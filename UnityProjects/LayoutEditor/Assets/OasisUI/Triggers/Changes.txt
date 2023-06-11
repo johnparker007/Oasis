@@ -1,0 +1,1 @@
+- Implemented to set BehaviorTrigger.InUse when ShowWindow was called outside.
