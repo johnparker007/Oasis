@@ -18,7 +18,7 @@ namespace DevionGames.UIWidgets
 			Canvas canvas = GetComponentInParent <Canvas> ();
 			if (canvas != null) {
 				canvasRectTransform = canvas.transform as RectTransform;
-				panelRectTransform = transform.parent as RectTransform;
+				panelRectTransform = transform.parent.parent as RectTransform;
 			}
 		}
 
