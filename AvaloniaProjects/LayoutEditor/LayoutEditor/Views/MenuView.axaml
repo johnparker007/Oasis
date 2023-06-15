@@ -1,0 +1,64 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="LayoutEditor.Views.MenuView">
+
+	<Menu>
+		<MenuItem Header="_File">
+			<MenuItem Header="_New..."/>
+			<MenuItem Header="_Open..."/>
+			<MenuItem Header="_Save..."/>
+			<MenuItem Header="Save _As..."/>
+			<Separator/>
+			<MenuItem Header="_Import">
+				<MenuItem Header="MFME Extract..."/>
+				<MenuItem Header="MFME Layout..."/>
+				<MenuItem Header="MAME Layout..."/>
+			</MenuItem>
+			<MenuItem Header="_Export">
+				<MenuItem Header="MFME Layout..."/>
+				<MenuItem Header="MAME Layout..."/>
+			</MenuItem>
+			<Separator/>
+			<MenuItem Header="_Close"/>
+			<MenuItem Header="E_xit"/>
+		</MenuItem>
+		<MenuItem Header="_Edit">
+			<MenuItem Header="Undo"/>
+			<MenuItem Header="Redo"/>
+			<Separator/>
+			<MenuItem Header="Cut"/>
+			<MenuItem Header="Copy"/>
+			<MenuItem Header="Paste"/>
+			<Separator/>
+			<MenuItem Header="Duplicate"/>
+			<MenuItem Header="Rename"/>
+			<MenuItem Header="Delete"/>
+			<Separator/>
+			<MenuItem Header="Preferences"/>
+		</MenuItem>
+		<MenuItem Header="_Component">
+			<MenuItem Header="Lamp"/>
+			<MenuItem Header="LED"/>
+			<MenuItem Header="Reel"/>
+			<MenuItem Header="Display"/>
+			<MenuItem Header="Button"/>
+			<MenuItem Header="Screen"/>
+			<MenuItem Header="Label"/>
+			<MenuItem Header="Image"/>
+			<Separator/>
+			<MenuItem Header="Group"/>
+		</MenuItem>		
+		<MenuItem Header="_Help">
+			<MenuItem Header="_Context Help"/>
+			<MenuItem Header="_Manual"/>
+			<Separator/>
+			<MenuItem Header="Check for _Updates"/>
+			<Separator/>
+			<MenuItem Header="_About"/>
+		</MenuItem>
+	</Menu>
+	
+</UserControl>
