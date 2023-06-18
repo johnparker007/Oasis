@@ -3,12 +3,32 @@ namespace Oasis.UI
     using System;
     using System.Drawing;
     using System.Windows.Forms;
-    using UnityWinForms.Examples.Panels;
+    using UnityWinForms.Examples;
 
     public class UI : Form
     {
-        private Panel _currentPanel;
+        // for now, hard code some values:
+        private const int kTreeViewWidth = 220;
+
+        private Panel _menuPanel = null;
+        private MenuStrip _menuStrip = null;
+
+        private Panel _treeViewPanel = null;
+        private TreeView _treeView = null;
+        private TabControl _tabControl = null;
+        private TabPage _tabPage = null;
+
         public UI()
+        {
+            InitialiseForm();
+            BuildMenu();
+
+            BuildHierarchy();
+            Build2D();
+            BuildInspector();
+        }
+
+        private void InitialiseForm()
         {
             uwfHeaderHeight = 0;
 
@@ -16,40 +36,26 @@ namespace Oasis.UI
             MaximizeBox = false;
             ControlBox = false;
             AutoScroll = true;
-            BackColor = Color.FromArgb(255, 0, 255);
-            Text = "Oasis Desktop  - TODO modify form to allow this head bar to be removed?  Or use Container";
+            BackColor = Color.FromArgb(0, 0, 0, 0);
+
+            uwfBorderColor = BackColor;
 
             SetWindowState(FormWindowState.Maximized);
-
-            //var panel = Activator.CreateInstance(typeof(PanelMenuStrip)) as PanelMenuStrip;
-
-            var panel = Activator.CreateInstance(typeof(Panel)) as Panel;
-            if (panel == null)
-                return;
-
-            if (_currentPanel != null && !_currentPanel.IsDisposed)
-                _currentPanel.Dispose();
-
-            _currentPanel = panel;
-            _currentPanel.Anchor = AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Right | AnchorStyles.Bottom;
-            //_currentPanel.Location = new Point(0, uwfHeaderHeight);
-            _currentPanel.Height = Height - uwfHeaderHeight;
-            _currentPanel.Width = Width;
-
-            BuildMenu();
-
-            Controls.Add(_currentPanel);
         }
 
         private void BuildMenu()
         {
-            var menu = new MenuStrip();
-            menu.Items.Add(BuildMenuFile());
-            menu.Items.Add(BuildMenuEdit());
-            menu.Items.Add(BuildMenuComponent());
-            menu.Items.Add(BuildMenuHelp());
+            _menuStrip = new MenuStrip();
+            BuildMenuPanel();
 
-            _currentPanel.Controls.Add(menu);
+            _menuStrip.Items.Add(BuildMenuFile());
+            _menuStrip.Items.Add(BuildMenuEdit());
+            _menuStrip.Items.Add(BuildMenuComponent());
+            _menuStrip.Items.Add(BuildMenuHelp());
+
+            _menuPanel.Controls.Add(_menuStrip);
+
+            Controls.Add(_menuPanel);
 
             // for ref:
             ////itemFile_New.ShortcutKeys = Keys.Control | Keys.N;
@@ -58,6 +64,15 @@ namespace Oasis.UI
 
             //itemFile_Exit.Image = uwfAppOwner.Resources.Close;
             //itemFile_Exit.uwfImageColor = Color.FromArgb(64, 64, 64);
+        }
+
+        private void BuildMenuPanel()
+        {
+            _menuPanel = Activator.CreateInstance(typeof(Panel)) as Panel;
+
+            _menuPanel.Anchor = AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Right;
+            _menuPanel.Height = _menuStrip.Height;
+            _menuPanel.Width = Width;
         }
 
         private ToolStripMenuItem BuildMenuFile()
@@ -170,6 +185,188 @@ namespace Oasis.UI
             itemHelp.DropDownItems.Add(itemHelp_About);
 
             return itemHelp;
+        }
+
+        private void BuildHierarchy()
+        {
+            BuildTabControl();
+            BuildTabPage();
+
+            _treeView = new TreeView();
+            _treeView.Anchor = AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Bottom;
+            //_treeView.Location = new Point(0, uwfHeaderHeight - 1); // All controls should be placed with Form header offset.
+            //_treeView.Location = new Point(0, uwfHeaderHeight - 1 + _menuStrip.Height);
+            //_treeView.Height = Height - uwfHeaderHeight + 1 - _menuStrip.Height;
+            //_treeView.TabStop = false;
+            _treeView.Size = _tabControl.Size;
+            //_treeView.BackColor = Color.Aquamarine;
+            //_treeView.NodeMouseClick += TreeViewOnNodeMouseClick;
+
+            BuildHierarchyData();
+
+
+
+            // for now, just create a single tabbed pane, later implement dockable tab system
+            //_treeViewPanel.Controls.Add(_treeView);
+            _tabPage.Controls.Add(_treeView);
+            _tabControl.TabPages.Add(_tabPage);
+            Controls.Add(_tabControl);
+        }
+
+        private void BuildTabControl()
+        {
+            _tabControl = new TabControl();
+
+            _tabControl.Location = new Point(0, uwfHeaderHeight - 1 + _menuStrip.Height);
+            //_treeViewPanel.Anchor = AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Bottom;
+            _tabControl.Height = Height - uwfHeaderHeight + 1 - _menuStrip.Height;
+            _tabControl.Width = kTreeViewWidth;
+            //_treeView.TabStop = false;
+            //_treeView.Width = 220;
+            _tabControl.Padding = new Padding(0);
+        }
+
+        private void BuildTabPage()
+        {
+            _tabPage = new TabPage();
+            _tabPage.Size = _tabControl.Size;
+            _tabPage.Text = "Hierarchy";
+        }
+
+        private void BuildHierarchyData()
+        {
+            // TODO replace the null with tags
+
+            var nodeButtons = new TreeNode("Buttons");
+            AddNode(nodeButtons, "Button", null);
+            AddNode(nodeButtons, "Button", null);
+            AddNode(nodeButtons, "Button", null);
+            AddNode(nodeButtons, "Button", null);
+            AddNode(nodeButtons, "Button", null);
+            AddNode(nodeButtons, "Button", null);
+            AddNode(nodeButtons, "Button", null);
+            AddNode(nodeButtons, "Button", null);
+            AddNode(nodeButtons, "Button", null);
+            _treeView.Nodes.Add(nodeButtons);
+
+            var nodeLamps = new TreeNode("Lamps");
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            AddNode(nodeLamps, "Lamp", null);
+            _treeView.Nodes.Add(nodeLamps);
+
+            var nodeSegmentDisplays = new TreeNode("Segment Displays");
+            AddNode(nodeSegmentDisplays, "Segment Display", null);
+            AddNode(nodeSegmentDisplays, "Segment Display", null);
+            AddNode(nodeSegmentDisplays, "Segment Display", null);
+            AddNode(nodeSegmentDisplays, "Segment Display", null);
+            AddNode(nodeSegmentDisplays, "Segment Display", null);
+            AddNode(nodeSegmentDisplays, "Segment Display", null);
+            AddNode(nodeSegmentDisplays, "Segment Display", null);
+            AddNode(nodeSegmentDisplays, "Segment Display", null);
+            AddNode(nodeSegmentDisplays, "Segment Display", null);
+            AddNode(nodeSegmentDisplays, "Segment Display", null);
+            AddNode(nodeSegmentDisplays, "Segment Display", null);
+            AddNode(nodeSegmentDisplays, "Segment Display", null);
+            _treeView.Nodes.Add(nodeSegmentDisplays);
+
+            // Refresh method or ExpandAll will update view list. 
+            // NOTE: most controls don't need to be refreshed. Make sure to take a look 
+            // at Refresh implementation in Control that you think is not working.
+            _treeView.ExpandAll();
+
+            // Grip renderer is normal control. Bring it to front if you use it over other controls that can technically hide it.
+            // uwfSizeGripRenderer.BringToFront();
+
+        }
+
+        private void Build2D()
+        {
+        }
+
+        private void BuildInspector()
+        {
+        }
+
+        private static void AddNode(TreeNode parent, string text, object tag)
+        {
+            var node = new TreeNode(text);
+            node.Tag = tag;
+
+            parent.Nodes.Add(node);
+        }
+        private void TreeViewOnNodeMouseClick(object sender, TreeNodeMouseClickEventArgs e)
+        {
+            //if (e.Button != MouseButtons.Left || e.Node == null || e.Node.Tag == null)
+            //    return;
+
+            //var panelType = e.Node.Tag as Type;
+            //if (panelType == null)
+            //    return;
+
+            //var panel = Activator.CreateInstance(panelType) as BaseExamplePanel;
+            //if (panel == null)
+            //    return;
+
+            //SetPanel(panel);
         }
     }
 }

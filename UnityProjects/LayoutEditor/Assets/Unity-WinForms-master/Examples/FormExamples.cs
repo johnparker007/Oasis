@@ -17,11 +17,11 @@
             // NOTE: most properties and methods that starts with 'uwf' are
             // internal and not supported by original Windows Forms.
 
-            BackColor = Color.FromArgb(239, 235, 233);
-            MinimumSize = new Size(320, 240);
-            Text = "Unity-WinForms";
-            Size = new Size(640, 480);
-            SizeGripStyle = SizeGripStyle.Show;
+            //BackColor = Color.FromArgb(239, 235, 233);
+            //MinimumSize = new Size(320, 240);
+            //Text = "Unity-WinForms";
+            //Size = new Size(640, 480);
+            //SizeGripStyle = SizeGripStyle.Show;
 
             treeView = new TreeView();
             treeView.Anchor = AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Bottom;
@@ -33,17 +33,17 @@
 
             Controls.Add(treeView);
 
-            var labelNote = new Label();
-            labelNote.Font = new Font("Arial", 14, FontStyle.Bold);
-            labelNote.Location = new Point(treeView.Location.X + treeView.Width + 16, treeView.Location.Y);
-            labelNote.Text = 
-                "This is not completed overview of the UWF controls.\r\n" + 
-                "Work in progress.\r\n\r\n" +
-                "Do not forget that you can still modify controls\r\n" + 
-                "with 'SWF Inspector' which is located in drop down\r\n" + 
-                "menu 'Window' -> 'UnityWinForms'.";
+            //var labelNote = new Label();
+            //labelNote.Font = new Font("Arial", 14, FontStyle.Bold);
+            //labelNote.Location = new Point(treeView.Location.X + treeView.Width + 16, treeView.Location.Y);
+            //labelNote.Text = 
+            //    "This is not completed overview of the UWF controls.\r\n" + 
+            //    "Work in progress.\r\n\r\n" +
+            //    "Do not forget that you can still modify controls\r\n" + 
+            //    "with 'SWF Inspector' which is located in drop down\r\n" + 
+            //    "menu 'Window' -> 'UnityWinForms'.";
             
-            Controls.Add(labelNote);
+            //Controls.Add(labelNote);
 
             var nodeControls = new TreeNode("Controls");
             AddNode(nodeControls, "Button", typeof(PanelButton));
@@ -68,16 +68,16 @@
             AddNode(nodeControls, "TabControl", typeof(PanelTabControl));
             AddNode(nodeControls, "TrackBar", typeof(PanelTrackBar));
             AddNode(nodeControls, "TreeView", typeof(PanelTreeView));
-            
+
             treeView.Nodes.Add(nodeControls);
 
-            var nodeOtherControls = new TreeNode("Other");
-            AddNode(nodeOtherControls, "Chart", typeof(PanelChart));
-            AddNode(nodeOtherControls, "ColorPicker", typeof(PanelColorPicker));
-            AddNode(nodeOtherControls, "TableView", typeof(PanelTableView));
-            AddNode(nodeOtherControls, "TableViewLazy", typeof(PanelTableViewLazy));
+            //var nodeOtherControls = new TreeNode("Other");
+            //AddNode(nodeOtherControls, "Chart", typeof(PanelChart));
+            //AddNode(nodeOtherControls, "ColorPicker", typeof(PanelColorPicker));
+            //AddNode(nodeOtherControls, "TableView", typeof(PanelTableView));
+            //AddNode(nodeOtherControls, "TableViewLazy", typeof(PanelTableViewLazy));
             
-            treeView.Nodes.Add(nodeOtherControls);
+            //treeView.Nodes.Add(nodeOtherControls);
 
             // Refresh method or ExpandAll will update view list. 
             // NOTE: most controls don't need to be refreshed. Make sure to take a look 
@@ -90,18 +90,18 @@
 
         public void SetPanel(BaseExamplePanel panel)
         {
-            if (currentPanel != null && !currentPanel.IsDisposed)
-                currentPanel.Dispose();
+            //if (currentPanel != null && !currentPanel.IsDisposed)
+            //    currentPanel.Dispose();
 
-            currentPanel = panel;
-            currentPanel.Anchor = AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Right | AnchorStyles.Bottom;
-            currentPanel.Location = new Point(treeView.Location.X + treeView.Width, uwfHeaderHeight);
-            currentPanel.Height = Height - uwfHeaderHeight - 16; // We don't want to hide SizeGripRenderer with scrollbars.
-            currentPanel.Width = Width - treeView.Width;
+            //currentPanel = panel;
+            //currentPanel.Anchor = AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Right | AnchorStyles.Bottom;
+            //currentPanel.Location = new Point(treeView.Location.X + treeView.Width, uwfHeaderHeight);
+            //currentPanel.Height = Height - uwfHeaderHeight - 16; // We don't want to hide SizeGripRenderer with scrollbars.
+            //currentPanel.Width = Width - treeView.Width;
 
-            Controls.Add(currentPanel);
+            //Controls.Add(currentPanel);
 
-            currentPanel.Initialize();
+            //currentPanel.Initialize();
         }
         
         private static void AddNode(TreeNode parent, string text, object tag)
