@@ -11,11 +11,20 @@
         internal TreeNode  root;
         
         internal float uwfScrollSpeed = 2;
-        internal Color uwfArrowImageColor = Color.FromArgb(0x26, 0x26, 0x26);
-        internal Color uwfArrowImageHoveredColor = Color.FromArgb(0x27, 0xC7, 0xF7);
-        internal Color uwfItemHoveredColor = Color.FromArgb(221, 238, 253);
-        internal Color uwfItemSelectedColor = Color.FromArgb(187, 222, 251); // Default is SystemColors.Highlight.
-        internal Color uwfItemSelectedUnfocusedColor = Color.FromArgb(187, 222, 251);
+
+        // JP Dark theme colors:
+        internal Color uwfArrowImageColor = Color.FromArgb(0x68, 0x68, 0x68); // OK
+        internal Color uwfArrowImageHoveredColor = Color.FromArgb(0xaa, 0xaa, 0xaa);// made up since Unity doesn't actually brighten arrow on hover
+        internal Color uwfItemHoveredColor = Color.FromArgb(0x45, 0x45, 0x45); // OK
+        internal Color uwfItemSelectedColor = Color.FromArgb(0x2c, 0x5d, 0x87); // OK
+        internal Color uwfItemSelectedUnfocusedColor = Color.FromArgb(0x4d, 0x4d, 0x4d); // OK
+
+        // JP Original colors:
+        //internal Color uwfArrowImageColor = Color.FromArgb(0x26, 0x26, 0x26);
+        //internal Color uwfArrowImageHoveredColor = Color.FromArgb(0x27, 0xC7, 0xF7);
+        //internal Color uwfItemHoveredColor = Color.FromArgb(221, 238, 253);
+        //internal Color uwfItemSelectedColor = Color.FromArgb(187, 222, 251); // Default is SystemColors.Highlight.
+        //internal Color uwfItemSelectedUnfocusedColor = Color.FromArgb(187, 222, 251);
 
         private readonly DrawTreeNodeEventArgs nodeArgs = new DrawTreeNodeEventArgs(null, null, Rectangle.Empty, TreeNodeStates.Default);
         private readonly List<TreeNode> nodeList = new List<TreeNode>();

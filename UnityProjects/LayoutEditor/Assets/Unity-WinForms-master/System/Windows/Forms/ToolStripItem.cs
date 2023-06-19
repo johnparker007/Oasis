@@ -7,11 +7,23 @@
     {
         internal bool boundsChanged;
         internal bool locationChanged;
+
+        // Dark theme:
         internal Color disabledForeColor = SystemColors.InactiveCaption;
-        internal Color hoverColor = Color.FromArgb(196, 225, 255);
+        internal Color hoverColor = Color.FromArgb(0x3e, 0x5f, 0x96); // OK
         internal Pen selectPen = new Pen(Color.FromArgb(51, 153, 255));
 
         private Color backColor = SystemColors.Control;
+
+        // JP ORIGINAL COLORS:
+        //internal Color disabledForeColor = SystemColors.InactiveCaption;
+        //internal Color hoverColor = Color.FromArgb(196, 225, 255);
+        //internal Pen selectPen = new Pen(Color.FromArgb(51, 153, 255));
+
+        //private Color backColor = SystemColors.Control;
+
+
+
         private Rectangle bounds = Rectangle.Empty;
         private ToolStrip owner;
         private Padding padding;

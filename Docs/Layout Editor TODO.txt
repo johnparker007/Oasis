@@ -1,0 +1,7 @@
+Implement the MVVM model, and do stuff like showing the About screen or opening file requester (to load the MFME Extracts as good first test.
+
+
+For the Hierarchy when viewing MFME style 2d layout, have another category that is Panels (probably better then 'Glasses'?), and there will be the defined Perspective Quads in there for the layout.
+
+Initially name Components as NewPanel, NewPanel2, NewPanel3 etc... so we have unique names.  Then will help for instance with the tabbed Edit views (such as the per perspective quad warped to rectangular view), so they have unique names which will be more usable.
+

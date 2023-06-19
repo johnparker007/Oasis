@@ -31,12 +31,13 @@ namespace Oasis.UI
         private void InitialiseForm()
         {
             uwfHeaderHeight = 0;
+            uwfShadowBox = false;
 
             Size = new Size(Screen.width, Screen.height);
             MaximizeBox = false;
             ControlBox = false;
             AutoScroll = true;
-            BackColor = Color.FromArgb(0, 0, 0, 0);
+            BackColor = Color.Transparent;
 
             uwfBorderColor = BackColor;
 

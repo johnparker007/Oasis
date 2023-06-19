@@ -142,7 +142,9 @@
         public static readonly Color Turquoise            = new Color(KnownColor.Turquoise,            0xFF40E0D0);
         public static readonly Color Violet               = new Color(KnownColor.Violet,               0xFFEE82EE);
         public static readonly Color Wheat                = new Color(KnownColor.Wheat,                0xFFF5DEB3);
-        public static readonly Color White                = new Color(KnownColor.White,                0xFFFFFFFF);
+        //        public static readonly Color White                = new Color(KnownColor.White,                0xFFFFFFFF);
+// bit of a hack, as lots of controls ref this, using Unity Hierarchy background for now
+public static readonly Color White = new Color(KnownColor.White, 0xFF383838); 
         public static readonly Color WhiteSmoke           = new Color(KnownColor.WhiteSmoke,           0xFFF5F5F5);
         public static readonly Color Yellow               = new Color(KnownColor.Yellow,               0xFFFFFF00);
         public static readonly Color YellowGreen          = new Color(KnownColor.YellowGreen,          0xFF9ACD32);

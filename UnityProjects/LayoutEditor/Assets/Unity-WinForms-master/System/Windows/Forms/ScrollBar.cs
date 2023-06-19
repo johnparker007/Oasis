@@ -7,6 +7,7 @@
         internal Button addButton;
         internal Button subtractButton;
         
+        // JP these two have no effect in the demo:
         internal Color uwfScrollColor = SystemColors.ScrollBar;
         internal Color uwfScrollHoverColor = Color.FromArgb(166, 166, 166);
 
@@ -33,7 +34,13 @@
         {
             Minimum = 0;
             SmallChange = 1;
-            BackColor = Color.FromArgb(240, 240, 240);
+
+
+            // Dark theme:
+            BackColor = Color.FromArgb(0x35, 0x35, 0x35);
+            // JP Original color
+            //BackColor = Color.FromArgb(240, 240, 240);
+
             TabStop = false;
             
             scrollCurrentColor = uwfScrollColor;
@@ -42,12 +49,21 @@
             scrollCurrentColorG = scrollCurrentColor.G;
             scrollCurrentColorB = scrollCurrentColor.B;
 
-            var backColor = SystemColors.Control;
-            var backHoverColor = Color.FromArgb(218, 218, 218);
+            var backColor = Color.FromArgb(0x35, 0x35, 0x35); // OK
+
+            // Dark theme:
+            var backHoverColor = Color.FromArgb(0x35, 0x35, 0x35); // JP this is background of the arrow images, not the bar
             var borderColor = Color.Transparent;
             var borderHoverColor = Color.Transparent;
-            var imageColor = Color.FromArgb(96, 96, 96);
-            var imageHoverColor = Color.Black;
+            var imageColor = Color.FromArgb(0xc4, 0xc4, 0xc4); // this is arrow foreground
+            var imageHoverColor = Color.FromArgb(0xc4, 0xc4, 0xc4); // this is arrow foreground
+
+            // JP Original colors:
+            //var backHoverColor = Color.FromArgb(218, 218, 218); // JP this is background of the arrow images, not the bar
+            //var borderColor = Color.Transparent;
+            //var borderHoverColor = Color.Transparent;
+            //var imageColor = Color.FromArgb(96, 96, 96); // this is arrow foreground
+            //var imageHoverColor = Color.Black;// this is arrow foreground
 
             addButton = new RepeatButton();
             addButton.uwfBorderHoverColor = borderHoverColor;
