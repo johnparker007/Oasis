@@ -54,6 +54,8 @@ namespace Oasis.UI
             _menuStrip.Items.Add(BuildMenuComponent());
             _menuStrip.Items.Add(BuildMenuHelp());
 
+            _menuStrip.BackColor = Color.FromArgb(56, 56, 56); // JP Dark theme
+
             _menuPanel.Controls.Add(_menuStrip);
 
             Controls.Add(_menuPanel);
@@ -74,6 +76,7 @@ namespace Oasis.UI
             _menuPanel.Anchor = AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Right;
             _menuPanel.Height = _menuStrip.Height;
             _menuPanel.Width = Width;
+            _menuPanel.BackColor = Color.FromArgb(56, 56, 56); // JP Dark theme
         }
 
         private ToolStripMenuItem BuildMenuFile()
@@ -225,6 +228,8 @@ namespace Oasis.UI
             //_treeView.TabStop = false;
             //_treeView.Width = 220;
             _tabControl.Padding = new Padding(0);
+
+            _tabControl.BackColor = Color.FromArgb(40, 40, 40); // JP Dark theme
         }
 
         private void BuildTabPage()

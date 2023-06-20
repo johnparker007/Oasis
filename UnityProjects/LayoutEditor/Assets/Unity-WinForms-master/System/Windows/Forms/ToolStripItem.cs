@@ -11,9 +11,10 @@
         // Dark theme:
         internal Color disabledForeColor = SystemColors.InactiveCaption;
         internal Color hoverColor = Color.FromArgb(0x3e, 0x5f, 0x96); // OK
-        internal Pen selectPen = new Pen(Color.FromArgb(51, 153, 255));
-
-        private Color backColor = SystemColors.Control;
+        // (this is the border around the selected/hovered menu item so setting same as hover color
+        // to 'remove' the border:
+        internal Pen selectPen = new Pen(Color.FromArgb(0x3e, 0x5f, 0x96)); // OK 
+        private Color backColor = Color.FromArgb(56, 56, 56);
 
         // JP ORIGINAL COLORS:
         //internal Color disabledForeColor = SystemColors.InactiveCaption;

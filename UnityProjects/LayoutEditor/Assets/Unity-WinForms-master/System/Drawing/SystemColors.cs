@@ -27,11 +27,11 @@
         public static readonly Color InactiveCaptionText = new Color(KnownColor.InactiveCaptionText, 0xFF000000);// unchanged, as cannot see used anywhere in the demo
         public static readonly Color Info = new Color(KnownColor.Info, 0xFFFFFFFF); // unchanged, as cannot see used anywhere in the demo
         public static readonly Color InfoText = new Color(KnownColor.InfoText, 0xFFffffff); // current month days in MonthCalendar
-        public static readonly Color Menu = new Color(KnownColor.Menu, 0xFFF0F0F0);
-        public static readonly Color MenuBar = new Color(KnownColor.MenuBar, 0xFFF0F0F0);
-        public static readonly Color MenuHighlight = new Color(KnownColor.MenuHighlight, 0xFF3399FF);// unchanged, as cannot see used anywhere in the demo
+        public static readonly Color Menu = new Color(KnownColor.Menu, 0xFFff00ff);
+        public static readonly Color MenuBar = new Color(KnownColor.MenuBar, 0xFFFff00ff);
+        public static readonly Color MenuHighlight = new Color(KnownColor.MenuHighlight, 0xFFff00ff);// unchanged, as cannot see used anywhere in the demo
         public static readonly Color MenuText = new Color(KnownColor.MenuText, 0xFF000000);//c9// unchanged, as cannot see used anywhere in the demo
-        public static readonly Color ScrollBar = new Color(KnownColor.ScrollBar, 0xFFC8C8C8);// unchanged, as cannot see used anywhere in the demo
+        public static readonly Color ScrollBar = new Color(KnownColor.ScrollBar, 0xFFff00ff);// unchanged, as cannot see used anywhere in the demo
         public static readonly Color Window = new Color(KnownColor.Window, 0xFF2A2A2A); // OK - seems to actually be text input fields though
         public static readonly Color WindowFrame = new Color(KnownColor.WindowFrame, 0xff1e1e1e); // prob OK - seems to be used as an outline for a label
         public static readonly Color WindowText = new Color(KnownColor.WindowText, 0xFF000000); // unchanged, as cannot see used anywhere in the demo

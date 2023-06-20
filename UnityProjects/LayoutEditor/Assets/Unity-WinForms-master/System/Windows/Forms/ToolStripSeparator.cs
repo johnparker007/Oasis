@@ -7,8 +7,13 @@ namespace System.Windows.Forms
         protected readonly Pen borderColor = new Pen(defaultSeparatorBorderColor);
         protected readonly Pen borderColor2 = new Pen(Color.White);
 
-        private const int WINBAR_SEPARATORTHICKNESS = 6;
-        private static readonly Color defaultSeparatorBorderColor = Color.FromArgb(189, 189, 189);
+        //private const int WINBAR_SEPARATORTHICKNESS = 6;
+        private const int WINBAR_SEPARATORTHICKNESS = 4; // JP was too chunky
+
+        // JP Dark theme:
+        private static readonly Color defaultSeparatorBorderColor = Color.FromArgb(96, 96, 96); // not from Unity
+        // JP ORIGINAL COLOR:
+        //private static readonly Color defaultSeparatorBorderColor = Color.FromArgb(189, 189, 189);
 
         public override bool CanSelect
         {

@@ -13,7 +13,10 @@
         internal int tabPageCount;
         internal int tabViewIndex;
 
-        private readonly Pen borderPen = new Pen(Color.FromArgb(172, 172, 172));
+        // JP Dark theme:
+        private readonly Pen borderPen = new Pen(Color.FromArgb(25, 25, 25));        
+        // JP ORIGINAL COLOR:
+        //private readonly Pen borderPen = new Pen(Color.FromArgb(172, 172, 172));
         private readonly Control pagesButtonsPanel;
         private Size itemSize = new Size(62, 21);
         private Button navigationButtonLeft;

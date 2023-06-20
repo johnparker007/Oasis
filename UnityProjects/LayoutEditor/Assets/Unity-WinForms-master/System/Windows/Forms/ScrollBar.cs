@@ -6,10 +6,10 @@
     {
         internal Button addButton;
         internal Button subtractButton;
-        
-        // JP these two have no effect in the demo:
-        internal Color uwfScrollColor = SystemColors.ScrollBar;
-        internal Color uwfScrollHoverColor = Color.FromArgb(166, 166, 166);
+
+        // JP Dark mode:
+        internal Color uwfScrollColor = Color.FromArgb(95, 95, 95);
+        internal Color uwfScrollHoverColor = Color.FromArgb(104, 104, 104);
 
         protected ScrollOrientation scrollOrientation;
 
@@ -38,12 +38,14 @@
 
             // Dark theme:
             BackColor = Color.FromArgb(0x35, 0x35, 0x35);
+            //ForeColor = Color.Magenta;
             // JP Original color
             //BackColor = Color.FromArgb(240, 240, 240);
 
             TabStop = false;
-            
+
             scrollCurrentColor = uwfScrollColor;
+            //scrollCurrentColor = Color.Magenta;
             scrollCurrentColorA = scrollCurrentColor.A;
             scrollCurrentColorR = scrollCurrentColor.R;
             scrollCurrentColorG = scrollCurrentColor.G;
@@ -53,10 +55,10 @@
 
             // Dark theme:
             var backHoverColor = Color.FromArgb(0x35, 0x35, 0x35); // JP this is background of the arrow images, not the bar
-            var borderColor = Color.Transparent;
-            var borderHoverColor = Color.Transparent;
+            var borderColor = Color.FromArgb(53, 53, 53); // this is arrow border
+            var borderHoverColor = Color.FromArgb(73, 73, 73); // this is arrow hover border
             var imageColor = Color.FromArgb(0xc4, 0xc4, 0xc4); // this is arrow foreground
-            var imageHoverColor = Color.FromArgb(0xc4, 0xc4, 0xc4); // this is arrow foreground
+            var imageHoverColor = Color.FromArgb(0xc4, 0xc4, 0xc4); // this is arrow hover foreground
 
             // JP Original colors:
             //var backHoverColor = Color.FromArgb(218, 218, 218); // JP this is background of the arrow images, not the bar
@@ -377,7 +379,6 @@
                 scrollDestinationColor = uwfScrollColor;
             MathHelper.ColorLerp(scrollDestinationColor, 4, ref scrollCurrentColorA, ref scrollCurrentColorR, ref scrollCurrentColorG, ref scrollCurrentColorB);
             scrollCurrentColor = Color.FromArgb((int)scrollCurrentColorA, (int)scrollCurrentColorR, (int)scrollCurrentColorR, (int)scrollCurrentColorB);
-
 
             if (scrollOrientation == ScrollOrientation.HorizontalScroll)
             {

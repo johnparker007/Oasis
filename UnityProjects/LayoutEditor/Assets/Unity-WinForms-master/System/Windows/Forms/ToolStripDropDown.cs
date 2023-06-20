@@ -5,7 +5,10 @@
     public class ToolStripDropDown : ToolStrip
     {
         internal ToolStripDropDownDirection direction;
-        internal readonly Pen borderPen = new Pen(Color.FromArgb(128, 128, 128));
+        // JP Dark theme:
+        internal readonly Pen borderPen = new Pen(Color.FromArgb(35, 35, 35));
+        // ORIGINAL COLOR:
+        //internal readonly Pen borderPen = new Pen(Color.FromArgb(128, 128, 128));
         internal Color uwfColumnBackColor = SystemColors.Control; // ?
         
         private ToolStripItem ownerItem;
