@@ -1,0 +1,55 @@
+{
+  "WorkItem": {
+    "AffectedComponent": {
+      "Name": "",
+      "DisplayName": ""
+    },
+    "ClosedComment": "",
+    "ClosedDate": "2013-12-11T17:58:59.807-08:00",
+    "CommentCount": 3,
+    "Custom": null,
+    "Description": "It'd be lovely if InputSimulator was on NuGet.",
+    "LastUpdatedDate": "2013-12-11T17:58:59.807-08:00",
+    "PlannedForRelease": "",
+    "ReleaseVisibleToPublic": false,
+    "Priority": {
+      "Name": "Low",
+      "Severity": 50,
+      "Id": 1
+    },
+    "ProjectName": "inputsimulator",
+    "ReportedDate": "2012-07-02T23:56:51.843-07:00",
+    "Status": {
+      "Name": "Closed",
+      "Id": 4
+    },
+    "ReasonClosed": {
+      "Name": "Fixed"
+    },
+    "Summary": "Put InputSimulator on NuGet.org",
+    "Type": {
+      "Name": "Issue",
+      "Id": 3
+    },
+    "VoteCount": 4,
+    "Id": 13003
+  },
+  "FileAttachments": [],
+  "Comments": [
+    {
+      "Message": "I agree. Being able to get this as a NuGet package would be awesome.",
+      "PostedDate": "2013-04-24T17:07:29.06-07:00",
+      "Id": 98398
+    },
+    {
+      "Message": "essential!",
+      "PostedDate": "2013-10-27T04:19:02.17-07:00",
+      "Id": 119805
+    },
+    {
+      "Message": "Sure is! I finally took a break and we're official: https://www.nuget.org/packages/InputSimulator/",
+      "PostedDate": "2013-12-11T17:58:56.39-08:00",
+      "Id": 127067
+    }
+  ]
+}

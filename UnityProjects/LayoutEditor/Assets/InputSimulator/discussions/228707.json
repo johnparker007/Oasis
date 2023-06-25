@@ -1,0 +1,10 @@
+[
+  {
+    "Id": "498896",
+    "ThreadId": "228707",
+    "Html": "<p>I want to use&nbsp;inputsimulator&nbsp;from window to dos . But when i try to pass text from windows screen to dos screen it is not passing text.</p>\r\n<p>&nbsp;</p>\r\n<p>InputSimulator.SimulateKeyDown(VirtualKeyCode.MENU);</p>\r\n<p>InputSimulator.SimulateKeyPress(VirtualKeyCode.TAB);&nbsp;&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;</p>\r\n<p>InputSimulator.SimulateKeyUp(VirtualKeyCode.MENU);&nbsp;&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;</p>\r\n<p>&nbsp;InputSimulator.SimulateTextEntry(&quot;Test&quot;);&nbsp;&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;</p>\r\n<p>InputSimulator.SimulateKeyPress(VirtualKeyCode.TAB);</p>\r\n<p>&nbsp;</p>",
+    "PostedDate": "2010-09-27T05:38:05.26-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

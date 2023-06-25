@@ -1,0 +1,82 @@
+[
+  {
+    "Id": "1096984",
+    "ThreadId": "458562",
+    "Html": "Hi, first of all great library, I really love it, everything works fine except the\r<br />\n LBUTTON / RBUTTON /MBUTTON. All of the other keys i've tested work just fine. \r<br />\n<br />\nI send simulate buttons like this: <br />\n<pre><code>private void button2_Click(object sender, EventArgs e)\n        {\n            System.Threading.Thread.Sleep(2000); \n            InputSimulator.SimulateKeyPress(VirtualKeyCode.LBUTTON);\n        }</code></pre>\n\nBut just nothing happens. Do I do anything wrong?<br />\n",
+    "PostedDate": "2013-09-20T08:09:36.487-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1097828",
+    "ThreadId": "458562",
+    "Html": "\r\n<div dir=\"ltr\">Hi There,\r\n<div><br>\r\n</div>\r\n<div>If you are trying to simulate a mouse button click I'd recommend using the later version of the code which has Mouse simulation.<br>\r\n</div>\r\n<div><br>\r\n</div>\r\n<div>\r\n<div>var sim = new InputSimulator();</div>\r\n<div>sim.Mouse.LeftButtonClick();</div>\r\n</div>\r\n<div><br>\r\n</div>\r\n<div>Cheers,</div>\r\n<div>Mike</div>\r\n</div>\r\n<div><br>\r\n<br>\r\n<div></div>\r\n</div>\r\n",
+    "PostedDate": "2013-09-22T15:38:15.057-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1201130",
+    "ThreadId": "458562",
+    "Html": "Hi, i absolutely love this library, great work, thank you very much. just wondering where can i download the latest version which has Mouse simulation ? i see only 0.1.00 version available\r<br />\n<br />\nTIA\r<br />\nMarina<br />\n",
+    "PostedDate": "2014-01-30T15:09:43.41-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1201133",
+    "ThreadId": "458562",
+    "Html": "Hi, you need to build the latest version by yourself, just download the source code.<br />\n",
+    "PostedDate": "2014-01-30T15:11:50.747-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1201336",
+    "ThreadId": "458562",
+    "Html": "hi, thanks for the quick respond.\r<br />\nis latest version WindowsInput ? should i delete old reference to InputSimulator and replace it with WindowsInput ?<br />\n",
+    "PostedDate": "2014-01-31T07:00:00.49-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1201342",
+    "ThreadId": "458562",
+    "Html": "Yes, that is the latest version of the code, it works a little bit different just see the examples<br />\n",
+    "PostedDate": "2014-01-31T07:05:59.847-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1201413",
+    "ThreadId": "458562",
+    "Html": "\r\n<div dir=\"ltr\">yeah, got it, thanks</div>\r\n<div><br>\r\n<br>\r\n<div></div>\r\n</div>\r\n",
+    "PostedDate": "2014-01-31T09:44:15.79-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1207009",
+    "ThreadId": "458562",
+    "Html": "\r\n<div dir=\"ltr\">Hi Marina,\r\n<div><br>\r\n</div>\r\n<div>You can also use nuget to install the package.</div>\r\n<div><br>\r\n</div>\r\n<div>Hope that helps.</div>\r\n<div>Mike</div>\r\n</div>\r\n<div><br>\r\n<br>\r\n<div></div>\r\n</div>\r\n",
+    "PostedDate": "2014-02-11T14:38:49.153-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1223437",
+    "ThreadId": "458562",
+    "Html": "Hi Mike,\r<br />\nWhen i try to install the package with NuGet i am getting the below error, Please help.\r<br />\n<br />\n<br />\n_PM&gt; Install-Package InputSimulator\r<br />\nThe source at nuget.org [<a href=\"https://www.nuget.org/api/v2/]\" rel=\"nofollow\">https://www.nuget.org/api/v2/]</a> is unreachable. Falling back to NuGet Local Cache at C:\\Users\\myName\\AppData\\Local\\NuGet\\Cache\r<br />\nInstall-Package : Unable to find package 'InputSimulator'.\r<br />\nAt line:1 char:16<br />\n<ul>\n<li>\nInstall-Package &lt;&lt;&lt;&lt;  InputSimulator<br />\n<ul>\n<li>CategoryInfo          : NotSpecified: (:) [Install-Package], InvalidOperationException</li>\n<li>\nFullyQualifiedErrorId : NuGetCmdletUnhandledException,NuGet.PowerShell.Commands.InstallPackageCommand_<br />\n</li>\n</ul>\n</li>\n</ul>\nThanks,\r<br />\nSelvendran P<br />\n",
+    "PostedDate": "2014-03-17T02:20:49.633-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1223440",
+    "ThreadId": "458562",
+    "Html": "\r\n<div dir=\"ltr\">What nuget is telling you is that it cannot reach the feed at <a href=\"http://nuget.org\">\r\nnuget.org</a> so it won't be able to find the InputSimulator package. Perhaps you have a proxy restricting access to\r\n<a href=\"http://nuget.org\">nuget.org</a>?</div>\r\n<div><br>\r\n<br>\r\n<div></div>\r\n</div>\r\n",
+    "PostedDate": "2014-03-17T02:22:41.247-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

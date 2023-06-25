@@ -1,0 +1,10 @@
+[
+  {
+    "Id": "1330339",
+    "ThreadId": "574460",
+    "Html": "I am trying to simulate Tab key down to put the keyboard focus on the next UI element. It works fine but if have a key already pressed then it does not work.\r<br />\n<br />\nI have a WPF tab control with multiple tabs and we are allowing user to switch tabs by using the Ctrl+shift key combination.\r<br />\nWhen the user switch to next tab i have to put focus on the first control on that tab.\r<br />\n<br />\nI listen for Key clicked event, in the event handler i switch the Tab and in the tab loaded event i am using Simulator for tab key down, but it does not work. I am guessing it has do something with Ctrl+shift key and the keyboard buffer is not cleared.<br />\n",
+    "PostedDate": "2014-12-09T13:49:04.53-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

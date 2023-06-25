@@ -1,0 +1,18 @@
+[
+  {
+    "Id": "1424297",
+    "ThreadId": "637497",
+    "Html": "I want to create a program that converts CEC input from a TV into generic keyboard input. At the moment, I'm just trying to get keyboard buttons to be simulated.\r<br />\n<br />\nSo far, this library rocks. It has made a lot of what I want to do so much easier. I've been using it by setting hotkeys that when pressed, simulates a keyboard press.\r<br />\n<br />\nThis works for everything I have tried (space, enter, backspace) and needed except my arrow keys. The hotkey works and the code runs, but my text cursor in Notepad doesn't move.\r<br />\n<br />\nThe code used is just this:<br />\n<pre><code>  InputSimulator kb= new InputSimulator();\n  kb.Keyboard.KeyPress(VirtualKeyCode.LEFT);</code></pre>\n\nSo while I can delete characters, return new lines, add spaces, etc. I can't move the text cursor as you would by pressing the arrow keys. \r<br />\n<br />\nThe arrow keys are necessary for my application to be useful, so if I can't get this to work I'll have to put it on hold.<br />\n",
+    "PostedDate": "2015-05-08T18:43:33.577-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1426479",
+    "ThreadId": "637497",
+    "Html": "\r\n<div dir=\"ltr\">Hey DeusRex,\r\n<div><br>\r\n</div>\r\n<div>Did you end up finding a solution?</div>\r\n<div><br>\r\n</div>\r\n<div>Mike</div>\r\n</div>\r\n<div><br>\r\n<div></div>\r\n</div>\r\n",
+    "PostedDate": "2015-05-19T19:07:15.987-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

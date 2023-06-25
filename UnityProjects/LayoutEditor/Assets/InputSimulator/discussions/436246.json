@@ -1,0 +1,18 @@
+[
+  {
+    "Id": "1013651",
+    "ThreadId": "436246",
+    "Html": "Years ago I was working in VB on a program that allowed automatic saving programmatically rather than using keystrokes. Using the Windows API it was possible to develope a routine that automatically searched for the correct window and activated it prior to calling the save function which was handled via the API menu calls. The nice thing about this was that the user did not experience the tell tale flash or delay in the program as usually happens when an imitated keystroke or mouse click is sent while the user is in the middle of working in the program.\r<br />\n<br />\nFor what reason I don't know for sure the developer ended up changing the menu structures to be generated after the program initiated. This made finding the correct menu item code almost impossible. The obvious recourse was to use the send key command or variations of the same which then caused the pause or flash as mentioned above.\r<br />\n<br />\nMy questions are as follows:<br />\n<ol>\n<li>\nUsing your current code, what would you suggest to be the best way to insure the correct window receives the keystroke or mouse input? This being important in situations where the command(s) is sent automatically no matter if the receiving window is active or not. And, do you find your solution to behave as I mentioned above?<br />\n</li>\n<li>\nMy best guess is that the menu system in the program I mentioned is developed similarly to those found in the MS Office suite but not 100% sure of that. Rather than sending a usually clumsy keystroke or mouse click is there another way to directly access the menu items AFTER they have been constructed by the program? It is still easy enough to find the Window Handle and pass that information from a stored variable when it's needed. FYI, I did try to find the menu item handles after the program started but still found many to be unlabeled. I even tried using a menu item count to increment according to the position held in the final menu to no avail. It's as if certain menu items simple do not truly exist.<br />\n</li>\n</ol>\nIt is my onion that solving the menu item identification issue would result in a far better solution than sending keystrokes or mouse clicks. Please take no offense from this as I am sure there are situations where they are more than adequate.\r<br />\n<br />\nThank you in advance,\r<br />\nMax H<br />\n",
+    "PostedDate": "2013-03-11T20:35:28.26-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1043371",
+    "ThreadId": "436246",
+    "Html": "You can force the window to be active via a brute force technique. It's not recommended though.  Check pinvoke for SetForegroundWindow and AttachThreadInput.  I have written functions like this in the past for use with creating multi-boxing gaming software (press a key and send to several windows).   You'll have to find the window, and then attach to it and bring it to the foreground. (pinvoke for getforegroundwindow or findwindow).<br />\n",
+    "PostedDate": "2013-05-14T06:52:38.063-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

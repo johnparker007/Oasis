@@ -1,0 +1,45 @@
+{
+  "WorkItem": {
+    "AffectedComponent": {
+      "Name": "",
+      "DisplayName": ""
+    },
+    "ClosedComment": "",
+    "ClosedDate": "2013-12-11T17:59:51.82-08:00",
+    "CommentCount": 1,
+    "Custom": "",
+    "Description": "Create a overload SimulateTextEntry(char c) to send one single character.",
+    "LastUpdatedDate": "2013-12-11T17:59:51.82-08:00",
+    "PlannedForRelease": "",
+    "ReleaseVisibleToPublic": false,
+    "Priority": {
+      "Name": "Low",
+      "Severity": 50,
+      "Id": 1
+    },
+    "ProjectName": "inputsimulator",
+    "ReportedDate": "2011-02-10T06:25:46.14-08:00",
+    "Status": {
+      "Name": "Closed",
+      "Id": 4
+    },
+    "ReasonClosed": {
+      "Name": "Fixed"
+    },
+    "Summary": "SimulateTextEntry(char c)",
+    "Type": {
+      "Name": "Issue",
+      "Id": 3
+    },
+    "VoteCount": 1,
+    "Id": 12987
+  },
+  "FileAttachments": [],
+  "Comments": [
+    {
+      "Message": "Added this in 1.0.4.0. :)",
+      "PostedDate": "2013-12-11T17:59:44.173-08:00",
+      "Id": 127068
+    }
+  ]
+}

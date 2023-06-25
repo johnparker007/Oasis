@@ -1,0 +1,18 @@
+[
+  {
+    "Id": "846844",
+    "ThreadId": "358959",
+    "Html": "\r\n<p>hello&nbsp;</p>\r\n<p>i want to send a CONTROL &#43; ALT &#43; DELETE</p>\r\n<p>I'v try to&nbsp;</p>\r\n<p></p>\r\n<div style=\"color:black; background-color:white\">\r\n<pre>   <span style=\"color:blue\">var</span> sim = <span style=\"color:blue\">new</span> InputSimulator();\r\n\r\n   sim.Keyboard.ModifiedKeyStroke(\r\n                <span style=\"color:blue\">new</span>[] { VirtualKeyCode.CONTROL, VirtualKeyCode.MENU },\r\n                VirtualKeyCode.DELETE);\r\n</pre>\r\n</div>\r\n<p></p>\r\n<p>or&nbsp;</p>\r\n<p></p>\r\n<div style=\"color:black; background-color:white\">\r\n<pre> <span style=\"color:blue\">var</span> sim = <span style=\"color:blue\">new</span> InputSimulator();\r\n\r\n sim.Keyboard.ModifiedKeyStroke(\r\n                <span style=\"color:blue\">new</span>[] { VirtualKeyCode.LCONTROL, VirtualKeyCode.LMENU },\r\n                VirtualKeyCode.DELETE);\r\n</pre>\r\n</div>\r\n<p></p>\r\n<p>without result ...</p>\r\n<p>someone has an idee ?</p>\r\n",
+    "PostedDate": "2012-06-08T23:12:09.93-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "902124",
+    "ThreadId": "358959",
+    "Html": "<p>The short answer is you can't because this particular key combination sends a hardware <span>interrupt&nbsp;</span>signal from the physical&nbsp;keyboard.</p>\r\n<p>For more information see:</p>\r\n<p><a href=\"http://techsupt.windowware.com/TS/T000001024F12.html\">http://techsupt.windowware.com/TS/T000001024F12.html</a></p>\r\n<p>and</p>\r\n<p><a href=\"http://stackoverflow.com/questions/5047344/net-simulate-ctrlaltdel-sendkeys\">http://stackoverflow.com/questions/5047344/net-simulate-ctrlaltdel-sendkeys</a></p>",
+    "PostedDate": "2012-08-21T13:56:50.127-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

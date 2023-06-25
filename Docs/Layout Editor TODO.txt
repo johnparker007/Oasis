@@ -1,3 +1,17 @@
+Dark theme - in progress
+
+Original: 
+Dark 160 
+DarkDark 105
+
+New:
+Dark 25
+DarkDark ~65% of 25 = 
+
+
+
+
+
 Implement the MVVM model, and do stuff like showing the About screen or opening file requester (to load the MFME Extracts as good first test.
 
 

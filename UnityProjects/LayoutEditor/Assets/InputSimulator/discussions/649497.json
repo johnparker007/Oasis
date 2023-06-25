@@ -1,0 +1,26 @@
+[
+  {
+    "Id": "1457683",
+    "ThreadId": "649497",
+    "Html": "Love this library, saving me so much time. The one issue I am having which is becoming a little bit aggravating is that the LSHIFT modifier key does not work. LCONTROL, LMENU work perfect but LSHIFT isn't working at all. Not sure why. Guessing it is because of the IsExtended property. I was going to try to clone the project on NuGet but I do not see that option.\r<br />\n<br />\nIf anyone can help me get that LSHIFT key working correctly I would greatly appreciate it. And when I say it isn't working, it works as a regular shift key but if you try to use it with shortcuts etc it doesn't work. Shift pluc C for example will create a capital letter, but it won't work with shortcut combinations. <br />\n",
+    "PostedDate": "2015-12-31T23:31:55.773-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1457698",
+    "ThreadId": "649497",
+    "Html": "Actually I am noticing this behavior seems to differ based on the hardware being used. Do the keys change based on the physical hardware? If so is there a good way to detect it? Same code on two different devices, one a Surface Book and the other a Custom PC. The code works with the LSHIFT on the custom PC, but it does not work on the Surface Book. Same OS, Windows 10.<br />\n",
+    "PostedDate": "2016-01-01T08:09:21.053-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1457718",
+    "ThreadId": "649497",
+    "Html": "Sorry, not the libs fault it seems. It appears it is an issue with the way some applications behave on certain devices. Even with straight C++ code I have the same issue. <br />\n",
+    "PostedDate": "2016-01-01T15:51:40.513-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

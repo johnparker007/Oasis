@@ -1,0 +1,26 @@
+[
+  {
+    "Id": "414502",
+    "ThreadId": "203914",
+    "Html": "<p>Given the following situation:</p>\r\n<p>- WPF main window application<br>- class library that interacts with a USB device or which spawns a new window.</p>\r\n<p>The class library is basically a software simulator for an external USB device which contains a few buttons, namely ENTER, CANCEL, LEFT and RIGHT.</p>\r\n<p>In my main window I have an update loop which listens to the class library.</p>\r\n<p>\r\n<div style=\"color:Black;background-color:White\">\r\n<pre>ClassLibrary.AbstractDevice.Update();\r\n<span style=\"color:Blue\">if</span> (ClassLibrary.AbstractDevice.HasKeyBeenPressed) {\r\n    InputSimulator.SimulateKeyDown(VirtualKeyCode.RETURN);\r\n}\r\n</pre>\r\n</div>\r\n</p>\r\n<p>In debug mode the class library shows the simulator. This is a new WPF window. When I press the ENTER button on my simulator window the HasKeyBeenPressed is correctly detected and the SimulateKeyDown function is called. However, that's where it stops. It doesn't perform the action the ENTER press should do. When I directly press the ENTER key on my keyboard, or I call the SimulateKeyDown function in the update loop of my main application it works. My guess is that because the simulator window has focus the key presses are not detected in my main application. Would there be a way to specify to which window has to handle the key press event?</p>\r\n<p>Regards</p>",
+    "PostedDate": "2010-03-05T01:54:00.753-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "414507",
+    "ThreadId": "203914",
+    "Html": "<p>I think I might have found a solution.</p>\r\n<p>From within my simulator window I can call Application.Current.Windows[0].Focus(). The focus changes before the keypress event is handled so it executes my command.</p>",
+    "PostedDate": "2010-03-05T02:31:24.9-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "415254",
+    "ThreadId": "203914",
+    "Html": "<p>Hi,</p>\r\n<p>Sorry I didn't get back to you earlier.&nbsp; I'm glad you found the solution on your own.&nbsp; A restriction of the SendInput API is that it only works on the currently focused window - I don't know of a way to target a particular window programmatically except to ensure it actually has input focus.</p>\r\n<p>The only other suggestion I had was to try SimulateKeyPress which simulates a KeyDown + KeyUp combination.&nbsp; In some situations the combination is required to get the intended result.</p>\r\n<p>Kind Regards,<br>Mike</p>",
+    "PostedDate": "2010-03-07T16:01:24.527-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

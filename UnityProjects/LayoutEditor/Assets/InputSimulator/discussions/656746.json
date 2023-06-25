@@ -1,0 +1,18 @@
+[
+  {
+    "Id": "1479999",
+    "ThreadId": "656746",
+    "Html": "I need to send some texts to another application which is running like in full screen and blocking all keyboard functions, except input typing and Esc key. Using this library gives me the UIPI exception calling SendInput method. Is there a way to bypass this?<br />\n",
+    "PostedDate": "2016-07-27T21:45:58.59-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1486799",
+    "ThreadId": "656746",
+    "Html": "This thread looks relevant to your question: <a href=\"https://inputsimulator.codeplex.com/discussions/638536\" rel=\"nofollow\">https://inputsimulator.codeplex.com/discussions/638536</a>\r<br />\n<br />\nFrom how I read the thread, it looks like the answer is no, not really. This library essentially is an easy way to use Windows' SendInput method. \r<br />\n<br />\nPlease let me know if you have or do find anything, I'd be curious to know! <br />\n",
+    "PostedDate": "2016-10-24T12:53:26.963-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

@@ -1,0 +1,26 @@
+[
+  {
+    "Id": "0",
+    "Name": "InputSimulator 0.1.0.0",
+    "DevelopmentStatus": "Stable",
+    "Description": "The initial 0.1.0.0 release of the InputSimulator project which focusses mainly on Keyboard input. This has been used in several projects for use as a keyboard simulator. No wrappers have been written yet for Mouse or other Hardware device inputs.",
+    "ReleasedDatge": "0001-01-01T00:00:00",
+    "ModifiedDate": "2009-12-20T15:20:51.057-08:00",
+    "Files": [
+      {
+        "Id": "254dd7a2-970a-4586-b5e6-975db9f9721a",
+        "FileName": "InputSimulator.0.1.0.0-bin.zip",
+        "Url": "./0/254dd7a2-970a-4586-b5e6-975db9f9721a",
+        "Type": "Application",
+        "UploadDate": "2009-12-20T15:19:25.67-08:00"
+      },
+      {
+        "Id": "1b40005f-7ded-44f9-946f-9147d708e8a8",
+        "FileName": "InputSimulator.0.1.0.0-src.zip",
+        "Url": "./0/1b40005f-7ded-44f9-946f-9147d708e8a8",
+        "Type": "Source Code",
+        "UploadDate": "2009-12-20T15:19:25.653-08:00"
+      }
+    ]
+  }
+]

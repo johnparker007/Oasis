@@ -1,0 +1,55 @@
+{
+  "WorkItem": {
+    "AffectedComponent": {
+      "Name": "",
+      "DisplayName": ""
+    },
+    "ClosedComment": "",
+    "ClosedDate": "2013-12-11T18:07:25.28-08:00",
+    "CommentCount": 3,
+    "Custom": null,
+    "Description": "InputSimulator.SimulateModifiedKeyStroke(new[]{VirtualKeyCode.MENU, VirtualKeyCode.TAB}, null);\ndoes not simulate the \"Alt+Tab\" behavior (has no effect).\n\nOS - Windows 8.",
+    "LastUpdatedDate": "2013-12-11T18:07:25.28-08:00",
+    "PlannedForRelease": "",
+    "ReleaseVisibleToPublic": false,
+    "Priority": {
+      "Name": "Low",
+      "Severity": 50,
+      "Id": 1
+    },
+    "ProjectName": "inputsimulator",
+    "ReportedDate": "2012-12-24T14:47:55.397-08:00",
+    "Status": {
+      "Name": "Closed",
+      "Id": 4
+    },
+    "ReasonClosed": {
+      "Name": "Fixed"
+    },
+    "Summary": "Alt+Tab simulation does not work",
+    "Type": {
+      "Name": "Issue",
+      "Id": 3
+    },
+    "VoteCount": 1,
+    "Id": 13005
+  },
+  "FileAttachments": [],
+  "Comments": [
+    {
+      "Message": "Should be closed as is not related to InputSimulator itself, but is related to Windows 8 restriction regarding the UI access.\r\n\r\nJust in case if somebody encounters this issue, the resolution is following :\r\n1. Sign the executable assembly by Microsoft trusted certificate;\r\n2. Add the trust info section into executable manifest file: \r\n<trustInfo xmlns=\"urn:schemas-microsoft-com:asm.v3\">\r\n    <security>\r\n      <requestedPrivileges>\r\n        <requestedExecutionLevel level=\"asInvoker\"\r\n         uiAccess=\"true\"/>\r\n      </requestedPrivileges>\r\n    </security>\r\n  </trustInfo>\r\n3. Place the application's package into the \"secured\" location (Program Files, System32)",
+      "PostedDate": "2012-12-25T04:34:44.107-08:00",
+      "Id": 84872
+    },
+    {
+      "Message": "Hi, \n\nI tried the given solution, but I'm being told that the InputSimulator isn't signed.  Did you encounter this problem?\n\nA slight bypass for any who want it: Alt + Escape still works\n\n",
+      "PostedDate": "2013-07-07T07:55:42.71-07:00",
+      "Id": 105312
+    },
+    {
+      "Message": "Hi there,\n\nThe latest version of InputSimulator (as of 1.0.4.0) is signed so you should be able to work around this issue using binaries, or compiling the source in yourself.\n\nHope that helps,\nMike",
+      "PostedDate": "2013-12-11T18:07:17.247-08:00",
+      "Id": 127073
+    }
+  ]
+}

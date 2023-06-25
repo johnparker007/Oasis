@@ -1,0 +1,10 @@
+[
+  {
+    "Id": "1093516",
+    "ThreadId": "457180",
+    "Html": "I'm hoping you guys can help me out. I have a small windows application  that I'm making that is essentially a server listening for HTTP calls from an android device. The application basically acts as a remote - if it hears mute, it will mute the volume of the computer, and so on. My issue is I'm having some problems with pausing the foreground application. I'm specifically trying to imitate the play/pause button you see on so many keyboards these days. My method for doing so has been to use the Windows Input Simulator project to simulate that play/pause key. Unfortunately, I'm not getting any type of discernible response - nothing in particular is happening. Fearing my set up, I switched the VirtualKeyCode.MEDIA_PLAY_PAUSE flag to the mute key flag and successfully muted my machine. Note that I am using Windows Media Player so I'm confident it's listening for the call.\r<br />\n<br />\nWhat I'm wondering is, is there any extra setup I need to do before I can pause whatever media is currently playing? Are there any other ways to achieve what I'm after rather than simulating the key press? Any help would be much appreciated guys!<br />\n",
+    "PostedDate": "2013-09-17T06:13:49.747-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

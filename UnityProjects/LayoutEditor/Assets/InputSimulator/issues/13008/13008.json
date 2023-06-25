@@ -1,0 +1,39 @@
+{
+  "WorkItem": {
+    "AffectedComponent": {
+      "Name": "",
+      "DisplayName": ""
+    },
+    "ClosedComment": "",
+    "ClosedDate": null,
+    "CommentCount": 0,
+    "Custom": null,
+    "Description": "The function SimulateTextEntry uses ASCII encoding and losing the high bytes for Unicode.\r\nDirect conversion of char to ushort works correctly for unicode.",
+    "LastUpdatedDate": "2014-04-22T10:38:23.653-07:00",
+    "PlannedForRelease": "",
+    "ReleaseVisibleToPublic": false,
+    "Priority": {
+      "Name": "Unassigned",
+      "Severity": 0,
+      "Id": 0
+    },
+    "ProjectName": "inputsimulator",
+    "ReportedDate": "2014-04-22T10:38:23.653-07:00",
+    "Status": {
+      "Name": "Proposed",
+      "Id": 1
+    },
+    "ReasonClosed": {
+      "Name": "Unassigned"
+    },
+    "Summary": "SimulateTextEntry does not work correctly with unicode",
+    "Type": {
+      "Name": "Unassigned",
+      "Id": 5
+    },
+    "VoteCount": 1,
+    "Id": 13008
+  },
+  "FileAttachments": [],
+  "Comments": []
+}

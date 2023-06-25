@@ -1,0 +1,10 @@
+[
+  {
+    "Id": "917845",
+    "ThreadId": "396990",
+    "Html": "\r\n<p>Hi Guys,</p>\r\n<p>I've started using Input Simulator and it seems to do exactly what I needed.&nbsp; However, I've found that if I feed the SimulateTextEntry method text too quickly, it will start producing garbage.</p>\r\n<p>I found that dumping data from a DataTable in a foreach loop, the method would print the first 100 or so rows correctly and then everything after that would be gobbledegook (a technical term).&nbsp; I solved this by putting a 50 msec delay after each call\r\n to the method.</p>\r\n<p>I hope this is helpful for anyone else experiencing this issue.</p>\r\n",
+    "PostedDate": "2012-09-26T07:01:49.25-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

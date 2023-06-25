@@ -1,0 +1,18 @@
+[
+  {
+    "Id": "1478906",
+    "ThreadId": "656381",
+    "Html": "(1st of all, a big thank you to the developer!)\r<br />\n<br />\n..sorry, but I cant find the corresponding VirtualKeyCode... Thanks a lot in advance\r<br />\n<br />\n<br />\nBTW It would be much easier (for me) if I could send directly the System.Windows.Forms.Keys ... instead of the need to implement a big Keys&lt;-&gt;VirtualKeyCode translation...<br />\n",
+    "PostedDate": "2016-07-14T07:30:16.367-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1478907",
+    "ThreadId": "656381",
+    "Html": "ok - sorry, found it by myself ;-)<br />\n<br />\n1) PageUp &amp; PageDown are called PRIOR and NEXT<br />\n2) The underlying values are more or less the same -  so casting will be the way to go.<br />\n",
+    "PostedDate": "2016-07-14T07:37:23.137-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

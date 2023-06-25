@@ -1,0 +1,18 @@
+[
+  {
+    "Id": "1426942",
+    "ThreadId": "638536",
+    "Html": "Hello\r<br />\n<br />\nI want to send the key press event to game running on PC using Windows Input Simulator (C# SendInput Wrapper - Simulate Keyboard and Mouse)\r<br />\n<br />\nhow to send message to that particular Game or process??? <br />\n",
+    "PostedDate": "2015-05-21T12:23:23.597-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1426970",
+    "ThreadId": "638536",
+    "Html": "\r\n<div dir=\"ltr\">Hi samvad007,\r\n<div><br>\r\n</div>\r\n<div>This library just wraps the SendInput Win32 API which simply targets the active window's message loop. There are often problems with games (DirectX) and UEFI (elevation).</div>\r\n<div><br>\r\n</div>\r\n<div>Other than that I don't have much help to offer. :(</div>\r\n<div><br>\r\n</div>\r\n<div>Good luck!</div>\r\n<div>Mike</div>\r\n</div>\r\n<div><br>\r\n<div></div>\r\n</div>\r\n",
+    "PostedDate": "2015-05-21T17:43:06.22-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

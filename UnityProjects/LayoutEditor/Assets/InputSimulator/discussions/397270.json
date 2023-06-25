@@ -1,0 +1,10 @@
+[
+  {
+    "Id": "918897",
+    "ThreadId": "397270",
+    "Html": "\r\n<p>Hi,</p>\r\n<p>I'm trying to send a program to next screen in a dual monitor setup by sending LSHIFT &#43; LWIN &#43; LEFT command, however, it's only coming out as LWIN &#43; LEFT ... SHIFT button does not send at all.&nbsp;</p>\r\n<p>Edit:</p>\r\n<p>False Alarm! Found the patch, and applied accordingly, works perfectly now! Thanks!</p>\r\n<p>&nbsp;</p>\r\n<p>-Mike</p>\r\n",
+    "PostedDate": "2012-09-28T02:10:45.607-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

@@ -1,6 +1,6 @@
 ﻿using System.Drawing;
 
-namespace UnityWinForms.Examples.Panels
+namespace Examples.Panels
 {
     using System.Windows.Forms;
     

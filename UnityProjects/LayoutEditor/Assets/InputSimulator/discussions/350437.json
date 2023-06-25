@@ -1,0 +1,10 @@
+[
+  {
+    "Id": "817012",
+    "ThreadId": "350437",
+    "Html": "<p>Hello,</p>\n<p>I want to do a \"ctrl + c\" with your input simulator class.</p>\n<p>To do that I use this line :</p>\n<div style=\"background-color: white; color: black;\">\n<pre>InputSimulator.SimulateModifiedKeyStroke(VirtualKeyCode.CONTROL, VirtualKeyCode.VK_C);\r\n</pre>\n</div>\n<p>The copy seems to work but after, when I click in a window my keyboards seems to be blocked with the ctrl key pressed.</p>\n<p>For exemple if I just press \"P\" after, it open the print dialog...</p>\n<p>Could you explain me why this behaviour occurs ?</p>\n<p>Regards,</p>\n<p>DK.</p>\n<p>&nbsp;</p>\n<p>&nbsp;</p>",
+    "PostedDate": "2012-03-29T01:19:52.19-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

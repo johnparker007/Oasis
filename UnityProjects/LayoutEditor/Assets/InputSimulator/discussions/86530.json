@@ -1,0 +1,154 @@
+[
+  {
+    "Id": "293414",
+    "ThreadId": "86530",
+    "Html": "<p>This library is amazing and you are the only person out there who is building a full .NET wrapper around the SendInput function.</p>\r\n<p>I was wondering if you are planning on implementing functions for simulating Mouse movement and clicks/double-clicks etc.? &nbsp;It looks like you were on the way to implementing it from the looks of the source code. &nbsp;Thanks</p>",
+    "PostedDate": "2010-02-20T00:45:14.693-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "352725",
+    "ThreadId": "86530",
+    "Html": "<p>Thanks for the positive feedback. &nbsp;I vaguely remember adding a comment that I could extend the support to include mouse events. &nbsp;I haven't had a need to do it at this point and if I'm honest with myself I won't get to it for a couple of months due to involvement in some other projects. &nbsp;I figure the work I'd done to this point would be pretty helpful since as you also found there is very little on the interwebs of this nature. &nbsp;If you'd like to jump on board and and implement the mouse simulation functionality feel free to contribute! &nbsp;:)</p>",
+    "PostedDate": "2010-02-21T14:56:40.727-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "361512",
+    "ThreadId": "86530",
+    "Html": "<p>Michael,</p>\r\n<div>Hi, I've actually started doing that. &nbsp;So far I've implemented mouse movement, left button down, left button up, left click, right button down, right button up, right click, double-click, and scroll. &nbsp;I've verified everything working except scroll. &nbsp;Honestly it was fairly straightforward to do since you had already created the MouseFlag class and it had extensive comments on how to use it.</div>\r\n<div></div>\r\n<div>I would be more than happy to merge those additions into the project if you are open to that. &nbsp;I have not contributed on a CodePlex project before so I am not sure how the process works. &nbsp;Let me know if you are interested,</div>\r\n<div></div>\r\n<div>Arash Emami</div>\r\n<div><a href=\"mailto:aemami99@gmail.com\">aemami99@gmail.com</a></div>\r\n<div>\r\n<div></div>\r\n</div>",
+    "PostedDate": "2010-02-22T00:16:24.003-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "415049",
+    "ThreadId": "86530",
+    "Html": "<p>I implemented the mouse move too because I need it for one application that I'm writing.</p>\r\n<p>Wondering if we can have the same naming convention</p>\r\n<p>&nbsp;</p>",
+    "PostedDate": "2010-03-06T13:36:27.357-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "415249",
+    "ThreadId": "86530",
+    "Html": "<p>Hi Guys,</p>\r\n<p>Possibly the easiest way to contribute your code would be to upload the files as a patch and I'll merge the changes in after I test them.</p>\r\n<p>Thanks!<br>Mike</p>",
+    "PostedDate": "2010-03-07T15:46:58.697-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "415592",
+    "ThreadId": "86530",
+    "Html": "<p>Hi Michael,</p>\r\n<p>I added mouse simulation, and uploaded the patch to you. &nbsp;I also moved the keyboard simulation functions into their own class (KeyboardSimulator) and folder.</p>\r\n<p>Arash</p>",
+    "PostedDate": "2010-03-08T11:52:47.497-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "418933",
+    "ThreadId": "86530",
+    "Html": "<p>Hi guys,</p>\r\n<p>I'm also interested in the mouse extensions.</p>\r\n<p>@michaelnoonan: Will you be able to publish the new version any time soon?</p>\r\n<p>@aemami99: Alternatively, would you be willing to share your version?</p>\r\n<p>Thx!</p>\r\n<p>Martin</p>",
+    "PostedDate": "2010-03-16T16:05:38.987-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "418955",
+    "ThreadId": "86530",
+    "Html": "<p>Hi All,</p>\r\n<p>Sorry about the slow responses so far.&nbsp; I've been overrun with project work at the moment.&nbsp; I've downloaded the patch Arash sent through and am spending a couple of hours today to test and refactor it a little bit.&nbsp; On the whole I think Arash has added some nice improvements!&nbsp; Thanks!</p>\r\n<p>I'll post the new release version of the binaries and source code by Friday morning, AEST - yep, I'm in Aussie.&nbsp; :)</p>\r\n<p>Cheers,<br>Mike</p>",
+    "PostedDate": "2010-03-16T17:18:38.867-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "422050",
+    "ThreadId": "86530",
+    "Html": "<p>Hey All,</p>\r\n<p>Just a quick note to let you know I'm not letting this work go stale. &nbsp;I'm currently working with the patch that Arash sent through and implementing some extra features around testability of the InputSimulator and providing for using a mock InputSimulator as a test harness for your applications.</p>\r\n<p>Cheers,<br>Mike&nbsp;</p>",
+    "PostedDate": "2010-03-22T03:52:58.33-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "422793",
+    "ThreadId": "86530",
+    "Html": "<p>Mike,</p>\r\n<p>thanks for the update, sounds great, I am looking forward to it! Btw, since you are making use of the win32 API, I was wondering if this will still work in Windows 7 (32 bit / 64 bit)? Any idea?</p>\r\n<p>Thanks much!</p>\r\n<p>Martin</p>",
+    "PostedDate": "2010-03-23T15:23:55.83-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "422807",
+    "ThreadId": "86530",
+    "Html": "It most definitely works on Windows 7.<div><br></div><div><br><br></div>",
+    "PostedDate": "2010-03-23T16:04:27.833-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "428134",
+    "ThreadId": "86530",
+    "Html": "<p>Hey All,</p>\r\n<p>Still working on the next version as we speak. Just wanted to let you know I'm still going on it and am hoping to get a first cut of the new code-base up to the codeplex source control tonight provided I get something useful done on the train today... &nbsp;:)</p>\r\n<p>Mike</p>",
+    "PostedDate": "2010-04-06T21:07:59.813-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "475226",
+    "ThreadId": "86530",
+    "Html": "<p>Hi all,</p>\r\n<p>Great work on this&nbsp; -&nbsp; was just using the System.Windows.Forms.SendKeys until now so thanks for sharing!</p>\r\n<p>&nbsp;</p>\r\n<p>Any update on the Mouse?? Am keen to use the functionality in a project.</p>\r\n<p>&nbsp;</p>\r\n<p>Regards<span style=\"font-family:Consolas;color:#2b91af;font-size:x-small\"><span style=\"font-family:Consolas;color:#2b91af;font-size:x-small\"><span style=\"font-family:Consolas;color:#2b91af;font-size:x-small\"></span></span></span></p>\r\n&nbsp;",
+    "PostedDate": "2010-08-01T15:00:54.92-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "475227",
+    "ThreadId": "86530",
+    "Html": "Hi Saracen,<div><br></div><div>Take a look at the in-development build for 0.2.0.0 and see if it all works well for you.  This includes mouse simulation as well.</div><div><br></div><div>Mike<br><br><div>\r\nOn Mon, Aug 2, 2010 at 8:01 AM, saracen9 <span dir=ltr>&lt;<a href=\"mailto:notifications@codeplex.com\">notifications@codeplex.com</a>&gt;</span> wrote:<br><blockquote style=\"margin:0 0 0 .8ex;border-left:1px #ccc solid;padding-left:1ex\">\r\n   <div> <p>From: saracen9</p> <div><p>Hi all,</p>\r\n<p>Great work on this  -  was just using the System.Windows.Forms.SendKeys until now so thanks for sharing!</p>\r\n<p> </p>\r\n<p>Any update on the Mouse?? Am keen to use the functionality in a project.</p>\r\n<p> </p>\r\n<p>Regards<span style=\"font-family:Consolas;color:#2b91af;font-size:x-small\"><span style=\"font-family:Consolas;color:#2b91af;font-size:x-small\"><span style=\"font-family:Consolas;color:#2b91af;font-size:x-small\"></span></span></span></p>\r\n\r\n </div> <div> <p>Read the <a href=\"http://inputsimulator.codeplex.com/Thread/View.aspx?ThreadId=86530&ANCHOR#Post475226\">full discussion online</a>.</p> <p>To add a post to this discussion, reply to this email (<a href=\"mailto:inputsimulator@discussions.codeplex.com?subject=[inputsimulator:86530]\">inputsimulator@discussions.codeplex.com</a>)</p>\r\n <p>To start a new discussion for this project, email <a href=\"mailto:inputsimulator@discussions.codeplex.com\">inputsimulator@discussions.codeplex.com</a></p> <p>You are receiving this email because you subscribed to this discussion on CodePlex. You can <a href=\"https://inputsimulator.codeplex.com/subscriptions/thread/project/edit\">unsubscribe or change your settings</a> on codePlex.com.</p>\r\n <p>Please note: Images and attachments will be removed from emails. Any posts to this discussion will also be available online at <a href=\"http://codeplex.com\">codeplex.com</a></p> </div> </div> </blockquote>\r\n</div><br></div>",
+    "PostedDate": "2010-08-01T15:14:21.13-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "475601",
+    "ThreadId": "86530",
+    "Html": "<p>Thanks for the advice michael,</p>\r\n<p>downloaded and built the .dll from the source but when I try using either of the &quot;MoveMouse&quot; methods it just defaults to the top left of the screen, no matter what co-ords i give it... any ideas?<span style=\"font-family:Consolas;font-size:x-small\"></span></p>",
+    "PostedDate": "2010-08-02T13:08:05.833-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "475667",
+    "ThreadId": "86530",
+    "Html": "Hi Saracen,<br><br>From the best of my knowledge the functionality works ok.  One of the tricks is that the position you want to move the mouse to is not a pixel position from the 0,0 position on your screen.  It is a normalised value which can represent either a relative or absolute movement as described <a href=\"http://msdn.microsoft.com/en-us/library/ms646260(v=VS.85).aspx\">here</a>.  It gets even more tricky when dealing with multiple monitors...<br>\r\n<br>If you take a look at the integration tests in the 0.2.0.0 interim build it has some mouse movement tests in it.<br><br>Hope this helps!  Let me know if it still doesn't seem to work right and send me a sample project if possible.<br>\r\nMike<br><br><div>On Tue, Aug 3, 2010 at 6:08 AM, saracen9 <span dir=ltr>&lt;<a href=\"mailto:notifications@codeplex.com\">notifications@codeplex.com</a>&gt;</span> wrote:<br><blockquote style=\"margin:0pt 0pt 0pt 0.8ex;padding-left:1ex\">\r\n   <div> <p>From: saracen9</p> <div><p>Thanks for the advice michael,</p>\r\n<p>downloaded and built the .dll from the source but when I try using either of the &quot;MoveMouse&quot; methods it just defaults to the top left of the screen, no matter what co-ords i give it... any ideas?<span style=\"font-family:Consolas;font-size:x-small\"></span></p>\r\n</div><div> <div> <p>Read the <a href=\"http://inputsimulator.codeplex.com/Thread/View.aspx?ThreadId=86530&ANCHOR#Post475601\">full discussion online</a>.</p> <p>To add a post to this discussion, reply to this email (<a href=\"mailto:inputsimulator@discussions.codeplex.com?subject=[inputsimulator:86530]\">inputsimulator@discussions.codeplex.com</a>)</p>\r\n <p>To start a new discussion for this project, email <a href=\"mailto:inputsimulator@discussions.codeplex.com\">inputsimulator@discussions.codeplex.com</a></p> <p>You are receiving this email because you subscribed to this discussion on CodePlex. You can <a href=\"https://inputsimulator.codeplex.com/subscriptions/thread/project/edit\">unsubscribe or change your settings</a> on codePlex.com.</p>\r\n <p>Please note: Images and attachments will be removed from emails. Any posts to this discussion will also be available online at <a href=\"http://codeplex.com\">codeplex.com</a></p> </div> </div></div> </blockquote>\r\n</div><br>",
+    "PostedDate": "2010-08-02T16:15:31.127-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "534582",
+    "ThreadId": "86530",
+    "Html": "\r\n<p>Hi, Michael</p>\r\n<p>&nbsp;</p>\r\n<p>I've looked for 0.2.0.0 build with no luck. Hope you can provide extra info on where to get it.</p>\r\n<p>&nbsp;</p>\r\n<p>Thanx</p>\r\n",
+    "PostedDate": "2010-12-12T01:51:34.833-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "990481",
+    "ThreadId": "86530",
+    "Html": "\r\n<p>To help with converting to the absolute point value from the x/y coords. Here's some methods:</p>\r\n<div style=\"color:black; background-color:white\">\r\n<pre><span style=\"color:blue\">private</span> <span style=\"color:blue\">double</span> convertXToAbsolute(<span style=\"color:blue\">int</span> x)\r\n{\r\n     <span style=\"color:blue\">return</span> ((<span style=\"color:blue\">double</span>)65535 * x) / (<span style=\"color:blue\">double</span>)Screen.PrimaryScreen.Bounds.Width;\r\n}\r\n\r\n<span style=\"color:blue\">private</span> <span style=\"color:blue\">double</span> convertYToAbsolute(<span style=\"color:blue\">int</span> y)\r\n{\r\n     <span style=\"color:blue\">return</span> ((<span style=\"color:blue\">double</span>)65535 * y) / (<span style=\"color:blue\">double</span>)Screen.PrimaryScreen.Bounds.Height;\r\n}\r\n</pre>\r\n</div>\r\n<p>&nbsp;</p>\r\n",
+    "PostedDate": "2013-01-22T11:26:27.82-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1223220",
+    "ThreadId": "86530",
+    "Html": "phonzie, what is that code supposed to do? What is x?<br />\n<br />\n@ Michael, <br />\nthis library is very useful to me, thank you very much. It only took me a while to figure out, that the download is completely outdated (when seaching for mouse functionality). I'd suggest also to release the newer version as a download.<br />\n",
+    "PostedDate": "2014-03-16T05:27:33.863-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

@@ -18,13 +18,23 @@ namespace Oasis.UI
             private set;
         } = null;
 
-
-        public RootUI()
+        public UIController UIController
         {
+            get;
+            private set;
+        } = null;
+
+
+        public RootUI(UIController uiController)
+        {
+            UIController = uiController; 
+
             InitialiseForm();
 
             ViewModelMenu = new ViewModelMenu(this, this);
             ViewModelHierarchy = new ViewModelHierarchy(this, this);
+
+            AddListeners();
         }
 
         private void InitialiseForm()
@@ -41,6 +51,11 @@ namespace Oasis.UI
             uwfBorderColor = BackColor;
 
             SetWindowState(FormWindowState.Maximized);
+        }
+
+        private void AddListeners()
+        {
+            ViewModelMenu.OnFileImportClick.AddListener(UIController.LayoutEditor.OnFileImportClick);
         }
     }
 }

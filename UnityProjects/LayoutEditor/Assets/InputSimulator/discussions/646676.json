@@ -1,0 +1,10 @@
+[
+  {
+    "Id": "1449799",
+    "ThreadId": "646676",
+    "Html": "I'm on a 64 bit windows 7 machine.\r<br />\n<br />\nI'm running this inside unity3d and I get two errors.\r<br />\nOne each keyPress is giving duplicate keys.\r<br />\n<br />\ninputText is only sending the last letter.\r<br />\n<br />\nAre either of these known issues that have solutions, or unique to my using unity3d.<br />\n",
+    "PostedDate": "2015-10-26T20:13:54.223-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

@@ -1,0 +1,10 @@
+[
+  {
+    "Id": "1232663",
+    "ThreadId": "541832",
+    "Html": "Hi,\r<br />\n<br />\nI am trying to open the windows task manager using the input simulator but it is not yielding any result.\r<br />\nI tried with the follwing code:\r<br />\n<br />\nInputSimulator.SimulateKeyDown(VirtualKeyCode.CONTROL);\r<br />\nInputSimulator.SimulateKeyDown(VirtualKeyCode.MENU);\r<br />\nInputSimulator.SimulateKeyPress(VirtualKeyCode.DELETE);\r<br />\nInputSimulator.SimulateKeyUp(VirtualKeyCode.MENU);\r<br />\nInputSimulator.SimulateKeyUp(VirtualKeyCode.CONTROL);\r<br />\n<br />\nBut it does not open the Task manager.\r<br />\nPlease help me out.\r<br />\n<br />\nThanks is advance<br />\n",
+    "PostedDate": "2014-04-09T21:52:00.21-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

@@ -1,0 +1,34 @@
+[
+  {
+    "Id": "695019",
+    "ThreadId": "278651",
+    "Html": "\r\n<p>It seems like my method of including the DLL into my project is not working, i did it this way, dragged the DLL into the project then added a reference, then called the namespace with &quot;using InputSimulator&quot; and it does not work, any help would be much appreciated!</p>\r\n",
+    "PostedDate": "2011-11-07T15:42:58.497-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "695023",
+    "ThreadId": "278651",
+    "Html": "<p>NVM i figured it out :)</p>",
+    "PostedDate": "2011-11-07T15:51:51.863-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "701302",
+    "ThreadId": "278651",
+    "Html": "<p>Any chance you could you share how you fixed this? &nbsp;I have the same problem.</p>",
+    "PostedDate": "2011-11-21T08:45:53.777-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "724149",
+    "ThreadId": "278651",
+    "Html": "<p>After import DLL adding a reference, you have to declare \"using WindowsInput\" and then you have available InputSimulator class.</p>",
+    "PostedDate": "2012-01-12T02:50:30.183-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

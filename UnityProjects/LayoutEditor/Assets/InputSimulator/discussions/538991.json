@@ -1,0 +1,58 @@
+[
+  {
+    "Id": "1222726",
+    "ThreadId": "538991",
+    "Html": "As per the source code given, have tried the below code,\r<br />\n<br />\nvar mov = new InputSimulator();\r<br />\n<br />\nbut i am getting the below two error's. Please assist.\r<br />\n<br />\nError\t1\tCannot declare a variable of static type 'WindowsInput.InputSimulator'\r<br />\nError\t2\tCannot create an instance of the static class 'WindowsInput.InputSimulator'<br />\n",
+    "PostedDate": "2014-03-14T04:46:35.63-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1223255",
+    "ThreadId": "538991",
+    "Html": "For the new version, you need to get it from NuGet, or download the source code and compile it. The download (version 0.1.0.0) is obsolete.<br />\n<br />\nOr you use the static functions of the old version such as<br />\n<blockquote>\nInputSimulator.SimulateWhatEver(...)<br />\n</blockquote>\n",
+    "PostedDate": "2014-03-16T07:34:56.01-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1223350",
+    "ThreadId": "538991",
+    "Html": "\r\n<div dir=\"ltr\">Hi, yes I need to update the code examples on the home page. Best bet is to download/clone the source for the latest version and take a look at the tests - they give a good example of how to use it.\r\n<div><br>\r\n</div>\r\n<div>Mike</div>\r\n</div>\r\n<div><br>\r\n<br>\r\n<div></div>\r\n</div>\r\n",
+    "PostedDate": "2014-03-16T16:12:41.533-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1223429",
+    "ThreadId": "538991",
+    "Html": "<strong>michaelnoonan wrote:</strong><br />\n<blockquote>\nHi, yes I need to update the code examples on the home page. Best bet is to download/clone the source for the latest version and take a look at the tests - they give a good example of how to use it.   Mike<br />\n</blockquote>\nHi Mike,\r<br />\n<br />\nIt would be great if you can share to me with code examples for mouse event stimulation alone.\r<br />\n<br />\nThanks,\r<br />\nSelvendran P.<br />\n",
+    "PostedDate": "2014-03-17T02:07:12.29-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1223438",
+    "ThreadId": "538991",
+    "Html": "\r\n<div dir=\"ltr\"><a href=\"https://github.com/michaelnoonan/inputsimulator/blob/master/WindowsInput.Tests/InputSimulatorExamples.cs\">https://github.com/michaelnoonan/inputsimulator/blob/master/WindowsInput.Tests/InputSimulatorExamples.cs</a><br>\r\n<div><br>\r\n</div>\r\n<div>\r\n<pre style=\"font-family:Consolas,'Liberation Mono',Courier,monospace; font-size:12px; margin-top:0px; margin-bottom:0px; color:rgb(51,51,51); line-height:18px\"><div id=\"LC71\" style=\"padding-left:10px\">\r\n<span style=\"font-weight:bold\">public</span> <span style=\"font-weight:bold\">void</span> <span style=\"color:rgb(153,0,0); font-weight:bold\">TestMouseMoveTo</span><span style=\"\">()</span></div>\r\n<div id=\"LC72\" style=\"padding-left:10px\">        <span style=\"\">{</span></div><div id=\"LC73\" style=\"padding-left:10px\">            <span style=\"color:rgb(68,85,136); font-weight:bold\">var</span> <span style=\"\">sim</span> <span style=\"\">=</span> <span style=\"font-weight:bold\">new</span> <span style=\"\">InputSimulator</span><span style=\"\">();</span></div>\r\n<div id=\"LC74\" style=\"padding-left:10px\">            <span style=\"\">sim</span><span style=\"\">.</span><span style=\"\">Mouse</span></div><div id=\"LC75\" style=\"padding-left:10px\">               <span style=\"\">.</span><span style=\"\">MoveMouseTo</span><span style=\"\">(</span><span style=\"color:rgb(0,153,153)\">0</span><span style=\"\">,</span> <span style=\"color:rgb(0,153,153)\">0</span><span style=\"\">)</span></div>\r\n<div id=\"LC76\" style=\"padding-left:10px\">               <span style=\"\">.</span><span style=\"\">Sleep</span><span style=\"\">(</span><span style=\"color:rgb(0,153,153)\">1000</span><span style=\"\">)</span></div>\r\n<div id=\"LC77\" style=\"padding-left:10px\">               <span style=\"\">.</span><span style=\"\">MoveMouseTo</span><span style=\"\">(</span><span style=\"color:rgb(0,153,153)\">65535</span><span style=\"\">,</span> <span style=\"color:rgb(0,153,153)\">65535</span><span style=\"\">)</span></div>\r\n<div id=\"LC78\" style=\"padding-left:10px\">               <span style=\"\">.</span><span style=\"\">Sleep</span><span style=\"\">(</span><span style=\"color:rgb(0,153,153)\">1000</span><span style=\"\">)</span></div>\r\n<div id=\"LC79\" style=\"padding-left:10px\">               <span style=\"\">.</span><span style=\"\">MoveMouseTo</span><span style=\"\">(</span><span style=\"color:rgb(0,153,153)\">65535</span><span style=\"\">/</span><span style=\"color:rgb(0,153,153)\">2</span><span style=\"\">,</span> <span style=\"color:rgb(0,153,153)\">65535</span><span style=\"\">/</span><span style=\"color:rgb(0,153,153)\">2</span><span style=\"\">);</span></div>\r\n<div id=\"LC80\" style=\"padding-left:10px\">        <span style=\"\">}</span></div><div id=\"LC80\" style=\"padding-left:10px\"><span style=\"\"><br></span></div><div id=\"LC80\" style=\"padding-left:10px\">\r\n<span style=\"\">Hope that helps.</span></div><div id=\"LC80\" style=\"padding-left:10px\"><span style=\"\">Mike</span></div></pre>\r\n</div>\r\n</div>\r\n<div><br>\r\n<br>\r\n<div></div>\r\n</div>\r\n",
+    "PostedDate": "2014-03-17T02:21:31.343-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1223455",
+    "ThreadId": "538991",
+    "Html": "Hi Mike,\r<br />\n<br />\nThanks, now it is working fine after removing the reference &quot;inputstimulator.dll&quot; and adding the reference &quot;WindowsInput.dll&quot;\r<br />\n<br />\nAlso, it is not stimulating function keys to the Citrix applications like (Tab, Enter, F7 etc.,)\r<br />\n<br />\nIs there any possible ways to send the function keys to the Citrix application?\r<br />\n<br />\nThanks,\r<br />\nSelvendran P.<br />\n",
+    "PostedDate": "2014-03-17T03:31:06.907-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1223718",
+    "ThreadId": "538991",
+    "Html": "\r\n<div dir=\"ltr\">Hi Selvendran,\r\n<div><br>\r\n</div>\r\n<div>I'm sorry, that's over to you. I know there'll be issues related to UAC in certain circumstances, and others have had issues getting input to DirectX etc (which makes sense) - sadly it will generally fail silently too.</div>\r\n<div><br>\r\n</div>\r\n<div>Good luck with your project.</div>\r\n<div>Mike</div>\r\n</div>\r\n<div><br>\r\n<br>\r\n<div></div>\r\n</div>\r\n",
+    "PostedDate": "2014-03-17T16:04:31.38-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

@@ -1,0 +1,18 @@
+[
+  {
+    "Id": "1485597",
+    "ThreadId": "658579",
+    "Html": "This lib looks nice but I don't see anyway to set the window handle that you want to funnel input into.  Any advice would be appreciated.<br />\n",
+    "PostedDate": "2016-10-07T22:06:11.717-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1486794",
+    "ThreadId": "658579",
+    "Html": "This thread looks relevant to your question: <a href=\"https://inputsimulator.codeplex.com/discussions/638536\" rel=\"nofollow\">https://inputsimulator.codeplex.com/discussions/638536</a>\r<br />\n<br />\nAccording to the second poster, the library targets only the active window. \r<br />\n<br />\nIf you get any more information on this, I'm struggling with this problem as well and would love any help.<br />\n",
+    "PostedDate": "2016-10-24T12:23:52.317-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

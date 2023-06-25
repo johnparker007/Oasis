@@ -1,0 +1,10 @@
+[
+  {
+    "Id": "1104646",
+    "ThreadId": "461439",
+    "Html": "Hello! Checking keypressing through spy++, I saw that there is difference between real keyboard press and InputSimulator:\r<br />\nReal keypress:\r<br />\nWM_KEYDOWN nVirtKey:VK_LEFT cRepeat:1 ScanCode:4B fExtended:1 fAltDown:0 fRepeat:0 fUp:0\r<br />\nwParam: 00000025\r<br />\nlParam: 014B0001\r<br />\nWM_KEYUP nVirtKey:VK_LEFT cRepeat:1 ScanCode:4B fExtended:1 fAltDown:0 fRepeat:1 fUp:1\r<br />\nwParam: 00000025\r<br />\nlParam: C14B0001\r<br />\n<br />\nSimulate keypress by InputSimulator:\r<br />\nWM_KEYDOWN nVirtKey:VK_LEFT cRepeat:1 ScanCode:00 fExtended:0 fAltDown:0 fRepeat:0 fUp:0\r<br />\nwParam: 00000025\r<br />\nlParam: 00000001\r<br />\nWM_KEYUP nVirtKey:VK_LEFT cRepeat:1 ScanCode:00 fExtended:0 fAltDown:0 fRepeat:1 fUp:1\r<br />\nwParam: 00000025\r<br />\nlParam: C0000001\r<br />\n<br />\nI found where i can change ScanCode in InputSimulator's source, but how can i change lParam?\r<br />\nThanks.<br />\n",
+    "PostedDate": "2013-10-07T10:02:02.69-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

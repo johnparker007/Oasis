@@ -1,0 +1,10 @@
+[
+  {
+    "Id": "1496918",
+    "ThreadId": "663188",
+    "Html": "Hi,\r<br />\n<br />\nI have a untiy project, which consists of a login screen. I have written Unity Integration tests to send the user name and password using InputSimulator. This works fine, when the tests are run through unity editor.\r<br />\n<br />\nBut, when I am running this test from command line,  there is no Editor that is open when the scripts are run.So, the input simulator sends the input to the window that is currently open, instead of the app\r<br />\n<br />\nHow do I send texts to the Unity gameobject? <br />\n",
+    "PostedDate": "2017-06-04T23:13:08.117-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

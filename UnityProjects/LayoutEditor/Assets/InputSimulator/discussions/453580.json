@@ -1,0 +1,26 @@
+[
+  {
+    "Id": "1081250",
+    "ThreadId": "453580",
+    "Html": "Added library in VS and she does not see why that link to it? what's the matter?!\r<br />\n<img src=\"http://the-reg.ru/InputSimulator.PNG\" alt=\"Image\" /><br />\n",
+    "PostedDate": "2013-08-16T00:30:31.98-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1081345",
+    "ThreadId": "453580",
+    "Html": "I had the same problem but i managed to do it by following these 3 steps<br />\n<ol>\n<li>Extract the InputSimulator contents somewhere sensible like your project URL</li>\n<li>In Visual Studio Click Project-&gt;Add Reference and browse to the InputSimulator DLL file</li>\n<li>\nadd the WindowsInput Namespace to the project by adding &quot;using WindowsInput;&quot;<br />\n</li>\n</ol>\nhope it helps<br />\n",
+    "PostedDate": "2013-08-16T06:40:04.643-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1081352",
+    "ThreadId": "453580",
+    "Html": "Thank you! It helped, it works!<br />\n",
+    "PostedDate": "2013-08-16T07:06:37.867-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

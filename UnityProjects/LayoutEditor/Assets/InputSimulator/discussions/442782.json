@@ -1,0 +1,10 @@
+[
+  {
+    "Id": "1040287",
+    "ThreadId": "442782",
+    "Html": "When I use TextEntry, all characters are sent as Unicode. The problem is that the legacy application I'm sending this to not understand Unicode.<br />\nInput Simulator should work the same way as the keyboard. Only characters that are not available in ASCII should be handled as Unicode. The ASCII chars should be send as ASCII, and not Unicode.<br />\n<br />\n<strong>Messages when I use the physical keyboard</strong><br />\n<pre><code>WM_KEYDOWN nVirtKey:'F' cRepeat:1 ScanCode:21 fExtended:0 fAltDown:0 fRepeat:0 fUp:0\nWM_CHAR chCharCode:'102' (102) cRepeat:1 ScanCode:21 fExtended:0 fAltDown:0 fRepeat:0 fUp:0\nWM_KEYUP nVirtKey:'F' cRepeat:1 ScanCode:21 fExtended:0 fAltDown:0 fRepeat:1 fUp:1</code></pre>\n\n<strong>Messages when I use TextEntry()</strong><br />\n<pre><code>WM_KEYDOWN nVirtKey:VK_PACKET cRepeat:1 ScanCode:00 fExtended:0 fAltDown:0 fRepeat:0 fUp:0\nWM_CHAR chCharCode:'102' (102) cRepeat:1 ScanCode:00 fExtended:0 fAltDown:0 fRepeat:0 fUp:0\nWM_KEYUP nVirtKey:VK_PACKET cRepeat:1 ScanCode:00 fExtended:0 fAltDown:0 fRepeat:1 fUp:1</code></pre>\n\n",
+    "PostedDate": "2013-05-07T02:10:29.187-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

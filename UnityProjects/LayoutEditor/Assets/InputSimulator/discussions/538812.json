@@ -1,0 +1,10 @@
+[
+  {
+    "Id": "1222088",
+    "ThreadId": "538812",
+    "Html": "Hi, \r<br />\n<br />\nI created a small application for web browsing within the defined domains. User have only a touch screen so I had to write the virtual keyboard. But there is a problem with InputSimulator. \r<br />\n<br />\nWhen I click in a text box on the page and simulate keystroke, browser (System.Windows.Controls.WebBrowser) responds to VK_TAB and VK_BACK but not VK_RETURN or any letter or number. I call SetForegroundWindow from user32.dll before, because browser and keyboard are in separate windows, to make browser window active. \r<br />\n<br />\nDo you have an idea of ​​what could be the reason? How to fix this?\r<br />\n<br />\nThanks<br />\n",
+    "PostedDate": "2014-03-12T13:54:40.28-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

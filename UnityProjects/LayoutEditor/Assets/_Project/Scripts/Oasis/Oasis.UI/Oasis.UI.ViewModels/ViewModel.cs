@@ -7,12 +7,17 @@ namespace Oasis.UI.ViewModels
     {
         protected RootUI _rootUI = null;
         protected Control _parent = null;
-        protected View _view = null;
+        protected ViewBase _view = null;
 
         public ViewModel(RootUI rootUI, Control parent)
         {
             _rootUI = rootUI;
             _parent = parent;
+        }
+
+        public virtual void Update()
+        {
+
         }
     }
 }

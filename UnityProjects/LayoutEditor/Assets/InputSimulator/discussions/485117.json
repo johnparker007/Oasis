@@ -1,0 +1,18 @@
+[
+  {
+    "Id": "1152780",
+    "ThreadId": "485117",
+    "Html": "<img src=\"http://social.msdn.microsoft.com/Forums/getfile/395632\" alt=\"Image\" />\r<br />\n<br />\nHere is an screenshot. The InputSimulator has Equals and ReferenceEquals only.\r<br />\nAnd Im pretty sure ive added the DLL file to the reference library correctly. But it doesnt show the SimulateKeyPress method. How Can I solve this ?<br />\n",
+    "PostedDate": "2014-01-10T22:10:03.463-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1153192",
+    "ThreadId": "485117",
+    "Html": "I really solved the problem. I forgot to restart the visual studio after installing the InputSimulator..\r<br />\nThanks.. It works.<br />\n",
+    "PostedDate": "2014-01-11T00:49:44.093-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": "2014-01-11T00:49:52.55-08:00"
+  }
+]

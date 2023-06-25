@@ -1,0 +1,45 @@
+{
+  "WorkItem": {
+    "AffectedComponent": {
+      "Name": "",
+      "DisplayName": ""
+    },
+    "ClosedComment": "",
+    "ClosedDate": null,
+    "CommentCount": 1,
+    "Custom": null,
+    "Description": "The nuget package for this appears to be wrong.  When I download it, I get a different DLL (even different name) than when I download manually from CodePlex.  The Dll on nuget does not have the same methods, etc.\r\n\r\nPlease resolve.\r\n\r\nThanks.",
+    "LastUpdatedDate": "2017-02-01T20:01:48.837-08:00",
+    "PlannedForRelease": "",
+    "ReleaseVisibleToPublic": false,
+    "Priority": {
+      "Name": "Unassigned",
+      "Severity": 0,
+      "Id": 0
+    },
+    "ProjectName": "inputsimulator",
+    "ReportedDate": "2016-01-18T07:43:13.463-08:00",
+    "Status": {
+      "Name": "Proposed",
+      "Id": 1
+    },
+    "ReasonClosed": {
+      "Name": "Unassigned"
+    },
+    "Summary": "Nuget Package",
+    "Type": {
+      "Name": "Unassigned",
+      "Id": 5
+    },
+    "VoteCount": 2,
+    "Id": 13012
+  },
+  "FileAttachments": [],
+  "Comments": [
+    {
+      "Message": "I did this as well. mine has completely different methods. \nI instantiate it with InputSimulator sim = new InputSimulator(); I have to do a using WindowsInput;\nThe methods I get are all keyboard, mouse, tostring, and some other stuff. But it doesn't seem to be working for me.",
+      "PostedDate": "2017-02-01T20:01:48.837-08:00",
+      "Id": 206367
+    }
+  ]
+}

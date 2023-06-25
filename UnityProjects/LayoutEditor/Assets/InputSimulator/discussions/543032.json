@@ -1,0 +1,10 @@
+[
+  {
+    "Id": "1236951",
+    "ThreadId": "543032",
+    "Html": "Hi everyone,\r<br />\n<br />\nI am trying to open a file with UIAutomation.0.8.7B2.NET35.\r<br />\nWhat I want to achieve is simply typing in the value in the file name bar (the browser is the windows file explorer) and then select open, but it does not seem that it is typing any value in the file name bar.\r<br />\nThe code I have thus far is\r<br />\nGet-UiaEdit -AutomationId '1148' -Class 'ComboBox' -Name 'File name:' -Win32 | Set-UiaEditText -Text $Textbar;\r<br />\nGet-UiaButton -Class 'Button' -Name 'Open' | Invoke-UIAButtonClick;\r<br />\n<br />\n$textbar is the string value I want to enter, I goes successfully over this step but when It tries to select open i see that a value has not been entered.\r<br />\n<br />\nRegards<br />\n",
+    "PostedDate": "2014-04-23T02:27:57.12-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

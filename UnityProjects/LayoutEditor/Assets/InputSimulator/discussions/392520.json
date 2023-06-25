@@ -1,0 +1,18 @@
+[
+  {
+    "Id": "902122",
+    "ThreadId": "392520",
+    "Html": "\r\n<p>In Windows 7/8 if you do &quot;Ctrl &#43; Alt &#43; Tab&quot; it shows a floating window with the opened applications that you can then click on any of them to bring it into view. &nbsp;This is the code I'm trying to use:</p>\r\n<p>&nbsp;</p>\r\n<p></p>\r\n<div style=\"color:black; background-color:white\">\r\n<pre>InputSimulator.SimulateModifiedKeyStroke(<span style=\"color:blue\">new</span>[] { VirtualKeyCode.LCONTROL, VirtualKeyCode.LMENU, VirtualKeyCode.TAB}, <span style=\"color:blue\">null</span> );\r\n</pre>\r\n</div>\r\n<p></p>\r\n<p>&nbsp;</p>\r\n<p>I've done something very similar that is working with &quot;Ctrl &#43; Windows Key &#43; Tab&quot; that is working (see below), but I can't seem to get the above code to work.</p>\r\n<p></p>\r\n<div style=\"color:black; background-color:white\">\r\n<pre>InputSimulator.SimulateModifiedKeyStroke(<span style=\"color:blue\">new</span>[] { VirtualKeyCode.CONTROL, VirtualKeyCode.LWIN, VirtualKeyCode.TAB }, <span style=\"color:blue\">null</span>);\r\n</pre>\r\n</div>\r\n<p></p>\r\n<p>Any ideas?</p>\r\n",
+    "PostedDate": "2012-08-21T13:52:14.277-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "916310",
+    "ThreadId": "392520",
+    "Html": "<p>Have you applied the patch I submitted here? http://inputsimulator.codeplex.com/workitem/13002</p>",
+    "PostedDate": "2012-09-23T09:43:15.887-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

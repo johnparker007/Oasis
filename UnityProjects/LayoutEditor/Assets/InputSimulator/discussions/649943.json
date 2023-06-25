@@ -1,0 +1,18 @@
+[
+  {
+    "Id": "1458980",
+    "ThreadId": "649943",
+    "Html": "Hello! I use Unity 5.3. C# lang. I import dll and try to SNAPSHOT with code:<br />\n<blockquote>\nWindowsInput.InputSimulator.SimulateKeyPress(VirtualKeyCode.VK_SNAPSHOT);<br />\n</blockquote>\nBut the error is: <br />\nWindowsInput.VirtualKeyCode' does not contain a definition for `VK_SNAPSHOT<br />\n<br />\nBut why?<br />\n",
+    "PostedDate": "2016-01-12T11:54:30.043-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1486791",
+    "ThreadId": "649943",
+    "Html": "VK_SNAPSHOT is listed in the library as simply &quot;SNAPSHOT&quot;. <br />\n",
+    "PostedDate": "2016-10-24T12:17:12.363-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

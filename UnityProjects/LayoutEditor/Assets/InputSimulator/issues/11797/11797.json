@@ -1,0 +1,66 @@
+{
+  "WorkItem": {
+    "AffectedComponent": {
+      "Name": "",
+      "DisplayName": ""
+    },
+    "ClosedComment": "",
+    "ClosedDate": null,
+    "CommentCount": 3,
+    "Custom": "",
+    "Description": "The use \"InputSimulator.SimulateTextEntry\" can not send text to a remote desktop windows.\n\nrepro: \n* have a Remote desktop connection open\n* try to send a text entry to it.\n\nthanks,\nregards,\n\njgi\nAttached is a Test Windows App with which the test was performed.",
+    "LastUpdatedDate": "2012-11-29T01:29:19.247-08:00",
+    "PlannedForRelease": "",
+    "ReleaseVisibleToPublic": false,
+    "Priority": {
+      "Name": "Low",
+      "Severity": 50,
+      "Id": 1
+    },
+    "ProjectName": "inputsimulator",
+    "ReportedDate": "2010-08-21T08:53:06.557-07:00",
+    "Status": {
+      "Name": "Proposed",
+      "Id": 1
+    },
+    "ReasonClosed": {
+      "Name": "Unassigned"
+    },
+    "Summary": "Can not use \"InputSimulator.SimulateTextEntry\" to send text to a Remote Desktop Connection (RDC) windows.",
+    "Type": {
+      "Name": "Issue",
+      "Id": 3
+    },
+    "VoteCount": 1,
+    "Id": 11797
+  },
+  "FileAttachments": [
+    {
+      "FileId": 241922,
+      "FileName": "InputSimulator.Cplx.Test.zip",
+      "DownloadUrl": ".\\241922"
+    },
+    {
+      "FileId": 388295,
+      "FileName": "InputSimulator-0.1.1.0.zip",
+      "DownloadUrl": ".\\388295"
+    }
+  ],
+  "Comments": [
+    {
+      "Message": "Hi There,\r\n\r\nThe InputSimulator uses the standard Win32 SendInput method which comes with\r\ncertain basic restrictions, and more so under Windows Vista/7.  Are you\r\nusing Vista or Windows 7?  If so this may have something to do with\r\nelevation.  I found a post here which may help isolate the\r\nproblem.\r\n\r\nhttp://www.eggheadcafe.com/software/aspnet/29620442/how-to-proper-use-sendinput-to-a-elevated-window-from-a-service.aspx\r\n\r\nIf you still have the issue please let me know so we can look into it\r\nfurther since there may be a bug in the way I'm setting up the structures to\r\npush into the SendInput method.  I know there's an outstanding issue with\r\nnon-standard unicode characters which I'm trying to get to...\r\n\r\nKind Regards,\r\nMike",
+      "PostedDate": "2010-08-22T17:30:00.507-07:00",
+      "Id": 36133
+    },
+    {
+      "Message": "Like many others, I was facing this problem too, when sending keystrokes to a remote session.\r\n\r\nThe problems seems to be, tha remote sessions - being RDP or ICA sessions - requires KEYBDINPUT.Scan to be non-zero.\r\n\r\nThe way I solved the problem (quick and dirty), was to duplicate e.g. SimulateKeyDown into SimulateKeyDownEx and set Scan by using the MapVirtualKey API in that method.\r\n\r\nI have attached the source files changed, for this to work.\r\n\r\nBest regards\r\nErnst Mikkelsen",
+      "PostedDate": "2012-06-09T06:33:04.277-07:00",
+      "Id": 67670
+    },
+    {
+      "Message": "Hello, \nWhat is your visual made proyect 0.1.0.1?\nI am open with visual 2010 and 48 error.\nError \"virtualkeycode\" and  \"INPUT[]\" in reference.\n\nCan you help me?\n\nregard,",
+      "PostedDate": "2012-11-29T01:29:19.247-08:00",
+      "Id": 83222
+    }
+  ]
+}

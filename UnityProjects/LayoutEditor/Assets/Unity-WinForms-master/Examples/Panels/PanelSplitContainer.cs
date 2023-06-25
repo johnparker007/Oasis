@@ -1,4 +1,4 @@
-﻿namespace UnityWinForms.Examples.Panels
+﻿namespace Examples.Panels
 {
     using System.Drawing;
     using System.Windows.Forms;

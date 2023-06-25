@@ -1,0 +1,39 @@
+{
+  "WorkItem": {
+    "AffectedComponent": {
+      "Name": "",
+      "DisplayName": ""
+    },
+    "ClosedComment": "",
+    "ClosedDate": null,
+    "CommentCount": 0,
+    "Custom": null,
+    "Description": "I have simulated Ctrl + Home, that worked well. Then I simulated Shift + End, but at this time the cursor moved to end and there was no selection happened.\r\n\r\n    InputSimulator.SimulateModifiedKeyStroke(\r\n        VirtualKeyCode.CONTROL,\r\n        VirtualKeyCode.HOME);\r\n    Thread.Sleep(waitTimeForEachChar*2*(index+1));\r\n    InputSimulator.SimulateModifiedKeyStroke(\r\n        VirtualKeyCode.SHIFT,\r\n        VirtualKeyCode.END);",
+    "LastUpdatedDate": "2017-05-22T23:14:25.11-07:00",
+    "PlannedForRelease": "",
+    "ReleaseVisibleToPublic": false,
+    "Priority": {
+      "Name": "Unassigned",
+      "Severity": 0,
+      "Id": 0
+    },
+    "ProjectName": "inputsimulator",
+    "ReportedDate": "2017-05-22T23:14:25.11-07:00",
+    "Status": {
+      "Name": "Proposed",
+      "Id": 1
+    },
+    "ReasonClosed": {
+      "Name": "Unassigned"
+    },
+    "Summary": "SHIFT + End combination is not working.",
+    "Type": {
+      "Name": "Unassigned",
+      "Id": 5
+    },
+    "VoteCount": 1,
+    "Id": 13017
+  },
+  "FileAttachments": [],
+  "Comments": []
+}

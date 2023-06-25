@@ -1,0 +1,18 @@
+[
+  {
+    "Id": "540263",
+    "ThreadId": "239501",
+    "Html": "\r\n<p>Hello,</p>\r\n<p>very powerfull project, but i've a probleme with this method : &#65279;&#65279;&#65279;&#65279;InputSimulator.SimulateTextEntry(strTextToSend);</p>\r\n<p>i want to send a string which length about 10ko, or may be more</p>\r\n<p>or it's truncated...</p>\r\n<p>Is there a limit on the size of the string for this method?</p>\r\n<p>Is it possible to manage that somewhere?</p>\r\n<p>thanks.</p>\r\n",
+    "PostedDate": "2010-12-24T06:57:51.447-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "901174",
+    "ThreadId": "239501",
+    "Html": "<p>Same problem for KeyboardSimulator.TextEntry(Text) in the last compilation of the source code.</p>\r\n<p>I think that is keyboard buffer overflow. Application which handles your simulated text entry can't do it so fast as you simulate the text flow.</p>\r\n<p>I used to divided my text string with 10 characters per substring and used Thrad.Sleep(5) &nbsp;between simulating the text entry of. It works but it isn't right.</p>\r\n<p>I need to control keyboard buffer to protect it from overflow. How can I do it?</p>\r\n<p>My working code:</p>\r\n<p>\r\n<div style=\"color: black; background-color: white;\">\r\n<pre>KeyboardSimulator cc = <span style=\"color: blue;\">new</span> KeyboardSimulator();\r\n<span style=\"color: blue;\">int</span> i = 0;\r\n<span style=\"color: blue;\">string</span> s = <span style=\"color: #a31515;\">\"\"</span>;\r\n<span style=\"color: blue;\">foreach</span> (Char c <span style=\"color: blue;\">in</span> Text) <span style=\"color: green;\">// string Text - whole string to simulate</span>\r\n{\r\n   s += c;\r\n   i++;\r\n   <span style=\"color: blue;\">if</span> (i == 10)\r\n   {\r\n      cc.TextEntry(s);\r\n      Thread.Sleep(5);\r\n      i = 0;\r\n      s = <span style=\"color: #a31515;\">\"\"</span>;\r\n   }\r\n}\r\ncc.TextEntry(s);\r\n</pre>\r\n</div>\r\n</p>\r\n<p>Need help. Thanks in advance.</p>\r\n<p>&nbsp;</p>",
+    "PostedDate": "2012-08-18T14:35:32.78-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

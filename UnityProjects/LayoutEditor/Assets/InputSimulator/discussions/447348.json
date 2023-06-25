@@ -1,0 +1,10 @@
+[
+  {
+    "Id": "1057975",
+    "ThreadId": "447348",
+    "Html": "Hi All,\r<br />\n<br />\nI want to send CTRL-ALT-END to a Remote Desktop. I do not have enough experience to convert the below to work in VB. I have successfully simulated single keys or even two key combos but not chords. VB says too many arguments when I do InputSimulator.SimulateKeyPress(VirtualKeyCode.CONTROL, VirtualKeyCode.MENU, VirtualKeyCode.END)\r<br />\n<br />\nThanks for your help!\r<br />\n<br />\n// You can simulate complex chords with multiple modifiers and key presses\r<br />\n  // For example CTRL-ALT-SHIFT-ESC-K which is simulated as\r<br />\n  // CTRL-down, ALT-down, SHIFT-down, press ESC, press K, SHIFT-up, ALT-up, CTRL-up\r<br />\n  InputSimulator.SimulateModifiedKeyStroke(<br />\n<pre><code>new[] { VirtualKeyCode.CONTROL, VirtualKeyCode.MENU, VirtualKeyCode.SHIFT },\nnew[] { VirtualKeyCode.ESCAPE, VirtualKeyCode.VK_K });</code></pre>\n\n}<br />\n",
+    "PostedDate": "2013-06-17T17:26:32.317-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

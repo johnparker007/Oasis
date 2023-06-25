@@ -5,6 +5,8 @@ namespace Oasis
 {
     public class UIController : MonoBehaviour
     {
+        public LayoutEditor LayoutEditor;
+
         public RootUI RootUI
         {
             get;
@@ -13,7 +15,12 @@ namespace Oasis
 
         private void Start()
         {
-            RootUI = new RootUI();
+            RebuildUI();
+        }
+
+        public void RebuildUI()
+        {
+            RootUI = new RootUI(this);
             RootUI.Show();
         }
     }

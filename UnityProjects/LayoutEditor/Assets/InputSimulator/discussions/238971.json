@@ -1,0 +1,10 @@
+[
+  {
+    "Id": "538167",
+    "ThreadId": "238971",
+    "Html": "\r\n<p>I've tried this library on one of my personal projects (and it simply works like a charm)</p>\r\n<p>But I got into some trouble with mouse input. I can't get it to do a mouse click. It processes all media keys perfectly, but mouse input just doesn't work.</p>\r\n<p>I've Googled a little bit and found that it seems to be a problem in SendInput API.</p>\r\n<p>I can use <a href=\"http://msdn.microsoft.com/en-us/library/ms646260(v=VS.85).aspx\">\r\nmouse_event</a> function via P/Invoke without any problems. Is this a problem with UAC or UIPI ? I've tried running my app as Administrator and Compatibility mode for XP but got the same result. mouse_event function is obsolete (according to msdn documentation).</p>\r\n<p>Do we have another way of getting this to work ?</p>\r\n<p>&nbsp;</p>\r\n<p>My environment: Win 7 64-bit. .NET 4, VS 2010. App compiled for &quot;AnyCPU&quot;</p>\r\n",
+    "PostedDate": "2010-12-20T01:20:11.823-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

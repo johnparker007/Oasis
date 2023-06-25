@@ -1,0 +1,18 @@
+[
+  {
+    "Id": "892484",
+    "ThreadId": "389358",
+    "Html": "\r\n<p>I'm trying to send CTRL&#43;G to different programs. In notepad everything works fine but in<br>\r\nAdobe Illustrator CS5 it becomes CTRL&#43;SHIFT&#43;WHEELUP while in CS6 it's SHIFT&#43;WHEELUP.</p>\r\n<p>I'm on Win7 64bit.</p>\r\n",
+    "PostedDate": "2012-07-27T22:26:38.577-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "908679",
+    "ThreadId": "389358",
+    "Html": "<p>As CapersL pointed out the solution is waiting 50 ms between the events.</p>",
+    "PostedDate": "2012-09-05T07:05:33.733-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

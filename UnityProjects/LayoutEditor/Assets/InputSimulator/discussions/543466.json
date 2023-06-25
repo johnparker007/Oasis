@@ -1,0 +1,10 @@
+[
+  {
+    "Id": "1238452",
+    "ThreadId": "543466",
+    "Html": "I am trying to create a keyboard app. I have the InputSimulator DLL added to my project but the only thing I do not know how to do is to set focus outside of the form so it sends the key pressed to other applications on like notepad, word...<br />\n",
+    "PostedDate": "2014-04-26T18:36:01.84-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

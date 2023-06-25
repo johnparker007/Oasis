@@ -1,0 +1,56 @@
+{
+  "WorkItem": {
+    "AffectedComponent": {
+      "Name": "",
+      "DisplayName": ""
+    },
+    "ClosedComment": "",
+    "ClosedDate": "2013-02-21T02:22:42.98-08:00",
+    "CommentCount": 2,
+    "Custom": null,
+    "Description": "We've run into issues when trying to Simulate pressing SHIFT + END (in order to select all text) for example in any edit field in order to select all text we simulate hitting HOME then Holding SHIFT and pressing END:\r\n\r\n\r\nInputSimulator.SimulateKeyPress(VirtualKeyCode.HOME);\r\nInputSimulator.SimulateKeyDown(VirtualKeyCode.SHIFT);\r\nInputSimulator.SimulateKeyPress(VirtualKeyCode.END);\r\nInputSimulator.SimulateKeyUp(VirtualKeyCode.SHIFT);\r\n\r\nThe HOME and END Keys seem to be simulated, but the Holding of the SHIFT does not work. We've also tried using the 'SimulateModifiedKeyStroke' and does not work either (expected as its just a convenience method for the above logic):\r\n\r\nInputSimulator.SimulateKeyPress(VirtualKeyCode.HOME);\r\nInputSimulator.SimulateModifiedKeyStroke(VirtualKeyCode.SHIFT, VirtualKeyCode.END);\r\n\r\n",
+    "LastUpdatedDate": "2013-02-21T02:22:42.98-08:00",
+    "PlannedForRelease": "",
+    "ReleaseVisibleToPublic": false,
+    "Priority": {
+      "Name": "Low",
+      "Severity": 50,
+      "Id": 1
+    },
+    "ProjectName": "inputsimulator",
+    "ReportedDate": "2012-06-20T09:12:37.31-07:00",
+    "Status": {
+      "Name": "Closed",
+      "Id": 4
+    },
+    "ReasonClosed": {
+      "Name": "Unassigned"
+    },
+    "Summary": "KEYEVENTF_EXTENDEDKEY is not sent for Extended Keys",
+    "Type": {
+      "Name": "Issue",
+      "Id": 3
+    },
+    "VoteCount": 1,
+    "Id": 13002
+  },
+  "FileAttachments": [
+    {
+      "FileId": 392038,
+      "FileName": "InputSimulator.cs.patch",
+      "DownloadUrl": ".\\392038"
+    }
+  ],
+  "Comments": [
+    {
+      "Message": "This issue is documented in detail here http://inputsimulator.codeplex.com/discussions/235928\r\n\r\nApparently we need to send the KEYEVENTF_EXTENDEDKEY in the dwFlags in order to make this work. It seems like there needs to be additional logic in InputSimulator to determine if the key is an Extended Key or not.\r\n\r\nI have located some documentation on MSDN that outlines which keys are considered 'Extended Keys' here http://msdn.microsoft.com/en-us/library/ms646267(v=vs.85).aspx Section \"Extended-Key Flag\". From the linked documentation:\r\n\r\n\"The extended-key flag indicates whether the keystroke message originated from one of the additional keys on the enhanced keyboard. The extended keys consist of the ALT and CTRL keys on the right-hand side of the keyboard; the INS, DEL, HOME, END, PAGE UP, PAGE DOWN, and arrow keys in the clusters to the left of the numeric keypad; the NUM LOCK key; the BREAK (CTRL+PAUSE) key; the PRINT SCRN key; and the divide (/) and ENTER keys in the numeric keypad. The extended-key flag is set if the key is an extended key.\"\r\n\r\nI have modified the version 0.1.0.0 of the Input Simulation Library (which is the version we use, and the version that is still available on the download page) to add a public static function called IsExtendedKey which will return boolean true if the key is an extended key, otherwise false. Please note that there was no parameter validation performed on this function to maintain current consistency with the existing functions. We would recommend that the library be modified to perform parameter validations on all public members, however that is beyond the scope of this fix.\r\n\r\nNext SimulateKeyDown, SimulateKeyUp, and SimulateKeyPress were modified to check to see if the given VirtualKeycode is an ExtendedKey, if so then the appropriate flag is appended to the Flags structure.\r\n\r\nPlease find attached a patch file that contains the changes as per the license agreement. This fix is released \"AS IS\" into the public domain with no claim of copyright to any portion of this fix. If you have additional questions please do not hesitate to contact me via CodePlex.\r\n",
+      "PostedDate": "2012-06-20T09:31:52.527-07:00",
+      "Id": 68330
+    },
+    {
+      "Message": "I've incorporated this patch into the next version of the code.",
+      "PostedDate": "2013-02-21T01:42:24.407-08:00",
+      "Id": 91054
+    }
+  ]
+}

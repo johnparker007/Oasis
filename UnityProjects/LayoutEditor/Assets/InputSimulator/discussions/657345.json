@@ -1,0 +1,18 @@
+[
+  {
+    "Id": "1481787",
+    "ThreadId": "657345",
+    "Html": "Hi, First , a great project !\r<br />\nBut I run into a problem, The method SimulateTextEntry works only with English letters.\r<br />\nWhen I try to write in Hebrew all I see is ???? (question mark).\r<br />\nI tried to convert the string before to a UTF8.\r<br />\nAny idea how to solve the problem ?<br />\n",
+    "PostedDate": "2016-08-22T08:33:17.73-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1486798",
+    "ThreadId": "657345",
+    "Html": "So it looks like the library simply doesn't have the Hebrew letters in it. \r<br />\n<br />\nMy guess: get the numeric values for Hebrew letters here <a href=\"https://msdn.microsoft.com/en-us/library/cc195057.aspx\" rel=\"nofollow\">https://msdn.microsoft.com/en-us/library/cc195057.aspx</a>\r<br />\nthen enter in a name and set it equal to variables either in the VirtualKeyCode (seen in the Native folder in WindowsInput) or in your code. This should let you call the code to the correct keyboard entry. <br />\n",
+    "PostedDate": "2016-10-24T12:46:40.423-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

@@ -1,0 +1,45 @@
+{
+  "WorkItem": {
+    "AffectedComponent": {
+      "Name": "",
+      "DisplayName": ""
+    },
+    "ClosedComment": "",
+    "ClosedDate": null,
+    "CommentCount": 0,
+    "Custom": null,
+    "Description": "I found nuget package with name InputSimualtor. But version is 1.0.4. See picture.\r\nI found a lot of keys, but no ENTER key. \r\nhow to make simple enter to press OK and close window? \r\n\r\n\r\nAlso the problem I try to solve is that in my autmated tests SendKeys.SendWait() works fine only if I logged in to server which runs tests, but if I logged off, the running test doesn't send events to window (Window is \"Save file as\" while printing ) and does nothing but waits. Yes, it could be becuase of the UAC, but the same user  runs nunit tests from TFS TestAgent  and who just logs in and watches the running test. If logged in - all wors fine, otherwise doesn't send events.\r\n\r\n",
+    "LastUpdatedDate": "2016-12-22T12:37:57.04-08:00",
+    "PlannedForRelease": "",
+    "ReleaseVisibleToPublic": false,
+    "Priority": {
+      "Name": "Unassigned",
+      "Severity": 0,
+      "Id": 0
+    },
+    "ProjectName": "inputsimulator",
+    "ReportedDate": "2016-12-22T12:35:37.17-08:00",
+    "Status": {
+      "Name": "Proposed",
+      "Id": 1
+    },
+    "ReasonClosed": {
+      "Name": "Unassigned"
+    },
+    "Summary": "No ENTER key found",
+    "Type": {
+      "Name": "Unassigned",
+      "Id": 5
+    },
+    "VoteCount": 1,
+    "Id": 13016
+  },
+  "FileAttachments": [
+    {
+      "FileId": 1626017,
+      "FileName": "1 (1).jpg",
+      "DownloadUrl": ".\\1626017"
+    }
+  ],
+  "Comments": []
+}

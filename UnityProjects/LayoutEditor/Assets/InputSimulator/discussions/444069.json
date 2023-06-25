@@ -1,0 +1,10 @@
+[
+  {
+    "Id": "1045145",
+    "ThreadId": "444069",
+    "Html": "Hi!\r<br />\nI tried to simulate key press on Remote Desktop. (WindowsInput v. 2) It'a OK then RD Window is active or maximized. But if it's minimazed the error is thrown.\r<br />\n<br />\nError message: &quot;A first chance exception of type 'System.Exception' occurred in WindowsInput.dll\r<br />\nSome simulated input commands were not sent successfully. The most common reason for this happening are the security features of Windows including User Interface Privacy Isolation (UIPI). Your application can only send commands to applications of the same or lower elevation. Similarly certain commands are restricted to Accessibility/UIAutomation applications. Refer to the project home page and the code samples for more information.&quot;\r<br />\n<br />\nIs it possible to simulate key press in this situation? Or maybe Windows forbids such behavior?<br />\n",
+    "PostedDate": "2013-05-17T08:22:38.21-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

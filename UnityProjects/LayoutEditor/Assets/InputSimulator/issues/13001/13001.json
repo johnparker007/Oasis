@@ -1,0 +1,50 @@
+{
+  "WorkItem": {
+    "AffectedComponent": {
+      "Name": "",
+      "DisplayName": ""
+    },
+    "ClosedComment": "",
+    "ClosedDate": "2013-02-21T02:22:16.087-08:00",
+    "CommentCount": 2,
+    "Custom": "",
+    "Description": "Make the project CLS-Compliant",
+    "LastUpdatedDate": "2013-02-21T02:22:16.087-08:00",
+    "PlannedForRelease": "",
+    "ReleaseVisibleToPublic": false,
+    "Priority": {
+      "Name": "Low",
+      "Severity": 50,
+      "Id": 1
+    },
+    "ProjectName": "inputsimulator",
+    "ReportedDate": "2011-02-11T04:07:27.47-08:00",
+    "Status": {
+      "Name": "Closed",
+      "Id": 4
+    },
+    "ReasonClosed": {
+      "Name": "Unassigned"
+    },
+    "Summary": "Make the project CLS-Compliant",
+    "Type": {
+      "Name": "Issue",
+      "Id": 3
+    },
+    "VoteCount": 1,
+    "Id": 13001
+  },
+  "FileAttachments": [],
+  "Comments": [
+    {
+      "Message": "And sign the assembly with a strong name",
+      "PostedDate": "2011-02-16T05:52:46.963-08:00",
+      "Id": 36134
+    },
+    {
+      "Message": "Wow, that was a little bit of work. It is now CLS Compliant and Strong Named.",
+      "PostedDate": "2013-02-21T02:22:11.993-08:00",
+      "Id": 91058
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+[
+  {
+    "Id": "1419010",
+    "ThreadId": "633908",
+    "Html": "Hello,<br />\n<br />\nI need to input a string in citrix application from a winforms application , this string will contain special characters like degree. Below is the code which i have tried but no luck. can anyone help me <br />\n<pre><code>        string co = &quot;This is a test° This is a test° This is a test° This is a test°This is a test°This is a test°&quot;;\n        WindowsInput.InputSimulator cc = new WindowsInput.InputSimulator();\n        cc.Keyboard.TextEntry(co);</code></pre>\n\n",
+    "PostedDate": "2015-04-27T07:22:44.053-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1486793",
+    "ThreadId": "633908",
+    "Html": "What is the error you are getting? More information would be helpful.<br />\n",
+    "PostedDate": "2016-10-24T12:18:19.443-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

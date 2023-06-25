@@ -1,0 +1,45 @@
+{
+  "WorkItem": {
+    "AffectedComponent": {
+      "Name": "",
+      "DisplayName": ""
+    },
+    "ClosedComment": "",
+    "ClosedDate": "2013-12-11T18:06:00.76-08:00",
+    "CommentCount": 1,
+    "Custom": null,
+    "Description": "Mouse buttons simulation like\r\n\r\nInputSimulator.SimulateKeyPress(VirtualKeyCode.LBUTTON);\r\n\r\nis not working. Keyboard simulation is fine. I don't know how to debug it further but I'm ready to try.",
+    "LastUpdatedDate": "2013-12-11T18:06:00.76-08:00",
+    "PlannedForRelease": "",
+    "ReleaseVisibleToPublic": false,
+    "Priority": {
+      "Name": "Unassigned",
+      "Severity": 0,
+      "Id": 0
+    },
+    "ProjectName": "inputsimulator",
+    "ReportedDate": "2013-05-29T16:03:28.3-07:00",
+    "Status": {
+      "Name": "Closed",
+      "Id": 4
+    },
+    "ReasonClosed": {
+      "Name": "Fixed"
+    },
+    "Summary": "LButton simulation is not working",
+    "Type": {
+      "Name": "Unassigned",
+      "Id": 5
+    },
+    "VoteCount": 1,
+    "Id": 13006
+  },
+  "FileAttachments": [],
+  "Comments": [
+    {
+      "Message": "Hi There,\n\nSorry for the slow response, you should use InputSimulator.Mouse.LeftButtonClick().\n\nHope that helps.\nMike",
+      "PostedDate": "2013-12-11T18:05:56.093-08:00",
+      "Id": 127072
+    }
+  ]
+}

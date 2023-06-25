@@ -1,0 +1,10 @@
+[
+  {
+    "Id": "1464903",
+    "ThreadId": "651860",
+    "Html": "I wanted to try running inputsimulator to type in a textbox continuously in an ec2 instance which is a vm on amazon.  It seems like it doesn't type unless I am connected through remote desktop. When I disconnect rdp and come back the typing did not continue even though the vm is supposed to be running.\r<br />\n<br />\nDoes a virtual machine have a virtual mouse and keyboard when it's not connected to a remote desktop?<br />\n",
+    "PostedDate": "2016-02-28T10:56:11.67-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

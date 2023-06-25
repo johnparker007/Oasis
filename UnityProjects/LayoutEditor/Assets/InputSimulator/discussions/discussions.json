@@ -1,0 +1,452 @@
+[
+  {
+    "Id": "81999",
+    "Title": "Dooglehead",
+    "LatestDate": "2010-07-29T07:23:41.793-07:00"
+  },
+  {
+    "Id": "86530",
+    "Title": "Will you implement Mouse simulation as well?",
+    "LatestDate": "2014-03-16T05:27:33.863-07:00"
+  },
+  {
+    "Id": "203914",
+    "Title": "Multiple windows focus issues.",
+    "LatestDate": "2010-03-07T16:01:24.527-08:00"
+  },
+  {
+    "Id": "214858",
+    "Title": "Unicode Support?",
+    "LatestDate": "2010-11-07T19:14:32.963-08:00"
+  },
+  {
+    "Id": "216215",
+    "Title": "Excellent Libarary/Wrapper",
+    "LatestDate": "2010-06-16T06:12:22.127-07:00"
+  },
+  {
+    "Id": "216385",
+    "Title": "event handlers",
+    "LatestDate": "2010-06-17T13:18:22.06-07:00"
+  },
+  {
+    "Id": "218827",
+    "Title": ".NET 2.0 compatible version?",
+    "LatestDate": "2012-02-08T05:41:39.507-08:00"
+  },
+  {
+    "Id": "221909",
+    "Title": "How to install",
+    "LatestDate": "2010-07-29T13:13:41.577-07:00"
+  },
+  {
+    "Id": "223888",
+    "Title": "Send Key Stroke to Adobe Shockwave Application",
+    "LatestDate": "2010-08-17T18:07:38.947-07:00"
+  },
+  {
+    "Id": "228707",
+    "Title": "DOS Interaction ",
+    "LatestDate": "2010-09-27T05:38:05.26-07:00"
+  },
+  {
+    "Id": "230578",
+    "Title": "InputBuilder Key Scan Codes",
+    "LatestDate": "2010-10-12T06:49:07.633-07:00"
+  },
+  {
+    "Id": "231470",
+    "Title": "Alt-Modifyer",
+    "LatestDate": "2010-10-19T06:46:31.287-07:00"
+  },
+  {
+    "Id": "233208",
+    "Title": "Translating System.Windows.Input.Key to VirtualKey?",
+    "LatestDate": "2011-03-07T07:01:41.533-08:00"
+  },
+  {
+    "Id": "235928",
+    "Title": "Simulating SHIFT + END (or HOME) Does Not Appear To Work",
+    "LatestDate": "2013-02-22T06:48:55.163-08:00"
+  },
+  {
+    "Id": "237168",
+    "Title": "Show at login screen",
+    "LatestDate": "2010-12-05T14:59:07-08:00"
+  },
+  {
+    "Id": "238971",
+    "Title": "Mouse Input not working",
+    "LatestDate": "2010-12-20T01:20:11.823-08:00"
+  },
+  {
+    "Id": "239501",
+    "Title": "length of string in SimulateTextEntry",
+    "LatestDate": "2012-08-18T14:35:32.78-07:00"
+  },
+  {
+    "Id": "240583",
+    "Title": "KeyDown",
+    "LatestDate": "2011-01-23T17:32:29.313-08:00"
+  },
+  {
+    "Id": "253487",
+    "Title": "Unable to Send Tab key at Citrix/Remote Desktop",
+    "LatestDate": "2014-08-03T12:28:58.587-07:00"
+  },
+  {
+    "Id": "267233",
+    "Title": "Detect Simulated vs Physical key presses?",
+    "LatestDate": "2012-05-30T01:53:04.123-07:00"
+  },
+  {
+    "Id": "272700",
+    "Title": "implement mouse simulation please",
+    "LatestDate": "2011-09-15T08:07:06.96-07:00"
+  },
+  {
+    "Id": "272752",
+    "Title": "Tilde (~) keyDown (The key above TAB key)",
+    "LatestDate": "2011-09-15T15:14:02.217-07:00"
+  },
+  {
+    "Id": "277342",
+    "Title": "[main] enter key vs. [numpad] enterkey",
+    "LatestDate": "2012-07-11T03:44:01.287-07:00"
+  },
+  {
+    "Id": "277680",
+    "Title": "Fullscreen game does not respond to input simulator/kb_event",
+    "LatestDate": "2013-08-16T14:30:36.187-07:00"
+  },
+  {
+    "Id": "278651",
+    "Title": "Can't Include the DLL in my project.",
+    "LatestDate": "2012-01-12T02:50:30.183-08:00"
+  },
+  {
+    "Id": "283264",
+    "Title": "Send input to Keyboard stream",
+    "LatestDate": "2012-01-25T07:09:49.38-08:00"
+  },
+  {
+    "Id": "308214",
+    "Title": "=/+ key code?",
+    "LatestDate": "2012-02-11T18:31:59.073-08:00"
+  },
+  {
+    "Id": "350437",
+    "Title": "Strange Behaviour with SimulateModifiedKeyStroke",
+    "LatestDate": "2012-03-29T01:19:52.19-07:00"
+  },
+  {
+    "Id": "352076",
+    "Title": "simulatekeypress method for ZOOM",
+    "LatestDate": "2012-04-12T09:22:08.437-07:00"
+  },
+  {
+    "Id": "358725",
+    "Title": "how to simulate input from multiple mouse devices?",
+    "LatestDate": "2012-06-07T07:31:22.39-07:00"
+  },
+  {
+    "Id": "358959",
+    "Title": "[how to] send Control + ALT + DELETE",
+    "LatestDate": "2012-08-21T13:56:50.127-07:00"
+  },
+  {
+    "Id": "359054",
+    "Title": "Input Simulator / VirtualKeyCode does not exists",
+    "LatestDate": "2012-06-11T21:56:50.09-07:00"
+  },
+  {
+    "Id": "360913",
+    "Title": "Unable to simulate accented characters using extended keyboard (dead keys)",
+    "LatestDate": "2012-06-26T15:05:21.133-07:00"
+  },
+  {
+    "Id": "361652",
+    "Title": "Mouse Support",
+    "LatestDate": "2012-07-11T03:38:23.34-07:00"
+  },
+  {
+    "Id": "374380",
+    "Title": "Why use own VirtualKeyCode enum if there is System.Windows.Forms.Keys?",
+    "LatestDate": "2012-07-18T14:54:25.53-07:00"
+  },
+  {
+    "Id": "389358",
+    "Title": "Misinterpreted keys in certain apps",
+    "LatestDate": "2012-09-05T07:05:33.733-07:00"
+  },
+  {
+    "Id": "392520",
+    "Title": "Trying to do Ctrl + Alt + Tab",
+    "LatestDate": "2012-09-23T09:43:15.887-07:00"
+  },
+  {
+    "Id": "396990",
+    "Title": "SimulateTextEntry Requires Time Delay",
+    "LatestDate": "2012-09-26T07:01:49.25-07:00"
+  },
+  {
+    "Id": "397270",
+    "Title": "Can't sent  LSHIFT + LWIN + LEFT , it is coming out LWIN + LEFT only...",
+    "LatestDate": "2012-09-28T02:10:45.607-07:00"
+  },
+  {
+    "Id": "415007",
+    "Title": "Missing method Retreive Key Character",
+    "LatestDate": "2012-12-21T04:47:58.327-08:00"
+  },
+  {
+    "Id": "432562",
+    "Title": "KeyEvent not always received by Spotify ? On slow computer",
+    "LatestDate": "2013-02-09T06:11:09.28-08:00"
+  },
+  {
+    "Id": "436246",
+    "Title": "Finding and activating desired Window",
+    "LatestDate": "2013-05-14T06:52:38.063-07:00"
+  },
+  {
+    "Id": "441072",
+    "Title": "Typing \"Sánchez\"",
+    "LatestDate": "2013-04-28T21:51:03.593-07:00"
+  },
+  {
+    "Id": "442782",
+    "Title": "TextEntry allways Unicode",
+    "LatestDate": "2013-05-07T02:10:29.187-07:00"
+  },
+  {
+    "Id": "442821",
+    "Title": "Usage with VS 2012 and .NET 4",
+    "LatestDate": "2014-04-10T04:51:10.36-07:00"
+  },
+  {
+    "Id": "444069",
+    "Title": "Simulating input on Remote Desktop",
+    "LatestDate": "2013-05-17T08:22:38.21-07:00"
+  },
+  {
+    "Id": "447348",
+    "Title": "VB.NET SimulateModifiedKeyStroke Chords",
+    "LatestDate": "2013-06-17T17:26:32.317-07:00"
+  },
+  {
+    "Id": "453580",
+    "Title": "not work in VS 2012 and. NET 4",
+    "LatestDate": "2013-08-16T07:06:37.867-07:00"
+  },
+  {
+    "Id": "453589",
+    "Title": "Implementing Input Simulator into the project",
+    "LatestDate": "2013-08-16T06:01:53.27-07:00"
+  },
+  {
+    "Id": "453613",
+    "Title": "Trouble with KeyDown function",
+    "LatestDate": "2013-09-09T06:10:24.163-07:00"
+  },
+  {
+    "Id": "457180",
+    "Title": "VirtualKeyCode.MEDIA_PLAY_PAUSE not working",
+    "LatestDate": "2013-09-17T06:13:49.747-07:00"
+  },
+  {
+    "Id": "457385",
+    "Title": "Input Simulater Does not work Properly for window 8",
+    "LatestDate": "2013-09-18T22:50:58.223-07:00"
+  },
+  {
+    "Id": "458562",
+    "Title": "LBUTTON/RBUTTON/MBUTTON doesnt work",
+    "LatestDate": "2014-03-17T02:22:41.247-07:00"
+  },
+  {
+    "Id": "461439",
+    "Title": "Different lParam from real keyboard",
+    "LatestDate": "2013-10-07T10:02:02.69-07:00"
+  },
+  {
+    "Id": "471093",
+    "Title": "How to use the library?",
+    "LatestDate": "2014-02-10T11:43:53.657-08:00"
+  },
+  {
+    "Id": "471462",
+    "Title": "SimulateTextEntry - Problem in simulating characters like ä,ü,ß",
+    "LatestDate": "2016-09-22T09:03:23.493-07:00"
+  },
+  {
+    "Id": "485117",
+    "Title": "Input Simulator does not work in visual c# 2010 ultimate.",
+    "LatestDate": "2014-01-11T00:49:44.093-08:00"
+  },
+  {
+    "Id": "538812",
+    "Title": "Not working correctly with WebBrowser",
+    "LatestDate": "2014-03-12T13:54:40.28-07:00"
+  },
+  {
+    "Id": "538991",
+    "Title": "Not able to create instance for InputStimulator to handle Mouse Move",
+    "LatestDate": "2014-03-17T16:04:31.38-07:00"
+  },
+  {
+    "Id": "541832",
+    "Title": "Not able to simulate Ctrl+Alt+Delete to open the task manager",
+    "LatestDate": "2014-04-09T21:52:00.21-07:00"
+  },
+  {
+    "Id": "543032",
+    "Title": "Help with opening a file with windows explorer",
+    "LatestDate": "2014-04-23T02:27:57.12-07:00"
+  },
+  {
+    "Id": "543466",
+    "Title": "Send keys outside the form",
+    "LatestDate": "2014-04-26T18:36:01.84-07:00"
+  },
+  {
+    "Id": "543881",
+    "Title": "x",
+    "LatestDate": "2014-04-30T09:18:53.697-07:00"
+  },
+  {
+    "Id": "544029",
+    "Title": "-",
+    "LatestDate": "2014-05-02T00:34:42.407-07:00"
+  },
+  {
+    "Id": "545723",
+    "Title": "Simulate atl + tab",
+    "LatestDate": "2014-05-21T02:51:23.04-07:00"
+  },
+  {
+    "Id": "560566",
+    "Title": "Problem with RightMouseDown",
+    "LatestDate": "2014-08-08T02:43:50.827-07:00"
+  },
+  {
+    "Id": "561353",
+    "Title": "Latest compiled dll",
+    "LatestDate": "2014-08-15T19:55:44.363-07:00"
+  },
+  {
+    "Id": "574460",
+    "Title": "How to clear last key pressed when simulating Tab",
+    "LatestDate": "2014-12-09T13:49:04.53-08:00"
+  },
+  {
+    "Id": "579481",
+    "Title": "Type or namespace 'InputSimulator' could not be found",
+    "LatestDate": "2015-05-01T14:05:05.667-07:00"
+  },
+  {
+    "Id": "584820",
+    "Title": "Write some cyrillic symbols with InputSimulator",
+    "LatestDate": "2015-04-27T06:47:13.52-07:00"
+  },
+  {
+    "Id": "631807",
+    "Title": "Middle Mouse Button Down/Up",
+    "LatestDate": "2016-10-24T12:07:06.05-07:00"
+  },
+  {
+    "Id": "633908",
+    "Title": "unable to send a string to an application which run on citrix",
+    "LatestDate": "2016-10-24T12:18:19.443-07:00"
+  },
+  {
+    "Id": "637497",
+    "Title": "Arrow keys not being sent",
+    "LatestDate": "2015-05-19T19:07:15.987-07:00"
+  },
+  {
+    "Id": "638536",
+    "Title": "I want to send key event to perticular game running using Windows Input Simulator (C# SendInput Wrapper - Simulate Keyboard and Mouse)",
+    "LatestDate": "2015-05-21T17:43:06.22-07:00"
+  },
+  {
+    "Id": "641469",
+    "Title": "MoveMouseTo and MouseMouseToPositionOnVirtualDesktop method",
+    "LatestDate": "2015-07-16T12:16:36.773-07:00"
+  },
+  {
+    "Id": "646190",
+    "Title": "Windows Input Simulator on Android ",
+    "LatestDate": "2015-10-14T00:27:50.353-07:00"
+  },
+  {
+    "Id": "646338",
+    "Title": "How i use mouse double click and mouse click using input simulator",
+    "LatestDate": "2015-10-18T06:50:29.617-07:00"
+  },
+  {
+    "Id": "646676",
+    "Title": "Getting Duplicate Keypresses and TextInput does not work",
+    "LatestDate": "2015-10-26T20:13:54.223-07:00"
+  },
+  {
+    "Id": "648953",
+    "Title": "TextEntry gives just last character of String",
+    "LatestDate": "2015-12-18T14:57:11.977-08:00"
+  },
+  {
+    "Id": "649455",
+    "Title": "Zoom In/Out (Ctrl+MouseWheelUp OR Ctrl+MouseWheelDown)",
+    "LatestDate": "2016-10-24T12:00:25.543-07:00"
+  },
+  {
+    "Id": "649497",
+    "Title": "Edit: Not Library's Fault.... LSHIFT Key Does not work with KeyDown correctly ",
+    "LatestDate": "2016-01-01T15:51:40.513-08:00"
+  },
+  {
+    "Id": "649943",
+    "Title": "VK_SNAPSHOT don't work",
+    "LatestDate": "2016-10-24T12:17:12.363-07:00"
+  },
+  {
+    "Id": "651860",
+    "Title": "Will input simulator work on a vm when it is not connected to rdp",
+    "LatestDate": "2016-02-28T10:56:11.67-08:00"
+  },
+  {
+    "Id": "656381",
+    "Title": "How to simulate PageUp and PageDown",
+    "LatestDate": "2016-07-14T07:37:23.137-07:00"
+  },
+  {
+    "Id": "656746",
+    "Title": "Is there a way to bypass the UIPI issue?",
+    "LatestDate": "2016-10-24T12:53:26.963-07:00"
+  },
+  {
+    "Id": "657345",
+    "Title": "Hebrew Support",
+    "LatestDate": "2016-10-24T12:46:40.423-07:00"
+  },
+  {
+    "Id": "658579",
+    "Title": "Setting the Window Handle",
+    "LatestDate": "2016-10-24T12:23:52.317-07:00"
+  },
+  {
+    "Id": "662959",
+    "Title": "Where is the documentation?",
+    "LatestDate": "2017-05-14T01:44:19.94-07:00"
+  },
+  {
+    "Id": "663045",
+    "Title": "read data from game\\midi port",
+    "LatestDate": "2017-05-22T06:29:40.947-07:00"
+  },
+  {
+    "Id": "663188",
+    "Title": "SendInput to UI, run from Console",
+    "LatestDate": "2017-06-04T23:13:08.117-07:00"
+  }
+]

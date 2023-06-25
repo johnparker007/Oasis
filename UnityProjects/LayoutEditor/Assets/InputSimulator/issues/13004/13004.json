@@ -1,0 +1,45 @@
+{
+  "WorkItem": {
+    "AffectedComponent": {
+      "Name": "",
+      "DisplayName": ""
+    },
+    "ClosedComment": "",
+    "ClosedDate": "2013-02-21T02:22:30.73-08:00",
+    "CommentCount": 1,
+    "Custom": null,
+    "Description": "The assembly is not strong-named, preventing consumption by assemblies that are.\r\n\r\nA strong-name keypair file should be included with the source and used to compile the assembly.",
+    "LastUpdatedDate": "2013-02-21T02:22:30.73-08:00",
+    "PlannedForRelease": "",
+    "ReleaseVisibleToPublic": false,
+    "Priority": {
+      "Name": "Low",
+      "Severity": 50,
+      "Id": 1
+    },
+    "ProjectName": "inputsimulator",
+    "ReportedDate": "2012-07-16T05:19:42.23-07:00",
+    "Status": {
+      "Name": "Closed",
+      "Id": 4
+    },
+    "ReasonClosed": {
+      "Name": "Unassigned"
+    },
+    "Summary": "Make The Assembly Strong Named",
+    "Type": {
+      "Name": "Issue",
+      "Id": 3
+    },
+    "VoteCount": 2,
+    "Id": 13004
+  },
+  "FileAttachments": [],
+  "Comments": [
+    {
+      "Message": "The next version will be strong-named - thanks for the report.",
+      "PostedDate": "2013-02-21T01:52:17.127-08:00",
+      "Id": 91055
+    }
+  ]
+}

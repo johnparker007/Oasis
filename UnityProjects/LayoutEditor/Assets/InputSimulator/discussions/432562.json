@@ -1,0 +1,10 @@
+[
+  {
+    "Id": "998891",
+    "ThreadId": "432562",
+    "Html": "Hi,\r<br />\nI 'm trying to:<br />\n<ol>\n<li>Activate (foreground) Spotify</li>\n<li>\nSend CTRL + Arrow<br />\n</li>\n</ol>\nOn a fast computer it seems working well. But on a smaller computer, Activate works but application didn't get CTRL+Arrow.\r<br />\n<br />\nTrying with NotePad it works on both computers.\r<br />\n<br />\nAny idea ?\r<br />\n<br />\nPS: Both computers use Windows 7.<br />\n",
+    "PostedDate": "2013-02-09T06:11:09.28-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

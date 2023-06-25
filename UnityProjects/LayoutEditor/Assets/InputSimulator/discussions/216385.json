@@ -1,0 +1,18 @@
+[
+  {
+    "Id": "456747",
+    "ThreadId": "216385",
+    "Html": "<p>quick question:</p>\r\n<p>Do calls to&nbsp;InputSimulator.SimulateTextEntry,&nbsp;InputSimulator.SimulateKeyDown, etc. dispatch events that can be listened for on&nbsp;System.Windows.Input.Keyboard.KeyDownEvent and the like?</p>\r\n<p>Mike</p>",
+    "PostedDate": "2010-06-17T08:04:17.467-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "456918",
+    "ThreadId": "216385",
+    "Html": "Hi Mike,<div><br></div><div>Funnily enough that's not a case I've tested for, although my instinct tells me you should get events generated, especially for the SimulateKeyDown/KeyUp events.  The native win32 SendInput() method simulates input messages by adding them to the message pump of the window just like the keyboard does.  SimulateTextEntry is a little bit different in that it simulates unicode text entry, not necessarily pure virtual key strokes.</div>\r\n<div><br></div><div>If you could do a quick test and let me know I'll post the info on the CodePlex pages.</div><div><br></div><div>Good luck,</div><div>Mike<br><br><div>On Fri, Jun 18, 2010 at 1:04 AM, lindee <span dir=ltr>&lt;<a href=\"mailto:notifications@codeplex.com\">notifications@codeplex.com</a>&gt;</span> wrote:<br>\r\n<blockquote style=\"margin:0 0 0 .8ex;border-left:1px #ccc solid;padding-left:1ex\">   <div> <p>From: lindee</p> <div><p>quick question:</p>\r\n<p>Do calls to InputSimulator.SimulateTextEntry, InputSimulator.SimulateKeyDown, etc. dispatch events that can be listened for on System.Windows.Input.Keyboard.KeyDownEvent and the like?</p>\r\n<p>Mike</p></div> <div> <p>Read the <a href=\"http://inputsimulator.codeplex.com/Thread/View.aspx?ThreadId=216385&ANCHOR#Post456747\">full discussion online</a>.</p> <p>To add a post to this discussion, reply to this email (<a href=\"mailto:inputsimulator@discussions.codeplex.com?subject=[inputsimulator:216385]\">inputsimulator@discussions.codeplex.com</a>)</p>\r\n <p>To start a new discussion for this project, email <a href=\"mailto:inputsimulator@discussions.codeplex.com\">inputsimulator@discussions.codeplex.com</a></p> <p>You are receiving this email because you subscribed to this discussion on CodePlex. You can <a href=\"https://inputsimulator.codeplex.com/subscriptions/thread/project/edit\">unsubscribe or change your settings</a> on codePlex.com.</p>\r\n <p>Please note: Images and attachments will be removed from emails. Any posts to this discussion will also be available online at <a href=\"http://codeplex.com\">codeplex.com</a></p> </div> </div> </blockquote>\r\n</div><br></div>",
+    "PostedDate": "2010-06-17T13:18:22.06-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

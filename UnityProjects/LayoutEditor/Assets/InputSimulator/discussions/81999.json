@@ -1,0 +1,42 @@
+[
+  {
+    "Id": "281658",
+    "ThreadId": "81999",
+    "Html": "<p>How do you install this/set it up to use in a c# program?</p>",
+    "PostedDate": "2010-01-25T18:50:46.44-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "282074",
+    "ThreadId": "81999",
+    "Html": "<p>All you need to do is download the Recommended Download (the binary release) from CodePlex (<a href=\"../Release/ProjectReleases.aspx?ReleaseId=37570#ReleaseFiles\">http://inputsimulator.codeplex.com/Release/ProjectReleases.aspx</a>) and grab the InputSimulator.* files and copy them into your solution structure somewhere as references.&nbsp; I normally set up my Solutions something like this:<br> <br>MySolution<br>&nbsp; MySolution.sln<br>&nbsp; References<br>&nbsp;&nbsp;&nbsp; InputSimulator.dll<br>&nbsp;&nbsp;&nbsp; InputSimulator.pdb<br>&nbsp;&nbsp;&nbsp; InputSimulator.xml<br>&nbsp; MyProject<br>&nbsp;&nbsp;&nbsp; MyProject.csproj<br><br>etc<br><br>Then you simply reference the InputSimulator.dll using a file reference (Add Reference -&gt; Browse and find the dll).&nbsp; After that you can import the WindowsInput namespace into your existing code and call the static methods on the InputSimulator class.</p>\r\n<p>Hope that helps.</p>\r\n<p>I'll add this information to the home page/wiki as well.</p>",
+    "PostedDate": "2010-01-26T16:28:38.057-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "427621",
+    "ThreadId": "81999",
+    "Html": "<p>Hello,</p>\r\n<p>&nbsp;</p>\r\n<p>First, thank you for your hard work on this project.</p>\r\n<p>&nbsp;</p>\r\n<p>I absolutely cannot reference this DLL. I do not understand why. I can view it in the object viewer but the interpreter does allow me to use a 'using InputSimulator;' statement.</p>\r\n<p>&nbsp;</p>\r\n<p>I've tried moving this file to the project's home directory etc. Don't know what the problem is I reference DLL's all the time.</p>\r\n<p>Warning&nbsp;&nbsp; &nbsp;3&nbsp;&nbsp; &nbsp;Could not resolve this reference. Could not locate the assembly &quot;InputSimulator, Version=0.1.0.0, Culture=neutral, processorArchitecture=MSIL&quot;. Check to make sure the assembly exists on disk. If this reference is required by your code, you may get compilation errors.&nbsp;&nbsp; &nbsp;ConsoleApplication1</p>",
+    "PostedDate": "2010-04-05T15:47:00.583-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "427624",
+    "ThreadId": "81999",
+    "Html": "<p>Disregard my previous post, I need to learn how to read more carefully.</p>\r\n<p>&nbsp;</p>\r\n<p>Thanks Anyway!</p>\r\n<p>&nbsp;</p>",
+    "PostedDate": "2010-04-05T15:53:03.08-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "474271",
+    "ThreadId": "81999",
+    "Html": "I scratched my head on this one for a while.  The magic line here, in case it is not obvious to everyone is:\r\n\r\n\r\nusing WindowsInput;\r\n\r\n\r\ninstead of \r\n\r\n\r\nusing InputSimulator;\r\n\r\n",
+    "PostedDate": "2010-07-29T07:23:41.793-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

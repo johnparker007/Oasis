@@ -1,0 +1,45 @@
+{
+  "WorkItem": {
+    "AffectedComponent": {
+      "Name": "",
+      "DisplayName": ""
+    },
+    "ClosedComment": "",
+    "ClosedDate": "2013-12-11T18:00:57.65-08:00",
+    "CommentCount": 1,
+    "Custom": "",
+    "Description": "Support for silverlight,please",
+    "LastUpdatedDate": "2013-12-11T18:00:57.65-08:00",
+    "PlannedForRelease": "",
+    "ReleaseVisibleToPublic": false,
+    "Priority": {
+      "Name": "Low",
+      "Severity": 50,
+      "Id": 1
+    },
+    "ProjectName": "inputsimulator",
+    "ReportedDate": "2010-07-12T08:41:24.817-07:00",
+    "Status": {
+      "Name": "Closed",
+      "Id": 4
+    },
+    "ReasonClosed": {
+      "Name": "Unassigned"
+    },
+    "Summary": "And silverlight?",
+    "Type": {
+      "Name": "Issue",
+      "Id": 3
+    },
+    "VoteCount": 1,
+    "Id": 11495
+  },
+  "FileAttachments": [],
+  "Comments": [
+    {
+      "Message": "I'm going to close this issue unless anyone else thinks its necessary to support SL.",
+      "PostedDate": "2013-12-11T18:00:55.233-08:00",
+      "Id": 127069
+    }
+  ]
+}

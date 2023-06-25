@@ -1,0 +1,34 @@
+[
+  {
+    "Id": "465065",
+    "ThreadId": "218827",
+    "Html": "<p>I recently upgraded from VS2005 to VS2010.&nbsp;</p>\r\n<p>Unfortunately VS2010 will not let me use InputSimulator.0.1.0.0-bin in my .NET 2.0 based project, it says that it's build for another version of the .NET framework.</p>\r\n<p>Then I downloaded the source of the original release (InputSimulator.0.1.0.0-src.zip) intending to build it for .NET 2.0, but indeed there are .NET 3.0 dependencies (Linq among others).</p>\r\n<p>The strange thing is that the bin is working on .NET 2.</p>\r\n<p>Can someone <span title=Eksempel>shed some light on this matter</span>?</p>\r\n<p>Thanks</p>",
+    "PostedDate": "2010-07-08T13:46:26.827-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "466109",
+    "ThreadId": "218827",
+    "Html": "Hi,<div><br></div><div>Sorry I didn't reply earlier.  There's a few ways to swing this answer. </div><div><br></div><div>VS2010 allows you to target different CLR/runtime versions.  If your project is supposed to target the .NET 2.0 runtime you can reference InputSimulator.0.1.0.0 in your VS2010 project and make sure the target of your project is also .NET 2.0.</div>\r\n<div><br></div><div>As far as the .NET 3.5 dependencies of Linq etc, you can still reference an assembly compiled for the same runtime.  So anything from .NET Framework Version 2.0 through to Version 3.5 SP1 all use the CLR 2.0 (as confusing but cool as that is).  I've build a couple of projects that were built using .NET Framework version 2.0 which reference .NET Framework version 3.5 assemblies.  The proviso is that your target runtime environment must have .NET Framework version 3.5 installed.</div>\r\n<div><br></div><div>If you are happy to target the .NET Framework 4.0/CLR 4.0 you can take either version of InputSimulator (0.1 or 0.2) and use those happily.</div><div><br></div><div>Failing all of that you can very quickly remove any dependency on Linq by taking the 0.1.0.0 code and writing foreach loops instead of the Linq statements.  This will make it a purely .NET framework version 2.0 release.  :)</div>\r\n<div><br></div><div>Kind Regards,</div><div>Mike<br><br><div>On Fri, Jul 9, 2010 at 6:46 AM, soeren123 <span dir=ltr>&lt;<a href=\"mailto:notifications@codeplex.com\">notifications@codeplex.com</a>&gt;</span> wrote:<br>\r\n<blockquote style=\"margin:0 0 0 .8ex;border-left:1px #ccc solid;padding-left:1ex\">   <div> <p>From: soeren123</p> <div><p>I recently upgraded from VS2005 to VS2010. </p>\r\n<p>Unfortunately VS2010 will not let me use InputSimulator.0.1.0.0-bin in my .NET 2.0 based project, it says that it's build for another version of the .NET framework.</p>\r\n<p>Then I downloaded the source of the original release (InputSimulator.0.1.0.0-src.zip) intending to build it for .NET 2.0, but indeed there are .NET 3.0 dependencies (Linq among others).</p>\r\n<p>The strange thing is that the bin is working on .NET 2.</p>\r\n<p>Can someone <span title=Eksempel>shed some light on this matter</span>?</p>\r\n<p>Thanks</p></div> <div> <p>Read the <a href=\"http://inputsimulator.codeplex.com/Thread/View.aspx?ThreadId=218827&ANCHOR#Post465065\">full discussion online</a>.</p> <p>To add a post to this discussion, reply to this email (<a href=\"mailto:inputsimulator@discussions.codeplex.com?subject=[inputsimulator:218827]\">inputsimulator@discussions.codeplex.com</a>)</p>\r\n <p>To start a new discussion for this project, email <a href=\"mailto:inputsimulator@discussions.codeplex.com\">inputsimulator@discussions.codeplex.com</a></p> <p>You are receiving this email because you subscribed to this discussion on CodePlex. You can <a href=\"https://inputsimulator.codeplex.com/subscriptions/thread/project/edit\">unsubscribe or change your settings</a> on codePlex.com.</p>\r\n <p>Please note: Images and attachments will be removed from emails. Any posts to this discussion will also be available online at <a href=\"http://codeplex.com\">codeplex.com</a></p> </div> </div> </blockquote>\r\n</div><br></div>",
+    "PostedDate": "2010-07-11T21:05:42.173-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "466202",
+    "ThreadId": "218827",
+    "Html": "<p>Thank you for the reply.</p>\r\n<p>I need a pure .NET 2 release so I've replaced the linq code.</p>\r\n<p>If anyone else needs this version please let me know.</p>\r\n<p>Best regards</p>\r\n<p>Soeren</p>\r\n<p>&nbsp;</p>",
+    "PostedDate": "2010-07-12T02:54:11.14-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "747111",
+    "ThreadId": "218827",
+    "Html": "<p>hey is it possible to obtain the 2.0 Version?</p>",
+    "PostedDate": "2012-02-08T05:41:39.507-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

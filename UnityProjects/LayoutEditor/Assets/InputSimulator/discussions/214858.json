@@ -1,0 +1,58 @@
+[
+  {
+    "Id": "451193",
+    "ThreadId": "214858",
+    "Html": "<p>What would it take to include Unicode Support? I've found this library to be tremendously helpful, but I've run into a problem with non-ASCII characters. Thanks for your work on this.</p>",
+    "PostedDate": "2010-06-03T06:53:21.153-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "452253",
+    "ThreadId": "214858",
+    "Html": "Hi,<div><br></div><div>Can you give me any more details?</div><div><br></div><div>From memory, if you are calling the SimulateTextInput() method, it should automatically recognise that a unicode character (non-ascii) has been specified and set the UNICODE flag.  The reality is that I didn't have a good test case at the time.</div>\r\n<div><br></div><div>If you can send me through the sample code file/project, I can help you from there.</div><div><br></div><div>Cheers,</div><div>Mike<br><br><div>On Thu, Jun 3, 2010 at 11:53 PM, byudaniel <span dir=ltr>&lt;<a href=\"mailto:notifications@codeplex.com\">notifications@codeplex.com</a>&gt;</span> wrote:<br>\r\n<blockquote style=\"margin:0 0 0 .8ex;border-left:1px #ccc solid;padding-left:1ex\">   <div> <p>From: byudaniel</p> <div><p>What would it take to include Unicode Support? I've found this library to be tremendously helpful, but I've run into a problem with non-ASCII characters. Thanks for your work on this.</p>\r\n</div> <div> <p>Read the <a href=\"http://inputsimulator.codeplex.com/Thread/View.aspx?ThreadId=214858&ANCHOR#Post451193\">full discussion online</a>.</p> <p>To add a post to this discussion, reply to this email (<a href=\"mailto:inputsimulator@discussions.codeplex.com?subject=[inputsimulator:214858]\">inputsimulator@discussions.codeplex.com</a>)</p>\r\n <p>To start a new discussion for this project, email <a href=\"mailto:inputsimulator@discussions.codeplex.com\">inputsimulator@discussions.codeplex.com</a></p> <p>You are receiving this email because you subscribed to this discussion on CodePlex. You can <a href=\"https://inputsimulator.codeplex.com/subscriptions/thread/project/edit\">unsubscribe or change your settings</a> on codePlex.com.</p>\r\n <p>Please note: Images and attachments will be removed from emails. Any posts to this discussion will also be available online at <a href=\"http://codeplex.com\">codeplex.com</a></p> </div> </div> </blockquote>\r\n</div><br></div>",
+    "PostedDate": "2010-06-06T17:17:51.78-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "452266",
+    "ThreadId": "214858",
+    "Html": "<p>Here is a quick example: (Form with textBox1 and a button that will focus the textbox and simulate text entry into this field.)</p>\r\n<div style=\"color:black;background-color:white\">\r\n<pre><span style=\"color:#0000ff\"><br></span></pre>\r\n<pre><span style=\"color:blue\">private</span> <span style=\"color:blue\">void</span> button1_Click(<span style=\"color:blue\">object</span> sender, RoutedEventArgs e)\r\n{\r\n    textBox1.Focus();\r\n    InputSimulator.SimulateTextEntry(<span style=\"color:#a31515\">&quot;Muḩāfaz̧at Shamāl Sīnā'&quot;</span>);\r\n}\r\n</pre>\r\n</div>\r\n<p>The text that is entered into the field shows up as Mu??faz?at Sham?l S?n?'</p>",
+    "PostedDate": "2010-06-06T18:38:37.827-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "452268",
+    "ThreadId": "214858",
+    "Html": "<p>I downloaded the latest source instead of the binary and it now works great!</p>",
+    "PostedDate": "2010-06-06T18:44:09.643-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "452269",
+    "ThreadId": "214858",
+    "Html": "Thanks, I'll have a bit of a play...<div>Mike<br><br><div>On Mon, Jun 7, 2010 at 11:38 AM, byudaniel <span dir=ltr>&lt;<a href=\"mailto:notifications@codeplex.com\">notifications@codeplex.com</a>&gt;</span> wrote:<br>\r\n<blockquote style=\"margin:0 0 0 .8ex;border-left:1px #ccc solid;padding-left:1ex\">   <div> <p>From: byudaniel</p> <div><p>Here is a quick example: (Form with textBox1 and a button that will focus the textbox and simulate text entry into this field.)</p>\r\n\r\n<div style=\"color:black;background-color:white\">\r\n<pre><span style=\"color:#0000ff\"><br></span></pre>\r\n<pre><span style=\"color:blue\">private</span> <span style=\"color:blue\">void</span> button1_Click(<span style=\"color:blue\">object</span> sender, RoutedEventArgs e)\r\n{\r\n    textBox1.Focus();\r\n    InputSimulator.SimulateTextEntry(<span style=\"color:#a31515\">&quot;Muḩāfaz̧at Shamāl Sīnā'&quot;</span>);\r\n}\r\n</pre>\r\n</div>\r\n<p>The text that is entered into the field shows up as Mu??faz?at Sham?l S?n?'</p></div><div> <div> <p>Read the <a href=\"http://inputsimulator.codeplex.com/Thread/View.aspx?ThreadId=214858&ANCHOR#Post452266\">full discussion online</a>.</p>\r\n <p>To add a post to this discussion, reply to this email (<a href=\"mailto:inputsimulator@discussions.codeplex.com?subject=[inputsimulator:214858]\">inputsimulator@discussions.codeplex.com</a>)</p> <p>To start a new discussion for this project, email <a href=\"mailto:inputsimulator@discussions.codeplex.com\">inputsimulator@discussions.codeplex.com</a></p>\r\n <p>You are receiving this email because you subscribed to this discussion on CodePlex. You can <a href=\"https://inputsimulator.codeplex.com/subscriptions/thread/project/edit\">unsubscribe or change your settings</a> on codePlex.com.</p>\r\n <p>Please note: Images and attachments will be removed from emails. Any posts to this discussion will also be available online at <a href=\"http://codeplex.com\">codeplex.com</a></p> </div> </div></div> </blockquote>\r\n</div><br></div>",
+    "PostedDate": "2010-06-06T18:45:41.893-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "518504",
+    "ThreadId": "214858",
+    "Html": "\r\n<p>&#65279;I also had trouble getting Unicode characters to work using SimulateTextEntry.&nbsp; I made the following two modifications to InputSimulator::SimulateTextEntry, and then it worked:</p>\r\n<div style=\"color:black; background-color:white\">\r\n<pre><span style=\"color:green\">//DBC: Adding support for Unicode.</span>\r\n<span style=\"color:green\">//var chars = UTF8Encoding.ASCII.GetBytes(text);</span>\r\n<span style=\"color:blue\">var</span> chars = UTF8Encoding.Unicode.GetBytes(text);\r\n\r\n<span style=\"color:blue\">var</span> len = chars.Length;\r\nINPUT[] inputList = <span style=\"color:blue\">new</span> INPUT[len * 2];\r\n<span style=\"color:blue\">for</span> (<span style=\"color:blue\">int</span> x = 0; x &lt; len; x&#43;=2)\r\n{\r\n    <span style=\"color:green\">//DBC: Adding support for Unicode.</span>\r\n    <span style=\"color:green\">//UInt16 scanCode = chars[x];</span>\r\n    UInt16 scanCode = BitConverter.ToUInt16(chars, x);\r\n\r\n</pre>\r\n</div>\r\n<p>Thanks for a very useful class!</p>\r\n<p>David Cater</p>\r\n",
+    "PostedDate": "2010-11-07T16:17:03.387-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "518526",
+    "ThreadId": "214858",
+    "Html": "Hi David,\r\n<div><br>\r\n</div>\r\n<div>Thanks for posting the fix.  I'm working on an updated version that *should* handle some more of the cases not covered by the original code-base.  I didn't have a good test case for Unicode or other character support.  This could fix several issues.</div>\r\n<div><br>\r\n</div>\r\n<div>I'll incorporate it into the WIP codebase and should be releasing soon.</div>\r\n<div><br>\r\n</div>\r\n<div>Cheers,</div>\r\n<div>Mike<br>\r\n<br>\r\n<div>On Mon, Nov 8, 2010 at 10:17 AM, xiard <span dir=\"ltr\"><<a href=\"mailto:notifications@codeplex.com\">notifications@codeplex.com</a>></span> wrote:<br>\r\n<blockquote style=\"margin:0 0 0 .8ex; border-left:1px #ccc solid; padding-left:1ex\">\r\n<div>\r\n<p>From: xiard</p>\r\n<div>\r\n<p>﻿I also had trouble getting Unicode characters to work using SimulateTextEntry.  I made the following two modifications to InputSimulator::SimulateTextEntry, and then it worked:</p>\r\n<div style=\"color:black; background-color:white\">\r\n<pre><span style=\"color:green\">//DBC: Adding support for Unicode.</span>\r\n<span style=\"color:green\">//var chars = UTF8Encoding.ASCII.GetBytes(text);</span>\r\n<span style=\"color:blue\">var</span> chars = UTF8Encoding.Unicode.GetBytes(text);\r\n\r\n<span style=\"color:blue\">var</span> len = chars.Length;\r\nINPUT[] inputList = <span style=\"color:blue\">new</span> INPUT[len * 2];\r\n<span style=\"color:blue\">for</span> (<span style=\"color:blue\">int</span> x = 0; x < len; x+=2)\r\n{\r\n    <span style=\"color:green\">//DBC: Adding support for Unicode.</span>\r\n    <span style=\"color:green\">//UInt16 scanCode = chars[x];</span>\r\n    UInt16 scanCode = BitConverter.ToUInt16(chars, x);\r\n\r\n</pre>\r\n</div>\r\n<p>Thanks for a very useful class!</p>\r\n<p>David Cater</p>\r\n</div>\r\n<div>\r\n<p>Read the <a href=\"http://inputsimulator.codeplex.com/Thread/View.aspx?ThreadId=214858&ANCHOR#Post518504\" target=\"_blank\">\r\nfull discussion online</a>.</p>\r\n<p>To add a post to this discussion, reply to this email (<a href=\"mailto:inputsimulator@discussions.codeplex.com?subject=[inputsimulator:214858]\" target=\"_blank\">inputsimulator@discussions.codeplex.com</a>)</p>\r\n<p>To start a new discussion for this project, email <a href=\"mailto:inputsimulator@discussions.codeplex.com\" target=\"_blank\">\r\ninputsimulator@discussions.codeplex.com</a></p>\r\n<p>You are receiving this email because you subscribed to this discussion on CodePlex. You can\r\n<a href=\"https://inputsimulator.codeplex.com/subscriptions/thread/project/edit\" target=\"_blank\">\r\nunsubscribe or change your settings</a> on codePlex.com.</p>\r\n<p>Please note: Images and attachments will be removed from emails. Any posts to this discussion will also be available online at\r\n<a href=\"http://codeplex.com\" target=\"_blank\">codeplex.com</a></p>\r\n</div>\r\n</div>\r\n</blockquote>\r\n</div>\r\n<br>\r\n</div>\r\n",
+    "PostedDate": "2010-11-07T19:14:32.963-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

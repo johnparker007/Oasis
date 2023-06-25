@@ -3,13 +3,13 @@ using System.Windows.Forms;
 
 namespace Oasis.UI.Views
 {
-    public class View
+    public abstract class ViewBase
     {
         protected RootUI _rootUI = null;
         protected Control _parent = null;
         protected ViewModel _viewModel = null;
 
-        public View(RootUI rootUI, Control parent, ViewModel viewModel)
+        public ViewBase(RootUI rootUI, Control parent, ViewModel viewModel)
         {
             _rootUI = rootUI;
             _parent = parent;

@@ -1,0 +1,18 @@
+[
+  {
+    "Id": "1081295",
+    "ThreadId": "453589",
+    "Html": "Hello everyone,\r<br />\n<br />\nI am a student just starting out with C# and VS (Express 2012) and am working on a small assignment part of which i need to send Keystrokes to the system. I find it quite difficult getting my head around the Windows API sendinput and was very happy when I found this wrapper.\r<br />\n<br />\nWould somebody be so kind to talk me through how to import this into my project in VS2012?\r<br />\n<br />\nThank you in advance.\r<br />\n<br />\nregards<br />\n",
+    "PostedDate": "2013-08-16T03:10:11.053-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1081339",
+    "ThreadId": "453589",
+    "Html": "I have figured it out thank you, Just in case somebody is looking for the same thing i will break it down into steps that I did:<br />\n<ol>\n<li>\nExtract the InputSimulator contents somewhere sensible like your project URL<br />\n</li>\n<li>\nIn Visual Studio Click Project-&gt;Add Reference and browse to the InputSimulator DLL file<br />\n</li>\n<li>\nadd the WindowsInput Namespace to the project by adding using WindowsInput;<br />\n</li>\n</ol>\nthanks for the great wrapper :)<br />\n",
+    "PostedDate": "2013-08-16T06:01:53.27-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

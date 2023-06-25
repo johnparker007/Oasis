@@ -1,0 +1,50 @@
+[
+  {
+    "Id": "1033636",
+    "ThreadId": "441072",
+    "Html": "How can I write with InputSimulator spanish word like (Sánchez)?\r<br />\n<br />\nThank you<br />\n",
+    "PostedDate": "2013-04-21T12:46:02.14-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1034219",
+    "ThreadId": "441072",
+    "Html": "\r\n<div dir=\"ltr\">You can use the SimulateTextEntry() method with that text verbatim. It supports the full Unicode character set supported on the version of Windows you are running.\r\n<div><br>\r\n</div>\r\n<div>Cheers,</div>\r\n<div>Mike</div>\r\n</div>\r\n<div><br>\r\n<br>\r\n<div></div>\r\n</div>\r\n",
+    "PostedDate": "2013-04-22T16:40:46.143-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1034359",
+    "ThreadId": "441072",
+    "Html": "\r\n<p dir=\"ltr\">Thank you for answering, It is not as you say, I test It, tried to write 'Sánchez' and It writes 'S?nchez'...\r\n</p>\r\n<p dir=\"ltr\">Why can It be like that? </p>\r\n",
+    "PostedDate": "2013-04-23T00:44:54.68-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1035314",
+    "ThreadId": "441072",
+    "Html": "\r\n<div dir=\"ltr\">Interesting. Could you try downloading the latest code revision from CodePlex here:\r\n<a href=\"http://inputsimulator.codeplex.com/SourceControl/changeset/view/81064747a32a8322ef47641227426ab032b81fac\">\r\nhttp://inputsimulator.codeplex.com/SourceControl/changeset/view/81064747a32a8322ef47641227426ab032b81fac</a>\r\n<div><br>\r\n</div>\r\n<div style=\"\">There's a suite of tests checking Unicode support. Let me know if that helps.</div>\r\n<div style=\"\"><br>\r\n</div>\r\n<div style=\"\">Cheers,</div>\r\n<div style=\"\">Mike</div>\r\n</div>\r\n<div><br>\r\n<br>\r\n<div></div>\r\n</div>\r\n",
+    "PostedDate": "2013-04-24T13:41:09.82-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1036847",
+    "ThreadId": "441072",
+    "Html": "I had the similar problem with Cyrillic. All characters were ???. I tried the latest revision, and it fixed problem!\r<br />\nAnd all project became cleaner and handier. Great job, thank you!<br />\n",
+    "PostedDate": "2013-04-28T15:53:21.183-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1036902",
+    "ThreadId": "441072",
+    "Html": "\r\n<div dir=\"ltr\">Hey, great news. I just need to make/find time to get it on nuget.\r\n<div><br>\r\n</div>\r\n<div>Thanks!</div>\r\n<div>Mike</div>\r\n</div>\r\n<div><br>\r\n<br>\r\n<div></div>\r\n</div>\r\n",
+    "PostedDate": "2013-04-28T21:51:03.593-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

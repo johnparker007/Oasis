@@ -1,0 +1,42 @@
+[
+  {
+    "Id": "1040407",
+    "ThreadId": "442821",
+    "Html": "First of all: The Input Simulator is a great project.<br />\n<br />\nAfter migrating from VS 2008 and .NET 3.5 to VS 2012 and .NET 4 (both on Windows 7, 64 bit) I recognized, that method <strong>IsKeyDownAsync</strong> didn't work anymore. Whatever the state of a key in question will be (down or up): <strong>IsKeyDownAsync</strong> is returning false.<br />\n<br />\nThe reason for this behavior is, that <strong>GetAsyncKeyState</strong> always returns 0 and sets error code 87 (ERROR_INVALID_PARAMETER). After changing the import signature from<br />\n<pre><code>static extern Int16 GetAsyncKeyState(UInt16 virtualKeyCode);\n</code></pre>\n\nto<br />\n<pre><code>static extern Int16 GetAsyncKeyState(Int32 virtualKeyCode);\n</code></pre>\n\neverything seems to be fixed.<br />\n",
+    "PostedDate": "2013-05-07T07:47:24.313-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1075783",
+    "ThreadId": "442821",
+    "Html": "\r\n<div dir=\"ltr\">Thanks for that, I'll look into a fix for both x86 and x64 versions.\r\n<div>Cheers,</div>\r\n<div>Mike</div>\r\n</div>\r\n<div><br>\r\n<br>\r\n<div></div>\r\n</div>\r\n",
+    "PostedDate": "2013-08-01T16:06:35.317-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1227201",
+    "ThreadId": "442821",
+    "Html": "Thank you very much!!!!!!<br />\n",
+    "PostedDate": "2014-03-26T19:49:10.903-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1232053",
+    "ThreadId": "442821",
+    "Html": "APPLAUSE!!\r<br />\n<br />\nThank you very much!!<br />\n",
+    "PostedDate": "2014-04-08T14:56:28.03-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1232771",
+    "ThreadId": "442821",
+    "Html": "One more information, same problem apply to:<br />\n<pre><code>    [DllImport(&quot;user32.dll&quot;, SetLastError = true)]\n    static extern Int16 GetKeyState(Int32 virtualKeyCode);</code></pre>\n\n",
+    "PostedDate": "2014-04-10T04:51:10.36-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

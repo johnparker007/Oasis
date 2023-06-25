@@ -1,0 +1,45 @@
+{
+  "WorkItem": {
+    "AffectedComponent": {
+      "Name": "",
+      "DisplayName": ""
+    },
+    "ClosedComment": "",
+    "ClosedDate": null,
+    "CommentCount": 1,
+    "Custom": null,
+    "Description": "When I try to send LWIN or RWIN key it just remains pressed until I press the other win key (when I send LWIN i have to press physicaly RWIN to release both)",
+    "LastUpdatedDate": "2015-10-01T09:21:48.623-07:00",
+    "PlannedForRelease": "",
+    "ReleaseVisibleToPublic": false,
+    "Priority": {
+      "Name": "Unassigned",
+      "Severity": 0,
+      "Id": 0
+    },
+    "ProjectName": "inputsimulator",
+    "ReportedDate": "2015-10-01T08:43:21.463-07:00",
+    "Status": {
+      "Name": "Proposed",
+      "Id": 1
+    },
+    "ReasonClosed": {
+      "Name": "Unassigned"
+    },
+    "Summary": "Sending WIN key makes it pressed all the time",
+    "Type": {
+      "Name": "Unassigned",
+      "Id": 5
+    },
+    "VoteCount": 1,
+    "Id": 13010
+  },
+  "FileAttachments": [],
+  "Comments": [
+    {
+      "Message": "Windows 10 pro",
+      "PostedDate": "2015-10-01T09:21:48.623-07:00",
+      "Id": 190981
+    }
+  ]
+}

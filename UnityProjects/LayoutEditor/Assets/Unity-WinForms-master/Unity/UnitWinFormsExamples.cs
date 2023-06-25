@@ -2,7 +2,7 @@
 {
     using UnityEngine;
 
-    using UnityWinForms.Examples;
+    using Examples;
 
     public class UnitWinFormsExamples : MonoBehaviour
     {

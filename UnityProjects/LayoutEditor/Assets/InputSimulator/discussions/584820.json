@@ -1,0 +1,18 @@
+[
+  {
+    "Id": "1360575",
+    "ThreadId": "584820",
+    "Html": "Hi! I have some troubles with eng. lang and with InputSimulator.<br />\nI can't send cyrillic symbols with InputSimulator, for example i use<br />\nInputSimulator.SimulateTextEntry(&quot;пидор,хуй соси&quot;);<br />\nBut in results i see &quot;?????,??? ????&quot;<br />\nHelp me! :)<br />\n",
+    "PostedDate": "2015-03-06T18:48:33.353-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1418969",
+    "ThreadId": "584820",
+    "Html": "I have same issue, did you find any solution. if so, can you post ur code<br />\n",
+    "PostedDate": "2015-04-27T06:47:13.52-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

@@ -1,0 +1,18 @@
+[
+  {
+    "Id": "516058",
+    "ThreadId": "233208",
+    "Html": "\r\n<p>How can I translate a System.Windows.Input.Key event (received from a WPF Event Handler) into a VirtualKey that the Windows Input Simulator can send?</p>\r\n<p>I am writing a simple remote control application that allows the user to pass mouse &amp; keyboard events from one computer to the next.&nbsp; I have the mouse actions working (thanks in part to this great library) but am having trouble with the key strokes\r\n due to the translation required.</p>\r\n<p>Thanks for any help!</p>\r\n",
+    "PostedDate": "2010-11-02T11:19:24.903-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "576647",
+    "ThreadId": "233208",
+    "Html": "<p>There is a convertor in .NET 4:</p>\r\n<p><a href=\"http://msdn.microsoft.com/en-us/library/system.windows.input.keyinterop.virtualkeyfromkey.aspx\">http://msdn.microsoft.com/en-us/library/system.windows.input.keyinterop.virtualkeyfromkey.aspx</a></p>\r\n<p>VirtualKeyCode key =&nbsp;(VirtualKeyCode)KeyInterop.VirtualKeyFromKey(Key.Right);</p>",
+    "PostedDate": "2011-03-07T07:01:41.533-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

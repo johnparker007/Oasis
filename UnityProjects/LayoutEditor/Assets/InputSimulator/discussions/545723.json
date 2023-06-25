@@ -1,0 +1,18 @@
+[
+  {
+    "Id": "1246654",
+    "ThreadId": "545723",
+    "Html": "Hi,\r<br />\n<br />\nI try to simulate alt + tab combinaison to switch between apps but I don't find a way.\r<br />\n<br />\nI try with :\r<br />\nvar sim = new InputSimulator();\r<br />\nsim.Keyboard.KeyDown(VirtualKeyCode.MENU);\r<br />\nsim.Keyboard.KeyPress(VirtualKeyCode.TAB);\r<br />\n<br />\nwith :\r<br />\nsim.Keyboard.ModifiedKeyStroke(VirtualKeyCode.MENU, VirtualKeyCode.TAB);\r<br />\n<br />\nbut nothing work.\r<br />\nI'm on wpf 4.5 application.\r<br />\n<br />\nThank you,\r<br />\nNasser<br />\n",
+    "PostedDate": "2014-05-18T07:58:23.033-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1247810",
+    "ThreadId": "545723",
+    "Html": "Hi!\r<br />\n<br />\nTry to use LMENU or RMENU instead of MENU then it should work.\r<br />\n<br />\nMajti<br />\n",
+    "PostedDate": "2014-05-21T02:51:23.04-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

@@ -5,7 +5,7 @@ using System.Windows.Forms;
 
 namespace Oasis.UI.Views
 {
-    public class ViewMenu : View
+    public class ViewMenu : ViewBase
     {
         public MenuStrip MenuStrip
         {
@@ -18,6 +18,14 @@ namespace Oasis.UI.Views
             get;
             private set;
         } = null;
+
+        protected ViewModelMenu ViewModelMenu
+        {
+            get
+            {
+                return (ViewModelMenu)_viewModel;
+            }
+        }
 
         public ViewMenu(RootUI rootUI, Control parent, ViewModel viewModel) : base(rootUI, parent, viewModel)
         {
@@ -64,6 +72,8 @@ namespace Oasis.UI.Views
             var itemFile_SaveAs = new ToolStripMenuItem("Save As...");
 
             var itemFile_Import = new ToolStripMenuItem("Import");
+            itemFile_Import.Click += ViewModelMenu.OnFile_ImportClick;
+
             var itemFile_Export = new ToolStripMenuItem("Export");
 
             var itemFile_Close = new ToolStripMenuItem("Close");
@@ -79,7 +89,7 @@ namespace Oasis.UI.Views
             itemFile.DropDownItems.Add(new ToolStripSeparator());
             itemFile.DropDownItems.Add(itemFile_Close);
             itemFile.DropDownItems.Add(itemFile_Exit);
-
+           
             return itemFile;
         }
 

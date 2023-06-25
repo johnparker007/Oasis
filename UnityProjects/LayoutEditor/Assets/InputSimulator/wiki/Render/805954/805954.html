@@ -1,0 +1,58 @@
+<div class="wikidoc"><h1>Project Description</h1>The Windows Input Simulator provides a simple .NET &#40;C&#35;&#41; interface to simulate Keyboard or Mouse input using the Win32 SendInput method. All of the Interop is done for you and there&#39;s a simple programming model for sending multiple keystrokes.<br /><br />Windows Forms provides the SendKeys method which can simulate text entry, but not actual key strokes.  Windows Input Simulator can be used in WPF, Windows Forms and Console Applications to synthesize or simulate any Keyboard input including Control, Alt, Shift, Tab, Enter, Space, Backspace, the Windows Key, Caps Lock, Num Lock, Scroll Lock, Volume Up/Down and Mute, Web, Mail, Search, Favorites, Function Keys, Back and Forward navigation keys, Programmable keys and any other key defined in the <a href="http://msdn.microsoft.com/en-us/library/dd375731%28VS.85%29.aspx">Virtual Key table</a>.  It provides a simple API to simulate text entry, key down, key up, key press and complex modified key strokes and chords.<br />
+<h1>Get it on NuGet.org</h1>Install-Package InputSimulator<br /><br /><img src="http://download-codeplex.sec.s-msft.com/Download?ProjectName=inputsimulator&DownloadId=98052" alt="InputSimulator&#32;Intellisense" title="InputSimulator&#32;Intellisense" /><br />
+<h2>Examples</h2><b>Example: Single key press</b><br /><div style="color:Black;background-color:White;"><pre>
+<span style="color:Blue;">public</span> <span style="color:Blue;">void</span> PressTheSpacebar()
+{
+  InputSimulator.SimulateKeyPress(VirtualKeyCode.SPACE);
+}
+</pre></div><br /><b>Example: Key-down and Key-up</b><br /><div style="color:Black;background-color:White;"><pre>
+<span style="color:Blue;">public</span> <span style="color:Blue;">void</span> ShoutHello()
+{
+  <span style="color:Green;">// Simulate each key stroke</span>
+  InputSimulator.SimulateKeyDown(VirtualKeyCode.SHIFT);
+  InputSimulator.SimulateKeyPress(VirtualKeyCode.VK_H);
+  InputSimulator.SimulateKeyPress(VirtualKeyCode.VK_E);
+  InputSimulator.SimulateKeyPress(VirtualKeyCode.VK_L);
+  InputSimulator.SimulateKeyPress(VirtualKeyCode.VK_L);
+  InputSimulator.SimulateKeyPress(VirtualKeyCode.VK_O);
+  InputSimulator.SimulateKeyPress(VirtualKeyCode.VK_1);
+  InputSimulator.SimulateKeyUp(VirtualKeyCode.SHIFT);
+
+  <span style="color:Green;">// Alternatively you can simulate text entry to acheive the same end result</span>
+  InputSimulator.SimulateTextEntry(<span style="color:#A31515;">&quot;HELLO!&quot;</span>);
+}
+</pre></div><br /><b>Example: Modified keystrokes such as CTRL-C</b><br /><div style="color:Black;background-color:White;"><pre>
+<span style="color:Blue;">public</span> <span style="color:Blue;">void</span> SimulateSomeModifiedKeystrokes()
+{
+  <span style="color:Green;">// CTRL-C (effectively a copy command in many situations)</span>
+  InputSimulator.SimulateModifiedKeyStroke(VirtualKeyCode.CONTROL, VirtualKeyCode.VK_C);
+
+  <span style="color:Green;">// You can simulate chords with multiple modifiers</span>
+  <span style="color:Green;">// For example CTRL-K-C whic is simulated as</span>
+  <span style="color:Green;">// CTRL-down, K, C, CTRL-up</span>
+  InputSimulator.SimulateModifiedKeyStroke(VirtualKeyCode.CONTROL, <span style="color:Blue;">new</span> [] {VirtualKeyCode.VK_K, VirtualKeyCode.VK_C});
+
+  <span style="color:Green;">// You can simulate complex chords with multiple modifiers and key presses</span>
+  <span style="color:Green;">// For example CTRL-ALT-SHIFT-ESC-K which is simulated as</span>
+  <span style="color:Green;">// CTRL-down, ALT-down, SHIFT-down, press ESC, press K, SHIFT-up, ALT-up, CTRL-up</span>
+  InputSimulator.SimulateModifiedKeyStroke(
+    <span style="color:Blue;">new</span>[] { VirtualKeyCode.CONTROL, VirtualKeyCode.MENU, VirtualKeyCode.SHIFT },
+    <span style="color:Blue;">new</span>[] { VirtualKeyCode.ESCAPE, VirtualKeyCode.VK_K });
+}
+</pre></div><br /><b>Example: Simulate text entry</b><br /><div style="color:Black;background-color:White;"><pre>
+<span style="color:Blue;">public</span> <span style="color:Blue;">void</span> SayHello()
+{
+  InputSimulator.SimulateTextEntry(<span style="color:#A31515;">&quot;Say hello!&quot;</span>);
+}
+</pre></div><br /><b>Example: Determine the state of different types of keys</b><br /><div style="color:Black;background-color:White;"><pre>
+<span style="color:Blue;">public</span> <span style="color:Blue;">void</span> GetKeyStatus()
+{
+  <span style="color:Green;">// Determines if the shift key is currently down</span>
+  <span style="color:Blue;">var</span> isShiftKeyDown = InputSimulator.IsKeyDown(VirtualKeyCode.SHIFT);
+
+  <span style="color:Green;">// Determines if the caps lock key is currently in effect (toggled on)</span>
+  <span style="color:Blue;">var</span> isCapsLockOn = InputSimulator.IsTogglingKeyInEffect(VirtualKeyCode.CAPITAL);
+}
+</pre></div>
+<h2>History</h2>It was originally written for use in the <a href="http://wpfkb.codeplex.com">WpfKB (WPF Touch Screen Keyboard)</a> project to simulate real keyboard entry to the active window. After looking for a comprehensive wrapper for the Win32 and User32 input simulation methods and coming up dry I decided to write and open-source this project. I hope it helps someone out there!<br />
+<h2>Comments and Contributions</h2>Feel free to comment, log issues/suggestions, or even better contribute to the project!</div><div class="ClearBoth"></div>

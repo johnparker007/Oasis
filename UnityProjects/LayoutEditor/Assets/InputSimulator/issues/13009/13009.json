@@ -1,0 +1,39 @@
+{
+  "WorkItem": {
+    "AffectedComponent": {
+      "Name": "",
+      "DisplayName": ""
+    },
+    "ClosedComment": "",
+    "ClosedDate": null,
+    "CommentCount": 0,
+    "Custom": null,
+    "Description": "Hi \r\n\r\nI have installed the wrapper with NuGet. When I try to use it like\r\ninputSimulator.SimulateTextEntry(\"Say hello!\");\r\n\r\nIt shows that SimulateTextEntry() function is not available.",
+    "LastUpdatedDate": "2014-10-20T20:13:25.17-07:00",
+    "PlannedForRelease": "",
+    "ReleaseVisibleToPublic": false,
+    "Priority": {
+      "Name": "Unassigned",
+      "Severity": 0,
+      "Id": 0
+    },
+    "ProjectName": "inputsimulator",
+    "ReportedDate": "2014-10-20T20:13:25.17-07:00",
+    "Status": {
+      "Name": "Proposed",
+      "Id": 1
+    },
+    "ReasonClosed": {
+      "Name": "Unassigned"
+    },
+    "Summary": "SimulateTextEntry() does not exists",
+    "Type": {
+      "Name": "Unassigned",
+      "Id": 5
+    },
+    "VoteCount": 1,
+    "Id": 13009
+  },
+  "FileAttachments": [],
+  "Comments": []
+}

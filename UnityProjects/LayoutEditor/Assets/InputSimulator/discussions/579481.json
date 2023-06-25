@@ -1,0 +1,18 @@
+[
+  {
+    "Id": "1349026",
+    "ThreadId": "579481",
+    "Html": "I have a simple form with a button, when the button is clicked a message is displayed. I'm using the Keyboard.KeyPress(VirtualKeyCode.RETURN) to simulate a user clicking the button. I getting the &quot;Type or namespace 'InputSimulator' could not be found&quot; message and I have the InputSimulator.dll added. Not sure what's going on. Code is below, thanks.\r<br />\n<br />\n<br />\nusing System;\r<br />\nusing System.Collections.Generic;\r<br />\nusing System.ComponentModel;\r<br />\nusing System.Data;\r<br />\nusing System.Drawing;\r<br />\nusing System.Linq;\r<br />\nusing System.Text;\r<br />\nusing System.Windows.Forms;\r<br />\nusing WindowsInput.Native;\r<br />\n<br />\n<br />\n<br />\nnamespace TestButton\r<br />\n{<br />\n<pre><code>public partial class frmTest : Form\n{\n    public frmTest()\n    {\n        InitializeComponent();\n    }\n\n    //public void PressReturn()\n    //{\n    //    InputSimulator.SimulateKeyPress(VirtualKeyCode.RETURN);\n    //}\n\n    private void btnTestButton_Click(object sender, EventArgs e)\n    {\n        btnTestButton.Enabled = true;\n        InputSimulator s = new InputSimulator();\n        s.Keyboard.KeyPress(VirtualKeyCode.RETURN);\n\n        System.Windows.Forms.MessageBox.Show(&quot;Test Button was clicked&quot;);\n\n    }\n\n}</code></pre>\n\n}<br />\n",
+    "PostedDate": "2015-02-04T10:19:29.143-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1422067",
+    "ThreadId": "579481",
+    "Html": "add the following line at the top of the code:\r<br />\nusing WindowsInput;<br />\n",
+    "PostedDate": "2015-05-01T14:05:05.667-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

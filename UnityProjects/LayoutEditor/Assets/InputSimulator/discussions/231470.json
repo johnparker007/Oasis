@@ -1,0 +1,26 @@
+[
+  {
+    "Id": "509316",
+    "ThreadId": "231470",
+    "Html": "<p>Hi,</p>\r\n<p>thank you VERY much for this library. I am writing a USB-HID overlay for a remote control that doesn't have its own driver. Now I came across the problem that while VirtualKeyCodes contain CONTROL and SHIFT (as well as R- and L-versions of those keys), they don't contain the ALT key at all. How am I supposed to say use the left ALT-Key as a modifier - in conjunction with e.g. the TAB-Key, which has the VirtualKeyCode 9. Maybe I just missed it, but I triple-checked it before posting.</p>\r\n<p>Since my application resides in the traybar and receives the events triggered by the remote control even without having focus, it should be able to always trigger events - such as a window change by virtually pressing ALT+TAB or VOLUME_UP or something along those lines.</p>\r\n<p>Thank you very much again and I'd be very curious to know how use the ALT-key modifyer.</p>\r\n<p>Igor.</p>",
+    "PostedDate": "2010-10-19T05:25:22.143-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "509322",
+    "ThreadId": "231470",
+    "Html": "Hi Igor,<div><br></div><div>The ALT key is poorly named in the VirtualKeyCodes class (which derives straight from the Windows Header files).  It's called MENU.</div><div><br></div><div>Hope that helps.</div><div>Mike<br>\r\n<br><div>On Tue, Oct 19, 2010 at 10:25 PM, divStar <span dir=ltr>&lt;<a href=\"mailto:notifications@codeplex.com\">notifications@codeplex.com</a>&gt;</span> wrote:<br><blockquote style=\"margin:0 0 0 .8ex;border-left:1px #ccc solid;padding-left:1ex\">\r\n   <div> <p>From: divStar</p> <div><p>Hi,</p>\r\n<p>thank you VERY much for this library. I am writing a USB-HID overlay for a remote control that doesn't have its own driver. Now I came across the problem that while VirtualKeyCodes contain CONTROL and SHIFT (as well as R- and L-versions of those keys), they don't contain the ALT key at all. How am I supposed to say use the left ALT-Key as a modifier - in conjunction with e.g. the TAB-Key, which has the VirtualKeyCode 9. Maybe I just missed it, but I triple-checked it before posting.</p>\r\n\r\n<p>Since my application resides in the traybar and receives the events triggered by the remote control even without having focus, it should be able to always trigger events - such as a window change by virtually pressing ALT+TAB or VOLUME_UP or something along those lines.</p>\r\n\r\n<p>Thank you very much again and I'd be very curious to know how use the ALT-key modifyer.</p>\r\n<p>Igor.</p></div> <div> <p>Read the <a href=\"http://inputsimulator.codeplex.com/Thread/View.aspx?ThreadId=231470&ANCHOR#Post509316\">full discussion online</a>.</p> <p>To add a post to this discussion, reply to this email (<a href=\"mailto:inputsimulator@discussions.codeplex.com?subject=[inputsimulator:231470]\">inputsimulator@discussions.codeplex.com</a>)</p>\r\n <p>To start a new discussion for this project, email <a href=\"mailto:inputsimulator@discussions.codeplex.com\">inputsimulator@discussions.codeplex.com</a></p> <p>You are receiving this email because you subscribed to this discussion on CodePlex. You can <a href=\"https://inputsimulator.codeplex.com/subscriptions/thread/project/edit\">unsubscribe or change your settings</a> on codePlex.com.</p>\r\n <p>Please note: Images and attachments will be removed from emails. Any posts to this discussion will also be available online at <a href=\"http://codeplex.com\">codeplex.com</a></p> </div> </div> </blockquote>\r\n</div><br></div>",
+    "PostedDate": "2010-10-19T05:35:01.097-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "509368",
+    "ThreadId": "231470",
+    "Html": "<p>Thank you very much - works great :).</p>\r\n<p>Seems I missed it .. I already wondered what that menu-key was, but I was busy doing other things and just got back to my PC. Thanks for answering so promptly.</p>\r\n<p>Igor.</p>",
+    "PostedDate": "2010-10-19T06:46:31.287-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

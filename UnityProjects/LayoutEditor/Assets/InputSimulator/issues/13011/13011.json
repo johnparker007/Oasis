@@ -1,0 +1,39 @@
+{
+  "WorkItem": {
+    "AffectedComponent": {
+      "Name": "",
+      "DisplayName": ""
+    },
+    "ClosedComment": "",
+    "ClosedDate": null,
+    "CommentCount": 0,
+    "Custom": null,
+    "Description": "I have been facing issue in firing key stroke on remote machine (remote machine connected using mstsc) using the InputSimulator.SimulateKeyPress. I need to imitate the left or right or down or up key press on an application running on the remote machine. I tired:\r\n\r\nWindowsInput.InputSimulator.SimulateKeyPress(WindowsInput.VirtualKeyCode.LEFT);\r\n\r\nbut this is not having any effect on the target application. The text area where this needs to be fired is selected and when doing key press on the physical keyboard then is working but through the API. \r\n\r\nIs this a know issue? Please suggest a workaround for this.\r\n\r\nthanks,\r\nRahul",
+    "LastUpdatedDate": "2015-12-16T05:38:24.953-08:00",
+    "PlannedForRelease": "",
+    "ReleaseVisibleToPublic": false,
+    "Priority": {
+      "Name": "Unassigned",
+      "Severity": 0,
+      "Id": 0
+    },
+    "ProjectName": "inputsimulator",
+    "ReportedDate": "2015-12-16T05:38:24.953-08:00",
+    "Status": {
+      "Name": "Proposed",
+      "Id": 1
+    },
+    "ReasonClosed": {
+      "Name": "Unassigned"
+    },
+    "Summary": "issue in firing key stroke on remote machine",
+    "Type": {
+      "Name": "Unassigned",
+      "Id": 5
+    },
+    "VoteCount": 1,
+    "Id": 13011
+  },
+  "FileAttachments": [],
+  "Comments": []
+}

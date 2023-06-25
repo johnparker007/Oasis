@@ -1,0 +1,39 @@
+{
+  "WorkItem": {
+    "AffectedComponent": {
+      "Name": "",
+      "DisplayName": ""
+    },
+    "ClosedComment": "",
+    "ClosedDate": null,
+    "CommentCount": 0,
+    "Custom": null,
+    "Description": "After simulating keystrokes, selection is always being cleared. For example when I simulate keys A B C D and Shoft+Left, the cursor is moving to left but D is not getting selected.\r\n\r\nSelection should not be disturbed.",
+    "LastUpdatedDate": "2017-05-22T23:26:00.23-07:00",
+    "PlannedForRelease": "",
+    "ReleaseVisibleToPublic": false,
+    "Priority": {
+      "Name": "Unassigned",
+      "Severity": 0,
+      "Id": 0
+    },
+    "ProjectName": "inputsimulator",
+    "ReportedDate": "2017-05-22T23:26:00.23-07:00",
+    "Status": {
+      "Name": "Proposed",
+      "Id": 1
+    },
+    "ReasonClosed": {
+      "Name": "Unassigned"
+    },
+    "Summary": "Selection is getting cleared on the field where keystrokes are simulated.",
+    "Type": {
+      "Name": "Unassigned",
+      "Id": 5
+    },
+    "VoteCount": 1,
+    "Id": 13018
+  },
+  "FileAttachments": [],
+  "Comments": []
+}

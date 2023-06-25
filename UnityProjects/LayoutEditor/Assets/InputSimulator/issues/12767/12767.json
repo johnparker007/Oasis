@@ -1,0 +1,45 @@
+{
+  "WorkItem": {
+    "AffectedComponent": {
+      "Name": "",
+      "DisplayName": ""
+    },
+    "ClosedComment": "",
+    "ClosedDate": "2013-12-11T18:02:25.323-08:00",
+    "CommentCount": 1,
+    "Custom": "",
+    "Description": "This method is incorrect. You need to do a KeyDown instead of a KeyUp for the first if statement.\nRight now Ctrl + A would be inputed as KeyUp \"Ctrl\" KeyPress \"A\" KeyUp \"Ctrl\"\n\n        public void ModifiedKeyStroke(IEnumerable<VirtualKeyCode> modifierKeyCodes, IEnumerable<VirtualKeyCode> keyCodes)\n        {\n            var builder = new InputBuilder();\n            if (modifierKeyCodes != null) modifierKeyCodes.ToList().ForEach(x => builder.AddKeyUp(x)); // Needs to be changed to a KeyDown\n            if (keyCodes != null) keyCodes.ToList().ForEach(x => builder.AddKeyPress(x));\n            if (modifierKeyCodes != null) modifierKeyCodes.Reverse().ToList().ForEach(x => builder.AddKeyUp(x));\n\n            SendSimulatedInput(builder.ToArray());\n        }\n\nIt should be:\nCtrl + A: KeyDown \"Ctrl\" KeyPress \"A\" KeyUp \"Ctrl\"\n\n        public void ModifiedKeyStroke(IEnumerable<VirtualKeyCode> modifierKeyCodes, IEnumerable<VirtualKeyCode> keyCodes)\n        {\n            var builder = new InputBuilder();\n            if (modifierKeyCodes != null) modifierKeyCodes.ToList().ForEach(x => builder.AddKeyDown(x)); // This was changed to a KeyDown\n            if (keyCodes != null) keyCodes.ToList().ForEach(x => builder.AddKeyPress(x));\n            if (modifierKeyCodes != null) modifierKeyCodes.Reverse().ToList().ForEach(x => builder.AddKeyUp(x));\n\n            SendSimulatedInput(builder.ToArray());\n        }",
+    "LastUpdatedDate": "2013-12-11T18:02:25.323-08:00",
+    "PlannedForRelease": "",
+    "ReleaseVisibleToPublic": false,
+    "Priority": {
+      "Name": "Low",
+      "Severity": 50,
+      "Id": 1
+    },
+    "ProjectName": "inputsimulator",
+    "ReportedDate": "2010-12-30T11:11:34.103-08:00",
+    "Status": {
+      "Name": "Closed",
+      "Id": 4
+    },
+    "ReasonClosed": {
+      "Name": "Fixed"
+    },
+    "Summary": "ModifiedKeyStroke method is incorrect. Need KeyDown instead of KeyUp",
+    "Type": {
+      "Name": "Issue",
+      "Id": 3
+    },
+    "VoteCount": 4,
+    "Id": 12767
+  },
+  "FileAttachments": [],
+  "Comments": [
+    {
+      "Message": "Thanks for the report. This has been fixed in 1.0.4.0. :)",
+      "PostedDate": "2013-12-11T18:02:21.017-08:00",
+      "Id": 127070
+    }
+  ]
+}

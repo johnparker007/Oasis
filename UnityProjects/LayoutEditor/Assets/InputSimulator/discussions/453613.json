@@ -1,0 +1,26 @@
+[
+  {
+    "Id": "1081373",
+    "ThreadId": "453613",
+    "Html": "I am having trouble simulating the holding of a key with the KeyDown function<br />\n<br />\nit doesn't seem to hold the key.<br />\n<br />\ni attempted to do this in Notepad and it only seems to print one E, therefore not being held down however if i do this with KeyDown on SHIFT it does make the letter capital.<br />\n<br />\nSo is it actually working but notepad not picking it up?<br />\n<pre><code>InputSimulator.SimulateKeyDown(VirtualKeyCode.VK_E);</code></pre>\n\n",
+    "PostedDate": "2013-08-16T07:37:51.283-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1081918",
+    "ThreadId": "453613",
+    "Html": "\r\n<div dir=\"ltr\">Hi There,\r\n<div><br>\r\n</div>\r\n<div>What you need to do is call SimulateKeyPress() in a loop while you want the keypresses to be repeated, most likely with a pause between the key presses.</div>\r\n<div><br>\r\n</div>\r\n<div>Hope this helps.</div>\r\n<div>Mike</div>\r\n</div>\r\n<div><br>\r\n<br>\r\n<div></div>\r\n</div>\r\n",
+    "PostedDate": "2013-08-18T16:05:15.237-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1090175",
+    "ThreadId": "453613",
+    "Html": "oh great thank you :) any chance of an example loop snippet? (sudo will do)<br />\n",
+    "PostedDate": "2013-09-09T06:10:24.163-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

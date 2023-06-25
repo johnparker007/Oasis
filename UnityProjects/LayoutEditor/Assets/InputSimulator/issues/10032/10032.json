@@ -1,0 +1,45 @@
+{
+  "WorkItem": {
+    "AffectedComponent": {
+      "Name": "",
+      "DisplayName": ""
+    },
+    "ClosedComment": "",
+    "ClosedDate": "2013-12-11T18:00:25.607-08:00",
+    "CommentCount": 1,
+    "Custom": "",
+    "Description": "For my app I need to hold the keys down, but it isn't working.\n\nI have send a timer to first call SimulateKeyDown() and after some time to call SimulateKeyUp().\n\nwhen I start it and I that focus on notepad (I gave it a little of delay to get time to focus on notepad) it only write one char.\nIf I call\n\nInputSimulator.SimulateKeyUp(VirtualKeyCode.VK_A)\n\nit will only print \"a\" instead of \"aaaaaaaaaaaaaaaaaaa\".\n\nThe timer is working proporly, I already checked it.",
+    "LastUpdatedDate": "2013-12-11T18:00:25.607-08:00",
+    "PlannedForRelease": "",
+    "ReleaseVisibleToPublic": false,
+    "Priority": {
+      "Name": "Low",
+      "Severity": 50,
+      "Id": 1
+    },
+    "ProjectName": "inputsimulator",
+    "ReportedDate": "2010-01-20T13:53:27.333-08:00",
+    "Status": {
+      "Name": "Closed",
+      "Id": 4
+    },
+    "ReasonClosed": {
+      "Name": "Unassigned"
+    },
+    "Summary": "It doesn't hold the key's down.",
+    "Type": {
+      "Name": "Issue",
+      "Id": 3
+    },
+    "VoteCount": 1,
+    "Id": 10032
+  },
+  "FileAttachments": [],
+  "Comments": [
+    {
+      "Message": "Hi there,\r\n\r\nI had to do a similar thing when using the original cut of InputSimulator.  The behaviour you are experiencing is actually the exact experience you get with the Win32 SendInput API, InputSimulator is just taking the pain of the Interop away.\r\n\r\nYou need to implement your own key repeating functionality.  In an earlier version of the WpfKb (wpfkb.codeplex.com)  project I implemented it using a DispatcherTimer.  I implemented it in a similar way to the standard windows key repeating where there is an initial delay, and then a key repeat frequency that was configurable.  When the key is first pressed I'd do a SimulateKeyPress(...) and then wait for the initial delay.  While the key was still pressed I picked up each Tick of the timer and performed another SimulateKeyPress(...).  This worked really well and should work for you too.\r\n\r\nUnfortunately I can't find the source code for that example right now.  If I do find it I'll post it through.\r\n\r\nKind Regards,\r\nMike",
+      "PostedDate": "2010-01-21T13:41:34.463-08:00",
+      "Id": 36132
+    }
+  ]
+}

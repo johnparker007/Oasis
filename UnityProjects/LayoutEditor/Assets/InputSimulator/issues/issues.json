@@ -1,0 +1,102 @@
+[
+  {
+    "Id": 10032,
+    "Title": "It doesn't hold the key's down."
+  },
+  {
+    "Id": 11495,
+    "Title": "And silverlight?"
+  },
+  {
+    "Id": 11797,
+    "Title": "Can not use \"InputSimulator.SimulateTextEntry\" to send text to a Remote Desktop Connection (RDC) windows."
+  },
+  {
+    "Id": 11919,
+    "Title": "Does Not Work With DirectX Applications"
+  },
+  {
+    "Id": 12074,
+    "Title": "Not able to get special Characters like \"€\""
+  },
+  {
+    "Id": 12767,
+    "Title": "ModifiedKeyStroke method is incorrect. Need KeyDown instead of KeyUp"
+  },
+  {
+    "Id": 12987,
+    "Title": "SimulateTextEntry(char c)"
+  },
+  {
+    "Id": 13001,
+    "Title": "Make the project CLS-Compliant"
+  },
+  {
+    "Id": 13002,
+    "Title": "KEYEVENTF_EXTENDEDKEY is not sent for Extended Keys"
+  },
+  {
+    "Id": 13003,
+    "Title": "Put InputSimulator on NuGet.org"
+  },
+  {
+    "Id": 13004,
+    "Title": "Make The Assembly Strong Named"
+  },
+  {
+    "Id": 13005,
+    "Title": "Alt+Tab simulation does not work"
+  },
+  {
+    "Id": 13006,
+    "Title": "LButton simulation is not working"
+  },
+  {
+    "Id": 13007,
+    "Title": "Works fine!"
+  },
+  {
+    "Id": 13008,
+    "Title": "SimulateTextEntry does not work correctly with unicode"
+  },
+  {
+    "Id": 13009,
+    "Title": "SimulateTextEntry() does not exists"
+  },
+  {
+    "Id": 13010,
+    "Title": "Sending WIN key makes it pressed all the time"
+  },
+  {
+    "Id": 13011,
+    "Title": "issue in firing key stroke on remote machine"
+  },
+  {
+    "Id": 13012,
+    "Title": "Nuget Package"
+  },
+  {
+    "Id": 13013,
+    "Title": "como hacemos el alt"
+  },
+  {
+    "Id": 13014,
+    "Title": "How to send right arrow in wpf"
+  },
+  {
+    "Id": 13015,
+    "Title": "When task manager is opened InputSimulator.Mouse.MoveMouseTo stops working"
+  },
+  {
+    "Id": 13016,
+    "Title": "No ENTER key found"
+  },
+  {
+    "Id": 13017,
+    "Title": "SHIFT + End combination is not working."
+  },
+  {
+    "Id": 13018,
+    "Title": "Selection is getting cleared on the field where keystrokes are simulated."
+  }
+]

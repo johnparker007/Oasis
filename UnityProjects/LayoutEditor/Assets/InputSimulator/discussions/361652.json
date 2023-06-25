@@ -1,0 +1,34 @@
+[
+  {
+    "Id": "856244",
+    "ThreadId": "361652",
+    "Html": "\r\n<p>How do i send any mouse events? Like LButtonDwn LButtonUp Mouse Move. Give an example or function name to do things like that. Thanks.</p>\r\n",
+    "PostedDate": "2012-07-02T02:29:17.177-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "856697",
+    "ThreadId": "361652",
+    "Html": "<p>\r\n<div style=\"color: black; background-color: white;\">\r\n<pre><span style=\"color: green;\">// Make sure you added the input simulator project</span>\r\n<span style=\"color: green;\">// to your solution, referenced it in the current project</span>\r\n<span style=\"color: green;\">// and used it like this:</span>\r\n<span style=\"color: blue;\">using</span> WindowsInput;\r\n\r\n<span style=\"color: green;\">// ..then do the other stuff required for a working application...</span>\r\n\r\n<span style=\"color: green;\">// ... and during some initialization part create a new</span>\r\n<span style=\"color: green;\">// instance of the input simulator...</span>\r\nTheInputSimulator = <span style=\"color: blue;\">new</span> InputSimulator();\r\n\r\n<span style=\"color: green;\">// ...and from then on you can send button events</span>\r\n<span style=\"color: green;\">// just like this...</span>\r\nTheInputSimulator.Mouse.LeftButtonDown();\r\n</pre>\r\n</div>\r\n</p>",
+    "PostedDate": "2012-07-03T01:58:27.16-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "859454",
+    "ThreadId": "361652",
+    "Html": "Hi there,\r\n<div><br>\r\n</div>\r\n<div>There's been code sitting in the repo that hasn't been released which simulates mouse events. Just download the latest version, compile and include in your application. There are some tests which should show you how to use the API.</div>\r\n<div><br>\r\n</div>\r\n<div>Cheers,</div>\r\n<div>Mike<br>\r\n<br>\r\n<div>On Tue, Jul 3, 2012 at 6:58 PM, ZoltanE <span dir=\"ltr\">&lt;<a href=\"mailto:notifications@codeplex.com\" target=\"_blank\">notifications@codeplex.com</a>&gt;</span> wrote:<br>\r\n<blockquote style=\"margin:0 0 0 .8ex; border-left:1px #ccc solid; padding-left:1ex\">\r\n<div>\r\n<p>From: ZoltanE</p>\r\n<div>\r\n<p></p>\r\n<div style=\"\">\r\n<pre><span style=\"color:green\">// Make sure you added the input simulator project</span>\r\n<span style=\"color:green\">// to your solution, referenced it in the current project</span>\r\n<span style=\"color:green\">// and used it like this:</span>\r\n<span style=\"color:blue\">using</span> WindowsInput;\r\n\r\n<span style=\"color:green\">// ..then do the other stuff required for a working application...</span>\r\n\r\n<span style=\"color:green\">// ... and during some initialization part create a new</span>\r\n<span style=\"color:green\">// instance of the input simulator...</span>\r\nTheInputSimulator = <span style=\"color:blue\">new</span> InputSimulator();\r\n\r\n<span style=\"color:green\">// ...and from then on you can send button events</span>\r\n<span style=\"color:green\">// just like this...</span>\r\nTheInputSimulator.Mouse.LeftButtonDown();\r\n</pre>\r\n</div>\r\n<p></p>\r\n</div>\r\n<div>\r\n<div>\r\n<p>Read the <a href=\"http://inputsimulator.codeplex.com/discussions/361652#post856697\" target=\"_blank\">\r\nfull discussion online</a>.</p>\r\n<p>To add a post to this discussion, reply to this email (<a href=\"mailto:inputsimulator@discussions.codeplex.com?subject=[inputsimulator:361652]\" target=\"_blank\">inputsimulator@discussions.codeplex.com</a>)</p>\r\n<p>To start a new discussion for this project, email <a href=\"mailto:inputsimulator@discussions.codeplex.com\" target=\"_blank\">\r\ninputsimulator@discussions.codeplex.com</a></p>\r\n<p>You are receiving this email because you subscribed to this discussion on CodePlex. You can\r\n<a href=\"https://inputsimulator.codeplex.com/subscriptions/thread/project/edit\" target=\"_blank\">\r\nunsubscribe or change your settings</a> on codePlex.com.</p>\r\n<p>Please note: Images and attachments will be removed from emails. Any posts to this discussion will also be available online at\r\n<a href=\"http://codeplex.com\" target=\"_blank\">codeplex.com</a></p>\r\n</div>\r\n</div>\r\n</div>\r\n</blockquote>\r\n</div>\r\n<br>\r\n</div>\r\n",
+    "PostedDate": "2012-07-09T20:24:36.757-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "860235",
+    "ThreadId": "361652",
+    "Html": "<p>Good to hear, many thanks!</p>",
+    "PostedDate": "2012-07-11T03:38:23.34-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

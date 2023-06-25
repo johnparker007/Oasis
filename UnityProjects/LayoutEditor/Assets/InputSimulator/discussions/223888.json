@@ -1,0 +1,10 @@
+[
+  {
+    "Id": "481635",
+    "ThreadId": "223888",
+    "Html": "<p>Hello.</p>\r\n<p>I'm trying to send a key stroke to an shockwave application.</p>\r\n<p>I already tried all the standard approaches (SendKeys, PostMessage), and without luck so far...</p>\r\n<p>Unfortunately, InputSimulator doesn't seem do to the trick neither..... Any ideas on why?</p>\r\n<p>Is it possible for a shockwave application to actually be able to determine that the key stroke comes from an application an not actually from the real keyboard&nbsp; (and thus be the reason why it don't work...)?</p>\r\n<p>Any suggestion for work-arounds?</p>\r\n<p>Thanks in advance.</p>",
+    "PostedDate": "2010-08-17T18:07:38.947-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

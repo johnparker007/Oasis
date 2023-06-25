@@ -1,0 +1,45 @@
+{
+  "WorkItem": {
+    "AffectedComponent": {
+      "Name": "",
+      "DisplayName": ""
+    },
+    "ClosedComment": "",
+    "ClosedDate": null,
+    "CommentCount": 1,
+    "Custom": "",
+    "Description": "The library, as the existing pInvoke solutions, doesn't work with DirectX applications. The key inputs are simply ignored by any game (or other kind of app) that uses DirectX.",
+    "LastUpdatedDate": "2015-06-02T04:12:12.793-07:00",
+    "PlannedForRelease": "",
+    "ReleaseVisibleToPublic": false,
+    "Priority": {
+      "Name": "Low",
+      "Severity": 50,
+      "Id": 1
+    },
+    "ProjectName": "inputsimulator",
+    "ReportedDate": "2010-09-12T09:47:02.95-07:00",
+    "Status": {
+      "Name": "Proposed",
+      "Id": 1
+    },
+    "ReasonClosed": {
+      "Name": "Unassigned"
+    },
+    "Summary": "Does Not Work With DirectX Applications",
+    "Type": {
+      "Name": "Issue",
+      "Id": 3
+    },
+    "VoteCount": 3,
+    "Id": 11919
+  },
+  "FileAttachments": [],
+  "Comments": [
+    {
+      "Message": "Do you have any idea how to make the SendInput working in DirectX applications?",
+      "PostedDate": "2015-06-02T04:12:12.793-07:00",
+      "Id": 185000
+    }
+  ]
+}

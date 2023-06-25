@@ -1,0 +1,50 @@
+{
+  "WorkItem": {
+    "AffectedComponent": {
+      "Name": "",
+      "DisplayName": ""
+    },
+    "ClosedComment": "",
+    "ClosedDate": "2013-12-11T18:05:05.223-08:00",
+    "CommentCount": 2,
+    "Custom": "",
+    "Description": "Issue in getting special characters by sending ALT+Numkeys e.g. ALT+0128 gives Euro symbol, windows onscreen keyboard also gives the symbol but not able to get through your dll",
+    "LastUpdatedDate": "2013-12-11T18:05:05.223-08:00",
+    "PlannedForRelease": "",
+    "ReleaseVisibleToPublic": false,
+    "Priority": {
+      "Name": "Low",
+      "Severity": 50,
+      "Id": 1
+    },
+    "ProjectName": "inputsimulator",
+    "ReportedDate": "2010-10-05T07:26:42.873-07:00",
+    "Status": {
+      "Name": "Closed",
+      "Id": 4
+    },
+    "ReasonClosed": {
+      "Name": "Fixed"
+    },
+    "Summary": "Not able to get special Characters like \"€\"",
+    "Type": {
+      "Name": "Issue",
+      "Id": 3
+    },
+    "VoteCount": 3,
+    "Id": 12074
+  },
+  "FileAttachments": [],
+  "Comments": [
+    {
+      "Message": "Why not replacing...\n\n\npublic static void SimulateTextEntry(string text)        \n{            \n\n\nvar chars = UTF8Encoding.ASCII.GetBytes(text);            \n\nWith:\n\nvar chars = UTF8Encoding.Unicode.GetBytes(text);            \n\n\n?\n\nThe SimulateTextEntry function will then be more useful for non-english people.",
+      "PostedDate": "2012-05-11T23:09:43.23-07:00",
+      "Id": 65547
+    },
+    {
+      "Message": "The latest version 1.0.4.0 should have full support for the UniCode pages now. There's a test that iterates through the known code pages (well, a cheat's test anyhow).",
+      "PostedDate": "2013-12-11T18:03:22.48-08:00",
+      "Id": 127071
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+[
+  {
+    "Id": "1456452",
+    "ThreadId": "648953",
+    "Html": "I'm sending in \r<br />\nInputSimulator.SimulateTextEntry(&quot;What's up&quot;);\r<br />\nand I just get ppppppppp\r<br />\n&quot;Hello&quot; gives ooooo\r<br />\nIt gives the last character of the string only.\r<br />\n<br />\nThis happens only running in the editor of unity3d, but not if I do a build as an .exe. It's very frustrating to work on. This is probably unique to unity3d but I was wondering if anybody had any ideas on why there would be a difference.<br />\n",
+    "PostedDate": "2015-12-18T14:57:11.977-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

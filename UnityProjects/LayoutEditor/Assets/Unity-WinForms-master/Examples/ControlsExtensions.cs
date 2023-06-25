@@ -1,4 +1,4 @@
-﻿namespace UnityWinForms.Examples
+﻿namespace Examples
 {
     using System;
     using System.Drawing;

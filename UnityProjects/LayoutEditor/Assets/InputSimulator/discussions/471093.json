@@ -1,0 +1,26 @@
+[
+  {
+    "Id": "1128815",
+    "ThreadId": "471093",
+    "Html": "Hey,<br />\nI am new to .NET so I might be doing something really stupid here.<br />\nI added reference to this dll. But I am not able to use any of the methods mentioned here.<br />\nI imported the library on top by<br />\n&quot;using inputsimulator&quot;<br />\nStill could not use the methods. I would appreciate any help in this regard.<br />\n",
+    "PostedDate": "2013-11-25T10:00:13.55-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1128819",
+    "ThreadId": "471093",
+    "Html": "Ok the namespace name is WindowsInput. I typed using WindowsInput and I got the InputSimulator class. But I am not able to access any of the methods from it.<br />\n",
+    "PostedDate": "2013-11-25T10:02:33.233-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1206480",
+    "ThreadId": "471093",
+    "Html": "Had the same issue. Currently it seems to works a bit different than published on the homepage:<br />\n<pre><code>            InputSimulator s = new InputSimulator();\n            s.Keyboard.KeyPress(VirtualKeyCode.VK_A);</code></pre>\n\n",
+    "PostedDate": "2014-02-10T11:43:53.657-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

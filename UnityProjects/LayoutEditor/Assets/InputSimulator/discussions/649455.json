@@ -1,0 +1,26 @@
+[
+  {
+    "Id": "1457566",
+    "ThreadId": "649455",
+    "Html": "I want to send a Windows Zoom-In/Out commands to a RichTextBox (or any &quot;zoomable&quot; WinForms control). I know how to send commands using something like below but I cannot figure out how to Zoom (Ctrl+MouseWheelUp OR Ctrl+MouseWheelDown).\r<br />\n<br />\n(I do not want Ctrl+&quot;+&quot;)\r<br />\n<br />\nAnyway, I tried these but they don't Zoom. <br />\n<pre><code>    private void button1_Click(object sender, EventArgs e)\n    {\n        var sim = new WindowsInput.InputSimulator();\n        richTextBox1.Focus();\n        sim.Keyboard.ModifiedKeyStroke(VirtualKeyCode.CONTROL, VirtualKeyCode.ZOOM);\n        sim.Keyboard.ModifiedKeyStroke(VirtualKeyCode.CONTROL, VirtualKeyCode.SCROLL);\n        sim.Keyboard.ModifiedKeyStroke(VirtualKeyCode.CONTROL)+sim.Mouse.VerticalScroll(100);\n    }\n</code></pre>\n\nAny ideas?<br />\n",
+    "PostedDate": "2015-12-30T11:39:11.34-08:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1486786",
+    "ThreadId": "649455",
+    "Html": "From what I understand of the library, the ModifiedKeyStroke and KeyPress functions work as a &quot;KeyDown&quot; and then &quot;KeyUp&quot;. What you need to do in order to use that shortcut is to <em>hold</em> the Ctrl key down while the vertical stroll happens -- so, switching ModifiedKeyStroke to KeyPress and then using the Mouse scroll function should (theoretically) work.\r<br />\n<br />\nHope this helps. I know this post is like 10 months old, though...<br />\n",
+    "PostedDate": "2016-10-24T11:53:38.613-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "1486787",
+    "ThreadId": "649455",
+    "Html": "Oh--word of caution: Be sure to use a &quot;KeyUp&quot; function after you're done, or the OS will be stuck thinking that key is held down. I fixed this once by rebooting my computer, but it's inconvenient and all you need is another line of code.<br />\n",
+    "PostedDate": "2016-10-24T12:00:25.543-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]

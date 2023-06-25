@@ -1,0 +1,18 @@
+[
+  {
+    "Id": "847105",
+    "ThreadId": "359054",
+    "Html": "\r\n<p>Hi , i just tried to do send a key if I press a button</p>\r\n<p>&nbsp; private void button1_Click_1(object sender, EventArgs e)&nbsp; &nbsp; &nbsp;</p>\r\n<p>&nbsp; {&nbsp; &nbsp;</p>\r\n<p>&nbsp; &nbsp; &nbsp; &nbsp; InputSimulator.SimulateKeyPress(VirtualKeyCode.SPACE);&nbsp; &nbsp;</p>\r\n<p>&nbsp; &nbsp; }</p>\r\n<p>&nbsp;</p>\r\n<p>But i get:<br>\r\nError<span> </span>2<span> </span>The name 'VirtualKeyCode' does not exist in the current context</p>\r\n<p>Error<span> </span>1<span> </span>The name 'InputSimulator' does not exist in the current context</p>\r\n<p>&nbsp;</p>\r\n<p>What should I do?</p>\r\n",
+    "PostedDate": "2012-06-10T08:09:20.527-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  },
+  {
+    "Id": "847731",
+    "ThreadId": "359054",
+    "Html": "<p>You should add</p>\r\n<p>\r\n<div style=\"color: black; background-color: white;\">\r\n<pre><span style=\"color: blue;\">using</span> WindowsInput.Native;\r\n</pre>\r\n</div>\r\n</p>\r\n<p>to fix the first problem.<br />As for the second, create an instance of the InputSimulator class before you start using it.</p>\r\n<p>\r\n<div style=\"color: black; background-color: white;\">\r\n<pre>TheInputSimulator = <span style=\"color: blue;\">new</span> InputSimulator();\r\n\r\nTheInputSimulator.Keyboard.KeyPress(VirtualKeyCode.SPACE);\r\n</pre>\r\n</div>\r\n</p>\r\n<p>Note that the examples on the front page are outdated. If you don't have intellisense to<br />help out with composing the function calls then I guess you should look inside the<br />InputSimulator and the related classes to see what's what.</p>",
+    "PostedDate": "2012-06-11T21:56:50.09-07:00",
+    "UserRole": null,
+    "MarkedAsAnswerDate": null
+  }
+]
