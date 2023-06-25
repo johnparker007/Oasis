@@ -18,6 +18,12 @@ namespace Oasis.UI
             private set;
         } = null;
 
+        public ViewModelInspector ViewModelInspector
+        {
+            get;
+            private set;
+        } = null;
+
         public UIController UIController
         {
             get;
@@ -33,6 +39,7 @@ namespace Oasis.UI
 
             ViewModelMenu = new ViewModelMenu(this, this);
             ViewModelHierarchy = new ViewModelHierarchy(this, this);
+            ViewModelInspector = new ViewModelInspector(this, this);
 
             AddListeners();
         }
