@@ -2,6 +2,7 @@ using MFMEExtract;
 using Oasis.Layout;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -11,10 +12,10 @@ namespace Oasis.MFME
     {
         public UnityEvent OnImportComplete = new UnityEvent();
 
-        private LayoutEditor _layoutEditor = null;
+        private Editor _layoutEditor = null;
         private LayoutObject _layoutObject = null;
 
-        public ExtractImporter(LayoutEditor layoutEditor)
+        public ExtractImporter(Editor layoutEditor)
         {
             _layoutEditor = layoutEditor;
             Extractor.OnLayoutLoaded.AddListener(OnMFMEExtractLayoutLoaded);
@@ -22,11 +23,13 @@ namespace Oasis.MFME
 
         private void OnMFMEExtractLayoutLoaded(MFMEExtract.Layout layout)
         {
-            GameObject layoutGameObject = new GameObject();
-            layoutGameObject.name = "Layout";
+            GameObject layoutGameObject = new GameObject("Layout");
             _layoutObject = layoutGameObject.AddComponent<LayoutObject>();
+            _layoutObject.transform.parent = _layoutEditor.transform;
+            _layoutObject.LayoutEditor = _layoutEditor;
             _layoutEditor.Layout = _layoutObject;
-            // background, 7seg, alphaxccd
+            
+
             foreach (ExtractComponentBase extractComponent in layout.Components)
             {
                 if (extractComponent.GetType() == typeof(ExtractComponentLamp))
@@ -74,6 +77,21 @@ namespace Oasis.MFME
         {
             ComponentLamp componentLamp = new ComponentLamp();
 
+            componentLamp.RectInt = new RectInt(
+                extractComponentLamp.Position.X,
+                extractComponentLamp.Position.Y,
+                extractComponentLamp.Size.X,
+                extractComponentLamp.Size.Y);
+
+            string bmpImageFilePath = Path.Combine(
+                Extractor.LayoutDirectoryPath, extractComponentLamp.LampElements[0].BmpImageFilename);
+
+            //string bmpMaskImageFilePath = Path.Combine(
+            //    Extractor.LayoutDirectoryPath, extractComponentLamp.LampElements[0].BmpMaskImageFilename);
+
+            //componentLamp.OasisImage = new Graphics.OasisImage(bmpImageFilePath, bmpMaskImageFilePath, true);
+            componentLamp.OasisImage = new Graphics.OasisImage(bmpImageFilePath, null, true);
+
             _layoutObject.AddComponent(componentLamp);
         }
 
@@ -101,6 +119,14 @@ namespace Oasis.MFME
         private void ImportBackground(ExtractComponentBackground extractComponentBackground)
         {
             ComponentBackground componentBackground = new ComponentBackground();
+
+            componentBackground.RectInt = new RectInt(
+                0, 0, extractComponentBackground.Size.X, extractComponentBackground.Size.Y);
+
+            string bmpImageFilePath = Path.Combine(
+                Extractor.LayoutDirectoryPath, extractComponentBackground.BmpImageFilename);
+
+            componentBackground.OasisImage = new Graphics.OasisImage(bmpImageFilePath, null, false);
 
             _layoutObject.AddComponent(componentBackground);
         }

@@ -25,7 +25,7 @@ namespace Oasis.UI.Views
             //_treeView.Location = new Point(0, uwfHeaderHeight - 1 + _menuStrip.Height);
             //_treeView.Height = Height - uwfHeaderHeight + 1 - _menuStrip.Height;
             //_treeView.TabStop = false;
-            _treeView.Size = _tabControl.Size;
+            _treeView.Size = _tabPage.Size;
             //_treeView.BackColor = Color.Aquamarine;
             //_treeView.NodeMouseClick += TreeViewOnNodeMouseClick;
 

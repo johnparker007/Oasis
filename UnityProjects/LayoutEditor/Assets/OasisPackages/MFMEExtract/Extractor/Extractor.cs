@@ -10,7 +10,8 @@ using UnityEngine.Events;
 
 public static class Extractor
 {
-    public static Layout Layout;
+    public static Layout Layout = null;
+    public static string LayoutDirectoryPath = null;
 
     public static UnityEvent<Layout> OnLayoutLoaded = new UnityEvent<Layout>();
 
@@ -55,6 +56,8 @@ public static class Extractor
     //    private static void LoadLayout(string directoryPath, string asName)
     public static void LoadLayout(string filePath)
     {
+        LayoutDirectoryPath = Path.GetDirectoryName(filePath);
+
         string json = File.ReadAllText(filePath);
 
         Layout = JsonConvert.DeserializeObject<Layout>(

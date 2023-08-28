@@ -24,6 +24,12 @@ namespace Oasis.UI
             private set;
         } = null;
 
+        public ViewModelStatusBar ViewModelStatusBar
+        {
+            get;
+            private set;
+        } = null;
+
         public UIController UIController
         {
             get;
@@ -33,15 +39,20 @@ namespace Oasis.UI
 
         public RootUI(UIController uiController)
         {
-            UIController = uiController; 
+            UIController = uiController;
 
-            InitialiseForm();
-
-            ViewModelMenu = new ViewModelMenu(this, this);
-            ViewModelHierarchy = new ViewModelHierarchy(this, this);
-            ViewModelInspector = new ViewModelInspector(this, this);
+            InitialiseWinFormsUI();
 
             AddListeners();
+        }
+
+        private void InitialiseWinFormsUI()
+        {
+            InitialiseForm();
+            ViewModelMenu = new ViewModelMenu(this, this);
+            ViewModelStatusBar = new ViewModelStatusBar(this, this);
+            ViewModelHierarchy = new ViewModelHierarchy(this, this);
+            ViewModelInspector = new ViewModelInspector(this, this);
         }
 
         private void InitialiseForm()
@@ -49,7 +60,11 @@ namespace Oasis.UI
             uwfHeaderHeight = 0;
             uwfShadowBox = false;
 
+            // TODO need to figure this size stuff out once the 'rebuild ui on window resize'
+            // stuff is underway - user may have their taskbar to the side for instance.
+
             Size = new Size(Screen.width, Screen.height);
+
             MaximizeBox = false;
             ControlBox = false;
             AutoScroll = true;

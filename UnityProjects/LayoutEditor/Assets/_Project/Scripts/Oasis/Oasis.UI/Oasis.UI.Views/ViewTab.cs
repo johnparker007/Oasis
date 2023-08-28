@@ -59,7 +59,12 @@ namespace Oasis.UI.Views
 
             _tabControl.Location = new Point(LocationX, _rootUI.uwfHeaderHeight - 1 + _rootUI.ViewModelMenu.MenuStripSize.Height);
             //_treeViewPanel.Anchor = AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Bottom;
-            _tabControl.Height = _parent.Height - _rootUI.uwfHeaderHeight + 1 - _rootUI.ViewModelMenu.MenuStripSize.Height;
+            _tabControl.Height = _parent.Height
+                - _rootUI.uwfHeaderHeight
+                + 1
+                - _rootUI.ViewModelMenu.MenuStripSize.Height
+                - _rootUI.ViewModelStatusBar.ViewStatusBar.Panel.Height;
+            
             _tabControl.Width = ControlWidth;
             //_treeView.TabStop = false;
             //_treeView.Width = 220;

@@ -3,7 +3,10 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 using Oasis.Layout;
+using Oasis.LayoutEditor;
+
 using Component = Oasis.Layout.Component;
+using EditorComponent = Oasis.LayoutEditor.EditorComponent;
 
 namespace Oasis
 {
@@ -13,6 +16,13 @@ namespace Oasis
         public UnityEvent OnDirty = new UnityEvent();
 
         public List<Component> Components = new List<Component>();
+        public List<EditorComponent> EditorComponents = new List<EditorComponent>();
+
+        public Editor LayoutEditor
+        {
+            get;
+            set;
+        }
 
         //private bool _changed = false;
         //private bool _dirty = false;
@@ -26,6 +36,23 @@ namespace Oasis
         public void AddComponent(Component component)
         {
             Components.Add(component);
+
+            if (component.GetType() == typeof(ComponentBackground))
+            {
+                EditorComponentBackground editorComponentBackground = Instantiate(
+                    LayoutEditor.EditorComponentBackgroundPrefab, 
+                    LayoutEditor.UIController.EditorCanvasGameObject.transform);
+
+                editorComponentBackground.Initialise((ComponentBackground)component, LayoutEditor);
+            }
+            else if (component.GetType() == typeof(ComponentLamp))
+            {
+                EditorComponentLamp editorComponentLamp = Instantiate(
+                    LayoutEditor.EditorComponentLampPrefab,
+                    LayoutEditor.UIController.EditorCanvasGameObject.transform);
+
+                editorComponentLamp.Initialise((ComponentLamp)component, LayoutEditor);
+            }
 
             OnChanged?.Invoke();
         }
