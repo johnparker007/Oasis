@@ -7,13 +7,13 @@ using Oasis.Graphics;
 
 namespace Oasis.LayoutEditor
 {
-    public class EditorComponentBackground : EditorComponent
+    public class EditorComponentBackground : EditorComponent2D
     {
         private Image _image = null;
         private Sprite _sprite = null;
         private Texture2D _texture2d = null;
 
-        protected void Awake()
+        protected override void Awake()
         {
             _image = GetComponent<Image>();
         }

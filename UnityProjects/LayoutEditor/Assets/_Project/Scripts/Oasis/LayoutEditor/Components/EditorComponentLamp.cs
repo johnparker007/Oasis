@@ -7,18 +7,15 @@ using Oasis.Graphics;
 
 namespace Oasis.LayoutEditor
 {
-    public class EditorComponentLamp : EditorComponent
+    public class EditorComponentLamp : EditorComponent2D
     {
-        private RectTransform _rectTransform = null;
         private Image _image = null;
         private Sprite _sprite = null;
         private Texture2D _texture2d = null;
 
-        protected void Awake()
+        protected override void Awake()
         {
             _image = GetComponent<Image>();
-
-            _rectTransform = GetComponent<RectTransform>();
         }
 
         protected void Update()
@@ -38,8 +35,6 @@ namespace Oasis.LayoutEditor
             Layout.Component component, Editor layoutEditor)
         {
             base.Initialise(component, layoutEditor);
-
-            UpdateRectTransformPosition(_rectTransform);
 
             ComponentLamp componentLamp = (ComponentLamp)component;
 
