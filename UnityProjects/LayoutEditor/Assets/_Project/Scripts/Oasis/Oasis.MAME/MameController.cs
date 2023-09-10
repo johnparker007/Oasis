@@ -18,8 +18,10 @@ namespace Oasis.MAME
         private const string kTEMPHardcodedRomName = "j6popoli";
 
         private const string kMameExeFilename = "mame.exe";
-        private const string kAdditionalArgs = "-output console -window";// -skipgameinfo -minimised";
 
+        // This '-video none' option means we don't need to actually skip the 'this game is not working' screens
+        // and go straight into the emulation.  Also don't need -window or -skip_gameinfo either
+        private const string kAdditionalArgs = "-output console -video none -seconds_to_run 999999999";
 
         private const string kLampDataPrefix = "lamp";
 
