@@ -6,13 +6,15 @@ using MFMEExtract;
 using Oasis.Layout;
 using Oasis.MFME;
 using Oasis.LayoutEditor;
+using Oasis.MAME;
 
 namespace Oasis
 {
     public class Editor : MonoBehaviour
     {
         public UIController UIController;
-        public MFMEExtractImporter MFMEExtractImporter;
+        public MFMEExtractImporter MFMEExtractImporter; // TODO can prob get rid of this class
+        public MameController MameController;
 
         public EditorComponentBackground EditorComponentBackgroundPrefab;
         public EditorComponentLamp EditorComponentLampPrefab;
@@ -30,6 +32,7 @@ namespace Oasis
             get;
             private set;
         } = null;
+
 
         private void Awake()
         {
@@ -68,7 +71,7 @@ namespace Oasis
 
         private void RemoveListeners()
         {
-
+            ExtractImporter.OnImportComplete.RemoveListener(OnImportComplete);
         }
 
         public void OnFileImportClick()
@@ -82,6 +85,26 @@ namespace Oasis
             {
                 Extractor.LoadLayout(paths[0]);
             }
+        }
+
+        public void OnEmulationStartClick()
+        {
+            MameController.StartMame();
+        }
+
+        public void OnEmulationStopClick()
+        {
+            MameController.StopMame();
+        }
+
+        public void OnEmulationPauseClick()
+        {
+            MameController.PauseMame();
+        }
+
+        public void OnEmulationResetClick()
+        {
+            MameController.ResetMame();
         }
 
         private void OnImportComplete()

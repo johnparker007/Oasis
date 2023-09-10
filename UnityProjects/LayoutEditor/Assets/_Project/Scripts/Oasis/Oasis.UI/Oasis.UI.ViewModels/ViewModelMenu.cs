@@ -11,6 +11,11 @@ namespace Oasis.UI.ViewModels
     {
         public UnityEvent OnFileImportClick = new UnityEvent();
 
+        public UnityEvent OnEmulationStartClick = new UnityEvent();
+        public UnityEvent OnEmulationStopClick = new UnityEvent();
+        public UnityEvent OnEmulationPauseClick = new UnityEvent();
+        public UnityEvent OnEmulationResetClick = new UnityEvent();
+
         public ViewMenu ViewMenu
         {
             get
@@ -35,6 +40,26 @@ namespace Oasis.UI.ViewModels
         public void OnFile_ImportClick(object sender, EventArgs e)
         {
             OnFileImportClick?.Invoke();
+        }
+
+        public void OnEmulation_StartClick(object sender, EventArgs e)
+        {
+            OnEmulationStartClick?.Invoke();
+        }
+
+        public void OnEmulation_StopClick(object sender, EventArgs e)
+        {
+            OnEmulationStopClick?.Invoke();
+        }
+
+        public void OnEmulation_PauseClick(object sender, EventArgs e)
+        {
+            OnEmulationPauseClick?.Invoke();
+        }
+
+        public void OnEmulation_ResetClick(object sender, EventArgs e)
+        {
+            OnEmulationResetClick?.Invoke();
         }
     }
 }

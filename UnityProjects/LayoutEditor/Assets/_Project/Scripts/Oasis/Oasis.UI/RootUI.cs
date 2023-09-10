@@ -78,6 +78,11 @@ namespace Oasis.UI
         private void AddListeners()
         {
             ViewModelMenu.OnFileImportClick.AddListener(UIController.LayoutEditor.OnFileImportClick);
+
+            ViewModelMenu.OnEmulationStartClick.AddListener(UIController.LayoutEditor.OnEmulationStartClick);
+            ViewModelMenu.OnEmulationStopClick.AddListener(UIController.LayoutEditor.OnEmulationStopClick);
+            ViewModelMenu.OnEmulationPauseClick.AddListener(UIController.LayoutEditor.OnEmulationPauseClick);
+            ViewModelMenu.OnEmulationResetClick.AddListener(UIController.LayoutEditor.OnEmulationResetClick);
         }
     }
 }

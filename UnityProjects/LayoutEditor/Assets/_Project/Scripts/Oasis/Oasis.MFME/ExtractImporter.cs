@@ -92,6 +92,10 @@ namespace Oasis.MFME
             //componentLamp.OasisImage = new Graphics.OasisImage(bmpImageFilePath, bmpMaskImageFilePath, true);
             componentLamp.OasisImage = new Graphics.OasisImage(bmpImageFilePath, null, true);
 
+// TODO - may want to make single componentLamp for each of the 12 possible mfme lamp elements in an mfme
+// lamp component:
+componentLamp.Number = (int)extractComponentLamp.GetLampNumber(0); // TODO will need to be checking lamp HasValue since it's nullable
+
             _layoutObject.AddComponent(componentLamp);
         }
 

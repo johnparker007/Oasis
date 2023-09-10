@@ -7,6 +7,7 @@ namespace Oasis.Layout
 {
     public class ComponentLamp : Component
     {
+        public int Number;
         public OasisImage OasisImage;
     }
 

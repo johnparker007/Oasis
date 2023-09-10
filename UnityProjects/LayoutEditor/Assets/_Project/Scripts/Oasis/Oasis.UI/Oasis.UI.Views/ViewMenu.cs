@@ -35,6 +35,7 @@ namespace Oasis.UI.Views
             MenuStrip.Items.Add(BuildMenuFile());
             MenuStrip.Items.Add(BuildMenuEdit());
             MenuStrip.Items.Add(BuildMenuComponent());
+            MenuStrip.Items.Add(BuildMenuEmulation());
             MenuStrip.Items.Add(BuildMenuHelp());
 
             MenuStrip.BackColor = Color.FromArgb(56, 56, 56); // JP Dark theme
@@ -153,6 +154,30 @@ namespace Oasis.UI.Views
             itemComponent.DropDownItems.Add(itemComponent_Group);
 
             return itemComponent;
+        }
+
+        private ToolStripMenuItem BuildMenuEmulation()
+        {
+            var itemEmulation = new ToolStripMenuItem("Emulation");
+
+            var itemEmulation_Start = new ToolStripMenuItem("Start");
+            itemEmulation_Start.Click += ViewModelMenu.OnEmulation_StartClick;
+
+            var itemEmulation_Stop = new ToolStripMenuItem("Stop");
+            itemEmulation_Stop.Click += ViewModelMenu.OnEmulation_StopClick;
+
+            var itemEmulation_Pause = new ToolStripMenuItem("Pause");
+            itemEmulation_Pause.Click += ViewModelMenu.OnEmulation_PauseClick;
+
+            var itemEmulation_Reset = new ToolStripMenuItem("Reset");
+            itemEmulation_Reset.Click += ViewModelMenu.OnEmulation_ResetClick;
+
+            itemEmulation.DropDownItems.Add(itemEmulation_Start);
+            itemEmulation.DropDownItems.Add(itemEmulation_Stop);
+            itemEmulation.DropDownItems.Add(itemEmulation_Pause);
+            itemEmulation.DropDownItems.Add(itemEmulation_Reset);
+
+            return itemEmulation;
         }
 
         private ToolStripMenuItem BuildMenuHelp()
