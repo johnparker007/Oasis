@@ -18,6 +18,7 @@ namespace Oasis
 
         public EditorComponentBackground EditorComponentBackgroundPrefab;
         public EditorComponentLamp EditorComponentLampPrefab;
+        public EditorComponentReel EditorComponentReelPrefab;
 
         public Zoom Zoom;
 

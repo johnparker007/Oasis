@@ -44,6 +44,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a7dca84c776d469458345bd5f8e4a1c1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  ArgsOutputConsole: 1
+  ArgsVideoNone: 0
   OnImportComplete:
+    m_PersistentCalls:
+      m_Calls: []
+  OnLampChanged:
     m_PersistentCalls:
       m_Calls: []

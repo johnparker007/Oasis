@@ -117,6 +117,19 @@ componentLamp.Number = (int)extractComponentLamp.GetLampNumber(0); // TODO will 
         {
             ComponentReel componentReel = new ComponentReel();
 
+            componentReel.RectInt = new RectInt(
+                extractComponentReel.Position.X,
+                extractComponentReel.Position.Y,
+                extractComponentReel.Size.X,
+                extractComponentReel.Size.Y);
+
+            string bandBmpImageFilePath = Path.Combine(
+                Extractor.LayoutDirectoryPath, extractComponentReel.BandBmpImageFilename);
+
+            componentReel.BandOasisImage = new Graphics.OasisImage(bandBmpImageFilePath, null, true);
+            // we need a +1 for the reel but not the lamps, prob MFME <> MAME inconsistency
+            componentReel.Number = extractComponentReel.Number + 1; 
+
             _layoutObject.AddComponent(componentReel);
         }
 

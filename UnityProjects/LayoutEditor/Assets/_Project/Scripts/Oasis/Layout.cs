@@ -53,6 +53,14 @@ namespace Oasis
 
                 editorComponentLamp.Initialise((ComponentLamp)component, LayoutEditor);
             }
+            else if (component.GetType() == typeof(ComponentReel))
+            {
+                EditorComponentReel editorComponentReel = Instantiate(
+                    LayoutEditor.EditorComponentReelPrefab,
+                    LayoutEditor.UIController.EditorCanvasGameObject.transform);
+
+                editorComponentReel.Initialise((ComponentReel)component, LayoutEditor);
+            }
 
             OnChanged?.Invoke();
         }

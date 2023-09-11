@@ -35,16 +35,6 @@ namespace Oasis.LayoutEditor
             {
                 _image.color = Color.clear;
             }
-
-// HACK TEST to flicker lamps
-            //if(Random.value < 0.5f)
-            //{
-            //    _image.color = Color.white;
-            //}
-            //else
-            //{
-            //    _image.color = Color.clear;
-            //}
         }
 
         public override void Initialise(
@@ -65,34 +55,8 @@ namespace Oasis.LayoutEditor
                 new Rect(0, 0, oasisImage.Width, oasisImage.Height), Vector2.zero);
 
             _image.sprite = _sprite;
-
-// TEMP - not sure this wants to be here, just putting in now for a basic test of the
-// mame controller data:
-//layoutEditor.MameController.OnLampChanged.AddListener(OnLampChanged);
         }
 
-        // THIS DIDNT WORK - due to blocking 
-//        private void OnLampChanged(int lampNumber, int lampValue)
-//        {
-//            if (lampNumber != _number)
-//            {
-//                return;
-//            }
-
-//// TODO THIS IS TEMP JUST TO TEST!  need to make a better system that doesn't block etc
-
-//            lock (this)
-//            {
-//                if (lampValue == 1)
-//                {
-//                    _image.color = Color.white;
-//                }
-//                else
-//                {
-//                    _image.color = Color.clear;
-//                }
-//            }
-//        }
     }
 
 }
