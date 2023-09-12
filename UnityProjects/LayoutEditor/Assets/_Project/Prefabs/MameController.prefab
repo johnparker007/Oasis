@@ -46,6 +46,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   ArgsOutputConsole: 1
   ArgsVideoNone: 0
+  ForceVsyncOffWhenRunning: 1
+  DebugOutputStdOut: 0
   OnImportComplete:
     m_PersistentCalls:
       m_Calls: []

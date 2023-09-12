@@ -23,28 +23,6 @@ namespace Oasis.LayoutEditor
             _image.material = _material;
         }
 
-        protected void Update()
-        {
-            // TOIMPROVE using a -1 for this stuff is crappy code!
-            if(_number == -1)
-            {
-                return;
-            }
-
-            // TODO do UV scrolling for horizontal/vertical reels
-            int reelPosition = LayoutEditor.MameController.ReelValues[_number];
-            // TODO hardcoded at 96 steps for now, just to get working with JPM impact popeye layout test
-            const int kTEMPReelYPositionCount = 96;
-            float normalisedOffset = (float)reelPosition / kTEMPReelYPositionCount;
-            normalisedOffset = 1f - normalisedOffset; // this is reversed prob simple to to texture coord system being flipped
-
-            const float kTEMPBandOffsetNormalisedToCorrectRendering = -0.11f; // not sure if this will be same for all techs from MAME
-            normalisedOffset += kTEMPBandOffsetNormalisedToCorrectRendering;
-
-            // TODO don't new Vector each time
-            _material.mainTextureOffset = new Vector2(0f, normalisedOffset);
-        }
-
         public override void Initialise(
             Layout.Component component, Editor layoutEditor)
         {
@@ -75,6 +53,27 @@ namespace Oasis.LayoutEditor
             _material.mainTextureScale = new Vector2(xScale, yScale);
         }
 
+        protected override void UpdateStateFromEmulation()
+        {
+            // TOIMPROVE using a -1 for this stuff is crappy code!
+            if (_number == -1)
+            {
+                return;
+            }
+
+            // TODO do UV scrolling for horizontal/vertical reels
+            int reelPosition = LayoutEditor.MameController.ReelValues[_number];
+            // TODO hardcoded at 96 steps for now, just to get working with JPM impact popeye layout test
+            const int kTEMPReelYPositionCount = 96;
+            float normalisedOffset = (float)reelPosition / kTEMPReelYPositionCount;
+            normalisedOffset = 1f - normalisedOffset; // this is reversed prob simple to to texture coord system being flipped
+
+            const float kTEMPBandOffsetNormalisedToCorrectRendering = -0.11f; // not sure if this will be same for all techs from MAME
+            normalisedOffset += kTEMPBandOffsetNormalisedToCorrectRendering;
+
+            // TODO don't new Vector each time
+            _material.mainTextureOffset = new Vector2(0f, normalisedOffset);
+        }
     }
 
 }

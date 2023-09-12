@@ -17,6 +17,12 @@ namespace Oasis.MAME
         public bool ArgsOutputConsole;
         public bool ArgsVideoNone;
 
+        [Tooltip("By forcing vsync off, we remove a frame of latency, so lamps etc will light up one frame earlier" +
+            ", essentially removing a frame of input lag, by removing a frame of Unity render lag behind the emulator." +
+            " In some recorded footage, Unity was actually *ahead* of the MAME internal layout rendering by 1 frame " +
+            "with vsync disabled!")]
+        public bool ForceVsyncOffWhenRunning;
+
         public bool DebugOutputStdOut;
 
 
@@ -118,11 +124,22 @@ namespace Oasis.MAME
 
             string arguments = kTEMPHardcodedRomName + additionalArgs;
             _process = StartProcess(MameExeDirectoryFullPath, kMameExeFilename, arguments);
+
+            if(ForceVsyncOffWhenRunning)
+            {
+                QualitySettings.vSyncCount = 0;
+            }
         }
 
         public void StopMame()
         {
-            // TODO - this will prob be done with Lua?
+            // TODO - stopping the emulation will prob be done with Lua?
+
+
+            if (ForceVsyncOffWhenRunning)
+            {
+                QualitySettings.vSyncCount = 1;
+            }
         }
 
         public void ResetMame()

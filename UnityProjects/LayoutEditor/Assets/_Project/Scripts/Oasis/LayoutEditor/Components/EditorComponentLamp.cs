@@ -19,24 +19,6 @@ namespace Oasis.LayoutEditor
             _image = GetComponent<Image>();
         }
 
-        protected void Update()
-        {
-            // TOIMPROVE using a -1 for this stuff is crappy code!
-            if(_number == -1)
-            {
-                return;
-            }
-
-            if(LayoutEditor.MameController.LampValues[_number] == 1)
-            {
-                _image.color = Color.white;
-            }
-            else
-            {
-                _image.color = Color.clear;
-            }
-        }
-
         public override void Initialise(
             Layout.Component component, Editor layoutEditor)
         {
@@ -55,6 +37,24 @@ namespace Oasis.LayoutEditor
                 new Rect(0, 0, oasisImage.Width, oasisImage.Height), Vector2.zero);
 
             _image.sprite = _sprite;
+        }
+
+        protected override void UpdateStateFromEmulation()
+        {
+            // TOIMPROVE using a -1 for this stuff is crappy code!
+            if (_number == -1)
+            {
+                return;
+            }
+
+            if (LayoutEditor.MameController.LampValues[_number] == 1)
+            {
+                _image.color = Color.white;
+            }
+            else
+            {
+                _image.color = Color.clear;
+            }
         }
 
     }

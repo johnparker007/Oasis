@@ -50,6 +50,11 @@ component.RectInt = new RectInt(
 
             _image.sprite = _sprite;
         }
+
+        protected override void UpdateStateFromEmulation()
+        {
+            // nothing to update
+        }
     }
 
 }
