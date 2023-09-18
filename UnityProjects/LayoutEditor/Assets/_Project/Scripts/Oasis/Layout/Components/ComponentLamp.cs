@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace Oasis.Layout
 {
-    public class ComponentLamp : Component
+    public class ComponentLamp : ComponentInput
     {
         public int Number;
         public OasisImage OasisImage;

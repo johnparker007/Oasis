@@ -1,10 +1,11 @@
 using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 using UnityEngine.Events;
 
 namespace Oasis.LayoutEditor
 {
+    using UnityEngine;
+
     public class Zoom : MonoBehaviour
     {
         private const float kInitialZoomLevel = 100f;

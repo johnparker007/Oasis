@@ -83,11 +83,33 @@ namespace Oasis.MFME
                 extractComponentLamp.Size.X,
                 extractComponentLamp.Size.Y);
 
+            // TODO - may want to make single componentLamp for each of the 12 possible mfme lamp elements in an mfme
+            // lamp component:
             string bmpImageFilePath = Path.Combine(
                 Extractor.LayoutDirectoryPath, extractComponentLamp.LampElements[0].BmpImageFilename);
 
             //string bmpMaskImageFilePath = Path.Combine(
             //    Extractor.LayoutDirectoryPath, extractComponentLamp.LampElements[0].BmpMaskImageFilename);
+
+            // TODO also need to figure out coin/note + effect inputs
+            if(extractComponentLamp.HasButtonInput)
+            {
+                componentLamp.Input.Enabled = true;
+
+                int mfmeButtonNumber = int.Parse(extractComponentLamp.ButtonNumberAsString);
+
+                componentLamp.Input.ButtonNumber = mfmeButtonNumber;
+
+                // TODO TEMP!  Just hardcode call for Impact, needs to check MFME layout platform:
+                //componentLamp.Input.PortTag = 
+                //    MameInputPortHelper.GetMamePortTagImpact(mfmeButtonNumber);
+
+                //componentLamp.Input.FieldMask =
+                //    MameInputPortHelper.GetMAMEPortInputMaskName(mfmeButtonNumber);
+
+                // TODO - support for Shortcut 2... maybe also combined inputs like Shift+3 etc?
+                componentLamp.Input.KeyCode = ShortcutKeyHelper.GetKeyCode(extractComponentLamp.Shortcut1);
+            }
 
             //componentLamp.OasisImage = new Graphics.OasisImage(bmpImageFilePath, bmpMaskImageFilePath, true);
             componentLamp.OasisImage = new Graphics.OasisImage(bmpImageFilePath, null, true);

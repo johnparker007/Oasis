@@ -61,6 +61,8 @@ namespace MFMEExtract
         {
             get
             {
+                // TOIMPROVE - should also do a safe TryParse check, to ensure 
+                // ButtonNumberAsString parses to an int
                 return ButtonNumberAsString.Length > 0;
             }
         }

@@ -1,0 +1,10 @@
+{
+  "plugin": {
+	"name": "oasis",
+	"description": "Oasis plugin",
+	"version": "0.0.1",
+	"author": "John Parker",
+	"type": "plugin",
+	"start": "false"
+  }
+}

@@ -14,6 +14,7 @@ namespace Oasis
     {
         public UnityEvent OnChanged = new UnityEvent();
         public UnityEvent OnDirty = new UnityEvent();
+        public UnityEvent<Component> OnAddComponent = new UnityEvent<Component>();
 
         public List<Component> Components = new List<Component>();
         public List<EditorComponent> EditorComponents = new List<EditorComponent>();
@@ -62,6 +63,7 @@ namespace Oasis
                 editorComponentReel.Initialise((ComponentReel)component, LayoutEditor);
             }
 
+            OnAddComponent?.Invoke(component);
             OnChanged?.Invoke();
         }
     }

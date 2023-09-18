@@ -7,6 +7,7 @@ using Oasis.Layout;
 using Oasis.MFME;
 using Oasis.LayoutEditor;
 using Oasis.MAME;
+using UnityEngine.Events;
 
 namespace Oasis
 {
@@ -22,17 +23,28 @@ namespace Oasis
 
         public Zoom Zoom;
 
+        public UnityEvent<LayoutObject> OnLayoutSet = new UnityEvent<LayoutObject>();
+
         public LayoutObject Layout
         {
-            get;
-            set;
-        } = null;
+            get
+            {
+                return _layout;
+            }
+            set
+            {
+                _layout = value;
+                OnLayoutSet?.Invoke(_layout);
+            }
+        }
 
         public ExtractImporter ExtractImporter
         {
             get;
             private set;
         } = null;
+
+        private LayoutObject _layout = null;
 
 
         private void Awake()

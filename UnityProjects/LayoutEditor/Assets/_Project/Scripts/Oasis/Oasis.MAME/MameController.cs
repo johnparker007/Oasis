@@ -1,5 +1,6 @@
 using MFMEExtract;
 using Oasis.Layout;
+using Oasis.MFME;
 using Oasis.Utility;
 using System.Collections;
 using System.Collections.Generic;
@@ -10,22 +11,8 @@ using UnityEngine.Events;
 
 namespace Oasis.MAME
 {
-    // TODO this prob doesn't need to be a monobehavioru after all,
-    // can be same pattern as the ExtractIMporter, standrad C# class
     public class MameController : MonoBehaviour
     {
-        public bool ArgsOutputConsole;
-        public bool ArgsVideoNone;
-
-        [Tooltip("By forcing vsync off, we remove a frame of latency, so lamps etc will light up one frame earlier" +
-            ", essentially removing a frame of input lag, by removing a frame of Unity render lag behind the emulator." +
-            " In some recorded footage, Unity was actually *ahead* of the MAME internal layout rendering by 1 frame " +
-            "with vsync disabled!")]
-        public bool ForceVsyncOffWhenRunning;
-
-        public bool DebugOutputStdOut;
-
-
         private const string kTEMPHardcodedMameExeDirectoryPath = "Emulators\\MAME\\mame0258";
         private const string kTEMPHardcodedRomName = "j6popoli";
 
@@ -33,11 +20,20 @@ namespace Oasis.MAME
 
         // Outputs component state changes to console, may be better way of pulling these out of MAME
         private const string kArgsOutputConsole = "-output console";
+        private const string kArgsOutputNetwork = "-output network";
+
+        // Enable Lua console (may be better way of doing this with a custom Mame lua plugin)
+        private const string kArgsLuaConsole = "-console";
+
+        // Use the Oasis plugin
+        private const string kArgsPluginOasis = "-plugin oasis";
 
         // This '-video none' option means we don't need to actually skip the 'this game is not working' screens
-        // and go straight into the emulation.  Also don't need -window or -skip_gameinfo either
+        // and go straight into the emulation.  Also don't need -window or -skip_gameinfo (?) either
         private const string kArgsVideoNone = "-video none -seconds_to_run 999999999";
-        private const string kArgsForTestingWithVideo = "-window -skip_gameinfo";
+        private const string kArgsForTestingWithVideo = "-window";
+
+        private const string kArgsSkipGameInfo = "-skip_gameinfo";
 
         // "-state A";  this works, loads the required state as part of startup, very fast/clean
 
@@ -63,8 +59,26 @@ namespace Oasis.MAME
         private const string kDataPrefixVfd = "vfd";
 
 
+        public bool ArgsOutputConsole;
+        public bool ArgsOutputNetwork;
 
-        // new test approach to deal with callback blocking
+        public bool ArgsLuaConsole;
+        public bool ArgsPluginOasis;
+        public bool ArgsVideoNone;
+        public bool ArgsSkipGameInfo;
+
+        public bool ProcessCreateNoWindow;
+
+        [Tooltip("By forcing vsync off, we remove a frame of latency, so lamps etc will light up one frame earlier" +
+            ", essentially removing a frame of input lag, by removing a frame of Unity render lag behind the emulator." +
+            " In some recorded footage, Unity was actually *ahead* of the MAME internal layout rendering by 1 frame " +
+            "with vsync disabled!")]
+        public bool ForceVsyncOffWhenRunning;
+
+        public bool DebugOutputStdOut;
+
+        public bool DebugOutputMameCommandLine;
+
         public int[] LampValues
         {
             get;
@@ -77,9 +91,7 @@ namespace Oasis.MAME
             private set;
         } = new int[16]; // TEMP test, no idea how large this needs to be wrt all techs!
 
-
         public UnityEvent OnImportComplete = new UnityEvent();
-        public UnityEvent<int, int> OnLampChanged = new UnityEvent<int, int>();
 
         private Process _process = null;
 
@@ -108,9 +120,30 @@ namespace Oasis.MAME
         public void StartMame()
         {
             string additionalArgs = "";
+
+            // can't be both of these:
             if(ArgsOutputConsole)
             {
                 additionalArgs += " " + kArgsOutputConsole;
+            }
+            else if (ArgsOutputNetwork)
+            {
+                additionalArgs += " " + kArgsOutputNetwork;
+            }
+
+            if (ArgsLuaConsole)
+            {
+                additionalArgs += " " + kArgsLuaConsole;
+            }
+
+            if (ArgsPluginOasis)
+            {
+                additionalArgs += " " + kArgsPluginOasis;
+            }
+
+            if (ArgsSkipGameInfo)
+            {
+                additionalArgs += " " + kArgsSkipGameInfo;
             }
 
             if (ArgsVideoNone)
@@ -152,8 +185,50 @@ namespace Oasis.MAME
 
         }
 
+        public async void TESTUnpause()
+        {
+            await _process.StandardInput.WriteLineAsync("resume\r\n");
+        } 
+
+        // TOIMPROVE - this class will need breaking up into input/output/commands etc
+        public void SetButtonState(int buttonNumber, bool state)
+        {
+            // TODO just hardcoded lookup of JPM Impact port/tag for testing for the mo, will
+            // need to be dynamic from currently selected Platform for these fruit machine raw inputs
+            // (video games will prob have an option to send 'standard' inputs, like P1 Joystick Up, P2 Fire 1 etc...)
+
+            string tag = MameInputPortHelper.GetMamePortTagImpact(buttonNumber);
+            string mask = MameInputPortHelper.GetMAMEPortInputMaskName(buttonNumber);
+
+            SetPortValue(tag, mask, state);
+        }
+
+        private void SetPortValue(string tag, string mask, bool keyDown)
+        {
+            string inputValue = keyDown ? "1" : "0";
+
+            string pluginCommand =
+                "set_input_value"
+                + " "
+                + tag
+                + " "
+                + mask
+                + " "
+                + inputValue
+                ;
+
+            UnityEngine.Debug.Log("Sending: " + pluginCommand);
+
+            _process.StandardInput.WriteLine(pluginCommand);
+        }
+
         private Process StartProcess(string workingDirectory, string filename, string arguments)
         {
+            if(DebugOutputMameCommandLine)
+            {
+                UnityEngine.Debug.LogError(filename + " " + arguments);
+            }
+
             string execPath = Path.Combine(workingDirectory, filename);
             execPath = execPath.Replace("/", "\\");
 
@@ -163,8 +238,7 @@ namespace Oasis.MAME
             startInfo.UseShellExecute = false;
             startInfo.RedirectStandardInput = true;
             startInfo.RedirectStandardOutput = true;
-            startInfo.CreateNoWindow = true; // <-- this means there's no Lua console window, MAME window still shows though.  Input mapping works, haven't checked readint std output yet
-            //startInfo.WindowStyle = ProcessWindowStyle.Hidden; // <-- this Hidden / Minimised has no effect on MAME
+            startInfo.CreateNoWindow = ProcessCreateNoWindow; 
 
             Process process = new Process();
             process.StartInfo = startInfo;
@@ -210,8 +284,6 @@ namespace Oasis.MAME
 
             //UnityEngine.Debug.LogError("lampNumber " + lampNumber + "   lampValue " + lampValue);
 
-            //OnLampChanged?.Invoke(lampNumber, lampValue);
-
             LampValues[lampNumber] = lampValue;
         }
 
@@ -237,7 +309,6 @@ namespace Oasis.MAME
 
             ProcessLine(dataReceivedEventArgs.Data);
         }
-
 
     }
 

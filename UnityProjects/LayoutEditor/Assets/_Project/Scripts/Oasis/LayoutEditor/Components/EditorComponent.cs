@@ -12,6 +12,12 @@ namespace Oasis.LayoutEditor
             private set;
         }
 
+        public Layout.Component Component
+        {
+            get;
+            private set;
+        }
+
         protected virtual void Awake()
         {
         }
@@ -26,6 +32,7 @@ namespace Oasis.LayoutEditor
 
         public virtual void Initialise(Layout.Component component, Editor layoutEditor)
         {
+            Component = component;
             LayoutEditor = layoutEditor;
         }
 

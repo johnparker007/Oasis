@@ -727,6 +727,10 @@ PrefabInstance:
       value: IngameDebugConsole
       objectReference: {fileID: 0}
     - target: {fileID: 11452418, guid: 67117722a812a2e46ab8cb8eafbf5f5e, type: 3}
+      propertyPath: toggleKey
+      value: 9
+      objectReference: {fileID: 0}
+    - target: {fileID: 11452418, guid: 67117722a812a2e46ab8cb8eafbf5f5e, type: 3}
       propertyPath: enablePopup
       value: 0
       objectReference: {fileID: 0}
@@ -1802,6 +1806,9 @@ MonoBehaviour:
   EditorComponentLampPrefab: {fileID: 3535370425537893857, guid: d5d925676a1996848bf6f70d96355d80, type: 3}
   EditorComponentReelPrefab: {fileID: 7270301404913838959, guid: ee690e3c8550a8a47953c65871800e76, type: 3}
   Zoom: {fileID: 2080336308}
+  OnLayoutSet:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!114 &2080336308
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1874,7 +1881,47 @@ PrefabInstance:
       value: MameController
       objectReference: {fileID: 0}
     - target: {fileID: 1934027768812496372, guid: 92875de48b8ebee4299040899e131ec1, type: 3}
+      propertyPath: ArgsVideoNone
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1934027768812496372, guid: 92875de48b8ebee4299040899e131ec1, type: 3}
+      propertyPath: ArgsLuaConsole
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1934027768812496372, guid: 92875de48b8ebee4299040899e131ec1, type: 3}
+      propertyPath: ArgsPluginOasis
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1934027768812496372, guid: 92875de48b8ebee4299040899e131ec1, type: 3}
+      propertyPath: ArgsSkipGameInfo
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1934027768812496372, guid: 92875de48b8ebee4299040899e131ec1, type: 3}
+      propertyPath: ArgsOutputConsole
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1934027768812496372, guid: 92875de48b8ebee4299040899e131ec1, type: 3}
+      propertyPath: ArgsOutputNetwork
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1934027768812496372, guid: 92875de48b8ebee4299040899e131ec1, type: 3}
       propertyPath: DebugOutputStdOut
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1934027768812496372, guid: 92875de48b8ebee4299040899e131ec1, type: 3}
+      propertyPath: ArgsPluginWorkerUi
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1934027768812496372, guid: 92875de48b8ebee4299040899e131ec1, type: 3}
+      propertyPath: ProcessCreateNoWindow
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1934027768812496372, guid: 92875de48b8ebee4299040899e131ec1, type: 3}
+      propertyPath: ForceVsyncOffWhenRunning
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1934027768812496372, guid: 92875de48b8ebee4299040899e131ec1, type: 3}
+      propertyPath: DebugOutputMameCommandLine
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1934027768812496373, guid: 92875de48b8ebee4299040899e131ec1, type: 3}
@@ -1923,3 +1970,68 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 92875de48b8ebee4299040899e131ec1, type: 3}
+--- !u!1001 &8412484400236955805
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 8412484400436986444, guid: e489cf3420fa093489936f5194053a21, type: 3}
+      propertyPath: LayoutEditor
+      value: 
+      objectReference: {fileID: 2080336307}
+    - target: {fileID: 8412484400436986444, guid: e489cf3420fa093489936f5194053a21, type: 3}
+      propertyPath: DebugOutputChanges
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8412484400436986445, guid: e489cf3420fa093489936f5194053a21, type: 3}
+      propertyPath: m_Name
+      value: ComponentInputController
+      objectReference: {fileID: 0}
+    - target: {fileID: 8412484400436986447, guid: e489cf3420fa093489936f5194053a21, type: 3}
+      propertyPath: m_RootOrder
+      value: 12
+      objectReference: {fileID: 0}
+    - target: {fileID: 8412484400436986447, guid: e489cf3420fa093489936f5194053a21, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8412484400436986447, guid: e489cf3420fa093489936f5194053a21, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8412484400436986447, guid: e489cf3420fa093489936f5194053a21, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8412484400436986447, guid: e489cf3420fa093489936f5194053a21, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8412484400436986447, guid: e489cf3420fa093489936f5194053a21, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8412484400436986447, guid: e489cf3420fa093489936f5194053a21, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8412484400436986447, guid: e489cf3420fa093489936f5194053a21, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8412484400436986447, guid: e489cf3420fa093489936f5194053a21, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8412484400436986447, guid: e489cf3420fa093489936f5194053a21, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8412484400436986447, guid: e489cf3420fa093489936f5194053a21, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: e489cf3420fa093489936f5194053a21, type: 3}
