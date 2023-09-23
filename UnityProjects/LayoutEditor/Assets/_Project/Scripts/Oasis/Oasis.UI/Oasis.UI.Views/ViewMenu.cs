@@ -163,19 +163,55 @@ namespace Oasis.UI.Views
             var itemEmulation_Start = new ToolStripMenuItem("Start");
             itemEmulation_Start.Click += ViewModelMenu.OnEmulation_StartClick;
 
-            var itemEmulation_Stop = new ToolStripMenuItem("Stop");
-            itemEmulation_Stop.Click += ViewModelMenu.OnEmulation_StopClick;
+            var itemEmulation_Exit = new ToolStripMenuItem("Exit");
+            itemEmulation_Exit.Click += ViewModelMenu.OnEmulation_ExitClick;
 
             var itemEmulation_Pause = new ToolStripMenuItem("Pause");
             itemEmulation_Pause.Click += ViewModelMenu.OnEmulation_PauseClick;
 
-            var itemEmulation_Reset = new ToolStripMenuItem("Reset");
-            itemEmulation_Reset.Click += ViewModelMenu.OnEmulation_ResetClick;
+            var itemEmulation_Resume = new ToolStripMenuItem("Resume");
+            itemEmulation_Resume.Click += ViewModelMenu.OnEmulation_ResumeClick;
 
+            var itemEmulation_SoftReset = new ToolStripMenuItem("Soft Reset");
+            itemEmulation_SoftReset.Click += ViewModelMenu.OnEmulation_SoftResetClick;
+
+            var itemEmulation_HardReset = new ToolStripMenuItem("Hard Reset");
+            itemEmulation_HardReset.Click += ViewModelMenu.OnEmulation_HardResetClick;
+
+            var itemEmulation_Throttled = new ToolStripMenuItem("Throttled");
+            itemEmulation_Throttled.Click += ViewModelMenu.OnEmulation_ThrottledClick;
+
+            var itemEmulation_Unthrottled = new ToolStripMenuItem("Unthrottled");
+            itemEmulation_Unthrottled.Click += ViewModelMenu.OnEmulation_UnthrottledClick;
+
+            var itemEmulation_StateLoad = new ToolStripMenuItem("State Load");
+            itemEmulation_StateLoad.Click += ViewModelMenu.OnEmulation_StateLoadClick;
+
+            var itemEmulation_StateSave = new ToolStripMenuItem("State Save");
+            itemEmulation_StateSave.Click += ViewModelMenu.OnEmulation_StateSaveClick;
+
+            var itemEmulation_StateSaveAndExit = new ToolStripMenuItem("State Save And Exit");
+            itemEmulation_StateSaveAndExit.Click += ViewModelMenu.OnEmulation_StateSaveAndExitClick;
+
+            var itemEmulation_StartAndStateLoad = new ToolStripMenuItem("Start And State Load");
+            itemEmulation_StartAndStateLoad.Click += ViewModelMenu.OnEmulation_StartAndStateLoadClick;
+
+            itemEmulation.DropDownItems.Add(itemEmulation_StartAndStateLoad);
+            itemEmulation.DropDownItems.Add(itemEmulation_StateSaveAndExit);
+            itemEmulation.DropDownItems.Add(new ToolStripSeparator());
             itemEmulation.DropDownItems.Add(itemEmulation_Start);
-            itemEmulation.DropDownItems.Add(itemEmulation_Stop);
+            itemEmulation.DropDownItems.Add(itemEmulation_StateLoad);
+            itemEmulation.DropDownItems.Add(itemEmulation_StateSave);
+            itemEmulation.DropDownItems.Add(itemEmulation_Exit);
+            itemEmulation.DropDownItems.Add(new ToolStripSeparator());
             itemEmulation.DropDownItems.Add(itemEmulation_Pause);
-            itemEmulation.DropDownItems.Add(itemEmulation_Reset);
+            itemEmulation.DropDownItems.Add(itemEmulation_Resume);
+            itemEmulation.DropDownItems.Add(new ToolStripSeparator());
+            itemEmulation.DropDownItems.Add(itemEmulation_Throttled);
+            itemEmulation.DropDownItems.Add(itemEmulation_Unthrottled);
+            itemEmulation.DropDownItems.Add(new ToolStripSeparator());
+            itemEmulation.DropDownItems.Add(itemEmulation_SoftReset);
+            itemEmulation.DropDownItems.Add(itemEmulation_HardReset);
 
             return itemEmulation;
         }

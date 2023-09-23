@@ -12,9 +12,17 @@ namespace Oasis.UI.ViewModels
         public UnityEvent OnFileImportClick = new UnityEvent();
 
         public UnityEvent OnEmulationStartClick = new UnityEvent();
-        public UnityEvent OnEmulationStopClick = new UnityEvent();
+        public UnityEvent OnEmulationExitClick = new UnityEvent();
         public UnityEvent OnEmulationPauseClick = new UnityEvent();
-        public UnityEvent OnEmulationResetClick = new UnityEvent();
+        public UnityEvent OnEmulationResumeClick = new UnityEvent();
+        public UnityEvent OnEmulationSoftResetClick = new UnityEvent();
+        public UnityEvent OnEmulationHardResetClick = new UnityEvent();
+        public UnityEvent OnEmulationThrottledClick = new UnityEvent();
+        public UnityEvent OnEmulationUnthrottledClick = new UnityEvent();
+        public UnityEvent OnEmulationStateLoadClick = new UnityEvent();
+        public UnityEvent OnEmulationStateSaveClick = new UnityEvent();
+        public UnityEvent OnEmulationStateSaveAndExitClick = new UnityEvent();
+        public UnityEvent OnEmulationStartAndStateLoadClick = new UnityEvent();      
 
         public ViewMenu ViewMenu
         {
@@ -47,9 +55,9 @@ namespace Oasis.UI.ViewModels
             OnEmulationStartClick?.Invoke();
         }
 
-        public void OnEmulation_StopClick(object sender, EventArgs e)
+        public void OnEmulation_ExitClick(object sender, EventArgs e)
         {
-            OnEmulationStopClick?.Invoke();
+            OnEmulationExitClick?.Invoke();
         }
 
         public void OnEmulation_PauseClick(object sender, EventArgs e)
@@ -57,9 +65,51 @@ namespace Oasis.UI.ViewModels
             OnEmulationPauseClick?.Invoke();
         }
 
-        public void OnEmulation_ResetClick(object sender, EventArgs e)
+        public void OnEmulation_ResumeClick(object sender, EventArgs e)
         {
-            OnEmulationResetClick?.Invoke();
+            OnEmulationResumeClick?.Invoke();
         }
+
+        public void OnEmulation_SoftResetClick(object sender, EventArgs e)
+        {
+            OnEmulationSoftResetClick?.Invoke();
+        }
+
+        public void OnEmulation_HardResetClick(object sender, EventArgs e)
+        {
+            OnEmulationHardResetClick?.Invoke();
+        }
+
+        public void OnEmulation_ThrottledClick(object sender, EventArgs e)
+        {
+            OnEmulationThrottledClick?.Invoke();
+        }
+
+        public void OnEmulation_UnthrottledClick(object sender, EventArgs e)
+        {
+            OnEmulationUnthrottledClick?.Invoke();
+        }
+
+        public void OnEmulation_StateLoadClick(object sender, EventArgs e)
+        {
+            OnEmulationStateLoadClick?.Invoke();
+        }
+
+        public void OnEmulation_StateSaveClick(object sender, EventArgs e)
+        {
+            OnEmulationStateSaveClick?.Invoke();
+        }
+
+        public void OnEmulation_StateSaveAndExitClick(object sender, EventArgs e)
+        {
+            OnEmulationStateSaveAndExitClick?.Invoke();
+        }
+
+        public void OnEmulation_StartAndStateLoadClick(object sender, EventArgs e)
+        {
+            OnEmulationStartAndStateLoadClick?.Invoke();
+        }
+        
+
     }
 }

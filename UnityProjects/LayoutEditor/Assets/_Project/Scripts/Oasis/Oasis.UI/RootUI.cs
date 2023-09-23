@@ -80,9 +80,20 @@ namespace Oasis.UI
             ViewModelMenu.OnFileImportClick.AddListener(UIController.LayoutEditor.OnFileImportClick);
 
             ViewModelMenu.OnEmulationStartClick.AddListener(UIController.LayoutEditor.OnEmulationStartClick);
-            ViewModelMenu.OnEmulationStopClick.AddListener(UIController.LayoutEditor.OnEmulationStopClick);
+            ViewModelMenu.OnEmulationExitClick.AddListener(UIController.LayoutEditor.OnEmulationExitClick);
             ViewModelMenu.OnEmulationPauseClick.AddListener(UIController.LayoutEditor.OnEmulationPauseClick);
-            ViewModelMenu.OnEmulationResetClick.AddListener(UIController.LayoutEditor.OnEmulationResetClick);
+            ViewModelMenu.OnEmulationResumeClick.AddListener(UIController.LayoutEditor.OnEmulationResumeClick);
+            ViewModelMenu.OnEmulationSoftResetClick.AddListener(UIController.LayoutEditor.OnEmulationSoftResetClick);
+            ViewModelMenu.OnEmulationHardResetClick.AddListener(UIController.LayoutEditor.OnEmulationSoftResetClick);
+            ViewModelMenu.OnEmulationThrottledClick.AddListener(UIController.LayoutEditor.OnEmulationThrottledClick);
+            ViewModelMenu.OnEmulationUnthrottledClick.AddListener(UIController.LayoutEditor.OnEmulationUnthrottledClick);
+            ViewModelMenu.OnEmulationStateLoadClick.AddListener(UIController.LayoutEditor.OnEmulationStateLoadClick);
+            ViewModelMenu.OnEmulationStateSaveClick.AddListener(UIController.LayoutEditor.OnEmulationStateSaveClick);
+            ViewModelMenu.OnEmulationStateSaveAndExitClick.AddListener(UIController.LayoutEditor.OnEmulationStateSaveAndExitClick);
+            ViewModelMenu.OnEmulationStartAndStateLoadClick.AddListener(UIController.LayoutEditor.OnEmulationStartAndStateLoadClick);
+
+
+            
         }
     }
 }

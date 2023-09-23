@@ -16,6 +16,8 @@ namespace Oasis.MAME
         private const string kTEMPHardcodedMameExeDirectoryPath = "Emulators\\MAME\\mame0258";
         private const string kTEMPHardcodedRomName = "j6popoli";
 
+        private const string kDefaultSaveStateFilename = "oasis_save_state";
+
         private const string kMameExeFilename = "mame.exe";
 
         // Outputs component state changes to console, may be better way of pulling these out of MAME
@@ -34,6 +36,9 @@ namespace Oasis.MAME
         private const string kArgsForTestingWithVideo = "-window";
 
         private const string kArgsSkipGameInfo = "-skip_gameinfo";
+
+        private const string kArgsStateLoad = "-state";
+
 
         // "-state A";  this works, loads the required state as part of startup, very fast/clean
 
@@ -57,6 +62,8 @@ namespace Oasis.MAME
         private const string kDataPrefixReel = "reel";
         private const string kDataPrefixVfdDuty0 = "vfdduty0";
         private const string kDataPrefixVfd = "vfd";
+
+        private const string kDataScreenPixelBytesStart = "pixel_data_start";
 
 
         public bool ArgsOutputConsole;
@@ -94,6 +101,7 @@ namespace Oasis.MAME
         public UnityEvent OnImportComplete = new UnityEvent();
 
         private Process _process = null;
+        //private bool _nextStdOutLineIsPixelData = false;
 
 
         public string MameExeDirectoryFullPath
@@ -102,6 +110,12 @@ namespace Oasis.MAME
             {
                 return Path.Combine(DataPathHelper.DynamicRootPath, kTEMPHardcodedMameExeDirectoryPath);
             }
+        }
+
+        // XXX TEMP initial hack test:
+        private void Update()
+        {
+           // SnapshotPixels();
         }
 
         private void OnDestroy()
@@ -117,7 +131,7 @@ namespace Oasis.MAME
             }
         }
 
-        public void StartMame()
+        public void StartMame(bool loadState)
         {
             string additionalArgs = "";
 
@@ -155,6 +169,11 @@ namespace Oasis.MAME
                 additionalArgs += " " + kArgsForTestingWithVideo;
             }
 
+            if(loadState)
+            {
+                additionalArgs += " " + kArgsStateLoad + " " + kDefaultSaveStateFilename;
+            }
+
             string arguments = kTEMPHardcodedRomName + additionalArgs;
             _process = StartProcess(MameExeDirectoryFullPath, kMameExeFilename, arguments);
 
@@ -164,10 +183,13 @@ namespace Oasis.MAME
             }
         }
 
-        public void StopMame()
+        public void ExitMame()
         {
-            // TODO - stopping the emulation will prob be done with Lua?
+            string pluginCommand = "exit";
 
+            UnityEngine.Debug.Log("Sending: " + pluginCommand);
+
+            _process.StandardInput.WriteLine(pluginCommand);
 
             if (ForceVsyncOffWhenRunning)
             {
@@ -175,20 +197,99 @@ namespace Oasis.MAME
             }
         }
 
-        public void ResetMame()
+        public void SoftReset()
         {
+            string pluginCommand = "soft_reset";
 
+            UnityEngine.Debug.Log("Sending: " + pluginCommand);
+
+            _process.StandardInput.WriteLine(pluginCommand);
         }
 
-        public void PauseMame()
+        public void HardReset()
         {
+            string pluginCommand = "hard_reset";
 
+            UnityEngine.Debug.Log("Sending: " + pluginCommand);
+
+            _process.StandardInput.WriteLine(pluginCommand);
         }
 
-        public async void TESTUnpause()
+        public void Pause()
         {
-            await _process.StandardInput.WriteLineAsync("resume\r\n");
+            string pluginCommand = "pause";
+
+            UnityEngine.Debug.Log("Sending: " + pluginCommand);
+
+            _process.StandardInput.WriteLine(pluginCommand);
+        }
+
+        public void Resume()
+        {
+            string pluginCommand = "resume";
+
+            UnityEngine.Debug.Log("Sending: " + pluginCommand);
+
+            _process.StandardInput.WriteLine(pluginCommand);
         } 
+
+        public void SetThrottled(bool throttled)
+        {
+            string pluginCommand =
+                "throttled"
+                + " "
+                + throttled;
+
+            UnityEngine.Debug.Log("Sending: " + pluginCommand);
+
+            _process.StandardInput.WriteLine(pluginCommand);
+        }
+
+        public void StateLoad()
+        {
+            string pluginCommand =
+                "state_load"
+                + " "
+                + kDefaultSaveStateFilename;
+
+            UnityEngine.Debug.Log("Sending: " + pluginCommand);
+
+            _process.StandardInput.WriteLine(pluginCommand);
+        }
+
+        public void StateSave()
+        {
+            string pluginCommand =
+                "state_save"
+                + " "
+                + kDefaultSaveStateFilename;
+
+            UnityEngine.Debug.Log("Sending: " + pluginCommand);
+
+            _process.StandardInput.WriteLine(pluginCommand);
+        }
+
+        public void StateSaveAndExit()
+        {
+            string pluginCommand =
+                "state_save_and_exit"
+                + " "
+                + kDefaultSaveStateFilename;
+
+            UnityEngine.Debug.Log("Sending: " + pluginCommand);
+
+            _process.StandardInput.WriteLine(pluginCommand);
+        }
+
+        // XXX TEMP to test
+        public void SnapshotPixels()
+        {
+            string pluginCommand = "snapshot_pixels";
+
+            UnityEngine.Debug.Log("Sending: " + pluginCommand);
+
+            _process.StandardInput.WriteLine(pluginCommand);
+        }
 
         // TOIMPROVE - this class will need breaking up into input/output/commands etc
         public void SetButtonState(int buttonNumber, bool state)
@@ -259,6 +360,17 @@ namespace Oasis.MAME
                 UnityEngine.Debug.LogError(lineData);
             }
 
+            //if (lineData == kDataScreenPixelBytesStart)
+            //{
+            //    _nextStdOutLineIsPixelData = true;
+            //}
+            //else if (_nextStdOutLineIsPixelData)
+            //{
+            //    ProcessLinePixelData(lineData);
+            //    _nextStdOutLineIsPixelData = false;
+            //}
+            //else
+            
             // TODO very crude for now, will be able to be optimised with dictionaries etc
             if (lineData.Substring(0, kDataPrefixLamp.Length) == kDataPrefixLamp)
             {
@@ -268,7 +380,23 @@ namespace Oasis.MAME
             {
                 ProcessLineReel(lineData);
             }
+
+            
+
+
         }
+
+        //private void ProcessLinePixelData(string lineData)
+        //{
+        //    // TOIMPROVE - optimise:  we will get the screen x/y resolution at process start.
+        //    // Then, we can create the fixed length byte array at start, and keep repopulating it, allocing
+        //    // ~60 times a frame is very bad!  Just to get working initially...
+        //    //byte[] bytes = new byte[lineData.Length * sizeof(char)];
+        //    //System.Buffer.BlockCopy(lineData.ToCharArray(), 0, bytes, 0, bytes.Length);
+
+        //    int here = 0;
+
+        //}
 
         // TOIMPROVE - can make a generic function since this component number/value text extraction is copy/paste
         private void ProcessLineLamp(string lineData)
@@ -306,6 +434,8 @@ namespace Oasis.MAME
         private void OnOutputDataReceived(object sender, DataReceivedEventArgs dataReceivedEventArgs)
         {
             //UnityEngine.Debug.LogError(dataReceivedEventArgs.Data);
+
+            //UnityEngine.Debug.LogError("Len: " + dataReceivedEventArgs.Data.Length);
 
             ProcessLine(dataReceivedEventArgs.Data);
         }

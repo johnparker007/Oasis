@@ -72,5 +72,18 @@ function lib:split(text, delim)
     return result
 end
 
+function lib:toboolean(str)
+	str = str:lower()
+	return str == "1" or str == "on" or str == "true"
+end
+
+function lib:string_from_bool(b)
+	if b then
+		return "1"
+	else
+		return "0"
+	end
+end
+
 
 return lib

@@ -102,22 +102,62 @@ namespace Oasis
 
         public void OnEmulationStartClick()
         {
-            MameController.StartMame();
+            MameController.StartMame(false);
         }
 
-        public void OnEmulationStopClick()
+        public void OnEmulationExitClick()
         {
-            MameController.StopMame();
+            MameController.ExitMame();
         }
 
         public void OnEmulationPauseClick()
         {
-            MameController.PauseMame();
+            MameController.Pause();
         }
 
-        public void OnEmulationResetClick()
+        public void OnEmulationResumeClick()
         {
-            MameController.ResetMame();
+            MameController.Resume();
+        }
+
+        public void OnEmulationSoftResetClick()
+        {
+            MameController.SoftReset();
+        }
+
+        public void OnEmulationHardResetClick()
+        {
+            MameController.HardReset();
+        }
+
+        public void OnEmulationThrottledClick()
+        {
+            MameController.SetThrottled(true);
+        }
+
+        public void OnEmulationUnthrottledClick()
+        {
+            MameController.SetThrottled(false);
+        }
+
+        public void OnEmulationStateLoadClick()
+        {
+            MameController.StateLoad();
+        }
+
+        public void OnEmulationStateSaveClick()
+        {
+            MameController.StateSave();
+        }
+
+        public void OnEmulationStateSaveAndExitClick()
+        {
+            MameController.StateSaveAndExit();
+        }
+
+        public void OnEmulationStartAndStateLoadClick()
+        {
+            MameController.StartMame(true);
         }
 
         private void OnImportComplete()
