@@ -9,6 +9,7 @@ namespace Oasis.Layout
     {
         public int Number;
         public OasisImage BandOasisImage;
+        public bool Reversed;
     }
 
 }

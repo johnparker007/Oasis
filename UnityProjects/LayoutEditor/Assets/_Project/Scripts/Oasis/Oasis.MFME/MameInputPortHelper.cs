@@ -1,3 +1,4 @@
+using Oasis.MAME;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -8,6 +9,19 @@ namespace Oasis.MFME
     {
         private const int kBitsPerPort = 8;
 
+        public static string GetMamePortTag(int mfmeButtonNumber, MameController.PlatformType platformType)
+        {
+            switch(platformType)
+            {
+                case MameController.PlatformType.MPU4:
+                    return GetMamePortTagMpu4(mfmeButtonNumber);
+                case MameController.PlatformType.Impact:
+                    return GetMamePortTagImpact(mfmeButtonNumber);
+                default:
+                    Debug.LogError("Not set up platform type " + platformType);
+                    return "";
+            }
+        }
 
         // TODO just hacked these functions in from Arcade Sim converter code for the mo:
 
@@ -15,14 +29,14 @@ namespace Oasis.MFME
         {
             string[] portNames =
             {
-                ":ORANGE1",
-                ":ORANGE2",
-                ":BLACK1",
-                ":BLACK2",
-                ":AUX1",
-                ":AUX2",
-                ":DIL1",
-                ":DIL2",
+                "ORANGE1",
+                "ORANGE2",
+                "BLACK1",
+                "BLACK2",
+                "AUX1",
+                "AUX2",
+                "DIL1",
+                "DIL2",
             };
 
             int portNameIndex = mfmeButtonNumber / kBitsPerPort;
@@ -34,17 +48,6 @@ namespace Oasis.MFME
         {
             string[] portNames =
             {
-                //":???", // don't know
-                //":???", // don't know
-                //":J10_0", // guess
-                //":J10_1", // guess
-                //":J10_2",
-                //":J9_0",
-                //":J9_1", // guess
-                //":J9_2",
-                //":COIN_SENSE", // semi guess
-                //":COINS"
-
                 "???", // don't know
                 "???", // don't know
                 "J10_0", // guess

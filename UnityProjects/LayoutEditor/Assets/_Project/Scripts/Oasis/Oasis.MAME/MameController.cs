@@ -13,8 +13,56 @@ namespace Oasis.MAME
 {
     public class MameController : MonoBehaviour
     {
+        // placeholder, may do something different to this for Oasis
+        public enum PlatformType
+        {
+            Scorpion1,
+            Scorpion2,
+            Scorpion4,
+            Scorpion5,
+            MPU3,
+            MPU4,
+            MPU5,
+            Impact,
+            M1AB,
+            // remaining ones from MFME:
+            MPU2,
+            MPU4Video,
+            MPU4Plasma,
+            BLACKBOX,
+            SYS83,
+            SYS85,
+            Adder5,
+            Proconn,
+            AceSys1,
+            AceSPACE,
+            MMM,
+            Epoch,
+            SRU,
+            Sys80,
+            MPS2,
+            Sys5,
+            Mach2000E,
+            Mach2000A,
+            IGTSPlus,
+            IGTS2000,
+            ACEVideo,
+            Electrocoin,
+            Coinmaster,
+            AstraA1,
+            Pluto5,
+            Phoenix,
+            Electro, // probably never need this one
+            M1Video,
+            INDER,
+            PCLMAXI,
+            Phoenix2,
+            // new ones from MAME:
+            MPU1,
+        }
+
+
         private const string kTEMPHardcodedMameExeDirectoryPath = "Emulators\\MAME\\mame0258";
-        private const string kTEMPHardcodedRomName = "j6popoli";
 
         private const string kDefaultSaveStateFilename = "oasis_save_state";
 
@@ -60,7 +108,8 @@ namespace Oasis.MAME
         private const string kDataPrefixLamp = "lamp";
         private const string kDataPrefixDigit = "digit";
         private const string kDataPrefixReel = "reel";
-        private const string kDataPrefixVfdDuty0 = "vfdduty0";
+        private const string kDataPrefixVfdDuty = "vfdduty";
+        private const string kDataPrefixVfdBlank = "vfdblank";
         private const string kDataPrefixVfd = "vfd";
 
         private const string kDataScreenPixelBytesStart = "pixel_data_start";
@@ -82,6 +131,12 @@ namespace Oasis.MAME
             "with vsync disabled!")]
         public bool ForceVsyncOffWhenRunning;
 
+        [Tooltip("Temp for testing")]
+        public string DebugMameRomName;
+
+        [Tooltip("Temp for testing")]
+        public PlatformType DebugPlatformType;
+
         public bool DebugOutputStdOut;
 
         public bool DebugOutputMameCommandLine;
@@ -97,6 +152,18 @@ namespace Oasis.MAME
             get;
             private set;
         } = new int[16]; // TEMP test, no idea how large this needs to be wrt all techs!
+
+        public int[] VfdValues
+        {
+            get;
+            private set;
+        } = new int[16]; // TEMP test, no idea how large this needs to be wrt all techs!
+
+        public int[] VfdDuty
+        {
+            get;
+            private set;
+        } = new int[4]; // TEMP test, no idea how large this needs to be wrt all techs!
 
         public UnityEvent OnImportComplete = new UnityEvent();
 
@@ -174,7 +241,7 @@ namespace Oasis.MAME
                 additionalArgs += " " + kArgsStateLoad + " " + kDefaultSaveStateFilename;
             }
 
-            string arguments = kTEMPHardcodedRomName + additionalArgs;
+            string arguments = DebugMameRomName + additionalArgs;
             _process = StartProcess(MameExeDirectoryFullPath, kMameExeFilename, arguments);
 
             if(ForceVsyncOffWhenRunning)
@@ -294,11 +361,8 @@ namespace Oasis.MAME
         // TOIMPROVE - this class will need breaking up into input/output/commands etc
         public void SetButtonState(int buttonNumber, bool state)
         {
-            // TODO just hardcoded lookup of JPM Impact port/tag for testing for the mo, will
-            // need to be dynamic from currently selected Platform for these fruit machine raw inputs
-            // (video games will prob have an option to send 'standard' inputs, like P1 Joystick Up, P2 Fire 1 etc...)
-
-            string tag = MameInputPortHelper.GetMamePortTagImpact(buttonNumber);
+            // video games will prob have an option to send 'standard' inputs, like P1 Joystick Up, P2 Fire 1 etc...
+            string tag = MameInputPortHelper.GetMamePortTag(buttonNumber, DebugPlatformType);
             string mask = MameInputPortHelper.GetMAMEPortInputMaskName(buttonNumber);
 
             SetPortValue(tag, mask, state);
@@ -380,8 +444,12 @@ namespace Oasis.MAME
             {
                 ProcessLineReel(lineData);
             }
+            else if (lineData.Substring(0, kDataPrefixVfd.Length) == kDataPrefixVfd)
+            {
+                ProcessLineVfd(lineData);
+            }
 
-            
+
 
 
         }
@@ -429,6 +497,37 @@ namespace Oasis.MAME
             //UnityEngine.Debug.LogError("reelNumber " + reelNumber + "   reelValue " + reelValue);
 
             ReelValues[reelNumber] = reelValue;
+        }
+
+        private void ProcessLineVfd(string lineData)
+        {
+            // Examples:
+            // vfdduty0 = 29 ; So this applies too all the sub elements of vfd0, range is 0-31
+            // vfd2 = 66555 ; In MAME these are the individual characters on the vfd, should be 1 bit per segment
+            // vfdblank15 = -1 ;  need to parse these
+            int vfdValueStartIndex = lineData.LastIndexOf(' ');
+            string vfdValueString = lineData.Substring(vfdValueStartIndex, lineData.Length - vfdValueStartIndex);
+            int vfdValue = int.Parse(vfdValueString);
+
+            if (lineData.Substring(0, kDataPrefixVfdDuty.Length) == kDataPrefixVfdDuty)
+            {
+                // TOIMPROVE just hard checking for vfd0 for now, some machines may use vfd1,2 etc
+                VfdDuty[0] = vfdValue;
+
+                UnityEngine.Debug.LogError("JP Vfd duty: " + VfdDuty[0]);
+            }
+            else if(lineData.Substring(0, kDataPrefixVfdBlank.Length) == kDataPrefixVfdBlank)
+            {
+                // TODO process these commands to blank Vfd elements (can prob just set associated vfd element number to 0)
+            }
+            else
+            {
+                string vfdNumberString = lineData.Substring(kDataPrefixVfd.Length, 2);
+                int vfdNumber = int.Parse(vfdNumberString);
+                VfdValues[vfdNumber] = vfdValue;
+
+                UnityEngine.Debug.LogError("JP Vfd" + vfdNumber + " = " + VfdValues[vfdNumber]);
+            }
         }
 
         private void OnOutputDataReceived(object sender, DataReceivedEventArgs dataReceivedEventArgs)

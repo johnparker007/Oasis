@@ -53,48 +53,48 @@ function lib:start()
 		end
 	end
 	
-	-- register another handler to output done frames
-	emu.register_frame_done(function()
-		utility:protected_call(callback_frame_done, "callback_frame_done")
-	end)
+	-- -- register another handler to output done frames
+	-- emu.register_frame_done(function()
+		-- utility:protected_call(callback_frame_done, "callback_frame_done")
+	-- end)
 	
-	function callback_frame_done()
-		-- it is essential that we only perform these activities when there
-		-- is an active session!
-		if session_active then
+	-- function callback_frame_done()
+		-- -- it is essential that we only perform these activities when there
+		-- -- is an active session!
+		-- if session_active then
 		
-			local screen = manager.machine.screens["screen"]
+			-- local screen = manager.machine.screens["screen"]
 			
-			print("@Oasis plugin: ### frame done callback received!")
+			-- print("@Oasis plugin: ### frame done callback received!")
 			
-			--local screen_size = manager.machine.video:snapshot_size()
+			-- --local screen_size = manager.machine.video:snapshot_size()
 
-			--local pixel_data = manager.machine.video:snapshot_pixels()
+			-- --local pixel_data = manager.machine.video:snapshot_pixels()
 			
-			-- TOIMPROVE don't need to output screensize every frame, Oasis MameController can get this 
-			-- once on init
-			print("screen_size x: " .. screen.width)
-			print("screen_size y: " .. screen.height)	
-			print("pixel_data_start")
+			-- -- TOIMPROVE don't need to output screensize every frame, Oasis MameController can get this 
+			-- -- once on init
+			-- print("screen_size x: " .. screen.width)
+			-- print("screen_size y: " .. screen.height)	
+			-- print("pixel_data_start")
 			
-			-- doesn't slow down, so it's not pixels() that's slow, it is printing it to stdout
-			print(screen:pixels()[50000])
+			-- -- doesn't slow down, so it's not pixels() that's slow, it is printing it to stdout
+			-- print(screen:pixels()[50000])
 			
-			--print(screen:pixels())
-			print("pixel_data_end")	
+			-- --print(screen:pixels())
+			-- print("pixel_data_end")	
 		
-			-- -- do we have a command?
-			-- if not (console_thread.yield or console_thread.busy) then
+			-- -- -- do we have a command?
+			-- -- if not (console_thread.yield or console_thread.busy) then
 			
-				-- print("@Oasis plugin: ### command line received: " .. console_thread.result)
-				-- -- invoke the command line
-				-- command_processor:invoke_command_line(console_thread.result)
+				-- -- print("@Oasis plugin: ### command line received: " .. console_thread.result)
+				-- -- -- invoke the command line
+				-- -- command_processor:invoke_command_line(console_thread.result)
 
-				-- -- continue on reading
-				-- console_thread:start(script)
-			-- end
-		end
-	end	
+				-- -- -- continue on reading
+				-- -- console_thread:start(script)
+			-- -- end
+		-- end
+	-- end	
 end
 
 return lib

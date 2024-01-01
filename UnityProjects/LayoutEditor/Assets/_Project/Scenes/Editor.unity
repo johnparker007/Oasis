@@ -589,7 +589,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Resources:
     Fonts:
-    - {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}
+    - {fileID: 10102, guid: 0000000000000000e000000000000000, type: 3}
     Images:
       ArrowDown: {fileID: 2800000, guid: 551da730aa768394bacc234eadef02ba, type: 3}
       ArrowLeft: {fileID: 2800000, guid: 1b7b04bb996b0654786062b732dd8fc2, type: 3}
@@ -1098,6 +1098,37 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   xRotationSpeed: 77
   yRotationSpeed: 111
+--- !u!1 &1593585480
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1593585481}
+  m_Layer: 0
+  m_Name: MfmeController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1593585481
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1593585480}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 12
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1597776977
 GameObject:
   m_ObjectHideFlags: 0
@@ -1800,7 +1831,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   UIController: {fileID: 1697159235}
-  MFMEExtractImporter: {fileID: 2083447348}
   MameController: {fileID: 2046216060}
   EditorComponentBackgroundPrefab: {fileID: 1050622726189904241, guid: 4b22f6c6f51ab1248a83e802e92102c8, type: 3}
   EditorComponentLampPrefab: {fileID: 3535370425537893857, guid: d5d925676a1996848bf6f70d96355d80, type: 3}
@@ -1825,50 +1855,6 @@ MonoBehaviour:
   OnZoomLevelSet:
     m_PersistentCalls:
       m_Calls: []
---- !u!1 &2083447346
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2083447347}
-  - component: {fileID: 2083447348}
-  m_Layer: 0
-  m_Name: MFMEExtractImporter
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &2083447347
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2083447346}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_RootOrder: 10
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2083447348
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2083447346}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3899fede796785b49b14e10cfc5e6f69, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1001 &1934027768651686536
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1897,6 +1883,10 @@ PrefabInstance:
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 1934027768812496372, guid: 92875de48b8ebee4299040899e131ec1, type: 3}
+      propertyPath: DebugMameRomName
+      value: m4andycp
+      objectReference: {fileID: 0}
+    - target: {fileID: 1934027768812496372, guid: 92875de48b8ebee4299040899e131ec1, type: 3}
       propertyPath: ArgsOutputConsole
       value: 1
       objectReference: {fileID: 0}
@@ -1906,7 +1896,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1934027768812496372, guid: 92875de48b8ebee4299040899e131ec1, type: 3}
       propertyPath: DebugOutputStdOut
-      value: 0
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1934027768812496372, guid: 92875de48b8ebee4299040899e131ec1, type: 3}
+      propertyPath: DebugPlatformType
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 1934027768812496372, guid: 92875de48b8ebee4299040899e131ec1, type: 3}
       propertyPath: ArgsPluginWorkerUi
@@ -1922,11 +1916,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1934027768812496372, guid: 92875de48b8ebee4299040899e131ec1, type: 3}
       propertyPath: DebugOutputMameCommandLine
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 1934027768812496373, guid: 92875de48b8ebee4299040899e131ec1, type: 3}
       propertyPath: m_RootOrder
-      value: 11
+      value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 1934027768812496373, guid: 92875de48b8ebee4299040899e131ec1, type: 3}
       propertyPath: m_LocalPosition.x
@@ -1991,7 +1985,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8412484400436986447, guid: e489cf3420fa093489936f5194053a21, type: 3}
       propertyPath: m_RootOrder
-      value: 12
+      value: 11
       objectReference: {fileID: 0}
     - target: {fileID: 8412484400436986447, guid: e489cf3420fa093489936f5194053a21, type: 3}
       propertyPath: m_LocalPosition.x

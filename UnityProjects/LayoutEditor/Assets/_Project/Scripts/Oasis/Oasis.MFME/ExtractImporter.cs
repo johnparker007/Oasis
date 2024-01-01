@@ -150,7 +150,8 @@ componentLamp.Number = (int)extractComponentLamp.GetLampNumber(0); // TODO will 
 
             componentReel.BandOasisImage = new Graphics.OasisImage(bandBmpImageFilePath, null, true);
             // we need a +1 for the reel but not the lamps, prob MFME <> MAME inconsistency
-            componentReel.Number = extractComponentReel.Number + 1; 
+            componentReel.Number = extractComponentReel.Number + 1;
+            componentReel.Reversed = extractComponentReel.Reversed;
 
             _layoutObject.AddComponent(componentReel);
         }

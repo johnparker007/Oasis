@@ -4,16 +4,25 @@ using UnityEngine;
 using UnityEngine.UI;
 using Oasis.Layout;
 using Oasis.Graphics;
+using Oasis.MAME;
 
 namespace Oasis.LayoutEditor
 {
     public class EditorComponentReel : EditorComponent2D
     {
-        private int _number = -1;
         private Image _image = null;
         private Sprite _sprite = null;
         private Texture2D _texture2d = null;
         private Material _material = null;
+
+        public ComponentReel ComponentReel
+        {
+            get
+            {
+                return (ComponentReel)Component;
+            }
+        }
+        
 
         protected override void Awake()
         {
@@ -28,11 +37,7 @@ namespace Oasis.LayoutEditor
         {
             base.Initialise(component, layoutEditor);
 
-            ComponentReel componentReel = (ComponentReel)component;
-
-            _number = componentReel.Number;
-
-            OasisImage bandOasisImage = componentReel.BandOasisImage;
+            OasisImage bandOasisImage = ComponentReel.BandOasisImage;
 
             _texture2d = bandOasisImage.GetTexture2dCopy(true);
             _texture2d.filterMode = FilterMode.Point;
@@ -56,17 +61,32 @@ namespace Oasis.LayoutEditor
         protected override void UpdateStateFromEmulation()
         {
             // TOIMPROVE using a -1 for this stuff is crappy code!
-            if (_number == -1)
+            if (ComponentReel.Number == -1)
             {
                 return;
             }
 
             // TODO do UV scrolling for horizontal/vertical reels
-            int reelPosition = LayoutEditor.MameController.ReelValues[_number];
+            int reelPosition = LayoutEditor.MameController.ReelValues[ComponentReel.Number];
             // TODO hardcoded at 96 steps for now, just to get working with JPM impact popeye layout test
             const int kTEMPReelYPositionCount = 96;
             float normalisedOffset = (float)reelPosition / kTEMPReelYPositionCount;
-            normalisedOffset = 1f - normalisedOffset; // this is reversed prob simple to to texture coord system being flipped
+
+            // TODO will need something better/ shared for this; on Impact, reels need to be reversed, but not on MPU4
+            switch(LayoutEditor.MameController.DebugPlatformType)
+            {
+                case MameController.PlatformType.Impact:
+                    normalisedOffset = 1f - normalisedOffset; 
+                    break;
+                case MameController.PlatformType.MPU4:
+                default:
+                    break;
+            }
+
+            if(ComponentReel.Reversed)
+            {
+                normalisedOffset = 1f - normalisedOffset;
+            }
 
             const float kTEMPBandOffsetNormalisedToCorrectRendering = -0.11f; // not sure if this will be same for all techs from MAME
             normalisedOffset += kTEMPBandOffsetNormalisedToCorrectRendering;

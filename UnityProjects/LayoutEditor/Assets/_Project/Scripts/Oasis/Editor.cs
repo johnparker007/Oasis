@@ -1,9 +1,6 @@
-using Oasis.MFME.Extract;
 using SFB;
 using System.Collections;
 using UnityEngine;
-using MFMEExtract;
-using Oasis.Layout;
 using Oasis.MFME;
 using Oasis.LayoutEditor;
 using Oasis.MAME;
@@ -14,7 +11,6 @@ namespace Oasis
     public class Editor : MonoBehaviour
     {
         public UIController UIController;
-        public MFMEExtractImporter MFMEExtractImporter; // TODO can prob get rid of this class
         public MameController MameController;
 
         public EditorComponentBackground EditorComponentBackgroundPrefab;
