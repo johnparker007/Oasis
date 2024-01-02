@@ -165,6 +165,12 @@ namespace Oasis.MAME
             private set;
         } = new int[4]; // TEMP test, no idea how large this needs to be wrt all techs!
 
+        public int[] DigitValues
+        {
+            get;
+            private set;
+        } = new int[64]; // TEMP test, no idea how large this needs to be wrt all techs!
+
         public UnityEvent OnImportComplete = new UnityEvent();
 
         private Process _process = null;
@@ -448,6 +454,10 @@ namespace Oasis.MAME
             {
                 ProcessLineVfd(lineData);
             }
+            else if (lineData.Substring(0, kDataPrefixDigit.Length) == kDataPrefixDigit)
+            {
+                ProcessLineDigit(lineData);
+            }
 
 
 
@@ -514,7 +524,7 @@ namespace Oasis.MAME
                 // TOIMPROVE just hard checking for vfd0 for now, some machines may use vfd1,2 etc
                 VfdDuty[0] = vfdValue;
 
-                UnityEngine.Debug.LogError("JP Vfd duty: " + VfdDuty[0]);
+                //UnityEngine.Debug.LogError("JP Vfd duty: " + VfdDuty[0]);
             }
             else if(lineData.Substring(0, kDataPrefixVfdBlank.Length) == kDataPrefixVfdBlank)
             {
@@ -526,8 +536,22 @@ namespace Oasis.MAME
                 int vfdNumber = int.Parse(vfdNumberString);
                 VfdValues[vfdNumber] = vfdValue;
 
-                UnityEngine.Debug.LogError("JP Vfd" + vfdNumber + " = " + VfdValues[vfdNumber]);
+                //UnityEngine.Debug.LogError("JP Vfd" + vfdNumber + " = " + VfdValues[vfdNumber]);
             }
+        }
+
+        private void ProcessLineDigit(string lineData)
+        {
+            // sets -1 as some kind of init/blank at startup on Andy Capp.  Otherwise seems to be 1 bit per segment
+            int digitValueStartIndex = lineData.LastIndexOf(' ');
+            string digitValueString = lineData.Substring(digitValueStartIndex, lineData.Length - digitValueStartIndex);
+            int digitValue = int.Parse(digitValueString);
+
+            string digitNumberString = lineData.Substring(kDataPrefixDigit.Length, 2);
+            int digitNumber = int.Parse(digitNumberString);
+            DigitValues[digitNumber] = digitValue;
+
+            UnityEngine.Debug.LogError("JP Digit" + digitNumber + " = " + DigitValues[digitNumber]);
         }
 
         private void OnOutputDataReceived(object sender, DataReceivedEventArgs dataReceivedEventArgs)
