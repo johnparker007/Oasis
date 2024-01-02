@@ -62,6 +62,14 @@ namespace Oasis
 
                 editorComponentReel.Initialise((ComponentReel)component, LayoutEditor);
             }
+            else if (component.GetType() == typeof(ComponentSevenSegment))
+            {
+                EditorComponentSevenSegment editorComponentSevenSegment = Instantiate(
+                    LayoutEditor.EditorComponentSevenSegmentPrefab,
+                    LayoutEditor.UIController.EditorCanvasGameObject.transform);
+
+                editorComponentSevenSegment.Initialise((ComponentSevenSegment)component, LayoutEditor);
+            }
 
             OnAddComponent?.Invoke(component);
             OnChanged?.Invoke();

@@ -16,7 +16,7 @@ namespace Oasis
         public EditorComponentBackground EditorComponentBackgroundPrefab;
         public EditorComponentLamp EditorComponentLampPrefab;
         public EditorComponentReel EditorComponentReelPrefab;
-
+        public EditorComponentSevenSegment EditorComponentSevenSegmentPrefab;
         public Zoom Zoom;
 
         public UnityEvent<LayoutObject> OnLayoutSet = new UnityEvent<LayoutObject>();

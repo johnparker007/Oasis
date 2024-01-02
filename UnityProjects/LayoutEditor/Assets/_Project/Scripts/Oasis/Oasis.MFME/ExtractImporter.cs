@@ -175,6 +175,14 @@ componentLamp.Number = (int)extractComponentLamp.GetLampNumber(0); // TODO will 
         {
             ComponentSevenSegment componentSevenSegment = new ComponentSevenSegment();
 
+            componentSevenSegment.RectInt = new RectInt(
+                extractComponentSevenSegment.Position.X,
+                extractComponentSevenSegment.Position.Y,
+                extractComponentSevenSegment.Size.X,
+                extractComponentSevenSegment.Size.Y);
+
+            componentSevenSegment.Number = extractComponentSevenSegment.Number;
+
             _layoutObject.AddComponent(componentSevenSegment);
         }
 

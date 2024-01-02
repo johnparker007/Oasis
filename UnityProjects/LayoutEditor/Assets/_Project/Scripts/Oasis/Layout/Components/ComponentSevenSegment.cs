@@ -6,7 +6,7 @@ namespace Oasis.Layout
 {
     public class ComponentSevenSegment : Component
     {
-
+        public int Number;
     }
 
 }
