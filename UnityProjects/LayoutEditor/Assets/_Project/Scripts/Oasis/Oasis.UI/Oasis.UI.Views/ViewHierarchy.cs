@@ -47,7 +47,7 @@ namespace Oasis.UI.Views
             BuildComponentNode(layoutObject, typeof(ComponentButton), "Buttons", "Button");
             BuildComponentNode(layoutObject, typeof(ComponentReel), "Reels", "Reel");
             BuildComponentNode(layoutObject, typeof(ComponentBackground), "Backgrounds", "Background");
-            BuildComponentNode(layoutObject, typeof(ComponentSevenSegment), "Seven Segments", "Seven Segment");
+            BuildComponentNode(layoutObject, typeof(Component7Segment), "Seven Segments", "Seven Segment");
             BuildComponentNode(layoutObject, typeof(ComponentAlpha), "Alphas", "Alpha");
 
 

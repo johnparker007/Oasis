@@ -4,9 +4,8 @@ using UnityEngine;
 
 namespace Oasis.Layout
 {
-    public class ComponentSevenSegment : Component
+    public class Component16SemicolonSegment : ComponentSegment
     {
-        public int Number;
     }
 
 }

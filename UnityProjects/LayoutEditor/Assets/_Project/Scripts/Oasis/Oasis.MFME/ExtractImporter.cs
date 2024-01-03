@@ -173,17 +173,17 @@ componentLamp.Number = (int)extractComponentLamp.GetLampNumber(0); // TODO will 
 
         private void ImportSevenSegment(ExtractComponentSevenSegment extractComponentSevenSegment)
         {
-            ComponentSevenSegment componentSevenSegment = new ComponentSevenSegment();
+            Component7Segment component7Segment = new Component7Segment();
 
-            componentSevenSegment.RectInt = new RectInt(
+            component7Segment.RectInt = new RectInt(
                 extractComponentSevenSegment.Position.X,
                 extractComponentSevenSegment.Position.Y,
                 extractComponentSevenSegment.Size.X,
                 extractComponentSevenSegment.Size.Y);
 
-            componentSevenSegment.Number = extractComponentSevenSegment.Number;
+            component7Segment.Number = extractComponentSevenSegment.Number;
 
-            _layoutObject.AddComponent(componentSevenSegment);
+            _layoutObject.AddComponent(component7Segment);
         }
 
         private void ImportAlpha(ExtractComponentAlpha extractComponentAlpha)

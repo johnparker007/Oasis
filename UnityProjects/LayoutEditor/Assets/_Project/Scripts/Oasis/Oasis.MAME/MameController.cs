@@ -542,10 +542,16 @@ namespace Oasis.MAME
 
         private void ProcessLineDigit(string lineData)
         {
-            // sets -1 as some kind of init/blank at startup on Andy Capp.  Otherwise seems to be 1 bit per segment
             int digitValueStartIndex = lineData.LastIndexOf(' ');
             string digitValueString = lineData.Substring(digitValueStartIndex, lineData.Length - digitValueStartIndex);
             int digitValue = int.Parse(digitValueString);
+
+            // sets -1 as some kind of init/blank at startup on Andy Capp.  Otherwise seems to be 1 bit per segment
+            if(digitValue == -1)
+            {
+                UnityEngine.Debug.LogError("JP Digit reset");
+                digitValue = 0;
+            }
 
             string digitNumberString = lineData.Substring(kDataPrefixDigit.Length, 2);
             int digitNumber = int.Parse(digitNumberString);
