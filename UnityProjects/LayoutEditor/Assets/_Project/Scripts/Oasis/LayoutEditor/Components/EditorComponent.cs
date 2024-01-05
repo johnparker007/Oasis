@@ -9,7 +9,7 @@ namespace Oasis.LayoutEditor
         public Editor LayoutEditor
         {
             get;
-            private set;
+            protected set;
         }
 
         public Layout.Component Component

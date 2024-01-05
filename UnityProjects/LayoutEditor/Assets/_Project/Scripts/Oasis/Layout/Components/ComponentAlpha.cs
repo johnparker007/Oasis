@@ -6,7 +6,7 @@ namespace Oasis.Layout
 {
     public class ComponentAlpha : Component
     {
-
+        public bool Reversed;
     }
 
 }

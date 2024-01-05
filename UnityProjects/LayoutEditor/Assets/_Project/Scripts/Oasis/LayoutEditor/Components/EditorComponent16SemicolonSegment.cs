@@ -12,13 +12,25 @@ namespace Oasis.LayoutEditor
         public override void Initialise(
             Layout.Component component, Editor layoutEditor)
         {
-            base.Initialise(component, layoutEditor);
+            LayoutEditor = layoutEditor;
 
-            Component16SemicolonSegment component16SemicolonSegment
-                = (Component16SemicolonSegment)component;
+            //base.Initialise(component, layoutEditor);
 
-            _number = component16SemicolonSegment.Number;
+            //Component16SemicolonSegment component16SemicolonSegment
+            //    = (Component16SemicolonSegment)component;
+
+            //_number = component16SemicolonSegment.Number;
         }
+
+        public void Setup(int vfdSegmentNumber)
+        {
+            _number = vfdSegmentNumber;
+        }
+
+        //public void UpdateStateFromEmulationPublic()
+        //{
+        //    UpdateStateFromEmulation();
+        //}
 
         protected override void UpdateStateFromEmulation()
         {
@@ -28,48 +40,47 @@ namespace Oasis.LayoutEditor
                 return;
             }
 
-            int segmentValue = LayoutEditor.MameController.DigitValues[_number];
-
+            int segmentValue = LayoutEditor.MameController.VfdValues[_number];
 
             // listed in MAME-defined bit order from rendlay.cpp:
 
             // top-left bar (0 red)
-            _material.SetFloat("_SegmentBrightness__TODO__", GetSegmentBrightness((segmentValue >> 0) & 1));
+            _material.SetFloat("_SegmentBrightness0", GetSegmentBrightness((segmentValue >> 0) & 1));
             // top-right bar (0 green)
-            _material.SetFloat("_SegmentBrightness__TODO__", GetSegmentBrightness((segmentValue >> 1) & 1));
+            _material.SetFloat("_SegmentBrightness1", GetSegmentBrightness((segmentValue >> 1) & 1));
             // right-top bar (0 blue)
-            _material.SetFloat("_SegmentBrightness__TODO__", GetSegmentBrightness((segmentValue >> 2) & 1));
+            _material.SetFloat("_SegmentBrightness2", GetSegmentBrightness((segmentValue >> 2) & 1));
             // right-bottom bar (0 alpha)
-            _material.SetFloat("_SegmentBrightness__TODO__", GetSegmentBrightness((segmentValue >> 3) & 1));
+            _material.SetFloat("_SegmentBrightness3", GetSegmentBrightness((segmentValue >> 3) & 1));
             // bottom-right bar (1 red)
-            _material.SetFloat("_SegmentBrightness__TODO__", GetSegmentBrightness((segmentValue >> 4) & 1));
+            _material.SetFloat("_SegmentBrightness4", GetSegmentBrightness((segmentValue >> 4) & 1));
             // bottom-left bar (1 green)
-            _material.SetFloat("_SegmentBrightness__TODO__", GetSegmentBrightness((segmentValue >> 5) & 1));
+            _material.SetFloat("_SegmentBrightness5", GetSegmentBrightness((segmentValue >> 5) & 1));
             // left-bottom bar (1 blue)
-            _material.SetFloat("_SegmentBrightness__TODO__", GetSegmentBrightness((segmentValue >> 6) & 1));
+            _material.SetFloat("_SegmentBrightness6", GetSegmentBrightness((segmentValue >> 6) & 1));
             // left-top bar (1 alpha)
-            _material.SetFloat("_SegmentBrightness__TODO__", GetSegmentBrightness((segmentValue >> 7) & 1));
+            _material.SetFloat("_SegmentBrightness7", GetSegmentBrightness((segmentValue >> 7) & 1));
             // horizontal-middle-left bar (2 red)
-            _material.SetFloat("_SegmentBrightness__TODO__", GetSegmentBrightness((segmentValue >> 8) & 1));
+            _material.SetFloat("_SegmentBrightness8", GetSegmentBrightness((segmentValue >> 8) & 1));
             // horizontal-middle-right bar (2 green)
-            _material.SetFloat("_SegmentBrightness__TODO__", GetSegmentBrightness((segmentValue >> 9) & 1));
+            _material.SetFloat("_SegmentBrightness9", GetSegmentBrightness((segmentValue >> 9) & 1));
             // vertical-middle-top bar (2 blue)
-            _material.SetFloat("_SegmentBrightness__TODO__", GetSegmentBrightness((segmentValue >> 10) & 1));
+            _material.SetFloat("_SegmentBrightness10", GetSegmentBrightness((segmentValue >> 10) & 1));
             // vertical-middle-bottom bar (2 alpha)
-            _material.SetFloat("_SegmentBrightness__TODO__", GetSegmentBrightness((segmentValue >> 11) & 1));
+            _material.SetFloat("_SegmentBrightness11", GetSegmentBrightness((segmentValue >> 11) & 1));
             // diagonal-left-bottom bar (3 red)
-            _material.SetFloat("_SegmentBrightness__TODO__", GetSegmentBrightness((segmentValue >> 12) & 1));
+            _material.SetFloat("_SegmentBrightness12", GetSegmentBrightness((segmentValue >> 12) & 1));
             // diagonal-left-top bar (3 green)
-            _material.SetFloat("_SegmentBrightness__TODO__", GetSegmentBrightness((segmentValue >> 13) & 1));
+            _material.SetFloat("_SegmentBrightness13", GetSegmentBrightness((segmentValue >> 13) & 1));
             // diagonal-right-top bar (3 blue)
-            _material.SetFloat("_SegmentBrightness__TODO__", GetSegmentBrightness((segmentValue >> 14) & 1));
+            _material.SetFloat("_SegmentBrightness14", GetSegmentBrightness((segmentValue >> 14) & 1));
             // diagonal-right-bottom bar (3 alpha)
-            _material.SetFloat("_SegmentBrightness__TODO__", GetSegmentBrightness((segmentValue >> 15) & 1));
+            _material.SetFloat("_SegmentBrightness15", GetSegmentBrightness((segmentValue >> 15) & 1));
 
             // decimal point (4 red)
-            _material.SetFloat("_SegmentBrightness__TODO__", GetSegmentBrightness((segmentValue >> 16) & 1));
+            _material.SetFloat("_SegmentBrightness16", GetSegmentBrightness((segmentValue >> 16) & 1));
             // comma tail (4 green)
-            _material.SetFloat("_SegmentBrightness__TODO__", GetSegmentBrightness((segmentValue >> 17) & 1));
+            //_material.SetFloat("_SegmentBrightness17", GetSegmentBrightness((segmentValue >> 17) & 1));
 
         }
     }

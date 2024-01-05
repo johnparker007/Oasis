@@ -190,12 +190,28 @@ componentLamp.Number = (int)extractComponentLamp.GetLampNumber(0); // TODO will 
         {
             ComponentAlpha componentAlpha = new ComponentAlpha();
 
+            componentAlpha.RectInt = new RectInt(
+                extractComponentAlpha.Position.X,
+                extractComponentAlpha.Position.Y,
+                extractComponentAlpha.Size.X,
+                extractComponentAlpha.Size.Y);
+
+            componentAlpha.Reversed = extractComponentAlpha.Reversed;
+
             _layoutObject.AddComponent(componentAlpha);
         }
 
         private void ImportAlphaNew(ExtractComponentAlphaNew extractComponentAlphaNew)
         {
             ComponentAlpha componentAlpha = new ComponentAlpha();
+
+            componentAlpha.RectInt = new RectInt(
+                extractComponentAlphaNew.Position.X,
+                extractComponentAlphaNew.Position.Y,
+                extractComponentAlphaNew.Size.X,
+                extractComponentAlphaNew.Size.Y);
+
+            componentAlpha.Reversed = extractComponentAlphaNew.Reversed;
 
             _layoutObject.AddComponent(componentAlpha);
         }
