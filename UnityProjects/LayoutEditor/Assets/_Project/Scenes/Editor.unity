@@ -1836,6 +1836,7 @@ MonoBehaviour:
   EditorComponentLampPrefab: {fileID: 3535370425537893857, guid: d5d925676a1996848bf6f70d96355d80, type: 3}
   EditorComponentReelPrefab: {fileID: 7270301404913838959, guid: ee690e3c8550a8a47953c65871800e76, type: 3}
   EditorComponentSevenSegmentPrefab: {fileID: 7496649456409283726, guid: e2724f460f4da8d4f95bd8830d362e6b, type: 3}
+  EditorComponent16SemicolonSegmentPrefab: {fileID: 32469920094958937, guid: f373d810af4ceb14caf902d7080ef12d, type: 3}
   Zoom: {fileID: 2080336308}
   OnLayoutSet:
     m_PersistentCalls:
