@@ -31,7 +31,7 @@ namespace Oasis.LayoutEditor
         protected float GetSegmentBrightness(int segmentBitValue)
         {
             const float kOnBrightness = 1f;
-            const float kOffBrightness = 0.1f;
+            const float kOffBrightness = 0.04f;
 
             if (segmentBitValue == 1)
             {
