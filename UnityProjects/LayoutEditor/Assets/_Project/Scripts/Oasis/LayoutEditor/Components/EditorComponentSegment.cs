@@ -9,6 +9,11 @@ namespace Oasis.LayoutEditor
 {
     public abstract class EditorComponentSegment : EditorComponent2D
     {
+        private const float kOnBrightness = 1f;
+        private const float kOffBrightness = 0.04f;
+        private const float kBrightnessRange = kOnBrightness - kOffBrightness;
+
+
         protected int _number = -1;
         protected Material _material = null;
 
@@ -30,9 +35,6 @@ namespace Oasis.LayoutEditor
 
         protected float GetSegmentBrightness(int segmentBitValue)
         {
-            const float kOnBrightness = 1f;
-            const float kOffBrightness = 0.04f;
-
             if (segmentBitValue == 1)
             {
                 return kOnBrightness;
@@ -41,6 +43,17 @@ namespace Oasis.LayoutEditor
             {
                 return kOffBrightness;
             }
+        }
+
+        protected float GetSegmentBrightness(int segmentBitValue, float dutyNormalised)
+        {
+            float brightness = kOffBrightness;
+            if (segmentBitValue == 1)
+            {
+                brightness += kBrightnessRange * dutyNormalised;
+            }
+
+            return brightness;
         }
     }
 
