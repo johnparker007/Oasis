@@ -5,6 +5,7 @@ using Oasis.MFME;
 using Oasis.LayoutEditor;
 using Oasis.MAME;
 using UnityEngine.Events;
+using System.Windows.Forms;
 
 namespace Oasis
 {
@@ -87,6 +88,11 @@ namespace Oasis
             ExtractImporter.OnImportComplete.RemoveListener(OnImportComplete);
         }
 
+        public void OnFileExtractClick()
+        {
+            Debug.LogError("TODO OnFileExtractClick");
+        }
+
         public void OnFileImportClick()
         {
             //string[] paths = StandaloneFileBrowser.OpenFolderPanel("MFME Extract folder", null, false);
@@ -98,6 +104,11 @@ namespace Oasis
             {
                 Extractor.LoadLayout(paths[0]);
             }
+        }
+
+        public void OnFileExportClick()
+        {
+            Debug.LogError("TODO OnFileExportClick");
         }
 
         public void OnEmulationStartClick()
@@ -158,6 +169,22 @@ namespace Oasis
         public void OnEmulationStartAndStateLoadClick()
         {
             MameController.StartMame(true);
+        }
+
+        public void OnHelpAboutClick()
+        {
+            Debug.LogError("Help About click");
+
+            //var form = new Form();
+            //form.Parent = UIController.RootUI;
+            //form.Text = "About";
+            //form.Show();
+            //form.ShowDialog();
+            //var buttonDialog = form.Create<Button>("Dialog");
+
+
+
+            UIController.ShowAboutForm();
         }
 
         private void OnImportComplete()

@@ -32,8 +32,6 @@ namespace Oasis.UI.Views
         {
             BuildStatusBarPanel();
 
-            //Panel.Controls.Add(MenuStrip);
-
             _parent.Controls.Add(Panel);
 
             ViewModelStatusBar.OnZoomChanged.AddListener(OnZoomChanged);

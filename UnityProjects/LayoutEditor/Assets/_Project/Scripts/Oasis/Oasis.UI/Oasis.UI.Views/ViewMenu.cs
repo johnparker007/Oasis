@@ -72,10 +72,14 @@ namespace Oasis.UI.Views
             var itemFile_Save = new ToolStripMenuItem("Save...");
             var itemFile_SaveAs = new ToolStripMenuItem("Save As...");
 
-            var itemFile_Import = new ToolStripMenuItem("Import");
+            var itemFile_Extract = new ToolStripMenuItem("MFME Extract");
+            itemFile_Extract.Click += ViewModelMenu.OnFile_ExtractClick;
+
+            var itemFile_Import = new ToolStripMenuItem("MFME Import");
             itemFile_Import.Click += ViewModelMenu.OnFile_ImportClick;
 
-            var itemFile_Export = new ToolStripMenuItem("Export");
+            var itemFile_Export = new ToolStripMenuItem("MAME Export");
+            itemFile_Export.Click += ViewModelMenu.OnFile_ExportClick;
 
             var itemFile_Close = new ToolStripMenuItem("Close");
             var itemFile_Exit = new ToolStripMenuItem("Exit");
@@ -85,6 +89,7 @@ namespace Oasis.UI.Views
             itemFile.DropDownItems.Add(itemFile_Save);
             itemFile.DropDownItems.Add(itemFile_SaveAs);
             itemFile.DropDownItems.Add(new ToolStripSeparator());
+            itemFile.DropDownItems.Add(itemFile_Extract);
             itemFile.DropDownItems.Add(itemFile_Import);
             itemFile.DropDownItems.Add(itemFile_Export);
             itemFile.DropDownItems.Add(new ToolStripSeparator());
@@ -226,6 +231,7 @@ namespace Oasis.UI.Views
             var itemHelp_CheckForUpdates = new ToolStripMenuItem("Check for Updates");
 
             var itemHelp_About = new ToolStripMenuItem("About");
+            itemHelp_About.Click += ViewModelMenu.OnHelp_AboutClick;
 
             itemHelp.DropDownItems.Add(itemHelp_ContextHelp);
             itemHelp.DropDownItems.Add(itemHelp_Manual);

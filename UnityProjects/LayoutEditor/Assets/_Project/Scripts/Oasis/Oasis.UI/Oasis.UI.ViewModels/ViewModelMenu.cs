@@ -9,7 +9,9 @@ namespace Oasis.UI.ViewModels
 {
     public class ViewModelMenu : ViewModel
     {
+        public UnityEvent OnFileExtractClick = new UnityEvent();
         public UnityEvent OnFileImportClick = new UnityEvent();
+        public UnityEvent OnFileExportClick = new UnityEvent();
 
         public UnityEvent OnEmulationStartClick = new UnityEvent();
         public UnityEvent OnEmulationExitClick = new UnityEvent();
@@ -22,7 +24,10 @@ namespace Oasis.UI.ViewModels
         public UnityEvent OnEmulationStateLoadClick = new UnityEvent();
         public UnityEvent OnEmulationStateSaveClick = new UnityEvent();
         public UnityEvent OnEmulationStateSaveAndExitClick = new UnityEvent();
-        public UnityEvent OnEmulationStartAndStateLoadClick = new UnityEvent();      
+        public UnityEvent OnEmulationStartAndStateLoadClick = new UnityEvent();
+
+        public UnityEvent OnHelpAboutClick = new UnityEvent();
+
 
         public ViewMenu ViewMenu
         {
@@ -45,9 +50,19 @@ namespace Oasis.UI.ViewModels
             _view = new ViewMenu(rootUI, parent, this);
         }
 
+        public void OnFile_ExtractClick(object sender, EventArgs e)
+        {
+            OnFileExtractClick?.Invoke();
+        }
+
         public void OnFile_ImportClick(object sender, EventArgs e)
         {
             OnFileImportClick?.Invoke();
+        }
+
+        public void OnFile_ExportClick(object sender, EventArgs e)
+        {
+            OnFileExportClick?.Invoke();
         }
 
         public void OnEmulation_StartClick(object sender, EventArgs e)
@@ -109,7 +124,10 @@ namespace Oasis.UI.ViewModels
         {
             OnEmulationStartAndStateLoadClick?.Invoke();
         }
-        
 
+        public void OnHelp_AboutClick(object sender, EventArgs e)
+        {
+            OnHelpAboutClick?.Invoke();
+        }
     }
 }

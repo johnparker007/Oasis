@@ -319,7 +319,8 @@
         {
             if (AlwaysFocused) return;
 
-            if (parent != null && 
+            if (parent != null &&
+                parent.controls != null && // JP added this guard for a dummy master App Window root parent that can have no controls
                 parent.controls.Count > 0 && 
                 parent.controls[parent.controls.Count - 1] != this)
             {
