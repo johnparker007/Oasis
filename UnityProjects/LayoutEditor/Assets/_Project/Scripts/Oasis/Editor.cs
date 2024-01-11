@@ -90,7 +90,7 @@ namespace Oasis
 
         public void OnFileExtractClick()
         {
-            Debug.LogError("TODO OnFileExtractClick");
+            UIController.ShowMfmeExtractForm();
         }
 
         public void OnFileImportClick()
@@ -173,17 +173,6 @@ namespace Oasis
 
         public void OnHelpAboutClick()
         {
-            Debug.LogError("Help About click");
-
-            //var form = new Form();
-            //form.Parent = UIController.RootUI;
-            //form.Text = "About";
-            //form.Show();
-            //form.ShowDialog();
-            //var buttonDialog = form.Create<Button>("Dialog");
-
-
-
             UIController.ShowAboutForm();
         }
 

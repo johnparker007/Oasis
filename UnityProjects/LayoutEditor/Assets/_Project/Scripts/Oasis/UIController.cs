@@ -27,6 +27,13 @@ namespace Oasis
             private set;
         } = null;
 
+        public MfmeExtractForm MfmeExtractForm
+        {
+            get;
+            private set;
+        } = null;
+
+
         private void Start()
         {
             RebuildUI();
@@ -52,11 +59,16 @@ namespace Oasis
 
         public void ShowAboutForm()
         {
-            // for now, seem to need to create a new form each time we want to 
-            // show it, to be checked in case this is wrong...
             AboutForm = new AboutForm(this);
             AboutForm.AssignParent(RootUI);
             AboutForm.ShowDialog();
+        }
+
+        public void ShowMfmeExtractForm()
+        {
+            MfmeExtractForm = new MfmeExtractForm(this);
+            MfmeExtractForm.AssignParent(RootUI);
+            MfmeExtractForm.ShowDialog();
         }
     }
 }
