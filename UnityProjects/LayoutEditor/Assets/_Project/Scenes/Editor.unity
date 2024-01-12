@@ -1098,6 +1098,103 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   xRotationSpeed: 77
   yRotationSpeed: 111
+--- !u!1 &1408368880
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1408368882}
+  - component: {fileID: 1408368881}
+  m_Layer: 0
+  m_Name: NativeMenuBar
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1408368881
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1408368880}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c592f7696a270b4f92649824491b365, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  menuRootItems:
+  - name: File
+    menuItems:
+    - name: Open
+      menuItems: []
+      shortcut: 79
+      shortcutCombination: 2
+      action:
+        m_PersistentCalls:
+          m_Calls: []
+  - name: Edit
+    menuItems:
+    - name: Copy
+      menuItems: []
+      shortcut: 67
+      shortcutCombination: 2
+      action:
+        m_PersistentCalls:
+          m_Calls: []
+    - name: Paste
+      menuItems: []
+      shortcut: 86
+      shortcutCombination: 2
+      action:
+        m_PersistentCalls:
+          m_Calls: []
+  - name: Component
+    menuItems:
+    - name: Lamp
+      menuItems: []
+      shortcut: 76
+      shortcutCombination: 2
+      action:
+        m_PersistentCalls:
+          m_Calls: []
+  - name: Emulation
+    menuItems:
+    - name: Start
+      menuItems: []
+      shortcut: 83
+      shortcutCombination: 3
+      action:
+        m_PersistentCalls:
+          m_Calls: []
+  - name: Help
+    menuItems:
+    - name: About
+      menuItems: []
+      shortcut: 0
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls: []
+--- !u!4 &1408368882
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1408368880}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 13
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1593585480
 GameObject:
   m_ObjectHideFlags: 0
