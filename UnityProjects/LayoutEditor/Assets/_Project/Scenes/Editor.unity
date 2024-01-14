@@ -1723,42 +1723,42 @@ MonoBehaviour:
     menuItems:
     - name: Context Help
       menuItems: []
-      shortcut: 0
+      shortcut: 32
       shortcutCombination: 0
       action:
         m_PersistentCalls:
           m_Calls: []
     - name: Manual
       menuItems: []
-      shortcut: 0
+      shortcut: 32
       shortcutCombination: 0
       action:
         m_PersistentCalls:
           m_Calls: []
     - name: '-'
       menuItems: []
-      shortcut: 0
+      shortcut: 32
       shortcutCombination: 0
       action:
         m_PersistentCalls:
           m_Calls: []
     - name: Check For Updates
       menuItems: []
-      shortcut: 0
+      shortcut: 32
       shortcutCombination: 0
       action:
         m_PersistentCalls:
           m_Calls: []
     - name: '-'
       menuItems: []
-      shortcut: 0
+      shortcut: 32
       shortcutCombination: 0
       action:
         m_PersistentCalls:
           m_Calls: []
     - name: About
       menuItems: []
-      shortcut: 0
+      shortcut: 32
       shortcutCombination: 0
       action:
         m_PersistentCalls:

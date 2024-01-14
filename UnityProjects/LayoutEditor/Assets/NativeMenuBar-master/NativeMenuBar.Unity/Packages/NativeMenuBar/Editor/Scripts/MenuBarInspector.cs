@@ -64,16 +64,22 @@ using System.Linq;
 
                         separatorCount++;
                     }
-
+                      
                     stringBuilder.AppendLine($"    [UnityEditor.MenuItem(\"NativeMenuBar/{commandNameSeparatorFixed}\")]");
                     stringBuilder.AppendLine($"    private static void {menuItemFullPathSeparatorFixed}()");
                     stringBuilder.AppendLine($"    {{");
-                    stringBuilder.AppendLine($"        menubar.MenuItems.Single(item => item.FullPath == \"{menuItem.FullPath}\").Action.Invoke();");
+
+                    //                    stringBuilder.AppendLine($"        menubar.MenuItems.Single(item => item.FullPath == \"{menuItem.FullPath}\").Action.Invoke();");
+                    stringBuilder.AppendLine($"        menubar.MenuItems.Single(item => item.FullPath == \"{commandNameSeparatorFixed}\").Action.Invoke();");
+
                     stringBuilder.AppendLine($"    }}");
                     stringBuilder.AppendLine($"    [UnityEditor.MenuItem(\"NativeMenuBar/{commandNameSeparatorFixed}\", true)]");
                     stringBuilder.AppendLine($"    private static bool {menuItemFullPathSeparatorFixed}Validate()");
                     stringBuilder.AppendLine($"    {{");
-                    stringBuilder.AppendLine($"        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == \"{menuItem.FullPath}\").IsInteractable;");
+
+                    //                    stringBuilder.AppendLine($"        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == \"{menuItem.FullPath}\").IsInteractable;");
+                    stringBuilder.AppendLine($"        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == \"{commandNameSeparatorFixed}\").IsInteractable;");
+
                     stringBuilder.AppendLine($"    }}");
                 }
                 stringBuilder.AppendLine($"{Environment.NewLine}}}");
@@ -86,7 +92,7 @@ using System.Linq;
 
                 AssetDatabase.Refresh();
             }
-        }
+        } 
 
         // https://gist.github.com/raducugheorghe/66e4e44b69caf2e4c7ab
         public static string SanitizeFolderName(string name)

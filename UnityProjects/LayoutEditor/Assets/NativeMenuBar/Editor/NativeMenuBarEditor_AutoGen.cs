@@ -27,22 +27,22 @@ public static class NativeMenuBar_AutoGen
     [UnityEditor.MenuItem("NativeMenuBar/File/Open _O")]
     private static void FileOpen()
     {
-        menubar.MenuItems.Single(item => item.FullPath == "File/Open").Action.Invoke();
+        menubar.MenuItems.Single(item => item.FullPath == "File/Open _O").Action.Invoke();
     }
     [UnityEditor.MenuItem("NativeMenuBar/File/Open _O", true)]
     private static bool FileOpenValidate()
     {
-        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "File/Open").IsInteractable;
+        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "File/Open _O").IsInteractable;
     }
     [UnityEditor.MenuItem("NativeMenuBar/File/Save _S")]
     private static void FileSave()
     {
-        menubar.MenuItems.Single(item => item.FullPath == "File/Save").Action.Invoke();
+        menubar.MenuItems.Single(item => item.FullPath == "File/Save _S").Action.Invoke();
     }
     [UnityEditor.MenuItem("NativeMenuBar/File/Save _S", true)]
     private static bool FileSaveValidate()
     {
-        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "File/Save").IsInteractable;
+        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "File/Save _S").IsInteractable;
     }
     [UnityEditor.MenuItem("NativeMenuBar/File/Save As")]
     private static void FileSaveAs()
@@ -97,12 +97,12 @@ public static class NativeMenuBar_AutoGen
     [UnityEditor.MenuItem("NativeMenuBar/File/--")]
     private static void File_1()
     {
-        menubar.MenuItems.Single(item => item.FullPath == "File/-").Action.Invoke();
+        menubar.MenuItems.Single(item => item.FullPath == "File/--").Action.Invoke();
     }
     [UnityEditor.MenuItem("NativeMenuBar/File/--", true)]
     private static bool File_1Validate()
     {
-        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "File/-").IsInteractable;
+        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "File/--").IsInteractable;
     }
     [UnityEditor.MenuItem("NativeMenuBar/File/Close")]
     private static void FileClose()
@@ -127,82 +127,82 @@ public static class NativeMenuBar_AutoGen
     [UnityEditor.MenuItem("NativeMenuBar/Edit/Undo _Z")]
     private static void EditUndo()
     {
-        menubar.MenuItems.Single(item => item.FullPath == "Edit/Undo").Action.Invoke();
+        menubar.MenuItems.Single(item => item.FullPath == "Edit/Undo _Z").Action.Invoke();
     }
     [UnityEditor.MenuItem("NativeMenuBar/Edit/Undo _Z", true)]
     private static bool EditUndoValidate()
     {
-        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Edit/Undo").IsInteractable;
+        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Edit/Undo _Z").IsInteractable;
     }
     [UnityEditor.MenuItem("NativeMenuBar/Edit/Redo _Y")]
     private static void EditRedo()
     {
-        menubar.MenuItems.Single(item => item.FullPath == "Edit/Redo").Action.Invoke();
+        menubar.MenuItems.Single(item => item.FullPath == "Edit/Redo _Y").Action.Invoke();
     }
     [UnityEditor.MenuItem("NativeMenuBar/Edit/Redo _Y", true)]
     private static bool EditRedoValidate()
     {
-        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Edit/Redo").IsInteractable;
+        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Edit/Redo _Y").IsInteractable;
     }
     [UnityEditor.MenuItem("NativeMenuBar/Edit/---")]
     private static void Edit_2()
     {
-        menubar.MenuItems.Single(item => item.FullPath == "Edit/-").Action.Invoke();
+        menubar.MenuItems.Single(item => item.FullPath == "Edit/---").Action.Invoke();
     }
     [UnityEditor.MenuItem("NativeMenuBar/Edit/---", true)]
     private static bool Edit_2Validate()
     {
-        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Edit/-").IsInteractable;
+        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Edit/---").IsInteractable;
     }
     [UnityEditor.MenuItem("NativeMenuBar/Edit/Cut _X")]
     private static void EditCut()
     {
-        menubar.MenuItems.Single(item => item.FullPath == "Edit/Cut").Action.Invoke();
+        menubar.MenuItems.Single(item => item.FullPath == "Edit/Cut _X").Action.Invoke();
     }
     [UnityEditor.MenuItem("NativeMenuBar/Edit/Cut _X", true)]
     private static bool EditCutValidate()
     {
-        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Edit/Cut").IsInteractable;
+        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Edit/Cut _X").IsInteractable;
     }
     [UnityEditor.MenuItem("NativeMenuBar/Edit/Copy _C")]
     private static void EditCopy()
     {
-        menubar.MenuItems.Single(item => item.FullPath == "Edit/Copy").Action.Invoke();
+        menubar.MenuItems.Single(item => item.FullPath == "Edit/Copy _C").Action.Invoke();
     }
     [UnityEditor.MenuItem("NativeMenuBar/Edit/Copy _C", true)]
     private static bool EditCopyValidate()
     {
-        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Edit/Copy").IsInteractable;
+        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Edit/Copy _C").IsInteractable;
     }
     [UnityEditor.MenuItem("NativeMenuBar/Edit/Paste _V")]
     private static void EditPaste()
     {
-        menubar.MenuItems.Single(item => item.FullPath == "Edit/Paste").Action.Invoke();
+        menubar.MenuItems.Single(item => item.FullPath == "Edit/Paste _V").Action.Invoke();
     }
     [UnityEditor.MenuItem("NativeMenuBar/Edit/Paste _V", true)]
     private static bool EditPasteValidate()
     {
-        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Edit/Paste").IsInteractable;
+        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Edit/Paste _V").IsInteractable;
     }
     [UnityEditor.MenuItem("NativeMenuBar/Edit/----")]
     private static void Edit_3()
     {
-        menubar.MenuItems.Single(item => item.FullPath == "Edit/-").Action.Invoke();
+        menubar.MenuItems.Single(item => item.FullPath == "Edit/----").Action.Invoke();
     }
     [UnityEditor.MenuItem("NativeMenuBar/Edit/----", true)]
     private static bool Edit_3Validate()
     {
-        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Edit/-").IsInteractable;
+        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Edit/----").IsInteractable;
     }
     [UnityEditor.MenuItem("NativeMenuBar/Edit/Duplicate _D")]
     private static void EditDuplicate()
     {
-        menubar.MenuItems.Single(item => item.FullPath == "Edit/Duplicate").Action.Invoke();
+        menubar.MenuItems.Single(item => item.FullPath == "Edit/Duplicate _D").Action.Invoke();
     }
     [UnityEditor.MenuItem("NativeMenuBar/Edit/Duplicate _D", true)]
     private static bool EditDuplicateValidate()
     {
-        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Edit/Duplicate").IsInteractable;
+        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Edit/Duplicate _D").IsInteractable;
     }
     [UnityEditor.MenuItem("NativeMenuBar/Edit/Rename")]
     private static void EditRename()
@@ -227,12 +227,12 @@ public static class NativeMenuBar_AutoGen
     [UnityEditor.MenuItem("NativeMenuBar/Edit/-----")]
     private static void Edit_4()
     {
-        menubar.MenuItems.Single(item => item.FullPath == "Edit/-").Action.Invoke();
+        menubar.MenuItems.Single(item => item.FullPath == "Edit/-----").Action.Invoke();
     }
     [UnityEditor.MenuItem("NativeMenuBar/Edit/-----", true)]
     private static bool Edit_4Validate()
     {
-        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Edit/-").IsInteractable;
+        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Edit/-----").IsInteractable;
     }
     [UnityEditor.MenuItem("NativeMenuBar/Edit/Preferences")]
     private static void EditPreferences()
@@ -327,12 +327,12 @@ public static class NativeMenuBar_AutoGen
     [UnityEditor.MenuItem("NativeMenuBar/Component/------")]
     private static void Component_5()
     {
-        menubar.MenuItems.Single(item => item.FullPath == "Component/-").Action.Invoke();
+        menubar.MenuItems.Single(item => item.FullPath == "Component/------").Action.Invoke();
     }
     [UnityEditor.MenuItem("NativeMenuBar/Component/------", true)]
     private static bool Component_5Validate()
     {
-        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Component/-").IsInteractable;
+        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Component/------").IsInteractable;
     }
     [UnityEditor.MenuItem("NativeMenuBar/Component/Group")]
     private static void ComponentGroup()
@@ -367,12 +367,12 @@ public static class NativeMenuBar_AutoGen
     [UnityEditor.MenuItem("NativeMenuBar/Emulation/-------")]
     private static void Emulation_6()
     {
-        menubar.MenuItems.Single(item => item.FullPath == "Emulation/-").Action.Invoke();
+        menubar.MenuItems.Single(item => item.FullPath == "Emulation/-------").Action.Invoke();
     }
     [UnityEditor.MenuItem("NativeMenuBar/Emulation/-------", true)]
     private static bool Emulation_6Validate()
     {
-        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Emulation/-").IsInteractable;
+        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Emulation/-------").IsInteractable;
     }
     [UnityEditor.MenuItem("NativeMenuBar/Emulation/Start")]
     private static void EmulationStart()
@@ -417,12 +417,12 @@ public static class NativeMenuBar_AutoGen
     [UnityEditor.MenuItem("NativeMenuBar/Emulation/--------")]
     private static void Emulation_7()
     {
-        menubar.MenuItems.Single(item => item.FullPath == "Emulation/-").Action.Invoke();
+        menubar.MenuItems.Single(item => item.FullPath == "Emulation/--------").Action.Invoke();
     }
     [UnityEditor.MenuItem("NativeMenuBar/Emulation/--------", true)]
     private static bool Emulation_7Validate()
     {
-        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Emulation/-").IsInteractable;
+        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Emulation/--------").IsInteractable;
     }
     [UnityEditor.MenuItem("NativeMenuBar/Emulation/Pause")]
     private static void EmulationPause()
@@ -447,12 +447,12 @@ public static class NativeMenuBar_AutoGen
     [UnityEditor.MenuItem("NativeMenuBar/Emulation/---------")]
     private static void Emulation_8()
     {
-        menubar.MenuItems.Single(item => item.FullPath == "Emulation/-").Action.Invoke();
+        menubar.MenuItems.Single(item => item.FullPath == "Emulation/---------").Action.Invoke();
     }
     [UnityEditor.MenuItem("NativeMenuBar/Emulation/---------", true)]
     private static bool Emulation_8Validate()
     {
-        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Emulation/-").IsInteractable;
+        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Emulation/---------").IsInteractable;
     }
     [UnityEditor.MenuItem("NativeMenuBar/Emulation/Throttle")]
     private static void EmulationThrottle()
@@ -477,12 +477,12 @@ public static class NativeMenuBar_AutoGen
     [UnityEditor.MenuItem("NativeMenuBar/Emulation/----------")]
     private static void Emulation_9()
     {
-        menubar.MenuItems.Single(item => item.FullPath == "Emulation/-").Action.Invoke();
+        menubar.MenuItems.Single(item => item.FullPath == "Emulation/----------").Action.Invoke();
     }
     [UnityEditor.MenuItem("NativeMenuBar/Emulation/----------", true)]
     private static bool Emulation_9Validate()
     {
-        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Emulation/-").IsInteractable;
+        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Emulation/----------").IsInteractable;
     }
     [UnityEditor.MenuItem("NativeMenuBar/Emulation/Soft Reset")]
     private static void EmulationSoftReset()
@@ -504,62 +504,62 @@ public static class NativeMenuBar_AutoGen
     {
         return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Emulation/Hard Reset").IsInteractable;
     }
-    [UnityEditor.MenuItem("NativeMenuBar/Help/Context Help _ ")]
+    [UnityEditor.MenuItem("NativeMenuBar/Help/Context Help")]
     private static void HelpContextHelp()
     {
         menubar.MenuItems.Single(item => item.FullPath == "Help/Context Help").Action.Invoke();
     }
-    [UnityEditor.MenuItem("NativeMenuBar/Help/Context Help _ ", true)]
+    [UnityEditor.MenuItem("NativeMenuBar/Help/Context Help", true)]
     private static bool HelpContextHelpValidate()
     {
         return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Help/Context Help").IsInteractable;
     }
-    [UnityEditor.MenuItem("NativeMenuBar/Help/Manual _ ")]
+    [UnityEditor.MenuItem("NativeMenuBar/Help/Manual")]
     private static void HelpManual()
     {
         menubar.MenuItems.Single(item => item.FullPath == "Help/Manual").Action.Invoke();
     }
-    [UnityEditor.MenuItem("NativeMenuBar/Help/Manual _ ", true)]
+    [UnityEditor.MenuItem("NativeMenuBar/Help/Manual", true)]
     private static bool HelpManualValidate()
     {
         return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Help/Manual").IsInteractable;
     }
-    [UnityEditor.MenuItem("NativeMenuBar/Help/- _ ----------")]
+    [UnityEditor.MenuItem("NativeMenuBar/Help/-----------")]
     private static void Help_10()
     {
-        menubar.MenuItems.Single(item => item.FullPath == "Help/-").Action.Invoke();
+        menubar.MenuItems.Single(item => item.FullPath == "Help/-----------").Action.Invoke();
     }
-    [UnityEditor.MenuItem("NativeMenuBar/Help/- _ ----------", true)]
+    [UnityEditor.MenuItem("NativeMenuBar/Help/-----------", true)]
     private static bool Help_10Validate()
     {
-        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Help/-").IsInteractable;
+        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Help/-----------").IsInteractable;
     }
-    [UnityEditor.MenuItem("NativeMenuBar/Help/Check For Updates _ ")]
+    [UnityEditor.MenuItem("NativeMenuBar/Help/Check For Updates")]
     private static void HelpCheckForUpdates()
     {
         menubar.MenuItems.Single(item => item.FullPath == "Help/Check For Updates").Action.Invoke();
     }
-    [UnityEditor.MenuItem("NativeMenuBar/Help/Check For Updates _ ", true)]
+    [UnityEditor.MenuItem("NativeMenuBar/Help/Check For Updates", true)]
     private static bool HelpCheckForUpdatesValidate()
     {
         return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Help/Check For Updates").IsInteractable;
     }
-    [UnityEditor.MenuItem("NativeMenuBar/Help/- _ -----------")]
+    [UnityEditor.MenuItem("NativeMenuBar/Help/------------")]
     private static void Help_11()
     {
-        menubar.MenuItems.Single(item => item.FullPath == "Help/-").Action.Invoke();
+        menubar.MenuItems.Single(item => item.FullPath == "Help/------------").Action.Invoke();
     }
-    [UnityEditor.MenuItem("NativeMenuBar/Help/- _ -----------", true)]
+    [UnityEditor.MenuItem("NativeMenuBar/Help/------------", true)]
     private static bool Help_11Validate()
     {
-        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Help/-").IsInteractable;
+        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Help/------------").IsInteractable;
     }
-    [UnityEditor.MenuItem("NativeMenuBar/Help/About _ ")]
+    [UnityEditor.MenuItem("NativeMenuBar/Help/About")]
     private static void HelpAbout()
     {
         menubar.MenuItems.Single(item => item.FullPath == "Help/About").Action.Invoke();
     }
-    [UnityEditor.MenuItem("NativeMenuBar/Help/About _ ", true)]
+    [UnityEditor.MenuItem("NativeMenuBar/Help/About", true)]
     private static bool HelpAboutValidate()
     {
         return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Help/About").IsInteractable;
