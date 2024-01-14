@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 using UnityEngine;
 
 [assembly: InternalsVisibleTo("NativeMenuBar.Editor")]
-
+ 
 namespace NativeMenuBar.Core
 {
     public class MenuBar : MonoBehaviour
@@ -100,7 +100,7 @@ namespace NativeMenuBar.Core
                 }
             }
         }
-
+         
         private void SetupMenuItemRecursively(AbstractMenuItem parent)
         {
             foreach (var menuItem in parent.MenuItems)

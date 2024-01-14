@@ -39,7 +39,7 @@ namespace NativeMenuBar.Core
                         return Array.Empty<KeyCode>();
                 }
             }
-        }
+        } 
 
         [SerializeField]
         private UnityEvent action = default;
