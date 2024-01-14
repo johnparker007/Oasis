@@ -63,12 +63,23 @@ UINT AddMenuItem(const UINT menuParent, const char* menuItem, bool hasSubItem)
     auto parentResult = std::find_if(menuItems.begin(), menuItems.end(), MenuItemIdComparator(menuParent));
     if (parentResult != std::end(menuItems))
     {
-        // If menuItem with the same name does not already exist
+        // If menuItem with the same name does not already exist or is seperator
         auto itemResult = std::find_if(menuItems.begin(), menuItems.end(), MenuItemNameAndParentIdComparator(menuItemStr, menuParent));
-        if (itemResult == std::end(menuItems))
+        if (itemResult == std::end(menuItems) || menuItem[0] == '-')
         {
             HMENU hMenuItem = CreatePopupMenu();
-            AppendMenu(parentResult->GetMenuHandle(), hasSubItem ? MF_POPUP : MF_STRING, (UINT)hMenuItem, s2ws(menuItemStr).c_str());
+
+            UINT uFlags;
+            if (menuItem[0] == '-')
+            {
+                uFlags = MF_SEPARATOR;
+            }
+            else
+            {
+                uFlags = hasSubItem ? MF_POPUP : MF_STRING;
+            }
+
+            AppendMenu(parentResult->GetMenuHandle(), uFlags, (UINT)hMenuItem, s2ws(menuItemStr).c_str());
             menuItems.emplace_back(MenuItem(hMenuItem, menuItem, parentResult->GetId()));
             return (UINT)hMenuItem;
         }

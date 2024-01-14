@@ -1130,6 +1130,25 @@ MonoBehaviour:
   menuRootItems:
   - name: File
     menuItems:
+    - name: New
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls:
+          - m_Target: {fileID: 2080336307}
+            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
+            m_MethodName: 
+            m_Mode: 1
+            m_Arguments:
+              m_ObjectArgument: {fileID: 0}
+              m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+              m_IntArgument: 0
+              m_FloatArgument: 0
+              m_StringArgument: 
+              m_BoolArgument: 0
+            m_CallState: 2
     - name: Open
       menuItems: []
       shortcut: 79
@@ -1137,6 +1156,58 @@ MonoBehaviour:
       action:
         m_PersistentCalls:
           m_Calls: []
+    - name: Save
+      menuItems: []
+      shortcut: 83
+      shortcutCombination: 2
+      action:
+        m_PersistentCalls:
+          m_Calls: []
+    - name: Save As
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls: []
+    - name: '-'
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls:
+          - m_Target: {fileID: 0}
+            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
+            m_MethodName: 
+            m_Mode: 1
+            m_Arguments:
+              m_ObjectArgument: {fileID: 0}
+              m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+              m_IntArgument: 0
+              m_FloatArgument: 0
+              m_StringArgument: 
+              m_BoolArgument: 0
+            m_CallState: 2
+    - name: Extract MFME
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls:
+          - m_Target: {fileID: 2080336307}
+            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
+            m_MethodName: OnFileExtractClick
+            m_Mode: 1
+            m_Arguments:
+              m_ObjectArgument: {fileID: 0}
+              m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+              m_IntArgument: 0
+              m_FloatArgument: 0
+              m_StringArgument: 
+              m_BoolArgument: 0
+            m_CallState: 2
     - name: Import MFME
       menuItems: []
       shortcut: 32
@@ -1156,8 +1227,112 @@ MonoBehaviour:
               m_StringArgument: 
               m_BoolArgument: 0
             m_CallState: 2
+    - name: Export MAME
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls:
+          - m_Target: {fileID: 2080336307}
+            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
+            m_MethodName: OnFileExportClick
+            m_Mode: 1
+            m_Arguments:
+              m_ObjectArgument: {fileID: 0}
+              m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+              m_IntArgument: 0
+              m_FloatArgument: 0
+              m_StringArgument: 
+              m_BoolArgument: 0
+            m_CallState: 2
+    - name: '-'
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls:
+          - m_Target: {fileID: 0}
+            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
+            m_MethodName: 
+            m_Mode: 1
+            m_Arguments:
+              m_ObjectArgument: {fileID: 0}
+              m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+              m_IntArgument: 0
+              m_FloatArgument: 0
+              m_StringArgument: 
+              m_BoolArgument: 0
+            m_CallState: 2
+    - name: Close
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls:
+          - m_Target: {fileID: 0}
+            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
+            m_MethodName: 
+            m_Mode: 1
+            m_Arguments:
+              m_ObjectArgument: {fileID: 0}
+              m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+              m_IntArgument: 0
+              m_FloatArgument: 0
+              m_StringArgument: 
+              m_BoolArgument: 0
+            m_CallState: 2
+    - name: Exit
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls:
+          - m_Target: {fileID: 0}
+            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
+            m_MethodName: 
+            m_Mode: 1
+            m_Arguments:
+              m_ObjectArgument: {fileID: 0}
+              m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+              m_IntArgument: 0
+              m_FloatArgument: 0
+              m_StringArgument: 
+              m_BoolArgument: 0
+            m_CallState: 2
   - name: Edit
     menuItems:
+    - name: Undo
+      menuItems: []
+      shortcut: 90
+      shortcutCombination: 2
+      action:
+        m_PersistentCalls:
+          m_Calls: []
+    - name: Redo
+      menuItems: []
+      shortcut: 89
+      shortcutCombination: 2
+      action:
+        m_PersistentCalls:
+          m_Calls: []
+    - name: '-'
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls: []
+    - name: Cut
+      menuItems: []
+      shortcut: 88
+      shortcutCombination: 2
+      action:
+        m_PersistentCalls:
+          m_Calls: []
     - name: Copy
       menuItems: []
       shortcut: 67
@@ -1172,33 +1347,434 @@ MonoBehaviour:
       action:
         m_PersistentCalls:
           m_Calls: []
+    - name: '-'
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls: []
+    - name: Duplicate
+      menuItems: []
+      shortcut: 68
+      shortcutCombination: 2
+      action:
+        m_PersistentCalls:
+          m_Calls: []
+    - name: Rename
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls: []
+    - name: Delete
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls: []
+    - name: '-'
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls: []
+    - name: Preferences
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls: []
   - name: Component
     menuItems:
     - name: Lamp
       menuItems: []
-      shortcut: 76
-      shortcutCombination: 2
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls: []
+    - name: LED
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls: []
+    - name: Reel
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls: []
+    - name: Display
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls: []
+    - name: Button
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls: []
+    - name: Screen
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls: []
+    - name: Label
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls: []
+    - name: Image
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls: []
+    - name: '-'
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls: []
+    - name: Group
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
       action:
         m_PersistentCalls:
           m_Calls: []
   - name: Emulation
     menuItems:
-    - name: Start
+    - name: Start And Load State
       menuItems: []
-      shortcut: 83
-      shortcutCombination: 3
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls:
+          - m_Target: {fileID: 2080336307}
+            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
+            m_MethodName: OnEmulationStartAndStateLoadClick
+            m_Mode: 1
+            m_Arguments:
+              m_ObjectArgument: {fileID: 0}
+              m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+              m_IntArgument: 0
+              m_FloatArgument: 0
+              m_StringArgument: 
+              m_BoolArgument: 0
+            m_CallState: 2
+    - name: Save State And Exit
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls:
+          - m_Target: {fileID: 2080336307}
+            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
+            m_MethodName: OnEmulationStateSaveAndExitClick
+            m_Mode: 1
+            m_Arguments:
+              m_ObjectArgument: {fileID: 0}
+              m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+              m_IntArgument: 0
+              m_FloatArgument: 0
+              m_StringArgument: 
+              m_BoolArgument: 0
+            m_CallState: 2
+    - name: '-'
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
       action:
         m_PersistentCalls:
           m_Calls: []
+    - name: Start
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls:
+          - m_Target: {fileID: 2080336307}
+            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
+            m_MethodName: OnEmulationStartClick
+            m_Mode: 1
+            m_Arguments:
+              m_ObjectArgument: {fileID: 0}
+              m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+              m_IntArgument: 0
+              m_FloatArgument: 0
+              m_StringArgument: 
+              m_BoolArgument: 0
+            m_CallState: 2
+    - name: Load State
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls:
+          - m_Target: {fileID: 2080336307}
+            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
+            m_MethodName: OnEmulationStateLoadClick
+            m_Mode: 1
+            m_Arguments:
+              m_ObjectArgument: {fileID: 0}
+              m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+              m_IntArgument: 0
+              m_FloatArgument: 0
+              m_StringArgument: 
+              m_BoolArgument: 0
+            m_CallState: 2
+    - name: Save State
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls:
+          - m_Target: {fileID: 2080336307}
+            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
+            m_MethodName: OnEmulationStateSaveClick
+            m_Mode: 1
+            m_Arguments:
+              m_ObjectArgument: {fileID: 0}
+              m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+              m_IntArgument: 0
+              m_FloatArgument: 0
+              m_StringArgument: 
+              m_BoolArgument: 0
+            m_CallState: 2
+    - name: Exit
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls:
+          - m_Target: {fileID: 2080336307}
+            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
+            m_MethodName: OnEmulationExitClick
+            m_Mode: 1
+            m_Arguments:
+              m_ObjectArgument: {fileID: 0}
+              m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+              m_IntArgument: 0
+              m_FloatArgument: 0
+              m_StringArgument: 
+              m_BoolArgument: 0
+            m_CallState: 2
+    - name: '-'
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls: []
+    - name: Pause
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls:
+          - m_Target: {fileID: 2080336307}
+            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
+            m_MethodName: OnEmulationPauseClick
+            m_Mode: 1
+            m_Arguments:
+              m_ObjectArgument: {fileID: 0}
+              m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+              m_IntArgument: 0
+              m_FloatArgument: 0
+              m_StringArgument: 
+              m_BoolArgument: 0
+            m_CallState: 2
+    - name: Resume
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls:
+          - m_Target: {fileID: 2080336307}
+            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
+            m_MethodName: OnEmulationResumeClick
+            m_Mode: 1
+            m_Arguments:
+              m_ObjectArgument: {fileID: 0}
+              m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+              m_IntArgument: 0
+              m_FloatArgument: 0
+              m_StringArgument: 
+              m_BoolArgument: 0
+            m_CallState: 2
+    - name: '-'
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls: []
+    - name: Throttle
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls:
+          - m_Target: {fileID: 2080336307}
+            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
+            m_MethodName: OnEmulationThrottledClick
+            m_Mode: 1
+            m_Arguments:
+              m_ObjectArgument: {fileID: 0}
+              m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+              m_IntArgument: 0
+              m_FloatArgument: 0
+              m_StringArgument: 
+              m_BoolArgument: 0
+            m_CallState: 2
+    - name: Unthrottle
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls:
+          - m_Target: {fileID: 2080336307}
+            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
+            m_MethodName: OnEmulationUnthrottledClick
+            m_Mode: 1
+            m_Arguments:
+              m_ObjectArgument: {fileID: 0}
+              m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+              m_IntArgument: 0
+              m_FloatArgument: 0
+              m_StringArgument: 
+              m_BoolArgument: 0
+            m_CallState: 2
+    - name: '-'
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls: []
+    - name: Soft Reset
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls:
+          - m_Target: {fileID: 2080336307}
+            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
+            m_MethodName: OnEmulationSoftResetClick
+            m_Mode: 1
+            m_Arguments:
+              m_ObjectArgument: {fileID: 0}
+              m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+              m_IntArgument: 0
+              m_FloatArgument: 0
+              m_StringArgument: 
+              m_BoolArgument: 0
+            m_CallState: 2
+    - name: Hard Reset
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls:
+          - m_Target: {fileID: 2080336307}
+            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
+            m_MethodName: OnEmulationHardResetClick
+            m_Mode: 1
+            m_Arguments:
+              m_ObjectArgument: {fileID: 0}
+              m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+              m_IntArgument: 0
+              m_FloatArgument: 0
+              m_StringArgument: 
+              m_BoolArgument: 0
+            m_CallState: 2
   - name: Help
     menuItems:
-    - name: About
+    - name: Context Help
       menuItems: []
       shortcut: 0
       shortcutCombination: 0
       action:
         m_PersistentCalls:
           m_Calls: []
+    - name: Manual
+      menuItems: []
+      shortcut: 0
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls: []
+    - name: '-'
+      menuItems: []
+      shortcut: 0
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls: []
+    - name: Check For Updates
+      menuItems: []
+      shortcut: 0
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls: []
+    - name: '-'
+      menuItems: []
+      shortcut: 0
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls: []
+    - name: About
+      menuItems: []
+      shortcut: 0
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls:
+          - m_Target: {fileID: 2080336307}
+            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
+            m_MethodName: OnHelpAboutClick
+            m_Mode: 1
+            m_Arguments:
+              m_ObjectArgument: {fileID: 0}
+              m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+              m_IntArgument: 0
+              m_FloatArgument: 0
+              m_StringArgument: 
+              m_BoolArgument: 0
+            m_CallState: 2
 --- !u!4 &1408368882
 Transform:
   m_ObjectHideFlags: 0

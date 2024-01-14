@@ -39,6 +39,8 @@ using System.Linq;
                 var menuBar = (MenuBar)target;
 
                 menuBar.SetupMenuItemRoot();
+
+                int separatorCount = 0;
                 
                 stringBuilder.AppendLine($"public static class NativeMenuBar_AutoGen{Environment.NewLine}{{{Environment.NewLine}");
                 stringBuilder.AppendLine($"    private static NativeMenuBar.Core.MenuBar menubar = UnityEngine.Object.FindObjectOfType<NativeMenuBar.Core.MenuBar>();");
@@ -47,13 +49,29 @@ using System.Linq;
                     var commandName = menuItem.Shortcut != ' '
                         ? $"{menuItem.FullPath} _{menuItem.Shortcut}"
                         : $"{menuItem.FullPath}";
-                    stringBuilder.AppendLine($"    [UnityEditor.MenuItem(\"NativeMenuBar/{commandName}\")]");
-                    stringBuilder.AppendLine($"    private static void {SanitizeFolderName(menuItem.FullPath)}()");
+
+                    string menuItemFullPathSeparatorFixed = SanitizeFolderName(menuItem.FullPath);
+                    string commandNameSeparatorFixed = commandName;
+                    if(menuItemFullPathSeparatorFixed.EndsWith("-"))
+                    {
+                        menuItemFullPathSeparatorFixed = menuItemFullPathSeparatorFixed.Replace("-", "_");
+                        menuItemFullPathSeparatorFixed += separatorCount;
+                        for (int spaceCharCount = 0; spaceCharCount < separatorCount; ++spaceCharCount)
+                        {
+                            commandNameSeparatorFixed += "-";
+                        }
+                        //commandNameSeparatorFixed += separatorCount;
+
+                        separatorCount++;
+                    }
+
+                    stringBuilder.AppendLine($"    [UnityEditor.MenuItem(\"NativeMenuBar/{commandNameSeparatorFixed}\")]");
+                    stringBuilder.AppendLine($"    private static void {menuItemFullPathSeparatorFixed}()");
                     stringBuilder.AppendLine($"    {{");
                     stringBuilder.AppendLine($"        menubar.MenuItems.Single(item => item.FullPath == \"{menuItem.FullPath}\").Action.Invoke();");
                     stringBuilder.AppendLine($"    }}");
-                    stringBuilder.AppendLine($"    [UnityEditor.MenuItem(\"NativeMenuBar/{commandName}\", true)]");
-                    stringBuilder.AppendLine($"    private static bool {SanitizeFolderName(menuItem.FullPath)}Validate()");
+                    stringBuilder.AppendLine($"    [UnityEditor.MenuItem(\"NativeMenuBar/{commandNameSeparatorFixed}\", true)]");
+                    stringBuilder.AppendLine($"    private static bool {menuItemFullPathSeparatorFixed}Validate()");
                     stringBuilder.AppendLine($"    {{");
                     stringBuilder.AppendLine($"        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == \"{menuItem.FullPath}\").IsInteractable;");
                     stringBuilder.AppendLine($"    }}");

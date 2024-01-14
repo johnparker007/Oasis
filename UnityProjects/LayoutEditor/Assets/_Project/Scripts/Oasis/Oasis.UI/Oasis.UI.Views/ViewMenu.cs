@@ -42,7 +42,8 @@ namespace Oasis.UI.Views
 
             Panel.Controls.Add(MenuStrip);
 
-            _parent.Controls.Add(Panel);
+            // DON'T ADD AS REPLACEING WITH NATIVE MENUS:
+            //_parent.Controls.Add(Panel);
 
             // for ref:
             ////itemFile_New.ShortcutKeys = Keys.Control | Keys.N;
