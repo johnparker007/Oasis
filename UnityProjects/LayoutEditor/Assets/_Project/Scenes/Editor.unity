@@ -257,7 +257,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &458817897
 RectTransform:
   m_ObjectHideFlags: 0
@@ -288,7 +288,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 458817896}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: dc42784cf147c0c48a680349fa168899, type: 3}
   m_Name: 
@@ -428,8 +428,8 @@ GameObject:
   m_Component:
   - component: {fileID: 645498727}
   - component: {fileID: 645498725}
-  m_Layer: 0
-  m_Name: UIBackgroundCamera
+  m_Layer: 5
+  m_Name: UICamera
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -444,8 +444,8 @@ Camera:
   m_GameObject: {fileID: 645498724}
   m_Enabled: 1
   serializedVersion: 2
-  m_ClearFlags: 4
-  m_BackGroundColor: {r: 1, g: 1, b: 1, a: 0}
+  m_ClearFlags: 2
+  m_BackGroundColor: {r: 0, g: 0, b: 0, a: 1}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
@@ -549,27 +549,32 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_id: 2be1f88c-39da-4087-b957-7dda543cc09d
-  m_leaveFreeSpace: 1
+  m_leaveFreeSpace: 0
   minimumFreeSpace: {x: 50, y: 50}
   freeSpaceTargetTransform: {fileID: 0}
   PreventDetachingLastDockedPanel: 0
   m_panelResizableAreaLength: 15
   m_canvasAnchorZoneLength: 20
   m_panelAnchorZoneLength: 80
-  initialPanelsUnanchored:
-  - tabs:
-    - content: {fileID: 801020840}
-      id: 655a8208-4a9a-460c-807f-63e56b25ef0e
-      minimumSize: {x: 100, y: 100}
-      tabLabel: Green Tab
-      tabIcon: {fileID: 0}
+  initialPanelsUnanchored: []
   initialPanelsAnchoredSerialized:
   - panel:
       tabs: []
     anchorDirection: 0
     initialSize: {x: 0, y: 0}
-    childCount: 2
+    childCount: 3
     indexOfFirstChild: 1
+  - panel:
+      tabs:
+      - content: {fileID: 801020840}
+        id: af931446-0701-4881-953c-8af55917b1ac
+        minimumSize: {x: 250, y: 300}
+        tabLabel: Green Tab
+        tabIcon: {fileID: 0}
+    anchorDirection: 0
+    initialSize: {x: 0, y: 0}
+    childCount: 0
+    indexOfFirstChild: 2
   - panel:
       tabs:
       - content: {fileID: 2038115445}
@@ -580,7 +585,7 @@ MonoBehaviour:
     anchorDirection: 1
     initialSize: {x: 0, y: 0}
     childCount: 0
-    indexOfFirstChild: 2
+    indexOfFirstChild: 3
   - panel:
       tabs:
       - content: {fileID: 1199676140}
@@ -596,7 +601,7 @@ MonoBehaviour:
     anchorDirection: 0
     initialSize: {x: 0, y: 0}
     childCount: 0
-    indexOfFirstChild: 3
+    indexOfFirstChild: 4
 --- !u!114 &647658037
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -610,7 +615,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 0.303}
+  m_Color: {r: 0.1254902, g: 0.1254902, b: 0.1254902, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -920,7 +925,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!81 &963194226
 AudioListener:
   m_ObjectHideFlags: 0
@@ -2155,7 +2160,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &1597776978
 RectTransform:
   m_ObjectHideFlags: 0
@@ -2231,7 +2236,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &1628565542
 RectTransform:
   m_ObjectHideFlags: 0
@@ -2266,9 +2271,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_Material: {fileID: 2100000, guid: 76f174fee86375a4080e1deffed6a11e, type: 2}
   m_Color: {r: 0.015686275, g: 0.03529412, b: 0.12941177, a: 0}
-  m_RaycastTarget: 1
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
+  m_Maskable: 0
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
@@ -2349,6 +2354,7 @@ GameObject:
   - component: {fileID: 1721750716}
   - component: {fileID: 1721750715}
   - component: {fileID: 1721750714}
+  - component: {fileID: 1721750718}
   m_Layer: 5
   m_Name: UI
   m_TagString: Untagged
@@ -2385,7 +2391,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0cd44c1031e13a943bb63640046fad76, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_UiScaleMode: 1
+  m_UiScaleMode: 0
   m_ReferencePixelsPerUnit: 100
   m_ScaleFactor: 1
   m_ReferenceResolution: {x: 1024, y: 768}
@@ -2415,7 +2421,7 @@ Canvas:
   m_SortingBucketNormalizedSize: 0
   m_AdditionalShaderChannelsFlag: 0
   m_SortingLayerID: 0
-  m_SortingOrder: 0
+  m_SortingOrder: 1
   m_TargetDisplay: 0
 --- !u!224 &1721750717
 RectTransform:
@@ -2438,6 +2444,22 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 0}
+--- !u!114 &1721750718
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1721750713}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 13f43f7a9474ed54489e906030258e3c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  horizontalCursor: {fileID: 2800000, guid: a9c77eeb970c9ae40a370ca7060be120, type: 3}
+  verticalCursor: {fileID: 2800000, guid: 68ac78481f5b6df4da69a6f5133b6702, type: 3}
+  diagonalCursorTopLeft: {fileID: 2800000, guid: cbaa205f7a905b8429011ee0c50015ea, type: 3}
+  diagonalCursorTopRight: {fileID: 2800000, guid: e5a757b3ef912a24c912a99d9e1befe5, type: 3}
 --- !u!1 &1780616360
 GameObject:
   m_ObjectHideFlags: 0
@@ -2497,7 +2519,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1853248490
 RectTransform:
   m_ObjectHideFlags: 0
