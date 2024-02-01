@@ -31,12 +31,16 @@ using System.Linq;
         {
             base.OnInspectorGUI();
 
+            MenuBar menuBar = (MenuBar)target;
+
+            GiveSeperatorsUniqueHyphenCounts(menuBar);
+
             var codeGenFile = Path.Combine(Application.dataPath, "NativeMenuBar", "Editor", "NativeMenuBarEditor_AutoGen.cs");
 
-            if(GUILayout.Button("Generate Editor menu"))
+            if (GUILayout.Button("Generate Editor menu"))
             {
                 var stringBuilder = new StringBuilder(headerString);
-                var menuBar = (MenuBar)target;
+                
 
                 menuBar.SetupMenuItemRoot();
 
@@ -100,6 +104,25 @@ using System.Linq;
             string regexSearch = new string(Path.GetInvalidFileNameChars()) + new string(Path.GetInvalidPathChars());
             var r = new Regex(string.Format("[{0}]", Regex.Escape(regexSearch)));
             return r.Replace(name, "").Replace(" ", string.Empty);
+        }
+
+        // JP added as part of making dividers work without errors in Unity Editor
+        // TODO this needs to be recursive for nested menu levels, just goes one deep for now
+        private static void GiveSeperatorsUniqueHyphenCounts(MenuBar menuBar)
+        {
+            int hyphenCount = 1;
+
+            foreach(MenuRootItem menuRootItem in menuBar.MenuRoots)
+            {
+                foreach(Core.MenuItem menuItem in menuRootItem.MenuItems)
+                {
+                    if(menuItem.Name.StartsWith('-'))
+                    {
+                        menuItem.Name = new string('-', hyphenCount);
+                        hyphenCount++;
+                    }
+                }
+            }
         }
     }
 }

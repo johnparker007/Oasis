@@ -4,7 +4,7 @@ using System.IO;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
-using Unity.EditorCoroutines.Editor;
+//using Unity.EditorCoroutines.Editor;
 
 [CustomEditor(typeof(MFMEExtractor))]
 public class MFMEExtractorEditor : Editor

@@ -1,2 +1,0 @@
-- Integrated camera preset option to UI Widgets
-- Sort in UI Manager
