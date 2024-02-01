@@ -21,7 +21,7 @@ namespace Oasis.UI.ViewModels
 
         public ViewModelAbout(RootUI rootUI) : base(rootUI)
         {
-            //_view = new ViewAbout(rootUI, parent, this);
+            //_view = new ViewAbout(rootUI, parent, this); 
         }
     }
 }

@@ -191,7 +191,6 @@ RectTransform:
   m_Children:
   - {fileID: 1628565542}
   - {fileID: 1597776978}
-  - {fileID: 823250719}
   - {fileID: 1853248490}
   m_Father: {fileID: 0}
   m_RootOrder: 5
@@ -464,7 +463,7 @@ Light:
   m_Type: 1
   m_Shape: 0
   m_Color: {r: 1, g: 0.95686275, b: 0.8392157, a: 1}
-  m_Intensity: 0.92
+  m_Intensity: 0.88
   m_Range: 10
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
@@ -529,76 +528,6 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 50, y: -30, z: 0}
---- !u!1 &823250718
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 823250719}
-  - component: {fileID: 823250721}
-  - component: {fileID: 823250720}
-  m_Layer: 0
-  m_Name: WinFormTest
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 0
---- !u!4 &823250719
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 823250718}
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -550.5, y: -259.5, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 458817897}
-  m_RootOrder: 2
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &823250720
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 823250718}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 47da7cd01c5be304a9260b199f599c5c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  ChartGradient: {fileID: 2100000, guid: 6be0c9c14be57034d98e05e736726a2f, type: 2}
---- !u!114 &823250721
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 823250718}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 71c12a0cb072c684197d035ca61a8ccc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  Resources:
-    Fonts:
-    - {fileID: 10102, guid: 0000000000000000e000000000000000, type: 3}
-    Images: {ArrowDown: {fileID: 2800000, guid: 551da730aa768394bacc234eadef02ba, type: 3}, ArrowLeft: {fileID: 2800000, guid: 1b7b04bb996b0654786062b732dd8fc2, type: 3}, ArrowRight: {fileID: 2800000, guid: e40a35421c13ddf44ba328f2d72ffdbb, type: 3}, ArrowUp: {fileID: 2800000, guid: f09596f7fbc69fb4eb1206f9e1d2be89, type: 3}, Circle: {fileID: 2800000, guid: 17f29ce7387fe41409d2ac9a4f0536c1, type: 3}, Checked: {fileID: 2800000, guid: cbe5a7c8920180f479dc435606d10934, type: 3}, Close: {fileID: 2800000, guid: 8481c8c3465c2b34794e292c82a7892b, type: 3}, Cursors: {Default: {fileID: 0}, Hand: {fileID: 2800000, guid: bdc8231271322354ea268078d46b0f7b, type: 3}, Help: {fileID: 2800000, guid: 9315750420766cf4ba0fb2d230aeace5, type: 3}, HSplit: {fileID: 2800000, guid: 7efa8c98225bc374b9110ff46c41de3e, type: 3}, IBeam: {fileID: 2800000, guid: 0ae64b2eda2cfa24f922b4d297a05f1b, type: 3}, SizeAll: {fileID: 2800000, guid: d3ba9fbe8f23a5c43b2fe194cd3f8ec0, type: 3}, SizeNESW: {fileID: 2800000, guid: 922595485564eae45a1240671b4a6144, type: 3}, SizeNS: {fileID: 2800000, guid: 79db38a4d6b0b8649880823a32abcb5e, type: 3}, SizeNWSE: {fileID: 2800000, guid: 4d2ad0c87281f934c9a3b78e9110d42b, type: 3}, SizeWE: {fileID: 2800000, guid: 5fdedb38baf1c0b48995d863b7971330, type: 3}, VSplit: {fileID: 2800000, guid: c005d6ac4a8fc854094840e692222d9a, type: 3}}, CurvedArrowDown: {fileID: 2800000, guid: 751d7fd4f3bba9e4cb9b2d657468b795, type: 3}, CurvedArrowLeft: {fileID: 2800000, guid: 686be37b1c0be964185a5ff55c91ee4a, type: 3}, CurvedArrowRight: {fileID: 2800000, guid: 27f1d3414e4ff634f9d8e960b50a9fb2, type: 3}, CurvedArrowUp: {fileID: 2800000, guid: e446464b26536a04db232cbedf42d897, type: 3}, DateTimePicker: {fileID: 2800000, guid: f1ad8eb54ad5d144db4a0038ea147a2b, type: 3}, DropDownRightArrow: {fileID: 2800000, guid: 863a837042d52cb46b9110b6f3921534, type: 3}, FileDialogBack: {fileID: 2800000, guid: 15df8a965c0d670418fb74198275f33a, type: 3}, FileDialogFile: {fileID: 2800000, guid: 08241aaf34d30694fbf94d9fb6f3ac0c, type: 3}, FileDialogFolder: {fileID: 2800000, guid: 1d194046dc031df4c91906eea913b07b, type: 3}, FileDialogRefresh: {fileID: 2800000, guid: b56b6e6196488d24eb1143a208462112, type: 3}, FileDialogUp: {fileID: 2800000, guid: eb384e855c41b2e4394d414df10b33f6, type: 3}, FormResize: {fileID: 2800000, guid: d1b6645dc1f4dd947b3b43ca5071e119, type: 3}, NumericDown: {fileID: 2800000, guid: 71d7e624b19b5cc40830c18a3a457dc9, type: 3}, NumericUp: {fileID: 2800000, guid: 3b12ef5b73b56664382b75757f30b11e, type: 3}, RadioButton_Checked: {fileID: 2800000, guid: 90afaf6bf95f45640a1dc2d47ad90587, type: 3}, RadioButton_Hovered: {fileID: 2800000, guid: 65f1c9541e5e24a49b3ef3bd0adccf90, type: 3}, RadioButton_Unchecked: {fileID: 2800000, guid: b21ff33de4d2aa34295a6cf327268d98, type: 3}, TreeNodeCollapsed: {fileID: 2800000, guid: 17f2a138e15ce964e95f1cd35305bbd3, type: 3}, TreeNodeExpanded: {fileID: 2800000, guid: 059b40be74418b14383967886e739d68, type: 3}}
-  ShiftDownDelayTime: 0.8
-  ShiftDownTime: 0.05
-  lastWidth: 0
-  lastHeight: 0
-  shiftPressed: 0
-  shiftDownTimer: 0
-  shiftDownDelayTimer: 0
-  paused: 0
 --- !u!1 &963194225
 GameObject:
   m_ObjectHideFlags: 0
@@ -2030,7 +1959,7 @@ RectTransform:
   m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 458817897}
-  m_RootOrder: 3
+  m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
