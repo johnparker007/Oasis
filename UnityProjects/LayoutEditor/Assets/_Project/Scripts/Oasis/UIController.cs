@@ -45,7 +45,7 @@ namespace Oasis
 
             //then that can create the RootUI and do show(this).  Then the RootUI form will
             // have a parent, and continually calling SendToBack should work
-            RootUI.SendToBack();
+            //RootUI.SendToBack();
         }
 
         public void RebuildUI()
@@ -53,22 +53,22 @@ namespace Oasis
             RootUIParentForm = new RootUIParentForm();
 
             RootUI = new RootUI(this);
-            RootUI.AssignParent(RootUIParentForm);
-            RootUI.Show();
+            //RootUI.AssignParent(RootUIParentForm);
+            //RootUI.Show();
         }
 
         public void ShowAboutForm()
         {
             AboutForm = new AboutForm(this);
-            AboutForm.AssignParent(RootUI);
-            AboutForm.ShowDialog();
+            //AboutForm.AssignParent(RootUI);
+            //AboutForm.ShowDialog();
         }
 
         public void ShowMfmeExtractForm()
         {
             MfmeExtractForm = new MfmeExtractForm(this);
-            MfmeExtractForm.AssignParent(RootUI);
-            MfmeExtractForm.ShowDialog();
+            //MfmeExtractForm.AssignParent(RootUI);
+            //MfmeExtractForm.ShowDialog();
         }
     }
 }

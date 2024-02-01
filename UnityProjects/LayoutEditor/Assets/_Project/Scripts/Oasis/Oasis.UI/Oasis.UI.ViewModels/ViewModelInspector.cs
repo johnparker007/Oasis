@@ -1,21 +1,18 @@
-using Oasis.UI.Views;
-using System.Windows.Forms;
-
 namespace Oasis.UI.ViewModels
 {
     public class ViewModelInspector : ViewModel
     {
-        public ViewModelInspector(RootUI rootUI, Control parent) : base(rootUI, parent)
+        public ViewModelInspector(RootUI rootUI) : base(rootUI)
         {
-            _view = new ViewInspector(rootUI, parent, this);
+            //_view = new ViewInspector(rootUI, parent, this);
         }
 
-        public override void Update()
-        {
-            base.Update();
+        //public override void Update()
+        //{
+        //    base.Update();
 
-            // just rebuild from scratch again for now:
-            _view = new ViewInspector(_rootUI, _parent, this);
-        }
+        //    // just rebuild from scratch again for now:
+        //    _view = new ViewInspector(_rootUI, _parent, this);
+        //}
     }
 }

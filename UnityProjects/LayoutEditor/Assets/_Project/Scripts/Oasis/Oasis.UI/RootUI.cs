@@ -1,10 +1,8 @@
 using Oasis.UI.ViewModels;
-using System.Drawing;
-using System.Windows.Forms;
 
 namespace Oasis.UI
 {
-    public class RootUI : Form
+    public class RootUI //: Form
     {
         public ViewModelMenu ViewModelMenu
         {
@@ -49,30 +47,30 @@ namespace Oasis.UI
         private void InitialiseWinFormsUI()
         {
             InitialiseForm();
-            ViewModelMenu = new ViewModelMenu(this, this);
-            ViewModelStatusBar = new ViewModelStatusBar(this, this);
-            ViewModelHierarchy = new ViewModelHierarchy(this, this);
-            ViewModelInspector = new ViewModelInspector(this, this);
+            ViewModelMenu = new ViewModelMenu(this);
+            //ViewModelStatusBar = new ViewModelStatusBar(this, this);
+            //ViewModelHierarchy = new ViewModelHierarchy(this, this);
+            //ViewModelInspector = new ViewModelInspector(this, this);
         }
 
         private void InitialiseForm()
         {
-            uwfHeaderHeight = 0;
-            uwfShadowBox = false;
+            //uwfHeaderHeight = 0;
+            //uwfShadowBox = false;
 
-            // TODO need to figure this size stuff out once the 'rebuild ui on window resize'
-            // stuff is underway - user may have their taskbar to the side for instance.
+            //// TODO need to figure this size stuff out once the 'rebuild ui on window resize'
+            //// stuff is underway - user may have their taskbar to the side for instance.
 
-            Size = new Size(Screen.width, Screen.height);
+            //Size = new Size(Screen.width, Screen.height);
 
-            MaximizeBox = false;
-            ControlBox = false;
-            AutoScroll = true;
-            BackColor = Color.Transparent;
+            //MaximizeBox = false;
+            //ControlBox = false;
+            //AutoScroll = true;
+            //BackColor = Color.Transparent;
 
-            uwfBorderColor = BackColor;
+            //uwfBorderColor = BackColor;
 
-            SetWindowState(FormWindowState.Maximized);
+            //SetWindowState(FormWindowState.Maximized);
         }
 
         private void AddListeners()

@@ -1,8 +1,4 @@
-using Oasis.UI.Views;
 using System;
-using System.Drawing;
-using System.Windows.Forms;
-using UnityEngine;
 using UnityEngine.Events;
 
 namespace Oasis.UI.ViewModels
@@ -29,25 +25,25 @@ namespace Oasis.UI.ViewModels
         public UnityEvent OnHelpAboutClick = new UnityEvent();
 
 
-        public ViewMenu ViewMenu
-        {
-            get
-            {
-                return (ViewMenu)_view;
-            }
-        }
+        //public ViewMenu ViewMenu
+        //{
+        //    get
+        //    {
+        //        return (ViewMenu)_view;
+        //    }
+        //}
 
-        public Size MenuStripSize
-        {
-            get
-            {
-                return ViewMenu.MenuStrip.Size;
-            }
-        }
+        //public Size MenuStripSize
+        //{
+        //    get
+        //    {
+        //        return ViewMenu.MenuStrip.Size;
+        //    }
+        //}
 
-        public ViewModelMenu(RootUI rootUI, Control parent) : base(rootUI, parent)
+        public ViewModelMenu(RootUI rootUI) : base(rootUI)
         {
-            _view = new ViewMenu(rootUI, parent, this);
+            
         }
 
         public void OnFile_ExtractClick(object sender, EventArgs e)

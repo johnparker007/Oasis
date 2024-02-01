@@ -1,10 +1,8 @@
 using Oasis.UI.ViewModels;
-using System.Drawing;
-using System.Windows.Forms;
 
 namespace Oasis.UI
 {
-    public class MfmeExtractForm : Form
+    public class MfmeExtractForm //: Form
     {
         public ViewModelMfmeExtract ViewModelMfmeExtract
         {
@@ -29,7 +27,7 @@ namespace Oasis.UI
         private void InitialiseWinFormsUI()
         {
             InitialiseForm();
-            ViewModelMfmeExtract = new ViewModelMfmeExtract(UIController.RootUI, this);
+           // ViewModelMfmeExtract = new ViewModelMfmeExtract(UIController.RootUI, this);
         }
 
         private void InitialiseForm()
@@ -38,16 +36,16 @@ namespace Oasis.UI
             //uwfShadowBox = false;
 
             // TODO need to figure this size stuff out once the 'rebuild ui on window resize'
-            // stuff is underway - user may have their taskbar to the side for instance.
+            //// stuff is underway - user may have their taskbar to the side for instance.
 
-            Text = "MFME Extract";
-            FormBorderStyle = FormBorderStyle.FixedSingle;
-            MaximizeBox = false;
-            MinimumSize = new Size(480, 320);
-            Size = MinimumSize;
-            SizeGripStyle = SizeGripStyle.Hide;
-            StartPosition = FormStartPosition.CenterScreen;
-            TopMost = true;
+            //Text = "MFME Extract";
+            //FormBorderStyle = FormBorderStyle.FixedSingle;
+            //MaximizeBox = false;
+            //MinimumSize = new Size(480, 320);
+            //Size = MinimumSize;
+            //SizeGripStyle = SizeGripStyle.Hide;
+            //StartPosition = FormStartPosition.CenterScreen;
+            //TopMost = true;
             
 
             //MaximizeBox = false;
