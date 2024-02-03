@@ -39,13 +39,7 @@ namespace Oasis.LayoutEditor
 
         protected void UpdateRectTransformPosition(RectTransform rectTransform)
         {
-            Canvas rootCanvas = LayoutEditor.UIController.RootCanvas;
-
-            rectTransform.SetLocalPositionAndRotation(
-                new Vector3(
-                    Position.x - rootCanvas.transform.position.x, 
-                    -Position.y + rootCanvas.transform.position.y, 0f),
-                Quaternion.identity);
+            rectTransform.anchoredPosition = new Vector2(Position.x, -Position.y);
 
             rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, Size.x);
             rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, Size.y);
