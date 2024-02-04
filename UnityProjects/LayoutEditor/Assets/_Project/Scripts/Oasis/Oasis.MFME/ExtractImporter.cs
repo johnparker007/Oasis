@@ -75,7 +75,9 @@ namespace Oasis.MFME
 
         private void ImportLamp(ExtractComponentLamp extractComponentLamp)
         {
-            ComponentLamp componentLamp = new ComponentLamp();
+            GameObject componentLampGameObject = new GameObject();
+            ComponentLamp componentLamp = (ComponentLamp)componentLampGameObject.AddComponent(typeof(ComponentLamp));
+            componentLampGameObject.transform.SetParent(_layoutObject.transform);
 
             componentLamp.RectInt = new RectInt(
                 extractComponentLamp.Position.X,
@@ -123,21 +125,27 @@ componentLamp.Number = (int)extractComponentLamp.GetLampNumber(0); // TODO will 
 
         private void ImportCheckbox(ExtractComponentCheckbox extractComponentCheckbox)
         {
-            ComponentSwitch componentSwitch = new ComponentSwitch();
+            GameObject componentSwitchGameObject = new GameObject();
+            ComponentSwitch componentSwitch = (ComponentSwitch)componentSwitchGameObject.AddComponent(typeof(ComponentSwitch));
+            componentSwitchGameObject.transform.SetParent(_layoutObject.transform);
 
             _layoutObject.AddComponent(componentSwitch);
         }
 
         private void ImportButton(ExtractComponentButton extractComponentButton)
         {
-            ComponentButton componentButton = new ComponentButton();
+            GameObject componentButtonGameObject = new GameObject();
+            ComponentButton componentButton = (ComponentButton)componentButtonGameObject.AddComponent(typeof(ComponentButton));
+            componentButtonGameObject.transform.SetParent(_layoutObject.transform);
 
             _layoutObject.AddComponent(componentButton);
         }
 
         private void ImportReel(ExtractComponentReel extractComponentReel)
         {
-            ComponentReel componentReel = new ComponentReel();
+            GameObject componentReelGameObject = new GameObject();
+            ComponentReel componentReel = (ComponentReel)componentReelGameObject.AddComponent(typeof(ComponentReel));
+            componentReelGameObject.transform.SetParent(_layoutObject.transform);
 
             componentReel.RectInt = new RectInt(
                 extractComponentReel.Position.X,
@@ -158,7 +166,11 @@ componentLamp.Number = (int)extractComponentLamp.GetLampNumber(0); // TODO will 
 
         private void ImportBackground(ExtractComponentBackground extractComponentBackground)
         {
-            ComponentBackground componentBackground = new ComponentBackground();
+            GameObject componentBackgroundGameObject = new GameObject();
+            ComponentBackground componentBackground = 
+                (ComponentBackground)componentBackgroundGameObject.AddComponent(typeof(ComponentBackground));
+
+            componentBackgroundGameObject.transform.SetParent(_layoutObject.transform);
 
             componentBackground.RectInt = new RectInt(
                 0, 0, extractComponentBackground.Size.X, extractComponentBackground.Size.Y);
@@ -173,7 +185,11 @@ componentLamp.Number = (int)extractComponentLamp.GetLampNumber(0); // TODO will 
 
         private void ImportSevenSegment(ExtractComponentSevenSegment extractComponentSevenSegment)
         {
-            Component7Segment component7Segment = new Component7Segment();
+            GameObject component7SegmentGameObject = new GameObject();
+            Component7Segment component7Segment =
+                (Component7Segment)component7SegmentGameObject.AddComponent(typeof(Component7Segment));
+
+            component7SegmentGameObject.transform.SetParent(_layoutObject.transform);
 
             component7Segment.RectInt = new RectInt(
                 extractComponentSevenSegment.Position.X,
@@ -188,7 +204,11 @@ componentLamp.Number = (int)extractComponentLamp.GetLampNumber(0); // TODO will 
 
         private void ImportAlpha(ExtractComponentAlpha extractComponentAlpha)
         {
-            ComponentAlpha componentAlpha = new ComponentAlpha();
+            GameObject componentAlphaGameObject = new GameObject();
+            ComponentAlpha componentAlpha =
+                (ComponentAlpha)componentAlphaGameObject.AddComponent(typeof(ComponentAlpha));
+
+            componentAlphaGameObject.transform.SetParent(_layoutObject.transform);
 
             componentAlpha.RectInt = new RectInt(
                 extractComponentAlpha.Position.X,
@@ -203,7 +223,11 @@ componentLamp.Number = (int)extractComponentLamp.GetLampNumber(0); // TODO will 
 
         private void ImportAlphaNew(ExtractComponentAlphaNew extractComponentAlphaNew)
         {
-            ComponentAlpha componentAlpha = new ComponentAlpha();
+            GameObject componentAlphaGameObject = new GameObject();
+            ComponentAlpha componentAlpha =
+                (ComponentAlpha)componentAlphaGameObject.AddComponent(typeof(ComponentAlpha));
+
+            componentAlphaGameObject.transform.SetParent(_layoutObject.transform);
 
             componentAlpha.RectInt = new RectInt(
                 extractComponentAlphaNew.Position.X,

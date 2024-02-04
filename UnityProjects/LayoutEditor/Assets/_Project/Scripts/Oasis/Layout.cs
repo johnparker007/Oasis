@@ -92,10 +92,15 @@ namespace Oasis
 
             if(editorComponent != null)
             {
-                LayoutEditor.UIController.RuntimeHierarchy.AddToPseudoScene(
-                    editorComponent.HierarchyPseudoSceneName, editorComponent.transform);
+                //LayoutEditor.UIController.RuntimeHierarchy.AddToPseudoScene(
+                //    editorComponent.HierarchyPseudoSceneName, editorComponent.transform);
 
-                editorComponent.gameObject.name = editorComponent.HierarchyName;
+                //editorComponent.gameObject.name = editorComponent.HierarchyName;
+
+                LayoutEditor.UIController.RuntimeHierarchy.AddToPseudoScene(
+                    editorComponent.HierarchyPseudoSceneName, component.transform);
+
+                component.gameObject.name = editorComponent.HierarchyName;
             }
 
             OnAddComponent?.Invoke(component);
