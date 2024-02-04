@@ -6,7 +6,6 @@ namespace Oasis
     public class UIController : MonoBehaviour
     {
         public Editor LayoutEditor;
-        public Canvas RootCanvas;
         public GameObject EditorCanvasGameObject;
 
         public RootUIParentForm RootUIParentForm
