@@ -1,4 +1,5 @@
 using Oasis.UI;
+using RuntimeInspectorNamespace;
 using UnityEngine;
 
 namespace Oasis
@@ -7,6 +8,7 @@ namespace Oasis
     {
         public Editor LayoutEditor;
         public GameObject EditorCanvasGameObject;
+        public RuntimeHierarchy RuntimeHierarchy;
 
         public RootUIParentForm RootUIParentForm
         {

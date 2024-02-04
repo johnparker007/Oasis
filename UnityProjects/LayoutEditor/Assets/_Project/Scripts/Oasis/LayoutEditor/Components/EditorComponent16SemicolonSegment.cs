@@ -9,6 +9,9 @@ namespace Oasis.LayoutEditor
 {
     public class EditorComponent16SemicolonSegment : EditorComponentSegment
     {
+        public override string HierarchyPseudoSceneName => null;
+        public override string HierarchyName => null;
+
         public const int kMaximumVfdDuty = 31;
 
         public override void Initialise(

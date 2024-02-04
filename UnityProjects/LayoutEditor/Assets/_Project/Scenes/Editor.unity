@@ -334,14 +334,30 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 114514363149991454, guid: 4d8c6c9fba0e46f489b21fd7d92d739d, type: 3}
       propertyPath: m_exposeUnityScenes
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 114514363149991454, guid: 4d8c6c9fba0e46f489b21fd7d92d739d, type: 3}
       propertyPath: m_connectedInspector
       value: 
       objectReference: {fileID: 905162364}
     - target: {fileID: 114514363149991454, guid: 4d8c6c9fba0e46f489b21fd7d92d739d, type: 3}
+      propertyPath: m_pointerLongPressAction
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 114514363149991454, guid: 4d8c6c9fba0e46f489b21fd7d92d739d, type: 3}
+      propertyPath: pseudoScenesOrder.Array.size
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 114514363149991454, guid: 4d8c6c9fba0e46f489b21fd7d92d739d, type: 3}
       propertyPath: m_exposeDontDestroyOnLoadScene
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 114514363149991454, guid: 4d8c6c9fba0e46f489b21fd7d92d739d, type: 3}
+      propertyPath: pseudoScenesOrder.Array.data[0]
+      value: MFME
+      objectReference: {fileID: 0}
+    - target: {fileID: 114514363149991454, guid: 4d8c6c9fba0e46f489b21fd7d92d739d, type: 3}
+      propertyPath: syncSelectionWithEditorHierarchy
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 224169921083597234, guid: 4d8c6c9fba0e46f489b21fd7d92d739d, type: 3}
@@ -1062,7 +1078,7 @@ MonoBehaviour:
       tabs: []
     anchorDirection: 0
     initialSize: {x: 0, y: 0}
-    childCount: 4
+    childCount: 3
     indexOfFirstChild: 1
   - panel:
       tabs:
@@ -1072,7 +1088,7 @@ MonoBehaviour:
         tabLabel: Inspector
         tabIcon: {fileID: 21300000, guid: 0f8acdd1055da144492d64162efbcb2a, type: 3}
     anchorDirection: 2
-    initialSize: {x: 0, y: 0}
+    initialSize: {x: 350, y: 0}
     childCount: 0
     indexOfFirstChild: 2
   - panel:
@@ -1083,7 +1099,7 @@ MonoBehaviour:
         tabLabel: Hierarchy
         tabIcon: {fileID: 21300000, guid: 1db0ef783b1548746a0a0088f91c2016, type: 3}
     anchorDirection: 0
-    initialSize: {x: 0, y: 0}
+    initialSize: {x: 350, y: 0}
     childCount: 0
     indexOfFirstChild: 3
   - panel:
@@ -1113,26 +1129,20 @@ MonoBehaviour:
         minimumSize: {x: 250, y: 300}
         tabLabel: Belly
         tabIcon: {fileID: 21300000, guid: 0ffbf9e4eb68d1046b8cd7441a213f44, type: 3}
+      - content: {fileID: 1775041579}
+        id: da48b882-ef80-4046-a9fd-c8e89211be1b
+        minimumSize: {x: 250, y: 300}
+        tabLabel: Cabinet
+        tabIcon: {fileID: 0}
+      - content: {fileID: 2018586779}
+        id: c7c3a5ce-91a1-48ac-ab4e-16abc6047325
+        minimumSize: {x: 250, y: 300}
+        tabLabel: Player
+        tabIcon: {fileID: 21300000, guid: 33659fe99961b224baefee43fb40bd3f, type: 3}
     anchorDirection: 1
     initialSize: {x: 0, y: 0}
     childCount: 0
     indexOfFirstChild: 4
-  - panel:
-      tabs:
-      - content: {fileID: 1775041579}
-        id: 5bc34423-650b-42dc-ac78-b45a433fc380
-        minimumSize: {x: 150, y: 150}
-        tabLabel: Cabinet
-        tabIcon: {fileID: 0}
-      - content: {fileID: 2018586779}
-        id: c006de25-ea0c-4e3b-8289-5b1b6489223e
-        minimumSize: {x: 250, y: 300}
-        tabLabel: Player
-        tabIcon: {fileID: 21300000, guid: 33659fe99961b224baefee43fb40bd3f, type: 3}
-    anchorDirection: 0
-    initialSize: {x: 0, y: 0}
-    childCount: 0
-    indexOfFirstChild: 5
 --- !u!114 &647658037
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3306,8 +3316,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   LayoutEditor: {fileID: 2080336307}
-  RootCanvas: {fileID: 0}
   EditorCanvasGameObject: {fileID: 707202142}
+  RuntimeHierarchy: {fileID: 188510028}
 --- !u!1 &1721750713
 GameObject:
   m_ObjectHideFlags: 0

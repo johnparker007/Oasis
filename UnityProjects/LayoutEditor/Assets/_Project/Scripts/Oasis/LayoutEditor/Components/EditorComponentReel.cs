@@ -10,6 +10,9 @@ namespace Oasis.LayoutEditor
 {
     public class EditorComponentReel : EditorComponent2D
     {
+        public override string HierarchyPseudoSceneName => "Reels";
+        public override string HierarchyName => "Reel";
+
         private Image _image = null;
         private Sprite _sprite = null;
         private Texture2D _texture2d = null;

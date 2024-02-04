@@ -38,11 +38,14 @@ namespace Oasis
         {
             Components.Add(component);
 
+            EditorComponent editorComponent = null;
             if (component.GetType() == typeof(ComponentBackground))
             {
                 EditorComponentBackground editorComponentBackground = Instantiate(
                     LayoutEditor.EditorComponentBackgroundPrefab, 
                     LayoutEditor.UIController.EditorCanvasGameObject.transform);
+
+                editorComponent = editorComponentBackground;
 
                 editorComponentBackground.Initialise((ComponentBackground)component, LayoutEditor);
             }
@@ -52,6 +55,8 @@ namespace Oasis
                     LayoutEditor.EditorComponentLampPrefab,
                     LayoutEditor.UIController.EditorCanvasGameObject.transform);
 
+                editorComponent = editorComponentLamp;
+
                 editorComponentLamp.Initialise((ComponentLamp)component, LayoutEditor);
             }
             else if (component.GetType() == typeof(ComponentReel))
@@ -59,6 +64,8 @@ namespace Oasis
                 EditorComponentReel editorComponentReel = Instantiate(
                     LayoutEditor.EditorComponentReelPrefab,
                     LayoutEditor.UIController.EditorCanvasGameObject.transform);
+
+                editorComponent = editorComponentReel;
 
                 editorComponentReel.Initialise((ComponentReel)component, LayoutEditor);
             }
@@ -68,6 +75,8 @@ namespace Oasis
                     LayoutEditor.EditorComponentSevenSegmentPrefab,
                     LayoutEditor.UIController.EditorCanvasGameObject.transform);
 
+                editorComponent = editorComponent7Segment;
+
                 editorComponent7Segment.Initialise((Component7Segment)component, LayoutEditor);
             }
             else if (component.GetType() == typeof(ComponentAlpha))
@@ -76,7 +85,17 @@ namespace Oasis
                     LayoutEditor.EditorComponentAlphaPrefab,
                     LayoutEditor.UIController.EditorCanvasGameObject.transform);
 
+                editorComponent = editorComponentAlpha;
+
                 editorComponentAlpha.Initialise((ComponentAlpha)component, LayoutEditor);
+            }
+
+            if(editorComponent != null)
+            {
+                LayoutEditor.UIController.RuntimeHierarchy.AddToPseudoScene(
+                    editorComponent.HierarchyPseudoSceneName, editorComponent.transform);
+
+                editorComponent.gameObject.name = editorComponent.HierarchyName;
             }
 
             OnAddComponent?.Invoke(component);

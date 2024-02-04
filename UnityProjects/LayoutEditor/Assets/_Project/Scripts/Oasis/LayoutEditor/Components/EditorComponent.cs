@@ -6,6 +6,16 @@ namespace Oasis.LayoutEditor
 {
     public abstract class EditorComponent : MonoBehaviour
     {
+        public abstract string HierarchyPseudoSceneName
+        {
+            get;
+        }
+
+        public abstract string HierarchyName
+        {
+            get;
+        }
+
         public Editor LayoutEditor
         {
             get;

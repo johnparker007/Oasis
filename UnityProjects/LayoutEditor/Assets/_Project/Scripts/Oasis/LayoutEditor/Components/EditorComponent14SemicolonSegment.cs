@@ -9,6 +9,9 @@ namespace Oasis.LayoutEditor
 {
     public class EditorComponent14SemicolonSegment : EditorComponentSegment
     {
+        public override string HierarchyPseudoSceneName => null;
+        public override string HierarchyName => null;
+
         public override void Initialise(
             Layout.Component component, Editor layoutEditor)
         {

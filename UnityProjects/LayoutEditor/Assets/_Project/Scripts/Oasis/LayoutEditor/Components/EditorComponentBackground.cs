@@ -9,6 +9,9 @@ namespace Oasis.LayoutEditor
 {
     public class EditorComponentBackground : EditorComponent2D
     {
+        public override string HierarchyPseudoSceneName => "Backgrounds";
+        public override string HierarchyName => "Background";
+
         private Image _image = null;
         private Sprite _sprite = null;
         private Texture2D _texture2d = null;
@@ -21,12 +24,12 @@ namespace Oasis.LayoutEditor
         public override void Initialise(
             Layout.Component component, Editor layoutEditor)
         {
-// XXX TODO temp workaround, there are issues where the background image is larger
-// than the MFME window size, as then image gets squashed a little to fit on the texture, so
-// then all the lamps are misaligned - quick hack workaround:
-// THIS HACK will break if there's no background image!
+        // XXX TODO temp workaround, there are issues where the background image is larger
+        // than the MFME window size, as then image gets squashed a little to fit on the texture, so
+        // then all the lamps are misaligned - quick hack workaround:
+        // THIS HACK will break if there's no background image!
 
-int originalWidth = component.RectInt.size.x;
+        int originalWidth = component.RectInt.size.x;
 int originalHeight = component.RectInt.size.x;
 component.RectInt = new RectInt(
     0, 0,
