@@ -1,5 +1,6 @@
 using Oasis.UI;
 using RuntimeInspectorNamespace;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Oasis
@@ -37,10 +38,12 @@ namespace Oasis
 
         private void Start()
         {
+            RuntimeHierarchy.ConnectedInspector.ComponentFilter += InspectorComponentFilter;
+
             RebuildUI();
         }
 
-        public void Update()
+        private void Update()
         {
             //"HERE - try having a new : Form object, that is DimensionlessAppContainerForm"
 
@@ -70,6 +73,12 @@ namespace Oasis
             MfmeExtractForm = new MfmeExtractForm(this);
             //MfmeExtractForm.AssignParent(RootUI);
             //MfmeExtractForm.ShowDialog();
+        }
+
+        private void InspectorComponentFilter(GameObject gameObject, List<Component> components)
+        {
+            // JP strip out Transform as we don't want that shown on any of our LayoutEditor objects
+            components.RemoveAll(x => x.GetType() == typeof(Transform));
         }
     }
 }
