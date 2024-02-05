@@ -52,6 +52,11 @@ namespace Oasis
             //RootUI.SendToBack();
         }
 
+        private void OnDestroy()
+        {
+            RuntimeHierarchy.ConnectedInspector.ComponentFilter -= InspectorComponentFilter;
+        }
+
         public void RebuildUI()
         {
             RootUIParentForm = new RootUIParentForm();
