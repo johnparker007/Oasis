@@ -42,7 +42,10 @@ namespace Oasis.LayoutEditor
 
         protected virtual void OnDestroy()
         {
-            Component.OnValueSet -= OnComponentValueSet;
+            if (Component != null)
+            {
+                Component.OnValueSet -= OnComponentValueSet;
+            }
         }
 
         public virtual void Initialise(Layout.Component component, Editor layoutEditor)
@@ -63,7 +66,6 @@ namespace Oasis.LayoutEditor
 
         protected virtual void OnComponentValueSet(Component component)
         {
-            Debug.LogError("value set on component " + component);
             Refresh();
         }
     }

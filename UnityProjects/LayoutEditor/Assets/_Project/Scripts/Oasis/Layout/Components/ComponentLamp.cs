@@ -7,7 +7,13 @@ namespace Oasis.Layout
 {
     public class ComponentLamp : ComponentInput
     {
-        public int Number;
+        private int _number = 0;
+        public int Number
+        {
+            get => _number;
+            set { _number = value; base.OnValueSetInvoke(); }
+        }
+
         public OasisImage OasisImage;
     }
 

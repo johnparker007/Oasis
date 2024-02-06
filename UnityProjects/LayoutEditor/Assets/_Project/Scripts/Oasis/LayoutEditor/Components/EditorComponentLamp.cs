@@ -22,15 +22,15 @@ namespace Oasis.LayoutEditor
             _image = GetComponent<Image>();
         }
 
-        public override void Initialise(
-            Layout.Component component, Editor layoutEditor)
+        protected override void Refresh()
         {
-            base.Initialise(component, layoutEditor);
+            base.Refresh();
 
-            ComponentLamp componentLamp = (ComponentLamp)component;
+            ComponentLamp componentLamp = (ComponentLamp)Component;
 
             _number = componentLamp.Number;
 
+            // TODO THERE ARE POTENTIALLY IMAGE-RELATED MEMORY LEAKS TO FIX HERE!
             OasisImage oasisImage = componentLamp.OasisImage;
 
             _texture2d = oasisImage.GetTexture2dCopy(true);
