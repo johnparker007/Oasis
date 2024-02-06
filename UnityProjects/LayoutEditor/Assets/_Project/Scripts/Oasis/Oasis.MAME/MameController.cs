@@ -549,7 +549,7 @@ namespace Oasis.MAME
             // sets -1 as some kind of init/blank at startup on Andy Capp.  Otherwise seems to be 1 bit per segment
             if(digitValue == -1)
             {
-                UnityEngine.Debug.LogError("JP Digit reset");
+                //UnityEngine.Debug.LogError("JP Digit reset");
                 digitValue = 0;
             }
 
@@ -557,7 +557,7 @@ namespace Oasis.MAME
             int digitNumber = int.Parse(digitNumberString);
             DigitValues[digitNumber] = digitValue;
 
-            UnityEngine.Debug.LogError("JP Digit" + digitNumber + " = " + DigitValues[digitNumber]);
+            //UnityEngine.Debug.LogError("JP Digit" + digitNumber + " = " + DigitValues[digitNumber]);
         }
 
         private void OnOutputDataReceived(object sender, DataReceivedEventArgs dataReceivedEventArgs)

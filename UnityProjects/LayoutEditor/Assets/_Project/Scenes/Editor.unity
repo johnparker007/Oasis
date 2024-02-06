@@ -4324,7 +4324,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1934027768812496372, guid: 92875de48b8ebee4299040899e131ec1, type: 3}
       propertyPath: DebugOutputStdOut
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1934027768812496372, guid: 92875de48b8ebee4299040899e131ec1, type: 3}
       propertyPath: DebugPlatformType
@@ -4344,7 +4344,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1934027768812496372, guid: 92875de48b8ebee4299040899e131ec1, type: 3}
       propertyPath: DebugOutputMameCommandLine
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1934027768812496373, guid: 92875de48b8ebee4299040899e131ec1, type: 3}
       propertyPath: m_RootOrder

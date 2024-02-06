@@ -20,19 +20,20 @@ namespace Oasis.LayoutEditor
 
         protected RectTransform _rectTransform = null;
 
-        protected override void Awake()
-        {
-
-        }
-
+        
         public override void Initialise(Layout.Component component, Editor layoutEditor)
         {
+            _rectTransform = GetComponent<RectTransform>(); 
+            
             base.Initialise(component, layoutEditor);
+        }
 
-            _rectTransform = GetComponent<RectTransform>();
+        protected override void Refresh()
+        {
+            base.Refresh();
 
-            Position = component.RectInt.position;
-            Size = component.RectInt.size;
+            Position = Component.RectInt.position;
+            Size = Component.RectInt.size;
 
             UpdateRectTransformPosition(_rectTransform);
         }
