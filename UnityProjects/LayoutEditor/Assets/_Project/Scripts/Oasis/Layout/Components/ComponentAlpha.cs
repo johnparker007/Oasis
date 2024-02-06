@@ -6,7 +6,12 @@ namespace Oasis.Layout
 {
     public class ComponentAlpha : Component
     {
-        public bool Reversed;
+        private bool _reversed = false;
+        public bool Reversed
+        {
+            get => _reversed;
+            set { _reversed = value; base.OnValueSetInvoke(); }
+        }
     }
 
 }

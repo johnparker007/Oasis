@@ -7,9 +7,21 @@ namespace Oasis.Layout
 {
     public class ComponentReel : Component
     {
-        public int Number;
+        private int _number = 0;
+        public int Number
+        {
+            get => _number;
+            set { _number = value; base.OnValueSetInvoke(); }
+        }
+
+        private bool _reversed = false;
+        public bool Reversed
+        {
+            get => _reversed;
+            set { _reversed = value; base.OnValueSetInvoke(); }
+        }
+
         public OasisImage BandOasisImage;
-        public bool Reversed;
     }
 
 }

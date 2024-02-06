@@ -40,13 +40,32 @@ namespace Oasis.LayoutEditor
             UpdateStateFromEmulation();
         }
 
+        protected virtual void OnDestroy()
+        {
+            Component.OnValueSet -= OnComponentValueSet;
+        }
+
         public virtual void Initialise(Layout.Component component, Editor layoutEditor)
         {
             Component = component;
             LayoutEditor = layoutEditor;
+
+            Component.OnValueSet += OnComponentValueSet;
+
+            Refresh();
         }
 
         protected abstract void UpdateStateFromEmulation();
+
+        protected virtual void Refresh()
+        {
+        }
+
+        protected virtual void OnComponentValueSet(Component component)
+        {
+            Debug.LogError("value set on component " + component);
+            Refresh();
+        }
     }
 
 }
