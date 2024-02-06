@@ -12,16 +12,6 @@ namespace Oasis.LayoutEditor
         public override string HierarchyPseudoSceneName => "7 Segments";
         public override string HierarchyName => "7 Segment";
 
-        public override void Initialise(
-            Layout.Component component, Editor layoutEditor)
-        {
-            base.Initialise(component, layoutEditor);
-
-            Component7Segment component7Segment = (Component7Segment)component;
-
-            _number = component7Segment.Number;
-        }
-
         protected override void UpdateStateFromEmulation()
         {
             // TOIMPROVE using a -1 for this stuff is crappy code!

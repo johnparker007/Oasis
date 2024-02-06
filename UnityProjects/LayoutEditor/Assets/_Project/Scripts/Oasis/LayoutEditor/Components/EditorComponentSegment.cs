@@ -24,13 +24,22 @@ namespace Oasis.LayoutEditor
             image.material = _material;
         }
 
-        protected void OnDestroy()
+        protected override void OnDestroy()
         {
+            base.OnDestroy();
+
             if(_material != null)
             {
                 Destroy(_material);
                 _material = null;
             }
+        }
+
+        protected override void Refresh()
+        {
+            base.Refresh();
+
+            _number = ((ComponentSegment)Component).Number;
         }
 
         protected float GetSegmentBrightness(int segmentBitValue)

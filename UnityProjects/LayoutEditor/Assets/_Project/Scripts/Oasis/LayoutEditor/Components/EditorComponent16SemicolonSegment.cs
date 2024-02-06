@@ -18,24 +18,12 @@ namespace Oasis.LayoutEditor
             Layout.Component component, Editor layoutEditor)
         {
             LayoutEditor = layoutEditor;
-
-            //base.Initialise(component, layoutEditor);
-
-            //Component16SemicolonSegment component16SemicolonSegment
-            //    = (Component16SemicolonSegment)component;
-
-            //_number = component16SemicolonSegment.Number;
         }
 
         public void Setup(int vfdSegmentNumber)
         {
             _number = vfdSegmentNumber;
         }
-
-        //public void UpdateStateFromEmulationPublic()
-        //{
-        //    UpdateStateFromEmulation();
-        //}
 
         protected override void UpdateStateFromEmulation()
         {
