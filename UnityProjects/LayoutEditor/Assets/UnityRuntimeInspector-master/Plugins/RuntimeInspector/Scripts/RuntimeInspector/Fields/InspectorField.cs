@@ -498,7 +498,11 @@ namespace RuntimeInspectorNamespace
 			if( variableDrawer != null )
 			{
 				if( variableName == null )
-					variableName = component.GetType().Name + " component";
+				// JP change for clearer info display:
+				//	variableName = component.GetType().Name + " component";
+				{
+					variableName = component.gameObject.name;
+				}
 
 				variableDrawer.BindTo( component.GetType(), string.Empty, () => component, ( value ) => { } );
 				variableDrawer.NameRaw = variableName;
