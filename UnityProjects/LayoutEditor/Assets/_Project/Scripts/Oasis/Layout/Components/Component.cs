@@ -10,11 +10,18 @@ namespace Oasis.Layout
         public delegate void OnValueSetDelegate(Component component);
         public event OnValueSetDelegate OnValueSet;
 
-        private RectInt _rectInt;
-        public RectInt RectInt
+        private Vector2Int _position;
+        public Vector2Int Position
         {
-            get => _rectInt;
-            set { _rectInt = value; OnValueSetInvoke(); }
+            get => _position;
+            set { _position = value; OnValueSetInvoke(); }
+        }
+
+        private Vector2Int _size;
+        public Vector2Int Size
+        {
+            get => _size;
+            set { _size = value; OnValueSetInvoke(); }
         }
 
         protected virtual void OnValueSetInvoke()

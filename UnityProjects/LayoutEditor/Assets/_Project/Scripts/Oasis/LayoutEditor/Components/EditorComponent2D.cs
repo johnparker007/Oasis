@@ -32,8 +32,8 @@ namespace Oasis.LayoutEditor
         {
             base.Refresh();
 
-            Position = Component.RectInt.position;
-            Size = Component.RectInt.size;
+            Position = Component.Position;
+            Size = Component.Size;
 
             UpdateRectTransformPosition(_rectTransform);
         }

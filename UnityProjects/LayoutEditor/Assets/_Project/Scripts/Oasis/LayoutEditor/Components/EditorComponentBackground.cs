@@ -29,12 +29,13 @@ namespace Oasis.LayoutEditor
         // then all the lamps are misaligned - quick hack workaround:
         // THIS HACK will break if there's no background image!
 
-        int originalWidth = component.RectInt.size.x;
-int originalHeight = component.RectInt.size.x;
-component.RectInt = new RectInt(
-    0, 0,
-    ((ComponentBackground)component).OasisImage.Width,
-    ((ComponentBackground)component).OasisImage.Height);
+        int originalWidth = component.Size.x;
+int originalHeight = component.Size.x;
+            component.Position = new Vector2Int(0, 0);
+            
+            component.Size = new Vector2Int(
+                ((ComponentBackground)component).OasisImage.Width,
+                ((ComponentBackground)component).OasisImage.Height);
                 
 
 

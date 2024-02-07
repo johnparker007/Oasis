@@ -79,9 +79,11 @@ namespace Oasis.MFME
             ComponentLamp componentLamp = (ComponentLamp)componentLampGameObject.AddComponent(typeof(ComponentLamp));
             componentLampGameObject.transform.SetParent(_layoutObject.transform);
 
-            componentLamp.RectInt = new RectInt(
+            componentLamp.Position = new Vector2Int(
                 extractComponentLamp.Position.X,
-                extractComponentLamp.Position.Y,
+                extractComponentLamp.Position.Y);
+
+            componentLamp.Size = new Vector2Int(
                 extractComponentLamp.Size.X,
                 extractComponentLamp.Size.Y);
 
@@ -147,9 +149,11 @@ componentLamp.Number = (int)extractComponentLamp.GetLampNumber(0); // TODO will 
             ComponentReel componentReel = (ComponentReel)componentReelGameObject.AddComponent(typeof(ComponentReel));
             componentReelGameObject.transform.SetParent(_layoutObject.transform);
 
-            componentReel.RectInt = new RectInt(
+            componentReel.Position = new Vector2Int(
                 extractComponentReel.Position.X,
-                extractComponentReel.Position.Y,
+                extractComponentReel.Position.Y);
+
+            componentReel.Size = new Vector2Int(
                 extractComponentReel.Size.X,
                 extractComponentReel.Size.Y);
 
@@ -172,8 +176,9 @@ componentLamp.Number = (int)extractComponentLamp.GetLampNumber(0); // TODO will 
 
             componentBackgroundGameObject.transform.SetParent(_layoutObject.transform);
 
-            componentBackground.RectInt = new RectInt(
-                0, 0, extractComponentBackground.Size.X, extractComponentBackground.Size.Y);
+            componentBackground.Position = new Vector2Int(0, 0);
+            componentBackground.Size = new Vector2Int(
+                extractComponentBackground.Size.X, extractComponentBackground.Size.Y);
 
             string bmpImageFilePath = Path.Combine(
                 Extractor.LayoutDirectoryPath, extractComponentBackground.BmpImageFilename);
@@ -191,9 +196,11 @@ componentLamp.Number = (int)extractComponentLamp.GetLampNumber(0); // TODO will 
 
             component7SegmentGameObject.transform.SetParent(_layoutObject.transform);
 
-            component7Segment.RectInt = new RectInt(
+            component7Segment.Position = new Vector2Int(
                 extractComponentSevenSegment.Position.X,
-                extractComponentSevenSegment.Position.Y,
+                extractComponentSevenSegment.Position.Y);
+
+            component7Segment.Size = new Vector2Int(
                 extractComponentSevenSegment.Size.X,
                 extractComponentSevenSegment.Size.Y);
 
@@ -210,9 +217,11 @@ componentLamp.Number = (int)extractComponentLamp.GetLampNumber(0); // TODO will 
 
             componentAlphaGameObject.transform.SetParent(_layoutObject.transform);
 
-            componentAlpha.RectInt = new RectInt(
+            componentAlpha.Position = new Vector2Int(
                 extractComponentAlpha.Position.X,
-                extractComponentAlpha.Position.Y,
+                extractComponentAlpha.Position.Y);
+
+            componentAlpha.Size = new Vector2Int(
                 extractComponentAlpha.Size.X,
                 extractComponentAlpha.Size.Y);
 
@@ -229,9 +238,11 @@ componentLamp.Number = (int)extractComponentLamp.GetLampNumber(0); // TODO will 
 
             componentAlphaGameObject.transform.SetParent(_layoutObject.transform);
 
-            componentAlpha.RectInt = new RectInt(
+            componentAlpha.Position = new Vector2Int(
                 extractComponentAlphaNew.Position.X,
-                extractComponentAlphaNew.Position.Y,
+                extractComponentAlphaNew.Position.Y);
+
+            componentAlpha.Size = new Vector2Int(
                 extractComponentAlphaNew.Size.X,
                 extractComponentAlphaNew.Size.Y);
 
