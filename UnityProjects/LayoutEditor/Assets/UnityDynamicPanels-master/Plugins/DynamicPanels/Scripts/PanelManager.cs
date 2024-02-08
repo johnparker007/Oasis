@@ -41,6 +41,11 @@ namespace DynamicPanels
 
 		// JP Adding for 'active tab' system:
 		private Panel globalActivePanel = null;
+		public PanelTab GlobalSelectedPanelTab
+        {
+			get;
+			private set;
+        }
 
 		private void Awake()
 		{
@@ -397,6 +402,11 @@ namespace DynamicPanels
 					bool isGlobalSelectedPanelTab = isGlobalActivePanel && isActiveTab;
 
 					panelTab.SetGlobalSelectedIndicatorVisible(isGlobalSelectedPanelTab);
+
+					if(isGlobalSelectedPanelTab)
+                    {
+						GlobalSelectedPanelTab = panelTab;
+					}
 				}
             }
         }

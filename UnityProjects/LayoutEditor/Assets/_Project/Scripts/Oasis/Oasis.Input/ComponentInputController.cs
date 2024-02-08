@@ -1,14 +1,17 @@
 using System.Collections;
 using System.Collections.Generic;
+using DynamicPanels;
 
 namespace Oasis.Input
 {
     using UnityEngine;
+    using Oasis.LayoutEditor;
     using static Oasis.Layout.ComponentInput;
 
     public class ComponentInputController : MonoBehaviour
     {
         public Editor LayoutEditor;
+        
         public bool DebugOutputChanges;
 
         private Dictionary<KeyCode, bool> _keyCodeStates = new Dictionary<KeyCode, bool>();
@@ -22,6 +25,12 @@ namespace Oasis.Input
 
         private void Update()
         {
+            if(PanelManager.Instance.GlobalSelectedPanelTab == null
+                || PanelManager.Instance.GlobalSelectedPanelTab.Content.GetComponentInChildren<EditorView>() == null)
+            {
+                return;
+            }
+
             _keyCodeStateDeltas.Clear();
 
             foreach (KeyCode keyCode in _keyCodeStates.Keys)
