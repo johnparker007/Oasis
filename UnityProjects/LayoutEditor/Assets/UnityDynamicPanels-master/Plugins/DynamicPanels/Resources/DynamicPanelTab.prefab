@@ -473,6 +473,7 @@ MonoBehaviour:
   iconHolder: {fileID: 114148454421488184}
   nameHolder: {fileID: 114355370929409690}
   closeButton: {fileID: 114670313046251076}
+  globalSelectedIndicator: {fileID: 1581872204320094175}
 --- !u!114 &114042780021900062
 MonoBehaviour:
   m_ObjectHideFlags: 0
