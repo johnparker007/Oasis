@@ -8,7 +8,10 @@ namespace Oasis.LayoutEditor
 
     public class Zoom : MonoBehaviour
     {
-        private const float kInitialZoomLevel = 100f;
+        public float InitialZoomLevel = 1f;
+        public float MinimumZoomLevel = 0.125f;
+        public float MaximumZoomLevel = 16f;
+
 
         public RectTransform EditorCanvasRectTransform;
 
@@ -30,35 +33,27 @@ namespace Oasis.LayoutEditor
 
         private float _zoomLevel = 0f;
 
-        private void Start()
+        private void Awake()
         {
-            _zoomLevel = kInitialZoomLevel;
+            _zoomLevel = InitialZoomLevel;
         }
 
         private void Update()
         {
-            if((Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
-                && Input.mouseScrollDelta.y != 0f)
+            if(/*(Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
+                && */Input.mouseScrollDelta.y != 0f)
             {
                 if(Input.mouseScrollDelta.y < 0f)
                 {
-                    ZoomOut();
+                    ZoomLevel *= 0.5f;
                 }
                 else
                 {
-                    ZoomIn();
+                    ZoomLevel *= 2f;
                 }
+                ZoomLevel = Mathf.Clamp(ZoomLevel, MinimumZoomLevel, MaximumZoomLevel);
             }
         }
 
-        private void ZoomOut()
-        {
-            ZoomLevel *= 0.5f;
-        }
-
-        private void ZoomIn()
-        {
-            ZoomLevel *= 2f;
-        }
     }
 }

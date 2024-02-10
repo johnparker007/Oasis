@@ -48,6 +48,12 @@ namespace Oasis
                 editorComponent = editorComponentBackground;
 
                 editorComponentBackground.Initialise((ComponentBackground)component, LayoutEditor);
+
+
+// JP quick hack for now:
+RectTransform editorCanvasRectTransform = LayoutEditor.UIController.EditorCanvasGameObject.GetComponent<RectTransform>();
+editorCanvasRectTransform.sizeDelta = new Vector2(component.Size.x, component.Size.y);
+
             }
             else if (component.GetType() == typeof(ComponentLamp))
             {
