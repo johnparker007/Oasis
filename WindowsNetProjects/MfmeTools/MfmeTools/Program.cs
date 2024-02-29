@@ -9,8 +9,10 @@ namespace MfmeTools
 {
     static class Program
     {
+        public static Configuration Configuration = new Configuration();
         public static Extractor Extractor = new Extractor();
         public static ExeCopier ExeCopier = new ExeCopier();
+
 
         /// <summary>
         /// The main entry point for the application.

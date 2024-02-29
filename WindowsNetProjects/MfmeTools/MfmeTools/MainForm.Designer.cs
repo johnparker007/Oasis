@@ -33,22 +33,25 @@ namespace MfmeTools
             this.buttonStartExtraction = new System.Windows.Forms.Button();
             this.buttonStartInjection = new System.Windows.Forms.Button();
             this.groupBoxExtraction = new System.Windows.Forms.GroupBox();
-            this.label1gygygy = new System.Windows.Forms.Label();
-            this.textBoxMfmeSourceLayoutPath = new System.Windows.Forms.TextBox();
+            this.buttonExtractSourcePath = new System.Windows.Forms.Button();
+            this.labelExtractSourcePath = new System.Windows.Forms.Label();
+            this.textBoxExtractSourcePath = new System.Windows.Forms.TextBox();
             this.checkBoxScrapeLamps9_12 = new System.Windows.Forms.CheckBox();
             this.checkBoxScrapeLamps5_8 = new System.Windows.Forms.CheckBox();
             this.checkBoxUseCachedReelImages = new System.Windows.Forms.CheckBox();
             this.checkBoxUseCachedLampImages = new System.Windows.Forms.CheckBox();
             this.groupBoxInjection = new System.Windows.Forms.GroupBox();
+            this.buttonInjectTargetPath = new System.Windows.Forms.Button();
+            this.buttonInjectSourcePath = new System.Windows.Forms.Button();
             this.checkBoxEnvironmentReflections = new System.Windows.Forms.CheckBox();
             this.checkBoxMachineReflections = new System.Windows.Forms.CheckBox();
             this.checkBoxBloom = new System.Windows.Forms.CheckBox();
             this.checkBoxEnvironmentLampBleed = new System.Windows.Forms.CheckBox();
             this.checkBoxEnvironmentBackground = new System.Windows.Forms.CheckBox();
-            this.labelOasisSourcelLayoutPath = new System.Windows.Forms.Label();
-            this.textBox1 = new System.Windows.Forms.TextBox();
-            this.label1 = new System.Windows.Forms.Label();
-            this.textBoxMfmeTargetLayoutPath = new System.Windows.Forms.TextBox();
+            this.labelInjectSourcePath = new System.Windows.Forms.Label();
+            this.textBoxInjectSourcePath = new System.Windows.Forms.TextBox();
+            this.labelInjectTargetPath = new System.Windows.Forms.Label();
+            this.textBoxInjectTargetPath = new System.Windows.Forms.TextBox();
             this.groupBoxExtraction.SuspendLayout();
             this.groupBoxInjection.SuspendLayout();
             this.SuspendLayout();
@@ -74,8 +77,9 @@ namespace MfmeTools
             // 
             // groupBoxExtraction
             // 
-            this.groupBoxExtraction.Controls.Add(this.label1gygygy);
-            this.groupBoxExtraction.Controls.Add(this.textBoxMfmeSourceLayoutPath);
+            this.groupBoxExtraction.Controls.Add(this.buttonExtractSourcePath);
+            this.groupBoxExtraction.Controls.Add(this.labelExtractSourcePath);
+            this.groupBoxExtraction.Controls.Add(this.textBoxExtractSourcePath);
             this.groupBoxExtraction.Controls.Add(this.checkBoxScrapeLamps9_12);
             this.groupBoxExtraction.Controls.Add(this.checkBoxScrapeLamps5_8);
             this.groupBoxExtraction.Controls.Add(this.checkBoxUseCachedReelImages);
@@ -83,26 +87,36 @@ namespace MfmeTools
             this.groupBoxExtraction.Controls.Add(this.buttonStartExtraction);
             this.groupBoxExtraction.Location = new System.Drawing.Point(12, 12);
             this.groupBoxExtraction.Name = "groupBoxExtraction";
-            this.groupBoxExtraction.Size = new System.Drawing.Size(632, 182);
+            this.groupBoxExtraction.Size = new System.Drawing.Size(716, 182);
             this.groupBoxExtraction.TabIndex = 2;
             this.groupBoxExtraction.TabStop = false;
             this.groupBoxExtraction.Text = "Extraction";
             // 
-            // label1gygygy
+            // buttonExtractSourcePath
             // 
-            this.label1gygygy.AutoSize = true;
-            this.label1gygygy.Location = new System.Drawing.Point(9, 61);
-            this.label1gygygy.Name = "label1gygygy";
-            this.label1gygygy.Size = new System.Drawing.Size(128, 13);
-            this.label1gygygy.TabIndex = 6;
-            this.label1gygygy.Text = "MFME source layout path";
+            this.buttonExtractSourcePath.Location = new System.Drawing.Point(627, 52);
+            this.buttonExtractSourcePath.Name = "buttonExtractSourcePath";
+            this.buttonExtractSourcePath.Size = new System.Drawing.Size(75, 23);
+            this.buttonExtractSourcePath.TabIndex = 7;
+            this.buttonExtractSourcePath.Text = "Browse...";
+            this.buttonExtractSourcePath.UseVisualStyleBackColor = true;
+            this.buttonExtractSourcePath.Click += new System.EventHandler(this.OnButtonExtractSourcePathClick);
             // 
-            // textBoxMfmeSourceLayoutPath
+            // labelExtractSourcePath
             // 
-            this.textBoxMfmeSourceLayoutPath.Location = new System.Drawing.Point(143, 54);
-            this.textBoxMfmeSourceLayoutPath.Name = "textBoxMfmeSourceLayoutPath";
-            this.textBoxMfmeSourceLayoutPath.Size = new System.Drawing.Size(477, 20);
-            this.textBoxMfmeSourceLayoutPath.TabIndex = 5;
+            this.labelExtractSourcePath.AutoSize = true;
+            this.labelExtractSourcePath.Location = new System.Drawing.Point(9, 61);
+            this.labelExtractSourcePath.Name = "labelExtractSourcePath";
+            this.labelExtractSourcePath.Size = new System.Drawing.Size(128, 13);
+            this.labelExtractSourcePath.TabIndex = 6;
+            this.labelExtractSourcePath.Text = "MFME source layout path";
+            // 
+            // textBoxExtractSourcePath
+            // 
+            this.textBoxExtractSourcePath.Location = new System.Drawing.Point(143, 54);
+            this.textBoxExtractSourcePath.Name = "textBoxExtractSourcePath";
+            this.textBoxExtractSourcePath.Size = new System.Drawing.Size(477, 20);
+            this.textBoxExtractSourcePath.TabIndex = 5;
             // 
             // checkBoxScrapeLamps9_12
             // 
@@ -146,22 +160,42 @@ namespace MfmeTools
             // 
             // groupBoxInjection
             // 
+            this.groupBoxInjection.Controls.Add(this.buttonInjectTargetPath);
+            this.groupBoxInjection.Controls.Add(this.buttonInjectSourcePath);
             this.groupBoxInjection.Controls.Add(this.checkBoxEnvironmentReflections);
             this.groupBoxInjection.Controls.Add(this.checkBoxMachineReflections);
             this.groupBoxInjection.Controls.Add(this.checkBoxBloom);
             this.groupBoxInjection.Controls.Add(this.checkBoxEnvironmentLampBleed);
             this.groupBoxInjection.Controls.Add(this.checkBoxEnvironmentBackground);
-            this.groupBoxInjection.Controls.Add(this.labelOasisSourcelLayoutPath);
-            this.groupBoxInjection.Controls.Add(this.textBox1);
-            this.groupBoxInjection.Controls.Add(this.label1);
+            this.groupBoxInjection.Controls.Add(this.labelInjectSourcePath);
+            this.groupBoxInjection.Controls.Add(this.textBoxInjectSourcePath);
+            this.groupBoxInjection.Controls.Add(this.labelInjectTargetPath);
             this.groupBoxInjection.Controls.Add(this.buttonStartInjection);
-            this.groupBoxInjection.Controls.Add(this.textBoxMfmeTargetLayoutPath);
+            this.groupBoxInjection.Controls.Add(this.textBoxInjectTargetPath);
             this.groupBoxInjection.Location = new System.Drawing.Point(12, 200);
             this.groupBoxInjection.Name = "groupBoxInjection";
-            this.groupBoxInjection.Size = new System.Drawing.Size(632, 232);
+            this.groupBoxInjection.Size = new System.Drawing.Size(716, 232);
             this.groupBoxInjection.TabIndex = 3;
             this.groupBoxInjection.TabStop = false;
             this.groupBoxInjection.Text = "Injection";
+            // 
+            // buttonInjectTargetPath
+            // 
+            this.buttonInjectTargetPath.Location = new System.Drawing.Point(627, 79);
+            this.buttonInjectTargetPath.Name = "buttonInjectTargetPath";
+            this.buttonInjectTargetPath.Size = new System.Drawing.Size(75, 23);
+            this.buttonInjectTargetPath.TabIndex = 16;
+            this.buttonInjectTargetPath.Text = "Browse...";
+            this.buttonInjectTargetPath.UseVisualStyleBackColor = true;
+            // 
+            // buttonInjectSourcePath
+            // 
+            this.buttonInjectSourcePath.Location = new System.Drawing.Point(627, 53);
+            this.buttonInjectSourcePath.Name = "buttonInjectSourcePath";
+            this.buttonInjectSourcePath.Size = new System.Drawing.Size(75, 23);
+            this.buttonInjectSourcePath.TabIndex = 8;
+            this.buttonInjectSourcePath.Text = "Browse...";
+            this.buttonInjectSourcePath.UseVisualStyleBackColor = true;
             // 
             // checkBoxEnvironmentReflections
             // 
@@ -213,43 +247,43 @@ namespace MfmeTools
             this.checkBoxEnvironmentBackground.Text = "Environment background";
             this.checkBoxEnvironmentBackground.UseVisualStyleBackColor = true;
             // 
-            // labelOasisSourcelLayoutPath
+            // labelInjectSourcePath
             // 
-            this.labelOasisSourcelLayoutPath.AutoSize = true;
-            this.labelOasisSourcelLayoutPath.Location = new System.Drawing.Point(9, 62);
-            this.labelOasisSourcelLayoutPath.Name = "labelOasisSourcelLayoutPath";
-            this.labelOasisSourcelLayoutPath.Size = new System.Drawing.Size(123, 13);
-            this.labelOasisSourcelLayoutPath.TabIndex = 10;
-            this.labelOasisSourcelLayoutPath.Text = "Oasis source layout path";
+            this.labelInjectSourcePath.AutoSize = true;
+            this.labelInjectSourcePath.Location = new System.Drawing.Point(9, 62);
+            this.labelInjectSourcePath.Name = "labelInjectSourcePath";
+            this.labelInjectSourcePath.Size = new System.Drawing.Size(123, 13);
+            this.labelInjectSourcePath.TabIndex = 10;
+            this.labelInjectSourcePath.Text = "Oasis source layout path";
             // 
-            // textBox1
+            // textBoxInjectSourcePath
             // 
-            this.textBox1.Location = new System.Drawing.Point(143, 55);
-            this.textBox1.Name = "textBox1";
-            this.textBox1.Size = new System.Drawing.Size(477, 20);
-            this.textBox1.TabIndex = 9;
+            this.textBoxInjectSourcePath.Location = new System.Drawing.Point(143, 55);
+            this.textBoxInjectSourcePath.Name = "textBoxInjectSourcePath";
+            this.textBoxInjectSourcePath.Size = new System.Drawing.Size(477, 20);
+            this.textBoxInjectSourcePath.TabIndex = 9;
             // 
-            // label1
+            // labelInjectTargetPath
             // 
-            this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(9, 88);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(123, 13);
-            this.label1.TabIndex = 8;
-            this.label1.Text = "MFME target layout path";
+            this.labelInjectTargetPath.AutoSize = true;
+            this.labelInjectTargetPath.Location = new System.Drawing.Point(9, 88);
+            this.labelInjectTargetPath.Name = "labelInjectTargetPath";
+            this.labelInjectTargetPath.Size = new System.Drawing.Size(123, 13);
+            this.labelInjectTargetPath.TabIndex = 8;
+            this.labelInjectTargetPath.Text = "MFME target layout path";
             // 
-            // textBoxMfmeTargetLayoutPath
+            // textBoxInjectTargetPath
             // 
-            this.textBoxMfmeTargetLayoutPath.Location = new System.Drawing.Point(143, 81);
-            this.textBoxMfmeTargetLayoutPath.Name = "textBoxMfmeTargetLayoutPath";
-            this.textBoxMfmeTargetLayoutPath.Size = new System.Drawing.Size(477, 20);
-            this.textBoxMfmeTargetLayoutPath.TabIndex = 7;
+            this.textBoxInjectTargetPath.Location = new System.Drawing.Point(143, 81);
+            this.textBoxInjectTargetPath.Name = "textBoxInjectTargetPath";
+            this.textBoxInjectTargetPath.Size = new System.Drawing.Size(477, 20);
+            this.textBoxInjectTargetPath.TabIndex = 7;
             // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(656, 450);
+            this.ClientSize = new System.Drawing.Size(738, 450);
             this.Controls.Add(this.groupBoxInjection);
             this.Controls.Add(this.groupBoxExtraction);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
@@ -273,17 +307,20 @@ namespace MfmeTools
         private System.Windows.Forms.CheckBox checkBoxScrapeLamps5_8;
         private System.Windows.Forms.CheckBox checkBoxUseCachedReelImages;
         private System.Windows.Forms.CheckBox checkBoxUseCachedLampImages;
-        private System.Windows.Forms.Label label1gygygy;
-        private System.Windows.Forms.TextBox textBoxMfmeSourceLayoutPath;
-        private System.Windows.Forms.Label labelOasisSourcelLayoutPath;
-        private System.Windows.Forms.TextBox textBox1;
-        private System.Windows.Forms.Label label1;
-        private System.Windows.Forms.TextBox textBoxMfmeTargetLayoutPath;
+        private System.Windows.Forms.Label labelExtractSourcePath;
+        private System.Windows.Forms.TextBox textBoxExtractSourcePath;
+        private System.Windows.Forms.Label labelInjectSourcePath;
+        private System.Windows.Forms.TextBox textBoxInjectSourcePath;
+        private System.Windows.Forms.Label labelInjectTargetPath;
+        private System.Windows.Forms.TextBox textBoxInjectTargetPath;
         private System.Windows.Forms.CheckBox checkBoxBloom;
         private System.Windows.Forms.CheckBox checkBoxEnvironmentLampBleed;
         private System.Windows.Forms.CheckBox checkBoxEnvironmentBackground;
         private System.Windows.Forms.CheckBox checkBoxEnvironmentReflections;
         private System.Windows.Forms.CheckBox checkBoxMachineReflections;
+        private System.Windows.Forms.Button buttonExtractSourcePath;
+        private System.Windows.Forms.Button buttonInjectTargetPath;
+        private System.Windows.Forms.Button buttonInjectSourcePath;
     }
 }
 

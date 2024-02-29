@@ -21,5 +21,15 @@ namespace MfmeTools
         {
             Program.Extractor.StartExtraction();
         }
+
+        private void OnButtonExtractSourcePathClick(object sender, EventArgs e)
+        {
+            string sourcePath = Program.Configuration.BrowseExtractionSourcePath();
+
+            if(sourcePath != null)
+            {
+                textBoxExtractSourcePath.Text = sourcePath;
+            }
+        }
     }
 }
