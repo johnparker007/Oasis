@@ -450,6 +450,8 @@ namespace DynamicPanels
 
 		public void OnPointerEnteredCanvas( DynamicPanelsCanvas canvas, PointerEventData pointer )
 		{
+			Debug.LogError("pointer entered canvas");
+
 			if( draggedPanel != null && pointer.pointerDrag != null )
 			{
 				PanelHeader header = pointer.pointerDrag.GetComponent<PanelHeader>();

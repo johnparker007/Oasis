@@ -22,7 +22,9 @@ namespace Oasis
         // not sure will need this:
         public EditorComponent16SemicolonSegment EditorComponent16SemicolonSegmentPrefab;
 
-        public Zoom Zoom;
+        public EditorPanel EditorPanelMFMEImport;
+        public EditorPanel EditorPanelFull;
+
 
         public UnityEvent<LayoutObject> OnLayoutSet = new UnityEvent<LayoutObject>();
 
@@ -81,6 +83,9 @@ namespace Oasis
                 && UIController.RootUI.ViewModelMenu != null);
 
             ExtractImporter.OnImportComplete.AddListener(OnImportComplete);
+
+// JP HACK:
+OnFileImportClick();
         }
 
         private void RemoveListeners()

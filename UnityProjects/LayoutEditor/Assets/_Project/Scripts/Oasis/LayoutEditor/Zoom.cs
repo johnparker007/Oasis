@@ -5,8 +5,9 @@ using UnityEngine.Events;
 namespace Oasis.LayoutEditor
 {
     using UnityEngine;
+    using UnityEngine.EventSystems;
 
-    public class Zoom : MonoBehaviour
+    public class Zoom : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
     {
         public float InitialZoomLevel = 1f;
         public float MinimumZoomLevel = 0.125f;
@@ -31,6 +32,12 @@ namespace Oasis.LayoutEditor
             }
         }
 
+        public bool PointerEntered
+        {
+            get;
+            private set;
+        }
+
         private float _zoomLevel = 0f;
 
         private void Awake()
@@ -40,6 +47,11 @@ namespace Oasis.LayoutEditor
 
         private void Update()
         {
+            if(!PointerEntered)
+            {
+                return;
+            }
+
             if(/*(Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
                 && */Input.mouseScrollDelta.y != 0f)
             {
@@ -53,6 +65,16 @@ namespace Oasis.LayoutEditor
                 }
                 ZoomLevel = Mathf.Clamp(ZoomLevel, MinimumZoomLevel, MaximumZoomLevel);
             }
+        }
+
+        void IPointerEnterHandler.OnPointerEnter(PointerEventData eventData)
+        {
+            PointerEntered = true;
+        }
+
+        void IPointerExitHandler.OnPointerExit(PointerEventData eventData)
+        {
+            PointerEntered = false;
         }
 
     }
