@@ -19,7 +19,16 @@ namespace MfmeTools
 
         private void OnButtonStartExtractionClick(object sender, EventArgs e)
         {
-            Program.Extractor.StartExtraction();
+            Extractor.Options extractorOptions = new Extractor.Options()
+            {
+                SourceLayoutPath = textBoxExtractSourcePath.Text,
+                UseCachedLampImages = checkBoxUseCachedLampImages.Checked,
+                UseCachedReelImages = checkBoxUseCachedReelImages.Checked,
+                ScrapeLamps5To8 = checkBoxScrapeLamps5_8.Checked,
+                ScrapeLamps9To12 = checkBoxScrapeLamps9_12.Checked
+            };
+
+            Program.Extractor.StartExtraction(extractorOptions);
         }
 
         private void OnButtonExtractSourcePathClick(object sender, EventArgs e)

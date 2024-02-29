@@ -8,7 +8,7 @@ using System.Windows.Forms;
 
 namespace MfmeTools
 {
-    class Configuration
+    public class Configuration
     {
         public string BrowseExtractionSourcePath()
         {

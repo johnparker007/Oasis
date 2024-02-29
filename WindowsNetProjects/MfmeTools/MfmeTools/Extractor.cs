@@ -6,11 +6,22 @@ using System.Threading.Tasks;
 
 namespace MfmeTools
 {
-    class Extractor
+    public class Extractor
     {
-        public void StartExtraction()
+        public struct Options
+        {
+            public string SourceLayoutPath;
+            public bool UseCachedLampImages;
+            public bool UseCachedReelImages;
+            public bool ScrapeLamps5To8;
+            public bool ScrapeLamps9To12;
+        }
+
+        public void StartExtraction(Options options)
         {
             Console.WriteLine("Start Extraction()");
+            Console.WriteLine("Extraction source layout: " + options.SourceLayoutPath);
+
         }
     }
 }
