@@ -37,8 +37,9 @@ namespace MfmeTools
             text = GetPrefix(logType) + " " + text;
 
             Program.MainForm.OutputLogRichTextBox.AppendText(text + "\n", GetColor(logType));
+            Program.MainForm.OutputLogRichTextBox.ScrollToCaret();
 
-            if(echoToConsole)
+            if (echoToConsole)
             {
                 Console.WriteLine(text);
             }

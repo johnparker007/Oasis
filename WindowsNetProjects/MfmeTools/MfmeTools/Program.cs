@@ -14,6 +14,7 @@ namespace MfmeTools
         public static Extractor Extractor = new Extractor();
         public static ExeCopier ExeCopier = new ExeCopier();
         public static LayoutCopier LayoutCopier = new LayoutCopier();
+        public static MfmeController MfmeController = new MfmeController();
 
         /// <summary>
         /// The main entry point for the application.

@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using WindowsInput;
 
 namespace MfmeTools
 {
@@ -25,6 +27,13 @@ namespace MfmeTools
             Program.LayoutCopier.CopyToMfmeTools(options.SourceLayoutPath);
             OutputLog.Log("Copied source layout to MFME Tools");
 
+        }
+
+        private IEnumerator ExtractorCoroutine(InputSimulator inputSimulator)
+        {
+
+
+            yield return null;
         }
     }
 }
