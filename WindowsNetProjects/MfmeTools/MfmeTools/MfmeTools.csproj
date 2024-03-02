@@ -47,6 +47,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Configuration.cs" />
+    <Compile Include="Extensions\RichTextBoxExtensions.cs" />
     <Compile Include="Extractor.cs" />
     <Compile Include="Helpers\FileHelper.cs" />
     <Compile Include="MainForm.cs">
@@ -57,6 +58,7 @@
     </Compile>
     <Compile Include="MFME\ExeCopier.cs" />
     <Compile Include="MFME\ExeHelper.cs" />
+    <Compile Include="OutputLog.cs" />
     <Compile Include="PathHelpers.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

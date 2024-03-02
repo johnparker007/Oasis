@@ -12,6 +12,14 @@ namespace MfmeTools
 {
     public partial class MainForm : Form
     {
+        public RichTextBox OutputLogRichTextBox
+        {
+            get
+            {
+                return richTextBoxOutputLog;
+            }
+        }
+
         public MainForm()
         {
             InitializeComponent();

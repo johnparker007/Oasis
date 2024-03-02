@@ -43,11 +43,11 @@ namespace MfmeTools.MFME
         {
             if (ExeHelper.IsLatestMFMEExePresent(kMfmeExeHash))
             {
-                Console.WriteLine("MFMEExeCopier - latest MFME exe already present, doing nothing.");
+                OutputLog.Log("MFMEExeCopier - latest MFME exe already present, doing nothing.");
                 return;
             }
-
-            Console.WriteLine("MFMEExeCopier - latest MFME exe not present, attempting to find...");
+            
+            OutputLog.LogWarning("MFMEExeCopier - latest MFME exe not present, attempting to find...");
 
             FindInitialPotentialPaths();
 
@@ -60,16 +60,16 @@ namespace MfmeTools.MFME
 
             if (_matchedLatestMFMEExePath != null)
             {
-                Console.WriteLine("MFMEExeCopier - MFME exe found, copying from " + _matchedLatestMFMEExePath);
+                OutputLog.Log("MFMEExeCopier - MFME exe found, copying from " + _matchedLatestMFMEExePath);
                 File.Copy(_matchedLatestMFMEExePath, ExeHelper.MFMEExePath, true);
-                Console.WriteLine("MFMEExeCopier - called copy, now MFMEExeHelper.IsLatestMFMEExePresent returning " + ExeHelper.IsLatestMFMEExePresent(kMfmeExeHash));
+                OutputLog.Log("MFMEExeCopier - called copy, now MFMEExeHelper.IsLatestMFMEExePresent returning " + ExeHelper.IsLatestMFMEExePresent(kMfmeExeHash));
             }
             else
             {
-                Console.WriteLine("MFMEExeCopier - MFME exe NOT found!  Search paths:");
+                OutputLog.LogError("MFMEExeCopier - MFME exe NOT found!  Search paths:");
                 foreach (string searchedPath in _searchedPaths)
                 {
-                    Console.WriteLine(searchedPath);
+                    OutputLog.Log(searchedPath);
                 }
             }
         }
@@ -139,7 +139,7 @@ namespace MfmeTools.MFME
             string registryStringData = (string)Registry.GetValue("HKEY_CURRENT_USER\\SOFTWARE\\CJW\\MFME", key, null);
             if (registryStringData == null)
             {
-                Console.WriteLine("MFMEExeCopier - couldn't get string data for key [" + key + "] from Windows Registry");
+                OutputLog.LogWarning("MFMEExeCopier - couldn't get string data for key [" + key + "] from Windows Registry");
             }
 
             return registryStringData;

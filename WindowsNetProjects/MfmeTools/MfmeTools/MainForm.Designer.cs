@@ -52,8 +52,11 @@ namespace MfmeTools
             this.textBoxInjectSourcePath = new System.Windows.Forms.TextBox();
             this.labelInjectTargetPath = new System.Windows.Forms.Label();
             this.textBoxInjectTargetPath = new System.Windows.Forms.TextBox();
+            this.richTextBoxOutputLog = new System.Windows.Forms.RichTextBox();
+            this.groupBoxOutputLog = new System.Windows.Forms.GroupBox();
             this.groupBoxExtraction.SuspendLayout();
             this.groupBoxInjection.SuspendLayout();
+            this.groupBoxOutputLog.SuspendLayout();
             this.SuspendLayout();
             // 
             // buttonStartExtraction
@@ -279,20 +282,44 @@ namespace MfmeTools
             this.textBoxInjectTargetPath.Size = new System.Drawing.Size(477, 20);
             this.textBoxInjectTargetPath.TabIndex = 7;
             // 
+            // richTextBoxOutputLog
+            // 
+            this.richTextBoxOutputLog.Font = new System.Drawing.Font("Microsoft Sans Serif", 9.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.richTextBoxOutputLog.Location = new System.Drawing.Point(6, 19);
+            this.richTextBoxOutputLog.Name = "richTextBoxOutputLog";
+            this.richTextBoxOutputLog.ReadOnly = true;
+            this.richTextBoxOutputLog.Size = new System.Drawing.Size(703, 134);
+            this.richTextBoxOutputLog.TabIndex = 4;
+            this.richTextBoxOutputLog.Text = "";
+            // 
+            // groupBoxOutputLog
+            // 
+            this.groupBoxOutputLog.Controls.Add(this.richTextBoxOutputLog);
+            this.groupBoxOutputLog.Location = new System.Drawing.Point(13, 439);
+            this.groupBoxOutputLog.Name = "groupBoxOutputLog";
+            this.groupBoxOutputLog.Size = new System.Drawing.Size(715, 159);
+            this.groupBoxOutputLog.TabIndex = 5;
+            this.groupBoxOutputLog.TabStop = false;
+            this.groupBoxOutputLog.Text = "Output Log";
+            // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(738, 450);
+            this.ClientSize = new System.Drawing.Size(738, 610);
+            this.Controls.Add(this.groupBoxOutputLog);
             this.Controls.Add(this.groupBoxInjection);
             this.Controls.Add(this.groupBoxExtraction);
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
+            this.MaximizeBox = false;
             this.Name = "MainForm";
             this.Text = "Oasis - MFME Tools";
             this.groupBoxExtraction.ResumeLayout(false);
             this.groupBoxExtraction.PerformLayout();
             this.groupBoxInjection.ResumeLayout(false);
             this.groupBoxInjection.PerformLayout();
+            this.groupBoxOutputLog.ResumeLayout(false);
             this.ResumeLayout(false);
 
         }
@@ -321,6 +348,8 @@ namespace MfmeTools
         private System.Windows.Forms.Button buttonExtractSourcePath;
         private System.Windows.Forms.Button buttonInjectTargetPath;
         private System.Windows.Forms.Button buttonInjectSourcePath;
+        private System.Windows.Forms.RichTextBox richTextBoxOutputLog;
+        private System.Windows.Forms.GroupBox groupBoxOutputLog;
     }
 }
 

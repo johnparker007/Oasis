@@ -9,6 +9,7 @@ namespace MfmeTools
 {
     static class Program
     {
+        public static MainForm MainForm;
         public static Configuration Configuration = new Configuration();
         public static Extractor Extractor = new Extractor();
         public static ExeCopier ExeCopier = new ExeCopier();
@@ -25,11 +26,13 @@ namespace MfmeTools
 
             Initialise();
 
-            Application.Run(new MainForm());
+            Application.Run(MainForm);
         }
 
         private static void Initialise()
         {
+            MainForm = new MainForm();
+
             ExeCopier.Initialise();
         }
     }
