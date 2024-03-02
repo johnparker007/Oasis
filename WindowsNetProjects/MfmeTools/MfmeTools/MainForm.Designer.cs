@@ -54,6 +54,7 @@ namespace MfmeTools
             this.textBoxInjectTargetPath = new System.Windows.Forms.TextBox();
             this.richTextBoxOutputLog = new System.Windows.Forms.RichTextBox();
             this.groupBoxOutputLog = new System.Windows.Forms.GroupBox();
+            this.checkBoxAnimatedButtons = new System.Windows.Forms.CheckBox();
             this.groupBoxExtraction.SuspendLayout();
             this.groupBoxInjection.SuspendLayout();
             this.groupBoxOutputLog.SuspendLayout();
@@ -163,6 +164,7 @@ namespace MfmeTools
             // 
             // groupBoxInjection
             // 
+            this.groupBoxInjection.Controls.Add(this.checkBoxAnimatedButtons);
             this.groupBoxInjection.Controls.Add(this.buttonInjectTargetPath);
             this.groupBoxInjection.Controls.Add(this.buttonInjectSourcePath);
             this.groupBoxInjection.Controls.Add(this.checkBoxEnvironmentReflections);
@@ -223,7 +225,7 @@ namespace MfmeTools
             // checkBoxBloom
             // 
             this.checkBoxBloom.AutoSize = true;
-            this.checkBoxBloom.Location = new System.Drawing.Point(13, 153);
+            this.checkBoxBloom.Location = new System.Drawing.Point(12, 153);
             this.checkBoxBloom.Name = "checkBoxBloom";
             this.checkBoxBloom.Size = new System.Drawing.Size(55, 17);
             this.checkBoxBloom.TabIndex = 13;
@@ -302,6 +304,16 @@ namespace MfmeTools
             this.groupBoxOutputLog.TabStop = false;
             this.groupBoxOutputLog.Text = "Output Log";
             // 
+            // checkBoxAnimatedButtons
+            // 
+            this.checkBoxAnimatedButtons.AutoSize = true;
+            this.checkBoxAnimatedButtons.Location = new System.Drawing.Point(290, 108);
+            this.checkBoxAnimatedButtons.Name = "checkBoxAnimatedButtons";
+            this.checkBoxAnimatedButtons.Size = new System.Drawing.Size(108, 17);
+            this.checkBoxAnimatedButtons.TabIndex = 17;
+            this.checkBoxAnimatedButtons.Text = "Animated buttons";
+            this.checkBoxAnimatedButtons.UseVisualStyleBackColor = true;
+            // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -350,6 +362,7 @@ namespace MfmeTools
         private System.Windows.Forms.Button buttonInjectSourcePath;
         private System.Windows.Forms.RichTextBox richTextBoxOutputLog;
         private System.Windows.Forms.GroupBox groupBoxOutputLog;
+        private System.Windows.Forms.CheckBox checkBoxAnimatedButtons;
     }
 }
 

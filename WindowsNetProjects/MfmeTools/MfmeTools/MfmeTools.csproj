@@ -50,14 +50,16 @@
     <Compile Include="Extensions\RichTextBoxExtensions.cs" />
     <Compile Include="Extractor.cs" />
     <Compile Include="Helpers\FileHelper.cs" />
+    <Compile Include="Helpers\MfmeGamFileHelper.cs" />
     <Compile Include="MainForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="MainForm.Designer.cs">
       <DependentUpon>MainForm.cs</DependentUpon>
     </Compile>
-    <Compile Include="MFME\ExeCopier.cs" />
-    <Compile Include="MFME\ExeHelper.cs" />
+    <Compile Include="Mfme\ExeCopier.cs" />
+    <Compile Include="Mfme\ExeHelper.cs" />
+    <Compile Include="Mfme\LayoutCopier.cs" />
     <Compile Include="OutputLog.cs" />
     <Compile Include="PathHelpers.cs" />
     <Compile Include="Program.cs" />

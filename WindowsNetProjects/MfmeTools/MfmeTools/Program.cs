@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using MfmeTools.MFME;
+using MfmeTools.Mfme;
 
 namespace MfmeTools
 {
@@ -13,7 +13,7 @@ namespace MfmeTools
         public static Configuration Configuration = new Configuration();
         public static Extractor Extractor = new Extractor();
         public static ExeCopier ExeCopier = new ExeCopier();
-
+        public static LayoutCopier LayoutCopier = new LayoutCopier();
 
         /// <summary>
         /// The main entry point for the application.

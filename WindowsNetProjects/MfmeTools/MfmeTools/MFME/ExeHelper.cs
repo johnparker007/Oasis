@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Security.Cryptography;
 
-namespace MfmeTools.MFME
+namespace MfmeTools.Mfme
 {
     public static class ExeHelper
     {

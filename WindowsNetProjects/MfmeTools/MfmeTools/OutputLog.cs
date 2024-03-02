@@ -34,7 +34,7 @@ namespace MfmeTools
 
         private static void WriteLog(LogType logType, string text, bool echoToConsole = true)
         {
-            text = GetIcon(logType) + " " + text;
+            text = GetPrefix(logType) + " " + text;
 
             Program.MainForm.OutputLogRichTextBox.AppendText(text + "\n", GetColor(logType));
 
@@ -59,7 +59,7 @@ namespace MfmeTools
             }
         }
 
-        private static string GetIcon(LogType logType)
+        private static string GetPrefix(LogType logType)
         {
             switch (logType)
             {

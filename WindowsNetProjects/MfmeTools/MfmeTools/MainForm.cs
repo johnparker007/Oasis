@@ -12,6 +12,9 @@ namespace MfmeTools
 {
     public partial class MainForm : Form
     {
+        public static bool kDebugHardcodePopulateSourceGamPath = true;
+
+
         public RichTextBox OutputLogRichTextBox
         {
             get
@@ -23,6 +26,12 @@ namespace MfmeTools
         public MainForm()
         {
             InitializeComponent();
+
+            if(kDebugHardcodePopulateSourceGamPath)
+            {
+                textBoxExtractSourcePath.Text = 
+                    "C:\\projects\\ChrFreeRomAutoPatcher_RomsAndLayouts\\LegacySectionFromDif\\Unzipped\\Barcrest\\Andy Capp (Barcrest)\\Andy_Capp_(Barcrest)_[Dx08_6jp].gam";
+            }
         }
 
         private void OnButtonStartExtractionClick(object sender, EventArgs e)

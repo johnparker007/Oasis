@@ -19,8 +19,11 @@ namespace MfmeTools
 
         public void StartExtraction(Options options)
         {
-            Console.WriteLine("Start Extraction()");
-            Console.WriteLine("Extraction source layout: " + options.SourceLayoutPath);
+            OutputLog.Log("Starting Extraction");
+            OutputLog.Log("Extraction source layout: " + options.SourceLayoutPath);
+
+            Program.LayoutCopier.CopyToMfmeTools(options.SourceLayoutPath);
+            OutputLog.Log("Copied source layout to MFME Tools");
 
         }
     }
