@@ -6,7 +6,9 @@ using System.Text;
 using System.Threading.Tasks;
 using WindowsInput;
 using System.Threading;
-
+using System.IO;
+using MfmeTools.Mfme;
+using System.Diagnostics;
 
 namespace MfmeTools
 {
@@ -21,6 +23,9 @@ namespace MfmeTools
             public bool ScrapeLamps9To12;
         }
 
+        private Process _mfmeProcess = null;
+        private Process _dllProcess = null;
+
         public void StartExtraction(Options options)
         {
             OutputLog.Log("Starting Extraction");
@@ -34,15 +39,25 @@ namespace MfmeTools
             //StartCoroutine
             InputSimulator inputSimulator = new InputSimulator();
 
-            ExtractorCoroutine(inputSimulator);
+            ExtractorCoroutine(inputSimulator, options);
         }
 
-        private void ExtractorCoroutine(InputSimulator inputSimulator)
+        private void ExtractorCoroutine(InputSimulator inputSimulator, Options options)
         {
-            OutputLog.LogError("JP TEST Sending Win+M minimise keystroke combo");
-//            inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LWIN, WindowsInput.Native.VirtualKeyCode.VK_M);
+            _mfmeProcess = MfmeController.LaunchMFMEExeWithLayout();
+            OutputLog.Log($"MFME exe launched (Process id: {_mfmeProcess.Id})");
 
-            Thread.Sleep(5000);
+            _dllProcess = MfmeController.LaunchMFMEDllInjector(_mfmeProcess);
+            OutputLog.Log($"MFME dll injector launched (Process id: {_dllProcess.Id})");
+
+
+
+
+
+            //            OutputLog.LogError("JP TEST Sending Win+M minimise keystroke combo");
+            //            inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LWIN, WindowsInput.Native.VirtualKeyCode.VK_M);
+
+            //            Thread.Sleep(5000);
 
             //inputSimulator.Keyboard.KeyDown(WindowsInput.Native.VirtualKeyCode.VK_J);
             //Thread.Sleep(50);
@@ -56,11 +71,12 @@ namespace MfmeTools
             //inputSimulator.Keyboard.KeyDown(WindowsInput.Native.VirtualKeyCode.VK_N);
             //Thread.Sleep(50);
 
-            inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LWIN, WindowsInput.Native.VirtualKeyCode.VK_M);
-            Thread.Sleep(50);
+            //inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LWIN, WindowsInput.Native.VirtualKeyCode.VK_M);
+            //Thread.Sleep(50);
 
 
             //yield return null;
         }
+
     }
 }

@@ -19,7 +19,7 @@ using std::endl;
 
 namespace MfmeDll
 {
-	const LPCWSTR OverrideLPDataMFMEStringWithASIM = L"MFME (Arcade Simulator)";
+	const LPCWSTR OverrideLPDataMFMEStringWithASIM = L"MFME (Oasis - MFME Tools)";
 
 	bool attached = false;
 

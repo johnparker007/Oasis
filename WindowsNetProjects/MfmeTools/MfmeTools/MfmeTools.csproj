@@ -76,6 +76,7 @@
     <Compile Include="Mfme\ExeHelper.cs" />
     <Compile Include="Mfme\LayoutCopier.cs" />
     <Compile Include="Mfme\MfmeController.cs" />
+    <Compile Include="Mfme\MfmeOasisCustomRegistry.cs" />
     <Compile Include="OutputLog.cs" />
     <Compile Include="PathHelpers.cs" />
     <Compile Include="Program.cs" />

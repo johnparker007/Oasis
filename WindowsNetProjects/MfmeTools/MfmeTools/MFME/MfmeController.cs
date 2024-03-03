@@ -10,46 +10,39 @@ namespace MfmeTools.Mfme
 {
     public class MfmeController
     {
-        public Process Process
+        public static readonly string kMameDllFilename = "MfmeDll.dll";
+        public static readonly string kDllInjectorExeFilename = "DllInject.exe";
+
+        public static Process LaunchMFMEExeWithLayout()
         {
-            get;
-            private set;
+            MfmeOasisCustomRegistry.Initialise();
+
+            string commandLineArguments = Path.Combine(LayoutCopier.kLayoutsDirectoryName, LayoutCopier.kLayoutGamFilename);
+
+            return StartProcess(ExeHelper.MFMERootPath, ExeHelper.MFMEExeFilename, commandLineArguments);
         }
 
-        public static Process StartEmulator(string workingDirectory, string filename, string arguments)
+        public static Process LaunchMFMEDllInjector(Process mfmeExeProcess)
         {
-            //Process process = new Process();
+            // launch dll inject immediately after starting emulator to try beat MFME to reading the Registry if that is possible
+            //StartDll(
+            //    Path.Combine(MFMEExeHelper.DynamicMFMERootPath, "_dll"),
+            //    kDllInjectorExeFilename,
+            //    Process.Id + " \"" + Path.Combine(MFMEExeHelper.DynamicMFMERootPath, "_dll", dllFilename) + "\"");
 
-            //process.StartInfo.WorkingDirectory = Application.dataPath + "\\" + workingDirectory;
-            //process.StartInfo.WorkingDirectory = process.StartInfo.WorkingDirectory.Replace("/", "\\");
+            string commandLineArguments =
+                mfmeExeProcess.Id + " \"" + Path.Combine(ExeHelper.MFMERootPath, kMameDllFilename) + "\"";
 
-            //process.StartInfo.FileName = filename;
-            //process.StartInfo.Arguments = arguments;
+            return StartProcess(ExeHelper.MFMERootPath, kDllInjectorExeFilename, commandLineArguments);
+        }
 
-            //process.StartInfo.RedirectStandardInput = true;
-            //process.StartInfo.UseShellExecute = false;
-
-
+        public static Process StartProcess(string workingDirectory, string filename, string arguments)
+        {
             string execPath = Path.Combine(workingDirectory, filename);
             execPath = execPath.Replace("/", "\\");
 
             var startInfo = new ProcessStartInfo(execPath, arguments);
             startInfo.WorkingDirectory = workingDirectory;
-
-            //if (UserSettingsController.Instance == null
-            //     || UserSettingsController.Instance.TestEmulator == EmulatorConfigurationData.EmulatorTypes.MFME)
-            if (true) // XXX Hacked back to always be MFME for now
-            {
-                // reserved for any future MFME specific settings
-            }
-            else
-            {
-                startInfo.UseShellExecute = false;
-                startInfo.RedirectStandardInput = true;
-                startInfo.RedirectStandardOutput = true;
-                startInfo.CreateNoWindow = true; // <-- this means there's no Lua console window, MAME window still shows though.  Input mapping works, haven't checked readint std output yet
-                                                 //startInfo.WindowStyle = ProcessWindowStyle.Hidden; // <-- this Hidden / Minimised has no effect on MAME
-            }
 
             Process process = new Process();
             process.StartInfo = startInfo;
@@ -58,5 +51,6 @@ namespace MfmeTools.Mfme
 
             return process;
         }
+
     }
 }

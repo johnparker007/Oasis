@@ -41,6 +41,7 @@ namespace MfmeTools
             this.checkBoxUseCachedReelImages = new System.Windows.Forms.CheckBox();
             this.checkBoxUseCachedLampImages = new System.Windows.Forms.CheckBox();
             this.groupBoxInjection = new System.Windows.Forms.GroupBox();
+            this.checkBoxAnimatedButtons = new System.Windows.Forms.CheckBox();
             this.buttonInjectTargetPath = new System.Windows.Forms.Button();
             this.buttonInjectSourcePath = new System.Windows.Forms.Button();
             this.checkBoxEnvironmentReflections = new System.Windows.Forms.CheckBox();
@@ -54,7 +55,6 @@ namespace MfmeTools
             this.textBoxInjectTargetPath = new System.Windows.Forms.TextBox();
             this.richTextBoxOutputLog = new System.Windows.Forms.RichTextBox();
             this.groupBoxOutputLog = new System.Windows.Forms.GroupBox();
-            this.checkBoxAnimatedButtons = new System.Windows.Forms.CheckBox();
             this.groupBoxExtraction.SuspendLayout();
             this.groupBoxInjection.SuspendLayout();
             this.groupBoxOutputLog.SuspendLayout();
@@ -184,6 +184,16 @@ namespace MfmeTools
             this.groupBoxInjection.TabStop = false;
             this.groupBoxInjection.Text = "Injection";
             // 
+            // checkBoxAnimatedButtons
+            // 
+            this.checkBoxAnimatedButtons.AutoSize = true;
+            this.checkBoxAnimatedButtons.Location = new System.Drawing.Point(290, 108);
+            this.checkBoxAnimatedButtons.Name = "checkBoxAnimatedButtons";
+            this.checkBoxAnimatedButtons.Size = new System.Drawing.Size(108, 17);
+            this.checkBoxAnimatedButtons.TabIndex = 17;
+            this.checkBoxAnimatedButtons.Text = "Animated buttons";
+            this.checkBoxAnimatedButtons.UseVisualStyleBackColor = true;
+            // 
             // buttonInjectTargetPath
             // 
             this.buttonInjectTargetPath.Location = new System.Drawing.Point(627, 79);
@@ -290,7 +300,7 @@ namespace MfmeTools
             this.richTextBoxOutputLog.Location = new System.Drawing.Point(6, 19);
             this.richTextBoxOutputLog.Name = "richTextBoxOutputLog";
             this.richTextBoxOutputLog.ReadOnly = true;
-            this.richTextBoxOutputLog.Size = new System.Drawing.Size(703, 134);
+            this.richTextBoxOutputLog.Size = new System.Drawing.Size(703, 249);
             this.richTextBoxOutputLog.TabIndex = 4;
             this.richTextBoxOutputLog.Text = "";
             // 
@@ -299,26 +309,16 @@ namespace MfmeTools
             this.groupBoxOutputLog.Controls.Add(this.richTextBoxOutputLog);
             this.groupBoxOutputLog.Location = new System.Drawing.Point(13, 439);
             this.groupBoxOutputLog.Name = "groupBoxOutputLog";
-            this.groupBoxOutputLog.Size = new System.Drawing.Size(715, 159);
+            this.groupBoxOutputLog.Size = new System.Drawing.Size(715, 274);
             this.groupBoxOutputLog.TabIndex = 5;
             this.groupBoxOutputLog.TabStop = false;
             this.groupBoxOutputLog.Text = "Output Log";
-            // 
-            // checkBoxAnimatedButtons
-            // 
-            this.checkBoxAnimatedButtons.AutoSize = true;
-            this.checkBoxAnimatedButtons.Location = new System.Drawing.Point(290, 108);
-            this.checkBoxAnimatedButtons.Name = "checkBoxAnimatedButtons";
-            this.checkBoxAnimatedButtons.Size = new System.Drawing.Size(108, 17);
-            this.checkBoxAnimatedButtons.TabIndex = 17;
-            this.checkBoxAnimatedButtons.Text = "Animated buttons";
-            this.checkBoxAnimatedButtons.UseVisualStyleBackColor = true;
             // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(738, 610);
+            this.ClientSize = new System.Drawing.Size(738, 725);
             this.Controls.Add(this.groupBoxOutputLog);
             this.Controls.Add(this.groupBoxInjection);
             this.Controls.Add(this.groupBoxExtraction);
