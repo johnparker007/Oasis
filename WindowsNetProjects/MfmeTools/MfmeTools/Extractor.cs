@@ -1,17 +1,12 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using MfmeTools.Mfme;
+using System.Diagnostics;
 using WindowsInput;
 using System.Threading;
-using System.IO;
-using MfmeTools.Mfme;
-using System.Diagnostics;
 
 namespace MfmeTools
 {
+    using WindowCapture;
+
     public class Extractor
     {
         public struct Options
@@ -44,11 +39,65 @@ namespace MfmeTools
 
         private void ExtractorCoroutine(InputSimulator inputSimulator, Options options)
         {
-            _mfmeProcess = MfmeController.LaunchMFMEExeWithLayout();
-            OutputLog.Log($"MFME exe launched (Process id: {_mfmeProcess.Id})");
+            LaunchMfmeAndDll();
 
-            _dllProcess = MfmeController.LaunchMFMEDllInjector(_mfmeProcess);
-            OutputLog.Log($"MFME dll injector launched (Process id: {_dllProcess.Id})");
+            WindowCapture.WindowCapture.Reset();
+
+            OutputLog.Log("Waiting for matching MFME.exe window handles...");
+
+            const int kRetryCount = 1000;
+            for(int retry = 0; retry < kRetryCount; ++retry)
+            {
+                WindowCapture.WindowCapture.FindSplashscreenWindow((uint)_mfmeProcess.Id);
+                if(WindowCapture.WindowCapture.SplashscreenWindowFound)
+                {
+                    break;
+                }
+
+                Thread.Sleep(50);
+            }
+
+            if(WindowCapture.WindowCapture.SplashscreenWindowFound)
+            {
+                OutputLog.Log("MFME.exe splashscreen window handle found");
+                OutputLog.Log("Splash title: "
+                    + WindowCapture.WindowCapture.GetWindowText(WindowCapture.WindowCapture.SplashscreenWindowHandle));
+            }
+            else
+            {
+                OutputLog.LogError("MFME.exe splashscreen window handle could not be found!");
+            }
+
+
+
+
+            for (int retry = 0; retry < kRetryCount; ++retry)
+            {
+                WindowCapture.WindowCapture.FindMainformWindow((uint)_mfmeProcess.Id);
+                if (WindowCapture.WindowCapture.MainFormWindowFound)
+                {
+                    break;
+                }
+
+                Thread.Sleep(50);
+            }
+
+            if (WindowCapture.WindowCapture.MainFormWindowFound)
+            {
+                OutputLog.Log("MFME.exe mainform window handle found");
+                OutputLog.Log("Mainform title: "
+                    + WindowCapture.WindowCapture.GetWindowText(WindowCapture.WindowCapture.MainFormWindowHandle));
+            }
+            else
+            {
+                OutputLog.LogError("MFME.exe mainform window handle could not be found!");
+            }
+
+            Thread.Sleep(100);
+
+            OutputLog.Log("Mainform title after 100ms sleep: "
+                + WindowCapture.WindowCapture.GetWindowText(WindowCapture.WindowCapture.MainFormWindowHandle));
+
 
 
 
@@ -77,6 +126,20 @@ namespace MfmeTools
 
             //yield return null;
         }
+
+        private void LaunchMfmeAndDll()
+        {
+            _mfmeProcess = MfmeController.LaunchMFMEExeWithLayout();
+            OutputLog.Log($"MFME exe launched (Process id: {_mfmeProcess.Id})");
+
+            _dllProcess = MfmeController.LaunchMFMEDllInjector(_mfmeProcess);
+            OutputLog.Log($"MFME dll injector launched (Process id: {_dllProcess.Id})");
+        }
+
+
+
+
+
 
     }
 }

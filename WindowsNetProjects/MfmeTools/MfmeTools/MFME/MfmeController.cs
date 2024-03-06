@@ -24,12 +24,6 @@ namespace MfmeTools.Mfme
 
         public static Process LaunchMFMEDllInjector(Process mfmeExeProcess)
         {
-            // launch dll inject immediately after starting emulator to try beat MFME to reading the Registry if that is possible
-            //StartDll(
-            //    Path.Combine(MFMEExeHelper.DynamicMFMERootPath, "_dll"),
-            //    kDllInjectorExeFilename,
-            //    Process.Id + " \"" + Path.Combine(MFMEExeHelper.DynamicMFMERootPath, "_dll", dllFilename) + "\"");
-
             string commandLineArguments =
                 mfmeExeProcess.Id + " \"" + Path.Combine(ExeHelper.MFMERootPath, kMameDllFilename) + "\"";
 
