@@ -76,8 +76,13 @@
     <Compile Include="Mfme\ExeCopier.cs" />
     <Compile Include="Mfme\ExeHelper.cs" />
     <Compile Include="Mfme\LayoutCopier.cs" />
+    <Compile Include="Mfme\MFMEAutomation.cs" />
     <Compile Include="Mfme\MfmeController.cs" />
     <Compile Include="Mfme\MfmeOasisCustomRegistry.cs" />
+    <Compile Include="Mfme\MFMEConstants.cs" />
+    <Compile Include="Mfme\MFMEScraperConstants.cs" />
+    <Compile Include="UnityStructWrappers\Color32.cs" />
+    <Compile Include="UnityStructWrappers\Vector2Int.cs" />
     <Compile Include="WindowCapture\NativeMethods.cs" />
     <Compile Include="OutputLog.cs" />
     <Compile Include="PathHelpers.cs" />
