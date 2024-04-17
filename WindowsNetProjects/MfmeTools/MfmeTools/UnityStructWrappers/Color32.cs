@@ -1,6 +1,6 @@
 ﻿namespace MfmeTools.UnityStructWrappers
 {
-    public class Color32
+    public struct Color32
     {
         public byte r;
         public byte g;

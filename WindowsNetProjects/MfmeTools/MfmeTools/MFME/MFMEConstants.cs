@@ -73,5 +73,24 @@
             SemiCircleDown,
             Pie
         }
+
+        public enum MFMECharacterSetType
+        {
+            OldCharset,
+            OKI1937,
+            BFMCharset
+        }
+
+        // Component BandReel
+        public static readonly int kBandReelLampMaskCount = 3; // just scrape the initial page to get started
+        public static readonly int kBandReelLampColumns = 2;
+        public static readonly int kBandReelLampRows = 5;
+        public static readonly int kBandReelLampCount = kBandReelLampColumns * kBandReelLampRows;
+
+        // Component Reel
+        public static readonly int kReelLampColumns = 3;
+        public static readonly int kReelLampRows = 5;
+        public static readonly int kReelLampCount = kReelLampColumns * kReelLampRows;
+
     }
 }
