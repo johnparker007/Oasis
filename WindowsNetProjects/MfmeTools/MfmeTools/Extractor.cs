@@ -48,7 +48,19 @@ namespace MfmeTools
             CaptureMFMESplashScreenWindow();
             CaptureMFMEMainFormWindow();
 
+            MFMEAutomation.EnableEditModeFromDesignMenu(inputSimulator);
 
+            // In ArcadeSim Extractor, I would extract the Configuration here,
+            // such as 8x MPU4 Lamp Columns bytes, then the config for the platform
+            // such as MPU4 fields, Scorpion fields etc.  Not sure if this will
+            // be relevant to this tool, at least initially (since all this is
+            // handled in the MAME driver).
+
+            MFMEAutomation.CopyOffLampsToBackground(inputSimulator);
+
+            // TODO Next - open properties window, and capture window handle for new capture system
+
+            Thread.Sleep(2000); // TODO this was set to 2 seconds, but surely it can be shorter?
 
 
 

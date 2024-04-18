@@ -70,14 +70,11 @@ namespace MfmeTools.Mfme
         //    Thread.Sleep(kShortDelay);
         //}
 
-        //public static void EnableEditModeFromDesignMenu(InputSimulator inputSimulator)
-        //{
-        //    inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LMENU, WindowsInput.Native.VirtualKeyCode.VK_D);
-        //    Thread.Sleep(kShortDelay);
-
-        //    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.VK_E);
-        //    Thread.Sleep(kShortDelay);
-        //}
+        public static void EnableEditModeFromDesignMenu(InputSimulator inputSimulator)
+        {
+            inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.CONTROL, WindowsInput.Native.VirtualKeyCode.VK_E);
+            Thread.Sleep(kShortDelay);
+        }
 
         //public static void DeleteAllOverlaysFromDesignMenu(InputSimulator inputSimulator)
         //{
@@ -126,17 +123,17 @@ namespace MfmeTools.Mfme
         //    }
         //}
 
-        //public static void CopyOffLampsToBackground(InputSimulator inputSimulator)
-        //{
-        //    inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LMENU, WindowsInput.Native.VirtualKeyCode.VK_D);
-        //    Thread.Sleep(kShortDelay);
+        public static void CopyOffLampsToBackground(InputSimulator inputSimulator)
+        {
+            inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LMENU, WindowsInput.Native.VirtualKeyCode.VK_D);
+            Thread.Sleep(kShortDelay);
 
-        //    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.VK_T);
-        //    Thread.Sleep(kShortDelay);
+            inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.VK_T);
+            Thread.Sleep(kShortDelay);
 
-        //    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.VK_P);
-        //    Thread.Sleep(kShortDelay);
-        //}
+            inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.VK_P);
+            Thread.Sleep(kShortDelay);
+        }
 
         //public static void OpenPropertiesWindow(InputSimulator inputSimulator,
         //    EmulatorScraper emulatorScraper, bool clickTopLeftOfLayoutInsteadOfCurrentPosition)
