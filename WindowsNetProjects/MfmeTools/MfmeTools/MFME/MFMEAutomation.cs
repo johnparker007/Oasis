@@ -43,17 +43,17 @@ namespace MfmeTools.Mfme
         //    Thread.Sleep(kShortDelay);
         //}
 
-        //public static double GetMouseCoordinateX(int screenPixelX)
-        //{
-        //    const int kScreenWidth = 1920; //  TODO find way to get actual display width (not Game window width)
-        //    return ((float)screenPixelX / kScreenWidth) * 65535;
-        //}
+        public static double GetMouseCoordinateX(int screenPixelX)
+        {
+            const int kScreenWidth = 1920; //  TODO find way to get actual display width (not Game window width)
+            return ((float)screenPixelX / kScreenWidth) * 65535;
+        }
 
-        //public static double GetMouseCoordinateY(int screenPixelY)
-        //{
-        //    const int kScreenHeight = 1080; //  TODO find way to get actual display height (not Game window height)
-        //    return ((float)screenPixelY / kScreenHeight) * 65535;
-        //}
+        public static double GetMouseCoordinateY(int screenPixelY)
+        {
+            const int kScreenHeight = 1080; //  TODO find way to get actual display height (not Game window height)
+            return ((float)screenPixelY / kScreenHeight) * 65535;
+        }
 
         //public static void StopEmulationFromDebugMenu(InputSimulator inputSimulator)
         //{
@@ -70,7 +70,7 @@ namespace MfmeTools.Mfme
         //    Thread.Sleep(kShortDelay);
         //}
 
-        public static void EnableEditModeFromDesignMenu(InputSimulator inputSimulator)
+        public static void ToggleEditMode(InputSimulator inputSimulator)
         {
             inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.CONTROL, WindowsInput.Native.VirtualKeyCode.VK_E);
             Thread.Sleep(kShortDelay);
@@ -135,35 +135,36 @@ namespace MfmeTools.Mfme
             Thread.Sleep(kShortDelay);
         }
 
-        //public static void OpenPropertiesWindow(InputSimulator inputSimulator,
-        //    EmulatorScraper emulatorScraper, bool clickTopLeftOfLayoutInsteadOfCurrentPosition)
-        //{
-        //    if (clickTopLeftOfLayoutInsteadOfCurrentPosition)
-        //    {
-        //        RightClickOnTopLeftCornerOfLayout(inputSimulator, emulatorScraper);
-        //    }
-        //    else
-        //    {
-        //        inputSimulator.Mouse.RightButtonClick();
-        //        Thread.Sleep(kShortDelay);
-        //    }
+        public static void OpenPropertiesWindow(InputSimulator inputSimulator,
+            bool clickTopLeftOfLayoutInsteadOfCurrentPosition)
+        {
+            if (clickTopLeftOfLayoutInsteadOfCurrentPosition)
+            {
+                RightClickOnTopLeftCornerOfLayout(inputSimulator);
+            }
+            else
+            {
+                inputSimulator.Mouse.RightButtonClick();
+                Thread.Sleep(kShortDelay);
+            }
 
-        //    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-        //    Thread.Sleep(kShortDelay);
+            inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
+            Thread.Sleep(kShortDelay);
 
-        //    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.RETURN);
-        //    Thread.Sleep(kShortDelay);
+            inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.RETURN);
+            Thread.Sleep(kShortDelay);
 
-        //    // Can't do this as on certain components, 'P' selects a new Lam[p]s menu option (see Dennis the Menace classic layout)
-        //    //inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.VK_P);
-        //    //Thread.Sleep(kShortDelay);
+            // Can't do this as on certain components, 'P' selects a new Lam[p]s menu option (see Dennis the Menace classic layout)
+            //inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.VK_P);
+            //Thread.Sleep(kShortDelay);
 
-        //    emulatorScraper.SetScrapeChildIfFound(true, "Properties");
+// TODO will need alt version of this for new MfmeTools scrape system:
+//            emulatorScraper.SetScrapeChildIfFound(true, "Properties");
 
-        //    // move current selection from tab to text box in lower right so it doesn't mess with OCRing first component type
-        //    inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LSHIFT, WindowsInput.Native.VirtualKeyCode.TAB);
-        //    Thread.Sleep(kShortDelay);
-        //}
+            // move current selection from tab to text box in lower right so it doesn't mess with OCRing first component type
+            inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LSHIFT, WindowsInput.Native.VirtualKeyCode.TAB);
+            Thread.Sleep(kShortDelay);
+        }
 
         //public static void LeftClickOnEmptyAreaOfDataLayout(InputSimulator inputSimulator, EmulatorScraper emulatorScraper)
         //{
@@ -180,23 +181,25 @@ namespace MfmeTools.Mfme
         //    Thread.Sleep(kShortDelay);
         //}
 
-        //public static void RightClickOnTopLeftCornerOfLayout(InputSimulator inputSimulator, EmulatorScraper emulatorScraper)
-        //{
-        //    int windowPixelX = emulatorScraper.UwcWindowTexture.window.x;
-        //    int windowPixelY = emulatorScraper.UwcWindowTexture.window.y;
-        //    int clickPositionPixelX = windowPixelX + kXOffsetToGetToTopLeftOfLayout;
-        //    int clickPositionPixelY = windowPixelY + kYOffsetToGetToTopLeftOfLayout;
-        //    // fudge so that at least for the extractor, we can extract narrow window layouts where the menu bar spills across two rows
-        //    clickPositionPixelY += 100; // should always be enough even for exceptionally narrow layouts
+        public static void RightClickOnTopLeftCornerOfLayout(InputSimulator inputSimulator)
+        {
+            //int windowPixelX = emulatorScraper.UwcWindowTexture.window.x;
+            //int windowPixelY = emulatorScraper.UwcWindowTexture.window.y;
+            int windowPixelX = WindowCapture.WindowCapture.MainFormWindowRect.X;
+            int windowPixelY = WindowCapture.WindowCapture.MainFormWindowRect.Y;
+            int clickPositionPixelX = windowPixelX + kXOffsetToGetToTopLeftOfLayout;
+            int clickPositionPixelY = windowPixelY + kYOffsetToGetToTopLeftOfLayout;
+            // fudge so that at least for the extractor, we can extract narrow window layouts where the menu bar spills across two rows
+            clickPositionPixelY += 100; // should always be enough even for exceptionally narrow layouts
 
-        //    double mousePositionX = GetMouseCoordinateX(clickPositionPixelX);
-        //    double mousePositionY = GetMouseCoordinateY(clickPositionPixelY);
-        //    inputSimulator.Mouse.MoveMouseTo(mousePositionX, mousePositionY);
-        //    Thread.Sleep(kShortDelay);
+            double mousePositionX = GetMouseCoordinateX(clickPositionPixelX);
+            double mousePositionY = GetMouseCoordinateY(clickPositionPixelY);
+            inputSimulator.Mouse.MoveMouseTo(mousePositionX, mousePositionY);
+            Thread.Sleep(kShortDelay);
 
-        //    inputSimulator.Mouse.RightButtonClick();
-        //    Thread.Sleep(kShortDelay);
-        //}
+            inputSimulator.Mouse.RightButtonClick();
+            Thread.Sleep(kShortDelay);
+        }
 
         //public static void GetTextCoroutine(InputSimulator inputSimulator, EmulatorScraper emulatorScraper,
         //    int mouseCoordinateWithinWindowX, int mouseCoordinateWithinWindowY)

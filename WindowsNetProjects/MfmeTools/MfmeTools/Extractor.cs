@@ -5,7 +5,9 @@ using System.Threading;
 
 namespace MfmeTools
 {
+    using System.Runtime.InteropServices;
     using WindowCapture;
+    using static MfmeTools.WindowCapture.NativeMethods;
 
     public class Extractor
     {
@@ -46,9 +48,11 @@ namespace MfmeTools
             OutputLog.Log("Waiting for matching MFME.exe window handles...");
 
             CaptureMFMESplashScreenWindow();
-            CaptureMFMEMainFormWindow();
 
-            MFMEAutomation.EnableEditModeFromDesignMenu(inputSimulator);
+            CaptureMFMEMainFormWindow();
+            GetMFMEMainFormWindowRect();
+
+            MFMEAutomation.ToggleEditMode(inputSimulator);
 
             // In ArcadeSim Extractor, I would extract the Configuration here,
             // such as 8x MPU4 Lamp Columns bytes, then the config for the platform
@@ -58,9 +62,9 @@ namespace MfmeTools
 
             MFMEAutomation.CopyOffLampsToBackground(inputSimulator);
 
-            // TODO Next - open properties window, and capture window handle for new capture system
-
-            Thread.Sleep(2000); // TODO this was set to 2 seconds, but surely it can be shorter?
+            MFMEAutomation.OpenPropertiesWindow(inputSimulator, true);
+            CaptureMFMEPropertiesWindow();
+            GetMFMEPropertiesWindowRect();
 
 
 
@@ -162,6 +166,65 @@ namespace MfmeTools
 
         }
 
+        private void CaptureMFMEPropertiesWindow()
+        {
+            const int kRetryCount = 1000;
+            for (int retry = 0; retry < kRetryCount; ++retry)
+            {
+                WindowCapture.WindowCapture.FindPropertiesWindow((uint)_mfmeProcess.Id);
+                if (WindowCapture.WindowCapture.PropertiesWindowFound)
+                {
+                    break;
+                }
+
+                Thread.Sleep(50);
+            }
+
+            if (WindowCapture.WindowCapture.PropertiesWindowFound)
+            {
+                OutputLog.Log("MFME.exe properties window handle found");
+                OutputLog.Log("Properties title: "
+                    + WindowCapture.WindowCapture.GetWindowText(WindowCapture.WindowCapture.PropertiesWindowHandle));
+            }
+            else
+            {
+                OutputLog.LogError("MFME.exe properties window handle could not be found!");
+            }
+        }
+
+        private void GetMFMEMainFormWindowRect()
+        {
+            const bool kDebugOutput = false;
+
+            WindowCapture.WindowCapture.MainFormWindowRect =
+                WindowCapture.WindowCapture.GetWindowRect(this, WindowCapture.WindowCapture.MainFormWindowHandle);
+
+            if (kDebugOutput)
+            {
+                OutputLog.Log($"Mainform rect: " +
+                    $"{WindowCapture.WindowCapture.MainFormWindowRect.X}, " +
+                    $"{WindowCapture.WindowCapture.MainFormWindowRect.Y}, " +
+                    $"{WindowCapture.WindowCapture.MainFormWindowRect.Width}, " +
+                    $"{WindowCapture.WindowCapture.MainFormWindowRect.Height}");
+            }
+        }
+
+        private void GetMFMEPropertiesWindowRect()
+        {
+            const bool kDebugOutput = false;
+
+            WindowCapture.WindowCapture.PropertiesWindowRect =
+                WindowCapture.WindowCapture.GetWindowRect(this, WindowCapture.WindowCapture.PropertiesWindowHandle);
+
+            if(kDebugOutput)
+            {
+                OutputLog.Log($"Properties rect: " +
+                    $"{WindowCapture.WindowCapture.PropertiesWindowRect.X}, " +
+                    $"{WindowCapture.WindowCapture.PropertiesWindowRect.Y}, " +
+                    $"{WindowCapture.WindowCapture.PropertiesWindowRect.Width}, " +
+                    $"{WindowCapture.WindowCapture.PropertiesWindowRect.Height}");
+            }
+        }
 
 
     }
