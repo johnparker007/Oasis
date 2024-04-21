@@ -5,10 +5,6 @@ using System.Threading;
 
 namespace MfmeTools
 {
-    using System.Runtime.InteropServices;
-    using WindowCapture;
-    using static MfmeTools.WindowCapture.NativeMethods;
-
     public class Extractor
     {
         public struct Options

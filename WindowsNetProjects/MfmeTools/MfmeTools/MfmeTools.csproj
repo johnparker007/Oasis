@@ -9,6 +9,9 @@
     <RootNamespace>MfmeTools</RootNamespace>
     <AssemblyName>MfmeTools</AssemblyName>
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
+	
+	<LangVersion>8.0</LangVersion>
+	
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <Deterministic>true</Deterministic>
@@ -49,6 +52,15 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="PresentationFramework" />
+    <Reference Include="SharpDX, Version=4.2.0.0, Culture=neutral, PublicKeyToken=b4dcf0f35e5521f1, processorArchitecture=MSIL">
+      <HintPath>..\packages\SharpDX.4.2.0\lib\net45\SharpDX.dll</HintPath>
+    </Reference>
+    <Reference Include="SharpDX.Direct3D11, Version=4.2.0.0, Culture=neutral, PublicKeyToken=b4dcf0f35e5521f1, processorArchitecture=MSIL">
+      <HintPath>..\packages\SharpDX.Direct3D11.4.2.0\lib\net45\SharpDX.Direct3D11.dll</HintPath>
+    </Reference>
+    <Reference Include="SharpDX.DXGI, Version=4.2.0.0, Culture=neutral, PublicKeyToken=b4dcf0f35e5521f1, processorArchitecture=MSIL">
+      <HintPath>..\packages\SharpDX.DXGI.4.2.0\lib\net45\SharpDX.DXGI.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -125,11 +137,18 @@
     <Compile Include="UnityStructWrappers\Color.cs" />
     <Compile Include="UnityStructWrappers\Color32.cs" />
     <Compile Include="UnityStructWrappers\Vector2Int.cs" />
-    <Compile Include="WindowCapture\NativeMethods.cs" />
+    <Compile Include="WindowCapture\BitBlt\BitBlt.cs" />
+    <Compile Include="WindowCapture\BitBlt\Interop\DeviceContextValues.cs" />
+    <Compile Include="WindowCapture\BitBlt\Interop\NativeMethods.cs" />
+    <Compile Include="WindowCapture\BitBlt\Interop\RECT.cs" />
+    <Compile Include="WindowCapture\BitBlt\Interop\TernaryRasterOperations.cs" />
+    <Compile Include="WindowCapture\MfmeWindow.cs" />
     <Compile Include="OutputLog.cs" />
     <Compile Include="PathHelpers.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="WindowCapture\Shared\Interfaces\ICaptureMethod.cs" />
+    <Compile Include="WindowCapture\Shared\Interop\NativeMethods.cs" />
     <Compile Include="WindowCapture\WindowCapture.cs" />
     <Compile Include="WindowsInput\IInputDeviceStateAdaptor.cs" />
     <Compile Include="WindowsInput\IInputMessageDispatcher.cs" />
@@ -167,6 +186,7 @@
       <DependentUpon>Resources.resx</DependentUpon>
       <DesignTime>True</DesignTime>
     </Compile>
+    <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>

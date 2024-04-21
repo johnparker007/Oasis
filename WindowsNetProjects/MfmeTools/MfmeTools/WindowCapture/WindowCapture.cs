@@ -1,4 +1,5 @@
 ﻿using MfmeTools.Mfme;
+using MfmeTools.WindowCapture.Shared.Interop;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -6,7 +7,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
-using static MfmeTools.WindowCapture.NativeMethods;
+using static MfmeTools.WindowCapture.Shared.Interop.NativeMethods;
 
 namespace MfmeTools.WindowCapture
 {
