@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MfmeTools.Mfme;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -17,7 +18,7 @@ namespace MfmeTools.WindowCapture
         {
             get
             {
-                return SplashscreenWindowHandle != IntPtr.Zero;
+                return MfmeScraper.SplashScreen.Handle != IntPtr.Zero;
             }
         }
 
@@ -25,7 +26,7 @@ namespace MfmeTools.WindowCapture
         {
             get
             {
-                return MainFormWindowHandle != IntPtr.Zero;
+                return MfmeScraper.MainForm.Handle != IntPtr.Zero;
             }
         }
 
@@ -33,21 +34,15 @@ namespace MfmeTools.WindowCapture
         {
             get
             {
-                return PropertiesWindowHandle != IntPtr.Zero;
+                return MfmeScraper.Properties.Handle != IntPtr.Zero;
             }
         }
 
-        public static IntPtr SplashscreenWindowHandle = IntPtr.Zero;
-        public static IntPtr MainFormWindowHandle = IntPtr.Zero;
-        public static IntPtr PropertiesWindowHandle = IntPtr.Zero;
-
-        public static RECT MainFormWindowRect = new RECT();
-        public static RECT PropertiesWindowRect = new RECT();
-
         public static void Reset()
         {
-            SplashscreenWindowHandle = IntPtr.Zero;
-            MainFormWindowHandle = IntPtr.Zero;
+            MfmeScraper.SplashScreen.Handle = IntPtr.Zero;
+            MfmeScraper.MainForm.Handle = IntPtr.Zero;
+            MfmeScraper.Properties.Handle = IntPtr.Zero;
         }
 
         public static void FindSplashscreenWindow(uint targetProcessId)
@@ -88,7 +83,7 @@ namespace MfmeTools.WindowCapture
                     OutputLog.Log($"Window title: {GetWindowText(hWnd)}");
                 }
 
-                SplashscreenWindowHandle = hWnd;
+                MfmeScraper.SplashScreen.Handle = hWnd;
 
                 return true;
             }, IntPtr.Zero);
@@ -123,7 +118,7 @@ namespace MfmeTools.WindowCapture
                     return true;
                 }
 
-                if (hWnd == SplashscreenWindowHandle)
+                if (hWnd == MfmeScraper.SplashScreen.Handle)
                 {
                     return true;
                 }
@@ -137,7 +132,7 @@ namespace MfmeTools.WindowCapture
                     OutputLog.Log($"Window title: {GetWindowText(hWnd)}");
                 }
 
-                MainFormWindowHandle = hWnd;
+                MfmeScraper.MainForm.Handle = hWnd;
 
                 return true;
             }, IntPtr.Zero);
@@ -171,7 +166,7 @@ namespace MfmeTools.WindowCapture
                     return true;
                 }
 
-                if (hWnd == SplashscreenWindowHandle || hWnd == MainFormWindowHandle)
+                if (hWnd == MfmeScraper.SplashScreen.Handle || hWnd == MfmeScraper.MainForm.Handle)
                 {
                     return true;
                 }
@@ -185,7 +180,7 @@ namespace MfmeTools.WindowCapture
                     OutputLog.Log($"Window title: {GetWindowText(hWnd)}");
                 }
 
-                PropertiesWindowHandle = hWnd;
+                MfmeScraper.Properties.Handle = hWnd;
 
                 return true;
             }, IntPtr.Zero);

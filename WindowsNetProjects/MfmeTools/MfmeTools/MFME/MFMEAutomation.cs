@@ -27,11 +27,11 @@ namespace MfmeTools.Mfme
         public static readonly int kAdjustSizeX_Y = 66;
         public static readonly int kAdjustSizeY_Y = 97;
 
-        //public static bool PreviousComponentNavigationTimedOut
-        //{
-        //    get;
-        //    private set;
-        //}
+        public static bool PreviousComponentNavigationTimedOut
+        {
+            get;
+            private set;
+        }
 
         //public static void CenterMouseOnScreen(InputSimulator inputSimulator)
         //{
@@ -161,6 +161,7 @@ namespace MfmeTools.Mfme
 // TODO will need alt version of this for new MfmeTools scrape system:
 //            emulatorScraper.SetScrapeChildIfFound(true, "Properties");
 
+// TODO CAN THIS BE REMOVED AS WE'RE GOING TO SCRAPE VIA MY DELPHI PIXEL FONT SCRAPER?
             // move current selection from tab to text box in lower right so it doesn't mess with OCRing first component type
             inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LSHIFT, WindowsInput.Native.VirtualKeyCode.TAB);
             Thread.Sleep(kShortDelay);
@@ -185,8 +186,8 @@ namespace MfmeTools.Mfme
         {
             //int windowPixelX = emulatorScraper.UwcWindowTexture.window.x;
             //int windowPixelY = emulatorScraper.UwcWindowTexture.window.y;
-            int windowPixelX = WindowCapture.WindowCapture.MainFormWindowRect.X;
-            int windowPixelY = WindowCapture.WindowCapture.MainFormWindowRect.Y;
+            int windowPixelX = MfmeScraper.MainForm.Rect.X;
+            int windowPixelY = MfmeScraper.MainForm.Rect.Y;
             int clickPositionPixelX = windowPixelX + kXOffsetToGetToTopLeftOfLayout;
             int clickPositionPixelY = windowPixelY + kYOffsetToGetToTopLeftOfLayout;
             // fudge so that at least for the extractor, we can extract narrow window layouts where the menu bar spills across two rows
@@ -217,73 +218,73 @@ namespace MfmeTools.Mfme
         //    Thread.Sleep(kVeryShortDelay);
         //}
 
-        //public static void LeftClickAtPosition(InputSimulator inputSimulator, EmulatorScraper emulatorScraper,
-        //    int mouseCoordinateWithinWindowX, int mouseCoordinateWithinWindowY, int? overrideDelay = null)
-        //{
-        //    ClickAtPosition(true, inputSimulator, emulatorScraper, mouseCoordinateWithinWindowX, mouseCoordinateWithinWindowY, overrideDelay);
-        //}
+        public static void LeftClickAtPosition(InputSimulator inputSimulator, 
+            int mouseCoordinateWithinWindowX, int mouseCoordinateWithinWindowY, int? overrideDelay = null)
+        {
+            ClickAtPosition(true, inputSimulator, mouseCoordinateWithinWindowX, mouseCoordinateWithinWindowY, overrideDelay);
+        }
 
-        //public static void RightClickAtPosition(InputSimulator inputSimulator, EmulatorScraper emulatorScraper,
-        //    int mouseCoordinateWithinWindowX, int mouseCoordinateWithinWindowY, int? overrideDelay = null)
-        //{
-        //    ClickAtPosition(false, inputSimulator, emulatorScraper, mouseCoordinateWithinWindowX, mouseCoordinateWithinWindowY, overrideDelay);
-        //}
+        public static void RightClickAtPosition(InputSimulator inputSimulator, 
+            int mouseCoordinateWithinWindowX, int mouseCoordinateWithinWindowY, int? overrideDelay = null)
+        {
+            ClickAtPosition(false, inputSimulator, mouseCoordinateWithinWindowX, mouseCoordinateWithinWindowY, overrideDelay);
+        }
 
-        //public static void ClickAtPosition(bool leftClick, InputSimulator inputSimulator, EmulatorScraper emulatorScraper,
-        //    int mouseCoordinateWithinWindowX, int mouseCoordinateWithinWindowY, int? overrideDelay = null)
-        //{
-        //    inputSimulator.Mouse.MoveMouseTo(
-        //         GetMouseCoordinateWithinWindowX(mouseCoordinateWithinWindowX, emulatorScraper),
-        //         GetMouseCoordinateWithinWindowY(mouseCoordinateWithinWindowY, emulatorScraper));
+        public static void ClickAtPosition(bool leftClick, InputSimulator inputSimulator, 
+            int mouseCoordinateWithinWindowX, int mouseCoordinateWithinWindowY, int? overrideDelay = null)
+        {
+            inputSimulator.Mouse.MoveMouseTo(
+                 GetMouseCoordinateWithinWindowX(mouseCoordinateWithinWindowX),
+                 GetMouseCoordinateWithinWindowY(mouseCoordinateWithinWindowY));
 
-        //    Thread.Sleep(kShortDelay);
+            Thread.Sleep(kShortDelay);
 
-        //    if (leftClick)
-        //    {
-        //        inputSimulator.Mouse.LeftButtonClick();
-        //    }
-        //    else
-        //    {
-        //        inputSimulator.Mouse.RightButtonClick();
-        //    }
+            if (leftClick)
+            {
+                inputSimulator.Mouse.LeftButtonClick();
+            }
+            else
+            {
+                inputSimulator.Mouse.RightButtonClick();
+            }
 
-        //    if (overrideDelay.HasValue)
-        //    {
-        //        Thread.Sleep(overrideDelay.Value);
-        //    }
-        //    else
-        //    {
-        //        Thread.Sleep(kShortDelay);
-        //    }
-        //}
+            if (overrideDelay.HasValue)
+            {
+                Thread.Sleep(overrideDelay.Value);
+            }
+            else
+            {
+                Thread.Sleep(kShortDelay);
+            }
+        }
 
-        //public static double GetMouseCoordinateWithinWindowX(int withinWindowPixelX, EmulatorScraper emulatorScraper)
-        //{
-        //    int screenPixelX = GetScreenPixelX(withinWindowPixelX, emulatorScraper);
-        //    return GetMouseCoordinateX(screenPixelX);
-        //}
+        public static double GetMouseCoordinateWithinWindowX(int withinWindowPixelX)
+        {
+            int screenPixelX = GetScreenPixelX(withinWindowPixelX);
+            return GetMouseCoordinateX(screenPixelX);
+        }
 
-        //public static double GetMouseCoordinateWithinWindowY(int withinWindowPixelY, EmulatorScraper emulatorScraper)
-        //{
-        //    int screenPixelY = GetScreenPixelY(withinWindowPixelY, emulatorScraper);
-        //    return GetMouseCoordinateY(screenPixelY);
-        //}
+        public static double GetMouseCoordinateWithinWindowY(int withinWindowPixelY)
+        {
+            int screenPixelY = GetScreenPixelY(withinWindowPixelY);
+            return GetMouseCoordinateY(screenPixelY);
+        }
 
-        //public static int GetScreenPixelX(int withinWindowPixelX, EmulatorScraper emulatorScraper)
-        //{
-        //    int windowPixelX = emulatorScraper.CurrentUwcWindowTextureBeingScraped.window.x;
-        //    int sreenPixelX = windowPixelX + withinWindowPixelX;
+        public static int GetScreenPixelX(int withinWindowPixelX)
+        {
+            int windowPixelX = MfmeScraper.CurrentWindow.Rect.X;
+            int screenPixelX = windowPixelX + withinWindowPixelX;
 
-        //    return sreenPixelX;
-        //}
+            return screenPixelX;
+        }
 
-        //public static int GetScreenPixelY(int withinWindowPixelY, EmulatorScraper emulatorScraper)
-        //{
-        //    int windowPixelY = emulatorScraper.CurrentUwcWindowTextureBeingScraped.window.y;
-        //    int sreenPixelY = windowPixelY + withinWindowPixelY;
+        public static int GetScreenPixelY(int withinWindowPixelY)
+        {
+            int windowPixelY = MfmeScraper.CurrentWindow.Rect.Y;
+            int screenPixelY = windowPixelY + withinWindowPixelY;
 
-        //    return sreenPixelY;
-        //}
+            return screenPixelY;
+        }
 
         //public static MFMEConstants.MFMEComponentType GetMFMEComponentType(EmulatorScraper emulatorScraper, string scrapedComponentNameOCR)
         //{
@@ -457,72 +458,77 @@ namespace MfmeTools.Mfme
         //    Thread.Sleep(kShortDelay);
         //}
 
-        //public static void ClickPropertiesComponentPreviousUntilOnFirstComponent(InputSimulator inputSimulator, EmulatorScraper emulatorScraper)
-        //{
-        //    PreviousComponentNavigationTimedOut = false;
+        public static void ClickPropertiesComponentPreviousUntilOnFirstComponent(InputSimulator inputSimulator)
+        {
+            PreviousComponentNavigationTimedOut = false;
 
-        //    do
-        //    {
-        //        ClickPropertiesComponentPrevious(inputSimulator, emulatorScraper);
-        //    }
-        //    while (PreviousComponentNavigationTimedOut == false);
-        //}
+            do
+            {
+                ClickPropertiesComponentPrevious(inputSimulator);
+            }
+            while (PreviousComponentNavigationTimedOut == false);
+        }
 
-        //public static void ClickPropertiesComponentNext(InputSimulator inputSimulator, EmulatorScraper emulatorScraper)
-        //{
-        //    yield return ClickPropertiesComponentNavigationArrow(inputSimulator, emulatorScraper, true);
-        //}
+        public static void ClickPropertiesComponentNext(InputSimulator inputSimulator)
+        {
+            ClickPropertiesComponentNavigationArrow(inputSimulator, true);
+        }
 
-        //public static void ClickPropertiesComponentPrevious(InputSimulator inputSimulator, EmulatorScraper emulatorScraper)
-        //{
-        //    yield return ClickPropertiesComponentNavigationArrow(inputSimulator, emulatorScraper, false);
-        //}
+        public static void ClickPropertiesComponentPrevious(InputSimulator inputSimulator)
+        {
+            ClickPropertiesComponentNavigationArrow(inputSimulator, false);
+        }
 
-        //private static IEnumerator ClickPropertiesComponentNavigationArrow(
-        //    InputSimulator inputSimulator, EmulatorScraper emulatorScraper, bool clickNext, float timeout = 1.0f)
-        //{
-        //    // capture initial 'Z order:' area pixels, click with no post delay, loop capturing pixels until they change from the initial zorder pixels 
-        //    Color32[] initialZOrderPixels = emulatorScraper.CurrentUwcWindowTextureBeingScraped.window.GetPixels(
-        //        MFMEScraperConstants.kPropertiesZOrder_X, MFMEScraperConstants.kPropertiesZOrder_Y,
-        //        MFMEScraperConstants.kPropertiesZOrder_Width, MFMEScraperConstants.kPropertiesZOrder_Height);
+        private static void ClickPropertiesComponentNavigationArrow(
+            InputSimulator inputSimulator, bool clickNext, float timeout = 1.0f)
+        {
+// JP HERE - to uncomment once new window capture is ported in
 
-        //    if (clickNext)
-        //    {
-        //        LeftClickAtPosition(inputSimulator, emulatorScraper,
-        //            MFMEScraperConstants.kPropertiesNextButton_X, MFMEScraperConstants.kPropertiesNextButton_Y, 0f);
-        //    }
-        //    else
-        //    {
-        //        LeftClickAtPosition(inputSimulator, emulatorScraper,
-        //            MFMEScraperConstants.kPropertiesPreviousButton_X, MFMEScraperConstants.kPropertiesPreviousButton_Y, 0f);
-        //    }
 
-        //    float elapsed = 0f;
-        //    bool currentZOrderPixelsChanged = false;
-        //    do
-        //    {
-        //        yield return null;
-        //        elapsed += Time.deltaTime;
+            //// capture initial 'Z order:' area pixels, click with no post delay, loop capturing pixels until they change from the initial zorder pixels 
+            //Color32[] initialZOrderPixels = 
+            //    MfmeScraper.CurrentWindow.GetPixels(
+            //    MFMEScraperConstants.kPropertiesZOrder_X, MFMEScraperConstants.kPropertiesZOrder_Y,
+            //    MFMEScraperConstants.kPropertiesZOrder_Width, MFMEScraperConstants.kPropertiesZOrder_Height);
 
-        //        Color32[] currentZOrderPixels = emulatorScraper.CurrentUwcWindowTextureBeingScraped.window.GetPixels(
-        //                        MFMEScraperConstants.kPropertiesZOrder_X, MFMEScraperConstants.kPropertiesZOrder_Y,
-        //                        MFMEScraperConstants.kPropertiesZOrder_Width, MFMEScraperConstants.kPropertiesZOrder_Height);
+            //if (clickNext)
+            //{
+            //    LeftClickAtPosition(inputSimulator, 
+            //        MFMEScraperConstants.kPropertiesNextButton_X, MFMEScraperConstants.kPropertiesNextButton_Y, 0);
+            //}
+            //else
+            //{
+            //    LeftClickAtPosition(inputSimulator, 
+            //        MFMEScraperConstants.kPropertiesPreviousButton_X, MFMEScraperConstants.kPropertiesPreviousButton_Y, 0);
+            //}
 
-        //        for (int zOrderPixelIndex = 0;
-        //            zOrderPixelIndex < MFMEScraperConstants.kPropertiesZOrder_Width * MFMEScraperConstants.kPropertiesZOrder_Height;
-        //            ++zOrderPixelIndex)
-        //        {
-        //            // only need to check a single channel to detect change to Zorder text
-        //            if (currentZOrderPixels[zOrderPixelIndex].r != initialZOrderPixels[zOrderPixelIndex].r)
-        //            {
-        //                currentZOrderPixelsChanged = true;
-        //            }
-        //        }
-        //    }
-        //    while (!currentZOrderPixelsChanged && elapsed < timeout);
+            //float elapsed = 0f;
+            //const int kFixedDeltaSleepMilliseconds = 17;
+            //bool currentZOrderPixelsChanged = false;
+            //do
+            //{
+            //    Thread.Sleep(kFixedDeltaSleepMilliseconds);
+            //    elapsed += kFixedDeltaSleepMilliseconds / 1000f;
 
-        //    PreviousComponentNavigationTimedOut = elapsed >= timeout;
-        //}
+            //    Color32[] currentZOrderPixels = emulatorScraper.CurrentUwcWindowTextureBeingScraped.window.GetPixels(
+            //                    MFMEScraperConstants.kPropertiesZOrder_X, MFMEScraperConstants.kPropertiesZOrder_Y,
+            //                    MFMEScraperConstants.kPropertiesZOrder_Width, MFMEScraperConstants.kPropertiesZOrder_Height);
+
+            //    for (int zOrderPixelIndex = 0;
+            //        zOrderPixelIndex < MFMEScraperConstants.kPropertiesZOrder_Width * MFMEScraperConstants.kPropertiesZOrder_Height;
+            //        ++zOrderPixelIndex)
+            //    {
+            //        // only need to check a single channel to detect change to Zorder text
+            //        if (currentZOrderPixels[zOrderPixelIndex].r != initialZOrderPixels[zOrderPixelIndex].r)
+            //        {
+            //            currentZOrderPixelsChanged = true;
+            //        }
+            //    }
+            //}
+            //while (!currentZOrderPixelsChanged && elapsed < timeout);
+
+            //PreviousComponentNavigationTimedOut = elapsed >= timeout;
+        }
 
     }
 }

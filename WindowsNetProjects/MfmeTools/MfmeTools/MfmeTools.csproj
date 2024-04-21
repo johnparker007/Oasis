@@ -120,6 +120,7 @@
     <Compile Include="Mfme\MfmeExtractor.cs" />
     <Compile Include="Mfme\MfmeOasisCustomRegistry.cs" />
     <Compile Include="Mfme\MFMEConstants.cs" />
+    <Compile Include="Mfme\MfmeScraper.cs" />
     <Compile Include="Mfme\MFMEScraperConstants.cs" />
     <Compile Include="UnityStructWrappers\Color.cs" />
     <Compile Include="UnityStructWrappers\Color32.cs" />

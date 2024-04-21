@@ -66,7 +66,7 @@ namespace MfmeTools
             CaptureMFMEPropertiesWindow();
             GetMFMEPropertiesWindowRect();
 
-
+            MFMEAutomation.ClickPropertiesComponentPreviousUntilOnFirstComponent(inputSimulator);
 
 
 
@@ -126,7 +126,7 @@ namespace MfmeTools
             {
                 OutputLog.Log("MFME.exe splashscreen window handle found");
                 OutputLog.Log("Splash title: "
-                    + WindowCapture.WindowCapture.GetWindowText(WindowCapture.WindowCapture.SplashscreenWindowHandle));
+                    + WindowCapture.WindowCapture.GetWindowText(MfmeScraper.SplashScreen.Handle));
             }
             else
             {
@@ -152,7 +152,7 @@ namespace MfmeTools
             {
                 OutputLog.Log("MFME.exe mainform window handle found");
                 OutputLog.Log("Mainform title: "
-                    + WindowCapture.WindowCapture.GetWindowText(WindowCapture.WindowCapture.MainFormWindowHandle));
+                    + WindowCapture.WindowCapture.GetWindowText(MfmeScraper.MainForm.Handle));
             }
             else
             {
@@ -162,7 +162,7 @@ namespace MfmeTools
             Thread.Sleep(100);
 
             OutputLog.Log("Mainform title after 100ms sleep: "
-                + WindowCapture.WindowCapture.GetWindowText(WindowCapture.WindowCapture.MainFormWindowHandle));
+                + WindowCapture.WindowCapture.GetWindowText(MfmeScraper.MainForm.Handle));
 
         }
 
@@ -184,7 +184,7 @@ namespace MfmeTools
             {
                 OutputLog.Log("MFME.exe properties window handle found");
                 OutputLog.Log("Properties title: "
-                    + WindowCapture.WindowCapture.GetWindowText(WindowCapture.WindowCapture.PropertiesWindowHandle));
+                    + WindowCapture.WindowCapture.GetWindowText(MfmeScraper.Properties.Handle));
             }
             else
             {
@@ -196,16 +196,16 @@ namespace MfmeTools
         {
             const bool kDebugOutput = false;
 
-            WindowCapture.WindowCapture.MainFormWindowRect =
-                WindowCapture.WindowCapture.GetWindowRect(this, WindowCapture.WindowCapture.MainFormWindowHandle);
+            MfmeScraper.MainForm.Rect =
+                WindowCapture.WindowCapture.GetWindowRect(this, MfmeScraper.MainForm.Handle);
 
             if (kDebugOutput)
             {
                 OutputLog.Log($"Mainform rect: " +
-                    $"{WindowCapture.WindowCapture.MainFormWindowRect.X}, " +
-                    $"{WindowCapture.WindowCapture.MainFormWindowRect.Y}, " +
-                    $"{WindowCapture.WindowCapture.MainFormWindowRect.Width}, " +
-                    $"{WindowCapture.WindowCapture.MainFormWindowRect.Height}");
+                    $"{MfmeScraper.MainForm.Rect.X}, " +
+                    $"{MfmeScraper.MainForm.Rect.Y}, " +
+                    $"{MfmeScraper.MainForm.Rect.Width}, " +
+                    $"{MfmeScraper.MainForm.Rect.Height}");
             }
         }
 
@@ -213,16 +213,16 @@ namespace MfmeTools
         {
             const bool kDebugOutput = false;
 
-            WindowCapture.WindowCapture.PropertiesWindowRect =
-                WindowCapture.WindowCapture.GetWindowRect(this, WindowCapture.WindowCapture.PropertiesWindowHandle);
+            MfmeScraper.Properties.Rect =
+                WindowCapture.WindowCapture.GetWindowRect(this, MfmeScraper.Properties.Handle);
 
             if(kDebugOutput)
             {
                 OutputLog.Log($"Properties rect: " +
-                    $"{WindowCapture.WindowCapture.PropertiesWindowRect.X}, " +
-                    $"{WindowCapture.WindowCapture.PropertiesWindowRect.Y}, " +
-                    $"{WindowCapture.WindowCapture.PropertiesWindowRect.Width}, " +
-                    $"{WindowCapture.WindowCapture.PropertiesWindowRect.Height}");
+                    $"{MfmeScraper.Properties.Rect.X}, " +
+                    $"{MfmeScraper.Properties.Rect.Y}, " +
+                    $"{MfmeScraper.Properties.Rect.Width}, " +
+                    $"{MfmeScraper.Properties.Rect.Height}");
             }
         }
 
