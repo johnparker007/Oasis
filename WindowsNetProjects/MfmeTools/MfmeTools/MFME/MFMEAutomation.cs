@@ -233,6 +233,10 @@ namespace MfmeTools.Mfme
         public static void ClickAtPosition(bool leftClick, InputSimulator inputSimulator, 
             int mouseCoordinateWithinWindowX, int mouseCoordinateWithinWindowY, int? overrideDelay = null)
         {
+// XXX TEMP HACK!  TO BE REMOVED!!!
+mouseCoordinateWithinWindowX += 5;
+
+
             inputSimulator.Mouse.MoveMouseTo(
                  GetMouseCoordinateWithinWindowX(mouseCoordinateWithinWindowX),
                  GetMouseCoordinateWithinWindowY(mouseCoordinateWithinWindowY));
@@ -467,6 +471,8 @@ namespace MfmeTools.Mfme
                 ClickPropertiesComponentPrevious(inputSimulator);
             }
             while (PreviousComponentNavigationTimedOut == false);
+
+            OutputLog.Log("Reached zeroth component");
         }
 
         public static void ClickPropertiesComponentNext(InputSimulator inputSimulator)
@@ -482,52 +488,53 @@ namespace MfmeTools.Mfme
         private static void ClickPropertiesComponentNavigationArrow(
             InputSimulator inputSimulator, bool clickNext, float timeout = 1.0f)
         {
-// JP HERE - to uncomment once new window capture is ported in
+            MfmeScraper.CurrentWindow.UpdateCapture();
 
+            // capture initial 'Z order:' area pixels, click with no post delay, loop capturing pixels until they change from the initial zorder pixels 
+            Color32[] initialZOrderPixels =
+                MfmeScraper.CurrentWindow.GetPixels(
+                MFMEScraperConstants.kPropertiesZOrder_X, MFMEScraperConstants.kPropertiesZOrder_Y,
+                MFMEScraperConstants.kPropertiesZOrder_Width, MFMEScraperConstants.kPropertiesZOrder_Height);
 
-            //// capture initial 'Z order:' area pixels, click with no post delay, loop capturing pixels until they change from the initial zorder pixels 
-            //Color32[] initialZOrderPixels = 
-            //    MfmeScraper.CurrentWindow.GetPixels(
-            //    MFMEScraperConstants.kPropertiesZOrder_X, MFMEScraperConstants.kPropertiesZOrder_Y,
-            //    MFMEScraperConstants.kPropertiesZOrder_Width, MFMEScraperConstants.kPropertiesZOrder_Height);
+            if (clickNext)
+            {
+                LeftClickAtPosition(inputSimulator,
+                    MFMEScraperConstants.kPropertiesNextButton_X, MFMEScraperConstants.kPropertiesNextButton_Y, 0);
+            }
+            else
+            {
+                LeftClickAtPosition(inputSimulator,
+                    MFMEScraperConstants.kPropertiesPreviousButton_X, MFMEScraperConstants.kPropertiesPreviousButton_Y, 0);
+            }
 
-            //if (clickNext)
-            //{
-            //    LeftClickAtPosition(inputSimulator, 
-            //        MFMEScraperConstants.kPropertiesNextButton_X, MFMEScraperConstants.kPropertiesNextButton_Y, 0);
-            //}
-            //else
-            //{
-            //    LeftClickAtPosition(inputSimulator, 
-            //        MFMEScraperConstants.kPropertiesPreviousButton_X, MFMEScraperConstants.kPropertiesPreviousButton_Y, 0);
-            //}
+            float elapsed = 0f;
+            const int kFixedDeltaSleepMilliseconds = 17;
+            bool currentZOrderPixelsChanged = false;
+            do
+            {
+                Thread.Sleep(kFixedDeltaSleepMilliseconds);
+                elapsed += kFixedDeltaSleepMilliseconds / 1000f;
 
-            //float elapsed = 0f;
-            //const int kFixedDeltaSleepMilliseconds = 17;
-            //bool currentZOrderPixelsChanged = false;
-            //do
-            //{
-            //    Thread.Sleep(kFixedDeltaSleepMilliseconds);
-            //    elapsed += kFixedDeltaSleepMilliseconds / 1000f;
+                MfmeScraper.CurrentWindow.UpdateCapture();
 
-            //    Color32[] currentZOrderPixels = emulatorScraper.CurrentUwcWindowTextureBeingScraped.window.GetPixels(
-            //                    MFMEScraperConstants.kPropertiesZOrder_X, MFMEScraperConstants.kPropertiesZOrder_Y,
-            //                    MFMEScraperConstants.kPropertiesZOrder_Width, MFMEScraperConstants.kPropertiesZOrder_Height);
+                Color32[] currentZOrderPixels = MfmeScraper.CurrentWindow.GetPixels(
+                                MFMEScraperConstants.kPropertiesZOrder_X, MFMEScraperConstants.kPropertiesZOrder_Y,
+                                MFMEScraperConstants.kPropertiesZOrder_Width, MFMEScraperConstants.kPropertiesZOrder_Height);
 
-            //    for (int zOrderPixelIndex = 0;
-            //        zOrderPixelIndex < MFMEScraperConstants.kPropertiesZOrder_Width * MFMEScraperConstants.kPropertiesZOrder_Height;
-            //        ++zOrderPixelIndex)
-            //    {
-            //        // only need to check a single channel to detect change to Zorder text
-            //        if (currentZOrderPixels[zOrderPixelIndex].r != initialZOrderPixels[zOrderPixelIndex].r)
-            //        {
-            //            currentZOrderPixelsChanged = true;
-            //        }
-            //    }
-            //}
-            //while (!currentZOrderPixelsChanged && elapsed < timeout);
+                for (int zOrderPixelIndex = 0;
+                    zOrderPixelIndex < MFMEScraperConstants.kPropertiesZOrder_Width * MFMEScraperConstants.kPropertiesZOrder_Height;
+                    ++zOrderPixelIndex)
+                {
+                    // only need to check a single channel to detect change to Zorder text
+                    if (currentZOrderPixels[zOrderPixelIndex].r != initialZOrderPixels[zOrderPixelIndex].r)
+                    {
+                        currentZOrderPixelsChanged = true;
+                    }
+                }
+            }
+            while (!currentZOrderPixelsChanged && elapsed < timeout);
 
-            //PreviousComponentNavigationTimedOut = elapsed >= timeout;
+            PreviousComponentNavigationTimedOut = elapsed >= timeout;
         }
 
     }

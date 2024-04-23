@@ -200,5 +200,12 @@ namespace MfmeTools.WindowCapture
             NativeMethods.GetWindowRect(new HandleRef(wrapper, hWnd), out RECT rect);
             return rect;
         }
+
+        public static RECT GetClientRect(object wrapper, IntPtr hWnd)
+        {
+            NativeMethods.GetClientRect(new HandleRef(wrapper, hWnd), out RECT rect);
+            return rect;
+        }
+
     }
 }

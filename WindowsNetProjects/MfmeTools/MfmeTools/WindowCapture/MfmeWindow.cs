@@ -1,4 +1,5 @@
-﻿using MfmeTools.UnityStructWrappers;
+﻿using MfmeTools.Mfme;
+using MfmeTools.UnityStructWrappers;
 using MfmeTools.WindowCapture.Shared.Interfaces;
 using SharpDX;
 using SharpDX.Direct3D11;
@@ -19,30 +20,31 @@ namespace MfmeTools.WindowCapture
     {
         public IntPtr Handle = IntPtr.Zero;
         public RECT Rect = new RECT();
-        public SharpDX.Direct3D11.Device Device = null;
 
-        private readonly ICaptureMethod _captureMethod;
+        private readonly ICaptureMethod _captureMethod = null;
+        private Color32[] _capturePixelData = null;
+
+        private int _width = 0;
+        private int _height = 0;
 
         public MfmeWindow(ICaptureMethod captureMethod)
         {
             _captureMethod = captureMethod;
         }
 
-        public Color32[] GetPixels(int _x, int _y, int _width, int _height)
+        public void StartCapture()
         {
-            // TODO this should be just set up once, and needs Device and Factory objects
-            _captureMethod.StartCapture(Handle, null, null);
+            _captureMethod.StartCapture(Handle, MfmeScraper.Device, MfmeScraper.Factory);
+        }
 
+        public void UpdateCapture()
+        {
+            using var texture2d = _captureMethod.TryGetNextFrameAsTexture2D(MfmeScraper.Device);
 
-            using var texture2d = _captureMethod.TryGetNextFrameAsTexture2D(null);
+            _width = texture2d.Description.Width;
+            _height = texture2d.Description.Height;
 
-
-            int width = texture2d.Description.Width;
-            int height = texture2d.Description.Height;
-
-            Console.WriteLine($"Texture width: {width}, height {height}");
-
-
+            Console.WriteLine($"Texture width: {_width}, height {_height}");
 
             // Assuming 'device' is your SharpDX.Direct3D11.Device object
             // and 'texture2D' is your SharpDX.Direct3D11.Texture2D object
@@ -61,12 +63,12 @@ namespace MfmeTools.WindowCapture
                 OptionFlags = ResourceOptionFlags.None
             };
 
-            using (Texture2D textureStaging = new Texture2D(Device, description))
+            using (Texture2D textureStaging = new Texture2D(MfmeScraper.Device, description))
             {
-                Device.ImmediateContext.CopyResource(texture2d, textureStaging);
+                MfmeScraper.Device.ImmediateContext.CopyResource(texture2d, textureStaging);
 
                 DataStream dataStream;
-                DataBox dataBox = Device.ImmediateContext.MapSubresource(textureStaging, 0, MapMode.Read, SharpDX.Direct3D11.MapFlags.None, out dataStream);
+                DataBox dataBox = MfmeScraper.Device.ImmediateContext.MapSubresource(textureStaging, 0, MapMode.Read, SharpDX.Direct3D11.MapFlags.None, out dataStream);
 
                 // Create a bitmap to store the pixel data
                 Bitmap bitmap = new Bitmap(description.Width, description.Height, PixelFormat.Format32bppArgb);
@@ -88,34 +90,68 @@ namespace MfmeTools.WindowCapture
                 bitmap.UnlockBits(bitmapData);
 
                 // Unmap the resource when you're done
-                Device.ImmediateContext.UnmapSubresource(textureStaging, 0);
+                MfmeScraper.Device.ImmediateContext.UnmapSubresource(textureStaging, 0);
 
-                // JP second test, print some bitmap data values:
-                // Assuming 'bitmapData' is your System.Drawing.Imaging.BitmapData object
 
-                // Calculate the index of the pixel data
+                // JP create/populate a Color32[] array from the Marshalled byte data
+                if (_capturePixelData == null)
+                {
+                    _capturePixelData = new Color32[_width * _height];
+                }
+
                 const int kPixelSize = 4; // For Format32bppArgb, each pixel is represented by 4 bytes (ARGB)
-                int yPosition = 200;
-                int xPosition = 200;
-                int index = yPosition * bitmapData.Stride + xPosition * kPixelSize;
+                for (int readX = 0; readX < _width; ++readX)
+                {
+                    for (int readY = 0; readY < _height; ++readY)
+                    {
+                        int readIndex = readY * bitmapData.Stride + readX * kPixelSize;
 
-                // Get the pointer to the pixel data
-                IntPtr pixelDataPtr = bitmapData.Scan0;
+                        // Get the pointer to the pixel data
+                        IntPtr pixelDataPtr = bitmapData.Scan0;
 
-                // Read the color bytes
-                byte blue = Marshal.ReadByte(pixelDataPtr, index);
-                byte green = Marshal.ReadByte(pixelDataPtr, index + 1);
-                byte red = Marshal.ReadByte(pixelDataPtr, index + 2);
-                byte alpha = Marshal.ReadByte(pixelDataPtr, index + 3);
+                        // Read the color bytes
+                        byte blue = Marshal.ReadByte(pixelDataPtr, readIndex);
+                        byte green = Marshal.ReadByte(pixelDataPtr, readIndex + 1);
+                        byte red = Marshal.ReadByte(pixelDataPtr, readIndex + 2);
+                        byte alpha = Marshal.ReadByte(pixelDataPtr, readIndex + 3);
 
-                // Print the red byte value
-                Console.WriteLine($"RGB byte values at " +
-                    $"row {yPosition}, column {xPosition}: {red},{green},{blue}");
+                        int writeIndex = (readY * _width) + readX;
+                        _capturePixelData[writeIndex].r = red;
+                        _capturePixelData[writeIndex].g = green;
+                        _capturePixelData[writeIndex].b = blue;
+                        _capturePixelData[writeIndex].a = alpha;
+                    }
+                }
+            }
+        }
+
+        public Color32[] GetPixels(int x, int y, int width, int height)
+        {
+            // JP do this offset for now, since the old ARcadeSim coordinates
+            // were all created including the window titlebar
+            y -= MfmeScraper.kMfmeWindowTitlebarHeight;
+
+            if (x < 0 || y < 0 || x + width > _width || y + height > _height)
+            {
+                Console.WriteLine($"ERROR invalid read area" +
+                    $" x: {x}, y: {y}. width: {width}, height: {height}");
+                return null;
             }
 
+            Color32[] pixelData = new Color32[width * height];
 
-            // TODO
-            return null;
+            int writeIndex = 0;
+            for (int readX = x; readX < x + width; ++readX)
+            {
+                for (int readY = y; readY < y + height; ++readY)
+                {
+                    int readIndex = (readY * _width) + readX;
+                    pixelData[writeIndex] = _capturePixelData[readIndex];
+                    ++writeIndex;
+                }
+            }
+
+            return pixelData;
         }
     }
 }

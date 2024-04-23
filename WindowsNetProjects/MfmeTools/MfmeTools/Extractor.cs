@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using WindowsInput;
 using System.Threading;
+using static MfmeTools.WindowCapture.Shared.Interop.NativeMethods;
 
 namespace MfmeTools
 {
@@ -46,7 +47,7 @@ namespace MfmeTools
             CaptureMFMESplashScreenWindow();
 
             CaptureMFMEMainFormWindow();
-            GetMFMEMainFormWindowRect();
+            GetMFMEMainFormClientRect();
 
             MFMEAutomation.ToggleEditMode(inputSimulator);
 
@@ -60,7 +61,10 @@ namespace MfmeTools
 
             MFMEAutomation.OpenPropertiesWindow(inputSimulator, true);
             CaptureMFMEPropertiesWindow();
-            GetMFMEPropertiesWindowRect();
+            GetMFMEPropertiesClientRect();
+
+            MfmeScraper.CurrentWindow = MfmeScraper.Properties;
+            MfmeScraper.Initialise();
 
             MFMEAutomation.ClickPropertiesComponentPreviousUntilOnFirstComponent(inputSimulator);
 
@@ -188,12 +192,14 @@ namespace MfmeTools
             }
         }
 
-        private void GetMFMEMainFormWindowRect()
+        private void GetMFMEMainFormClientRect()
         {
             const bool kDebugOutput = false;
 
             MfmeScraper.MainForm.Rect =
                 WindowCapture.WindowCapture.GetWindowRect(this, MfmeScraper.MainForm.Handle);
+
+            RemoveTitleBarAndBorders(ref MfmeScraper.MainForm.Rect);
 
             if (kDebugOutput)
             {
@@ -205,14 +211,16 @@ namespace MfmeTools
             }
         }
 
-        private void GetMFMEPropertiesWindowRect()
+        private void GetMFMEPropertiesClientRect()
         {
             const bool kDebugOutput = false;
 
             MfmeScraper.Properties.Rect =
                 WindowCapture.WindowCapture.GetWindowRect(this, MfmeScraper.Properties.Handle);
 
-            if(kDebugOutput)
+            RemoveTitleBarAndBorders(ref MfmeScraper.Properties.Rect);
+
+            if (kDebugOutput)
             {
                 OutputLog.Log($"Properties rect: " +
                     $"{MfmeScraper.Properties.Rect.X}, " +
@@ -220,6 +228,12 @@ namespace MfmeTools
                     $"{MfmeScraper.Properties.Rect.Width}, " +
                     $"{MfmeScraper.Properties.Rect.Height}");
             }
+        }
+
+        private void RemoveTitleBarAndBorders(ref RECT rect)
+        {
+            //rect.Y += MfmeScraper.kMfmeWindowTitlebarHeight;
+            //rect.Height -= MfmeScraper.kMfmeWindowTitlebarHeight;
         }
 
 
