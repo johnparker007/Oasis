@@ -18,6 +18,8 @@ namespace MfmeTools.WindowCapture
 {
     public class MfmeWindow
     {
+        private const bool kDebutOutputGetPixels = true;
+
         public IntPtr Handle = IntPtr.Zero;
         public RECT Rect = new RECT();
 
@@ -141,14 +143,31 @@ namespace MfmeTools.WindowCapture
             Color32[] pixelData = new Color32[width * height];
 
             int writeIndex = 0;
-            for (int readX = x; readX < x + width; ++readX)
+            for (int readY = y; readY < y + height; ++readY)
             {
-                for (int readY = y; readY < y + height; ++readY)
+                for (int readX = x; readX < x + width; ++readX)
                 {
                     int readIndex = (readY * _width) + readX;
                     pixelData[writeIndex] = _capturePixelData[readIndex];
                     ++writeIndex;
                 }
+            }
+
+            if(kDebutOutputGetPixels)
+            {
+                Console.WriteLine("--START GETPIXELS OUTPUT:");
+                for (int pixelDataY = 0; pixelDataY < height; ++pixelDataY)
+                {
+                    string outputRow = "";
+                    for (int pixelDataX = 0; pixelDataX < width; ++pixelDataX)
+                    {
+                        int readIndex = (pixelDataY * width) + pixelDataX;
+                        Color32 pixel = pixelData[readIndex];
+                        outputRow += pixel.r < 128 ? "1" : "0";
+                    }
+                    Console.WriteLine(outputRow);
+                }
+                Console.WriteLine("--END GETPIXELS OUTPUT:");
             }
 
             return pixelData;
