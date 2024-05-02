@@ -59,5 +59,15 @@ namespace MfmeTools.Properties {
                 resourceCulture = value;
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap DelphiFontScraper_sourceImage {
+            get {
+                object obj = ResourceManager.GetObject("DelphiFontScraper_sourceImage", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
     }
 }
