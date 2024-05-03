@@ -1,4 +1,4 @@
-﻿using MfmeTools.UnityStructWrappers;
+﻿using MfmeTools.UnityWrappers;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -7,7 +7,7 @@ namespace MfmeTools.Mfme
     public static class MFMEScraperConstants
     {
         // properties window component type tab
-        public static readonly int kComponentTypeTabX = 4;
+        public static readonly int kComponentTypeTabX = 9;
         public static readonly int kComponentTypeTabY = 31;
         public static readonly int kComponentTypeTabWidth = 94;
         public static readonly int kComponentTypeTabHeight = 19;

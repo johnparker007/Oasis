@@ -113,6 +113,7 @@
     <Compile Include="ExtractComponents\ExtractComponentSevenSegment.cs" />
     <Compile Include="ExtractComponents\ExtractComponentSevenSegmentBlock.cs" />
     <Compile Include="Extractor.cs" />
+    <Compile Include="Extract\Layout.cs" />
     <Compile Include="Helpers\FileHelper.cs" />
     <Compile Include="Helpers\MfmeGamFileHelper.cs" />
     <Compile Include="JsonDataStructures\Vector2IntJSON.cs" />
@@ -126,6 +127,7 @@
     <Compile Include="Mfme\DelphiFontScraper.cs" />
     <Compile Include="Mfme\ExeCopier.cs" />
     <Compile Include="Mfme\ExeHelper.cs" />
+    <Compile Include="Mfme\ExtractComponentProcessor.cs" />
     <Compile Include="Mfme\LayoutCopier.cs" />
     <Compile Include="Mfme\MFMEAutomation.cs" />
     <Compile Include="Mfme\MfmeController.cs" />
@@ -134,9 +136,10 @@
     <Compile Include="Mfme\MFMEConstants.cs" />
     <Compile Include="Mfme\MfmeScraper.cs" />
     <Compile Include="Mfme\MFMEScraperConstants.cs" />
-    <Compile Include="UnityStructWrappers\Color.cs" />
-    <Compile Include="UnityStructWrappers\Color32.cs" />
-    <Compile Include="UnityStructWrappers\Vector2Int.cs" />
+    <Compile Include="UnityWrappers\Color.cs" />
+    <Compile Include="UnityWrappers\Color32.cs" />
+    <Compile Include="UnityWrappers\KeyCode.cs" />
+    <Compile Include="UnityWrappers\Vector2Int.cs" />
     <Compile Include="WindowCapture\BitBlt\BitBlt.cs" />
     <Compile Include="WindowCapture\BitBlt\Interop\DeviceContextValues.cs" />
     <Compile Include="WindowCapture\BitBlt\Interop\NativeMethods.cs" />

@@ -1,4 +1,4 @@
-﻿using MfmeTools.UnityStructWrappers;
+﻿using MfmeTools.UnityWrappers;
 using System;
 using System.Collections.Generic;
 using System.Linq;

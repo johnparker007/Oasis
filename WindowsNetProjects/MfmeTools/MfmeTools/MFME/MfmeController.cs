@@ -46,5 +46,13 @@ namespace MfmeTools.Mfme
             return process;
         }
 
+        public static void KillMFMEProcessIfNotExited(Process mfmeProcess)
+        {
+            if (mfmeProcess != null && !mfmeProcess.HasExited)
+            {
+                mfmeProcess.Kill();
+            }
+        }
+
     }
 }

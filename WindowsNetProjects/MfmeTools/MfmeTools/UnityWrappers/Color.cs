@@ -1,4 +1,4 @@
-﻿namespace MfmeTools.UnityStructWrappers
+﻿namespace MfmeTools.UnityWrappers
 {
     public struct Color
     {
@@ -12,7 +12,7 @@
             this.r = r;
             this.g = g;
             this.b = b;
-            this.a = 1f;
+            a = 1f;
         }
 
         public Color(float r, float g, float b, float a)
@@ -22,5 +22,14 @@
             this.b = b;
             this.a = a;
         }
+
+        public Color(Color32 color32)
+        {
+            r = color32.r / 255f;
+            g = color32.g / 255f;
+            b = color32.b / 255f;
+            a = color32.a / 255f;
+        }
+
     }
 }

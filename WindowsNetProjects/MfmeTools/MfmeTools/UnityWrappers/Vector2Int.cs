@@ -1,4 +1,4 @@
-﻿namespace MfmeTools.UnityStructWrappers
+﻿namespace MfmeTools.UnityWrappers
 {
     public struct Vector2Int
     {

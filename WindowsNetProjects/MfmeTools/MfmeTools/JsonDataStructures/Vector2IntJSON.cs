@@ -1,4 +1,4 @@
-﻿using MfmeTools.UnityStructWrappers;
+﻿using MfmeTools.UnityWrappers;
 using System;
 
 namespace MfmeTools.JsonDataStructures

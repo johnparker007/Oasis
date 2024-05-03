@@ -1,4 +1,4 @@
-﻿using MfmeTools.UnityStructWrappers;
+﻿using MfmeTools.UnityWrappers;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -290,153 +290,137 @@ mouseCoordinateWithinWindowX += 5;
             return screenPixelY;
         }
 
-        //public static MFMEConstants.MFMEComponentType GetMFMEComponentType(EmulatorScraper emulatorScraper, string scrapedComponentNameOCR)
-        //{
-        //    string scrapedComponentNameTrimmed = scrapedComponentNameOCR.TrimEnd(' ', ':');
+        public static MFMEConstants.MFMEComponentType GetMFMEComponentType(string scrapedComponentName)
+        {
+            switch (scrapedComponentName)
+            {
+                case "Background":
+                    return MFMEConstants.MFMEComponentType.Background;
+                case "Matrix Alpha":
+                    return MFMEConstants.MFMEComponentType.MatrixAlpha;
+                case "Seven Segment":
+                    return MFMEConstants.MFMEComponentType.SevenSegment;
+                case "Seven Segment Block":
+                    return MFMEConstants.MFMEComponentType.SevenSegmentBlock;
+                case "Reel":
+                    return MFMEConstants.MFMEComponentType.Reel;
+                case "Lamp":
+                    return MFMEConstants.MFMEComponentType.Lamp;
+                case "CheckBox":
+                    return MFMEConstants.MFMEComponentType.Checkbox;
+                case "Label":
+                    return MFMEConstants.MFMEComponentType.Label;
+                case "Button":
+                    return MFMEConstants.MFMEComponentType.Button;
+                case "LED":
+                    return MFMEConstants.MFMEComponentType.Led;
+                case "RGB Led": 
+                    return MFMEConstants.MFMEComponentType.RgbLed;
+                case "Dot Alpha":
+                    return MFMEConstants.MFMEComponentType.DotAlpha;
+                case "Alpha New":
+                    return MFMEConstants.MFMEComponentType.AlphaNew;
+                case "Alpha":
+                    return MFMEConstants.MFMEComponentType.Alpha;
+                case "Frame":
+                    return MFMEConstants.MFMEComponentType.Frame;
+                case "Band Reel":
+                    return MFMEConstants.MFMEComponentType.BandReel;
+                case "Disc Reel":
+                    return MFMEConstants.MFMEComponentType.DiscReel;
+                case "FlipReel":
+                    return MFMEConstants.MFMEComponentType.FlipReel;
+                case "Reel Bonus Reel":
+                    return MFMEConstants.MFMEComponentType.JpmBonusReel;
+                case "BFM Alpha":
+                    return MFMEConstants.MFMEComponentType.BfmAlpha;
+                case "Proconn Matrix":
+                    return MFMEConstants.MFMEComponentType.ProconnMatrix;
+                case "Epoch Alpha":
+                    return MFMEConstants.MFMEComponentType.EpochAlpha;
+                case "IGT VFD": 
+                    return MFMEConstants.MFMEComponentType.IgtVfd;
+                case "Plasma":
+                    return MFMEConstants.MFMEComponentType.Plasma;
+                case "Dot Matrix":
+                    return MFMEConstants.MFMEComponentType.DotMatrix;
+                case "BFM Led":
+                    return MFMEConstants.MFMEComponentType.BfmLed;
+                case "BFMColourLed":
+                    return MFMEConstants.MFMEComponentType.BfmColourLed;
+                case "Ace Matrix":
+                    return MFMEConstants.MFMEComponentType.AceMatrix;
+                case "Epoch Matrix":
+                    return MFMEConstants.MFMEComponentType.EpochMatrix;
+                case "Video": 
+                    return MFMEConstants.MFMEComponentType.BarcrestBwbVideo;
+                case "BFM Video":
+                    return MFMEConstants.MFMEComponentType.BfmVideo;
+                case "ACE Video":
+                    return MFMEConstants.MFMEComponentType.AceVideo;
+                case "Maygay Video":
+                    return MFMEConstants.MFMEComponentType.MaygayVideo;
+                case "Prism Lamp":
+                    return MFMEConstants.MFMEComponentType.PrismLamp;
+                case "Bitmap":
+                    return MFMEConstants.MFMEComponentType.Bitmap;
+                case "Border":
+                    return MFMEConstants.MFMEComponentType.Border;
+                default:
+                    OutputLog.LogError("Component not found!  Scraped component name: " + scrapedComponentName);
+                    return MFMEConstants.MFMEComponentType.None;
+            }
+        }
 
-        //    //UnityEngine.Debug.LogError("scrapedComponentNameTrimmed: " + scrapedComponentNameTrimmed);
+        public static void DoWorkaroundFixForMFMEComponentHeightBugAfterAlphaNewComponent(
+            InputSimulator inputSimulator)
+        {
+            // enter something in the angle field as we have already scraped that for this component
+            // (doesn't interfere with the rest of our scraping) - just to get the Undo button available
+            SetTextToNumber(inputSimulator,
+                MFMEScraperConstants.kComponentPositionAngle_X, MFMEScraperConstants.kComponentPositionAngle_Y + 4, 0);
 
-        //    string mfmeComponentTypeTextDelphiScrape;
-        //    switch (scrapedComponentNameTrimmed)
-        //    {
-        //        case "Background":
-        //            return MFMEConstants.MFMEComponentType.Background;
-        //        case "Matrix Alpha":
-        //            return MFMEConstants.MFMEComponentType.MatrixAlpha;
-        //        case "Seven Segment":
-        //            mfmeComponentTypeTextDelphiScrape = MFMEScraper.GetFieldCharacters(emulatorScraper, 9, 31, 20);
-        //            if (mfmeComponentTypeTextDelphiScrape == "Seven Segment Block")
-        //            {
-        //                return MFMEConstants.MFMEComponentType.SevenSegmentBlock;
-        //            }
+            // click undo
+            LeftClickAtPosition(inputSimulator,
+                MFMEScraperConstants.kPropertiesUndoButton_X, MFMEScraperConstants.kPropertiesUndoButton_Y, kLongDelay);
 
-        //            return MFMEConstants.MFMEComponentType.SevenSegment;
-        //        case "Reel":
-        //            return MFMEConstants.MFMEComponentType.Reel;
-        //        case "Lamp":
-        //            return MFMEConstants.MFMEComponentType.Lamp;
-        //        case "CheckBox":
-        //            return MFMEConstants.MFMEComponentType.Checkbox;
-        //        case "Label":
-        //            return MFMEConstants.MFMEComponentType.Label;
-        //        case "Button":
-        //            return MFMEConstants.MFMEComponentType.Button;
-        //        case "LED":
-        //            return MFMEConstants.MFMEComponentType.Led;
-        //        case "AGB Led": // the OCR incorrectly scrapes this as 'AGB' insted of 'RGB'
-        //            return MFMEConstants.MFMEComponentType.RgbLed;
-        //        case "Dot Alpha":
-        //            return MFMEConstants.MFMEComponentType.DotAlpha;
-        //        case "Alpha New":
-        //            return MFMEConstants.MFMEComponentType.AlphaNew;
-        //        case "Alpha":
-        //            mfmeComponentTypeTextDelphiScrape = MFMEScraper.GetFieldCharacters(emulatorScraper, 9, 31, 15);
-        //            if (mfmeComponentTypeTextDelphiScrape == "BFM Alpha")
-        //            {
-        //                return MFMEConstants.MFMEComponentType.BfmAlpha;
-        //            }
-
-        //            return MFMEConstants.MFMEComponentType.Alpha;
-        //        case "Frame":
-        //            return MFMEConstants.MFMEComponentType.Frame;
-        //        case "Band Reel":
-        //            return MFMEConstants.MFMEComponentType.BandReel;
-        //        case "Disc Reel":
-        //            return MFMEConstants.MFMEComponentType.DiscReel;
-        //        case "FlipReel":
-        //            return MFMEConstants.MFMEComponentType.FlipReel;
-        //        case "Reel Bonus Ree": // the OCR doesn't pick up the final 'l' character
-        //            return MFMEConstants.MFMEComponentType.JpmBonusReel;
-        //        //case "BFM Alpha": // Dealt with above, the OCR can't scrape this correctly
-        //        //    return MFMEConstants.MFMEComponentType.BFMAlpha;
-        //        case "Proconn Matrix":
-        //            return MFMEConstants.MFMEComponentType.ProconnMatrix;
-        //        case "Epoch Alpha":
-        //            return MFMEConstants.MFMEComponentType.EpochAlpha;
-        //        case "IGT": // the OCR doesn't pick up the final 'VFD' characters
-        //            return MFMEConstants.MFMEComponentType.IgtVfd;
-        //        case "Plasma":
-        //            return MFMEConstants.MFMEComponentType.Plasma;
-        //        case "Dot Matrix":
-        //            return MFMEConstants.MFMEComponentType.DotMatrix;
-        //        case "Led": // the OCR doesn't pick up the 'BFM' prefix, should be "BFM Led"
-        //            return MFMEConstants.MFMEComponentType.BfmLed;
-        //        case "BFMColourLed":
-        //            return MFMEConstants.MFMEComponentType.BfmColourLed;
-        //        case "Ace Matrix":
-        //            return MFMEConstants.MFMEComponentType.AceMatrix;
-        //        case "Epoch Matrix":
-        //            return MFMEConstants.MFMEComponentType.EpochMatrix;
-        //        case "I Video": // OCR scrapes leading 'I', should be 'Video', which represents 'Barcrest/BWB Video' 
-        //            return MFMEConstants.MFMEComponentType.BarcrestBwbVideo;
-        //        case "BFM Video":
-        //            return MFMEConstants.MFMEComponentType.BfmVideo;
-        //        case "ACE Video":
-        //            return MFMEConstants.MFMEComponentType.AceVideo;
-        //        case "Maygay Video":
-        //            return MFMEConstants.MFMEComponentType.MaygayVideo;
-        //        case "Prism Lamp":
-        //            return MFMEConstants.MFMEComponentType.PrismLamp;
-        //        case "Bitmap":
-        //            return MFMEConstants.MFMEComponentType.Bitmap;
-        //        case "Border":
-        //            return MFMEConstants.MFMEComponentType.Border;
-
-        //        default:
-        //            OutputLog.LogError("Component not found!  Scraped trimmed component name: " + scrapedComponentNameTrimmed);
-        //            return MFMEConstants.MFMEComponentType.None;
-        //    }
-        //}
-
-        //public static void DoWorkaroundFixForMFMEComponentHeightBugAfterAlphaNewComponent(
-        //    InputSimulator inputSimulator, EmulatorScraper emulatorScraper)
-        //{
-        //    // enter something in the angle field as wedon't scrape from that (doesn't interfere with the rest of our scraping) - just to get the Undo button available
-        //    SetTextToNumber(inputSimulator, emulatorScraper,
-        //        MFMEScraperConstants.kComponentPositionAngle_X, MFMEScraperConstants.kComponentPositionAngle_Y + 4, 0);
-
-        //    // click undo
-        //    LeftClickAtPosition(inputSimulator, 
-        //        emulatorScraper, MFMEScraperConstants.kPropertiesUndoButton_X, MFMEScraperConstants.kPropertiesUndoButton_Y, kLongDelay);
-
-        //    // now the Component Height value will be correct, ready for scraping, instead of '50'.
-        //    // Fix for MFME bug where components before/after AlphaNew component will have height of '50' in the Component Height field,
-        //    // completely unrelated to their actual height.
-        //}
+            // now the Component Height value will be correct, ready for scraping, instead of '50'.
+            // Fix for MFME bug where components before/after AlphaNew component will have height of '50' in the Component Height field,
+            // completely unrelated to their actual height.
+        }
 
 
-        //public static void SetTextToNumber(
-        //    InputSimulator inputSimulator, EmulatorScraper emulatorScraper,
-        //    int mouseCoordinateWithinWindowX,
-        //    int mouseCoordinateWithinWindowY,
-        //    int number,
-        //    int offsetFromTopLeftInteriorPixels = 4)
-        //{
-        //    LeftClickAtPosition(
-        //        inputSimulator, emulatorScraper,
-        //        mouseCoordinateWithinWindowX + offsetFromTopLeftInteriorPixels, mouseCoordinateWithinWindowY + offsetFromTopLeftInteriorPixels);
+        public static void SetTextToNumber(
+            InputSimulator inputSimulator, 
+            int mouseCoordinateWithinWindowX,
+            int mouseCoordinateWithinWindowY,
+            int number,
+            int offsetFromTopLeftInteriorPixels = 4)
+        {
+            LeftClickAtPosition(inputSimulator, 
+                mouseCoordinateWithinWindowX + offsetFromTopLeftInteriorPixels, mouseCoordinateWithinWindowY + offsetFromTopLeftInteriorPixels);
 
-        //    inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LCONTROL, WindowsInput.Native.VirtualKeyCode.VK_A);
+            inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LCONTROL, WindowsInput.Native.VirtualKeyCode.VK_A);
 
-        //    string numberString = number.ToString();
-        //    for (int characterIndex = 0; characterIndex < numberString.Length; ++characterIndex)
-        //    {
-        //        string singleNumberString = numberString.Substring(characterIndex, 1);
-        //        if (singleNumberString == "-")
-        //        {
-        //            inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.OEM_MINUS);
-        //        }
-        //        else
-        //        {
-        //            int characterValue = int.Parse(singleNumberString);
-        //            int virtualKeyCode = (int)WindowsInput.Native.VirtualKeyCode.VK_0 + characterValue;
+            string numberString = number.ToString();
+            for (int characterIndex = 0; characterIndex < numberString.Length; ++characterIndex)
+            {
+                string singleNumberString = numberString.Substring(characterIndex, 1);
+                if (singleNumberString == "-")
+                {
+                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.OEM_MINUS);
+                }
+                else
+                {
+                    int characterValue = int.Parse(singleNumberString);
+                    int virtualKeyCode = (int)WindowsInput.Native.VirtualKeyCode.VK_0 + characterValue;
 
-        //            inputSimulator.Keyboard.KeyPress((WindowsInput.Native.VirtualKeyCode)virtualKeyCode);
-        //        }
+                    inputSimulator.Keyboard.KeyPress((WindowsInput.Native.VirtualKeyCode)virtualKeyCode);
+                }
 
-        //        Thread.Sleep(kVeryShortDelay);
-        //    }
-        //}
+                Thread.Sleep(kVeryShortDelay);
+            }
+        }
 
         //public static void SetDropdownToValue(
         //    InputSimulator inputSimulator, EmulatorScraper emulatorScraper,

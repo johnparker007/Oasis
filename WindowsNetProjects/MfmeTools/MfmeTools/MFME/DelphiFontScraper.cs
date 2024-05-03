@@ -1,5 +1,5 @@
 ﻿using MfmeTools.Extensions;
-using MfmeTools.UnityStructWrappers;
+using MfmeTools.UnityWrappers;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -16,10 +16,6 @@ namespace MfmeTools.Mfme
 
         public static readonly char kFirstChar = ' ';
         public static readonly int kLastChar = 156; // can't do '£' as Unity evaluates £ as 163, not 156 ASCII
-
-        public static readonly Color32 kMFMEImageBoxYellow = new Color32(255, 255, 0, 255);
-        public static readonly Color32 kMFMEImageBoxWhite = new Color32(255, 255, 255, 255);
-        public static readonly Color32 kMFMEImageBoxGrey = new Color32(192, 192, 192, 255);
 
         private const int kRectPixelsWorkArraySize = 1024; // using work array to avoid the slowness of repeatedly newing arrays
         private const int kRectPixelsIntWorkArraySize = 1024; // using work array to avoid the slowness of repeatedly newing arrays

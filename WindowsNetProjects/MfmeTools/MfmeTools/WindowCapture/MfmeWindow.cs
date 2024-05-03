@@ -1,5 +1,5 @@
 ﻿using MfmeTools.Mfme;
-using MfmeTools.UnityStructWrappers;
+using MfmeTools.UnityWrappers;
 using MfmeTools.WindowCapture.Shared.Interfaces;
 using SharpDX;
 using SharpDX.Direct3D11;
@@ -169,6 +169,24 @@ namespace MfmeTools.WindowCapture
                 }
                 Console.WriteLine("--END GETPIXELS OUTPUT:");
             }
+
+            return pixelData;
+        }
+
+        public Color32 GetPixel(int x, int y)
+        {
+            // JP do this offset for now, since the old ARcadeSim coordinates
+            // were all created including the window titlebar
+            y -= MfmeScraper.kMfmeWindowTitlebarHeight;
+
+            if (x < 0 || y < 0 || x  >= _width || y >= _height)
+            {
+                Console.WriteLine($"ERROR invalid read area" +
+                    $" x: {x}, y: {y}");
+                return new Color32(); ;
+            }
+
+            Color32 pixelData = _capturePixelData[(y * _width) + x];
 
             return pixelData;
         }

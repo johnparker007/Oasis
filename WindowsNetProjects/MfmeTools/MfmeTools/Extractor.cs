@@ -5,6 +5,9 @@ using System.Threading;
 using static MfmeTools.WindowCapture.Shared.Interop.NativeMethods;
 using static MfmeTools.Mfme.MFMEConstants;
 using System;
+using static MfmeTools.Mfme.MfmeExtractor;
+using MfmeTools.Extract;
+using System.IO;
 
 namespace MfmeTools
 {
@@ -19,6 +22,8 @@ namespace MfmeTools
             public bool ScrapeLamps9To12;
         }
 
+        public static Layout Layout;
+
         private Process _mfmeProcess = null;
         private Process _dllProcess = null;
 
@@ -29,6 +34,8 @@ namespace MfmeTools
         {
             OutputLog.Log("Starting Extraction");
             OutputLog.Log("Extraction source layout: " + options.SourceLayoutPath);
+
+            Layout = new Layout() { ASName = Path.GetFileName(options.SourceLayoutPath) };
 
             Program.LayoutCopier.CopyToMfmeTools(options.SourceLayoutPath);
             OutputLog.Log("Copied source layout to MFME Tools");
@@ -72,62 +79,39 @@ namespace MfmeTools
 
             MFMEAutomation.ClickPropertiesComponentPreviousUntilOnFirstComponent(inputSimulator);
 
-
-
-
-
-
+            // begin the component scraping loop:
             _previousComponentType = MFMEComponentType.None;
             int zOrder = 0;
             do
             {
+                string mfmeComponentTypeText = DelphiFontScraper.GetFieldCharacters(
+                    MFMEScraperConstants.kComponentTypeTabX, MFMEScraperConstants.kComponentTypeTabY);
 
-                // OASIS TODO - port to Delphi font scraper:
-                //    string mfmeComponentTypeTextOCR = MFMEAutomation.GetText(
-                //        tesseractDriver, EmulatorScraper,
-                //        MFMEScraperConstants.kComponentTypeTabX, MFMEScraperConstants.kComponentTypeTabY,
-                //        MFMEScraperConstants.kComponentTypeTabWidth, MFMEScraperConstants.kComponentTypeTabHeight);
-
-                //    Converter.MFMEComponentType mfmeComponentType = MFMEAutomation.GetMFMEComponentType(EmulatorScraper, mfmeComponentTypeTextOCR);
-
-                string componentXText = "0";
-                string componentYText = "0";
-                string componentWidthText = "0";
-                string componentHeightText = "0";
-                string angleText = "0";
-                string textBoxText = "";
-
-Console.WriteLine("Get X");
-                componentXText = DelphiFontScraper.GetFieldCharacters(
-                    MFMEScraperConstants.kComponentPositionX_X, MFMEScraperConstants.kComponentPositionX_Y);
-
-Console.WriteLine("Get Y");
-                componentYText = DelphiFontScraper.GetFieldCharacters(
-                    MFMEScraperConstants.kComponentPositionY_X, MFMEScraperConstants.kComponentPositionY_Y);
-
-Console.WriteLine("Get Width");
-                componentWidthText = DelphiFontScraper.GetFieldCharacters(
-                    MFMEScraperConstants.kComponentPositionWidth_X, MFMEScraperConstants.kComponentPositionWidth_Y);
-
-                // OASIS TODO: reimplement:
-                //if (_previousComponentType == Converter.MFMEComponentType.AlphaNew)
-                //{
-                //    yield return MFMEAutomation.DoWorkaroundFixForMFMEComponentHeightBugAfterAlphaNewComponent(
-                //        inputSimulator, this, EmulatorScraper);
-                //}
-
-Console.WriteLine("Get Height");
-                componentHeightText = DelphiFontScraper.GetFieldCharacters(
-                    MFMEScraperConstants.kComponentPositionHeight_X, MFMEScraperConstants.kComponentPositionHeight_Y);
-
-Console.WriteLine("Get Angle");
-                angleText = DelphiFontScraper.GetFieldCharacters(
+                // do this first, as we may park the cursor in Angle input field as part of a workaround fix
+                // for an MFME bug (present in Pook Indiana Jones DX as an example:
+                string angleText = DelphiFontScraper.GetFieldCharacters(
                     MFMEScraperConstants.kComponentAngle_X, MFMEScraperConstants.kComponentAngle_Y);
 
+                string componentXText = DelphiFontScraper.GetFieldCharacters(
+                    MFMEScraperConstants.kComponentPositionX_X, MFMEScraperConstants.kComponentPositionX_Y);
 
-                Console.WriteLine($"x: {componentXText}, y: {componentYText}, width: {componentWidthText}, height: {componentHeightText}, angle: {angleText}");
+                string componentYText = DelphiFontScraper.GetFieldCharacters(
+                    MFMEScraperConstants.kComponentPositionY_X, MFMEScraperConstants.kComponentPositionY_Y);
 
+                string componentWidthText = DelphiFontScraper.GetFieldCharacters(
+                    MFMEScraperConstants.kComponentPositionWidth_X, MFMEScraperConstants.kComponentPositionWidth_Y);
 
+                if (_previousComponentType == MFMEComponentType.AlphaNew)
+                {
+                    MFMEAutomation.DoWorkaroundFixForMFMEComponentHeightBugAfterAlphaNewComponent(
+                        inputSimulator);
+                }
+
+                string componentHeightText = DelphiFontScraper.GetFieldCharacters(
+                    MFMEScraperConstants.kComponentPositionHeight_X, MFMEScraperConstants.kComponentPositionHeight_Y);
+
+                string textBoxText = "";
+// OASIS - TODO:
                 //    // workaround, as once text box has been clicked in, the flashing cursor in top-left is picked up as non-blank,
                 //    // even if text box is empty
                 //    const int kIgnoreLeftmostPixelColumnCount = 6;
@@ -144,139 +128,143 @@ Console.WriteLine("Get Angle");
                 //        textBoxText = GUIUtility.systemCopyBuffer;
                 //    }
 
-                //    ComponentStandardData componentStandardData = new ComponentStandardData(
-                //        componentXText, componentYText, componentWidthText, componentHeightText, angleText, textBoxText, zOrder);
+                ComponentStandardData componentStandardData = new ComponentStandardData(
+                    componentXText, componentYText, componentWidthText, componentHeightText, angleText, textBoxText, zOrder);
 
-                //    switch (mfmeComponentType)
-                //    {
-                //        case Converter.MFMEComponentType.Background:
-                //            yield return ProcessBackground(inputSimulator, componentStandardData);
-                //            break;
-                //        case Converter.MFMEComponentType.Lamp:
-                //            yield return ProcessLamp(inputSimulator, componentStandardData);
-                //            break;
-                //        case Converter.MFMEComponentType.Reel:
-                //            yield return ProcessReel(inputSimulator, componentStandardData);
-                //            break;
-                //        case Converter.MFMEComponentType.DotAlpha:
-                //            yield return ProcessDotAlpha(inputSimulator, componentStandardData);
-                //            break;
-                //        case Converter.MFMEComponentType.MatrixAlpha:
-                //            yield return ProcessMatrixAlpha(inputSimulator, componentStandardData);
-                //            break;
-                //        case Converter.MFMEComponentType.SevenSegment:
-                //            yield return ProcessSevenSegment(inputSimulator, componentStandardData);
-                //            break;
-                //        case Converter.MFMEComponentType.AlphaNew:
-                //            yield return ProcessAlphaNew(inputSimulator, componentStandardData);
-                //            break;
-                //        case Converter.MFMEComponentType.Alpha:
-                //            yield return ProcessAlpha(inputSimulator, componentStandardData);
-                //            break;
-                //        case Converter.MFMEComponentType.Checkbox:
-                //            yield return ProcessCheckbox(inputSimulator, componentStandardData);
-                //            break;
-                //        case Converter.MFMEComponentType.RgbLed:
-                //            yield return ProcessRgbLed(inputSimulator, componentStandardData);
-                //            break;
-                //        case Converter.MFMEComponentType.Led:
-                //            yield return ProcessLed(inputSimulator, componentStandardData);
-                //            break;
-                //        case Converter.MFMEComponentType.Frame:
-                //            yield return ProcessFrame(inputSimulator, componentStandardData);
-                //            break;
-                //        case Converter.MFMEComponentType.Label:
-                //            yield return ProcessLabel(inputSimulator, componentStandardData);
-                //            break;
-                //        case Converter.MFMEComponentType.Button:
-                //            yield return ProcessButton(inputSimulator, componentStandardData);
-                //            break;
-                //        case Converter.MFMEComponentType.BandReel:
-                //            yield return ProcessBandReel(inputSimulator, componentStandardData);
-                //            break;
-                //        case Converter.MFMEComponentType.DiscReel:
-                //            yield return ProcessDiscReel(inputSimulator, componentStandardData);
-                //            break;
-                //        case Converter.MFMEComponentType.FlipReel:
-                //            yield return ProcessFlipReel(inputSimulator, componentStandardData);
-                //            break;
-                //        case Converter.MFMEComponentType.JpmBonusReel:
-                //            yield return ProcessJpmBonusReel(inputSimulator, componentStandardData);
-                //            break;
-                //        case Converter.MFMEComponentType.BfmAlpha:
-                //            yield return ProcessBfmAlpha(inputSimulator, componentStandardData);
-                //            break;
-                //        case Converter.MFMEComponentType.ProconnMatrix:
-                //            yield return ProcessProconnMatrix(inputSimulator, componentStandardData);
-                //            break;
-                //        case Converter.MFMEComponentType.EpochAlpha:
-                //            yield return ProcessEpochAlpha(inputSimulator, componentStandardData);
-                //            break;
-                //        case Converter.MFMEComponentType.IgtVfd:
-                //            yield return ProcessIgtVfd(inputSimulator, componentStandardData);
-                //            break;
-                //        case Converter.MFMEComponentType.Plasma:
-                //            yield return ProcessPlasma(inputSimulator, componentStandardData);
-                //            break;
-                //        case Converter.MFMEComponentType.DotMatrix:
-                //            yield return ProcessDotMatrix(inputSimulator, componentStandardData);
-                //            break;
-                //        case Converter.MFMEComponentType.BfmLed:
-                //            yield return ProcessBfmLed(inputSimulator, componentStandardData);
-                //            break;
-                //        case Converter.MFMEComponentType.BfmColourLed:
-                //            yield return ProcessBfmColourLed(inputSimulator, componentStandardData);
-                //            break;
-                //        case Converter.MFMEComponentType.AceMatrix:
-                //            yield return ProcessAceMatrix(inputSimulator, componentStandardData);
-                //            break;
-                //        case Converter.MFMEComponentType.EpochMatrix:
-                //            yield return ProcessEpochMatrix(inputSimulator, componentStandardData);
-                //            break;
-                //        case Converter.MFMEComponentType.BarcrestBwbVideo:
-                //            yield return ProcessBarcrestBwbVideo(inputSimulator, componentStandardData);
-                //            break;
-                //        case Converter.MFMEComponentType.BfmVideo:
-                //            yield return ProcessBfmVideo(inputSimulator, componentStandardData);
-                //            break;
-                //        case Converter.MFMEComponentType.AceVideo:
-                //            yield return ProcessAceVideo(inputSimulator, componentStandardData);
-                //            break;
-                //        case Converter.MFMEComponentType.MaygayVideo:
-                //            yield return ProcessMaygayVideo(inputSimulator, componentStandardData);
-                //            break;
-                //        case Converter.MFMEComponentType.PrismLamp:
-                //            yield return ProcessPrismLamp(inputSimulator, componentStandardData);
-                //            break;
-                //        case Converter.MFMEComponentType.Bitmap:
-                //            yield return ProcessBitmap(inputSimulator, componentStandardData);
-                //            break;
-                //        case Converter.MFMEComponentType.SevenSegmentBlock:
-                //            yield return ProcessSevenSegmentBlock(inputSimulator, componentStandardData);
-                //            break;
-                //        case Converter.MFMEComponentType.Border:
-                //            yield return ProcessBorder(inputSimulator, componentStandardData);
-                //            break;
+                MFMEComponentType mfmeComponentType = MFMEAutomation.GetMFMEComponentType(mfmeComponentTypeText);
+                switch (mfmeComponentType)
+                {
+                    //        case MFMEComponentType.Background:
+                    //            ExtractComponentProcessor.ProcessBackground(inputSimulator, componentStandardData);
+                    //            break;
+                    //        case MFMEComponentType.Lamp:
+                    //            ExtractComponentProcessor.ProcessLamp(inputSimulator, componentStandardData);
+                    //            break;
+                    //        case MFMEComponentType.Reel:
+                    //            ExtractComponentProcessor.ProcessReel(inputSimulator, componentStandardData);
+                    //            break;
+                    case MFMEComponentType.DotAlpha:
+                        ExtractComponentProcessor.ProcessDotAlpha(inputSimulator, componentStandardData);
+                        break;
+                    case MFMEComponentType.MatrixAlpha:
+                        ExtractComponentProcessor.ProcessMatrixAlpha(inputSimulator, componentStandardData);
+                        break;
+                    case MFMEComponentType.SevenSegment:
+                        ExtractComponentProcessor.ProcessSevenSegment(inputSimulator, componentStandardData);
+                        break;
+                    case MFMEComponentType.AlphaNew:
+                        ExtractComponentProcessor.ProcessAlphaNew(inputSimulator, componentStandardData);
+                        break;
+                    //case MFMEComponentType.Alpha:
+                    //    ExtractComponentProcessor.ProcessAlpha(inputSimulator, componentStandardData);
+                    //    break;
+                    case MFMEComponentType.Checkbox:
+                        ExtractComponentProcessor.ProcessCheckbox(inputSimulator, componentStandardData);
+                        break;
+                    case MFMEComponentType.RgbLed:
+                        ExtractComponentProcessor.ProcessRgbLed(inputSimulator, componentStandardData);
+                        break;
+                    case MFMEComponentType.Led:
+                        ExtractComponentProcessor.ProcessLed(inputSimulator, componentStandardData);
+                        break;
+                    case MFMEComponentType.Frame:
+                        ExtractComponentProcessor.ProcessFrame(inputSimulator, componentStandardData);
+                        break;
+                    case MFMEComponentType.Label:
+                        ExtractComponentProcessor.ProcessLabel(inputSimulator, componentStandardData);
+                        break;
+                    //        case MFMEComponentType.Button:
+                    //            ExtractComponentProcessor.ProcessButton(inputSimulator, componentStandardData);
+                    //            break;
+                    //        case MFMEComponentType.BandReel:
+                    //            ExtractComponentProcessor.ProcessBandReel(inputSimulator, componentStandardData);
+                    //            break;
+                    //        case MFMEComponentType.DiscReel:
+                    //            ExtractComponentProcessor.ProcessDiscReel(inputSimulator, componentStandardData);
+                    //            break;
+                    //        case MFMEComponentType.FlipReel:
+                    //            ExtractComponentProcessor.ProcessFlipReel(inputSimulator, componentStandardData);
+                    //            break;
+                    //        case MFMEComponentType.JpmBonusReel:
+                    //            ExtractComponentProcessor.ProcessJpmBonusReel(inputSimulator, componentStandardData);
+                    //            break;
+                    case MFMEComponentType.BfmAlpha:
+                        ExtractComponentProcessor.ProcessBfmAlpha(inputSimulator, componentStandardData);
+                        break;
+                    case MFMEComponentType.ProconnMatrix:
+                        ExtractComponentProcessor.ProcessProconnMatrix(inputSimulator, componentStandardData);
+                        break;
+                    case MFMEComponentType.EpochAlpha:
+                        ExtractComponentProcessor.ProcessEpochAlpha(inputSimulator, componentStandardData);
+                        break;
+                    case MFMEComponentType.IgtVfd:
+                        ExtractComponentProcessor.ProcessIgtVfd(inputSimulator, componentStandardData);
+                        break;
+                    case MFMEComponentType.Plasma:
+                        ExtractComponentProcessor.ProcessPlasma(inputSimulator, componentStandardData);
+                        break;
+                    case MFMEComponentType.DotMatrix:
+                        ExtractComponentProcessor.ProcessDotMatrix(inputSimulator, componentStandardData);
+                        break;
+                    case MFMEComponentType.BfmLed:
+                        ExtractComponentProcessor.ProcessBfmLed(inputSimulator, componentStandardData);
+                        break;
+                    case MFMEComponentType.BfmColourLed:
+                        ExtractComponentProcessor.ProcessBfmColourLed(inputSimulator, componentStandardData);
+                        break;
+                    case MFMEComponentType.AceMatrix:
+                        ExtractComponentProcessor.ProcessAceMatrix(inputSimulator, componentStandardData);
+                        break;
+                    case MFMEComponentType.EpochMatrix:
+                        ExtractComponentProcessor.ProcessEpochMatrix(inputSimulator, componentStandardData);
+                        break;
+                    case MFMEComponentType.BarcrestBwbVideo:
+                        ExtractComponentProcessor.ProcessBarcrestBwbVideo(inputSimulator, componentStandardData);
+                        break;
+                    case MFMEComponentType.BfmVideo:
+                        ExtractComponentProcessor.ProcessBfmVideo(inputSimulator, componentStandardData);
+                        break;
+                    case MFMEComponentType.AceVideo:
+                        ExtractComponentProcessor.ProcessAceVideo(inputSimulator, componentStandardData);
+                        break;
+                    case MFMEComponentType.MaygayVideo:
+                        ExtractComponentProcessor.ProcessMaygayVideo(inputSimulator, componentStandardData);
+                        break;
+                    //        case MFMEComponentType.PrismLamp:
+                    //            ExtractComponentProcessor.ProcessPrismLamp(inputSimulator, componentStandardData);
+                    //            break;
+                    //        case MFMEComponentType.Bitmap:
+                    //            ExtractComponentProcessor.ProcessBitmap(inputSimulator, componentStandardData);
+                    //            break;
+                    case MFMEComponentType.SevenSegmentBlock:
+                        ExtractComponentProcessor.ProcessSevenSegmentBlock(inputSimulator, componentStandardData);
+                        break;
+                    case MFMEComponentType.Border:
+                        ExtractComponentProcessor.ProcessBorder(inputSimulator, componentStandardData);
+                        break;
 
-                //        default:
-                //            UnityEngine.Debug.LogError("MFME Extractor: skipping MFMEComponentType " + mfmeComponentType
-                //                + " (Z Order: " + zOrder + ")");
-                //            break;
-                //    }
+                    default:
+                        OutputLog.LogError($"Skipping ComponentType {mfmeComponentType}, zOrder {zOrder}");
+                        break;
+                }
 
+// OASIS - MAYBE TODO?  Really should try a more detailed scrape of font info so we don't need these
+// crappy 'SnapshotRenders' any more.  It was for scraping classic layout text to work out text flow
+// without knowing font style/size etc.  Could do with something more advanced now this Extractor is
+// entering its releasable form.
                 //    yield return WriteSnapshotTextRender(Extractor.Layout.Components.Last());
+                //Thread.Sleep(100); // missed scraping a text field on Adders (Hold 1) since adding this code to write the SnapshotTextRender
 
-                //    yield return new WaitForSeconds(0.1f); // missed scraping a text field on Adders (Hold 1) since adding this code to write the SnapshotTextRender
+                _previousComponentType = mfmeComponentType;
+                ++zOrder;
 
-                //    _previousComponentType = mfmeComponentType;
-                //    ++zOrder;
-
-                //    yield return MFMEAutomation.ClickPropertiesComponentNext(inputSimulator, this, EmulatorScraper);
+                MFMEAutomation.ClickPropertiesComponentNext(inputSimulator);
             }
             while (!MFMEAutomation.PreviousComponentNavigationTimedOut);
 
             //Extractor.SaveLayout(OutputDirectoryPath);
 
+            // PROB TO REMOVE - FROM THE OLD ARCADE SIM BIG CLASSIC EXTRACTION ATTEMPT
             //if (zOrder == Extractor.Layout.Components.Count && Extractor.Layout.Components.Count > 0)
             //{
             //    string extractCompletedMarkerFilePath = Path.Combine(
@@ -285,14 +273,7 @@ Console.WriteLine("Get Angle");
             //    File.WriteAllBytes(extractCompletedMarkerFilePath, new byte[0]);
             //}
 
-            //MFMEAutomation.KillMFMEProcessIfNotExited(_mfmeProcess);
-
-
-
-
-
-
-
+            MfmeController.KillMFMEProcessIfNotExited(_mfmeProcess);
         }
 
         private void LaunchMfmeAndDll()
