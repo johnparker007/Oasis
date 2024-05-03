@@ -14,6 +14,14 @@
             this.b = b;
             this.a = a;
         }
+
+        public Color32(System.Drawing.Color color)
+        {
+            r = color.R;
+            g = color.G;
+            b = color.B;
+            a = color.A;
+        }
     }
 }
 

@@ -73,6 +73,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Configuration.cs" />
+    <Compile Include="Extensions\BitmapExtensions.cs" />
     <Compile Include="Extensions\RichTextBoxExtensions.cs" />
     <Compile Include="ExtractComponents\ExtractComponentAceMatrix.cs" />
     <Compile Include="ExtractComponents\ExtractComponentAceVideo.cs" />
@@ -122,6 +123,7 @@
     <Compile Include="MainForm.Designer.cs">
       <DependentUpon>MainForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="Mfme\DelphiFontScraper.cs" />
     <Compile Include="Mfme\ExeCopier.cs" />
     <Compile Include="Mfme\ExeHelper.cs" />
     <Compile Include="Mfme\LayoutCopier.cs" />
