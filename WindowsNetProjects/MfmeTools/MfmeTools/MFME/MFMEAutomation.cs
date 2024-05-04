@@ -302,13 +302,13 @@ mouseCoordinateWithinWindowX += 5;
                     return MFMEConstants.MFMEComponentType.SevenSegment;
                 case "Seven Segment Block":
                     return MFMEConstants.MFMEComponentType.SevenSegmentBlock;
-                case "Reel":
+                case "Ree": // current Delphi font scraper can't scrap final 'l' ("Reel")
                     return MFMEConstants.MFMEComponentType.Reel;
                 case "Lamp":
                     return MFMEConstants.MFMEComponentType.Lamp;
                 case "CheckBox":
                     return MFMEConstants.MFMEComponentType.Checkbox;
-                case "Label":
+                case "Labe": // current Delphi font scraper can't scrap final 'l' ("Label")
                     return MFMEConstants.MFMEComponentType.Label;
                 case "Button":
                     return MFMEConstants.MFMEComponentType.Button;
@@ -324,13 +324,13 @@ mouseCoordinateWithinWindowX += 5;
                     return MFMEConstants.MFMEComponentType.Alpha;
                 case "Frame":
                     return MFMEConstants.MFMEComponentType.Frame;
-                case "Band Reel":
+                case "Band Ree": // current Delphi font scraper can't scrap final 'l' ("Band Reel")
                     return MFMEConstants.MFMEComponentType.BandReel;
-                case "Disc Reel":
+                case "Disc Ree": // current Delphi font scraper can't scrap final 'l' ("Disc Reel")
                     return MFMEConstants.MFMEComponentType.DiscReel;
-                case "FlipReel":
+                case "FlipRee": // current Delphi font scraper can't scrap final 'l' ("FlipReel")
                     return MFMEConstants.MFMEComponentType.FlipReel;
-                case "Reel Bonus Reel":
+                case "Reel Bonus Ree": // current Delphi font scraper can't scrap final 'l' ("Reel Bonus Reel")
                     return MFMEConstants.MFMEComponentType.JpmBonusReel;
                 case "BFM Alpha":
                     return MFMEConstants.MFMEComponentType.BfmAlpha;
