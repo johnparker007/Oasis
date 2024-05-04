@@ -62,9 +62,8 @@ namespace MfmeTools.Mfme
 
         public static bool GetCheckboxValue(int topLeftInteriorPixelX, int topLeftInteriorPixelY)
         {
-            // these aren't quite right, need to understand why they work!
-            const int kOffsetToDetectPixelFromTopLeftAsMeasuredFromScreenshotsX = 10;
-            const int kOffsetToDetectPixelFromTopLeftAsMeasuredFromScreenshotsY = 9;
+            const int kOffsetToDetectPixelFromTopLeftAsMeasuredFromScreenshotsX = 3;
+            const int kOffsetToDetectPixelFromTopLeftAsMeasuredFromScreenshotsY = 7;
 
             Color32 scrapedPixelColor32 = CurrentWindow.GetPixel(
                     topLeftInteriorPixelX + kOffsetToDetectPixelFromTopLeftAsMeasuredFromScreenshotsX,
@@ -75,9 +74,14 @@ namespace MfmeTools.Mfme
 
         public static bool GetCheckboxPropertiesResultPanePreviewValue(int topLeftInteriorPixelX, int topLeftInteriorPixelY)
         {
+// OASIS STILL TODO/TEST
             // these aren't quite right, need to understand why they work!
-            const int kOffsetToDetectPixelFromTopLeftAsMeasuredFromScreenshotsX = 9;
-            const int kOffsetToDetectPixelFromTopLeftAsMeasuredFromScreenshotsY = 6;
+            //const int kOffsetToDetectPixelFromTopLeftAsMeasuredFromScreenshotsX = 9;
+            //const int kOffsetToDetectPixelFromTopLeftAsMeasuredFromScreenshotsY = 6;
+            //const int kOffsetToDetectPixelFromTopLeftAsMeasuredFromScreenshotsX = 2;
+            //const int kOffsetToDetectPixelFromTopLeftAsMeasuredFromScreenshotsY = 4;
+            const int kOffsetToDetectPixelFromTopLeftAsMeasuredFromScreenshotsX = 3;
+const int kOffsetToDetectPixelFromTopLeftAsMeasuredFromScreenshotsY = 7;
 
             Color32 scrapedPixelColor32 = CurrentWindow.GetPixel(
                     topLeftInteriorPixelX + kOffsetToDetectPixelFromTopLeftAsMeasuredFromScreenshotsX,
@@ -88,8 +92,11 @@ namespace MfmeTools.Mfme
 
         public static Color32 GetColorboxValue(int topLeftInteriorPixelX, int topLeftInteriorPixelY)
         {
-            const int kOffsetToDetectPixelFromTopLeftAsMeasuredFromScreenshotsX = 10 + (19 / 2);
-            const int kOffsetToDetectPixelFromTopLeftAsMeasuredFromScreenshotsY = 9 + (19 / 2);
+            const int kColorBoxInteriorSize = 19; // 19x19 pixels square
+            const int kColorBoxCenterOffset = kColorBoxInteriorSize / 2;
+
+            const int kOffsetToDetectPixelFromTopLeftAsMeasuredFromScreenshotsX = kColorBoxCenterOffset;
+            const int kOffsetToDetectPixelFromTopLeftAsMeasuredFromScreenshotsY = kColorBoxCenterOffset;
 
             Color32 scrapedPixelColor32 =
                 CurrentWindow.GetPixel(
@@ -101,8 +108,11 @@ namespace MfmeTools.Mfme
 
         public static bool GetRadioButtonValue(int topLeftInteriorPixelX, int topLeftInteriorPixelY)
         {
-            const int kOffsetToDetectPixelFromTopLeftAsMeasuredFromScreenshotsX = 12;
-            const int kOffsetToDetectPixelFromTopLeftAsMeasuredFromScreenshotsY = 8;
+            const int kRadioButtonSize = 13; // 13x13 pixels square
+            const int kRadioButtonCenterOffset = kRadioButtonSize / 2;
+
+            const int kOffsetToDetectPixelFromTopLeftAsMeasuredFromScreenshotsX = kRadioButtonCenterOffset;
+            const int kOffsetToDetectPixelFromTopLeftAsMeasuredFromScreenshotsY = kRadioButtonCenterOffset;
 
             Color32 scrapedPixelColor32 =
                 CurrentWindow.GetPixel(
@@ -115,6 +125,7 @@ namespace MfmeTools.Mfme
         public static bool IsImageBoxBlank(
             int topLeftInteriorPixelX, int topLeftInteriorPixelY, int width, int height, bool checkerboard, bool blankIsYellow = true)
         {
+// OASIS STILL TODO/TEST
             // I don't know why these all keep coming out differently?
             const int kImageBoxOffsetToMatchToPixelFromCroppedScreenshotsX = 8;
             const int kImageBoxOffsetToMatchToPixelFromCroppedScreenshotsY = 1;
