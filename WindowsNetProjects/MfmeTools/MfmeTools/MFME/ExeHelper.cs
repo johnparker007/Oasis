@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Security.Cryptography;
 
-namespace MfmeTools.Mfme
+namespace Oasis.MfmeTools.Shared.Mfme
 {
     public static class ExeHelper
     {

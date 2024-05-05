@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace MfmeTools.UnityWrappers
+namespace Oasis.MfmeTools.UnityWrappers
 {
     //
     // Summary:

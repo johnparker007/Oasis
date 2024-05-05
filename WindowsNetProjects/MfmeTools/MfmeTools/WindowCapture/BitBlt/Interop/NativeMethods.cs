@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 
-namespace MfmeTools.WindowCapture.BitBlt.Interop
+namespace Oasis.MfmeTools.WindowCapture.BitBlt.Interop
 {
     internal static class NativeMethods
     {

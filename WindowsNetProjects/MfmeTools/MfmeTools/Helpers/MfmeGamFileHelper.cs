@@ -6,7 +6,7 @@ using System.Linq;
 using System;
 
 
-namespace MfmeTools.Helpers
+namespace Oasis.MfmeTools.Helpers
 {
     public static class MfmeGamFileHelper
     {

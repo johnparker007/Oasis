@@ -1,11 +1,11 @@
-﻿using MfmeTools.UnityWrappers;
+﻿using Oasis.MfmeTools.UnityWrappers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace MfmeTools.Mfme
+namespace Oasis.MfmeTools.Shared.Mfme
 {
     public class MfmeExtractor
     {

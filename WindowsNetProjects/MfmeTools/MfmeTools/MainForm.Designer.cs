@@ -1,5 +1,5 @@
 ﻿
-namespace MfmeTools
+namespace Oasis.MfmeTools
 {
     partial class MainForm
     {

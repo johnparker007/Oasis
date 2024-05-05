@@ -2,7 +2,7 @@
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace MfmeTools.WindowCapture.Shared.Interop
+namespace Oasis.MfmeTools.WindowCapture.Shared.Interop
 {
     public static class NativeMethods
     {

@@ -1,6 +1,6 @@
-﻿using MfmeTools.Mfme;
-using MfmeTools.UnityWrappers;
-using MfmeTools.WindowCapture.Shared.Interfaces;
+﻿using Oasis.MfmeTools.Shared.Mfme;
+using Oasis.MfmeTools.UnityWrappers;
+using Oasis.MfmeTools.WindowCapture.Shared.Interfaces;
 using SharpDX;
 using SharpDX.Direct3D11;
 using SharpDX.DXGI;
@@ -12,9 +12,9 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
-using static MfmeTools.WindowCapture.Shared.Interop.NativeMethods;
+using static Oasis.MfmeTools.WindowCapture.Shared.Interop.NativeMethods;
 
-namespace MfmeTools.WindowCapture
+namespace Oasis.MfmeTools.WindowCapture
 {
     public class MfmeWindow
     {

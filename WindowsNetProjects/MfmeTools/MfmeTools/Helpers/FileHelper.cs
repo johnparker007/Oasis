@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace MfmeTools.Helpers
+namespace Oasis.MfmeTools.Helpers
 {
     public static class FileHelper
     {

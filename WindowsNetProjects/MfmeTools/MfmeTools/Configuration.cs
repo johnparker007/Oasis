@@ -1,4 +1,4 @@
-﻿using MfmeTools.Helpers;
+﻿using Oasis.MfmeTools.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace MfmeTools
+namespace Oasis.MfmeTools
 {
     public class Configuration
     {

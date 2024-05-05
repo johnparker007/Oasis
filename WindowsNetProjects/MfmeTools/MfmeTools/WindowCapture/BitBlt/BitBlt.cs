@@ -1,18 +1,18 @@
 ﻿using System;
 using System.Drawing;
 using System.Drawing.Imaging;
-using MfmeTools.WindowCapture.Shared.Interfaces;
+using Oasis.MfmeTools.WindowCapture.Shared.Interfaces;
 using SharpDX;
 using SharpDX.Direct3D11;
 using SharpDX.DXGI;
 
-using MfmeTools.WindowCapture.BitBlt.Interop;
-using MfmeTools.WindowCapture.Shared;
+using Oasis.MfmeTools.WindowCapture.BitBlt.Interop;
+using Oasis.MfmeTools.WindowCapture.Shared;
 
 using Device = SharpDX.Direct3D11.Device;
 using Rectangle = System.Drawing.Rectangle;
 
-namespace MfmeTools.WindowCapture.BitBlt
+namespace Oasis.MfmeTools.WindowCapture.BitBlt
 {
     internal class BitBlt : ICaptureMethod
     {

@@ -1,6 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 
-namespace MfmeTools.WindowCapture.BitBlt.Interop
+namespace Oasis.MfmeTools.WindowCapture.BitBlt.Interop
 {
     [StructLayout(LayoutKind.Sequential)]
     internal struct RECT

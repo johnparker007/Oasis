@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace MfmeTools.Extensions
+namespace Oasis.MfmeTools.Extensions
 {
     public static class RichTextBoxExtensions
     {

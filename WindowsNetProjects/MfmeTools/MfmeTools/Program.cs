@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using MfmeTools.Mfme;
+using Oasis.MfmeTools.Shared.Mfme;
 
-namespace MfmeTools
+namespace Oasis.MfmeTools
 {
     static class Program
     {

@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace MfmeTools
+namespace Oasis.MfmeTools
 {
     public static class PathHelpers
     {

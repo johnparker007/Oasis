@@ -1,4 +1,4 @@
-﻿namespace MfmeTools.UnityWrappers
+﻿namespace Oasis.MfmeTools.UnityWrappers
 {
     public struct Vector2Int
     {

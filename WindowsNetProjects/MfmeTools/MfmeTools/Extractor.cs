@@ -1,16 +1,16 @@
-﻿using MfmeTools.Mfme;
+﻿using Oasis.MfmeTools.Shared.Mfme;
 using System.Diagnostics;
 using WindowsInput;
 using System.Threading;
-using static MfmeTools.WindowCapture.Shared.Interop.NativeMethods;
-using static MfmeTools.Mfme.MFMEConstants;
+using static Oasis.MfmeTools.WindowCapture.Shared.Interop.NativeMethods;
+using static Oasis.MfmeTools.Shared.Mfme.MFMEConstants;
 using System;
-using static MfmeTools.Mfme.MfmeExtractor;
-using MfmeTools.Extract;
+using static Oasis.MfmeTools.Shared.Mfme.MfmeExtractor;
+using Oasis.MfmeTools.Shared.Extract;
 using System.IO;
 using Newtonsoft.Json;
 
-namespace MfmeTools
+namespace Oasis.MfmeTools
 {
     public class Extractor
     {
@@ -263,7 +263,7 @@ namespace MfmeTools
             }
             while (!MFMEAutomation.PreviousComponentNavigationTimedOut);
 
-            SaveLayout(Path.GetDirectoryName(options.SourceLayoutPath));
+            FileSystem.SaveLayout(Layout, options.SourceLayoutPath);
 
             // PROB TO REMOVE - FROM THE OLD ARCADE SIM BIG CLASSIC EXTRACTION ATTEMPT
             //if (zOrder == Extractor.Layout.Components.Count && Extractor.Layout.Components.Count > 0)
@@ -414,17 +414,6 @@ namespace MfmeTools
             //rect.Height -= MfmeScraper.kMfmeWindowTitlebarHeight;
         }
 
-        public static void SaveLayout(string directoryPath)
-        {
-            string json = JsonConvert.SerializeObject(Layout, Formatting.Indented, new JsonSerializerSettings
-            {
-                TypeNameHandling = TypeNameHandling.Auto //, ReferenceLoopHandling = ReferenceLoopHandling.Ignore
-            });
-
-            string filePath = Path.Combine(directoryPath, Layout.ASName + ".json");
-
-            File.WriteAllText(filePath, json);
-        }
 
 
     }

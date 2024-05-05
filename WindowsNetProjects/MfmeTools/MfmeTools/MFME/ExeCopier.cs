@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace MfmeTools.Mfme
+namespace Oasis.MfmeTools.Shared.Mfme
 {
     public class ExeCopier
     {

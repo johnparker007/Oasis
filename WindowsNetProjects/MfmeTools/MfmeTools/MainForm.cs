@@ -8,7 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace MfmeTools
+namespace Oasis.MfmeTools
 {
     public partial class MainForm : Form
     {

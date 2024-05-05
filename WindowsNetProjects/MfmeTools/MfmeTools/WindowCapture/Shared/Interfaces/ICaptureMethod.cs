@@ -5,7 +5,7 @@ using SharpDX.DXGI;
 
 using Device = SharpDX.Direct3D11.Device;
 
-namespace MfmeTools.WindowCapture.Shared.Interfaces
+namespace Oasis.MfmeTools.WindowCapture.Shared.Interfaces
 {
     public interface ICaptureMethod : IDisposable
     {

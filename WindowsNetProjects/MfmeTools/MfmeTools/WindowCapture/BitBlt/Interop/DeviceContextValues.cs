@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace MfmeTools.WindowCapture.BitBlt.Interop
+namespace Oasis.MfmeTools.WindowCapture.BitBlt.Interop
 {
     [Flags]
     internal enum DeviceContextValues : uint

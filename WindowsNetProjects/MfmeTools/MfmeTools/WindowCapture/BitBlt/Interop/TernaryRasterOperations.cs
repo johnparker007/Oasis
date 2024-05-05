@@ -2,7 +2,7 @@
 // ReSharper disable UnusedMember.Global
 // ReSharper disable IdentifierTypo
 
-namespace MfmeTools.WindowCapture.BitBlt.Interop
+namespace Oasis.MfmeTools.WindowCapture.BitBlt.Interop
 {
     internal enum TernaryRasterOperations : uint
     {
