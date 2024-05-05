@@ -8,6 +8,7 @@ using System;
 using static MfmeTools.Mfme.MfmeExtractor;
 using MfmeTools.Extract;
 using System.IO;
+using Newtonsoft.Json;
 
 namespace MfmeTools
 {
@@ -35,7 +36,7 @@ namespace MfmeTools
             OutputLog.Log("Starting Extraction");
             OutputLog.Log("Extraction source layout: " + options.SourceLayoutPath);
 
-            Layout = new Layout() { ASName = Path.GetFileName(options.SourceLayoutPath) };
+            Layout = new Layout() { ASName = Path.GetFileNameWithoutExtension(options.SourceLayoutPath) };
 
             Program.LayoutCopier.CopyToMfmeTools(options.SourceLayoutPath);
             OutputLog.Log("Copied source layout to MFME Tools");
@@ -262,7 +263,7 @@ namespace MfmeTools
             }
             while (!MFMEAutomation.PreviousComponentNavigationTimedOut);
 
-            //Extractor.SaveLayout(OutputDirectoryPath);
+            SaveLayout(Path.GetDirectoryName(options.SourceLayoutPath));
 
             // PROB TO REMOVE - FROM THE OLD ARCADE SIM BIG CLASSIC EXTRACTION ATTEMPT
             //if (zOrder == Extractor.Layout.Components.Count && Extractor.Layout.Components.Count > 0)
@@ -411,6 +412,18 @@ namespace MfmeTools
         {
             //rect.Y += MfmeScraper.kMfmeWindowTitlebarHeight;
             //rect.Height -= MfmeScraper.kMfmeWindowTitlebarHeight;
+        }
+
+        public static void SaveLayout(string directoryPath)
+        {
+            string json = JsonConvert.SerializeObject(Layout, Formatting.Indented, new JsonSerializerSettings
+            {
+                TypeNameHandling = TypeNameHandling.Auto //, ReferenceLoopHandling = ReferenceLoopHandling.Ignore
+            });
+
+            string filePath = Path.Combine(directoryPath, Layout.ASName + ".json");
+
+            File.WriteAllText(filePath, json);
         }
 
 
