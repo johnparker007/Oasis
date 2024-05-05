@@ -42,19 +42,7 @@ namespace Oasis.MfmeTools.Shared.Mfme
                     MFMEAutomation.RightClickAtPosition(inputSimulator, 
                         MFMEScraperConstants.kPropertiesBackgroundImage_CenterX, MFMEScraperConstants.kPropertiesBackgroundImage_CenterY);
 
-                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-                    Thread.Sleep(MFMEAutomation.kShortDelay);
-
-                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-                    Thread.Sleep(MFMEAutomation.kShortDelay);
-
-                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-                    Thread.Sleep(MFMEAutomation.kShortDelay);
-
-                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-                    Thread.Sleep(MFMEAutomation.kShortDelay);
-
-                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.RETURN);
+                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.VK_S);
                     Thread.Sleep(MFMEAutomation.kShortDelay);
 
                     // wait for file requester to intialise
@@ -151,19 +139,7 @@ namespace Oasis.MfmeTools.Shared.Mfme
                 MFMEAutomation.RightClickAtPosition(inputSimulator, 
                     MFMEScraperConstants.kPropertiesReelImage_CenterX, MFMEScraperConstants.kPropertiesReelImage_CenterY);
 
-                inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-                Thread.Sleep(MFMEAutomation.kShortDelay);
-
-                inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-                Thread.Sleep(MFMEAutomation.kShortDelay);
-
-                inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-                Thread.Sleep(MFMEAutomation.kShortDelay);
-
-                inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-                Thread.Sleep(MFMEAutomation.kShortDelay);
-
-                inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.RETURN);
+                inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.VK_S);
                 Thread.Sleep(MFMEAutomation.kShortDelay);
 
                 Thread.Sleep(MFMEAutomation.kVeryLongDelay); // wait for file requester to intialise
@@ -202,19 +178,7 @@ namespace Oasis.MfmeTools.Shared.Mfme
                     MFMEAutomation.RightClickAtPosition(inputSimulator, 
                         MFMEScraperConstants.kPropertiesOverlayImage_CenterX, MFMEScraperConstants.kPropertiesOverlayImage_CenterY);
 
-                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-                    Thread.Sleep(MFMEAutomation.kShortDelay);
-
-                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-                    Thread.Sleep(MFMEAutomation.kShortDelay);
-
-                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-                    Thread.Sleep(MFMEAutomation.kShortDelay);
-
-                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-                    Thread.Sleep(MFMEAutomation.kShortDelay);
-
-                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.RETURN);
+                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.VK_S);
                     Thread.Sleep(MFMEAutomation.kShortDelay);
 
                     Thread.Sleep(MFMEAutomation.kVeryLongDelay); // wait for file requester to intialise
