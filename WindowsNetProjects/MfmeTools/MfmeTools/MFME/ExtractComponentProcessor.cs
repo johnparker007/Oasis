@@ -1439,342 +1439,309 @@ namespace Oasis.MfmeTools.Shared.Mfme
             Extractor.Layout.Components.Add(extractMatrixAlpha);
         }
 
-        //        public static void ProcessLamp(InputSimulator inputSimulator, ComponentStandardData componentStandardData)
-        //        {
-        //            ExtractComponentLamp extractComponentLamp = new ExtractComponentLamp(componentStandardData);
+        public static void ProcessLamp(InputSimulator inputSimulator, ComponentStandardData componentStandardData)
+        {
+            ExtractComponentLamp extractComponentLamp = new ExtractComponentLamp(componentStandardData);
 
-        //            extractComponentLamp.NoOutline = MfmeScraper.GetCheckboxValue(
-        //                EmulatorScraper, MFMEScraperConstants.kPropertiesLampNoOutlineCheckbox_X, MFMEScraperConstants.kPropertiesLampNoOutlineCheckbox_Y);
+            extractComponentLamp.NoOutline = MfmeScraper.GetCheckboxValue(
+                MFMEScraperConstants.kPropertiesLampNoOutlineCheckbox_X, MFMEScraperConstants.kPropertiesLampNoOutlineCheckbox_Y);
 
-        //            extractComponentLamp.Graphic = MfmeScraper.GetCheckboxValue(
-        //                EmulatorScraper, MFMEScraperConstants.kPropertiesLampGraphicCheckbox_X, MFMEScraperConstants.kPropertiesLampGraphicCheckbox_Y);
+            extractComponentLamp.Graphic = MfmeScraper.GetCheckboxValue(
+                MFMEScraperConstants.kPropertiesLampGraphicCheckbox_X, MFMEScraperConstants.kPropertiesLampGraphicCheckbox_Y);
 
-        //            extractComponentLamp.Transparent = MfmeScraper.GetCheckboxValue(
-        //                EmulatorScraper, MFMEScraperConstants.kPropertiesLampTransparentCheckbox_X, MFMEScraperConstants.kPropertiesLampTransparentCheckbox_Y);
+            extractComponentLamp.Transparent = MfmeScraper.GetCheckboxValue(
+                MFMEScraperConstants.kPropertiesLampTransparentCheckbox_X, MFMEScraperConstants.kPropertiesLampTransparentCheckbox_Y);
 
-        //            extractComponentLamp.Blend = MfmeScraper.GetCheckboxValue(
-        //                EmulatorScraper, MFMEScraperConstants.kPropertiesLampBlendCheckbox_X, MFMEScraperConstants.kPropertiesLampBlendCheckbox_Y);
+            extractComponentLamp.Blend = MfmeScraper.GetCheckboxValue(
+                MFMEScraperConstants.kPropertiesLampBlendCheckbox_X, MFMEScraperConstants.kPropertiesLampBlendCheckbox_Y);
 
-        //            extractComponentLamp.Inverted = MfmeScraper.GetCheckboxValue(
-        //                EmulatorScraper, MFMEScraperConstants.kPropertiesLampInvertedCheckbox_X, MFMEScraperConstants.kPropertiesLampInvertedCheckbox_Y);
+            extractComponentLamp.Inverted = MfmeScraper.GetCheckboxValue(
+                MFMEScraperConstants.kPropertiesLampInvertedCheckbox_X, MFMEScraperConstants.kPropertiesLampInvertedCheckbox_Y);
 
-        //            extractComponentLamp.ClickAll = MfmeScraper.GetCheckboxValue(
-        //                EmulatorScraper, MFMEScraperConstants.kPropertiesLampClickAllCheckbox_X, MFMEScraperConstants.kPropertiesLampClickAllCheckbox_Y);
+            extractComponentLamp.ClickAll = MfmeScraper.GetCheckboxValue(
+                MFMEScraperConstants.kPropertiesLampClickAllCheckbox_X, MFMEScraperConstants.kPropertiesLampClickAllCheckbox_Y);
 
-        //            extractComponentLamp.LED = MfmeScraper.GetCheckboxValue(
-        //                EmulatorScraper, MFMEScraperConstants.kPropertiesLampLEDCheckbox_X, MFMEScraperConstants.kPropertiesLampLEDCheckbox_Y);
+            extractComponentLamp.LED = MfmeScraper.GetCheckboxValue(
+                MFMEScraperConstants.kPropertiesLampLEDCheckbox_X, MFMEScraperConstants.kPropertiesLampLEDCheckbox_Y);
 
-        //            extractComponentLamp.LockOut = MfmeScraper.GetCheckboxValue(
-        //                EmulatorScraper, MFMEScraperConstants.kPropertiesLampLockOutCheckbox_X, MFMEScraperConstants.kPropertiesLampLockOutCheckbox_Y);
+            extractComponentLamp.LockOut = MfmeScraper.GetCheckboxValue(
+                MFMEScraperConstants.kPropertiesLampLockOutCheckbox_X, MFMEScraperConstants.kPropertiesLampLockOutCheckbox_Y);
 
-        //            extractComponentLamp.RGB = MfmeScraper.GetCheckboxValue(
-        //                EmulatorScraper, MFMEScraperConstants.kPropertiesLampRGBCheckbox_X, MFMEScraperConstants.kPropertiesLampRGBCheckbox_Y);
+            extractComponentLamp.RGB = MfmeScraper.GetCheckboxValue(
+                MFMEScraperConstants.kPropertiesLampRGBCheckbox_X, MFMEScraperConstants.kPropertiesLampRGBCheckbox_Y);
 
-        //            extractComponentLamp.PreserveAspectRatio = MfmeScraper.GetCheckboxValue(
-        //                EmulatorScraper, MFMEScraperConstants.kPropertiesLampPreserveAspectRatioCheckbox_X, MFMEScraperConstants.kPropertiesLampPreserveAspectRatioCheckbox_Y);
+            extractComponentLamp.PreserveAspectRatio = MfmeScraper.GetCheckboxValue(
+                MFMEScraperConstants.kPropertiesLampPreserveAspectRatioCheckbox_X, MFMEScraperConstants.kPropertiesLampPreserveAspectRatioCheckbox_Y);
 
 
-        //            extractComponentLamp.ButtonNumberAsString = DelphiFontScraper.GetFieldCharacters(
-        //                MFMEScraperConstants.kPropertiesLampButtonNumber_X, MFMEScraperConstants.kPropertiesLampButtonNumber_Y);
+            extractComponentLamp.ButtonNumberAsString = DelphiFontScraper.GetFieldCharacters(
+                MFMEScraperConstants.kPropertiesLampButtonNumber_X, MFMEScraperConstants.kPropertiesLampButtonNumber_Y);
 
-        //            extractComponentLamp.CoinNote = DelphiFontScraper.GetDropdownCharacters(
-        //                MFMEScraperConstants.kPropertiesLampCoinNote_X, MFMEScraperConstants.kPropertiesLampCoinNote_Y);
+            extractComponentLamp.CoinNote = DelphiFontScraper.GetDropdownCharacters(
+                MFMEScraperConstants.kPropertiesLampCoinNote_X, MFMEScraperConstants.kPropertiesLampCoinNote_Y);
 
-        //            extractComponentLamp.Effect = DelphiFontScraper.GetDropdownCharacters(
-        //                MFMEScraperConstants.kPropertiesLampEffect_X, MFMEScraperConstants.kPropertiesLampEffect_Y);
+            extractComponentLamp.Effect = DelphiFontScraper.GetDropdownCharacters(
+                MFMEScraperConstants.kPropertiesLampEffect_X, MFMEScraperConstants.kPropertiesLampEffect_Y);
 
-        //            extractComponentLamp.InhibitLampAsString = DelphiFontScraper.GetFieldCharacters(
-        //                MFMEScraperConstants.kPropertiesLampInhibitLamp_X, MFMEScraperConstants.kPropertiesLampInhibitLamp_Y);
+            extractComponentLamp.InhibitLampAsString = DelphiFontScraper.GetFieldCharacters(
+                MFMEScraperConstants.kPropertiesLampInhibitLamp_X, MFMEScraperConstants.kPropertiesLampInhibitLamp_Y);
 
-        //            extractComponentLamp.Shortcut1 = DelphiFontScraper.GetFieldCharacters(
-        //                MFMEScraperConstants.kPropertiesLampShortcut1_X, MFMEScraperConstants.kPropertiesLampShortcut1_Y);
+            extractComponentLamp.Shortcut1 = DelphiFontScraper.GetFieldCharacters(
+                MFMEScraperConstants.kPropertiesLampShortcut1_X, MFMEScraperConstants.kPropertiesLampShortcut1_Y);
 
-        //            extractComponentLamp.Shortcut2 = DelphiFontScraper.GetFieldCharacters(
-        //                MFMEScraperConstants.kPropertiesLampShortcut2_X, MFMEScraperConstants.kPropertiesLampShortcut2_Y);
+            extractComponentLamp.Shortcut2 = DelphiFontScraper.GetFieldCharacters(
+                MFMEScraperConstants.kPropertiesLampShortcut2_X, MFMEScraperConstants.kPropertiesLampShortcut2_Y);
 
-        //            Color color = new Color(MfmeScraper.GetColorboxValue(
-        //                MFMEScraperConstants.kPropertiesLampTextColourColourbox_X, MFMEScraperConstants.kPropertiesLampTextColourColourbox_Y);
-        //            extractComponentLamp.TextColor = new ColorJSON(color);
+            Color color = new Color(MfmeScraper.GetColorboxValue(
+                MFMEScraperConstants.kPropertiesLampTextColourColourbox_X, MFMEScraperConstants.kPropertiesLampTextColourColourbox_Y));
+            extractComponentLamp.TextColor = new ColorJSON(color);
 
-        //            color = new Color(MfmeScraper.GetColorboxValue(
-        //                MFMEScraperConstants.kPropertiesLampOutlineColourColourbox_X, MFMEScraperConstants.kPropertiesLampOutlineColourColourbox_Y);
-        //            extractComponentLamp.OutlineColor = new ColorJSON(color);
+            color = new Color(MfmeScraper.GetColorboxValue(
+                MFMEScraperConstants.kPropertiesLampOutlineColourColourbox_X, MFMEScraperConstants.kPropertiesLampOutlineColourColourbox_Y));
+            extractComponentLamp.OutlineColor = new ColorJSON(color);
 
-        //            extractComponentLamp.XOff = int.Parse(DelphiFontScraper.GetFieldCharacters(
-        //                MFMEScraperConstants.kPropertiesLampXOff_X, MFMEScraperConstants.kPropertiesLampXOff_Y));
+            extractComponentLamp.XOff = int.Parse(DelphiFontScraper.GetFieldCharacters(
+                MFMEScraperConstants.kPropertiesLampXOff_X, MFMEScraperConstants.kPropertiesLampXOff_Y));
 
-        //            extractComponentLamp.YOff = int.Parse(DelphiFontScraper.GetFieldCharacters(
-        //                MFMEScraperConstants.kPropertiesLampYOff_X, MFMEScraperConstants.kPropertiesLampYOff_Y));
+            extractComponentLamp.YOff = int.Parse(DelphiFontScraper.GetFieldCharacters(
+                MFMEScraperConstants.kPropertiesLampYOff_X, MFMEScraperConstants.kPropertiesLampYOff_Y));
 
-        //            extractComponentLamp.Shape = DelphiFontScraper.GetDropdownCharacters(
-        //                    MFMEScraperConstants.kPropertiesLampShape_X, MFMEScraperConstants.kPropertiesLampShape_Y);
+            extractComponentLamp.Shape = DelphiFontScraper.GetDropdownCharacters(
+                    MFMEScraperConstants.kPropertiesLampShape_X, MFMEScraperConstants.kPropertiesLampShape_Y);
 
-        //            extractComponentLamp.ShapeParameter1 = DelphiFontScraper.GetFieldCharacters(
-        //                MFMEScraperConstants.kPropertiesLampShapeParameter1_X, MFMEScraperConstants.kPropertiesLampShapeParameter1_Y);
+            extractComponentLamp.ShapeParameter1 = DelphiFontScraper.GetFieldCharacters(
+                MFMEScraperConstants.kPropertiesLampShapeParameter1_X, MFMEScraperConstants.kPropertiesLampShapeParameter1_Y);
 
-        //            extractComponentLamp.ShapeParameter2 = DelphiFontScraper.GetFieldCharacters(
-        //                MFMEScraperConstants.kPropertiesLampShapeParameter2_X, MFMEScraperConstants.kPropertiesLampShapeParameter2_Y);
+            extractComponentLamp.ShapeParameter2 = DelphiFontScraper.GetFieldCharacters(
+                MFMEScraperConstants.kPropertiesLampShapeParameter2_X, MFMEScraperConstants.kPropertiesLampShapeParameter2_Y);
 
-        //            color = new Color(MfmeScraper.GetColorboxValue(
-        //                        MFMEScraperConstants.kPropertiesLampOffImageColourbox_X, MFMEScraperConstants.kPropertiesLampOffImageColourbox_Y);
-        //            extractComponentLamp.OffImageColor = new ColorJSON(color);
+            color = new Color(MfmeScraper.GetColorboxValue(
+                        MFMEScraperConstants.kPropertiesLampOffImageColourbox_X, MFMEScraperConstants.kPropertiesLampOffImageColourbox_Y));
+            extractComponentLamp.OffImageColor = new ColorJSON(color);
 
-        //            // TODO only scraping the first 4 lamps for now:
-        //            //for(int lampElementIndex = 0; lampElementIndex < ExtractComponentLamp.kLampElementCount; ++lampElementIndex)
-        //            for (int lampElementIndex = 0; lampElementIndex < 4; ++lampElementIndex)
-        //            {
-        //                yield return ProcessLampElement(inputSimulator, componentStandardData, lampElementIndex, extractComponentLamp);
-        //            }
+            // TODO only scraping the first 4 lamps for now:
+            //for(int lampElementIndex = 0; lampElementIndex < ExtractComponentLamp.kLampElementCount; ++lampElementIndex)
+            for (int lampElementIndex = 0; lampElementIndex < 4; ++lampElementIndex)
+            {
+                ProcessLampElement(inputSimulator, componentStandardData, lampElementIndex, extractComponentLamp);
+            }
 
-        //            Extractor.Layout.Components.Add(extractComponentLamp);
+            Extractor.Layout.Components.Add(extractComponentLamp);
+        }
 
-        //            
-        //        }
+        public static void ProcessLampElement(InputSimulator inputSimulator, ComponentStandardData componentStandardData,
+            int lampElementIndex, ExtractComponentLamp extractComponentLamp)
+        {
+            int lampIndexX;
+            int lampIndexY;
 
-        //        public static void ProcessLampElement(InputSimulator inputSimulator, ComponentStandardData componentStandardData,
-        //            int lampElementIndex, ExtractComponentLamp extractComponentLamp)
-        //        {
-        //            int lampIndexX;
-        //            int lampIndexY;
+            int lampOnColorboxX;
+            int lampOnColorboxY;
 
-        //            int lampOnColorboxX;
-        //            int lampOnColorboxY;
+            int lampImageCenterX;
+            int lampImageCenterY;
+            int lampImageTopLeftX;
+            int lampImageTopLeftY;
 
-        //            int lampImageCenterX;
-        //            int lampImageCenterY;
-        //            int lampImageTopLeftX;
-        //            int lampImageTopLeftY;
+            int lampMaskImageCenterX;
+            int lampMaskImageCenterY;
+            int lampMaskImageTopLeftX;
+            int lampMaskImageTopLeftY;
 
-        //            int lampMaskImageCenterX;
-        //            int lampMaskImageCenterY;
-        //            int lampMaskImageTopLeftX;
-        //            int lampMaskImageTopLeftY;
+            GetLampData(lampElementIndex, out lampIndexX, out lampIndexY, out lampOnColorboxX, out lampOnColorboxY,
+                out lampImageCenterX, out lampImageCenterY, out lampImageTopLeftX, out lampImageTopLeftY);
 
-        //            GetLampData(lampElementIndex, out lampIndexX, out lampIndexY, out lampOnColorboxX, out lampOnColorboxY,
-        //                out lampImageCenterX, out lampImageCenterY, out lampImageTopLeftX, out lampImageTopLeftY);
+            GetLampMaskData(lampElementIndex, out lampMaskImageCenterX, out lampMaskImageCenterY, out lampMaskImageTopLeftX, out lampMaskImageTopLeftY);
+
+            extractComponentLamp.LampElements[lampElementIndex].NumberAsText = DelphiFontScraper.GetFieldCharacters(lampIndexX, lampIndexY);
 
-        //            GetLampMaskData(lampElementIndex, out lampMaskImageCenterX, out lampMaskImageCenterY, out lampMaskImageTopLeftX, out lampMaskImageTopLeftY);
-
-        //            extractComponentLamp.LampElements[lampElementIndex].NumberAsText = DelphiFontScraper.GetFieldCharacters( lampIndexX, lampIndexY);
-
-        //            int lampIndex;
-        //            try
-        //            {
-        //                lampIndex = int.Parse(extractComponentLamp.LampElements[lampElementIndex].NumberAsText);
-        //            }
-        //            catch (Exception)
-        //            {
-        //                // not a valid number in the lamp index field, skip this lamp
-        //                yield break;
-        //            }
-
-        //            Color color = new Color(MfmeScraper.GetColorboxValue( lampOnColorboxX, lampOnColorboxY);
-        //            extractComponentLamp.LampElements[lampElementIndex].OnColor = new ColorJSON(color);
-
-        //            if (MfmeScraper.IsImageBoxBlank( lampImageTopLeftX, lampImageTopLeftY,
-        //                MFMEScraperConstants.kPropertiesLampImage_Width, MFMEScraperConstants.kPropertiesLampImage_Height, false))
-        //            {
-        //                yield break; // TOIMPROVE later, will need to implement blended lamps that do the technique of reusing image from 1st (or earlier?) spot
-        //            }
-
-        //            // TOIMPROVE - maybe doing away with the On1, On2 etc terminology?  LEDs are Red, Green, Blue etc, plus never use Off lamp type
-        //            Converter.MFMELampType lampType = (Converter.MFMELampType)(lampElementIndex + 1);
-
-        //            string lampImagefilename = "lamp_"
-        //                + lampIndex + "_"
-        //                + componentStandardData.Position.x + "_"
-        //                + componentStandardData.Position.y + "_"
-        //                + componentStandardData.Size.x + "_"
-        //                + componentStandardData.Size.y + "_"
-        //                + lampType.ToString()
-        //                + ".bmp";
-
-        //            string lampMaskImageFilename = Path.GetFileNameWithoutExtension(lampImagefilename) + "_mask.bmp";
-
-        //            string saveFullPath = Path.Combine(Converter.kMFMEConverterOutputPath, OutputDirectoryName, lampImagefilename);
-        //            saveFullPath = saveFullPath.Replace("/", "\\");
-
-        //            string saveMaskFullPath = Path.Combine(Converter.kMFMEConverterOutputPath, OutputDirectoryName, lampMaskImageFilename);
-        //            saveMaskFullPath = saveMaskFullPath.Replace("/", "\\");
-
-        //            // save lamp bmp image from MFME
-        //            if ((DontUseExistingLamps || !File.Exists(saveFullPath)) && !MachineConfiguration.ClassicForMAME)
-        //            {
-        //                FileHelper.DeleteFileAndMetafileIfFound(saveFullPath);
-
-        //                MFMEAutomation.RightClickAtPosition(inputSimulator, this, EmulatorScraper, lampImageCenterX, lampImageCenterY);
-
-        //                inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.VK_S);
-        //                Thread.Sleep(MFMEAutomation.kShortDelay);
-
-        //                // TIMPROVE: DO this on all other right click menus where shortcut exists!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-        //                //inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-        //                //Thread.Sleep(MFMEAutomation.kShortDelay);
-
-        //                //inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-        //                //Thread.Sleep(MFMEAutomation.kShortDelay);
-
-        //                //inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-        //                //Thread.Sleep(MFMEAutomation.kShortDelay);
-
-        //                //inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-        //                //Thread.Sleep(MFMEAutomation.kShortDelay);
-
-        //                //inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-        //                //Thread.Sleep(MFMEAutomation.kShortDelay);
-
-        //                //inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-        //                //Thread.Sleep(MFMEAutomation.kShortDelay);
-
-        //                //inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-        //                //Thread.Sleep(MFMEAutomation.kShortDelay);
-
-        //                //inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.RETURN);
-        //                //Thread.Sleep(MFMEAutomation.kShortDelay);
-
-        //                // wait for file requester to intialise
-        //                Thread.Sleep(MFMEAutomation.kVeryLongDelay);
-
-        //                Clipboard.SetText(saveFullPath;
-
-        //                inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LCONTROL, WindowsInput.Native.VirtualKeyCode.VK_V);
-        //                Thread.Sleep(MFMEAutomation.kMediumDelay);
-
-        //                inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.RETURN);
-        //                Thread.Sleep(MFMEAutomation.kVeryLongDelay);
-        //            }
-
-        //            // TODO a check will be needed when more work is done on this, as we can sometimes have no lamp image, just 
-        //            // a lamp mask image etc... for now assuming always a lamp
-        //            extractComponentLamp.LampElements[lampElementIndex].BmpImageFilename = lampImagefilename;
-
-        //            // save lamp mask bmp image from MFME if present
-        //            if (!MfmeScraper.IsImageBoxBlank( lampMaskImageTopLeftX, lampMaskImageTopLeftY,
-        //                MFMEScraperConstants.kPropertiesLampImage_Width, MFMEScraperConstants.kPropertiesLampImage_Height, false))
-        //            {
-        //                extractComponentLamp.LampElements[lampElementIndex].BmpMaskImageFilename = lampMaskImageFilename;
-
-        //                if ((DontUseExistingLamps || !File.Exists(saveMaskFullPath)) && !MachineConfiguration.ClassicForMAME)
-        //                {
-        //                    FileHelper.DeleteFileAndMetafileIfFound(saveMaskFullPath);
-
-        //                    MFMEAutomation.RightClickAtPosition(inputSimulator, this, EmulatorScraper, lampMaskImageCenterX, lampMaskImageCenterY);
-
-        //                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.VK_S);
-        //                    Thread.Sleep(MFMEAutomation.kShortDelay);
-
-        //                    // wait for file requester to intialise
-        //                    Thread.Sleep(MFMEAutomation.kVeryLongDelay);
-
-        //                    Clipboard.SetText(saveMaskFullPath;
-
-        //                    inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LCONTROL, WindowsInput.Native.VirtualKeyCode.VK_V);
-        //                    Thread.Sleep(MFMEAutomation.kMediumDelay);
-
-        //                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.RETURN);
-        //                    Thread.Sleep(MFMEAutomation.kVeryLongDelay);
-        //                }
-        //            }
-
-        //            
-        //        }
-
-        //        private void GetLampData(int lampElementIndex, out int lampIndexX, out int lampIndexY,
-        //            out int lampOnColorboxX, out int lampOnColorboxY,
-        //            out int lampImageCenterX, out int lampImageCenterY, out int lampImageTopLeftX, out int lampImageTopLeftY)
-        //        {
-        //            const int kXShiftPixels = 152;
-        //            const int kYShiftPixels = 196;
-
-        //            lampIndexX = MFMEScraperConstants.kPropertiesLamp1Index_X;
-        //            lampIndexY = MFMEScraperConstants.kPropertiesLamp1Index_Y;
-        //            lampOnColorboxX = MFMEScraperConstants.kPropertiesLamp1OnColourbox_X;
-        //            lampOnColorboxY = MFMEScraperConstants.kPropertiesLamp1OnColourbox_Y;
-        //            lampImageCenterX = MFMEScraperConstants.kPropertiesLamp1Image_CenterX;
-        //            lampImageCenterY = MFMEScraperConstants.kPropertiesLamp1Image_CenterY;
-        //            lampImageTopLeftX = MFMEScraperConstants.kPropertiesLamp1Image_TopLeftX;
-        //            lampImageTopLeftY = MFMEScraperConstants.kPropertiesLamp1Image_TopLeftY;
-
-        //            switch (lampElementIndex)
-        //            {
-        //                case 0:
-        //                case 4:
-        //                case 8:
-        //                    // no offset required, base reference scrape coordinates are for On1 lamp 
-        //                    break;
-        //                case 1:
-        //                case 5:
-        //                case 9:
-        //                    lampIndexX += kXShiftPixels;
-        //                    lampImageCenterX += kXShiftPixels;
-        //                    lampImageTopLeftX += kXShiftPixels;
-        //                    break;
-        //                case 2:
-        //                case 6:
-        //                case 10:
-        //                    lampIndexX -= 1; // This is because the On3 panel is incorrectly aligned in MFME - it's 1px to the left of where it should be
-        //                    lampIndexY += kYShiftPixels;
-        //                    lampImageCenterX -= 1; // This is because the On3 panel is incorrectly aligned in MFME - it's 1px to the left of where it should be
-        //                    lampImageTopLeftX -= 1; // This is because the On3 panel is incorrectly aligned in MFME - it's 1px to the left of where it should be
-        //                    lampImageCenterY += kYShiftPixels + 2;// this is because lower lamp image boxes are offset down by a further 2 pixels due to MFME mistake
-        //                    lampImageTopLeftY += kYShiftPixels + 2;// this is because lower lamp image boxes are offset down by a further 2 pixels due to MFME mistake
-        //                    break;
-        //                case 3:
-        //                case 7:
-        //                case 11:
-        //                    lampIndexX += kXShiftPixels;
-        //                    lampImageCenterX += kXShiftPixels;
-        //                    lampImageTopLeftX += kXShiftPixels;
-        //                    lampIndexY += kYShiftPixels;
-        //                    lampImageCenterY += kYShiftPixels;
-        //                    lampImageTopLeftY += kYShiftPixels;
-        //                    break;
-        //                default:
-        //                    UnityEngine.Debug.LogError("Lamp element index out of range");
-        //                    break;
-        //            }
-        //        }
-
-        //        private void GetLampMaskData(int lampElementIndex, /*out int lampIndexX, out int lampIndexY,*/
-        //            out int lampMaskImageCenterX, out int lampMaskImageCenterY, out int lampMaskImageTopLeftX, out int lampMaskImageTopLeftY)
-        //        {
-        //            GetLampData(lampElementIndex, out int lampIndexX, out int lampIndexY, out int _, out int _,
-        //                out lampMaskImageCenterX, out lampMaskImageCenterY,
-        //                out lampMaskImageTopLeftX, out lampMaskImageTopLeftY);
-
-        //            // correct image coordinates to mask image box
-        //            switch (lampElementIndex)
-        //            {
-        //                case 0:
-        //                case 4:
-        //                case 8:
-        //                    lampMaskImageCenterY += 70;
-        //                    lampMaskImageTopLeftY += 70;
-        //                    break;
-        //                case 1:
-        //                case 5:
-        //                case 9:
-        //                    lampMaskImageCenterY += 70;
-        //                    lampMaskImageTopLeftY += 70;
-        //                    break;
-        //                case 2:
-        //                case 6:
-        //                case 10:
-        //                    lampMaskImageCenterY += 68;
-        //                    lampMaskImageTopLeftY += 68;
-        //                    break;
-        //                case 3:
-        //                case 7:
-        //                case 11:
-        //                    lampMaskImageCenterY += 70;
-        //                    lampMaskImageTopLeftY += 70;
-        //                    break;
-        //                default:
-        //                    UnityEngine.Debug.LogError("Lamp element index out of range");
-        //                    break;
-        //            }
-        //        }
+            int lampIndex;
+            try
+            {
+                lampIndex = int.Parse(extractComponentLamp.LampElements[lampElementIndex].NumberAsText);
+            }
+            catch (Exception)
+            {
+                // not a valid number in the lamp index field, skip this lamp
+                return;
+            }
+
+            Color color = new Color(MfmeScraper.GetColorboxValue(lampOnColorboxX, lampOnColorboxY));
+            extractComponentLamp.LampElements[lampElementIndex].OnColor = new ColorJSON(color);
+
+            if (MfmeScraper.IsImageBoxBlank(lampImageTopLeftX, lampImageTopLeftY,
+                MFMEScraperConstants.kPropertiesLampImage_Width, MFMEScraperConstants.kPropertiesLampImage_Height, false))
+            {
+                return; // TOIMPROVE later, will need to implement blended lamps that do the technique of reusing image from 1st (or earlier?) spot
+            }
+
+            // TOIMPROVE - maybe doing away with the On1, On2 etc terminology?  LEDs are Red, Green, Blue etc, plus never use Off lamp type
+            MFMELampType lampType = (MFMELampType)(lampElementIndex + 1);
+
+            string lampImagefilename = "lamp_"
+                + lampIndex + "_"
+                + componentStandardData.Position.x + "_"
+                + componentStandardData.Position.y + "_"
+                + componentStandardData.Size.x + "_"
+                + componentStandardData.Size.y + "_"
+                + lampType.ToString()
+                + ".bmp";
+
+            string saveFullPath = FileSystem.GetFullLampImagePath(lampImagefilename);
+
+            // save lamp bmp image from MFME
+            if (!FileSystem.UseCachedLampImages || !File.Exists(saveFullPath))
+            {
+                FileSystem.TryDeleteLampImage(lampImagefilename);
+
+                MFMEAutomation.RightClickAtPosition(inputSimulator, lampImageCenterX, lampImageCenterY);
+
+                inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.VK_S);
+                Thread.Sleep(MFMEAutomation.kShortDelay);
+
+                // wait for file requester to intialise
+                Thread.Sleep(MFMEAutomation.kVeryLongDelay);
+
+                Clipboard.SetText(saveFullPath);
+
+                inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LCONTROL, WindowsInput.Native.VirtualKeyCode.VK_V);
+                Thread.Sleep(MFMEAutomation.kMediumDelay);
+
+                inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.RETURN);
+                Thread.Sleep(MFMEAutomation.kVeryLongDelay);
+            }
+
+            // TODO a check will be needed when more work is done on this, as we can sometimes have no lamp image, just 
+            // a lamp mask image etc... for now assuming always a lamp
+            extractComponentLamp.LampElements[lampElementIndex].BmpImageFilename = lampImagefilename;
+
+            string lampMaskImageFilename = Path.GetFileNameWithoutExtension(lampImagefilename) + "_mask.bmp";
+            string saveMaskFullPath = FileSystem.GetFullLampImagePath(lampMaskImageFilename);
+
+            // save lamp mask bmp image from MFME if present
+            if (!MfmeScraper.IsImageBoxBlank(lampMaskImageTopLeftX, lampMaskImageTopLeftY,
+                MFMEScraperConstants.kPropertiesLampImage_Width, MFMEScraperConstants.kPropertiesLampImage_Height, false))
+            {
+                extractComponentLamp.LampElements[lampElementIndex].BmpMaskImageFilename = lampMaskImageFilename;
+
+                if (!FileSystem.UseCachedLampImages || !File.Exists(saveMaskFullPath))
+                {
+                    FileSystem.TryDeleteLampImage(lampMaskImageFilename);
+
+                    MFMEAutomation.RightClickAtPosition(inputSimulator, lampMaskImageCenterX, lampMaskImageCenterY);
+
+                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.VK_S);
+                    Thread.Sleep(MFMEAutomation.kShortDelay);
+
+                    // wait for file requester to intialise
+                    Thread.Sleep(MFMEAutomation.kVeryLongDelay);
+
+                    Clipboard.SetText(saveMaskFullPath);
+
+                    inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LCONTROL, WindowsInput.Native.VirtualKeyCode.VK_V);
+                    Thread.Sleep(MFMEAutomation.kMediumDelay);
+
+                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.RETURN);
+                    Thread.Sleep(MFMEAutomation.kVeryLongDelay);
+                }
+            }
+        }
+
+        private static void GetLampData(int lampElementIndex, out int lampIndexX, out int lampIndexY,
+            out int lampOnColorboxX, out int lampOnColorboxY,
+            out int lampImageCenterX, out int lampImageCenterY, out int lampImageTopLeftX, out int lampImageTopLeftY)
+        {
+            const int kXShiftPixels = 152;
+            const int kYShiftPixels = 196;
+
+            lampIndexX = MFMEScraperConstants.kPropertiesLamp1Index_X;
+            lampIndexY = MFMEScraperConstants.kPropertiesLamp1Index_Y;
+            lampOnColorboxX = MFMEScraperConstants.kPropertiesLamp1OnColourbox_X;
+            lampOnColorboxY = MFMEScraperConstants.kPropertiesLamp1OnColourbox_Y;
+            lampImageCenterX = MFMEScraperConstants.kPropertiesLamp1Image_CenterX;
+            lampImageCenterY = MFMEScraperConstants.kPropertiesLamp1Image_CenterY;
+            lampImageTopLeftX = MFMEScraperConstants.kPropertiesLamp1Image_TopLeftX;
+            lampImageTopLeftY = MFMEScraperConstants.kPropertiesLamp1Image_TopLeftY;
+
+            switch (lampElementIndex)
+            {
+                case 0:
+                case 4:
+                case 8:
+                    // no offset required, base reference scrape coordinates are for On1 lamp 
+                    break;
+                case 1:
+                case 5:
+                case 9:
+                    lampIndexX += kXShiftPixels;
+                    lampImageCenterX += kXShiftPixels;
+                    lampImageTopLeftX += kXShiftPixels;
+                    break;
+                case 2:
+                case 6:
+                case 10:
+                    lampIndexX -= 1; // This is because the On3 panel is incorrectly aligned in MFME - it's 1px to the left of where it should be
+                    lampIndexY += kYShiftPixels;
+                    lampImageCenterX -= 1; // This is because the On3 panel is incorrectly aligned in MFME - it's 1px to the left of where it should be
+                    lampImageTopLeftX -= 1; // This is because the On3 panel is incorrectly aligned in MFME - it's 1px to the left of where it should be
+                    lampImageCenterY += kYShiftPixels + 2;// this is because lower lamp image boxes are offset down by a further 2 pixels due to MFME mistake
+                    lampImageTopLeftY += kYShiftPixels + 2;// this is because lower lamp image boxes are offset down by a further 2 pixels due to MFME mistake
+                    break;
+                case 3:
+                case 7:
+                case 11:
+                    lampIndexX += kXShiftPixels;
+                    lampImageCenterX += kXShiftPixels;
+                    lampImageTopLeftX += kXShiftPixels;
+                    lampIndexY += kYShiftPixels;
+                    lampImageCenterY += kYShiftPixels;
+                    lampImageTopLeftY += kYShiftPixels;
+                    break;
+                default:
+                    OutputLog.LogError("Lamp element index out of range");
+                    break;
+            }
+        }
+
+        private static void GetLampMaskData(int lampElementIndex, /*out int lampIndexX, out int lampIndexY,*/
+            out int lampMaskImageCenterX, out int lampMaskImageCenterY, out int lampMaskImageTopLeftX, out int lampMaskImageTopLeftY)
+        {
+            GetLampData(lampElementIndex, out int lampIndexX, out int lampIndexY, out int _, out int _,
+                out lampMaskImageCenterX, out lampMaskImageCenterY,
+                out lampMaskImageTopLeftX, out lampMaskImageTopLeftY);
+
+            // correct image coordinates to mask image box
+            switch (lampElementIndex)
+            {
+                case 0:
+                case 4:
+                case 8:
+                    lampMaskImageCenterY += 70;
+                    lampMaskImageTopLeftY += 70;
+                    break;
+                case 1:
+                case 5:
+                case 9:
+                    lampMaskImageCenterY += 70;
+                    lampMaskImageTopLeftY += 70;
+                    break;
+                case 2:
+                case 6:
+                case 10:
+                    lampMaskImageCenterY += 68;
+                    lampMaskImageTopLeftY += 68;
+                    break;
+                case 3:
+                case 7:
+                case 11:
+                    lampMaskImageCenterY += 70;
+                    lampMaskImageTopLeftY += 70;
+                    break;
+                default:
+                    OutputLog.LogError("Lamp element index out of range");
+                    break;
+            }
+        }
 
         public static void ProcessCheckbox(InputSimulator inputSimulator, ComponentStandardData componentStandardData)
         {

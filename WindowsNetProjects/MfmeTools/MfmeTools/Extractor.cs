@@ -149,9 +149,9 @@ namespace Oasis.MfmeTools
                     case MFMEComponentType.Background:
                         ExtractComponentProcessor.ProcessBackground(inputSimulator, componentStandardData);
                         break;
-                    //        case MFMEComponentType.Lamp:
-                    //            ExtractComponentProcessor.ProcessLamp(inputSimulator, componentStandardData);
-                    //            break;
+                    case MFMEComponentType.Lamp:
+                        ExtractComponentProcessor.ProcessLamp(inputSimulator, componentStandardData);
+                        break;
                     case MFMEComponentType.Reel:
                         ExtractComponentProcessor.ProcessReel(inputSimulator, componentStandardData);
                         break;
