@@ -1,11 +1,15 @@
-﻿using Oasis.MfmeTools.Shared.ExtractComponents;
+﻿using Oasis.MfmeTools.Shared.Extract;
+using Oasis.MfmeTools.Shared.ExtractComponents;
 using Oasis.MfmeTools.Shared.JsonDataStructures;
 using Oasis.MfmeTools.UnityWrappers;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 using WindowsInput;
 using static Oasis.MfmeTools.Shared.Mfme.MFMEConstants;
 using static Oasis.MfmeTools.Shared.Mfme.MfmeExtractor;
@@ -14,71 +18,66 @@ namespace Oasis.MfmeTools.Shared.Mfme
 {
     public static class ExtractComponentProcessor
     {
-        //        public static void ProcessBackground(InputSimulator inputSimulator, ComponentStandardData componentStandardData)
-        //        {
-        //            // TODO - acquire window width / height from right click menu, set as ComponentBackground width/height
+        public static void ProcessBackground(InputSimulator inputSimulator, ComponentStandardData componentStandardData)
+        {
+            // TODO - acquire window width / height from right click menu, set as ComponentBackground width/height
 
-        //            bool backgroundBitmapBlank = MfmeScraper.IsImageBoxBlank(
-        //                            MFMEScraperConstants.kPropertiesBackgroundImage_X, MFMEScraperConstants.kPropertiesBackgroundImage_Y,
-        //                            MFMEScraperConstants.kPropertiesBackgroundImage_Width, MFMEScraperConstants.kPropertiesBackgroundImage_Height,
-        //                            true, false);
+            bool backgroundBitmapBlank = MfmeScraper.IsImageBoxBlank(
+                            MFMEScraperConstants.kPropertiesBackgroundImage_X, MFMEScraperConstants.kPropertiesBackgroundImage_Y,
+                            MFMEScraperConstants.kPropertiesBackgroundImage_Width, MFMEScraperConstants.kPropertiesBackgroundImage_Height,
+                            true, false);
 
+            string saveFullPath = "";
 
-        //            string saveFullPath = "";
+            if (!backgroundBitmapBlank)
+            {
+                string filename = "background.bmp";
+                saveFullPath = FileSystem.GetFullBackgroundImagePath(filename);
 
-        //            if (!backgroundBitmapBlank)
-        //            {
-        //                saveFullPath = Path.Combine(OutputDirectoryPath, "background.bmp");
-        //                saveFullPath = saveFullPath.Replace("/", "\\");
+                // save bmp image from MFME
+                if (!FileSystem.UseCachedBackgroundImage || !File.Exists(saveFullPath))
+                {
+                    FileSystem.TryDeleteBackgroundImage(filename);
 
-        //                // save bmp image from MFME
-        //                if ((DontUseExistingBackgrounds || !File.Exists(saveFullPath)) && !MachineConfiguration.ClassicForMAME)
-        //                {
-        //                    FileHelper.DeleteFileAndMetafileIfFound(saveFullPath);
+                    MFMEAutomation.RightClickAtPosition(inputSimulator, 
+                        MFMEScraperConstants.kPropertiesBackgroundImage_CenterX, MFMEScraperConstants.kPropertiesBackgroundImage_CenterY);
 
-        //                    MFMEAutomation.RightClickAtPosition(inputSimulator, this, EmulatorScraper,
-        //                        MFMEScraperConstants.kPropertiesBackgroundImage_CenterX, MFMEScraperConstants.kPropertiesBackgroundImage_CenterY);
+                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
+                    Thread.Sleep(MFMEAutomation.kShortDelay);
 
-        //                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-        //                    yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
+                    Thread.Sleep(MFMEAutomation.kShortDelay);
 
-        //                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-        //                    yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
+                    Thread.Sleep(MFMEAutomation.kShortDelay);
 
-        //                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-        //                    yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
+                    Thread.Sleep(MFMEAutomation.kShortDelay);
 
-        //                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-        //                    yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.RETURN);
+                    Thread.Sleep(MFMEAutomation.kShortDelay);
 
-        //                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.RETURN);
-        //                    yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+                    // wait for file requester to intialise
+                    Thread.Sleep(MFMEAutomation.kVeryLongDelay);
 
-        //                    // wait for file requester to intialise
-        //                    yield return new WaitForSeconds(MFMEAutomation.kVeryLongDelay);
+                    Clipboard.SetText(saveFullPath);
 
-        //                    GUIUtility.systemCopyBuffer = saveFullPath;
+                    inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LCONTROL, WindowsInput.Native.VirtualKeyCode.VK_V);
+                    Thread.Sleep(MFMEAutomation.kMediumDelay);
 
-        //                    inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LCONTROL, WindowsInput.Native.VirtualKeyCode.VK_V);
-        //                    yield return new WaitForSeconds(MFMEAutomation.kMediumDelay);
+                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.RETURN);
+                    Thread.Sleep(MFMEAutomation.kVeryLongDelay);
+                }
+            }
 
-        //                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.RETURN);
-        //                    yield return new WaitForSeconds(MFMEAutomation.kVeryLongDelay);
-        //                }
-        //            }
+            ExtractComponentBackground extractBackground = new ExtractComponentBackground(componentStandardData);
+            extractBackground.BmpImageFilename = Path.GetFileName(saveFullPath);
 
-        //            ExtractComponentBackground extractBackground = new ExtractComponentBackground(componentStandardData);
-        //            extractBackground.BmpImageFilename = Path.GetFileName(saveFullPath);
+            Extractor.Layout.Components.Add(extractBackground);
 
-        //            Extractor.Layout.Components.Add(extractBackground);
-
-        //            //ConverterImage converterImage = new ConverterImage(saveFullPath, null, false);
-        //            //Extractor.Layout.BackgroundImageSize.X = converterImage.Width;
-        //            //Extractor.Layout.BackgroundImageSize.Y = converterImage.Height;
-
-        //            Extractor.Layout.BackgroundImageSize.X = componentStandardData.Size.x;
-        //            Extractor.Layout.BackgroundImageSize.Y = componentStandardData.Size.y;
-        //        }
+            Extractor.Layout.BackgroundImageSize.X = componentStandardData.Size.x;
+            Extractor.Layout.BackgroundImageSize.Y = componentStandardData.Size.y;
+        }
 
         //        public static void ProcessReel(InputSimulator inputSimulator, ComponentStandardData componentStandardData)
         //        {
@@ -161,29 +160,29 @@ namespace Oasis.MfmeTools.Shared.Mfme
         //                    MFMEScraperConstants.kPropertiesReelImage_CenterX, MFMEScraperConstants.kPropertiesReelImage_CenterY);
 
         //                inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-        //                yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+        //                Thread.Sleep(MFMEAutomation.kShortDelay);
 
         //                inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-        //                yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+        //                Thread.Sleep(MFMEAutomation.kShortDelay);
 
         //                inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-        //                yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+        //                Thread.Sleep(MFMEAutomation.kShortDelay);
 
         //                inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-        //                yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+        //                Thread.Sleep(MFMEAutomation.kShortDelay);
 
         //                inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.RETURN);
-        //                yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+        //                Thread.Sleep(MFMEAutomation.kShortDelay);
 
-        //                yield return new WaitForSeconds(MFMEAutomation.kVeryLongDelay); // wait for file requester to intialise
+        //                Thread.Sleep(MFMEAutomation.kVeryLongDelay); // wait for file requester to intialise
 
         //                GUIUtility.systemCopyBuffer = reelImageSaveFullPath;
 
         //                inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LCONTROL, WindowsInput.Native.VirtualKeyCode.VK_V);
-        //                yield return new WaitForSeconds(MFMEAutomation.kMediumDelay);
+        //                Thread.Sleep(MFMEAutomation.kMediumDelay);
 
         //                inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.RETURN);
-        //                yield return new WaitForSeconds(MFMEAutomation.kVeryLongDelay);
+        //                Thread.Sleep(MFMEAutomation.kVeryLongDelay);
         //            }
 
         //            // save bmp image from MFME
@@ -204,29 +203,29 @@ namespace Oasis.MfmeTools.Shared.Mfme
         //                        MFMEScraperConstants.kPropertiesOverlayImage_CenterX, MFMEScraperConstants.kPropertiesOverlayImage_CenterY);
 
         //                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-        //                    yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+        //                    Thread.Sleep(MFMEAutomation.kShortDelay);
 
         //                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-        //                    yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+        //                    Thread.Sleep(MFMEAutomation.kShortDelay);
 
         //                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-        //                    yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+        //                    Thread.Sleep(MFMEAutomation.kShortDelay);
 
         //                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-        //                    yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+        //                    Thread.Sleep(MFMEAutomation.kShortDelay);
 
         //                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.RETURN);
-        //                    yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+        //                    Thread.Sleep(MFMEAutomation.kShortDelay);
 
-        //                    yield return new WaitForSeconds(MFMEAutomation.kVeryLongDelay); // wait for file requester to intialise
+        //                    Thread.Sleep(MFMEAutomation.kVeryLongDelay); // wait for file requester to intialise
 
         //                    GUIUtility.systemCopyBuffer = reelOverlaySaveFullPath;
 
         //                    inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LCONTROL, WindowsInput.Native.VirtualKeyCode.VK_V);
-        //                    yield return new WaitForSeconds(MFMEAutomation.kMediumDelay);
+        //                    Thread.Sleep(MFMEAutomation.kMediumDelay);
 
         //                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.RETURN);
-        //                    yield return new WaitForSeconds(MFMEAutomation.kVeryLongDelay);
+        //                    Thread.Sleep(MFMEAutomation.kVeryLongDelay);
         //                }
         //            }
 
@@ -1346,29 +1345,29 @@ namespace Oasis.MfmeTools.Shared.Mfme
         //                    MFMEScraperConstants.kPropertiesAlphaImage_CenterX, MFMEScraperConstants.kPropertiesAlphaImage_CenterY);
 
         //                inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-        //                yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+        //                Thread.Sleep(MFMEAutomation.kShortDelay);
 
         //                inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-        //                yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+        //                Thread.Sleep(MFMEAutomation.kShortDelay);
 
         //                inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-        //                yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+        //                Thread.Sleep(MFMEAutomation.kShortDelay);
 
         //                inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-        //                yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+        //                Thread.Sleep(MFMEAutomation.kShortDelay);
 
         //                inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.RETURN);
-        //                yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+        //                Thread.Sleep(MFMEAutomation.kShortDelay);
 
-        //                yield return new WaitForSeconds(MFMEAutomation.kVeryLongDelay); // wait for file requester to intialise
+        //                Thread.Sleep(MFMEAutomation.kVeryLongDelay); // wait for file requester to intialise
 
         //                GUIUtility.systemCopyBuffer = alphaImageSaveFullPath;
 
         //                inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LCONTROL, WindowsInput.Native.VirtualKeyCode.VK_V);
-        //                yield return new WaitForSeconds(MFMEAutomation.kMediumDelay);
+        //                Thread.Sleep(MFMEAutomation.kMediumDelay);
 
         //                inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.RETURN);
-        //                yield return new WaitForSeconds(MFMEAutomation.kVeryLongDelay);
+        //                Thread.Sleep(MFMEAutomation.kVeryLongDelay);
         //            }
 
         //            extractAlpha.BmpImageFilename = alphaImagefilename;
@@ -1606,44 +1605,44 @@ namespace Oasis.MfmeTools.Shared.Mfme
         //                MFMEAutomation.RightClickAtPosition(inputSimulator, this, EmulatorScraper, lampImageCenterX, lampImageCenterY);
 
         //                inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.VK_S);
-        //                yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+        //                Thread.Sleep(MFMEAutomation.kShortDelay);
 
         //                // TIMPROVE: DO this on all other right click menus where shortcut exists!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
         //                //inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-        //                //yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+        //                //Thread.Sleep(MFMEAutomation.kShortDelay);
 
         //                //inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-        //                //yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+        //                //Thread.Sleep(MFMEAutomation.kShortDelay);
 
         //                //inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-        //                //yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+        //                //Thread.Sleep(MFMEAutomation.kShortDelay);
 
         //                //inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-        //                //yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+        //                //Thread.Sleep(MFMEAutomation.kShortDelay);
 
         //                //inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-        //                //yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+        //                //Thread.Sleep(MFMEAutomation.kShortDelay);
 
         //                //inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-        //                //yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+        //                //Thread.Sleep(MFMEAutomation.kShortDelay);
 
         //                //inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-        //                //yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+        //                //Thread.Sleep(MFMEAutomation.kShortDelay);
 
         //                //inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.RETURN);
-        //                //yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+        //                //Thread.Sleep(MFMEAutomation.kShortDelay);
 
         //                // wait for file requester to intialise
-        //                yield return new WaitForSeconds(MFMEAutomation.kVeryLongDelay);
+        //                Thread.Sleep(MFMEAutomation.kVeryLongDelay);
 
         //                GUIUtility.systemCopyBuffer = saveFullPath;
 
         //                inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LCONTROL, WindowsInput.Native.VirtualKeyCode.VK_V);
-        //                yield return new WaitForSeconds(MFMEAutomation.kMediumDelay);
+        //                Thread.Sleep(MFMEAutomation.kMediumDelay);
 
         //                inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.RETURN);
-        //                yield return new WaitForSeconds(MFMEAutomation.kVeryLongDelay);
+        //                Thread.Sleep(MFMEAutomation.kVeryLongDelay);
         //            }
 
         //            // TODO a check will be needed when more work is done on this, as we can sometimes have no lamp image, just 
@@ -1663,18 +1662,18 @@ namespace Oasis.MfmeTools.Shared.Mfme
         //                    MFMEAutomation.RightClickAtPosition(inputSimulator, this, EmulatorScraper, lampMaskImageCenterX, lampMaskImageCenterY);
 
         //                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.VK_S);
-        //                    yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+        //                    Thread.Sleep(MFMEAutomation.kShortDelay);
 
         //                    // wait for file requester to intialise
-        //                    yield return new WaitForSeconds(MFMEAutomation.kVeryLongDelay);
+        //                    Thread.Sleep(MFMEAutomation.kVeryLongDelay);
 
         //                    GUIUtility.systemCopyBuffer = saveMaskFullPath;
 
         //                    inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LCONTROL, WindowsInput.Native.VirtualKeyCode.VK_V);
-        //                    yield return new WaitForSeconds(MFMEAutomation.kMediumDelay);
+        //                    Thread.Sleep(MFMEAutomation.kMediumDelay);
 
         //                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.RETURN);
-        //                    yield return new WaitForSeconds(MFMEAutomation.kVeryLongDelay);
+        //                    Thread.Sleep(MFMEAutomation.kVeryLongDelay);
         //                }
         //            }
 

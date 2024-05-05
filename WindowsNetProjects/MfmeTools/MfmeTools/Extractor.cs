@@ -17,8 +17,10 @@ namespace Oasis.MfmeTools
         public struct Options
         {
             public string SourceLayoutPath;
+            public bool UseCachedBackgroundImage;
             public bool UseCachedLampImages;
             public bool UseCachedReelImages;
+            public bool UseCachedBitmapImages;
             public bool ScrapeLamps5To8;
             public bool ScrapeLamps9To12;
         }
@@ -41,12 +43,19 @@ namespace Oasis.MfmeTools
             Program.LayoutCopier.CopyToMfmeTools(options.SourceLayoutPath);
             OutputLog.Log("Copied source layout to MFME Tools");
 
+            FileSystem.Setup(options.SourceLayoutPath,
+                options.UseCachedBackgroundImage,
+                options.UseCachedReelImages,
+                options.UseCachedLampImages,
+                options.UseCachedBitmapImages);
+            OutputLog.Log("Extract filesystem set up");
+
             InputSimulator inputSimulator = new InputSimulator();
 
-            LoadAndExtractCurrentLayout(inputSimulator, options);
+            LoadAndExtractCurrentLayout(inputSimulator);
         }
 
-        private void LoadAndExtractCurrentLayout(InputSimulator inputSimulator, Options options)
+        private void LoadAndExtractCurrentLayout(InputSimulator inputSimulator)
         {
             LaunchMfmeAndDll();
 
@@ -135,9 +144,9 @@ namespace Oasis.MfmeTools
                 MFMEComponentType mfmeComponentType = MFMEAutomation.GetMFMEComponentType(mfmeComponentTypeText);
                 switch (mfmeComponentType)
                 {
-                    //        case MFMEComponentType.Background:
-                    //            ExtractComponentProcessor.ProcessBackground(inputSimulator, componentStandardData);
-                    //            break;
+                    case MFMEComponentType.Background:
+                        ExtractComponentProcessor.ProcessBackground(inputSimulator, componentStandardData);
+                        break;
                     //        case MFMEComponentType.Lamp:
                     //            ExtractComponentProcessor.ProcessLamp(inputSimulator, componentStandardData);
                     //            break;
@@ -263,7 +272,7 @@ namespace Oasis.MfmeTools
             }
             while (!MFMEAutomation.PreviousComponentNavigationTimedOut);
 
-            FileSystem.SaveLayout(Layout, options.SourceLayoutPath);
+            FileSystem.SaveLayout(Layout);
 
             // PROB TO REMOVE - FROM THE OLD ARCADE SIM BIG CLASSIC EXTRACTION ATTEMPT
             //if (zOrder == Extractor.Layout.Components.Count && Extractor.Layout.Components.Count > 0)
