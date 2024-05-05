@@ -79,166 +79,166 @@ namespace Oasis.MfmeTools.Shared.Mfme
             Extractor.Layout.BackgroundImageSize.Y = componentStandardData.Size.y;
         }
 
-        //        public static void ProcessReel(InputSimulator inputSimulator, ComponentStandardData componentStandardData)
-        //        {
-        //            ExtractComponentReel extractReel = new ExtractComponentReel(componentStandardData);
+        public static void ProcessReel(InputSimulator inputSimulator, ComponentStandardData componentStandardData)
+        {
+            ExtractComponentReel extractReel = new ExtractComponentReel(componentStandardData);
 
-        //            extractReel.Number = int.Parse(DelphiFontScraper.GetFieldCharacters(
-        //                MFMEScraperConstants.kPropertiesReelNumber_X, MFMEScraperConstants.kPropertiesReelNumber_Y));
+            extractReel.Number = int.Parse(DelphiFontScraper.GetFieldCharacters(
+                MFMEScraperConstants.kPropertiesReelNumber_X, MFMEScraperConstants.kPropertiesReelNumber_Y));
 
-        //            extractReel.Stops = int.Parse(DelphiFontScraper.GetFieldCharacters(
-        //                MFMEScraperConstants.kPropertiesReelStops_X, MFMEScraperConstants.kPropertiesReelStops_Y));
+            extractReel.Stops = int.Parse(DelphiFontScraper.GetFieldCharacters(
+                MFMEScraperConstants.kPropertiesReelStops_X, MFMEScraperConstants.kPropertiesReelStops_Y));
 
-        //            extractReel.HalfSteps = int.Parse(DelphiFontScraper.GetFieldCharacters(
-        //                MFMEScraperConstants.kPropertiesReelHalfSteps_X, MFMEScraperConstants.kPropertiesReelHalfSteps_Y));
+            extractReel.HalfSteps = int.Parse(DelphiFontScraper.GetFieldCharacters(
+                MFMEScraperConstants.kPropertiesReelHalfSteps_X, MFMEScraperConstants.kPropertiesReelHalfSteps_Y));
 
-        //            extractReel.Resolution = int.Parse(DelphiFontScraper.GetFieldCharacters(
-        //                MFMEScraperConstants.kPropertiesReelResolution_X, MFMEScraperConstants.kPropertiesReelResolution_Y));
+            extractReel.Resolution = int.Parse(DelphiFontScraper.GetFieldCharacters(
+                MFMEScraperConstants.kPropertiesReelResolution_X, MFMEScraperConstants.kPropertiesReelResolution_Y));
 
-        //            extractReel.BandOffset = int.Parse(DelphiFontScraper.GetFieldCharacters(
-        //                MFMEScraperConstants.kPropertiesReelBandOffset_X, MFMEScraperConstants.kPropertiesReelBandOffset_Y));
+            extractReel.BandOffset = int.Parse(DelphiFontScraper.GetFieldCharacters(
+                MFMEScraperConstants.kPropertiesReelBandOffset_X, MFMEScraperConstants.kPropertiesReelBandOffset_Y));
 
-        //            extractReel.OptoTab = int.Parse(DelphiFontScraper.GetFieldCharacters(
-        //                MFMEScraperConstants.kPropertiesReelOptoTab_X, MFMEScraperConstants.kPropertiesReelOptoTab_Y));
+            extractReel.OptoTab = int.Parse(DelphiFontScraper.GetFieldCharacters(
+                MFMEScraperConstants.kPropertiesReelOptoTab_X, MFMEScraperConstants.kPropertiesReelOptoTab_Y));
 
-        //            extractReel.Height = int.Parse(DelphiFontScraper.GetFieldCharacters(
-        //                MFMEScraperConstants.kPropertiesReelHeight_X, MFMEScraperConstants.kPropertiesReelHeight_Y));
+            extractReel.Height = int.Parse(DelphiFontScraper.GetFieldCharacters(
+                MFMEScraperConstants.kPropertiesReelHeight_X, MFMEScraperConstants.kPropertiesReelHeight_Y));
 
-        //            extractReel.WidthDiff = int.Parse(DelphiFontScraper.GetFieldCharacters(
-        //                MFMEScraperConstants.kPropertiesReelWidthDiff_X, MFMEScraperConstants.kPropertiesReelWidthDiff_Y));
+            extractReel.WidthDiff = int.Parse(DelphiFontScraper.GetFieldCharacters(
+                MFMEScraperConstants.kPropertiesReelWidthDiff_X, MFMEScraperConstants.kPropertiesReelWidthDiff_Y));
 
-        //            extractReel.Horizontal = MfmeScraper.GetCheckboxValue(
-        //                EmulatorScraper, MFMEScraperConstants.kPropertiesReelHorizontalCheckbox_X, MFMEScraperConstants.kPropertiesReelHorizontalCheckbox_Y);
+            extractReel.Horizontal = MfmeScraper.GetCheckboxValue(
+                MFMEScraperConstants.kPropertiesReelHorizontalCheckbox_X, MFMEScraperConstants.kPropertiesReelHorizontalCheckbox_Y);
 
-        //            extractReel.Reversed = MfmeScraper.GetCheckboxValue(
-        //                EmulatorScraper, MFMEScraperConstants.kPropertiesReelReversedCheckbox_X, MFMEScraperConstants.kPropertiesReelReversedCheckbox_Y);
+            extractReel.Reversed = MfmeScraper.GetCheckboxValue(
+                MFMEScraperConstants.kPropertiesReelReversedCheckbox_X, MFMEScraperConstants.kPropertiesReelReversedCheckbox_Y);
 
-        //            extractReel.Lamps = MfmeScraper.GetCheckboxValue(
-        //                EmulatorScraper, MFMEScraperConstants.kPropertiesReelLampsCheckbox_X, MFMEScraperConstants.kPropertiesReelLampsCheckbox_Y);
+            extractReel.Lamps = MfmeScraper.GetCheckboxValue(
+                MFMEScraperConstants.kPropertiesReelLampsCheckbox_X, MFMEScraperConstants.kPropertiesReelLampsCheckbox_Y);
 
-        //            extractReel.LampsLEDs = MfmeScraper.GetCheckboxValue(
-        //                EmulatorScraper, MFMEScraperConstants.kPropertiesReelLampsLEDsCheckbox_X, MFMEScraperConstants.kPropertiesReelLampsLEDsCheckbox_Y);
+            extractReel.LampsLEDs = MfmeScraper.GetCheckboxValue(
+                MFMEScraperConstants.kPropertiesReelLampsLEDsCheckbox_X, MFMEScraperConstants.kPropertiesReelLampsLEDsCheckbox_Y);
 
-        //            extractReel.Mirrored = MfmeScraper.GetCheckboxValue(
-        //                EmulatorScraper, MFMEScraperConstants.kPropertiesReelMirroredCheckbox_X, MFMEScraperConstants.kPropertiesReelMirroredCheckbox_Y);
+            extractReel.Mirrored = MfmeScraper.GetCheckboxValue(
+                MFMEScraperConstants.kPropertiesReelMirroredCheckbox_X, MFMEScraperConstants.kPropertiesReelMirroredCheckbox_Y);
 
-        //            for (int reelLampIndex = 0; reelLampIndex < ComponentReel.kReelLampCount; ++reelLampIndex)
-        //            {
-        //                Vector2Int propertiesReelLampNumberPosition = MFMEScraperConstants.GetPropertiesReelLampNumber_XY(reelLampIndex);
+            for (int reelLampIndex = 0; reelLampIndex < kReelLampCount; ++reelLampIndex)
+            {
+                Vector2Int propertiesReelLampNumberPosition = MFMEScraperConstants.GetPropertiesReelLampNumber_XY(reelLampIndex);
 
-        //                extractReel.LampNumbersAsStrings[reelLampIndex] = DelphiFontScraper.GetFieldCharacters(
-        //                    propertiesReelLampNumberPosition.x, propertiesReelLampNumberPosition.y);
-        //            }
+                extractReel.LampNumbersAsStrings[reelLampIndex] = DelphiFontScraper.GetFieldCharacters(
+                    propertiesReelLampNumberPosition.x, propertiesReelLampNumberPosition.y);
+            }
 
-        //            extractReel.WinLinesCount = int.Parse(DelphiFontScraper.GetFieldCharacters(
-        //                MFMEScraperConstants.kPropertiesReelWinLinesCount_X, MFMEScraperConstants.kPropertiesReelWinLinesCount_Y));
+            extractReel.WinLinesCount = int.Parse(DelphiFontScraper.GetFieldCharacters(
+                MFMEScraperConstants.kPropertiesReelWinLinesCount_X, MFMEScraperConstants.kPropertiesReelWinLinesCount_Y));
 
-        //            extractReel.WinLinesOffset = int.Parse(DelphiFontScraper.GetFieldCharacters(
-        //                MFMEScraperConstants.kPropertiesReelWinLinesOffset_X, MFMEScraperConstants.kPropertiesReelWinLinesOffset_Y));
+            extractReel.WinLinesOffset = int.Parse(DelphiFontScraper.GetFieldCharacters(
+                MFMEScraperConstants.kPropertiesReelWinLinesOffset_X, MFMEScraperConstants.kPropertiesReelWinLinesOffset_Y));
 
-        //            string reelImagefilename = "reel_"
-        //                + extractReel.Number
-        //                + ".bmp";
+            string reelImagefilename = "reel_"
+                + extractReel.Number
+                + ".bmp";
 
-        //            string reelImageSaveFullPath = Path.Combine(Converter.kMFMEConverterOutputPath, OutputDirectoryName, reelImagefilename);
-        //            reelImageSaveFullPath = reelImageSaveFullPath.Replace("/", "\\");
+            string reelImageSaveFullPath = FileSystem.GetFullReelImagePath(reelImagefilename);
 
-        //            string reelOverlayImagefilename = "reeloverlay_"
-        //                + extractReel.Number
-        //                + ".bmp";
+            // save bmp reel image from MFME
+            if (!FileSystem.UseCachedReelImages || !File.Exists(reelImageSaveFullPath))
+            {
+                FileSystem.TryDeleteReelImage(reelImageSaveFullPath);
 
-        //            string reelOverlaySaveFullPath = Path.Combine(Converter.kMFMEConverterOutputPath, OutputDirectoryName, reelOverlayImagefilename);
-        //            reelOverlaySaveFullPath = reelOverlaySaveFullPath.Replace("/", "\\");
+                // save reel band image
+                MFMEAutomation.RightClickAtPosition(inputSimulator, 
+                    MFMEScraperConstants.kPropertiesReelImage_CenterX, MFMEScraperConstants.kPropertiesReelImage_CenterY);
 
-        //            // save bmp image from MFME
-        //            if (DontUseExistingReels || !File.Exists(reelImageSaveFullPath))
-        //            {
-        //                FileHelper.DeleteFileAndMetafileIfFound(reelImageSaveFullPath);
+                inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
+                Thread.Sleep(MFMEAutomation.kShortDelay);
 
-        //                // save reel band image
-        //                MFMEAutomation.RightClickAtPosition(inputSimulator, this, EmulatorScraper,
-        //                    MFMEScraperConstants.kPropertiesReelImage_CenterX, MFMEScraperConstants.kPropertiesReelImage_CenterY);
+                inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
+                Thread.Sleep(MFMEAutomation.kShortDelay);
 
-        //                inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-        //                Thread.Sleep(MFMEAutomation.kShortDelay);
+                inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
+                Thread.Sleep(MFMEAutomation.kShortDelay);
 
-        //                inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-        //                Thread.Sleep(MFMEAutomation.kShortDelay);
+                inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
+                Thread.Sleep(MFMEAutomation.kShortDelay);
 
-        //                inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-        //                Thread.Sleep(MFMEAutomation.kShortDelay);
+                inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.RETURN);
+                Thread.Sleep(MFMEAutomation.kShortDelay);
 
-        //                inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-        //                Thread.Sleep(MFMEAutomation.kShortDelay);
+                Thread.Sleep(MFMEAutomation.kVeryLongDelay); // wait for file requester to intialise
 
-        //                inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.RETURN);
-        //                Thread.Sleep(MFMEAutomation.kShortDelay);
+                Clipboard.SetText(reelImageSaveFullPath);
 
-        //                Thread.Sleep(MFMEAutomation.kVeryLongDelay); // wait for file requester to intialise
+                inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LCONTROL, WindowsInput.Native.VirtualKeyCode.VK_V);
+                Thread.Sleep(MFMEAutomation.kMediumDelay);
 
-        //                GUIUtility.systemCopyBuffer = reelImageSaveFullPath;
+                inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.RETURN);
+                Thread.Sleep(MFMEAutomation.kVeryLongDelay);
+            }
 
-        //                inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LCONTROL, WindowsInput.Native.VirtualKeyCode.VK_V);
-        //                Thread.Sleep(MFMEAutomation.kMediumDelay);
+            string reelOverlayImagefilename = "reeloverlay_"
+                + extractReel.Number
+                + ".bmp";
 
-        //                inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.RETURN);
-        //                Thread.Sleep(MFMEAutomation.kVeryLongDelay);
-        //            }
+            string reelOverlaySaveFullPath = FileSystem.GetFullReelImagePath(reelOverlayImagefilename);
 
-        //            // save bmp image from MFME
-        //            if ((DontUseExistingReels || !File.Exists(reelOverlaySaveFullPath)) && !MachineConfiguration.ClassicForMAME)
-        //            {
-        //                FileHelper.DeleteFileAndMetafileIfFound(reelOverlaySaveFullPath);
+            // save reel overlay bmp image from MFME
+            if (!FileSystem.UseCachedReelImages || !File.Exists(reelOverlaySaveFullPath))
+            {
+                FileSystem.TryDeleteReelImage(reelOverlaySaveFullPath);
 
-        //                // save reel overlay image if present
-        //                MFMEAutomation.LeftClickAtPosition(inputSimulator,
-        //                    MFMEScraperConstants.kPropertiesOverlayTab_CenterX, MFMEScraperConstants.kPropertiesOverlayTab_CenterY);
+                // save reel overlay image if present
+                MFMEAutomation.LeftClickAtPosition(inputSimulator,
+                    MFMEScraperConstants.kPropertiesOverlayTab_CenterX, MFMEScraperConstants.kPropertiesOverlayTab_CenterY);
 
-        //                // is it just blank checkerboard?
-        //                if (!MfmeScraper.IsImageBoxBlank(
-        //                    EmulatorScraper, MFMEScraperConstants.kPropertiesOverlayImage_TopLeftX, MFMEScraperConstants.kPropertiesOverlayImage_TopLeftY,
-        //                    MFMEScraperConstants.kPropertiesOverlayImage_Width, MFMEScraperConstants.kPropertiesOverlayImage_Height, true))
-        //                {
-        //                    MFMEAutomation.RightClickAtPosition(inputSimulator, this, EmulatorScraper,
-        //                        MFMEScraperConstants.kPropertiesOverlayImage_CenterX, MFMEScraperConstants.kPropertiesOverlayImage_CenterY);
+                MfmeScraper.CurrentWindow.UpdateCapture();
 
-        //                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-        //                    Thread.Sleep(MFMEAutomation.kShortDelay);
+                // is it just blank checkerboard?
+                if (!MfmeScraper.IsImageBoxBlank(
+                    MFMEScraperConstants.kPropertiesOverlayImage_TopLeftX, MFMEScraperConstants.kPropertiesOverlayImage_TopLeftY,
+                    MFMEScraperConstants.kPropertiesOverlayImage_Width, MFMEScraperConstants.kPropertiesOverlayImage_Height, true))
+                {
+                    MFMEAutomation.RightClickAtPosition(inputSimulator, 
+                        MFMEScraperConstants.kPropertiesOverlayImage_CenterX, MFMEScraperConstants.kPropertiesOverlayImage_CenterY);
 
-        //                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-        //                    Thread.Sleep(MFMEAutomation.kShortDelay);
+                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
+                    Thread.Sleep(MFMEAutomation.kShortDelay);
 
-        //                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-        //                    Thread.Sleep(MFMEAutomation.kShortDelay);
+                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
+                    Thread.Sleep(MFMEAutomation.kShortDelay);
 
-        //                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
-        //                    Thread.Sleep(MFMEAutomation.kShortDelay);
+                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
+                    Thread.Sleep(MFMEAutomation.kShortDelay);
 
-        //                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.RETURN);
-        //                    Thread.Sleep(MFMEAutomation.kShortDelay);
+                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
+                    Thread.Sleep(MFMEAutomation.kShortDelay);
 
-        //                    Thread.Sleep(MFMEAutomation.kVeryLongDelay); // wait for file requester to intialise
+                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.RETURN);
+                    Thread.Sleep(MFMEAutomation.kShortDelay);
 
-        //                    GUIUtility.systemCopyBuffer = reelOverlaySaveFullPath;
+                    Thread.Sleep(MFMEAutomation.kVeryLongDelay); // wait for file requester to intialise
 
-        //                    inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LCONTROL, WindowsInput.Native.VirtualKeyCode.VK_V);
-        //                    Thread.Sleep(MFMEAutomation.kMediumDelay);
+                    Clipboard.SetText(reelOverlaySaveFullPath);
 
-        //                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.RETURN);
-        //                    Thread.Sleep(MFMEAutomation.kVeryLongDelay);
-        //                }
-        //            }
+                    inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LCONTROL, WindowsInput.Native.VirtualKeyCode.VK_V);
+                    Thread.Sleep(MFMEAutomation.kMediumDelay);
 
-        //            extractReel.BandBmpImageFilename = Path.GetFileName(reelImageSaveFullPath);
+                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.RETURN);
+                    Thread.Sleep(MFMEAutomation.kVeryLongDelay);
+                }
+            }
 
-        //            extractReel.HasOverlay = File.Exists(reelOverlaySaveFullPath);
-        //            if (extractReel.HasOverlay)
-        //            {
-        //                extractReel.OverlayBmpImageFilename = Path.GetFileName(reelOverlaySaveFullPath);
-        //            }
+            extractReel.BandBmpImageFilename = Path.GetFileName(reelImageSaveFullPath);
 
-        //            Extractor.Layout.Components.Add(extractReel);
-        //        }
+            extractReel.HasOverlay = File.Exists(reelOverlaySaveFullPath);
+            if (extractReel.HasOverlay)
+            {
+                extractReel.OverlayBmpImageFilename = Path.GetFileName(reelOverlaySaveFullPath);
+            }
+
+            Extractor.Layout.Components.Add(extractReel);
+        }
 
         //        public static void ProcessBandReel(InputSimulator inputSimulator, ComponentStandardData componentStandardData)
         //        {
@@ -1361,7 +1361,7 @@ namespace Oasis.MfmeTools.Shared.Mfme
 
         //                Thread.Sleep(MFMEAutomation.kVeryLongDelay); // wait for file requester to intialise
 
-        //                GUIUtility.systemCopyBuffer = alphaImageSaveFullPath;
+        //                Clipboard.SetText(alphaImageSaveFullPath;
 
         //                inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LCONTROL, WindowsInput.Native.VirtualKeyCode.VK_V);
         //                Thread.Sleep(MFMEAutomation.kMediumDelay);
@@ -1636,7 +1636,7 @@ namespace Oasis.MfmeTools.Shared.Mfme
         //                // wait for file requester to intialise
         //                Thread.Sleep(MFMEAutomation.kVeryLongDelay);
 
-        //                GUIUtility.systemCopyBuffer = saveFullPath;
+        //                Clipboard.SetText(saveFullPath;
 
         //                inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LCONTROL, WindowsInput.Native.VirtualKeyCode.VK_V);
         //                Thread.Sleep(MFMEAutomation.kMediumDelay);
@@ -1667,7 +1667,7 @@ namespace Oasis.MfmeTools.Shared.Mfme
         //                    // wait for file requester to intialise
         //                    Thread.Sleep(MFMEAutomation.kVeryLongDelay);
 
-        //                    GUIUtility.systemCopyBuffer = saveMaskFullPath;
+        //                    Clipboard.SetText(saveMaskFullPath;
 
         //                    inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LCONTROL, WindowsInput.Native.VirtualKeyCode.VK_V);
         //                    Thread.Sleep(MFMEAutomation.kMediumDelay);

@@ -38,6 +38,12 @@ namespace Oasis.MfmeTools.Shared.Extract
             private set;
         }
 
+        public static bool UseCachedButtonImages
+        {
+            get;
+            private set;
+        }
+
         public static bool UseCachedBitmapImages
         {
             get;
@@ -49,11 +55,13 @@ namespace Oasis.MfmeTools.Shared.Extract
             bool useCachedBackgroundImage,
             bool useCachedReelImages,
             bool useCachedLampImages,
+            bool useCachedButtonImages,
             bool useCachedBitmapImages)
         {
             UseCachedBackgroundImage = useCachedBackgroundImage;
             UseCachedReelImages = useCachedReelImages;
             UseCachedLampImages = useCachedLampImages;
+            UseCachedButtonImages = useCachedButtonImages;
             UseCachedBitmapImages = useCachedBitmapImages;
 
             _sourceLayoutPath = sourceLayoutPath;
@@ -84,6 +92,36 @@ namespace Oasis.MfmeTools.Shared.Extract
         public static string GetFullBackgroundImagePath(string filename)
         {
             return Path.Combine(_targetExtractRootPath, kBackgroundDirectoryName, filename);
+        }
+
+        public static void TryDeleteReelImage(string filename)
+        {
+            TryDeleteImage(_targetExtractRootPath, kReelsDirectoryName, filename);
+        }
+
+        public static string GetFullReelImagePath(string filename)
+        {
+            return Path.Combine(_targetExtractRootPath, kReelsDirectoryName, filename);
+        }
+
+        public static void TryDeleteLampImage(string filename)
+        {
+            TryDeleteImage(_targetExtractRootPath, kLampsDirectoryName, filename);
+        }
+
+        public static string GetFullLampImagePath(string filename)
+        {
+            return Path.Combine(_targetExtractRootPath, kLampsDirectoryName, filename);
+        }
+
+        public static void TryDeleteButtonImage(string filename)
+        {
+            TryDeleteImage(_targetExtractRootPath, kButtonsDirectoryName, filename);
+        }
+
+        public static string GetFullButtonImagePath(string filename)
+        {
+            return Path.Combine(_targetExtractRootPath, kButtonsDirectoryName, filename);
         }
 
         public static void SaveLayout(Layout layout)

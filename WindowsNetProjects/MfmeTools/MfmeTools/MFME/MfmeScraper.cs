@@ -4,6 +4,7 @@ using Oasis.MfmeTools.WindowCapture.BitBlt;
 using SharpDX.Direct3D;
 using SharpDX.Direct3D11;
 using SharpDX.DXGI;
+using System;
 using System.Windows.Forms;
 using static Oasis.MfmeTools.Shared.Mfme.MFMEConstants;
 using Device = SharpDX.Direct3D11.Device;
@@ -127,8 +128,10 @@ const int kOffsetToDetectPixelFromTopLeftAsMeasuredFromScreenshotsY = 7;
         {
 // OASIS STILL TODO/TEST
             // I don't know why these all keep coming out differently?
-            const int kImageBoxOffsetToMatchToPixelFromCroppedScreenshotsX = 8;
-            const int kImageBoxOffsetToMatchToPixelFromCroppedScreenshotsY = 1;
+            //const int kImageBoxOffsetToMatchToPixelFromCroppedScreenshotsX = 8;
+            //const int kImageBoxOffsetToMatchToPixelFromCroppedScreenshotsY = 1;
+const int kImageBoxOffsetToMatchToPixelFromCroppedScreenshotsX = 0;
+const int kImageBoxOffsetToMatchToPixelFromCroppedScreenshotsY = 0;
 
             int readX = topLeftInteriorPixelX + kImageBoxOffsetToMatchToPixelFromCroppedScreenshotsX;
             int readY = topLeftInteriorPixelY + kImageBoxOffsetToMatchToPixelFromCroppedScreenshotsY;
@@ -163,7 +166,7 @@ const int kOffsetToDetectPixelFromTopLeftAsMeasuredFromScreenshotsY = 7;
                     }
 
                     // useful for debugging sraping:
-                    //Debug.Log("x,y == " + x + "," + y + " == " + scrapedPixelColor32.r);
+                    Console.WriteLine("x,y == " + x + "," + y + " == " + scrapedPixelColor32.r);
                 }
             }
 

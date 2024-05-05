@@ -19,6 +19,7 @@ namespace Oasis.MfmeTools
             public string SourceLayoutPath;
             public bool UseCachedBackgroundImage;
             public bool UseCachedLampImages;
+            public bool UseCachedButtonImages;
             public bool UseCachedReelImages;
             public bool UseCachedBitmapImages;
             public bool ScrapeLamps5To8;
@@ -47,6 +48,7 @@ namespace Oasis.MfmeTools
                 options.UseCachedBackgroundImage,
                 options.UseCachedReelImages,
                 options.UseCachedLampImages,
+                options.UseCachedButtonImages,
                 options.UseCachedBitmapImages);
             OutputLog.Log("Extract filesystem set up");
 
@@ -150,9 +152,9 @@ namespace Oasis.MfmeTools
                     //        case MFMEComponentType.Lamp:
                     //            ExtractComponentProcessor.ProcessLamp(inputSimulator, componentStandardData);
                     //            break;
-                    //        case MFMEComponentType.Reel:
-                    //            ExtractComponentProcessor.ProcessReel(inputSimulator, componentStandardData);
-                    //            break;
+                    case MFMEComponentType.Reel:
+                        ExtractComponentProcessor.ProcessReel(inputSimulator, componentStandardData);
+                        break;
                     case MFMEComponentType.DotAlpha:
                         ExtractComponentProcessor.ProcessDotAlpha(inputSimulator, componentStandardData);
                         break;
