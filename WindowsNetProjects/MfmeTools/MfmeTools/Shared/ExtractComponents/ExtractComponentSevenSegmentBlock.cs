@@ -1,8 +1,6 @@
-﻿using Oasis.MfmeTools.Shared.JsonDataStructures;
-using Oasis.MfmeTools.Shared.Mfme;
+﻿using Oasis.MfmeTools.Shared.Extract;
+using Oasis.MfmeTools.Shared.JsonDataStructures;
 using System;
-using System.Collections;
-using System.Collections.Generic;
 
 
 namespace Oasis.MfmeTools.Shared.ExtractComponents
@@ -59,7 +57,7 @@ namespace Oasis.MfmeTools.Shared.ExtractComponents
         public DigitElement[] DigitElements = new DigitElement[kDigitElementCount];
 
 
-        public ExtractComponentSevenSegmentBlock(MfmeExtractor.ComponentStandardData componentStandardData) : base(componentStandardData)
+        public ExtractComponentSevenSegmentBlock(ComponentStandardData componentStandardData) : base(componentStandardData)
         {
             for (int digitElementIndex = 0; digitElementIndex < kDigitElementCount; ++digitElementIndex)
             {

@@ -1,7 +1,7 @@
 ﻿using Oasis.MfmeTools.Shared.Extract;
 using Oasis.MfmeTools.Shared.ExtractComponents;
 using Oasis.MfmeTools.Shared.JsonDataStructures;
-using Oasis.MfmeTools.UnityWrappers;
+using Oasis.MfmeTools.Shared.UnityWrappers;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -11,10 +11,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using WindowsInput;
+using static Oasis.MfmeTools.Mfme.MfmeExtractor;
 using static Oasis.MfmeTools.Shared.Mfme.MFMEConstants;
-using static Oasis.MfmeTools.Shared.Mfme.MfmeExtractor;
 
-namespace Oasis.MfmeTools.Shared.Mfme
+namespace Oasis.MfmeTools.Mfme
 {
     public static class ExtractComponentProcessor
     {

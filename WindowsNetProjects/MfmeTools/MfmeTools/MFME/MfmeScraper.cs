@@ -1,4 +1,4 @@
-﻿using Oasis.MfmeTools.UnityWrappers;
+﻿using Oasis.MfmeTools.Shared.UnityWrappers;
 using Oasis.MfmeTools.WindowCapture;
 using Oasis.MfmeTools.WindowCapture.BitBlt;
 using SharpDX.Direct3D;
@@ -9,7 +9,7 @@ using System.Windows.Forms;
 using static Oasis.MfmeTools.Shared.Mfme.MFMEConstants;
 using Device = SharpDX.Direct3D11.Device;
 
-namespace Oasis.MfmeTools.Shared.Mfme
+namespace Oasis.MfmeTools.Mfme
 {
     public static class MfmeScraper
     {

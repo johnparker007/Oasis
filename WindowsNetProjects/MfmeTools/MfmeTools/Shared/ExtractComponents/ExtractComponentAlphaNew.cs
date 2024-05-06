@@ -1,8 +1,6 @@
-﻿using Oasis.MfmeTools.Shared.JsonDataStructures;
-using Oasis.MfmeTools.Shared.Mfme;
+﻿using Oasis.MfmeTools.Shared.Extract;
+using Oasis.MfmeTools.Shared.JsonDataStructures;
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using static Oasis.MfmeTools.Shared.Mfme.MFMEConstants;
 
 namespace Oasis.MfmeTools.Shared.ExtractComponents
@@ -16,7 +14,7 @@ namespace Oasis.MfmeTools.Shared.ExtractComponents
         public ColorJSON OnColor;
         public bool SixteenSegment;
 
-        public ExtractComponentAlphaNew(MfmeExtractor.ComponentStandardData componentStandardData) : base(componentStandardData)
+        public ExtractComponentAlphaNew(ComponentStandardData componentStandardData) : base(componentStandardData)
         {
         }
     }

@@ -1,7 +1,5 @@
-﻿using Oasis.MfmeTools.Shared.Mfme;
+﻿using Oasis.MfmeTools.Shared.Extract;
 using System;
-using System.Collections;
-using System.Collections.Generic;
 
 
 namespace Oasis.MfmeTools.Shared.ExtractComponents
@@ -13,7 +11,7 @@ namespace Oasis.MfmeTools.Shared.ExtractComponents
 		public bool Vertical;
 		public string Quality;
 
-		public ExtractComponentMaygayVideo(MfmeExtractor.ComponentStandardData componentStandardData) : base(componentStandardData)
+		public ExtractComponentMaygayVideo(ComponentStandardData componentStandardData) : base(componentStandardData)
 		{
 		}
 

@@ -116,6 +116,7 @@
     <Compile Include="Shared\ExtractComponents\ExtractComponentSevenSegment.cs" />
     <Compile Include="Shared\ExtractComponents\ExtractComponentSevenSegmentBlock.cs" />
     <Compile Include="Extractor.cs" />
+    <Compile Include="Shared\Extract\ComponentStandardData.cs" />
     <Compile Include="Shared\Extract\FileSystem.cs" />
     <Compile Include="Shared\Extract\Layout.cs" />
     <Compile Include="Helpers\FileHelper.cs" />
@@ -140,10 +141,10 @@
     <Compile Include="Shared\Mfme\MFMEConstants.cs" />
     <Compile Include="Mfme\MfmeScraper.cs" />
     <Compile Include="Mfme\MFMEScraperConstants.cs" />
-    <Compile Include="UnityWrappers\Color.cs" />
-    <Compile Include="UnityWrappers\Color32.cs" />
-    <Compile Include="UnityWrappers\KeyCode.cs" />
-    <Compile Include="UnityWrappers\Vector2Int.cs" />
+    <Compile Include="Shared\UnityWrappers\Color.cs" />
+    <Compile Include="Shared\UnityWrappers\Color32.cs" />
+    <Compile Include="Shared\UnityWrappers\KeyCode.cs" />
+    <Compile Include="Shared\UnityWrappers\Vector2Int.cs" />
     <Compile Include="WindowCapture\BitBlt\BitBlt.cs" />
     <Compile Include="WindowCapture\BitBlt\Interop\DeviceContextValues.cs" />
     <Compile Include="WindowCapture\BitBlt\Interop\NativeMethods.cs" />

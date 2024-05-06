@@ -1,14 +1,11 @@
-﻿using Oasis.MfmeTools.Shared.JsonDataStructures;
-using Oasis.MfmeTools.Shared.Mfme;
+﻿using Oasis.MfmeTools.Shared.Extract;
+using Oasis.MfmeTools.Shared.JsonDataStructures;
 using System;
-using System.Collections;
-using System.Collections.Generic;
-
 
 namespace Oasis.MfmeTools.Shared.ExtractComponents
 {
     [Serializable]
-    public class ExtractComponentBase 
+    public abstract class ExtractComponentBase
     {
         public Vector2IntJSON Position;
         public Vector2IntJSON Size;
@@ -16,7 +13,7 @@ namespace Oasis.MfmeTools.Shared.ExtractComponents
         public string TextBoxText;
         public int ZOrder; 
 
-        public ExtractComponentBase(MfmeExtractor.ComponentStandardData componentStandardData)
+        public ExtractComponentBase(ComponentStandardData componentStandardData)
         {
             Position = new Vector2IntJSON(componentStandardData.Position);
             Size = new Vector2IntJSON(componentStandardData.Size);

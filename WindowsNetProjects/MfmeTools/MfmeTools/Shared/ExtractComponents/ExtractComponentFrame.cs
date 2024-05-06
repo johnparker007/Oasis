@@ -1,7 +1,5 @@
-﻿using Oasis.MfmeTools.Shared.Mfme;
+﻿using Oasis.MfmeTools.Shared.Extract;
 using System;
-using System.Collections;
-using System.Collections.Generic;
 
 
 namespace Oasis.MfmeTools.Shared.ExtractComponents
@@ -12,7 +10,7 @@ namespace Oasis.MfmeTools.Shared.ExtractComponents
         public string ShapeAsString;
         public string BevelAsString;
 
-        public ExtractComponentFrame(MfmeExtractor.ComponentStandardData componentStandardData) : base(componentStandardData)
+        public ExtractComponentFrame(ComponentStandardData componentStandardData) : base(componentStandardData)
         {
         }
     }

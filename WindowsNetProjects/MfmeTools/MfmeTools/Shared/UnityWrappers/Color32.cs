@@ -1,4 +1,4 @@
-﻿namespace Oasis.MfmeTools.UnityWrappers
+﻿namespace Oasis.MfmeTools.Shared.UnityWrappers
 {
     public struct Color32
     {

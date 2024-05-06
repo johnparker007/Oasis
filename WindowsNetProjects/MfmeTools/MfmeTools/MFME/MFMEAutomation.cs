@@ -1,4 +1,5 @@
-﻿using Oasis.MfmeTools.UnityWrappers;
+﻿using Oasis.MfmeTools.Shared.Mfme;
+using Oasis.MfmeTools.Shared.UnityWrappers;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -6,7 +7,7 @@ using System.Diagnostics;
 using System.Threading;
 using WindowsInput;
 
-namespace Oasis.MfmeTools.Shared.Mfme
+namespace Oasis.MfmeTools.Mfme
 {
     public static class MFMEAutomation
     {

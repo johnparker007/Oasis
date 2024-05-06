@@ -1,5 +1,5 @@
 ﻿using Oasis.MfmeTools.Extensions;
-using Oasis.MfmeTools.UnityWrappers;
+using Oasis.MfmeTools.Shared.UnityWrappers;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Oasis.MfmeTools.Shared.Mfme
+namespace Oasis.MfmeTools.Mfme
 {
     public static class DelphiFontScraper
     {

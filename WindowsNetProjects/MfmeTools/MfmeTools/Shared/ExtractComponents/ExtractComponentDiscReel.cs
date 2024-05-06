@@ -1,7 +1,5 @@
-﻿using Oasis.MfmeTools.Shared.Mfme;
+﻿using Oasis.MfmeTools.Shared.Extract;
 using System;
-using System.Collections;
-using System.Collections.Generic;
 
 
 namespace Oasis.MfmeTools.Shared.ExtractComponents
@@ -49,7 +47,7 @@ namespace Oasis.MfmeTools.Shared.ExtractComponents
 		public bool HasOverlay;
 		public string OverlayBmpImageFilename;
 
-		public ExtractComponentDiscReel(MfmeExtractor.ComponentStandardData componentStandardData) : base(componentStandardData)
+		public ExtractComponentDiscReel(ComponentStandardData componentStandardData) : base(componentStandardData)
 		{
 		}
 

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Oasis.MfmeTools.Mfme;
 using Oasis.MfmeTools.Shared.Mfme;
 
 namespace Oasis.MfmeTools

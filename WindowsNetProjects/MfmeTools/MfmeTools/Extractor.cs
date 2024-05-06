@@ -5,10 +5,11 @@ using System.Threading;
 using static Oasis.MfmeTools.WindowCapture.Shared.Interop.NativeMethods;
 using static Oasis.MfmeTools.Shared.Mfme.MFMEConstants;
 using System;
-using static Oasis.MfmeTools.Shared.Mfme.MfmeExtractor;
+using static Oasis.MfmeTools.Mfme.MfmeExtractor;
 using Oasis.MfmeTools.Shared.Extract;
 using System.IO;
 using Newtonsoft.Json;
+using Oasis.MfmeTools.Mfme;
 
 namespace Oasis.MfmeTools
 {

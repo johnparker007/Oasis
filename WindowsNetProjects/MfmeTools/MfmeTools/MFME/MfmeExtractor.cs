@@ -1,32 +1,14 @@
-﻿using Oasis.MfmeTools.UnityWrappers;
+﻿using Oasis.MfmeTools.Shared.UnityWrappers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Oasis.MfmeTools.Shared.Mfme
+namespace Oasis.MfmeTools.Mfme
 {
     public class MfmeExtractor
     {
-        public struct ComponentStandardData
-        {
-            public Vector2Int Position;
-            public Vector2Int Size;
-            public string AngleAsText;
-            public string TextBoxText;
-            public int ZOrder;
-
-            public ComponentStandardData(string x, string y, string width, string height, string angle, string textBoxText, int zOrder)
-            {
-                Position = new Vector2Int(int.Parse(x), int.Parse(y));
-                Size = new Vector2Int(int.Parse(width), int.Parse(height));
-                AngleAsText = angle;
-                TextBoxText = textBoxText;
-                ZOrder = zOrder;
-            }
-        }
-
         public const string kExtractCompletedFilename = "ExtractCompleted";
         public const string kExtractFailedFilename = "ExtractFailed";
 

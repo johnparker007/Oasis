@@ -3,8 +3,6 @@ using Oasis.MfmeTools.Shared.JsonDataStructures;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Oasis.MfmeTools.Shared.Extract
 {

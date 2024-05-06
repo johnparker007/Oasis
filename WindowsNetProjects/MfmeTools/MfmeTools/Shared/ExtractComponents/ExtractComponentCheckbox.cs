@@ -1,8 +1,6 @@
-﻿using Oasis.MfmeTools.Shared.JsonDataStructures;
-using Oasis.MfmeTools.Shared.Mfme;
+﻿using Oasis.MfmeTools.Shared.Extract;
+using Oasis.MfmeTools.Shared.JsonDataStructures;
 using System;
-using System.Collections;
-using System.Collections.Generic;
 
 
 namespace Oasis.MfmeTools.Shared.ExtractComponents
@@ -15,7 +13,7 @@ namespace Oasis.MfmeTools.Shared.ExtractComponents
         public string Text;
         public bool State;
 
-        public ExtractComponentCheckbox(MfmeExtractor.ComponentStandardData componentStandardData) : base(componentStandardData)
+        public ExtractComponentCheckbox(ComponentStandardData componentStandardData) : base(componentStandardData)
         {
         }
     }

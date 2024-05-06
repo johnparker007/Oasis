@@ -1,8 +1,6 @@
-﻿using Oasis.MfmeTools.Shared.JsonDataStructures;
-using Oasis.MfmeTools.Shared.Mfme;
+﻿using Oasis.MfmeTools.Shared.Extract;
+using Oasis.MfmeTools.Shared.JsonDataStructures;
 using System;
-using System.Collections;
-using System.Collections.Generic;
 
 
 namespace Oasis.MfmeTools.Shared.ExtractComponents
@@ -17,7 +15,7 @@ namespace Oasis.MfmeTools.Shared.ExtractComponents
 		public bool Outer;
 		public bool Inner;
 
-		public ExtractComponentBorder(MfmeExtractor.ComponentStandardData componentStandardData) : base(componentStandardData)
+		public ExtractComponentBorder(ComponentStandardData componentStandardData) : base(componentStandardData)
 		{
 		}
 

@@ -1,7 +1,5 @@
-﻿using Oasis.MfmeTools.Shared.Mfme;
+﻿using Oasis.MfmeTools.Shared.Extract;
 using System;
-using System.Collections;
-using System.Collections.Generic;
 
 
 namespace Oasis.MfmeTools.Shared.ExtractComponents
@@ -11,7 +9,7 @@ namespace Oasis.MfmeTools.Shared.ExtractComponents
     {
         public string BmpImageFilename;
 
-        public ExtractComponentBackground(MfmeExtractor.ComponentStandardData componentStandardData) : base(componentStandardData)
+        public ExtractComponentBackground(ComponentStandardData componentStandardData) : base(componentStandardData)
         {
         }
 

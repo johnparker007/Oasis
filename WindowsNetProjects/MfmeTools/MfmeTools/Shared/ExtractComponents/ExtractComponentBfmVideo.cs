@@ -1,7 +1,5 @@
-﻿using Oasis.MfmeTools.Shared.Mfme;
+﻿using Oasis.MfmeTools.Shared.Extract;
 using System;
-using System.Collections;
-using System.Collections.Generic;
 
 
 namespace Oasis.MfmeTools.Shared.ExtractComponents
@@ -20,7 +18,7 @@ namespace Oasis.MfmeTools.Shared.ExtractComponents
 		public int Number;
 		public ResolutionType Resolution;
 
-		public ExtractComponentBfmVideo(MfmeExtractor.ComponentStandardData componentStandardData) : base(componentStandardData)
+		public ExtractComponentBfmVideo(ComponentStandardData componentStandardData) : base(componentStandardData)
 		{
 		}
 

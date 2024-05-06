@@ -1,8 +1,8 @@
-﻿using Oasis.MfmeTools.UnityWrappers;
+﻿using Oasis.MfmeTools.Shared.UnityWrappers;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Oasis.MfmeTools.Shared.Mfme
+namespace Oasis.MfmeTools.Mfme
 {
     public static class MFMEScraperConstants
     {

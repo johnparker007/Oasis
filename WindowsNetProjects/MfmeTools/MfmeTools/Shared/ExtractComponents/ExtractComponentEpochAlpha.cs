@@ -1,8 +1,6 @@
-﻿using Oasis.MfmeTools.Shared.JsonDataStructures;
-using Oasis.MfmeTools.Shared.Mfme;
+﻿using Oasis.MfmeTools.Shared.Extract;
+using Oasis.MfmeTools.Shared.JsonDataStructures;
 using System;
-using System.Collections;
-using System.Collections.Generic;
 
 
 namespace Oasis.MfmeTools.Shared.ExtractComponents
@@ -18,7 +16,7 @@ namespace Oasis.MfmeTools.Shared.ExtractComponents
 		public ColorJSON OffColour;
 		public ColorJSON BackgroundColour;
 
-		public ExtractComponentEpochAlpha(MfmeExtractor.ComponentStandardData componentStandardData) : base(componentStandardData)
+		public ExtractComponentEpochAlpha(ComponentStandardData componentStandardData) : base(componentStandardData)
 		{
 		}
 

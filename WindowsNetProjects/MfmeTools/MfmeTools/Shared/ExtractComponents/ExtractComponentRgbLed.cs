@@ -1,8 +1,6 @@
-﻿using Oasis.MfmeTools.Shared.JsonDataStructures;
-using Oasis.MfmeTools.Shared.Mfme;
+﻿using Oasis.MfmeTools.Shared.Extract;
+using Oasis.MfmeTools.Shared.JsonDataStructures;
 using System;
-using System.Collections;
-using System.Collections.Generic;
 
 
 namespace Oasis.MfmeTools.Shared.ExtractComponents
@@ -28,7 +26,7 @@ namespace Oasis.MfmeTools.Shared.ExtractComponents
         public ColorJSON AdjustedColorGreenBlue; // incorrectly labelled as RedGreen in MFME
         public ColorJSON AdjustedColorRedGreenBlue;
 
-        public ExtractComponentRgbLed(MfmeExtractor.ComponentStandardData componentStandardData) : base(componentStandardData)
+        public ExtractComponentRgbLed(ComponentStandardData componentStandardData) : base(componentStandardData)
         {
         }
     }

@@ -1,4 +1,4 @@
-﻿using Oasis.MfmeTools.UnityWrappers;
+﻿using Oasis.MfmeTools.Shared.UnityWrappers;
 using System;
 
 namespace Oasis.MfmeTools.Shared.JsonDataStructures

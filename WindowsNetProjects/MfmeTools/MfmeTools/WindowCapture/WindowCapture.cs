@@ -1,4 +1,5 @@
-﻿using Oasis.MfmeTools.Shared.Mfme;
+﻿using Oasis.MfmeTools.Mfme;
+using Oasis.MfmeTools.Shared.Mfme;
 using Oasis.MfmeTools.WindowCapture.Shared.Interop;
 using System;
 using System.Collections.Generic;

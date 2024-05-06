@@ -1,4 +1,4 @@
-﻿using Oasis.MfmeTools.Shared.Mfme;
+﻿using Oasis.MfmeTools.Shared.Extract;
 using System;
 
 namespace Oasis.MfmeTools.Shared.ExtractComponents
@@ -8,7 +8,7 @@ namespace Oasis.MfmeTools.Shared.ExtractComponents
     {
 		// this component has no properties outside of ComponentStandardData
 
-		public ExtractComponentAceVideo(MfmeExtractor.ComponentStandardData componentStandardData) : base(componentStandardData)
+		public ExtractComponentAceVideo(ComponentStandardData componentStandardData) : base(componentStandardData)
 		{
 		}
 

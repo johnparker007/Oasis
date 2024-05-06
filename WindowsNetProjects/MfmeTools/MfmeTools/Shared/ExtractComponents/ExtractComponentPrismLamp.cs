@@ -1,7 +1,5 @@
-﻿using Oasis.MfmeTools.Shared.Mfme;
+﻿using Oasis.MfmeTools.Shared.Extract;
 using System;
-using System.Collections;
-using System.Collections.Generic;
 
 
 namespace Oasis.MfmeTools.Shared.ExtractComponents
@@ -23,7 +21,7 @@ namespace Oasis.MfmeTools.Shared.ExtractComponents
 		public string Lamp2MaskBmpFilename;
 		public string OffImageBmpFilename;
 
-		public ExtractComponentPrismLamp(MfmeExtractor.ComponentStandardData componentStandardData) : base(componentStandardData)
+		public ExtractComponentPrismLamp(ComponentStandardData componentStandardData) : base(componentStandardData)
 		{
 		}
 

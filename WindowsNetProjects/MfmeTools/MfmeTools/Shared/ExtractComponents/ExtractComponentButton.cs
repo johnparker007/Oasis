@@ -1,5 +1,5 @@
 ﻿using Oasis.MfmeTools.Shared.JsonDataStructures;
-using Oasis.MfmeTools.Shared.Mfme;
+using Oasis.MfmeTools.Shared.Extract;
 using System;
 
 namespace Oasis.MfmeTools.Shared.ExtractComponents
@@ -50,7 +50,7 @@ namespace Oasis.MfmeTools.Shared.ExtractComponents
 
 
 
-        public ExtractComponentButton(MfmeExtractor.ComponentStandardData componentStandardData) : base(componentStandardData)
+        public ExtractComponentButton(ComponentStandardData componentStandardData) : base(componentStandardData)
         {
             for (int lampElementIndex = 0; lampElementIndex < kLampElementCount; ++lampElementIndex)
             {

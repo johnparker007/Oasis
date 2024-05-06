@@ -1,5 +1,6 @@
-﻿using Oasis.MfmeTools.Shared.Mfme;
-using Oasis.MfmeTools.UnityWrappers;
+﻿using Oasis.MfmeTools.Mfme;
+using Oasis.MfmeTools.Shared.Mfme;
+using Oasis.MfmeTools.Shared.UnityWrappers;
 using Oasis.MfmeTools.WindowCapture.Shared.Interfaces;
 using SharpDX;
 using SharpDX.Direct3D11;
