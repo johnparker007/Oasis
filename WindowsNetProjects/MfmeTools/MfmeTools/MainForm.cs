@@ -13,6 +13,7 @@ namespace Oasis.MfmeTools
     public partial class MainForm : Form
     {
         public static bool kDebugHardcodePopulateSourceGamPath = true;
+        public static bool kDebugDefaultCacheAllImageTypes = true;
 
 
         public RichTextBox OutputLogRichTextBox
@@ -32,6 +33,15 @@ namespace Oasis.MfmeTools
                 textBoxExtractSourcePath.Text = 
                     "C:\\projects\\ChrFreeRomAutoPatcher_RomsAndLayouts\\LegacySectionFromDif\\Unzipped\\Barcrest\\Andy Capp (Barcrest)\\Andy_Capp_(Barcrest)_[Dx08_6jp].gam";
             }
+
+            if(kDebugDefaultCacheAllImageTypes)
+            {
+                checkBoxUseCachedReelImages.CheckState = CheckState.Checked;
+                checkBoxUseCachedLampImages.CheckState = CheckState.Checked;
+                checkBoxUseCachedButtonImages.CheckState = CheckState.Checked;
+                checkBoxUseCachedBitmapImages.CheckState = CheckState.Checked;
+                checkBoxUseCachedBackgroundImage.CheckState = CheckState.Checked;
+            }
         }
 
         private void OnButtonStartExtractionClick(object sender, EventArgs e)
@@ -39,8 +49,13 @@ namespace Oasis.MfmeTools
             Extractor.Options extractorOptions = new Extractor.Options()
             {
                 SourceLayoutPath = textBoxExtractSourcePath.Text,
+
                 UseCachedLampImages = checkBoxUseCachedLampImages.Checked,
                 UseCachedReelImages = checkBoxUseCachedReelImages.Checked,
+                UseCachedButtonImages = checkBoxUseCachedButtonImages.Checked,
+                UseCachedBitmapImages = checkBoxUseCachedBitmapImages.Checked,
+                UseCachedBackgroundImage = checkBoxUseCachedBackgroundImage.Checked,
+
                 ScrapeLamps5To8 = checkBoxScrapeLamps5_8.Checked,
                 ScrapeLamps9To12 = checkBoxScrapeLamps9_12.Checked
             };

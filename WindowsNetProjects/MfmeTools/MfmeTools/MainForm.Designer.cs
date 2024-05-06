@@ -55,6 +55,9 @@ namespace Oasis.MfmeTools
             this.textBoxInjectTargetPath = new System.Windows.Forms.TextBox();
             this.richTextBoxOutputLog = new System.Windows.Forms.RichTextBox();
             this.groupBoxOutputLog = new System.Windows.Forms.GroupBox();
+            this.checkBoxUseCachedButtonImages = new System.Windows.Forms.CheckBox();
+            this.checkBoxUseCachedBitmapImages = new System.Windows.Forms.CheckBox();
+            this.checkBoxUseCachedBackgroundImage = new System.Windows.Forms.CheckBox();
             this.groupBoxExtraction.SuspendLayout();
             this.groupBoxInjection.SuspendLayout();
             this.groupBoxOutputLog.SuspendLayout();
@@ -81,6 +84,9 @@ namespace Oasis.MfmeTools
             // 
             // groupBoxExtraction
             // 
+            this.groupBoxExtraction.Controls.Add(this.checkBoxUseCachedBackgroundImage);
+            this.groupBoxExtraction.Controls.Add(this.checkBoxUseCachedBitmapImages);
+            this.groupBoxExtraction.Controls.Add(this.checkBoxUseCachedButtonImages);
             this.groupBoxExtraction.Controls.Add(this.buttonExtractSourcePath);
             this.groupBoxExtraction.Controls.Add(this.labelExtractSourcePath);
             this.groupBoxExtraction.Controls.Add(this.textBoxExtractSourcePath);
@@ -125,7 +131,7 @@ namespace Oasis.MfmeTools
             // checkBoxScrapeLamps9_12
             // 
             this.checkBoxScrapeLamps9_12.AutoSize = true;
-            this.checkBoxScrapeLamps9_12.Location = new System.Drawing.Point(12, 149);
+            this.checkBoxScrapeLamps9_12.Location = new System.Drawing.Point(397, 103);
             this.checkBoxScrapeLamps9_12.Name = "checkBoxScrapeLamps9_12";
             this.checkBoxScrapeLamps9_12.Size = new System.Drawing.Size(114, 17);
             this.checkBoxScrapeLamps9_12.TabIndex = 4;
@@ -135,7 +141,7 @@ namespace Oasis.MfmeTools
             // checkBoxScrapeLamps5_8
             // 
             this.checkBoxScrapeLamps5_8.AutoSize = true;
-            this.checkBoxScrapeLamps5_8.Location = new System.Drawing.Point(12, 126);
+            this.checkBoxScrapeLamps5_8.Location = new System.Drawing.Point(397, 80);
             this.checkBoxScrapeLamps5_8.Name = "checkBoxScrapeLamps5_8";
             this.checkBoxScrapeLamps5_8.Size = new System.Drawing.Size(108, 17);
             this.checkBoxScrapeLamps5_8.TabIndex = 3;
@@ -314,6 +320,36 @@ namespace Oasis.MfmeTools
             this.groupBoxOutputLog.TabStop = false;
             this.groupBoxOutputLog.Text = "Output Log";
             // 
+            // checkBoxUseCachedButtonImages
+            // 
+            this.checkBoxUseCachedButtonImages.AutoSize = true;
+            this.checkBoxUseCachedButtonImages.Location = new System.Drawing.Point(163, 80);
+            this.checkBoxUseCachedButtonImages.Name = "checkBoxUseCachedButtonImages";
+            this.checkBoxUseCachedButtonImages.Size = new System.Drawing.Size(153, 17);
+            this.checkBoxUseCachedButtonImages.TabIndex = 8;
+            this.checkBoxUseCachedButtonImages.Text = "Use cached button images";
+            this.checkBoxUseCachedButtonImages.UseVisualStyleBackColor = true;
+            // 
+            // checkBoxUseCachedBitmapImages
+            // 
+            this.checkBoxUseCachedBitmapImages.AutoSize = true;
+            this.checkBoxUseCachedBitmapImages.Location = new System.Drawing.Point(163, 103);
+            this.checkBoxUseCachedBitmapImages.Name = "checkBoxUseCachedBitmapImages";
+            this.checkBoxUseCachedBitmapImages.Size = new System.Drawing.Size(154, 17);
+            this.checkBoxUseCachedBitmapImages.TabIndex = 9;
+            this.checkBoxUseCachedBitmapImages.Text = "Use cached bitmap images";
+            this.checkBoxUseCachedBitmapImages.UseVisualStyleBackColor = true;
+            // 
+            // checkBoxUseCachedBackgroundImage
+            // 
+            this.checkBoxUseCachedBackgroundImage.AutoSize = true;
+            this.checkBoxUseCachedBackgroundImage.Location = new System.Drawing.Point(12, 126);
+            this.checkBoxUseCachedBackgroundImage.Name = "checkBoxUseCachedBackgroundImage";
+            this.checkBoxUseCachedBackgroundImage.Size = new System.Drawing.Size(175, 17);
+            this.checkBoxUseCachedBackgroundImage.TabIndex = 10;
+            this.checkBoxUseCachedBackgroundImage.Text = "Use cached background image";
+            this.checkBoxUseCachedBackgroundImage.UseVisualStyleBackColor = true;
+            // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -363,6 +399,9 @@ namespace Oasis.MfmeTools
         private System.Windows.Forms.RichTextBox richTextBoxOutputLog;
         private System.Windows.Forms.GroupBox groupBoxOutputLog;
         private System.Windows.Forms.CheckBox checkBoxAnimatedButtons;
+        private System.Windows.Forms.CheckBox checkBoxUseCachedBitmapImages;
+        private System.Windows.Forms.CheckBox checkBoxUseCachedButtonImages;
+        private System.Windows.Forms.CheckBox checkBoxUseCachedBackgroundImage;
     }
 }
 
