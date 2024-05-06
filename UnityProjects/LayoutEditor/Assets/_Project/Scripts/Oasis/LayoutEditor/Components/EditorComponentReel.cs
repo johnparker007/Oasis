@@ -57,7 +57,10 @@ namespace Oasis.LayoutEditor
             // set y scale TODO this would be x scale on horizontal reel
 
             float xScale = 1f; // TODO MFME has the 'border width' stuff, maybe factor that in?
-            float yScale = _rectTransform.rect.height / bandOasisImage.Height;
+
+            //float yScale = _rectTransform.rect.height / bandOasisImage.Height;
+float yScale = ComponentReel.VisibleScale2D;
+
             _material.mainTextureScale = new Vector2(xScale, yScale);
         }
 

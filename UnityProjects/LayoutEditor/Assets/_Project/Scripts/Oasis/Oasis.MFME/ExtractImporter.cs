@@ -175,6 +175,14 @@ namespace Oasis.MFME
             componentReel.Number = extractComponentReel.Number + 1;
             componentReel.Reversed = extractComponentReel.Reversed;
 
+            // convert MFME's visible reel scaling to a simple float
+            // MFME uses Reel Stops and Reel Height (not the standard x/y/width/height 'height')
+            // this is crude since not worth coding MFME's fake reel perspective scaling, but should be reasonable enough
+            int stops = extractComponentReel.Stops;
+            int height = extractComponentReel.Height;
+            float halfHeight = height * 0.5f;
+            componentReel.VisibleScale2D = (halfHeight / componentReel.BandOasisImage.Height) * stops * 0.25f;
+
             _layoutObject.AddComponent(componentReel);
         }
 

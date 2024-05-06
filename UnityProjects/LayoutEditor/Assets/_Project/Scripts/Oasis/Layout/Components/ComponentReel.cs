@@ -21,6 +21,13 @@ namespace Oasis.Layout
             set { _reversed = value; base.OnValueSetInvoke(); }
         }
 
+        private float _visibleScale2D = 1f;
+        public float VisibleScale2D
+        {
+            get => _visibleScale2D;
+            set { _visibleScale2D = value; base.OnValueSetInvoke(); }
+        }
+
         public OasisImage BandOasisImage;
     }
 
