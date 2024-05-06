@@ -1,5 +1,7 @@
-using MFMEExtract;
+//using MFMEExtract;
 using Oasis.Layout;
+using Oasis.MfmeTools.Shared.ExtractComponents;
+using Oasis.MfmeTools.Shared.Extract;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -21,7 +23,7 @@ namespace Oasis.MFME
             Extractor.OnLayoutLoaded.AddListener(OnMFMEExtractLayoutLoaded);
         }
 
-        private void OnMFMEExtractLayoutLoaded(MFMEExtract.Layout layout)
+        private void OnMFMEExtractLayoutLoaded(MfmeTools.Shared.Extract.Layout layout)
         {
             GameObject layoutGameObject = new GameObject("Layout");
             _layoutObject = layoutGameObject.AddComponent<LayoutObject>();
@@ -89,8 +91,13 @@ namespace Oasis.MFME
 
             // TODO - may want to make single componentLamp for each of the 12 possible mfme lamp elements in an mfme
             // lamp component:
-            string bmpImageFilePath = Path.Combine(
-                Extractor.LayoutDirectoryPath, extractComponentLamp.LampElements[0].BmpImageFilename);
+            string bmpImageFilePath = null;
+            string bmpImageFilename = extractComponentLamp.LampElements[0].BmpImageFilename;
+            if(bmpImageFilename != null)
+            {
+                bmpImageFilePath = Path.Combine(Extractor.LayoutDirectoryPath,
+                FileSystem.kLampsDirectoryName, extractComponentLamp.LampElements[0].BmpImageFilename);
+            }
 
             //string bmpMaskImageFilePath = Path.Combine(
             //    Extractor.LayoutDirectoryPath, extractComponentLamp.LampElements[0].BmpMaskImageFilename);
@@ -116,11 +123,14 @@ namespace Oasis.MFME
             }
 
             //componentLamp.OasisImage = new Graphics.OasisImage(bmpImageFilePath, bmpMaskImageFilePath, true);
-            componentLamp.OasisImage = new Graphics.OasisImage(bmpImageFilePath, null, true);
+            if(bmpImageFilePath != null)
+            {
+                componentLamp.OasisImage = new Graphics.OasisImage(bmpImageFilePath, null, true);
+            }
 
-// TODO - may want to make single componentLamp for each of the 12 possible mfme lamp elements in an mfme
-// lamp component:
-componentLamp.Number = (int)extractComponentLamp.GetLampNumber(0); // TODO will need to be checking lamp HasValue since it's nullable
+            // TODO - may want to make single componentLamp for each of the 12 possible mfme lamp elements in an mfme
+            // lamp component:
+            componentLamp.Number = (int)extractComponentLamp.GetLampNumber(0); // TODO will need to be checking lamp HasValue since it's nullable
 
             _layoutObject.AddComponent(componentLamp);
         }
@@ -157,8 +167,8 @@ componentLamp.Number = (int)extractComponentLamp.GetLampNumber(0); // TODO will 
                 extractComponentReel.Size.X,
                 extractComponentReel.Size.Y);
 
-            string bandBmpImageFilePath = Path.Combine(
-                Extractor.LayoutDirectoryPath, extractComponentReel.BandBmpImageFilename);
+            string bandBmpImageFilePath = Path.Combine(Extractor.LayoutDirectoryPath, 
+                FileSystem.kReelsDirectoryName, extractComponentReel.BandBmpImageFilename);
 
             componentReel.BandOasisImage = new Graphics.OasisImage(bandBmpImageFilePath, null, true);
             // we need a +1 for the reel but not the lamps, prob MFME <> MAME inconsistency
@@ -180,8 +190,8 @@ componentLamp.Number = (int)extractComponentLamp.GetLampNumber(0); // TODO will 
             componentBackground.Size = new Vector2Int(
                 extractComponentBackground.Size.X, extractComponentBackground.Size.Y);
 
-            string bmpImageFilePath = Path.Combine(
-                Extractor.LayoutDirectoryPath, extractComponentBackground.BmpImageFilename);
+            string bmpImageFilePath = Path.Combine(Extractor.LayoutDirectoryPath, 
+                FileSystem.kBackgroundDirectoryName, extractComponentBackground.BmpImageFilename);
 
             componentBackground.OasisImage = new Graphics.OasisImage(bmpImageFilePath, null, false);
 

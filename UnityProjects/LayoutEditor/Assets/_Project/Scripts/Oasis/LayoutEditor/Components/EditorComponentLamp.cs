@@ -32,14 +32,16 @@ namespace Oasis.LayoutEditor
 
             // TODO THERE ARE POTENTIALLY IMAGE-RELATED MEMORY LEAKS TO FIX HERE!
             OasisImage oasisImage = componentLamp.OasisImage;
+            if(oasisImage != null)
+            {
+                _texture2d = oasisImage.GetTexture2dCopy(true);
+                _texture2d.filterMode = FilterMode.Point;
 
-            _texture2d = oasisImage.GetTexture2dCopy(true);
-            _texture2d.filterMode = FilterMode.Point;
+                _sprite = Sprite.Create(_texture2d,
+                    new Rect(0, 0, oasisImage.Width, oasisImage.Height), Vector2.zero);
 
-            _sprite = Sprite.Create(_texture2d,
-                new Rect(0, 0, oasisImage.Width, oasisImage.Height), Vector2.zero);
-
-            _image.sprite = _sprite;
+                _image.sprite = _sprite;
+            }
         }
 
         protected override void UpdateStateFromEmulation()

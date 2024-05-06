@@ -1,11 +1,13 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using MFMEExtract;
+//using MFMEExtract;
 using System.Linq;
 using System.IO;
 using Newtonsoft.Json;
 using UnityEngine.Events;
+using Oasis.MfmeTools.Shared.Extract;
+using System;
 //using Newtonsoft.Json;
 
 public static class Extractor
@@ -59,6 +61,9 @@ public static class Extractor
         LayoutDirectoryPath = Path.GetDirectoryName(filePath);
 
         string json = File.ReadAllText(filePath);
+
+        // change the MfmeTools assembly string to the one that Unity expects:
+        json = json.Replace("MfmeTools\",", "Assembly-CSharp\",");
 
         Layout = JsonConvert.DeserializeObject<Layout>(
             json, new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.Auto });
