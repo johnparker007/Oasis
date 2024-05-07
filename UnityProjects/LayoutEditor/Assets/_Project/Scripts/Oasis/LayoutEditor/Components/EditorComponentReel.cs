@@ -94,8 +94,23 @@ float yScale = ComponentReel.VisibleScale2D;
                 normalisedOffset = 1f - normalisedOffset;
             }
 
-            const float kTEMPBandOffsetNormalisedToCorrectRendering = -0.11f; // not sure if this will be same for all techs from MAME
-            normalisedOffset += kTEMPBandOffsetNormalisedToCorrectRendering;
+            // only tested for the 2d mfme style reels so far to test:
+            float bandOffsetNormalisedToCorrectRendering = 0f;
+            switch (LayoutEditor.MameController.DebugPlatformType)
+            {
+                case MameController.PlatformType.Impact:
+                    // correct for JPM Impact (I think - Popeye):
+                    bandOffsetNormalisedToCorrectRendering = -0.11f;
+                    break;
+                case MameController.PlatformType.MPU4:
+                    // correct for Andy Capp, not tested on any others yet
+                    bandOffsetNormalisedToCorrectRendering = -0.12f;
+                    break;
+                default:
+                    break;
+            }
+
+            normalisedOffset += bandOffsetNormalisedToCorrectRendering;
 
             // TODO don't new Vector each time
             _material.mainTextureOffset = new Vector2(0f, normalisedOffset);
