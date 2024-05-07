@@ -29,6 +29,9 @@ namespace Oasis.Layout
         }
 
         public OasisImage BandOasisImage;
+        // Not sure about this being in here, for MFME Import stage only,
+        // will copy into Background transparency when converted to an Oasis panel
+        public OasisImage OverlayOasisImage;
     }
 
 }

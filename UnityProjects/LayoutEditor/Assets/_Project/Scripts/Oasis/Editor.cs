@@ -19,6 +19,8 @@ namespace Oasis
         public EditorComponentReel EditorComponentReelPrefab;
         public EditorComponent7Segment EditorComponentSevenSegmentPrefab;
         public EditorComponentAlpha EditorComponentAlphaPrefab;
+        public EditorComponentOverlay EditorComponentOverlayPrefab;
+
         // not sure will need this:
         public EditorComponent16SemicolonSegment EditorComponent16SemicolonSegmentPrefab;
 

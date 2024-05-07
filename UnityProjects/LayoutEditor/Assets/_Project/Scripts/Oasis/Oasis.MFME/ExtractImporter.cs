@@ -169,8 +169,15 @@ namespace Oasis.MFME
 
             string bandBmpImageFilePath = Path.Combine(Extractor.LayoutDirectoryPath, 
                 FileSystem.kReelsDirectoryName, extractComponentReel.BandBmpImageFilename);
-
             componentReel.BandOasisImage = new Graphics.OasisImage(bandBmpImageFilePath, null, true);
+
+            if(extractComponentReel.HasOverlay)
+            {
+                string overlayBmpImageFilePath = Path.Combine(Extractor.LayoutDirectoryPath,
+                    FileSystem.kReelsDirectoryName, extractComponentReel.OverlayBmpImageFilename);
+                componentReel.OverlayOasisImage = new Graphics.OasisImage(overlayBmpImageFilePath, null, true);
+            }
+
             // we need a +1 for the reel but not the lamps, prob MFME <> MAME inconsistency
             componentReel.Number = extractComponentReel.Number + 1;
             componentReel.Reversed = extractComponentReel.Reversed;

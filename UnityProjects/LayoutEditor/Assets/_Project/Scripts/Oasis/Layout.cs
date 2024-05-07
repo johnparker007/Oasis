@@ -34,7 +34,7 @@ namespace Oasis
             set;
         }
 
-        public void AddComponent(Component component)
+        public void AddComponent(Component component, bool overlay = false)
         {
             Components.Add(component);
 
@@ -67,13 +67,32 @@ editorCanvasRectTransform.sizeDelta = new Vector2(component.Size.x, component.Si
             }
             else if (component.GetType() == typeof(ComponentReel))
             {
-                EditorComponentReel editorComponentReel = Instantiate(
-                    LayoutEditor.EditorComponentReelPrefab,
-                    LayoutEditor.UIController.EditorCanvasGameObject.transform);
+                ComponentReel componentReel = (ComponentReel)component;
+                if (overlay)
+                {
+                    EditorComponentOverlay editorComponentOverlay = Instantiate(
+                        LayoutEditor.EditorComponentOverlayPrefab,
+                        LayoutEditor.UIController.EditorCanvasGameObject.transform);
 
-                editorComponent = editorComponentReel;
+                    editorComponent = editorComponentOverlay;
 
-                editorComponentReel.Initialise((ComponentReel)component, LayoutEditor);
+                    editorComponentOverlay.Initialise(componentReel, LayoutEditor);
+                }
+                else
+                {
+                    EditorComponentReel editorComponentReel = Instantiate(
+                        LayoutEditor.EditorComponentReelPrefab,
+                        LayoutEditor.UIController.EditorCanvasGameObject.transform);
+
+                    editorComponent = editorComponentReel;
+
+                    editorComponentReel.Initialise(componentReel, LayoutEditor);
+
+                    if (componentReel.OverlayOasisImage != null)
+                    {
+                        AddComponent(component, true);
+                    }
+                }
             }
             else if (component.GetType() == typeof(Component7Segment))
             {
