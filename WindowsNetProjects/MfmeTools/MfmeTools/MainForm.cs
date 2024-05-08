@@ -30,8 +30,13 @@ namespace Oasis.MfmeTools
 
             if(kDebugHardcodePopulateSourceGamPath)
             {
-                textBoxExtractSourcePath.Text = 
-                    "C:\\projects\\ChrFreeRomAutoPatcher_RomsAndLayouts\\LegacySectionFromDif\\Unzipped\\Barcrest\\Andy Capp (Barcrest)\\Andy_Capp_(Barcrest)_[Dx08_6jp].gam";
+                //textBoxExtractSourcePath.Text = 
+                //    "C:\\projects\\ChrFreeRomAutoPatcher_RomsAndLayouts\\LegacySectionFromDif\\Unzipped\\Barcrest\\Andy Capp (Barcrest)\\Andy_Capp_(Barcrest)_[Dx08_6jp].gam";
+
+                textBoxExtractSourcePath.Text =
+                    "C:\\Users\\John\\Desktop\\_temp\\Nickelodeon £3 All Cash Dx\\Nickelodeon £3 All Cash.gam";
+
+            
             }
 
             if(kDebugDefaultCacheAllImageTypes)

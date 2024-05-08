@@ -25,10 +25,14 @@ namespace Oasis.MfmeTools.Helpers
 
         public static string GetValue(string gamFilePath, string key)
         {
-            string[] lines = File.ReadAllLines(gamFilePath);
+            // can't use ReadAllLines, as it doesn't read characters above 127, but 
+            // MFME writes characters above 127 (e.g: £ character was encoded as $A3):
+            string contents = File.ReadAllText(gamFilePath, System.Text.Encoding.GetEncoding(1252));
+            string[] lines = contents.Split('\n');
 
             foreach (string line in lines)
-            {
+            
+        {
                 if (line.StartsWith(key))
                 {
                     return line.Substring(key.Length + 1); // +1 for the Space char after the key name in the gam file
@@ -40,7 +44,7 @@ namespace Oasis.MfmeTools.Helpers
             return null;
         }
 
-        public static void PatchLines(string gamFilePath, string key, string patchText)
+        public static void PatchLines(string gamFilePath, string key, string patchText, bool preserveKey)
         {
             string[] lines = File.ReadAllLines(gamFilePath);
 
@@ -48,7 +52,14 @@ namespace Oasis.MfmeTools.Helpers
             {
                 if (lines[lineIndex].StartsWith(key))
                 {
-                    lines[lineIndex] = patchText;
+                    if(preserveKey)
+                    {
+                        lines[lineIndex] = key + " " + patchText;
+                    }
+                    else
+                    {
+                        lines[lineIndex] = patchText;
+                    }
                 }
             }
 

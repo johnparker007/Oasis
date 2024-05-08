@@ -12,7 +12,7 @@ namespace Oasis.MfmeTools.Mfme
     {
         public static readonly string kLayoutsDirectoryName = "Layouts";
         public static readonly string kLayoutGamFilename = "MFME_Layout.gam";
-        //public static readonly string kLayoutFmlFilename = "MFME_Layout.fml";
+        public static readonly string kLayoutFmlFilename = "MFME_Layout.fml";
 
         public static string LayoutsDirectoryPath
         {
@@ -29,13 +29,12 @@ namespace Oasis.MfmeTools.Mfme
             string targetGamFilePath = Path.Combine(LayoutsDirectoryPath, kLayoutGamFilename);
             File.Copy(sourceGamFilePath, targetGamFilePath);
 
-            string sourceFmlFilename = MfmeGamFileHelper.GetFmlFilename(sourceGamFilePath);
-            OutputLog.Log("Linked .fml source filename: " + sourceFmlFilename);
+            string originalSourceFmlFilename = MfmeGamFileHelper.GetFmlFilename(sourceGamFilePath);
 
             string sourceLayoutDirectoryPath = Path.GetDirectoryName(sourceGamFilePath);
-            string sourceFmlPath = Path.Combine(sourceLayoutDirectoryPath, sourceFmlFilename);
+            string sourceFmlPath = Path.Combine(sourceLayoutDirectoryPath, originalSourceFmlFilename);
 
-            string targetFmlFilePath = Path.Combine(LayoutsDirectoryPath, sourceFmlFilename);
+            string targetFmlFilePath = Path.Combine(LayoutsDirectoryPath, kLayoutFmlFilename);
             File.Copy(sourceFmlPath, targetFmlFilePath);
 
             PatchGamFile(targetGamFilePath);
@@ -43,8 +42,12 @@ namespace Oasis.MfmeTools.Mfme
 
         private void PatchGamFile(string gamFilePath)
         {
-            MfmeGamFileHelper.PatchLines(gamFilePath, "Sound", "");
-            MfmeGamFileHelper.PatchLines(gamFilePath, "ROM", "");
+            // MFME has a bug so it can't load .fml contains '£' etc
+            MfmeGamFileHelper.PatchLines(gamFilePath, "Layout", kLayoutFmlFilename, true);
+
+            // blanking the ROMs skips all the startup popups, and stops game running
+            MfmeGamFileHelper.PatchLines(gamFilePath, "Sound", "", false);
+            MfmeGamFileHelper.PatchLines(gamFilePath, "ROM", "", false);
         }
     }
 }
