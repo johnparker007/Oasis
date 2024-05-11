@@ -5,7 +5,6 @@ namespace Oasis.UI.ViewModels
 {
     public class ViewModelMenu : ViewModel
     {
-        public UnityEvent OnFileExtractClick = new UnityEvent();
         public UnityEvent OnFileImportClick = new UnityEvent();
         public UnityEvent OnFileExportClick = new UnityEvent();
 
@@ -21,6 +20,9 @@ namespace Oasis.UI.ViewModels
         public UnityEvent OnEmulationStateSaveClick = new UnityEvent();
         public UnityEvent OnEmulationStateSaveAndExitClick = new UnityEvent();
         public UnityEvent OnEmulationStartAndStateLoadClick = new UnityEvent();
+
+        public UnityEvent OnMfmeExtractClick = new UnityEvent();
+        public UnityEvent OnMfmeRemapMpu4LampsClick = new UnityEvent();
 
         public UnityEvent OnHelpAboutClick = new UnityEvent();
 
@@ -44,11 +46,6 @@ namespace Oasis.UI.ViewModels
         public ViewModelMenu(RootUI rootUI) : base(rootUI)
         {
             
-        }
-
-        public void OnFile_ExtractClick(object sender, EventArgs e)
-        {
-            OnFileExtractClick?.Invoke();
         }
 
         public void OnFile_ImportClick(object sender, EventArgs e)
@@ -119,6 +116,16 @@ namespace Oasis.UI.ViewModels
         public void OnEmulation_StartAndStateLoadClick(object sender, EventArgs e)
         {
             OnEmulationStartAndStateLoadClick?.Invoke();
+        }
+
+        public void OnMfme_ExtractClick(object sender, EventArgs e)
+        {
+            OnMfmeExtractClick?.Invoke();
+        }
+
+        public void OnMfme_RemapMpu4LampsClick(object sender, EventArgs e)
+        {
+            OnMfmeRemapMpu4LampsClick?.Invoke();
         }
 
         public void OnHelp_AboutClick(object sender, EventArgs e)

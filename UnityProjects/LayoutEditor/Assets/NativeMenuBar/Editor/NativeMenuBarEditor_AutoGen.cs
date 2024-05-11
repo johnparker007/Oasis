@@ -64,16 +64,6 @@ public static class NativeMenuBar_AutoGen
     {
         return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "File/-").IsInteractable;
     }
-    [UnityEditor.MenuItem("NativeMenuBar/File/Extract MFME")]
-    private static void FileExtractMFME()
-    {
-        menubar.MenuItems.Single(item => item.FullPath == "File/Extract MFME").Action.Invoke();
-    }
-    [UnityEditor.MenuItem("NativeMenuBar/File/Extract MFME", true)]
-    private static bool FileExtractMFMEValidate()
-    {
-        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "File/Extract MFME").IsInteractable;
-    }
     [UnityEditor.MenuItem("NativeMenuBar/File/Import MFME")]
     private static void FileImportMFME()
     {
@@ -503,6 +493,26 @@ public static class NativeMenuBar_AutoGen
     private static bool EmulationHardResetValidate()
     {
         return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Emulation/Hard Reset").IsInteractable;
+    }
+    [UnityEditor.MenuItem("NativeMenuBar/MFME/Extract Layout")]
+    private static void MFMEExtractLayout()
+    {
+        menubar.MenuItems.Single(item => item.FullPath == "MFME/Extract Layout").Action.Invoke();
+    }
+    [UnityEditor.MenuItem("NativeMenuBar/MFME/Extract Layout", true)]
+    private static bool MFMEExtractLayoutValidate()
+    {
+        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "MFME/Extract Layout").IsInteractable;
+    }
+    [UnityEditor.MenuItem("NativeMenuBar/MFME/Remap MPU4 Lamps")]
+    private static void MFMERemapMPU4Lamps()
+    {
+        menubar.MenuItems.Single(item => item.FullPath == "MFME/Remap MPU4 Lamps").Action.Invoke();
+    }
+    [UnityEditor.MenuItem("NativeMenuBar/MFME/Remap MPU4 Lamps", true)]
+    private static bool MFMERemapMPU4LampsValidate()
+    {
+        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "MFME/Remap MPU4 Lamps").IsInteractable;
     }
     [UnityEditor.MenuItem("NativeMenuBar/Help/Context Help")]
     private static void HelpContextHelp()

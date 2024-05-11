@@ -1,3 +1,4 @@
+using DynamicPanels;
 using Oasis.UI;
 using RuntimeInspectorNamespace;
 using System.Collections.Generic;
@@ -10,6 +11,7 @@ namespace Oasis
         public Editor LayoutEditor;
         public GameObject EditorCanvasGameObject;
         public RuntimeHierarchy RuntimeHierarchy;
+        public DynamicPanelsCanvas DynamicPanelsCanvas;
 
         public RootUIParentForm RootUIParentForm
         {
@@ -78,6 +80,12 @@ namespace Oasis
             MfmeExtractForm = new MfmeExtractForm(this);
             //MfmeExtractForm.AssignParent(RootUI);
             //MfmeExtractForm.ShowDialog();
+        }
+
+
+        public void ShowMfmeRemapLampsForm()
+        {
+            // TODO
         }
 
         private void InspectorComponentFilter(GameObject gameObject, List<Component> components)

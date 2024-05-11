@@ -103,8 +103,19 @@ float yScale = ComponentReel.VisibleScale2D;
                     bandOffsetNormalisedToCorrectRendering = -0.11f;
                     break;
                 case MameController.PlatformType.MPU4:
-                    // correct for Andy Capp, not tested on any others yet
-                    bandOffsetNormalisedToCorrectRendering = -0.12f;
+                    switch(ComponentReel.Stops)
+                    {
+                        case 12:
+                            bandOffsetNormalisedToCorrectRendering = -0.102f;
+                            break;
+                        case 16:
+                            bandOffsetNormalisedToCorrectRendering = -0.153f;
+                            break;
+                        case 24:
+                            break;
+                        case 25:
+                            break;
+                    }
                     break;
                 default:
                     break;

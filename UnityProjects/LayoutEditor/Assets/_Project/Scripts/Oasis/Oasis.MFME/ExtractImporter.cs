@@ -180,15 +180,27 @@ namespace Oasis.MFME
 
             // we need a +1 for the reel but not the lamps, prob MFME <> MAME inconsistency
             componentReel.Number = extractComponentReel.Number + 1;
+            componentReel.Stops = extractComponentReel.Stops;
             componentReel.Reversed = extractComponentReel.Reversed;
 
             // convert MFME's visible reel scaling to a simple float
             // MFME uses Reel Stops and Reel Height (not the standard x/y/width/height 'height')
             // this is crude since not worth coding MFME's fake reel perspective scaling, but should be reasonable enough
+
+            // in MFME I think it's 50 of Height per visible symbol.  And then we need
+            // Stops to know how many individual symbols on reel
+
+            const int kMfmeHeightPerVisibleSymbol = 50;
             int stops = extractComponentReel.Stops;
             int height = extractComponentReel.Height;
-            float halfHeight = height * 0.5f;
-            componentReel.VisibleScale2D = (halfHeight / componentReel.BandOasisImage.Height) * stops * 0.25f;
+            float visibleSymbols = (float)height / kMfmeHeightPerVisibleSymbol;
+            float scale = visibleSymbols / stops;
+
+            //            float halfHeight = height * 0.5f;
+            //"HERE - BandOasisImage.Height should have very little effect on this calc from comparing Andy Capp and Nickelodeon"
+            //            componentReel.VisibleScale2D = (halfHeight / componentReel.BandOasisImage.Height) * stops * 0.25f;
+
+            componentReel.VisibleScale2D = scale;
 
             _layoutObject.AddComponent(componentReel);
         }

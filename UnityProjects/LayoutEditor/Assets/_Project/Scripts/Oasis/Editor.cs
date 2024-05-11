@@ -95,11 +95,6 @@ OnFileImportClick();
             ExtractImporter.OnImportComplete.RemoveListener(OnImportComplete);
         }
 
-        public void OnFileExtractClick()
-        {
-            UIController.ShowMfmeExtractForm();
-        }
-
         public void OnFileImportClick()
         {
             //string[] paths = StandaloneFileBrowser.OpenFolderPanel("MFME Extract folder", null, false);
@@ -176,6 +171,16 @@ OnFileImportClick();
         public void OnEmulationStartAndStateLoadClick()
         {
             MameController.StartMame(true);
+        }
+
+        public void OnMfmeExtractClick()
+        {
+            UIController.ShowMfmeExtractForm();
+        }
+
+        public void OnMfmeRemapLampsClick()
+        {
+            UIController.ShowMfmeRemapLampsForm();
         }
 
         public void OnHelpAboutClick()

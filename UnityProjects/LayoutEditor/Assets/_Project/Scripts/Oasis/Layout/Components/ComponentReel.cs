@@ -14,6 +14,13 @@ namespace Oasis.Layout
             set { _number = value; base.OnValueSetInvoke(); }
         }
 
+        private int _stops = 0;
+        public int Stops
+        {
+            get => _stops;
+            set { _stops = value; base.OnValueSetInvoke(); }
+        }
+
         private bool _reversed = false;
         public bool Reversed
         {
