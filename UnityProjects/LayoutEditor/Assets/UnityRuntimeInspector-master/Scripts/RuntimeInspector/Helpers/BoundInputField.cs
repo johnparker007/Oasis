@@ -54,6 +54,10 @@ namespace RuntimeInspectorNamespace
 					m_skinVersion = m_skin.Version;
 
 					inputField.textComponent.SetSkinInputFieldText( m_skin );
+
+					// JP expand Skin to control selection color:
+					inputField.selectionColor = m_skin.SelectedItemBackgroundColor;
+
 					inputFieldBackground.color = m_skin.InputFieldNormalBackgroundColor;
 
 					Text placeholder = inputField.placeholder as Text;
