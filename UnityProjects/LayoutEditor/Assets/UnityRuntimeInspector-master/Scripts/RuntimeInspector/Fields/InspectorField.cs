@@ -125,7 +125,7 @@ namespace RuntimeInspectorNamespace
 
 		public void BindTo( InspectorField parent, MemberInfo variable, string variableName = null )
 		{
-			if( variable is FieldInfo )
+			if( variable is FieldInfo ) 
 			{
 				FieldInfo field = (FieldInfo) variable;
 				if( variableName == null )
