@@ -7,6 +7,7 @@ using Oasis.LayoutEditor;
 
 using Component = Oasis.Layout.Component;
 using EditorComponent = Oasis.LayoutEditor.EditorComponent;
+using Oasis.LayoutEditor.Tools;
 
 namespace Oasis
 {
@@ -130,6 +131,25 @@ editorCanvasRectTransform.sizeDelta = new Vector2(component.Size.x, component.Si
 
             OnAddComponent?.Invoke(component);
             OnChanged?.Invoke();
+        }
+
+        public void RemapLamps(string[] mfmeLampTable, string[] mameLampTable)
+        {
+            Mpu4LampRemapper lampRemapper = new Mpu4LampRemapper(mfmeLampTable, mameLampTable);
+
+            foreach (Component component in Components)
+            {
+                // TODO buttons, leds as lamps, any other lamp driven components
+                if (component.GetType() != typeof(ComponentLamp))
+                {
+                    continue;
+                }
+
+                ComponentLamp componentLamp = (ComponentLamp)component;
+
+                // TODO I think only lamps 0-127 are scrambled
+                componentLamp.Number = lampRemapper.GetRemappedLampNumber(componentLamp.Number);
+            }
         }
     }
 }

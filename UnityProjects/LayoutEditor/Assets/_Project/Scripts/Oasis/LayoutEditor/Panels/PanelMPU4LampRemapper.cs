@@ -1,15 +1,14 @@
+using Oasis.LayoutEditor.Tools;
 using Oasis.UI.Fields;
-using RuntimeInspectorNamespace;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Oasis.LayoutEditor.Panels
 {
     public class PanelMPU4LampRemapper : PanelBase
     {
+        public UIController UIController;
+
         public FieldMPU4LampColumns SourceLampColumns;
         public FieldMPU4LampColumns TargetLampColumns;
         public Button PopulateSourceButton;
@@ -54,7 +53,15 @@ namespace Oasis.LayoutEditor.Panels
 
         private void OnRemapLampsButtonClick()
         {
-            Debug.LogError("OnRemapLampsButtonClick");
+            string[] sourceLampColumnsText = new string[Mpu4LampRemapper.kLampTableSize];
+            string[] targetLampColumnsText = new string[Mpu4LampRemapper.kLampTableSize];
+            for (int lampColumnIndex = 0; lampColumnIndex < Mpu4LampRemapper.kLampTableSize; ++lampColumnIndex)
+            {
+                sourceLampColumnsText[lampColumnIndex] = SourceLampColumns.InputFields[lampColumnIndex].text;
+                targetLampColumnsText[lampColumnIndex] = TargetLampColumns.InputFields[lampColumnIndex].text;
+            }
+
+            UIController.LayoutEditor.Layout.RemapLamps(sourceLampColumnsText, targetLampColumnsText);
         }
 
     }
