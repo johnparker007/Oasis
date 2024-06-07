@@ -40,7 +40,7 @@ namespace Oasis.MAME
                 string mameVariableName = _romDataReferencesDictionary[mameRomName];
                 if (_lampColumnDataDictionary.ContainsKey(mameVariableName))
                 {
-                    return _lampColumnDataDictionary[mameRomName];
+                    return _lampColumnDataDictionary[mameVariableName];
                 }
             }
 
@@ -130,7 +130,65 @@ namespace Oasis.MAME
 
         private void InitialiseRomDataReferences()
         {
-            // TODO
+            _romDataReferencesDictionary = new Dictionary<string, string>();
+
+            foreach(string filename in RomLampColumnReferenceSourceFilenames)
+            {
+                ProcessRomDataReferencesFile(filename);
+            }
         }
+
+        private void ProcessRomDataReferencesFile(string filename)
+        {
+            string romDataReferencePath = Path.Combine(SourceCodeDirectoryFullPath, filename);
+            string[] lines = File.ReadAllLines(romDataReferencePath);
+
+            foreach(string line in lines)
+            {
+                if (!line.StartsWith("GAME(") && !line.StartsWith("GAMEL("))
+                {
+                    continue;
+                }
+
+                if (!line.Contains("mpu4_characteriser_pal"))
+                {
+                    continue;
+                }
+
+                AddRomDataReferenceRow(line);
+            }
+        }
+
+        private void AddRomDataReferenceRow(string line)
+        {
+            string mameRomName = ExtractMameRomName(line);
+            string mameRomReference = ExtractMameRomReference(line);
+
+            _romDataReferencesDictionary.Add(mameRomName, mameRomReference);
+        }
+
+        private string ExtractMameRomName(string line)
+        {
+            string[] splitLine = line.Split(',');
+
+            const int kParentRomNameColumn = 1;
+            return splitLine[kParentRomNameColumn].Trim();
+        }
+
+        private string ExtractMameRomReference(string line)
+        {
+            string[] splitLine = line.Split(',');
+
+            const int kRomReferenceColumn = 3;
+            string referenceFieldFull = splitLine[kRomReferenceColumn].Trim();
+
+            int startIndex = referenceFieldFull.LastIndexOf(':') + 1;
+            int endIndex = referenceFieldFull.IndexOf('>');
+            int length = endIndex - startIndex;
+
+            return referenceFieldFull.Substring(startIndex, length);
+        }
+
+
     }
 }
