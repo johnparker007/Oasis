@@ -5,6 +5,7 @@ using Oasis.MFME;
 using Oasis.LayoutEditor;
 using Oasis.MAME;
 using UnityEngine.Events;
+using Oasis.Project;
 
 
 namespace Oasis
@@ -13,6 +14,7 @@ namespace Oasis
     {
         public UIController UIController;
         public MameController MameController;
+        public MameMpu4ChrSourceCodeLookup MameMpu4ChrSourceCodeLookup;
 
         public EditorComponentBackground EditorComponentBackgroundPrefab;
         public EditorComponentLamp EditorComponentLampPrefab;
@@ -26,6 +28,8 @@ namespace Oasis
 
         public EditorPanel EditorPanelMFMEImport;
         public EditorPanel EditorPanelFull;
+
+        public ProjectData Project;
 
 
         public UnityEvent<LayoutObject> OnLayoutSet = new UnityEvent<LayoutObject>();

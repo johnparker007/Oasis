@@ -7,8 +7,6 @@ namespace Oasis.LayoutEditor.Panels
 {
     public class PanelMPU4LampRemapper : PanelBase
     {
-        public UIController UIController;
-
         public FieldMPU4LampColumns SourceLampColumns;
         public FieldMPU4LampColumns TargetLampColumns;
         public Button PopulateSourceButton;
@@ -48,7 +46,20 @@ namespace Oasis.LayoutEditor.Panels
 
         private void OnPopulateTargetButtonClick()
         {
-            Debug.LogError("PopulateTarget - Not yet implemented");
+            string[] lampColumnData = UIController.LayoutEditor.MameMpu4ChrSourceCodeLookup.GetLampColumnData(
+                UIController.LayoutEditor.MameController.DebugMameRomName);
+
+            if (lampColumnData != null)
+            {
+                for (int lampColumnIndex = 0; lampColumnIndex < Mpu4LampRemapper.kLampTableSize; ++lampColumnIndex)
+                {
+                    TargetLampColumns.InputFields[lampColumnIndex].text = lampColumnData[lampColumnIndex];
+                }
+            }
+            else
+            {
+                // TODO popup / message: 'chr lamp data not found for romname'
+            }
         }
 
         private void OnRemapLampsButtonClick()

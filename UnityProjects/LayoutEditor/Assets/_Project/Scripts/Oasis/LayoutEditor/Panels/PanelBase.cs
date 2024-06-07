@@ -9,6 +9,8 @@ namespace Oasis.LayoutEditor.Panels
 {
     public class PanelBase : SkinnedWindow
     {
+        public UIController UIController;
+
         [Header("Internal Variables")]
         [SerializeField]
         private ScrollRect _scrollView;
