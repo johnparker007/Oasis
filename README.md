@@ -34,6 +34,24 @@ TODO
     - [ ] Impact (maybe already in ArcadeSim source)
     - [ ] TODO add remaining platforms
 
+## Layout Editor
+- [ ] TODO create this list
+
+## Machine Editor
+- [ ] TODO create this list
+
+## Machine Player
+- [ ] TODO create this list
+
+## Arcade Simulator
+- [ ] TODO create this list
+
+## Multiplayer
+- [ ] TODO create this list
+
+## Oasis Hub
+- [ ] TODO create this list
+
 
 # Unity technical details
 Unity version is 2021 LTS (2021.3.15f1 LTS at the time of writing), as the Arcade Simulator project is built on 2021.2.7f1. The plan is to switch to 2023 LTS when that is released in Q4 2024, as well as general improvements, this will allow for removal of the Unity splashscreen delay when starting the various programs that make up the Oasis suite.
