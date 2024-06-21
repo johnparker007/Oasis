@@ -10,8 +10,8 @@ TODO
 # To do list
 
 ## MFME Tools
-- [ ] Create as Windows C# Net app
-- [ ] Implement window capture system
+- [x] Create as Windows C# Net app
+- [x] Implement window capture system
 - [ ] Implement scraping (a lot of this can be ported from Arcade Sim source)
   - [ ] Properties window
     - [ ]  Components
