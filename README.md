@@ -11,6 +11,8 @@ TODO
 
 ## MFME Tools
 - [x] Create as Windows C# Net app
+
+### Extractor
 - [x] Implement window capture system
 - [ ] Implement scraping (a lot of this can be ported from Arcade Sim source)
   - [ ] Properties window
@@ -33,6 +35,9 @@ TODO
     - [ ] Scorpion 4
     - [ ] Impact (maybe already in ArcadeSim source)
     - [ ] TODO add remaining platforms
+    
+### Injector
+  -[ ] TODO make this list (very low priority)
 
 ## Layout Editor
 - [ ] TODO create this list
