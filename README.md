@@ -1,6 +1,11 @@
 # Architecture
 TODO - test diagram below, further docs on 'mermaid' syntax for expanding this here:
+
 https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/creating-diagrams
+
+https://mermaid.js.org/intro/
+
+And a live editor for quick testing here: https://mermaid.live/
 
 ```mermaid
 graph TD;
@@ -46,7 +51,7 @@ TODO
     - [ ] TODO add remaining platforms
     
 ### Injector
-  -[ ] TODO make this list (very low priority)
+  -[ ] TODO make this list (MFME layout injection is a very low priority feature at present)
 
 ## Layout Editor
 - [ ] TODO create this list
