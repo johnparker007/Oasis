@@ -1,5 +1,14 @@
 # Architecture
-TODO
+TODO - test diagram below, further docs on 'mermaid' syntax for expanding this here:
+https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/creating-diagrams
+
+```mermaid
+graph TD;
+    A-->B;
+    A-->C;
+    B-->D;
+    C-->D;
+```
 
 # Roadmap
 TODO
