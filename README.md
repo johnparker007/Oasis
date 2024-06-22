@@ -1,11 +1,7 @@
 # Architecture
-TODO - test diagram below:
-
-<!-- 
+<!-- Mermaid diagram tools/info:
     https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/creating-diagrams
-    
     https://mermaid.js.org/intro/
-    
     And a live editor for quick testing here: https://mermaid.live/
 -->
 
