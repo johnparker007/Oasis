@@ -53,7 +53,7 @@ TODO
     - [ ] TODO add remaining platforms
     
 ### Injector
-  -[ ] TODO make this list (MFME layout injection is a very low priority feature at present)
+- [ ] TODO make this list (MFME layout injection is a very low priority feature at present)
 
 ## Layout Editor
 - [ ] TODO create this list
