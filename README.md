@@ -31,10 +31,23 @@ block-beta
 ```
 
 # Roadmap
-TODO
+
+## MfmeTools Extractor
+- 100% extraction including text/fonts for classic layouts
+- 'safe extract' features for end users - overlay + key/mouse movement abort extraction
+
+## Layout Editor
+- Importing all MFME component types
+- Design how the MfmeImport -> Full Layout flow works
+- Design how the hybrid of 2d/3d versions of components (e.g. Reel) work
+- Creation of remaining components to do classic layouts ready for MAME .lay export for MAME development
+- MAME .lay exporter (from Full classic layout, converting gfx to text only components... platform-specific stuff like InputMasks etc)
+- Editing controls for Full view
+- Project structure - like Unity, with image files etc as assets?  Probably better than some single file archive format
+- Full View -> panel views (e.g. Top glass, Bottom glass etc)
+- TODO more here 
 
 # Features
-TODO
 
 # To do list
 
