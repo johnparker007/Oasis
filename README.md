@@ -10,11 +10,28 @@ TODO - test diagram below:
 -->
 
 ```mermaid
-graph TD;
-    A-->B;
-    A-->C;
-    B-->D;
-    C-->D;
+block-beta
+    columns 3
+    doc>"Oasis Suite Architecture"]:3
+
+    block:row1:3
+        Hub["Launcher / Hub"]
+        AssetLibrary[("Asset Libary")]
+        MachineDatabase[("Machine Database")]
+    end
+
+    block:row2:3
+        MfmeLayoutExtractor["MFME Layout Extractor"]
+        LayoutEditor["Layout Editor"]
+        MameLayoutBuilder["MAME Layout Builder"]
+    end
+
+    block:row3:3
+        ArcadeSimulator["Arcade Simulator"]
+        CabinetEditor["Cabinet Editor"]
+        MachinePlayer["Machine Player"]
+    end
+    
 ```
 
 # Roadmap
