@@ -1,11 +1,13 @@
 # Architecture
-TODO - test diagram below, further docs on 'mermaid' syntax for expanding this here:
+TODO - test diagram below:
 
-https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/creating-diagrams
-
-https://mermaid.js.org/intro/
-
-And a live editor for quick testing here: https://mermaid.live/
+<!-- 
+    https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/creating-diagrams
+    
+    https://mermaid.js.org/intro/
+    
+    And a live editor for quick testing here: https://mermaid.live/
+-->
 
 ```mermaid
 graph TD;
