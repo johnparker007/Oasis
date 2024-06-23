@@ -181,7 +181,7 @@ namespace Oasis.MAME
         {
             get
             {
-                return Path.Combine(DataPathHelper.DynamicRootPath, kTEMPHardcodedMameExeDirectoryPath);
+                return Path.Combine(DataPathHelper.MAMERootPath);
             }
         }
 

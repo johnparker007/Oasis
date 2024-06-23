@@ -20,14 +20,6 @@ namespace Oasis.MAME
         // mame rom name, mame variable name
         private Dictionary<string, string> _romDataReferencesDictionary = null;
 
-        public string SourceCodeDirectoryFullPath
-        {
-            get
-            {
-                return Path.Combine(DataPathHelper.DynamicRootPath, kSourceCodeDirectoryPath);
-            }
-        }
-
         public string[] GetLampColumnData(string mameRomName)
         {
             if(!_initialised)
@@ -59,7 +51,7 @@ namespace Oasis.MAME
         {
             _lampColumnDataDictionary = new Dictionary<string, string[]>();
 
-            string lampColumnDataPath = Path.Combine(SourceCodeDirectoryFullPath, LampColumnDataSourceFilename);
+            string lampColumnDataPath = Path.Combine(DataPathHelper.MAMESourcePath, LampColumnDataSourceFilename);
             string[] lines = File.ReadAllLines(lampColumnDataPath);
 
             foreach(string line in lines)
@@ -140,7 +132,7 @@ namespace Oasis.MAME
 
         private void ProcessRomDataReferencesFile(string filename)
         {
-            string romDataReferencePath = Path.Combine(SourceCodeDirectoryFullPath, filename);
+            string romDataReferencePath = Path.Combine(DataPathHelper.MAMESourcePath, filename);
             string[] lines = File.ReadAllLines(romDataReferencePath);
 
             foreach(string line in lines)

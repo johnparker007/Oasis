@@ -5,36 +5,35 @@ namespace Oasis.Utility
 {
     public static class DataPathHelper
     {
-        public static string DynamicRootPath
+        public static string ProjectRootPath
         {
             get
             {
-                if (Application.isEditor)
-                {
-                    return EditorRootPath;
-                }
-                else
-                {
-                    return BuildRootPath;
-                }
+                return System.IO.Path.GetDirectoryName(Application.dataPath);
             }
         }
 
-        public static string EditorRootPath
+        public static string MAMERootPath
         {
             get
             {
-                // TOIMPROVE - this will differ for different developer PCs, should pull out to 
-                // some kind of config file/scriptable object
-                return "C:\\projects\\GitRepos\\Oasis\\UnityProjectDataDirs\\LayoutEditor";
+                return Path.Combine(DataPathHelper.ProjectRootPath, "Emulators\\MAME\\mame0258");
             }
         }
 
-        public static string BuildRootPath
+        public static string MAMEROMSPath
         {
             get
             {
-                return Application.dataPath;
+                return Path.Combine(DataPathHelper.MAMERootPath, "roms");
+            }
+        }
+
+        public static string MAMESourcePath
+        {
+            get
+            {
+                return Path.Combine(DataPathHelper.ProjectRootPath, "MameSource\\barcrest");
             }
         }
     }
