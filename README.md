@@ -32,6 +32,27 @@ block-beta
 
 # Roadmap
 
+```mermaid
+gantt
+    title Oasis Components
+    dateFormat X
+    axisFormat %s
+    section Project
+    Launcher/Hub : 2, 3        
+    section Data
+    Machine Database : 4, 5    
+    Asset Library : 4, 6    
+    section Layout
+    MFME Layout Extractor : 0, 2    
+    Layout Editor : 1, 7    
+    MAME Layout Builder : 2, 3     
+    section 3d
+    Cabinet Editor : 3, 5    
+    Machine Player : 4, 6    
+    Arcade Simulator : 5, 8    
+```
+
+<!-- TODO add some of below to TODO lists tasks
 ## MfmeTools Extractor
 - 100% extraction including text/fonts for classic layouts
 - 'safe extract' features for end users - overlay + key/mouse movement abort extraction
@@ -46,6 +67,7 @@ block-beta
 - Project structure - like Unity, with image files etc as assets?  Probably better than some single file archive format
 - Full View -> panel views (e.g. Top glass, Bottom glass etc)
 - TODO more here 
+-->
 
 # Features
 
