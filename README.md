@@ -52,7 +52,8 @@ gantt
     Arcade Simulator : 5, 8    
 ```
 
-All TODO items are now being tracked on a private Jira server.  A way may be found to share a public view of this in future.
+# Todo/In Progress/Done tasks/features
+All issues are currently being tracked on a private Jira server for developer convenience.  A way may be found to share a live public view of this in future.
 
 # Unity technical details
 Unity version is 2021 LTS (2021.3.15f1 LTS at the time of writing), as the Arcade Simulator project is built on 2021.2.7f1. The plan is to switch to 2023 LTS when that is released in Q4 2024, as well as general improvements, this will allow for removal of the Unity splashscreen delay when starting the various programs that make up the Oasis suite.
