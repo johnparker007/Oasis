@@ -52,27 +52,7 @@ gantt
     Arcade Simulator : 5, 8    
 ```
 
-<!-- TODO add some of below to TODO lists tasks
-## MfmeTools Extractor
-- 100% extraction including text/fonts for classic layouts
-- 'safe extract' features for end users - overlay + key/mouse movement abort extraction
-
-## Layout Editor
-- Importing all MFME component types
-- Design how the MfmeImport -> Full Layout flow works
-- Design how the hybrid of 2d/3d versions of components (e.g. Reel) work
-- Creation of remaining components to do classic layouts ready for MAME .lay export for MAME development
-- MAME .lay exporter (from Full classic layout, converting gfx to text only components... platform-specific stuff like InputMasks etc)
-- Editing controls for Full view
-- Project structure - like Unity, with image files etc as assets?  Probably better than some single file archive format
-- Full View -> panel views (e.g. Top glass, Bottom glass etc)
-- TODO more here 
--->
-
-# Features
-
-# To do
-* Note: All TODO items are now being tracked on a private Jira server.  A way may be found to share a public view of this in future.
+All TODO items are now being tracked on a private Jira server.  A way may be found to share a public view of this in future.
 
 # Unity technical details
 Unity version is 2021 LTS (2021.3.15f1 LTS at the time of writing), as the Arcade Simulator project is built on 2021.2.7f1. The plan is to switch to 2023 LTS when that is released in Q4 2024, as well as general improvements, this will allow for removal of the Unity splashscreen delay when starting the various programs that make up the Oasis suite.
