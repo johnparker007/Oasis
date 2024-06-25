@@ -30,8 +30,9 @@ block-beta
     
 ```
 
-# Roadmap
+# Roadmaps
 
+## Overall
 ```mermaid
 gantt
     title Oasis Components
@@ -51,6 +52,111 @@ gantt
     Machine Player : 4, 6    
     Arcade Simulator : 5, 8    
 ```
+## Machine Database
+```mermaid
+gantt
+    title TODO Machine Database elements
+    dateFormat X
+    axisFormat %s
+    section TODO
+    TODO : 2, 3        
+    section TODO
+    TODO : 3, 5    
+    TODO : 4, 6    
+    TODO : 5, 8    
+```
+## Asset Library
+```mermaid
+gantt
+    title TODO Asset Library elements
+    dateFormat X
+    axisFormat %s
+    section TODO
+    TODO : 2, 3        
+    section TODO
+    TODO : 3, 5    
+    TODO : 4, 6    
+    TODO : 5, 8    
+```
+## MFME Layout Extractor
+```mermaid
+gantt
+    title TODO MFME Layout Extractor elements
+    dateFormat X
+    axisFormat %s
+    section TODO
+    TODO : 2, 3        
+    section TODO
+    TODO : 3, 5    
+    TODO : 4, 6    
+    TODO : 5, 8    
+```
+## Layout Editor
+```mermaid
+gantt
+    title TODO Layout Editor elements
+    dateFormat X
+    axisFormat %s
+    section TODO
+    TODO : 2, 3        
+    section TODO
+    TODO : 3, 5    
+    TODO : 4, 6    
+    TODO : 5, 8    
+```
+## MAME Layout Builder
+```mermaid
+gantt
+    title TODO MAME Layout Builder elements
+    dateFormat X
+    axisFormat %s
+    section TODO
+    TODO : 2, 3        
+    section TODO
+    TODO : 3, 5    
+    TODO : 4, 6    
+    TODO : 5, 8    
+```
+## Cabinet Editor
+```mermaid
+gantt
+    title TODO Cabinet Editor elements
+    dateFormat X
+    axisFormat %s
+    section TODO
+    TODO : 2, 3        
+    section TODO
+    TODO : 3, 5    
+    TODO : 4, 6    
+    TODO : 5, 8    
+```
+## Machine Player
+```mermaid
+gantt
+    title TODO Machine Player elements
+    dateFormat X
+    axisFormat %s
+    section TODO
+    TODO : 2, 3        
+    section TODO
+    TODO : 3, 5    
+    TODO : 4, 6    
+    TODO : 5, 8    
+```
+## Arcade Simulator
+```mermaid
+gantt
+    title TODO Arcade Simulator elements
+    dateFormat X
+    axisFormat %s
+    section TODO
+    TODO : 2, 3        
+    section TODO
+    TODO : 3, 5    
+    TODO : 4, 6    
+    TODO : 5, 8    
+```
+
 
 # Todo/In Progress/Done tasks/features
 All issues are currently being tracked on a private Jira server for developer convenience.  A way may be found to share a live public view of this in future.
