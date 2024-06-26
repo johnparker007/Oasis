@@ -5,7 +5,7 @@
 - Enable creation of interactive 3d arcade machines for use in arcade environments.
 - Importing of 3d models from packages such as Blender (probably as GLTF files), to build machines plus other environment assets.
 - For fruit machines, support for extracting and importing 2d layouts from Mfme.
-- For MAME, export function for text only 'classic' internal layouts for inclusion in MAME source, plus graphical 2d layouts.
+- For MAME, export function for text only 'classic' internal layouts for inclusion in MAME source, plus graphical 'dx' layouts.
 
 # Architecture
 <!-- Mermaid diagram tools/info:
