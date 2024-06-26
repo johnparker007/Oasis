@@ -1,3 +1,12 @@
+# Objectives
+- Enable creation and playing of 3d arcade environments.
+- Support multiplayer rooms as well as single player mode, including offline play. 
+- Support for desktop, joypad and VR controls/rendering.
+- Enable creation of interactive 3d arcade machines for use in arcade environments.
+- Importing of 3d models from packages such as Blender (probably as GLTF files), to build machines plus other environment assets.
+- For fruit machines, support for extracting and importing 2d layouts from Mfme.
+- For MAME, export function for text only 'classic' internal layouts for inclusion in MAME source, plus graphical 2d layouts.
+
 # Architecture
 <!-- Mermaid diagram tools/info:
     https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/creating-diagrams
