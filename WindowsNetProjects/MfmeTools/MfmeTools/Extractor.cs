@@ -73,11 +73,7 @@ namespace Oasis.MfmeTools
 
             MFMEAutomation.ToggleEditMode(inputSimulator);
 
-            // In ArcadeSim Extractor, I would extract the Configuration here,
-            // such as 8x MPU4 Lamp Columns bytes, then the config for the platform
-            // such as MPU4 fields, Scorpion fields etc.  Not sure if this will
-            // be relevant to this tool, at least initially (since all this is
-            // handled in the MAME driver).
+            ExtractConfiguration(inputSimulator);
 
             MFMEAutomation.CopyOffLampsToBackground(inputSimulator);
 
@@ -426,7 +422,609 @@ namespace Oasis.MfmeTools
             //rect.Height -= MfmeScraper.kMfmeWindowTitlebarHeight;
         }
 
+        private void ExtractConfiguration(InputSimulator inputSimulator)
+        {
+            //ExtractComponentBackground extractBackground = new ExtractComponentBackground(componentStandardData);
+            //extractBackground.BmpImageFilename = Path.GetFileName(saveFullPath);
 
+            //Extractor.Layout.Components.Add(extractBackground);
+
+            //Extractor.Layout.BackgroundImageSize.X = componentStandardData.Size.x;
+            //Extractor.Layout.BackgroundImageSize.Y = componentStandardData.Size.y;
+
+
+
+
+
+            //            if (MachineConfiguration.Platform == MachineConfigurationData.PlatformType.MPU4)
+            //            {
+            //                yield return ExtractMPU4CharacteriserLampData(inputSimulator);
+            //            }
+
+            //            bool scrapingSetup = false;
+            //            switch (MachineConfiguration.Platform)
+            //            {
+            //                case MachineConfigurationData.PlatformType.MPU4:
+            //                    scrapingSetup = true;
+            //                    break;
+            //                default:
+            //                    break;
+            //            }
+
+            //            if (scrapingSetup)
+            //            {
+            //                EmulatorScraper.SetScrapeChildIfFound(true, "Game Configuration");
+
+            //                // move mouse to top of screen so it doesn't hover over fields and break scraping
+            //                //inputSimulator.Mouse.MoveMouseBy(0, -2000);
+            //                inputSimulator.Mouse.MoveMouseTo(1, 1);
+
+            //                // open configuration window
+            //                inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LMENU, WindowsInput.Native.VirtualKeyCode.VK_C);
+
+            //                yield return new WaitForSeconds(2f);
+            //            }
+
+            //            switch (MachineConfiguration.Platform)
+            //            {
+            //                case MachineConfigurationData.PlatformType.MPU4:
+            //                    yield return ExtractConfigurationPageMPU4(inputSimulator);
+            //                    break;
+            //                case MachineConfigurationData.PlatformType.Scorpion1:
+            //                    yield return ExtractConfigurationPageScorpion1(inputSimulator);
+            //                    break;
+            //                case MachineConfigurationData.PlatformType.Scorpion2:
+            //                    yield return ExtractConfigurationPageScorpion2(inputSimulator);
+            //                    break;
+            //                case MachineConfigurationData.PlatformType.MPS2:
+            //                    yield return ExtractConfigurationPageMPS2(inputSimulator);
+            //                    break;
+            //                case MachineConfigurationData.PlatformType.M1AB:
+            //                    yield return ExtractConfigurationPageM1AB(inputSimulator);
+            //                    break;
+
+
+
+
+            //                default:
+            //                    break;
+            //            }
+
+            //            if (scrapingSetup)
+            //            {
+            //                // close configuration window
+            //                inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LMENU, WindowsInput.Native.VirtualKeyCode.F4);
+            //                yield return new WaitForSeconds(2f);
+
+            //                EmulatorScraper.SetScrapeChildIfFound(false);
+            //            }
+
+            //            yield return null;
+        }
+
+        private void ExtractMPU4CharacteriserLampData(InputSimulator inputSimulator)
+        {
+
+        }
+
+        //            if (MachineConfiguration.Platform == MachineConfigurationData.PlatformType.MPU4)
+        //            {
+        //                yield return ExtractMPU4CharacteriserLampData(inputSimulator);
+        //            }
+
+        //            bool scrapingSetup = false;
+        //            switch (MachineConfiguration.Platform)
+        //            {
+        //                case MachineConfigurationData.PlatformType.MPU4:
+        //                    scrapingSetup = true;
+        //                    break;
+        //                default:
+        //                    break;
+        //            }
+
+        //            if (scrapingSetup)
+        //            {
+        //                EmulatorScraper.SetScrapeChildIfFound(true, "Game Configuration");
+
+        //                // move mouse to top of screen so it doesn't hover over fields and break scraping
+        //                //inputSimulator.Mouse.MoveMouseBy(0, -2000);
+        //                inputSimulator.Mouse.MoveMouseTo(1, 1);
+
+        //                // open configuration window
+        //                inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LMENU, WindowsInput.Native.VirtualKeyCode.VK_C);
+
+        //                yield return new WaitForSeconds(2f);
+        //            }
+
+        //            switch (MachineConfiguration.Platform)
+        //            {
+        //                case MachineConfigurationData.PlatformType.MPU4:
+        //                    yield return ExtractConfigurationPageMPU4(inputSimulator);
+        //                    break;
+        //                case MachineConfigurationData.PlatformType.Scorpion1:
+        //                    yield return ExtractConfigurationPageScorpion1(inputSimulator);
+        //                    break;
+        //                case MachineConfigurationData.PlatformType.Scorpion2:
+        //                    yield return ExtractConfigurationPageScorpion2(inputSimulator);
+        //                    break;
+        //                case MachineConfigurationData.PlatformType.MPS2:
+        //                    yield return ExtractConfigurationPageMPS2(inputSimulator);
+        //                    break;
+        //                case MachineConfigurationData.PlatformType.M1AB:
+        //                    yield return ExtractConfigurationPageM1AB(inputSimulator);
+        //                    break;
+
+
+
+
+        //                default:
+        //                    break;
+        //            }
+
+        //            if (scrapingSetup)
+        //            {
+        //                // close configuration window
+        //                inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LMENU, WindowsInput.Native.VirtualKeyCode.F4);
+        //                yield return new WaitForSeconds(2f);
+
+        //                EmulatorScraper.SetScrapeChildIfFound(false);
+        //            }
+
+        //            yield return null;
+        //        }
+
+        //        private IEnumerator ExtractMPU4CharacteriserLampData(InputSimulator inputSimulator)
+        //        {
+        //            EmulatorScraper.SetScrapeChildIfFound(false);
+
+        //            ExtractConfigurationMPU4 configuration = new ExtractConfigurationMPU4();
+
+        //            inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LMENU, WindowsInput.Native.VirtualKeyCode.VK_D);
+        //            yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+
+        //            // can't use shortcut as sometimes it changes from *C*haracteriser, to C*h*aracteriser, so Downs are safer:
+        //            inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
+        //            yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+
+        //            inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
+        //            yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+
+        //            inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
+        //            yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+
+        //            inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
+        //            yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+
+        //            inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
+        //            yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+
+        //            inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
+        //            yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+
+        //            inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.RETURN);
+        //            yield return new WaitForSeconds(MFMEAutomation.kMediumDelay);
+
+        //            inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LSHIFT, WindowsInput.Native.VirtualKeyCode.TAB);
+        //            yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+
+        //            inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
+        //            yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+
+        //            inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
+        //            yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+
+        //            inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
+        //            yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+
+        //            inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
+        //            yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+
+        //            inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
+        //            yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+
+        //            inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
+        //            yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+
+        //            inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
+        //            yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+
+        //            inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.DOWN);
+        //            yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+
+        //            for (int characteriserLamp = 0; characteriserLamp < ExtractConfigurationMPU4.kCharacteriserLampCount; ++characteriserLamp)
+        //            {
+        //                inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.TAB);
+        //                yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+
+        //                inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LCONTROL, WindowsInput.Native.VirtualKeyCode.VK_C);
+        //                yield return new WaitForSeconds(MFMEAutomation.kShortDelay);
+
+        //                configuration.CharacteriserLamps[characteriserLamp] = GUIUtility.systemCopyBuffer;
+        //            }
+
+        //            inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LMENU, WindowsInput.Native.VirtualKeyCode.F4);
+        //            yield return new WaitForSeconds(MFMEAutomation.kLongDelay);
+
+        //            Extractor.Layout.Configuration = configuration;
+
+        //            EmulatorScraper.SetScrapeChildIfFound(true);
+        //        }
+
+        //        private IEnumerator ExtractConfigurationPageMPU4(InputSimulator inputSimulator)
+        //        {
+        //            ExtractConfigurationMPU4 configuration = (ExtractConfigurationMPU4)Extractor.Layout.Configuration;
+
+        //            configuration.MeterElements[0].TypeAsString = MFMEScraper.GetDropdownCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationMPU4MeterInType1_DropdownX),
+        //                MFMEScraperConstants.kConfigurationMPU4MeterInType1_DropdownY);
+
+        //            configuration.MeterElements[1].TypeAsString = MFMEScraper.GetDropdownCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationMPU4MeterInType2_DropdownX),
+        //                MFMEScraperConstants.kConfigurationMPU4MeterInType2_DropdownY);
+
+        //            configuration.MeterElements[2].TypeAsString = MFMEScraper.GetDropdownCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationMPU4MeterInType3_DropdownX),
+        //                MFMEScraperConstants.kConfigurationMPU4MeterInType3_DropdownY);
+
+        //            configuration.MeterElements[0].MultiplierAsString = MFMEScraper.GetDropdownCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationMPU4MeterInMultiplier1_DropdownX),
+        //                MFMEScraperConstants.kConfigurationMPU4MeterInMultiplier1_DropdownY);
+
+        //            configuration.MeterElements[1].MultiplierAsString = MFMEScraper.GetDropdownCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationMPU4MeterInMultiplier2_DropdownX),
+        //                MFMEScraperConstants.kConfigurationMPU4MeterInMultiplier2_DropdownY);
+
+        //            configuration.MeterElements[2].MultiplierAsString = MFMEScraper.GetDropdownCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationMPU4MeterInMultiplier3_DropdownX),
+        //                MFMEScraperConstants.kConfigurationMPU4MeterInMultiplier3_DropdownY);
+
+        //            configuration.MeterElements[3].TypeAsString = MFMEScraper.GetDropdownCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationMPU4MeterOutType1_DropdownX),
+        //                MFMEScraperConstants.kConfigurationMPU4MeterOutType1_DropdownY);
+
+        //            configuration.MeterElements[4].TypeAsString = MFMEScraper.GetDropdownCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationMPU4MeterOutType2_DropdownX),
+        //                MFMEScraperConstants.kConfigurationMPU4MeterOutType2_DropdownY);
+
+        //            configuration.MeterElements[5].TypeAsString = MFMEScraper.GetDropdownCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationMPU4MeterOutType3_DropdownX),
+        //                MFMEScraperConstants.kConfigurationMPU4MeterOutType3_DropdownY);
+
+        //            configuration.MeterElements[3].MultiplierAsString = MFMEScraper.GetDropdownCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationMPU4MeterOutMultiplier1_DropdownX),
+        //                MFMEScraperConstants.kConfigurationMPU4MeterOutMultiplier1_DropdownY);
+
+        //            configuration.MeterElements[4].MultiplierAsString = MFMEScraper.GetDropdownCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationMPU4MeterOutMultiplier2_DropdownX),
+        //                MFMEScraperConstants.kConfigurationMPU4MeterOutMultiplier2_DropdownY);
+
+        //            configuration.MeterElements[5].MultiplierAsString = MFMEScraper.GetDropdownCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationMPU4MeterOutMultiplier3_DropdownX),
+        //                MFMEScraperConstants.kConfigurationMPU4MeterOutMultiplier3_DropdownY);
+
+        //            configuration.Stake = MFMEScraper.GetDropdownCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationMPU4Stake_DropdownX),
+        //                MFMEScraperConstants.kConfigurationMPU4Stake_DropdownY);
+
+        //            configuration.Prize = MFMEScraper.GetDropdownCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationMPU4Prize_DropdownX),
+        //                MFMEScraperConstants.kConfigurationMPU4Prize_DropdownY);
+
+        //            configuration.Percentage = MFMEScraper.GetDropdownCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationMPU4Percentage_DropdownX),
+        //                MFMEScraperConstants.kConfigurationMPU4Percentage_DropdownY);
+
+        //            if (MFMEScraper.GetRadioButtonValue(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationMPU4VolumeControlAuto_RadioButtonTopLeftX),
+        //                MFMEScraperConstants.kConfigurationMPU4VolumeControlAuto_RadioButtonTopLeftY))
+        //            {
+        //                configuration.VolumeControl = MFMEExtract.ExtractConfigurationMPU4.VolumeControlType.Auto;
+        //            }
+        //            else
+        //            {
+        //                configuration.VolumeControl = MFMEExtract.ExtractConfigurationMPU4.VolumeControlType.Manual;
+        //            }
+
+        //            configuration.RomPagingAsString = MFMEScraper.GetDropdownCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationMPU4ROMPaging_DropdownX),
+        //                MFMEScraperConstants.kConfigurationMPU4ROMPaging_DropdownY);
+
+        //            if (MFMEScraper.GetRadioButtonValue(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationMPU4LVDNo_RadioButtonTopLeftX),
+        //                MFMEScraperConstants.kConfigurationMPU4LVDNo_RadioButtonTopLeftY))
+        //            {
+        //                configuration.LVD = MFMEExtract.ExtractConfigurationMPU4.LVDType.No;
+        //            }
+        //            else
+        //            {
+        //                configuration.LVD = MFMEExtract.ExtractConfigurationMPU4.LVDType.Yes;
+        //            }
+
+        //            if (MFMEScraper.GetRadioButtonValue(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationMPU4DisplayReel_RadioButtonTopLeftX),
+        //                MFMEScraperConstants.kConfigurationMPU4DisplayReel_RadioButtonTopLeftY))
+        //            {
+        //                configuration.Display = MFMEExtract.ExtractConfigurationMPU4.DisplayType.Reel;
+        //            }
+        //            else
+        //            {
+        //                configuration.Display = MFMEExtract.ExtractConfigurationMPU4.DisplayType.Video;
+        //            }
+
+        //            if (MFMEScraper.GetRadioButtonValue(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationMPU4LampTestPass_RadioButtonTopLeftX),
+        //                MFMEScraperConstants.kConfigurationMPU4LampTestPass_RadioButtonTopLeftY))
+        //            {
+        //                configuration.LampTest = MFMEExtract.ExtractConfigurationMPU4.LampTestType.Pass;
+        //            }
+        //            else
+        //            {
+        //                configuration.LampTest = MFMEExtract.ExtractConfigurationMPU4.LampTestType.Fail;
+        //            }
+
+        //            configuration.PayoutAsString = MFMEScraper.GetDropdownCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationMPU4Payout_DropdownX),
+        //                MFMEScraperConstants.kConfigurationMPU4Payout_DropdownY);
+
+        //            configuration.ExtenderAux1AsString = MFMEScraper.GetDropdownCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationMPU4ExtenderAux1_DropdownX),
+        //                MFMEScraperConstants.kConfigurationMPU4ExtenderAux1_DropdownY);
+
+        //            configuration.SevenSegDisplayAsString = MFMEScraper.GetDropdownCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationMPU4SevenSegDisplay_DropdownX),
+        //                MFMEScraperConstants.kConfigurationMPU4SevenSegDisplay_DropdownY);
+
+        //            configuration.ReelsAsString = MFMEScraper.GetDropdownCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationMPU4Reels_DropdownX),
+        //                MFMEScraperConstants.kConfigurationMPU4Reels_DropdownY);
+
+        //            configuration.SoundAsString = MFMEScraper.GetDropdownCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationMPU4Sound_DropdownX),
+        //                MFMEScraperConstants.kConfigurationMPU4Sound_DropdownY);
+
+        //            configuration.EncryptionAsString = MFMEScraper.GetDropdownCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationMPU4Encryption_DropdownX),
+        //                MFMEScraperConstants.kConfigurationMPU4Encryption_DropdownY);
+
+        //            configuration.CharacterAsString = MFMEScraper.GetDropdownCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationMPU4Character_DropdownX),
+        //                MFMEScraperConstants.kConfigurationMPU4Character_DropdownY);
+
+        //            configuration.DataPakAsString = MFMEScraper.GetDropdownCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationMPU4DataPak_DropdownX),
+        //                MFMEScraperConstants.kConfigurationMPU4DataPak_DropdownY);
+
+        //            configuration.SwitchServiceAsString = MFMEScraper.GetFieldCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationMPU4SwitchService_X),
+        //                MFMEScraperConstants.kConfigurationMPU4SwitchService_Y);
+
+        //            configuration.SwitchCashAsString = MFMEScraper.GetFieldCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationMPU4SwitchCash_X),
+        //                MFMEScraperConstants.kConfigurationMPU4SwitchCash_Y);
+
+        //            configuration.SwitchRefillAsString = MFMEScraper.GetFieldCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationMPU4SwitchRefill_X),
+        //                MFMEScraperConstants.kConfigurationMPU4SwitchRefill_Y);
+
+        //            configuration.SwitchTestAsString = MFMEScraper.GetFieldCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationMPU4SwitchTest_X),
+        //                MFMEScraperConstants.kConfigurationMPU4SwitchTest_Y);
+
+        //            configuration.SwitchTopUpAsString = MFMEScraper.GetFieldCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationMPU4SwitchTopUp_X),
+        //                MFMEScraperConstants.kConfigurationMPU4SwitchTopUp_Y);
+
+        //            configuration.Aux1Invert = MFMEScraper.GetCheckboxValue(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationMPU4Aux1Invert_CheckboxX),
+        //                MFMEScraperConstants.kConfigurationMPU4Aux1Invert_CheckboxY);
+
+        //            configuration.Aux2Invert = MFMEScraper.GetCheckboxValue(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationMPU4Aux2Invert_CheckboxX),
+        //                MFMEScraperConstants.kConfigurationMPU4Aux2Invert_CheckboxY);
+
+        //            configuration.DoorInvert = MFMEScraper.GetCheckboxValue(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationMPU4DoorInvert_CheckboxX),
+        //                MFMEScraperConstants.kConfigurationMPU4DoorInvert_CheckboxY);
+
+
+        //            if (MFMEScraper.GetRadioButtonValue(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationMPU4AlphaCableNormal_RadioButtonTopLeftX),
+        //                MFMEScraperConstants.kConfigurationMPU4AlphaCableNormal_RadioButtonTopLeftY))
+        //            {
+        //                configuration.AlphaCable = MFMEExtract.ExtractConfigurationMPU4.AlphaCableType.Normal;
+        //            }
+        //            else
+        //            {
+        //                configuration.AlphaCable = MFMEExtract.ExtractConfigurationMPU4.AlphaCableType.CR;
+        //            }
+
+        //            if (MFMEScraper.GetRadioButtonValue(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationMPU4ModType2_RadioButtonTopLeftX),
+        //                MFMEScraperConstants.kConfigurationMPU4ModType2_RadioButtonTopLeftY))
+        //            {
+        //                configuration.ModType = MFMEExtract.ExtractConfigurationMPU4.ModTypes.Two;
+        //            }
+        //            else
+        //            {
+        //                configuration.ModType = MFMEExtract.ExtractConfigurationMPU4.ModTypes.Four;
+        //            }
+
+        //            if (MFMEScraper.GetRadioButtonValue(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationMPU4CabinetStyleDefault_RadioButtonTopLeftX),
+        //                MFMEScraperConstants.kConfigurationMPU4CabinetStyleDefault_RadioButtonTopLeftY))
+        //            {
+        //                configuration.CabinetStyle = MFMEExtract.ExtractConfigurationMPU4.CabinetStyleType.Default;
+        //            }
+        //            else if (MFMEScraper.GetRadioButtonValue(EmulatorScraper,
+        //                 MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationMPU4CabinetStyleRio_RadioButtonTopLeftX),
+        //                 MFMEScraperConstants.kConfigurationMPU4CabinetStyleRio_RadioButtonTopLeftY))
+        //            {
+        //                configuration.CabinetStyle = MFMEExtract.ExtractConfigurationMPU4.CabinetStyleType.Rio;
+        //            }
+        //            else
+        //            {
+        //                configuration.CabinetStyle = MFMEExtract.ExtractConfigurationMPU4.CabinetStyleType.Genesis;
+        //            }
+
+        //            yield return null;
+        //        }
+
+        //        private IEnumerator ExtractConfigurationPageScorpion1(InputSimulator inputSimulator)
+        //        {
+        //            ExtractConfigurationScorpion1 configuration = new ExtractConfigurationScorpion1();
+
+        //            configuration.MeterElements[0].TypeAsString = MFMEScraper.GetDropdownCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationScorpion1MeterInType1_DropdownX),
+        //                MFMEScraperConstants.kConfigurationScorpion1MeterInType1_DropdownY);
+
+        //            configuration.MeterElements[1].TypeAsString = MFMEScraper.GetDropdownCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationScorpion1MeterInType2_DropdownX),
+        //                MFMEScraperConstants.kConfigurationScorpion1MeterInType2_DropdownY);
+
+        //            configuration.MeterElements[2].TypeAsString = MFMEScraper.GetDropdownCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationScorpion1MeterInType3_DropdownX),
+        //                MFMEScraperConstants.kConfigurationScorpion1MeterInType3_DropdownY);
+
+        //            configuration.MeterElements[0].MultiplierAsString = MFMEScraper.GetDropdownCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationScorpion1MeterInMultiplier1_DropdownX),
+        //                MFMEScraperConstants.kConfigurationScorpion1MeterInMultiplier1_DropdownY);
+
+        //            configuration.MeterElements[1].MultiplierAsString = MFMEScraper.GetDropdownCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationScorpion1MeterInMultiplier2_DropdownX),
+        //                MFMEScraperConstants.kConfigurationScorpion1MeterInMultiplier2_DropdownY);
+
+        //            configuration.MeterElements[2].MultiplierAsString = MFMEScraper.GetDropdownCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationScorpion1MeterInMultiplier3_DropdownX),
+        //                MFMEScraperConstants.kConfigurationScorpion1MeterInMultiplier3_DropdownY);
+
+        //            configuration.MeterElements[3].TypeAsString = MFMEScraper.GetDropdownCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationScorpion1MeterOutType1_DropdownX),
+        //                MFMEScraperConstants.kConfigurationScorpion1MeterOutType1_DropdownY);
+
+        //            configuration.MeterElements[4].TypeAsString = MFMEScraper.GetDropdownCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationScorpion1MeterOutType2_DropdownX),
+        //                MFMEScraperConstants.kConfigurationScorpion1MeterOutType2_DropdownY);
+
+        //            configuration.MeterElements[5].TypeAsString = MFMEScraper.GetDropdownCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationScorpion1MeterOutType3_DropdownX),
+        //                MFMEScraperConstants.kConfigurationScorpion1MeterOutType3_DropdownY);
+
+        //            configuration.MeterElements[3].MultiplierAsString = MFMEScraper.GetDropdownCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationScorpion1MeterOutMultiplier1_DropdownX),
+        //                MFMEScraperConstants.kConfigurationScorpion1MeterOutMultiplier1_DropdownY);
+
+        //            configuration.MeterElements[4].MultiplierAsString = MFMEScraper.GetDropdownCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationScorpion1MeterOutMultiplier2_DropdownX),
+        //                MFMEScraperConstants.kConfigurationScorpion1MeterOutMultiplier2_DropdownY);
+
+        //            configuration.MeterElements[5].MultiplierAsString = MFMEScraper.GetDropdownCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationScorpion1MeterOutMultiplier3_DropdownX),
+        //                MFMEScraperConstants.kConfigurationScorpion1MeterOutMultiplier3_DropdownY);
+
+        //            configuration.Stake = MFMEScraper.GetDropdownCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationScorpion1Stake_DropdownX),
+        //                MFMEScraperConstants.kConfigurationScorpion1Stake_DropdownY);
+
+        //            configuration.Prize = MFMEScraper.GetDropdownCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationScorpion1Prize_DropdownX),
+        //                MFMEScraperConstants.kConfigurationScorpion1Prize_DropdownY);
+
+        //            configuration.Percentage = MFMEScraper.GetDropdownCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationScorpion1Percentage_DropdownX),
+        //                MFMEScraperConstants.kConfigurationScorpion1Percentage_DropdownY);
+
+        //            configuration.EncryptionAsString = MFMEScraper.GetDropdownCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationScorpion1Encryption_DropdownX),
+        //                MFMEScraperConstants.kConfigurationScorpion1Encryption_DropdownY);
+
+        //            configuration.SwitchServiceAsString = MFMEScraper.GetFieldCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationScorpion1SwitchService_X),
+        //                MFMEScraperConstants.kConfigurationScorpion1SwitchService_Y);
+
+        //            configuration.SwitchCashAsString = MFMEScraper.GetFieldCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationScorpion1SwitchCash_X),
+        //                MFMEScraperConstants.kConfigurationScorpion1SwitchCash_Y);
+
+        //            configuration.SwitchRefillAsString = MFMEScraper.GetFieldCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationScorpion1SwitchRefill_X),
+        //                MFMEScraperConstants.kConfigurationScorpion1SwitchRefill_Y);
+
+        //            configuration.SwitchTestAsString = MFMEScraper.GetFieldCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationScorpion1SwitchTest_X),
+        //                MFMEScraperConstants.kConfigurationScorpion1SwitchTest_Y);
+
+        //            configuration.SwitchPaySense1AsString = MFMEScraper.GetFieldCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationScorpion1SwitchPaysense1_X),
+        //                MFMEScraperConstants.kConfigurationScorpion1SwitchPaysense1_Y);
+
+        //            configuration.SwitchPaySense2AsString = MFMEScraper.GetFieldCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationScorpion1SwitchPaysense2_X),
+        //                MFMEScraperConstants.kConfigurationScorpion1SwitchPaysense2_Y);
+
+        //            configuration.SwitchPaySense3AsString = MFMEScraper.GetFieldCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationScorpion1SwitchPaysense3_X),
+        //                MFMEScraperConstants.kConfigurationScorpion1SwitchPaysense3_Y);
+
+        //            configuration.SwitchPaySense4AsString = MFMEScraper.GetFieldCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationScorpion1SwitchPaysense4_X),
+        //                MFMEScraperConstants.kConfigurationScorpion1SwitchPaysense4_Y);
+
+        //            configuration.SwitchDMBusyAsString = MFMEScraper.GetFieldCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationScorpion1SwitchDMBusy_X),
+        //                MFMEScraperConstants.kConfigurationScorpion1SwitchDMBusy_Y);
+
+        //            configuration.DataPakAsString = MFMEScraper.GetFieldCharacters(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationScorpion1DataPak_DropdownX),
+        //                MFMEScraperConstants.kConfigurationScorpion1DataPak_DropdownY);
+
+        //            if (MFMEScraper.GetRadioButtonValue(EmulatorScraper,
+        //                MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationScorpion1SampledSoundNEC_RadioButtonTopLeftX),
+        //                MFMEScraperConstants.kConfigurationScorpion1SampledSoundNEC_RadioButtonTopLeftY))
+        //            {
+        //                configuration.SampledSound = ExtractConfigurationScorpion1.SampledSoundType.NEC;
+        //            }
+        //            else if (MFMEScraper.GetRadioButtonValue(EmulatorScraper,
+        //                 MFMEScraper.GetGameConfigurationX(MFMEScraperConstants.kConfigurationScorpion1SampledSoundOKI_RadioButtonTopLeftX),
+        //                 MFMEScraperConstants.kConfigurationScorpion1SampledSoundOKI_RadioButtonTopLeftY))
+        //            {
+        //                configuration.SampledSound = ExtractConfigurationScorpion1.SampledSoundType.OKI;
+        //            }
+        //            else
+        //            {
+        //                configuration.SampledSound = ExtractConfigurationScorpion1.SampledSoundType.Global;
+        //            }
+
+        //            Extractor.Layout.Configuration = configuration;
+
+        //            yield return null;
+        //        }
+
+        //        private IEnumerator ExtractConfigurationPageScorpion2(InputSimulator inputSimulator)
+        //        {
+        //            ExtractConfigurationScorpion2 configuration = new ExtractConfigurationScorpion2();
+
+        //            Extractor.Layout.Configuration = configuration;
+
+        //            yield return null;
+        //        }
+
+        //        private IEnumerator ExtractConfigurationPageMPS2(InputSimulator inputSimulator)
+        //        {
+        //            ExtractConfigurationMPS2 configuration = new ExtractConfigurationMPS2();
+
+        //            Extractor.Layout.Configuration = configuration;
+
+        //            yield return null;
+        //        }
+
+        //        private IEnumerator ExtractConfigurationPageM1AB(InputSimulator inputSimulator)
+        //        {
+        //            ExtractConfigurationM1AB configuration = new ExtractConfigurationM1AB();
+
+        //            Extractor.Layout.Configuration = configuration;
+
+        //            yield return null;
+        //        }
 
     }
 }
