@@ -4,7 +4,7 @@ using UnityEngine.EventSystems;
 namespace DynamicPanels
 {
 	[DisallowMultipleComponent]
-	public class PanelHeader : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
+	public class PanelHeader : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IPointerClickHandler
 	{
 #pragma warning disable 0649
 		[SerializeField]
@@ -58,5 +58,18 @@ namespace DynamicPanels
 		{
 			pointerId = PanelManager.NON_EXISTING_TOUCH;
 		}
-	}
+
+        public void OnPointerClick(PointerEventData eventData)
+        {
+            if(eventData.button == PointerEventData.InputButton.Right)
+            {
+				ProcessRightClick(eventData);
+            }
+        }
+
+        private void ProcessRightClick(PointerEventData eventData)
+        {
+            Debug.LogError("Right click panel tab");
+        }
+    }
 }
