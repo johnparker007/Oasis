@@ -131,7 +131,7 @@ GameObject:
   - component: {fileID: 114949715950445638}
   - component: {fileID: -1304870516647291739}
   m_Layer: 5
-  m_Name: MenuItem
+  m_Name: ContextMenuItem
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -175,7 +175,7 @@ MonoBehaviour:
   m_MinWidth: -1
   m_MinHeight: -1
   m_PreferredWidth: -1
-  m_PreferredHeight: 33
+  m_PreferredHeight: 28
   m_FlexibleWidth: -1
   m_FlexibleHeight: -1
   m_LayoutPriority: 1

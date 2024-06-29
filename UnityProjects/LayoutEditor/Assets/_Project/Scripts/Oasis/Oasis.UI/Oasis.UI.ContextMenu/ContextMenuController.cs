@@ -46,8 +46,13 @@ namespace Oasis.UI.ContextMenu
         public void CreateMenu()
         {
             _contextMenu = Instantiate(ContextMenuPrefab, transform);
-            _contextMenu.AddItem("test1");
-            _contextMenu.AddItem("test2");
+            _contextMenu.AddItem("Test Normal");
+            _contextMenu.AddItem("Test Normal 2");
+            _contextMenu.AddToggle("Test Toggle", true);
+            _contextMenu.AddSeparator();
+            _contextMenu.AddItem("Test Normal 3");
+            _contextMenu.AddItem("Test Normal 4");
+            _contextMenu.AddItem("Test Normal 5");
         }
 
         public void DestroyMenu()

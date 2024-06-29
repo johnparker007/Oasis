@@ -17,7 +17,7 @@ GameObject:
   - component: {fileID: 225280226039488996}
   - component: {fileID: 8143040896738589515}
   m_Layer: 5
-  m_Name: Menu
+  m_Name: ContextMenu
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -161,3 +161,4 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ContextMenuItemPrefab: {fileID: -1304870516647291739, guid: 7f9ab2a07e35b35428a88d28fc4c6b3f, type: 3}
+  ContextMenuSeparatorPrefab: {fileID: 1374796119476572, guid: ebdd6c5dc7451c744becdfe1102344b5, type: 3}
