@@ -12,7 +12,10 @@ namespace Oasis.Graphics
     [Serializable]
     public class OasisImage
     {
+        // we hide this as these arrays can be very large and will hang the editor
+        [HideInInspector]
         public Color32[] ImageData;
+
         public int Width;
         public int Height;
 
