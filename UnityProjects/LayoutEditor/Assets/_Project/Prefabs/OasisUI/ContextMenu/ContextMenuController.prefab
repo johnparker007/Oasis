@@ -50,4 +50,4 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ContextMenuPrefab: {fileID: 8143040896738589515, guid: 9efa5dfbb900cc447b8f837a8135edc5, type: 3}
-  ContextMenuItemPrefab: {fileID: -1304870516647291739, guid: 7f9ab2a07e35b35428a88d28fc4c6b3f, type: 3}
+  ContextMenuDefinitions: {fileID: 11400000, guid: 4d8a82c8f15a19247a6c9bd7d78dc8a0, type: 2}

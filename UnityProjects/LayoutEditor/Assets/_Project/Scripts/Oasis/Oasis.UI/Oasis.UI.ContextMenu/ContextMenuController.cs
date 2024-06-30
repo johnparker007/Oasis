@@ -1,3 +1,4 @@
+using Oasis.UI.ContextMenu.Data;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -7,6 +8,7 @@ namespace Oasis.UI.ContextMenu
     public class ContextMenuController : MonoBehaviour
     {
         public ContextMenu ContextMenuPrefab;
+        public ContextMenuDefinitions ContextMenuDefinitions;
 
         private ContextMenu _contextMenu = null;
 
@@ -29,13 +31,20 @@ namespace Oasis.UI.ContextMenu
         public void CreateMenu()
         {
             _contextMenu = Instantiate(ContextMenuPrefab, transform);
-            _contextMenu.AddItem("Test Normal");
-            _contextMenu.AddItem("Test Normal 2");
-            _contextMenu.AddToggle("Test Toggle", true);
-            _contextMenu.AddSeparator();
-            _contextMenu.AddItem("Test Normal 3");
-            _contextMenu.AddItem("Test Normal 4");
-            _contextMenu.AddItem("Test Normal 5");
+
+            ContextMenuDefinition contextMenuDefinition = ContextMenuDefinitions.GetMenu("Emulation");
+            foreach(ContextMenuDefinitionBase element in contextMenuDefinition.Elements)
+            {
+                if(element.GetType() == typeof(ContextMenuItemDefinition))
+                {
+                    _contextMenu.AddItem(((ContextMenuItemDefinition)element).DisplayText);
+                }
+                else if(element.GetType() == typeof(ContextMenuSeparatorDefinition))
+                {
+                    _contextMenu.AddSeparator();
+                }
+
+            }
         }
 
         public void DestroyMenu()
