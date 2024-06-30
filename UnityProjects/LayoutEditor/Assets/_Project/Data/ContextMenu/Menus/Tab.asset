@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 25c8d7c232763e14386b129193bdb2c0, type: 3}
   m_Name: Tab
   m_EditorClassIdentifier: 
+  Name: Tab
   Elements:
   - {fileID: 11400000, guid: 3be4047349e3e83429642773275808c6, type: 2}
   - {fileID: 11400000, guid: bce6da975a2318c4393a58958a579d17, type: 2}

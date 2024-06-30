@@ -1,5 +1,6 @@
 using DynamicPanels;
 using Oasis.UI;
+using Oasis.UI.ContextMenu;
 using RuntimeInspectorNamespace;
 using System.Collections.Generic;
 using UnityEngine;
@@ -12,6 +13,7 @@ namespace Oasis
         public GameObject EditorCanvasGameObject;
         public RuntimeHierarchy RuntimeHierarchy;
         public DynamicPanelsCanvas DynamicPanelsCanvas;
+        public ContextMenuController ContextMenuController;
 
         public RootUIParentForm RootUIParentForm
         {

@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 25c8d7c232763e14386b129193bdb2c0, type: 3}
   m_Name: Emulation
   m_EditorClassIdentifier: 
+  Name: Emulation
   Elements:
   - {fileID: 11400000, guid: 20635ddcc19904f4a98cbec15edcbaaf, type: 2}
   - {fileID: 11400000, guid: f1505263e02d61045853c6e8be0721f2, type: 2}

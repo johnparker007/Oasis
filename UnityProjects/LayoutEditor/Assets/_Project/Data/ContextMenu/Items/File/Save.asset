@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 48639320d2b039f4484c5a6d78d60e2b, type: 3}
   m_Name: Save
   m_EditorClassIdentifier: 
+  Name: FileSave
   EventName: FileSave
   Toggle: 0
   DisplayText: Save

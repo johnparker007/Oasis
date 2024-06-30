@@ -12,3 +12,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1d16860155815b540a47dc9aec5aa476, type: 3}
   m_Name: Separator
   m_EditorClassIdentifier: 
+  Name: Separator

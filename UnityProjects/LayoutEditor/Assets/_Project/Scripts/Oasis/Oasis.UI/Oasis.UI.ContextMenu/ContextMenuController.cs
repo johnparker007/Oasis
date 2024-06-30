@@ -8,24 +8,7 @@ namespace Oasis.UI.ContextMenu
     {
         public ContextMenu ContextMenuPrefab;
 
-        public static ContextMenuController Instance = null;
-
         private ContextMenu _contextMenu = null;
-
-        public void Awake()
-        {
-            if (Instance == null)
-            {
-                Instance = this;
-            }
-            else if (this != Instance)
-            {
-                Destroy(this);
-                return;
-            }
-
-            DontDestroyOnLoad(gameObject);
-        }
 
         // TEMP - HACK to test!
         private void Update()

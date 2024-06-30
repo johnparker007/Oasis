@@ -9,10 +9,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 48639320d2b039f4484c5a6d78d60e2b, type: 3}
-  m_Name: Open
+  m_Script: {fileID: 11500000, guid: f71e6760f48cffa41a30f6afc18b6034, type: 3}
+  m_Name: _Menus
   m_EditorClassIdentifier: 
-  Name: FileOpen
-  EventName: FileOpen
-  Toggle: 0
-  DisplayText: Open
+  Definitions:
+  - {fileID: 11400000, guid: 37618efbcdbd9a64b82b520b9cfa8d7a, type: 2}
+  - {fileID: 11400000, guid: 7fb2047f54621064095490ea0881dd07, type: 2}
