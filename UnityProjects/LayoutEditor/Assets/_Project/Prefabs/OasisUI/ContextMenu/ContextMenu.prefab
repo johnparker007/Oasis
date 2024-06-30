@@ -160,5 +160,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5e63f4b37534aec4983c182842634e7e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  ContextMenuItemPrefab: {fileID: -1304870516647291739, guid: 7f9ab2a07e35b35428a88d28fc4c6b3f, type: 3}
+  ContextMenuDefinitions: {fileID: 11400000, guid: 4d8a82c8f15a19247a6c9bd7d78dc8a0, type: 2}
+  ContextMenuPrefab: {fileID: 8143040896738589515}
+  ContextMenuItemCommandPrefab: {fileID: -1304870516647291739, guid: 7f9ab2a07e35b35428a88d28fc4c6b3f, type: 3}
+  ContextMenuItemTogglePrefab: {fileID: 3345126902109793364, guid: 53e584a044a78524bb8e43b87f08d571, type: 3}
+  ContextMenuItemLinkPrefab: {fileID: 648876192840734499, guid: b8cf1c585293cf444b3d4bd91cc89aec, type: 3}
   ContextMenuSeparatorPrefab: {fileID: 1374796119476572, guid: ebdd6c5dc7451c744becdfe1102344b5, type: 3}
