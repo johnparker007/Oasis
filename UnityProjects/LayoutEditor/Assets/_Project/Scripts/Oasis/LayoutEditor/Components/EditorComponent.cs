@@ -49,6 +49,11 @@ namespace Oasis.LayoutEditor
 
         public virtual void Initialise(Layout.Component component)
         {
+            //Prevent null pointer exception
+            if (component == null) {
+                return;
+            }
+
             Component = component;
 
             Component.OnValueSet += OnComponentValueSet;

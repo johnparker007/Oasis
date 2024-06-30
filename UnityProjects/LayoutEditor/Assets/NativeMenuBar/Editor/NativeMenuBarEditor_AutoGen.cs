@@ -64,6 +64,16 @@ public static class NativeMenuBar_AutoGen
     {
         return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "File/Import MFME").IsInteractable;
     }
+    [UnityEditor.MenuItem("NativeMenuBar/File/Save Oasis Project")]
+    private static void FileSaveOasisProject()
+    {
+        menubar.MenuItems.Single(item => item.FullPath == "File/Save Oasis Project").Action.Invoke();
+    }
+    [UnityEditor.MenuItem("NativeMenuBar/File/Save Oasis Project", true)]
+    private static bool FileSaveOasisProjectValidate()
+    {
+        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "File/Save Oasis Project").IsInteractable;
+    }
     [UnityEditor.MenuItem("NativeMenuBar/File/Export MAME")]
     private static void FileExportMAME()
     {
