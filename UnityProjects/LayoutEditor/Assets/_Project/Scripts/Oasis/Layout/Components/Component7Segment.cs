@@ -4,8 +4,20 @@ using UnityEngine;
 
 namespace Oasis.Layout
 {
-    public class Component7Segment : ComponentSegment
+    public class Component7Segment : ComponentSegment, SerializableDictionary 
     {
-    }
+        public new void SetRepresentation(KeyValuePair<string, Dictionary<string, object>> representation) {
+            if (representation.Key == this.GetType().Name) {
+            }
+        }
 
+        public new KeyValuePair<string,  Dictionary<string, object>> GetRepresentation() {
+            KeyValuePair<string, Dictionary<string, object>> baseRepresentation = base.GetRepresentation();
+            Dictionary<string, object> dictionary = baseRepresentation.Value;
+            // Add fields to dictionary from this component
+            // ...
+            KeyValuePair<string, Dictionary<string, object>> representation = new KeyValuePair<string, Dictionary<string, object>>(this.GetType().Name, dictionary);
+            return representation;
+        }
+    }
 }

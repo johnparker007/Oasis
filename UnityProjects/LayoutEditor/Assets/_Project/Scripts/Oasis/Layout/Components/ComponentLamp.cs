@@ -2,10 +2,13 @@ using Oasis.Graphics;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System.Runtime.Serialization;
+using System;
 
 namespace Oasis.Layout
 {
-    public class ComponentLamp : ComponentInput
+    // TODO: Why is a lamp a ComponentInput when ComponentSwitch and ComponentButton are not?
+    public class ComponentLamp : ComponentInput, SerializableDictionary
     {
         private int _number = 0;
         public int Number
@@ -15,6 +18,26 @@ namespace Oasis.Layout
         }
 
         public OasisImage OasisImage;
+
+        public new void SetRepresentation(KeyValuePair<string, Dictionary<string, object>> representation) {
+            foreach (KeyValuePair<string, object> field in representation.Value) {
+                switch(field.Key) {
+                    case "number":
+                    int number = 0;
+                    Int32.TryParse((string)field.Value, out number);
+                    _number = number;
+                    break;
+                }
+            }
+        }
+
+        public new KeyValuePair<string,  Dictionary<string, object>> GetRepresentation() {
+            KeyValuePair<string, Dictionary<string, object>> baseRepresentation = base.GetRepresentation();
+            Dictionary<string, object> dictionary = baseRepresentation.Value;
+            dictionary["number"] = _number.ToString();
+            KeyValuePair<string, Dictionary<string, object>> representation = new KeyValuePair<string, Dictionary<string, object>>(this.GetType().Name, dictionary);
+            return representation;
+        }
     }
 
 }
