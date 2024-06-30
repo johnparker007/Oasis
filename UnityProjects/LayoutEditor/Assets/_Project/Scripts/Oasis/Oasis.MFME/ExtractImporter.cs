@@ -25,6 +25,11 @@ namespace Oasis.MFME
 
         private void OnMFMEExtractLayoutLoaded(MfmeTools.Shared.Extract.Layout layout)
         {
+            if(_layoutObject != null)
+            {
+                GameObject.Destroy(_layoutObject.gameObject);
+            }
+
             GameObject layoutGameObject = new GameObject("Layout");
             _layoutObject = layoutGameObject.AddComponent<LayoutObject>();
             _layoutObject.transform.parent = _layoutEditor.transform;
