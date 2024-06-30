@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 25c8d7c232763e14386b129193bdb2c0, type: 3}
+  m_Name: Tab
+  m_EditorClassIdentifier: 
+  Elements:
+  - {fileID: 11400000, guid: 3be4047349e3e83429642773275808c6, type: 2}
+  - {fileID: 11400000, guid: bce6da975a2318c4393a58958a579d17, type: 2}
+  - {fileID: 11400000, guid: bedcf739803f8fe4f8066858f56303cd, type: 2}
+  - {fileID: 11400000, guid: 37618efbcdbd9a64b82b520b9cfa8d7a, type: 2}
