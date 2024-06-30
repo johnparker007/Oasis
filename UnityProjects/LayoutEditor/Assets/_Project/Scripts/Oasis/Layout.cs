@@ -8,10 +8,17 @@ using Oasis.LayoutEditor;
 using Component = Oasis.Layout.Component;
 using EditorComponent = Oasis.LayoutEditor.EditorComponent;
 using Oasis.LayoutEditor.Tools;
+using System.Runtime.Serialization;
+using System.Runtime.Serialization.Formatters.Binary;
+using System.IO;
 
 namespace Oasis
 {
-    public class LayoutObject : MonoBehaviour
+
+    // TODO: Implement ISerializable for LayoutObject itself
+    // Figure out how to trigger the nested serialization of the components
+    
+    public class LayoutObject : MonoBehaviour, ISerializable 
     {
         public UnityEvent OnChanged = new UnityEvent();
         public UnityEvent OnDirty = new UnityEvent();
@@ -33,6 +40,21 @@ namespace Oasis
         {
             get;
             set;
+        }
+
+        public void GetObjectData (System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context)
+        {
+            info.AddValue("component_type", this.GetType().Name);
+            int componentIndex = 0;
+            byte[] serializedComponents = {};
+            IFormatter formatter = new BinaryFormatter();
+            MemoryStream ms = new MemoryStream();
+            foreach (Component component in Components) {
+                if (component is ISerializable) {
+                        formatter.Serialize(ms, ((ISerializable)component));
+                }
+            }
+            info.AddValue("components", ms.ToArray());
         }
 
         public void AddComponent(Component component, bool overlay = false)

@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System.Runtime.Serialization;
 
 namespace Oasis.Layout
 {
@@ -29,6 +30,13 @@ namespace Oasis.Layout
             OnValueSet?.Invoke(this);
         }
 
+        public void GetObjectData (System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context)
+        {
+            info.AddValue("x", _position.x);
+            info.AddValue("y", _position.y);
+            info.AddValue("width", _size.x);
+            info.AddValue("height", _size.y);
+        }
     }
 
 }
