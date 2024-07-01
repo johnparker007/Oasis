@@ -2,6 +2,7 @@ using Oasis.Graphics;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System.Runtime.Serialization;
 
 namespace Oasis.Layout
 {
@@ -19,6 +20,14 @@ namespace Oasis.Layout
             public int ButtonNumber;  
             //public string PortTag;
             //public string FieldMask;
+
+           
+        }
+
+         public void GetObjectData(System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context)
+        {
+            base.GetObjectData(info, context);
+            info.AddValue("component_type", this.GetType().Name);        
         }
 
         public InputData Input = new InputData();
