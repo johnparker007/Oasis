@@ -7,6 +7,7 @@ namespace Oasis.Input
     using UnityEngine;
     using Oasis.LayoutEditor;
     using static Oasis.Layout.ComponentInput;
+    using Oasis.Layout;
 
     public class ComponentInputController : MonoBehaviour
     {
@@ -82,7 +83,7 @@ namespace Oasis.Input
             _keyCodeStates.Clear();
             _inputDatas.Clear();
 
-            foreach (Layout.Component component in LayoutEditor.Layout.Components)
+            foreach (Layout.Component component in LayoutEditor.Layout.MfmeImportView.Data.Components)
             {
                 if(!component.GetType().IsSubclassOf(typeof(Layout.ComponentInput)))
                 {
@@ -111,7 +112,7 @@ namespace Oasis.Input
             // TODO else remove listener if set?  Also in OnDestroy if set?
         }
 
-        private void OnLayoutAddComponent(Layout.Component component)
+        private void OnLayoutAddComponent(Layout.Component component, View view)
         {
             RebuildActiveKeycodes();
         }

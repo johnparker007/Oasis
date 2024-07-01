@@ -13,17 +13,31 @@ namespace Oasis
 {
     public class LayoutObject : MonoBehaviour
     {
-        public UnityEvent OnChanged = new UnityEvent();
-        public UnityEvent OnDirty = new UnityEvent();
-        public UnityEvent<Component> OnAddComponent = new UnityEvent<Component>();
+        public static readonly string kMfmeViewName = "MFME Import";
 
-        public List<Component> Components = new List<Component>();
-        public List<EditorComponent> EditorComponents = new List<EditorComponent>();
+        // the data to be loaded/saved goes in this data class:
+        [System.Serializable]
+        public class LayoutData
+        {
+            public List<View> Views = new();
+        }
+
+        public LayoutData Data = new LayoutData();
+
+        public UnityEvent<Component, View> OnAddComponent = new();
 
         public Editor LayoutEditor
         {
             get;
             set;
+        }
+
+        public View MfmeImportView
+        {
+            get
+            {
+                return GetView(kMfmeViewName);
+            }
         }
 
         //private bool _changed = false;
@@ -35,121 +49,39 @@ namespace Oasis
             set;
         }
 
-        public void AddComponent(Component component, bool overlay = false)
+        public View AddView(string name)
         {
-            Components.Add(component);
+            GameObject viewGameObject = new GameObject();
+            View view = (View)viewGameObject.AddComponent(typeof(View));
+            viewGameObject.transform.SetParent(transform);
 
-            EditorComponent editorComponent = null;
-            if (component.GetType() == typeof(ComponentBackground))
-            {
-                EditorComponentBackground editorComponentBackground = Instantiate(
-                    LayoutEditor.EditorComponentBackgroundPrefab, 
-                    LayoutEditor.UIController.EditorCanvasGameObject.transform);
+            Data.Views.Add(view);
 
-                editorComponent = editorComponentBackground;
+            view.Initialise(name, LayoutEditor);
 
-                editorComponentBackground.Initialise((ComponentBackground)component, LayoutEditor);
+            return view;
+        }
 
+        public void DeleteView(string name)
+        {
+            View view = GetView(name);
+            DeleteView(view);
+        }
 
-// JP quick hack for now:
-RectTransform editorCanvasRectTransform = LayoutEditor.UIController.EditorCanvasGameObject.GetComponent<RectTransform>();
-editorCanvasRectTransform.sizeDelta = new Vector2(component.Size.x, component.Size.y);
+        public void DeleteView(View view)
+        {
+            Data.Views.Remove(view);
+            Destroy(view.gameObject);
+        }
 
-            }
-            else if (component.GetType() == typeof(ComponentLamp))
-            {
-                EditorComponentLamp editorComponentLamp = Instantiate(
-                    LayoutEditor.EditorComponentLampPrefab,
-                    LayoutEditor.UIController.EditorCanvasGameObject.transform);
-
-                editorComponent = editorComponentLamp;
-
-                editorComponentLamp.Initialise((ComponentLamp)component, LayoutEditor);
-            }
-            else if (component.GetType() == typeof(ComponentReel))
-            {
-                ComponentReel componentReel = (ComponentReel)component;
-                if (overlay)
-                {
-                    EditorComponentOverlay editorComponentOverlay = Instantiate(
-                        LayoutEditor.EditorComponentOverlayPrefab,
-                        LayoutEditor.UIController.EditorCanvasGameObject.transform);
-
-                    editorComponent = editorComponentOverlay;
-
-                    editorComponentOverlay.Initialise(componentReel, LayoutEditor);
-                }
-                else
-                {
-                    EditorComponentReel editorComponentReel = Instantiate(
-                        LayoutEditor.EditorComponentReelPrefab,
-                        LayoutEditor.UIController.EditorCanvasGameObject.transform);
-
-                    editorComponent = editorComponentReel;
-
-                    editorComponentReel.Initialise(componentReel, LayoutEditor);
-
-                    if (componentReel.OverlayOasisImage != null)
-                    {
-                        AddComponent(component, true);
-                    }
-                }
-            }
-            else if (component.GetType() == typeof(Component7Segment))
-            {
-                EditorComponent7Segment editorComponent7Segment = Instantiate(
-                    LayoutEditor.EditorComponentSevenSegmentPrefab,
-                    LayoutEditor.UIController.EditorCanvasGameObject.transform);
-
-                editorComponent = editorComponent7Segment;
-
-                editorComponent7Segment.Initialise((Component7Segment)component, LayoutEditor);
-            }
-            else if (component.GetType() == typeof(ComponentAlpha))
-            {
-                EditorComponentAlpha editorComponentAlpha = Instantiate(
-                    LayoutEditor.EditorComponentAlphaPrefab,
-                    LayoutEditor.UIController.EditorCanvasGameObject.transform);
-
-                editorComponent = editorComponentAlpha;
-
-                editorComponentAlpha.Initialise((ComponentAlpha)component, LayoutEditor);
-            }
-
-            if(editorComponent != null)
-            {
-                //LayoutEditor.UIController.RuntimeHierarchy.AddToPseudoScene(
-                //    editorComponent.HierarchyPseudoSceneName, editorComponent.transform);
-
-                //editorComponent.gameObject.name = editorComponent.HierarchyName;
-
-                LayoutEditor.UIController.RuntimeHierarchy.AddToPseudoScene(
-                    editorComponent.HierarchyPseudoSceneName, component.transform);
-
-                component.gameObject.name = editorComponent.HierarchyName;
-            }
-
-            OnAddComponent?.Invoke(component);
-            OnChanged?.Invoke();
+        public View GetView(string name)
+        {
+            return Data.Views.Find(x => x.Name == name);
         }
 
         public void RemapLamps(string[] mfmeLampTable, string[] mameLampTable)
         {
-            Mpu4LampRemapper lampRemapper = new Mpu4LampRemapper(mfmeLampTable, mameLampTable);
-
-            foreach (Component component in Components)
-            {
-                // TODO buttons, leds as lamps, any other lamp driven components
-                if (component.GetType() != typeof(ComponentLamp))
-                {
-                    continue;
-                }
-
-                ComponentLamp componentLamp = (ComponentLamp)component;
-
-                // TODO I think only lamps 0-127 are scrambled
-                componentLamp.Number = lampRemapper.GetRemappedLampNumber(componentLamp.Number);
-            }
+            MfmeImportView.RemapLamps(mfmeLampTable, mameLampTable);
         }
     }
 }

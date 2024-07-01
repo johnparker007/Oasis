@@ -16,6 +16,7 @@ namespace Oasis.MFME
 
         private Editor _layoutEditor = null;
         private LayoutObject _layoutObject = null;
+        private View _mfmeView = null;
 
         public ExtractImporter(Editor layoutEditor)
         {
@@ -35,7 +36,8 @@ namespace Oasis.MFME
             _layoutObject.transform.parent = _layoutEditor.transform;
             _layoutObject.LayoutEditor = _layoutEditor;
             _layoutEditor.Layout = _layoutObject;
-            
+
+            _mfmeView = _layoutEditor.Layout.AddView(LayoutObject.kMfmeViewName);
 
             foreach (ExtractComponentBase extractComponent in layout.Components)
             {
@@ -84,7 +86,7 @@ namespace Oasis.MFME
         {
             GameObject componentLampGameObject = new GameObject();
             ComponentLamp componentLamp = (ComponentLamp)componentLampGameObject.AddComponent(typeof(ComponentLamp));
-            componentLampGameObject.transform.SetParent(_layoutObject.transform);
+            componentLampGameObject.transform.SetParent(_mfmeView.transform);
 
             componentLamp.Position = new Vector2Int(
                 extractComponentLamp.Position.X,
@@ -137,32 +139,32 @@ namespace Oasis.MFME
             // lamp component:
             componentLamp.Number = (int)extractComponentLamp.GetLampNumber(0); // TODO will need to be checking lamp HasValue since it's nullable
 
-            _layoutObject.AddComponent(componentLamp);
+            _mfmeView.AddComponent(componentLamp);
         }
 
         private void ImportCheckbox(ExtractComponentCheckbox extractComponentCheckbox)
         {
             GameObject componentSwitchGameObject = new GameObject();
             ComponentSwitch componentSwitch = (ComponentSwitch)componentSwitchGameObject.AddComponent(typeof(ComponentSwitch));
-            componentSwitchGameObject.transform.SetParent(_layoutObject.transform);
+            componentSwitchGameObject.transform.SetParent(_mfmeView.transform);
 
-            _layoutObject.AddComponent(componentSwitch);
+            _mfmeView.AddComponent(componentSwitch);
         }
 
         private void ImportButton(ExtractComponentButton extractComponentButton)
         {
             GameObject componentButtonGameObject = new GameObject();
             ComponentButton componentButton = (ComponentButton)componentButtonGameObject.AddComponent(typeof(ComponentButton));
-            componentButtonGameObject.transform.SetParent(_layoutObject.transform);
+            componentButtonGameObject.transform.SetParent(_mfmeView.transform);
 
-            _layoutObject.AddComponent(componentButton);
+            _mfmeView.AddComponent(componentButton);
         }
 
         private void ImportReel(ExtractComponentReel extractComponentReel)
         {
             GameObject componentReelGameObject = new GameObject();
             ComponentReel componentReel = (ComponentReel)componentReelGameObject.AddComponent(typeof(ComponentReel));
-            componentReelGameObject.transform.SetParent(_layoutObject.transform);
+            componentReelGameObject.transform.SetParent(_mfmeView.transform);
 
             componentReel.Position = new Vector2Int(
                 extractComponentReel.Position.X,
@@ -207,7 +209,7 @@ namespace Oasis.MFME
 
             componentReel.VisibleScale2D = scale;
 
-            _layoutObject.AddComponent(componentReel);
+            _mfmeView.AddComponent(componentReel);
         }
 
         private void ImportBackground(ExtractComponentBackground extractComponentBackground)
@@ -216,7 +218,7 @@ namespace Oasis.MFME
             ComponentBackground componentBackground = 
                 (ComponentBackground)componentBackgroundGameObject.AddComponent(typeof(ComponentBackground));
 
-            componentBackgroundGameObject.transform.SetParent(_layoutObject.transform);
+            componentBackgroundGameObject.transform.SetParent(_mfmeView.transform);
 
             componentBackground.Position = new Vector2Int(0, 0);
             componentBackground.Size = new Vector2Int(
@@ -227,7 +229,7 @@ namespace Oasis.MFME
 
             componentBackground.OasisImage = new Graphics.OasisImage(bmpImageFilePath, null, false);
 
-            _layoutObject.AddComponent(componentBackground);
+            _mfmeView.AddComponent(componentBackground);
         }
 
         private void ImportSevenSegment(ExtractComponentSevenSegment extractComponentSevenSegment)
@@ -236,7 +238,7 @@ namespace Oasis.MFME
             Component7Segment component7Segment =
                 (Component7Segment)component7SegmentGameObject.AddComponent(typeof(Component7Segment));
 
-            component7SegmentGameObject.transform.SetParent(_layoutObject.transform);
+            component7SegmentGameObject.transform.SetParent(_mfmeView.transform);
 
             component7Segment.Position = new Vector2Int(
                 extractComponentSevenSegment.Position.X,
@@ -248,7 +250,7 @@ namespace Oasis.MFME
 
             component7Segment.Number = extractComponentSevenSegment.Number;
 
-            _layoutObject.AddComponent(component7Segment);
+            _mfmeView.AddComponent(component7Segment);
         }
 
         private void ImportAlpha(ExtractComponentAlpha extractComponentAlpha)
@@ -257,7 +259,7 @@ namespace Oasis.MFME
             ComponentAlpha componentAlpha =
                 (ComponentAlpha)componentAlphaGameObject.AddComponent(typeof(ComponentAlpha));
 
-            componentAlphaGameObject.transform.SetParent(_layoutObject.transform);
+            componentAlphaGameObject.transform.SetParent(_mfmeView.transform);
 
             componentAlpha.Position = new Vector2Int(
                 extractComponentAlpha.Position.X,
@@ -269,7 +271,7 @@ namespace Oasis.MFME
 
             componentAlpha.Reversed = extractComponentAlpha.Reversed;
 
-            _layoutObject.AddComponent(componentAlpha);
+            _mfmeView.AddComponent(componentAlpha);
         }
 
         private void ImportAlphaNew(ExtractComponentAlphaNew extractComponentAlphaNew)
@@ -278,7 +280,7 @@ namespace Oasis.MFME
             ComponentAlpha componentAlpha =
                 (ComponentAlpha)componentAlphaGameObject.AddComponent(typeof(ComponentAlpha));
 
-            componentAlphaGameObject.transform.SetParent(_layoutObject.transform);
+            componentAlphaGameObject.transform.SetParent(_mfmeView.transform);
 
             componentAlpha.Position = new Vector2Int(
                 extractComponentAlphaNew.Position.X,
@@ -290,7 +292,7 @@ namespace Oasis.MFME
 
             componentAlpha.Reversed = extractComponentAlphaNew.Reversed;
 
-            _layoutObject.AddComponent(componentAlpha);
+            _mfmeView.AddComponent(componentAlpha);
         }
     }
 
