@@ -14,7 +14,7 @@ namespace Oasis.LayoutEditor
         private const float kBrightnessRange = kOnBrightness - kOffBrightness;
 
 
-        protected int? _number = -1;
+        protected int? _number = null;
         protected Material _material = null;
 
         protected override void Awake()
