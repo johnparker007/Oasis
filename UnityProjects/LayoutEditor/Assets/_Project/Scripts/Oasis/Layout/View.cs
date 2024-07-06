@@ -20,6 +20,8 @@ namespace Oasis.Layout
 
         public ViewData Data = new ViewData();
 
+        public UnityEvent OnChanged = new UnityEvent();
+
         private Editor _layoutEditor = null;
 
         public string Name

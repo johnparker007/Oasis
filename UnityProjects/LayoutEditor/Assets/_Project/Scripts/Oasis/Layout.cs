@@ -40,15 +40,6 @@ namespace Oasis
             }
         }
 
-        //private bool _changed = false;
-        //private bool _dirty = false;
-
-        public bool Dirty
-        {
-            get;
-            set;
-        }
-
         public View AddView(string name)
         {
             GameObject viewGameObject = new GameObject();
