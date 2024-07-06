@@ -12,7 +12,7 @@ namespace Oasis.LayoutEditor
         public override string HierarchyPseudoSceneName => "Lamps";
         public override string HierarchyName => "Lamp";
 
-        private int _number = -1;
+        private int? _number = null;
         private Image _image = null;
         private Sprite _sprite = null;
         private Texture2D _texture2d = null;
@@ -46,13 +46,12 @@ namespace Oasis.LayoutEditor
 
         protected override void UpdateStateFromEmulation()
         {
-            // TOIMPROVE using a -1 for this stuff is crappy code!
-            if (_number == -1)
+            if (!_number.HasValue)
             {
                 return;
             }
 
-            if (LayoutEditor.MameController.LampValues[_number] == 1)
+            if (LayoutEditor.MameController.LampValues[(int)_number] == 1)
             {
                 _image.color = Color.white;
             }

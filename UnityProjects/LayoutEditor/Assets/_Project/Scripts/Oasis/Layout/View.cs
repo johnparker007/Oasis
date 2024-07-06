@@ -153,9 +153,13 @@ namespace Oasis.Layout
                 }
 
                 ComponentLamp componentLamp = (ComponentLamp)component;
+                if(!componentLamp.Number.HasValue)
+                {
+                    continue;
+                }
 
                 // TODO I think only lamps 0-127 are scrambled
-                componentLamp.Number = lampRemapper.GetRemappedLampNumber(componentLamp.Number);
+                componentLamp.Number = lampRemapper.GetRemappedLampNumber((int)componentLamp.Number);
             }
         }
     }

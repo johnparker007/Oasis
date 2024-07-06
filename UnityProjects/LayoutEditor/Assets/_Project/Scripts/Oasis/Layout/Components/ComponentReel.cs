@@ -7,15 +7,15 @@ namespace Oasis.Layout
 {
     public class ComponentReel : Component
     {
-        private int _number = 0;
-        public int Number
+        private int? _number = null;
+        public int? Number
         {
             get => _number;
             set { _number = value; base.OnValueSetInvoke(); }
         }
 
-        private int _stops = 0;
-        public int Stops
+        private int? _stops = null;
+        public int? Stops
         {
             get => _stops;
             set { _stops = value; base.OnValueSetInvoke(); }

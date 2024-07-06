@@ -24,13 +24,12 @@ namespace Oasis.LayoutEditor
 
         protected override void UpdateStateFromEmulation()
         {
-            // TOIMPROVE using a -1 for this stuff is crappy code!
-            if (_number == -1)
+            if (!_number.HasValue)
             {
                 return;
             }
 
-            int segmentValue = LayoutEditor.MameController.DigitValues[_number];
+            int segmentValue = LayoutEditor.MameController.VfdValues[(int)_number];
 
             // listed in MAME-defined bit order from rendlay.cpp:
 

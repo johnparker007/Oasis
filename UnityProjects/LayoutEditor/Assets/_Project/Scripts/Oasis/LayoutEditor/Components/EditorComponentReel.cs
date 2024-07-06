@@ -66,14 +66,13 @@ float yScale = ComponentReel.VisibleScale2D;
 
         protected override void UpdateStateFromEmulation()
         {
-            // TOIMPROVE using a -1 for this stuff is crappy code!
-            if (ComponentReel.Number == -1)
+            if (!ComponentReel.Number.HasValue)
             {
                 return;
             }
 
             // TODO do UV scrolling for horizontal/vertical reels
-            int reelPosition = LayoutEditor.MameController.ReelValues[ComponentReel.Number];
+            int reelPosition = LayoutEditor.MameController.ReelValues[(int)ComponentReel.Number];
             // TODO hardcoded at 96 steps for now, just to get working with JPM impact popeye layout test
             const int kTEMPReelYPositionCount = 96;
             float normalisedOffset = (float)reelPosition / kTEMPReelYPositionCount;
