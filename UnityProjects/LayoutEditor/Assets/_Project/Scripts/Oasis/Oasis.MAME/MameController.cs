@@ -173,8 +173,11 @@ namespace Oasis.MAME
 
         public UnityEvent OnImportComplete = new UnityEvent();
 
-        private Process _process = null;
-        //private bool _nextStdOutLineIsPixelData = false;
+        public Process Process
+        {
+            get;
+            private set;
+        } = null;
 
 
         public string MameExeDirectoryFullPath
@@ -185,22 +188,20 @@ namespace Oasis.MAME
             }
         }
 
-        // XXX TEMP initial hack test:
         private void Update()
         {
-           // SnapshotPixels();
         }
 
         private void OnDestroy()
         {
             // TODO this stuff will want to be in the StopMame() flow etc
-            if(_process != null)
+            if(Process != null)
             {
-                _process.OutputDataReceived -= OnOutputDataReceived;
+                Process.OutputDataReceived -= OnOutputDataReceived;
 
-                _process.CancelOutputRead();
+                Process.CancelOutputRead();
 
-                _process.Kill();
+                Process.Kill();
             }
         }
 
@@ -248,7 +249,7 @@ namespace Oasis.MAME
             }
 
             string arguments = DebugMameRomName + additionalArgs;
-            _process = StartProcess(MameExeDirectoryFullPath, kMameExeFilename, arguments);
+            Process = StartProcess(MameExeDirectoryFullPath, kMameExeFilename, arguments);
 
             if(ForceVsyncOffWhenRunning)
             {
@@ -262,7 +263,7 @@ namespace Oasis.MAME
 
             UnityEngine.Debug.Log("Sending: " + pluginCommand);
 
-            _process.StandardInput.WriteLine(pluginCommand);
+            Process.StandardInput.WriteLine(pluginCommand);
 
             if (ForceVsyncOffWhenRunning)
             {
@@ -276,7 +277,7 @@ namespace Oasis.MAME
 
             UnityEngine.Debug.Log("Sending: " + pluginCommand);
 
-            _process.StandardInput.WriteLine(pluginCommand);
+            Process.StandardInput.WriteLine(pluginCommand);
         }
 
         public void HardReset()
@@ -285,7 +286,7 @@ namespace Oasis.MAME
 
             UnityEngine.Debug.Log("Sending: " + pluginCommand);
 
-            _process.StandardInput.WriteLine(pluginCommand);
+            Process.StandardInput.WriteLine(pluginCommand);
         }
 
         public void Pause()
@@ -294,7 +295,7 @@ namespace Oasis.MAME
 
             UnityEngine.Debug.Log("Sending: " + pluginCommand);
 
-            _process.StandardInput.WriteLine(pluginCommand);
+            Process.StandardInput.WriteLine(pluginCommand);
         }
 
         public void Resume()
@@ -303,7 +304,7 @@ namespace Oasis.MAME
 
             UnityEngine.Debug.Log("Sending: " + pluginCommand);
 
-            _process.StandardInput.WriteLine(pluginCommand);
+            Process.StandardInput.WriteLine(pluginCommand);
         } 
 
         public void SetThrottled(bool throttled)
@@ -315,7 +316,7 @@ namespace Oasis.MAME
 
             UnityEngine.Debug.Log("Sending: " + pluginCommand);
 
-            _process.StandardInput.WriteLine(pluginCommand);
+            Process.StandardInput.WriteLine(pluginCommand);
         }
 
         public void StateLoad()
@@ -327,7 +328,7 @@ namespace Oasis.MAME
 
             UnityEngine.Debug.Log("Sending: " + pluginCommand);
 
-            _process.StandardInput.WriteLine(pluginCommand);
+            Process.StandardInput.WriteLine(pluginCommand);
         }
 
         public void StateSave()
@@ -339,7 +340,7 @@ namespace Oasis.MAME
 
             UnityEngine.Debug.Log("Sending: " + pluginCommand);
 
-            _process.StandardInput.WriteLine(pluginCommand);
+            Process.StandardInput.WriteLine(pluginCommand);
         }
 
         public void StateSaveAndExit()
@@ -351,7 +352,7 @@ namespace Oasis.MAME
 
             UnityEngine.Debug.Log("Sending: " + pluginCommand);
 
-            _process.StandardInput.WriteLine(pluginCommand);
+            Process.StandardInput.WriteLine(pluginCommand);
         }
 
         // XXX TEMP to test
@@ -361,7 +362,7 @@ namespace Oasis.MAME
 
             UnityEngine.Debug.Log("Sending: " + pluginCommand);
 
-            _process.StandardInput.WriteLine(pluginCommand);
+            Process.StandardInput.WriteLine(pluginCommand);
         }
 
         // TOIMPROVE - this class will need breaking up into input/output/commands etc
@@ -390,7 +391,7 @@ namespace Oasis.MAME
 
             UnityEngine.Debug.Log("Sending: " + pluginCommand);
 
-            _process.StandardInput.WriteLine(pluginCommand);
+            Process.StandardInput.WriteLine(pluginCommand);
         }
 
         private Process StartProcess(string workingDirectory, string filename, string arguments)

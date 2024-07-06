@@ -32,12 +32,17 @@ namespace Oasis.LayoutEditor
         {
         }
 
-        protected virtual void LateUpdate()
+        // Ideally don't override this in derived EditorComponents, so that blocking logic due
+        // to Emulation not running holds true:
+        protected void LateUpdate()
         {
             // we call this in LateUpdate, as from stepping through desktop recordings, this brings the latency
             // between lamps on the internal MAME layout and the Unity rendered Lamps etc to zero frames (perfectly
             // in sync):
-            UpdateStateFromEmulation();
+            if (LayoutEditor != null && LayoutEditor.MameController.Process != null)
+            {
+                UpdateStateFromEmulation();
+            }
         }
 
         protected virtual void OnDestroy()
