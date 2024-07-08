@@ -133,7 +133,7 @@ namespace Oasis.Layout
                 component.gameObject.name = editorComponent.HierarchyName;
             }
 
-            Editor.Instance.Layout.OnAddComponent?.Invoke(component, this);
+            Editor.Instance.Project.Layout.OnAddComponent?.Invoke(component, this);
             OnChanged?.Invoke();
         }
 

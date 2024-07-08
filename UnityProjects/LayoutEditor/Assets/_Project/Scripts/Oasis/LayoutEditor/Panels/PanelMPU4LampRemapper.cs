@@ -72,7 +72,7 @@ namespace Oasis.LayoutEditor.Panels
                 targetLampColumnsText[lampColumnIndex] = TargetLampColumns.InputFields[lampColumnIndex].text;
             }
 
-            Editor.Instance.Layout.RemapLamps(sourceLampColumnsText, targetLampColumnsText);
+            Editor.Instance.Project.Layout.RemapLamps(sourceLampColumnsText, targetLampColumnsText);
         }
 
     }

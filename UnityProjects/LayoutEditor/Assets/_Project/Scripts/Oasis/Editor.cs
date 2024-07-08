@@ -40,26 +40,12 @@ namespace Oasis
             private set;
         } = null;
 
-        public LayoutObject Layout
-        {
-            get
-            {
-                return _layout;
-            }
-            set
-            {
-                _layout = value;
-                OnLayoutSet?.Invoke(_layout);
-            }
-        }
 
         public ExtractImporter ExtractImporter
         {
             get;
             private set;
         } = null;
-
-        private LayoutObject _layout = null;
 
 
         private void Awake()

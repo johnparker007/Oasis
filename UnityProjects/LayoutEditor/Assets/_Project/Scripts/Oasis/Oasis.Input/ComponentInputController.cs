@@ -81,7 +81,7 @@ namespace Oasis.Input
             _keyCodeStates.Clear();
             _inputDatas.Clear();
 
-            foreach (Layout.Component component in Editor.Instance.Layout.MfmeImportView.Data.Components)
+            foreach (Layout.Component component in Editor.Instance.Project.Layout.MfmeImportView.Data.Components)
             {
                 if(!component.GetType().IsSubclassOf(typeof(Layout.ComponentInput)))
                 {

@@ -32,9 +32,9 @@ namespace Oasis.MFME
             GameObject layoutGameObject = new GameObject("Layout");
             _layoutObject = layoutGameObject.AddComponent<LayoutObject>();
             _layoutObject.transform.parent = Editor.Instance.transform;
-            Editor.Instance.Layout = _layoutObject;
+            Editor.Instance.Project.Layout = _layoutObject;
 
-            _mfmeView = Editor.Instance.Layout.AddView(LayoutObject.kMfmeViewName);
+            _mfmeView = Editor.Instance.Project.Layout.AddView(LayoutObject.kMfmeViewName);
 
             foreach (ExtractComponentBase extractComponent in layout.Components)
             {
