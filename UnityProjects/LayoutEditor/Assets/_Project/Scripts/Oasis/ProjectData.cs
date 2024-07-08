@@ -10,7 +10,11 @@ namespace Oasis
     [Serializable]
     public class ProjectData
     {
-        public SettingsData Settings;
+        public SettingsData Settings
+        {   
+            get;
+            set;
+        }
 
         private LayoutObject _layout = null;
 

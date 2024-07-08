@@ -21,7 +21,16 @@ namespace Oasis.Project
             public MameController.PlatformType Platform;
         }
 
-        public MameData Mame;
-        public FruitMachineData FruitMachine;
+        public MameData Mame
+        {
+            get;
+            set;
+        }
+
+        public FruitMachineData FruitMachine
+        {
+            get;
+            set;
+        }
     }
 }
