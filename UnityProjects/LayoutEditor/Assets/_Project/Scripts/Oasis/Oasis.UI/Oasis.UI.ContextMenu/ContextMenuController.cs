@@ -18,8 +18,8 @@ namespace Oasis.UI.ContextMenu
             {
                 if(_contextMenu == null)
                 {
-                    //CreateMenu("Tab");
-                    CreateMenu("Emulation");
+                    CreateMenu("Tab");
+                    //CreateMenu("Emulation");
                 }
                 else
                 {

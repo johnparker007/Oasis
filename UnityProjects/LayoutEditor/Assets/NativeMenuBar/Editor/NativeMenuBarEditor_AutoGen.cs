@@ -14,45 +14,35 @@ public static class NativeMenuBar_AutoGen
 {
 
     private static NativeMenuBar.Core.MenuBar menubar = UnityEngine.Object.FindObjectOfType<NativeMenuBar.Core.MenuBar>();
-    [UnityEditor.MenuItem("NativeMenuBar/File/New")]
-    private static void FileNew()
+    [UnityEditor.MenuItem("NativeMenuBar/File/New Project")]
+    private static void FileNewProject()
     {
-        menubar.MenuItems.Single(item => item.FullPath == "File/New").Action.Invoke();
+        menubar.MenuItems.Single(item => item.FullPath == "File/New Project").Action.Invoke();
     }
-    [UnityEditor.MenuItem("NativeMenuBar/File/New", true)]
-    private static bool FileNewValidate()
+    [UnityEditor.MenuItem("NativeMenuBar/File/New Project", true)]
+    private static bool FileNewProjectValidate()
     {
-        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "File/New").IsInteractable;
+        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "File/New Project").IsInteractable;
     }
-    [UnityEditor.MenuItem("NativeMenuBar/File/Open _O")]
-    private static void FileOpen()
+    [UnityEditor.MenuItem("NativeMenuBar/File/Open Project _O")]
+    private static void FileOpenProject()
     {
-        menubar.MenuItems.Single(item => item.FullPath == "File/Open _O").Action.Invoke();
+        menubar.MenuItems.Single(item => item.FullPath == "File/Open Project _O").Action.Invoke();
     }
-    [UnityEditor.MenuItem("NativeMenuBar/File/Open _O", true)]
-    private static bool FileOpenValidate()
+    [UnityEditor.MenuItem("NativeMenuBar/File/Open Project _O", true)]
+    private static bool FileOpenProjectValidate()
     {
-        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "File/Open _O").IsInteractable;
+        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "File/Open Project _O").IsInteractable;
     }
-    [UnityEditor.MenuItem("NativeMenuBar/File/Save _S")]
-    private static void FileSave()
+    [UnityEditor.MenuItem("NativeMenuBar/File/Save Project _S")]
+    private static void FileSaveProject()
     {
-        menubar.MenuItems.Single(item => item.FullPath == "File/Save _S").Action.Invoke();
+        menubar.MenuItems.Single(item => item.FullPath == "File/Save Project _S").Action.Invoke();
     }
-    [UnityEditor.MenuItem("NativeMenuBar/File/Save _S", true)]
-    private static bool FileSaveValidate()
+    [UnityEditor.MenuItem("NativeMenuBar/File/Save Project _S", true)]
+    private static bool FileSaveProjectValidate()
     {
-        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "File/Save _S").IsInteractable;
-    }
-    [UnityEditor.MenuItem("NativeMenuBar/File/Save As")]
-    private static void FileSaveAs()
-    {
-        menubar.MenuItems.Single(item => item.FullPath == "File/Save As").Action.Invoke();
-    }
-    [UnityEditor.MenuItem("NativeMenuBar/File/Save As", true)]
-    private static bool FileSaveAsValidate()
-    {
-        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "File/Save As").IsInteractable;
+        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "File/Save Project _S").IsInteractable;
     }
     [UnityEditor.MenuItem("NativeMenuBar/File/-")]
     private static void File_0()

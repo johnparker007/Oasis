@@ -3928,7 +3928,7 @@ MonoBehaviour:
   menuRootItems:
   - name: File
     menuItems:
-    - name: New
+    - name: New Project
       menuItems: []
       shortcut: 32
       shortcutCombination: 0
@@ -3947,24 +3947,17 @@ MonoBehaviour:
               m_StringArgument: 
               m_BoolArgument: 0
             m_CallState: 2
-    - name: Open
+    - name: Open Project
       menuItems: []
       shortcut: 79
       shortcutCombination: 2
       action:
         m_PersistentCalls:
           m_Calls: []
-    - name: Save
+    - name: Save Project
       menuItems: []
       shortcut: 83
       shortcutCombination: 2
-      action:
-        m_PersistentCalls:
-          m_Calls: []
-    - name: Save As
-      menuItems: []
-      shortcut: 32
-      shortcutCombination: 0
       action:
         m_PersistentCalls:
           m_Calls: []

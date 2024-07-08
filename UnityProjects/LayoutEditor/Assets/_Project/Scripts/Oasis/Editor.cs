@@ -83,10 +83,7 @@ namespace Oasis
 
         private IEnumerator AddListenersCoroutine()
         {
-            yield return new WaitUntil(() =>
-                UIController != null
-                && UIController.RootUI != null
-                && UIController.RootUI.ViewModelMenu != null);
+            yield return new WaitUntil(() => UIController != null);
 
             ExtractImporter.OnImportComplete.AddListener(OnImportComplete);
 
@@ -179,7 +176,6 @@ OnFileImportClick();
 
         public void OnMfmeExtractClick()
         {
-            UIController.ShowMfmeExtractForm();
         }
 
         public void OnMfmeRemapLampsClick()
@@ -189,12 +185,10 @@ OnFileImportClick();
 
         public void OnHelpAboutClick()
         {
-            UIController.ShowAboutForm();
         }
 
         private void OnImportComplete()
         {
-            UIController.RebuildUI();
         }
 
     }
