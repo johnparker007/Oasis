@@ -12,10 +12,9 @@ namespace Oasis.LayoutEditor
         public override string HierarchyPseudoSceneName => null;
         public override string HierarchyName => null;
 
-        public override void Initialise(
-            Layout.Component component, Editor layoutEditor)
+        public override void Initialise(Layout.Component component)
         {
-            base.Initialise(component, layoutEditor);
+            base.Initialise(component);
 
             Component14Segment component14Segment = (Component14Segment)component;
 
@@ -29,7 +28,7 @@ namespace Oasis.LayoutEditor
                 return;
             }
 
-            int segmentValue = LayoutEditor.MameController.VfdValues[(int)_number];
+            int segmentValue = Editor.Instance.MameController.VfdValues[(int)_number];
 
             // listed in MAME-defined bit order from rendlay.cpp:
 

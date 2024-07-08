@@ -22,8 +22,6 @@ namespace Oasis.Layout
 
         public UnityEvent OnChanged = new UnityEvent();
 
-        private Editor _layoutEditor = null;
-
         public string Name
         {
             get
@@ -36,10 +34,9 @@ namespace Oasis.Layout
             }
         }
 
-        public void Initialise(string name, Editor editor)
+        public void Initialise(string name)
         {
             Name = name;
-            _layoutEditor = editor;
         }
 
         public void AddComponent(Component component, bool overlay = false)
@@ -50,28 +47,28 @@ namespace Oasis.Layout
             if (component.GetType() == typeof(ComponentBackground))
             {
                 EditorComponentBackground editorComponentBackground = Instantiate(
-                    _layoutEditor.EditorComponentBackgroundPrefab,
-                    _layoutEditor.UIController.EditorCanvasGameObject.transform);
+                    Editor.Instance.EditorComponentBackgroundPrefab,
+                    Editor.Instance.UIController.EditorCanvasGameObject.transform);
 
                 editorComponent = editorComponentBackground;
 
-                editorComponentBackground.Initialise((ComponentBackground)component, _layoutEditor);
+                editorComponentBackground.Initialise((ComponentBackground)component);
 
 
                 // JP quick hack for now:
-                RectTransform editorCanvasRectTransform = _layoutEditor.UIController.EditorCanvasGameObject.GetComponent<RectTransform>();
+                RectTransform editorCanvasRectTransform = Editor.Instance.UIController.EditorCanvasGameObject.GetComponent<RectTransform>();
                 editorCanvasRectTransform.sizeDelta = new Vector2(component.Size.x, component.Size.y);
 
             }
             else if (component.GetType() == typeof(ComponentLamp))
             {
                 EditorComponentLamp editorComponentLamp = Instantiate(
-                    _layoutEditor.EditorComponentLampPrefab,
-                    _layoutEditor.UIController.EditorCanvasGameObject.transform);
+                    Editor.Instance.EditorComponentLampPrefab,
+                    Editor.Instance.UIController.EditorCanvasGameObject.transform);
 
                 editorComponent = editorComponentLamp;
 
-                editorComponentLamp.Initialise((ComponentLamp)component, _layoutEditor);
+                editorComponentLamp.Initialise((ComponentLamp)component);
             }
             else if (component.GetType() == typeof(ComponentReel))
             {
@@ -79,22 +76,22 @@ namespace Oasis.Layout
                 if (overlay)
                 {
                     EditorComponentOverlay editorComponentOverlay = Instantiate(
-                        _layoutEditor.EditorComponentOverlayPrefab,
-                        _layoutEditor.UIController.EditorCanvasGameObject.transform);
+                        Editor.Instance.EditorComponentOverlayPrefab,
+                        Editor.Instance.UIController.EditorCanvasGameObject.transform);
 
                     editorComponent = editorComponentOverlay;
 
-                    editorComponentOverlay.Initialise(componentReel, _layoutEditor);
+                    editorComponentOverlay.Initialise(componentReel);
                 }
                 else
                 {
                     EditorComponentReel editorComponentReel = Instantiate(
-                        _layoutEditor.EditorComponentReelPrefab,
-                        _layoutEditor.UIController.EditorCanvasGameObject.transform);
+                        Editor.Instance.EditorComponentReelPrefab,
+                        Editor.Instance.UIController.EditorCanvasGameObject.transform);
 
                     editorComponent = editorComponentReel;
 
-                    editorComponentReel.Initialise(componentReel, _layoutEditor);
+                    editorComponentReel.Initialise(componentReel);
 
                     if (componentReel.OverlayOasisImage != null)
                     {
@@ -105,22 +102,22 @@ namespace Oasis.Layout
             else if (component.GetType() == typeof(Component7Segment))
             {
                 EditorComponent7Segment editorComponent7Segment = Instantiate(
-                    _layoutEditor.EditorComponentSevenSegmentPrefab,
-                    _layoutEditor.UIController.EditorCanvasGameObject.transform);
+                    Editor.Instance.EditorComponentSevenSegmentPrefab,
+                    Editor.Instance.UIController.EditorCanvasGameObject.transform);
 
                 editorComponent = editorComponent7Segment;
 
-                editorComponent7Segment.Initialise((Component7Segment)component, _layoutEditor);
+                editorComponent7Segment.Initialise((Component7Segment)component);
             }
             else if (component.GetType() == typeof(ComponentAlpha))
             {
                 EditorComponentAlpha editorComponentAlpha = Instantiate(
-                    _layoutEditor.EditorComponentAlphaPrefab,
-                    _layoutEditor.UIController.EditorCanvasGameObject.transform);
+                    Editor.Instance.EditorComponentAlphaPrefab,
+                    Editor.Instance.UIController.EditorCanvasGameObject.transform);
 
                 editorComponent = editorComponentAlpha;
 
-                editorComponentAlpha.Initialise((ComponentAlpha)component, _layoutEditor);
+                editorComponentAlpha.Initialise((ComponentAlpha)component);
             }
 
             if (editorComponent != null)
@@ -130,13 +127,13 @@ namespace Oasis.Layout
 
                 //editorComponent.gameObject.name = editorComponent.HierarchyName;
 
-                _layoutEditor.UIController.RuntimeHierarchy.AddToPseudoScene(
+                Editor.Instance.UIController.RuntimeHierarchy.AddToPseudoScene(
                     editorComponent.HierarchyPseudoSceneName, component.transform);
 
                 component.gameObject.name = editorComponent.HierarchyName;
             }
 
-            _layoutEditor.Layout.OnAddComponent?.Invoke(component, this);
+            Editor.Instance.Layout.OnAddComponent?.Invoke(component, this);
             OnChanged?.Invoke();
         }
 

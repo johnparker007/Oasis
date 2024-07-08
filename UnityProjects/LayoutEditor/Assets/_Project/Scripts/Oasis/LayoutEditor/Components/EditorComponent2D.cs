@@ -21,11 +21,11 @@ namespace Oasis.LayoutEditor
         protected RectTransform _rectTransform = null;
 
         
-        public override void Initialise(Layout.Component component, Editor layoutEditor)
+        public override void Initialise(Layout.Component component)
         {
             _rectTransform = GetComponent<RectTransform>(); 
             
-            base.Initialise(component, layoutEditor);
+            base.Initialise(component);
         }
 
         protected override void Refresh()

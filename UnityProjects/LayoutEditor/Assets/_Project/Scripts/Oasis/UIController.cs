@@ -9,7 +9,6 @@ namespace Oasis
 {
     public class UIController : MonoBehaviour
     {
-        public Editor LayoutEditor;
         public GameObject EditorCanvasGameObject;
         public RuntimeHierarchy RuntimeHierarchy;
         public DynamicPanelsCanvas DynamicPanelsCanvas;

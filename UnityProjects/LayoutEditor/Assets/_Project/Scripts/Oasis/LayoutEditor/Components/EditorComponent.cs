@@ -16,12 +16,6 @@ namespace Oasis.LayoutEditor
             get;
         }
 
-        public Editor LayoutEditor
-        {
-            get;
-            protected set;
-        }
-
         public Layout.Component Component
         {
             get;
@@ -39,7 +33,7 @@ namespace Oasis.LayoutEditor
             // we call this in LateUpdate, as from stepping through desktop recordings, this brings the latency
             // between lamps on the internal MAME layout and the Unity rendered Lamps etc to zero frames (perfectly
             // in sync):
-            if (LayoutEditor != null && LayoutEditor.MameController.Process != null)
+            if (Editor.Instance != null && Editor.Instance.MameController.Process != null)
             {
                 UpdateStateFromEmulation();
             }
@@ -53,10 +47,9 @@ namespace Oasis.LayoutEditor
             }
         }
 
-        public virtual void Initialise(Layout.Component component, Editor layoutEditor)
+        public virtual void Initialise(Layout.Component component)
         {
             Component = component;
-            LayoutEditor = layoutEditor;
 
             Component.OnValueSet += OnComponentValueSet;
 

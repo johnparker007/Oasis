@@ -26,12 +26,6 @@ namespace Oasis
 
         public UnityEvent<Component, View> OnAddComponent = new();
 
-        public Editor LayoutEditor
-        {
-            get;
-            set;
-        }
-
         public View MfmeImportView
         {
             get
@@ -48,7 +42,7 @@ namespace Oasis
 
             Data.Views.Add(view);
 
-            view.Initialise(name, LayoutEditor);
+            view.Initialise(name);
 
             return view;
         }

@@ -14,13 +14,11 @@ namespace Oasis.MFME
     {
         public UnityEvent OnImportComplete = new UnityEvent();
 
-        private Editor _layoutEditor = null;
         private LayoutObject _layoutObject = null;
         private View _mfmeView = null;
 
-        public ExtractImporter(Editor layoutEditor)
+        public ExtractImporter()
         {
-            _layoutEditor = layoutEditor;
             Extractor.OnLayoutLoaded.AddListener(OnMFMEExtractLayoutLoaded);
         }
 
@@ -33,11 +31,10 @@ namespace Oasis.MFME
 
             GameObject layoutGameObject = new GameObject("Layout");
             _layoutObject = layoutGameObject.AddComponent<LayoutObject>();
-            _layoutObject.transform.parent = _layoutEditor.transform;
-            _layoutObject.LayoutEditor = _layoutEditor;
-            _layoutEditor.Layout = _layoutObject;
+            _layoutObject.transform.parent = Editor.Instance.transform;
+            Editor.Instance.Layout = _layoutObject;
 
-            _mfmeView = _layoutEditor.Layout.AddView(LayoutObject.kMfmeViewName);
+            _mfmeView = Editor.Instance.Layout.AddView(LayoutObject.kMfmeViewName);
 
             foreach (ExtractComponentBase extractComponent in layout.Components)
             {

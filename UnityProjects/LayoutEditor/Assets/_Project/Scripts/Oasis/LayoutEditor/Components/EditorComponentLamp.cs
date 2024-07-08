@@ -51,7 +51,7 @@ namespace Oasis.LayoutEditor
                 return;
             }
 
-            if (LayoutEditor.MameController.LampValues[(int)_number] == 1)
+            if (Editor.Instance.MameController.LampValues[(int)_number] == 1)
             {
                 _image.color = Color.white;
             }

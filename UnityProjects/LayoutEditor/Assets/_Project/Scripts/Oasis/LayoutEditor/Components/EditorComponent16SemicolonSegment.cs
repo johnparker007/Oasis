@@ -14,12 +14,6 @@ namespace Oasis.LayoutEditor
 
         public const int kMaximumVfdDuty = 31;
 
-        public override void Initialise(
-            Layout.Component component, Editor layoutEditor)
-        {
-            LayoutEditor = layoutEditor;
-        }
-
         public void Setup(int vfdSegmentNumber)
         {
             _number = vfdSegmentNumber;
@@ -32,12 +26,12 @@ namespace Oasis.LayoutEditor
                 return;
             }
 
-            int segmentValue = LayoutEditor.MameController.VfdValues[(int)_number];
+            int segmentValue = Editor.Instance.MameController.VfdValues[(int)_number];
 
             // listed in MAME-defined bit order from rendlay.cpp:
 
             // TOIMPROVE - this would be more efficient as a shader parameter?
-            float dutyNormalised = (float)LayoutEditor.MameController.VfdDuty[0] / kMaximumVfdDuty;
+            float dutyNormalised = (float)Editor.Instance.MameController.VfdDuty[0] / kMaximumVfdDuty;
 
             // top-left bar (0 red)
             _material.SetFloat("_SegmentBrightness0", 

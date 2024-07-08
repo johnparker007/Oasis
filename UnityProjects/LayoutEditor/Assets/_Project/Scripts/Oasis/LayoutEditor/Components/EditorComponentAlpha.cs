@@ -28,7 +28,7 @@ namespace Oasis.LayoutEditor
             {
                 EditorComponent16SemicolonSegment segment = _segments[editorSegmentIndex];
 
-                segment.Initialise(null, LayoutEditor);
+                segment.Initialise(null);
 
                 int segmentIndex;
                 if (((ComponentAlpha)Component).Reversed)

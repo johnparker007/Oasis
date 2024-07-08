@@ -35,10 +35,9 @@ namespace Oasis.LayoutEditor
             _image.material = _material;
         }
 
-        public override void Initialise(
-            Layout.Component component, Editor layoutEditor)
+        public override void Initialise(Layout.Component component)
         {
-            base.Initialise(component, layoutEditor);
+            base.Initialise(component);
 
             OasisImage bandOasisImage = ComponentReel.BandOasisImage;
 
@@ -72,13 +71,13 @@ float yScale = ComponentReel.VisibleScale2D;
             }
 
             // TODO do UV scrolling for horizontal/vertical reels
-            int reelPosition = LayoutEditor.MameController.ReelValues[(int)ComponentReel.Number];
+            int reelPosition = Editor.Instance.MameController.ReelValues[(int)ComponentReel.Number];
             // TODO hardcoded at 96 steps for now, just to get working with JPM impact popeye layout test
             const int kTEMPReelYPositionCount = 96;
             float normalisedOffset = (float)reelPosition / kTEMPReelYPositionCount;
 
             // TODO will need something better/ shared for this; on Impact, reels need to be reversed, but not on MPU4
-            switch(LayoutEditor.MameController.DebugPlatformType)
+            switch(Editor.Instance.MameController.DebugPlatformType)
             {
                 case MameController.PlatformType.Impact:
                     normalisedOffset = 1f - normalisedOffset; 
@@ -95,7 +94,7 @@ float yScale = ComponentReel.VisibleScale2D;
 
             // only tested for the 2d mfme style reels so far to test:
             float bandOffsetNormalisedToCorrectRendering = 0f;
-            switch (LayoutEditor.MameController.DebugPlatformType)
+            switch (Editor.Instance.MameController.DebugPlatformType)
             {
                 case MameController.PlatformType.Impact:
                     // correct for JPM Impact (I think - Popeye):

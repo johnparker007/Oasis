@@ -46,8 +46,8 @@ namespace Oasis.LayoutEditor.Panels
 
         private void OnPopulateTargetButtonClick()
         {
-            string[] lampColumnData = UIController.LayoutEditor.MameMpu4ChrSourceCodeLookup.GetLampColumnData(
-                UIController.LayoutEditor.MameController.DebugMameRomName);
+            string[] lampColumnData = Editor.Instance.MameMpu4ChrSourceCodeLookup.GetLampColumnData(
+                Editor.Instance.MameController.DebugMameRomName);
 
             if (lampColumnData != null)
             {
@@ -72,7 +72,7 @@ namespace Oasis.LayoutEditor.Panels
                 targetLampColumnsText[lampColumnIndex] = TargetLampColumns.InputFields[lampColumnIndex].text;
             }
 
-            UIController.LayoutEditor.Layout.RemapLamps(sourceLampColumnsText, targetLampColumnsText);
+            Editor.Instance.Layout.RemapLamps(sourceLampColumnsText, targetLampColumnsText);
         }
 
     }

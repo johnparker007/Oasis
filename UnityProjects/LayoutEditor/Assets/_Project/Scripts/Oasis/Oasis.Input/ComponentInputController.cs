@@ -11,8 +11,6 @@ namespace Oasis.Input
 
     public class ComponentInputController : MonoBehaviour
     {
-        public Editor LayoutEditor;
-        
         public bool DebugOutputChanges;
 
         private Dictionary<KeyCode, bool> _keyCodeStates = new Dictionary<KeyCode, bool>();
@@ -21,7 +19,7 @@ namespace Oasis.Input
 
         private void Start()
         {
-            LayoutEditor.OnLayoutSet.AddListener(OnLayoutSet);
+            Editor.Instance.OnLayoutSet.AddListener(OnLayoutSet);
         }
 
         private void Update()
@@ -62,7 +60,7 @@ namespace Oasis.Input
                 {
                     if(inputData.KeyCode == keyCode)
                     {
-                        LayoutEditor.MameController.SetButtonState(inputData.ButtonNumber, newState);
+                        Editor.Instance.MameController.SetButtonState(inputData.ButtonNumber, newState);
                     }
                 }
 
@@ -72,7 +70,7 @@ namespace Oasis.Input
 
         private void OnDestroy()
         {
-            LayoutEditor.OnLayoutSet.RemoveListener(OnLayoutSet);
+            Editor.Instance.OnLayoutSet.RemoveListener(OnLayoutSet);
 
             //LayoutEditor.Layout.OnAddComponent.RemoveListener(OnLayoutAddComponent);
         }
@@ -83,7 +81,7 @@ namespace Oasis.Input
             _keyCodeStates.Clear();
             _inputDatas.Clear();
 
-            foreach (Layout.Component component in LayoutEditor.Layout.MfmeImportView.Data.Components)
+            foreach (Layout.Component component in Editor.Instance.Layout.MfmeImportView.Data.Components)
             {
                 if(!component.GetType().IsSubclassOf(typeof(Layout.ComponentInput)))
                 {

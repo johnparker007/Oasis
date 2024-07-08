@@ -21,8 +21,7 @@ namespace Oasis.LayoutEditor
             _image = GetComponent<Image>();
         }
 
-        public override void Initialise(
-            Layout.Component component, Editor layoutEditor)
+        public override void Initialise(Layout.Component component)
         {
         // XXX TODO temp workaround, there are issues where the background image is larger
         // than the MFME window size, as then image gets squashed a little to fit on the texture, so
@@ -40,7 +39,7 @@ int originalHeight = component.Size.x;
 
 
 
-            base.Initialise(component, layoutEditor);
+            base.Initialise(component);
 
             ComponentBackground componentBackground = (ComponentBackground)component;
 

@@ -19,7 +19,7 @@ namespace Oasis.LayoutEditor
                 return;
             }
 
-            int segmentValue = LayoutEditor.MameController.DigitValues[(int)_number];
+            int segmentValue = Editor.Instance.MameController.DigitValues[(int)_number];
 
             // listed in MAME-defined bit order from rendlay.cpp:
 

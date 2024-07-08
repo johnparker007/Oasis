@@ -34,6 +34,12 @@ namespace Oasis
 
         public UnityEvent<LayoutObject> OnLayoutSet = new UnityEvent<LayoutObject>();
 
+        public static Editor Instance
+        {
+            get;
+            private set;
+        } = null;
+
         public LayoutObject Layout
         {
             get
@@ -58,7 +64,18 @@ namespace Oasis
 
         private void Awake()
         {
-            ExtractImporter = new ExtractImporter(this);
+            if (Instance == null)
+            {
+                Instance = this;
+                DontDestroyOnLoad(Instance);
+            }
+            else if (this != Instance)
+            {
+                Destroy(this);
+                return;
+            }
+
+            ExtractImporter = new ExtractImporter();
         }
 
         private void Start()
