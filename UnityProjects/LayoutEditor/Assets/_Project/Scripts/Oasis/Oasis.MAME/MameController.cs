@@ -16,6 +16,8 @@ namespace Oasis.MAME
         // placeholder, may do something different to this for Oasis
         public enum PlatformType
         {
+            None,
+
             Scorpion1,
             Scorpion2,
             Scorpion4,

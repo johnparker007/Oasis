@@ -29,7 +29,11 @@ namespace Oasis
         public EditorPanel EditorPanelMFMEImport;
         public EditorPanel EditorPanelFull;
 
-        public ProjectData Project;
+        public ProjectData Project
+        {
+            get;
+            set;
+        }
 
 
         public UnityEvent<LayoutObject> OnLayoutSet = new UnityEvent<LayoutObject>();
@@ -62,6 +66,8 @@ namespace Oasis
             }
 
             ExtractImporter = new ExtractImporter();
+
+            Project = new ProjectData();
         }
 
         private void Start()

@@ -30,5 +30,10 @@ namespace Oasis
                 Editor.Instance.OnLayoutSet?.Invoke(_layout);
             }
         }
+
+        public ProjectData()
+        {
+            Settings = new SettingsData();
+        }
     }
 }

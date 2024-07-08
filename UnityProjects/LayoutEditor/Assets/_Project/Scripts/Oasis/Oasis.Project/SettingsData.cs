@@ -32,5 +32,11 @@ namespace Oasis.Project
             get;
             set;
         }
+
+        public SettingsData()
+        {
+            Mame = new MameData();
+            FruitMachine = new FruitMachineData();
+        }
     }
 }
