@@ -7,6 +7,6 @@ namespace Oasis.UI.Fields
 {
     public class FieldString : Field
     {
-        public InputField InputField;
+        public BoundInputField Input;
 	}
 }

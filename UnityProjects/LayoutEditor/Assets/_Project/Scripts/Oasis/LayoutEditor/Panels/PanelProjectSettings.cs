@@ -1,4 +1,5 @@
 using Oasis.LayoutEditor.Tools;
+using Oasis.UI;
 using Oasis.UI.Fields;
 using UnityEngine;
 using UnityEngine.UI;
@@ -30,33 +31,37 @@ namespace Oasis.LayoutEditor.Panels
         // generic processing behaviour:
         private void AddListeners()
         {
-            MameRomName.InputField.onValueChanged.AddListener(OnMameRomNameValueChanged);
-            MameRomName.InputField.onEndEdit.AddListener(OnMameRomNameEndEdit);
+            MameRomName.Input.OnValueChanged += OnMameRomNameValueChanged;
+            MameRomName.Input.OnValueSubmitted += OnMameRomNameEndEdit;
         }
 
         private void RemoveListeners()
         {
-            MameRomName.InputField.onValueChanged.RemoveListener(OnMameRomNameValueChanged);
-            MameRomName.InputField.onEndEdit.RemoveListener(OnMameRomNameEndEdit);
+            MameRomName.Input.OnValueChanged -= OnMameRomNameValueChanged;
+            MameRomName.Input.OnValueSubmitted -= OnMameRomNameEndEdit;
         }
 
         private void Populate()
         {
-            MameRomName.InputField.text = Editor.Instance.Project.Settings.Mame.RomName;
+            MameRomName.Input.Text = Editor.Instance.Project.Settings.Mame.RomName;
         }
 
         // TODO temp - will be doing an equivalent of the 'BoundInputField' approach used
         // by the Inspector was using for UI prototyping
-        private void OnMameRomNameValueChanged(string value)
+        private bool OnMameRomNameValueChanged(BoundInputField source, string value)
         {
             Debug.Log("OnMameRomNameValueChanged: " + value);
             Editor.Instance.Project.Settings.Mame.RomName = value;
+
+            return true;
         }
 
-        private void OnMameRomNameEndEdit(string value)
+        private bool OnMameRomNameEndEdit(BoundInputField source, string value)
         {
             Debug.Log("OnMameRomNameEndEdit: " + value);
             Editor.Instance.Project.Settings.Mame.RomName = value;
+
+            return true;
         }
 
     }
