@@ -134,9 +134,6 @@ namespace Oasis.MAME
         public bool ForceVsyncOffWhenRunning;
 
         [Tooltip("Temp for testing")]
-        public string DebugMameRomName;
-
-        [Tooltip("Temp for testing")]
         public PlatformType DebugPlatformType;
 
         public bool DebugOutputStdOut;
@@ -250,7 +247,7 @@ namespace Oasis.MAME
                 additionalArgs += " " + kArgsStateLoad + " " + kDefaultSaveStateFilename;
             }
 
-            string arguments = DebugMameRomName + additionalArgs;
+            string arguments = Editor.Instance.Project.Settings.Mame.RomName + additionalArgs;
             Process = StartProcess(MameExeDirectoryFullPath, kMameExeFilename, arguments);
 
             if(ForceVsyncOffWhenRunning)

@@ -101,6 +101,17 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 60e23337e7c70f34981e939040ef5565, type: 3}
+--- !u!114 &212138577579347100 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 54723955439586824, guid: 60e23337e7c70f34981e939040ef5565, type: 3}
+  m_PrefabInstance: {fileID: 158683495070712468}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 05634ee1b60f99d44a79370170c077d9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1001 &6707667779917306419
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -266,7 +277,7 @@ MonoBehaviour:
   _scrollView: {fileID: 6665698182402409595}
   _background: {fileID: 6669525170859553381}
   _scrollbar: {fileID: 6669335977993273509}
-  MameRomName: {fileID: 0}
+  MameRomName: {fileID: 212138577579347100}
 --- !u!224 &6775850327660092363 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 224841020572500472, guid: d5899d1c277927d458e41e5420cc1f97, type: 3}

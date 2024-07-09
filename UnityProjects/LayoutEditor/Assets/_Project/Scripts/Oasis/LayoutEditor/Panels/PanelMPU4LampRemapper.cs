@@ -47,7 +47,7 @@ namespace Oasis.LayoutEditor.Panels
         private void OnPopulateTargetButtonClick()
         {
             string[] lampColumnData = Editor.Instance.MameMpu4ChrSourceCodeLookup.GetLampColumnData(
-                Editor.Instance.MameController.DebugMameRomName);
+                Editor.Instance.Project.Settings.Mame.RomName);
 
             if (lampColumnData != null)
             {
