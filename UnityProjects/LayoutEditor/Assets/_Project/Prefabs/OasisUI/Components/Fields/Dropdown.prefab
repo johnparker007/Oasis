@@ -597,9 +597,9 @@ GameObject:
   m_Component:
   - component: {fileID: 3964059342490756411}
   - component: {fileID: 3856837386043583387}
-  - component: {fileID: 54723955439586824}
+  - component: {fileID: 5779723353394259443}
   m_Layer: 5
-  m_Name: DropdownField
+  m_Name: Dropdown
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -648,7 +648,7 @@ MonoBehaviour:
   m_FlexibleWidth: -1
   m_FlexibleHeight: -1
   m_LayoutPriority: 1
---- !u!114 &54723955439586824
+--- !u!114 &5779723353394259443
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -657,10 +657,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 3753846582309515585}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 05634ee1b60f99d44a79370170c077d9, type: 3}
+  m_Script: {fileID: 11500000, guid: 3dd351c39f1ade24cbd13e5bfaba9a9b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Input: {fileID: 0}
+  Dropdown: {fileID: 4439460873773983334}
 --- !u!1 &3754683534949290237
 GameObject:
   m_ObjectHideFlags: 0
