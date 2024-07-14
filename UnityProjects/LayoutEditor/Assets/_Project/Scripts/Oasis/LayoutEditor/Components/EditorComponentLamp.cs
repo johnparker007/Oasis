@@ -16,10 +16,12 @@ namespace Oasis.LayoutEditor
         private Image _image = null;
         private Sprite _sprite = null;
         private Texture2D _texture2d = null;
+        private Text _text = null;
 
         protected override void Awake()
         {
             _image = GetComponent<Image>();
+            _text = GetComponentInChildren<Text>();
         }
 
         protected override void Refresh()
@@ -29,6 +31,8 @@ namespace Oasis.LayoutEditor
             ComponentLamp componentLamp = (ComponentLamp)Component;
 
             _number = componentLamp.Number;
+
+            _text.text = componentLamp.Text;
 
             // TODO THERE ARE POTENTIALLY IMAGE-RELATED MEMORY LEAKS TO FIX HERE!
             OasisImage oasisImage = componentLamp.OasisImage;
