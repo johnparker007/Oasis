@@ -136,6 +136,9 @@ namespace Oasis.MFME
             // lamp component:
             componentLamp.Number = (int)extractComponentLamp.GetLampNumber(0); // TODO will need to be checking lamp HasValue since it's nullable
 
+            componentLamp.Name = $"Lamp {componentLamp.Number}";
+            componentLamp.Text = $"Lamp Text {componentLamp.Number}";
+
             _mfmeView.AddComponent(componentLamp);
         }
 
@@ -206,6 +209,17 @@ namespace Oasis.MFME
 
             componentReel.VisibleScale2D = scale;
 
+            componentReel.Name = $"Reel {componentReel.Number}";
+            componentReel.Text = "";
+            for (int stopIndex = 0; stopIndex < stops; ++stopIndex)
+            {
+                componentReel.Text += $"Symbol {stopIndex}";
+                if(stopIndex < stops - 1)
+                {
+                    componentReel.Text += ", ";
+                }
+            }
+
             _mfmeView.AddComponent(componentReel);
         }
 
@@ -225,6 +239,8 @@ namespace Oasis.MFME
                 FileSystem.kBackgroundDirectoryName, extractComponentBackground.BmpImageFilename);
 
             componentBackground.OasisImage = new Graphics.OasisImage(bmpImageFilePath, null, false);
+
+            componentBackground.Name = "Background";
 
             _mfmeView.AddComponent(componentBackground);
         }
@@ -247,6 +263,8 @@ namespace Oasis.MFME
 
             component7Segment.Number = extractComponentSevenSegment.Number;
 
+            component7Segment.Name = $"7 Segment {component7Segment.Number}";
+
             _mfmeView.AddComponent(component7Segment);
         }
 
@@ -268,6 +286,8 @@ namespace Oasis.MFME
 
             componentAlpha.Reversed = extractComponentAlpha.Reversed;
 
+            componentAlpha.Name = "Alpha";
+
             _mfmeView.AddComponent(componentAlpha);
         }
 
@@ -288,6 +308,8 @@ namespace Oasis.MFME
                 extractComponentAlphaNew.Size.Y);
 
             componentAlpha.Reversed = extractComponentAlphaNew.Reversed;
+
+            componentAlpha.Name = "Alpha";
 
             _mfmeView.AddComponent(componentAlpha);
         }

@@ -24,6 +24,20 @@ namespace Oasis.Layout
             set { _size = value; OnValueSetInvoke(); }
         }
 
+        private string _name;
+        public string Name
+        {
+            get => _name;
+            set { _name = value; OnValueSetInvoke(); }
+        }
+
+        private string _text;
+        public string Text
+        {
+            get => _text;
+            set { _text = value; OnValueSetInvoke(); }
+        }
+
         protected virtual void OnValueSetInvoke()
         {
             OnValueSet?.Invoke(this);
