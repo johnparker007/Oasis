@@ -115,6 +115,8 @@ namespace Oasis.MFME
 
                 componentLamp.Input.ButtonNumber = mfmeButtonNumber;
 
+                componentLamp.Input.Inverted = extractComponentLamp.Inverted;
+
                 // TODO TEMP!  Just hardcode call for Impact, needs to check MFME layout platform:
                 //componentLamp.Input.PortTag = 
                 //    MameInputPortHelper.GetMamePortTagImpact(mfmeButtonNumber);
