@@ -8,10 +8,17 @@ using Oasis.LayoutEditor;
 using Component = Oasis.Layout.Component;
 using EditorComponent = Oasis.LayoutEditor.EditorComponent;
 using Oasis.LayoutEditor.Tools;
+using System.Runtime.Serialization;
+using System.Runtime.Serialization.Formatters.Binary;
+using System.IO;
 
 namespace Oasis
 {
-    public class LayoutObject : MonoBehaviour
+
+    // TODO: Implement ISerializable for LayoutObject itself
+    // Figure out how to trigger the nested serialization of the components
+    
+    public class LayoutObject : MonoBehaviour, SerializableDictionary
     {
         public static readonly string kMfmeViewName = "MFME Import";
 
@@ -21,6 +28,23 @@ namespace Oasis
         {
             public List<View> Views = new();
         }
+
+        public void SetRepresentation(Dictionary<string, object> representation) {
+            if ((string)representation["type"] != this.GetType().Name) {
+                return;
+            }
+        }
+
+        public Dictionary<string, object> GetRepresentation() {
+            Dictionary<string, object> typeWrapper = new Dictionary<string, object>();
+            typeWrapper["type"] = GetType().Name;
+            typeWrapper["views"] = new Dictionary<string, object>();
+            foreach (View view in Data.Views) {
+                ((Dictionary<string, object>)typeWrapper["views"])[view.Name] = ((SerializableDictionary)view).GetRepresentation();
+            }
+            return typeWrapper;
+        }
+
 
         public LayoutData Data = new LayoutData();
 
@@ -32,6 +56,15 @@ namespace Oasis
             {
                 return GetView(kMfmeViewName);
             }
+        }
+
+        //private bool _changed = false;
+        //private bool _dirty = false;
+
+        public bool Dirty
+        {
+            get;
+            set;
         }
 
         public View AddView(string name)
@@ -62,6 +95,11 @@ namespace Oasis
         public View GetView(string name)
         {
             return Data.Views.Find(x => x.Name == name);
+        }
+
+        public List<View> GetViews()
+        {
+            return Data.Views;
         }
 
         public void RemapLamps(string[] mfmeLampTable, string[] mameLampTable)

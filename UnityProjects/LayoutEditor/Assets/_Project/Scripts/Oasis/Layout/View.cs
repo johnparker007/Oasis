@@ -8,8 +8,34 @@ using EditorComponent = Oasis.LayoutEditor.EditorComponent;
 
 namespace Oasis.Layout
 {
-    public class View : MonoBehaviour
+    public class View : MonoBehaviour, SerializableDictionary 
     {
+        public void SetRepresentation(Dictionary<string, object> representation) {
+            if ((string)representation["type"] != this.GetType().Name) {
+                return;
+            }
+            // TODO: Rehydrate views/components
+            
+        }
+
+        public Dictionary<string, object> GetRepresentation() {
+            Dictionary<string, object> representation = new Dictionary<string, object>();
+            representation["type"] = GetType().Name;
+            representation["items"] = new Dictionary<string, object>();
+            representation["unknown"] = new List<Dictionary<string, object>>();
+            foreach (SerializableDictionary component in Data.Components) {
+                Dictionary<string, object> componentData = component.GetRepresentation();
+                object name;
+                componentData.TryGetValue("name", out name);
+                if (name != null) {
+                    ((Dictionary<string, object>)representation["items"])[(string)name] = component.GetRepresentation();
+                    continue;
+                }
+                ((List<Dictionary<string, object>>)representation["unknown"]).Add(component.GetRepresentation());
+            }
+            return representation;
+        }
+
         // the data to be loaded/saved goes in this data class:
         [System.Serializable]
         public class ViewData

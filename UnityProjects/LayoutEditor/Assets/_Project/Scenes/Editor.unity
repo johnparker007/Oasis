@@ -3999,6 +3999,25 @@ MonoBehaviour:
               m_StringArgument: 
               m_BoolArgument: 0
             m_CallState: 2
+    - name: Save Oasis Project
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls:
+          - m_Target: {fileID: 2080336307}
+            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
+            m_MethodName: OnOasisExportClick
+            m_Mode: 1
+            m_Arguments:
+              m_ObjectArgument: {fileID: 0}
+              m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+              m_IntArgument: 0
+              m_FloatArgument: 0
+              m_StringArgument: 
+              m_BoolArgument: 0
+            m_CallState: 2
     - name: Export MAME
       menuItems: []
       shortcut: 32
@@ -4008,7 +4027,7 @@ MonoBehaviour:
           m_Calls:
           - m_Target: {fileID: 2080336307}
             m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
-            m_MethodName: OnFileExportClick
+            m_MethodName: OnMAMEExportClick
             m_Mode: 1
             m_Arguments:
               m_ObjectArgument: {fileID: 0}
@@ -4948,7 +4967,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9c074cfcb1e9af544811fdd4638c72a2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  LayoutEditor: {fileID: 2080336307}
   EditorCanvasGameObject: {fileID: 2056383324}
   RuntimeHierarchy: {fileID: 188510028}
   DynamicPanelsCanvas: {fileID: 647658036}
@@ -6041,12 +6059,6 @@ MonoBehaviour:
   EditorComponent16SemicolonSegmentPrefab: {fileID: 32469920094958937, guid: f373d810af4ceb14caf902d7080ef12d, type: 3}
   EditorPanelMFMEImport: {fileID: 2038115449}
   EditorPanelFull: {fileID: 1627987300}
-  Project:
-    Settings:
-      Mame:
-        RomName: 
-      FruitMachine:
-        Platform: 0
   OnLayoutSet:
     m_PersistentCalls:
       m_Calls: []
@@ -6095,7 +6107,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1934027768812496372, guid: 92875de48b8ebee4299040899e131ec1, type: 3}
       propertyPath: DebugPlatformType
-      value: 5
+      value: 6
       objectReference: {fileID: 0}
     - target: {fileID: 1934027768812496372, guid: 92875de48b8ebee4299040899e131ec1, type: 3}
       propertyPath: ArgsPluginWorkerUi
@@ -6166,6 +6178,30 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 2025278087}
     m_Modifications:
+    - target: {fileID: 139332234508407998, guid: 6d3a1fb326a65ea4cb0a3c4e31547214, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 139332234508407998, guid: 6d3a1fb326a65ea4cb0a3c4e31547214, type: 3}
+      propertyPath: m_AnchorMin.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 139332234508407998, guid: 6d3a1fb326a65ea4cb0a3c4e31547214, type: 3}
+      propertyPath: m_SizeDelta.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 139332234508407998, guid: 6d3a1fb326a65ea4cb0a3c4e31547214, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 139332234508407998, guid: 6d3a1fb326a65ea4cb0a3c4e31547214, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 139332234508407998, guid: 6d3a1fb326a65ea4cb0a3c4e31547214, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 2323061096147331859, guid: 6d3a1fb326a65ea4cb0a3c4e31547214, type: 3}
       propertyPath: UIController
       value: 

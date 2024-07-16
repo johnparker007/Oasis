@@ -3,9 +3,12 @@ using System.Collections;
 using UnityEngine;
 using Oasis.MFME;
 using Oasis.LayoutEditor;
+using Oasis.Layout;
 using Oasis.MAME;
 using UnityEngine.Events;
 using Oasis.Project;
+using System.Collections.Generic;
+using Oasis.Export;
 
 
 namespace Oasis
@@ -118,9 +121,22 @@ OnFileImportClick();
             }
         }
 
+        //TODO: Get rid of this...
         public void OnFileExportClick()
         {
-            Debug.LogError("TODO OnFileExportClick");
+            OnOasisExportClick();
+        }
+
+        public void OnMAMEExportClick()
+        {
+            MameExporter exporter = new MameExporter(new FileSystemWrapper(), new ProjectSettingsValidator(), new LayoutValidator());
+            exporter.Export(Project, "e:\\exported.lay");
+        }
+
+        public void OnOasisExportClick()
+        {
+            OasisExporter exporter = new OasisExporter(new FileSystemWrapper(), new ProjectSettingsValidator(), new LayoutValidator());
+            exporter.Export(Project, string.Format("e:\\{0}.json", Project.Settings.Mame.RomName));
         }
 
         public void OnEmulationStartClick()
