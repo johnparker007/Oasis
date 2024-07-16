@@ -112,7 +112,6 @@ namespace Oasis.MFME
                 componentLamp.Input.Enabled = true;
 
                 int mfmeButtonNumber = int.Parse(extractComponentLamp.ButtonNumberAsString);
-
                 componentLamp.Input.ButtonNumber = mfmeButtonNumber;
 
                 componentLamp.Input.Inverted = extractComponentLamp.Inverted;
@@ -150,6 +149,10 @@ namespace Oasis.MFME
             ComponentSwitch componentSwitch = (ComponentSwitch)componentSwitchGameObject.AddComponent(typeof(ComponentSwitch));
             componentSwitchGameObject.transform.SetParent(_mfmeView.transform);
 
+            componentSwitch.Input.Enabled = true;
+            componentSwitch.Input.ButtonNumber = extractComponentCheckbox.Number;
+            // TODO import State
+
             _mfmeView.AddComponent(componentSwitch);
         }
 
@@ -158,6 +161,16 @@ namespace Oasis.MFME
             GameObject componentButtonGameObject = new GameObject();
             ComponentButton componentButton = (ComponentButton)componentButtonGameObject.AddComponent(typeof(ComponentButton));
             componentButtonGameObject.transform.SetParent(_mfmeView.transform);
+
+            if (extractComponentButton.HasButtonInput)
+            {
+                int mfmeButtonNumber = int.Parse(extractComponentButton.ButtonNumberAsString);
+                componentButton.Input.ButtonNumber = mfmeButtonNumber;
+
+                componentButton.Input.Inverted = extractComponentButton.Inverted;
+
+                componentButton.Input.KeyCode = ShortcutKeyHelper.GetKeyCode(extractComponentButton.Shortcut1);
+            }
 
             _mfmeView.AddComponent(componentButton);
         }
