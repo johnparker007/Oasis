@@ -2,7 +2,7 @@ using System.Collections.Generic;
 
 namespace Oasis.Layout
 {
-    public class ComponentSwitch : Component, SerializableDictionary
+    public class ComponentSwitch : ComponentInput, SerializableDictionary
     {
         public new void SetRepresentation(Dictionary<string, object> representation) {
             base.SetRepresentation(representation);

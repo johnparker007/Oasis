@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -8,6 +9,7 @@ namespace Oasis.Layout
         public class InputData
         {
             public bool Enabled;
+            public bool Inverted;
 
             public KeyCode KeyCode;
 
@@ -17,14 +19,34 @@ namespace Oasis.Layout
             public int ButtonNumber;  
             //public string PortTag;
             //public string FieldMask;
-
-           
         }
 
-        public new void SetRepresentation(Dictionary<string, object> representation) {
+        public new void SetRepresentation(Dictionary<string, object> representation) 
+        {
             base.SetRepresentation(representation);
-            if ((string)representation["type"] != this.GetType().Name) {
+
+            if ((string)representation["type"] != GetType().Name) 
+            {
                 return;
+            }
+
+            foreach (KeyValuePair<string, object> field in representation)
+            {
+                switch (field.Key)
+                {
+                    case "enabled":
+                        Input.Enabled = (string)field.Value == "true";
+                        break;
+                    case "inverted":
+                        Input.Inverted = (string)field.Value == "true";
+                        break;
+                    case "key_code":
+                        Enum.TryParse((string)field.Value, out Input.KeyCode);
+                        break;
+                    case "button_number":
+                        int.TryParse((string)field.Value, out Input.ButtonNumber);
+                        break;
+                }
             }
         }
 
@@ -32,6 +54,7 @@ namespace Oasis.Layout
             Dictionary<string, object> representation = base.GetRepresentation();
             representation["type"] = GetType().Name;
             representation["enabled"] = Input.Enabled ? "true" : "false";
+            representation["inverted"] = Input.Inverted ? "true" : "false";
             representation["key_code"] = Input.KeyCode.ToString();
             representation["button_number"] = Input.ButtonNumber;
             return representation;
