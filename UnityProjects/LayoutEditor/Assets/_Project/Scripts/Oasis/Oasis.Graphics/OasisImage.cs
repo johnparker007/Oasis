@@ -1,3 +1,4 @@
+using Oasis.Utility;
 using System;
 using System.IO;
 //using OpenCVForUnity.CoreModule;
@@ -60,10 +61,28 @@ namespace Oasis.Graphics
 
         public OasisImage(string bmpFilePath, string bmpMaskFilePath, bool alphaSupport)
         {
-            Vector2Int imageSize = BMPHelper.GetImageDataFromBmp(bmpFilePath, bmpMaskFilePath, out ImageData, alphaSupport);
+            Vector2Int imageSize = BmpHelper.GetImageDataFromBmp(bmpFilePath, bmpMaskFilePath, out ImageData, alphaSupport);
 
             Width = imageSize.x;
             Height = imageSize.y;
+        }
+
+        public OasisImage(byte[] pngFileBytes)
+        {
+            Texture2D texture2D = PngHelper.LoadPngToTexture2D(pngFileBytes);
+
+            ImageData = texture2D.GetPixels32();
+
+            Width = texture2D.width;
+            Height = texture2D.height;
+        }
+
+        public OasisImage(Texture2D texture2D)
+        {
+            ImageData = texture2D.GetPixels32();
+
+            Width = texture2D.width;
+            Height = texture2D.height;
         }
 
         public OasisImage(OasisImage sourceOasisImage, RectInt cropRect)
@@ -725,7 +744,7 @@ namespace Oasis.Graphics
         //    }
         //}
 
-        public byte[] GetAsPNGBytes(TextureFormat textureFormat = TextureFormat.BGRA32)
+        public byte[] GetAsPngBytes(TextureFormat textureFormat = TextureFormat.BGRA32)
         {
             Color[] scrapedPixelBlockColor = new Color[ImageData.Length];
             for (int i = 0; i < ImageData.Length; ++i)
