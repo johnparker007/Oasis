@@ -1,6 +1,7 @@
 using Oasis.Graphics;
 using System.Collections.Generic;
 using System;
+using UnityEngine;
 
 namespace Oasis.Layout
 {
@@ -14,23 +15,49 @@ namespace Oasis.Layout
             set { _number = value; base.OnValueSetInvoke(); }
         }
 
+        private Color _onColor = Color.white;
+        public Color OnColor
+        {
+            get => _onColor;
+            set { _onColor = value; base.OnValueSetInvoke(); }
+        }
+
+        private Color _offColor = Color.black;
+        public Color OffColor
+        {
+            get => _offColor;
+            set { _offColor = value; base.OnValueSetInvoke(); }
+        }
+
         public OasisImage OasisImage;
 
-        public new void SetRepresentation(Dictionary<string, object> representation) {
+        public new void SetRepresentation(Dictionary<string, object> representation) 
+        {
             base.SetRepresentation(representation);
-            if ((string)representation["type"] != this.GetType().Name) {
+            if ((string)representation["type"] != this.GetType().Name) 
+            {
                 return;
             }
-            foreach (KeyValuePair<string, object> field in representation) {
-                switch(field.Key) {
+            foreach (KeyValuePair<string, object> field in representation) 
+            {
+                switch(field.Key) 
+                {
                     case "number":
-                    try {
-                        _number = Int32.Parse((string)field.Value);
-                    }
-                    catch {
-                        _number = null;
-                    }
-                    break;
+                        try {
+                            _number = Int32.Parse((string)field.Value);
+                        }
+                        catch {
+                            _number = null;
+                        }
+                        break;
+                    case "onColor":
+                        // TODO implement Color encode/decode text format
+                        Debug.LogWarning("TODO implement Color encode/decode text format");
+                        break;
+                    case "offColor":
+                        // TODO implement Color encode/decode text format
+                        Debug.LogWarning("TODO implement Color encode/decode text format");
+                        break;
                 }
             }
         }
@@ -39,6 +66,9 @@ namespace Oasis.Layout
             Dictionary<string, object> representation = base.GetRepresentation();
             representation["type"] = GetType().Name;
             representation["number"] = _number?.ToString();
+
+            Debug.LogWarning("TODO implement Color encode/decode text format");
+
             return representation;
         }
     }
