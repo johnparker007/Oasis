@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 using UnityEngine.Events;
+using Oasis.MfmeTools.Shared.UnityWrappers;
 
 namespace Oasis.MFME
 {
@@ -85,11 +86,11 @@ namespace Oasis.MFME
             ComponentLamp componentLamp = (ComponentLamp)componentLampGameObject.AddComponent(typeof(ComponentLamp));
             componentLampGameObject.transform.SetParent(_mfmeView.transform);
 
-            componentLamp.Position = new Vector2Int(
+            componentLamp.Position = new UnityEngine.Vector2Int(
                 extractComponentLamp.Position.X,
                 extractComponentLamp.Position.Y);
 
-            componentLamp.Size = new Vector2Int(
+            componentLamp.Size = new UnityEngine.Vector2Int(
                 extractComponentLamp.Size.X,
                 extractComponentLamp.Size.Y);
 
@@ -137,6 +138,13 @@ namespace Oasis.MFME
             // lamp component:
             componentLamp.Number = (int)extractComponentLamp.GetLampNumber(0); // TODO will need to be checking lamp HasValue since it's nullable
 
+            componentLamp.OnColor = new UnityEngine.Color(
+                extractComponentLamp.OffImageColor.ToColor().r,
+                extractComponentLamp.OffImageColor.ToColor().g,
+                extractComponentLamp.OffImageColor.ToColor().b);
+
+            componentLamp.OffColor = componentLamp.OnColor * 0.5f;
+
             componentLamp.Name = $"Lamp {componentLamp.Number}";
             componentLamp.Text = $"Lamp Text {componentLamp.Number}";
 
@@ -181,11 +189,11 @@ namespace Oasis.MFME
             ComponentReel componentReel = (ComponentReel)componentReelGameObject.AddComponent(typeof(ComponentReel));
             componentReelGameObject.transform.SetParent(_mfmeView.transform);
 
-            componentReel.Position = new Vector2Int(
+            componentReel.Position = new UnityEngine.Vector2Int(
                 extractComponentReel.Position.X,
                 extractComponentReel.Position.Y);
 
-            componentReel.Size = new Vector2Int(
+            componentReel.Size = new UnityEngine.Vector2Int(
                 extractComponentReel.Size.X,
                 extractComponentReel.Size.Y);
 
@@ -246,8 +254,8 @@ namespace Oasis.MFME
 
             componentBackgroundGameObject.transform.SetParent(_mfmeView.transform);
 
-            componentBackground.Position = new Vector2Int(0, 0);
-            componentBackground.Size = new Vector2Int(
+            componentBackground.Position = new UnityEngine.Vector2Int(0, 0);
+            componentBackground.Size = new UnityEngine.Vector2Int(
                 extractComponentBackground.Size.X, extractComponentBackground.Size.Y);
 
             string bmpImageFilePath = Path.Combine(Extractor.LayoutDirectoryPath, 
@@ -268,11 +276,11 @@ namespace Oasis.MFME
 
             component7SegmentGameObject.transform.SetParent(_mfmeView.transform);
 
-            component7Segment.Position = new Vector2Int(
+            component7Segment.Position = new UnityEngine.Vector2Int(
                 extractComponentSevenSegment.Position.X,
                 extractComponentSevenSegment.Position.Y);
 
-            component7Segment.Size = new Vector2Int(
+            component7Segment.Size = new UnityEngine.Vector2Int(
                 extractComponentSevenSegment.Size.X,
                 extractComponentSevenSegment.Size.Y);
 
@@ -291,11 +299,11 @@ namespace Oasis.MFME
 
             componentAlphaGameObject.transform.SetParent(_mfmeView.transform);
 
-            componentAlpha.Position = new Vector2Int(
+            componentAlpha.Position = new UnityEngine.Vector2Int(
                 extractComponentAlpha.Position.X,
                 extractComponentAlpha.Position.Y);
 
-            componentAlpha.Size = new Vector2Int(
+            componentAlpha.Size = new UnityEngine.Vector2Int(
                 extractComponentAlpha.Size.X,
                 extractComponentAlpha.Size.Y);
 
@@ -314,11 +322,11 @@ namespace Oasis.MFME
 
             componentAlphaGameObject.transform.SetParent(_mfmeView.transform);
 
-            componentAlpha.Position = new Vector2Int(
+            componentAlpha.Position = new UnityEngine.Vector2Int(
                 extractComponentAlphaNew.Position.X,
                 extractComponentAlphaNew.Position.Y);
 
-            componentAlpha.Size = new Vector2Int(
+            componentAlpha.Size = new UnityEngine.Vector2Int(
                 extractComponentAlphaNew.Size.X,
                 extractComponentAlphaNew.Size.Y);
 

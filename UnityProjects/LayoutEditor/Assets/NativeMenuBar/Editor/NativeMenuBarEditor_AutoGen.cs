@@ -514,6 +514,26 @@ public static class NativeMenuBar_AutoGen
     {
         return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "MFME/Remap MPU4 Lamps").IsInteractable;
     }
+    [UnityEditor.MenuItem("NativeMenuBar/View/Display Text Mode On")]
+    private static void ViewDisplayTextModeOn()
+    {
+        menubar.MenuItems.Single(item => item.FullPath == "View/Display Text Mode On").Action.Invoke();
+    }
+    [UnityEditor.MenuItem("NativeMenuBar/View/Display Text Mode On", true)]
+    private static bool ViewDisplayTextModeOnValidate()
+    {
+        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "View/Display Text Mode On").IsInteractable;
+    }
+    [UnityEditor.MenuItem("NativeMenuBar/View/Display Text Mode Off")]
+    private static void ViewDisplayTextModeOff()
+    {
+        menubar.MenuItems.Single(item => item.FullPath == "View/Display Text Mode Off").Action.Invoke();
+    }
+    [UnityEditor.MenuItem("NativeMenuBar/View/Display Text Mode Off", true)]
+    private static bool ViewDisplayTextModeOffValidate()
+    {
+        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "View/Display Text Mode Off").IsInteractable;
+    }
     [UnityEditor.MenuItem("NativeMenuBar/Help/Context Help")]
     private static void HelpContextHelp()
     {

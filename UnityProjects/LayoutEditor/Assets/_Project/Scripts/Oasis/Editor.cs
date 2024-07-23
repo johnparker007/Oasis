@@ -38,8 +38,21 @@ namespace Oasis
             set;
         }
 
+        public bool DisplayText
+        {
+            get
+            {
+                return _displayText;
+            }
+            private set
+            {
+                _displayText = value;
+                OnDisplayTextSet?.Invoke(_displayText);
+            }
+        }
 
         public UnityEvent<LayoutObject> OnLayoutSet = new UnityEvent<LayoutObject>();
+        public UnityEvent<bool> OnDisplayTextSet = new UnityEvent<bool>();
 
         public static Editor Instance
         {
@@ -47,13 +60,13 @@ namespace Oasis
             private set;
         } = null;
 
-
         public ExtractImporter ExtractImporter
         {
             get;
             private set;
         } = null;
 
+        private bool _displayText = false;
 
         private void Awake()
         {
@@ -212,9 +225,21 @@ OnFileImportClick();
         {
         }
 
+        public void OnDisplayTextOnClick()
+        {
+            DisplayText = true;
+        }
+
+        public void OnDisplayTextOffClick()
+        {
+            DisplayText = false;
+        }
+
         private void OnImportComplete()
         {
         }
+
+
 
     }
 }

@@ -2204,7 +2204,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6625193861410891249, guid: 805ffa950bc7030499153e77d521caea, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -0.0000076293945
+      value: 69.99999
       objectReference: {fileID: 0}
     - target: {fileID: 6625296662114882825, guid: 805ffa950bc7030499153e77d521caea, type: 3}
       propertyPath: m_AnchorMax.x
@@ -4541,6 +4541,46 @@ MonoBehaviour:
           - m_Target: {fileID: 2080336307}
             m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
             m_MethodName: OnMfmeRemapLampsClick
+            m_Mode: 1
+            m_Arguments:
+              m_ObjectArgument: {fileID: 0}
+              m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+              m_IntArgument: 0
+              m_FloatArgument: 0
+              m_StringArgument: 
+              m_BoolArgument: 0
+            m_CallState: 2
+  - name: View
+    menuItems:
+    - name: Display Text Mode On
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls:
+          - m_Target: {fileID: 2080336307}
+            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
+            m_MethodName: OnDisplayTextOnClick
+            m_Mode: 1
+            m_Arguments:
+              m_ObjectArgument: {fileID: 0}
+              m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+              m_IntArgument: 0
+              m_FloatArgument: 0
+              m_StringArgument: 
+              m_BoolArgument: 0
+            m_CallState: 2
+    - name: Display Text Mode Off
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls:
+          - m_Target: {fileID: 2080336307}
+            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
+            m_MethodName: OnDisplayTextOffClick
             m_Mode: 1
             m_Arguments:
               m_ObjectArgument: {fileID: 0}
