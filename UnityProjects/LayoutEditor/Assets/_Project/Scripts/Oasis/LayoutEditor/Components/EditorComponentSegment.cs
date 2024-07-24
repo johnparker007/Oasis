@@ -19,6 +19,8 @@ namespace Oasis.LayoutEditor
 
         protected override void Awake()
         {
+            base.Awake();
+
             Image image = GetComponent<Image>();
             _material = new Material(image.material);
             image.material = _material;

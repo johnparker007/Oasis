@@ -16,6 +16,8 @@ namespace Oasis.LayoutEditor
 
         protected override void Awake()
         {
+            base.Awake();
+
             _segments = new List<EditorComponent16SemicolonSegment>();
             _segments.AddRange(GetComponentsInChildren<EditorComponent16SemicolonSegment>());
         }

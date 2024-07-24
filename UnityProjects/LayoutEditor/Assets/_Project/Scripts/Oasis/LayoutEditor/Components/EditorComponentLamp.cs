@@ -20,6 +20,8 @@ namespace Oasis.LayoutEditor
 
         protected override void Awake()
         {
+            base.Awake();
+
             _image = GetComponent<Image>();
             _text = GetComponentInChildren<Text>();
         }
@@ -64,6 +66,15 @@ namespace Oasis.LayoutEditor
                 _image.color = Color.clear;
             }
         }
+
+        protected override void ShowDisplayElements(bool text)
+        {
+            base.ShowDisplayElements(text);
+
+            _image.enabled = !text;
+            _text.enabled = text;
+        }
+
 
     }
 

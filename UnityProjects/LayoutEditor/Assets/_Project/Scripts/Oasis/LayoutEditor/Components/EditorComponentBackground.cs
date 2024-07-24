@@ -18,6 +18,8 @@ namespace Oasis.LayoutEditor
 
         protected override void Awake()
         {
+            base.Awake();
+
             _image = GetComponent<Image>();
         }
 

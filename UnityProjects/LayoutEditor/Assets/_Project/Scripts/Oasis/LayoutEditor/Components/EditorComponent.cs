@@ -24,6 +24,12 @@ namespace Oasis.LayoutEditor
 
         protected virtual void Awake()
         {
+            Editor.Instance.OnDisplayTextSet.AddListener(OnDisplayTextSet);
+        }
+
+        protected virtual void Start()
+        {
+            ShowDisplayElements(Editor.Instance.DisplayText);
         }
 
         // Ideally don't override this in derived EditorComponents, so that blocking logic due
@@ -45,6 +51,8 @@ namespace Oasis.LayoutEditor
             {
                 Component.OnValueSet -= OnComponentValueSet;
             }
+
+            Editor.Instance.OnDisplayTextSet.RemoveListener(OnDisplayTextSet);
         }
 
         public virtual void Initialise(Layout.Component component)
@@ -67,9 +75,18 @@ namespace Oasis.LayoutEditor
         {
         }
 
+        protected virtual void ShowDisplayElements(bool text)
+        {
+        }
+
         protected virtual void OnComponentValueSet(Component component)
         {
             Refresh();
+        }
+
+        protected virtual void OnDisplayTextSet(bool enabled)
+        {
+            ShowDisplayElements(enabled);
         }
     }
 
