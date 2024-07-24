@@ -10,6 +10,7 @@ using Oasis.MfmeTools.Shared.Extract;
 using System.IO;
 using Newtonsoft.Json;
 using Oasis.MfmeTools.Mfme;
+using System.Windows.Forms;
 
 namespace Oasis.MfmeTools
 {
@@ -120,22 +121,22 @@ namespace Oasis.MfmeTools
                     MFMEScraperConstants.kComponentPositionHeight_X, MFMEScraperConstants.kComponentPositionHeight_Y);
 
                 string textBoxText = "";
-// OASIS - TODO:
-                //    // workaround, as once text box has been clicked in, the flashing cursor in top-left is picked up as non-blank,
-                //    // even if text box is empty
-                //    const int kIgnoreLeftmostPixelColumnCount = 6;
-                //    if (!MFMEScraper.IsImageBoxBlank(EmulatorScraper,
-                //        MFMEScraperConstants.kComponentTextBox_X + kIgnoreLeftmostPixelColumnCount, MFMEScraperConstants.kComponentTextBox_Y,
-                //        MFMEScraperConstants.kComponentTextBox_Width - kIgnoreLeftmostPixelColumnCount, MFMEScraperConstants.kComponentTextBox_Height,
-                //        false, false))
-                //    {
-                //        // TOIMPROVE this offset to get the mouse cursor to select inside the text box should be done better:
-                //        const int kOffsetToClickInsideTextBox = 6;
-                //        yield return MFMEAutomation.GetTextCoroutine(inputSimulator, this, EmulatorScraper,
-                //            MFMEScraperConstants.kComponentTextBox_X + kOffsetToClickInsideTextBox,
-                //            MFMEScraperConstants.kComponentTextBox_Y + kOffsetToClickInsideTextBox);
-                //        textBoxText = GUIUtility.systemCopyBuffer;
-                //    }
+                // workaround, as once text box has been clicked in, the flashing cursor in top-left is picked up as non-blank,
+                // even if text box is empty
+                const int kIgnoreLeftmostPixelColumnCount = 6;
+                if (!MfmeScraper.IsImageBoxBlank(
+                    MFMEScraperConstants.kComponentTextBox_X + kIgnoreLeftmostPixelColumnCount, MFMEScraperConstants.kComponentTextBox_Y,
+                    MFMEScraperConstants.kComponentTextBox_Width - kIgnoreLeftmostPixelColumnCount, MFMEScraperConstants.kComponentTextBox_Height,
+                    false, false))
+                {
+                    // TOIMPROVE this offset to get the mouse cursor to select inside the text box should be done better:
+                    const int kOffsetToClickInsideTextBox = 6;
+                    MFMEAutomation.GetText(inputSimulator,  
+                        MFMEScraperConstants.kComponentTextBox_X + kOffsetToClickInsideTextBox,
+                        MFMEScraperConstants.kComponentTextBox_Y + kOffsetToClickInsideTextBox);
+
+                    textBoxText = TryGetClipboardText();
+                }
 
                 ComponentStandardData componentStandardData = new ComponentStandardData(
                     componentXText, componentYText, componentWidthText, componentHeightText, angleText, textBoxText, zOrder);
@@ -283,6 +284,39 @@ namespace Oasis.MfmeTools
             //}
 
             MfmeController.KillMFMEProcessIfNotExited(_mfmeProcess);
+        }
+
+        // TODO move this out to a Clipboard helper class if it works:
+        // TOIMPROVE - this is still really rather slow, though it does work
+        static string TryGetClipboardText(int retryCount = 200, int retryDelayMilliseconds = 10)
+        {
+            bool success = false;
+            int attempts = 0;
+            string text = null;
+
+            while (!success && attempts < retryCount)
+            {
+                try
+                {
+                    if (Clipboard.ContainsText())
+                    {
+                        text = Clipboard.GetText();
+                        success = true;
+                    }
+                }
+                catch (System.Runtime.InteropServices.ExternalException)
+                {
+                    attempts++;
+                    Thread.Sleep(retryDelayMilliseconds); // Wait for a short time before retrying
+                }
+            }
+
+            if (!success)
+            {
+                Console.WriteLine("Failed to get clipboard text after multiple attempts.");
+            }
+
+            return text;
         }
 
         private void LaunchMfmeAndDll()

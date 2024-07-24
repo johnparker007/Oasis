@@ -5,6 +5,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
+using System.Windows.Forms;
 using WindowsInput;
 
 namespace Oasis.MfmeTools.Mfme
@@ -203,21 +204,21 @@ namespace Oasis.MfmeTools.Mfme
             Thread.Sleep(kShortDelay);
         }
 
-        //public static void GetTextCoroutine(InputSimulator inputSimulator, EmulatorScraper emulatorScraper,
-        //    int mouseCoordinateWithinWindowX, int mouseCoordinateWithinWindowY)
-        //{
-        //    GUIUtility.systemCopyBuffer = "";
+        public static void GetText(InputSimulator inputSimulator, 
+            int mouseCoordinateWithinWindowX, int mouseCoordinateWithinWindowY)
+        {
+            Clipboard.Clear();
 
-        //    LeftClickAtPosition(inputSimulator, emulatorScraper, mouseCoordinateWithinWindowX, mouseCoordinateWithinWindowY);
+            LeftClickAtPosition(inputSimulator, mouseCoordinateWithinWindowX, mouseCoordinateWithinWindowY);
 
-        //    inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LCONTROL, WindowsInput.Native.VirtualKeyCode.VK_A);
+            inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LCONTROL, WindowsInput.Native.VirtualKeyCode.VK_A);
 
-        //    Thread.Sleep(kVeryShortDelay);
+            Thread.Sleep(kVeryShortDelay);
 
-        //    inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LCONTROL, WindowsInput.Native.VirtualKeyCode.VK_C);
+            inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LCONTROL, WindowsInput.Native.VirtualKeyCode.VK_C);
 
-        //    Thread.Sleep(kVeryShortDelay);
-        //}
+            Thread.Sleep(kVeryShortDelay);
+        }
 
         public static void LeftClickAtPosition(InputSimulator inputSimulator, 
             int mouseCoordinateWithinWindowX, int mouseCoordinateWithinWindowY, int? overrideDelay = null)
