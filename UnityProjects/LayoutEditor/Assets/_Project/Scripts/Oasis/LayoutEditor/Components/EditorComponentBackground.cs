@@ -60,6 +60,13 @@ int originalHeight = component.Size.x;
         {
             // nothing to update
         }
+
+        protected override void ShowDisplayElements(bool text)
+        {
+            base.ShowDisplayElements(text);
+
+            _image.enabled = !text;
+        }
     }
 
 }
