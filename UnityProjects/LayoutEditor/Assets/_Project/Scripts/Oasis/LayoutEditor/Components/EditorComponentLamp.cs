@@ -35,6 +35,7 @@ namespace Oasis.LayoutEditor
             _number = componentLamp.Number;
 
             _text.text = componentLamp.Text;
+            _text.color = componentLamp.TextColor;
 
             // TODO THERE ARE POTENTIALLY IMAGE-RELATED MEMORY LEAKS TO FIX HERE!
             OasisImage oasisImage = componentLamp.OasisImage;

@@ -15,7 +15,7 @@ namespace Oasis.Layout
             set { _number = value; base.OnValueSetInvoke(); }
         }
 
-        private Color _onColor = Color.white;
+        private Color _onColor = Color.blue;
         public Color OnColor
         {
             get => _onColor;
@@ -27,6 +27,13 @@ namespace Oasis.Layout
         {
             get => _offColor;
             set { _offColor = value; base.OnValueSetInvoke(); }
+        }
+
+        private Color _textColor = Color.white;
+        public Color TextColor
+        {
+            get => _textColor;
+            set { _textColor = value; base.OnValueSetInvoke(); }
         }
 
         public OasisImage OasisImage;
@@ -55,6 +62,10 @@ namespace Oasis.Layout
                         Debug.LogWarning("TODO implement Color encode/decode text format");
                         break;
                     case "offColor":
+                        // TODO implement Color encode/decode text format
+                        Debug.LogWarning("TODO implement Color encode/decode text format");
+                        break;
+                    case "textColor":
                         // TODO implement Color encode/decode text format
                         Debug.LogWarning("TODO implement Color encode/decode text format");
                         break;

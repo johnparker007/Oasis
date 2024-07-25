@@ -136,7 +136,7 @@ namespace Oasis.MFME
 
             // TODO - may want to make single componentLamp for each of the 12 possible mfme lamp elements in an mfme
             // lamp component:
-            componentLamp.Number = (int)extractComponentLamp.GetLampNumber(0); // TODO will need to be checking lamp HasValue since it's nullable
+            componentLamp.Number = extractComponentLamp.GetLampNumber(0); // TODO will need to be checking lamp HasValue since it's nullable
 
             componentLamp.OnColor = new UnityEngine.Color(
                 extractComponentLamp.OffImageColor.ToColor().r,
@@ -145,8 +145,21 @@ namespace Oasis.MFME
 
             componentLamp.OffColor = componentLamp.OnColor * 0.5f;
 
-            componentLamp.Name = $"Lamp {componentLamp.Number}";
-            componentLamp.Text = $"Lamp Text {componentLamp.Number}";
+            componentLamp.TextColor = new UnityEngine.Color(
+                extractComponentLamp.TextColor.ToColor().r,
+                extractComponentLamp.TextColor.ToColor().g,
+                extractComponentLamp.TextColor.ToColor().b);
+
+            componentLamp.Name = "Lamp";
+            
+            if (extractComponentLamp.TextBoxText.Length > 0)
+            {
+                componentLamp.Text = extractComponentLamp.TextBoxText;
+            }
+            else
+            {
+                componentLamp.Text = $"Lamp Text {componentLamp.Number}";
+            }
 
             _mfmeView.AddComponent(componentLamp);
         }
@@ -258,10 +271,13 @@ namespace Oasis.MFME
             componentBackground.Size = new UnityEngine.Vector2Int(
                 extractComponentBackground.Size.X, extractComponentBackground.Size.Y);
 
-            string bmpImageFilePath = Path.Combine(Extractor.LayoutDirectoryPath, 
-                FileSystem.kBackgroundDirectoryName, extractComponentBackground.BmpImageFilename);
+            if(extractComponentBackground.BmpImageFilename.Length > 0)
+            {
+                string bmpImageFilePath = Path.Combine(Extractor.LayoutDirectoryPath,
+                    FileSystem.kBackgroundDirectoryName, extractComponentBackground.BmpImageFilename);
 
-            componentBackground.OasisImage = new Graphics.OasisImage(bmpImageFilePath, null, false);
+                componentBackground.OasisImage = new Graphics.OasisImage(bmpImageFilePath, null, false);
+            }
 
             componentBackground.Name = "Background";
 

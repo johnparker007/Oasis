@@ -25,35 +25,31 @@ namespace Oasis.LayoutEditor
 
         public override void Initialise(Layout.Component component)
         {
-        // XXX TODO temp workaround, there are issues where the background image is larger
-        // than the MFME window size, as then image gets squashed a little to fit on the texture, so
-        // then all the lamps are misaligned - quick hack workaround:
-        // THIS HACK will break if there's no background image!
+            ComponentBackground componentBackground = (ComponentBackground)component;
+            OasisImage oasisImage = componentBackground.OasisImage;
 
-        int originalWidth = component.Size.x;
-int originalHeight = component.Size.x;
             component.Position = new Vector2Int(0, 0);
-            
-            component.Size = new Vector2Int(
-                ((ComponentBackground)component).OasisImage.Width,
-                ((ComponentBackground)component).OasisImage.Height);
-                
 
-
+            // TODO temp workaround, there are issues where the background image is larger
+            // than the MFME window size, as then image gets squashed a little to fit on the texture, so
+            // then all the lamps are misaligned - quick hack workaround:
+            if (oasisImage != null)
+            {
+                component.Size = new Vector2Int(oasisImage.Width, oasisImage.Height);
+            }
 
             base.Initialise(component);
 
-            ComponentBackground componentBackground = (ComponentBackground)component;
+            if(oasisImage != null)
+            {
+                _texture2d = oasisImage.GetTexture2dCopy(true);
+                _texture2d.filterMode = FilterMode.Point;
 
-            OasisImage oasisImage = componentBackground.OasisImage;
+                _sprite = Sprite.Create(_texture2d,
+                    new Rect(0, 0, oasisImage.Width, oasisImage.Height), Vector2.zero);
 
-            _texture2d = oasisImage.GetTexture2dCopy(true);
-            _texture2d.filterMode = FilterMode.Point;
-
-            _sprite = Sprite.Create(_texture2d,
-                new Rect(0, 0, oasisImage.Width, oasisImage.Height), Vector2.zero);
-
-            _image.sprite = _sprite;
+                _image.sprite = _sprite;
+            }
         }
 
         protected override void UpdateStateFromEmulation()
