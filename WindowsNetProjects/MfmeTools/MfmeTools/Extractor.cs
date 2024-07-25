@@ -135,7 +135,8 @@ namespace Oasis.MfmeTools
                         MFMEScraperConstants.kComponentTextBox_X + kOffsetToClickInsideTextBox,
                         MFMEScraperConstants.kComponentTextBox_Y + kOffsetToClickInsideTextBox);
 
-                    textBoxText = TryGetClipboardText();
+                    //textBoxText = TryGetClipboardText();
+                    textBoxText = GetTextFromClipboard();
                 }
 
                 ComponentStandardData componentStandardData = new ComponentStandardData(
@@ -298,7 +299,8 @@ namespace Oasis.MfmeTools
             {
                 try
                 {
-                    if (Clipboard.ContainsText())
+                    // just as slow with this ContainsText check commented out
+                    //if (Clipboard.ContainsText())
                     {
                         text = Clipboard.GetText();
                         success = true;
@@ -317,6 +319,33 @@ namespace Oasis.MfmeTools
             }
 
             return text;
+        }
+
+        internal static string GetTextFromClipboard()
+        {
+            string clipText = "";
+
+            RunAsSTAThread(
+           () =>
+           {
+               clipText = Clipboard.GetText();
+           });
+
+            return clipText;
+        }
+
+        internal static void RunAsSTAThread(Action goForIt)
+        {
+            AutoResetEvent @event = new AutoResetEvent(false);
+            Thread thread = new Thread(
+                () =>
+                {
+                    goForIt();
+                    @event.Set();
+                });
+            thread.SetApartmentState(ApartmentState.STA);
+            thread.Start();
+            @event.WaitOne();
         }
 
         private void LaunchMfmeAndDll()
