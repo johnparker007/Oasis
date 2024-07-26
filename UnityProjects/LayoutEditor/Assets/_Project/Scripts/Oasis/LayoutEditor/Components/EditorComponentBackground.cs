@@ -16,6 +16,14 @@ namespace Oasis.LayoutEditor
         private Sprite _sprite = null;
         private Texture2D _texture2d = null;
 
+        protected ComponentBackground ComponentBackground
+        {
+            get
+            {
+                return (ComponentBackground)Component; 
+            }
+        }
+
         protected override void Awake()
         {
             base.Awake();
@@ -49,6 +57,12 @@ namespace Oasis.LayoutEditor
                     new Rect(0, 0, oasisImage.Width, oasisImage.Height), Vector2.zero);
 
                 _image.sprite = _sprite;
+
+                _image.color = Color.white;
+            }
+            else
+            {
+                _image.color = ComponentBackground.Color;
             }
         }
 
@@ -61,7 +75,14 @@ namespace Oasis.LayoutEditor
         {
             base.ShowDisplayElements(text);
 
-            _image.enabled = !text;
+            if (text)
+            {
+                _image.sprite = null;
+            }
+            else
+            {
+                _image.sprite = _sprite;
+            }
         }
     }
 

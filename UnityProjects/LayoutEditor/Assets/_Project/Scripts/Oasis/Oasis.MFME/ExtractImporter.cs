@@ -277,7 +277,7 @@ namespace Oasis.MFME
             componentBackground.Size = new UnityEngine.Vector2Int(
                 extractComponentBackground.Size.X, extractComponentBackground.Size.Y);
 
-            if(extractComponentBackground.BmpImageFilename.Length > 0)
+            if (extractComponentBackground.BmpImageFilename.Length > 0)
             {
                 string bmpImageFilePath = Path.Combine(Extractor.LayoutDirectoryPath,
                     FileSystem.kBackgroundDirectoryName, extractComponentBackground.BmpImageFilename);
