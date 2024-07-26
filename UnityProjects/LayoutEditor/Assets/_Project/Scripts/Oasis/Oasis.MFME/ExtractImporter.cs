@@ -73,7 +73,7 @@ namespace Oasis.MFME
                 }
                 else
                 {
-                    Debug.LogError("Not imported!  " + extractComponent.GetType());
+                    Debug.LogWarning("Not imported!  " + extractComponent.GetType());
                 }
             }
 
@@ -136,14 +136,20 @@ namespace Oasis.MFME
 
             // TODO - may want to make single componentLamp for each of the 12 possible mfme lamp elements in an mfme
             // lamp component:
-            componentLamp.Number = extractComponentLamp.GetLampNumber(0); // TODO will need to be checking lamp HasValue since it's nullable
+            // all a bit of a hack for now, just use 1st of the 12 lamp elements
+            ExtractComponentLamp.LampElement lampElement = extractComponentLamp.LampElements[0];
+
+            componentLamp.Number = lampElement.Number; // TODO will need to be checking lamp HasValue since it's nullable
 
             componentLamp.OnColor = new UnityEngine.Color(
+                lampElement.OnColor.ToColor().r,
+                lampElement.OnColor.ToColor().g,
+                lampElement.OnColor.ToColor().b);
+
+            componentLamp.OffColor = new UnityEngine.Color(
                 extractComponentLamp.OffImageColor.ToColor().r,
                 extractComponentLamp.OffImageColor.ToColor().g,
                 extractComponentLamp.OffImageColor.ToColor().b);
-
-            componentLamp.OffColor = componentLamp.OnColor * 0.5f;
 
             componentLamp.TextColor = new UnityEngine.Color(
                 extractComponentLamp.TextColor.ToColor().r,

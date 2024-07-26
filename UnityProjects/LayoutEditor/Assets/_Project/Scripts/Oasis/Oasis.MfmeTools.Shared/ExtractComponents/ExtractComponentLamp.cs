@@ -15,6 +15,14 @@ namespace Oasis.MfmeTools.Shared.ExtractComponents
             public ColorJSON OnColor;
             public string BmpImageFilename;
             public string BmpMaskImageFilename;
+
+            public int? Number
+            {
+                get
+                {
+                    return NumberAsText.Length == 0 ? (int?)null : int.Parse(NumberAsText);
+                }
+            }
         }
 
         public static readonly int kLampElementCount = 12;
@@ -71,13 +79,6 @@ namespace Oasis.MfmeTools.Shared.ExtractComponents
             {
                 LampElements[lampElementIndex] = new LampElement();
             }
-        }
-
-        public int? GetLampNumber(int lampElementIndex)
-        {
-            LampElement lampElement = LampElements[lampElementIndex];
-
-            return lampElement.NumberAsText.Length == 0 ? (int?)null : int.Parse(lampElement.NumberAsText);
         }
     }
 

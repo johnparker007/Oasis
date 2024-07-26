@@ -1,3 +1,4 @@
+using Oasis.MAME;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -20,6 +21,14 @@ namespace Oasis.LayoutEditor
         {
             get;
             private set;
+        }
+
+        protected MameController MameController
+        {
+            get
+            {
+                return Editor.Instance.MameController;
+            }
         }
 
         protected virtual void Awake()

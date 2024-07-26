@@ -18,6 +18,14 @@ namespace Oasis.LayoutEditor
         private Texture2D _texture2d = null;
         private Text _text = null;
 
+        protected ComponentLamp ComponentLamp
+        {
+            get
+            {
+                return (ComponentLamp)Component;
+            }
+        }
+
         protected override void Awake()
         {
             base.Awake();
@@ -30,15 +38,13 @@ namespace Oasis.LayoutEditor
         {
             base.Refresh();
 
-            ComponentLamp componentLamp = (ComponentLamp)Component;
+            _number = ComponentLamp.Number;
 
-            _number = componentLamp.Number;
-
-            _text.text = componentLamp.Text;
-            _text.color = componentLamp.TextColor;
+            _text.text = ComponentLamp.Text;
+            _text.color = ComponentLamp.TextColor;
 
             // TODO THERE ARE POTENTIALLY IMAGE-RELATED MEMORY LEAKS TO FIX HERE!
-            OasisImage oasisImage = componentLamp.OasisImage;
+            OasisImage oasisImage = ComponentLamp.OasisImage;
             if(oasisImage != null)
             {
                 _texture2d = oasisImage.GetTexture2dCopy(true);
@@ -49,6 +55,8 @@ namespace Oasis.LayoutEditor
 
                 _image.sprite = _sprite;
             }
+
+            SetLampBrightness(0f);
         }
 
         protected override void UpdateStateFromEmulation()
@@ -58,24 +66,39 @@ namespace Oasis.LayoutEditor
                 return;
             }
 
-            if (Editor.Instance.MameController.LampValues[(int)_number] == 1)
-            {
-                _image.color = Color.white;
-            }
-            else
-            {
-                _image.color = Color.clear;
-            }
+            // hack for now, until we implement variable brightness lamps in MAME - lamp is always full on or full off
+            float lampBrightness = MameController.LampValues[(int)_number] == 1 ? 1f : 0f;
+            SetLampBrightness(lampBrightness);
         }
 
         protected override void ShowDisplayElements(bool text)
         {
             base.ShowDisplayElements(text);
 
-            _image.enabled = !text;
-            _text.enabled = text;
+            if (text)
+            {
+                _image.sprite = null;
+                _text.enabled = true;
+            }
+            else
+            {
+                _image.sprite = _sprite;
+                _text.enabled = false;
+            }
+
         }
 
+        protected void SetLampBrightness(float brightness)
+        {
+            if(Editor.Instance.DisplayText)
+            {
+                _image.color = Color.Lerp(ComponentLamp.OffColor, ComponentLamp.OnColor, brightness);
+            }
+            else
+            {
+                _image.color = Color.white * brightness;
+            }
+        }
 
     }
 
