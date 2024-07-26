@@ -163,6 +163,8 @@ namespace Oasis.MFME
             componentLamp.Name = "Lamp";
             componentLamp.Text = extractComponentLamp.TextBoxText;
 
+            componentLamp.Outline = !extractComponentLamp.NoOutline;
+
             _mfmeView.AddComponent(componentLamp);
         }
 
@@ -362,6 +364,7 @@ namespace Oasis.MFME
         private void ImportMatrixAlpha(ExtractComponentMatrixAlpha extractComponentMatrixAlpha)
         {
             // TODO placeholder, treat dot matrix alpha as 16 segment alpha until written the Component/renderer
+            // also, need to check do we get both matrix output and 16seg output from MAME drivers such as sc4?
             Debug.LogWarning("Importing Matrix Alpha as Alpha new for now");
 
 // ******* TEMP CODE JUST TO GET A FUNCTIONAL ALPHA WORKING ***

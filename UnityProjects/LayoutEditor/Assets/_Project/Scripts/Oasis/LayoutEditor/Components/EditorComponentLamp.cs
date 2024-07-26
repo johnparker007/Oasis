@@ -17,6 +17,7 @@ namespace Oasis.LayoutEditor
         private Sprite _sprite = null;
         private Texture2D _texture2d = null;
         private Text _text = null;
+        private Outline _outline = null;
 
         protected ComponentLamp ComponentLamp
         {
@@ -32,6 +33,7 @@ namespace Oasis.LayoutEditor
 
             _image = GetComponent<Image>();
             _text = GetComponentInChildren<Text>();
+            _outline = GetComponent<Outline>();
         }
 
         protected override void Refresh()
@@ -55,6 +57,8 @@ namespace Oasis.LayoutEditor
 
                 _image.sprite = _sprite;
             }
+
+            _outline.enabled = ComponentLamp.Outline;
 
             SetLampBrightness(0f);
         }

@@ -38,6 +38,13 @@ namespace Oasis.Layout
 
         public OasisImage OasisImage;
 
+        private bool _outline = true;
+        public bool Outline
+        {
+            get => _outline;
+            set { _outline = value; base.OnValueSetInvoke(); }
+        }
+
         public new void SetRepresentation(Dictionary<string, object> representation) 
         {
             base.SetRepresentation(representation);
@@ -69,6 +76,9 @@ namespace Oasis.Layout
                         // TODO implement Color encode/decode text format
                         Debug.LogWarning("TODO implement Color encode/decode text format");
                         break;
+                    case "outline":
+                        _outline = (string)field.Value == "true";
+                        break;
                 }
             }
         }
@@ -77,6 +87,7 @@ namespace Oasis.Layout
             Dictionary<string, object> representation = base.GetRepresentation();
             representation["type"] = GetType().Name;
             representation["number"] = _number?.ToString();
+            representation["outline"] = _outline ? "true" : "false";
 
             Debug.LogWarning("TODO implement Color encode/decode text format");
 
