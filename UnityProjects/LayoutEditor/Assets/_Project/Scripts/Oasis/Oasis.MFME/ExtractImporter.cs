@@ -25,7 +25,7 @@ namespace Oasis.MFME
 
         private void OnMFMEExtractLayoutLoaded(MfmeTools.Shared.Extract.Layout layout)
         {
-            if(_layoutObject != null)
+            if (_layoutObject != null)
             {
                 GameObject.Destroy(_layoutObject.gameObject);
             }
@@ -71,6 +71,10 @@ namespace Oasis.MFME
                 {
                     ImportAlphaNew((ExtractComponentAlphaNew)extractComponent);
                 }
+                else if (extractComponent.GetType() == typeof(ExtractComponentMatrixAlpha))
+                {
+                    ImportMatrixAlpha((ExtractComponentMatrixAlpha)extractComponent);
+                }
                 else
                 {
                     Debug.LogWarning("Not imported!  " + extractComponent.GetType());
@@ -98,7 +102,7 @@ namespace Oasis.MFME
             // lamp component:
             string bmpImageFilePath = null;
             string bmpImageFilename = extractComponentLamp.LampElements[0].BmpImageFilename;
-            if(bmpImageFilename != null)
+            if (bmpImageFilename != null)
             {
                 bmpImageFilePath = Path.Combine(Extractor.LayoutDirectoryPath,
                 FileSystem.kLampsDirectoryName, extractComponentLamp.LampElements[0].BmpImageFilename);
@@ -108,7 +112,7 @@ namespace Oasis.MFME
             //    Extractor.LayoutDirectoryPath, extractComponentLamp.LampElements[0].BmpMaskImageFilename);
 
             // TODO also need to figure out coin/note + effect inputs
-            if(extractComponentLamp.HasButtonInput)
+            if (extractComponentLamp.HasButtonInput)
             {
                 componentLamp.Input.Enabled = true;
 
@@ -129,7 +133,7 @@ namespace Oasis.MFME
             }
 
             //componentLamp.OasisImage = new Graphics.OasisImage(bmpImageFilePath, bmpMaskImageFilePath, true);
-            if(bmpImageFilePath != null)
+            if (bmpImageFilePath != null)
             {
                 componentLamp.OasisImage = new Graphics.OasisImage(bmpImageFilePath, null, true);
             }
@@ -157,15 +161,7 @@ namespace Oasis.MFME
                 extractComponentLamp.TextColor.ToColor().b);
 
             componentLamp.Name = "Lamp";
-            
-            if (extractComponentLamp.TextBoxText.Length > 0)
-            {
-                componentLamp.Text = extractComponentLamp.TextBoxText;
-            }
-            else
-            {
-                componentLamp.Text = $"Lamp Text {componentLamp.Number}";
-            }
+            componentLamp.Text = extractComponentLamp.TextBoxText;
 
             _mfmeView.AddComponent(componentLamp);
         }
@@ -216,11 +212,11 @@ namespace Oasis.MFME
                 extractComponentReel.Size.X,
                 extractComponentReel.Size.Y);
 
-            string bandBmpImageFilePath = Path.Combine(Extractor.LayoutDirectoryPath, 
+            string bandBmpImageFilePath = Path.Combine(Extractor.LayoutDirectoryPath,
                 FileSystem.kReelsDirectoryName, extractComponentReel.BandBmpImageFilename);
             componentReel.BandOasisImage = new Graphics.OasisImage(bandBmpImageFilePath, null, true);
 
-            if(extractComponentReel.HasOverlay)
+            if (extractComponentReel.HasOverlay)
             {
                 string overlayBmpImageFilePath = Path.Combine(Extractor.LayoutDirectoryPath,
                     FileSystem.kReelsDirectoryName, extractComponentReel.OverlayBmpImageFilename);
@@ -256,7 +252,7 @@ namespace Oasis.MFME
             for (int stopIndex = 0; stopIndex < stops; ++stopIndex)
             {
                 componentReel.Text += $"Symbol {stopIndex}";
-                if(stopIndex < stops - 1)
+                if (stopIndex < stops - 1)
                 {
                     componentReel.Text += ", ";
                 }
@@ -268,7 +264,7 @@ namespace Oasis.MFME
         private void ImportBackground(ExtractComponentBackground extractComponentBackground)
         {
             GameObject componentBackgroundGameObject = new GameObject();
-            ComponentBackground componentBackground = 
+            ComponentBackground componentBackground =
                 (ComponentBackground)componentBackgroundGameObject.AddComponent(typeof(ComponentBackground));
 
             componentBackgroundGameObject.transform.SetParent(_mfmeView.transform);
@@ -276,6 +272,10 @@ namespace Oasis.MFME
             componentBackground.Position = new UnityEngine.Vector2Int(0, 0);
             componentBackground.Size = new UnityEngine.Vector2Int(
                 extractComponentBackground.Size.X, extractComponentBackground.Size.Y);
+
+            // XXX TODO TEMP HACK FOR TESTING, to be replaced once we are scraping the various
+            // additional background info from the Mfme component:
+            componentBackground.Color = new UnityEngine.Color(0.5f, 0f, 0f);
 
             if (extractComponentBackground.BmpImageFilename.Length > 0)
             {
@@ -358,7 +358,34 @@ namespace Oasis.MFME
 
             _mfmeView.AddComponent(componentAlpha);
         }
+
+        private void ImportMatrixAlpha(ExtractComponentMatrixAlpha extractComponentMatrixAlpha)
+        {
+            // TODO placeholder, treat dot matrix alpha as 16 segment alpha until written the Component/renderer
+            Debug.LogWarning("Importing Matrix Alpha as Alpha new for now");
+
+// ******* TEMP CODE JUST TO GET A FUNCTIONAL ALPHA WORKING ***
+GameObject componentAlphaGameObject = new GameObject();
+ComponentAlpha componentAlpha =
+    (ComponentAlpha)componentAlphaGameObject.AddComponent(typeof(ComponentAlpha));
+
+componentAlphaGameObject.transform.SetParent(_mfmeView.transform);
+
+componentAlpha.Position = new UnityEngine.Vector2Int(
+    extractComponentMatrixAlpha.Position.X,
+    extractComponentMatrixAlpha.Position.Y);
+
+componentAlpha.Size = new UnityEngine.Vector2Int(
+    extractComponentMatrixAlpha.Size.X,
+    extractComponentMatrixAlpha.Size.Y);
+
+componentAlpha.Reversed = false;
+
+componentAlpha.Name = "Alpha";
+
+_mfmeView.AddComponent(componentAlpha);
+
+        }
+
     }
-
 }
-

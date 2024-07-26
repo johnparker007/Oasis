@@ -86,6 +86,7 @@ namespace Oasis.LayoutEditor
                 _text.enabled = false;
             }
 
+            SetLampBrightness(0f);
         }
 
         protected void SetLampBrightness(float brightness)
