@@ -160,7 +160,7 @@ namespace Oasis.MFME
                 extractComponentLamp.TextColor.ToColor().g,
                 extractComponentLamp.TextColor.ToColor().b);
 
-            componentLamp.Name = "Lamp";
+            componentLamp.Name = "Lamp_" + lampElement.Number;
             componentLamp.Text = extractComponentLamp.TextBoxText;
 
             componentLamp.Outline = !extractComponentLamp.NoOutline;
