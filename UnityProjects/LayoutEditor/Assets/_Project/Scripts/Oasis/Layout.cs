@@ -102,6 +102,20 @@ namespace Oasis
             return Data.Views;
         }
 
+        public Component GetComponentByGuid(string guid)
+        {
+            foreach(View view in Data.Views)
+            {
+                Component component = view.GetComponentByGuid(guid);
+                if(component != null)
+                {
+                    return component;
+                }
+            }
+
+            return null;
+        }
+
         public void RemapLamps(string[] mfmeLampTable, string[] mameLampTable)
         {
             MfmeImportView.RemapLamps(mfmeLampTable, mameLampTable);

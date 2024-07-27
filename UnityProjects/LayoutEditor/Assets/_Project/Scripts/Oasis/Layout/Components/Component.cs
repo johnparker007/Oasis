@@ -9,6 +9,12 @@ namespace Oasis.Layout
         public delegate void OnValueSetDelegate(Component component);
         public event OnValueSetDelegate OnValueSet;
 
+        public string Guid
+        {
+            get;
+            private set;
+        }
+
         private Vector2Int _position;
         public Vector2Int Position
         {
@@ -37,42 +43,68 @@ namespace Oasis.Layout
             set { _text = value; OnValueSetInvoke(); }
         }
 
+        // JP TODO - the plan is to change this base Component class to NOT derive from Monobehaviour, but instead
+        // be a pure c# class.  At that point, we can add standard contructor/destructor, and so then for instance
+        // the Component will set up its own GUID on instantiation.
+        // This work can't be done until the current UI Hierarchy and Inspector are rewritten, the current ones were
+        // placeholders to get something useable going.
+        public void ConstructorPlaceholder()
+        {
+            AllocateGuid();
+        }
+
         protected virtual void OnValueSetInvoke()
         {
             OnValueSet?.Invoke(this);
         }
 
-        public void SetRepresentation(Dictionary<string, object> representation) {
-            int currentValue = 0;
-            if ((string)representation["type"] != this.GetType().Name) {
+        public void SetRepresentation(Dictionary<string, object> representation) 
+        {
+            if ((string)representation["type"] != this.GetType().Name)
+            {
                 return;
             }
-            foreach (string k in representation.Keys) {
-                switch(k) {
+
+            foreach (string k in representation.Keys) 
+            {
+                int currentValue;
+                switch (k)
+                {
+                    case "guid":
+                        Guid = (string)representation[k];
+                        break;
+                    case "name":
+                        _name = (string)representation[k];
+                        break;
+                    case "text":
+                        _text = (string)representation[k];
+                        break;
                     case "x":
-                    Int32.TryParse((string)representation[k], out currentValue);
-                    _position.x = currentValue;
-                    break;
+                        int.TryParse((string)representation[k], out currentValue);
+                        _position.x = currentValue;
+                        break;
                     case "y":
-                    Int32.TryParse((string)representation[k], out currentValue);
-                    _position.y = currentValue;
-                    break;
+                        int.TryParse((string)representation[k], out currentValue);
+                        _position.y = currentValue;
+                        break;
                     case "width":
-                    Int32.TryParse((string)representation[k], out currentValue);
-                    _size.x = currentValue;
-                    break;
+                        int.TryParse((string)representation[k], out currentValue);
+                        _size.x = currentValue;
+                        break;
                     case "height":
-                    Int32.TryParse((string)representation[k], out currentValue);
-                    _size.y = currentValue;
-                    break;
+                        int.TryParse((string)representation[k], out currentValue);
+                        _size.y = currentValue;
+                        break;
                 }
             }
         }
 
-        public Dictionary<string, object> GetRepresentation() {
+        public Dictionary<string, object> GetRepresentation() 
+        {
             return new Dictionary<string, object>
             {
                 {"type", GetType().Name},
+                {"guid", Guid},
                 {"name", _name},
                 {"text", _text},
                 {"x", _position.x.ToString()},
@@ -80,6 +112,22 @@ namespace Oasis.Layout
                 {"width", _size.x.ToString()},
                 {"height", _size.y.ToString()},
             };
+        }
+
+        private void AllocateGuid()
+        {
+            if(Guid == null || Guid.Length == 0)
+            {
+                string newGuid;
+
+                do
+                {
+                    newGuid = System.Guid.NewGuid().ToString();
+                }
+                while (Editor.Instance.Project.Layout.GetComponentByGuid(newGuid) != null);
+
+                Guid = newGuid;
+            }
         }
 
     }

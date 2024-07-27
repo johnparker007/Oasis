@@ -163,6 +163,11 @@ namespace Oasis.Layout
             OnChanged?.Invoke();
         }
 
+        public Component GetComponentByGuid(string guid)
+        {
+            return Data.Components.Find(x => x.Guid == guid);
+        }
+
         public void RemapLamps(string[] mfmeLampTable, string[] mameLampTable)
         {
             Mpu4LampRemapper lampRemapper = new Mpu4LampRemapper(mfmeLampTable, mameLampTable);

@@ -112,13 +112,33 @@ namespace Oasis
 
             ExtractImporter.OnImportComplete.AddListener(OnImportComplete);
 
-// JP HACK:
-OnFileImportClick();
+            // JP Placeholder until Components are not derived from Monobehaviour:
+            OnLayoutSet.AddListener(OnLayoutSetCallback);
+
+            // JP HACK:
+            OnFileImportClick();
         }
 
         private void RemoveListeners()
         {
             ExtractImporter.OnImportComplete.RemoveListener(OnImportComplete);
+        }
+
+        // JP Placeholder until Component base no longer derived from Monobehaviour:
+        private void OnLayoutAddComponent(Layout.Component component, View view)
+        {
+            // fake call constructor, until we have standard c# constructor/destructor
+            component.ConstructorPlaceholder();
+        }
+
+        // JP Placeholder until Component base no longer derived from Monobehaviour:
+        private void OnLayoutSetCallback(LayoutObject layout)
+        {
+            if (layout != null)
+            {
+                layout.OnAddComponent.AddListener(OnLayoutAddComponent);
+            }
+            // TODO else remove listener if set?  Also in OnDestroy if set?
         }
 
         public void OnFileImportClick()
