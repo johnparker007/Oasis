@@ -63,9 +63,6 @@ namespace Oasis.MAME
             MPU1,
         }
 
-
-        private const string kTEMPHardcodedMameExeDirectoryPath = "Emulators\\MAME\\mame0258";
-
         private const string kDefaultSaveStateFilename = "oasis_save_state";
 
         private const string kMameExeFilename = "mame.exe";

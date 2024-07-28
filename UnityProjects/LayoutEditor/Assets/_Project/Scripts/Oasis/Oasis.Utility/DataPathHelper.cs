@@ -9,7 +9,7 @@ namespace Oasis.Utility
         {
             get
             {
-                return System.IO.Path.GetDirectoryName(Application.dataPath);
+                return Path.GetDirectoryName(Application.dataPath);
             }
         }
 
@@ -17,7 +17,8 @@ namespace Oasis.Utility
         {
             get
             {
-                return Path.Combine(DataPathHelper.ProjectRootPath, "Emulators\\MAME\\mame0258");
+                // This is temporary, until the proper system is in that manages MAME binaries, savestates, dynamic run folder, etc
+                return Path.Combine(ProjectRootPath, "Emulators\\MAME\\mame0267");
             }
         }
 
@@ -25,7 +26,7 @@ namespace Oasis.Utility
         {
             get
             {
-                return Path.Combine(DataPathHelper.MAMERootPath, "roms");
+                return Path.Combine(MAMERootPath, "roms");
             }
         }
 
@@ -33,7 +34,7 @@ namespace Oasis.Utility
         {
             get
             {
-                return Path.Combine(DataPathHelper.ProjectRootPath, "MameSource\\barcrest");
+                return Path.Combine(ProjectRootPath, "MameSource\\barcrest");
             }
         }
     }

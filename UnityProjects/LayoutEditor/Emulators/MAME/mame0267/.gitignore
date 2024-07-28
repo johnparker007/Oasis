@@ -1,0 +1,17 @@
+mame.exe
+mame.sym
+ui.ini
+artwork/
+bgfx/
+cfg/
+crtlr/
+docs/
+hash/
+hlsl/
+ini/
+language/
+nvram/
+roms/
+samples/
+snap/
+sta/
