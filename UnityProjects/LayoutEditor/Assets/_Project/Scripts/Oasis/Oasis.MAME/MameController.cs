@@ -104,8 +104,12 @@ namespace Oasis.MAME
         //vfdduty0 = 27   (JP 0-31 I believe)
         //vfd13 = 41164  (JP prob 1 bit per segment, support up to 16 segs including dot?  or is it for char set?
 
+        private const string kDataPrefixLampLabel = "lamplabel"; // not sure what this is for now, going to discard, seen on sc4dnd
+        private const string kDataPrefixTriac = "triac";
+        private const string kDataPrefixText = "text";
         private const string kDataPrefixLamp = "lamp";
         private const string kDataPrefixDigit = "digit";
+        private const string kDataPrefixSReel = "sreel"; // legacy
         private const string kDataPrefixReel = "reel";
         private const string kDataPrefixVfdDuty = "vfdduty";
         private const string kDataPrefixVfdBlank = "vfdblank";
@@ -437,8 +441,25 @@ namespace Oasis.MAME
             //    _nextStdOutLineIsPixelData = false;
             //}
             //else
-            
+
             // TODO very crude for now, will be able to be optimised with dictionaries etc
+            //if (lineData.Substring(0, kDataPrefixSReel.Length) == kDataPrefixSReel)
+            //{
+            //    // ignore/discard
+            //}
+            //else if (lineData.Substring(0, kDataPrefixTriac.Length) == kDataPrefixTriac)
+            //{
+            //    // ignore/discard
+            //}
+            //else if (lineData.Substring(0, kDataPrefixText.Length) == kDataPrefixText)
+            //{
+            //    // ignore/discard
+            //}
+            //else if (lineData.Substring(0, kDataPrefixLampLabel.Length) == kDataPrefixLampLabel) // needs to be before "Lamp"!
+            //{
+            //    // ignore/discard
+            //}
+            //else 
             if (lineData.Substring(0, kDataPrefixLamp.Length) == kDataPrefixLamp)
             {
                 ProcessLineLamp(lineData);
