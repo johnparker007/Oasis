@@ -556,6 +556,9 @@ namespace Oasis.MAME
 
                 //UnityEngine.Debug.LogError("JP Vfd" + vfdNumber + " = " + VfdValues[vfdNumber]);
             }
+
+// XXX hack to force cull brightness while working out issue with sc4 vfd compared to mpu4
+VfdDuty[0] = 31;
         }
 
         private void ProcessLineDigit(string lineData)

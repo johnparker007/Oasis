@@ -137,13 +137,29 @@ namespace Oasis.Layout
             }
             else if (component.GetType() == typeof(ComponentAlpha))
             {
-                EditorComponentAlpha editorComponentAlpha = Instantiate(
-                    Editor.Instance.EditorComponentAlphaPrefab,
-                    Editor.Instance.UIController.EditorCanvasGameObject.transform);
+                // TODO kinda hacky for now, until decided how this is going to work wrt design:
+                switch (Editor.Instance.Project.Settings.FruitMachine.Platform)
+                {
+                    case MAME.MameController.PlatformType.Scorpion4:
+                        EditorComponentAlpha14 editorComponentAlpha14 = Instantiate(
+                            Editor.Instance.EditorComponentAlpha14Prefab,
+                            Editor.Instance.UIController.EditorCanvasGameObject.transform);
 
-                editorComponent = editorComponentAlpha;
+                        editorComponent = editorComponentAlpha14;
 
-                editorComponentAlpha.Initialise((ComponentAlpha)component);
+                        editorComponentAlpha14.Initialise((ComponentAlpha)component);
+                        break;
+                    case MAME.MameController.PlatformType.MPU4:
+                    default:
+                        EditorComponentAlpha editorComponentAlpha16 = Instantiate(
+                            Editor.Instance.EditorComponentAlphaPrefab,
+                            Editor.Instance.UIController.EditorCanvasGameObject.transform);
+
+                        editorComponent = editorComponentAlpha16;
+
+                        editorComponentAlpha16.Initialise((ComponentAlpha)component);
+                        break;
+                }
             }
 
             if (editorComponent != null)

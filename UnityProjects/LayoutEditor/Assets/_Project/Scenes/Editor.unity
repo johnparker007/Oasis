@@ -2204,7 +2204,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6625193861410891249, guid: 805ffa950bc7030499153e77d521caea, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 69.99999
+      value: -0.0000076293945
       objectReference: {fileID: 0}
     - target: {fileID: 6625296662114882825, guid: 805ffa950bc7030499153e77d521caea, type: 3}
       propertyPath: m_AnchorMax.x
@@ -6095,11 +6095,14 @@ MonoBehaviour:
   EditorComponentReelPrefab: {fileID: 7270301404913838959, guid: ee690e3c8550a8a47953c65871800e76, type: 3}
   EditorComponentSevenSegmentPrefab: {fileID: 7496649456409283726, guid: e2724f460f4da8d4f95bd8830d362e6b, type: 3}
   EditorComponentAlphaPrefab: {fileID: 3842146194991930722, guid: 16bd2967a11aec640a0f0bb0c56be1a9, type: 3}
+  EditorComponentAlpha14Prefab: {fileID: 6476336133491195093, guid: 2ddce75944df8154fbf19412f6d6ef26, type: 3}
   EditorComponentOverlayPrefab: {fileID: 1078919621334969651, guid: ebc318787e7ba6c4289ac1185a9ac6c1, type: 3}
-  EditorComponent16SemicolonSegmentPrefab: {fileID: 32469920094958937, guid: f373d810af4ceb14caf902d7080ef12d, type: 3}
   EditorPanelMFMEImport: {fileID: 2038115449}
   EditorPanelFull: {fileID: 1627987300}
   OnLayoutSet:
+    m_PersistentCalls:
+      m_Calls: []
+  OnDisplayTextSet:
     m_PersistentCalls:
       m_Calls: []
 --- !u!1001 &1934027768651686536

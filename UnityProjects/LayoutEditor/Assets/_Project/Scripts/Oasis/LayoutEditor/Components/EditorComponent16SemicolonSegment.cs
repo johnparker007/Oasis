@@ -7,18 +7,8 @@ using Oasis.Graphics;
 
 namespace Oasis.LayoutEditor
 {
-    public class EditorComponent16SemicolonSegment : EditorComponentSegment
+    public class EditorComponent16SemicolonSegment : EditorComponentSegmentAlpha
     {
-        public override string HierarchyPseudoSceneName => null;
-        public override string HierarchyName => null;
-
-        public const int kMaximumVfdDuty = 31;
-
-        public void Setup(int vfdSegmentNumber)
-        {
-            _number = vfdSegmentNumber;
-        }
-
         protected override void UpdateStateFromEmulation()
         {
             if (!_number.HasValue)
