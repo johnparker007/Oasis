@@ -1877,79 +1877,77 @@ namespace Oasis.MfmeTools.Mfme
             Extractor.Layout.Components.Add(extractLabel);
         }
 
-        //        public static void ProcessButton(InputSimulator inputSimulator, ComponentStandardData componentStandardData)
-        //        {
-        //            ExtractComponentButton extractButton = new ExtractComponentButton(componentStandardData);
+        public static void ProcessButton(InputSimulator inputSimulator, ComponentStandardData componentStandardData)
+        {
+            ExtractComponentButton extractButton = new ExtractComponentButton(componentStandardData);
 
-        //            // TODO Extract the lamp image and mask image if present
+            // TODO Extract the lamp image and mask image if present
 
-        //            extractButton.LampElements[0].NumberAsText = DelphiFontScraper.GetFieldCharacters(
-        //                MFMEScraperConstants.kPropertiesButtonLampElement0LampNumber_X, MFMEScraperConstants.kPropertiesButtonLampElement0LampNumber_Y);
+            extractButton.LampElements[0].NumberAsText = DelphiFontScraper.GetFieldCharacters(
+                MFMEScraperConstants.kPropertiesButtonLampElement0LampNumber_X, MFMEScraperConstants.kPropertiesButtonLampElement0LampNumber_Y);
 
-        //            Color color = new Color(MfmeScraper.GetColorboxValue(
-        //                MFMEScraperConstants.kPropertiesButtonLampElement0Color_X, MFMEScraperConstants.kPropertiesButtonLampElement0Color_Y);
-        //            extractButton.LampElements[0].OnColor = new ColorJSON(color);
+            Color color = new Color(MfmeScraper.GetColorboxValue(
+                MFMEScraperConstants.kPropertiesButtonLampElement0Color_X, MFMEScraperConstants.kPropertiesButtonLampElement0Color_Y));
+            extractButton.LampElements[0].OnColor = new ColorJSON(color);
 
-        //            extractButton.LampElements[1].NumberAsText = DelphiFontScraper.GetFieldCharacters(
-        //                MFMEScraperConstants.kPropertiesButtonLampElement1LampNumber_X, MFMEScraperConstants.kPropertiesButtonLampElement1LampNumber_Y);
+            extractButton.LampElements[1].NumberAsText = DelphiFontScraper.GetFieldCharacters(
+                MFMEScraperConstants.kPropertiesButtonLampElement1LampNumber_X, MFMEScraperConstants.kPropertiesButtonLampElement1LampNumber_Y);
 
-        //            color = new Color(MfmeScraper.GetColorboxValue(
-        //                MFMEScraperConstants.kPropertiesButtonLampElement1Color_X, MFMEScraperConstants.kPropertiesButtonLampElement1Color_Y);
-        //            extractButton.LampElements[1].OnColor = new ColorJSON(color);
+            color = new Color(MfmeScraper.GetColorboxValue(
+                MFMEScraperConstants.kPropertiesButtonLampElement1Color_X, MFMEScraperConstants.kPropertiesButtonLampElement1Color_Y));
+            extractButton.LampElements[1].OnColor = new ColorJSON(color);
 
-        //            extractButton.ButtonNumberAsString = DelphiFontScraper.GetFieldCharacters(
-        //                MFMEScraperConstants.kPropertiesButtonButtonNumber_X, MFMEScraperConstants.kPropertiesButtonButtonNumber_Y);
+            extractButton.ButtonNumberAsString = DelphiFontScraper.GetFieldCharacters(
+                MFMEScraperConstants.kPropertiesButtonButtonNumber_X, MFMEScraperConstants.kPropertiesButtonButtonNumber_Y);
 
-        //            extractButton.CoinNote = DelphiFontScraper.GetDropdownCharacters(
-        //                MFMEScraperConstants.kPropertiesButtonCoinNote_X, MFMEScraperConstants.kPropertiesButtonCoinNote_Y);
+            extractButton.CoinNote = DelphiFontScraper.GetDropdownCharacters(
+                MFMEScraperConstants.kPropertiesButtonCoinNote_X, MFMEScraperConstants.kPropertiesButtonCoinNote_Y);
 
-        //            extractButton.Effect = DelphiFontScraper.GetDropdownCharacters(
-        //                MFMEScraperConstants.kPropertiesButtonEffect_X, MFMEScraperConstants.kPropertiesButtonEffect_Y);
+            extractButton.Effect = DelphiFontScraper.GetDropdownCharacters(
+                MFMEScraperConstants.kPropertiesButtonEffect_X, MFMEScraperConstants.kPropertiesButtonEffect_Y);
 
-        //            extractButton.InhibitLampAsString = DelphiFontScraper.GetFieldCharacters(
-        //                MFMEScraperConstants.kPropertiesButtonInhibitLamp_X, MFMEScraperConstants.kPropertiesButtonInhibitLamp_Y);
+            extractButton.InhibitLampAsString = DelphiFontScraper.GetFieldCharacters(
+                MFMEScraperConstants.kPropertiesButtonInhibitLamp_X, MFMEScraperConstants.kPropertiesButtonInhibitLamp_Y);
 
-        //            extractButton.Shortcut1 = DelphiFontScraper.GetFieldCharacters(
-        //                MFMEScraperConstants.kPropertiesButtonShortcut1_X, MFMEScraperConstants.kPropertiesButtonShortcut1_Y);
+            extractButton.Shortcut1 = DelphiFontScraper.GetFieldCharacters(
+                MFMEScraperConstants.kPropertiesButtonShortcut1_X, MFMEScraperConstants.kPropertiesButtonShortcut1_Y);
 
-        //            extractButton.Shortcut2 = DelphiFontScraper.GetFieldCharacters(
-        //                MFMEScraperConstants.kPropertiesButtonShortcut2_X, MFMEScraperConstants.kPropertiesButtonShortcut2_Y);
+            extractButton.Shortcut2 = DelphiFontScraper.GetFieldCharacters(
+                MFMEScraperConstants.kPropertiesButtonShortcut2_X, MFMEScraperConstants.kPropertiesButtonShortcut2_Y);
 
-        //            extractButton.Graphic = MfmeScraper.GetCheckboxValue(
-        //                EmulatorScraper, MFMEScraperConstants.kPropertiesButtonGraphicCheckbox_X, MFMEScraperConstants.kPropertiesButtonGraphicCheckbox_Y);
+            extractButton.Graphic = MfmeScraper.GetCheckboxValue(
+                MFMEScraperConstants.kPropertiesButtonGraphicCheckbox_X, MFMEScraperConstants.kPropertiesButtonGraphicCheckbox_Y);
 
-        //            extractButton.Inverted = MfmeScraper.GetCheckboxValue(
-        //                EmulatorScraper, MFMEScraperConstants.kPropertiesButtonInvertedCheckbox_X, MFMEScraperConstants.kPropertiesButtonInvertedCheckbox_Y);
+            extractButton.Inverted = MfmeScraper.GetCheckboxValue(
+                MFMEScraperConstants.kPropertiesButtonInvertedCheckbox_X, MFMEScraperConstants.kPropertiesButtonInvertedCheckbox_Y);
 
-        //            extractButton.Split = MfmeScraper.GetCheckboxValue(
-        //                EmulatorScraper, MFMEScraperConstants.kPropertiesButtonSplitCheckbox_X, MFMEScraperConstants.kPropertiesButtonSplitCheckbox_Y);
+            extractButton.Split = MfmeScraper.GetCheckboxValue(
+                MFMEScraperConstants.kPropertiesButtonSplitCheckbox_X, MFMEScraperConstants.kPropertiesButtonSplitCheckbox_Y);
 
-        //            extractButton.LockOut = MfmeScraper.GetCheckboxValue(
-        //                EmulatorScraper, MFMEScraperConstants.kPropertiesButtonLockOutCheckbox_X, MFMEScraperConstants.kPropertiesButtonLockOutCheckbox_Y);
+            extractButton.LockOut = MfmeScraper.GetCheckboxValue(
+                MFMEScraperConstants.kPropertiesButtonLockOutCheckbox_X, MFMEScraperConstants.kPropertiesButtonLockOutCheckbox_Y);
 
-        //            extractButton.LED = MfmeScraper.GetCheckboxValue(
-        //                EmulatorScraper, MFMEScraperConstants.kPropertiesButtonLEDCheckbox_X, MFMEScraperConstants.kPropertiesButtonLEDCheckbox_Y);
+            extractButton.LED = MfmeScraper.GetCheckboxValue(
+                MFMEScraperConstants.kPropertiesButtonLEDCheckbox_X, MFMEScraperConstants.kPropertiesButtonLEDCheckbox_Y);
 
-        //            extractButton.XOff = int.Parse(DelphiFontScraper.GetFieldCharacters(
-        //                MFMEScraperConstants.kPropertiesButtonXOff_X, MFMEScraperConstants.kPropertiesButtonXOff_Y));
+            extractButton.XOff = int.Parse(DelphiFontScraper.GetFieldCharacters(
+                MFMEScraperConstants.kPropertiesButtonXOff_X, MFMEScraperConstants.kPropertiesButtonXOff_Y));
 
-        //            extractButton.YOff = int.Parse(DelphiFontScraper.GetFieldCharacters(
-        //                MFMEScraperConstants.kPropertiesButtonYOff_X, MFMEScraperConstants.kPropertiesButtonYOff_Y));
+            extractButton.YOff = int.Parse(DelphiFontScraper.GetFieldCharacters(
+                MFMEScraperConstants.kPropertiesButtonYOff_X, MFMEScraperConstants.kPropertiesButtonYOff_Y));
 
-        //            color = new Color(MfmeScraper.GetColorboxValue(
-        //                        MFMEScraperConstants.kPropertiesButtonTextColourbox_X, MFMEScraperConstants.kPropertiesButtonTextColourbox_Y);
-        //            extractButton.TextColor = new ColorJSON(color);
+            color = new Color(MfmeScraper.GetColorboxValue(
+                        MFMEScraperConstants.kPropertiesButtonTextColourbox_X, MFMEScraperConstants.kPropertiesButtonTextColourbox_Y));
+            extractButton.TextColor = new ColorJSON(color);
 
-        //            extractButton.ShapeAsString = DelphiFontScraper.GetDropdownCharacters(
-        //                MFMEScraperConstants.kPropertiesButtonShapeDropdown_X, MFMEScraperConstants.kPropertiesButtonShapeDropdown_Y);
+            extractButton.ShapeAsString = DelphiFontScraper.GetDropdownCharacters(
+                MFMEScraperConstants.kPropertiesButtonShapeDropdown_X, MFMEScraperConstants.kPropertiesButtonShapeDropdown_Y);
 
-        //            color = new Color(MfmeScraper.GetColorboxValue(
-        //                        MFMEScraperConstants.kPropertiesButtonOffImageColourbox_X, MFMEScraperConstants.kPropertiesButtonOffImageColourbox_Y);
-        //            extractButton.OffImageColor = new ColorJSON(color);
+            color = new Color(MfmeScraper.GetColorboxValue(
+                        MFMEScraperConstants.kPropertiesButtonOffImageColourbox_X, MFMEScraperConstants.kPropertiesButtonOffImageColourbox_Y));
+            extractButton.OffImageColor = new ColorJSON(color);
 
-        //            Extractor.Layout.Components.Add(extractButton);
-
-        //            
-        //        }
+            Extractor.Layout.Components.Add(extractButton);
+        }
     }
 }
