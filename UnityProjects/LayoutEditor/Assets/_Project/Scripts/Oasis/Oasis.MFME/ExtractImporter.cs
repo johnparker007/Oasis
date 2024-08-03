@@ -189,6 +189,8 @@ namespace Oasis.MFME
 
             if (extractComponentButton.HasButtonInput)
             {
+                componentButton.Input.Enabled = true;
+
                 int mfmeButtonNumber = int.Parse(extractComponentButton.ButtonNumberAsString);
                 componentButton.Input.ButtonNumber = mfmeButtonNumber;
 
