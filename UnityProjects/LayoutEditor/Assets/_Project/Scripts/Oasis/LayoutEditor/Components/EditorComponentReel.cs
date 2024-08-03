@@ -82,6 +82,7 @@ float yScale = ComponentReel.VisibleScale2D;
             switch(Editor.Instance.Project.Settings.FruitMachine.Platform)
             {
                 case MameController.PlatformType.Impact:
+                case MameController.PlatformType.Scorpion4:
                     normalisedOffset = 1f - normalisedOffset; 
                     break;
                 case MameController.PlatformType.MPU4:
@@ -110,6 +111,21 @@ float yScale = ComponentReel.VisibleScale2D;
                             break;
                         case 16:
                             bandOffsetNormalisedToCorrectRendering = -0.153f;
+                            break;
+                        case 24:
+                            break;
+                        case 25:
+                            break;
+                    }
+                    break;
+                case MameController.PlatformType.Scorpion4:
+                    switch (ComponentReel.Stops)
+                    {
+                        case 12:
+                            bandOffsetNormalisedToCorrectRendering = 0.643f + ((1f / 12f) * 1f) - ((1f/7f) * (1f/12f));
+                            break;
+                        case 16:
+                            bandOffsetNormalisedToCorrectRendering = 0.0905f;
                             break;
                         case 24:
                             break;
