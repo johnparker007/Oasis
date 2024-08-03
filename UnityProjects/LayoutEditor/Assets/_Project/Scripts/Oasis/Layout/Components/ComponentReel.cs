@@ -40,36 +40,45 @@ namespace Oasis.Layout
         // will copy into Background transparency when converted to an Oasis panel
         public OasisImage OverlayOasisImage;
 
-        public new void SetRepresentation(Dictionary<string, object> representation) {
+        public override void SetRepresentation(Dictionary<string, object> representation) 
+        {
             base.SetRepresentation(representation);
-            if ((string)representation["type"] != this.GetType().Name) {
+
+            if ((string)representation["type"] != GetType().Name) 
+            {
                 return;
             }
-            foreach (KeyValuePair<string, object> field in representation) {
+
+            foreach (KeyValuePair<string, object> field in representation) 
+            {
                 int iNumber = 0;
                 float fNumber = 0;
-                switch(field.Key) {
+                switch(field.Key) 
+                {
                     case "stops":
-                    Int32.TryParse((string)field.Value, out iNumber);
-                    _stops = iNumber;
-                    break;
+                        int.TryParse((string)field.Value, out iNumber);
+                        _stops = iNumber;
+                        break;
                     case "visible_scale_2d":
-                    float.TryParse((string)field.Value, out fNumber);
-                    _visibleScale2D = fNumber;
-                    break;
+                        float.TryParse((string)field.Value, out fNumber);
+                        _visibleScale2D = fNumber;
+                        break;
                     case "is_reversed":
-                    _reversed = (string)(field.Value) == "true";
-                    break;
+                        _reversed = (string)field.Value == "true";
+                        break;
                 }
             }
         }
 
-        public new Dictionary<string, object> GetRepresentation() {
+        public override Dictionary<string, object> GetRepresentation() 
+        {
             Dictionary<string, object> representation = base.GetRepresentation();
+
             representation["type"] = GetType().Name;
             representation["stops"] = _stops.ToString();
             representation["visible_scale_2d"] = _visibleScale2D.ToString();
             representation["is_reversed"] = _reversed ? "true" : "false";
+
             return representation;
         }
     }

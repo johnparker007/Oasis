@@ -15,10 +15,11 @@ namespace Oasis.Layout
             set { _color = value; base.OnValueSetInvoke(); }
         }
 
-        public new void SetRepresentation(Dictionary<string, object> representation)
+        public override void SetRepresentation(Dictionary<string, object> representation)
         {
             base.SetRepresentation(representation);
-            if ((string)representation["type"] != this.GetType().Name)
+
+            if ((string)representation["type"] != GetType().Name)
             {
                 return;
             }
@@ -35,8 +36,10 @@ namespace Oasis.Layout
             }
         }
 
-        public new Dictionary<string, object> GetRepresentation() {
+        public override Dictionary<string, object> GetRepresentation() 
+        {
             Dictionary<string, object> representation = base.GetRepresentation();
+
             representation["type"] = GetType().Name;
 
             // TODO implement Color encode/decode text format

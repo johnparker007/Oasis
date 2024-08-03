@@ -8,26 +8,31 @@ using EditorComponent = Oasis.LayoutEditor.EditorComponent;
 
 namespace Oasis.Layout
 {
-    public class View : MonoBehaviour, SerializableDictionary 
+    public class View : MonoBehaviour, SerializableDictionary
     {
-        public void SetRepresentation(Dictionary<string, object> representation) {
-            if ((string)representation["type"] != this.GetType().Name) {
+        public void SetRepresentation(Dictionary<string, object> representation)
+        {
+            if ((string)representation["type"] != this.GetType().Name)
+            {
                 return;
             }
             // TODO: Rehydrate views/components
-            
+
         }
 
-        public Dictionary<string, object> GetRepresentation() {
+        public Dictionary<string, object> GetRepresentation()
+        {
             Dictionary<string, object> representation = new Dictionary<string, object>();
             representation["type"] = GetType().Name;
             representation["items"] = new Dictionary<string, object>();
             representation["unknown"] = new List<Dictionary<string, object>>();
-            foreach (SerializableDictionary component in Data.Components) {
+            foreach (SerializableDictionary component in Data.Components)
+            {
                 Dictionary<string, object> componentData = component.GetRepresentation();
                 object name;
                 componentData.TryGetValue("name", out name);
-                if (name != null) {
+                if (name != null)
+                {
                     ((Dictionary<string, object>)representation["items"])[(string)name] = component.GetRepresentation();
                     continue;
                 }
@@ -72,94 +77,23 @@ namespace Oasis.Layout
             EditorComponent editorComponent = null;
             if (component.GetType() == typeof(ComponentBackground))
             {
-                EditorComponentBackground editorComponentBackground = Instantiate(
-                    Editor.Instance.EditorComponentBackgroundPrefab,
-                    Editor.Instance.UIController.EditorCanvasGameObject.transform);
-
-                editorComponent = editorComponentBackground;
-
-                editorComponentBackground.Initialise((ComponentBackground)component);
-
-
-                // JP quick hack for now:
-                RectTransform editorCanvasRectTransform = Editor.Instance.UIController.EditorCanvasGameObject.GetComponent<RectTransform>();
-                editorCanvasRectTransform.sizeDelta = new Vector2(component.Size.x, component.Size.y);
-
+                editorComponent = AddComponentBackground((ComponentBackground)component);
             }
             else if (component.GetType() == typeof(ComponentLamp))
             {
-                EditorComponentLamp editorComponentLamp = Instantiate(
-                    Editor.Instance.EditorComponentLampPrefab,
-                    Editor.Instance.UIController.EditorCanvasGameObject.transform);
-
-                editorComponent = editorComponentLamp;
-
-                editorComponentLamp.Initialise((ComponentLamp)component);
+                editorComponent = AddComponentLamp((ComponentLamp)component);
             }
             else if (component.GetType() == typeof(ComponentReel))
             {
-                ComponentReel componentReel = (ComponentReel)component;
-                if (overlay)
-                {
-                    EditorComponentOverlay editorComponentOverlay = Instantiate(
-                        Editor.Instance.EditorComponentOverlayPrefab,
-                        Editor.Instance.UIController.EditorCanvasGameObject.transform);
-
-                    editorComponent = editorComponentOverlay;
-
-                    editorComponentOverlay.Initialise(componentReel);
-                }
-                else
-                {
-                    EditorComponentReel editorComponentReel = Instantiate(
-                        Editor.Instance.EditorComponentReelPrefab,
-                        Editor.Instance.UIController.EditorCanvasGameObject.transform);
-
-                    editorComponent = editorComponentReel;
-
-                    editorComponentReel.Initialise(componentReel);
-
-                    if (componentReel.OverlayOasisImage != null)
-                    {
-                        AddComponent(component, true);
-                    }
-                }
+                editorComponent = AddComponentReel((ComponentReel)component, overlay);
             }
             else if (component.GetType() == typeof(Component7Segment))
             {
-                EditorComponent7Segment editorComponent7Segment = Instantiate(
-                    Editor.Instance.EditorComponentSevenSegmentPrefab,
-                    Editor.Instance.UIController.EditorCanvasGameObject.transform);
-
-                editorComponent = editorComponent7Segment;
-
-                editorComponent7Segment.Initialise((Component7Segment)component);
+                editorComponent = AddComponent7Segment((Component7Segment)component);
             }
             else if (component.GetType() == typeof(ComponentAlpha))
             {
-                // TODO kinda hacky for now, until decided how this is going to work wrt design:
-                switch (Editor.Instance.Project.Settings.FruitMachine.Platform)
-                {
-                    case MAME.MameController.PlatformType.Scorpion4:
-                        EditorComponentAlpha14 editorComponentAlpha14 = Instantiate(
-                            Editor.Instance.EditorComponentAlpha14Prefab,
-                            Editor.Instance.UIController.EditorCanvasGameObject.transform);
-
-                        editorComponent = editorComponentAlpha14;
-
-                        editorComponentAlpha14.Initialise((ComponentAlpha)component);
-                        break;
-                    case MAME.MameController.PlatformType.MPU4:
-                    default:
-                        EditorComponentAlpha editorComponentAlpha16 = Instantiate(
-                            Editor.Instance.EditorComponentAlphaPrefab,
-                            Editor.Instance.UIController.EditorCanvasGameObject.transform);
-
-                        editorComponent = editorComponentAlpha16;
-
-                        editorComponentAlpha16.Initialise((ComponentAlpha)component);
-                        break;
-                }
+                editorComponent = AddComponentAlpha((ComponentAlpha)component);
             }
 
             if (editorComponent != null)
@@ -197,7 +131,7 @@ namespace Oasis.Layout
                 }
 
                 ComponentLamp componentLamp = (ComponentLamp)component;
-                if(!componentLamp.Number.HasValue)
+                if (!componentLamp.Number.HasValue)
                 {
                     continue;
                 }
@@ -206,5 +140,108 @@ namespace Oasis.Layout
                 componentLamp.Number = lampRemapper.GetRemappedLampNumber((int)componentLamp.Number);
             }
         }
+
+        private EditorComponent AddComponentBackground(ComponentBackground component)
+        {
+            EditorComponentBackground editorComponentBackground = Instantiate(
+                Editor.Instance.EditorComponentBackgroundPrefab,
+                Editor.Instance.UIController.EditorCanvasGameObject.transform);
+
+            editorComponentBackground.Initialise(component);
+
+            // JP quick hack for now:
+            RectTransform editorCanvasRectTransform = Editor.Instance.UIController.EditorCanvasGameObject.GetComponent<RectTransform>();
+            editorCanvasRectTransform.sizeDelta = new Vector2(component.Size.x, component.Size.y);
+
+            return editorComponentBackground;
+        }
+
+        private EditorComponent AddComponentLamp(ComponentLamp component)
+        {
+            EditorComponentLamp editorComponentLamp = Instantiate(
+                Editor.Instance.EditorComponentLampPrefab,
+                Editor.Instance.UIController.EditorCanvasGameObject.transform);
+
+            editorComponentLamp.Initialise(component);
+
+            return editorComponentLamp;
+        }
+
+        private EditorComponent AddComponentReel(ComponentReel component, bool overlay)
+        {
+            EditorComponent editorComponent;
+            if (overlay)
+            {
+                EditorComponentOverlay editorComponentOverlay = Instantiate(
+                    Editor.Instance.EditorComponentOverlayPrefab,
+                    Editor.Instance.UIController.EditorCanvasGameObject.transform);
+
+                editorComponent = editorComponentOverlay;
+
+                editorComponentOverlay.Initialise(component);
+            }
+            else
+            {
+                EditorComponentReel editorComponentReel = Instantiate(
+                    Editor.Instance.EditorComponentReelPrefab,
+                    Editor.Instance.UIController.EditorCanvasGameObject.transform);
+
+                editorComponent = editorComponentReel;
+
+                editorComponentReel.Initialise(component);
+
+                if (component.OverlayOasisImage != null)
+                {
+                    AddComponent(component, true);
+                }
+            }
+
+            return editorComponent;
+        }
+
+        private EditorComponent AddComponent7Segment(Component7Segment component)
+        {
+            EditorComponent7Segment editorComponent7Segment = Instantiate(
+                Editor.Instance.EditorComponentSevenSegmentPrefab,
+                Editor.Instance.UIController.EditorCanvasGameObject.transform);
+
+            editorComponent7Segment.Initialise(component);
+
+            return editorComponent7Segment;
+        }
+
+        private EditorComponent AddComponentAlpha(ComponentAlpha component)
+        {
+            // TODO kinda hacky for now, until decided how this is going to work wrt design:
+            // TOIMPROVE - I think it's probvably better to have a single EditorComponentAlpha,
+            // that can be set into one of the four 'modes'; 14, 14+semicolon, 16, 16+semecolon
+            // and theoretically changed on the fly - more versatile
+            EditorComponent editorComponent;
+            switch (Editor.Instance.Project.Settings.FruitMachine.Platform)
+            {
+                case MAME.MameController.PlatformType.Scorpion4:
+                    EditorComponentAlpha14 editorComponentAlpha14 = Instantiate(
+                        Editor.Instance.EditorComponentAlpha14Prefab,
+                        Editor.Instance.UIController.EditorCanvasGameObject.transform);
+
+                    editorComponent = editorComponentAlpha14;
+
+                    editorComponentAlpha14.Initialise(component);
+                    break;
+                case MAME.MameController.PlatformType.MPU4:
+                default:
+                    EditorComponentAlpha editorComponentAlpha16 = Instantiate(
+                        Editor.Instance.EditorComponentAlphaPrefab,
+                        Editor.Instance.UIController.EditorCanvasGameObject.transform);
+
+                    editorComponent = editorComponentAlpha16;
+
+                    editorComponentAlpha16.Initialise(component);
+                    break;
+            }
+
+            return editorComponent;
+        }
+
     }
 }

@@ -53,14 +53,9 @@ namespace Oasis.Layout
             AllocateGuid();
         }
 
-        protected virtual void OnValueSetInvoke()
+        public virtual void SetRepresentation(Dictionary<string, object> representation) 
         {
-            OnValueSet?.Invoke(this);
-        }
-
-        public void SetRepresentation(Dictionary<string, object> representation) 
-        {
-            if ((string)representation["type"] != this.GetType().Name)
+            if ((string)representation["type"] != GetType().Name)
             {
                 return;
             }
@@ -99,7 +94,7 @@ namespace Oasis.Layout
             }
         }
 
-        public Dictionary<string, object> GetRepresentation() 
+        public virtual Dictionary<string, object> GetRepresentation() 
         {
             return new Dictionary<string, object>
             {
@@ -112,6 +107,11 @@ namespace Oasis.Layout
                 {"width", _size.x.ToString()},
                 {"height", _size.y.ToString()},
             };
+        }
+
+        protected virtual void OnValueSetInvoke()
+        {
+            OnValueSet?.Invoke(this);
         }
 
         private void AllocateGuid()

@@ -4,16 +4,22 @@ namespace Oasis.Layout
 {
     public class Component16SemicolonSegment : ComponentSegment, SerializableDictionary
     {
-        public new void SetRepresentation(Dictionary<string, object> representation) {
+        public override void SetRepresentation(Dictionary<string, object> representation) 
+        {
             base.SetRepresentation(representation);
-            if ((string)representation["type"] != this.GetType().Name) {
+
+            if ((string)representation["type"] != GetType().Name) 
+            {
                 return;
             }
         }
 
-        public new Dictionary<string, object> GetRepresentation() {
+        public override Dictionary<string, object> GetRepresentation() 
+        {
             Dictionary<string, object> representation = base.GetRepresentation();
+
             representation["type"] = GetType().Name;
+
             return representation;
         }
     }

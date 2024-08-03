@@ -11,29 +11,36 @@ namespace Oasis.Layout
             get => _number;
             set { _number = value; base.OnValueSetInvoke(); }
         }
-        public new void SetRepresentation(Dictionary<string, object> representation) {
+
+        public override void SetRepresentation(Dictionary<string, object> representation) 
+        {
             base.SetRepresentation(representation);
-            if ((string)representation["type"] != this.GetType().Name) {
+
+            if ((string)representation["type"] != GetType().Name) 
+            {
                 return;
             }
-            foreach (KeyValuePair<string, object> field in representation) {
-                switch(field.Key) {
+
+            foreach (KeyValuePair<string, object> field in representation) 
+            {
+                int iNumber = 0;
+                switch (field.Key) 
+                {
                     case "number":
-                    try {
-                        _number = Int32.Parse((string)field.Value);
-                    }
-                    catch {
-                        _number = null;
-                    }
-                    break;
+                        int.TryParse((string)field.Value, out iNumber);
+                        _number = iNumber;
+                        break;
                 }
             }
         }
 
-        public new Dictionary<string, object> GetRepresentation() {
+        public override Dictionary<string, object> GetRepresentation() 
+        {
             Dictionary<string, object> representation = base.GetRepresentation();
+
             representation["type"] = GetType().Name;
             representation["number"] = _number?.ToString();
+
             return representation;
         }
     }

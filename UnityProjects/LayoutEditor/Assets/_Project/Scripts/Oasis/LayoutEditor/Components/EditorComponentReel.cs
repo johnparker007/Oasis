@@ -96,6 +96,8 @@ float yScale = ComponentReel.VisibleScale2D;
             }
 
             // only tested for the 2d mfme style reels so far to test:
+            // TODO pull these values out to ScriptableObjects or something, if can realtime adjust
+            // during dev without needing restart that will make adding new techs far less painful!
             float bandOffsetNormalisedToCorrectRendering = 0f;
             switch (Editor.Instance.Project.Settings.FruitMachine.Platform)
             {

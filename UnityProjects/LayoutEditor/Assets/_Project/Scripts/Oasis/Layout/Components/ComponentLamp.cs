@@ -45,24 +45,23 @@ namespace Oasis.Layout
             set { _outline = value; base.OnValueSetInvoke(); }
         }
 
-        public new void SetRepresentation(Dictionary<string, object> representation) 
+        public override void SetRepresentation(Dictionary<string, object> representation) 
         {
             base.SetRepresentation(representation);
-            if ((string)representation["type"] != this.GetType().Name) 
+
+            if ((string)representation["type"] != GetType().Name) 
             {
                 return;
             }
+
             foreach (KeyValuePair<string, object> field in representation) 
             {
+                int iNumber;
                 switch(field.Key) 
                 {
                     case "number":
-                        try {
-                            _number = Int32.Parse((string)field.Value);
-                        }
-                        catch {
-                            _number = null;
-                        }
+                        int.TryParse((string)field.Value, out iNumber);
+                        _number = iNumber;
                         break;
                     case "onColor":
                         // TODO implement Color encode/decode text format
@@ -83,8 +82,10 @@ namespace Oasis.Layout
             }
         }
 
-        public new Dictionary<string, object> GetRepresentation() {
+        public override Dictionary<string, object> GetRepresentation() 
+        {
             Dictionary<string, object> representation = base.GetRepresentation();
+
             representation["type"] = GetType().Name;
             representation["number"] = _number?.ToString();
             representation["outline"] = _outline ? "true" : "false";

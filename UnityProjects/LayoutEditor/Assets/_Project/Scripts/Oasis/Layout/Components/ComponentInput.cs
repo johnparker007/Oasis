@@ -21,7 +21,10 @@ namespace Oasis.Layout
             //public string FieldMask;
         }
 
-        public new void SetRepresentation(Dictionary<string, object> representation) 
+        public InputData Input = new InputData();
+
+
+        public override void SetRepresentation(Dictionary<string, object> representation) 
         {
             base.SetRepresentation(representation);
 
@@ -50,17 +53,20 @@ namespace Oasis.Layout
             }
         }
 
-        public new Dictionary<string, object> GetRepresentation() {
+        public override Dictionary<string, object> GetRepresentation() 
+        {
             Dictionary<string, object> representation = base.GetRepresentation();
+
             representation["type"] = GetType().Name;
             representation["enabled"] = Input.Enabled ? "true" : "false";
             representation["inverted"] = Input.Inverted ? "true" : "false";
             representation["key_code"] = Input.KeyCode.ToString();
             representation["button_number"] = Input.ButtonNumber;
+
             return representation;
         }
 
-        public InputData Input = new InputData();
+
     }
 
 }
