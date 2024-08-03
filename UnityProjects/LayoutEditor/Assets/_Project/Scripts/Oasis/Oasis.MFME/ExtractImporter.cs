@@ -183,23 +183,10 @@ namespace Oasis.MFME
 
         private void ImportButton(ExtractComponentButton extractComponentButton)
         {
-            GameObject componentButtonGameObject = new GameObject();
-            ComponentButton componentButton = (ComponentButton)componentButtonGameObject.AddComponent(typeof(ComponentButton));
-            componentButtonGameObject.transform.SetParent(_mfmeView.transform);
+            // new approach, in the LayoutEditor all buttons are simply lamps with input enabled:
+            ExtractComponentLamp extractComponentLamp = new ExtractComponentLamp(extractComponentButton);
 
-            if (extractComponentButton.HasButtonInput)
-            {
-                componentButton.Input.Enabled = true;
-
-                int mfmeButtonNumber = int.Parse(extractComponentButton.ButtonNumberAsString);
-                componentButton.Input.ButtonNumber = mfmeButtonNumber;
-
-                componentButton.Input.Inverted = extractComponentButton.Inverted;
-
-                componentButton.Input.KeyCode = ShortcutKeyHelper.GetKeyCode(extractComponentButton.Shortcut1);
-            }
-
-            _mfmeView.AddComponent(componentButton);
+            ImportLamp(extractComponentLamp);
         }
 
         private void ImportReel(ExtractComponentReel extractComponentReel)

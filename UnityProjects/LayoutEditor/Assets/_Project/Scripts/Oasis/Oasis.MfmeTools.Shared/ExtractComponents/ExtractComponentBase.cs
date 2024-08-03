@@ -11,7 +11,16 @@ namespace Oasis.MfmeTools.Shared.ExtractComponents
         public Vector2IntJSON Size;
         public string AngleAsText;
         public string TextBoxText;
-        public int ZOrder; 
+        public int ZOrder;
+
+        public ExtractComponentBase(ExtractComponentBase sourceExtractComponent)
+        {
+            Position = sourceExtractComponent.Position;
+            Size = sourceExtractComponent.Size;
+            AngleAsText = sourceExtractComponent.AngleAsText;
+            TextBoxText = sourceExtractComponent.TextBoxText;
+            ZOrder = sourceExtractComponent.ZOrder;
+        }
 
         public ExtractComponentBase(ComponentStandardData componentStandardData)
         {
@@ -21,6 +30,7 @@ namespace Oasis.MfmeTools.Shared.ExtractComponents
             TextBoxText = componentStandardData.TextBoxText;
             ZOrder = componentStandardData.ZOrder;
         }
+
     }
 
 }
