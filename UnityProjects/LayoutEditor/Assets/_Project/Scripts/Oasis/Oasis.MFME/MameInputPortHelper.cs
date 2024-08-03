@@ -17,6 +17,8 @@ namespace Oasis.MFME
                     return GetMamePortTagMpu4(mfmeButtonNumber);
                 case MameController.PlatformType.Impact:
                     return GetMamePortTagImpact(mfmeButtonNumber);
+                case MameController.PlatformType.Scorpion4:
+                    return GetMamePortTagScorpion4(mfmeButtonNumber);
                 default:
                     Debug.LogError("Not set up platform type " + platformType);
                     return "";
@@ -24,7 +26,9 @@ namespace Oasis.MFME
         }
 
         // TODO just hacked these functions in from Arcade Sim converter code for the mo:
-
+        // TOIMPROVE - refactor to single function that has array passed in or something,
+        // to get rid of this duplicated copy/paste function.  Get some of this already written
+        // in ArcadeSim source, under MAMELayoutInputHelper.cs
         public static string GetMamePortTagMpu4(int mfmeButtonNumber)
         {
             string[] portNames =
@@ -58,6 +62,21 @@ namespace Oasis.MFME
                 "J9_2",
                 "COIN_SENSE", // semi guess
                 "COINS"
+            };
+
+            int portNameIndex = mfmeButtonNumber / kBitsPerPort;
+
+            return portNames[portNameIndex];
+        }
+
+        public static string GetMamePortTagScorpion4(int mfmeButtonNumber)
+        {
+            string[] portNames =
+            {
+                "IN-0", "IN-1", "IN-2", "IN-3", "IN-4", "IN-5", "IN-6", "IN-7",
+                "IN-8", "IN-9", "IN-10","IN-11","IN-12","IN-13","IN-14","IN-15",
+                "IN-16","IN-17","IN-18","IN-19","IN-20","IN-21","IN-22","IN-23",
+                "IN-24","IN-25","IN-26","IN-27","IN-28","IN-29","IN-30","IN-31",
             };
 
             int portNameIndex = mfmeButtonNumber / kBitsPerPort;

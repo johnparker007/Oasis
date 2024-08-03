@@ -79,7 +79,7 @@ float yScale = ComponentReel.VisibleScale2D;
             float normalisedOffset = (float)reelPosition / kTEMPReelYPositionCount;
 
             // TODO will need something better/ shared for this; on Impact, reels need to be reversed, but not on MPU4
-            switch(Editor.Instance.MameController.DebugPlatformType)
+            switch(Editor.Instance.Project.Settings.FruitMachine.Platform)
             {
                 case MameController.PlatformType.Impact:
                     normalisedOffset = 1f - normalisedOffset; 
@@ -96,7 +96,7 @@ float yScale = ComponentReel.VisibleScale2D;
 
             // only tested for the 2d mfme style reels so far to test:
             float bandOffsetNormalisedToCorrectRendering = 0f;
-            switch (Editor.Instance.MameController.DebugPlatformType)
+            switch (Editor.Instance.Project.Settings.FruitMachine.Platform)
             {
                 case MameController.PlatformType.Impact:
                     // correct for JPM Impact (I think - Popeye):

@@ -134,9 +134,6 @@ namespace Oasis.MAME
             "with vsync disabled!")]
         public bool ForceVsyncOffWhenRunning;
 
-        [Tooltip("Temp for testing")]
-        public PlatformType DebugPlatformType;
-
         public bool DebugOutputStdOut;
 
         public bool DebugOutputMameCommandLine;
@@ -369,7 +366,7 @@ namespace Oasis.MAME
         public void SetButtonState(int buttonNumber, bool state)
         {
             // video games will prob have an option to send 'standard' inputs, like P1 Joystick Up, P2 Fire 1 etc...
-            string tag = MameInputPortHelper.GetMamePortTag(buttonNumber, DebugPlatformType);
+            string tag = MameInputPortHelper.GetMamePortTag(buttonNumber, Editor.Instance.Project.Settings.FruitMachine.Platform);
             string mask = MameInputPortHelper.GetMAMEPortInputMaskName(buttonNumber);
 
             SetPortValue(tag, mask, state);
