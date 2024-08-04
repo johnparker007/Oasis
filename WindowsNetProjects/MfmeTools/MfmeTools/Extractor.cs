@@ -191,6 +191,9 @@ namespace Oasis.MfmeTools
                 string textBoxFontSize = "";
                 if (textBoxText != null && textBoxText.Length > 0)
                 {
+                    // this is grotty but it'll do the job, the OS font window is coming out differently
+                    const int kOsWindowScrapeOffsetY = 5;
+
                     // text was found, so need to scrape the font name/style/size data
                     textBoxFontName = DelphiFontScraper.GetFieldCharacters(
                         MFMEScraperConstants.kPropertiesFontName_X, MFMEScraperConstants.kPropertiesFontName_Y);
@@ -212,10 +215,12 @@ namespace Oasis.MfmeTools
                     MfmeScraper.CurrentWindow.UpdateCapture();
 
                     textBoxFontStyle = DelphiFontScraper.GetFieldCharacters(
-                        MFMEScraperConstants.kPropertiesFontWindowFontStyle_X, MFMEScraperConstants.kPropertiesFontWindowFontStyle_Y);
+                        MFMEScraperConstants.kPropertiesFontWindowFontStyle_X, 
+                        MFMEScraperConstants.kPropertiesFontWindowFontStyle_Y + kOsWindowScrapeOffsetY);
 
                     textBoxFontSize = DelphiFontScraper.GetFieldCharacters(
-                        MFMEScraperConstants.kPropertiesFontWindowFontSize_X, MFMEScraperConstants.kPropertiesFontWindowFontSize_Y);
+                        MFMEScraperConstants.kPropertiesFontWindowFontSize_X, 
+                        MFMEScraperConstants.kPropertiesFontWindowFontSize_Y + kOsWindowScrapeOffsetY);
 
                     inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.ESCAPE);
                     Thread.Sleep(MFMEAutomation.kMediumDelay);
@@ -562,7 +567,7 @@ namespace Oasis.MfmeTools
             MfmeScraper.MainForm.Rect =
                 WindowCapture.WindowCapture.GetWindowRect(this, MfmeScraper.MainForm.Handle);
 
-            RemoveTitleBarAndBorders(ref MfmeScraper.MainForm.Rect);
+            //RemoveTitleBarAndBorders(ref MfmeScraper.MainForm.Rect);
 
             if (kDebugOutput)
             {
@@ -581,7 +586,7 @@ namespace Oasis.MfmeTools
             MfmeScraper.Properties.Rect =
                 WindowCapture.WindowCapture.GetWindowRect(this, MfmeScraper.Properties.Handle);
 
-            RemoveTitleBarAndBorders(ref MfmeScraper.Properties.Rect);
+            //RemoveTitleBarAndBorders(ref MfmeScraper.Properties.Rect);
 
             if (kDebugOutput)
             {
@@ -600,7 +605,8 @@ namespace Oasis.MfmeTools
             MfmeScraper.PropertiesFont.Rect =
                 WindowCapture.WindowCapture.GetWindowRect(this, MfmeScraper.PropertiesFont.Handle);
 
-            //RemoveTitleBarAndBorders(ref MfmeScraper.Properties.Rect);
+            //const int kPixelsToRemoveFromTop = 70;
+            //RemovePixelRowsFromTop(ref MfmeScraper.PropertiesFont.Rect, kPixelsToRemoveFromTop);
 
             if (kDebugOutput)
             {
@@ -612,10 +618,10 @@ namespace Oasis.MfmeTools
             }
         }
 
-        private void RemoveTitleBarAndBorders(ref RECT rect)
+        private void RemovePixelRowsFromTop(ref RECT rect, int pixelRows)
         {
-            //rect.Y += MfmeScraper.kMfmeWindowTitlebarHeight;
-            //rect.Height -= MfmeScraper.kMfmeWindowTitlebarHeight;
+            rect.Y += pixelRows;
+            rect.Height -= pixelRows;
         }
 
         private void ExtractConfiguration(InputSimulator inputSimulator)

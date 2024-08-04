@@ -20,6 +20,8 @@ namespace Oasis.MfmeTools.Mfme
         private const int kRectPixelsWorkArraySize = 1024; // using work array to avoid the slowness of repeatedly newing arrays
         private const int kRectPixelsIntWorkArraySize = 1024; // using work array to avoid the slowness of repeatedly newing arrays
 
+        public static bool ForceDebugOutput = false;
+
         public static int CharacterHeight = 0;
         public static List<int> CharacterWidths = new List<int>();
         public static List<int> CharacterXOffsets = new List<int>();
@@ -192,8 +194,8 @@ namespace Oasis.MfmeTools.Mfme
                 _rectPixelsInt[pixelIndex] = _rectPixels[pixelIndex].r < 128 ? 1 : 0; // darker pixels to 1, brighter pixels to 0
             }
 
-            const bool kDebugOutput = true;
-            if (kDebugOutput)
+            const bool kDebugOutput = false;
+            if (kDebugOutput || ForceDebugOutput)
             {
                 string output = "";
                 for (int row = 0; row < CharacterHeight; ++row)
@@ -205,7 +207,7 @@ namespace Oasis.MfmeTools.Mfme
 
                     output += "\n";
                 }
-                //Console.WriteLine(output);
+                Console.WriteLine(output);
             }
 
             // scan forwards or backwards through the character bitmap lookup for match
