@@ -11,6 +11,7 @@ using System.IO;
 using Newtonsoft.Json;
 using Oasis.MfmeTools.Mfme;
 using System.Windows.Forms;
+using MfmeTools.Helpers;
 
 namespace Oasis.MfmeTools
 {
@@ -19,13 +20,17 @@ namespace Oasis.MfmeTools
         public struct Options
         {
             public string SourceLayoutPath;
+            
             public bool UseCachedBackgroundImage;
             public bool UseCachedLampImages;
             public bool UseCachedButtonImages;
             public bool UseCachedReelImages;
             public bool UseCachedBitmapImages;
+
             public bool ScrapeLamps5To8;
             public bool ScrapeLamps9To12;
+
+            public bool DisableFontSmoothing;
         }
 
         public static Layout Layout;
@@ -35,9 +40,35 @@ namespace Oasis.MfmeTools
 
         private MFMEComponentType _previousComponentType = MFMEComponentType.None;
 
+        private bool? _userFontSmoothingSetting = null;
+
+        public Extractor()
+        {
+        }
+
+        ~Extractor()
+        {
+            if(_userFontSmoothingSetting.HasValue)
+            {
+                FontSmoothingHelper.SetFontSmoothing((bool)_userFontSmoothingSetting);
+                OutputLog.Log($"User font smoothing setting restored: {_userFontSmoothingSetting}");
+            }
+        }
 
         public void StartExtraction(Options options)
         {
+            if(options.DisableFontSmoothing)
+            {
+                if(!_userFontSmoothingSetting.HasValue)
+                {
+                    _userFontSmoothingSetting = FontSmoothingHelper.GetFontSmoothing();
+                    OutputLog.Log($"User font smoothing setting stored: {_userFontSmoothingSetting}");
+                }
+
+                FontSmoothingHelper.SetFontSmoothing(false);
+                OutputLog.Log("Disabled font smoothing");
+            }
+
             OutputLog.Log("Starting Extraction");
             OutputLog.Log("Extraction source layout: " + options.SourceLayoutPath);
 
@@ -57,6 +88,20 @@ namespace Oasis.MfmeTools
             InputSimulator inputSimulator = new InputSimulator();
 
             LoadAndExtractCurrentLayout(inputSimulator);
+
+            if (options.DisableFontSmoothing)
+            {
+                if(_userFontSmoothingSetting.HasValue)
+                {
+                    FontSmoothingHelper.SetFontSmoothing((bool)_userFontSmoothingSetting);
+                    OutputLog.Log($"Restore font smoothing to user setting: {_userFontSmoothingSetting}");
+                }
+                else
+                {
+                    OutputLog.LogError(
+                        "Something has gone wrong, reach end of extraction, but don't have user font smoothing setting stored!");
+                }
+            }
         }
 
         private void LoadAndExtractCurrentLayout(InputSimulator inputSimulator)

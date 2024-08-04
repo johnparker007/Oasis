@@ -14,6 +14,8 @@ namespace Oasis.MfmeTools
     {
         public static bool kDebugHardcodePopulateSourceGamPath = true;
         public static bool kDebugDefaultCacheAllImageTypes = true;
+        public static bool kDebugDefaultDisableFontSmoothing = true;
+
 
 
         public RichTextBox OutputLogRichTextBox
@@ -47,6 +49,11 @@ namespace Oasis.MfmeTools
                 checkBoxUseCachedBitmapImages.CheckState = CheckState.Checked;
                 checkBoxUseCachedBackgroundImage.CheckState = CheckState.Checked;
             }
+
+            if(kDebugDefaultDisableFontSmoothing)
+            {
+                checkBoxDisableFontSmoothing.CheckState = CheckState.Checked;
+            }
         }
 
         private void OnButtonStartExtractionClick(object sender, EventArgs e)
@@ -62,7 +69,9 @@ namespace Oasis.MfmeTools
                 UseCachedBackgroundImage = checkBoxUseCachedBackgroundImage.Checked,
 
                 ScrapeLamps5To8 = checkBoxScrapeLamps5_8.Checked,
-                ScrapeLamps9To12 = checkBoxScrapeLamps9_12.Checked
+                ScrapeLamps9To12 = checkBoxScrapeLamps9_12.Checked,
+
+                DisableFontSmoothing = checkBoxDisableFontSmoothing.Checked
             };
 
             Program.Extractor.StartExtraction(extractorOptions);

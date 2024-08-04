@@ -33,6 +33,9 @@ namespace Oasis.MfmeTools
             this.buttonStartExtraction = new System.Windows.Forms.Button();
             this.buttonStartInjection = new System.Windows.Forms.Button();
             this.groupBoxExtraction = new System.Windows.Forms.GroupBox();
+            this.checkBoxUseCachedBackgroundImage = new System.Windows.Forms.CheckBox();
+            this.checkBoxUseCachedBitmapImages = new System.Windows.Forms.CheckBox();
+            this.checkBoxUseCachedButtonImages = new System.Windows.Forms.CheckBox();
             this.buttonExtractSourcePath = new System.Windows.Forms.Button();
             this.labelExtractSourcePath = new System.Windows.Forms.Label();
             this.textBoxExtractSourcePath = new System.Windows.Forms.TextBox();
@@ -55,9 +58,7 @@ namespace Oasis.MfmeTools
             this.textBoxInjectTargetPath = new System.Windows.Forms.TextBox();
             this.richTextBoxOutputLog = new System.Windows.Forms.RichTextBox();
             this.groupBoxOutputLog = new System.Windows.Forms.GroupBox();
-            this.checkBoxUseCachedButtonImages = new System.Windows.Forms.CheckBox();
-            this.checkBoxUseCachedBitmapImages = new System.Windows.Forms.CheckBox();
-            this.checkBoxUseCachedBackgroundImage = new System.Windows.Forms.CheckBox();
+            this.checkBoxDisableFontSmoothing = new System.Windows.Forms.CheckBox();
             this.groupBoxExtraction.SuspendLayout();
             this.groupBoxInjection.SuspendLayout();
             this.groupBoxOutputLog.SuspendLayout();
@@ -84,6 +85,7 @@ namespace Oasis.MfmeTools
             // 
             // groupBoxExtraction
             // 
+            this.groupBoxExtraction.Controls.Add(this.checkBoxDisableFontSmoothing);
             this.groupBoxExtraction.Controls.Add(this.checkBoxUseCachedBackgroundImage);
             this.groupBoxExtraction.Controls.Add(this.checkBoxUseCachedBitmapImages);
             this.groupBoxExtraction.Controls.Add(this.checkBoxUseCachedButtonImages);
@@ -101,6 +103,36 @@ namespace Oasis.MfmeTools
             this.groupBoxExtraction.TabIndex = 2;
             this.groupBoxExtraction.TabStop = false;
             this.groupBoxExtraction.Text = "Extraction";
+            // 
+            // checkBoxUseCachedBackgroundImage
+            // 
+            this.checkBoxUseCachedBackgroundImage.AutoSize = true;
+            this.checkBoxUseCachedBackgroundImage.Location = new System.Drawing.Point(12, 126);
+            this.checkBoxUseCachedBackgroundImage.Name = "checkBoxUseCachedBackgroundImage";
+            this.checkBoxUseCachedBackgroundImage.Size = new System.Drawing.Size(175, 17);
+            this.checkBoxUseCachedBackgroundImage.TabIndex = 10;
+            this.checkBoxUseCachedBackgroundImage.Text = "Use cached background image";
+            this.checkBoxUseCachedBackgroundImage.UseVisualStyleBackColor = true;
+            // 
+            // checkBoxUseCachedBitmapImages
+            // 
+            this.checkBoxUseCachedBitmapImages.AutoSize = true;
+            this.checkBoxUseCachedBitmapImages.Location = new System.Drawing.Point(163, 103);
+            this.checkBoxUseCachedBitmapImages.Name = "checkBoxUseCachedBitmapImages";
+            this.checkBoxUseCachedBitmapImages.Size = new System.Drawing.Size(154, 17);
+            this.checkBoxUseCachedBitmapImages.TabIndex = 9;
+            this.checkBoxUseCachedBitmapImages.Text = "Use cached bitmap images";
+            this.checkBoxUseCachedBitmapImages.UseVisualStyleBackColor = true;
+            // 
+            // checkBoxUseCachedButtonImages
+            // 
+            this.checkBoxUseCachedButtonImages.AutoSize = true;
+            this.checkBoxUseCachedButtonImages.Location = new System.Drawing.Point(163, 80);
+            this.checkBoxUseCachedButtonImages.Name = "checkBoxUseCachedButtonImages";
+            this.checkBoxUseCachedButtonImages.Size = new System.Drawing.Size(153, 17);
+            this.checkBoxUseCachedButtonImages.TabIndex = 8;
+            this.checkBoxUseCachedButtonImages.Text = "Use cached button images";
+            this.checkBoxUseCachedButtonImages.UseVisualStyleBackColor = true;
             // 
             // buttonExtractSourcePath
             // 
@@ -320,35 +352,15 @@ namespace Oasis.MfmeTools
             this.groupBoxOutputLog.TabStop = false;
             this.groupBoxOutputLog.Text = "Output Log";
             // 
-            // checkBoxUseCachedButtonImages
+            // checkBoxDisableFontSmoothing
             // 
-            this.checkBoxUseCachedButtonImages.AutoSize = true;
-            this.checkBoxUseCachedButtonImages.Location = new System.Drawing.Point(163, 80);
-            this.checkBoxUseCachedButtonImages.Name = "checkBoxUseCachedButtonImages";
-            this.checkBoxUseCachedButtonImages.Size = new System.Drawing.Size(153, 17);
-            this.checkBoxUseCachedButtonImages.TabIndex = 8;
-            this.checkBoxUseCachedButtonImages.Text = "Use cached button images";
-            this.checkBoxUseCachedButtonImages.UseVisualStyleBackColor = true;
-            // 
-            // checkBoxUseCachedBitmapImages
-            // 
-            this.checkBoxUseCachedBitmapImages.AutoSize = true;
-            this.checkBoxUseCachedBitmapImages.Location = new System.Drawing.Point(163, 103);
-            this.checkBoxUseCachedBitmapImages.Name = "checkBoxUseCachedBitmapImages";
-            this.checkBoxUseCachedBitmapImages.Size = new System.Drawing.Size(154, 17);
-            this.checkBoxUseCachedBitmapImages.TabIndex = 9;
-            this.checkBoxUseCachedBitmapImages.Text = "Use cached bitmap images";
-            this.checkBoxUseCachedBitmapImages.UseVisualStyleBackColor = true;
-            // 
-            // checkBoxUseCachedBackgroundImage
-            // 
-            this.checkBoxUseCachedBackgroundImage.AutoSize = true;
-            this.checkBoxUseCachedBackgroundImage.Location = new System.Drawing.Point(12, 126);
-            this.checkBoxUseCachedBackgroundImage.Name = "checkBoxUseCachedBackgroundImage";
-            this.checkBoxUseCachedBackgroundImage.Size = new System.Drawing.Size(175, 17);
-            this.checkBoxUseCachedBackgroundImage.TabIndex = 10;
-            this.checkBoxUseCachedBackgroundImage.Text = "Use cached background image";
-            this.checkBoxUseCachedBackgroundImage.UseVisualStyleBackColor = true;
+            this.checkBoxDisableFontSmoothing.AutoSize = true;
+            this.checkBoxDisableFontSmoothing.Location = new System.Drawing.Point(12, 149);
+            this.checkBoxDisableFontSmoothing.Name = "checkBoxDisableFontSmoothing";
+            this.checkBoxDisableFontSmoothing.Size = new System.Drawing.Size(134, 17);
+            this.checkBoxDisableFontSmoothing.TabIndex = 11;
+            this.checkBoxDisableFontSmoothing.Text = "DIsable font smoothing";
+            this.checkBoxDisableFontSmoothing.UseVisualStyleBackColor = true;
             // 
             // MainForm
             // 
@@ -402,6 +414,7 @@ namespace Oasis.MfmeTools
         private System.Windows.Forms.CheckBox checkBoxUseCachedBitmapImages;
         private System.Windows.Forms.CheckBox checkBoxUseCachedButtonImages;
         private System.Windows.Forms.CheckBox checkBoxUseCachedBackgroundImage;
+        private System.Windows.Forms.CheckBox checkBoxDisableFontSmoothing;
     }
 }
 
