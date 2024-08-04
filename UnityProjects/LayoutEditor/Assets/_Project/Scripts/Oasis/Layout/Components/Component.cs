@@ -43,6 +43,28 @@ namespace Oasis.Layout
             set { _text = value; OnValueSetInvoke(); }
         }
 
+        private string _fontName;
+        public string FontName
+        {
+            get => _fontName;
+            set { _fontName = value; OnValueSetInvoke(); }
+        }
+
+        private string _fontStyle;
+        public string FontStyle
+        {
+            get => _fontStyle;
+            set { _fontStyle = value; OnValueSetInvoke(); }
+        }
+
+        private int _fontSize;
+        public int FontSize
+        {
+            get => _fontSize;
+            set { _fontSize = value; OnValueSetInvoke(); }
+        }
+
+
         // JP TODO - the plan is to change this base Component class to NOT derive from Monobehaviour, but instead
         // be a pure c# class.  At that point, we can add standard contructor/destructor, and so then for instance
         // the Component will set up its own GUID on instantiation.
@@ -74,6 +96,16 @@ namespace Oasis.Layout
                     case "text":
                         _text = (string)representation[k];
                         break;
+                    case "fontname":
+                        _fontName = (string)representation[k];
+                        break;
+                    case "fontstyle":
+                        _fontStyle = (string)representation[k];
+                        break;
+                    case "fontsize":
+                        int.TryParse((string)representation[k], out currentValue);
+                        _fontSize = currentValue;
+                        break;
                     case "x":
                         int.TryParse((string)representation[k], out currentValue);
                         _position.x = currentValue;
@@ -102,6 +134,9 @@ namespace Oasis.Layout
                 {"guid", Guid},
                 {"name", _name},
                 {"text", _text},
+                {"fontname", _fontName},
+                {"fontstyle", _fontStyle},
+                {"fontsize", _fontSize.ToString()},
                 {"x", _position.x.ToString()},
                 {"y", _position.y.ToString()},
                 {"width", _size.x.ToString()},

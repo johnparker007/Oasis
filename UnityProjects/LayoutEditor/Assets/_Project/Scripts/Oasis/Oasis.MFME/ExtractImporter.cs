@@ -161,7 +161,13 @@ namespace Oasis.MFME
                 extractComponentLamp.TextColor.ToColor().b);
 
             componentLamp.Name = "Lamp";
+
+            // TODO these base text fields prob want doing in a single method for importing all components
             componentLamp.Text = extractComponentLamp.TextBoxText;
+            componentLamp.FontName = extractComponentLamp.TextBoxFontName;
+            componentLamp.FontStyle = extractComponentLamp.TextBoxFontStyle;
+            int.TryParse(extractComponentLamp.TextBoxFontSize, out int fontSize);
+            componentLamp.FontSize = fontSize;
 
             componentLamp.Outline = !extractComponentLamp.NoOutline;
 

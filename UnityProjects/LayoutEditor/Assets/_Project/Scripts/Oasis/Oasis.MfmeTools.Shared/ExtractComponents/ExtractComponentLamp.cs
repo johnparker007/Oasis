@@ -1,4 +1,5 @@
-﻿using Oasis.MfmeTools.Shared.Extract;
+﻿using Newtonsoft.Json;
+using Oasis.MfmeTools.Shared.Extract;
 using Oasis.MfmeTools.Shared.JsonDataStructures;
 using System;
 
@@ -20,13 +21,18 @@ namespace Oasis.MfmeTools.Shared.ExtractComponents
             {
                 get
                 {
-                    return NumberAsText.Length == 0 ? (int?)null : int.Parse(NumberAsText);
+                    if(NumberAsText == null || NumberAsText.Length == 0)
+                    {
+                        return null;
+                    }
+
+                    return int.Parse(NumberAsText);
                 }
             }
 
             public object Clone()
             {
-                LampElement cloneCopy = new()
+                LampElement cloneCopy = new LampElement()
                 {
                     NumberAsText = NumberAsText,
                     OnColor = OnColor,
