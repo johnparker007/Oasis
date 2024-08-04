@@ -205,7 +205,7 @@ namespace Oasis.MfmeTools.Mfme
 
                     output += "\n";
                 }
-                Console.WriteLine(output);
+                //Console.WriteLine(output);
             }
 
             // scan forwards or backwards through the character bitmap lookup for match

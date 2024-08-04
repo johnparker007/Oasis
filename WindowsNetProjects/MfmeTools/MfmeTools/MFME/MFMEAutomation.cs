@@ -169,6 +169,14 @@ namespace Oasis.MfmeTools.Mfme
             Thread.Sleep(kShortDelay);
         }
 
+        public static void OpenPropertiesFontWindow(InputSimulator inputSimulator)
+        {
+            LeftClickAtPosition(inputSimulator,
+                MFMEScraperConstants.kPropertiesFontButton_X, MFMEScraperConstants.kPropertiesFontButton_Y);
+            Thread.Sleep(kMediumDelay);
+        }
+
+
         //public static void LeftClickOnEmptyAreaOfDataLayout(InputSimulator inputSimulator, EmulatorScraper emulatorScraper)
         //{
         //    int windowPixelX = emulatorScraper.UwcWindowTexture.window.x;

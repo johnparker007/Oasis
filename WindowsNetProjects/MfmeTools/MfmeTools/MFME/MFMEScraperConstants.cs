@@ -26,6 +26,12 @@ namespace Oasis.MfmeTools.Mfme
         public static readonly int kPropertiesUndoButton_X = 728;
         public static readonly int kPropertiesUndoButton_Y = 591;
 
+        public static readonly int kPropertiesFontButton_X = 493;
+        public static readonly int kPropertiesFontButton_Y = 590;
+
+        public static readonly int kPropertiesFontName_X = 585 - 68;
+        public static readonly int kPropertiesFontName_Y = 435 + 147;
+
 
         // generic component fields:
         public static readonly int kComponentPositionX_X = 489;
@@ -61,6 +67,14 @@ namespace Oasis.MfmeTools.Mfme
 
         public static readonly int kPropertiesOverlayImage_CenterX = kPropertiesOverlayImage_TopLeftX + (kPropertiesOverlayImage_Width / 2);
         public static readonly int kPropertiesOverlayImage_CenterY = kPropertiesOverlayImage_TopLeftY + (kPropertiesOverlayImage_Height / 2);
+
+        
+        // properties font window fields
+        public static readonly int kPropertiesFontWindowFontStyle_X = 166;
+        public static readonly int kPropertiesFontWindowFontStyle_Y = 52;
+
+        public static readonly int kPropertiesFontWindowFontSize_X = 286;
+        public static readonly int kPropertiesFontWindowFontSize_Y = 52;
 
 
         // background fields

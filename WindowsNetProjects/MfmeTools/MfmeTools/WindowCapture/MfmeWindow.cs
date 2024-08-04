@@ -19,7 +19,7 @@ namespace Oasis.MfmeTools.WindowCapture
 {
     public class MfmeWindow
     {
-        private const bool kDebutOutputGetPixels = true;
+        private const bool kDebutOutputGetPixels = false;
 
         public IntPtr Handle = IntPtr.Zero;
         public RECT Rect = new RECT();
@@ -38,6 +38,11 @@ namespace Oasis.MfmeTools.WindowCapture
         public void StartCapture()
         {
             _captureMethod.StartCapture(Handle, MfmeScraper.Device, MfmeScraper.Factory);
+        }
+
+        public void StopCapture()
+        {
+            _captureMethod.StopCapture();
         }
 
         public void UpdateCapture()

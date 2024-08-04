@@ -23,6 +23,7 @@ namespace Oasis.MfmeTools.Mfme
         public static MfmeWindow SplashScreen = new MfmeWindow(new BitBlt());
         public static MfmeWindow MainForm = new MfmeWindow(new BitBlt());
         public static MfmeWindow Properties = new MfmeWindow(new BitBlt());
+        public static MfmeWindow PropertiesFont = new MfmeWindow(new BitBlt());
 
         public static MfmeWindow CurrentWindow = null;
 
@@ -58,7 +59,7 @@ namespace Oasis.MfmeTools.Mfme
 
 
             // JP not sure if should set up all windows here:
-            Properties.StartCapture();
+            //Properties.StartCapture();
         }
 
         public static bool GetCheckboxValue(int topLeftInteriorPixelX, int topLeftInteriorPixelY)
@@ -166,7 +167,7 @@ const int kImageBoxOffsetToMatchToPixelFromCroppedScreenshotsY = 0;
                     }
 
                     // useful for debugging sraping:
-                    Console.WriteLine("x,y == " + x + "," + y + " == " + scrapedPixelColor32.r);
+                    //Console.WriteLine("x,y == " + x + "," + y + " == " + scrapedPixelColor32.r);
                 }
             }
 

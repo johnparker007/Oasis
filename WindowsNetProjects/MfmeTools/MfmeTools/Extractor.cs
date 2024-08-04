@@ -127,8 +127,10 @@ namespace Oasis.MfmeTools
             CaptureMFMEPropertiesWindow();
             GetMFMEPropertiesClientRect();
 
-            MfmeScraper.CurrentWindow = MfmeScraper.Properties;
             MfmeScraper.Initialise();
+            MfmeScraper.CurrentWindow = MfmeScraper.Properties;
+            MfmeScraper.CurrentWindow.StartCapture();
+
 
             DelphiFontScraper.Initialise();
 
@@ -184,8 +186,49 @@ namespace Oasis.MfmeTools
                     textBoxText = GetTextFromClipboard();
                 }
 
+                string textBoxFontName = "";
+                string textBoxFontStyle = "";
+                string textBoxFontSize = "";
+                if (textBoxText != null && textBoxText.Length > 0)
+                {
+                    // text was found, so need to scrape the font name/style/size data
+                    textBoxFontName = DelphiFontScraper.GetFieldCharacters(
+                        MFMEScraperConstants.kPropertiesFontName_X, MFMEScraperConstants.kPropertiesFontName_Y);
+
+                    MFMEAutomation.OpenPropertiesFontWindow(inputSimulator);
+
+                    // we always need to refind the Font window, as its handle changes
+                    // each time it's closed and reopened (I think this is different to
+                    // native Mfme Delphi form windows which are just instanced once)
+                    MfmeScraper.PropertiesFont.Handle = IntPtr.Zero;
+                    CaptureMFMEPropertiesFontWindow();
+                    GetMFMEPropertiesFontClientRect();
+
+                    MfmeScraper.CurrentWindow.StopCapture();
+                    MfmeScraper.CurrentWindow = MfmeScraper.PropertiesFont;
+                    MfmeScraper.CurrentWindow.StartCapture();
+
+                    // need a single update to capture contents to a new texture
+                    MfmeScraper.CurrentWindow.UpdateCapture();
+
+                    textBoxFontStyle = DelphiFontScraper.GetFieldCharacters(
+                        MFMEScraperConstants.kPropertiesFontWindowFontStyle_X, MFMEScraperConstants.kPropertiesFontWindowFontStyle_Y);
+
+                    textBoxFontSize = DelphiFontScraper.GetFieldCharacters(
+                        MFMEScraperConstants.kPropertiesFontWindowFontSize_X, MFMEScraperConstants.kPropertiesFontWindowFontSize_Y);
+
+                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.ESCAPE);
+                    Thread.Sleep(MFMEAutomation.kMediumDelay);
+
+                    MfmeScraper.CurrentWindow.StopCapture();
+                    MfmeScraper.CurrentWindow = MfmeScraper.Properties;
+                    MfmeScraper.CurrentWindow.StartCapture();
+                }
+
                 ComponentStandardData componentStandardData = new ComponentStandardData(
-                    componentXText, componentYText, componentWidthText, componentHeightText, angleText, textBoxText, zOrder);
+                    componentXText, componentYText, componentWidthText, componentHeightText, angleText, 
+                    textBoxText, textBoxFontName, textBoxFontStyle, textBoxFontSize,
+                    zOrder);
 
                 MFMEComponentType mfmeComponentType = MFMEAutomation.GetMFMEComponentType(mfmeComponentTypeText);
                 switch (mfmeComponentType)
@@ -476,13 +519,39 @@ namespace Oasis.MfmeTools
 
             if (WindowCapture.WindowCapture.PropertiesWindowFound)
             {
-                OutputLog.Log("MFME.exe properties window handle found");
+                OutputLog.Log($"MFME.exe properties window handle found: {MfmeScraper.Properties.Handle}");
                 OutputLog.Log("Properties title: "
                     + WindowCapture.WindowCapture.GetWindowText(MfmeScraper.Properties.Handle));
             }
             else
             {
                 OutputLog.LogError("MFME.exe properties window handle could not be found!");
+            }
+        }
+
+        private void CaptureMFMEPropertiesFontWindow()
+        {
+            const int kRetryCount = 1000;
+            for (int retry = 0; retry < kRetryCount; ++retry)
+            {
+                WindowCapture.WindowCapture.FindPropertiesFontWindow((uint)_mfmeProcess.Id);
+                if (WindowCapture.WindowCapture.PropertiesFontWindowFound)
+                {
+                    break;
+                }
+
+                Thread.Sleep(50);
+            }
+
+            if (WindowCapture.WindowCapture.PropertiesFontWindowFound)
+            {
+                OutputLog.Log($"MFME.exe properties font window handle found: {MfmeScraper.PropertiesFont.Handle}");
+                OutputLog.Log("Properties font title: "
+                    + WindowCapture.WindowCapture.GetWindowText(MfmeScraper.PropertiesFont.Handle));
+            }
+            else
+            {
+                OutputLog.LogError("MFME.exe properties font window handle could not be found!");
             }
         }
 
@@ -521,6 +590,25 @@ namespace Oasis.MfmeTools
                     $"{MfmeScraper.Properties.Rect.Y}, " +
                     $"{MfmeScraper.Properties.Rect.Width}, " +
                     $"{MfmeScraper.Properties.Rect.Height}");
+            }
+        }
+
+        private void GetMFMEPropertiesFontClientRect()
+        {
+            const bool kDebugOutput = true;
+
+            MfmeScraper.PropertiesFont.Rect =
+                WindowCapture.WindowCapture.GetWindowRect(this, MfmeScraper.PropertiesFont.Handle);
+
+            //RemoveTitleBarAndBorders(ref MfmeScraper.Properties.Rect);
+
+            if (kDebugOutput)
+            {
+                OutputLog.Log($"Properties font rect: " +
+                    $"{MfmeScraper.PropertiesFont.Rect.X}, " +
+                    $"{MfmeScraper.PropertiesFont.Rect.Y}, " +
+                    $"{MfmeScraper.PropertiesFont.Rect.Width}, " +
+                    $"{MfmeScraper.PropertiesFont.Rect.Height}");
             }
         }
 

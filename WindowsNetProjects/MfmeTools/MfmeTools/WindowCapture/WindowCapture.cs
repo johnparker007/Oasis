@@ -40,6 +40,14 @@ namespace Oasis.MfmeTools.WindowCapture
             }
         }
 
+        public static bool PropertiesFontWindowFound
+        {
+            get
+            {
+                return MfmeScraper.PropertiesFont.Handle != IntPtr.Zero;
+            }
+        }
+
         public static void Reset()
         {
             MfmeScraper.SplashScreen.Handle = IntPtr.Zero;
@@ -183,6 +191,61 @@ namespace Oasis.MfmeTools.WindowCapture
                 }
 
                 MfmeScraper.Properties.Handle = hWnd;
+
+                return true;
+            }, IntPtr.Zero);
+        }
+
+        public static void FindPropertiesFontWindow(uint targetProcessId)
+        {
+            const bool kDebugOutput = false;
+
+            NativeMethods.EnumWindows((hWnd, lParam) =>
+            {
+                if (PropertiesFontWindowFound)
+                {
+                    return true;
+                }
+
+                NativeMethods.GetWindowThreadProcessId(hWnd, out var processId);
+
+                if (processId != targetProcessId)
+                {
+                    return true;
+                }
+
+                if (!NativeMethods.IsWindowVisible(hWnd))
+                {
+                    return true;
+                }
+
+                if (string.IsNullOrWhiteSpace(GetWindowText(hWnd)))
+                {
+                    return true;
+                }
+
+                if (hWnd == MfmeScraper.SplashScreen.Handle
+                    || hWnd == MfmeScraper.MainForm.Handle
+                    || hWnd == MfmeScraper.Properties.Handle)
+                {
+                    return true;
+                }
+
+                if(GetWindowText(hWnd) != "Font")
+                {
+                    return true;
+                }
+
+                var process = Process.GetProcessById((int)processId);
+
+                if (kDebugOutput)
+                {
+                    OutputLog.Log("Found Window");
+                    OutputLog.Log($"Process name: {process.ProcessName}");
+                    OutputLog.Log($"Window title: {GetWindowText(hWnd)}");
+                }
+
+                MfmeScraper.PropertiesFont.Handle = hWnd;
 
                 return true;
             }, IntPtr.Zero);

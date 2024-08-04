@@ -88,6 +88,7 @@ NativeMethods.GetClientRect(_hWnd, out var rect);
         public void StopCapture()
         {
             _hWnd = IntPtr.Zero;
+            IsCapturing = false;
         }
     }
 }

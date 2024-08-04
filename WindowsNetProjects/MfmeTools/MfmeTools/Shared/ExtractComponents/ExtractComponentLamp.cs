@@ -1,4 +1,5 @@
-﻿using Oasis.MfmeTools.Shared.Extract;
+﻿using Newtonsoft.Json;
+using Oasis.MfmeTools.Shared.Extract;
 using Oasis.MfmeTools.Shared.JsonDataStructures;
 using System;
 
@@ -9,12 +10,38 @@ namespace Oasis.MfmeTools.Shared.ExtractComponents
     public class ExtractComponentLamp : ExtractComponentBase
     {
         [Serializable]
-        public class LampElement
+        public class LampElement : ICloneable
         {
             public string NumberAsText;
             public ColorJSON OnColor;
             public string BmpImageFilename;
             public string BmpMaskImageFilename;
+
+            public int? Number
+            {
+                get
+                {
+                    if(NumberAsText == null || NumberAsText.Length == 0)
+                    {
+                        return null;
+                    }
+
+                    return int.Parse(NumberAsText);
+                }
+            }
+
+            public object Clone()
+            {
+                LampElement cloneCopy = new LampElement()
+                {
+                    NumberAsText = NumberAsText,
+                    OnColor = OnColor,
+                    BmpImageFilename = BmpImageFilename,
+                    BmpMaskImageFilename = BmpMaskImageFilename
+                };
+
+                return cloneCopy;
+            }
         }
 
         public static readonly int kLampElementCount = 12;
@@ -64,7 +91,7 @@ namespace Oasis.MfmeTools.Shared.ExtractComponents
             }
         }
 
-
+        [Newtonsoft.Json.JsonConstructor]
         public ExtractComponentLamp(ComponentStandardData componentStandardData) : base(componentStandardData)
         {
             for(int lampElementIndex = 0; lampElementIndex < kLampElementCount; ++lampElementIndex)
@@ -73,11 +100,39 @@ namespace Oasis.MfmeTools.Shared.ExtractComponents
             }
         }
 
-        public int? GetLampNumber(int lampElementIndex)
+        // This is a special case method used to convert an MFME Button to an MFME Lamp
+        // during the Import process, so from then on is treated as a Lamp with Input
+        public ExtractComponentLamp(ExtractComponentButton sourceExtractComponentButton) : base(sourceExtractComponentButton)
         {
-            LampElement lampElement = LampElements[lampElementIndex];
+            for (int lampElementIndex = 0; lampElementIndex < kLampElementCount; ++lampElementIndex)
+            {
+                LampElements[lampElementIndex] = new LampElement();
+            }
 
-            return lampElement.NumberAsText.Length == 0 ? (int?)null : int.Parse(lampElement.NumberAsText);
+            for (int lampElementIndex = 0; lampElementIndex < sourceExtractComponentButton.LampElements.Length; ++lampElementIndex)
+            {
+                LampElements[lampElementIndex] = (LampElement)sourceExtractComponentButton.LampElements[lampElementIndex].Clone();
+            }
+
+            ButtonNumberAsString = sourceExtractComponentButton.ButtonNumberAsString; ;
+            CoinNote = sourceExtractComponentButton.CoinNote;
+            Effect = sourceExtractComponentButton.Effect;
+            InhibitLampAsString = sourceExtractComponentButton.InhibitLampAsString;
+            Shortcut1 = sourceExtractComponentButton.Shortcut1;
+            Shortcut2 = sourceExtractComponentButton.Shortcut2;
+
+            Graphic = sourceExtractComponentButton.Graphic;
+            Inverted = sourceExtractComponentButton.Inverted;
+            LockOut = sourceExtractComponentButton.LockOut;
+            LED = sourceExtractComponentButton.LED;
+
+            XOff = sourceExtractComponentButton.XOff;
+            YOff = sourceExtractComponentButton.YOff;
+
+            TextColor = sourceExtractComponentButton.TextColor;
+            Shape = sourceExtractComponentButton.ShapeAsString;
+
+            OffImageColor = sourceExtractComponentButton.OffImageColor;
         }
     }
 
