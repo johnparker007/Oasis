@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using Oasis.Layout;
 using Oasis.Graphics;
+using Oasis.UI;
 
 namespace Oasis.LayoutEditor
 {
@@ -44,6 +45,19 @@ namespace Oasis.LayoutEditor
 
             _text.text = ComponentLamp.Text;
             _text.color = ComponentLamp.TextColor;
+
+            // TEMP hack test just to get things going!
+            Font font = FontManager.Instance.GetFont(ComponentLamp.FontName);
+            if (font != null)
+            {
+                _text.font = font;
+
+                // adding a crude scale factor since they appear too small in Oasis, not sure if this a bug
+                const float kMfmeFontScale = 1.25f; 
+                _text.fontSize = (int)(ComponentLamp.FontSize * kMfmeFontScale);
+
+                _text.fontStyle = FontManager.GetFontStyle(ComponentLamp.FontStyle);
+            }
 
             // TODO THERE ARE POTENTIALLY IMAGE-RELATED MEMORY LEAKS TO FIX HERE!
             OasisImage oasisImage = ComponentLamp.OasisImage;
