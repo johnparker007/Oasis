@@ -52,9 +52,9 @@ namespace Oasis.LayoutEditor
             {
                 _text.font = font;
 
-                // adding a crude scale factor since they appear too small in Oasis, not sure if this a bug
-                const float kMfmeFontScale = 1.25f; 
-                _text.fontSize = (int)(ComponentLamp.FontSize * kMfmeFontScale);
+                // Seems to be a discrepancy, so e.g: 36 in Mfme needs to be 48 in Unity
+                const float kMfmeFontScale = 1.3333333333f;
+                _text.fontSize = Mathf.RoundToInt(ComponentLamp.FontSize * kMfmeFontScale);
 
                 _text.fontStyle = FontManager.GetFontStyle(ComponentLamp.FontStyle);
             }
