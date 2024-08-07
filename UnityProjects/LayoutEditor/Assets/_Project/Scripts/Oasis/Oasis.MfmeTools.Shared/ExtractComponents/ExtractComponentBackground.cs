@@ -1,4 +1,5 @@
 ﻿using Oasis.MfmeTools.Shared.Extract;
+using Oasis.MfmeTools.Shared.JsonDataStructures;
 using System;
 
 
@@ -8,9 +9,7 @@ namespace Oasis.MfmeTools.Shared.ExtractComponents
     public class ExtractComponentBackground : ExtractComponentBase
     {
         public string BmpImageFilename;
-
-        // TODO there's a bunch of stuff missing to be implemented here!
-        // color etc
+        public ColorJSON Color;
 
         public ExtractComponentBackground(ComponentStandardData componentStandardData) : base(componentStandardData)
         {

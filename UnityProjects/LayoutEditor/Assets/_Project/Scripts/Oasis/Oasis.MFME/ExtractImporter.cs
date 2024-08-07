@@ -270,9 +270,10 @@ namespace Oasis.MFME
             componentBackground.Size = new UnityEngine.Vector2Int(
                 extractComponentBackground.Size.X, extractComponentBackground.Size.Y);
 
-            // XXX TODO TEMP HACK FOR TESTING, to be replaced once we are scraping the various
-            // additional background info from the Mfme component:
-            componentBackground.Color = new UnityEngine.Color(0.5f, 0f, 0f);
+            componentBackground.Color = new UnityEngine.Color(
+                extractComponentBackground.Color.ToColor().r,
+                extractComponentBackground.Color.ToColor().g,
+                extractComponentBackground.Color.ToColor().b);
 
             if (extractComponentBackground.BmpImageFilename.Length > 0)
             {

@@ -11,10 +11,12 @@ namespace Oasis.MfmeTools.Shared.Extract
     {
         public string ASName;
 
+        // TODO perhaps not necessary any more?  Can get width/height from extracted bmp image...
         public Vector2IntJSON BackgroundImageSize;
 
         public List<ExtractComponentBase> Components = new List<ExtractComponentBase>();
 
+        // TODO this is being encoded in the JSON again...
         public ExtractComponentBackground Background
         {
             get
