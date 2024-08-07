@@ -61,6 +61,11 @@ namespace Oasis.MfmeTools.Mfme
             ExtractComponentBackground extractBackground = new ExtractComponentBackground(componentStandardData);
             extractBackground.BmpImageFilename = Path.GetFileName(saveFullPath);
 
+            Color color = new Color(MfmeScraper.GetColorboxValue(
+                MFMEScraperConstants.kPropertiesBackgroundColourColorbox_X, MFMEScraperConstants.kPropertiesBackgroundColourColorbox_Y));
+            extractBackground.Color = new ColorJSON(color);
+
+
             Extractor.Layout.Components.Add(extractBackground);
 
             Extractor.Layout.BackgroundImageSize.X = componentStandardData.Size.x;

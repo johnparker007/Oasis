@@ -313,7 +313,7 @@ namespace Oasis.MfmeTools
                     case MFMEComponentType.BfmLed:
                         ExtractComponentProcessor.ProcessBfmLed(inputSimulator, componentStandardData);
                         break;
-                    case MFMEComponentType.BfmColourLed:
+                    case MFMEComponentType.BfmColorLed:
                         ExtractComponentProcessor.ProcessBfmColourLed(inputSimulator, componentStandardData);
                         break;
                     case MFMEComponentType.AceMatrix:

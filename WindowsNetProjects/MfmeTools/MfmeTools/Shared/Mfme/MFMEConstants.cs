@@ -30,7 +30,7 @@
             Plasma,
             DotMatrix,
             BfmLed,
-            BfmColourLed,
+            BfmColorLed,
             AceMatrix,
             EpochMatrix,
             SevenSegmentBlock,

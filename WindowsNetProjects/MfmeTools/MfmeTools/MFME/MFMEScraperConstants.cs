@@ -86,6 +86,9 @@ namespace Oasis.MfmeTools.Mfme
         public static readonly int kPropertiesBackgroundImage_CenterX = kPropertiesBackgroundImage_X + (kPropertiesBackgroundImage_Width / 2);
         public static readonly int kPropertiesBackgroundImage_CenterY = kPropertiesBackgroundImage_Y + (kPropertiesBackgroundImage_Height / 2);
 
+        public static readonly int kPropertiesBackgroundColourColorbox_X = 18;
+        public static readonly int kPropertiesBackgroundColourColorbox_Y = 343;
+
         // reel fields
         public static readonly int kPropertiesReelNumber_X = 20;
         public static readonly int kPropertiesReelNumber_Y = 223;

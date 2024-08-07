@@ -357,7 +357,7 @@ mouseCoordinateWithinWindowX += 5;
                 case "BFM Led":
                     return MFMEConstants.MFMEComponentType.BfmLed;
                 case "BFMColourLed":
-                    return MFMEConstants.MFMEComponentType.BfmColourLed;
+                    return MFMEConstants.MFMEComponentType.BfmColorLed;
                 case "Ace Matrix":
                     return MFMEConstants.MFMEComponentType.AceMatrix;
                 case "Epoch Matrix":
