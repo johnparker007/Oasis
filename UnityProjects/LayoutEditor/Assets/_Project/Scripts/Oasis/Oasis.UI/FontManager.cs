@@ -53,7 +53,25 @@ namespace Oasis.UI
             }
         }
 
-        public Font GetFont(string name)
+        public static string GetOSStyleName(FontStyle style)
+        {
+            switch (style)
+            {
+                case FontStyle.Normal:
+                    return "";
+                case FontStyle.Bold:
+                    return "Bold";
+                case FontStyle.Italic:
+                    return "Italic";
+                case FontStyle.BoldAndItalic:
+                    return "Bold Italic";
+                default:
+                    Debug.LogError("Calling with invalid style");
+                    return null;
+            }
+        }
+
+        public Font GetFont(string name, FontStyle style, int size)
         {
             foreach(Font mfmeFont in MfmeFonts)
             {
@@ -63,7 +81,54 @@ namespace Oasis.UI
                 }
             }
 
-            // TODO try get OS font by name
+            // There is some issues with some OS fonts, for instance Unispace Bold is found in the list of OS
+            // fonts, but upon creating, it appears to be falling back to Arial.  This may be a bug/shortcoming of the Unity
+            // inbuilt CreateDynamicFontFromOSFont functionality.
+
+            string nameWithOsStyleName = name;
+            if(style != FontStyle.Normal)
+            {
+                nameWithOsStyleName += " " + GetOSStyleName(style);
+            }
+            
+            string fallbackNameWithOsBold = name + " " + GetOSStyleName(FontStyle.Bold);
+            string fallbackNameWithOsItalic = name + " " + GetOSStyleName(FontStyle.Italic);
+            string fallbackNameWithOsBoldItalic = name + " " + GetOSStyleName(FontStyle.BoldAndItalic);
+
+            string osFontNameToCreate = null;
+            string[] installedFontNames = Font.GetOSInstalledFontNames();
+            if (installedFontNames.Contains(nameWithOsStyleName))
+            {
+                osFontNameToCreate = nameWithOsStyleName;
+            }
+            else if(installedFontNames.Contains(name))
+            {
+                osFontNameToCreate = name;
+            }
+            // further fallback:
+            else if(installedFontNames.Contains(fallbackNameWithOsBold))
+            {
+                osFontNameToCreate = fallbackNameWithOsBold;
+            }
+            else if (installedFontNames.Contains(fallbackNameWithOsItalic))
+            {
+                osFontNameToCreate = fallbackNameWithOsItalic;
+            }
+            else if (installedFontNames.Contains(fallbackNameWithOsBoldItalic))
+            {
+                osFontNameToCreate = fallbackNameWithOsBoldItalic;
+            }
+
+            if (osFontNameToCreate != null)
+            {
+                Font dynamicFont = Font.CreateDynamicFontFromOSFont(osFontNameToCreate, size);
+                if (dynamicFont != null)
+                {
+                    return dynamicFont;
+                }
+            }
+
+            // TODO - an Oasis-defined fallback that works better than Unity's Arial 12 point only font fallback
 
             return null;
         }

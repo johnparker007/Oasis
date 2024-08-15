@@ -46,17 +46,19 @@ namespace Oasis.LayoutEditor
             _text.text = ComponentLamp.Text;
             _text.color = ComponentLamp.TextColor;
 
-            // TEMP hack test just to get things going!
-            Font font = FontManager.Instance.GetFont(ComponentLamp.FontName);
+            // TEMP hack test for these fonts just to get things going!
+
+            FontStyle fontStyle = FontManager.GetFontStyle(ComponentLamp.FontStyle);
+            // Seems to be a discrepancy, so e.g: 36 in Mfme needs to be 48 in Unity
+            const float kMfmeFontScale = 1.3333333333f; 
+            int fontSize = Mathf.RoundToInt(ComponentLamp.FontSize * kMfmeFontScale);
+            Font font = FontManager.Instance.GetFont(ComponentLamp.FontName, fontStyle, fontSize);
             if (font != null)
             {
                 _text.font = font;
-
-                // Seems to be a discrepancy, so e.g: 36 in Mfme needs to be 48 in Unity
-                const float kMfmeFontScale = 1.3333333333f;
-                _text.fontSize = Mathf.RoundToInt(ComponentLamp.FontSize * kMfmeFontScale);
-
-                _text.fontStyle = FontManager.GetFontStyle(ComponentLamp.FontStyle);
+                _text.fontSize = fontSize;
+                _text.fontStyle = fontStyle; // TODO do we not need this if baked into the font we gewnerated?
+                // otherwise we may end up with 'double-bold' fonts or double-italic fonts.
             }
 
             // TODO THERE ARE POTENTIALLY IMAGE-RELATED MEMORY LEAKS TO FIX HERE!

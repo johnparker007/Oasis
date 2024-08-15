@@ -1,0 +1,9 @@
+<svg width="110" height="110">
+					<radialGradient id="radGrad" cx="55" cy="55" r="101" fx="55" fy="80.25" >
+						<stop offset="0" style="stop-color:#eeeeee;" />
+						<stop offset="0.45" style="stop-color:#888888;" />
+						<stop offset="1" style="stop-color:#666666;" />
+					</radialGradient>
+					<circle cx="55" cy="55" r="52" style="fill:url(#radGrad);stroke:#555555;stroke-width:6;" />
+					<circle cx="55" cy="55" r="50" style="fill:none;stroke:#dddddd;stroke-width:1;stroke-opacity:0.75" />
+				</svg>
