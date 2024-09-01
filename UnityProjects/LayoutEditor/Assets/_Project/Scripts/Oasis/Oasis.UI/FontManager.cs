@@ -71,7 +71,7 @@ namespace Oasis.UI
             }
         }
 
-        public Font GetFont(string name, FontStyle style, int size)
+        public Font GetFont(string name, FontStyle style, int defaultSize = 0)
         {
             foreach(Font mfmeFont in MfmeFonts)
             {
@@ -121,7 +121,7 @@ namespace Oasis.UI
 
             if (osFontNameToCreate != null)
             {
-                Font dynamicFont = Font.CreateDynamicFontFromOSFont(osFontNameToCreate, size);
+                Font dynamicFont = Font.CreateDynamicFontFromOSFont(osFontNameToCreate, defaultSize);
                 if (dynamicFont != null)
                 {
                     return dynamicFont;
