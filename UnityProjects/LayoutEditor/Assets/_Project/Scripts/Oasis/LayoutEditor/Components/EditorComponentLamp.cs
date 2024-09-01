@@ -57,7 +57,10 @@ namespace Oasis.LayoutEditor
 
             FontStyle fontStyle = FontManager.GetFontStyle(ComponentLamp.FontStyle);
             // Seems to be a discrepancy, so e.g: 36 in Mfme needs to be 48 in Unity
-            const float kMfmeFontScale = 1.3333333333f; 
+            //const float kMfmeFontScale = 1.3333333333f; // maybe slightly too small 
+            //const float kMfmeFontScale = 1.5f;// slightly too big
+            const float kMfmeFontScale = 1.33f;
+
             int fontSize = Mathf.RoundToInt(ComponentLamp.FontSize * kMfmeFontScale);
             Font font = FontManager.Instance.GetFont(ComponentLamp.FontName, fontStyle, fontSize);
             if (font != null)
@@ -75,9 +78,9 @@ namespace Oasis.LayoutEditor
                 // *** New TMP version:
                 TMP_FontAsset fontAsset = TMP_FontAsset.CreateFontAsset(font);
                 _tmpText.font = fontAsset;
-                //float fontSizeFloat = ComponentLamp.FontSize * kMfmeFontScale;
+                float fontSizeFloat = ComponentLamp.FontSize * kMfmeFontScale;
 // test round down to int:
-float fontSizeFloat = (int)(ComponentLamp.FontSize * kMfmeFontScale);
+//float fontSizeFloat = (int)(ComponentLamp.FontSize * kMfmeFontScale);
                 _tmpText.fontSize = fontSizeFloat;
 
                 // settings to give a less blurry/soft font at smaller sizes
