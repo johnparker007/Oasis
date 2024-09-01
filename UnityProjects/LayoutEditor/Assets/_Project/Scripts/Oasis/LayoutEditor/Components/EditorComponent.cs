@@ -84,7 +84,7 @@ namespace Oasis.LayoutEditor
         {
         }
 
-        protected virtual void ShowDisplayElements(bool text)
+        protected virtual void ShowDisplayElements(bool forceText)
         {
         }
 

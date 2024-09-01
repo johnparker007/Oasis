@@ -78,10 +78,16 @@ namespace Oasis.LayoutEditor
 
                 _image.sprite = _sprite;
             }
+            else
+            {
+                _sprite = null;
+            }
 
             _outline.enabled = ComponentLamp.Outline;
 
             SetLampBrightness(0f);
+
+            ShowDisplayElements(_sprite == null);
         }
 
         protected override void UpdateStateFromEmulation()
@@ -96,11 +102,11 @@ namespace Oasis.LayoutEditor
             SetLampBrightness(lampBrightness);
         }
 
-        protected override void ShowDisplayElements(bool text)
+        protected override void ShowDisplayElements(bool forceText)
         {
-            base.ShowDisplayElements(text);
+            base.ShowDisplayElements(forceText);
 
-            if (text)
+            if (_sprite == null || forceText)
             {
                 _image.sprite = null;
                 _tmpText.enabled = true;
@@ -116,7 +122,7 @@ namespace Oasis.LayoutEditor
 
         protected void SetLampBrightness(float brightness)
         {
-            if(Editor.Instance.DisplayText)
+            if(_image.sprite == null || Editor.Instance.DisplayText)
             {
                 _image.color = Color.Lerp(ComponentLamp.OffColor, ComponentLamp.OnColor, brightness);
             }
