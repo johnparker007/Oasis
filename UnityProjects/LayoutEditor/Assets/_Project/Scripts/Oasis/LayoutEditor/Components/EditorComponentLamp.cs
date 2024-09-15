@@ -62,8 +62,22 @@ namespace Oasis.LayoutEditor
                 _tmpText.font.material.SetFloat("_Sharpness", 1f);
                 _tmpText.font.material.SetFloat("_GradientScale", 15f);
 
-                // TODO font styles
-                //_tmpText.fontStyle = fontStyle;
+                // TODO font styles shold only apply if style isn't baked into font
+                switch(fontStyle)
+                {
+                    case FontStyle.Normal:
+                        break;
+                    case FontStyle.Bold:
+                        _tmpText.fontStyle = FontStyles.Bold;
+                        break;
+                    case FontStyle.Italic:
+                        _tmpText.fontStyle = FontStyles.Italic;
+                        break;
+                    case FontStyle.BoldAndItalic:
+                        _tmpText.fontStyle |= FontStyles.Bold;
+                        _tmpText.fontStyle |= FontStyles.Italic;
+                        break;
+                }
             }
 
             // TODO THERE ARE POTENTIALLY IMAGE-RELATED MEMORY LEAKS TO FIX HERE!

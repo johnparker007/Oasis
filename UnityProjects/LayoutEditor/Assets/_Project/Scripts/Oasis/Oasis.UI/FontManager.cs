@@ -4,9 +4,13 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using System.Linq;
+using Microsoft.Win32;
+using System.IO;
 
 namespace Oasis.UI
 {
+
+
     public class FontManager : MonoBehaviour
     {
         public List<Font> MfmeFonts;
@@ -71,7 +75,7 @@ namespace Oasis.UI
             }
         }
 
-        public Font GetFont(string name, FontStyle style, int defaultSize = 0)
+        public Font GetFont(string name, FontStyle style)
         {
             foreach(Font mfmeFont in MfmeFonts)
             {
@@ -81,56 +85,45 @@ namespace Oasis.UI
                 }
             }
 
-            // There is some issues with some OS fonts, for instance Unispace Bold is found in the list of OS
-            // fonts, but upon creating, it appears to be falling back to Arial.  This may be a bug/shortcoming of the Unity
-            // inbuilt CreateDynamicFontFromOSFont functionality.
+            //string[] fontPaths = Font.GetPathsToOSFonts();
+            const string kWindowsFontPath = "C://Windows//Fonts"; // TODO extract font path from 1st entry in Font.GetPathsToOSFonts()
+            string fontFileName = GetFontFileName(name, style);
 
-            string nameWithOsStyleName = name;
-            if(style != FontStyle.Normal)
+            if (fontFileName != null)
             {
-                nameWithOsStyleName += " " + GetOSStyleName(style);
-            }
-            
-            string fallbackNameWithOsBold = name + " " + GetOSStyleName(FontStyle.Bold);
-            string fallbackNameWithOsItalic = name + " " + GetOSStyleName(FontStyle.Italic);
-            string fallbackNameWithOsBoldItalic = name + " " + GetOSStyleName(FontStyle.BoldAndItalic);
-
-            string osFontNameToCreate = null;
-            string[] installedFontNames = Font.GetOSInstalledFontNames();
-            if (installedFontNames.Contains(nameWithOsStyleName))
-            {
-                osFontNameToCreate = nameWithOsStyleName;
-            }
-            else if(installedFontNames.Contains(name))
-            {
-                osFontNameToCreate = name;
-            }
-            // further fallback:
-            else if(installedFontNames.Contains(fallbackNameWithOsBold))
-            {
-                osFontNameToCreate = fallbackNameWithOsBold;
-            }
-            else if (installedFontNames.Contains(fallbackNameWithOsItalic))
-            {
-                osFontNameToCreate = fallbackNameWithOsItalic;
-            }
-            else if (installedFontNames.Contains(fallbackNameWithOsBoldItalic))
-            {
-                osFontNameToCreate = fallbackNameWithOsBoldItalic;
-            }
-
-            if (osFontNameToCreate != null)
-            {
-                Font dynamicFont = Font.CreateDynamicFontFromOSFont(osFontNameToCreate, defaultSize);
-                if (dynamicFont != null)
-                {
-                    return dynamicFont;
-                }
+                string fontFilePath = Path.Combine(kWindowsFontPath, fontFileName);
+                Font dynamicFont = new Font(fontFilePath);
+                return dynamicFont;
             }
 
             // TODO - an Oasis-defined fallback that works better than Unity's Arial 12 point only font fallback
 
             return null;
+        }
+
+        public static string GetFontFileName(string name, FontStyle style)
+        {
+            // Define the registry key for system fonts
+            string fontsRegistryPath = @"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts";
+
+            // Open the registry key
+            using (RegistryKey fontsKey = Registry.LocalMachine.OpenSubKey(fontsRegistryPath))
+            {
+                if (fontsKey != null)
+                {
+                    foreach (string fontRegistryName in fontsKey.GetValueNames())
+                    {
+                        string fontFile = fontsKey.GetValue(fontRegistryName).ToString();
+                        // TOIMPROVE - get fonts that are specific bold or italic fonts, and then
+                        // don't use TMP bold system etc
+                        if (fontRegistryName.StartsWith(name, StringComparison.OrdinalIgnoreCase))
+                        {
+                            return fontFile; // This is the filename of the font
+                        }
+                    }
+                }
+            }
+            return null; // Return null if not found
         }
     }
 
