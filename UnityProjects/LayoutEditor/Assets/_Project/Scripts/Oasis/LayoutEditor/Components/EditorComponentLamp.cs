@@ -54,6 +54,14 @@ namespace Oasis.LayoutEditor
             if (font != null)
             {
                 TMP_FontAsset fontAsset = TMP_FontAsset.CreateFontAsset(font);
+
+                if(fontAsset != null)
+                {
+                    // setting boldSpacing to zero appears to fix the per font inconsistent character spacing issue
+                    fontAsset.boldSpacing = 0f;
+                }
+
+
                 _tmpText.font = fontAsset;
                 const float kMfmeFontScale = 1.33333f;
                 float fontSizeFloat = ComponentLamp.FontSize * kMfmeFontScale;
