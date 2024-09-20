@@ -124,12 +124,28 @@ namespace Oasis.UI
                 {
                     foreach (string fontRegistryName in fontsKey.GetValueNames())
                     {
-                        string fontFile = fontsKey.GetValue(fontRegistryName).ToString();
+                        if(!fontRegistryName.Contains("TrueType"))
+                        {
+                            continue;
+                        }
+
                         // TOIMPROVE - get fonts that are specific bold or italic fonts, and then
                         // don't use TMP bold system etc
                         if (fontRegistryName.StartsWith(name, StringComparison.OrdinalIgnoreCase))
                         {
-                            return fontFile; // This is the filename of the font
+                            return fontsKey.GetValue(fontRegistryName).ToString(); // This is the filename of the font
+                        }
+                        else // kludgy workaround since some of the MS fonts are not in a usable format
+                        {
+                            string nameMSStripped = name.Replace("MS", "");
+                            string fontRegistryNameMSStripped = fontRegistryName.Replace("MS", "");
+
+                            // TODO this can go wrong, for instance Serif source name could return Sans Serif, 
+                            // so needs some extra code to check there are no 'non-present words' such as Sans
+                            if (fontRegistryNameMSStripped.Contains(nameMSStripped, StringComparison.OrdinalIgnoreCase))
+                            {
+                                return fontsKey.GetValue(fontRegistryNameMSStripped).ToString(); // This is the filename of the font
+                            }
                         }
                     }
                 }
