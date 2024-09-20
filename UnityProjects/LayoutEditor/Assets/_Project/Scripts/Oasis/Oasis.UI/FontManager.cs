@@ -9,11 +9,13 @@ using System.IO;
 
 namespace Oasis.UI
 {
-
-
     public class FontManager : MonoBehaviour
     {
         public List<Font> MfmeFonts;
+
+        private FontCache _fontCache = null;
+        private TmpFontAssetCache _fontAssetCache = null;
+ 
 
         public static FontManager Instance
         {
@@ -34,6 +36,8 @@ namespace Oasis.UI
                 Destroy(this);
                 return;
             }
+
+            Initialise();
         }
 
         public static FontStyle GetFontStyle(string fontStyle)
@@ -77,10 +81,16 @@ namespace Oasis.UI
 
         public Font GetFont(string name, FontStyle style)
         {
+            if(_fontCache.ContainsFont(name, style))
+            {
+                return _fontCache.GetFont(name, style);
+            }
+
             foreach(Font mfmeFont in MfmeFonts)
             {
                 if(mfmeFont.fontNames[0] == name)
                 {
+                    _fontCache.TryAddFont(mfmeFont, name, style);
                     return mfmeFont;
                 }
             }
@@ -93,6 +103,7 @@ namespace Oasis.UI
             {
                 string fontFilePath = Path.Combine(kWindowsFontPath, fontFileName);
                 Font dynamicFont = new Font(fontFilePath);
+                _fontCache.TryAddFont(dynamicFont, name, style);
                 return dynamicFont;
             }
 
@@ -125,6 +136,32 @@ namespace Oasis.UI
             }
             return null; // Return null if not found
         }
+
+        public TMP_FontAsset GetTmpFontAsset(Font font)
+        {
+            if (_fontAssetCache.ContainsFontAsset(font))
+            {
+                return _fontAssetCache.GetFontAsset(font);
+            }
+
+            TMP_FontAsset fontAsset = TMP_FontAsset.CreateFontAsset(font);
+            if (fontAsset != null)
+            {
+                // setting boldSpacing to zero appears to fix the per font inconsistent character spacing issue
+                fontAsset.boldSpacing = 0f;
+
+                _fontAssetCache.TryAddFontAsset(font, fontAsset);
+            }
+
+            return fontAsset;
+        }
+
+        private void Initialise()
+        {
+            _fontCache = new FontCache();
+            _fontAssetCache = new TmpFontAssetCache();
+        }
+
     }
 
 }
