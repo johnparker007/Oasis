@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 4906619042777656120}
   - component: {fileID: 3535370425537893857}
   - component: {fileID: 5484171099915543309}
+  - component: {fileID: 3469075028429903233}
   m_Layer: 5
   m_Name: EditorComponentLamp
   m_TagString: Untagged
@@ -34,7 +35,6 @@ RectTransform:
   m_Children:
   - {fileID: 4914745393343592690}
   m_Father: {fileID: 0}
-  m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
@@ -106,11 +106,25 @@ MonoBehaviour:
   m_EffectColor: {r: 0, g: 0, b: 0, a: 0.5}
   m_EffectDistance: {x: 1, y: -1}
   m_UseGraphicAlpha: 1
+--- !u!114 &3469075028429903233
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4906619042777656126}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 31a19414c41e5ae4aae2af33fee712f6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_ShowMaskGraphic: 1
 --- !u!1001 &7277653931619101782
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Modification:
+    serializedVersion: 3
     m_TransformParent: {fileID: 4906619042777656127}
     m_Modifications:
     - target: {fileID: 2363199395729167524, guid: 91aaef4d049561b49ab17c66bc60186f, type: 3}
@@ -202,6 +216,9 @@ PrefabInstance:
       value: TextElement
       objectReference: {fileID: 0}
     m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 91aaef4d049561b49ab17c66bc60186f, type: 3}
 --- !u!224 &4914745393343592690 stripped
 RectTransform:
