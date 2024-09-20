@@ -15,7 +15,13 @@ namespace Oasis.UI
 
         private FontCache _fontCache = null;
         private TmpFontAssetCache _fontAssetCache = null;
- 
+
+        // TOIMPROVE could pull this out to scriptable object
+        private static readonly Dictionary<string, string> kSubstituteFonts = new Dictionary<string, string>
+        {
+            { "Termina", "Courier" }, // missing ending 'l' due to crappy scraper I/l issue, also not available
+        };
+
 
         public static FontManager Instance
         {
@@ -131,21 +137,27 @@ namespace Oasis.UI
 
                         // TOIMPROVE - get fonts that are specific bold or italic fonts, and then
                         // don't use TMP bold system etc
-                        if (fontRegistryName.StartsWith(name, StringComparison.OrdinalIgnoreCase))
+
+
+                        string searchName = name;
+                        if (kSubstituteFonts.ContainsKey(name))
+                        {
+                            searchName = kSubstituteFonts[name];
+                        }
+
+                        string searchNameMSStripped = searchName.Replace("MS", "");
+                        string fontRegistryNameMSStripped = fontRegistryName.Replace("MS", "");
+
+                        if (fontRegistryName.StartsWith(searchName, StringComparison.OrdinalIgnoreCase))
                         {
                             return fontsKey.GetValue(fontRegistryName).ToString(); // This is the filename of the font
                         }
-                        else // kludgy workaround since some of the MS fonts are not in a usable format
+                        // TODO this can go wrong, for instance Serif source name could return Sans Serif, 
+                        // so needs some extra code to check there are no 'non-present words' such as Sans
+                        // kludgy workaround since some of the MS fonts are not in a usable format
+                        else if (fontRegistryNameMSStripped.Contains(searchNameMSStripped, StringComparison.OrdinalIgnoreCase))
                         {
-                            string nameMSStripped = name.Replace("MS", "");
-                            string fontRegistryNameMSStripped = fontRegistryName.Replace("MS", "");
-
-                            // TODO this can go wrong, for instance Serif source name could return Sans Serif, 
-                            // so needs some extra code to check there are no 'non-present words' such as Sans
-                            if (fontRegistryNameMSStripped.Contains(nameMSStripped, StringComparison.OrdinalIgnoreCase))
-                            {
-                                return fontsKey.GetValue(fontRegistryNameMSStripped).ToString(); // This is the filename of the font
-                            }
+                            return fontsKey.GetValue(fontRegistryNameMSStripped).ToString(); // This is the filename of the font
                         }
                     }
                 }
