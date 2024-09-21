@@ -6,6 +6,5 @@ namespace Oasis.UI.ContextMenu.Data
 {
     public abstract class ContextMenuDefinitionBase : DefinitionBase
     {
-        public string Name;
     }
 }

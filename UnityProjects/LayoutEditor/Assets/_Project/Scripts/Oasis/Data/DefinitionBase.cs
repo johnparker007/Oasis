@@ -6,5 +6,6 @@ namespace Oasis.Data
 {
     public class DefinitionBase : ScriptableObject
     {
+        public string Name;
     }
 }

@@ -6,12 +6,17 @@ using UnityEngine;
 using System.Linq;
 using Microsoft.Win32;
 using System.IO;
+using Oasis.MFME.Data;
 
 namespace Oasis.UI
 {
     public class FontManager : MonoBehaviour
     {
         public List<Font> MfmeFonts;
+
+        public FontImportDefinitions FontImportDefinitions;
+
+        public Material TextMeshProMaterial;
 
         private FontCache _fontCache = null;
         private TmpFontAssetCache _fontAssetCache = null;
@@ -178,10 +183,18 @@ namespace Oasis.UI
                 // setting boldSpacing to zero appears to fix the per font inconsistent character spacing issue
                 fontAsset.boldSpacing = 0f;
 
+                // initial test, this may need to be done differently:
+                //fontAsset.material = new Material(fontAsset.material);
+
                 _fontAssetCache.TryAddFontAsset(font, fontAsset);
             }
 
             return fontAsset;
+        }
+
+        public FontImportDefinition GetFontImportDefinition(string name)
+        {
+            return (FontImportDefinition)FontImportDefinitions.GetDefinition(name);
         }
 
         private void Initialise()

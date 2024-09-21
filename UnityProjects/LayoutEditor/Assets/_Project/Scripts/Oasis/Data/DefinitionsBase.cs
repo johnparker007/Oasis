@@ -8,6 +8,11 @@ namespace Oasis.Data
     public class DefinitionsBase : ScriptableObject
     {
         public List<DefinitionBase> Definitions = new List<DefinitionBase>();
+
+        public DefinitionBase GetDefinition(string name)
+        {
+            return Definitions.Find(definition => definition.Name == name);
+        }
     }
 }
 

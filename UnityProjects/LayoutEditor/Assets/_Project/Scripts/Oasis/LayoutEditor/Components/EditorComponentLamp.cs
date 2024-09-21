@@ -6,6 +6,7 @@ using Oasis.Layout;
 using Oasis.Graphics;
 using Oasis.UI;
 using TMPro;
+using Oasis.MFME.Data;
 
 namespace Oasis.LayoutEditor
 {
@@ -60,11 +61,41 @@ namespace Oasis.LayoutEditor
                 float fontSizeFloat = ComponentLamp.FontSize * kMfmeFontScale;
                 _tmpText.fontSize = fontSizeFloat;
 
+                FontImportDefinition fontImportDefinition = (FontImportDefinition)
+                    FontManager.Instance.FontImportDefinitions.GetDefinition(ComponentLamp.FontName);
+
+                if(fontImportDefinition != null)
+                {
+                    _tmpText.lineSpacing = fontImportDefinition.OasisLineSpacing;
+                    _tmpText.characterSpacing = fontImportDefinition.OasisCharacterSpacing;
+                }
+
+                // Create a new material instance from the TMP_Text font material
+                //Material newMaterial = Instantiate(_tmpText.fontMaterial);
+
+                //newMaterial.shader = Shader.Find("TextMeshPro/Distance Field");
+
+                //// Ensure the material has a unique name to identify it easily
+                //newMaterial.name = _tmpText.fontMaterial.name + "_EditableInstance";
+
+                //// Assign the instantiated material to the TMP_Text object
+                //_tmpText.fontSharedMaterial = newMaterial;
+
+                //// Make sure the material's shader properties are editable
+                //newMaterial.shader = Shader.Find(newMaterial.shader.name);
+
+
+
+
+
+
+
+
                 _tmpText.font.material.SetFloat("_Sharpness", 1f);
                 _tmpText.font.material.SetFloat("_GradientScale", 15f);
 
                 // TODO font styles shold only apply if style isn't baked into font
-                switch(fontStyle)
+                switch (fontStyle)
                 {
                     case FontStyle.Normal:
                         break;
@@ -98,7 +129,8 @@ namespace Oasis.LayoutEditor
                 _sprite = null;
             }
 
-            _outline.enabled = ComponentLamp.Outline;
+            // TEMP Force disable until do proper element rendering
+            //_outline.enabled = ComponentLamp.Outline;
 
             SetLampBrightness(0f);
 
