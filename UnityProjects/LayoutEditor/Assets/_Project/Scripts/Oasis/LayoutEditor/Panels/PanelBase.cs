@@ -7,7 +7,7 @@ using UnityEngine.UI;
 
 namespace Oasis.LayoutEditor.Panels
 {
-    public class PanelBase : SkinnedWindow
+    public abstract class PanelBase : SkinnedWindow
     {
         public UIController UIController;
 
@@ -25,7 +25,7 @@ namespace Oasis.LayoutEditor.Panels
         // Used to make sure that the scrolled content always remains within the scroll view's boundaries
         private PointerEventData _nullPointerEventData;
 
-        private bool _initialized = false;
+        private bool _initialisedBase = false;
 
         private Canvas _canvas;
 
@@ -34,16 +34,37 @@ namespace Oasis.LayoutEditor.Panels
         protected override void Awake()
         {
             base.Awake();
-            Initialize();
+            InitialiseBase();
+            AddListeners();
         }
 
+        protected virtual void Start()
+        {
+            Initialise();
+            Populate();
+        }
 
-		private void Initialize()
+        protected virtual void OnDestroy()
+        {
+            RemoveListeners();
+        }
+
+        protected abstract void AddListeners();
+
+        protected abstract void RemoveListeners();
+
+        protected abstract void Initialise();
+
+        protected abstract void Populate();
+
+        private void InitialiseBase()
 		{
-			if (_initialized)
-				return;
+			if (_initialisedBase)
+            {
+                return;
+            }
 
-			_initialized = true;
+            _initialisedBase = true;
 
 			_drawArea = _scrollView.content;
 			_canvas = GetComponentInParent<Canvas>();

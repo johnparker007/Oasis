@@ -6,7 +6,7 @@ using UnityEngine.EventSystems;
 namespace Oasis.LayoutEditor
 {
     [RequireComponent(typeof(Zoom))]
-    public class EditorPanel : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+    public class EditorPanel : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerDownHandler, IPointerUpHandler
     {
         public Zoom Zoom
         {
@@ -20,19 +20,35 @@ namespace Oasis.LayoutEditor
             private set;
         }
 
+        public bool PointerDown
+        {
+            get;
+            private set;
+        }
+
         private void Awake()
         {
             Zoom = GetComponent<Zoom>();    
         }
 
-        void IPointerEnterHandler.OnPointerEnter(PointerEventData eventData)
+        public void OnPointerEnter(PointerEventData eventData)
         {
             PointerEntered = true;
         }
 
-        void IPointerExitHandler.OnPointerExit(PointerEventData eventData)
+        public void OnPointerExit(PointerEventData eventData)
         {
             PointerEntered = false;
+        }
+
+        public void OnPointerDown(PointerEventData eventData)
+        {
+            PointerDown = true;
+        }
+
+        public void OnPointerUp(PointerEventData eventData)
+        {
+            PointerDown = false;
         }
     }
 }

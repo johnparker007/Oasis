@@ -1,10 +1,11 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 namespace Oasis.LayoutEditor
 {
-    public abstract class EditorComponent2D : EditorComponent
+    public abstract class EditorComponent2D : EditorComponent, IPointerEnterHandler, IPointerExitHandler, IPointerDownHandler, IPointerUpHandler
     {
         public Vector2Int Position
         {
@@ -44,6 +45,28 @@ namespace Oasis.LayoutEditor
 
             rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, Size.x);
             rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, Size.y);
+        }
+
+        public void OnPointerEnter(PointerEventData eventData)
+        {
+           // throw new System.NotImplementedException();
+        }
+
+        public void OnPointerExit(PointerEventData eventData)
+        {
+            //throw new System.NotImplementedException();
+        }
+
+        public void OnPointerDown(PointerEventData eventData)
+        {
+            //Debug.LogError("Editor component " + gameObject.name + " - OnPointerDown " + eventData.position);
+
+            //throw new System.NotImplementedException();
+        }
+
+        public void OnPointerUp(PointerEventData eventData)
+        {
+            //throw new System.NotImplementedException();
         }
     }
 

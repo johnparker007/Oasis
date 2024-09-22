@@ -13,26 +13,25 @@ namespace Oasis.LayoutEditor.Panels
         public Button PopulateTargetButton;
         public Button RemapLampsButton;
 
-        protected override void Awake()
-        {
-            base.Awake();
 
-            AddListeners();
-        }
-
-        private void OnDestroy()
-        {
-            RemoveListeners();
-        }
-
-        private void AddListeners()
+        protected override void AddListeners()
         {
             PopulateSourceButton.onClick.AddListener(OnPopulateSourceButtonClick);
             PopulateTargetButton.onClick.AddListener(OnPopulateTargetButtonClick);
             RemapLampsButton.onClick.AddListener(OnRemapLampsButtonClick);
         }
 
-        private void RemoveListeners()
+        protected override void Initialise()
+        {
+            // TODO?
+        }
+
+        protected override void Populate()
+        {
+            // TODO?
+        }
+
+        protected override void RemoveListeners()
         {
             PopulateSourceButton.onClick.RemoveListener(OnPopulateSourceButtonClick);
             PopulateTargetButton.onClick.RemoveListener(OnPopulateTargetButtonClick);

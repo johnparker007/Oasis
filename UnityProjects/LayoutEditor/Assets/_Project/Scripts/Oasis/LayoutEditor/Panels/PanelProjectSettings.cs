@@ -12,29 +12,12 @@ namespace Oasis.LayoutEditor.Panels
     public class PanelProjectSettings : PanelBase
     {
         public FieldString MameRomName;
-        public UI.Fields.FieldEnum FruitMachinePlatform;
+        public FieldEnum FruitMachinePlatform;
 
-        protected override void Awake()
-        {
-            base.Awake();
-
-            AddListeners();
-        }
-
-        protected void Start()
-        {
-            Initialise();
-            Populate();
-        }
-
-        private void OnDestroy()
-        {
-            RemoveListeners();
-        }
 
         // JP TODO note this is all just initial testing code of how we will make our own 'BoundInputField'
         // generic processing behaviour:
-        private void AddListeners()
+        protected override void AddListeners()
         {
             MameRomName.Input.OnValueChanged += OnMameRomNameValueChanged;
             MameRomName.Input.OnValueSubmitted += OnMameRomNameEndEdit;
@@ -42,7 +25,7 @@ namespace Oasis.LayoutEditor.Panels
             FruitMachinePlatform.Dropdown.onValueChanged.AddListener(OnFruitMachinePlatformValueChanged);
         }
 
-        private void RemoveListeners()
+        protected override void RemoveListeners()
         {
             MameRomName.Input.OnValueChanged -= OnMameRomNameValueChanged;
             MameRomName.Input.OnValueSubmitted -= OnMameRomNameEndEdit;
@@ -50,7 +33,7 @@ namespace Oasis.LayoutEditor.Panels
             FruitMachinePlatform.Dropdown.onValueChanged.RemoveListener(OnFruitMachinePlatformValueChanged);
         }
 
-        private void Initialise()
+        protected override void Initialise()
         {
             InitialiseFruitMachinePlatformDropdown();
         }
@@ -60,7 +43,7 @@ namespace Oasis.LayoutEditor.Panels
             FruitMachinePlatform.Setup(typeof(MameController.PlatformType));
         }
 
-        private void Populate()
+        protected override void Populate()
         {
             MameRomName.Input.Text = Editor.Instance.Project.Settings.Mame.RomName;
 

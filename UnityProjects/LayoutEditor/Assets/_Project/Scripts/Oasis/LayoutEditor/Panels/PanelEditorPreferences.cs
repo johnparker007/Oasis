@@ -13,37 +13,19 @@ namespace Oasis.LayoutEditor.Panels
     {
         public FieldString ServerAddress;
 
-        protected override void Awake()
-        {
-            base.Awake();
-
-            AddListeners();
-        }
-
-        protected void Start()
-        {
-            Initialise();
-            Populate();
-        }
-
-        private void OnDestroy()
-        {
-            RemoveListeners();
-        }
-
-        private void AddListeners()
+        protected override void AddListeners()
         {
         }
 
-        private void RemoveListeners()
+        protected override void RemoveListeners()
         {
         }
 
-        private void Initialise()
+        protected override void Initialise()
         {
         }
 
-        private void Populate()
+        protected override void Populate()
         {
             // TODO - Editor preferences
 
