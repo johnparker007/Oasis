@@ -13,5 +13,5 @@ MonoBehaviour:
   m_Name: MS Sans Serif
   m_EditorClassIdentifier: 
   Name: MS Sans Serif
-  OasisLineSpacing: 0
-  OasisCharacterSpacing: 0
+  OasisLineSpacing: 8
+  OasisCharacterSpacing: 5.5
