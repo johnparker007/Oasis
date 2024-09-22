@@ -94,15 +94,24 @@ namespace Oasis.LayoutEditor.Panels
 
         private bool OnNumberValueChanged(BoundInputField source, string value)
         {
-            ComponentLamp.Number = int.Parse(value);
+            ProcessNumberEdit(value);
+
             return true;
         }
 
         private bool OnNumberEndEdit(BoundInputField source, string value)
         {
-            ComponentLamp.Number = int.Parse(value);
+            ProcessNumberEdit(value);
+
             return true;
         }
 
+        private void ProcessNumberEdit(string value)
+        {
+            if (int.TryParse(value, out int result))
+            {
+                ComponentLamp.Number = result;
+            }
+        }
     }
 }
