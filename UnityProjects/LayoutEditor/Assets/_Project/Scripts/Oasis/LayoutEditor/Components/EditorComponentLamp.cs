@@ -22,7 +22,7 @@ namespace Oasis.LayoutEditor
         private TMP_Text _tmpText = null;
         private Outline _outline = null;
 
-        protected ComponentLamp ComponentLamp
+        public ComponentLamp ComponentLamp
         {
             get
             {
@@ -51,10 +51,10 @@ namespace Oasis.LayoutEditor
 
 
             FontStyle fontStyle = FontManager.GetFontStyle(ComponentLamp.FontStyle);
-            Font font = FontManager.Instance.GetFont(ComponentLamp.FontName, fontStyle);
+            Font font = Editor.Instance.FontManager.GetFont(ComponentLamp.FontName, fontStyle);
             if (font != null)
             {
-                TMP_FontAsset fontAsset = FontManager.Instance.GetTmpFontAsset(font);
+                TMP_FontAsset fontAsset = Editor.Instance.FontManager.GetTmpFontAsset(font);
 
                 _tmpText.font = fontAsset;
                 const float kMfmeFontScale = 1.33333f;
@@ -62,7 +62,7 @@ namespace Oasis.LayoutEditor
                 _tmpText.fontSize = fontSizeFloat;
 
                 FontImportDefinition fontImportDefinition = (FontImportDefinition)
-                    FontManager.Instance.FontImportDefinitions.GetDefinition(ComponentLamp.FontName);
+                    Editor.Instance.FontManager.FontImportDefinitions.GetDefinition(ComponentLamp.FontName);
 
                 if(fontImportDefinition != null)
                 {

@@ -13,12 +13,14 @@ namespace Oasis.LayoutEditor
 
         public List<EditorComponent> SelectedEditorComponents = new List<EditorComponent>();
 
-        public void Start()
+        private void Awake()
         {
+            AddListeners();
         }
 
         public void OnDestroy()
         {
+            RemoveListeners();
         }
 
         public void SelectObject(EditorComponent editorComponent)
@@ -119,5 +121,33 @@ namespace Oasis.LayoutEditor
             OnSelectionChange.Invoke();
         }
 
+        private void AddListeners()
+        {
+            Editor.Instance.OnEditorViewEnabled.AddListener(OnEditorViewEnabled);
+            Editor.Instance.OnEditorViewDisabled.AddListener(OnEditorViewDisabled);
+        }
+
+        private void RemoveListeners()
+        {
+            Editor.Instance.OnEditorViewEnabled.RemoveListener(OnEditorViewEnabled);
+            Editor.Instance.OnEditorViewDisabled.RemoveListener(OnEditorViewDisabled);
+        }
+
+        private void OnEditorViewEnabled(EditorView editorView)
+        {
+            editorView.OnLeftButtonDown.AddListener(OnEditorViewLeftButtonDown);
+        }
+
+        private void OnEditorViewDisabled(EditorView editorView)
+        {
+            editorView.OnLeftButtonDown.RemoveListener(OnEditorViewLeftButtonDown);
+        }
+
+        private void OnEditorViewLeftButtonDown(List<EditorComponent> editorComponents)
+        {
+            // TODO this is just test code!
+            DeselectAllObjects();
+            SelectObject(editorComponents[0]);
+        }
     }
 }

@@ -9,7 +9,7 @@ using UnityEngine.Events;
 using Oasis.Project;
 using System.Collections.Generic;
 using Oasis.Export;
-
+using Oasis.UI;
 
 namespace Oasis
 {
@@ -17,6 +17,8 @@ namespace Oasis
     {
         public UIController UIController;
         public MameController MameController;
+        public SelectionController SelectionController;
+        public FontManager FontManager;
         public MameMpu4ChrSourceCodeLookup MameMpu4ChrSourceCodeLookup;
 
         public EditorComponentBackground EditorComponentBackgroundPrefab;
@@ -51,6 +53,10 @@ namespace Oasis
 
         public UnityEvent<LayoutObject> OnLayoutSet = new UnityEvent<LayoutObject>();
         public UnityEvent<bool> OnDisplayTextSet = new UnityEvent<bool>();
+        public UnityEvent<EditorView> OnEditorViewEnabled = new UnityEvent<EditorView>();
+        public UnityEvent<EditorView> OnEditorViewDisabled = new UnityEvent<EditorView>();
+
+
 
         public static Editor Instance
         {

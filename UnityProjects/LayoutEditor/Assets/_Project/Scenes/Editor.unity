@@ -3462,6 +3462,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   GraphicRaycaster: {fileID: 0}
+  OnLeftButtonDown:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1 &1223117544
 GameObject:
   m_ObjectHideFlags: 0
@@ -3511,6 +3514,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   GraphicRaycaster: {fileID: 2056383326}
+  OnLeftButtonDown:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1 &1256510092
 GameObject:
   m_ObjectHideFlags: 0
@@ -5230,6 +5236,17 @@ MonoBehaviour:
   verticalCursor: {fileID: 2800000, guid: 68ac78481f5b6df4da69a6f5133b6702, type: 3}
   diagonalCursorTopLeft: {fileID: 2800000, guid: cbaa205f7a905b8429011ee0c50015ea, type: 3}
   diagonalCursorTopRight: {fileID: 2800000, guid: e5a757b3ef912a24c912a99d9e1befe5, type: 3}
+--- !u!114 &1722651177 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 329930933455498248, guid: d8f9813b8d0977f4abcf2f91cabb9fff, type: 3}
+  m_PrefabInstance: {fileID: 552464027564956582}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8599351a1ce56ce499d116989f400ad6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1775041578
 GameObject:
   m_ObjectHideFlags: 0
@@ -5732,6 +5749,17 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1959639527}
   m_CullTransparentMesh: 1
+--- !u!114 &1972226907 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 9114275200122101699, guid: 9a0bb2d4df81ffd4c950394a485ebe9e, type: 3}
+  m_PrefabInstance: {fileID: 9114275199164060598}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 50c7f5b29fcb61442b4aa03af4f44d99, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &2018586778
 GameObject:
   m_ObjectHideFlags: 0
@@ -6436,6 +6464,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   UIController: {fileID: 1697159235}
   MameController: {fileID: 2046216060}
+  SelectionController: {fileID: 1722651177}
+  FontManager: {fileID: 1972226907}
   MameMpu4ChrSourceCodeLookup: {fileID: 1105341036}
   EditorComponentBackgroundPrefab: {fileID: 1050622726189904241, guid: 4b22f6c6f51ab1248a83e802e92102c8, type: 3}
   EditorComponentLampPrefab: {fileID: 3535370425537893857, guid: d5d925676a1996848bf6f70d96355d80, type: 3}
@@ -6450,6 +6480,9 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   OnDisplayTextSet:
+    m_PersistentCalls:
+      m_Calls: []
+  OnEditorViewEnabled:
     m_PersistentCalls:
       m_Calls: []
 --- !u!1001 &552464027564956582

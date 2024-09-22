@@ -31,12 +31,16 @@ namespace Oasis.LayoutEditor.Panels
 
         protected override void AddListeners()
         {
+            base.AddListeners();
+
             Number.Input.OnValueChanged += OnNumberValueChanged;
             Number.Input.OnValueSubmitted += OnNumberEndEdit;
         }
 
         protected override void RemoveListeners()
         {
+            base.RemoveListeners();
+
             Number.Input.OnValueChanged -= OnNumberValueChanged;
             Number.Input.OnValueSubmitted -= OnNumberEndEdit;
         }
@@ -47,6 +51,45 @@ namespace Oasis.LayoutEditor.Panels
 
         protected override void Populate()
         {
+            // TODO this is just test code for now!
+            if (Editor.Instance.SelectionController.SelectedEditorComponents.Count > 0)
+            {
+                EditorComponent firstSelectedEditorComponent =
+                    Editor.Instance.SelectionController.SelectedEditorComponents[0];
+
+                if (firstSelectedEditorComponent.GetType() == typeof(EditorComponentLamp))
+                {
+                    EditorComponentLamp editorComponentLamp = (EditorComponentLamp)firstSelectedEditorComponent;
+                    if(editorComponentLamp.ComponentLamp.Number.HasValue)
+                    {
+                        Number.Input.Text = editorComponentLamp.ComponentLamp.Number.ToString();
+                    }
+                    else
+                    {
+                        Number.Input.Text = "";
+                    }
+                }
+            }
+        }
+
+        protected override void OnSelectionChange()
+        {
+            // TODO this is just test code for now!
+            if(Editor.Instance.SelectionController.SelectedEditorComponents.Count > 0)
+            {
+                EditorComponent firstSelectedEditorComponent =
+                    Editor.Instance.SelectionController.SelectedEditorComponents[0];
+
+                if(firstSelectedEditorComponent.GetType() == typeof(EditorComponentLamp))
+                {
+                    // not sure if this would be doing the enable/disable of the Inspector type...
+                    // for now as a test, just populate with lamp values:
+
+                    EditorComponent = firstSelectedEditorComponent; // TODO this is just to get started, need to develop 'multi-edit' feature
+
+                    Populate();
+                }
+            }
         }
 
         private bool OnNumberValueChanged(BoundInputField source, string value)

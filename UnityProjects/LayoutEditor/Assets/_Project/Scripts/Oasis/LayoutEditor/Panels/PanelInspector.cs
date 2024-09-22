@@ -25,6 +25,19 @@ namespace Oasis.LayoutEditor.Panels
             }
         }
 
+        protected override void AddListeners()
+        {
+            Editor.Instance.SelectionController.OnSelectionChange.AddListener(OnSelectionChange);
+        }
+
+        protected override void RemoveListeners()
+        {
+            Editor.Instance.SelectionController.OnSelectionChange.RemoveListener(OnSelectionChange);
+        }
+
+        protected abstract void OnSelectionChange();
+
+
 
         // suspect there will be some generic inspector stuff that can go in here, equivalent 
         // to Unity's gameObject name, tag, layer etc

@@ -13,6 +13,16 @@ namespace Oasis.LayoutEditor
 
         public UnityEvent<List<EditorComponent>> OnLeftButtonDown;
 
+        private void OnEnable()
+        {
+            Editor.Instance.OnEditorViewEnabled?.Invoke(this);
+        }
+
+        private void OnDisable()
+        {
+            Editor.Instance.OnEditorViewDisabled?.Invoke(this);
+        }
+
         private void Update()
         {
             if(UnityEngine.Input.GetMouseButtonDown(0))

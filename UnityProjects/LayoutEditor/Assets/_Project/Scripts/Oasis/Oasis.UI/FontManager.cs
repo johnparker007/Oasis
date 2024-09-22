@@ -28,26 +28,8 @@ namespace Oasis.UI
         };
 
 
-        public static FontManager Instance
-        {
-            get;
-            private set;
-        } = null;
-
-
         private void Awake()
         {
-            if (Instance == null)
-            {
-                Instance = this;
-                DontDestroyOnLoad(Instance);
-            }
-            else if (this != Instance)
-            {
-                Destroy(this);
-                return;
-            }
-
             Initialise();
         }
 
