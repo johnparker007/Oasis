@@ -28,6 +28,10 @@ namespace Oasis.LayoutEditor.Panels
         }
 
         public FieldString Number;
+        public FieldColor OnColor;
+        public FieldColor OffColor;
+        public FieldColor TextColor;
+
 
         protected override void AddListeners()
         {
@@ -68,6 +72,10 @@ namespace Oasis.LayoutEditor.Panels
                     {
                         Number.Input.Text = "";
                     }
+
+                    OnColor.ColorImage.color = editorComponentLamp.ComponentLamp.OnColor;
+                    OffColor.ColorImage.color = editorComponentLamp.ComponentLamp.OffColor;
+                    TextColor.ColorImage.color = editorComponentLamp.ComponentLamp.TextColor;
                 }
             }
         }
