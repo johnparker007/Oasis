@@ -7,6 +7,8 @@ namespace Oasis.LayoutEditor
     {
         public PanelInspectorLamp PanelInspectorLamp;
         public PanelInspector7Segment PanelInspector7Segment;
+        public PanelInspectorReel PanelInspectorReel;
+        public PanelInspectorBackground PanelInspectorBackground;
 
         private void Awake()
         {
@@ -53,12 +55,24 @@ namespace Oasis.LayoutEditor
                 PanelInspector7Segment.EditorComponent = firstSelectedEditorComponent;
                 PanelInspector7Segment.gameObject.SetActive(true);
             }
+            else if (firstSelectedEditorComponent.GetType() == typeof(EditorComponentReel))
+            {
+                PanelInspectorReel.EditorComponent = firstSelectedEditorComponent;
+                PanelInspectorReel.gameObject.SetActive(true);
+            }
+            else if (firstSelectedEditorComponent.GetType() == typeof(EditorComponentBackground))
+            {
+                PanelInspectorBackground.EditorComponent = firstSelectedEditorComponent;
+                PanelInspectorBackground.gameObject.SetActive(true);
+            }
         }
 
         private void DisableAllPanels()
         {
             PanelInspectorLamp.gameObject.SetActive(false);
             PanelInspector7Segment.gameObject.SetActive(false);
+            PanelInspectorReel.gameObject.SetActive(false);
+            PanelInspectorBackground.gameObject.SetActive(false);
         }
     }
 
