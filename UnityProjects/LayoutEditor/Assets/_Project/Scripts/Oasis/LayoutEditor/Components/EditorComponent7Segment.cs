@@ -12,6 +12,14 @@ namespace Oasis.LayoutEditor
         public override string HierarchyPseudoSceneName => "7 Segments";
         public override string HierarchyName => "7 Segment";
 
+        public Component7Segment Component7Segment
+        {
+            get
+            {
+                return (Component7Segment)Component;
+            }
+        }
+
         protected override void UpdateStateFromEmulation()
         {
             if (!_number.HasValue)

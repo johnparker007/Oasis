@@ -12,10 +12,19 @@ namespace Oasis.UI
         public OnValueChangedDelegate OnValueChanged;
         public OnValueChangedDelegate OnValueSubmitted;
 
+        private InputField _inputField = null;
+
         public InputField InputField
         {
-            get;
-            private set;
+            get
+            {
+                if(_inputField == null)
+                {
+                    _inputField = GetComponent<InputField>();
+                }
+
+                return _inputField;
+            }
         }
 
         public string Text
@@ -43,8 +52,6 @@ namespace Oasis.UI
 
         private void Initialise()
         {
-            InputField = GetComponent<InputField>();
-
             AddListeners();
         }
 

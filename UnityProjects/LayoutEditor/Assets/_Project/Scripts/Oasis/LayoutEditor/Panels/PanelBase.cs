@@ -44,6 +44,11 @@ namespace Oasis.LayoutEditor.Panels
             Populate();
         }
 
+        protected virtual void OnEnable()
+        {
+            Populate();
+        }
+
         protected virtual void OnDestroy()
         {
             RemoveListeners();

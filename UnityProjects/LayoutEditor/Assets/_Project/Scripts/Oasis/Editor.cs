@@ -18,6 +18,7 @@ namespace Oasis
         public UIController UIController;
         public MameController MameController;
         public SelectionController SelectionController;
+        public InspectorController InspectorController;
         public FontManager FontManager;
         public MameMpu4ChrSourceCodeLookup MameMpu4ChrSourceCodeLookup;
 

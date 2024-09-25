@@ -9,28 +9,25 @@ using UnityEngine.UI;
 
 namespace Oasis.LayoutEditor.Panels
 {
-    public class PanelInspectorLamp : PanelInspector
+    public class PanelInspector7Segment : PanelInspector
     {
-        public EditorComponentLamp EditorComponentLamp
+        public EditorComponent7Segment EditorComponent7Segment
         {
             get
             {
-                return (EditorComponentLamp)EditorComponent;
+                return (EditorComponent7Segment)EditorComponent;
             }
         }
 
-        public Layout.ComponentLamp ComponentLamp
+        public Layout.Component7Segment Component7Segment
         {
             get
             {
-                return (Layout.ComponentLamp)Component;
+                return (Layout.Component7Segment)Component;
             }
         }
 
         public FieldString Number;
-        public FieldColor OnColor;
-        public FieldColor OffColor;
-        public FieldColor TextColor;
 
 
         protected override void AddListeners()
@@ -61,21 +58,17 @@ namespace Oasis.LayoutEditor.Panels
                 EditorComponent firstSelectedEditorComponent =
                     Editor.Instance.SelectionController.SelectedEditorComponents[0];
 
-                if (firstSelectedEditorComponent.GetType() == typeof(EditorComponentLamp))
+                if (firstSelectedEditorComponent.GetType() == typeof(EditorComponent7Segment))
                 {
-                    EditorComponentLamp editorComponentLamp = (EditorComponentLamp)firstSelectedEditorComponent;
-                    if(editorComponentLamp.ComponentLamp.Number.HasValue)
+                    EditorComponent7Segment editorComponent7Segment = (EditorComponent7Segment)firstSelectedEditorComponent;
+                    if(editorComponent7Segment.Component7Segment.Number.HasValue)
                     {
-                        Number.Input.Text = editorComponentLamp.ComponentLamp.Number.ToString();
+                        Number.Input.Text = editorComponent7Segment.Component7Segment.Number.ToString();
                     }
                     else
                     {
                         Number.Input.Text = "";
                     }
-
-                    OnColor.ColorImage.color = editorComponentLamp.ComponentLamp.OnColor;
-                    OffColor.ColorImage.color = editorComponentLamp.ComponentLamp.OffColor;
-                    TextColor.ColorImage.color = editorComponentLamp.ComponentLamp.TextColor;
                 }
             }
         }
@@ -103,7 +96,7 @@ namespace Oasis.LayoutEditor.Panels
         {
             if (int.TryParse(value, out int result))
             {
-                ComponentLamp.Number = result;
+                Component7Segment.Number = result;
             }
         }
     }
