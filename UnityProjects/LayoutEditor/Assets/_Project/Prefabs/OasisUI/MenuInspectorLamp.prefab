@@ -10,7 +10,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 3753846582309515585, guid: 60e23337e7c70f34981e939040ef5565, type: 3}
       propertyPath: m_Name
-      value: StringField
+      value: NumberStringField
       objectReference: {fileID: 0}
     - target: {fileID: 3857862157695987999, guid: 60e23337e7c70f34981e939040ef5565, type: 3}
       propertyPath: m_ContentType
@@ -377,7 +377,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 3753846582309515585, guid: f36ab852c93c4a34e8b94dc5e3e47477, type: 3}
       propertyPath: m_Name
-      value: ColorField
+      value: OnColorField
       objectReference: {fileID: 0}
     - target: {fileID: 3964059342490756411, guid: f36ab852c93c4a34e8b94dc5e3e47477, type: 3}
       propertyPath: m_Pivot.x
