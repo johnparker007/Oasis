@@ -52,6 +52,8 @@ namespace Oasis.LayoutEditor.Panels
 
         protected override void Populate()
         {
+            base.Populate();
+
             // TODO this is just test code for now!
             if (Editor.Instance.SelectionController.SelectedEditorComponents.Count > 0)
             {

@@ -9,6 +9,7 @@ namespace Oasis.LayoutEditor
         public PanelInspector7Segment PanelInspector7Segment;
         public PanelInspectorReel PanelInspectorReel;
         public PanelInspectorBackground PanelInspectorBackground;
+        public PanelInspectorSegmentAlpha PanelInspectorSegmentAlpha;
 
         private void Awake()
         {
@@ -65,6 +66,26 @@ namespace Oasis.LayoutEditor
                 PanelInspectorBackground.EditorComponent = firstSelectedEditorComponent;
                 PanelInspectorBackground.gameObject.SetActive(true);
             }
+            else if (firstSelectedEditorComponent.GetType() == typeof(EditorComponent16SemicolonSegment))
+            {
+                //firstSelectedEditorComponent.
+
+                PanelInspectorSegmentAlpha.EditorComponent = firstSelectedEditorComponent;
+                PanelInspectorSegmentAlpha.gameObject.SetActive(true);
+
+            }
+
+            //else if(firstSelectedEditorComponent.GetType() == typeof(EditorComponentAlpha))
+            //{
+            //    PanelInspectorSegmentAlpha.EditorComponent = firstSelectedEditorComponent;
+            //    PanelInspectorSegmentAlpha.gameObject.SetActive(true);
+            //}
+            //else if (firstSelectedEditorComponent.GetType() == typeof(EditorComponentAlpha14))
+            //{
+            //    // TODO need to work out better way to deal with these variations of a segment alpha
+            //    PanelInspectorSegmentAlpha.EditorComponent = firstSelectedEditorComponent;
+            //    PanelInspectorSegmentAlpha.gameObject.SetActive(true);
+            //}
         }
 
         private void DisableAllPanels()
@@ -73,6 +94,7 @@ namespace Oasis.LayoutEditor
             PanelInspector7Segment.gameObject.SetActive(false);
             PanelInspectorReel.gameObject.SetActive(false);
             PanelInspectorBackground.gameObject.SetActive(false);
+            PanelInspectorSegmentAlpha.gameObject.SetActive(false);
         }
     }
 
