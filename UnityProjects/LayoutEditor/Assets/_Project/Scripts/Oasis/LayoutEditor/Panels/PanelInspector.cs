@@ -27,6 +27,7 @@ namespace Oasis.LayoutEditor.Panels
 
         public FieldVector2 Position;
         public FieldVector2 Size;
+        public FieldString Text;
 
         protected override void Populate()
         {
@@ -42,6 +43,11 @@ namespace Oasis.LayoutEditor.Panels
                 Vector2Int componentSize = firstSelectedEditorComponent.Component.Size;
                 Size.InputX.Text = componentSize.x.ToString();
                 Size.InputY.Text = componentSize.y.ToString();
+
+                if(Text != null)
+                {
+                    Text.Input.Text = firstSelectedEditorComponent.Component.Text;
+                }
             }
         }
 
@@ -58,6 +64,12 @@ namespace Oasis.LayoutEditor.Panels
             Size.InputX.OnValueSubmitted += OnSizeXEndEdit;
             Size.InputY.OnValueChanged += OnSizeYValueChanged;
             Size.InputY.OnValueSubmitted += OnSizeYEndEdit;
+
+            if(Text != null)
+            {
+                Text.Input.OnValueChanged += OnTextValueChanged;
+                Text.Input.OnValueSubmitted += OnTextEndEdit;
+            }
         }
 
         protected override void RemoveListeners()
@@ -73,6 +85,12 @@ namespace Oasis.LayoutEditor.Panels
             Size.InputX.OnValueSubmitted -= OnSizeXEndEdit;
             Size.InputY.OnValueChanged -= OnSizeYValueChanged;
             Size.InputY.OnValueSubmitted -= OnSizeYEndEdit;
+
+            if (Text != null)
+            {
+                Text.Input.OnValueChanged -= OnTextValueChanged;
+                Text.Input.OnValueSubmitted -= OnTextEndEdit;
+            }
         }
 
         protected abstract void OnSelectionChange();
@@ -125,6 +143,18 @@ namespace Oasis.LayoutEditor.Panels
             return true;
         }
 
+        private bool OnTextValueChanged(BoundInputField source, string value)
+        {
+            ProcessTextEdit(value);
+            return true;
+        }
+
+        private bool OnTextEndEdit(BoundInputField source, string value)
+        {
+            ProcessTextEdit(value);
+            return true;
+        }
+
         private void ProcessPositionXEdit(string value)
         {
             if (int.TryParse(value, out int result))
@@ -163,6 +193,11 @@ namespace Oasis.LayoutEditor.Panels
                 size.y = result;
                 Component.Size = size;
             }
+        }
+
+        private void ProcessTextEdit(string value)
+        {
+            Component.Text = value;
         }
 
 
