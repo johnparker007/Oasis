@@ -25,6 +25,7 @@ namespace Oasis.LayoutEditor
 
         private void Update()
         {
+            // TOIMPROVE - this should all be done with the Unity interfaces like OnPointerDown etc
             if(UnityEngine.Input.GetMouseButtonDown(0))
             {
                 ProcessLeftButtonDown();

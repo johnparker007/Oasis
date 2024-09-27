@@ -1,10 +1,11 @@
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Oasis.UI
 {
-    public class ColorBox : MonoBehaviour
+    public class ColorBox : MonoBehaviour, IPointerClickHandler
     {
         public Image TargetGraphic;
 
@@ -37,6 +38,20 @@ namespace Oasis.UI
         //    }
         //}
 
+
+        public void OnPointerClick(PointerEventData eventData)
+        {
+            if(eventData.button == PointerEventData.InputButton.Left)
+            {
+                Debug.LogError("On color box left click");
+
+                Editor.Instance.ColorPicker.gameObject.SetActive(true);
+
+            }
+        }
+
+
+
         public class OnChangeEvent : UnityEvent<Color>
         {
             //public OnChangeEvent();
@@ -51,6 +66,7 @@ namespace Oasis.UI
         {
             //public EndEditEvent();
         }
+
     }
 
 

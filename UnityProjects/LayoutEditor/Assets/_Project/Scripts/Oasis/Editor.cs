@@ -10,6 +10,7 @@ using Oasis.Project;
 using System.Collections.Generic;
 using Oasis.Export;
 using Oasis.UI;
+using HSVPicker;
 
 namespace Oasis
 {
@@ -20,6 +21,7 @@ namespace Oasis
         public SelectionController SelectionController;
         public InspectorController InspectorController;
         public FontManager FontManager;
+        public ColorPicker ColorPicker;
         public MameMpu4ChrSourceCodeLookup MameMpu4ChrSourceCodeLookup;
 
         public EditorComponentBackground EditorComponentBackgroundPrefab;
@@ -89,6 +91,8 @@ namespace Oasis
             ExtractImporter = new ExtractImporter();
 
             Project = new ProjectData();
+
+            ColorPicker.gameObject.SetActive(false);
         }
 
         private void Start()
