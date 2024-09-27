@@ -75,9 +75,9 @@ namespace Oasis.LayoutEditor.Panels
                         Number.Input.Text = "";
                     }
 
-                    OnColor.ColorImage.color = editorComponentLamp.ComponentLamp.OnColor;
-                    OffColor.ColorImage.color = editorComponentLamp.ComponentLamp.OffColor;
-                    TextColor.ColorImage.color = editorComponentLamp.ComponentLamp.TextColor;
+                    OnColor.Input.Color = editorComponentLamp.ComponentLamp.OnColor;
+                    OffColor.Input.Color = editorComponentLamp.ComponentLamp.OffColor;
+                    TextColor.Input.Color = editorComponentLamp.ComponentLamp.TextColor;
                 }
             }
         }

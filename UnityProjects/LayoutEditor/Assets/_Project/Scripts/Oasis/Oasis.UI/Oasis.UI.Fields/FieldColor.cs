@@ -7,6 +7,6 @@ namespace Oasis.UI.Fields
 {
     public class FieldColor : Field
     {
-        public Image ColorImage;
+        public BoundColorBox Input;
 	}
 }
