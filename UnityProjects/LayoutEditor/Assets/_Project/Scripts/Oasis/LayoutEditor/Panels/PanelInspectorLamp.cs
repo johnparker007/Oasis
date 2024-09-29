@@ -39,6 +39,10 @@ namespace Oasis.LayoutEditor.Panels
 
             Number.Input.OnValueChanged += OnNumberValueChanged;
             Number.Input.OnValueSubmitted += OnNumberEndEdit;
+
+            OnColor.Input.OnValueChanged -= OnOnColorValueChanged;
+            OffColor.Input.OnValueChanged += OnOffColorValueChanged;
+            TextColor.Input.OnValueChanged += OnTextColorValueChanged;
         }
 
         protected override void RemoveListeners()
@@ -47,6 +51,10 @@ namespace Oasis.LayoutEditor.Panels
 
             Number.Input.OnValueChanged -= OnNumberValueChanged;
             Number.Input.OnValueSubmitted -= OnNumberEndEdit;
+
+            OnColor.Input.OnValueChanged -= OnOnColorValueChanged;
+            OffColor.Input.OnValueChanged -= OnOffColorValueChanged;
+            TextColor.Input.OnValueChanged -= OnTextColorValueChanged;
         }
 
         protected override void Initialise()
@@ -90,14 +98,30 @@ namespace Oasis.LayoutEditor.Panels
         private bool OnNumberValueChanged(BoundInputField source, string value)
         {
             ProcessNumberEdit(value);
-
             return true;
         }
 
         private bool OnNumberEndEdit(BoundInputField source, string value)
         {
             ProcessNumberEdit(value);
+            return true;
+        }
 
+        private bool OnOnColorValueChanged(BoundColorBox source, Color color)
+        {
+            ComponentLamp.OnColor = color;
+            return true;
+        }
+
+        private bool OnOffColorValueChanged(BoundColorBox source, Color color)
+        {
+            ComponentLamp.OffColor = color;
+            return true;
+        }
+
+        private bool OnTextColorValueChanged(BoundColorBox source, Color color)
+        {
+            ComponentLamp.TextColor = color;
             return true;
         }
 
