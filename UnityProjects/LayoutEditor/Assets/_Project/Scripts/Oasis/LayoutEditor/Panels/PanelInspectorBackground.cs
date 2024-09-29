@@ -27,14 +27,20 @@ namespace Oasis.LayoutEditor.Panels
             }
         }
 
+        public FieldColor Color;
+
         protected override void AddListeners()
         {
             base.AddListeners();
+
+            Color.Input.OnValueChanged += OnColorValueChanged;
         }
 
         protected override void RemoveListeners()
         {
             base.RemoveListeners();
+
+            Color.Input.OnValueChanged -= OnColorValueChanged;
         }
 
         protected override void Initialise()
@@ -55,8 +61,7 @@ namespace Oasis.LayoutEditor.Panels
                 {
                     EditorComponentBackground editorComponentBackground = (EditorComponentBackground)firstSelectedEditorComponent;
 
-                    // TODO
-
+                    Color.Input.Color = editorComponentBackground.ComponentBackground.Color;
                 }
             }
         }
@@ -64,6 +69,13 @@ namespace Oasis.LayoutEditor.Panels
         protected override void OnSelectionChange()
         {
             // TODO this may not be needed if it's all dealt with by the InspectorController
+        }
+
+        private bool OnColorValueChanged(BoundColorBox source, Color color)
+        {
+            ComponentBackground.Color = color;
+
+            return true;
         }
 
     }

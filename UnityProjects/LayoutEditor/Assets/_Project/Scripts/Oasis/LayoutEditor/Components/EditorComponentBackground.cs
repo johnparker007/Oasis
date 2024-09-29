@@ -16,7 +16,7 @@ namespace Oasis.LayoutEditor
         private Sprite _sprite = null;
         private Texture2D _texture2d = null;
 
-        protected ComponentBackground ComponentBackground
+        public ComponentBackground ComponentBackground
         {
             get
             {
@@ -64,6 +64,13 @@ namespace Oasis.LayoutEditor
             {
                 _image.color = ComponentBackground.Color;
             }
+        }
+
+        protected override void Refresh()
+        {
+            base.Refresh();
+
+            _image.color = ComponentBackground.Color;
         }
 
         protected override void UpdateStateFromEmulation()
