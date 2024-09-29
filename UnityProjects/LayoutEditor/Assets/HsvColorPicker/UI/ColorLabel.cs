@@ -33,8 +33,6 @@ namespace HSVPicker
             {
                 picker.onValueChanged.AddListener(ColorChanged);
                 picker.onHSVChanged.AddListener(HSVChanged);
-
-                UpdateValue();
             }
         }
 

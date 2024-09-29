@@ -80,9 +80,8 @@ namespace Oasis.UI
         {
             yield return null;
 
-            ColorPicker.CurrentColor = Color;
-
             ColorPicker.gameObject.SetActive(true);
+            ColorPicker.CurrentColor = Color;
 
             ColorPicker.onValueChanged.AddListener(OnPickerValueChanged);
 
