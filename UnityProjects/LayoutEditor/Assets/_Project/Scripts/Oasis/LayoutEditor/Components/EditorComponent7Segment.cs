@@ -20,6 +20,13 @@ namespace Oasis.LayoutEditor
             }
         }
 
+        protected override void Refresh()
+        {
+            base.Refresh();
+
+            _material.SetColor("_Color", _color);
+        }
+
         protected override void UpdateStateFromEmulation()
         {
             if (!_number.HasValue)

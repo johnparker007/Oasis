@@ -28,6 +28,7 @@ namespace Oasis.LayoutEditor.Panels
         }
 
         public FieldString Number;
+        public FieldColor Color;
 
 
         protected override void AddListeners()
@@ -36,6 +37,8 @@ namespace Oasis.LayoutEditor.Panels
 
             Number.Input.OnValueChanged += OnNumberValueChanged;
             Number.Input.OnValueSubmitted += OnNumberEndEdit;
+
+            Color.Input.OnValueChanged += OnColorValueChanged;
         }
 
         protected override void RemoveListeners()
@@ -71,6 +74,8 @@ namespace Oasis.LayoutEditor.Panels
                     {
                         Number.Input.Text = "";
                     }
+
+                    Color.Input.Color = editorComponent7Segment.Component7Segment.Color;
                 }
             }
         }
@@ -90,6 +95,13 @@ namespace Oasis.LayoutEditor.Panels
         private bool OnNumberEndEdit(BoundInputField source, string value)
         {
             ProcessNumberEdit(value);
+
+            return true;
+        }
+
+        private bool OnColorValueChanged(BoundColorBox source, Color color)
+        {
+            Component7Segment.Color = color;
 
             return true;
         }

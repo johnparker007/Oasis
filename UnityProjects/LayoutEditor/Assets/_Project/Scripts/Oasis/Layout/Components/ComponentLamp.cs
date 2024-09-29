@@ -56,12 +56,11 @@ namespace Oasis.Layout
 
             foreach (KeyValuePair<string, object> field in representation) 
             {
-                int iNumber;
                 switch(field.Key) 
                 {
                     case "number":
-                        int.TryParse((string)field.Value, out iNumber);
-                        _number = iNumber;
+                        int.TryParse((string)field.Value, out int number);
+                        _number = number;
                         break;
                     case "onColor":
                         // TODO implement Color encode/decode text format

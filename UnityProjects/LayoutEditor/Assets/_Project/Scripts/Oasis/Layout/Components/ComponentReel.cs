@@ -51,17 +51,15 @@ namespace Oasis.Layout
 
             foreach (KeyValuePair<string, object> field in representation) 
             {
-                int iNumber = 0;
-                float fNumber = 0;
                 switch(field.Key) 
                 {
                     case "stops":
-                        int.TryParse((string)field.Value, out iNumber);
-                        _stops = iNumber;
+                        int.TryParse((string)field.Value, out int stops);
+                        _stops = stops;
                         break;
                     case "visible_scale_2d":
-                        float.TryParse((string)field.Value, out fNumber);
-                        _visibleScale2D = fNumber;
+                        float.TryParse((string)field.Value, out float visibleScale2d);
+                        _visibleScale2D = visibleScale2d;
                         break;
                     case "is_reversed":
                         _reversed = (string)field.Value == "true";

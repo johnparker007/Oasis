@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System;
+using UnityEngine;
 
 namespace Oasis.Layout
 {
@@ -10,6 +11,13 @@ namespace Oasis.Layout
         {
             get => _number;
             set { _number = value; base.OnValueSetInvoke(); }
+        }
+
+        private Color _color = UnityEngine.Color.white;
+        public Color Color
+        {
+            get => _color;
+            set { _color = value; base.OnValueSetInvoke(); }
         }
 
         public override void SetRepresentation(Dictionary<string, object> representation) 
@@ -23,12 +31,15 @@ namespace Oasis.Layout
 
             foreach (KeyValuePair<string, object> field in representation) 
             {
-                int iNumber = 0;
                 switch (field.Key) 
                 {
                     case "number":
-                        int.TryParse((string)field.Value, out iNumber);
-                        _number = iNumber;
+                        int.TryParse((string)field.Value, out int number);
+                        _number = number;
+                        break;
+                    case "color":
+                        // TODO implement Color encode/decode text format
+                        Debug.LogWarning("TODO implement Color encode/decode text format");
                         break;
                 }
             }
@@ -40,6 +51,8 @@ namespace Oasis.Layout
 
             representation["type"] = GetType().Name;
             representation["number"] = _number?.ToString();
+
+            Debug.LogWarning("TODO implement Color encode/decode text format");
 
             return representation;
         }

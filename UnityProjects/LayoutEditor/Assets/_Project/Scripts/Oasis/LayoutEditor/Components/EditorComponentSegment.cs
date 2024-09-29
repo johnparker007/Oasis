@@ -15,6 +15,7 @@ namespace Oasis.LayoutEditor
 
 
         protected int? _number = null;
+        protected Color _color = Color.white;
         protected Material _material = null;
 
         protected override void Awake()
@@ -42,6 +43,7 @@ namespace Oasis.LayoutEditor
             base.Refresh();
 
             _number = ((ComponentSegment)Component).Number;
+            _color = ((ComponentSegment)Component).Color;
         }
 
         protected float GetSegmentBrightness(int segmentBitValue)

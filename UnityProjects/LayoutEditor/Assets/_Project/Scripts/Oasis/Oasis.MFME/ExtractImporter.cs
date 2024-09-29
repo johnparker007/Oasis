@@ -306,6 +306,11 @@ namespace Oasis.MFME
 
             component7Segment.Number = extractComponentSevenSegment.Number;
 
+            component7Segment.Color = new UnityEngine.Color(
+                extractComponentSevenSegment.SegmentOnColor.ToColor().r,
+                extractComponentSevenSegment.SegmentOnColor.ToColor().g,
+                extractComponentSevenSegment.SegmentOnColor.ToColor().b);
+
             component7Segment.Name = $"7 Segment {component7Segment.Number}";
 
             _mfmeView.AddComponent(component7Segment);
