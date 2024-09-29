@@ -7,7 +7,7 @@ using UnityEngine.UI;
 
 namespace Oasis.LayoutEditor
 {
-    public class EditorView : MonoBehaviour
+    public class EditorView : MonoBehaviour, IPointerDownHandler
     {
         public GraphicRaycaster GraphicRaycaster;
 
@@ -23,36 +23,27 @@ namespace Oasis.LayoutEditor
             Editor.Instance.OnEditorViewDisabled?.Invoke(this);
         }
 
-        private void Update()
+        public void OnPointerDown(PointerEventData eventData)
         {
-            // TOIMPROVE - this should all be done with the Unity interfaces like OnPointerDown etc
-            if(UnityEngine.Input.GetMouseButtonDown(0))
+            if(eventData.button == PointerEventData.InputButton.Left)
             {
-                ProcessLeftButtonDown();
-            }
-        }
+                List<RaycastResult> results = new List<RaycastResult>();
+                GraphicRaycaster.Raycast(eventData, results);
 
-        private void ProcessLeftButtonDown()
-        {
-            PointerEventData pointerEventData = new PointerEventData(EventSystem.current);
-            pointerEventData.position = UnityEngine.Input.mousePosition;
-
-            List<RaycastResult> results = new List<RaycastResult>();
-            GraphicRaycaster.Raycast(pointerEventData, results);
-
-            List<EditorComponent> editorComponents = new List<EditorComponent>();
-            foreach (RaycastResult result in results)
-            {
-                EditorComponent editorComponent = result.gameObject.GetComponent<EditorComponent>();
-                if(editorComponent != null)
+                List<EditorComponent> editorComponents = new List<EditorComponent>();
+                foreach (RaycastResult result in results)
                 {
-                    editorComponents.Add(editorComponent);
+                    EditorComponent editorComponent = result.gameObject.GetComponent<EditorComponent>();
+                    if (editorComponent != null)
+                    {
+                        editorComponents.Add(editorComponent);
+                    }
                 }
-            }
 
-            if(editorComponents.Count > 0)
-            {
-                OnLeftButtonDown?.Invoke(editorComponents);
+                if (editorComponents.Count > 0)
+                {
+                    OnLeftButtonDown?.Invoke(editorComponents);
+                }
             }
         }
     }
