@@ -107,6 +107,9 @@ namespace Oasis.UI.Selection
             Vector2 size = localMax - localMin;
             Vector2 topLeft = localMin;
 
+            topLeft *= _selectionManager.ContentZoom;
+            size *= _selectionManager.ContentZoom;
+
             _fillRect.anchoredPosition = _borderRect.anchoredPosition = topLeft;
             _fillRect.sizeDelta = _borderRect.sizeDelta = size;
         }

@@ -28,6 +28,15 @@ namespace Oasis.UI.Selection
             }
         }
 
+        public float ContentZoom
+        {
+            get
+            {
+                // x & y scale will always be locked to the same value so can safely simply return x
+                return _scrollRect.content.localScale.x;
+            }
+        }
+
         private Vector2 _startPosition = Vector2.zero;
 
 
