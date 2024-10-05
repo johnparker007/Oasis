@@ -7,11 +7,11 @@ using UnityEngine.UI;
 
 namespace Oasis.LayoutEditor
 {
-    public class EditorView : MonoBehaviour, IPointerDownHandler
+    public class EditorView : MonoBehaviour, IPointerClickHandler
     {
         public GraphicRaycaster GraphicRaycaster;
 
-        public UnityEvent<List<EditorComponent>> OnLeftButtonDown;
+        public UnityEvent<List<EditorComponent>> OnPointerClickEvent;
 
         private void OnEnable()
         {
@@ -23,7 +23,7 @@ namespace Oasis.LayoutEditor
             Editor.Instance.OnEditorViewDisabled?.Invoke(this);
         }
 
-        public void OnPointerDown(PointerEventData eventData)
+        public void OnPointerClick(PointerEventData eventData)
         {
             if(eventData.button == PointerEventData.InputButton.Left)
             {
@@ -42,7 +42,7 @@ namespace Oasis.LayoutEditor
 
                 if (editorComponents.Count > 0)
                 {
-                    OnLeftButtonDown?.Invoke(editorComponents);
+                    OnPointerClickEvent?.Invoke(editorComponents);
                 }
             }
         }

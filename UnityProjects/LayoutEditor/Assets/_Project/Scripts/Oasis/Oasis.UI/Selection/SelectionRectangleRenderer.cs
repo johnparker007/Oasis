@@ -95,9 +95,6 @@ namespace Oasis.UI.Selection
 
         public void UpdateSelection(Vector2 start, Vector2 end)
         {
-            Debug.LogError($"UpdateSelection: {start} -> {end}");
-
-
             Vector2 min = Vector2.Min(start, end);
             Vector2 max = Vector2.Max(start, end);
 

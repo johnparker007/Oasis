@@ -24,9 +24,12 @@ namespace Oasis.UI.Selection
 
         void IDragHandler.OnDrag(PointerEventData eventData)
         {
-            if (_selectionManager.IsSelecting)
+            if (eventData.button == kLeftMouseButton)
             {
-                _selectionManager.UpdateSelection(eventData.position);
+                if (_selectionManager.IsSelecting)
+                {
+                    _selectionManager.UpdateSelection(eventData.position);
+                }
             }
         }
 

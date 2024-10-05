@@ -135,15 +135,15 @@ namespace Oasis.LayoutEditor
 
         private void OnEditorViewEnabled(EditorView editorView)
         {
-            editorView.OnLeftButtonDown.AddListener(OnEditorViewLeftButtonDown);
+            editorView.OnPointerClickEvent.AddListener(OnEditorViewPointerClick);
         }
 
         private void OnEditorViewDisabled(EditorView editorView)
         {
-            editorView.OnLeftButtonDown.RemoveListener(OnEditorViewLeftButtonDown);
+            editorView.OnPointerClickEvent.RemoveListener(OnEditorViewPointerClick);
         }
 
-        private void OnEditorViewLeftButtonDown(List<EditorComponent> editorComponents)
+        private void OnEditorViewPointerClick(List<EditorComponent> editorComponents)
         {
             // TODO this is just test code!
             DeselectAllObjects();
