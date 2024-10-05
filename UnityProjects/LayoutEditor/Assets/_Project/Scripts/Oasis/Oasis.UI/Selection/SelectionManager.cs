@@ -3,6 +3,7 @@ using UnityEngine;
 namespace Oasis.UI.Selection
 {
     using UnityEngine;
+    using UnityEngine.UI;
 
     public class SelectionManager : MonoBehaviour
     {
@@ -14,6 +15,9 @@ namespace Oasis.UI.Selection
         [Tooltip("Reference to the Canvas.")]
         [SerializeField] private Canvas _canvas;
 
+        [Tooltip("Reference to the ScrollRect.")]
+        [SerializeField] private ScrollRect _scrollRect;
+
         public bool IsSelecting { get; private set; } = kDefaultIsSelecting;
 
         public Canvas Canvas
@@ -24,20 +28,28 @@ namespace Oasis.UI.Selection
             }
         }
 
-        private Vector2 _startPosition;
+        private Vector2 _startPosition = Vector2.zero;
 
-        public void StartSelection(Vector2 startPos)
+
+        public void StartSelection(Vector2 startPosition)
         {
             IsSelecting = true;
-            _startPosition = startPos;
-            _selectionRenderer.Show(startPos, startPos);
+            _startPosition = startPosition;
+
+            _startPosition.x += _scrollRect.content.localPosition.x;
+            _startPosition.y += _scrollRect.content.localPosition.y;
+
+            _selectionRenderer.Show(_startPosition, _startPosition);
         }
 
-        public void UpdateSelection(Vector2 currentPos)
+        public void UpdateSelection(Vector2 currentPosition)
         {
             if (IsSelecting)
             {
-                _selectionRenderer.UpdateSelection(_startPosition, currentPos);
+                currentPosition.x += _scrollRect.content.localPosition.x;
+                currentPosition.y += _scrollRect.content.localPosition.y;
+
+                _selectionRenderer.UpdateSelection(_startPosition, currentPosition);
             }
         }
 

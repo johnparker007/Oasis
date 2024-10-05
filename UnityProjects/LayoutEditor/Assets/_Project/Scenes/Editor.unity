@@ -6827,6 +6827,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _selectionRenderer: {fileID: 1254255962}
   _canvas: {fileID: 2056383327}
+  _scrollRect: {fileID: 1372228749}
 --- !u!114 &1667003602
 MonoBehaviour:
   m_ObjectHideFlags: 0
