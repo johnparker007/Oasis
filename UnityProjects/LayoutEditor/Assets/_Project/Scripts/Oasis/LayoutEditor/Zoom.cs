@@ -52,8 +52,8 @@ namespace Oasis.LayoutEditor
                 return;
             }
 
-            if(/*(Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
-                && */Input.mouseScrollDelta.y != 0f)
+            if((Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
+                && Input.mouseScrollDelta.y != 0f)
             {
                 if(Input.mouseScrollDelta.y < 0f)
                 {
