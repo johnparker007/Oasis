@@ -245,14 +245,11 @@ namespace Oasis.MFME
             componentReel.VisibleScale2D = scale;
 
             componentReel.Name = $"Reel {componentReel.Number}";
-            componentReel.Text = "";
+
+            componentReel.ReelSymbolText = new List<string>();
             for (int stopIndex = 0; stopIndex < stops; ++stopIndex)
             {
-                componentReel.Text += $"Symbol {stopIndex}";
-                if (stopIndex < stops - 1)
-                {
-                    componentReel.Text += ", ";
-                }
+                componentReel.ReelSymbolText.Add($"Symbol {stopIndex}");
             }
 
             _mfmeView.AddComponent(componentReel);

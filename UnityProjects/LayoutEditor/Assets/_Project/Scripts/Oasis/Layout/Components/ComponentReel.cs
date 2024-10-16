@@ -35,10 +35,13 @@ namespace Oasis.Layout
             set { _visibleScale2D = value; base.OnValueSetInvoke(); }
         }
 
+        public List<string> ReelSymbolText;
+
         public OasisImage BandOasisImage;
         // Not sure about this being in here, for MFME Import stage only,
         // will copy into Background transparency when converted to an Oasis panel
         public OasisImage OverlayOasisImage;
+
 
         public override void SetRepresentation(Dictionary<string, object> representation) 
         {
@@ -64,6 +67,8 @@ namespace Oasis.Layout
                     case "is_reversed":
                         _reversed = (string)field.Value == "true";
                         break;
+
+                        // TODO need to do IO of string Lists for List<string> ReelSymbolText
                 }
             }
         }
@@ -76,6 +81,8 @@ namespace Oasis.Layout
             representation["stops"] = _stops.ToString();
             representation["visible_scale_2d"] = _visibleScale2D.ToString();
             representation["is_reversed"] = _reversed ? "true" : "false";
+
+            // TODO need to do IO of string Lists for List<string> ReelSymbolText
 
             return representation;
         }
