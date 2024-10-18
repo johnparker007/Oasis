@@ -21,15 +21,6 @@ namespace Oasis.Layout
 
         }
 
-        private string GetComponentKey(Dictionary<string, object> data) {
-                object n, g;
-                data.TryGetValue("name", out n);
-                data.TryGetValue("guid", out g);
-                string name = n != null ? (string)n:"";
-                string guid = g != null ? (string)g:"";
-                return name + "_" + guid;  
-        }
-
         public Dictionary<string, object> GetRepresentation()
         {
             Dictionary<string, object> representation = new Dictionary<string, object>();
@@ -39,7 +30,7 @@ namespace Oasis.Layout
             foreach (SerializableDictionary component in Data.Components)
             {
                 Dictionary<string, object> componentData = component.GetRepresentation();
-                string componentKey = GetComponentKey(componentData);
+                string componentKey = Component.GetComponentKey(componentData);
                 if (componentKey != "")
                 {
                     ((Dictionary<string, object>)representation["items"])[componentKey] = component.GetRepresentation();

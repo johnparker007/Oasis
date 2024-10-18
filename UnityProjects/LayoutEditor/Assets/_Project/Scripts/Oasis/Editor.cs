@@ -178,7 +178,7 @@ namespace Oasis
         public void OnOasisExportClick()
         {
             OasisExporter exporter = new OasisExporter(new FileSystemWrapper(), new ProjectSettingsValidator(), new LayoutValidator());
-            exporter.Export(Project, string.Format("e:\\{0}.json", Project.Settings.Mame.RomName));
+            exporter.Export(Project, string.Format("e:\\SavedLayout\\{0}.json", Project.Settings.Mame.RomName));
         }
 
         public void OnEmulationStartClick()

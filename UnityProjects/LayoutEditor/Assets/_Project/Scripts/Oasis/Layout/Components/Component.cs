@@ -64,6 +64,15 @@ namespace Oasis.Layout
             set { _fontSize = value; OnValueSetInvoke(); }
         }
 
+        public static string GetComponentKey(Dictionary<string, object> data) {
+                object n, g;
+                data.TryGetValue("name", out n);
+                data.TryGetValue("guid", out g);
+                string name = n != null ? (string)n:"";
+                string guid = g != null ? (string)g:"";
+                return name + "_" + guid;  
+        }
+
 
         // JP TODO - the plan is to change this base Component class to NOT derive from Monobehaviour, but instead
         // be a pure c# class.  At that point, we can add standard contructor/destructor, and so then for instance

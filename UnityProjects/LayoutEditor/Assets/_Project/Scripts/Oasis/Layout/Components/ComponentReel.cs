@@ -82,6 +82,13 @@ namespace Oasis.Layout
             representation["visible_scale_2d"] = _visibleScale2D.ToString();
             representation["is_reversed"] = _reversed ? "true" : "false";
 
+            if (BandOasisImage != null) {
+                ImageOperations.SaveToPNG(BandOasisImage, "reel_band_" + Component.GetComponentKey(representation));
+            }
+            if (OverlayOasisImage != null) {
+                ImageOperations.SaveToPNG(OverlayOasisImage, "reel_overlay_" + Component.GetComponentKey(representation));
+            }
+
             // TODO need to do IO of string Lists for List<string> ReelSymbolText
 
             return representation;
