@@ -42,6 +42,10 @@ namespace Oasis.Layout
 
             representation["type"] = GetType().Name;
 
+            if (OasisImage != null) {
+                ImageOperations.SaveToPNG(OasisImage, "background_" + Component.GetComponentKey(representation));
+            }
+
             // TODO implement Color encode/decode text format
             Debug.LogWarning("TODO implement Color encode/decode text format");
 

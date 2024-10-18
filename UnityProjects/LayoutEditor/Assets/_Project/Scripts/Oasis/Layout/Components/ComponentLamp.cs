@@ -89,6 +89,10 @@ namespace Oasis.Layout
             representation["number"] = _number?.ToString();
             representation["outline"] = _outline ? "true" : "false";
 
+            if (OasisImage != null) {
+                ImageOperations.SaveToPNG(OasisImage, Component.GetComponentKey(representation));
+            }
+
             Debug.LogWarning("TODO implement Color encode/decode text format");
 
             return representation;
