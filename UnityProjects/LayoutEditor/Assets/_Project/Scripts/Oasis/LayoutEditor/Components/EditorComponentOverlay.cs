@@ -33,7 +33,7 @@ namespace Oasis.LayoutEditor
             OasisImage oasisImage = componentReel.OverlayOasisImage;
             if(oasisImage != null)
             {
-                _texture2d = oasisImage.GetTexture2dCopy(true);
+                _texture2d = oasisImage.GetTexture2dCopy();
                 _texture2d.filterMode = FilterMode.Point;
 
                 _sprite = Sprite.Create(_texture2d,

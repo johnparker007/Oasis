@@ -43,7 +43,7 @@ namespace Oasis.LayoutEditor
 
             OasisImage bandOasisImage = ComponentReel.BandOasisImage;
 
-            _texture2d = bandOasisImage.GetTexture2dCopy(true);
+            _texture2d = bandOasisImage.GetTexture2dCopy();
             _texture2d.filterMode = FilterMode.Point;
             // TODO this would be different for horizontal UV scrolling reel!
             _texture2d.wrapModeU = TextureWrapMode.Clamp;

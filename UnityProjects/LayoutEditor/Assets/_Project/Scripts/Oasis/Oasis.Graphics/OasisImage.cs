@@ -65,6 +65,8 @@ namespace Oasis.Graphics
 
             Width = imageSize.x;
             Height = imageSize.y;
+
+            FlipY(); // we Y-Flip as the BMP comes in 'upside-down' - this may later want to find its way into BmpHelper.GetImageDataFromBmp
         }
 
         public OasisImage(byte[] pngFileBytes)
@@ -230,20 +232,11 @@ namespace Oasis.Graphics
         //    return mat;
         //}
 
-        public Texture2D GetTexture2dCopy(bool flipY)
+        public Texture2D GetTexture2dCopy()
         {
             Texture2D texture2D = new Texture2D(Width, Height);
 
-            if (flipY)
-            {
-                FlipY();
-                texture2D.SetPixels32(ImageData);
-                FlipY();
-            }
-            else
-            {
-                texture2D.SetPixels32(ImageData);
-            }
+            texture2D.SetPixels32(ImageData);
 
             texture2D.Apply();
 
