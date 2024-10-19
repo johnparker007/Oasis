@@ -24,10 +24,8 @@ namespace Oasis.Layout
         public override Dictionary<string, object> GetRepresentation() 
         {
             Dictionary<string, object> representation = base.GetRepresentation();
-
             representation["type"] = GetType().Name;
-            representation["is_reversed"] = _reversed ? "true" : "false";
-
+            representation["is_reversed"] = _reversed;
             return representation;
         }
     }

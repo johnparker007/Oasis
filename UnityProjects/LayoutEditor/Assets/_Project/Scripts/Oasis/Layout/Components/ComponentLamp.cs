@@ -84,17 +84,17 @@ namespace Oasis.Layout
         public override Dictionary<string, object> GetRepresentation() 
         {
             Dictionary<string, object> representation = base.GetRepresentation();
-
             representation["type"] = GetType().Name;
-            representation["number"] = _number?.ToString();
-            representation["outline"] = _outline ? "true" : "false";
-
+            representation["number"] = _number;
+            representation["outline"] = _outline;
+            representation["on_color"] = "#" + ColorUtility.ToHtmlStringRGB(OnColor);
+            representation["off_color"] = "#" + ColorUtility.ToHtmlStringRGB(OffColor);
+            representation["text_color"] = "#" + ColorUtility.ToHtmlStringRGB(TextColor);
+            representation["file_path"] = null;
             if (OasisImage != null) {
-                ImageOperations.SaveToPNG(OasisImage, Component.GetComponentKey(representation));
+                representation["file_path"] =  Component.GetComponentKey(representation) + ".png";
+                ImageOperations.SaveToPNG(OasisImage, (string) representation["file_path"]);
             }
-
-            Debug.LogWarning("TODO implement Color encode/decode text format");
-
             return representation;
         }
     }

@@ -48,12 +48,9 @@ namespace Oasis.Layout
         public override Dictionary<string, object> GetRepresentation() 
         {
             Dictionary<string, object> representation = base.GetRepresentation();
-
             representation["type"] = GetType().Name;
-            representation["number"] = _number?.ToString();
-
-            Debug.LogWarning("TODO implement Color encode/decode text format");
-
+            representation["number"] = _number;
+            representation["color"] = "#" + ColorUtility.ToHtmlStringRGB(Color);
             return representation;
         }
     }

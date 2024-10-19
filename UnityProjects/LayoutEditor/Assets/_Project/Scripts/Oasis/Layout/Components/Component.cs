@@ -142,14 +142,15 @@ namespace Oasis.Layout
                 {"type", GetType().Name},
                 {"guid", Guid},
                 {"name", _name},
+                //TODO: Do we need to include text/fontname etc for every component?
                 {"text", _text},
                 {"fontname", _fontName},
                 {"fontstyle", _fontStyle},
-                {"fontsize", _fontSize.ToString()},
-                {"x", _position.x.ToString()},
-                {"y", _position.y.ToString()},
-                {"width", _size.x.ToString()},
-                {"height", _size.y.ToString()},
+                {"fontsize", _fontSize},
+                {"x", _position.x},
+                {"y", _position.y},
+                {"width", _size.x},
+                {"height", _size.y},
             };
         }
 

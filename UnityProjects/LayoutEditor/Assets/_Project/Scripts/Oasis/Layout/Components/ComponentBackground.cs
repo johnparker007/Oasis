@@ -39,16 +39,13 @@ namespace Oasis.Layout
         public override Dictionary<string, object> GetRepresentation() 
         {
             Dictionary<string, object> representation = base.GetRepresentation();
-
             representation["type"] = GetType().Name;
-
+            representation["file_path"] = null;
+            representation["color"] = "#" + ColorUtility.ToHtmlStringRGBA(Color);
             if (OasisImage != null) {
-                ImageOperations.SaveToPNG(OasisImage, "background_" + Component.GetComponentKey(representation));
+                representation["file_path"] =  Component.GetComponentKey(representation) + ".png";
+                ImageOperations.SaveToPNG(OasisImage, (string) representation["file_path"]);
             }
-
-            // TODO implement Color encode/decode text format
-            Debug.LogWarning("TODO implement Color encode/decode text format");
-
             return representation;
         }
     }
