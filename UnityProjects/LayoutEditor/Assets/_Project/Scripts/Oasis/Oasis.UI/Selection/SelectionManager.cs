@@ -3,14 +3,16 @@ using UnityEngine;
 namespace Oasis.UI.Selection
 {
     using UnityEngine;
+    using UnityEngine.Events;
     using UnityEngine.UI;
 
     public class SelectionManager : MonoBehaviour
     {
-        private const bool kDefaultIsSelecting = false;
-
         [Tooltip("Reference to the SelectionRectangleRenderer script.")]
         [SerializeField] private SelectionRectangleRenderer _selectionRenderer;
+
+        [Tooltip("Reference to the ComponentSelector script.")]
+        [SerializeField] private ComponentSelector _componentSelector;
 
         [Tooltip("Reference to the Canvas.")]
         [SerializeField] private Canvas _canvas;
@@ -18,7 +20,33 @@ namespace Oasis.UI.Selection
         [Tooltip("Reference to the ScrollRect.")]
         [SerializeField] private ScrollRect _scrollRect;
 
-        public bool IsSelecting { get; private set; } = kDefaultIsSelecting;
+        public UnityAction OnSelectStart;
+        public UnityAction OnSelectEnd;
+
+
+        public bool IsSelecting 
+        { 
+            get
+            {
+                return _isSelecting;
+            }
+            private set
+            {
+                if(_isSelecting != value)
+                {
+                    if(value)
+                    {
+                        OnSelectStart?.Invoke();
+                    }
+                    else
+                    {
+                        OnSelectEnd?.Invoke();
+                    }
+                }
+
+                _isSelecting = value;
+            }
+        } 
 
         public Canvas Canvas
         {
@@ -37,18 +65,31 @@ namespace Oasis.UI.Selection
             }
         }
 
-        private Vector2 _startPosition = Vector2.zero;
+        public Vector2 StartPosition
+        {
+            get;
+            private set;
+        } = Vector2.zero;
+
+        public Vector2 CurrentPosition
+        {
+            get;
+            private set;
+        } = Vector2.zero;
+
+        private bool _isSelecting = false;
 
 
         public void StartSelection(Vector2 startPosition)
         {
             IsSelecting = true;
-            _startPosition = startPosition;
 
-            _startPosition.x += _scrollRect.content.localPosition.x;
-            _startPosition.y += _scrollRect.content.localPosition.y;
+            startPosition.x += _scrollRect.content.localPosition.x;
+            startPosition.y += _scrollRect.content.localPosition.y;
 
-            _selectionRenderer.Show(_startPosition, _startPosition);
+            StartPosition = startPosition;
+
+            _selectionRenderer.Show(StartPosition, StartPosition);
         }
 
         public void UpdateSelection(Vector2 currentPosition)
@@ -58,7 +99,9 @@ namespace Oasis.UI.Selection
                 currentPosition.x += _scrollRect.content.localPosition.x;
                 currentPosition.y += _scrollRect.content.localPosition.y;
 
-                _selectionRenderer.UpdateSelection(_startPosition, currentPosition);
+                CurrentPosition = currentPosition;
+
+                _selectionRenderer.UpdateSelection(StartPosition, CurrentPosition);
             }
         }
 
