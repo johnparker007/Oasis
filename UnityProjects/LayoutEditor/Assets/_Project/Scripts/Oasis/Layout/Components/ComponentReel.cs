@@ -78,19 +78,21 @@ namespace Oasis.Layout
             Dictionary<string, object> representation = base.GetRepresentation();
 
             representation["type"] = GetType().Name;
-            representation["stops"] = _stops.ToString();
-            representation["visible_scale_2d"] = _visibleScale2D.ToString();
-            representation["is_reversed"] = _reversed ? "true" : "false";
-
+            representation["stops"] = _stops;
+            representation["visible_scale_2d"] = _visibleScale2D;
+            representation["is_reversed"] = _reversed;
+            representation["number"] = _number;
+            representation["reel_symbol_text"] = ReelSymbolText;
+            representation["file_path_band_image"] = null;
+            representation["file_path_overlay_image"] = null;
             if (BandOasisImage != null) {
-                ImageOperations.SaveToPNG(BandOasisImage, "reel_band_" + Component.GetComponentKey(representation));
+                representation["file_path_band_image"] =  "reel_band_" + Component.GetComponentKey(representation) + ".png";
+                ImageOperations.SaveToPNG(BandOasisImage, (string) representation["file_path_band_image"]);
             }
             if (OverlayOasisImage != null) {
-                ImageOperations.SaveToPNG(OverlayOasisImage, "reel_overlay_" + Component.GetComponentKey(representation));
+                representation["file_path_overlay_image"] =  "reel_overlay_" + Component.GetComponentKey(representation) + ".png";
+                ImageOperations.SaveToPNG(OverlayOasisImage, (string) representation["file_path_overlay_image"]);
             }
-
-            // TODO need to do IO of string Lists for List<string> ReelSymbolText
-
             return representation;
         }
     }

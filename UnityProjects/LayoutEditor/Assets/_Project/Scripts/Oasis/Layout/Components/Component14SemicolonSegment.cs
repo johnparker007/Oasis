@@ -17,9 +17,7 @@ namespace Oasis.Layout
         public override Dictionary<string, object> GetRepresentation() 
         {
             Dictionary<string, object> representation = base.GetRepresentation();
-
             representation["type"] = GetType().Name;
-
             return representation;
         }
     }

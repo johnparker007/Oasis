@@ -56,13 +56,11 @@ namespace Oasis.Layout
         public override Dictionary<string, object> GetRepresentation() 
         {
             Dictionary<string, object> representation = base.GetRepresentation();
-
             representation["type"] = GetType().Name;
-            representation["enabled"] = Input.Enabled ? "true" : "false";
-            representation["inverted"] = Input.Inverted ? "true" : "false";
+            representation["enabled"] = Input.Enabled;
+            representation["inverted"] = Input.Inverted;
             representation["key_code"] = Input.KeyCode.ToString();
             representation["button_number"] = Input.ButtonNumber;
-
             return representation;
         }
 
