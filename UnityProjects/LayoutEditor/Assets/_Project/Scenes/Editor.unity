@@ -2108,8 +2108,8 @@ MonoBehaviour:
       - content: {fileID: 2038115445}
         id: 706988d7-ad78-4684-bfaa-0566a6f8447f
         minimumSize: {x: 150, y: 150}
-        tabLabel: MFME
-        tabIcon: {fileID: 21300000, guid: 7399e32dd7fc66e44919aa24e39e864d, type: 3}
+        tabLabel: Base
+        tabIcon: {fileID: 21300000, guid: f5d6265488be57f43b1bd1e30a52d7af, type: 3}
       - content: {fileID: 1627987296}
         id: c2332266-150c-49f4-b7a0-9da4c11f4923
         minimumSize: {x: 250, y: 300}
@@ -9539,7 +9539,7 @@ GameObject:
   - component: {fileID: 2038115449}
   - component: {fileID: 2038115448}
   m_Layer: 5
-  m_Name: MFME Import
+  m_Name: ViewBase
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -9956,7 +9956,7 @@ MonoBehaviour:
   EditorComponentAlphaPrefab: {fileID: 3842146194991930722, guid: 16bd2967a11aec640a0f0bb0c56be1a9, type: 3}
   EditorComponentAlpha14Prefab: {fileID: 6476336133491195093, guid: 2ddce75944df8154fbf19412f6d6ef26, type: 3}
   EditorComponentOverlayPrefab: {fileID: 1078919621334969651, guid: ebc318787e7ba6c4289ac1185a9ac6c1, type: 3}
-  EditorPanelMFMEImport: {fileID: 2038115449}
+  EditorPanelViewBase: {fileID: 2038115449}
   EditorPanelFull: {fileID: 1627987300}
   OnLayoutSet:
     m_PersistentCalls:
