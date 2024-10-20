@@ -118,6 +118,7 @@
     <Compile Include="Shared\ExtractComponents\ExtractComponentSevenSegmentBlock.cs" />
     <Compile Include="Extractor.cs" />
     <Compile Include="Shared\Extract\ComponentStandardData.cs" />
+    <Compile Include="Shared\Extract\ExtractGamFile.cs" />
     <Compile Include="Shared\Extract\FileSystem.cs" />
     <Compile Include="Shared\Extract\Layout.cs" />
     <Compile Include="Helpers\FileHelper.cs" />

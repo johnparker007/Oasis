@@ -12,6 +12,7 @@ using Newtonsoft.Json;
 using Oasis.MfmeTools.Mfme;
 using System.Windows.Forms;
 using MfmeTools.Helpers;
+using Oasis.MfmeTools.Helpers;
 
 namespace Oasis.MfmeTools
 {
@@ -74,6 +75,8 @@ namespace Oasis.MfmeTools
             OutputLog.Log("Extraction source layout: " + options.SourceLayoutPath);
 
             Layout = new Layout() { ASName = Path.GetFileNameWithoutExtension(options.SourceLayoutPath) };
+
+            Layout.GamFile.KeyValuePairs = MfmeGamFileHelper.GetKeyValuePairs(options.SourceLayoutPath);
 
             Program.LayoutCopier.CopyToMfmeTools(options.SourceLayoutPath);
             OutputLog.Log("Copied source layout to MFME Tools");

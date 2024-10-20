@@ -21,21 +21,48 @@ namespace Oasis.MfmeTools.Helpers
             return GetValue(gamFilePath, kKeyLayout);
         }
 
-        public static string GetPlatformName(string gamFilePath)
+        public static Dictionary<string, string> GetKeyValuePairs(string gamFilePath)
         {
-            return GetValue(gamFilePath, kKeyPlatform);
+            Dictionary<string, string> keyValuePairs = new Dictionary<string, string>();
+
+            string[] lines = GetLines(gamFilePath);
+            foreach(string line in lines)
+            {
+                if(string.IsNullOrWhiteSpace(line))
+                {
+                    continue;
+                }
+
+                string[] words = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                string key = words[0];
+                if (line.StartsWith("DIP"))
+                {
+                    key += " " + words[1];
+                }
+
+                string value = line.Substring(key.Length + 1);
+
+                keyValuePairs.Add(key, value);
+            }
+
+            return keyValuePairs;
         }
 
-        public static string GetValue(string gamFilePath, string key)
+        public static string[] GetLines(string gamFilePath)
         {
             // can't use ReadAllLines, as it doesn't read characters above 127, but 
             // MFME writes characters above 127 (e.g: £ character was encoded as $A3):
             string contents = File.ReadAllText(gamFilePath, System.Text.Encoding.GetEncoding(1252));
             string[] lines = contents.Split('\n');
 
-            foreach (string line in lines)
-            
+            return lines;
+        }
+
+        public static string GetValue(string gamFilePath, string key)
         {
+            string[] lines = GetLines(gamFilePath);
+            foreach (string line in lines)
+            {
                 if (line.StartsWith(key))
                 {
                     return line.Substring(key.Length + 1); // +1 for the Space char after the key name in the gam file

@@ -12,6 +12,8 @@ namespace Oasis.MfmeTools.Shared.Extract
     {
         public string ASName;
 
+        public ExtractGamFile GamFile = new ExtractGamFile();
+
         public List<ExtractComponentBase> Components = new List<ExtractComponentBase>();
 
         [JsonIgnore]
