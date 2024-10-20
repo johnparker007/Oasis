@@ -90,6 +90,8 @@ namespace Oasis.MfmeTools
                 options.UseCachedRomIdent);
             OutputLog.Log("Extract filesystem set up");
 
+            StartExtractionMameRomIdent(options);
+
             InputSimulator inputSimulator = new InputSimulator();
 
             LoadAndExtractCurrentLayout(inputSimulator);
@@ -107,6 +109,25 @@ namespace Oasis.MfmeTools
                         "Something has gone wrong, reach end of extraction, but don't have user font smoothing setting stored!");
                 }
             }
+        }
+
+        private void StartExtractionMameRomIdent(Options options)
+        {
+            string romIdent = FileSystem.ReadRomIdent();
+            if (romIdent == null)
+            {
+                // TODO pull in RomIdent stuff from Arcade Sim:
+
+
+                // dummy test code for now:
+                romIdent = "m4andycp";
+
+
+
+                FileSystem.WriteRomIdent(romIdent);
+            }
+
+            Layout.MameRomIdent = romIdent;
         }
 
         private void LoadAndExtractCurrentLayout(InputSimulator inputSimulator)

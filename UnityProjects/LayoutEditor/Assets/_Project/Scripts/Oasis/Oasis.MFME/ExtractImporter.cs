@@ -26,6 +26,7 @@ namespace Oasis.MFME
         private void OnMFMEExtractLayoutLoaded(MfmeTools.Shared.Extract.Layout layout)
         {
             ImportGamData(layout);
+            ImportMameRomIdent(layout);
 
             if (_layoutObject != null)
             {
@@ -90,6 +91,11 @@ namespace Oasis.MFME
         {
             Editor.Instance.Project.Settings.FruitMachine.Platform = 
                 MAME.MameController.GetPlatformFromMfmeSystem(layout.GamFile.KeyValuePairs["System"]);
+        }
+
+        private void ImportMameRomIdent(MfmeTools.Shared.Extract.Layout layout)
+        {
+            Editor.Instance.Project.Settings.Mame.RomName = layout.MameRomIdent;
         }
 
         private void ImportLamp(ExtractComponentLamp extractComponentLamp)

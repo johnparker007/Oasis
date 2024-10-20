@@ -14,6 +14,8 @@ namespace Oasis.MfmeTools.Shared.Extract
 
         public ExtractGamFile GamFile = new ExtractGamFile();
 
+        public string MameRomIdent;
+
         public List<ExtractComponentBase> Components = new List<ExtractComponentBase>();
 
         [JsonIgnore]

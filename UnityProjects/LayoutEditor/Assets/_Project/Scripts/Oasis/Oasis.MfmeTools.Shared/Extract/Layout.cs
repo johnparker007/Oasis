@@ -14,6 +14,8 @@ namespace Oasis.MfmeTools.Shared.Extract
 
         public ExtractGamFile GamFile = new ExtractGamFile();
 
+        public string MameRomIdent;
+
         public List<ExtractComponentBase> Components = new List<ExtractComponentBase>();
 
         [JsonIgnore]
@@ -33,7 +35,7 @@ namespace Oasis.MfmeTools.Shared.Extract
                 || (extractComponentBase.Position.Y + extractComponentBase.Size.Y) < 0;
         }
 
-// OASIS TODO - to fix where MPU4 lamps wrong in Mfme with 'matching' wrong Chr lamp values
+        // OASIS TODO - to fix where MPU4 lamps wrong in Mfme with 'matching' wrong Chr lamp values
         //public void RemapLamps(string[] mfmeLampTable, string[] mameLampTable)
         //{
         //    MAMELayoutMPU4ChrLampRemapper lampRemapper = new MAMELayoutMPU4ChrLampRemapper(mfmeLampTable, mameLampTable);

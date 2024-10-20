@@ -11,6 +11,10 @@ namespace Oasis.MfmeTools.Shared.Extract
         public static readonly string kLampsDirectoryName = "lamps";
         public static readonly string kButtonsDirectoryName = "buttons";
         public static readonly string kBitmapsDirectoryName = "bitmaps";
+        public static readonly string kMiscDirectoryName = "misc";
+
+        public static readonly string kRomIdentFilename = "romident.txt";
+
 
         private static string _sourceLayoutPath = null;
         private static string _targetExtractRootPath = null;
@@ -51,6 +55,13 @@ namespace Oasis.MfmeTools.Shared.Extract
             private set;
         }
 
+        public static string RomIdentPath
+        {
+            get
+            {
+                return Path.Combine(_targetExtractRootPath, kMiscDirectoryName, kRomIdentFilename);
+            }
+        }
 
         public static void Setup(string sourceLayoutPath, 
             bool useCachedBackgroundImage,
@@ -80,16 +91,33 @@ namespace Oasis.MfmeTools.Shared.Extract
                 Directory.CreateDirectory(targetExtractRootPath);
             }
 
-            CreateImageDirectory(targetExtractRootPath, kBackgroundDirectoryName);
-            CreateImageDirectory(targetExtractRootPath, kReelsDirectoryName);
-            CreateImageDirectory(targetExtractRootPath, kLampsDirectoryName);
-            CreateImageDirectory(targetExtractRootPath, kButtonsDirectoryName);
-            CreateImageDirectory(targetExtractRootPath, kBitmapsDirectoryName);
+            CreateResourceDirectory(targetExtractRootPath, kBackgroundDirectoryName);
+            CreateResourceDirectory(targetExtractRootPath, kReelsDirectoryName);
+            CreateResourceDirectory(targetExtractRootPath, kLampsDirectoryName);
+            CreateResourceDirectory(targetExtractRootPath, kButtonsDirectoryName);
+            CreateResourceDirectory(targetExtractRootPath, kBitmapsDirectoryName);
+            CreateResourceDirectory(targetExtractRootPath, kMiscDirectoryName);
+        }
+
+        public static string ReadRomIdent()
+        {
+            if(!File.Exists(RomIdentPath))
+            {
+                return null;
+            }
+
+            return File.ReadAllText(RomIdentPath);
+        }
+
+        public static void WriteRomIdent(string romIdent)
+        {
+            TryDeleteResource(RomIdentPath);
+            File.WriteAllText(RomIdentPath, romIdent);
         }
 
         public static void TryDeleteBackgroundImage(string filename)
         {
-            TryDeleteImage(_targetExtractRootPath, kBackgroundDirectoryName, filename);
+            TryDeleteResource(_targetExtractRootPath, kBackgroundDirectoryName, filename);
         }
 
         public static string GetFullBackgroundImagePath(string filename)
@@ -99,7 +127,7 @@ namespace Oasis.MfmeTools.Shared.Extract
 
         public static void TryDeleteReelImage(string filename)
         {
-            TryDeleteImage(_targetExtractRootPath, kReelsDirectoryName, filename);
+            TryDeleteResource(_targetExtractRootPath, kReelsDirectoryName, filename);
         }
 
         public static string GetFullReelImagePath(string filename)
@@ -109,7 +137,7 @@ namespace Oasis.MfmeTools.Shared.Extract
 
         public static void TryDeleteLampImage(string filename)
         {
-            TryDeleteImage(_targetExtractRootPath, kLampsDirectoryName, filename);
+            TryDeleteResource(_targetExtractRootPath, kLampsDirectoryName, filename);
         }
 
         public static string GetFullLampImagePath(string filename)
@@ -119,7 +147,7 @@ namespace Oasis.MfmeTools.Shared.Extract
 
         public static void TryDeleteButtonImage(string filename)
         {
-            TryDeleteImage(_targetExtractRootPath, kButtonsDirectoryName, filename);
+            TryDeleteResource(_targetExtractRootPath, kButtonsDirectoryName, filename);
         }
 
         public static string GetFullButtonImagePath(string filename)
@@ -147,7 +175,7 @@ namespace Oasis.MfmeTools.Shared.Extract
             return targetExtractRootPath;
         }
 
-        private static void CreateImageDirectory(string targetExtractRootPath, string imageDirectoryName)
+        private static void CreateResourceDirectory(string targetExtractRootPath, string imageDirectoryName)
         {
             string imageDirectoryPath = Path.Combine(targetExtractRootPath, imageDirectoryName);
             if (!Directory.Exists(imageDirectoryPath))
@@ -156,13 +184,17 @@ namespace Oasis.MfmeTools.Shared.Extract
             }
         }
 
-        private static void TryDeleteImage(string targetExtractRootPath, string directory, string filename)
+        private static void TryDeleteResource(string targetExtractRootPath, string directory, string filename)
         {
             string filePath = Path.Combine(targetExtractRootPath, directory, filename);
+            TryDeleteResource(filePath);
+        }
 
-            if(File.Exists(filePath))
+        private static void TryDeleteResource(string path)
+        {
+            if (File.Exists(path))
             {
-                File.Delete(filePath);
+                File.Delete(path);
             }
         }
     }
