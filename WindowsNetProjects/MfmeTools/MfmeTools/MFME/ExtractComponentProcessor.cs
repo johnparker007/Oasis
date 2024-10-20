@@ -65,11 +65,7 @@ namespace Oasis.MfmeTools.Mfme
                 MFMEScraperConstants.kPropertiesBackgroundColourColorbox_X, MFMEScraperConstants.kPropertiesBackgroundColourColorbox_Y));
             extractBackground.Color = new ColorJSON(color);
 
-
             Extractor.Layout.Components.Add(extractBackground);
-
-            Extractor.Layout.BackgroundImageSize.X = componentStandardData.Size.x;
-            Extractor.Layout.BackgroundImageSize.Y = componentStandardData.Size.y;
         }
 
         public static void ProcessReel(InputSimulator inputSimulator, ComponentStandardData componentStandardData)

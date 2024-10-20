@@ -1,4 +1,5 @@
-﻿using Oasis.MfmeTools.Shared.ExtractComponents;
+﻿using Newtonsoft.Json;
+using Oasis.MfmeTools.Shared.ExtractComponents;
 using Oasis.MfmeTools.Shared.JsonDataStructures;
 using System;
 using System.Collections.Generic;
@@ -11,10 +12,9 @@ namespace Oasis.MfmeTools.Shared.Extract
     {
         public string ASName;
 
-        public Vector2IntJSON BackgroundImageSize;
-
         public List<ExtractComponentBase> Components = new List<ExtractComponentBase>();
 
+        [JsonIgnore]
         public ExtractComponentBackground Background
         {
             get

@@ -29,6 +29,8 @@ namespace Oasis.MfmeTools.Mfme
             string targetGamFilePath = Path.Combine(LayoutsDirectoryPath, kLayoutGamFilename);
             File.Copy(sourceGamFilePath, targetGamFilePath);
 
+            FileHelper.RecursiveSetWritable(Path.GetDirectoryName(targetGamFilePath));
+
             string originalSourceFmlFilename = MfmeGamFileHelper.GetFmlFilename(sourceGamFilePath);
 
             string sourceLayoutDirectoryPath = Path.GetDirectoryName(sourceGamFilePath);
