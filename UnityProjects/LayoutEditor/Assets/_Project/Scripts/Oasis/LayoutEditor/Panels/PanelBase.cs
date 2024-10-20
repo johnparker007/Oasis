@@ -11,6 +11,8 @@ namespace Oasis.LayoutEditor.Panels
     {
         public UIController UIController;
 
+        protected bool _initialised = false;
+
         [Header("Internal Variables")]
         [SerializeField]
         private ScrollRect _scrollView;
@@ -46,6 +48,7 @@ namespace Oasis.LayoutEditor.Panels
 
         protected virtual void OnEnable()
         {
+            Initialise();
             Populate();
         }
 

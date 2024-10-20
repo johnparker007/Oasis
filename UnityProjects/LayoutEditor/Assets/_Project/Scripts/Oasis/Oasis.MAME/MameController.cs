@@ -372,6 +372,124 @@ namespace Oasis.MAME
             SetPortValue(tag, mask, state);
         }
 
+        // JP TOIMPROVE: this probably doesn't want to live in here long term
+        public static PlatformType GetPlatformFromMfmeSystem(string mfmeSystem)
+        {
+            switch (mfmeSystem)
+            {
+                case "MPU3":
+                    return PlatformType.MPU3;
+                case "MPU4":
+                    return PlatformType.MPU4;
+                case "IMPACT":
+                    return PlatformType.Impact;
+                case "M1AB":
+                    return PlatformType.M1AB;
+                case "MPS2":
+                    return PlatformType.MPS2;
+                case "SYS1":
+                    return PlatformType.AceSys1;
+                case "SCORPION2":
+                    return PlatformType.Scorpion2;
+                //case "DOTMATRIX":
+                //    Debug.LogError("No mapping!    static _gamFilePath: " + _gamFilePath);
+                //    Debug.Break();
+                //    return PlatformType.MFMEGamNotSetUp; // This is wrong, unsure of some mappings
+                case "SYSTEM80":
+                    return PlatformType.Sys80;
+                case "SYS5":
+                    return PlatformType.Sys5;
+                case "MPU4VIDEO":
+                    return PlatformType.MPU4Video;
+                case "SCORPION1":
+                    return PlatformType.Scorpion1;
+                case "SYS85":
+                    return PlatformType.SYS85;
+                case "spACE":
+                    return PlatformType.AceSPACE;
+                case "PROCONN":
+                    return PlatformType.Proconn;
+                case "SCORPION4":
+                    return PlatformType.Scorpion4;
+                case "MACH2000E":
+                    return PlatformType.Mach2000E;
+                case "MPU5":
+                    return PlatformType.MPU5;
+                case "SRU":
+                    return PlatformType.SRU;
+                case "EPOCH":
+                    return PlatformType.Epoch;
+                //case "MACH2000S":
+                //    Debug.LogError("No mapping!    static _gamFilePath: " + _gamFilePath);
+                //    Debug.Break();
+                //    return PlatformType.MFMEGamNotSetUp; // This is wrong, unsure of some mappings
+                case "MACH2000A":
+                    return PlatformType.Mach2000A;
+                case "MMM":
+                    return PlatformType.MMM;
+                case "MPU2":
+                    return PlatformType.MPU2;
+                case "IGTS+":
+                    return PlatformType.IGTSPlus;
+                case "SCORPION5":
+                    return PlatformType.Scorpion5;
+                case "ADDER5":
+                    return PlatformType.Adder5;
+                case "SYS83":
+                    return PlatformType.SYS83;
+                case "IGTS2000":
+                    return PlatformType.IGTS2000;
+                //case "IGTVFD":
+                //    Debug.LogError("No mapping!    static _gamFilePath: " + _gamFilePath);
+                //    Debug.Break();
+                //    return PlatformType.MFMEGamNotSetUp; // This is wrong, unsure of some mappings
+                case "ACEVIDEO":
+                    return PlatformType.ACEVideo;
+                case "MPU4PLASMA":
+                    return PlatformType.MPU4Plasma;
+                case "ELECTROCOIN":
+                    return PlatformType.Electrocoin;
+                //case "ECOINSOUND":
+                //    Debug.LogError("No mapping!    static _gamFilePath: " + _gamFilePath);
+                //    Debug.Break();
+                //    return PlatformType.MFMEGamNotSetUp; // This is wrong, unsure of some mappings
+                case "COINMASTER":
+                    return PlatformType.Coinmaster;
+                case "ASTRASYSA1":
+                    return PlatformType.AstraA1;
+                case "PLUTO5":
+                    return PlatformType.Pluto5;
+                case "PHOENIX":
+                    return PlatformType.Phoenix;
+                case "BLACKBOX":
+                    return PlatformType.BLACKBOX;
+                case "ELECTRO":
+                    return PlatformType.Electro;
+                case "M1VIDEO":
+                    return PlatformType.M1Video;
+                //case "M1REEL":
+                //    Debug.LogError("No mapping!    static _gamFilePath: " + _gamFilePath);
+                //    Debug.Break();
+                //    return PlatformType.MFMEGamNotSetUp; // This is wrong, unsure of some mappings
+                case "INDER":
+                    return PlatformType.INDER;
+                case "PCLMAXI":
+                    return PlatformType.PCLMAXI;
+                //case "MAYGAYDOTMATRIX":
+                //    Debug.LogError("No mapping!    static _gamFilePath: " + _gamFilePath);
+                //    Debug.Break();
+                //    return PlatformType.MFMEGamNotSetUp; // This is wrong, unsure of some mappings
+                case "PHOENIX2":
+                    return PlatformType.Phoenix2;
+                //case "Unknown":
+                //    return PlatformType.MFMEGamUnknown;
+
+                default:
+                    UnityEngine.Debug.LogError("mfmeSystem not set up for: " + mfmeSystem);
+                    return PlatformType.Electro;
+            }
+        }
+
         private void SetPortValue(string tag, string mask, bool keyDown)
         {
             string inputValue = keyDown ? "1" : "0";
@@ -586,6 +704,8 @@ VfdDuty[0] = 31;
 
             ProcessLine(dataReceivedEventArgs.Data);
         }
+
+        
 
     }
 

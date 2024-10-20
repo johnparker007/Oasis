@@ -35,6 +35,13 @@ namespace Oasis.LayoutEditor.Panels
 
         protected override void Initialise()
         {
+            if (_initialised)
+            {
+                return;
+            }
+
+            _initialised = true;
+
             InitialiseFruitMachinePlatformDropdown();
         }
 

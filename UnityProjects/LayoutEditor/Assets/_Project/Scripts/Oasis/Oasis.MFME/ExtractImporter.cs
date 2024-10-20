@@ -25,6 +25,8 @@ namespace Oasis.MFME
 
         private void OnMFMEExtractLayoutLoaded(MfmeTools.Shared.Extract.Layout layout)
         {
+            ImportGamData(layout);
+
             if (_layoutObject != null)
             {
                 GameObject.Destroy(_layoutObject.gameObject);
@@ -82,6 +84,12 @@ namespace Oasis.MFME
             }
 
             OnImportComplete?.Invoke();
+        }
+
+        private void ImportGamData(MfmeTools.Shared.Extract.Layout layout)
+        {
+            Editor.Instance.Project.Settings.FruitMachine.Platform = 
+                MAME.MameController.GetPlatformFromMfmeSystem(layout.GamFile.KeyValuePairs["System"]);
         }
 
         private void ImportLamp(ExtractComponentLamp extractComponentLamp)

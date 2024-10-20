@@ -23,7 +23,12 @@ namespace Oasis.LayoutEditor.Panels
 
         protected override void Initialise()
         {
-            // TODO?
+            if (_initialised)
+            {
+                return;
+            }
+
+            _initialised = true;
         }
 
         protected override void Populate()
