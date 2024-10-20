@@ -79,6 +79,7 @@
     <Compile Include="Extensions\BitmapExtensions.cs" />
     <Compile Include="Extensions\RichTextBoxExtensions.cs" />
     <Compile Include="Helpers\FontSmoothingHelper.cs" />
+    <Compile Include="Mame\MameRomIdentifier.cs" />
     <Compile Include="Shared\ExtractComponents\ExtractComponentAceMatrix.cs" />
     <Compile Include="Shared\ExtractComponents\ExtractComponentAceVideo.cs" />
     <Compile Include="Shared\ExtractComponents\ExtractComponentAlpha.cs" />

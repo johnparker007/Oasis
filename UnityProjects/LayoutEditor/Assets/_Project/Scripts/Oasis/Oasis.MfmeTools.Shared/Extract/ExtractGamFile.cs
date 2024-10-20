@@ -9,6 +9,6 @@ namespace Oasis.MfmeTools.Shared.Extract
     [Serializable]
     public class ExtractGamFile
     {
-        public Dictionary<string, string> KeyValuePairs = new Dictionary<string, string>();
+        public Dictionary<string, List<string>> KeyValuePairs = new Dictionary<string, List<string>>();
     }
 }

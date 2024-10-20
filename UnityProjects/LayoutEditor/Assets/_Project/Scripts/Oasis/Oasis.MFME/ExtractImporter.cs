@@ -90,7 +90,7 @@ namespace Oasis.MFME
         private void ImportGamData(MfmeTools.Shared.Extract.Layout layout)
         {
             Editor.Instance.Project.Settings.FruitMachine.Platform = 
-                MAME.MameController.GetPlatformFromMfmeSystem(layout.GamFile.KeyValuePairs["System"]);
+                MAME.MameController.GetPlatformFromMfmeSystem(layout.GamFile.KeyValuePairs["System"][0]);
         }
 
         private void ImportMameRomIdent(MfmeTools.Shared.Extract.Layout layout)

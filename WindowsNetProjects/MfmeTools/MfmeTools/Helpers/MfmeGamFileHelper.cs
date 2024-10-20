@@ -21,9 +21,9 @@ namespace Oasis.MfmeTools.Helpers
             return GetValue(gamFilePath, kKeyLayout);
         }
 
-        public static Dictionary<string, string> GetKeyValuePairs(string gamFilePath)
+        public static Dictionary<string, List<string>> GetKeyValuePairs(string gamFilePath)
         {
-            Dictionary<string, string> keyValuePairs = new Dictionary<string, string>();
+            Dictionary<string, List<string>> keyValuePairs = new Dictionary<string, List<string>>();
 
             string[] lines = GetLines(gamFilePath);
             foreach(string line in lines)
@@ -42,7 +42,7 @@ namespace Oasis.MfmeTools.Helpers
 
                 string value = line.Substring(key.Length + 1);
 
-                keyValuePairs.Add(key, value);
+                AddKeyValuePair(keyValuePairs, key, value);
             }
 
             return keyValuePairs;
@@ -99,16 +99,16 @@ namespace Oasis.MfmeTools.Helpers
         }
 
 
-        //public static void ReadGamFile(string gamFilePath)
-        //{
-        //    if (_gamFilePath == gamFilePath)
-        //    {
-        //        return;
-        //    }
+        public static void ReadGamFile(string gamFilePath)
+        {
+            if (_gamFilePath == gamFilePath)
+            {
+                return;
+            }
 
-        //    _gamFileLines = File.ReadAllLines(gamFilePath).ToList();
-        //    _gamFilePath = gamFilePath;
-        //}
+            _gamFileLines = File.ReadAllLines(gamFilePath).ToList();
+            _gamFilePath = gamFilePath;
+        }
 
         //public static MachineConfigurationData.PlatformType Platform
         //{
@@ -269,6 +269,15 @@ namespace Oasis.MfmeTools.Helpers
             }
 
             return values;
+        }
+
+        private static void AddKeyValuePair(Dictionary<string, List<string>> keyValuePairs, string key, string value)
+        {
+            if (!keyValuePairs.ContainsKey(key))
+            {
+                keyValuePairs[key] = new List<string>();
+            }
+            keyValuePairs[key].Add(value);
         }
 
         //private static MachineConfigurationData.PlatformType GetPlatform(string mfmeGamSystemString)

@@ -13,6 +13,8 @@ using Oasis.MfmeTools.Mfme;
 using System.Windows.Forms;
 using MfmeTools.Helpers;
 using Oasis.MfmeTools.Helpers;
+using Oasis.MfmeTools.Mame;
+using System.Collections.Generic;
 
 namespace Oasis.MfmeTools
 {
@@ -116,13 +118,14 @@ namespace Oasis.MfmeTools
             string romIdent = FileSystem.ReadRomIdent();
             if (romIdent == null)
             {
-                // TODO pull in RomIdent stuff from Arcade Sim:
+                MfmeGamFileHelper.ReadGamFile(options.SourceLayoutPath);
+                romIdent = MameRomIdentifier.IdentifyRom(MfmeGamFileHelper.ROM);
 
-
-                // dummy test code for now:
-                romIdent = "m4andycp";
-
-
+                if(romIdent == null)
+                {
+                    OutputLog.LogWarning("Unable to match MFME ROM(s) to MAME ROM");
+                    romIdent = "";
+                }
 
                 FileSystem.WriteRomIdent(romIdent);
             }
