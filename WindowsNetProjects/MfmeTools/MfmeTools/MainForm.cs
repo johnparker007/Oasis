@@ -14,6 +14,7 @@ namespace Oasis.MfmeTools
     {
         public static bool kDebugHardcodePopulateSourceGamPath = true;
         public static bool kDebugDefaultCacheAllImageTypes = true;
+        public static bool kDebugDefaultCacheRomIdent = true;
         public static bool kDebugDefaultDisableFontSmoothing = true;
 
 
@@ -50,6 +51,11 @@ namespace Oasis.MfmeTools
                 checkBoxUseCachedBackgroundImage.CheckState = CheckState.Checked;
             }
 
+            if(kDebugDefaultCacheRomIdent)
+            {
+                checkBoxUseCachedRomIdent.CheckState = CheckState.Checked;
+            }
+
             if(kDebugDefaultDisableFontSmoothing)
             {
                 checkBoxDisableFontSmoothing.CheckState = CheckState.Checked;
@@ -67,6 +73,7 @@ namespace Oasis.MfmeTools
                 UseCachedButtonImages = checkBoxUseCachedButtonImages.Checked,
                 UseCachedBitmapImages = checkBoxUseCachedBitmapImages.Checked,
                 UseCachedBackgroundImage = checkBoxUseCachedBackgroundImage.Checked,
+                UseCachedRomIdent = checkBoxUseCachedRomIdent.Checked,
 
                 ScrapeLamps5To8 = checkBoxScrapeLamps5_8.Checked,
                 ScrapeLamps9To12 = checkBoxScrapeLamps9_12.Checked,

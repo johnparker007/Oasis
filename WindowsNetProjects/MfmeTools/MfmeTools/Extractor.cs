@@ -26,6 +26,7 @@ namespace Oasis.MfmeTools
             public bool UseCachedButtonImages;
             public bool UseCachedReelImages;
             public bool UseCachedBitmapImages;
+            public bool UseCachedRomIdent;
 
             public bool ScrapeLamps5To8;
             public bool ScrapeLamps9To12;
@@ -82,7 +83,8 @@ namespace Oasis.MfmeTools
                 options.UseCachedReelImages,
                 options.UseCachedLampImages,
                 options.UseCachedButtonImages,
-                options.UseCachedBitmapImages);
+                options.UseCachedBitmapImages,
+                options.UseCachedRomIdent);
             OutputLog.Log("Extract filesystem set up");
 
             InputSimulator inputSimulator = new InputSimulator();

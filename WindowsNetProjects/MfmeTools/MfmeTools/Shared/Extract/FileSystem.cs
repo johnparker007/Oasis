@@ -45,19 +45,27 @@ namespace Oasis.MfmeTools.Shared.Extract
             private set;
         }
 
+        public static bool UseCachedRomIdent
+        {
+            get;
+            private set;
+        }
+
 
         public static void Setup(string sourceLayoutPath, 
             bool useCachedBackgroundImage,
             bool useCachedReelImages,
             bool useCachedLampImages,
             bool useCachedButtonImages,
-            bool useCachedBitmapImages)
+            bool useCachedBitmapImages,
+            bool useCachedRomIdent)
         {
             UseCachedBackgroundImage = useCachedBackgroundImage;
             UseCachedReelImages = useCachedReelImages;
             UseCachedLampImages = useCachedLampImages;
             UseCachedButtonImages = useCachedButtonImages;
             UseCachedBitmapImages = useCachedBitmapImages;
+            UseCachedRomIdent = useCachedRomIdent;
 
             _sourceLayoutPath = sourceLayoutPath;
             _targetExtractRootPath = GetTargetExtractPathRoot(_sourceLayoutPath);
