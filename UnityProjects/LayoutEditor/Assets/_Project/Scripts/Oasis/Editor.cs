@@ -23,6 +23,7 @@ namespace Oasis
         public FontManager FontManager;
         public ColorPicker ColorPicker;
         public MameMpu4ChrSourceCodeLookup MameMpu4ChrSourceCodeLookup;
+        public Preferences Preferences;
 
         public EditorComponentBackground EditorComponentBackgroundPrefab;
         public EditorComponentLamp EditorComponentLampPrefab;

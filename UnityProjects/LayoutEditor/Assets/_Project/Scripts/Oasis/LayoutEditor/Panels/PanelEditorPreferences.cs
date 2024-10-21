@@ -38,19 +38,19 @@ namespace Oasis.LayoutEditor.Panels
 
         protected override void Populate()
         {
-            ProjectsFolder.Input.Text = "TODO";
+            ProjectsFolder.Input.Text = Editor.Instance.Preferences.ProjectsFolder;
         }
 
         private bool OnProjectsFolderValueChanged(BoundInputField source, string value)
         {
-            Debug.LogError("TODO store ProjectsFolder: " + value);
+            Editor.Instance.Preferences.ProjectsFolder = value;
 
             return true;
         }
 
         private bool OnProjectsFolderEndEdit(BoundInputField source, string value)
         {
-            Debug.LogError("TODO store ProjectsFolder: " + value);
+            Editor.Instance.Preferences.ProjectsFolder = value;
 
             return true;
         }

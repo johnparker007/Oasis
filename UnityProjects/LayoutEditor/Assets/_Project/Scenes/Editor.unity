@@ -728,6 +728,50 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1511ccae7919cfc46b603b9b337fdc94, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!1 &237358545
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 237358546}
+  - component: {fileID: 237358547}
+  m_Layer: 0
+  m_Name: Preferences
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &237358546
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 237358545}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2080336306}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &237358547
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 237358545}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 00bd3097bf103a74c9b825d85103598f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &283447549
 GameObject:
   m_ObjectHideFlags: 0
@@ -10028,7 +10072,8 @@ Transform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 237358546}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &2080336307
@@ -10050,6 +10095,7 @@ MonoBehaviour:
   FontManager: {fileID: 1972226907}
   ColorPicker: {fileID: 180061000}
   MameMpu4ChrSourceCodeLookup: {fileID: 1105341036}
+  Preferences: {fileID: 237358547}
   EditorComponentBackgroundPrefab: {fileID: 1050622726189904241, guid: 4b22f6c6f51ab1248a83e802e92102c8, type: 3}
   EditorComponentLampPrefab: {fileID: 3535370425537893857, guid: d5d925676a1996848bf6f70d96355d80, type: 3}
   EditorComponentReelPrefab: {fileID: 7270301404913838959, guid: ee690e3c8550a8a47953c65871800e76, type: 3}
