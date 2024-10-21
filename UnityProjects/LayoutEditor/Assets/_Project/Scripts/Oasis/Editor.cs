@@ -11,6 +11,9 @@ using System.Collections.Generic;
 using Oasis.Export;
 using Oasis.UI;
 using HSVPicker;
+using Oasis.Import;
+using Oasis.FileOperations;
+
 
 namespace Oasis
 {
@@ -179,6 +182,8 @@ namespace Oasis
         {
             OasisExporter exporter = new OasisExporter(new FileSystemWrapper(), new ProjectSettingsValidator(), new LayoutValidator());
             exporter.Export(Project, string.Format("e:\\SavedLayout\\{0}.json", Project.Settings.Mame.RomName));
+            Oasis.Import.Importer importer = new Oasis.Import.Importer();
+            importer.Import(string.Format("e:\\SavedLayout\\{0}.json", Project.Settings.Mame.RomName));
         }
 
         public void OnEmulationStartClick()

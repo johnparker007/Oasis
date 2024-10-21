@@ -19,6 +19,16 @@ namespace Oasis.Layout
             {
                 return;
             }
+
+            foreach (string k in representation.Keys) 
+            {
+                switch (k)
+                {
+                    case "is_reversed":
+                        Reversed = (bool)representation[k];
+                        break;
+                }
+            }
         }
 
         public override Dictionary<string, object> GetRepresentation() 

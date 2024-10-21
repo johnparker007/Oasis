@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Oasis.Project;
+using Oasis.FileOperations;
 
 namespace Oasis.Export
 {
