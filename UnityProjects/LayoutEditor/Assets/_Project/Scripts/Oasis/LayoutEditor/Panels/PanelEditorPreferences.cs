@@ -12,13 +12,18 @@ namespace Oasis.LayoutEditor.Panels
     public class PanelEditorPreferences : PanelBase
     {
         public FieldString ServerAddress;
+        public FieldString ProjectsFolder;
 
         protected override void AddListeners()
         {
+            ProjectsFolder.Input.OnValueChanged += OnProjectsFolderValueChanged;
+            ProjectsFolder.Input.OnValueSubmitted += OnProjectsFolderEndEdit;
         }
 
         protected override void RemoveListeners()
         {
+            ProjectsFolder.Input.OnValueChanged -= OnProjectsFolderValueChanged;
+            ProjectsFolder.Input.OnValueSubmitted -= OnProjectsFolderEndEdit;
         }
 
         protected override void Initialise()
@@ -33,15 +38,22 @@ namespace Oasis.LayoutEditor.Panels
 
         protected override void Populate()
         {
-            // TODO - Editor preferences
-
-            //MameRomName.Input.Text = Editor.Instance.Project.Settings.Mame.RomName;
+            ProjectsFolder.Input.Text = "TODO";
         }
 
-        // TODO temp - will be doing an equivalent of the 'BoundInputField' approach used
-        // by the Inspector was using for UI prototyping
+        private bool OnProjectsFolderValueChanged(BoundInputField source, string value)
+        {
+            Debug.LogError("TODO store ProjectsFolder: " + value);
 
+            return true;
+        }
 
+        private bool OnProjectsFolderEndEdit(BoundInputField source, string value)
+        {
+            Debug.LogError("TODO store ProjectsFolder: " + value);
+
+            return true;
+        }
     }
 
 }
