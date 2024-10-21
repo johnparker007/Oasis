@@ -2198,41 +2198,6 @@ MonoBehaviour:
         minimumSize: {x: 150, y: 150}
         tabLabel: Base
         tabIcon: {fileID: 21300000, guid: f5d6265488be57f43b1bd1e30a52d7af, type: 3}
-      - content: {fileID: 491618928}
-        id: 25745cd4-04d1-4502-851c-f4054eb897d6
-        minimumSize: {x: 250, y: 300}
-        tabLabel: MAME
-        tabIcon: {fileID: 21300000, guid: 7b9689cf77ed29f4d8577dfe49800ce4, type: 3}
-      - content: {fileID: 1627987296}
-        id: c2332266-150c-49f4-b7a0-9da4c11f4923
-        minimumSize: {x: 250, y: 300}
-        tabLabel: Full
-        tabIcon: {fileID: 21300000, guid: 0ffbf9e4eb68d1046b8cd7441a213f44, type: 3}
-      - content: {fileID: 90804741}
-        id: b9215165-eba5-411e-aab0-f545da9c4c0d
-        minimumSize: {x: 250, y: 300}
-        tabLabel: Top
-        tabIcon: {fileID: 21300000, guid: 0ffbf9e4eb68d1046b8cd7441a213f44, type: 3}
-      - content: {fileID: 1959639528}
-        id: d3ab17e6-5624-46ee-94d5-09339dc3ebab
-        minimumSize: {x: 250, y: 300}
-        tabLabel: Bottom
-        tabIcon: {fileID: 21300000, guid: 0ffbf9e4eb68d1046b8cd7441a213f44, type: 3}
-      - content: {fileID: 1267106628}
-        id: 447a6ece-34a6-40c6-b460-bc19f7abb6b7
-        minimumSize: {x: 250, y: 300}
-        tabLabel: Belly
-        tabIcon: {fileID: 21300000, guid: 0ffbf9e4eb68d1046b8cd7441a213f44, type: 3}
-      - content: {fileID: 1775041579}
-        id: da48b882-ef80-4046-a9fd-c8e89211be1b
-        minimumSize: {x: 250, y: 300}
-        tabLabel: Cabinet
-        tabIcon: {fileID: 0}
-      - content: {fileID: 2018586779}
-        id: c7c3a5ce-91a1-48ac-ab4e-16abc6047325
-        minimumSize: {x: 250, y: 300}
-        tabLabel: Player
-        tabIcon: {fileID: 21300000, guid: 33659fe99961b224baefee43fb40bd3f, type: 3}
       - content: {fileID: 1256510093}
         id: 3e3b7abf-6195-4e16-9d8c-96256a9627b1
         minimumSize: {x: 250, y: 300}
