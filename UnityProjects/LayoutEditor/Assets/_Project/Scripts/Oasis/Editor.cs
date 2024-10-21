@@ -47,7 +47,7 @@ namespace Oasis
             {
                 return _displayText;
             }
-            private set
+            set
             {
                 _displayText = value;
                 OnDisplayTextSet?.Invoke(_displayText);
@@ -58,7 +58,6 @@ namespace Oasis
         public UnityEvent<bool> OnDisplayTextSet = new UnityEvent<bool>();
         public UnityEvent<EditorView> OnEditorViewEnabled = new UnityEvent<EditorView>();
         public UnityEvent<EditorView> OnEditorViewDisabled = new UnityEvent<EditorView>();
-
 
 
         public static Editor Instance
@@ -123,9 +122,6 @@ namespace Oasis
 
             // JP Placeholder until Components are not derived from Monobehaviour:
             OnLayoutSet.AddListener(OnLayoutSetCallback);
-
-            // JP HACK:
-            OnFileImportClick();
         }
 
         private void RemoveListeners()
@@ -150,125 +146,8 @@ namespace Oasis
             // TODO else remove listener if set?  Also in OnDestroy if set?
         }
 
-        public void OnFileImportClick()
-        {
-            //string[] paths = StandaloneFileBrowser.OpenFolderPanel("MFME Extract folder", null, false);
-            //ExtensionFilter extensionFilter = new ExtensionFilter("JSON files", "json");
-            
-            string[] paths = StandaloneFileBrowser.OpenFilePanel("Open File", null, "json", false);
-
-            if (paths.Length > 0 && paths[0] != null && paths[0].Length > 0)
-            {
-                Extractor.LoadLayout(paths[0]);
-            }
-        }
-
-        //TODO: Get rid of this...
-        public void OnFileExportClick()
-        {
-            OnOasisExportClick();
-        }
-
-        public void OnMAMEExportClick()
-        {
-            MameExporter exporter = new MameExporter(new FileSystemWrapper(), new ProjectSettingsValidator(), new LayoutValidator());
-            exporter.Export(Project, "e:\\exported.lay");
-        }
-
-        public void OnOasisExportClick()
-        {
-            OasisExporter exporter = new OasisExporter(new FileSystemWrapper(), new ProjectSettingsValidator(), new LayoutValidator());
-            exporter.Export(Project, string.Format("e:\\SavedLayout\\{0}.json", Project.Settings.Mame.RomName));
-        }
-
-        public void OnEmulationStartClick()
-        {
-            MameController.StartMame(false);
-        }
-
-        public void OnEmulationExitClick()
-        {
-            MameController.ExitMame();
-        }
-
-        public void OnEmulationPauseClick()
-        {
-            MameController.Pause();
-        }
-
-        public void OnEmulationResumeClick()
-        {
-            MameController.Resume();
-        }
-
-        public void OnEmulationSoftResetClick()
-        {
-            MameController.SoftReset();
-        }
-
-        public void OnEmulationHardResetClick()
-        {
-            MameController.HardReset();
-        }
-
-        public void OnEmulationThrottledClick()
-        {
-            MameController.SetThrottled(true);
-        }
-
-        public void OnEmulationUnthrottledClick()
-        {
-            MameController.SetThrottled(false);
-        }
-
-        public void OnEmulationStateLoadClick()
-        {
-            MameController.StateLoad();
-        }
-
-        public void OnEmulationStateSaveClick()
-        {
-            MameController.StateSave();
-        }
-
-        public void OnEmulationStateSaveAndExitClick()
-        {
-            MameController.StateSaveAndExit();
-        }
-
-        public void OnEmulationStartAndStateLoadClick()
-        {
-            MameController.StartMame(true);
-        }
-
-        public void OnMfmeExtractClick()
-        {
-        }
-
-        public void OnMfmeRemapLampsClick()
-        {
-            UIController.ShowMfmeRemapLampsForm();
-        }
-
-        public void OnHelpAboutClick()
-        {
-        }
-
-        public void OnDisplayTextOnClick()
-        {
-            DisplayText = true;
-        }
-
-        public void OnDisplayTextOffClick()
-        {
-            DisplayText = false;
-        }
-
         private void OnImportComplete()
         {
         }
-
-
-
     }
 }

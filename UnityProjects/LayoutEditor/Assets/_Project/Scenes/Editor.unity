@@ -1361,6 +1361,50 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 453911065}
   m_CullTransparentMesh: 1
+--- !u!1 &457364581
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 457364583}
+  - component: {fileID: 457364582}
+  m_Layer: 0
+  m_Name: SelectionHandler
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &457364582
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 457364581}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 420c2e792b6b91545b00745213d5c5af, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!4 &457364583
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 457364581}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1907701908}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &491618927
 GameObject:
   m_ObjectHideFlags: 0
@@ -5917,16 +5961,16 @@ MonoBehaviour:
   menuRootItems:
   - name: File
     menuItems:
-    - name: New Project
+    - name: New
       menuItems: []
       shortcut: 32
       shortcutCombination: 0
       action:
         m_PersistentCalls:
           m_Calls:
-          - m_Target: {fileID: 2080336307}
-            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
-            m_MethodName: 
+          - m_Target: {fileID: 457364582}
+            m_TargetAssemblyTypeName: Oasis.NativeMenus.SelectionHandler, Assembly-CSharp
+            m_MethodName: OnFileNew
             m_Mode: 1
             m_Arguments:
               m_ObjectArgument: {fileID: 0}
@@ -5936,20 +5980,63 @@ MonoBehaviour:
               m_StringArgument: 
               m_BoolArgument: 0
             m_CallState: 2
-    - name: Open Project
+    - name: Open
       menuItems: []
       shortcut: 32
       shortcutCombination: 0
       action:
         m_PersistentCalls:
-          m_Calls: []
-    - name: Save Project
+          m_Calls:
+          - m_Target: {fileID: 457364582}
+            m_TargetAssemblyTypeName: Oasis.NativeMenus.SelectionHandler, Assembly-CSharp
+            m_MethodName: OnFileOpen
+            m_Mode: 1
+            m_Arguments:
+              m_ObjectArgument: {fileID: 0}
+              m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+              m_IntArgument: 0
+              m_FloatArgument: 0
+              m_StringArgument: 
+              m_BoolArgument: 0
+            m_CallState: 2
+    - name: Save
       menuItems: []
       shortcut: 32
       shortcutCombination: 0
       action:
         m_PersistentCalls:
-          m_Calls: []
+          m_Calls:
+          - m_Target: {fileID: 457364582}
+            m_TargetAssemblyTypeName: Oasis.NativeMenus.SelectionHandler, Assembly-CSharp
+            m_MethodName: OnFileSave
+            m_Mode: 1
+            m_Arguments:
+              m_ObjectArgument: {fileID: 0}
+              m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+              m_IntArgument: 0
+              m_FloatArgument: 0
+              m_StringArgument: 
+              m_BoolArgument: 0
+            m_CallState: 2
+    - name: Save As
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls:
+          - m_Target: {fileID: 457364582}
+            m_TargetAssemblyTypeName: Oasis.NativeMenus.SelectionHandler, Assembly-CSharp
+            m_MethodName: OnFileSaveAs
+            m_Mode: 1
+            m_Arguments:
+              m_ObjectArgument: {fileID: 0}
+              m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+              m_IntArgument: 0
+              m_FloatArgument: 0
+              m_StringArgument: 
+              m_BoolArgument: 0
+            m_CallState: 2
     - name: '-'
       menuItems: []
       shortcut: 32
@@ -5976,28 +6063,9 @@ MonoBehaviour:
       action:
         m_PersistentCalls:
           m_Calls:
-          - m_Target: {fileID: 2080336307}
-            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
-            m_MethodName: OnFileImportClick
-            m_Mode: 1
-            m_Arguments:
-              m_ObjectArgument: {fileID: 0}
-              m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-              m_IntArgument: 0
-              m_FloatArgument: 0
-              m_StringArgument: 
-              m_BoolArgument: 0
-            m_CallState: 2
-    - name: Save Oasis Project
-      menuItems: []
-      shortcut: 32
-      shortcutCombination: 0
-      action:
-        m_PersistentCalls:
-          m_Calls:
-          - m_Target: {fileID: 2080336307}
-            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
-            m_MethodName: OnOasisExportClick
+          - m_Target: {fileID: 457364582}
+            m_TargetAssemblyTypeName: Oasis.NativeMenus.SelectionHandler, Assembly-CSharp
+            m_MethodName: OnFileImportMfme
             m_Mode: 1
             m_Arguments:
               m_ObjectArgument: {fileID: 0}
@@ -6014,9 +6082,9 @@ MonoBehaviour:
       action:
         m_PersistentCalls:
           m_Calls:
-          - m_Target: {fileID: 2080336307}
-            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
-            m_MethodName: OnMAMEExportClick
+          - m_Target: {fileID: 457364582}
+            m_TargetAssemblyTypeName: Oasis.NativeMenus.SelectionHandler, Assembly-CSharp
+            m_MethodName: OnFileExportMAME
             m_Mode: 1
             m_Arguments:
               m_ObjectArgument: {fileID: 0}
@@ -6052,9 +6120,9 @@ MonoBehaviour:
       action:
         m_PersistentCalls:
           m_Calls:
-          - m_Target: {fileID: 0}
-            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
-            m_MethodName: 
+          - m_Target: {fileID: 457364582}
+            m_TargetAssemblyTypeName: Oasis.NativeMenus.SelectionHandler, Assembly-CSharp
+            m_MethodName: OnFileClose
             m_Mode: 1
             m_Arguments:
               m_ObjectArgument: {fileID: 0}
@@ -6071,9 +6139,9 @@ MonoBehaviour:
       action:
         m_PersistentCalls:
           m_Calls:
-          - m_Target: {fileID: 0}
-            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
-            m_MethodName: 
+          - m_Target: {fileID: 457364582}
+            m_TargetAssemblyTypeName: Oasis.NativeMenus.SelectionHandler, Assembly-CSharp
+            m_MethodName: OnFileExit
             m_Mode: 1
             m_Arguments:
               m_ObjectArgument: {fileID: 0}
@@ -6250,9 +6318,9 @@ MonoBehaviour:
       action:
         m_PersistentCalls:
           m_Calls:
-          - m_Target: {fileID: 2080336307}
-            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
-            m_MethodName: OnEmulationStartAndStateLoadClick
+          - m_Target: {fileID: 457364582}
+            m_TargetAssemblyTypeName: Oasis.NativeMenus.SelectionHandler, Assembly-CSharp
+            m_MethodName: OnEmulationStartAndStateLoad
             m_Mode: 1
             m_Arguments:
               m_ObjectArgument: {fileID: 0}
@@ -6269,9 +6337,9 @@ MonoBehaviour:
       action:
         m_PersistentCalls:
           m_Calls:
-          - m_Target: {fileID: 2080336307}
-            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
-            m_MethodName: OnEmulationStateSaveAndExitClick
+          - m_Target: {fileID: 457364582}
+            m_TargetAssemblyTypeName: Oasis.NativeMenus.SelectionHandler, Assembly-CSharp
+            m_MethodName: OnEmulationStateSaveAndExit
             m_Mode: 1
             m_Arguments:
               m_ObjectArgument: {fileID: 0}
@@ -6295,9 +6363,9 @@ MonoBehaviour:
       action:
         m_PersistentCalls:
           m_Calls:
-          - m_Target: {fileID: 2080336307}
-            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
-            m_MethodName: OnEmulationStartClick
+          - m_Target: {fileID: 457364582}
+            m_TargetAssemblyTypeName: Oasis.NativeMenus.SelectionHandler, Assembly-CSharp
+            m_MethodName: OnEmulationStart
             m_Mode: 1
             m_Arguments:
               m_ObjectArgument: {fileID: 0}
@@ -6314,9 +6382,9 @@ MonoBehaviour:
       action:
         m_PersistentCalls:
           m_Calls:
-          - m_Target: {fileID: 2080336307}
-            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
-            m_MethodName: OnEmulationStateLoadClick
+          - m_Target: {fileID: 457364582}
+            m_TargetAssemblyTypeName: Oasis.NativeMenus.SelectionHandler, Assembly-CSharp
+            m_MethodName: OnEmulationStateLoad
             m_Mode: 1
             m_Arguments:
               m_ObjectArgument: {fileID: 0}
@@ -6333,9 +6401,9 @@ MonoBehaviour:
       action:
         m_PersistentCalls:
           m_Calls:
-          - m_Target: {fileID: 2080336307}
-            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
-            m_MethodName: OnEmulationStateSaveClick
+          - m_Target: {fileID: 457364582}
+            m_TargetAssemblyTypeName: Oasis.NativeMenus.SelectionHandler, Assembly-CSharp
+            m_MethodName: OnEmulationStateSave
             m_Mode: 1
             m_Arguments:
               m_ObjectArgument: {fileID: 0}
@@ -6352,9 +6420,9 @@ MonoBehaviour:
       action:
         m_PersistentCalls:
           m_Calls:
-          - m_Target: {fileID: 2080336307}
-            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
-            m_MethodName: OnEmulationExitClick
+          - m_Target: {fileID: 457364582}
+            m_TargetAssemblyTypeName: Oasis.NativeMenus.SelectionHandler, Assembly-CSharp
+            m_MethodName: OnEmulationExit
             m_Mode: 1
             m_Arguments:
               m_ObjectArgument: {fileID: 0}
@@ -6378,9 +6446,9 @@ MonoBehaviour:
       action:
         m_PersistentCalls:
           m_Calls:
-          - m_Target: {fileID: 2080336307}
-            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
-            m_MethodName: OnEmulationPauseClick
+          - m_Target: {fileID: 457364582}
+            m_TargetAssemblyTypeName: Oasis.NativeMenus.SelectionHandler, Assembly-CSharp
+            m_MethodName: OnEmulationPause
             m_Mode: 1
             m_Arguments:
               m_ObjectArgument: {fileID: 0}
@@ -6397,9 +6465,9 @@ MonoBehaviour:
       action:
         m_PersistentCalls:
           m_Calls:
-          - m_Target: {fileID: 2080336307}
-            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
-            m_MethodName: OnEmulationResumeClick
+          - m_Target: {fileID: 457364582}
+            m_TargetAssemblyTypeName: Oasis.NativeMenus.SelectionHandler, Assembly-CSharp
+            m_MethodName: OnEmulationResume
             m_Mode: 1
             m_Arguments:
               m_ObjectArgument: {fileID: 0}
@@ -6423,9 +6491,9 @@ MonoBehaviour:
       action:
         m_PersistentCalls:
           m_Calls:
-          - m_Target: {fileID: 2080336307}
-            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
-            m_MethodName: OnEmulationThrottledClick
+          - m_Target: {fileID: 457364582}
+            m_TargetAssemblyTypeName: Oasis.NativeMenus.SelectionHandler, Assembly-CSharp
+            m_MethodName: OnEmulationThrottled
             m_Mode: 1
             m_Arguments:
               m_ObjectArgument: {fileID: 0}
@@ -6442,9 +6510,9 @@ MonoBehaviour:
       action:
         m_PersistentCalls:
           m_Calls:
-          - m_Target: {fileID: 2080336307}
-            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
-            m_MethodName: OnEmulationUnthrottledClick
+          - m_Target: {fileID: 457364582}
+            m_TargetAssemblyTypeName: Oasis.NativeMenus.SelectionHandler, Assembly-CSharp
+            m_MethodName: OnEmulationUnthrottled
             m_Mode: 1
             m_Arguments:
               m_ObjectArgument: {fileID: 0}
@@ -6468,9 +6536,9 @@ MonoBehaviour:
       action:
         m_PersistentCalls:
           m_Calls:
-          - m_Target: {fileID: 2080336307}
-            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
-            m_MethodName: OnEmulationSoftResetClick
+          - m_Target: {fileID: 457364582}
+            m_TargetAssemblyTypeName: Oasis.NativeMenus.SelectionHandler, Assembly-CSharp
+            m_MethodName: OnEmulationSoftReset
             m_Mode: 1
             m_Arguments:
               m_ObjectArgument: {fileID: 0}
@@ -6487,9 +6555,9 @@ MonoBehaviour:
       action:
         m_PersistentCalls:
           m_Calls:
-          - m_Target: {fileID: 2080336307}
-            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
-            m_MethodName: OnEmulationHardResetClick
+          - m_Target: {fileID: 457364582}
+            m_TargetAssemblyTypeName: Oasis.NativeMenus.SelectionHandler, Assembly-CSharp
+            m_MethodName: OnEmulationHardReset
             m_Mode: 1
             m_Arguments:
               m_ObjectArgument: {fileID: 0}
@@ -6508,9 +6576,9 @@ MonoBehaviour:
       action:
         m_PersistentCalls:
           m_Calls:
-          - m_Target: {fileID: 2080336307}
-            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
-            m_MethodName: OnMfmeExtractClick
+          - m_Target: {fileID: 457364582}
+            m_TargetAssemblyTypeName: Oasis.NativeMenus.SelectionHandler, Assembly-CSharp
+            m_MethodName: OnMfmeExtract
             m_Mode: 1
             m_Arguments:
               m_ObjectArgument: {fileID: 0}
@@ -6527,9 +6595,9 @@ MonoBehaviour:
       action:
         m_PersistentCalls:
           m_Calls:
-          - m_Target: {fileID: 2080336307}
-            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
-            m_MethodName: OnMfmeRemapLampsClick
+          - m_Target: {fileID: 457364582}
+            m_TargetAssemblyTypeName: Oasis.NativeMenus.SelectionHandler, Assembly-CSharp
+            m_MethodName: OnMfmeRemapLamps
             m_Mode: 1
             m_Arguments:
               m_ObjectArgument: {fileID: 0}
@@ -6548,9 +6616,9 @@ MonoBehaviour:
       action:
         m_PersistentCalls:
           m_Calls:
-          - m_Target: {fileID: 2080336307}
-            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
-            m_MethodName: OnDisplayTextOnClick
+          - m_Target: {fileID: 457364582}
+            m_TargetAssemblyTypeName: Oasis.NativeMenus.SelectionHandler, Assembly-CSharp
+            m_MethodName: OnViewDisplayTextOn
             m_Mode: 1
             m_Arguments:
               m_ObjectArgument: {fileID: 0}
@@ -6567,9 +6635,9 @@ MonoBehaviour:
       action:
         m_PersistentCalls:
           m_Calls:
-          - m_Target: {fileID: 2080336307}
-            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
-            m_MethodName: OnDisplayTextOffClick
+          - m_Target: {fileID: 457364582}
+            m_TargetAssemblyTypeName: Oasis.NativeMenus.SelectionHandler, Assembly-CSharp
+            m_MethodName: OnViewDisplayTextOff
             m_Mode: 1
             m_Arguments:
               m_ObjectArgument: {fileID: 0}
@@ -6623,9 +6691,9 @@ MonoBehaviour:
       action:
         m_PersistentCalls:
           m_Calls:
-          - m_Target: {fileID: 2080336307}
-            m_TargetAssemblyTypeName: Oasis.Editor, Assembly-CSharp
-            m_MethodName: OnHelpAboutClick
+          - m_Target: {fileID: 457364582}
+            m_TargetAssemblyTypeName: Oasis.NativeMenus.SelectionHandler, Assembly-CSharp
+            m_MethodName: OnHelpAbout
             m_Mode: 1
             m_Arguments:
               m_ObjectArgument: {fileID: 0}
@@ -6648,7 +6716,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 1907701908}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1442643217
 GameObject:
@@ -8030,6 +8098,39 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1899413906}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1 &1907701907
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1907701908}
+  m_Layer: 0
+  m_Name: NativeMenus
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1907701908
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1907701907}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1408368882}
+  - {fileID: 457364583}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1959639527
 GameObject:
   m_ObjectHideFlags: 0
@@ -10847,9 +10948,9 @@ SceneRoots:
   - {fileID: 1934027768651686536}
   - {fileID: 8281339768565449379}
   - {fileID: 8412484400236955805}
-  - {fileID: 1408368882}
   - {fileID: 1721750717}
   - {fileID: 225541484}
   - {fileID: 1403062830}
   - {fileID: 9114275199164060598}
   - {fileID: 552464027564956582}
+  - {fileID: 1907701908}
