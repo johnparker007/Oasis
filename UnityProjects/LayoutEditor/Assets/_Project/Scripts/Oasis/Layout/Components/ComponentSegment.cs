@@ -29,17 +29,17 @@ namespace Oasis.Layout
                 return;
             }
 
+            Color color;
             foreach (KeyValuePair<string, object> field in representation) 
             {
                 switch (field.Key) 
                 {
                     case "number":
-                        int.TryParse((string)field.Value, out int number);
-                        _number = number;
+                        Number = (int)field.Value;
                         break;
                     case "color":
-                        // TODO implement Color encode/decode text format
-                        Debug.LogWarning("TODO implement Color encode/decode text format");
+                        if (ColorUtility.TryParseHtmlString((string)field.Value, out color))
+                            Color = color;
                         break;
                 }
             }

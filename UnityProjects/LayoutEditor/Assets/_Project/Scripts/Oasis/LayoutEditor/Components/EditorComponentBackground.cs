@@ -62,7 +62,10 @@ namespace Oasis.LayoutEditor
             }
             else
             {
-                _image.color = ComponentBackground.Color;
+                //TODO: Address the real cause of this being null
+                if (ComponentBackground != null) {
+                    _image.color = ComponentBackground.Color;
+                }
             }
         }
 

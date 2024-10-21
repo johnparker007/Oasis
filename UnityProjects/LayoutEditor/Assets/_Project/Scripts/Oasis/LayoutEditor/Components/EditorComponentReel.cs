@@ -42,25 +42,26 @@ namespace Oasis.LayoutEditor
             base.Initialise(component);
 
             OasisImage bandOasisImage = ComponentReel.BandOasisImage;
+            if (bandOasisImage != null) {
+                _texture2d = bandOasisImage.GetTexture2dCopy();
+                _texture2d.filterMode = FilterMode.Point;
+                // TODO this would be different for horizontal UV scrolling reel!
+                _texture2d.wrapModeU = TextureWrapMode.Clamp;
+                _texture2d.wrapModeV = TextureWrapMode.Repeat;
 
-            _texture2d = bandOasisImage.GetTexture2dCopy();
-            _texture2d.filterMode = FilterMode.Point;
-            // TODO this would be different for horizontal UV scrolling reel!
-            _texture2d.wrapModeU = TextureWrapMode.Clamp;
-            _texture2d.wrapModeV = TextureWrapMode.Repeat;
+                _sprite = Sprite.Create(_texture2d,
+                    new Rect(0, 0, bandOasisImage.Width, bandOasisImage.Height), Vector2.zero);
 
-            _sprite = Sprite.Create(_texture2d,
-                new Rect(0, 0, bandOasisImage.Width, bandOasisImage.Height), Vector2.zero);
-
-            _image.sprite = _sprite;
-            _image.preserveAspect = false;
-
+                _image.sprite = _sprite;
+                _image.preserveAspect = false;
+            }
+            
             // set y scale TODO this would be x scale on horizontal reel
 
             float xScale = 1f; // TODO MFME has the 'border width' stuff, maybe factor that in?
 
             //float yScale = _rectTransform.rect.height / bandOasisImage.Height;
-float yScale = ComponentReel.VisibleScale2D;
+            float yScale = ComponentReel.VisibleScale2D;
 
             _material.mainTextureScale = new Vector2(xScale, yScale);
         }

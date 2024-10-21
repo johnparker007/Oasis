@@ -20,5 +20,11 @@ namespace Oasis.Graphics {
                 )
             );
         }
+
+        public static OasisImage LoadFromPng(string filePath)
+        {
+            //TODO: Implement
+            return null;
+        }
     }
 }
