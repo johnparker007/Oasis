@@ -45,6 +45,7 @@ using System.Linq;
                 menuBar.SetupMenuItemRoot();
 
                 int separatorCount = 0;
+                int unityMenuItemPriority = 0; // JP another hack just to try get this grotty NativeMenuBar system working better
                 
                 stringBuilder.AppendLine($"public static class NativeMenuBar_AutoGen{Environment.NewLine}{{{Environment.NewLine}");
                 stringBuilder.AppendLine($"    private static NativeMenuBar.Core.MenuBar menubar = UnityEngine.Object.FindObjectOfType<NativeMenuBar.Core.MenuBar>();");
@@ -68,8 +69,19 @@ using System.Linq;
 
                         separatorCount++;
                     }
-                      
-                    stringBuilder.AppendLine($"    [UnityEditor.MenuItem(\"NativeMenuBar/{commandNameSeparatorFixed}\")]");
+
+                    // JP more hackiness from me, until I rip this system out and buil a better one:
+                    if(commandNameSeparatorFixed.Contains("-"))
+                    {
+                        //   priority:
+                        //     The order to display the menu item in a menu. If a menu item has a priority value
+                        //     that is 10 or greater than the item that precedes it, a separator line divides
+                        //     the two menu items from each other in the menu.
+                        unityMenuItemPriority += 10;
+                        continue;
+                    }
+
+                    stringBuilder.AppendLine($"    [UnityEditor.MenuItem(\"NativeMenuBar/{commandNameSeparatorFixed}\", priority = {unityMenuItemPriority})]");
                     stringBuilder.AppendLine($"    private static void {menuItemFullPathSeparatorFixed}()");
                     stringBuilder.AppendLine($"    {{");
 
@@ -77,7 +89,8 @@ using System.Linq;
                     stringBuilder.AppendLine($"        menubar.MenuItems.Single(item => item.FullPath == \"{commandNameSeparatorFixed}\").Action.Invoke();");
 
                     stringBuilder.AppendLine($"    }}");
-                    stringBuilder.AppendLine($"    [UnityEditor.MenuItem(\"NativeMenuBar/{commandNameSeparatorFixed}\", true)]");
+                    //stringBuilder.AppendLine($"    [UnityEditor.MenuItem(\"NativeMenuBar/{commandNameSeparatorFixed}\", true)]");
+                    stringBuilder.AppendLine($"    [UnityEditor.MenuItem(\"NativeMenuBar/{commandNameSeparatorFixed}\", true, {unityMenuItemPriority})]");
                     stringBuilder.AppendLine($"    private static bool {menuItemFullPathSeparatorFixed}Validate()");
                     stringBuilder.AppendLine($"    {{");
 
@@ -85,6 +98,8 @@ using System.Linq;
                     stringBuilder.AppendLine($"        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == \"{commandNameSeparatorFixed}\").IsInteractable;");
 
                     stringBuilder.AppendLine($"    }}");
+
+                    ++unityMenuItemPriority;
                 }
                 stringBuilder.AppendLine($"{Environment.NewLine}}}");
 
