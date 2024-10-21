@@ -24,14 +24,21 @@ namespace Oasis.Layout
                 return;
             }
 
-            foreach (KeyValuePair<string, object> field in representation)
+            Color color;
+            foreach (KeyValuePair<string, object> field in representation) 
             {
-                switch (field.Key)
+                switch(field.Key) 
                 {
                     case "color":
-                        // TODO implement Color encode/decode text format
-                        Debug.LogWarning("TODO implement Color encode/decode text format");
+                        if (ColorUtility.TryParseHtmlString((string)field.Value, out color))
+                            Color = color;
                         break;
+                    case "file_path":
+                        if (field.Value != null) {
+                            OasisImage = ImageOperations.LoadFromPng(string.Format("e:\\SavedLayout\\{0}", (string)field.Value));
+                        }
+                        break;
+                    
                 }
             }
         }

@@ -3,6 +3,7 @@ using UnityEngine;
 using Oasis;
 using Oasis.Export;
 using Oasis.MAME;
+using Oasis.FileOperations;
 
 namespace Oasis.NativeMenus
 {

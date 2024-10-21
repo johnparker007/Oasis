@@ -57,18 +57,31 @@ namespace Oasis.Layout
                 switch(field.Key) 
                 {
                     case "stops":
-                        int.TryParse((string)field.Value, out int stops);
-                        _stops = stops;
+                        Stops = (int)field.Value;
                         break;
                     case "visible_scale_2d":
-                        float.TryParse((string)field.Value, out float visibleScale2d);
-                        _visibleScale2D = visibleScale2d;
+                        VisibleScale2D = (float)field.Value;
                         break;
                     case "is_reversed":
-                        _reversed = (string)field.Value == "true";
+                        Reversed = (bool)field.Value;
                         break;
-
-                        // TODO need to do IO of string Lists for List<string> ReelSymbolText
+                    case "number":
+                        Number = (int)field.Value;
+                        break;
+                    case "reel_symbol_text":
+                        ReelSymbolText = (List<string>)field.Value;
+                        break;
+                    case "file_path_band_image":
+                        if (field.Value != null) {
+                            BandOasisImage = ImageOperations.LoadFromPng(string.Format("e:\\SavedLayout\\{0}", (string)field.Value));
+                        }
+                        break;
+                    case "file_path_overlay_image":
+                        if (field.Value != null) {
+                            OverlayOasisImage = ImageOperations.LoadFromPng(string.Format("e:\\SavedLayout\\{0}", (string)field.Value));
+                        }
+                        break;
+                    
                 }
             }
         }

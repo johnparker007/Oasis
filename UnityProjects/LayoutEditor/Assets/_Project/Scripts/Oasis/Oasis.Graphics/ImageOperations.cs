@@ -9,7 +9,7 @@ namespace Oasis.Graphics {
         public static void SaveToPNG(OasisImage image, string fileUniqueName)
         {
             //TODO: Get rid of the ugly hardwiring here.
-            string fileName = string.Format("e:\\SavedLayout\\{0}.png", fileUniqueName);
+            string fileName = string.Format("e:\\SavedLayout\\{0}", fileUniqueName);
             File.WriteAllBytes(
                 fileName,
                 ImageConversion.EncodeArrayToPNG(
@@ -19,6 +19,11 @@ namespace Oasis.Graphics {
                     (uint)image.Height
                 )
             );
+        }
+
+        public static OasisImage LoadFromPng(string filePath)
+        {
+            return new OasisImage(File.ReadAllBytes(filePath));
         }
     }
 }
