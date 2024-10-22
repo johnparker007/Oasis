@@ -17,5 +17,10 @@ namespace Oasis.NativeMenus
         {
             Editor.Instance.DisplayText = false;
         }
+
+        public void OnViewAddMameView()
+        {
+            Editor.Instance.ViewController.AddViewMame();
+        }
     }
 }

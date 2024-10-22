@@ -1461,7 +1461,7 @@ GameObject:
   - component: {fileID: 491618930}
   - component: {fileID: 491618929}
   m_Layer: 5
-  m_Name: MAME Export
+  m_Name: ViewMAME
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -4154,6 +4154,61 @@ MonoBehaviour:
   m_OnValueChanged:
     m_PersistentCalls:
       m_Calls: []
+--- !u!1 &992671415
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 992671417}
+  - component: {fileID: 992671416}
+  m_Layer: 0
+  m_Name: ViewController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &992671416
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 992671415}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 16bd30c2ac1c7ba48bfb09a9220371cf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  DynamicPanelsCanvas: {fileID: 647658036}
+  ViewBase: {fileID: 2038115444}
+  ViewMame: {fileID: 491618927}
+  BasePanelDefinition:
+    RectTransform: {fileID: 2038115445}
+    Label: Base
+    Icon: {fileID: 21300000, guid: f5d6265488be57f43b1bd1e30a52d7af, type: 3}
+  MamePanelDefinition:
+    RectTransform: {fileID: 491618928}
+    Label: MAME
+    Icon: {fileID: 21300000, guid: 7b9689cf77ed29f4d8577dfe49800ce4, type: 3}
+--- !u!4 &992671417
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 992671415}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1102551722
 GameObject:
   m_ObjectHideFlags: 0
@@ -6656,6 +6711,44 @@ MonoBehaviour:
               m_StringArgument: 
               m_BoolArgument: 0
             m_CallState: 2
+    - name: -----------
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls:
+          - m_Target: {fileID: 0}
+            m_TargetAssemblyTypeName: Oasis.NativeMenus.SelectionHandler, Assembly-CSharp
+            m_MethodName: 
+            m_Mode: 1
+            m_Arguments:
+              m_ObjectArgument: {fileID: 0}
+              m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+              m_IntArgument: 0
+              m_FloatArgument: 0
+              m_StringArgument: 
+              m_BoolArgument: 0
+            m_CallState: 2
+    - name: Add MAME View
+      menuItems: []
+      shortcut: 32
+      shortcutCombination: 0
+      action:
+        m_PersistentCalls:
+          m_Calls:
+          - m_Target: {fileID: 457364582}
+            m_TargetAssemblyTypeName: Oasis.NativeMenus.SelectionHandler, Assembly-CSharp
+            m_MethodName: OnViewAddMameView
+            m_Mode: 1
+            m_Arguments:
+              m_ObjectArgument: {fileID: 0}
+              m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+              m_IntArgument: 0
+              m_FloatArgument: 0
+              m_StringArgument: 
+              m_BoolArgument: 0
+            m_CallState: 2
   - name: Help
     menuItems:
     - name: Context Help
@@ -6672,7 +6765,7 @@ MonoBehaviour:
       action:
         m_PersistentCalls:
           m_Calls: []
-    - name: -----------
+    - name: ------------
       menuItems: []
       shortcut: 32
       shortcutCombination: 0
@@ -6686,7 +6779,7 @@ MonoBehaviour:
       action:
         m_PersistentCalls:
           m_Calls: []
-    - name: ------------
+    - name: -------------
       menuItems: []
       shortcut: 32
       shortcutCombination: 0
@@ -10058,6 +10151,7 @@ MonoBehaviour:
   SelectionController: {fileID: 1722651177}
   InspectorController: {fileID: 1199676143}
   FontManager: {fileID: 1972226907}
+  ViewController: {fileID: 992671416}
   ColorPicker: {fileID: 180061000}
   MameMpu4ChrSourceCodeLookup: {fileID: 1105341036}
   Preferences: {fileID: 237358547}
@@ -10989,3 +11083,4 @@ SceneRoots:
   - {fileID: 9114275199164060598}
   - {fileID: 552464027564956582}
   - {fileID: 1907701908}
+  - {fileID: 992671417}

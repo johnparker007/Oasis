@@ -71,7 +71,7 @@ using System.Linq;
                     }
 
                     // JP more hackiness from me, until I rip this system out and buil a better one:
-                    if(commandNameSeparatorFixed.Contains("-"))
+                    if (commandNameSeparatorFixed.Contains("-"))
                     {
                         //   priority:
                         //     The order to display the menu item in a menu. If a menu item has a priority value
