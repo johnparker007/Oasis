@@ -22,6 +22,7 @@ namespace Oasis
         public InspectorController InspectorController;
         public FontManager FontManager;
         public ViewController ViewController;
+        public TabController TabController;
         public ColorPicker ColorPicker;
         public MameMpu4ChrSourceCodeLookup MameMpu4ChrSourceCodeLookup;
         public Preferences Preferences;

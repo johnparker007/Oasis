@@ -3,6 +3,7 @@ using UnityEngine;
 using Oasis;
 using Oasis.Export;
 using Oasis.MAME;
+using Oasis.LayoutEditor;
 
 namespace Oasis.NativeMenus
 {
@@ -14,7 +15,7 @@ namespace Oasis.NativeMenus
 
         public void OnMfmeRemapLamps()
         {
-            Editor.Instance.UIController.ShowMfmeRemapLampsForm();
+            Editor.Instance.TabController.ShowTab(TabController.TabTypes.LampRemapper);
         }
     }
 }

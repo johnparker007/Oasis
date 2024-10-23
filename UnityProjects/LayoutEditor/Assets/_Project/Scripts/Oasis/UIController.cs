@@ -25,11 +25,6 @@ namespace Oasis
             RuntimeHierarchy.ConnectedInspector.ComponentFilter -= InspectorComponentFilter;
         }
 
-        public void ShowMfmeRemapLampsForm()
-        {
-            // TODO
-        }
-
         private void InspectorComponentFilter(GameObject gameObject, List<Component> components)
         {
             // JP strip out Transform as we don't want that shown on any of our LayoutEditor objects
