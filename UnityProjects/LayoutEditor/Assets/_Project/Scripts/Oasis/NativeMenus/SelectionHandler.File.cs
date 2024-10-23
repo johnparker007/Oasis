@@ -10,12 +10,12 @@ namespace Oasis.NativeMenus
     {
         public void OnFileNew()
         {
-
+            Debug.LogWarning("Not yet implemented!");
         }
 
         public void OnFileOpen()
         {
-
+            Debug.LogWarning("Not yet implemented!");
         }
 
         public void OnFileSave()
@@ -26,7 +26,7 @@ namespace Oasis.NativeMenus
 
         public void OnFileSaveAs()
         {
-
+            Debug.LogWarning("Not yet implemented!");
         }
 
         public void OnFileImportMfme()
@@ -50,12 +50,15 @@ namespace Oasis.NativeMenus
 
         public void OnFileClose()
         {
-
+            Debug.LogWarning("Not yet implemented!");
         }
 
         public void OnFileExit()
         {
-            
+            // TODO - block exit if project has unsaved changes
+            // also - logic to be placed in a project closing handler, which will trigger same modal dialog
+            // if there are unsaved changes on opening new project, creating new project, closing project etc.
+            Application.Quit();
         }
     }
 }
