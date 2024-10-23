@@ -47,6 +47,16 @@ namespace Oasis.Utility
             }
         }
 
+        public override void OnScroll(PointerEventData data)
+        {
+            // JP fix for longstanding Unity bug where horizontal scrolling is reversed:
+            Vector2 scrollDelta = data.scrollDelta;
+            scrollDelta.x *= -1f;
+            data.scrollDelta = scrollDelta; 
+
+            base.OnScroll(data);
+        }
+
     }
 
 }
