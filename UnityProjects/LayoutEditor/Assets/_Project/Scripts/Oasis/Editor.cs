@@ -35,9 +35,6 @@ namespace Oasis
         public EditorComponentAlpha14 EditorComponentAlpha14Prefab;
         public EditorComponentOverlay EditorComponentOverlayPrefab;
 
-        public EditorPanel EditorPanelViewBase;
-        public EditorPanel EditorPanelFull;
-
         public ProjectData Project
         {
             get;

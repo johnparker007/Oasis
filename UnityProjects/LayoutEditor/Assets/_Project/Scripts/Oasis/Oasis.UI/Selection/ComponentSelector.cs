@@ -21,7 +21,7 @@ namespace Oasis.UI.Selection
 
             // TOIMPROVE this will change when we get rid of the old RuntimeHierarchy/pseudo-scene stuff and
             // roll our own.  Then we'll be able to get the list of all EditorComponents in the view.
-            List<Layout.Component> components = Editor.Instance.Project.Layout.MfmeImportView.Data.Components;
+            List<Layout.Component> components = Editor.Instance.Project.Layout.BaseView.Data.Components;
             foreach(Layout.Component component in components)
             {
                 bool insideSelectionRectangle = IsEditorComponentInsideSelectionRectangle(component);

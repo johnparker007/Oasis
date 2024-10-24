@@ -22,5 +22,10 @@ namespace Oasis.NativeMenus
         {
             Editor.Instance.ViewController.AddViewMame();
         }
+
+        public void OnViewRebuildMameView()
+        {
+            Editor.Instance.ViewController.RebuildViewMame();
+        }
     }
 }

@@ -20,8 +20,6 @@ namespace Oasis
     
     public class LayoutObject : MonoBehaviour, SerializableDictionary
     {
-        public static readonly string kMfmeViewName = "MFME Import";
-
         // the data to be loaded/saved goes in this data class:
         [System.Serializable]
         public class LayoutData
@@ -50,11 +48,11 @@ namespace Oasis
 
         public UnityEvent<Component, View> OnAddComponent = new();
 
-        public View MfmeImportView
+        public View BaseView
         {
             get
             {
-                return GetView(kMfmeViewName);
+                return GetView(ViewController.kBaseViewName);
             }
         }
 
@@ -118,7 +116,7 @@ namespace Oasis
 
         public void RemapLamps(string[] mfmeLampTable, string[] mameLampTable)
         {
-            MfmeImportView.RemapLamps(mfmeLampTable, mameLampTable);
+            BaseView.RemapLamps(mfmeLampTable, mameLampTable);
         }
     }
 }

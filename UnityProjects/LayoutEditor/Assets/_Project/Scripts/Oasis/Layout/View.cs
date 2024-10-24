@@ -65,6 +65,14 @@ namespace Oasis.Layout
             }
         }
 
+        public EditorView EditorView
+        {
+            get
+            {
+                return ViewController.GetEditorView(Name);
+            }
+        }
+
         public void Initialise(string name)
         {
             Name = name;
@@ -96,6 +104,7 @@ namespace Oasis.Layout
                 editorComponent = AddComponentAlpha((ComponentAlpha)component);
             }
 
+            // TODO this will most/all be removed fully when the new Hierarchy implementation is done
             if (editorComponent != null)
             {
                 //LayoutEditor.UIController.RuntimeHierarchy.AddToPseudoScene(
@@ -103,8 +112,9 @@ namespace Oasis.Layout
 
                 //editorComponent.gameObject.name = editorComponent.HierarchyName;
 
-                Editor.Instance.UIController.RuntimeHierarchy.AddToPseudoScene(
-                    editorComponent.HierarchyPseudoSceneName, component.transform);
+                
+                //Editor.Instance.UIController.RuntimeHierarchy.AddToPseudoScene(
+                //    editorComponent.HierarchyPseudoSceneName, component.transform);
 
                 component.gameObject.name = editorComponent.HierarchyName;
             }
@@ -145,12 +155,13 @@ namespace Oasis.Layout
         {
             EditorComponentBackground editorComponentBackground = Instantiate(
                 Editor.Instance.EditorComponentBackgroundPrefab,
-                Editor.Instance.UIController.EditorCanvasGameObject.transform);
+                //Editor.Instance.UIController.EditorCanvasGameObject.transform);
+                EditorView.GraphicRaycaster.transform);
 
             editorComponentBackground.Initialise(component);
 
             // JP quick hack for now:
-            RectTransform editorCanvasRectTransform = Editor.Instance.UIController.EditorCanvasGameObject.GetComponent<RectTransform>();
+            RectTransform editorCanvasRectTransform = EditorView.GraphicRaycaster.GetComponent<RectTransform>();
             editorCanvasRectTransform.sizeDelta = new Vector2(component.Size.x, component.Size.y);
 
             return editorComponentBackground;
@@ -160,7 +171,7 @@ namespace Oasis.Layout
         {
             EditorComponentLamp editorComponentLamp = Instantiate(
                 Editor.Instance.EditorComponentLampPrefab,
-                Editor.Instance.UIController.EditorCanvasGameObject.transform);
+                EditorView.GraphicRaycaster.transform);
 
             editorComponentLamp.Initialise(component);
 
@@ -174,7 +185,7 @@ namespace Oasis.Layout
             {
                 EditorComponentOverlay editorComponentOverlay = Instantiate(
                     Editor.Instance.EditorComponentOverlayPrefab,
-                    Editor.Instance.UIController.EditorCanvasGameObject.transform);
+                    EditorView.GraphicRaycaster.transform);
 
                 editorComponent = editorComponentOverlay;
 
@@ -184,7 +195,7 @@ namespace Oasis.Layout
             {
                 EditorComponentReel editorComponentReel = Instantiate(
                     Editor.Instance.EditorComponentReelPrefab,
-                    Editor.Instance.UIController.EditorCanvasGameObject.transform);
+                    EditorView.GraphicRaycaster.transform);
 
                 editorComponent = editorComponentReel;
 
@@ -203,7 +214,7 @@ namespace Oasis.Layout
         {
             EditorComponent7Segment editorComponent7Segment = Instantiate(
                 Editor.Instance.EditorComponentSevenSegmentPrefab,
-                Editor.Instance.UIController.EditorCanvasGameObject.transform);
+                EditorView.GraphicRaycaster.transform);
 
             editorComponent7Segment.Initialise(component);
 
@@ -222,7 +233,7 @@ namespace Oasis.Layout
                 case MAME.MameController.PlatformType.Scorpion4:
                     EditorComponentAlpha14 editorComponentAlpha14 = Instantiate(
                         Editor.Instance.EditorComponentAlpha14Prefab,
-                        Editor.Instance.UIController.EditorCanvasGameObject.transform);
+                        EditorView.GraphicRaycaster.transform);
 
                     editorComponent = editorComponentAlpha14;
 
@@ -232,7 +243,7 @@ namespace Oasis.Layout
                 default:
                     EditorComponentAlpha editorComponentAlpha16 = Instantiate(
                         Editor.Instance.EditorComponentAlphaPrefab,
-                        Editor.Instance.UIController.EditorCanvasGameObject.transform);
+                        EditorView.GraphicRaycaster.transform);
 
                     editorComponent = editorComponentAlpha16;
 

@@ -9,6 +9,8 @@ namespace Oasis.LayoutEditor
 {
     public class EditorView : MonoBehaviour, IPointerClickHandler
     {
+        public string ViewName;
+
         public GraphicRaycaster GraphicRaycaster;
 
         public UnityEvent<List<EditorComponent>> OnPointerClickEvent;

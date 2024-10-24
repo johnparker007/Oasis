@@ -27,8 +27,6 @@ namespace Oasis.LayoutEditor
             public RectTransform RectTransform;
         }
 
-        public DynamicPanelsCanvas DynamicPanelsCanvas;
-
         public List<TabDefinition> TabDefinitions;
 
 
@@ -47,7 +45,9 @@ namespace Oasis.LayoutEditor
 
         private PanelTab CreatePanelTab(TabDefinition tabDefinition)
         {
-            Panel panel = PanelUtils.CreatePanelFor(tabDefinition.RectTransform, DynamicPanelsCanvas);
+            DynamicPanelsCanvas dynamicPanelsCanvas = Editor.Instance.UIController.DynamicPanelsCanvas;
+
+            Panel panel = PanelUtils.CreatePanelFor(tabDefinition.RectTransform, dynamicPanelsCanvas);
             PanelTab panelTab = panel[0];
             panelTab.Icon = tabDefinition.Icon;
             panelTab.Label = tabDefinition.Label;
