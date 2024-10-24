@@ -130,7 +130,7 @@ namespace Oasis
         }
 
         // JP Placeholder until Component base no longer derived from Monobehaviour:
-        private void OnLayoutAddComponent(Layout.Component component, View view)
+        private void OnLayoutAddComponent(Layout.Component component, View view, bool overlay)
         {
             // fake call constructor, until we have standard c# constructor/destructor
             component.ConstructorPlaceholder();

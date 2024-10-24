@@ -4420,7 +4420,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ViewName: 
-  GraphicRaycaster: {fileID: 0}
+  Content: {fileID: 0}
   OnPointerClickEvent:
     m_PersistentCalls:
       m_Calls: []

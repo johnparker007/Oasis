@@ -718,7 +718,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cac22a9eaa649c140a170753cf8934eb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  GraphicRaycaster: {fileID: 8997981079497652513}
+  ViewName: 
+  Content: {fileID: 8997981079497652513}
   OnPointerClickEvent:
     m_PersistentCalls:
       m_Calls: []

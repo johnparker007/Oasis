@@ -48,7 +48,7 @@ namespace Oasis.LayoutEditor
             Debug.LogError("Before: baseView.Data.Components.Count == " + baseView.Data.Components.Count);
             Debug.LogError("Before: mameView.Data.Components.Count == " + mameView.Data.Components.Count);
             
-            // TODO clear all mameView components before rebuild
+            // TODO clear all mameView components and associated EditorComponents before rebuild
             foreach(Layout.Component component in baseView.Data.Components)
             {
                 // TODO deep clone all components, maybe after remove Monobehaviour stuff
