@@ -47,7 +47,7 @@ namespace Oasis.Layout
         public class ViewData
         {
             public string Name;
-            public ViewQuad ViewQuad;
+            public ViewQuad ViewQuad = new ViewQuad();
             public List<Component> Components = new List<Component>();
         }
 
@@ -78,6 +78,18 @@ namespace Oasis.Layout
         public void Initialise(string name)
         {
             Name = name;
+
+            // TODO - this is just a workaround hack for testing for now!!!
+            const int kDEBUGLeft = 0;
+            const int kDEBUGRight = 500;
+            const int kDEBUGTop = 0;
+            const int kDEBUGBottom = 500;
+
+            Data.ViewQuad.Points[(int)ViewQuad.PointTypes.TopLeft] = new Vector2(kDEBUGLeft, kDEBUGTop);
+            Data.ViewQuad.Points[(int)ViewQuad.PointTypes.TopRight] = new Vector2(kDEBUGRight, kDEBUGTop);
+            Data.ViewQuad.Points[(int)ViewQuad.PointTypes.BottomLeft] = new Vector2(kDEBUGLeft, kDEBUGBottom);
+            Data.ViewQuad.Points[(int)ViewQuad.PointTypes.BottomRight] = new Vector2(kDEBUGRight, kDEBUGBottom);
+
 
             // TOIMPROVE - need a better way of doing this rather than the View controlling the EditorView:
             EditorView.Initialise();

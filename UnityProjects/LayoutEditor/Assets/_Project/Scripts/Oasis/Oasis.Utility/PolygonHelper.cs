@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace Oasis.Uility
@@ -24,6 +25,11 @@ namespace Oasis.Uility
             }
 
             return inside;
+        }
+
+        public static bool IsPointInPolygon(Vector2 point, Vector2[] polygonPoints)
+        {
+            return IsPointInPolygon(point, polygonPoints.ToList());
         }
     }
 }

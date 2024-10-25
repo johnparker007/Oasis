@@ -64,6 +64,39 @@ namespace Oasis.Layout
             set { _fontSize = value; OnValueSetInvoke(); }
         }
 
+        // TOIMPROVE: this could be done better, perhaps with some kind of 'OasisRect' or standard Rect
+        public Vector2 PointTopLeft
+        {
+            get
+            {
+                return new Vector2(Position.x, Position.y);
+            }
+        }
+
+        public Vector2 PointTopRight
+        {
+            get
+            {
+                return new Vector2(Position.x + Size.x, Position.y);
+            }
+        }
+
+        public Vector2 PointBottomLeft
+        {
+            get
+            {
+                return new Vector2(Position.x, Position.y + Size.y);
+            }
+        }
+
+        public Vector2 PointBottomRight
+        {
+            get
+            {
+                return new Vector2(Position.x + Size.x, Position.y + Size.y);
+            }
+        }
+
         public static string GetComponentKey(Dictionary<string, object> data) {
                 object n, g;
                 data.TryGetValue("name", out n);
