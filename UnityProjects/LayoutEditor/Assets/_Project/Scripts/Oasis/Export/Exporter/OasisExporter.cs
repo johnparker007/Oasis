@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Newtonsoft.Json;
 using Oasis.Project;
 using Oasis.Common;
+using Oasis.FileOperations;
 
 namespace Oasis.Export 
 {

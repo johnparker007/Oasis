@@ -126,7 +126,6 @@ namespace Oasis.Layout
 
             foreach (string k in representation.Keys) 
             {
-                int currentValue;
                 switch (k)
                 {
                     case "guid":
@@ -145,24 +144,19 @@ namespace Oasis.Layout
                         _fontStyle = (string)representation[k];
                         break;
                     case "fontsize":
-                        int.TryParse((string)representation[k], out currentValue);
-                        _fontSize = currentValue;
+                        _fontSize = (int)representation[k];
                         break;
                     case "x":
-                        int.TryParse((string)representation[k], out currentValue);
-                        _position.x = currentValue;
+                        _position.x = (int)representation[k];
                         break;
                     case "y":
-                        int.TryParse((string)representation[k], out currentValue);
-                        _position.y = currentValue;
+                        _position.y = (int)representation[k];
                         break;
                     case "width":
-                        int.TryParse((string)representation[k], out currentValue);
-                        _size.x = currentValue;
+                        _size.x = (int)representation[k];
                         break;
                     case "height":
-                        int.TryParse((string)representation[k], out currentValue);
-                        _size.y = currentValue;
+                        _size.y = (int)representation[k];
                         break;
                 }
             }

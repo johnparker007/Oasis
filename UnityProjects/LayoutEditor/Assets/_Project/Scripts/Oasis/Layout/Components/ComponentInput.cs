@@ -38,16 +38,16 @@ namespace Oasis.Layout
                 switch (field.Key)
                 {
                     case "enabled":
-                        Input.Enabled = (string)field.Value == "true";
+                        Input.Enabled = (bool) field.Value;
                         break;
                     case "inverted":
-                        Input.Inverted = (string)field.Value == "true";
+                        Input.Inverted = (bool) field.Value;
                         break;
                     case "key_code":
-                        Enum.TryParse((string)field.Value, out Input.KeyCode);
+                        Input.KeyCode = (KeyCode) Enum.Parse(typeof(KeyCode), (string)field.Value) ;
                         break;
                     case "button_number":
-                        int.TryParse((string)field.Value, out Input.ButtonNumber);
+                        Input.ButtonNumber = (int)field.Value;
                         break;
                 }
             }

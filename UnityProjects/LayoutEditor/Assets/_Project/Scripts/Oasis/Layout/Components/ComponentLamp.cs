@@ -1,6 +1,5 @@
 using Oasis.Graphics;
 using System.Collections.Generic;
-using System;
 using UnityEngine;
 
 namespace Oasis.Layout
@@ -53,30 +52,38 @@ namespace Oasis.Layout
             {
                 return;
             }
-
+            Color color;
             foreach (KeyValuePair<string, object> field in representation) 
             {
                 switch(field.Key) 
                 {
                     case "number":
-                        int.TryParse((string)field.Value, out int number);
-                        _number = number;
-                        break;
-                    case "onColor":
-                        // TODO implement Color encode/decode text format
-                        Debug.LogWarning("TODO implement Color encode/decode text format");
-                        break;
-                    case "offColor":
-                        // TODO implement Color encode/decode text format
-                        Debug.LogWarning("TODO implement Color encode/decode text format");
-                        break;
-                    case "textColor":
-                        // TODO implement Color encode/decode text format
-                        Debug.LogWarning("TODO implement Color encode/decode text format");
+                        Number = null;
+                        if (field.Value != null) {
+                            Number = (int)field.Value;
+                        }
                         break;
                     case "outline":
-                        _outline = (string)field.Value == "true";
+                        Outline = (bool)field.Value;
+                        break;   
+                    case "on_color":
+                        if (ColorUtility.TryParseHtmlString((string)field.Value, out color))
+                            OnColor = color;
                         break;
+                    case "off_color":
+                        if (ColorUtility.TryParseHtmlString((string)field.Value, out color))
+                            OffColor = color;
+                        break;
+                    case "text_color":
+                        if (ColorUtility.TryParseHtmlString((string)field.Value, out color))
+                            TextColor = color;
+                        break;
+                    case "file_path":
+                        if (field.Value != null) {
+                            OasisImage = ImageOperations.LoadFromPng(string.Format("e:\\SavedLayout\\{0}", (string)field.Value));
+                        }
+                        break;
+                    
                 }
             }
         }
