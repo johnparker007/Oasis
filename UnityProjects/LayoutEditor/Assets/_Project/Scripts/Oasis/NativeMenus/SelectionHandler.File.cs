@@ -23,6 +23,8 @@ namespace Oasis.NativeMenus
         {
             OasisExporter exporter = new OasisExporter(new FileSystemWrapper(), new ProjectSettingsValidator(), new LayoutValidator());
             exporter.Export(Editor.Instance.Project, string.Format("e:\\SavedLayout\\{0}.json", Editor.Instance.Project.Settings.Mame.RomName));
+            Oasis.Import.Importer importer = new Oasis.Import.Importer();
+            Editor.Instance.Project = importer.Import(string.Format("e:\\SavedLayout\\{0}.json", Editor.Instance.Project.Settings.Mame.RomName));
         }
 
         public void OnFileSaveAs()
