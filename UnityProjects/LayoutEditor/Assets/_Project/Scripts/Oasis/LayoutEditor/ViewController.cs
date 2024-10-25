@@ -35,7 +35,21 @@ namespace Oasis.LayoutEditor
         public void AddViewMame()
         {
             ViewMamePanelTab = Editor.Instance.TabController.ShowTab(TabController.TabTypes.MameView);
-            Editor.Instance.Project.Layout.AddView(kMameViewName);
+            View viewMame = Editor.Instance.Project.Layout.AddView(kMameViewName);
+
+            // for now initialise MAME view quad as the size of the Base view background
+            // TOIMPROVE - potentially... can the Base view not have a background, or are we
+            // always forcing that as a required component on a new Base view?
+            View viewBase = Editor.Instance.Project.Layout.BaseView;
+
+            ComponentBackground baseBackground =
+                (ComponentBackground)viewBase.Data.Components.Find(x => x.GetType() == typeof(ComponentBackground));
+
+            viewMame.SetViewQuadRectangle(
+                baseBackground.Position.y,
+                baseBackground.Position.x,
+                baseBackground.Position.y + baseBackground.Size.y,
+                baseBackground.Position.x + baseBackground.Size.x);
         }
 
         public void RebuildViewMame()

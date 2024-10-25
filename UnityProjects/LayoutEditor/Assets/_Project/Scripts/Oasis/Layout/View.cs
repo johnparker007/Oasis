@@ -79,20 +79,16 @@ namespace Oasis.Layout
         {
             Name = name;
 
-            // TODO - this is just a workaround hack for testing for now!!!
-            const int kDEBUGLeft = 0;
-            const int kDEBUGRight = 500;
-            const int kDEBUGTop = 0;
-            const int kDEBUGBottom = 500;
-
-            Data.ViewQuad.Points[(int)ViewQuad.PointTypes.TopLeft] = new Vector2(kDEBUGLeft, kDEBUGTop);
-            Data.ViewQuad.Points[(int)ViewQuad.PointTypes.TopRight] = new Vector2(kDEBUGRight, kDEBUGTop);
-            Data.ViewQuad.Points[(int)ViewQuad.PointTypes.BottomRight] = new Vector2(kDEBUGRight, kDEBUGBottom);
-            Data.ViewQuad.Points[(int)ViewQuad.PointTypes.BottomLeft] = new Vector2(kDEBUGLeft, kDEBUGBottom);
-
-
             // TOIMPROVE - need a better way of doing this rather than the View controlling the EditorView:
             EditorView.Initialise();
+        }
+
+        public void SetViewQuadRectangle(float top, float left, float bottom, float right)
+        {
+            Data.ViewQuad.Points[(int)ViewQuad.PointTypes.TopLeft] = new Vector2(left, top);
+            Data.ViewQuad.Points[(int)ViewQuad.PointTypes.TopRight] = new Vector2(right, top);
+            Data.ViewQuad.Points[(int)ViewQuad.PointTypes.BottomRight] = new Vector2(right, bottom);
+            Data.ViewQuad.Points[(int)ViewQuad.PointTypes.BottomLeft] = new Vector2(left, bottom);
         }
 
         public void AddComponent(Component component, bool overlay = false)
