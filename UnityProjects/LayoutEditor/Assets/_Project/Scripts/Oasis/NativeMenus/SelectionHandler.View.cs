@@ -27,5 +27,15 @@ namespace Oasis.NativeMenus
         {
             Editor.Instance.ViewController.RebuildViewMame();
         }
+
+        public void OnViewShowBaseViewQuads()
+        {
+            Editor.Instance.ViewController.SetBaseViewQuadsActive(true);
+        }
+
+        public void OnViewHideBaseViewQuads()
+        {
+            Editor.Instance.ViewController.SetBaseViewQuadsActive(false);
+        }
     }
 }

@@ -56,11 +56,18 @@ namespace Oasis.LayoutEditor
                 mameView.AddComponent(component);
             }
 
-            // TODO target has more components than source!
+            // TODO target has more components than source! (prob reel overlays which
+            // will be removed when background alpha baking is done)
 
             Debug.LogError("After: baseView.Data.Components.Count == " + baseView.Data.Components.Count);
             Debug.LogError("After: mameView.Data.Components.Count == " + mameView.Data.Components.Count);
         }
+
+        public void SetBaseViewQuadsActive(bool active)
+        {
+            // TODO
+        }
+            
 
     }
 

@@ -2,6 +2,7 @@ using Oasis.LayoutEditor;
 using Oasis.LayoutEditor.Tools;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.Events;
 using EditorComponent = Oasis.LayoutEditor.EditorComponent;
@@ -46,6 +47,7 @@ namespace Oasis.Layout
         public class ViewData
         {
             public string Name;
+            public ViewQuad ViewQuad;
             public List<Component> Components = new List<Component>();
         }
 
@@ -87,6 +89,32 @@ namespace Oasis.Layout
 
             Editor.Instance.Project.Layout.OnAddComponent?.Invoke(component, this, overlay);
             OnChanged?.Invoke();
+        }
+
+        public void RemoveComponent(Component component)
+        {
+            Data.Components.Remove(component);
+
+            Editor.Instance.Project.Layout.OnRemoveComponent?.Invoke(component, this);
+            OnChanged?.Invoke();
+        }
+
+        public void RemoveComponents(List<Component> components)
+        {
+            foreach(Component component in components)
+            {
+                RemoveComponent(component);
+            }
+        }
+
+        public void RemoveComponents(Component[] components)
+        {
+            RemoveComponents(components.ToList());
+        }
+
+        public void RemoveAllComponents()
+        {
+            RemoveComponents(Data.Components);
         }
 
         public Component GetComponentByGuid(string guid)

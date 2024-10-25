@@ -47,6 +47,7 @@ namespace Oasis
         public LayoutData Data = new LayoutData();
 
         public UnityEvent<Component, View, bool> OnAddComponent = new();
+        public UnityEvent<Component, View> OnRemoveComponent = new();
 
         public View BaseView
         {

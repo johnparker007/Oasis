@@ -464,42 +464,62 @@ public static class NativeMenuBar_AutoGen
     {
         return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "View/Rebuild MAME View").IsInteractable;
     }
-    [UnityEditor.MenuItem("NativeMenuBar/Help/Context Help", priority = 155)]
+    [UnityEditor.MenuItem("NativeMenuBar/View/Show Base ViewQuads", priority = 165)]
+    private static void ViewShowBaseViewQuads()
+    {
+        menubar.MenuItems.Single(item => item.FullPath == "View/Show Base ViewQuads").Action.Invoke();
+    }
+    [UnityEditor.MenuItem("NativeMenuBar/View/Show Base ViewQuads", true, 165)]
+    private static bool ViewShowBaseViewQuadsValidate()
+    {
+        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "View/Show Base ViewQuads").IsInteractable;
+    }
+    [UnityEditor.MenuItem("NativeMenuBar/View/Hide Base ViewQuads", priority = 166)]
+    private static void ViewHideBaseViewQuads()
+    {
+        menubar.MenuItems.Single(item => item.FullPath == "View/Hide Base ViewQuads").Action.Invoke();
+    }
+    [UnityEditor.MenuItem("NativeMenuBar/View/Hide Base ViewQuads", true, 166)]
+    private static bool ViewHideBaseViewQuadsValidate()
+    {
+        return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "View/Hide Base ViewQuads").IsInteractable;
+    }
+    [UnityEditor.MenuItem("NativeMenuBar/Help/Context Help", priority = 167)]
     private static void HelpContextHelp()
     {
         menubar.MenuItems.Single(item => item.FullPath == "Help/Context Help").Action.Invoke();
     }
-    [UnityEditor.MenuItem("NativeMenuBar/Help/Context Help", true, 155)]
+    [UnityEditor.MenuItem("NativeMenuBar/Help/Context Help", true, 167)]
     private static bool HelpContextHelpValidate()
     {
         return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Help/Context Help").IsInteractable;
     }
-    [UnityEditor.MenuItem("NativeMenuBar/Help/Manual", priority = 156)]
+    [UnityEditor.MenuItem("NativeMenuBar/Help/Manual", priority = 168)]
     private static void HelpManual()
     {
         menubar.MenuItems.Single(item => item.FullPath == "Help/Manual").Action.Invoke();
     }
-    [UnityEditor.MenuItem("NativeMenuBar/Help/Manual", true, 156)]
+    [UnityEditor.MenuItem("NativeMenuBar/Help/Manual", true, 168)]
     private static bool HelpManualValidate()
     {
         return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Help/Manual").IsInteractable;
     }
-    [UnityEditor.MenuItem("NativeMenuBar/Help/Check For Updates", priority = 167)]
+    [UnityEditor.MenuItem("NativeMenuBar/Help/Check For Updates", priority = 179)]
     private static void HelpCheckForUpdates()
     {
         menubar.MenuItems.Single(item => item.FullPath == "Help/Check For Updates").Action.Invoke();
     }
-    [UnityEditor.MenuItem("NativeMenuBar/Help/Check For Updates", true, 167)]
+    [UnityEditor.MenuItem("NativeMenuBar/Help/Check For Updates", true, 179)]
     private static bool HelpCheckForUpdatesValidate()
     {
         return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Help/Check For Updates").IsInteractable;
     }
-    [UnityEditor.MenuItem("NativeMenuBar/Help/About", priority = 178)]
+    [UnityEditor.MenuItem("NativeMenuBar/Help/About", priority = 190)]
     private static void HelpAbout()
     {
         menubar.MenuItems.Single(item => item.FullPath == "Help/About").Action.Invoke();
     }
-    [UnityEditor.MenuItem("NativeMenuBar/Help/About", true, 178)]
+    [UnityEditor.MenuItem("NativeMenuBar/Help/About", true, 190)]
     private static bool HelpAboutValidate()
     {
         return UnityEngine.Application.isPlaying && menubar.MenuItems.Single(item => item.FullPath == "Help/About").IsInteractable;
