@@ -54,15 +54,13 @@ namespace Oasis.LayoutEditor
                 // TODO deep clone all components, maybe after remove Monobehaviour stuff
 
                 // TOIMPROVE - this all wants refactoring into some kind of OasisRect system:
-                // TOIMPROVE this is a crude approach for now, any components that have one or more corners outside are skipped
-                if (!mameView.Data.ViewQuad.ContainsAllPoints(
+                if (!mameView.Data.ViewQuad.ContainsAnyPoint(
                     component.PointTopLeft, 
                     component.PointTopRight, 
                     component.PointBottomLeft, 
                     component.PointBottomRight))
                 {
-                    // TODO seems to be issue with ContainsAllPoints
-                    //continue;
+                    continue;
                 }
 
                 mameView.AddComponent(component);

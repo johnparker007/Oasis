@@ -10,8 +10,8 @@ namespace Oasis.Layout
         {
             TopLeft,
             TopRight,
-            BottomLeft,
-            BottomRight
+            BottomRight,
+            BottomLeft
         }
 
         public Vector2[] Points = new Vector2[Enum.GetValues(typeof(PointTypes)).Length];

@@ -87,8 +87,8 @@ namespace Oasis.Layout
 
             Data.ViewQuad.Points[(int)ViewQuad.PointTypes.TopLeft] = new Vector2(kDEBUGLeft, kDEBUGTop);
             Data.ViewQuad.Points[(int)ViewQuad.PointTypes.TopRight] = new Vector2(kDEBUGRight, kDEBUGTop);
-            Data.ViewQuad.Points[(int)ViewQuad.PointTypes.BottomLeft] = new Vector2(kDEBUGLeft, kDEBUGBottom);
             Data.ViewQuad.Points[(int)ViewQuad.PointTypes.BottomRight] = new Vector2(kDEBUGRight, kDEBUGBottom);
+            Data.ViewQuad.Points[(int)ViewQuad.PointTypes.BottomLeft] = new Vector2(kDEBUGLeft, kDEBUGBottom);
 
 
             // TOIMPROVE - need a better way of doing this rather than the View controlling the EditorView:
