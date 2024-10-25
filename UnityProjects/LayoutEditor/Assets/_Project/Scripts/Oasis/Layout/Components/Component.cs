@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Oasis.Layout
 {
-    public abstract class Component : MonoBehaviour, SerializableDictionary
+    public abstract class Component : SerializableDictionary
     {
         public delegate void OnValueSetDelegate(Component component);
         public event OnValueSetDelegate OnValueSet;

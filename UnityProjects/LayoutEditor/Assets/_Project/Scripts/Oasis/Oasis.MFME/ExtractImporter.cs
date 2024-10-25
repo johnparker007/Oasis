@@ -102,7 +102,7 @@ namespace Oasis.MFME
         private void ImportLamp(ExtractComponentLamp extractComponentLamp)
         {
             GameObject componentLampGameObject = new GameObject();
-            ComponentLamp componentLamp = (ComponentLamp)componentLampGameObject.AddComponent(typeof(ComponentLamp));
+            ComponentLamp componentLamp = new ComponentLamp();
             componentLampGameObject.transform.SetParent(_baseView.transform);
 
             componentLamp.Position = new UnityEngine.Vector2Int(
@@ -192,7 +192,7 @@ namespace Oasis.MFME
         private void ImportCheckbox(ExtractComponentCheckbox extractComponentCheckbox)
         {
             GameObject componentSwitchGameObject = new GameObject();
-            ComponentSwitch componentSwitch = (ComponentSwitch)componentSwitchGameObject.AddComponent(typeof(ComponentSwitch));
+            ComponentSwitch componentSwitch = new ComponentSwitch();
             componentSwitchGameObject.transform.SetParent(_baseView.transform);
 
             componentSwitch.Input.Enabled = true;
@@ -213,7 +213,7 @@ namespace Oasis.MFME
         private void ImportReel(ExtractComponentReel extractComponentReel)
         {
             GameObject componentReelGameObject = new GameObject();
-            ComponentReel componentReel = (ComponentReel)componentReelGameObject.AddComponent(typeof(ComponentReel));
+            ComponentReel componentReel = new ComponentReel();
             componentReelGameObject.transform.SetParent(_baseView.transform);
 
             componentReel.Position = new UnityEngine.Vector2Int(
@@ -273,8 +273,7 @@ namespace Oasis.MFME
         private void ImportBackground(ExtractComponentBackground extractComponentBackground)
         {
             GameObject componentBackgroundGameObject = new GameObject();
-            ComponentBackground componentBackground =
-                (ComponentBackground)componentBackgroundGameObject.AddComponent(typeof(ComponentBackground));
+            ComponentBackground componentBackground = new ComponentBackground();
 
             componentBackgroundGameObject.transform.SetParent(_baseView.transform);
 
@@ -303,8 +302,7 @@ namespace Oasis.MFME
         private void ImportSevenSegment(ExtractComponentSevenSegment extractComponentSevenSegment)
         {
             GameObject component7SegmentGameObject = new GameObject();
-            Component7Segment component7Segment =
-                (Component7Segment)component7SegmentGameObject.AddComponent(typeof(Component7Segment));
+            Component7Segment component7Segment = new Component7Segment();
 
             component7SegmentGameObject.transform.SetParent(_baseView.transform);
 
@@ -331,8 +329,7 @@ namespace Oasis.MFME
         private void ImportAlpha(ExtractComponentAlpha extractComponentAlpha)
         {
             GameObject componentAlphaGameObject = new GameObject();
-            ComponentAlpha componentAlpha =
-                (ComponentAlpha)componentAlphaGameObject.AddComponent(typeof(ComponentAlpha));
+            ComponentAlpha componentAlpha = new ComponentAlpha();
 
             componentAlphaGameObject.transform.SetParent(_baseView.transform);
 
@@ -354,8 +351,7 @@ namespace Oasis.MFME
         private void ImportAlphaNew(ExtractComponentAlphaNew extractComponentAlphaNew)
         {
             GameObject componentAlphaGameObject = new GameObject();
-            ComponentAlpha componentAlpha =
-                (ComponentAlpha)componentAlphaGameObject.AddComponent(typeof(ComponentAlpha));
+            ComponentAlpha componentAlpha = new ComponentAlpha();
 
             componentAlphaGameObject.transform.SetParent(_baseView.transform);
 
@@ -382,8 +378,7 @@ namespace Oasis.MFME
 
 // ******* TEMP CODE JUST TO GET A FUNCTIONAL ALPHA WORKING ***
 GameObject componentAlphaGameObject = new GameObject();
-ComponentAlpha componentAlpha =
-    (ComponentAlpha)componentAlphaGameObject.AddComponent(typeof(ComponentAlpha));
+ComponentAlpha componentAlpha = new ComponentAlpha();
 
 componentAlphaGameObject.transform.SetParent(_baseView.transform);
 

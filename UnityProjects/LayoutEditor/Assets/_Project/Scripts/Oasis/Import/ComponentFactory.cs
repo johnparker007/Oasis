@@ -11,21 +11,22 @@ namespace Oasis.Import
         /// </summary>
         /// <param name="componentType">A string representing the type of component to be created</param>
         /// <returns>A Component of the desired type or an ImportParseException if not found.</returns>
-        public static Oasis.Layout.Component Create(string componentType)
+        public static Layout.Component Create(string componentType)
         {
-            GameObject gameObject = new GameObject();
-            Oasis.Layout.Component component;
-            switch(componentType) {
-                case "ComponentBackground": return (ComponentBackground)gameObject.AddComponent(typeof(ComponentBackground));
-                case "ComponentLamp": return (ComponentLamp)gameObject.AddComponent(typeof(ComponentLamp));
-                case "Component7Segment": return (Component7Segment)gameObject.AddComponent(typeof(Component7Segment));
-                case "Component14Segment": return (Component14Segment)gameObject.AddComponent(typeof(Component14Segment));
-                case "Component16Segment": return (Component16Segment)gameObject.AddComponent(typeof(Component16Segment));
-                case "ComponentAlpha": return (ComponentAlpha)gameObject.AddComponent(typeof(ComponentAlpha));
-                case "ComponentReel": return (ComponentReel)gameObject.AddComponent(typeof(ComponentReel));
-                case "ComponentSwitch": return (ComponentSwitch)gameObject.AddComponent(typeof(ComponentSwitch));  
+            switch (componentType)
+            {
+                case "ComponentBackground": return new ComponentBackground();
+                case "ComponentLamp": return new ComponentLamp();
+                case "Component7Segment": return new Component7Segment();
+                case "Component14Segment": return new Component14Segment();
+                case "Component16Segment": return new Component16Segment();
+                case "ComponentAlpha": return new ComponentAlpha();
+                case "ComponentReel": return new ComponentReel();
+                case "ComponentSwitch": return new ComponentSwitch();
+
+                default:
+                    throw new ImportParseException("Unknown component type " + componentType);
             }
-            throw new ImportParseException("Unknown component type " + componentType);
         }
 
         /// <summary>

@@ -88,7 +88,7 @@ namespace Oasis.LayoutEditor
         {
         }
 
-        protected virtual void OnComponentValueSet(Component component)
+        protected virtual void OnComponentValueSet(Layout.Component component)
         {
             Refresh();
         }
