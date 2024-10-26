@@ -10,7 +10,7 @@ using EditorComponent = Oasis.LayoutEditor.EditorComponent;
 
 namespace Oasis.Layout
 {
-    public class View : MonoBehaviour, SerializableDictionary
+    public class View : SerializableDictionary
     {
         public void SetRepresentation(Dictionary<string, object> representation)
         {
@@ -63,7 +63,7 @@ namespace Oasis.Layout
             }
             set
             {
-                Data.Name = gameObject.name = value;
+                Data.Name = value;
             }
         }
 

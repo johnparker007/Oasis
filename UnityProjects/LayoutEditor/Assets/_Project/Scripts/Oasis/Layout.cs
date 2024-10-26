@@ -68,9 +68,7 @@ namespace Oasis
 
         public View AddView(string name)
         {
-            GameObject viewGameObject = new GameObject();
-            View view = (View)viewGameObject.AddComponent(typeof(View));
-            viewGameObject.transform.SetParent(transform);
+            View view = new View();
 
             Data.Views.Add(view);
 
@@ -88,7 +86,6 @@ namespace Oasis
         public void DeleteView(View view)
         {
             Data.Views.Remove(view);
-            Destroy(view.gameObject);
         }
 
         public View GetView(string name)
