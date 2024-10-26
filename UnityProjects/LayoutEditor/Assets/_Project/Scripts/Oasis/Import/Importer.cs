@@ -14,9 +14,7 @@ namespace Oasis.Import
     {
         public ProjectData ParseProject(string json)
         {
-            GameObject layoutGameObject = new GameObject("Layout");
-            LayoutObject layout =  layoutGameObject.AddComponent<LayoutObject>();
-            layout.transform.parent = Editor.Instance.transform;
+            LayoutObject layout =  new LayoutObject();
             JToken token = JToken.Parse(json);
             if ((string) token["type"] != "LayoutObject") {
                 throw new ImportParseException("JSON does not represent a LayoutObject");

@@ -18,7 +18,7 @@ namespace Oasis
     // TODO: Implement ISerializable for LayoutObject itself
     // Figure out how to trigger the nested serialization of the components
     
-    public class LayoutObject : MonoBehaviour, SerializableDictionary
+    public class LayoutObject : SerializableDictionary
     {
         // the data to be loaded/saved goes in this data class:
         [System.Serializable]

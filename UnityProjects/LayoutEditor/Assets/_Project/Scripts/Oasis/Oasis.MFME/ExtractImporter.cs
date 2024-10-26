@@ -29,14 +29,7 @@ namespace Oasis.MFME
             ImportGamData(layout);
             ImportMameRomIdent(layout);
 
-            if (_layoutObject != null)
-            {
-                GameObject.Destroy(_layoutObject.gameObject);
-            }
-
-            GameObject layoutGameObject = new GameObject("Layout");
-            _layoutObject = layoutGameObject.AddComponent<LayoutObject>();
-            _layoutObject.transform.parent = Editor.Instance.transform;
+            _layoutObject = new LayoutObject();
             Editor.Instance.Project.Layout = _layoutObject;
 
             _baseView = Editor.Instance.Project.Layout.AddView(ViewController.kBaseViewName);
