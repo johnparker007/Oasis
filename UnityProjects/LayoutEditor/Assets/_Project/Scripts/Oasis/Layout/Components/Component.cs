@@ -97,6 +97,11 @@ namespace Oasis.Layout
             }
         }
 
+        public Component()
+        {
+            AllocateGuid();
+        }
+
         public static string GetComponentKey(Dictionary<string, object> data) {
                 object n, g;
                 data.TryGetValue("name", out n);
@@ -104,17 +109,6 @@ namespace Oasis.Layout
                 string name = n != null ? (string)n:"";
                 string guid = g != null ? (string)g:"";
                 return name + "_" + guid;  
-        }
-
-
-        // JP TODO - the plan is to change this base Component class to NOT derive from Monobehaviour, but instead
-        // be a pure c# class.  At that point, we can add standard contructor/destructor, and so then for instance
-        // the Component will set up its own GUID on instantiation.
-        // This work can't be done until the current UI Hierarchy and Inspector are rewritten, the current ones were
-        // placeholders to get something useable going.
-        public void ConstructorPlaceholder()
-        {
-            AllocateGuid();
         }
 
         public virtual void SetRepresentation(Dictionary<string, object> representation) 

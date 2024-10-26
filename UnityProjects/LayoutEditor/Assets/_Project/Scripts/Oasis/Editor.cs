@@ -122,31 +122,11 @@ namespace Oasis
             yield return new WaitUntil(() => UIController != null);
 
             ExtractImporter.OnImportComplete.AddListener(OnImportComplete);
-
-            // JP Placeholder until Components are not derived from Monobehaviour:
-            OnLayoutSet.AddListener(OnLayoutSetCallback);
         }
 
         private void RemoveListeners()
         {
             ExtractImporter.OnImportComplete.RemoveListener(OnImportComplete);
-        }
-
-        // JP Placeholder until Component base no longer derived from Monobehaviour:
-        private void OnLayoutAddComponent(Layout.Component component, View view, bool overlay)
-        {
-            // fake call constructor, until we have standard c# constructor/destructor
-            component.ConstructorPlaceholder();
-        }
-
-        // JP Placeholder until Component base no longer derived from Monobehaviour:
-        private void OnLayoutSetCallback(LayoutObject layout)
-        {
-            if (layout != null)
-            {
-                layout.OnAddComponent.AddListener(OnLayoutAddComponent);
-            }
-            // TODO else remove listener if set?  Also in OnDestroy if set?
         }
 
         private void OnImportComplete()
