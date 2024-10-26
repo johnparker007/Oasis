@@ -101,9 +101,7 @@ namespace Oasis.MFME
 
         private void ImportLamp(ExtractComponentLamp extractComponentLamp)
         {
-            GameObject componentLampGameObject = new GameObject();
             ComponentLamp componentLamp = new ComponentLamp();
-            componentLampGameObject.transform.SetParent(_baseView.transform);
 
             componentLamp.Position = new UnityEngine.Vector2Int(
                 extractComponentLamp.Position.X,
@@ -191,9 +189,7 @@ namespace Oasis.MFME
 
         private void ImportCheckbox(ExtractComponentCheckbox extractComponentCheckbox)
         {
-            GameObject componentSwitchGameObject = new GameObject();
             ComponentSwitch componentSwitch = new ComponentSwitch();
-            componentSwitchGameObject.transform.SetParent(_baseView.transform);
 
             componentSwitch.Input.Enabled = true;
             componentSwitch.Input.ButtonNumber = extractComponentCheckbox.Number;
@@ -212,9 +208,7 @@ namespace Oasis.MFME
 
         private void ImportReel(ExtractComponentReel extractComponentReel)
         {
-            GameObject componentReelGameObject = new GameObject();
             ComponentReel componentReel = new ComponentReel();
-            componentReelGameObject.transform.SetParent(_baseView.transform);
 
             componentReel.Position = new UnityEngine.Vector2Int(
                 extractComponentReel.Position.X,
@@ -272,10 +266,7 @@ namespace Oasis.MFME
 
         private void ImportBackground(ExtractComponentBackground extractComponentBackground)
         {
-            GameObject componentBackgroundGameObject = new GameObject();
             ComponentBackground componentBackground = new ComponentBackground();
-
-            componentBackgroundGameObject.transform.SetParent(_baseView.transform);
 
             componentBackground.Position = new UnityEngine.Vector2Int(0, 0);
             componentBackground.Size = new UnityEngine.Vector2Int(
@@ -301,10 +292,7 @@ namespace Oasis.MFME
 
         private void ImportSevenSegment(ExtractComponentSevenSegment extractComponentSevenSegment)
         {
-            GameObject component7SegmentGameObject = new GameObject();
             Component7Segment component7Segment = new Component7Segment();
-
-            component7SegmentGameObject.transform.SetParent(_baseView.transform);
 
             component7Segment.Position = new UnityEngine.Vector2Int(
                 extractComponentSevenSegment.Position.X,
@@ -328,10 +316,7 @@ namespace Oasis.MFME
 
         private void ImportAlpha(ExtractComponentAlpha extractComponentAlpha)
         {
-            GameObject componentAlphaGameObject = new GameObject();
             ComponentAlpha componentAlpha = new ComponentAlpha();
-
-            componentAlphaGameObject.transform.SetParent(_baseView.transform);
 
             componentAlpha.Position = new UnityEngine.Vector2Int(
                 extractComponentAlpha.Position.X,
@@ -350,10 +335,7 @@ namespace Oasis.MFME
 
         private void ImportAlphaNew(ExtractComponentAlphaNew extractComponentAlphaNew)
         {
-            GameObject componentAlphaGameObject = new GameObject();
             ComponentAlpha componentAlpha = new ComponentAlpha();
-
-            componentAlphaGameObject.transform.SetParent(_baseView.transform);
 
             componentAlpha.Position = new UnityEngine.Vector2Int(
                 extractComponentAlphaNew.Position.X,
@@ -377,10 +359,7 @@ namespace Oasis.MFME
             Debug.LogWarning("Importing Matrix Alpha as Alpha new for now");
 
 // ******* TEMP CODE JUST TO GET A FUNCTIONAL ALPHA WORKING ***
-GameObject componentAlphaGameObject = new GameObject();
 ComponentAlpha componentAlpha = new ComponentAlpha();
-
-componentAlphaGameObject.transform.SetParent(_baseView.transform);
 
 componentAlpha.Position = new UnityEngine.Vector2Int(
     extractComponentMatrixAlpha.Position.X,
