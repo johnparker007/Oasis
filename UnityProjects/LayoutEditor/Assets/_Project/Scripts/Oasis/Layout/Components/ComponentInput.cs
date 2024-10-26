@@ -16,13 +16,37 @@ namespace Oasis.Layout
             // Going for this ButtonNumber approach for now, then derive the Mame port
             // tag/mask during runtime, based on currently selected Platform.  This approach
             // may need revisiting...
-            public int ButtonNumber;  
+            public int ButtonNumber;
             //public string PortTag;
             //public string FieldMask;
+
+            public InputData Clone()
+            {
+                // TOIMPROVE should change this to memberwise clone for the immutables
+                return new InputData
+                {
+                    Enabled = this.Enabled,
+                    Inverted = this.Inverted,
+                    KeyCode = this.KeyCode,
+                    ButtonNumber = this.ButtonNumber
+                };
+            }
         }
 
         public InputData Input = new InputData();
 
+
+        public override Component Clone()
+        {
+            ComponentInput clone = (ComponentInput)base.Clone();
+
+            if (Input != null)
+            {
+                clone.Input = Input.Clone();
+            }
+
+            return clone;
+        }
 
         public override void SetRepresentation(Dictionary<string, object> representation) 
         {

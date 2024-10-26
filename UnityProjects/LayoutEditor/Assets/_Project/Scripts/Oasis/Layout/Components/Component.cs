@@ -102,6 +102,22 @@ namespace Oasis.Layout
             AllocateGuid();
         }
 
+        public virtual Component Clone()
+        {
+            Component clone = (Component)MemberwiseClone();
+
+            // Allocate a new GUID for the cloned object, otherwise it will be a non-unique duplicate...
+            // TODO unless we may actually want to keep the GIUD as a link?  Then perhaps a 'parent' 
+            // instance id may work better...
+            clone.AllocateGuid();
+
+            // Reset event handlers - TODO check, is this the way to do this,
+            // assumes will never close back to Base View for instance
+            clone.OnValueSet = null;
+
+            return clone;
+        }
+
         public static string GetComponentKey(Dictionary<string, object> data) {
                 object n, g;
                 data.TryGetValue("name", out n);

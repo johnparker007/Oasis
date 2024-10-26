@@ -15,6 +15,18 @@ namespace Oasis.Layout
             set { _color = value; base.OnValueSetInvoke(); }
         }
 
+        public override Component Clone()
+        {
+            ComponentBackground clone = (ComponentBackground)base.Clone();
+
+            if (OasisImage != null)
+            {
+                clone.OasisImage = OasisImage.Clone();
+            }
+
+            return clone;
+        }
+
         public override void SetRepresentation(Dictionary<string, object> representation)
         {
             base.SetRepresentation(representation);

@@ -43,6 +43,28 @@ namespace Oasis.Layout
         public OasisImage OverlayOasisImage;
 
 
+        public override Component Clone()
+        {
+            ComponentReel clone = (ComponentReel)base.Clone();
+
+            if (ReelSymbolText != null)
+            {
+                clone.ReelSymbolText = new List<string>(ReelSymbolText);
+            }
+
+            if (BandOasisImage != null)
+            {
+                clone.BandOasisImage = BandOasisImage.Clone();
+            }
+
+            if (OverlayOasisImage != null)
+            {
+                clone.OverlayOasisImage = OverlayOasisImage.Clone();
+            }
+
+            return clone;
+        }
+
         public override void SetRepresentation(Dictionary<string, object> representation) 
         {
             base.SetRepresentation(representation);

@@ -44,6 +44,18 @@ namespace Oasis.Layout
             set { _outline = value; base.OnValueSetInvoke(); }
         }
 
+        public override Component Clone()
+        {
+            ComponentLamp clone = (ComponentLamp)base.Clone();
+
+            if (OasisImage != null)
+            {
+                clone.OasisImage = OasisImage.Clone();
+            }
+
+            return clone;
+        }
+
         public override void SetRepresentation(Dictionary<string, object> representation) 
         {
             base.SetRepresentation(representation);
