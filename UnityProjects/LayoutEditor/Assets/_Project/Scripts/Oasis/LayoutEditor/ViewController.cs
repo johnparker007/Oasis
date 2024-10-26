@@ -77,6 +77,19 @@ namespace Oasis.LayoutEditor
 
                 Layout.Component componentClone = component.Clone();
 
+                // TOIMPROVE put this in here for now, as not even sure if this is the best way to go about this:
+                if(componentClone.Position.x < 0)
+                {
+                    componentClone.Size = new Vector2Int(componentClone.Size.x + componentClone.Position.x, componentClone.Size.y);
+                    componentClone.Position = new Vector2Int(0, componentClone.Position.y);
+                }
+
+                if (componentClone.Position.y < 0)
+                {
+                    componentClone.Size = new Vector2Int(componentClone.Size.x, componentClone.Size.y + componentClone.Position.y);
+                    componentClone.Position = new Vector2Int(componentClone.Position.x, 0);
+                }
+
                 mameView.AddComponent(componentClone);
             }
 

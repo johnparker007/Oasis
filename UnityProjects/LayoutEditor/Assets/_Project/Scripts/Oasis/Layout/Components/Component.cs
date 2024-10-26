@@ -112,7 +112,7 @@ namespace Oasis.Layout
             clone.AllocateGuid();
 
             // Reset event handlers - TODO check, is this the way to do this,
-            // assumes will never close back to Base View for instance
+            // assumes will never clone back to Base View for instance
             clone.OnValueSet = null;
 
             return clone;
