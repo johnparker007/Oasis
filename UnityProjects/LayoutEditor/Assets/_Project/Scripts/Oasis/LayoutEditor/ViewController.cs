@@ -65,8 +65,6 @@ namespace Oasis.LayoutEditor
             // TODO clear all mameView components and associated EditorComponents before rebuild
             foreach(Layout.Component component in baseView.Data.Components)
             {
-                // TODO deep clone all components, maybe after remove Monobehaviour stuff
-
                 // TOIMPROVE - this all wants refactoring into some kind of OasisRect system:
                 if (!mameView.Data.ViewQuad.ContainsAnyPoint(
                     component.PointTopLeft, 
@@ -77,7 +75,9 @@ namespace Oasis.LayoutEditor
                     continue;
                 }
 
-                mameView.AddComponent(component);
+                Layout.Component componentClone = component.Clone();
+
+                mameView.AddComponent(componentClone);
             }
 
             // TODO target has more components than source! (prob reel overlays which
