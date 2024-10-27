@@ -215,12 +215,49 @@ namespace Oasis.MFME
                 FileSystem.kReelsDirectoryName, extractComponentReel.BandBmpImageFilename);
             componentReel.BandOasisImage = new Graphics.OasisImage(bandBmpImageFilePath, null, true);
 
+
+            // ******* START temp code for applying overlays to background image
+
+            // TOIMPROVE - the 'overlay' will be changed so that the MfmeTools Extractor will have new settings:
+            // - scrape Alpha overlays
+            // - scrape Segemnt overlays
+            // - potentially more component types
+            // so for specific layouts, e.g: Rat Race by TommyC, we would scrape the Alpha overlay and that would
+            // give us the Rats nose showing above the top edge of the Alpha.
+            // ... so this code will be at at higher level, and will go through all component types to copy that overlay
+            // onto the Background with transparency, not just Reels.
+
+            ComponentBackground componentBackground = 
+                (ComponentBackground)_baseView.Data.Components.Find(x => x.GetType() == typeof(ComponentBackground));
+
+            Graphics.OasisImage temporaryBackgroundOasisImage = componentBackground.OasisImage.Clone();
+            Graphics.OasisImage temporaryOverlayOasisImage;
             if (extractComponentReel.HasOverlay)
             {
                 string overlayBmpImageFilePath = Path.Combine(Extractor.LayoutDirectoryPath,
                     FileSystem.kReelsDirectoryName, extractComponentReel.OverlayBmpImageFilename);
-                componentReel.OverlayOasisImage = new Graphics.OasisImage(overlayBmpImageFilePath, null, true);
+
+                temporaryOverlayOasisImage = new Graphics.OasisImage(overlayBmpImageFilePath, null, true);
             }
+            else
+            {
+                temporaryOverlayOasisImage = new Graphics.OasisImage(componentReel.Size);
+            }
+
+            temporaryBackgroundOasisImage.Draw(temporaryOverlayOasisImage,
+                componentReel.Position.x, 
+                componentBackground.Size.y - componentReel.Position.y - componentReel.Size.y);
+
+            componentBackground.OasisImage.ImageData = temporaryBackgroundOasisImage.ImageData;
+
+            // need to re-init the EditorComponentBackground so it's texture is rebuilt.
+            // TOIMPROVE - should perhaps have something other that Initialise(...) in the
+            // EditorComponent... perhaps a RebuildTextures or something similar?
+            EditorComponent editorComponentBackground = _baseView.EditorView.GetEditorComponent(componentBackground);
+            editorComponentBackground.Initialise(componentBackground);
+        
+            // ******* END temp code for applying overlays to background image
+
 
             // we need a +1 for the reel but not the lamps, prob MFME <> MAME inconsistency
             componentReel.Number = extractComponentReel.Number + 1;

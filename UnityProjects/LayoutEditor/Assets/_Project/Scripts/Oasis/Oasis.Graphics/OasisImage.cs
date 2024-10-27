@@ -29,6 +29,14 @@ namespace Oasis.Graphics
             Height = height;
         }
 
+        public OasisImage(Vector2Int size)
+        {
+            ImageData = new Color32[size.x * size.y];
+
+            Width = size.x;
+            Height = size.y;
+        }
+
         public OasisImage(Color32 fillColor, int width, int height)
         {
             ImageData = new Color32[width * height];

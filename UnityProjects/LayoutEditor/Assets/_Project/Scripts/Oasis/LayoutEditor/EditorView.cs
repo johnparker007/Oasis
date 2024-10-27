@@ -79,6 +79,11 @@ namespace Oasis.LayoutEditor
             }
         }
 
+        public EditorComponent GetEditorComponent(Layout.Component component)
+        {
+            return _editorComponents.Find(x => x.Component == component);
+        }
+
         private void OnLayoutAddComponent(Layout.Component component, View view, bool overlay)
         {
             if(view.Name != ViewName)
