@@ -36,7 +36,6 @@ namespace Oasis
         public EditorComponent7Segment EditorComponentSevenSegmentPrefab;
         public EditorComponentAlpha EditorComponentAlphaPrefab;
         public EditorComponentAlpha14 EditorComponentAlpha14Prefab;
-        public EditorComponentOverlay EditorComponentOverlayPrefab;
 
         public ProjectData Project
         {

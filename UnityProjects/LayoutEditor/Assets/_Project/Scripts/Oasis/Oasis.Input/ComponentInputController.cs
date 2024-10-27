@@ -110,7 +110,7 @@ namespace Oasis.Input
             // TODO else remove listener if set?  Also in OnDestroy if set?
         }
 
-        private void OnLayoutAddComponent(Layout.Component component, View view, bool overlay)
+        private void OnLayoutAddComponent(Layout.Component component, View view)
         {
             RebuildActiveKeycodes();
         }

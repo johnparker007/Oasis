@@ -91,11 +91,11 @@ namespace Oasis.Layout
             Data.ViewQuad.Points[(int)ViewQuad.PointTypes.BottomLeft] = new Vector2(left, bottom);
         }
 
-        public void AddComponent(Component component, bool overlay = false)
+        public void AddComponent(Component component)
         {
             Data.Components.Add(component);
 
-            Editor.Instance.Project.Layout.OnAddComponent?.Invoke(component, this, overlay);
+            Editor.Instance.Project.Layout.OnAddComponent?.Invoke(component, this);
             OnChanged?.Invoke();
         }
 

@@ -84,7 +84,7 @@ namespace Oasis.LayoutEditor
             return _editorComponents.Find(x => x.Component == component);
         }
 
-        private void OnLayoutAddComponent(Layout.Component component, View view, bool overlay)
+        private void OnLayoutAddComponent(Layout.Component component, View view)
         {
             if(view.Name != ViewName)
             {
@@ -102,7 +102,7 @@ namespace Oasis.LayoutEditor
             }
             else if (component.GetType() == typeof(ComponentReel))
             {
-                editorComponent = AddComponentReel((ComponentReel)component, overlay);
+                editorComponent = AddComponentReel((ComponentReel)component);
             }
             else if (component.GetType() == typeof(Component7Segment))
             {
@@ -143,36 +143,15 @@ namespace Oasis.LayoutEditor
             return editorComponentLamp;
         }
 
-        private EditorComponent AddComponentReel(ComponentReel component, bool overlay)
+        private EditorComponent AddComponentReel(ComponentReel component)
         {
-            EditorComponent editorComponent;
-            if (overlay)
-            {
-                EditorComponentOverlay editorComponentOverlay = Instantiate(
-                    Editor.Instance.EditorComponentOverlayPrefab,
-                    Content.transform);
+            EditorComponentReel editorComponentReel = Instantiate(
+                Editor.Instance.EditorComponentReelPrefab,
+                Content.transform);
 
-                editorComponent = editorComponentOverlay;
+            editorComponentReel.Initialise(component);
 
-                editorComponentOverlay.Initialise(component);
-            }
-            else
-            {
-                EditorComponentReel editorComponentReel = Instantiate(
-                    Editor.Instance.EditorComponentReelPrefab,
-                    Content.transform);
-
-                editorComponent = editorComponentReel;
-
-                editorComponentReel.Initialise(component);
-
-                if (component.OverlayOasisImage != null)
-                {
-                    View.AddComponent(component, true);
-                }
-            }
-
-            return editorComponent;
+            return editorComponentReel;
         }
 
         private EditorComponent AddComponent7Segment(Component7Segment component)
