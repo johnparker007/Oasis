@@ -1,6 +1,7 @@
 using Oasis.Layout;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.EventSystems;
@@ -25,6 +26,18 @@ namespace Oasis.LayoutEditor
             {
                 return Editor.Instance.Project.Layout.GetView(ViewName);
             }
+        }
+
+        public EditorViewContentLayer GetLayer(EditorViewContentLayer.LayerTypes layerType)
+        {
+            List<EditorViewContentLayer> layers = Content.GetComponentsInChildren<EditorViewContentLayer>(true).ToList();
+
+            return layers.Find(x => x.LayerType == layerType);
+        }
+
+        public Transform GetLayerTransform(EditorViewContentLayer.LayerTypes layerType)
+        {
+            return GetLayer(layerType).transform;
         }
 
         private void OnEnable()
@@ -120,8 +133,7 @@ namespace Oasis.LayoutEditor
         {
             EditorComponentBackground editorComponentBackground = Instantiate(
                 Editor.Instance.EditorComponentBackgroundPrefab,
-                //Editor.Instance.UIController.EditorCanvasGameObject.transform);
-                Content.transform);
+                GetLayerTransform(EditorViewContentLayer.LayerTypes.Background));
 
             editorComponentBackground.Initialise(component);
 
@@ -136,7 +148,7 @@ namespace Oasis.LayoutEditor
         {
             EditorComponentLamp editorComponentLamp = Instantiate(
                 Editor.Instance.EditorComponentLampPrefab,
-                Content.transform);
+                GetLayerTransform(EditorViewContentLayer.LayerTypes.AboveBackground));
 
             editorComponentLamp.Initialise(component);
 
@@ -145,9 +157,11 @@ namespace Oasis.LayoutEditor
 
         private EditorComponent AddComponentReel(ComponentReel component)
         {
+            // TODO this can't work with how we currently do solid color layers, with no image:
+            // will need to either use image to 'punch out' the alpha windows... or something else...
             EditorComponentReel editorComponentReel = Instantiate(
                 Editor.Instance.EditorComponentReelPrefab,
-                Content.transform);
+                GetLayerTransform(EditorViewContentLayer.LayerTypes.BelowBackground));
 
             editorComponentReel.Initialise(component);
 
@@ -156,9 +170,11 @@ namespace Oasis.LayoutEditor
 
         private EditorComponent AddComponent7Segment(Component7Segment component)
         {
+            // TOIMPROVE - this will ultimately want to be Below the background glass with
+            // alpha windows punched out that can later be refined in the Layout Editor
             EditorComponent7Segment editorComponent7Segment = Instantiate(
                 Editor.Instance.EditorComponentSevenSegmentPrefab,
-                Content.transform);
+                GetLayerTransform(EditorViewContentLayer.LayerTypes.AboveBackground));
 
             editorComponent7Segment.Initialise(component);
 
@@ -171,13 +187,16 @@ namespace Oasis.LayoutEditor
             // TOIMPROVE - I think it's probvably better to have a single EditorComponentAlpha,
             // that can be set into one of the four 'modes'; 14, 14+semicolon, 16, 16+semecolon
             // and theoretically changed on the fly - more versatile
+
+            // TOIMPROVE - this will ultimately want to be Below the background glass with
+            // alpha windows punched out that can later be refined in the Layout Editor
             EditorComponent editorComponent;
             switch (Editor.Instance.Project.Settings.FruitMachine.Platform)
             {
                 case MAME.MameController.PlatformType.Scorpion4:
                     EditorComponentAlpha14 editorComponentAlpha14 = Instantiate(
                         Editor.Instance.EditorComponentAlpha14Prefab,
-                        Content.transform);
+                        GetLayerTransform(EditorViewContentLayer.LayerTypes.AboveBackground));
 
                     editorComponent = editorComponentAlpha14;
 
@@ -187,7 +206,7 @@ namespace Oasis.LayoutEditor
                 default:
                     EditorComponentAlpha editorComponentAlpha16 = Instantiate(
                         Editor.Instance.EditorComponentAlphaPrefab,
-                        Content.transform);
+                        GetLayerTransform(EditorViewContentLayer.LayerTypes.AboveBackground));
 
                     editorComponent = editorComponentAlpha16;
 

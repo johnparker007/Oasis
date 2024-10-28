@@ -9,9 +9,6 @@ namespace Oasis.LayoutEditor
 {
     public class EditorComponent7Segment : EditorComponentSegment
     {
-        public override string HierarchyPseudoSceneName => "7 Segments";
-        public override string HierarchyName => "7 Segment";
-
         public Component7Segment Component7Segment
         {
             get

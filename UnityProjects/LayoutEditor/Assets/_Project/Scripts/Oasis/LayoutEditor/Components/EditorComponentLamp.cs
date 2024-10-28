@@ -12,9 +12,6 @@ namespace Oasis.LayoutEditor
 {
     public class EditorComponentLamp : EditorComponent2D
     {
-        public override string HierarchyPseudoSceneName => "Lamps";
-        public override string HierarchyName => "Lamp";
-
         private int? _number = null;
         private Image _image = null;
         private Sprite _sprite = null;

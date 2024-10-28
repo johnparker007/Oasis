@@ -6468,7 +6468,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9c074cfcb1e9af544811fdd4638c72a2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  RuntimeHierarchy: {fileID: 188510028}
   DynamicPanelsCanvas: {fileID: 647658036}
   ContextMenuController: {fileID: 8137222398384535314}
 --- !u!1 &1721750713
@@ -9166,7 +9165,6 @@ MonoBehaviour:
   EditorComponentSevenSegmentPrefab: {fileID: 7496649456409283726, guid: e2724f460f4da8d4f95bd8830d362e6b, type: 3}
   EditorComponentAlphaPrefab: {fileID: 3842146194991930722, guid: 16bd2967a11aec640a0f0bb0c56be1a9, type: 3}
   EditorComponentAlpha14Prefab: {fileID: 6476336133491195093, guid: 2ddce75944df8154fbf19412f6d6ef26, type: 3}
-  EditorComponentOverlayPrefab: {fileID: 1078919621334969651, guid: ebc318787e7ba6c4289ac1185a9ac6c1, type: 3}
   OnLayoutSet:
     m_PersistentCalls:
       m_Calls: []
@@ -9658,6 +9656,10 @@ PrefabInstance:
       propertyPath: m_AnchorMin.y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 5169444920475316183, guid: a1a48b56fbd60af4eb8b117176fb1a56, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 6166672508716612653, guid: a1a48b56fbd60af4eb8b117176fb1a56, type: 3}
       propertyPath: m_Name
       value: ViewBase
@@ -9672,6 +9674,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7348310096890892617, guid: a1a48b56fbd60af4eb8b117176fb1a56, type: 3}
       propertyPath: m_AnchorMin.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7348310096890892617, guid: a1a48b56fbd60af4eb8b117176fb1a56, type: 3}
+      propertyPath: m_LocalPosition.x
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7442919721077635114, guid: a1a48b56fbd60af4eb8b117176fb1a56, type: 3}

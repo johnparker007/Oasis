@@ -9,9 +9,6 @@ namespace Oasis.LayoutEditor
 {
     public class EditorComponentAlpha14 : EditorComponent2D
     {
-        public override string HierarchyPseudoSceneName => "Alphas";
-        public override string HierarchyName => "Alpha";
-
         private List<EditorComponent14SemicolonSegment> _segments = null;
 
         protected override void Awake()

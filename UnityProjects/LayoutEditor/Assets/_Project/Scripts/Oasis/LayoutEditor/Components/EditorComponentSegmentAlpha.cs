@@ -9,9 +9,6 @@ namespace Oasis.LayoutEditor
 {
     public abstract class EditorComponentSegmentAlpha : EditorComponentSegment
     {
-        public override string HierarchyPseudoSceneName => null;
-        public override string HierarchyName => null;
-
         public const int kMaximumVfdDuty = 31;
 
         public void Setup(int vfdSegmentNumber)

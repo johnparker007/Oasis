@@ -9,9 +9,6 @@ namespace Oasis.LayoutEditor
 {
     public class EditorComponentBackground : EditorComponent2D
     {
-        public override string HierarchyPseudoSceneName => "Backgrounds";
-        public override string HierarchyName => "Background";
-
         private Image _image = null;
         private Sprite _sprite = null;
         private Texture2D _texture2d = null;
