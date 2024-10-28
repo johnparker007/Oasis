@@ -230,32 +230,36 @@ namespace Oasis.MFME
             ComponentBackground componentBackground = 
                 (ComponentBackground)_baseView.Data.Components.Find(x => x.GetType() == typeof(ComponentBackground));
 
-            Graphics.OasisImage temporaryBackgroundOasisImage = componentBackground.OasisImage.Clone();
-            Graphics.OasisImage temporaryOverlayOasisImage;
-            if (extractComponentReel.HasOverlay)
+            if(componentBackground.OasisImage != null)
             {
-                string overlayBmpImageFilePath = Path.Combine(Extractor.LayoutDirectoryPath,
-                    FileSystem.kReelsDirectoryName, extractComponentReel.OverlayBmpImageFilename);
+                Graphics.OasisImage temporaryBackgroundOasisImage = componentBackground.OasisImage.Clone();
+                Graphics.OasisImage temporaryOverlayOasisImage;
+                if (extractComponentReel.HasOverlay)
+                {
+                    string overlayBmpImageFilePath = Path.Combine(Extractor.LayoutDirectoryPath,
+                        FileSystem.kReelsDirectoryName, extractComponentReel.OverlayBmpImageFilename);
 
-                temporaryOverlayOasisImage = new Graphics.OasisImage(overlayBmpImageFilePath, null, true);
+                    temporaryOverlayOasisImage = new Graphics.OasisImage(overlayBmpImageFilePath, null, true);
+                }
+                else
+                {
+                    temporaryOverlayOasisImage = new Graphics.OasisImage(componentReel.Size);
+                }
+
+                temporaryBackgroundOasisImage.Draw(temporaryOverlayOasisImage,
+                    componentReel.Position.x,
+                    componentBackground.Size.y - componentReel.Position.y - componentReel.Size.y);
+
+                componentBackground.OasisImage.ImageData = temporaryBackgroundOasisImage.ImageData;
+
+                // need to re-init the EditorComponentBackground so it's texture is rebuilt.
+                // TOIMPROVE - should perhaps have something other that Initialise(...) in the
+                // EditorComponent... perhaps a RebuildTextures or something similar?
+                EditorComponent editorComponentBackground = _baseView.EditorView.GetEditorComponent(componentBackground);
+                editorComponentBackground.Initialise(componentBackground);
             }
-            else
-            {
-                temporaryOverlayOasisImage = new Graphics.OasisImage(componentReel.Size);
-            }
 
-            temporaryBackgroundOasisImage.Draw(temporaryOverlayOasisImage,
-                componentReel.Position.x, 
-                componentBackground.Size.y - componentReel.Position.y - componentReel.Size.y);
 
-            componentBackground.OasisImage.ImageData = temporaryBackgroundOasisImage.ImageData;
-
-            // need to re-init the EditorComponentBackground so it's texture is rebuilt.
-            // TOIMPROVE - should perhaps have something other that Initialise(...) in the
-            // EditorComponent... perhaps a RebuildTextures or something similar?
-            EditorComponent editorComponentBackground = _baseView.EditorView.GetEditorComponent(componentBackground);
-            editorComponentBackground.Initialise(componentBackground);
-        
             // ******* END temp code for applying overlays to background image
 
 
