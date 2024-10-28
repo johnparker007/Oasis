@@ -8,6 +8,11 @@ namespace Oasis.UI
         // Override the default raycast method to ignore fully transparent pixels
         public override bool IsRaycastLocationValid(Vector2 screenPoint, Camera eventCamera)
         {
+            if(sprite == null || sprite.texture == null)
+            {
+                return true;
+            }
+
             // Get the rectTransform position relative to the screen
             RectTransformUtility.ScreenPointToLocalPointInRectangle(rectTransform, screenPoint, eventCamera, out Vector2 localPoint);
 
