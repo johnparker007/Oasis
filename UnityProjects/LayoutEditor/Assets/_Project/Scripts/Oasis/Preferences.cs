@@ -4,7 +4,9 @@ using UnityEngine;
 
 public class Preferences : MonoBehaviour
 {
+    public static string kPathOasisFolderName = "Oasis";
     public static string kPathProjectsFolderName = "Projects";
+
     public static string kKeyProjectsFolder = "ProjectsFolder";
 
     public string ProjectsFolder
@@ -26,12 +28,22 @@ public class Preferences : MonoBehaviour
         }
     }
 
-    protected string DefaultProjectsFolderPath
+    protected string DefaultOasisFolderPath
     {
         get
         {
             string myDocumentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-            string projectsFolderPath = Path.Combine(myDocumentsPath, kPathProjectsFolderName);
+            string oasisFolderPath = Path.Combine(myDocumentsPath, kPathOasisFolderName);
+            return oasisFolderPath;
+        }
+
+    }
+
+    protected string DefaultProjectsFolderPath
+    {
+        get
+        {
+            string projectsFolderPath = Path.Combine(DefaultOasisFolderPath, kPathProjectsFolderName);
             return projectsFolderPath;
         }
     }
