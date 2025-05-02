@@ -1,3 +1,6 @@
+using Oasis.Export;
+using Oasis.FileOperations;
+using System.IO;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -31,13 +34,34 @@ namespace Oasis.LayoutEditor.ProjectsHub
 
         private void OnCreateProjectButtonClick()
         {
-            // create project folder
-            // save current empty project into folder
+            // create new empty current project and layout and settings
+            Editor.Instance.Project = new ProjectData();
+            Editor.Instance.Project.Layout = new LayoutObject();
+            Editor.Instance.Project.Settings.Mame.RomName = "";
+
+
+            // save the project
+            string projectFolderPath = Path.Combine(
+                LocationInputField.text, ProjectNameInputField.text);
+
+            CreateProjectFolder(projectFolderPath);
+
+            OasisExporter exporter = new OasisExporter(
+                new FileSystemWrapper(), new ProjectSettingsValidator(), new LayoutValidator());
+
+            exporter.Export(
+                Editor.Instance.Project, 
+                string.Format("{0}\\project.json", projectFolderPath));
         }
 
         private void OnCancelButtonClick()
         {
             _projectsHubController.ShowHubMenu();
+        }
+
+        private void CreateProjectFolder(string projectFolderPath)
+        {
+            Directory.CreateDirectory(projectFolderPath);
         }
     }
 }
