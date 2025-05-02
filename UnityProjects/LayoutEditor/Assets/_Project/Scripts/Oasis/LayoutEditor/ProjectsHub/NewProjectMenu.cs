@@ -5,6 +5,8 @@ namespace Oasis.LayoutEditor.ProjectsHub
 {
     public class NewProjectMenu : MonoBehaviour
     {
+        public TMPro.TMP_InputField ProjectNameInputField;
+        public TMPro.TMP_InputField LocationInputField;
         public Button CreateProjectButton;
         public Button CancelButton;
 
@@ -13,6 +15,9 @@ namespace Oasis.LayoutEditor.ProjectsHub
         private void Awake()
         {
             _projectsHubController = GetComponentInParent<ProjectsHubController>();
+
+            ProjectNameInputField.text = "New Project";
+            LocationInputField.text = Editor.Instance.Preferences.ProjectsFolder;
 
             CreateProjectButton.onClick.AddListener(OnCreateProjectButtonClick);
             CancelButton.onClick.AddListener(OnCancelButtonClick);
@@ -26,7 +31,8 @@ namespace Oasis.LayoutEditor.ProjectsHub
 
         private void OnCreateProjectButtonClick()
         {
-            Debug.LogError("TODO create project using options");
+            // create project folder
+            // save current empty project into folder
         }
 
         private void OnCancelButtonClick()
