@@ -26,7 +26,7 @@ namespace Oasis.LayoutEditor.ProjectsHub
 
         private void OnNewProjectButtonClick()
         {
-            _projectsHubController.ShowNewProjectMenu();
+            _projectsHubController.SetNewProjectMenuActive(true);
         }
 
         private void OnAddProjectButtonClick()

@@ -11,19 +11,19 @@ namespace Oasis.LayoutEditor.ProjectsHub
 
         private void Awake()
         {
-            ShowHubMenu();
+            SetHubMenuActive(true);
+            SetNewProjectMenuActive(false);
         }
 
-        public void ShowHubMenu()
+        public void SetHubMenuActive(bool active)
         {
-            HubMenu.gameObject.SetActive(true);
-            NewProjectMenu.gameObject.SetActive(false);
+            HubMenu.gameObject.SetActive(active);
         }
 
-        public void ShowNewProjectMenu()
+        public void SetNewProjectMenuActive(bool active)
         {
-            HubMenu.gameObject.SetActive(false);
-            NewProjectMenu.gameObject.SetActive(true);
+            NewProjectMenu.gameObject.SetActive(active);
         }
+
     }
 }
