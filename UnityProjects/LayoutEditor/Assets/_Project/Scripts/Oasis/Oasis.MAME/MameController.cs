@@ -245,7 +245,10 @@ namespace Oasis.MAME
                 additionalArgs += " " + kArgsStateLoad + " " + kDefaultSaveStateFilename;
             }
 
-            string arguments = Editor.Instance.Project.Settings.Mame.RomName + additionalArgs;
+            //string arguments = Editor.Instance.Project.Settings.Mame.RomName + additionalArgs;
+//xxx hack
+string arguments = Editor.Instance.Project.Settings.Mame.RomName;
+
             Process = StartProcess(MameExeDirectoryFullPath, kMameExeFilename, arguments);
 
             if(ForceVsyncOffWhenRunning)
@@ -513,6 +516,7 @@ namespace Oasis.MAME
         {
             if(DebugOutputMameCommandLine)
             {
+                UnityEngine.Debug.LogError("Working dir: " + workingDirectory);
                 UnityEngine.Debug.LogError(filename + " " + arguments);
             }
 

@@ -8,10 +8,14 @@ namespace Oasis.Graphics {
     {
         public static void SaveToPNG(OasisImage image, string fileUniqueName)
         {
-            //TODO: Get rid of the ugly hardwiring here.
-            string fileName = string.Format("e:\\SavedLayout\\{0}", fileUniqueName);
+            //JP TODO slightly less hardwiring, but we will prob want to pass in a path
+            // to this generic SaveToPNG function:
+            string filePath = Path.Combine(
+                                  Editor.Instance.ProjectController.ProjectRootPath,
+                                  fileUniqueName);
+
             File.WriteAllBytes(
-                fileName,
+                filePath,
                 ImageConversion.EncodeArrayToPNG(
                     image.GetAsByteArray(),
                     UnityEngine.Experimental.Rendering.GraphicsFormat.B8G8R8A8_SRGB,

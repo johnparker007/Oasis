@@ -1,7 +1,7 @@
 using Oasis.Graphics;
 using System;
 using System.Collections.Generic;
-
+using System.IO;
 
 namespace Oasis.Layout
 {
@@ -94,13 +94,21 @@ namespace Oasis.Layout
                         ReelSymbolText = (List<string>)field.Value;
                         break;
                     case "file_path_band_image":
-                        if (field.Value != null) {
-                            BandOasisImage = ImageOperations.LoadFromPng(string.Format("e:\\SavedLayout\\{0}", (string)field.Value));
+                        if (field.Value != null)
+                        {
+                            BandOasisImage = ImageOperations.LoadFromPng(
+                                Path.Combine(
+                                    Editor.Instance.ProjectController.ProjectRootPath,
+                                    (string)field.Value));
                         }
                         break;
                     case "file_path_overlay_image":
-                        if (field.Value != null) {
-                            OverlayOasisImage = ImageOperations.LoadFromPng(string.Format("e:\\SavedLayout\\{0}", (string)field.Value));
+                        if (field.Value != null)
+                        {
+                            OverlayOasisImage = ImageOperations.LoadFromPng(
+                                Path.Combine(
+                                    Editor.Instance.ProjectController.ProjectRootPath,
+                                    (string)field.Value));
                         }
                         break;
                     

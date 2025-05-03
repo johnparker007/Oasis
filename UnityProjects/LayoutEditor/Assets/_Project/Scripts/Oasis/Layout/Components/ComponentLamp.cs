@@ -1,5 +1,6 @@
 using Oasis.Graphics;
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 
 namespace Oasis.Layout
@@ -91,8 +92,12 @@ namespace Oasis.Layout
                             TextColor = color;
                         break;
                     case "file_path":
-                        if (field.Value != null) {
-                            OasisImage = ImageOperations.LoadFromPng(string.Format("e:\\SavedLayout\\{0}", (string)field.Value));
+                        if (field.Value != null) 
+                        {
+                            OasisImage = ImageOperations.LoadFromPng(
+                                Path.Combine(
+                                    Editor.Instance.ProjectController.ProjectRootPath,
+                                    (string)field.Value));
                         }
                         break;
                     

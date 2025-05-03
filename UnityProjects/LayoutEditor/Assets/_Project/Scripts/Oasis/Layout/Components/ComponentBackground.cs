@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using Oasis.Graphics;
 using UnityEngine;
 
@@ -46,8 +47,12 @@ namespace Oasis.Layout
                             Color = color;
                         break;
                     case "file_path":
-                        if (field.Value != null) {
-                            OasisImage = ImageOperations.LoadFromPng(string.Format("e:\\SavedLayout\\{0}", (string)field.Value));
+                        if (field.Value != null) 
+                        {
+                            OasisImage = ImageOperations.LoadFromPng(
+                                Path.Combine(
+                                    Editor.Instance.ProjectController.ProjectRootPath, 
+                                    (string)field.Value));
                         }
                         break;
                     

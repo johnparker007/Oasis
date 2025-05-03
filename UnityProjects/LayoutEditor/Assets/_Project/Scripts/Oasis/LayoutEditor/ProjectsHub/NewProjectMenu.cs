@@ -46,6 +46,8 @@ namespace Oasis.LayoutEditor.ProjectsHub
 
             CreateProjectFolder(projectFolderPath);
 
+            Editor.Instance.ProjectController.ProjectRootPath = projectFolderPath;
+
             OasisExporter exporter = new OasisExporter(
                 new FileSystemWrapper(), new ProjectSettingsValidator(), new LayoutValidator());
 

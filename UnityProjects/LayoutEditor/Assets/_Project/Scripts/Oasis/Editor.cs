@@ -19,6 +19,7 @@ namespace Oasis
 {
     public class Editor : MonoBehaviour
     {
+        public ProjectController ProjectController;
         public UIController UIController;
         public MameController MameController;
         public SelectionController SelectionController;
