@@ -3,16 +3,33 @@ using Oasis.FileOperations;
 using System.IO;
 using UnityEngine;
 
-namespace Oasis
+namespace Oasis.Projects
 {
-    public class ProjectController : MonoBehaviour
+    public class ProjectsController : MonoBehaviour
     {
         public const string kProjectJsonFilename = "project.json";
-
+         
         public string ProjectRootPath
         {
             get;
             set;
+        }
+
+        public ProjectsList ProjectsList
+        {
+            get;
+            private set;
+        }
+
+
+        private void Awake()
+        {
+            ProjectsList = GetComponent<ProjectsList>();
+        }
+
+        private void Start()
+        {
+            
         }
 
         public bool CreateNewProject(string rootPath)
@@ -27,9 +44,15 @@ namespace Oasis
             // create project directory
             Directory.CreateDirectory(rootPath);
 
-            Editor.Instance.ProjectController.ProjectRootPath = rootPath;
+            Editor.Instance.ProjectsController.ProjectRootPath = rootPath;
 
             SaveProject();
+
+            ProjectsList.AddListItem(new ProjectsList.ListItem()
+            {
+                Path = rootPath,
+                LastModifiedTime = 0 // TODO
+            });
 
             return true;
         }

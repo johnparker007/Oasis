@@ -6,7 +6,7 @@ using Oasis.LayoutEditor;
 using Oasis.Layout;
 using Oasis.MAME;
 using UnityEngine.Events;
-using Oasis.Project;
+using Oasis.Projects;
 using System.Collections.Generic;
 using Oasis.Export;
 using Oasis.UI;
@@ -19,7 +19,7 @@ namespace Oasis
 {
     public class Editor : MonoBehaviour
     {
-        public ProjectController ProjectController;
+        public ProjectsController ProjectsController;
         public UIController UIController;
         public MameController MameController;
         public SelectionController SelectionController;

@@ -24,7 +24,7 @@ namespace Oasis.NativeMenus
 
         public void OnFileSaveProject()
         {
-            Editor.Instance.ProjectController.SaveProject();
+            Editor.Instance.ProjectsController.SaveProject();
 
             // Original test export->import code:
             //OasisExporter exporter = new OasisExporter(new FileSystemWrapper(), new ProjectSettingsValidator(), new LayoutValidator());

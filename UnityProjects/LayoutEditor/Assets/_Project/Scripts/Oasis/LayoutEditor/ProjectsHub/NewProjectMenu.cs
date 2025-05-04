@@ -36,7 +36,7 @@ namespace Oasis.LayoutEditor.ProjectsHub
         {
             string projectFolderPath = Path.Combine(LocationInputField.text, ProjectNameInputField.text);
 
-            Editor.Instance.ProjectController.CreateNewProject(projectFolderPath);
+            Editor.Instance.ProjectsController.CreateNewProject(projectFolderPath);
 
             _projectsHubController.SetNewProjectMenuActive(false);
             _projectsHubController.SetHubMenuActive(false);

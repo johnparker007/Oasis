@@ -98,7 +98,7 @@ namespace Oasis.Layout
                         {
                             BandOasisImage = ImageOperations.LoadFromPng(
                                 Path.Combine(
-                                    Editor.Instance.ProjectController.ProjectRootPath,
+                                    Editor.Instance.ProjectsController.ProjectRootPath,
                                     (string)field.Value));
                         }
                         break;
@@ -107,7 +107,7 @@ namespace Oasis.Layout
                         {
                             OverlayOasisImage = ImageOperations.LoadFromPng(
                                 Path.Combine(
-                                    Editor.Instance.ProjectController.ProjectRootPath,
+                                    Editor.Instance.ProjectsController.ProjectRootPath,
                                     (string)field.Value));
                         }
                         break;
