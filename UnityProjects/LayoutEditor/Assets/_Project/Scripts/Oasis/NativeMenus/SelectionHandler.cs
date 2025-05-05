@@ -8,7 +8,7 @@ namespace Oasis.NativeMenus
 {
     public partial class SelectionHandler : MonoBehaviour
     {
-        private const bool kDebugForceMfmeImportOnStartup = true;
+        private const bool kDebugForceMfmeImportOnStartup = false;
         private const bool kDebugForceProjectLoadOnStartup = false;
 
         private void Start()
