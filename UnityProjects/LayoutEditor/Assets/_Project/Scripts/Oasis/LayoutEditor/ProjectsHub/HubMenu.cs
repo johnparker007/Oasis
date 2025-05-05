@@ -1,4 +1,5 @@
 using Oasis.Projects;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -35,6 +36,8 @@ namespace Oasis.LayoutEditor.ProjectsHub
 
             NewProjectButton.onClick.AddListener(OnNewProjectButtonClick);
             AddProjectButton.onClick.AddListener(OnAddProjectButtonClick);
+
+            ProjectsListRows.OnRowButtonClick.AddListener(OnRowButtonClick);
         }
 
         private void Start()
@@ -58,6 +61,8 @@ namespace Oasis.LayoutEditor.ProjectsHub
             NewProjectButton.onClick.RemoveListener(OnNewProjectButtonClick);
             AddProjectButton.onClick.RemoveListener(OnAddProjectButtonClick);
 
+            ProjectsListRows.OnRowButtonClick.RemoveListener(OnRowButtonClick);
+
             Editor.Instance.ProjectsController.ProjectsList.OnListModified.RemoveListener(OnListModified);
         }
 
@@ -76,6 +81,11 @@ namespace Oasis.LayoutEditor.ProjectsHub
         private void OnListModified()
         {
             _rebuildRequired = true;
+        }
+
+        private void OnRowButtonClick(ProjectsListRow row)
+        {
+            Debug.LogError("TODO implement row click handling to load project");
         }
     }
 }

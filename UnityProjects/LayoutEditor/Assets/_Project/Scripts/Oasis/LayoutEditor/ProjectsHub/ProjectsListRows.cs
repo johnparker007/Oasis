@@ -1,12 +1,15 @@
 using Oasis.Projects;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Events;
 
 namespace Oasis.LayoutEditor.ProjectsHub
 {
     public class ProjectsListRows : MonoBehaviour
     {
         public ProjectsListRow ProjectsListRowPrefab;
+
+        public UnityEvent<ProjectsListRow> OnRowButtonClick = null;
 
         private List<ProjectsListRow> _rows = new List<ProjectsListRow>();
 
