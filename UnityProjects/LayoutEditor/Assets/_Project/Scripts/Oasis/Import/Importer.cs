@@ -14,7 +14,9 @@ namespace Oasis.Import
     {
         public ProjectData ParseProject(string json)
         {
-            LayoutObject layout =  new LayoutObject();
+            Editor.Instance.Project = new ProjectData();
+            Editor.Instance.Project.Layout =  new LayoutObject();
+
             JToken token = JToken.Parse(json);
             if ((string) token["type"] != "LayoutObject") {
                 throw new ImportParseException("JSON does not represent a LayoutObject");
@@ -22,14 +24,12 @@ namespace Oasis.Import
             // Iterate over the views and import them
             foreach(JProperty viewKey in token["views"]) {
                 JToken currentView = token["views"][viewKey.Name];
-                ParseView(viewKey.Name, currentView, layout);
+                ParseView(viewKey.Name, currentView, Editor.Instance.Project.Layout);
             }
             // Parse project specific fields and pass these back also.
-            ProjectData project = new ProjectData();
-            project.Layout = layout;
-            project.Settings.Mame.RomName = (string) token["project_settings"]["ROM_Name"];
-            project.Settings.FruitMachine.Platform = (MameController.PlatformType) Enum.Parse(typeof(MameController.PlatformType), (string) token["project_settings"]["FruitMachine_Platform"], true);
-            return project;
+            Editor.Instance.Project.Settings.Mame.RomName = (string) token["project_settings"]["ROM_Name"];
+            Editor.Instance.Project.Settings.FruitMachine.Platform = (MameController.PlatformType) Enum.Parse(typeof(MameController.PlatformType), (string) token["project_settings"]["FruitMachine_Platform"], true);
+            return Editor.Instance.Project;
         }
 
         public View ParseView(string key, JToken token, LayoutObject layout)

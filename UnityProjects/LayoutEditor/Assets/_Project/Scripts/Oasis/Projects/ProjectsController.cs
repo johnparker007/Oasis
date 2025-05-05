@@ -44,7 +44,7 @@ namespace Oasis.Projects
             // create project directory
             Directory.CreateDirectory(rootPath);
 
-            Editor.Instance.ProjectsController.ProjectRootPath = rootPath;
+            ProjectRootPath = rootPath;
 
             SaveProject();
 
@@ -65,6 +65,20 @@ namespace Oasis.Projects
 
             OasisExporter exporter = new OasisExporter(new FileSystemWrapper(), new ProjectSettingsValidator(), new LayoutValidator());
             exporter.Export(Editor.Instance.Project, projectJsonPath);
+
+            return true;
+        }
+
+        public bool LoadProject(string path)
+        {
+            // TODO prob want to add some exception handling and return false for failed save
+
+            ProjectRootPath = path;
+
+            string projectJsonPath = Path.Combine(ProjectRootPath, kProjectJsonFilename);
+
+            Import.Importer importer = new Import.Importer();
+            Editor.Instance.Project = importer.Import(projectJsonPath);
 
             return true;
         }

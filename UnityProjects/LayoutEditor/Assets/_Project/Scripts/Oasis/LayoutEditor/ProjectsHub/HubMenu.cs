@@ -85,7 +85,8 @@ namespace Oasis.LayoutEditor.ProjectsHub
 
         private void OnRowButtonClick(ProjectsListRow row)
         {
-            Debug.LogError("TODO implement row click handling to load project");
+            Editor.Instance.ProjectsController.LoadProject(row.PathText.text);
+            _projectsHubController.SetHubMenuActive(false);
         }
     }
 }
