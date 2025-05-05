@@ -9,6 +9,8 @@ namespace Oasis.LayoutEditor.ProjectsHub
     {
         public Button NewProjectButton;
         public Button AddProjectButton;
+        public ProjectsListRows ProjectsListRows;
+
 
         private ProjectsHubController _projectsHubController = null;
 
@@ -46,7 +48,7 @@ namespace Oasis.LayoutEditor.ProjectsHub
         {
             if(_rebuildRequired && ListItems != null)
             {
-                RebuildProjectsList();
+                ProjectsListRows.Rebuild(ListItems);
                 _rebuildRequired = false;
             }
         }
@@ -69,14 +71,6 @@ namespace Oasis.LayoutEditor.ProjectsHub
             Debug.LogError("TODO OnAddProjectButtonClick");
 
             //Editor.Instance.Preferences.ProjectsFolder
-        }
-
-        private void RebuildProjectsList()
-        {
-            foreach (ProjectsList.ListItem listItem in ListItems)
-            {
-                Debug.LogError("Rebuild - " + listItem.Path);
-            }
         }
 
         private void OnListModified()
