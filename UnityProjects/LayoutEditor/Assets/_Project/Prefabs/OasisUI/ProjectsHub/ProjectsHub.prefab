@@ -4575,7 +4575,7 @@ MonoBehaviour:
     m_Right: 20
     m_Top: 10
     m_Bottom: 10
-  m_ChildAlignment: 4
+  m_ChildAlignment: 1
   m_Spacing: 0
   m_ChildForceExpandWidth: 1
   m_ChildForceExpandHeight: 1
@@ -4597,3 +4597,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ProjectsListRowPrefab: {fileID: 7656269992135536559, guid: 9160d18d806a7a74eac58632e5ed675a, type: 3}
+  OnRowButtonClick:
+    m_PersistentCalls:
+      m_Calls: []
+  OnRemoveButtonClick:
+    m_PersistentCalls:
+      m_Calls: []

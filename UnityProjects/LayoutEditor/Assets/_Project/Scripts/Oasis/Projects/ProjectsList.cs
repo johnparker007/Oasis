@@ -58,7 +58,13 @@ namespace Oasis.Projects
             OnListModified?.Invoke();
         }
 
-        // TODO remove list item
+        public void RemoveListItem(string projectPath)
+        {
+            ListItems.Remove(ListItems.Find(x => x.Path == projectPath));
+            Save();
+
+            OnListModified?.Invoke();
+        }
 
         public void Save()
         {

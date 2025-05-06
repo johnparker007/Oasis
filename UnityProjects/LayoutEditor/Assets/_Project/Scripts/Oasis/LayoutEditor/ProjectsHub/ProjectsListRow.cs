@@ -10,6 +10,7 @@ namespace Oasis.LayoutEditor.ProjectsHub
         public TMPro.TMP_Text NameText;
         public TMPro.TMP_Text PathText;
         public Button RowButton;
+        public Button RemoveButton;
 
         private ProjectsListRows _projectsListRows = null;
 
@@ -18,6 +19,7 @@ namespace Oasis.LayoutEditor.ProjectsHub
             _projectsListRows = GetComponentInParent<ProjectsListRows>();
 
             RowButton.onClick.AddListener(OnRowButtonClick);
+            RemoveButton.onClick.AddListener(OnRemoveButtonClick);
         }
 
         private void OnDestroy()
@@ -38,6 +40,11 @@ namespace Oasis.LayoutEditor.ProjectsHub
         public void OnRowButtonClick()
         {
             _projectsListRows.OnRowButtonClick?.Invoke(this);
+        }
+
+        public void OnRemoveButtonClick()
+        {
+            _projectsListRows.OnRemoveButtonClick?.Invoke(this);
         }
     }
 }

@@ -10,6 +10,7 @@ namespace Oasis.LayoutEditor.ProjectsHub
         public ProjectsListRow ProjectsListRowPrefab;
 
         public UnityEvent<ProjectsListRow> OnRowButtonClick = null;
+        public UnityEvent<ProjectsListRow> OnRemoveButtonClick = null;
 
         private List<ProjectsListRow> _rows = new List<ProjectsListRow>();
 
@@ -27,7 +28,7 @@ namespace Oasis.LayoutEditor.ProjectsHub
         {
             foreach (ProjectsListRow row in _rows)
             {
-                Destroy(row);
+                Destroy(row.gameObject);
             }
 
             _rows.Clear();

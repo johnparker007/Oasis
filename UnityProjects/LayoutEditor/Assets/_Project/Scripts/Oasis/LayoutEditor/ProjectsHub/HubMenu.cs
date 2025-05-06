@@ -38,6 +38,7 @@ namespace Oasis.LayoutEditor.ProjectsHub
             AddProjectButton.onClick.AddListener(OnAddProjectButtonClick);
 
             ProjectsListRows.OnRowButtonClick.AddListener(OnRowButtonClick);
+            ProjectsListRows.OnRemoveButtonClick.AddListener(OnRemoveButtonClick);
         }
 
         private void Start()
@@ -62,6 +63,7 @@ namespace Oasis.LayoutEditor.ProjectsHub
             AddProjectButton.onClick.RemoveListener(OnAddProjectButtonClick);
 
             ProjectsListRows.OnRowButtonClick.RemoveListener(OnRowButtonClick);
+            ProjectsListRows.OnRemoveButtonClick.RemoveListener(OnRemoveButtonClick);
 
             Editor.Instance.ProjectsController.ProjectsList.OnListModified.RemoveListener(OnListModified);
         }
@@ -87,6 +89,12 @@ namespace Oasis.LayoutEditor.ProjectsHub
         {
             Editor.Instance.ProjectsController.LoadProject(row.PathText.text);
             _projectsHubController.SetHubMenuActive(false);
+        }
+
+        private void OnRemoveButtonClick(ProjectsListRow row)
+        {
+            string textLookup = row.PathText.text.Replace("\\\\", "\\");
+            Editor.Instance.ProjectsController.ProjectsList.RemoveListItem(textLookup);
         }
     }
 }

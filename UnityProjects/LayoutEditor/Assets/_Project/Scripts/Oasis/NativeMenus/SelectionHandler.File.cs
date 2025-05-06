@@ -25,12 +25,6 @@ namespace Oasis.NativeMenus
         public void OnFileSaveProject()
         {
             Editor.Instance.ProjectsController.SaveProject();
-
-            // Original test export->import code:
-            //OasisExporter exporter = new OasisExporter(new FileSystemWrapper(), new ProjectSettingsValidator(), new LayoutValidator());
-            //exporter.Export(Editor.Instance.Project, string.Format("e:\\SavedLayout2\\{0}.json", Editor.Instance.Project.Settings.Mame.RomName));
-            //Oasis.Import.Importer importer = new Oasis.Import.Importer();
-            //Editor.Instance.Project = importer.Import(string.Format("e:\\SavedLayout2\\{0}.json", Editor.Instance.Project.Settings.Mame.RomName));
         }
 
         public void OnFileImportMfme()

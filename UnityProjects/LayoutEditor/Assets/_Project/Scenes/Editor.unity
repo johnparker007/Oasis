@@ -9550,6 +9550,14 @@ PrefabInstance:
       propertyPath: m_Name
       value: ProjectsHub
       objectReference: {fileID: 0}
+    - target: {fileID: 7984991958640566710, guid: a1b86705f1022b54ab55ffd82b1ddd2e, type: 3}
+      propertyPath: m_ChildControlHeight
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7984991958640566710, guid: a1b86705f1022b54ab55ffd82b1ddd2e, type: 3}
+      propertyPath: m_ChildForceExpandHeight
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 8418518294324502330, guid: a1b86705f1022b54ab55ffd82b1ddd2e, type: 3}
       propertyPath: m_AnchorMax.y
       value: 0
