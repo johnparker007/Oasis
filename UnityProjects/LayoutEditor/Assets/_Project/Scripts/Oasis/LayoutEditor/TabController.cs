@@ -15,7 +15,9 @@ namespace Oasis.LayoutEditor
             CustomView,
             ProjectSettings,
             Preferences,
-            LampRemapper
+            LampRemapper,
+            LocalLightNormaliser,
+            UpscaledBase
         }
 
         [Serializable]
