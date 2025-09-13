@@ -1,0 +1,1 @@
+RunUpscaler.bat "C:\Users\John\Desktop\temphex1.png" "C:\Users\John\Desktop\temphex1_UPSCALED_BY_BAT.png" "4" "C:\Program Files\Upscayl\resources\models" "ultrasharp"
