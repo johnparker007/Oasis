@@ -334,9 +334,5 @@ namespace NativeWindowsContextMenu
         public void ShowMenuAtCursor(object _) { Debug.LogWarning("Native Windows context menu is only available on Windows."); }
     }
 
-    public sealed class NativeContextMenuDemo : MonoBehaviour, IPointerClickHandler
-    {
-        public void OnPointerClick(PointerEventData eventData) { Debug.LogWarning("Windows-only demo"); }
-    }
 }
 #endif
