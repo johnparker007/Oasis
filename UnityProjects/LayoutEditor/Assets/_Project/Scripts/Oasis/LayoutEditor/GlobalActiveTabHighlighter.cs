@@ -47,7 +47,27 @@ namespace Oasis.LayoutEditor
 
             if (tab.Content != null)
             {
-                AddClickHandler(tab.Content.gameObject, tab);
+                // Add handlers for all existing descendants of the tab content
+                AddClickHandlersRecursively(tab.Content, tab);
+
+                // Watch for future hierarchy changes so dynamically created children
+                // also receive click handlers
+                ContentHierarchyWatcher watcher = tab.Content.gameObject.GetComponent<ContentHierarchyWatcher>();
+                if (watcher == null)
+                {
+                    watcher = tab.Content.gameObject.AddComponent<ContentHierarchyWatcher>();
+                }
+                watcher.Initialize(this, tab);
+            }
+        }
+
+        private void AddClickHandlersRecursively(Transform root, PanelTab tab)
+        {
+            AddClickHandler(root.gameObject, tab);
+
+            foreach (Transform child in root)
+            {
+                AddClickHandlersRecursively(child, tab);
             }
         }
 
@@ -122,6 +142,26 @@ namespace Oasis.LayoutEditor
                 if (_highlighter != null)
                 {
                     _highlighter.HighlightTab(_tab);
+                }
+            }
+        }
+
+        private sealed class ContentHierarchyWatcher : MonoBehaviour
+        {
+            private GlobalActiveTabHighlighter _highlighter;
+            private PanelTab _tab;
+
+            public void Initialize(GlobalActiveTabHighlighter highlighter, PanelTab tab)
+            {
+                _highlighter = highlighter;
+                _tab = tab;
+            }
+
+            private void OnTransformChildrenChanged()
+            {
+                if (_highlighter != null)
+                {
+                    _highlighter.AddClickHandlersRecursively(transform, _tab);
                 }
             }
         }
