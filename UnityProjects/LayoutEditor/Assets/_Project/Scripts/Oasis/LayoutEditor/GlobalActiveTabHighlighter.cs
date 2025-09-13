@@ -43,10 +43,20 @@ namespace Oasis.LayoutEditor
             outline.effectDistance = new Vector2(_highlightThickness, _highlightThickness);
             outline.enabled = false;
 
-            TabClickHandler clickHandler = tab.gameObject.GetComponent<TabClickHandler>();
+            AddClickHandler(tab.gameObject, tab);
+
+            if (tab.Content != null)
+            {
+                AddClickHandler(tab.Content.gameObject, tab);
+            }
+        }
+
+        private void AddClickHandler(GameObject target, PanelTab tab)
+        {
+            TabClickHandler clickHandler = target.GetComponent<TabClickHandler>();
             if (clickHandler == null)
             {
-                clickHandler = tab.gameObject.AddComponent<TabClickHandler>();
+                clickHandler = target.AddComponent<TabClickHandler>();
             }
             clickHandler.Initialize(this, tab);
         }
