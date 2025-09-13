@@ -63,10 +63,6 @@ namespace DynamicPanels
 
 		[SerializeField]
 		private Button closeButton;
-
-		// JP adding as part of global selected tab system
-		[SerializeField]
-		private Image globalSelectedIndicator;
 #pragma warning restore 0649
 
 		internal InternalSettings Internal { get; private set; }
@@ -174,12 +170,6 @@ namespace DynamicPanels
 		public void Destroy()
 		{
 			m_panel.RemoveTab( this );
-		}
-
-		// JP adding for the global selected tab system:
-		public void SetGlobalSelectedIndicatorVisible(bool visible)
-        {
-			globalSelectedIndicator.gameObject.SetActive(visible);
 		}
 
 		private void SetActive( bool activeState )

@@ -495,10 +495,6 @@ namespace DynamicPanels
 			}
 
 			ActiveTab = tabIndex;
-
-			// JP this is a bit hacky, but it'll do for now!
-			PanelManager.Instance.SetGlobalActivePanel(this);
-
 			return tabs[tabIndex];
 		}
 

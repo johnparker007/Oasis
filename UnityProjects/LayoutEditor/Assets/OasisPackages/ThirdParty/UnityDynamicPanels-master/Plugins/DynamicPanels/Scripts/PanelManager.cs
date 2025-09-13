@@ -39,14 +39,6 @@ namespace DynamicPanels
 		private float nextPanelValidationTime;
 		private PointerEventData nullPointerEventData;
 
-		// JP Adding for 'active tab' system:
-		private Panel globalActivePanel = null;
-		public PanelTab GlobalSelectedPanelTab
-        {
-			get;
-			private set;
-        }
-
 		private void Awake()
 		{
 			if( m_instance == null )
@@ -112,10 +104,7 @@ namespace DynamicPanels
 				if( Input.touchCount == 0 )
 				{
 					if( Input.GetMouseButtonDown( 0 ) || Input.GetMouseButtonDown( 1 ) || Input.GetMouseButtonDown( 2 ) )
-                    {
-						BringClickedPanelToForward(Input.mousePosition);
-						SetClickedPanelAsGlobalActivePanel(Input.mousePosition);
-					}
+						BringClickedPanelToForward( Input.mousePosition );
 				}
 				else
 				{
@@ -123,16 +112,9 @@ namespace DynamicPanels
 					{
 						Touch touch = Input.GetTouch( i );
 						if( touch.phase == TouchPhase.Began )
-                        {
-							BringClickedPanelToForward(touch.position);
-							SetClickedPanelAsGlobalActivePanel(Input.mousePosition);
-						}
+							BringClickedPanelToForward( touch.position );
 					}
 				}
-
-				// JP TOIMPROVE this is a bit inefficient doing this every update, but will work
-				// for now.  Could be done with some callback/onstatechanged type approach.
-				UpdateGlobalActiveTabIndicator();
 #endif
 			}
 
@@ -169,9 +151,6 @@ namespace DynamicPanels
 			{
 				panels.Add( panel );
 				panel.GetComponentInParent<DynamicPanelsCanvas>().UnanchoredPanelGroup.AddElement( panel );
-
-				// JP just putting this here for now, so the last registered new panel becomes the global active panel
-				globalActivePanel = panel;
 			}
 		}
 
@@ -316,11 +295,6 @@ namespace DynamicPanels
 			return null;
 		}
 
-		public void SetGlobalActivePanel(Panel panel)
-        {
-			globalActivePanel = panel;
-        }
-
 		private void BringClickedPanelToForward( Vector2 screenPoint )
 		{
 			for( int i = 0; i < canvases.Count; i++ )
@@ -353,65 +327,7 @@ namespace DynamicPanels
 			}
 		}
 
-		private void SetClickedPanelAsGlobalActivePanel(Vector2 screenPoint)
-		{
-			globalActivePanel = null;
-
-			for (int i = 0; i < canvases.Count; i++)
-			{
-				if (!canvases[i].gameObject.activeInHierarchy)
-					continue;
-
-				Camera worldCamera = canvases[i].Internal.worldCamera;
-				if (RectTransformUtility.RectangleContainsScreenPoint(canvases[i].RectTransform, screenPoint, worldCamera))
-				{
-					for (int j = 0; j < panels.Count; j++)
-					{
-						if (panels[j].Internal.IsDummy)
-							continue;
-
-						if (panels[j].Canvas == canvases[i] && RectTransformUtility.RectangleContainsScreenPoint(panels[j].Internal.HighlightTransform, screenPoint, worldCamera))
-						{
-							if (globalActivePanel == null 
-								|| panels[j].RectTransform.GetSiblingIndex() > globalActivePanel.RectTransform.GetSiblingIndex())
-							{
-								globalActivePanel = panels[j];
-							}
-						}
-					}
-
-					if (globalActivePanel != null)
-					{
-						return;
-					}
-				}
-			}
-		}
-
-        private void UpdateGlobalActiveTabIndicator()
-        {
-			foreach(Panel panel in panels)
-            {
-				for (int tabIndex = 0; tabIndex < panel.NumberOfTabs; ++tabIndex)
-				{
-					PanelTab panelTab = panel[tabIndex];
-
-					bool isGlobalActivePanel = panel == globalActivePanel;
-					bool isActiveTab = tabIndex == panel.ActiveTab;
-
-					bool isGlobalSelectedPanelTab = isGlobalActivePanel && isActiveTab;
-
-					panelTab.SetGlobalSelectedIndicatorVisible(isGlobalSelectedPanelTab);
-
-					if(isGlobalSelectedPanelTab)
-                    {
-						GlobalSelectedPanelTab = panelTab;
-					}
-				}
-            }
-        }
-
-        public void StopCanvasOperations( DynamicPanelsCanvas canvas )
+		public void StopCanvasOperations( DynamicPanelsCanvas canvas )
 		{
 			CancelDraggingPanel();
 

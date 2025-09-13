@@ -24,11 +24,15 @@ namespace Oasis.Input
 
         private void Update()
         {
-            if(PanelManager.Instance.GlobalSelectedPanelTab == null
-                || PanelManager.Instance.GlobalSelectedPanelTab.Content.GetComponentInChildren<EditorView>() == null)
-            {
-                return;
-            }
+            // TODO attempting to restart use of DynamicPanels, keeping the source unaltered,
+            // 'GlobalSelectedPanelTab' will ideally need to be reimplemented outside of the core 
+            // DynamicPanels package
+
+            //if(PanelManager.Instance.GlobalSelectedPanelTab == null
+            //    || PanelManager.Instance.GlobalSelectedPanelTab.Content.GetComponentInChildren<EditorView>() == null)
+            //{
+            //    return;
+            //}
 
             _keyCodeStateDeltas.Clear();
 
