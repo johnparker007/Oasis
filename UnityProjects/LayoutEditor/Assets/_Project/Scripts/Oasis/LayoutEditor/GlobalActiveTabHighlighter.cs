@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 using DynamicPanels;
 
 namespace Oasis.LayoutEditor
@@ -41,9 +42,21 @@ namespace Oasis.LayoutEditor
             outline.effectColor = _highlightColor;
             outline.effectDistance = new Vector2(_highlightThickness, _highlightThickness);
             outline.enabled = false;
+
+            TabClickHandler clickHandler = tab.gameObject.GetComponent<TabClickHandler>();
+            if (clickHandler == null)
+            {
+                clickHandler = tab.gameObject.AddComponent<TabClickHandler>();
+            }
+            clickHandler.Initialize(this, tab);
         }
 
         private void OnActiveTabChanged(PanelTab tab)
+        {
+            HighlightTab(tab);
+        }
+
+        public void HighlightTab(PanelTab tab)
         {
             if (_current != null)
             {
@@ -81,6 +94,25 @@ namespace Oasis.LayoutEditor
                 }
 
                 _current = null;
+            }
+        }
+        private sealed class TabClickHandler : MonoBehaviour, IPointerDownHandler
+        {
+            private GlobalActiveTabHighlighter _highlighter;
+            private PanelTab _tab;
+
+            public void Initialize(GlobalActiveTabHighlighter highlighter, PanelTab tab)
+            {
+                _highlighter = highlighter;
+                _tab = tab;
+            }
+
+            public void OnPointerDown(PointerEventData eventData)
+            {
+                if (_highlighter != null)
+                {
+                    _highlighter.HighlightTab(_tab);
+                }
             }
         }
     }
