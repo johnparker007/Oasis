@@ -7,10 +7,12 @@ using DynamicPanels;
 public sealed class TabHeaderContextMenu : NativeContextMenu
 {
     bool _maximised;
+    byte[] _savedBytes;
 
     protected override List<NativeContextMenuManager.MenuItemSpec> BuildMenu()
     {
         var tab = GetComponent<PanelTab>();
+        var panel = tab ? tab.Panel : null;
 
         return new List<NativeContextMenuManager.MenuItemSpec>
         {
@@ -18,8 +20,24 @@ public sealed class TabHeaderContextMenu : NativeContextMenu
                 "Maximise",
                 () =>
                 {
+                    if (!panel)
+                    {
+                        return;
+                    }
+
                     _maximised = !_maximised;
-                    Debug.Log($"Maximise set to {_maximised}");
+                    if (_maximised)
+                    {
+                        _savedBytes = PanelSerialization.SerializeCanvasToArray(panel.Canvas);
+                        panel.Detach();
+                        panel.BringForward();
+                        panel.RectTransform.anchoredPosition = Vector2.zero;
+                        panel.FloatingSize = panel.Canvas.Size;
+                    }
+                    else
+                    {
+                        PanelSerialization.DeserializeCanvasFromArray(panel.Canvas, _savedBytes);
+                    }
                 },
                 true,
                 _maximised),
