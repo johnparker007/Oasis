@@ -36,5 +36,10 @@ public static class TabHeaderContextMenuAttacher
         {
             tab.gameObject.AddComponent<PanelTabMaximiser>();
         }
+
+        if (tab.GetComponent<PanelTabDoubleClickMaximiser>() == null)
+        {
+            tab.gameObject.AddComponent<PanelTabDoubleClickMaximiser>();
+        }
     }
 }
