@@ -4,7 +4,7 @@ using DynamicPanels;
 // Ensures every PanelTab has the components required for context menu and
 // maximise/restore functionality. Adds the components to existing tabs and to
 // any tabs created later.
-public static class TabHeaderContextMenuAttacher
+public static class PanelTabComponentAttacher
 {
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void Initialize()
