@@ -34,15 +34,64 @@ namespace Oasis.LayoutEditor
             public RectTransform RectTransform;
         }
 
+        [SerializeField]
+        private RectTransform _closedTabsRoot;
+
+        private readonly Dictionary<TabTypes, Panel> _storedPanels = new();
+
         public List<TabDefinition> TabDefinitions;
 
+        private void Awake()
+        {
+            PanelNotificationCenter.OnTabClosed += HandleTabClosed;
+        }
+
+        private void OnDestroy()
+        {
+            PanelNotificationCenter.OnTabClosed -= HandleTabClosed;
+        }
+
+        private void HandleTabClosed(PanelTab tab)
+        {
+            if (tab == null)
+            {
+                return;
+            }
+
+            if (!Enum.TryParse(tab.ID, out TabTypes id))
+            {
+                return;
+            }
+
+            Panel panel = tab.Panel.DetachTab(tab);
+            if (panel == null)
+            {
+                return;
+            }
+
+            if (_closedTabsRoot != null)
+            {
+                panel.RectTransform.SetParent(_closedTabsRoot, false);
+            }
+
+            panel.gameObject.SetActive(false);
+            _storedPanels[id] = panel;
+        }
 
         public PanelTab ShowTab(TabTypes tabType)
         {
-            if(tabType == TabTypes.CustomView)
+            if (tabType == TabTypes.CustomView)
             {
                 Debug.LogError("Can't show a custom view just by tab type, needs the uniquely identifying name (label)!");
                 return null;
+            }
+
+            if (_storedPanels.TryGetValue(tabType, out Panel storedPanel) && storedPanel != null)
+            {
+                storedPanel.gameObject.SetActive(true);
+                PanelManager.Instance.AnchorPanel(storedPanel, storedPanel.Canvas, Direction.Right);
+                _storedPanels.Remove(tabType);
+                return storedPanel[0];
             }
 
             TabDefinition tabDefinition = TabDefinitions.Find(x => x.TypeID == tabType);
