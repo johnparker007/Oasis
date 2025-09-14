@@ -41,5 +41,10 @@ public static class TabHeaderContextMenuAttacher
         {
             tab.gameObject.AddComponent<PanelTabDoubleClickMaximiser>();
         }
+
+        if (tab.GetComponent<PanelTabMiddleClickCloser>() == null)
+        {
+            tab.gameObject.AddComponent<PanelTabMiddleClickCloser>();
+        }
     }
 }
