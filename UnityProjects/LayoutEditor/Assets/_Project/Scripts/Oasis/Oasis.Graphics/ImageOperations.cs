@@ -10,8 +10,10 @@ namespace Oasis.Graphics {
         {
             //JP TODO slightly less hardwiring, but we will prob want to pass in a path
             // to this generic SaveToPNG function:
+            string assetsPath = Editor.Instance.ProjectsController.ProjectAssetsPath;
+            Directory.CreateDirectory(assetsPath);
             string filePath = Path.Combine(
-                                  Editor.Instance.ProjectsController.ProjectRootPath,
+                                  assetsPath,
                                   fileUniqueName);
 
             File.WriteAllBytes(
