@@ -1,6 +1,8 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using DynamicPanels;
+using Oasis.LayoutEditor;
 
 namespace Oasis
 {
@@ -10,9 +12,9 @@ namespace Oasis
         private RectTransform _closedTabsRoot;
 
         [SerializeField]
-        private string[] _toolWindowIds;
+        private TabController.TabTypes[] _toolTabTypes;
 
-        private readonly Dictionary<string, Panel> _storedPanels = new Dictionary<string, Panel>();
+        private readonly Dictionary<TabController.TabTypes, Panel> _storedPanels = new();
 
         private void Awake()
         {
@@ -31,18 +33,17 @@ namespace Oasis
                 return;
             }
 
-            string id = tab.ID;
-            if (string.IsNullOrEmpty(id))
+            if (!Enum.TryParse(tab.ID, out TabController.TabTypes id))
             {
                 return;
             }
 
-            if (_toolWindowIds != null && _toolWindowIds.Length > 0)
+            if (_toolTabTypes != null && _toolTabTypes.Length > 0)
             {
                 bool match = false;
-                for (int i = 0; i < _toolWindowIds.Length; i++)
+                for (int i = 0; i < _toolTabTypes.Length; i++)
                 {
-                    if (_toolWindowIds[i] == id)
+                    if (_toolTabTypes[i] == id)
                     {
                         match = true;
                         break;
@@ -70,27 +71,22 @@ namespace Oasis
             _storedPanels[id] = panel;
         }
 
-        public void ShowTab(string id)
+        public void ShowTab(TabController.TabTypes tabType)
         {
-            if (string.IsNullOrEmpty(id))
-            {
-                return;
-            }
-
             Panel panel;
-            if (!_storedPanels.TryGetValue(id, out panel) || panel == null)
+            if (!_storedPanels.TryGetValue(tabType, out panel) || panel == null)
             {
                 return;
             }
 
             panel.gameObject.SetActive(true);
             PanelManager.Instance.AnchorPanel(panel, panel.Canvas, Direction.Right);
-            _storedPanels.Remove(id);
+            _storedPanels.Remove(tabType);
         }
 
         public void ShowInspector()
         {
-            ShowTab("Inspector");
+            ShowTab(TabController.TabTypes.Inspector);
         }
     }
 }
