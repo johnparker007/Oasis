@@ -12,6 +12,7 @@ namespace Oasis
         private RectTransform _closedTabsRoot;
 
         [SerializeField]
+
         private TabController.TabTypes[] _toolTabTypes;
 
         private readonly Dictionary<TabController.TabTypes, Panel> _storedPanels = new();
@@ -68,7 +69,7 @@ namespace Oasis
             }
 
             panel.gameObject.SetActive(false);
-            _storedPanels[id] = panel;
+            _storedPanels[tabType] = panel;
         }
 
         public void ShowTab(TabController.TabTypes tabType)
