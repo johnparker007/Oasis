@@ -1,6 +1,7 @@
 using UnityEngine;
 using DynamicPanels;
 using UnityEngine.UI;
+using UnityEngine.Serialization;
 using System;
 using System.Collections.Generic;
 
@@ -27,7 +28,8 @@ namespace Oasis.LayoutEditor
         public class TabDefinition
         {
             public string Label;
-            public TabTypes TabType;
+            [FormerlySerializedAs("TabType")]
+            public TabTypes TypeID;
             public Sprite Icon;
             public RectTransform RectTransform;
         }
@@ -43,7 +45,7 @@ namespace Oasis.LayoutEditor
                 return null;
             }
 
-            TabDefinition tabDefinition = TabDefinitions.Find(x => x.TabType == tabType);
+            TabDefinition tabDefinition = TabDefinitions.Find(x => x.TypeID == tabType);
             PanelTab panelTab = CreatePanelTab(tabDefinition);
             return panelTab;
         }
@@ -56,6 +58,7 @@ namespace Oasis.LayoutEditor
             PanelTab panelTab = panel[0];
             panelTab.Icon = tabDefinition.Icon;
             panelTab.Label = tabDefinition.Label;
+            panelTab.ID = tabDefinition.TypeID.ToString();
 
             return panelTab;
         }
