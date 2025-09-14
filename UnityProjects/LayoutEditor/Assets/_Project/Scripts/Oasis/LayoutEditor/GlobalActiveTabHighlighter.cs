@@ -33,15 +33,15 @@ namespace Oasis.LayoutEditor
 
         private void OnTabCreated(PanelTab tab)
         {
-            Outline outline = tab.gameObject.GetComponent<Outline>();
-            if (outline == null)
+            TabHighlight highlight = tab.gameObject.GetComponent<TabHighlight>();
+            if (highlight == null)
             {
-                outline = tab.gameObject.AddComponent<Outline>();
+                highlight = tab.gameObject.AddComponent<TabHighlight>();
             }
 
-            outline.effectColor = _highlightColor;
-            outline.effectDistance = new Vector2(_highlightThickness, _highlightThickness);
-            outline.enabled = false;
+            highlight.color = _highlightColor;
+            highlight.Thickness = _highlightThickness;
+            highlight.enabled = false;
 
             AddClickHandler(tab.gameObject, tab);
 
@@ -90,10 +90,10 @@ namespace Oasis.LayoutEditor
         {
             if (_current != null)
             {
-                Outline currentOutline = _current.gameObject.GetComponent<Outline>();
-                if (currentOutline != null)
+                TabHighlight currentHighlight = _current.gameObject.GetComponent<TabHighlight>();
+                if (currentHighlight != null)
                 {
-                    currentOutline.enabled = false;
+                    currentHighlight.enabled = false;
                 }
             }
 
@@ -101,15 +101,15 @@ namespace Oasis.LayoutEditor
 
             if (_current != null)
             {
-                Outline newOutline = _current.gameObject.GetComponent<Outline>();
-                if (newOutline == null)
+                TabHighlight newHighlight = _current.gameObject.GetComponent<TabHighlight>();
+                if (newHighlight == null)
                 {
-                    newOutline = _current.gameObject.AddComponent<Outline>();
+                    newHighlight = _current.gameObject.AddComponent<TabHighlight>();
                 }
 
-                newOutline.effectColor = _highlightColor;
-                newOutline.effectDistance = new Vector2(_highlightThickness, _highlightThickness);
-                newOutline.enabled = true;
+                newHighlight.color = _highlightColor;
+                newHighlight.Thickness = _highlightThickness;
+                newHighlight.enabled = true;
             }
         }
 
@@ -117,10 +117,10 @@ namespace Oasis.LayoutEditor
         {
             if (_current == tab)
             {
-                Outline outline = tab.gameObject.GetComponent<Outline>();
-                if (outline != null)
+                TabHighlight highlight = tab.gameObject.GetComponent<TabHighlight>();
+                if (highlight != null)
                 {
-                    outline.enabled = false;
+                    highlight.enabled = false;
                 }
 
                 _current = null;
