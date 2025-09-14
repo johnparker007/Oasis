@@ -41,20 +41,6 @@ namespace Oasis.LayoutEditor
 
         public List<TabDefinition> TabDefinitions;
 
-        private void Awake()
-        {
-            PanelNotificationCenter.OnTabClosed += HandleTabClosed;
-        }
-
-        private void OnDestroy()
-        {
-            PanelNotificationCenter.OnTabClosed -= HandleTabClosed;
-        }
-
-        private void HandleTabClosed(PanelTab tab)
-        {
-            HideTab(tab);
-        }
 
         public void HideTab(PanelTab tab)
         {
