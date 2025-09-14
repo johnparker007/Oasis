@@ -12,6 +12,7 @@ public sealed class TabHeaderContextMenu : NativeContextMenu
     {
         var tab = GetComponent<PanelTab>();
         var maximiser = GetComponent<PanelTabMaximiser>();
+        Panel anchorPanel = tab ? tab.Panel : null;
 
         return new List<NativeContextMenuManager.MenuItemSpec>
         {
@@ -45,19 +46,19 @@ public sealed class TabHeaderContextMenu : NativeContextMenu
                         "Hierarchy",
                         () =>
                         {
-                            Editor.Instance.TabController.ShowTab(TabController.TabTypes.Hierarchy);
+                            Editor.Instance.TabController.ShowTab(TabController.TabTypes.Hierarchy, anchorPanel);
                         }),
                     new NativeContextMenuManager.MenuItemSpec(
                         "Inspector",
                         () =>
                         {
-                            Editor.Instance.TabController.ShowTab(TabController.TabTypes.Inspector);
+                            Editor.Instance.TabController.ShowTab(TabController.TabTypes.Inspector, anchorPanel);
                         }),
                     new NativeContextMenuManager.MenuItemSpec(
                         "Project",
                         () =>
                         {
-                            Editor.Instance.TabController.ShowTab(TabController.TabTypes.Project);
+                            Editor.Instance.TabController.ShowTab(TabController.TabTypes.Project, anchorPanel);
                         }),
                 }
             },

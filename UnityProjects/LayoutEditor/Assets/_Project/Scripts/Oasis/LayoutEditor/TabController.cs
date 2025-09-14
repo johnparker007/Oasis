@@ -69,7 +69,7 @@ namespace Oasis.LayoutEditor
             _storedPanels[id] = panel;
         }
 
-        public PanelTab ShowTab(TabTypes tabType)
+        public PanelTab ShowTab(TabTypes tabType, Panel anchorPanel = null)
         {
             if (tabType == TabTypes.CustomView)
             {
@@ -80,13 +80,24 @@ namespace Oasis.LayoutEditor
             if (_storedPanels.TryGetValue(tabType, out Panel storedPanel) && storedPanel != null)
             {
                 storedPanel.gameObject.SetActive(true);
-                PanelManager.Instance.AnchorPanel(storedPanel, storedPanel.Canvas, Direction.Right);
+                if (anchorPanel != null)
+                {
+                    PanelManager.Instance.AnchorPanel(storedPanel, anchorPanel, Direction.Right);
+                }
+                else
+                {
+                    PanelManager.Instance.AnchorPanel(storedPanel, storedPanel.Canvas, Direction.Right);
+                }
                 _storedPanels.Remove(tabType);
                 return storedPanel[0];
             }
 
             TabDefinition tabDefinition = TabDefinitions.Find(x => x.TypeID == tabType);
             PanelTab panelTab = CreatePanelTab(tabDefinition);
+            if (anchorPanel != null)
+            {
+                PanelManager.Instance.AnchorPanel(panelTab.Panel, anchorPanel, Direction.Right);
+            }
             return panelTab;
         }
 
