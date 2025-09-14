@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 using DynamicPanels;
+using Oasis;
 
 // Closes a tab when it is middle-clicked.
 public sealed class PanelTabMiddleClickCloser : MonoBehaviour, IPointerClickHandler
@@ -12,7 +13,7 @@ public sealed class PanelTabMiddleClickCloser : MonoBehaviour, IPointerClickHand
             var tab = GetComponent<PanelTab>();
             if (tab)
             {
-                tab.Destroy();
+                Editor.Instance.TabController.HideTab(tab);
             }
         }
     }

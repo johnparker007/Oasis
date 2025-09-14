@@ -32,7 +32,7 @@ public sealed class TabHeaderContextMenu : NativeContextMenu
                 {
                     if (tab)
                     {
-                        tab.Destroy();
+                        Editor.Instance.TabController.HideTab(tab);
                     }
                 }),
             NativeContextMenuManager.MenuItemSpec.Sep(),
