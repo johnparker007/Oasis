@@ -2,6 +2,7 @@
 using UnityEditor;
 using UnityEngine;
 using Oasis;
+using Oasis.LayoutEditor;
 
 public static class TabPoolMenu
 {
@@ -11,7 +12,7 @@ public static class TabPoolMenu
         TabPool pool = Object.FindObjectOfType<TabPool>();
         if (pool != null)
         {
-            pool.ShowTab("Inspector");
+            pool.ShowTab(TabController.TabTypes.Inspector);
         }
         else
         {

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using DynamicPanels;
+using Oasis.LayoutEditor;
 
 namespace Oasis
 {
@@ -10,9 +11,9 @@ namespace Oasis
         private RectTransform _closedTabsRoot;
 
         [SerializeField]
-        private string[] _toolWindowIds;
+        private TabController.TabTypes[] _toolWindowIds;
 
-        private readonly Dictionary<string, Panel> _storedPanels = new Dictionary<string, Panel>();
+        private readonly Dictionary<TabController.TabTypes, Panel> _storedPanels = new Dictionary<TabController.TabTypes, Panel>();
 
         private void Awake()
         {
@@ -37,12 +38,17 @@ namespace Oasis
                 return;
             }
 
+            if (!System.Enum.TryParse<TabController.TabTypes>(id, out var tabType))
+            {
+                return;
+            }
+
             if (_toolWindowIds != null && _toolWindowIds.Length > 0)
             {
                 bool match = false;
                 for (int i = 0; i < _toolWindowIds.Length; i++)
                 {
-                    if (_toolWindowIds[i] == id)
+                    if (_toolWindowIds[i] == tabType)
                     {
                         match = true;
                         break;
@@ -67,16 +73,11 @@ namespace Oasis
             }
 
             panel.gameObject.SetActive(false);
-            _storedPanels[id] = panel;
+            _storedPanels[tabType] = panel;
         }
 
-        public void ShowTab(string id)
+        public void ShowTab(TabController.TabTypes id)
         {
-            if (string.IsNullOrEmpty(id))
-            {
-                return;
-            }
-
             Panel panel;
             if (!_storedPanels.TryGetValue(id, out panel) || panel == null)
             {
@@ -90,7 +91,7 @@ namespace Oasis
 
         public void ShowInspector()
         {
-            ShowTab("Inspector");
+            ShowTab(TabController.TabTypes.Inspector);
         }
     }
 }
