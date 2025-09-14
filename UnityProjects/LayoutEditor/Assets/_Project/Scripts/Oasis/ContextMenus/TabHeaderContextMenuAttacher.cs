@@ -1,8 +1,9 @@
 using UnityEngine;
 using DynamicPanels;
 
-// Ensures every PanelTab has a TabHeaderContextMenu component attached.
-// Adds the component to existing tabs and to any tabs created later.
+// Ensures every PanelTab has the components required for context menu and
+// maximise/restore functionality. Adds the components to existing tabs and to
+// any tabs created later.
 public static class TabHeaderContextMenuAttacher
 {
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -21,9 +22,19 @@ public static class TabHeaderContextMenuAttacher
 
     static void Attach(PanelTab tab)
     {
-        if (tab && tab.GetComponent<TabHeaderContextMenu>() == null)
+        if (!tab)
+        {
+            return;
+        }
+
+        if (tab.GetComponent<TabHeaderContextMenu>() == null)
         {
             tab.gameObject.AddComponent<TabHeaderContextMenu>();
+        }
+
+        if (tab.GetComponent<PanelTabMaximiser>() == null)
+        {
+            tab.gameObject.AddComponent<PanelTabMaximiser>();
         }
     }
 }
