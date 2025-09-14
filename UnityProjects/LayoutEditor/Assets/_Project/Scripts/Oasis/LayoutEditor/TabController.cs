@@ -17,7 +17,10 @@ namespace Oasis.LayoutEditor
             Preferences,
             LampRemapper,
             LocalLightNormaliser,
-            UpscaledBase
+            UpscaledBase,
+            Hierarchy,
+            Inspector,
+            Project
         }
 
         [Serializable]
