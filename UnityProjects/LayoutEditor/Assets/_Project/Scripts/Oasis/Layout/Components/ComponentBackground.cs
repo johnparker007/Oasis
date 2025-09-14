@@ -51,7 +51,7 @@ namespace Oasis.Layout
                         {
                             OasisImage = ImageOperations.LoadFromPng(
                                 Path.Combine(
-                                    Editor.Instance.ProjectsController.ProjectRootPath, 
+                                    Editor.Instance.ProjectsController.ProjectAssetsPath,
                                     (string)field.Value));
                         }
                         break;
