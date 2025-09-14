@@ -53,6 +53,11 @@ namespace Oasis.LayoutEditor
 
         private void HandleTabClosed(PanelTab tab)
         {
+            HideTab(tab);
+        }
+
+        public void HideTab(PanelTab tab)
+        {
             if (tab == null)
             {
                 return;
