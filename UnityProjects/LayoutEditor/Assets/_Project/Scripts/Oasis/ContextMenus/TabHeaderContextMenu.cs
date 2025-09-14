@@ -14,6 +14,10 @@ public sealed class TabHeaderContextMenu : NativeContextMenu
         var maximiser = GetComponent<PanelTabMaximiser>();
         Panel anchorPanel = tab ? tab.Panel : null;
 
+        bool hierarchyActive = Editor.Instance.TabController.IsTabActive(TabController.TabTypes.Hierarchy);
+        bool inspectorActive = Editor.Instance.TabController.IsTabActive(TabController.TabTypes.Inspector);
+        bool projectActive = Editor.Instance.TabController.IsTabActive(TabController.TabTypes.Project);
+
         return new List<NativeContextMenuManager.MenuItemSpec>
         {
             new NativeContextMenuManager.MenuItemSpec(
@@ -47,19 +51,22 @@ public sealed class TabHeaderContextMenu : NativeContextMenu
                         () =>
                         {
                             Editor.Instance.TabController.ShowTab(TabController.TabTypes.Hierarchy, anchorPanel);
-                        }),
+                        },
+                        !hierarchyActive),
                     new NativeContextMenuManager.MenuItemSpec(
                         "Inspector",
                         () =>
                         {
                             Editor.Instance.TabController.ShowTab(TabController.TabTypes.Inspector, anchorPanel);
-                        }),
+                        },
+                        !inspectorActive),
                     new NativeContextMenuManager.MenuItemSpec(
                         "Project",
                         () =>
                         {
                             Editor.Instance.TabController.ShowTab(TabController.TabTypes.Project, anchorPanel);
-                        }),
+                        },
+                        !projectActive),
                 }
             },
         };
