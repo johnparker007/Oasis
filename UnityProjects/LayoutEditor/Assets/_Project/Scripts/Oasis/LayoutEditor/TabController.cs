@@ -101,6 +101,21 @@ namespace Oasis.LayoutEditor
             return panelTab;
         }
 
+        public bool IsTabActive(TabTypes tabType)
+        {
+            if (_storedPanels.TryGetValue(tabType, out Panel storedPanel) && storedPanel != null)
+            {
+                return storedPanel.gameObject.activeSelf;
+            }
+
+            if (PanelNotificationCenter.TryGetTab(tabType.ToString(), out PanelTab tab))
+            {
+                return tab.Panel.gameObject.activeSelf;
+            }
+
+            return false;
+        }
+
         private PanelTab CreatePanelTab(TabDefinition tabDefinition)
         {
             DynamicPanelsCanvas dynamicPanelsCanvas = Editor.Instance.UIController.DynamicPanelsCanvas;
