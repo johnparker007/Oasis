@@ -2022,19 +2022,8 @@ MonoBehaviour:
       tabs: []
     anchorDirection: 0
     initialSize: {x: 0, y: 0}
-    childCount: 1
-    indexOfFirstChild: 1
-  - panel:
-      tabs:
-      - content: {fileID: 2038115445}
-        id: 706988d7-ad78-4684-bfaa-0566a6f8447f
-        minimumSize: {x: 150, y: 150}
-        tabLabel: Base
-        tabIcon: {fileID: 21300000, guid: f5d6265488be57f43b1bd1e30a52d7af, type: 3}
-    anchorDirection: 1
-    initialSize: {x: 0, y: 0}
     childCount: 0
-    indexOfFirstChild: 2
+    indexOfFirstChild: 1
 --- !u!114 &647658037
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -10527,15 +10516,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5169444920475316183, guid: a1a48b56fbd60af4eb8b117176fb1a56, type: 3}
       propertyPath: m_AnchorMax.x
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5169444920475316183, guid: a1a48b56fbd60af4eb8b117176fb1a56, type: 3}
       propertyPath: m_AnchorMax.y
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5169444920475316183, guid: a1a48b56fbd60af4eb8b117176fb1a56, type: 3}
       propertyPath: m_AnchorMin.y
-      value: 0
+      value: 0.100000024
       objectReference: {fileID: 0}
     - target: {fileID: 5169444920475316183, guid: a1a48b56fbd60af4eb8b117176fb1a56, type: 3}
       propertyPath: m_LocalPosition.y
@@ -10553,17 +10542,21 @@ PrefabInstance:
       propertyPath: m_Name
       value: ViewBase
       objectReference: {fileID: 0}
+    - target: {fileID: 6166672508716612653, guid: a1a48b56fbd60af4eb8b117176fb1a56, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 7348310096890892617, guid: a1a48b56fbd60af4eb8b117176fb1a56, type: 3}
       propertyPath: m_AnchorMax.x
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7348310096890892617, guid: a1a48b56fbd60af4eb8b117176fb1a56, type: 3}
       propertyPath: m_AnchorMax.y
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7348310096890892617, guid: a1a48b56fbd60af4eb8b117176fb1a56, type: 3}
       propertyPath: m_AnchorMin.x
-      value: 0
+      value: 0.032258093
       objectReference: {fileID: 0}
     - target: {fileID: 7348310096890892617, guid: a1a48b56fbd60af4eb8b117176fb1a56, type: 3}
       propertyPath: m_LocalPosition.x

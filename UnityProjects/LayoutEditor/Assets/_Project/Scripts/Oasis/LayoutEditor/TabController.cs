@@ -41,6 +41,17 @@ namespace Oasis.LayoutEditor
 
         public List<TabDefinition> TabDefinitions;
 
+        private void Start()
+        {
+            ShowTab(TabTypes.Hierarchy);
+            ShowTab(TabTypes.Inspector);
+            ShowTab(TabTypes.Project);
+
+            // need this to load a project (based on an MFME import), will
+            // want a better solution later
+            ShowTab(TabTypes.BaseView);
+        }
+
 
         public void HideTab(PanelTab tab)
         {
