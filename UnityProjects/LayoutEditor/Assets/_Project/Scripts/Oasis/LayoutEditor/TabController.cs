@@ -43,13 +43,96 @@ namespace Oasis.LayoutEditor
 
         private void Start()
         {
-            ShowTab(TabTypes.Hierarchy);
-            ShowTab(TabTypes.Inspector);
-            ShowTab(TabTypes.Project);
+            PanelTab hierarchyTab = ShowTab(TabTypes.Hierarchy);
+            PanelTab inspectorTab = ShowTab(TabTypes.Inspector);
+            PanelTab projectTab = ShowTab(TabTypes.Project);
 
             // need this to load a project (based on an MFME import), will
             // want a better solution later
-            ShowTab(TabTypes.BaseView);
+            PanelTab baseViewTab = ShowTab(TabTypes.BaseView);
+
+            DynamicPanelsCanvas dynamicPanelsCanvas = Editor.Instance.UIController.DynamicPanelsCanvas;
+            if (dynamicPanelsCanvas == null)
+            {
+                Debug.LogWarning("Dynamic panels canvas not found, default tab layout cannot be created.");
+                return;
+            }
+
+            Panel basePanel = baseViewTab?.Panel;
+            if (basePanel == null)
+            {
+                Debug.LogWarning("Base view tab is missing, default tab layout cannot be created.");
+                return;
+            }
+
+            DockDefaultLayout(
+                dynamicPanelsCanvas,
+                basePanel,
+                hierarchyTab?.Panel,
+                inspectorTab?.Panel,
+                projectTab?.Panel);
+        }
+
+        private static void DockDefaultLayout(
+            DynamicPanelsCanvas canvas,
+            Panel basePanel,
+            Panel hierarchyPanel,
+            Panel inspectorPanel,
+            Panel projectPanel)
+        {
+            RectTransform canvasRect = canvas.RectTransform;
+            float canvasWidth = canvasRect.rect.width;
+            float canvasHeight = canvasRect.rect.height;
+
+            PanelManager panelManager = PanelManager.Instance;
+            panelManager.AnchorPanel(basePanel, canvas, Direction.Left);
+
+            basePanel.RectTransform.sizeDelta = new Vector2(canvasWidth, canvasHeight);
+
+            const float sideWidthFraction = 0.2f;
+            const float projectHeightFraction = 0.25f;
+
+            if (hierarchyPanel != null)
+            {
+                panelManager.AnchorPanel(hierarchyPanel, basePanel, Direction.Left);
+                hierarchyPanel.RectTransform.sizeDelta = new Vector2(canvasWidth * sideWidthFraction, canvasHeight);
+            }
+
+            if (inspectorPanel != null)
+            {
+                panelManager.AnchorPanel(inspectorPanel, basePanel, Direction.Right);
+                inspectorPanel.RectTransform.sizeDelta = new Vector2(canvasWidth * sideWidthFraction, canvasHeight);
+            }
+
+            float baseWidth = canvasWidth;
+            if (hierarchyPanel != null)
+            {
+                baseWidth -= hierarchyPanel.RectTransform.sizeDelta.x;
+            }
+
+            if (inspectorPanel != null)
+            {
+                baseWidth -= inspectorPanel.RectTransform.sizeDelta.x;
+            }
+
+            baseWidth = Mathf.Max(0f, baseWidth);
+            basePanel.RectTransform.sizeDelta = new Vector2(baseWidth, canvasHeight);
+
+            float projectHeight = 0f;
+            if (projectPanel != null)
+            {
+                panelManager.AnchorPanel(projectPanel, basePanel, Direction.Bottom);
+                projectHeight = canvasHeight * projectHeightFraction;
+                projectPanel.RectTransform.sizeDelta = new Vector2(baseWidth, projectHeight);
+            }
+
+            float baseHeight = Mathf.Max(0f, canvasHeight - projectHeight);
+            basePanel.RectTransform.sizeDelta = new Vector2(baseWidth, baseHeight);
+
+            if (projectPanel != null)
+            {
+                projectPanel.RectTransform.sizeDelta = new Vector2(baseWidth, projectHeight);
+            }
         }
 
 
