@@ -18,6 +18,9 @@ public sealed class TabHeaderContextMenu : NativeContextMenu
         bool inspectorActive = Editor.Instance.TabController.IsTabActive(TabController.TabTypes.Inspector);
         bool projectActive = Editor.Instance.TabController.IsTabActive(TabController.TabTypes.Project);
 
+        // To improve - the whole 'Views' thing needs to be dynamic from list of available views in this project
+        bool baseViewActive = Editor.Instance.TabController.IsTabActive(TabController.TabTypes.BaseView);
+
         return new List<NativeContextMenuManager.MenuItemSpec>
         {
             new NativeContextMenuManager.MenuItemSpec(
@@ -67,6 +70,14 @@ public sealed class TabHeaderContextMenu : NativeContextMenu
                             Editor.Instance.TabController.ShowTab(TabController.TabTypes.Project, anchorPanel);
                         },
                         !projectActive),
+                    NativeContextMenuManager.MenuItemSpec.Sep(),
+                    new NativeContextMenuManager.MenuItemSpec(
+                        "Base View",
+                        () =>
+                        {
+                            Editor.Instance.TabController.ShowTab(TabController.TabTypes.BaseView, anchorPanel);
+                        },
+                        !baseViewActive),
                 }
             },
         };
