@@ -71,7 +71,10 @@ namespace Oasis.NativeMenu
                 Item("Background/Local Normalise", 167, handler.OnBackgroundLocalNormalise),
                 Item("Background/Global Normalise", 168, handler.OnBackgroundGlobalNormalise),
 
-                Item("Window/Project", 169, null, Disabled),
+                Item("Window/Hierarchy", 169, handler.OnWindowShowHierarchy, handler.CanShowWindowHierarchy),
+                Item("Window/Inspector", 170, handler.OnWindowShowInspector, handler.CanShowWindowInspector),
+                Item("Window/Project", 171, handler.OnWindowShowProject, handler.CanShowWindowProject),
+                Item("Window/Base View", 172, handler.OnWindowShowBaseView, handler.CanShowWindowBaseView),
 
                 Item("Help/Context Help", 170, null, Disabled),
                 Item("Help/Manual", 171, null, Disabled),
