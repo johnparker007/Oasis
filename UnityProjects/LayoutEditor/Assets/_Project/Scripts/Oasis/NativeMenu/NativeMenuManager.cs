@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-namespace Oasis.NativeMenuNEW
+namespace Oasis.NativeMenu
 {
     public sealed class NativeMenuManager
     {

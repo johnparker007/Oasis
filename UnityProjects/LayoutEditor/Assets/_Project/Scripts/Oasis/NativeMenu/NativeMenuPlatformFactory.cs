@@ -1,6 +1,6 @@
 using System;
 
-namespace Oasis.NativeMenuNEW
+namespace Oasis.NativeMenu
 {
     internal interface INativeMenuPlatform : IDisposable
     {

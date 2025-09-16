@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using UnityEngine;
 
-namespace Oasis.NativeMenuNEW
+namespace Oasis.NativeMenu
 {
     internal sealed class NativeMenuWindowsPlatform : INativeMenuPlatform
     {

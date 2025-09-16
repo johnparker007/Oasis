@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-namespace Oasis.NativeMenuNEW
+namespace Oasis.NativeMenu
 {
     public static class NativeMenuRegistry
     {
