@@ -5544,8 +5544,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ec247b73c0d84a468a345ae0edbf7509, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
+  m_Name: 
+  m_EditorClassIdentifier: 
   selectionHandler: {fileID: 457364582}
 --- !u!4 &1408368882
 Transform:
@@ -6093,7 +6093,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   DynamicPanelsCanvas: {fileID: 647658036}
-  ContextMenuController: {fileID: 0}
 --- !u!1 &1721750713
 GameObject:
   m_ObjectHideFlags: 0
