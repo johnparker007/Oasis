@@ -5528,7 +5528,7 @@ GameObject:
   - component: {fileID: 1408368882}
   - component: {fileID: 1408368881}
   m_Layer: 0
-  m_Name: NativeMenuNEW
+  m_Name: NativeMenu
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

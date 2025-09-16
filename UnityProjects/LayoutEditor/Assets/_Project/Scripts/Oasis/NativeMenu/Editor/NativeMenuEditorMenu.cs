@@ -1,11 +1,11 @@
 #if UNITY_EDITOR
 using UnityEditor;
 
-namespace Oasis.NativeMenuNEW.Editor
+namespace Oasis.NativeMenu.Editor
 {
-    internal static class NativeMenuNewEditorMenu
+    internal static class NativeMenuEditorMenu
     {
-        private const string MenuPrefix = "NativeMenuNEW";
+        private const string MenuPrefix = "NativeMenu";
 
         private static void Execute(string relativePath)
         {

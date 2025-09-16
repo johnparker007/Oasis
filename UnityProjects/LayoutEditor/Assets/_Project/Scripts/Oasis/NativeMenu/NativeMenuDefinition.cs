@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using Oasis.NativeMenus;
 
-namespace Oasis.NativeMenuNEW
+namespace Oasis.NativeMenu
 {
     internal static class NativeMenuDefinition
     {

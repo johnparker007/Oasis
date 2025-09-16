@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Oasis.NativeMenuNEW
+namespace Oasis.NativeMenu
 {
     /// <summary>
     /// Serializable description of a menu entry before it is converted into runtime menu items.

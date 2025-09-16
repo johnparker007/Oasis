@@ -1,7 +1,7 @@
 using UnityEngine;
 using Oasis.NativeMenus;
 
-namespace Oasis.NativeMenuNEW
+namespace Oasis.NativeMenu
 {
     [DisallowMultipleComponent]
     public sealed class NativeMenuBootstrap : MonoBehaviour
