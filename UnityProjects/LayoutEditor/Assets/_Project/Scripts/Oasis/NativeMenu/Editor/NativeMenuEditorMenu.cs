@@ -262,10 +262,25 @@ namespace Oasis.NativeMenu.Editor
         [MenuItem(MenuPrefix + "/Background/Global Normalise", true, 168)]
         private static bool BackgroundGlobalNormaliseValidate() => Validate("Background/Global Normalise");
 
-        [MenuItem(MenuPrefix + "/Window/Project", priority = 169)]
+        [MenuItem(MenuPrefix + "/Window/Hierarchy", priority = 169)]
+        private static void WindowHierarchy() => Execute("Window/Hierarchy");
+        [MenuItem(MenuPrefix + "/Window/Hierarchy", true, 169)]
+        private static bool WindowHierarchyValidate() => Validate("Window/Hierarchy");
+
+        [MenuItem(MenuPrefix + "/Window/Inspector", priority = 170)]
+        private static void WindowInspector() => Execute("Window/Inspector");
+        [MenuItem(MenuPrefix + "/Window/Inspector", true, 170)]
+        private static bool WindowInspectorValidate() => Validate("Window/Inspector");
+
+        [MenuItem(MenuPrefix + "/Window/Project", priority = 171)]
         private static void WindowProject() => Execute("Window/Project");
-        [MenuItem(MenuPrefix + "/Window/Project", true, 169)]
+        [MenuItem(MenuPrefix + "/Window/Project", true, 171)]
         private static bool WindowProjectValidate() => Validate("Window/Project");
+
+        [MenuItem(MenuPrefix + "/Window/Base View", priority = 172)]
+        private static void WindowBaseView() => Execute("Window/Base View");
+        [MenuItem(MenuPrefix + "/Window/Base View", true, 172)]
+        private static bool WindowBaseViewValidate() => Validate("Window/Base View");
 
         [MenuItem(MenuPrefix + "/Help/Context Help", priority = 170)]
         private static void HelpContextHelp() => Execute("Help/Context Help");
