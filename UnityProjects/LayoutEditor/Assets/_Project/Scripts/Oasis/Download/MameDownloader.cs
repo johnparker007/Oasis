@@ -68,7 +68,7 @@ namespace Oasis.Download
             }
 
             Directory.CreateDirectory(extractPath);
-            LazyExtractor.Extract(extractPath, archivePath);
+            await LazyExtractor.ExtractAsync(extractPath, archivePath);
 
             return extractPath;
 #endif
