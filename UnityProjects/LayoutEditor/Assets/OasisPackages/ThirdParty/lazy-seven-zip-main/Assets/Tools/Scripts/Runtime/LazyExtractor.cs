@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Threading.Tasks;
 using SevenZip;
@@ -78,6 +79,82 @@ namespace LazyJedi.SevenZip
 
             using SevenZipExtractor extractor = new SevenZipExtractor(inArchive, password);
             await extractor.ExtractArchiveAsync(outPath);
+        }
+
+        #endregion
+
+        #region ROOTED EXTRACTION
+
+        public static void ExtractToRootedPath(string rootPath, string inArchive, string password = "")
+        {
+            if (string.IsNullOrEmpty(inArchive))
+            {
+                Debug.LogWarning("Invalid archive.");
+                return;
+            }
+
+            if (string.IsNullOrEmpty(rootPath))
+            {
+                Debug.LogWarning("Invalid extraction root.");
+                return;
+            }
+
+            string normalizedRootPath = Path.GetFullPath(rootPath);
+            if (!Directory.Exists(normalizedRootPath)) Directory.CreateDirectory(normalizedRootPath);
+
+            string rootComparisonPrefix = normalizedRootPath;
+            if (!IsEndingWithDirectorySeparator(rootComparisonPrefix))
+            {
+                rootComparisonPrefix += Path.DirectorySeparatorChar;
+            }
+
+            using SevenZipExtractor extractor = new SevenZipExtractor(inArchive, password);
+            foreach (ArchiveFileInfo entry in extractor.ArchiveFileData)
+            {
+                if (entry.IsDirectory) continue;
+
+                string destinationCandidate = Path.Combine(normalizedRootPath, entry.FileName);
+
+                string fullDestinationPath;
+                try
+                {
+                    fullDestinationPath = Path.GetFullPath(destinationCandidate);
+                }
+                catch (Exception ex) when (ex is ArgumentException || ex is NotSupportedException || ex is PathTooLongException)
+                {
+                    Debug.LogWarning($"Skipping entry '{entry.FileName}' because its destination path is invalid: {ex.Message}");
+                    continue;
+                }
+
+                if (!fullDestinationPath.StartsWith(rootComparisonPrefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    Debug.LogWarning($"Skipping entry '{entry.FileName}' because it resolves outside of the extraction root.");
+                    continue;
+                }
+
+                string destinationDirectory = Path.GetDirectoryName(fullDestinationPath);
+                if (!string.IsNullOrEmpty(destinationDirectory) && !Directory.Exists(destinationDirectory))
+                {
+                    Directory.CreateDirectory(destinationDirectory);
+                }
+
+                using FileStream destinationStream = new FileStream(
+                    fullDestinationPath,
+                    FileMode.Create,
+                    FileAccess.Write,
+                    FileShare.None,
+                    bufferSize: 81920,
+                    FileOptions.SequentialScan);
+                extractor.ExtractFile(entry.Index, destinationStream);
+            }
+        }
+
+        private static bool IsEndingWithDirectorySeparator(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return false;
+
+            char lastChar = path[path.Length - 1];
+            return lastChar == Path.DirectorySeparatorChar || lastChar == Path.AltDirectorySeparatorChar;
         }
 
         #endregion
