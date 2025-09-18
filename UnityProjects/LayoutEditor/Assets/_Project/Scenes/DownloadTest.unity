@@ -320,7 +320,7 @@ GameObject:
   - component: {fileID: 1153203380}
   - component: {fileID: 1153203381}
   m_Layer: 0
-  m_Name: DownloadTest
+  m_Name: DownloadTest Mame
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -353,8 +353,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f425bcecbd4cca546b66fb664fe79cca, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  ArchivePath: C:\Users\John\Downloads\mame0279b_64bit.exe
-  TargetPath: C:\Users\John\Downloads\ExtractTest
 --- !u!114 &1153203381
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -367,6 +365,64 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 591ab583eda64ed0a019ac7ba5665a8c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!1 &2018372666
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2018372669}
+  - component: {fileID: 2018372667}
+  - component: {fileID: 2018372670}
+  m_Layer: 0
+  m_Name: DownloadTest Mame Rom
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!114 &2018372667
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2018372666}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 539fa48e4c5be2b4bac414ff7905b1db, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!4 &2018372669
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2018372666}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2018372670
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2018372666}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c1cf48e27f97a0248b6097ca5518613b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  MameRomName: m4andycp
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -374,3 +430,4 @@ SceneRoots:
   - {fileID: 229039645}
   - {fileID: 827439211}
   - {fileID: 1153203379}
+  - {fileID: 2018372669}

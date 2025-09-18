@@ -9,7 +9,7 @@ namespace Oasis.Download
 {
     public class MameDownloader : MonoBehaviour
     {
-        public const string DefaultVersionNumber = "239";
+        public const string DefaultVersionNumber = "279";
 
         private const string DownloadRootUrl = "https://github.com/mamedev/mame/releases/download";
         private const string SevenZipExecutableName = "7z.exe";
