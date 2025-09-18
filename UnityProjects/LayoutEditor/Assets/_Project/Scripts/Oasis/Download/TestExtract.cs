@@ -1,4 +1,3 @@
-using LazyJedi.SevenZip;
 using UnityEngine;
 
 namespace Oasis.Download
