@@ -1,6 +1,7 @@
 using MFMEExtract;
 using Oasis.Layout;
 using Oasis.MFME;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -536,16 +537,19 @@ namespace Oasis.MAME
             startInfo.UseShellExecute = false;
             startInfo.RedirectStandardInput = true;
             startInfo.RedirectStandardOutput = true;
+            startInfo.RedirectStandardError = true;
             startInfo.CreateNoWindow = ProcessCreateNoWindow; 
 
             Process process = new Process();
             process.StartInfo = startInfo;
 
             process.OutputDataReceived += OnOutputDataReceived;
+            process.ErrorDataReceived += OnErrorDataReceived;
 
             process.Start();
 
             process.BeginOutputReadLine();
+            process.BeginErrorReadLine(); 
 
             return process;
         }
@@ -586,26 +590,23 @@ namespace Oasis.MAME
             //    // ignore/discard
             //}
             //else 
-            if (lineData.Substring(0, kDataPrefixLamp.Length) == kDataPrefixLamp)
+            if (lineData.StartsWith(kDataPrefixLamp, StringComparison.Ordinal))
             {
                 ProcessLineLamp(lineData);
             }
-            else if (lineData.Substring(0, kDataPrefixReel.Length) == kDataPrefixReel)
+            else if (lineData.StartsWith(kDataPrefixReel, StringComparison.Ordinal))
             {
                 ProcessLineReel(lineData);
             }
-            else if (lineData.Substring(0, kDataPrefixVfd.Length) == kDataPrefixVfd)
+            else if (lineData.StartsWith(kDataPrefixVfd, StringComparison.Ordinal))
             {
                 ProcessLineVfd(lineData);
             }
-            else if (lineData.Substring(0, kDataPrefixDigit.Length) == kDataPrefixDigit)
+            else if (lineData.StartsWith(kDataPrefixDigit, StringComparison.Ordinal))
             {
                 ProcessLineDigit(lineData);
             }
-
-
-
-
+            // else ignore unknown prefixes
         }
 
         //private void ProcessLinePixelData(string lineData)
@@ -707,16 +708,40 @@ VfdDuty[0] = 31;
             //UnityEngine.Debug.LogError("JP Digit" + digitNumber + " = " + DigitValues[digitNumber]);
         }
 
-        private void OnOutputDataReceived(object sender, DataReceivedEventArgs dataReceivedEventArgs)
+        private void OnOutputDataReceived(object sender, DataReceivedEventArgs e)
         {
-            //UnityEngine.Debug.LogError(dataReceivedEventArgs.Data);
+            string line = e.Data;
+            if (string.IsNullOrEmpty(line))
+            {
+                return;
+            }
 
-            //UnityEngine.Debug.LogError("Len: " + dataReceivedEventArgs.Data.Length);
-
-            ProcessLine(dataReceivedEventArgs.Data);
+            try
+            {
+                ProcessLine(line);
+            }
+            catch (Exception ex)
+            {
+                if (DebugOutputStdOut)
+                {
+                    UnityEngine.Debug.LogError($"Parse error: {ex.Message} | {line}");
+                }
+            }
         }
 
-        
+        private void OnErrorDataReceived(object sender, DataReceivedEventArgs e)
+        {
+            string line = e.Data;
+            if (string.IsNullOrEmpty(line))
+            {
+                return;
+            }
+
+            if (DebugOutputStdOut)
+            {
+                UnityEngine.Debug.LogError("[MAME-ERR] " + line);
+            }
+        }
 
     }
 
