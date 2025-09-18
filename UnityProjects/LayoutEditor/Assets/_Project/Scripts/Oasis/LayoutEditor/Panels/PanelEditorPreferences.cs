@@ -13,17 +13,25 @@ namespace Oasis.LayoutEditor.Panels
     {
         public FieldString ServerAddress;
         public FieldString ProjectsFolder;
+        public FieldInt MameVersion;
 
         protected override void AddListeners()
         {
             ProjectsFolder.Input.OnValueChanged += OnProjectsFolderValueChanged;
-            ProjectsFolder.Input.OnValueSubmitted += OnProjectsFolderEndEdit;
+            ProjectsFolder.Input.OnValueSubmitted += OnProjectsFolderValueChanged;
+
+            MameVersion.Input.OnValueChanged += OnMameVersionValueChanged;
+            MameVersion.Input.OnValueSubmitted += OnMameVersionValueChanged;
+
         }
 
         protected override void RemoveListeners()
         {
             ProjectsFolder.Input.OnValueChanged -= OnProjectsFolderValueChanged;
-            ProjectsFolder.Input.OnValueSubmitted -= OnProjectsFolderEndEdit;
+            ProjectsFolder.Input.OnValueSubmitted -= OnProjectsFolderValueChanged;
+
+            MameVersion.Input.OnValueChanged -= OnMameVersionValueChanged;
+            MameVersion.Input.OnValueSubmitted -= OnMameVersionValueChanged;
         }
 
         protected override void Initialise()
@@ -39,6 +47,7 @@ namespace Oasis.LayoutEditor.Panels
         protected override void Populate()
         {
             ProjectsFolder.Input.Text = Editor.Instance.Preferences.ProjectsFolder;
+            MameVersion.Input.Text = Editor.Instance.Preferences.MameVersion.ToString();
         }
 
         private bool OnProjectsFolderValueChanged(BoundInputField source, string value)
@@ -48,9 +57,9 @@ namespace Oasis.LayoutEditor.Panels
             return true;
         }
 
-        private bool OnProjectsFolderEndEdit(BoundInputField source, string value)
+        private bool OnMameVersionValueChanged(BoundInputField source, string value)
         {
-            Editor.Instance.Preferences.ProjectsFolder = value;
+            Editor.Instance.Preferences.MameVersion = int.Parse(value);
 
             return true;
         }
