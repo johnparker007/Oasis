@@ -1,5 +1,6 @@
 using Oasis.Export;
 using Oasis.FileOperations;
+using System;
 using System.IO;
 using UnityEngine;
 
@@ -51,13 +52,13 @@ namespace Oasis.Projects
             Directory.CreateDirectory(rootPath);
             Directory.CreateDirectory(Path.Combine(rootPath, kAssetsFolderName));
 
-            ProjectRootPath = rootPath;
+            ProjectRootPath = NormalizeProjectPath(rootPath);
 
             SaveProject();
 
             ProjectsList.AddListItem(new ProjectsList.ListItem()
             {
-                Path = rootPath,
+                Path = ProjectRootPath,
                 LastModifiedTime = 0 // TODO
             });
 
@@ -80,7 +81,7 @@ namespace Oasis.Projects
         {
             // TODO prob want to add some exception handling and return false for failed save
 
-            ProjectRootPath = path;
+            ProjectRootPath = NormalizeProjectPath(path);
 
             Directory.CreateDirectory(ProjectAssetsPath);
 
@@ -90,6 +91,102 @@ namespace Oasis.Projects
             Editor.Instance.Project = importer.Import(projectJsonPath);
 
             return true;
+        }
+
+        public bool TryAddExistingProject(string projectRootPath)
+        {
+            if (string.IsNullOrWhiteSpace(projectRootPath))
+            {
+                return false;
+            }
+
+            string normalisedPath;
+
+            try
+            {
+                normalisedPath = NormalizeProjectPath(projectRootPath);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogWarning($"Failed to normalise project path '{projectRootPath}': {exception.Message}");
+                return false;
+            }
+
+            if (!Directory.Exists(normalisedPath))
+            {
+                Debug.LogWarning($"Project directory does not exist at path '{normalisedPath}'.");
+                return false;
+            }
+
+            string projectJsonPath = Path.Combine(normalisedPath, kProjectJsonFilename);
+
+            if (!File.Exists(projectJsonPath))
+            {
+                Debug.LogWarning($"Unable to find '{kProjectJsonFilename}' in '{normalisedPath}'.");
+                return false;
+            }
+
+            if (IsProjectInList(normalisedPath))
+            {
+                return true;
+            }
+
+            ulong lastModifiedTime = 0;
+
+            try
+            {
+                lastModifiedTime = (ulong)File.GetLastWriteTimeUtc(projectJsonPath).ToFileTimeUtc();
+            }
+            catch (Exception exception)
+            {
+                Debug.LogWarning($"Failed to read modified time for '{projectJsonPath}': {exception.Message}");
+            }
+
+            ProjectsList.AddListItem(new ProjectsList.ListItem()
+            {
+                Path = normalisedPath,
+                LastModifiedTime = lastModifiedTime
+            });
+
+            return true;
+        }
+
+        private string NormalizeProjectPath(string projectPath)
+        {
+            string fullPath = Path.GetFullPath(projectPath);
+            string rootPath = Path.GetPathRoot(fullPath);
+
+            if (!string.IsNullOrEmpty(fullPath) && !string.Equals(fullPath, rootPath, StringComparison.OrdinalIgnoreCase))
+            {
+                fullPath = fullPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            }
+
+            return fullPath;
+        }
+
+        private bool IsProjectInList(string projectPath)
+        {
+            foreach (ProjectsList.ListItem listItem in ProjectsList.ListItems)
+            {
+                string existingPath;
+
+                try
+                {
+                    existingPath = NormalizeProjectPath(listItem.Path);
+                }
+                catch (Exception exception)
+                {
+                    Debug.LogWarning($"Failed to normalise stored project path '{listItem.Path}': {exception.Message}");
+                    continue;
+                }
+
+                if (string.Equals(existingPath, projectPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
     }
 }

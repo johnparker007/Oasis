@@ -1,6 +1,8 @@
 using Oasis.Projects;
+using SFB;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -75,9 +77,38 @@ namespace Oasis.LayoutEditor.ProjectsHub
 
         private void OnAddProjectButtonClick()
         {
-            Debug.LogError("TODO OnAddProjectButtonClick");
+            string defaultPath = null;
 
-            //Editor.Instance.Preferences.ProjectsFolder
+            if (Editor.Instance?.Preferences != null)
+            {
+                defaultPath = Editor.Instance.Preferences.ProjectsFolder;
+            }
+
+            if (string.IsNullOrEmpty(defaultPath) || !Directory.Exists(defaultPath))
+            {
+                defaultPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            }
+
+            string[] paths = StandaloneFileBrowser.OpenFolderPanel("Select Project Folder", defaultPath, false);
+
+            if (paths == null || paths.Length == 0)
+            {
+                return;
+            }
+
+            string selectedPath = paths[0];
+
+            if (string.IsNullOrEmpty(selectedPath))
+            {
+                return;
+            }
+
+            bool projectAdded = Editor.Instance.ProjectsController.TryAddExistingProject(selectedPath);
+
+            if (!projectAdded)
+            {
+                Debug.LogWarning($"Unable to add project at path '{selectedPath}'.");
+            }
         }
 
         private void OnListModified()
