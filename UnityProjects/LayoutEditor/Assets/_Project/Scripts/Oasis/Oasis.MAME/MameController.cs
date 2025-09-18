@@ -252,9 +252,9 @@ namespace Oasis.MAME
                 additionalArgs += " " + kArgsStateLoad + " " + kDefaultSaveStateFilename;
             }
 
-            //string arguments = Editor.Instance.Project.Settings.Mame.RomName + additionalArgs;
+            string arguments = Editor.Instance.Project.Settings.Mame.RomName + additionalArgs;
 //xxx hack
-string arguments = Editor.Instance.Project.Settings.Mame.RomName;
+//string arguments = Editor.Instance.Project.Settings.Mame.RomName;
 
             Process = StartProcess(MameExeDirectoryFullPath, kMameExeFilename, arguments);
 
