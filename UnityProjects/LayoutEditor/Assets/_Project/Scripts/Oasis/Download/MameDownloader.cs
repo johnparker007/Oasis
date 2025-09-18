@@ -1,9 +1,10 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
-using LazyJedi.SevenZip;
 using UnityEngine;
 using UnityEngine.Networking;
+using Oasis.Utility;
 
 namespace Oasis.Download
 {
@@ -12,6 +13,7 @@ namespace Oasis.Download
         public const string DefaultVersionNumber = "239";
 
         private const string DownloadRootUrl = "https://github.com/mamedev/mame/releases/download";
+        private const string SevenZipExecutableName = "7z.exe";
 
         private static MameDownloader _instance;
 
@@ -68,10 +70,53 @@ namespace Oasis.Download
             }
 
             Directory.CreateDirectory(extractPath);
-            await LazyExtractor.ExtractAsync(extractPath, archivePath);
+            await ExtractArchiveAsync(archivePath, extractPath);
 
             return extractPath;
 #endif
+        }
+
+        private static async Task ExtractArchiveAsync(string archivePath, string extractPath)
+        {
+            if (!File.Exists(archivePath))
+            {
+                throw new FileNotFoundException($"Archive not found at '{archivePath}'.", archivePath);
+            }
+
+            string sevenZipPath = ExternalExecutableUtility.GetExecutablePath(SevenZipExecutableName);
+            if (string.IsNullOrEmpty(sevenZipPath) || !File.Exists(sevenZipPath))
+            {
+                throw new InvalidOperationException($"Required extractor '{SevenZipExecutableName}' was not found.");
+            }
+
+            string extractionArguments = $"x \"{archivePath}\" -o\"{extractPath}\" -y";
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = sevenZipPath,
+                Arguments = extractionArguments,
+                CreateNoWindow = true,
+                UseShellExecute = false,
+                WorkingDirectory = Path.GetDirectoryName(sevenZipPath) ?? string.Empty
+            };
+
+            await Task.Run(() =>
+            {
+                using (var process = Process.Start(startInfo))
+                {
+                    if (process == null)
+                    {
+                        throw new InvalidOperationException("Failed to start the 7z extraction process.");
+                    }
+
+                    process.WaitForExit();
+
+                    if (process.ExitCode != 0)
+                    {
+                        throw new InvalidOperationException($"7z extraction failed with exit code {process.ExitCode}.");
+                    }
+                }
+            });
         }
 
         private static async Task DownloadFileAsync(string url, string destinationPath)
