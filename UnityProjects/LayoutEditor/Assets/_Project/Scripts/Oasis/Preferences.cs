@@ -8,6 +8,9 @@ public class Preferences : MonoBehaviour
     public static string kPathProjectsFolderName = "Projects";
 
     public static string kKeyProjectsFolder = "ProjectsFolder";
+    public static string kKeyMameVersion = "MameVersion";
+
+    public const int kDefaultMameVersion = 239;
 
     public string ProjectsFolder
     {
@@ -25,6 +28,20 @@ public class Preferences : MonoBehaviour
         set
         {
             PlayerPrefs.SetString(kKeyProjectsFolder, value);
+        }
+    }
+
+    public int MameVersion
+    {
+        get
+        {
+            int storedVersion = PlayerPrefs.GetInt(kKeyMameVersion, kDefaultMameVersion);
+            return Mathf.Clamp(storedVersion, 0, 9999);
+        }
+        set
+        {
+            int sanitisedValue = Mathf.Clamp(value, 0, 9999);
+            PlayerPrefs.SetInt(kKeyMameVersion, sanitisedValue);
         }
     }
 

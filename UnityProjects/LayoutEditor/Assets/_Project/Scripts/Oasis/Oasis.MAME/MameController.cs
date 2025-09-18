@@ -1,7 +1,6 @@
 using MFMEExtract;
 using Oasis.Layout;
 using Oasis.MFME;
-using Oasis.Utility;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -181,7 +180,15 @@ namespace Oasis.MAME
         {
             get
             {
-                return Path.Combine(DataPathHelper.MAMERootPath);
+                int mameVersion = Preferences.kDefaultMameVersion;
+
+                if (Editor.Instance != null && Editor.Instance.Preferences != null)
+                {
+                    mameVersion = Editor.Instance.Preferences.MameVersion;
+                }
+
+                string versionFolder = $"mame{mameVersion.ToString("D4")}";
+                return Path.Combine(Application.persistentDataPath, "Downloads", "MAME", versionFolder);
             }
         }
 
