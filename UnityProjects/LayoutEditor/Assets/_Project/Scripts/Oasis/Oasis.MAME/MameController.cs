@@ -1,4 +1,5 @@
 using MFMEExtract;
+using Oasis.Download;
 using Oasis.Layout;
 using Oasis.MFME;
 using System;
@@ -247,6 +248,10 @@ namespace Oasis.MAME
             {
                 additionalArgs += " " + kArgsForTestingWithVideo;
             }
+
+            string romDirectory = MameRomDownloader.GetRomDownloadDirectory();
+            string romDirectoryWindows = romDirectory.Replace("/", "\\");
+            additionalArgs += " -rompath \"" + romDirectoryWindows + "\"";
 
             if(loadState)
             {
