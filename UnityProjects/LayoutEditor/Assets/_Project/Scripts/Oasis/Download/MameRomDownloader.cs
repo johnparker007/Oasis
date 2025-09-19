@@ -49,7 +49,7 @@ namespace Oasis.Download
             }
 
             var trimmedRomName = romName.Trim();
-            var downloadsRoot = Path.Combine(Application.persistentDataPath, "Downloads", "MAME", "ROMs");
+            var downloadsRoot = GetRomDownloadDirectory();
             Directory.CreateDirectory(downloadsRoot);
 
             var archiveFileName = string.Format("{0}.zip", trimmedRomName);
@@ -63,6 +63,11 @@ namespace Oasis.Download
 
             return archivePath;
 #endif
+        }
+
+        public static string GetRomDownloadDirectory()
+        {
+            return Path.Combine(Application.persistentDataPath, "Downloads", "MAME", "ROMs");
         }
     }
 }
