@@ -9,7 +9,7 @@ namespace Oasis.Download
 {
     public class MameDownloader : MonoBehaviour
     {
-        public const string DefaultVersionNumber = "279";
+        public const string DefaultVersionNumber = "281";
 
         private const string DownloadRootUrl = "https://github.com/mamedev/mame/releases/download";
         private const string SevenZipExecutableName = "7z.exe";
@@ -57,7 +57,7 @@ namespace Oasis.Download
             var versionFolder = string.Format("mame{0}", paddedVersion);
             var downloadsRoot = Path.Combine(Application.persistentDataPath, "Downloads", "MAME");
             var extractPath = Path.Combine(downloadsRoot, versionFolder);
-            var archiveFileName = string.Format("{0}b_64bit.exe", versionFolder);
+            var archiveFileName = string.Format("{0}b_x64.exe", versionFolder);
             var archivePath = Path.Combine(downloadsRoot, archiveFileName);
 
             Directory.CreateDirectory(downloadsRoot);
@@ -65,6 +65,7 @@ namespace Oasis.Download
             if (!File.Exists(archivePath))
             {
                 var downloadUrl = string.Format("{0}/{1}/{2}", DownloadRootUrl, versionFolder, archiveFileName);
+                UnityEngine.Debug.LogError("downloadUrl: " + downloadUrl);
                 await DownloadUtility.DownloadFileAsync(downloadUrl, archivePath);
             }
 
@@ -130,7 +131,7 @@ namespace Oasis.Download
 
             if (!Directory.Exists(pluginSourceDirectory))
             {
-                Debug.LogWarning($"MAME plugin source directory '{pluginSourceDirectory}' does not exist. Plugins will not be copied.");
+                UnityEngine.Debug.LogWarning($"MAME plugin source directory '{pluginSourceDirectory}' does not exist. Plugins will not be copied.");
                 return;
             }
 
@@ -145,7 +146,7 @@ namespace Oasis.Download
             }
 
             CopyDirectory(pluginSourceDirectory, pluginDestinationDirectory);
-            Debug.Log($"Copied MAME plugins from '{pluginSourceDirectory}' to '{pluginDestinationDirectory}'.");
+            UnityEngine.Debug.Log($"Copied MAME plugins from '{pluginSourceDirectory}' to '{pluginDestinationDirectory}'.");
         }
 
         private static void CopyDirectory(string sourceDir, string destinationDir)
