@@ -210,7 +210,7 @@ namespace Oasis.NativeProgress
                     SetForegroundWindow(_unityWindowHandle);
                 }
 
-                DestroyWindowNative(_windowHandle);
+                DestroyWindow(_windowHandle);
 
                 if (unityWindowStillExists)
                 {
@@ -604,8 +604,8 @@ namespace Oasis.NativeProgress
             IntPtr hInstance,
             IntPtr lpParam);
 
-        [DllImport("user32.dll", SetLastError = true)]
-        private static extern bool DestroyWindowNative(IntPtr hWnd);
+        [DllImport("user32.dll", SetLastError = true, EntryPoint = "DestroyWindow")]
+        private static extern bool DestroyWindow(IntPtr hWnd);
 
         [DllImport("user32.dll")]
         private static extern IntPtr DefWindowProc(IntPtr hWnd, uint uMsg, IntPtr wParam, IntPtr lParam);
