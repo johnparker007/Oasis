@@ -272,14 +272,27 @@ namespace NativeWindowsUI
             if (_window != IntPtr.Zero) return;
 
             var owner = GetUnityWindow();
+            IntPtr creationOwner = owner;
             _window = CreateWindowEx(0, WindowClassName, string.Empty,
                 WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
                 CW_USEDEFAULT, CW_USEDEFAULT, WindowWidth, WindowHeight,
-                owner, IntPtr.Zero, GetModuleHandle(null), IntPtr.Zero);
+                creationOwner, IntPtr.Zero, GetModuleHandle(null), IntPtr.Zero);
+
+            if (_window == IntPtr.Zero && creationOwner != IntPtr.Zero)
+            {
+                int error = Marshal.GetLastWin32Error();
+                Debug.LogWarning($"Failed to create native progress dialog with owner window (error {error}); retrying without owner.");
+                creationOwner = IntPtr.Zero;
+                _window = CreateWindowEx(0, WindowClassName, string.Empty,
+                    WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
+                    CW_USEDEFAULT, CW_USEDEFAULT, WindowWidth, WindowHeight,
+                    creationOwner, IntPtr.Zero, GetModuleHandle(null), IntPtr.Zero);
+            }
 
             if (_window == IntPtr.Zero)
             {
-                throw new InvalidOperationException("Failed to create native progress dialog window.");
+                int error = Marshal.GetLastWin32Error();
+                throw new InvalidOperationException($"Failed to create native progress dialog window (Win32 error {error}).");
             }
 
             _ownerWindow = owner;
