@@ -9,7 +9,7 @@ namespace Oasis.NativeProgress
 
         private void Awake()
         {
-#if UNITY_STANDALONE_WIN && !UNITY_EDITOR
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
             if (!NativeProgressWindow.EnsureWindowCreated(out string errorMessage))
             {
                 Debug.LogError($"Failed to create native progress window: {errorMessage}");
@@ -18,13 +18,13 @@ namespace Oasis.NativeProgress
 
             _windowCreated = true;
 #else
-            Debug.Log("Native progress window bootstrap is only active in Windows standalone builds.");
+            Debug.Log("Native progress window bootstrap is only active on Windows platforms.");
 #endif
         }
 
         private void OnDestroy()
         {
-#if UNITY_STANDALONE_WIN && !UNITY_EDITOR
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
             if (_windowCreated)
             {
                 NativeProgressWindow.CloseWindow();

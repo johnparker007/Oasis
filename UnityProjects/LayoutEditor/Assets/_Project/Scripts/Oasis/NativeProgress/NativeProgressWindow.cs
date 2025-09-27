@@ -4,7 +4,7 @@ namespace Oasis.NativeProgress
 {
     internal static class NativeProgressWindow
     {
-#if UNITY_STANDALONE_WIN && !UNITY_EDITOR
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
         private const string WindowClassName = "OasisNativeProgressWindow";
         private const int CS_HREDRAW = 0x0002;
         private const int CS_VREDRAW = 0x0001;
@@ -177,7 +177,7 @@ namespace Oasis.NativeProgress
 #else
         public static bool EnsureWindowCreated(out string errorMessage)
         {
-            errorMessage = "Native progress window is only supported in Windows standalone builds.";
+            errorMessage = "Native progress window is only supported on Windows.";
             return false;
         }
 
