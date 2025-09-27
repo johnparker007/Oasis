@@ -24,9 +24,11 @@ namespace Oasis.NativeProgress
         private const int SW_SHOW = 5;
         private const int IDC_ARROW = 32512;
         private const int COLOR_WINDOW = 5;
-        private const int PBM_SETMARQUEE = 0x0400 + 103;
-        private const int PBM_SETRANGE32 = 0x0400 + 6;
-        private const int PBM_SETPOS = 0x0400 + 2;
+        private const int WM_USER = 0x0400;
+        // PBM_SETMARQUEE must use WM_USER + 10 (previously an incorrect offset kept the control stuck in marquee mode).
+        private const int PBM_SETMARQUEE = WM_USER + 10;
+        private const int PBM_SETRANGE32 = WM_USER + 6;
+        private const int PBM_SETPOS = WM_USER + 2;
         private const int WM_SETFONT = 0x0030;
         private const int WM_SIZE = 0x0005;
         private const int WM_DESTROY = 0x0002;
@@ -42,6 +44,12 @@ namespace Oasis.NativeProgress
         private const int ProgressRange = 100;
         private const int PBS_SMOOTH = 0x00000001;
         private const int PBS_MARQUEE = 0x00000008;
+        private const int GWL_STYLE = -16;
+        private const uint SWP_NOSIZE = 0x0001;
+        private const uint SWP_NOMOVE = 0x0002;
+        private const uint SWP_NOZORDER = 0x0004;
+        private const uint SWP_NOACTIVATE = 0x0010;
+        private const uint SWP_FRAMECHANGED = 0x0020;
 
         private static ushort _classAtom;
         private static IntPtr _instanceHandle = IntPtr.Zero;
@@ -367,6 +375,7 @@ namespace Oasis.NativeProgress
 
                 if (_isMarqueeMode)
                 {
+                    ToggleProgressBarMarquee(false);
                     SendMessage(_progressHandle, PBM_SETMARQUEE, IntPtr.Zero, IntPtr.Zero);
                     SendMessage(_progressHandle, PBM_SETRANGE32, IntPtr.Zero, new IntPtr(ProgressRange));
                     _isMarqueeMode = false;
@@ -380,9 +389,32 @@ namespace Oasis.NativeProgress
             }
             else if (!_isMarqueeMode)
             {
+                ToggleProgressBarMarquee(true);
                 SendMessage(_progressHandle, PBM_SETMARQUEE, new IntPtr(1), IntPtr.Zero);
                 _currentProgressValue = -1;
                 _isMarqueeMode = true;
+            }
+        }
+
+        private static void ToggleProgressBarMarquee(bool enable)
+        {
+            if (_progressHandle == IntPtr.Zero)
+            {
+                return;
+            }
+
+            int style = GetWindowLong(_progressHandle, GWL_STYLE);
+            bool hasMarqueeStyle = (style & PBS_MARQUEE) == PBS_MARQUEE;
+
+            if (enable && !hasMarqueeStyle)
+            {
+                SetWindowLong(_progressHandle, GWL_STYLE, style | PBS_MARQUEE);
+                SetWindowPos(_progressHandle, IntPtr.Zero, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+            }
+            else if (!enable && hasMarqueeStyle)
+            {
+                SetWindowLong(_progressHandle, GWL_STYLE, style & ~PBS_MARQUEE);
+                SetWindowPos(_progressHandle, IntPtr.Zero, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
             }
         }
 
@@ -576,6 +608,15 @@ namespace Oasis.NativeProgress
 
         [DllImport("user32.dll", SetLastError = true)]
         private static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
 
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
         private static extern IntPtr SendMessage(IntPtr hWnd, int Msg, IntPtr wParam, IntPtr lParam);
