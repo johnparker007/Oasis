@@ -25,14 +25,20 @@ namespace Oasis.NativeProgress
         private const int IDC_ARROW = 32512;
         private const int COLOR_WINDOW = 5;
         private const int PBM_SETMARQUEE = 0x0400 + 103;
+        private const int PBM_SETRANGE = 0x0400 + 1;
+        private const int PBM_SETPOS = 0x0400 + 2;
         private const int WM_SETFONT = 0x0030;
         private const int WM_SIZE = 0x0005;
+        private const int WM_SETTEXT = 0x000C;
         private const int WM_DESTROY = 0x0002;
         private const int WM_COMMAND = 0x0111;
+        private const int WM_CTLCOLORSTATIC = 0x0138;
         private const int BN_CLICKED = 0;
         private const int DEFAULT_GUI_FONT = 17;
         private const int CancelButtonId = 1001;
         private const uint ICC_PROGRESS_CLASS = 0x00000020;
+        private const int TRANSPARENT = 1;
+        private const int ProgressRange = 1000;
 
         private static ushort _classAtom;
         private static IntPtr _instanceHandle = IntPtr.Zero;
@@ -42,6 +48,9 @@ namespace Oasis.NativeProgress
         private static IntPtr _labelHandle = IntPtr.Zero;
         private static IntPtr _cancelButtonHandle = IntPtr.Zero;
         private static bool _commonControlsInitialized;
+        private static bool _isMarqueeMode = true;
+        private static int _currentProgressValue = -1;
+        private static IntPtr _windowBackgroundBrush = IntPtr.Zero;
         private static WndProc _wndProc;
 
         public static bool EnsureWindowCreated(out string errorMessage)
@@ -137,16 +146,16 @@ namespace Oasis.NativeProgress
             return true;
         }
 
-        public static bool UpdateContent(string windowTitle, string statusText, bool cancelEnabled)
+        public static bool UpdateContent(string windowTitle, string statusText, bool cancelEnabled, float? progress = null)
         {
             if (_windowHandle == IntPtr.Zero)
             {
                 return false;
             }
 
-            if (!string.IsNullOrEmpty(windowTitle))
+            if (windowTitle != null)
             {
-                SetWindowText(_windowHandle, windowTitle);
+                SendMessageString(_windowHandle, WM_SETTEXT, IntPtr.Zero, windowTitle);
             }
 
             if (_labelHandle != IntPtr.Zero)
@@ -160,6 +169,19 @@ namespace Oasis.NativeProgress
                 EnableWindow(_cancelButtonHandle, cancelEnabled);
             }
 
+            UpdateProgressInternal(progress);
+
+            return true;
+        }
+
+        public static bool UpdateProgress(float normalizedProgress)
+        {
+            if (_windowHandle == IntPtr.Zero)
+            {
+                return false;
+            }
+
+            UpdateProgressInternal(normalizedProgress);
             return true;
         }
 
@@ -184,6 +206,9 @@ namespace Oasis.NativeProgress
             _progressHandle = IntPtr.Zero;
             _labelHandle = IntPtr.Zero;
             _cancelButtonHandle = IntPtr.Zero;
+            _isMarqueeMode = true;
+            _currentProgressValue = -1;
+            _windowBackgroundBrush = IntPtr.Zero;
         }
 
         private static void UnregisterWindowClass()
@@ -233,6 +258,8 @@ namespace Oasis.NativeProgress
 
             SendMessage(_progressHandle, PBM_SETMARQUEE, new IntPtr(1), new IntPtr(0));
             SendMessage(_progressHandle, WM_SETFONT, fontHandle, new IntPtr(1));
+            _isMarqueeMode = true;
+            _currentProgressValue = -1;
 
             _labelHandle = CreateWindowEx(
                 0,
@@ -310,6 +337,48 @@ namespace Oasis.NativeProgress
             return true;
         }
 
+        private static void UpdateProgressInternal(float? normalizedProgress)
+        {
+            if (_progressHandle == IntPtr.Zero)
+            {
+                return;
+            }
+
+            if (normalizedProgress.HasValue)
+            {
+                float clamped = normalizedProgress.Value;
+                if (clamped < 0f)
+                {
+                    clamped = 0f;
+                }
+                else if (clamped > 1f)
+                {
+                    clamped = 1f;
+                }
+
+                int progressValue = (int)(clamped * ProgressRange);
+
+                if (_isMarqueeMode)
+                {
+                    SendMessage(_progressHandle, PBM_SETMARQUEE, IntPtr.Zero, IntPtr.Zero);
+                    SendMessage(_progressHandle, PBM_SETRANGE, IntPtr.Zero, MakeLParam(0, ProgressRange));
+                    _isMarqueeMode = false;
+                }
+
+                if (progressValue != _currentProgressValue)
+                {
+                    SendMessage(_progressHandle, PBM_SETPOS, new IntPtr(progressValue), IntPtr.Zero);
+                    _currentProgressValue = progressValue;
+                }
+            }
+            else if (!_isMarqueeMode)
+            {
+                SendMessage(_progressHandle, PBM_SETMARQUEE, new IntPtr(1), IntPtr.Zero);
+                _currentProgressValue = -1;
+                _isMarqueeMode = true;
+            }
+        }
+
         private static void UpdateChildLayout()
         {
             if (_windowHandle == IntPtr.Zero)
@@ -375,6 +444,19 @@ namespace Oasis.NativeProgress
                     }
 
                     break;
+                case WM_CTLCOLORSTATIC:
+                    if (lParam == _labelHandle)
+                    {
+                        SetBkMode(wParam, TRANSPARENT);
+                        if (_windowBackgroundBrush == IntPtr.Zero)
+                        {
+                            _windowBackgroundBrush = GetSysColorBrush(COLOR_WINDOW);
+                        }
+
+                        return _windowBackgroundBrush;
+                    }
+
+                    break;
                 case WM_DESTROY:
                     _progressHandle = IntPtr.Zero;
                     _labelHandle = IntPtr.Zero;
@@ -393,6 +475,11 @@ namespace Oasis.NativeProgress
         private static int HighWord(IntPtr value)
         {
             return (int)(((long)value >> 16) & 0xFFFF);
+        }
+
+        private static IntPtr MakeLParam(int low, int high)
+        {
+            return new IntPtr((high << 16) | (low & 0xFFFF));
         }
 
         private delegate IntPtr WndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
@@ -493,11 +580,20 @@ namespace Oasis.NativeProgress
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
         private static extern IntPtr SendMessage(IntPtr hWnd, int Msg, IntPtr wParam, IntPtr lParam);
 
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        private static extern IntPtr SendMessageString(IntPtr hWnd, int Msg, IntPtr wParam, string lParam);
+
         [DllImport("comctl32.dll", SetLastError = true)]
         private static extern bool InitCommonControlsEx(ref INITCOMMONCONTROLSEX lpInitCtrls);
 
         [DllImport("gdi32.dll")]
         private static extern IntPtr GetStockObject(int fnObject);
+
+        [DllImport("gdi32.dll")]
+        private static extern int SetBkMode(IntPtr hdc, int mode);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetSysColorBrush(int nIndex);
 #else
         public static bool EnsureWindowCreated(out string errorMessage)
         {
@@ -505,7 +601,12 @@ namespace Oasis.NativeProgress
             return false;
         }
 
-        public static bool UpdateContent(string windowTitle, string statusText, bool cancelEnabled)
+        public static bool UpdateContent(string windowTitle, string statusText, bool cancelEnabled, float? progress = null)
+        {
+            return false;
+        }
+
+        public static bool UpdateProgress(float normalizedProgress)
         {
             return false;
         }

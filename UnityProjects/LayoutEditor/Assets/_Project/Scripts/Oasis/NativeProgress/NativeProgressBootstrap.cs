@@ -36,7 +36,7 @@ namespace Oasis.NativeProgress
 #if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
             if (_windowCreated)
             {
-                NativeProgressWindow.UpdateContent(_windowTitle, _statusText, _cancelAvailable);
+                NativeProgressWindow.UpdateContent(_windowTitle, _statusText, _cancelAvailable, 0.5f);
             }
 #endif
         }
