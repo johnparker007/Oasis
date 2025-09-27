@@ -35,6 +35,7 @@ namespace Oasis.NativeProgress
         private const int WM_COMMAND = 0x0111;
         private const int WM_CTLCOLORSTATIC = 0x0138;
         private const int WM_SETTEXT = 0x000C;
+        private const int WM_QUIT = 0x0012;
         private const int BN_CLICKED = 0;
         private const int DEFAULT_GUI_FONT = 17;
         private const int CancelButtonId = 1001;
@@ -50,6 +51,7 @@ namespace Oasis.NativeProgress
         private const uint SWP_NOZORDER = 0x0004;
         private const uint SWP_NOACTIVATE = 0x0010;
         private const uint SWP_FRAMECHANGED = 0x0020;
+        private const uint PM_REMOVE = 0x0001;
 
         private static ushort _classAtom;
         private static IntPtr _instanceHandle = IntPtr.Zero;
@@ -200,13 +202,23 @@ namespace Oasis.NativeProgress
         {
             if (_windowHandle != IntPtr.Zero)
             {
-                if (_unityWindowHandle != IntPtr.Zero)
+                bool unityWindowStillExists = _unityWindowHandle != IntPtr.Zero && IsWindow(_unityWindowHandle);
+
+                if (unityWindowStillExists)
                 {
                     EnableWindow(_unityWindowHandle, true);
                     SetForegroundWindow(_unityWindowHandle);
                 }
 
                 DestroyWindowNative(_windowHandle);
+
+                if (unityWindowStillExists)
+                {
+                    // Closing the native progress window can enqueue a WM_QUIT message for the thread when
+                    // Unity's main window still exists. Remove it so cancelling the progress UI does not exit Unity.
+                    PeekMessage(out MSG _, IntPtr.Zero, WM_QUIT, WM_QUIT, PM_REMOVE);
+                }
+
                 _windowHandle = IntPtr.Zero;
             }
 
@@ -517,6 +529,25 @@ namespace Oasis.NativeProgress
             return (int)(((long)value >> 16) & 0xFFFF);
         }
 
+        [StructLayout(LayoutKind.Sequential)]
+        private struct POINT
+        {
+            public int X;
+            public int Y;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct MSG
+        {
+            public IntPtr hwnd;
+            public uint message;
+            public IntPtr wParam;
+            public IntPtr lParam;
+            public uint time;
+            public POINT pt;
+            public uint lPrivate;
+        }
+
         private delegate IntPtr WndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
 
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
@@ -626,6 +657,12 @@ namespace Oasis.NativeProgress
 
         [DllImport("comctl32.dll", SetLastError = true)]
         private static extern bool InitCommonControlsEx(ref INITCOMMONCONTROLSEX lpInitCtrls);
+
+        [DllImport("user32.dll")]
+        private static extern bool PeekMessage(out MSG lpMsg, IntPtr hWnd, uint wMsgFilterMin, uint wMsgFilterMax, uint wRemoveMsg);
+
+        [DllImport("user32.dll")]
+        private static extern bool IsWindow(IntPtr hWnd);
 
         [DllImport("gdi32.dll")]
         private static extern IntPtr GetStockObject(int fnObject);
