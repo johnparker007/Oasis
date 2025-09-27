@@ -32,13 +32,14 @@ namespace Oasis.NativeProgress
         private const int WM_DESTROY = 0x0002;
         private const int WM_COMMAND = 0x0111;
         private const int WM_CTLCOLORSTATIC = 0x0138;
+        private const int WM_SETTEXT = 0x000C;
         private const int BN_CLICKED = 0;
         private const int DEFAULT_GUI_FONT = 17;
         private const int CancelButtonId = 1001;
         private const uint ICC_PROGRESS_CLASS = 0x00000020;
         private const int TRANSPARENT = 1;
         private const int COLOR_WINDOWTEXT = 8;
-        private const int ProgressRange = 1000;
+        private const int ProgressRange = 100;
         private const int PBS_SMOOTH = 0x00000001;
         private const int PBS_MARQUEE = 0x00000008;
 
@@ -157,12 +158,12 @@ namespace Oasis.NativeProgress
 
             if (windowTitle != null)
             {
-                SetWindowText(_windowHandle, windowTitle);
+                SendMessage(_windowHandle, WM_SETTEXT, IntPtr.Zero, windowTitle);
             }
 
             if (_labelHandle != IntPtr.Zero)
             {
-                SetWindowText(_labelHandle, statusText ?? string.Empty);
+                SendMessage(_labelHandle, WM_SETTEXT, IntPtr.Zero, statusText ?? string.Empty);
             }
 
             if (_cancelButtonHandle != IntPtr.Zero)
@@ -358,7 +359,11 @@ namespace Oasis.NativeProgress
                     clamped = 1f;
                 }
 
-                int progressValue = (int)(clamped * ProgressRange);
+                int progressValue = (int)Math.Round(clamped * ProgressRange);
+                if (progressValue > ProgressRange)
+                {
+                    progressValue = ProgressRange;
+                }
 
                 if (_isMarqueeMode)
                 {
@@ -551,9 +556,6 @@ namespace Oasis.NativeProgress
         [DllImport("user32.dll", SetLastError = true)]
         private static extern IntPtr LoadCursor(IntPtr hInstance, IntPtr lpCursorName);
 
-        [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-        private static extern bool SetWindowText(IntPtr hWnd, string lpString);
-
         [DllImport("user32.dll")]
         private static extern IntPtr GetActiveWindow();
 
@@ -577,6 +579,9 @@ namespace Oasis.NativeProgress
 
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
         private static extern IntPtr SendMessage(IntPtr hWnd, int Msg, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        private static extern IntPtr SendMessage(IntPtr hWnd, int Msg, IntPtr wParam, string lParam);
 
         [DllImport("comctl32.dll", SetLastError = true)]
         private static extern bool InitCommonControlsEx(ref INITCOMMONCONTROLSEX lpInitCtrls);
