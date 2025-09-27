@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.InteropServices;
+
 namespace Oasis.NativeProgress
 {
     internal static class NativeProgressWindow
@@ -11,16 +12,36 @@ namespace Oasis.NativeProgress
         private const int WS_VISIBLE = 0x10000000;
         private const int WS_POPUP = unchecked((int)0x80000000);
         private const int WS_CAPTION = 0x00C00000;
+        private const int WS_CHILD = 0x40000000;
+        private const int WS_TABSTOP = 0x00010000;
+        private const int WS_GROUP = 0x00020000;
+        private const int BS_PUSHBUTTON = 0x00000000;
+        private const int SS_LEFT = 0x00000000;
         private const int WS_EX_DLGMODALFRAME = 0x00000001;
         private const int CW_USEDEFAULT = unchecked((int)0x80000000);
         private const int SW_SHOWNORMAL = 1;
+        private const int SW_HIDE = 0;
+        private const int SW_SHOW = 5;
         private const int IDC_ARROW = 32512;
         private const int COLOR_WINDOW = 5;
+        private const int PBM_SETMARQUEE = 0x0400 + 103;
+        private const int WM_SETFONT = 0x0030;
+        private const int WM_SIZE = 0x0005;
+        private const int WM_DESTROY = 0x0002;
+        private const int WM_COMMAND = 0x0111;
+        private const int BN_CLICKED = 0;
+        private const int DEFAULT_GUI_FONT = 17;
+        private const int CancelButtonId = 1001;
+        private const uint ICC_PROGRESS_CLASS = 0x00000020;
 
         private static ushort _classAtom;
         private static IntPtr _instanceHandle = IntPtr.Zero;
         private static IntPtr _windowHandle = IntPtr.Zero;
         private static IntPtr _unityWindowHandle = IntPtr.Zero;
+        private static IntPtr _progressHandle = IntPtr.Zero;
+        private static IntPtr _labelHandle = IntPtr.Zero;
+        private static IntPtr _cancelButtonHandle = IntPtr.Zero;
+        private static bool _commonControlsInitialized;
         private static WndProc _wndProc;
 
         public static bool EnsureWindowCreated(out string errorMessage)
@@ -84,8 +105,8 @@ namespace Oasis.NativeProgress
                 WS_POPUP | WS_CAPTION | WS_VISIBLE,
                 CW_USEDEFAULT,
                 CW_USEDEFAULT,
-                480,
-                120,
+                500,
+                150,
                 _unityWindowHandle,
                 IntPtr.Zero,
                 _instanceHandle,
@@ -103,10 +124,42 @@ namespace Oasis.NativeProgress
             ShowWindow(_windowHandle, SW_SHOWNORMAL);
             UpdateWindow(_windowHandle);
 
+            if (!EnsureChildControls(out errorMessage))
+            {
+                CloseWindow();
+                return false;
+            }
+
             EnableWindow(_unityWindowHandle, false);
             SetForegroundWindow(_windowHandle);
 
             errorMessage = null;
+            return true;
+        }
+
+        public static bool UpdateContent(string windowTitle, string statusText, bool cancelEnabled)
+        {
+            if (_windowHandle == IntPtr.Zero)
+            {
+                return false;
+            }
+
+            if (!string.IsNullOrEmpty(windowTitle))
+            {
+                SetWindowText(_windowHandle, windowTitle);
+            }
+
+            if (_labelHandle != IntPtr.Zero)
+            {
+                SetWindowText(_labelHandle, statusText ?? string.Empty);
+            }
+
+            if (_cancelButtonHandle != IntPtr.Zero)
+            {
+                ShowWindow(_cancelButtonHandle, cancelEnabled ? SW_SHOW : SW_HIDE);
+                EnableWindow(_cancelButtonHandle, cancelEnabled);
+            }
+
             return true;
         }
 
@@ -128,6 +181,9 @@ namespace Oasis.NativeProgress
             _wndProc = null;
             _instanceHandle = IntPtr.Zero;
             _unityWindowHandle = IntPtr.Zero;
+            _progressHandle = IntPtr.Zero;
+            _labelHandle = IntPtr.Zero;
+            _cancelButtonHandle = IntPtr.Zero;
         }
 
         private static void UnregisterWindowClass()
@@ -139,9 +195,204 @@ namespace Oasis.NativeProgress
             }
         }
 
+        private static bool EnsureChildControls(out string errorMessage)
+        {
+            if (_progressHandle != IntPtr.Zero && _labelHandle != IntPtr.Zero && _cancelButtonHandle != IntPtr.Zero)
+            {
+                errorMessage = null;
+                UpdateChildLayout();
+                return true;
+            }
+
+            if (!EnsureCommonControls(out errorMessage))
+            {
+                return false;
+            }
+
+            IntPtr fontHandle = GetStockObject(DEFAULT_GUI_FONT);
+
+            _progressHandle = CreateWindowEx(
+                0,
+                "msctls_progress32",
+                null,
+                WS_CHILD | WS_VISIBLE,
+                0,
+                0,
+                0,
+                0,
+                _windowHandle,
+                IntPtr.Zero,
+                _instanceHandle,
+                IntPtr.Zero);
+
+            if (_progressHandle == IntPtr.Zero)
+            {
+                errorMessage = $"Failed to create progress bar control. Error: {Marshal.GetLastWin32Error()}";
+                return false;
+            }
+
+            SendMessage(_progressHandle, PBM_SETMARQUEE, new IntPtr(1), new IntPtr(0));
+            SendMessage(_progressHandle, WM_SETFONT, fontHandle, new IntPtr(1));
+
+            _labelHandle = CreateWindowEx(
+                0,
+                "STATIC",
+                string.Empty,
+                WS_CHILD | WS_VISIBLE | SS_LEFT,
+                0,
+                0,
+                0,
+                0,
+                _windowHandle,
+                IntPtr.Zero,
+                _instanceHandle,
+                IntPtr.Zero);
+
+            if (_labelHandle == IntPtr.Zero)
+            {
+                errorMessage = $"Failed to create status label control. Error: {Marshal.GetLastWin32Error()}";
+                return false;
+            }
+
+            SendMessage(_labelHandle, WM_SETFONT, fontHandle, new IntPtr(1));
+
+            _cancelButtonHandle = CreateWindowEx(
+                0,
+                "BUTTON",
+                "Cancel",
+                WS_CHILD | WS_TABSTOP | WS_GROUP | BS_PUSHBUTTON,
+                0,
+                0,
+                0,
+                0,
+                _windowHandle,
+                new IntPtr(CancelButtonId),
+                _instanceHandle,
+                IntPtr.Zero);
+
+            if (_cancelButtonHandle == IntPtr.Zero)
+            {
+                errorMessage = $"Failed to create cancel button control. Error: {Marshal.GetLastWin32Error()}";
+                return false;
+            }
+
+            SendMessage(_cancelButtonHandle, WM_SETFONT, fontHandle, new IntPtr(1));
+            ShowWindow(_cancelButtonHandle, SW_HIDE);
+
+            UpdateChildLayout();
+
+            errorMessage = null;
+            return true;
+        }
+
+        private static bool EnsureCommonControls(out string errorMessage)
+        {
+            if (_commonControlsInitialized)
+            {
+                errorMessage = null;
+                return true;
+            }
+
+            var controls = new INITCOMMONCONTROLSEX
+            {
+                dwSize = (uint)Marshal.SizeOf(typeof(INITCOMMONCONTROLSEX)),
+                dwICC = ICC_PROGRESS_CLASS,
+            };
+
+            if (!InitCommonControlsEx(ref controls))
+            {
+                errorMessage = $"InitCommonControlsEx failed with error {Marshal.GetLastWin32Error()}";
+                return false;
+            }
+
+            _commonControlsInitialized = true;
+            errorMessage = null;
+            return true;
+        }
+
+        private static void UpdateChildLayout()
+        {
+            if (_windowHandle == IntPtr.Zero)
+            {
+                return;
+            }
+
+            if (!GetClientRect(_windowHandle, out RECT clientRect))
+            {
+                return;
+            }
+
+            int width = clientRect.Right - clientRect.Left;
+            int padding = 16;
+            int verticalSpacing = 10;
+            int progressHeight = 22;
+            int buttonWidth = 90;
+            int buttonHeight = 26;
+            int labelHeight = 20;
+
+            int progressX = padding;
+            int progressY = padding;
+            int progressWidth = width - (padding * 2);
+
+            if (_progressHandle != IntPtr.Zero)
+            {
+                MoveWindow(_progressHandle, progressX, progressY, progressWidth, progressHeight, true);
+            }
+
+            int labelAreaY = progressY + progressHeight + verticalSpacing;
+            int buttonX = width - padding - buttonWidth;
+            int labelWidth = buttonX - progressX - verticalSpacing;
+            if (labelWidth < 50)
+            {
+                labelWidth = progressWidth;
+            }
+
+            if (_labelHandle != IntPtr.Zero)
+            {
+                MoveWindow(_labelHandle, progressX, labelAreaY + ((buttonHeight - labelHeight) / 2), labelWidth, labelHeight, true);
+            }
+
+            if (_cancelButtonHandle != IntPtr.Zero)
+            {
+                MoveWindow(_cancelButtonHandle, buttonX, labelAreaY, buttonWidth, buttonHeight, true);
+            }
+        }
+
         private static IntPtr WindowProcedure(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam)
         {
+            switch (msg)
+            {
+                case WM_SIZE:
+                    UpdateChildLayout();
+                    break;
+                case WM_COMMAND:
+                    int commandId = LowWord(wParam);
+                    int notificationCode = HighWord(wParam);
+                    if (commandId == CancelButtonId && notificationCode == BN_CLICKED)
+                    {
+                        CloseWindow();
+                        return IntPtr.Zero;
+                    }
+
+                    break;
+                case WM_DESTROY:
+                    _progressHandle = IntPtr.Zero;
+                    _labelHandle = IntPtr.Zero;
+                    _cancelButtonHandle = IntPtr.Zero;
+                    break;
+            }
+
             return DefWindowProc(hWnd, msg, wParam, lParam);
+        }
+
+        private static int LowWord(IntPtr value)
+        {
+            return (int)((long)value & 0xFFFF);
+        }
+
+        private static int HighWord(IntPtr value)
+        {
+            return (int)(((long)value >> 16) & 0xFFFF);
         }
 
         private delegate IntPtr WndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
@@ -161,6 +412,22 @@ namespace Oasis.NativeProgress
             public string lpszMenuName;
             public string lpszClassName;
             public IntPtr hIconSm;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct RECT
+        {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct INITCOMMONCONTROLSEX
+        {
+            public uint dwSize;
+            public uint dwICC;
         }
 
         [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
@@ -199,6 +466,9 @@ namespace Oasis.NativeProgress
         [DllImport("user32.dll", SetLastError = true)]
         private static extern IntPtr LoadCursor(IntPtr hInstance, IntPtr lpCursorName);
 
+        [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern bool SetWindowText(IntPtr hWnd, string lpString);
+
         [DllImport("user32.dll")]
         private static extern IntPtr GetActiveWindow();
 
@@ -213,10 +483,30 @@ namespace Oasis.NativeProgress
 
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
         private static extern IntPtr GetModuleHandle(string lpModuleName);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int nWidth, int nHeight, bool bRepaint);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        private static extern IntPtr SendMessage(IntPtr hWnd, int Msg, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("comctl32.dll", SetLastError = true)]
+        private static extern bool InitCommonControlsEx(ref INITCOMMONCONTROLSEX lpInitCtrls);
+
+        [DllImport("gdi32.dll")]
+        private static extern IntPtr GetStockObject(int fnObject);
 #else
         public static bool EnsureWindowCreated(out string errorMessage)
         {
             errorMessage = "Native progress window is only supported on Windows.";
+            return false;
+        }
+
+        public static bool UpdateContent(string windowTitle, string statusText, bool cancelEnabled)
+        {
             return false;
         }
 
