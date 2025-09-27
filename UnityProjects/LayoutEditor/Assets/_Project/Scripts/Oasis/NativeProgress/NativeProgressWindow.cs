@@ -24,9 +24,11 @@ namespace Oasis.NativeProgress
         private const int SW_SHOW = 5;
         private const int IDC_ARROW = 32512;
         private const int COLOR_WINDOW = 5;
-        private const int PBM_SETMARQUEE = 0x0400 + 103;
-        private const int PBM_SETRANGE32 = 0x0400 + 6;
-        private const int PBM_SETPOS = 0x0400 + 2;
+        private const int WM_USER = 0x0400;
+        // PBM_SETMARQUEE must use WM_USER + 10 (previously an incorrect offset kept the control stuck in marquee mode).
+        private const int PBM_SETMARQUEE = WM_USER + 10;
+        private const int PBM_SETRANGE32 = WM_USER + 6;
+        private const int PBM_SETPOS = WM_USER + 2;
         private const int WM_SETFONT = 0x0030;
         private const int WM_SIZE = 0x0005;
         private const int WM_DESTROY = 0x0002;
