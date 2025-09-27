@@ -8,8 +8,10 @@ namespace Oasis.NativeProgress
         private const string WindowClassName = "OasisNativeProgressWindow";
         private const int CS_HREDRAW = 0x0002;
         private const int CS_VREDRAW = 0x0001;
-        private const int WS_OVERLAPPEDWINDOW = 0x00CF0000;
         private const int WS_VISIBLE = 0x10000000;
+        private const int WS_POPUP = unchecked((int)0x80000000);
+        private const int WS_CAPTION = 0x00C00000;
+        private const int WS_EX_DLGMODALFRAME = 0x00000001;
         private const int CW_USEDEFAULT = unchecked((int)0x80000000);
         private const int SW_SHOWNORMAL = 1;
         private const int IDC_ARROW = 32512;
@@ -18,6 +20,7 @@ namespace Oasis.NativeProgress
         private static ushort _classAtom;
         private static IntPtr _instanceHandle = IntPtr.Zero;
         private static IntPtr _windowHandle = IntPtr.Zero;
+        private static IntPtr _unityWindowHandle = IntPtr.Zero;
         private static WndProc _wndProc;
 
         public static bool EnsureWindowCreated(out string errorMessage)
@@ -32,6 +35,18 @@ namespace Oasis.NativeProgress
             if (_instanceHandle == IntPtr.Zero)
             {
                 errorMessage = $"GetModuleHandle failed with error {Marshal.GetLastWin32Error()}";
+                return false;
+            }
+
+            _unityWindowHandle = GetActiveWindow();
+            if (_unityWindowHandle == IntPtr.Zero)
+            {
+                _unityWindowHandle = GetForegroundWindow();
+            }
+
+            if (_unityWindowHandle == IntPtr.Zero)
+            {
+                errorMessage = "Unable to determine Unity window handle.";
                 return false;
             }
 
@@ -58,19 +73,20 @@ namespace Oasis.NativeProgress
             {
                 errorMessage = $"RegisterClassEx failed with error {Marshal.GetLastWin32Error()}";
                 _wndProc = null;
+                _unityWindowHandle = IntPtr.Zero;
                 return false;
             }
 
             _windowHandle = CreateWindowEx(
-                0,
+                WS_EX_DLGMODALFRAME,
                 WindowClassName,
                 "Oasis Progress",
-                WS_OVERLAPPEDWINDOW | WS_VISIBLE,
+                WS_POPUP | WS_CAPTION | WS_VISIBLE,
                 CW_USEDEFAULT,
                 CW_USEDEFAULT,
                 480,
                 120,
-                IntPtr.Zero,
+                _unityWindowHandle,
                 IntPtr.Zero,
                 _instanceHandle,
                 IntPtr.Zero);
@@ -80,11 +96,15 @@ namespace Oasis.NativeProgress
                 int lastError = Marshal.GetLastWin32Error();
                 UnregisterWindowClass();
                 errorMessage = $"CreateWindowEx failed with error {lastError}";
+                _unityWindowHandle = IntPtr.Zero;
                 return false;
             }
 
             ShowWindow(_windowHandle, SW_SHOWNORMAL);
             UpdateWindow(_windowHandle);
+
+            EnableWindow(_unityWindowHandle, false);
+            SetForegroundWindow(_windowHandle);
 
             errorMessage = null;
             return true;
@@ -94,6 +114,12 @@ namespace Oasis.NativeProgress
         {
             if (_windowHandle != IntPtr.Zero)
             {
+                if (_unityWindowHandle != IntPtr.Zero)
+                {
+                    EnableWindow(_unityWindowHandle, true);
+                    SetForegroundWindow(_unityWindowHandle);
+                }
+
                 DestroyWindowNative(_windowHandle);
                 _windowHandle = IntPtr.Zero;
             }
@@ -101,6 +127,7 @@ namespace Oasis.NativeProgress
             UnregisterWindowClass();
             _wndProc = null;
             _instanceHandle = IntPtr.Zero;
+            _unityWindowHandle = IntPtr.Zero;
         }
 
         private static void UnregisterWindowClass()
@@ -171,6 +198,18 @@ namespace Oasis.NativeProgress
 
         [DllImport("user32.dll", SetLastError = true)]
         private static extern IntPtr LoadCursor(IntPtr hInstance, IntPtr lpCursorName);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetActiveWindow();
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetForegroundWindow();
+
+        [DllImport("user32.dll")]
+        private static extern bool EnableWindow(IntPtr hWnd, bool bEnable);
+
+        [DllImport("user32.dll")]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
 
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
         private static extern IntPtr GetModuleHandle(string lpModuleName);
