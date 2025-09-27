@@ -1,3 +1,4 @@
+using NativeWindowsUI;
 using UnityEngine;
 
 namespace Oasis.Download
@@ -10,8 +11,16 @@ namespace Oasis.Download
         protected void Start()
         {
             //LazyExtractor.Extract(TargetPath, ArchivePath);
+            BeginTest();
 
-            System.Threading.Tasks.Task<string> task = MameDownloader.Instance.DownloadAndExtractAsync();
+
+        }
+
+        private async void BeginTest()
+        {
+            NativeProgressDialog.ShowDialog("test title", "test message", null, false);
+            await MameDownloader.Instance.DownloadAndExtractAsync();
+            NativeProgressDialog.HideDialog();
         }
     }
 }
