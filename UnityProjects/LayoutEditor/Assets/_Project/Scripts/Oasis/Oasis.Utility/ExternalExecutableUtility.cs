@@ -57,6 +57,11 @@ namespace Oasis.Utility
             return Path.Combine(executableDirectory, executableFileName);
         }
 
+        public static string GetExternalAssetsDirectory()
+        {
+            return GetExecutableDirectory();
+        }
+
         public static bool HasEditorExecutables()
         {
 #if UNITY_EDITOR
@@ -130,7 +135,48 @@ namespace Oasis.Utility
                 File.Copy(sourceFilePath, destinationFilePath, true);
             }
 
+            foreach (string sourceSubDirectory in Directory.GetDirectories(sourceDirectory))
+            {
+                string directoryName = Path.GetFileName(sourceSubDirectory);
+                if (string.IsNullOrEmpty(directoryName))
+                {
+                    continue;
+                }
+
+                string destinationSubDirectory = Path.Combine(destinationDirectory, directoryName);
+                CopyDirectoryRecursive(sourceSubDirectory, destinationSubDirectory);
+            }
+
             Debug.Log($"Copied external executables to '{destinationDirectory}'.");
+        }
+
+        private static void CopyDirectoryRecursive(string sourceDirectory, string destinationDirectory)
+        {
+            Directory.CreateDirectory(destinationDirectory);
+
+            foreach (string filePath in Directory.GetFiles(sourceDirectory))
+            {
+                string fileName = Path.GetFileName(filePath);
+                if (string.IsNullOrEmpty(fileName))
+                {
+                    continue;
+                }
+
+                string destinationFilePath = Path.Combine(destinationDirectory, fileName);
+                File.Copy(filePath, destinationFilePath, true);
+            }
+
+            foreach (string subDirectory in Directory.GetDirectories(sourceDirectory))
+            {
+                string directoryName = Path.GetFileName(subDirectory);
+                if (string.IsNullOrEmpty(directoryName))
+                {
+                    continue;
+                }
+
+                string destinationSubDirectory = Path.Combine(destinationDirectory, directoryName);
+                CopyDirectoryRecursive(subDirectory, destinationSubDirectory);
+            }
         }
 #endif
     }
