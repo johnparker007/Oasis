@@ -180,25 +180,15 @@ namespace Oasis.Download
 
         private static string GetPluginSourceDirectory()
         {
-            string projectRootPath = DataPathHelper.ProjectRootPath;
+            string externalAssetsDirectory = ExternalExecutableUtility.GetExternalAssetsDirectory();
 
-            string[] candidatePaths = new[]
+            if (string.IsNullOrEmpty(externalAssetsDirectory))
             {
-                Path.Combine(projectRootPath, "MameLuaPlugins", "oasis"),
-                Path.Combine(projectRootPath, "..", "MameLuaPlugins", "oasis"),
-                Path.Combine(projectRootPath, "..", "..", "MameLuaPlugins", "oasis")
-            };
-
-            foreach (string candidatePath in candidatePaths)
-            {
-                string fullPath = Path.GetFullPath(candidatePath);
-                if (Directory.Exists(fullPath))
-                {
-                    return fullPath;
-                }
+                UnityEngine.Debug.LogWarning("External assets directory is not configured. MAME plugins will not be copied.");
+                return string.Empty;
             }
 
-            return Path.GetFullPath(candidatePaths[candidatePaths.Length - 1]);
+            return Path.Combine(externalAssetsDirectory, "MameLuaPlugins", "oasis");
         }
 
     }
