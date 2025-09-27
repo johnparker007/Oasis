@@ -13,6 +13,8 @@ namespace Oasis.Download
 
         private const string DownloadRootUrl = "https://github.com/mamedev/mame/releases/download";
         private const string SevenZipExecutableName = "7z.exe";
+        private const string SevenZipFolderName = "7-Zip";
+        private static readonly string SevenZipExecutableRelativePath = Path.Combine(SevenZipFolderName, SevenZipExecutableName);
 
         private static MameDownloader _instance;
 
@@ -84,7 +86,11 @@ namespace Oasis.Download
                 throw new FileNotFoundException($"Archive not found at '{archivePath}'.", archivePath);
             }
 
-            string sevenZipPath = ExternalExecutableUtility.GetExecutablePath(SevenZipExecutableName);
+            string sevenZipPath = ExternalExecutableUtility.GetExecutablePath(SevenZipExecutableRelativePath);
+            if (string.IsNullOrEmpty(sevenZipPath) || !File.Exists(sevenZipPath))
+            {
+                sevenZipPath = ExternalExecutableUtility.GetExecutablePath(SevenZipExecutableName);
+            }
             if (string.IsNullOrEmpty(sevenZipPath) || !File.Exists(sevenZipPath))
             {
                 throw new InvalidOperationException($"Required extractor '{SevenZipExecutableName}' was not found.");
