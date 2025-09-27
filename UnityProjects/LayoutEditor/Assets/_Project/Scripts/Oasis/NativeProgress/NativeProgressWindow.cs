@@ -25,11 +25,10 @@ namespace Oasis.NativeProgress
         private const int IDC_ARROW = 32512;
         private const int COLOR_WINDOW = 5;
         private const int PBM_SETMARQUEE = 0x0400 + 103;
-        private const int PBM_SETRANGE = 0x0400 + 1;
+        private const int PBM_SETRANGE32 = 0x0400 + 6;
         private const int PBM_SETPOS = 0x0400 + 2;
         private const int WM_SETFONT = 0x0030;
         private const int WM_SIZE = 0x0005;
-        private const int WM_SETTEXT = 0x000C;
         private const int WM_DESTROY = 0x0002;
         private const int WM_COMMAND = 0x0111;
         private const int WM_CTLCOLORSTATIC = 0x0138;
@@ -38,7 +37,10 @@ namespace Oasis.NativeProgress
         private const int CancelButtonId = 1001;
         private const uint ICC_PROGRESS_CLASS = 0x00000020;
         private const int TRANSPARENT = 1;
+        private const int COLOR_WINDOWTEXT = 8;
         private const int ProgressRange = 1000;
+        private const int PBS_SMOOTH = 0x00000001;
+        private const int PBS_MARQUEE = 0x00000008;
 
         private static ushort _classAtom;
         private static IntPtr _instanceHandle = IntPtr.Zero;
@@ -155,7 +157,7 @@ namespace Oasis.NativeProgress
 
             if (windowTitle != null)
             {
-                SendMessageString(_windowHandle, WM_SETTEXT, IntPtr.Zero, windowTitle);
+                SetWindowText(_windowHandle, windowTitle);
             }
 
             if (_labelHandle != IntPtr.Zero)
@@ -240,7 +242,7 @@ namespace Oasis.NativeProgress
                 0,
                 "msctls_progress32",
                 null,
-                WS_CHILD | WS_VISIBLE,
+                WS_CHILD | WS_VISIBLE | PBS_SMOOTH | PBS_MARQUEE,
                 0,
                 0,
                 0,
@@ -361,7 +363,7 @@ namespace Oasis.NativeProgress
                 if (_isMarqueeMode)
                 {
                     SendMessage(_progressHandle, PBM_SETMARQUEE, IntPtr.Zero, IntPtr.Zero);
-                    SendMessage(_progressHandle, PBM_SETRANGE, IntPtr.Zero, MakeLParam(0, ProgressRange));
+                    SendMessage(_progressHandle, PBM_SETRANGE32, IntPtr.Zero, new IntPtr(ProgressRange));
                     _isMarqueeMode = false;
                 }
 
@@ -448,6 +450,7 @@ namespace Oasis.NativeProgress
                     if (lParam == _labelHandle)
                     {
                         SetBkMode(wParam, TRANSPARENT);
+                        SetTextColor(wParam, GetSysColor(COLOR_WINDOWTEXT));
                         if (_windowBackgroundBrush == IntPtr.Zero)
                         {
                             _windowBackgroundBrush = GetSysColorBrush(COLOR_WINDOW);
@@ -475,11 +478,6 @@ namespace Oasis.NativeProgress
         private static int HighWord(IntPtr value)
         {
             return (int)(((long)value >> 16) & 0xFFFF);
-        }
-
-        private static IntPtr MakeLParam(int low, int high)
-        {
-            return new IntPtr((high << 16) | (low & 0xFFFF));
         }
 
         private delegate IntPtr WndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
@@ -580,9 +578,6 @@ namespace Oasis.NativeProgress
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
         private static extern IntPtr SendMessage(IntPtr hWnd, int Msg, IntPtr wParam, IntPtr lParam);
 
-        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-        private static extern IntPtr SendMessageString(IntPtr hWnd, int Msg, IntPtr wParam, string lParam);
-
         [DllImport("comctl32.dll", SetLastError = true)]
         private static extern bool InitCommonControlsEx(ref INITCOMMONCONTROLSEX lpInitCtrls);
 
@@ -591,6 +586,12 @@ namespace Oasis.NativeProgress
 
         [DllImport("gdi32.dll")]
         private static extern int SetBkMode(IntPtr hdc, int mode);
+
+        [DllImport("gdi32.dll")]
+        private static extern int SetTextColor(IntPtr hdc, int crColor);
+
+        [DllImport("user32.dll")]
+        private static extern int GetSysColor(int nIndex);
 
         [DllImport("user32.dll")]
         private static extern IntPtr GetSysColorBrush(int nIndex);
