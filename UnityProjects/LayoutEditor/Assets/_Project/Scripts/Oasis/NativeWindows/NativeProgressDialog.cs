@@ -119,6 +119,11 @@ namespace Oasis.NativeWindows
             return DefWindowProc(hWnd, msg, wParam, lParam);
         }
 
+
+        [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode, EntryPoint = "RegisterClassExW")]
+        private static extern ushort RegisterClassEx(ref WNDCLASSEX lpwcx);
+
+
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
         private struct WNDCLASSEX
         {
