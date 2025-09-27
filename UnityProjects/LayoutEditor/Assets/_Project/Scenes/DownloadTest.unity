@@ -319,6 +319,7 @@ GameObject:
   - component: {fileID: 1153203379}
   - component: {fileID: 1153203380}
   - component: {fileID: 1153203381}
+  - component: {fileID: 1153203382}
   m_Layer: 0
   m_Name: DownloadTest Mame
   m_TagString: Untagged
@@ -363,6 +364,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 591ab583eda64ed0a019ac7ba5665a8c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &1153203382
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1153203378}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2d4c57f83a0940d79f8a1e1643b91c7a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
 --- !u!1 &2018372666
