@@ -9,7 +9,7 @@ namespace Oasis.Download
 {
     public class MameDownloader : MonoBehaviour
     {
-        public const string DefaultVersionNumber = "279";
+        public const string DefaultVersionNumber = "281";
 
         private const string DownloadRootUrl = "https://github.com/mamedev/mame/releases/download";
         private const string SevenZipExecutableName = "7z.exe";
@@ -57,7 +57,7 @@ namespace Oasis.Download
             var versionFolder = string.Format("mame{0}", paddedVersion);
             var downloadsRoot = Path.Combine(Application.persistentDataPath, "Downloads", "MAME");
             var extractPath = Path.Combine(downloadsRoot, versionFolder);
-            var archiveFileName = string.Format("{0}b_64bit.exe", versionFolder);
+            var archiveFileName = string.Format("{0}b_x64.exe", versionFolder);
             var archivePath = Path.Combine(downloadsRoot, archiveFileName);
 
             Directory.CreateDirectory(downloadsRoot);
@@ -65,11 +65,13 @@ namespace Oasis.Download
             if (!File.Exists(archivePath))
             {
                 var downloadUrl = string.Format("{0}/{1}/{2}", DownloadRootUrl, versionFolder, archiveFileName);
+                UnityEngine.Debug.LogError("downloadUrl: " + downloadUrl);
                 await DownloadUtility.DownloadFileAsync(downloadUrl, archivePath);
             }
 
             Directory.CreateDirectory(extractPath);
             await ExtractArchiveAsync(archivePath, extractPath);
+            CopyMamePlugins(extractPath);
 
             return extractPath;
 #endif
@@ -116,6 +118,87 @@ namespace Oasis.Download
                     }
                 }
             });
+        }
+
+        private static void CopyMamePlugins(string extractPath)
+        {
+            if (string.IsNullOrEmpty(extractPath))
+            {
+                throw new ArgumentException("Extract path must be provided.", nameof(extractPath));
+            }
+
+            string pluginSourceDirectory = GetPluginSourceDirectory();
+
+            if (!Directory.Exists(pluginSourceDirectory))
+            {
+                UnityEngine.Debug.LogWarning($"MAME plugin source directory '{pluginSourceDirectory}' does not exist. Plugins will not be copied.");
+                return;
+            }
+
+            string pluginDestinationRoot = Path.Combine(extractPath, "plugins");
+            string pluginDestinationDirectory = Path.Combine(pluginDestinationRoot, "oasis");
+
+            Directory.CreateDirectory(pluginDestinationRoot);
+
+            if (Directory.Exists(pluginDestinationDirectory))
+            {
+                Directory.Delete(pluginDestinationDirectory, true);
+            }
+
+            CopyDirectory(pluginSourceDirectory, pluginDestinationDirectory);
+            UnityEngine.Debug.Log($"Copied MAME plugins from '{pluginSourceDirectory}' to '{pluginDestinationDirectory}'.");
+        }
+
+        private static void CopyDirectory(string sourceDir, string destinationDir)
+        {
+            Directory.CreateDirectory(destinationDir);
+
+            foreach (string filePath in Directory.GetFiles(sourceDir))
+            {
+                string fileName = Path.GetFileName(filePath);
+                if (string.IsNullOrEmpty(fileName))
+                {
+                    continue;
+                }
+
+                string destinationFilePath = Path.Combine(destinationDir, fileName);
+                File.Copy(filePath, destinationFilePath, true);
+            }
+
+            foreach (string directoryPath in Directory.GetDirectories(sourceDir))
+            {
+                string directoryName = Path.GetFileName(directoryPath);
+                if (string.IsNullOrEmpty(directoryName))
+                {
+                    continue;
+                }
+
+                string destinationSubDirectory = Path.Combine(destinationDir, directoryName);
+                CopyDirectory(directoryPath, destinationSubDirectory);
+            }
+        }
+
+        private static string GetPluginSourceDirectory()
+        {
+            string projectRootPath = DataPathHelper.ProjectRootPath;
+
+            string[] candidatePaths = new[]
+            {
+                Path.Combine(projectRootPath, "MameLuaPlugins", "oasis"),
+                Path.Combine(projectRootPath, "..", "MameLuaPlugins", "oasis"),
+                Path.Combine(projectRootPath, "..", "..", "MameLuaPlugins", "oasis")
+            };
+
+            foreach (string candidatePath in candidatePaths)
+            {
+                string fullPath = Path.GetFullPath(candidatePath);
+                if (Directory.Exists(fullPath))
+                {
+                    return fullPath;
+                }
+            }
+
+            return Path.GetFullPath(candidatePaths[candidatePaths.Length - 1]);
         }
 
     }
