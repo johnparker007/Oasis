@@ -160,7 +160,7 @@ namespace Oasis.LayoutEditor.Panels
             }
             catch (Exception exception)
             {
-                Debug.LogWarning($"Failed to enumerate directories in '{assetsPath}': {exception.Message}");
+                UnityEngine.Debug.LogWarning($"Failed to enumerate directories in '{assetsPath}': {exception.Message}");
                 return;
             }
 
@@ -188,7 +188,7 @@ namespace Oasis.LayoutEditor.Panels
             }
             catch (Exception exception)
             {
-                Debug.LogWarning($"Failed to enumerate directories in '{directoryPath}': {exception.Message}");
+                UnityEngine.Debug.LogWarning($"Failed to enumerate directories in '{directoryPath}': {exception.Message}");
                 subDirectories = Array.Empty<string>();
             }
 
@@ -359,7 +359,7 @@ namespace Oasis.LayoutEditor.Panels
             }
             catch (Exception exception)
             {
-                Debug.LogWarning($"Failed to open directory '{directoryPath}' in Explorer: {exception.Message}");
+                UnityEngine.Debug.LogWarning($"Failed to open directory '{directoryPath}' in Explorer: {exception.Message}");
             }
         }
 #endif
@@ -444,7 +444,7 @@ namespace Oasis.LayoutEditor.Panels
             }
             catch (Exception exception)
             {
-                Debug.LogWarning($"Failed to watch assets directory '{assetsPath}': {exception.Message}");
+                UnityEngine.Debug.LogWarning($"Failed to watch assets directory '{assetsPath}': {exception.Message}");
             }
         }
 
