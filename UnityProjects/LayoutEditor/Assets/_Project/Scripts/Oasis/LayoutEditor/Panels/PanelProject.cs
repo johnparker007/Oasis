@@ -1,8 +1,14 @@
+using Oasis.LayoutEditor.RuntimeHierarchyIntegration;
 using RuntimeInspectorNamespace;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
+using UnityEngine.EventSystems;
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+using NativeWindowsContextMenu;
+using System.Diagnostics;
+#endif
 
 namespace Oasis.LayoutEditor.Panels
 {
@@ -11,6 +17,7 @@ namespace Oasis.LayoutEditor.Panels
         private const string kPseudoSceneName = "Assets";
 
         private RuntimeHierarchy _runtimeHierarchy = null;
+        private RuntimeHierarchyRightClickBroadcaster _hierarchyRightClickBroadcaster = null;
         private readonly List<Transform> _runtimeHierarchyAssetsRootTransforms = new List<Transform>();
         private FileSystemWatcher _assetsDirectoryWatcher;
         private string _watchedAssetsPath;
@@ -28,10 +35,23 @@ namespace Oasis.LayoutEditor.Panels
         protected override void AddListeners()
         {
             _assetsHierarchyDirty = true;
+
+            EnsureHierarchyBroadcaster();
+
+            if (_hierarchyRightClickBroadcaster != null)
+            {
+                _hierarchyRightClickBroadcaster.DrawerRightClicked -= OnHierarchyDrawerRightClicked;
+                _hierarchyRightClickBroadcaster.DrawerRightClicked += OnHierarchyDrawerRightClicked;
+            }
         }
 
         protected override void RemoveListeners()
         {
+            if (_hierarchyRightClickBroadcaster != null)
+            {
+                _hierarchyRightClickBroadcaster.DrawerRightClicked -= OnHierarchyDrawerRightClicked;
+            }
+
             DisposeAssetsWatcher();
             ClearAssetsPseudoScene();
         }
@@ -45,6 +65,11 @@ namespace Oasis.LayoutEditor.Panels
 
             _runtimeHierarchy = GetComponentInChildren<RuntimeHierarchy>(true);
 
+            if (_runtimeHierarchy != null)
+            {
+                EnsureHierarchyBroadcaster();
+            }
+
             _runtimeHierarchy.CreatePseudoScene(kPseudoSceneName);
 
 
@@ -56,8 +81,33 @@ namespace Oasis.LayoutEditor.Panels
             RefreshAssetsPseudoScene();
         }
 
-        private void Update()
+        private void EnsureHierarchyBroadcaster()
         {
+            if (_runtimeHierarchy == null)
+            {
+                _hierarchyRightClickBroadcaster = null;
+                return;
+            }
+
+            if (_hierarchyRightClickBroadcaster != null)
+            {
+                return;
+            }
+
+            _hierarchyRightClickBroadcaster = _runtimeHierarchy.GetComponent<RuntimeHierarchyRightClickBroadcaster>();
+
+            if (_hierarchyRightClickBroadcaster == null)
+            {
+                _hierarchyRightClickBroadcaster = _runtimeHierarchy.gameObject.AddComponent<RuntimeHierarchyRightClickBroadcaster>();
+            }
+
+            _hierarchyRightClickBroadcaster.ForceScan();
+        }
+
+        protected override void Update()
+        {
+            base.Update();
+
             if (!_initialised)
             {
                 return;
@@ -118,7 +168,7 @@ namespace Oasis.LayoutEditor.Panels
             {
                 string directoryName = Path.GetFileName(directoryPath);
 
-                Transform directoryTransform = CreateNamedTransform(directoryName, null);
+                Transform directoryTransform = CreateNamedTransform(directoryName, null, directoryPath);
 
                 _runtimeHierarchy.AddToPseudoScene(kPseudoSceneName, directoryTransform);
                 _runtimeHierarchyAssetsRootTransforms.Add(directoryTransform);
@@ -146,11 +196,53 @@ namespace Oasis.LayoutEditor.Panels
             {
                 string directoryName = Path.GetFileName(subDirectory);
 
-                Transform directoryTransform = CreateNamedTransform(directoryName, parentTransform);
+                Transform directoryTransform = CreateNamedTransform(directoryName, parentTransform, subDirectory);
 
                 PopulateDirectoryTransforms(subDirectory, directoryTransform);
             }
 
+        }
+
+        private void OnHierarchyDrawerRightClicked(HierarchyField drawer, PointerEventData eventData)
+        {
+            if (drawer == null)
+            {
+                return;
+            }
+
+            HierarchyData data = drawer.Data;
+
+            if (data == null)
+            {
+                return;
+            }
+
+            Transform boundTransform = data.BoundTransform;
+
+            if (boundTransform == null)
+            {
+                if (data is HierarchyDataRootPseudoScene pseudoSceneData &&
+                    string.Equals(pseudoSceneData.Name, kPseudoSceneName, StringComparison.Ordinal))
+                {
+                    string assetsPath = GetCurrentProjectAssetsPath();
+
+                    if (!string.IsNullOrEmpty(assetsPath))
+                    {
+                        ShowDirectoryContextMenu(assetsPath);
+                    }
+                }
+
+                return;
+            }
+
+            DirectoryMetadata metadata = boundTransform.GetComponent<DirectoryMetadata>();
+
+            if (metadata == null || string.IsNullOrEmpty(metadata.DirectoryPath))
+            {
+                return;
+            }
+
+            ShowDirectoryContextMenu(metadata.DirectoryPath);
         }
 
         private void ClearAssetsPseudoScene()
@@ -176,12 +268,15 @@ namespace Oasis.LayoutEditor.Panels
             _runtimeHierarchyAssetsRootTransforms.Clear();
         }
 
-        private Transform CreateNamedTransform(string name, Transform parentTransform)
+        private Transform CreateNamedTransform(string name, Transform parentTransform, string directoryPath)
         {
             GameObject gameObject = new GameObject(name)
             {
                 hideFlags = HideFlags.HideAndDontSave
             };
+
+            DirectoryMetadata metadata = gameObject.AddComponent<DirectoryMetadata>();
+            metadata.Initialise(directoryPath);
 
             Transform transform = gameObject.transform;
 
@@ -209,6 +304,65 @@ namespace Oasis.LayoutEditor.Panels
                 DestroyImmediate(transform.gameObject);
             }
         }
+
+        private void ShowDirectoryContextMenu(string directoryPath)
+        {
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+            if (string.IsNullOrEmpty(directoryPath))
+            {
+                return;
+            }
+
+            NativeContextMenuManager manager = EnsureContextMenuManager();
+
+            if (manager == null)
+            {
+                return;
+            }
+
+            bool directoryExists = Directory.Exists(directoryPath);
+
+            var menuItems = new List<NativeContextMenuManager.MenuItemSpec>
+            {
+                new NativeContextMenuManager.MenuItemSpec(
+                    "Show in Explorer",
+                    () => ShowDirectoryInExplorer(directoryPath),
+                    directoryExists)
+            };
+
+            manager.ShowMenuAtCursor(menuItems);
+#endif
+        }
+
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+        private static NativeContextMenuManager EnsureContextMenuManager()
+        {
+            if (NativeContextMenuManager.Instance != null)
+            {
+                return NativeContextMenuManager.Instance;
+            }
+
+            GameObject managerObject = new GameObject("NativeContextMenuManager");
+            return managerObject.AddComponent<NativeContextMenuManager>();
+        }
+
+        private static void ShowDirectoryInExplorer(string directoryPath)
+        {
+            if (string.IsNullOrEmpty(directoryPath) || !Directory.Exists(directoryPath))
+            {
+                return;
+            }
+
+            try
+            {
+                Process.Start("explorer.exe", $"\"{directoryPath}\"");
+            }
+            catch (Exception exception)
+            {
+                Debug.LogWarning($"Failed to open directory '{directoryPath}' in Explorer: {exception.Message}");
+            }
+        }
+#endif
 
         private string GetCurrentProjectRootPath()
         {
@@ -320,6 +474,16 @@ namespace Oasis.LayoutEditor.Panels
         private void OnAssetsDirectoryRenamed(object sender, RenamedEventArgs e)
         {
             _assetsHierarchyDirty = true;
+        }
+
+        private sealed class DirectoryMetadata : MonoBehaviour
+        {
+            public string DirectoryPath { get; private set; }
+
+            public void Initialise(string directoryPath)
+            {
+                DirectoryPath = directoryPath;
+            }
         }
     }
 
