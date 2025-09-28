@@ -4,6 +4,7 @@ using UnityEngine.UI;
 using UnityEngine.Serialization;
 using System;
 using System.Collections.Generic;
+using Oasis.LayoutEditor.Panels;
 
 namespace Oasis.LayoutEditor
 {
@@ -188,6 +189,11 @@ namespace Oasis.LayoutEditor
 
             TabDefinition tabDefinition = TabDefinitions.Find(x => x.TypeID == tabType);
             PanelTab panelTab = CreatePanelTab(tabDefinition);
+
+            if (tabDefinition.TypeID == TabTypes.Project)
+            {
+                InitialiseProjectPanel(panelTab?.Panel);
+            }
             if (anchorPanel != null)
             {
                 PanelManager.Instance.AnchorPanel(panelTab.Panel, anchorPanel, Direction.Right);
@@ -208,6 +214,22 @@ namespace Oasis.LayoutEditor
             }
 
             return false;
+        }
+
+        private static void InitialiseProjectPanel(Panel panel)
+        {
+            if (panel == null)
+            {
+                return;
+            }
+
+            PanelProject panelProject = panel.RectTransform.GetComponent<PanelProject>();
+            if (panelProject == null)
+            {
+                panelProject = panel.RectTransform.gameObject.AddComponent<PanelProject>();
+            }
+
+            panelProject.EnsureInitialised();
         }
 
         private PanelTab CreatePanelTab(TabDefinition tabDefinition)
