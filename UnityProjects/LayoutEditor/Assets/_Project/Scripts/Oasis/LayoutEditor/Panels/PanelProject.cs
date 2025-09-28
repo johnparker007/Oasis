@@ -1,5 +1,6 @@
 using RuntimeInspectorNamespace;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
@@ -10,7 +11,7 @@ namespace Oasis.LayoutEditor.Panels
         private const string kPseudoSceneName = "Assets";
 
         private RuntimeHierarchy _runtimeHierarchy = null;
-        private Transform _runtimeHierarchyAssetsRootTransform;
+        private readonly List<Transform> _runtimeHierarchyAssetsRootTransforms = new List<Transform>();
         private FileSystemWatcher _assetsDirectoryWatcher;
         private string _watchedAssetsPath;
         private string _lastKnownProjectRootPath;
@@ -88,35 +89,42 @@ namespace Oasis.LayoutEditor.Panels
 
             SetupAssetsWatcher(assetsPath);
 
-            Transform assetsRootTransform = CreateAssetsHierarchy(assetsPath);
-
-            if (assetsRootTransform != null)
-            {
-                _runtimeHierarchy.AddToPseudoScene(kPseudoSceneName, assetsRootTransform);
-            }
+            CreateAssetsHierarchy(assetsPath);
         }
 
-        private Transform CreateAssetsHierarchy(string assetsPath)
+        private void CreateAssetsHierarchy(string assetsPath)
         {
             ClearAssetsPseudoScene();
 
             if (string.IsNullOrEmpty(assetsPath))
             {
-                return null;
+                return;
             }
 
-            string rootName = Path.GetFileName(assetsPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+            string[] topLevelDirectories;
 
-            if (string.IsNullOrEmpty(rootName))
+            try
             {
-                rootName = kPseudoSceneName;
+                topLevelDirectories = Directory.GetDirectories(assetsPath);
+                Array.Sort(topLevelDirectories, StringComparer.OrdinalIgnoreCase);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogWarning($"Failed to enumerate directories in '{assetsPath}': {exception.Message}");
+                return;
             }
 
-            _runtimeHierarchyAssetsRootTransform = CreateNamedTransform(rootName, null);
+            foreach (string directoryPath in topLevelDirectories)
+            {
+                string directoryName = Path.GetFileName(directoryPath);
 
-            PopulateDirectoryTransforms(assetsPath, _runtimeHierarchyAssetsRootTransform);
+                Transform directoryTransform = CreateNamedTransform(directoryName, null);
 
-            return _runtimeHierarchyAssetsRootTransform;
+                _runtimeHierarchy.AddToPseudoScene(kPseudoSceneName, directoryTransform);
+                _runtimeHierarchyAssetsRootTransforms.Add(directoryTransform);
+
+                PopulateDirectoryTransforms(directoryPath, directoryTransform);
+            }
         }
 
         private void PopulateDirectoryTransforms(string directoryPath, Transform parentTransform)
@@ -143,41 +151,29 @@ namespace Oasis.LayoutEditor.Panels
                 PopulateDirectoryTransforms(subDirectory, directoryTransform);
             }
 
-            string[] files;
-
-            try
-            {
-                files = Directory.GetFiles(directoryPath);
-                Array.Sort(files, StringComparer.OrdinalIgnoreCase);
-            }
-            catch (Exception exception)
-            {
-                Debug.LogWarning($"Failed to enumerate files in '{directoryPath}': {exception.Message}");
-                files = Array.Empty<string>();
-            }
-
-            foreach (string file in files)
-            {
-                string fileName = Path.GetFileName(file);
-
-                CreateNamedTransform(fileName, parentTransform);
-            }
         }
 
         private void ClearAssetsPseudoScene()
         {
-            if (_runtimeHierarchyAssetsRootTransform == null)
+            if (_runtimeHierarchyAssetsRootTransforms.Count == 0)
             {
                 return;
             }
 
             if (_runtimeHierarchy != null)
             {
-                _runtimeHierarchy.RemoveFromPseudoScene(kPseudoSceneName, _runtimeHierarchyAssetsRootTransform, false);
+                foreach (Transform rootTransform in _runtimeHierarchyAssetsRootTransforms)
+                {
+                    _runtimeHierarchy.RemoveFromPseudoScene(kPseudoSceneName, rootTransform, false);
+                }
             }
 
-            DestroyTransform(_runtimeHierarchyAssetsRootTransform);
-            _runtimeHierarchyAssetsRootTransform = null;
+            foreach (Transform rootTransform in _runtimeHierarchyAssetsRootTransforms)
+            {
+                DestroyTransform(rootTransform);
+            }
+
+            _runtimeHierarchyAssetsRootTransforms.Clear();
         }
 
         private Transform CreateNamedTransform(string name, Transform parentTransform)
