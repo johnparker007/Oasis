@@ -1,4 +1,4 @@
-using Oasis.LayoutEditor.RuntimeHierarchy;
+using Oasis.LayoutEditor.RuntimeHierarchyIntegration;
 using RuntimeInspectorNamespace;
 using System;
 using System.Collections.Generic;
@@ -104,8 +104,10 @@ namespace Oasis.LayoutEditor.Panels
             _hierarchyRightClickBroadcaster.ForceScan();
         }
 
-        private void Update()
+        protected override void Update()
         {
+            base.Update();
+
             if (!_initialised)
             {
                 return;

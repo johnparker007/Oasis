@@ -3,7 +3,7 @@ using RuntimeInspectorNamespace;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-namespace Oasis.LayoutEditor.RuntimeHierarchy
+namespace Oasis.LayoutEditor.RuntimeHierarchyIntegration
 {
     [DisallowMultipleComponent]
     [RequireComponent(typeof(HierarchyField))]
