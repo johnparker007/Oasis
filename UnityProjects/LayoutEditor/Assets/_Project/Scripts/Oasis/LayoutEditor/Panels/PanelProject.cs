@@ -1,3 +1,4 @@
+using Oasis.LayoutEditor.RuntimeHierarchy;
 using RuntimeInspectorNamespace;
 using System;
 using System.Collections.Generic;
@@ -16,6 +17,7 @@ namespace Oasis.LayoutEditor.Panels
         private const string kPseudoSceneName = "Assets";
 
         private RuntimeHierarchy _runtimeHierarchy = null;
+        private RuntimeHierarchyRightClickBroadcaster _hierarchyRightClickBroadcaster = null;
         private readonly List<Transform> _runtimeHierarchyAssetsRootTransforms = new List<Transform>();
         private FileSystemWatcher _assetsDirectoryWatcher;
         private string _watchedAssetsPath;
@@ -34,18 +36,20 @@ namespace Oasis.LayoutEditor.Panels
         {
             _assetsHierarchyDirty = true;
 
-            if (_runtimeHierarchy != null)
+            EnsureHierarchyBroadcaster();
+
+            if (_hierarchyRightClickBroadcaster != null)
             {
-                _runtimeHierarchy.OnDrawerRightClicked -= OnHierarchyDrawerRightClicked;
-                _runtimeHierarchy.OnDrawerRightClicked += OnHierarchyDrawerRightClicked;
+                _hierarchyRightClickBroadcaster.DrawerRightClicked -= OnHierarchyDrawerRightClicked;
+                _hierarchyRightClickBroadcaster.DrawerRightClicked += OnHierarchyDrawerRightClicked;
             }
         }
 
         protected override void RemoveListeners()
         {
-            if (_runtimeHierarchy != null)
+            if (_hierarchyRightClickBroadcaster != null)
             {
-                _runtimeHierarchy.OnDrawerRightClicked -= OnHierarchyDrawerRightClicked;
+                _hierarchyRightClickBroadcaster.DrawerRightClicked -= OnHierarchyDrawerRightClicked;
             }
 
             DisposeAssetsWatcher();
@@ -61,6 +65,11 @@ namespace Oasis.LayoutEditor.Panels
 
             _runtimeHierarchy = GetComponentInChildren<RuntimeHierarchy>(true);
 
+            if (_runtimeHierarchy != null)
+            {
+                EnsureHierarchyBroadcaster();
+            }
+
             _runtimeHierarchy.CreatePseudoScene(kPseudoSceneName);
 
 
@@ -70,6 +79,29 @@ namespace Oasis.LayoutEditor.Panels
         protected override void Populate()
         {
             RefreshAssetsPseudoScene();
+        }
+
+        private void EnsureHierarchyBroadcaster()
+        {
+            if (_runtimeHierarchy == null)
+            {
+                _hierarchyRightClickBroadcaster = null;
+                return;
+            }
+
+            if (_hierarchyRightClickBroadcaster != null)
+            {
+                return;
+            }
+
+            _hierarchyRightClickBroadcaster = _runtimeHierarchy.GetComponent<RuntimeHierarchyRightClickBroadcaster>();
+
+            if (_hierarchyRightClickBroadcaster == null)
+            {
+                _hierarchyRightClickBroadcaster = _runtimeHierarchy.gameObject.AddComponent<RuntimeHierarchyRightClickBroadcaster>();
+            }
+
+            _hierarchyRightClickBroadcaster.ForceScan();
         }
 
         private void Update()

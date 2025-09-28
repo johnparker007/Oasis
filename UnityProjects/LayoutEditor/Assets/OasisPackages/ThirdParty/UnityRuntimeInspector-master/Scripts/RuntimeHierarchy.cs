@@ -16,10 +16,9 @@ namespace RuntimeInspectorNamespace
 		public enum SelectOptions { None = 0, Additive = 1, FocusOnSelection = 2, ForceRevealSelection = 4 };
 		public enum LongPressAction { None = 0, CreateDraggedReferenceItem = 1, ShowMultiSelectionToggles = 2, ShowMultiSelectionTogglesThenCreateDraggedReferenceItem = 3 };
 
-                public delegate void SelectionChangedDelegate( ReadOnlyCollection<Transform> selection );
-                public delegate void DoubleClickDelegate( HierarchyData clickedItem );
-                public delegate void DrawerRightClickDelegate( HierarchyField clickedDrawer, PointerEventData eventData );
-                public delegate bool GameObjectFilterDelegate( Transform transform );
+		public delegate void SelectionChangedDelegate( ReadOnlyCollection<Transform> selection );
+		public delegate void DoubleClickDelegate( HierarchyData clickedItem );
+		public delegate bool GameObjectFilterDelegate( Transform transform );
 
 #pragma warning disable 0649
 		[SerializeField]
@@ -415,9 +414,8 @@ namespace RuntimeInspectorNamespace
 		// Used to make sure that the scrolled content always remains within the scroll view's boundaries
 		private PointerEventData nullPointerEventData;
 
-                public SelectionChangedDelegate OnSelectionChanged;
-                public DoubleClickDelegate OnItemDoubleClicked;
-                public DrawerRightClickDelegate OnDrawerRightClicked;
+		public SelectionChangedDelegate OnSelectionChanged;
+		public DoubleClickDelegate OnItemDoubleClicked;
 
 		private GameObjectFilterDelegate m_gameObjectDelegate;
 		public GameObjectFilterDelegate GameObjectFilter
@@ -1085,15 +1083,15 @@ namespace RuntimeInspectorNamespace
 			return null;
 		}
 
-                public void OnDrawerPointerEvent( HierarchyField drawer, PointerEventData eventData, bool isPointerDown )
-                {
-                        if( !isPointerDown )
-                        {
-                                currentlyPressedDrawer = null;
-                                pressedDrawerActivePointer = null;
+		public void OnDrawerPointerEvent( HierarchyField drawer, PointerEventData eventData, bool isPointerDown )
+		{
+			if( !isPointerDown )
+			{
+				currentlyPressedDrawer = null;
+				pressedDrawerActivePointer = null;
 
-                                // We have activated MultiSelectionToggleSelectionMode with this press; processing the click would result in
-                                // deselecting the Transform that we've just selected with this press because its selected state would be toggled
+				// We have activated MultiSelectionToggleSelectionMode with this press; processing the click would result in
+				// deselecting the Transform that we've just selected with this press because its selected state would be toggled
 				// again inside OnItemClicked. Simply ignore the click to avoid this issue
 				if( justActivatedMultiSelectionToggleSelectionMode )
 				{
@@ -1112,25 +1110,14 @@ namespace RuntimeInspectorNamespace
 					eventData.pointerDrag = null;
 				}
 #endif
-                        }
-                        else
-                        {
-                                if( eventData.button == PointerEventData.InputButton.Right )
-                                {
-                                        if( OnDrawerRightClicked != null )
-                                                OnDrawerRightClicked( drawer, eventData );
-
-                                        return;
-                                }
-
-                                if( m_pointerLongPressAction != LongPressAction.None )
-                                {
-                                        currentlyPressedDrawer = drawer;
-                                        pressedDrawerActivePointer = eventData;
-                                        pressedDrawerDraggedReferenceCreateTime = Time.realtimeSinceStartup + m_pointerLongPressDuration;
-                                }
-                        }
-                }
+			}
+			else if( m_pointerLongPressAction != LongPressAction.None )
+			{
+				currentlyPressedDrawer = drawer;
+				pressedDrawerActivePointer = eventData;
+				pressedDrawerDraggedReferenceCreateTime = Time.realtimeSinceStartup + m_pointerLongPressDuration;
+			}
+		}
 
 		public bool Select( Transform selection, SelectOptions selectOptions = SelectOptions.None )
 		{
