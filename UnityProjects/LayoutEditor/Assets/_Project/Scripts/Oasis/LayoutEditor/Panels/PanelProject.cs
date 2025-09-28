@@ -187,6 +187,17 @@ namespace Oasis.LayoutEditor.Panels
 
             if (boundTransform == null)
             {
+                if (data is HierarchyDataRootPseudoScene pseudoSceneData &&
+                    string.Equals(pseudoSceneData.Name, kPseudoSceneName, StringComparison.Ordinal))
+                {
+                    string assetsPath = GetCurrentProjectAssetsPath();
+
+                    if (!string.IsNullOrEmpty(assetsPath))
+                    {
+                        ShowDirectoryContextMenu(assetsPath);
+                    }
+                }
+
                 return;
             }
 
