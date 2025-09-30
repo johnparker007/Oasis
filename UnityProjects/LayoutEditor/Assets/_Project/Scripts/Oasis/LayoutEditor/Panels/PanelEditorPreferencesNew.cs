@@ -9,11 +9,14 @@ namespace Oasis.LayoutEditor.Panels
     {
         private const string kPseudoSceneName = "Preferences";
 
-        private static readonly string[] kInitialSections =
+        [System.Serializable]
+        public struct PreferenceSection
         {
-            "General",
-            "MAME"
-        };
+            public string Category;
+            public GameObject MenuPane;
+        }
+
+        public List<PreferenceSection> PreferenceSections = new List<PreferenceSection>();
 
         private RuntimeHierarchy _runtimeHierarchy;
         private readonly List<Transform> _sectionTransforms = new List<Transform>();
@@ -81,13 +84,18 @@ namespace Oasis.LayoutEditor.Panels
 
             ClearPreferenceSections();
 
-            foreach (string sectionName in kInitialSections)
+            foreach (PreferenceSection preferenceSection in PreferenceSections)
             {
-                Transform sectionTransform = CreateSectionTransform(sectionName);
+                if (string.IsNullOrEmpty(preferenceSection.Category))
+                {
+                    continue;
+                }
+
+                Transform sectionTransform = CreateSectionTransform(preferenceSection.Category);
                 _runtimeHierarchy.AddToPseudoScene(kPseudoSceneName, sectionTransform);
 
                 _sectionTransforms.Add(sectionTransform);
-                _sectionNamesByTransform[sectionTransform] = sectionName;
+                _sectionNamesByTransform[sectionTransform] = preferenceSection.Category;
             }
         }
 
@@ -162,7 +170,16 @@ namespace Oasis.LayoutEditor.Panels
 
         private void OnPreferenceSectionSelected(string sectionName)
         {
-            Debug.Log($"Preference section selected: {sectionName}");
+            foreach (PreferenceSection preferenceSection in PreferenceSections)
+            {
+                bool shouldBeActive = preferenceSection.Category == sectionName;
+
+                if (preferenceSection.MenuPane != null &&
+                    preferenceSection.MenuPane.activeSelf != shouldBeActive)
+                {
+                    preferenceSection.MenuPane.SetActive(shouldBeActive);
+                }
+            }
         }
     }
 
