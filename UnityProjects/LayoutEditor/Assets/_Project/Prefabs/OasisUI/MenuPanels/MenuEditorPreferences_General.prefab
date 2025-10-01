@@ -375,7 +375,7 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 1530605722893704, guid: d5899d1c277927d458e41e5420cc1f97, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 944527039363765272}
+      addedObject: {fileID: 8485762478135730452}
   m_SourcePrefab: {fileID: 100100000, guid: d5899d1c277927d458e41e5420cc1f97, type: 3}
 --- !u!224 &3301452226902502170 stripped
 RectTransform:
@@ -387,7 +387,7 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 1530605722893704, guid: d5899d1c277927d458e41e5420cc1f97, type: 3}
   m_PrefabInstance: {fileID: 3373151012760791778}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &944527039363765272
+--- !u!114 &8485762478135730452
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -396,7 +396,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 3371690797597218666}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 734584ca02493174da49aebb4eca225a, type: 3}
+  m_Script: {fileID: 11500000, guid: cef23bf7bd9cfa043bb3a18ea18ba734, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   m_skin: {fileID: 11400000, guid: b38b1cb4db852fe4ea114688dada27d0, type: 2}
@@ -406,7 +406,6 @@ MonoBehaviour:
   _scrollbar: {fileID: 3411343725884043380}
   ServerAddress: {fileID: 1726567907615301037}
   ProjectsFolder: {fileID: 1522031067273812405}
-  MameVersion: {fileID: 0}
 --- !u!114 &3411287024220160692 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 114988579474761814, guid: d5899d1c277927d458e41e5420cc1f97, type: 3}
