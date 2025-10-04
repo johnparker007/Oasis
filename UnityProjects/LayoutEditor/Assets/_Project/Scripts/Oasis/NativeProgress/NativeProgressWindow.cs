@@ -25,7 +25,6 @@ namespace Oasis.NativeProgress
         private const int IDC_ARROW = 32512;
         private const int COLOR_WINDOW = 5;
         private const int WM_USER = 0x0400;
-        // PBM_SETMARQUEE must use WM_USER + 10 (previously an incorrect offset kept the control stuck in marquee mode).
         private const int PBM_SETMARQUEE = WM_USER + 10;
         private const int PBM_SETRANGE32 = WM_USER + 6;
         private const int PBM_SETPOS = WM_USER + 2;
@@ -34,7 +33,6 @@ namespace Oasis.NativeProgress
         private const int WM_DESTROY = 0x0002;
         private const int WM_COMMAND = 0x0111;
         private const int WM_CTLCOLORSTATIC = 0x0138;
-        private const int WM_SETTEXT = 0x000C;
         private const int WM_QUIT = 0x0012;
         private const int BN_CLICKED = 0;
         private const int DEFAULT_GUI_FONT = 17;
@@ -64,6 +62,10 @@ namespace Oasis.NativeProgress
         private static bool _isMarqueeMode = true;
         private static int _currentProgressValue = -1;
         private static IntPtr _windowBackgroundBrush = IntPtr.Zero;
+
+        [UnmanagedFunctionPointer(CallingConvention.Winapi, CharSet = CharSet.Unicode)]
+        private delegate IntPtr WndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+
         private static WndProc _wndProc;
 
         public static bool EnsureWindowCreated(out string errorMessage)
@@ -74,19 +76,15 @@ namespace Oasis.NativeProgress
                 return true;
             }
 
-            _instanceHandle = GetModuleHandle(null);
+            _instanceHandle = GetModuleHandleW(null);
             if (_instanceHandle == IntPtr.Zero)
             {
-                errorMessage = $"GetModuleHandle failed with error {Marshal.GetLastWin32Error()}";
+                errorMessage = $"GetModuleHandleW failed with error {Marshal.GetLastWin32Error()}";
                 return false;
             }
 
             _unityWindowHandle = GetActiveWindow();
-            if (_unityWindowHandle == IntPtr.Zero)
-            {
-                _unityWindowHandle = GetForegroundWindow();
-            }
-
+            if (_unityWindowHandle == IntPtr.Zero) _unityWindowHandle = GetForegroundWindow();
             if (_unityWindowHandle == IntPtr.Zero)
             {
                 errorMessage = "Unable to determine Unity window handle.";
@@ -95,32 +93,32 @@ namespace Oasis.NativeProgress
 
             _wndProc = WindowProcedure;
 
-            var windowClass = new WNDCLASSEX
+            var windowClass = new WNDCLASSEXW
             {
-                cbSize = (uint)Marshal.SizeOf(typeof(WNDCLASSEX)),
+                cbSize = (uint)Marshal.SizeOf(typeof(WNDCLASSEXW)),
                 style = CS_HREDRAW | CS_VREDRAW,
                 lpfnWndProc = _wndProc,
                 cbClsExtra = 0,
                 cbWndExtra = 0,
                 hInstance = _instanceHandle,
                 hIcon = IntPtr.Zero,
-                hCursor = LoadCursor(IntPtr.Zero, new IntPtr(IDC_ARROW)),
+                hCursor = LoadCursorW(IntPtr.Zero, new IntPtr(IDC_ARROW)),
                 hbrBackground = new IntPtr(COLOR_WINDOW + 1),
                 lpszMenuName = null,
                 lpszClassName = WindowClassName,
                 hIconSm = IntPtr.Zero
             };
 
-            _classAtom = RegisterClassEx(ref windowClass);
+            _classAtom = RegisterClassExW(ref windowClass);
             if (_classAtom == 0)
             {
-                errorMessage = $"RegisterClassEx failed with error {Marshal.GetLastWin32Error()}";
+                errorMessage = $"RegisterClassExW failed with error {Marshal.GetLastWin32Error()}";
                 _wndProc = null;
                 _unityWindowHandle = IntPtr.Zero;
                 return false;
             }
 
-            _windowHandle = CreateWindowEx(
+            _windowHandle = CreateWindowExW(
                 WS_EX_DLGMODALFRAME,
                 WindowClassName,
                 "Oasis Progress",
@@ -138,7 +136,7 @@ namespace Oasis.NativeProgress
             {
                 int lastError = Marshal.GetLastWin32Error();
                 UnregisterWindowClass();
-                errorMessage = $"CreateWindowEx failed with error {lastError}";
+                errorMessage = $"CreateWindowExW failed with error {lastError}";
                 _unityWindowHandle = IntPtr.Zero;
                 return false;
             }
@@ -161,20 +159,10 @@ namespace Oasis.NativeProgress
 
         public static bool UpdateContent(string windowTitle, string statusText, bool cancelEnabled, float? progress = null)
         {
-            if (_windowHandle == IntPtr.Zero)
-            {
-                return false;
-            }
+            if (_windowHandle == IntPtr.Zero) return false;
 
-            if (windowTitle != null)
-            {
-                SendMessage(_windowHandle, WM_SETTEXT, IntPtr.Zero, windowTitle);
-            }
-
-            if (_labelHandle != IntPtr.Zero)
-            {
-                SendMessage(_labelHandle, WM_SETTEXT, IntPtr.Zero, statusText ?? string.Empty);
-            }
+            if (windowTitle != null) SetWindowTextW(_windowHandle, windowTitle);
+            if (_labelHandle != IntPtr.Zero) SetWindowTextW(_labelHandle, statusText ?? string.Empty);
 
             if (_cancelButtonHandle != IntPtr.Zero)
             {
@@ -183,17 +171,12 @@ namespace Oasis.NativeProgress
             }
 
             UpdateProgressInternal(progress);
-
             return true;
         }
 
         public static bool UpdateProgress(float normalizedProgress)
         {
-            if (_windowHandle == IntPtr.Zero)
-            {
-                return false;
-            }
-
+            if (_windowHandle == IntPtr.Zero) return false;
             UpdateProgressInternal(normalizedProgress);
             return true;
         }
@@ -203,7 +186,6 @@ namespace Oasis.NativeProgress
             if (_windowHandle != IntPtr.Zero)
             {
                 bool unityWindowStillExists = _unityWindowHandle != IntPtr.Zero && IsWindow(_unityWindowHandle);
-
                 if (unityWindowStillExists)
                 {
                     EnableWindow(_unityWindowHandle, true);
@@ -214,8 +196,6 @@ namespace Oasis.NativeProgress
 
                 if (unityWindowStillExists)
                 {
-                    // Closing the native progress window can enqueue a WM_QUIT message for the thread when
-                    // Unity's main window still exists. Remove it so cancelling the progress UI does not exit Unity.
                     PeekMessage(out MSG _, IntPtr.Zero, WM_QUIT, WM_QUIT, PM_REMOVE);
                 }
 
@@ -238,7 +218,7 @@ namespace Oasis.NativeProgress
         {
             if (_classAtom != 0 && _instanceHandle != IntPtr.Zero)
             {
-                UnregisterClass(WindowClassName, _instanceHandle);
+                UnregisterClassW(WindowClassName, _instanceHandle);
                 _classAtom = 0;
             }
         }
@@ -252,26 +232,15 @@ namespace Oasis.NativeProgress
                 return true;
             }
 
-            if (!EnsureCommonControls(out errorMessage))
-            {
-                return false;
-            }
+            if (!EnsureCommonControls(out errorMessage)) return false;
 
             IntPtr fontHandle = GetStockObject(DEFAULT_GUI_FONT);
 
-            _progressHandle = CreateWindowEx(
-                0,
-                "msctls_progress32",
-                null,
+            _progressHandle = CreateWindowExW(
+                0, "msctls_progress32", null,
                 WS_CHILD | WS_VISIBLE | PBS_SMOOTH | PBS_MARQUEE,
-                0,
-                0,
-                0,
-                0,
-                _windowHandle,
-                IntPtr.Zero,
-                _instanceHandle,
-                IntPtr.Zero);
+                0, 0, 0, 0,
+                _windowHandle, IntPtr.Zero, _instanceHandle, IntPtr.Zero);
 
             if (_progressHandle == IntPtr.Zero)
             {
@@ -279,24 +248,16 @@ namespace Oasis.NativeProgress
                 return false;
             }
 
-            SendMessage(_progressHandle, PBM_SETMARQUEE, new IntPtr(1), new IntPtr(0));
+            SendMessage(_progressHandle, PBM_SETMARQUEE, new IntPtr(1), IntPtr.Zero);
             SendMessage(_progressHandle, WM_SETFONT, fontHandle, new IntPtr(1));
             _isMarqueeMode = true;
             _currentProgressValue = -1;
 
-            _labelHandle = CreateWindowEx(
-                0,
-                "STATIC",
-                string.Empty,
+            _labelHandle = CreateWindowExW(
+                0, "STATIC", string.Empty,
                 WS_CHILD | WS_VISIBLE | SS_LEFT,
-                0,
-                0,
-                0,
-                0,
-                _windowHandle,
-                IntPtr.Zero,
-                _instanceHandle,
-                IntPtr.Zero);
+                0, 0, 0, 0,
+                _windowHandle, IntPtr.Zero, _instanceHandle, IntPtr.Zero);
 
             if (_labelHandle == IntPtr.Zero)
             {
@@ -306,19 +267,11 @@ namespace Oasis.NativeProgress
 
             SendMessage(_labelHandle, WM_SETFONT, fontHandle, new IntPtr(1));
 
-            _cancelButtonHandle = CreateWindowEx(
-                0,
-                "BUTTON",
-                "Cancel",
+            _cancelButtonHandle = CreateWindowExW(
+                0, "BUTTON", "Cancel",
                 WS_CHILD | WS_TABSTOP | WS_GROUP | BS_PUSHBUTTON,
-                0,
-                0,
-                0,
-                0,
-                _windowHandle,
-                new IntPtr(CancelButtonId),
-                _instanceHandle,
-                IntPtr.Zero);
+                0, 0, 0, 0,
+                _windowHandle, new IntPtr(CancelButtonId), _instanceHandle, IntPtr.Zero);
 
             if (_cancelButtonHandle == IntPtr.Zero)
             {
@@ -343,12 +296,7 @@ namespace Oasis.NativeProgress
                 return true;
             }
 
-            var controls = new INITCOMMONCONTROLSEX
-            {
-                dwSize = (uint)Marshal.SizeOf(typeof(INITCOMMONCONTROLSEX)),
-                dwICC = ICC_PROGRESS_CLASS,
-            };
-
+            var controls = new INITCOMMONCONTROLSEX { dwSize = (uint)Marshal.SizeOf(typeof(INITCOMMONCONTROLSEX)), dwICC = ICC_PROGRESS_CLASS };
             if (!InitCommonControlsEx(ref controls))
             {
                 errorMessage = $"InitCommonControlsEx failed with error {Marshal.GetLastWin32Error()}";
@@ -362,28 +310,16 @@ namespace Oasis.NativeProgress
 
         private static void UpdateProgressInternal(float? normalizedProgress)
         {
-            if (_progressHandle == IntPtr.Zero)
-            {
-                return;
-            }
+            if (_progressHandle == IntPtr.Zero) return;
 
             if (normalizedProgress.HasValue)
             {
                 float clamped = normalizedProgress.Value;
-                if (clamped < 0f)
-                {
-                    clamped = 0f;
-                }
-                else if (clamped > 1f)
-                {
-                    clamped = 1f;
-                }
+                if (clamped < 0f) clamped = 0f;
+                else if (clamped > 1f) clamped = 1f;
 
                 int progressValue = (int)Math.Round(clamped * ProgressRange);
-                if (progressValue > ProgressRange)
-                {
-                    progressValue = ProgressRange;
-                }
+                if (progressValue > ProgressRange) progressValue = ProgressRange;
 
                 if (_isMarqueeMode)
                 {
@@ -410,10 +346,7 @@ namespace Oasis.NativeProgress
 
         private static void ToggleProgressBarMarquee(bool enable)
         {
-            if (_progressHandle == IntPtr.Zero)
-            {
-                return;
-            }
+            if (_progressHandle == IntPtr.Zero) return;
 
             int style = GetWindowLong(_progressHandle, GWL_STYLE);
             bool hasMarqueeStyle = (style & PBS_MARQUEE) == PBS_MARQUEE;
@@ -421,26 +354,21 @@ namespace Oasis.NativeProgress
             if (enable && !hasMarqueeStyle)
             {
                 SetWindowLong(_progressHandle, GWL_STYLE, style | PBS_MARQUEE);
-                SetWindowPos(_progressHandle, IntPtr.Zero, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+                SetWindowPos(_progressHandle, IntPtr.Zero, 0, 0, 0, 0,
+                    SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
             }
             else if (!enable && hasMarqueeStyle)
             {
                 SetWindowLong(_progressHandle, GWL_STYLE, style & ~PBS_MARQUEE);
-                SetWindowPos(_progressHandle, IntPtr.Zero, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+                SetWindowPos(_progressHandle, IntPtr.Zero, 0, 0, 0, 0,
+                    SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
             }
         }
 
         private static void UpdateChildLayout()
         {
-            if (_windowHandle == IntPtr.Zero)
-            {
-                return;
-            }
-
-            if (!GetClientRect(_windowHandle, out RECT clientRect))
-            {
-                return;
-            }
+            if (_windowHandle == IntPtr.Zero) return;
+            if (!GetClientRect(_windowHandle, out RECT clientRect)) return;
 
             int width = clientRect.Right - clientRect.Left;
             int padding = 16;
@@ -455,27 +383,18 @@ namespace Oasis.NativeProgress
             int progressWidth = width - (padding * 2);
 
             if (_progressHandle != IntPtr.Zero)
-            {
                 MoveWindow(_progressHandle, progressX, progressY, progressWidth, progressHeight, true);
-            }
 
             int labelAreaY = progressY + progressHeight + verticalSpacing;
             int buttonX = width - padding - buttonWidth;
             int labelWidth = buttonX - progressX - verticalSpacing;
-            if (labelWidth < 50)
-            {
-                labelWidth = progressWidth;
-            }
+            if (labelWidth < 50) labelWidth = progressWidth;
 
             if (_labelHandle != IntPtr.Zero)
-            {
                 MoveWindow(_labelHandle, progressX, labelAreaY + ((buttonHeight - labelHeight) / 2), labelWidth, labelHeight, true);
-            }
 
             if (_cancelButtonHandle != IntPtr.Zero)
-            {
                 MoveWindow(_cancelButtonHandle, buttonX, labelAreaY, buttonWidth, buttonHeight, true);
-            }
         }
 
         private static IntPtr WindowProcedure(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam)
@@ -493,7 +412,6 @@ namespace Oasis.NativeProgress
                         CloseWindow();
                         return IntPtr.Zero;
                     }
-
                     break;
                 case WM_CTLCOLORSTATIC:
                     if (lParam == _labelHandle)
@@ -501,13 +419,9 @@ namespace Oasis.NativeProgress
                         SetBkMode(wParam, TRANSPARENT);
                         SetTextColor(wParam, GetSysColor(COLOR_WINDOWTEXT));
                         if (_windowBackgroundBrush == IntPtr.Zero)
-                        {
                             _windowBackgroundBrush = GetSysColorBrush(COLOR_WINDOW);
-                        }
-
                         return _windowBackgroundBrush;
                     }
-
                     break;
                 case WM_DESTROY:
                     _progressHandle = IntPtr.Zero;
@@ -516,25 +430,14 @@ namespace Oasis.NativeProgress
                     break;
             }
 
-            return DefWindowProc(hWnd, msg, wParam, lParam);
+            return DefWindowProcW(hWnd, msg, wParam, lParam);
         }
 
-        private static int LowWord(IntPtr value)
-        {
-            return (int)((long)value & 0xFFFF);
-        }
-
-        private static int HighWord(IntPtr value)
-        {
-            return (int)(((long)value >> 16) & 0xFFFF);
-        }
+        private static int LowWord(IntPtr value) => (int)((long)value & 0xFFFF);
+        private static int HighWord(IntPtr value) => (int)(((long)value >> 16) & 0xFFFF);
 
         [StructLayout(LayoutKind.Sequential)]
-        private struct POINT
-        {
-            public int X;
-            public int Y;
-        }
+        private struct POINT { public int X; public int Y; }
 
         [StructLayout(LayoutKind.Sequential)]
         private struct MSG
@@ -548,10 +451,8 @@ namespace Oasis.NativeProgress
             public uint lPrivate;
         }
 
-        private delegate IntPtr WndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
-
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-        private struct WNDCLASSEX
+        private struct WNDCLASSEXW
         {
             public uint cbSize;
             public uint style;
@@ -568,29 +469,20 @@ namespace Oasis.NativeProgress
         }
 
         [StructLayout(LayoutKind.Sequential)]
-        private struct RECT
-        {
-            public int Left;
-            public int Top;
-            public int Right;
-            public int Bottom;
-        }
+        private struct RECT { public int Left; public int Top; public int Right; public int Bottom; }
 
         [StructLayout(LayoutKind.Sequential)]
-        private struct INITCOMMONCONTROLSEX
-        {
-            public uint dwSize;
-            public uint dwICC;
-        }
+        private struct INITCOMMONCONTROLSEX { public uint dwSize; public uint dwICC; }
 
-        [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-        private static extern ushort RegisterClassEx(ref WNDCLASSEX lpwcx);
+        // WIDE API IMPORTS
+        [DllImport("user32.dll", ExactSpelling = true, EntryPoint = "RegisterClassExW", SetLastError = true)]
+        private static extern ushort RegisterClassExW(ref WNDCLASSEXW lpwcx);
 
-        [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-        private static extern bool UnregisterClass(string lpClassName, IntPtr hInstance);
+        [DllImport("user32.dll", ExactSpelling = true, EntryPoint = "UnregisterClassW", SetLastError = true, CharSet = CharSet.Unicode)]
+        private static extern bool UnregisterClassW(string lpClassName, IntPtr hInstance);
 
-        [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-        private static extern IntPtr CreateWindowEx(
+        [DllImport("user32.dll", ExactSpelling = true, EntryPoint = "CreateWindowExW", SetLastError = true, CharSet = CharSet.Unicode)]
+        private static extern IntPtr CreateWindowExW(
             int dwExStyle,
             string lpClassName,
             string lpWindowName,
@@ -604,100 +496,50 @@ namespace Oasis.NativeProgress
             IntPtr hInstance,
             IntPtr lpParam);
 
-        [DllImport("user32.dll", SetLastError = true, EntryPoint = "DestroyWindow")]
+        [DllImport("user32.dll", ExactSpelling = true, EntryPoint = "DefWindowProcW")]
+        private static extern IntPtr DefWindowProcW(IntPtr hWnd, uint uMsg, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll", ExactSpelling = true, EntryPoint = "LoadCursorW", SetLastError = true)]
+        private static extern IntPtr LoadCursorW(IntPtr hInstance, IntPtr lpCursorName);
+
+        [DllImport("user32.dll", ExactSpelling = true, EntryPoint = "SetWindowTextW", SetLastError = true, CharSet = CharSet.Unicode)]
+        private static extern bool SetWindowTextW(IntPtr hWnd, string lpString);
+
+        // GENERIC USER32/GDI32
+        [DllImport("user32.dll", EntryPoint = "DestroyWindow", SetLastError = true)]
         private static extern bool DestroyWindow(IntPtr hWnd);
 
-        [DllImport("user32.dll")]
-        private static extern IntPtr DefWindowProc(IntPtr hWnd, uint uMsg, IntPtr wParam, IntPtr lParam);
-
-        [DllImport("user32.dll")]
-        private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
-
-        [DllImport("user32.dll")]
-        private static extern bool UpdateWindow(IntPtr hWnd);
-
-        [DllImport("user32.dll", SetLastError = true)]
-        private static extern IntPtr LoadCursor(IntPtr hInstance, IntPtr lpCursorName);
-
-        [DllImport("user32.dll")]
-        private static extern IntPtr GetActiveWindow();
-
-        [DllImport("user32.dll")]
-        private static extern IntPtr GetForegroundWindow();
-
-        [DllImport("user32.dll")]
-        private static extern bool EnableWindow(IntPtr hWnd, bool bEnable);
-
-        [DllImport("user32.dll")]
-        private static extern bool SetForegroundWindow(IntPtr hWnd);
-
-        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-        private static extern IntPtr GetModuleHandle(string lpModuleName);
-
-        [DllImport("user32.dll", SetLastError = true)]
-        private static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int nWidth, int nHeight, bool bRepaint);
-
-        [DllImport("user32.dll", SetLastError = true)]
-        private static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
-
-        [DllImport("user32.dll", SetLastError = true)]
-        private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
-
-        [DllImport("user32.dll", SetLastError = true)]
-        private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
-
-        [DllImport("user32.dll", SetLastError = true)]
-        private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
-
-        [DllImport("user32.dll", CharSet = CharSet.Auto)]
-        private static extern IntPtr SendMessage(IntPtr hWnd, int Msg, IntPtr wParam, IntPtr lParam);
-
-        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-        private static extern IntPtr SendMessage(IntPtr hWnd, int Msg, IntPtr wParam, string lParam);
-
-        [DllImport("comctl32.dll", SetLastError = true)]
-        private static extern bool InitCommonControlsEx(ref INITCOMMONCONTROLSEX lpInitCtrls);
-
-        [DllImport("user32.dll")]
-        private static extern bool PeekMessage(out MSG lpMsg, IntPtr hWnd, uint wMsgFilterMin, uint wMsgFilterMax, uint wRemoveMsg);
-
-        [DllImport("user32.dll")]
-        private static extern bool IsWindow(IntPtr hWnd);
-
-        [DllImport("gdi32.dll")]
-        private static extern IntPtr GetStockObject(int fnObject);
-
-        [DllImport("gdi32.dll")]
-        private static extern int SetBkMode(IntPtr hdc, int mode);
-
-        [DllImport("gdi32.dll")]
-        private static extern int SetTextColor(IntPtr hdc, int crColor);
-
-        [DllImport("user32.dll")]
-        private static extern int GetSysColor(int nIndex);
-
-        [DllImport("user32.dll")]
-        private static extern IntPtr GetSysColorBrush(int nIndex);
+        [DllImport("user32.dll")] private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+        [DllImport("user32.dll")] private static extern bool UpdateWindow(IntPtr hWnd);
+        [DllImport("user32.dll")] private static extern IntPtr GetActiveWindow();
+        [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
+        [DllImport("user32.dll")] private static extern bool EnableWindow(IntPtr hWnd, bool bEnable);
+        [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr hWnd);
+        [DllImport("user32.dll", SetLastError = true)] private static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int nWidth, int nHeight, bool bRepaint);
+        [DllImport("user32.dll", SetLastError = true)] private static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
+        [DllImport("user32.dll", SetLastError = true)] private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+        [DllImport("user32.dll", SetLastError = true)] private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+        [DllImport("user32.dll", SetLastError = true)] private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+        [DllImport("user32.dll")] private static extern IntPtr SendMessage(IntPtr hWnd, int Msg, IntPtr wParam, IntPtr lParam);
+        [DllImport("comctl32.dll", SetLastError = true)] private static extern bool InitCommonControlsEx(ref INITCOMMONCONTROLSEX lpInitCtrls);
+        [DllImport("user32.dll")] private static extern bool PeekMessage(out MSG lpMsg, IntPtr hWnd, uint wMsgFilterMin, uint wMsgFilterMax, uint wRemoveMsg);
+        [DllImport("user32.dll")] private static extern bool IsWindow(IntPtr hWnd);
+        [DllImport("gdi32.dll")] private static extern IntPtr GetStockObject(int fnObject);
+        [DllImport("gdi32.dll")] private static extern int SetBkMode(IntPtr hdc, int mode);
+        [DllImport("gdi32.dll")] private static extern int SetTextColor(IntPtr hdc, int crColor);
+        [DllImport("user32.dll")] private static extern int GetSysColor(int nIndex);
+        [DllImport("user32.dll")] private static extern IntPtr GetSysColorBrush(int nIndex);
+        [DllImport("kernel32.dll", ExactSpelling = true, EntryPoint = "GetModuleHandleW", SetLastError = true, CharSet = CharSet.Unicode)]
+        private static extern IntPtr GetModuleHandleW(string lpModuleName);
 #else
         public static bool EnsureWindowCreated(out string errorMessage)
         {
             errorMessage = "Native progress window is only supported on Windows.";
             return false;
         }
-
-        public static bool UpdateContent(string windowTitle, string statusText, bool cancelEnabled, float? progress = null)
-        {
-            return false;
-        }
-
-        public static bool UpdateProgress(float normalizedProgress)
-        {
-            return false;
-        }
-
-        public static void CloseWindow()
-        {
-        }
+        public static bool UpdateContent(string windowTitle, string statusText, bool cancelEnabled, float? progress = null) { return false; }
+        public static bool UpdateProgress(float normalizedProgress) { return false; }
+        public static void CloseWindow() { }
 #endif
     }
 }
