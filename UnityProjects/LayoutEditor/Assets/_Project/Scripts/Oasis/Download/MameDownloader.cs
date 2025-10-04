@@ -45,7 +45,14 @@ namespace Oasis.Download
             }
         }
 
-        public async Task<string> DownloadAndExtractAsync(int versionNumber = kDefaultVersionNumber)
+        public enum MameDownloadStage
+        {
+            Downloading,
+            Extracting,
+            InstallingPlugins
+        }
+
+        public async Task<string> DownloadAndExtractAsync(int versionNumber = kDefaultVersionNumber, Action<MameDownloadStage> onStageChanged = null)
         {
 #if !UNITY_EDITOR_WIN && !UNITY_STANDALONE_WIN
             throw new PlatformNotSupportedException("MAME downloader currently supports only Windows builds.");
@@ -72,6 +79,8 @@ namespace Oasis.Download
 
             Directory.CreateDirectory(downloadsRoot);
 
+            onStageChanged?.Invoke(MameDownloadStage.Downloading);
+
             if (!File.Exists(archivePath))
             {
                 var downloadUrl = string.Format("{0}/{1}/{2}", DownloadRootUrl, versionFolder, archiveFileName);
@@ -80,7 +89,11 @@ namespace Oasis.Download
             }
 
             Directory.CreateDirectory(extractPath);
+
+            onStageChanged?.Invoke(MameDownloadStage.Extracting);
             await ExtractArchiveAsync(archivePath, extractPath);
+
+            onStageChanged?.Invoke(MameDownloadStage.InstallingPlugins);
             CopyMamePlugins(extractPath);
 
             return extractPath;
