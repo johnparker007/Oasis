@@ -9,7 +9,7 @@ namespace Oasis.Download
 {
     public class MameDownloader : MonoBehaviour
     {
-        public const string DefaultVersionNumber = "281";
+        public const int kDefaultVersionNumber = 281;
 
         private const string DownloadRootUrl = "https://github.com/mamedev/mame/releases/download";
         private const string SevenZipExecutableName = "7z.exe";
@@ -45,21 +45,29 @@ namespace Oasis.Download
             }
         }
 
-        public async Task<string> DownloadAndExtractAsync(string versionNumber = DefaultVersionNumber)
+        public async Task<string> DownloadAndExtractAsync(int versionNumber = kDefaultVersionNumber)
         {
 #if !UNITY_EDITOR_WIN && !UNITY_STANDALONE_WIN
             throw new PlatformNotSupportedException("MAME downloader currently supports only Windows builds.");
 #else
-            if (string.IsNullOrWhiteSpace(versionNumber))
-            {
-                throw new ArgumentException("Version number must be provided.", nameof(versionNumber));
-            }
+            string versionNumberString = versionNumber.ToString();
 
-            var paddedVersion = versionNumber.Trim().PadLeft(4, '0');
+            var paddedVersion = versionNumberString.Trim().PadLeft(4, '0');
             var versionFolder = string.Format("mame{0}", paddedVersion);
             var downloadsRoot = Path.Combine(Application.persistentDataPath, "Downloads", "MAME");
             var extractPath = Path.Combine(downloadsRoot, versionFolder);
-            var archiveFileName = string.Format("{0}b_x64.exe", versionFolder);
+
+            string archiveFileName;
+            if (versionNumber >= 281)
+            {
+                archiveFileName = string.Format("{0}b_x64.exe", versionFolder);
+
+            }
+            else
+            {
+                archiveFileName = string.Format("{0}b_64bit.exe", versionFolder);
+
+            }
             var archivePath = Path.Combine(downloadsRoot, archiveFileName);
 
             Directory.CreateDirectory(downloadsRoot);

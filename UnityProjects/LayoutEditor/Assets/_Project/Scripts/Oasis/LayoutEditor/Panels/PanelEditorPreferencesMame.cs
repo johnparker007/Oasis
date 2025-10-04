@@ -1,3 +1,4 @@
+using Oasis.Download;
 using Oasis.LayoutEditor.Tools;
 using Oasis.MAME;
 using Oasis.UI;
@@ -12,17 +13,22 @@ namespace Oasis.LayoutEditor.Panels
     public class PanelEditorPreferencesMame : PanelBase
     {
         public FieldInt MameVersion;
+        public Button ButtonInstallSelectedVersion;
 
         protected override void AddListeners()
         {
             MameVersion.Input.OnValueChanged += OnMameVersionValueChanged;
             MameVersion.Input.OnValueSubmitted += OnMameVersionValueChanged;
+
+            ButtonInstallSelectedVersion.onClick.AddListener(OnButtonInstallSelectedVersionClick);
         }
 
         protected override void RemoveListeners()
         {
             MameVersion.Input.OnValueChanged -= OnMameVersionValueChanged;
             MameVersion.Input.OnValueSubmitted -= OnMameVersionValueChanged;
+
+            ButtonInstallSelectedVersion.onClick.RemoveListener(OnButtonInstallSelectedVersionClick);
         }
 
         protected override void Initialise()
@@ -46,6 +52,14 @@ namespace Oasis.LayoutEditor.Panels
 
             return true;
         }
+
+        private void OnButtonInstallSelectedVersionClick()
+        {
+            System.Threading.Tasks.Task<string> task = 
+                MameDownloader.Instance.DownloadAndExtractAsync(Editor.Instance.Preferences.MameVersion);
+        }
+
+
     }
 
 }
