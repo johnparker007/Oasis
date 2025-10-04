@@ -5,6 +5,7 @@ using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.Networking;
 using Oasis.NativeProgress;
 using Oasis.Utility;
 
@@ -15,6 +16,7 @@ namespace Oasis.Download
         public const int kDefaultVersionNumber = 281;
 
         private const string DownloadRootUrl = "https://github.com/mamedev/mame/releases/download";
+        private const string LatestReleaseApiUrl = "https://api.github.com/repos/mamedev/mame/releases/latest";
         private const string SevenZipExecutableName = "7z.exe";
         private const string SevenZipFolderName = "7-Zip";
         private static readonly string SevenZipExecutableRelativePath = Path.Combine(SevenZipFolderName, SevenZipExecutableName);
@@ -53,6 +55,39 @@ namespace Oasis.Download
             Downloading,
             Extracting,
             InstallingPlugins
+        }
+
+
+        public async Task<int> GetLatestVersionNumberAsync()
+        {
+            using (var request = UnityWebRequest.Get(LatestReleaseApiUrl))
+            {
+                request.SetRequestHeader("User-Agent", "OasisMameDownloader/1.0");
+
+                var operation = request.SendWebRequest();
+                while (!operation.isDone)
+                {
+                    await Task.Yield();
+                }
+
+#if UNITY_2020_1_OR_NEWER
+                if (request.result != UnityWebRequest.Result.Success)
+#else
+                if (request.isNetworkError || request.isHttpError)
+#endif
+                {
+                    throw new InvalidOperationException(string.Format("Failed to query latest MAME version: {0}", request.error));
+                }
+
+                string json = request.downloadHandler.text;
+                int? versionNumber = TryParseLatestVersionNumber(json);
+                if (!versionNumber.HasValue)
+                {
+                    throw new InvalidOperationException("Unable to determine latest MAME version from GitHub response.");
+                }
+
+                return versionNumber.Value;
+            }
         }
 
         public async Task<string> DownloadAndExtractAsync(
@@ -396,6 +431,61 @@ namespace Oasis.Download
             }
 
             return normalized;
+        }
+
+        private static int? TryParseLatestVersionNumber(string json)
+        {
+            if (string.IsNullOrEmpty(json))
+            {
+                return null;
+            }
+
+            const string tagPrefix = "\"tag_name\":\"";
+            int prefixIndex = json.IndexOf(tagPrefix, StringComparison.OrdinalIgnoreCase);
+            if (prefixIndex < 0)
+            {
+                return null;
+            }
+
+            int valueStartIndex = prefixIndex + tagPrefix.Length;
+            if (valueStartIndex >= json.Length)
+            {
+                return null;
+            }
+
+            int valueEndIndex = json.IndexOf('"', valueStartIndex);
+            if (valueEndIndex < 0)
+            {
+                return null;
+            }
+
+            string tagValue = json.Substring(valueStartIndex, valueEndIndex - valueStartIndex);
+            if (string.IsNullOrEmpty(tagValue))
+            {
+                return null;
+            }
+
+            var digitsBuilder = new StringBuilder(tagValue.Length);
+            for (int i = 0; i < tagValue.Length; i++)
+            {
+                char c = tagValue[i];
+                if (char.IsDigit(c))
+                {
+                    digitsBuilder.Append(c);
+                }
+            }
+
+            if (digitsBuilder.Length == 0)
+            {
+                return null;
+            }
+
+            if (!int.TryParse(digitsBuilder.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int versionNumber))
+            {
+                return null;
+            }
+
+            return versionNumber;
         }
 
     }
