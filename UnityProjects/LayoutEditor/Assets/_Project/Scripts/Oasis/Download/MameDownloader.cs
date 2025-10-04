@@ -110,12 +110,14 @@ namespace Oasis.Download
                 onExtractionProgress?.Invoke(clampedProgress);
 
                 int percentValue = Mathf.Clamp(Mathf.RoundToInt(clampedProgress * 100f), 0, 100);
+                float overallProgress = Mathf.Lerp(0.5f, 0.75f, clampedProgress);
+
                 NativeProgressWindow.UpdateContent(
                     "Extracting MAME...",
                     $"Extracting MAME... {percentValue}%",
-                    false);
+                    false,
+                    overallProgress);
 
-                float overallProgress = Mathf.Lerp(0.5f, 0.75f, clampedProgress);
                 NativeProgressWindow.UpdateProgress(overallProgress);
             };
 #else

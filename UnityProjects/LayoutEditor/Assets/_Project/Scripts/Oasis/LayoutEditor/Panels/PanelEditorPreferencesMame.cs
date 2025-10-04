@@ -123,13 +123,15 @@ namespace Oasis.LayoutEditor.Panels
                         float clamped = Mathf.Clamp01(progress);
                         int percentValue = Mathf.Clamp(Mathf.RoundToInt(clamped * 100f), 0, 100);
 
+                        float overallProgress = Mathf.Lerp(0.5f, 0.75f, clamped);
+
                         NativeProgressWindow.UpdateContent(
                             "Extracting MAME...",
                             $"Extracting MAME... {percentValue}%",
                             false,
-                            null);
+                            overallProgress);
 
-                        NativeProgressWindow.UpdateProgress(Mathf.Lerp(0.5f, 0.75f, clamped));
+                        NativeProgressWindow.UpdateProgress(overallProgress);
                     }
 #else
                     null,
