@@ -141,6 +141,7 @@ namespace Oasis.NativeProgress
                 return false;
             }
 
+            CenterWindowOnUnityWindow();
             ShowWindow(_windowHandle, SW_SHOWNORMAL);
             UpdateWindow(_windowHandle);
 
@@ -155,6 +156,30 @@ namespace Oasis.NativeProgress
 
             errorMessage = null;
             return true;
+        }
+
+        private static void CenterWindowOnUnityWindow()
+        {
+            if (_windowHandle == IntPtr.Zero || _unityWindowHandle == IntPtr.Zero) return;
+            if (!GetWindowRect(_unityWindowHandle, out RECT unityRect)) return;
+            if (!GetWindowRect(_windowHandle, out RECT windowRect)) return;
+
+            int unityWidth = unityRect.Right - unityRect.Left;
+            int unityHeight = unityRect.Bottom - unityRect.Top;
+            int windowWidth = windowRect.Right - windowRect.Left;
+            int windowHeight = windowRect.Bottom - windowRect.Top;
+
+            int x = unityRect.Left + ((unityWidth - windowWidth) / 2);
+            int y = unityRect.Top + ((unityHeight - windowHeight) / 2);
+
+            SetWindowPos(
+                _windowHandle,
+                IntPtr.Zero,
+                x,
+                y,
+                0,
+                0,
+                SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
         }
 
         public static bool UpdateContent(string windowTitle, string statusText, bool cancelEnabled, float? progress = null)
@@ -517,6 +542,7 @@ namespace Oasis.NativeProgress
         [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr hWnd);
         [DllImport("user32.dll", SetLastError = true)] private static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int nWidth, int nHeight, bool bRepaint);
         [DllImport("user32.dll", SetLastError = true)] private static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
+        [DllImport("user32.dll", SetLastError = true)] private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
         [DllImport("user32.dll", SetLastError = true)] private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
         [DllImport("user32.dll", SetLastError = true)] private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
         [DllImport("user32.dll", SetLastError = true)] private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);

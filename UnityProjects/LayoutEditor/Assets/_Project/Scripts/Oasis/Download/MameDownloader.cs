@@ -52,7 +52,7 @@ namespace Oasis.Download
             InstallingPlugins
         }
 
-        public async Task<string> DownloadAndExtractAsync(int versionNumber = kDefaultVersionNumber, Action<MameDownloadStage> onStageChanged = null)
+        public async Task<string> DownloadAndExtractAsync(int versionNumber = kDefaultVersionNumber, Action<MameDownloadStage> onStageChanged = null, Action<long> onDownloadProgress = null)
         {
 #if !UNITY_EDITOR_WIN && !UNITY_STANDALONE_WIN
             throw new PlatformNotSupportedException("MAME downloader currently supports only Windows builds.");
@@ -85,7 +85,11 @@ namespace Oasis.Download
             {
                 var downloadUrl = string.Format("{0}/{1}/{2}", DownloadRootUrl, versionFolder, archiveFileName);
                 UnityEngine.Debug.LogError("downloadUrl: " + downloadUrl);
-                await DownloadUtility.DownloadFileAsync(downloadUrl, archivePath);
+                await DownloadUtility.DownloadFileAsync(downloadUrl, archivePath, onDownloadProgress);
+            }
+            else
+            {
+                onDownloadProgress?.Invoke(new FileInfo(archivePath).Length);
             }
 
             Directory.CreateDirectory(extractPath);
