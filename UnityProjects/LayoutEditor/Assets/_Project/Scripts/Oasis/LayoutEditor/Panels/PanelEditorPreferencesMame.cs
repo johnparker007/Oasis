@@ -1,6 +1,7 @@
 using Oasis.Download;
 using Oasis.LayoutEditor.Tools;
 using Oasis.MAME;
+using Oasis.NativeProgress;
 using Oasis.UI;
 using Oasis.UI.Fields;
 using System;
@@ -53,13 +54,62 @@ namespace Oasis.LayoutEditor.Panels
             return true;
         }
 
-        private void OnButtonInstallSelectedVersionClick()
+        private async void OnButtonInstallSelectedVersionClick()
         {
-            System.Threading.Tasks.Task<string> task = 
-                MameDownloader.Instance.DownloadAndExtractAsync(Editor.Instance.Preferences.MameVersion);
+            bool progressWindowCreated = false;
+
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+            if (NativeProgressWindow.EnsureWindowCreated(out string errorMessage))
+            {
+                progressWindowCreated = true;
+            }
+            else if (!string.IsNullOrEmpty(errorMessage))
+            {
+                Debug.LogError($"Failed to create native progress window: {errorMessage}");
+            }
+#endif
+
+            try
+            {
+                await MameDownloader.Instance.DownloadAndExtractAsync(
+                    Editor.Instance.Preferences.MameVersion,
+                    stage =>
+                    {
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+                        if (!progressWindowCreated)
+                        {
+                            return;
+                        }
+
+                        switch (stage)
+                        {
+                            case MameDownloader.MameDownloadStage.Downloading:
+                                NativeProgressWindow.UpdateContent("Downloading MAME...", null, false, 0.25f);
+                                break;
+                            case MameDownloader.MameDownloadStage.Extracting:
+                                NativeProgressWindow.UpdateContent("Extracting MAME...", null, false, 0.5f);
+                                break;
+                            case MameDownloader.MameDownloadStage.InstallingPlugins:
+                                NativeProgressWindow.UpdateContent("Install plugins...", null, false, 0.75f);
+                                break;
+                        }
+#endif
+                    });
+            }
+            catch (Exception exception)
+            {
+                Debug.LogError($"Failed to install selected MAME version: {exception}");
+            }
+            finally
+            {
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+                if (progressWindowCreated)
+                {
+                    NativeProgressWindow.CloseWindow();
+                }
+#endif
+            }
         }
-
-
     }
 
 }
