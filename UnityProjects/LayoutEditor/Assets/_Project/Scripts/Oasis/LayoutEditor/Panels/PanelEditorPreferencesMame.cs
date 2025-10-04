@@ -84,7 +84,11 @@ namespace Oasis.LayoutEditor.Panels
                         switch (stage)
                         {
                             case MameDownloader.MameDownloadStage.Downloading:
-                                NativeProgressWindow.UpdateContent("Downloading MAME...", "Downloading MAME...", false, 0.25f);
+                                NativeProgressWindow.UpdateContent(
+                                    "Downloading MAME...",
+                                    FormatBytesDownloadedLabel(0),
+                                    false,
+                                    0.25f);
                                 break;
                             case MameDownloader.MameDownloadStage.Extracting:
                                 NativeProgressWindow.UpdateContent("Extracting MAME...", "Extracting MAME...", false, 0.5f);
@@ -94,7 +98,25 @@ namespace Oasis.LayoutEditor.Panels
                                 break;
                         }
 #endif
-                    });
+                    },
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+                    bytesDownloaded =>
+                    {
+                        if (!progressWindowCreated)
+                        {
+                            return;
+                        }
+
+                        NativeProgressWindow.UpdateContent(
+                            "Downloading MAME...",
+                            FormatBytesDownloadedLabel(bytesDownloaded),
+                            false,
+                            0.25f);
+                    }
+#else
+                    null
+#endif
+                    );
             }
             catch (Exception exception)
             {
@@ -110,6 +132,13 @@ namespace Oasis.LayoutEditor.Panels
 #endif
             }
         }
+
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+        private static string FormatBytesDownloadedLabel(long bytesDownloaded)
+        {
+            return $"{bytesDownloaded:N0} bytes downloaded";
+        }
+#endif
     }
 
 }
