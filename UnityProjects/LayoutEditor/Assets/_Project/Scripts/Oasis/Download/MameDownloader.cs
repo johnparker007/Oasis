@@ -1,8 +1,10 @@
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
 using UnityEngine;
+using Oasis.NativeProgress;
 using Oasis.Utility;
 
 namespace Oasis.Download
@@ -52,7 +54,11 @@ namespace Oasis.Download
             InstallingPlugins
         }
 
-        public async Task<string> DownloadAndExtractAsync(int versionNumber = kDefaultVersionNumber, Action<MameDownloadStage> onStageChanged = null, Action<long> onDownloadProgress = null)
+        public async Task<string> DownloadAndExtractAsync(
+            int versionNumber = kDefaultVersionNumber,
+            Action<MameDownloadStage> onStageChanged = null,
+            Action<long> onDownloadProgress = null,
+            Action<float> onExtractionProgress = null)
         {
 #if !UNITY_EDITOR_WIN && !UNITY_STANDALONE_WIN
             throw new PlatformNotSupportedException("MAME downloader currently supports only Windows builds.");
@@ -95,7 +101,36 @@ namespace Oasis.Download
             Directory.CreateDirectory(extractPath);
 
             onStageChanged?.Invoke(MameDownloadStage.Extracting);
-            await ExtractArchiveAsync(archivePath, extractPath);
+
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+            Action<float> extractionProgressHandler = progress =>
+            {
+                float clampedProgress = Mathf.Clamp01(progress);
+                onExtractionProgress?.Invoke(clampedProgress);
+
+                int percentValue = Mathf.Clamp(Mathf.RoundToInt(clampedProgress * 100f), 0, 100);
+                NativeProgressWindow.UpdateContent(
+                    "Extracting MAME...",
+                    $"Extracting MAME... {percentValue}%",
+                    false);
+
+                float overallProgress = Mathf.Lerp(0.5f, 0.75f, clampedProgress);
+                NativeProgressWindow.UpdateProgress(overallProgress);
+            };
+#else
+            Action<float> extractionProgressHandler = progress =>
+            {
+                float clampedProgress = Mathf.Clamp01(progress);
+                onExtractionProgress?.Invoke(clampedProgress);
+            };
+#endif
+
+            await ExtractArchiveAsync(archivePath, extractPath, extractionProgressHandler);
+
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+            NativeProgressWindow.UpdateContent("Extracting MAME...", "Extracting MAME...", false, 0.5f);
+            NativeProgressWindow.UpdateProgress(0.5f);
+#endif
 
             onStageChanged?.Invoke(MameDownloadStage.InstallingPlugins);
             CopyMamePlugins(extractPath);
@@ -104,7 +139,7 @@ namespace Oasis.Download
 #endif
         }
 
-        private static async Task ExtractArchiveAsync(string archivePath, string extractPath)
+        private static async Task ExtractArchiveAsync(string archivePath, string extractPath, Action<float> onExtractionProgress = null)
         {
             if (!File.Exists(archivePath))
             {
@@ -121,7 +156,7 @@ namespace Oasis.Download
                 throw new InvalidOperationException($"Required extractor '{SevenZipExecutableName}' was not found.");
             }
 
-            string extractionArguments = $"x \"{archivePath}\" -o\"{extractPath}\" -y";
+            string extractionArguments = $"x \"{archivePath}\" -o\"{extractPath}\" -y -bsp1 -bse1";
 
             var startInfo = new ProcessStartInfo
             {
@@ -129,23 +164,119 @@ namespace Oasis.Download
                 Arguments = extractionArguments,
                 CreateNoWindow = true,
                 UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
                 WorkingDirectory = Path.GetDirectoryName(sevenZipPath) ?? string.Empty
             };
 
             await Task.Run(() =>
             {
-                using (var process = Process.Start(startInfo))
+                using (var process = new Process { StartInfo = startInfo })
                 {
-                    if (process == null)
+                    if (!process.Start())
                     {
                         throw new InvalidOperationException("Failed to start the 7z extraction process.");
                     }
 
-                    process.WaitForExit();
+                    float lastReportedProgress = -1f;
 
-                    if (process.ExitCode != 0)
+                    void HandleProgress(string data)
                     {
-                        throw new InvalidOperationException($"7z extraction failed with exit code {process.ExitCode}.");
+                        if (string.IsNullOrEmpty(data))
+                        {
+                            return;
+                        }
+
+                        string trimmed = data.Trim();
+                        if (!trimmed.EndsWith("%", StringComparison.Ordinal))
+                        {
+                            return;
+                        }
+
+                        string[] tokens = trimmed.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                        if (tokens.Length == 0)
+                        {
+                            return;
+                        }
+
+                        string percentToken = null;
+                        for (int i = tokens.Length - 1; i >= 0; i--)
+                        {
+                            if (tokens[i].EndsWith("%", StringComparison.Ordinal))
+                            {
+                                percentToken = tokens[i];
+                                break;
+                            }
+                        }
+
+                        if (percentToken == null)
+                        {
+                            return;
+                        }
+
+                        percentToken = percentToken.TrimEnd('%');
+                        if (!float.TryParse(percentToken, NumberStyles.Float, CultureInfo.InvariantCulture, out float percentValue))
+                        {
+                            return;
+                        }
+
+                        float normalized = percentValue / 100f;
+                        if (normalized < 0f)
+                        {
+                            normalized = 0f;
+                        }
+                        else if (normalized > 1f)
+                        {
+                            normalized = 1f;
+                        }
+
+                        if (Math.Abs(normalized - lastReportedProgress) < 0.0001f)
+                        {
+                            return;
+                        }
+
+                        lastReportedProgress = normalized;
+                        onExtractionProgress?.Invoke(normalized);
+                    }
+
+                    DataReceivedEventHandler outputHandler = (sender, args) => HandleProgress(args.Data);
+                    DataReceivedEventHandler errorHandler = (sender, args) => HandleProgress(args.Data);
+
+                    process.OutputDataReceived += outputHandler;
+                    process.ErrorDataReceived += errorHandler;
+
+                    try
+                    {
+                        process.BeginOutputReadLine();
+                        process.BeginErrorReadLine();
+
+                        process.WaitForExit();
+
+                        if (process.ExitCode != 0)
+                        {
+                            throw new InvalidOperationException($"7z extraction failed with exit code {process.ExitCode}.");
+                        }
+                    }
+                    finally
+                    {
+                        try
+                        {
+                            process.CancelOutputRead();
+                        }
+                        catch (InvalidOperationException)
+                        {
+                        }
+
+                        try
+                        {
+                            process.CancelErrorRead();
+                        }
+                        catch (InvalidOperationException)
+                        {
+                        }
+
+                        process.OutputDataReceived -= outputHandler;
+                        process.ErrorDataReceived -= errorHandler;
                     }
                 }
             });

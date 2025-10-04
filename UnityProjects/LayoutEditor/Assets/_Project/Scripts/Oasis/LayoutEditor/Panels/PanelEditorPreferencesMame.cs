@@ -91,7 +91,7 @@ namespace Oasis.LayoutEditor.Panels
                                     0.25f);
                                 break;
                             case MameDownloader.MameDownloadStage.Extracting:
-                                NativeProgressWindow.UpdateContent("Extracting MAME...", "Extracting MAME...", false, 0.5f);
+                                NativeProgressWindow.UpdateContent("Extracting MAME...", "Extracting MAME... 0%", false, 0.5f);
                                 break;
                             case MameDownloader.MameDownloadStage.InstallingPlugins:
                                 NativeProgressWindow.UpdateContent("Copying Oasis Plugin...", "Install plugins...", false, 0.75f);
@@ -112,8 +112,25 @@ namespace Oasis.LayoutEditor.Panels
                             FormatBytesDownloadedLabel(bytesDownloaded),
                             false,
                             0.25f);
+                    },
+                    progress =>
+                    {
+                        if (!progressWindowCreated)
+                        {
+                            return;
+                        }
+
+                        float clamped = Mathf.Clamp01(progress);
+                        int percentValue = Mathf.Clamp(Mathf.RoundToInt(clamped * 100f), 0, 100);
+
+                        NativeProgressWindow.UpdateContent(
+                            "Extracting MAME...",
+                            $"Extracting MAME... {percentValue}%",
+                            false,
+                            null);
                     }
 #else
+                    null,
                     null
 #endif
                     );
