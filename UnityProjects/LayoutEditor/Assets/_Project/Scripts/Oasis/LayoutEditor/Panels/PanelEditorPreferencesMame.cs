@@ -84,13 +84,13 @@ namespace Oasis.LayoutEditor.Panels
                         switch (stage)
                         {
                             case MameDownloader.MameDownloadStage.Downloading:
-                                NativeProgressWindow.UpdateContent("Downloading MAME...", null, false, 0.25f);
+                                NativeProgressWindow.UpdateContent(null, "Downloading MAME...", false, 0.25f);
                                 break;
                             case MameDownloader.MameDownloadStage.Extracting:
-                                NativeProgressWindow.UpdateContent("Extracting MAME...", null, false, 0.5f);
+                                NativeProgressWindow.UpdateContent(null, "Extracting MAME...", false, 0.5f);
                                 break;
                             case MameDownloader.MameDownloadStage.InstallingPlugins:
-                                NativeProgressWindow.UpdateContent("Install plugins...", null, false, 0.75f);
+                                NativeProgressWindow.UpdateContent(null, "Install plugins...", false, 0.75f);
                                 break;
                         }
 #endif
