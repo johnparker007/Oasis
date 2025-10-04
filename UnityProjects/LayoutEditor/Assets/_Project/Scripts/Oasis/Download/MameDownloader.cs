@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
 using Oasis.NativeProgress;
@@ -182,53 +183,13 @@ namespace Oasis.Download
 
                     void HandleProgress(string data)
                     {
-                        if (string.IsNullOrEmpty(data))
+                        float? parsedProgress = TryParseProgressValue(data);
+                        if (!parsedProgress.HasValue)
                         {
                             return;
                         }
 
-                        string trimmed = data.Trim();
-                        if (!trimmed.EndsWith("%", StringComparison.Ordinal))
-                        {
-                            return;
-                        }
-
-                        string[] tokens = trimmed.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
-                        if (tokens.Length == 0)
-                        {
-                            return;
-                        }
-
-                        string percentToken = null;
-                        for (int i = tokens.Length - 1; i >= 0; i--)
-                        {
-                            if (tokens[i].EndsWith("%", StringComparison.Ordinal))
-                            {
-                                percentToken = tokens[i];
-                                break;
-                            }
-                        }
-
-                        if (percentToken == null)
-                        {
-                            return;
-                        }
-
-                        percentToken = percentToken.TrimEnd('%');
-                        if (!float.TryParse(percentToken, NumberStyles.Float, CultureInfo.InvariantCulture, out float percentValue))
-                        {
-                            return;
-                        }
-
-                        float normalized = percentValue / 100f;
-                        if (normalized < 0f)
-                        {
-                            normalized = 0f;
-                        }
-                        else if (normalized > 1f)
-                        {
-                            normalized = 1f;
-                        }
+                        float normalized = parsedProgress.Value;
 
                         if (Math.Abs(normalized - lastReportedProgress) < 0.0001f)
                         {
@@ -255,6 +216,12 @@ namespace Oasis.Download
                         if (process.ExitCode != 0)
                         {
                             throw new InvalidOperationException($"7z extraction failed with exit code {process.ExitCode}.");
+                        }
+
+                        if (lastReportedProgress < 1f)
+                        {
+                            lastReportedProgress = 1f;
+                            onExtractionProgress?.Invoke(1f);
                         }
                     }
                     finally
@@ -351,6 +318,82 @@ namespace Oasis.Download
             }
 
             return Path.Combine(externalAssetsDirectory, "MameLuaPlugins", "oasis");
+        }
+
+        private static float? TryParseProgressValue(string data)
+        {
+            if (string.IsNullOrEmpty(data))
+            {
+                return null;
+            }
+
+            var cleanedBuilder = new StringBuilder(data.Length);
+            for (int i = 0; i < data.Length; i++)
+            {
+                char c = data[i];
+                if (c == '\r' || c == '\b' || c == '\u001b')
+                {
+                    continue;
+                }
+
+                cleanedBuilder.Append(c);
+            }
+
+            if (cleanedBuilder.Length == 0)
+            {
+                return null;
+            }
+
+            string cleaned = cleanedBuilder.ToString();
+
+            int percentIndex = cleaned.LastIndexOf('%');
+            if (percentIndex <= 0)
+            {
+                return null;
+            }
+
+            int valueStart = percentIndex - 1;
+            while (valueStart >= 0)
+            {
+                char c = cleaned[valueStart];
+                if (char.IsDigit(c) || c == '.' || c == ',')
+                {
+                    valueStart--;
+                    continue;
+                }
+
+                valueStart++;
+                break;
+            }
+
+            if (valueStart < 0)
+            {
+                valueStart = 0;
+            }
+
+            int length = percentIndex - valueStart;
+            if (length <= 0)
+            {
+                return null;
+            }
+
+            string numberString = cleaned.Substring(valueStart, length).Replace(',', '.');
+            if (!float.TryParse(numberString, NumberStyles.Float, CultureInfo.InvariantCulture, out float percentValue))
+            {
+                return null;
+            }
+
+            float normalized = percentValue / 100f;
+            if (normalized < 0f)
+            {
+                normalized = 0f;
+            }
+            else if (normalized > 1f)
+            {
+                normalized = 1f;
+            }
+
+            return normalized;
         }
 
     }

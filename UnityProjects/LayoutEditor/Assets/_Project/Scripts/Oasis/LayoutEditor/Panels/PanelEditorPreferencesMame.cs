@@ -128,6 +128,8 @@ namespace Oasis.LayoutEditor.Panels
                             $"Extracting MAME... {percentValue}%",
                             false,
                             null);
+
+                        NativeProgressWindow.UpdateProgress(Mathf.Lerp(0.5f, 0.75f, clamped));
                     }
 #else
                     null,
