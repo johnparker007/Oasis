@@ -56,6 +56,12 @@ namespace Oasis.LayoutEditor.Panels
                 _hierarchyRightClickBroadcaster.DrawerRightClicked -= OnHierarchyDrawerRightClicked;
                 _hierarchyRightClickBroadcaster.DrawerRightClicked += OnHierarchyDrawerRightClicked;
             }
+
+            if (_runtimeHierarchyFilesAndFoldersList != null)
+            {
+                _runtimeHierarchyFilesAndFoldersList.OnItemDoubleClicked -= OnFilesAndFoldersItemDoubleClicked;
+                _runtimeHierarchyFilesAndFoldersList.OnItemDoubleClicked += OnFilesAndFoldersItemDoubleClicked;
+            }
         }
 
         protected override void RemoveListeners()
@@ -68,6 +74,11 @@ namespace Oasis.LayoutEditor.Panels
             if (_runtimeHierarchyFoldersTree != null)
             {
                 _runtimeHierarchyFoldersTree.OnSelectionChanged -= OnFoldersTreeSelectionChanged;
+            }
+
+            if (_runtimeHierarchyFilesAndFoldersList != null)
+            {
+                _runtimeHierarchyFilesAndFoldersList.OnItemDoubleClicked -= OnFilesAndFoldersItemDoubleClicked;
             }
 
             DisposeAssetsWatcher();
@@ -377,6 +388,88 @@ namespace Oasis.LayoutEditor.Panels
                 _runtimeHierarchyFilesAndFoldersStandaloneCollection?.Add(fileTransform);
                 _runtimeHierarchyFilesAndFoldersTransforms.Add(fileTransform);
             }
+        }
+
+        private void OnFilesAndFoldersItemDoubleClicked(HierarchyData data)
+        {
+            if (data == null)
+            {
+                return;
+            }
+
+            Transform boundTransform = data.BoundTransform;
+
+            if (boundTransform == null)
+            {
+                return;
+            }
+
+            DirectoryMetadata directoryMetadata = boundTransform.GetComponent<DirectoryMetadata>();
+
+            if (directoryMetadata != null && !string.IsNullOrEmpty(directoryMetadata.DirectoryPath))
+            {
+                NavigateToDirectory(directoryMetadata.DirectoryPath);
+                return;
+            }
+
+            FileMetadata fileMetadata = boundTransform.GetComponent<FileMetadata>();
+
+            if (fileMetadata != null && !string.IsNullOrEmpty(fileMetadata.FilePath))
+            {
+                LaunchFile(fileMetadata.FilePath);
+            }
+        }
+
+        private void NavigateToDirectory(string directoryPath)
+        {
+            if (string.IsNullOrEmpty(directoryPath) || !Directory.Exists(directoryPath))
+            {
+                return;
+            }
+
+            if (_runtimeHierarchyFoldersTree != null &&
+                _directoryTransformsByPath.TryGetValue(directoryPath, out Transform directoryTransform) &&
+                directoryTransform != null)
+            {
+                _runtimeHierarchyFoldersTree.Select(directoryTransform);
+                return;
+            }
+
+            RefreshFilesAndFoldersList(directoryPath);
+        }
+
+        private void LaunchFile(string filePath)
+        {
+            if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
+            {
+                return;
+            }
+
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+            try
+            {
+                ProcessStartInfo startInfo = new ProcessStartInfo(filePath)
+                {
+                    UseShellExecute = true
+                };
+
+                Process.Start(startInfo);
+            }
+            catch (Exception exception)
+            {
+                UnityEngine.Debug.LogWarning($"Failed to launch file '{filePath}': {exception.Message}");
+            }
+#else
+            try
+            {
+                string fileUri = new Uri(filePath).AbsoluteUri;
+                Application.OpenURL(fileUri);
+            }
+            catch (Exception exception)
+            {
+                UnityEngine.Debug.LogWarning($"Failed to launch file '{filePath}': {exception.Message}");
+            }
+#endif
         }
 
         private void RestoreFoldersTreeSelection()
