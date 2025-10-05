@@ -756,7 +756,7 @@ namespace Oasis.LayoutEditor.Panels
             };
 
             DirectoryMetadata metadata = gameObject.AddComponent<DirectoryMetadata>();
-            metadata.Initialise(directoryPath);
+            metadata.Initialise(directoryPath, registerDirectoryTransform);
 
             Transform transform = gameObject.transform;
 
@@ -1025,9 +1025,12 @@ namespace Oasis.LayoutEditor.Panels
         {
             public string DirectoryPath { get; private set; }
 
-            public void Initialise(string directoryPath)
+            public bool RepresentedInHierarchyTree { get; private set; }
+
+            public void Initialise(string directoryPath, bool representedInHierarchyTree)
             {
                 DirectoryPath = directoryPath;
+                RepresentedInHierarchyTree = representedInHierarchyTree;
             }
         }
 

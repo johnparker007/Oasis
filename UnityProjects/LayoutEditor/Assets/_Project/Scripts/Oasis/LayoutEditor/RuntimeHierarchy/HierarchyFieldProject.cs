@@ -15,7 +15,7 @@ public class HierarchyFieldProject : HierarchyField
     [SerializeField] private Sprite _genericFileSprite;
 
     private HierarchyData _lastObservedData;
-    private bool _lastObservedExpandedState;
+    private bool _lastObservedExpandedStateForIcon;
     private int _lastObservedChildCount;
     private bool _hasCachedDirectoryContent;
     private bool _cachedDirectoryHasContent;
@@ -23,6 +23,7 @@ public class HierarchyFieldProject : HierarchyField
 
     private static Type s_directoryMetadataType;
     private static PropertyInfo s_directoryPathProperty;
+    private static PropertyInfo s_directoryRepresentedInHierarchyTreeProperty;
     private static Type s_fileMetadataType;
 
     private void OnEnable()
@@ -52,11 +53,11 @@ public class HierarchyFieldProject : HierarchyField
 
         bool isExpanded = data.IsExpanded;
         bool dataChanged = forceRefresh || data != _lastObservedData;
-        bool expansionChanged = forceRefresh || isExpanded != _lastObservedExpandedState;
         int childCount = data.ChildCount;
         bool childCountChanged = forceRefresh || dataChanged || childCount != _lastObservedChildCount;
 
         bool isFileEntry = IsFileEntry(data);
+        bool treatAsExpanded = false;
         Sprite targetSprite;
 
         if (isFileEntry)
@@ -67,12 +68,16 @@ public class HierarchyFieldProject : HierarchyField
         }
         else
         {
+            bool useExpandedStateForIcon = ShouldUseTreeEntryIcons(data);
+            treatAsExpanded = useExpandedStateForIcon && isExpanded;
+            bool expansionChanged = forceRefresh || treatAsExpanded != _lastObservedExpandedStateForIcon;
+
             if (dataChanged)
             {
                 _hasCachedDirectoryContent = false;
             }
 
-            if (isExpanded)
+            if (treatAsExpanded)
             {
                 _hasCachedDirectoryContent = false;
             }
@@ -82,7 +87,7 @@ public class HierarchyFieldProject : HierarchyField
                 _hasCachedDirectoryContent = true;
             }
 
-            targetSprite = isExpanded
+            targetSprite = treatAsExpanded
                 ? _openFolderNonEmptySprite
                 : (_cachedDirectoryHasContent ? _closedFolderNonEmptySprite : _closedFolderEmptySprite);
         }
@@ -94,7 +99,7 @@ public class HierarchyFieldProject : HierarchyField
         }
 
         _lastObservedData = data;
-        _lastObservedExpandedState = isExpanded;
+        _lastObservedExpandedStateForIcon = treatAsExpanded;
         _lastObservedChildCount = childCount;
     }
 
@@ -107,10 +112,48 @@ public class HierarchyFieldProject : HierarchyField
         }
 
         _lastObservedData = null;
-        _lastObservedExpandedState = false;
+        _lastObservedExpandedStateForIcon = false;
         _lastObservedChildCount = 0;
         _hasCachedDirectoryContent = false;
         _cachedDirectoryHasContent = false;
+    }
+
+    private static bool ShouldUseTreeEntryIcons(HierarchyData data)
+    {
+        if (data == null)
+        {
+            return true;
+        }
+
+        Transform boundTransform = data.BoundTransform;
+
+        if (boundTransform == null)
+        {
+            return true;
+        }
+
+        EnsureProjectMetadataReflection();
+
+        if (s_directoryMetadataType == null)
+        {
+            return true;
+        }
+
+        Component metadata = boundTransform.GetComponent(s_directoryMetadataType);
+
+        if (metadata == null)
+        {
+            return true;
+        }
+
+        if (s_directoryRepresentedInHierarchyTreeProperty == null)
+        {
+            return true;
+        }
+
+        object representedValue = s_directoryRepresentedInHierarchyTreeProperty.GetValue(metadata, null);
+
+        return representedValue is bool representedInHierarchyTree ? representedInHierarchyTree : true;
     }
 
     private bool DetermineHasContent(HierarchyData data, int childCount)
@@ -217,6 +260,7 @@ public class HierarchyFieldProject : HierarchyField
                 {
                     s_directoryMetadataType = directoryMetadataType;
                     s_directoryPathProperty = directoryMetadataType.GetProperty("DirectoryPath", BindingFlags.Public | BindingFlags.Instance);
+                    s_directoryRepresentedInHierarchyTreeProperty = directoryMetadataType.GetProperty("RepresentedInHierarchyTree", BindingFlags.Public | BindingFlags.Instance);
                 }
             }
 
