@@ -47,28 +47,32 @@ namespace Oasis.LayoutEditor
 
             if (tab.Content != null)
             {
-                // Add handlers for all existing descendants of the tab content
+                // Add handlers for all existing descendants of the tab content and
+                // ensure that any future hierarchy changes also receive handlers.
                 AddClickHandlersRecursively(tab.Content, tab);
-
-                // Watch for future hierarchy changes so dynamically created children
-                // also receive click handlers
-                ContentHierarchyWatcher watcher = tab.Content.gameObject.GetComponent<ContentHierarchyWatcher>();
-                if (watcher == null)
-                {
-                    watcher = tab.Content.gameObject.AddComponent<ContentHierarchyWatcher>();
-                }
-                watcher.Initialize(this, tab);
             }
         }
 
         private void AddClickHandlersRecursively(Transform root, PanelTab tab)
         {
             AddClickHandler(root.gameObject, tab);
+            EnsureHierarchyWatcher(root, tab);
 
             foreach (Transform child in root)
             {
                 AddClickHandlersRecursively(child, tab);
             }
+        }
+
+        private void EnsureHierarchyWatcher(Transform target, PanelTab tab)
+        {
+            ContentHierarchyWatcher watcher = target.GetComponent<ContentHierarchyWatcher>();
+            if (watcher == null)
+            {
+                watcher = target.gameObject.AddComponent<ContentHierarchyWatcher>();
+            }
+
+            watcher.Initialize(this, tab);
         }
 
         private void AddClickHandler(GameObject target, PanelTab tab)
