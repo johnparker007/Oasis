@@ -1,3 +1,4 @@
+using Oasis.LayoutEditor.RuntimeHierarchyIntegration;
 using RuntimeInspectorNamespace;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -7,8 +8,6 @@ namespace Oasis.LayoutEditor.Panels
 {
     public class PanelEditorPreferences : PanelBase
     {
-        private const string kPseudoSceneName = "Preferences";
-
         [System.Serializable]
         public struct PreferenceSection
         {
@@ -19,6 +18,7 @@ namespace Oasis.LayoutEditor.Panels
         public List<PreferenceSection> PreferenceSections = new List<PreferenceSection>();
 
         private RuntimeHierarchy _runtimeHierarchy;
+        private RuntimeHierarchyStandaloneTransformCollection _runtimeHierarchyTransformCollection;
         private readonly List<Transform> _sectionTransforms = new List<Transform>();
         private readonly Dictionary<Transform, string> _sectionNamesByTransform = new Dictionary<Transform, string>();
 
@@ -41,11 +41,6 @@ namespace Oasis.LayoutEditor.Panels
             }
 
             EnsureRuntimeHierarchy();
-
-            if (_runtimeHierarchy != null)
-            {
-                _runtimeHierarchy.CreatePseudoScene(kPseudoSceneName);
-            }
 
             _initialised = true;
         }
@@ -70,6 +65,11 @@ namespace Oasis.LayoutEditor.Panels
             if (_runtimeHierarchy == null)
             {
                 _runtimeHierarchy = GetComponentInChildren<RuntimeHierarchy>(true);
+
+                if (_runtimeHierarchy != null && _runtimeHierarchyTransformCollection == null)
+                {
+                    _runtimeHierarchyTransformCollection = new RuntimeHierarchyStandaloneTransformCollection(_runtimeHierarchy);
+                }
             }
         }
 
@@ -92,7 +92,8 @@ namespace Oasis.LayoutEditor.Panels
                 }
 
                 Transform sectionTransform = CreateSectionTransform(preferenceSection.Category);
-                _runtimeHierarchy.AddToPseudoScene(kPseudoSceneName, sectionTransform);
+
+                _runtimeHierarchyTransformCollection?.Add(sectionTransform);
 
                 _sectionTransforms.Add(sectionTransform);
                 _sectionNamesByTransform[sectionTransform] = preferenceSection.Category;
@@ -113,11 +114,11 @@ namespace Oasis.LayoutEditor.Panels
         {
             if (_sectionTransforms.Count > 0)
             {
-                if (_runtimeHierarchy != null)
+                if (_runtimeHierarchyTransformCollection != null)
                 {
                     foreach (Transform sectionTransform in _sectionTransforms)
                     {
-                        _runtimeHierarchy.RemoveFromPseudoScene(kPseudoSceneName, sectionTransform, false);
+                        _runtimeHierarchyTransformCollection.Remove(sectionTransform);
                     }
                 }
 
@@ -129,6 +130,7 @@ namespace Oasis.LayoutEditor.Panels
 
             _sectionTransforms.Clear();
             _sectionNamesByTransform.Clear();
+            _runtimeHierarchyTransformCollection?.Clear();
         }
 
         private void DestroyTransform(Transform transform)
