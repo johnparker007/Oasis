@@ -2,13 +2,12 @@ using RuntimeInspectorNamespace;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 namespace Oasis.LayoutEditor.Panels
 {
     public class PanelEditorPreferences : PanelBase
     {
-        private const string kPseudoSceneName = "Preferences";
-
         [System.Serializable]
         public struct PreferenceSection
         {
@@ -19,8 +18,9 @@ namespace Oasis.LayoutEditor.Panels
         public List<PreferenceSection> PreferenceSections = new List<PreferenceSection>();
 
         private RuntimeHierarchy _runtimeHierarchy;
-        private readonly List<Transform> _sectionTransforms = new List<Transform>();
-        private readonly Dictionary<Transform, string> _sectionNamesByTransform = new Dictionary<Transform, string>();
+        private RuntimeHierarchyRightClickBroadcaster _hierarchyBroadcaster;
+        private readonly List<string> _sectionPseudoSceneNames = new List<string>();
+        private readonly HashSet<string> _sectionPseudoSceneLookup = new HashSet<string>();
 
         protected override void AddListeners()
         {
@@ -30,6 +30,14 @@ namespace Oasis.LayoutEditor.Panels
             {
                 _runtimeHierarchy.OnSelectionChanged -= OnRuntimeHierarchySelectionChanged;
                 _runtimeHierarchy.OnSelectionChanged += OnRuntimeHierarchySelectionChanged;
+            }
+
+            EnsureHierarchyBroadcaster();
+
+            if (_hierarchyBroadcaster != null)
+            {
+                _hierarchyBroadcaster.DrawerClicked -= OnHierarchyDrawerClicked;
+                _hierarchyBroadcaster.DrawerClicked += OnHierarchyDrawerClicked;
             }
         }
 
@@ -41,11 +49,6 @@ namespace Oasis.LayoutEditor.Panels
             }
 
             EnsureRuntimeHierarchy();
-
-            if (_runtimeHierarchy != null)
-            {
-                _runtimeHierarchy.CreatePseudoScene(kPseudoSceneName);
-            }
 
             _initialised = true;
         }
@@ -62,6 +65,11 @@ namespace Oasis.LayoutEditor.Panels
                 _runtimeHierarchy.OnSelectionChanged -= OnRuntimeHierarchySelectionChanged;
             }
 
+            if (_hierarchyBroadcaster != null)
+            {
+                _hierarchyBroadcaster.DrawerClicked -= OnHierarchyDrawerClicked;
+            }
+
             ClearPreferenceSections();
         }
 
@@ -73,9 +81,33 @@ namespace Oasis.LayoutEditor.Panels
             }
         }
 
+        private void EnsureHierarchyBroadcaster()
+        {
+            if (_runtimeHierarchy == null)
+            {
+                _hierarchyBroadcaster = null;
+                return;
+            }
+
+            if (_hierarchyBroadcaster != null)
+            {
+                return;
+            }
+
+            _hierarchyBroadcaster = _runtimeHierarchy.GetComponent<RuntimeHierarchyRightClickBroadcaster>();
+
+            if (_hierarchyBroadcaster == null)
+            {
+                _hierarchyBroadcaster = _runtimeHierarchy.gameObject.AddComponent<RuntimeHierarchyRightClickBroadcaster>();
+            }
+
+            _hierarchyBroadcaster.ForceScan();
+        }
+
         private void CreatePreferenceSections()
         {
             EnsureRuntimeHierarchy();
+            EnsureHierarchyBroadcaster();
 
             if (_runtimeHierarchy == null)
             {
@@ -91,80 +123,77 @@ namespace Oasis.LayoutEditor.Panels
                     continue;
                 }
 
-                Transform sectionTransform = CreateSectionTransform(preferenceSection.Category);
-                _runtimeHierarchy.AddToPseudoScene(kPseudoSceneName, sectionTransform);
-
-                _sectionTransforms.Add(sectionTransform);
-                _sectionNamesByTransform[sectionTransform] = preferenceSection.Category;
+                if (_sectionPseudoSceneLookup.Add(preferenceSection.Category))
+                {
+                    _sectionPseudoSceneNames.Add(preferenceSection.Category);
+                    _runtimeHierarchy.CreatePseudoScene(preferenceSection.Category);
+                }
             }
-        }
 
-        private Transform CreateSectionTransform(string sectionName)
-        {
-            GameObject sectionObject = new GameObject(sectionName)
-            {
-                hideFlags = HideFlags.HideAndDontSave
-            };
-
-            return sectionObject.transform;
+            _hierarchyBroadcaster?.ForceScan();
         }
 
         private void ClearPreferenceSections()
         {
-            if (_sectionTransforms.Count > 0)
+            if (_sectionPseudoSceneNames.Count > 0 && _runtimeHierarchy != null)
             {
-                if (_runtimeHierarchy != null)
+                foreach (string pseudoSceneName in _sectionPseudoSceneNames)
                 {
-                    foreach (Transform sectionTransform in _sectionTransforms)
-                    {
-                        _runtimeHierarchy.RemoveFromPseudoScene(kPseudoSceneName, sectionTransform, false);
-                    }
-                }
-
-                foreach (Transform sectionTransform in _sectionTransforms)
-                {
-                    DestroyTransform(sectionTransform);
+                    _runtimeHierarchy.DeletePseudoScene(pseudoSceneName);
                 }
             }
 
-            _sectionTransforms.Clear();
-            _sectionNamesByTransform.Clear();
-        }
-
-        private void DestroyTransform(Transform transform)
-        {
-            if (transform == null)
-            {
-                return;
-            }
-
-            if (Application.isPlaying)
-            {
-                Destroy(transform.gameObject);
-            }
-            else
-            {
-                DestroyImmediate(transform.gameObject);
-            }
+            _sectionPseudoSceneNames.Clear();
+            _sectionPseudoSceneLookup.Clear();
         }
 
         private void OnRuntimeHierarchySelectionChanged(ReadOnlyCollection<Transform> selection)
         {
+            TrySelectPreferenceSectionFromSelection(selection);
+        }
+
+        private bool TrySelectPreferenceSectionFromSelection(ReadOnlyCollection<Transform> selection)
+        {
             if (selection == null || selection.Count == 0)
             {
-                return;
+                return false;
             }
 
             for (int i = selection.Count - 1; i >= 0; i--)
             {
                 Transform selectedTransform = selection[i];
 
-                if (selectedTransform != null &&
-                    _sectionNamesByTransform.TryGetValue(selectedTransform, out string sectionName))
+                if (selectedTransform == null)
+                {
+                    continue;
+                }
+
+                string sectionName = selectedTransform.name;
+
+                if (!string.IsNullOrEmpty(sectionName) &&
+                    _sectionPseudoSceneLookup.Contains(sectionName))
                 {
                     OnPreferenceSectionSelected(sectionName);
-                    return;
+                    return true;
                 }
+            }
+
+            return false;
+        }
+
+        private void OnHierarchyDrawerClicked(HierarchyField drawer, PointerEventData eventData)
+        {
+            if (drawer == null || eventData == null || eventData.button != PointerEventData.InputButton.Left)
+            {
+                return;
+            }
+
+            var data = drawer.Data;
+
+            if (data is HierarchyDataRootPseudoScene pseudoScene &&
+                _sectionPseudoSceneLookup.Contains(pseudoScene.Name))
+            {
+                OnPreferenceSectionSelected(pseudoScene.Name);
             }
         }
 

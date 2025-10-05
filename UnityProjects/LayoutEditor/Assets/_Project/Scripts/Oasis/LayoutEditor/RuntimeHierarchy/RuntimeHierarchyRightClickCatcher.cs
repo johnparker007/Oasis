@@ -99,12 +99,17 @@ namespace Oasis.LayoutEditor.RuntimeHierarchyIntegration
 
         private void HandlePointerClick(PointerEventData eventData)
         {
-            if (eventData == null || eventData.button != PointerEventData.InputButton.Right)
+            if (eventData == null)
             {
                 return;
             }
 
-            _broadcaster?.NotifyRightClick(_drawer, eventData);
+            _broadcaster?.NotifyClick(_drawer, eventData);
+
+            if (eventData.button == PointerEventData.InputButton.Right)
+            {
+                _broadcaster?.NotifyRightClick(_drawer, eventData);
+            }
         }
     }
 }

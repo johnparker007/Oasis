@@ -10,6 +10,7 @@ namespace Oasis.LayoutEditor.RuntimeHierarchyIntegration
     {
         private const float ScanIntervalSeconds = 0.25f;
 
+        public event System.Action<HierarchyField, PointerEventData> DrawerClicked;
         public event System.Action<HierarchyField, PointerEventData> DrawerRightClicked;
 
         private RuntimeHierarchy _runtimeHierarchy;
@@ -81,6 +82,11 @@ namespace Oasis.LayoutEditor.RuntimeHierarchyIntegration
 
             catcher.Configure(this, drawer);
             _observedDrawers.Add(drawer);
+        }
+
+        internal void NotifyClick(HierarchyField drawer, PointerEventData eventData)
+        {
+            DrawerClicked?.Invoke(drawer, eventData);
         }
 
         internal void NotifyRightClick(HierarchyField drawer, PointerEventData eventData)
