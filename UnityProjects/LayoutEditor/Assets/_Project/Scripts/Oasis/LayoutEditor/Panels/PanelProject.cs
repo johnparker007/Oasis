@@ -1,6 +1,7 @@
 using Oasis.LayoutEditor.RuntimeHierarchyIntegration;
 using RuntimeInspectorNamespace;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -22,6 +23,7 @@ namespace Oasis.LayoutEditor.Panels
 
         private RuntimeHierarchyRightClickBroadcaster _foldersTreeRightClickBroadcaster = null;
         private RuntimeHierarchyRightClickBroadcaster _filesAndFoldersRightClickBroadcaster = null;
+        private Coroutine _pendingContextMenuCoroutine;
         private readonly List<Transform> _runtimeHierarchyAssetsRootTransforms = new List<Transform>();
         private readonly List<Transform> _runtimeHierarchyFilesAndFoldersTransforms = new List<Transform>();
         private RuntimeHierarchyStandaloneTransformCollection _runtimeHierarchyFilesAndFoldersStandaloneCollection;
@@ -90,6 +92,8 @@ namespace Oasis.LayoutEditor.Panels
                 _filesAndFoldersRightClickBroadcaster.DrawerRightClicked -= OnFilesAndFoldersDrawerRightClicked;
                 _filesAndFoldersRightClickBroadcaster = null;
             }
+
+            CancelPendingContextMenu();
 
             if (_runtimeHierarchyFoldersTree != null)
             {
@@ -613,7 +617,7 @@ namespace Oasis.LayoutEditor.Panels
 
                     if (!string.IsNullOrEmpty(assetsPath))
                     {
-                        ShowDirectoryContextMenu(assetsPath);
+                        ShowDirectoryContextMenuDeferred(assetsPath);
                     }
                 }
 
@@ -627,7 +631,12 @@ namespace Oasis.LayoutEditor.Panels
                 return;
             }
 
-            ShowDirectoryContextMenu(metadata.DirectoryPath);
+            if (_runtimeHierarchyFoldersTree != null)
+            {
+                _runtimeHierarchyFoldersTree.Select(boundTransform);
+            }
+
+            ShowDirectoryContextMenuDeferred(metadata.DirectoryPath);
         }
 
         private void OnFilesAndFoldersDrawerRightClicked(HierarchyField drawer, PointerEventData eventData)
@@ -655,7 +664,12 @@ namespace Oasis.LayoutEditor.Panels
 
             if (directoryMetadata != null && !string.IsNullOrEmpty(directoryMetadata.DirectoryPath))
             {
-                ShowDirectoryContextMenu(directoryMetadata.DirectoryPath);
+                if (_runtimeHierarchyFilesAndFoldersList != null)
+                {
+                    _runtimeHierarchyFilesAndFoldersList.Select(boundTransform);
+                }
+
+                ShowDirectoryContextMenuDeferred(directoryMetadata.DirectoryPath);
                 return;
             }
 
@@ -666,7 +680,50 @@ namespace Oasis.LayoutEditor.Panels
                 return;
             }
 
-            ShowFileContextMenu(fileMetadata.FilePath);
+            if (_runtimeHierarchyFilesAndFoldersList != null)
+            {
+                _runtimeHierarchyFilesAndFoldersList.Select(boundTransform);
+            }
+
+            ShowFileContextMenuDeferred(fileMetadata.FilePath);
+        }
+
+        private void CancelPendingContextMenu()
+        {
+            if (_pendingContextMenuCoroutine != null)
+            {
+                StopCoroutine(_pendingContextMenuCoroutine);
+                _pendingContextMenuCoroutine = null;
+            }
+        }
+
+        private void ShowDirectoryContextMenuDeferred(string directoryPath)
+        {
+            ShowContextMenuDeferred(() => ShowDirectoryContextMenu(directoryPath));
+        }
+
+        private void ShowFileContextMenuDeferred(string filePath)
+        {
+            ShowContextMenuDeferred(() => ShowFileContextMenu(filePath));
+        }
+
+        private void ShowContextMenuDeferred(Action showMenuAction)
+        {
+            if (showMenuAction == null)
+            {
+                return;
+            }
+
+            CancelPendingContextMenu();
+            _pendingContextMenuCoroutine = StartCoroutine(ShowContextMenuDeferredCoroutine(showMenuAction));
+        }
+
+        private IEnumerator ShowContextMenuDeferredCoroutine(Action showMenuAction)
+        {
+            yield return null;
+
+            _pendingContextMenuCoroutine = null;
+            showMenuAction();
         }
 
         private void ClearAssetsPseudoScene()
