@@ -627,6 +627,11 @@ namespace Oasis.LayoutEditor.Panels
                 return;
             }
 
+            if (_runtimeHierarchyFoldersTree != null)
+            {
+                _runtimeHierarchyFoldersTree.Select(boundTransform);
+            }
+
             ShowDirectoryContextMenu(metadata.DirectoryPath);
         }
 
@@ -655,6 +660,11 @@ namespace Oasis.LayoutEditor.Panels
 
             if (directoryMetadata != null && !string.IsNullOrEmpty(directoryMetadata.DirectoryPath))
             {
+                if (_runtimeHierarchyFilesAndFoldersList != null)
+                {
+                    _runtimeHierarchyFilesAndFoldersList.Select(boundTransform);
+                }
+
                 ShowDirectoryContextMenu(directoryMetadata.DirectoryPath);
                 return;
             }
@@ -664,6 +674,11 @@ namespace Oasis.LayoutEditor.Panels
             if (fileMetadata == null || string.IsNullOrEmpty(fileMetadata.FilePath))
             {
                 return;
+            }
+
+            if (_runtimeHierarchyFilesAndFoldersList != null)
+            {
+                _runtimeHierarchyFilesAndFoldersList.Select(boundTransform);
             }
 
             ShowFileContextMenu(fileMetadata.FilePath);
