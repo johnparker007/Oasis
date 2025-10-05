@@ -1,5 +1,4 @@
 using RuntimeInspectorNamespace;
-using System;
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
@@ -16,12 +15,12 @@ namespace Oasis.LayoutEditor.RuntimeHierarchyIntegration
             "searchSceneData",
             BindingFlags.Instance | BindingFlags.NonPublic);
 
-        private readonly RuntimeHierarchy _runtimeHierarchy;
-        private readonly List<Transform> _transforms = new List<Transform>();
+        private static readonly MethodInfo SetListViewDirtyMethod = typeof(RuntimeHierarchy).GetMethod(
+            "SetListViewDirty",
+            BindingFlags.Instance | BindingFlags.NonPublic);
 
-        private string _pseudoSceneName;
-        private HierarchyDataRootPseudoScene _pseudoSceneData;
-        private HierarchyDataRootSearch _pseudoSceneSearchData;
+        private readonly RuntimeHierarchy _runtimeHierarchy;
+        private readonly List<Entry> _entries = new List<Entry>();
 
         public RuntimeHierarchyStandaloneTransformCollection(RuntimeHierarchy runtimeHierarchy)
         {
@@ -35,89 +34,21 @@ namespace Oasis.LayoutEditor.RuntimeHierarchyIntegration
                 return;
             }
 
-            if (_transforms.Contains(transform))
+            if (SceneDataField == null || SearchSceneDataField == null)
             {
                 return;
             }
 
-            EnsurePseudoScene();
-
-            if (string.IsNullOrEmpty(_pseudoSceneName))
+            if (_entries.Exists(entry => entry.Transform == transform))
             {
                 return;
             }
 
-            _runtimeHierarchy.AddToPseudoScene(_pseudoSceneName, transform);
-
-            _transforms.Add(transform);
-
-            EnsurePseudoSceneExpanded();
-        }
-
-        public void Remove(Transform transform)
-        {
-            if (_runtimeHierarchy == null || transform == null)
+            HierarchyDataRootStandaloneTransform rootData = new HierarchyDataRootStandaloneTransform(_runtimeHierarchy, transform);
+            HierarchyDataRootSearch searchData = new HierarchyDataRootSearch(_runtimeHierarchy, rootData)
             {
-                return;
-            }
-
-            if (!_transforms.Remove(transform))
-            {
-                return;
-            }
-
-            if (!string.IsNullOrEmpty(_pseudoSceneName))
-            {
-                _runtimeHierarchy.RemoveFromPseudoScene(_pseudoSceneName, transform, false);
-            }
-
-            if (_transforms.Count == 0)
-            {
-                DeletePseudoScene();
-            }
-        }
-
-        public void Clear()
-        {
-            if (_runtimeHierarchy == null || _transforms.Count == 0)
-            {
-                return;
-            }
-
-            if (!string.IsNullOrEmpty(_pseudoSceneName))
-            {
-                _runtimeHierarchy.RemoveFromPseudoScene(_pseudoSceneName, _transforms, false);
-                DeletePseudoScene();
-            }
-
-            _transforms.Clear();
-        }
-
-        private void EnsurePseudoScene()
-        {
-            if (_runtimeHierarchy == null)
-            {
-                return;
-            }
-
-            if (string.IsNullOrEmpty(_pseudoSceneName))
-            {
-                _pseudoSceneName = $"Standalone_{_runtimeHierarchy.GetInstanceID()}_{Guid.NewGuid():N}";
-            }
-
-            if (_pseudoSceneData == null)
-            {
-                _runtimeHierarchy.CreatePseudoScene(_pseudoSceneName);
-                UpdatePseudoSceneReferences();
-            }
-        }
-
-        private void UpdatePseudoSceneReferences()
-        {
-            if (_runtimeHierarchy == null || SceneDataField == null || SearchSceneDataField == null)
-            {
-                return;
-            }
+                IsExpanded = true
+            };
 
             List<HierarchyDataRoot> sceneData = SceneDataField.GetValue(_runtimeHierarchy) as List<HierarchyDataRoot>;
             List<HierarchyDataRoot> searchSceneData = SearchSceneDataField.GetValue(_runtimeHierarchy) as List<HierarchyDataRoot>;
@@ -127,44 +58,157 @@ namespace Oasis.LayoutEditor.RuntimeHierarchyIntegration
                 return;
             }
 
-            for (int i = 0; i < sceneData.Count && i < searchSceneData.Count; i++)
-            {
-                if (sceneData[i] is HierarchyDataRootPseudoScene pseudoScene &&
-                    pseudoScene.Name == _pseudoSceneName)
-                {
-                    _pseudoSceneData = pseudoScene;
-                    _pseudoSceneSearchData = searchSceneData[i] as HierarchyDataRootSearch;
-                    EnsurePseudoSceneExpanded();
-                    return;
-                }
-            }
+            sceneData.Add(rootData);
+            searchSceneData.Add(searchData);
+
+            _entries.Add(new Entry(transform, rootData, searchData));
+
+            rootData.IsExpanded = true;
+
+            MarkHierarchyDirty();
         }
 
-        private void EnsurePseudoSceneExpanded()
+        public void Remove(Transform transform)
         {
-            if (_pseudoSceneData != null)
-            {
-                _pseudoSceneData.IsExpanded = true;
-            }
-
-            if (_pseudoSceneSearchData != null)
-            {
-                _pseudoSceneSearchData.IsExpanded = true;
-            }
-        }
-
-        private void DeletePseudoScene()
-        {
-            if (_runtimeHierarchy == null || string.IsNullOrEmpty(_pseudoSceneName))
+            if (_runtimeHierarchy == null || transform == null)
             {
                 return;
             }
 
-            _runtimeHierarchy.DeletePseudoScene(_pseudoSceneName);
+            int entryIndex = _entries.FindIndex(entry => entry.Transform == transform);
 
-            _pseudoSceneData = null;
-            _pseudoSceneSearchData = null;
-            _pseudoSceneName = null;
+            if (entryIndex < 0)
+            {
+                return;
+            }
+
+            Entry entry = _entries[entryIndex];
+            RemoveEntry(entry);
+            _entries.RemoveAt(entryIndex);
+
+            MarkHierarchyDirty();
+        }
+
+        public void Clear()
+        {
+            if (_runtimeHierarchy == null || _entries.Count == 0)
+            {
+                return;
+            }
+
+            for (int i = _entries.Count - 1; i >= 0; i--)
+            {
+                RemoveEntry(_entries[i]);
+            }
+
+            _entries.Clear();
+            MarkHierarchyDirty();
+        }
+
+        private void RemoveEntry(Entry entry)
+        {
+            if (SceneDataField == null || SearchSceneDataField == null)
+            {
+                return;
+            }
+
+            List<HierarchyDataRoot> sceneData = SceneDataField.GetValue(_runtimeHierarchy) as List<HierarchyDataRoot>;
+            List<HierarchyDataRoot> searchSceneData = SearchSceneDataField.GetValue(_runtimeHierarchy) as List<HierarchyDataRoot>;
+
+            if (sceneData != null)
+            {
+                sceneData.Remove(entry.RootData);
+            }
+
+            if (searchSceneData != null)
+            {
+                searchSceneData.Remove(entry.SearchData);
+            }
+        }
+
+        private void MarkHierarchyDirty()
+        {
+            if (_runtimeHierarchy == null)
+            {
+                return;
+            }
+
+            if (SetListViewDirtyMethod != null)
+            {
+                SetListViewDirtyMethod.Invoke(_runtimeHierarchy, null);
+            }
+        }
+
+        private readonly struct Entry
+        {
+            public Entry(Transform transform, HierarchyDataRootStandaloneTransform rootData, HierarchyDataRootSearch searchData)
+            {
+                Transform = transform;
+                RootData = rootData;
+                SearchData = searchData;
+            }
+
+            public Transform Transform { get; }
+            public HierarchyDataRootStandaloneTransform RootData { get; }
+            public HierarchyDataRootSearch SearchData { get; }
+        }
+
+        private sealed class HierarchyDataRootStandaloneTransform : HierarchyDataRootPseudoScene
+        {
+            private readonly Transform _transform;
+
+            public HierarchyDataRootStandaloneTransform(RuntimeHierarchy hierarchy, Transform transform)
+                : base(hierarchy, string.Empty)
+            {
+                _transform = transform;
+            }
+
+            public override string Name => _transform ? _transform.name : "<missing>";
+
+            public override int ChildCount => _transform ? _transform.childCount : 0;
+
+            public override Transform BoundTransform => _transform;
+
+            public override bool IsActive => _transform ? _transform.gameObject.activeInHierarchy : false;
+
+            public override void RefreshContent()
+            {
+            }
+
+            public override bool Refresh()
+            {
+                m_depth = 0;
+
+                bool changed = base.Refresh();
+
+                if (_transform == null)
+                {
+                    m_height = 0;
+                    m_depth = -1;
+                }
+
+                return changed;
+            }
+
+            public override Transform GetChild(int index)
+            {
+                return _transform ? _transform.GetChild(index) : null;
+            }
+
+            public override Transform GetNearestRootOf(Transform target)
+            {
+                if (!_transform || target == null)
+                {
+                    return null;
+                }
+
+                if (ReferenceEquals(target, _transform) || target.IsChildOf(_transform))
+                {
+                    return _transform;
+                }
+
+                return null;
+            }
         }
     }
 }
