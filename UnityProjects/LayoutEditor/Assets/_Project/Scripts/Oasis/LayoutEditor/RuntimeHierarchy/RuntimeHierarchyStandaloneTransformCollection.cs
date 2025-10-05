@@ -39,7 +39,7 @@ namespace Oasis.LayoutEditor.RuntimeHierarchyIntegration
                 return;
             }
 
-            if (_entries.Exists(e => e.Transform == transform))
+            if (_entries.Exists(entry => entry.Transform == transform))
             {
                 return;
             }
@@ -153,12 +153,12 @@ namespace Oasis.LayoutEditor.RuntimeHierarchyIntegration
             public HierarchyDataRootSearch SearchData { get; }
         }
 
-        private sealed class HierarchyDataRootStandaloneTransform : HierarchyDataRoot
+        private sealed class HierarchyDataRootStandaloneTransform : HierarchyDataRootPseudoScene
         {
             private readonly Transform _transform;
 
             public HierarchyDataRootStandaloneTransform(RuntimeHierarchy hierarchy, Transform transform)
-                : base(hierarchy)
+                : base(hierarchy, string.Empty)
             {
                 _transform = transform;
             }
@@ -169,12 +169,16 @@ namespace Oasis.LayoutEditor.RuntimeHierarchyIntegration
 
             public override Transform BoundTransform => _transform;
 
+            public override bool IsActive => _transform ? _transform.gameObject.activeInHierarchy : false;
+
             public override void RefreshContent()
             {
             }
 
             public override bool Refresh()
             {
+                m_depth = 0;
+
                 bool changed = base.Refresh();
 
                 if (_transform == null)

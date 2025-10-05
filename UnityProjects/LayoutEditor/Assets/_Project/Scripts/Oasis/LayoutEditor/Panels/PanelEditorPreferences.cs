@@ -21,6 +21,9 @@ namespace Oasis.LayoutEditor.Panels
         private RuntimeHierarchyStandaloneTransformCollection _runtimeHierarchyTransformCollection;
         private readonly List<Transform> _sectionTransforms = new List<Transform>();
         private readonly Dictionary<Transform, string> _sectionNamesByTransform = new Dictionary<Transform, string>();
+        private readonly Dictionary<string, Transform> _sectionTransformsByCategory = new Dictionary<string, Transform>();
+
+        private string _currentPreferenceSectionCategory;
 
         protected override void AddListeners()
         {
@@ -97,7 +100,10 @@ namespace Oasis.LayoutEditor.Panels
 
                 _sectionTransforms.Add(sectionTransform);
                 _sectionNamesByTransform[sectionTransform] = preferenceSection.Category;
+                _sectionTransformsByCategory[preferenceSection.Category] = sectionTransform;
             }
+
+            SelectStoredOrDefaultPreferenceSection();
         }
 
         private Transform CreateSectionTransform(string sectionName)
@@ -130,7 +136,40 @@ namespace Oasis.LayoutEditor.Panels
 
             _sectionTransforms.Clear();
             _sectionNamesByTransform.Clear();
+            _sectionTransformsByCategory.Clear();
             _runtimeHierarchyTransformCollection?.Clear();
+        }
+
+        private void SelectStoredOrDefaultPreferenceSection()
+        {
+            if (_runtimeHierarchy == null || _sectionTransforms.Count == 0)
+            {
+                return;
+            }
+
+            Transform transformToSelect = null;
+
+            if (!string.IsNullOrEmpty(_currentPreferenceSectionCategory) &&
+                _sectionTransformsByCategory.TryGetValue(_currentPreferenceSectionCategory, out Transform storedTransform))
+            {
+                transformToSelect = storedTransform;
+            }
+            else
+            {
+                transformToSelect = _sectionTransforms[0];
+            }
+
+            if (transformToSelect == null)
+            {
+                return;
+            }
+
+            _runtimeHierarchy.Select(transformToSelect);
+
+            if (_sectionNamesByTransform.TryGetValue(transformToSelect, out string sectionName))
+            {
+                OnPreferenceSectionSelected(sectionName);
+            }
         }
 
         private void DestroyTransform(Transform transform)
@@ -172,6 +211,11 @@ namespace Oasis.LayoutEditor.Panels
 
         private void OnPreferenceSectionSelected(string sectionName)
         {
+            if (string.IsNullOrEmpty(sectionName))
+            {
+                return;
+            }
+
             foreach (PreferenceSection preferenceSection in PreferenceSections)
             {
                 bool shouldBeActive = preferenceSection.Category == sectionName;
@@ -182,6 +226,8 @@ namespace Oasis.LayoutEditor.Panels
                     preferenceSection.MenuPane.SetActive(shouldBeActive);
                 }
             }
+
+            _currentPreferenceSectionCategory = sectionName;
         }
     }
 
