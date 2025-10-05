@@ -12,6 +12,7 @@ public class HierarchyFieldProject : HierarchyField
     [SerializeField] private Sprite _closedFolderEmptySprite;
     [SerializeField] private Sprite _closedFolderNonEmptySprite;
     [SerializeField] private Sprite _openFolderNonEmptySprite;
+    [SerializeField] private Sprite _genericFileSprite;
 
     private HierarchyData _lastObservedData;
     private bool _lastObservedExpandedState;

@@ -215,6 +215,7 @@ MonoBehaviour:
   _closedFolderEmptySprite: {fileID: 21300000, guid: f031862440dd57a4e9420a15f0bd907b, type: 3}
   _closedFolderNonEmptySprite: {fileID: 21300000, guid: 7ecd0a61ee5da0b4cb2119b921a7f73a, type: 3}
   _openFolderNonEmptySprite: {fileID: 21300000, guid: ab5c791bb4be7fa4f857b6bcb6af0d75, type: 3}
+  _genericFileSprite: {fileID: 21300000, guid: 74da81925074df74d9f2f7834048e33a, type: 3}
 --- !u!114 &8749593589230969177 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 114051133184378632, guid: bcc0e6fb439ccc74c850c0ecc139d80e, type: 3}
