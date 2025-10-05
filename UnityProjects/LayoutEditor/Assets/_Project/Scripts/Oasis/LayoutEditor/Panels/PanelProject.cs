@@ -16,7 +16,6 @@ namespace Oasis.LayoutEditor.Panels
     public class PanelProject : PanelBase
     {
         private const string kPseudoSceneName = "Assets";
-        private const string kFilesAndFoldersPseudoSceneName = "AssetsContents";
 
         [SerializeField] private RuntimeHierarchy _runtimeHierarchyFoldersTree = null;
         [SerializeField] private RuntimeHierarchy _runtimeHierarchyFilesAndFoldersList = null;
@@ -24,6 +23,7 @@ namespace Oasis.LayoutEditor.Panels
         private RuntimeHierarchyRightClickBroadcaster _hierarchyRightClickBroadcaster = null;
         private readonly List<Transform> _runtimeHierarchyAssetsRootTransforms = new List<Transform>();
         private readonly List<Transform> _runtimeHierarchyFilesAndFoldersTransforms = new List<Transform>();
+        private RuntimeHierarchyStandaloneTransformCollection _runtimeHierarchyFilesAndFoldersStandaloneCollection;
         private readonly Dictionary<string, Transform> _directoryTransformsByPath = new Dictionary<string, Transform>(StringComparer.OrdinalIgnoreCase);
         private FileSystemWatcher _assetsDirectoryWatcher;
         private string _watchedAssetsPath;
@@ -122,9 +122,10 @@ namespace Oasis.LayoutEditor.Panels
                 _runtimeHierarchyFoldersTree.CreatePseudoScene(kPseudoSceneName);
             }
 
-            if (_runtimeHierarchyFilesAndFoldersList != null)
+            if (_runtimeHierarchyFilesAndFoldersList != null && _runtimeHierarchyFilesAndFoldersStandaloneCollection == null)
             {
-                _runtimeHierarchyFilesAndFoldersList.CreatePseudoScene(kFilesAndFoldersPseudoSceneName);
+                _runtimeHierarchyFilesAndFoldersStandaloneCollection = new RuntimeHierarchyStandaloneTransformCollection(
+                    _runtimeHierarchyFilesAndFoldersList);
             }
 
 
@@ -350,7 +351,7 @@ namespace Oasis.LayoutEditor.Panels
 
                 Transform directoryTransform = CreateDirectoryTransform(directoryName, null, subDirectory, false);
 
-                _runtimeHierarchyFilesAndFoldersList.AddToPseudoScene(kFilesAndFoldersPseudoSceneName, directoryTransform);
+                _runtimeHierarchyFilesAndFoldersStandaloneCollection?.Add(directoryTransform);
                 _runtimeHierarchyFilesAndFoldersTransforms.Add(directoryTransform);
             }
 
@@ -373,7 +374,7 @@ namespace Oasis.LayoutEditor.Panels
 
                 Transform fileTransform = CreateFileTransform(fileName, filePath);
 
-                _runtimeHierarchyFilesAndFoldersList.AddToPseudoScene(kFilesAndFoldersPseudoSceneName, fileTransform);
+                _runtimeHierarchyFilesAndFoldersStandaloneCollection?.Add(fileTransform);
                 _runtimeHierarchyFilesAndFoldersTransforms.Add(fileTransform);
             }
         }
@@ -437,16 +438,10 @@ namespace Oasis.LayoutEditor.Panels
 
         private void ClearFilesAndFoldersPseudoScene()
         {
+            _runtimeHierarchyFilesAndFoldersStandaloneCollection?.Clear();
+
             if (_runtimeHierarchyFilesAndFoldersTransforms.Count > 0)
             {
-                if (_runtimeHierarchyFilesAndFoldersList != null)
-                {
-                    foreach (Transform entryTransform in _runtimeHierarchyFilesAndFoldersTransforms)
-                    {
-                        _runtimeHierarchyFilesAndFoldersList.RemoveFromPseudoScene(kFilesAndFoldersPseudoSceneName, entryTransform, false);
-                    }
-                }
-
                 foreach (Transform entryTransform in _runtimeHierarchyFilesAndFoldersTransforms)
                 {
                     DestroyTransform(entryTransform);
