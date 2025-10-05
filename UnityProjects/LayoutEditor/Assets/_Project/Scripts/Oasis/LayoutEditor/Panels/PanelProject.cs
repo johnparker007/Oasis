@@ -16,7 +16,9 @@ namespace Oasis.LayoutEditor.Panels
     {
         private const string kPseudoSceneName = "Assets";
 
-        private RuntimeHierarchy _runtimeHierarchy = null;
+        [SerializeField] private RuntimeHierarchy _runtimeHierarchyFoldersTree = null;
+        [SerializeField] private RuntimeHierarchy _runtimeHierarchyFilesAndFoldersList = null;
+        
         private RuntimeHierarchyRightClickBroadcaster _hierarchyRightClickBroadcaster = null;
         private readonly List<Transform> _runtimeHierarchyAssetsRootTransforms = new List<Transform>();
         private FileSystemWatcher _assetsDirectoryWatcher;
@@ -63,14 +65,14 @@ namespace Oasis.LayoutEditor.Panels
                 return;
             }
 
-            _runtimeHierarchy = GetComponentInChildren<RuntimeHierarchy>(true);
+            _runtimeHierarchyFoldersTree = GetComponentInChildren<RuntimeHierarchy>(true);
 
-            if (_runtimeHierarchy != null)
+            if (_runtimeHierarchyFoldersTree != null)
             {
                 EnsureHierarchyBroadcaster();
             }
 
-            _runtimeHierarchy.CreatePseudoScene(kPseudoSceneName);
+            _runtimeHierarchyFoldersTree.CreatePseudoScene(kPseudoSceneName);
 
 
             _initialised = true;
@@ -83,7 +85,7 @@ namespace Oasis.LayoutEditor.Panels
 
         private void EnsureHierarchyBroadcaster()
         {
-            if (_runtimeHierarchy == null)
+            if (_runtimeHierarchyFoldersTree == null)
             {
                 _hierarchyRightClickBroadcaster = null;
                 return;
@@ -94,11 +96,11 @@ namespace Oasis.LayoutEditor.Panels
                 return;
             }
 
-            _hierarchyRightClickBroadcaster = _runtimeHierarchy.GetComponent<RuntimeHierarchyRightClickBroadcaster>();
+            _hierarchyRightClickBroadcaster = _runtimeHierarchyFoldersTree.GetComponent<RuntimeHierarchyRightClickBroadcaster>();
 
             if (_hierarchyRightClickBroadcaster == null)
             {
-                _hierarchyRightClickBroadcaster = _runtimeHierarchy.gameObject.AddComponent<RuntimeHierarchyRightClickBroadcaster>();
+                _hierarchyRightClickBroadcaster = _runtimeHierarchyFoldersTree.gameObject.AddComponent<RuntimeHierarchyRightClickBroadcaster>();
             }
 
             _hierarchyRightClickBroadcaster.ForceScan();
@@ -130,7 +132,7 @@ namespace Oasis.LayoutEditor.Panels
 
         private void RefreshAssetsPseudoScene()
         {
-            if (_runtimeHierarchy == null)
+            if (_runtimeHierarchyFoldersTree == null)
             {
                 return;
             }
@@ -170,7 +172,7 @@ namespace Oasis.LayoutEditor.Panels
 
                 Transform directoryTransform = CreateNamedTransform(directoryName, null, directoryPath);
 
-                _runtimeHierarchy.AddToPseudoScene(kPseudoSceneName, directoryTransform);
+                _runtimeHierarchyFoldersTree.AddToPseudoScene(kPseudoSceneName, directoryTransform);
                 _runtimeHierarchyAssetsRootTransforms.Add(directoryTransform);
 
                 PopulateDirectoryTransforms(directoryPath, directoryTransform);
@@ -252,11 +254,11 @@ namespace Oasis.LayoutEditor.Panels
                 return;
             }
 
-            if (_runtimeHierarchy != null)
+            if (_runtimeHierarchyFoldersTree != null)
             {
                 foreach (Transform rootTransform in _runtimeHierarchyAssetsRootTransforms)
                 {
-                    _runtimeHierarchy.RemoveFromPseudoScene(kPseudoSceneName, rootTransform, false);
+                    _runtimeHierarchyFoldersTree.RemoveFromPseudoScene(kPseudoSceneName, rootTransform, false);
                 }
             }
 
