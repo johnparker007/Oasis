@@ -211,6 +211,9 @@ MonoBehaviour:
   expandArrow: {fileID: 8750433061015696627}
   multiSelectionToggle: {fileID: 8750177155331527811}
   multiSelectionToggleBackground: {fileID: 8749593589230969177}
+  projectContentTransform: {fileID: 8927434274643688803}
+  projectNameText: {fileID: 8750382802034606881}
+  projectMultiSelectionToggle: {fileID: 8750177155331527811}
 --- !u!114 &8749593589230969177 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 114051133184378632, guid: bcc0e6fb439ccc74c850c0ecc139d80e, type: 3}
