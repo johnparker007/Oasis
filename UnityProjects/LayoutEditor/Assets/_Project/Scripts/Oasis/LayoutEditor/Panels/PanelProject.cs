@@ -20,7 +20,8 @@ namespace Oasis.LayoutEditor.Panels
         [SerializeField] private RuntimeHierarchy _runtimeHierarchyFoldersTree = null;
         [SerializeField] private RuntimeHierarchy _runtimeHierarchyFilesAndFoldersList = null;
 
-        private RuntimeHierarchyRightClickBroadcaster _hierarchyRightClickBroadcaster = null;
+        private RuntimeHierarchyRightClickBroadcaster _foldersTreeRightClickBroadcaster = null;
+        private RuntimeHierarchyRightClickBroadcaster _filesAndFoldersRightClickBroadcaster = null;
         private readonly List<Transform> _runtimeHierarchyAssetsRootTransforms = new List<Transform>();
         private readonly List<Transform> _runtimeHierarchyFilesAndFoldersTransforms = new List<Transform>();
         private RuntimeHierarchyStandaloneTransformCollection _runtimeHierarchyFilesAndFoldersStandaloneCollection;
@@ -43,18 +44,20 @@ namespace Oasis.LayoutEditor.Panels
         {
             _assetsHierarchyDirty = true;
 
-            EnsureHierarchyBroadcaster();
-
             if (_runtimeHierarchyFoldersTree != null)
             {
                 _runtimeHierarchyFoldersTree.OnSelectionChanged -= OnFoldersTreeSelectionChanged;
                 _runtimeHierarchyFoldersTree.OnSelectionChanged += OnFoldersTreeSelectionChanged;
             }
 
-            if (_hierarchyRightClickBroadcaster != null)
+            _foldersTreeRightClickBroadcaster = EnsureHierarchyBroadcaster(
+                _runtimeHierarchyFoldersTree,
+                _foldersTreeRightClickBroadcaster);
+
+            if (_foldersTreeRightClickBroadcaster != null)
             {
-                _hierarchyRightClickBroadcaster.DrawerRightClicked -= OnHierarchyDrawerRightClicked;
-                _hierarchyRightClickBroadcaster.DrawerRightClicked += OnHierarchyDrawerRightClicked;
+                _foldersTreeRightClickBroadcaster.DrawerRightClicked -= OnFoldersTreeDrawerRightClicked;
+                _foldersTreeRightClickBroadcaster.DrawerRightClicked += OnFoldersTreeDrawerRightClicked;
             }
 
             if (_runtimeHierarchyFilesAndFoldersList != null)
@@ -62,13 +65,30 @@ namespace Oasis.LayoutEditor.Panels
                 _runtimeHierarchyFilesAndFoldersList.OnItemDoubleClicked -= OnFilesAndFoldersItemDoubleClicked;
                 _runtimeHierarchyFilesAndFoldersList.OnItemDoubleClicked += OnFilesAndFoldersItemDoubleClicked;
             }
+
+            _filesAndFoldersRightClickBroadcaster = EnsureHierarchyBroadcaster(
+                _runtimeHierarchyFilesAndFoldersList,
+                _filesAndFoldersRightClickBroadcaster);
+
+            if (_filesAndFoldersRightClickBroadcaster != null)
+            {
+                _filesAndFoldersRightClickBroadcaster.DrawerRightClicked -= OnFilesAndFoldersDrawerRightClicked;
+                _filesAndFoldersRightClickBroadcaster.DrawerRightClicked += OnFilesAndFoldersDrawerRightClicked;
+            }
         }
 
         protected override void RemoveListeners()
         {
-            if (_hierarchyRightClickBroadcaster != null)
+            if (_foldersTreeRightClickBroadcaster != null)
             {
-                _hierarchyRightClickBroadcaster.DrawerRightClicked -= OnHierarchyDrawerRightClicked;
+                _foldersTreeRightClickBroadcaster.DrawerRightClicked -= OnFoldersTreeDrawerRightClicked;
+                _foldersTreeRightClickBroadcaster = null;
+            }
+
+            if (_filesAndFoldersRightClickBroadcaster != null)
+            {
+                _filesAndFoldersRightClickBroadcaster.DrawerRightClicked -= OnFilesAndFoldersDrawerRightClicked;
+                _filesAndFoldersRightClickBroadcaster = null;
             }
 
             if (_runtimeHierarchyFoldersTree != null)
@@ -129,7 +149,9 @@ namespace Oasis.LayoutEditor.Panels
 
             if (_runtimeHierarchyFoldersTree != null)
             {
-                EnsureHierarchyBroadcaster();
+                _foldersTreeRightClickBroadcaster = EnsureHierarchyBroadcaster(
+                    _runtimeHierarchyFoldersTree,
+                    _foldersTreeRightClickBroadcaster);
                 _runtimeHierarchyFoldersTree.CreatePseudoScene(kPseudoSceneName);
             }
 
@@ -137,6 +159,13 @@ namespace Oasis.LayoutEditor.Panels
             {
                 _runtimeHierarchyFilesAndFoldersStandaloneCollection = new RuntimeHierarchyStandaloneTransformCollection(
                     _runtimeHierarchyFilesAndFoldersList);
+            }
+
+            if (_runtimeHierarchyFilesAndFoldersList != null)
+            {
+                _filesAndFoldersRightClickBroadcaster = EnsureHierarchyBroadcaster(
+                    _runtimeHierarchyFilesAndFoldersList,
+                    _filesAndFoldersRightClickBroadcaster);
             }
 
 
@@ -148,27 +177,29 @@ namespace Oasis.LayoutEditor.Panels
             RefreshAssetsPseudoScene();
         }
 
-        private void EnsureHierarchyBroadcaster()
+        private static RuntimeHierarchyRightClickBroadcaster EnsureHierarchyBroadcaster(
+            RuntimeHierarchy hierarchy,
+            RuntimeHierarchyRightClickBroadcaster currentBroadcaster)
         {
-            if (_runtimeHierarchyFoldersTree == null)
+            if (hierarchy == null)
             {
-                _hierarchyRightClickBroadcaster = null;
-                return;
+                return null;
             }
 
-            if (_hierarchyRightClickBroadcaster != null)
+            RuntimeHierarchyRightClickBroadcaster broadcaster = currentBroadcaster;
+
+            if (broadcaster == null)
             {
-                return;
+                broadcaster = hierarchy.GetComponent<RuntimeHierarchyRightClickBroadcaster>();
+
+                if (broadcaster == null)
+                {
+                    broadcaster = hierarchy.gameObject.AddComponent<RuntimeHierarchyRightClickBroadcaster>();
+                }
             }
 
-            _hierarchyRightClickBroadcaster = _runtimeHierarchyFoldersTree.GetComponent<RuntimeHierarchyRightClickBroadcaster>();
-
-            if (_hierarchyRightClickBroadcaster == null)
-            {
-                _hierarchyRightClickBroadcaster = _runtimeHierarchyFoldersTree.gameObject.AddComponent<RuntimeHierarchyRightClickBroadcaster>();
-            }
-
-            _hierarchyRightClickBroadcaster.ForceScan();
+            broadcaster.ForceScan();
+            return broadcaster;
         }
 
         protected override void Update()
@@ -557,7 +588,7 @@ namespace Oasis.LayoutEditor.Panels
             return gameObject.transform;
         }
 
-        private void OnHierarchyDrawerRightClicked(HierarchyField drawer, PointerEventData eventData)
+        private void OnFoldersTreeDrawerRightClicked(HierarchyField drawer, PointerEventData eventData)
         {
             if (drawer == null)
             {
@@ -586,6 +617,37 @@ namespace Oasis.LayoutEditor.Panels
                     }
                 }
 
+                return;
+            }
+
+            DirectoryMetadata metadata = boundTransform.GetComponent<DirectoryMetadata>();
+
+            if (metadata == null || string.IsNullOrEmpty(metadata.DirectoryPath))
+            {
+                return;
+            }
+
+            ShowDirectoryContextMenu(metadata.DirectoryPath);
+        }
+
+        private void OnFilesAndFoldersDrawerRightClicked(HierarchyField drawer, PointerEventData eventData)
+        {
+            if (drawer == null)
+            {
+                return;
+            }
+
+            HierarchyData data = drawer.Data;
+
+            if (data == null)
+            {
+                return;
+            }
+
+            Transform boundTransform = data.BoundTransform;
+
+            if (boundTransform == null)
+            {
                 return;
             }
 
