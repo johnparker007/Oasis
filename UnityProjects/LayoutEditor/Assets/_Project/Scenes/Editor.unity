@@ -2213,6 +2213,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Preferences
       objectReference: {fileID: 0}
+    - target: {fileID: 4216532040807254195, guid: cb0aae3f66f97f847a03ce61e0314197, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 5297741612677342915, guid: cb0aae3f66f97f847a03ce61e0314197, type: 3}
       propertyPath: m_Pivot.x
       value: 0.5
