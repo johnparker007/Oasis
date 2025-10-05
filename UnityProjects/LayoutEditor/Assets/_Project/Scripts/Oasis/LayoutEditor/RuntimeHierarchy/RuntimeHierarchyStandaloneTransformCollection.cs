@@ -161,6 +161,7 @@ namespace Oasis.LayoutEditor.RuntimeHierarchyIntegration
                 : base(hierarchy, string.Empty)
             {
                 _transform = transform;
+                m_depth = 1;
             }
 
             public override string Name => _transform ? _transform.name : "<missing>";
@@ -177,7 +178,7 @@ namespace Oasis.LayoutEditor.RuntimeHierarchyIntegration
 
             public override bool Refresh()
             {
-                m_depth = 0;
+                m_depth = 1;
 
                 bool changed = base.Refresh();
 
