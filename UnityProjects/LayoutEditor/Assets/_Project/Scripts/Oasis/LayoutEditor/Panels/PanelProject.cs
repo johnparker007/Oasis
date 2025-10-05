@@ -651,14 +651,22 @@ namespace Oasis.LayoutEditor.Panels
                 return;
             }
 
-            DirectoryMetadata metadata = boundTransform.GetComponent<DirectoryMetadata>();
+            DirectoryMetadata directoryMetadata = boundTransform.GetComponent<DirectoryMetadata>();
 
-            if (metadata == null || string.IsNullOrEmpty(metadata.DirectoryPath))
+            if (directoryMetadata != null && !string.IsNullOrEmpty(directoryMetadata.DirectoryPath))
+            {
+                ShowDirectoryContextMenu(directoryMetadata.DirectoryPath);
+                return;
+            }
+
+            FileMetadata fileMetadata = boundTransform.GetComponent<FileMetadata>();
+
+            if (fileMetadata == null || string.IsNullOrEmpty(fileMetadata.FilePath))
             {
                 return;
             }
 
-            ShowDirectoryContextMenu(metadata.DirectoryPath);
+            ShowFileContextMenu(fileMetadata.FilePath);
         }
 
         private void ClearAssetsPseudoScene()
@@ -754,6 +762,42 @@ namespace Oasis.LayoutEditor.Panels
 #endif
         }
 
+        private void ShowFileContextMenu(string filePath)
+        {
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+            if (string.IsNullOrEmpty(filePath))
+            {
+                return;
+            }
+
+            NativeContextMenuManager manager = EnsureContextMenuManager();
+
+            if (manager == null)
+            {
+                return;
+            }
+
+            bool fileExists = File.Exists(filePath);
+            bool directoryExists = false;
+
+            if (fileExists)
+            {
+                string directoryPath = Path.GetDirectoryName(filePath);
+                directoryExists = !string.IsNullOrEmpty(directoryPath) && Directory.Exists(directoryPath);
+            }
+
+            var menuItems = new List<NativeContextMenuManager.MenuItemSpec>
+            {
+                new NativeContextMenuManager.MenuItemSpec(
+                    "Show in Explorer",
+                    () => ShowFileInExplorer(filePath),
+                    fileExists && directoryExists)
+            };
+
+            manager.ShowMenuAtCursor(menuItems);
+#endif
+        }
+
 #if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
         private static NativeContextMenuManager EnsureContextMenuManager()
         {
@@ -780,6 +824,30 @@ namespace Oasis.LayoutEditor.Panels
             catch (Exception exception)
             {
                 UnityEngine.Debug.LogWarning($"Failed to open directory '{directoryPath}' in Explorer: {exception.Message}");
+            }
+        }
+
+        private static void ShowFileInExplorer(string filePath)
+        {
+            if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
+            {
+                return;
+            }
+
+            string directoryPath = Path.GetDirectoryName(filePath);
+
+            if (string.IsNullOrEmpty(directoryPath) || !Directory.Exists(directoryPath))
+            {
+                return;
+            }
+
+            try
+            {
+                Process.Start("explorer.exe", $"/select,\"{filePath}\"");
+            }
+            catch (Exception exception)
+            {
+                UnityEngine.Debug.LogWarning($"Failed to show file '{filePath}' in Explorer: {exception.Message}");
             }
         }
 #endif
