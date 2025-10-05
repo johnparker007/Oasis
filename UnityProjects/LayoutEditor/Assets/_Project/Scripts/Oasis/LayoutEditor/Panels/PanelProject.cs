@@ -2,6 +2,7 @@ using Oasis.LayoutEditor.RuntimeHierarchyIntegration;
 using RuntimeInspectorNamespace;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -15,16 +16,20 @@ namespace Oasis.LayoutEditor.Panels
     public class PanelProject : PanelBase
     {
         private const string kPseudoSceneName = "Assets";
+        private const string kFilesAndFoldersPseudoSceneName = "AssetsContents";
 
         [SerializeField] private RuntimeHierarchy _runtimeHierarchyFoldersTree = null;
         [SerializeField] private RuntimeHierarchy _runtimeHierarchyFilesAndFoldersList = null;
-        
+
         private RuntimeHierarchyRightClickBroadcaster _hierarchyRightClickBroadcaster = null;
         private readonly List<Transform> _runtimeHierarchyAssetsRootTransforms = new List<Transform>();
+        private readonly List<Transform> _runtimeHierarchyFilesAndFoldersTransforms = new List<Transform>();
+        private readonly Dictionary<string, Transform> _directoryTransformsByPath = new Dictionary<string, Transform>(StringComparer.OrdinalIgnoreCase);
         private FileSystemWatcher _assetsDirectoryWatcher;
         private string _watchedAssetsPath;
         private string _lastKnownProjectRootPath;
         private volatile bool _assetsHierarchyDirty;
+        private string _currentlySelectedDirectoryPath;
 
 
         protected override void Awake()
@@ -40,6 +45,12 @@ namespace Oasis.LayoutEditor.Panels
 
             EnsureHierarchyBroadcaster();
 
+            if (_runtimeHierarchyFoldersTree != null)
+            {
+                _runtimeHierarchyFoldersTree.OnSelectionChanged -= OnFoldersTreeSelectionChanged;
+                _runtimeHierarchyFoldersTree.OnSelectionChanged += OnFoldersTreeSelectionChanged;
+            }
+
             if (_hierarchyRightClickBroadcaster != null)
             {
                 _hierarchyRightClickBroadcaster.DrawerRightClicked -= OnHierarchyDrawerRightClicked;
@@ -54,8 +65,14 @@ namespace Oasis.LayoutEditor.Panels
                 _hierarchyRightClickBroadcaster.DrawerRightClicked -= OnHierarchyDrawerRightClicked;
             }
 
+            if (_runtimeHierarchyFoldersTree != null)
+            {
+                _runtimeHierarchyFoldersTree.OnSelectionChanged -= OnFoldersTreeSelectionChanged;
+            }
+
             DisposeAssetsWatcher();
             ClearAssetsPseudoScene();
+            ClearFilesAndFoldersPseudoScene();
         }
 
         protected override void Initialise()
@@ -65,14 +82,50 @@ namespace Oasis.LayoutEditor.Panels
                 return;
             }
 
-            _runtimeHierarchyFoldersTree = GetComponentInChildren<RuntimeHierarchy>(true);
+            if (_runtimeHierarchyFoldersTree == null || _runtimeHierarchyFilesAndFoldersList == null)
+            {
+                RuntimeHierarchy[] runtimeHierarchies = GetComponentsInChildren<RuntimeHierarchy>(true);
+
+                if (runtimeHierarchies != null)
+                {
+                    for (int i = 0; i < runtimeHierarchies.Length; i++)
+                    {
+                        RuntimeHierarchy hierarchy = runtimeHierarchies[i];
+
+                        if (hierarchy == null)
+                        {
+                            continue;
+                        }
+
+                        if (_runtimeHierarchyFoldersTree == null)
+                        {
+                            _runtimeHierarchyFoldersTree = hierarchy;
+                            continue;
+                        }
+
+                        if (_runtimeHierarchyFilesAndFoldersList == null && hierarchy != _runtimeHierarchyFoldersTree)
+                        {
+                            _runtimeHierarchyFilesAndFoldersList = hierarchy;
+                        }
+
+                        if (_runtimeHierarchyFoldersTree != null && _runtimeHierarchyFilesAndFoldersList != null)
+                        {
+                            break;
+                        }
+                    }
+                }
+            }
 
             if (_runtimeHierarchyFoldersTree != null)
             {
                 EnsureHierarchyBroadcaster();
+                _runtimeHierarchyFoldersTree.CreatePseudoScene(kPseudoSceneName);
             }
 
-            _runtimeHierarchyFoldersTree.CreatePseudoScene(kPseudoSceneName);
+            if (_runtimeHierarchyFilesAndFoldersList != null)
+            {
+                _runtimeHierarchyFilesAndFoldersList.CreatePseudoScene(kFilesAndFoldersPseudoSceneName);
+            }
 
 
             _initialised = true;
@@ -132,7 +185,7 @@ namespace Oasis.LayoutEditor.Panels
 
         private void RefreshAssetsPseudoScene()
         {
-            if (_runtimeHierarchyFoldersTree == null)
+            if (_runtimeHierarchyFoldersTree == null && _runtimeHierarchyFilesAndFoldersList == null)
             {
                 return;
             }
@@ -148,10 +201,14 @@ namespace Oasis.LayoutEditor.Panels
         {
             ClearAssetsPseudoScene();
 
-            if (string.IsNullOrEmpty(assetsPath))
+            if (string.IsNullOrEmpty(assetsPath) || !Directory.Exists(assetsPath))
             {
+                _currentlySelectedDirectoryPath = null;
+                RefreshFilesAndFoldersList(null);
                 return;
             }
+
+            _directoryTransformsByPath[assetsPath] = null;
 
             string[] topLevelDirectories;
 
@@ -163,20 +220,26 @@ namespace Oasis.LayoutEditor.Panels
             catch (Exception exception)
             {
                 UnityEngine.Debug.LogWarning($"Failed to enumerate directories in '{assetsPath}': {exception.Message}");
-                return;
+                topLevelDirectories = Array.Empty<string>();
             }
 
-            foreach (string directoryPath in topLevelDirectories)
+            if (_runtimeHierarchyFoldersTree != null)
             {
-                string directoryName = Path.GetFileName(directoryPath);
+                foreach (string directoryPath in topLevelDirectories)
+                {
+                    string directoryName = Path.GetFileName(directoryPath);
 
-                Transform directoryTransform = CreateNamedTransform(directoryName, null, directoryPath);
+                    Transform directoryTransform = CreateDirectoryTransform(directoryName, null, directoryPath, true);
 
-                _runtimeHierarchyFoldersTree.AddToPseudoScene(kPseudoSceneName, directoryTransform);
-                _runtimeHierarchyAssetsRootTransforms.Add(directoryTransform);
+                    _runtimeHierarchyFoldersTree.AddToPseudoScene(kPseudoSceneName, directoryTransform);
+                    _runtimeHierarchyAssetsRootTransforms.Add(directoryTransform);
 
-                PopulateDirectoryTransforms(directoryPath, directoryTransform);
+                    PopulateDirectoryTransforms(directoryPath, directoryTransform);
+                }
             }
+
+            RestoreFoldersTreeSelection();
+            RefreshFilesAndFoldersList(_currentlySelectedDirectoryPath);
         }
 
         private void PopulateDirectoryTransforms(string directoryPath, Transform parentTransform)
@@ -198,11 +261,212 @@ namespace Oasis.LayoutEditor.Panels
             {
                 string directoryName = Path.GetFileName(subDirectory);
 
-                Transform directoryTransform = CreateNamedTransform(directoryName, parentTransform, subDirectory);
+                Transform directoryTransform = CreateDirectoryTransform(directoryName, parentTransform, subDirectory, true);
 
                 PopulateDirectoryTransforms(subDirectory, directoryTransform);
             }
 
+        }
+
+        private void OnFoldersTreeSelectionChanged(ReadOnlyCollection<Transform> selection)
+        {
+            string directoryPath = GetDirectoryPathFromSelection(selection);
+
+            if (string.IsNullOrEmpty(directoryPath))
+            {
+                directoryPath = GetCurrentProjectAssetsPath();
+            }
+
+            RefreshFilesAndFoldersList(directoryPath);
+        }
+
+        private string GetDirectoryPathFromSelection(ReadOnlyCollection<Transform> selection)
+        {
+            if (selection == null)
+            {
+                return null;
+            }
+
+            for (int i = selection.Count - 1; i >= 0; i--)
+            {
+                Transform selectedTransform = selection[i];
+
+                if (selectedTransform == null)
+                {
+                    continue;
+                }
+
+                DirectoryMetadata metadata = selectedTransform.GetComponent<DirectoryMetadata>();
+
+                if (metadata != null && !string.IsNullOrEmpty(metadata.DirectoryPath))
+                {
+                    return metadata.DirectoryPath;
+                }
+            }
+
+            return null;
+        }
+
+        private void RefreshFilesAndFoldersList(string directoryPath)
+        {
+            ClearFilesAndFoldersPseudoScene();
+
+            string targetDirectory = directoryPath;
+
+            if (string.IsNullOrEmpty(targetDirectory) || !Directory.Exists(targetDirectory))
+            {
+                targetDirectory = GetCurrentProjectAssetsPath();
+            }
+
+            if (string.IsNullOrEmpty(targetDirectory) || !Directory.Exists(targetDirectory))
+            {
+                _currentlySelectedDirectoryPath = null;
+                return;
+            }
+
+            _currentlySelectedDirectoryPath = targetDirectory;
+
+            if (_runtimeHierarchyFilesAndFoldersList == null)
+            {
+                return;
+            }
+
+            string[] subDirectories = Array.Empty<string>();
+
+            try
+            {
+                subDirectories = Directory.GetDirectories(targetDirectory);
+                Array.Sort(subDirectories, StringComparer.OrdinalIgnoreCase);
+            }
+            catch (Exception exception)
+            {
+                UnityEngine.Debug.LogWarning($"Failed to enumerate directories in '{targetDirectory}': {exception.Message}");
+                subDirectories = Array.Empty<string>();
+            }
+
+            foreach (string subDirectory in subDirectories)
+            {
+                string directoryName = Path.GetFileName(subDirectory);
+
+                Transform directoryTransform = CreateDirectoryTransform(directoryName, null, subDirectory, false);
+
+                _runtimeHierarchyFilesAndFoldersList.AddToPseudoScene(kFilesAndFoldersPseudoSceneName, directoryTransform);
+                _runtimeHierarchyFilesAndFoldersTransforms.Add(directoryTransform);
+            }
+
+            string[] files = Array.Empty<string>();
+
+            try
+            {
+                files = Directory.GetFiles(targetDirectory);
+                Array.Sort(files, StringComparer.OrdinalIgnoreCase);
+            }
+            catch (Exception exception)
+            {
+                UnityEngine.Debug.LogWarning($"Failed to enumerate files in '{targetDirectory}': {exception.Message}");
+                files = Array.Empty<string>();
+            }
+
+            foreach (string filePath in files)
+            {
+                string fileName = Path.GetFileName(filePath);
+
+                Transform fileTransform = CreateFileTransform(fileName, filePath);
+
+                _runtimeHierarchyFilesAndFoldersList.AddToPseudoScene(kFilesAndFoldersPseudoSceneName, fileTransform);
+                _runtimeHierarchyFilesAndFoldersTransforms.Add(fileTransform);
+            }
+        }
+
+        private void RestoreFoldersTreeSelection()
+        {
+            if (_runtimeHierarchyFoldersTree == null)
+            {
+                return;
+            }
+
+            string desiredDirectoryPath = _currentlySelectedDirectoryPath;
+
+            if (string.IsNullOrEmpty(desiredDirectoryPath))
+            {
+                desiredDirectoryPath = GetCurrentProjectAssetsPath();
+            }
+
+            if (string.IsNullOrEmpty(desiredDirectoryPath))
+            {
+                return;
+            }
+
+            if (_directoryTransformsByPath.TryGetValue(desiredDirectoryPath, out Transform directoryTransform) && directoryTransform != null)
+            {
+                ReadOnlyCollection<Transform> currentSelection = _runtimeHierarchyFoldersTree.CurrentSelection;
+
+                if (!IsTransformInSelection(currentSelection, directoryTransform))
+                {
+                    _runtimeHierarchyFoldersTree.Select(directoryTransform);
+                }
+            }
+            else
+            {
+                ReadOnlyCollection<Transform> currentSelection = _runtimeHierarchyFoldersTree.CurrentSelection;
+
+                if (currentSelection != null && currentSelection.Count > 0)
+                {
+                    _runtimeHierarchyFoldersTree.Deselect();
+                }
+            }
+        }
+
+        private static bool IsTransformInSelection(ReadOnlyCollection<Transform> selection, Transform targetTransform)
+        {
+            if (selection == null || targetTransform == null)
+            {
+                return false;
+            }
+
+            for (int i = selection.Count - 1; i >= 0; i--)
+            {
+                if (selection[i] == targetTransform)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private void ClearFilesAndFoldersPseudoScene()
+        {
+            if (_runtimeHierarchyFilesAndFoldersTransforms.Count > 0)
+            {
+                if (_runtimeHierarchyFilesAndFoldersList != null)
+                {
+                    foreach (Transform entryTransform in _runtimeHierarchyFilesAndFoldersTransforms)
+                    {
+                        _runtimeHierarchyFilesAndFoldersList.RemoveFromPseudoScene(kFilesAndFoldersPseudoSceneName, entryTransform, false);
+                    }
+                }
+
+                foreach (Transform entryTransform in _runtimeHierarchyFilesAndFoldersTransforms)
+                {
+                    DestroyTransform(entryTransform);
+                }
+            }
+
+            _runtimeHierarchyFilesAndFoldersTransforms.Clear();
+        }
+
+        private Transform CreateFileTransform(string name, string filePath)
+        {
+            GameObject gameObject = new GameObject(name)
+            {
+                hideFlags = HideFlags.HideAndDontSave
+            };
+
+            FileMetadata metadata = gameObject.AddComponent<FileMetadata>();
+            metadata.Initialise(filePath);
+
+            return gameObject.transform;
         }
 
         private void OnHierarchyDrawerRightClicked(HierarchyField drawer, PointerEventData eventData)
@@ -249,28 +513,27 @@ namespace Oasis.LayoutEditor.Panels
 
         private void ClearAssetsPseudoScene()
         {
-            if (_runtimeHierarchyAssetsRootTransforms.Count == 0)
+            if (_runtimeHierarchyAssetsRootTransforms.Count > 0)
             {
-                return;
-            }
+                if (_runtimeHierarchyFoldersTree != null)
+                {
+                    foreach (Transform rootTransform in _runtimeHierarchyAssetsRootTransforms)
+                    {
+                        _runtimeHierarchyFoldersTree.RemoveFromPseudoScene(kPseudoSceneName, rootTransform, false);
+                    }
+                }
 
-            if (_runtimeHierarchyFoldersTree != null)
-            {
                 foreach (Transform rootTransform in _runtimeHierarchyAssetsRootTransforms)
                 {
-                    _runtimeHierarchyFoldersTree.RemoveFromPseudoScene(kPseudoSceneName, rootTransform, false);
+                    DestroyTransform(rootTransform);
                 }
             }
 
-            foreach (Transform rootTransform in _runtimeHierarchyAssetsRootTransforms)
-            {
-                DestroyTransform(rootTransform);
-            }
-
             _runtimeHierarchyAssetsRootTransforms.Clear();
+            _directoryTransformsByPath.Clear();
         }
 
-        private Transform CreateNamedTransform(string name, Transform parentTransform, string directoryPath)
+        private Transform CreateDirectoryTransform(string name, Transform parentTransform, string directoryPath, bool registerDirectoryTransform)
         {
             GameObject gameObject = new GameObject(name)
             {
@@ -285,6 +548,11 @@ namespace Oasis.LayoutEditor.Panels
             if (parentTransform != null)
             {
                 transform.SetParent(parentTransform, false);
+            }
+
+            if (registerDirectoryTransform && !string.IsNullOrEmpty(directoryPath))
+            {
+                _directoryTransformsByPath[directoryPath] = transform;
             }
 
             return transform;
@@ -485,6 +753,16 @@ namespace Oasis.LayoutEditor.Panels
             public void Initialise(string directoryPath)
             {
                 DirectoryPath = directoryPath;
+            }
+        }
+
+        private sealed class FileMetadata : MonoBehaviour
+        {
+            public string FilePath { get; private set; }
+
+            public void Initialise(string filePath)
+            {
+                FilePath = filePath;
             }
         }
     }
