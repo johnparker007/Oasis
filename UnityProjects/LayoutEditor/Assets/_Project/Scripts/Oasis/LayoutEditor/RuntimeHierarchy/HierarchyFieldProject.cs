@@ -23,6 +23,7 @@ public class HierarchyFieldProject : HierarchyField
 
     private static Type s_directoryMetadataType;
     private static PropertyInfo s_directoryPathProperty;
+    private static Type s_fileMetadataType;
 
     private void OnEnable()
     {
@@ -55,24 +56,36 @@ public class HierarchyFieldProject : HierarchyField
         int childCount = data.ChildCount;
         bool childCountChanged = forceRefresh || dataChanged || childCount != _lastObservedChildCount;
 
-        if (dataChanged)
-        {
-            _hasCachedDirectoryContent = false;
-        }
+        bool isFileEntry = IsFileEntry(data);
+        Sprite targetSprite;
 
-        if (isExpanded)
+        if (isFileEntry)
         {
+            targetSprite = _genericFileSprite;
             _hasCachedDirectoryContent = false;
+            _cachedDirectoryHasContent = false;
         }
-        else if (!_hasCachedDirectoryContent || childCountChanged || expansionChanged)
+        else
         {
-            _cachedDirectoryHasContent = DetermineHasContent(data, childCount);
-            _hasCachedDirectoryContent = true;
-        }
+            if (dataChanged)
+            {
+                _hasCachedDirectoryContent = false;
+            }
 
-        Sprite targetSprite = isExpanded
-            ? _openFolderNonEmptySprite
-            : (_cachedDirectoryHasContent ? _closedFolderNonEmptySprite : _closedFolderEmptySprite);
+            if (isExpanded)
+            {
+                _hasCachedDirectoryContent = false;
+            }
+            else if (!_hasCachedDirectoryContent || childCountChanged || expansionChanged)
+            {
+                _cachedDirectoryHasContent = DetermineHasContent(data, childCount);
+                _hasCachedDirectoryContent = true;
+            }
+
+            targetSprite = isExpanded
+                ? _openFolderNonEmptySprite
+                : (_cachedDirectoryHasContent ? _closedFolderNonEmptySprite : _closedFolderEmptySprite);
+        }
 
         if (_lastAppliedSprite != targetSprite)
         {
@@ -119,7 +132,7 @@ public class HierarchyFieldProject : HierarchyField
             return false;
         }
 
-        EnsureDirectoryMetadataReflection();
+        EnsureProjectMetadataReflection();
 
         if (s_directoryMetadataType == null || s_directoryPathProperty == null)
         {
@@ -158,9 +171,35 @@ public class HierarchyFieldProject : HierarchyField
         return false;
     }
 
-    private static void EnsureDirectoryMetadataReflection()
+    private static bool IsFileEntry(HierarchyData data)
     {
-        if (s_directoryMetadataType != null)
+        if (data == null)
+        {
+            return false;
+        }
+
+        Transform boundTransform = data.BoundTransform;
+
+        if (boundTransform == null)
+        {
+            return false;
+        }
+
+        EnsureProjectMetadataReflection();
+
+        if (s_fileMetadataType == null)
+        {
+            return false;
+        }
+
+        Component metadata = boundTransform.GetComponent(s_fileMetadataType);
+
+        return metadata != null;
+    }
+
+    private static void EnsureProjectMetadataReflection()
+    {
+        if (s_directoryMetadataType != null && s_fileMetadataType != null)
         {
             return;
         }
@@ -170,16 +209,31 @@ public class HierarchyFieldProject : HierarchyField
         for (int i = 0; i < assemblies.Length; i++)
         {
             Assembly assembly = assemblies[i];
-            Type metadataType = assembly.GetType("Oasis.LayoutEditor.Panels.PanelProject+DirectoryMetadata");
-
-            if (metadataType == null)
+            if (s_directoryMetadataType == null)
             {
-                continue;
+                Type directoryMetadataType = assembly.GetType("Oasis.LayoutEditor.Panels.PanelProject+DirectoryMetadata");
+
+                if (directoryMetadataType != null)
+                {
+                    s_directoryMetadataType = directoryMetadataType;
+                    s_directoryPathProperty = directoryMetadataType.GetProperty("DirectoryPath", BindingFlags.Public | BindingFlags.Instance);
+                }
             }
 
-            s_directoryMetadataType = metadataType;
-            s_directoryPathProperty = metadataType.GetProperty("DirectoryPath", BindingFlags.Public | BindingFlags.Instance);
-            break;
+            if (s_fileMetadataType == null)
+            {
+                Type fileMetadataType = assembly.GetType("Oasis.LayoutEditor.Panels.PanelProject+FileMetadata");
+
+                if (fileMetadataType != null)
+                {
+                    s_fileMetadataType = fileMetadataType;
+                }
+            }
+
+            if (s_directoryMetadataType != null && s_fileMetadataType != null)
+            {
+                break;
+            }
         }
     }
 }
