@@ -88,6 +88,10 @@ PrefabInstance:
       value: Project
       objectReference: {fileID: 0}
     - target: {fileID: 114514363149991454, guid: 4d8c6c9fba0e46f489b21fd7d92d739d, type: 3}
+      propertyPath: m_skin
+      value: 
+      objectReference: {fileID: 11400000, guid: 936b790410e2bb844bd290f49d25f5d0, type: 2}
+    - target: {fileID: 114514363149991454, guid: 4d8c6c9fba0e46f489b21fd7d92d739d, type: 3}
       propertyPath: drawerPrefab
       value: 
       objectReference: {fileID: 2148907033583018155, guid: 455f47acd5e9d0e4ab24d051a73380bc, type: 3}
