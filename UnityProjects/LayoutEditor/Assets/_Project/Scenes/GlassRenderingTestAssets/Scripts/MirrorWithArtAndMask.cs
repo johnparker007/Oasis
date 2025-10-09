@@ -58,13 +58,23 @@ public class MirrorWithArtAndMask : MonoBehaviour
         if (mat == null)
         {
             mat = new Material(Shader.Find("Oasis/ArtworkAndMaskedMirror"));
-            mat.SetTexture("_ArtworkTex", _artworkTexture);
-            mat.SetTexture("_MirrorMaskTex", _artworkMirrorMaskTexture);
         }
+
+        mat.SetTexture("_ArtworkTex", _artworkTexture);
+        mat.SetTexture("_MirrorMaskTex", _artworkMirrorMaskTexture);
 
         mr.sharedMaterial = mat;
 
         RenderPipelineManager.beginCameraRendering += OnCameraRender;
+    }
+
+    private void OnValidate()
+    {
+        if (mat != null)
+        {
+            mat.SetTexture("_ArtworkTex", _artworkTexture);
+            mat.SetTexture("_MirrorMaskTex", _artworkMirrorMaskTexture);
+        }
     }
 
     private void OnDisable()
