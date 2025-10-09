@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 
-public class Mirror : MonoBehaviour
+public class MirrorWithArtAndMask : MonoBehaviour
 {
     [Serializable]
     public class Info
@@ -13,6 +13,9 @@ public class Mirror : MonoBehaviour
         public RTHandle rtMain;
         public RTHandle rtAlt;
     }
+
+    [SerializeField] private Texture2D _artworkTexture;
+    [SerializeField] private Texture2D _artworkMirrorMaskTexture;
 
     public GameObject thisGameObject => mrObj;
 
@@ -53,7 +56,12 @@ public class Mirror : MonoBehaviour
         linkedCam.enabled = false;
 
         if (mat == null)
-            mat = new Material(Shader.Find("Oasis/Mirror"));
+        {
+            mat = new Material(Shader.Find("Oasis/ArtworkAndMaskedMirror"));
+            mat.SetTexture("_ArtworkTex", _artworkTexture);
+            mat.SetTexture("_MirrorMaskTex", _artworkMirrorMaskTexture);
+        }
+
         mr.sharedMaterial = mat;
 
         RenderPipelineManager.beginCameraRendering += OnCameraRender;

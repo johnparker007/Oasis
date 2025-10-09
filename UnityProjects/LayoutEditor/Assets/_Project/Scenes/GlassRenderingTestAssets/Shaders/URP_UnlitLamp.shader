@@ -1,4 +1,4 @@
-Shader "Unlit/URP_Unlit"
+Shader "Unlit/URP_UnlitLamp"
 {
     Properties
     {

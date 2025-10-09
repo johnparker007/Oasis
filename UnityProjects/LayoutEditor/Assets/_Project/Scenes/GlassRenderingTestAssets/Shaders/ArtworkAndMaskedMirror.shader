@@ -1,9 +1,11 @@
-Shader "Oasis/Mirror"
+Shader "Oasis/ArtworkAndMaskedMirror"
 {
     Properties
     {
         _MainTex("Texture", 2D) = "white" {}
         _AltTex("Texture", 2D) = "white" {}
+        _ArtworkTex("Texture", 2D) = "white" {}
+        _MirrorMaskTex("Texture", 2D) = "white" {}
     }
         SubShader
     {
@@ -53,6 +55,10 @@ Shader "Oasis/Mirror"
             float4 _MainTex_ST;
             sampler2D _AltTex;
             // UNITY_DECLARE_SCREENSPACE_TEXTURE(_AltTex);
+
+            sampler2D _ArtworkTex;
+            sampler2D _MirrorMaskTex;
+
             float2 _Offset;
 
             v2f vert(appdata v)
