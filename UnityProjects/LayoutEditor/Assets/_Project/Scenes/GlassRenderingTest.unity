@@ -1085,8 +1085,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 330585543}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.014517247, y: 0.9496619, z: -0.044484075, w: 0.3097623}
-  m_LocalPosition: {x: 0.171, y: 2.402, z: -2.995}
+  m_LocalRotation: {x: 0.015434802, y: 0.80134547, z: -0.020682607, w: 0.5976449}
+  m_LocalPosition: {x: -0.011963785, y: 2.0955346, z: -3.5126016}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2371,6 +2371,8 @@ MonoBehaviour:
   _artworkTexture: {fileID: 2800000, guid: 44b979fba728e334ba12b3826f41a115, type: 3}
   _artworkMirrorMaskTexture: {fileID: 2800000, guid: 07acd71aaadc1c941ae10ad02ed5ea14, type: 3}
   _artworkGlowMaskTexture: {fileID: 2800000, guid: e82e43f61eb2521459b31a783ba26b63, type: 3}
+  _artworkLampMaskTexture: {fileID: 2800000, guid: 0d5829b165909374c88ddbb392f9e76b, type: 3}
+  mat: {fileID: 0}
   renderScale: 1
   renderSize: {x: 0, y: 0}
 --- !u!23 &946890147

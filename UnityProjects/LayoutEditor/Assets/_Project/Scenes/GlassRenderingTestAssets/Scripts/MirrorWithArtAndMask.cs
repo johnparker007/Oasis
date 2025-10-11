@@ -17,7 +17,7 @@ public class MirrorWithArtAndMask : MonoBehaviour
     [SerializeField] private Texture2D _artworkTexture;
     [SerializeField] private Texture2D _artworkMirrorMaskTexture;
     [SerializeField] private Texture2D _artworkGlowMaskTexture;
-
+    [SerializeField] private Texture2D _artworkLampMaskTexture;
 
     public GameObject thisGameObject => mrObj;
 
@@ -64,7 +64,8 @@ public class MirrorWithArtAndMask : MonoBehaviour
 
         mat.SetTexture("_ArtworkTex", _artworkTexture);
         mat.SetTexture("_MirrorMaskTex", _artworkMirrorMaskTexture);
-        mat.SetTexture("_GlowMaskTex", _artworkGlowMaskTexture);       
+        mat.SetTexture("_GlowMaskTex", _artworkGlowMaskTexture);
+        mat.SetTexture("_LampMaskTex", _artworkLampMaskTexture);
 
         mr.sharedMaterial = mat;
 
@@ -78,6 +79,7 @@ public class MirrorWithArtAndMask : MonoBehaviour
             mat.SetTexture("_ArtworkTex", _artworkTexture);
             mat.SetTexture("_MirrorMaskTex", _artworkMirrorMaskTexture);
             mat.SetTexture("_GlowMaskTex", _artworkGlowMaskTexture);
+            mat.SetTexture("_LampMaskTex", _artworkLampMaskTexture);
         }
     }
 

@@ -7,11 +7,14 @@ Shader "Oasis/ArtworkAndMaskedMirror"
         _ArtworkTex("Artwork", 2D) = "white" {}
         _MirrorMaskTex("Mirror Mask", 2D) = "white" {}
         _GlowMaskTex("Glow Mask", 2D) = "black" {}
-        _GlowIntensity("Glow Intensity", Range(0,10)) = 2.0
-        _MirrorBaseline("Mirror Baseline", Range(0,0.1)) = 0.013
+        _LampMaskTex("Lamp Mask", 2D) = "black" {}
+        _MasterIntensity("Master Intensity", Range(0,20)) = 2.0
+        _GlowLampRatio("Glow/Lamp Ratio", Range(0,1)) = 0.85
+        _MirrorBaseline("Mirror Baseline", Range(0,1)) = 0.03
+        _BoostColor("Boost Color", Color) = (1.0, 0.87, 0.5, 1)
         _BaseColor("Base Color", Color) = (1,1,1,1)
-        _Smoothness("Smoothness", Range(0,1)) = 0.1
-        _SpecColor("Specular Color", Color) = (1,1,1,1)
+        _Smoothness("Smoothness", Range(0,1)) = 0.0
+        _SpecColor("Specular Color", Color) = (0.25,0.25,0.25,1)
     }
         SubShader
         {
@@ -64,6 +67,7 @@ Shader "Oasis/ArtworkAndMaskedMirror"
                     float3 viewDirWS : TEXCOORD4;
                     float4 screenPos : TEXCOORD5;
                     float2 uvGlow : TEXCOORD6;
+                    float2 uvLamp : TEXCOORD7;
                     UNITY_VERTEX_INPUT_INSTANCE_ID
                     UNITY_VERTEX_OUTPUT_STEREO
                 };
@@ -85,11 +89,18 @@ Shader "Oasis/ArtworkAndMaskedMirror"
                 SAMPLER(sampler_GlowMaskTex);
                 float4 _GlowMaskTex_ST;
 
+                TEXTURE2D(_LampMaskTex);
+                SAMPLER(sampler_LampMaskTex);
+                float4 _LampMaskTex_ST;
+
                 float4 _BaseColor;
                 float _Smoothness;
                 float4 _SpecColor;
-                float _GlowIntensity;
+
+                float _MasterIntensity;
+                float _GlowLampRatio;
                 float _MirrorBaseline;
+                float4 _BoostColor;
 
                 Varyings vert(Attributes input)
                 {
@@ -109,6 +120,7 @@ Shader "Oasis/ArtworkAndMaskedMirror"
                     output.uvArtwork = TRANSFORM_TEX(input.uv, _ArtworkTex);
                     output.uvMask = TRANSFORM_TEX(input.uv, _MirrorMaskTex);
                     output.uvGlow = TRANSFORM_TEX(input.uv, _GlowMaskTex);
+                    output.uvLamp = TRANSFORM_TEX(input.uv, _LampMaskTex);
                     output.screenPos = ComputeScreenPos(output.positionCS);
 
                     return output;
@@ -185,11 +197,24 @@ Shader "Oasis/ArtworkAndMaskedMirror"
                         ? SAMPLE_TEXTURE2D(_AltTex, sampler_AltTex, screenUV)
                         : SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, screenUV);
 
-                    // Glow boosts _ArtworkTex color
+                    // Masks
                     half glowMask = SAMPLE_TEXTURE2D(_GlowMaskTex, sampler_GlowMaskTex, input.uvGlow).r;
-                    half3 glow = artworkSample.rgb * (_GlowIntensity * glowMask);
+                    half lampMask = SAMPLE_TEXTURE2D(_LampMaskTex, sampler_LampMaskTex, input.uvLamp).r;
 
-                    half3 finalColor = saturate(litArtwork + mirrorColor.rgb * mask + glow);
+                    // Master + ratio -> per-effect intensities
+                    half glowI = (half)_MasterIntensity * (half)_GlowLampRatio;
+                    half lampI = (half)_MasterIntensity * (half)(1.0h - _GlowLampRatio);
+
+                    // Boost scalar (no tint yet)
+                    half lampSuppression = saturate(1.0h - glowMask);
+                    half boostScalar = glowI * glowMask + lampI * lampMask * lampSuppression;
+
+                    // Apply tint only to the boosted portion
+                    half3 boostTint = (half3)_BoostColor.rgb;
+                    half3 boostedDelta = artworkSample.rgb * boostScalar * boostTint;
+
+                    // Compose
+                    half3 finalColor = saturate(litArtwork + mirrorColor.rgb * mask + boostedDelta);
                     return half4(finalColor, 1);
                 }
                 ENDHLSL
