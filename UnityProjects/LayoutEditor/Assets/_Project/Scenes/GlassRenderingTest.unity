@@ -2368,7 +2368,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6c3c5d6eb3ff5374c8618859bd83e969, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _artworkTexture: {fileID: 2800000, guid: 44b979fba728e334ba12b3826f41a115, type: 3}
+  _artworkTexture: {fileID: 2800000, guid: 6921762c0a418354cac1d1e173350f96, type: 3}
   _artworkMirrorMaskTexture: {fileID: 2800000, guid: 07acd71aaadc1c941ae10ad02ed5ea14, type: 3}
   _artworkGlowMaskTexture: {fileID: 2800000, guid: e82e43f61eb2521459b31a783ba26b63, type: 3}
   _artworkLampMaskTexture: {fileID: 2800000, guid: 0d5829b165909374c88ddbb392f9e76b, type: 3}

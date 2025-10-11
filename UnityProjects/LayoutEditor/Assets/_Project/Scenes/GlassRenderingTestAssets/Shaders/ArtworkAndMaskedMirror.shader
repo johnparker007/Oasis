@@ -213,10 +213,14 @@ Shader "Oasis/ArtworkAndMaskedMirror"
                     half3 boostTint = (half3)_BoostColor.rgb;
                     half3 boostedDelta = artworkSample.rgb * boostScalar * boostTint;
 
-                    // Compose
-                    half3 finalColor = saturate(litArtwork + mirrorColor.rgb * mask + boostedDelta);
+                    // Compose with artwork alpha support
+                    half a = artworkSample.a;
+                    half3 baseUnder = mirrorColor.rgb * mask;
+                    half3 finalColor = saturate(baseUnder + a * (litArtwork + boostedDelta));
+
                     return half4(finalColor, 1);
                 }
+
                 ENDHLSL
             }
         }
