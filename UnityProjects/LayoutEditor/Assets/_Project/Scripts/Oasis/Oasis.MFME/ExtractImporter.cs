@@ -322,10 +322,10 @@ namespace Oasis.MFME
                 {
                     Graphics.OasisImage sourceImage = componentBackground.OasisImage;
 
-                    Vector2Int pointA = Vector2Int.zero;
-                    Vector2Int pointB = new Vector2Int(sourceImage.Width - 1, 0);
-                    Vector2Int pointC = new Vector2Int(sourceImage.Width - 1, sourceImage.Height - 1);
-                    Vector2Int pointD = new Vector2Int(0, sourceImage.Height - 1);
+                    UnityEngine.Vector2Int pointA = UnityEngine.Vector2Int.zero;
+                    UnityEngine.Vector2Int pointB = new UnityEngine.Vector2Int(sourceImage.Width - 1, 0);
+                    UnityEngine.Vector2Int pointC = new UnityEngine.Vector2Int(sourceImage.Width - 1, sourceImage.Height - 1);
+                    UnityEngine.Vector2Int pointD = new UnityEngine.Vector2Int(0, sourceImage.Height - 1);
 
                     float targetAspectRatio = sourceImage.Width / (float)sourceImage.Height;
 
