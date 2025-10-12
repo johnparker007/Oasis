@@ -77,18 +77,18 @@ namespace Oasis.LayoutEditor
             float normalisedOffset = (float)reelPosition / kTEMPReelYPositionCount;
 
             // TODO will need something better/ shared for this; on Impact, reels need to be reversed, but not on MPU4
-            switch(Editor.Instance.Project.Settings.FruitMachine.Platform)
+            switch (Editor.Instance.Project.Settings.FruitMachine.Platform)
             {
                 case MameController.PlatformType.Impact:
                 case MameController.PlatformType.Scorpion4:
-                    normalisedOffset = 1f - normalisedOffset; 
+                    normalisedOffset = 1f - normalisedOffset;
                     break;
                 case MameController.PlatformType.MPU4:
                 default:
                     break;
             }
 
-            if(ComponentReel.Reversed)
+            if (ComponentReel.Reversed)
             {
                 normalisedOffset = 1f - normalisedOffset;
             }
@@ -96,15 +96,29 @@ namespace Oasis.LayoutEditor
             // only tested for the 2d mfme style reels so far to test:
             // TODO pull these values out to ScriptableObjects or something, if can realtime adjust
             // during dev without needing restart that will make adding new techs far less painful!
+            float bandOffsetNormalisedToCorrectRendering = 
+                GetNormalisedBandOffsetToCorrectRendering(Editor.Instance.Project.Settings.FruitMachine.Platform, ComponentReel);
+
+            normalisedOffset += bandOffsetNormalisedToCorrectRendering;
+
+            // TODO don't new Vector each time
+            _material.mainTextureOffset = new Vector2(0f, normalisedOffset);
+        }
+
+        private static float GetNormalisedBandOffsetToCorrectRendering(
+            MameController.PlatformType platformType, ComponentReel componentReel)
+        {
             float bandOffsetNormalisedToCorrectRendering = 0f;
-            switch (Editor.Instance.Project.Settings.FruitMachine.Platform)
+
+            switch (platformType)
             {
                 case MameController.PlatformType.Impact:
                     // correct for JPM Impact (I think - Popeye):
                     bandOffsetNormalisedToCorrectRendering = -0.11f;
                     break;
                 case MameController.PlatformType.MPU4:
-                    switch(ComponentReel.Stops)
+                    // correct I think for Andy Capp
+                    switch (componentReel.Stops)
                     {
                         case 12:
                             bandOffsetNormalisedToCorrectRendering = -0.102f;
@@ -119,13 +133,14 @@ namespace Oasis.LayoutEditor
                     }
                     break;
                 case MameController.PlatformType.Scorpion4:
-                    switch (ComponentReel.Stops)
+                    // correct for Full Throttle
+                    switch (componentReel.Stops)
                     {
                         case 12:
-                            bandOffsetNormalisedToCorrectRendering = 0.643f + ((1f / 12f) * 1f) - ((1f/7f) * (1f/12f));
+                            bandOffsetNormalisedToCorrectRendering = 0.2f + ((1f/12f) * 0.4f) - (1f / 12f);
                             break;
                         case 16:
-                            bandOffsetNormalisedToCorrectRendering = 0.0905f;
+                            bandOffsetNormalisedToCorrectRendering = 0.1305f;
                             break;
                         case 24:
                             break;
@@ -133,14 +148,9 @@ namespace Oasis.LayoutEditor
                             break;
                     }
                     break;
-                default:
-                    break;
             }
 
-            normalisedOffset += bandOffsetNormalisedToCorrectRendering;
-
-            // TODO don't new Vector each time
-            _material.mainTextureOffset = new Vector2(0f, normalisedOffset);
+            return bandOffsetNormalisedToCorrectRendering;
         }
     }
 
