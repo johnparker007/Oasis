@@ -70,7 +70,14 @@ namespace Oasis.LayoutEditor
         {
             base.Refresh();
 
-            _image.color = ComponentBackground.Color;
+            if(_sprite == null)
+            {
+                _image.color = ComponentBackground.Color;
+            }
+            else
+            {
+                _image.color = Color.white;
+            }
         }
 
         protected override void UpdateStateFromEmulation()
