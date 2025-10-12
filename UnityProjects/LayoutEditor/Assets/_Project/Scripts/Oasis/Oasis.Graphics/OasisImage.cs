@@ -413,7 +413,7 @@ namespace Oasis.Graphics
                         ((homographyInverse[1, 0] * destinationX) + (homographyInverse[1, 1] * destinationY) + homographyInverse[1, 2]) /
                         denominator;
 
-                    Color32 sampledColor = SampleBilinearClamped(sourceImage, (float)sourceX, (float)sourceY);
+                    Color32 sampledColor = SampleBicubicClamped(sourceImage, (float)sourceX, (float)sourceY);
 
                     transformedImage.ImageData[(targetWidth * y) + x] = sampledColor;
                 }
@@ -613,6 +613,115 @@ namespace Oasis.Graphics
             inverse[2, 2] = ((matrix[0, 0] * matrix[1, 1]) - (matrix[0, 1] * matrix[1, 0])) * inverseDeterminant;
 
             return inverse;
+        }
+
+        private static Color GetPixelClamped(OasisImage sourceImage, int x, int y)
+        {
+            if (sourceImage == null)
+            {
+                throw new ArgumentNullException(nameof(sourceImage));
+            }
+
+            if (sourceImage.Width <= 0 || sourceImage.Height <= 0)
+            {
+                return new Color(0.0f, 0.0f, 0.0f, 0.0f);
+            }
+
+            int clampedX = Mathf.Clamp(x, 0, sourceImage.Width - 1);
+            int clampedY = Mathf.Clamp(y, 0, sourceImage.Height - 1);
+
+            return sourceImage.ImageData[(sourceImage.Width * clampedY) + clampedX];
+        }
+
+        private static float CubicCatmullRom(float value0, float value1, float value2, float value3, float t)
+        {
+            float t2 = t * t;
+            float t3 = t2 * t;
+
+            return 0.5f *
+                ((2.0f * value1) +
+                (-value0 + value2) * t +
+                ((2.0f * value0) - (5.0f * value1) + (4.0f * value2) - value3) * t2 +
+                (-value0 + (3.0f * value1) - (3.0f * value2) + value3) * t3);
+        }
+
+        private static Color CubicCatmullRom(Color value0, Color value1, Color value2, Color value3, float t)
+        {
+            return new Color(
+                CubicCatmullRom(value0.r, value1.r, value2.r, value3.r, t),
+                CubicCatmullRom(value0.g, value1.g, value2.g, value3.g, t),
+                CubicCatmullRom(value0.b, value1.b, value2.b, value3.b, t),
+                CubicCatmullRom(value0.a, value1.a, value2.a, value3.a, t));
+        }
+
+        private static Color32 SampleBicubicClamped(OasisImage sourceImage, float x, float y)
+        {
+            if (sourceImage == null)
+            {
+                throw new ArgumentNullException(nameof(sourceImage));
+            }
+
+            if (sourceImage.Width <= 0 || sourceImage.Height <= 0)
+            {
+                return new Color32(0, 0, 0, 0);
+            }
+
+            if (float.IsNaN(x) || float.IsNaN(y))
+            {
+                return new Color32(0, 0, 0, 0);
+            }
+
+            if (sourceImage.Width < 2 || sourceImage.Height < 2)
+            {
+                return SampleBilinearClamped(sourceImage, x, y);
+            }
+
+            float clampedX = Mathf.Clamp(x, 0.0f, sourceImage.Width - 1.0f);
+            float clampedY = Mathf.Clamp(y, 0.0f, sourceImage.Height - 1.0f);
+
+            int x0 = Mathf.FloorToInt(clampedX);
+            int y0 = Mathf.FloorToInt(clampedY);
+
+            float tx = clampedX - x0;
+            float ty = clampedY - y0;
+
+            Color row0 = CubicCatmullRom(
+                GetPixelClamped(sourceImage, x0 - 1, y0 - 1),
+                GetPixelClamped(sourceImage, x0, y0 - 1),
+                GetPixelClamped(sourceImage, x0 + 1, y0 - 1),
+                GetPixelClamped(sourceImage, x0 + 2, y0 - 1),
+                tx);
+
+            Color row1 = CubicCatmullRom(
+                GetPixelClamped(sourceImage, x0 - 1, y0),
+                GetPixelClamped(sourceImage, x0, y0),
+                GetPixelClamped(sourceImage, x0 + 1, y0),
+                GetPixelClamped(sourceImage, x0 + 2, y0),
+                tx);
+
+            Color row2 = CubicCatmullRom(
+                GetPixelClamped(sourceImage, x0 - 1, y0 + 1),
+                GetPixelClamped(sourceImage, x0, y0 + 1),
+                GetPixelClamped(sourceImage, x0 + 1, y0 + 1),
+                GetPixelClamped(sourceImage, x0 + 2, y0 + 1),
+                tx);
+
+            Color row3 = CubicCatmullRom(
+                GetPixelClamped(sourceImage, x0 - 1, y0 + 2),
+                GetPixelClamped(sourceImage, x0, y0 + 2),
+                GetPixelClamped(sourceImage, x0 + 1, y0 + 2),
+                GetPixelClamped(sourceImage, x0 + 2, y0 + 2),
+                tx);
+
+            Color blended = CubicCatmullRom(row0, row1, row2, row3, ty);
+
+            blended.r = Mathf.Clamp01(blended.r);
+            blended.g = Mathf.Clamp01(blended.g);
+            blended.b = Mathf.Clamp01(blended.b);
+            blended.a = Mathf.Clamp01(blended.a);
+
+            Color32 result = blended;
+            return result;
         }
 
         private static Color32 SampleBilinearClamped(OasisImage sourceImage, float x, float y)
