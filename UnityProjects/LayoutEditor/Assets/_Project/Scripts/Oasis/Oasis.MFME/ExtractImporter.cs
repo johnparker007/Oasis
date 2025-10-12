@@ -317,6 +317,32 @@ namespace Oasis.MFME
                     FileSystem.kBackgroundDirectoryName, extractComponentBackground.BmpImageFilename);
 
                 componentBackground.OasisImage = new Graphics.OasisImage(bmpImageFilePath, null, false);
+
+                if (componentBackground.OasisImage != null)
+                {
+                    Graphics.OasisImage sourceImage = componentBackground.OasisImage;
+
+                    Vector2Int pointA = Vector2Int.zero;
+                    Vector2Int pointB = new Vector2Int(sourceImage.Width - 1, 0);
+                    Vector2Int pointC = new Vector2Int(sourceImage.Width - 1, sourceImage.Height - 1);
+                    Vector2Int pointD = new Vector2Int(0, sourceImage.Height - 1);
+
+                    float targetAspectRatio = sourceImage.Width / (float)sourceImage.Height;
+
+                    Graphics.OasisImage transformedImage = Graphics.OasisImage.Transform(
+                        sourceImage,
+                        pointA,
+                        pointB,
+                        pointC,
+                        pointD,
+                        targetAspectRatio);
+
+                    byte[] pngBytes = transformedImage.GetAsPngBytes();
+                    string outputPath = Path.Combine(Application.dataPath, "testTransform.png");
+
+                    File.WriteAllBytes(outputPath, pngBytes);
+                    Debug.Log($"Saved test transform to {outputPath}");
+                }
             }
 
             componentBackground.Name = "Background";
