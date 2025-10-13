@@ -8,7 +8,7 @@ namespace Oasis.LayoutEditor
 {
     public class BaseViewQuadOverlay : MonoBehaviour
     {
-        private const float kHandleSize = 16f;
+        private const float kHandleSize = 48f;
         private const float kEdgeThickness = 2f;
         private const float kHandleOutlineThickness = 2f;
 
