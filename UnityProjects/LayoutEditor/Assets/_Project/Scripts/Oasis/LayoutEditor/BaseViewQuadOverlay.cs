@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using Oasis.Layout;
@@ -14,7 +15,8 @@ namespace Oasis.LayoutEditor
 
         private static readonly Color kFillColor = new Color(1.0f, 1.0f, 0.0f, 0.0f);
         private static readonly Color kEdgeColor = new Color(1.0f, 1.0f, 0.0f, 1.0f);
-        private static readonly Color kHandleColor = new Color(1.0f, 1.0f, 0.0f, 1.0f);
+        private static readonly Color kHandleColorActive = new Color(1.0f, 1.0f, 0.0f, 1.0f);
+        private static readonly Color kHandleColorInactive = new Color(1.0f, 1.0f, 0.0f, 0.25f);
 
         private readonly Vector2[] _points = new Vector2[Enum.GetValues(typeof(ViewQuad.PointTypes)).Length];
 
@@ -26,6 +28,9 @@ namespace Oasis.LayoutEditor
         private RectTransform[] _edgeRects;
         private BaseViewQuadHandle[] _handles;
         private Vector2 _lastContentSize = Vector2.zero;
+        private readonly Dictionary<int, int> _hoverPointerCounts = new Dictionary<int, int>();
+        private bool _isDraggingHandle = false;
+        private bool _handlesCurrentlyActive = false;
 
         private float ZoomLevel => _zoom != null ? Mathf.Max(_zoom.ZoomLevel, 0.0001f) : 1f;
 
@@ -75,6 +80,8 @@ namespace Oasis.LayoutEditor
             {
                 _handles[i] = CreateHandle(i);
             }
+
+            ApplyHandleColor();
         }
 
         private ViewQuadFillGraphic CreateFillGraphic()
@@ -91,7 +98,10 @@ namespace Oasis.LayoutEditor
 
             ViewQuadFillGraphic fillGraphic = fillObject.GetComponent<ViewQuadFillGraphic>();
             fillGraphic.color = kFillColor;
-            fillGraphic.raycastTarget = false;
+            fillGraphic.raycastTarget = true;
+
+            BaseViewQuadOverlayPointerArea pointerArea = fillObject.AddComponent<BaseViewQuadOverlayPointerArea>();
+            pointerArea.Initialize(this);
 
             return fillGraphic;
         }
@@ -124,7 +134,7 @@ namespace Oasis.LayoutEditor
             rect.pivot = new Vector2(0.5f, 0.5f);
 
             ViewQuadHandleGraphic handleGraphic = handleObject.GetComponent<ViewQuadHandleGraphic>();
-            handleGraphic.color = kHandleColor;
+            handleGraphic.color = kHandleColorInactive;
             handleGraphic.raycastTarget = true;
 
             BaseViewQuadHandle handle = handleObject.GetComponent<BaseViewQuadHandle>();
@@ -300,6 +310,8 @@ namespace Oasis.LayoutEditor
                     handleGraphic.LineWidth = kHandleOutlineThickness / ZoomLevel;
                 }
             }
+
+            ApplyHandleColor();
         }
 
         private void OnZoomLevelChanged(float zoom)
@@ -326,6 +338,106 @@ namespace Oasis.LayoutEditor
         {
             Rect rect = _contentRect.rect;
             return new Vector2(Mathf.Abs(rect.width), Mathf.Abs(rect.height));
+        }
+
+        private void ApplyHandleColor()
+        {
+            bool shouldBeActive = ShouldHandlesBeActive();
+            if (shouldBeActive == _handlesCurrentlyActive)
+            {
+                return;
+            }
+
+            _handlesCurrentlyActive = shouldBeActive;
+
+            if (_handles == null || _handles.Length == 0)
+            {
+                return;
+            }
+
+            Color targetColor = shouldBeActive ? kHandleColorActive : kHandleColorInactive;
+
+            for (int i = 0; i < _handles.Length; ++i)
+            {
+                if (_handles[i] == null)
+                {
+                    continue;
+                }
+
+                ViewQuadHandleGraphic handleGraphic = _handles[i].GetComponent<ViewQuadHandleGraphic>();
+                if (handleGraphic != null)
+                {
+                    handleGraphic.color = targetColor;
+                }
+            }
+        }
+
+        private bool ShouldHandlesBeActive()
+        {
+            return _hoverPointerCounts.Count > 0 && !_isDraggingHandle;
+        }
+
+        internal void NotifyPointerEnter(int pointerId)
+        {
+            if (_hoverPointerCounts.TryGetValue(pointerId, out int count))
+            {
+                _hoverPointerCounts[pointerId] = count + 1;
+            }
+            else
+            {
+                _hoverPointerCounts[pointerId] = 1;
+            }
+
+            ApplyHandleColor();
+        }
+
+        internal void NotifyPointerExit(int pointerId)
+        {
+            if (!_hoverPointerCounts.TryGetValue(pointerId, out int count))
+            {
+                return;
+            }
+
+            count--;
+            if (count <= 0)
+            {
+                _hoverPointerCounts.Remove(pointerId);
+            }
+            else
+            {
+                _hoverPointerCounts[pointerId] = count;
+            }
+
+            ApplyHandleColor();
+        }
+
+        internal void NotifyHandleDragBegin()
+        {
+            if (_isDraggingHandle)
+            {
+                return;
+            }
+
+            _isDraggingHandle = true;
+            ApplyHandleColor();
+        }
+
+        internal void NotifyHandleDragEnd()
+        {
+            if (!_isDraggingHandle)
+            {
+                return;
+            }
+
+            _isDraggingHandle = false;
+            ApplyHandleColor();
+        }
+
+        private void OnDisable()
+        {
+            _hoverPointerCounts.Clear();
+            _isDraggingHandle = false;
+            ApplyHandleColor();
         }
     }
 }
