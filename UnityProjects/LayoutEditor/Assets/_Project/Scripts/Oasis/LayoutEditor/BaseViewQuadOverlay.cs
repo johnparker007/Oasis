@@ -297,7 +297,7 @@ namespace Oasis.LayoutEditor
                 ViewQuadHandleGraphic handleGraphic = _handles[i].GetComponent<ViewQuadHandleGraphic>();
                 if (handleGraphic != null)
                 {
-                    handleGraphic.LineWidth = Mathf.Max(1f, kHandleOutlineThickness / ZoomLevel);
+                    handleGraphic.LineWidth = kHandleOutlineThickness / ZoomLevel;
                 }
             }
         }
