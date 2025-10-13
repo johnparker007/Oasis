@@ -67,13 +67,20 @@ namespace Oasis.LayoutEditor
                 if(!Mathf.Approximately(newZoom, previousZoom))
                 {
                     bool hasLocalPoint = RectTransformUtility.ScreenPointToLocalPointInRectangle(EditorCanvasRectTransform, Input.mousePosition, null, out Vector2 localPoint);
+                    bool hasParentPoint = false;
+                    Vector2 parentLocalPoint = Vector2.zero;
+                    RectTransform parentRectTransform = EditorCanvasRectTransform.parent as RectTransform;
+
+                    if(parentRectTransform != null)
+                    {
+                        hasParentPoint = RectTransformUtility.ScreenPointToLocalPointInRectangle(parentRectTransform, Input.mousePosition, null, out parentLocalPoint);
+                    }
+
                     ZoomLevel = newZoom;
 
-                    if(hasLocalPoint)
+                    if(hasLocalPoint && hasParentPoint)
                     {
-                        Vector2 anchoredPosition = EditorCanvasRectTransform.anchoredPosition;
-                        anchoredPosition += localPoint * (previousZoom - newZoom);
-                        EditorCanvasRectTransform.anchoredPosition = anchoredPosition;
+                        EditorCanvasRectTransform.anchoredPosition = parentLocalPoint - (localPoint * newZoom);
                     }
                 }
             }
