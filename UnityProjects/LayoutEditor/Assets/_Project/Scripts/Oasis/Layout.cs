@@ -185,6 +185,9 @@ namespace Oasis
             float heightLeft = Vector2.Distance(viewQuadPoints[(int)ViewQuad.PointTypes.TopLeft], viewQuadPoints[(int)ViewQuad.PointTypes.BottomLeft]);
             float heightRight = Vector2.Distance(viewQuadPoints[(int)ViewQuad.PointTypes.TopRight], viewQuadPoints[(int)ViewQuad.PointTypes.BottomRight]);
 
+            // TODO this aspect ratio calc is just placeholder - ultimately there will be a 'cabinet' loaded from the
+            // cabinet editor, and the view quad will be linked to one of the cabinet panels, and then the aspect ratio
+            // will come from that cabinet panel width/height
             float maxWidth = Mathf.Max(widthTop, widthBottom);
             float maxHeight = Mathf.Max(heightLeft, heightRight);
 
