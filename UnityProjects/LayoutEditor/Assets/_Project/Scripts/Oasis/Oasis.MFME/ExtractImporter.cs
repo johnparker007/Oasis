@@ -318,30 +318,44 @@ namespace Oasis.MFME
 
                 componentBackground.OasisImage = new Graphics.OasisImage(bmpImageFilePath, null, false);
 
-                if (componentBackground.OasisImage != null)
+                // JP This is just test code - once the perspective quad selection tool and image/view 
+                // creation stuff is working properly, this can be discarded:
+                const bool kDebugTestOasisImageTransform = false;
+                if(kDebugTestOasisImageTransform)
                 {
-                    Graphics.OasisImage sourceImage = componentBackground.OasisImage;
+                    if (componentBackground.OasisImage != null)
+                    {
+                        Graphics.OasisImage sourceImage = componentBackground.OasisImage;
 
-                    UnityEngine.Vector2Int pointA = UnityEngine.Vector2Int.zero;
-                    UnityEngine.Vector2Int pointB = new UnityEngine.Vector2Int(sourceImage.Width - 1, 0);
-                    UnityEngine.Vector2Int pointC = new UnityEngine.Vector2Int(sourceImage.Width - 1, sourceImage.Height - 1);
-                    UnityEngine.Vector2Int pointD = new UnityEngine.Vector2Int(0, sourceImage.Height - 1);
+                        // correct, but both x and y flipped:
+                        //UnityEngine.Vector2Int pointA = new UnityEngine.Vector2Int(439, sourceImage.Height - 1312);
+                        //UnityEngine.Vector2Int pointB = new UnityEngine.Vector2Int(1600, sourceImage.Height - 1312);
+                        //UnityEngine.Vector2Int pointC = new UnityEngine.Vector2Int(1678, sourceImage.Height - 1811);
+                        //UnityEngine.Vector2Int pointD = new UnityEngine.Vector2Int(360, sourceImage.Height - 1811);
 
-                    float targetAspectRatio = sourceImage.Width / (float)sourceImage.Height;
+                        // WORKING (for Full Thottle DX lower glass) - no x/y flip issue
+                        UnityEngine.Vector2Int pointA = new UnityEngine.Vector2Int(360, sourceImage.Height - 1811);
+                        UnityEngine.Vector2Int pointB = new UnityEngine.Vector2Int(1678, sourceImage.Height - 1811);
+                        UnityEngine.Vector2Int pointC = new UnityEngine.Vector2Int(1600, sourceImage.Height - 1312);
+                        UnityEngine.Vector2Int pointD = new UnityEngine.Vector2Int(439, sourceImage.Height - 1312);
 
-                    Graphics.OasisImage transformedImage = Graphics.OasisImage.Transform(
-                        sourceImage,
-                        pointA,
-                        pointB,
-                        pointC,
-                        pointD,
-                        targetAspectRatio);
+                        //float targetAspectRatio = sourceImage.Width / (float)sourceImage.Height;
+                        float targetAspectRatio = 1518 / (float)728;
 
-                    byte[] pngBytes = transformedImage.GetAsPngBytes();
-                    string outputPath = Path.Combine(Application.dataPath, "testTransform.png");
+                        Graphics.OasisImage transformedImage = Graphics.OasisImage.Transform(
+                            sourceImage,
+                            pointA,
+                            pointB,
+                            pointC,
+                            pointD,
+                            targetAspectRatio);
 
-                    File.WriteAllBytes(outputPath, pngBytes);
-                    Debug.Log($"Saved test transform to {outputPath}");
+                        byte[] pngBytes = transformedImage.GetAsPngBytes();
+                        string outputPath = Path.Combine(Application.persistentDataPath, "testTransform.png");
+
+                        File.WriteAllBytes(outputPath, pngBytes);
+                        Debug.LogError($"Saved test transform to {outputPath}");
+                    }
                 }
             }
 
