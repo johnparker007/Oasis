@@ -13,6 +13,8 @@ namespace Oasis.LayoutEditor
         public const string kBaseViewName = "Base";
         public const string kMameViewName = "Mame";
 
+        private BaseViewQuadOverlay _baseViewQuadOverlay = null;
+
         
 
         public PanelTab ViewMamePanelTab
@@ -102,7 +104,58 @@ namespace Oasis.LayoutEditor
 
         public void SetBaseViewQuadsActive(bool active)
         {
-            // TODO
+            if (active)
+            {
+                BaseViewQuadOverlay overlay = GetOrCreateBaseViewQuadOverlay();
+                if (overlay != null)
+                {
+                    overlay.SetActive(true);
+                }
+            }
+            else if (_baseViewQuadOverlay != null)
+            {
+                _baseViewQuadOverlay.SetActive(false);
+            }
+        }
+
+        private BaseViewQuadOverlay GetOrCreateBaseViewQuadOverlay()
+        {
+            if (_baseViewQuadOverlay != null)
+            {
+                return _baseViewQuadOverlay;
+            }
+
+            View baseView = Editor.Instance.Project.Layout.BaseView;
+            if (baseView == null)
+            {
+                return null;
+            }
+
+            EditorView editorView = baseView.EditorView;
+            if (editorView == null || editorView.Content == null)
+            {
+                return null;
+            }
+
+            RectTransform contentRect = editorView.Content.GetComponent<RectTransform>();
+            if (contentRect == null)
+            {
+                return null;
+            }
+
+            GameObject overlayObject = new GameObject("BaseViewQuadOverlay", typeof(RectTransform), typeof(BaseViewQuadOverlay));
+            overlayObject.transform.SetParent(contentRect, false);
+
+            BaseViewQuadOverlay overlay = overlayObject.GetComponent<BaseViewQuadOverlay>();
+
+            EditorPanel editorPanel = editorView.GetComponentInParent<EditorPanel>();
+            Zoom zoom = editorPanel != null ? editorPanel.Zoom : null;
+
+            overlay.Initialize(baseView, contentRect, zoom);
+
+            _baseViewQuadOverlay = overlay;
+
+            return _baseViewQuadOverlay;
         }
             
 
