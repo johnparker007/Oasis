@@ -49,7 +49,7 @@ namespace Oasis.Utility
 
         public override void OnScroll(PointerEventData data)
         {
-            if(Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
+            if(UnityEngine.Input.GetKey(KeyCode.LeftControl) || UnityEngine.Input.GetKey(KeyCode.RightControl))
             {
                 data.Use();
                 return;
