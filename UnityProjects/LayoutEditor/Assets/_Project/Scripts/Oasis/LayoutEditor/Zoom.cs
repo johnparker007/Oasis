@@ -7,7 +7,7 @@ namespace Oasis.LayoutEditor
     using UnityEngine;
     using UnityEngine.EventSystems;
 
-    public class Zoom : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+    public class Zoom : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IScrollHandler
     {
         public float InitialZoomLevel = 1f;
         public float MinimumZoomLevel = 0.125f;
@@ -55,10 +55,15 @@ namespace Oasis.LayoutEditor
                 return;
             }
 
-            if((Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
-                && Input.mouseScrollDelta.y != 0f)
+            if((Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)))
             {
                 float scrollDelta = Input.mouseScrollDelta.y;
+
+                if(Mathf.Approximately(scrollDelta, 0f))
+                {
+                    return;
+                }
+
                 float previousZoom = ZoomLevel;
                 float step = Mathf.Max(0.0001f, _zoomStep);
                 float zoomFactor = Mathf.Pow(1f + step, scrollDelta);
@@ -66,46 +71,7 @@ namespace Oasis.LayoutEditor
 
                 if(!Mathf.Approximately(newZoom, previousZoom))
                 {
-                    bool hasLocalPoint = RectTransformUtility.ScreenPointToLocalPointInRectangle(EditorCanvasRectTransform, Input.mousePosition, null, out Vector2 localPoint);
-                    bool hasParentPoint = false;
-                    Vector2 parentLocalPoint = Vector2.zero;
-                    RectTransform parentRectTransform = EditorCanvasRectTransform.parent as RectTransform;
-
-                    if(parentRectTransform != null)
-                    {
-                        hasParentPoint = RectTransformUtility.ScreenPointToLocalPointInRectangle(parentRectTransform, Input.mousePosition, null, out parentLocalPoint);
-                    }
-
                     ZoomLevel = newZoom;
-
-                    if(hasLocalPoint && hasParentPoint && parentRectTransform != null)
-                    {
-                        Vector2 scaleSign = new Vector2(
-                            Mathf.Sign(EditorCanvasRectTransform.lossyScale.x),
-                            Mathf.Sign(EditorCanvasRectTransform.lossyScale.y));
-
-                        if(scaleSign.x == 0f)
-                        {
-                            scaleSign.x = 1f;
-                        }
-
-                        if(scaleSign.y == 0f)
-                        {
-                            scaleSign.y = 1f;
-                        }
-
-                        Vector2 scaledLocalPoint = Vector2.Scale(localPoint * newZoom, scaleSign);
-                        Vector2 targetLocalPosition = parentLocalPoint - scaledLocalPoint;
-
-                        Vector2 parentSize = parentRectTransform.rect.size;
-                        Vector2 parentPivotOffset = Vector2.Scale(parentSize, parentRectTransform.pivot);
-                        Vector2 anchorAverage = Vector2.Scale(
-                            parentSize,
-                            (EditorCanvasRectTransform.anchorMin + EditorCanvasRectTransform.anchorMax) * 0.5f);
-                        Vector2 anchorReferencePoint = anchorAverage - parentPivotOffset;
-
-                        EditorCanvasRectTransform.anchoredPosition = targetLocalPosition - anchorReferencePoint;
-                    }
                 }
             }
         }
@@ -118,6 +84,14 @@ namespace Oasis.LayoutEditor
         void IPointerExitHandler.OnPointerExit(PointerEventData eventData)
         {
             PointerEntered = false;
+        }
+
+        void IScrollHandler.OnScroll(PointerEventData eventData)
+        {
+            if(Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
+            {
+                eventData.Use();
+            }
         }
 
     }
