@@ -12,6 +12,9 @@ namespace Oasis.LayoutEditor
         public float InitialZoomLevel = 1f;
         public float MinimumZoomLevel = 0.125f;
         public float MaximumZoomLevel = 16f;
+        [SerializeField]
+        [Tooltip("Fractional amount applied to each zoom step (e.g. 0.1 = 10% change per scroll).")]
+        private float _zoomStep = 0.1f;
 
 
         public RectTransform EditorCanvasRectTransform;
@@ -55,15 +58,24 @@ namespace Oasis.LayoutEditor
             if((Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
                 && Input.mouseScrollDelta.y != 0f)
             {
-                if(Input.mouseScrollDelta.y < 0f)
+                float scrollDelta = Input.mouseScrollDelta.y;
+                float previousZoom = ZoomLevel;
+                float step = Mathf.Max(0.0001f, _zoomStep);
+                float zoomFactor = Mathf.Pow(1f + step, scrollDelta);
+                float newZoom = Mathf.Clamp(previousZoom * zoomFactor, MinimumZoomLevel, MaximumZoomLevel);
+
+                if(!Mathf.Approximately(newZoom, previousZoom))
                 {
-                    ZoomLevel *= 0.5f;
+                    bool hasLocalPoint = RectTransformUtility.ScreenPointToLocalPointInRectangle(EditorCanvasRectTransform, Input.mousePosition, null, out Vector2 localPoint);
+                    ZoomLevel = newZoom;
+
+                    if(hasLocalPoint)
+                    {
+                        Vector2 anchoredPosition = EditorCanvasRectTransform.anchoredPosition;
+                        anchoredPosition += localPoint * (previousZoom - newZoom);
+                        EditorCanvasRectTransform.anchoredPosition = anchoredPosition;
+                    }
                 }
-                else
-                {
-                    ZoomLevel *= 2f;
-                }
-                ZoomLevel = Mathf.Clamp(ZoomLevel, MinimumZoomLevel, MaximumZoomLevel);
             }
         }
 
