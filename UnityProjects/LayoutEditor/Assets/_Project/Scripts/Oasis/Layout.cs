@@ -172,10 +172,13 @@ namespace Oasis
                 return;
             }
 
-            Vector2Int pointA = ConvertViewQuadPointToImagePoint(viewQuadPoints[(int)ViewQuad.PointTypes.TopLeft], sourceImage);
-            Vector2Int pointB = ConvertViewQuadPointToImagePoint(viewQuadPoints[(int)ViewQuad.PointTypes.TopRight], sourceImage);
-            Vector2Int pointC = ConvertViewQuadPointToImagePoint(viewQuadPoints[(int)ViewQuad.PointTypes.BottomRight], sourceImage);
-            Vector2Int pointD = ConvertViewQuadPointToImagePoint(viewQuadPoints[(int)ViewQuad.PointTypes.BottomLeft], sourceImage);
+            // The OasisImage.Transform implementation expects the corner points to be supplied in the
+            // same order as the working debug routine (bottom-left, bottom-right, top-right, top-left)
+            // otherwise the output becomes flipped. Match that ordering when converting the base view quad.
+            Vector2Int pointA = ConvertViewQuadPointToImagePoint(viewQuadPoints[(int)ViewQuad.PointTypes.BottomLeft], sourceImage);
+            Vector2Int pointB = ConvertViewQuadPointToImagePoint(viewQuadPoints[(int)ViewQuad.PointTypes.BottomRight], sourceImage);
+            Vector2Int pointC = ConvertViewQuadPointToImagePoint(viewQuadPoints[(int)ViewQuad.PointTypes.TopRight], sourceImage);
+            Vector2Int pointD = ConvertViewQuadPointToImagePoint(viewQuadPoints[(int)ViewQuad.PointTypes.TopLeft], sourceImage);
 
             float widthTop = Vector2.Distance(viewQuadPoints[(int)ViewQuad.PointTypes.TopLeft], viewQuadPoints[(int)ViewQuad.PointTypes.TopRight]);
             float widthBottom = Vector2.Distance(viewQuadPoints[(int)ViewQuad.PointTypes.BottomLeft], viewQuadPoints[(int)ViewQuad.PointTypes.BottomRight]);
