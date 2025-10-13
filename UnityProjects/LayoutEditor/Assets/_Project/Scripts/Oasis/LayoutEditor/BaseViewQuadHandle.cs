@@ -4,7 +4,7 @@ using UnityEngine.EventSystems;
 namespace Oasis.LayoutEditor
 {
     [RequireComponent(typeof(RectTransform))]
-    public class BaseViewQuadHandle : MonoBehaviour, IPointerDownHandler, IDragHandler
+    public class BaseViewQuadHandle : MonoBehaviour, IPointerDownHandler, IDragHandler, IPointerEnterHandler, IPointerExitHandler
     {
         private BaseViewQuadOverlay _overlay;
         private int _index;
@@ -48,6 +48,16 @@ namespace Oasis.LayoutEditor
                 layoutPoint += _dragOffset;
                 _overlay.SetPointFromHandle(_index, layoutPoint);
             }
+        }
+
+        public void OnPointerEnter(PointerEventData eventData)
+        {
+            _overlay.SetHandleHoverState(_index, true);
+        }
+
+        public void OnPointerExit(PointerEventData eventData)
+        {
+            _overlay.SetHandleHoverState(_index, false);
         }
     }
 }

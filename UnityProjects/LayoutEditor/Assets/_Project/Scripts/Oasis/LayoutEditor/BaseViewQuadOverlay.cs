@@ -12,6 +12,9 @@ namespace Oasis.LayoutEditor
         private const float kEdgeThickness = 2f;
         private const float kHandleOutlineThickness = 2f;
 
+        private const float kHandleHoverAlpha = 1f;
+        private const float kHandleIdleAlpha = 0.25f;
+
         private static readonly Color kFillColor = new Color(1.0f, 1.0f, 0.0f, 0.0f);
         private static readonly Color kEdgeColor = new Color(1.0f, 1.0f, 0.0f, 1.0f);
         private static readonly Color kHandleColor = new Color(1.0f, 1.0f, 0.0f, 1.0f);
@@ -24,6 +27,7 @@ namespace Oasis.LayoutEditor
         private RectTransform _rectTransform;
         private ViewQuadFillGraphic _fillGraphic;
         private RectTransform[] _edgeRects;
+        private ViewQuadHandleGraphic[] _handleGraphics;
         private BaseViewQuadHandle[] _handles;
         private Vector2 _lastContentSize = Vector2.zero;
 
@@ -64,6 +68,7 @@ namespace Oasis.LayoutEditor
         {
             _fillGraphic = CreateFillGraphic();
             _edgeRects = new RectTransform[_points.Length];
+            _handleGraphics = new ViewQuadHandleGraphic[_points.Length];
             _handles = new BaseViewQuadHandle[_points.Length];
 
             for (int i = 0; i < _points.Length; ++i)
@@ -75,6 +80,8 @@ namespace Oasis.LayoutEditor
             {
                 _handles[i] = CreateHandle(i);
             }
+
+            ResetAllHandleHoverStates();
         }
 
         private ViewQuadFillGraphic CreateFillGraphic()
@@ -124,13 +131,51 @@ namespace Oasis.LayoutEditor
             rect.pivot = new Vector2(0.5f, 0.5f);
 
             ViewQuadHandleGraphic handleGraphic = handleObject.GetComponent<ViewQuadHandleGraphic>();
-            handleGraphic.color = kHandleColor;
+            handleGraphic.color = GetHandleColorWithAlpha(kHandleIdleAlpha);
             handleGraphic.raycastTarget = true;
 
+            _handleGraphics[index] = handleGraphic;
             BaseViewQuadHandle handle = handleObject.GetComponent<BaseViewQuadHandle>();
             handle.Initialize(this, index);
 
             return handle;
+        }
+
+        private Color GetHandleColorWithAlpha(float alpha)
+        {
+            Color color = kHandleColor;
+            color.a = alpha;
+            return color;
+        }
+
+        private void ResetAllHandleHoverStates()
+        {
+            if (_handleGraphics == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < _handleGraphics.Length; ++i)
+            {
+                SetHandleHoverState(i, false);
+            }
+        }
+
+        internal void SetHandleHoverState(int index, bool isHovering)
+        {
+            if (_handleGraphics == null || index < 0 || index >= _handleGraphics.Length)
+            {
+                return;
+            }
+
+            ViewQuadHandleGraphic handleGraphic = _handleGraphics[index];
+            if (handleGraphic == null)
+            {
+                return;
+            }
+
+            float targetAlpha = isHovering ? kHandleHoverAlpha : kHandleIdleAlpha;
+            handleGraphic.color = GetHandleColorWithAlpha(targetAlpha);
         }
 
         private void OnDestroy()
@@ -149,6 +194,7 @@ namespace Oasis.LayoutEditor
             {
                 CopyPointsFromView();
                 RefreshVisuals();
+                ResetAllHandleHoverStates();
             }
         }
 
