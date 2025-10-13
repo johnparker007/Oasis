@@ -10,6 +10,7 @@ namespace Oasis.LayoutEditor
     {
         private const float kHandleSize = 16f;
         private const float kEdgeThickness = 2f;
+        private const float kHandleOutlineThickness = 2f;
 
         private static readonly Color kFillColor = new Color(1.0f, 1.0f, 0.0f, 0.0f);
         private static readonly Color kEdgeColor = new Color(1.0f, 1.0f, 0.0f, 1.0f);
@@ -114,7 +115,7 @@ namespace Oasis.LayoutEditor
 
         private BaseViewQuadHandle CreateHandle(int index)
         {
-            GameObject handleObject = new GameObject($"Handle{index}", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(BaseViewQuadHandle));
+            GameObject handleObject = new GameObject($"Handle{index}", typeof(RectTransform), typeof(CanvasRenderer), typeof(ViewQuadHandleGraphic), typeof(BaseViewQuadHandle));
             handleObject.transform.SetParent(transform, false);
 
             RectTransform rect = handleObject.GetComponent<RectTransform>();
@@ -122,9 +123,9 @@ namespace Oasis.LayoutEditor
             rect.anchorMax = new Vector2(0f, 1f);
             rect.pivot = new Vector2(0.5f, 0.5f);
 
-            Image image = handleObject.GetComponent<Image>();
-            image.color = kHandleColor;
-            image.raycastTarget = true;
+            ViewQuadHandleGraphic handleGraphic = handleObject.GetComponent<ViewQuadHandleGraphic>();
+            handleGraphic.color = kHandleColor;
+            handleGraphic.raycastTarget = true;
 
             BaseViewQuadHandle handle = handleObject.GetComponent<BaseViewQuadHandle>();
             handle.Initialize(this, index);
@@ -292,6 +293,12 @@ namespace Oasis.LayoutEditor
                 RectTransform rect = _handles[i].RectTransform;
                 rect.anchoredPosition = LayoutToAnchored(_points[i]);
                 rect.sizeDelta = new Vector2(size, size);
+
+                ViewQuadHandleGraphic handleGraphic = _handles[i].GetComponent<ViewQuadHandleGraphic>();
+                if (handleGraphic != null)
+                {
+                    handleGraphic.LineWidth = Mathf.Max(1f, kHandleOutlineThickness / ZoomLevel);
+                }
             }
         }
 
