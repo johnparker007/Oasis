@@ -80,7 +80,22 @@ namespace Oasis.LayoutEditor
 
                     if(hasLocalPoint && hasParentPoint)
                     {
-                        EditorCanvasRectTransform.anchoredPosition = parentLocalPoint - (localPoint * newZoom);
+                        Vector2 scaleSign = new Vector2(
+                            Mathf.Sign(EditorCanvasRectTransform.lossyScale.x),
+                            Mathf.Sign(EditorCanvasRectTransform.lossyScale.y));
+
+                        if(scaleSign.x == 0f)
+                        {
+                            scaleSign.x = 1f;
+                        }
+
+                        if(scaleSign.y == 0f)
+                        {
+                            scaleSign.y = 1f;
+                        }
+
+                        Vector2 scaledLocalPoint = Vector2.Scale(localPoint * newZoom, scaleSign);
+                        EditorCanvasRectTransform.anchoredPosition = parentLocalPoint - scaledLocalPoint;
                     }
                 }
             }
