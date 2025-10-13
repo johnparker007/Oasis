@@ -11,9 +11,9 @@ namespace Oasis.LayoutEditor
         private const float kHandleSize = 16f;
         private const float kEdgeThickness = 2f;
 
-        private static readonly Color kFillColor = new Color(0.2f, 0.6f, 1f, 0.1f);
-        private static readonly Color kEdgeColor = new Color(0.2f, 0.6f, 1f, 0.8f);
-        private static readonly Color kHandleColor = new Color(0.2f, 0.6f, 1f, 1f);
+        private static readonly Color kFillColor = new Color(1.0f, 1.0f, 0.0f, 0.0f);
+        private static readonly Color kEdgeColor = new Color(1.0f, 1.0f, 0.0f, 1.0f);
+        private static readonly Color kHandleColor = new Color(1.0f, 1.0f, 0.0f, 1.0f);
 
         private readonly Vector2[] _points = new Vector2[Enum.GetValues(typeof(ViewQuad.PointTypes)).Length];
 
