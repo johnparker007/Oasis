@@ -206,8 +206,7 @@ namespace Oasis.LayoutEditor
 
         private Vector2 LocalToLayout(Vector2 localPoint)
         {
-            float zoom = ZoomLevel;
-            return new Vector2(localPoint.x / zoom, -localPoint.y / zoom);
+            return new Vector2(localPoint.x, -localPoint.y);
         }
 
         private Vector2 LayoutToAnchored(Vector2 layoutPoint)
