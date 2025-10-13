@@ -66,6 +66,7 @@ namespace Oasis.NativeMenu
                 Item("View/Rebuild MAME View", 153, handler.OnViewRebuildMameView),
                 Item("View/Show Base ViewQuads", 164, handler.OnViewShowBaseViewQuads),
                 Item("View/Hide Base ViewQuads", 165, handler.OnViewHideBaseViewQuads),
+                Item("View/Output Transformed ViewQuad", 166, handler.OnViewOutputTransformedViewQuad),
 
                 Item("Background/Upscale", 166, handler.OnBackgroundUpscale),
                 Item("Background/Local Normalise", 167, handler.OnBackgroundLocalNormalise),

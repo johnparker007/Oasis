@@ -247,6 +247,11 @@ namespace Oasis.NativeMenu.Editor
         [MenuItem(MenuPrefix + "/View/Hide Base ViewQuads", true, 165)]
         private static bool ViewHideBaseViewquadsValidate() => Validate("View/Hide Base ViewQuads");
 
+        [MenuItem(MenuPrefix + "/View/Output Transformed ViewQuad", priority = 166)]
+        private static void ViewOutputTransformedViewquad() => Execute("View/Output Transformed ViewQuad");
+        [MenuItem(MenuPrefix + "/View/Output Transformed ViewQuad", true, 166)]
+        private static bool ViewOutputTransformedViewquadValidate() => Validate("View/Output Transformed ViewQuad");
+
         [MenuItem(MenuPrefix + "/Background/Upscale", priority = 166)]
         private static void BackgroundUpscale() => Execute("Background/Upscale");
         [MenuItem(MenuPrefix + "/Background/Upscale", true, 166)]
