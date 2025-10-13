@@ -78,7 +78,7 @@ namespace Oasis.LayoutEditor
 
                     ZoomLevel = newZoom;
 
-                    if(hasLocalPoint && hasParentPoint)
+                    if(hasLocalPoint && hasParentPoint && parentRectTransform != null)
                     {
                         Vector2 scaleSign = new Vector2(
                             Mathf.Sign(EditorCanvasRectTransform.lossyScale.x),
@@ -95,7 +95,16 @@ namespace Oasis.LayoutEditor
                         }
 
                         Vector2 scaledLocalPoint = Vector2.Scale(localPoint * newZoom, scaleSign);
-                        EditorCanvasRectTransform.anchoredPosition = parentLocalPoint - scaledLocalPoint;
+                        Vector2 targetLocalPosition = parentLocalPoint - scaledLocalPoint;
+
+                        Vector2 parentSize = parentRectTransform.rect.size;
+                        Vector2 parentPivotOffset = Vector2.Scale(parentSize, parentRectTransform.pivot);
+                        Vector2 anchorAverage = Vector2.Scale(
+                            parentSize,
+                            (EditorCanvasRectTransform.anchorMin + EditorCanvasRectTransform.anchorMax) * 0.5f);
+                        Vector2 anchorReferencePoint = anchorAverage - parentPivotOffset;
+
+                        EditorCanvasRectTransform.anchoredPosition = targetLocalPosition - anchorReferencePoint;
                     }
                 }
             }
