@@ -116,5 +116,108 @@ namespace Oasis
         {
             BaseView.RemapLamps(mfmeLampTable, mameLampTable);
         }
+
+        public void OutputTransformedViewQuad()
+        {
+            View baseView = BaseView;
+            if (baseView == null)
+            {
+                Debug.LogWarning("The loaded layout does not contain a base view.");
+                return;
+            }
+
+            ComponentBackground backgroundComponent = null;
+            foreach (Component component in baseView.Data.Components)
+            {
+                if (component is ComponentBackground candidate && candidate.OasisImage != null)
+                {
+                    backgroundComponent = candidate;
+                    break;
+                }
+            }
+
+            if (backgroundComponent == null || backgroundComponent.OasisImage == null)
+            {
+                Debug.LogWarning("The base view does not contain a background image to transform.");
+                return;
+            }
+
+            Oasis.Graphics.OasisImage sourceImage = backgroundComponent.OasisImage;
+            if (sourceImage.Width <= 0 || sourceImage.Height <= 0)
+            {
+                Debug.LogWarning("The background image has invalid dimensions.");
+                return;
+            }
+
+            Vector2[] viewQuadPoints = baseView.Data.ViewQuad?.Points;
+            if (viewQuadPoints == null || viewQuadPoints.Length < 4)
+            {
+                Debug.LogWarning("The base view quad is not defined.");
+                return;
+            }
+
+            bool hasConfiguredPoint = false;
+            foreach (Vector2 point in viewQuadPoints)
+            {
+                if (!Mathf.Approximately(point.x, 0f) || !Mathf.Approximately(point.y, 0f))
+                {
+                    hasConfiguredPoint = true;
+                    break;
+                }
+            }
+
+            if (!hasConfiguredPoint)
+            {
+                Debug.LogWarning("The base view quad has not been configured.");
+                return;
+            }
+
+            Vector2Int pointA = ConvertViewQuadPointToImagePoint(viewQuadPoints[(int)ViewQuad.PointTypes.TopLeft], sourceImage);
+            Vector2Int pointB = ConvertViewQuadPointToImagePoint(viewQuadPoints[(int)ViewQuad.PointTypes.TopRight], sourceImage);
+            Vector2Int pointC = ConvertViewQuadPointToImagePoint(viewQuadPoints[(int)ViewQuad.PointTypes.BottomRight], sourceImage);
+            Vector2Int pointD = ConvertViewQuadPointToImagePoint(viewQuadPoints[(int)ViewQuad.PointTypes.BottomLeft], sourceImage);
+
+            float widthTop = Vector2.Distance(viewQuadPoints[(int)ViewQuad.PointTypes.TopLeft], viewQuadPoints[(int)ViewQuad.PointTypes.TopRight]);
+            float widthBottom = Vector2.Distance(viewQuadPoints[(int)ViewQuad.PointTypes.BottomLeft], viewQuadPoints[(int)ViewQuad.PointTypes.BottomRight]);
+            float heightLeft = Vector2.Distance(viewQuadPoints[(int)ViewQuad.PointTypes.TopLeft], viewQuadPoints[(int)ViewQuad.PointTypes.BottomLeft]);
+            float heightRight = Vector2.Distance(viewQuadPoints[(int)ViewQuad.PointTypes.TopRight], viewQuadPoints[(int)ViewQuad.PointTypes.BottomRight]);
+
+            float maxWidth = Mathf.Max(widthTop, widthBottom);
+            float maxHeight = Mathf.Max(heightLeft, heightRight);
+
+            if (maxWidth <= Mathf.Epsilon || maxHeight <= Mathf.Epsilon)
+            {
+                Debug.LogWarning("The base view quad does not have a valid size.");
+                return;
+            }
+
+            float targetAspectRatio = maxWidth / maxHeight;
+
+            Oasis.Graphics.OasisImage transformedImage = Oasis.Graphics.OasisImage.Transform(
+                sourceImage,
+                pointA,
+                pointB,
+                pointC,
+                pointD,
+                targetAspectRatio);
+
+            byte[] pngBytes = transformedImage.GetAsPngBytes();
+            string outputPath = Path.Combine(Application.persistentDataPath, "transformedViewQuad.png");
+
+            File.WriteAllBytes(outputPath, pngBytes);
+            Debug.Log($"Saved transformed ViewQuad image to {outputPath}");
+        }
+
+        private static Vector2Int ConvertViewQuadPointToImagePoint(Vector2 layoutPoint, Oasis.Graphics.OasisImage sourceImage)
+        {
+            int x = Mathf.RoundToInt(layoutPoint.x);
+            int y = Mathf.RoundToInt(layoutPoint.y);
+
+            int clampedX = Mathf.Clamp(x, 0, Mathf.Max(0, sourceImage.Width - 1));
+            int flippedY = sourceImage.Height - 1 - y;
+            flippedY = Mathf.Clamp(flippedY, 0, Mathf.Max(0, sourceImage.Height - 1));
+
+            return new Vector2Int(clampedX, flippedY);
+        }
     }
 }

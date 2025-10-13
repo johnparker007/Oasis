@@ -317,46 +317,6 @@ namespace Oasis.MFME
                     FileSystem.kBackgroundDirectoryName, extractComponentBackground.BmpImageFilename);
 
                 componentBackground.OasisImage = new Graphics.OasisImage(bmpImageFilePath, null, false);
-
-                // JP This is just test code - once the perspective quad selection tool and image/view 
-                // creation stuff is working properly, this can be discarded:
-                const bool kDebugTestOasisImageTransform = false;
-                if(kDebugTestOasisImageTransform)
-                {
-                    if (componentBackground.OasisImage != null)
-                    {
-                        Graphics.OasisImage sourceImage = componentBackground.OasisImage;
-
-                        // correct, but both x and y flipped:
-                        //UnityEngine.Vector2Int pointA = new UnityEngine.Vector2Int(439, sourceImage.Height - 1312);
-                        //UnityEngine.Vector2Int pointB = new UnityEngine.Vector2Int(1600, sourceImage.Height - 1312);
-                        //UnityEngine.Vector2Int pointC = new UnityEngine.Vector2Int(1678, sourceImage.Height - 1811);
-                        //UnityEngine.Vector2Int pointD = new UnityEngine.Vector2Int(360, sourceImage.Height - 1811);
-
-                        // WORKING (for Full Thottle DX lower glass) - no x/y flip issue
-                        UnityEngine.Vector2Int pointA = new UnityEngine.Vector2Int(360, sourceImage.Height - 1811);
-                        UnityEngine.Vector2Int pointB = new UnityEngine.Vector2Int(1678, sourceImage.Height - 1811);
-                        UnityEngine.Vector2Int pointC = new UnityEngine.Vector2Int(1600, sourceImage.Height - 1312);
-                        UnityEngine.Vector2Int pointD = new UnityEngine.Vector2Int(439, sourceImage.Height - 1312);
-
-                        //float targetAspectRatio = sourceImage.Width / (float)sourceImage.Height;
-                        float targetAspectRatio = 1518 / (float)728;
-
-                        Graphics.OasisImage transformedImage = Graphics.OasisImage.Transform(
-                            sourceImage,
-                            pointA,
-                            pointB,
-                            pointC,
-                            pointD,
-                            targetAspectRatio);
-
-                        byte[] pngBytes = transformedImage.GetAsPngBytes();
-                        string outputPath = Path.Combine(Application.persistentDataPath, "testTransform.png");
-
-                        File.WriteAllBytes(outputPath, pngBytes);
-                        Debug.LogError($"Saved test transform to {outputPath}");
-                    }
-                }
             }
 
             componentBackground.Name = "Background";

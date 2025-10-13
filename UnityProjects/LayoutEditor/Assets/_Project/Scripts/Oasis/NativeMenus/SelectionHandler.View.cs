@@ -37,5 +37,23 @@ namespace Oasis.NativeMenus
         {
             Editor.Instance.ViewController.SetBaseViewQuadsActive(false);
         }
+
+        public void OnViewOutputTransformedViewQuad()
+        {
+            if (Editor.Instance == null)
+            {
+                Debug.LogWarning("The editor is not initialised; unable to output the transformed ViewQuad.");
+                return;
+            }
+
+            LayoutObject layout = Editor.Instance.Project?.Layout;
+            if (layout == null)
+            {
+                Debug.LogWarning("No layout is loaded; unable to output a transformed ViewQuad image.");
+                return;
+            }
+
+            layout.OutputTransformedViewQuad();
+        }
     }
 }
