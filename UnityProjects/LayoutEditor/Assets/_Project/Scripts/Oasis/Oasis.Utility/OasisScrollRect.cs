@@ -49,10 +49,16 @@ namespace Oasis.Utility
 
         public override void OnScroll(PointerEventData data)
         {
+            if(Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
+            {
+                data.Use();
+                return;
+            }
+
             // JP fix for longstanding Unity bug where horizontal scrolling is reversed:
             Vector2 scrollDelta = data.scrollDelta;
             scrollDelta.x *= -1f;
-            data.scrollDelta = scrollDelta; 
+            data.scrollDelta = scrollDelta;
 
             base.OnScroll(data);
         }
