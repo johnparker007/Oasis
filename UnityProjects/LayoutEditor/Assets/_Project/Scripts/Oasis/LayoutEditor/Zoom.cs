@@ -7,11 +7,14 @@ namespace Oasis.LayoutEditor
     using UnityEngine;
     using UnityEngine.EventSystems;
 
-    public class Zoom : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+    public class Zoom : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IScrollHandler
     {
         public float InitialZoomLevel = 1f;
         public float MinimumZoomLevel = 0.125f;
         public float MaximumZoomLevel = 16f;
+        [SerializeField]
+        [Tooltip("Fractional amount applied to each zoom step (e.g. 0.1 = 10% change per scroll).")]
+        private float _zoomStep = 0.1f;
 
 
         public RectTransform EditorCanvasRectTransform;
@@ -52,18 +55,35 @@ namespace Oasis.LayoutEditor
                 return;
             }
 
-            if((Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
-                && Input.mouseScrollDelta.y != 0f)
+            if((Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)))
             {
-                if(Input.mouseScrollDelta.y < 0f)
+                float scrollDelta = Input.mouseScrollDelta.y;
+
+                if(Mathf.Approximately(scrollDelta, 0f))
                 {
-                    ZoomLevel *= 0.5f;
+                    return;
                 }
-                else
+
+                float previousZoom = ZoomLevel;
+                float step = Mathf.Max(0.0001f, _zoomStep);
+                float zoomFactor = Mathf.Pow(1f + step, scrollDelta);
+                float newZoom = Mathf.Clamp(previousZoom * zoomFactor, MinimumZoomLevel, MaximumZoomLevel);
+
+                if(!Mathf.Approximately(newZoom, previousZoom))
                 {
-                    ZoomLevel *= 2f;
+                    Vector2 localPointerBefore;
+                    Vector3 worldPointerBefore = Vector3.zero;
+                    bool hasLocalPointer = TryGetPointerLocalToContent(out localPointerBefore, out worldPointerBefore);
+
+                    ZoomLevel = newZoom;
+
+                    if(hasLocalPointer)
+                    {
+                        Vector3 worldPointerAfter = EditorCanvasRectTransform.TransformPoint(localPointerBefore);
+                        Vector3 worldDelta = worldPointerBefore - worldPointerAfter;
+                        EditorCanvasRectTransform.position += worldDelta;
+                    }
                 }
-                ZoomLevel = Mathf.Clamp(ZoomLevel, MinimumZoomLevel, MaximumZoomLevel);
             }
         }
 
@@ -75,6 +95,36 @@ namespace Oasis.LayoutEditor
         void IPointerExitHandler.OnPointerExit(PointerEventData eventData)
         {
             PointerEntered = false;
+        }
+
+        void IScrollHandler.OnScroll(PointerEventData eventData)
+        {
+            if(Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
+            {
+                eventData.Use();
+            }
+        }
+
+        private bool TryGetPointerLocalToContent(out Vector2 localPointer, out Vector3 worldPointer)
+        {
+            localPointer = default;
+            worldPointer = default;
+
+            var canvas = EditorCanvasRectTransform.GetComponentInParent<Canvas>();
+            Camera eventCamera = null;
+
+            if(canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay)
+            {
+                eventCamera = canvas.worldCamera;
+            }
+
+            if(!RectTransformUtility.ScreenPointToLocalPointInRectangle(EditorCanvasRectTransform, Input.mousePosition, eventCamera, out localPointer))
+            {
+                return false;
+            }
+
+            worldPointer = EditorCanvasRectTransform.TransformPoint(localPointer);
+            return true;
         }
 
     }
