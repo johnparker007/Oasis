@@ -42,6 +42,7 @@ namespace Oasis.Import
                 JToken currentComponent = token["items"][componentKey.Name];
                 view.AddComponent(ParseComponent(componentKey.Name, currentComponent));
             }
+            ApplyViewQuad(view, token["view_quad"]);
             return view;
         }
 
@@ -87,6 +88,61 @@ namespace Oasis.Import
                 return project;
             }
             return null;
+        }
+
+        private static void ApplyViewQuad(View view, JToken viewQuadToken)
+        {
+            if (viewQuadToken == null)
+            {
+                return;
+            }
+
+            TryAssignPoint(view, ViewQuad.PointTypes.TopLeft, viewQuadToken["top_left"]);
+            TryAssignPoint(view, ViewQuad.PointTypes.TopRight, viewQuadToken["top_right"]);
+            TryAssignPoint(view, ViewQuad.PointTypes.BottomRight, viewQuadToken["bottom_right"]);
+            TryAssignPoint(view, ViewQuad.PointTypes.BottomLeft, viewQuadToken["bottom_left"]);
+        }
+
+        private static void TryAssignPoint(View view, ViewQuad.PointTypes pointType, JToken pointToken)
+        {
+            if (!TryParsePoint(pointToken, out Vector2 point))
+            {
+                return;
+            }
+
+            view.Data.ViewQuad.Points[(int)pointType] = point;
+        }
+
+        private static bool TryParsePoint(JToken token, out Vector2 point)
+        {
+            point = default;
+
+            if (token == null || token.Type == JTokenType.Null)
+            {
+                return false;
+            }
+
+            if (token.Type == JTokenType.Object)
+            {
+                JToken xToken = token["x"];
+                JToken yToken = token["y"];
+                if (xToken != null && yToken != null && xToken.Type != JTokenType.Null && yToken.Type != JTokenType.Null)
+                {
+                    point = new Vector2(xToken.Value<float>(), yToken.Value<float>());
+                    return true;
+                }
+            }
+            else if (token.Type == JTokenType.Array)
+            {
+                JArray array = (JArray)token;
+                if (array.Count >= 2)
+                {
+                    point = new Vector2(array[0].Value<float>(), array[1].Value<float>());
+                    return true;
+                }
+            }
+
+            return false;
         }
     }
 }

@@ -39,6 +39,11 @@ namespace Oasis.Layout
                 }
                 ((List<Dictionary<string, object>>)representation["unknown"]).Add(component.GetRepresentation());
             }
+            Vector2[] viewQuadPoints = Data.ViewQuad?.Points;
+            if (viewQuadPoints != null && viewQuadPoints.Length == Enum.GetValues(typeof(ViewQuad.PointTypes)).Length)
+            {
+                representation["view_quad"] = CreateViewQuadRepresentation(viewQuadPoints);
+            }
             return representation;
         }
 
@@ -151,6 +156,26 @@ namespace Oasis.Layout
                 // TODO I think only lamps 0-127 are scrambled
                 componentLamp.Number = lampRemapper.GetRemappedLampNumber((int)componentLamp.Number);
             }
+        }
+
+        private static Dictionary<string, object> CreateViewQuadRepresentation(Vector2[] points)
+        {
+            return new Dictionary<string, object>
+            {
+                { "top_left", CreatePointRepresentation(points[(int)ViewQuad.PointTypes.TopLeft]) },
+                { "top_right", CreatePointRepresentation(points[(int)ViewQuad.PointTypes.TopRight]) },
+                { "bottom_right", CreatePointRepresentation(points[(int)ViewQuad.PointTypes.BottomRight]) },
+                { "bottom_left", CreatePointRepresentation(points[(int)ViewQuad.PointTypes.BottomLeft]) }
+            };
+        }
+
+        private static Dictionary<string, float> CreatePointRepresentation(Vector2 point)
+        {
+            return new Dictionary<string, float>
+            {
+                { "x", point.x },
+                { "y", point.y }
+            };
         }
 
 
