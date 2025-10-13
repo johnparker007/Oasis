@@ -71,7 +71,18 @@ namespace Oasis.LayoutEditor
 
                 if(!Mathf.Approximately(newZoom, previousZoom))
                 {
+                    Vector2 localPointerBefore;
+                    Vector3 worldPointerBefore = Vector3.zero;
+                    bool hasLocalPointer = TryGetPointerLocalToContent(out localPointerBefore, out worldPointerBefore);
+
                     ZoomLevel = newZoom;
+
+                    if(hasLocalPointer)
+                    {
+                        Vector3 worldPointerAfter = EditorCanvasRectTransform.TransformPoint(localPointerBefore);
+                        Vector3 worldDelta = worldPointerBefore - worldPointerAfter;
+                        EditorCanvasRectTransform.position += worldDelta;
+                    }
                 }
             }
         }
@@ -92,6 +103,28 @@ namespace Oasis.LayoutEditor
             {
                 eventData.Use();
             }
+        }
+
+        private bool TryGetPointerLocalToContent(out Vector2 localPointer, out Vector3 worldPointer)
+        {
+            localPointer = default;
+            worldPointer = default;
+
+            var canvas = EditorCanvasRectTransform.GetComponentInParent<Canvas>();
+            Camera eventCamera = null;
+
+            if(canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay)
+            {
+                eventCamera = canvas.worldCamera;
+            }
+
+            if(!RectTransformUtility.ScreenPointToLocalPointInRectangle(EditorCanvasRectTransform, Input.mousePosition, eventCamera, out localPointer))
+            {
+                return false;
+            }
+
+            worldPointer = EditorCanvasRectTransform.TransformPoint(localPointer);
+            return true;
         }
 
     }
