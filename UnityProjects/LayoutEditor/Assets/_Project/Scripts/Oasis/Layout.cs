@@ -300,13 +300,6 @@ namespace Oasis
             }
 
             return true;
-            if (bottomTab != null)
-            {
-                bottomTab.Label = viewName;
-            }
-
-            string absolutePath = Path.Combine(projectsController.ProjectAssetsPath, relativeImagePath);
-            Debug.Log($"Saved transformed ViewQuad image to {absolutePath}");
         }
 
         private static Vector2Int ConvertViewQuadPointToImagePoint(Vector2 layoutPoint, Oasis.Graphics.OasisImage sourceImage)
