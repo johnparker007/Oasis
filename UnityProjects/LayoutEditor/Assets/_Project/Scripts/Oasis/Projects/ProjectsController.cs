@@ -91,24 +91,28 @@ namespace Oasis.Projects
             Import.Importer importer = new Import.Importer();
             Editor.Instance.Project = importer.Import(projectJsonPath);
 
+            const bool kDebugNativeDialogTest = false;
+            if(kDebugNativeDialogTest)
+            {
 #if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
-            var dialogOptions = new NativeDialogOptions
-            {
-                Title = "Project Loaded",
-                Message = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
-                ShowOkButton = true,
-                ShowCancelButton = true,
-                ShowCloseButton = true,
-                Icon = NativeDialogIcon.Information,
-                OnOkClicked = () => Debug.Log("OK Clicked"),
-                OnCancelClicked = () => Debug.Log("Cancel Clicked"),
-            };
+                var dialogOptions = new NativeDialogOptions
+                {
+                    Title = "Project Loaded",
+                    Message = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+                    ShowOkButton = true,
+                    ShowCancelButton = true,
+                    ShowCloseButton = true,
+                    Icon = NativeDialogIcon.Information,
+                    OnOkClicked = () => Debug.Log("OK Clicked"),
+                    OnCancelClicked = () => Debug.Log("Cancel Clicked"),
+                };
 
-            if (!NativeDialogWindow.ShowDialog(dialogOptions, out string dialogErrorMessage) && !string.IsNullOrEmpty(dialogErrorMessage))
-            {
-                Debug.LogWarning($"Failed to display native dialog: {dialogErrorMessage}");
-            }
+                if (!NativeDialogWindow.ShowDialog(dialogOptions, out string dialogErrorMessage) && !string.IsNullOrEmpty(dialogErrorMessage))
+                {
+                    Debug.LogWarning($"Failed to display native dialog: {dialogErrorMessage}");
+                }
 #endif
+            }
 
             return true;
         }
