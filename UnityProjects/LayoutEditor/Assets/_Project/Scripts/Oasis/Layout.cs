@@ -180,24 +180,15 @@ namespace Oasis
             Vector2Int pointC = ConvertViewQuadPointToImagePoint(viewQuadPoints[(int)ViewQuad.PointTypes.TopRight], sourceImage);
             Vector2Int pointD = ConvertViewQuadPointToImagePoint(viewQuadPoints[(int)ViewQuad.PointTypes.TopLeft], sourceImage);
 
-            float widthTop = Vector2.Distance(viewQuadPoints[(int)ViewQuad.PointTypes.TopLeft], viewQuadPoints[(int)ViewQuad.PointTypes.TopRight]);
-            float widthBottom = Vector2.Distance(viewQuadPoints[(int)ViewQuad.PointTypes.BottomLeft], viewQuadPoints[(int)ViewQuad.PointTypes.BottomRight]);
-            float heightLeft = Vector2.Distance(viewQuadPoints[(int)ViewQuad.PointTypes.TopLeft], viewQuadPoints[(int)ViewQuad.PointTypes.BottomLeft]);
-            float heightRight = Vector2.Distance(viewQuadPoints[(int)ViewQuad.PointTypes.TopRight], viewQuadPoints[(int)ViewQuad.PointTypes.BottomRight]);
-
             // TODO this aspect ratio calc is just placeholder - ultimately there will be a 'cabinet' loaded from the
             // cabinet editor, and the view quad will be linked to one of the cabinet panels, and then the aspect ratio
             // will come from that cabinet panel width/height
-            float maxWidth = Mathf.Max(widthTop, widthBottom);
-            float maxHeight = Mathf.Max(heightLeft, heightRight);
 
-            if (maxWidth <= Mathf.Epsilon || maxHeight <= Mathf.Epsilon)
-            {
-                Debug.LogWarning("The base view quad does not have a valid size.");
-                return;
-            }
+            // from original ArcadeSim Eclipse cabinet:
+            float bottomPanelWidth = 0.63f;
+            float bottomPanelHeight = 0.3457056f;
 
-            float targetAspectRatio = maxWidth / maxHeight;
+            float targetAspectRatio = bottomPanelWidth / bottomPanelHeight;
 
             Oasis.Graphics.OasisImage transformedImage = Oasis.Graphics.OasisImage.Transform(
                 sourceImage,
