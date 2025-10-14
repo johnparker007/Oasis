@@ -6,8 +6,6 @@ using Oasis.Layout;
 using Oasis.LayoutEditor;
 
 using Component = Oasis.Layout.Component;
-using EditorComponent = Oasis.LayoutEditor.EditorComponent;
-using Oasis.LayoutEditor.Tools;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.IO;
@@ -241,6 +239,11 @@ namespace Oasis
                 bottomView.RemoveAllComponents();
             }
 
+            if (!TryEnsureViewTab(bottomView, TabController.TabTypes.TestNewView))
+            {
+                Debug.LogWarning("Unable to display the Bottom view tab for the transformed ViewQuad image.");
+                return;
+            }
             editorView.Initialise();
 
             ComponentBackground bottomBackground = new ComponentBackground
@@ -257,6 +260,46 @@ namespace Oasis
 
             bottomView.AddComponent(bottomBackground);
 
+            string absolutePath = Path.Combine(projectsController.ProjectAssetsPath, relativeImagePath);
+            Debug.Log($"Saved transformed ViewQuad image to {absolutePath}");
+        }
+
+        public bool TryEnsureViewTab(View view, TabController.TabTypes tabType)
+        {
+            if (view == null)
+            {
+                return false;
+            }
+
+            var tabController = Editor.Instance?.TabController;
+            if (tabController == null)
+            {
+                Debug.LogWarning("Tab controller is unavailable; unable to display layout views.");
+                return false;
+            }
+
+            var panelTab = tabController.ShowTab(tabType);
+            var panel = panelTab?.Panel;
+
+            EditorView editorView = panel != null
+                ? panel.GetComponentInChildren<EditorView>(true)
+                : ViewController.GetEditorView(view.Name);
+
+            if (editorView == null)
+            {
+                Debug.LogWarning($"Unable to locate an EditorView for the '{view.Name}' view tab.");
+                return false;
+            }
+
+            editorView.ViewName = view.Name;
+            editorView.Initialise();
+
+            if (panelTab != null)
+            {
+                panelTab.Label = view.Name;
+            }
+
+            return true;
             if (bottomTab != null)
             {
                 bottomTab.Label = viewName;

@@ -85,7 +85,13 @@ namespace Oasis.Layout
             Name = name;
 
             // TOIMPROVE - need a better way of doing this rather than the View controlling the EditorView:
-            EditorView.Initialise();
+            EditorView editorView = EditorView;
+            if (editorView == null)
+            {
+                return;
+            }
+
+            editorView.Initialise();
         }
 
         public void SetViewQuadRectangle(float top, float left, float bottom, float right)
