@@ -3023,8 +3023,8 @@ MonoBehaviour:
     Prefab: {fileID: 1440808265}
   - Label: TestNewView
     TypeID: 11
-    Icon: {fileID: 0}
-    Prefab: {fileID: 0}
+    Icon: {fileID: 21300000, guid: f5d6265488be57f43b1bd1e30a52d7af, type: 3}
+    Prefab: {fileID: 2038115445}
 --- !u!4 &1200569259
 Transform:
   m_ObjectHideFlags: 0
@@ -3936,6 +3936,7 @@ MonoBehaviour:
   InitialZoomLevel: 1
   MinimumZoomLevel: 0.125
   MaximumZoomLevel: 16
+  _zoomStep: 0.1
   EditorCanvasRectTransform: {fileID: 787548045}
   OnZoomLevelSet:
     m_PersistentCalls:
