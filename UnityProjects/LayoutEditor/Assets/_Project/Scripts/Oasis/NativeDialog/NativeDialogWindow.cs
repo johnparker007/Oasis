@@ -305,7 +305,7 @@ namespace Oasis.NativeDialog
             _iconHandle = CreateWindowExW(
                 0,
                 "STATIC",
-                IntPtr.Zero,
+                string.Empty,
                 WS_CHILD | SS_ICON,
                 0,
                 0,
