@@ -21,7 +21,8 @@ namespace Oasis.LayoutEditor
             UpscaledBase,
             Hierarchy,
             Inspector,
-            Project
+            Project,
+            TestNewView
         }
 
         [Serializable]
@@ -31,7 +32,8 @@ namespace Oasis.LayoutEditor
             [FormerlySerializedAs("TabType")]
             public TabTypes TypeID;
             public Sprite Icon;
-            public RectTransform RectTransform;
+            [FormerlySerializedAs("RectTransform")]
+            public RectTransform Prefab;
         }
 
         [SerializeField]
@@ -188,6 +190,10 @@ namespace Oasis.LayoutEditor
 
             TabDefinition tabDefinition = TabDefinitions.Find(x => x.TypeID == tabType);
             PanelTab panelTab = CreatePanelTab(tabDefinition);
+            if (panelTab == null)
+            {
+                return null;
+            }
             if (anchorPanel != null)
             {
                 PanelManager.Instance.AnchorPanel(panelTab.Panel, anchorPanel, Direction.Right);
@@ -212,9 +218,31 @@ namespace Oasis.LayoutEditor
 
         private PanelTab CreatePanelTab(TabDefinition tabDefinition)
         {
+            if (tabDefinition == null)
+            {
+                Debug.LogError("No tab definition provided when attempting to create a panel tab.");
+                return null;
+            }
+
+            if (tabDefinition.Prefab == null)
+            {
+                Debug.LogError($"Tab definition '{tabDefinition.Label}' does not have a prefab assigned.");
+                return null;
+            }
+
             DynamicPanelsCanvas dynamicPanelsCanvas = Editor.Instance.UIController.DynamicPanelsCanvas;
 
-            Panel panel = PanelUtils.CreatePanelFor(tabDefinition.RectTransform, dynamicPanelsCanvas);
+            Transform parent = _closedTabsRoot != null ? _closedTabsRoot : dynamicPanelsCanvas?.RectTransform;
+            RectTransform tabContentInstance = parent != null
+                ? Instantiate(tabDefinition.Prefab, parent, false)
+                : Instantiate(tabDefinition.Prefab);
+
+            Panel panel = PanelUtils.CreatePanelFor(tabContentInstance, dynamicPanelsCanvas);
+            if (panel == null)
+            {
+                Destroy(tabContentInstance.gameObject);
+                return null;
+            }
             PanelTab panelTab = panel[0];
             panelTab.Icon = tabDefinition.Icon;
             panelTab.Label = tabDefinition.Label;
