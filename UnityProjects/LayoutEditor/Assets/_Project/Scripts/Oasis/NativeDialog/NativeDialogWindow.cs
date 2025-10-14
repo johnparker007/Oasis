@@ -55,6 +55,7 @@ namespace Oasis.NativeDialog
         private const int GWL_STYLE = -16;
         private const int WM_QUIT = 0x0012;
         private const int ERROR_CLASS_ALREADY_EXISTS = 1410;
+        private const int ERROR_CLASS_DOES_NOT_EXIST = 1411;
 
         private const int BaseWidth = 420;
         private const int BaseHeight = 200;
@@ -212,8 +213,8 @@ namespace Oasis.NativeDialog
                 }
             }
 
-            ResetState();
             UnregisterWindowClass();
+            ResetState();
         }
 
         private static void ResetState()
@@ -261,7 +262,26 @@ namespace Oasis.NativeDialog
                 int lastError = Marshal.GetLastWin32Error();
                 if (lastError == ERROR_CLASS_ALREADY_EXISTS)
                 {
-                    _classAtom = 1;
+                    if (!UnregisterClassW(WindowClassName, _instanceHandle))
+                    {
+                        int unregisterError = Marshal.GetLastWin32Error();
+                        if (unregisterError != ERROR_CLASS_DOES_NOT_EXIST)
+                        {
+                            errorMessage = $"UnregisterClassW failed with error {unregisterError} while trying to reuse the native dialog window class.";
+                            _wndProc = null;
+                            return false;
+                        }
+                    }
+
+                    _classAtom = RegisterClassExW(ref windowClass);
+                    if (_classAtom == 0)
+                    {
+                        lastError = Marshal.GetLastWin32Error();
+                        errorMessage = $"RegisterClassExW failed with error {lastError}";
+                        _wndProc = null;
+                        return false;
+                    }
+
                     errorMessage = null;
                     return true;
                 }
@@ -279,7 +299,14 @@ namespace Oasis.NativeDialog
         {
             if (_classAtom != 0 && _instanceHandle != IntPtr.Zero)
             {
-                UnregisterClassW(WindowClassName, _instanceHandle);
+                if (!UnregisterClassW(WindowClassName, _instanceHandle))
+                {
+                    if (Marshal.GetLastWin32Error() != ERROR_CLASS_DOES_NOT_EXIST)
+                    {
+                        return;
+                    }
+                }
+
                 _classAtom = 0;
                 _wndProc = null;
             }
