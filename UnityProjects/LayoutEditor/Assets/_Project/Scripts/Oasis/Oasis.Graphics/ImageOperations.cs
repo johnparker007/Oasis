@@ -16,6 +16,12 @@ namespace Oasis.Graphics {
                                   assetsPath,
                                   fileUniqueName);
 
+            string directory = Path.GetDirectoryName(filePath);
+            if (!string.IsNullOrEmpty(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
             File.WriteAllBytes(
                 filePath,
                 ImageConversion.EncodeArrayToPNG(
