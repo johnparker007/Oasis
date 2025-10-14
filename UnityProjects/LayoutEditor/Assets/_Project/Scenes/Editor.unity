@@ -2984,43 +2984,47 @@ MonoBehaviour:
   - Label: Base
     TypeID: 0
     Icon: {fileID: 21300000, guid: f5d6265488be57f43b1bd1e30a52d7af, type: 3}
-    RectTransform: {fileID: 2038115445}
+    Prefab: {fileID: 2038115445}
   - Label: MAME
     TypeID: 1
     Icon: {fileID: 21300000, guid: 7b9689cf77ed29f4d8577dfe49800ce4, type: 3}
-    RectTransform: {fileID: 1485089913}
+    Prefab: {fileID: 1485089913}
   - Label: Project Settings
     TypeID: 3
     Icon: {fileID: 21300000, guid: a388810f090106e478121fb2a8c46836, type: 3}
-    RectTransform: {fileID: 2025278087}
+    Prefab: {fileID: 2025278087}
   - Label: Preferences
     TypeID: 4
     Icon: {fileID: 21300000, guid: a388810f090106e478121fb2a8c46836, type: 3}
-    RectTransform: {fileID: 1041729045}
+    Prefab: {fileID: 1041729045}
   - Label: Lamp Remapper
     TypeID: 5
     Icon: {fileID: 21300000, guid: bb5977adbd407224c8f48d1aa6a03ef0, type: 3}
-    RectTransform: {fileID: 1256510093}
+    Prefab: {fileID: 1256510093}
   - Label: Local Normalise
     TypeID: 6
     Icon: {fileID: 21300000, guid: e4d8124e3b1619f4e981537295c854d6, type: 3}
-    RectTransform: {fileID: 133785264}
+    Prefab: {fileID: 133785264}
   - Label: Upscale
     TypeID: 7
     Icon: {fileID: 21300000, guid: e225330a54e29204091592903796d5f5, type: 3}
-    RectTransform: {fileID: 1094106569}
+    Prefab: {fileID: 1094106569}
   - Label: Inspector
     TypeID: 9
     Icon: {fileID: 21300000, guid: 0f8acdd1055da144492d64162efbcb2a, type: 3}
-    RectTransform: {fileID: 1199676140}
+    Prefab: {fileID: 1199676140}
   - Label: Hierarchy
     TypeID: 8
     Icon: {fileID: 21300000, guid: 1db0ef783b1548746a0a0088f91c2016, type: 3}
-    RectTransform: {fileID: 801020840}
+    Prefab: {fileID: 801020840}
   - Label: Project
     TypeID: 10
     Icon: {fileID: 21300000, guid: adbef4ee1ee2b2a458695041a2aae218, type: 3}
-    RectTransform: {fileID: 1440808265}
+    Prefab: {fileID: 1440808265}
+  - Label: TestNewView
+    TypeID: 11
+    Icon: {fileID: 21300000, guid: f5d6265488be57f43b1bd1e30a52d7af, type: 3}
+    Prefab: {fileID: 2038115445}
 --- !u!4 &1200569259
 Transform:
   m_ObjectHideFlags: 0
@@ -3932,6 +3936,7 @@ MonoBehaviour:
   InitialZoomLevel: 1
   MinimumZoomLevel: 0.125
   MaximumZoomLevel: 16
+  _zoomStep: 0.1
   EditorCanvasRectTransform: {fileID: 787548045}
   OnZoomLevelSet:
     m_PersistentCalls:
