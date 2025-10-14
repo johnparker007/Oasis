@@ -54,6 +54,7 @@ namespace Oasis.NativeDialog
         private const uint SWP_FRAMECHANGED = 0x0020;
         private const int GWL_STYLE = -16;
         private const int WM_QUIT = 0x0012;
+        private const int ERROR_CLASS_ALREADY_EXISTS = 1410;
 
         private const int BaseWidth = 420;
         private const int BaseHeight = 200;
@@ -257,7 +258,15 @@ namespace Oasis.NativeDialog
             _classAtom = RegisterClassExW(ref windowClass);
             if (_classAtom == 0)
             {
-                errorMessage = $"RegisterClassExW failed with error {Marshal.GetLastWin32Error()}";
+                int lastError = Marshal.GetLastWin32Error();
+                if (lastError == ERROR_CLASS_ALREADY_EXISTS)
+                {
+                    _classAtom = 1;
+                    errorMessage = null;
+                    return true;
+                }
+
+                errorMessage = $"RegisterClassExW failed with error {lastError}";
                 _wndProc = null;
                 return false;
             }
