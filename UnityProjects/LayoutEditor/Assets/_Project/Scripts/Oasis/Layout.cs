@@ -203,10 +203,31 @@ namespace Oasis
                 return;
             }
 
+            var tabController = Editor.Instance?.TabController;
+            if (tabController == null)
+            {
+                Debug.LogWarning("Tab controller is unavailable; unable to create a view for the transformed ViewQuad image.");
+                return;
+            }
+
             const string viewName = "Bottom";
             string viewFolderName = string.Concat("View", viewName);
             string relativeImagePath = Path.Combine(viewFolderName, "Background.png");
             relativeImagePath = relativeImagePath.Replace('\\', '/');
+
+            var bottomTab = tabController.ShowTab(TabController.TabTypes.TestNewView);
+            var bottomPanel = bottomTab?.Panel;
+            EditorView editorView = bottomPanel != null
+                ? bottomPanel.GetComponentInChildren<EditorView>(true)
+                : null;
+
+            if (editorView == null)
+            {
+                Debug.LogWarning("Unable to locate an EditorView for the new Bottom view tab.");
+                return;
+            }
+
+            editorView.ViewName = viewName;
 
             View bottomView = GetView(viewName);
             if (bottomView == null)
@@ -223,6 +244,7 @@ namespace Oasis
                 Debug.LogWarning("Unable to display the Bottom view tab for the transformed ViewQuad image.");
                 return;
             }
+            editorView.Initialise();
 
             ComponentBackground bottomBackground = new ComponentBackground
             {
@@ -278,6 +300,13 @@ namespace Oasis
             }
 
             return true;
+            if (bottomTab != null)
+            {
+                bottomTab.Label = viewName;
+            }
+
+            string absolutePath = Path.Combine(projectsController.ProjectAssetsPath, relativeImagePath);
+            Debug.Log($"Saved transformed ViewQuad image to {absolutePath}");
         }
 
         private static Vector2Int ConvertViewQuadPointToImagePoint(Vector2 layoutPoint, Oasis.Graphics.OasisImage sourceImage)
