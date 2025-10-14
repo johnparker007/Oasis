@@ -77,6 +77,16 @@ namespace Oasis.LayoutEditor
 
             EnsureContentContainer();
             Editor.Instance.Project.Layout.OnAddComponent.AddListener(OnLayoutAddComponent);
+
+            View layoutView = this.View;
+            if (layoutView != null)
+            {
+                foreach (Layout.Component component in layoutView.Data.Components)
+                {
+                    OnLayoutAddComponent(component, layoutView);
+                }
+            }
+
             _initialised = true;
         }
 

@@ -6,8 +6,6 @@ using Oasis.Layout;
 using Oasis.LayoutEditor;
 
 using Component = Oasis.Layout.Component;
-using EditorComponent = Oasis.LayoutEditor.EditorComponent;
-using Oasis.LayoutEditor.Tools;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.IO;
@@ -205,31 +203,10 @@ namespace Oasis
                 return;
             }
 
-            var tabController = Editor.Instance?.TabController;
-            if (tabController == null)
-            {
-                Debug.LogWarning("Tab controller is unavailable; unable to create a view for the transformed ViewQuad image.");
-                return;
-            }
-
             const string viewName = "Bottom";
             string viewFolderName = string.Concat("View", viewName);
             string relativeImagePath = Path.Combine(viewFolderName, "Background.png");
             relativeImagePath = relativeImagePath.Replace('\\', '/');
-
-            var bottomTab = tabController.ShowTab(TabController.TabTypes.TestNewView);
-            var bottomPanel = bottomTab?.Panel;
-            EditorView editorView = bottomPanel != null
-                ? bottomPanel.GetComponentInChildren<EditorView>(true)
-                : null;
-
-            if (editorView == null)
-            {
-                Debug.LogWarning("Unable to locate an EditorView for the new Bottom view tab.");
-                return;
-            }
-
-            editorView.ViewName = viewName;
 
             View bottomView = GetView(viewName);
             if (bottomView == null)
@@ -241,7 +218,11 @@ namespace Oasis
                 bottomView.RemoveAllComponents();
             }
 
-            editorView.Initialise();
+            if (!TryEnsureViewTab(bottomView, TabController.TabTypes.TestNewView))
+            {
+                Debug.LogWarning("Unable to display the Bottom view tab for the transformed ViewQuad image.");
+                return;
+            }
 
             ComponentBackground bottomBackground = new ComponentBackground
             {
@@ -257,13 +238,46 @@ namespace Oasis
 
             bottomView.AddComponent(bottomBackground);
 
-            if (bottomTab != null)
-            {
-                bottomTab.Label = viewName;
-            }
-
             string absolutePath = Path.Combine(projectsController.ProjectAssetsPath, relativeImagePath);
             Debug.Log($"Saved transformed ViewQuad image to {absolutePath}");
+        }
+
+        public bool TryEnsureViewTab(View view, TabController.TabTypes tabType)
+        {
+            if (view == null)
+            {
+                return false;
+            }
+
+            var tabController = Editor.Instance?.TabController;
+            if (tabController == null)
+            {
+                Debug.LogWarning("Tab controller is unavailable; unable to display layout views.");
+                return false;
+            }
+
+            var panelTab = tabController.ShowTab(tabType);
+            var panel = panelTab?.Panel;
+
+            EditorView editorView = panel != null
+                ? panel.GetComponentInChildren<EditorView>(true)
+                : ViewController.GetEditorView(view.Name);
+
+            if (editorView == null)
+            {
+                Debug.LogWarning($"Unable to locate an EditorView for the '{view.Name}' view tab.");
+                return false;
+            }
+
+            editorView.ViewName = view.Name;
+            editorView.Initialise();
+
+            if (panelTab != null)
+            {
+                panelTab.Label = view.Name;
+            }
+
+            return true;
         }
 
         private static Vector2Int ConvertViewQuadPointToImagePoint(Vector2 layoutPoint, Oasis.Graphics.OasisImage sourceImage)

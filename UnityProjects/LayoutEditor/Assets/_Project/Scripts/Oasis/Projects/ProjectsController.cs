@@ -3,6 +3,8 @@ using System.IO;
 using UnityEngine;
 using Oasis.Export;
 using Oasis.FileOperations;
+using Oasis.Layout;
+using Oasis.LayoutEditor;
 using Oasis.NativeDialog;
 
 namespace Oasis.Projects
@@ -90,6 +92,14 @@ namespace Oasis.Projects
 
             Import.Importer importer = new Import.Importer();
             Editor.Instance.Project = importer.Import(projectJsonPath);
+
+            View bottomView = Editor.Instance.Project.Layout.GetView("Bottom");
+            if (bottomView != null)
+            {
+                Editor.Instance.Project.Layout.TryEnsureViewTab(
+                    bottomView,
+                    TabController.TabTypes.TestNewView);
+            }
 
             const bool kDebugNativeDialogTest = false;
             if(kDebugNativeDialogTest)
