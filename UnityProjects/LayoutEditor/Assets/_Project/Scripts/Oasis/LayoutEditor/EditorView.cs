@@ -19,6 +19,11 @@ namespace Oasis.LayoutEditor
 
         private bool _initialised = false;
         private List<EditorComponent> _editorComponents = new List<EditorComponent>();
+        private RectTransform _contentContainer = null;
+        private Vector2 _lastKnownContentSize = Vector2.zero;
+        private bool _hasCenteredContent = false;
+
+        private RectTransform ContentRectTransform => Content != null ? Content.GetComponent<RectTransform>() : null;
 
         public View View
         {
@@ -38,6 +43,11 @@ namespace Oasis.LayoutEditor
         public Transform GetLayerTransform(EditorViewContentLayer.LayerTypes layerType)
         {
             return GetLayer(layerType).transform;
+        }
+
+        private void Awake()
+        {
+            EnsureContentContainer();
         }
 
         private void OnEnable()
@@ -65,7 +75,9 @@ namespace Oasis.LayoutEditor
                 return;
             }
 
+            EnsureContentContainer();
             Editor.Instance.Project.Layout.OnAddComponent.AddListener(OnLayoutAddComponent);
+            _initialised = true;
         }
 
         public void OnPointerClick(PointerEventData eventData)
@@ -141,6 +153,8 @@ namespace Oasis.LayoutEditor
             RectTransform editorCanvasRectTransform = Content.GetComponent<RectTransform>();
             editorCanvasRectTransform.sizeDelta = new Vector2(component.Size.x, component.Size.y);
 
+            SyncContentContainerSize();
+
             return editorComponentBackground;
         }
 
@@ -215,6 +229,162 @@ namespace Oasis.LayoutEditor
             }
 
             return editorComponent;
+        }
+
+        private void LateUpdate()
+        {
+            RectTransform contentRect = ContentRectTransform;
+            if (contentRect == null)
+            {
+                return;
+            }
+
+            if (contentRect.hasChanged)
+            {
+                contentRect.hasChanged = false;
+                SyncContentContainerSize();
+                CenterContent();
+            }
+        }
+
+        private RectTransform EnsureContentContainer()
+        {
+            if (_contentContainer != null)
+            {
+                return _contentContainer;
+            }
+
+            RectTransform contentRect = ContentRectTransform;
+            if (contentRect == null)
+            {
+                return null;
+            }
+
+            RectTransform currentParent = contentRect.parent as RectTransform;
+            if (currentParent == null)
+            {
+                return null;
+            }
+
+            EditorViewContentContainer existingContainer = currentParent.GetComponent<EditorViewContentContainer>();
+            if (existingContainer != null)
+            {
+                _contentContainer = existingContainer.RectTransform;
+                return _contentContainer;
+            }
+
+            GameObject containerObject = new GameObject("ContentContainer", typeof(RectTransform), typeof(EditorViewContentContainer));
+            containerObject.layer = contentRect.gameObject.layer;
+
+            RectTransform containerRect = containerObject.GetComponent<RectTransform>();
+            containerRect.SetParent(currentParent, false);
+            containerRect.SetSiblingIndex(contentRect.GetSiblingIndex());
+            containerRect.anchorMin = new Vector2(0.5f, 0.5f);
+            containerRect.anchorMax = new Vector2(0.5f, 0.5f);
+            containerRect.pivot = new Vector2(0.5f, 0.5f);
+            containerRect.anchoredPosition = Vector2.zero;
+            containerRect.localScale = Vector3.one;
+
+            contentRect.SetParent(containerRect, false);
+            contentRect.anchorMin = new Vector2(0f, 1f);
+            contentRect.anchorMax = new Vector2(0f, 1f);
+            contentRect.pivot = new Vector2(0f, 1f);
+            contentRect.anchoredPosition = Vector2.zero;
+
+            ScrollRect scrollRect = containerRect.GetComponentInParent<ScrollRect>();
+            if (scrollRect != null)
+            {
+                scrollRect.content = containerRect;
+            }
+
+            Zoom zoom = GetComponentInParent<Zoom>();
+            if (zoom != null)
+            {
+                RectTransform previousCanvas = zoom.EditorCanvasRectTransform;
+                if (previousCanvas == null || previousCanvas == contentRect)
+                {
+                    zoom.EditorCanvasRectTransform = containerRect;
+                }
+
+                float zoomLevel = Mathf.Max(zoom.ZoomLevel, Mathf.Epsilon);
+                containerRect.localScale = new Vector3(zoomLevel, zoomLevel, zoomLevel);
+            }
+
+            _contentContainer = containerRect;
+
+            Vector2 size = contentRect.rect.size;
+            if (Mathf.Approximately(size.x, 0f) && Mathf.Approximately(size.y, 0f))
+            {
+                size = contentRect.sizeDelta;
+            }
+
+            containerRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, size.x);
+            containerRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, size.y);
+
+            _lastKnownContentSize = size;
+            _hasCenteredContent = false;
+
+            CenterContent();
+
+            return _contentContainer;
+        }
+
+        private void SyncContentContainerSize()
+        {
+            RectTransform contentRect = ContentRectTransform;
+            RectTransform containerRect = EnsureContentContainer();
+            if (contentRect == null || containerRect == null)
+            {
+                return;
+            }
+
+            Vector2 size = contentRect.rect.size;
+            if (Mathf.Approximately(size.x, 0f) && Mathf.Approximately(size.y, 0f))
+            {
+                size = contentRect.sizeDelta;
+            }
+
+            if (Approximately(size, _lastKnownContentSize))
+            {
+                return;
+            }
+
+            containerRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, size.x);
+            containerRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, size.y);
+
+            _lastKnownContentSize = size;
+            _hasCenteredContent = false;
+
+            CenterContent();
+        }
+
+        private void CenterContent()
+        {
+            if (_hasCenteredContent)
+            {
+                return;
+            }
+
+            RectTransform containerRect = EnsureContentContainer();
+            if (containerRect == null)
+            {
+                return;
+            }
+
+            ScrollRect scrollRect = containerRect.GetComponentInParent<ScrollRect>();
+            if (scrollRect != null)
+            {
+                scrollRect.normalizedPosition = new Vector2(0.5f, 0.5f);
+            }
+
+            containerRect.anchoredPosition = Vector2.zero;
+
+            _hasCenteredContent = true;
+        }
+
+        private static bool Approximately(Vector2 a, Vector2 b)
+        {
+            return Mathf.Approximately(a.x, b.x) && Mathf.Approximately(a.y, b.y);
         }
     }
 
