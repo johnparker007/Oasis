@@ -198,11 +198,72 @@ namespace Oasis
                 pointD,
                 targetAspectRatio);
 
-            byte[] pngBytes = transformedImage.GetAsPngBytes();
-            string outputPath = Path.Combine(Application.persistentDataPath, "transformedViewQuad.png");
+            var projectsController = Editor.Instance?.ProjectsController;
+            if (projectsController == null || string.IsNullOrEmpty(projectsController.ProjectAssetsPath))
+            {
+                Debug.LogWarning("Project assets path is unavailable; unable to save the transformed ViewQuad image.");
+                return;
+            }
 
-            File.WriteAllBytes(outputPath, pngBytes);
-            Debug.Log($"Saved transformed ViewQuad image to {outputPath}");
+            var tabController = Editor.Instance?.TabController;
+            if (tabController == null)
+            {
+                Debug.LogWarning("Tab controller is unavailable; unable to create a view for the transformed ViewQuad image.");
+                return;
+            }
+
+            const string viewName = "Bottom";
+            string viewFolderName = string.Concat("View", viewName);
+            string relativeImagePath = Path.Combine(viewFolderName, "Background.png");
+            relativeImagePath = relativeImagePath.Replace('\\', '/');
+
+            var bottomTab = tabController.ShowTab(TabController.TabTypes.TestNewView);
+            var bottomPanel = bottomTab?.Panel;
+            EditorView editorView = bottomPanel != null
+                ? bottomPanel.GetComponentInChildren<EditorView>(true)
+                : null;
+
+            if (editorView == null)
+            {
+                Debug.LogWarning("Unable to locate an EditorView for the new Bottom view tab.");
+                return;
+            }
+
+            editorView.ViewName = viewName;
+
+            View bottomView = GetView(viewName);
+            if (bottomView == null)
+            {
+                bottomView = AddView(viewName);
+            }
+            else
+            {
+                bottomView.RemoveAllComponents();
+            }
+
+            editorView.Initialise();
+
+            ComponentBackground bottomBackground = new ComponentBackground
+            {
+                Name = $"{viewName} Background",
+                Position = Vector2Int.zero,
+                Size = new Vector2Int(transformedImage.Width, transformedImage.Height),
+                OasisImage = transformedImage,
+                RelativeAssetPath = relativeImagePath,
+                Color = backgroundComponent.Color
+            };
+
+            Oasis.Graphics.ImageOperations.SaveToPNG(transformedImage, relativeImagePath);
+
+            bottomView.AddComponent(bottomBackground);
+
+            if (bottomTab != null)
+            {
+                bottomTab.Label = viewName;
+            }
+
+            string absolutePath = Path.Combine(projectsController.ProjectAssetsPath, relativeImagePath);
+            Debug.Log($"Saved transformed ViewQuad image to {absolutePath}");
         }
 
         private static Vector2Int ConvertViewQuadPointToImagePoint(Vector2 layoutPoint, Oasis.Graphics.OasisImage sourceImage)

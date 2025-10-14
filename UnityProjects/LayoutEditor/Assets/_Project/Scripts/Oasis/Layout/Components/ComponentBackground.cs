@@ -9,6 +9,8 @@ namespace Oasis.Layout
     {
         public OasisImage OasisImage;
 
+        public string RelativeAssetPath { get; set; }
+
         private Color _color = Color.white;
         public Color Color
         {
@@ -24,6 +26,8 @@ namespace Oasis.Layout
             {
                 clone.OasisImage = OasisImage.Clone();
             }
+
+            clone.RelativeAssetPath = RelativeAssetPath;
 
             return clone;
         }
@@ -47,7 +51,8 @@ namespace Oasis.Layout
                             Color = color;
                         break;
                     case "file_path":
-                        if (field.Value != null) 
+                        RelativeAssetPath = field.Value as string;
+                        if (field.Value != null)
                         {
                             OasisImage = ImageOperations.LoadFromPng(
                                 Path.Combine(
@@ -64,11 +69,17 @@ namespace Oasis.Layout
         {
             Dictionary<string, object> representation = base.GetRepresentation();
             representation["type"] = GetType().Name;
-            representation["file_path"] = null;
             representation["color"] = "#" + ColorUtility.ToHtmlStringRGBA(Color);
+            string filePath = RelativeAssetPath;
+            if (string.IsNullOrEmpty(filePath))
+            {
+                filePath = Component.GetComponentKey(representation) + ".png";
+            }
+
+            representation["file_path"] = filePath;
+
             if (OasisImage != null) {
-                representation["file_path"] =  Component.GetComponentKey(representation) + ".png";
-                ImageOperations.SaveToPNG(OasisImage, (string) representation["file_path"]);
+                ImageOperations.SaveToPNG(OasisImage, filePath);
             }
             return representation;
         }
