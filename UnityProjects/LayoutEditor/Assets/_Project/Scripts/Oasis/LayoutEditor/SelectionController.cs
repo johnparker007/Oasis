@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
@@ -13,6 +14,9 @@ namespace Oasis.LayoutEditor
 
         public List<EditorComponent> SelectedEditorComponents = new List<EditorComponent>();
 
+        private bool _suppressNextPointerClickSelection;
+        private Coroutine _clearPointerClickSuppressionCoroutine;
+
         private void Awake()
         {
             AddListeners();
@@ -20,6 +24,12 @@ namespace Oasis.LayoutEditor
 
         public void OnDestroy()
         {
+            if (_clearPointerClickSuppressionCoroutine != null)
+            {
+                StopCoroutine(_clearPointerClickSuppressionCoroutine);
+                _clearPointerClickSuppressionCoroutine = null;
+            }
+
             RemoveListeners();
         }
 
@@ -121,6 +131,31 @@ namespace Oasis.LayoutEditor
             OnSelectionChange.Invoke();
         }
 
+        public void SuppressNextPointerClickSelection()
+        {
+            _suppressNextPointerClickSelection = true;
+
+            if (_clearPointerClickSuppressionCoroutine != null)
+            {
+                StopCoroutine(_clearPointerClickSuppressionCoroutine);
+            }
+
+            _clearPointerClickSuppressionCoroutine = StartCoroutine(ClearPointerClickSuppressionAfterPointerUp());
+        }
+
+        private IEnumerator ClearPointerClickSuppressionAfterPointerUp()
+        {
+            while (UnityEngine.Input.GetMouseButton(0))
+            {
+                yield return null;
+            }
+
+            yield return null;
+
+            _suppressNextPointerClickSelection = false;
+            _clearPointerClickSuppressionCoroutine = null;
+        }
+
         private void AddListeners()
         {
             Editor.Instance.OnEditorViewEnabled.AddListener(OnEditorViewEnabled);
@@ -145,8 +180,25 @@ namespace Oasis.LayoutEditor
 
         private void OnEditorViewPointerClick(List<EditorComponent> editorComponents)
         {
+            if (_suppressNextPointerClickSelection)
+            {
+                _suppressNextPointerClickSelection = false;
+                if (_clearPointerClickSuppressionCoroutine != null)
+                {
+                    StopCoroutine(_clearPointerClickSuppressionCoroutine);
+                    _clearPointerClickSuppressionCoroutine = null;
+                }
+                return;
+            }
+
             // TODO this is just test code!
             DeselectAllObjects();
+
+            if (editorComponents == null || editorComponents.Count == 0)
+            {
+                return;
+            }
+
             SelectObject(editorComponents[0]);
         }
     }

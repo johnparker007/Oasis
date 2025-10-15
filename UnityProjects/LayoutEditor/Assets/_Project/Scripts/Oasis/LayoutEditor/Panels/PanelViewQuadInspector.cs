@@ -1,6 +1,7 @@
 using Oasis.Layout;
 using Oasis.UI;
 using Oasis.UI.Fields;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Oasis.LayoutEditor.Panels
@@ -16,8 +17,22 @@ namespace Oasis.LayoutEditor.Panels
         [SerializeField]
         private FieldVector2 _layoutPointD;
 
+        private struct InputBinding
+        {
+            public int PointIndex;
+            public bool IsX;
+
+            public InputBinding(int pointIndex, bool isX)
+            {
+                PointIndex = pointIndex;
+                IsX = isX;
+            }
+        }
+
         private BaseViewQuadOverlay _overlay;
         private int _handleIndex = -1;
+        private FieldVector2[] _layoutPoints;
+        private readonly Dictionary<BoundInputField, InputBinding> _inputBindings = new Dictionary<BoundInputField, InputBinding>();
 
         public BaseViewQuadOverlay Overlay => _overlay;
 
@@ -61,63 +76,85 @@ namespace Oasis.LayoutEditor.Panels
 
         protected override void Initialise()
         {
+            if (_layoutPoints != null)
+            {
+                return;
+            }
+
+            _layoutPoints = new[]
+            {
+                _layoutPointA,
+                _layoutPointB,
+                _layoutPointC,
+                _layoutPointD,
+            };
         }
 
         protected override void Populate()
         {
-            if (_layoutPointA == null)
+            Initialise();
+
+            if (_layoutPoints == null)
             {
                 return;
             }
 
             if (!HasTarget)
             {
-                SetFieldTexts(string.Empty, string.Empty);
+                ClearAllFieldTexts();
                 return;
             }
 
-            Vector2 point = _overlay.GetPoint(_handleIndex);
-            SetFieldTexts(Mathf.RoundToInt(point.x).ToString(), Mathf.RoundToInt(point.y).ToString());
+            int pointCount = Mathf.Min(_overlay.PointCount, _layoutPoints.Length);
+
+            for (int i = 0; i < _layoutPoints.Length; ++i)
+            {
+                FieldVector2 field = _layoutPoints[i];
+                if (field == null)
+                {
+                    continue;
+                }
+
+                if (i < pointCount)
+                {
+                    Vector2 point = _overlay.GetPoint(i);
+                    SetFieldTexts(field, Mathf.RoundToInt(point.x).ToString(), Mathf.RoundToInt(point.y).ToString());
+                }
+                else
+                {
+                    SetFieldTexts(field, string.Empty, string.Empty);
+                }
+            }
         }
 
         protected override void AddListeners()
         {
-            if (_layoutPointA == null)
+            Initialise();
+
+            if (_layoutPoints == null)
             {
                 return;
             }
 
-            if (_layoutPointA.InputX != null)
+            for (int i = 0; i < _layoutPoints.Length; ++i)
             {
-                _layoutPointA.InputX.OnValueChanged += OnPointXValueChanged;
-                _layoutPointA.InputX.OnValueSubmitted += OnPointXEndEdit;
-            }
-
-            if (_layoutPointA.InputY != null)
-            {
-                _layoutPointA.InputY.OnValueChanged += OnPointYValueChanged;
-                _layoutPointA.InputY.OnValueSubmitted += OnPointYEndEdit;
+                RegisterFieldListeners(_layoutPoints[i], i);
             }
         }
 
         protected override void RemoveListeners()
         {
-            if (_layoutPointA == null)
+            if (_layoutPoints == null)
             {
                 return;
             }
 
-            if (_layoutPointA.InputX != null)
+            for (int i = 0; i < _layoutPoints.Length; ++i)
             {
-                _layoutPointA.InputX.OnValueChanged -= OnPointXValueChanged;
-                _layoutPointA.InputX.OnValueSubmitted -= OnPointXEndEdit;
+                UnregisterFieldListeners(_layoutPoints[i]);
             }
 
-            if (_layoutPointA.InputY != null)
-            {
-                _layoutPointA.InputY.OnValueChanged -= OnPointYValueChanged;
-                _layoutPointA.InputY.OnValueSubmitted -= OnPointYEndEdit;
-            }
+            _inputBindings.Clear();
         }
 
         protected override void OnDestroy()
@@ -126,33 +163,30 @@ namespace Oasis.LayoutEditor.Panels
             UnsubscribeFromOverlay();
         }
 
-        private bool OnPointXValueChanged(BoundInputField source, string value)
+        private bool OnPointValueChanged(BoundInputField source, string value)
         {
-            UpdateLayoutPoint(value, true);
+            return ProcessPointInput(source, value);
+        }
+
+        private bool OnPointValueSubmitted(BoundInputField source, string value)
+        {
+            return ProcessPointInput(source, value);
+        }
+
+        private bool ProcessPointInput(BoundInputField source, string value)
+        {
+            if (!_inputBindings.TryGetValue(source, out InputBinding binding))
+            {
+                return false;
+            }
+
+            UpdateLayoutPoint(binding.PointIndex, binding.IsX, value);
             return true;
         }
 
-        private bool OnPointXEndEdit(BoundInputField source, string value)
+        private void UpdateLayoutPoint(int pointIndex, bool isX, string value)
         {
-            UpdateLayoutPoint(value, true);
-            return true;
-        }
-
-        private bool OnPointYValueChanged(BoundInputField source, string value)
-        {
-            UpdateLayoutPoint(value, false);
-            return true;
-        }
-
-        private bool OnPointYEndEdit(BoundInputField source, string value)
-        {
-            UpdateLayoutPoint(value, false);
-            return true;
-        }
-
-        private void UpdateLayoutPoint(string value, bool isX)
-        {
-            if (!HasTarget)
+            if (!HasTarget || pointIndex < 0 || pointIndex >= _overlay.PointCount)
             {
                 return;
             }
@@ -162,7 +196,7 @@ namespace Oasis.LayoutEditor.Panels
                 return;
             }
 
-            Vector2 point = _overlay.GetPoint(_handleIndex);
+            Vector2 point = _overlay.GetPoint(pointIndex);
             if (isX)
             {
                 point.x = result;
@@ -172,7 +206,7 @@ namespace Oasis.LayoutEditor.Panels
                 point.y = result;
             }
 
-            _overlay.SetPoint(_handleIndex, point);
+            _overlay.SetPoint(pointIndex, point);
         }
 
         private void SubscribeToOverlay()
@@ -208,21 +242,80 @@ namespace Oasis.LayoutEditor.Panels
             Populate();
         }
 
-        private void SetFieldTexts(string xValue, string yValue)
+        private void RegisterFieldListeners(FieldVector2 field, int pointIndex)
         {
-            if (_layoutPointA == null)
+            if (field == null)
             {
                 return;
             }
 
-            if (_layoutPointA.InputX != null)
+            RegisterInputField(field.InputX, pointIndex, true);
+            RegisterInputField(field.InputY, pointIndex, false);
+        }
+
+        private void RegisterInputField(BoundInputField inputField, int pointIndex, bool isX)
+        {
+            if (inputField == null || _inputBindings.ContainsKey(inputField))
             {
-                _layoutPointA.InputX.Text = xValue;
+                return;
             }
 
-            if (_layoutPointA.InputY != null)
+            inputField.OnValueChanged += OnPointValueChanged;
+            inputField.OnValueSubmitted += OnPointValueSubmitted;
+            _inputBindings[inputField] = new InputBinding(pointIndex, isX);
+        }
+
+        private void UnregisterFieldListeners(FieldVector2 field)
+        {
+            if (field == null)
             {
-                _layoutPointA.InputY.Text = yValue;
+                return;
+            }
+
+            UnregisterInputField(field.InputX);
+            UnregisterInputField(field.InputY);
+        }
+
+        private void UnregisterInputField(BoundInputField inputField)
+        {
+            if (inputField == null)
+            {
+                return;
+            }
+
+            inputField.OnValueChanged -= OnPointValueChanged;
+            inputField.OnValueSubmitted -= OnPointValueSubmitted;
+            _inputBindings.Remove(inputField);
+        }
+
+        private void ClearAllFieldTexts()
+        {
+            if (_layoutPoints == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < _layoutPoints.Length; ++i)
+            {
+                SetFieldTexts(_layoutPoints[i], string.Empty, string.Empty);
+            }
+        }
+
+        private void SetFieldTexts(FieldVector2 field, string xValue, string yValue)
+        {
+            if (field == null)
+            {
+                return;
+            }
+
+            if (field.InputX != null)
+            {
+                field.InputX.Text = xValue;
+            }
+
+            if (field.InputY != null)
+            {
+                field.InputY.Text = yValue;
             }
         }
     }

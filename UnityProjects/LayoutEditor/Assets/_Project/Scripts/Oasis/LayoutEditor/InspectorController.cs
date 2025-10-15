@@ -147,6 +147,8 @@ namespace Oasis.LayoutEditor
                 Editor.Instance.SelectionController.DeselectAllObjects();
             }
 
+            Editor.Instance.SelectionController.SuppressNextPointerClickSelection();
+
             DisableAllPanels();
 
             PanelViewQuadInspector.SetTarget(overlay, handleIndex);
