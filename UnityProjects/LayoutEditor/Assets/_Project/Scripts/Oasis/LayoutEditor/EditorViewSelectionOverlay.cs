@@ -463,7 +463,7 @@ namespace Oasis.LayoutEditor
 
                     if (Application.isPlaying)
                     {
-                        Destroy(edgeObject);
+                        GameObject.Destroy(edgeObject);
                     }
                     else
                     {
