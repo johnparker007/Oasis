@@ -22,6 +22,7 @@ namespace Oasis.LayoutEditor
         private RectTransform _contentContainer = null;
         private Vector2 _lastKnownContentSize = Vector2.zero;
         private bool _hasCenteredContent = false;
+        private EditorViewSelectionOverlay _selectionOverlay;
 
         private RectTransform ContentRectTransform => Content != null ? Content.GetComponent<RectTransform>() : null;
 
@@ -77,6 +78,7 @@ namespace Oasis.LayoutEditor
 
             EnsureContentContainer();
             Editor.Instance.Project.Layout.OnAddComponent.AddListener(OnLayoutAddComponent);
+            EnsureSelectionOverlay();
 
             View layoutView = this.View;
             if (layoutView != null)
@@ -255,6 +257,11 @@ namespace Oasis.LayoutEditor
                 SyncContentContainerSize();
                 CenterContent();
             }
+
+            if (_selectionOverlay == null)
+            {
+                EnsureSelectionOverlay();
+            }
         }
 
         private RectTransform EnsureContentContainer()
@@ -336,7 +343,40 @@ namespace Oasis.LayoutEditor
 
             CenterContent();
 
+            EnsureSelectionOverlay();
+
             return _contentContainer;
+        }
+
+        private void EnsureSelectionOverlay()
+        {
+            if (_selectionOverlay != null)
+            {
+                return;
+            }
+
+            RectTransform contentRect = ContentRectTransform;
+            if (contentRect == null)
+            {
+                return;
+            }
+
+            EditorPanel editorPanel = GetComponentInParent<EditorPanel>();
+            Zoom zoom = editorPanel != null ? editorPanel.Zoom : null;
+            SelectionController selectionController = Editor.Instance != null
+                ? Editor.Instance.SelectionController
+                : null;
+
+            GameObject overlayObject = new GameObject(
+                "SelectionOverlay",
+                typeof(RectTransform),
+                typeof(EditorViewSelectionOverlay));
+            overlayObject.transform.SetParent(contentRect, false);
+            overlayObject.transform.SetAsLastSibling();
+
+            EditorViewSelectionOverlay overlay = overlayObject.GetComponent<EditorViewSelectionOverlay>();
+            overlay.Initialize(this, contentRect, zoom, selectionController);
+            _selectionOverlay = overlay;
         }
 
         private void SyncContentContainerSize()
