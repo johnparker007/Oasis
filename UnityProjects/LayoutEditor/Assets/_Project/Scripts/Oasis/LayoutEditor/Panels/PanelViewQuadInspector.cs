@@ -8,7 +8,13 @@ namespace Oasis.LayoutEditor.Panels
     public class PanelViewQuadInspector : PanelBase
     {
         [SerializeField]
-        private FieldVector2 _layoutPoint;
+        private FieldVector2 _layoutPointA;
+        [SerializeField]
+        private FieldVector2 _layoutPointB;
+        [SerializeField]
+        private FieldVector2 _layoutPointC;
+        [SerializeField]
+        private FieldVector2 _layoutPointD;
 
         private BaseViewQuadOverlay _overlay;
         private int _handleIndex = -1;
@@ -59,7 +65,7 @@ namespace Oasis.LayoutEditor.Panels
 
         protected override void Populate()
         {
-            if (_layoutPoint == null)
+            if (_layoutPointA == null)
             {
                 return;
             }
@@ -76,41 +82,41 @@ namespace Oasis.LayoutEditor.Panels
 
         protected override void AddListeners()
         {
-            if (_layoutPoint == null)
+            if (_layoutPointA == null)
             {
                 return;
             }
 
-            if (_layoutPoint.InputX != null)
+            if (_layoutPointA.InputX != null)
             {
-                _layoutPoint.InputX.OnValueChanged += OnPointXValueChanged;
-                _layoutPoint.InputX.OnValueSubmitted += OnPointXEndEdit;
+                _layoutPointA.InputX.OnValueChanged += OnPointXValueChanged;
+                _layoutPointA.InputX.OnValueSubmitted += OnPointXEndEdit;
             }
 
-            if (_layoutPoint.InputY != null)
+            if (_layoutPointA.InputY != null)
             {
-                _layoutPoint.InputY.OnValueChanged += OnPointYValueChanged;
-                _layoutPoint.InputY.OnValueSubmitted += OnPointYEndEdit;
+                _layoutPointA.InputY.OnValueChanged += OnPointYValueChanged;
+                _layoutPointA.InputY.OnValueSubmitted += OnPointYEndEdit;
             }
         }
 
         protected override void RemoveListeners()
         {
-            if (_layoutPoint == null)
+            if (_layoutPointA == null)
             {
                 return;
             }
 
-            if (_layoutPoint.InputX != null)
+            if (_layoutPointA.InputX != null)
             {
-                _layoutPoint.InputX.OnValueChanged -= OnPointXValueChanged;
-                _layoutPoint.InputX.OnValueSubmitted -= OnPointXEndEdit;
+                _layoutPointA.InputX.OnValueChanged -= OnPointXValueChanged;
+                _layoutPointA.InputX.OnValueSubmitted -= OnPointXEndEdit;
             }
 
-            if (_layoutPoint.InputY != null)
+            if (_layoutPointA.InputY != null)
             {
-                _layoutPoint.InputY.OnValueChanged -= OnPointYValueChanged;
-                _layoutPoint.InputY.OnValueSubmitted -= OnPointYEndEdit;
+                _layoutPointA.InputY.OnValueChanged -= OnPointYValueChanged;
+                _layoutPointA.InputY.OnValueSubmitted -= OnPointYEndEdit;
             }
         }
 
@@ -204,19 +210,19 @@ namespace Oasis.LayoutEditor.Panels
 
         private void SetFieldTexts(string xValue, string yValue)
         {
-            if (_layoutPoint == null)
+            if (_layoutPointA == null)
             {
                 return;
             }
 
-            if (_layoutPoint.InputX != null)
+            if (_layoutPointA.InputX != null)
             {
-                _layoutPoint.InputX.Text = xValue;
+                _layoutPointA.InputX.Text = xValue;
             }
 
-            if (_layoutPoint.InputY != null)
+            if (_layoutPointA.InputY != null)
             {
-                _layoutPoint.InputY.Text = yValue;
+                _layoutPointA.InputY.Text = yValue;
             }
         }
     }
