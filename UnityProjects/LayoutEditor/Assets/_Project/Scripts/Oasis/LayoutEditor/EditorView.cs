@@ -17,11 +17,18 @@ namespace Oasis.LayoutEditor
 
         public UnityEvent<List<EditorComponent>> OnPointerClickEvent;
 
+        private const float kSelectionOutlineThickness = 2f;
+
         private bool _initialised = false;
         private List<EditorComponent> _editorComponents = new List<EditorComponent>();
         private RectTransform _contentContainer = null;
         private Vector2 _lastKnownContentSize = Vector2.zero;
         private bool _hasCenteredContent = false;
+        private readonly Dictionary<EditorComponent, ViewQuadHandleGraphic> _selectionHighlights =
+            new Dictionary<EditorComponent, ViewQuadHandleGraphic>();
+        private bool _selectionEventsSubscribed;
+        private bool _zoomEventsSubscribed;
+        private Zoom _zoom;
 
         private RectTransform ContentRectTransform => Content != null ? Content.GetComponent<RectTransform>() : null;
 
@@ -48,16 +55,27 @@ namespace Oasis.LayoutEditor
         private void Awake()
         {
             EnsureContentContainer();
+
+            EditorPanel editorPanel = GetComponentInParent<EditorPanel>();
+            _zoom = editorPanel != null ? editorPanel.Zoom : null;
         }
 
         private void OnEnable()
         {
             Editor.Instance.OnEditorViewEnabled?.Invoke(this);
+
+            SubscribeToSelectionEvents();
+            SubscribeToZoomEvents();
+            UpdateSelectionHighlights();
         }
 
         private void OnDisable()
         {
             Editor.Instance.OnEditorViewDisabled?.Invoke(this);
+
+            UnsubscribeFromSelectionEvents();
+            UnsubscribeFromZoomEvents();
+            ClearSelectionHighlights();
         }
 
         private void OnDestroy()
@@ -66,6 +84,10 @@ namespace Oasis.LayoutEditor
             {
                 Editor.Instance.Project.Layout.OnAddComponent.RemoveListener(OnLayoutAddComponent);
             }
+
+            UnsubscribeFromSelectionEvents();
+            UnsubscribeFromZoomEvents();
+            ClearSelectionHighlights();
         }
 
         public void Initialise()
@@ -149,6 +171,8 @@ namespace Oasis.LayoutEditor
             }
 
             _editorComponents.Add(editorComponent);
+
+            UpdateSelectionHighlights();
         }
 
         private EditorComponent AddComponentBackground(ComponentBackground component)
@@ -395,6 +419,241 @@ namespace Oasis.LayoutEditor
         private static bool Approximately(Vector2 a, Vector2 b)
         {
             return Mathf.Approximately(a.x, b.x) && Mathf.Approximately(a.y, b.y);
+        }
+
+        private void SubscribeToSelectionEvents()
+        {
+            if (_selectionEventsSubscribed)
+            {
+                return;
+            }
+
+            SelectionController selectionController = Editor.Instance?.SelectionController;
+            if (selectionController == null)
+            {
+                return;
+            }
+
+            selectionController.OnSelectionChange.AddListener(OnSelectionChanged);
+            _selectionEventsSubscribed = true;
+        }
+
+        private void UnsubscribeFromSelectionEvents()
+        {
+            if (!_selectionEventsSubscribed)
+            {
+                return;
+            }
+
+            SelectionController selectionController = Editor.Instance?.SelectionController;
+            if (selectionController != null)
+            {
+                selectionController.OnSelectionChange.RemoveListener(OnSelectionChanged);
+            }
+
+            _selectionEventsSubscribed = false;
+        }
+
+        private void SubscribeToZoomEvents()
+        {
+            if (_zoom == null || _zoomEventsSubscribed)
+            {
+                return;
+            }
+
+            _zoom.OnZoomLevelSet.AddListener(OnZoomLevelSet);
+            _zoomEventsSubscribed = true;
+        }
+
+        private void UnsubscribeFromZoomEvents()
+        {
+            if (_zoom == null || !_zoomEventsSubscribed)
+            {
+                return;
+            }
+
+            _zoom.OnZoomLevelSet.RemoveListener(OnZoomLevelSet);
+            _zoomEventsSubscribed = false;
+        }
+
+        private void OnSelectionChanged()
+        {
+            UpdateSelectionHighlights();
+        }
+
+        private void OnZoomLevelSet(float zoomLevel)
+        {
+            UpdateHighlightThickness();
+        }
+
+        private void UpdateSelectionHighlights()
+        {
+            Transform contentTransform = Content != null ? Content.transform : null;
+            if (contentTransform == null)
+            {
+                ClearSelectionHighlights();
+                return;
+            }
+
+            SelectionController selectionController = Editor.Instance?.SelectionController;
+            if (selectionController == null)
+            {
+                ClearSelectionHighlights();
+                return;
+            }
+
+            List<EditorComponent> selectedComponents = selectionController.SelectedEditorComponents;
+
+            List<EditorComponent> componentsToRemove = null;
+            foreach (KeyValuePair<EditorComponent, ViewQuadHandleGraphic> pair in _selectionHighlights)
+            {
+                EditorComponent component = pair.Key;
+                if (component == null ||
+                    pair.Value == null ||
+                    !selectedComponents.Contains(component) ||
+                    !component.transform.IsChildOf(contentTransform))
+                {
+                    componentsToRemove ??= new List<EditorComponent>();
+                    componentsToRemove.Add(component);
+                }
+            }
+
+            if (componentsToRemove != null)
+            {
+                for (int i = 0; i < componentsToRemove.Count; ++i)
+                {
+                    RemoveSelectionHighlight(componentsToRemove[i]);
+                }
+            }
+
+            for (int i = 0; i < selectedComponents.Count; ++i)
+            {
+                EditorComponent component = selectedComponents[i];
+                if (component == null)
+                {
+                    continue;
+                }
+
+                if (!component.transform.IsChildOf(contentTransform))
+                {
+                    continue;
+                }
+
+                EnsureSelectionHighlight(component);
+            }
+
+            UpdateHighlightThickness();
+        }
+
+        private void EnsureSelectionHighlight(EditorComponent component)
+        {
+            if (component == null)
+            {
+                return;
+            }
+
+            if (_selectionHighlights.TryGetValue(component, out ViewQuadHandleGraphic existing) && existing != null)
+            {
+                existing.gameObject.SetActive(true);
+                return;
+            }
+
+            GameObject highlightObject = new GameObject(
+                "SelectionHighlight",
+                typeof(RectTransform),
+                typeof(CanvasRenderer),
+                typeof(ViewQuadHandleGraphic));
+
+            highlightObject.hideFlags = HideFlags.HideAndDontSave;
+            highlightObject.transform.SetParent(component.transform, false);
+            highlightObject.transform.SetAsLastSibling();
+
+            RectTransform rect = highlightObject.GetComponent<RectTransform>();
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+
+            ViewQuadHandleGraphic graphic = highlightObject.GetComponent<ViewQuadHandleGraphic>();
+            graphic.color = Color.white;
+            graphic.raycastTarget = false;
+
+            _selectionHighlights[component] = graphic;
+        }
+
+        private void RemoveSelectionHighlight(EditorComponent component)
+        {
+            if (component == null)
+            {
+                return;
+            }
+
+            if (!_selectionHighlights.TryGetValue(component, out ViewQuadHandleGraphic graphic))
+            {
+                return;
+            }
+
+            _selectionHighlights.Remove(component);
+            if (graphic != null)
+            {
+                DestroyHighlightGraphic(graphic);
+            }
+        }
+
+        private void UpdateHighlightThickness()
+        {
+            if (_selectionHighlights.Count == 0)
+            {
+                return;
+            }
+
+            float zoomLevel = _zoom != null ? Mathf.Max(_zoom.ZoomLevel, 0.0001f) : 1f;
+            float lineWidth = kSelectionOutlineThickness / zoomLevel;
+
+            foreach (ViewQuadHandleGraphic graphic in _selectionHighlights.Values)
+            {
+                if (graphic == null)
+                {
+                    continue;
+                }
+
+                graphic.LineWidth = lineWidth;
+            }
+        }
+
+        private void ClearSelectionHighlights()
+        {
+            if (_selectionHighlights.Count == 0)
+            {
+                return;
+            }
+
+            foreach (ViewQuadHandleGraphic graphic in _selectionHighlights.Values)
+            {
+                if (graphic != null)
+                {
+                    DestroyHighlightGraphic(graphic);
+                }
+            }
+
+            _selectionHighlights.Clear();
+        }
+
+        private void DestroyHighlightGraphic(ViewQuadHandleGraphic graphic)
+        {
+            if (graphic == null)
+            {
+                return;
+            }
+
+            if (Application.isPlaying)
+            {
+                Destroy(graphic.gameObject);
+            }
+            else
+            {
+                DestroyImmediate(graphic.gameObject);
+            }
         }
     }
 

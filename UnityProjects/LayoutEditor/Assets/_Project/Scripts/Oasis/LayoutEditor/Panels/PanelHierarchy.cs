@@ -1,10 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using Oasis.Layout;
+using Oasis.LayoutEditor;
 using Oasis.LayoutEditor.RuntimeHierarchyIntegration;
 using RuntimeInspectorNamespace;
 using UnityEngine;
+using UnityEngine.Events;
 using Component = Oasis.Layout.Component;
 using View = Oasis.Layout.View;
 
@@ -22,6 +25,7 @@ namespace Oasis.LayoutEditor.Panels
         };
 
         private const string kFallbackCategoryName = "Components";
+        private const string kViewQuadCategoryName = "View Quads";
 
         [SerializeField]
         private RuntimeHierarchy _runtimeHierarchy = null;
@@ -29,12 +33,20 @@ namespace Oasis.LayoutEditor.Panels
         private RuntimeHierarchyStandaloneTransformCollection _transformCollection;
         private readonly Dictionary<string, Transform> _categoryRoots = new(StringComparer.Ordinal);
         private readonly Dictionary<Component, ComponentEntry> _componentEntries = new();
+        private readonly Dictionary<Transform, Component> _componentsByTransform = new();
+        private readonly Dictionary<View, ViewQuadEntry> _viewQuadEntries = new();
+        private readonly Dictionary<Transform, View> _viewQuadTransforms = new();
+        private readonly List<Transform> _runtimeSelectionBuffer = new();
+        private readonly List<EditorComponent> _hierarchySelectionBuffer = new();
 
         private LayoutObject _observedLayout;
         private View _currentView;
         private string _currentViewName;
         private EditorView _currentEditorView;
         private bool _eventsSubscribed;
+        private bool _selectionEventsSubscribed;
+        private bool _isApplyingEditorSelection;
+        private bool _isApplyingHierarchySelection;
 
         private void Awake()
         {
@@ -45,6 +57,7 @@ namespace Oasis.LayoutEditor.Panels
         {
             EnsureRuntimeHierarchy();
             EnsureCategoryRoots();
+            SubscribeToHierarchySelection();
 
             if (string.IsNullOrEmpty(_currentViewName))
             {
@@ -52,6 +65,7 @@ namespace Oasis.LayoutEditor.Panels
             }
 
             SubscribeToEditorEvents();
+            SubscribeToSelectionEvents();
             SubscribeToLayout(Editor.Instance != null ? Editor.Instance.Project?.Layout : null);
 
             RefreshActiveView();
@@ -61,8 +75,11 @@ namespace Oasis.LayoutEditor.Panels
         {
             UnsubscribeFromLayout();
             UnsubscribeFromEditorEvents();
+            UnsubscribeFromSelectionEvents();
+            UnsubscribeFromHierarchySelection();
 
             ClearComponentEntries();
+            ClearViewQuadEntries();
             DestroyCategoryRoots();
 
             _currentView = null;
@@ -81,6 +98,29 @@ namespace Oasis.LayoutEditor.Panels
             {
                 _transformCollection = new RuntimeHierarchyStandaloneTransformCollection(_runtimeHierarchy);
             }
+
+            SubscribeToHierarchySelection();
+        }
+
+        private void SubscribeToHierarchySelection()
+        {
+            if (_runtimeHierarchy == null)
+            {
+                return;
+            }
+
+            _runtimeHierarchy.OnSelectionChanged -= OnRuntimeHierarchySelectionChanged;
+            _runtimeHierarchy.OnSelectionChanged += OnRuntimeHierarchySelectionChanged;
+        }
+
+        private void UnsubscribeFromHierarchySelection()
+        {
+            if (_runtimeHierarchy == null)
+            {
+                return;
+            }
+
+            _runtimeHierarchy.OnSelectionChanged -= OnRuntimeHierarchySelectionChanged;
         }
 
         private void SubscribeToEditorEvents()
@@ -114,6 +154,39 @@ namespace Oasis.LayoutEditor.Panels
             Editor.Instance.OnLayoutSet.RemoveListener(OnLayoutSet);
 
             _eventsSubscribed = false;
+        }
+
+        private void SubscribeToSelectionEvents()
+        {
+            if (_selectionEventsSubscribed)
+            {
+                return;
+            }
+
+            SelectionController selectionController = Editor.Instance?.SelectionController;
+            if (selectionController == null)
+            {
+                return;
+            }
+
+            selectionController.OnSelectionChange.AddListener(OnEditorSelectionChanged);
+            _selectionEventsSubscribed = true;
+        }
+
+        private void UnsubscribeFromSelectionEvents()
+        {
+            if (!_selectionEventsSubscribed)
+            {
+                return;
+            }
+
+            SelectionController selectionController = Editor.Instance?.SelectionController;
+            if (selectionController != null)
+            {
+                selectionController.OnSelectionChange.RemoveListener(OnEditorSelectionChanged);
+            }
+
+            _selectionEventsSubscribed = false;
         }
 
         private void SubscribeToLayout(LayoutObject layout)
@@ -279,13 +352,17 @@ namespace Oasis.LayoutEditor.Panels
             if (_runtimeHierarchy == null)
             {
                 ClearComponentEntries();
+                ClearViewQuadEntries();
                 return;
             }
 
             _runtimeHierarchy.Deselect();
 
             ClearComponentEntries();
+            ClearViewQuadEntries();
             EnsureCategoryRoots();
+            EnsureViewQuadCategoryRoot();
+            AddViewQuadEntries();
 
             View activeView = ResolveCurrentView();
 
@@ -325,6 +402,40 @@ namespace Oasis.LayoutEditor.Panels
             return _currentView;
         }
 
+        private EditorView GetActiveEditorView()
+        {
+            if (_currentEditorView != null && _currentEditorView.isActiveAndEnabled)
+            {
+                return _currentEditorView;
+            }
+
+            View view = ResolveCurrentView();
+            EditorView editorView = view?.EditorView;
+
+            if (editorView != null && editorView.isActiveAndEnabled)
+            {
+                return editorView;
+            }
+
+            return _currentEditorView ?? editorView;
+        }
+
+        private EditorComponent GetEditorComponentForLayoutComponent(Component component)
+        {
+            if (component == null)
+            {
+                return null;
+            }
+
+            EditorView editorView = GetActiveEditorView();
+            if (editorView == null)
+            {
+                return null;
+            }
+
+            return editorView.GetEditorComponent(component);
+        }
+
         private void EnsureCategoryRoots()
         {
             if (_transformCollection == null)
@@ -336,6 +447,65 @@ namespace Oasis.LayoutEditor.Panels
             {
                 GetOrCreateCategoryTransform(s_defaultCategoryNames[i]);
             }
+        }
+
+        private void EnsureViewQuadCategoryRoot()
+        {
+            GetOrCreateCategoryTransform(kViewQuadCategoryName);
+        }
+
+        private void AddViewQuadEntries()
+        {
+            LayoutObject layout = Editor.Instance?.Project?.Layout;
+            if (layout == null)
+            {
+                return;
+            }
+
+            List<View> views = layout.GetViews();
+            if (views == null || views.Count == 0)
+            {
+                return;
+            }
+
+            Transform parentTransform = GetOrCreateCategoryTransform(kViewQuadCategoryName);
+            if (parentTransform == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < views.Count; ++i)
+            {
+                AddViewQuadEntry(views[i], parentTransform);
+            }
+        }
+
+        private void AddViewQuadEntry(View view, Transform parentTransform)
+        {
+            if (view == null || parentTransform == null)
+            {
+                return;
+            }
+
+            if (_viewQuadEntries.ContainsKey(view))
+            {
+                UpdateViewQuadEntryName(view);
+                return;
+            }
+
+            GameObject entryObject = new GameObject(GetViewQuadDisplayName(view))
+            {
+                hideFlags = HideFlags.HideAndDontSave
+            };
+
+            Transform entryTransform = entryObject.transform;
+            entryTransform.SetParent(parentTransform, false);
+
+            UnityAction onChangedHandler = () => UpdateViewQuadEntryName(view);
+            view.OnChanged.AddListener(onChangedHandler);
+
+            _viewQuadEntries[view] = new ViewQuadEntry(entryTransform, onChangedHandler);
+            _viewQuadTransforms[entryTransform] = view;
         }
 
         private Transform GetOrCreateCategoryTransform(string categoryName)
@@ -365,6 +535,68 @@ namespace Oasis.LayoutEditor.Panels
             };
 
             return categoryObject.transform;
+        }
+
+        private void SelectViewQuadFromHierarchy(View view)
+        {
+            if (view == null)
+            {
+                return;
+            }
+
+            EditorView editorView = view.EditorView;
+            if (editorView == null)
+            {
+                return;
+            }
+
+            BaseViewQuadOverlay overlay = editorView.GetComponentInChildren<BaseViewQuadOverlay>(true);
+            if (overlay == null)
+            {
+                return;
+            }
+
+            if (!overlay.gameObject.activeSelf)
+            {
+                overlay.gameObject.SetActive(true);
+            }
+
+            if (overlay.HasSelectedHandle)
+            {
+                overlay.SelectHandle(overlay.SelectedHandleIndex);
+            }
+            else
+            {
+                overlay.SelectHandle(0);
+            }
+        }
+
+        private void ClearViewQuadEntries()
+        {
+            if (_viewQuadEntries.Count == 0)
+            {
+                return;
+            }
+
+            foreach (KeyValuePair<View, ViewQuadEntry> pair in _viewQuadEntries)
+            {
+                View view = pair.Key;
+                ViewQuadEntry entry = pair.Value;
+
+                if (view != null && entry.OnChangedHandler != null)
+                {
+                    view.OnChanged.RemoveListener(entry.OnChangedHandler);
+                }
+
+                if (entry.Transform != null)
+                {
+                    _viewQuadTransforms.Remove(entry.Transform);
+                    DestroyTransform(entry.Transform);
+                }
+            }
+
+            _viewQuadEntries.Clear();
+            _viewQuadTransforms.Clear();
         }
 
         private void DestroyCategoryRoots()
@@ -414,6 +646,7 @@ namespace Oasis.LayoutEditor.Panels
             component.OnValueSet += handler;
 
             _componentEntries[component] = new ComponentEntry(entryTransform, handler);
+            _componentsByTransform[entryTransform] = component;
         }
 
         private void RemoveComponentEntry(Component component)
@@ -432,6 +665,7 @@ namespace Oasis.LayoutEditor.Panels
 
             if (entry.Transform != null)
             {
+                _componentsByTransform.Remove(entry.Transform);
                 DestroyTransform(entry.Transform);
             }
 
@@ -457,11 +691,13 @@ namespace Oasis.LayoutEditor.Panels
 
                 if (entry.Transform != null)
                 {
+                    _componentsByTransform.Remove(entry.Transform);
                     DestroyTransform(entry.Transform);
                 }
             }
 
             _componentEntries.Clear();
+            _componentsByTransform.Clear();
         }
 
         private void OnLayoutComponentAdded(Component component, View view)
@@ -505,6 +741,137 @@ namespace Oasis.LayoutEditor.Panels
             _runtimeHierarchy?.Refresh();
         }
 
+        private void OnEditorSelectionChanged()
+        {
+            if (_runtimeHierarchy == null || _isApplyingHierarchySelection)
+            {
+                return;
+            }
+
+            SelectionController selectionController = Editor.Instance?.SelectionController;
+            if (selectionController == null)
+            {
+                return;
+            }
+
+            try
+            {
+                _isApplyingEditorSelection = true;
+
+                _runtimeSelectionBuffer.Clear();
+
+                List<EditorComponent> selectedComponents = selectionController.SelectedEditorComponents;
+                for (int i = 0; i < selectedComponents.Count; ++i)
+                {
+                    EditorComponent editorComponent = selectedComponents[i];
+                    if (editorComponent == null)
+                    {
+                        continue;
+                    }
+
+                    Component layoutComponent = editorComponent.Component;
+                    if (layoutComponent == null)
+                    {
+                        continue;
+                    }
+
+                    if (_componentEntries.TryGetValue(layoutComponent, out ComponentEntry entry) && entry.Transform != null)
+                    {
+                        if (!_runtimeSelectionBuffer.Contains(entry.Transform))
+                        {
+                            _runtimeSelectionBuffer.Add(entry.Transform);
+                        }
+                    }
+                }
+
+                if (_runtimeSelectionBuffer.Count > 0)
+                {
+                    _runtimeHierarchy.Select(
+                        _runtimeSelectionBuffer,
+                        RuntimeHierarchy.SelectOptions.ForceRevealSelection | RuntimeHierarchy.SelectOptions.FocusOnSelection);
+                }
+                else
+                {
+                    _runtimeHierarchy.Deselect();
+                }
+            }
+            finally
+            {
+                _runtimeSelectionBuffer.Clear();
+                _isApplyingEditorSelection = false;
+            }
+        }
+
+        private void OnRuntimeHierarchySelectionChanged(ReadOnlyCollection<Transform> selection)
+        {
+            if (_isApplyingEditorSelection)
+            {
+                return;
+            }
+
+            SelectionController selectionController = Editor.Instance?.SelectionController;
+            if (selectionController == null)
+            {
+                return;
+            }
+
+            try
+            {
+                _isApplyingHierarchySelection = true;
+
+                _hierarchySelectionBuffer.Clear();
+                View selectedViewQuad = null;
+
+                if (selection != null)
+                {
+                    for (int i = 0; i < selection.Count; ++i)
+                    {
+                        Transform selectedTransform = selection[i];
+                        if (selectedTransform == null)
+                        {
+                            continue;
+                        }
+
+                        if (_componentsByTransform.TryGetValue(selectedTransform, out Component component) && component != null)
+                        {
+                            EditorComponent editorComponent = GetEditorComponentForLayoutComponent(component);
+                            if (editorComponent != null && !_hierarchySelectionBuffer.Contains(editorComponent))
+                            {
+                                _hierarchySelectionBuffer.Add(editorComponent);
+                            }
+                        }
+                        else if (_viewQuadTransforms.TryGetValue(selectedTransform, out View view) && view != null)
+                        {
+                            selectedViewQuad = view;
+                        }
+                    }
+                }
+
+                if (_hierarchySelectionBuffer.Count > 0)
+                {
+                    selectionController.DeselectAllObjects();
+                    for (int i = 0; i < _hierarchySelectionBuffer.Count; ++i)
+                    {
+                        selectionController.SelectObject(_hierarchySelectionBuffer[i]);
+                    }
+                }
+                else if (selectedViewQuad != null)
+                {
+                    selectionController.DeselectAllObjects();
+                    SelectViewQuadFromHierarchy(selectedViewQuad);
+                }
+                else if (selection == null || selection.Count == 0)
+                {
+                    selectionController.DeselectAllObjects();
+                }
+            }
+            finally
+            {
+                _hierarchySelectionBuffer.Clear();
+                _isApplyingHierarchySelection = false;
+            }
+        }
+
         private bool IsTargetView(View view)
         {
             if (view == null)
@@ -535,6 +902,19 @@ namespace Oasis.LayoutEditor.Panels
             if (_componentEntries.TryGetValue(component, out ComponentEntry entry) && entry.Transform != null)
             {
                 entry.Transform.gameObject.name = GetComponentDisplayName(component);
+            }
+        }
+
+        private void UpdateViewQuadEntryName(View view)
+        {
+            if (view == null)
+            {
+                return;
+            }
+
+            if (_viewQuadEntries.TryGetValue(view, out ViewQuadEntry entry) && entry.Transform != null)
+            {
+                entry.Transform.gameObject.name = GetViewQuadDisplayName(view);
             }
         }
 
@@ -578,6 +958,24 @@ namespace Oasis.LayoutEditor.Panels
             };
         }
 
+        private static string GetViewQuadDisplayName(View view)
+        {
+            if (view == null)
+            {
+                return "<missing view quad>";
+            }
+
+            string viewName = !string.IsNullOrWhiteSpace(view.Name) ? view.Name : "<unnamed view>";
+            string quadName = view.Data?.ViewQuad?.Name;
+
+            if (!string.IsNullOrWhiteSpace(quadName))
+            {
+                return $"{viewName} View Quad ({quadName})";
+            }
+
+            return $"{viewName} View Quad";
+        }
+
         private static void DestroyTransform(Transform transform)
         {
             if (transform == null)
@@ -605,6 +1003,18 @@ namespace Oasis.LayoutEditor.Panels
 
             public Transform Transform { get; }
             public Component.OnValueSetDelegate ValueChangedHandler { get; }
+        }
+
+        private readonly struct ViewQuadEntry
+        {
+            public ViewQuadEntry(Transform transform, UnityAction onChangedHandler)
+            {
+                Transform = transform;
+                OnChangedHandler = onChangedHandler;
+            }
+
+            public Transform Transform { get; }
+            public UnityAction OnChangedHandler { get; }
         }
     }
 }
