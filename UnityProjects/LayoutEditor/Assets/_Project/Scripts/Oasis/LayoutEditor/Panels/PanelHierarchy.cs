@@ -32,6 +32,7 @@ namespace Oasis.LayoutEditor.Panels
 
         private LayoutObject _observedLayout;
         private View _currentView;
+        private string _currentViewName;
         private EditorView _currentEditorView;
         private bool _eventsSubscribed;
 
@@ -44,6 +45,11 @@ namespace Oasis.LayoutEditor.Panels
         {
             EnsureRuntimeHierarchy();
             EnsureCategoryRoots();
+
+            if (string.IsNullOrEmpty(_currentViewName))
+            {
+                _currentViewName = ViewController.kBaseViewName;
+            }
 
             SubscribeToEditorEvents();
             SubscribeToLayout(Editor.Instance != null ? Editor.Instance.Project?.Layout : null);
@@ -61,6 +67,7 @@ namespace Oasis.LayoutEditor.Panels
 
             _currentView = null;
             _currentEditorView = null;
+            _currentViewName = null;
         }
 
         private void EnsureRuntimeHierarchy()
@@ -155,6 +162,7 @@ namespace Oasis.LayoutEditor.Panels
             }
 
             _currentEditorView = editorView;
+            _currentViewName = editorView.ViewName;
             SetCurrentView(ResolveView(editorView));
         }
 
@@ -201,6 +209,7 @@ namespace Oasis.LayoutEditor.Panels
         {
             if (Editor.Instance == null)
             {
+                _currentViewName = ViewController.kBaseViewName;
                 SetCurrentView(null);
                 return;
             }
@@ -209,11 +218,20 @@ namespace Oasis.LayoutEditor.Panels
             if (baseEditorView != null && baseEditorView.isActiveAndEnabled)
             {
                 _currentEditorView = baseEditorView;
+                _currentViewName = baseEditorView.ViewName;
                 SetCurrentView(ResolveView(baseEditorView));
                 return;
             }
 
             View fallbackView = Editor.Instance.Project?.Layout?.BaseView;
+            if (fallbackView != null)
+            {
+                _currentViewName = fallbackView.Name;
+            }
+            else
+            {
+                _currentViewName = ViewController.kBaseViewName;
+            }
             SetCurrentView(fallbackView);
         }
 
@@ -246,6 +264,11 @@ namespace Oasis.LayoutEditor.Panels
                 _currentView = view;
             }
 
+            if (view != null)
+            {
+                _currentViewName = view.Name;
+            }
+
             RebuildHierarchyEntries();
         }
 
@@ -264,18 +287,42 @@ namespace Oasis.LayoutEditor.Panels
             ClearComponentEntries();
             EnsureCategoryRoots();
 
-            if (_currentView == null)
+            View activeView = ResolveCurrentView();
+
+            if (activeView == null)
             {
                 _runtimeHierarchy.Refresh();
                 return;
             }
 
-            foreach (Component component in _currentView.Data.Components)
+            foreach (Component component in activeView.Data.Components)
             {
                 AddComponentEntry(component);
             }
 
             _runtimeHierarchy.Refresh();
+        }
+
+        private View ResolveCurrentView()
+        {
+            if (_currentView != null)
+            {
+                return _currentView;
+            }
+
+            if (string.IsNullOrEmpty(_currentViewName))
+            {
+                return null;
+            }
+
+            View resolvedView = Editor.Instance?.Project?.Layout?.GetView(_currentViewName);
+            if (resolvedView != null)
+            {
+                _currentView = resolvedView;
+                _currentViewName = resolvedView.Name;
+            }
+
+            return _currentView;
         }
 
         private void EnsureCategoryRoots()
@@ -419,9 +466,18 @@ namespace Oasis.LayoutEditor.Panels
 
         private void OnLayoutComponentAdded(Component component, View view)
         {
-            if (_currentView == null || !ReferenceEquals(_currentView, view))
+            if (!IsTargetView(view))
             {
                 return;
+            }
+
+            if (_currentView == null && view != null)
+            {
+                _currentView = view;
+                if (string.IsNullOrEmpty(_currentViewName))
+                {
+                    _currentViewName = view.Name;
+                }
             }
 
             EnsureCategoryRoots();
@@ -431,13 +487,42 @@ namespace Oasis.LayoutEditor.Panels
 
         private void OnLayoutComponentRemoved(Component component, View view)
         {
-            if (_currentView == null || !ReferenceEquals(_currentView, view))
+            if (!IsTargetView(view))
             {
                 return;
             }
 
+            if (_currentView == null && view != null)
+            {
+                _currentView = view;
+                if (string.IsNullOrEmpty(_currentViewName))
+                {
+                    _currentViewName = view.Name;
+                }
+            }
+
             RemoveComponentEntry(component);
             _runtimeHierarchy?.Refresh();
+        }
+
+        private bool IsTargetView(View view)
+        {
+            if (view == null)
+            {
+                return false;
+            }
+
+            if (_currentView != null && ReferenceEquals(_currentView, view))
+            {
+                return true;
+            }
+
+            if (!string.IsNullOrEmpty(_currentViewName) && string.Equals(view.Name, _currentViewName, StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            return false;
         }
 
         private void UpdateComponentEntryName(Component component)
