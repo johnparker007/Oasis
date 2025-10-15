@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
@@ -14,6 +15,7 @@ namespace Oasis.LayoutEditor
         public List<EditorComponent> SelectedEditorComponents = new List<EditorComponent>();
 
         private bool _suppressNextPointerClickSelection;
+        private Coroutine _clearPointerClickSuppressionCoroutine;
 
         private void Awake()
         {
@@ -22,6 +24,12 @@ namespace Oasis.LayoutEditor
 
         public void OnDestroy()
         {
+            if (_clearPointerClickSuppressionCoroutine != null)
+            {
+                StopCoroutine(_clearPointerClickSuppressionCoroutine);
+                _clearPointerClickSuppressionCoroutine = null;
+            }
+
             RemoveListeners();
         }
 
@@ -126,6 +134,26 @@ namespace Oasis.LayoutEditor
         public void SuppressNextPointerClickSelection()
         {
             _suppressNextPointerClickSelection = true;
+
+            if (_clearPointerClickSuppressionCoroutine != null)
+            {
+                StopCoroutine(_clearPointerClickSuppressionCoroutine);
+            }
+
+            _clearPointerClickSuppressionCoroutine = StartCoroutine(ClearPointerClickSuppressionAfterPointerUp());
+        }
+
+        private IEnumerator ClearPointerClickSuppressionAfterPointerUp()
+        {
+            while (Input.GetMouseButton(0))
+            {
+                yield return null;
+            }
+
+            yield return null;
+
+            _suppressNextPointerClickSelection = false;
+            _clearPointerClickSuppressionCoroutine = null;
         }
 
         private void AddListeners()
@@ -155,6 +183,11 @@ namespace Oasis.LayoutEditor
             if (_suppressNextPointerClickSelection)
             {
                 _suppressNextPointerClickSelection = false;
+                if (_clearPointerClickSuppressionCoroutine != null)
+                {
+                    StopCoroutine(_clearPointerClickSuppressionCoroutine);
+                    _clearPointerClickSuppressionCoroutine = null;
+                }
                 return;
             }
 
