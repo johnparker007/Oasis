@@ -9,6 +9,9 @@ namespace Oasis.LayoutEditor.Panels
     public class PanelViewQuadInspector : PanelBase
     {
         [SerializeField]
+        private FieldString _panelName;
+
+        [SerializeField]
         private FieldVector2 _layoutPointA;
         [SerializeField]
         private FieldVector2 _layoutPointB;
