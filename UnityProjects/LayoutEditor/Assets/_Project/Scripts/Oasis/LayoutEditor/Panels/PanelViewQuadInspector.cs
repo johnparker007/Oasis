@@ -1,6 +1,7 @@
 using Oasis.Layout;
 using Oasis.UI;
 using Oasis.UI.Fields;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -97,6 +98,15 @@ namespace Oasis.LayoutEditor.Panels
         {
             Initialise();
 
+            if (_panelName != null && _panelName.Input != null)
+            {
+                string targetName = _overlay != null ? _overlay.ViewQuadName ?? string.Empty : string.Empty;
+                if (!string.Equals(_panelName.Input.Text, targetName, StringComparison.Ordinal))
+                {
+                    _panelName.Input.Text = targetName;
+                }
+            }
+
             if (_layoutPoints == null)
             {
                 return;
@@ -134,6 +144,12 @@ namespace Oasis.LayoutEditor.Panels
         {
             Initialise();
 
+            if (_panelName != null && _panelName.Input != null)
+            {
+                _panelName.Input.OnValueChanged += OnPanelNameValueChanged;
+                _panelName.Input.OnValueSubmitted += OnPanelNameValueSubmitted;
+            }
+
             if (_layoutPoints == null)
             {
                 return;
@@ -147,6 +163,12 @@ namespace Oasis.LayoutEditor.Panels
 
         protected override void RemoveListeners()
         {
+            if (_panelName != null && _panelName.Input != null)
+            {
+                _panelName.Input.OnValueChanged -= OnPanelNameValueChanged;
+                _panelName.Input.OnValueSubmitted -= OnPanelNameValueSubmitted;
+            }
+
             if (_layoutPoints == null)
             {
                 return;
@@ -176,6 +198,16 @@ namespace Oasis.LayoutEditor.Panels
             return ProcessPointInput(source, value);
         }
 
+        private bool OnPanelNameValueChanged(BoundInputField source, string value)
+        {
+            return ProcessPanelNameInput(value);
+        }
+
+        private bool OnPanelNameValueSubmitted(BoundInputField source, string value)
+        {
+            return ProcessPanelNameInput(value);
+        }
+
         private bool ProcessPointInput(BoundInputField source, string value)
         {
             if (!_inputBindings.TryGetValue(source, out InputBinding binding))
@@ -184,6 +216,23 @@ namespace Oasis.LayoutEditor.Panels
             }
 
             UpdateLayoutPoint(binding.PointIndex, binding.IsX, value);
+            return true;
+        }
+
+        private bool ProcessPanelNameInput(string value)
+        {
+            if (_overlay == null)
+            {
+                return false;
+            }
+
+            string newName = value ?? string.Empty;
+            if (string.Equals(_overlay.ViewQuadName, newName, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            _overlay.ViewQuadName = newName;
             return true;
         }
 
@@ -293,6 +342,14 @@ namespace Oasis.LayoutEditor.Panels
 
         private void ClearAllFieldTexts()
         {
+            if (_panelName != null && _panelName.Input != null)
+            {
+                if (!string.IsNullOrEmpty(_panelName.Input.Text))
+                {
+                    _panelName.Input.Text = string.Empty;
+                }
+            }
+
             if (_layoutPoints == null)
             {
                 return;

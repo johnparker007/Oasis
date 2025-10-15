@@ -5,6 +5,7 @@ using Newtonsoft.Json.Linq;
 using Oasis.FileOperations;
 using System.IO;
 using Oasis.Layout;
+using Oasis.LayoutEditor;
 using UnityEngine;
 using Oasis.MAME;
 
@@ -101,6 +102,8 @@ namespace Oasis.Import
             TryAssignPoint(view, ViewQuad.PointTypes.TopRight, viewQuadToken["top_right"]);
             TryAssignPoint(view, ViewQuad.PointTypes.BottomRight, viewQuadToken["bottom_right"]);
             TryAssignPoint(view, ViewQuad.PointTypes.BottomLeft, viewQuadToken["bottom_left"]);
+
+            AssignViewQuadName(view, viewQuadToken["name"]);
         }
 
         private static void TryAssignPoint(View view, ViewQuad.PointTypes pointType, JToken pointToken)
@@ -143,6 +146,28 @@ namespace Oasis.Import
             }
 
             return false;
+        }
+
+        private static void AssignViewQuadName(View view, JToken nameToken)
+        {
+            if (view?.Data?.ViewQuad == null)
+            {
+                return;
+            }
+
+            string name = string.Empty;
+
+            if (nameToken != null && nameToken.Type != JTokenType.Null)
+            {
+                name = nameToken.Type == JTokenType.String ? nameToken.Value<string>() : nameToken.ToString();
+            }
+
+            if (string.IsNullOrWhiteSpace(name) && string.Equals(view.Name, ViewController.kBaseViewName, StringComparison.Ordinal))
+            {
+                name = LayoutObject.kDefaultBaseViewQuadName;
+            }
+
+            view.Data.ViewQuad.Name = name ?? string.Empty;
         }
     }
 }

@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -18,6 +19,8 @@ namespace Oasis
     
     public class LayoutObject : SerializableDictionary
     {
+        public const string kDefaultBaseViewQuadName = "Bottom";
+
         // the data to be loaded/saved goes in this data class:
         [System.Serializable]
         public class LayoutData
@@ -71,6 +74,11 @@ namespace Oasis
             Data.Views.Add(view);
 
             view.Initialise(name);
+
+            if (string.Equals(name, ViewController.kBaseViewName, StringComparison.Ordinal) && string.IsNullOrEmpty(view.Data.ViewQuad.Name))
+            {
+                view.Data.ViewQuad.Name = kDefaultBaseViewQuadName;
+            }
 
             return view;
         }
@@ -210,7 +218,7 @@ namespace Oasis
                 return;
             }
 
-            const string viewName = "Bottom";
+            string viewName = GetBaseViewQuadName();
             string viewFolderName = string.Concat("View", viewName);
             string relativeImagePath = Path.Combine(viewFolderName, "Background.png");
             relativeImagePath = relativeImagePath.Replace('\\', '/');
@@ -300,6 +308,25 @@ namespace Oasis
             }
 
             return true;
+        }
+
+        public string GetBaseViewQuadName()
+        {
+            View baseView = BaseView;
+            if (baseView?.Data?.ViewQuad == null)
+            {
+                return kDefaultBaseViewQuadName;
+            }
+
+            string name = baseView.Data.ViewQuad.Name;
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                name = kDefaultBaseViewQuadName;
+                baseView.Data.ViewQuad.Name = name;
+                Dirty = true;
+            }
+
+            return name;
         }
 
         private static Vector2Int ConvertViewQuadPointToImagePoint(Vector2 layoutPoint, Oasis.Graphics.OasisImage sourceImage)

@@ -14,6 +14,8 @@ namespace Oasis.Layout
             BottomLeft
         }
 
+        public string Name = string.Empty;
+
         public Vector2[] Points = new Vector2[Enum.GetValues(typeof(PointTypes)).Length];
 
         public bool ContainsPoint(Vector2 point)

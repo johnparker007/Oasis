@@ -93,11 +93,12 @@ namespace Oasis.Projects
             Import.Importer importer = new Import.Importer();
             Editor.Instance.Project = importer.Import(projectJsonPath);
 
-            View bottomView = Editor.Instance.Project.Layout.GetView("Bottom");
-            if (bottomView != null)
+            string baseViewQuadName = Editor.Instance.Project.Layout.GetBaseViewQuadName();
+            View targetView = Editor.Instance.Project.Layout.GetView(baseViewQuadName);
+            if (targetView != null)
             {
                 Editor.Instance.Project.Layout.TryEnsureViewTab(
-                    bottomView,
+                    targetView,
                     TabController.TabTypes.TestNewView);
             }
 
