@@ -17,6 +17,8 @@ namespace Oasis.LayoutEditor
 
         private void Awake()
         {
+            Editor.Instance.InspectorController = this;
+
             AddListeners();
             DisableAllPanels();
         }
