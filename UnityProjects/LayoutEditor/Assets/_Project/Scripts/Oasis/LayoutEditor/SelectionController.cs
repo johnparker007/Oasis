@@ -44,13 +44,18 @@ namespace Oasis.LayoutEditor
             //editorComponent.ArcadeEditorObjectHighlight.SetHightlightColor(ArcadeEditorObjectHighlight.HighlightColorType.Selected);
             SelectedEditorComponents.Add(editorComponent);
 
+            SetOutlineSelected(editorComponent, true);
+
             OnSelectionChange.Invoke();
         }
 
         public void DeselectObject(EditorComponent editorComponent)
         {
             //editorComponent.ArcadeEditorObjectHighlight.SetHightlightColor(ArcadeEditorObjectHighlight.HighlightColorType.Unselected);
-            SelectedEditorComponents.Remove(editorComponent);
+            if (SelectedEditorComponents.Remove(editorComponent))
+            {
+                SetOutlineSelected(editorComponent, false);
+            }
 
             OnSelectionChange.Invoke();
         }
@@ -59,7 +64,7 @@ namespace Oasis.LayoutEditor
         {
             foreach (EditorComponent selectedEditorComponent in SelectedEditorComponents)
             {
-                //selectedEditorComponent.ArcadeEditorObjectHighlight.SetHightlightColor(ArcadeEditorObjectHighlight.HighlightColorType.Unselected);
+                SetOutlineSelected(selectedEditorComponent, false);
             }
             SelectedEditorComponents.Clear();
 
@@ -122,6 +127,7 @@ namespace Oasis.LayoutEditor
         {
             foreach (EditorComponent selectedEditorComponent in SelectedEditorComponents)
             {
+                SetOutlineSelected(selectedEditorComponent, false);
                 Destroy(selectedEditorComponent.gameObject);
             }
 
@@ -129,6 +135,22 @@ namespace Oasis.LayoutEditor
 
             OnSelectionDelete.Invoke();
             OnSelectionChange.Invoke();
+        }
+
+        private void SetOutlineSelected(EditorComponent editorComponent, bool selected)
+        {
+            if (editorComponent == null)
+            {
+                return;
+            }
+
+            EditorComponentSelectionOutline outline = editorComponent.GetComponent<EditorComponentSelectionOutline>();
+            if (outline == null)
+            {
+                outline = editorComponent.gameObject.AddComponent<EditorComponentSelectionOutline>();
+            }
+
+            outline.SetSelected(selected);
         }
 
         public void SuppressNextPointerClickSelection()

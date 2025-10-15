@@ -1,4 +1,5 @@
 using Oasis.LayoutEditor.Panels;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -14,6 +15,11 @@ namespace Oasis.LayoutEditor
         public PanelViewQuadInspector PanelViewQuadInspector;
 
         private readonly HashSet<BaseViewQuadOverlay> _registeredViewQuadOverlays = new HashSet<BaseViewQuadOverlay>();
+
+        public event Action<BaseViewQuadOverlay> OnViewQuadOverlayRegistered;
+        public event Action<BaseViewQuadOverlay, bool> OnViewQuadSelectionChanged;
+
+        public IEnumerable<BaseViewQuadOverlay> RegisteredViewQuadOverlays => _registeredViewQuadOverlays;
 
         private void Awake()
         {
@@ -133,6 +139,8 @@ namespace Oasis.LayoutEditor
             overlay.OnHandleSelectionCleared += OnViewQuadHandleSelectionCleared;
 
             _registeredViewQuadOverlays.Add(overlay);
+
+            OnViewQuadOverlayRegistered?.Invoke(overlay);
         }
 
         private void OnViewQuadHandleSelected(BaseViewQuadOverlay overlay, int handleIndex)
@@ -153,6 +161,8 @@ namespace Oasis.LayoutEditor
 
             PanelViewQuadInspector.SetTarget(overlay, handleIndex);
             PanelViewQuadInspector.gameObject.SetActive(true);
+
+            OnViewQuadSelectionChanged?.Invoke(overlay, true);
         }
 
         private void OnViewQuadHandleSelectionCleared(BaseViewQuadOverlay overlay)
@@ -169,6 +179,8 @@ namespace Oasis.LayoutEditor
 
             PanelViewQuadInspector.ClearTarget();
             PanelViewQuadInspector.gameObject.SetActive(false);
+
+            OnViewQuadSelectionChanged?.Invoke(overlay, false);
         }
     }
 
