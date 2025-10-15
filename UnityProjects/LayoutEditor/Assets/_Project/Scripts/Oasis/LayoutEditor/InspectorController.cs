@@ -1,6 +1,7 @@
 using Oasis.LayoutEditor.Panels;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Events;
 
 namespace Oasis.LayoutEditor
 {
@@ -14,6 +15,11 @@ namespace Oasis.LayoutEditor
         public PanelViewQuadInspector PanelViewQuadInspector;
 
         private readonly HashSet<BaseViewQuadOverlay> _registeredViewQuadOverlays = new HashSet<BaseViewQuadOverlay>();
+
+        public event UnityAction<BaseViewQuadOverlay> OnViewQuadOverlayRegistered;
+        public event UnityAction<BaseViewQuadOverlay> OnViewQuadOverlayUnregistered;
+        public event UnityAction<BaseViewQuadOverlay, int> OnViewQuadHandleSelectedEvent;
+        public event UnityAction<BaseViewQuadOverlay> OnViewQuadHandleSelectionClearedEvent;
 
         private void Awake()
         {
@@ -46,6 +52,8 @@ namespace Oasis.LayoutEditor
 
                 overlay.OnHandleSelected -= OnViewQuadHandleSelected;
                 overlay.OnHandleSelectionCleared -= OnViewQuadHandleSelectionCleared;
+
+                OnViewQuadOverlayUnregistered?.Invoke(overlay);
             }
 
             _registeredViewQuadOverlays.Clear();
@@ -133,6 +141,8 @@ namespace Oasis.LayoutEditor
             overlay.OnHandleSelectionCleared += OnViewQuadHandleSelectionCleared;
 
             _registeredViewQuadOverlays.Add(overlay);
+
+            OnViewQuadOverlayRegistered?.Invoke(overlay);
         }
 
         private void OnViewQuadHandleSelected(BaseViewQuadOverlay overlay, int handleIndex)
@@ -153,6 +163,8 @@ namespace Oasis.LayoutEditor
 
             PanelViewQuadInspector.SetTarget(overlay, handleIndex);
             PanelViewQuadInspector.gameObject.SetActive(true);
+
+            OnViewQuadHandleSelectedEvent?.Invoke(overlay, handleIndex);
         }
 
         private void OnViewQuadHandleSelectionCleared(BaseViewQuadOverlay overlay)
@@ -169,6 +181,8 @@ namespace Oasis.LayoutEditor
 
             PanelViewQuadInspector.ClearTarget();
             PanelViewQuadInspector.gameObject.SetActive(false);
+
+            OnViewQuadHandleSelectionClearedEvent?.Invoke(overlay);
         }
     }
 
