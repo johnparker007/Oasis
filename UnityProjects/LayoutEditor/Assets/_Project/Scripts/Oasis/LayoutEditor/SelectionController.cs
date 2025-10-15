@@ -13,6 +13,8 @@ namespace Oasis.LayoutEditor
 
         public List<EditorComponent> SelectedEditorComponents = new List<EditorComponent>();
 
+        private bool _suppressNextPointerClickSelection;
+
         private void Awake()
         {
             AddListeners();
@@ -121,6 +123,11 @@ namespace Oasis.LayoutEditor
             OnSelectionChange.Invoke();
         }
 
+        public void SuppressNextPointerClickSelection()
+        {
+            _suppressNextPointerClickSelection = true;
+        }
+
         private void AddListeners()
         {
             Editor.Instance.OnEditorViewEnabled.AddListener(OnEditorViewEnabled);
@@ -145,8 +152,20 @@ namespace Oasis.LayoutEditor
 
         private void OnEditorViewPointerClick(List<EditorComponent> editorComponents)
         {
+            if (_suppressNextPointerClickSelection)
+            {
+                _suppressNextPointerClickSelection = false;
+                return;
+            }
+
             // TODO this is just test code!
             DeselectAllObjects();
+
+            if (editorComponents == null || editorComponents.Count == 0)
+            {
+                return;
+            }
+
             SelectObject(editorComponents[0]);
         }
     }
