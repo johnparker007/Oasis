@@ -145,7 +145,7 @@ namespace Oasis.LayoutEditor
 
         private IEnumerator ClearPointerClickSuppressionAfterPointerUp()
         {
-            while (Input.GetMouseButton(0))
+            while (UnityEngine.Input.GetMouseButton(0))
             {
                 yield return null;
             }
