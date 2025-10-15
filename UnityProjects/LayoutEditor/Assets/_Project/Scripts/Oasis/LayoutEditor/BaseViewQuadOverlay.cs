@@ -47,6 +47,31 @@ namespace Oasis.LayoutEditor
 
         public int PointCount => _points.Length;
 
+        public string ViewQuadName
+        {
+            get
+            {
+                return _view?.Data?.ViewQuad?.Name;
+            }
+            set
+            {
+                if (_view == null || _view.Data?.ViewQuad == null)
+                {
+                    return;
+                }
+
+                string newName = value ?? string.Empty;
+                if (string.Equals(_view.Data.ViewQuad.Name, newName, StringComparison.Ordinal))
+                {
+                    return;
+                }
+
+                _view.Data.ViewQuad.Name = newName;
+                Editor.Instance.Project.Layout.Dirty = true;
+                _view.OnChanged?.Invoke();
+            }
+        }
+
         public void Initialize(View view, RectTransform contentRect, Zoom zoom)
         {
             _view = view;
