@@ -155,7 +155,7 @@ namespace Oasis.LayoutEditor.Panels
             }
 
             _currentEditorView = editorView;
-            SetCurrentView(editorView.View);
+            SetCurrentView(ResolveView(editorView));
         }
 
         private void OnEditorViewDisabled(EditorView editorView)
@@ -182,7 +182,7 @@ namespace Oasis.LayoutEditor.Panels
 
             if (_currentEditorView != null && _currentEditorView.isActiveAndEnabled)
             {
-                SetCurrentView(_currentEditorView.View);
+                SetCurrentView(ResolveView(_currentEditorView));
                 return;
             }
 
@@ -190,7 +190,7 @@ namespace Oasis.LayoutEditor.Panels
             if (activeEditorView != null)
             {
                 _currentEditorView = activeEditorView;
-                SetCurrentView(activeEditorView.View);
+                SetCurrentView(ResolveView(activeEditorView));
                 return;
             }
 
@@ -209,12 +209,22 @@ namespace Oasis.LayoutEditor.Panels
             if (baseEditorView != null && baseEditorView.isActiveAndEnabled)
             {
                 _currentEditorView = baseEditorView;
-                SetCurrentView(baseEditorView.View);
+                SetCurrentView(ResolveView(baseEditorView));
                 return;
             }
 
             View fallbackView = Editor.Instance.Project?.Layout?.BaseView;
             SetCurrentView(fallbackView);
+        }
+
+        private static View ResolveView(EditorView editorView)
+        {
+            if (editorView == null)
+            {
+                return null;
+            }
+
+            return Editor.Instance?.Project?.Layout?.GetView(editorView.ViewName);
         }
 
         private EditorView FindActiveEditorView()
