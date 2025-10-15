@@ -155,9 +155,11 @@ namespace Oasis.LayoutEditor
 
             _baseViewQuadOverlay = overlay;
 
+            Editor.Instance.InspectorController.RegisterViewQuadOverlay(overlay);
+
             return _baseViewQuadOverlay;
         }
-            
+
 
     }
 

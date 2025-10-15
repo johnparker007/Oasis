@@ -1,4 +1,5 @@
 using Oasis.LayoutEditor.Panels;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Oasis.LayoutEditor
@@ -10,9 +11,14 @@ namespace Oasis.LayoutEditor
         public PanelInspectorReel PanelInspectorReel;
         public PanelInspectorBackground PanelInspectorBackground;
         public PanelInspectorSegmentAlpha PanelInspectorSegmentAlpha;
+        public PanelViewQuadInspector PanelViewQuadInspector;
+
+        private readonly HashSet<BaseViewQuadOverlay> _registeredViewQuadOverlays = new HashSet<BaseViewQuadOverlay>();
 
         private void Awake()
         {
+            Editor.Instance.InspectorController = this;
+
             AddListeners();
             DisableAllPanels();
         }
@@ -30,6 +36,19 @@ namespace Oasis.LayoutEditor
         private void RemoveListeners()
         {
             Editor.Instance.SelectionController.OnSelectionChange.RemoveListener(OnSelectionChange);
+
+            foreach (BaseViewQuadOverlay overlay in _registeredViewQuadOverlays)
+            {
+                if (overlay == null)
+                {
+                    continue;
+                }
+
+                overlay.OnHandleSelected -= OnViewQuadHandleSelected;
+                overlay.OnHandleSelectionCleared -= OnViewQuadHandleSelectionCleared;
+            }
+
+            _registeredViewQuadOverlays.Clear();
         }
 
         private void OnSelectionChange()
@@ -37,7 +56,9 @@ namespace Oasis.LayoutEditor
             // TODO very simple version, with no MultiEdit for now:
 
             DisableAllPanels(); // always reinit for now, even if selecting another lamp when one already selected etc
-            
+
+            PanelViewQuadInspector?.ClearTarget();
+
             if (Editor.Instance.SelectionController.SelectedEditorComponents.Count == 0)
             {
                 return;
@@ -95,6 +116,57 @@ namespace Oasis.LayoutEditor
             PanelInspectorReel.gameObject.SetActive(false);
             PanelInspectorBackground.gameObject.SetActive(false);
             PanelInspectorSegmentAlpha.gameObject.SetActive(false);
+            if (PanelViewQuadInspector != null)
+            {
+                PanelViewQuadInspector.gameObject.SetActive(false);
+            }
+        }
+
+        public void RegisterViewQuadOverlay(BaseViewQuadOverlay overlay)
+        {
+            if (overlay == null || _registeredViewQuadOverlays.Contains(overlay))
+            {
+                return;
+            }
+
+            overlay.OnHandleSelected += OnViewQuadHandleSelected;
+            overlay.OnHandleSelectionCleared += OnViewQuadHandleSelectionCleared;
+
+            _registeredViewQuadOverlays.Add(overlay);
+        }
+
+        private void OnViewQuadHandleSelected(BaseViewQuadOverlay overlay, int handleIndex)
+        {
+            if (PanelViewQuadInspector == null)
+            {
+                return;
+            }
+
+            if (Editor.Instance.SelectionController.SelectedEditorComponents.Count > 0)
+            {
+                Editor.Instance.SelectionController.DeselectAllObjects();
+            }
+
+            DisableAllPanels();
+
+            PanelViewQuadInspector.SetTarget(overlay, handleIndex);
+            PanelViewQuadInspector.gameObject.SetActive(true);
+        }
+
+        private void OnViewQuadHandleSelectionCleared(BaseViewQuadOverlay overlay)
+        {
+            if (PanelViewQuadInspector == null)
+            {
+                return;
+            }
+
+            if (PanelViewQuadInspector.Overlay != overlay)
+            {
+                return;
+            }
+
+            PanelViewQuadInspector.ClearTarget();
+            PanelViewQuadInspector.gameObject.SetActive(false);
         }
     }
 

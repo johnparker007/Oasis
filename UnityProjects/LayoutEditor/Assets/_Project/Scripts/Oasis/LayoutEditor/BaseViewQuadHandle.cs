@@ -30,6 +30,8 @@ namespace Oasis.LayoutEditor
                 return;
             }
 
+            _overlay.SelectHandle(_index);
+
             if (_overlay.TryGetLayoutPoint(eventData.position, eventData.pressEventCamera, out Vector2 layoutPoint))
             {
                 _dragOffset = _overlay.GetPoint(_index) - layoutPoint;
