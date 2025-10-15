@@ -30,10 +30,22 @@ namespace Oasis.LayoutEditor
         private ViewQuadHandleGraphic[] _handleGraphics;
         private BaseViewQuadHandle[] _handles;
         private Vector2 _lastContentSize = Vector2.zero;
+        private int _selectedHandleIndex = -1;
 
         private float ZoomLevel => _zoom != null ? Mathf.Max(_zoom.ZoomLevel, 0.0001f) : 1f;
 
         internal RectTransform ContentRect => _contentRect;
+
+        public event Action<BaseViewQuadOverlay, int> OnHandleSelected;
+        public event Action<BaseViewQuadOverlay> OnHandleSelectionCleared;
+
+        public View View => _view;
+
+        public int SelectedHandleIndex => _selectedHandleIndex;
+
+        public bool HasSelectedHandle => _selectedHandleIndex >= 0 && _selectedHandleIndex < _points.Length;
+
+        public int PointCount => _points.Length;
 
         public void Initialize(View view, RectTransform contentRect, Zoom zoom)
         {
@@ -180,6 +192,8 @@ namespace Oasis.LayoutEditor
 
         private void OnDestroy()
         {
+            ClearHandleSelection();
+
             if (_zoom != null)
             {
                 _zoom.OnZoomLevelSet.RemoveListener(OnZoomLevelChanged);
@@ -188,6 +202,11 @@ namespace Oasis.LayoutEditor
 
         public void SetActive(bool active)
         {
+            if (!active)
+            {
+                ClearHandleSelection();
+            }
+
             gameObject.SetActive(active);
 
             if (active)
@@ -196,6 +215,11 @@ namespace Oasis.LayoutEditor
                 RefreshVisuals();
                 ResetAllHandleHoverStates();
             }
+        }
+
+        public void SetPoint(int index, Vector2 layoutPoint)
+        {
+            SetPointInternal(index, layoutPoint);
         }
 
         public bool TryGetLayoutPoint(Vector2 screenPosition, Camera eventCamera, out Vector2 layoutPoint)
@@ -217,6 +241,39 @@ namespace Oasis.LayoutEditor
 
         internal void SetPointFromHandle(int index, Vector2 layoutPoint)
         {
+            SetPointInternal(index, layoutPoint);
+        }
+
+        internal void SelectHandle(int index)
+        {
+            if (index < 0 || index >= _points.Length)
+            {
+                return;
+            }
+
+            _selectedHandleIndex = index;
+            OnHandleSelected?.Invoke(this, index);
+        }
+
+        internal void ClearHandleSelection()
+        {
+            if (!HasSelectedHandle)
+            {
+                _selectedHandleIndex = -1;
+                return;
+            }
+
+            _selectedHandleIndex = -1;
+            OnHandleSelectionCleared?.Invoke(this);
+        }
+
+        private void SetPointInternal(int index, Vector2 layoutPoint)
+        {
+            if (index < 0 || index >= _points.Length)
+            {
+                return;
+            }
+
             layoutPoint = ApplyConstraints(layoutPoint);
 
             if (_points[index] == layoutPoint)
