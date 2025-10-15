@@ -177,6 +177,26 @@ namespace Oasis.MAME
             private set;
         } = null;
 
+        public bool IsRunning
+        {
+            get
+            {
+                if (Process == null)
+                {
+                    return false;
+                }
+
+                try
+                {
+                    return !Process.HasExited;
+                }
+                catch (InvalidOperationException)
+                {
+                    return false;
+                }
+            }
+        }
+
 
         public string MameExeDirectoryFullPath
         {
@@ -508,6 +528,11 @@ namespace Oasis.MAME
 
         private void SetPortValue(string tag, string mask, bool keyDown)
         {
+            if (!IsRunning)
+            {
+                return;
+            }
+
             string inputValue = keyDown ? "1" : "0";
 
             string pluginCommand =
@@ -519,6 +544,16 @@ namespace Oasis.MAME
                 + " "
                 + inputValue
                 ;
+
+            if (Process.StandardInput == null)
+            {
+                return;
+            }
+
+            if (Process.StandardInput.BaseStream == null || !Process.StandardInput.BaseStream.CanWrite)
+            {
+                return;
+            }
 
             UnityEngine.Debug.Log("Sending: " + pluginCommand);
 
