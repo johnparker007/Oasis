@@ -22,6 +22,7 @@ namespace Oasis.LayoutEditor
         private readonly Vector2[] _points = new Vector2[Enum.GetValues(typeof(ViewQuad.PointTypes)).Length];
 
         private View _view;
+        private ViewQuad _viewQuad;
         private RectTransform _contentRect;
         private Zoom _zoom;
         private RectTransform _rectTransform;
@@ -47,42 +48,50 @@ namespace Oasis.LayoutEditor
 
         public int PointCount => _points.Length;
 
+        public ViewQuad ViewQuad => _viewQuad;
+
         public string ViewQuadName
         {
             get
             {
-                return _view?.Data?.ViewQuad?.Name;
+                return _viewQuad?.Name;
             }
             set
             {
-                if (_view == null || _view.Data?.ViewQuad == null)
+                if (_viewQuad == null)
                 {
                     return;
                 }
 
                 string newName = value ?? string.Empty;
-                if (string.Equals(_view.Data.ViewQuad.Name, newName, StringComparison.Ordinal))
+                if (string.Equals(_viewQuad.Name, newName, StringComparison.Ordinal))
                 {
                     return;
                 }
 
-                _view.Data.ViewQuad.Name = newName;
-                Editor.Instance.Project.Layout.Dirty = true;
+                _viewQuad.Name = newName;
+                LayoutObject layout = Editor.Instance != null ? Editor.Instance.Project?.Layout : null;
+                if (layout != null)
+                {
+                    layout.Dirty = true;
+                }
                 _view.OnChanged?.Invoke();
+                RefreshOverlayName();
             }
         }
 
-        public void Initialize(View view, RectTransform contentRect, Zoom zoom)
+        public void Initialize(View view, RectTransform contentRect, Zoom zoom, ViewQuad viewQuad)
         {
             _view = view;
             _contentRect = contentRect;
             _zoom = zoom;
+            _viewQuad = viewQuad;
             _rectTransform = GetComponent<RectTransform>();
 
             ConfigureRectTransform();
             CreateVisuals();
-            CopyPointsFromView();
-            RefreshVisuals();
+            SynchronizeWithViewQuad(true);
+            RefreshOverlayName();
 
             if (_zoom != null)
             {
@@ -232,13 +241,12 @@ namespace Oasis.LayoutEditor
                 ClearHandleSelection();
             }
 
+            bool wasActive = gameObject.activeSelf;
             gameObject.SetActive(active);
 
-            if (active)
+            if (active && !wasActive)
             {
-                CopyPointsFromView();
-                RefreshVisuals();
-                ResetAllHandleHoverStates();
+                SynchronizeWithViewQuad(true);
             }
         }
 
@@ -276,6 +284,7 @@ namespace Oasis.LayoutEditor
                 return;
             }
 
+            _view?.TrySetActiveViewQuad(_viewQuad);
             _selectedHandleIndex = index;
             OnHandleSelected?.Invoke(this, index);
         }
@@ -294,6 +303,11 @@ namespace Oasis.LayoutEditor
 
         private void SetPointInternal(int index, Vector2 layoutPoint)
         {
+            if (_viewQuad == null)
+            {
+                return;
+            }
+
             if (index < 0 || index >= _points.Length)
             {
                 return;
@@ -307,8 +321,12 @@ namespace Oasis.LayoutEditor
             }
 
             _points[index] = layoutPoint;
-            _view.Data.ViewQuad.Points[index] = layoutPoint;
-            Editor.Instance.Project.Layout.Dirty = true;
+            _viewQuad.Points[index] = layoutPoint;
+            LayoutObject layout = Editor.Instance != null ? Editor.Instance.Project?.Layout : null;
+            if (layout != null)
+            {
+                layout.Dirty = true;
+            }
             _view.OnChanged?.Invoke();
 
             RefreshVisuals();
@@ -345,10 +363,27 @@ namespace Oasis.LayoutEditor
 
         private void CopyPointsFromView()
         {
+            if (_viewQuad == null)
+            {
+                for (int i = 0; i < _points.Length; ++i)
+                {
+                    _points[i] = Vector2.zero;
+                }
+
+                return;
+            }
+
+            Vector2[] viewQuadPoints = _viewQuad.Points;
+            if (viewQuadPoints == null || viewQuadPoints.Length != _points.Length)
+            {
+                viewQuadPoints = new Vector2[_points.Length];
+                _viewQuad.Points = viewQuadPoints;
+            }
+
             bool hasNonZeroPoint = false;
             for (int i = 0; i < _points.Length; ++i)
             {
-                _points[i] = _view.Data.ViewQuad.Points[i];
+                _points[i] = viewQuadPoints[i];
                 if (!Mathf.Approximately(_points[i].x, 0f) || !Mathf.Approximately(_points[i].y, 0f))
                 {
                     hasNonZeroPoint = true;
@@ -360,12 +395,23 @@ namespace Oasis.LayoutEditor
                 Vector2 size = GetContentSize();
                 if (size.x > 0f && size.y > 0f)
                 {
-                    _view.SetViewQuadRectangle(0f, 0f, size.y, size.x);
+                    viewQuadPoints[(int)ViewQuad.PointTypes.TopLeft] = new Vector2(0f, 0f);
+                    viewQuadPoints[(int)ViewQuad.PointTypes.TopRight] = new Vector2(size.x, 0f);
+                    viewQuadPoints[(int)ViewQuad.PointTypes.BottomRight] = new Vector2(size.x, size.y);
+                    viewQuadPoints[(int)ViewQuad.PointTypes.BottomLeft] = new Vector2(0f, size.y);
 
                     for (int i = 0; i < _points.Length; ++i)
                     {
-                        _points[i] = _view.Data.ViewQuad.Points[i];
+                        _points[i] = viewQuadPoints[i];
                     }
+
+                    LayoutObject layout = Editor.Instance != null ? Editor.Instance.Project?.Layout : null;
+                    if (layout != null)
+                    {
+                        layout.Dirty = true;
+                    }
+
+                    _view?.OnChanged?.Invoke();
                 }
             }
         }
@@ -447,6 +493,33 @@ namespace Oasis.LayoutEditor
             if (size != _lastContentSize)
             {
                 RefreshVisuals();
+            }
+        }
+
+        internal void SynchronizeWithViewQuad(bool resetHandleHoverStates)
+        {
+            CopyPointsFromView();
+            RefreshVisuals();
+
+            if (resetHandleHoverStates)
+            {
+                ResetAllHandleHoverStates();
+            }
+        }
+
+        internal void RefreshOverlayName()
+        {
+            string viewName = _view != null ? _view.Name : string.Empty;
+            string quadName = _viewQuad != null ? _viewQuad.Name : string.Empty;
+            string displayName = string.IsNullOrWhiteSpace(quadName) ? "Unnamed ViewQuad" : quadName;
+
+            if (!string.IsNullOrWhiteSpace(viewName))
+            {
+                gameObject.name = $"{viewName} ViewQuad - {displayName}";
+            }
+            else
+            {
+                gameObject.name = $"ViewQuad - {displayName}";
             }
         }
 

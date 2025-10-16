@@ -171,7 +171,8 @@ namespace Oasis.LayoutEditor
             PanelViewQuadInspector.SetTarget(overlay, handleIndex);
             PanelViewQuadInspector.gameObject.SetActive(true);
 
-            Editor.Instance?.HierarchyPanel?.HighlightViewQuad(overlay?.View);
+            View view = overlay?.View;
+            Editor.Instance?.HierarchyPanel?.HighlightViewQuad(view, overlay?.ViewQuad);
         }
 
         private void OnViewQuadHandleSelectionCleared(BaseViewQuadOverlay overlay)
@@ -190,14 +191,15 @@ namespace Oasis.LayoutEditor
             PanelViewQuadInspector.gameObject.SetActive(false);
         }
 
-        public void ShowViewQuadForView(View view)
+        public void ShowViewQuad(View view, ViewQuad viewQuad)
         {
             if (PanelViewQuadInspector == null)
             {
                 return;
             }
 
-            BaseViewQuadOverlay overlay = FindOverlayForView(view);
+            view?.TrySetActiveViewQuad(viewQuad);
+            BaseViewQuadOverlay overlay = FindOverlay(view, viewQuad);
             if (overlay == null)
             {
                 return;
@@ -209,12 +211,14 @@ namespace Oasis.LayoutEditor
             PanelViewQuadInspector.gameObject.SetActive(true);
         }
 
-        private BaseViewQuadOverlay FindOverlayForView(View view)
+        private BaseViewQuadOverlay FindOverlay(View view, ViewQuad viewQuad)
         {
             if (view == null)
             {
                 return null;
             }
+
+            ViewQuad targetViewQuad = viewQuad ?? view.ActiveViewQuad;
 
             foreach (BaseViewQuadOverlay overlay in _registeredViewQuadOverlays)
             {
@@ -223,7 +227,12 @@ namespace Oasis.LayoutEditor
                     continue;
                 }
 
-                if (ReferenceEquals(overlay.View, view))
+                if (!ReferenceEquals(overlay.View, view))
+                {
+                    continue;
+                }
+
+                if (targetViewQuad == null || ReferenceEquals(overlay.ViewQuad, targetViewQuad))
                 {
                     return overlay;
                 }

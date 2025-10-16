@@ -94,12 +94,15 @@ namespace Oasis.Projects
             Editor.Instance.Project = importer.Import(projectJsonPath);
 
             string baseViewQuadName = Editor.Instance.Project.Layout.GetBaseViewQuadName();
-            View targetView = Editor.Instance.Project.Layout.GetView(baseViewQuadName);
-            if (targetView != null)
+            if (!string.IsNullOrWhiteSpace(baseViewQuadName))
             {
-                Editor.Instance.Project.Layout.TryEnsureViewTab(
-                    targetView,
-                    TabController.TabTypes.TestNewView);
+                View targetView = Editor.Instance.Project.Layout.GetView(baseViewQuadName);
+                if (targetView != null)
+                {
+                    Editor.Instance.Project.Layout.TryEnsureViewTab(
+                        targetView,
+                        TabController.TabTypes.TestNewView);
+                }
             }
 
             const bool kDebugNativeDialogTest = false;

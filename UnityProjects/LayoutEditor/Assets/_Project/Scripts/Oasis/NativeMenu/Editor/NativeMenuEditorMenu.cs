@@ -227,6 +227,11 @@ namespace Oasis.NativeMenu.Editor
         [MenuItem(MenuPrefix + "/View/Display Text Mode Off", true, 141)]
         private static bool ViewDisplayTextModeOffValidate() => Validate("View/Display Text Mode Off");
 
+        [MenuItem(MenuPrefix + "/View/Add ViewQuad", priority = 150)]
+        private static void ViewAddViewQuad() => Execute("View/Add ViewQuad");
+        [MenuItem(MenuPrefix + "/View/Add ViewQuad", true, 150)]
+        private static bool ViewAddViewQuadValidate() => Validate("View/Add ViewQuad");
+
         [MenuItem(MenuPrefix + "/View/Add MAME View", priority = 152)]
         private static void ViewAddMameView() => Execute("View/Add MAME View");
         [MenuItem(MenuPrefix + "/View/Add MAME View", true, 152)]

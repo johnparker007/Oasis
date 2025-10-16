@@ -14,9 +14,10 @@ namespace Oasis.LayoutEditor
         public const string kBaseViewName = "Base";
         public const string kMameViewName = "Mame";
 
-        private BaseViewQuadOverlay _baseViewQuadOverlay = null;
+        private readonly Dictionary<ViewQuad, BaseViewQuadOverlay> _baseViewQuadOverlays = new();
         private Coroutine _ensureBaseViewQuadOverlayRoutine = null;
         private bool _listenersRegistered = false;
+        private View _baseViewWithOverlays = null;
 
         private void OnEnable()
         {
@@ -34,7 +35,7 @@ namespace Oasis.LayoutEditor
             StopAllCoroutines();
             _ensureBaseViewQuadOverlayRoutine = null;
             UnregisterListeners();
-            ResetBaseViewQuadOverlay();
+            ResetBaseViewQuadOverlays();
         }
 
         private IEnumerator WaitForEditorAndInitialize()
@@ -90,7 +91,7 @@ namespace Oasis.LayoutEditor
 
         private void OnLayoutSet(Oasis.LayoutObject layout)
         {
-            ResetBaseViewQuadOverlay();
+            ResetBaseViewQuadOverlays();
             EnsureBaseViewQuadOverlayVisible();
         }
 
@@ -116,7 +117,7 @@ namespace Oasis.LayoutEditor
 
             if (string.Equals(editorView.ViewName, kBaseViewName, StringComparison.Ordinal))
             {
-                ResetBaseViewQuadOverlay();
+                ResetBaseViewQuadOverlays();
             }
         }
 
@@ -135,14 +136,7 @@ namespace Oasis.LayoutEditor
 
         private bool TryEnsureBaseViewQuadOverlayVisible()
         {
-            BaseViewQuadOverlay overlay = GetOrCreateBaseViewQuadOverlay();
-            if (overlay == null)
-            {
-                return false;
-            }
-
-            overlay.SetActive(true);
-            return true;
+            return TrySynchronizeBaseViewQuadOverlays();
         }
 
         private IEnumerator WaitForBaseViewQuadOverlay()
@@ -208,13 +202,20 @@ namespace Oasis.LayoutEditor
             Debug.LogError("Before: mameView.Data.Components.Count == " + mameView.Data.Components.Count);
             
             // TODO clear all mameView components and associated EditorComponents before rebuild
+            ViewQuad mameViewQuad = mameView?.ActiveViewQuad;
+            if (mameViewQuad == null)
+            {
+                Debug.LogWarning("The MAME view does not have a ViewQuad configured; unable to rebuild.");
+                return;
+            }
+
             foreach(Layout.Component component in baseView.Data.Components)
             {
                 // TOIMPROVE - this all wants refactoring into some kind of OasisRect system:
-                if (!mameView.Data.ViewQuad.ContainsAnyPoint(
-                    component.PointTopLeft, 
-                    component.PointTopRight, 
-                    component.PointBottomLeft, 
+                if (!mameViewQuad.ContainsAnyPoint(
+                    component.PointTopLeft,
+                    component.PointTopRight,
+                    component.PointBottomLeft,
                     component.PointBottomRight))
                 {
                     continue;
@@ -245,61 +246,140 @@ namespace Oasis.LayoutEditor
             Debug.LogError("After: mameView.Data.Components.Count == " + mameView.Data.Components.Count);
         }
 
-        private BaseViewQuadOverlay GetOrCreateBaseViewQuadOverlay()
+        private bool TrySynchronizeBaseViewQuadOverlays()
         {
-            if (_baseViewQuadOverlay != null)
-            {
-                return _baseViewQuadOverlay;
-            }
-
             if (Editor.Instance == null || Editor.Instance.Project == null)
             {
-                return null;
+                return false;
             }
 
             LayoutObject layout = Editor.Instance.Project.Layout;
             if (layout == null)
             {
-                return null;
+                return false;
             }
 
             View baseView = layout.BaseView;
             if (baseView == null)
             {
-                return null;
+                ResetBaseViewQuadOverlays();
+                return false;
+            }
+
+            SubscribeToBaseView(baseView);
+
+            IReadOnlyList<ViewQuad> viewQuads = baseView.ViewQuads;
+            if (viewQuads == null || viewQuads.Count == 0)
+            {
+                DestroyBaseViewQuadOverlayObjects();
+                return false;
             }
 
             EditorView editorView = baseView.EditorView;
             if (editorView == null || editorView.Content == null)
             {
-                return null;
+                return false;
             }
 
             RectTransform contentRect = editorView.Content.GetComponent<RectTransform>();
             if (contentRect == null)
             {
-                return null;
+                return false;
             }
-
-            GameObject overlayObject = new GameObject("BaseViewQuadOverlay", typeof(RectTransform), typeof(BaseViewQuadOverlay));
-            overlayObject.transform.SetParent(contentRect, false);
-
-            BaseViewQuadOverlay overlay = overlayObject.GetComponent<BaseViewQuadOverlay>();
 
             EditorPanel editorPanel = editorView.GetComponentInParent<EditorPanel>();
             Zoom zoom = editorPanel != null ? editorPanel.Zoom : null;
 
-            overlay.Initialize(baseView, contentRect, zoom);
-
-            _baseViewQuadOverlay = overlay;
-
             InspectorController inspectorController = Editor.Instance.InspectorController;
-            inspectorController?.RegisterViewQuadOverlay(overlay);
 
-            return _baseViewQuadOverlay;
+            HashSet<ViewQuad> processed = new HashSet<ViewQuad>();
+            foreach (ViewQuad viewQuad in viewQuads)
+            {
+                if (viewQuad == null)
+                {
+                    continue;
+                }
+
+                processed.Add(viewQuad);
+
+                bool overlayCreated = false;
+                if (!_baseViewQuadOverlays.TryGetValue(viewQuad, out BaseViewQuadOverlay overlay) || overlay == null)
+                {
+                    overlay = CreateBaseViewQuadOverlay(contentRect, baseView, viewQuad, zoom);
+                    _baseViewQuadOverlays[viewQuad] = overlay;
+                    inspectorController?.RegisterViewQuadOverlay(overlay);
+                    overlayCreated = true;
+                }
+
+                if (overlay == null)
+                {
+                    continue;
+                }
+
+                if (overlayCreated)
+                {
+                    overlay.SetActive(true);
+                }
+                else if (!overlay.gameObject.activeSelf)
+                {
+                    overlay.SetActive(true);
+                }
+                else
+                {
+                    overlay.SynchronizeWithViewQuad(false);
+                }
+
+                overlay.RefreshOverlayName();
+
+                if (ReferenceEquals(baseView.ActiveViewQuad, viewQuad))
+                {
+                    overlay.transform.SetAsLastSibling();
+                }
+            }
+
+            if (_baseViewQuadOverlays.Count > processed.Count)
+            {
+                List<ViewQuad> toRemove = new List<ViewQuad>();
+                foreach (KeyValuePair<ViewQuad, BaseViewQuadOverlay> pair in _baseViewQuadOverlays)
+                {
+                    if (!processed.Contains(pair.Key))
+                    {
+                        toRemove.Add(pair.Key);
+                    }
+                }
+
+                foreach (ViewQuad removed in toRemove)
+                {
+                    if (_baseViewQuadOverlays.TryGetValue(removed, out BaseViewQuadOverlay overlay))
+                    {
+                        inspectorController?.UnregisterViewQuadOverlay(overlay);
+                        if (overlay != null)
+                        {
+                            DestroyOverlayObject(overlay.gameObject);
+                        }
+                    }
+
+                    _baseViewQuadOverlays.Remove(removed);
+                }
+            }
+
+            RemoveUntrackedBaseViewQuadOverlays(contentRect, baseView, inspectorController);
+
+            return _baseViewQuadOverlays.Count > 0;
         }
 
-        private void ResetBaseViewQuadOverlay()
+        private BaseViewQuadOverlay CreateBaseViewQuadOverlay(RectTransform parent, View baseView, ViewQuad viewQuad, Zoom zoom)
+        {
+            GameObject overlayObject = new GameObject("BaseViewQuadOverlay", typeof(RectTransform), typeof(BaseViewQuadOverlay));
+            overlayObject.transform.SetParent(parent, false);
+            overlayObject.transform.SetAsLastSibling();
+
+            BaseViewQuadOverlay overlay = overlayObject.GetComponent<BaseViewQuadOverlay>();
+            overlay.Initialize(baseView, parent, zoom, viewQuad);
+            return overlay;
+        }
+
+        private void ResetBaseViewQuadOverlays()
         {
             if (_ensureBaseViewQuadOverlayRoutine != null)
             {
@@ -307,16 +387,107 @@ namespace Oasis.LayoutEditor
                 _ensureBaseViewQuadOverlayRoutine = null;
             }
 
-            if (_baseViewQuadOverlay == null)
+            SubscribeToBaseView(null);
+
+            DestroyBaseViewQuadOverlayObjects();
+        }
+
+        private void DestroyBaseViewQuadOverlayObjects()
+        {
+            if (_baseViewQuadOverlays.Count == 0)
             {
                 return;
             }
 
             InspectorController inspectorController = Editor.Instance != null ? Editor.Instance.InspectorController : null;
-            inspectorController?.UnregisterViewQuadOverlay(_baseViewQuadOverlay);
 
-            Destroy(_baseViewQuadOverlay.gameObject);
-            _baseViewQuadOverlay = null;
+            foreach (BaseViewQuadOverlay overlay in _baseViewQuadOverlays.Values)
+            {
+                if (overlay == null)
+                {
+                    continue;
+                }
+
+                inspectorController?.UnregisterViewQuadOverlay(overlay);
+                DestroyOverlayObject(overlay.gameObject);
+            }
+
+            _baseViewQuadOverlays.Clear();
+        }
+
+        private void RemoveUntrackedBaseViewQuadOverlays(RectTransform parent, View baseView, InspectorController inspectorController)
+        {
+            if (parent == null || baseView == null)
+            {
+                return;
+            }
+
+            BaseViewQuadOverlay[] overlaysInScene = parent.GetComponentsInChildren<BaseViewQuadOverlay>(true);
+            if (overlaysInScene == null || overlaysInScene.Length == 0)
+            {
+                return;
+            }
+
+            foreach (BaseViewQuadOverlay candidate in overlaysInScene)
+            {
+                if (candidate == null || !ReferenceEquals(candidate.View, baseView))
+                {
+                    continue;
+                }
+
+                ViewQuad candidateViewQuad = candidate.ViewQuad;
+                if (candidateViewQuad != null &&
+                    _baseViewQuadOverlays.TryGetValue(candidateViewQuad, out BaseViewQuadOverlay trackedOverlay) &&
+                    ReferenceEquals(trackedOverlay, candidate))
+                {
+                    continue;
+                }
+
+                inspectorController?.UnregisterViewQuadOverlay(candidate);
+                DestroyOverlayObject(candidate.gameObject);
+            }
+        }
+
+        private static void DestroyOverlayObject(GameObject overlayObject)
+        {
+            if (overlayObject == null)
+            {
+                return;
+            }
+
+            if (Application.isPlaying)
+            {
+                Destroy(overlayObject);
+            }
+            else
+            {
+                DestroyImmediate(overlayObject);
+            }
+        }
+
+        private void SubscribeToBaseView(View baseView)
+        {
+            if (ReferenceEquals(_baseViewWithOverlays, baseView))
+            {
+                return;
+            }
+
+            if (_baseViewWithOverlays != null)
+            {
+                _baseViewWithOverlays.OnChanged.RemoveListener(OnBaseViewChanged);
+            }
+
+            _baseViewWithOverlays = baseView;
+
+            if (_baseViewWithOverlays != null)
+            {
+                _baseViewWithOverlays.OnChanged.AddListener(OnBaseViewChanged);
+            }
+        }
+
+        private void OnBaseViewChanged()
+        {
+            EnsureBaseViewQuadOverlayVisible();
         }
 
 

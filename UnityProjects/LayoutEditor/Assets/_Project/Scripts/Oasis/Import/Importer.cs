@@ -43,7 +43,7 @@ namespace Oasis.Import
                 JToken currentComponent = token["items"][componentKey.Name];
                 view.AddComponent(ParseComponent(componentKey.Name, currentComponent));
             }
-            ApplyViewQuad(view, token["view_quad"]);
+            ApplyViewQuads(view, token["view_quads"], token["active_view_quad_index"]);
             return view;
         }
 
@@ -91,29 +91,114 @@ namespace Oasis.Import
             return null;
         }
 
-        private static void ApplyViewQuad(View view, JToken viewQuadToken)
+        private static void ApplyViewQuads(View view, JToken viewQuadsToken, JToken activeIndexToken)
         {
-            if (viewQuadToken == null)
+            if (view == null)
             {
                 return;
             }
 
-            TryAssignPoint(view, ViewQuad.PointTypes.TopLeft, viewQuadToken["top_left"]);
-            TryAssignPoint(view, ViewQuad.PointTypes.TopRight, viewQuadToken["top_right"]);
-            TryAssignPoint(view, ViewQuad.PointTypes.BottomRight, viewQuadToken["bottom_right"]);
-            TryAssignPoint(view, ViewQuad.PointTypes.BottomLeft, viewQuadToken["bottom_left"]);
+            if (viewQuadsToken == null || viewQuadsToken.Type == JTokenType.Null)
+            {
+                view.Data.ViewQuads.Clear();
+                view.Data.ActiveViewQuadIndex = -1;
+                view.OnChanged?.Invoke();
+                return;
+            }
 
-            AssignViewQuadName(view, viewQuadToken["name"]);
+            if (viewQuadsToken.Type != JTokenType.Array)
+            {
+                view.Data.ViewQuads.Clear();
+                view.Data.ActiveViewQuadIndex = -1;
+                view.OnChanged?.Invoke();
+                return;
+            }
+
+            view.Data.ViewQuads.Clear();
+
+            foreach (JToken quadToken in (JArray)viewQuadsToken)
+            {
+                if (quadToken == null || quadToken.Type == JTokenType.Null || quadToken.Type != JTokenType.Object)
+                {
+                    continue;
+                }
+
+                ViewQuad viewQuad = new ViewQuad();
+                PopulateViewQuad(viewQuad, quadToken);
+                view.Data.ViewQuads.Add(viewQuad);
+            }
+
+            int activeIndex = ResolveActiveViewQuadIndex(activeIndexToken, view.Data.ViewQuads.Count);
+
+            view.Data.ActiveViewQuadIndex = -1;
+
+            if (activeIndex >= 0 && activeIndex < view.Data.ViewQuads.Count)
+            {
+                view.TrySetActiveViewQuad(view.Data.ViewQuads[activeIndex]);
+            }
+            else if (view.Data.ViewQuads.Count == 0)
+            {
+                view.OnChanged?.Invoke();
+            }
+            else
+            {
+                view.TrySetActiveViewQuad(view.Data.ViewQuads[0]);
+            }
         }
 
-        private static void TryAssignPoint(View view, ViewQuad.PointTypes pointType, JToken pointToken)
+        private static void PopulateViewQuad(ViewQuad viewQuad, JToken viewQuadToken)
+        {
+            if (viewQuad == null || viewQuadToken == null || viewQuadToken.Type == JTokenType.Null)
+            {
+                return;
+            }
+
+            TryAssignPoint(viewQuad, ViewQuad.PointTypes.TopLeft, viewQuadToken["top_left"]);
+            TryAssignPoint(viewQuad, ViewQuad.PointTypes.TopRight, viewQuadToken["top_right"]);
+            TryAssignPoint(viewQuad, ViewQuad.PointTypes.BottomRight, viewQuadToken["bottom_right"]);
+            TryAssignPoint(viewQuad, ViewQuad.PointTypes.BottomLeft, viewQuadToken["bottom_left"]);
+
+            AssignViewQuadName(viewQuad, viewQuadToken["name"]);
+        }
+
+        private static int ResolveActiveViewQuadIndex(JToken activeIndexToken, int viewQuadCount)
+        {
+            if (viewQuadCount <= 0)
+            {
+                return -1;
+            }
+
+            if (activeIndexToken == null || activeIndexToken.Type == JTokenType.Null)
+            {
+                return 0;
+            }
+
+            int parsedIndex;
+
+            if (activeIndexToken.Type == JTokenType.Integer)
+            {
+                parsedIndex = activeIndexToken.Value<int>();
+            }
+            else if (activeIndexToken.Type == JTokenType.Float)
+            {
+                parsedIndex = Mathf.RoundToInt(activeIndexToken.Value<float>());
+            }
+            else if (!int.TryParse(activeIndexToken.ToString(), out parsedIndex))
+            {
+                parsedIndex = 0;
+            }
+
+            return Mathf.Clamp(parsedIndex, 0, Mathf.Max(0, viewQuadCount - 1));
+        }
+
+        private static void TryAssignPoint(ViewQuad viewQuad, ViewQuad.PointTypes pointType, JToken pointToken)
         {
             if (!TryParsePoint(pointToken, out Vector2 point))
             {
                 return;
             }
 
-            view.Data.ViewQuad.Points[(int)pointType] = point;
+            viewQuad.Points[(int)pointType] = point;
         }
 
         private static bool TryParsePoint(JToken token, out Vector2 point)
@@ -148,9 +233,9 @@ namespace Oasis.Import
             return false;
         }
 
-        private static void AssignViewQuadName(View view, JToken nameToken)
+        private static void AssignViewQuadName(ViewQuad viewQuad, JToken nameToken)
         {
-            if (view?.Data?.ViewQuad == null)
+            if (viewQuad == null)
             {
                 return;
             }
@@ -162,12 +247,7 @@ namespace Oasis.Import
                 name = nameToken.Type == JTokenType.String ? nameToken.Value<string>() : nameToken.ToString();
             }
 
-            if (string.IsNullOrWhiteSpace(name) && string.Equals(view.Name, ViewController.kBaseViewName, StringComparison.Ordinal))
-            {
-                name = LayoutObject.kDefaultBaseViewQuadName;
-            }
-
-            view.Data.ViewQuad.Name = name ?? string.Empty;
+            viewQuad.Name = name ?? string.Empty;
         }
     }
 }
