@@ -187,7 +187,18 @@ namespace Oasis.LayoutEditor
                 return _baseViewQuadOverlay;
             }
 
-            View baseView = Editor.Instance.Project.Layout.BaseView;
+            if (Editor.Instance == null || Editor.Instance.Project == null)
+            {
+                return null;
+            }
+
+            LayoutObject layout = Editor.Instance.Project.Layout;
+            if (layout == null)
+            {
+                return null;
+            }
+
+            View baseView = layout.BaseView;
             if (baseView == null)
             {
                 return null;
@@ -217,7 +228,8 @@ namespace Oasis.LayoutEditor
 
             _baseViewQuadOverlay = overlay;
 
-            Editor.Instance.InspectorController.RegisterViewQuadOverlay(overlay);
+            InspectorController inspectorController = Editor.Instance.InspectorController;
+            inspectorController?.RegisterViewQuadOverlay(overlay);
 
             return _baseViewQuadOverlay;
         }
