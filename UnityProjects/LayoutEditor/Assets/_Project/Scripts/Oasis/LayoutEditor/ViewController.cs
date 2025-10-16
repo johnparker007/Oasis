@@ -360,13 +360,15 @@ namespace Oasis.LayoutEditor
                         inspectorController?.UnregisterViewQuadOverlay(overlay);
                         if (overlay != null)
                         {
-                            Destroy(overlay.gameObject);
+                            DestroyOverlayObject(overlay.gameObject);
                         }
                     }
 
                     _baseViewQuadOverlays.Remove(removed);
                 }
             }
+
+            RemoveUntrackedBaseViewQuadOverlays(contentRect, baseView, inspectorController);
 
             return _baseViewQuadOverlays.Count > 0;
         }
@@ -412,10 +414,60 @@ namespace Oasis.LayoutEditor
                 }
 
                 inspectorController?.UnregisterViewQuadOverlay(overlay);
-                Destroy(overlay.gameObject);
+                DestroyOverlayObject(overlay.gameObject);
             }
 
             _baseViewQuadOverlays.Clear();
+        }
+
+        private void RemoveUntrackedBaseViewQuadOverlays(RectTransform parent, View baseView, InspectorController inspectorController)
+        {
+            if (parent == null || baseView == null)
+            {
+                return;
+            }
+
+            BaseViewQuadOverlay[] overlaysInScene = parent.GetComponentsInChildren<BaseViewQuadOverlay>(true);
+            if (overlaysInScene == null || overlaysInScene.Length == 0)
+            {
+                return;
+            }
+
+            foreach (BaseViewQuadOverlay candidate in overlaysInScene)
+            {
+                if (candidate == null || !ReferenceEquals(candidate.View, baseView))
+                {
+                    continue;
+                }
+
+                ViewQuad candidateViewQuad = candidate.ViewQuad;
+                if (candidateViewQuad != null &&
+                    _baseViewQuadOverlays.TryGetValue(candidateViewQuad, out BaseViewQuadOverlay trackedOverlay) &&
+                    ReferenceEquals(trackedOverlay, candidate))
+                {
+                    continue;
+                }
+
+                inspectorController?.UnregisterViewQuadOverlay(candidate);
+                DestroyOverlayObject(candidate.gameObject);
+            }
+        }
+
+        private static void DestroyOverlayObject(GameObject overlayObject)
+        {
+            if (overlayObject == null)
+            {
+                return;
+            }
+
+            if (Application.isPlaying)
+            {
+                Destroy(overlayObject);
+            }
+            else
+            {
+                DestroyImmediate(overlayObject);
+            }
         }
 
         private void SubscribeToBaseView(View baseView)
