@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using Oasis.Layout;
+using Oasis.LayoutEditor;
 using Oasis.LayoutEditor.RuntimeHierarchyIntegration;
 using RuntimeInspectorNamespace;
 using UnityEngine;
@@ -916,6 +917,17 @@ namespace Oasis.LayoutEditor.Panels
             _suppressHierarchySelectionChange = false;
         }
 
+        public void EnsureViewQuadEntry(View view, ViewQuad viewQuad)
+        {
+            ViewQuadKey key = new ViewQuadKey(view, viewQuad);
+            if (!key.IsValid)
+            {
+                return;
+            }
+
+            EnsureViewQuadEntryTransform(key);
+        }
+
         public void HighlightViewQuad(View view, ViewQuad viewQuad)
         {
             ViewQuadKey key = new ViewQuadKey(view, viewQuad);
@@ -932,6 +944,12 @@ namespace Oasis.LayoutEditor.Panels
 
             key.View?.TrySetActiveViewQuad(key.ViewQuad);
             HighlightHierarchyEntry(entryTransform);
+
+            InspectorController inspectorController = Editor.Instance != null
+                ? Editor.Instance.InspectorController
+                : null;
+
+            inspectorController?.ShowViewQuad(key.View, key.ViewQuad);
         }
 
         private Transform EnsureViewQuadEntryTransform(ViewQuadKey key)
