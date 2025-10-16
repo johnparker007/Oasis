@@ -1,3 +1,4 @@
+using Oasis.Layout;
 using Oasis.LayoutEditor.Panels;
 using System.Collections.Generic;
 using UnityEngine;
@@ -169,6 +170,8 @@ namespace Oasis.LayoutEditor
 
             PanelViewQuadInspector.SetTarget(overlay, handleIndex);
             PanelViewQuadInspector.gameObject.SetActive(true);
+
+            Editor.Instance?.HierarchyPanel?.HighlightViewQuad(overlay?.View);
         }
 
         private void OnViewQuadHandleSelectionCleared(BaseViewQuadOverlay overlay)
@@ -185,6 +188,48 @@ namespace Oasis.LayoutEditor
 
             PanelViewQuadInspector.ClearTarget();
             PanelViewQuadInspector.gameObject.SetActive(false);
+        }
+
+        public void ShowViewQuadForView(View view)
+        {
+            if (PanelViewQuadInspector == null)
+            {
+                return;
+            }
+
+            BaseViewQuadOverlay overlay = FindOverlayForView(view);
+            if (overlay == null)
+            {
+                return;
+            }
+
+            DisableAllPanels();
+
+            PanelViewQuadInspector.SetTarget(overlay, overlay.SelectedHandleIndex);
+            PanelViewQuadInspector.gameObject.SetActive(true);
+        }
+
+        private BaseViewQuadOverlay FindOverlayForView(View view)
+        {
+            if (view == null)
+            {
+                return null;
+            }
+
+            foreach (BaseViewQuadOverlay overlay in _registeredViewQuadOverlays)
+            {
+                if (overlay == null)
+                {
+                    continue;
+                }
+
+                if (ReferenceEquals(overlay.View, view))
+                {
+                    return overlay;
+                }
+            }
+
+            return null;
         }
     }
 

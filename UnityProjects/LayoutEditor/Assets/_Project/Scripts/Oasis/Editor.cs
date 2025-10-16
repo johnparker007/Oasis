@@ -3,6 +3,7 @@ using System.Collections;
 using UnityEngine;
 using Oasis.MFME;
 using Oasis.LayoutEditor;
+using Oasis.LayoutEditor.Panels;
 using Oasis.Layout;
 using Oasis.MAME;
 using UnityEngine.Events;
@@ -24,6 +25,7 @@ namespace Oasis
         public MameController MameController;
         public SelectionController SelectionController;
         public InspectorController InspectorController;
+        public PanelHierarchy HierarchyPanel;
         public FontManager FontManager;
         public ViewController ViewController;
         public TabController TabController;

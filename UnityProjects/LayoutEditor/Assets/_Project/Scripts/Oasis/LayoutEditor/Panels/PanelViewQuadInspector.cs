@@ -42,7 +42,9 @@ namespace Oasis.LayoutEditor.Panels
 
         public int HandleIndex => _handleIndex;
 
-        public bool HasTarget => _overlay != null && _handleIndex >= 0 && _handleIndex < _overlay.PointCount;
+        public bool HasTarget => _overlay != null;
+
+        public bool HasHandleSelection => _overlay != null && _handleIndex >= 0 && _handleIndex < _overlay.PointCount;
 
         public void SetTarget(BaseViewQuadOverlay overlay, int handleIndex)
         {
@@ -238,7 +240,7 @@ namespace Oasis.LayoutEditor.Panels
 
         private void UpdateLayoutPoint(int pointIndex, bool isX, string value)
         {
-            if (!HasTarget || pointIndex < 0 || pointIndex >= _overlay.PointCount)
+            if (_overlay == null || pointIndex < 0 || pointIndex >= _overlay.PointCount)
             {
                 return;
             }

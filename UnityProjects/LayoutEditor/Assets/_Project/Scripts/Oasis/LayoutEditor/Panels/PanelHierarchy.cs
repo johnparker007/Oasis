@@ -54,6 +54,11 @@ namespace Oasis.LayoutEditor.Panels
 
         private void OnEnable()
         {
+            if (Editor.Instance != null)
+            {
+                Editor.Instance.HierarchyPanel = this;
+            }
+
             EnsureRuntimeHierarchy();
             EnsureCategoryRoots();
             EnsureViewQuadRoot();
@@ -72,6 +77,11 @@ namespace Oasis.LayoutEditor.Panels
 
         private void OnDisable()
         {
+            if (Editor.Instance != null && ReferenceEquals(Editor.Instance.HierarchyPanel, this))
+            {
+                Editor.Instance.HierarchyPanel = null;
+            }
+
             UnsubscribeFromLayout();
             UnsubscribeFromEditorEvents();
             UnsubscribeFromRuntimeHierarchyEvents();
@@ -856,6 +866,61 @@ namespace Oasis.LayoutEditor.Panels
             _suppressHierarchySelectionChange = false;
         }
 
+        public void HighlightViewQuad(View view)
+        {
+            if (view == null)
+            {
+                return;
+            }
+
+            Transform entryTransform = EnsureViewQuadEntryTransform(view);
+            if (entryTransform == null)
+            {
+                return;
+            }
+
+            HighlightHierarchyEntry(entryTransform);
+        }
+
+        private Transform EnsureViewQuadEntryTransform(View view)
+        {
+            if (view == null)
+            {
+                return null;
+            }
+
+            if (_viewQuadEntries.TryGetValue(view, out ViewQuadEntry entry))
+            {
+                if (entry.Transform != null)
+                {
+                    return entry.Transform;
+                }
+
+                RemoveViewQuadEntry(view);
+            }
+
+            Transform parent = GetOrCreateViewQuadRoot();
+            if (parent == null)
+            {
+                return null;
+            }
+
+            bool alreadyHadEntry = _viewQuadEntries.ContainsKey(view);
+            AddViewQuadEntry(view, parent);
+
+            if (_viewQuadEntries.TryGetValue(view, out entry) && entry.Transform != null)
+            {
+                if (!alreadyHadEntry)
+                {
+                    _runtimeHierarchy?.Refresh();
+                }
+
+                return entry.Transform;
+            }
+
+            return null;
+        }
+
         private EditorComponent FindEditorComponent(Component component)
         {
             if (component == null)
@@ -944,6 +1009,7 @@ namespace Oasis.LayoutEditor.Panels
             else if (viewToSelect != null)
             {
                 selectionController.DeselectAllObjects();
+                Editor.Instance?.InspectorController?.ShowViewQuadForView(viewToSelect);
             }
             else if (selection == null || selection.Count == 0)
             {
