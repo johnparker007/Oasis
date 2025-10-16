@@ -917,6 +917,17 @@ namespace Oasis.LayoutEditor.Panels
             _suppressHierarchySelectionChange = false;
         }
 
+        public void EnsureViewQuadEntry(View view, ViewQuad viewQuad)
+        {
+            ViewQuadKey key = new ViewQuadKey(view, viewQuad);
+            if (!key.IsValid)
+            {
+                return;
+            }
+
+            EnsureViewQuadEntryTransform(key);
+        }
+
         public void HighlightViewQuad(View view, ViewQuad viewQuad)
         {
             ViewQuadKey key = new ViewQuadKey(view, viewQuad);

@@ -140,6 +140,11 @@ namespace Oasis.LayoutEditor
 
             _registeredViewQuadOverlays.Add(overlay);
 
+            PanelHierarchy hierarchyPanel = Editor.Instance != null
+                ? Editor.Instance.HierarchyPanel
+                : null;
+            hierarchyPanel?.EnsureViewQuadEntry(overlay.View, overlay.ViewQuad);
+
             TryShowPendingViewQuad(overlay);
         }
 
