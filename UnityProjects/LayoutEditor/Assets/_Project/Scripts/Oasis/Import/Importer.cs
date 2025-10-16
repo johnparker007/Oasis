@@ -162,11 +162,6 @@ namespace Oasis.Import
                 name = nameToken.Type == JTokenType.String ? nameToken.Value<string>() : nameToken.ToString();
             }
 
-            if (string.IsNullOrWhiteSpace(name) && string.Equals(view.Name, ViewController.kBaseViewName, StringComparison.Ordinal))
-            {
-                name = LayoutObject.kDefaultBaseViewQuadName;
-            }
-
             view.Data.ViewQuad.Name = name ?? string.Empty;
         }
     }

@@ -271,6 +271,11 @@ namespace Oasis.LayoutEditor.Panels
             SelectFallbackView();
         }
 
+        public View GetActiveView()
+        {
+            return ResolveCurrentView();
+        }
+
         private void SelectFallbackView()
         {
             if (Editor.Instance == null)

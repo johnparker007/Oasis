@@ -19,8 +19,6 @@ namespace Oasis
     
     public class LayoutObject : SerializableDictionary
     {
-        public const string kDefaultBaseViewQuadName = "Bottom";
-
         // the data to be loaded/saved goes in this data class:
         [System.Serializable]
         public class LayoutData
@@ -77,14 +75,64 @@ namespace Oasis
 
             view.Initialise(name);
 
-            if (string.Equals(name, ViewController.kBaseViewName, StringComparison.Ordinal) && string.IsNullOrEmpty(view.Data.ViewQuad.Name))
-            {
-                view.Data.ViewQuad.Name = kDefaultBaseViewQuadName;
-            }
-
             OnAddView?.Invoke(view);
 
             return view;
+        }
+
+        public bool TryAddViewQuad(View view, string preferredBaseName = null)
+        {
+            if (view?.Data?.ViewQuad == null)
+            {
+                return false;
+            }
+
+            if (!string.IsNullOrWhiteSpace(view.Data.ViewQuad.Name))
+            {
+                return false;
+            }
+
+            string viewQuadName = GetNextAvailableViewQuadName(preferredBaseName);
+            view.Data.ViewQuad.Name = viewQuadName;
+            Dirty = true;
+            view.OnChanged?.Invoke();
+            return true;
+        }
+
+        private string GetNextAvailableViewQuadName(string preferredBaseName)
+        {
+            const string kDefaultBaseName = "New ViewQuad";
+            string trimmedBaseName = string.IsNullOrWhiteSpace(preferredBaseName)
+                ? null
+                : preferredBaseName.Trim();
+            string baseName = string.IsNullOrEmpty(trimmedBaseName) ? kDefaultBaseName : trimmedBaseName;
+
+            HashSet<string> usedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (View existingView in Data.Views)
+            {
+                string existingName = existingView?.Data?.ViewQuad?.Name;
+                if (!string.IsNullOrWhiteSpace(existingName))
+                {
+                    usedNames.Add(existingName);
+                }
+            }
+
+            if (!usedNames.Contains(baseName))
+            {
+                return baseName;
+            }
+
+            int suffix = 2;
+            while (true)
+            {
+                string candidate = $"{baseName} ({suffix})";
+                if (!usedNames.Contains(candidate))
+                {
+                    return candidate;
+                }
+
+                suffix++;
+            }
         }
 
         public void DeleteView(string name)
@@ -228,6 +276,12 @@ namespace Oasis
             }
 
             string viewName = GetBaseViewQuadName();
+            if (string.IsNullOrWhiteSpace(viewName))
+            {
+                Debug.LogWarning("The base view quad does not have a name; unable to output the transformed ViewQuad image.");
+                return;
+            }
+
             string viewFolderName = string.Concat("View", viewName);
             string relativeImagePath = Path.Combine(viewFolderName, "Background.png");
             relativeImagePath = relativeImagePath.Replace('\\', '/');
@@ -240,7 +294,7 @@ namespace Oasis
 
             if (editorView == null)
             {
-                Debug.LogWarning("Unable to locate an EditorView for the new Bottom view tab.");
+                Debug.LogWarning($"Unable to locate an EditorView for the new '{viewName}' view tab.");
                 return;
             }
 
@@ -258,7 +312,7 @@ namespace Oasis
 
             if (!TryEnsureViewTab(bottomView, TabController.TabTypes.TestNewView))
             {
-                Debug.LogWarning("Unable to display the Bottom view tab for the transformed ViewQuad image.");
+                Debug.LogWarning($"Unable to display the '{viewName}' view tab for the transformed ViewQuad image.");
                 return;
             }
             editorView.Initialise();
@@ -324,18 +378,10 @@ namespace Oasis
             View baseView = BaseView;
             if (baseView?.Data?.ViewQuad == null)
             {
-                return kDefaultBaseViewQuadName;
+                return string.Empty;
             }
 
-            string name = baseView.Data.ViewQuad.Name;
-            if (string.IsNullOrWhiteSpace(name))
-            {
-                name = kDefaultBaseViewQuadName;
-                baseView.Data.ViewQuad.Name = name;
-                Dirty = true;
-            }
-
-            return name;
+            return baseView.Data.ViewQuad.Name ?? string.Empty;
         }
 
         private static Vector2Int ConvertViewQuadPointToImagePoint(Vector2 layoutPoint, Oasis.Graphics.OasisImage sourceImage)

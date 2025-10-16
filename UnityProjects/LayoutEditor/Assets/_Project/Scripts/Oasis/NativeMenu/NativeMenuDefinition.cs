@@ -62,6 +62,7 @@ namespace Oasis.NativeMenu
 
                 Item("View/Display Text Mode On", 140, handler.OnViewDisplayTextOn),
                 Item("View/Display Text Mode Off", 141, handler.OnViewDisplayTextOff),
+                Item("View/Add ViewQuad", 150, handler.OnViewAddViewQuad),
                 Item("View/Add MAME View", 152, handler.OnViewAddMameView),
                 Item("View/Rebuild MAME View", 153, handler.OnViewRebuildMameView),
                 Item("View/Output Transformed ViewQuad", 166, handler.OnViewOutputTransformedViewQuad),
