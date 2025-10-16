@@ -266,6 +266,8 @@ namespace Oasis.LayoutEditor
                 return false;
             }
 
+            SubscribeToBaseView(baseView);
+
             if ((baseView.ViewQuads == null || baseView.ViewQuads.Count == 0) && baseView.Data.ViewQuad != null)
             {
                 baseView.EnsureViewQuad();
@@ -274,8 +276,7 @@ namespace Oasis.LayoutEditor
             IReadOnlyList<ViewQuad> viewQuads = baseView.ViewQuads;
             if (viewQuads == null || viewQuads.Count == 0)
             {
-                ResetBaseViewQuadOverlays();
-                SubscribeToBaseView(null);
+                DestroyBaseViewQuadOverlayObjects();
                 return false;
             }
 
@@ -293,8 +294,6 @@ namespace Oasis.LayoutEditor
 
             EditorPanel editorPanel = editorView.GetComponentInParent<EditorPanel>();
             Zoom zoom = editorPanel != null ? editorPanel.Zoom : null;
-
-            SubscribeToBaseView(baseView);
 
             InspectorController inspectorController = Editor.Instance.InspectorController;
 
@@ -393,6 +392,11 @@ namespace Oasis.LayoutEditor
 
             SubscribeToBaseView(null);
 
+            DestroyBaseViewQuadOverlayObjects();
+        }
+
+        private void DestroyBaseViewQuadOverlayObjects()
+        {
             if (_baseViewQuadOverlays.Count == 0)
             {
                 return;
