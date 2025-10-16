@@ -172,7 +172,7 @@ namespace Oasis.LayoutEditor
             PanelViewQuadInspector.gameObject.SetActive(true);
 
             View view = overlay?.View;
-            Editor.Instance?.HierarchyPanel?.HighlightViewQuad(view, view?.ActiveViewQuad);
+            Editor.Instance?.HierarchyPanel?.HighlightViewQuad(view, overlay?.ViewQuad);
         }
 
         private void OnViewQuadHandleSelectionCleared(BaseViewQuadOverlay overlay)
@@ -199,7 +199,7 @@ namespace Oasis.LayoutEditor
             }
 
             view?.TrySetActiveViewQuad(viewQuad);
-            BaseViewQuadOverlay overlay = FindOverlayForView(view);
+            BaseViewQuadOverlay overlay = FindOverlay(view, viewQuad);
             if (overlay == null)
             {
                 return;
@@ -211,12 +211,14 @@ namespace Oasis.LayoutEditor
             PanelViewQuadInspector.gameObject.SetActive(true);
         }
 
-        private BaseViewQuadOverlay FindOverlayForView(View view)
+        private BaseViewQuadOverlay FindOverlay(View view, ViewQuad viewQuad)
         {
             if (view == null)
             {
                 return null;
             }
+
+            ViewQuad targetViewQuad = viewQuad ?? view.ActiveViewQuad;
 
             foreach (BaseViewQuadOverlay overlay in _registeredViewQuadOverlays)
             {
@@ -225,7 +227,12 @@ namespace Oasis.LayoutEditor
                     continue;
                 }
 
-                if (ReferenceEquals(overlay.View, view))
+                if (!ReferenceEquals(overlay.View, view))
+                {
+                    continue;
+                }
+
+                if (targetViewQuad == null || ReferenceEquals(overlay.ViewQuad, targetViewQuad))
                 {
                     return overlay;
                 }
