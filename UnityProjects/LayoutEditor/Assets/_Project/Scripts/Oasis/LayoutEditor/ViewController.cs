@@ -208,13 +208,20 @@ namespace Oasis.LayoutEditor
             Debug.LogError("Before: mameView.Data.Components.Count == " + mameView.Data.Components.Count);
             
             // TODO clear all mameView components and associated EditorComponents before rebuild
+            ViewQuad mameViewQuad = mameView?.Data?.ViewQuad;
+            if (mameViewQuad == null)
+            {
+                Debug.LogWarning("The MAME view does not have a ViewQuad configured; unable to rebuild.");
+                return;
+            }
+
             foreach(Layout.Component component in baseView.Data.Components)
             {
                 // TOIMPROVE - this all wants refactoring into some kind of OasisRect system:
-                if (!mameView.Data.ViewQuad.ContainsAnyPoint(
-                    component.PointTopLeft, 
-                    component.PointTopRight, 
-                    component.PointBottomLeft, 
+                if (!mameViewQuad.ContainsAnyPoint(
+                    component.PointTopLeft,
+                    component.PointTopRight,
+                    component.PointBottomLeft,
                     component.PointBottomRight))
                 {
                     continue;
@@ -264,7 +271,7 @@ namespace Oasis.LayoutEditor
             }
 
             View baseView = layout.BaseView;
-            if (baseView == null)
+            if (baseView == null || !baseView.HasViewQuad)
             {
                 return null;
             }

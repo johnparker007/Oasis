@@ -52,7 +52,7 @@ namespace Oasis.Layout
         public class ViewData
         {
             public string Name;
-            public ViewQuad ViewQuad = new ViewQuad();
+            public ViewQuad ViewQuad;
             public List<Component> Components = new List<Component>();
         }
 
@@ -80,6 +80,18 @@ namespace Oasis.Layout
             }
         }
 
+        public bool HasViewQuad => Data.ViewQuad != null;
+
+        public ViewQuad EnsureViewQuad()
+        {
+            if (Data.ViewQuad == null)
+            {
+                Data.ViewQuad = new ViewQuad();
+            }
+
+            return Data.ViewQuad;
+        }
+
         public void Initialise(string name)
         {
             Name = name;
@@ -96,10 +108,11 @@ namespace Oasis.Layout
 
         public void SetViewQuadRectangle(float top, float left, float bottom, float right)
         {
-            Data.ViewQuad.Points[(int)ViewQuad.PointTypes.TopLeft] = new Vector2(left, top);
-            Data.ViewQuad.Points[(int)ViewQuad.PointTypes.TopRight] = new Vector2(right, top);
-            Data.ViewQuad.Points[(int)ViewQuad.PointTypes.BottomRight] = new Vector2(right, bottom);
-            Data.ViewQuad.Points[(int)ViewQuad.PointTypes.BottomLeft] = new Vector2(left, bottom);
+            ViewQuad viewQuad = EnsureViewQuad();
+            viewQuad.Points[(int)ViewQuad.PointTypes.TopLeft] = new Vector2(left, top);
+            viewQuad.Points[(int)ViewQuad.PointTypes.TopRight] = new Vector2(right, top);
+            viewQuad.Points[(int)ViewQuad.PointTypes.BottomRight] = new Vector2(right, bottom);
+            viewQuad.Points[(int)ViewQuad.PointTypes.BottomLeft] = new Vector2(left, bottom);
         }
 
         public void AddComponent(Component component)

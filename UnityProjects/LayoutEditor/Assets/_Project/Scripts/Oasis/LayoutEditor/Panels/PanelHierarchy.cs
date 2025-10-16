@@ -629,6 +629,12 @@ namespace Oasis.LayoutEditor.Panels
                 return;
             }
 
+            if (view.Data?.ViewQuad == null)
+            {
+                RemoveViewQuadEntry(view);
+                return;
+            }
+
             if (_viewQuadEntries.ContainsKey(view))
             {
                 UpdateViewQuadEntryName(view);
@@ -680,6 +686,12 @@ namespace Oasis.LayoutEditor.Panels
         {
             if (view == null)
             {
+                return;
+            }
+
+            if (view.Data?.ViewQuad == null)
+            {
+                RemoveViewQuadEntry(view);
                 return;
             }
 

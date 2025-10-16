@@ -32,6 +32,8 @@ namespace Oasis.LayoutEditor
         private Vector2 _lastContentSize = Vector2.zero;
         private int _selectedHandleIndex = -1;
 
+        private ViewQuad ActiveViewQuad => _view?.Data?.ViewQuad;
+
         private float ZoomLevel => _zoom != null ? Mathf.Max(_zoom.ZoomLevel, 0.0001f) : 1f;
 
         internal RectTransform ContentRect => _contentRect;
@@ -51,22 +53,23 @@ namespace Oasis.LayoutEditor
         {
             get
             {
-                return _view?.Data?.ViewQuad?.Name;
+                return ActiveViewQuad?.Name;
             }
             set
             {
-                if (_view == null || _view.Data?.ViewQuad == null)
+                ViewQuad viewQuad = ActiveViewQuad;
+                if (viewQuad == null)
                 {
                     return;
                 }
 
                 string newName = value ?? string.Empty;
-                if (string.Equals(_view.Data.ViewQuad.Name, newName, StringComparison.Ordinal))
+                if (string.Equals(viewQuad.Name, newName, StringComparison.Ordinal))
                 {
                     return;
                 }
 
-                _view.Data.ViewQuad.Name = newName;
+                viewQuad.Name = newName;
                 Editor.Instance.Project.Layout.Dirty = true;
                 _view.OnChanged?.Invoke();
             }
@@ -294,6 +297,12 @@ namespace Oasis.LayoutEditor
 
         private void SetPointInternal(int index, Vector2 layoutPoint)
         {
+            ViewQuad viewQuad = ActiveViewQuad;
+            if (viewQuad == null)
+            {
+                return;
+            }
+
             if (index < 0 || index >= _points.Length)
             {
                 return;
@@ -307,7 +316,7 @@ namespace Oasis.LayoutEditor
             }
 
             _points[index] = layoutPoint;
-            _view.Data.ViewQuad.Points[index] = layoutPoint;
+            viewQuad.Points[index] = layoutPoint;
             Editor.Instance.Project.Layout.Dirty = true;
             _view.OnChanged?.Invoke();
 
@@ -345,10 +354,21 @@ namespace Oasis.LayoutEditor
 
         private void CopyPointsFromView()
         {
+            ViewQuad viewQuad = ActiveViewQuad;
+            if (viewQuad == null)
+            {
+                for (int i = 0; i < _points.Length; ++i)
+                {
+                    _points[i] = Vector2.zero;
+                }
+
+                return;
+            }
+
             bool hasNonZeroPoint = false;
             for (int i = 0; i < _points.Length; ++i)
             {
-                _points[i] = _view.Data.ViewQuad.Points[i];
+                _points[i] = viewQuad.Points[i];
                 if (!Mathf.Approximately(_points[i].x, 0f) || !Mathf.Approximately(_points[i].y, 0f))
                 {
                     hasNonZeroPoint = true;
@@ -364,7 +384,7 @@ namespace Oasis.LayoutEditor
 
                     for (int i = 0; i < _points.Length; ++i)
                     {
-                        _points[i] = _view.Data.ViewQuad.Points[i];
+                        _points[i] = viewQuad.Points[i];
                     }
                 }
             }

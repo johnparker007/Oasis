@@ -82,18 +82,24 @@ namespace Oasis
 
         public bool TryAddViewQuad(View view, string preferredBaseName = null)
         {
-            if (view?.Data?.ViewQuad == null)
+            if (view?.Data == null)
             {
                 return false;
             }
 
-            if (!string.IsNullOrWhiteSpace(view.Data.ViewQuad.Name))
+            ViewQuad viewQuad = view.Data.ViewQuad ?? view.EnsureViewQuad();
+            if (viewQuad == null)
+            {
+                return false;
+            }
+
+            if (!string.IsNullOrWhiteSpace(viewQuad.Name))
             {
                 return false;
             }
 
             string viewQuadName = GetNextAvailableViewQuadName(preferredBaseName);
-            view.Data.ViewQuad.Name = viewQuadName;
+            viewQuad.Name = viewQuadName;
             Dirty = true;
             view.OnChanged?.Invoke();
             return true;
@@ -381,7 +387,7 @@ namespace Oasis
                 return string.Empty;
             }
 
-            return baseView.Data.ViewQuad.Name ?? string.Empty;
+            return baseView.Data.ViewQuad?.Name ?? string.Empty;
         }
 
         private static Vector2Int ConvertViewQuadPointToImagePoint(Vector2 layoutPoint, Oasis.Graphics.OasisImage sourceImage)

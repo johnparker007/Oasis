@@ -93,27 +93,33 @@ namespace Oasis.Import
 
         private static void ApplyViewQuad(View view, JToken viewQuadToken)
         {
-            if (viewQuadToken == null)
+            if (view == null || viewQuadToken == null)
             {
                 return;
             }
 
-            TryAssignPoint(view, ViewQuad.PointTypes.TopLeft, viewQuadToken["top_left"]);
-            TryAssignPoint(view, ViewQuad.PointTypes.TopRight, viewQuadToken["top_right"]);
-            TryAssignPoint(view, ViewQuad.PointTypes.BottomRight, viewQuadToken["bottom_right"]);
-            TryAssignPoint(view, ViewQuad.PointTypes.BottomLeft, viewQuadToken["bottom_left"]);
+            ViewQuad viewQuad = view.EnsureViewQuad();
+            if (viewQuad == null)
+            {
+                return;
+            }
 
-            AssignViewQuadName(view, viewQuadToken["name"]);
+            TryAssignPoint(viewQuad, ViewQuad.PointTypes.TopLeft, viewQuadToken["top_left"]);
+            TryAssignPoint(viewQuad, ViewQuad.PointTypes.TopRight, viewQuadToken["top_right"]);
+            TryAssignPoint(viewQuad, ViewQuad.PointTypes.BottomRight, viewQuadToken["bottom_right"]);
+            TryAssignPoint(viewQuad, ViewQuad.PointTypes.BottomLeft, viewQuadToken["bottom_left"]);
+
+            AssignViewQuadName(viewQuad, viewQuadToken["name"]);
         }
 
-        private static void TryAssignPoint(View view, ViewQuad.PointTypes pointType, JToken pointToken)
+        private static void TryAssignPoint(ViewQuad viewQuad, ViewQuad.PointTypes pointType, JToken pointToken)
         {
             if (!TryParsePoint(pointToken, out Vector2 point))
             {
                 return;
             }
 
-            view.Data.ViewQuad.Points[(int)pointType] = point;
+            viewQuad.Points[(int)pointType] = point;
         }
 
         private static bool TryParsePoint(JToken token, out Vector2 point)
@@ -148,9 +154,9 @@ namespace Oasis.Import
             return false;
         }
 
-        private static void AssignViewQuadName(View view, JToken nameToken)
+        private static void AssignViewQuadName(ViewQuad viewQuad, JToken nameToken)
         {
-            if (view?.Data?.ViewQuad == null)
+            if (viewQuad == null)
             {
                 return;
             }
@@ -162,7 +168,7 @@ namespace Oasis.Import
                 name = nameToken.Type == JTokenType.String ? nameToken.Value<string>() : nameToken.ToString();
             }
 
-            view.Data.ViewQuad.Name = name ?? string.Empty;
+            viewQuad.Name = name ?? string.Empty;
         }
     }
 }
