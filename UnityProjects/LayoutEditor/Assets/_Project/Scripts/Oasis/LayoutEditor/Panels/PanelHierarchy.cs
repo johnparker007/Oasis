@@ -95,7 +95,9 @@ namespace Oasis.LayoutEditor.Panels
 
             if (_runtimeHierarchy != null && _transformCollection == null)
             {
-                _transformCollection = new RuntimeHierarchyStandaloneTransformCollection(_runtimeHierarchy);
+                _transformCollection = new RuntimeHierarchyStandaloneTransformCollection(
+                    _runtimeHierarchy,
+                    expandEntries: false);
             }
 
             SubscribeToRuntimeHierarchyEvents();

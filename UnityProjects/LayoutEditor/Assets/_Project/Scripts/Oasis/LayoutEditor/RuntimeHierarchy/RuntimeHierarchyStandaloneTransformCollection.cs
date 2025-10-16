@@ -21,10 +21,12 @@ namespace Oasis.LayoutEditor.RuntimeHierarchyIntegration
 
         private readonly RuntimeHierarchy _runtimeHierarchy;
         private readonly List<Entry> _entries = new List<Entry>();
+        private readonly bool _expandEntries;
 
-        public RuntimeHierarchyStandaloneTransformCollection(RuntimeHierarchy runtimeHierarchy)
+        public RuntimeHierarchyStandaloneTransformCollection(RuntimeHierarchy runtimeHierarchy, bool expandEntries = true)
         {
             _runtimeHierarchy = runtimeHierarchy;
+            _expandEntries = expandEntries;
         }
 
         public void Add(Transform transform)
@@ -63,7 +65,7 @@ namespace Oasis.LayoutEditor.RuntimeHierarchyIntegration
 
             _entries.Add(new Entry(transform, rootData, searchData));
 
-            rootData.IsExpanded = true;
+            rootData.IsExpanded = _expandEntries;
 
             MarkHierarchyDirty();
         }
