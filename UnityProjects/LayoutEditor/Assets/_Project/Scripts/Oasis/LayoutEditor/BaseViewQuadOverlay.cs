@@ -32,7 +32,7 @@ namespace Oasis.LayoutEditor
         private Vector2 _lastContentSize = Vector2.zero;
         private int _selectedHandleIndex = -1;
 
-        private ViewQuad ActiveViewQuad => _view?.Data?.ViewQuad;
+        private ViewQuad ActiveViewQuad => _view?.ActiveViewQuad;
 
         private float ZoomLevel => _zoom != null ? Mathf.Max(_zoom.ZoomLevel, 0.0001f) : 1f;
 

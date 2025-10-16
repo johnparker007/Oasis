@@ -39,7 +39,7 @@ namespace Oasis.Layout
                 }
                 ((List<Dictionary<string, object>>)representation["unknown"]).Add(component.GetRepresentation());
             }
-            ViewQuad viewQuad = Data.ViewQuad;
+            ViewQuad viewQuad = ActiveViewQuad;
             if (viewQuad?.Points != null && viewQuad.Points.Length == Enum.GetValues(typeof(ViewQuad.PointTypes)).Length)
             {
                 representation["view_quad"] = CreateViewQuadRepresentation(viewQuad);
@@ -52,7 +52,10 @@ namespace Oasis.Layout
         public class ViewData
         {
             public string Name;
+            [System.Obsolete("Use ViewQuads collection instead.")]
             public ViewQuad ViewQuad;
+            public List<ViewQuad> ViewQuads = new List<ViewQuad>();
+            public int ActiveViewQuadIndex = -1;
             public List<Component> Components = new List<Component>();
         }
 
@@ -80,16 +83,99 @@ namespace Oasis.Layout
             }
         }
 
-        public bool HasViewQuad => Data.ViewQuad != null;
+        public IReadOnlyList<ViewQuad> ViewQuads => Data.ViewQuads;
+
+        public ViewQuad ActiveViewQuad
+        {
+            get
+            {
+                int index = Data.ActiveViewQuadIndex;
+                if ((index < 0 || index >= Data.ViewQuads.Count) && Data.ViewQuad != null)
+                {
+                    EnsureViewQuad();
+                    index = Data.ActiveViewQuadIndex;
+                }
+
+                if (index < 0 || index >= Data.ViewQuads.Count)
+                {
+                    return null;
+                }
+
+                return Data.ViewQuads[index];
+            }
+        }
+
+        public bool HasViewQuad => ActiveViewQuad != null;
 
         public ViewQuad EnsureViewQuad()
         {
-            if (Data.ViewQuad == null)
+            if (Data.ViewQuads.Count == 0)
             {
-                Data.ViewQuad = new ViewQuad();
+                if (Data.ViewQuad != null)
+                {
+                    Data.ViewQuads.Add(Data.ViewQuad);
+                    Data.ViewQuad = null;
+                }
+                else
+                {
+                    Data.ViewQuads.Add(new ViewQuad());
+                }
+                Data.ActiveViewQuadIndex = 0;
+            }
+            else if (Data.ActiveViewQuadIndex < 0 || Data.ActiveViewQuadIndex >= Data.ViewQuads.Count)
+            {
+                Data.ActiveViewQuadIndex = 0;
             }
 
-            return Data.ViewQuad;
+            return Data.ViewQuads[Data.ActiveViewQuadIndex];
+        }
+
+        public ViewQuad AddViewQuad()
+        {
+            ViewQuad newViewQuad = new ViewQuad();
+            Data.ViewQuads.Add(newViewQuad);
+            Data.ActiveViewQuadIndex = Data.ViewQuads.Count - 1;
+            Data.ViewQuad = null;
+            return newViewQuad;
+        }
+
+        public bool TrySetActiveViewQuad(ViewQuad viewQuad)
+        {
+            if (Data.ViewQuads.Count == 0 && Data.ViewQuad != null)
+            {
+                EnsureViewQuad();
+            }
+
+            if (viewQuad == null)
+            {
+                if (Data.ViewQuads.Count == 0)
+                {
+                    return false;
+                }
+
+                if (Data.ActiveViewQuadIndex != 0)
+                {
+                    Data.ActiveViewQuadIndex = 0;
+                    OnChanged?.Invoke();
+                }
+
+                return true;
+            }
+
+            int index = Data.ViewQuads.IndexOf(viewQuad);
+            if (index < 0)
+            {
+                return false;
+            }
+
+            if (Data.ActiveViewQuadIndex == index)
+            {
+                return true;
+            }
+
+            Data.ActiveViewQuadIndex = index;
+            OnChanged?.Invoke();
+            return true;
         }
 
         public void Initialise(string name)

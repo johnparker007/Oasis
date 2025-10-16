@@ -60,13 +60,13 @@ namespace Oasis.NativeMenus
 
             string viewName = string.IsNullOrWhiteSpace(targetView.Name) ? "<unnamed view>" : targetView.Name;
 
-            if (layout.TryAddViewQuad(targetView))
+            if (layout.TryAddViewQuad(targetView, out ViewQuad createdViewQuad))
             {
-                hierarchy?.HighlightViewQuad(targetView);
+                hierarchy?.HighlightViewQuad(targetView, createdViewQuad);
                 return;
             }
 
-            string existingName = targetView.Data?.ViewQuad?.Name ?? string.Empty;
+            string existingName = targetView.ActiveViewQuad?.Name ?? string.Empty;
             if (!string.IsNullOrWhiteSpace(existingName))
             {
                 Debug.LogWarning($"The view '{viewName}' already has a ViewQuad named '{existingName}'.");

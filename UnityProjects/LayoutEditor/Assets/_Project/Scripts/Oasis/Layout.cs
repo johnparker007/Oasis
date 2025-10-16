@@ -80,29 +80,62 @@ namespace Oasis
             return view;
         }
 
-        public bool TryAddViewQuad(View view, string preferredBaseName = null)
+        public bool TryAddViewQuad(View view, out ViewQuad createdViewQuad, string preferredBaseName = null)
         {
+            createdViewQuad = null;
             if (view?.Data == null)
             {
                 return false;
             }
 
-            ViewQuad viewQuad = view.Data.ViewQuad ?? view.EnsureViewQuad();
+            ViewQuad viewQuad = FindViewQuadWithoutName(view);
             if (viewQuad == null)
             {
-                return false;
+                viewQuad = view.AddViewQuad();
             }
 
-            if (!string.IsNullOrWhiteSpace(viewQuad.Name))
+            if (viewQuad == null)
             {
                 return false;
             }
 
             string viewQuadName = GetNextAvailableViewQuadName(preferredBaseName);
             viewQuad.Name = viewQuadName;
+            view.TrySetActiveViewQuad(viewQuad);
             Dirty = true;
             view.OnChanged?.Invoke();
+            createdViewQuad = viewQuad;
             return true;
+        }
+
+        private static ViewQuad FindViewQuadWithoutName(View view)
+        {
+            if (view == null)
+            {
+                return null;
+            }
+
+            IReadOnlyList<ViewQuad> viewQuads = view.ViewQuads;
+            if ((viewQuads == null || viewQuads.Count == 0) && view.Data.ViewQuad != null)
+            {
+                view.EnsureViewQuad();
+                viewQuads = view.ViewQuads;
+            }
+            if (viewQuads == null)
+            {
+                return null;
+            }
+
+            for (int i = 0; i < viewQuads.Count; i++)
+            {
+                ViewQuad candidate = viewQuads[i];
+                if (candidate != null && string.IsNullOrWhiteSpace(candidate.Name))
+                {
+                    return candidate;
+                }
+            }
+
+            return null;
         }
 
         private string GetNextAvailableViewQuadName(string preferredBaseName)
@@ -116,10 +149,24 @@ namespace Oasis
             HashSet<string> usedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (View existingView in Data.Views)
             {
-                string existingName = existingView?.Data?.ViewQuad?.Name;
-                if (!string.IsNullOrWhiteSpace(existingName))
+                string legacyName = existingView?.Data?.ViewQuad?.Name;
+                if (!string.IsNullOrWhiteSpace(legacyName))
                 {
-                    usedNames.Add(existingName);
+                    usedNames.Add(legacyName);
+                }
+
+                if (existingView?.ViewQuads == null)
+                {
+                    continue;
+                }
+
+                foreach (ViewQuad existingQuad in existingView.ViewQuads)
+                {
+                    string existingName = existingQuad?.Name;
+                    if (!string.IsNullOrWhiteSpace(existingName))
+                    {
+                        usedNames.Add(existingName);
+                    }
                 }
             }
 
@@ -218,7 +265,7 @@ namespace Oasis
                 return;
             }
 
-            Vector2[] viewQuadPoints = baseView.Data.ViewQuad?.Points;
+            Vector2[] viewQuadPoints = baseView.ActiveViewQuad?.Points;
             if (viewQuadPoints == null || viewQuadPoints.Length < 4)
             {
                 Debug.LogWarning("The base view quad is not defined.");
@@ -382,12 +429,12 @@ namespace Oasis
         public string GetBaseViewQuadName()
         {
             View baseView = BaseView;
-            if (baseView?.Data?.ViewQuad == null)
+            if (baseView == null || !baseView.HasViewQuad)
             {
                 return string.Empty;
             }
 
-            return baseView.Data.ViewQuad?.Name ?? string.Empty;
+            return baseView.ActiveViewQuad?.Name ?? string.Empty;
         }
 
         private static Vector2Int ConvertViewQuadPointToImagePoint(Vector2 layoutPoint, Oasis.Graphics.OasisImage sourceImage)

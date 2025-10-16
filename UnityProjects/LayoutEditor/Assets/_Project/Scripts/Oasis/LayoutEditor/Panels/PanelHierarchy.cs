@@ -35,8 +35,8 @@ namespace Oasis.LayoutEditor.Panels
         private readonly Dictionary<Component, ComponentEntry> _componentEntries = new();
         private readonly Dictionary<Transform, Component> _transformToComponent = new();
         private Transform _viewQuadsRoot;
-        private readonly Dictionary<View, ViewQuadEntry> _viewQuadEntries = new();
-        private readonly Dictionary<Transform, View> _transformToViewQuad = new();
+        private readonly Dictionary<ViewQuadKey, ViewQuadEntry> _viewQuadEntries = new();
+        private readonly Dictionary<Transform, ViewQuadKey> _transformToViewQuad = new();
 
         private LayoutObject _observedLayout;
         private View _currentView;
@@ -587,9 +587,9 @@ namespace Oasis.LayoutEditor.Panels
                 return;
             }
 
-            foreach (View view in _viewQuadEntries.Keys.ToList())
+            foreach (ViewQuadKey key in _viewQuadEntries.Keys.ToList())
             {
-                RemoveViewQuadEntry(view);
+                RemoveViewQuadEntry(key);
             }
 
             _viewQuadEntries.Clear();
@@ -618,30 +618,44 @@ namespace Oasis.LayoutEditor.Panels
 
             foreach (View view in views)
             {
-                AddViewQuadEntry(view, parent);
+                if (view?.ViewQuads == null || view.ViewQuads.Count == 0)
+                {
+                    RemoveViewQuadEntries(view);
+                    continue;
+                }
+
+                foreach (ViewQuad viewQuad in view.ViewQuads)
+                {
+                    AddViewQuadEntry(view, viewQuad, parent);
+                }
             }
         }
 
-        private void AddViewQuadEntry(View view, Transform parent)
+        private void AddViewQuadEntry(View view, ViewQuad viewQuad, Transform parent)
         {
-            if (view == null || parent == null)
+            if (view == null || viewQuad == null || parent == null)
             {
                 return;
             }
 
-            if (view.Data?.ViewQuad == null)
+            if (view.ViewQuads == null || !view.ViewQuads.Contains(viewQuad))
             {
-                RemoveViewQuadEntry(view);
+                view.TrySetActiveViewQuad(viewQuad);
+                if (view.ViewQuads == null || !view.ViewQuads.Contains(viewQuad))
+                {
+                    return;
+                }
+            }
+
+            ViewQuadKey key = new ViewQuadKey(view, viewQuad);
+
+            if (_viewQuadEntries.ContainsKey(key))
+            {
+                UpdateViewQuadEntryName(key);
                 return;
             }
 
-            if (_viewQuadEntries.ContainsKey(view))
-            {
-                UpdateViewQuadEntryName(view);
-                return;
-            }
-
-            GameObject entryObject = new GameObject(GetViewQuadDisplayName(view))
+            GameObject entryObject = new GameObject(GetViewQuadDisplayName(key))
             {
                 hideFlags = HideFlags.HideAndDontSave
             };
@@ -649,28 +663,23 @@ namespace Oasis.LayoutEditor.Panels
             Transform entryTransform = entryObject.transform;
             entryTransform.SetParent(parent, false);
 
-            UnityAction handler = () => UpdateViewQuadEntryName(view);
+            UnityAction handler = () => UpdateViewQuadEntryName(key);
             view.OnChanged.AddListener(handler);
 
-            _viewQuadEntries[view] = new ViewQuadEntry(entryTransform, handler);
-            _transformToViewQuad[entryTransform] = view;
+            _viewQuadEntries[key] = new ViewQuadEntry(entryTransform, handler);
+            _transformToViewQuad[entryTransform] = key;
         }
 
-        private void RemoveViewQuadEntry(View view)
+        private void RemoveViewQuadEntry(ViewQuadKey key)
         {
-            if (view == null)
-            {
-                return;
-            }
-
-            if (!_viewQuadEntries.TryGetValue(view, out ViewQuadEntry entry))
+            if (!_viewQuadEntries.TryGetValue(key, out ViewQuadEntry entry))
             {
                 return;
             }
 
             if (entry.ViewChangedHandler != null)
             {
-                view.OnChanged.RemoveListener(entry.ViewChangedHandler);
+                key.View?.OnChanged.RemoveListener(entry.ViewChangedHandler);
             }
 
             if (entry.Transform != null)
@@ -679,23 +688,41 @@ namespace Oasis.LayoutEditor.Panels
                 DestroyTransform(entry.Transform);
             }
 
-            _viewQuadEntries.Remove(view);
+            _viewQuadEntries.Remove(key);
         }
 
-        private void UpdateViewQuadEntryName(View view)
+        private void RemoveViewQuadEntries(View view)
         {
             if (view == null)
             {
                 return;
             }
 
-            if (view.Data?.ViewQuad == null)
+            List<ViewQuadKey> keysToRemove = _viewQuadEntries.Keys
+                .Where(key => ReferenceEquals(key.View, view))
+                .ToList();
+
+            foreach (ViewQuadKey key in keysToRemove)
             {
-                RemoveViewQuadEntry(view);
+                RemoveViewQuadEntry(key);
+            }
+        }
+
+        private void UpdateViewQuadEntryName(ViewQuadKey key)
+        {
+            if (!key.IsValid)
+            {
+                RemoveViewQuadEntry(key);
                 return;
             }
 
-            if (_viewQuadEntries.TryGetValue(view, out ViewQuadEntry entry) && entry.Transform != null)
+            if (key.View.ViewQuads == null || !key.View.ViewQuads.Contains(key.ViewQuad))
+            {
+                RemoveViewQuadEntry(key);
+                return;
+            }
+
+            if (_viewQuadEntries.TryGetValue(key, out ViewQuadEntry entry) && entry.Transform != null)
             {
                 GameObject entryObject = entry.Transform.gameObject;
                 if (entryObject == null)
@@ -703,7 +730,7 @@ namespace Oasis.LayoutEditor.Panels
                     return;
                 }
 
-                string newName = GetViewQuadDisplayName(view);
+                string newName = GetViewQuadDisplayName(key);
                 if (!string.Equals(entryObject.name, newName, StringComparison.Ordinal))
                 {
                     entryObject.name = newName;
@@ -763,13 +790,19 @@ namespace Oasis.LayoutEditor.Panels
                 return;
             }
 
-            AddViewQuadEntry(view, parent);
+            if (view?.ViewQuads != null)
+            {
+                foreach (ViewQuad viewQuad in view.ViewQuads)
+                {
+                    AddViewQuadEntry(view, viewQuad, parent);
+                }
+            }
             _runtimeHierarchy?.Refresh();
         }
 
         private void OnLayoutViewRemoved(View view)
         {
-            RemoveViewQuadEntry(view);
+            RemoveViewQuadEntries(view);
             _runtimeHierarchy?.Refresh();
 
             if (view != null && ReferenceEquals(_currentView, view))
@@ -883,37 +916,39 @@ namespace Oasis.LayoutEditor.Panels
             _suppressHierarchySelectionChange = false;
         }
 
-        public void HighlightViewQuad(View view)
+        public void HighlightViewQuad(View view, ViewQuad viewQuad)
         {
-            if (view == null)
+            ViewQuadKey key = new ViewQuadKey(view, viewQuad);
+            if (!key.IsValid)
             {
                 return;
             }
 
-            Transform entryTransform = EnsureViewQuadEntryTransform(view);
+            Transform entryTransform = EnsureViewQuadEntryTransform(key);
             if (entryTransform == null)
             {
                 return;
             }
 
+            key.View?.TrySetActiveViewQuad(key.ViewQuad);
             HighlightHierarchyEntry(entryTransform);
         }
 
-        private Transform EnsureViewQuadEntryTransform(View view)
+        private Transform EnsureViewQuadEntryTransform(ViewQuadKey key)
         {
-            if (view == null)
+            if (!key.IsValid)
             {
                 return null;
             }
 
-            if (_viewQuadEntries.TryGetValue(view, out ViewQuadEntry entry))
+            if (_viewQuadEntries.TryGetValue(key, out ViewQuadEntry entry))
             {
                 if (entry.Transform != null)
                 {
                     return entry.Transform;
                 }
 
-                RemoveViewQuadEntry(view);
+                RemoveViewQuadEntry(key);
             }
 
             Transform parent = GetOrCreateViewQuadRoot();
@@ -922,10 +957,10 @@ namespace Oasis.LayoutEditor.Panels
                 return null;
             }
 
-            bool alreadyHadEntry = _viewQuadEntries.ContainsKey(view);
-            AddViewQuadEntry(view, parent);
+            bool alreadyHadEntry = _viewQuadEntries.ContainsKey(key);
+            AddViewQuadEntry(key.View, key.ViewQuad, parent);
 
-            if (_viewQuadEntries.TryGetValue(view, out entry) && entry.Transform != null)
+            if (_viewQuadEntries.TryGetValue(key, out entry) && entry.Transform != null)
             {
                 if (!alreadyHadEntry)
                 {
@@ -980,7 +1015,8 @@ namespace Oasis.LayoutEditor.Panels
             }
 
             Component componentToSelect = null;
-            View viewToSelect = null;
+            ViewQuadKey viewQuadToSelect = default;
+            bool hasViewQuadSelection = false;
 
             if (selection != null)
             {
@@ -998,9 +1034,10 @@ namespace Oasis.LayoutEditor.Panels
                         break;
                     }
 
-                    if (_transformToViewQuad.TryGetValue(transform, out View view))
+                    if (_transformToViewQuad.TryGetValue(transform, out ViewQuadKey key) && key.IsValid)
                     {
-                        viewToSelect = view;
+                        viewQuadToSelect = key;
+                        hasViewQuadSelection = true;
                         break;
                     }
                 }
@@ -1023,10 +1060,11 @@ namespace Oasis.LayoutEditor.Panels
                     }
                 }
             }
-            else if (viewToSelect != null)
+            else if (hasViewQuadSelection)
             {
                 selectionController.DeselectAllObjects();
-                Editor.Instance?.InspectorController?.ShowViewQuadForView(viewToSelect);
+                viewQuadToSelect.View?.TrySetActiveViewQuad(viewQuadToSelect.ViewQuad);
+                Editor.Instance?.InspectorController?.ShowViewQuad(viewQuadToSelect.View, viewQuadToSelect.ViewQuad);
             }
             else if (selection == null || selection.Count == 0)
             {
@@ -1085,9 +1123,12 @@ namespace Oasis.LayoutEditor.Panels
             return $"{kLegacyComponentNamePrefix}{componentTypeDisplayName}";
         }
 
-        private static string GetViewQuadDisplayName(View view)
+        private static string GetViewQuadDisplayName(ViewQuadKey key)
         {
-            if (view == null)
+            View view = key.View;
+            ViewQuad viewQuad = key.ViewQuad;
+
+            if (view == null || viewQuad == null)
             {
                 return "<missing view quad>";
             }
@@ -1098,7 +1139,7 @@ namespace Oasis.LayoutEditor.Panels
                 viewName = "<unnamed view>";
             }
 
-            string quadName = view.Data != null ? view.Data.ViewQuad?.Name : null;
+            string quadName = viewQuad.Name;
             if (!string.IsNullOrWhiteSpace(quadName))
             {
                 return $"{viewName} View Quad ({quadName})";
@@ -1151,6 +1192,41 @@ namespace Oasis.LayoutEditor.Panels
 
             public Transform Transform { get; }
             public Component.OnValueSetDelegate ValueChangedHandler { get; }
+        }
+
+        private readonly struct ViewQuadKey : IEquatable<ViewQuadKey>
+        {
+            public ViewQuadKey(View view, ViewQuad viewQuad)
+            {
+                View = view;
+                ViewQuad = viewQuad;
+            }
+
+            public View View { get; }
+
+            public ViewQuad ViewQuad { get; }
+
+            public bool IsValid => View != null && ViewQuad != null;
+
+            public bool Equals(ViewQuadKey other)
+            {
+                return ReferenceEquals(View, other.View) && ReferenceEquals(ViewQuad, other.ViewQuad);
+            }
+
+            public override bool Equals(object obj)
+            {
+                return obj is ViewQuadKey other && Equals(other);
+            }
+
+            public override int GetHashCode()
+            {
+                unchecked
+                {
+                    int viewHash = View != null ? View.GetHashCode() : 0;
+                    int quadHash = ViewQuad != null ? ViewQuad.GetHashCode() : 0;
+                    return (viewHash * 397) ^ quadHash;
+                }
+            }
         }
 
         private readonly struct ViewQuadEntry
