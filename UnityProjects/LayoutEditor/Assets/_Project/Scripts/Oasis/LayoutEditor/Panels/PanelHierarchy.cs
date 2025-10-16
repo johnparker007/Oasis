@@ -184,6 +184,8 @@ namespace Oasis.LayoutEditor.Panels
 
             layout.OnAddComponent.AddListener(OnLayoutComponentAdded);
             layout.OnRemoveComponent.AddListener(OnLayoutComponentRemoved);
+            layout.OnAddView.AddListener(OnLayoutViewAdded);
+            layout.OnRemoveView.AddListener(OnLayoutViewRemoved);
 
             _observedLayout = layout;
         }
@@ -197,6 +199,8 @@ namespace Oasis.LayoutEditor.Panels
 
             _observedLayout.OnAddComponent.RemoveListener(OnLayoutComponentAdded);
             _observedLayout.OnRemoveComponent.RemoveListener(OnLayoutComponentRemoved);
+            _observedLayout.OnAddView.RemoveListener(OnLayoutViewAdded);
+            _observedLayout.OnRemoveView.RemoveListener(OnLayoutViewRemoved);
             _observedLayout = null;
         }
 
@@ -568,21 +572,9 @@ namespace Oasis.LayoutEditor.Panels
                 return;
             }
 
-            foreach (KeyValuePair<View, ViewQuadEntry> pair in _viewQuadEntries)
+            foreach (View view in _viewQuadEntries.Keys.ToList())
             {
-                View view = pair.Key;
-                ViewQuadEntry entry = pair.Value;
-
-                if (view != null && entry.ViewChangedHandler != null)
-                {
-                    view.OnChanged.RemoveListener(entry.ViewChangedHandler);
-                }
-
-                if (entry.Transform != null)
-                {
-                    _transformToViewQuad.Remove(entry.Transform);
-                    DestroyTransform(entry.Transform);
-                }
+                RemoveViewQuadEntry(view);
             }
 
             _viewQuadEntries.Clear();
@@ -641,6 +633,32 @@ namespace Oasis.LayoutEditor.Panels
 
             _viewQuadEntries[view] = new ViewQuadEntry(entryTransform, handler);
             _transformToViewQuad[entryTransform] = view;
+        }
+
+        private void RemoveViewQuadEntry(View view)
+        {
+            if (view == null)
+            {
+                return;
+            }
+
+            if (!_viewQuadEntries.TryGetValue(view, out ViewQuadEntry entry))
+            {
+                return;
+            }
+
+            if (entry.ViewChangedHandler != null)
+            {
+                view.OnChanged.RemoveListener(entry.ViewChangedHandler);
+            }
+
+            if (entry.Transform != null)
+            {
+                _transformToViewQuad.Remove(entry.Transform);
+                DestroyTransform(entry.Transform);
+            }
+
+            _viewQuadEntries.Remove(view);
         }
 
         private void UpdateViewQuadEntryName(View view)
@@ -708,6 +726,29 @@ namespace Oasis.LayoutEditor.Panels
             RemoveComponentEntry(component);
             _runtimeHierarchy?.Refresh();
             OnSelectionChanged();
+        }
+
+        private void OnLayoutViewAdded(View view)
+        {
+            Transform parent = GetOrCreateViewQuadRoot();
+            if (parent == null)
+            {
+                return;
+            }
+
+            AddViewQuadEntry(view, parent);
+            _runtimeHierarchy?.Refresh();
+        }
+
+        private void OnLayoutViewRemoved(View view)
+        {
+            RemoveViewQuadEntry(view);
+            _runtimeHierarchy?.Refresh();
+
+            if (view != null && ReferenceEquals(_currentView, view))
+            {
+                SelectFallbackView();
+            }
         }
 
         private bool IsTargetView(View view)

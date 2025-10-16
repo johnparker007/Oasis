@@ -49,6 +49,8 @@ namespace Oasis
 
         public UnityEvent<Component, View> OnAddComponent = new();
         public UnityEvent<Component, View> OnRemoveComponent = new();
+        public UnityEvent<View> OnAddView = new();
+        public UnityEvent<View> OnRemoveView = new();
 
         public View BaseView
         {
@@ -80,6 +82,8 @@ namespace Oasis
                 view.Data.ViewQuad.Name = kDefaultBaseViewQuadName;
             }
 
+            OnAddView?.Invoke(view);
+
             return view;
         }
 
@@ -91,6 +95,11 @@ namespace Oasis
 
         public void DeleteView(View view)
         {
+            if (view != null)
+            {
+                OnRemoveView?.Invoke(view);
+            }
+
             Data.Views.Remove(view);
         }
 
