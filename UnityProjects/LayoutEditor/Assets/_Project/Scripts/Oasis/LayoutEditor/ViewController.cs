@@ -2,6 +2,7 @@ using UnityEngine;
 using DynamicPanels;
 using UnityEngine.UI;
 using System;
+using System.Collections;
 using Oasis.Layout;
 using System.Linq;
 using System.Collections.Generic;
@@ -14,8 +15,85 @@ namespace Oasis.LayoutEditor
         public const string kMameViewName = "Mame";
 
         private BaseViewQuadOverlay _baseViewQuadOverlay = null;
+        private bool _listenersRegistered = false;
 
-        
+        private void OnEnable()
+        {
+            if (!TryRegisterListeners())
+            {
+                StartCoroutine(WaitForEditorAndInitialize());
+                return;
+            }
+
+            EnsureBaseViewQuadOverlayVisible();
+        }
+
+        private void OnDisable()
+        {
+            StopAllCoroutines();
+            UnregisterListeners();
+        }
+
+        private IEnumerator WaitForEditorAndInitialize()
+        {
+            yield return new WaitUntil(() => Editor.Instance != null);
+
+            if (!isActiveAndEnabled)
+            {
+                yield break;
+            }
+
+            if (TryRegisterListeners())
+            {
+                EnsureBaseViewQuadOverlayVisible();
+            }
+        }
+
+        private bool TryRegisterListeners()
+        {
+            if (_listenersRegistered)
+            {
+                return true;
+            }
+
+            if (Editor.Instance == null)
+            {
+                return false;
+            }
+
+            Editor.Instance.OnLayoutSet.AddListener(OnLayoutSet);
+            _listenersRegistered = true;
+            return true;
+        }
+
+        private void UnregisterListeners()
+        {
+            if (!_listenersRegistered)
+            {
+                return;
+            }
+
+            if (Editor.Instance != null)
+            {
+                Editor.Instance.OnLayoutSet.RemoveListener(OnLayoutSet);
+            }
+
+            _listenersRegistered = false;
+        }
+
+        private void OnLayoutSet(Oasis.LayoutObject layout)
+        {
+            EnsureBaseViewQuadOverlayVisible();
+        }
+
+        private void EnsureBaseViewQuadOverlayVisible()
+        {
+            BaseViewQuadOverlay overlay = GetOrCreateBaseViewQuadOverlay();
+            if (overlay != null)
+            {
+                overlay.SetActive(true);
+            }
+        }
 
         public PanelTab ViewMamePanelTab
         {
@@ -100,22 +178,6 @@ namespace Oasis.LayoutEditor
 
             Debug.LogError("After: baseView.Data.Components.Count == " + baseView.Data.Components.Count);
             Debug.LogError("After: mameView.Data.Components.Count == " + mameView.Data.Components.Count);
-        }
-
-        public void SetBaseViewQuadsActive(bool active)
-        {
-            if (active)
-            {
-                BaseViewQuadOverlay overlay = GetOrCreateBaseViewQuadOverlay();
-                if (overlay != null)
-                {
-                    overlay.SetActive(true);
-                }
-            }
-            else if (_baseViewQuadOverlay != null)
-            {
-                _baseViewQuadOverlay.SetActive(false);
-            }
         }
 
         private BaseViewQuadOverlay GetOrCreateBaseViewQuadOverlay()
