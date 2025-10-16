@@ -116,11 +116,6 @@ namespace Oasis
             }
 
             IReadOnlyList<ViewQuad> viewQuads = view.ViewQuads;
-            if ((viewQuads == null || viewQuads.Count == 0) && view.Data.ViewQuad != null)
-            {
-                view.EnsureViewQuad();
-                viewQuads = view.ViewQuads;
-            }
             if (viewQuads == null)
             {
                 return null;
@@ -149,12 +144,6 @@ namespace Oasis
             HashSet<string> usedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (View existingView in Data.Views)
             {
-                string legacyName = existingView?.Data?.ViewQuad?.Name;
-                if (!string.IsNullOrWhiteSpace(legacyName))
-                {
-                    usedNames.Add(legacyName);
-                }
-
                 if (existingView?.ViewQuads == null)
                 {
                     continue;

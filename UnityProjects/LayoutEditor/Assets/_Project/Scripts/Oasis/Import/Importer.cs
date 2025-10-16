@@ -43,11 +43,7 @@ namespace Oasis.Import
                 JToken currentComponent = token["items"][componentKey.Name];
                 view.AddComponent(ParseComponent(componentKey.Name, currentComponent));
             }
-            bool appliedViewQuads = TryApplyViewQuads(view, token["view_quads"], token["active_view_quad_index"]);
-            if (!appliedViewQuads)
-            {
-                ApplyLegacyViewQuad(view, token["view_quad"]);
-            }
+            ApplyViewQuads(view, token["view_quads"], token["active_view_quad_index"]);
             return view;
         }
 
@@ -95,25 +91,30 @@ namespace Oasis.Import
             return null;
         }
 
-        private static bool TryApplyViewQuads(View view, JToken viewQuadsToken, JToken activeIndexToken)
+        private static void ApplyViewQuads(View view, JToken viewQuadsToken, JToken activeIndexToken)
         {
             if (view == null)
             {
-                return false;
+                return;
             }
 
             if (viewQuadsToken == null || viewQuadsToken.Type == JTokenType.Null)
             {
-                return false;
+                view.Data.ViewQuads.Clear();
+                view.Data.ActiveViewQuadIndex = -1;
+                view.OnChanged?.Invoke();
+                return;
             }
 
             if (viewQuadsToken.Type != JTokenType.Array)
             {
-                return false;
+                view.Data.ViewQuads.Clear();
+                view.Data.ActiveViewQuadIndex = -1;
+                view.OnChanged?.Invoke();
+                return;
             }
 
             view.Data.ViewQuads.Clear();
-            view.Data.ViewQuad = null;
 
             foreach (JToken quadToken in (JArray)viewQuadsToken)
             {
@@ -143,24 +144,6 @@ namespace Oasis.Import
             {
                 view.TrySetActiveViewQuad(view.Data.ViewQuads[0]);
             }
-
-            return true;
-        }
-
-        private static void ApplyLegacyViewQuad(View view, JToken viewQuadToken)
-        {
-            if (view == null || viewQuadToken == null)
-            {
-                return;
-            }
-
-            ViewQuad viewQuad = view.EnsureViewQuad();
-            if (viewQuad == null)
-            {
-                return;
-            }
-
-            PopulateViewQuad(viewQuad, viewQuadToken);
         }
 
         private static void PopulateViewQuad(ViewQuad viewQuad, JToken viewQuadToken)

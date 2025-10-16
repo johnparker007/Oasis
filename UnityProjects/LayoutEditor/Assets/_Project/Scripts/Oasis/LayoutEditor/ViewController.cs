@@ -202,7 +202,7 @@ namespace Oasis.LayoutEditor
             Debug.LogError("Before: mameView.Data.Components.Count == " + mameView.Data.Components.Count);
             
             // TODO clear all mameView components and associated EditorComponents before rebuild
-            ViewQuad mameViewQuad = mameView?.Data?.ViewQuad;
+            ViewQuad mameViewQuad = mameView?.ActiveViewQuad;
             if (mameViewQuad == null)
             {
                 Debug.LogWarning("The MAME view does not have a ViewQuad configured; unable to rebuild.");
@@ -267,11 +267,6 @@ namespace Oasis.LayoutEditor
             }
 
             SubscribeToBaseView(baseView);
-
-            if ((baseView.ViewQuads == null || baseView.ViewQuads.Count == 0) && baseView.Data.ViewQuad != null)
-            {
-                baseView.EnsureViewQuad();
-            }
 
             IReadOnlyList<ViewQuad> viewQuads = baseView.ViewQuads;
             if (viewQuads == null || viewQuads.Count == 0)

@@ -42,11 +42,6 @@ namespace Oasis.Layout
             List<Dictionary<string, object>> viewQuadRepresentations = new List<Dictionary<string, object>>();
 
             IReadOnlyList<ViewQuad> viewQuads = Data.ViewQuads;
-            if ((viewQuads == null || viewQuads.Count == 0) && Data.ViewQuad != null)
-            {
-                viewQuads = new List<ViewQuad> { Data.ViewQuad };
-            }
-
             if (viewQuads != null)
             {
                 foreach (ViewQuad viewQuad in viewQuads)
@@ -74,11 +69,6 @@ namespace Oasis.Layout
 
             representation["active_view_quad_index"] = activeIndex;
 
-            ViewQuad activeViewQuad = ActiveViewQuad;
-            if (activeViewQuad?.Points != null && activeViewQuad.Points.Length == Enum.GetValues(typeof(ViewQuad.PointTypes)).Length)
-            {
-                representation["view_quad"] = CreateViewQuadRepresentation(activeViewQuad);
-            }
             return representation;
         }
 
@@ -87,8 +77,6 @@ namespace Oasis.Layout
         public class ViewData
         {
             public string Name;
-            [System.Obsolete("Use ViewQuads collection instead.")]
-            public ViewQuad ViewQuad;
             public List<ViewQuad> ViewQuads = new List<ViewQuad>();
             public int ActiveViewQuadIndex = -1;
             public List<Component> Components = new List<Component>();
@@ -125,12 +113,6 @@ namespace Oasis.Layout
             get
             {
                 int index = Data.ActiveViewQuadIndex;
-                if ((index < 0 || index >= Data.ViewQuads.Count) && Data.ViewQuad != null)
-                {
-                    EnsureViewQuad();
-                    index = Data.ActiveViewQuadIndex;
-                }
-
                 if (index < 0 || index >= Data.ViewQuads.Count)
                 {
                     return null;
@@ -146,15 +128,7 @@ namespace Oasis.Layout
         {
             if (Data.ViewQuads.Count == 0)
             {
-                if (Data.ViewQuad != null)
-                {
-                    Data.ViewQuads.Add(Data.ViewQuad);
-                    Data.ViewQuad = null;
-                }
-                else
-                {
-                    Data.ViewQuads.Add(new ViewQuad());
-                }
+                Data.ViewQuads.Add(new ViewQuad());
                 Data.ActiveViewQuadIndex = 0;
             }
             else if (Data.ActiveViewQuadIndex < 0 || Data.ActiveViewQuadIndex >= Data.ViewQuads.Count)
@@ -170,17 +144,11 @@ namespace Oasis.Layout
             ViewQuad newViewQuad = new ViewQuad();
             Data.ViewQuads.Add(newViewQuad);
             Data.ActiveViewQuadIndex = Data.ViewQuads.Count - 1;
-            Data.ViewQuad = null;
             return newViewQuad;
         }
 
         public bool TrySetActiveViewQuad(ViewQuad viewQuad)
         {
-            if (Data.ViewQuads.Count == 0 && Data.ViewQuad != null)
-            {
-                EnsureViewQuad();
-            }
-
             if (viewQuad == null)
             {
                 if (Data.ViewQuads.Count == 0)
