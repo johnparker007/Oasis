@@ -43,7 +43,11 @@ namespace Oasis.Import
                 JToken currentComponent = token["items"][componentKey.Name];
                 view.AddComponent(ParseComponent(componentKey.Name, currentComponent));
             }
-            ApplyViewQuad(view, token["view_quad"]);
+            bool appliedViewQuads = TryApplyViewQuads(view, token["view_quads"], token["active_view_quad_index"]);
+            if (!appliedViewQuads)
+            {
+                ApplyLegacyViewQuad(view, token["view_quad"]);
+            }
             return view;
         }
 
@@ -91,7 +95,59 @@ namespace Oasis.Import
             return null;
         }
 
-        private static void ApplyViewQuad(View view, JToken viewQuadToken)
+        private static bool TryApplyViewQuads(View view, JToken viewQuadsToken, JToken activeIndexToken)
+        {
+            if (view == null)
+            {
+                return false;
+            }
+
+            if (viewQuadsToken == null || viewQuadsToken.Type == JTokenType.Null)
+            {
+                return false;
+            }
+
+            if (viewQuadsToken.Type != JTokenType.Array)
+            {
+                return false;
+            }
+
+            view.Data.ViewQuads.Clear();
+            view.Data.ViewQuad = null;
+
+            foreach (JToken quadToken in (JArray)viewQuadsToken)
+            {
+                if (quadToken == null || quadToken.Type == JTokenType.Null || quadToken.Type != JTokenType.Object)
+                {
+                    continue;
+                }
+
+                ViewQuad viewQuad = new ViewQuad();
+                PopulateViewQuad(viewQuad, quadToken);
+                view.Data.ViewQuads.Add(viewQuad);
+            }
+
+            int activeIndex = ResolveActiveViewQuadIndex(activeIndexToken, view.Data.ViewQuads.Count);
+
+            view.Data.ActiveViewQuadIndex = -1;
+
+            if (activeIndex >= 0 && activeIndex < view.Data.ViewQuads.Count)
+            {
+                view.TrySetActiveViewQuad(view.Data.ViewQuads[activeIndex]);
+            }
+            else if (view.Data.ViewQuads.Count == 0)
+            {
+                view.OnChanged?.Invoke();
+            }
+            else
+            {
+                view.TrySetActiveViewQuad(view.Data.ViewQuads[0]);
+            }
+
+            return true;
+        }
+
+        private static void ApplyLegacyViewQuad(View view, JToken viewQuadToken)
         {
             if (view == null || viewQuadToken == null)
             {
@@ -104,12 +160,52 @@ namespace Oasis.Import
                 return;
             }
 
+            PopulateViewQuad(viewQuad, viewQuadToken);
+        }
+
+        private static void PopulateViewQuad(ViewQuad viewQuad, JToken viewQuadToken)
+        {
+            if (viewQuad == null || viewQuadToken == null || viewQuadToken.Type == JTokenType.Null)
+            {
+                return;
+            }
+
             TryAssignPoint(viewQuad, ViewQuad.PointTypes.TopLeft, viewQuadToken["top_left"]);
             TryAssignPoint(viewQuad, ViewQuad.PointTypes.TopRight, viewQuadToken["top_right"]);
             TryAssignPoint(viewQuad, ViewQuad.PointTypes.BottomRight, viewQuadToken["bottom_right"]);
             TryAssignPoint(viewQuad, ViewQuad.PointTypes.BottomLeft, viewQuadToken["bottom_left"]);
 
             AssignViewQuadName(viewQuad, viewQuadToken["name"]);
+        }
+
+        private static int ResolveActiveViewQuadIndex(JToken activeIndexToken, int viewQuadCount)
+        {
+            if (viewQuadCount <= 0)
+            {
+                return -1;
+            }
+
+            if (activeIndexToken == null || activeIndexToken.Type == JTokenType.Null)
+            {
+                return 0;
+            }
+
+            int parsedIndex;
+
+            if (activeIndexToken.Type == JTokenType.Integer)
+            {
+                parsedIndex = activeIndexToken.Value<int>();
+            }
+            else if (activeIndexToken.Type == JTokenType.Float)
+            {
+                parsedIndex = Mathf.RoundToInt(activeIndexToken.Value<float>());
+            }
+            else if (!int.TryParse(activeIndexToken.ToString(), out parsedIndex))
+            {
+                parsedIndex = 0;
+            }
+
+            return Mathf.Clamp(parsedIndex, 0, Mathf.Max(0, viewQuadCount - 1));
         }
 
         private static void TryAssignPoint(ViewQuad viewQuad, ViewQuad.PointTypes pointType, JToken pointToken)

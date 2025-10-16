@@ -39,10 +39,45 @@ namespace Oasis.Layout
                 }
                 ((List<Dictionary<string, object>>)representation["unknown"]).Add(component.GetRepresentation());
             }
-            ViewQuad viewQuad = ActiveViewQuad;
-            if (viewQuad?.Points != null && viewQuad.Points.Length == Enum.GetValues(typeof(ViewQuad.PointTypes)).Length)
+            List<Dictionary<string, object>> viewQuadRepresentations = new List<Dictionary<string, object>>();
+
+            IReadOnlyList<ViewQuad> viewQuads = Data.ViewQuads;
+            if ((viewQuads == null || viewQuads.Count == 0) && Data.ViewQuad != null)
             {
-                representation["view_quad"] = CreateViewQuadRepresentation(viewQuad);
+                viewQuads = new List<ViewQuad> { Data.ViewQuad };
+            }
+
+            if (viewQuads != null)
+            {
+                foreach (ViewQuad viewQuad in viewQuads)
+                {
+                    if (viewQuad == null)
+                    {
+                        continue;
+                    }
+
+                    viewQuadRepresentations.Add(CreateViewQuadRepresentation(viewQuad));
+                }
+            }
+
+            representation["view_quads"] = viewQuadRepresentations;
+
+            int activeIndex = Data.ActiveViewQuadIndex;
+            if (viewQuadRepresentations.Count == 0)
+            {
+                activeIndex = -1;
+            }
+            else if (activeIndex < 0 || activeIndex >= viewQuadRepresentations.Count)
+            {
+                activeIndex = Mathf.Clamp(activeIndex, 0, viewQuadRepresentations.Count - 1);
+            }
+
+            representation["active_view_quad_index"] = activeIndex;
+
+            ViewQuad activeViewQuad = ActiveViewQuad;
+            if (activeViewQuad?.Points != null && activeViewQuad.Points.Length == Enum.GetValues(typeof(ViewQuad.PointTypes)).Length)
+            {
+                representation["view_quad"] = CreateViewQuadRepresentation(activeViewQuad);
             }
             return representation;
         }
@@ -265,7 +300,12 @@ namespace Oasis.Layout
 
         private static Dictionary<string, object> CreateViewQuadRepresentation(ViewQuad viewQuad)
         {
-            Vector2[] points = viewQuad.Points;
+            Vector2[] points = viewQuad?.Points;
+            int pointCount = Enum.GetValues(typeof(ViewQuad.PointTypes)).Length;
+            if (points == null || points.Length < pointCount)
+            {
+                points = new Vector2[pointCount];
+            }
 
             return new Dictionary<string, object>
             {
