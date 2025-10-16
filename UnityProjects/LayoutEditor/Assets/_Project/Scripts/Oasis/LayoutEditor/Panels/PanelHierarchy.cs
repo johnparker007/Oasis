@@ -25,6 +25,7 @@ namespace Oasis.LayoutEditor.Panels
 
         private const string kFallbackCategoryName = "Components";
         private const string kViewQuadCategoryName = "View Quads";
+        private const string kLegacyComponentNamePrefix = "(Legacy) ";
 
         [SerializeField]
         private RuntimeHierarchy _runtimeHierarchy = null;
@@ -920,6 +921,18 @@ namespace Oasis.LayoutEditor.Panels
                 return "<missing>";
             }
 
+            switch (component)
+            {
+                case ComponentBackground:
+                    return FormatLegacyComponentDisplayName("Background", null);
+                case ComponentReel reel:
+                    return FormatLegacyComponentDisplayName("Reel", reel.Number);
+                case Component7Segment segment7:
+                    return FormatLegacyComponentDisplayName("7 Segment", segment7.Number);
+                case ComponentLamp lamp:
+                    return FormatLegacyComponentDisplayName("Lamp", lamp.Number);
+            }
+
             string baseName = component.Name;
             if (string.IsNullOrWhiteSpace(baseName))
             {
@@ -934,6 +947,16 @@ namespace Oasis.LayoutEditor.Panels
             }
 
             return baseName;
+        }
+
+        private static string FormatLegacyComponentDisplayName(string componentTypeDisplayName, int? number)
+        {
+            if (number.HasValue)
+            {
+                return $"{kLegacyComponentNamePrefix}{componentTypeDisplayName} ({number.Value})";
+            }
+
+            return $"{kLegacyComponentNamePrefix}{componentTypeDisplayName}";
         }
 
         private static string GetViewQuadDisplayName(View view)
