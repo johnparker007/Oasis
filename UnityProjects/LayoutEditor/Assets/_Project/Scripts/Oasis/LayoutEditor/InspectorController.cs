@@ -15,6 +15,8 @@ namespace Oasis.LayoutEditor
         public PanelViewQuadInspector PanelViewQuadInspector;
 
         private readonly HashSet<BaseViewQuadOverlay> _registeredViewQuadOverlays = new HashSet<BaseViewQuadOverlay>();
+        private View _pendingViewQuadView;
+        private ViewQuad _pendingViewQuad;
 
         private void Awake()
         {
@@ -64,6 +66,9 @@ namespace Oasis.LayoutEditor
             {
                 return;
             }
+
+            _pendingViewQuadView = null;
+            _pendingViewQuad = null;
 
             EditorComponent firstSelectedEditorComponent =
                 Editor.Instance.SelectionController.SelectedEditorComponents[0];
@@ -134,6 +139,8 @@ namespace Oasis.LayoutEditor
             overlay.OnHandleSelectionCleared += OnViewQuadHandleSelectionCleared;
 
             _registeredViewQuadOverlays.Add(overlay);
+
+            TryShowPendingViewQuad(overlay);
         }
 
         public void UnregisterViewQuadOverlay(BaseViewQuadOverlay overlay)
@@ -202,8 +209,13 @@ namespace Oasis.LayoutEditor
             BaseViewQuadOverlay overlay = FindOverlay(view, viewQuad);
             if (overlay == null)
             {
+                _pendingViewQuadView = view;
+                _pendingViewQuad = viewQuad;
                 return;
             }
+
+            _pendingViewQuadView = null;
+            _pendingViewQuad = null;
 
             DisableAllPanels();
 
@@ -239,6 +251,32 @@ namespace Oasis.LayoutEditor
             }
 
             return null;
+        }
+
+        private void TryShowPendingViewQuad(BaseViewQuadOverlay overlay)
+        {
+            if (overlay == null)
+            {
+                return;
+            }
+
+            if (_pendingViewQuadView == null)
+            {
+                return;
+            }
+
+            if (!ReferenceEquals(overlay.View, _pendingViewQuadView))
+            {
+                return;
+            }
+
+            ViewQuad targetViewQuad = _pendingViewQuad ?? _pendingViewQuadView.ActiveViewQuad;
+            if (targetViewQuad != null && !ReferenceEquals(overlay.ViewQuad, targetViewQuad))
+            {
+                return;
+            }
+
+            ShowViewQuad(_pendingViewQuadView, _pendingViewQuad);
         }
     }
 
