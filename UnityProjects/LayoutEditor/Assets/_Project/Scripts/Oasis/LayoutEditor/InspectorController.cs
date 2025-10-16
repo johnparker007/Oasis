@@ -135,6 +135,22 @@ namespace Oasis.LayoutEditor
             _registeredViewQuadOverlays.Add(overlay);
         }
 
+        public void UnregisterViewQuadOverlay(BaseViewQuadOverlay overlay)
+        {
+            if (overlay == null)
+            {
+                return;
+            }
+
+            if (!_registeredViewQuadOverlays.Remove(overlay))
+            {
+                return;
+            }
+
+            overlay.OnHandleSelected -= OnViewQuadHandleSelected;
+            overlay.OnHandleSelectionCleared -= OnViewQuadHandleSelectionCleared;
+        }
+
         private void OnViewQuadHandleSelected(BaseViewQuadOverlay overlay, int handleIndex)
         {
             if (PanelViewQuadInspector == null)

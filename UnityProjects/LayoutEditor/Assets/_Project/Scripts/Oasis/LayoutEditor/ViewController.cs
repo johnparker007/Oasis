@@ -32,6 +32,7 @@ namespace Oasis.LayoutEditor
         {
             StopAllCoroutines();
             UnregisterListeners();
+            ResetBaseViewQuadOverlay();
         }
 
         private IEnumerator WaitForEditorAndInitialize()
@@ -62,6 +63,8 @@ namespace Oasis.LayoutEditor
             }
 
             Editor.Instance.OnLayoutSet.AddListener(OnLayoutSet);
+            Editor.Instance.OnEditorViewEnabled.AddListener(OnEditorViewEnabled);
+            Editor.Instance.OnEditorViewDisabled.AddListener(OnEditorViewDisabled);
             _listenersRegistered = true;
             return true;
         }
@@ -76,6 +79,8 @@ namespace Oasis.LayoutEditor
             if (Editor.Instance != null)
             {
                 Editor.Instance.OnLayoutSet.RemoveListener(OnLayoutSet);
+                Editor.Instance.OnEditorViewEnabled.RemoveListener(OnEditorViewEnabled);
+                Editor.Instance.OnEditorViewDisabled.RemoveListener(OnEditorViewDisabled);
             }
 
             _listenersRegistered = false;
@@ -83,7 +88,34 @@ namespace Oasis.LayoutEditor
 
         private void OnLayoutSet(Oasis.LayoutObject layout)
         {
+            ResetBaseViewQuadOverlay();
             EnsureBaseViewQuadOverlayVisible();
+        }
+
+        private void OnEditorViewEnabled(EditorView editorView)
+        {
+            if (editorView == null)
+            {
+                return;
+            }
+
+            if (string.Equals(editorView.ViewName, kBaseViewName, StringComparison.Ordinal))
+            {
+                EnsureBaseViewQuadOverlayVisible();
+            }
+        }
+
+        private void OnEditorViewDisabled(EditorView editorView)
+        {
+            if (editorView == null)
+            {
+                return;
+            }
+
+            if (string.Equals(editorView.ViewName, kBaseViewName, StringComparison.Ordinal))
+            {
+                ResetBaseViewQuadOverlay();
+            }
         }
 
         private void EnsureBaseViewQuadOverlayVisible()
@@ -232,6 +264,20 @@ namespace Oasis.LayoutEditor
             inspectorController?.RegisterViewQuadOverlay(overlay);
 
             return _baseViewQuadOverlay;
+        }
+
+        private void ResetBaseViewQuadOverlay()
+        {
+            if (_baseViewQuadOverlay == null)
+            {
+                return;
+            }
+
+            InspectorController inspectorController = Editor.Instance != null ? Editor.Instance.InspectorController : null;
+            inspectorController?.UnregisterViewQuadOverlay(_baseViewQuadOverlay);
+
+            Destroy(_baseViewQuadOverlay.gameObject);
+            _baseViewQuadOverlay = null;
         }
 
 
