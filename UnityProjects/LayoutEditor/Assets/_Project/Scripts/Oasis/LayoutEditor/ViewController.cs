@@ -15,6 +15,7 @@ namespace Oasis.LayoutEditor
         public const string kMameViewName = "Mame";
 
         private BaseViewQuadOverlay _baseViewQuadOverlay = null;
+        private Coroutine _ensureBaseViewQuadOverlayRoutine = null;
         private bool _listenersRegistered = false;
 
         private void OnEnable()
@@ -31,6 +32,7 @@ namespace Oasis.LayoutEditor
         private void OnDisable()
         {
             StopAllCoroutines();
+            _ensureBaseViewQuadOverlayRoutine = null;
             UnregisterListeners();
             ResetBaseViewQuadOverlay();
         }
@@ -120,11 +122,42 @@ namespace Oasis.LayoutEditor
 
         private void EnsureBaseViewQuadOverlayVisible()
         {
-            BaseViewQuadOverlay overlay = GetOrCreateBaseViewQuadOverlay();
-            if (overlay != null)
+            if (TryEnsureBaseViewQuadOverlayVisible())
             {
-                overlay.SetActive(true);
+                return;
             }
+
+            if (_ensureBaseViewQuadOverlayRoutine == null)
+            {
+                _ensureBaseViewQuadOverlayRoutine = StartCoroutine(WaitForBaseViewQuadOverlay());
+            }
+        }
+
+        private bool TryEnsureBaseViewQuadOverlayVisible()
+        {
+            BaseViewQuadOverlay overlay = GetOrCreateBaseViewQuadOverlay();
+            if (overlay == null)
+            {
+                return false;
+            }
+
+            overlay.SetActive(true);
+            return true;
+        }
+
+        private IEnumerator WaitForBaseViewQuadOverlay()
+        {
+            while (isActiveAndEnabled)
+            {
+                if (TryEnsureBaseViewQuadOverlayVisible())
+                {
+                    break;
+                }
+
+                yield return null;
+            }
+
+            _ensureBaseViewQuadOverlayRoutine = null;
         }
 
         public PanelTab ViewMamePanelTab
@@ -268,6 +301,12 @@ namespace Oasis.LayoutEditor
 
         private void ResetBaseViewQuadOverlay()
         {
+            if (_ensureBaseViewQuadOverlayRoutine != null)
+            {
+                StopCoroutine(_ensureBaseViewQuadOverlayRoutine);
+                _ensureBaseViewQuadOverlayRoutine = null;
+            }
+
             if (_baseViewQuadOverlay == null)
             {
                 return;
