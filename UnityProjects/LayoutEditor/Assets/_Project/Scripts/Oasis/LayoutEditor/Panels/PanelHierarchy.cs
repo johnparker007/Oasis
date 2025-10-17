@@ -899,7 +899,18 @@ namespace Oasis.LayoutEditor.Panels
 
             if (_componentEntries.TryGetValue(component, out ComponentEntry entry) && entry.Transform != null)
             {
-                entry.Transform.gameObject.name = GetComponentDisplayName(component);
+                GameObject entryObject = entry.Transform.gameObject;
+                if (entryObject == null)
+                {
+                    return;
+                }
+
+                string newName = GetComponentDisplayName(component);
+                if (!string.Equals(entryObject.name, newName, StringComparison.Ordinal))
+                {
+                    entryObject.name = newName;
+                    _runtimeHierarchy?.Refresh();
+                }
             }
         }
 
