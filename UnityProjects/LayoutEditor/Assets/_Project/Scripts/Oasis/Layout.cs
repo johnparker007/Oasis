@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using DynamicPanels;
 using UnityEngine;
 using UnityEngine.Events;
 using Oasis.Layout;
@@ -377,7 +378,7 @@ namespace Oasis
             Debug.Log($"Saved transformed ViewQuad image to {absolutePath}");
         }
 
-        public bool TryEnsureViewTab(View view, TabController.TabTypes tabType)
+        public bool TryEnsureViewTab(View view, TabController.TabTypes tabType, Panel anchorPanel = null)
         {
             if (view == null)
             {
@@ -391,7 +392,7 @@ namespace Oasis
                 return false;
             }
 
-            var panelTab = tabController.ShowTab(tabType);
+            var panelTab = tabController.ShowTab(tabType, anchorPanel);
             var panel = panelTab?.Panel;
 
             EditorView editorView = panel != null

@@ -1,8 +1,10 @@
 using NativeWindowsContextMenu;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using DynamicPanels;
 using Oasis;
+using Oasis.Layout;
 using Oasis.LayoutEditor;
 
 // Context menu for tab headers.
@@ -17,9 +19,73 @@ public sealed class TabHeaderContextMenu : NativeContextMenu
         bool hierarchyActive = Editor.Instance.TabController.IsTabActive(TabController.TabTypes.Hierarchy);
         bool inspectorActive = Editor.Instance.TabController.IsTabActive(TabController.TabTypes.Inspector);
         bool projectActive = Editor.Instance.TabController.IsTabActive(TabController.TabTypes.Project);
-
-        // To improve - the whole 'Views' thing needs to be dynamic from list of available views in this project
         bool baseViewActive = Editor.Instance.TabController.IsTabActive(TabController.TabTypes.BaseView);
+
+        LayoutObject layout = Editor.Instance?.Project?.Layout;
+
+        var addTabChildren = new List<NativeContextMenuManager.MenuItemSpec>
+        {
+            new NativeContextMenuManager.MenuItemSpec(
+                "Hierarchy",
+                () =>
+                {
+                    Editor.Instance.TabController.ShowTab(TabController.TabTypes.Hierarchy, anchorPanel);
+                },
+                !hierarchyActive),
+            new NativeContextMenuManager.MenuItemSpec(
+                "Inspector",
+                () =>
+                {
+                    Editor.Instance.TabController.ShowTab(TabController.TabTypes.Inspector, anchorPanel);
+                },
+                !inspectorActive),
+            new NativeContextMenuManager.MenuItemSpec(
+                "Project",
+                () =>
+                {
+                    Editor.Instance.TabController.ShowTab(TabController.TabTypes.Project, anchorPanel);
+                },
+                !projectActive),
+            NativeContextMenuManager.MenuItemSpec.Sep(),
+            new NativeContextMenuManager.MenuItemSpec(
+                "Base View",
+                () =>
+                {
+                    Editor.Instance.TabController.ShowTab(TabController.TabTypes.BaseView, anchorPanel);
+                },
+                !baseViewActive),
+        };
+
+        if (layout != null)
+        {
+            IReadOnlyList<View> views = layout.GetViews();
+            if (views != null)
+            {
+                foreach (View view in views)
+                {
+                    if (view == null)
+                    {
+                        continue;
+                    }
+
+                    string viewName = view.Name;
+                    if (string.IsNullOrWhiteSpace(viewName) || string.Equals(viewName, ViewController.kBaseViewName, StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+
+                    bool viewActive = IsViewActive(viewName);
+
+                    addTabChildren.Add(new NativeContextMenuManager.MenuItemSpec(
+                        viewName,
+                        () =>
+                        {
+                            layout.TryEnsureViewTab(view, TabController.TabTypes.TestNewView, anchorPanel);
+                        },
+                        !viewActive));
+                }
+            }
+        }
 
         return new List<NativeContextMenuManager.MenuItemSpec>
         {
@@ -47,39 +113,19 @@ public sealed class TabHeaderContextMenu : NativeContextMenu
             new NativeContextMenuManager.MenuItemSpec(
                 "Add Tab")
             {
-                Children = new List<NativeContextMenuManager.MenuItemSpec>
-                {
-                    new NativeContextMenuManager.MenuItemSpec(
-                        "Hierarchy",
-                        () =>
-                        {
-                            Editor.Instance.TabController.ShowTab(TabController.TabTypes.Hierarchy, anchorPanel);
-                        },
-                        !hierarchyActive),
-                    new NativeContextMenuManager.MenuItemSpec(
-                        "Inspector",
-                        () =>
-                        {
-                            Editor.Instance.TabController.ShowTab(TabController.TabTypes.Inspector, anchorPanel);
-                        },
-                        !inspectorActive),
-                    new NativeContextMenuManager.MenuItemSpec(
-                        "Project",
-                        () =>
-                        {
-                            Editor.Instance.TabController.ShowTab(TabController.TabTypes.Project, anchorPanel);
-                        },
-                        !projectActive),
-                    NativeContextMenuManager.MenuItemSpec.Sep(),
-                    new NativeContextMenuManager.MenuItemSpec(
-                        "Base View",
-                        () =>
-                        {
-                            Editor.Instance.TabController.ShowTab(TabController.TabTypes.BaseView, anchorPanel);
-                        },
-                        !baseViewActive),
-                }
+                Children = addTabChildren
             },
         };
+    }
+
+    private static bool IsViewActive(string viewName)
+    {
+        EditorView editorView = ViewController.GetEditorView(viewName);
+        if (editorView == null)
+        {
+            return false;
+        }
+
+        return editorView.isActiveAndEnabled && editorView.gameObject.activeInHierarchy;
     }
 }
