@@ -1,3 +1,4 @@
+using Oasis;
 using Oasis.Layout;
 using Oasis.UI;
 using Oasis.UI.Fields;
@@ -116,6 +117,8 @@ namespace Oasis.LayoutEditor.Panels
                 }
             }
 
+            UpdateActionButtons();
+
             if (_layoutPoints == null)
             {
                 return;
@@ -153,6 +156,16 @@ namespace Oasis.LayoutEditor.Panels
         {
             Initialise();
 
+            if (_buttonAddView != null)
+            {
+                _buttonAddView.onClick.AddListener(OnAddViewButtonClicked);
+            }
+
+            if (_buttonUpdateView != null)
+            {
+                _buttonUpdateView.onClick.AddListener(OnUpdateViewButtonClicked);
+            }
+
             if (_panelName != null && _panelName.Input != null)
             {
                 _panelName.Input.OnValueChanged += OnPanelNameValueChanged;
@@ -172,6 +185,16 @@ namespace Oasis.LayoutEditor.Panels
 
         protected override void RemoveListeners()
         {
+            if (_buttonAddView != null)
+            {
+                _buttonAddView.onClick.RemoveListener(OnAddViewButtonClicked);
+            }
+
+            if (_buttonUpdateView != null)
+            {
+                _buttonUpdateView.onClick.RemoveListener(OnUpdateViewButtonClicked);
+            }
+
             if (_panelName != null && _panelName.Input != null)
             {
                 _panelName.Input.OnValueChanged -= OnPanelNameValueChanged;
@@ -232,17 +255,88 @@ namespace Oasis.LayoutEditor.Panels
         {
             if (_overlay == null)
             {
+                UpdateActionButtons();
                 return false;
             }
 
             string newName = value ?? string.Empty;
             if (string.Equals(_overlay.ViewQuadName, newName, StringComparison.Ordinal))
             {
+                UpdateActionButtons();
                 return false;
             }
 
             _overlay.ViewQuadName = newName;
+            UpdateActionButtons();
             return true;
+        }
+
+        private void OnAddViewButtonClicked()
+        {
+            OutputTransformedViewQuad();
+        }
+
+        private void OnUpdateViewButtonClicked()
+        {
+            OutputTransformedViewQuad();
+        }
+
+        private void OutputTransformedViewQuad()
+        {
+            if (_overlay == null)
+            {
+                return;
+            }
+
+            LayoutObject layout = Editor.Instance?.Project?.Layout;
+            if (layout == null)
+            {
+                Debug.LogWarning("No layout is loaded; unable to output a transformed ViewQuad image.");
+                return;
+            }
+
+            View overlayView = _overlay.View;
+            ViewQuad overlayViewQuad = _overlay.ViewQuad;
+            if (overlayView == null || overlayViewQuad == null)
+            {
+                Debug.LogWarning("The selected ViewQuad is unavailable; unable to output the transformed ViewQuad image.");
+                return;
+            }
+
+            overlayView.TrySetActiveViewQuad(overlayViewQuad);
+            layout.OutputTransformedViewQuad();
+            UpdateActionButtons();
+        }
+
+        private void UpdateActionButtons()
+        {
+            bool hasOverlay = _overlay != null;
+            string viewQuadName = hasOverlay ? _overlay.ViewQuadName : null;
+            bool hasValidName = hasOverlay && !string.IsNullOrWhiteSpace(viewQuadName);
+
+            bool viewExists = false;
+            if (hasValidName)
+            {
+                LayoutObject layout = Editor.Instance?.Project?.Layout;
+                if (layout != null)
+                {
+                    viewExists = layout.GetView(viewQuadName) != null;
+                }
+            }
+
+            if (_buttonAddView != null)
+            {
+                bool showAdd = hasValidName && !viewExists;
+                _buttonAddView.gameObject.SetActive(showAdd);
+                _buttonAddView.interactable = showAdd;
+            }
+
+            if (_buttonUpdateView != null)
+            {
+                bool showUpdate = hasValidName && viewExists;
+                _buttonUpdateView.gameObject.SetActive(showUpdate);
+                _buttonUpdateView.interactable = showUpdate;
+            }
         }
 
         private void UpdateLayoutPoint(int pointIndex, bool isX, string value)
