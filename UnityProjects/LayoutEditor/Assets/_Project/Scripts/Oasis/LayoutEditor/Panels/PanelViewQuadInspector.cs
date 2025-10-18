@@ -4,6 +4,7 @@ using Oasis.UI.Fields;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Oasis.LayoutEditor.Panels
 {
@@ -20,6 +21,12 @@ namespace Oasis.LayoutEditor.Panels
         private FieldVector2 _layoutPointC;
         [SerializeField]
         private FieldVector2 _layoutPointD;
+
+        [SerializeField]
+        private Button _buttonAddView;
+        [SerializeField]
+        private Button _buttonUpdateView;
+
 
         private struct InputBinding
         {
