@@ -1153,10 +1153,7 @@ namespace Oasis.LayoutEditor.Panels
                 return;
             }
 
-            for (int i = 0; i < s_defaultCategoryNames.Length; i++)
-            {
-                GetOrCreateCategoryTransform(s_defaultCategoryNames[i]);
-            }
+            RemoveEmptyCategoryRoots();
         }
 
         private void EnsureViewQuadRoot()
@@ -1230,6 +1227,51 @@ namespace Oasis.LayoutEditor.Panels
             _categoryRoots.Clear();
         }
 
+        private void RemoveEmptyCategoryRoots()
+        {
+            if (_categoryRoots.Count == 0)
+            {
+                return;
+            }
+
+            foreach (Transform categoryTransform in _categoryRoots.Values.ToList())
+            {
+                RemoveCategoryIfEmpty(categoryTransform);
+            }
+        }
+
+        private void RemoveCategoryIfEmpty(Transform categoryTransform)
+        {
+            if (categoryTransform == null)
+            {
+                return;
+            }
+
+            if (categoryTransform.childCount > 0)
+            {
+                return;
+            }
+
+            string categoryKey = null;
+
+            foreach (KeyValuePair<string, Transform> pair in _categoryRoots)
+            {
+                if (pair.Value == categoryTransform)
+                {
+                    categoryKey = pair.Key;
+                    break;
+                }
+            }
+
+            if (!string.IsNullOrEmpty(categoryKey))
+            {
+                _categoryRoots.Remove(categoryKey);
+            }
+
+            _transformCollection?.Remove(categoryTransform);
+            DestroyTransform(categoryTransform);
+        }
+
         private void DestroyViewQuadRoot()
         {
             if (_viewQuadsRoot == null)
@@ -1294,6 +1336,8 @@ namespace Oasis.LayoutEditor.Panels
             }
 
             _componentEntries.Remove(component);
+
+            RemoveCategoryIfEmpty(entry.Transform != null ? entry.Transform.parent : null);
         }
 
         private void ClearComponentEntries()
@@ -1322,6 +1366,8 @@ namespace Oasis.LayoutEditor.Panels
 
             _componentEntries.Clear();
             _transformToComponent.Clear();
+
+            RemoveEmptyCategoryRoots();
         }
 
         private void ClearViewQuadEntries()
