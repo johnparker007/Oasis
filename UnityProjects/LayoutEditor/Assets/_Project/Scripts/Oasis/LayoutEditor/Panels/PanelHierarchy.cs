@@ -54,6 +54,7 @@ namespace Oasis.LayoutEditor.Panels
         private bool _suppressHierarchySelectionChange;
         private Coroutine _pendingActiveViewUpdate;
         private readonly Dictionary<EditorView, EditorViewFocusRelay> _viewFocusRelays = new();
+        private readonly Dictionary<PanelTab, TabFocusRelay> _tabFocusRelays = new();
 
         private void Awake()
         {
@@ -70,6 +71,7 @@ namespace Oasis.LayoutEditor.Panels
             EnsureRuntimeHierarchy();
             EnsureCategoryRoots();
             EnsureViewQuadRoot();
+            EnsureTabFocusRelays();
 
             if (string.IsNullOrEmpty(_currentViewName))
             {
@@ -108,6 +110,7 @@ namespace Oasis.LayoutEditor.Panels
             _currentViewName = null;
 
             ClearFocusRelays();
+            ClearTabFocusRelays();
         }
 
         private void EnsureRuntimeHierarchy()
@@ -201,6 +204,8 @@ namespace Oasis.LayoutEditor.Panels
 
             PanelNotificationCenter.OnActiveTabChanged += OnPanelActiveTabChanged;
             PanelNotificationCenter.OnPanelBecameActive += OnPanelBecameActive;
+            PanelNotificationCenter.OnTabCreated += OnPanelTabCreated;
+            PanelNotificationCenter.OnTabDestroyed += OnPanelTabDestroyed;
             _panelNotificationEventsSubscribed = true;
         }
 
@@ -213,6 +218,8 @@ namespace Oasis.LayoutEditor.Panels
 
             PanelNotificationCenter.OnActiveTabChanged -= OnPanelActiveTabChanged;
             PanelNotificationCenter.OnPanelBecameActive -= OnPanelBecameActive;
+            PanelNotificationCenter.OnTabCreated -= OnPanelTabCreated;
+            PanelNotificationCenter.OnTabDestroyed -= OnPanelTabDestroyed;
             _panelNotificationEventsSubscribed = false;
         }
 
@@ -368,6 +375,16 @@ namespace Oasis.LayoutEditor.Panels
             ScheduleActiveViewUpdate(panel[activeIndex]);
         }
 
+        private void OnPanelTabCreated(PanelTab tab)
+        {
+            EnsureTabFocusRelay(tab);
+        }
+
+        private void OnPanelTabDestroyed(PanelTab tab)
+        {
+            RemoveTabFocusRelay(tab);
+        }
+
         private static EditorView FindEditorViewForTab(PanelTab tab)
         {
             if (tab?.Content == null)
@@ -480,6 +497,90 @@ namespace Oasis.LayoutEditor.Panels
             SetCurrentView(ResolveView(editorView));
         }
 
+        private void HandleTabFocused(PanelTab tab)
+        {
+            if (!isActiveAndEnabled || tab == null)
+            {
+                return;
+            }
+
+            ScheduleActiveViewUpdate(tab);
+        }
+
+        private void EnsureTabFocusRelays()
+        {
+            if (!isActiveAndEnabled)
+            {
+                return;
+            }
+
+            foreach (PanelTab tab in Resources.FindObjectsOfTypeAll<PanelTab>())
+            {
+                if (tab == null || !tab.gameObject.scene.IsValid())
+                {
+                    continue;
+                }
+
+                EnsureTabFocusRelay(tab);
+            }
+        }
+
+        private void EnsureTabFocusRelay(PanelTab tab)
+        {
+            if (tab == null)
+            {
+                return;
+            }
+
+            if (_tabFocusRelays.TryGetValue(tab, out TabFocusRelay existingRelay) && existingRelay != null)
+            {
+                existingRelay.Initialize(this, tab);
+                return;
+            }
+
+            TabFocusRelay relay = tab.GetComponent<TabFocusRelay>();
+            if (relay == null)
+            {
+                relay = tab.gameObject.AddComponent<TabFocusRelay>();
+            }
+
+            relay.Initialize(this, tab);
+            _tabFocusRelays[tab] = relay;
+        }
+
+        private void RemoveTabFocusRelay(PanelTab tab)
+        {
+            if (tab == null)
+            {
+                return;
+            }
+
+            if (_tabFocusRelays.TryGetValue(tab, out TabFocusRelay relay))
+            {
+                if (relay != null)
+                {
+                    relay.Release(this);
+                }
+
+                _tabFocusRelays.Remove(tab);
+            }
+        }
+
+        private void ClearTabFocusRelays()
+        {
+            if (_tabFocusRelays.Count == 0)
+            {
+                return;
+            }
+
+            foreach (TabFocusRelay relay in _tabFocusRelays.Values)
+            {
+                relay?.Release(this);
+            }
+
+            _tabFocusRelays.Clear();
+        }
+
         private void EnsureFocusRelay(EditorView editorView)
         {
             if (editorView == null)
@@ -540,6 +641,209 @@ namespace Oasis.LayoutEditor.Panels
             }
 
             _viewFocusRelays.Clear();
+        }
+
+        private sealed class TabFocusRelay : MonoBehaviour, IPointerDownHandler
+        {
+            private readonly List<TabPointerHandler> _pointerHandlers = new();
+            private readonly List<TabContentWatcher> _hierarchyWatchers = new();
+            private readonly HashSet<Transform> _registeredTransforms = new();
+
+            private PanelHierarchy _hierarchy;
+            private PanelTab _tab;
+
+            public void Initialize(PanelHierarchy hierarchy, PanelTab tab)
+            {
+                bool hierarchyChanged = !ReferenceEquals(_hierarchy, hierarchy);
+                bool tabChanged = !ReferenceEquals(_tab, tab);
+
+                if (hierarchyChanged || tabChanged)
+                {
+                    ReleaseHandlers();
+                    _hierarchy = hierarchy;
+                    _tab = tab;
+                }
+
+                AttachHandlers();
+            }
+
+            public void Release(PanelHierarchy hierarchy)
+            {
+                if (!ReferenceEquals(_hierarchy, hierarchy))
+                {
+                    return;
+                }
+
+                ReleaseHandlers();
+
+                _hierarchy = null;
+                _tab = null;
+
+                Destroy(this);
+            }
+
+            public void OnPointerDown(PointerEventData eventData)
+            {
+                NotifyFocusRequested();
+            }
+
+            private void AttachHandlers()
+            {
+                if (_hierarchy == null || _tab == null)
+                {
+                    return;
+                }
+
+                RegisterPointerHandler(_tab.gameObject);
+
+                if (_tab.Content != null)
+                {
+                    AddHandlersRecursively(_tab.Content);
+                }
+            }
+
+            private void ReleaseHandlers()
+            {
+                if (_pointerHandlers.Count == 0 && _hierarchyWatchers.Count == 0)
+                {
+                    _registeredTransforms.Clear();
+                    return;
+                }
+
+                foreach (TabPointerHandler handler in _pointerHandlers)
+                {
+                    handler?.Release(this);
+                }
+
+                foreach (TabContentWatcher watcher in _hierarchyWatchers)
+                {
+                    watcher?.Release(this);
+                }
+
+                _pointerHandlers.Clear();
+                _hierarchyWatchers.Clear();
+                _registeredTransforms.Clear();
+            }
+
+            private void RegisterPointerHandler(GameObject target)
+            {
+                if (target == null)
+                {
+                    return;
+                }
+
+                TabPointerHandler handler = target.GetComponent<TabPointerHandler>();
+                if (handler == null)
+                {
+                    handler = target.AddComponent<TabPointerHandler>();
+                }
+
+                handler.Initialize(this);
+                _pointerHandlers.Add(handler);
+            }
+
+            private void AddHandlersRecursively(Transform root)
+            {
+                if (root == null)
+                {
+                    return;
+                }
+
+                bool isNewTransform = _registeredTransforms.Add(root);
+                if (isNewTransform)
+                {
+                    RegisterPointerHandler(root.gameObject);
+
+                    TabContentWatcher watcher = root.GetComponent<TabContentWatcher>();
+                    if (watcher == null)
+                    {
+                        watcher = root.gameObject.AddComponent<TabContentWatcher>();
+                    }
+
+                    watcher.Initialize(this);
+                    _hierarchyWatchers.Add(watcher);
+                }
+
+                foreach (Transform child in root)
+                {
+                    AddHandlersRecursively(child);
+                }
+            }
+
+            private void NotifyFocusRequested()
+            {
+                if (_hierarchy == null || _tab == null)
+                {
+                    return;
+                }
+
+                _hierarchy.HandleTabFocused(_tab);
+            }
+
+            private void HandleChildrenChanged(Transform root)
+            {
+                if (root == null)
+                {
+                    return;
+                }
+
+                foreach (Transform child in root)
+                {
+                    AddHandlersRecursively(child);
+                }
+            }
+
+            private sealed class TabPointerHandler : MonoBehaviour, IPointerDownHandler
+            {
+                private TabFocusRelay _relay;
+
+                public void Initialize(TabFocusRelay relay)
+                {
+                    _relay = relay;
+                }
+
+                public void Release(TabFocusRelay relay)
+                {
+                    if (!ReferenceEquals(_relay, relay))
+                    {
+                        return;
+                    }
+
+                    _relay = null;
+                    Destroy(this);
+                }
+
+                public void OnPointerDown(PointerEventData eventData)
+                {
+                    _relay?.NotifyFocusRequested();
+                }
+            }
+
+            private sealed class TabContentWatcher : MonoBehaviour
+            {
+                private TabFocusRelay _relay;
+
+                public void Initialize(TabFocusRelay relay)
+                {
+                    _relay = relay;
+                }
+
+                public void Release(TabFocusRelay relay)
+                {
+                    if (!ReferenceEquals(_relay, relay))
+                    {
+                        return;
+                    }
+
+                    _relay = null;
+                    Destroy(this);
+                }
+
+                private void OnTransformChildrenChanged()
+                {
+                    _relay?.HandleChildrenChanged(transform);
+                }
+            }
         }
 
         private sealed class EditorViewFocusRelay : MonoBehaviour, IPointerDownHandler
