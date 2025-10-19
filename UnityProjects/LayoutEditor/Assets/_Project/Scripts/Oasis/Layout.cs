@@ -6,6 +6,9 @@ using UnityEngine;
 using UnityEngine.Events;
 using Oasis.Layout;
 using Oasis.LayoutEditor;
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+using Oasis.NativeProgress;
+#endif
 
 using Component = Oasis.Layout.Component;
 using System.Runtime.Serialization;
@@ -225,142 +228,235 @@ namespace Oasis
 
         public void OutputTransformedViewQuad()
         {
-            View baseView = BaseView;
-            if (baseView == null)
+            bool progressWindowCreated = false;
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+            if (!NativeProgressWindow.EnsureWindowCreated(out string progressWindowError))
             {
-                Debug.LogWarning("The loaded layout does not contain a base view.");
-                return;
-            }
-
-            ComponentBackground backgroundComponent = null;
-            foreach (Component component in baseView.Data.Components)
-            {
-                if (component is ComponentBackground candidate && candidate.OasisImage != null)
+                if (!string.IsNullOrEmpty(progressWindowError))
                 {
-                    backgroundComponent = candidate;
-                    break;
+                    Debug.LogWarning($"Unable to display progress window: {progressWindowError}");
                 }
-            }
-
-            if (backgroundComponent == null || backgroundComponent.OasisImage == null)
-            {
-                Debug.LogWarning("The base view does not contain a background image to transform.");
-                return;
-            }
-
-            Oasis.Graphics.OasisImage sourceImage = backgroundComponent.OasisImage;
-            if (sourceImage.Width <= 0 || sourceImage.Height <= 0)
-            {
-                Debug.LogWarning("The background image has invalid dimensions.");
-                return;
-            }
-
-            Vector2[] viewQuadPoints = baseView.ActiveViewQuad?.Points;
-            if (viewQuadPoints == null || viewQuadPoints.Length < 4)
-            {
-                Debug.LogWarning("The base view quad is not defined.");
-                return;
-            }
-
-            bool hasConfiguredPoint = false;
-            foreach (Vector2 point in viewQuadPoints)
-            {
-                if (!Mathf.Approximately(point.x, 0f) || !Mathf.Approximately(point.y, 0f))
-                {
-                    hasConfiguredPoint = true;
-                    break;
-                }
-            }
-
-            if (!hasConfiguredPoint)
-            {
-                Debug.LogWarning("The base view quad has not been configured.");
-                return;
-            }
-
-            // The OasisImage.Transform implementation expects the corner points to be supplied in the
-            // same order as the working debug routine (bottom-left, bottom-right, top-right, top-left)
-            // otherwise the output becomes flipped. Match that ordering when converting the base view quad.
-            Vector2Int pointA = ConvertViewQuadPointToImagePoint(viewQuadPoints[(int)ViewQuad.PointTypes.BottomLeft], sourceImage);
-            Vector2Int pointB = ConvertViewQuadPointToImagePoint(viewQuadPoints[(int)ViewQuad.PointTypes.BottomRight], sourceImage);
-            Vector2Int pointC = ConvertViewQuadPointToImagePoint(viewQuadPoints[(int)ViewQuad.PointTypes.TopRight], sourceImage);
-            Vector2Int pointD = ConvertViewQuadPointToImagePoint(viewQuadPoints[(int)ViewQuad.PointTypes.TopLeft], sourceImage);
-
-            // TODO this aspect ratio calc is just placeholder - ultimately there will be a 'cabinet' loaded from the
-            // cabinet editor, and the view quad will be linked to one of the cabinet panels, and then the aspect ratio
-            // will come from that cabinet panel width/height
-
-            // from original ArcadeSim Eclipse cabinet:
-            float bottomPanelWidth = 0.63f;
-            float bottomPanelHeight = 0.3457056f;
-
-            float targetAspectRatio = bottomPanelWidth / bottomPanelHeight;
-
-            Oasis.Graphics.OasisImage transformedImage = Oasis.Graphics.OasisImage.Transform(
-                sourceImage,
-                pointA,
-                pointB,
-                pointC,
-                pointD,
-                targetAspectRatio);
-
-            var projectsController = Editor.Instance?.ProjectsController;
-            if (projectsController == null || string.IsNullOrEmpty(projectsController.ProjectAssetsPath))
-            {
-                Debug.LogWarning("Project assets path is unavailable; unable to save the transformed ViewQuad image.");
-                return;
-            }
-
-            var tabController = Editor.Instance?.TabController;
-            if (tabController == null)
-            {
-                Debug.LogWarning("Tab controller is unavailable; unable to create a view for the transformed ViewQuad image.");
-                return;
-            }
-
-            string viewName = GetBaseViewQuadName();
-            if (string.IsNullOrWhiteSpace(viewName))
-            {
-                Debug.LogWarning("The base view quad does not have a name; unable to output the transformed ViewQuad image.");
-                return;
-            }
-
-            string viewFolderName = string.Concat("View", viewName);
-            string relativeImagePath = Path.Combine(viewFolderName, "Background.png");
-            relativeImagePath = relativeImagePath.Replace('\\', '/');
-
-            View bottomView = GetView(viewName);
-            if (bottomView == null)
-            {
-                bottomView = AddView(viewName);
             }
             else
             {
-                bottomView.RemoveAllComponents();
+                progressWindowCreated = true;
+                NativeProgressWindow.UpdateContent("Creating View...", "Preparing view data...", false, 0.0f);
+                NativeProgressWindow.UpdateProgress(0.0f);
+            }
+#endif
+
+            void UpdateProgress(string message, float progress)
+            {
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+                if (!progressWindowCreated)
+                {
+                    return;
+                }
+
+                float clampedProgress = Mathf.Clamp01(progress);
+                NativeProgressWindow.UpdateContent("Creating View...", message ?? string.Empty, false, clampedProgress);
+                NativeProgressWindow.UpdateProgress(clampedProgress);
+#endif
             }
 
-            if (!TryEnsureViewTab(bottomView, TabController.TabTypes.TestNewView))
+            Action<float> CreateTransformProgressHandler(float startProgress, float endProgress)
             {
-                Debug.LogWarning($"Unable to display the '{viewName}' view tab for the transformed ViewQuad image.");
-                return;
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+                if (!progressWindowCreated)
+                {
+                    return null;
+                }
+
+                return transformProgress =>
+                {
+                    float clamped = Mathf.Clamp01(transformProgress);
+                    int percent = Mathf.RoundToInt(clamped * 100f);
+                    float overall = Mathf.Lerp(startProgress, endProgress, clamped);
+                    string phaseMessage = $"Creating transformed image {percent}%";
+                    NativeProgressWindow.UpdateContent("Creating View...", phaseMessage, false, overall);
+                    NativeProgressWindow.UpdateProgress(overall);
+                };
+#else
+                return null;
+#endif
             }
 
-            ComponentBackground bottomBackground = new ComponentBackground
+            void CloseProgressWindow()
             {
-                Name = $"{viewName} Background",
-                Position = Vector2Int.zero,
-                Size = new Vector2Int(transformedImage.Width, transformedImage.Height),
-                OasisImage = transformedImage,
-                RelativeAssetPath = relativeImagePath,
-                Color = backgroundComponent.Color
-            };
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+                if (!progressWindowCreated)
+                {
+                    return;
+                }
 
-            Oasis.Graphics.ImageOperations.SaveToPNG(transformedImage, relativeImagePath);
+                NativeProgressWindow.CloseWindow();
+#endif
+            }
 
-            bottomView.AddComponent(bottomBackground);
+            try
+            {
+                const float PreparationProgress = 0.1f;
+                const float CalculatingProgress = 0.2f;
+                const float TransformStartProgress = 0.3f;
+                const float TransformEndProgress = 0.75f;
+                const float SavingProgress = 0.85f;
+                const float FinalisingProgress = 0.95f;
 
-            string absolutePath = Path.Combine(projectsController.ProjectAssetsPath, relativeImagePath);
-            Debug.Log($"Saved transformed ViewQuad image to {absolutePath}");
+                UpdateProgress("Preparing view data...", PreparationProgress);
+
+                View baseView = BaseView;
+                if (baseView == null)
+                {
+                    Debug.LogWarning("The loaded layout does not contain a base view.");
+                    return;
+                }
+
+                ComponentBackground backgroundComponent = null;
+                foreach (Component component in baseView.Data.Components)
+                {
+                    if (component is ComponentBackground candidate && candidate.OasisImage != null)
+                    {
+                        backgroundComponent = candidate;
+                        break;
+                    }
+                }
+
+                if (backgroundComponent == null || backgroundComponent.OasisImage == null)
+                {
+                    Debug.LogWarning("The base view does not contain a background image to transform.");
+                    return;
+                }
+
+                Oasis.Graphics.OasisImage sourceImage = backgroundComponent.OasisImage;
+                if (sourceImage.Width <= 0 || sourceImage.Height <= 0)
+                {
+                    Debug.LogWarning("The background image has invalid dimensions.");
+                    return;
+                }
+
+                Vector2[] viewQuadPoints = baseView.ActiveViewQuad?.Points;
+                if (viewQuadPoints == null || viewQuadPoints.Length < 4)
+                {
+                    Debug.LogWarning("The base view quad is not defined.");
+                    return;
+                }
+
+                bool hasConfiguredPoint = false;
+                foreach (Vector2 point in viewQuadPoints)
+                {
+                    if (!Mathf.Approximately(point.x, 0f) || !Mathf.Approximately(point.y, 0f))
+                    {
+                        hasConfiguredPoint = true;
+                        break;
+                    }
+                }
+
+                if (!hasConfiguredPoint)
+                {
+                    Debug.LogWarning("The base view quad has not been configured.");
+                    return;
+                }
+
+                UpdateProgress("Calculating transform...", CalculatingProgress);
+
+                // The OasisImage.Transform implementation expects the corner points to be supplied in the
+                // same order as the working debug routine (bottom-left, bottom-right, top-right, top-left)
+                // otherwise the output becomes flipped. Match that ordering when converting the base view quad.
+                Vector2Int pointA = ConvertViewQuadPointToImagePoint(viewQuadPoints[(int)ViewQuad.PointTypes.BottomLeft], sourceImage);
+                Vector2Int pointB = ConvertViewQuadPointToImagePoint(viewQuadPoints[(int)ViewQuad.PointTypes.BottomRight], sourceImage);
+                Vector2Int pointC = ConvertViewQuadPointToImagePoint(viewQuadPoints[(int)ViewQuad.PointTypes.TopRight], sourceImage);
+                Vector2Int pointD = ConvertViewQuadPointToImagePoint(viewQuadPoints[(int)ViewQuad.PointTypes.TopLeft], sourceImage);
+
+                // TODO this aspect ratio calc is just placeholder - ultimately there will be a 'cabinet' loaded from the
+                // cabinet editor, and the view quad will be linked to one of the cabinet panels, and then the aspect ratio
+                // will come from that cabinet panel width/height
+
+                // from original ArcadeSim Eclipse cabinet:
+                float bottomPanelWidth = 0.63f;
+                float bottomPanelHeight = 0.3457056f;
+
+                float targetAspectRatio = bottomPanelWidth / bottomPanelHeight;
+
+                UpdateProgress("Creating transformed image 0%", TransformStartProgress);
+                var transformProgressHandler = CreateTransformProgressHandler(TransformStartProgress, TransformEndProgress);
+
+                Oasis.Graphics.OasisImage transformedImage = Oasis.Graphics.OasisImage.Transform(
+                    sourceImage,
+                    pointA,
+                    pointB,
+                    pointC,
+                    pointD,
+                    targetAspectRatio,
+                    transformProgressHandler);
+
+                var projectsController = Editor.Instance?.ProjectsController;
+                if (projectsController == null || string.IsNullOrEmpty(projectsController.ProjectAssetsPath))
+                {
+                    Debug.LogWarning("Project assets path is unavailable; unable to save the transformed ViewQuad image.");
+                    return;
+                }
+
+                var tabController = Editor.Instance?.TabController;
+                if (tabController == null)
+                {
+                    Debug.LogWarning("Tab controller is unavailable; unable to create a view for the transformed ViewQuad image.");
+                    return;
+                }
+
+                string viewName = GetBaseViewQuadName();
+                if (string.IsNullOrWhiteSpace(viewName))
+                {
+                    Debug.LogWarning("The base view quad does not have a name; unable to output the transformed ViewQuad image.");
+                    return;
+                }
+
+                string viewFolderName = string.Concat("View", viewName);
+                string relativeImagePath = Path.Combine(viewFolderName, "Background.png");
+                relativeImagePath = relativeImagePath.Replace('\\', '/');
+
+                View bottomView = GetView(viewName);
+                if (bottomView == null)
+                {
+                    bottomView = AddView(viewName);
+                }
+                else
+                {
+                    bottomView.RemoveAllComponents();
+                }
+
+                if (!TryEnsureViewTab(bottomView, TabController.TabTypes.TestNewView))
+                {
+                    Debug.LogWarning($"Unable to display the '{viewName}' view tab for the transformed ViewQuad image.");
+                    return;
+                }
+
+                ComponentBackground bottomBackground = new ComponentBackground
+                {
+                    Name = $"{viewName} Background",
+                    Position = Vector2Int.zero,
+                    Size = new Vector2Int(transformedImage.Width, transformedImage.Height),
+                    OasisImage = transformedImage,
+                    RelativeAssetPath = relativeImagePath,
+                    Color = backgroundComponent.Color
+                };
+
+                UpdateProgress("Saving transformed image...", SavingProgress);
+
+                Oasis.Graphics.ImageOperations.SaveToPNG(transformedImage, relativeImagePath);
+
+                UpdateProgress("Finalising view...", FinalisingProgress);
+
+                bottomView.AddComponent(bottomBackground);
+
+                string absolutePath = Path.Combine(projectsController.ProjectAssetsPath, relativeImagePath);
+                Debug.Log($"Saved transformed ViewQuad image to {absolutePath}");
+
+                UpdateProgress("View created", 1.0f);
+            }
+            finally
+            {
+                CloseProgressWindow();
+            }
         }
 
         public bool TryEnsureViewTab(View view, TabController.TabTypes tabType, Panel anchorPanel = null)

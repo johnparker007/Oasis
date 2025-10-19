@@ -319,7 +319,8 @@ namespace Oasis.Graphics
             Vector2Int pointB,
             Vector2Int pointC,
             Vector2Int pointD,
-            float targetAspectRatio)
+            float targetAspectRatio,
+            Action<float> onProgress = null)
         {
             if (sourceImage == null)
             {
@@ -387,6 +388,8 @@ namespace Oasis.Graphics
             double[,] homography = SolveHomography(sourcePoints, destinationPoints);
             double[,] homographyInverse = Invert3x3Matrix(homography);
 
+            onProgress?.Invoke(0.0f);
+
             for (int y = 0; y < targetHeight; ++y)
             {
                 for (int x = 0; x < targetWidth; ++x)
@@ -417,6 +420,8 @@ namespace Oasis.Graphics
 
                     transformedImage.ImageData[(targetWidth * y) + x] = sampledColor;
                 }
+
+                onProgress?.Invoke((float)(y + 1) / targetHeight);
             }
 
             return transformedImage;
