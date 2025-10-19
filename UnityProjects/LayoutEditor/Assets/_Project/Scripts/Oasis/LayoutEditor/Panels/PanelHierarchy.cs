@@ -11,6 +11,7 @@ using RuntimeInspectorNamespace;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 using Component = Oasis.Layout.Component;
 using View = Oasis.Layout.View;
 
@@ -543,30 +544,134 @@ namespace Oasis.LayoutEditor.Panels
 
         private sealed class EditorViewFocusRelay : MonoBehaviour, IPointerDownHandler
         {
+            private readonly List<FocusForwarder> _focusForwarders = new();
+            private readonly List<ContentHierarchyWatcher> _hierarchyWatchers = new();
+            private readonly HashSet<Transform> _registeredTransforms = new();
+
             private PanelHierarchy _hierarchy;
             private EditorView _editorView;
 
             public void Initialize(PanelHierarchy hierarchy, EditorView editorView)
             {
-                _hierarchy = hierarchy;
-                _editorView = editorView;
+                bool hierarchyChanged = !ReferenceEquals(_hierarchy, hierarchy);
+                bool viewChanged = !ReferenceEquals(_editorView, editorView);
+
+                if (hierarchyChanged || viewChanged)
+                {
+                    ReleaseHandlers();
+                    _hierarchy = hierarchy;
+                    _editorView = editorView;
+                }
+
+                AttachHandlers();
             }
 
             public void Release(PanelHierarchy hierarchy)
             {
-                if (ReferenceEquals(_hierarchy, hierarchy))
+                if (!ReferenceEquals(_hierarchy, hierarchy))
                 {
-                    _hierarchy = null;
+                    return;
                 }
 
-                if (_hierarchy == null)
-                {
-                    _editorView = null;
-                    Destroy(this);
-                }
+                ReleaseHandlers();
+
+                _hierarchy = null;
+                _editorView = null;
+
+                Destroy(this);
             }
 
             public void OnPointerDown(PointerEventData eventData)
+            {
+                NotifyFocusRequested();
+            }
+
+            private void AttachHandlers()
+            {
+                if (_hierarchy == null || _editorView == null)
+                {
+                    return;
+                }
+
+                AddHandlersRecursively(_editorView.transform);
+
+                GraphicRaycaster contentRaycaster = _editorView.Content;
+                if (contentRaycaster != null)
+                {
+                    AddHandlersRecursively(contentRaycaster.transform);
+                }
+            }
+
+            private void ReleaseHandlers()
+            {
+                if (_focusForwarders.Count == 0 && _hierarchyWatchers.Count == 0)
+                {
+                    _registeredTransforms.Clear();
+                    return;
+                }
+
+                foreach (FocusForwarder forwarder in _focusForwarders)
+                {
+                    forwarder?.Release(this);
+                }
+
+                foreach (ContentHierarchyWatcher watcher in _hierarchyWatchers)
+                {
+                    watcher?.Release(this);
+                }
+
+                _focusForwarders.Clear();
+                _hierarchyWatchers.Clear();
+                _registeredTransforms.Clear();
+            }
+
+            private void AddHandlersRecursively(Transform root)
+            {
+                if (root == null)
+                {
+                    return;
+                }
+
+                bool isNewTransform = _registeredTransforms.Add(root);
+                if (isNewTransform)
+                {
+                    FocusForwarder forwarder = root.GetComponent<FocusForwarder>();
+                    if (forwarder == null)
+                    {
+                        forwarder = root.gameObject.AddComponent<FocusForwarder>();
+                    }
+                    forwarder.Initialize(this);
+                    _focusForwarders.Add(forwarder);
+
+                    ContentHierarchyWatcher watcher = root.GetComponent<ContentHierarchyWatcher>();
+                    if (watcher == null)
+                    {
+                        watcher = root.gameObject.AddComponent<ContentHierarchyWatcher>();
+                    }
+                    watcher.Initialize(this);
+                    _hierarchyWatchers.Add(watcher);
+                }
+
+                foreach (Transform child in root)
+                {
+                    AddHandlersRecursively(child);
+                }
+            }
+
+            private void HandleChildrenChanged(Transform root)
+            {
+                if (root == null)
+                {
+                    return;
+                }
+
+                foreach (Transform child in root)
+                {
+                    AddHandlersRecursively(child);
+                }
+            }
+
+            private void NotifyFocusRequested()
             {
                 if (_hierarchy == null || _editorView == null)
                 {
@@ -574,6 +679,58 @@ namespace Oasis.LayoutEditor.Panels
                 }
 
                 _hierarchy.HandleEditorViewFocused(_editorView);
+            }
+
+            private sealed class FocusForwarder : MonoBehaviour, IPointerDownHandler
+            {
+                private EditorViewFocusRelay _relay;
+
+                public void Initialize(EditorViewFocusRelay relay)
+                {
+                    _relay = relay;
+                }
+
+                public void Release(EditorViewFocusRelay relay)
+                {
+                    if (!ReferenceEquals(_relay, relay))
+                    {
+                        return;
+                    }
+
+                    _relay = null;
+                    Destroy(this);
+                }
+
+                public void OnPointerDown(PointerEventData eventData)
+                {
+                    _relay?.NotifyFocusRequested();
+                }
+            }
+
+            private sealed class ContentHierarchyWatcher : MonoBehaviour
+            {
+                private EditorViewFocusRelay _relay;
+
+                public void Initialize(EditorViewFocusRelay relay)
+                {
+                    _relay = relay;
+                }
+
+                public void Release(EditorViewFocusRelay relay)
+                {
+                    if (!ReferenceEquals(_relay, relay))
+                    {
+                        return;
+                    }
+
+                    _relay = null;
+                    Destroy(this);
+                }
+
+                private void OnTransformChildrenChanged()
+                {
+                    _relay?.HandleChildrenChanged(transform);
+                }
             }
         }
 
