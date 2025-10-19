@@ -10,6 +10,7 @@ using Oasis.LayoutEditor.RuntimeHierarchyIntegration;
 using RuntimeInspectorNamespace;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.EventSystems;
 using Component = Oasis.Layout.Component;
 using View = Oasis.Layout.View;
 
@@ -51,6 +52,7 @@ namespace Oasis.LayoutEditor.Panels
         private bool _suppressSelectionChangeHandling;
         private bool _suppressHierarchySelectionChange;
         private Coroutine _pendingActiveViewUpdate;
+        private readonly Dictionary<EditorView, EditorViewFocusRelay> _viewFocusRelays = new();
 
         private void Awake()
         {
@@ -103,6 +105,8 @@ namespace Oasis.LayoutEditor.Panels
             _currentView = null;
             _currentEditorView = null;
             _currentViewName = null;
+
+            ClearFocusRelays();
         }
 
         private void EnsureRuntimeHierarchy()
@@ -260,6 +264,7 @@ namespace Oasis.LayoutEditor.Panels
                 return;
             }
 
+            EnsureFocusRelay(editorView);
             _currentEditorView = editorView;
             _currentViewName = editorView.ViewName;
             SetCurrentView(ResolveView(editorView));
@@ -277,6 +282,8 @@ namespace Oasis.LayoutEditor.Panels
                 _currentEditorView = null;
                 SelectFallbackView();
             }
+
+            RemoveFocusRelay(editorView);
         }
 
         private void RefreshActiveView()
@@ -434,6 +441,7 @@ namespace Oasis.LayoutEditor.Panels
 
             if (editorView != null)
             {
+                EnsureFocusRelay(editorView);
                 _currentEditorView = editorView;
                 if (resolvedView == null && layout != null)
                 {
@@ -452,6 +460,121 @@ namespace Oasis.LayoutEditor.Panels
 
             _currentViewName = viewName;
             SetCurrentView(resolvedView);
+        }
+
+        private void HandleEditorViewFocused(EditorView editorView)
+        {
+            if (!isActiveAndEnabled || editorView == null)
+            {
+                return;
+            }
+
+            _currentEditorView = editorView;
+
+            if (!string.IsNullOrEmpty(editorView.ViewName))
+            {
+                _currentViewName = editorView.ViewName;
+            }
+
+            SetCurrentView(ResolveView(editorView));
+        }
+
+        private void EnsureFocusRelay(EditorView editorView)
+        {
+            if (editorView == null)
+            {
+                return;
+            }
+
+            if (_viewFocusRelays.TryGetValue(editorView, out EditorViewFocusRelay existingRelay) && existingRelay != null)
+            {
+                existingRelay.Initialize(this, editorView);
+                return;
+            }
+
+            EditorPanel editorPanel = editorView.GetComponentInChildren<EditorPanel>(true);
+            if (editorPanel == null)
+            {
+                return;
+            }
+
+            EditorViewFocusRelay relay = editorPanel.GetComponent<EditorViewFocusRelay>();
+            if (relay == null)
+            {
+                relay = editorPanel.gameObject.AddComponent<EditorViewFocusRelay>();
+            }
+
+            relay.Initialize(this, editorView);
+            _viewFocusRelays[editorView] = relay;
+        }
+
+        private void RemoveFocusRelay(EditorView editorView)
+        {
+            if (editorView == null)
+            {
+                return;
+            }
+
+            if (_viewFocusRelays.TryGetValue(editorView, out EditorViewFocusRelay relay))
+            {
+                if (relay != null)
+                {
+                    relay.Release(this);
+                }
+
+                _viewFocusRelays.Remove(editorView);
+            }
+        }
+
+        private void ClearFocusRelays()
+        {
+            if (_viewFocusRelays.Count == 0)
+            {
+                return;
+            }
+
+            foreach (EditorViewFocusRelay relay in _viewFocusRelays.Values)
+            {
+                relay?.Release(this);
+            }
+
+            _viewFocusRelays.Clear();
+        }
+
+        private sealed class EditorViewFocusRelay : MonoBehaviour, IPointerDownHandler
+        {
+            private PanelHierarchy _hierarchy;
+            private EditorView _editorView;
+
+            public void Initialize(PanelHierarchy hierarchy, EditorView editorView)
+            {
+                _hierarchy = hierarchy;
+                _editorView = editorView;
+            }
+
+            public void Release(PanelHierarchy hierarchy)
+            {
+                if (ReferenceEquals(_hierarchy, hierarchy))
+                {
+                    _hierarchy = null;
+                }
+
+                if (_hierarchy == null)
+                {
+                    _editorView = null;
+                    Destroy(this);
+                }
+            }
+
+            public void OnPointerDown(PointerEventData eventData)
+            {
+                if (_hierarchy == null || _editorView == null)
+                {
+                    return;
+                }
+
+                _hierarchy.HandleEditorViewFocused(_editorView);
+            }
         }
 
         private void CancelPendingActiveViewUpdate()
