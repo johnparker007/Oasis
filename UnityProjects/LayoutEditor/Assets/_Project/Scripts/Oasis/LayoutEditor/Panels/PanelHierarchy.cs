@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -9,6 +10,8 @@ using Oasis.LayoutEditor.RuntimeHierarchyIntegration;
 using RuntimeInspectorNamespace;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.EventSystems;
+using UnityEngine.UI;
 using Component = Oasis.Layout.Component;
 using View = Oasis.Layout.View;
 
@@ -45,11 +48,13 @@ namespace Oasis.LayoutEditor.Panels
         private string _currentViewName;
         private EditorView _currentEditorView;
         private bool _eventsSubscribed;
-        private bool _panelNotificationEventsSubscribed;
         private bool _runtimeHierarchyEventsSubscribed;
+        private bool _panelNotificationEventsSubscribed;
         private bool _suppressSelectionChangeHandling;
         private bool _suppressHierarchySelectionChange;
-        private readonly Dictionary<EditorView, UnityAction<List<EditorComponent>>> _editorViewPointerHandlers = new();
+        private Coroutine _pendingActiveViewUpdate;
+        private readonly Dictionary<EditorView, EditorViewFocusRelay> _viewFocusRelays = new();
+        private readonly Dictionary<PanelTab, TabFocusRelay> _tabFocusRelays = new();
 
         private void Awake()
         {
@@ -66,13 +71,14 @@ namespace Oasis.LayoutEditor.Panels
             EnsureRuntimeHierarchy();
             EnsureCategoryRoots();
             EnsureViewQuadRoot();
-            SubscribeToPanelNotificationEvents();
+            EnsureTabFocusRelays();
 
             if (string.IsNullOrEmpty(_currentViewName))
             {
                 _currentViewName = ViewController.kBaseViewName;
             }
 
+            SubscribeToPanelNotificationEvents();
             SubscribeToEditorEvents();
             SubscribeToLayout(Editor.Instance != null ? Editor.Instance.Project?.Layout : null);
 
@@ -97,11 +103,14 @@ namespace Oasis.LayoutEditor.Panels
             DestroyCategoryRoots();
             DestroyViewQuadRoot();
 
-            ClearEditorViewPointerHandlers();
+            CancelPendingActiveViewUpdate();
 
             _currentView = null;
             _currentEditorView = null;
             _currentViewName = null;
+
+            ClearFocusRelays();
+            ClearTabFocusRelays();
         }
 
         private void EnsureRuntimeHierarchy()
@@ -186,6 +195,34 @@ namespace Oasis.LayoutEditor.Panels
             _eventsSubscribed = false;
         }
 
+        private void SubscribeToPanelNotificationEvents()
+        {
+            if (_panelNotificationEventsSubscribed)
+            {
+                return;
+            }
+
+            PanelNotificationCenter.OnActiveTabChanged += OnPanelActiveTabChanged;
+            PanelNotificationCenter.OnPanelBecameActive += OnPanelBecameActive;
+            PanelNotificationCenter.OnTabCreated += OnPanelTabCreated;
+            PanelNotificationCenter.OnTabDestroyed += OnPanelTabDestroyed;
+            _panelNotificationEventsSubscribed = true;
+        }
+
+        private void UnsubscribeFromPanelNotificationEvents()
+        {
+            if (!_panelNotificationEventsSubscribed)
+            {
+                return;
+            }
+
+            PanelNotificationCenter.OnActiveTabChanged -= OnPanelActiveTabChanged;
+            PanelNotificationCenter.OnPanelBecameActive -= OnPanelBecameActive;
+            PanelNotificationCenter.OnTabCreated -= OnPanelTabCreated;
+            PanelNotificationCenter.OnTabDestroyed -= OnPanelTabDestroyed;
+            _panelNotificationEventsSubscribed = false;
+        }
+
         private void SubscribeToLayout(LayoutObject layout)
         {
             if (_observedLayout == layout)
@@ -235,8 +272,10 @@ namespace Oasis.LayoutEditor.Panels
                 return;
             }
 
-            RegisterEditorViewPointerHandler(editorView);
-            SetActiveEditorView(editorView);
+            EnsureFocusRelay(editorView);
+            _currentEditorView = editorView;
+            _currentViewName = editorView.ViewName;
+            SetCurrentView(ResolveView(editorView));
         }
 
         private void OnEditorViewDisabled(EditorView editorView)
@@ -246,13 +285,13 @@ namespace Oasis.LayoutEditor.Panels
                 return;
             }
 
-            UnregisterEditorViewPointerHandler(editorView);
-
             if (ReferenceEquals(_currentEditorView, editorView))
             {
                 _currentEditorView = null;
                 SelectFallbackView();
             }
+
+            RemoveFocusRelay(editorView);
         }
 
         private void RefreshActiveView()
@@ -272,7 +311,8 @@ namespace Oasis.LayoutEditor.Panels
             EditorView activeEditorView = FindActiveEditorView();
             if (activeEditorView != null)
             {
-                SetActiveEditorView(activeEditorView);
+                _currentEditorView = activeEditorView;
+                SetCurrentView(ResolveView(activeEditorView));
                 return;
             }
 
@@ -296,7 +336,9 @@ namespace Oasis.LayoutEditor.Panels
             EditorView baseEditorView = ViewController.GetEditorView(ViewController.kBaseViewName);
             if (baseEditorView != null && baseEditorView.isActiveAndEnabled)
             {
-                SetActiveEditorView(baseEditorView);
+                _currentEditorView = baseEditorView;
+                _currentViewName = baseEditorView.ViewName;
+                SetCurrentView(ResolveView(baseEditorView));
                 return;
             }
 
@@ -312,6 +354,702 @@ namespace Oasis.LayoutEditor.Panels
             SetCurrentView(fallbackView);
         }
 
+        private void OnPanelActiveTabChanged(PanelTab tab)
+        {
+            ScheduleActiveViewUpdate(tab);
+        }
+
+        private void OnPanelBecameActive(Panel panel)
+        {
+            if (panel == null)
+            {
+                return;
+            }
+
+            int activeIndex = panel.ActiveTab;
+            if (activeIndex < 0)
+            {
+                return;
+            }
+
+            ScheduleActiveViewUpdate(panel[activeIndex]);
+        }
+
+        private void OnPanelTabCreated(PanelTab tab)
+        {
+            EnsureTabFocusRelay(tab);
+        }
+
+        private void OnPanelTabDestroyed(PanelTab tab)
+        {
+            RemoveTabFocusRelay(tab);
+        }
+
+        private static EditorView FindEditorViewForTab(PanelTab tab)
+        {
+            if (tab?.Content == null)
+            {
+                return null;
+            }
+
+            return tab.Content.GetComponentInChildren<EditorView>(true);
+        }
+
+        private void ScheduleActiveViewUpdate(PanelTab tab)
+        {
+            if (!isActiveAndEnabled || tab == null)
+            {
+                return;
+            }
+
+            CancelPendingActiveViewUpdate();
+            _pendingActiveViewUpdate = StartCoroutine(ApplyActiveViewWhenReady(tab));
+        }
+
+        private IEnumerator ApplyActiveViewWhenReady(PanelTab tab)
+        {
+            yield return null;
+
+            ApplyActiveTab(tab);
+            _pendingActiveViewUpdate = null;
+        }
+
+        private void ApplyActiveTab(PanelTab tab)
+        {
+            if (!isActiveAndEnabled || tab == null)
+            {
+                return;
+            }
+
+            LayoutObject layout = Editor.Instance?.Project?.Layout;
+            EditorView editorView = FindEditorViewForTab(tab);
+
+            string viewName = editorView != null ? editorView.ViewName : null;
+            View resolvedView = null;
+
+            if (layout != null && !string.IsNullOrEmpty(viewName))
+            {
+                resolvedView = layout.GetView(viewName);
+            }
+
+            string labelName = tab.Label;
+            if ((resolvedView == null || string.IsNullOrEmpty(viewName)) && !string.IsNullOrEmpty(labelName))
+            {
+                View labelView = layout?.GetView(labelName);
+                if (labelView != null)
+                {
+                    resolvedView = labelView;
+                    viewName = labelView.Name;
+                }
+                else if (string.IsNullOrEmpty(viewName))
+                {
+                    viewName = labelName;
+                }
+            }
+
+            if (editorView == null && !string.IsNullOrEmpty(viewName))
+            {
+                editorView = ViewController.GetEditorView(viewName);
+            }
+
+            if (editorView != null)
+            {
+                EnsureFocusRelay(editorView);
+                _currentEditorView = editorView;
+                if (resolvedView == null && layout != null)
+                {
+                    resolvedView = layout.GetView(editorView.ViewName);
+                }
+            }
+            else if (resolvedView == null)
+            {
+                return;
+            }
+            else
+            {
+                _currentEditorView = null;
+            }
+
+            if (resolvedView == null && layout != null && !string.IsNullOrEmpty(viewName))
+            {
+                resolvedView = layout.GetView(viewName);
+            }
+
+            if (!string.IsNullOrEmpty(viewName))
+            {
+                _currentViewName = viewName;
+            }
+
+            SetCurrentView(resolvedView);
+        }
+
+        private void HandleEditorViewFocused(EditorView editorView)
+        {
+            if (!isActiveAndEnabled || editorView == null)
+            {
+                return;
+            }
+
+            _currentEditorView = editorView;
+
+            if (!string.IsNullOrEmpty(editorView.ViewName))
+            {
+                _currentViewName = editorView.ViewName;
+            }
+
+            SetCurrentView(ResolveView(editorView));
+        }
+
+        private void HandleTabFocused(PanelTab tab)
+        {
+            if (!isActiveAndEnabled || tab == null)
+            {
+                return;
+            }
+
+            ScheduleActiveViewUpdate(tab);
+        }
+
+        private void EnsureTabFocusRelays()
+        {
+            if (!isActiveAndEnabled)
+            {
+                return;
+            }
+
+            foreach (PanelTab tab in Resources.FindObjectsOfTypeAll<PanelTab>())
+            {
+                if (tab == null || !tab.gameObject.scene.IsValid())
+                {
+                    continue;
+                }
+
+                EnsureTabFocusRelay(tab);
+            }
+        }
+
+        private void EnsureTabFocusRelay(PanelTab tab)
+        {
+            if (tab == null)
+            {
+                return;
+            }
+
+            if (_tabFocusRelays.TryGetValue(tab, out TabFocusRelay existingRelay) && existingRelay != null)
+            {
+                existingRelay.Initialize(this, tab);
+                return;
+            }
+
+            TabFocusRelay relay = tab.GetComponent<TabFocusRelay>();
+            if (relay == null)
+            {
+                relay = tab.gameObject.AddComponent<TabFocusRelay>();
+            }
+
+            relay.Initialize(this, tab);
+            _tabFocusRelays[tab] = relay;
+        }
+
+        private void RemoveTabFocusRelay(PanelTab tab)
+        {
+            if (tab == null)
+            {
+                return;
+            }
+
+            if (_tabFocusRelays.TryGetValue(tab, out TabFocusRelay relay))
+            {
+                if (relay != null)
+                {
+                    relay.Release(this);
+                }
+
+                _tabFocusRelays.Remove(tab);
+            }
+        }
+
+        private void ClearTabFocusRelays()
+        {
+            if (_tabFocusRelays.Count == 0)
+            {
+                return;
+            }
+
+            foreach (TabFocusRelay relay in _tabFocusRelays.Values)
+            {
+                relay?.Release(this);
+            }
+
+            _tabFocusRelays.Clear();
+        }
+
+        private void EnsureFocusRelay(EditorView editorView)
+        {
+            if (editorView == null)
+            {
+                return;
+            }
+
+            if (_viewFocusRelays.TryGetValue(editorView, out EditorViewFocusRelay existingRelay) && existingRelay != null)
+            {
+                existingRelay.Initialize(this, editorView);
+                return;
+            }
+
+            EditorPanel editorPanel = editorView.GetComponentInChildren<EditorPanel>(true);
+            if (editorPanel == null)
+            {
+                return;
+            }
+
+            EditorViewFocusRelay relay = editorPanel.GetComponent<EditorViewFocusRelay>();
+            if (relay == null)
+            {
+                relay = editorPanel.gameObject.AddComponent<EditorViewFocusRelay>();
+            }
+
+            relay.Initialize(this, editorView);
+            _viewFocusRelays[editorView] = relay;
+        }
+
+        private void RemoveFocusRelay(EditorView editorView)
+        {
+            if (editorView == null)
+            {
+                return;
+            }
+
+            if (_viewFocusRelays.TryGetValue(editorView, out EditorViewFocusRelay relay))
+            {
+                if (relay != null)
+                {
+                    relay.Release(this);
+                }
+
+                _viewFocusRelays.Remove(editorView);
+            }
+        }
+
+        private void ClearFocusRelays()
+        {
+            if (_viewFocusRelays.Count == 0)
+            {
+                return;
+            }
+
+            foreach (EditorViewFocusRelay relay in _viewFocusRelays.Values)
+            {
+                relay?.Release(this);
+            }
+
+            _viewFocusRelays.Clear();
+        }
+
+        private sealed class TabFocusRelay : MonoBehaviour, IPointerDownHandler
+        {
+            private readonly List<TabPointerHandler> _pointerHandlers = new();
+            private readonly List<TabContentWatcher> _hierarchyWatchers = new();
+            private readonly HashSet<Transform> _registeredTransforms = new();
+
+            private PanelHierarchy _hierarchy;
+            private PanelTab _tab;
+
+            public void Initialize(PanelHierarchy hierarchy, PanelTab tab)
+            {
+                bool hierarchyChanged = !ReferenceEquals(_hierarchy, hierarchy);
+                bool tabChanged = !ReferenceEquals(_tab, tab);
+
+                if (hierarchyChanged || tabChanged)
+                {
+                    ReleaseHandlers();
+                    _hierarchy = hierarchy;
+                    _tab = tab;
+                }
+
+                AttachHandlers();
+            }
+
+            public void Release(PanelHierarchy hierarchy)
+            {
+                if (!ReferenceEquals(_hierarchy, hierarchy))
+                {
+                    return;
+                }
+
+                ReleaseHandlers();
+
+                _hierarchy = null;
+                _tab = null;
+
+                Destroy(this);
+            }
+
+            public void OnPointerDown(PointerEventData eventData)
+            {
+                NotifyFocusRequested();
+            }
+
+            private void AttachHandlers()
+            {
+                if (_hierarchy == null || _tab == null)
+                {
+                    return;
+                }
+
+                RegisterPointerHandler(_tab.gameObject);
+
+                if (_tab.Content != null)
+                {
+                    AddHandlersRecursively(_tab.Content);
+                }
+            }
+
+            private void ReleaseHandlers()
+            {
+                if (_pointerHandlers.Count == 0 && _hierarchyWatchers.Count == 0)
+                {
+                    _registeredTransforms.Clear();
+                    return;
+                }
+
+                foreach (TabPointerHandler handler in _pointerHandlers)
+                {
+                    handler?.Release(this);
+                }
+
+                foreach (TabContentWatcher watcher in _hierarchyWatchers)
+                {
+                    watcher?.Release(this);
+                }
+
+                _pointerHandlers.Clear();
+                _hierarchyWatchers.Clear();
+                _registeredTransforms.Clear();
+            }
+
+            private void RegisterPointerHandler(GameObject target)
+            {
+                if (target == null)
+                {
+                    return;
+                }
+
+                TabPointerHandler handler = target.GetComponent<TabPointerHandler>();
+                if (handler == null)
+                {
+                    handler = target.AddComponent<TabPointerHandler>();
+                }
+
+                handler.Initialize(this);
+                _pointerHandlers.Add(handler);
+            }
+
+            private void AddHandlersRecursively(Transform root)
+            {
+                if (root == null)
+                {
+                    return;
+                }
+
+                bool isNewTransform = _registeredTransforms.Add(root);
+                if (isNewTransform)
+                {
+                    RegisterPointerHandler(root.gameObject);
+
+                    TabContentWatcher watcher = root.GetComponent<TabContentWatcher>();
+                    if (watcher == null)
+                    {
+                        watcher = root.gameObject.AddComponent<TabContentWatcher>();
+                    }
+
+                    watcher.Initialize(this);
+                    _hierarchyWatchers.Add(watcher);
+                }
+
+                foreach (Transform child in root)
+                {
+                    AddHandlersRecursively(child);
+                }
+            }
+
+            private void NotifyFocusRequested()
+            {
+                if (_hierarchy == null || _tab == null)
+                {
+                    return;
+                }
+
+                _hierarchy.HandleTabFocused(_tab);
+            }
+
+            private void HandleChildrenChanged(Transform root)
+            {
+                if (root == null)
+                {
+                    return;
+                }
+
+                foreach (Transform child in root)
+                {
+                    AddHandlersRecursively(child);
+                }
+            }
+
+            private sealed class TabPointerHandler : MonoBehaviour, IPointerDownHandler
+            {
+                private TabFocusRelay _relay;
+
+                public void Initialize(TabFocusRelay relay)
+                {
+                    _relay = relay;
+                }
+
+                public void Release(TabFocusRelay relay)
+                {
+                    if (!ReferenceEquals(_relay, relay))
+                    {
+                        return;
+                    }
+
+                    _relay = null;
+                    Destroy(this);
+                }
+
+                public void OnPointerDown(PointerEventData eventData)
+                {
+                    _relay?.NotifyFocusRequested();
+                }
+            }
+
+            private sealed class TabContentWatcher : MonoBehaviour
+            {
+                private TabFocusRelay _relay;
+
+                public void Initialize(TabFocusRelay relay)
+                {
+                    _relay = relay;
+                }
+
+                public void Release(TabFocusRelay relay)
+                {
+                    if (!ReferenceEquals(_relay, relay))
+                    {
+                        return;
+                    }
+
+                    _relay = null;
+                    Destroy(this);
+                }
+
+                private void OnTransformChildrenChanged()
+                {
+                    _relay?.HandleChildrenChanged(transform);
+                }
+            }
+        }
+
+        private sealed class EditorViewFocusRelay : MonoBehaviour, IPointerDownHandler
+        {
+            private readonly List<FocusForwarder> _focusForwarders = new();
+            private readonly List<ContentHierarchyWatcher> _hierarchyWatchers = new();
+            private readonly HashSet<Transform> _registeredTransforms = new();
+
+            private PanelHierarchy _hierarchy;
+            private EditorView _editorView;
+
+            public void Initialize(PanelHierarchy hierarchy, EditorView editorView)
+            {
+                bool hierarchyChanged = !ReferenceEquals(_hierarchy, hierarchy);
+                bool viewChanged = !ReferenceEquals(_editorView, editorView);
+
+                if (hierarchyChanged || viewChanged)
+                {
+                    ReleaseHandlers();
+                    _hierarchy = hierarchy;
+                    _editorView = editorView;
+                }
+
+                AttachHandlers();
+            }
+
+            public void Release(PanelHierarchy hierarchy)
+            {
+                if (!ReferenceEquals(_hierarchy, hierarchy))
+                {
+                    return;
+                }
+
+                ReleaseHandlers();
+
+                _hierarchy = null;
+                _editorView = null;
+
+                Destroy(this);
+            }
+
+            public void OnPointerDown(PointerEventData eventData)
+            {
+                NotifyFocusRequested();
+            }
+
+            private void AttachHandlers()
+            {
+                if (_hierarchy == null || _editorView == null)
+                {
+                    return;
+                }
+
+                AddHandlersRecursively(_editorView.transform);
+
+                GraphicRaycaster contentRaycaster = _editorView.Content;
+                if (contentRaycaster != null)
+                {
+                    AddHandlersRecursively(contentRaycaster.transform);
+                }
+            }
+
+            private void ReleaseHandlers()
+            {
+                if (_focusForwarders.Count == 0 && _hierarchyWatchers.Count == 0)
+                {
+                    _registeredTransforms.Clear();
+                    return;
+                }
+
+                foreach (FocusForwarder forwarder in _focusForwarders)
+                {
+                    forwarder?.Release(this);
+                }
+
+                foreach (ContentHierarchyWatcher watcher in _hierarchyWatchers)
+                {
+                    watcher?.Release(this);
+                }
+
+                _focusForwarders.Clear();
+                _hierarchyWatchers.Clear();
+                _registeredTransforms.Clear();
+            }
+
+            private void AddHandlersRecursively(Transform root)
+            {
+                if (root == null)
+                {
+                    return;
+                }
+
+                bool isNewTransform = _registeredTransforms.Add(root);
+                if (isNewTransform)
+                {
+                    FocusForwarder forwarder = root.GetComponent<FocusForwarder>();
+                    if (forwarder == null)
+                    {
+                        forwarder = root.gameObject.AddComponent<FocusForwarder>();
+                    }
+                    forwarder.Initialize(this);
+                    _focusForwarders.Add(forwarder);
+
+                    ContentHierarchyWatcher watcher = root.GetComponent<ContentHierarchyWatcher>();
+                    if (watcher == null)
+                    {
+                        watcher = root.gameObject.AddComponent<ContentHierarchyWatcher>();
+                    }
+                    watcher.Initialize(this);
+                    _hierarchyWatchers.Add(watcher);
+                }
+
+                foreach (Transform child in root)
+                {
+                    AddHandlersRecursively(child);
+                }
+            }
+
+            private void HandleChildrenChanged(Transform root)
+            {
+                if (root == null)
+                {
+                    return;
+                }
+
+                foreach (Transform child in root)
+                {
+                    AddHandlersRecursively(child);
+                }
+            }
+
+            private void NotifyFocusRequested()
+            {
+                if (_hierarchy == null || _editorView == null)
+                {
+                    return;
+                }
+
+                _hierarchy.HandleEditorViewFocused(_editorView);
+            }
+
+            private sealed class FocusForwarder : MonoBehaviour, IPointerDownHandler
+            {
+                private EditorViewFocusRelay _relay;
+
+                public void Initialize(EditorViewFocusRelay relay)
+                {
+                    _relay = relay;
+                }
+
+                public void Release(EditorViewFocusRelay relay)
+                {
+                    if (!ReferenceEquals(_relay, relay))
+                    {
+                        return;
+                    }
+
+                    _relay = null;
+                    Destroy(this);
+                }
+
+                public void OnPointerDown(PointerEventData eventData)
+                {
+                    _relay?.NotifyFocusRequested();
+                }
+            }
+
+            private sealed class ContentHierarchyWatcher : MonoBehaviour
+            {
+                private EditorViewFocusRelay _relay;
+
+                public void Initialize(EditorViewFocusRelay relay)
+                {
+                    _relay = relay;
+                }
+
+                public void Release(EditorViewFocusRelay relay)
+                {
+                    if (!ReferenceEquals(_relay, relay))
+                    {
+                        return;
+                    }
+
+                    _relay = null;
+                    Destroy(this);
+                }
+
+                private void OnTransformChildrenChanged()
+                {
+                    _relay?.HandleChildrenChanged(transform);
+                }
+            }
+        }
+
+        private void CancelPendingActiveViewUpdate()
+        {
+            if (_pendingActiveViewUpdate != null)
+            {
+                StopCoroutine(_pendingActiveViewUpdate);
+                _pendingActiveViewUpdate = null;
+            }
+        }
+
         private static View ResolveView(EditorView editorView)
         {
             if (editorView == null)
@@ -320,19 +1058,6 @@ namespace Oasis.LayoutEditor.Panels
             }
 
             return Editor.Instance?.Project?.Layout?.GetView(editorView.ViewName);
-        }
-
-        private void SetActiveEditorView(EditorView editorView)
-        {
-            if (editorView == null)
-            {
-                return;
-            }
-
-            RegisterEditorViewPointerHandler(editorView);
-            _currentEditorView = editorView;
-            _currentViewName = editorView.ViewName;
-            SetCurrentView(ResolveView(editorView));
         }
 
         private EditorView FindActiveEditorView()
@@ -397,96 +1122,6 @@ namespace Oasis.LayoutEditor.Panels
 
             _runtimeHierarchy.Refresh();
             OnSelectionChanged();
-        }
-
-        private void SubscribeToPanelNotificationEvents()
-        {
-            if (_panelNotificationEventsSubscribed)
-            {
-                return;
-            }
-
-            PanelNotificationCenter.OnActiveTabChanged += OnPanelActiveTabChanged;
-            PanelNotificationCenter.OnTabCreated += OnPanelTabCreated;
-            PanelNotificationCenter.OnTabDestroyed += OnPanelTabDestroyed;
-            _panelNotificationEventsSubscribed = true;
-        }
-
-        private void UnsubscribeFromPanelNotificationEvents()
-        {
-            if (!_panelNotificationEventsSubscribed)
-            {
-                return;
-            }
-
-            PanelNotificationCenter.OnActiveTabChanged -= OnPanelActiveTabChanged;
-            PanelNotificationCenter.OnTabCreated -= OnPanelTabCreated;
-            PanelNotificationCenter.OnTabDestroyed -= OnPanelTabDestroyed;
-            _panelNotificationEventsSubscribed = false;
-        }
-
-        private void OnPanelActiveTabChanged(PanelTab tab)
-        {
-            SetActiveEditorView(FindEditorViewForTab(tab));
-        }
-
-        private void OnPanelTabCreated(PanelTab tab)
-        {
-            RegisterEditorViewPointerHandler(FindEditorViewForTab(tab));
-        }
-
-        private void OnPanelTabDestroyed(PanelTab tab)
-        {
-            UnregisterEditorViewPointerHandler(FindEditorViewForTab(tab));
-        }
-
-        private static EditorView FindEditorViewForTab(PanelTab tab)
-        {
-            if (tab?.Content == null)
-            {
-                return null;
-            }
-
-            return tab.Content.GetComponentInChildren<EditorView>(true);
-        }
-
-        private void RegisterEditorViewPointerHandler(EditorView editorView)
-        {
-            if (editorView == null || _editorViewPointerHandlers.ContainsKey(editorView))
-            {
-                return;
-            }
-
-            UnityAction<List<EditorComponent>> handler = _ => SetActiveEditorView(editorView);
-            editorView.OnPointerClickEvent.AddListener(handler);
-            _editorViewPointerHandlers.Add(editorView, handler);
-        }
-
-        private void UnregisterEditorViewPointerHandler(EditorView editorView)
-        {
-            if (editorView == null)
-            {
-                return;
-            }
-
-            if (_editorViewPointerHandlers.TryGetValue(editorView, out UnityAction<List<EditorComponent>> handler))
-            {
-                editorView.OnPointerClickEvent.RemoveListener(handler);
-                _editorViewPointerHandlers.Remove(editorView);
-            }
-        }
-
-        private void ClearEditorViewPointerHandlers()
-        {
-            foreach ((EditorView editorView, UnityAction<List<EditorComponent>> handler) in _editorViewPointerHandlers)
-            {
-                if (editorView != null)
-                {
-                    editorView.OnPointerClickEvent.RemoveListener(handler);
-                }
-            }
-
-            _editorViewPointerHandlers.Clear();
         }
 
         private View ResolveCurrentView()
