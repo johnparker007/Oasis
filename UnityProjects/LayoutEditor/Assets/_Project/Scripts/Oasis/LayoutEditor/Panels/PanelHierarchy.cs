@@ -1102,18 +1102,20 @@ namespace Oasis.LayoutEditor.Panels
 
             ClearComponentEntries();
             ClearViewQuadEntries();
+            DestroyViewQuadRoot();
             EnsureCategoryRoots();
-            EnsureViewQuadRoot();
-            RebuildViewQuadEntries();
 
             View activeView = ResolveCurrentView();
 
             if (activeView == null)
             {
+                EnsureViewQuadRoot();
                 _runtimeHierarchy.Refresh();
                 OnSelectionChanged();
                 return;
             }
+
+            RebuildViewQuadEntries(activeView);
 
             foreach (Component component in activeView.Data.Components)
             {
@@ -1158,6 +1160,13 @@ namespace Oasis.LayoutEditor.Panels
 
         private void EnsureViewQuadRoot()
         {
+            View activeView = ResolveCurrentView();
+            if (activeView?.ViewQuads == null || activeView.ViewQuads.Count == 0)
+            {
+                DestroyViewQuadRoot();
+                return;
+            }
+
             GetOrCreateViewQuadRoot();
         }
 
@@ -1386,38 +1395,22 @@ namespace Oasis.LayoutEditor.Panels
             _transformToViewQuad.Clear();
         }
 
-        private void RebuildViewQuadEntries()
+        private void RebuildViewQuadEntries(View activeView)
         {
+            if (activeView?.ViewQuads == null || activeView.ViewQuads.Count == 0)
+            {
+                return;
+            }
+
             Transform parent = GetOrCreateViewQuadRoot();
             if (parent == null)
             {
                 return;
             }
 
-            LayoutObject layout = Editor.Instance != null ? Editor.Instance.Project?.Layout : null;
-            if (layout == null)
+            foreach (ViewQuad viewQuad in activeView.ViewQuads)
             {
-                return;
-            }
-
-            List<View> views = layout.GetViews();
-            if (views == null)
-            {
-                return;
-            }
-
-            foreach (View view in views)
-            {
-                if (view?.ViewQuads == null || view.ViewQuads.Count == 0)
-                {
-                    RemoveViewQuadEntries(view);
-                    continue;
-                }
-
-                foreach (ViewQuad viewQuad in view.ViewQuads)
-                {
-                    AddViewQuadEntry(view, viewQuad, parent);
-                }
+                AddViewQuadEntry(activeView, viewQuad, parent);
             }
         }
 
@@ -1574,6 +1567,11 @@ namespace Oasis.LayoutEditor.Panels
 
         private void OnLayoutViewAdded(View view)
         {
+            if (!IsTargetView(view))
+            {
+                return;
+            }
+
             Transform parent = GetOrCreateViewQuadRoot();
             if (parent == null)
             {
@@ -1756,6 +1754,12 @@ namespace Oasis.LayoutEditor.Panels
                 }
 
                 RemoveViewQuadEntry(key);
+            }
+
+            View currentView = ResolveCurrentView();
+            if (!ReferenceEquals(currentView, key.View))
+            {
+                return null;
             }
 
             Transform parent = GetOrCreateViewQuadRoot();
