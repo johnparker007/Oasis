@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -49,6 +50,7 @@ namespace Oasis.LayoutEditor.Panels
         private bool _panelNotificationEventsSubscribed;
         private bool _suppressSelectionChangeHandling;
         private bool _suppressHierarchySelectionChange;
+        private Coroutine _pendingActiveViewUpdate;
 
         private void Awake()
         {
@@ -95,6 +97,8 @@ namespace Oasis.LayoutEditor.Panels
             ClearViewQuadEntries();
             DestroyCategoryRoots();
             DestroyViewQuadRoot();
+
+            CancelPendingActiveViewUpdate();
 
             _currentView = null;
             _currentEditorView = null;
@@ -191,6 +195,7 @@ namespace Oasis.LayoutEditor.Panels
             }
 
             PanelNotificationCenter.OnActiveTabChanged += OnPanelActiveTabChanged;
+            PanelNotificationCenter.OnPanelBecameActive += OnPanelBecameActive;
             _panelNotificationEventsSubscribed = true;
         }
 
@@ -202,6 +207,7 @@ namespace Oasis.LayoutEditor.Panels
             }
 
             PanelNotificationCenter.OnActiveTabChanged -= OnPanelActiveTabChanged;
+            PanelNotificationCenter.OnPanelBecameActive -= OnPanelBecameActive;
             _panelNotificationEventsSubscribed = false;
         }
 
@@ -335,25 +341,23 @@ namespace Oasis.LayoutEditor.Panels
 
         private void OnPanelActiveTabChanged(PanelTab tab)
         {
-            EditorView editorView = FindEditorViewForTab(tab);
-            if (editorView == null)
+            ScheduleActiveViewUpdate(tab);
+        }
+
+        private void OnPanelBecameActive(Panel panel)
+        {
+            if (panel == null)
             {
                 return;
             }
 
-            if (string.IsNullOrEmpty(editorView.ViewName))
+            int activeIndex = panel.ActiveTab;
+            if (activeIndex < 0)
             {
                 return;
             }
 
-            if (Editor.Instance?.Project?.Layout == null)
-            {
-                return;
-            }
-
-            _currentEditorView = editorView;
-            _currentViewName = editorView.ViewName;
-            SetCurrentView(ResolveView(editorView));
+            ScheduleActiveViewUpdate(panel[activeIndex]);
         }
 
         private static EditorView FindEditorViewForTab(PanelTab tab)
@@ -364,6 +368,82 @@ namespace Oasis.LayoutEditor.Panels
             }
 
             return tab.Content.GetComponentInChildren<EditorView>(true);
+        }
+
+        private void ScheduleActiveViewUpdate(PanelTab tab)
+        {
+            if (!isActiveAndEnabled || tab == null)
+            {
+                return;
+            }
+
+            CancelPendingActiveViewUpdate();
+            _pendingActiveViewUpdate = StartCoroutine(ApplyActiveViewWhenReady(tab));
+        }
+
+        private IEnumerator ApplyActiveViewWhenReady(PanelTab tab)
+        {
+            yield return null;
+
+            ApplyActiveTab(tab);
+            _pendingActiveViewUpdate = null;
+        }
+
+        private void ApplyActiveTab(PanelTab tab)
+        {
+            if (!isActiveAndEnabled || tab == null)
+            {
+                return;
+            }
+
+            EditorView editorView = FindEditorViewForTab(tab);
+            if (editorView == null)
+            {
+                return;
+            }
+
+            LayoutObject layout = Editor.Instance?.Project?.Layout;
+
+            string viewName = editorView.ViewName;
+            View resolvedView = null;
+
+            if (layout != null && !string.IsNullOrEmpty(viewName))
+            {
+                resolvedView = layout.GetView(viewName);
+            }
+
+            string labelName = tab.Label;
+            if ((resolvedView == null || string.IsNullOrEmpty(viewName)) && !string.IsNullOrEmpty(labelName))
+            {
+                View labelView = layout?.GetView(labelName);
+                if (labelView != null)
+                {
+                    resolvedView = labelView;
+                    viewName = labelView.Name;
+                }
+                else if (string.IsNullOrEmpty(viewName))
+                {
+                    viewName = labelName;
+                }
+            }
+
+            if (string.IsNullOrEmpty(viewName))
+            {
+                return;
+            }
+
+            _currentEditorView = editorView;
+            _currentViewName = viewName;
+            SetCurrentView(resolvedView);
+        }
+
+        private void CancelPendingActiveViewUpdate()
+        {
+            if (_pendingActiveViewUpdate != null)
+            {
+                StopCoroutine(_pendingActiveViewUpdate);
+                _pendingActiveViewUpdate = null;
+            }
         }
 
         private static View ResolveView(EditorView editorView)
