@@ -1103,6 +1103,7 @@ namespace Oasis.LayoutEditor.Panels
             ClearComponentEntries();
             ClearViewQuadEntries();
             DestroyViewQuadRoot();
+            DestroyCategoryRoots();
             EnsureCategoryRoots();
 
             View activeView = ResolveCurrentView();
