@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using DynamicPanels;
 using Oasis.Layout;
 using Oasis.LayoutEditor;
 using Oasis.LayoutEditor.RuntimeHierarchyIntegration;
@@ -45,6 +46,7 @@ namespace Oasis.LayoutEditor.Panels
         private EditorView _currentEditorView;
         private bool _eventsSubscribed;
         private bool _runtimeHierarchyEventsSubscribed;
+        private bool _panelNotificationEventsSubscribed;
         private bool _suppressSelectionChangeHandling;
         private bool _suppressHierarchySelectionChange;
 
@@ -69,6 +71,7 @@ namespace Oasis.LayoutEditor.Panels
                 _currentViewName = ViewController.kBaseViewName;
             }
 
+            SubscribeToPanelNotificationEvents();
             SubscribeToEditorEvents();
             SubscribeToLayout(Editor.Instance != null ? Editor.Instance.Project?.Layout : null);
 
@@ -86,6 +89,7 @@ namespace Oasis.LayoutEditor.Panels
             UnsubscribeFromLayout();
             UnsubscribeFromEditorEvents();
             UnsubscribeFromRuntimeHierarchyEvents();
+            UnsubscribeFromPanelNotificationEvents();
 
             ClearComponentEntries();
             ClearViewQuadEntries();
@@ -177,6 +181,28 @@ namespace Oasis.LayoutEditor.Panels
             }
 
             _eventsSubscribed = false;
+        }
+
+        private void SubscribeToPanelNotificationEvents()
+        {
+            if (_panelNotificationEventsSubscribed)
+            {
+                return;
+            }
+
+            PanelNotificationCenter.OnActiveTabChanged += OnPanelActiveTabChanged;
+            _panelNotificationEventsSubscribed = true;
+        }
+
+        private void UnsubscribeFromPanelNotificationEvents()
+        {
+            if (!_panelNotificationEventsSubscribed)
+            {
+                return;
+            }
+
+            PanelNotificationCenter.OnActiveTabChanged -= OnPanelActiveTabChanged;
+            _panelNotificationEventsSubscribed = false;
         }
 
         private void SubscribeToLayout(LayoutObject layout)
@@ -305,6 +331,39 @@ namespace Oasis.LayoutEditor.Panels
                 _currentViewName = ViewController.kBaseViewName;
             }
             SetCurrentView(fallbackView);
+        }
+
+        private void OnPanelActiveTabChanged(PanelTab tab)
+        {
+            EditorView editorView = FindEditorViewForTab(tab);
+            if (editorView == null)
+            {
+                return;
+            }
+
+            if (string.IsNullOrEmpty(editorView.ViewName))
+            {
+                return;
+            }
+
+            if (Editor.Instance?.Project?.Layout == null)
+            {
+                return;
+            }
+
+            _currentEditorView = editorView;
+            _currentViewName = editorView.ViewName;
+            SetCurrentView(ResolveView(editorView));
+        }
+
+        private static EditorView FindEditorViewForTab(PanelTab tab)
+        {
+            if (tab?.Content == null)
+            {
+                return null;
+            }
+
+            return tab.Content.GetComponentInChildren<EditorView>(true);
         }
 
         private static View ResolveView(EditorView editorView)
