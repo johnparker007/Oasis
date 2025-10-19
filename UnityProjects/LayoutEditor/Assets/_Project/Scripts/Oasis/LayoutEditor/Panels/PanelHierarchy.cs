@@ -447,11 +447,6 @@ namespace Oasis.LayoutEditor.Panels
                 }
             }
 
-            if (string.IsNullOrEmpty(viewName))
-            {
-                return;
-            }
-
             if (editorView == null && !string.IsNullOrEmpty(viewName))
             {
                 editorView = ViewController.GetEditorView(viewName);
@@ -466,17 +461,25 @@ namespace Oasis.LayoutEditor.Panels
                     resolvedView = layout.GetView(editorView.ViewName);
                 }
             }
+            else if (resolvedView == null)
+            {
+                return;
+            }
             else
             {
                 _currentEditorView = null;
             }
 
-            if (resolvedView == null && layout != null)
+            if (resolvedView == null && layout != null && !string.IsNullOrEmpty(viewName))
             {
                 resolvedView = layout.GetView(viewName);
             }
 
-            _currentViewName = viewName;
+            if (!string.IsNullOrEmpty(viewName))
+            {
+                _currentViewName = viewName;
+            }
+
             SetCurrentView(resolvedView);
         }
 
