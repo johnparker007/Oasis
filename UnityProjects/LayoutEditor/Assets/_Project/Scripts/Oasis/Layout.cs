@@ -329,20 +329,6 @@ namespace Oasis
             string relativeImagePath = Path.Combine(viewFolderName, "Background.png");
             relativeImagePath = relativeImagePath.Replace('\\', '/');
 
-            var bottomTab = tabController.ShowTab(TabController.TabTypes.TestNewView);
-            var bottomPanel = bottomTab?.Panel;
-            EditorView editorView = bottomPanel != null
-                ? bottomPanel.GetComponentInChildren<EditorView>(true)
-                : null;
-
-            if (editorView == null)
-            {
-                Debug.LogWarning($"Unable to locate an EditorView for the new '{viewName}' view tab.");
-                return;
-            }
-
-            editorView.ViewName = viewName;
-
             View bottomView = GetView(viewName);
             if (bottomView == null)
             {
@@ -358,7 +344,6 @@ namespace Oasis
                 Debug.LogWarning($"Unable to display the '{viewName}' view tab for the transformed ViewQuad image.");
                 return;
             }
-            editorView.Initialise();
 
             ComponentBackground bottomBackground = new ComponentBackground
             {
