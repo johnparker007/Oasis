@@ -396,15 +396,10 @@ namespace Oasis.LayoutEditor.Panels
                 return;
             }
 
-            EditorView editorView = FindEditorViewForTab(tab);
-            if (editorView == null)
-            {
-                return;
-            }
-
             LayoutObject layout = Editor.Instance?.Project?.Layout;
+            EditorView editorView = FindEditorViewForTab(tab);
 
-            string viewName = editorView.ViewName;
+            string viewName = editorView != null ? editorView.ViewName : null;
             View resolvedView = null;
 
             if (layout != null && !string.IsNullOrEmpty(viewName))
@@ -432,7 +427,29 @@ namespace Oasis.LayoutEditor.Panels
                 return;
             }
 
-            _currentEditorView = editorView;
+            if (editorView == null && !string.IsNullOrEmpty(viewName))
+            {
+                editorView = ViewController.GetEditorView(viewName);
+            }
+
+            if (editorView != null)
+            {
+                _currentEditorView = editorView;
+                if (resolvedView == null && layout != null)
+                {
+                    resolvedView = layout.GetView(editorView.ViewName);
+                }
+            }
+            else
+            {
+                _currentEditorView = null;
+            }
+
+            if (resolvedView == null && layout != null)
+            {
+                resolvedView = layout.GetView(viewName);
+            }
+
             _currentViewName = viewName;
             SetCurrentView(resolvedView);
         }
