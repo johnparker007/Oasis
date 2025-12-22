@@ -326,7 +326,7 @@ namespace Oasis.MFME
 
             string bandBmpImageFilePath = Path.Combine(Extractor.LayoutDirectoryPath,
                 FileSystem.kReelsDirectoryName, extractComponentBandReel.BandBmpImageFilename);
-            componentBandReel.BandOasisImage = new Graphics.OasisImage(bandBmpImageFilePath, null, true);
+            componentBandReel.BandOasisImage = new Graphics.OasisImage(bandBmpImageFilePath, null, false);
 
 
             // ******* START temp code for applying overlays to background image

@@ -205,61 +205,128 @@ namespace Oasis.MfmeTools.Mfme
             Extractor.Layout.Components.Add(extractReel);
         }
 
-        //        public static void ProcessBandReel(InputSimulator inputSimulator, ComponentStandardData componentStandardData)
-        //        {
-        //            ExtractComponentBandReel extractBandReel = new ExtractComponentBandReel(componentStandardData);
+        public static void ProcessBandReel(InputSimulator inputSimulator, ComponentStandardData componentStandardData)
+        {
+            ExtractComponentBandReel extractBandReel = new ExtractComponentBandReel(componentStandardData);
 
-        //            extractBandReel.Number = int.Parse(DelphiFontScraper.GetFieldCharacters(
-        //                MFMEScraperConstants.kPropertiesBandReelNumber_X, MFMEScraperConstants.kPropertiesBandReelNumber_Y));
+            extractBandReel.Number = int.Parse(DelphiFontScraper.GetFieldCharacters(
+                MFMEScraperConstants.kPropertiesBandReelNumber_X, MFMEScraperConstants.kPropertiesBandReelNumber_Y));
 
-        //            extractBandReel.Stops = int.Parse(DelphiFontScraper.GetFieldCharacters(
-        //                MFMEScraperConstants.kPropertiesBandReelStops_X, MFMEScraperConstants.kPropertiesBandReelStops_Y));
+            extractBandReel.Stops = int.Parse(DelphiFontScraper.GetFieldCharacters(
+                MFMEScraperConstants.kPropertiesBandReelStops_X, MFMEScraperConstants.kPropertiesBandReelStops_Y));
 
-        //            extractBandReel.HalfSteps = int.Parse(DelphiFontScraper.GetFieldCharacters(
-        //                MFMEScraperConstants.kPropertiesBandReelHalfSteps_X, MFMEScraperConstants.kPropertiesBandReelHalfSteps_Y));
+            extractBandReel.HalfSteps = int.Parse(DelphiFontScraper.GetFieldCharacters(
+                MFMEScraperConstants.kPropertiesBandReelHalfSteps_X, MFMEScraperConstants.kPropertiesBandReelHalfSteps_Y));
 
-        //            extractBandReel.View = int.Parse(DelphiFontScraper.GetFieldCharacters(
-        //                MFMEScraperConstants.kPropertiesBandReelView_X, MFMEScraperConstants.kPropertiesBandReelView_Y));
+            extractBandReel.View = int.Parse(DelphiFontScraper.GetFieldCharacters(
+                MFMEScraperConstants.kPropertiesBandReelView_X, MFMEScraperConstants.kPropertiesBandReelView_Y));
 
-        //            extractBandReel.Offset = int.Parse(DelphiFontScraper.GetFieldCharacters(
-        //                MFMEScraperConstants.kPropertiesBandReelOffset_X, MFMEScraperConstants.kPropertiesBandReelOffset_Y));
+            extractBandReel.Offset = int.Parse(DelphiFontScraper.GetFieldCharacters(
+                MFMEScraperConstants.kPropertiesBandReelOffset_X, MFMEScraperConstants.kPropertiesBandReelOffset_Y));
 
-        //            extractBandReel.Spacing = int.Parse(DelphiFontScraper.GetFieldCharacters(
-        //                MFMEScraperConstants.kPropertiesBandReelSpacing_X, MFMEScraperConstants.kPropertiesBandReelSpacing_Y));
+            extractBandReel.Spacing = int.Parse(DelphiFontScraper.GetFieldCharacters(
+                MFMEScraperConstants.kPropertiesBandReelSpacing_X, MFMEScraperConstants.kPropertiesBandReelSpacing_Y));
 
-        //            extractBandReel.OptoTab = int.Parse(DelphiFontScraper.GetFieldCharacters(
-        //                MFMEScraperConstants.kPropertiesBandReelOptoTab_X, MFMEScraperConstants.kPropertiesBandReelOptoTab_Y));
+            extractBandReel.OptoTab = int.Parse(DelphiFontScraper.GetFieldCharacters(
+                MFMEScraperConstants.kPropertiesBandReelOptoTab_X, MFMEScraperConstants.kPropertiesBandReelOptoTab_Y));
 
-        //            extractBandReel.Reversed = MfmeScraper.GetCheckboxValue(
-        //                EmulatorScraper, MFMEScraperConstants.kPropertiesBandReelReversedCheckbox_X, MFMEScraperConstants.kPropertiesBandReelReversedCheckbox_Y);
+            extractBandReel.Reversed = MfmeScraper.GetCheckboxValue(
+                MFMEScraperConstants.kPropertiesBandReelReversedCheckbox_X, MFMEScraperConstants.kPropertiesBandReelReversedCheckbox_Y);
 
-        //            extractBandReel.Inverted = MfmeScraper.GetCheckboxValue(
-        //                EmulatorScraper, MFMEScraperConstants.kPropertiesBandReelInvertedCheckbox_X, MFMEScraperConstants.kPropertiesBandReelInvertedCheckbox_Y);
+            extractBandReel.Inverted = MfmeScraper.GetCheckboxValue(
+                MFMEScraperConstants.kPropertiesBandReelInvertedCheckbox_X, MFMEScraperConstants.kPropertiesBandReelInvertedCheckbox_Y);
 
-        //            extractBandReel.Vertical = MfmeScraper.GetCheckboxValue(
-        //                EmulatorScraper, MFMEScraperConstants.kPropertiesBandReelVerticalCheckbox_X, MFMEScraperConstants.kPropertiesBandReelVerticalCheckbox_Y);
+            extractBandReel.Vertical = MfmeScraper.GetCheckboxValue(
+                MFMEScraperConstants.kPropertiesBandReelVerticalCheckbox_X, MFMEScraperConstants.kPropertiesBandReelVerticalCheckbox_Y);
 
-        //            extractBandReel.Opaque = MfmeScraper.GetCheckboxValue(
-        //                EmulatorScraper, MFMEScraperConstants.kPropertiesBandReelOpaqueCheckbox_X, MFMEScraperConstants.kPropertiesBandReelOpaqueCheckbox_Y);
+            extractBandReel.Opaque = MfmeScraper.GetCheckboxValue(
+                MFMEScraperConstants.kPropertiesBandReelOpaqueCheckbox_X, MFMEScraperConstants.kPropertiesBandReelOpaqueCheckbox_Y);
 
-        //            extractBandReel.Lamps = MfmeScraper.GetCheckboxValue(
-        //                EmulatorScraper, MFMEScraperConstants.kPropertiesBandReelLampsCheckbox_X, MFMEScraperConstants.kPropertiesBandReelLampsCheckbox_Y);
+            extractBandReel.Lamps = MfmeScraper.GetCheckboxValue(
+                MFMEScraperConstants.kPropertiesBandReelLampsCheckbox_X, MFMEScraperConstants.kPropertiesBandReelLampsCheckbox_Y);
 
-        //            extractBandReel.Custom = MfmeScraper.GetCheckboxValue(
-        //                EmulatorScraper, MFMEScraperConstants.kPropertiesBandReelCustomCheckbox_X, MFMEScraperConstants.kPropertiesBandReelCustomCheckbox_Y);
+            extractBandReel.Custom = MfmeScraper.GetCheckboxValue(
+                MFMEScraperConstants.kPropertiesBandReelCustomCheckbox_X, MFMEScraperConstants.kPropertiesBandReelCustomCheckbox_Y);
 
-        //            // TODO
-        //            //public string[] LampNumbersAsStrings = new string[ComponentBandReel.kReelLampCount];
+            string reelImagefilename = "bandreel_"
+                + extractBandReel.Number
+                + ".bmp";
 
-        //            //public bool HasOverlay;
+            string reelImageSaveFullPath = FileSystem.GetFullReelImagePath(reelImagefilename);
 
-        //            //public string BandBmpImageFilename;
-        //            //public string OverlayBmpImageFilename;
+            // save bmp reel image from MFME
+            if (!FileSystem.UseCachedReelImages || !File.Exists(reelImageSaveFullPath))
+            {
+                FileSystem.TryDeleteReelImage(reelImageSaveFullPath);
 
-        //            
+                // save reel band image
+                MFMEAutomation.RightClickAtPosition(inputSimulator,
+                    MFMEScraperConstants.kPropertiesBandReelImage_CenterX, MFMEScraperConstants.kPropertiesBandReelImage_CenterY);
 
-        //            Extractor.Layout.Components.Add(extractBandReel);
-        //        }
+                inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.VK_S);
+                Thread.Sleep(MFMEAutomation.kShortDelay);
+
+                Thread.Sleep(MFMEAutomation.kVeryLongDelay); // wait for file requester to intialise
+
+                Clipboard.SetText(reelImageSaveFullPath);
+
+                inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LCONTROL, WindowsInput.Native.VirtualKeyCode.VK_V);
+                Thread.Sleep(MFMEAutomation.kMediumDelay);
+
+                inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.RETURN);
+                Thread.Sleep(MFMEAutomation.kVeryLongDelay);
+            }
+
+            string reelOverlayImagefilename = "bandreeloverlay_"
+                + extractBandReel.Number
+                + ".bmp";
+
+            string reelOverlaySaveFullPath = FileSystem.GetFullReelImagePath(reelOverlayImagefilename);
+
+            // save reel overlay bmp image from MFME
+            if (!FileSystem.UseCachedReelImages || !File.Exists(reelOverlaySaveFullPath))
+            {
+                FileSystem.TryDeleteReelImage(reelOverlaySaveFullPath);
+
+                // save reel overlay image if present
+                MFMEAutomation.LeftClickAtPosition(inputSimulator,
+                    MFMEScraperConstants.kPropertiesOverlayTab_CenterX, MFMEScraperConstants.kPropertiesOverlayTab_CenterY);
+
+                MfmeScraper.CurrentWindow.UpdateCapture();
+
+                // is it just blank checkerboard?
+                if (!MfmeScraper.IsImageBoxBlank(
+                    MFMEScraperConstants.kPropertiesOverlayImage_TopLeftX, MFMEScraperConstants.kPropertiesOverlayImage_TopLeftY,
+                    MFMEScraperConstants.kPropertiesOverlayImage_Width, MFMEScraperConstants.kPropertiesOverlayImage_Height, true))
+                {
+                    MFMEAutomation.RightClickAtPosition(inputSimulator,
+                        MFMEScraperConstants.kPropertiesOverlayImage_CenterX, MFMEScraperConstants.kPropertiesOverlayImage_CenterY);
+
+                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.VK_S);
+                    Thread.Sleep(MFMEAutomation.kShortDelay);
+
+                    Thread.Sleep(MFMEAutomation.kVeryLongDelay); // wait for file requester to intialise
+
+                    Clipboard.SetText(reelOverlaySaveFullPath);
+
+                    inputSimulator.Keyboard.ModifiedKeyStroke(WindowsInput.Native.VirtualKeyCode.LCONTROL, WindowsInput.Native.VirtualKeyCode.VK_V);
+                    Thread.Sleep(MFMEAutomation.kMediumDelay);
+
+                    inputSimulator.Keyboard.KeyPress(WindowsInput.Native.VirtualKeyCode.RETURN);
+                    Thread.Sleep(MFMEAutomation.kVeryLongDelay);
+                }
+            }
+
+            extractBandReel.BandBmpImageFilename = Path.GetFileName(reelImageSaveFullPath);
+
+            extractBandReel.HasOverlay = File.Exists(reelOverlaySaveFullPath);
+            if (extractBandReel.HasOverlay)
+            {
+                extractBandReel.OverlayBmpImageFilename = Path.GetFileName(reelOverlaySaveFullPath);
+            }
+
+            Extractor.Layout.Components.Add(extractBandReel);
+        }
 
         //        public static void ProcessDiscReel(InputSimulator inputSimulator, ComponentStandardData componentStandardData)
         //        {

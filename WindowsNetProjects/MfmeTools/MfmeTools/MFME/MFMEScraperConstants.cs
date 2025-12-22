@@ -269,8 +269,8 @@ namespace Oasis.MfmeTools.Mfme
         public static readonly int kPropertiesBandReelMask3Tab_CenterX = 420;
         public static readonly int kPropertiesBandReelMask3Tab_CenterY = kPropertiesBandReelMask1Tab_CenterY;
 
-        public static readonly int kPropertiesReelBandImage_CenterX = 380;
-        public static readonly int kPropertiesReelBandImage_CenterY = 129;
+        public static readonly int kPropertiesBandReelImage_CenterX = 380;
+        public static readonly int kPropertiesBandReelImage_CenterY = 129;
 
 
         // disc reel fields

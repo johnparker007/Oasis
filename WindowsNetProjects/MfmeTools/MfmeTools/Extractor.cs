@@ -309,9 +309,9 @@ namespace Oasis.MfmeTools
                     case MFMEComponentType.Button:
                         ExtractComponentProcessor.ProcessButton(inputSimulator, componentStandardData);
                         break;
-                    //        case MFMEComponentType.BandReel:
-                    //            ExtractComponentProcessor.ProcessBandReel(inputSimulator, componentStandardData);
-                    //            break;
+                    case MFMEComponentType.BandReel:
+                        ExtractComponentProcessor.ProcessBandReel(inputSimulator, componentStandardData);
+                        break;
                     //        case MFMEComponentType.DiscReel:
                     //            ExtractComponentProcessor.ProcessDiscReel(inputSimulator, componentStandardData);
                     //            break;
