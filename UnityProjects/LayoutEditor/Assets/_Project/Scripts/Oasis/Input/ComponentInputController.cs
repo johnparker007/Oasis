@@ -82,7 +82,14 @@ namespace Oasis.Input
                     {
                         if (shouldProcessInput)
                         {
-                            Editor.Instance.MameController.SetButtonState(inputData.ButtonNumber, newState);
+                            if(inputData.CoinInput)
+                            {
+                                Editor.Instance.MameController.SetCoinState(newState);
+                            }
+                            else
+                            {
+                                Editor.Instance.MameController.SetButtonState(inputData.ButtonNumber, newState);
+                            }
                         }
                     }
                 }
@@ -156,7 +163,14 @@ namespace Oasis.Input
                 {
                     if (isMameRunning)
                     {
-                        Editor.Instance.MameController.SetButtonState(inputData.ButtonNumber, false);
+                        if (inputData.CoinInput)
+                        {
+                            Editor.Instance.MameController.SetCoinState(false);
+                        }
+                        else
+                        {
+                            Editor.Instance.MameController.SetButtonState(inputData.ButtonNumber, false);
+                        }
                     }
 
                     _keyCodeStates[inputData.KeyCode] = false;

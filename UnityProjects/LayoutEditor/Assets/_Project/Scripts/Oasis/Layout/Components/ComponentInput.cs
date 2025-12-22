@@ -10,6 +10,7 @@ namespace Oasis.Layout
         {
             public bool Enabled;
             public bool Inverted;
+            public bool CoinInput;
 
             public KeyCode KeyCode;
 
@@ -64,6 +65,9 @@ namespace Oasis.Layout
                     case "enabled":
                         Input.Enabled = (bool) field.Value;
                         break;
+                    case "coin_input":
+                        Input.CoinInput = (bool)field.Value;
+                        break;
                     case "inverted":
                         Input.Inverted = (bool) field.Value;
                         break;
@@ -82,6 +86,7 @@ namespace Oasis.Layout
             Dictionary<string, object> representation = base.GetRepresentation();
             representation["type"] = GetType().Name;
             representation["enabled"] = Input.Enabled;
+            representation["coin_input"] = Input.CoinInput;
             representation["inverted"] = Input.Inverted;
             representation["key_code"] = Input.KeyCode.ToString();
             representation["button_number"] = Input.ButtonNumber;

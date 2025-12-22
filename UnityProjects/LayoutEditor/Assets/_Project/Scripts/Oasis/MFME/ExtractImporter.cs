@@ -117,10 +117,11 @@ namespace Oasis.MFME
             //string bmpMaskImageFilePath = Path.Combine(
             //    Extractor.LayoutDirectoryPath, extractComponentLamp.LampElements[0].BmpMaskImageFilename);
 
-            // TODO also need to figure out coin/note + effect inputs
+            // TODO also need to figure out coin/note + effect inputs 
             if (extractComponentLamp.HasButtonInput)
             {
                 componentLamp.Input.Enabled = true;
+                componentLamp.Input.CoinInput = false;
 
                 int mfmeButtonNumber = int.Parse(extractComponentLamp.ButtonNumberAsString);
                 componentLamp.Input.ButtonNumber = mfmeButtonNumber;
@@ -137,6 +138,15 @@ namespace Oasis.MFME
                 // TODO - support for Shortcut 2... maybe also combined inputs like Shift+3 etc?
                 componentLamp.Input.KeyCode = ShortcutKeyHelper.GetKeyCode(extractComponentLamp.Shortcut1);
             }
+            else if(extractComponentLamp.HasCoinInput)
+            {
+                // TOIMPROVE some of the code can be shared with the button input, such as getting which is the key code
+                componentLamp.Input.Enabled = true;
+                componentLamp.Input.CoinInput = true;
+                componentLamp.Input.Inverted = extractComponentLamp.Inverted;
+                componentLamp.Input.KeyCode = ShortcutKeyHelper.GetKeyCode(extractComponentLamp.Shortcut1);
+            }
+
 
             //componentLamp.OasisImage = new Graphics.OasisImage(bmpImageFilePath, bmpMaskImageFilePath, true);
             if (bmpImageFilePath != null)

@@ -408,6 +408,15 @@ namespace Oasis.MAME
             SetPortValue(tag, mask, state);
         }
 
+        // very preliminary, just to get 'electronic' coin inputs working on JPM Force 10
+        public void SetCoinState(bool state)
+        {
+            string tag = "COINS";
+            string mask = "1";
+
+            SetPortValue(tag, mask, state);
+        }
+
         // JP TOIMPROVE: this probably doesn't want to live in here long term
         public static PlatformType GetPlatformFromMfmeSystem(string mfmeSystem)
         {
