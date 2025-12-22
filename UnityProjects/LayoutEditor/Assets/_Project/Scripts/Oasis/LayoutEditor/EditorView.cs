@@ -149,6 +149,10 @@ namespace Oasis.LayoutEditor
             {
                 editorComponent = AddComponentAlpha((ComponentAlpha)component);
             }
+            else if (component.GetType() == typeof(ComponentBandReel))
+            {
+                editorComponent = AddComponentBandReel((ComponentBandReel)component);
+            }
 
             _editorComponents.Add(editorComponent);
         }
@@ -192,6 +196,19 @@ namespace Oasis.LayoutEditor
             editorComponentReel.Initialise(component);
 
             return editorComponentReel;
+        }
+
+        private EditorComponent AddComponentBandReel(ComponentBandReel component)
+        {
+            // TODO this can't work with how we currently do solid color layers, with no image:
+            // will need to either use image to 'punch out' the alpha windows... or something else...
+            EditorComponentBandReel editorComponentBandReel = Instantiate(
+                Editor.Instance.EditorComponentBandReelPrefab,
+                GetLayerTransform(EditorViewContentLayer.LayerTypes.BelowBackground));
+
+            editorComponentBandReel.Initialise(component);
+
+            return editorComponentBandReel;
         }
 
         private EditorComponent AddComponent7Segment(Component7Segment component)

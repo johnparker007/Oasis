@@ -36,6 +36,7 @@ namespace Oasis
         public EditorComponentBackground EditorComponentBackgroundPrefab;
         public EditorComponentLamp EditorComponentLampPrefab;
         public EditorComponentReel EditorComponentReelPrefab;
+        public EditorComponentBandReel EditorComponentBandReelPrefab;
         public EditorComponent7Segment EditorComponentSevenSegmentPrefab;
         public EditorComponentAlpha EditorComponentAlphaPrefab;
         public EditorComponentAlpha14 EditorComponentAlpha14Prefab;

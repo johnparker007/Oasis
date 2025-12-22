@@ -72,6 +72,10 @@ namespace Oasis.MFME
                 {
                     ImportMatrixAlpha((ExtractComponentMatrixAlpha)extractComponent);
                 }
+                else if(extractComponent.GetType() == typeof(ExtractComponentBandReel))
+                {
+                    ImportBandReel((ExtractComponentBandReel)extractComponent);
+                }
                 else
                 {
                     Debug.LogWarning("Not imported!  " + extractComponent.GetType());
@@ -306,6 +310,106 @@ namespace Oasis.MFME
             }
 
             _baseView.AddComponent(componentReel);
+        }
+
+        private void ImportBandReel(ExtractComponentBandReel extractComponentBandReel)
+        {
+            ComponentBandReel componentBandReel = new ComponentBandReel();
+
+            componentBandReel.Position = new UnityEngine.Vector2Int(
+                extractComponentBandReel.Position.X,
+                extractComponentBandReel.Position.Y);
+
+            componentBandReel.Size = new UnityEngine.Vector2Int(
+                extractComponentBandReel.Size.X,
+                extractComponentBandReel.Size.Y);
+
+            string bandBmpImageFilePath = Path.Combine(Extractor.LayoutDirectoryPath,
+                FileSystem.kReelsDirectoryName, extractComponentBandReel.BandBmpImageFilename);
+            componentBandReel.BandOasisImage = new Graphics.OasisImage(bandBmpImageFilePath, null, true);
+
+
+            // ******* START temp code for applying overlays to background image
+
+            // TOIMPROVE - the 'overlay' will be changed so that the MfmeTools Extractor will have new settings:
+            // - scrape Alpha overlays
+            // - scrape Segemnt overlays
+            // - potentially more component types
+            // so for specific layouts, e.g: Rat Race by TommyC, we would scrape the Alpha overlay and that would
+            // give us the Rats nose showing above the top edge of the Alpha.
+            // ... so this code will be at at higher level, and will go through all component types to copy that overlay
+            // onto the Background with transparency, not just Reels.
+
+            ComponentBackground componentBackground =
+                (ComponentBackground)_baseView.Data.Components.Find(x => x.GetType() == typeof(ComponentBackground));
+
+            if (componentBackground.OasisImage != null)
+            {
+                Graphics.OasisImage temporaryBackgroundOasisImage = componentBackground.OasisImage.Clone();
+                Graphics.OasisImage temporaryOverlayOasisImage;
+                if (extractComponentBandReel.HasOverlay)
+                {
+                    string overlayBmpImageFilePath = Path.Combine(Extractor.LayoutDirectoryPath,
+                        FileSystem.kReelsDirectoryName, extractComponentBandReel.OverlayBmpImageFilename);
+
+                    temporaryOverlayOasisImage = new Graphics.OasisImage(overlayBmpImageFilePath, null, true);
+                }
+                else
+                {
+                    temporaryOverlayOasisImage = new Graphics.OasisImage(componentBandReel.Size);
+                }
+
+                temporaryBackgroundOasisImage.Draw(temporaryOverlayOasisImage,
+                    componentBandReel.Position.x,
+                    componentBackground.Size.y - componentBandReel.Position.y - componentBandReel.Size.y);
+
+                componentBackground.OasisImage.ImageData = temporaryBackgroundOasisImage.ImageData;
+
+                // need to re-init the EditorComponentBackground so it's texture is rebuilt.
+                // TOIMPROVE - should perhaps have something other that Initialise(...) in the
+                // EditorComponent... perhaps a RebuildTextures or something similar?
+                EditorComponent editorComponentBackground = _baseView.EditorView.GetEditorComponent(componentBackground);
+                editorComponentBackground.Initialise(componentBackground);
+            }
+
+
+            // ******* END temp code for applying overlays to background image
+
+
+            // we need a +1 for the reel but not the lamps, prob MFME <> MAME inconsistency
+            componentBandReel.Number = extractComponentBandReel.Number + 1;
+            componentBandReel.Stops = extractComponentBandReel.Stops;
+            componentBandReel.Reversed = extractComponentBandReel.Reversed;
+
+            // convert MFME's visible reel scaling to a simple float
+            // MFME uses Reel Stops and Reel Height (not the standard x/y/width/height 'height')
+            // this is crude since not worth coding MFME's fake reel perspective scaling, but should be reasonable enough
+
+            // in MFME I think it's 50 of Height per visible symbol.  And then we need
+            // Stops to know how many individual symbols on reel
+
+            const int kMfmeWidthPerVisibleSymbol = 50;
+            int stops = extractComponentBandReel.Stops;
+// XXX guess for now:
+            int width = extractComponentBandReel.Size.X;
+            float visibleSymbols = (float)width / kMfmeWidthPerVisibleSymbol;
+            float scale = visibleSymbols / stops;
+
+            //            float halfHeight = height * 0.5f;
+            //"HERE - BandOasisImage.Height should have very little effect on this calc from comparing Andy Capp and Nickelodeon"
+            //            componentReel.VisibleScale2D = (halfHeight / componentReel.BandOasisImage.Height) * stops * 0.25f;
+
+            componentBandReel.VisibleScale2D = scale;
+
+            componentBandReel.Name = $"BandReel {componentBandReel.Number}";
+
+            componentBandReel.ReelSymbolText = new List<string>();
+            for (int stopIndex = 0; stopIndex < stops; ++stopIndex)
+            {
+                componentBandReel.ReelSymbolText.Add($"Symbol {stopIndex}");
+            }
+
+            _baseView.AddComponent(componentBandReel);
         }
 
         private void ImportBackground(ExtractComponentBackground extractComponentBackground)

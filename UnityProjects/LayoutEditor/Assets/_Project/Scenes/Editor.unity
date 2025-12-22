@@ -3410,6 +3410,7 @@ MonoBehaviour:
   MameController: {fileID: 2046216060}
   SelectionController: {fileID: 1722651177}
   InspectorController: {fileID: 0}
+  HierarchyPanel: {fileID: 0}
   FontManager: {fileID: 1972226907}
   ViewController: {fileID: 992671416}
   TabController: {fileID: 1200569258}
@@ -3419,6 +3420,7 @@ MonoBehaviour:
   EditorComponentBackgroundPrefab: {fileID: 1050622726189904241, guid: 4b22f6c6f51ab1248a83e802e92102c8, type: 3}
   EditorComponentLampPrefab: {fileID: 3535370425537893857, guid: d5d925676a1996848bf6f70d96355d80, type: 3}
   EditorComponentReelPrefab: {fileID: 7270301404913838959, guid: ee690e3c8550a8a47953c65871800e76, type: 3}
+  EditorComponentBandReelPrefab: {fileID: 8309801233764015443, guid: e30a2e0f343fb1b4596d260e6fed2c9d, type: 3}
   EditorComponentSevenSegmentPrefab: {fileID: 7496649456409283726, guid: e2724f460f4da8d4f95bd8830d362e6b, type: 3}
   EditorComponentAlphaPrefab: {fileID: 3842146194991930722, guid: 16bd2967a11aec640a0f0bb0c56be1a9, type: 3}
   EditorComponentAlpha14Prefab: {fileID: 6476336133491195093, guid: 2ddce75944df8154fbf19412f6d6ef26, type: 3}
@@ -3815,7 +3817,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1934027768812496372, guid: 92875de48b8ebee4299040899e131ec1, type: 3}
       propertyPath: DebugOutputStdOut
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1934027768812496372, guid: 92875de48b8ebee4299040899e131ec1, type: 3}
       propertyPath: DebugPlatformType
@@ -3961,7 +3963,7 @@ PrefabInstance:
       objectReference: {fileID: 2080336307}
     - target: {fileID: 8412484400436986444, guid: e489cf3420fa093489936f5194053a21, type: 3}
       propertyPath: DebugOutputChanges
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8412484400436986445, guid: e489cf3420fa093489936f5194053a21, type: 3}
       propertyPath: m_Name
