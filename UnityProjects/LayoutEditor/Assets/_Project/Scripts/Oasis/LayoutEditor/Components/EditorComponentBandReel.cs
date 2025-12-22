@@ -39,15 +39,17 @@ namespace Oasis.LayoutEditor
             base.Initialise(component);
 
             OasisImage bandOasisImage = ComponentBandReel.BandOasisImage;
-            if (bandOasisImage != null) {
-                _texture2d = bandOasisImage.GetTexture2dCopy();
+            if (bandOasisImage != null) 
+            {
+                OasisImage bandOasisImageHorizontal = bandOasisImage.ConvertToHorizontalReelBand((int)ComponentBandReel.Stops);
+                _texture2d = bandOasisImageHorizontal.GetTexture2dCopy();
                 _texture2d.filterMode = FilterMode.Point;
                 // TODO this would be different for horizontal UV scrolling reel!
-                _texture2d.wrapModeU = TextureWrapMode.Clamp;
-                _texture2d.wrapModeV = TextureWrapMode.Repeat;
+                _texture2d.wrapModeU = TextureWrapMode.Repeat;
+                _texture2d.wrapModeV = TextureWrapMode.Clamp;
 
                 _sprite = Sprite.Create(_texture2d,
-                    new Rect(0, 0, bandOasisImage.Width, bandOasisImage.Height), Vector2.zero);
+                    new Rect(0, 0, bandOasisImageHorizontal.Width, bandOasisImageHorizontal.Height), Vector2.zero);
 
                 _image.sprite = _sprite;
                 _image.preserveAspect = false;
@@ -55,10 +57,10 @@ namespace Oasis.LayoutEditor
             
             // set y scale TODO this would be x scale on horizontal reel
 
-            float xScale = 1f; // TODO MFME has the 'border width' stuff, maybe factor that in?
+            float xScale = ComponentBandReel.VisibleScale2D; // TODO MFME has the 'border width' stuff, maybe factor that in?
 
             //float yScale = _rectTransform.rect.height / bandOasisImage.Height;
-            float yScale = ComponentBandReel.VisibleScale2D;
+            float yScale = 1f;
 
             _material.mainTextureScale = new Vector2(xScale, yScale);
         }
@@ -102,7 +104,7 @@ namespace Oasis.LayoutEditor
             normalisedOffset += bandOffsetNormalisedToCorrectRendering;
 
             // TODO don't new Vector each time
-            _material.mainTextureOffset = new Vector2(0f, normalisedOffset);
+            _material.mainTextureOffset = new Vector2(normalisedOffset, 0f);
         }
 
         private static float GetNormalisedBandOffsetToCorrectRendering(

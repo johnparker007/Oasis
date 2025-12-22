@@ -22,6 +22,7 @@ namespace Oasis.Import
                 case "Component16Segment": return new Component16Segment();
                 case "ComponentAlpha": return new ComponentAlpha();
                 case "ComponentReel": return new ComponentReel();
+                case "ComponentBandReel": return new ComponentBandReel();
                 case "ComponentSwitch": return new ComponentSwitch();
 
                 default:

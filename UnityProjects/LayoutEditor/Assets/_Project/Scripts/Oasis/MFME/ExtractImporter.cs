@@ -389,12 +389,14 @@ namespace Oasis.MFME
             // in MFME I think it's 50 of Height per visible symbol.  And then we need
             // Stops to know how many individual symbols on reel
 
-            const int kMfmeWidthPerVisibleSymbol = 50;
+//            const int kMfmeWidthPerVisibleSymbol = 50;
+//            int stops = extractComponentBandReel.Stops;
+//// XXX guess for now:
+//            int width = extractComponentBandReel.Size.X;
+//            float visibleSymbols = (float)width / kMfmeWidthPerVisibleSymbol;
+
             int stops = extractComponentBandReel.Stops;
-// XXX guess for now:
-            int width = extractComponentBandReel.Size.X;
-            float visibleSymbols = (float)width / kMfmeWidthPerVisibleSymbol;
-            float scale = visibleSymbols / stops;
+            float scale = (float)5 / stops;
 
             //            float halfHeight = height * 0.5f;
             //"HERE - BandOasisImage.Height should have very little effect on this calc from comparing Andy Capp and Nickelodeon"
