@@ -817,6 +817,38 @@ namespace Oasis.Graphics
             Draw(sourceImage, 0, 0, sourceImage.Width, sourceImage.Height, destinationX, destinationY);
         }
 
+        public OasisImage ConvertToHorizontalReelBand(int symbolCount)
+        {
+            if (symbolCount <= 0)
+            {
+                Debug.LogError("ConvertToHorizontalReelBand requires at least one symbol.");
+                return null;
+            }
+
+            int symbolHeight = Height / symbolCount;
+            int remainingHeight = Height % symbolCount;
+            int targetHeight = symbolHeight + (remainingHeight > 0 ? 1 : 0);
+
+            if (remainingHeight != 0)
+            {
+                Debug.LogWarning(
+                    $"OasisImage height {Height} is not evenly divisible by symbol count {symbolCount}. Using last symbol height of {symbolHeight + remainingHeight}.");
+            }
+
+            OasisImage horizontalBand = new OasisImage(Width * symbolCount, targetHeight);
+
+            for (int symbolIndex = 0; symbolIndex < symbolCount; ++symbolIndex)
+            {
+                int sourceY = symbolIndex * symbolHeight;
+                int sourceHeight = symbolIndex == symbolCount - 1 ? Height - sourceY : symbolHeight;
+                int destinationX = symbolIndex * Width;
+
+                horizontalBand.Draw(this, 0, sourceY, Width, sourceHeight, destinationX, 0);
+            }
+
+            return horizontalBand;
+        }
+
         public void Draw(OasisImage sourceImage, int sourceX, int sourceY, int sourceWidth, int sourceHeight, int destinationX, int destinationY)
         {
             for (int readX = 0; readX < sourceWidth; ++readX)
