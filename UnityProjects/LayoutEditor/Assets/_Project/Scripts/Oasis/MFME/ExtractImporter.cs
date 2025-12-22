@@ -326,6 +326,7 @@ namespace Oasis.MFME
 
             string bandBmpImageFilePath = Path.Combine(Extractor.LayoutDirectoryPath,
                 FileSystem.kReelsDirectoryName, extractComponentBandReel.BandBmpImageFilename);
+            // alpha support false here since MFME appears to have a bug when saving out BandReel bmps
             componentBandReel.BandOasisImage = new Graphics.OasisImage(bandBmpImageFilePath, null, false);
 
 
