@@ -70,17 +70,23 @@ namespace Oasis.Layout
             Dictionary<string, object> representation = base.GetRepresentation();
             representation["type"] = GetType().Name;
             representation["color"] = "#" + ColorUtility.ToHtmlStringRGBA(Color);
-            string filePath = RelativeAssetPath;
-            if (string.IsNullOrEmpty(filePath))
+            
+            if (OasisImage != null)
             {
-                filePath = Component.GetComponentKey(representation) + ".png";
-            }
+                string filePath = RelativeAssetPath;
+                if (string.IsNullOrEmpty(filePath))
+                {
+                    filePath = Component.GetComponentKey(representation) + ".png";
+                }
 
-            representation["file_path"] = filePath;
-
-            if (OasisImage != null) {
+                representation["file_path"] = filePath;
                 ImageOperations.SaveToPNG(OasisImage, filePath);
             }
+            else
+            {
+                representation["file_path"] = null;
+            }
+
             return representation;
         }
     }

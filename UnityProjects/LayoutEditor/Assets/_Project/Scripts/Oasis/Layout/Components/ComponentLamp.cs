@@ -108,17 +108,24 @@ namespace Oasis.Layout
         public override Dictionary<string, object> GetRepresentation() 
         {
             Dictionary<string, object> representation = base.GetRepresentation();
+
             representation["type"] = GetType().Name;
             representation["number"] = _number;
             representation["outline"] = _outline;
             representation["on_color"] = "#" + ColorUtility.ToHtmlStringRGB(OnColor);
             representation["off_color"] = "#" + ColorUtility.ToHtmlStringRGB(OffColor);
             representation["text_color"] = "#" + ColorUtility.ToHtmlStringRGB(TextColor);
-            representation["file_path"] = null;
-            if (OasisImage != null) {
+
+            if (OasisImage != null) 
+            {
                 representation["file_path"] =  Component.GetComponentKey(representation) + ".png";
                 ImageOperations.SaveToPNG(OasisImage, (string) representation["file_path"]);
             }
+            else
+            {
+                representation["file_path"] = null;
+            }
+
             return representation;
         }
     }
