@@ -70,6 +70,6 @@
 - [x] Implement zoom
 - [x] Implement selection
 - [x] Add rectangle tool
-- [ ] Add image placement
+- [x] Add image placement
 - [ ] Add basic inspector editing
 - [ ] Save/load panel document

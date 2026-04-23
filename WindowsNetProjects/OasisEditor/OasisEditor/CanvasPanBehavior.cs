@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using OasisEditor.Commands;
 
@@ -61,6 +62,13 @@ public static class CanvasPanBehavior
             typeof(CanvasPanBehavior),
             new PropertyMetadata(false));
 
+    public static readonly DependencyProperty IsImageToolActiveProperty =
+        DependencyProperty.RegisterAttached(
+            "IsImageToolActive",
+            typeof(bool),
+            typeof(CanvasPanBehavior),
+            new PropertyMetadata(false));
+
     private static readonly DependencyProperty SelectedElementProperty =
         DependencyProperty.RegisterAttached(
             "SelectedElement",
@@ -94,6 +102,8 @@ public static class CanvasPanBehavior
     private const double ZoomStep = 1.1;
     private const double NewRectangleWidth = 180;
     private const double NewRectangleHeight = 120;
+    private const double NewImageWidth = 220;
+    private const double NewImageHeight = 140;
 
     public static bool GetIsEnabled(DependencyObject dependencyObject)
     {
@@ -133,6 +143,16 @@ public static class CanvasPanBehavior
     public static void SetIsRectangleToolActive(DependencyObject dependencyObject, bool value)
     {
         dependencyObject.SetValue(IsRectangleToolActiveProperty, value);
+    }
+
+    public static bool GetIsImageToolActive(DependencyObject dependencyObject)
+    {
+        return (bool)dependencyObject.GetValue(IsImageToolActiveProperty);
+    }
+
+    public static void SetIsImageToolActive(DependencyObject dependencyObject, bool value)
+    {
+        dependencyObject.SetValue(IsImageToolActiveProperty, value);
     }
 
     private static void OnIsEnabledChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs eventArgs)
@@ -222,6 +242,13 @@ public static class CanvasPanBehavior
             return;
         }
 
+        if (GetIsImageToolActive(canvas) && clickedElement is null)
+        {
+            AddImage(canvas, eventArgs);
+            eventArgs.Handled = true;
+            return;
+        }
+
         var selectedElement = (FrameworkElement?)canvas.GetValue(SelectedElementProperty);
 
         if (ReferenceEquals(clickedElement, selectedElement))
@@ -272,6 +299,38 @@ public static class CanvasPanBehavior
         System.Windows.Controls.Canvas.SetTop(rectangle, y);
         var previousSelection = (FrameworkElement?)panelCanvas.GetValue(SelectedElementProperty);
         ExecuteCanvasMutation(panelCanvas, new AddRectangleMutationCommand(panelCanvas, rectangle, previousSelection, x, y));
+    }
+
+    private static void AddImage(FrameworkElement canvas, MouseButtonEventArgs eventArgs)
+    {
+        if (canvas is not Canvas panelCanvas)
+        {
+            return;
+        }
+
+        var clickPosition = eventArgs.GetPosition(panelCanvas.Parent as IInputElement ?? panelCanvas);
+        var (scale, translate) = EnsureTransformGroup(panelCanvas);
+        var canvasPoint = new Point(
+            (clickPosition.X - translate.X) / scale.ScaleX,
+            (clickPosition.Y - translate.Y) / scale.ScaleY);
+
+        var image = new Image
+        {
+            Width = NewImageWidth,
+            Height = NewImageHeight,
+            Stretch = Stretch.Fill,
+            Source = CreatePlaceholderImageSource()
+        };
+        SetIsSelectable(image, true);
+        SetIsSelected(image, true);
+
+        var x = Math.Max(0, canvasPoint.X - (NewImageWidth / 2));
+        var y = Math.Max(0, canvasPoint.Y - (NewImageHeight / 2));
+        Canvas.SetLeft(image, x);
+        Canvas.SetTop(image, y);
+
+        var previousSelection = (FrameworkElement?)panelCanvas.GetValue(SelectedElementProperty);
+        ExecuteCanvasMutation(panelCanvas, new AddImageMutationCommand(panelCanvas, image, previousSelection, x, y));
     }
 
     private static void OnMouseWheel(object sender, MouseWheelEventArgs eventArgs)
@@ -459,6 +518,50 @@ public static class CanvasPanBehavior
         return created;
     }
 
+    private static ImageSource CreatePlaceholderImageSource()
+    {
+        const int pixelWidth = 220;
+        const int pixelHeight = 140;
+        const int bytesPerPixel = 4;
+        var pixels = new byte[pixelWidth * pixelHeight * bytesPerPixel];
+
+        for (var y = 0; y < pixelHeight; y++)
+        {
+            for (var x = 0; x < pixelWidth; x++)
+            {
+                var index = ((y * pixelWidth) + x) * bytesPerPixel;
+                var isGridLine = x % 22 == 0 || y % 20 == 0;
+                byte red = 58;
+                byte green = 80;
+                byte blue = 118;
+
+                if (isGridLine)
+                {
+                    red = 92;
+                    green = 118;
+                    blue = 163;
+                }
+
+                pixels[index] = blue;
+                pixels[index + 1] = green;
+                pixels[index + 2] = red;
+                pixels[index + 3] = 255;
+            }
+        }
+
+        var bitmap = BitmapSource.Create(
+            pixelWidth,
+            pixelHeight,
+            96,
+            96,
+            PixelFormats.Bgra32,
+            null,
+            pixels,
+            pixelWidth * bytesPerPixel);
+        bitmap.Freeze();
+        return bitmap;
+    }
+
     private sealed class AddRectangleMutationCommand : Commands.ICommand
     {
         private readonly Canvas _canvas;
@@ -500,6 +603,59 @@ public static class CanvasPanBehavior
         {
             _canvas.Children.Remove(_rectangle);
             SetIsSelected(_rectangle, false);
+
+            if (_previousSelection is not null && _canvas.Children.Contains(_previousSelection))
+            {
+                SetIsSelected(_previousSelection, true);
+                _canvas.SetValue(SelectedElementProperty, _previousSelection);
+                return;
+            }
+
+            _canvas.ClearValue(SelectedElementProperty);
+        }
+    }
+
+    private sealed class AddImageMutationCommand : Commands.ICommand
+    {
+        private readonly Canvas _canvas;
+        private readonly Image _image;
+        private readonly FrameworkElement? _previousSelection;
+        private readonly double _x;
+        private readonly double _y;
+
+        public AddImageMutationCommand(Canvas canvas, Image image, FrameworkElement? previousSelection, double x, double y)
+        {
+            _canvas = canvas;
+            _image = image;
+            _previousSelection = previousSelection;
+            _x = x;
+            _y = y;
+        }
+
+        public string Description => "Add image";
+
+        public void Execute()
+        {
+            if (!_canvas.Children.Contains(_image))
+            {
+                Canvas.SetLeft(_image, _x);
+                Canvas.SetTop(_image, _y);
+                _canvas.Children.Add(_image);
+            }
+
+            if (_previousSelection is not null)
+            {
+                SetIsSelected(_previousSelection, false);
+            }
+
+            SetIsSelected(_image, true);
+            _canvas.SetValue(SelectedElementProperty, _image);
+        }
+
+        public void Undo()
+        {
+            _canvas.Children.Remove(_image);
+            SetIsSelected(_image, false);
 
             if (_previousSelection is not null && _canvas.Children.Contains(_previousSelection))
             {
