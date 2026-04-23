@@ -4,7 +4,7 @@
 - [x] Create solution structure
 - [x] Implement project create flow
 - [x] Implement project open flow
-- [ ] Implement recent projects list
+- [x] Implement recent projects list
 - [ ] Generate project directory layout
 - [ ] Load project into editor shell
 
