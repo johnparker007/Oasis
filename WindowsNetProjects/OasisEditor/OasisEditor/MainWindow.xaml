@@ -512,13 +512,35 @@
                                                                     Cursor="SizeAll"
                                                                     local:CanvasPanBehavior.IsEnabled="True"
                                                                     Background="{DynamicResource PanelBackgroundBrush}">
+                                                                <Canvas.Resources>
+                                                                    <Style TargetType="Rectangle">
+                                                                        <Setter Property="Stroke"
+                                                                                Value="{DynamicResource BorderSubtleBrush}" />
+                                                                        <Setter Property="StrokeThickness"
+                                                                                Value="1.5" />
+                                                                        <Setter Property="Fill"
+                                                                                Value="{DynamicResource ToolBarBackgroundBrush}" />
+                                                                        <Style.Triggers>
+                                                                            <Trigger Property="local:CanvasPanBehavior.IsSelected"
+                                                                                     Value="True">
+                                                                                <Setter Property="Stroke"
+                                                                                        Value="{DynamicResource SelectionBrush}" />
+                                                                                <Setter Property="StrokeThickness"
+                                                                                        Value="2.5" />
+                                                                            </Trigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Canvas.Resources>
                                                                 <Rectangle Width="540"
                                                                            Height="300"
-                                                                           Stroke="{DynamicResource SelectionBrush}"
-                                                                           StrokeThickness="2"
-                                                                           Fill="{DynamicResource ToolBarBackgroundBrush}"
+                                                                           local:CanvasPanBehavior.IsSelectable="True"
                                                                            Canvas.Left="120"
                                                                            Canvas.Top="90" />
+                                                                <Rectangle Width="220"
+                                                                           Height="160"
+                                                                           local:CanvasPanBehavior.IsSelectable="True"
+                                                                           Canvas.Left="760"
+                                                                           Canvas.Top="240" />
                                                                 <TextBlock Canvas.Left="136"
                                                                            Canvas.Top="106"
                                                                            FontWeight="SemiBold"
@@ -528,6 +550,10 @@
                                                                            Canvas.Top="132"
                                                                            Foreground="{DynamicResource TextSecondaryBrush}"
                                                                            Text="Drag with middle mouse to pan. Use mouse wheel to zoom." />
+                                                                <TextBlock Canvas.Left="136"
+                                                                           Canvas.Top="156"
+                                                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                                                           Text="Left-click a shape to select it." />
                                                             </Canvas>
                                                         </Border>
                                                     </Border>

@@ -73,7 +73,7 @@
 - [x] Render panel canvas
 - [x] Implement pan
 - [x] Implement zoom
-- [ ] Implement selection
+- [x] Implement selection
 - [ ] Add rectangle tool
 - [ ] Add image placement
 - [ ] Add basic inspector editing
