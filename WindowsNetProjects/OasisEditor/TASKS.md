@@ -71,5 +71,5 @@
 - [x] Implement selection
 - [x] Add rectangle tool
 - [x] Add image placement
-- [ ] Add basic inspector editing
+- [x] Add basic inspector editing
 - [ ] Save/load panel document

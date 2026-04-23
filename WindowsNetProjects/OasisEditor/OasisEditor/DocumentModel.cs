@@ -142,4 +142,9 @@ public sealed class EditorDocument
     {
         return new EditorDocument(Title, DocumentType, FilePath, ContentSummary, false, false);
     }
+
+    public EditorDocument WithContentSummary(string contentSummary)
+    {
+        return new EditorDocument(Title, DocumentType, FilePath, contentSummary, IsUntitled, IsDirty);
+    }
 }

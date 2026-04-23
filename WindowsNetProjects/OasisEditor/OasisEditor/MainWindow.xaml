@@ -661,8 +661,25 @@
                                                 BorderBrush="{DynamicResource BorderSubtleBrush}"
                                                 BorderThickness="1"
                                                 CornerRadius="4">
-                                            <TextBlock TextWrapping="Wrap"
-                                                       Text="{Binding InspectorSummary}" />
+                                            <StackPanel>
+                                                <TextBlock TextWrapping="Wrap"
+                                                           Text="{Binding InspectorSummary}" />
+                                                <TextBlock Margin="0,10,0,0"
+                                                           FontWeight="SemiBold"
+                                                           Text="Edit Summary" />
+                                                <TextBox Margin="0,6,0,0"
+                                                         MinHeight="88"
+                                                         AcceptsReturn="True"
+                                                         VerticalScrollBarVisibility="Auto"
+                                                         IsEnabled="{Binding CanEditInspectorSummary}"
+                                                         Text="{Binding InspectorEditableSummary, UpdateSourceTrigger=PropertyChanged}" />
+                                                <Button Margin="0,8,0,0"
+                                                        HorizontalAlignment="Left"
+                                                        Padding="10,4"
+                                                        IsEnabled="{Binding CanEditInspectorSummary}"
+                                                        Command="{Binding ApplyInspectorSummaryCommand}"
+                                                        Content="Apply Summary" />
+                                            </StackPanel>
                                         </Border>
                                     </StackPanel>
                                 </Border>
