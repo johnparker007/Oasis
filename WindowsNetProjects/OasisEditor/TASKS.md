@@ -70,7 +70,7 @@
 - [x] Ensure documents update via commands only
 
 ## Phase 5 — Panel Editor (MVP)
-- [ ] Render panel canvas
+- [x] Render panel canvas
 - [ ] Implement pan
 - [ ] Implement zoom
 - [ ] Implement selection
@@ -78,4 +78,3 @@
 - [ ] Add image placement
 - [ ] Add basic inspector editing
 - [ ] Save/load panel document
-

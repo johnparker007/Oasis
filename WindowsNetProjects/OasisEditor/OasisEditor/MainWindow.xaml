@@ -2,6 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:local="clr-namespace:OasisEditor"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="Oasis Editor"
@@ -476,22 +477,76 @@
                                     </TabControl.ItemTemplate>
                                     <TabControl.ContentTemplate>
                                         <DataTemplate>
-                                            <StackPanel Margin="4">
-                                                <TextBlock FontWeight="SemiBold"
+                                            <Grid Margin="4">
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="*" />
+                                                </Grid.RowDefinitions>
+
+                                                <TextBlock Grid.Row="0"
+                                                           FontWeight="SemiBold"
                                                            Text="{Binding TypeLabel}" />
-                                                <TextBlock Margin="0,6,0,0"
+
+                                                <TextBlock Grid.Row="1"
+                                                           Margin="0,6,0,0"
                                                            Foreground="{DynamicResource TextSecondaryBrush}"
                                                            Text="{Binding FilePath}" />
-                                                <Border Margin="0,10,0,0"
-                                                        Padding="10"
-                                                        CornerRadius="4"
-                                                        Background="{DynamicResource SelectionBrush}"
-                                                        BorderBrush="{DynamicResource BorderSubtleBrush}"
-                                                        BorderThickness="1">
-                                                    <TextBlock TextWrapping="Wrap"
-                                                               Text="{Binding ContentSummary}" />
-                                                </Border>
-                                            </StackPanel>
+
+                                                <Grid Grid.Row="2"
+                                                      Margin="0,10,0,0">
+                                                    <Border x:Name="PanelCanvasContainer"
+                                                            Padding="12"
+                                                            Background="{DynamicResource EditorBackgroundBrush}"
+                                                            BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                                            BorderThickness="1"
+                                                            CornerRadius="4"
+                                                            Visibility="Collapsed">
+                                                        <Grid>
+                                                            <Canvas MinHeight="280"
+                                                                    Background="{DynamicResource PanelBackgroundBrush}">
+                                                                <Rectangle Width="540"
+                                                                           Height="300"
+                                                                           Stroke="{DynamicResource SelectionBrush}"
+                                                                           StrokeThickness="2"
+                                                                           Fill="{DynamicResource ToolBarBackgroundBrush}"
+                                                                           Canvas.Left="24"
+                                                                           Canvas.Top="24" />
+                                                                <TextBlock Canvas.Left="40"
+                                                                           Canvas.Top="40"
+                                                                           FontWeight="SemiBold"
+                                                                           Text="Panel Canvas (MVP)"
+                                                                           Foreground="{DynamicResource TextPrimaryBrush}" />
+                                                                <TextBlock Canvas.Left="40"
+                                                                           Canvas.Top="66"
+                                                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                                                           Text="Viewport, pan, and zoom will be added in follow-up tasks." />
+                                                            </Canvas>
+                                                        </Grid>
+                                                    </Border>
+
+                                                    <Border x:Name="DefaultSummaryContainer"
+                                                            Padding="10"
+                                                            CornerRadius="4"
+                                                            Background="{DynamicResource SelectionBrush}"
+                                                            BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                                            BorderThickness="1">
+                                                        <TextBlock TextWrapping="Wrap"
+                                                                   Text="{Binding ContentSummary}" />
+                                                    </Border>
+                                                </Grid>
+                                            </Grid>
+                                            <DataTemplate.Triggers>
+                                                <DataTrigger Binding="{Binding Document.DocumentType}"
+                                                             Value="{x:Static local:EditorDocumentType.Panel2D}">
+                                                    <Setter TargetName="PanelCanvasContainer"
+                                                            Property="Visibility"
+                                                            Value="Visible" />
+                                                    <Setter TargetName="DefaultSummaryContainer"
+                                                            Property="Visibility"
+                                                            Value="Collapsed" />
+                                                </DataTrigger>
+                                            </DataTemplate.Triggers>
                                         </DataTemplate>
                                     </TabControl.ContentTemplate>
                                 </TabControl>
