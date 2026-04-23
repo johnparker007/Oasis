@@ -12,7 +12,7 @@
 - [x] Create main window
 - [x] Add menu bar
 - [x] Add toolbar
-- [ ] Implement basic dock layout
+- [x] Implement basic dock layout
 - [ ] Implement document tab system
 - [ ] Add panels:
   - [ ] Asset browser

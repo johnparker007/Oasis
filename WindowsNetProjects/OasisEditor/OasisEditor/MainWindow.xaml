@@ -180,21 +180,92 @@
                         </StackPanel>
                     </Border>
 
-                    <Border Grid.Row="2"
-                            Margin="0,10,0,0"
-                            Padding="10"
-                            Background="#FFF9FAFC"
-                            BorderBrush="#FFD9E0EE"
-                            BorderThickness="1"
-                            CornerRadius="4">
-                        <StackPanel>
-                            <TextBlock FontWeight="SemiBold"
-                                       Text="Workspace" />
-                            <TextBlock Margin="0,6,0,0"
-                                       Foreground="DimGray"
-                                       Text="Main editor workspace will host menus, toolbars, docked panels, and document tabs in upcoming tasks." />
-                        </StackPanel>
-                    </Border>
+                    <Grid Grid.Row="2"
+                          Margin="0,10,0,0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="36" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="120" />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="220" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="260" />
+                        </Grid.ColumnDefinitions>
+
+                        <Border Grid.Row="0"
+                                Grid.ColumnSpan="3"
+                                Padding="10,6"
+                                Background="#FFF3F6FC"
+                                BorderBrush="#FFD9E0EE"
+                                BorderThickness="1"
+                                CornerRadius="4,4,0,0">
+                            <TextBlock VerticalAlignment="Center"
+                                       FontWeight="SemiBold"
+                                       Text="Dock Layout (Phase 2 MVP)" />
+                        </Border>
+
+                        <Border Grid.Row="1"
+                                Grid.Column="0"
+                                Padding="10"
+                                Background="#FFF9FAFC"
+                                BorderBrush="#FFD9E0EE"
+                                BorderThickness="1,0,0,1">
+                            <StackPanel>
+                                <TextBlock FontWeight="SemiBold"
+                                           Text="Left Dock" />
+                                <TextBlock Margin="0,6,0,0"
+                                           Foreground="DimGray"
+                                           Text="Tool windows and navigation." />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Row="1"
+                                Grid.Column="1"
+                                Padding="10"
+                                Background="White"
+                                BorderBrush="#FFD9E0EE"
+                                BorderThickness="1,0,1,1">
+                            <StackPanel>
+                                <TextBlock FontWeight="SemiBold"
+                                           Text="Document Host" />
+                                <TextBlock Margin="0,6,0,0"
+                                           Foreground="DimGray"
+                                           Text="Center workspace for open editor documents." />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Row="1"
+                                Grid.Column="2"
+                                Padding="10"
+                                Background="#FFF9FAFC"
+                                BorderBrush="#FFD9E0EE"
+                                BorderThickness="0,0,1,1">
+                            <StackPanel>
+                                <TextBlock FontWeight="SemiBold"
+                                           Text="Right Dock" />
+                                <TextBlock Margin="0,6,0,0"
+                                           Foreground="DimGray"
+                                           Text="Properties and inspectors." />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Row="2"
+                                Grid.ColumnSpan="3"
+                                Padding="10"
+                                Background="#FFF5F8FF"
+                                BorderBrush="#FFD9E0EE"
+                                BorderThickness="1,0,1,1"
+                                CornerRadius="0,0,4,4">
+                            <StackPanel>
+                                <TextBlock FontWeight="SemiBold"
+                                           Text="Bottom Dock" />
+                                <TextBlock Margin="0,6,0,0"
+                                           Foreground="DimGray"
+                                           Text="Output, logs, and diagnostics." />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
                 </Grid>
             </GroupBox>
         </Grid>
