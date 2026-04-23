@@ -4,9 +4,9 @@ namespace OasisEditor;
 
 public partial class MainWindow : Window
 {
-    public MainWindow()
+    public MainWindow(IApplicationThemeService applicationThemeService, EditorPreferencesStore preferencesStore)
     {
         InitializeComponent();
-        DataContext = new MainWindowViewModel();
+        DataContext = new MainWindowViewModel(applicationThemeService, preferencesStore, this);
     }
 }

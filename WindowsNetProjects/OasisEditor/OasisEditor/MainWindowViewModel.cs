@@ -14,6 +14,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 {
     private readonly ProjectScaffolder _projectScaffolder = new();
     private readonly RecentProjectsStore _recentProjectsStore = new();
+    private readonly IApplicationThemeService _applicationThemeService;
+    private readonly EditorPreferencesStore _preferencesStore;
+    private readonly Window _ownerWindow;
     private string _projectName = string.Empty;
     private string _projectLocation = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
     private string _projectFilePath = string.Empty;
@@ -26,11 +29,18 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private int _panelDocumentCounter = 1;
     private int _cabinetDocumentCounter = 1;
     private int _machineDocumentCounter = 1;
+    private ThemePreference _selectedThemePreference;
+    private PreferencesWindow? _preferencesWindow;
+    private ProjectSettingsWindow? _projectSettingsWindow;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public MainWindowViewModel()
+    public MainWindowViewModel(IApplicationThemeService applicationThemeService, EditorPreferencesStore preferencesStore, Window ownerWindow)
     {
+        _applicationThemeService = applicationThemeService;
+        _preferencesStore = preferencesStore;
+        _ownerWindow = ownerWindow;
+
         CreateProjectCommand = new RelayCommand(CreateProject, CanCreateProject);
         OpenProjectCommand = new RelayCommand(OpenProject, CanOpenProject);
         OpenRecentProjectCommand = new RelayCommand(OpenSelectedRecentProject, CanOpenSelectedRecentProject);
@@ -43,13 +53,21 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         CloseSelectedDocumentCommand = new RelayCommand(CloseSelectedDocument, CanCloseSelectedDocument);
         RefreshAssetBrowserCommand = new RelayCommand(RefreshAssetBrowser, CanRefreshAssetBrowser);
         ClearOutputCommand = new RelayCommand(ClearOutput, CanClearOutput);
+        OpenPreferencesCommand = new RelayCommand(OpenPreferences);
+        OpenProjectSettingsCommand = new RelayCommand(OpenProjectSettings);
+        ClosePreferencesCommand = new RelayCommand(ClosePreferences);
+        CloseProjectSettingsCommand = new RelayCommand(CloseProjectSettings);
         ExitCommand = new RelayCommand(ExitApplication);
+
+        var preferences = _preferencesStore.Load();
+        _selectedThemePreference = preferences.ThemePreference;
 
         RecentProjects = new ObservableCollection<string>(_recentProjectsStore.Load());
         OpenDocuments = new ObservableCollection<DocumentTabViewModel>();
         AssetBrowserItems = new ObservableCollection<AssetBrowserItemViewModel>();
         OutputEntries = new ObservableCollection<string>();
         AddOutputEntry("Editor shell initialized.");
+        AddOutputEntry($"Theme preference loaded: {_selectedThemePreference}");
     }
 
     public ICommand CreateProjectCommand { get; }
@@ -64,11 +82,34 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand CloseSelectedDocumentCommand { get; }
     public ICommand RefreshAssetBrowserCommand { get; }
     public ICommand ClearOutputCommand { get; }
+    public ICommand OpenPreferencesCommand { get; }
+    public ICommand OpenProjectSettingsCommand { get; }
+    public ICommand ClosePreferencesCommand { get; }
+    public ICommand CloseProjectSettingsCommand { get; }
     public ICommand ExitCommand { get; }
     public ObservableCollection<string> RecentProjects { get; }
     public ObservableCollection<DocumentTabViewModel> OpenDocuments { get; }
     public ObservableCollection<AssetBrowserItemViewModel> AssetBrowserItems { get; }
     public ObservableCollection<string> OutputEntries { get; }
+
+
+    public IReadOnlyList<ThemePreference> ThemePreferences { get; } = Enum.GetValues<ThemePreference>();
+
+    public ThemePreference SelectedThemePreference
+    {
+        get => _selectedThemePreference;
+        set
+        {
+            if (!SetProperty(ref _selectedThemePreference, value))
+            {
+                return;
+            }
+
+            _applicationThemeService.ApplyTheme(Application.Current ?? throw new InvalidOperationException("Application is not initialized."), value);
+            _preferencesStore.Save(new EditorPreferences { ThemePreference = value });
+            AddOutputEntry($"Theme preference changed: {value}");
+        }
+    }
 
     public string ProjectName
     {
@@ -541,6 +582,55 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         SelectedDocument = OpenDocuments[nextIndex];
         StatusMessage = $"Closed document tab: {documentToClose.Title}";
         AddOutputEntry($"Closed document tab: {documentToClose.Title}");
+    }
+
+
+    private void OpenPreferences()
+    {
+        if (_preferencesWindow is { IsLoaded: true })
+        {
+            _preferencesWindow.Activate();
+            return;
+        }
+
+        _preferencesWindow = new PreferencesWindow
+        {
+            Owner = _ownerWindow,
+            DataContext = this
+        };
+
+        _preferencesWindow.Closed += (_, _) => _preferencesWindow = null;
+        _preferencesWindow.Show();
+        AddOutputEntry("Opened Preferences window.");
+    }
+
+    private void OpenProjectSettings()
+    {
+        if (_projectSettingsWindow is { IsLoaded: true })
+        {
+            _projectSettingsWindow.Activate();
+            return;
+        }
+
+        _projectSettingsWindow = new ProjectSettingsWindow
+        {
+            Owner = _ownerWindow,
+            DataContext = this
+        };
+
+        _projectSettingsWindow.Closed += (_, _) => _projectSettingsWindow = null;
+        _projectSettingsWindow.Show();
+        AddOutputEntry("Opened Project Settings window.");
+    }
+
+    private void ClosePreferences()
+    {
+        _preferencesWindow?.Close();
+    }
+
+    private void CloseProjectSettings()
+    {
+        _projectSettingsWindow?.Close();
     }
 
     private static void ExitApplication()

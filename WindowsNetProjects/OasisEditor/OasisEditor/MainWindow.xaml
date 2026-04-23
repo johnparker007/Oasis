@@ -8,7 +8,9 @@
         Height="780"
         Width="1200"
         MinHeight="620"
-        MinWidth="900">
+        MinWidth="900"
+        Background="{DynamicResource EditorBackgroundBrush}"
+        Foreground="{DynamicResource TextPrimaryBrush}">
     <Grid Margin="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -43,11 +45,17 @@
                 <MenuItem Header="E_xit"
                           Command="{Binding ExitCommand}" />
             </MenuItem>
+            <MenuItem Header="_Edit">
+                <MenuItem Header="_Preferences"
+                          Command="{Binding OpenPreferencesCommand}" />
+                <MenuItem Header="_Project Settings"
+                          Command="{Binding OpenProjectSettingsCommand}" />
+            </MenuItem>
         </Menu>
 
         <ToolBarTray Grid.Row="1"
                      Margin="0,0,0,12"
-                     Background="#FFF2F5FB">
+                     Background="{DynamicResource ToolBarBackgroundBrush}">
             <ToolBar Band="0"
                      BandIndex="0">
                 <Button Command="{Binding CreateProjectCommand}"
@@ -78,14 +86,14 @@
                 Padding="16"
                 Margin="0,0,0,12"
                 CornerRadius="6"
-                Background="#FF1C2535">
+                Background="{DynamicResource PanelBackgroundBrush}">
             <StackPanel>
                 <TextBlock FontSize="22"
                            FontWeight="SemiBold"
-                           Foreground="White"
+                           Foreground="{DynamicResource TextPrimaryBrush}"
                            Text="Oasis Editor" />
                 <TextBlock Margin="0,4,0,0"
-                           Foreground="#FFE3E8F0"
+                           Foreground="{DynamicResource TextSecondaryBrush}"
                            Text="Slot machine content authoring shell" />
             </StackPanel>
         </Border>
@@ -181,17 +189,17 @@
                             Padding="10"
                             Margin="0,0,0,10"
                             BorderThickness="1"
-                            BorderBrush="LightGray"
+                            BorderBrush="{DynamicResource BorderSubtleBrush}"
                             CornerRadius="4">
                         <TextBlock TextWrapping="Wrap"
-                                   Foreground="DimGray"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
                                    Text="{Binding StatusMessage}" />
                     </Border>
 
                     <Border Grid.Row="1"
                             Padding="10"
                             BorderThickness="1"
-                            BorderBrush="LightGray"
+                            BorderBrush="{DynamicResource BorderSubtleBrush}"
                             CornerRadius="4">
                         <StackPanel>
                             <TextBlock FontWeight="SemiBold"
@@ -199,7 +207,7 @@
                             <TextBlock Margin="0,4,0,0"
                                        Text="{Binding LoadedProject.Name, TargetNullValue=No project loaded.}" />
                             <TextBlock Margin="0,2,0,0"
-                                       Foreground="DimGray"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"
                                        Text="{Binding LoadedProject.ProjectFilePath, TargetNullValue=Open or create a project to load the editor shell.}" />
                         </StackPanel>
                     </Border>
@@ -220,8 +228,8 @@
                         <Border Grid.Row="0"
                                 Grid.ColumnSpan="3"
                                 Padding="10,6"
-                                Background="#FFF3F6FC"
-                                BorderBrush="#FFD9E0EE"
+                                Background="{DynamicResource ToolBarBackgroundBrush}"
+                                BorderBrush="{DynamicResource BorderSubtleBrush}"
                                 BorderThickness="1"
                                 CornerRadius="4,4,0,0">
                             <TextBlock VerticalAlignment="Center"
@@ -232,8 +240,8 @@
                         <Border Grid.Row="1"
                                 Grid.Column="0"
                                 Padding="10"
-                                Background="#FFF9FAFC"
-                                BorderBrush="#FFD9E0EE"
+                                Background="{DynamicResource InspectorBackgroundBrush}"
+                                BorderBrush="{DynamicResource BorderSubtleBrush}"
                                 BorderThickness="1,0,0,1">
                             <Grid>
                                 <Grid.RowDefinitions>
@@ -270,8 +278,8 @@
                         <Border Grid.Row="1"
                                 Grid.Column="1"
                                 Padding="10"
-                                Background="White"
-                                BorderBrush="#FFD9E0EE"
+                                Background="{DynamicResource PanelBackgroundBrush}"
+                                BorderBrush="{DynamicResource BorderSubtleBrush}"
                                 BorderThickness="1,0,1,1">
                             <Grid>
                                 <Grid.RowDefinitions>
@@ -332,13 +340,13 @@
                                                 <TextBlock FontWeight="SemiBold"
                                                            Text="{Binding TypeLabel}" />
                                                 <TextBlock Margin="0,6,0,0"
-                                                           Foreground="DimGray"
+                                                           Foreground="{DynamicResource TextSecondaryBrush}"
                                                            Text="{Binding FilePath}" />
                                                 <Border Margin="0,10,0,0"
                                                         Padding="10"
                                                         CornerRadius="4"
-                                                        Background="#FFF8FAFF"
-                                                        BorderBrush="#FFD9E0EE"
+                                                        Background="{DynamicResource SelectionBrush}"
+                                                        BorderBrush="{DynamicResource BorderSubtleBrush}"
                                                         BorderThickness="1">
                                                     <TextBlock TextWrapping="Wrap"
                                                                Text="{Binding ContentSummary}" />
@@ -353,8 +361,8 @@
                         <Border Grid.Row="1"
                                 Grid.Column="2"
                                 Padding="10"
-                                Background="#FFF9FAFC"
-                                BorderBrush="#FFD9E0EE"
+                                Background="{DynamicResource InspectorBackgroundBrush}"
+                                BorderBrush="{DynamicResource BorderSubtleBrush}"
                                 BorderThickness="0,0,1,1">
                             <Grid>
                                 <Grid.RowDefinitions>
@@ -369,23 +377,23 @@
                                 <Border Grid.Row="1"
                                         Margin="0,8,0,0"
                                         Padding="10"
-                                        Background="White"
-                                        BorderBrush="#FFD9E0EE"
+                                        Background="{DynamicResource PanelBackgroundBrush}"
+                                        BorderBrush="{DynamicResource BorderSubtleBrush}"
                                         BorderThickness="1"
                                         CornerRadius="4">
                                     <StackPanel>
                                         <TextBlock FontWeight="SemiBold"
                                                    Text="{Binding InspectorTitle}" />
                                         <TextBlock Margin="0,6,0,0"
-                                                   Foreground="DimGray"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}"
                                                    Text="{Binding InspectorType}" />
                                         <TextBlock Margin="0,6,0,0"
                                                    TextWrapping="Wrap"
                                                    Text="{Binding InspectorPath}" />
                                         <Border Margin="0,10,0,0"
                                                 Padding="8"
-                                                Background="#FFF8FAFF"
-                                                BorderBrush="#FFD9E0EE"
+                                                Background="{DynamicResource SelectionBrush}"
+                                                BorderBrush="{DynamicResource BorderSubtleBrush}"
                                                 BorderThickness="1"
                                                 CornerRadius="4">
                                             <TextBlock TextWrapping="Wrap"
@@ -399,8 +407,8 @@
                         <Border Grid.Row="2"
                                 Grid.ColumnSpan="3"
                                 Padding="10"
-                                Background="#FFF5F8FF"
-                                BorderBrush="#FFD9E0EE"
+                                Background="{DynamicResource ToolBarBackgroundBrush}"
+                                BorderBrush="{DynamicResource BorderSubtleBrush}"
                                 BorderThickness="1,0,1,1"
                                 CornerRadius="0,0,4,4">
                             <Grid>
@@ -423,8 +431,8 @@
 
                                 <ListBox Grid.Row="1"
                                          Margin="0,8,0,0"
-                                         Background="White"
-                                         BorderBrush="#FFD9E0EE"
+                                         Background="{DynamicResource PanelBackgroundBrush}"
+                                         BorderBrush="{DynamicResource BorderSubtleBrush}"
                                          BorderThickness="1"
                                          ItemsSource="{Binding OutputEntries}" />
                             </Grid>
@@ -437,7 +445,7 @@
         <StatusBar Grid.Row="4" Margin="0,12,0,0">
             <StatusBarItem Content="Ready" />
             <Separator />
-            <StatusBarItem Content="Phase 3: Document System" />
+            <StatusBarItem Content="Phase 3A: Theme Foundations" />
         </StatusBar>
     </Grid>
 </Window>
