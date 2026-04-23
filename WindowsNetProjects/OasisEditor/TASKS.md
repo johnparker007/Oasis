@@ -6,8 +6,8 @@
 - [x] Create dedicated Launcher window class and view model
 - [x] Make Launcher window the application startup window
 - [x] Move New Project UI into Launcher window
-- [ ] Move Open Project UI into Launcher window
-- [ ] Move Recent Projects list UI into Launcher window
+- [x] Move Open Project UI into Launcher window
+- [x] Move Recent Projects list UI into Launcher window
 
 ### Project Opening Flow
 - [ ] Refactor project creation flow so Launcher opens editor only after success

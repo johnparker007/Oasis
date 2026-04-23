@@ -254,48 +254,14 @@
             </Grid.ColumnDefinitions>
 
             <GroupBox Grid.Column="0" Header="Project Setup" Padding="10">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                        </Grid.RowDefinitions>
-
-                        <TextBlock Grid.Row="0"
-                                   Margin="0,0,0,4"
-                                   Text="Project file" />
-                        <TextBox Grid.Row="1"
-                                 Margin="0,0,0,10"
-                                 Text="{Binding ProjectFilePath, UpdateSourceTrigger=PropertyChanged}" />
-
-                        <StackPanel Grid.Row="2"
-                                    Orientation="Horizontal"
-                                    HorizontalAlignment="Right"
-                                    Margin="0,0,0,10">
-                            <Button MinWidth="140"
-                                    Padding="14,6"
-                                    Margin="0,0,8,0"
-                                    Command="{Binding OpenProjectCommand}"
-                                    Content="Open project" />
-                            <Button MinWidth="160"
-                                    Padding="14,6"
-                                    Command="{Binding OpenRecentProjectCommand}"
-                                    Content="Open selected recent" />
-                        </StackPanel>
-
-                        <TextBlock Grid.Row="3"
-                                   Margin="0,0,0,4"
-                                   Text="Recent projects" />
-                        <ListBox Grid.Row="4"
-                                 Margin="0"
-                                 MinHeight="120"
-                                 ItemsSource="{Binding RecentProjects}"
-                                 SelectedItem="{Binding SelectedRecentProject, Mode=TwoWay}" />
-                    </Grid>
-                </ScrollViewer>
+                <Border Padding="10"
+                        BorderThickness="1"
+                        BorderBrush="{DynamicResource BorderSubtleBrush}"
+                        CornerRadius="4">
+                    <TextBlock TextWrapping="Wrap"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
+                               Text="Project creation and opening now starts from the Launcher window." />
+                </Border>
             </GroupBox>
 
             <GroupBox Grid.Column="2" Header="Editor Shell" Padding="10">

@@ -1,20 +1,25 @@
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
+using Microsoft.Win32;
 
 namespace OasisEditor;
 
 public sealed class LauncherWindowViewModel : INotifyPropertyChanged
 {
     private readonly ProjectScaffolder _projectScaffolder = new();
+    private readonly RecentProjectsStore _recentProjectsStore = new();
     private readonly IApplicationThemeService _applicationThemeService;
     private readonly EditorPreferencesStore _preferencesStore;
     private readonly Window _launcherWindow;
     private string _projectName = string.Empty;
     private string _projectLocation = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-    private string _statusMessage = "Create a new project to continue.";
+    private string _projectFilePath = string.Empty;
+    private string _statusMessage = "Create or open a project to continue.";
+    private string? _selectedRecentProject;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -25,12 +30,20 @@ public sealed class LauncherWindowViewModel : INotifyPropertyChanged
         _launcherWindow = launcherWindow;
 
         CreateProjectCommand = new RelayCommand(CreateProject, CanCreateProject);
+        BrowseProjectFileCommand = new RelayCommand(BrowseProjectFile);
+        OpenProjectCommand = new RelayCommand(OpenProject, CanOpenProject);
+        OpenRecentProjectCommand = new RelayCommand(OpenSelectedRecentProject, CanOpenSelectedRecentProject);
         ExitCommand = new RelayCommand(ExitApplication);
+
+        RecentProjects = new ObservableCollection<string>(_recentProjectsStore.Load());
     }
 
     public ICommand CreateProjectCommand { get; }
-
+    public ICommand BrowseProjectFileCommand { get; }
+    public ICommand OpenProjectCommand { get; }
+    public ICommand OpenRecentProjectCommand { get; }
     public ICommand ExitCommand { get; }
+    public ObservableCollection<string> RecentProjects { get; }
 
     public string ProjectName
     {
@@ -56,6 +69,30 @@ public sealed class LauncherWindowViewModel : INotifyPropertyChanged
         }
     }
 
+    public string ProjectFilePath
+    {
+        get => _projectFilePath;
+        set
+        {
+            if (SetProperty(ref _projectFilePath, value))
+            {
+                NotifyOpenCommand();
+            }
+        }
+    }
+
+    public string? SelectedRecentProject
+    {
+        get => _selectedRecentProject;
+        set
+        {
+            if (SetProperty(ref _selectedRecentProject, value))
+            {
+                NotifyOpenRecentCommand();
+            }
+        }
+    }
+
     public string StatusMessage
     {
         get => _statusMessage;
@@ -68,9 +105,7 @@ public sealed class LauncherWindowViewModel : INotifyPropertyChanged
         {
             var projectPath = _projectScaffolder.CreateProject(ProjectName, ProjectLocation);
             var projectFilePath = Path.Combine(projectPath, $"{ProjectName.Trim()}.oasisproj");
-            var mainWindow = new MainWindow(_applicationThemeService, _preferencesStore, projectFilePath);
-            mainWindow.Show();
-            _launcherWindow.Close();
+            OpenEditor(projectFilePath);
         }
         catch (Exception ex)
         {
@@ -84,9 +119,86 @@ public sealed class LauncherWindowViewModel : INotifyPropertyChanged
         return !string.IsNullOrWhiteSpace(ProjectName) && !string.IsNullOrWhiteSpace(ProjectLocation);
     }
 
+    private void BrowseProjectFile()
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "Open Project",
+            Filter = "Oasis Project|*.oasisproj|All Files|*.*",
+            CheckFileExists = true,
+            Multiselect = false
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            ProjectFilePath = dialog.FileName;
+        }
+    }
+
+    private void OpenProject()
+    {
+        OpenEditor(ProjectFilePath);
+    }
+
+    private bool CanOpenProject()
+    {
+        return !string.IsNullOrWhiteSpace(ProjectFilePath);
+    }
+
+    private void OpenSelectedRecentProject()
+    {
+        if (string.IsNullOrWhiteSpace(SelectedRecentProject))
+        {
+            return;
+        }
+
+        OpenEditor(SelectedRecentProject);
+    }
+
+    private bool CanOpenSelectedRecentProject()
+    {
+        return !string.IsNullOrWhiteSpace(SelectedRecentProject);
+    }
+
+    private void OpenEditor(string projectFilePath)
+    {
+        try
+        {
+            var trimmed = projectFilePath.Trim();
+            if (!File.Exists(trimmed))
+            {
+                throw new FileNotFoundException("Project file was not found.", trimmed);
+            }
+
+            if (!string.Equals(Path.GetExtension(trimmed), ".oasisproj", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Project file must use the .oasisproj extension.");
+            }
+
+            var mainWindow = new MainWindow(_applicationThemeService, _preferencesStore, trimmed);
+            mainWindow.Show();
+            _launcherWindow.Close();
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = ex.Message;
+            MessageBox.Show(ex.Message, "Open Project Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
     private void NotifyCreateCommand()
     {
         (CreateProjectCommand as RelayCommand)?.RaiseCanExecuteChanged();
+    }
+
+    private void NotifyOpenCommand()
+    {
+        (OpenProjectCommand as RelayCommand)?.RaiseCanExecuteChanged();
+    }
+
+    private void NotifyOpenRecentCommand()
+    {
+        (OpenRecentProjectCommand as RelayCommand)?.RaiseCanExecuteChanged();
     }
 
     private static void ExitApplication()
