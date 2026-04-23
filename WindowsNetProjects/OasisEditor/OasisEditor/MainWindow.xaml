@@ -12,11 +12,27 @@
     <Grid Margin="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0"
+        <Menu Grid.Row="0"
+              Margin="0,0,0,12">
+            <MenuItem Header="_File">
+                <MenuItem Header="_Create Project"
+                          Command="{Binding CreateProjectCommand}" />
+                <MenuItem Header="_Open Project"
+                          Command="{Binding OpenProjectCommand}" />
+                <MenuItem Header="Open Selected _Recent"
+                          Command="{Binding OpenRecentProjectCommand}" />
+                <Separator />
+                <MenuItem Header="E_xit"
+                          Command="{Binding ExitCommand}" />
+            </MenuItem>
+        </Menu>
+
+        <Border Grid.Row="1"
                 Padding="16"
                 Margin="0,0,0,12"
                 CornerRadius="6"
@@ -32,7 +48,7 @@
             </StackPanel>
         </Border>
 
-        <Grid Grid.Row="1">
+        <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="360" />
                 <ColumnDefinition Width="12" />
@@ -165,7 +181,7 @@
             </GroupBox>
         </Grid>
 
-        <StatusBar Grid.Row="2" Margin="0,12,0,0">
+        <StatusBar Grid.Row="3" Margin="0,12,0,0">
             <StatusBarItem Content="Ready" />
             <Separator />
             <StatusBarItem Content="Phase 2: Editor Shell" />
