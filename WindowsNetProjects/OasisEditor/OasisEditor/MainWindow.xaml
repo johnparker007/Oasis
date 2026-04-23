@@ -28,6 +28,13 @@
                 <MenuItem Header="Open Selected _Recent"
                           Command="{Binding OpenRecentProjectCommand}" />
                 <Separator />
+                <MenuItem Header="New _Panel2D Stub"
+                          Command="{Binding OpenPanel2DStubCommand}" />
+                <MenuItem Header="New _Cabinet3D Stub"
+                          Command="{Binding OpenCabinet3DStubCommand}" />
+                <MenuItem Header="New _Machine Stub"
+                          Command="{Binding OpenMachineStubCommand}" />
+                <Separator />
                 <MenuItem Header="Open _Document"
                           Command="{Binding OpenDocumentCommand}" />
                 <MenuItem Header="_Save Document"
@@ -49,6 +56,13 @@
                         Content="Open Project" />
                 <Button Command="{Binding OpenRecentProjectCommand}"
                         Content="Open Recent" />
+                <Separator />
+                <Button Command="{Binding OpenPanel2DStubCommand}"
+                        Content="New Panel2D" />
+                <Button Command="{Binding OpenCabinet3DStubCommand}"
+                        Content="New Cabinet3D" />
+                <Button Command="{Binding OpenMachineStubCommand}"
+                        Content="New Machine" />
                 <Separator />
                 <Button Command="{Binding OpenDocumentCommand}"
                         Content="Open Document" />
@@ -280,6 +294,18 @@
                                                 Content="New Tab" />
                                         <Button Padding="10,4"
                                                 Margin="0,0,8,0"
+                                                Command="{Binding OpenPanel2DStubCommand}"
+                                                Content="New Panel2D" />
+                                        <Button Padding="10,4"
+                                                Margin="0,0,8,0"
+                                                Command="{Binding OpenCabinet3DStubCommand}"
+                                                Content="New Cabinet3D" />
+                                        <Button Padding="10,4"
+                                                Margin="0,0,8,0"
+                                                Command="{Binding OpenMachineStubCommand}"
+                                                Content="New Machine" />
+                                        <Button Padding="10,4"
+                                                Margin="0,0,8,0"
                                                 Command="{Binding OpenDocumentCommand}"
                                                 Content="Open..." />
                                         <Button Padding="10,4"
@@ -411,7 +437,7 @@
         <StatusBar Grid.Row="4" Margin="0,12,0,0">
             <StatusBarItem Content="Ready" />
             <Separator />
-            <StatusBarItem Content="Phase 2: Editor Shell" />
+            <StatusBarItem Content="Phase 3: Document System" />
         </StatusBar>
     </Grid>
 </Window>

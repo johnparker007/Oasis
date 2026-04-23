@@ -23,11 +23,11 @@
 - [x] Define base document model
 - [x] Implement open/save document
 - [x] Implement document dirty state
-- [ ] Implement document tabs integration
-- [ ] Stub document types:
-  - [ ] .panel2d
-  - [ ] .cabinet3d
-  - [ ] .machine
+- [x] Implement document tabs integration
+- [x] Stub document types:
+  - [x] .panel2d
+  - [x] .cabinet3d
+  - [x] .machine
 
 ## Phase 4 — Command System
 - [ ] Define ICommand interface
