@@ -26,6 +26,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         CreateProjectCommand = new RelayCommand(CreateProject, CanCreateProject);
         OpenProjectCommand = new RelayCommand(OpenProject, CanOpenProject);
         OpenRecentProjectCommand = new RelayCommand(OpenSelectedRecentProject, CanOpenSelectedRecentProject);
+        ExitCommand = new RelayCommand(ExitApplication);
 
         RecentProjects = new ObservableCollection<string>(_recentProjectsStore.Load());
     }
@@ -33,6 +34,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand CreateProjectCommand { get; }
     public ICommand OpenProjectCommand { get; }
     public ICommand OpenRecentProjectCommand { get; }
+    public ICommand ExitCommand { get; }
     public ObservableCollection<string> RecentProjects { get; }
 
     public string ProjectName
@@ -147,6 +149,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private bool CanOpenSelectedRecentProject()
     {
         return !string.IsNullOrWhiteSpace(SelectedRecentProject);
+    }
+
+    private static void ExitApplication()
+    {
+        Application.Current.Shutdown();
     }
 
     private void OpenProjectFile(string projectFilePath, string? successMessage)

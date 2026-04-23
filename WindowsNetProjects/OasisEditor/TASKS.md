@@ -10,7 +10,7 @@
 
 ## Phase 2 — Editor Shell
 - [x] Create main window
-- [ ] Add menu bar
+- [x] Add menu bar
 - [ ] Add toolbar
 - [ ] Implement basic dock layout
 - [ ] Implement document tab system
