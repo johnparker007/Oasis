@@ -17,7 +17,7 @@
 - [ ] Ensure failed project load shows error without opening editor shell
 
 ### Editor Shell Separation
-- [ ] Remove startup project-selection UI from editor shell
+- [x] Remove startup project-selection UI from editor shell
 - [ ] Ensure editor shell requires a valid loaded project at construction/open time
 - [ ] Ensure editor shell initializes correctly from an already-loaded project
 - [ ] Prevent editor shell from opening when no active project exists

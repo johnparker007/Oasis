@@ -248,23 +248,10 @@
 
         <Grid Grid.Row="3">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="360" />
-                <ColumnDefinition Width="12" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <GroupBox Grid.Column="0" Header="Project Setup" Padding="10">
-                <Border Padding="10"
-                        BorderThickness="1"
-                        BorderBrush="{DynamicResource BorderSubtleBrush}"
-                        CornerRadius="4">
-                    <TextBlock TextWrapping="Wrap"
-                               Foreground="{DynamicResource TextSecondaryBrush}"
-                               Text="Project creation and opening now starts from the Launcher window." />
-                </Border>
-            </GroupBox>
-
-            <GroupBox Grid.Column="2" Header="Editor Shell" Padding="10">
+            <GroupBox Grid.Column="0" Header="Editor Shell" Padding="10">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
