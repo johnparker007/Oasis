@@ -527,7 +527,7 @@
                                                                 <TextBlock Canvas.Left="136"
                                                                            Canvas.Top="132"
                                                                            Foreground="{DynamicResource TextSecondaryBrush}"
-                                                                           Text="Drag with left mouse button to pan." />
+                                                                           Text="Drag with middle mouse button to pan." />
                                                             </Canvas>
                                                         </Border>
                                                     </Border>

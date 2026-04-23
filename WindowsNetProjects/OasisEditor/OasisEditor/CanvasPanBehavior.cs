@@ -55,23 +55,28 @@ public static class CanvasPanBehavior
         if (isEnabled)
         {
             EnsureTranslateTransform(element);
-            element.MouseLeftButtonDown += OnMouseLeftButtonDown;
+            element.MouseDown += OnMouseDown;
             element.MouseMove += OnMouseMove;
-            element.MouseLeftButtonUp += OnMouseLeftButtonUp;
+            element.MouseUp += OnMouseUp;
             element.LostMouseCapture += OnLostMouseCapture;
         }
         else
         {
-            element.MouseLeftButtonDown -= OnMouseLeftButtonDown;
+            element.MouseDown -= OnMouseDown;
             element.MouseMove -= OnMouseMove;
-            element.MouseLeftButtonUp -= OnMouseLeftButtonUp;
+            element.MouseUp -= OnMouseUp;
             element.LostMouseCapture -= OnLostMouseCapture;
         }
     }
 
-    private static void OnMouseLeftButtonDown(object sender, MouseButtonEventArgs eventArgs)
+    private static void OnMouseDown(object sender, MouseButtonEventArgs eventArgs)
     {
         if (sender is not FrameworkElement element)
+        {
+            return;
+        }
+
+        if (eventArgs.ChangedButton != MouseButton.Middle)
         {
             return;
         }
@@ -103,8 +108,13 @@ public static class CanvasPanBehavior
         transform.Y = origin.Y + delta.Y;
     }
 
-    private static void OnMouseLeftButtonUp(object sender, MouseButtonEventArgs eventArgs)
+    private static void OnMouseUp(object sender, MouseButtonEventArgs eventArgs)
     {
+        if (eventArgs.ChangedButton != MouseButton.Middle)
+        {
+            return;
+        }
+
         EndPan(sender as FrameworkElement);
     }
 
