@@ -502,27 +502,34 @@
                                                             BorderThickness="1"
                                                             CornerRadius="4"
                                                             Visibility="Collapsed">
-                                                        <Grid>
-                                                            <Canvas MinHeight="280"
+                                                        <Border MinHeight="280"
+                                                                ClipToBounds="True"
+                                                                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                                                BorderThickness="1"
+                                                                Background="{DynamicResource PanelBackgroundBrush}">
+                                                            <Canvas Width="1400"
+                                                                    Height="900"
+                                                                    Cursor="SizeAll"
+                                                                    local:CanvasPanBehavior.IsEnabled="True"
                                                                     Background="{DynamicResource PanelBackgroundBrush}">
                                                                 <Rectangle Width="540"
                                                                            Height="300"
                                                                            Stroke="{DynamicResource SelectionBrush}"
                                                                            StrokeThickness="2"
                                                                            Fill="{DynamicResource ToolBarBackgroundBrush}"
-                                                                           Canvas.Left="24"
-                                                                           Canvas.Top="24" />
-                                                                <TextBlock Canvas.Left="40"
-                                                                           Canvas.Top="40"
+                                                                           Canvas.Left="120"
+                                                                           Canvas.Top="90" />
+                                                                <TextBlock Canvas.Left="136"
+                                                                           Canvas.Top="106"
                                                                            FontWeight="SemiBold"
                                                                            Text="Panel Canvas (MVP)"
                                                                            Foreground="{DynamicResource TextPrimaryBrush}" />
-                                                                <TextBlock Canvas.Left="40"
-                                                                           Canvas.Top="66"
+                                                                <TextBlock Canvas.Left="136"
+                                                                           Canvas.Top="132"
                                                                            Foreground="{DynamicResource TextSecondaryBrush}"
-                                                                           Text="Viewport, pan, and zoom will be added in follow-up tasks." />
+                                                                           Text="Drag with left mouse button to pan." />
                                                             </Canvas>
-                                                        </Grid>
+                                                        </Border>
                                                     </Border>
 
                                                     <Border x:Name="DefaultSummaryContainer"
