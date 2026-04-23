@@ -63,11 +63,11 @@
   - [x] Theme persistence after restart
 
 ## Phase 4 — Command System
-- [ ] Define ICommand interface
-- [ ] Implement command history
-- [ ] Implement undo
-- [ ] Implement redo
-- [ ] Ensure documents update via commands only
+- [x] Define ICommand interface
+- [x] Implement command history
+- [x] Implement undo
+- [x] Implement redo
+- [x] Ensure documents update via commands only
 
 ## Phase 5 — Panel Editor (MVP)
 - [ ] Render panel canvas
