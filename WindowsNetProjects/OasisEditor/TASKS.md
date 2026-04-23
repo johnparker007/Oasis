@@ -56,11 +56,6 @@
   - [x] SelectionBrush
 - [x] Replace shell-level hard-coded colors with semantic theme resources
 - [x] Ensure main window, menu, toolbar, document tabs, and panels respond to theme changes
-- [x] Add smoke test checklist for:
-  - [x] System theme
-  - [x] Light theme
-  - [x] Dark theme
-  - [x] Theme persistence after restart
 
 ## Phase 4 — Command System
 - [x] Define ICommand interface
