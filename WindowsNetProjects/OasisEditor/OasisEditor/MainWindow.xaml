@@ -13,6 +13,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
@@ -32,7 +33,24 @@
             </MenuItem>
         </Menu>
 
-        <Border Grid.Row="1"
+        <ToolBarTray Grid.Row="1"
+                     Margin="0,0,0,12"
+                     Background="#FFF2F5FB">
+            <ToolBar Band="0"
+                     BandIndex="0">
+                <Button Command="{Binding CreateProjectCommand}"
+                        Content="Create Project" />
+                <Button Command="{Binding OpenProjectCommand}"
+                        Content="Open Project" />
+                <Button Command="{Binding OpenRecentProjectCommand}"
+                        Content="Open Recent" />
+                <Separator />
+                <Button Command="{Binding ExitCommand}"
+                        Content="Exit" />
+            </ToolBar>
+        </ToolBarTray>
+
+        <Border Grid.Row="2"
                 Padding="16"
                 Margin="0,0,0,12"
                 CornerRadius="6"
@@ -48,7 +66,7 @@
             </StackPanel>
         </Border>
 
-        <Grid Grid.Row="2">
+        <Grid Grid.Row="3">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="360" />
                 <ColumnDefinition Width="12" />
@@ -181,7 +199,7 @@
             </GroupBox>
         </Grid>
 
-        <StatusBar Grid.Row="3" Margin="0,12,0,0">
+        <StatusBar Grid.Row="4" Margin="0,12,0,0">
             <StatusBarItem Content="Ready" />
             <Separator />
             <StatusBarItem Content="Phase 2: Editor Shell" />
