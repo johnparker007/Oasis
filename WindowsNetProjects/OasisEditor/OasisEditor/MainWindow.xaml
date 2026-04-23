@@ -511,7 +511,6 @@
                                                                     Height="900"
                                                                     Cursor="SizeAll"
                                                                     local:CanvasPanBehavior.IsEnabled="True"
-                                                                    local:CanvasSelectionBehavior.IsEnabled="True"
                                                                     Background="{DynamicResource PanelBackgroundBrush}">
                                                                 <Canvas.Resources>
                                                                     <Style TargetType="Rectangle">
@@ -522,7 +521,7 @@
                                                                         <Setter Property="Fill"
                                                                                 Value="{DynamicResource ToolBarBackgroundBrush}" />
                                                                         <Style.Triggers>
-                                                                            <Trigger Property="local:CanvasSelectionBehavior.IsSelected"
+                                                                            <Trigger Property="local:CanvasPanBehavior.IsSelected"
                                                                                      Value="True">
                                                                                 <Setter Property="Stroke"
                                                                                         Value="{DynamicResource SelectionBrush}" />
@@ -534,12 +533,12 @@
                                                                 </Canvas.Resources>
                                                                 <Rectangle Width="540"
                                                                            Height="300"
-                                                                           local:CanvasSelectionBehavior.IsSelectable="True"
+                                                                           local:CanvasPanBehavior.IsSelectable="True"
                                                                            Canvas.Left="120"
                                                                            Canvas.Top="90" />
                                                                 <Rectangle Width="220"
                                                                            Height="160"
-                                                                           local:CanvasSelectionBehavior.IsSelectable="True"
+                                                                           local:CanvasPanBehavior.IsSelectable="True"
                                                                            Canvas.Left="760"
                                                                            Canvas.Top="240" />
                                                                 <TextBlock Canvas.Left="136"

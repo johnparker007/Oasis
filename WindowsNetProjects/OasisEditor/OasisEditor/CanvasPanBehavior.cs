@@ -34,6 +34,27 @@ public static class CanvasPanBehavior
             typeof(CanvasPanBehavior),
             new PropertyMetadata(false));
 
+    public static readonly DependencyProperty IsSelectableProperty =
+        DependencyProperty.RegisterAttached(
+            "IsSelectable",
+            typeof(bool),
+            typeof(CanvasPanBehavior),
+            new PropertyMetadata(false));
+
+    public static readonly DependencyProperty IsSelectedProperty =
+        DependencyProperty.RegisterAttached(
+            "IsSelected",
+            typeof(bool),
+            typeof(CanvasPanBehavior),
+            new PropertyMetadata(false));
+
+    private static readonly DependencyProperty SelectedElementProperty =
+        DependencyProperty.RegisterAttached(
+            "SelectedElement",
+            typeof(FrameworkElement),
+            typeof(CanvasPanBehavior),
+            new PropertyMetadata(null));
+
     private const double MinZoom = 0.25;
     private const double MaxZoom = 4.0;
     private const double ZoomStep = 1.1;
@@ -48,6 +69,26 @@ public static class CanvasPanBehavior
         dependencyObject.SetValue(IsEnabledProperty, value);
     }
 
+    public static bool GetIsSelectable(DependencyObject dependencyObject)
+    {
+        return (bool)dependencyObject.GetValue(IsSelectableProperty);
+    }
+
+    public static void SetIsSelectable(DependencyObject dependencyObject, bool value)
+    {
+        dependencyObject.SetValue(IsSelectableProperty, value);
+    }
+
+    public static bool GetIsSelected(DependencyObject dependencyObject)
+    {
+        return (bool)dependencyObject.GetValue(IsSelectedProperty);
+    }
+
+    public static void SetIsSelected(DependencyObject dependencyObject, bool value)
+    {
+        dependencyObject.SetValue(IsSelectedProperty, value);
+    }
+
     private static void OnIsEnabledChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs eventArgs)
     {
         if (dependencyObject is not FrameworkElement element)
@@ -60,6 +101,7 @@ public static class CanvasPanBehavior
         {
             EnsureTransformGroup(element);
             element.MouseDown += OnMouseDown;
+            element.MouseLeftButtonDown += OnMouseLeftButtonDown;
             element.MouseMove += OnMouseMove;
             element.MouseUp += OnMouseUp;
             element.MouseWheel += OnMouseWheel;
@@ -68,6 +110,7 @@ public static class CanvasPanBehavior
         else
         {
             element.MouseDown -= OnMouseDown;
+            element.MouseLeftButtonDown -= OnMouseLeftButtonDown;
             element.MouseMove -= OnMouseMove;
             element.MouseUp -= OnMouseUp;
             element.MouseWheel -= OnMouseWheel;
@@ -111,6 +154,37 @@ public static class CanvasPanBehavior
         var (_, translate) = EnsureTransformGroup(element);
         translate.X = origin.X + delta.X;
         translate.Y = origin.Y + delta.Y;
+    }
+
+    private static void OnMouseLeftButtonDown(object sender, MouseButtonEventArgs eventArgs)
+    {
+        if (sender is not FrameworkElement canvas)
+        {
+            return;
+        }
+
+        var clickedElement = FindSelectableElement(eventArgs.OriginalSource as DependencyObject, canvas);
+        var selectedElement = (FrameworkElement?)canvas.GetValue(SelectedElementProperty);
+
+        if (ReferenceEquals(clickedElement, selectedElement))
+        {
+            return;
+        }
+
+        if (selectedElement is not null)
+        {
+            SetIsSelected(selectedElement, false);
+        }
+
+        if (clickedElement is null)
+        {
+            canvas.ClearValue(SelectedElementProperty);
+            return;
+        }
+
+        SetIsSelected(clickedElement, true);
+        canvas.SetValue(SelectedElementProperty, clickedElement);
+        eventArgs.Handled = true;
     }
 
     private static void OnMouseWheel(object sender, MouseWheelEventArgs eventArgs)
@@ -187,5 +261,26 @@ public static class CanvasPanBehavior
         transformGroup.Children.Add(translate);
         element.RenderTransform = transformGroup;
         return (scale, translate);
+    }
+
+    private static FrameworkElement? FindSelectableElement(DependencyObject? source, FrameworkElement canvas)
+    {
+        var current = source;
+        while (current is not null)
+        {
+            if (current is FrameworkElement element && GetIsSelectable(element))
+            {
+                return element;
+            }
+
+            if (ReferenceEquals(current, canvas))
+            {
+                return null;
+            }
+
+            current = VisualTreeHelper.GetParent(current);
+        }
+
+        return null;
     }
 }
