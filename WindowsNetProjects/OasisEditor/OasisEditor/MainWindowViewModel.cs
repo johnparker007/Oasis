@@ -17,6 +17,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string _projectFilePath = string.Empty;
     private string _statusMessage = "Create a new project to get started.";
     private string? _selectedRecentProject;
+    private EditorProject? _loadedProject;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -64,6 +65,20 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         private set => SetProperty(ref _statusMessage, value);
     }
 
+    public EditorProject? LoadedProject
+    {
+        get => _loadedProject;
+        private set
+        {
+            if (SetProperty(ref _loadedProject, value))
+            {
+                OnPropertyChanged(nameof(HasLoadedProject));
+            }
+        }
+    }
+
+    public bool HasLoadedProject => LoadedProject is not null;
+
     public string ProjectFilePath
     {
         get => _projectFilePath;
@@ -95,8 +110,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             var projectPath = _projectScaffolder.CreateProject(ProjectName, ProjectLocation);
             var projectFilePath = Path.Combine(projectPath, $"{ProjectName.Trim()}.oasisproj");
 
-            UpdateRecentProjects(projectFilePath);
-            StatusMessage = $"Project created: {projectPath}";
+            OpenProjectFile(projectFilePath, $"Project created and loaded: {projectPath}");
         }
         catch (Exception ex)
         {
@@ -112,7 +126,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void OpenProject()
     {
-        OpenProjectFile(ProjectFilePath);
+        OpenProjectFile(ProjectFilePath, null);
     }
 
     private bool CanOpenProject()
@@ -127,7 +141,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        OpenProjectFile(SelectedRecentProject);
+        OpenProjectFile(SelectedRecentProject, null);
     }
 
     private bool CanOpenSelectedRecentProject()
@@ -135,7 +149,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         return !string.IsNullOrWhiteSpace(SelectedRecentProject);
     }
 
-    private void OpenProjectFile(string projectFilePath)
+    private void OpenProjectFile(string projectFilePath, string? successMessage)
     {
         try
         {
@@ -165,15 +179,58 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 throw new InvalidOperationException("Project metadata contains an empty 'name' field.");
             }
 
+            var projectDirectory = Path.GetDirectoryName(projectFile);
+            if (string.IsNullOrWhiteSpace(projectDirectory))
+            {
+                throw new InvalidOperationException("Unable to determine project directory.");
+            }
+
+            var layoutElement = projectDocument.RootElement.GetProperty("layout");
+            var assetsDirectory = ResolveProjectDirectory(projectDirectory, layoutElement, "assets");
+            var machinesDirectory = ResolveProjectDirectory(projectDirectory, layoutElement, "machines");
+            var generatedDirectory = ResolveProjectDirectory(projectDirectory, layoutElement, "generated");
+
+            LoadedProject = new EditorProject
+            {
+                Name = openedProjectName,
+                ProjectFilePath = projectFile,
+                ProjectDirectory = projectDirectory,
+                AssetsDirectory = assetsDirectory,
+                MachinesDirectory = machinesDirectory,
+                GeneratedDirectory = generatedDirectory
+            };
+
             ProjectFilePath = projectFile;
             UpdateRecentProjects(projectFile);
-            StatusMessage = $"Project opened: {openedProjectName} ({projectFile})";
+            StatusMessage = successMessage ?? $"Project opened: {openedProjectName} ({projectFile})";
         }
         catch (Exception ex)
         {
             StatusMessage = ex.Message;
             MessageBox.Show(ex.Message, "Open Project Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
+    }
+
+    private static string ResolveProjectDirectory(string projectDirectory, JsonElement layoutElement, string propertyName)
+    {
+        if (!layoutElement.TryGetProperty(propertyName, out var directoryElement))
+        {
+            throw new InvalidOperationException($"Project metadata is missing required layout '{propertyName}' field.");
+        }
+
+        var relativePath = directoryElement.GetString();
+        if (string.IsNullOrWhiteSpace(relativePath))
+        {
+            throw new InvalidOperationException($"Project metadata layout '{propertyName}' field is empty.");
+        }
+
+        var fullPath = Path.GetFullPath(Path.Combine(projectDirectory, relativePath));
+        if (!Directory.Exists(fullPath))
+        {
+            throw new DirectoryNotFoundException($"Project layout folder was not found: {fullPath}");
+        }
+
+        return fullPath;
     }
 
     private void UpdateRecentProjects(string projectFilePath)
@@ -219,7 +276,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         storage = value;
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        OnPropertyChanged(propertyName);
         return true;
+    }
+
+    private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }

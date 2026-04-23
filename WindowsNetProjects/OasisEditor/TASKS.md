@@ -6,7 +6,7 @@
 - [x] Implement project open flow
 - [x] Implement recent projects list
 - [x] Generate project directory layout
-- [ ] Load project into editor shell
+- [x] Load project into editor shell
 
 ## Phase 2 — Editor Shell
 - [ ] Create main window
