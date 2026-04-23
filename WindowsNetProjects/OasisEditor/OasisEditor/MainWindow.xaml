@@ -11,6 +11,133 @@
         MinWidth="900"
         Background="{DynamicResource EditorBackgroundBrush}"
         Foreground="{DynamicResource TextPrimaryBrush}">
+    <Window.Resources>
+        <Style x:Key="EditorMenuStyle"
+               TargetType="{x:Type Menu}">
+            <Setter Property="Background"
+                    Value="{DynamicResource ToolBarBackgroundBrush}" />
+            <Setter Property="Foreground"
+                    Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="BorderBrush"
+                    Value="{DynamicResource BorderSubtleBrush}" />
+            <Setter Property="BorderThickness"
+                    Value="1" />
+            <Setter Property="Padding"
+                    Value="2" />
+        </Style>
+
+        <Style x:Key="EditorMenuItemStyle"
+               TargetType="{x:Type MenuItem}">
+            <Setter Property="Foreground"
+                    Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="Background"
+                    Value="{DynamicResource ToolBarBackgroundBrush}" />
+            <Setter Property="BorderBrush"
+                    Value="{DynamicResource BorderSubtleBrush}" />
+            <Setter Property="BorderThickness"
+                    Value="1" />
+            <Setter Property="Padding"
+                    Value="8,4" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type MenuItem}">
+                        <Grid SnapsToDevicePixels="True">
+                            <Border x:Name="MenuItemBorder"
+                                    Padding="{TemplateBinding Padding}"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="0"
+                                    CornerRadius="4">
+                                <DockPanel LastChildFill="True">
+                                    <ContentPresenter x:Name="GlyphContent"
+                                                      VerticalAlignment="Center"
+                                                      Margin="0,0,8,0"
+                                                      ContentSource="Icon" />
+                                    <ContentPresenter x:Name="HeaderContent"
+                                                      VerticalAlignment="Center"
+                                                      ContentSource="Header"
+                                                      RecognizesAccessKey="True" />
+                                </DockPanel>
+                            </Border>
+                            <Popup x:Name="SubMenuPopup"
+                                   AllowsTransparency="True"
+                                   Focusable="False"
+                                   IsOpen="{TemplateBinding IsSubmenuOpen}"
+                                   Placement="Bottom"
+                                   PopupAnimation="Fade">
+                                <Border Padding="4"
+                                        Background="{DynamicResource ToolBarBackgroundBrush}"
+                                        BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="4">
+                                    <StackPanel KeyboardNavigation.DirectionalNavigation="Cycle"
+                                                IsItemsHost="True" />
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="Icon"
+                                     Value="{x:Null}">
+                                <Setter TargetName="GlyphContent"
+                                        Property="Visibility"
+                                        Value="Collapsed" />
+                            </Trigger>
+                            <Trigger Property="IsHighlighted"
+                                     Value="True">
+                                <Setter TargetName="MenuItemBorder"
+                                        Property="Background"
+                                        Value="{DynamicResource SelectionBrush}" />
+                            </Trigger>
+                            <Trigger Property="Role"
+                                     Value="TopLevelHeader">
+                                <Setter TargetName="SubMenuPopup"
+                                        Property="Placement"
+                                        Value="Bottom" />
+                            </Trigger>
+                            <Trigger Property="Role"
+                                     Value="SubmenuHeader">
+                                <Setter TargetName="SubMenuPopup"
+                                        Property="Placement"
+                                        Value="Right" />
+                            </Trigger>
+                            <Trigger Property="Role"
+                                     Value="TopLevelItem">
+                                <Setter TargetName="SubMenuPopup"
+                                        Property="Visibility"
+                                        Value="Collapsed" />
+                            </Trigger>
+                            <Trigger Property="Role"
+                                     Value="SubmenuItem">
+                                <Setter TargetName="SubMenuPopup"
+                                        Property="Visibility"
+                                        Value="Collapsed" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled"
+                                     Value="False">
+                                <Setter Property="Opacity"
+                                        Value="0.65" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsHighlighted"
+                         Value="True">
+                    <Setter Property="Background"
+                            Value="{DynamicResource SelectionBrush}" />
+                    <Setter Property="Foreground"
+                            Value="{DynamicResource TextPrimaryBrush}" />
+                </Trigger>
+                <Trigger Property="IsSubmenuOpen"
+                         Value="True">
+                    <Setter Property="Background"
+                            Value="{DynamicResource SelectionBrush}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
     <Grid Margin="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -21,8 +148,8 @@
         </Grid.RowDefinitions>
 
         <Menu Grid.Row="0"
-              Background="{DynamicResource MenuBackgroundBrush}"
-              Foreground="{DynamicResource MenuForegroundBrush}"
+              Style="{StaticResource EditorMenuStyle}"
+              ItemContainerStyle="{StaticResource EditorMenuItemStyle}"
               Margin="0,0,0,12">
             <MenuItem Header="_File">
                 <MenuItem Header="_Create Project"

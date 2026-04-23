@@ -23,71 +23,112 @@
             <SolidColorBrush x:Key="BorderSubtleBrush" Color="#FF334156" />
             <SolidColorBrush x:Key="SelectionBrush" Color="#FF2C4F7E" />
 
-            <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-                <Setter Property="Background" Value="{DynamicResource ControlBackgroundBrush}" />
-                <Setter Property="Foreground" Value="{DynamicResource ControlForegroundBrush}" />
-                <Setter Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}" />
-            </Style>
-
-            <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
-                <Setter Property="Background" Value="{DynamicResource ControlBackgroundBrush}" />
-                <Setter Property="Foreground" Value="{DynamicResource ControlForegroundBrush}" />
-                <Setter Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}" />
-            </Style>
-
-            <Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
-                <Setter Property="Background" Value="{DynamicResource ControlBackgroundBrush}" />
-                <Setter Property="Foreground" Value="{DynamicResource ControlForegroundBrush}" />
-                <Setter Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}" />
-            </Style>
-
-            <Style TargetType="ListBox" BasedOn="{StaticResource {x:Type ListBox}}">
-                <Setter Property="Background" Value="{DynamicResource ControlBackgroundBrush}" />
-                <Setter Property="Foreground" Value="{DynamicResource ControlForegroundBrush}" />
-                <Setter Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}" />
-            </Style>
-
-            <Style TargetType="TabControl" BasedOn="{StaticResource {x:Type TabControl}}">
+            <Style TargetType="TextBox">
                 <Setter Property="Background" Value="{DynamicResource PanelBackgroundBrush}" />
                 <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}" />
-            </Style>
-
-            <Style TargetType="GroupBox" BasedOn="{StaticResource {x:Type GroupBox}}">
-                <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
-                <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}" />
-                <Setter Property="Background" Value="{DynamicResource PanelBackgroundBrush}" />
-            </Style>
-
-            <Style TargetType="StatusBar" BasedOn="{StaticResource {x:Type StatusBar}}">
-                <Setter Property="Background" Value="{DynamicResource ToolBarBackgroundBrush}" />
-                <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
-                <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}" />
+                <Setter Property="CaretBrush" Value="{DynamicResource TextPrimaryBrush}" />
+                <Setter Property="SelectionBrush" Value="{DynamicResource SelectionBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
-            </Style>
-
-            <Style TargetType="Menu" BasedOn="{StaticResource {x:Type Menu}}">
-                <Setter Property="Background" Value="{DynamicResource MenuBackgroundBrush}" />
-                <Setter Property="Foreground" Value="{DynamicResource MenuForegroundBrush}" />
-            </Style>
-
-            <Style TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}">
-                <Setter Property="Background" Value="{DynamicResource MenuBackgroundBrush}" />
-                <Setter Property="Foreground" Value="{DynamicResource MenuForegroundBrush}" />
-                <Setter Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}" />
                 <Style.Triggers>
-                    <Trigger Property="IsHighlighted" Value="True">
-                        <Setter Property="Background" Value="{DynamicResource ControlHoverBrush}" />
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="BorderBrush" Value="{DynamicResource SelectionBrush}" />
                     </Trigger>
-                    <Trigger Property="IsPressed" Value="True">
-                        <Setter Property="Background" Value="{DynamicResource ControlPressedBrush}" />
+                    <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                        <Setter Property="BorderBrush" Value="{DynamicResource SelectionBrush}" />
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Opacity" Value="0.65" />
                     </Trigger>
                 </Style.Triggers>
             </Style>
 
-            <Style TargetType="ToolBar" BasedOn="{StaticResource {x:Type ToolBar}}">
-                <Setter Property="Background" Value="{DynamicResource ToolBarBackgroundBrush}" />
+            <Style TargetType="ListBox">
+                <Setter Property="Background" Value="{DynamicResource PanelBackgroundBrush}" />
                 <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="Padding" Value="2" />
+                <Style.Triggers>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Opacity" Value="0.65" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <Style TargetType="ListBoxItem">
+                <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                <Setter Property="Padding" Value="6,4" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ListBoxItem">
+                            <Border x:Name="ItemBorder"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="Transparent"
+                                    BorderThickness="1"
+                                    CornerRadius="3"
+                                    SnapsToDevicePixels="True">
+                                <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                  VerticalAlignment="Center"
+                                                  SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource InspectorBackgroundBrush}" />
+                                    <Setter TargetName="ItemBorder" Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}" />
+                                </Trigger>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource SelectionBrush}" />
+                                    <Setter TargetName="ItemBorder" Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}" />
+                                    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter Property="Opacity" Value="0.65" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style TargetType="ComboBox">
+                <Setter Property="Background" Value="{DynamicResource PanelBackgroundBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}" />
+                <Style.Triggers>
+                    <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                        <Setter Property="BorderBrush" Value="{DynamicResource SelectionBrush}" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <Style TargetType="TabControl">
+                <Setter Property="Background" Value="{DynamicResource PanelBackgroundBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            </Style>
+
+            <Style TargetType="TabItem">
+                <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                <Setter Property="Background" Value="{DynamicResource InspectorBackgroundBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}" />
+                <Style.Triggers>
+                    <Trigger Property="IsSelected" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource SelectionBrush}" />
+                    </Trigger>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="BorderBrush" Value="{DynamicResource SelectionBrush}" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <Style TargetType="StatusBar">
+                <Setter Property="Background" Value="{DynamicResource PanelBackgroundBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
             </Style>
         </ResourceDictionary>
     </Application.Resources>
