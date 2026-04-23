@@ -5,136 +5,170 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="Oasis Editor"
-        Height="500"
-        Width="700"
-        MinHeight="500"
-        MinWidth="700">
+        Height="780"
+        Width="1200"
+        MinHeight="620"
+        MinWidth="900">
     <Grid Margin="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="140" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="170" />
-            <ColumnDefinition Width="*" />
-        </Grid.ColumnDefinitions>
 
-        <TextBlock Grid.Row="0"
-                   Grid.ColumnSpan="2"
-                   FontSize="18"
-                   FontWeight="SemiBold"
-                   Margin="0,0,0,14"
-                   Text="Project Setup" />
-
-        <TextBlock Grid.Row="1"
-                   Grid.Column="0"
-                   VerticalAlignment="Center"
-                   Margin="0,0,12,10"
-                   Text="Project name" />
-
-        <TextBox Grid.Row="1"
-                 Grid.Column="1"
-                 Margin="0,0,0,10"
-                 Text="{Binding ProjectName, UpdateSourceTrigger=PropertyChanged}" />
-
-        <TextBlock Grid.Row="2"
-                   Grid.Column="0"
-                   VerticalAlignment="Center"
-                   Margin="0,0,12,10"
-                   Text="Project location" />
-
-        <TextBox Grid.Row="2"
-                 Grid.Column="1"
-                 Margin="0,0,0,10"
-                 Text="{Binding ProjectLocation, UpdateSourceTrigger=PropertyChanged}" />
-
-        <Border Grid.Row="3"
-                Grid.Column="1"
-                HorizontalAlignment="Right"
-                Margin="0,0,0,10">
-            <Button MinWidth="140"
-                    Padding="14,6"
-                    Command="{Binding CreateProjectCommand}"
-                    Content="Create project" />
-        </Border>
-
-        <TextBlock Grid.Row="4"
-                   Grid.Column="0"
-                   VerticalAlignment="Center"
-                   Margin="0,0,12,10"
-                   Text="Project file" />
-
-        <TextBox Grid.Row="4"
-                 Grid.Column="1"
-                 Margin="0,0,0,10"
-                 Text="{Binding ProjectFilePath, UpdateSourceTrigger=PropertyChanged}" />
-
-        <Button Grid.Row="5"
-                Grid.Column="1"
-                HorizontalAlignment="Right"
-                MinWidth="140"
-                Padding="14,6"
-                Margin="0,0,0,10"
-                Command="{Binding OpenProjectCommand}"
-                Content="Open project" />
-
-        <TextBlock Grid.Row="6"
-                   Grid.Column="0"
-                   VerticalAlignment="Top"
-                   Margin="0,0,12,10"
-                   Text="Recent projects" />
-
-        <ListBox Grid.Row="6"
-                 Grid.Column="1"
-                 Margin="0,0,0,10"
-                 ItemsSource="{Binding RecentProjects}"
-                 SelectedItem="{Binding SelectedRecentProject, Mode=TwoWay}" />
-
-        <Button Grid.Row="7"
-                Grid.Column="1"
-                HorizontalAlignment="Right"
-                MinWidth="140"
-                Padding="14,6"
-                Margin="0,0,0,10"
-                Command="{Binding OpenRecentProjectCommand}"
-                Content="Open selected recent" />
-
-        <Border Grid.Row="8"
-                Grid.ColumnSpan="2"
-                Margin="0,0,0,10"
-                Padding="10"
-                BorderThickness="1"
-                BorderBrush="LightGray"
-                CornerRadius="4">
-            <TextBlock TextWrapping="Wrap"
-                       Foreground="DimGray"
-                       Text="{Binding StatusMessage}" />
-        </Border>
-
-        <Border Grid.Row="9"
-                Grid.ColumnSpan="2"
-                Padding="10"
-                BorderThickness="1"
-                BorderBrush="LightGray"
-                CornerRadius="4">
+        <Border Grid.Row="0"
+                Padding="16"
+                Margin="0,0,0,12"
+                CornerRadius="6"
+                Background="#FF1C2535">
             <StackPanel>
-                <TextBlock FontWeight="SemiBold"
-                           Text="Loaded project" />
+                <TextBlock FontSize="22"
+                           FontWeight="SemiBold"
+                           Foreground="White"
+                           Text="Oasis Editor" />
                 <TextBlock Margin="0,4,0,0"
-                           Text="{Binding LoadedProject.Name, TargetNullValue=No project loaded.}" />
-                <TextBlock Margin="0,2,0,0"
-                           Foreground="DimGray"
-                           Text="{Binding LoadedProject.ProjectFilePath, TargetNullValue=Open or create a project to load the editor shell.}" />
+                           Foreground="#FFE3E8F0"
+                           Text="Slot machine content authoring shell" />
             </StackPanel>
         </Border>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="360" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <GroupBox Grid.Column="0" Header="Project Setup" Padding="10">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0"
+                                   Margin="0,0,0,4"
+                                   Text="Project name" />
+                        <TextBox Grid.Row="1"
+                                 Margin="0,0,0,10"
+                                 Text="{Binding ProjectName, UpdateSourceTrigger=PropertyChanged}" />
+
+                        <TextBlock Grid.Row="2"
+                                   Margin="0,0,0,4"
+                                   Text="Project location" />
+                        <TextBox Grid.Row="3"
+                                 Margin="0,0,0,10"
+                                 Text="{Binding ProjectLocation, UpdateSourceTrigger=PropertyChanged}" />
+
+                        <Button Grid.Row="4"
+                                HorizontalAlignment="Right"
+                                MinWidth="140"
+                                Padding="14,6"
+                                Margin="0,0,0,10"
+                                Command="{Binding CreateProjectCommand}"
+                                Content="Create project" />
+
+                        <TextBlock Grid.Row="5"
+                                   Margin="0,0,0,4"
+                                   Text="Project file" />
+                        <TextBox Grid.Row="6"
+                                 Margin="0,0,0,10"
+                                 Text="{Binding ProjectFilePath, UpdateSourceTrigger=PropertyChanged}" />
+
+                        <StackPanel Grid.Row="7"
+                                    Orientation="Horizontal"
+                                    HorizontalAlignment="Right"
+                                    Margin="0,0,0,10">
+                            <Button MinWidth="140"
+                                    Padding="14,6"
+                                    Margin="0,0,8,0"
+                                    Command="{Binding OpenProjectCommand}"
+                                    Content="Open project" />
+                            <Button MinWidth="160"
+                                    Padding="14,6"
+                                    Command="{Binding OpenRecentProjectCommand}"
+                                    Content="Open selected recent" />
+                        </StackPanel>
+
+                        <TextBlock Grid.Row="8"
+                                   Margin="0,0,0,4"
+                                   Text="Recent projects" />
+                        <ListBox Grid.Row="9"
+                                 Margin="0"
+                                 MinHeight="120"
+                                 ItemsSource="{Binding RecentProjects}"
+                                 SelectedItem="{Binding SelectedRecentProject, Mode=TwoWay}" />
+                    </Grid>
+                </ScrollViewer>
+            </GroupBox>
+
+            <GroupBox Grid.Column="2" Header="Editor Shell" Padding="10">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0"
+                            Padding="10"
+                            Margin="0,0,0,10"
+                            BorderThickness="1"
+                            BorderBrush="LightGray"
+                            CornerRadius="4">
+                        <TextBlock TextWrapping="Wrap"
+                                   Foreground="DimGray"
+                                   Text="{Binding StatusMessage}" />
+                    </Border>
+
+                    <Border Grid.Row="1"
+                            Padding="10"
+                            BorderThickness="1"
+                            BorderBrush="LightGray"
+                            CornerRadius="4">
+                        <StackPanel>
+                            <TextBlock FontWeight="SemiBold"
+                                       Text="Loaded project" />
+                            <TextBlock Margin="0,4,0,0"
+                                       Text="{Binding LoadedProject.Name, TargetNullValue=No project loaded.}" />
+                            <TextBlock Margin="0,2,0,0"
+                                       Foreground="DimGray"
+                                       Text="{Binding LoadedProject.ProjectFilePath, TargetNullValue=Open or create a project to load the editor shell.}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Row="2"
+                            Margin="0,10,0,0"
+                            Padding="10"
+                            Background="#FFF9FAFC"
+                            BorderBrush="#FFD9E0EE"
+                            BorderThickness="1"
+                            CornerRadius="4">
+                        <StackPanel>
+                            <TextBlock FontWeight="SemiBold"
+                                       Text="Workspace" />
+                            <TextBlock Margin="0,6,0,0"
+                                       Foreground="DimGray"
+                                       Text="Main editor workspace will host menus, toolbars, docked panels, and document tabs in upcoming tasks." />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </GroupBox>
+        </Grid>
+
+        <StatusBar Grid.Row="2" Margin="0,12,0,0">
+            <StatusBarItem Content="Ready" />
+            <Separator />
+            <StatusBarItem Content="Phase 2: Editor Shell" />
+        </StatusBar>
     </Grid>
 </Window>

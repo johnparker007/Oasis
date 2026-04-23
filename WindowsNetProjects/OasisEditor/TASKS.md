@@ -9,7 +9,7 @@
 - [x] Load project into editor shell
 
 ## Phase 2 — Editor Shell
-- [ ] Create main window
+- [x] Create main window
 - [ ] Add menu bar
 - [ ] Add toolbar
 - [ ] Implement basic dock layout
