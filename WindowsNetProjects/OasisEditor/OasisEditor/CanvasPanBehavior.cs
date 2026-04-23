@@ -647,6 +647,10 @@ public static class CanvasPanBehavior
             }
 
             canvas.ClearValue(SelectedElementProperty);
+            if (canvas.DataContext is DocumentTabViewModel tab)
+            {
+                tab.PanelLayoutJson = Panel2DDocumentStorage.SerializeLayout(elements);
+            }
         }
         finally
         {
@@ -694,7 +698,12 @@ public static class CanvasPanBehavior
             .Cast<PanelElementFile>()
             .ToArray();
 
-        canvas.SetCurrentValue(PanelLayoutJsonProperty, Panel2DDocumentStorage.SerializeLayout(elements));
+        var layoutJson = Panel2DDocumentStorage.SerializeLayout(elements);
+        canvas.SetCurrentValue(PanelLayoutJsonProperty, layoutJson);
+        if (canvas.DataContext is DocumentTabViewModel tab)
+        {
+            tab.PanelLayoutJson = layoutJson;
+        }
     }
 
     private static PanelElementFile? CreateElementFromVisual(FrameworkElement child)
