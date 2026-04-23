@@ -38,7 +38,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public MainWindowViewModel(IApplicationThemeService applicationThemeService, EditorPreferencesStore preferencesStore, Window ownerWindow)
+    public MainWindowViewModel(
+        IApplicationThemeService applicationThemeService,
+        EditorPreferencesStore preferencesStore,
+        Window ownerWindow,
+        string? startupProjectFilePath = null)
     {
         _applicationThemeService = applicationThemeService;
         _preferencesStore = preferencesStore;
@@ -72,6 +76,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OutputEntries = new ObservableCollection<string>();
         AddOutputEntry("Editor shell initialized.");
         AddOutputEntry($"Theme preference loaded: {_selectedThemePreference}");
+
+        if (!string.IsNullOrWhiteSpace(startupProjectFilePath))
+        {
+            OpenProjectFile(startupProjectFilePath, null);
+        }
     }
 
     public ICommand CreateProjectCommand { get; }

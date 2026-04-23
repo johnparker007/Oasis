@@ -3,11 +3,11 @@
 ## Current Focus — Startup Flow Refactor
 
 ### Launcher Window
-- [ ] Create dedicated Launcher window class and view model
-- [ ] Make Launcher window the application startup window
-- [ ] Move New Project UI into Launcher window
-- [ ] Move Open Project UI into Launcher window
-- [ ] Move Recent Projects list UI into Launcher window
+- [x] Create dedicated Launcher window class and view model
+- [x] Make Launcher window the application startup window
+- [x] Move New Project UI into Launcher window
+- [x] Move Open Project UI into Launcher window
+- [x] Move Recent Projects list UI into Launcher window
 
 ### Project Opening Flow
 - [ ] Refactor project creation flow so Launcher opens editor only after success
@@ -17,7 +17,7 @@
 - [ ] Ensure failed project load shows error without opening editor shell
 
 ### Editor Shell Separation
-- [ ] Remove startup project-selection UI from editor shell
+- [x] Remove startup project-selection UI from editor shell
 - [ ] Ensure editor shell requires a valid loaded project at construction/open time
 - [ ] Ensure editor shell initializes correctly from an already-loaded project
 - [ ] Prevent editor shell from opening when no active project exists

@@ -248,84 +248,10 @@
 
         <Grid Grid.Row="3">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="360" />
-                <ColumnDefinition Width="12" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <GroupBox Grid.Column="0" Header="Project Setup" Padding="10">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                        </Grid.RowDefinitions>
-
-                        <TextBlock Grid.Row="0"
-                                   Margin="0,0,0,4"
-                                   Text="Project name" />
-                        <TextBox Grid.Row="1"
-                                 Margin="0,0,0,10"
-                                 Text="{Binding ProjectName, UpdateSourceTrigger=PropertyChanged}" />
-
-                        <TextBlock Grid.Row="2"
-                                   Margin="0,0,0,4"
-                                   Text="Project location" />
-                        <TextBox Grid.Row="3"
-                                 Margin="0,0,0,10"
-                                 Text="{Binding ProjectLocation, UpdateSourceTrigger=PropertyChanged}" />
-
-                        <Button Grid.Row="4"
-                                HorizontalAlignment="Right"
-                                MinWidth="140"
-                                Padding="14,6"
-                                Margin="0,0,0,10"
-                                Command="{Binding CreateProjectCommand}"
-                                Content="Create project" />
-
-                        <TextBlock Grid.Row="5"
-                                   Margin="0,0,0,4"
-                                   Text="Project file" />
-                        <TextBox Grid.Row="6"
-                                 Margin="0,0,0,10"
-                                 Text="{Binding ProjectFilePath, UpdateSourceTrigger=PropertyChanged}" />
-
-                        <StackPanel Grid.Row="7"
-                                    Orientation="Horizontal"
-                                    HorizontalAlignment="Right"
-                                    Margin="0,0,0,10">
-                            <Button MinWidth="140"
-                                    Padding="14,6"
-                                    Margin="0,0,8,0"
-                                    Command="{Binding OpenProjectCommand}"
-                                    Content="Open project" />
-                            <Button MinWidth="160"
-                                    Padding="14,6"
-                                    Command="{Binding OpenRecentProjectCommand}"
-                                    Content="Open selected recent" />
-                        </StackPanel>
-
-                        <TextBlock Grid.Row="8"
-                                   Margin="0,0,0,4"
-                                   Text="Recent projects" />
-                        <ListBox Grid.Row="9"
-                                 Margin="0"
-                                 MinHeight="120"
-                                 ItemsSource="{Binding RecentProjects}"
-                                 SelectedItem="{Binding SelectedRecentProject, Mode=TwoWay}" />
-                    </Grid>
-                </ScrollViewer>
-            </GroupBox>
-
-            <GroupBox Grid.Column="2" Header="Editor Shell" Padding="10">
+            <GroupBox Grid.Column="0" Header="Editor Shell" Padding="10">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
