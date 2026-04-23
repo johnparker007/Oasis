@@ -312,13 +312,44 @@
                                 Background="#FFF9FAFC"
                                 BorderBrush="#FFD9E0EE"
                                 BorderThickness="0,0,1,1">
-                            <StackPanel>
-                                <TextBlock FontWeight="SemiBold"
-                                           Text="Right Dock" />
-                                <TextBlock Margin="0,6,0,0"
-                                           Foreground="DimGray"
-                                           Text="Properties and inspectors." />
-                            </StackPanel>
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0"
+                                           FontWeight="SemiBold"
+                                           Text="Inspector" />
+
+                                <Border Grid.Row="1"
+                                        Margin="0,8,0,0"
+                                        Padding="10"
+                                        Background="White"
+                                        BorderBrush="#FFD9E0EE"
+                                        BorderThickness="1"
+                                        CornerRadius="4">
+                                    <StackPanel>
+                                        <TextBlock FontWeight="SemiBold"
+                                                   Text="{Binding InspectorTitle}" />
+                                        <TextBlock Margin="0,6,0,0"
+                                                   Foreground="DimGray"
+                                                   Text="{Binding InspectorType}" />
+                                        <TextBlock Margin="0,6,0,0"
+                                                   TextWrapping="Wrap"
+                                                   Text="{Binding InspectorPath}" />
+                                        <Border Margin="0,10,0,0"
+                                                Padding="8"
+                                                Background="#FFF8FAFF"
+                                                BorderBrush="#FFD9E0EE"
+                                                BorderThickness="1"
+                                                CornerRadius="4">
+                                            <TextBlock TextWrapping="Wrap"
+                                                       Text="{Binding InspectorSummary}" />
+                                        </Border>
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
                         </Border>
 
                         <Border Grid.Row="2"

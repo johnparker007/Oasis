@@ -89,6 +89,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             if (SetProperty(ref _loadedProject, value))
             {
                 OnPropertyChanged(nameof(HasLoadedProject));
+                NotifyInspectorChanged();
                 NotifyDocumentCommands();
             }
         }
@@ -127,6 +128,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             if (SetProperty(ref _selectedDocument, value))
             {
+                NotifyInspectorChanged();
                 NotifyDocumentCommands();
             }
         }
@@ -139,8 +141,101 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             if (SetProperty(ref _selectedAsset, value))
             {
+                NotifyInspectorChanged();
                 NotifyAssetBrowserCommand();
             }
+        }
+    }
+
+    public string InspectorTitle
+    {
+        get
+        {
+            if (SelectedAsset is not null)
+            {
+                return $"Asset: {SelectedAsset.DisplayPath}";
+            }
+
+            if (SelectedDocument is not null)
+            {
+                return $"Document: {SelectedDocument.Title}";
+            }
+
+            if (LoadedProject is not null)
+            {
+                return $"Project: {LoadedProject.Name}";
+            }
+
+            return "No selection";
+        }
+    }
+
+    public string InspectorType
+    {
+        get
+        {
+            if (SelectedAsset is not null)
+            {
+                return "Asset File";
+            }
+
+            if (SelectedDocument is not null)
+            {
+                return SelectedDocument.TypeLabel;
+            }
+
+            if (LoadedProject is not null)
+            {
+                return "Editor Project";
+            }
+
+            return "None";
+        }
+    }
+
+    public string InspectorPath
+    {
+        get
+        {
+            if (SelectedAsset is not null)
+            {
+                return SelectedAsset.FullPath;
+            }
+
+            if (SelectedDocument is not null)
+            {
+                return SelectedDocument.FilePath;
+            }
+
+            if (LoadedProject is not null)
+            {
+                return LoadedProject.ProjectFilePath;
+            }
+
+            return "Select an asset or document to inspect details.";
+        }
+    }
+
+    public string InspectorSummary
+    {
+        get
+        {
+            if (SelectedAsset is not null)
+            {
+                return "Use this panel as the starting point for future property editing.";
+            }
+
+            if (SelectedDocument is not null)
+            {
+                return SelectedDocument.ContentSummary;
+            }
+
+            if (LoadedProject is not null)
+            {
+                return "Project loaded. Select a document tab or asset file to inspect it.";
+            }
+
+            return "Open or create a project to enable the inspector.";
         }
     }
 
@@ -373,6 +468,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             AssetBrowserItems.Clear();
             SelectedAsset = null;
+            NotifyInspectorChanged();
             return;
         }
 
@@ -389,6 +485,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         SelectedAsset = AssetBrowserItems.FirstOrDefault();
+        NotifyInspectorChanged();
     }
 
     private void NotifyCreateCommand()
@@ -436,6 +533,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             refreshRelayCommand.RaiseCanExecuteChanged();
         }
+    }
+
+    private void NotifyInspectorChanged()
+    {
+        OnPropertyChanged(nameof(InspectorTitle));
+        OnPropertyChanged(nameof(InspectorType));
+        OnPropertyChanged(nameof(InspectorPath));
+        OnPropertyChanged(nameof(InspectorSummary));
     }
 
     private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
