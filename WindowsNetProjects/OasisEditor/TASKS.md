@@ -21,7 +21,7 @@
 
 ## Phase 3 — Document System
 - [x] Define base document model
-- [ ] Implement open/save document
+- [x] Implement open/save document
 - [ ] Implement document dirty state
 - [ ] Implement document tabs integration
 - [ ] Stub document types:

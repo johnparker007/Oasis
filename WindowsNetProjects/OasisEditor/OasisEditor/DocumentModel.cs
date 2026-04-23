@@ -50,4 +50,28 @@ public sealed class EditorDocument
             $"Assets: {project.AssetsDirectory}\nMachines: {project.MachinesDirectory}\nGenerated: {project.GeneratedDirectory}",
             false);
     }
+
+    public static EditorDocument CreateFromFile(string filePath, string summary)
+    {
+        var extension = Path.GetExtension(filePath);
+        var documentType = extension.ToLowerInvariant() switch
+        {
+            ".panel2d" => EditorDocumentType.Panel2D,
+            ".cabinet3d" => EditorDocumentType.Cabinet3D,
+            ".machine" => EditorDocumentType.Machine,
+            _ => EditorDocumentType.Generic
+        };
+
+        return new EditorDocument(
+            Path.GetFileName(filePath),
+            documentType,
+            filePath,
+            summary,
+            false);
+    }
+
+    public EditorDocument SaveAs(string filePath, string summary)
+    {
+        return CreateFromFile(filePath, summary);
+    }
 }

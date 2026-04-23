@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Input;
+using Microsoft.Win32;
 
 namespace OasisEditor;
 
@@ -31,6 +32,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OpenProjectCommand = new RelayCommand(OpenProject, CanOpenProject);
         OpenRecentProjectCommand = new RelayCommand(OpenSelectedRecentProject, CanOpenSelectedRecentProject);
         OpenUntitledDocumentCommand = new RelayCommand(OpenUntitledDocument, CanOpenUntitledDocument);
+        OpenDocumentCommand = new RelayCommand(OpenDocument, CanOpenDocument);
+        SaveSelectedDocumentCommand = new RelayCommand(SaveSelectedDocument, CanSaveSelectedDocument);
         CloseSelectedDocumentCommand = new RelayCommand(CloseSelectedDocument, CanCloseSelectedDocument);
         RefreshAssetBrowserCommand = new RelayCommand(RefreshAssetBrowser, CanRefreshAssetBrowser);
         ClearOutputCommand = new RelayCommand(ClearOutput, CanClearOutput);
@@ -47,6 +50,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand OpenProjectCommand { get; }
     public ICommand OpenRecentProjectCommand { get; }
     public ICommand OpenUntitledDocumentCommand { get; }
+    public ICommand OpenDocumentCommand { get; }
+    public ICommand SaveSelectedDocumentCommand { get; }
     public ICommand CloseSelectedDocumentCommand { get; }
     public ICommand RefreshAssetBrowserCommand { get; }
     public ICommand ClearOutputCommand { get; }
@@ -318,6 +323,125 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         return SelectedDocument is not null;
     }
 
+    private bool CanOpenDocument()
+    {
+        return LoadedProject is not null;
+    }
+
+    private void OpenDocument()
+    {
+        if (LoadedProject is null)
+        {
+            return;
+        }
+
+        var dialog = new OpenFileDialog
+        {
+            Title = "Open Document",
+            Filter = "Editor Documents|*.panel2d;*.cabinet3d;*.machine|All Files|*.*",
+            InitialDirectory = LoadedProject.ProjectDirectory,
+            CheckFileExists = true
+        };
+
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        try
+        {
+            var path = dialog.FileName;
+            var preview = File.ReadAllText(path);
+            var summary = preview.Length > 300 ? $"{preview[..300]}..." : preview;
+            if (string.IsNullOrWhiteSpace(summary))
+            {
+                summary = "Document opened (file is empty).";
+            }
+
+            var document = new DocumentTabViewModel(EditorDocument.CreateFromFile(path, summary));
+            OpenDocuments.Add(document);
+            SelectedDocument = document;
+            StatusMessage = $"Opened document: {document.Title}";
+            AddOutputEntry($"Opened document file {path}");
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = ex.Message;
+            AddOutputEntry($"Open document failed: {ex.Message}");
+            MessageBox.Show(ex.Message, "Open Document Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private bool CanSaveSelectedDocument()
+    {
+        return SelectedDocument is not null && SelectedDocument.Document.DocumentType != EditorDocumentType.ProjectOverview;
+    }
+
+    private void SaveSelectedDocument()
+    {
+        if (SelectedDocument is null)
+        {
+            return;
+        }
+
+        var current = SelectedDocument;
+        var savePath = current.Document.IsUntitled ? PromptSavePath() : current.FilePath;
+        if (string.IsNullOrWhiteSpace(savePath))
+        {
+            return;
+        }
+
+        try
+        {
+            var persisted = new
+            {
+                title = current.Title,
+                type = current.Document.DocumentType.ToString(),
+                summary = current.ContentSummary,
+                savedAtUtc = DateTime.UtcNow
+            };
+
+            var content = JsonSerializer.Serialize(persisted, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(savePath, content);
+
+            var updatedDocument = new DocumentTabViewModel(current.Document.SaveAs(savePath, current.ContentSummary));
+            var index = OpenDocuments.IndexOf(current);
+            if (index >= 0)
+            {
+                OpenDocuments[index] = updatedDocument;
+            }
+
+            SelectedDocument = updatedDocument;
+            StatusMessage = $"Saved document: {updatedDocument.Title}";
+            AddOutputEntry($"Saved document to {savePath}");
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = ex.Message;
+            AddOutputEntry($"Save document failed: {ex.Message}");
+            MessageBox.Show(ex.Message, "Save Document Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private string? PromptSavePath()
+    {
+        if (LoadedProject is null)
+        {
+            return null;
+        }
+
+        var dialog = new SaveFileDialog
+        {
+            Title = "Save Document",
+            InitialDirectory = LoadedProject.AssetsDirectory,
+            FileName = $"{SelectedDocument?.Title ?? "Document"}.panel2d",
+            DefaultExt = ".panel2d",
+            Filter = "Panel 2D|*.panel2d|Cabinet 3D|*.cabinet3d|Machine|*.machine|All Files|*.*"
+        };
+
+        return dialog.ShowDialog() == true ? dialog.FileName : null;
+    }
+
     private void CloseSelectedDocument()
     {
         if (SelectedDocument is null)
@@ -542,6 +666,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (OpenUntitledDocumentCommand is RelayCommand openRelayCommand)
         {
             openRelayCommand.RaiseCanExecuteChanged();
+        }
+
+        if (OpenDocumentCommand is RelayCommand openDocumentRelayCommand)
+        {
+            openDocumentRelayCommand.RaiseCanExecuteChanged();
+        }
+
+        if (SaveSelectedDocumentCommand is RelayCommand saveRelayCommand)
+        {
+            saveRelayCommand.RaiseCanExecuteChanged();
         }
 
         if (CloseSelectedDocumentCommand is RelayCommand closeRelayCommand)
