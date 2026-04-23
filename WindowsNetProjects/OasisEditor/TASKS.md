@@ -15,7 +15,7 @@
 - [x] Implement basic dock layout
 - [x] Implement document tab system
 - [ ] Add panels:
-  - [ ] Asset browser
+  - [x] Asset browser
   - [ ] Inspector
   - [ ] Output/log
 

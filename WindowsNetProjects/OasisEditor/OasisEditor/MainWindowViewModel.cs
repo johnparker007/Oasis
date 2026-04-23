@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Windows;
@@ -19,6 +20,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string? _selectedRecentProject;
     private EditorProject? _loadedProject;
     private DocumentTabViewModel? _selectedDocument;
+    private AssetBrowserItemViewModel? _selectedAsset;
     private int _untitledDocumentCounter = 1;
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -30,10 +32,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OpenRecentProjectCommand = new RelayCommand(OpenSelectedRecentProject, CanOpenSelectedRecentProject);
         OpenUntitledDocumentCommand = new RelayCommand(OpenUntitledDocument, CanOpenUntitledDocument);
         CloseSelectedDocumentCommand = new RelayCommand(CloseSelectedDocument, CanCloseSelectedDocument);
+        RefreshAssetBrowserCommand = new RelayCommand(RefreshAssetBrowser, CanRefreshAssetBrowser);
         ExitCommand = new RelayCommand(ExitApplication);
 
         RecentProjects = new ObservableCollection<string>(_recentProjectsStore.Load());
         OpenDocuments = new ObservableCollection<DocumentTabViewModel>();
+        AssetBrowserItems = new ObservableCollection<AssetBrowserItemViewModel>();
     }
 
     public ICommand CreateProjectCommand { get; }
@@ -41,9 +45,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand OpenRecentProjectCommand { get; }
     public ICommand OpenUntitledDocumentCommand { get; }
     public ICommand CloseSelectedDocumentCommand { get; }
+    public ICommand RefreshAssetBrowserCommand { get; }
     public ICommand ExitCommand { get; }
     public ObservableCollection<string> RecentProjects { get; }
     public ObservableCollection<DocumentTabViewModel> OpenDocuments { get; }
+    public ObservableCollection<AssetBrowserItemViewModel> AssetBrowserItems { get; }
 
     public string ProjectName
     {
@@ -122,6 +128,18 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             if (SetProperty(ref _selectedDocument, value))
             {
                 NotifyDocumentCommands();
+            }
+        }
+    }
+
+    public AssetBrowserItemViewModel? SelectedAsset
+    {
+        get => _selectedAsset;
+        set
+        {
+            if (SetProperty(ref _selectedAsset, value))
+            {
+                NotifyAssetBrowserCommand();
             }
         }
     }
@@ -283,6 +301,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             ProjectFilePath = projectFile;
             UpdateRecentProjects(projectFile);
             EnsureProjectOverviewDocument();
+            RefreshAssetBrowser();
             StatusMessage = successMessage ?? $"Project opened: {openedProjectName} ({projectFile})";
         }
         catch (Exception ex)
@@ -343,6 +362,35 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
+    private bool CanRefreshAssetBrowser()
+    {
+        return LoadedProject is not null;
+    }
+
+    private void RefreshAssetBrowser()
+    {
+        if (LoadedProject is null)
+        {
+            AssetBrowserItems.Clear();
+            SelectedAsset = null;
+            return;
+        }
+
+        var assetsRoot = LoadedProject.AssetsDirectory;
+        var assetFiles = Directory.EnumerateFiles(assetsRoot, "*", SearchOption.AllDirectories)
+            .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        AssetBrowserItems.Clear();
+        foreach (var file in assetFiles)
+        {
+            var relativePath = Path.GetRelativePath(assetsRoot, file);
+            AssetBrowserItems.Add(new AssetBrowserItemViewModel(relativePath, file));
+        }
+
+        SelectedAsset = AssetBrowserItems.FirstOrDefault();
+    }
+
     private void NotifyCreateCommand()
     {
         if (CreateProjectCommand is RelayCommand relayCommand)
@@ -378,6 +426,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             closeRelayCommand.RaiseCanExecuteChanged();
         }
+
+        NotifyAssetBrowserCommand();
+    }
+
+    private void NotifyAssetBrowserCommand()
+    {
+        if (RefreshAssetBrowserCommand is RelayCommand refreshRelayCommand)
+        {
+            refreshRelayCommand.RaiseCanExecuteChanged();
+        }
     }
 
     private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
@@ -412,4 +470,16 @@ public sealed class DocumentTabViewModel
     public string TypeLabel { get; }
     public string FilePath { get; }
     public string ContentSummary { get; }
+}
+
+public sealed class AssetBrowserItemViewModel
+{
+    public AssetBrowserItemViewModel(string displayPath, string fullPath)
+    {
+        DisplayPath = displayPath;
+        FullPath = fullPath;
+    }
+
+    public string DisplayPath { get; }
+    public string FullPath { get; }
 }

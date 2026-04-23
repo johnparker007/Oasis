@@ -211,13 +211,36 @@
                                 Background="#FFF9FAFC"
                                 BorderBrush="#FFD9E0EE"
                                 BorderThickness="1,0,0,1">
-                            <StackPanel>
-                                <TextBlock FontWeight="SemiBold"
-                                           Text="Left Dock" />
-                                <TextBlock Margin="0,6,0,0"
-                                           Foreground="DimGray"
-                                           Text="Tool windows and navigation." />
-                            </StackPanel>
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0"
+                                           FontWeight="SemiBold"
+                                           Text="Asset Browser" />
+
+                                <DockPanel Grid.Row="1"
+                                           Margin="0,6,0,8"
+                                           LastChildFill="False">
+                                    <Button DockPanel.Dock="Right"
+                                            Padding="10,4"
+                                            Command="{Binding RefreshAssetBrowserCommand}"
+                                            Content="Refresh" />
+                                </DockPanel>
+
+                                <ListBox Grid.Row="2"
+                                         ItemsSource="{Binding AssetBrowserItems}"
+                                         SelectedItem="{Binding SelectedAsset, Mode=TwoWay}">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding DisplayPath}" />
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </Grid>
                         </Border>
 
                         <Border Grid.Row="1"
