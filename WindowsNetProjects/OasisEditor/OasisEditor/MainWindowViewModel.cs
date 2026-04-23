@@ -33,11 +33,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OpenUntitledDocumentCommand = new RelayCommand(OpenUntitledDocument, CanOpenUntitledDocument);
         CloseSelectedDocumentCommand = new RelayCommand(CloseSelectedDocument, CanCloseSelectedDocument);
         RefreshAssetBrowserCommand = new RelayCommand(RefreshAssetBrowser, CanRefreshAssetBrowser);
+        ClearOutputCommand = new RelayCommand(ClearOutput, CanClearOutput);
         ExitCommand = new RelayCommand(ExitApplication);
 
         RecentProjects = new ObservableCollection<string>(_recentProjectsStore.Load());
         OpenDocuments = new ObservableCollection<DocumentTabViewModel>();
         AssetBrowserItems = new ObservableCollection<AssetBrowserItemViewModel>();
+        OutputEntries = new ObservableCollection<string>();
+        AddOutputEntry("Editor shell initialized.");
     }
 
     public ICommand CreateProjectCommand { get; }
@@ -46,10 +49,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand OpenUntitledDocumentCommand { get; }
     public ICommand CloseSelectedDocumentCommand { get; }
     public ICommand RefreshAssetBrowserCommand { get; }
+    public ICommand ClearOutputCommand { get; }
     public ICommand ExitCommand { get; }
     public ObservableCollection<string> RecentProjects { get; }
     public ObservableCollection<DocumentTabViewModel> OpenDocuments { get; }
     public ObservableCollection<AssetBrowserItemViewModel> AssetBrowserItems { get; }
+    public ObservableCollection<string> OutputEntries { get; }
 
     public string ProjectName
     {
@@ -247,10 +252,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             var projectFilePath = Path.Combine(projectPath, $"{ProjectName.Trim()}.oasisproj");
 
             OpenProjectFile(projectFilePath, $"Project created and loaded: {projectPath}");
+            AddOutputEntry($"Created project at {projectPath}");
         }
         catch (Exception ex)
         {
             StatusMessage = ex.Message;
+            AddOutputEntry($"Create project failed: {ex.Message}");
             MessageBox.Show(ex.Message, "Create Project Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
@@ -306,6 +313,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OpenDocuments.Add(document);
         SelectedDocument = document;
         StatusMessage = $"Opened document tab: {document.Title}";
+        AddOutputEntry($"Opened document tab: {document.Title}");
     }
 
     private bool CanCloseSelectedDocument()
@@ -329,12 +337,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             SelectedDocument = null;
             StatusMessage = "Closed document tab.";
+            AddOutputEntry($"Closed document tab: {documentToClose.Title}");
             return;
         }
 
         var nextIndex = Math.Clamp(index, 0, OpenDocuments.Count - 1);
         SelectedDocument = OpenDocuments[nextIndex];
         StatusMessage = $"Closed document tab: {documentToClose.Title}";
+        AddOutputEntry($"Closed document tab: {documentToClose.Title}");
     }
 
     private static void ExitApplication()
@@ -398,10 +408,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             EnsureProjectOverviewDocument();
             RefreshAssetBrowser();
             StatusMessage = successMessage ?? $"Project opened: {openedProjectName} ({projectFile})";
+            AddOutputEntry($"Loaded project '{openedProjectName}' from {projectFile}");
         }
         catch (Exception ex)
         {
             StatusMessage = ex.Message;
+            AddOutputEntry($"Open project failed: {ex.Message}");
             MessageBox.Show(ex.Message, "Open Project Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
@@ -469,6 +481,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             AssetBrowserItems.Clear();
             SelectedAsset = null;
             NotifyInspectorChanged();
+            AddOutputEntry("Asset browser cleared (no project loaded).");
             return;
         }
 
@@ -486,6 +499,25 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         SelectedAsset = AssetBrowserItems.FirstOrDefault();
         NotifyInspectorChanged();
+        AddOutputEntry($"Asset browser refreshed ({AssetBrowserItems.Count} files).");
+    }
+
+    private bool CanClearOutput()
+    {
+        return OutputEntries.Count > 0;
+    }
+
+    private void ClearOutput()
+    {
+        OutputEntries.Clear();
+        AddOutputEntry("Output log cleared.");
+    }
+
+    private void AddOutputEntry(string message)
+    {
+        var timestamp = DateTime.Now.ToString("HH:mm:ss");
+        OutputEntries.Add($"[{timestamp}] {message}");
+        NotifyOutputCommand();
     }
 
     private void NotifyCreateCommand()
@@ -532,6 +564,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (RefreshAssetBrowserCommand is RelayCommand refreshRelayCommand)
         {
             refreshRelayCommand.RaiseCanExecuteChanged();
+        }
+    }
+
+    private void NotifyOutputCommand()
+    {
+        if (ClearOutputCommand is RelayCommand clearRelayCommand)
+        {
+            clearRelayCommand.RaiseCanExecuteChanged();
         }
     }
 

@@ -17,7 +17,7 @@
 - [ ] Add panels:
   - [x] Asset browser
   - [x] Inspector
-  - [ ] Output/log
+  - [x] Output/log
 
 ## Phase 3 — Document System
 - [ ] Define base document model
