@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
@@ -10,10 +11,12 @@ namespace OasisEditor;
 public sealed class MainWindowViewModel : INotifyPropertyChanged
 {
     private readonly ProjectScaffolder _projectScaffolder = new();
+    private readonly RecentProjectsStore _recentProjectsStore = new();
     private string _projectName = string.Empty;
     private string _projectLocation = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
     private string _projectFilePath = string.Empty;
     private string _statusMessage = "Create a new project to get started.";
+    private string? _selectedRecentProject;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -21,10 +24,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         CreateProjectCommand = new RelayCommand(CreateProject, CanCreateProject);
         OpenProjectCommand = new RelayCommand(OpenProject, CanOpenProject);
+        OpenRecentProjectCommand = new RelayCommand(OpenSelectedRecentProject, CanOpenSelectedRecentProject);
+
+        RecentProjects = new ObservableCollection<string>(_recentProjectsStore.Load());
     }
 
     public ICommand CreateProjectCommand { get; }
     public ICommand OpenProjectCommand { get; }
+    public ICommand OpenRecentProjectCommand { get; }
+    public ObservableCollection<string> RecentProjects { get; }
 
     public string ProjectName
     {
@@ -68,11 +76,26 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
+    public string? SelectedRecentProject
+    {
+        get => _selectedRecentProject;
+        set
+        {
+            if (SetProperty(ref _selectedRecentProject, value))
+            {
+                NotifyOpenRecentCommand();
+            }
+        }
+    }
+
     private void CreateProject()
     {
         try
         {
             var projectPath = _projectScaffolder.CreateProject(ProjectName, ProjectLocation);
+            var projectFilePath = Path.Combine(projectPath, $"{ProjectName.Trim()}.oasisproj");
+
+            UpdateRecentProjects(projectFilePath);
             StatusMessage = $"Project created: {projectPath}";
         }
         catch (Exception ex)
@@ -89,9 +112,34 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void OpenProject()
     {
+        OpenProjectFile(ProjectFilePath);
+    }
+
+    private bool CanOpenProject()
+    {
+        return !string.IsNullOrWhiteSpace(ProjectFilePath);
+    }
+
+    private void OpenSelectedRecentProject()
+    {
+        if (string.IsNullOrWhiteSpace(SelectedRecentProject))
+        {
+            return;
+        }
+
+        OpenProjectFile(SelectedRecentProject);
+    }
+
+    private bool CanOpenSelectedRecentProject()
+    {
+        return !string.IsNullOrWhiteSpace(SelectedRecentProject);
+    }
+
+    private void OpenProjectFile(string projectFilePath)
+    {
         try
         {
-            var projectFile = ProjectFilePath.Trim();
+            var projectFile = projectFilePath.Trim();
 
             if (!File.Exists(projectFile))
             {
@@ -117,6 +165,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 throw new InvalidOperationException("Project metadata contains an empty 'name' field.");
             }
 
+            ProjectFilePath = projectFile;
+            UpdateRecentProjects(projectFile);
             StatusMessage = $"Project opened: {openedProjectName} ({projectFile})";
         }
         catch (Exception ex)
@@ -126,9 +176,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private bool CanOpenProject()
+    private void UpdateRecentProjects(string projectFilePath)
     {
-        return !string.IsNullOrWhiteSpace(ProjectFilePath);
+        var updated = _recentProjectsStore.Add(projectFilePath);
+
+        RecentProjects.Clear();
+        foreach (var item in updated)
+        {
+            RecentProjects.Add(item);
+        }
     }
 
     private void NotifyCreateCommand()
@@ -142,6 +198,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private void NotifyOpenCommand()
     {
         if (OpenProjectCommand is RelayCommand relayCommand)
+        {
+            relayCommand.RaiseCanExecuteChanged();
+        }
+    }
+
+    private void NotifyOpenRecentCommand()
+    {
+        if (OpenRecentProjectCommand is RelayCommand relayCommand)
         {
             relayCommand.RaiseCanExecuteChanged();
         }

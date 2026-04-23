@@ -4,8 +4,8 @@
 - [x] Create solution structure
 - [x] Implement project create flow
 - [x] Implement project open flow
-- [ ] Implement recent projects list
-- [ ] Generate project directory layout
+- [x] Implement recent projects list
+- [x] Generate project directory layout
 - [ ] Load project into editor shell
 
 ## Phase 2 — Editor Shell

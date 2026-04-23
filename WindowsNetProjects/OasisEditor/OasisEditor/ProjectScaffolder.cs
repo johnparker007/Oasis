@@ -8,8 +8,15 @@ public sealed class ProjectScaffolder
     private static readonly string[] ProjectFolders =
     [
         "Assets",
+        "Assets/Images",
+        "Assets/Audio",
+        "Assets/Fonts",
+        "Assets/Panel2D",
+        "Assets/Cabinet3D",
         "Machines",
-        "Generated"
+        "Generated",
+        "Generated/Build",
+        "Generated/Preview"
     ];
 
     public string CreateProject(string projectName, string rootLocation)
@@ -45,7 +52,13 @@ public sealed class ProjectScaffolder
         {
             name = sanitizedName,
             createdUtc = DateTime.UtcNow,
-            version = 1
+            version = 1,
+            layout = new
+            {
+                assets = "Assets",
+                machines = "Machines",
+                generated = "Generated"
+            }
         };
 
         var json = JsonSerializer.Serialize(projectMetadata, new JsonSerializerOptions
