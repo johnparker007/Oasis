@@ -3,9 +3,9 @@
 ## Current Focus — Startup Flow Refactor
 
 ### Launcher Window
-- [ ] Create dedicated Launcher window class and view model
-- [ ] Make Launcher window the application startup window
-- [ ] Move New Project UI into Launcher window
+- [x] Create dedicated Launcher window class and view model
+- [x] Make Launcher window the application startup window
+- [x] Move New Project UI into Launcher window
 - [ ] Move Open Project UI into Launcher window
 - [ ] Move Recent Projects list UI into Launcher window
 

@@ -1,0 +1,69 @@
+<Window x:Class="OasisEditor.LauncherWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Oasis Launcher"
+        Height="320"
+        Width="560"
+        MinHeight="280"
+        MinWidth="520"
+        Background="{DynamicResource EditorBackgroundBrush}"
+        Foreground="{DynamicResource TextPrimaryBrush}">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0"
+                   FontSize="22"
+                   FontWeight="SemiBold"
+                   Text="Oasis Editor Launcher" />
+
+        <TextBlock Grid.Row="1"
+                   Margin="0,6,0,14"
+                   Foreground="{DynamicResource TextSecondaryBrush}"
+                   Text="Create a project to open the editor shell." />
+
+        <Grid Grid.Row="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0" Margin="0,0,0,4" Text="Project name" />
+            <TextBox Grid.Row="1"
+                     Margin="0,0,0,10"
+                     Text="{Binding ProjectName, UpdateSourceTrigger=PropertyChanged}" />
+
+            <TextBlock Grid.Row="2" Margin="0,0,0,4" Text="Project location" />
+            <TextBox Grid.Row="3"
+                     Text="{Binding ProjectLocation, UpdateSourceTrigger=PropertyChanged}" />
+        </Grid>
+
+        <TextBlock Grid.Row="3"
+                   Margin="0,10,0,0"
+                   Foreground="{DynamicResource TextSecondaryBrush}"
+                   Text="{Binding StatusMessage}"
+                   TextWrapping="Wrap" />
+
+        <StackPanel Grid.Row="4"
+                    Margin="0,16,0,0"
+                    HorizontalAlignment="Right"
+                    Orientation="Horizontal">
+            <Button MinWidth="90"
+                    Margin="0,0,8,0"
+                    Padding="12,6"
+                    Command="{Binding ExitCommand}"
+                    Content="Exit" />
+            <Button MinWidth="140"
+                    Padding="12,6"
+                    Command="{Binding CreateProjectCommand}"
+                    Content="Create Project" />
+        </StackPanel>
+    </Grid>
+</Window>

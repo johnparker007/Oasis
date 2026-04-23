@@ -261,44 +261,17 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
 
                         <TextBlock Grid.Row="0"
                                    Margin="0,0,0,4"
-                                   Text="Project name" />
-                        <TextBox Grid.Row="1"
-                                 Margin="0,0,0,10"
-                                 Text="{Binding ProjectName, UpdateSourceTrigger=PropertyChanged}" />
-
-                        <TextBlock Grid.Row="2"
-                                   Margin="0,0,0,4"
-                                   Text="Project location" />
-                        <TextBox Grid.Row="3"
-                                 Margin="0,0,0,10"
-                                 Text="{Binding ProjectLocation, UpdateSourceTrigger=PropertyChanged}" />
-
-                        <Button Grid.Row="4"
-                                HorizontalAlignment="Right"
-                                MinWidth="140"
-                                Padding="14,6"
-                                Margin="0,0,0,10"
-                                Command="{Binding CreateProjectCommand}"
-                                Content="Create project" />
-
-                        <TextBlock Grid.Row="5"
-                                   Margin="0,0,0,4"
                                    Text="Project file" />
-                        <TextBox Grid.Row="6"
+                        <TextBox Grid.Row="1"
                                  Margin="0,0,0,10"
                                  Text="{Binding ProjectFilePath, UpdateSourceTrigger=PropertyChanged}" />
 
-                        <StackPanel Grid.Row="7"
+                        <StackPanel Grid.Row="2"
                                     Orientation="Horizontal"
                                     HorizontalAlignment="Right"
                                     Margin="0,0,0,10">
@@ -313,10 +286,10 @@
                                     Content="Open selected recent" />
                         </StackPanel>
 
-                        <TextBlock Grid.Row="8"
+                        <TextBlock Grid.Row="3"
                                    Margin="0,0,0,4"
                                    Text="Recent projects" />
-                        <ListBox Grid.Row="9"
+                        <ListBox Grid.Row="4"
                                  Margin="0"
                                  MinHeight="120"
                                  ItemsSource="{Binding RecentProjects}"

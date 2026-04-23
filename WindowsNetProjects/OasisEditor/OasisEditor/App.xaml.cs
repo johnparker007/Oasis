@@ -16,7 +16,7 @@ public partial class App : Application
 
         base.OnStartup(e);
 
-        var mainWindow = new MainWindow(_applicationThemeService, _preferencesStore);
-        mainWindow.Show();
+        var launcherWindow = new LauncherWindow(_applicationThemeService, _preferencesStore);
+        launcherWindow.Show();
     }
 }
