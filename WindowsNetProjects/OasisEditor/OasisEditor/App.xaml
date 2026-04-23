@@ -7,14 +7,14 @@
                 <ResourceDictionary Source="pack://application:,,,/PresentationFramework.Fluent;component/Themes/Fluent.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
-            <SolidColorBrush x:Key="EditorBackgroundBrush" Color="#FFF4F7FC" />
-            <SolidColorBrush x:Key="PanelBackgroundBrush" Color="White" />
-            <SolidColorBrush x:Key="InspectorBackgroundBrush" Color="#FFF9FAFC" />
-            <SolidColorBrush x:Key="ToolBarBackgroundBrush" Color="#FFF2F5FB" />
-            <SolidColorBrush x:Key="TextPrimaryBrush" Color="#FF20242C" />
-            <SolidColorBrush x:Key="TextSecondaryBrush" Color="#FF626A78" />
-            <SolidColorBrush x:Key="BorderSubtleBrush" Color="#FFD9E0EE" />
-            <SolidColorBrush x:Key="SelectionBrush" Color="#FFCCE0FF" />
+            <SolidColorBrush x:Key="EditorBackgroundBrush" Color="#FF151A22" />
+            <SolidColorBrush x:Key="PanelBackgroundBrush" Color="#FF1C2535" />
+            <SolidColorBrush x:Key="InspectorBackgroundBrush" Color="#FF18202E" />
+            <SolidColorBrush x:Key="ToolBarBackgroundBrush" Color="#FF202B3C" />
+            <SolidColorBrush x:Key="TextPrimaryBrush" Color="#FFF2F5FB" />
+            <SolidColorBrush x:Key="TextSecondaryBrush" Color="#FFC2CBDA" />
+            <SolidColorBrush x:Key="BorderSubtleBrush" Color="#FF334156" />
+            <SolidColorBrush x:Key="SelectionBrush" Color="#FF2C4F7E" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>
