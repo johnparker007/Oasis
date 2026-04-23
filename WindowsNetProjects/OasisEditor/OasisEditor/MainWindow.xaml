@@ -461,6 +461,10 @@
                                                 Margin="0,0,8,0"
                                                 Command="{Binding SaveSelectedDocumentCommand}"
                                                 Content="Save" />
+                                        <ToggleButton x:Name="RectangleToolToggle"
+                                                      Padding="10,4"
+                                                      Margin="0,0,8,0"
+                                                      Content="Rectangle Tool" />
                                         <Button Padding="10,4"
                                                 Command="{Binding CloseSelectedDocumentCommand}"
                                                 Content="Close Tab" />
@@ -511,6 +515,7 @@
                                                                     Height="900"
                                                                     Cursor="SizeAll"
                                                                     local:CanvasPanBehavior.IsEnabled="True"
+                                                                    local:CanvasPanBehavior.IsRectangleToolActive="{Binding IsChecked, ElementName=RectangleToolToggle}"
                                                                     Background="{DynamicResource PanelBackgroundBrush}">
                                                                 <Canvas.Resources>
                                                                     <Style TargetType="Rectangle">
@@ -554,6 +559,10 @@
                                                                            Canvas.Top="156"
                                                                            Foreground="{DynamicResource TextSecondaryBrush}"
                                                                            Text="Left-click a shape to select it." />
+                                                                <TextBlock Canvas.Left="136"
+                                                                           Canvas.Top="180"
+                                                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                                                           Text="Enable Rectangle Tool, then left-click empty canvas to place a rectangle." />
                                                             </Canvas>
                                                         </Border>
                                                     </Border>
