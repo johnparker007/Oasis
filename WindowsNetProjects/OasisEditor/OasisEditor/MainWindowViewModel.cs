@@ -34,6 +34,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private ThemePreference _selectedThemePreference;
     private PreferencesWindow? _preferencesWindow;
     private ProjectSettingsWindow? _projectSettingsWindow;
+    private string _inspectorEditableSummary = string.Empty;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -59,6 +60,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OpenProjectSettingsCommand = new RelayCommand(OpenProjectSettings);
         ClosePreferencesCommand = new RelayCommand(ClosePreferences);
         CloseProjectSettingsCommand = new RelayCommand(CloseProjectSettings);
+        ApplyInspectorSummaryCommand = new RelayCommand(ApplyInspectorSummary, CanApplyInspectorSummary);
         ExitCommand = new RelayCommand(ExitApplication);
 
         var preferences = _preferencesStore.Load();
@@ -88,6 +90,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand OpenProjectSettingsCommand { get; }
     public ICommand ClosePreferencesCommand { get; }
     public ICommand CloseProjectSettingsCommand { get; }
+    public ICommand ApplyInspectorSummaryCommand { get; }
     public ICommand ExitCommand { get; }
     public ObservableCollection<string> RecentProjects { get; }
     public ObservableCollection<DocumentTabViewModel> OpenDocuments { get; }
@@ -300,6 +303,21 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return "Open or create a project to enable the inspector.";
         }
     }
+
+    public string InspectorEditableSummary
+    {
+        get => _inspectorEditableSummary;
+        set
+        {
+            if (SetProperty(ref _inspectorEditableSummary, value))
+            {
+                NotifyInspectorEditCommand();
+            }
+        }
+    }
+
+    public bool CanEditInspectorSummary => SelectedDocument is not null
+        && SelectedDocument.Document.DocumentType != EditorDocumentType.ProjectOverview;
 
     private void CreateProject()
     {
@@ -1067,6 +1085,46 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(InspectorType));
         OnPropertyChanged(nameof(InspectorPath));
         OnPropertyChanged(nameof(InspectorSummary));
+        OnPropertyChanged(nameof(CanEditInspectorSummary));
+
+        InspectorEditableSummary = SelectedDocument?.ContentSummary ?? string.Empty;
+        NotifyInspectorEditCommand();
+    }
+
+    private bool CanApplyInspectorSummary()
+    {
+        if (!CanEditInspectorSummary || SelectedDocument is null)
+        {
+            return false;
+        }
+
+        return !string.Equals(
+            SelectedDocument.ContentSummary,
+            InspectorEditableSummary,
+            StringComparison.Ordinal);
+    }
+
+    private void ApplyInspectorSummary()
+    {
+        if (SelectedDocument is null || !CanEditInspectorSummary)
+        {
+            return;
+        }
+
+        var updated = new DocumentTabViewModel(
+            SelectedDocument.Document.WithContentSummary(InspectorEditableSummary).MarkDirty());
+
+        ExecuteDocumentMutation(new ReplaceDocumentTabMutationCommand(this, SelectedDocument, updated));
+        StatusMessage = $"Updated inspector summary for {updated.Title}";
+        AddOutputEntry($"Inspector summary updated for {updated.Title}");
+    }
+
+    private void NotifyInspectorEditCommand()
+    {
+        if (ApplyInspectorSummaryCommand is RelayCommand relayCommand)
+        {
+            relayCommand.RaiseCanExecuteChanged();
+        }
     }
 
     private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
