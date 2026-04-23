@@ -496,13 +496,22 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return null;
         }
 
+        var selectedDocument = SelectedDocument;
+        var defaultName = selectedDocument?.Document.Title ?? "Document";
+        var (defaultExtension, filter) = selectedDocument?.Document.DocumentType switch
+        {
+            EditorDocumentType.Cabinet3D => (".cabinet3d", "Cabinet 3D|*.cabinet3d|Panel 2D|*.panel2d|Machine|*.machine|All Files|*.*"),
+            EditorDocumentType.Machine => (".machine", "Machine|*.machine|Panel 2D|*.panel2d|Cabinet 3D|*.cabinet3d|All Files|*.*"),
+            _ => (".panel2d", "Panel 2D|*.panel2d|Cabinet 3D|*.cabinet3d|Machine|*.machine|All Files|*.*")
+        };
+
         var dialog = new SaveFileDialog
         {
             Title = "Save Document",
             InitialDirectory = LoadedProject.AssetsDirectory,
-            FileName = $"{SelectedDocument?.Title ?? "Document"}.panel2d",
-            DefaultExt = ".panel2d",
-            Filter = "Panel 2D|*.panel2d|Cabinet 3D|*.cabinet3d|Machine|*.machine|All Files|*.*"
+            FileName = $"{defaultName}{defaultExtension}",
+            DefaultExt = defaultExtension,
+            Filter = filter
         };
 
         return dialog.ShowDialog() == true ? dialog.FileName : null;
