@@ -305,10 +305,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         var document = new DocumentTabViewModel(
-            $"Untitled {_untitledDocumentCounter++}",
-            "Document Type",
-            "No file associated yet.",
-            "Create or open a project asset to begin editing.");
+            EditorDocument.CreateUntitled($"Untitled {_untitledDocumentCounter++}"));
 
         OpenDocuments.Add(document);
         SelectedDocument = document;
@@ -426,11 +423,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         OpenDocuments.Clear();
-        var overviewDocument = new DocumentTabViewModel(
-            "Project Overview",
-            "Project",
-            LoadedProject.ProjectFilePath,
-            $"Assets: {LoadedProject.AssetsDirectory}\nMachines: {LoadedProject.MachinesDirectory}\nGenerated: {LoadedProject.GeneratedDirectory}");
+        var overviewDocument = new DocumentTabViewModel(EditorDocument.CreateProjectOverview(LoadedProject));
 
         OpenDocuments.Add(overviewDocument);
         SelectedDocument = overviewDocument;
@@ -603,18 +596,23 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
 public sealed class DocumentTabViewModel
 {
-    public DocumentTabViewModel(string title, string typeLabel, string filePath, string contentSummary)
+    public DocumentTabViewModel(EditorDocument document)
     {
-        Title = title;
-        TypeLabel = typeLabel;
-        FilePath = filePath;
-        ContentSummary = contentSummary;
+        Document = document;
     }
 
-    public string Title { get; }
-    public string TypeLabel { get; }
-    public string FilePath { get; }
-    public string ContentSummary { get; }
+    public EditorDocument Document { get; }
+    public string Title => Document.Title;
+    public string TypeLabel => Document.DocumentType switch
+    {
+        EditorDocumentType.ProjectOverview => "Project",
+        EditorDocumentType.Panel2D => "Panel 2D",
+        EditorDocumentType.Cabinet3D => "Cabinet 3D",
+        EditorDocumentType.Machine => "Machine",
+        _ => "Document Type"
+    };
+    public string FilePath => Document.FilePath;
+    public string ContentSummary => Document.ContentSummary;
 }
 
 public sealed class AssetBrowserItemViewModel
