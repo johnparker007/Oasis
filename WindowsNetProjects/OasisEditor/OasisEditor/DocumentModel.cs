@@ -16,13 +16,15 @@ public sealed class EditorDocument
         EditorDocumentType documentType,
         string filePath,
         string contentSummary,
-        bool isUntitled)
+        bool isUntitled,
+        bool isDirty)
     {
         Title = title;
         DocumentType = documentType;
         FilePath = filePath;
         ContentSummary = contentSummary;
         IsUntitled = isUntitled;
+        IsDirty = isDirty;
     }
 
     public string Title { get; }
@@ -30,6 +32,7 @@ public sealed class EditorDocument
     public string FilePath { get; }
     public string ContentSummary { get; }
     public bool IsUntitled { get; }
+    public bool IsDirty { get; }
 
     public static EditorDocument CreateUntitled(string title)
     {
@@ -38,6 +41,7 @@ public sealed class EditorDocument
             EditorDocumentType.Generic,
             "No file associated yet.",
             "Create or open a project asset to begin editing.",
+            true,
             true);
     }
 
@@ -48,6 +52,7 @@ public sealed class EditorDocument
             EditorDocumentType.ProjectOverview,
             project.ProjectFilePath,
             $"Assets: {project.AssetsDirectory}\nMachines: {project.MachinesDirectory}\nGenerated: {project.GeneratedDirectory}",
+            false,
             false);
     }
 
@@ -79,11 +84,22 @@ public sealed class EditorDocument
             documentType,
             filePath,
             summary,
+            false,
             false);
     }
 
     public EditorDocument SaveAs(string filePath, string summary)
     {
         return CreateFromFile(filePath, summary);
+    }
+
+    public EditorDocument MarkDirty()
+    {
+        return new EditorDocument(Title, DocumentType, FilePath, ContentSummary, IsUntitled, true);
+    }
+
+    public EditorDocument MarkClean()
+    {
+        return new EditorDocument(Title, DocumentType, FilePath, ContentSummary, false, false);
     }
 }
