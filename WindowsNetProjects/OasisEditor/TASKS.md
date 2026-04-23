@@ -2,7 +2,7 @@
 
 ## Phase 1 — Project System
 - [x] Create solution structure
-- [ ] Implement project create flow
+- [x] Implement project create flow
 - [ ] Implement project open flow
 - [ ] Implement recent projects list
 - [ ] Generate project directory layout
