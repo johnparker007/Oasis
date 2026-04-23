@@ -226,13 +226,61 @@
                                 Background="White"
                                 BorderBrush="#FFD9E0EE"
                                 BorderThickness="1,0,1,1">
-                            <StackPanel>
-                                <TextBlock FontWeight="SemiBold"
-                                           Text="Document Host" />
-                                <TextBlock Margin="0,6,0,0"
-                                           Foreground="DimGray"
-                                           Text="Center workspace for open editor documents." />
-                            </StackPanel>
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+
+                                <DockPanel Grid.Row="0"
+                                           LastChildFill="False"
+                                           Margin="0,0,0,8">
+                                    <TextBlock DockPanel.Dock="Left"
+                                               VerticalAlignment="Center"
+                                               FontWeight="SemiBold"
+                                               Text="Document Host" />
+                                    <StackPanel DockPanel.Dock="Right"
+                                                Orientation="Horizontal">
+                                        <Button Padding="10,4"
+                                                Margin="0,0,8,0"
+                                                Command="{Binding OpenUntitledDocumentCommand}"
+                                                Content="New Tab" />
+                                        <Button Padding="10,4"
+                                                Command="{Binding CloseSelectedDocumentCommand}"
+                                                Content="Close Tab" />
+                                    </StackPanel>
+                                </DockPanel>
+
+                                <TabControl Grid.Row="1"
+                                            ItemsSource="{Binding OpenDocuments}"
+                                            SelectedItem="{Binding SelectedDocument, Mode=TwoWay}">
+                                    <TabControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Title}" />
+                                        </DataTemplate>
+                                    </TabControl.ItemTemplate>
+                                    <TabControl.ContentTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Margin="4">
+                                                <TextBlock FontWeight="SemiBold"
+                                                           Text="{Binding TypeLabel}" />
+                                                <TextBlock Margin="0,6,0,0"
+                                                           Foreground="DimGray"
+                                                           Text="{Binding FilePath}" />
+                                                <Border Margin="0,10,0,0"
+                                                        Padding="10"
+                                                        CornerRadius="4"
+                                                        Background="#FFF8FAFF"
+                                                        BorderBrush="#FFD9E0EE"
+                                                        BorderThickness="1">
+                                                    <TextBlock TextWrapping="Wrap"
+                                                               Text="{Binding ContentSummary}" />
+                                                </Border>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </TabControl.ContentTemplate>
+                                </TabControl>
+                            </Grid>
                         </Border>
 
                         <Border Grid.Row="1"

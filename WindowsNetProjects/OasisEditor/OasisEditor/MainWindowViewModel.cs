@@ -18,6 +18,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string _statusMessage = "Create a new project to get started.";
     private string? _selectedRecentProject;
     private EditorProject? _loadedProject;
+    private DocumentTabViewModel? _selectedDocument;
+    private int _untitledDocumentCounter = 1;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -26,16 +28,22 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         CreateProjectCommand = new RelayCommand(CreateProject, CanCreateProject);
         OpenProjectCommand = new RelayCommand(OpenProject, CanOpenProject);
         OpenRecentProjectCommand = new RelayCommand(OpenSelectedRecentProject, CanOpenSelectedRecentProject);
+        OpenUntitledDocumentCommand = new RelayCommand(OpenUntitledDocument, CanOpenUntitledDocument);
+        CloseSelectedDocumentCommand = new RelayCommand(CloseSelectedDocument, CanCloseSelectedDocument);
         ExitCommand = new RelayCommand(ExitApplication);
 
         RecentProjects = new ObservableCollection<string>(_recentProjectsStore.Load());
+        OpenDocuments = new ObservableCollection<DocumentTabViewModel>();
     }
 
     public ICommand CreateProjectCommand { get; }
     public ICommand OpenProjectCommand { get; }
     public ICommand OpenRecentProjectCommand { get; }
+    public ICommand OpenUntitledDocumentCommand { get; }
+    public ICommand CloseSelectedDocumentCommand { get; }
     public ICommand ExitCommand { get; }
     public ObservableCollection<string> RecentProjects { get; }
+    public ObservableCollection<DocumentTabViewModel> OpenDocuments { get; }
 
     public string ProjectName
     {
@@ -75,6 +83,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             if (SetProperty(ref _loadedProject, value))
             {
                 OnPropertyChanged(nameof(HasLoadedProject));
+                NotifyDocumentCommands();
             }
         }
     }
@@ -101,6 +110,18 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             if (SetProperty(ref _selectedRecentProject, value))
             {
                 NotifyOpenRecentCommand();
+            }
+        }
+    }
+
+    public DocumentTabViewModel? SelectedDocument
+    {
+        get => _selectedDocument;
+        set
+        {
+            if (SetProperty(ref _selectedDocument, value))
+            {
+                NotifyDocumentCommands();
             }
         }
     }
@@ -149,6 +170,58 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private bool CanOpenSelectedRecentProject()
     {
         return !string.IsNullOrWhiteSpace(SelectedRecentProject);
+    }
+
+    private bool CanOpenUntitledDocument()
+    {
+        return LoadedProject is not null;
+    }
+
+    private void OpenUntitledDocument()
+    {
+        if (LoadedProject is null)
+        {
+            return;
+        }
+
+        var document = new DocumentTabViewModel(
+            $"Untitled {_untitledDocumentCounter++}",
+            "Document Type",
+            "No file associated yet.",
+            "Create or open a project asset to begin editing.");
+
+        OpenDocuments.Add(document);
+        SelectedDocument = document;
+        StatusMessage = $"Opened document tab: {document.Title}";
+    }
+
+    private bool CanCloseSelectedDocument()
+    {
+        return SelectedDocument is not null;
+    }
+
+    private void CloseSelectedDocument()
+    {
+        if (SelectedDocument is null)
+        {
+            return;
+        }
+
+        var documentToClose = SelectedDocument;
+        var index = OpenDocuments.IndexOf(documentToClose);
+
+        OpenDocuments.Remove(documentToClose);
+
+        if (OpenDocuments.Count == 0)
+        {
+            SelectedDocument = null;
+            StatusMessage = "Closed document tab.";
+            return;
+        }
+
+        var nextIndex = Math.Clamp(index, 0, OpenDocuments.Count - 1);
+        SelectedDocument = OpenDocuments[nextIndex];
+        StatusMessage = $"Closed document tab: {documentToClose.Title}";
     }
 
     private static void ExitApplication()
@@ -209,6 +282,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
             ProjectFilePath = projectFile;
             UpdateRecentProjects(projectFile);
+            EnsureProjectOverviewDocument();
             StatusMessage = successMessage ?? $"Project opened: {openedProjectName} ({projectFile})";
         }
         catch (Exception ex)
@@ -216,6 +290,24 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             StatusMessage = ex.Message;
             MessageBox.Show(ex.Message, "Open Project Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
+    }
+
+    private void EnsureProjectOverviewDocument()
+    {
+        if (LoadedProject is null)
+        {
+            return;
+        }
+
+        OpenDocuments.Clear();
+        var overviewDocument = new DocumentTabViewModel(
+            "Project Overview",
+            "Project",
+            LoadedProject.ProjectFilePath,
+            $"Assets: {LoadedProject.AssetsDirectory}\nMachines: {LoadedProject.MachinesDirectory}\nGenerated: {LoadedProject.GeneratedDirectory}");
+
+        OpenDocuments.Add(overviewDocument);
+        SelectedDocument = overviewDocument;
     }
 
     private static string ResolveProjectDirectory(string projectDirectory, JsonElement layoutElement, string propertyName)
@@ -275,14 +367,27 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private bool SetProperty<T>(ref T storage, T value, [CallerMemberName] string? propertyName = null)
+    private void NotifyDocumentCommands()
     {
-        if (EqualityComparer<T>.Default.Equals(storage, value))
+        if (OpenUntitledDocumentCommand is RelayCommand openRelayCommand)
+        {
+            openRelayCommand.RaiseCanExecuteChanged();
+        }
+
+        if (CloseSelectedDocumentCommand is RelayCommand closeRelayCommand)
+        {
+            closeRelayCommand.RaiseCanExecuteChanged();
+        }
+    }
+
+    private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+    {
+        if (EqualityComparer<T>.Default.Equals(field, value))
         {
             return false;
         }
 
-        storage = value;
+        field = value;
         OnPropertyChanged(propertyName);
         return true;
     }
@@ -291,4 +396,20 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
+}
+
+public sealed class DocumentTabViewModel
+{
+    public DocumentTabViewModel(string title, string typeLabel, string filePath, string contentSummary)
+    {
+        Title = title;
+        TypeLabel = typeLabel;
+        FilePath = filePath;
+        ContentSummary = contentSummary;
+    }
+
+    public string Title { get; }
+    public string TypeLabel { get; }
+    public string FilePath { get; }
+    public string ContentSummary { get; }
 }
