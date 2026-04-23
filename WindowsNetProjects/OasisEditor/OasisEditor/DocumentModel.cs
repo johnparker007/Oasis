@@ -53,17 +53,29 @@ public sealed class EditorDocument
 
     public static EditorDocument CreateFromFile(string filePath, string summary)
     {
-        var extension = Path.GetExtension(filePath);
-        var documentType = extension.ToLowerInvariant() switch
+        var extension = System.IO.Path.GetExtension(filePath);
+        var normalizedExtension = extension.ToLowerInvariant();
+
+        EditorDocumentType documentType;
+        if (normalizedExtension == ".panel2d")
         {
-            ".panel2d" => EditorDocumentType.Panel2D,
-            ".cabinet3d" => EditorDocumentType.Cabinet3D,
-            ".machine" => EditorDocumentType.Machine,
-            _ => EditorDocumentType.Generic
-        };
+            documentType = EditorDocumentType.Panel2D;
+        }
+        else if (normalizedExtension == ".cabinet3d")
+        {
+            documentType = EditorDocumentType.Cabinet3D;
+        }
+        else if (normalizedExtension == ".machine")
+        {
+            documentType = EditorDocumentType.Machine;
+        }
+        else
+        {
+            documentType = EditorDocumentType.Generic;
+        }
 
         return new EditorDocument(
-            Path.GetFileName(filePath),
+            System.IO.Path.GetFileName(filePath),
             documentType,
             filePath,
             summary,
