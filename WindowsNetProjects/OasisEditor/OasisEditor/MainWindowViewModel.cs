@@ -23,6 +23,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private DocumentTabViewModel? _selectedDocument;
     private AssetBrowserItemViewModel? _selectedAsset;
     private int _untitledDocumentCounter = 1;
+    private int _panelDocumentCounter = 1;
+    private int _cabinetDocumentCounter = 1;
+    private int _machineDocumentCounter = 1;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -32,6 +35,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OpenProjectCommand = new RelayCommand(OpenProject, CanOpenProject);
         OpenRecentProjectCommand = new RelayCommand(OpenSelectedRecentProject, CanOpenSelectedRecentProject);
         OpenUntitledDocumentCommand = new RelayCommand(OpenUntitledDocument, CanOpenUntitledDocument);
+        OpenPanel2DStubCommand = new RelayCommand(OpenPanel2DStubDocument, CanOpenUntitledDocument);
+        OpenCabinet3DStubCommand = new RelayCommand(OpenCabinet3DStubDocument, CanOpenUntitledDocument);
+        OpenMachineStubCommand = new RelayCommand(OpenMachineStubDocument, CanOpenUntitledDocument);
         OpenDocumentCommand = new RelayCommand(OpenDocument, CanOpenDocument);
         SaveSelectedDocumentCommand = new RelayCommand(SaveSelectedDocument, CanSaveSelectedDocument);
         CloseSelectedDocumentCommand = new RelayCommand(CloseSelectedDocument, CanCloseSelectedDocument);
@@ -50,6 +56,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand OpenProjectCommand { get; }
     public ICommand OpenRecentProjectCommand { get; }
     public ICommand OpenUntitledDocumentCommand { get; }
+    public ICommand OpenPanel2DStubCommand { get; }
+    public ICommand OpenCabinet3DStubCommand { get; }
+    public ICommand OpenMachineStubCommand { get; }
     public ICommand OpenDocumentCommand { get; }
     public ICommand SaveSelectedDocumentCommand { get; }
     public ICommand CloseSelectedDocumentCommand { get; }
@@ -318,6 +327,54 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         AddOutputEntry($"Opened document tab: {document.Title}");
     }
 
+    private void OpenPanel2DStubDocument()
+    {
+        if (LoadedProject is null)
+        {
+            return;
+        }
+
+        var document = new DocumentTabViewModel(
+            EditorDocument.CreatePanel2DStub($"Panel {_panelDocumentCounter++}"));
+
+        OpenDocuments.Add(document);
+        SelectedDocument = document;
+        StatusMessage = $"Opened panel document stub: {document.Title}";
+        AddOutputEntry($"Opened panel document stub: {document.Title}");
+    }
+
+    private void OpenCabinet3DStubDocument()
+    {
+        if (LoadedProject is null)
+        {
+            return;
+        }
+
+        var document = new DocumentTabViewModel(
+            EditorDocument.CreateCabinet3DStub($"Cabinet {_cabinetDocumentCounter++}"));
+
+        OpenDocuments.Add(document);
+        SelectedDocument = document;
+        StatusMessage = $"Opened cabinet document stub: {document.Title}";
+        AddOutputEntry($"Opened cabinet document stub: {document.Title}");
+    }
+
+    private void OpenMachineStubDocument()
+    {
+        if (LoadedProject is null)
+        {
+            return;
+        }
+
+        var document = new DocumentTabViewModel(
+            EditorDocument.CreateMachineStub($"Machine {_machineDocumentCounter++}"));
+
+        OpenDocuments.Add(document);
+        SelectedDocument = document;
+        StatusMessage = $"Opened machine document stub: {document.Title}";
+        AddOutputEntry($"Opened machine document stub: {document.Title}");
+    }
+
     private bool CanCloseSelectedDocument()
     {
         return SelectedDocument is not null;
@@ -439,13 +496,22 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return null;
         }
 
+        var selectedDocument = SelectedDocument;
+        var defaultName = selectedDocument?.Document.Title ?? "Document";
+        var (defaultExtension, filter) = selectedDocument?.Document.DocumentType switch
+        {
+            EditorDocumentType.Cabinet3D => (".cabinet3d", "Cabinet 3D|*.cabinet3d|Panel 2D|*.panel2d|Machine|*.machine|All Files|*.*"),
+            EditorDocumentType.Machine => (".machine", "Machine|*.machine|Panel 2D|*.panel2d|Cabinet 3D|*.cabinet3d|All Files|*.*"),
+            _ => (".panel2d", "Panel 2D|*.panel2d|Cabinet 3D|*.cabinet3d|Machine|*.machine|All Files|*.*")
+        };
+
         var dialog = new SaveFileDialog
         {
             Title = "Save Document",
             InitialDirectory = LoadedProject.AssetsDirectory,
-            FileName = $"{SelectedDocument?.Title ?? "Document"}.panel2d",
-            DefaultExt = ".panel2d",
-            Filter = "Panel 2D|*.panel2d|Cabinet 3D|*.cabinet3d|Machine|*.machine|All Files|*.*"
+            FileName = $"{defaultName}{defaultExtension}",
+            DefaultExt = defaultExtension,
+            Filter = filter
         };
 
         return dialog.ShowDialog() == true ? dialog.FileName : null;
@@ -691,6 +757,21 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (OpenUntitledDocumentCommand is RelayCommand openRelayCommand)
         {
             openRelayCommand.RaiseCanExecuteChanged();
+        }
+
+        if (OpenPanel2DStubCommand is RelayCommand openPanelRelayCommand)
+        {
+            openPanelRelayCommand.RaiseCanExecuteChanged();
+        }
+
+        if (OpenCabinet3DStubCommand is RelayCommand openCabinetRelayCommand)
+        {
+            openCabinetRelayCommand.RaiseCanExecuteChanged();
+        }
+
+        if (OpenMachineStubCommand is RelayCommand openMachineRelayCommand)
+        {
+            openMachineRelayCommand.RaiseCanExecuteChanged();
         }
 
         if (OpenDocumentCommand is RelayCommand openDocumentRelayCommand)

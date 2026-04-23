@@ -36,11 +36,51 @@ public sealed class EditorDocument
 
     public static EditorDocument CreateUntitled(string title)
     {
-        return new EditorDocument(
+        return CreateUntitledWithType(
             title,
             EditorDocumentType.Generic,
             "No file associated yet.",
-            "Create or open a project asset to begin editing.",
+            "Create or open a project asset to begin editing.");
+    }
+
+    public static EditorDocument CreatePanel2DStub(string title)
+    {
+        return CreateUntitledWithType(
+            title,
+            EditorDocumentType.Panel2D,
+            "Not saved yet (.panel2d)",
+            "Panel 2D stub:\n- Add panel bounds\n- Add placeholder layers\n- Configure control hit areas");
+    }
+
+    public static EditorDocument CreateCabinet3DStub(string title)
+    {
+        return CreateUntitledWithType(
+            title,
+            EditorDocumentType.Cabinet3D,
+            "Not saved yet (.cabinet3d)",
+            "Cabinet 3D stub:\n- Assign cabinet prefab reference\n- Configure screen anchor points\n- Map input regions");
+    }
+
+    public static EditorDocument CreateMachineStub(string title)
+    {
+        return CreateUntitledWithType(
+            title,
+            EditorDocumentType.Machine,
+            "Not saved yet (.machine)",
+            "Machine stub:\n- Reference panel and cabinet docs\n- Configure runtime metadata\n- Set default generated output targets");
+    }
+
+    private static EditorDocument CreateUntitledWithType(
+        string title,
+        EditorDocumentType documentType,
+        string filePath,
+        string contentSummary)
+    {
+        return new EditorDocument(
+            title,
+            documentType,
+            filePath,
+            contentSummary,
             true,
             true);
     }
