@@ -1,6 +1,49 @@
 # TASKS.md
 
-## Phase 1 — Project System
+## Current Focus — Startup Flow Refactor
+
+### Launcher Window
+- [ ] Create dedicated Launcher window class and view model
+- [ ] Make Launcher window the application startup window
+- [ ] Move New Project UI into Launcher window
+- [ ] Move Open Project UI into Launcher window
+- [ ] Move Recent Projects list UI into Launcher window
+
+### Project Opening Flow
+- [ ] Refactor project creation flow so Launcher opens editor only after success
+- [ ] Refactor project open flow so Launcher opens editor only after success
+- [ ] Refactor recent project selection flow so Launcher opens editor only after success
+- [ ] Ensure cancel/failure keeps user in Launcher window
+- [ ] Ensure failed project load shows error without opening editor shell
+
+### Editor Shell Separation
+- [ ] Remove startup project-selection UI from editor shell
+- [ ] Ensure editor shell requires a valid loaded project at construction/open time
+- [ ] Ensure editor shell initializes correctly from an already-loaded project
+- [ ] Prevent editor shell from opening when no active project exists
+
+### Close Project Flow
+- [ ] Add File > Close Project action
+- [ ] Close editor shell and return to Launcher window
+- [ ] Ensure closing a project clears active document/session state
+- [ ] Ensure Launcher refreshes recent projects after returning from editor shell
+
+### Verification
+- [ ] Verify New Project opens editor correctly
+- [ ] Verify Open Project opens editor correctly
+- [ ] Verify Recent Project opens editor correctly
+- [ ] Verify cancel from project selection keeps Launcher open
+- [ ] Verify Close Project returns user to Launcher
+- [ ] Verify app startup no longer exposes editor UI before project load
+
+## Next Up
+- [ ] Refine command system integration into editors
+- [ ] Begin improving panel editor usability (selection, snapping, layering)
+- [ ] Begin cabinet import MVP planning
+
+## Completed
+
+### Phase 1 — Project System
 - [x] Create solution structure
 - [x] Implement project create flow
 - [x] Implement project open flow
@@ -8,7 +51,7 @@
 - [x] Generate project directory layout
 - [x] Load project into editor shell
 
-## Phase 2 — Editor Shell
+### Phase 2 — Editor Shell
 - [x] Create main window
 - [x] Add menu bar
 - [x] Add toolbar
@@ -19,7 +62,7 @@
   - [x] Inspector
   - [x] Output/log
 
-## Phase 3 — Document System
+### Phase 3 — Document System
 - [x] Define base document model
 - [x] Implement open/save document
 - [x] Implement document dirty state
@@ -28,8 +71,8 @@
   - [x] .panel2d
   - [x] .cabinet3d
   - [x] .machine
-  
-## Phase 3A — .NET 9 Upgrade and Theme Foundations
+
+### Phase 3A — .NET 9 Upgrade and Theme Foundations
 - [x] Update solution target frameworks from .NET 8 to .NET 9
 - [x] Verify solution builds and runs cleanly in Visual Studio 2022
 - [x] Add built-in WPF Fluent theme resources
@@ -57,14 +100,14 @@
 - [x] Replace shell-level hard-coded colors with semantic theme resources
 - [x] Ensure main window, menu, toolbar, document tabs, and panels respond to theme changes
 
-## Phase 4 — Command System
+### Phase 4 — Command System
 - [x] Define ICommand interface
 - [x] Implement command history
 - [x] Implement undo
 - [x] Implement redo
 - [x] Ensure documents update via commands only
 
-## Phase 5 — Panel Editor (MVP)
+### Phase 5 — Panel Editor (MVP)
 - [x] Render panel canvas
 - [x] Implement pan
 - [x] Implement zoom

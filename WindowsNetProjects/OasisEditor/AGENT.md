@@ -31,6 +31,13 @@ The editor is project-based:
 - Users must open/create a project before editing
 - Projects contain Assets/, Machines/, Generated/, etc.
 
+## Startup Flow Rules
+- The application must start in a Launcher window
+- The editor shell must NOT open without an active project
+- Project creation/opening UI belongs in the Launcher window only
+- Closing a project should return the user to the Launcher window
+- The editor shell must assume a valid loaded project at all times
+
 ## Theme Rules
 - Do not hard-code UI colors in views or code-behind
 - Use semantic theme resources for editor UI colors
@@ -40,6 +47,11 @@ The editor is project-based:
 ## Current Focus
 Follow TASKS.md in order.
 Always implement the next unchecked task unless instructed otherwise.
+
+For larger refactors:
+- complete one small startup-flow task at a time
+- keep the app runnable after each task where practical
+- do not combine Launcher refactor work with unrelated editor changes
 
 ## How to Work
 - Keep changes minimal and focused
