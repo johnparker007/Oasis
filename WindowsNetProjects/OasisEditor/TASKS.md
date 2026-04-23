@@ -30,10 +30,10 @@
   - [x] .machine
   
 ## Phase 3A — .NET 9 Upgrade and Theme Foundations
-- [ ] Update solution target frameworks from .NET 8 to .NET 9
-- [ ] Verify solution builds and runs cleanly in Visual Studio 2022
-- [ ] Add built-in WPF Fluent theme resources
-- [ ] Define application theme service
+- [x] Update solution target frameworks from .NET 8 to .NET 9
+- [x] Verify solution builds and runs cleanly in Visual Studio 2022
+- [x] Add built-in WPF Fluent theme resources
+- [x] Define application theme service
 - [ ] Define theme preference enum:
   - [ ] System
   - [ ] Light
