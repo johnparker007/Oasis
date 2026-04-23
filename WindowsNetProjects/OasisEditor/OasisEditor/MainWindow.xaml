@@ -158,6 +158,10 @@
               Style="{StaticResource EditorMenuStyle}"
               ItemContainerStyle="{StaticResource EditorMenuItemStyle}"
               Margin="0,0,0,12">
+            <Menu.Resources>
+                <Style TargetType="{x:Type MenuItem}"
+                       BasedOn="{StaticResource EditorMenuItemStyle}" />
+            </Menu.Resources>
             <MenuItem Header="_File">
                 <MenuItem Header="_Create Project"
                           Command="{Binding CreateProjectCommand}" />
