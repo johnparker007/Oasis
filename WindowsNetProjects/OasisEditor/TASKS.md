@@ -34,33 +34,33 @@
 - [x] Verify solution builds and runs cleanly in Visual Studio 2022
 - [x] Add built-in WPF Fluent theme resources
 - [x] Define application theme service
-- [ ] Define theme preference enum:
-  - [ ] System
-  - [ ] Light
-  - [ ] Dark
-- [ ] Persist editor theme preference
-- [ ] Apply theme preference on startup
-- [ ] Add Edit > Preferences menu item
-- [ ] Add Edit > Project Settings menu item
-- [ ] Create non-modal Preferences window
-- [ ] Create non-modal Project Settings window
-- [ ] Add theme selector to Preferences window
-- [ ] Define semantic editor brushes:
-  - [ ] EditorBackgroundBrush
-  - [ ] PanelBackgroundBrush
-  - [ ] InspectorBackgroundBrush
-  - [ ] ToolBarBackgroundBrush
-  - [ ] TextPrimaryBrush
-  - [ ] TextSecondaryBrush
-  - [ ] BorderSubtleBrush
-  - [ ] SelectionBrush
-- [ ] Replace shell-level hard-coded colors with semantic theme resources
-- [ ] Ensure main window, menu, toolbar, document tabs, and panels respond to theme changes
-- [ ] Add smoke test checklist for:
-  - [ ] System theme
-  - [ ] Light theme
-  - [ ] Dark theme
-  - [ ] Theme persistence after restart
+- [x] Define theme preference enum:
+  - [x] System
+  - [x] Light
+  - [x] Dark
+- [x] Persist editor theme preference
+- [x] Apply theme preference on startup
+- [x] Add Edit > Preferences menu item
+- [x] Add Edit > Project Settings menu item
+- [x] Create non-modal Preferences window
+- [x] Create non-modal Project Settings window
+- [x] Add theme selector to Preferences window
+- [x] Define semantic editor brushes:
+  - [x] EditorBackgroundBrush
+  - [x] PanelBackgroundBrush
+  - [x] InspectorBackgroundBrush
+  - [x] ToolBarBackgroundBrush
+  - [x] TextPrimaryBrush
+  - [x] TextSecondaryBrush
+  - [x] BorderSubtleBrush
+  - [x] SelectionBrush
+- [x] Replace shell-level hard-coded colors with semantic theme resources
+- [x] Ensure main window, menu, toolbar, document tabs, and panels respond to theme changes
+- [x] Add smoke test checklist for:
+  - [x] System theme
+  - [x] Light theme
+  - [x] Dark theme
+  - [x] Theme persistence after restart
 
 ## Phase 4 — Command System
 - [ ] Define ICommand interface
