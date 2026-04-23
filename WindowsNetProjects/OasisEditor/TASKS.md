@@ -22,7 +22,7 @@
 ## Phase 3 — Document System
 - [x] Define base document model
 - [x] Implement open/save document
-- [ ] Implement document dirty state
+- [x] Implement document dirty state
 - [ ] Implement document tabs integration
 - [ ] Stub document types:
   - [ ] .panel2d

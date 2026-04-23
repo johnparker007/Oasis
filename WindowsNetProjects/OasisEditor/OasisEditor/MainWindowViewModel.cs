@@ -404,7 +404,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             var content = JsonSerializer.Serialize(persisted, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(savePath, content);
 
-            var updatedDocument = new DocumentTabViewModel(current.Document.SaveAs(savePath, current.ContentSummary));
+            var updatedDocument = new DocumentTabViewModel(
+                current.Document.SaveAs(savePath, current.ContentSummary).MarkClean());
             var index = OpenDocuments.IndexOf(current);
             if (index >= 0)
             {
@@ -736,7 +737,7 @@ public sealed class DocumentTabViewModel
     }
 
     public EditorDocument Document { get; }
-    public string Title => Document.Title;
+    public string Title => Document.IsDirty ? $"{Document.Title}*" : Document.Title;
     public string TypeLabel => Document.DocumentType switch
     {
         EditorDocumentType.ProjectOverview => "Project",
@@ -747,6 +748,7 @@ public sealed class DocumentTabViewModel
     };
     public string FilePath => Document.FilePath;
     public string ContentSummary => Document.ContentSummary;
+    public bool IsDirty => Document.IsDirty;
 }
 
 public sealed class AssetBrowserItemViewModel
