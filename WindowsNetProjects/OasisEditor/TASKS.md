@@ -14,13 +14,13 @@
 - [x] Add toolbar
 - [x] Implement basic dock layout
 - [x] Implement document tab system
-- [ ] Add panels:
+- [x] Add panels:
   - [x] Asset browser
   - [x] Inspector
   - [x] Output/log
 
 ## Phase 3 — Document System
-- [ ] Define base document model
+- [x] Define base document model
 - [ ] Implement open/save document
 - [ ] Implement document dirty state
 - [ ] Implement document tabs integration
