@@ -7,7 +7,8 @@
         MinWidth="380"
         MinHeight="200"
         WindowStartupLocation="CenterOwner"
-        Background="{DynamicResource PanelBackgroundBrush}">
+        Background="{DynamicResource PanelBackgroundBrush}"
+        Foreground="{DynamicResource TextPrimaryBrush}">
     <Grid Margin="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
