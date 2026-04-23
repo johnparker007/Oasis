@@ -1,7 +1,7 @@
 # TASKS.md
 
 ## Phase 1 — Project System
-- [ ] Create solution structure
+- [x] Create solution structure
 - [ ] Implement project create flow
 - [ ] Implement project open flow
 - [ ] Implement recent projects list
