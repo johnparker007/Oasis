@@ -31,6 +31,12 @@ The editor is project-based:
 - Users must open/create a project before editing
 - Projects contain Assets/, Machines/, Generated/, etc.
 
+## Theme Rules
+- Do not hard-code UI colors in views or code-behind
+- Use semantic theme resources for editor UI colors
+- New UI must work in System, Light, and Dark modes
+- Prefer app-defined semantic brushes over direct Fluent resource usage in feature views
+
 ## Current Focus
 Follow TASKS.md in order.
 Always implement the next unchecked task unless instructed otherwise.

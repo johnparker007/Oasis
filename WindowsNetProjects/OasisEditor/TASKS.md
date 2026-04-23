@@ -28,6 +28,39 @@
   - [x] .panel2d
   - [x] .cabinet3d
   - [x] .machine
+  
+## Phase 3A — .NET 9 Upgrade and Theme Foundations
+- [ ] Update solution target frameworks from .NET 8 to .NET 9
+- [ ] Verify solution builds and runs cleanly in Visual Studio 2022
+- [ ] Add built-in WPF Fluent theme resources
+- [ ] Define application theme service
+- [ ] Define theme preference enum:
+  - [ ] System
+  - [ ] Light
+  - [ ] Dark
+- [ ] Persist editor theme preference
+- [ ] Apply theme preference on startup
+- [ ] Add Edit > Preferences menu item
+- [ ] Add Edit > Project Settings menu item
+- [ ] Create non-modal Preferences window
+- [ ] Create non-modal Project Settings window
+- [ ] Add theme selector to Preferences window
+- [ ] Define semantic editor brushes:
+  - [ ] EditorBackgroundBrush
+  - [ ] PanelBackgroundBrush
+  - [ ] InspectorBackgroundBrush
+  - [ ] ToolBarBackgroundBrush
+  - [ ] TextPrimaryBrush
+  - [ ] TextSecondaryBrush
+  - [ ] BorderSubtleBrush
+  - [ ] SelectionBrush
+- [ ] Replace shell-level hard-coded colors with semantic theme resources
+- [ ] Ensure main window, menu, toolbar, document tabs, and panels respond to theme changes
+- [ ] Add smoke test checklist for:
+  - [ ] System theme
+  - [ ] Light theme
+  - [ ] Dark theme
+  - [ ] Theme persistence after restart
 
 ## Phase 4 — Command System
 - [ ] Define ICommand interface
@@ -45,3 +78,4 @@
 - [ ] Add image placement
 - [ ] Add basic inspector editing
 - [ ] Save/load panel document
+
