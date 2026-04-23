@@ -17,6 +17,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="140" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -117,6 +118,23 @@
             <TextBlock TextWrapping="Wrap"
                        Foreground="DimGray"
                        Text="{Binding StatusMessage}" />
+        </Border>
+
+        <Border Grid.Row="9"
+                Grid.ColumnSpan="2"
+                Padding="10"
+                BorderThickness="1"
+                BorderBrush="LightGray"
+                CornerRadius="4">
+            <StackPanel>
+                <TextBlock FontWeight="SemiBold"
+                           Text="Loaded project" />
+                <TextBlock Margin="0,4,0,0"
+                           Text="{Binding LoadedProject.Name, TargetNullValue=No project loaded.}" />
+                <TextBlock Margin="0,2,0,0"
+                           Foreground="DimGray"
+                           Text="{Binding LoadedProject.ProjectFilePath, TargetNullValue=Open or create a project to load the editor shell.}" />
+            </StackPanel>
         </Border>
     </Grid>
 </Window>
