@@ -395,7 +395,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         var document = new DocumentTabViewModel(
-            EditorDocument.CreatePanel2DStub($"Panel {_panelDocumentCounter++}"));
+            EditorDocument.CreatePanel2DStub($"Panel {_panelDocumentCounter++}"),
+            panelLayoutJson: Panel2DDocumentStorage.SerializeLayout([]));
 
         ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
         StatusMessage = $"Opened panel document stub: {document.Title}";
@@ -466,9 +467,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             var path = dialog.FileName;
             var content = File.ReadAllText(path);
-            var summary = BuildDocumentSummary(path, content);
+            var openData = BuildOpenDocumentData(path, content);
 
-            var openedNewTab = OpenOrSelectDocument(path, summary);
+            var openedNewTab = OpenOrSelectDocument(path, openData.Summary, openData.PanelLayoutJson);
             if (!openedNewTab)
             {
                 AddOutputEntry($"Switched to already open document tab for {path}");
@@ -515,7 +516,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             File.WriteAllText(savePath, content);
 
             var updatedDocument = new DocumentTabViewModel(
-                current.Document.SaveAs(savePath, current.ContentSummary).MarkClean());
+                current.Document.SaveAs(savePath, current.ContentSummary).MarkClean(),
+                current.PanelLayoutJson);
             ExecuteDocumentMutation(new ReplaceDocumentTabMutationCommand(this, current, updatedDocument));
             StatusMessage = $"Saved document: {updatedDocument.Title}";
             AddOutputEntry($"Saved document to {savePath}");
@@ -700,7 +702,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ExecuteDocumentMutation(new ReplaceOpenDocumentsMutationCommand(this, [overviewDocument], overviewDocument));
     }
 
-    private bool OpenOrSelectDocument(string path, string summary)
+    private bool OpenOrSelectDocument(string path, string summary, string? panelLayoutJson)
     {
         var existing = OpenDocuments.FirstOrDefault(
             tab => string.Equals(tab.FilePath, path, StringComparison.OrdinalIgnoreCase));
@@ -710,7 +712,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return false;
         }
 
-        var document = new DocumentTabViewModel(EditorDocument.CreateFromFile(path, summary));
+        var document = new DocumentTabViewModel(EditorDocument.CreateFromFile(path, summary), panelLayoutJson);
         ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
         return true;
     }
@@ -720,28 +722,32 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _documentCommandService.Execute(command);
     }
 
-    private static string BuildDocumentSummary(string path, string content)
+    private static OpenDocumentData BuildOpenDocumentData(string path, string content)
     {
         if (string.Equals(Path.GetExtension(path), ".panel2d", StringComparison.OrdinalIgnoreCase)
-            && Panel2DDocumentStorage.TryCreateSummary(content, out var panelSummary))
+            && Panel2DDocumentStorage.TryRead(content, out var panelDocument))
         {
-            return panelSummary;
+            var summary = string.IsNullOrWhiteSpace(panelDocument.Summary)
+                ? "Panel document opened."
+                : panelDocument.Summary.Trim();
+            return new OpenDocumentData(summary, Panel2DDocumentStorage.SerializeLayout(panelDocument.Elements));
         }
 
         var preview = content.Length > 300 ? $"{content[..300]}..." : content;
         if (string.IsNullOrWhiteSpace(preview))
         {
-            return "Document opened (file is empty).";
+            preview = "Document opened (file is empty).";
         }
 
-        return preview;
+        return new OpenDocumentData(preview, null);
     }
 
     private static string BuildDocumentContent(DocumentTabViewModel document)
     {
         if (document.Document.DocumentType == EditorDocumentType.Panel2D)
         {
-            return Panel2DDocumentStorage.Serialize(document.Document.Title, document.ContentSummary);
+            var elements = Panel2DDocumentStorage.DeserializeLayout(document.PanelLayoutJson);
+            return Panel2DDocumentStorage.Serialize(document.Document.Title, document.ContentSummary, elements);
         }
 
         var persisted = new
@@ -1135,7 +1141,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         var updated = new DocumentTabViewModel(
-            SelectedDocument.Document.WithContentSummary(InspectorEditableSummary).MarkDirty());
+            SelectedDocument.Document.WithContentSummary(InspectorEditableSummary).MarkDirty(),
+            SelectedDocument.PanelLayoutJson);
 
         ExecuteDocumentMutation(new ReplaceDocumentTabMutationCommand(this, SelectedDocument, updated));
         StatusMessage = $"Updated inspector summary for {updated.Title}";
@@ -1168,11 +1175,18 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     }
 }
 
-public sealed class DocumentTabViewModel
+internal readonly record struct OpenDocumentData(string Summary, string? PanelLayoutJson);
+
+public sealed class DocumentTabViewModel : INotifyPropertyChanged
 {
-    public DocumentTabViewModel(EditorDocument document)
+    private string? _panelLayoutJson;
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public DocumentTabViewModel(EditorDocument document, string? panelLayoutJson = null)
     {
         Document = document;
+        _panelLayoutJson = panelLayoutJson;
     }
 
     public EditorDocument Document { get; }
@@ -1188,6 +1202,21 @@ public sealed class DocumentTabViewModel
     public string FilePath => Document.FilePath;
     public string ContentSummary => Document.ContentSummary;
     public bool IsDirty => Document.IsDirty;
+
+    public string? PanelLayoutJson
+    {
+        get => _panelLayoutJson;
+        set
+        {
+            if (string.Equals(_panelLayoutJson, value, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _panelLayoutJson = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PanelLayoutJson)));
+        }
+    }
 }
 
 public sealed class AssetBrowserItemViewModel
