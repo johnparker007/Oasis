@@ -72,4 +72,4 @@
 - [x] Add rectangle tool
 - [x] Add image placement
 - [x] Add basic inspector editing
-- [ ] Save/load panel document
+- [x] Save/load panel document

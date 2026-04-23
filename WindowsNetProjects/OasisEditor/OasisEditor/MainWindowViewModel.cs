@@ -465,12 +465,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         try
         {
             var path = dialog.FileName;
-            var preview = File.ReadAllText(path);
-            var summary = preview.Length > 300 ? $"{preview[..300]}..." : preview;
-            if (string.IsNullOrWhiteSpace(summary))
-            {
-                summary = "Document opened (file is empty).";
-            }
+            var content = File.ReadAllText(path);
+            var summary = BuildDocumentSummary(path, content);
 
             var openedNewTab = OpenOrSelectDocument(path, summary);
             if (!openedNewTab)
@@ -515,15 +511,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         try
         {
-            var persisted = new
-            {
-                title = current.Title,
-                type = current.Document.DocumentType.ToString(),
-                summary = current.ContentSummary,
-                savedAtUtc = DateTime.UtcNow
-            };
-
-            var content = JsonSerializer.Serialize(persisted, new JsonSerializerOptions { WriteIndented = true });
+            var content = BuildDocumentContent(current);
             File.WriteAllText(savePath, content);
 
             var updatedDocument = new DocumentTabViewModel(
@@ -730,6 +718,41 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private void ExecuteDocumentMutation(EditorCommands.ICommand command)
     {
         _documentCommandService.Execute(command);
+    }
+
+    private static string BuildDocumentSummary(string path, string content)
+    {
+        if (string.Equals(Path.GetExtension(path), ".panel2d", StringComparison.OrdinalIgnoreCase)
+            && Panel2DDocumentStorage.TryCreateSummary(content, out var panelSummary))
+        {
+            return panelSummary;
+        }
+
+        var preview = content.Length > 300 ? $"{content[..300]}..." : content;
+        if (string.IsNullOrWhiteSpace(preview))
+        {
+            return "Document opened (file is empty).";
+        }
+
+        return preview;
+    }
+
+    private static string BuildDocumentContent(DocumentTabViewModel document)
+    {
+        if (document.Document.DocumentType == EditorDocumentType.Panel2D)
+        {
+            return Panel2DDocumentStorage.Serialize(document.Document.Title, document.ContentSummary);
+        }
+
+        var persisted = new
+        {
+            title = document.Title,
+            type = document.Document.DocumentType.ToString(),
+            summary = document.ContentSummary,
+            savedAtUtc = DateTime.UtcNow
+        };
+
+        return JsonSerializer.Serialize(persisted, new JsonSerializerOptions { WriteIndented = true });
     }
 
     private sealed class OpenDocumentTabMutationCommand : EditorCommands.ICommand
