@@ -358,11 +358,19 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 summary = "Document opened (file is empty).";
             }
 
-            var document = new DocumentTabViewModel(EditorDocument.CreateFromFile(path, summary));
-            OpenDocuments.Add(document);
-            SelectedDocument = document;
-            StatusMessage = $"Opened document: {document.Title}";
-            AddOutputEntry($"Opened document file {path}");
+            var openedNewTab = OpenOrSelectDocument(path, summary);
+            if (!openedNewTab)
+            {
+                AddOutputEntry($"Switched to already open document tab for {path}");
+            }
+
+            var selectedTitle = SelectedDocument?.Title ?? Path.GetFileName(path);
+            StatusMessage = openedNewTab
+                ? $"Opened document: {selectedTitle}"
+                : $"Activated open document tab: {selectedTitle}";
+            AddOutputEntry(openedNewTab
+                ? $"Opened document file {path}"
+                : $"Activated existing document tab for {path}");
         }
         catch (Exception ex)
         {
@@ -552,6 +560,22 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         OpenDocuments.Add(overviewDocument);
         SelectedDocument = overviewDocument;
+    }
+
+    private bool OpenOrSelectDocument(string path, string summary)
+    {
+        var existing = OpenDocuments.FirstOrDefault(
+            tab => string.Equals(tab.FilePath, path, StringComparison.OrdinalIgnoreCase));
+        if (existing is not null)
+        {
+            SelectedDocument = existing;
+            return false;
+        }
+
+        var document = new DocumentTabViewModel(EditorDocument.CreateFromFile(path, summary));
+        OpenDocuments.Add(document);
+        SelectedDocument = document;
+        return true;
     }
 
     private static string ResolveProjectDirectory(string projectDirectory, JsonElement layoutElement, string propertyName)
