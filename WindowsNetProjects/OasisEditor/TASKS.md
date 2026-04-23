@@ -13,7 +13,7 @@
 - [x] Add menu bar
 - [x] Add toolbar
 - [x] Implement basic dock layout
-- [ ] Implement document tab system
+- [x] Implement document tab system
 - [ ] Add panels:
   - [ ] Asset browser
   - [ ] Inspector
