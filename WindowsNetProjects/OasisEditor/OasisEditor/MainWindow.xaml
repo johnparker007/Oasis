@@ -12,6 +12,12 @@
         MinWidth="900"
         Background="{DynamicResource EditorBackgroundBrush}"
         Foreground="{DynamicResource TextPrimaryBrush}">
+    <Window.InputBindings>
+        <KeyBinding Command="{x:Static local:CanvasPanBehavior.UndoCommand}"
+                    Gesture="Ctrl+Z" />
+        <KeyBinding Command="{x:Static local:CanvasPanBehavior.RedoCommand}"
+                    Gesture="Ctrl+Y" />
+    </Window.InputBindings>
     <Window.Resources>
         <Style x:Key="EditorMenuStyle"
                TargetType="{x:Type Menu}">
@@ -187,6 +193,13 @@
                           Command="{Binding ExitCommand}" />
             </MenuItem>
             <MenuItem Header="_Edit">
+                <MenuItem Header="_Undo"
+                          Command="{x:Static local:CanvasPanBehavior.UndoCommand}"
+                          InputGestureText="Ctrl+Z" />
+                <MenuItem Header="_Redo"
+                          Command="{x:Static local:CanvasPanBehavior.RedoCommand}"
+                          InputGestureText="Ctrl+Y" />
+                <Separator />
                 <MenuItem Header="_Preferences"
                           Command="{Binding OpenPreferencesCommand}" />
                 <MenuItem Header="_Project Settings"
@@ -514,6 +527,7 @@
                                                             <Canvas Width="1400"
                                                                     Height="900"
                                                                     Cursor="SizeAll"
+                                                                    Focusable="True"
                                                                     local:CanvasPanBehavior.IsEnabled="True"
                                                                     local:CanvasPanBehavior.IsRectangleToolActive="{Binding IsChecked, ElementName=RectangleToolToggle}"
                                                                     Background="{DynamicResource PanelBackgroundBrush}">
