@@ -69,12 +69,33 @@ public static class CanvasPanBehavior
             typeof(CanvasPanBehavior),
             new PropertyMetadata(false));
 
+    public static readonly DependencyProperty PanelLayoutJsonProperty =
+        DependencyProperty.RegisterAttached(
+            "PanelLayoutJson",
+            typeof(string),
+            typeof(CanvasPanBehavior),
+            new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, OnPanelLayoutJsonChanged));
+
     private static readonly DependencyProperty SelectedElementProperty =
         DependencyProperty.RegisterAttached(
             "SelectedElement",
             typeof(FrameworkElement),
             typeof(CanvasPanBehavior),
             new PropertyMetadata(null));
+
+    private static readonly DependencyProperty IsPersistedElementProperty =
+        DependencyProperty.RegisterAttached(
+            "IsPersistedElement",
+            typeof(bool),
+            typeof(CanvasPanBehavior),
+            new PropertyMetadata(false));
+
+    private static readonly DependencyProperty IsApplyingLayoutProperty =
+        DependencyProperty.RegisterAttached(
+            "IsApplyingLayout",
+            typeof(bool),
+            typeof(CanvasPanBehavior),
+            new PropertyMetadata(false));
 
     private static readonly DependencyProperty CommandServiceProperty =
         DependencyProperty.RegisterAttached(
@@ -153,6 +174,16 @@ public static class CanvasPanBehavior
     public static void SetIsImageToolActive(DependencyObject dependencyObject, bool value)
     {
         dependencyObject.SetValue(IsImageToolActiveProperty, value);
+    }
+
+    public static string? GetPanelLayoutJson(DependencyObject dependencyObject)
+    {
+        return (string?)dependencyObject.GetValue(PanelLayoutJsonProperty);
+    }
+
+    public static void SetPanelLayoutJson(DependencyObject dependencyObject, string? value)
+    {
+        dependencyObject.SetValue(PanelLayoutJsonProperty, value);
     }
 
     private static void OnIsEnabledChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs eventArgs)
@@ -292,6 +323,7 @@ public static class CanvasPanBehavior
         };
         SetIsSelectable(rectangle, true);
         SetIsSelected(rectangle, true);
+        rectangle.SetValue(IsPersistedElementProperty, true);
 
         var x = Math.Max(0, canvasPoint.X - (NewRectangleWidth / 2));
         var y = Math.Max(0, canvasPoint.Y - (NewRectangleHeight / 2));
@@ -323,6 +355,7 @@ public static class CanvasPanBehavior
         };
         SetIsSelectable(image, true);
         SetIsSelected(image, true);
+        image.SetValue(IsPersistedElementProperty, true);
 
         var x = Math.Max(0, canvasPoint.X - (NewImageWidth / 2));
         var y = Math.Max(0, canvasPoint.Y - (NewImageHeight / 2));
@@ -504,6 +537,10 @@ public static class CanvasPanBehavior
     private static void ExecuteCanvasMutation(FrameworkElement canvas, Commands.ICommand command)
     {
         GetCommandService(canvas).Execute(command);
+        if (canvas is Canvas panelCanvas)
+        {
+            SyncPanelLayout(panelCanvas);
+        }
     }
 
     private static CommandService GetCommandService(FrameworkElement canvas)
@@ -560,6 +597,137 @@ public static class CanvasPanBehavior
             pixelWidth * bytesPerPixel);
         bitmap.Freeze();
         return bitmap;
+    }
+
+    private static void OnPanelLayoutJsonChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs eventArgs)
+    {
+        if (dependencyObject is not Canvas canvas)
+        {
+            return;
+        }
+
+        if ((bool)canvas.GetValue(IsApplyingLayoutProperty))
+        {
+            return;
+        }
+
+        ApplyPersistedLayout(canvas, eventArgs.NewValue as string);
+    }
+
+    private static void ApplyPersistedLayout(Canvas canvas, string? layoutJson)
+    {
+        canvas.SetValue(IsApplyingLayoutProperty, true);
+        try
+        {
+            var persistedChildren = canvas.Children
+                .OfType<FrameworkElement>()
+                .Where(child => (bool)child.GetValue(IsPersistedElementProperty))
+                .ToList();
+
+            foreach (var child in persistedChildren)
+            {
+                canvas.Children.Remove(child);
+            }
+
+            var elements = Panel2DDocumentStorage.DeserializeLayout(layoutJson);
+            foreach (var element in elements)
+            {
+                var visual = CreateVisualFromElement(element);
+                if (visual is null)
+                {
+                    continue;
+                }
+
+                visual.SetValue(IsPersistedElementProperty, true);
+                SetIsSelectable(visual, true);
+                SetIsSelected(visual, false);
+                Canvas.SetLeft(visual, Math.Max(0, element.X));
+                Canvas.SetTop(visual, Math.Max(0, element.Y));
+                canvas.Children.Add(visual);
+            }
+
+            canvas.ClearValue(SelectedElementProperty);
+            if (canvas.DataContext is DocumentTabViewModel tab)
+            {
+                tab.PanelLayoutJson = Panel2DDocumentStorage.SerializeLayout(elements);
+            }
+        }
+        finally
+        {
+            canvas.SetValue(IsApplyingLayoutProperty, false);
+        }
+    }
+
+    private static FrameworkElement? CreateVisualFromElement(PanelElementFile element)
+    {
+        if (string.Equals(element.Kind, "rectangle", StringComparison.OrdinalIgnoreCase))
+        {
+            return new Rectangle
+            {
+                Width = element.Width <= 0 ? NewRectangleWidth : element.Width,
+                Height = element.Height <= 0 ? NewRectangleHeight : element.Height
+            };
+        }
+
+        if (string.Equals(element.Kind, "image", StringComparison.OrdinalIgnoreCase))
+        {
+            return new Image
+            {
+                Width = element.Width <= 0 ? NewImageWidth : element.Width,
+                Height = element.Height <= 0 ? NewImageHeight : element.Height,
+                Stretch = Stretch.Fill,
+                Source = CreatePlaceholderImageSource()
+            };
+        }
+
+        return null;
+    }
+
+    private static void SyncPanelLayout(Canvas canvas)
+    {
+        if ((bool)canvas.GetValue(IsApplyingLayoutProperty))
+        {
+            return;
+        }
+
+        var elements = canvas.Children
+            .OfType<FrameworkElement>()
+            .Where(child => (bool)child.GetValue(IsPersistedElementProperty))
+            .Select(CreateElementFromVisual)
+            .Where(element => element is not null)
+            .Cast<PanelElementFile>()
+            .ToArray();
+
+        var layoutJson = Panel2DDocumentStorage.SerializeLayout(elements);
+        canvas.SetCurrentValue(PanelLayoutJsonProperty, layoutJson);
+        if (canvas.DataContext is DocumentTabViewModel tab)
+        {
+            tab.PanelLayoutJson = layoutJson;
+        }
+    }
+
+    private static PanelElementFile? CreateElementFromVisual(FrameworkElement child)
+    {
+        var kind = child switch
+        {
+            Rectangle => "rectangle",
+            Image => "image",
+            _ => null
+        };
+
+        if (kind is null)
+        {
+            return null;
+        }
+
+        return new PanelElementFile
+        {
+            Kind = kind,
+            X = Canvas.GetLeft(child),
+            Y = Canvas.GetTop(child),
+            Width = child.Width,
+            Height = child.Height
+        };
     }
 
     private sealed class AddRectangleMutationCommand : Commands.ICommand
