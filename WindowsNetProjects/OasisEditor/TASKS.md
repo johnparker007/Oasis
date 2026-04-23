@@ -72,7 +72,7 @@
 ## Phase 5 — Panel Editor (MVP)
 - [x] Render panel canvas
 - [x] Implement pan
-- [ ] Implement zoom
+- [x] Implement zoom
 - [ ] Implement selection
 - [ ] Add rectangle tool
 - [ ] Add image placement

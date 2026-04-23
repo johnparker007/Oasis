@@ -34,6 +34,10 @@ public static class CanvasPanBehavior
             typeof(CanvasPanBehavior),
             new PropertyMetadata(false));
 
+    private const double MinZoom = 0.25;
+    private const double MaxZoom = 4.0;
+    private const double ZoomStep = 1.1;
+
     public static bool GetIsEnabled(DependencyObject dependencyObject)
     {
         return (bool)dependencyObject.GetValue(IsEnabledProperty);
@@ -54,10 +58,11 @@ public static class CanvasPanBehavior
         var isEnabled = (bool)eventArgs.NewValue;
         if (isEnabled)
         {
-            EnsureTranslateTransform(element);
+            EnsureTransformGroup(element);
             element.MouseDown += OnMouseDown;
             element.MouseMove += OnMouseMove;
             element.MouseUp += OnMouseUp;
+            element.MouseWheel += OnMouseWheel;
             element.LostMouseCapture += OnLostMouseCapture;
         }
         else
@@ -65,6 +70,7 @@ public static class CanvasPanBehavior
             element.MouseDown -= OnMouseDown;
             element.MouseMove -= OnMouseMove;
             element.MouseUp -= OnMouseUp;
+            element.MouseWheel -= OnMouseWheel;
             element.LostMouseCapture -= OnLostMouseCapture;
         }
     }
@@ -81,11 +87,10 @@ public static class CanvasPanBehavior
             return;
         }
 
-        EnsureTranslateTransform(element);
+        var (_, translate) = EnsureTransformGroup(element);
         var startPoint = eventArgs.GetPosition(element.Parent as IInputElement ?? element);
-        var transform = (TranslateTransform)element.RenderTransform;
         element.SetValue(StartPointProperty, startPoint);
-        element.SetValue(OriginProperty, new Point(transform.X, transform.Y));
+        element.SetValue(OriginProperty, new Point(translate.X, translate.Y));
         element.SetValue(IsPanningProperty, true);
         element.CaptureMouse();
         element.Cursor = Cursors.SizeAll;
@@ -103,9 +108,36 @@ public static class CanvasPanBehavior
         var origin = (Point)element.GetValue(OriginProperty);
         var currentPoint = eventArgs.GetPosition(element.Parent as IInputElement ?? element);
         var delta = currentPoint - startPoint;
-        var transform = (TranslateTransform)element.RenderTransform;
-        transform.X = origin.X + delta.X;
-        transform.Y = origin.Y + delta.Y;
+        var (_, translate) = EnsureTransformGroup(element);
+        translate.X = origin.X + delta.X;
+        translate.Y = origin.Y + delta.Y;
+    }
+
+    private static void OnMouseWheel(object sender, MouseWheelEventArgs eventArgs)
+    {
+        if (sender is not FrameworkElement element)
+        {
+            return;
+        }
+
+        var (scale, translate) = EnsureTransformGroup(element);
+        var parent = element.Parent as IInputElement ?? element;
+        var pivot = eventArgs.GetPosition(parent);
+        var zoomFactor = eventArgs.Delta > 0 ? ZoomStep : 1.0 / ZoomStep;
+        var newScale = Math.Clamp(scale.ScaleX * zoomFactor, MinZoom, MaxZoom);
+        if (Math.Abs(newScale - scale.ScaleX) < 0.0001)
+        {
+            return;
+        }
+
+        var worldX = (pivot.X - translate.X) / scale.ScaleX;
+        var worldY = (pivot.Y - translate.Y) / scale.ScaleY;
+
+        scale.ScaleX = newScale;
+        scale.ScaleY = newScale;
+        translate.X = pivot.X - (worldX * newScale);
+        translate.Y = pivot.Y - (worldY * newScale);
+        eventArgs.Handled = true;
     }
 
     private static void OnMouseUp(object sender, MouseButtonEventArgs eventArgs)
@@ -139,13 +171,21 @@ public static class CanvasPanBehavior
         element.Cursor = Cursors.Arrow;
     }
 
-    private static void EnsureTranslateTransform(FrameworkElement element)
+    private static (ScaleTransform Scale, TranslateTransform Translate) EnsureTransformGroup(FrameworkElement element)
     {
-        if (element.RenderTransform is TranslateTransform)
+        if (element.RenderTransform is TransformGroup existingGroup &&
+            existingGroup.Children.OfType<ScaleTransform>().FirstOrDefault() is { } existingScale &&
+            existingGroup.Children.OfType<TranslateTransform>().FirstOrDefault() is { } existingTranslate)
         {
-            return;
+            return (existingScale, existingTranslate);
         }
 
-        element.RenderTransform = new TranslateTransform();
+        var transformGroup = new TransformGroup();
+        var scale = new ScaleTransform(1, 1);
+        var translate = new TranslateTransform();
+        transformGroup.Children.Add(scale);
+        transformGroup.Children.Add(translate);
+        element.RenderTransform = transformGroup;
+        return (scale, translate);
     }
 }
