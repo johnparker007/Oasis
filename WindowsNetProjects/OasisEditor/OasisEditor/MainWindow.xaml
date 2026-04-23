@@ -28,6 +28,11 @@
                 <MenuItem Header="Open Selected _Recent"
                           Command="{Binding OpenRecentProjectCommand}" />
                 <Separator />
+                <MenuItem Header="Open _Document"
+                          Command="{Binding OpenDocumentCommand}" />
+                <MenuItem Header="_Save Document"
+                          Command="{Binding SaveSelectedDocumentCommand}" />
+                <Separator />
                 <MenuItem Header="E_xit"
                           Command="{Binding ExitCommand}" />
             </MenuItem>
@@ -44,6 +49,11 @@
                         Content="Open Project" />
                 <Button Command="{Binding OpenRecentProjectCommand}"
                         Content="Open Recent" />
+                <Separator />
+                <Button Command="{Binding OpenDocumentCommand}"
+                        Content="Open Document" />
+                <Button Command="{Binding SaveSelectedDocumentCommand}"
+                        Content="Save Document" />
                 <Separator />
                 <Button Command="{Binding ExitCommand}"
                         Content="Exit" />
@@ -268,6 +278,14 @@
                                                 Margin="0,0,8,0"
                                                 Command="{Binding OpenUntitledDocumentCommand}"
                                                 Content="New Tab" />
+                                        <Button Padding="10,4"
+                                                Margin="0,0,8,0"
+                                                Command="{Binding OpenDocumentCommand}"
+                                                Content="Open..." />
+                                        <Button Padding="10,4"
+                                                Margin="0,0,8,0"
+                                                Command="{Binding SaveSelectedDocumentCommand}"
+                                                Content="Save" />
                                         <Button Padding="10,4"
                                                 Command="{Binding CloseSelectedDocumentCommand}"
                                                 Content="Close Tab" />
