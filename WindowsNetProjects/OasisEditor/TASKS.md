@@ -74,7 +74,7 @@
 - [x] Implement pan
 - [x] Implement zoom
 - [x] Implement selection
-- [ ] Add rectangle tool
+- [x] Add rectangle tool
 - [ ] Add image placement
 - [ ] Add basic inspector editing
 - [ ] Save/load panel document

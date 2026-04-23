@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Shapes;
 
 namespace OasisEditor;
 
@@ -48,6 +49,13 @@ public static class CanvasPanBehavior
             typeof(CanvasPanBehavior),
             new PropertyMetadata(false));
 
+    public static readonly DependencyProperty IsRectangleToolActiveProperty =
+        DependencyProperty.RegisterAttached(
+            "IsRectangleToolActive",
+            typeof(bool),
+            typeof(CanvasPanBehavior),
+            new PropertyMetadata(false));
+
     private static readonly DependencyProperty SelectedElementProperty =
         DependencyProperty.RegisterAttached(
             "SelectedElement",
@@ -58,6 +66,8 @@ public static class CanvasPanBehavior
     private const double MinZoom = 0.25;
     private const double MaxZoom = 4.0;
     private const double ZoomStep = 1.1;
+    private const double NewRectangleWidth = 180;
+    private const double NewRectangleHeight = 120;
 
     public static bool GetIsEnabled(DependencyObject dependencyObject)
     {
@@ -87,6 +97,16 @@ public static class CanvasPanBehavior
     public static void SetIsSelected(DependencyObject dependencyObject, bool value)
     {
         dependencyObject.SetValue(IsSelectedProperty, value);
+    }
+
+    public static bool GetIsRectangleToolActive(DependencyObject dependencyObject)
+    {
+        return (bool)dependencyObject.GetValue(IsRectangleToolActiveProperty);
+    }
+
+    public static void SetIsRectangleToolActive(DependencyObject dependencyObject, bool value)
+    {
+        dependencyObject.SetValue(IsRectangleToolActiveProperty, value);
     }
 
     private static void OnIsEnabledChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs eventArgs)
@@ -164,6 +184,14 @@ public static class CanvasPanBehavior
         }
 
         var clickedElement = FindSelectableElement(eventArgs.OriginalSource as DependencyObject, canvas);
+
+        if (GetIsRectangleToolActive(canvas) && clickedElement is null)
+        {
+            AddRectangle(canvas, eventArgs);
+            eventArgs.Handled = true;
+            return;
+        }
+
         var selectedElement = (FrameworkElement?)canvas.GetValue(SelectedElementProperty);
 
         if (ReferenceEquals(clickedElement, selectedElement))
@@ -185,6 +213,42 @@ public static class CanvasPanBehavior
         SetIsSelected(clickedElement, true);
         canvas.SetValue(SelectedElementProperty, clickedElement);
         eventArgs.Handled = true;
+    }
+
+    private static void AddRectangle(FrameworkElement canvas, MouseButtonEventArgs eventArgs)
+    {
+        if (canvas is not System.Windows.Controls.Canvas panelCanvas)
+        {
+            return;
+        }
+
+        var clickPosition = eventArgs.GetPosition(panelCanvas.Parent as IInputElement ?? panelCanvas);
+        var (scale, translate) = EnsureTransformGroup(panelCanvas);
+        var canvasPoint = new Point(
+            (clickPosition.X - translate.X) / scale.ScaleX,
+            (clickPosition.Y - translate.Y) / scale.ScaleY);
+
+        var rectangle = new Rectangle
+        {
+            Width = NewRectangleWidth,
+            Height = NewRectangleHeight
+        };
+        SetIsSelectable(rectangle, true);
+        SetIsSelected(rectangle, true);
+
+        var x = Math.Max(0, canvasPoint.X - (NewRectangleWidth / 2));
+        var y = Math.Max(0, canvasPoint.Y - (NewRectangleHeight / 2));
+        System.Windows.Controls.Canvas.SetLeft(rectangle, x);
+        System.Windows.Controls.Canvas.SetTop(rectangle, y);
+        panelCanvas.Children.Add(rectangle);
+
+        var previousSelection = (FrameworkElement?)panelCanvas.GetValue(SelectedElementProperty);
+        if (previousSelection is not null)
+        {
+            SetIsSelected(previousSelection, false);
+        }
+
+        panelCanvas.SetValue(SelectedElementProperty, rectangle);
     }
 
     private static void OnMouseWheel(object sender, MouseWheelEventArgs eventArgs)
