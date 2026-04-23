@@ -46,9 +46,10 @@
                                     Padding="{TemplateBinding Padding}"
                                     Background="{TemplateBinding Background}"
                                     BorderBrush="{TemplateBinding BorderBrush}"
-                                    BorderThickness="0"
+                                    BorderThickness="1"
                                     CornerRadius="4">
-                                <DockPanel LastChildFill="True">
+                                <DockPanel LastChildFill="True"
+                                           TextElement.Foreground="{TemplateBinding Foreground}">
                                     <ContentPresenter x:Name="GlyphContent"
                                                       VerticalAlignment="Center"
                                                       Margin="0,0,8,0"
@@ -86,6 +87,9 @@
                                      Value="True">
                                 <Setter TargetName="MenuItemBorder"
                                         Property="Background"
+                                        Value="{DynamicResource ControlHoverBrush}" />
+                                <Setter TargetName="MenuItemBorder"
+                                        Property="BorderBrush"
                                         Value="{DynamicResource SelectionBrush}" />
                             </Trigger>
                             <Trigger Property="Role"
@@ -115,10 +119,10 @@
                             <Trigger Property="IsEnabled"
                                      Value="False">
                                 <Setter Property="Foreground"
-                                        Value="{DynamicResource TextSecondaryBrush}" />
+                                        Value="{DynamicResource TextPrimaryBrush}" />
                                 <Setter TargetName="MenuItemBorder"
                                         Property="Opacity"
-                                        Value="1" />
+                                        Value="0.72" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
