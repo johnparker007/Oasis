@@ -1,3 +1,5 @@
+using System.Windows;
+
 namespace OasisEditor;
 
 public interface IApplicationThemeService
