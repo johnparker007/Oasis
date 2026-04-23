@@ -46,9 +46,10 @@
                                     Padding="{TemplateBinding Padding}"
                                     Background="{TemplateBinding Background}"
                                     BorderBrush="{TemplateBinding BorderBrush}"
-                                    BorderThickness="0"
+                                    BorderThickness="1"
                                     CornerRadius="4">
-                                <DockPanel LastChildFill="True">
+                                <DockPanel LastChildFill="True"
+                                           TextElement.Foreground="{TemplateBinding Foreground}">
                                     <ContentPresenter x:Name="GlyphContent"
                                                       VerticalAlignment="Center"
                                                       Margin="0,0,8,0"
@@ -86,6 +87,9 @@
                                      Value="True">
                                 <Setter TargetName="MenuItemBorder"
                                         Property="Background"
+                                        Value="{DynamicResource ControlHoverBrush}" />
+                                <Setter TargetName="MenuItemBorder"
+                                        Property="BorderBrush"
                                         Value="{DynamicResource SelectionBrush}" />
                             </Trigger>
                             <Trigger Property="Role"
@@ -114,8 +118,11 @@
                             </Trigger>
                             <Trigger Property="IsEnabled"
                                      Value="False">
-                                <Setter Property="Opacity"
-                                        Value="0.65" />
+                                <Setter Property="Foreground"
+                                        Value="{DynamicResource TextPrimaryBrush}" />
+                                <Setter TargetName="MenuItemBorder"
+                                        Property="Opacity"
+                                        Value="0.72" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -151,6 +158,10 @@
               Style="{StaticResource EditorMenuStyle}"
               ItemContainerStyle="{StaticResource EditorMenuItemStyle}"
               Margin="0,0,0,12">
+            <Menu.Resources>
+                <Style TargetType="{x:Type MenuItem}"
+                       BasedOn="{StaticResource EditorMenuItemStyle}" />
+            </Menu.Resources>
             <MenuItem Header="_File">
                 <MenuItem Header="_Create Project"
                           Command="{Binding CreateProjectCommand}" />
