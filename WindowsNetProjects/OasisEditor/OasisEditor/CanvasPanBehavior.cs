@@ -1,12 +1,17 @@
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using OasisEditor.Commands;
 
 namespace OasisEditor;
 
 public static class CanvasPanBehavior
 {
+    public static readonly RoutedUICommand UndoCommand = new("Undo", "Undo", typeof(CanvasPanBehavior));
+    public static readonly RoutedUICommand RedoCommand = new("Redo", "Redo", typeof(CanvasPanBehavior));
+
     public static readonly DependencyProperty IsEnabledProperty =
         DependencyProperty.RegisterAttached(
             "IsEnabled",
@@ -60,6 +65,27 @@ public static class CanvasPanBehavior
         DependencyProperty.RegisterAttached(
             "SelectedElement",
             typeof(FrameworkElement),
+            typeof(CanvasPanBehavior),
+            new PropertyMetadata(null));
+
+    private static readonly DependencyProperty CommandServiceProperty =
+        DependencyProperty.RegisterAttached(
+            "CommandService",
+            typeof(CommandService),
+            typeof(CanvasPanBehavior),
+            new PropertyMetadata(null));
+
+    private static readonly DependencyProperty UndoCommandBindingProperty =
+        DependencyProperty.RegisterAttached(
+            "UndoCommandBinding",
+            typeof(CommandBinding),
+            typeof(CanvasPanBehavior),
+            new PropertyMetadata(null));
+
+    private static readonly DependencyProperty RedoCommandBindingProperty =
+        DependencyProperty.RegisterAttached(
+            "RedoCommandBinding",
+            typeof(CommandBinding),
             typeof(CanvasPanBehavior),
             new PropertyMetadata(null));
 
@@ -120,6 +146,7 @@ public static class CanvasPanBehavior
         if (isEnabled)
         {
             EnsureTransformGroup(element);
+            EnsureCommandBindings(element);
             element.MouseDown += OnMouseDown;
             element.MouseLeftButtonDown += OnMouseLeftButtonDown;
             element.MouseMove += OnMouseMove;
@@ -129,6 +156,7 @@ public static class CanvasPanBehavior
         }
         else
         {
+            RemoveCommandBindings(element);
             element.MouseDown -= OnMouseDown;
             element.MouseLeftButtonDown -= OnMouseLeftButtonDown;
             element.MouseMove -= OnMouseMove;
@@ -150,6 +178,7 @@ public static class CanvasPanBehavior
             return;
         }
 
+        element.Focus();
         var (_, translate) = EnsureTransformGroup(element);
         var startPoint = eventArgs.GetPosition(element.Parent as IInputElement ?? element);
         element.SetValue(StartPointProperty, startPoint);
@@ -183,6 +212,7 @@ public static class CanvasPanBehavior
             return;
         }
 
+        canvas.Focus();
         var clickedElement = FindSelectableElement(eventArgs.OriginalSource as DependencyObject, canvas);
 
         if (GetIsRectangleToolActive(canvas) && clickedElement is null)
@@ -240,15 +270,8 @@ public static class CanvasPanBehavior
         var y = Math.Max(0, canvasPoint.Y - (NewRectangleHeight / 2));
         System.Windows.Controls.Canvas.SetLeft(rectangle, x);
         System.Windows.Controls.Canvas.SetTop(rectangle, y);
-        panelCanvas.Children.Add(rectangle);
-
         var previousSelection = (FrameworkElement?)panelCanvas.GetValue(SelectedElementProperty);
-        if (previousSelection is not null)
-        {
-            SetIsSelected(previousSelection, false);
-        }
-
-        panelCanvas.SetValue(SelectedElementProperty, rectangle);
+        ExecuteCanvasMutation(panelCanvas, new AddRectangleMutationCommand(panelCanvas, rectangle, previousSelection, x, y));
     }
 
     private static void OnMouseWheel(object sender, MouseWheelEventArgs eventArgs)
@@ -346,5 +369,146 @@ public static class CanvasPanBehavior
         }
 
         return null;
+    }
+
+    private static void EnsureCommandBindings(FrameworkElement element)
+    {
+        if ((CommandService?)element.GetValue(CommandServiceProperty) is null)
+        {
+            element.SetValue(CommandServiceProperty, new CommandService());
+        }
+
+        if ((CommandBinding?)element.GetValue(UndoCommandBindingProperty) is null)
+        {
+            var undoBinding = new CommandBinding(UndoCommand, OnUndoExecuted, OnUndoCanExecute);
+            element.CommandBindings.Add(undoBinding);
+            element.SetValue(UndoCommandBindingProperty, undoBinding);
+        }
+
+        if ((CommandBinding?)element.GetValue(RedoCommandBindingProperty) is null)
+        {
+            var redoBinding = new CommandBinding(RedoCommand, OnRedoExecuted, OnRedoCanExecute);
+            element.CommandBindings.Add(redoBinding);
+            element.SetValue(RedoCommandBindingProperty, redoBinding);
+        }
+    }
+
+    private static void RemoveCommandBindings(FrameworkElement element)
+    {
+        if ((CommandBinding?)element.GetValue(UndoCommandBindingProperty) is { } undoBinding)
+        {
+            element.CommandBindings.Remove(undoBinding);
+            element.ClearValue(UndoCommandBindingProperty);
+        }
+
+        if ((CommandBinding?)element.GetValue(RedoCommandBindingProperty) is { } redoBinding)
+        {
+            element.CommandBindings.Remove(redoBinding);
+            element.ClearValue(RedoCommandBindingProperty);
+        }
+    }
+
+    private static void OnUndoCanExecute(object sender, CanExecuteRoutedEventArgs eventArgs)
+    {
+        eventArgs.CanExecute = sender is FrameworkElement element && GetCommandService(element).CanUndo;
+        eventArgs.Handled = true;
+    }
+
+    private static void OnRedoCanExecute(object sender, CanExecuteRoutedEventArgs eventArgs)
+    {
+        eventArgs.CanExecute = sender is FrameworkElement element && GetCommandService(element).CanRedo;
+        eventArgs.Handled = true;
+    }
+
+    private static void OnUndoExecuted(object sender, ExecutedRoutedEventArgs eventArgs)
+    {
+        if (sender is not FrameworkElement element)
+        {
+            return;
+        }
+
+        GetCommandService(element).TryUndo();
+        eventArgs.Handled = true;
+    }
+
+    private static void OnRedoExecuted(object sender, ExecutedRoutedEventArgs eventArgs)
+    {
+        if (sender is not FrameworkElement element)
+        {
+            return;
+        }
+
+        GetCommandService(element).TryRedo();
+        eventArgs.Handled = true;
+    }
+
+    private static void ExecuteCanvasMutation(FrameworkElement canvas, Commands.ICommand command)
+    {
+        GetCommandService(canvas).Execute(command);
+    }
+
+    private static CommandService GetCommandService(FrameworkElement canvas)
+    {
+        if ((CommandService?)canvas.GetValue(CommandServiceProperty) is { } existing)
+        {
+            return existing;
+        }
+
+        var created = new CommandService();
+        canvas.SetValue(CommandServiceProperty, created);
+        return created;
+    }
+
+    private sealed class AddRectangleMutationCommand : Commands.ICommand
+    {
+        private readonly Canvas _canvas;
+        private readonly Rectangle _rectangle;
+        private readonly FrameworkElement? _previousSelection;
+        private readonly double _x;
+        private readonly double _y;
+
+        public AddRectangleMutationCommand(Canvas canvas, Rectangle rectangle, FrameworkElement? previousSelection, double x, double y)
+        {
+            _canvas = canvas;
+            _rectangle = rectangle;
+            _previousSelection = previousSelection;
+            _x = x;
+            _y = y;
+        }
+
+        public string Description => "Add rectangle";
+
+        public void Execute()
+        {
+            if (!_canvas.Children.Contains(_rectangle))
+            {
+                Canvas.SetLeft(_rectangle, _x);
+                Canvas.SetTop(_rectangle, _y);
+                _canvas.Children.Add(_rectangle);
+            }
+
+            if (_previousSelection is not null)
+            {
+                SetIsSelected(_previousSelection, false);
+            }
+
+            SetIsSelected(_rectangle, true);
+            _canvas.SetValue(SelectedElementProperty, _rectangle);
+        }
+
+        public void Undo()
+        {
+            _canvas.Children.Remove(_rectangle);
+            SetIsSelected(_rectangle, false);
+
+            if (_previousSelection is not null && _canvas.Children.Contains(_previousSelection))
+            {
+                SetIsSelected(_previousSelection, true);
+                _canvas.SetValue(SelectedElementProperty, _previousSelection);
+                return;
+            }
+
+            _canvas.ClearValue(SelectedElementProperty);
+        }
     }
 }
