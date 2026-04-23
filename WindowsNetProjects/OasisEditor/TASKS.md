@@ -16,7 +16,7 @@
 - [x] Implement document tab system
 - [ ] Add panels:
   - [x] Asset browser
-  - [ ] Inspector
+  - [x] Inspector
   - [ ] Output/log
 
 ## Phase 3 — Document System
