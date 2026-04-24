@@ -5,6 +5,7 @@ namespace OasisEditor;
 
 public partial class App : Application
 {
+    private static DateTime _lastSuppressedAvalonDockLogUtc = DateTime.MinValue;
     private readonly IApplicationThemeService _applicationThemeService = new ApplicationThemeService();
     private readonly EditorPreferencesStore _preferencesStore = new();
 
@@ -30,13 +31,14 @@ public partial class App : Application
 
     private static void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
-        CrashDiagnostics.Log("DispatcherUnhandledException", e.Exception, isTerminating: false);
-
-        if (IsAvalonDockDragNullReference(e.Exception))
+        if (IsAvalonDockDragException(e.Exception))
         {
+            TryLogSuppressedAvalonDockException(e.Exception);
             e.Handled = true;
             return;
         }
+
+        CrashDiagnostics.Log("DispatcherUnhandledException", e.Exception, isTerminating: false);
 
         var message = $"A fatal UI exception occurred.\n\nCrash details were written to:\n{CrashDiagnostics.LogPath}";
         MessageBox.Show(message, "Oasis Editor - Crash", MessageBoxButton.OK, MessageBoxImage.Error);
@@ -58,9 +60,21 @@ public partial class App : Application
         e.SetObserved();
     }
 
-    private static bool IsAvalonDockDragNullReference(Exception exception)
+    private static void TryLogSuppressedAvalonDockException(Exception exception)
     {
-        if (exception is not NullReferenceException)
+        var now = DateTime.UtcNow;
+        if ((now - _lastSuppressedAvalonDockLogUtc).TotalMilliseconds < 500)
+        {
+            return;
+        }
+
+        _lastSuppressedAvalonDockLogUtc = now;
+        CrashDiagnostics.Log("SuppressedAvalonDockDragException", exception, isTerminating: false);
+    }
+
+    private static bool IsAvalonDockDragException(Exception exception)
+    {
+        if (exception is not NullReferenceException && exception is not ArgumentNullException)
         {
             return false;
         }
@@ -72,6 +86,7 @@ public partial class App : Application
         }
 
         return stackTrace.Contains("AvalonDock.Controls.OverlayWindow.OnApplyTemplate", StringComparison.Ordinal)
-               || stackTrace.Contains("AvalonDock.Controls.DragService", StringComparison.Ordinal);
+               || stackTrace.Contains("AvalonDock.Controls.DragService", StringComparison.Ordinal)
+               || stackTrace.Contains("AvalonDock.Controls.OverlayWindow.AvalonDock.Controls.IOverlayWindow.DragEnter", StringComparison.Ordinal);
     }
 }
