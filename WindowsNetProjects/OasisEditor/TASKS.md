@@ -109,12 +109,12 @@ These tasks should be completed one at a time. They are behavior-preserving unle
 - [x] Reduce `CanvasPanBehavior.cs` to coordination/glue code only
 
 ### Refactor Cleanup
-- [ ] Remove unused XAML resources
-- [ ] Remove unused C# usings
-- [ ] Remove dead code discovered during refactor
-- [ ] Ensure all extracted views preserve existing bindings
-- [ ] Ensure project builds cleanly
-- [ ] Smoke test main editor flows
+- [x] Remove unused XAML resources
+- [x] Remove unused C# usings
+- [x] Remove dead code discovered during refactor
+- [x] Ensure all extracted views preserve existing bindings
+- [x] Ensure project builds cleanly
+- [x] Smoke test main editor flows
 
 ### Optional Future Refactors
 - [ ] Consider DataTemplates for view switching
