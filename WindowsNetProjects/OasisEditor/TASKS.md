@@ -9,7 +9,7 @@
 - [x] Replace main window layout with DockingManager
 - [x] Create central document pane
 - [x] Add one tool window (Inspector) docked to the right
-- [ ] Ensure app builds and runs
+- [x] Ensure app builds and runs
 
 #### Phase 2 — Tool Window Expansion
 - [ ] Add Hierarchy tool window (left dock)
