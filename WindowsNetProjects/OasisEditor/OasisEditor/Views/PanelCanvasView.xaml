@@ -118,7 +118,7 @@
                                                 <Setter Property="Fill"
                                                         Value="{DynamicResource ToolBarBackgroundBrush}" />
                                                 <Style.Triggers>
-                                                    <Trigger Property="local:CanvasPanBehavior.IsSelected"
+                                                    <Trigger Property="local:CanvasSelectionBehavior.IsSelected"
                                                              Value="True">
                                                         <Setter Property="Stroke"
                                                                 Value="{DynamicResource SelectionBrush}" />
@@ -131,7 +131,7 @@
                                                 <Setter Property="Opacity"
                                                         Value="0.88" />
                                                 <Style.Triggers>
-                                                    <Trigger Property="local:CanvasPanBehavior.IsSelected"
+                                                    <Trigger Property="local:CanvasSelectionBehavior.IsSelected"
                                                              Value="True">
                                                         <Setter Property="Opacity"
                                                                 Value="1" />
@@ -141,12 +141,12 @@
                                         </Canvas.Resources>
                                         <Rectangle Width="540"
                                                    Height="300"
-                                                   local:CanvasPanBehavior.IsSelectable="True"
+                                                   local:CanvasSelectionBehavior.IsSelectable="True"
                                                    Canvas.Left="120"
                                                    Canvas.Top="90" />
                                         <Rectangle Width="220"
                                                    Height="160"
-                                                   local:CanvasPanBehavior.IsSelectable="True"
+                                                   local:CanvasSelectionBehavior.IsSelectable="True"
                                                    Canvas.Left="760"
                                                    Canvas.Top="240" />
                                         <TextBlock Canvas.Left="136"
