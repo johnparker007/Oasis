@@ -11,36 +11,7 @@
              d:DesignHeight="450"
              d:DesignWidth="900">
     <Grid Background="{DynamicResource EditorBackgroundBrush}">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
-
-        <Border Grid.Row="0"
-                Padding="16"
-                Margin="0,0,0,12"
-                CornerRadius="6"
-                Background="{DynamicResource PanelBackgroundBrush}"
-                BorderBrush="{DynamicResource BorderSubtleBrush}"
-                BorderThickness="1">
-            <StackPanel>
-                <TextBlock FontSize="22"
-                           FontWeight="SemiBold"
-                           Foreground="{DynamicResource TextPrimaryBrush}"
-                           Text="Oasis Editor" />
-                <TextBlock Margin="0,4,0,0"
-                           Foreground="{DynamicResource TextSecondaryBrush}"
-                           Text="Slot machine content authoring shell" />
-                <TextBlock Margin="0,8,0,0"
-                           Foreground="{DynamicResource TextSecondaryBrush}"
-                           Text="{Binding StatusMessage}" />
-                <TextBlock Margin="0,4,0,0"
-                           Foreground="{DynamicResource TextSecondaryBrush}"
-                           Text="{Binding LoadedProject.ProjectFilePath, TargetNullValue=Open or create a project to load the editor shell.}" />
-            </StackPanel>
-        </Border>
-
-        <avalonDock:DockingManager Grid.Row="1"
+        <avalonDock:DockingManager
                                    Background="{DynamicResource EditorBackgroundBrush}">
             <avalonDock:DockingManager.Resources>
                 <ResourceDictionary Source="../Styles/AvalonDockVs2013Palette.xaml" />

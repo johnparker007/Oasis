@@ -24,7 +24,6 @@
     <Grid Margin="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
@@ -70,31 +69,9 @@
             </MenuItem>
         </Menu>
 
-        <ToolBarTray Grid.Row="1"
-                     Margin="0,0,0,12"
-                     Background="{DynamicResource ToolBarBackgroundBrush}">
-            <ToolBar Band="0"
-                     BandIndex="0">
-                <Button Command="{Binding OpenPanel2DStubCommand}"
-                        Content="New Panel2D" />
-                <Button Command="{Binding OpenCabinet3DStubCommand}"
-                        Content="New Cabinet3D" />
-                <Button Command="{Binding OpenMachineStubCommand}"
-                        Content="New Machine" />
-                <Separator />
-                <Button Command="{Binding OpenDocumentCommand}"
-                        Content="Open Document" />
-                <Button Command="{Binding SaveSelectedDocumentCommand}"
-                        Content="Save Document" />
-                <Separator />
-                <Button Command="{Binding ExitCommand}"
-                        Content="Exit" />
-            </ToolBar>
-        </ToolBarTray>
+        <views:EditorShellView Grid.Row="1" />
 
-        <views:EditorShellView Grid.Row="2" />
-
-        <StatusBar Grid.Row="3"
+        <StatusBar Grid.Row="2"
                    Margin="0,12,0,0"
                    Background="{DynamicResource ToolBarBackgroundBrush}"
                    Foreground="{DynamicResource TextPrimaryBrush}">
