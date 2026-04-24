@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:local="clr-namespace:OasisEditor"
         xmlns:views="clr-namespace:OasisEditor.Views"
+        xmlns:xcad="http://schemas.xceed.com/wpf/xaml/avalondock"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="Oasis Editor"
@@ -92,7 +93,37 @@
             </ToolBar>
         </ToolBarTray>
 
-        <views:EditorShellView Grid.Row="2" />
+        <xcad:DockingManager Grid.Row="2">
+            <xcad:LayoutRoot>
+                <xcad:LayoutPanel Orientation="Horizontal">
+                    <xcad:LayoutDocumentPaneGroup>
+                        <xcad:LayoutDocumentPane>
+                            <xcad:LayoutDocument Title="Document"
+                                                 CanClose="False"
+                                                 CanFloat="False">
+                                <Border Padding="10"
+                                        Background="{DynamicResource PanelBackgroundBrush}">
+                                    <views:PanelCanvasView />
+                                </Border>
+                            </xcad:LayoutDocument>
+                        </xcad:LayoutDocumentPane>
+                    </xcad:LayoutDocumentPaneGroup>
+
+                    <xcad:LayoutAnchorablePane DockWidth="300">
+                        <xcad:LayoutAnchorable Title="Inspector"
+                                               CanAutoHide="False"
+                                               CanClose="False"
+                                               CanHide="False"
+                                               CanFloat="False">
+                            <Border Padding="10"
+                                    Background="{DynamicResource InspectorBackgroundBrush}">
+                                <views:InspectorView />
+                            </Border>
+                        </xcad:LayoutAnchorable>
+                    </xcad:LayoutAnchorablePane>
+                </xcad:LayoutPanel>
+            </xcad:LayoutRoot>
+        </xcad:DockingManager>
 
         <StatusBar Grid.Row="3"
                    Margin="0,12,0,0"
@@ -100,7 +131,7 @@
                    Foreground="{DynamicResource TextPrimaryBrush}">
             <StatusBarItem Content="Ready" />
             <Separator />
-            <StatusBarItem Content="Phase 3A: Theme Foundations" />
+            <StatusBarItem Content="Phase 1: AvalonDock minimal integration" />
         </StatusBar>
     </Grid>
 </Window>
