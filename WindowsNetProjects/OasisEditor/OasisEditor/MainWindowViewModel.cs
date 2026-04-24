@@ -17,7 +17,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly RecentProjectsStore _recentProjectsStore = new();
     private readonly IApplicationThemeService _applicationThemeService;
     private readonly EditorPreferencesStore _preferencesStore;
-    private readonly EditorCommands.CommandService _documentCommandService = new();
+    private readonly EditorCommands.CommandService _shellCommandService = new();
     private readonly Window _ownerWindow;
     private string _projectName = string.Empty;
     private string _projectLocation = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
@@ -530,7 +530,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
             var updatedDocument = new DocumentTabViewModel(
                 current.Document.SaveAs(savePath, current.ContentSummary).MarkClean(),
-                current.PanelLayoutJson);
+                current.PanelLayoutJson,
+                current.DocumentId,
+                current.CommandService);
             ExecuteDocumentMutation(new ReplaceDocumentTabMutationCommand(this, current, updatedDocument));
             StatusMessage = $"Saved document: {updatedDocument.Title}";
             AddOutputEntry($"Saved document to {savePath}");
@@ -660,7 +662,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void ClearProjectSessionState()
     {
-        _documentCommandService.History.Clear();
+        _shellCommandService.History.Clear();
         OpenDocuments.Clear();
         SelectedDocument = null;
 
@@ -788,7 +790,27 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void ExecuteDocumentMutation(EditorCommands.ICommand command)
     {
-        _documentCommandService.Execute(command);
+        _shellCommandService.Execute(command);
+    }
+
+    public bool CanUndoActiveDocument()
+    {
+        return SelectedDocument?.CommandService.CanUndo ?? false;
+    }
+
+    public bool CanRedoActiveDocument()
+    {
+        return SelectedDocument?.CommandService.CanRedo ?? false;
+    }
+
+    public bool UndoActiveDocument()
+    {
+        return SelectedDocument?.CommandService.TryUndo() ?? false;
+    }
+
+    public bool RedoActiveDocument()
+    {
+        return SelectedDocument?.CommandService.TryRedo() ?? false;
     }
 
     private static OpenDocumentData BuildOpenDocumentData(string path, string content)
@@ -1216,7 +1238,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         var updated = new DocumentTabViewModel(
             SelectedDocument.Document.WithContentSummary(InspectorEditableSummary).MarkDirty(),
-            SelectedDocument.PanelLayoutJson);
+            SelectedDocument.PanelLayoutJson,
+            SelectedDocument.DocumentId,
+            SelectedDocument.CommandService);
 
         ExecuteDocumentMutation(new ReplaceDocumentTabMutationCommand(this, SelectedDocument, updated));
         StatusMessage = $"Updated inspector summary for {updated.Title}";
@@ -1253,17 +1277,26 @@ internal readonly record struct OpenDocumentData(string Summary, string? PanelLa
 
 public sealed class DocumentTabViewModel : INotifyPropertyChanged
 {
+    private readonly EditorCommands.CommandService _commandService;
     private string? _panelLayoutJson;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public DocumentTabViewModel(EditorDocument document, string? panelLayoutJson = null)
+    public DocumentTabViewModel(
+        EditorDocument document,
+        string? panelLayoutJson = null,
+        Guid? documentId = null,
+        EditorCommands.CommandService? commandService = null)
     {
         Document = document;
+        DocumentId = documentId ?? Guid.NewGuid();
+        _commandService = commandService ?? new EditorCommands.CommandService(new EditorCommands.CommandHistory(), DocumentId);
         _panelLayoutJson = panelLayoutJson;
     }
 
     public EditorDocument Document { get; }
+    public Guid DocumentId { get; }
+    public EditorCommands.CommandService CommandService => _commandService;
     public string Title => Document.IsDirty ? $"{Document.Title}*" : Document.Title;
     public string TypeLabel => Document.DocumentType switch
     {

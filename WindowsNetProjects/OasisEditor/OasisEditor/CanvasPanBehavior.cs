@@ -97,27 +97,6 @@ public static class CanvasPanBehavior
             typeof(CanvasPanBehavior),
             new PropertyMetadata(false));
 
-    private static readonly DependencyProperty CommandServiceProperty =
-        DependencyProperty.RegisterAttached(
-            "CommandService",
-            typeof(CommandService),
-            typeof(CanvasPanBehavior),
-            new PropertyMetadata(null));
-
-    private static readonly DependencyProperty UndoCommandBindingProperty =
-        DependencyProperty.RegisterAttached(
-            "UndoCommandBinding",
-            typeof(CommandBinding),
-            typeof(CanvasPanBehavior),
-            new PropertyMetadata(null));
-
-    private static readonly DependencyProperty RedoCommandBindingProperty =
-        DependencyProperty.RegisterAttached(
-            "RedoCommandBinding",
-            typeof(CommandBinding),
-            typeof(CanvasPanBehavior),
-            new PropertyMetadata(null));
-
     private const double MinZoom = 0.25;
     private const double MaxZoom = 4.0;
     private const double ZoomStep = 1.1;
@@ -197,7 +176,6 @@ public static class CanvasPanBehavior
         if (isEnabled)
         {
             EnsureTransformGroup(element);
-            EnsureCommandBindings(element);
             element.MouseDown += OnMouseDown;
             element.MouseLeftButtonDown += OnMouseLeftButtonDown;
             element.MouseMove += OnMouseMove;
@@ -207,7 +185,6 @@ public static class CanvasPanBehavior
         }
         else
         {
-            RemoveCommandBindings(element);
             element.MouseDown -= OnMouseDown;
             element.MouseLeftButtonDown -= OnMouseLeftButtonDown;
             element.MouseMove -= OnMouseMove;
@@ -330,7 +307,12 @@ public static class CanvasPanBehavior
         System.Windows.Controls.Canvas.SetLeft(rectangle, x);
         System.Windows.Controls.Canvas.SetTop(rectangle, y);
         var previousSelection = (FrameworkElement?)panelCanvas.GetValue(SelectedElementProperty);
-        ExecuteCanvasMutation(panelCanvas, new AddRectangleMutationCommand(panelCanvas, rectangle, previousSelection, x, y));
+        if (panelCanvas.DataContext is not DocumentTabViewModel tab)
+        {
+            return;
+        }
+
+        ExecuteCanvasMutation(panelCanvas, new AddRectangleMutationCommand(tab.DocumentId, panelCanvas, rectangle, previousSelection, x, y));
     }
 
     private static void AddImage(FrameworkElement canvas, MouseButtonEventArgs eventArgs)
@@ -363,7 +345,12 @@ public static class CanvasPanBehavior
         Canvas.SetTop(image, y);
 
         var previousSelection = (FrameworkElement?)panelCanvas.GetValue(SelectedElementProperty);
-        ExecuteCanvasMutation(panelCanvas, new AddImageMutationCommand(panelCanvas, image, previousSelection, x, y));
+        if (panelCanvas.DataContext is not DocumentTabViewModel tab)
+        {
+            return;
+        }
+
+        ExecuteCanvasMutation(panelCanvas, new AddImageMutationCommand(tab.DocumentId, panelCanvas, image, previousSelection, x, y));
     }
 
     private static void OnMouseWheel(object sender, MouseWheelEventArgs eventArgs)
@@ -463,96 +450,18 @@ public static class CanvasPanBehavior
         return null;
     }
 
-    private static void EnsureCommandBindings(FrameworkElement element)
-    {
-        if ((CommandService?)element.GetValue(CommandServiceProperty) is null)
-        {
-            element.SetValue(CommandServiceProperty, new CommandService());
-        }
-
-        if ((CommandBinding?)element.GetValue(UndoCommandBindingProperty) is null)
-        {
-            var undoBinding = new CommandBinding(UndoCommand, OnUndoExecuted, OnUndoCanExecute);
-            element.CommandBindings.Add(undoBinding);
-            element.SetValue(UndoCommandBindingProperty, undoBinding);
-        }
-
-        if ((CommandBinding?)element.GetValue(RedoCommandBindingProperty) is null)
-        {
-            var redoBinding = new CommandBinding(RedoCommand, OnRedoExecuted, OnRedoCanExecute);
-            element.CommandBindings.Add(redoBinding);
-            element.SetValue(RedoCommandBindingProperty, redoBinding);
-        }
-    }
-
-    private static void RemoveCommandBindings(FrameworkElement element)
-    {
-        if ((CommandBinding?)element.GetValue(UndoCommandBindingProperty) is { } undoBinding)
-        {
-            element.CommandBindings.Remove(undoBinding);
-            element.ClearValue(UndoCommandBindingProperty);
-        }
-
-        if ((CommandBinding?)element.GetValue(RedoCommandBindingProperty) is { } redoBinding)
-        {
-            element.CommandBindings.Remove(redoBinding);
-            element.ClearValue(RedoCommandBindingProperty);
-        }
-    }
-
-    private static void OnUndoCanExecute(object sender, CanExecuteRoutedEventArgs eventArgs)
-    {
-        eventArgs.CanExecute = sender is FrameworkElement element && GetCommandService(element).CanUndo;
-        eventArgs.Handled = true;
-    }
-
-    private static void OnRedoCanExecute(object sender, CanExecuteRoutedEventArgs eventArgs)
-    {
-        eventArgs.CanExecute = sender is FrameworkElement element && GetCommandService(element).CanRedo;
-        eventArgs.Handled = true;
-    }
-
-    private static void OnUndoExecuted(object sender, ExecutedRoutedEventArgs eventArgs)
-    {
-        if (sender is not FrameworkElement element)
-        {
-            return;
-        }
-
-        GetCommandService(element).TryUndo();
-        eventArgs.Handled = true;
-    }
-
-    private static void OnRedoExecuted(object sender, ExecutedRoutedEventArgs eventArgs)
-    {
-        if (sender is not FrameworkElement element)
-        {
-            return;
-        }
-
-        GetCommandService(element).TryRedo();
-        eventArgs.Handled = true;
-    }
-
     private static void ExecuteCanvasMutation(FrameworkElement canvas, Commands.ICommand command)
     {
-        GetCommandService(canvas).Execute(command);
+        if (canvas.DataContext is not DocumentTabViewModel tab)
+        {
+            return;
+        }
+
+        tab.CommandService.Execute(command);
         if (canvas is Canvas panelCanvas)
         {
             SyncPanelLayout(panelCanvas);
         }
-    }
-
-    private static CommandService GetCommandService(FrameworkElement canvas)
-    {
-        if ((CommandService?)canvas.GetValue(CommandServiceProperty) is { } existing)
-        {
-            return existing;
-        }
-
-        var created = new CommandService();
-        canvas.SetValue(CommandServiceProperty, created);
-        return created;
     }
 
     private static ImageSource CreatePlaceholderImageSource()
@@ -738,22 +647,26 @@ public static class CanvasPanBehavior
         };
     }
 
-    private sealed class AddRectangleMutationCommand : Commands.ICommand
+    private sealed class AddRectangleMutationCommand : Commands.IDocumentCommand
     {
+        private readonly Guid _documentId;
         private readonly Canvas _canvas;
         private readonly Rectangle _rectangle;
         private readonly FrameworkElement? _previousSelection;
         private readonly double _x;
         private readonly double _y;
 
-        public AddRectangleMutationCommand(Canvas canvas, Rectangle rectangle, FrameworkElement? previousSelection, double x, double y)
+        public AddRectangleMutationCommand(Guid documentId, Canvas canvas, Rectangle rectangle, FrameworkElement? previousSelection, double x, double y)
         {
+            _documentId = documentId;
             _canvas = canvas;
             _rectangle = rectangle;
             _previousSelection = previousSelection;
             _x = x;
             _y = y;
         }
+
+        public Guid DocumentId => _documentId;
 
         public string Description => "Add rectangle";
 
@@ -773,6 +686,7 @@ public static class CanvasPanBehavior
 
             SetIsSelected(_rectangle, true);
             _canvas.SetValue(SelectedElementProperty, _rectangle);
+            SyncPanelLayout(_canvas);
         }
 
         public void Undo()
@@ -788,25 +702,30 @@ public static class CanvasPanBehavior
             }
 
             _canvas.ClearValue(SelectedElementProperty);
+            SyncPanelLayout(_canvas);
         }
     }
 
-    private sealed class AddImageMutationCommand : Commands.ICommand
+    private sealed class AddImageMutationCommand : Commands.IDocumentCommand
     {
+        private readonly Guid _documentId;
         private readonly Canvas _canvas;
         private readonly Image _image;
         private readonly FrameworkElement? _previousSelection;
         private readonly double _x;
         private readonly double _y;
 
-        public AddImageMutationCommand(Canvas canvas, Image image, FrameworkElement? previousSelection, double x, double y)
+        public AddImageMutationCommand(Guid documentId, Canvas canvas, Image image, FrameworkElement? previousSelection, double x, double y)
         {
+            _documentId = documentId;
             _canvas = canvas;
             _image = image;
             _previousSelection = previousSelection;
             _x = x;
             _y = y;
         }
+
+        public Guid DocumentId => _documentId;
 
         public string Description => "Add image";
 
@@ -826,6 +745,7 @@ public static class CanvasPanBehavior
 
             SetIsSelected(_image, true);
             _canvas.SetValue(SelectedElementProperty, _image);
+            SyncPanelLayout(_canvas);
         }
 
         public void Undo()
@@ -841,6 +761,7 @@ public static class CanvasPanBehavior
             }
 
             _canvas.ClearValue(SelectedElementProperty);
+            SyncPanelLayout(_canvas);
         }
     }
 }
