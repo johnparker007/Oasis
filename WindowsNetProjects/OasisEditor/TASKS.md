@@ -5,10 +5,10 @@
 ### Docking Framework Integration (AvalonDock)
 
 #### Phase 1 — Minimal Integration
-- [ ] Add AvalonDock via NuGet
-- [ ] Replace main window layout with DockingManager
-- [ ] Create central document pane
-- [ ] Add one tool window (Inspector) docked to the right
+- [x] Add AvalonDock via NuGet
+- [x] Replace main window layout with DockingManager
+- [x] Create central document pane
+- [x] Add one tool window (Inspector) docked to the right
 - [ ] Ensure app builds and runs
 
 #### Phase 2 — Tool Window Expansion

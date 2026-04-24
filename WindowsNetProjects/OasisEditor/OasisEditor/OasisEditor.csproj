@@ -8,4 +8,8 @@
     <UseWPF>true</UseWPF>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Xceed.Wpf.AvalonDock" Version="4.70.0" />
+  </ItemGroup>
+
 </Project>
