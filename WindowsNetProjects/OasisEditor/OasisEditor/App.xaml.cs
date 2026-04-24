@@ -32,7 +32,7 @@ public partial class App : Application
     {
         CrashDiagnostics.Log("DispatcherUnhandledException", e.Exception, isTerminating: false);
 
-        if (IsAvalonDockOverlayTemplateNullReference(e.Exception))
+        if (IsAvalonDockDragNullReference(e.Exception))
         {
             e.Handled = true;
             return;
@@ -58,13 +58,20 @@ public partial class App : Application
         e.SetObserved();
     }
 
-    private static bool IsAvalonDockOverlayTemplateNullReference(Exception exception)
+    private static bool IsAvalonDockDragNullReference(Exception exception)
     {
         if (exception is not NullReferenceException)
         {
             return false;
         }
 
-        return exception.StackTrace?.Contains("AvalonDock.Controls.OverlayWindow.OnApplyTemplate", StringComparison.Ordinal) == true;
+        var stackTrace = exception.StackTrace;
+        if (string.IsNullOrWhiteSpace(stackTrace))
+        {
+            return false;
+        }
+
+        return stackTrace.Contains("AvalonDock.Controls.OverlayWindow.OnApplyTemplate", StringComparison.Ordinal)
+               || stackTrace.Contains("AvalonDock.Controls.DragService", StringComparison.Ordinal);
     }
 }
