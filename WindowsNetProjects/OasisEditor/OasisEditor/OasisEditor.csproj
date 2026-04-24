@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Xceed.Wpf.AvalonDock" Version="4.70.0" />
+    <PackageReference Include="Xceed.Wpf.AvalonDock" Version="5.0.25228.6150" />
   </ItemGroup>
 
 </Project>

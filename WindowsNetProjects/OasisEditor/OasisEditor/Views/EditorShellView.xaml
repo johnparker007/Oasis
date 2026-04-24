@@ -38,25 +38,27 @@
                 </DataTemplate>
             </ad:DockingManager.LayoutItemTemplate>
 
-            <adLayout:LayoutRoot>
-                <adLayout:LayoutPanel Orientation="Horizontal">
-                    <adLayout:LayoutDocumentPaneGroup>
-                        <adLayout:LayoutDocumentPane>
-                            <adLayout:LayoutDocument Title="Panel2D">
-                                <views:PanelCanvasView />
-                            </adLayout:LayoutDocument>
-                        </adLayout:LayoutDocumentPane>
-                    </adLayout:LayoutDocumentPaneGroup>
+            <ad:DockingManager.Layout>
+                <adLayout:LayoutRoot>
+                    <adLayout:LayoutPanel Orientation="Horizontal">
+                        <adLayout:LayoutDocumentPaneGroup>
+                            <adLayout:LayoutDocumentPane>
+                                <adLayout:LayoutDocument Title="Panel2D">
+                                    <views:PanelCanvasView />
+                                </adLayout:LayoutDocument>
+                            </adLayout:LayoutDocumentPane>
+                        </adLayout:LayoutDocumentPaneGroup>
 
-                    <adLayout:LayoutAnchorablePane DockWidth="300">
-                        <adLayout:LayoutAnchorable Title="Inspector"
-                                                   CanClose="False"
-                                                   CanHide="False">
-                            <views:InspectorView />
-                        </adLayout:LayoutAnchorable>
-                    </adLayout:LayoutAnchorablePane>
-                </adLayout:LayoutPanel>
-            </adLayout:LayoutRoot>
+                        <adLayout:LayoutAnchorablePane DockWidth="300">
+                            <adLayout:LayoutAnchorable Title="Inspector"
+                                                       CanClose="False"
+                                                       CanHide="False">
+                                <views:InspectorView />
+                            </adLayout:LayoutAnchorable>
+                        </adLayout:LayoutAnchorablePane>
+                    </adLayout:LayoutPanel>
+                </adLayout:LayoutRoot>
+            </ad:DockingManager.Layout>
         </ad:DockingManager>
     </Grid>
 </UserControl>
