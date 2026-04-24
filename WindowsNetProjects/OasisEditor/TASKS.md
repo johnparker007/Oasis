@@ -3,17 +3,17 @@
 ## Current Focus — Editor Stability and Document Context
 
 ### Undo/Redo Robustness
-- [ ] Audit current command history ownership
-- [ ] Ensure each open document has its own command history
-- [ ] Ensure commands are bound to the document they were created for
-- [ ] Ensure undo only affects the active document
-- [ ] Ensure redo only affects the active document
-- [ ] Clear redo stack only for the affected document when a new command is executed
-- [ ] Prevent commands from applying to a different active document after tab switching
-- [ ] Add document identity checks before command execute/undo/redo
-- [ ] Ensure closing a document clears or safely discards its command history
-- [ ] Ensure switching tabs updates undo/redo menu enabled state
-- [ ] Ensure undo/redo menu labels reflect active document command names where possible
+- [x] Audit current command history ownership
+- [x] Ensure each open document has its own command history
+- [x] Ensure commands are bound to the document they were created for
+- [x] Ensure undo only affects the active document
+- [x] Ensure redo only affects the active document
+- [x] Clear redo stack only for the affected document when a new command is executed
+- [x] Prevent commands from applying to a different active document after tab switching
+- [x] Add document identity checks before command execute/undo/redo
+- [x] Ensure closing a document clears or safely discards its command history
+- [x] Ensure switching tabs updates undo/redo menu enabled state
+- [x] Ensure undo/redo menu labels reflect active document command names where possible
 
 ### Undo/Redo Verification
 - [ ] Verify undo/redo works with one Panel2D document
@@ -66,6 +66,61 @@
   - [ ] duplicate/copy/paste
 - [ ] Begin cabinet import MVP planning
 - [ ] Begin machine assembly MVP planning
+
+
+---
+
+## Refactor Track — WPF Maintainability
+
+These tasks should be completed one at a time. They are behavior-preserving unless explicitly stated otherwise.
+
+### Refactor Guardrails
+- [ ] Keep behavior and UI appearance unchanged unless a task explicitly says otherwise
+- [ ] Build after each refactor task
+- [ ] Fix compile, binding, and resource errors before moving on
+- [ ] Prefer small diffs over large rewrites
+- [ ] Do not introduce new frameworks or major architecture changes without a separate task
+- [ ] If a task says “plan only”, do not edit code
+
+### XAML / View Refactors
+- [ ] Extract Menu styles from `MainWindow.xaml` into `Styles/Menu.xaml`
+- [ ] Extract Asset Browser UI into `Views/AssetBrowserView.xaml`
+- [ ] Extract Inspector UI into `Views/InspectorView.xaml`
+- [ ] Extract Output Log UI into `Views/OutputLogView.xaml`
+- [ ] Extract Panel 2D canvas/tab UI into `Views/PanelCanvasView.xaml`
+- [ ] Clean up `MainWindow.xaml` so it acts mainly as the application shell
+
+### ViewModel Refactors
+- [ ] Move `DocumentTabViewModel` into `ViewModels/DocumentTabViewModel.cs`
+- [ ] Move `AssetBrowserItemViewModel` into `ViewModels/AssetBrowserItemViewModel.cs`
+- [ ] Review `MainWindowViewModel.cs` and propose a split plan only
+- [ ] Extract Asset Browser logic into `ViewModels/AssetBrowserViewModel.cs`
+- [ ] Extract Inspector logic into `ViewModels/InspectorViewModel.cs`
+- [ ] Extract Output Log logic into `ViewModels/OutputLogViewModel.cs`
+- [ ] Extract document/workspace logic into `ViewModels/DocumentWorkspaceViewModel.cs`
+
+### Canvas / Behavior Refactors
+- [ ] Review `CanvasPanBehavior.cs` and propose a split plan only
+- [ ] Extract canvas selection logic into `CanvasSelectionBehavior.cs`
+- [ ] Extract pan/zoom logic into `CanvasPanZoomBehavior.cs`
+- [ ] Extract canvas element creation logic into `PanelElementFactory.cs`
+- [ ] Extract canvas layout serialization/mapping into `PanelLayoutMapper.cs`
+- [ ] Extract canvas mutation commands into `CanvasMutationCommands.cs`
+- [ ] Reduce `CanvasPanBehavior.cs` to coordination/glue code only
+
+### Refactor Cleanup
+- [ ] Remove unused XAML resources
+- [ ] Remove unused C# usings
+- [ ] Remove dead code discovered during refactor
+- [ ] Ensure all extracted views preserve existing bindings
+- [ ] Ensure project builds cleanly
+- [ ] Smoke test main editor flows
+
+### Optional Future Refactors
+- [ ] Consider DataTemplates for view switching
+- [ ] Consider dependency injection
+- [ ] Consider undo/redo service abstraction
+- [ ] Consider separating services from ViewModels
 
 ---
 

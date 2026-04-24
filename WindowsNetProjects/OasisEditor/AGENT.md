@@ -53,6 +53,35 @@ The editor is project-based:
 - New UI must work in System, Light, and Dark modes
 - Prefer app-defined semantic brushes over direct Fluent resource usage in feature views
 
+
+## WPF Maintainability Rules
+- Large XAML files should not be preserved solely to give Codex more context
+- `MainWindow.xaml` should act primarily as the application shell
+- Use UserControls for cohesive UI regions such as asset browser, inspector, output/log, document tabs, and canvas host views
+- Use ResourceDictionaries for shared styles, brushes, templates, and repeated UI resources
+- Do not create UserControls only to reduce line count; extract only when the section has a clear responsibility
+- Preserve existing bindings, commands, DataContext assumptions, and visual appearance during view extraction
+- Prefer one view extraction per task
+
+## ViewModel Maintainability Rules
+- Avoid allowing `MainWindowViewModel` to become the owner of every editor concern
+- Move cohesive child concepts into separate ViewModels when they have distinct state, commands, or responsibilities
+- Keep public behavior and binding-facing property names stable during refactors unless a task explicitly allows a rename
+- Prefer composition over broad rewrites
+
+## Canvas Behavior Refactor Rules
+- Treat `CanvasPanBehavior.cs` as interaction code, not a dumping ground for document, persistence, selection, and command logic
+- Split canvas behavior gradually into focused components
+- Keep pan/zoom, selection, element creation, layout mapping, and mutation command logic separate where practical
+- Do not change canvas behavior while extracting unless a task explicitly requests a behavior change
+
+## Refactor Workflow Rules
+- For risky files, propose a short split plan before editing
+- Complete one refactor task at a time
+- Build after each refactor task
+- Fix compile errors, binding errors, and missing resource errors before marking a task complete
+- Keep refactor-only changes separate from feature changes where practical
+
 ## Current Focus
 Follow TASKS.md in order.
 Always implement the next unchecked task unless instructed otherwise.
