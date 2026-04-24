@@ -83,7 +83,7 @@ These tasks should be completed one at a time. They are behavior-preserving unle
 - [ ] If a task says “plan only”, do not edit code
 
 ### XAML / View Refactors
-- [ ] Extract Menu styles from `MainWindow.xaml` into `Styles/Menu.xaml`
+- [x] Extract Menu styles from `MainWindow.xaml` into `Styles/Menu.xaml`
 - [ ] Extract Asset Browser UI into `Views/AssetBrowserView.xaml`
 - [ ] Extract Inspector UI into `Views/InspectorView.xaml`
 - [ ] Extract Output Log UI into `Views/OutputLogView.xaml`
