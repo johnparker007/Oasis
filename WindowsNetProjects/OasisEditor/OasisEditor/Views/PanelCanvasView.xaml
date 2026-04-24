@@ -1,0 +1,134 @@
+<UserControl x:Class="OasisEditor.Views.PanelCanvasView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:OasisEditor"
+             xmlns:views="clr-namespace:OasisEditor.Views"
+             mc:Ignorable="d"
+             d:DesignHeight="360"
+             d:DesignWidth="640">
+    <Grid Margin="0,10,0,0">
+        <Border x:Name="PanelCanvasContainer"
+                Padding="12"
+                Background="{DynamicResource EditorBackgroundBrush}"
+                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                BorderThickness="1"
+                CornerRadius="4"
+                Visibility="Collapsed">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Visibility"
+                            Value="Collapsed" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding Document.DocumentType}"
+                                     Value="{x:Static local:EditorDocumentType.Panel2D}">
+                            <Setter Property="Visibility"
+                                    Value="Visible" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <Border MinHeight="280"
+                    ClipToBounds="True"
+                    BorderBrush="{DynamicResource BorderSubtleBrush}"
+                    BorderThickness="1"
+                    Background="{DynamicResource PanelBackgroundBrush}">
+                <Canvas Width="1400"
+                        Height="900"
+                        Cursor="SizeAll"
+                        Focusable="True"
+                        local:CanvasPanBehavior.IsEnabled="True"
+                        local:CanvasPanBehavior.IsRectangleToolActive="{Binding IsRectangleToolActive, RelativeSource={RelativeSource AncestorType={x:Type views:PanelCanvasView}}}"
+                        local:CanvasPanBehavior.IsImageToolActive="{Binding IsImageToolActive, RelativeSource={RelativeSource AncestorType={x:Type views:PanelCanvasView}}}"
+                        local:CanvasPanBehavior.PanelLayoutJson="{Binding PanelLayoutJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                        Background="{DynamicResource PanelBackgroundBrush}">
+                    <Canvas.Resources>
+                        <Style TargetType="Rectangle">
+                            <Setter Property="Stroke"
+                                    Value="{DynamicResource BorderSubtleBrush}" />
+                            <Setter Property="StrokeThickness"
+                                    Value="1.5" />
+                            <Setter Property="Fill"
+                                    Value="{DynamicResource ToolBarBackgroundBrush}" />
+                            <Style.Triggers>
+                                <Trigger Property="local:CanvasPanBehavior.IsSelected"
+                                         Value="True">
+                                    <Setter Property="Stroke"
+                                            Value="{DynamicResource SelectionBrush}" />
+                                    <Setter Property="StrokeThickness"
+                                            Value="2.5" />
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                        <Style TargetType="Image">
+                            <Setter Property="Opacity"
+                                    Value="0.88" />
+                            <Style.Triggers>
+                                <Trigger Property="local:CanvasPanBehavior.IsSelected"
+                                         Value="True">
+                                    <Setter Property="Opacity"
+                                            Value="1" />
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Canvas.Resources>
+                    <Rectangle Width="540"
+                               Height="300"
+                               local:CanvasPanBehavior.IsSelectable="True"
+                               Canvas.Left="120"
+                               Canvas.Top="90" />
+                    <Rectangle Width="220"
+                               Height="160"
+                               local:CanvasPanBehavior.IsSelectable="True"
+                               Canvas.Left="760"
+                               Canvas.Top="240" />
+                    <TextBlock Canvas.Left="136"
+                               Canvas.Top="106"
+                               FontWeight="SemiBold"
+                               Text="Panel Canvas (MVP)"
+                               Foreground="{DynamicResource TextPrimaryBrush}" />
+                    <TextBlock Canvas.Left="136"
+                               Canvas.Top="132"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
+                               Text="Drag with middle mouse to pan. Use mouse wheel to zoom." />
+                    <TextBlock Canvas.Left="136"
+                               Canvas.Top="156"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
+                               Text="Left-click a shape to select it." />
+                    <TextBlock Canvas.Left="136"
+                               Canvas.Top="180"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
+                               Text="Enable Rectangle Tool, then left-click empty canvas to place a rectangle." />
+                    <TextBlock Canvas.Left="136"
+                               Canvas.Top="204"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
+                               Text="Disable Rectangle Tool, enable Image Tool, then left-click empty canvas to place an image." />
+                </Canvas>
+            </Border>
+        </Border>
+
+        <Border x:Name="DefaultSummaryContainer"
+                Padding="10"
+                CornerRadius="4"
+                Background="{DynamicResource SelectionBrush}"
+                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                BorderThickness="1">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Visibility"
+                            Value="Visible" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding Document.DocumentType}"
+                                     Value="{x:Static local:EditorDocumentType.Panel2D}">
+                            <Setter Property="Visibility"
+                                    Value="Collapsed" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <TextBlock TextWrapping="Wrap"
+                       Text="{Binding ContentSummary}" />
+        </Border>
+    </Grid>
+</UserControl>
