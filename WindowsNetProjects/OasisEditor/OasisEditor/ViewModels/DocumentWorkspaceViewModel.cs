@@ -17,6 +17,7 @@ public sealed class DocumentWorkspaceViewModel
     private readonly Action _notifyUndoRedoStateChanged;
     private readonly Action<string> _setStatusMessage;
     private readonly Action<string> _addOutputEntry;
+    private readonly Action<Guid> _onDocumentClosed;
 
     private int _untitledDocumentCounter = 1;
     private int _panelDocumentCounter = 1;
@@ -31,7 +32,8 @@ public sealed class DocumentWorkspaceViewModel
         Action<DocumentTabViewModel?> setSelectedDocument,
         Action notifyUndoRedoStateChanged,
         Action<string> setStatusMessage,
-        Action<string> addOutputEntry)
+        Action<string> addOutputEntry,
+        Action<Guid>? onDocumentClosed = null)
     {
         _getLoadedProject = getLoadedProject;
         _setLoadedProject = setLoadedProject;
@@ -41,6 +43,7 @@ public sealed class DocumentWorkspaceViewModel
         _notifyUndoRedoStateChanged = notifyUndoRedoStateChanged;
         _setStatusMessage = setStatusMessage;
         _addOutputEntry = addOutputEntry;
+        _onDocumentClosed = onDocumentClosed ?? (_ => { });
     }
 
     public bool CanOpenUntitledDocument() => _getLoadedProject() is not null;
@@ -391,6 +394,7 @@ public sealed class DocumentWorkspaceViewModel
             _index = _owner._openDocuments.IndexOf(_document);
             _owner._openDocuments.Remove(_document);
             _document.CommandService.History.Clear();
+            _owner._onDocumentClosed(_document.DocumentId);
 
             _nextSelection = _owner._openDocuments.Count == 0
                 ? null

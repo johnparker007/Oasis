@@ -152,6 +152,7 @@ public static class CanvasPanBehavior
         }
 
         CanvasSelectionBehavior.SelectFromSource(canvas, eventArgs.OriginalSource as DependencyObject);
+        NotifyActiveDocumentSelection(canvas, clickedElement);
         if (clickedElement is not null)
         {
             eventArgs.Handled = true;
@@ -273,5 +274,39 @@ public static class CanvasPanBehavior
         }
 
         PanelLayoutMapper.ApplyPersistedLayout(canvas, eventArgs.NewValue as string);
+    }
+
+    private static void NotifyActiveDocumentSelection(FrameworkElement canvas, FrameworkElement? selectedElement)
+    {
+        if (canvas.DataContext is not DocumentTabViewModel tab)
+        {
+            return;
+        }
+
+        if (Window.GetWindow(canvas)?.DataContext is not MainWindowViewModel shellViewModel)
+        {
+            return;
+        }
+
+        if (selectedElement is null)
+        {
+            shellViewModel.UpdateDocumentPanelSelection(tab.DocumentId, null);
+            return;
+        }
+
+        var kind = selectedElement switch
+        {
+            System.Windows.Shapes.Rectangle => "rectangle",
+            Image => "image",
+            _ => selectedElement.GetType().Name
+        };
+
+        var selection = new PanelSelectionInfo(
+            kind,
+            Canvas.GetLeft(selectedElement),
+            Canvas.GetTop(selectedElement),
+            selectedElement.Width,
+            selectedElement.Height);
+        shellViewModel.UpdateDocumentPanelSelection(tab.DocumentId, selection);
     }
 }

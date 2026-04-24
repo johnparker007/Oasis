@@ -11,6 +11,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
     private readonly Func<AssetBrowserItemViewModel?> _selectedAssetAccessor;
     private readonly Func<DocumentTabViewModel?> _selectedDocumentAccessor;
     private readonly Func<EditorProject?> _loadedProjectAccessor;
+    private readonly ActiveDocumentContextService _activeDocumentContext;
     private readonly Func<DocumentTabViewModel, string, DocumentTabViewModel?> _applySummary;
     private string _inspectorEditableSummary = string.Empty;
 
@@ -18,11 +19,13 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         Func<AssetBrowserItemViewModel?> selectedAssetAccessor,
         Func<DocumentTabViewModel?> selectedDocumentAccessor,
         Func<EditorProject?> loadedProjectAccessor,
+        ActiveDocumentContextService activeDocumentContext,
         Func<DocumentTabViewModel, string, DocumentTabViewModel?> applySummary)
     {
         _selectedAssetAccessor = selectedAssetAccessor;
         _selectedDocumentAccessor = selectedDocumentAccessor;
         _loadedProjectAccessor = loadedProjectAccessor;
+        _activeDocumentContext = activeDocumentContext;
         _applySummary = applySummary;
         ApplyInspectorSummaryCommand = new RelayCommand(ApplyInspectorSummary, CanApplyInspectorSummary);
     }
@@ -113,16 +116,21 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
     {
         get
         {
+            var selectedDocument = _selectedDocumentAccessor();
+            if (selectedDocument is not null)
+            {
+                if (_activeDocumentContext.ActivePanelSelection is PanelSelectionInfo panelSelection)
+                {
+                    return $"Selected {panelSelection.Kind} at ({panelSelection.X:0.##}, {panelSelection.Y:0.##}) sized {panelSelection.Width:0.##} x {panelSelection.Height:0.##}.";
+                }
+
+                return selectedDocument.ContentSummary;
+            }
+
             var selectedAsset = _selectedAssetAccessor();
             if (selectedAsset is not null)
             {
                 return "Use this panel as the starting point for future property editing.";
-            }
-
-            var selectedDocument = _selectedDocumentAccessor();
-            if (selectedDocument is not null)
-            {
-                return selectedDocument.ContentSummary;
             }
 
             var loadedProject = _loadedProjectAccessor();
