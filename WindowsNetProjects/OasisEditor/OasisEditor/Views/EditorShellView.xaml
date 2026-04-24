@@ -5,7 +5,6 @@
              xmlns:views="clr-namespace:OasisEditor.Views"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:ad="http://schemas.xceed.com/wpf/xaml/avalondock"
-             xmlns:adLayout="http://schemas.xceed.com/wpf/xaml/avalondock/layout"
              mc:Ignorable="d"
              d:DesignHeight="450"
              d:DesignWidth="900">
@@ -39,25 +38,25 @@
             </ad:DockingManager.LayoutItemTemplate>
 
             <ad:DockingManager.Layout>
-                <adLayout:LayoutRoot>
-                    <adLayout:LayoutPanel Orientation="Horizontal">
-                        <adLayout:LayoutDocumentPaneGroup>
-                            <adLayout:LayoutDocumentPane>
-                                <adLayout:LayoutDocument Title="Panel2D">
+                <ad:LayoutRoot>
+                    <ad:LayoutPanel Orientation="Horizontal">
+                        <ad:LayoutDocumentPaneGroup>
+                            <ad:LayoutDocumentPane>
+                                <ad:LayoutDocument Title="Panel2D">
                                     <views:PanelCanvasView />
-                                </adLayout:LayoutDocument>
-                            </adLayout:LayoutDocumentPane>
-                        </adLayout:LayoutDocumentPaneGroup>
+                                </ad:LayoutDocument>
+                            </ad:LayoutDocumentPane>
+                        </ad:LayoutDocumentPaneGroup>
 
-                        <adLayout:LayoutAnchorablePane DockWidth="300">
-                            <adLayout:LayoutAnchorable Title="Inspector"
+                        <ad:LayoutAnchorablePane DockWidth="300">
+                            <ad:LayoutAnchorable Title="Inspector"
                                                        CanClose="False"
                                                        CanHide="False">
                                 <views:InspectorView />
-                            </adLayout:LayoutAnchorable>
-                        </adLayout:LayoutAnchorablePane>
-                    </adLayout:LayoutPanel>
-                </adLayout:LayoutRoot>
+                            </ad:LayoutAnchorable>
+                        </ad:LayoutAnchorablePane>
+                    </ad:LayoutPanel>
+                </ad:LayoutRoot>
             </ad:DockingManager.Layout>
         </ad:DockingManager>
     </Grid>
