@@ -381,39 +381,8 @@
                         <views:InspectorView Grid.Row="1"
                                              Grid.Column="2" />
 
-                        <Border Grid.Row="2"
-                                Grid.ColumnSpan="3"
-                                Padding="10"
-                                Background="{DynamicResource ToolBarBackgroundBrush}"
-                                BorderBrush="{DynamicResource BorderSubtleBrush}"
-                                BorderThickness="1,0,1,1"
-                                CornerRadius="0,0,4,4">
-                            <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="*" />
-                                </Grid.RowDefinitions>
-
-                                <DockPanel Grid.Row="0"
-                                           LastChildFill="False">
-                                    <TextBlock DockPanel.Dock="Left"
-                                               FontWeight="SemiBold"
-                                               VerticalAlignment="Center"
-                                               Text="Output / Log" />
-                                    <Button DockPanel.Dock="Right"
-                                            Padding="10,4"
-                                            Command="{Binding ClearOutputCommand}"
-                                            Content="Clear" />
-                                </DockPanel>
-
-                                <ListBox Grid.Row="1"
-                                         Margin="0,8,0,0"
-                                         Background="{DynamicResource PanelBackgroundBrush}"
-                                         BorderBrush="{DynamicResource BorderSubtleBrush}"
-                                         BorderThickness="1"
-                                         ItemsSource="{Binding OutputEntries}" />
-                            </Grid>
-                        </Border>
+                        <views:OutputLogView Grid.Row="2"
+                                             Grid.ColumnSpan="3" />
                     </Grid>
                 </Grid>
             </GroupBox>
