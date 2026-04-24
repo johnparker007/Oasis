@@ -12,11 +12,11 @@
 - [x] Ensure app builds and runs
 
 #### Phase 2 — Tool Window Expansion
-- [ ] Add Hierarchy tool window (left dock)
-- [ ] Add Asset Browser tool window
-- [ ] Add Output/Log tool window (bottom dock)
-- [ ] Allow tool windows to be tabbed together
-- [ ] Ensure tool windows can be dragged and docked
+- [x] Add Hierarchy tool window (left dock)
+- [x] Add Asset Browser tool window
+- [x] Add Output/Log tool window (bottom dock)
+- [x] Allow tool windows to be tabbed together
+- [x] Ensure tool windows can be dragged and docked
 
 #### Phase 3 — Document Integration
 - [ ] Ensure Panel2D documents open in central document area

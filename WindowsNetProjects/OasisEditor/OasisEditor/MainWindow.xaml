@@ -95,29 +95,62 @@
 
         <xcad:DockingManager Grid.Row="2">
             <xcad:LayoutRoot>
-                <xcad:LayoutPanel Orientation="Horizontal">
-                    <xcad:LayoutDocumentPaneGroup>
-                        <xcad:LayoutDocumentPane>
-                            <xcad:LayoutDocument Title="Document"
-                                                 CanClose="False"
-                                                 CanFloat="False">
+                <xcad:LayoutPanel Orientation="Vertical">
+                    <xcad:LayoutPanel Orientation="Horizontal">
+                        <xcad:LayoutAnchorablePane DockWidth="260">
+                            <xcad:LayoutAnchorable Title="Hierarchy"
+                                                   CanAutoHide="True"
+                                                   CanClose="False"
+                                                   CanHide="False">
                                 <Border Padding="10"
-                                        Background="{DynamicResource PanelBackgroundBrush}">
-                                    <views:PanelCanvasView />
+                                        Background="{DynamicResource InspectorBackgroundBrush}">
+                                    <views:HierarchyView />
                                 </Border>
-                            </xcad:LayoutDocument>
-                        </xcad:LayoutDocumentPane>
-                    </xcad:LayoutDocumentPaneGroup>
+                            </xcad:LayoutAnchorable>
+                            <xcad:LayoutAnchorable Title="Asset Browser"
+                                                   CanAutoHide="True"
+                                                   CanClose="False"
+                                                   CanHide="False">
+                                <Border Padding="10"
+                                        Background="{DynamicResource InspectorBackgroundBrush}">
+                                    <views:AssetBrowserView />
+                                </Border>
+                            </xcad:LayoutAnchorable>
+                        </xcad:LayoutAnchorablePane>
 
-                    <xcad:LayoutAnchorablePane DockWidth="300">
-                        <xcad:LayoutAnchorable Title="Inspector"
-                                               CanAutoHide="False"
+                        <xcad:LayoutDocumentPaneGroup>
+                            <xcad:LayoutDocumentPane>
+                                <xcad:LayoutDocument Title="Document"
+                                                     CanClose="False">
+                                    <Border Padding="10"
+                                            Background="{DynamicResource PanelBackgroundBrush}">
+                                        <views:PanelCanvasView />
+                                    </Border>
+                                </xcad:LayoutDocument>
+                            </xcad:LayoutDocumentPane>
+                        </xcad:LayoutDocumentPaneGroup>
+
+                        <xcad:LayoutAnchorablePane DockWidth="300">
+                            <xcad:LayoutAnchorable Title="Inspector"
+                                                   CanAutoHide="True"
+                                                   CanClose="False"
+                                                   CanHide="False">
+                                <Border Padding="10"
+                                        Background="{DynamicResource InspectorBackgroundBrush}">
+                                    <views:InspectorView />
+                                </Border>
+                            </xcad:LayoutAnchorable>
+                        </xcad:LayoutAnchorablePane>
+                    </xcad:LayoutPanel>
+
+                    <xcad:LayoutAnchorablePane DockHeight="220">
+                        <xcad:LayoutAnchorable Title="Output / Log"
+                                               CanAutoHide="True"
                                                CanClose="False"
-                                               CanHide="False"
-                                               CanFloat="False">
+                                               CanHide="False">
                             <Border Padding="10"
-                                    Background="{DynamicResource InspectorBackgroundBrush}">
-                                <views:InspectorView />
+                                    Background="{DynamicResource ToolBarBackgroundBrush}">
+                                <views:OutputLogView />
                             </Border>
                         </xcad:LayoutAnchorable>
                     </xcad:LayoutAnchorablePane>
@@ -131,7 +164,7 @@
                    Foreground="{DynamicResource TextPrimaryBrush}">
             <StatusBarItem Content="Ready" />
             <Separator />
-            <StatusBarItem Content="Phase 1: AvalonDock minimal integration" />
+            <StatusBarItem Content="Phase 2: tool windows expanded and dockable" />
         </StatusBar>
     </Grid>
 </Window>
