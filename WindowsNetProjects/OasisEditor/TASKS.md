@@ -3,11 +3,11 @@
 ## Current Focus — Editor Stability and Document Context
 
 ### Undo/Redo Robustness
-- [ ] Audit current command history ownership
-- [ ] Ensure each open document has its own command history
-- [ ] Ensure commands are bound to the document they were created for
-- [ ] Ensure undo only affects the active document
-- [ ] Ensure redo only affects the active document
+- [x] Audit current command history ownership
+- [x] Ensure each open document has its own command history
+- [x] Ensure commands are bound to the document they were created for
+- [x] Ensure undo only affects the active document
+- [x] Ensure redo only affects the active document
 - [ ] Clear redo stack only for the affected document when a new command is executed
 - [ ] Prevent commands from applying to a different active document after tab switching
 - [ ] Add document identity checks before command execute/undo/redo

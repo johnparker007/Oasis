@@ -20,3 +20,11 @@ public interface ICommand
     /// </summary>
     void Undo();
 }
+
+/// <summary>
+/// Represents a command scoped to a specific document.
+/// </summary>
+public interface IDocumentCommand : ICommand
+{
+    Guid DocumentId { get; }
+}
