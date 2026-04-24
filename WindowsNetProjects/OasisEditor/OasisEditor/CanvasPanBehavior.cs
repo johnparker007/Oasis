@@ -709,10 +709,13 @@ public static class CanvasPanBehavior
             {
                 SetIsSelected(_previousSelection, true);
                 _canvas.SetValue(SelectedElementProperty, _previousSelection);
-                return;
             }
 
-            _canvas.ClearValue(SelectedElementProperty);
+            if (_previousSelection is null || !_canvas.Children.Contains(_previousSelection))
+            {
+                _canvas.ClearValue(SelectedElementProperty);
+            }
+
             SyncPanelLayout(_canvas);
         }
     }
@@ -768,10 +771,13 @@ public static class CanvasPanBehavior
             {
                 SetIsSelected(_previousSelection, true);
                 _canvas.SetValue(SelectedElementProperty, _previousSelection);
-                return;
             }
 
-            _canvas.ClearValue(SelectedElementProperty);
+            if (_previousSelection is null || !_canvas.Children.Contains(_previousSelection))
+            {
+                _canvas.ClearValue(SelectedElementProperty);
+            }
+
             SyncPanelLayout(_canvas);
         }
     }
