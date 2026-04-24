@@ -5,7 +5,6 @@
         xmlns:local="clr-namespace:OasisEditor"
         xmlns:views="clr-namespace:OasisEditor.Views"
         xmlns:xcad="https://github.com/Dirkster99/AvalonDock"
-        xmlns:themes="clr-namespace:AvalonDock.Themes.VS2013;assembly=AvalonDock.Themes.VS2013"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="Oasis Editor"
@@ -95,9 +94,6 @@
         </ToolBarTray>
 
         <xcad:DockingManager Grid.Row="2" x:Name="DockingManager">
-            <xcad:DockingManager.Theme>
-                <themes:Vs2013DarkTheme />
-            </xcad:DockingManager.Theme>
             <xcad:LayoutRoot>
                 <xcad:LayoutPanel Orientation="Horizontal">
                     <xcad:LayoutAnchorablePane DockWidth="260">
