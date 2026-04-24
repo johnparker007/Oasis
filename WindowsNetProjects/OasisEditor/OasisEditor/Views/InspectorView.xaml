@@ -1,0 +1,69 @@
+<UserControl x:Class="OasisEditor.Views.InspectorView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d"
+             d:DesignHeight="450"
+             d:DesignWidth="260">
+    <Border Padding="10"
+            Background="{DynamicResource InspectorBackgroundBrush}"
+            BorderBrush="{DynamicResource BorderSubtleBrush}"
+            BorderThickness="0,0,1,1">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0"
+                       FontWeight="SemiBold"
+                       Text="Inspector" />
+
+            <Border Grid.Row="1"
+                    Margin="0,8,0,0"
+                    Padding="10"
+                    Background="{DynamicResource PanelBackgroundBrush}"
+                    BorderBrush="{DynamicResource BorderSubtleBrush}"
+                    BorderThickness="1"
+                    CornerRadius="4">
+                <StackPanel>
+                    <TextBlock FontWeight="SemiBold"
+                               Text="{Binding InspectorTitle}" />
+                    <TextBlock Margin="0,6,0,0"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
+                               Text="{Binding InspectorType}" />
+                    <TextBlock Margin="0,6,0,0"
+                               TextWrapping="Wrap"
+                               Text="{Binding InspectorPath}" />
+                    <Border Margin="0,10,0,0"
+                            Padding="8"
+                            Background="{DynamicResource SelectionBrush}"
+                            BorderBrush="{DynamicResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="4">
+                        <StackPanel>
+                            <TextBlock TextWrapping="Wrap"
+                                       Text="{Binding InspectorSummary}" />
+                            <TextBlock Margin="0,10,0,0"
+                                       FontWeight="SemiBold"
+                                       Text="Edit Summary" />
+                            <TextBox Margin="0,6,0,0"
+                                     MinHeight="88"
+                                     AcceptsReturn="True"
+                                     VerticalScrollBarVisibility="Auto"
+                                     IsEnabled="{Binding CanEditInspectorSummary}"
+                                     Text="{Binding InspectorEditableSummary, UpdateSourceTrigger=PropertyChanged}" />
+                            <Button Margin="0,8,0,0"
+                                    HorizontalAlignment="Left"
+                                    Padding="10,4"
+                                    IsEnabled="{Binding CanEditInspectorSummary}"
+                                    Command="{Binding ApplyInspectorSummaryCommand}"
+                                    Content="Apply Summary" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Border>
+</UserControl>
