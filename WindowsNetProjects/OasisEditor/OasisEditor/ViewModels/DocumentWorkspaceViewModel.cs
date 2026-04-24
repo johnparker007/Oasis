@@ -232,7 +232,7 @@ public sealed class DocumentWorkspaceViewModel
         return updated;
     }
 
-    public static OpenDocumentData BuildOpenDocumentData(string path, string content)
+    internal static OpenDocumentData BuildOpenDocumentData(string path, string content)
     {
         if (string.Equals(Path.GetExtension(path), ".panel2d", StringComparison.OrdinalIgnoreCase)
             && Panel2DDocumentStorage.TryRead(content, out var panelDocument))
