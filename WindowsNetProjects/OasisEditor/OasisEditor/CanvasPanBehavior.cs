@@ -699,10 +699,18 @@ public static class CanvasPanBehavior
             .ToArray();
 
         var layoutJson = Panel2DDocumentStorage.SerializeLayout(elements);
-        canvas.SetCurrentValue(PanelLayoutJsonProperty, layoutJson);
-        if (canvas.DataContext is DocumentTabViewModel tab)
+        canvas.SetValue(IsApplyingLayoutProperty, true);
+        try
         {
-            tab.PanelLayoutJson = layoutJson;
+            canvas.SetCurrentValue(PanelLayoutJsonProperty, layoutJson);
+            if (canvas.DataContext is DocumentTabViewModel tab)
+            {
+                tab.PanelLayoutJson = layoutJson;
+            }
+        }
+        finally
+        {
+            canvas.SetValue(IsApplyingLayoutProperty, false);
         }
     }
 
