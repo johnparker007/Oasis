@@ -100,13 +100,13 @@ These tasks should be completed one at a time. They are behavior-preserving unle
 - [x] Extract document/workspace logic into `ViewModels/DocumentWorkspaceViewModel.cs`
 
 ### Canvas / Behavior Refactors
-- [ ] Review `CanvasPanBehavior.cs` and propose a split plan only
-- [ ] Extract canvas selection logic into `CanvasSelectionBehavior.cs`
-- [ ] Extract pan/zoom logic into `CanvasPanZoomBehavior.cs`
-- [ ] Extract canvas element creation logic into `PanelElementFactory.cs`
-- [ ] Extract canvas layout serialization/mapping into `PanelLayoutMapper.cs`
-- [ ] Extract canvas mutation commands into `CanvasMutationCommands.cs`
-- [ ] Reduce `CanvasPanBehavior.cs` to coordination/glue code only
+- [x] Review `CanvasPanBehavior.cs` and propose a split plan only
+- [x] Extract canvas selection logic into `CanvasSelectionBehavior.cs`
+- [x] Extract pan/zoom logic into `CanvasPanZoomBehavior.cs`
+- [x] Extract canvas element creation logic into `PanelElementFactory.cs`
+- [x] Extract canvas layout serialization/mapping into `PanelLayoutMapper.cs`
+- [x] Extract canvas mutation commands into `CanvasMutationCommands.cs`
+- [x] Reduce `CanvasPanBehavior.cs` to coordination/glue code only
 
 ### Refactor Cleanup
 - [ ] Remove unused XAML resources

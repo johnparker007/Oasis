@@ -1,9 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
 using OasisEditor.Commands;
 
 namespace OasisEditor;
@@ -19,41 +16,6 @@ public static class CanvasPanBehavior
             typeof(bool),
             typeof(CanvasPanBehavior),
             new PropertyMetadata(false, OnIsEnabledChanged));
-
-    private static readonly DependencyProperty StartPointProperty =
-        DependencyProperty.RegisterAttached(
-            "StartPoint",
-            typeof(Point),
-            typeof(CanvasPanBehavior),
-            new PropertyMetadata(default(Point)));
-
-    private static readonly DependencyProperty OriginProperty =
-        DependencyProperty.RegisterAttached(
-            "Origin",
-            typeof(Point),
-            typeof(CanvasPanBehavior),
-            new PropertyMetadata(default(Point)));
-
-    private static readonly DependencyProperty IsPanningProperty =
-        DependencyProperty.RegisterAttached(
-            "IsPanning",
-            typeof(bool),
-            typeof(CanvasPanBehavior),
-            new PropertyMetadata(false));
-
-    public static readonly DependencyProperty IsSelectableProperty =
-        DependencyProperty.RegisterAttached(
-            "IsSelectable",
-            typeof(bool),
-            typeof(CanvasPanBehavior),
-            new PropertyMetadata(false));
-
-    public static readonly DependencyProperty IsSelectedProperty =
-        DependencyProperty.RegisterAttached(
-            "IsSelected",
-            typeof(bool),
-            typeof(CanvasPanBehavior),
-            new PropertyMetadata(false));
 
     public static readonly DependencyProperty IsRectangleToolActiveProperty =
         DependencyProperty.RegisterAttached(
@@ -76,35 +38,6 @@ public static class CanvasPanBehavior
             typeof(CanvasPanBehavior),
             new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, OnPanelLayoutJsonChanged));
 
-    private static readonly DependencyProperty SelectedElementProperty =
-        DependencyProperty.RegisterAttached(
-            "SelectedElement",
-            typeof(FrameworkElement),
-            typeof(CanvasPanBehavior),
-            new PropertyMetadata(null));
-
-    private static readonly DependencyProperty IsPersistedElementProperty =
-        DependencyProperty.RegisterAttached(
-            "IsPersistedElement",
-            typeof(bool),
-            typeof(CanvasPanBehavior),
-            new PropertyMetadata(false));
-
-    private static readonly DependencyProperty IsApplyingLayoutProperty =
-        DependencyProperty.RegisterAttached(
-            "IsApplyingLayout",
-            typeof(bool),
-            typeof(CanvasPanBehavior),
-            new PropertyMetadata(false));
-
-    private const double MinZoom = 0.25;
-    private const double MaxZoom = 4.0;
-    private const double ZoomStep = 1.1;
-    private const double NewRectangleWidth = 180;
-    private const double NewRectangleHeight = 120;
-    private const double NewImageWidth = 220;
-    private const double NewImageHeight = 140;
-
     public static bool GetIsEnabled(DependencyObject dependencyObject)
     {
         return (bool)dependencyObject.GetValue(IsEnabledProperty);
@@ -113,26 +46,6 @@ public static class CanvasPanBehavior
     public static void SetIsEnabled(DependencyObject dependencyObject, bool value)
     {
         dependencyObject.SetValue(IsEnabledProperty, value);
-    }
-
-    public static bool GetIsSelectable(DependencyObject dependencyObject)
-    {
-        return (bool)dependencyObject.GetValue(IsSelectableProperty);
-    }
-
-    public static void SetIsSelectable(DependencyObject dependencyObject, bool value)
-    {
-        dependencyObject.SetValue(IsSelectableProperty, value);
-    }
-
-    public static bool GetIsSelected(DependencyObject dependencyObject)
-    {
-        return (bool)dependencyObject.GetValue(IsSelectedProperty);
-    }
-
-    public static void SetIsSelected(DependencyObject dependencyObject, bool value)
-    {
-        dependencyObject.SetValue(IsSelectedProperty, value);
     }
 
     public static bool GetIsRectangleToolActive(DependencyObject dependencyObject)
@@ -175,7 +88,7 @@ public static class CanvasPanBehavior
         var isEnabled = (bool)eventArgs.NewValue;
         if (isEnabled)
         {
-            EnsureTransformGroup(element);
+            CanvasPanZoomBehavior.EnsureTransformGroup(element);
             element.MouseDown += OnMouseDown;
             element.MouseLeftButtonDown += OnMouseLeftButtonDown;
             element.MouseMove += OnMouseMove;
@@ -201,36 +114,17 @@ public static class CanvasPanBehavior
             return;
         }
 
-        if (eventArgs.ChangedButton != MouseButton.Middle)
-        {
-            return;
-        }
-
-        element.Focus();
-        var (_, translate) = EnsureTransformGroup(element);
-        var startPoint = eventArgs.GetPosition(element.Parent as IInputElement ?? element);
-        element.SetValue(StartPointProperty, startPoint);
-        element.SetValue(OriginProperty, new Point(translate.X, translate.Y));
-        element.SetValue(IsPanningProperty, true);
-        element.CaptureMouse();
-        element.Cursor = Cursors.SizeAll;
-        eventArgs.Handled = true;
+        CanvasPanZoomBehavior.HandleMouseDown(element, eventArgs);
     }
 
     private static void OnMouseMove(object sender, MouseEventArgs eventArgs)
     {
-        if (sender is not FrameworkElement element || !(bool)element.GetValue(IsPanningProperty))
+        if (sender is not FrameworkElement element)
         {
             return;
         }
 
-        var startPoint = (Point)element.GetValue(StartPointProperty);
-        var origin = (Point)element.GetValue(OriginProperty);
-        var currentPoint = eventArgs.GetPosition(element.Parent as IInputElement ?? element);
-        var delta = currentPoint - startPoint;
-        var (_, translate) = EnsureTransformGroup(element);
-        translate.X = origin.X + delta.X;
-        translate.Y = origin.Y + delta.Y;
+        CanvasPanZoomBehavior.HandleMouseMove(element, eventArgs);
     }
 
     private static void OnMouseLeftButtonDown(object sender, MouseButtonEventArgs eventArgs)
@@ -241,7 +135,7 @@ public static class CanvasPanBehavior
         }
 
         canvas.Focus();
-        var clickedElement = FindSelectableElement(eventArgs.OriginalSource as DependencyObject, canvas);
+        var clickedElement = CanvasSelectionBehavior.FindSelectableElement(eventArgs.OriginalSource as DependencyObject, canvas);
 
         if (GetIsRectangleToolActive(canvas) && clickedElement is null)
         {
@@ -257,44 +151,22 @@ public static class CanvasPanBehavior
             return;
         }
 
-        var selectedElement = (FrameworkElement?)canvas.GetValue(SelectedElementProperty);
-
-        if (ReferenceEquals(clickedElement, selectedElement))
+        CanvasSelectionBehavior.SelectFromSource(canvas, eventArgs.OriginalSource as DependencyObject);
+        if (clickedElement is not null)
         {
-            return;
+            eventArgs.Handled = true;
         }
-
-        if (selectedElement is not null)
-        {
-            SetIsSelected(selectedElement, false);
-        }
-
-        if (clickedElement is null)
-        {
-            canvas.ClearValue(SelectedElementProperty);
-            return;
-        }
-
-        SetIsSelected(clickedElement, true);
-        canvas.SetValue(SelectedElementProperty, clickedElement);
-        eventArgs.Handled = true;
     }
 
     private static void AddRectangle(FrameworkElement canvas, MouseButtonEventArgs eventArgs)
     {
-        if (canvas is not System.Windows.Controls.Canvas panelCanvas)
+        if (canvas is not Canvas panelCanvas)
         {
             return;
         }
 
-        var clickPosition = eventArgs.GetPosition(panelCanvas.Parent as IInputElement ?? panelCanvas);
-        var (scale, translate) = EnsureTransformGroup(panelCanvas);
-        var canvasPoint = new Point(
-            (clickPosition.X - translate.X) / scale.ScaleX,
-            (clickPosition.Y - translate.Y) / scale.ScaleY);
-
-        var x = Math.Max(0, canvasPoint.X - (NewRectangleWidth / 2));
-        var y = Math.Max(0, canvasPoint.Y - (NewRectangleHeight / 2));
+        var canvasPoint = GetCanvasPoint(panelCanvas, eventArgs);
+        var element = PanelElementFactory.CreateRectangleElement(canvasPoint);
         if (panelCanvas.DataContext is not DocumentTabViewModel tab)
         {
             return;
@@ -302,17 +174,7 @@ public static class CanvasPanBehavior
 
         ExecuteCanvasMutation(
             panelCanvas,
-            new AddRectangleMutationCommand(
-                tab.DocumentId,
-                tab,
-                new PanelElementFile
-                {
-                    Kind = "rectangle",
-                    X = x,
-                    Y = y,
-                    Width = NewRectangleWidth,
-                    Height = NewRectangleHeight
-                }));
+            CanvasMutationCommands.CreateAddRectangleCommand(tab.DocumentId, tab, element));
     }
 
     private static void AddImage(FrameworkElement canvas, MouseButtonEventArgs eventArgs)
@@ -322,14 +184,8 @@ public static class CanvasPanBehavior
             return;
         }
 
-        var clickPosition = eventArgs.GetPosition(panelCanvas.Parent as IInputElement ?? panelCanvas);
-        var (scale, translate) = EnsureTransformGroup(panelCanvas);
-        var canvasPoint = new Point(
-            (clickPosition.X - translate.X) / scale.ScaleX,
-            (clickPosition.Y - translate.Y) / scale.ScaleY);
-
-        var x = Math.Max(0, canvasPoint.X - (NewImageWidth / 2));
-        var y = Math.Max(0, canvasPoint.Y - (NewImageHeight / 2));
+        var canvasPoint = GetCanvasPoint(panelCanvas, eventArgs);
+        var element = PanelElementFactory.CreateImageElement(canvasPoint);
         if (panelCanvas.DataContext is not DocumentTabViewModel tab)
         {
             return;
@@ -337,17 +193,16 @@ public static class CanvasPanBehavior
 
         ExecuteCanvasMutation(
             panelCanvas,
-            new AddImageMutationCommand(
-                tab.DocumentId,
-                tab,
-                new PanelElementFile
-                {
-                    Kind = "image",
-                    X = x,
-                    Y = y,
-                    Width = NewImageWidth,
-                    Height = NewImageHeight
-                }));
+            CanvasMutationCommands.CreateAddImageCommand(tab.DocumentId, tab, element));
+    }
+
+    private static Point GetCanvasPoint(Canvas panelCanvas, MouseButtonEventArgs eventArgs)
+    {
+        var clickPosition = eventArgs.GetPosition(panelCanvas.Parent as IInputElement ?? panelCanvas);
+        var (scale, translate) = CanvasPanZoomBehavior.EnsureTransformGroup(panelCanvas);
+        return new Point(
+            (clickPosition.X - translate.X) / scale.ScaleX,
+            (clickPosition.Y - translate.Y) / scale.ScaleY);
     }
 
     private static void OnMouseWheel(object sender, MouseWheelEventArgs eventArgs)
@@ -357,94 +212,27 @@ public static class CanvasPanBehavior
             return;
         }
 
-        var (scale, translate) = EnsureTransformGroup(element);
-        var parent = element.Parent as IInputElement ?? element;
-        var pivot = eventArgs.GetPosition(parent);
-        var zoomFactor = eventArgs.Delta > 0 ? ZoomStep : 1.0 / ZoomStep;
-        var newScale = Math.Clamp(scale.ScaleX * zoomFactor, MinZoom, MaxZoom);
-        if (Math.Abs(newScale - scale.ScaleX) < 0.0001)
-        {
-            return;
-        }
-
-        var worldX = (pivot.X - translate.X) / scale.ScaleX;
-        var worldY = (pivot.Y - translate.Y) / scale.ScaleY;
-
-        scale.ScaleX = newScale;
-        scale.ScaleY = newScale;
-        translate.X = pivot.X - (worldX * newScale);
-        translate.Y = pivot.Y - (worldY * newScale);
-        eventArgs.Handled = true;
+        CanvasPanZoomBehavior.HandleMouseWheel(element, eventArgs);
     }
 
     private static void OnMouseUp(object sender, MouseButtonEventArgs eventArgs)
     {
-        if (eventArgs.ChangedButton != MouseButton.Middle)
+        if (sender is not FrameworkElement element)
         {
             return;
         }
 
-        EndPan(sender as FrameworkElement);
+        CanvasPanZoomBehavior.HandleMouseUp(element, eventArgs);
     }
 
     private static void OnLostMouseCapture(object sender, MouseEventArgs eventArgs)
     {
-        EndPan(sender as FrameworkElement);
-    }
-
-    private static void EndPan(FrameworkElement? element)
-    {
-        if (element is null)
+        if (sender is not FrameworkElement element)
         {
             return;
         }
 
-        element.SetValue(IsPanningProperty, false);
-        if (element.IsMouseCaptured)
-        {
-            element.ReleaseMouseCapture();
-        }
-
-        element.Cursor = Cursors.Arrow;
-    }
-
-    private static (ScaleTransform Scale, TranslateTransform Translate) EnsureTransformGroup(FrameworkElement element)
-    {
-        if (element.RenderTransform is TransformGroup existingGroup &&
-            existingGroup.Children.OfType<ScaleTransform>().FirstOrDefault() is { } existingScale &&
-            existingGroup.Children.OfType<TranslateTransform>().FirstOrDefault() is { } existingTranslate)
-        {
-            return (existingScale, existingTranslate);
-        }
-
-        var transformGroup = new TransformGroup();
-        var scale = new ScaleTransform(1, 1);
-        var translate = new TranslateTransform();
-        transformGroup.Children.Add(scale);
-        transformGroup.Children.Add(translate);
-        element.RenderTransform = transformGroup;
-        return (scale, translate);
-    }
-
-    private static FrameworkElement? FindSelectableElement(DependencyObject? source, FrameworkElement canvas)
-    {
-        var current = source;
-        while (current is not null)
-        {
-            if (current is FrameworkElement element && GetIsSelectable(element))
-            {
-                return element;
-            }
-
-            if (ReferenceEquals(current, canvas))
-            {
-                return null;
-            }
-
-            current = VisualTreeHelper.GetParent(current);
-        }
-
-        return null;
+        CanvasPanZoomBehavior.HandleLostMouseCapture(element);
     }
 
     private static void ExecuteCanvasMutation(FrameworkElement canvas, Commands.ICommand command)
@@ -468,52 +256,8 @@ public static class CanvasPanBehavior
 
         if (canvas is Canvas panelCanvas)
         {
-            SyncPanelLayout(panelCanvas);
+            PanelLayoutMapper.SyncPanelLayout(panelCanvas, PanelLayoutJsonProperty);
         }
-    }
-
-    private static ImageSource CreatePlaceholderImageSource()
-    {
-        const int pixelWidth = 220;
-        const int pixelHeight = 140;
-        const int bytesPerPixel = 4;
-        var pixels = new byte[pixelWidth * pixelHeight * bytesPerPixel];
-
-        for (var y = 0; y < pixelHeight; y++)
-        {
-            for (var x = 0; x < pixelWidth; x++)
-            {
-                var index = ((y * pixelWidth) + x) * bytesPerPixel;
-                var isGridLine = x % 22 == 0 || y % 20 == 0;
-                byte red = 58;
-                byte green = 80;
-                byte blue = 118;
-
-                if (isGridLine)
-                {
-                    red = 92;
-                    green = 118;
-                    blue = 163;
-                }
-
-                pixels[index] = blue;
-                pixels[index + 1] = green;
-                pixels[index + 2] = red;
-                pixels[index + 3] = 255;
-            }
-        }
-
-        var bitmap = BitmapSource.Create(
-            pixelWidth,
-            pixelHeight,
-            96,
-            96,
-            PixelFormats.Bgra32,
-            null,
-            pixels,
-            pixelWidth * bytesPerPixel);
-        bitmap.Freeze();
-        return bitmap;
     }
 
     private static void OnPanelLayoutJsonChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs eventArgs)
@@ -523,278 +267,11 @@ public static class CanvasPanBehavior
             return;
         }
 
-        if ((bool)canvas.GetValue(IsApplyingLayoutProperty))
+        if (PanelLayoutMapper.IsApplyingLayout(canvas))
         {
             return;
         }
 
-        ApplyPersistedLayout(canvas, eventArgs.NewValue as string);
-    }
-
-    private static void ApplyPersistedLayout(Canvas canvas, string? layoutJson)
-    {
-        canvas.SetValue(IsApplyingLayoutProperty, true);
-        try
-        {
-            var persistedChildren = canvas.Children
-                .OfType<FrameworkElement>()
-                .Where(child => (bool)child.GetValue(IsPersistedElementProperty))
-                .ToList();
-
-            foreach (var child in persistedChildren)
-            {
-                canvas.Children.Remove(child);
-            }
-
-            var elements = Panel2DDocumentStorage.DeserializeLayout(layoutJson);
-            foreach (var element in elements)
-            {
-                var visual = CreateVisualFromElement(element);
-                if (visual is null)
-                {
-                    continue;
-                }
-
-                visual.SetValue(IsPersistedElementProperty, true);
-                SetIsSelectable(visual, true);
-                SetIsSelected(visual, false);
-                Canvas.SetLeft(visual, Math.Max(0, element.X));
-                Canvas.SetTop(visual, Math.Max(0, element.Y));
-                canvas.Children.Add(visual);
-            }
-
-            canvas.ClearValue(SelectedElementProperty);
-            if (canvas.DataContext is DocumentTabViewModel tab)
-            {
-                tab.PanelLayoutJson = Panel2DDocumentStorage.SerializeLayout(elements);
-            }
-        }
-        finally
-        {
-            canvas.SetValue(IsApplyingLayoutProperty, false);
-        }
-    }
-
-    private static FrameworkElement? CreateVisualFromElement(PanelElementFile element)
-    {
-        if (string.Equals(element.Kind, "rectangle", StringComparison.OrdinalIgnoreCase))
-        {
-            return new Rectangle
-            {
-                Width = element.Width <= 0 ? NewRectangleWidth : element.Width,
-                Height = element.Height <= 0 ? NewRectangleHeight : element.Height
-            };
-        }
-
-        if (string.Equals(element.Kind, "image", StringComparison.OrdinalIgnoreCase))
-        {
-            return new Image
-            {
-                Width = element.Width <= 0 ? NewImageWidth : element.Width,
-                Height = element.Height <= 0 ? NewImageHeight : element.Height,
-                Stretch = Stretch.Fill,
-                Source = CreatePlaceholderImageSource()
-            };
-        }
-
-        return null;
-    }
-
-    private static void SyncPanelLayout(Canvas canvas)
-    {
-        if ((bool)canvas.GetValue(IsApplyingLayoutProperty))
-        {
-            return;
-        }
-
-        var elements = canvas.Children
-            .OfType<FrameworkElement>()
-            .Where(child => (bool)child.GetValue(IsPersistedElementProperty))
-            .Select(CreateElementFromVisual)
-            .Where(element => element is not null)
-            .Cast<PanelElementFile>()
-            .ToArray();
-
-        var layoutJson = Panel2DDocumentStorage.SerializeLayout(elements);
-        canvas.SetValue(IsApplyingLayoutProperty, true);
-        try
-        {
-            canvas.SetCurrentValue(PanelLayoutJsonProperty, layoutJson);
-            if (canvas.DataContext is DocumentTabViewModel tab)
-            {
-                tab.PanelLayoutJson = layoutJson;
-            }
-        }
-        finally
-        {
-            canvas.SetValue(IsApplyingLayoutProperty, false);
-        }
-    }
-
-    private static PanelElementFile? CreateElementFromVisual(FrameworkElement child)
-    {
-        var kind = child switch
-        {
-            Rectangle => "rectangle",
-            Image => "image",
-            _ => null
-        };
-
-        if (kind is null)
-        {
-            return null;
-        }
-
-        return new PanelElementFile
-        {
-            Kind = kind,
-            X = Canvas.GetLeft(child),
-            Y = Canvas.GetTop(child),
-            Width = child.Width,
-            Height = child.Height
-        };
-    }
-
-    private sealed class AddRectangleMutationCommand : Commands.IDocumentCommand
-    {
-        private readonly Guid _documentId;
-        private readonly DocumentTabViewModel _document;
-        private readonly PanelElementFile _element;
-        private int? _insertIndex;
-
-        public AddRectangleMutationCommand(Guid documentId, DocumentTabViewModel document, PanelElementFile element)
-        {
-            _documentId = documentId;
-            _document = document;
-            _element = element;
-        }
-
-        public Guid DocumentId => _documentId;
-
-        public string Description => "Add rectangle";
-
-        public void Execute()
-        {
-            var elements = Panel2DDocumentStorage.DeserializeLayout(_document.PanelLayoutJson).ToList();
-            var index = Math.Clamp(_insertIndex ?? elements.Count, 0, elements.Count);
-            elements.Insert(index, _element);
-            _insertIndex = index;
-            _document.PanelLayoutJson = Panel2DDocumentStorage.SerializeLayout(elements);
-        }
-
-        public void Undo()
-        {
-            var elements = Panel2DDocumentStorage.DeserializeLayout(_document.PanelLayoutJson).ToList();
-            if (elements.Count == 0)
-            {
-                return;
-            }
-
-            var removed = false;
-            if (_insertIndex is int index
-                && index >= 0
-                && index < elements.Count
-                && IsSameElement(elements[index], _element))
-            {
-                elements.RemoveAt(index);
-                removed = true;
-            }
-
-            if (!removed)
-            {
-                for (var i = elements.Count - 1; i >= 0; i--)
-                {
-                    if (!IsSameElement(elements[i], _element))
-                    {
-                        continue;
-                    }
-
-                    elements.RemoveAt(i);
-                    removed = true;
-                    break;
-                }
-            }
-
-            if (removed)
-            {
-                _document.PanelLayoutJson = Panel2DDocumentStorage.SerializeLayout(elements);
-            }
-        }
-    }
-
-    private sealed class AddImageMutationCommand : Commands.IDocumentCommand
-    {
-        private readonly Guid _documentId;
-        private readonly DocumentTabViewModel _document;
-        private readonly PanelElementFile _element;
-        private int? _insertIndex;
-
-        public AddImageMutationCommand(Guid documentId, DocumentTabViewModel document, PanelElementFile element)
-        {
-            _documentId = documentId;
-            _document = document;
-            _element = element;
-        }
-
-        public Guid DocumentId => _documentId;
-
-        public string Description => "Add image";
-
-        public void Execute()
-        {
-            var elements = Panel2DDocumentStorage.DeserializeLayout(_document.PanelLayoutJson).ToList();
-            var index = Math.Clamp(_insertIndex ?? elements.Count, 0, elements.Count);
-            elements.Insert(index, _element);
-            _insertIndex = index;
-            _document.PanelLayoutJson = Panel2DDocumentStorage.SerializeLayout(elements);
-        }
-
-        public void Undo()
-        {
-            var elements = Panel2DDocumentStorage.DeserializeLayout(_document.PanelLayoutJson).ToList();
-            if (elements.Count == 0)
-            {
-                return;
-            }
-
-            var removed = false;
-            if (_insertIndex is int index
-                && index >= 0
-                && index < elements.Count
-                && IsSameElement(elements[index], _element))
-            {
-                elements.RemoveAt(index);
-                removed = true;
-            }
-
-            if (!removed)
-            {
-                for (var i = elements.Count - 1; i >= 0; i--)
-                {
-                    if (!IsSameElement(elements[i], _element))
-                    {
-                        continue;
-                    }
-
-                    elements.RemoveAt(i);
-                    removed = true;
-                    break;
-                }
-            }
-
-            if (removed)
-            {
-                _document.PanelLayoutJson = Panel2DDocumentStorage.SerializeLayout(elements);
-            }
-        }
-    }
-
-    private static bool IsSameElement(PanelElementFile left, PanelElementFile right)
-    {
-        return string.Equals(left.Kind, right.Kind, StringComparison.OrdinalIgnoreCase)
-            && left.X.Equals(right.X)
-            && left.Y.Equals(right.Y)
-            && left.Width.Equals(right.Width)
-            && left.Height.Equals(right.Height);
+        PanelLayoutMapper.ApplyPersistedLayout(canvas, eventArgs.NewValue as string);
     }
 }
