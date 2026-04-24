@@ -10,32 +10,30 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <TextBlock Grid.Row="0"
                    FontWeight="SemiBold"
                    Text="Hierarchy" />
 
-        <TreeView Grid.Row="1"
-                  Margin="0,8,0,0"
-                  Background="{DynamicResource PanelBackgroundBrush}"
-                  BorderBrush="{DynamicResource BorderSubtleBrush}"
-                  BorderThickness="1">
-            <TreeViewItem Header="Open Documents"
-                          IsExpanded="True">
-                <ItemsControl ItemsSource="{Binding OpenDocuments}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding Title}" />
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </TreeViewItem>
+        <ListBox Grid.Row="1"
+                 Margin="0,8,0,0"
+                 Background="{DynamicResource PanelBackgroundBrush}"
+                 BorderBrush="{DynamicResource BorderSubtleBrush}"
+                 BorderThickness="1"
+                 ItemsSource="{Binding OpenDocuments}"
+                 SelectedItem="{Binding SelectedDocument, Mode=TwoWay}">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <TextBlock Text="{Binding Title}" />
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
 
-            <TreeViewItem Header="Active Document"
-                          IsExpanded="True">
-                <TextBlock Text="{Binding SelectedDocument.Title, TargetNullValue=None}" />
-            </TreeViewItem>
-        </TreeView>
+        <TextBlock Grid.Row="2"
+                   Margin="0,8,0,0"
+                   Foreground="{DynamicResource TextSecondaryBrush}"
+                   Text="{Binding SelectedDocument.Title, StringFormat=Active: {0}, TargetNullValue=Active: None}" />
     </Grid>
 </UserControl>
