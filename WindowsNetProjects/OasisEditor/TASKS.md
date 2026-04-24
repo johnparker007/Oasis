@@ -10,11 +10,11 @@
 - [x] Move Recent Projects list UI into Launcher window
 
 ### Project Opening Flow
-- [ ] Refactor project creation flow so Launcher opens editor only after success
-- [ ] Refactor project open flow so Launcher opens editor only after success
-- [ ] Refactor recent project selection flow so Launcher opens editor only after success
-- [ ] Ensure cancel/failure keeps user in Launcher window
-- [ ] Ensure failed project load shows error without opening editor shell
+- [x] Refactor project creation flow so Launcher opens editor only after success
+- [x] Refactor project open flow so Launcher opens editor only after success
+- [x] Refactor recent project selection flow so Launcher opens editor only after success
+- [x] Ensure cancel/failure keeps user in Launcher window
+- [x] Ensure failed project load shows error without opening editor shell
 
 ### Editor Shell Separation
 - [x] Remove startup project-selection UI from editor shell
