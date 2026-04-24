@@ -17,7 +17,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly RecentProjectsStore _recentProjectsStore = new();
     private readonly IApplicationThemeService _applicationThemeService;
     private readonly EditorPreferencesStore _preferencesStore;
-    private readonly EditorCommands.CommandService _documentCommandService = new();
+    private readonly EditorCommands.CommandService _shellCommandService = new();
     private readonly Window _ownerWindow;
     private string _projectName = string.Empty;
     private string _projectLocation = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
@@ -332,6 +332,24 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public bool CanEditInspectorSummary => SelectedDocument is not null
         && SelectedDocument.Document.DocumentType != EditorDocumentType.ProjectOverview;
 
+    public string UndoMenuHeader
+    {
+        get
+        {
+            var description = SelectedDocument?.CommandService.UndoDescription;
+            return string.IsNullOrWhiteSpace(description) ? "_Undo" : $"_Undo {description}";
+        }
+    }
+
+    public string RedoMenuHeader
+    {
+        get
+        {
+            var description = SelectedDocument?.CommandService.RedoDescription;
+            return string.IsNullOrWhiteSpace(description) ? "_Redo" : $"_Redo {description}";
+        }
+    }
+
     private void CreateProject()
     {
         try
@@ -530,7 +548,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
             var updatedDocument = new DocumentTabViewModel(
                 current.Document.SaveAs(savePath, current.ContentSummary).MarkClean(),
-                current.PanelLayoutJson);
+                current.PanelLayoutJson,
+                current.DocumentId,
+                current.CommandService);
             ExecuteDocumentMutation(new ReplaceDocumentTabMutationCommand(this, current, updatedDocument));
             StatusMessage = $"Saved document: {updatedDocument.Title}";
             AddOutputEntry($"Saved document to {savePath}");
@@ -660,7 +680,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void ClearProjectSessionState()
     {
-        _documentCommandService.History.Clear();
+        _shellCommandService.History.Clear();
         OpenDocuments.Clear();
         SelectedDocument = null;
 
@@ -788,7 +808,66 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void ExecuteDocumentMutation(EditorCommands.ICommand command)
     {
-        _documentCommandService.Execute(command);
+        _shellCommandService.Execute(command);
+    }
+
+    public bool CanUndoActiveDocument()
+    {
+        return SelectedDocument?.CommandService.CanUndo ?? false;
+    }
+
+    public bool CanRedoActiveDocument()
+    {
+        return SelectedDocument?.CommandService.CanRedo ?? false;
+    }
+
+    public bool UndoActiveDocument()
+    {
+        var activeDocument = SelectedDocument;
+        if (activeDocument is null)
+        {
+            return false;
+        }
+
+        var undone = activeDocument.CommandService.TryUndo();
+        if (undone)
+        {
+            NotifyUndoRedoStateChanged();
+        }
+
+        return undone;
+    }
+
+    public bool RedoActiveDocument()
+    {
+        var activeDocument = SelectedDocument;
+        if (activeDocument is null)
+        {
+            return false;
+        }
+
+        var redone = activeDocument.CommandService.TryRedo();
+        if (redone)
+        {
+            NotifyUndoRedoStateChanged();
+        }
+
+        return redone;
+    }
+
+    public bool ExecuteDocumentCanvasCommand(Guid documentId, EditorCommands.ICommand command)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+
+        var activeDocument = SelectedDocument;
+        if (activeDocument is null || activeDocument.DocumentId != documentId)
+        {
+            return false;
+        }
+
+        activeDocument.CommandService.Execute(command);
+        NotifyUndoRedoStateChanged();
+        return true;
     }
 
     private static OpenDocumentData BuildOpenDocumentData(string path, string content)
@@ -943,6 +1022,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             _index = _owner.OpenDocuments.IndexOf(_document);
             _owner.OpenDocuments.Remove(_document);
+            _document.CommandService.History.Clear();
 
             _nextSelection = _owner.OpenDocuments.Count == 0
                 ? null
@@ -1163,7 +1243,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             closeProjectRelayCommand.RaiseCanExecuteChanged();
         }
 
+        NotifyUndoRedoStateChanged();
         NotifyAssetBrowserCommand();
+    }
+
+    private void NotifyUndoRedoStateChanged()
+    {
+        OnPropertyChanged(nameof(UndoMenuHeader));
+        OnPropertyChanged(nameof(RedoMenuHeader));
+        CommandManager.InvalidateRequerySuggested();
     }
 
     private void NotifyAssetBrowserCommand()
@@ -1216,7 +1304,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         var updated = new DocumentTabViewModel(
             SelectedDocument.Document.WithContentSummary(InspectorEditableSummary).MarkDirty(),
-            SelectedDocument.PanelLayoutJson);
+            SelectedDocument.PanelLayoutJson,
+            SelectedDocument.DocumentId,
+            SelectedDocument.CommandService);
 
         ExecuteDocumentMutation(new ReplaceDocumentTabMutationCommand(this, SelectedDocument, updated));
         StatusMessage = $"Updated inspector summary for {updated.Title}";
@@ -1253,17 +1343,26 @@ internal readonly record struct OpenDocumentData(string Summary, string? PanelLa
 
 public sealed class DocumentTabViewModel : INotifyPropertyChanged
 {
+    private readonly EditorCommands.CommandService _commandService;
     private string? _panelLayoutJson;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public DocumentTabViewModel(EditorDocument document, string? panelLayoutJson = null)
+    public DocumentTabViewModel(
+        EditorDocument document,
+        string? panelLayoutJson = null,
+        Guid? documentId = null,
+        EditorCommands.CommandService? commandService = null)
     {
         Document = document;
+        DocumentId = documentId ?? Guid.NewGuid();
+        _commandService = commandService ?? new EditorCommands.CommandService(new EditorCommands.CommandHistory(), DocumentId);
         _panelLayoutJson = panelLayoutJson;
     }
 
     public EditorDocument Document { get; }
+    public Guid DocumentId { get; }
+    public EditorCommands.CommandService CommandService => _commandService;
     public string Title => Document.IsDirty ? $"{Document.Title}*" : Document.Title;
     public string TypeLabel => Document.DocumentType switch
     {
