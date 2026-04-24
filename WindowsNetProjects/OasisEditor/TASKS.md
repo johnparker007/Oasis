@@ -25,12 +25,12 @@
 - [x] Verify Ctrl+Z and Ctrl+Y route through the active document only
 
 ### Active Document Context
-- [ ] Define active document context service if not already present
-- [ ] Ensure selection state is document-specific
-- [ ] Ensure inspector displays selection from active document only
-- [ ] Ensure asset/editor commands target active document explicitly
-- [ ] Ensure tab switching refreshes hierarchy, inspector, and command state
-- [ ] Add safe empty states for no active document
+- [x] Define active document context service if not already present
+- [x] Ensure selection state is document-specific
+- [x] Ensure inspector displays selection from active document only
+- [x] Ensure asset/editor commands target active document explicitly
+- [x] Ensure tab switching refreshes hierarchy, inspector, and command state
+- [x] Add safe empty states for no active document
 
 ### Hierarchy Panel
 - [ ] Rename or repurpose existing panel area as Hierarchy if needed

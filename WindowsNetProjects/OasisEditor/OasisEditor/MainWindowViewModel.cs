@@ -27,6 +27,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly OutputLogViewModel _outputLog;
     private readonly InspectorViewModel _inspector;
     private readonly DocumentWorkspaceViewModel _documentWorkspace;
+    private readonly ActiveDocumentContextService _activeDocumentContext;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -60,6 +61,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ExitCommand = new RelayCommand(ExitApplication);
 
         _outputLog = new OutputLogViewModel();
+        _activeDocumentContext = new ActiveDocumentContextService();
         _assetBrowser = new AssetBrowserViewModel(
             () => LoadedProject,
             () => OnPropertyChanged(nameof(SelectedAsset)),
@@ -69,6 +71,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             () => SelectedAsset,
             () => SelectedDocument,
             () => LoadedProject,
+            _activeDocumentContext,
             ApplyInspectorSummary);
 
         var preferences = _preferencesStore.Load();
@@ -84,7 +87,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             value => SelectedDocument = value,
             NotifyUndoRedoStateChanged,
             value => StatusMessage = value,
-            AddOutputEntry);
+            AddOutputEntry,
+            documentId => _activeDocumentContext.ClearDocumentState(documentId));
         AssetBrowserItems = _assetBrowser.AssetBrowserItems;
         OutputEntries = _outputLog.OutputEntries;
         RefreshAssetBrowserCommand = _assetBrowser.RefreshAssetBrowserCommand;
@@ -174,6 +178,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             if (SetProperty(ref _selectedDocument, value))
             {
+                _activeDocumentContext.SetActiveDocument(value);
                 NotifyInspectorChanged();
                 NotifyDocumentCommands();
             }
@@ -458,6 +463,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private void ClearProjectSessionState()
     {
         _documentWorkspace.ClearProjectSessionState();
+        _activeDocumentContext.ClearAll();
 
         AssetBrowserItems.Clear();
         SelectedAsset = null;
@@ -552,6 +558,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public bool ExecuteDocumentCanvasCommand(Guid documentId, EditorCommands.ICommand command)
     {
         return _documentWorkspace.ExecuteDocumentCanvasCommand(documentId, command);
+    }
+
+    public void UpdateDocumentPanelSelection(Guid documentId, PanelSelectionInfo? selection)
+    {
+        _activeDocumentContext.SetPanelSelection(documentId, selection);
+        NotifyInspectorChanged();
     }
 
     private static string ResolveProjectDirectory(string projectDirectory, JsonElement layoutElement, string propertyName)
