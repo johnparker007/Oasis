@@ -88,7 +88,7 @@ These tasks should be completed one at a time. They are behavior-preserving unle
 - [x] Extract Inspector UI into `Views/InspectorView.xaml`
 - [x] Extract Output Log UI into `Views/OutputLogView.xaml`
 - [x] Extract Panel 2D canvas/tab UI into `Views/PanelCanvasView.xaml`
-- [ ] Clean up `MainWindow.xaml` so it acts mainly as the application shell
+- [x] Clean up `MainWindow.xaml` so it acts mainly as the application shell
 
 ### ViewModel Refactors
 - [ ] Move `DocumentTabViewModel` into `ViewModels/DocumentTabViewModel.cs`
