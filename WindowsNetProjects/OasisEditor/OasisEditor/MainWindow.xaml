@@ -99,7 +99,8 @@
                     <xcad:LayoutAnchorablePane DockWidth="260">
                         <xcad:LayoutAnchorable Title="Hierarchy"
                                                CanClose="False"
-                                               CanAutoHide="True">
+                                               CanAutoHide="True"
+                                               CanFloat="False">
                             <Border Padding="10"
                                     Background="{DynamicResource InspectorBackgroundBrush}">
                                 <views:HierarchyView />
@@ -107,7 +108,8 @@
                         </xcad:LayoutAnchorable>
                         <xcad:LayoutAnchorable Title="Asset Browser"
                                                CanClose="False"
-                                               CanAutoHide="True">
+                                               CanAutoHide="True"
+                                               CanFloat="False">
                             <Border Padding="10"
                                     Background="{DynamicResource InspectorBackgroundBrush}">
                                 <views:AssetBrowserView />
@@ -119,7 +121,8 @@
                         <xcad:LayoutDocumentPaneGroup>
                             <xcad:LayoutDocumentPane>
                                 <xcad:LayoutDocument Title="Document"
-                                                     CanClose="False">
+                                                     CanClose="False"
+                                                     CanFloat="False">
                                     <Border Padding="10"
                                             Background="{DynamicResource PanelBackgroundBrush}">
                                         <views:PanelCanvasView />
@@ -131,7 +134,8 @@
                         <xcad:LayoutAnchorablePane DockHeight="220">
                             <xcad:LayoutAnchorable Title="Output / Log"
                                                    CanClose="False"
-                                                   CanAutoHide="True">
+                                                   CanAutoHide="True"
+                                               CanFloat="False">
                                 <Border Padding="10"
                                         Background="{DynamicResource ToolBarBackgroundBrush}">
                                     <views:OutputLogView />
@@ -143,7 +147,8 @@
                     <xcad:LayoutAnchorablePane DockWidth="300">
                         <xcad:LayoutAnchorable Title="Inspector"
                                                CanClose="False"
-                                               CanAutoHide="True">
+                                               CanAutoHide="True"
+                                               CanFloat="False">
                             <Border Padding="10"
                                     Background="{DynamicResource InspectorBackgroundBrush}">
                                 <views:InspectorView />
