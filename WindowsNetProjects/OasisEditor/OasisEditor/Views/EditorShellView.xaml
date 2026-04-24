@@ -10,7 +10,7 @@
              mc:Ignorable="d"
              d:DesignHeight="450"
              d:DesignWidth="900">
-    <Grid>
+    <Grid Background="{DynamicResource EditorBackgroundBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -20,7 +20,9 @@
                 Padding="16"
                 Margin="0,0,0,12"
                 CornerRadius="6"
-                Background="{DynamicResource PanelBackgroundBrush}">
+                Background="{DynamicResource PanelBackgroundBrush}"
+                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                BorderThickness="1">
             <StackPanel>
                 <TextBlock FontSize="22"
                            FontWeight="SemiBold"
@@ -40,6 +42,9 @@
 
         <avalonDock:DockingManager Grid.Row="1"
                                    Background="{DynamicResource EditorBackgroundBrush}">
+            <avalonDock:DockingManager.Resources>
+                <ResourceDictionary Source="../Styles/AvalonDockVs2013Palette.xaml" />
+            </avalonDock:DockingManager.Resources>
             <avalonDock:DockingManager.Theme>
                 <themes:Vs2013DarkTheme />
             </avalonDock:DockingManager.Theme>
@@ -63,7 +68,7 @@
                                                    ContentId="DocumentWorkspace"
                                                    CanClose="False">
                                 <Border Padding="10"
-                                        Background="{DynamicResource PanelBackgroundBrush}">
+                                        Background="{DynamicResource WorkspaceBackgroundBrush}">
                                     <views:PanelCanvasView />
                                 </Border>
                             </layout:LayoutDocument>

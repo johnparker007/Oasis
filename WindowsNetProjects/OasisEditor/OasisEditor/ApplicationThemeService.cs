@@ -35,7 +35,7 @@ public sealed class ApplicationThemeService : IApplicationThemeService
         ArgumentNullException.ThrowIfNull(application);
 
         var effectiveTheme = ResolveEffectiveTheme(preference);
-        var palette = effectiveTheme == ThemePreference.Dark ? BuildDarkPalette() : BuildLightPalette();
+        var palette = effectiveTheme == ThemePreference.Dark ? BuildScreenshotDarkPalette() : BuildLightPalette();
 
         foreach (var (key, color) in palette)
         {
@@ -73,27 +73,37 @@ public sealed class ApplicationThemeService : IApplicationThemeService
             ["PanelBackgroundBrush"] = Colors.White,
             ["InspectorBackgroundBrush"] = (Color)ColorConverter.ConvertFromString("#FFF9FAFC"),
             ["ToolBarBackgroundBrush"] = (Color)ColorConverter.ConvertFromString("#FFF2F5FB"),
+            ["WorkspaceBackgroundBrush"] = Colors.White,
             ["ControlHoverBrush"] = (Color)ColorConverter.ConvertFromString("#FFEAF0FA"),
+            ["ControlPressedBrush"] = (Color)ColorConverter.ConvertFromString("#FFDCE8FA"),
             ["TextPrimaryBrush"] = (Color)ColorConverter.ConvertFromString("#FF20242C"),
             ["TextSecondaryBrush"] = (Color)ColorConverter.ConvertFromString("#FF626A78"),
+            ["TextMutedBrush"] = (Color)ColorConverter.ConvertFromString("#FF7A8392"),
             ["BorderSubtleBrush"] = (Color)ColorConverter.ConvertFromString("#FFD9E0EE"),
-            ["SelectionBrush"] = (Color)ColorConverter.ConvertFromString("#FFCCE0FF")
+            ["BorderStrongBrush"] = (Color)ColorConverter.ConvertFromString("#FFB9C7DA"),
+            ["SelectionBrush"] = (Color)ColorConverter.ConvertFromString("#FFCCE0FF"),
+            ["DisabledBrush"] = (Color)ColorConverter.ConvertFromString("#FFB7BFCC")
         };
     }
 
-    private static Dictionary<string, Color> BuildDarkPalette()
+    private static Dictionary<string, Color> BuildScreenshotDarkPalette()
     {
         return new Dictionary<string, Color>
         {
-            ["EditorBackgroundBrush"] = (Color)ColorConverter.ConvertFromString("#FF151A22"),
-            ["PanelBackgroundBrush"] = (Color)ColorConverter.ConvertFromString("#FF1C2535"),
-            ["InspectorBackgroundBrush"] = (Color)ColorConverter.ConvertFromString("#FF18202E"),
-            ["ToolBarBackgroundBrush"] = (Color)ColorConverter.ConvertFromString("#FF202B3C"),
-            ["ControlHoverBrush"] = (Color)ColorConverter.ConvertFromString("#FF30405A"),
-            ["TextPrimaryBrush"] = (Color)ColorConverter.ConvertFromString("#FFF2F5FB"),
-            ["TextSecondaryBrush"] = (Color)ColorConverter.ConvertFromString("#FFC2CBDA"),
-            ["BorderSubtleBrush"] = (Color)ColorConverter.ConvertFromString("#FF334156"),
-            ["SelectionBrush"] = (Color)ColorConverter.ConvertFromString("#FF2C4F7E")
+            ["EditorBackgroundBrush"] = (Color)ColorConverter.ConvertFromString("#FF25282C"),
+            ["PanelBackgroundBrush"] = (Color)ColorConverter.ConvertFromString("#FF2A2D31"),
+            ["InspectorBackgroundBrush"] = (Color)ColorConverter.ConvertFromString("#FF2D3034"),
+            ["ToolBarBackgroundBrush"] = (Color)ColorConverter.ConvertFromString("#FF303338"),
+            ["WorkspaceBackgroundBrush"] = (Color)ColorConverter.ConvertFromString("#FF4A4E53"),
+            ["ControlHoverBrush"] = (Color)ColorConverter.ConvertFromString("#FF3A3E44"),
+            ["ControlPressedBrush"] = (Color)ColorConverter.ConvertFromString("#FF454A51"),
+            ["TextPrimaryBrush"] = (Color)ColorConverter.ConvertFromString("#FFF4F4F4"),
+            ["TextSecondaryBrush"] = (Color)ColorConverter.ConvertFromString("#FFD7D9DC"),
+            ["TextMutedBrush"] = (Color)ColorConverter.ConvertFromString("#FFA6ABB1"),
+            ["BorderSubtleBrush"] = (Color)ColorConverter.ConvertFromString("#FF3B3F45"),
+            ["BorderStrongBrush"] = (Color)ColorConverter.ConvertFromString("#FF50555C"),
+            ["SelectionBrush"] = (Color)ColorConverter.ConvertFromString("#FF555A62"),
+            ["DisabledBrush"] = (Color)ColorConverter.ConvertFromString("#FF6B7077")
         };
     }
 }

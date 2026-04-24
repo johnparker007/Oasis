@@ -1,0 +1,43 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Load AvalonDock's VS2013 brush dictionary first, then override common VS2013 color tokens in one place. -->
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="/AvalonDock.Themes.VS2013;component/DarkBrushs.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+
+    <Color x:Key="Vs2013_WindowBackgroundColor">#FF25282C</Color>
+    <Color x:Key="Vs2013_EnvironmentBackgroundColor">#FF25282C</Color>
+    <Color x:Key="Vs2013_ToolWindowBackgroundColor">#FF2D3034</Color>
+    <Color x:Key="Vs2013_DocumentWindowBackgroundColor">#FF2A2D31</Color>
+    <Color x:Key="Vs2013_DocumentWellBackgroundColor">#FF2A2D31</Color>
+    <Color x:Key="Vs2013_TabBackgroundColor">#FF303338</Color>
+    <Color x:Key="Vs2013_TabSelectedBackgroundColor">#FF4A4E53</Color>
+    <Color x:Key="Vs2013_TabMouseOverBackgroundColor">#FF3A3E44</Color>
+    <Color x:Key="Vs2013_TabBorderColor">#FF3B3F45</Color>
+    <Color x:Key="Vs2013_ActiveBorderColor">#FF50555C</Color>
+    <Color x:Key="Vs2013_InactiveBorderColor">#FF3B3F45</Color>
+    <Color x:Key="Vs2013_TitleBackgroundColor">#FF303338</Color>
+    <Color x:Key="Vs2013_TitleSelectedBackgroundColor">#FF4A4E53</Color>
+    <Color x:Key="Vs2013_TextColor">#FFF4F4F4</Color>
+    <Color x:Key="Vs2013_InactiveTextColor">#FFD7D9DC</Color>
+    <Color x:Key="Vs2013_DisabledTextColor">#FFA6ABB1</Color>
+    <Color x:Key="Vs2013_HighlightColor">#FF555A62</Color>
+
+    <SolidColorBrush x:Key="Vs2013_WindowBackgroundBrush" Color="{StaticResource Vs2013_WindowBackgroundColor}" />
+    <SolidColorBrush x:Key="Vs2013_EnvironmentBackgroundBrush" Color="{StaticResource Vs2013_EnvironmentBackgroundColor}" />
+    <SolidColorBrush x:Key="Vs2013_ToolWindowBackgroundBrush" Color="{StaticResource Vs2013_ToolWindowBackgroundColor}" />
+    <SolidColorBrush x:Key="Vs2013_DocumentWindowBackgroundBrush" Color="{StaticResource Vs2013_DocumentWindowBackgroundColor}" />
+    <SolidColorBrush x:Key="Vs2013_DocumentWellBackgroundBrush" Color="{StaticResource Vs2013_DocumentWellBackgroundColor}" />
+    <SolidColorBrush x:Key="Vs2013_TabBackgroundBrush" Color="{StaticResource Vs2013_TabBackgroundColor}" />
+    <SolidColorBrush x:Key="Vs2013_TabSelectedBackgroundBrush" Color="{StaticResource Vs2013_TabSelectedBackgroundColor}" />
+    <SolidColorBrush x:Key="Vs2013_TabMouseOverBackgroundBrush" Color="{StaticResource Vs2013_TabMouseOverBackgroundColor}" />
+    <SolidColorBrush x:Key="Vs2013_TabBorderBrush" Color="{StaticResource Vs2013_TabBorderColor}" />
+    <SolidColorBrush x:Key="Vs2013_ActiveBorderBrush" Color="{StaticResource Vs2013_ActiveBorderColor}" />
+    <SolidColorBrush x:Key="Vs2013_InactiveBorderBrush" Color="{StaticResource Vs2013_InactiveBorderColor}" />
+    <SolidColorBrush x:Key="Vs2013_TitleBackgroundBrush" Color="{StaticResource Vs2013_TitleBackgroundColor}" />
+    <SolidColorBrush x:Key="Vs2013_TitleSelectedBackgroundBrush" Color="{StaticResource Vs2013_TitleSelectedBackgroundColor}" />
+    <SolidColorBrush x:Key="Vs2013_TextBrush" Color="{StaticResource Vs2013_TextColor}" />
+    <SolidColorBrush x:Key="Vs2013_InactiveTextBrush" Color="{StaticResource Vs2013_InactiveTextColor}" />
+    <SolidColorBrush x:Key="Vs2013_DisabledTextBrush" Color="{StaticResource Vs2013_DisabledTextColor}" />
+    <SolidColorBrush x:Key="Vs2013_HighlightBrush" Color="{StaticResource Vs2013_HighlightColor}" />
+</ResourceDictionary>
