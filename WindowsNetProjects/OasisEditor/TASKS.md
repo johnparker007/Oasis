@@ -18,9 +18,9 @@
 
 ### Editor Shell Separation
 - [x] Remove startup project-selection UI from editor shell
-- [ ] Ensure editor shell requires a valid loaded project at construction/open time
-- [ ] Ensure editor shell initializes correctly from an already-loaded project
-- [ ] Prevent editor shell from opening when no active project exists
+- [x] Ensure editor shell requires a valid loaded project at construction/open time
+- [x] Ensure editor shell initializes correctly from an already-loaded project
+- [x] Prevent editor shell from opening when no active project exists
 
 ### Close Project Flow
 - [ ] Add File > Close Project action
