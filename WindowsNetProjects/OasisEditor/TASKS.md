@@ -23,10 +23,10 @@
 - [x] Prevent editor shell from opening when no active project exists
 
 ### Close Project Flow
-- [ ] Add File > Close Project action
-- [ ] Close editor shell and return to Launcher window
-- [ ] Ensure closing a project clears active document/session state
-- [ ] Ensure Launcher refreshes recent projects after returning from editor shell
+- [x] Add File > Close Project action
+- [x] Close editor shell and return to Launcher window
+- [x] Ensure closing a project clears active document/session state
+- [x] Ensure Launcher refreshes recent projects after returning from editor shell
 
 ### Verification
 - [ ] Verify New Project opens editor correctly
