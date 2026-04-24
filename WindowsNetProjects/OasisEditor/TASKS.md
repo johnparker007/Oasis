@@ -16,13 +16,13 @@
 - [x] Ensure undo/redo menu labels reflect active document command names where possible
 
 ### Undo/Redo Verification
-- [ ] Verify undo/redo works with one Panel2D document
-- [ ] Verify undo/redo works independently across two Panel2D documents
-- [ ] Verify undo in one tab does not affect another tab
-- [ ] Verify redo in one tab does not affect another tab
-- [ ] Verify adding a new command in one document does not clear redo history in another document
-- [ ] Verify closing a document prevents its commands from being reused accidentally
-- [ ] Verify Ctrl+Z and Ctrl+Y route through the active document only
+- [x] Verify undo/redo works with one Panel2D document
+- [x] Verify undo/redo works independently across two Panel2D documents
+- [x] Verify undo in one tab does not affect another tab
+- [x] Verify redo in one tab does not affect another tab
+- [x] Verify adding a new command in one document does not clear redo history in another document
+- [x] Verify closing a document prevents its commands from being reused accidentally
+- [x] Verify Ctrl+Z and Ctrl+Y route through the active document only
 
 ### Active Document Context
 - [ ] Define active document context service if not already present
