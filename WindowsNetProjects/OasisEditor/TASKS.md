@@ -8,12 +8,12 @@
 - [x] Ensure commands are bound to the document they were created for
 - [x] Ensure undo only affects the active document
 - [x] Ensure redo only affects the active document
-- [ ] Clear redo stack only for the affected document when a new command is executed
-- [ ] Prevent commands from applying to a different active document after tab switching
-- [ ] Add document identity checks before command execute/undo/redo
-- [ ] Ensure closing a document clears or safely discards its command history
-- [ ] Ensure switching tabs updates undo/redo menu enabled state
-- [ ] Ensure undo/redo menu labels reflect active document command names where possible
+- [x] Clear redo stack only for the affected document when a new command is executed
+- [x] Prevent commands from applying to a different active document after tab switching
+- [x] Add document identity checks before command execute/undo/redo
+- [x] Ensure closing a document clears or safely discards its command history
+- [x] Ensure switching tabs updates undo/redo menu enabled state
+- [x] Ensure undo/redo menu labels reflect active document command names where possible
 
 ### Undo/Redo Verification
 - [ ] Verify undo/redo works with one Panel2D document

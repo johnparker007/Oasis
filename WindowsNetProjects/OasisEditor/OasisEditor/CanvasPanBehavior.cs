@@ -457,7 +457,18 @@ public static class CanvasPanBehavior
             return;
         }
 
-        tab.CommandService.Execute(command);
+        if (Window.GetWindow(canvas)?.DataContext is MainWindowViewModel shellViewModel)
+        {
+            if (!shellViewModel.ExecuteDocumentCanvasCommand(tab.DocumentId, command))
+            {
+                return;
+            }
+        }
+        else
+        {
+            tab.CommandService.Execute(command);
+        }
+
         if (canvas is Canvas panelCanvas)
         {
             SyncPanelLayout(panelCanvas);

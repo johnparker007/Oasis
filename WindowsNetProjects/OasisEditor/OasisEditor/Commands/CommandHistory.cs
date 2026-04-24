@@ -57,6 +57,18 @@ public sealed class CommandHistory
         return _entries[_nextIndex - 1];
     }
 
+    public bool TryGetUndoCandidate(out ICommand? command)
+    {
+        if (!CanUndo)
+        {
+            command = null;
+            return false;
+        }
+
+        command = _entries[_nextIndex - 1];
+        return true;
+    }
+
     public ICommand GetRedoCandidate()
     {
         if (!CanRedo)
@@ -65,6 +77,18 @@ public sealed class CommandHistory
         }
 
         return _entries[_nextIndex];
+    }
+
+    public bool TryGetRedoCandidate(out ICommand? command)
+    {
+        if (!CanRedo)
+        {
+            command = null;
+            return false;
+        }
+
+        command = _entries[_nextIndex];
+        return true;
     }
 
     public void MarkUndone()
