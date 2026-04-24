@@ -1,7 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Windows;
@@ -17,7 +16,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly RecentProjectsStore _recentProjectsStore = new();
     private readonly IApplicationThemeService _applicationThemeService;
     private readonly EditorPreferencesStore _preferencesStore;
-    private readonly EditorCommands.CommandService _shellCommandService = new();
     private readonly Window _ownerWindow;
     private string _projectName = string.Empty;
     private string _projectLocation = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
@@ -26,16 +24,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string? _selectedRecentProject;
     private EditorProject? _loadedProject;
     private DocumentTabViewModel? _selectedDocument;
-    private int _untitledDocumentCounter = 1;
-    private int _panelDocumentCounter = 1;
-    private int _cabinetDocumentCounter = 1;
-    private int _machineDocumentCounter = 1;
     private ThemePreference _selectedThemePreference;
     private PreferencesWindow? _preferencesWindow;
     private ProjectSettingsWindow? _projectSettingsWindow;
     private readonly AssetBrowserViewModel _assetBrowser;
     private readonly OutputLogViewModel _outputLog;
     private readonly InspectorViewModel _inspector;
+    private readonly DocumentWorkspaceViewModel _documentWorkspace;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -88,6 +83,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         RecentProjects = new ObservableCollection<string>(_recentProjectsStore.Load());
         OpenDocuments = new ObservableCollection<DocumentTabViewModel>();
+        _documentWorkspace = new DocumentWorkspaceViewModel(
+            () => _loadedProject,
+            value => LoadedProject = value,
+            OpenDocuments,
+            () => _selectedDocument,
+            value => SelectedDocument = value,
+            NotifyUndoRedoStateChanged,
+            value => StatusMessage = value,
+            AddOutputEntry);
         AssetBrowserItems = _assetBrowser.AssetBrowserItems;
         OutputEntries = _outputLog.OutputEntries;
         RefreshAssetBrowserCommand = _assetBrowser.RefreshAssetBrowserCommand;
@@ -319,78 +323,37 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private bool CanOpenUntitledDocument()
     {
-        return LoadedProject is not null;
+        return _documentWorkspace.CanOpenUntitledDocument();
     }
 
     private void OpenUntitledDocument()
     {
-        if (LoadedProject is null)
-        {
-            return;
-        }
-
-        var document = new DocumentTabViewModel(
-            EditorDocument.CreateUntitled($"Untitled {_untitledDocumentCounter++}"));
-
-        ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
-        StatusMessage = $"Opened document tab: {document.Title}";
-        AddOutputEntry($"Opened document tab: {document.Title}");
+        _documentWorkspace.OpenUntitledDocument();
     }
 
     private void OpenPanel2DStubDocument()
     {
-        if (LoadedProject is null)
-        {
-            return;
-        }
-
-        var document = new DocumentTabViewModel(
-            EditorDocument.CreatePanel2DStub($"Panel {_panelDocumentCounter++}"),
-            panelLayoutJson: Panel2DDocumentStorage.SerializeLayout([]));
-
-        ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
-        StatusMessage = $"Opened panel document stub: {document.Title}";
-        AddOutputEntry($"Opened panel document stub: {document.Title}");
+        _documentWorkspace.OpenPanel2DStubDocument();
     }
 
     private void OpenCabinet3DStubDocument()
     {
-        if (LoadedProject is null)
-        {
-            return;
-        }
-
-        var document = new DocumentTabViewModel(
-            EditorDocument.CreateCabinet3DStub($"Cabinet {_cabinetDocumentCounter++}"));
-
-        ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
-        StatusMessage = $"Opened cabinet document stub: {document.Title}";
-        AddOutputEntry($"Opened cabinet document stub: {document.Title}");
+        _documentWorkspace.OpenCabinet3DStubDocument();
     }
 
     private void OpenMachineStubDocument()
     {
-        if (LoadedProject is null)
-        {
-            return;
-        }
-
-        var document = new DocumentTabViewModel(
-            EditorDocument.CreateMachineStub($"Machine {_machineDocumentCounter++}"));
-
-        ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
-        StatusMessage = $"Opened machine document stub: {document.Title}";
-        AddOutputEntry($"Opened machine document stub: {document.Title}");
+        _documentWorkspace.OpenMachineStubDocument();
     }
 
     private bool CanCloseSelectedDocument()
     {
-        return SelectedDocument is not null;
+        return _documentWorkspace.CanCloseSelectedDocument();
     }
 
     private bool CanOpenDocument()
     {
-        return LoadedProject is not null;
+        return _documentWorkspace.CanOpenDocument();
     }
 
     private void OpenDocument()
@@ -417,9 +380,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             var path = dialog.FileName;
             var content = File.ReadAllText(path);
-            var openData = BuildOpenDocumentData(path, content);
+            var openData = DocumentWorkspaceViewModel.BuildOpenDocumentData(path, content);
 
-            var openedNewTab = OpenOrSelectDocument(path, openData.Summary, openData.PanelLayoutJson);
+            var openedNewTab = _documentWorkspace.OpenOrSelectDocument(path, openData.Summary, openData.PanelLayoutJson);
             if (!openedNewTab)
             {
                 AddOutputEntry($"Switched to already open document tab for {path}");
@@ -443,7 +406,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private bool CanSaveSelectedDocument()
     {
-        return SelectedDocument is not null && SelectedDocument.Document.DocumentType != EditorDocumentType.ProjectOverview;
+        return _documentWorkspace.CanSaveSelectedDocument();
     }
 
     private void SaveSelectedDocument()
@@ -462,7 +425,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         try
         {
-            var content = BuildDocumentContent(current);
+            var content = DocumentWorkspaceViewModel.BuildDocumentContent(current);
             File.WriteAllText(savePath, content);
 
             var updatedDocument = new DocumentTabViewModel(
@@ -470,7 +433,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 current.PanelLayoutJson,
                 current.DocumentId,
                 current.CommandService);
-            ExecuteDocumentMutation(new ReplaceDocumentTabMutationCommand(this, current, updatedDocument));
+            _documentWorkspace.ReplaceDocument(current, updatedDocument);
             StatusMessage = $"Saved document: {updatedDocument.Title}";
             AddOutputEntry($"Saved document to {savePath}");
         }
@@ -512,15 +475,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void CloseSelectedDocument()
     {
-        if (SelectedDocument is null)
-        {
-            return;
-        }
-
-        var documentToClose = SelectedDocument;
-        ExecuteDocumentMutation(new CloseDocumentTabMutationCommand(this, documentToClose));
-        StatusMessage = $"Closed document tab: {documentToClose.Title}";
-        AddOutputEntry($"Closed document tab: {documentToClose.Title}");
+        _documentWorkspace.CloseSelectedDocument();
     }
 
 
@@ -599,16 +554,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void ClearProjectSessionState()
     {
-        _shellCommandService.History.Clear();
-        OpenDocuments.Clear();
-        SelectedDocument = null;
+        _documentWorkspace.ClearProjectSessionState();
 
         AssetBrowserItems.Clear();
         SelectedAsset = null;
-
-        LoadedProject = null;
         ProjectFilePath = string.Empty;
-        StatusMessage = "Project closed. Returned to Launcher.";
     }
 
     private static void ExitApplication()
@@ -626,7 +576,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
             ProjectFilePath = projectFile;
             UpdateRecentProjects(projectFile);
-            EnsureProjectOverviewDocument();
+            _documentWorkspace.EnsureProjectOverviewDocument();
             _assetBrowser.RefreshAssetBrowser();
             StatusMessage = successMessage ?? $"Project opened: {project.Name} ({projectFile})";
             AddOutputEntry($"Loaded project '{project.Name}' from {projectFile}");
@@ -645,7 +595,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         LoadedProject = project;
         ProjectFilePath = project.ProjectFilePath;
         UpdateRecentProjects(project.ProjectFilePath);
-        EnsureProjectOverviewDocument();
+        _documentWorkspace.EnsureProjectOverviewDocument();
         _assetBrowser.RefreshAssetBrowser();
         StatusMessage = $"Project opened: {project.Name} ({project.ProjectFilePath})";
         AddOutputEntry($"Loaded startup project '{project.Name}' from {project.ProjectFilePath}");
@@ -699,317 +649,29 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         };
     }
 
-    private void EnsureProjectOverviewDocument()
-    {
-        if (LoadedProject is null)
-        {
-            return;
-        }
-
-        var overviewDocument = new DocumentTabViewModel(EditorDocument.CreateProjectOverview(LoadedProject));
-        ExecuteDocumentMutation(new ReplaceOpenDocumentsMutationCommand(this, [overviewDocument], overviewDocument));
-    }
-
-    private bool OpenOrSelectDocument(string path, string summary, string? panelLayoutJson)
-    {
-        var existing = OpenDocuments.FirstOrDefault(
-            tab => string.Equals(tab.FilePath, path, StringComparison.OrdinalIgnoreCase));
-        if (existing is not null)
-        {
-            ExecuteDocumentMutation(new SelectDocumentTabMutationCommand(this, existing));
-            return false;
-        }
-
-        var document = new DocumentTabViewModel(EditorDocument.CreateFromFile(path, summary), panelLayoutJson);
-        ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
-        return true;
-    }
-
-    private void ExecuteDocumentMutation(EditorCommands.ICommand command)
-    {
-        _shellCommandService.Execute(command);
-    }
-
     public bool CanUndoActiveDocument()
     {
-        return SelectedDocument?.CommandService.CanUndo ?? false;
+        return _documentWorkspace.CanUndoActiveDocument();
     }
 
     public bool CanRedoActiveDocument()
     {
-        return SelectedDocument?.CommandService.CanRedo ?? false;
+        return _documentWorkspace.CanRedoActiveDocument();
     }
 
     public bool UndoActiveDocument()
     {
-        var activeDocument = SelectedDocument;
-        if (activeDocument is null)
-        {
-            return false;
-        }
-
-        var undone = activeDocument.CommandService.TryUndo();
-        if (undone)
-        {
-            NotifyUndoRedoStateChanged();
-        }
-
-        return undone;
+        return _documentWorkspace.UndoActiveDocument();
     }
 
     public bool RedoActiveDocument()
     {
-        var activeDocument = SelectedDocument;
-        if (activeDocument is null)
-        {
-            return false;
-        }
-
-        var redone = activeDocument.CommandService.TryRedo();
-        if (redone)
-        {
-            NotifyUndoRedoStateChanged();
-        }
-
-        return redone;
+        return _documentWorkspace.RedoActiveDocument();
     }
 
     public bool ExecuteDocumentCanvasCommand(Guid documentId, EditorCommands.ICommand command)
     {
-        ArgumentNullException.ThrowIfNull(command);
-
-        var activeDocument = SelectedDocument;
-        if (activeDocument is null || activeDocument.DocumentId != documentId)
-        {
-            return false;
-        }
-
-        activeDocument.CommandService.Execute(command);
-        NotifyUndoRedoStateChanged();
-        return true;
-    }
-
-    private static OpenDocumentData BuildOpenDocumentData(string path, string content)
-    {
-        if (string.Equals(Path.GetExtension(path), ".panel2d", StringComparison.OrdinalIgnoreCase)
-            && Panel2DDocumentStorage.TryRead(content, out var panelDocument))
-        {
-            var summary = string.IsNullOrWhiteSpace(panelDocument.Summary)
-                ? "Panel document opened."
-                : panelDocument.Summary.Trim();
-            return new OpenDocumentData(summary, Panel2DDocumentStorage.SerializeLayout(panelDocument.Elements));
-        }
-
-        var preview = content.Length > 300 ? $"{content[..300]}..." : content;
-        if (string.IsNullOrWhiteSpace(preview))
-        {
-            preview = "Document opened (file is empty).";
-        }
-
-        return new OpenDocumentData(preview, null);
-    }
-
-    private static string BuildDocumentContent(DocumentTabViewModel document)
-    {
-        if (document.Document.DocumentType == EditorDocumentType.Panel2D)
-        {
-            var elements = Panel2DDocumentStorage.DeserializeLayout(document.PanelLayoutJson);
-            return Panel2DDocumentStorage.Serialize(document.Document.Title, document.ContentSummary, elements);
-        }
-
-        var persisted = new
-        {
-            title = document.Title,
-            type = document.Document.DocumentType.ToString(),
-            summary = document.ContentSummary,
-            savedAtUtc = DateTime.UtcNow
-        };
-
-        return JsonSerializer.Serialize(persisted, new JsonSerializerOptions { WriteIndented = true });
-    }
-
-    private sealed class OpenDocumentTabMutationCommand : EditorCommands.ICommand
-    {
-        private readonly MainWindowViewModel _owner;
-        private readonly DocumentTabViewModel _document;
-        private DocumentTabViewModel? _previousSelection;
-
-        public OpenDocumentTabMutationCommand(MainWindowViewModel owner, DocumentTabViewModel document)
-        {
-            _owner = owner;
-            _document = document;
-        }
-
-        public string Description => $"Open document tab {_document.Title}";
-
-        public void Execute()
-        {
-            _previousSelection = _owner.SelectedDocument;
-            _owner.OpenDocuments.Add(_document);
-            _owner.SelectedDocument = _document;
-        }
-
-        public void Undo()
-        {
-            _owner.OpenDocuments.Remove(_document);
-            _owner.SelectedDocument = _previousSelection;
-        }
-    }
-
-    private sealed class SelectDocumentTabMutationCommand : EditorCommands.ICommand
-    {
-        private readonly MainWindowViewModel _owner;
-        private readonly DocumentTabViewModel _target;
-        private DocumentTabViewModel? _previousSelection;
-
-        public SelectDocumentTabMutationCommand(MainWindowViewModel owner, DocumentTabViewModel target)
-        {
-            _owner = owner;
-            _target = target;
-        }
-
-        public string Description => $"Select document tab {_target.Title}";
-
-        public void Execute()
-        {
-            _previousSelection = _owner.SelectedDocument;
-            _owner.SelectedDocument = _target;
-        }
-
-        public void Undo()
-        {
-            _owner.SelectedDocument = _previousSelection;
-        }
-    }
-
-    private sealed class ReplaceDocumentTabMutationCommand : EditorCommands.ICommand
-    {
-        private readonly MainWindowViewModel _owner;
-        private readonly DocumentTabViewModel _original;
-        private readonly DocumentTabViewModel _updated;
-        private int _index = -1;
-        private DocumentTabViewModel? _previousSelection;
-
-        public ReplaceDocumentTabMutationCommand(MainWindowViewModel owner, DocumentTabViewModel original, DocumentTabViewModel updated)
-        {
-            _owner = owner;
-            _original = original;
-            _updated = updated;
-        }
-
-        public string Description => $"Replace document tab {_original.Title}";
-
-        public void Execute()
-        {
-            _index = _owner.OpenDocuments.IndexOf(_original);
-            _previousSelection = _owner.SelectedDocument;
-            if (_index >= 0)
-            {
-                _owner.OpenDocuments[_index] = _updated;
-            }
-
-            _owner.SelectedDocument = _updated;
-        }
-
-        public void Undo()
-        {
-            if (_index >= 0)
-            {
-                _owner.OpenDocuments[_index] = _original;
-            }
-
-            _owner.SelectedDocument = _previousSelection;
-        }
-    }
-
-    private sealed class CloseDocumentTabMutationCommand : EditorCommands.ICommand
-    {
-        private readonly MainWindowViewModel _owner;
-        private readonly DocumentTabViewModel _document;
-        private int _index = -1;
-        private DocumentTabViewModel? _nextSelection;
-
-        public CloseDocumentTabMutationCommand(MainWindowViewModel owner, DocumentTabViewModel document)
-        {
-            _owner = owner;
-            _document = document;
-        }
-
-        public string Description => $"Close document tab {_document.Title}";
-
-        public void Execute()
-        {
-            _index = _owner.OpenDocuments.IndexOf(_document);
-            _owner.OpenDocuments.Remove(_document);
-            _document.CommandService.History.Clear();
-
-            _nextSelection = _owner.OpenDocuments.Count == 0
-                ? null
-                : _owner.OpenDocuments[Math.Clamp(_index, 0, _owner.OpenDocuments.Count - 1)];
-            _owner.SelectedDocument = _nextSelection;
-        }
-
-        public void Undo()
-        {
-            if (_index < 0 || _index > _owner.OpenDocuments.Count)
-            {
-                _owner.OpenDocuments.Add(_document);
-                _owner.SelectedDocument = _document;
-                return;
-            }
-
-            _owner.OpenDocuments.Insert(_index, _document);
-            _owner.SelectedDocument = _document;
-        }
-    }
-
-    private sealed class ReplaceOpenDocumentsMutationCommand : EditorCommands.ICommand
-    {
-        private readonly MainWindowViewModel _owner;
-        private readonly IReadOnlyList<DocumentTabViewModel> _nextDocuments;
-        private readonly DocumentTabViewModel? _nextSelection;
-        private List<DocumentTabViewModel>? _previousDocuments;
-        private DocumentTabViewModel? _previousSelection;
-
-        public ReplaceOpenDocumentsMutationCommand(
-            MainWindowViewModel owner,
-            IReadOnlyList<DocumentTabViewModel> nextDocuments,
-            DocumentTabViewModel? nextSelection)
-        {
-            _owner = owner;
-            _nextDocuments = nextDocuments;
-            _nextSelection = nextSelection;
-        }
-
-        public string Description => "Replace open documents";
-
-        public void Execute()
-        {
-            _previousDocuments = _owner.OpenDocuments.ToList();
-            _previousSelection = _owner.SelectedDocument;
-
-            _owner.OpenDocuments.Clear();
-            foreach (var document in _nextDocuments)
-            {
-                _owner.OpenDocuments.Add(document);
-            }
-
-            _owner.SelectedDocument = _nextSelection;
-        }
-
-        public void Undo()
-        {
-            _owner.OpenDocuments.Clear();
-            if (_previousDocuments is not null)
-            {
-                foreach (var document in _previousDocuments)
-                {
-                    _owner.OpenDocuments.Add(document);
-                }
-            }
-
-            _owner.SelectedDocument = _previousSelection;
-        }
+        return _documentWorkspace.ExecuteDocumentCanvasCommand(documentId, command);
     }
 
     private static string ResolveProjectDirectory(string projectDirectory, JsonElement layoutElement, string propertyName)
@@ -1138,18 +800,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(CanEditInspectorSummary));
     }
 
-    private DocumentTabViewModel? ApplyInspectorSummary(DocumentTabViewModel selectedDocument, string summary)
+    private DocumentTabViewModel? ApplyInspectorSummary(DocumentTabViewModel _, string summary)
     {
-        var updated = new DocumentTabViewModel(
-            selectedDocument.Document.WithContentSummary(summary).MarkDirty(),
-            selectedDocument.PanelLayoutJson,
-            selectedDocument.DocumentId,
-            selectedDocument.CommandService);
-
-        ExecuteDocumentMutation(new ReplaceDocumentTabMutationCommand(this, selectedDocument, updated));
-        StatusMessage = $"Updated inspector summary for {updated.Title}";
-        AddOutputEntry($"Inspector summary updated for {updated.Title}");
-        return updated;
+        return _documentWorkspace.ApplyInspectorSummary(summary);
     }
 
     private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
