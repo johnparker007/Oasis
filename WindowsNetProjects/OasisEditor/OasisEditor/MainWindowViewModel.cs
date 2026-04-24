@@ -332,6 +332,24 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public bool CanEditInspectorSummary => SelectedDocument is not null
         && SelectedDocument.Document.DocumentType != EditorDocumentType.ProjectOverview;
 
+    public string UndoMenuHeader
+    {
+        get
+        {
+            var description = SelectedDocument?.CommandService.UndoDescription;
+            return string.IsNullOrWhiteSpace(description) ? "_Undo" : $"_Undo {description}";
+        }
+    }
+
+    public string RedoMenuHeader
+    {
+        get
+        {
+            var description = SelectedDocument?.CommandService.RedoDescription;
+            return string.IsNullOrWhiteSpace(description) ? "_Redo" : $"_Redo {description}";
+        }
+    }
+
     private void CreateProject()
     {
         try
@@ -805,12 +823,51 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public bool UndoActiveDocument()
     {
-        return SelectedDocument?.CommandService.TryUndo() ?? false;
+        var activeDocument = SelectedDocument;
+        if (activeDocument is null)
+        {
+            return false;
+        }
+
+        var undone = activeDocument.CommandService.TryUndo();
+        if (undone)
+        {
+            NotifyUndoRedoStateChanged();
+        }
+
+        return undone;
     }
 
     public bool RedoActiveDocument()
     {
-        return SelectedDocument?.CommandService.TryRedo() ?? false;
+        var activeDocument = SelectedDocument;
+        if (activeDocument is null)
+        {
+            return false;
+        }
+
+        var redone = activeDocument.CommandService.TryRedo();
+        if (redone)
+        {
+            NotifyUndoRedoStateChanged();
+        }
+
+        return redone;
+    }
+
+    public bool ExecuteDocumentCanvasCommand(Guid documentId, EditorCommands.ICommand command)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+
+        var activeDocument = SelectedDocument;
+        if (activeDocument is null || activeDocument.DocumentId != documentId)
+        {
+            return false;
+        }
+
+        activeDocument.CommandService.Execute(command);
+        NotifyUndoRedoStateChanged();
+        return true;
     }
 
     private static OpenDocumentData BuildOpenDocumentData(string path, string content)
@@ -965,6 +1022,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             _index = _owner.OpenDocuments.IndexOf(_document);
             _owner.OpenDocuments.Remove(_document);
+            _document.CommandService.History.Clear();
 
             _nextSelection = _owner.OpenDocuments.Count == 0
                 ? null
@@ -1185,7 +1243,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             closeProjectRelayCommand.RaiseCanExecuteChanged();
         }
 
+        NotifyUndoRedoStateChanged();
         NotifyAssetBrowserCommand();
+    }
+
+    private void NotifyUndoRedoStateChanged()
+    {
+        OnPropertyChanged(nameof(UndoMenuHeader));
+        OnPropertyChanged(nameof(RedoMenuHeader));
+        CommandManager.InvalidateRequerySuggested();
     }
 
     private void NotifyAssetBrowserCommand()

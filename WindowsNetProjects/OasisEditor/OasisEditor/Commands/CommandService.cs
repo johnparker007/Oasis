@@ -20,10 +20,17 @@ public sealed class CommandService
     }
 
     public CommandHistory History => _history;
+    public Guid? DocumentId => _documentId;
 
     public bool CanUndo => _history.CanUndo;
 
     public bool CanRedo => _history.CanRedo;
+
+    public string? UndoDescription =>
+        _history.TryGetUndoCandidate(out var command) ? command?.Description : null;
+
+    public string? RedoDescription =>
+        _history.TryGetRedoCandidate(out var command) ? command?.Description : null;
 
     public void Execute(ICommand command)
     {
@@ -64,9 +71,14 @@ public sealed class CommandService
 
     private void ValidateDocumentOwnership(ICommand command)
     {
-        if (_documentId is null || command is not IDocumentCommand documentCommand)
+        if (_documentId is null)
         {
             return;
+        }
+
+        if (command is not IDocumentCommand documentCommand)
+        {
+            throw new InvalidOperationException("Document-scoped command service can only execute document commands.");
         }
 
         if (documentCommand.DocumentId != _documentId.Value)
