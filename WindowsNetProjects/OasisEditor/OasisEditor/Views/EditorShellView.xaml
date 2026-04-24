@@ -55,20 +55,6 @@
                                 </Border>
                             </layout:LayoutAnchorable>
 
-                            <layout:LayoutAnchorable Title="Properties Placeholder"
-                                                     ContentId="PropertiesPlaceholder">
-                                <Border Padding="12"
-                                        Background="{DynamicResource InspectorBackgroundBrush}">
-                                    <StackPanel>
-                                        <TextBlock FontWeight="SemiBold"
-                                                   Text="Properties" />
-                                        <TextBlock Margin="0,8,0,0"
-                                                   TextWrapping="Wrap"
-                                                   Foreground="{DynamicResource TextSecondaryBrush}"
-                                                   Text="Placeholder dock panel for future property grid content." />
-                                    </StackPanel>
-                                </Border>
-                            </layout:LayoutAnchorable>
                         </layout:LayoutAnchorablePane>
                     </layout:LayoutPanel>
 
