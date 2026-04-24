@@ -97,7 +97,7 @@ These tasks should be completed one at a time. They are behavior-preserving unle
 - [x] Extract Asset Browser logic into `ViewModels/AssetBrowserViewModel.cs`
 - [x] Extract Inspector logic into `ViewModels/InspectorViewModel.cs`
 - [x] Extract Output Log logic into `ViewModels/OutputLogViewModel.cs`
-- [ ] Extract document/workspace logic into `ViewModels/DocumentWorkspaceViewModel.cs`
+- [x] Extract document/workspace logic into `ViewModels/DocumentWorkspaceViewModel.cs`
 
 ### Canvas / Behavior Refactors
 - [ ] Review `CanvasPanBehavior.cs` and propose a split plan only
