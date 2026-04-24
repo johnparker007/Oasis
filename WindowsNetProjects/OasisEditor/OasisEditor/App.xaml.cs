@@ -32,6 +32,12 @@ public partial class App : Application
     {
         CrashDiagnostics.Log("DispatcherUnhandledException", e.Exception, isTerminating: false);
 
+        if (IsAvalonDockOverlayTemplateNullReference(e.Exception))
+        {
+            e.Handled = true;
+            return;
+        }
+
         var message = $"A fatal UI exception occurred.\n\nCrash details were written to:\n{CrashDiagnostics.LogPath}";
         MessageBox.Show(message, "Oasis Editor - Crash", MessageBoxButton.OK, MessageBoxImage.Error);
 
@@ -50,5 +56,15 @@ public partial class App : Application
     {
         CrashDiagnostics.Log("TaskScheduler.UnobservedTaskException", e.Exception, isTerminating: false);
         e.SetObserved();
+    }
+
+    private static bool IsAvalonDockOverlayTemplateNullReference(Exception exception)
+    {
+        if (exception is not NullReferenceException)
+        {
+            return false;
+        }
+
+        return exception.StackTrace?.Contains("AvalonDock.Controls.OverlayWindow.OnApplyTemplate", StringComparison.Ordinal) == true;
     }
 }
