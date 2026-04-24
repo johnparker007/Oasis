@@ -204,54 +204,9 @@
                 </Setter>
             </Style>
 
-            <Style TargetType="TabControl">
-                <Setter Property="Background" Value="{DynamicResource PanelBackgroundBrush}" />
-                <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}" />
-                <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
-            </Style>
+            
 
-            <Style TargetType="TabItem">
-                <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
-                <Setter Property="Background" Value="{DynamicResource InspectorBackgroundBrush}" />
-                <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}" />
-                <Setter Property="Padding" Value="10,5" />
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="TabItem">
-                            <Border x:Name="TabBorder"
-                                    Margin="0,0,1,0"
-                                    Padding="{TemplateBinding Padding}"
-                                    Background="{TemplateBinding Background}"
-                                    BorderBrush="{TemplateBinding BorderBrush}"
-                                    BorderThickness="1,1,1,0"
-                                    CornerRadius="4,4,0,0">
-                                <ContentPresenter ContentSource="Header"
-                                                  RecognizesAccessKey="True" />
-                            </Border>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsSelected" Value="True">
-                                    <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource SelectionBrush}" />
-                                    <Setter TargetName="TabBorder" Property="BorderBrush" Value="{DynamicResource SelectionBrush}" />
-                                </Trigger>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="TabBorder" Property="BorderBrush" Value="{DynamicResource SelectionBrush}" />
-                                </Trigger>
-                                <Trigger Property="IsEnabled" Value="False">
-                                    <Setter Property="Opacity" Value="0.65" />
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
-                <Style.Triggers>
-                    <Trigger Property="IsSelected" Value="True">
-                        <Setter Property="Background" Value="{DynamicResource SelectionBrush}" />
-                    </Trigger>
-                    <Trigger Property="IsMouseOver" Value="True">
-                        <Setter Property="BorderBrush" Value="{DynamicResource SelectionBrush}" />
-                    </Trigger>
-                </Style.Triggers>
-            </Style>
+            
 
             <Style TargetType="StatusBar">
                 <Setter Property="Background" Value="{DynamicResource PanelBackgroundBrush}" />
