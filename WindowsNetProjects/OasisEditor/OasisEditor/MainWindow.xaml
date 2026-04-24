@@ -263,8 +263,8 @@
                                                            Text="{Binding FilePath}" />
 
                                                 <views:PanelCanvasView Grid.Row="2"
-                                                                     IsRectangleToolActive="{Binding IsChecked, ElementName=RectangleToolToggle, TargetNullValue=False}"
-                                                                     IsImageToolActive="{Binding IsChecked, ElementName=ImageToolToggle, TargetNullValue=False}" />
+                                                                     IsRectangleToolActive="{Binding IsChecked, ElementName=RectangleToolToggle, Mode=OneWay, TargetNullValue=False, FallbackValue=False}"
+                                                                     IsImageToolActive="{Binding IsChecked, ElementName=ImageToolToggle, Mode=OneWay, TargetNullValue=False, FallbackValue=False}" />
                                             </Grid>
                                         </DataTemplate>
                                     </TabControl.ContentTemplate>
