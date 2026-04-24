@@ -1,6 +1,6 @@
 namespace OasisEditor;
 
-public static class CanvasMutationCommands
+internal static class CanvasMutationCommands
 {
     public static Commands.ICommand CreateAddRectangleCommand(Guid documentId, DocumentTabViewModel document, PanelElementFile element)
     {

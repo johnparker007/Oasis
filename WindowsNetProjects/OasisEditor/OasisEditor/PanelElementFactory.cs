@@ -6,7 +6,7 @@ using System.Windows.Shapes;
 
 namespace OasisEditor;
 
-public static class PanelElementFactory
+internal static class PanelElementFactory
 {
     public const double NewRectangleWidth = 180;
     public const double NewRectangleHeight = 120;
