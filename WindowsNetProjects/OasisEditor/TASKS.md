@@ -91,12 +91,12 @@ These tasks should be completed one at a time. They are behavior-preserving unle
 - [x] Clean up `MainWindow.xaml` so it acts mainly as the application shell
 
 ### ViewModel Refactors
-- [ ] Move `DocumentTabViewModel` into `ViewModels/DocumentTabViewModel.cs`
-- [ ] Move `AssetBrowserItemViewModel` into `ViewModels/AssetBrowserItemViewModel.cs`
-- [ ] Review `MainWindowViewModel.cs` and propose a split plan only
-- [ ] Extract Asset Browser logic into `ViewModels/AssetBrowserViewModel.cs`
-- [ ] Extract Inspector logic into `ViewModels/InspectorViewModel.cs`
-- [ ] Extract Output Log logic into `ViewModels/OutputLogViewModel.cs`
+- [x] Move `DocumentTabViewModel` into `ViewModels/DocumentTabViewModel.cs`
+- [x] Move `AssetBrowserItemViewModel` into `ViewModels/AssetBrowserItemViewModel.cs`
+- [x] Review `MainWindowViewModel.cs` and propose a split plan only
+- [x] Extract Asset Browser logic into `ViewModels/AssetBrowserViewModel.cs`
+- [x] Extract Inspector logic into `ViewModels/InspectorViewModel.cs`
+- [x] Extract Output Log logic into `ViewModels/OutputLogViewModel.cs`
 - [ ] Extract document/workspace logic into `ViewModels/DocumentWorkspaceViewModel.cs`
 
 ### Canvas / Behavior Refactors

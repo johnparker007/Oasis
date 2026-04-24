@@ -26,7 +26,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string? _selectedRecentProject;
     private EditorProject? _loadedProject;
     private DocumentTabViewModel? _selectedDocument;
-    private AssetBrowserItemViewModel? _selectedAsset;
     private int _untitledDocumentCounter = 1;
     private int _panelDocumentCounter = 1;
     private int _cabinetDocumentCounter = 1;
@@ -34,7 +33,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private ThemePreference _selectedThemePreference;
     private PreferencesWindow? _preferencesWindow;
     private ProjectSettingsWindow? _projectSettingsWindow;
-    private string _inspectorEditableSummary = string.Empty;
+    private readonly AssetBrowserViewModel _assetBrowser;
+    private readonly OutputLogViewModel _outputLog;
+    private readonly InspectorViewModel _inspector;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -63,23 +64,35 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OpenDocumentCommand = new RelayCommand(OpenDocument, CanOpenDocument);
         SaveSelectedDocumentCommand = new RelayCommand(SaveSelectedDocument, CanSaveSelectedDocument);
         CloseSelectedDocumentCommand = new RelayCommand(CloseSelectedDocument, CanCloseSelectedDocument);
-        RefreshAssetBrowserCommand = new RelayCommand(RefreshAssetBrowser, CanRefreshAssetBrowser);
-        ClearOutputCommand = new RelayCommand(ClearOutput, CanClearOutput);
         OpenPreferencesCommand = new RelayCommand(OpenPreferences);
         OpenProjectSettingsCommand = new RelayCommand(OpenProjectSettings);
         ClosePreferencesCommand = new RelayCommand(ClosePreferences);
         CloseProjectSettingsCommand = new RelayCommand(CloseProjectSettings);
-        ApplyInspectorSummaryCommand = new RelayCommand(ApplyInspectorSummary, CanApplyInspectorSummary);
         CloseProjectCommand = new RelayCommand(CloseProject, CanCloseProject);
         ExitCommand = new RelayCommand(ExitApplication);
+
+        _outputLog = new OutputLogViewModel();
+        _assetBrowser = new AssetBrowserViewModel(
+            () => LoadedProject,
+            () => OnPropertyChanged(nameof(SelectedAsset)),
+            NotifyInspectorChanged,
+            AddOutputEntry);
+        _inspector = new InspectorViewModel(
+            () => SelectedAsset,
+            () => SelectedDocument,
+            () => LoadedProject,
+            ApplyInspectorSummary);
 
         var preferences = _preferencesStore.Load();
         _selectedThemePreference = preferences.ThemePreference;
 
         RecentProjects = new ObservableCollection<string>(_recentProjectsStore.Load());
         OpenDocuments = new ObservableCollection<DocumentTabViewModel>();
-        AssetBrowserItems = new ObservableCollection<AssetBrowserItemViewModel>();
-        OutputEntries = new ObservableCollection<string>();
+        AssetBrowserItems = _assetBrowser.AssetBrowserItems;
+        OutputEntries = _outputLog.OutputEntries;
+        RefreshAssetBrowserCommand = _assetBrowser.RefreshAssetBrowserCommand;
+        ClearOutputCommand = _outputLog.ClearOutputCommand;
+        ApplyInspectorSummaryCommand = _inspector.ApplyInspectorSummaryCommand;
         AddOutputEntry("Editor shell initialized.");
         AddOutputEntry($"Theme preference loaded: {_selectedThemePreference}");
 
@@ -214,123 +227,29 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public AssetBrowserItemViewModel? SelectedAsset
     {
-        get => _selectedAsset;
+        get => _assetBrowser.SelectedAsset;
         set
         {
-            if (SetProperty(ref _selectedAsset, value))
-            {
-                NotifyInspectorChanged();
-                NotifyAssetBrowserCommand();
-            }
+            _assetBrowser.SelectedAsset = value;
+            OnPropertyChanged();
         }
     }
 
-    public string InspectorTitle
-    {
-        get
-        {
-            if (SelectedAsset is not null)
-            {
-                return $"Asset: {SelectedAsset.DisplayPath}";
-            }
+    public string InspectorTitle => _inspector.InspectorTitle;
 
-            if (SelectedDocument is not null)
-            {
-                return $"Document: {SelectedDocument.Title}";
-            }
+    public string InspectorType => _inspector.InspectorType;
 
-            if (LoadedProject is not null)
-            {
-                return $"Project: {LoadedProject.Name}";
-            }
+    public string InspectorPath => _inspector.InspectorPath;
 
-            return "No selection";
-        }
-    }
-
-    public string InspectorType
-    {
-        get
-        {
-            if (SelectedAsset is not null)
-            {
-                return "Asset File";
-            }
-
-            if (SelectedDocument is not null)
-            {
-                return SelectedDocument.TypeLabel;
-            }
-
-            if (LoadedProject is not null)
-            {
-                return "Editor Project";
-            }
-
-            return "None";
-        }
-    }
-
-    public string InspectorPath
-    {
-        get
-        {
-            if (SelectedAsset is not null)
-            {
-                return SelectedAsset.FullPath;
-            }
-
-            if (SelectedDocument is not null)
-            {
-                return SelectedDocument.FilePath;
-            }
-
-            if (LoadedProject is not null)
-            {
-                return LoadedProject.ProjectFilePath;
-            }
-
-            return "Select an asset or document to inspect details.";
-        }
-    }
-
-    public string InspectorSummary
-    {
-        get
-        {
-            if (SelectedAsset is not null)
-            {
-                return "Use this panel as the starting point for future property editing.";
-            }
-
-            if (SelectedDocument is not null)
-            {
-                return SelectedDocument.ContentSummary;
-            }
-
-            if (LoadedProject is not null)
-            {
-                return "Project loaded. Select a document tab or asset file to inspect it.";
-            }
-
-            return "Open or create a project to enable the inspector.";
-        }
-    }
+    public string InspectorSummary => _inspector.InspectorSummary;
 
     public string InspectorEditableSummary
     {
-        get => _inspectorEditableSummary;
-        set
-        {
-            if (SetProperty(ref _inspectorEditableSummary, value))
-            {
-                NotifyInspectorEditCommand();
-            }
-        }
+        get => _inspector.InspectorEditableSummary;
+        set => _inspector.InspectorEditableSummary = value;
     }
 
-    public bool CanEditInspectorSummary => SelectedDocument is not null
-        && SelectedDocument.Document.DocumentType != EditorDocumentType.ProjectOverview;
+    public bool CanEditInspectorSummary => _inspector.CanEditInspectorSummary;
 
     public string UndoMenuHeader
     {
@@ -708,7 +627,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             ProjectFilePath = projectFile;
             UpdateRecentProjects(projectFile);
             EnsureProjectOverviewDocument();
-            RefreshAssetBrowser();
+            _assetBrowser.RefreshAssetBrowser();
             StatusMessage = successMessage ?? $"Project opened: {project.Name} ({projectFile})";
             AddOutputEntry($"Loaded project '{project.Name}' from {projectFile}");
         }
@@ -727,7 +646,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ProjectFilePath = project.ProjectFilePath;
         UpdateRecentProjects(project.ProjectFilePath);
         EnsureProjectOverviewDocument();
-        RefreshAssetBrowser();
+        _assetBrowser.RefreshAssetBrowser();
         StatusMessage = $"Project opened: {project.Name} ({project.ProjectFilePath})";
         AddOutputEntry($"Loaded startup project '{project.Name}' from {project.ProjectFilePath}");
     }
@@ -1126,55 +1045,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private bool CanRefreshAssetBrowser()
-    {
-        return LoadedProject is not null;
-    }
-
-    private void RefreshAssetBrowser()
-    {
-        if (LoadedProject is null)
-        {
-            AssetBrowserItems.Clear();
-            SelectedAsset = null;
-            NotifyInspectorChanged();
-            AddOutputEntry("Asset browser cleared (no project loaded).");
-            return;
-        }
-
-        var assetsRoot = LoadedProject.AssetsDirectory;
-        var assetFiles = Directory.EnumerateFiles(assetsRoot, "*", SearchOption.AllDirectories)
-            .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        AssetBrowserItems.Clear();
-        foreach (var file in assetFiles)
-        {
-            var relativePath = Path.GetRelativePath(assetsRoot, file);
-            AssetBrowserItems.Add(new AssetBrowserItemViewModel(relativePath, file));
-        }
-
-        SelectedAsset = AssetBrowserItems.FirstOrDefault();
-        NotifyInspectorChanged();
-        AddOutputEntry($"Asset browser refreshed ({AssetBrowserItems.Count} files).");
-    }
-
-    private bool CanClearOutput()
-    {
-        return OutputEntries.Count > 0;
-    }
-
-    private void ClearOutput()
-    {
-        OutputEntries.Clear();
-        AddOutputEntry("Output log cleared.");
-    }
-
     private void AddOutputEntry(string message)
     {
-        var timestamp = DateTime.Now.ToString("HH:mm:ss");
-        OutputEntries.Add($"[{timestamp}] {message}");
-        NotifyOutputCommand();
+        _outputLog.AddOutputEntry(message);
     }
 
     private void NotifyCreateCommand()
@@ -1244,7 +1117,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         NotifyUndoRedoStateChanged();
-        NotifyAssetBrowserCommand();
+        _assetBrowser.NotifyRefreshCommand();
     }
 
     private void NotifyUndoRedoStateChanged()
@@ -1254,71 +1127,29 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         CommandManager.InvalidateRequerySuggested();
     }
 
-    private void NotifyAssetBrowserCommand()
-    {
-        if (RefreshAssetBrowserCommand is RelayCommand refreshRelayCommand)
-        {
-            refreshRelayCommand.RaiseCanExecuteChanged();
-        }
-    }
-
-    private void NotifyOutputCommand()
-    {
-        if (ClearOutputCommand is RelayCommand clearRelayCommand)
-        {
-            clearRelayCommand.RaiseCanExecuteChanged();
-        }
-    }
-
     private void NotifyInspectorChanged()
     {
+        _inspector.NotifyContextChanged();
         OnPropertyChanged(nameof(InspectorTitle));
         OnPropertyChanged(nameof(InspectorType));
         OnPropertyChanged(nameof(InspectorPath));
         OnPropertyChanged(nameof(InspectorSummary));
+        OnPropertyChanged(nameof(InspectorEditableSummary));
         OnPropertyChanged(nameof(CanEditInspectorSummary));
-
-        InspectorEditableSummary = SelectedDocument?.ContentSummary ?? string.Empty;
-        NotifyInspectorEditCommand();
     }
 
-    private bool CanApplyInspectorSummary()
+    private DocumentTabViewModel? ApplyInspectorSummary(DocumentTabViewModel selectedDocument, string summary)
     {
-        if (!CanEditInspectorSummary || SelectedDocument is null)
-        {
-            return false;
-        }
-
-        return !string.Equals(
-            SelectedDocument.ContentSummary,
-            InspectorEditableSummary,
-            StringComparison.Ordinal);
-    }
-
-    private void ApplyInspectorSummary()
-    {
-        if (SelectedDocument is null || !CanEditInspectorSummary)
-        {
-            return;
-        }
-
         var updated = new DocumentTabViewModel(
-            SelectedDocument.Document.WithContentSummary(InspectorEditableSummary).MarkDirty(),
-            SelectedDocument.PanelLayoutJson,
-            SelectedDocument.DocumentId,
-            SelectedDocument.CommandService);
+            selectedDocument.Document.WithContentSummary(summary).MarkDirty(),
+            selectedDocument.PanelLayoutJson,
+            selectedDocument.DocumentId,
+            selectedDocument.CommandService);
 
-        ExecuteDocumentMutation(new ReplaceDocumentTabMutationCommand(this, SelectedDocument, updated));
+        ExecuteDocumentMutation(new ReplaceDocumentTabMutationCommand(this, selectedDocument, updated));
         StatusMessage = $"Updated inspector summary for {updated.Title}";
         AddOutputEntry($"Inspector summary updated for {updated.Title}");
-    }
-
-    private void NotifyInspectorEditCommand()
-    {
-        if (ApplyInspectorSummaryCommand is RelayCommand relayCommand)
-        {
-            relayCommand.RaiseCanExecuteChanged();
-        }
+        return updated;
     }
 
     private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
@@ -1340,66 +1171,3 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 }
 
 internal readonly record struct OpenDocumentData(string Summary, string? PanelLayoutJson);
-
-public sealed class DocumentTabViewModel : INotifyPropertyChanged
-{
-    private readonly EditorCommands.CommandService _commandService;
-    private string? _panelLayoutJson;
-
-    public event PropertyChangedEventHandler? PropertyChanged;
-
-    public DocumentTabViewModel(
-        EditorDocument document,
-        string? panelLayoutJson = null,
-        Guid? documentId = null,
-        EditorCommands.CommandService? commandService = null)
-    {
-        Document = document;
-        DocumentId = documentId ?? Guid.NewGuid();
-        _commandService = commandService ?? new EditorCommands.CommandService(new EditorCommands.CommandHistory(), DocumentId);
-        _panelLayoutJson = panelLayoutJson;
-    }
-
-    public EditorDocument Document { get; }
-    public Guid DocumentId { get; }
-    public EditorCommands.CommandService CommandService => _commandService;
-    public string Title => Document.IsDirty ? $"{Document.Title}*" : Document.Title;
-    public string TypeLabel => Document.DocumentType switch
-    {
-        EditorDocumentType.ProjectOverview => "Project",
-        EditorDocumentType.Panel2D => "Panel 2D",
-        EditorDocumentType.Cabinet3D => "Cabinet 3D",
-        EditorDocumentType.Machine => "Machine",
-        _ => "Document Type"
-    };
-    public string FilePath => Document.FilePath;
-    public string ContentSummary => Document.ContentSummary;
-    public bool IsDirty => Document.IsDirty;
-
-    public string? PanelLayoutJson
-    {
-        get => _panelLayoutJson;
-        set
-        {
-            if (string.Equals(_panelLayoutJson, value, StringComparison.Ordinal))
-            {
-                return;
-            }
-
-            _panelLayoutJson = value;
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PanelLayoutJson)));
-        }
-    }
-}
-
-public sealed class AssetBrowserItemViewModel
-{
-    public AssetBrowserItemViewModel(string displayPath, string fullPath)
-    {
-        DisplayPath = displayPath;
-        FullPath = fullPath;
-    }
-
-    public string DisplayPath { get; }
-    public string FullPath { get; }
-}
