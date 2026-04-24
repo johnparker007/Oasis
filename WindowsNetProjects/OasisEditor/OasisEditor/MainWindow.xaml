@@ -4,8 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:local="clr-namespace:OasisEditor"
         xmlns:views="clr-namespace:OasisEditor.Views"
-        xmlns:avalonDock="clr-namespace:AvalonDock;assembly=Dirkster.AvalonDock"
-        xmlns:avalonLayout="clr-namespace:AvalonDock.Layout;assembly=Dirkster.AvalonDock"
+        xmlns:xcad="clr-namespace:Xceed.Wpf.AvalonDock;assembly=Xceed.Wpf.AvalonDock"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="Oasis Editor"
@@ -94,24 +93,24 @@
             </ToolBar>
         </ToolBarTray>
 
-        <avalonDock:DockingManager Grid.Row="2">
-            <avalonLayout:LayoutRoot>
-                <avalonLayout:LayoutPanel Orientation="Horizontal">
-                    <avalonLayout:LayoutDocumentPaneGroup>
-                        <avalonLayout:LayoutDocumentPane>
-                            <avalonLayout:LayoutDocument Title="Document"
+        <xcad:DockingManager Grid.Row="2">
+            <xcad:LayoutRoot>
+                <xcad:LayoutPanel Orientation="Horizontal">
+                    <xcad:LayoutDocumentPaneGroup>
+                        <xcad:LayoutDocumentPane>
+                            <xcad:LayoutDocument Title="Document"
                                                  CanClose="False"
                                                  CanFloat="False">
                                 <Border Padding="10"
                                         Background="{DynamicResource PanelBackgroundBrush}">
                                     <views:PanelCanvasView />
                                 </Border>
-                            </avalonLayout:LayoutDocument>
-                        </avalonLayout:LayoutDocumentPane>
-                    </avalonLayout:LayoutDocumentPaneGroup>
+                            </xcad:LayoutDocument>
+                        </xcad:LayoutDocumentPane>
+                    </xcad:LayoutDocumentPaneGroup>
 
-                    <avalonLayout:LayoutAnchorablePane DockWidth="300">
-                        <avalonLayout:LayoutAnchorable Title="Inspector"
+                    <xcad:LayoutAnchorablePane DockWidth="300">
+                        <xcad:LayoutAnchorable Title="Inspector"
                                                CanAutoHide="False"
                                                CanClose="False"
                                                CanHide="False"
@@ -120,11 +119,11 @@
                                     Background="{DynamicResource InspectorBackgroundBrush}">
                                 <views:InspectorView />
                             </Border>
-                        </avalonLayout:LayoutAnchorable>
-                    </avalonLayout:LayoutAnchorablePane>
-                </avalonLayout:LayoutPanel>
-            </avalonLayout:LayoutRoot>
-        </avalonDock:DockingManager>
+                        </xcad:LayoutAnchorable>
+                    </xcad:LayoutAnchorablePane>
+                </xcad:LayoutPanel>
+            </xcad:LayoutRoot>
+        </xcad:DockingManager>
 
         <StatusBar Grid.Row="3"
                    Margin="0,12,0,0"
