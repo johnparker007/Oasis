@@ -1,0 +1,203 @@
+<UserControl x:Class="OasisEditor.Views.PanelCanvasView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:OasisEditor"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignHeight="600"
+             d:DesignWidth="700">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <DockPanel Grid.Row="0"
+                   Margin="0,0,0,8"
+                   LastChildFill="False">
+            <TextBlock DockPanel.Dock="Left"
+                       VerticalAlignment="Center"
+                       FontWeight="SemiBold"
+                       Text="Document Host" />
+            <StackPanel DockPanel.Dock="Right"
+                        Orientation="Horizontal">
+                <Button Padding="10,4"
+                        Margin="0,0,8,0"
+                        Command="{Binding OpenUntitledDocumentCommand}"
+                        Content="New Tab" />
+                <Button Padding="10,4"
+                        Margin="0,0,8,0"
+                        Command="{Binding OpenPanel2DStubCommand}"
+                        Content="New Panel2D" />
+                <Button Padding="10,4"
+                        Margin="0,0,8,0"
+                        Command="{Binding OpenCabinet3DStubCommand}"
+                        Content="New Cabinet3D" />
+                <Button Padding="10,4"
+                        Margin="0,0,8,0"
+                        Command="{Binding OpenMachineStubCommand}"
+                        Content="New Machine" />
+                <Button Padding="10,4"
+                        Margin="0,0,8,0"
+                        Command="{Binding OpenDocumentCommand}"
+                        Content="Open..." />
+                <Button Padding="10,4"
+                        Margin="0,0,8,0"
+                        Command="{Binding SaveSelectedDocumentCommand}"
+                        Content="Save" />
+                <ToggleButton x:Name="RectangleToolToggle"
+                              Padding="10,4"
+                              Margin="0,0,8,0"
+                              Content="Rectangle Tool" />
+                <ToggleButton x:Name="ImageToolToggle"
+                              Padding="10,4"
+                              Margin="0,0,8,0"
+                              Content="Image Tool" />
+                <Button Padding="10,4"
+                        Command="{Binding CloseSelectedDocumentCommand}"
+                        Content="Close Tab" />
+            </StackPanel>
+        </DockPanel>
+
+        <TabControl Grid.Row="1"
+                    ItemsSource="{Binding OpenDocuments}"
+                    SelectedItem="{Binding SelectedDocument, Mode=TwoWay}">
+            <TabControl.ItemTemplate>
+                <DataTemplate>
+                    <TextBlock Text="{Binding Title}" />
+                </DataTemplate>
+            </TabControl.ItemTemplate>
+            <TabControl.ContentTemplate>
+                <DataTemplate>
+                    <Grid Margin="4">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0"
+                                   FontWeight="SemiBold"
+                                   Text="{Binding TypeLabel}" />
+
+                        <TextBlock Grid.Row="1"
+                                   Margin="0,6,0,0"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                   Text="{Binding FilePath}" />
+
+                        <Grid Grid.Row="2"
+                              Margin="0,10,0,0">
+                            <Border x:Name="PanelCanvasContainer"
+                                    Padding="12"
+                                    Background="{DynamicResource EditorBackgroundBrush}"
+                                    BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="4"
+                                    Visibility="Collapsed">
+                                <Border MinHeight="280"
+                                        ClipToBounds="True"
+                                        BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                        BorderThickness="1"
+                                        Background="{DynamicResource PanelBackgroundBrush}">
+                                    <Canvas Width="1400"
+                                            Height="900"
+                                            Cursor="SizeAll"
+                                            Focusable="True"
+                                            local:CanvasPanBehavior.IsEnabled="True"
+                                            local:CanvasPanBehavior.IsRectangleToolActive="{Binding IsChecked, ElementName=RectangleToolToggle}"
+                                            local:CanvasPanBehavior.IsImageToolActive="{Binding IsChecked, ElementName=ImageToolToggle}"
+                                            local:CanvasPanBehavior.PanelLayoutJson="{Binding PanelLayoutJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                            Background="{DynamicResource PanelBackgroundBrush}">
+                                        <Canvas.Resources>
+                                            <Style TargetType="Rectangle">
+                                                <Setter Property="Stroke"
+                                                        Value="{DynamicResource BorderSubtleBrush}" />
+                                                <Setter Property="StrokeThickness"
+                                                        Value="1.5" />
+                                                <Setter Property="Fill"
+                                                        Value="{DynamicResource ToolBarBackgroundBrush}" />
+                                                <Style.Triggers>
+                                                    <Trigger Property="local:CanvasPanBehavior.IsSelected"
+                                                             Value="True">
+                                                        <Setter Property="Stroke"
+                                                                Value="{DynamicResource SelectionBrush}" />
+                                                        <Setter Property="StrokeThickness"
+                                                                Value="2.5" />
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                            <Style TargetType="Image">
+                                                <Setter Property="Opacity"
+                                                        Value="0.88" />
+                                                <Style.Triggers>
+                                                    <Trigger Property="local:CanvasPanBehavior.IsSelected"
+                                                             Value="True">
+                                                        <Setter Property="Opacity"
+                                                                Value="1" />
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Canvas.Resources>
+                                        <Rectangle Width="540"
+                                                   Height="300"
+                                                   local:CanvasPanBehavior.IsSelectable="True"
+                                                   Canvas.Left="120"
+                                                   Canvas.Top="90" />
+                                        <Rectangle Width="220"
+                                                   Height="160"
+                                                   local:CanvasPanBehavior.IsSelectable="True"
+                                                   Canvas.Left="760"
+                                                   Canvas.Top="240" />
+                                        <TextBlock Canvas.Left="136"
+                                                   Canvas.Top="106"
+                                                   FontWeight="SemiBold"
+                                                   Text="Panel Canvas (MVP)"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}" />
+                                        <TextBlock Canvas.Left="136"
+                                                   Canvas.Top="132"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                                   Text="Drag with middle mouse to pan. Use mouse wheel to zoom." />
+                                        <TextBlock Canvas.Left="136"
+                                                   Canvas.Top="156"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                                   Text="Left-click a shape to select it." />
+                                        <TextBlock Canvas.Left="136"
+                                                   Canvas.Top="180"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                                   Text="Enable Rectangle Tool, then left-click empty canvas to place a rectangle." />
+                                        <TextBlock Canvas.Left="136"
+                                                   Canvas.Top="204"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                                   Text="Disable Rectangle Tool, enable Image Tool, then left-click empty canvas to place an image." />
+                                    </Canvas>
+                                </Border>
+                            </Border>
+
+                            <Border x:Name="DefaultSummaryContainer"
+                                    Padding="10"
+                                    CornerRadius="4"
+                                    Background="{DynamicResource SelectionBrush}"
+                                    BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                    BorderThickness="1">
+                                <TextBlock TextWrapping="Wrap"
+                                           Text="{Binding ContentSummary}" />
+                            </Border>
+                        </Grid>
+                    </Grid>
+                    <DataTemplate.Triggers>
+                        <DataTrigger Binding="{Binding Document.DocumentType}"
+                                     Value="{x:Static local:EditorDocumentType.Panel2D}">
+                            <Setter TargetName="PanelCanvasContainer"
+                                    Property="Visibility"
+                                    Value="Visible" />
+                            <Setter TargetName="DefaultSummaryContainer"
+                                    Property="Visibility"
+                                    Value="Collapsed" />
+                        </DataTrigger>
+                    </DataTemplate.Triggers>
+                </DataTemplate>
+            </TabControl.ContentTemplate>
+        </TabControl>
+    </Grid>
+</UserControl>
