@@ -12,16 +12,12 @@ namespace OasisEditor;
 
 public sealed class MainWindowViewModel : INotifyPropertyChanged
 {
-    private readonly ProjectScaffolder _projectScaffolder = new();
     private readonly RecentProjectsStore _recentProjectsStore = new();
     private readonly IApplicationThemeService _applicationThemeService;
     private readonly EditorPreferencesStore _preferencesStore;
     private readonly Window _ownerWindow;
-    private string _projectName = string.Empty;
-    private string _projectLocation = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
     private string _projectFilePath = string.Empty;
     private string _statusMessage = "Create a new project to get started.";
-    private string? _selectedRecentProject;
     private EditorProject? _loadedProject;
     private DocumentTabViewModel? _selectedDocument;
     private ThemePreference _selectedThemePreference;
@@ -49,9 +45,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             throw new InvalidOperationException("Editor shell requires an active loaded project.");
         }
 
-        CreateProjectCommand = new RelayCommand(CreateProject, CanCreateProject);
-        OpenProjectCommand = new RelayCommand(OpenProject, CanOpenProject);
-        OpenRecentProjectCommand = new RelayCommand(OpenSelectedRecentProject, CanOpenSelectedRecentProject);
         OpenUntitledDocumentCommand = new RelayCommand(OpenUntitledDocument, CanOpenUntitledDocument);
         OpenPanel2DStubCommand = new RelayCommand(OpenPanel2DStubDocument, CanOpenUntitledDocument);
         OpenCabinet3DStubCommand = new RelayCommand(OpenCabinet3DStubDocument, CanOpenUntitledDocument);
@@ -103,9 +96,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         LoadStartupProject(startupProjectFilePath.Trim());
     }
 
-    public ICommand CreateProjectCommand { get; }
-    public ICommand OpenProjectCommand { get; }
-    public ICommand OpenRecentProjectCommand { get; }
     public ICommand OpenUntitledDocumentCommand { get; }
     public ICommand OpenPanel2DStubCommand { get; }
     public ICommand OpenCabinet3DStubCommand { get; }
@@ -146,30 +136,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    public string ProjectName
-    {
-        get => _projectName;
-        set
-        {
-            if (SetProperty(ref _projectName, value))
-            {
-                NotifyCreateCommand();
-            }
-        }
-    }
-
-    public string ProjectLocation
-    {
-        get => _projectLocation;
-        set
-        {
-            if (SetProperty(ref _projectLocation, value))
-            {
-                NotifyCreateCommand();
-            }
-        }
-    }
-
     public string StatusMessage
     {
         get => _statusMessage;
@@ -197,22 +163,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         get => _projectFilePath;
         set
         {
-            if (SetProperty(ref _projectFilePath, value))
-            {
-                NotifyOpenCommand();
-            }
-        }
-    }
-
-    public string? SelectedRecentProject
-    {
-        get => _selectedRecentProject;
-        set
-        {
-            if (SetProperty(ref _selectedRecentProject, value))
-            {
-                NotifyOpenRecentCommand();
-            }
+            SetProperty(ref _projectFilePath, value);
         }
     }
 
@@ -271,54 +222,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             var description = SelectedDocument?.CommandService.RedoDescription;
             return string.IsNullOrWhiteSpace(description) ? "_Redo" : $"_Redo {description}";
         }
-    }
-
-    private void CreateProject()
-    {
-        try
-        {
-            var projectPath = _projectScaffolder.CreateProject(ProjectName, ProjectLocation);
-            var projectFilePath = Path.Combine(projectPath, $"{ProjectName.Trim()}.oasisproj");
-
-            OpenProjectFile(projectFilePath, $"Project created and loaded: {projectPath}");
-            AddOutputEntry($"Created project at {projectPath}");
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = ex.Message;
-            AddOutputEntry($"Create project failed: {ex.Message}");
-            MessageBox.Show(ex.Message, "Create Project Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
-    }
-
-    private bool CanCreateProject()
-    {
-        return !string.IsNullOrWhiteSpace(ProjectName) && !string.IsNullOrWhiteSpace(ProjectLocation);
-    }
-
-    private void OpenProject()
-    {
-        OpenProjectFile(ProjectFilePath, null);
-    }
-
-    private bool CanOpenProject()
-    {
-        return !string.IsNullOrWhiteSpace(ProjectFilePath);
-    }
-
-    private void OpenSelectedRecentProject()
-    {
-        if (string.IsNullOrWhiteSpace(SelectedRecentProject))
-        {
-            return;
-        }
-
-        OpenProjectFile(SelectedRecentProject, null);
-    }
-
-    private bool CanOpenSelectedRecentProject()
-    {
-        return !string.IsNullOrWhiteSpace(SelectedRecentProject);
     }
 
     private bool CanOpenUntitledDocument()
@@ -566,29 +469,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         Application.Current.Shutdown();
     }
 
-    private void OpenProjectFile(string projectFilePath, string? successMessage)
-    {
-        try
-        {
-            var projectFile = projectFilePath.Trim();
-            var project = LoadProjectFromFile(projectFile);
-            LoadedProject = project;
-
-            ProjectFilePath = projectFile;
-            UpdateRecentProjects(projectFile);
-            _documentWorkspace.EnsureProjectOverviewDocument();
-            _assetBrowser.RefreshAssetBrowser();
-            StatusMessage = successMessage ?? $"Project opened: {project.Name} ({projectFile})";
-            AddOutputEntry($"Loaded project '{project.Name}' from {projectFile}");
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = ex.Message;
-            AddOutputEntry($"Open project failed: {ex.Message}");
-            MessageBox.Show(ex.Message, "Open Project Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
-    }
-
     private void LoadStartupProject(string startupProjectFilePath)
     {
         var project = LoadProjectFromFile(startupProjectFilePath);
@@ -710,30 +590,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private void AddOutputEntry(string message)
     {
         _outputLog.AddOutputEntry(message);
-    }
-
-    private void NotifyCreateCommand()
-    {
-        if (CreateProjectCommand is RelayCommand relayCommand)
-        {
-            relayCommand.RaiseCanExecuteChanged();
-        }
-    }
-
-    private void NotifyOpenCommand()
-    {
-        if (OpenProjectCommand is RelayCommand relayCommand)
-        {
-            relayCommand.RaiseCanExecuteChanged();
-        }
-    }
-
-    private void NotifyOpenRecentCommand()
-    {
-        if (OpenRecentProjectCommand is RelayCommand relayCommand)
-        {
-            relayCommand.RaiseCanExecuteChanged();
-        }
     }
 
     private void NotifyDocumentCommands()
