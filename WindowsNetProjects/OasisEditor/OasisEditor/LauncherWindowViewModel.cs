@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Input;
 using Microsoft.Win32;
@@ -132,12 +133,18 @@ public sealed class LauncherWindowViewModel : INotifyPropertyChanged
         if (dialog.ShowDialog() == true)
         {
             ProjectFilePath = dialog.FileName;
+            StatusMessage = $"Selected project file: {ProjectFilePath}";
+        }
+        else
+        {
+            ProjectFilePath = string.Empty;
+            StatusMessage = "Project selection canceled. You are still in the Launcher.";
         }
     }
 
     private void OpenProject()
     {
-        OpenEditor(ProjectFilePath);
+        OpenEditor(ProjectFilePath, requireLoadedProject: true);
     }
 
     private bool CanOpenProject()
@@ -152,7 +159,7 @@ public sealed class LauncherWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        OpenEditor(SelectedRecentProject);
+        OpenEditor(SelectedRecentProject, requireLoadedProject: true);
     }
 
     private bool CanOpenSelectedRecentProject()
@@ -160,22 +167,20 @@ public sealed class LauncherWindowViewModel : INotifyPropertyChanged
         return !string.IsNullOrWhiteSpace(SelectedRecentProject);
     }
 
-    private void OpenEditor(string projectFilePath)
+    private void OpenEditor(string projectFilePath, bool requireLoadedProject = false)
     {
         try
         {
             var trimmed = projectFilePath.Trim();
-            if (!File.Exists(trimmed))
-            {
-                throw new FileNotFoundException("Project file was not found.", trimmed);
-            }
-
-            if (!string.Equals(Path.GetExtension(trimmed), ".oasisproj", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException("Project file must use the .oasisproj extension.");
-            }
+            ValidateProjectFile(trimmed);
 
             var mainWindow = new MainWindow(_applicationThemeService, _preferencesStore, trimmed);
+
+            if (requireLoadedProject)
+            {
+                EnsureProjectLoaded(mainWindow);
+            }
+
             mainWindow.Show();
             _launcherWindow.Close();
         }
@@ -183,6 +188,53 @@ public sealed class LauncherWindowViewModel : INotifyPropertyChanged
         {
             StatusMessage = ex.Message;
             MessageBox.Show(ex.Message, "Open Project Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private static void EnsureProjectLoaded(Window mainWindow)
+    {
+        if (mainWindow.DataContext is not MainWindowViewModel viewModel)
+        {
+            mainWindow.Close();
+            throw new InvalidOperationException("Editor failed to initialize project context.");
+        }
+
+        if (viewModel.HasLoadedProject)
+        {
+            return;
+        }
+
+        var message = string.IsNullOrWhiteSpace(viewModel.StatusMessage)
+            ? "Project could not be loaded."
+            : viewModel.StatusMessage;
+        mainWindow.Close();
+        throw new InvalidOperationException(message);
+    }
+
+    private static void ValidateProjectFile(string projectFilePath)
+    {
+        if (!File.Exists(projectFilePath))
+        {
+            throw new FileNotFoundException("Project file was not found.", projectFilePath);
+        }
+
+        if (!string.Equals(Path.GetExtension(projectFilePath), ".oasisproj", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Project file must use the .oasisproj extension.");
+        }
+
+        using var projectStream = File.OpenRead(projectFilePath);
+        using var projectDocument = JsonDocument.Parse(projectStream);
+
+        if (!projectDocument.RootElement.TryGetProperty("name", out var projectNameElement))
+        {
+            throw new InvalidOperationException("Project metadata is missing required 'name' field.");
+        }
+
+        var projectName = projectNameElement.GetString();
+        if (string.IsNullOrWhiteSpace(projectName))
+        {
+            throw new InvalidOperationException("Project metadata contains an empty 'name' field.");
         }
     }
 
