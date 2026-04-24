@@ -1,47 +1,101 @@
 # TASKS.md
 
-## Current Focus — Startup Flow Refactor
+## Current Focus — Editor Stability and Document Context
 
-### Launcher Window
+### Undo/Redo Robustness
+- [ ] Audit current command history ownership
+- [ ] Ensure each open document has its own command history
+- [ ] Ensure commands are bound to the document they were created for
+- [ ] Ensure undo only affects the active document
+- [ ] Ensure redo only affects the active document
+- [ ] Clear redo stack only for the affected document when a new command is executed
+- [ ] Prevent commands from applying to a different active document after tab switching
+- [ ] Add document identity checks before command execute/undo/redo
+- [ ] Ensure closing a document clears or safely discards its command history
+- [ ] Ensure switching tabs updates undo/redo menu enabled state
+- [ ] Ensure undo/redo menu labels reflect active document command names where possible
+
+### Undo/Redo Verification
+- [ ] Verify undo/redo works with one Panel2D document
+- [ ] Verify undo/redo works independently across two Panel2D documents
+- [ ] Verify undo in one tab does not affect another tab
+- [ ] Verify redo in one tab does not affect another tab
+- [ ] Verify adding a new command in one document does not clear redo history in another document
+- [ ] Verify closing a document prevents its commands from being reused accidentally
+- [ ] Verify Ctrl+Z and Ctrl+Y route through the active document only
+
+### Active Document Context
+- [ ] Define active document context service if not already present
+- [ ] Ensure selection state is document-specific
+- [ ] Ensure inspector displays selection from active document only
+- [ ] Ensure asset/editor commands target active document explicitly
+- [ ] Ensure tab switching refreshes hierarchy, inspector, and command state
+- [ ] Add safe empty states for no active document
+
+### Hierarchy Panel
+- [ ] Rename or repurpose existing panel area as Hierarchy if needed
+- [ ] Create document-aware hierarchy provider interface
+- [ ] Add Panel2D hierarchy provider
+- [ ] Show Panel2D objects grouped by type:
+  - [ ] Images
+  - [ ] Rectangles
+  - [ ] Anchors
+  - [ ] Zones
+- [ ] Update hierarchy when active document changes
+- [ ] Update hierarchy when document content changes
+- [ ] Selecting an item in hierarchy selects the object on the canvas
+- [ ] Selecting an object on the canvas selects the item in hierarchy
+- [ ] Support rename from hierarchy if object naming exists
+- [ ] Support delete selected hierarchy item through command system
+- [ ] Add empty hierarchy state for unsupported document types
+
+### Panel Editor Object Model Cleanup
+- [ ] Ensure every editable panel object has a stable object ID
+- [ ] Ensure every editable panel object has a display name
+- [ ] Ensure object type is explicit and queryable
+- [ ] Ensure image and rectangle objects share common selectable-object contract
+- [ ] Ensure hierarchy and inspector use the same selected object identity
+- [ ] Ensure save/load preserves object IDs and names
+
+## Next Up
+- [ ] Improve panel editor usability:
+  - [ ] snapping
+  - [ ] layer ordering
+  - [ ] object locking
+  - [ ] object visibility
+  - [ ] duplicate/copy/paste
+- [ ] Begin cabinet import MVP planning
+- [ ] Begin machine assembly MVP planning
+
+---
+
+## Completed
+
+### Startup Flow Refactor
 - [x] Create dedicated Launcher window class and view model
 - [x] Make Launcher window the application startup window
 - [x] Move New Project UI into Launcher window
 - [x] Move Open Project UI into Launcher window
 - [x] Move Recent Projects list UI into Launcher window
-
-### Project Opening Flow
 - [x] Refactor project creation flow so Launcher opens editor only after success
 - [x] Refactor project open flow so Launcher opens editor only after success
 - [x] Refactor recent project selection flow so Launcher opens editor only after success
 - [x] Ensure cancel/failure keeps user in Launcher window
 - [x] Ensure failed project load shows error without opening editor shell
-
-### Editor Shell Separation
 - [x] Remove startup project-selection UI from editor shell
 - [x] Ensure editor shell requires a valid loaded project at construction/open time
 - [x] Ensure editor shell initializes correctly from an already-loaded project
 - [x] Prevent editor shell from opening when no active project exists
-
-### Close Project Flow
 - [x] Add File > Close Project action
 - [x] Close editor shell and return to Launcher window
 - [x] Ensure closing a project clears active document/session state
 - [x] Ensure Launcher refreshes recent projects after returning from editor shell
-
-### Verification
-- [ ] Verify New Project opens editor correctly
-- [ ] Verify Open Project opens editor correctly
-- [ ] Verify Recent Project opens editor correctly
-- [ ] Verify cancel from project selection keeps Launcher open
-- [ ] Verify Close Project returns user to Launcher
-- [ ] Verify app startup no longer exposes editor UI before project load
-
-## Next Up
-- [ ] Refine command system integration into editors
-- [ ] Begin improving panel editor usability (selection, snapping, layering)
-- [ ] Begin cabinet import MVP planning
-
-## Completed
+- [x] Verify New Project opens editor correctly
+- [x] Verify Open Project opens editor correctly
+- [x] Verify Recent Project opens editor correctly
+- [x] Verify cancel from project selection keeps Launcher open
+- [x] Verify Close Project returns user to Launcher
+- [x] Verify app startup no longer exposes editor UI before project load
 
 ### Phase 1 — Project System
 - [x] Create solution structure

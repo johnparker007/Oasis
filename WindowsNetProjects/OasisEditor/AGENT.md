@@ -26,6 +26,15 @@ The solution is structured as:
 - Prefer small, testable classes
 - Prefer simple implementations over over-engineering
 
+## Document Context Rules
+- Each open document owns its own command history
+- Undo/redo must operate only on the active document
+- Commands must be bound to the document they were created for
+- Commands must never apply to whichever document happens to be active later
+- Selection state is document-specific
+- Inspector and hierarchy panels must reflect the active document only
+- Opening and closing document tabs are not part of undo/redo unless explicitly requested later
+
 ## Project Model
 The editor is project-based:
 - Users must open/create a project before editing
