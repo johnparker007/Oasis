@@ -1,7 +1,10 @@
 <UserControl x:Class="OasisEditor.Views.EditorShellView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:avalonDock="clr-namespace:AvalonDock;assembly=AvalonDock"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:layout="clr-namespace:AvalonDock.Layout;assembly=AvalonDock"
+             xmlns:themes="clr-namespace:AvalonDock.Themes;assembly=AvalonDock.Themes.VS2013"
              xmlns:views="clr-namespace:OasisEditor.Views"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
@@ -26,115 +29,100 @@
                 <TextBlock Margin="0,4,0,0"
                            Foreground="{DynamicResource TextSecondaryBrush}"
                            Text="Slot machine content authoring shell" />
+                <TextBlock Margin="0,8,0,0"
+                           Foreground="{DynamicResource TextSecondaryBrush}"
+                           Text="{Binding StatusMessage}" />
+                <TextBlock Margin="0,4,0,0"
+                           Foreground="{DynamicResource TextSecondaryBrush}"
+                           Text="{Binding LoadedProject.ProjectFilePath, TargetNullValue=Open or create a project to load the editor shell.}" />
             </StackPanel>
         </Border>
 
-        <Grid Grid.Row="1">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
+        <avalonDock:DockingManager Grid.Row="1"
+                                   Background="{DynamicResource EditorBackgroundBrush}">
+            <avalonDock:DockingManager.Theme>
+                <themes:Vs2013DarkTheme />
+            </avalonDock:DockingManager.Theme>
 
-            <GroupBox Grid.Column="0"
-                      Header="Editor Shell"
-                      Padding="10">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
+            <layout:LayoutRoot>
+                <layout:LayoutPanel Orientation="Vertical">
+                    <layout:LayoutPanel Orientation="Horizontal">
+                        <layout:LayoutAnchorablePane DockWidth="240">
+                            <layout:LayoutAnchorable Title="Assets"
+                                                     ContentId="Assets"
+                                                     CanClose="False">
+                                <Border Padding="10"
+                                        Background="{DynamicResource InspectorBackgroundBrush}">
+                                    <views:AssetBrowserView />
+                                </Border>
+                            </layout:LayoutAnchorable>
+                        </layout:LayoutAnchorablePane>
 
-                    <Border Grid.Row="0"
-                            Padding="10"
-                            Margin="0,0,0,10"
-                            BorderThickness="1"
-                            BorderBrush="{DynamicResource BorderSubtleBrush}"
-                            CornerRadius="4">
-                        <TextBlock TextWrapping="Wrap"
-                                   Foreground="{DynamicResource TextSecondaryBrush}"
-                                   Text="{Binding StatusMessage}" />
-                    </Border>
+                        <layout:LayoutDocumentPane>
+                            <layout:LayoutDocument Title="Document Workspace"
+                                                   ContentId="DocumentWorkspace"
+                                                   CanClose="False">
+                                <Border Padding="10"
+                                        Background="{DynamicResource PanelBackgroundBrush}">
+                                    <views:PanelCanvasView />
+                                </Border>
+                            </layout:LayoutDocument>
+                        </layout:LayoutDocumentPane>
 
-                    <Border Grid.Row="1"
-                            Padding="10"
-                            BorderThickness="1"
-                            BorderBrush="{DynamicResource BorderSubtleBrush}"
-                            CornerRadius="4">
-                        <StackPanel>
-                            <TextBlock FontWeight="SemiBold"
-                                       Text="Loaded project" />
-                            <TextBlock Margin="0,4,0,0"
-                                       Text="{Binding LoadedProject.Name, TargetNullValue=No project loaded.}" />
-                            <TextBlock Margin="0,2,0,0"
-                                       Foreground="{DynamicResource TextSecondaryBrush}"
-                                       Text="{Binding LoadedProject.ProjectFilePath, TargetNullValue=Open or create a project to load the editor shell.}" />
-                        </StackPanel>
-                    </Border>
+                        <layout:LayoutAnchorablePane DockWidth="280">
+                            <layout:LayoutAnchorable Title="Inspector"
+                                                     ContentId="Inspector"
+                                                     CanClose="False">
+                                <Border Padding="10"
+                                        Background="{DynamicResource InspectorBackgroundBrush}">
+                                    <views:InspectorView />
+                                </Border>
+                            </layout:LayoutAnchorable>
 
-                    <Grid Grid.Row="2"
-                          Margin="0,10,0,0">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="36" />
-                            <RowDefinition Height="*" />
-                            <RowDefinition Height="120" />
-                        </Grid.RowDefinitions>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="220" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="260" />
-                        </Grid.ColumnDefinitions>
+                            <layout:LayoutAnchorable Title="Properties Placeholder"
+                                                     ContentId="PropertiesPlaceholder">
+                                <Border Padding="12"
+                                        Background="{DynamicResource InspectorBackgroundBrush}">
+                                    <StackPanel>
+                                        <TextBlock FontWeight="SemiBold"
+                                                   Text="Properties" />
+                                        <TextBlock Margin="0,8,0,0"
+                                                   TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                                   Text="Placeholder dock panel for future property grid content." />
+                                    </StackPanel>
+                                </Border>
+                            </layout:LayoutAnchorable>
+                        </layout:LayoutAnchorablePane>
+                    </layout:LayoutPanel>
 
-                        <Border Grid.Row="0"
-                                Grid.ColumnSpan="3"
-                                Padding="10,6"
-                                Background="{DynamicResource ToolBarBackgroundBrush}"
-                                BorderBrush="{DynamicResource BorderSubtleBrush}"
-                                BorderThickness="1"
-                                CornerRadius="4,4,0,0">
-                            <TextBlock VerticalAlignment="Center"
-                                       FontWeight="SemiBold"
-                                       Text="Dock Layout (Phase 2 MVP)" />
-                        </Border>
+                    <layout:LayoutAnchorablePane DockHeight="160">
+                        <layout:LayoutAnchorable Title="Output"
+                                                 ContentId="Output"
+                                                 CanClose="False">
+                            <Border Padding="10"
+                                    Background="{DynamicResource ToolBarBackgroundBrush}">
+                                <views:OutputLogView />
+                            </Border>
+                        </layout:LayoutAnchorable>
 
-                        <Border Grid.Row="1"
-                                Grid.Column="0"
-                                Padding="10"
-                                Background="{DynamicResource InspectorBackgroundBrush}"
-                                BorderBrush="{DynamicResource BorderSubtleBrush}"
-                                BorderThickness="1,0,0,1">
-                            <views:AssetBrowserView />
-                        </Border>
-
-                        <Border Grid.Row="1"
-                                Grid.Column="1"
-                                Padding="10"
-                                Background="{DynamicResource PanelBackgroundBrush}"
-                                BorderBrush="{DynamicResource BorderSubtleBrush}"
-                                BorderThickness="1,0,1,1">
-                            <views:PanelCanvasView />
-                        </Border>
-
-                        <Border Grid.Row="1"
-                                Grid.Column="2"
-                                Padding="10"
-                                Background="{DynamicResource InspectorBackgroundBrush}"
-                                BorderBrush="{DynamicResource BorderSubtleBrush}"
-                                BorderThickness="0,0,1,1">
-                            <views:InspectorView />
-                        </Border>
-
-                        <Border Grid.Row="2"
-                                Grid.ColumnSpan="3"
-                                Padding="10"
-                                Background="{DynamicResource ToolBarBackgroundBrush}"
-                                BorderBrush="{DynamicResource BorderSubtleBrush}"
-                                BorderThickness="1,0,1,1"
-                                CornerRadius="0,0,4,4">
-                            <views:OutputLogView />
-                        </Border>
-                    </Grid>
-                </Grid>
-            </GroupBox>
-        </Grid>
+                        <layout:LayoutAnchorable Title="Tasks Placeholder"
+                                                 ContentId="TasksPlaceholder">
+                            <Border Padding="12"
+                                    Background="{DynamicResource ToolBarBackgroundBrush}">
+                                <StackPanel>
+                                    <TextBlock FontWeight="SemiBold"
+                                               Text="Tasks" />
+                                    <TextBlock Margin="0,8,0,0"
+                                               TextWrapping="Wrap"
+                                               Foreground="{DynamicResource TextSecondaryBrush}"
+                                               Text="Placeholder dock panel for validation, build, or import tasks." />
+                                </StackPanel>
+                            </Border>
+                        </layout:LayoutAnchorable>
+                    </layout:LayoutAnchorablePane>
+                </layout:LayoutPanel>
+            </layout:LayoutRoot>
+        </avalonDock:DockingManager>
     </Grid>
 </UserControl>
