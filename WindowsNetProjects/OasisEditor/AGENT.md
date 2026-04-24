@@ -47,51 +47,54 @@ The editor is project-based:
 - Closing a project should return the user to the Launcher window
 - The editor shell must assume a valid loaded project at all times
 
+## Docking Rules
+- WPF DockPanel is only a layout container and must not be used as the editor docking system
+- Use a dedicated docking framework (AvalonDock) for dockable tabs and tool windows
+- Docking framework usage must be isolated to Editor.Shell.Wpf
+- Feature modules must not depend directly on AvalonDock types
+- Distinguish between:
+  - Documents (Panel2D, Cabinet3D, Machine)
+  - Tool windows (Hierarchy, Inspector, Assets, Output)
+- The editor must remain functional even if the docking framework is replaced later
+
 ## Theme Rules
 - Do not hard-code UI colors in views or code-behind
 - Use semantic theme resources for editor UI colors
 - New UI must work in System, Light, and Dark modes
 - Prefer app-defined semantic brushes over direct Fluent resource usage in feature views
 
-
 ## WPF Maintainability Rules
 - Large XAML files should not be preserved solely to give Codex more context
-- `MainWindow.xaml` should act primarily as the application shell
-- Use UserControls for cohesive UI regions such as asset browser, inspector, output/log, document tabs, and canvas host views
-- Use ResourceDictionaries for shared styles, brushes, templates, and repeated UI resources
-- Do not create UserControls only to reduce line count; extract only when the section has a clear responsibility
-- Preserve existing bindings, commands, DataContext assumptions, and visual appearance during view extraction
-- Prefer one view extraction per task
+- MainWindow.xaml should act primarily as the application shell
+- Use UserControls for cohesive UI regions
+- Use ResourceDictionaries for shared styles and brushes
+- Do not extract views purely to reduce line count
 
 ## ViewModel Maintainability Rules
-- Avoid allowing `MainWindowViewModel` to become the owner of every editor concern
-- Move cohesive child concepts into separate ViewModels when they have distinct state, commands, or responsibilities
-- Keep public behavior and binding-facing property names stable during refactors unless a task explicitly allows a rename
-- Prefer composition over broad rewrites
+- Avoid overloading MainWindowViewModel
+- Extract cohesive logic into dedicated ViewModels
+- Prefer composition over large rewrites
 
 ## Canvas Behavior Refactor Rules
-- Treat `CanvasPanBehavior.cs` as interaction code, not a dumping ground for document, persistence, selection, and command logic
-- Split canvas behavior gradually into focused components
-- Keep pan/zoom, selection, element creation, layout mapping, and mutation command logic separate where practical
-- Do not change canvas behavior while extracting unless a task explicitly requests a behavior change
+- Keep canvas behavior modular (pan/zoom, selection, etc.)
+- Do not mix document logic into canvas interaction code
 
 ## Refactor Workflow Rules
-- For risky files, propose a short split plan before editing
-- Complete one refactor task at a time
-- Build after each refactor task
-- Fix compile errors, binding errors, and missing resource errors before marking a task complete
-- Keep refactor-only changes separate from feature changes where practical
+- Complete one refactor at a time
+- Build after each change
+- Fix errors before continuing
+- Keep refactor-only changes separate from feature work
 
 ## Current Focus
 Follow TASKS.md in order.
 Always implement the next unchecked task unless instructed otherwise.
 
-For larger refactors:
-- complete one small startup-flow task at a time
-- keep the app runnable after each task where practical
-- do not combine Launcher refactor work with unrelated editor changes
+For large changes:
+- complete 2–3 tasks at a time
+- keep the app runnable
+- avoid mixing unrelated changes
 
 ## How to Work
 - Keep changes minimal and focused
 - Do not refactor unrelated systems
-- If a task is unclear, ask for clarification
+- Ask for clarification if needed
