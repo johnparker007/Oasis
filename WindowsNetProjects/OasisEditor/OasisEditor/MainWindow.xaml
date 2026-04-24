@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:local="clr-namespace:OasisEditor"
+        xmlns:views="clr-namespace:OasisEditor.Views"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="Oasis Editor"
@@ -173,43 +174,8 @@
                                        Text="Dock Layout (Phase 2 MVP)" />
                         </Border>
 
-                        <Border Grid.Row="1"
-                                Grid.Column="0"
-                                Padding="10"
-                                Background="{DynamicResource InspectorBackgroundBrush}"
-                                BorderBrush="{DynamicResource BorderSubtleBrush}"
-                                BorderThickness="1,0,0,1">
-                            <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="*" />
-                                </Grid.RowDefinitions>
-
-                                <TextBlock Grid.Row="0"
-                                           FontWeight="SemiBold"
-                                           Text="Asset Browser" />
-
-                                <DockPanel Grid.Row="1"
-                                           Margin="0,6,0,8"
-                                           LastChildFill="False">
-                                    <Button DockPanel.Dock="Right"
-                                            Padding="10,4"
-                                            Command="{Binding RefreshAssetBrowserCommand}"
-                                            Content="Refresh" />
-                                </DockPanel>
-
-                                <ListBox Grid.Row="2"
-                                         ItemsSource="{Binding AssetBrowserItems}"
-                                         SelectedItem="{Binding SelectedAsset, Mode=TwoWay}">
-                                    <ListBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Text="{Binding DisplayPath}" />
-                                        </DataTemplate>
-                                    </ListBox.ItemTemplate>
-                                </ListBox>
-                            </Grid>
-                        </Border>
+                        <views:AssetBrowserView Grid.Row="1"
+                                                Grid.Column="0" />
 
                         <Border Grid.Row="1"
                                 Grid.Column="1"
