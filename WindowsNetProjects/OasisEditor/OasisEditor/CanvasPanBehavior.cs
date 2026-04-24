@@ -293,26 +293,26 @@ public static class CanvasPanBehavior
             (clickPosition.X - translate.X) / scale.ScaleX,
             (clickPosition.Y - translate.Y) / scale.ScaleY);
 
-        var rectangle = new Rectangle
-        {
-            Width = NewRectangleWidth,
-            Height = NewRectangleHeight
-        };
-        SetIsSelectable(rectangle, true);
-        SetIsSelected(rectangle, true);
-        rectangle.SetValue(IsPersistedElementProperty, true);
-
         var x = Math.Max(0, canvasPoint.X - (NewRectangleWidth / 2));
         var y = Math.Max(0, canvasPoint.Y - (NewRectangleHeight / 2));
-        System.Windows.Controls.Canvas.SetLeft(rectangle, x);
-        System.Windows.Controls.Canvas.SetTop(rectangle, y);
-        var previousSelection = (FrameworkElement?)panelCanvas.GetValue(SelectedElementProperty);
         if (panelCanvas.DataContext is not DocumentTabViewModel tab)
         {
             return;
         }
 
-        ExecuteCanvasMutation(panelCanvas, new AddRectangleMutationCommand(tab.DocumentId, panelCanvas, rectangle, previousSelection, x, y));
+        ExecuteCanvasMutation(
+            panelCanvas,
+            new AddRectangleMutationCommand(
+                tab.DocumentId,
+                tab,
+                new PanelElementFile
+                {
+                    Kind = "rectangle",
+                    X = x,
+                    Y = y,
+                    Width = NewRectangleWidth,
+                    Height = NewRectangleHeight
+                }));
     }
 
     private static void AddImage(FrameworkElement canvas, MouseButtonEventArgs eventArgs)
@@ -328,29 +328,26 @@ public static class CanvasPanBehavior
             (clickPosition.X - translate.X) / scale.ScaleX,
             (clickPosition.Y - translate.Y) / scale.ScaleY);
 
-        var image = new Image
-        {
-            Width = NewImageWidth,
-            Height = NewImageHeight,
-            Stretch = Stretch.Fill,
-            Source = CreatePlaceholderImageSource()
-        };
-        SetIsSelectable(image, true);
-        SetIsSelected(image, true);
-        image.SetValue(IsPersistedElementProperty, true);
-
         var x = Math.Max(0, canvasPoint.X - (NewImageWidth / 2));
         var y = Math.Max(0, canvasPoint.Y - (NewImageHeight / 2));
-        Canvas.SetLeft(image, x);
-        Canvas.SetTop(image, y);
-
-        var previousSelection = (FrameworkElement?)panelCanvas.GetValue(SelectedElementProperty);
         if (panelCanvas.DataContext is not DocumentTabViewModel tab)
         {
             return;
         }
 
-        ExecuteCanvasMutation(panelCanvas, new AddImageMutationCommand(tab.DocumentId, panelCanvas, image, previousSelection, x, y));
+        ExecuteCanvasMutation(
+            panelCanvas,
+            new AddImageMutationCommand(
+                tab.DocumentId,
+                tab,
+                new PanelElementFile
+                {
+                    Kind = "image",
+                    X = x,
+                    Y = y,
+                    Width = NewImageWidth,
+                    Height = NewImageHeight
+                }));
     }
 
     private static void OnMouseWheel(object sender, MouseWheelEventArgs eventArgs)
@@ -661,20 +658,15 @@ public static class CanvasPanBehavior
     private sealed class AddRectangleMutationCommand : Commands.IDocumentCommand
     {
         private readonly Guid _documentId;
-        private readonly Canvas _canvas;
-        private readonly Rectangle _rectangle;
-        private readonly FrameworkElement? _previousSelection;
-        private readonly double _x;
-        private readonly double _y;
+        private readonly DocumentTabViewModel _document;
+        private readonly PanelElementFile _element;
+        private int? _insertIndex;
 
-        public AddRectangleMutationCommand(Guid documentId, Canvas canvas, Rectangle rectangle, FrameworkElement? previousSelection, double x, double y)
+        public AddRectangleMutationCommand(Guid documentId, DocumentTabViewModel document, PanelElementFile element)
         {
             _documentId = documentId;
-            _canvas = canvas;
-            _rectangle = rectangle;
-            _previousSelection = previousSelection;
-            _x = x;
-            _y = y;
+            _document = document;
+            _element = element;
         }
 
         public Guid DocumentId => _documentId;
@@ -683,60 +675,65 @@ public static class CanvasPanBehavior
 
         public void Execute()
         {
-            if (!_canvas.Children.Contains(_rectangle))
-            {
-                Canvas.SetLeft(_rectangle, _x);
-                Canvas.SetTop(_rectangle, _y);
-                _canvas.Children.Add(_rectangle);
-            }
-
-            if (_previousSelection is not null)
-            {
-                SetIsSelected(_previousSelection, false);
-            }
-
-            SetIsSelected(_rectangle, true);
-            _canvas.SetValue(SelectedElementProperty, _rectangle);
-            SyncPanelLayout(_canvas);
+            var elements = Panel2DDocumentStorage.DeserializeLayout(_document.PanelLayoutJson).ToList();
+            var index = Math.Clamp(_insertIndex ?? elements.Count, 0, elements.Count);
+            elements.Insert(index, _element);
+            _insertIndex = index;
+            _document.PanelLayoutJson = Panel2DDocumentStorage.SerializeLayout(elements);
         }
 
         public void Undo()
         {
-            _canvas.Children.Remove(_rectangle);
-            SetIsSelected(_rectangle, false);
-
-            if (_previousSelection is not null && _canvas.Children.Contains(_previousSelection))
+            var elements = Panel2DDocumentStorage.DeserializeLayout(_document.PanelLayoutJson).ToList();
+            if (elements.Count == 0)
             {
-                SetIsSelected(_previousSelection, true);
-                _canvas.SetValue(SelectedElementProperty, _previousSelection);
+                return;
             }
 
-            if (_previousSelection is null || !_canvas.Children.Contains(_previousSelection))
+            var removed = false;
+            if (_insertIndex is int index
+                && index >= 0
+                && index < elements.Count
+                && IsSameElement(elements[index], _element))
             {
-                _canvas.ClearValue(SelectedElementProperty);
+                elements.RemoveAt(index);
+                removed = true;
             }
 
-            SyncPanelLayout(_canvas);
+            if (!removed)
+            {
+                for (var i = elements.Count - 1; i >= 0; i--)
+                {
+                    if (!IsSameElement(elements[i], _element))
+                    {
+                        continue;
+                    }
+
+                    elements.RemoveAt(i);
+                    removed = true;
+                    break;
+                }
+            }
+
+            if (removed)
+            {
+                _document.PanelLayoutJson = Panel2DDocumentStorage.SerializeLayout(elements);
+            }
         }
     }
 
     private sealed class AddImageMutationCommand : Commands.IDocumentCommand
     {
         private readonly Guid _documentId;
-        private readonly Canvas _canvas;
-        private readonly Image _image;
-        private readonly FrameworkElement? _previousSelection;
-        private readonly double _x;
-        private readonly double _y;
+        private readonly DocumentTabViewModel _document;
+        private readonly PanelElementFile _element;
+        private int? _insertIndex;
 
-        public AddImageMutationCommand(Guid documentId, Canvas canvas, Image image, FrameworkElement? previousSelection, double x, double y)
+        public AddImageMutationCommand(Guid documentId, DocumentTabViewModel document, PanelElementFile element)
         {
             _documentId = documentId;
-            _canvas = canvas;
-            _image = image;
-            _previousSelection = previousSelection;
-            _x = x;
-            _y = y;
+            _document = document;
+            _element = element;
         }
 
         public Guid DocumentId => _documentId;
@@ -745,40 +742,59 @@ public static class CanvasPanBehavior
 
         public void Execute()
         {
-            if (!_canvas.Children.Contains(_image))
-            {
-                Canvas.SetLeft(_image, _x);
-                Canvas.SetTop(_image, _y);
-                _canvas.Children.Add(_image);
-            }
-
-            if (_previousSelection is not null)
-            {
-                SetIsSelected(_previousSelection, false);
-            }
-
-            SetIsSelected(_image, true);
-            _canvas.SetValue(SelectedElementProperty, _image);
-            SyncPanelLayout(_canvas);
+            var elements = Panel2DDocumentStorage.DeserializeLayout(_document.PanelLayoutJson).ToList();
+            var index = Math.Clamp(_insertIndex ?? elements.Count, 0, elements.Count);
+            elements.Insert(index, _element);
+            _insertIndex = index;
+            _document.PanelLayoutJson = Panel2DDocumentStorage.SerializeLayout(elements);
         }
 
         public void Undo()
         {
-            _canvas.Children.Remove(_image);
-            SetIsSelected(_image, false);
-
-            if (_previousSelection is not null && _canvas.Children.Contains(_previousSelection))
+            var elements = Panel2DDocumentStorage.DeserializeLayout(_document.PanelLayoutJson).ToList();
+            if (elements.Count == 0)
             {
-                SetIsSelected(_previousSelection, true);
-                _canvas.SetValue(SelectedElementProperty, _previousSelection);
+                return;
             }
 
-            if (_previousSelection is null || !_canvas.Children.Contains(_previousSelection))
+            var removed = false;
+            if (_insertIndex is int index
+                && index >= 0
+                && index < elements.Count
+                && IsSameElement(elements[index], _element))
             {
-                _canvas.ClearValue(SelectedElementProperty);
+                elements.RemoveAt(index);
+                removed = true;
             }
 
-            SyncPanelLayout(_canvas);
+            if (!removed)
+            {
+                for (var i = elements.Count - 1; i >= 0; i--)
+                {
+                    if (!IsSameElement(elements[i], _element))
+                    {
+                        continue;
+                    }
+
+                    elements.RemoveAt(i);
+                    removed = true;
+                    break;
+                }
+            }
+
+            if (removed)
+            {
+                _document.PanelLayoutJson = Panel2DDocumentStorage.SerializeLayout(elements);
+            }
         }
+    }
+
+    private static bool IsSameElement(PanelElementFile left, PanelElementFile right)
+    {
+        return string.Equals(left.Kind, right.Kind, StringComparison.OrdinalIgnoreCase)
+            && left.X.Equals(right.X)
+            && left.Y.Equals(right.Y)
+            && left.Width.Equals(right.Width)
+            && left.Height.Equals(right.Height);
     }
 }
