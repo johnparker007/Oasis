@@ -65,7 +65,7 @@ public sealed class AssetBrowserViewModel
             return;
         }
 
-        var assetDirectory = Path.Combine(loadedProject.RootPath, "Assets");
+        var assetDirectory = loadedProject.AssetsDirectory;
         if (!Directory.Exists(assetDirectory))
         {
             Directory.CreateDirectory(assetDirectory);
