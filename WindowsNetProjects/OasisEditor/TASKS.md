@@ -86,7 +86,7 @@ These tasks should be completed one at a time. They are behavior-preserving unle
 - [x] Extract Menu styles from `MainWindow.xaml` into `Styles/Menu.xaml`
 - [x] Extract Asset Browser UI into `Views/AssetBrowserView.xaml`
 - [x] Extract Inspector UI into `Views/InspectorView.xaml`
-- [ ] Extract Output Log UI into `Views/OutputLogView.xaml`
+- [x] Extract Output Log UI into `Views/OutputLogView.xaml`
 - [ ] Extract Panel 2D canvas/tab UI into `Views/PanelCanvasView.xaml`
 - [ ] Clean up `MainWindow.xaml` so it acts mainly as the application shell
 
