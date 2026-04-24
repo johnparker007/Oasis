@@ -175,6 +175,8 @@
                           Command="{Binding OpenDocumentCommand}" />
                 <MenuItem Header="_Save Document"
                           Command="{Binding SaveSelectedDocumentCommand}" />
+                <MenuItem Header="_Close Project"
+                          Command="{Binding CloseProjectCommand}" />
                 <Separator />
                 <MenuItem Header="E_xit"
                           Command="{Binding ExitCommand}" />

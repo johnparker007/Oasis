@@ -70,6 +70,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ClosePreferencesCommand = new RelayCommand(ClosePreferences);
         CloseProjectSettingsCommand = new RelayCommand(CloseProjectSettings);
         ApplyInspectorSummaryCommand = new RelayCommand(ApplyInspectorSummary, CanApplyInspectorSummary);
+        CloseProjectCommand = new RelayCommand(CloseProject, CanCloseProject);
         ExitCommand = new RelayCommand(ExitApplication);
 
         var preferences = _preferencesStore.Load();
@@ -102,6 +103,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand ClosePreferencesCommand { get; }
     public ICommand CloseProjectSettingsCommand { get; }
     public ICommand ApplyInspectorSummaryCommand { get; }
+    public ICommand CloseProjectCommand { get; }
     public ICommand ExitCommand { get; }
     public ObservableCollection<string> RecentProjects { get; }
     public ObservableCollection<DocumentTabViewModel> OpenDocuments { get; }
@@ -631,6 +633,45 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _projectSettingsWindow?.Close();
     }
 
+    private bool CanCloseProject()
+    {
+        return LoadedProject is not null;
+    }
+
+    private void CloseProject()
+    {
+        if (LoadedProject is null)
+        {
+            return;
+        }
+
+        ClosePreferences();
+        CloseProjectSettings();
+        ClearProjectSessionState();
+
+        var launcherWindow = new LauncherWindow(_applicationThemeService, _preferencesStore);
+        launcherWindow.Show();
+
+        _ownerWindow.Close();
+        Application.Current.MainWindow = launcherWindow;
+        launcherWindow.Activate();
+        launcherWindow.Focus();
+    }
+
+    private void ClearProjectSessionState()
+    {
+        _documentCommandService.History.Clear();
+        OpenDocuments.Clear();
+        SelectedDocument = null;
+
+        AssetBrowserItems.Clear();
+        SelectedAsset = null;
+
+        LoadedProject = null;
+        ProjectFilePath = string.Empty;
+        StatusMessage = "Project closed. Returned to Launcher.";
+    }
+
     private static void ExitApplication()
     {
         Application.Current.Shutdown();
@@ -1115,6 +1156,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (CloseSelectedDocumentCommand is RelayCommand closeRelayCommand)
         {
             closeRelayCommand.RaiseCanExecuteChanged();
+        }
+
+        if (CloseProjectCommand is RelayCommand closeProjectRelayCommand)
+        {
+            closeProjectRelayCommand.RaiseCanExecuteChanged();
         }
 
         NotifyAssetBrowserCommand();
