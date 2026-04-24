@@ -42,11 +42,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         IApplicationThemeService applicationThemeService,
         EditorPreferencesStore preferencesStore,
         Window ownerWindow,
-        string? startupProjectFilePath = null)
+        string startupProjectFilePath)
     {
         _applicationThemeService = applicationThemeService;
         _preferencesStore = preferencesStore;
         _ownerWindow = ownerWindow;
+
+        if (string.IsNullOrWhiteSpace(startupProjectFilePath))
+        {
+            throw new InvalidOperationException("Editor shell requires an active loaded project.");
+        }
 
         CreateProjectCommand = new RelayCommand(CreateProject, CanCreateProject);
         OpenProjectCommand = new RelayCommand(OpenProject, CanOpenProject);
@@ -77,10 +82,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         AddOutputEntry("Editor shell initialized.");
         AddOutputEntry($"Theme preference loaded: {_selectedThemePreference}");
 
-        if (!string.IsNullOrWhiteSpace(startupProjectFilePath))
-        {
-            OpenProjectFile(startupProjectFilePath, null);
-        }
+        LoadStartupProject(startupProjectFilePath.Trim());
     }
 
     public ICommand CreateProjectCommand { get; }
@@ -639,58 +641,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         try
         {
             var projectFile = projectFilePath.Trim();
-
-            if (!File.Exists(projectFile))
-            {
-                throw new FileNotFoundException("Project file was not found.", projectFile);
-            }
-
-            if (!string.Equals(Path.GetExtension(projectFile), ".oasisproj", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException("Project file must use the .oasisproj extension.");
-            }
-
-            using var projectStream = File.OpenRead(projectFile);
-            using var projectDocument = JsonDocument.Parse(projectStream);
-
-            if (!projectDocument.RootElement.TryGetProperty("name", out var projectNameElement))
-            {
-                throw new InvalidOperationException("Project metadata is missing required 'name' field.");
-            }
-
-            var openedProjectName = projectNameElement.GetString();
-            if (string.IsNullOrWhiteSpace(openedProjectName))
-            {
-                throw new InvalidOperationException("Project metadata contains an empty 'name' field.");
-            }
-
-            var projectDirectory = Path.GetDirectoryName(projectFile);
-            if (string.IsNullOrWhiteSpace(projectDirectory))
-            {
-                throw new InvalidOperationException("Unable to determine project directory.");
-            }
-
-            var layoutElement = projectDocument.RootElement.GetProperty("layout");
-            var assetsDirectory = ResolveProjectDirectory(projectDirectory, layoutElement, "assets");
-            var machinesDirectory = ResolveProjectDirectory(projectDirectory, layoutElement, "machines");
-            var generatedDirectory = ResolveProjectDirectory(projectDirectory, layoutElement, "generated");
-
-            LoadedProject = new EditorProject
-            {
-                Name = openedProjectName,
-                ProjectFilePath = projectFile,
-                ProjectDirectory = projectDirectory,
-                AssetsDirectory = assetsDirectory,
-                MachinesDirectory = machinesDirectory,
-                GeneratedDirectory = generatedDirectory
-            };
+            var project = LoadProjectFromFile(projectFile);
+            LoadedProject = project;
 
             ProjectFilePath = projectFile;
             UpdateRecentProjects(projectFile);
             EnsureProjectOverviewDocument();
             RefreshAssetBrowser();
-            StatusMessage = successMessage ?? $"Project opened: {openedProjectName} ({projectFile})";
-            AddOutputEntry($"Loaded project '{openedProjectName}' from {projectFile}");
+            StatusMessage = successMessage ?? $"Project opened: {project.Name} ({projectFile})";
+            AddOutputEntry($"Loaded project '{project.Name}' from {projectFile}");
         }
         catch (Exception ex)
         {
@@ -698,6 +657,66 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             AddOutputEntry($"Open project failed: {ex.Message}");
             MessageBox.Show(ex.Message, "Open Project Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
+    }
+
+    private void LoadStartupProject(string startupProjectFilePath)
+    {
+        var project = LoadProjectFromFile(startupProjectFilePath);
+        LoadedProject = project;
+        ProjectFilePath = project.ProjectFilePath;
+        UpdateRecentProjects(project.ProjectFilePath);
+        EnsureProjectOverviewDocument();
+        RefreshAssetBrowser();
+        StatusMessage = $"Project opened: {project.Name} ({project.ProjectFilePath})";
+        AddOutputEntry($"Loaded startup project '{project.Name}' from {project.ProjectFilePath}");
+    }
+
+    private static EditorProject LoadProjectFromFile(string projectFilePath)
+    {
+        if (!File.Exists(projectFilePath))
+        {
+            throw new FileNotFoundException("Project file was not found.", projectFilePath);
+        }
+
+        if (!string.Equals(Path.GetExtension(projectFilePath), ".oasisproj", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Project file must use the .oasisproj extension.");
+        }
+
+        using var projectStream = File.OpenRead(projectFilePath);
+        using var projectDocument = JsonDocument.Parse(projectStream);
+
+        if (!projectDocument.RootElement.TryGetProperty("name", out var projectNameElement))
+        {
+            throw new InvalidOperationException("Project metadata is missing required 'name' field.");
+        }
+
+        var openedProjectName = projectNameElement.GetString();
+        if (string.IsNullOrWhiteSpace(openedProjectName))
+        {
+            throw new InvalidOperationException("Project metadata contains an empty 'name' field.");
+        }
+
+        var projectDirectory = Path.GetDirectoryName(projectFilePath);
+        if (string.IsNullOrWhiteSpace(projectDirectory))
+        {
+            throw new InvalidOperationException("Unable to determine project directory.");
+        }
+
+        var layoutElement = projectDocument.RootElement.GetProperty("layout");
+        var assetsDirectory = ResolveProjectDirectory(projectDirectory, layoutElement, "assets");
+        var machinesDirectory = ResolveProjectDirectory(projectDirectory, layoutElement, "machines");
+        var generatedDirectory = ResolveProjectDirectory(projectDirectory, layoutElement, "generated");
+
+        return new EditorProject
+        {
+            Name = openedProjectName,
+            ProjectFilePath = projectFilePath,
+            ProjectDirectory = projectDirectory,
+            AssetsDirectory = assetsDirectory,
+            MachinesDirectory = machinesDirectory,
+            GeneratedDirectory = generatedDirectory
+        };
     }
 
     private void EnsureProjectOverviewDocument()

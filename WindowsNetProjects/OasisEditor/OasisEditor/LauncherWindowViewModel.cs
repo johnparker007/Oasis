@@ -144,7 +144,7 @@ public sealed class LauncherWindowViewModel : INotifyPropertyChanged
 
     private void OpenProject()
     {
-        OpenEditor(ProjectFilePath, requireLoadedProject: true);
+        OpenEditor(ProjectFilePath);
     }
 
     private bool CanOpenProject()
@@ -159,7 +159,7 @@ public sealed class LauncherWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        OpenEditor(SelectedRecentProject, requireLoadedProject: true);
+        OpenEditor(SelectedRecentProject);
     }
 
     private bool CanOpenSelectedRecentProject()
@@ -167,7 +167,7 @@ public sealed class LauncherWindowViewModel : INotifyPropertyChanged
         return !string.IsNullOrWhiteSpace(SelectedRecentProject);
     }
 
-    private void OpenEditor(string projectFilePath, bool requireLoadedProject = false)
+    private void OpenEditor(string projectFilePath)
     {
         try
         {
@@ -175,11 +175,6 @@ public sealed class LauncherWindowViewModel : INotifyPropertyChanged
             ValidateProjectFile(trimmed);
 
             var mainWindow = new MainWindow(_applicationThemeService, _preferencesStore, trimmed);
-
-            if (requireLoadedProject)
-            {
-                EnsureProjectLoaded(mainWindow);
-            }
 
             mainWindow.Show();
             _launcherWindow.Close();
@@ -189,26 +184,6 @@ public sealed class LauncherWindowViewModel : INotifyPropertyChanged
             StatusMessage = ex.Message;
             MessageBox.Show(ex.Message, "Open Project Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
-    }
-
-    private static void EnsureProjectLoaded(Window mainWindow)
-    {
-        if (mainWindow.DataContext is not MainWindowViewModel viewModel)
-        {
-            mainWindow.Close();
-            throw new InvalidOperationException("Editor failed to initialize project context.");
-        }
-
-        if (viewModel.HasLoadedProject)
-        {
-            return;
-        }
-
-        var message = string.IsNullOrWhiteSpace(viewModel.StatusMessage)
-            ? "Project could not be loaded."
-            : viewModel.StatusMessage;
-        mainWindow.Close();
-        throw new InvalidOperationException(message);
     }
 
     private static void ValidateProjectFile(string projectFilePath)

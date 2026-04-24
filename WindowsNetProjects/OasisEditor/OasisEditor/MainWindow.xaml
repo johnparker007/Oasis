@@ -164,13 +164,6 @@
                        BasedOn="{StaticResource EditorMenuItemStyle}" />
             </Menu.Resources>
             <MenuItem Header="_File">
-                <MenuItem Header="_Create Project"
-                          Command="{Binding CreateProjectCommand}" />
-                <MenuItem Header="_Open Project"
-                          Command="{Binding OpenProjectCommand}" />
-                <MenuItem Header="Open Selected _Recent"
-                          Command="{Binding OpenRecentProjectCommand}" />
-                <Separator />
                 <MenuItem Header="New _Panel2D Stub"
                           Command="{Binding OpenPanel2DStubCommand}" />
                 <MenuItem Header="New _Cabinet3D Stub"
@@ -206,13 +199,6 @@
                      Background="{DynamicResource ToolBarBackgroundBrush}">
             <ToolBar Band="0"
                      BandIndex="0">
-                <Button Command="{Binding CreateProjectCommand}"
-                        Content="Create Project" />
-                <Button Command="{Binding OpenProjectCommand}"
-                        Content="Open Project" />
-                <Button Command="{Binding OpenRecentProjectCommand}"
-                        Content="Open Recent" />
-                <Separator />
                 <Button Command="{Binding OpenPanel2DStubCommand}"
                         Content="New Panel2D" />
                 <Button Command="{Binding OpenCabinet3DStubCommand}"
