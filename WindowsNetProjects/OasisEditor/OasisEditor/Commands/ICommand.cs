@@ -28,3 +28,12 @@ public interface IDocumentCommand : ICommand
 {
     Guid DocumentId { get; }
 }
+
+/// <summary>
+/// Optional command contract indicating whether the last execution produced a real mutation.
+/// Command services may use this to skip recording no-op executions in history.
+/// </summary>
+public interface IExecutionTrackedCommand : ICommand
+{
+    bool WasExecuted { get; }
+}

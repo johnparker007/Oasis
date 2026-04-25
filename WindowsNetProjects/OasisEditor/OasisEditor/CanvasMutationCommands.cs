@@ -26,7 +26,7 @@ internal static class CanvasMutationCommands
         return new RenameElementMutationCommand(documentId, document, selection, newName);
     }
 
-    private sealed class AddRectangleMutationCommand : Commands.IDocumentCommand
+    private sealed class AddRectangleMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
     {
         private readonly Guid _documentId;
         private readonly DocumentTabViewModel _document;
@@ -44,14 +44,18 @@ internal static class CanvasMutationCommands
 
         public string Description => "Add rectangle";
 
+        public bool WasExecuted { get; private set; }
+
         public void Execute()
         {
+            WasExecuted = false;
             var elements = Panel2DDocumentStorage.DeserializeLayout(_document.PanelLayoutJson).ToList();
             var index = Math.Clamp(_insertIndex ?? elements.Count, 0, elements.Count);
             elements.Insert(index, _element);
             _insertIndex = index;
             _document.PanelLayoutJson = Panel2DDocumentStorage.SerializeLayout(elements);
             _document.MarkDirty();
+            WasExecuted = true;
         }
 
         public void Undo()
@@ -95,7 +99,7 @@ internal static class CanvasMutationCommands
         }
     }
 
-    private sealed class AddImageMutationCommand : Commands.IDocumentCommand
+    private sealed class AddImageMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
     {
         private readonly Guid _documentId;
         private readonly DocumentTabViewModel _document;
@@ -113,14 +117,18 @@ internal static class CanvasMutationCommands
 
         public string Description => "Add image";
 
+        public bool WasExecuted { get; private set; }
+
         public void Execute()
         {
+            WasExecuted = false;
             var elements = Panel2DDocumentStorage.DeserializeLayout(_document.PanelLayoutJson).ToList();
             var index = Math.Clamp(_insertIndex ?? elements.Count, 0, elements.Count);
             elements.Insert(index, _element);
             _insertIndex = index;
             _document.PanelLayoutJson = Panel2DDocumentStorage.SerializeLayout(elements);
             _document.MarkDirty();
+            WasExecuted = true;
         }
 
         public void Undo()
@@ -164,7 +172,7 @@ internal static class CanvasMutationCommands
         }
     }
 
-    private sealed class DeleteElementMutationCommand : Commands.IDocumentCommand
+    private sealed class DeleteElementMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
     {
         private readonly Guid _documentId;
         private readonly DocumentTabViewModel _document;
@@ -183,8 +191,11 @@ internal static class CanvasMutationCommands
 
         public string Description => "Delete element";
 
+        public bool WasExecuted { get; private set; }
+
         public void Execute()
         {
+            WasExecuted = false;
             var elements = Panel2DDocumentStorage.DeserializeLayout(_document.PanelLayoutJson).ToList();
             if (!TryFindMatchingElementIndex(elements, _selection, out var index))
             {
@@ -196,6 +207,7 @@ internal static class CanvasMutationCommands
             elements.RemoveAt(index);
             _document.PanelLayoutJson = Panel2DDocumentStorage.SerializeLayout(elements);
             _document.MarkDirty();
+            WasExecuted = true;
         }
 
         public void Undo()
@@ -213,7 +225,7 @@ internal static class CanvasMutationCommands
         }
     }
 
-    private sealed class RenameElementMutationCommand : Commands.IDocumentCommand
+    private sealed class RenameElementMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
     {
         private readonly Guid _documentId;
         private readonly DocumentTabViewModel _document;
@@ -238,8 +250,11 @@ internal static class CanvasMutationCommands
 
         public string Description => "Rename element";
 
+        public bool WasExecuted { get; private set; }
+
         public void Execute()
         {
+            WasExecuted = false;
             var elements = Panel2DDocumentStorage.DeserializeLayout(_document.PanelLayoutJson).ToList();
             if (!TryFindMatchingElementIndex(elements, _selection, out var index))
             {
@@ -268,6 +283,7 @@ internal static class CanvasMutationCommands
 
             _document.PanelLayoutJson = Panel2DDocumentStorage.SerializeLayout(elements);
             _document.MarkDirty();
+            WasExecuted = true;
         }
 
         public void Undo()
