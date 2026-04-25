@@ -38,6 +38,12 @@ public sealed class CommandService
         ValidateDocumentOwnership(command);
 
         command.Execute();
+        if (command is IExecutionTrackedCommand executionTrackedCommand
+            && !executionTrackedCommand.WasExecuted)
+        {
+            return;
+        }
+
         _history.RecordExecuted(command);
     }
 
