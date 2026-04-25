@@ -1,23 +1,45 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Windows.Input;
 
 namespace OasisEditor;
 
-public sealed class OutputLogViewModel
+public sealed class OutputLogViewModel : INotifyPropertyChanged
 {
+    private OutputLogEntry? _lastEntry;
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
     public OutputLogViewModel()
     {
-        OutputEntries = new ObservableCollection<string>();
+        OutputEntries = new ObservableCollection<OutputLogEntry>();
         ClearOutputCommand = new RelayCommand(ClearOutput, CanClearOutput);
     }
 
-    public ObservableCollection<string> OutputEntries { get; }
+    public ObservableCollection<OutputLogEntry> OutputEntries { get; }
     public ICommand ClearOutputCommand { get; }
 
-    public void AddOutputEntry(string message)
+    public OutputLogEntry? LastEntry
     {
-        var timestamp = DateTime.Now.ToString("HH:mm:ss");
-        OutputEntries.Add($"[{timestamp}] {message}");
+        get => _lastEntry;
+        private set
+        {
+            if (ReferenceEquals(_lastEntry, value))
+            {
+                return;
+            }
+
+            _lastEntry = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public void AddOutputEntry(string message, OutputLogStatus status)
+    {
+        var entry = new OutputLogEntry(DateTime.Now, message, status);
+        OutputEntries.Add(entry);
+        LastEntry = entry;
         NotifyClearCommand();
     }
 
@@ -29,7 +51,8 @@ public sealed class OutputLogViewModel
     private void ClearOutput()
     {
         OutputEntries.Clear();
-        AddOutputEntry("Output log cleared.");
+        LastEntry = null;
+        AddOutputEntry("Output log cleared.", OutputLogStatus.Info);
     }
 
     public void NotifyClearCommand()
@@ -38,5 +61,10 @@ public sealed class OutputLogViewModel
         {
             clearRelayCommand.RaiseCanExecuteChanged();
         }
+    }
+
+    private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }

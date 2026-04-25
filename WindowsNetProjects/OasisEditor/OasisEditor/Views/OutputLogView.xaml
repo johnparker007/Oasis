@@ -23,6 +23,22 @@
         <ListBox Grid.Row="1"
                  Margin="0,8,0,0"
                  BorderThickness="0"
-                 ItemsSource="{Binding OutputEntries}" />
+                 ItemsSource="{Binding OutputEntries}">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock FontFamily="Segoe MDL2 Assets"
+                                   Foreground="{Binding StatusBrush}"
+                                   Text="{Binding IconGlyph}" />
+                        <TextBlock Margin="8,0,0,0"
+                                   Foreground="{Binding StatusBrush}"
+                                   Text="{Binding FormattedTimestamp, StringFormat=[{0}]}" />
+                        <TextBlock Margin="8,0,0,0"
+                                   Foreground="{Binding StatusBrush}"
+                                   Text="{Binding Message}" />
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
     </Grid>
 </UserControl>

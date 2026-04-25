@@ -91,9 +91,27 @@
                    Margin="0"
                    Background="{DynamicResource ToolBarBackgroundBrush}"
                    Foreground="{DynamicResource TextPrimaryBrush}">
-            <StatusBarItem Content="Ready" />
+            <StatusBarItem>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock FontFamily="Segoe MDL2 Assets"
+                               Text="{Binding StatusIconGlyph}"
+                               Foreground="{Binding StatusMessageBrush}" />
+                    <TextBlock Margin="6,0,0,0"
+                               Text="Status"
+                               Foreground="{Binding StatusMessageBrush}" />
+                </StackPanel>
+            </StatusBarItem>
             <Separator />
-            <StatusBarItem Content="Phase 3A: Theme Foundations" />
+            <StatusBarItem>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock FontFamily="Segoe MDL2 Assets"
+                               Text="{Binding StatusIconGlyph}"
+                               Foreground="{Binding StatusMessageBrush}" />
+                    <TextBlock Margin="8,0,0,0"
+                               Text="{Binding StatusMessage}"
+                               Foreground="{Binding StatusMessageBrush}" />
+                </StackPanel>
+            </StatusBarItem>
         </StatusBar>
     </Grid>
 </Window>
