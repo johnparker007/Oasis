@@ -8,6 +8,13 @@ namespace OasisEditor;
 
 internal static class PanelElementFactory
 {
+    public static readonly DependencyProperty ElementNameProperty =
+        DependencyProperty.RegisterAttached(
+            "ElementName",
+            typeof(string),
+            typeof(PanelElementFactory),
+            new PropertyMetadata(string.Empty));
+
     public const double NewRectangleWidth = 180;
     public const double NewRectangleHeight = 120;
     public const double NewImageWidth = 220;
@@ -51,17 +58,20 @@ internal static class PanelElementFactory
     {
         if (element.ElementKind == PanelElementKind.Rectangle)
         {
-            return new Rectangle
+            var rectangle = new Rectangle
             {
                 Uid = element.ObjectId,
                 Width = element.Width <= 0 ? NewRectangleWidth : element.Width,
                 Height = element.Height <= 0 ? NewRectangleHeight : element.Height
             };
+
+            SetElementName(rectangle, element.Name);
+            return rectangle;
         }
 
         if (element.ElementKind == PanelElementKind.Image)
         {
-            return new Image
+            var image = new Image
             {
                 Uid = element.ObjectId,
                 Width = element.Width <= 0 ? NewImageWidth : element.Width,
@@ -69,6 +79,9 @@ internal static class PanelElementFactory
                 Stretch = Stretch.Fill,
                 Source = CreatePlaceholderImageSource()
             };
+
+            SetElementName(image, element.Name);
+            return image;
         }
 
         return null;
@@ -89,16 +102,29 @@ internal static class PanelElementFactory
         }
 
         var objectId = string.IsNullOrWhiteSpace(child.Uid) ? Guid.NewGuid().ToString("N") : child.Uid.Trim();
+        var elementName = GetElementName(child);
         return new PanelElementFile
         {
             ObjectId = objectId,
-            Name = Panel2DDocumentStorage.CreateDefaultElementName(kind, objectId),
+            Name = string.IsNullOrWhiteSpace(elementName)
+                ? Panel2DDocumentStorage.CreateDefaultElementName(kind, objectId)
+                : elementName.Trim(),
             Kind = Panel2DDocumentStorage.SerializeElementKind(kind),
             X = Canvas.GetLeft(child),
             Y = Canvas.GetTop(child),
             Width = child.Width,
             Height = child.Height
         };
+    }
+
+    public static string GetElementName(DependencyObject dependencyObject)
+    {
+        return (string)dependencyObject.GetValue(ElementNameProperty);
+    }
+
+    public static void SetElementName(DependencyObject dependencyObject, string value)
+    {
+        dependencyObject.SetValue(ElementNameProperty, value);
     }
 
     private static ImageSource CreatePlaceholderImageSource()
