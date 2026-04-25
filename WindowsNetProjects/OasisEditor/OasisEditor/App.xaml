@@ -112,7 +112,7 @@
                 <Setter Property="Background" Value="{DynamicResource ToolBarBackgroundBrush}" />
                 <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}" />
-                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="BorderThickness" Value="0,1,0,0" />
             </Style>
         </ResourceDictionary>
     </Application.Resources>

@@ -85,10 +85,10 @@
         </Menu>
 
         <views:EditorShellView Grid.Row="1"
-                               Margin="16,12,16,0" />
+                               Margin="0" />
 
         <StatusBar Grid.Row="2"
-                   Margin="16,12,16,16"
+                   Margin="0"
                    Background="{DynamicResource ToolBarBackgroundBrush}"
                    Foreground="{DynamicResource TextPrimaryBrush}">
             <StatusBarItem Content="Ready" />
