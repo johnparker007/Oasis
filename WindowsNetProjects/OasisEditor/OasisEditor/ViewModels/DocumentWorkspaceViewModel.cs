@@ -228,7 +228,12 @@ public sealed class DocumentWorkspaceViewModel
             selectedDocument.Document.WithContentSummary(summary).MarkDirty(),
             selectedDocument.PanelLayoutJson,
             selectedDocument.DocumentId,
-            selectedDocument.CommandService);
+            selectedDocument.CommandService)
+        {
+            PanelZoom = selectedDocument.PanelZoom,
+            PanelPanX = selectedDocument.PanelPanX,
+            PanelPanY = selectedDocument.PanelPanY
+        };
 
         ExecuteDocumentMutation(new ReplaceDocumentTabMutationCommand(this, selectedDocument, updated));
         _setStatusMessage($"Updated inspector summary for {updated.Title}");
