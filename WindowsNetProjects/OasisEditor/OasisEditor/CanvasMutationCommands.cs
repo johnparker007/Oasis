@@ -12,6 +12,11 @@ internal static class CanvasMutationCommands
         return new AddImageMutationCommand(documentId, document, element);
     }
 
+    public static Commands.ICommand CreateDeleteElementCommand(Guid documentId, DocumentTabViewModel document, PanelSelectionInfo selection)
+    {
+        return new DeleteElementMutationCommand(documentId, document, selection);
+    }
+
     private sealed class AddRectangleMutationCommand : Commands.IDocumentCommand
     {
         private readonly Guid _documentId;
@@ -144,6 +149,79 @@ internal static class CanvasMutationCommands
                 _document.PanelLayoutJson = Panel2DDocumentStorage.SerializeLayout(elements);
             }
         }
+    }
+
+    private sealed class DeleteElementMutationCommand : Commands.IDocumentCommand
+    {
+        private readonly Guid _documentId;
+        private readonly DocumentTabViewModel _document;
+        private readonly PanelSelectionInfo _selection;
+        private PanelElementFile? _deletedElement;
+        private int? _deletedIndex;
+
+        public DeleteElementMutationCommand(Guid documentId, DocumentTabViewModel document, PanelSelectionInfo selection)
+        {
+            _documentId = documentId;
+            _document = document;
+            _selection = selection;
+        }
+
+        public Guid DocumentId => _documentId;
+
+        public string Description => "Delete element";
+
+        public void Execute()
+        {
+            var elements = Panel2DDocumentStorage.DeserializeLayout(_document.PanelLayoutJson).ToList();
+            if (!TryFindMatchingElementIndex(elements, _selection, out var index))
+            {
+                return;
+            }
+
+            _deletedElement = elements[index];
+            _deletedIndex = index;
+            elements.RemoveAt(index);
+            _document.PanelLayoutJson = Panel2DDocumentStorage.SerializeLayout(elements);
+        }
+
+        public void Undo()
+        {
+            if (_deletedElement is null || _deletedIndex is not int index)
+            {
+                return;
+            }
+
+            var elements = Panel2DDocumentStorage.DeserializeLayout(_document.PanelLayoutJson).ToList();
+            var insertIndex = Math.Clamp(index, 0, elements.Count);
+            elements.Insert(insertIndex, _deletedElement);
+            _document.PanelLayoutJson = Panel2DDocumentStorage.SerializeLayout(elements);
+        }
+    }
+
+    private static bool TryFindMatchingElementIndex(IReadOnlyList<PanelElementFile> elements, PanelSelectionInfo selection, out int index)
+    {
+        for (var i = 0; i < elements.Count; i++)
+        {
+            var element = elements[i];
+            if (!string.Equals(element.Kind, selection.Kind, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (!element.X.Equals(selection.X)
+                || !element.Y.Equals(selection.Y)
+                || !element.Width.Equals(selection.Width)
+                || !element.Height.Equals(selection.Height))
+            {
+                continue;
+            }
+
+            index = i;
+            return true;
+        }
+
+        index = -1;
+        return false;
     }
 
     private static bool IsSameElement(PanelElementFile left, PanelElementFile right)
