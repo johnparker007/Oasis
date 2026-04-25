@@ -9,16 +9,11 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0"
-                   FontWeight="SemiBold"
-                   Text="Asset Browser" />
-
-        <DockPanel Grid.Row="1"
-                   Margin="0,6,0,8"
+        <DockPanel Grid.Row="0"
+                   Margin="0,0,0,8"
                    LastChildFill="False">
             <Button DockPanel.Dock="Right"
                     Padding="10,4"
@@ -26,7 +21,7 @@
                     Content="Refresh" />
         </DockPanel>
 
-        <ListBox Grid.Row="2"
+        <ListBox Grid.Row="1"
                  ItemsSource="{Binding AssetBrowserItems}"
                  SelectedItem="{Binding SelectedAsset, Mode=TwoWay}">
             <ListBox.ItemTemplate>
