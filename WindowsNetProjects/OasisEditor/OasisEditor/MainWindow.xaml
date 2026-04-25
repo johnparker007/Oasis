@@ -21,11 +21,13 @@
         </Grid.RowDefinitions>
 
         <Menu Grid.Row="0"
+              Height="{x:Static SystemParameters.MenuHeight}"
               Background="{DynamicResource {x:Static SystemColors.MenuBrushKey}}"
               Foreground="{DynamicResource {x:Static SystemColors.MenuTextBrushKey}}"
               BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}"
               BorderThickness="0,0,0,1"
-              Padding="0">
+              Padding="0"
+              VerticalContentAlignment="Center">
             <MenuItem Header="_File">
                 <MenuItem Header="New _Panel2D Stub"
                           Command="{Binding OpenPanel2DStubCommand}" />
