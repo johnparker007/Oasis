@@ -10,14 +10,14 @@ public sealed class AssetBrowserViewModel
     private readonly Func<EditorProject?> _loadedProjectAccessor;
     private readonly Action _selectionChanged;
     private readonly Action _notifyInspectorChanged;
-    private readonly Action<string> _addOutputEntry;
+    private readonly Action<string, OutputLogStatus> _addOutputEntry;
     private AssetBrowserItemViewModel? _selectedAsset;
 
     public AssetBrowserViewModel(
         Func<EditorProject?> loadedProjectAccessor,
         Action selectionChanged,
         Action notifyInspectorChanged,
-        Action<string> addOutputEntry)
+        Action<string, OutputLogStatus> addOutputEntry)
     {
         _loadedProjectAccessor = loadedProjectAccessor;
         _selectionChanged = selectionChanged;
@@ -61,7 +61,7 @@ public sealed class AssetBrowserViewModel
             AssetBrowserItems.Clear();
             SelectedAsset = null;
             _notifyInspectorChanged();
-            _addOutputEntry("Asset browser cleared (no project loaded).");
+            _addOutputEntry("Asset browser cleared (no project loaded).", OutputLogStatus.Info);
             return;
         }
 
@@ -85,7 +85,7 @@ public sealed class AssetBrowserViewModel
 
         SelectedAsset = AssetBrowserItems.FirstOrDefault();
         _notifyInspectorChanged();
-        _addOutputEntry($"Asset browser refreshed ({AssetBrowserItems.Count} files).");
+        _addOutputEntry($"Asset browser refreshed ({AssetBrowserItems.Count} files).", OutputLogStatus.Info);
     }
 
     public void NotifyRefreshCommand()

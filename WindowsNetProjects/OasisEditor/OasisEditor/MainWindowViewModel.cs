@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
 using Microsoft.Win32;
 using EditorCommands = OasisEditor.Commands;
 
@@ -61,6 +62,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ExitCommand = new RelayCommand(ExitApplication);
 
         _outputLog = new OutputLogViewModel();
+        _outputLog.PropertyChanged += OnOutputLogPropertyChanged;
         _activeDocumentContext = new ActiveDocumentContextService();
         _assetBrowser = new AssetBrowserViewModel(
             () => LoadedProject,
@@ -94,8 +96,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         RefreshAssetBrowserCommand = _assetBrowser.RefreshAssetBrowserCommand;
         ClearOutputCommand = _outputLog.ClearOutputCommand;
         ApplyInspectorSummaryCommand = _inspector.ApplyInspectorSummaryCommand;
-        AddOutputEntry("Editor shell initialized.");
-        AddOutputEntry($"Theme preference loaded: {_selectedThemePreference}");
+        AddOutputEntry("Editor shell initialized.", OutputLogStatus.Info);
+        AddOutputEntry($"Theme preference loaded: {_selectedThemePreference}", OutputLogStatus.Info);
 
         LoadStartupProject(startupProjectFilePath.Trim());
     }
@@ -119,7 +121,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ObservableCollection<string> RecentProjects { get; }
     public ObservableCollection<DocumentTabViewModel> OpenDocuments { get; }
     public ObservableCollection<AssetBrowserItemViewModel> AssetBrowserItems { get; }
-    public ObservableCollection<string> OutputEntries { get; }
+    public ObservableCollection<OutputLogEntry> OutputEntries { get; }
 
 
     public IReadOnlyList<ThemePreference> ThemePreferences { get; } = Enum.GetValues<ThemePreference>();
@@ -136,15 +138,21 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
             _applicationThemeService.ApplyTheme(Application.Current ?? throw new InvalidOperationException("Application is not initialized."), value);
             _preferencesStore.Save(new EditorPreferences { ThemePreference = value });
-            AddOutputEntry($"Theme preference changed: {value}");
+            AddOutputEntry($"Theme preference changed: {value}", OutputLogStatus.Info);
         }
     }
 
     public string StatusMessage
     {
-        get => _statusMessage;
+        get => LastOutputEntry?.Message ?? _statusMessage;
         private set => SetProperty(ref _statusMessage, value);
     }
+
+    public OutputLogEntry? LastOutputEntry => _outputLog.LastEntry;
+
+    public string StatusIconGlyph => LastOutputEntry?.IconGlyph ?? "\uE946";
+
+    public Brush StatusMessageBrush => LastOutputEntry?.StatusBrush ?? Brushes.White;
 
     public EditorProject? LoadedProject
     {
@@ -293,7 +301,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             var openedNewTab = _documentWorkspace.OpenOrSelectDocument(path, openData.Summary, openData.PanelLayoutJson);
             if (!openedNewTab)
             {
-                AddOutputEntry($"Switched to already open document tab for {path}");
+                AddOutputEntry($"Switched to already open document tab for {path}", OutputLogStatus.Info);
             }
 
             var selectedTitle = SelectedDocument?.Title ?? Path.GetFileName(path);
@@ -302,12 +310,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 : $"Activated open document tab: {selectedTitle}";
             AddOutputEntry(openedNewTab
                 ? $"Opened document file {path}"
-                : $"Activated existing document tab for {path}");
+                : $"Activated existing document tab for {path}",
+                OutputLogStatus.Info);
         }
         catch (Exception ex)
         {
             StatusMessage = ex.Message;
-            AddOutputEntry($"Open document failed: {ex.Message}");
+            AddOutputEntry($"Open document failed: {ex.Message}", OutputLogStatus.Error);
             MessageBox.Show(ex.Message, "Open Document Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
@@ -343,12 +352,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 current.CommandService);
             _documentWorkspace.ReplaceDocument(current, updatedDocument);
             StatusMessage = $"Saved document: {updatedDocument.Title}";
-            AddOutputEntry($"Saved document to {savePath}");
+            AddOutputEntry($"Saved document to {savePath}", OutputLogStatus.Info);
         }
         catch (Exception ex)
         {
             StatusMessage = ex.Message;
-            AddOutputEntry($"Save document failed: {ex.Message}");
+            AddOutputEntry($"Save document failed: {ex.Message}", OutputLogStatus.Error);
             MessageBox.Show(ex.Message, "Save Document Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
@@ -403,7 +412,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         _preferencesWindow.Closed += (_, _) => _preferencesWindow = null;
         _preferencesWindow.Show();
-        AddOutputEntry("Opened Preferences window.");
+        AddOutputEntry("Opened Preferences window.", OutputLogStatus.Info);
     }
 
     private void OpenProjectSettings()
@@ -422,7 +431,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         _projectSettingsWindow.Closed += (_, _) => _projectSettingsWindow = null;
         _projectSettingsWindow.Show();
-        AddOutputEntry("Opened Project Settings window.");
+        AddOutputEntry("Opened Project Settings window.", OutputLogStatus.Info);
     }
 
     private void ClosePreferences()
@@ -484,7 +493,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _documentWorkspace.EnsureProjectOverviewDocument();
         _assetBrowser.RefreshAssetBrowser();
         StatusMessage = $"Project opened: {project.Name} ({project.ProjectFilePath})";
-        AddOutputEntry($"Loaded startup project '{project.Name}' from {project.ProjectFilePath}");
+        AddOutputEntry($"Loaded startup project '{project.Name}' from {project.ProjectFilePath}", OutputLogStatus.Info);
     }
 
     private static EditorProject LoadProjectFromFile(string projectFilePath)
@@ -599,9 +608,22 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private void AddOutputEntry(string message)
+    private void AddOutputEntry(string message, OutputLogStatus status)
     {
-        _outputLog.AddOutputEntry(message);
+        _outputLog.AddOutputEntry(message, status);
+    }
+
+    private void OnOutputLogPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is not nameof(OutputLogViewModel.LastEntry))
+        {
+            return;
+        }
+
+        OnPropertyChanged(nameof(LastOutputEntry));
+        OnPropertyChanged(nameof(StatusMessage));
+        OnPropertyChanged(nameof(StatusIconGlyph));
+        OnPropertyChanged(nameof(StatusMessageBrush));
     }
 
     private void NotifyDocumentCommands()

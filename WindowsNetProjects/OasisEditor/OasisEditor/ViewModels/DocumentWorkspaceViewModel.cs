@@ -16,7 +16,7 @@ public sealed class DocumentWorkspaceViewModel
     private readonly Action<DocumentTabViewModel?> _setSelectedDocument;
     private readonly Action _notifyUndoRedoStateChanged;
     private readonly Action<string> _setStatusMessage;
-    private readonly Action<string> _addOutputEntry;
+    private readonly Action<string, OutputLogStatus> _addOutputEntry;
     private readonly Action<Guid> _onDocumentClosed;
 
     private int _untitledDocumentCounter = 1;
@@ -32,7 +32,7 @@ public sealed class DocumentWorkspaceViewModel
         Action<DocumentTabViewModel?> setSelectedDocument,
         Action notifyUndoRedoStateChanged,
         Action<string> setStatusMessage,
-        Action<string> addOutputEntry,
+        Action<string, OutputLogStatus> addOutputEntry,
         Action<Guid>? onDocumentClosed = null)
     {
         _getLoadedProject = getLoadedProject;
@@ -66,7 +66,7 @@ public sealed class DocumentWorkspaceViewModel
         var document = new DocumentTabViewModel(EditorDocument.CreateUntitled($"Untitled {_untitledDocumentCounter++}"));
         ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
         _setStatusMessage($"Opened document tab: {document.Title}");
-        _addOutputEntry($"Opened document tab: {document.Title}");
+        _addOutputEntry($"Opened document tab: {document.Title}", OutputLogStatus.Info);
     }
 
     public void OpenPanel2DStubDocument()
@@ -82,7 +82,7 @@ public sealed class DocumentWorkspaceViewModel
 
         ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
         _setStatusMessage($"Opened panel document stub: {document.Title}");
-        _addOutputEntry($"Opened panel document stub: {document.Title}");
+        _addOutputEntry($"Opened panel document stub: {document.Title}", OutputLogStatus.Info);
     }
 
     public void OpenCabinet3DStubDocument()
@@ -95,7 +95,7 @@ public sealed class DocumentWorkspaceViewModel
         var document = new DocumentTabViewModel(EditorDocument.CreateCabinet3DStub($"Cabinet {_cabinetDocumentCounter++}"));
         ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
         _setStatusMessage($"Opened cabinet document stub: {document.Title}");
-        _addOutputEntry($"Opened cabinet document stub: {document.Title}");
+        _addOutputEntry($"Opened cabinet document stub: {document.Title}", OutputLogStatus.Info);
     }
 
     public void OpenMachineStubDocument()
@@ -108,7 +108,7 @@ public sealed class DocumentWorkspaceViewModel
         var document = new DocumentTabViewModel(EditorDocument.CreateMachineStub($"Machine {_machineDocumentCounter++}"));
         ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
         _setStatusMessage($"Opened machine document stub: {document.Title}");
-        _addOutputEntry($"Opened machine document stub: {document.Title}");
+        _addOutputEntry($"Opened machine document stub: {document.Title}", OutputLogStatus.Info);
     }
 
     public void CloseSelectedDocument()
@@ -121,7 +121,7 @@ public sealed class DocumentWorkspaceViewModel
 
         ExecuteDocumentMutation(new CloseDocumentTabMutationCommand(this, selectedDocument));
         _setStatusMessage($"Closed document tab: {selectedDocument.Title}");
-        _addOutputEntry($"Closed document tab: {selectedDocument.Title}");
+        _addOutputEntry($"Closed document tab: {selectedDocument.Title}", OutputLogStatus.Info);
     }
 
     public bool OpenOrSelectDocument(string path, string summary, string? panelLayoutJson)
@@ -232,7 +232,7 @@ public sealed class DocumentWorkspaceViewModel
 
         ExecuteDocumentMutation(new ReplaceDocumentTabMutationCommand(this, selectedDocument, updated));
         _setStatusMessage($"Updated inspector summary for {updated.Title}");
-        _addOutputEntry($"Inspector summary updated for {updated.Title}");
+        _addOutputEntry($"Inspector summary updated for {updated.Title}", OutputLogStatus.Info);
         return updated;
     }
 
