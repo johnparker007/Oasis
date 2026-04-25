@@ -109,6 +109,9 @@
                                             local:CanvasPanBehavior.IsImageToolActive="{Binding IsChecked, ElementName=ImageToolToggle}"
                                             local:CanvasPanBehavior.PanelLayoutJson="{Binding PanelLayoutJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                             local:CanvasPanBehavior.SelectedPanelSelection="{Binding HierarchySelectedPanelSelection, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                            local:CanvasPanBehavior.PanelZoom="{Binding PanelZoom, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                            local:CanvasPanBehavior.PanelPanX="{Binding PanelPanX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                            local:CanvasPanBehavior.PanelPanY="{Binding PanelPanY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                             Background="{DynamicResource PanelBackgroundBrush}">
                                         <Canvas.Resources>
                                             <Style TargetType="Rectangle">

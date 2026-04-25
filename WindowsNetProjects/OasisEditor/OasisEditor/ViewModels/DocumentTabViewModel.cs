@@ -8,6 +8,9 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     private readonly CommandService _commandService;
     private string? _panelLayoutJson;
     private PanelSelectionInfo? _hierarchySelectedPanelSelection;
+    private double _panelZoom = 1.0;
+    private double _panelPanX;
+    private double _panelPanY;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -66,6 +69,51 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
 
             _hierarchySelectedPanelSelection = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HierarchySelectedPanelSelection)));
+        }
+    }
+
+    public double PanelZoom
+    {
+        get => _panelZoom;
+        set
+        {
+            if (Math.Abs(_panelZoom - value) < 0.0001)
+            {
+                return;
+            }
+
+            _panelZoom = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PanelZoom)));
+        }
+    }
+
+    public double PanelPanX
+    {
+        get => _panelPanX;
+        set
+        {
+            if (Math.Abs(_panelPanX - value) < 0.0001)
+            {
+                return;
+            }
+
+            _panelPanX = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PanelPanX)));
+        }
+    }
+
+    public double PanelPanY
+    {
+        get => _panelPanY;
+        set
+        {
+            if (Math.Abs(_panelPanY - value) < 0.0001)
+            {
+                return;
+            }
+
+            _panelPanY = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PanelPanY)));
         }
     }
 }

@@ -46,6 +46,27 @@ public static class CanvasPanBehavior
             typeof(CanvasPanBehavior),
             new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, OnSelectedPanelSelectionChanged));
 
+    public static readonly DependencyProperty PanelZoomProperty =
+        DependencyProperty.RegisterAttached(
+            "PanelZoom",
+            typeof(double),
+            typeof(CanvasPanBehavior),
+            new FrameworkPropertyMetadata(1.0, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, OnPanelViewportStateChanged));
+
+    public static readonly DependencyProperty PanelPanXProperty =
+        DependencyProperty.RegisterAttached(
+            "PanelPanX",
+            typeof(double),
+            typeof(CanvasPanBehavior),
+            new FrameworkPropertyMetadata(0.0, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, OnPanelViewportStateChanged));
+
+    public static readonly DependencyProperty PanelPanYProperty =
+        DependencyProperty.RegisterAttached(
+            "PanelPanY",
+            typeof(double),
+            typeof(CanvasPanBehavior),
+            new FrameworkPropertyMetadata(0.0, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, OnPanelViewportStateChanged));
+
     public static bool GetIsEnabled(DependencyObject dependencyObject)
     {
         return (bool)dependencyObject.GetValue(IsEnabledProperty);
@@ -96,6 +117,36 @@ public static class CanvasPanBehavior
         dependencyObject.SetValue(SelectedPanelSelectionProperty, value);
     }
 
+    public static double GetPanelZoom(DependencyObject dependencyObject)
+    {
+        return (double)dependencyObject.GetValue(PanelZoomProperty);
+    }
+
+    public static void SetPanelZoom(DependencyObject dependencyObject, double value)
+    {
+        dependencyObject.SetValue(PanelZoomProperty, value);
+    }
+
+    public static double GetPanelPanX(DependencyObject dependencyObject)
+    {
+        return (double)dependencyObject.GetValue(PanelPanXProperty);
+    }
+
+    public static void SetPanelPanX(DependencyObject dependencyObject, double value)
+    {
+        dependencyObject.SetValue(PanelPanXProperty, value);
+    }
+
+    public static double GetPanelPanY(DependencyObject dependencyObject)
+    {
+        return (double)dependencyObject.GetValue(PanelPanYProperty);
+    }
+
+    public static void SetPanelPanY(DependencyObject dependencyObject, double value)
+    {
+        dependencyObject.SetValue(PanelPanYProperty, value);
+    }
+
     private static void OnIsEnabledChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs eventArgs)
     {
         if (dependencyObject is not FrameworkElement element)
@@ -107,6 +158,7 @@ public static class CanvasPanBehavior
         if (isEnabled)
         {
             CanvasPanZoomBehavior.EnsureTransformGroup(element);
+            ApplyViewportStateToCanvas(element);
             element.MouseDown += OnMouseDown;
             element.MouseLeftButtonDown += OnMouseLeftButtonDown;
             element.MouseMove += OnMouseMove;
@@ -125,6 +177,16 @@ public static class CanvasPanBehavior
         }
     }
 
+    private static void OnPanelViewportStateChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs _)
+    {
+        if (dependencyObject is not FrameworkElement element)
+        {
+            return;
+        }
+
+        ApplyViewportStateToCanvas(element);
+    }
+
     private static void OnMouseDown(object sender, MouseButtonEventArgs eventArgs)
     {
         if (sender is not FrameworkElement element)
@@ -133,6 +195,7 @@ public static class CanvasPanBehavior
         }
 
         CanvasPanZoomBehavior.HandleMouseDown(element, eventArgs);
+        UpdateViewportStateFromCanvas(element);
     }
 
     private static void OnMouseMove(object sender, MouseEventArgs eventArgs)
@@ -143,6 +206,7 @@ public static class CanvasPanBehavior
         }
 
         CanvasPanZoomBehavior.HandleMouseMove(element, eventArgs);
+        UpdateViewportStateFromCanvas(element);
     }
 
     private static void OnMouseLeftButtonDown(object sender, MouseButtonEventArgs eventArgs)
@@ -232,6 +296,7 @@ public static class CanvasPanBehavior
         }
 
         CanvasPanZoomBehavior.HandleMouseWheel(element, eventArgs);
+        UpdateViewportStateFromCanvas(element);
     }
 
     private static void OnMouseUp(object sender, MouseButtonEventArgs eventArgs)
@@ -252,6 +317,23 @@ public static class CanvasPanBehavior
         }
 
         CanvasPanZoomBehavior.HandleLostMouseCapture(element);
+    }
+
+    private static void ApplyViewportStateToCanvas(FrameworkElement element)
+    {
+        var (scale, translate) = CanvasPanZoomBehavior.EnsureTransformGroup(element);
+        scale.ScaleX = GetPanelZoom(element);
+        scale.ScaleY = GetPanelZoom(element);
+        translate.X = GetPanelPanX(element);
+        translate.Y = GetPanelPanY(element);
+    }
+
+    private static void UpdateViewportStateFromCanvas(FrameworkElement element)
+    {
+        var (scale, translate) = CanvasPanZoomBehavior.EnsureTransformGroup(element);
+        element.SetCurrentValue(PanelZoomProperty, scale.ScaleX);
+        element.SetCurrentValue(PanelPanXProperty, translate.X);
+        element.SetCurrentValue(PanelPanYProperty, translate.Y);
     }
 
     private static void ExecuteCanvasMutation(FrameworkElement canvas, Commands.ICommand command)

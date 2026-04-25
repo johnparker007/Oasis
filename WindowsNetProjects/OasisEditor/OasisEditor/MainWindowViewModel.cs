@@ -492,7 +492,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 current.Document.SaveAs(savePath, current.ContentSummary).MarkClean(),
                 current.PanelLayoutJson,
                 current.DocumentId,
-                current.CommandService);
+                current.CommandService)
+            {
+                PanelZoom = current.PanelZoom,
+                PanelPanX = current.PanelPanX,
+                PanelPanY = current.PanelPanY
+            };
             _documentWorkspace.ReplaceDocument(current, updatedDocument);
             StatusMessage = $"Saved document: {updatedDocument.Title}";
             AddOutputEntry($"Saved document to {savePath}", OutputLogStatus.Info);
