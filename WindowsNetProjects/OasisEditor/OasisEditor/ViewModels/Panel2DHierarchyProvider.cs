@@ -40,8 +40,11 @@ public sealed class Panel2DHierarchyProvider : IDocumentHierarchyProvider
                 var y = Math.Round(element.Y);
                 var width = Math.Round(element.Width);
                 var height = Math.Round(element.Height);
+                var displayName = string.IsNullOrWhiteSpace(element.Name)
+                    ? $"{itemPrefix} {index + 1} ({width}×{height} at {x}, {y})"
+                    : element.Name.Trim();
                 return new HierarchyItemViewModel(
-                    $"{itemPrefix} {index + 1} ({width}×{height} at {x}, {y})",
+                    displayName,
                     $"{kind}:{element.X:0.###}:{element.Y:0.###}:{element.Width:0.###}:{element.Height:0.###}",
                     panelSelection: new PanelSelectionInfo(
                         kind,
