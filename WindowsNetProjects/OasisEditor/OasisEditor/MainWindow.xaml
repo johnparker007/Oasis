@@ -21,6 +21,7 @@
         </Grid.RowDefinitions>
 
         <Menu Grid.Row="0"
+              Height="24"
               Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}"
               Foreground="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}"
               BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}"
@@ -32,12 +33,24 @@
                         <Trigger Property="Role"
                                  Value="TopLevelHeader">
                             <Setter Property="Padding"
-                                    Value="4,1" />
+                                    Value="6,0" />
+                            <Setter Property="Height"
+                                    Value="22" />
+                            <Setter Property="MinWidth"
+                                    Value="0" />
+                            <Setter Property="Margin"
+                                    Value="0" />
                         </Trigger>
                         <Trigger Property="Role"
                                  Value="TopLevelItem">
                             <Setter Property="Padding"
-                                    Value="4,1" />
+                                    Value="6,0" />
+                            <Setter Property="Height"
+                                    Value="22" />
+                            <Setter Property="MinWidth"
+                                    Value="0" />
+                            <Setter Property="Margin"
+                                    Value="0" />
                         </Trigger>
                     </Style.Triggers>
                 </Style>
