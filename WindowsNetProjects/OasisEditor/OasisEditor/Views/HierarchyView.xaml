@@ -20,11 +20,19 @@
         <TreeView Grid.Row="0"
                   ItemsSource="{Binding HierarchyItems}"
                   SelectedItemChanged="OnTreeViewSelectedItemChanged"
-                  Visibility="{Binding HasHierarchyItems, Converter={StaticResource BoolToVisibility}}">
+                  Visibility="{Binding HasHierarchyItems, Converter={StaticResource BoolToVisibility}}"
+                  Foreground="{DynamicResource TextPrimaryBrush}"
+                  Background="{DynamicResource PanelBackgroundBrush}"
+                  BorderBrush="{DynamicResource BorderSubtleBrush}"
+                  BorderThickness="1">
             <TreeView.Resources>
+                <Style TargetType="{x:Type TreeViewItem}">
+                    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                </Style>
                 <HierarchicalDataTemplate DataType="{x:Type local:HierarchyItemViewModel}"
                                           ItemsSource="{Binding Children}">
-                    <TextBlock Text="{Binding DisplayName}" />
+                    <TextBlock Text="{Binding DisplayName}"
+                               Foreground="{DynamicResource TextPrimaryBrush}" />
                 </HierarchicalDataTemplate>
             </TreeView.Resources>
         </TreeView>
