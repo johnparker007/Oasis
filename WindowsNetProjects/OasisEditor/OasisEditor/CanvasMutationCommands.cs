@@ -51,6 +51,7 @@ internal static class CanvasMutationCommands
             elements.Insert(index, _element);
             _insertIndex = index;
             _document.PanelLayoutJson = Panel2DDocumentStorage.SerializeLayout(elements);
+            _document.MarkDirty();
         }
 
         public void Undo()
@@ -89,6 +90,7 @@ internal static class CanvasMutationCommands
             if (removed)
             {
                 _document.PanelLayoutJson = Panel2DDocumentStorage.SerializeLayout(elements);
+                _document.MarkDirty();
             }
         }
     }
@@ -118,6 +120,7 @@ internal static class CanvasMutationCommands
             elements.Insert(index, _element);
             _insertIndex = index;
             _document.PanelLayoutJson = Panel2DDocumentStorage.SerializeLayout(elements);
+            _document.MarkDirty();
         }
 
         public void Undo()
@@ -156,6 +159,7 @@ internal static class CanvasMutationCommands
             if (removed)
             {
                 _document.PanelLayoutJson = Panel2DDocumentStorage.SerializeLayout(elements);
+                _document.MarkDirty();
             }
         }
     }
@@ -191,6 +195,7 @@ internal static class CanvasMutationCommands
             _deletedIndex = index;
             elements.RemoveAt(index);
             _document.PanelLayoutJson = Panel2DDocumentStorage.SerializeLayout(elements);
+            _document.MarkDirty();
         }
 
         public void Undo()
@@ -204,6 +209,7 @@ internal static class CanvasMutationCommands
             var insertIndex = Math.Clamp(index, 0, elements.Count);
             elements.Insert(insertIndex, _deletedElement);
             _document.PanelLayoutJson = Panel2DDocumentStorage.SerializeLayout(elements);
+            _document.MarkDirty();
         }
     }
 
@@ -241,12 +247,18 @@ internal static class CanvasMutationCommands
             }
 
             var existing = elements[index];
+            var normalizedNewName = _newName.Trim();
+            if (string.Equals(existing.Name?.Trim(), normalizedNewName, StringComparison.Ordinal))
+            {
+                return;
+            }
+
             _renamedIndex = index;
             _previousName = existing.Name;
             elements[index] = new PanelElementFile
             {
                 ObjectId = existing.ObjectId,
-                Name = _newName,
+                Name = normalizedNewName,
                 Kind = existing.Kind,
                 X = existing.X,
                 Y = existing.Y,
@@ -255,6 +267,7 @@ internal static class CanvasMutationCommands
             };
 
             _document.PanelLayoutJson = Panel2DDocumentStorage.SerializeLayout(elements);
+            _document.MarkDirty();
         }
 
         public void Undo()
@@ -288,6 +301,7 @@ internal static class CanvasMutationCommands
             };
 
             _document.PanelLayoutJson = Panel2DDocumentStorage.SerializeLayout(elements);
+            _document.MarkDirty();
         }
     }
 

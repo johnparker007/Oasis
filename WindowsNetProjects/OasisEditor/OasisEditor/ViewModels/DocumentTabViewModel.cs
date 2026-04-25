@@ -6,6 +6,7 @@ namespace OasisEditor;
 public sealed class DocumentTabViewModel : INotifyPropertyChanged
 {
     private readonly CommandService _commandService;
+    private EditorDocument _document;
     private string? _panelLayoutJson;
     private PanelSelectionInfo? _hierarchySelectedPanelSelection;
     private double _panelZoom = 1.0;
@@ -20,13 +21,13 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
         Guid? documentId = null,
         CommandService? commandService = null)
     {
-        Document = document;
+        _document = document;
         DocumentId = documentId ?? Guid.NewGuid();
         _commandService = commandService ?? new CommandService(new CommandHistory(), DocumentId);
         _panelLayoutJson = panelLayoutJson;
     }
 
-    public EditorDocument Document { get; }
+    public EditorDocument Document => _document;
     public Guid DocumentId { get; }
     public CommandService CommandService => _commandService;
     public string Title => Document.IsDirty ? $"{Document.Title}*" : Document.Title;
@@ -41,6 +42,19 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     public string FilePath => Document.FilePath;
     public string ContentSummary => Document.ContentSummary;
     public bool IsDirty => Document.IsDirty;
+
+    public void MarkDirty()
+    {
+        if (_document.IsDirty)
+        {
+            return;
+        }
+
+        _document = _document.MarkDirty();
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Document)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsDirty)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Title)));
+    }
 
     public string? PanelLayoutJson
     {
