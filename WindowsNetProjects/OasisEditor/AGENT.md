@@ -82,6 +82,50 @@ The editor is project-based:
 - Fix compile errors, binding errors, and missing resource errors before marking a task complete
 - Keep refactor-only changes separate from feature changes where practical
 
+## Current Code Review Priorities
+The immediate work is stability and maintainability for the existing WPF Panel2D editor. Before adding major new features, address the review-fix track in `TASKS.md` in order.
+
+Priority order:
+1. Correctness fixes that protect user work: dirty state, no-op command history, close-tab command safety.
+2. Small duplication cleanup: shared add-element command.
+3. Canvas behaviour split while preserving UX.
+4. Introduce a live, UI-agnostic Panel2D model separate from JSON storage.
+5. Add schema validation, migration hooks, and storage/model tests.
+6. Only then plan layer ordering, locking, visibility, duplicate/copy/paste, cabinet import, machine assembly, or Unity export.
+
+## Code Review Rules
+- The live editor state should not be raw JSON long term. JSON is a persistence format, not the canonical in-memory model.
+- Panel2D document state should move toward a UI-agnostic model containing elements with stable IDs, display names, kinds, coordinates, and dimensions.
+- WPF controls, dependency properties, brushes, and canvas visuals must not leak into domain/model classes.
+- Canvas visuals should be a projection of the Panel2D model.
+- Save/load should preserve the existing `.panel2d` format until a dedicated schema migration task changes it.
+- Dirty state must change only for real document mutations and must clear after successful save.
+- No-op commands must not be recorded in undo/redo history.
+- Commands that cannot execute should fail safely and visibly during development rather than silently corrupting state.
+- Keep object identity based on stable object IDs, not display names or canvas positions.
+
+## Panel2D Storage and Migration Rules
+- Treat `SchemaVersion = 1` as the current `.panel2d` format.
+- Add explicit validation before expanding the format.
+- Add migration hooks before introducing schema version 2 or later.
+- Unsupported future schema versions should produce clear errors rather than being silently normalised.
+- Malformed or partially invalid files should fail gracefully with useful output-log/error messages.
+
+## Canvas and Interaction Rules
+- `CanvasPanBehavior.cs` should remain coordination/glue only.
+- Tool placement, command dispatch, selection, pan/zoom, visual mapping, and persistence mapping should stay in separate focused classes.
+- Non-persisted instructional or placeholder visuals must not be treated as selectable/persisted editor objects.
+- Hierarchy should list persisted/model-backed objects only.
+- Keep click-to-place, pan, zoom, selection, and hierarchy selection behaviour unchanged during refactor-only tasks.
+
+## Testing Rules
+- Build after every task.
+- Smoke test the relevant editor flow after every task.
+- Add automated tests for model/storage/command behaviour where practical.
+- If a new test project is needed, keep it under `Oasis/WindowsNetProjects/OasisEditor` and limit it to the editor project.
+- Do not proceed to the next task while compile errors, binding errors, missing resources, or failing tests remain.
+
+
 ## Current Focus
 Follow TASKS.md in order.
 Always implement the next unchecked task unless instructed otherwise.

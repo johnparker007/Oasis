@@ -1,5 +1,103 @@
 # TASKS.md
 
+## Current Focus — Code Review Fixes and Panel2D Model Stabilisation
+
+These tasks come from the Editor code review. Complete them in order. Build and smoke test after each checked task. Keep each task as a small, focused Codex change.
+
+### Review Fix Guardrails
+- [ ] Only modify files under `Oasis/WindowsNetProjects/OasisEditor`
+- [ ] Keep the app runnable after every task
+- [ ] Build after every task and fix compile/binding/resource errors before continuing
+- [ ] Prefer small diffs and behaviour-preserving changes unless the task explicitly changes behaviour
+- [ ] Do not start Blender, cabinet import, machine assembly, or Unity export work in this track
+- [ ] Do not introduce new frameworks or dependency injection yet
+- [ ] Add tests where practical; if the project has no test project yet, create the smallest suitable test project under the Editor solution only
+
+### Phase A — Correctness Fixes Before Larger Refactors
+- [ ] Ensure Panel2D canvas mutations mark the owning document dirty
+  - [ ] Add a focused API on `DocumentTabViewModel` or the workspace to mark the document dirty without replacing unrelated state
+  - [ ] Ensure add rectangle marks the document dirty
+  - [ ] Ensure add image marks the document dirty
+  - [ ] Ensure delete element marks the document dirty only when an element was actually deleted
+  - [ ] Ensure rename element marks the document dirty only when the name actually changed
+  - [ ] Verify the tab title gains `*` after each real canvas mutation
+  - [ ] Verify saving clears the dirty marker
+- [ ] Prevent no-op document commands from entering undo/redo history
+  - [ ] Introduce a minimal success/no-op contract for commands, or an equivalent command-service guard
+  - [ ] Do not record delete when no matching element exists
+  - [ ] Do not record rename when no matching element exists
+  - [ ] Do not record rename when the new name equals the current name after normalisation
+  - [ ] Verify undo/redo menu labels do not change after no-op commands
+- [ ] Preserve command-history integrity when closing and undoing a closed document tab
+  - [ ] Review whether clearing a document command history inside close-tab execution makes undo of tab close unsafe
+  - [ ] Adjust close-tab behaviour so undoing a close either restores a usable document safely or the close operation is not undoable
+  - [ ] Verify closing a tab cannot leave stale document commands executable against a different tab
+- [ ] Replace duplicated add-element command implementations
+  - [ ] Replace separate rectangle/image add commands with a single `AddPanelElementMutationCommand`
+  - [ ] Preserve existing public factory methods if that keeps callers stable
+  - [ ] Verify add rectangle/image undo/redo still works
+
+### Phase B — Canvas Behaviour Split Without Changing UX
+- [ ] Move canvas command dispatch out of `CanvasPanBehavior`
+  - [ ] Create a small canvas command adapter/service responsible for routing commands to the active document shell
+  - [ ] Keep `Window.GetWindow(...)` usage contained in one place if it cannot be removed yet
+  - [ ] Preserve current canvas behaviour and bindings
+- [ ] Move panel tool placement logic out of `CanvasPanBehavior`
+  - [ ] Extract rectangle/image placement decisions into a focused tool/controller class
+  - [ ] Keep click-to-place behaviour unchanged
+  - [ ] Verify placement works with current pan/zoom transforms
+- [ ] Remove or isolate hardcoded MVP canvas sample visuals
+  - [ ] Ensure non-persisted instructional visuals are not selectable editor objects
+  - [ ] Prefer an overlay/help layer rather than selectable placeholder rectangles/text
+  - [ ] Verify hierarchy contains only persisted panel elements
+  - [ ] Verify save/load does not include sample visuals
+
+### Phase C — Panel2D Live Model Preparation
+- [ ] Create a domain-facing Panel2D model separate from JSON storage
+  - [ ] Add `Panel2DDocumentModel` with panel title/summary and a collection/list of `PanelElementModel`
+  - [ ] Add `PanelElementModel` fields for object ID, name, kind, X, Y, width, and height
+  - [ ] Keep the model UI-agnostic: no WPF types, controls, brushes, or dependency properties
+  - [ ] Add conversion between the new model and existing `PanelElementFile` storage DTOs
+  - [ ] Keep existing `.panel2d` file format working
+- [ ] Move Panel2D mutation commands to operate on the live model first
+  - [ ] Add element, delete element, and rename element should mutate the model
+  - [ ] Update JSON/layout sync as a projection of the model, not as the canonical state
+  - [ ] Preserve undo/redo behaviour
+  - [ ] Verify save/open round-trips existing panel files
+- [ ] Make hierarchy and inspector read from the live Panel2D model where practical
+  - [ ] Keep binding-facing property names stable unless a task explicitly allows a rename
+  - [ ] Verify selection identity remains object-ID based
+  - [ ] Verify hierarchy refreshes after add/delete/rename
+
+### Phase D — Storage, Validation, and Migration
+- [ ] Add explicit Panel2D schema validation
+  - [ ] Validate `SchemaVersion`
+  - [ ] Validate required element IDs, names, kinds, and dimensions
+  - [ ] Normalise recoverable issues and report unrecoverable ones cleanly
+  - [ ] Ensure malformed JSON fails gracefully with a clear output-log/error message
+- [ ] Add Panel2D schema migration hooks
+  - [ ] Keep schema version 1 as the current format
+  - [ ] Add a small migration entry point even if there are no migrations yet
+  - [ ] Ensure future schema versions fail with an explicit unsupported-version message
+- [ ] Add tests for Panel2D storage/model behaviour
+  - [ ] Round-trip rectangle and image elements
+  - [ ] Preserve object IDs and names
+  - [ ] Normalise missing IDs/names only when intended
+  - [ ] Reject or report unsupported schema versions
+
+### Phase E — Deferred Planning Only
+- [ ] Plan layer ordering support only
+  - [ ] Identify required model fields and UI commands
+  - [ ] Do not implement yet
+- [ ] Plan object locking/visibility support only
+  - [ ] Identify required model fields, canvas hit-test changes, and hierarchy UI changes
+  - [ ] Do not implement yet
+- [ ] Plan copy/paste/duplicate support only
+  - [ ] Identify ID-generation and undo/redo requirements
+  - [ ] Do not implement yet
+
+---
+
 ## Current Focus — Editor Stability and Document Context
 
 ### Undo/Redo Robustness
