@@ -23,20 +23,8 @@
 
         <ListBox Grid.Row="1"
                  ItemsSource="{Binding AssetBrowserItems}"
-                 SelectedItem="{Binding SelectedAsset, Mode=TwoWay}">
-            <ListBox.ItemContainerStyle>
-                <Style TargetType="{x:Type ListBoxItem}">
-                    <Setter Property="InputBindings">
-                        <Setter.Value>
-                            <InputBindingCollection>
-                                <MouseBinding Gesture="LeftDoubleClick"
-                                              Command="{Binding DataContext.OpenAssetCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                              CommandParameter="{Binding}" />
-                            </InputBindingCollection>
-                        </Setter.Value>
-                    </Setter>
-                </Style>
-            </ListBox.ItemContainerStyle>
+                 SelectedItem="{Binding SelectedAsset, Mode=TwoWay}"
+                 MouseDoubleClick="OnAssetListMouseDoubleClick">
             <ListBox.ItemTemplate>
                 <DataTemplate>
                     <TextBlock Text="{Binding DisplayPath}" />
