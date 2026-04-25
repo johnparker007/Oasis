@@ -68,20 +68,6 @@
                             </Border>
                         </layout:LayoutAnchorable>
 
-                        <layout:LayoutAnchorable Title="Tasks Placeholder"
-                                                 ContentId="TasksPlaceholder">
-                            <Border Padding="12"
-                                    Background="{DynamicResource ToolBarBackgroundBrush}">
-                                <StackPanel>
-                                    <TextBlock FontWeight="SemiBold"
-                                               Text="Tasks" />
-                                    <TextBlock Margin="0,8,0,0"
-                                               TextWrapping="Wrap"
-                                               Foreground="{DynamicResource TextSecondaryBrush}"
-                                               Text="Placeholder dock panel for validation, build, or import tasks." />
-                                </StackPanel>
-                            </Border>
-                        </layout:LayoutAnchorable>
                     </layout:LayoutAnchorablePane>
                 </layout:LayoutPanel>
             </layout:LayoutRoot>
