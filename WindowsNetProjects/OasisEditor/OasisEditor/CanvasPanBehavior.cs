@@ -343,16 +343,9 @@ public static class CanvasPanBehavior
             return;
         }
 
-        if (Window.GetWindow(canvas)?.DataContext is MainWindowViewModel shellViewModel)
+        if (!CanvasCommandDispatcher.ExecuteMutation(canvas, tab, command))
         {
-            if (!shellViewModel.ExecuteDocumentCanvasCommand(tab.DocumentId, command))
-            {
-                return;
-            }
-        }
-        else
-        {
-            tab.CommandService.Execute(command);
+            return;
         }
 
         if (canvas is Canvas panelCanvas)
@@ -414,14 +407,9 @@ public static class CanvasPanBehavior
             return;
         }
 
-        if (Window.GetWindow(canvas)?.DataContext is not MainWindowViewModel shellViewModel)
-        {
-            return;
-        }
-
         if (selectedElement is null)
         {
-            shellViewModel.UpdateDocumentPanelSelection(tab.DocumentId, null);
+            CanvasCommandDispatcher.NotifyDocumentSelection(canvas, tab, null);
             return;
         }
 
@@ -434,10 +422,10 @@ public static class CanvasPanBehavior
                 Canvas.GetTop(selectedElement),
                 selectedElement.Width,
                 selectedElement.Height);
-            shellViewModel.UpdateDocumentPanelSelection(tab.DocumentId, fallbackSelection);
+            CanvasCommandDispatcher.NotifyDocumentSelection(canvas, tab, fallbackSelection);
             return;
         }
 
-        shellViewModel.UpdateDocumentPanelSelection(tab.DocumentId, PanelSelectionContract.ToSelectionInfo(selectable));
+        CanvasCommandDispatcher.NotifyDocumentSelection(canvas, tab, PanelSelectionContract.ToSelectionInfo(selectable));
     }
 }

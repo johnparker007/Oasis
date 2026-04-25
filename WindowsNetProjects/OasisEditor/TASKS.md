@@ -38,10 +38,10 @@ These tasks come from the Editor code review. Complete them in order. Build and 
   - [ ] Verify add rectangle/image undo/redo still works
 
 ### Phase B — Canvas Behaviour Split Without Changing UX
-- [ ] Move canvas command dispatch out of `CanvasPanBehavior`
-  - [ ] Create a small canvas command adapter/service responsible for routing commands to the active document shell
-  - [ ] Keep `Window.GetWindow(...)` usage contained in one place if it cannot be removed yet
-  - [ ] Preserve current canvas behaviour and bindings
+- [x] Move canvas command dispatch out of `CanvasPanBehavior`
+  - [x] Create a small canvas command adapter/service responsible for routing commands to the active document shell
+  - [x] Keep `Window.GetWindow(...)` usage contained in one place if it cannot be removed yet
+  - [x] Preserve current canvas behaviour and bindings
 - [ ] Move panel tool placement logic out of `CanvasPanBehavior`
   - [ ] Extract rectangle/image placement decisions into a focused tool/controller class
   - [ ] Keep click-to-place behaviour unchanged
