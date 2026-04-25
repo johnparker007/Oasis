@@ -67,6 +67,13 @@ public static class CanvasPanBehavior
             typeof(CanvasPanBehavior),
             new FrameworkPropertyMetadata(0.0, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, OnPanelViewportStateChanged));
 
+    private static readonly DependencyProperty IsSyncingViewportStateProperty =
+        DependencyProperty.RegisterAttached(
+            "IsSyncingViewportState",
+            typeof(bool),
+            typeof(CanvasPanBehavior),
+            new PropertyMetadata(false));
+
     public static bool GetIsEnabled(DependencyObject dependencyObject)
     {
         return (bool)dependencyObject.GetValue(IsEnabledProperty);
@@ -180,6 +187,11 @@ public static class CanvasPanBehavior
     private static void OnPanelViewportStateChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs _)
     {
         if (dependencyObject is not FrameworkElement element)
+        {
+            return;
+        }
+
+        if ((bool)element.GetValue(IsSyncingViewportStateProperty))
         {
             return;
         }
@@ -331,9 +343,17 @@ public static class CanvasPanBehavior
     private static void UpdateViewportStateFromCanvas(FrameworkElement element)
     {
         var (scale, translate) = CanvasPanZoomBehavior.EnsureTransformGroup(element);
-        element.SetCurrentValue(PanelZoomProperty, scale.ScaleX);
-        element.SetCurrentValue(PanelPanXProperty, translate.X);
-        element.SetCurrentValue(PanelPanYProperty, translate.Y);
+        element.SetValue(IsSyncingViewportStateProperty, true);
+        try
+        {
+            element.SetCurrentValue(PanelZoomProperty, scale.ScaleX);
+            element.SetCurrentValue(PanelPanXProperty, translate.X);
+            element.SetCurrentValue(PanelPanYProperty, translate.Y);
+        }
+        finally
+        {
+            element.SetValue(IsSyncingViewportStateProperty, false);
+        }
     }
 
     private static void ExecuteCanvasMutation(FrameworkElement canvas, Commands.ICommand command)
