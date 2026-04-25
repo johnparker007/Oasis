@@ -142,16 +142,7 @@ public sealed class HierarchyViewModel : INotifyPropertyChanged
 
     private static bool IsSelectionMatch(PanelSelectionInfo left, PanelSelectionInfo right)
     {
-        return string.Equals(left.Kind, right.Kind, StringComparison.OrdinalIgnoreCase)
-            && AreClose(left.X, right.X)
-            && AreClose(left.Y, right.Y)
-            && AreClose(left.Width, right.Width)
-            && AreClose(left.Height, right.Height);
-    }
-
-    private static bool AreClose(double left, double right)
-    {
-        return Math.Abs(left - right) < 0.01d;
+        return PanelSelectionContract.IsSameSelection(left, right);
     }
 
     private static IEnumerable<HierarchyItemViewModel> Flatten(IEnumerable<HierarchyItemViewModel> items)
