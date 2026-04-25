@@ -17,9 +17,11 @@ internal static class PanelElementFactory
     {
         var x = Math.Max(0, canvasPoint.X - (NewRectangleWidth / 2));
         var y = Math.Max(0, canvasPoint.Y - (NewRectangleHeight / 2));
+        var objectId = Guid.NewGuid().ToString("N");
         return new PanelElementFile
         {
-            ObjectId = Guid.NewGuid().ToString("N"),
+            ObjectId = objectId,
+            Name = Panel2DDocumentStorage.CreateDefaultElementName("rectangle", objectId),
             Kind = "rectangle",
             X = x,
             Y = y,
@@ -32,9 +34,11 @@ internal static class PanelElementFactory
     {
         var x = Math.Max(0, canvasPoint.X - (NewImageWidth / 2));
         var y = Math.Max(0, canvasPoint.Y - (NewImageHeight / 2));
+        var objectId = Guid.NewGuid().ToString("N");
         return new PanelElementFile
         {
-            ObjectId = Guid.NewGuid().ToString("N"),
+            ObjectId = objectId,
+            Name = Panel2DDocumentStorage.CreateDefaultElementName("image", objectId),
             Kind = "image",
             X = x,
             Y = y,
@@ -84,9 +88,11 @@ internal static class PanelElementFactory
             return null;
         }
 
+        var objectId = string.IsNullOrWhiteSpace(child.Uid) ? Guid.NewGuid().ToString("N") : child.Uid.Trim();
         return new PanelElementFile
         {
-            ObjectId = string.IsNullOrWhiteSpace(child.Uid) ? Guid.NewGuid().ToString("N") : child.Uid.Trim(),
+            ObjectId = objectId,
+            Name = Panel2DDocumentStorage.CreateDefaultElementName(kind, objectId),
             Kind = kind,
             X = Canvas.GetLeft(child),
             Y = Canvas.GetTop(child),

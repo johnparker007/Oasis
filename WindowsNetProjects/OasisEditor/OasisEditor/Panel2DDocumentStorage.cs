@@ -71,12 +71,40 @@ internal static class Panel2DDocumentStorage
 
     private static PanelElementFile NormalizeElement(PanelElementFile element)
     {
+        var normalizedObjectId = string.IsNullOrWhiteSpace(element.ObjectId)
+            ? Guid.NewGuid().ToString("N")
+            : element.ObjectId.Trim();
+
         return element with
         {
-            ObjectId = string.IsNullOrWhiteSpace(element.ObjectId)
-                ? Guid.NewGuid().ToString("N")
-                : element.ObjectId.Trim()
+            ObjectId = normalizedObjectId,
+            Name = NormalizeElementName(element.Name, element.Kind, normalizedObjectId),
+            Kind = element.Kind?.Trim() ?? string.Empty
         };
+    }
+
+    internal static string CreateDefaultElementName(string? kind, string? objectId)
+    {
+        var prefix = string.Equals(kind, "image", StringComparison.OrdinalIgnoreCase)
+            ? "Image"
+            : "Rectangle";
+
+        if (string.IsNullOrWhiteSpace(objectId))
+        {
+            return prefix;
+        }
+
+        var trimmedObjectId = objectId.Trim();
+        var suffixLength = Math.Min(6, trimmedObjectId.Length);
+        var suffix = trimmedObjectId[..suffixLength].ToUpperInvariant();
+        return $"{prefix} {suffix}";
+    }
+
+    private static string NormalizeElementName(string? name, string? kind, string objectId)
+    {
+        return string.IsNullOrWhiteSpace(name)
+            ? CreateDefaultElementName(kind, objectId)
+            : name.Trim();
     }
 }
 
