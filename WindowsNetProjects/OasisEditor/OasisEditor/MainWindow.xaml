@@ -96,17 +96,6 @@
                     <TextBlock FontFamily="Segoe MDL2 Assets"
                                Text="{Binding StatusIconGlyph}"
                                Foreground="{Binding StatusMessageBrush}" />
-                    <TextBlock Margin="6,0,0,0"
-                               Text="Status"
-                               Foreground="{Binding StatusMessageBrush}" />
-                </StackPanel>
-            </StatusBarItem>
-            <Separator />
-            <StatusBarItem>
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock FontFamily="Segoe MDL2 Assets"
-                               Text="{Binding StatusIconGlyph}"
-                               Foreground="{Binding StatusMessageBrush}" />
                     <TextBlock Margin="8,0,0,0"
                                Text="{Binding StatusMessage}"
                                Foreground="{Binding StatusMessageBrush}" />
