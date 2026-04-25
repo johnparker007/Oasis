@@ -379,12 +379,14 @@ public sealed class DocumentWorkspaceViewModel
         }
     }
 
-    private sealed class CloseDocumentTabMutationCommand : EditorCommands.ICommand
+    private sealed class CloseDocumentTabMutationCommand : EditorCommands.ICommand, EditorCommands.IExecutionTrackedCommand
     {
         private readonly DocumentWorkspaceViewModel _owner;
         private readonly DocumentTabViewModel _document;
         private int _index = -1;
         private DocumentTabViewModel? _nextSelection;
+
+        public bool WasExecuted { get; private set; }
 
         public CloseDocumentTabMutationCommand(DocumentWorkspaceViewModel owner, DocumentTabViewModel document)
         {
@@ -396,6 +398,7 @@ public sealed class DocumentWorkspaceViewModel
 
         public void Execute()
         {
+            WasExecuted = false;
             _index = _owner._openDocuments.IndexOf(_document);
             _owner._openDocuments.Remove(_document);
             _document.CommandService.History.Clear();
@@ -405,6 +408,9 @@ public sealed class DocumentWorkspaceViewModel
                 ? null
                 : _owner._openDocuments[Math.Clamp(_index, 0, _owner._openDocuments.Count - 1)];
             _owner._setSelectedDocument(_nextSelection);
+
+            // Closing tabs should not be undoable while per-document history is discarded.
+            WasExecuted = false;
         }
 
         public void Undo()
