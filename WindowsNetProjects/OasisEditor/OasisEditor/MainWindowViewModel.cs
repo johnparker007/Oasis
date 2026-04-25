@@ -267,18 +267,18 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public bool DeleteSelectedHierarchyItem()
     {
-        if (SelectedDocument is null || SelectedDocument.Document.DocumentType != EditorDocumentType.Panel2D)
+        var selectedDocument = SelectedDocument;
+        if (selectedDocument is null || selectedDocument.Document.DocumentType != EditorDocumentType.Panel2D)
         {
             return false;
         }
 
-        var selection = SelectedDocument.HierarchySelectedPanelSelection;
-        if (selection is null)
+        if (selectedDocument.HierarchySelectedPanelSelection is not PanelSelectionInfo selection)
         {
             return false;
         }
 
-        var hasMatchingElement = Panel2DDocumentStorage.DeserializeLayout(SelectedDocument.PanelLayoutJson)
+        var hasMatchingElement = Panel2DDocumentStorage.DeserializeLayout(selectedDocument.PanelLayoutJson)
             .Any(element =>
                 string.Equals(element.Kind, selection.Kind, StringComparison.OrdinalIgnoreCase)
                 && element.X.Equals(selection.X)
@@ -290,11 +290,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return false;
         }
 
-        var command = CanvasMutationCommands.CreateDeleteElementCommand(SelectedDocument.DocumentId, SelectedDocument, selection);
-        var wasDeleted = ExecuteDocumentCanvasCommand(SelectedDocument.DocumentId, command);
+        var command = CanvasMutationCommands.CreateDeleteElementCommand(selectedDocument.DocumentId, selectedDocument, selection);
+        var wasDeleted = ExecuteDocumentCanvasCommand(selectedDocument.DocumentId, command);
         if (wasDeleted)
         {
-            UpdateDocumentPanelSelection(SelectedDocument.DocumentId, null);
+            UpdateDocumentPanelSelection(selectedDocument.DocumentId, null);
         }
 
         return wasDeleted;
