@@ -13,15 +13,7 @@
         MinWidth="900"
         Background="{DynamicResource EditorBackgroundBrush}"
         Foreground="{DynamicResource TextPrimaryBrush}">
-    <Window.Resources>
-        <ResourceDictionary>
-            <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="Styles/Menu.xaml" />
-            </ResourceDictionary.MergedDictionaries>
-        </ResourceDictionary>
-    </Window.Resources>
-
-    <Grid Margin="16">
+    <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -29,12 +21,35 @@
         </Grid.RowDefinitions>
 
         <Menu Grid.Row="0"
-              Style="{StaticResource EditorMenuStyle}"
-              ItemContainerStyle="{StaticResource EditorMenuItemStyle}"
-              Margin="0,0,0,12">
+              MinHeight="24"
+              Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}"
+              Foreground="{DynamicResource {x:Static SystemColors.MenuTextBrushKey}}"
+              BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}"
+              BorderThickness="0,0,0,1"
+              Padding="0">
             <Menu.Resources>
-                <Style TargetType="{x:Type MenuItem}"
-                       BasedOn="{StaticResource EditorMenuItemStyle}" />
+                <Style TargetType="{x:Type MenuItem}">
+                    <Style.Triggers>
+                        <Trigger Property="Role"
+                                 Value="TopLevelHeader">
+                            <Setter Property="Padding"
+                                    Value="6,0" />
+                            <Setter Property="MinWidth"
+                                    Value="0" />
+                            <Setter Property="Margin"
+                                    Value="0" />
+                        </Trigger>
+                        <Trigger Property="Role"
+                                 Value="TopLevelItem">
+                            <Setter Property="Padding"
+                                    Value="6,0" />
+                            <Setter Property="MinWidth"
+                                    Value="0" />
+                            <Setter Property="Margin"
+                                    Value="0" />
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
             </Menu.Resources>
             <MenuItem Header="_File">
                 <MenuItem Header="New _Panel2D Stub"
@@ -69,10 +84,11 @@
             </MenuItem>
         </Menu>
 
-        <views:EditorShellView Grid.Row="1" />
+        <views:EditorShellView Grid.Row="1"
+                               Margin="16,12,16,0" />
 
         <StatusBar Grid.Row="2"
-                   Margin="0,12,0,0"
+                   Margin="16,12,16,16"
                    Background="{DynamicResource ToolBarBackgroundBrush}"
                    Foreground="{DynamicResource TextPrimaryBrush}">
             <StatusBarItem Content="Ready" />
