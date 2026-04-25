@@ -21,18 +21,27 @@
         </Grid.RowDefinitions>
 
         <Menu Grid.Row="0"
-              MinHeight="28"
               Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}"
               Foreground="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}"
               BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}"
               BorderThickness="0,0,0,1"
               Padding="0">
-            <Menu.ItemContainerStyle>
+            <Menu.Resources>
                 <Style TargetType="{x:Type MenuItem}">
-                    <Setter Property="Padding"
-                            Value="8,4" />
+                    <Style.Triggers>
+                        <Trigger Property="Role"
+                                 Value="TopLevelHeader">
+                            <Setter Property="Padding"
+                                    Value="4,1" />
+                        </Trigger>
+                        <Trigger Property="Role"
+                                 Value="TopLevelItem">
+                            <Setter Property="Padding"
+                                    Value="4,1" />
+                        </Trigger>
+                    </Style.Triggers>
                 </Style>
-            </Menu.ItemContainerStyle>
+            </Menu.Resources>
             <MenuItem Header="_File">
                 <MenuItem Header="New _Panel2D Stub"
                           Command="{Binding OpenPanel2DStubCommand}" />
