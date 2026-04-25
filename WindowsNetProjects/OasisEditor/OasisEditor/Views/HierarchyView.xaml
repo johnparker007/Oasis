@@ -19,6 +19,7 @@
 
         <TreeView Grid.Row="0"
                   ItemsSource="{Binding HierarchyItems}"
+                  SelectedItemChanged="OnTreeViewSelectedItemChanged"
                   Visibility="{Binding HasHierarchyItems, Converter={StaticResource BoolToVisibility}}">
             <TreeView.Resources>
                 <HierarchicalDataTemplate DataType="{x:Type local:HierarchyItemViewModel}"

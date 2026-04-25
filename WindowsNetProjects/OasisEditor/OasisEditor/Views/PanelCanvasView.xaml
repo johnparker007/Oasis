@@ -108,6 +108,7 @@
                                             local:CanvasPanBehavior.IsRectangleToolActive="{Binding IsChecked, ElementName=RectangleToolToggle}"
                                             local:CanvasPanBehavior.IsImageToolActive="{Binding IsChecked, ElementName=ImageToolToggle}"
                                             local:CanvasPanBehavior.PanelLayoutJson="{Binding PanelLayoutJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                            local:CanvasPanBehavior.SelectedPanelSelection="{Binding HierarchySelectedPanelSelection, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                             Background="{DynamicResource PanelBackgroundBrush}">
                                         <Canvas.Resources>
                                             <Style TargetType="Rectangle">

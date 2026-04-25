@@ -43,7 +43,7 @@
   - [x] Zones
 - [x] Update hierarchy when active document changes
 - [x] Update hierarchy when document content changes
-- [ ] Selecting an item in hierarchy selects the object on the canvas
+- [x] Selecting an item in hierarchy selects the object on the canvas
 - [ ] Selecting an object on the canvas selects the item in hierarchy
 - [ ] Support rename from hierarchy if object naming exists
 - [ ] Support delete selected hierarchy item through command system
