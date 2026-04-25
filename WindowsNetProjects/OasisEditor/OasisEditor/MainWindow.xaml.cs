@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
+using OasisEditor.Views;
 
 namespace OasisEditor;
 
@@ -58,6 +59,26 @@ public partial class MainWindow : Window
     private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
         SaveWindowPlacement();
+    }
+
+    private void OnAssetsWindowMenuItemClicked(object sender, RoutedEventArgs e)
+    {
+        EditorShell.ShowOrFocusToolWindow(EditorToolWindowId.Assets);
+    }
+
+    private void OnHierarchyWindowMenuItemClicked(object sender, RoutedEventArgs e)
+    {
+        EditorShell.ShowOrFocusToolWindow(EditorToolWindowId.Hierarchy);
+    }
+
+    private void OnInspectorWindowMenuItemClicked(object sender, RoutedEventArgs e)
+    {
+        EditorShell.ShowOrFocusToolWindow(EditorToolWindowId.Inspector);
+    }
+
+    private void OnOutputWindowMenuItemClicked(object sender, RoutedEventArgs e)
+    {
+        EditorShell.ShowOrFocusToolWindow(EditorToolWindowId.Output);
     }
 
     private void ApplyWindowPlacement()

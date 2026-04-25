@@ -11,7 +11,7 @@
              d:DesignHeight="450"
              d:DesignWidth="900">
     <Grid Background="{DynamicResource EditorBackgroundBrush}">
-        <avalonDock:DockingManager
+        <avalonDock:DockingManager x:Name="DockingManager"
                                    Background="{DynamicResource EditorBackgroundBrush}">
             <avalonDock:DockingManager.Resources>
                 <ResourceDictionary Source="../Styles/AvalonDockVs2013Palette.xaml" />

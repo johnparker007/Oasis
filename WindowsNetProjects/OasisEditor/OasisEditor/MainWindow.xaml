@@ -82,9 +82,20 @@
                 <MenuItem Header="_Project Settings"
                           Command="{Binding OpenProjectSettingsCommand}" />
             </MenuItem>
+            <MenuItem Header="_Window">
+                <MenuItem Header="_Assets"
+                          Click="OnAssetsWindowMenuItemClicked" />
+                <MenuItem Header="_Hierarchy"
+                          Click="OnHierarchyWindowMenuItemClicked" />
+                <MenuItem Header="_Inspector"
+                          Click="OnInspectorWindowMenuItemClicked" />
+                <MenuItem Header="_Output"
+                          Click="OnOutputWindowMenuItemClicked" />
+            </MenuItem>
         </Menu>
 
-        <views:EditorShellView Grid.Row="1"
+        <views:EditorShellView x:Name="EditorShell"
+                               Grid.Row="1"
                                Margin="0" />
 
         <StatusBar Grid.Row="2"
