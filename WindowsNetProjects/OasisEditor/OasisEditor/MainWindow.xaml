@@ -13,7 +13,7 @@
         MinWidth="900"
         Background="{DynamicResource EditorBackgroundBrush}"
         Foreground="{DynamicResource TextPrimaryBrush}">
-    <Grid Margin="16">
+    <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -21,7 +21,11 @@
         </Grid.RowDefinitions>
 
         <Menu Grid.Row="0"
-              Margin="0,0,0,12">
+              Background="{DynamicResource {x:Static SystemColors.MenuBrushKey}}"
+              Foreground="{DynamicResource {x:Static SystemColors.MenuTextBrushKey}}"
+              BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}"
+              BorderThickness="0,0,0,1"
+              Padding="0">
             <MenuItem Header="_File">
                 <MenuItem Header="New _Panel2D Stub"
                           Command="{Binding OpenPanel2DStubCommand}" />
@@ -55,10 +59,11 @@
             </MenuItem>
         </Menu>
 
-        <views:EditorShellView Grid.Row="1" />
+        <views:EditorShellView Grid.Row="1"
+                               Margin="16,12,16,0" />
 
         <StatusBar Grid.Row="2"
-                   Margin="0,12,0,0"
+                   Margin="16,12,16,16"
                    Background="{DynamicResource ToolBarBackgroundBrush}"
                    Foreground="{DynamicResource TextPrimaryBrush}">
             <StatusBarItem Content="Ready" />
