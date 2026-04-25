@@ -21,9 +21,9 @@
         </Grid.RowDefinitions>
 
         <Menu Grid.Row="0"
-              Height="24"
+              MinHeight="24"
               Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}"
-              Foreground="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}"
+              Foreground="{DynamicResource {x:Static SystemColors.MenuTextBrushKey}}"
               BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}"
               BorderThickness="0,0,0,1"
               Padding="0">
