@@ -317,34 +317,12 @@ public static class CanvasPanBehavior
 
     private static bool IsSelectionMatch(FrameworkElement element, PanelSelectionInfo selection)
     {
-        var elementObjectId = element.Uid?.Trim() ?? string.Empty;
-        if (!string.IsNullOrWhiteSpace(selection.ObjectId)
-            && !string.IsNullOrWhiteSpace(elementObjectId))
-        {
-            return string.Equals(elementObjectId, selection.ObjectId, StringComparison.Ordinal);
-        }
-
-        var kind = element switch
-        {
-            System.Windows.Shapes.Rectangle => "rectangle",
-            Image => "image",
-            _ => string.Empty
-        };
-
-        if (!string.Equals(kind, selection.Kind, StringComparison.OrdinalIgnoreCase))
+        if (!PanelSelectionContract.TryCreateFromVisual(element, out var selectable))
         {
             return false;
         }
 
-        return AreClose(Canvas.GetLeft(element), selection.X)
-            && AreClose(Canvas.GetTop(element), selection.Y)
-            && AreClose(element.Width, selection.Width)
-            && AreClose(element.Height, selection.Height);
-    }
-
-    private static bool AreClose(double left, double right)
-    {
-        return Math.Abs(left - right) < 0.01d;
+        return PanelSelectionContract.IsMatch(selectable, selection);
     }
 
     private static void NotifyActiveDocumentSelection(FrameworkElement canvas, FrameworkElement? selectedElement)
@@ -365,20 +343,19 @@ public static class CanvasPanBehavior
             return;
         }
 
-        var kind = selectedElement switch
+        if (!PanelSelectionContract.TryCreateFromVisual(selectedElement, out var selectable))
         {
-            System.Windows.Shapes.Rectangle => "rectangle",
-            Image => "image",
-            _ => selectedElement.GetType().Name
-        };
+            var fallbackSelection = new PanelSelectionInfo(
+                selectedElement.Uid?.Trim() ?? string.Empty,
+                selectedElement.GetType().Name,
+                Canvas.GetLeft(selectedElement),
+                Canvas.GetTop(selectedElement),
+                selectedElement.Width,
+                selectedElement.Height);
+            shellViewModel.UpdateDocumentPanelSelection(tab.DocumentId, fallbackSelection);
+            return;
+        }
 
-        var selection = new PanelSelectionInfo(
-            selectedElement.Uid?.Trim() ?? string.Empty,
-            kind,
-            Canvas.GetLeft(selectedElement),
-            Canvas.GetTop(selectedElement),
-            selectedElement.Width,
-            selectedElement.Height);
-        shellViewModel.UpdateDocumentPanelSelection(tab.DocumentId, selection);
+        shellViewModel.UpdateDocumentPanelSelection(tab.DocumentId, PanelSelectionContract.ToSelectionInfo(selectable));
     }
 }

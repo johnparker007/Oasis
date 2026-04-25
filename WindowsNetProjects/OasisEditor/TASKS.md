@@ -51,11 +51,11 @@
 
 ### Panel Editor Object Model Cleanup
 - [x] Ensure every editable panel object has a stable object ID
-- [ ] Ensure every editable panel object has a display name
-- [ ] Ensure object type is explicit and queryable
-- [ ] Ensure image and rectangle objects share common selectable-object contract
-- [ ] Ensure hierarchy and inspector use the same selected object identity
-- [ ] Ensure save/load preserves object IDs and names
+- [x] Ensure every editable panel object has a display name
+- [x] Ensure object type is explicit and queryable
+- [x] Ensure image and rectangle objects share common selectable-object contract
+- [x] Ensure hierarchy and inspector use the same selected object identity
+- [x] Ensure save/load preserves object IDs and names
 
 ## Next Up
 - [ ] Improve panel editor usability:
