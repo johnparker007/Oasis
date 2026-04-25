@@ -9,15 +9,11 @@
              d:DesignWidth="220">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+        <local:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibility" />
     </UserControl.Resources>
 
     <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
-
-        <TreeView Grid.Row="0"
+        <TreeView
                   ItemsSource="{Binding HierarchyItems}"
                   SelectedItemChanged="OnTreeViewSelectedItemChanged"
                   PreviewKeyDown="OnTreeViewPreviewKeyDown"
@@ -40,9 +36,12 @@
             </TreeView.Resources>
         </TreeView>
 
-        <TextBlock Grid.Row="1"
-                   Margin="0,8,0,0"
+        <TextBlock Margin="12"
+                   VerticalAlignment="Center"
+                   HorizontalAlignment="Center"
                    TextWrapping="Wrap"
+                   TextAlignment="Center"
+                   Visibility="{Binding HasHierarchyItems, Converter={StaticResource InverseBoolToVisibility}}"
                    Foreground="{DynamicResource TextSecondaryBrush}"
                    Text="{Binding HierarchyEmptyStateMessage}" />
     </Grid>

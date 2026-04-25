@@ -47,7 +47,7 @@
 - [x] Selecting an object on the canvas selects the item in hierarchy
 - [ ] Support rename from hierarchy if object naming exists
 - [x] Support delete selected hierarchy item through command system
-- [ ] Add empty hierarchy state for unsupported document types
+- [x] Add empty hierarchy state for unsupported document types
 
 ### Panel Editor Object Model Cleanup
 - [ ] Ensure every editable panel object has a stable object ID
