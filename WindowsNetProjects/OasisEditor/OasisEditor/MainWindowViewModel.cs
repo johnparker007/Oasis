@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Windows;
@@ -598,8 +599,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public void UpdateDocumentPanelSelection(Guid documentId, PanelSelectionInfo? selection)
     {
+        var document = OpenDocuments.FirstOrDefault(tab => tab.DocumentId == documentId);
+        if (document is not null)
+        {
+            document.HierarchySelectedPanelSelection = selection;
+        }
+
         _activeDocumentContext.SetPanelSelection(documentId, selection);
         NotifyInspectorChanged();
+        RefreshHierarchy();
     }
 
     private static string ResolveProjectDirectory(string projectDirectory, JsonElement layoutElement, string propertyName)

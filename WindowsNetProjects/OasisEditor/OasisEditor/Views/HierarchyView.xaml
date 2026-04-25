@@ -28,6 +28,8 @@
             <TreeView.Resources>
                 <Style TargetType="{x:Type TreeViewItem}">
                     <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                    <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                    <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
                 </Style>
                 <HierarchicalDataTemplate DataType="{x:Type local:HierarchyItemViewModel}"
                                           ItemsSource="{Binding Children}">

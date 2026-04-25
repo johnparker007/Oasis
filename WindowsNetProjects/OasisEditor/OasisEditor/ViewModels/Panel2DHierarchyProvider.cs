@@ -42,6 +42,7 @@ public sealed class Panel2DHierarchyProvider : IDocumentHierarchyProvider
                 var height = Math.Round(element.Height);
                 return new HierarchyItemViewModel(
                     $"{itemPrefix} {index + 1} ({width}×{height} at {x}, {y})",
+                    $"{kind}:{element.X:0.###}:{element.Y:0.###}:{element.Width:0.###}:{element.Height:0.###}",
                     panelSelection: new PanelSelectionInfo(
                         kind,
                         element.X,
@@ -52,6 +53,6 @@ public sealed class Panel2DHierarchyProvider : IDocumentHierarchyProvider
             .ToArray();
 
         var label = matches.Length > 0 ? $"{groupName} ({matches.Length})" : $"{groupName} (0)";
-        return new HierarchyItemViewModel(label, isGroup: true, children: matches);
+        return new HierarchyItemViewModel(label, $"group:{kind}", isGroup: true, children: matches);
     }
 }
