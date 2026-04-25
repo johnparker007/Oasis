@@ -34,8 +34,6 @@
                                  Value="TopLevelHeader">
                             <Setter Property="Padding"
                                     Value="6,0" />
-                            <Setter Property="Height"
-                                    Value="22" />
                             <Setter Property="MinWidth"
                                     Value="0" />
                             <Setter Property="Margin"
@@ -45,8 +43,6 @@
                                  Value="TopLevelItem">
                             <Setter Property="Padding"
                                     Value="6,0" />
-                            <Setter Property="Height"
-                                    Value="22" />
                             <Setter Property="MinWidth"
                                     Value="0" />
                             <Setter Property="Margin"
