@@ -300,6 +300,75 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         return wasDeleted;
     }
 
+    public bool TryGetSelectedHierarchyItemName(out string currentName)
+    {
+        currentName = string.Empty;
+        var selectedDocument = SelectedDocument;
+        if (selectedDocument is null || selectedDocument.Document.DocumentType != EditorDocumentType.Panel2D)
+        {
+            return false;
+        }
+
+        if (selectedDocument.HierarchySelectedPanelSelection is not PanelSelectionInfo selection)
+        {
+            return false;
+        }
+
+        var matchingElement = Panel2DDocumentStorage.DeserializeLayout(selectedDocument.PanelLayoutJson)
+            .FirstOrDefault(element =>
+                string.Equals(element.Kind, selection.Kind, StringComparison.OrdinalIgnoreCase)
+                && element.X.Equals(selection.X)
+                && element.Y.Equals(selection.Y)
+                && element.Width.Equals(selection.Width)
+                && element.Height.Equals(selection.Height));
+        if (matchingElement is null)
+        {
+            return false;
+        }
+
+        currentName = matchingElement.Name ?? string.Empty;
+        return true;
+    }
+
+    public bool RenameSelectedHierarchyItem(string newName)
+    {
+        var selectedDocument = SelectedDocument;
+        if (selectedDocument is null || selectedDocument.Document.DocumentType != EditorDocumentType.Panel2D)
+        {
+            return false;
+        }
+
+        if (selectedDocument.HierarchySelectedPanelSelection is not PanelSelectionInfo selection)
+        {
+            return false;
+        }
+
+        var normalizedName = newName?.Trim();
+        if (string.IsNullOrWhiteSpace(normalizedName))
+        {
+            return false;
+        }
+
+        var hasMatchingElement = Panel2DDocumentStorage.DeserializeLayout(selectedDocument.PanelLayoutJson)
+            .Any(element =>
+                string.Equals(element.Kind, selection.Kind, StringComparison.OrdinalIgnoreCase)
+                && element.X.Equals(selection.X)
+                && element.Y.Equals(selection.Y)
+                && element.Width.Equals(selection.Width)
+                && element.Height.Equals(selection.Height));
+        if (!hasMatchingElement)
+        {
+            return false;
+        }
+
+        var command = CanvasMutationCommands.CreateRenameElementCommand(
+            selectedDocument.DocumentId,
+            selectedDocument,
+            selection,
+            normalizedName);
+        return ExecuteDocumentCanvasCommand(selectedDocument.DocumentId, command);
+    }
+
     private bool CanOpenUntitledDocument()
     {
         return _documentWorkspace.CanOpenUntitledDocument();

@@ -80,6 +80,7 @@ internal sealed class Panel2DDocumentFile
 
 internal sealed class PanelElementFile
 {
+    public string Name { get; init; } = string.Empty;
     public string Kind { get; init; } = string.Empty;
     public double X { get; init; }
     public double Y { get; init; }

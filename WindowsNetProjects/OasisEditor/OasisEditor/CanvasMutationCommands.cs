@@ -17,6 +17,15 @@ internal static class CanvasMutationCommands
         return new DeleteElementMutationCommand(documentId, document, selection);
     }
 
+    public static Commands.ICommand CreateRenameElementCommand(
+        Guid documentId,
+        DocumentTabViewModel document,
+        PanelSelectionInfo selection,
+        string newName)
+    {
+        return new RenameElementMutationCommand(documentId, document, selection, newName);
+    }
+
     private sealed class AddRectangleMutationCommand : Commands.IDocumentCommand
     {
         private readonly Guid _documentId;
@@ -198,6 +207,88 @@ internal static class CanvasMutationCommands
         }
     }
 
+    private sealed class RenameElementMutationCommand : Commands.IDocumentCommand
+    {
+        private readonly Guid _documentId;
+        private readonly DocumentTabViewModel _document;
+        private readonly PanelSelectionInfo _selection;
+        private readonly string _newName;
+        private int? _renamedIndex;
+        private string? _previousName;
+
+        public RenameElementMutationCommand(
+            Guid documentId,
+            DocumentTabViewModel document,
+            PanelSelectionInfo selection,
+            string newName)
+        {
+            _documentId = documentId;
+            _document = document;
+            _selection = selection;
+            _newName = newName;
+        }
+
+        public Guid DocumentId => _documentId;
+
+        public string Description => "Rename element";
+
+        public void Execute()
+        {
+            var elements = Panel2DDocumentStorage.DeserializeLayout(_document.PanelLayoutJson).ToList();
+            if (!TryFindMatchingElementIndex(elements, _selection, out var index))
+            {
+                return;
+            }
+
+            var existing = elements[index];
+            _renamedIndex = index;
+            _previousName = existing.Name;
+            elements[index] = new PanelElementFile
+            {
+                Name = _newName,
+                Kind = existing.Kind,
+                X = existing.X,
+                Y = existing.Y,
+                Width = existing.Width,
+                Height = existing.Height
+            };
+
+            _document.PanelLayoutJson = Panel2DDocumentStorage.SerializeLayout(elements);
+        }
+
+        public void Undo()
+        {
+            if (_renamedIndex is not int index)
+            {
+                return;
+            }
+
+            var elements = Panel2DDocumentStorage.DeserializeLayout(_document.PanelLayoutJson).ToList();
+            if (index < 0 || index >= elements.Count)
+            {
+                return;
+            }
+
+            if (!IsSelectionMatch(elements[index], _selection))
+            {
+                return;
+            }
+
+            var existing = elements[index];
+            elements[index] = new PanelElementFile
+            {
+                Name = _previousName ?? string.Empty,
+                Kind = existing.Kind,
+                X = existing.X,
+                Y = existing.Y,
+                Width = existing.Width,
+                Height = existing.Height
+            };
+
+            _document.PanelLayoutJson = Panel2DDocumentStorage.SerializeLayout(elements);
+        }
+    }
+
     private static bool TryFindMatchingElementIndex(IReadOnlyList<PanelElementFile> elements, PanelSelectionInfo selection, out int index)
     {
         for (var i = 0; i < elements.Count; i++)
@@ -231,5 +322,14 @@ internal static class CanvasMutationCommands
             && left.Y.Equals(right.Y)
             && left.Width.Equals(right.Width)
             && left.Height.Equals(right.Height);
+    }
+
+    private static bool IsSelectionMatch(PanelElementFile element, PanelSelectionInfo selection)
+    {
+        return string.Equals(element.Kind, selection.Kind, StringComparison.OrdinalIgnoreCase)
+            && element.X.Equals(selection.X)
+            && element.Y.Equals(selection.Y)
+            && element.Width.Equals(selection.Width)
+            && element.Height.Equals(selection.Height);
     }
 }
