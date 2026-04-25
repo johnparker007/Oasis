@@ -19,10 +19,9 @@ public partial class AssetBrowserView : UserControl
         }
 
         var command = viewModel.OpenAssetCommand;
-        var commandParameter = viewModel.SelectedAsset;
-        if (command.CanExecute(commandParameter))
+        if (command.CanExecute(null))
         {
-            command.Execute(commandParameter);
+            command.Execute(null);
         }
     }
 }

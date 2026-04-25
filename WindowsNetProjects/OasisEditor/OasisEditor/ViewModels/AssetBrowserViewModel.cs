@@ -101,9 +101,9 @@ public sealed class AssetBrowserViewModel
         }
     }
 
-    private void OpenAsset(object? commandParameter)
+    private void OpenAsset()
     {
-        var asset = commandParameter as AssetBrowserItemViewModel ?? SelectedAsset;
+        var asset = SelectedAsset;
         if (asset is null)
         {
             return;
