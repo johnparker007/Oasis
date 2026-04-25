@@ -67,6 +67,13 @@ public static class CanvasPanBehavior
             typeof(CanvasPanBehavior),
             new FrameworkPropertyMetadata(0.0, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, OnPanelViewportStateChanged));
 
+    private static readonly DependencyProperty IsSyncingViewportStateProperty =
+        DependencyProperty.RegisterAttached(
+            "IsSyncingViewportState",
+            typeof(bool),
+            typeof(CanvasPanBehavior),
+            new PropertyMetadata(false));
+
     public static bool GetIsEnabled(DependencyObject dependencyObject)
     {
         return (bool)dependencyObject.GetValue(IsEnabledProperty);
@@ -180,6 +187,11 @@ public static class CanvasPanBehavior
     private static void OnPanelViewportStateChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs _)
     {
         if (dependencyObject is not FrameworkElement element)
+        {
+            return;
+        }
+
+        if ((bool)element.GetValue(IsSyncingViewportStateProperty))
         {
             return;
         }
@@ -331,9 +343,17 @@ public static class CanvasPanBehavior
     private static void UpdateViewportStateFromCanvas(FrameworkElement element)
     {
         var (scale, translate) = CanvasPanZoomBehavior.EnsureTransformGroup(element);
-        element.SetCurrentValue(PanelZoomProperty, scale.ScaleX);
-        element.SetCurrentValue(PanelPanXProperty, translate.X);
-        element.SetCurrentValue(PanelPanYProperty, translate.Y);
+        element.SetValue(IsSyncingViewportStateProperty, true);
+        try
+        {
+            element.SetCurrentValue(PanelZoomProperty, scale.ScaleX);
+            element.SetCurrentValue(PanelPanXProperty, translate.X);
+            element.SetCurrentValue(PanelPanYProperty, translate.Y);
+        }
+        finally
+        {
+            element.SetValue(IsSyncingViewportStateProperty, false);
+        }
     }
 
     private static void ExecuteCanvasMutation(FrameworkElement canvas, Commands.ICommand command)
@@ -343,16 +363,9 @@ public static class CanvasPanBehavior
             return;
         }
 
-        if (Window.GetWindow(canvas)?.DataContext is MainWindowViewModel shellViewModel)
+        if (!CanvasCommandDispatcher.ExecuteMutation(canvas, tab, command))
         {
-            if (!shellViewModel.ExecuteDocumentCanvasCommand(tab.DocumentId, command))
-            {
-                return;
-            }
-        }
-        else
-        {
-            tab.CommandService.Execute(command);
+            return;
         }
 
         if (canvas is Canvas panelCanvas)
@@ -414,14 +427,9 @@ public static class CanvasPanBehavior
             return;
         }
 
-        if (Window.GetWindow(canvas)?.DataContext is not MainWindowViewModel shellViewModel)
-        {
-            return;
-        }
-
         if (selectedElement is null)
         {
-            shellViewModel.UpdateDocumentPanelSelection(tab.DocumentId, null);
+            CanvasCommandDispatcher.NotifyDocumentSelection(canvas, tab, null);
             return;
         }
 
@@ -434,10 +442,10 @@ public static class CanvasPanBehavior
                 Canvas.GetTop(selectedElement),
                 selectedElement.Width,
                 selectedElement.Height);
-            shellViewModel.UpdateDocumentPanelSelection(tab.DocumentId, fallbackSelection);
+            CanvasCommandDispatcher.NotifyDocumentSelection(canvas, tab, fallbackSelection);
             return;
         }
 
-        shellViewModel.UpdateDocumentPanelSelection(tab.DocumentId, PanelSelectionContract.ToSelectionInfo(selectable));
+        CanvasCommandDispatcher.NotifyDocumentSelection(canvas, tab, PanelSelectionContract.ToSelectionInfo(selectable));
     }
 }
