@@ -29,8 +29,7 @@
                                                      CanClose="False">
                                 <Border Padding="10"
                                         Background="{DynamicResource InspectorBackgroundBrush}">
-                                    <TextBlock Text="Hierarchy placeholder"
-                                               Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    <views:HierarchyView />
                                 </Border>
                             </layout:LayoutAnchorable>
                         </layout:LayoutAnchorablePane>
