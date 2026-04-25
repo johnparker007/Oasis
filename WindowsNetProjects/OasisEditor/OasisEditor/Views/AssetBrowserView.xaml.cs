@@ -13,15 +13,16 @@ public partial class AssetBrowserView : UserControl
 
     private void OnAssetListMouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
-        if (DataContext is not AssetBrowserViewModel viewModel)
+        if (DataContext is not MainWindowViewModel viewModel)
         {
             return;
         }
 
         var command = viewModel.OpenAssetCommand;
-        if (command.CanExecute(null))
+        var selectedAsset = viewModel.SelectedAsset;
+        if (command.CanExecute(selectedAsset))
         {
-            command.Execute(null);
+            command.Execute(selectedAsset);
         }
     }
 }

@@ -100,6 +100,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         AssetBrowserItems = _assetBrowser.AssetBrowserItems;
         OutputEntries = _outputLog.OutputEntries;
         RefreshAssetBrowserCommand = _assetBrowser.RefreshAssetBrowserCommand;
+        OpenAssetCommand = _assetBrowser.OpenAssetCommand;
         ClearOutputCommand = _outputLog.ClearOutputCommand;
         ApplyInspectorSummaryCommand = _inspector.ApplyInspectorSummaryCommand;
         AddOutputEntry("Editor shell initialized.", OutputLogStatus.Info);
@@ -117,6 +118,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand SaveSelectedDocumentCommand { get; }
     public ICommand CloseSelectedDocumentCommand { get; }
     public ICommand RefreshAssetBrowserCommand { get; }
+    public ICommand OpenAssetCommand { get; }
     public ICommand ClearOutputCommand { get; }
     public ICommand OpenPreferencesCommand { get; }
     public ICommand OpenProjectSettingsCommand { get; }
