@@ -28,10 +28,10 @@ These tasks come from the Editor code review. Complete them in order. Build and 
   - [ ] Do not record rename when no matching element exists
   - [ ] Do not record rename when the new name equals the current name after normalisation
   - [ ] Verify undo/redo menu labels do not change after no-op commands
-- [ ] Preserve command-history integrity when closing and undoing a closed document tab
-  - [ ] Review whether clearing a document command history inside close-tab execution makes undo of tab close unsafe
-  - [ ] Adjust close-tab behaviour so undoing a close either restores a usable document safely or the close operation is not undoable
-  - [ ] Verify closing a tab cannot leave stale document commands executable against a different tab
+- [x] Preserve command-history integrity when closing and undoing a closed document tab
+  - [x] Review whether clearing a document command history inside close-tab execution makes undo of tab close unsafe
+  - [x] Adjust close-tab behaviour so undoing a close either restores a usable document safely or the close operation is not undoable
+  - [x] Verify closing a tab cannot leave stale document commands executable against a different tab
 - [ ] Replace duplicated add-element command implementations
   - [ ] Replace separate rectangle/image add commands with a single `AddPanelElementMutationCommand`
   - [ ] Preserve existing public factory methods if that keeps callers stable
