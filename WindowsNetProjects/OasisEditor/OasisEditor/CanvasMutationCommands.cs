@@ -245,6 +245,7 @@ internal static class CanvasMutationCommands
             _previousName = existing.Name;
             elements[index] = new PanelElementFile
             {
+                ObjectId = existing.ObjectId,
                 Name = _newName,
                 Kind = existing.Kind,
                 X = existing.X,
@@ -277,6 +278,7 @@ internal static class CanvasMutationCommands
             var existing = elements[index];
             elements[index] = new PanelElementFile
             {
+                ObjectId = existing.ObjectId,
                 Name = _previousName ?? string.Empty,
                 Kind = existing.Kind,
                 X = existing.X,
@@ -291,6 +293,18 @@ internal static class CanvasMutationCommands
 
     private static bool TryFindMatchingElementIndex(IReadOnlyList<PanelElementFile> elements, PanelSelectionInfo selection, out int index)
     {
+        if (!string.IsNullOrWhiteSpace(selection.ObjectId))
+        {
+            for (var i = 0; i < elements.Count; i++)
+            {
+                if (string.Equals(elements[i].ObjectId, selection.ObjectId, StringComparison.Ordinal))
+                {
+                    index = i;
+                    return true;
+                }
+            }
+        }
+
         for (var i = 0; i < elements.Count; i++)
         {
             var element = elements[i];
@@ -317,6 +331,12 @@ internal static class CanvasMutationCommands
 
     private static bool IsSameElement(PanelElementFile left, PanelElementFile right)
     {
+        if (!string.IsNullOrWhiteSpace(left.ObjectId)
+            && !string.IsNullOrWhiteSpace(right.ObjectId))
+        {
+            return string.Equals(left.ObjectId, right.ObjectId, StringComparison.Ordinal);
+        }
+
         return string.Equals(left.Kind, right.Kind, StringComparison.OrdinalIgnoreCase)
             && left.X.Equals(right.X)
             && left.Y.Equals(right.Y)
@@ -326,6 +346,12 @@ internal static class CanvasMutationCommands
 
     private static bool IsSelectionMatch(PanelElementFile element, PanelSelectionInfo selection)
     {
+        if (!string.IsNullOrWhiteSpace(selection.ObjectId)
+            && !string.IsNullOrWhiteSpace(element.ObjectId))
+        {
+            return string.Equals(element.ObjectId, selection.ObjectId, StringComparison.Ordinal);
+        }
+
         return string.Equals(element.Kind, selection.Kind, StringComparison.OrdinalIgnoreCase)
             && element.X.Equals(selection.X)
             && element.Y.Equals(selection.Y)

@@ -50,7 +50,7 @@
 - [x] Add empty hierarchy state for unsupported document types
 
 ### Panel Editor Object Model Cleanup
-- [ ] Ensure every editable panel object has a stable object ID
+- [x] Ensure every editable panel object has a stable object ID
 - [ ] Ensure every editable panel object has a display name
 - [ ] Ensure object type is explicit and queryable
 - [ ] Ensure image and rectangle objects share common selectable-object contract

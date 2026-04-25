@@ -279,12 +279,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         var hasMatchingElement = Panel2DDocumentStorage.DeserializeLayout(selectedDocument.PanelLayoutJson)
-            .Any(element =>
-                string.Equals(element.Kind, selection.Kind, StringComparison.OrdinalIgnoreCase)
-                && element.X.Equals(selection.X)
-                && element.Y.Equals(selection.Y)
-                && element.Width.Equals(selection.Width)
-                && element.Height.Equals(selection.Height));
+            .Any(element => IsSelectionMatch(element, selection));
         if (!hasMatchingElement)
         {
             return false;
@@ -315,12 +310,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         var matchingElement = Panel2DDocumentStorage.DeserializeLayout(selectedDocument.PanelLayoutJson)
-            .FirstOrDefault(element =>
-                string.Equals(element.Kind, selection.Kind, StringComparison.OrdinalIgnoreCase)
-                && element.X.Equals(selection.X)
-                && element.Y.Equals(selection.Y)
-                && element.Width.Equals(selection.Width)
-                && element.Height.Equals(selection.Height));
+            .FirstOrDefault(element => IsSelectionMatch(element, selection));
         if (matchingElement is null)
         {
             return false;
@@ -350,12 +340,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         var hasMatchingElement = Panel2DDocumentStorage.DeserializeLayout(selectedDocument.PanelLayoutJson)
-            .Any(element =>
-                string.Equals(element.Kind, selection.Kind, StringComparison.OrdinalIgnoreCase)
-                && element.X.Equals(selection.X)
-                && element.Y.Equals(selection.Y)
-                && element.Width.Equals(selection.Width)
-                && element.Height.Equals(selection.Height));
+            .Any(element => IsSelectionMatch(element, selection));
         if (!hasMatchingElement)
         {
             return false;
@@ -859,6 +844,21 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
+
+    private static bool IsSelectionMatch(PanelElementFile element, PanelSelectionInfo selection)
+    {
+        if (!string.IsNullOrWhiteSpace(selection.ObjectId)
+            && !string.IsNullOrWhiteSpace(element.ObjectId))
+        {
+            return string.Equals(element.ObjectId, selection.ObjectId, StringComparison.Ordinal);
+        }
+
+        return string.Equals(element.Kind, selection.Kind, StringComparison.OrdinalIgnoreCase)
+            && element.X.Equals(selection.X)
+            && element.Y.Equals(selection.Y)
+            && element.Width.Equals(selection.Width)
+            && element.Height.Equals(selection.Height);
     }
 }
 

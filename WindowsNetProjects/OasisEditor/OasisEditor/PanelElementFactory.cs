@@ -19,6 +19,7 @@ internal static class PanelElementFactory
         var y = Math.Max(0, canvasPoint.Y - (NewRectangleHeight / 2));
         return new PanelElementFile
         {
+            ObjectId = Guid.NewGuid().ToString("N"),
             Kind = "rectangle",
             X = x,
             Y = y,
@@ -33,6 +34,7 @@ internal static class PanelElementFactory
         var y = Math.Max(0, canvasPoint.Y - (NewImageHeight / 2));
         return new PanelElementFile
         {
+            ObjectId = Guid.NewGuid().ToString("N"),
             Kind = "image",
             X = x,
             Y = y,
@@ -47,6 +49,7 @@ internal static class PanelElementFactory
         {
             return new Rectangle
             {
+                Uid = element.ObjectId,
                 Width = element.Width <= 0 ? NewRectangleWidth : element.Width,
                 Height = element.Height <= 0 ? NewRectangleHeight : element.Height
             };
@@ -56,6 +59,7 @@ internal static class PanelElementFactory
         {
             return new Image
             {
+                Uid = element.ObjectId,
                 Width = element.Width <= 0 ? NewImageWidth : element.Width,
                 Height = element.Height <= 0 ? NewImageHeight : element.Height,
                 Stretch = Stretch.Fill,
@@ -82,6 +86,7 @@ internal static class PanelElementFactory
 
         return new PanelElementFile
         {
+            ObjectId = string.IsNullOrWhiteSpace(child.Uid) ? Guid.NewGuid().ToString("N") : child.Uid.Trim(),
             Kind = kind,
             X = Canvas.GetLeft(child),
             Y = Canvas.GetTop(child),
