@@ -11,25 +11,30 @@ public sealed class AssetBrowserViewModel
     private readonly Action _selectionChanged;
     private readonly Action _notifyInspectorChanged;
     private readonly Action<string, OutputLogStatus> _addOutputEntry;
+    private readonly Action<AssetBrowserItemViewModel?> _openAsset;
     private AssetBrowserItemViewModel? _selectedAsset;
 
     public AssetBrowserViewModel(
         Func<EditorProject?> loadedProjectAccessor,
         Action selectionChanged,
         Action notifyInspectorChanged,
-        Action<string, OutputLogStatus> addOutputEntry)
+        Action<string, OutputLogStatus> addOutputEntry,
+        Action<AssetBrowserItemViewModel?> openAsset)
     {
         _loadedProjectAccessor = loadedProjectAccessor;
         _selectionChanged = selectionChanged;
         _notifyInspectorChanged = notifyInspectorChanged;
         _addOutputEntry = addOutputEntry;
+        _openAsset = openAsset;
 
         AssetBrowserItems = new ObservableCollection<AssetBrowserItemViewModel>();
         RefreshAssetBrowserCommand = new RelayCommand(RefreshAssetBrowser, CanRefreshAssetBrowser);
+        OpenAssetCommand = new RelayCommand(OpenAsset);
     }
 
     public ObservableCollection<AssetBrowserItemViewModel> AssetBrowserItems { get; }
     public ICommand RefreshAssetBrowserCommand { get; }
+    public ICommand OpenAssetCommand { get; }
 
     public AssetBrowserItemViewModel? SelectedAsset
     {
@@ -94,5 +99,17 @@ public sealed class AssetBrowserViewModel
         {
             refreshRelayCommand.RaiseCanExecuteChanged();
         }
+    }
+
+    private void OpenAsset(object? commandParameter)
+    {
+        var asset = commandParameter as AssetBrowserItemViewModel ?? SelectedAsset;
+        if (asset is null)
+        {
+            return;
+        }
+
+        SelectedAsset = asset;
+        _openAsset(asset);
     }
 }
