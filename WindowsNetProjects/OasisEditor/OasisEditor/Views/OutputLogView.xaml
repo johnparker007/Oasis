@@ -14,10 +14,6 @@
 
         <DockPanel Grid.Row="0"
                    LastChildFill="False">
-            <TextBlock DockPanel.Dock="Left"
-                       FontWeight="SemiBold"
-                       VerticalAlignment="Center"
-                       Text="Output / Log" />
             <Button DockPanel.Dock="Right"
                     Padding="10,4"
                     Command="{Binding ClearOutputCommand}"
@@ -26,9 +22,7 @@
 
         <ListBox Grid.Row="1"
                  Margin="0,8,0,0"
-                 Background="{DynamicResource PanelBackgroundBrush}"
-                 BorderBrush="{DynamicResource BorderSubtleBrush}"
-                 BorderThickness="1"
+                 BorderThickness="0"
                  ItemsSource="{Binding OutputEntries}" />
     </Grid>
 </UserControl>
