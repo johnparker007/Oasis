@@ -265,6 +265,41 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         SelectedDocument.HierarchySelectedPanelSelection = selection;
     }
 
+    public bool DeleteSelectedHierarchyItem()
+    {
+        var selectedDocument = SelectedDocument;
+        if (selectedDocument is null || selectedDocument.Document.DocumentType != EditorDocumentType.Panel2D)
+        {
+            return false;
+        }
+
+        if (selectedDocument.HierarchySelectedPanelSelection is not PanelSelectionInfo selection)
+        {
+            return false;
+        }
+
+        var hasMatchingElement = Panel2DDocumentStorage.DeserializeLayout(selectedDocument.PanelLayoutJson)
+            .Any(element =>
+                string.Equals(element.Kind, selection.Kind, StringComparison.OrdinalIgnoreCase)
+                && element.X.Equals(selection.X)
+                && element.Y.Equals(selection.Y)
+                && element.Width.Equals(selection.Width)
+                && element.Height.Equals(selection.Height));
+        if (!hasMatchingElement)
+        {
+            return false;
+        }
+
+        var command = CanvasMutationCommands.CreateDeleteElementCommand(selectedDocument.DocumentId, selectedDocument, selection);
+        var wasDeleted = ExecuteDocumentCanvasCommand(selectedDocument.DocumentId, command);
+        if (wasDeleted)
+        {
+            UpdateDocumentPanelSelection(selectedDocument.DocumentId, null);
+        }
+
+        return wasDeleted;
+    }
+
     private bool CanOpenUntitledDocument()
     {
         return _documentWorkspace.CanOpenUntitledDocument();
