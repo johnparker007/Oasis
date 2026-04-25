@@ -69,22 +69,21 @@ public static class CanvasPanZoomBehavior
     public static void HandleMouseWheel(FrameworkElement element, MouseWheelEventArgs eventArgs)
     {
         var (scale, translate) = EnsureTransformGroup(element);
-        var parent = element.Parent as IInputElement ?? element;
-        var pivot = eventArgs.GetPosition(parent);
+        var pivot = eventArgs.GetPosition(element);
+        var previousScale = scale.ScaleX;
         var zoomFactor = eventArgs.Delta > 0 ? ZoomStep : 1.0 / ZoomStep;
-        var newScale = Math.Clamp(scale.ScaleX * zoomFactor, MinZoom, MaxZoom);
-        if (Math.Abs(newScale - scale.ScaleX) < 0.0001)
+        var newScale = Math.Clamp(previousScale * zoomFactor, MinZoom, MaxZoom);
+        if (Math.Abs(newScale - previousScale) < 0.0001)
         {
             return;
         }
 
-        var worldX = (pivot.X - translate.X) / scale.ScaleX;
-        var worldY = (pivot.Y - translate.Y) / scale.ScaleY;
-
         scale.ScaleX = newScale;
         scale.ScaleY = newScale;
-        translate.X = pivot.X - (worldX * newScale);
-        translate.Y = pivot.Y - (worldY * newScale);
+
+        // Keep the world-space point under the mouse pointer stable while zooming.
+        translate.X += pivot.X * (previousScale - newScale);
+        translate.Y += pivot.Y * (previousScale - newScale);
         eventArgs.Handled = true;
     }
 
