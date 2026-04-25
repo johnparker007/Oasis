@@ -45,8 +45,9 @@ public sealed class Panel2DHierarchyProvider : IDocumentHierarchyProvider
                     : element.Name.Trim();
                 return new HierarchyItemViewModel(
                     displayName,
-                    $"{kind}:{element.X:0.###}:{element.Y:0.###}:{element.Width:0.###}:{element.Height:0.###}",
+                    $"{kind}:{element.ObjectId}",
                     panelSelection: new PanelSelectionInfo(
+                        element.ObjectId,
                         kind,
                         element.X,
                         element.Y,

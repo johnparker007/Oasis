@@ -317,6 +317,13 @@ public static class CanvasPanBehavior
 
     private static bool IsSelectionMatch(FrameworkElement element, PanelSelectionInfo selection)
     {
+        var elementObjectId = element.Uid?.Trim() ?? string.Empty;
+        if (!string.IsNullOrWhiteSpace(selection.ObjectId)
+            && !string.IsNullOrWhiteSpace(elementObjectId))
+        {
+            return string.Equals(elementObjectId, selection.ObjectId, StringComparison.Ordinal);
+        }
+
         var kind = element switch
         {
             System.Windows.Shapes.Rectangle => "rectangle",
@@ -366,6 +373,7 @@ public static class CanvasPanBehavior
         };
 
         var selection = new PanelSelectionInfo(
+            selectedElement.Uid?.Trim() ?? string.Empty,
             kind,
             Canvas.GetLeft(selectedElement),
             Canvas.GetTop(selectedElement),

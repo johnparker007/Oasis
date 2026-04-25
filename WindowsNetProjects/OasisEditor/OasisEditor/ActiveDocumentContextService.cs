@@ -47,6 +47,7 @@ public sealed class ActiveDocumentContextService
 }
 
 public readonly record struct PanelSelectionInfo(
+    string ObjectId,
     string Kind,
     double X,
     double Y,

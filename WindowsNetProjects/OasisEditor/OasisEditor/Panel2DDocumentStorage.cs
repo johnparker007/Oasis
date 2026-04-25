@@ -60,12 +60,23 @@ internal static class Panel2DDocumentStorage
 
         try
         {
-            return JsonSerializer.Deserialize<List<PanelElementFile>>(layoutJson) ?? [];
+            var elements = JsonSerializer.Deserialize<List<PanelElementFile>>(layoutJson) ?? [];
+            return elements.Select(NormalizeElement).ToArray();
         }
         catch (JsonException)
         {
             return [];
         }
+    }
+
+    private static PanelElementFile NormalizeElement(PanelElementFile element)
+    {
+        return element with
+        {
+            ObjectId = string.IsNullOrWhiteSpace(element.ObjectId)
+                ? Guid.NewGuid().ToString("N")
+                : element.ObjectId.Trim()
+        };
     }
 }
 
@@ -78,8 +89,9 @@ internal sealed class Panel2DDocumentFile
     public PanelElementFile[] Elements { get; init; } = [];
 }
 
-internal sealed class PanelElementFile
+internal sealed record PanelElementFile
 {
+    public string ObjectId { get; init; } = string.Empty;
     public string Name { get; init; } = string.Empty;
     public string Kind { get; init; } = string.Empty;
     public double X { get; init; }
