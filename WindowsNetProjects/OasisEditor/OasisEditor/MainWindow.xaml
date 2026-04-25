@@ -13,14 +13,6 @@
         MinWidth="900"
         Background="{DynamicResource EditorBackgroundBrush}"
         Foreground="{DynamicResource TextPrimaryBrush}">
-    <Window.Resources>
-        <ResourceDictionary>
-            <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="Styles/Menu.xaml" />
-            </ResourceDictionary.MergedDictionaries>
-        </ResourceDictionary>
-    </Window.Resources>
-
     <Grid Margin="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -29,13 +21,7 @@
         </Grid.RowDefinitions>
 
         <Menu Grid.Row="0"
-              Style="{StaticResource EditorMenuStyle}"
-              ItemContainerStyle="{StaticResource EditorMenuItemStyle}"
               Margin="0,0,0,12">
-            <Menu.Resources>
-                <Style TargetType="{x:Type MenuItem}"
-                       BasedOn="{StaticResource EditorMenuItemStyle}" />
-            </Menu.Resources>
             <MenuItem Header="_File">
                 <MenuItem Header="New _Panel2D Stub"
                           Command="{Binding OpenPanel2DStubCommand}" />
