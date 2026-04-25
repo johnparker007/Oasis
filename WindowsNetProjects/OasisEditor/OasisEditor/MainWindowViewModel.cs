@@ -249,6 +249,21 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
+    public void SelectHierarchyItem(HierarchyItemViewModel? hierarchyItem)
+    {
+        if (SelectedDocument is null || SelectedDocument.Document.DocumentType != EditorDocumentType.Panel2D)
+        {
+            return;
+        }
+
+        if (hierarchyItem is null || hierarchyItem.IsGroup || hierarchyItem.PanelSelection is not PanelSelectionInfo selection)
+        {
+            return;
+        }
+
+        SelectedDocument.HierarchySelectedPanelSelection = selection;
+    }
+
     private bool CanOpenUntitledDocument()
     {
         return _documentWorkspace.CanOpenUntitledDocument();

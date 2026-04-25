@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Linq;
 using OasisEditor.Commands;
 
 namespace OasisEditor;
@@ -37,6 +38,13 @@ public static class CanvasPanBehavior
             typeof(string),
             typeof(CanvasPanBehavior),
             new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, OnPanelLayoutJsonChanged));
+
+    public static readonly DependencyProperty SelectedPanelSelectionProperty =
+        DependencyProperty.RegisterAttached(
+            "SelectedPanelSelection",
+            typeof(PanelSelectionInfo?),
+            typeof(CanvasPanBehavior),
+            new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, OnSelectedPanelSelectionChanged));
 
     public static bool GetIsEnabled(DependencyObject dependencyObject)
     {
@@ -76,6 +84,16 @@ public static class CanvasPanBehavior
     public static void SetPanelLayoutJson(DependencyObject dependencyObject, string? value)
     {
         dependencyObject.SetValue(PanelLayoutJsonProperty, value);
+    }
+
+    public static PanelSelectionInfo? GetSelectedPanelSelection(DependencyObject dependencyObject)
+    {
+        return (PanelSelectionInfo?)dependencyObject.GetValue(SelectedPanelSelectionProperty);
+    }
+
+    public static void SetSelectedPanelSelection(DependencyObject dependencyObject, PanelSelectionInfo? value)
+    {
+        dependencyObject.SetValue(SelectedPanelSelectionProperty, value);
     }
 
     private static void OnIsEnabledChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs eventArgs)
@@ -274,6 +292,52 @@ public static class CanvasPanBehavior
         }
 
         PanelLayoutMapper.ApplyPersistedLayout(canvas, eventArgs.NewValue as string);
+    }
+
+    private static void OnSelectedPanelSelectionChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs eventArgs)
+    {
+        if (dependencyObject is not Canvas canvas)
+        {
+            return;
+        }
+
+        if (eventArgs.NewValue is not PanelSelectionInfo selection)
+        {
+            CanvasSelectionBehavior.ClearSelection(canvas);
+            NotifyActiveDocumentSelection(canvas, null);
+            return;
+        }
+
+        var matchedElement = canvas.Children
+            .OfType<FrameworkElement>()
+            .FirstOrDefault(element => IsSelectionMatch(element, selection));
+        CanvasSelectionBehavior.SelectElement(canvas, matchedElement);
+        NotifyActiveDocumentSelection(canvas, matchedElement);
+    }
+
+    private static bool IsSelectionMatch(FrameworkElement element, PanelSelectionInfo selection)
+    {
+        var kind = element switch
+        {
+            System.Windows.Shapes.Rectangle => "rectangle",
+            Image => "image",
+            _ => string.Empty
+        };
+
+        if (!string.Equals(kind, selection.Kind, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return AreClose(Canvas.GetLeft(element), selection.X)
+            && AreClose(Canvas.GetTop(element), selection.Y)
+            && AreClose(element.Width, selection.Width)
+            && AreClose(element.Height, selection.Height);
+    }
+
+    private static bool AreClose(double left, double right)
+    {
+        return Math.Abs(left - right) < 0.01d;
     }
 
     private static void NotifyActiveDocumentSelection(FrameworkElement canvas, FrameworkElement? selectedElement)

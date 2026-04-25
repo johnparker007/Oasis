@@ -82,6 +82,29 @@ public static class CanvasSelectionBehavior
         canvas.ClearValue(SelectedElementProperty);
     }
 
+    public static void SelectElement(FrameworkElement canvas, FrameworkElement? element)
+    {
+        var selectedElement = (FrameworkElement?)canvas.GetValue(SelectedElementProperty);
+        if (ReferenceEquals(selectedElement, element))
+        {
+            return;
+        }
+
+        if (selectedElement is not null)
+        {
+            SetIsSelected(selectedElement, false);
+        }
+
+        if (element is null)
+        {
+            canvas.ClearValue(SelectedElementProperty);
+            return;
+        }
+
+        SetIsSelected(element, true);
+        canvas.SetValue(SelectedElementProperty, element);
+    }
+
     public static FrameworkElement? FindSelectableElement(DependencyObject? source, FrameworkElement canvas)
     {
         var current = source;
