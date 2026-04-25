@@ -23,7 +23,8 @@
 
         <ListBox Grid.Row="1"
                  ItemsSource="{Binding AssetBrowserItems}"
-                 SelectedItem="{Binding SelectedAsset, Mode=TwoWay}">
+                 SelectedItem="{Binding SelectedAsset, Mode=TwoWay}"
+                 MouseDoubleClick="OnAssetListMouseDoubleClick">
             <ListBox.ItemTemplate>
                 <DataTemplate>
                     <TextBlock Text="{Binding DisplayPath}" />

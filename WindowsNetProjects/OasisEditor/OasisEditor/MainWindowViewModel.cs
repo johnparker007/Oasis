@@ -70,7 +70,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             () => LoadedProject,
             () => OnPropertyChanged(nameof(SelectedAsset)),
             NotifyInspectorChanged,
-            AddOutputEntry);
+            AddOutputEntry,
+            OpenAssetDocument);
         _inspector = new InspectorViewModel(
             () => SelectedAsset,
             () => SelectedDocument,
@@ -99,6 +100,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         AssetBrowserItems = _assetBrowser.AssetBrowserItems;
         OutputEntries = _outputLog.OutputEntries;
         RefreshAssetBrowserCommand = _assetBrowser.RefreshAssetBrowserCommand;
+        OpenAssetCommand = _assetBrowser.OpenAssetCommand;
         ClearOutputCommand = _outputLog.ClearOutputCommand;
         ApplyInspectorSummaryCommand = _inspector.ApplyInspectorSummaryCommand;
         AddOutputEntry("Editor shell initialized.", OutputLogStatus.Info);
@@ -116,6 +118,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand SaveSelectedDocumentCommand { get; }
     public ICommand CloseSelectedDocumentCommand { get; }
     public ICommand RefreshAssetBrowserCommand { get; }
+    public ICommand OpenAssetCommand { get; }
     public ICommand ClearOutputCommand { get; }
     public ICommand OpenPreferencesCommand { get; }
     public ICommand OpenProjectSettingsCommand { get; }
@@ -411,24 +414,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         try
         {
-            var path = dialog.FileName;
-            var content = File.ReadAllText(path);
-            var openData = DocumentWorkspaceViewModel.BuildOpenDocumentData(path, content);
-
-            var openedNewTab = _documentWorkspace.OpenOrSelectDocument(path, openData.Summary, openData.PanelLayoutJson);
-            if (!openedNewTab)
-            {
-                AddOutputEntry($"Switched to already open document tab for {path}", OutputLogStatus.Info);
-            }
-
-            var selectedTitle = SelectedDocument?.Title ?? Path.GetFileName(path);
-            StatusMessage = openedNewTab
-                ? $"Opened document: {selectedTitle}"
-                : $"Activated open document tab: {selectedTitle}";
-            AddOutputEntry(openedNewTab
-                ? $"Opened document file {path}"
-                : $"Activated existing document tab for {path}",
-                OutputLogStatus.Info);
+            OpenDocumentFromPath(dialog.FileName);
         }
         catch (Exception ex)
         {
@@ -436,6 +422,46 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             AddOutputEntry($"Open document failed: {ex.Message}", OutputLogStatus.Error);
             MessageBox.Show(ex.Message, "Open Document Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
+    }
+
+    private void OpenAssetDocument(AssetBrowserItemViewModel? asset)
+    {
+        if (asset is null)
+        {
+            return;
+        }
+
+        try
+        {
+            OpenDocumentFromPath(asset.FullPath);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = ex.Message;
+            AddOutputEntry($"Open asset failed: {ex.Message}", OutputLogStatus.Error);
+            MessageBox.Show(ex.Message, "Open Asset Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void OpenDocumentFromPath(string path)
+    {
+        var content = File.ReadAllText(path);
+        var openData = DocumentWorkspaceViewModel.BuildOpenDocumentData(path, content);
+
+        var openedNewTab = _documentWorkspace.OpenOrSelectDocument(path, openData.Summary, openData.PanelLayoutJson);
+        if (!openedNewTab)
+        {
+            AddOutputEntry($"Switched to already open document tab for {path}", OutputLogStatus.Info);
+        }
+
+        var selectedTitle = SelectedDocument?.Title ?? Path.GetFileName(path);
+        StatusMessage = openedNewTab
+            ? $"Opened document: {selectedTitle}"
+            : $"Activated open document tab: {selectedTitle}";
+        AddOutputEntry(openedNewTab
+            ? $"Opened document file {path}"
+            : $"Activated existing document tab for {path}",
+            OutputLogStatus.Info);
     }
 
     private bool CanSaveSelectedDocument()
