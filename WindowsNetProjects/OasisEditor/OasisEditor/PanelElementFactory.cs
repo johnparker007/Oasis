@@ -21,8 +21,8 @@ internal static class PanelElementFactory
         return new PanelElementFile
         {
             ObjectId = objectId,
-            Name = Panel2DDocumentStorage.CreateDefaultElementName("rectangle", objectId),
-            Kind = "rectangle",
+            Name = Panel2DDocumentStorage.CreateDefaultElementName(PanelElementKind.Rectangle, objectId),
+            Kind = Panel2DDocumentStorage.SerializeElementKind(PanelElementKind.Rectangle),
             X = x,
             Y = y,
             Width = NewRectangleWidth,
@@ -38,8 +38,8 @@ internal static class PanelElementFactory
         return new PanelElementFile
         {
             ObjectId = objectId,
-            Name = Panel2DDocumentStorage.CreateDefaultElementName("image", objectId),
-            Kind = "image",
+            Name = Panel2DDocumentStorage.CreateDefaultElementName(PanelElementKind.Image, objectId),
+            Kind = Panel2DDocumentStorage.SerializeElementKind(PanelElementKind.Image),
             X = x,
             Y = y,
             Width = NewImageWidth,
@@ -49,7 +49,7 @@ internal static class PanelElementFactory
 
     public static FrameworkElement? CreateVisualFromElement(PanelElementFile element)
     {
-        if (string.Equals(element.Kind, "rectangle", StringComparison.OrdinalIgnoreCase))
+        if (element.ElementKind == PanelElementKind.Rectangle)
         {
             return new Rectangle
             {
@@ -59,7 +59,7 @@ internal static class PanelElementFactory
             };
         }
 
-        if (string.Equals(element.Kind, "image", StringComparison.OrdinalIgnoreCase))
+        if (element.ElementKind == PanelElementKind.Image)
         {
             return new Image
             {
@@ -78,12 +78,12 @@ internal static class PanelElementFactory
     {
         var kind = child switch
         {
-            Rectangle => "rectangle",
-            Image => "image",
-            _ => null
+            Rectangle => PanelElementKind.Rectangle,
+            Image => PanelElementKind.Image,
+            _ => PanelElementKind.Unknown
         };
 
-        if (kind is null)
+        if (kind == PanelElementKind.Unknown)
         {
             return null;
         }
@@ -93,7 +93,7 @@ internal static class PanelElementFactory
         {
             ObjectId = objectId,
             Name = Panel2DDocumentStorage.CreateDefaultElementName(kind, objectId),
-            Kind = kind,
+            Kind = Panel2DDocumentStorage.SerializeElementKind(kind),
             X = Canvas.GetLeft(child),
             Y = Canvas.GetTop(child),
             Width = child.Width,

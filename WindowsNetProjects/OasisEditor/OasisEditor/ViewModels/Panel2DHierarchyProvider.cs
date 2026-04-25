@@ -17,10 +17,10 @@ public sealed class Panel2DHierarchyProvider : IDocumentHierarchyProvider
         var elements = Panel2DDocumentStorage.DeserializeLayout(document?.PanelLayoutJson);
         var groups = new List<HierarchyItemViewModel>
         {
-            BuildGroup("Images", elements, "image", "Image"),
-            BuildGroup("Rectangles", elements, "rectangle", "Rectangle"),
-            BuildGroup("Anchors", elements, "anchor", "Anchor"),
-            BuildGroup("Zones", elements, "zone", "Zone")
+            BuildGroup("Images", elements, PanelElementKind.Image, "Image"),
+            BuildGroup("Rectangles", elements, PanelElementKind.Rectangle, "Rectangle"),
+            BuildGroup("Anchors", elements, PanelElementKind.Anchor, "Anchor"),
+            BuildGroup("Zones", elements, PanelElementKind.Zone, "Zone")
         };
 
         return groups;
@@ -29,11 +29,12 @@ public sealed class Panel2DHierarchyProvider : IDocumentHierarchyProvider
     private static HierarchyItemViewModel BuildGroup(
         string groupName,
         IReadOnlyList<PanelElementFile> elements,
-        string kind,
+        PanelElementKind kind,
         string itemPrefix)
     {
+        var kindToken = Panel2DDocumentStorage.SerializeElementKind(kind);
         var matches = elements
-            .Where(element => string.Equals(element.Kind, kind, StringComparison.OrdinalIgnoreCase))
+            .Where(element => element.ElementKind == kind)
             .Select((element, index) =>
             {
                 var x = Math.Round(element.X);
@@ -48,7 +49,7 @@ public sealed class Panel2DHierarchyProvider : IDocumentHierarchyProvider
                     $"{kind}:{element.ObjectId}",
                     panelSelection: new PanelSelectionInfo(
                         element.ObjectId,
-                        kind,
+                        kindToken,
                         element.X,
                         element.Y,
                         element.Width,
@@ -57,6 +58,6 @@ public sealed class Panel2DHierarchyProvider : IDocumentHierarchyProvider
             .ToArray();
 
         var label = matches.Length > 0 ? $"{groupName} ({matches.Length})" : $"{groupName} (0)";
-        return new HierarchyItemViewModel(label, $"group:{kind}", isGroup: true, children: matches);
+        return new HierarchyItemViewModel(label, $"group:{kindToken}", isGroup: true, children: matches);
     }
 }
