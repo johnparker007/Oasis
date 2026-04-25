@@ -24,12 +24,13 @@
                 <layout:LayoutPanel Orientation="Vertical">
                     <layout:LayoutPanel Orientation="Horizontal">
                         <layout:LayoutAnchorablePane DockWidth="240">
-                            <layout:LayoutAnchorable Title="Assets"
-                                                     ContentId="Assets"
+                            <layout:LayoutAnchorable Title="Hierarchy"
+                                                     ContentId="Hierarchy"
                                                      CanClose="False">
                                 <Border Padding="10"
                                         Background="{DynamicResource InspectorBackgroundBrush}">
-                                    <views:AssetBrowserView />
+                                    <TextBlock Text="Hierarchy placeholder"
+                                               Foreground="{DynamicResource TextPrimaryBrush}" />
                                 </Border>
                             </layout:LayoutAnchorable>
                         </layout:LayoutAnchorablePane>
@@ -59,6 +60,15 @@
                     </layout:LayoutPanel>
 
                     <layout:LayoutAnchorablePane DockHeight="160">
+                        <layout:LayoutAnchorable Title="Assets"
+                                                 ContentId="Assets"
+                                                 CanClose="False">
+                            <Border Padding="10"
+                                    Background="{DynamicResource ToolBarBackgroundBrush}">
+                                <views:AssetBrowserView />
+                            </Border>
+                        </layout:LayoutAnchorable>
+
                         <layout:LayoutAnchorable Title="Output"
                                                  ContentId="Output"
                                                  CanClose="False">
