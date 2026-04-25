@@ -170,7 +170,7 @@ internal sealed class Panel2DDocumentFile
     public PanelElementFile[] Elements { get; init; } = [];
 }
 
-internal sealed record PanelElementFile
+internal sealed record PanelElementFile : IPanelSelectableObject
 {
     public string ObjectId { get; init; } = string.Empty;
     public string Name { get; init; } = string.Empty;

@@ -848,17 +848,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private static bool IsSelectionMatch(PanelElementFile element, PanelSelectionInfo selection)
     {
-        if (!string.IsNullOrWhiteSpace(selection.ObjectId)
-            && !string.IsNullOrWhiteSpace(element.ObjectId))
-        {
-            return string.Equals(element.ObjectId, selection.ObjectId, StringComparison.Ordinal);
-        }
-
-        return string.Equals(element.Kind, selection.Kind, StringComparison.OrdinalIgnoreCase)
-            && element.X.Equals(selection.X)
-            && element.Y.Equals(selection.Y)
-            && element.Width.Equals(selection.Width)
-            && element.Height.Equals(selection.Height);
+        return PanelSelectionContract.IsMatch(element, selection);
     }
 }
 

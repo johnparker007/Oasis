@@ -65,7 +65,7 @@ internal static class CanvasMutationCommands
             if (_insertIndex is int index
                 && index >= 0
                 && index < elements.Count
-                && IsSameElement(elements[index], _element))
+                && PanelSelectionContract.IsSame(elements[index], _element))
             {
                 elements.RemoveAt(index);
                 removed = true;
@@ -75,7 +75,7 @@ internal static class CanvasMutationCommands
             {
                 for (var i = elements.Count - 1; i >= 0; i--)
                 {
-                    if (!IsSameElement(elements[i], _element))
+                    if (!PanelSelectionContract.IsSame(elements[i], _element))
                     {
                         continue;
                     }
@@ -132,7 +132,7 @@ internal static class CanvasMutationCommands
             if (_insertIndex is int index
                 && index >= 0
                 && index < elements.Count
-                && IsSameElement(elements[index], _element))
+                && PanelSelectionContract.IsSame(elements[index], _element))
             {
                 elements.RemoveAt(index);
                 removed = true;
@@ -142,7 +142,7 @@ internal static class CanvasMutationCommands
             {
                 for (var i = elements.Count - 1; i >= 0; i--)
                 {
-                    if (!IsSameElement(elements[i], _element))
+                    if (!PanelSelectionContract.IsSame(elements[i], _element))
                     {
                         continue;
                     }
@@ -270,7 +270,7 @@ internal static class CanvasMutationCommands
                 return;
             }
 
-            if (!IsSelectionMatch(elements[index], _selection))
+            if (!PanelSelectionContract.IsMatch(elements[index], _selection))
             {
                 return;
             }
@@ -308,15 +308,7 @@ internal static class CanvasMutationCommands
         for (var i = 0; i < elements.Count; i++)
         {
             var element = elements[i];
-            if (!string.Equals(element.Kind, selection.Kind, StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            if (!element.X.Equals(selection.X)
-                || !element.Y.Equals(selection.Y)
-                || !element.Width.Equals(selection.Width)
-                || !element.Height.Equals(selection.Height))
+            if (!PanelSelectionContract.IsMatch(element, selection))
             {
                 continue;
             }
@@ -327,35 +319,5 @@ internal static class CanvasMutationCommands
 
         index = -1;
         return false;
-    }
-
-    private static bool IsSameElement(PanelElementFile left, PanelElementFile right)
-    {
-        if (!string.IsNullOrWhiteSpace(left.ObjectId)
-            && !string.IsNullOrWhiteSpace(right.ObjectId))
-        {
-            return string.Equals(left.ObjectId, right.ObjectId, StringComparison.Ordinal);
-        }
-
-        return string.Equals(left.Kind, right.Kind, StringComparison.OrdinalIgnoreCase)
-            && left.X.Equals(right.X)
-            && left.Y.Equals(right.Y)
-            && left.Width.Equals(right.Width)
-            && left.Height.Equals(right.Height);
-    }
-
-    private static bool IsSelectionMatch(PanelElementFile element, PanelSelectionInfo selection)
-    {
-        if (!string.IsNullOrWhiteSpace(selection.ObjectId)
-            && !string.IsNullOrWhiteSpace(element.ObjectId))
-        {
-            return string.Equals(element.ObjectId, selection.ObjectId, StringComparison.Ordinal);
-        }
-
-        return string.Equals(element.Kind, selection.Kind, StringComparison.OrdinalIgnoreCase)
-            && element.X.Equals(selection.X)
-            && element.Y.Equals(selection.Y)
-            && element.Width.Equals(selection.Width)
-            && element.Height.Equals(selection.Height);
     }
 }
