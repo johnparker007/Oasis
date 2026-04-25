@@ -27,6 +27,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly AssetBrowserViewModel _assetBrowser;
     private readonly OutputLogViewModel _outputLog;
     private readonly InspectorViewModel _inspector;
+    private readonly HierarchyViewModel _hierarchy;
     private readonly DocumentWorkspaceViewModel _documentWorkspace;
     private readonly ActiveDocumentContextService _activeDocumentContext;
 
@@ -75,6 +76,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             () => LoadedProject,
             _activeDocumentContext,
             ApplyInspectorSummary);
+        _hierarchy = new HierarchyViewModel(
+            () => SelectedDocument,
+            [new Panel2DHierarchyProvider()]);
 
         var preferences = _preferencesStore.Load();
         _selectedThemePreference = preferences.ThemePreference;
@@ -100,6 +104,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         AddOutputEntry($"Theme preference loaded: {_selectedThemePreference}", OutputLogStatus.Info);
 
         LoadStartupProject(startupProjectFilePath.Trim());
+        RefreshHierarchy();
     }
 
     public ICommand OpenUntitledDocumentCommand { get; }
@@ -189,6 +194,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 _activeDocumentContext.SetActiveDocument(value);
                 NotifyInspectorChanged();
                 NotifyDocumentCommands();
+                RefreshHierarchy();
             }
         }
     }
@@ -218,6 +224,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     }
 
     public bool CanEditInspectorSummary => _inspector.CanEditInspectorSummary;
+
+    public IReadOnlyList<HierarchyItemViewModel> HierarchyItems => _hierarchy.Items;
+
+    public bool HasHierarchyItems => _hierarchy.HasItems;
+
+    public string HierarchyEmptyStateMessage => _hierarchy.EmptyStateMessage;
 
     public string UndoMenuHeader
     {
@@ -670,12 +682,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         NotifyUndoRedoStateChanged();
         _assetBrowser.NotifyRefreshCommand();
+        RefreshHierarchy();
     }
 
     private void NotifyUndoRedoStateChanged()
     {
         OnPropertyChanged(nameof(UndoMenuHeader));
         OnPropertyChanged(nameof(RedoMenuHeader));
+        RefreshHierarchy();
         CommandManager.InvalidateRequerySuggested();
     }
 
@@ -688,6 +702,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(InspectorSummary));
         OnPropertyChanged(nameof(InspectorEditableSummary));
         OnPropertyChanged(nameof(CanEditInspectorSummary));
+    }
+
+    private void RefreshHierarchy()
+    {
+        _hierarchy.Refresh();
+        OnPropertyChanged(nameof(HierarchyItems));
+        OnPropertyChanged(nameof(HasHierarchyItems));
+        OnPropertyChanged(nameof(HierarchyEmptyStateMessage));
     }
 
     private DocumentTabViewModel? ApplyInspectorSummary(DocumentTabViewModel _, string summary)

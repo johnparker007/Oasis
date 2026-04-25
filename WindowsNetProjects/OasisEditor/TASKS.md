@@ -33,16 +33,16 @@
 - [x] Add safe empty states for no active document
 
 ### Hierarchy Panel
-- [ ] Rename or repurpose existing panel area as Hierarchy if needed
-- [ ] Create document-aware hierarchy provider interface
-- [ ] Add Panel2D hierarchy provider
-- [ ] Show Panel2D objects grouped by type:
-  - [ ] Images
-  - [ ] Rectangles
-  - [ ] Anchors
-  - [ ] Zones
-- [ ] Update hierarchy when active document changes
-- [ ] Update hierarchy when document content changes
+- [x] Rename or repurpose existing panel area as Hierarchy if needed
+- [x] Create document-aware hierarchy provider interface
+- [x] Add Panel2D hierarchy provider
+- [x] Show Panel2D objects grouped by type:
+  - [x] Images
+  - [x] Rectangles
+  - [x] Anchors
+  - [x] Zones
+- [x] Update hierarchy when active document changes
+- [x] Update hierarchy when document content changes
 - [ ] Selecting an item in hierarchy selects the object on the canvas
 - [ ] Selecting an object on the canvas selects the item in hierarchy
 - [ ] Support rename from hierarchy if object naming exists
