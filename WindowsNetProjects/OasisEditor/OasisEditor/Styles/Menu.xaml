@@ -12,6 +12,8 @@
                 Value="1" />
         <Setter Property="Padding"
                 Value="2" />
+        <Setter Property="FontSize"
+                Value="13" />
     </Style>
 
     <Style x:Key="EditorMenuItemStyle"
@@ -26,6 +28,8 @@
                 Value="1" />
         <Setter Property="Padding"
                 Value="8,4" />
+        <Setter Property="FontSize"
+                Value="13" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type MenuItem}">
@@ -75,10 +79,10 @@
                                  Value="True">
                             <Setter TargetName="MenuItemBorder"
                                     Property="Background"
-                                    Value="{DynamicResource ControlHoverBrush}" />
+                                    Value="{DynamicResource ControlPressedBrush}" />
                             <Setter TargetName="MenuItemBorder"
                                     Property="BorderBrush"
-                                    Value="{DynamicResource SelectionBrush}" />
+                                    Value="{DynamicResource BorderStrongBrush}" />
                         </Trigger>
                         <Trigger Property="Role"
                                  Value="TopLevelHeader">
@@ -107,10 +111,10 @@
                         <Trigger Property="IsEnabled"
                                  Value="False">
                             <Setter Property="Foreground"
-                                    Value="{DynamicResource TextPrimaryBrush}" />
+                                    Value="{DynamicResource DisabledBrush}" />
                             <Setter TargetName="MenuItemBorder"
                                     Property="Opacity"
-                                    Value="0.72" />
+                                    Value="1" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -120,14 +124,14 @@
             <Trigger Property="IsHighlighted"
                      Value="True">
                 <Setter Property="Background"
-                        Value="{DynamicResource SelectionBrush}" />
+                        Value="{DynamicResource ControlPressedBrush}" />
                 <Setter Property="Foreground"
                         Value="{DynamicResource TextPrimaryBrush}" />
             </Trigger>
             <Trigger Property="IsSubmenuOpen"
                      Value="True">
                 <Setter Property="Background"
-                        Value="{DynamicResource SelectionBrush}" />
+                        Value="{DynamicResource ControlPressedBrush}" />
             </Trigger>
         </Style.Triggers>
     </Style>
@@ -146,6 +150,8 @@
                 Value="4" />
         <Setter Property="SnapsToDevicePixels"
                 Value="True" />
+        <Setter Property="FontSize"
+                Value="13" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type ContextMenu}">
