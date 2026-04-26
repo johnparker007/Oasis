@@ -283,6 +283,65 @@ public sealed class Panel2DRoundTripTests
         Assert.Equal("Rectangles (0)", rectangleGroupAfterDelete.DisplayName);
     }
 
+    [Fact]
+    public void DeleteElementCommand_TracksExecutionAndSupportsUndoRedo()
+    {
+        var document = CreatePanelDocument(
+            new PanelElementModel
+            {
+                ObjectId = "rect-1",
+                Name = "Rect 1",
+                Kind = PanelElementKind.Rectangle,
+                X = 12,
+                Y = 18,
+                Width = 24,
+                Height = 30
+            });
+
+        var selection = new PanelSelectionInfo("rect-1", "rectangle", 12, 18, 24, 30);
+        var command = CanvasMutationCommands.CreateDeleteElementCommand(document.DocumentId, document, selection);
+
+        Assert.IsAssignableFrom<Commands.IExecutionTrackedCommand>(command);
+        var tracked = (Commands.IExecutionTrackedCommand)command;
+
+        command.Execute();
+        Assert.True(tracked.WasExecuted);
+        Assert.Empty(document.GetPanelElements());
+
+        command.Undo();
+        var restored = Assert.Single(document.GetPanelElements());
+        Assert.Equal("rect-1", restored.ObjectId);
+
+        command.Execute();
+        Assert.True(tracked.WasExecuted);
+        Assert.Empty(document.GetPanelElements());
+    }
+
+    [Fact]
+    public void DeleteElementCommand_NoMatchingSelection_DoesNotExecute()
+    {
+        var document = CreatePanelDocument(
+            new PanelElementModel
+            {
+                ObjectId = "rect-1",
+                Name = "Rect 1",
+                Kind = PanelElementKind.Rectangle,
+                X = 10,
+                Y = 10,
+                Width = 20,
+                Height = 20
+            });
+
+        var missingSelection = new PanelSelectionInfo("missing-id", "rectangle", 10, 10, 20, 20);
+        var command = CanvasMutationCommands.CreateDeleteElementCommand(document.DocumentId, document, missingSelection);
+        var tracked = Assert.IsAssignableFrom<Commands.IExecutionTrackedCommand>(command);
+
+        command.Execute();
+
+        Assert.False(tracked.WasExecuted);
+        Assert.Single(document.GetPanelElements());
+    }
+
     [Theory]
     [InlineData(0.1, 9.9, 0.0, 10.0)]
     [InlineData(14.9, 15.1, 10.0, 20.0)]

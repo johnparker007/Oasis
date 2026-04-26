@@ -45,11 +45,11 @@ These tasks come from the latest Editor code review. Complete them in order. Bui
   - [x] Avoid `Microsoft.VisualBasic.Interaction.InputBox` long-term if a simple editor-owned dialog can be added without scope creep
   - [x] Mark the document dirty only when the name actually changes
   - [x] Preserve undo/redo behavior
-- [ ] Route Delete through the existing delete behavior
-  - [ ] Preserve Delete key behavior
-  - [ ] Do not record no-op delete commands
-  - [ ] Clear selection after successful delete
-  - [ ] Preserve undo/redo behavior
+- [x] Route Delete through the existing delete behavior
+  - [x] Preserve Delete key behavior
+  - [x] Do not record no-op delete commands
+  - [x] Clear selection after successful delete
+  - [x] Preserve undo/redo behavior
 - [ ] Implement Duplicate for Panel2D hierarchy entities
   - [ ] Duplicate the selected model-backed element only
   - [ ] Generate a new stable object ID
