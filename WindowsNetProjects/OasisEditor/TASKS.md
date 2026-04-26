@@ -16,10 +16,10 @@ These tasks come from the latest Editor code review. Complete them in order. Bui
 - [ ] Add tests where practical; keep tests under the Editor solution only
 
 ### Phase F — Shared Context Menu Command Foundation
-- [ ] Review current hierarchy keyboard handlers and asset double-click handlers
-  - [ ] Identify commands already implemented for rename/delete/open
-  - [ ] Identify command gaps for cut/copy/paste/duplicate/show-in-explorer/assets rename/assets delete
-  - [ ] Do not change behavior in this review step
+- [x] Review current hierarchy keyboard handlers and asset double-click handlers
+  - [x] Identify commands already implemented for rename/delete/open
+  - [x] Identify command gaps for cut/copy/paste/duplicate/show-in-explorer/assets rename/assets delete
+  - [x] Do not change behavior in this review step
 - [ ] Add a reusable command pattern for pane item context menus
   - [ ] Keep View code-behind limited to selecting the right-clicked item before opening the menu, if needed
   - [ ] Put command execution and CanExecute logic on the relevant ViewModel or focused service
