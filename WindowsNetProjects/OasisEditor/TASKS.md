@@ -148,10 +148,10 @@ These tasks come from the latest Editor code review. Complete them in order. Bui
   - [x] Delete handles files, empty folders, missing paths, and non-empty folders safely
 
 ### Phase J — Follow-up Refactor Checks
-- [ ] Review `MainWindowViewModel` after context menu and asset browser changes
-  - [ ] Move any new cohesive asset-browser logic back into `AssetBrowserViewModel` or focused services
-  - [ ] Move any new hierarchy command logic into hierarchy/document command helpers where practical
-  - [ ] Keep MainWindowViewModel as orchestration, not a dumping ground
+- [x] Review `MainWindowViewModel` after context menu and asset browser changes
+  - [x] Move any new cohesive asset-browser logic back into `AssetBrowserViewModel` or focused services
+  - [x] Move any new hierarchy command logic into hierarchy/document command helpers where practical
+  - [x] Keep MainWindowViewModel as orchestration, not a dumping ground
 - [ ] Review document mutation command coverage
   - [ ] Ensure Duplicate/Paste use the same command safety contracts as add/delete/rename
   - [ ] Ensure no-op commands are not recorded

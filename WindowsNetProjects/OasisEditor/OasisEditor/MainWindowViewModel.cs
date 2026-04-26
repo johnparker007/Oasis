@@ -121,10 +121,18 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         RenameSelectedHierarchyItemCommand = new RelayCommand(
             RenameSelectedHierarchyItemWithPrompt,
             CanRenameSelectedHierarchyItem);
-        CutSelectedHierarchyItemCommand = new RelayCommand(ExecuteCutSelectedHierarchyItem, CanCutSelectedHierarchyItem);
-        CopySelectedHierarchyItemCommand = new RelayCommand(ExecuteCopySelectedHierarchyItem, CanCopySelectedHierarchyItem);
-        PasteHierarchyItemCommand = new RelayCommand(ExecutePasteHierarchyItem, CanPasteHierarchyItem);
-        DuplicateSelectedHierarchyItemCommand = new RelayCommand(ExecuteDuplicateSelectedHierarchyItem, CanDuplicateSelectedHierarchyItem);
+        CutSelectedHierarchyItemCommand = new RelayCommand(
+            () => _hierarchyPanelCommands.ExecuteCutSelected(),
+            () => _hierarchyPanelCommands.CanCutSelected());
+        CopySelectedHierarchyItemCommand = new RelayCommand(
+            () => _hierarchyPanelCommands.ExecuteCopySelected(),
+            () => _hierarchyPanelCommands.CanCopySelected());
+        PasteHierarchyItemCommand = new RelayCommand(
+            () => _hierarchyPanelCommands.ExecutePasteSelected(),
+            () => _hierarchyPanelCommands.CanPasteSelected());
+        DuplicateSelectedHierarchyItemCommand = new RelayCommand(
+            () => _hierarchyPanelCommands.ExecuteDuplicateSelected(),
+            () => _hierarchyPanelCommands.CanDuplicateSelected());
         ClearOutputCommand = _outputLog.ClearOutputCommand;
         ApplyInspectorSummaryCommand = _inspector.ApplyInspectorSummaryCommand;
         AddOutputEntry("Editor shell initialized.", OutputLogStatus.Info);
@@ -414,46 +422,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private bool CanDeleteHierarchyItem(HierarchyItemViewModel hierarchyItem) => _hierarchyPanelCommands.CanDeleteItem(hierarchyItem);
 
     private void DeleteHierarchyItem(HierarchyItemViewModel hierarchyItem) => _hierarchyPanelCommands.DeleteItem(hierarchyItem);
-
-    private bool CanCutSelectedHierarchyItem()
-    {
-        return _hierarchyPanelCommands.CanCutSelected();
-    }
-
-    private bool CanCopySelectedHierarchyItem()
-    {
-        return _hierarchyPanelCommands.CanCopySelected();
-    }
-
-    private bool CanPasteHierarchyItem()
-    {
-        return _hierarchyPanelCommands.CanPasteSelected();
-    }
-
-    private bool CanDuplicateSelectedHierarchyItem()
-    {
-        return _hierarchyPanelCommands.CanDuplicateSelected();
-    }
-
-    private void ExecuteCutSelectedHierarchyItem()
-    {
-        _hierarchyPanelCommands.ExecuteCutSelected();
-    }
-
-    private void ExecuteCopySelectedHierarchyItem()
-    {
-        _hierarchyPanelCommands.ExecuteCopySelected();
-    }
-
-    private void ExecutePasteHierarchyItem()
-    {
-        _hierarchyPanelCommands.ExecutePasteSelected();
-    }
-
-    private void ExecuteDuplicateSelectedHierarchyItem()
-    {
-        _hierarchyPanelCommands.ExecuteDuplicateSelected();
-    }
 
     private bool CanOpenUntitledDocument()
     {
