@@ -25,9 +25,22 @@
                   BorderThickness="1">
             <TreeView.ContextMenu>
                 <ContextMenu Style="{StaticResource EditorContextMenuStyle}">
+                    <MenuItem Header="Cut"
+                              Style="{StaticResource EditorContextMenuItemStyle}"
+                              Command="{Binding CutSelectedHierarchyItemCommand}" />
+                    <MenuItem Header="Copy"
+                              Style="{StaticResource EditorContextMenuItemStyle}"
+                              Command="{Binding CopySelectedHierarchyItemCommand}" />
+                    <MenuItem Header="Paste"
+                              Style="{StaticResource EditorContextMenuItemStyle}"
+                              Command="{Binding PasteHierarchyItemCommand}" />
+                    <Separator />
                     <MenuItem Header="Rename"
                               Style="{StaticResource EditorContextMenuItemStyle}"
                               Command="{Binding RenameSelectedHierarchyItemCommand}" />
+                    <MenuItem Header="Duplicate"
+                              Style="{StaticResource EditorContextMenuItemStyle}"
+                              Command="{Binding DuplicateSelectedHierarchyItemCommand}" />
                     <MenuItem Header="Delete"
                               Style="{StaticResource EditorContextMenuItemStyle}"
                               Command="{Binding DeleteSelectedHierarchyItemCommand}" />

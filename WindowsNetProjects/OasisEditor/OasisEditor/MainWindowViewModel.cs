@@ -109,6 +109,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         RenameSelectedHierarchyItemCommand = new RelayCommand(
             RenameSelectedHierarchyItemWithPrompt,
             CanRenameSelectedHierarchyItem);
+        CutSelectedHierarchyItemCommand = new RelayCommand(ExecuteCutSelectedHierarchyItem, CanCutSelectedHierarchyItem);
+        CopySelectedHierarchyItemCommand = new RelayCommand(ExecuteCopySelectedHierarchyItem, CanCopySelectedHierarchyItem);
+        PasteHierarchyItemCommand = new RelayCommand(ExecutePasteHierarchyItem, CanPasteHierarchyItem);
+        DuplicateSelectedHierarchyItemCommand = new RelayCommand(ExecuteDuplicateSelectedHierarchyItem, CanDuplicateSelectedHierarchyItem);
         ClearOutputCommand = _outputLog.ClearOutputCommand;
         ApplyInspectorSummaryCommand = _inspector.ApplyInspectorSummaryCommand;
         AddOutputEntry("Editor shell initialized.", OutputLogStatus.Info);
@@ -129,6 +133,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand OpenAssetCommand { get; }
     public ICommand DeleteSelectedHierarchyItemCommand { get; }
     public ICommand RenameSelectedHierarchyItemCommand { get; }
+    public ICommand CutSelectedHierarchyItemCommand { get; }
+    public ICommand CopySelectedHierarchyItemCommand { get; }
+    public ICommand PasteHierarchyItemCommand { get; }
+    public ICommand DuplicateSelectedHierarchyItemCommand { get; }
     public ICommand ClearOutputCommand { get; }
     public ICommand OpenPreferencesCommand { get; }
     public ICommand OpenProjectSettingsCommand { get; }
@@ -450,6 +458,30 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         SelectHierarchyItem(hierarchyItem);
         DeleteSelectedHierarchyItem();
+    }
+
+    private static bool CanCutSelectedHierarchyItem() => false;
+
+    private static bool CanCopySelectedHierarchyItem() => false;
+
+    private static bool CanPasteHierarchyItem() => false;
+
+    private static bool CanDuplicateSelectedHierarchyItem() => false;
+
+    private static void ExecuteCutSelectedHierarchyItem()
+    {
+    }
+
+    private static void ExecuteCopySelectedHierarchyItem()
+    {
+    }
+
+    private static void ExecutePasteHierarchyItem()
+    {
+    }
+
+    private static void ExecuteDuplicateSelectedHierarchyItem()
+    {
     }
 
     private bool CanOpenUntitledDocument()
@@ -840,6 +872,26 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (RenameSelectedHierarchyItemCommand is RelayCommand renameHierarchyCommand)
         {
             renameHierarchyCommand.RaiseCanExecuteChanged();
+        }
+
+        if (CutSelectedHierarchyItemCommand is RelayCommand cutHierarchyCommand)
+        {
+            cutHierarchyCommand.RaiseCanExecuteChanged();
+        }
+
+        if (CopySelectedHierarchyItemCommand is RelayCommand copyHierarchyCommand)
+        {
+            copyHierarchyCommand.RaiseCanExecuteChanged();
+        }
+
+        if (PasteHierarchyItemCommand is RelayCommand pasteHierarchyCommand)
+        {
+            pasteHierarchyCommand.RaiseCanExecuteChanged();
+        }
+
+        if (DuplicateSelectedHierarchyItemCommand is RelayCommand duplicateHierarchyCommand)
+        {
+            duplicateHierarchyCommand.RaiseCanExecuteChanged();
         }
     }
 

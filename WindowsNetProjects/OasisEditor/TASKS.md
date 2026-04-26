@@ -33,13 +33,13 @@ These tasks come from the latest Editor code review. Complete them in order. Bui
 - [x] Ensure right-clicking a hierarchy entity selects it before showing the context menu
   - [x] Do not select non-entity group rows as editable objects
   - [x] Preserve existing left-click selection behavior
-- [ ] Add initial hierarchy entity context menu items
-  - [ ] Cut
-  - [ ] Copy
-  - [ ] Paste
-  - [ ] Rename
-  - [ ] Duplicate
-  - [ ] Delete
+- [x] Add initial hierarchy entity context menu items
+  - [x] Cut
+  - [x] Copy
+  - [x] Paste
+  - [x] Rename
+  - [x] Duplicate
+  - [x] Delete
 - [ ] Route Rename through the existing rename behavior
   - [ ] Preserve F2 rename behavior
   - [ ] Avoid `Microsoft.VisualBasic.Interaction.InputBox` long-term if a simple editor-owned dialog can be added without scope creep
