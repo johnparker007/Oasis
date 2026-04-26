@@ -73,6 +73,14 @@ public sealed class HierarchyViewModel : INotifyPropertyChanged
         NotifyCollectionStateChanged();
     }
 
+    public HierarchyItemViewModel? GetSelectedEntity()
+    {
+        return Flatten(Items).FirstOrDefault(item =>
+            item.IsSelected &&
+            !item.IsGroup &&
+            item.PanelSelection is PanelSelectionInfo);
+    }
+
     private static HashSet<string> CollectExpandedNodeKeys(IEnumerable<HierarchyItemViewModel> items)
     {
         var expandedNodeKeys = new HashSet<string>(StringComparer.Ordinal);

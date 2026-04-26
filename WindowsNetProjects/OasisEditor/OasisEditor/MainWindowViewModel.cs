@@ -409,50 +409,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         return renameDialog.ShowDialog() == true ? renameDialog.NameText : null;
     }
 
-    private HierarchyItemViewModel? GetSelectedHierarchyEntity()
-    {
-        return EnumerateHierarchyItems(HierarchyItems).FirstOrDefault(item =>
-            item.IsSelected &&
-            !item.IsGroup &&
-            item.PanelSelection is PanelSelectionInfo);
-    }
+    private HierarchyItemViewModel? GetSelectedHierarchyEntity() => _hierarchy.GetSelectedEntity();
 
-    private static IEnumerable<HierarchyItemViewModel> EnumerateHierarchyItems(IEnumerable<HierarchyItemViewModel> roots)
-    {
-        foreach (var item in roots)
-        {
-            yield return item;
+    private bool CanDeleteHierarchyItem(HierarchyItemViewModel hierarchyItem) => _hierarchyPanelCommands.CanDeleteItem(hierarchyItem);
 
-            foreach (var child in EnumerateHierarchyItems(item.Children))
-            {
-                yield return child;
-            }
-        }
-    }
-
-    private bool CanDeleteHierarchyItem(HierarchyItemViewModel hierarchyItem)
-    {
-        var selectedDocument = SelectedDocument;
-        if (selectedDocument is null || selectedDocument.Document.DocumentType != EditorDocumentType.Panel2D)
-        {
-            return false;
-        }
-
-        return !hierarchyItem.IsGroup &&
-               hierarchyItem.PanelSelection is PanelSelectionInfo selection &&
-               selectedDocument.HasPanelElement(selection);
-    }
-
-    private void DeleteHierarchyItem(HierarchyItemViewModel hierarchyItem)
-    {
-        if (!CanDeleteHierarchyItem(hierarchyItem))
-        {
-            return;
-        }
-
-        SelectHierarchyItem(hierarchyItem);
-        DeleteSelectedHierarchyItem();
-    }
+    private void DeleteHierarchyItem(HierarchyItemViewModel hierarchyItem) => _hierarchyPanelCommands.DeleteItem(hierarchyItem);
 
     private bool CanCutSelectedHierarchyItem()
     {

@@ -25,6 +25,36 @@ internal sealed class HierarchyPanelCommandService
         return TryGetSelectionDocument(out var document, out var selection) && document.HasPanelElement(selection);
     }
 
+    public bool CanDeleteItem(HierarchyItemViewModel hierarchyItem)
+    {
+        var selectedDocument = _selectedDocumentAccessor();
+        if (selectedDocument is null || selectedDocument.Document.DocumentType != EditorDocumentType.Panel2D)
+        {
+            return false;
+        }
+
+        return !hierarchyItem.IsGroup
+               && hierarchyItem.PanelSelection is PanelSelectionInfo selection
+               && selectedDocument.HasPanelElement(selection);
+    }
+
+    public bool DeleteItem(HierarchyItemViewModel hierarchyItem)
+    {
+        if (!CanDeleteItem(hierarchyItem) || hierarchyItem.PanelSelection is not PanelSelectionInfo selection)
+        {
+            return false;
+        }
+
+        var selectedDocument = _selectedDocumentAccessor();
+        if (selectedDocument is null)
+        {
+            return false;
+        }
+
+        _updateDocumentSelection(selectedDocument.DocumentId, selection);
+        return DeleteSelected();
+    }
+
     public bool DeleteSelected()
     {
         if (!TryGetSelectionDocument(out var document, out var selection) || !document.HasPanelElement(selection))
