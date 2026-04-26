@@ -265,7 +265,9 @@ public sealed class DocumentWorkspaceViewModel
     {
         if (document.Document.DocumentType == EditorDocumentType.Panel2D)
         {
-            var elements = Panel2DDocumentStorage.ToStorageElements(document.GetPanelElements());
+            var elements = document.GetPanelElements()
+                .Select(Panel2DDocumentStorage.ToStorageElement)
+                .ToArray();
             return Panel2DDocumentStorage.Serialize(document.Document.Title, document.ContentSummary, elements);
         }
 
