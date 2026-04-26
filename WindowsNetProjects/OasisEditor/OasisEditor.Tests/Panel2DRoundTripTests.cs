@@ -1,4 +1,5 @@
 using Xunit;
+using System.Windows;
 
 namespace OasisEditor.Tests;
 
@@ -280,6 +281,30 @@ public sealed class Panel2DRoundTripTests
         var rectangleGroupAfterDelete = hierarchy.Items.Single(i => i.NodeKey == "group:rectangle");
         Assert.Empty(rectangleGroupAfterDelete.Children);
         Assert.Equal("Rectangles (0)", rectangleGroupAfterDelete.DisplayName);
+    }
+
+    [Theory]
+    [InlineData(0.1, 9.9, 0.0, 10.0)]
+    [InlineData(14.9, 15.1, 10.0, 20.0)]
+    [InlineData(25.0, 35.0, 20.0, 40.0)]
+    [InlineData(-4.9, -5.1, 0.0, -10.0)]
+    public void SnapPointToGrid_RoundsToNearestTenPixels(double x, double y, double expectedX, double expectedY)
+    {
+        var snapped = PanelToolPlacementController.SnapPointToGrid(new Point(x, y));
+
+        Assert.Equal(expectedX, snapped.X);
+        Assert.Equal(expectedY, snapped.Y);
+    }
+
+    [Fact]
+    public void SnapPointToGrid_PreservesExactGridCoordinates()
+    {
+        var point = new Point(40.0, -30.0);
+
+        var snapped = PanelToolPlacementController.SnapPointToGrid(point);
+
+        Assert.Equal(40.0, snapped.X);
+        Assert.Equal(-30.0, snapped.Y);
     }
 
     private static DocumentTabViewModel CreatePanelDocument(params PanelElementModel[] elements)

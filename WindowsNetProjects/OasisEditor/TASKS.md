@@ -53,13 +53,13 @@ These tasks come from the Editor code review. Complete them in order. Build and 
   - [x] Verify save/load does not include sample visuals
 
 ### Phase C — Panel2D Live Model Preparation
-- [ ] Create a domain-facing Panel2D model separate from JSON storage
+- [x] Create a domain-facing Panel2D model separate from JSON storage
   - [x] Add `Panel2DDocumentModel` with panel title/summary and a collection/list of `PanelElementModel`
   - [x] Add `PanelElementModel` fields for object ID, name, kind, X, Y, width, and height
   - [x] Keep the model UI-agnostic: no WPF types, controls, brushes, or dependency properties
   - [x] Add conversion between the new model and existing `PanelElementFile` storage DTOs
   - [x] Keep existing `.panel2d` file format working
-- [ ] Move Panel2D mutation commands to operate on the live model first
+- [x] Move Panel2D mutation commands to operate on the live model first
   - [x] Add element, delete element, and rename element should mutate the model
   - [x] Update JSON/layout sync as a projection of the model, not as the canonical state
   - [x] Preserve undo/redo behaviour
@@ -86,14 +86,14 @@ These tasks come from the Editor code review. Complete them in order. Build and 
   - [x] Reject or report unsupported schema versions
 
 ### Phase E — Deferred Planning Only
-- [ ] Plan layer ordering support only
-  - [ ] Identify required model fields and UI commands
+- [x] Plan layer ordering support only
+  - [x] Identify required model fields and UI commands
   - [ ] Do not implement yet
-- [ ] Plan object locking/visibility support only
-  - [ ] Identify required model fields, canvas hit-test changes, and hierarchy UI changes
+- [x] Plan object locking/visibility support only
+  - [x] Identify required model fields, canvas hit-test changes, and hierarchy UI changes
   - [ ] Do not implement yet
-- [ ] Plan copy/paste/duplicate support only
-  - [ ] Identify ID-generation and undo/redo requirements
+- [x] Plan copy/paste/duplicate support only
+  - [x] Identify ID-generation and undo/redo requirements
   - [ ] Do not implement yet
 
 ---
@@ -157,7 +157,7 @@ These tasks come from the Editor code review. Complete them in order. Build and 
 
 ## Next Up
 - [ ] Improve panel editor usability:
-  - [ ] snapping
+  - [x] snapping
   - [ ] layer ordering
   - [ ] object locking
   - [ ] object visibility
