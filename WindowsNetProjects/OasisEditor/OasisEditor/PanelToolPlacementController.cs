@@ -1,7 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using OasisEditor.Commands;
 
 namespace OasisEditor;
 
@@ -12,7 +11,7 @@ internal static class PanelToolPlacementController
         MouseButtonEventArgs eventArgs,
         bool isRectangleToolActive,
         bool isImageToolActive,
-        Action<FrameworkElement, ICommand> executeCanvasMutation)
+        Action<FrameworkElement, Commands.ICommand> executeCanvasMutation)
     {
         if (canvas is not Canvas panelCanvas)
         {
