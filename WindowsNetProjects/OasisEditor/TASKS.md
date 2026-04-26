@@ -54,11 +54,11 @@ These tasks come from the Editor code review. Complete them in order. Build and 
 
 ### Phase C — Panel2D Live Model Preparation
 - [ ] Create a domain-facing Panel2D model separate from JSON storage
-  - [ ] Add `Panel2DDocumentModel` with panel title/summary and a collection/list of `PanelElementModel`
-  - [ ] Add `PanelElementModel` fields for object ID, name, kind, X, Y, width, and height
-  - [ ] Keep the model UI-agnostic: no WPF types, controls, brushes, or dependency properties
-  - [ ] Add conversion between the new model and existing `PanelElementFile` storage DTOs
-  - [ ] Keep existing `.panel2d` file format working
+  - [x] Add `Panel2DDocumentModel` with panel title/summary and a collection/list of `PanelElementModel`
+  - [x] Add `PanelElementModel` fields for object ID, name, kind, X, Y, width, and height
+  - [x] Keep the model UI-agnostic: no WPF types, controls, brushes, or dependency properties
+  - [x] Add conversion between the new model and existing `PanelElementFile` storage DTOs
+  - [x] Keep existing `.panel2d` file format working
 - [ ] Move Panel2D mutation commands to operate on the live model first
   - [ ] Add element, delete element, and rename element should mutate the model
   - [ ] Update JSON/layout sync as a projection of the model, not as the canonical state
