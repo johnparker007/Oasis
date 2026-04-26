@@ -6,6 +6,8 @@ namespace OasisEditor;
 
 internal static class PanelToolPlacementController
 {
+    internal const double SnapGridSize = 10.0;
+
     public static bool TryHandlePlacement(
         FrameworkElement canvas,
         MouseButtonEventArgs eventArgs,
@@ -28,7 +30,7 @@ internal static class PanelToolPlacementController
             return false;
         }
 
-        var canvasPoint = GetCanvasPoint(panelCanvas, eventArgs);
+        var canvasPoint = SnapPointToGrid(GetCanvasPoint(panelCanvas, eventArgs));
         if (isRectangleToolActive)
         {
             var rectangle = PanelElementFactory.CreateRectangleElement(canvasPoint);
@@ -53,5 +55,17 @@ internal static class PanelToolPlacementController
         return new Point(
             (clickPosition.X - translate.X) / scale.ScaleX,
             (clickPosition.Y - translate.Y) / scale.ScaleY);
+    }
+
+    internal static Point SnapPointToGrid(Point point)
+    {
+        return new Point(
+            SnapCoordinate(point.X),
+            SnapCoordinate(point.Y));
+    }
+
+    private static double SnapCoordinate(double value)
+    {
+        return Math.Round(value / SnapGridSize) * SnapGridSize;
     }
 }

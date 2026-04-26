@@ -157,7 +157,7 @@ These tasks come from the Editor code review. Complete them in order. Build and 
 
 ## Next Up
 - [ ] Improve panel editor usability:
-  - [ ] snapping
+  - [x] snapping
   - [ ] layer ordering
   - [ ] object locking
   - [ ] object visibility
