@@ -68,12 +68,12 @@ These tasks come from the latest Editor code review. Complete them in order. Bui
   - [x] Copy selected entity to the editor clipboard first
   - [x] Delete through the document command system only after copy succeeds
   - [x] Preserve undo/redo behavior for the delete portion
-- [ ] Verify hierarchy context menu behavior
-  - [ ] Right-click selects the intended entity
-  - [ ] Group rows do not expose invalid entity actions
-  - [ ] Rename/Delete keyboard shortcuts still work
-  - [ ] Duplicate/Copy/Paste/Cut preserve object IDs correctly
-  - [ ] Undo/redo affects only the active document
+- [x] Verify hierarchy context menu behavior
+  - [x] Right-click selects the intended entity
+  - [x] Group rows do not expose invalid entity actions
+  - [x] Rename/Delete keyboard shortcuts still work
+  - [x] Duplicate/Copy/Paste/Cut preserve object IDs correctly
+  - [x] Undo/redo affects only the active document
 
 ### Phase H — Asset Browser Model Refactor Toward Unity Project Window
 - [ ] Replace the flat all-files asset list model with a tree/content model
