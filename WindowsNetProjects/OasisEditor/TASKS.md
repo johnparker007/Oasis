@@ -63,11 +63,11 @@ These tasks come from the Editor code review. Complete them in order. Build and 
   - [x] Add element, delete element, and rename element should mutate the model
   - [x] Update JSON/layout sync as a projection of the model, not as the canonical state
   - [x] Preserve undo/redo behaviour
-  - [ ] Verify save/open round-trips existing panel files
-- [ ] Make hierarchy and inspector read from the live Panel2D model where practical
-  - [ ] Keep binding-facing property names stable unless a task explicitly allows a rename
-  - [ ] Verify selection identity remains object-ID based
-  - [ ] Verify hierarchy refreshes after add/delete/rename
+  - [x] Verify save/open round-trips existing panel files
+- [x] Make hierarchy and inspector read from the live Panel2D model where practical
+  - [x] Keep binding-facing property names stable unless a task explicitly allows a rename
+  - [x] Verify selection identity remains object-ID based
+  - [x] Verify hierarchy refreshes after add/delete/rename
 
 ### Phase D — Storage, Validation, and Migration
 - [ ] Add explicit Panel2D schema validation
