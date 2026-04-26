@@ -20,14 +20,14 @@ These tasks come from the latest Editor code review. Complete them in order. Bui
   - [x] Identify commands already implemented for rename/delete/open
   - [x] Identify command gaps for cut/copy/paste/duplicate/show-in-explorer/assets rename/assets delete
   - [x] Do not change behavior in this review step
-- [ ] Add a reusable command pattern for pane item context menus
-  - [ ] Keep View code-behind limited to selecting the right-clicked item before opening the menu, if needed
-  - [ ] Put command execution and CanExecute logic on the relevant ViewModel or focused service
-  - [ ] Ensure unavailable operations are disabled in the menu
-  - [ ] Keep keyboard shortcuts and context menus routed through the same command methods
-- [ ] Add shared menu item styling/resources if useful
-  - [ ] Use semantic theme resources
-  - [ ] Ensure context menus work in System, Light, and Dark theme modes
+- [x] Add a reusable command pattern for pane item context menus
+  - [x] Keep View code-behind limited to selecting the right-clicked item before opening the menu, if needed
+  - [x] Put command execution and CanExecute logic on the relevant ViewModel or focused service
+  - [x] Ensure unavailable operations are disabled in the menu
+  - [x] Keep keyboard shortcuts and context menus routed through the same command methods
+- [x] Add shared menu item styling/resources if useful
+  - [x] Use semantic theme resources
+  - [x] Ensure context menus work in System, Light, and Dark theme modes
 
 ### Phase G — Hierarchy Entity Context Menu
 - [ ] Ensure right-clicking a hierarchy entity selects it before showing the context menu

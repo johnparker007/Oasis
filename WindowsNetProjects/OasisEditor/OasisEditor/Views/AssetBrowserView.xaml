@@ -24,7 +24,15 @@
         <ListBox Grid.Row="1"
                  ItemsSource="{Binding AssetBrowserItems}"
                  SelectedItem="{Binding SelectedAsset, Mode=TwoWay}"
+                 PreviewMouseRightButtonDown="OnAssetListPreviewMouseRightButtonDown"
                  MouseDoubleClick="OnAssetListMouseDoubleClick">
+            <ListBox.ContextMenu>
+                <ContextMenu Style="{StaticResource EditorContextMenuStyle}">
+                    <MenuItem Header="Open"
+                              Style="{StaticResource EditorContextMenuItemStyle}"
+                              Command="{Binding OpenAssetCommand}" />
+                </ContextMenu>
+            </ListBox.ContextMenu>
             <ListBox.ItemTemplate>
                 <DataTemplate>
                     <TextBlock Text="{Binding DisplayPath}" />

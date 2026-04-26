@@ -1,7 +1,7 @@
 using System.Windows.Controls;
 using System.Windows;
 using System.Windows.Input;
-using Microsoft.VisualBasic;
+using System.Windows.Media;
 
 namespace OasisEditor.Views;
 
@@ -46,23 +46,50 @@ public partial class HierarchyView : UserControl
             return;
         }
 
-        if (!viewModel.TryGetSelectedHierarchyItemName(out var currentName))
+        var renameCommand = viewModel.RenameSelectedHierarchyItemCommand;
+        if (renameCommand.CanExecute(null))
         {
-            return;
-        }
-
-        var renamed = Interaction.InputBox(
-            "Enter a new name for the selected hierarchy object:",
-            "Rename Hierarchy Item",
-            currentName);
-        if (string.IsNullOrWhiteSpace(renamed))
-        {
-            return;
-        }
-
-        if (viewModel.RenameSelectedHierarchyItem(renamed))
-        {
+            renameCommand.Execute(null);
             eventArgs.Handled = true;
         }
+    }
+
+    private void OnTreeViewPreviewMouseRightButtonDown(object sender, MouseButtonEventArgs eventArgs)
+    {
+        if (DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        if (eventArgs.OriginalSource is not DependencyObject source)
+        {
+            return;
+        }
+
+        var treeViewItem = FindAncestor<TreeViewItem>(source);
+        if (treeViewItem?.DataContext is not HierarchyItemViewModel hierarchyItem)
+        {
+            return;
+        }
+
+        treeViewItem.IsSelected = true;
+        viewModel.SelectHierarchyItem(hierarchyItem);
+    }
+
+    private static T? FindAncestor<T>(DependencyObject current)
+        where T : DependencyObject
+    {
+        var node = current;
+        while (node is not null)
+        {
+            if (node is T ancestor)
+            {
+                return ancestor;
+            }
+
+            node = VisualTreeHelper.GetParent(node);
+        }
+
+        return null;
     }
 }

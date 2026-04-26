@@ -1,5 +1,7 @@
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows;
+using System.Windows.Media;
 using OasisEditor;
 
 namespace OasisEditor.Views;
@@ -24,5 +26,44 @@ public partial class AssetBrowserView : UserControl
         {
             command.Execute(selectedAsset);
         }
+    }
+
+    private void OnAssetListPreviewMouseRightButtonDown(object sender, MouseButtonEventArgs eventArgs)
+    {
+        if (sender is not ListBox listBox)
+        {
+            return;
+        }
+
+        if (eventArgs.OriginalSource is not DependencyObject source)
+        {
+            return;
+        }
+
+        var listBoxItem = FindAncestor<ListBoxItem>(source);
+        if (listBoxItem is null)
+        {
+            return;
+        }
+
+        listBoxItem.IsSelected = true;
+        listBox.Focus();
+    }
+
+    private static T? FindAncestor<T>(DependencyObject current)
+        where T : DependencyObject
+    {
+        var node = current;
+        while (node is not null)
+        {
+            if (node is T ancestor)
+            {
+                return ancestor;
+            }
+
+            node = VisualTreeHelper.GetParent(node);
+        }
+
+        return null;
     }
 }
