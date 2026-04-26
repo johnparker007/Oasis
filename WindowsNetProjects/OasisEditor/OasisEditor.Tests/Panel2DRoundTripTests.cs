@@ -1,5 +1,7 @@
 using Xunit;
 using System.Windows;
+using System.Collections.ObjectModel;
+using OasisEditor.Commands;
 
 namespace OasisEditor.Tests;
 
@@ -446,6 +448,98 @@ public sealed class Panel2DRoundTripTests
         Assert.Single(document.GetPanelElements());
     }
 
+    [Fact]
+    public void ExecuteDocumentCanvasCommand_TargetingInactiveDocument_ReturnsFalseAndDoesNotMutate()
+    {
+        var firstDocument = CreatePanelDocument(
+            new PanelElementModel
+            {
+                ObjectId = "first-rect",
+                Name = "First",
+                Kind = PanelElementKind.Rectangle,
+                X = 0,
+                Y = 0,
+                Width = 10,
+                Height = 10
+            });
+        var secondDocument = CreatePanelDocument(
+            new PanelElementModel
+            {
+                ObjectId = "second-rect",
+                Name = "Second",
+                Kind = PanelElementKind.Rectangle,
+                X = 20,
+                Y = 20,
+                Width = 10,
+                Height = 10
+            });
+
+        var workspace = CreateWorkspace(selectedDocument: firstDocument, firstDocument, secondDocument);
+
+        var selectionInSecondDocument = new PanelSelectionInfo("second-rect", "rectangle", 20, 20, 10, 10);
+        var command = CanvasMutationCommands.CreateRenameElementCommand(
+            secondDocument.DocumentId,
+            secondDocument,
+            selectionInSecondDocument,
+            "Should Not Apply");
+
+        var executed = workspace.ExecuteDocumentCanvasCommand(secondDocument.DocumentId, command);
+
+        Assert.False(executed);
+        Assert.Equal("Second", secondDocument.GetPanelElements().Single().Name);
+        Assert.Empty(secondDocument.CommandService.History.Entries);
+    }
+
+    [Fact]
+    public void UndoActiveDocument_OnlyUndoesActiveDocumentHistory()
+    {
+        var firstDocument = CreatePanelDocument(
+            new PanelElementModel
+            {
+                ObjectId = "first-rect",
+                Name = "First",
+                Kind = PanelElementKind.Rectangle,
+                X = 0,
+                Y = 0,
+                Width = 10,
+                Height = 10
+            });
+        var secondDocument = CreatePanelDocument(
+            new PanelElementModel
+            {
+                ObjectId = "second-rect",
+                Name = "Second",
+                Kind = PanelElementKind.Rectangle,
+                X = 20,
+                Y = 20,
+                Width = 10,
+                Height = 10
+            });
+
+        var workspace = CreateWorkspace(selectedDocument: firstDocument, firstDocument, secondDocument);
+
+        var firstRename = CanvasMutationCommands.CreateRenameElementCommand(
+            firstDocument.DocumentId,
+            firstDocument,
+            new PanelSelectionInfo("first-rect", "rectangle", 0, 0, 10, 10),
+            "First Renamed");
+        var secondRename = CanvasMutationCommands.CreateRenameElementCommand(
+            secondDocument.DocumentId,
+            secondDocument,
+            new PanelSelectionInfo("second-rect", "rectangle", 20, 20, 10, 10),
+            "Second Renamed");
+
+        Assert.True(workspace.ExecuteDocumentCanvasCommand(firstDocument.DocumentId, firstRename));
+        workspace = CreateWorkspace(selectedDocument: secondDocument, firstDocument, secondDocument);
+        Assert.True(workspace.ExecuteDocumentCanvasCommand(secondDocument.DocumentId, secondRename));
+
+        workspace = CreateWorkspace(selectedDocument: firstDocument, firstDocument, secondDocument);
+        Assert.True(workspace.UndoActiveDocument());
+
+        Assert.Equal("First", firstDocument.GetPanelElements().Single().Name);
+        Assert.Equal("Second Renamed", secondDocument.GetPanelElements().Single().Name);
+    }
+
     [Theory]
     [InlineData(0.1, 9.9, 0.0, 10.0)]
     [InlineData(14.9, 15.1, 10.0, 20.0)]
@@ -475,5 +569,24 @@ public sealed class Panel2DRoundTripTests
         var document = new DocumentTabViewModel(EditorDocument.CreatePanel2DStub("Panel"));
         document.SetPanelElements(elements);
         return document;
+    }
+
+    private static DocumentWorkspaceViewModel CreateWorkspace(
+        DocumentTabViewModel selectedDocument,
+        params DocumentTabViewModel[] openDocuments)
+    {
+        var loadedProject = EditorProject.CreateNew("TestProject", "C:/Repo/TestProject");
+        var documents = new ObservableCollection<DocumentTabViewModel>(openDocuments);
+        var currentSelection = selectedDocument;
+
+        return new DocumentWorkspaceViewModel(
+            () => loadedProject,
+            project => loadedProject = project,
+            documents,
+            () => currentSelection,
+            document => currentSelection = document,
+            () => { },
+            _ => { },
+            (_, _) => { });
     }
 }
