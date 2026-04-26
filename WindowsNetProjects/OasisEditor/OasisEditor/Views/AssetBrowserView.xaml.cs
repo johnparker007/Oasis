@@ -50,6 +50,19 @@ public partial class AssetBrowserView : UserControl
         listBox.Focus();
     }
 
+    private void OnDirectoryTreeSelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> eventArgs)
+    {
+        if (DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        if (eventArgs.NewValue is AssetDirectoryNodeViewModel directoryNode)
+        {
+            viewModel.SelectedAssetDirectory = directoryNode;
+        }
+    }
+
     private static T? FindAncestor<T>(DependencyObject current)
         where T : DependencyObject
     {

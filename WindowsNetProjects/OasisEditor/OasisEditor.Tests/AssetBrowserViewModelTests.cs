@@ -49,6 +49,42 @@ public sealed class AssetBrowserViewModelTests
         Assert.Contains(viewModel.AssetBrowserItems, item => !item.IsDirectory && item.DisplayPath == "panel.panel2d");
     }
 
+    [Fact]
+    public void RefreshAssetBrowser_RestoresSelectedDirectoryAndAssetWhenStillPresent()
+    {
+        using var temp = new TempProjectDirectory();
+        Directory.CreateDirectory(Path.Combine(temp.AssetsDirectory, "Art"));
+        File.WriteAllText(Path.Combine(temp.AssetsDirectory, "Art", "panel.panel2d"), "{}");
+
+        var viewModel = CreateViewModel(temp.Project, _ => { });
+        viewModel.RefreshAssetBrowser();
+
+        var artDirectory = Assert.Single(viewModel.AssetBrowserItems, item => item.IsDirectory && item.DisplayPath == "Art");
+        viewModel.OpenAssetCommand.Execute(artDirectory);
+
+        var panelFile = Assert.Single(viewModel.AssetBrowserItems, item => !item.IsDirectory && item.DisplayPath == "panel.panel2d");
+        viewModel.SelectedAsset = panelFile;
+
+        viewModel.RefreshAssetBrowser();
+
+        Assert.Equal(Path.Combine(temp.AssetsDirectory, "Art"), viewModel.SelectedDirectory?.FullPath);
+        Assert.Equal("panel.panel2d", viewModel.SelectedAsset?.DisplayPath);
+    }
+
+    [Fact]
+    public void RefreshAssetBrowser_WithEmptyAssetsDirectory_ShowsRootAndNoItems()
+    {
+        using var temp = new TempProjectDirectory();
+        var viewModel = CreateViewModel(temp.Project, _ => { });
+
+        viewModel.RefreshAssetBrowser();
+
+        var root = Assert.Single(viewModel.AssetDirectoryTree);
+        Assert.Equal("Assets", root.DisplayPath);
+        Assert.Equal(temp.AssetsDirectory, root.FullPath);
+        Assert.Empty(viewModel.AssetBrowserItems);
+    }
+
     private static AssetBrowserViewModel CreateViewModel(EditorProject project, Action<AssetBrowserItemViewModel?> openAsset)
     {
         return new AssetBrowserViewModel(

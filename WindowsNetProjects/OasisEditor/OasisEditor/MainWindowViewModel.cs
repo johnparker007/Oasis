@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Collections.Specialized;
 using Microsoft.Win32;
 using EditorCommands = OasisEditor.Commands;
 
@@ -73,6 +74,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             NotifyInspectorChanged,
             AddOutputEntry,
             OpenAssetDocument);
+        _assetBrowser.StateChanged += OnAssetBrowserStateChanged;
         _inspector = new InspectorViewModel(
             () => SelectedAsset,
             () => SelectedDocument,
@@ -99,6 +101,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             AddOutputEntry,
             documentId => _activeDocumentContext.ClearDocumentState(documentId));
         AssetBrowserItems = _assetBrowser.AssetBrowserItems;
+        AssetBrowserItems.CollectionChanged += OnAssetBrowserItemsChanged;
         OutputEntries = _outputLog.OutputEntries;
         RefreshAssetBrowserCommand = _assetBrowser.RefreshAssetBrowserCommand;
         OpenAssetCommand = _assetBrowser.OpenAssetCommand;
@@ -149,6 +152,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ObservableCollection<DocumentTabViewModel> OpenDocuments { get; }
     public ObservableCollection<AssetBrowserItemViewModel> AssetBrowserItems { get; }
     public ObservableCollection<OutputLogEntry> OutputEntries { get; }
+    public IReadOnlyList<AssetDirectoryNodeViewModel> AssetDirectoryTree => _assetBrowser.AssetDirectoryTree;
 
 
     public IReadOnlyList<ThemePreference> ThemePreferences { get; } = Enum.GetValues<ThemePreference>();
@@ -246,6 +250,25 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             OnPropertyChanged();
         }
     }
+
+    public AssetDirectoryNodeViewModel? SelectedAssetDirectory
+    {
+        get => _assetBrowser.SelectedDirectory;
+        set
+        {
+            if (ReferenceEquals(_assetBrowser.SelectedDirectory, value))
+            {
+                return;
+            }
+
+            _assetBrowser.SelectedDirectory = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(SelectedAssetDirectoryLabel));
+        }
+    }
+
+    public string SelectedAssetDirectoryLabel => SelectedAssetDirectory?.DisplayPath ?? "Assets";
+    public bool HasAssetBrowserItems => AssetBrowserItems.Count > 0;
 
     public string InspectorTitle => _inspector.InspectorTitle;
 
@@ -744,6 +767,19 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             ? $"Opened document file {path}"
             : $"Activated existing document tab for {path}",
             OutputLogStatus.Info);
+    }
+
+    private void OnAssetBrowserStateChanged()
+    {
+        OnPropertyChanged(nameof(AssetDirectoryTree));
+        OnPropertyChanged(nameof(SelectedAssetDirectory));
+        OnPropertyChanged(nameof(SelectedAssetDirectoryLabel));
+        OnPropertyChanged(nameof(HasAssetBrowserItems));
+    }
+
+    private void OnAssetBrowserItemsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        OnPropertyChanged(nameof(HasAssetBrowserItems));
     }
 
     private bool CanSaveSelectedDocument()
