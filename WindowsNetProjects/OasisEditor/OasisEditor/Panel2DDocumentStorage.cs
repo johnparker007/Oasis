@@ -84,6 +84,55 @@ internal static class Panel2DDocumentStorage
         }
     }
 
+
+    public static Panel2DDocumentModel ToModel(Panel2DDocumentFile document)
+    {
+        return new Panel2DDocumentModel
+        {
+            Title = document.Title,
+            Summary = document.Summary,
+            Elements = document.Elements
+                .Select(NormalizeElement)
+                .Select(ToModel)
+                .ToArray()
+        };
+    }
+
+    public static IReadOnlyList<PanelElementFile> ToStorageElements(Panel2DDocumentModel model)
+    {
+        return model.Elements
+            .Select(ToStorageElement)
+            .ToArray();
+    }
+
+    public static PanelElementModel ToModel(PanelElementFile element)
+    {
+        var normalized = NormalizeElement(element);
+        return new PanelElementModel
+        {
+            ObjectId = normalized.ObjectId,
+            Name = normalized.Name,
+            Kind = ParseElementKind(normalized.Kind),
+            X = normalized.X,
+            Y = normalized.Y,
+            Width = normalized.Width,
+            Height = normalized.Height
+        };
+    }
+
+    public static PanelElementFile ToStorageElement(PanelElementModel element)
+    {
+        return NormalizeElement(new PanelElementFile
+        {
+            ObjectId = element.ObjectId,
+            Name = element.Name,
+            Kind = SerializeElementKind(element.Kind),
+            X = element.X,
+            Y = element.Y,
+            Width = element.Width,
+            Height = element.Height
+        });
+    }
     public static string SerializeLayout(IReadOnlyList<PanelElementFile> elements)
     {
         return JsonSerializer.Serialize(elements);
