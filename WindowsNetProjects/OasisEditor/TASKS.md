@@ -43,7 +43,7 @@ These tasks come from the Editor code review. Complete them in order. Build and 
   - [x] Keep `Window.GetWindow(...)` usage contained in one place if it cannot be removed yet
   - [x] Preserve current canvas behaviour and bindings
 - [ ] Move panel tool placement logic out of `CanvasPanBehavior`
-  - [ ] Extract rectangle/image placement decisions into a focused tool/controller class
+  - [x] Extract rectangle/image placement decisions into a focused tool/controller class
   - [ ] Keep click-to-place behaviour unchanged
   - [ ] Verify placement works with current pan/zoom transforms
 - [ ] Remove or isolate hardcoded MVP canvas sample visuals

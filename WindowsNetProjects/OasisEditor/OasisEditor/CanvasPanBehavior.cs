@@ -231,16 +231,14 @@ public static class CanvasPanBehavior
         canvas.Focus();
         var clickedElement = CanvasSelectionBehavior.FindSelectableElement(eventArgs.OriginalSource as DependencyObject, canvas);
 
-        if (GetIsRectangleToolActive(canvas) && clickedElement is null)
+        if (clickedElement is null
+            && PanelToolPlacementController.TryHandlePlacement(
+                canvas,
+                eventArgs,
+                GetIsRectangleToolActive(canvas),
+                GetIsImageToolActive(canvas),
+                ExecuteCanvasMutation))
         {
-            AddRectangle(canvas, eventArgs);
-            eventArgs.Handled = true;
-            return;
-        }
-
-        if (GetIsImageToolActive(canvas) && clickedElement is null)
-        {
-            AddImage(canvas, eventArgs);
             eventArgs.Handled = true;
             return;
         }
@@ -251,53 +249,6 @@ public static class CanvasPanBehavior
         {
             eventArgs.Handled = true;
         }
-    }
-
-    private static void AddRectangle(FrameworkElement canvas, MouseButtonEventArgs eventArgs)
-    {
-        if (canvas is not Canvas panelCanvas)
-        {
-            return;
-        }
-
-        var canvasPoint = GetCanvasPoint(panelCanvas, eventArgs);
-        var element = PanelElementFactory.CreateRectangleElement(canvasPoint);
-        if (panelCanvas.DataContext is not DocumentTabViewModel tab)
-        {
-            return;
-        }
-
-        ExecuteCanvasMutation(
-            panelCanvas,
-            CanvasMutationCommands.CreateAddRectangleCommand(tab.DocumentId, tab, element));
-    }
-
-    private static void AddImage(FrameworkElement canvas, MouseButtonEventArgs eventArgs)
-    {
-        if (canvas is not Canvas panelCanvas)
-        {
-            return;
-        }
-
-        var canvasPoint = GetCanvasPoint(panelCanvas, eventArgs);
-        var element = PanelElementFactory.CreateImageElement(canvasPoint);
-        if (panelCanvas.DataContext is not DocumentTabViewModel tab)
-        {
-            return;
-        }
-
-        ExecuteCanvasMutation(
-            panelCanvas,
-            CanvasMutationCommands.CreateAddImageCommand(tab.DocumentId, tab, element));
-    }
-
-    private static Point GetCanvasPoint(Canvas panelCanvas, MouseButtonEventArgs eventArgs)
-    {
-        var clickPosition = eventArgs.GetPosition(panelCanvas.Parent as IInputElement ?? panelCanvas);
-        var (scale, translate) = CanvasPanZoomBehavior.EnsureTransformGroup(panelCanvas);
-        return new Point(
-            (clickPosition.X - translate.X) / scale.ScaleX,
-            (clickPosition.Y - translate.Y) / scale.ScaleY);
     }
 
     private static void OnMouseWheel(object sender, MouseWheelEventArgs eventArgs)
