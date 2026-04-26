@@ -1,7 +1,6 @@
 using Xunit;
 using System.Windows;
 using System.Collections.ObjectModel;
-using OasisEditor.Commands;
 
 namespace OasisEditor.Tests;
 
@@ -575,7 +574,15 @@ public sealed class Panel2DRoundTripTests
         DocumentTabViewModel selectedDocument,
         params DocumentTabViewModel[] openDocuments)
     {
-        var loadedProject = EditorProject.CreateNew("TestProject", "C:/Repo/TestProject");
+        var loadedProject = new EditorProject
+        {
+            Name = "TestProject",
+            ProjectFilePath = "C:/Repo/TestProject/TestProject.oasisproj",
+            ProjectDirectory = "C:/Repo/TestProject",
+            AssetsDirectory = "C:/Repo/TestProject/Assets",
+            MachinesDirectory = "C:/Repo/TestProject/Machines",
+            GeneratedDirectory = "C:/Repo/TestProject/Generated"
+        };
         var documents = new ObservableCollection<DocumentTabViewModel>(openDocuments);
         var currentSelection = selectedDocument;
 
