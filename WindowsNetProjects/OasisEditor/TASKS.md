@@ -76,38 +76,38 @@ These tasks come from the latest Editor code review. Complete them in order. Bui
   - [x] Undo/redo affects only the active document
 
 ### Phase H — Asset Browser Model Refactor Toward Unity Project Window
-- [ ] Replace the flat all-files asset list model with a tree/content model
-  - [ ] Add an asset directory tree ViewModel rooted at the project's Assets directory
-  - [ ] Add a selected asset directory property
-  - [ ] Add a right-pane collection containing the selected directory's child folders and files
-  - [ ] Keep asset paths relative to the Assets root for display and identity where practical
-  - [ ] Ensure all full paths are contained inside the project's Assets directory
-- [ ] Preserve existing asset open behavior during the model refactor
-  - [ ] Double-clicking an asset file opens/loads it through the existing `OpenAsset` flow
-  - [ ] Unsupported document types should continue to fail gracefully with output-log/error messages
-  - [ ] Refresh should rebuild tree/content state safely
-- [ ] Add folder navigation behavior
-  - [ ] Selecting a directory in the left tree updates the right pane
-  - [ ] Double-clicking a folder in the right pane navigates into that folder
-  - [ ] Preserve or restore selection where possible after refresh
-- [ ] Add folder/file icon state
-  - [ ] Empty folder icon/template
-  - [ ] Closed folder icon/template
-  - [ ] Open/selected folder icon/template
-  - [ ] File icon/template
-  - [ ] Use simple built-in glyphs or lightweight templates first; do not add image asset dependencies unless requested
-- [ ] Update `AssetBrowserView.xaml` to a two-column layout
-  - [ ] Left column: directory tree
-  - [ ] Right column: selected directory contents
-  - [ ] Keep Refresh available
-  - [ ] Use semantic theme resources
-  - [ ] Avoid hard-coded colors
-- [ ] Verify Unity-style asset browsing flow
-  - [ ] Empty Assets folder shows an empty state and root folder
-  - [ ] Nested folders appear in the tree
-  - [ ] Selected folder contents appear on the right
-  - [ ] Double-click folder navigation works
-  - [ ] Double-click file open still works
+- [x] Replace the flat all-files asset list model with a tree/content model
+  - [x] Add an asset directory tree ViewModel rooted at the project's Assets directory
+  - [x] Add a selected asset directory property
+  - [x] Add a right-pane collection containing the selected directory's child folders and files
+  - [x] Keep asset paths relative to the Assets root for display and identity where practical
+  - [x] Ensure all full paths are contained inside the project's Assets directory
+- [x] Preserve existing asset open behavior during the model refactor
+  - [x] Double-clicking an asset file opens/loads it through the existing `OpenAsset` flow
+  - [x] Unsupported document types should continue to fail gracefully with output-log/error messages
+  - [x] Refresh should rebuild tree/content state safely
+- [x] Add folder navigation behavior
+  - [x] Selecting a directory in the left tree updates the right pane
+  - [x] Double-clicking a folder in the right pane navigates into that folder
+  - [x] Preserve or restore selection where possible after refresh
+- [x] Add folder/file icon state
+  - [x] Empty folder icon/template
+  - [x] Closed folder icon/template
+  - [x] Open/selected folder icon/template
+  - [x] File icon/template
+  - [x] Use simple built-in glyphs or lightweight templates first; do not add image asset dependencies unless requested
+- [x] Update `AssetBrowserView.xaml` to a two-column layout
+  - [x] Left column: directory tree
+  - [x] Right column: selected directory contents
+  - [x] Keep Refresh available
+  - [x] Use semantic theme resources
+  - [x] Avoid hard-coded colors
+- [x] Verify Unity-style asset browsing flow
+  - [x] Empty Assets folder shows an empty state and root folder
+  - [x] Nested folders appear in the tree
+  - [x] Selected folder contents appear on the right
+  - [x] Double-click folder navigation works
+  - [x] Double-click file open still works
 
 ### Phase I — Assets Pane Context Menu
 - [ ] Ensure right-clicking an asset item selects it before showing the context menu

@@ -14,6 +14,7 @@ public sealed class AssetBrowserViewModel
     private readonly Action<AssetBrowserItemViewModel?> _openAsset;
     private AssetBrowserItemViewModel? _selectedAsset;
     private AssetDirectoryNodeViewModel? _selectedDirectory;
+    public event Action? StateChanged;
 
     public AssetBrowserViewModel(
         Func<EditorProject?> loadedProjectAccessor,
@@ -52,7 +53,9 @@ public sealed class AssetBrowserViewModel
             }
 
             _selectedDirectory = value;
+            UpdateDirectorySelectionState(value);
             RefreshDirectoryContents();
+            StateChanged?.Invoke();
         }
     }
 
@@ -71,6 +74,7 @@ public sealed class AssetBrowserViewModel
             _notifyInspectorChanged();
             NotifyRefreshCommand();
             NotifyOpenAssetCommand();
+            StateChanged?.Invoke();
         }
     }
 
@@ -109,6 +113,7 @@ public sealed class AssetBrowserViewModel
         RestoreSelectedAsset(selectedAssetPath);
         _notifyInspectorChanged();
         _addOutputEntry($"Asset browser refreshed ({AssetBrowserItems.Count} items).", OutputLogStatus.Info);
+        StateChanged?.Invoke();
     }
 
     public void NotifyRefreshCommand()
@@ -179,6 +184,7 @@ public sealed class AssetBrowserViewModel
         }
 
         RestoreSelectedAsset(selectedAssetPath);
+        StateChanged?.Invoke();
     }
 
     private void OpenAsset(AssetBrowserItemViewModel asset)
@@ -243,6 +249,37 @@ public sealed class AssetBrowserViewModel
             {
                 SelectedDirectory = match;
                 return;
+            }
+        }
+    }
+
+    private void UpdateDirectorySelectionState(AssetDirectoryNodeViewModel? selectedDirectory)
+    {
+        foreach (var root in AssetDirectoryTree)
+        {
+            UpdateDirectorySelectionStateRecursive(root, selectedDirectory);
+        }
+    }
+
+    private static void UpdateDirectorySelectionStateRecursive(
+        AssetDirectoryNodeViewModel node,
+        AssetDirectoryNodeViewModel? selectedDirectory)
+    {
+        var isSelected = selectedDirectory is not null
+                         && string.Equals(node.FullPath, selectedDirectory.FullPath, StringComparison.OrdinalIgnoreCase);
+        node.IsSelected = isSelected;
+
+        if (isSelected)
+        {
+            node.IsExpanded = true;
+        }
+
+        foreach (var child in node.Children)
+        {
+            UpdateDirectorySelectionStateRecursive(child, selectedDirectory);
+            if (child.IsSelected)
+            {
+                node.IsExpanded = true;
             }
         }
     }
