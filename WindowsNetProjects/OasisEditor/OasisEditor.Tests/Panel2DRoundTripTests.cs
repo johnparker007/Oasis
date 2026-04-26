@@ -73,7 +73,7 @@ public sealed class Panel2DRoundTripTests
     }
 
     [Fact]
-    public void BuildOpenDocumentData_WithInvalidPanelJson_FallsBackToPreview()
+    public void BuildOpenDocumentData_WithInvalidPanelJson_ReturnsClearErrorSummary()
     {
         const string path = "C:/Repo/Assets/bad.panel2d";
         const string invalidJson = "{ not valid json";
@@ -81,8 +81,8 @@ public sealed class Panel2DRoundTripTests
         var openData = DocumentWorkspaceViewModel.BuildOpenDocumentData(path, invalidJson);
 
         Assert.Null(openData.PanelLayoutJson);
-        Assert.Null(openData.PanelTitle);
-        Assert.Contains("{ not valid json", openData.Summary);
+        Assert.Equal("bad.panel2d", openData.PanelTitle);
+        Assert.Contains("Malformed JSON", openData.Summary);
     }
 
     [Fact]
@@ -120,6 +120,83 @@ public sealed class Panel2DRoundTripTests
         Assert.Equal(2, element.Y);
         Assert.Equal(3, element.Width);
         Assert.Equal(4, element.Height);
+    }
+
+    [Fact]
+    public void TryReadValidated_WithFutureSchemaVersion_ReturnsUnsupportedVersionError()
+    {
+        const string sourceJson = """
+        {
+          "SchemaVersion": 2,
+          "Title": "Future Panel",
+          "Summary": "Future",
+          "Elements": []
+        }
+        """;
+
+        var success = Panel2DDocumentStorage.TryReadValidated(sourceJson, out _, out var errorMessage);
+
+        Assert.False(success);
+        Assert.Contains("Unsupported schema version '2'", errorMessage);
+    }
+
+    [Fact]
+    public void TryReadValidated_WithInvalidElementKind_ReturnsValidationError()
+    {
+        const string sourceJson = """
+        {
+          "SchemaVersion": 1,
+          "Title": "Invalid Kind Panel",
+          "Summary": "Invalid",
+          "Elements": [
+            {
+              "ObjectId": "obj-1",
+              "Name": "Bad Kind",
+              "Kind": "triangle",
+              "X": 1,
+              "Y": 2,
+              "Width": 3,
+              "Height": 4
+            }
+          ]
+        }
+        """;
+
+        var success = Panel2DDocumentStorage.TryReadValidated(sourceJson, out _, out var errorMessage);
+
+        Assert.False(success);
+        Assert.Contains("unsupported kind", errorMessage, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void TryReadValidated_WithMissingNameAndObjectId_NormalizesValues()
+    {
+        const string sourceJson = """
+        {
+          "SchemaVersion": 1,
+          "Title": "Normalizable Panel",
+          "Summary": "Normalizable",
+          "Elements": [
+            {
+              "ObjectId": "",
+              "Name": "",
+              "Kind": "rectangle",
+              "X": 1,
+              "Y": 2,
+              "Width": 30,
+              "Height": 40
+            }
+          ]
+        }
+        """;
+
+        var success = Panel2DDocumentStorage.TryReadValidated(sourceJson, out var parsed, out var errorMessage);
+
+        Assert.True(success);
+        Assert.Equal(string.Empty, errorMessage);
+        var element = Assert.Single(parsed.Elements);
+        Assert.False(string.IsNullOrWhiteSpace(element.ObjectId));
+        Assert.StartsWith("Rectangle ", element.Name);
     }
 
     [Fact]

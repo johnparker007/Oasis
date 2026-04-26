@@ -5,6 +5,8 @@ namespace OasisEditor;
 
 internal static class Panel2DDocumentStorage
 {
+    public const int CurrentSchemaVersion = 1;
+
     internal static PanelElementKind ParseElementKind(string? kind)
     {
         if (string.Equals(kind, "rectangle", StringComparison.OrdinalIgnoreCase))
@@ -46,7 +48,7 @@ internal static class Panel2DDocumentStorage
     {
         var payload = new Panel2DDocumentFile
         {
-            SchemaVersion = 1,
+            SchemaVersion = CurrentSchemaVersion,
             Title = title,
             Summary = summary,
             SavedAtUtc = DateTime.UtcNow,
@@ -58,7 +60,7 @@ internal static class Panel2DDocumentStorage
 
     public static bool TryCreateSummary(string content, out string summary)
     {
-        if (!TryRead(content, out var document))
+        if (!TryReadValidated(content, out var document, out _))
         {
             summary = string.Empty;
             return false;
@@ -82,6 +84,83 @@ internal static class Panel2DDocumentStorage
             document = new Panel2DDocumentFile();
             return false;
         }
+    }
+
+    public static bool TryReadValidated(string content, out Panel2DDocumentFile document, out string errorMessage)
+    {
+        if (!TryRead(content, out var parsed))
+        {
+            document = new Panel2DDocumentFile();
+            errorMessage = "Malformed JSON.";
+            return false;
+        }
+
+        if (!TryMigrateToCurrentSchema(parsed, out var migrated, out errorMessage))
+        {
+            document = new Panel2DDocumentFile();
+            return false;
+        }
+
+        if (!TryValidateAndNormalize(migrated, out var normalized, out errorMessage))
+        {
+            document = new Panel2DDocumentFile();
+            return false;
+        }
+
+        document = normalized;
+        return true;
+    }
+
+    public static bool TryMigrateToCurrentSchema(Panel2DDocumentFile source, out Panel2DDocumentFile migrated, out string errorMessage)
+    {
+        if (source.SchemaVersion == CurrentSchemaVersion)
+        {
+            migrated = source;
+            errorMessage = string.Empty;
+            return true;
+        }
+
+        migrated = new Panel2DDocumentFile();
+        errorMessage = source.SchemaVersion > CurrentSchemaVersion
+            ? $"Unsupported schema version '{source.SchemaVersion}'. Current supported version is {CurrentSchemaVersion}."
+            : $"Unsupported schema version '{source.SchemaVersion}'.";
+        return false;
+    }
+
+    public static bool TryValidateAndNormalize(Panel2DDocumentFile source, out Panel2DDocumentFile normalized, out string errorMessage)
+    {
+        if (source.SchemaVersion != CurrentSchemaVersion)
+        {
+            normalized = new Panel2DDocumentFile();
+            errorMessage = $"Unsupported schema version '{source.SchemaVersion}'.";
+            return false;
+        }
+
+        var elements = source.Elements ?? [];
+        foreach (var element in elements)
+        {
+            var normalizedKind = ParseElementKind(element.Kind);
+            if (normalizedKind == PanelElementKind.Unknown)
+            {
+                normalized = new Panel2DDocumentFile();
+                errorMessage = $"Element '{element.ObjectId}' has unsupported kind '{element.Kind}'.";
+                return false;
+            }
+
+            if (!IsValidDimension(element.Width) || !IsValidDimension(element.Height))
+            {
+                normalized = new Panel2DDocumentFile();
+                errorMessage = $"Element '{element.ObjectId}' has invalid dimensions.";
+                return false;
+            }
+        }
+
+        normalized = source with
+        {
+            Elements = elements.Select(NormalizeElement).ToArray()
+        };
+        errorMessage = string.Empty;
+        return true;
     }
 
 
@@ -199,6 +278,13 @@ internal static class Panel2DDocumentStorage
             ? CreateDefaultElementName(kind, objectId)
             : name.Trim();
     }
+
+    private static bool IsValidDimension(double value)
+    {
+        return !double.IsNaN(value)
+            && !double.IsInfinity(value)
+            && value > 0;
+    }
 }
 
 internal enum PanelElementKind
@@ -210,7 +296,7 @@ internal enum PanelElementKind
     Zone
 }
 
-internal sealed class Panel2DDocumentFile
+internal sealed record Panel2DDocumentFile
 {
     public int SchemaVersion { get; init; }
     public string Title { get; init; } = string.Empty;

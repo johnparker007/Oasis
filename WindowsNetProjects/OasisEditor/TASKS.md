@@ -70,20 +70,20 @@ These tasks come from the Editor code review. Complete them in order. Build and 
   - [x] Verify hierarchy refreshes after add/delete/rename
 
 ### Phase D — Storage, Validation, and Migration
-- [ ] Add explicit Panel2D schema validation
-  - [ ] Validate `SchemaVersion`
-  - [ ] Validate required element IDs, names, kinds, and dimensions
-  - [ ] Normalise recoverable issues and report unrecoverable ones cleanly
-  - [ ] Ensure malformed JSON fails gracefully with a clear output-log/error message
-- [ ] Add Panel2D schema migration hooks
-  - [ ] Keep schema version 1 as the current format
-  - [ ] Add a small migration entry point even if there are no migrations yet
-  - [ ] Ensure future schema versions fail with an explicit unsupported-version message
-- [ ] Add tests for Panel2D storage/model behaviour
-  - [ ] Round-trip rectangle and image elements
-  - [ ] Preserve object IDs and names
-  - [ ] Normalise missing IDs/names only when intended
-  - [ ] Reject or report unsupported schema versions
+- [x] Add explicit Panel2D schema validation
+  - [x] Validate `SchemaVersion`
+  - [x] Validate required element IDs, names, kinds, and dimensions
+  - [x] Normalise recoverable issues and report unrecoverable ones cleanly
+  - [x] Ensure malformed JSON fails gracefully with a clear output-log/error message
+- [x] Add Panel2D schema migration hooks
+  - [x] Keep schema version 1 as the current format
+  - [x] Add a small migration entry point even if there are no migrations yet
+  - [x] Ensure future schema versions fail with an explicit unsupported-version message
+- [x] Add tests for Panel2D storage/model behaviour
+  - [x] Round-trip rectangle and image elements
+  - [x] Preserve object IDs and names
+  - [x] Normalise missing IDs/names only when intended
+  - [x] Reject or report unsupported schema versions
 
 ### Phase E — Deferred Planning Only
 - [ ] Plan layer ordering support only

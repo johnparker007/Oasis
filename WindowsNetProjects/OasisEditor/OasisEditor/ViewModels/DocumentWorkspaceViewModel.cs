@@ -243,16 +243,23 @@ public sealed class DocumentWorkspaceViewModel
 
     internal static OpenDocumentData BuildOpenDocumentData(string path, string content)
     {
-        if (string.Equals(Path.GetExtension(path), ".panel2d", StringComparison.OrdinalIgnoreCase)
-            && Panel2DDocumentStorage.TryRead(content, out var panelDocument))
+        if (string.Equals(Path.GetExtension(path), ".panel2d", StringComparison.OrdinalIgnoreCase))
         {
-            var summary = string.IsNullOrWhiteSpace(panelDocument.Summary)
-                ? "Panel document opened."
-                : panelDocument.Summary.Trim();
-            var title = string.IsNullOrWhiteSpace(panelDocument.Title)
-                ? Path.GetFileName(path)
-                : panelDocument.Title.Trim();
-            return new OpenDocumentData(summary, Panel2DDocumentStorage.SerializeLayout(panelDocument.Elements), title);
+            if (Panel2DDocumentStorage.TryReadValidated(content, out var panelDocument, out var errorMessage))
+            {
+                var summary = string.IsNullOrWhiteSpace(panelDocument.Summary)
+                    ? "Panel document opened."
+                    : panelDocument.Summary.Trim();
+                var title = string.IsNullOrWhiteSpace(panelDocument.Title)
+                    ? Path.GetFileName(path)
+                    : panelDocument.Title.Trim();
+                return new OpenDocumentData(summary, Panel2DDocumentStorage.SerializeLayout(panelDocument.Elements), title);
+            }
+
+            return new OpenDocumentData(
+                $"Failed to open panel document: {errorMessage}",
+                null,
+                Path.GetFileName(path));
         }
 
         var preview = content.Length > 300 ? $"{content[..300]}..." : content;
