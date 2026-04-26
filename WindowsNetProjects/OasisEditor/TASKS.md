@@ -64,10 +64,10 @@ These tasks come from the latest Editor code review. Complete them in order. Bui
   - [x] Disable Paste when clipboard data is missing or incompatible
   - [x] Execute Paste through the document command system
   - [x] Preserve undo/redo behavior
-- [ ] Implement Cut for Panel2D hierarchy entities
-  - [ ] Copy selected entity to the editor clipboard first
-  - [ ] Delete through the document command system only after copy succeeds
-  - [ ] Preserve undo/redo behavior for the delete portion
+- [x] Implement Cut for Panel2D hierarchy entities
+  - [x] Copy selected entity to the editor clipboard first
+  - [x] Delete through the document command system only after copy succeeds
+  - [x] Preserve undo/redo behavior for the delete portion
 - [ ] Verify hierarchy context menu behavior
   - [ ] Right-click selects the intended entity
   - [ ] Group rows do not expose invalid entity actions

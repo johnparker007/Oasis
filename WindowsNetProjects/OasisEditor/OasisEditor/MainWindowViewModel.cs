@@ -461,7 +461,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         DeleteSelectedHierarchyItem();
     }
 
-    private static bool CanCutSelectedHierarchyItem() => false;
+    private bool CanCutSelectedHierarchyItem()
+    {
+        return CanCopySelectedHierarchyItem();
+    }
 
     private bool CanCopySelectedHierarchyItem()
     {
@@ -503,11 +506,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         return selectedDocument.HasPanelElement(selection);
     }
 
-    private static void ExecuteCutSelectedHierarchyItem()
-    {
-    }
-
-    private void ExecuteCopySelectedHierarchyItem()
+    private void ExecuteCutSelectedHierarchyItem()
     {
         var selectedDocument = SelectedDocument;
         if (selectedDocument is null || selectedDocument.Document.DocumentType != EditorDocumentType.Panel2D)
@@ -520,25 +519,25 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        if (!selectedDocument.TryGetPanelElement(selection, out var element))
+        if (!selectedDocument.HasPanelElement(selection))
         {
             return;
         }
 
-        _panelClipboardPayload = new PanelElementClipboardPayload
+        if (!TryCopySelectedHierarchyItemToClipboard())
         {
-            Element = new PanelElementModel
-            {
-                ObjectId = element.ObjectId,
-                Name = element.Name,
-                Kind = element.Kind,
-                X = element.X,
-                Y = element.Y,
-                Width = element.Width,
-                Height = element.Height
-            }
-        };
-        NotifyHierarchyCommands();
+            return;
+        }
+
+        DeleteSelectedHierarchyItem();
+    }
+
+    private void ExecuteCopySelectedHierarchyItem()
+    {
+        if (!TryCopySelectedHierarchyItemToClipboard())
+        {
+            return;
+        }
     }
 
     private void ExecutePasteHierarchyItem()
@@ -560,6 +559,41 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             selectedDocument,
             clipboardPayload.Element);
         ExecuteDocumentCanvasCommand(selectedDocument.DocumentId, command);
+    }
+
+    private bool TryCopySelectedHierarchyItemToClipboard()
+    {
+        var selectedDocument = SelectedDocument;
+        if (selectedDocument is null || selectedDocument.Document.DocumentType != EditorDocumentType.Panel2D)
+        {
+            return false;
+        }
+
+        if (selectedDocument.HierarchySelectedPanelSelection is not PanelSelectionInfo selection)
+        {
+            return false;
+        }
+
+        if (!selectedDocument.TryGetPanelElement(selection, out var element))
+        {
+            return false;
+        }
+
+        _panelClipboardPayload = new PanelElementClipboardPayload
+        {
+            Element = new PanelElementModel
+            {
+                ObjectId = element.ObjectId,
+                Name = element.Name,
+                Kind = element.Kind,
+                X = element.X,
+                Y = element.Y,
+                Width = element.Width,
+                Height = element.Height
+            }
+        };
+        NotifyHierarchyCommands();
+        return true;
     }
 
     private void ExecuteDuplicateSelectedHierarchyItem()
