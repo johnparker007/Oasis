@@ -136,12 +136,30 @@
            TargetType="{x:Type ContextMenu}">
         <Setter Property="Background"
                 Value="{DynamicResource ToolBarBackgroundBrush}" />
+        <Setter Property="Foreground"
+                Value="{DynamicResource TextPrimaryBrush}" />
         <Setter Property="BorderBrush"
                 Value="{DynamicResource BorderSubtleBrush}" />
         <Setter Property="BorderThickness"
                 Value="1" />
         <Setter Property="Padding"
                 Value="4" />
+        <Setter Property="SnapsToDevicePixels"
+                Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ContextMenu}">
+                    <Border Padding="{TemplateBinding Padding}"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="4">
+                        <StackPanel KeyboardNavigation.DirectionalNavigation="Cycle"
+                                    IsItemsHost="True" />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <Style x:Key="EditorContextMenuItemStyle"
