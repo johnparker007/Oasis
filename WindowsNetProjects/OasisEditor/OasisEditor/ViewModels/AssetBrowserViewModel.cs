@@ -29,7 +29,9 @@ public sealed class AssetBrowserViewModel
 
         AssetBrowserItems = new ObservableCollection<AssetBrowserItemViewModel>();
         RefreshAssetBrowserCommand = new RelayCommand(RefreshAssetBrowser, CanRefreshAssetBrowser);
-        OpenAssetCommand = new RelayCommand(OpenAsset);
+        OpenAssetCommand = new PaneItemCommand<AssetBrowserItemViewModel>(
+            () => SelectedAsset,
+            asset => OpenAsset(asset));
     }
 
     public ObservableCollection<AssetBrowserItemViewModel> AssetBrowserItems { get; }
@@ -50,6 +52,7 @@ public sealed class AssetBrowserViewModel
             _selectionChanged();
             _notifyInspectorChanged();
             NotifyRefreshCommand();
+            NotifyOpenAssetCommand();
         }
     }
 
@@ -101,15 +104,17 @@ public sealed class AssetBrowserViewModel
         }
     }
 
-    private void OpenAsset()
+    private void OpenAsset(AssetBrowserItemViewModel asset)
     {
-        var asset = SelectedAsset;
-        if (asset is null)
-        {
-            return;
-        }
-
         SelectedAsset = asset;
         _openAsset(asset);
+    }
+
+    private void NotifyOpenAssetCommand()
+    {
+        if (OpenAssetCommand is PaneItemCommand<AssetBrowserItemViewModel> openAssetCommand)
+        {
+            openAssetCommand.RaiseCanExecuteChanged();
+        }
     }
 }

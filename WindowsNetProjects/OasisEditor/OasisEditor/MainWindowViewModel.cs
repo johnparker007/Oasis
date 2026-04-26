@@ -101,6 +101,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OutputEntries = _outputLog.OutputEntries;
         RefreshAssetBrowserCommand = _assetBrowser.RefreshAssetBrowserCommand;
         OpenAssetCommand = _assetBrowser.OpenAssetCommand;
+        DeleteSelectedHierarchyItemCommand = new PaneItemCommand<HierarchyItemViewModel>(
+            GetSelectedHierarchyEntity,
+            item => DeleteHierarchyItem(item),
+            CanDeleteHierarchyItem);
         ClearOutputCommand = _outputLog.ClearOutputCommand;
         ApplyInspectorSummaryCommand = _inspector.ApplyInspectorSummaryCommand;
         AddOutputEntry("Editor shell initialized.", OutputLogStatus.Info);
@@ -119,6 +123,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand CloseSelectedDocumentCommand { get; }
     public ICommand RefreshAssetBrowserCommand { get; }
     public ICommand OpenAssetCommand { get; }
+    public ICommand DeleteSelectedHierarchyItemCommand { get; }
     public ICommand ClearOutputCommand { get; }
     public ICommand OpenPreferencesCommand { get; }
     public ICommand OpenProjectSettingsCommand { get; }
@@ -214,6 +219,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 NotifyInspectorChanged();
                 NotifyDocumentCommands();
                 RefreshHierarchy();
+                NotifyHierarchyCommands();
             }
         }
     }
@@ -281,6 +287,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         SelectedDocument.HierarchySelectedPanelSelection = selection;
+        NotifyHierarchyCommands();
     }
 
     public bool DeleteSelectedHierarchyItem()
@@ -364,6 +371,38 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             selection,
             normalizedName);
         return ExecuteDocumentCanvasCommand(selectedDocument.DocumentId, command);
+    }
+
+    private HierarchyItemViewModel? GetSelectedHierarchyEntity()
+    {
+        return HierarchyItems.FirstOrDefault(item =>
+            item.IsSelected &&
+            !item.IsGroup &&
+            item.PanelSelection is PanelSelectionInfo);
+    }
+
+    private bool CanDeleteHierarchyItem(HierarchyItemViewModel hierarchyItem)
+    {
+        var selectedDocument = SelectedDocument;
+        if (selectedDocument is null || selectedDocument.Document.DocumentType != EditorDocumentType.Panel2D)
+        {
+            return false;
+        }
+
+        return !hierarchyItem.IsGroup &&
+               hierarchyItem.PanelSelection is PanelSelectionInfo selection &&
+               selectedDocument.HasPanelElement(selection);
+    }
+
+    private void DeleteHierarchyItem(HierarchyItemViewModel hierarchyItem)
+    {
+        if (!CanDeleteHierarchyItem(hierarchyItem))
+        {
+            return;
+        }
+
+        SelectHierarchyItem(hierarchyItem);
+        DeleteSelectedHierarchyItem();
     }
 
     private bool CanOpenUntitledDocument()
@@ -743,6 +782,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         RefreshHierarchy();
     }
 
+
+    private void NotifyHierarchyCommands()
+    {
+        if (DeleteSelectedHierarchyItemCommand is PaneItemCommand<HierarchyItemViewModel> deleteHierarchyCommand)
+        {
+            deleteHierarchyCommand.RaiseCanExecuteChanged();
+        }
+    }
+
     private static string ResolveProjectDirectory(string projectDirectory, JsonElement layoutElement, string propertyName)
     {
         if (!layoutElement.TryGetProperty(propertyName, out var directoryElement))
@@ -866,6 +914,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(HierarchyItems));
         OnPropertyChanged(nameof(HasHierarchyItems));
         OnPropertyChanged(nameof(HierarchyEmptyStateMessage));
+        NotifyHierarchyCommands();
     }
 
     private void OnSelectedDocumentPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -879,6 +928,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (e.PropertyName is nameof(DocumentTabViewModel.HierarchySelectedPanelSelection))
         {
             NotifyInspectorChanged();
+            NotifyHierarchyCommands();
         }
     }
 

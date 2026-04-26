@@ -6,6 +6,7 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="pack://application:,,,/PresentationFramework.Fluent;component/Themes/Fluent.xaml" />
                 <ResourceDictionary Source="Styles/OasisPalette.xaml" />
+                <ResourceDictionary Source="Styles/Menu.xaml" />
                 <ResourceDictionary Source="Styles/AvalonDockVs2013Palette.xaml" />
             </ResourceDictionary.MergedDictionaries>
 

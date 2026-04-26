@@ -20,13 +20,12 @@
 
         <Menu Grid.Row="0"
               MinHeight="24"
-              Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}"
-              Foreground="{DynamicResource {x:Static SystemColors.MenuTextBrushKey}}"
-              BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}"
               BorderThickness="0,0,0,1"
-              Padding="0">
+              Padding="0"
+              Style="{DynamicResource EditorMenuStyle}">
             <Menu.Resources>
-                <Style TargetType="{x:Type MenuItem}">
+                <Style TargetType="{x:Type MenuItem}"
+                       BasedOn="{StaticResource EditorMenuItemStyle}">
                     <Style.Triggers>
                         <Trigger Property="Role"
                                  Value="TopLevelHeader">

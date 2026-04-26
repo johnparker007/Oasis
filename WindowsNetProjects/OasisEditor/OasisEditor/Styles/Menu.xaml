@@ -131,4 +131,20 @@
             </Trigger>
         </Style.Triggers>
     </Style>
+
+    <Style x:Key="EditorContextMenuStyle"
+           TargetType="{x:Type ContextMenu}">
+        <Setter Property="Background"
+                Value="{DynamicResource ToolBarBackgroundBrush}" />
+        <Setter Property="BorderBrush"
+                Value="{DynamicResource BorderSubtleBrush}" />
+        <Setter Property="BorderThickness"
+                Value="1" />
+        <Setter Property="Padding"
+                Value="4" />
+    </Style>
+
+    <Style x:Key="EditorContextMenuItemStyle"
+           TargetType="{x:Type MenuItem}"
+           BasedOn="{StaticResource EditorMenuItemStyle}" />
 </ResourceDictionary>
