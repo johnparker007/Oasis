@@ -73,7 +73,7 @@ public partial class HierarchyView : UserControl
         }
 
         treeViewItem.IsSelected = true;
-        viewModel.SelectHierarchyItem(hierarchyItem);
+        viewModel.SelectHierarchyItemForContextMenu(hierarchyItem);
     }
 
     private static T? FindAncestor<T>(DependencyObject current)
