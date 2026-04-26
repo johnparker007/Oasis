@@ -412,6 +412,40 @@ public sealed class Panel2DRoundTripTests
         Assert.Equal("Rect Original Copy 2", duplicate.Name);
     }
 
+    [Fact]
+    public void PasteElementCommand_CreatesOffsetElementWithNewObjectIdAndSupportsUndo()
+    {
+        var document = CreatePanelDocument(
+            new PanelElementModel
+            {
+                ObjectId = "source-id",
+                Name = "Rect Original",
+                Kind = PanelElementKind.Rectangle,
+                X = 30,
+                Y = 40,
+                Width = 50,
+                Height = 60
+            });
+
+        var source = document.GetPanelElements().Single();
+        var command = CanvasMutationCommands.CreatePasteElementCommand(document.DocumentId, document, source);
+        var tracked = Assert.IsAssignableFrom<Commands.IExecutionTrackedCommand>(command);
+
+        command.Execute();
+
+        Assert.True(tracked.WasExecuted);
+        Assert.Equal(2, document.GetPanelElements().Count);
+        var pasted = document.GetPanelElements().Single(element => element.ObjectId != "source-id");
+        Assert.Equal("Rect Original (2)", pasted.Name);
+        Assert.Equal(40, pasted.X);
+        Assert.Equal(50, pasted.Y);
+        Assert.Equal(50, pasted.Width);
+        Assert.Equal(60, pasted.Height);
+
+        command.Undo();
+        Assert.Single(document.GetPanelElements());
+    }
+
     [Theory]
     [InlineData(0.1, 9.9, 0.0, 10.0)]
     [InlineData(14.9, 15.1, 10.0, 20.0)]
