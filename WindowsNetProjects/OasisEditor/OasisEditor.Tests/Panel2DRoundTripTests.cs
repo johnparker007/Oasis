@@ -1,3 +1,5 @@
+using Xunit;
+
 namespace OasisEditor.Tests;
 
 public sealed class Panel2DRoundTripTests
@@ -170,7 +172,7 @@ public sealed class Panel2DRoundTripTests
             [new Panel2DHierarchyProvider()]);
 
         hierarchy.Refresh();
-        Assert.Equal("Rectangles (0)", hierarchy.Items.Single(i => i.NodeKey == "group:rectangle").Label);
+        Assert.Equal("Rectangles (0)", hierarchy.Items.Single(i => i.NodeKey == "group:rectangle").DisplayName);
 
         var element = new PanelElementFile
         {
@@ -187,20 +189,20 @@ public sealed class Panel2DRoundTripTests
         hierarchy.Refresh();
         var rectangleGroupAfterAdd = hierarchy.Items.Single(i => i.NodeKey == "group:rectangle");
         var addedItem = Assert.Single(rectangleGroupAfterAdd.Children);
-        Assert.Equal("Rectangles (1)", rectangleGroupAfterAdd.Label);
-        Assert.Equal("Rect Original", addedItem.Label);
+        Assert.Equal("Rectangles (1)", rectangleGroupAfterAdd.DisplayName);
+        Assert.Equal("Rect Original", addedItem.DisplayName);
 
         var selection = addedItem.PanelSelection!.Value;
         CanvasMutationCommands.CreateRenameElementCommand(document.DocumentId, document, selection, "Rect Renamed").Execute();
         hierarchy.Refresh();
         var rectangleGroupAfterRename = hierarchy.Items.Single(i => i.NodeKey == "group:rectangle");
-        Assert.Equal("Rect Renamed", Assert.Single(rectangleGroupAfterRename.Children).Label);
+        Assert.Equal("Rect Renamed", Assert.Single(rectangleGroupAfterRename.Children).DisplayName);
 
         CanvasMutationCommands.CreateDeleteElementCommand(document.DocumentId, document, selection).Execute();
         hierarchy.Refresh();
         var rectangleGroupAfterDelete = hierarchy.Items.Single(i => i.NodeKey == "group:rectangle");
         Assert.Empty(rectangleGroupAfterDelete.Children);
-        Assert.Equal("Rectangles (0)", rectangleGroupAfterDelete.Label);
+        Assert.Equal("Rectangles (0)", rectangleGroupAfterDelete.DisplayName);
     }
 
     private static DocumentTabViewModel CreatePanelDocument(params PanelElementModel[] elements)

@@ -14,7 +14,8 @@ public sealed class Panel2DHierarchyProvider : IDocumentHierarchyProvider
             return [];
         }
 
-        var elements = document.GetPanelElements();
+        var panelDocument = document!;
+        var elements = panelDocument.GetPanelElements();
         var groups = new List<HierarchyItemViewModel>
         {
             BuildGroup("Images", elements, PanelElementKind.Image, "Image"),
