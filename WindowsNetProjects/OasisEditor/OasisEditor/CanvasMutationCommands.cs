@@ -233,7 +233,7 @@ internal static class CanvasMutationCommands
                 return;
             }
 
-            if (!PanelSelectionContract.IsMatch(elements[index], _selection))
+            if (!PanelSelectionContract.IsMatch(Panel2DDocumentStorage.ToStorageElement(elements[index]), _selection))
             {
                 return;
             }
@@ -298,16 +298,6 @@ internal static class CanvasMutationCommands
 
     private static bool IsMatch(PanelElementModel element, PanelSelectionInfo selection)
     {
-        if (!string.IsNullOrWhiteSpace(selection.ObjectId))
-        {
-            return string.Equals(element.ObjectId, selection.ObjectId, StringComparison.Ordinal);
-        }
-
-        return string.Equals(element.Name, selection.DisplayName, StringComparison.Ordinal)
-               && element.Kind == selection.Kind
-               && Math.Abs(element.X - selection.X) < 0.0001
-               && Math.Abs(element.Y - selection.Y) < 0.0001
-               && Math.Abs(element.Width - selection.Width) < 0.0001
-               && Math.Abs(element.Height - selection.Height) < 0.0001;
+        return PanelSelectionContract.IsMatch(Panel2DDocumentStorage.ToStorageElement(element), selection);
     }
 }
