@@ -25,7 +25,7 @@
               Style="{DynamicResource EditorMenuStyle}">
             <Menu.Resources>
                 <Style TargetType="{x:Type MenuItem}"
-                       BasedOn="{DynamicResource EditorMenuItemStyle}">
+                       BasedOn="{StaticResource EditorMenuItemStyle}">
                     <Style.Triggers>
                         <Trigger Property="Role"
                                  Value="TopLevelHeader">
