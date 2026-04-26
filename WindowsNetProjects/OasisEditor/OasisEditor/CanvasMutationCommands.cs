@@ -55,18 +55,19 @@ internal static class CanvasMutationCommands
         public void Execute()
         {
             WasExecuted = false;
-            var elements = Panel2DDocumentStorage.DeserializeLayout(_document.PanelLayoutJson).ToList();
+            var elements = _document.GetPanelElements().ToList();
+            var elementModel = Panel2DDocumentStorage.ToModel(_element);
             var index = Math.Clamp(_insertIndex ?? elements.Count, 0, elements.Count);
-            elements.Insert(index, _element);
+            elements.Insert(index, elementModel);
             _insertIndex = index;
-            _document.PanelLayoutJson = Panel2DDocumentStorage.SerializeLayout(elements);
+            _document.SetPanelElements(elements);
             _document.MarkDirty();
             WasExecuted = true;
         }
 
         public void Undo()
         {
-            var elements = Panel2DDocumentStorage.DeserializeLayout(_document.PanelLayoutJson).ToList();
+            var elements = _document.GetPanelElements().ToList();
             if (elements.Count == 0)
             {
                 return;
@@ -76,7 +77,7 @@ internal static class CanvasMutationCommands
             if (_insertIndex is int index
                 && index >= 0
                 && index < elements.Count
-                && PanelSelectionContract.IsSame(elements[index], _element))
+                && IsSameElement(elements[index], _element))
             {
                 elements.RemoveAt(index);
                 removed = true;
@@ -86,7 +87,7 @@ internal static class CanvasMutationCommands
             {
                 for (var i = elements.Count - 1; i >= 0; i--)
                 {
-                    if (!PanelSelectionContract.IsSame(elements[i], _element))
+                    if (!IsSameElement(elements[i], _element))
                     {
                         continue;
                     }
@@ -99,7 +100,7 @@ internal static class CanvasMutationCommands
 
             if (removed)
             {
-                _document.PanelLayoutJson = Panel2DDocumentStorage.SerializeLayout(elements);
+                _document.SetPanelElements(elements);
                 _document.MarkDirty();
             }
         }
@@ -129,16 +130,16 @@ internal static class CanvasMutationCommands
         public void Execute()
         {
             WasExecuted = false;
-            var elements = Panel2DDocumentStorage.DeserializeLayout(_document.PanelLayoutJson).ToList();
+            var elements = _document.GetPanelElements().ToList();
             if (!TryFindMatchingElementIndex(elements, _selection, out var index))
             {
                 return;
             }
 
-            _deletedElement = elements[index];
+            _deletedElement = Panel2DDocumentStorage.ToStorageElement(elements[index]);
             _deletedIndex = index;
             elements.RemoveAt(index);
-            _document.PanelLayoutJson = Panel2DDocumentStorage.SerializeLayout(elements);
+            _document.SetPanelElements(elements);
             _document.MarkDirty();
             WasExecuted = true;
         }
@@ -150,10 +151,10 @@ internal static class CanvasMutationCommands
                 return;
             }
 
-            var elements = Panel2DDocumentStorage.DeserializeLayout(_document.PanelLayoutJson).ToList();
+            var elements = _document.GetPanelElements().ToList();
             var insertIndex = Math.Clamp(index, 0, elements.Count);
-            elements.Insert(insertIndex, _deletedElement);
-            _document.PanelLayoutJson = Panel2DDocumentStorage.SerializeLayout(elements);
+            elements.Insert(insertIndex, Panel2DDocumentStorage.ToModel(_deletedElement));
+            _document.SetPanelElements(elements);
             _document.MarkDirty();
         }
     }
@@ -188,7 +189,7 @@ internal static class CanvasMutationCommands
         public void Execute()
         {
             WasExecuted = false;
-            var elements = Panel2DDocumentStorage.DeserializeLayout(_document.PanelLayoutJson).ToList();
+            var elements = _document.GetPanelElements().ToList();
             if (!TryFindMatchingElementIndex(elements, _selection, out var index))
             {
                 return;
@@ -196,14 +197,14 @@ internal static class CanvasMutationCommands
 
             var existing = elements[index];
             var normalizedNewName = _newName.Trim();
-            if (string.Equals(existing.Name?.Trim(), normalizedNewName, StringComparison.Ordinal))
+            if (string.Equals(existing.Name.Trim(), normalizedNewName, StringComparison.Ordinal))
             {
                 return;
             }
 
             _renamedIndex = index;
             _previousName = existing.Name;
-            elements[index] = new PanelElementFile
+            elements[index] = new PanelElementModel
             {
                 ObjectId = existing.ObjectId,
                 Name = normalizedNewName,
@@ -214,7 +215,7 @@ internal static class CanvasMutationCommands
                 Height = existing.Height
             };
 
-            _document.PanelLayoutJson = Panel2DDocumentStorage.SerializeLayout(elements);
+            _document.SetPanelElements(elements);
             _document.MarkDirty();
             WasExecuted = true;
         }
@@ -226,19 +227,19 @@ internal static class CanvasMutationCommands
                 return;
             }
 
-            var elements = Panel2DDocumentStorage.DeserializeLayout(_document.PanelLayoutJson).ToList();
+            var elements = _document.GetPanelElements().ToList();
             if (index < 0 || index >= elements.Count)
             {
                 return;
             }
 
-            if (!PanelSelectionContract.IsMatch(elements[index], _selection))
+            if (!PanelSelectionContract.IsMatch(Panel2DDocumentStorage.ToStorageElement(elements[index]), _selection))
             {
                 return;
             }
 
             var existing = elements[index];
-            elements[index] = new PanelElementFile
+            elements[index] = new PanelElementModel
             {
                 ObjectId = existing.ObjectId,
                 Name = _previousName ?? string.Empty,
@@ -249,12 +250,12 @@ internal static class CanvasMutationCommands
                 Height = existing.Height
             };
 
-            _document.PanelLayoutJson = Panel2DDocumentStorage.SerializeLayout(elements);
+            _document.SetPanelElements(elements);
             _document.MarkDirty();
         }
     }
 
-    private static bool TryFindMatchingElementIndex(IReadOnlyList<PanelElementFile> elements, PanelSelectionInfo selection, out int index)
+    private static bool TryFindMatchingElementIndex(IReadOnlyList<PanelElementModel> elements, PanelSelectionInfo selection, out int index)
     {
         if (!string.IsNullOrWhiteSpace(selection.ObjectId))
         {
@@ -271,7 +272,7 @@ internal static class CanvasMutationCommands
         for (var i = 0; i < elements.Count; i++)
         {
             var element = elements[i];
-            if (!PanelSelectionContract.IsMatch(element, selection))
+            if (!IsMatch(element, selection))
             {
                 continue;
             }
@@ -282,5 +283,21 @@ internal static class CanvasMutationCommands
 
         index = -1;
         return false;
+    }
+
+    private static bool IsSameElement(PanelElementModel model, PanelElementFile storageElement)
+    {
+        return string.Equals(model.ObjectId, storageElement.ObjectId, StringComparison.Ordinal)
+               && string.Equals(model.Name, storageElement.Name, StringComparison.Ordinal)
+               && model.Kind == Panel2DDocumentStorage.ParseElementKind(storageElement.Kind)
+               && Math.Abs(model.X - storageElement.X) < 0.0001
+               && Math.Abs(model.Y - storageElement.Y) < 0.0001
+               && Math.Abs(model.Width - storageElement.Width) < 0.0001
+               && Math.Abs(model.Height - storageElement.Height) < 0.0001;
+    }
+
+    private static bool IsMatch(PanelElementModel element, PanelSelectionInfo selection)
+    {
+        return PanelSelectionContract.IsMatch(Panel2DDocumentStorage.ToStorageElement(element), selection);
     }
 }

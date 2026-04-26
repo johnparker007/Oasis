@@ -60,7 +60,7 @@ These tasks come from the Editor code review. Complete them in order. Build and 
   - [x] Add conversion between the new model and existing `PanelElementFile` storage DTOs
   - [x] Keep existing `.panel2d` file format working
 - [ ] Move Panel2D mutation commands to operate on the live model first
-  - [ ] Add element, delete element, and rename element should mutate the model
+  - [x] Add element, delete element, and rename element should mutate the model
   - [ ] Update JSON/layout sync as a projection of the model, not as the canonical state
   - [ ] Preserve undo/redo behaviour
   - [ ] Verify save/open round-trips existing panel files
