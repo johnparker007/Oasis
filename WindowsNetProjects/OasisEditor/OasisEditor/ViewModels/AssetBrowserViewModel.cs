@@ -35,7 +35,8 @@ public sealed class AssetBrowserViewModel
         RefreshAssetBrowserCommand = new RelayCommand(RefreshAssetBrowser, CanRefreshAssetBrowser);
         OpenAssetCommand = new PaneItemCommand<AssetBrowserItemViewModel>(
             () => SelectedAsset,
-            asset => OpenAsset(asset));
+            asset => OpenAsset(asset),
+            CanOpenAsset);
         ShowInExplorerCommand = new PaneItemCommand<AssetBrowserItemViewModel>(
             () => SelectedAsset,
             asset => ShowInExplorer(asset));
@@ -205,12 +206,31 @@ public sealed class AssetBrowserViewModel
     {
         if (asset.IsDirectory)
         {
+            if (!Directory.Exists(asset.FullPath))
+            {
+                _addOutputEntry($"Cannot open folder; path does not exist: {asset.FullPath}", OutputLogStatus.Warning);
+                return;
+            }
+
             SelectDirectoryByPath(asset.FullPath);
+            return;
+        }
+
+        if (!File.Exists(asset.FullPath))
+        {
+            _addOutputEntry($"Cannot open asset; path does not exist: {asset.FullPath}", OutputLogStatus.Warning);
             return;
         }
 
         SelectedAsset = asset;
         _openAsset(asset);
+    }
+
+    private static bool CanOpenAsset(AssetBrowserItemViewModel asset)
+    {
+        return asset.IsDirectory
+            ? Directory.Exists(asset.FullPath)
+            : File.Exists(asset.FullPath);
     }
 
     private void NotifyOpenAssetCommand()
