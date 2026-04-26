@@ -89,9 +89,9 @@ public static class PanelLayoutMapper
         try
         {
             canvas.SetCurrentValue(panelLayoutJsonProperty, layoutJson);
-            if (canvas.DataContext is DocumentTabViewModel tab)
+            if (canvas.DataContext is DocumentTabViewModel tabViewModel)
             {
-                tab.PanelLayoutJson = layoutJson;
+                tabViewModel.PanelLayoutJson = layoutJson;
             }
         }
         finally
