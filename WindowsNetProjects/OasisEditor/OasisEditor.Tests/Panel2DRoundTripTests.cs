@@ -1,3 +1,5 @@
+using Xunit;
+
 namespace OasisEditor.Tests;
 
 public sealed class Panel2DRoundTripTests
