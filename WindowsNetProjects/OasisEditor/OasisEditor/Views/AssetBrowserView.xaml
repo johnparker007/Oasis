@@ -37,8 +37,7 @@
                 <ColumnDefinition Width="1.5*" />
             </Grid.ColumnDefinitions>
 
-            <TreeView x:Name="DirectoryTreeView"
-                      Grid.Column="0"
+            <TreeView Grid.Column="0"
                       ItemsSource="{Binding AssetDirectoryTree}"
                       PreviewMouseRightButtonDown="OnDirectoryTreePreviewMouseRightButtonDown"
                       SelectedItemChanged="OnDirectoryTreeSelectedItemChanged"
@@ -98,6 +97,15 @@
                                 <MenuItem Header="Open"
                                           Style="{StaticResource EditorContextMenuItemStyle}"
                                           Command="{Binding OpenAssetCommand}" />
+                                <MenuItem Header="Show In Explorer"
+                                          Style="{StaticResource EditorContextMenuItemStyle}"
+                                          Command="{Binding ShowAssetInExplorerCommand}" />
+                                <MenuItem Header="Rename"
+                                          Style="{StaticResource EditorContextMenuItemStyle}"
+                                          Command="{Binding RenameAssetCommand}" />
+                                <MenuItem Header="Delete"
+                                          Style="{StaticResource EditorContextMenuItemStyle}"
+                                          Command="{Binding DeleteAssetCommand}" />
                             </ContextMenu>
                         </ListBox.ContextMenu>
                         <ListBox.ItemTemplate>

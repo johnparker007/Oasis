@@ -35,12 +35,24 @@ public sealed class AssetBrowserViewModel
         OpenAssetCommand = new PaneItemCommand<AssetBrowserItemViewModel>(
             () => SelectedAsset,
             asset => OpenAsset(asset));
+        ShowInExplorerCommand = new PaneItemCommand<AssetBrowserItemViewModel>(
+            () => SelectedAsset,
+            asset => ShowInExplorer(asset));
+        RenameAssetCommand = new PaneItemCommand<AssetBrowserItemViewModel>(
+            () => SelectedAsset,
+            asset => RenameAsset(asset));
+        DeleteAssetCommand = new PaneItemCommand<AssetBrowserItemViewModel>(
+            () => SelectedAsset,
+            asset => DeleteAsset(asset));
     }
 
     public ObservableCollection<AssetBrowserItemViewModel> AssetBrowserItems { get; }
     public ObservableCollection<AssetDirectoryNodeViewModel> AssetDirectoryTree { get; }
     public ICommand RefreshAssetBrowserCommand { get; }
     public ICommand OpenAssetCommand { get; }
+    public ICommand ShowInExplorerCommand { get; }
+    public ICommand RenameAssetCommand { get; }
+    public ICommand DeleteAssetCommand { get; }
 
     public AssetDirectoryNodeViewModel? SelectedDirectory
     {
@@ -74,6 +86,7 @@ public sealed class AssetBrowserViewModel
             _notifyInspectorChanged();
             NotifyRefreshCommand();
             NotifyOpenAssetCommand();
+            NotifyAssetContextCommands();
             StateChanged?.Invoke();
         }
     }
@@ -205,6 +218,39 @@ public sealed class AssetBrowserViewModel
         {
             openAssetCommand.RaiseCanExecuteChanged();
         }
+    }
+
+    private void NotifyAssetContextCommands()
+    {
+        if (ShowInExplorerCommand is PaneItemCommand<AssetBrowserItemViewModel> showInExplorerCommand)
+        {
+            showInExplorerCommand.RaiseCanExecuteChanged();
+        }
+
+        if (RenameAssetCommand is PaneItemCommand<AssetBrowserItemViewModel> renameAssetCommand)
+        {
+            renameAssetCommand.RaiseCanExecuteChanged();
+        }
+
+        if (DeleteAssetCommand is PaneItemCommand<AssetBrowserItemViewModel> deleteAssetCommand)
+        {
+            deleteAssetCommand.RaiseCanExecuteChanged();
+        }
+    }
+
+    private void ShowInExplorer(AssetBrowserItemViewModel asset)
+    {
+        _addOutputEntry($"Show In Explorer is not implemented yet ({asset.DisplayPath}).", OutputLogStatus.Info);
+    }
+
+    private void RenameAsset(AssetBrowserItemViewModel asset)
+    {
+        _addOutputEntry($"Rename is not implemented yet ({asset.DisplayPath}).", OutputLogStatus.Info);
+    }
+
+    private void DeleteAsset(AssetBrowserItemViewModel asset)
+    {
+        _addOutputEntry($"Delete is not implemented yet ({asset.DisplayPath}).", OutputLogStatus.Info);
     }
 
     private static string GetDirectoryDisplayPath(string assetsRoot, string directoryPath)
