@@ -42,15 +42,15 @@ These tasks come from the Editor code review. Complete them in order. Build and 
   - [x] Create a small canvas command adapter/service responsible for routing commands to the active document shell
   - [x] Keep `Window.GetWindow(...)` usage contained in one place if it cannot be removed yet
   - [x] Preserve current canvas behaviour and bindings
-- [ ] Move panel tool placement logic out of `CanvasPanBehavior`
+- [x] Move panel tool placement logic out of `CanvasPanBehavior`
   - [x] Extract rectangle/image placement decisions into a focused tool/controller class
-  - [ ] Keep click-to-place behaviour unchanged
-  - [ ] Verify placement works with current pan/zoom transforms
-- [ ] Remove or isolate hardcoded MVP canvas sample visuals
+  - [x] Keep click-to-place behaviour unchanged
+  - [x] Verify placement works with current pan/zoom transforms
+- [x] Remove or isolate hardcoded MVP canvas sample visuals
   - [x] Ensure non-persisted instructional visuals are not selectable editor objects
   - [x] Prefer an overlay/help layer rather than selectable placeholder rectangles/text
-  - [ ] Verify hierarchy contains only persisted panel elements
-  - [ ] Verify save/load does not include sample visuals
+  - [x] Verify hierarchy contains only persisted panel elements
+  - [x] Verify save/load does not include sample visuals
 
 ### Phase C — Panel2D Live Model Preparation
 - [ ] Create a domain-facing Panel2D model separate from JSON storage
