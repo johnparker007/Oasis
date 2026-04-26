@@ -119,4 +119,94 @@ public sealed class Panel2DRoundTripTests
         Assert.Equal(3, element.Width);
         Assert.Equal(4, element.Height);
     }
+
+    [Fact]
+    public void RenameCommand_MatchesByObjectId_WhenSelectionBoundsDiffer()
+    {
+        var document = CreatePanelDocument(
+            new PanelElementModel
+            {
+                ObjectId = "first",
+                Name = "First",
+                Kind = PanelElementKind.Rectangle,
+                X = 5,
+                Y = 5,
+                Width = 10,
+                Height = 10
+            },
+            new PanelElementModel
+            {
+                ObjectId = "second",
+                Name = "Second",
+                Kind = PanelElementKind.Rectangle,
+                X = 55,
+                Y = 55,
+                Width = 10,
+                Height = 10
+            });
+
+        var selection = new PanelSelectionInfo("second", "rectangle", 5, 5, 10, 10);
+        var renameCommand = CanvasMutationCommands.CreateRenameElementCommand(
+            document.DocumentId,
+            document,
+            selection,
+            "Renamed by Id");
+
+        renameCommand.Execute();
+
+        var byId = document.GetPanelElements().Single(e => e.ObjectId == "second");
+        var other = document.GetPanelElements().Single(e => e.ObjectId == "first");
+        Assert.Equal("Renamed by Id", byId.Name);
+        Assert.Equal("First", other.Name);
+    }
+
+    [Fact]
+    public void HierarchyViewModel_RefreshReflectsAddRenameDeleteMutations()
+    {
+        var document = CreatePanelDocument();
+        DocumentTabViewModel? selectedDocument = document;
+        var hierarchy = new HierarchyViewModel(
+            () => selectedDocument,
+            [new Panel2DHierarchyProvider()]);
+
+        hierarchy.Refresh();
+        Assert.Equal("Rectangles (0)", hierarchy.Items.Single(i => i.NodeKey == "group:rectangle").Label);
+
+        var element = new PanelElementFile
+        {
+            ObjectId = "rect-id",
+            Name = "Rect Original",
+            Kind = "rectangle",
+            X = 10,
+            Y = 20,
+            Width = 30,
+            Height = 40
+        };
+
+        CanvasMutationCommands.CreateAddRectangleCommand(document.DocumentId, document, element).Execute();
+        hierarchy.Refresh();
+        var rectangleGroupAfterAdd = hierarchy.Items.Single(i => i.NodeKey == "group:rectangle");
+        var addedItem = Assert.Single(rectangleGroupAfterAdd.Children);
+        Assert.Equal("Rectangles (1)", rectangleGroupAfterAdd.Label);
+        Assert.Equal("Rect Original", addedItem.Label);
+
+        var selection = addedItem.PanelSelection!.Value;
+        CanvasMutationCommands.CreateRenameElementCommand(document.DocumentId, document, selection, "Rect Renamed").Execute();
+        hierarchy.Refresh();
+        var rectangleGroupAfterRename = hierarchy.Items.Single(i => i.NodeKey == "group:rectangle");
+        Assert.Equal("Rect Renamed", Assert.Single(rectangleGroupAfterRename.Children).Label);
+
+        CanvasMutationCommands.CreateDeleteElementCommand(document.DocumentId, document, selection).Execute();
+        hierarchy.Refresh();
+        var rectangleGroupAfterDelete = hierarchy.Items.Single(i => i.NodeKey == "group:rectangle");
+        Assert.Empty(rectangleGroupAfterDelete.Children);
+        Assert.Equal("Rectangles (0)", rectangleGroupAfterDelete.Label);
+    }
+
+    private static DocumentTabViewModel CreatePanelDocument(params PanelElementModel[] elements)
+    {
+        var document = new DocumentTabViewModel(EditorDocument.CreatePanel2DStub("Panel"));
+        document.SetPanelElements(elements);
+        return document;
+    }
 }
