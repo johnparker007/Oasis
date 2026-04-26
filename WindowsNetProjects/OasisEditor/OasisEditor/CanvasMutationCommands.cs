@@ -34,6 +34,14 @@ internal static class CanvasMutationCommands
         return new DuplicateElementMutationCommand(documentId, document, selection);
     }
 
+    public static Commands.ICommand CreatePasteElementCommand(
+        Guid documentId,
+        DocumentTabViewModel document,
+        PanelElementModel sourceElement)
+    {
+        return new PasteElementMutationCommand(documentId, document, sourceElement);
+    }
+
     private sealed class AddPanelElementMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
     {
         private readonly Guid _documentId;
@@ -344,6 +352,81 @@ internal static class CanvasMutationCommands
         }
     }
 
+    private sealed class PasteElementMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
+    {
+        private const double PasteOffset = 10.0;
+        private readonly Guid _documentId;
+        private readonly DocumentTabViewModel _document;
+        private readonly PanelElementModel _sourceElement;
+        private PanelElementModel? _pastedElement;
+        private int? _insertIndex;
+
+        public PasteElementMutationCommand(Guid documentId, DocumentTabViewModel document, PanelElementModel sourceElement)
+        {
+            _documentId = documentId;
+            _document = document;
+            _sourceElement = sourceElement;
+        }
+
+        public Guid DocumentId => _documentId;
+
+        public string Description => "Paste element";
+
+        public bool WasExecuted { get; private set; }
+
+        public void Execute()
+        {
+            WasExecuted = false;
+            var elements = _document.GetPanelElements().ToList();
+
+            if (_pastedElement is null)
+            {
+                _pastedElement = new PanelElementModel
+                {
+                    ObjectId = BuildUniqueObjectId(elements),
+                    Name = BuildUniqueName(_sourceElement.Name, elements),
+                    Kind = _sourceElement.Kind,
+                    X = _sourceElement.X + PasteOffset,
+                    Y = _sourceElement.Y + PasteOffset,
+                    Width = _sourceElement.Width,
+                    Height = _sourceElement.Height
+                };
+                _insertIndex = elements.Count;
+            }
+
+            var pastedElement = _pastedElement;
+            if (pastedElement is null || elements.Any(element => string.Equals(element.ObjectId, pastedElement.ObjectId, StringComparison.Ordinal)))
+            {
+                return;
+            }
+
+            var insertIndex = Math.Clamp(_insertIndex ?? elements.Count, 0, elements.Count);
+            elements.Insert(insertIndex, pastedElement);
+            _document.SetPanelElements(elements);
+            _document.MarkDirty();
+            WasExecuted = true;
+        }
+
+        public void Undo()
+        {
+            var pastedElement = _pastedElement;
+            if (pastedElement is null)
+            {
+                return;
+            }
+
+            var elements = _document.GetPanelElements().ToList();
+            var removed = elements.RemoveAll(element => string.Equals(element.ObjectId, pastedElement.ObjectId, StringComparison.Ordinal)) > 0;
+            if (!removed)
+            {
+                return;
+            }
+
+            _document.SetPanelElements(elements);
+            _document.MarkDirty();
+        }
+    }
+
     private static bool TryFindMatchingElementIndex(IReadOnlyList<PanelElementModel> elements, PanelSelectionInfo selection, out int index)
     {
         if (!string.IsNullOrWhiteSpace(selection.ObjectId))
@@ -421,6 +504,32 @@ internal static class CanvasMutationCommands
         while (true)
         {
             var candidate = $"{copyBase} {suffix}";
+            if (!existingNames.Contains(candidate))
+            {
+                return candidate;
+            }
+
+            suffix++;
+        }
+    }
+
+    private static string BuildUniqueName(string sourceName, IReadOnlyList<PanelElementModel> elements)
+    {
+        var baseName = string.IsNullOrWhiteSpace(sourceName)
+            ? "Element"
+            : sourceName.Trim();
+        var existingNames = new HashSet<string>(
+            elements.Select(element => element.Name.Trim()),
+            StringComparer.OrdinalIgnoreCase);
+        if (!existingNames.Contains(baseName))
+        {
+            return baseName;
+        }
+
+        var suffix = 2;
+        while (true)
+        {
+            var candidate = $"{baseName} ({suffix})";
             if (!existingNames.Contains(candidate))
             {
                 return candidate;

@@ -57,17 +57,17 @@ These tasks come from the latest Editor code review. Complete them in order. Bui
   - [x] Offset the duplicate slightly on the canvas if practical
   - [x] Execute through the document command system
   - [x] Preserve undo/redo behavior
-- [ ] Implement Copy/Paste for Panel2D hierarchy entities
-  - [ ] Use an editor-owned clipboard format for Panel2D element data
-  - [ ] Paste must create new stable object IDs
-  - [ ] Paste must target the active document only
-  - [ ] Disable Paste when clipboard data is missing or incompatible
-  - [ ] Execute Paste through the document command system
-  - [ ] Preserve undo/redo behavior
-- [ ] Implement Cut for Panel2D hierarchy entities
-  - [ ] Copy selected entity to the editor clipboard first
-  - [ ] Delete through the document command system only after copy succeeds
-  - [ ] Preserve undo/redo behavior for the delete portion
+- [x] Implement Copy/Paste for Panel2D hierarchy entities
+  - [x] Use an editor-owned clipboard format for Panel2D element data
+  - [x] Paste must create new stable object IDs
+  - [x] Paste must target the active document only
+  - [x] Disable Paste when clipboard data is missing or incompatible
+  - [x] Execute Paste through the document command system
+  - [x] Preserve undo/redo behavior
+- [x] Implement Cut for Panel2D hierarchy entities
+  - [x] Copy selected entity to the editor clipboard first
+  - [x] Delete through the document command system only after copy succeeds
+  - [x] Preserve undo/redo behavior for the delete portion
 - [ ] Verify hierarchy context menu behavior
   - [ ] Right-click selects the intended entity
   - [ ] Group rows do not expose invalid entity actions
