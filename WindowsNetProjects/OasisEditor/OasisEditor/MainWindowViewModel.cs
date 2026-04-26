@@ -442,7 +442,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         var content = File.ReadAllText(path);
         var openData = DocumentWorkspaceViewModel.BuildOpenDocumentData(path, content);
 
-        var openedNewTab = _documentWorkspace.OpenOrSelectDocument(path, openData.Summary, openData.PanelLayoutJson);
+        var openedNewTab = _documentWorkspace.OpenOrSelectDocument(
+            path,
+            openData.Summary,
+            openData.PanelLayoutJson,
+            openData.PanelTitle);
         if (!openedNewTab)
         {
             AddOutputEntry($"Switched to already open document tab for {path}", OutputLogStatus.Info);
@@ -873,4 +877,4 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
 }
 
-internal readonly record struct OpenDocumentData(string Summary, string? PanelLayoutJson);
+internal readonly record struct OpenDocumentData(string Summary, string? PanelLayoutJson, string? PanelTitle = null);

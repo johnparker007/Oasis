@@ -124,7 +124,7 @@ public sealed class DocumentWorkspaceViewModel
         _addOutputEntry($"Closed document tab: {selectedDocument.Title}", OutputLogStatus.Info);
     }
 
-    public bool OpenOrSelectDocument(string path, string summary, string? panelLayoutJson)
+    public bool OpenOrSelectDocument(string path, string summary, string? panelLayoutJson, string? panelTitle = null)
     {
         var existing = _openDocuments.FirstOrDefault(tab => string.Equals(tab.FilePath, path, StringComparison.OrdinalIgnoreCase));
         if (existing is not null)
@@ -133,7 +133,7 @@ public sealed class DocumentWorkspaceViewModel
             return false;
         }
 
-        var document = new DocumentTabViewModel(EditorDocument.CreateFromFile(path, summary), panelLayoutJson);
+        var document = new DocumentTabViewModel(EditorDocument.CreateFromFile(path, summary, panelTitle), panelLayoutJson);
         ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
         return true;
     }
@@ -249,7 +249,10 @@ public sealed class DocumentWorkspaceViewModel
             var summary = string.IsNullOrWhiteSpace(panelDocument.Summary)
                 ? "Panel document opened."
                 : panelDocument.Summary.Trim();
-            return new OpenDocumentData(summary, Panel2DDocumentStorage.SerializeLayout(panelDocument.Elements));
+            var title = string.IsNullOrWhiteSpace(panelDocument.Title)
+                ? Path.GetFileName(path)
+                : panelDocument.Title.Trim();
+            return new OpenDocumentData(summary, Panel2DDocumentStorage.SerializeLayout(panelDocument.Elements), title);
         }
 
         var preview = content.Length > 300 ? $"{content[..300]}..." : content;
