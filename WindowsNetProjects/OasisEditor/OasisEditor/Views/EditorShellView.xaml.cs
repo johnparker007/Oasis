@@ -8,6 +8,8 @@ public partial class EditorShellView : UserControl
     public EditorShellView()
     {
         InitializeComponent();
+        HideToolWindow(EditorToolWindowId.Preferences);
+        HideToolWindow(EditorToolWindowId.ProjectSettings);
     }
 
     public void ShowOrFocusToolWindow(EditorToolWindowId toolWindowId)
@@ -27,6 +29,12 @@ public partial class EditorShellView : UserControl
         target.Show();
         target.IsSelected = true;
         target.IsActive = true;
+    }
+
+    public void HideToolWindow(EditorToolWindowId toolWindowId)
+    {
+        var target = FindToolWindow(toolWindowId);
+        target?.Hide();
     }
 
     private LayoutAnchorable? FindToolWindow(EditorToolWindowId toolWindowId)

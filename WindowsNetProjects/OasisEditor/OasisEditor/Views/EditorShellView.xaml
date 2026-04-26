@@ -55,6 +55,24 @@
                                 </Border>
                             </layout:LayoutAnchorable>
 
+                        <layout:LayoutAnchorable Title="Preferences"
+                                                 ContentId="Preferences"
+                                                 CanClose="True">
+                            <Border Padding="10"
+                                    Background="{DynamicResource InspectorBackgroundBrush}">
+                                <views:PreferencesView />
+                            </Border>
+                        </layout:LayoutAnchorable>
+
+                        <layout:LayoutAnchorable Title="Project Settings"
+                                                 ContentId="ProjectSettings"
+                                                 CanClose="True">
+                            <Border Padding="10"
+                                    Background="{DynamicResource InspectorBackgroundBrush}">
+                                <views:ProjectSettingsView />
+                            </Border>
+                        </layout:LayoutAnchorable>
+
                         </layout:LayoutAnchorablePane>
                     </layout:LayoutPanel>
 

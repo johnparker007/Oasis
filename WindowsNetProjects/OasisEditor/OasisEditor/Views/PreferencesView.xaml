@@ -1,0 +1,34 @@
+<UserControl x:Class="OasisEditor.Views.PreferencesView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignHeight="220"
+             d:DesignWidth="420">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0"
+                   FontSize="18"
+                   FontWeight="SemiBold"
+                   Foreground="{DynamicResource TextPrimaryBrush}"
+                   Text="Editor Preferences" />
+
+        <TextBlock Grid.Row="1"
+                   Margin="0,16,0,6"
+                   Foreground="{DynamicResource TextSecondaryBrush}"
+                   Text="Theme" />
+
+        <ComboBox Grid.Row="2"
+                  Width="180"
+                  VerticalAlignment="Top"
+                  HorizontalAlignment="Left"
+                  ItemsSource="{Binding ThemePreferences}"
+                  SelectedItem="{Binding SelectedThemePreference, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+    </Grid>
+</UserControl>
