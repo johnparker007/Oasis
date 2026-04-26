@@ -295,6 +295,24 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         NotifyHierarchyCommands();
     }
 
+    public void SelectHierarchyItemForContextMenu(HierarchyItemViewModel? hierarchyItem)
+    {
+        if (SelectedDocument is null || SelectedDocument.Document.DocumentType != EditorDocumentType.Panel2D)
+        {
+            return;
+        }
+
+        if (hierarchyItem is null || hierarchyItem.IsGroup || hierarchyItem.PanelSelection is not PanelSelectionInfo selection)
+        {
+            SelectedDocument.HierarchySelectedPanelSelection = null;
+            NotifyHierarchyCommands();
+            return;
+        }
+
+        SelectedDocument.HierarchySelectedPanelSelection = selection;
+        NotifyHierarchyCommands();
+    }
+
     public bool DeleteSelectedHierarchyItem()
     {
         var selectedDocument = SelectedDocument;
