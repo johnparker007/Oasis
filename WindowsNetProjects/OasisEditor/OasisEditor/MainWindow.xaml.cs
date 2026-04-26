@@ -9,6 +9,8 @@ public partial class MainWindow : Window
 {
     private readonly EditorPreferencesStore _preferencesStore;
     private readonly string _startupProjectFilePath;
+    private readonly MainWindowViewModel _viewModel;
+    private readonly EditorShellView _editorShell;
 
     public MainWindow(
         IApplicationThemeService applicationThemeService,
@@ -24,29 +26,31 @@ public partial class MainWindow : Window
         _startupProjectFilePath = NormalizeProjectPath(startupProjectFilePath);
 
         InitializeComponent();
+        _editorShell = new EditorShellView();
+        EditorShellHost.Content = _editorShell;
         Loaded += OnLoaded;
         Closing += OnClosing;
         EditorKeyboardShortcuts.RegisterWindowBindings(this);
-        var viewModel = new MainWindowViewModel(applicationThemeService, preferencesStore, this, startupProjectFilePath);
-        DataContext = viewModel;
+        _viewModel = new MainWindowViewModel(applicationThemeService, preferencesStore, this, startupProjectFilePath);
+        DataContext = _viewModel;
 
         CommandBindings.Add(new CommandBinding(CanvasPanBehavior.UndoCommand, (_, args) =>
         {
-            viewModel.UndoActiveDocument();
+            _viewModel.UndoActiveDocument();
             args.Handled = true;
         }, (_, args) =>
         {
-            args.CanExecute = viewModel.CanUndoActiveDocument();
+            args.CanExecute = _viewModel.CanUndoActiveDocument();
             args.Handled = true;
         }));
 
         CommandBindings.Add(new CommandBinding(CanvasPanBehavior.RedoCommand, (_, args) =>
         {
-            viewModel.RedoActiveDocument();
+            _viewModel.RedoActiveDocument();
             args.Handled = true;
         }, (_, args) =>
         {
-            args.CanExecute = viewModel.CanRedoActiveDocument();
+            args.CanExecute = _viewModel.CanRedoActiveDocument();
             args.Handled = true;
         }));
     }
@@ -63,22 +67,38 @@ public partial class MainWindow : Window
 
     private void OnAssetsWindowMenuItemClicked(object sender, RoutedEventArgs e)
     {
-        EditorShell.ShowOrFocusToolWindow(EditorToolWindowId.Assets);
+        _editorShell.ShowOrFocusToolWindow(EditorToolWindowId.Assets);
     }
 
     private void OnHierarchyWindowMenuItemClicked(object sender, RoutedEventArgs e)
     {
-        EditorShell.ShowOrFocusToolWindow(EditorToolWindowId.Hierarchy);
+        _editorShell.ShowOrFocusToolWindow(EditorToolWindowId.Hierarchy);
     }
 
     private void OnInspectorWindowMenuItemClicked(object sender, RoutedEventArgs e)
     {
-        EditorShell.ShowOrFocusToolWindow(EditorToolWindowId.Inspector);
+        _editorShell.ShowOrFocusToolWindow(EditorToolWindowId.Inspector);
     }
 
     private void OnOutputWindowMenuItemClicked(object sender, RoutedEventArgs e)
     {
-        EditorShell.ShowOrFocusToolWindow(EditorToolWindowId.Output);
+        _editorShell.ShowOrFocusToolWindow(EditorToolWindowId.Output);
+    }
+
+    private void OnUndoMenuItemClicked(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel.CanUndoActiveDocument())
+        {
+            _viewModel.UndoActiveDocument();
+        }
+    }
+
+    private void OnRedoMenuItemClicked(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel.CanRedoActiveDocument())
+        {
+            _viewModel.RedoActiveDocument();
+        }
     }
 
     private void ApplyWindowPlacement()

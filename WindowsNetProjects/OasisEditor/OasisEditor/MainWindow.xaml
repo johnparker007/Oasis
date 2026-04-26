@@ -2,8 +2,6 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:local="clr-namespace:OasisEditor;assembly=OasisEditor"
-        xmlns:views="clr-namespace:OasisEditor.Views;assembly=OasisEditor"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="Oasis Editor"
@@ -71,11 +69,11 @@
             </MenuItem>
             <MenuItem Header="_Edit">
                 <MenuItem Header="{Binding UndoMenuHeader}"
-                          Command="{x:Static local:CanvasPanBehavior.UndoCommand}"
-                          InputGestureText="{x:Static local:EditorKeyboardShortcuts.UndoGestureText}" />
+                          Click="OnUndoMenuItemClicked"
+                          InputGestureText="Ctrl+Z" />
                 <MenuItem Header="{Binding RedoMenuHeader}"
-                          Command="{x:Static local:CanvasPanBehavior.RedoCommand}"
-                          InputGestureText="{x:Static local:EditorKeyboardShortcuts.RedoGestureText}" />
+                          Click="OnRedoMenuItemClicked"
+                          InputGestureText="Ctrl+Shift+Z" />
                 <Separator />
                 <MenuItem Header="_Preferences"
                           Command="{Binding OpenPreferencesCommand}" />
@@ -94,9 +92,9 @@
             </MenuItem>
         </Menu>
 
-        <views:EditorShellView x:Name="EditorShell"
-                               Grid.Row="1"
-                               Margin="0" />
+        <ContentControl x:Name="EditorShellHost"
+                        Grid.Row="1"
+                        Margin="0" />
 
         <StatusBar Grid.Row="2"
                    Margin="0"
