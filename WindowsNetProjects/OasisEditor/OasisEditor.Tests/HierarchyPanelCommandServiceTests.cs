@@ -91,6 +91,57 @@ public sealed class HierarchyPanelCommandServiceTests
         Assert.Empty(document.CommandService.History.Entries);
     }
 
+    [Fact]
+    public void CanDeleteItem_ReturnsFalse_ForHierarchyGroupItems()
+    {
+        var document = CreatePanelDocument(
+            new PanelElementModel
+            {
+                ObjectId = "source-id",
+                Name = "Rect One",
+                Kind = PanelElementKind.Rectangle,
+                X = 1,
+                Y = 2,
+                Width = 3,
+                Height = 4
+            });
+        var workspace = CreateWorkspace(document, document);
+        var service = CreateService(document, workspace);
+        var groupItem = new HierarchyItemViewModel("Rectangles (1)", "group:rectangle", isGroup: true);
+
+        var canDelete = service.CanDeleteItem(groupItem);
+
+        Assert.False(canDelete);
+    }
+
+    [Fact]
+    public void DeleteItem_ForPanelEntity_DeletesElementAndClearsSelection()
+    {
+        var document = CreatePanelDocument(
+            new PanelElementModel
+            {
+                ObjectId = "source-id",
+                Name = "Rect One",
+                Kind = PanelElementKind.Rectangle,
+                X = 10,
+                Y = 20,
+                Width = 30,
+                Height = 40
+            });
+
+        var workspace = CreateWorkspace(document, document);
+        var selection = new PanelSelectionInfo("source-id", "rectangle", 10, 20, 30, 40);
+        var entityItem = new HierarchyItemViewModel("Rect One", "rectangle:source-id", panelSelection: selection);
+        var service = CreateService(document, workspace);
+
+        var deleted = service.DeleteItem(entityItem);
+
+        Assert.True(deleted);
+        Assert.Empty(document.GetPanelElements());
+        Assert.Null(document.HierarchySelectedPanelSelection);
+        Assert.Single(document.CommandService.History.Entries);
+    }
+
     private static HierarchyPanelCommandService CreateService(
         DocumentTabViewModel selectedDocument,
         DocumentWorkspaceViewModel workspace)
