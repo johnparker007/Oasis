@@ -73,7 +73,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             () => OnPropertyChanged(nameof(SelectedAsset)),
             NotifyInspectorChanged,
             AddOutputEntry,
-            OpenAssetDocument);
+            OpenAssetDocument,
+            PromptForAssetRename);
         _assetBrowser.StateChanged += OnAssetBrowserStateChanged;
         _inspector = new InspectorViewModel(
             () => SelectedAsset,
@@ -456,6 +457,19 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         RenameSelectedHierarchyItem(renameDialog.NameText);
+    }
+
+    private string? PromptForAssetRename(string currentName)
+    {
+        var renameDialog = new HierarchyRenameDialog(
+            currentName,
+            "Rename Asset",
+            "Rename asset or folder")
+        {
+            Owner = _ownerWindow
+        };
+
+        return renameDialog.ShowDialog() == true ? renameDialog.NameText : null;
     }
 
     private HierarchyItemViewModel? GetSelectedHierarchyEntity()

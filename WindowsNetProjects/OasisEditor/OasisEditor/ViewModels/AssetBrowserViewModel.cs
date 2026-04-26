@@ -13,6 +13,7 @@ public sealed class AssetBrowserViewModel
     private readonly Action _notifyInspectorChanged;
     private readonly Action<string, OutputLogStatus> _addOutputEntry;
     private readonly Action<AssetBrowserItemViewModel?> _openAsset;
+    private readonly Func<string, string?> _requestAssetRename;
     private AssetBrowserItemViewModel? _selectedAsset;
     private AssetDirectoryNodeViewModel? _selectedDirectory;
     public event Action? StateChanged;
@@ -22,13 +23,15 @@ public sealed class AssetBrowserViewModel
         Action selectionChanged,
         Action notifyInspectorChanged,
         Action<string, OutputLogStatus> addOutputEntry,
-        Action<AssetBrowserItemViewModel?> openAsset)
+        Action<AssetBrowserItemViewModel?> openAsset,
+        Func<string, string?> requestAssetRename)
     {
         _loadedProjectAccessor = loadedProjectAccessor;
         _selectionChanged = selectionChanged;
         _notifyInspectorChanged = notifyInspectorChanged;
         _addOutputEntry = addOutputEntry;
         _openAsset = openAsset;
+        _requestAssetRename = requestAssetRename;
 
         AssetBrowserItems = new ObservableCollection<AssetBrowserItemViewModel>();
         AssetDirectoryTree = new ObservableCollection<AssetDirectoryNodeViewModel>();
@@ -307,7 +310,81 @@ public sealed class AssetBrowserViewModel
 
     private void RenameAsset(AssetBrowserItemViewModel asset)
     {
-        _addOutputEntry($"Rename is not implemented yet ({asset.DisplayPath}).", OutputLogStatus.Info);
+        var requestedName = _requestAssetRename(asset.DisplayPath);
+        if (string.IsNullOrWhiteSpace(requestedName))
+        {
+            return;
+        }
+
+        var trimmedName = requestedName.Trim();
+        if (trimmedName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0
+            || trimmedName.Contains(Path.DirectorySeparatorChar)
+            || trimmedName.Contains(Path.AltDirectorySeparatorChar))
+        {
+            _addOutputEntry($"Rename failed: invalid asset name '{trimmedName}'.", OutputLogStatus.Warning);
+            return;
+        }
+
+        var parentDirectory = Path.GetDirectoryName(asset.FullPath);
+        if (string.IsNullOrWhiteSpace(parentDirectory))
+        {
+            _addOutputEntry("Rename failed: could not resolve parent directory.", OutputLogStatus.Warning);
+            return;
+        }
+
+        var targetPath = Path.Combine(parentDirectory, trimmedName);
+        var loadedProject = _loadedProjectAccessor();
+        if (loadedProject is null || !IsPathInsideRoot(loadedProject.AssetsDirectory, targetPath))
+        {
+            _addOutputEntry("Rename blocked: target path escapes the Assets root.", OutputLogStatus.Warning);
+            return;
+        }
+
+        if (string.Equals(asset.FullPath, targetPath, StringComparison.OrdinalIgnoreCase))
+        {
+            _addOutputEntry($"Rename skipped: '{asset.DisplayPath}' is unchanged.", OutputLogStatus.Info);
+            return;
+        }
+
+        if (File.Exists(targetPath) || Directory.Exists(targetPath))
+        {
+            _addOutputEntry($"Rename failed: '{trimmedName}' already exists.", OutputLogStatus.Warning);
+            return;
+        }
+
+        try
+        {
+            if (asset.IsDirectory)
+            {
+                if (!Directory.Exists(asset.FullPath))
+                {
+                    _addOutputEntry($"Rename failed: folder not found '{asset.FullPath}'.", OutputLogStatus.Warning);
+                    return;
+                }
+
+                Directory.Move(asset.FullPath, targetPath);
+            }
+            else
+            {
+                if (!File.Exists(asset.FullPath))
+                {
+                    _addOutputEntry($"Rename failed: file not found '{asset.FullPath}'.", OutputLogStatus.Warning);
+                    return;
+                }
+
+                File.Move(asset.FullPath, targetPath);
+            }
+
+            RefreshAssetBrowser();
+            SelectDirectoryByPath(parentDirectory);
+            SelectedAsset = AssetBrowserItems.FirstOrDefault(item =>
+                string.Equals(item.FullPath, targetPath, StringComparison.OrdinalIgnoreCase));
+            _addOutputEntry($"Renamed '{asset.DisplayPath}' to '{trimmedName}'.", OutputLogStatus.Info);
+        }
+        catch (Exception ex)
+        {
+            _addOutputEntry($"Rename failed: {ex.Message}", OutputLogStatus.Warning);
+        }
     }
 
     private void DeleteAsset(AssetBrowserItemViewModel asset)
