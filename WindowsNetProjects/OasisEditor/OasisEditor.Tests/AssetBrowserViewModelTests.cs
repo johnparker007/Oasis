@@ -1,5 +1,4 @@
 using System.IO;
-using System.Linq;
 using Xunit;
 
 namespace OasisEditor.Tests;
@@ -40,7 +39,7 @@ public sealed class AssetBrowserViewModelTests
         var viewModel = CreateViewModel(temp.Project, asset => openedAsset = asset);
 
         viewModel.RefreshAssetBrowser();
-        var artDirectory = Assert.Single(viewModel.AssetBrowserItems.Where(item => item.IsDirectory));
+        var artDirectory = Assert.Single(viewModel.AssetBrowserItems, item => item.IsDirectory);
 
         Assert.True(viewModel.OpenAssetCommand.CanExecute(artDirectory));
         viewModel.OpenAssetCommand.Execute(artDirectory);
