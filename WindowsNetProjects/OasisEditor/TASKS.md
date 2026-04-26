@@ -1,5 +1,178 @@
 # TASKS.md
 
+## Current Focus — Context Menus and Unity-Style Assets Pane
+
+These tasks come from the latest Editor code review. Complete them in order. Build and smoke test after each checked task. Keep each task as a small, focused Codex change.
+
+### Feature Guardrails
+- [ ] Only modify files under `Oasis/WindowsNetProjects/OasisEditor`
+- [ ] Keep the app runnable after every task
+- [ ] Build after every task and fix compile/binding/resource errors before continuing
+- [ ] Prefer small diffs and behaviour-preserving refactors unless the task explicitly changes behaviour
+- [ ] Do not start Blender, cabinet import, machine assembly, or Unity export work in this track
+- [ ] Do not introduce new frameworks or dependency injection yet
+- [ ] Do not place command logic in WPF views/code-behind when a ViewModel or focused command service can own it
+- [ ] Reuse existing command paths for keyboard/menu/context-menu entry points instead of duplicating behavior
+- [ ] Add tests where practical; keep tests under the Editor solution only
+
+### Phase F — Shared Context Menu Command Foundation
+- [ ] Review current hierarchy keyboard handlers and asset double-click handlers
+  - [ ] Identify commands already implemented for rename/delete/open
+  - [ ] Identify command gaps for cut/copy/paste/duplicate/show-in-explorer/assets rename/assets delete
+  - [ ] Do not change behavior in this review step
+- [ ] Add a reusable command pattern for pane item context menus
+  - [ ] Keep View code-behind limited to selecting the right-clicked item before opening the menu, if needed
+  - [ ] Put command execution and CanExecute logic on the relevant ViewModel or focused service
+  - [ ] Ensure unavailable operations are disabled in the menu
+  - [ ] Keep keyboard shortcuts and context menus routed through the same command methods
+- [ ] Add shared menu item styling/resources if useful
+  - [ ] Use semantic theme resources
+  - [ ] Ensure context menus work in System, Light, and Dark theme modes
+
+### Phase G — Hierarchy Entity Context Menu
+- [ ] Ensure right-clicking a hierarchy entity selects it before showing the context menu
+  - [ ] Do not select non-entity group rows as editable objects
+  - [ ] Preserve existing left-click selection behavior
+- [ ] Add initial hierarchy entity context menu items
+  - [ ] Cut
+  - [ ] Copy
+  - [ ] Paste
+  - [ ] Rename
+  - [ ] Duplicate
+  - [ ] Delete
+- [ ] Route Rename through the existing rename behavior
+  - [ ] Preserve F2 rename behavior
+  - [ ] Avoid `Microsoft.VisualBasic.Interaction.InputBox` long-term if a simple editor-owned dialog can be added without scope creep
+  - [ ] Mark the document dirty only when the name actually changes
+  - [ ] Preserve undo/redo behavior
+- [ ] Route Delete through the existing delete behavior
+  - [ ] Preserve Delete key behavior
+  - [ ] Do not record no-op delete commands
+  - [ ] Clear selection after successful delete
+  - [ ] Preserve undo/redo behavior
+- [ ] Implement Duplicate for Panel2D hierarchy entities
+  - [ ] Duplicate the selected model-backed element only
+  - [ ] Generate a new stable object ID
+  - [ ] Generate a useful display name such as `<name> Copy`
+  - [ ] Offset the duplicate slightly on the canvas if practical
+  - [ ] Execute through the document command system
+  - [ ] Preserve undo/redo behavior
+- [ ] Implement Copy/Paste for Panel2D hierarchy entities
+  - [ ] Use an editor-owned clipboard format for Panel2D element data
+  - [ ] Paste must create new stable object IDs
+  - [ ] Paste must target the active document only
+  - [ ] Disable Paste when clipboard data is missing or incompatible
+  - [ ] Execute Paste through the document command system
+  - [ ] Preserve undo/redo behavior
+- [ ] Implement Cut for Panel2D hierarchy entities
+  - [ ] Copy selected entity to the editor clipboard first
+  - [ ] Delete through the document command system only after copy succeeds
+  - [ ] Preserve undo/redo behavior for the delete portion
+- [ ] Verify hierarchy context menu behavior
+  - [ ] Right-click selects the intended entity
+  - [ ] Group rows do not expose invalid entity actions
+  - [ ] Rename/Delete keyboard shortcuts still work
+  - [ ] Duplicate/Copy/Paste/Cut preserve object IDs correctly
+  - [ ] Undo/redo affects only the active document
+
+### Phase H — Asset Browser Model Refactor Toward Unity Project Window
+- [ ] Replace the flat all-files asset list model with a tree/content model
+  - [ ] Add an asset directory tree ViewModel rooted at the project's Assets directory
+  - [ ] Add a selected asset directory property
+  - [ ] Add a right-pane collection containing the selected directory's child folders and files
+  - [ ] Keep asset paths relative to the Assets root for display and identity where practical
+  - [ ] Ensure all full paths are contained inside the project's Assets directory
+- [ ] Preserve existing asset open behavior during the model refactor
+  - [ ] Double-clicking an asset file opens/loads it through the existing `OpenAsset` flow
+  - [ ] Unsupported document types should continue to fail gracefully with output-log/error messages
+  - [ ] Refresh should rebuild tree/content state safely
+- [ ] Add folder navigation behavior
+  - [ ] Selecting a directory in the left tree updates the right pane
+  - [ ] Double-clicking a folder in the right pane navigates into that folder
+  - [ ] Preserve or restore selection where possible after refresh
+- [ ] Add folder/file icon state
+  - [ ] Empty folder icon/template
+  - [ ] Closed folder icon/template
+  - [ ] Open/selected folder icon/template
+  - [ ] File icon/template
+  - [ ] Use simple built-in glyphs or lightweight templates first; do not add image asset dependencies unless requested
+- [ ] Update `AssetBrowserView.xaml` to a two-column layout
+  - [ ] Left column: directory tree
+  - [ ] Right column: selected directory contents
+  - [ ] Keep Refresh available
+  - [ ] Use semantic theme resources
+  - [ ] Avoid hard-coded colors
+- [ ] Verify Unity-style asset browsing flow
+  - [ ] Empty Assets folder shows an empty state and root folder
+  - [ ] Nested folders appear in the tree
+  - [ ] Selected folder contents appear on the right
+  - [ ] Double-click folder navigation works
+  - [ ] Double-click file open still works
+
+### Phase I — Assets Pane Context Menu
+- [ ] Ensure right-clicking an asset item selects it before showing the context menu
+  - [ ] Support both left-tree directory items and right-pane directory/file items where practical
+  - [ ] Do not break double-click open/navigation
+- [ ] Add initial asset item context menu items
+  - [ ] Show In Explorer
+  - [ ] Open
+  - [ ] Delete
+  - [ ] Rename
+- [ ] Implement Show In Explorer
+  - [ ] For files, show/select the file in Windows Explorer
+  - [ ] For folders, open the folder in Windows Explorer
+  - [ ] Handle missing paths gracefully and log a useful output message
+- [ ] Implement Open
+  - [ ] Files: use the existing asset document open flow
+  - [ ] Folders: navigate into the folder
+  - [ ] Disable Open where it is not meaningful
+- [ ] Implement Rename for assets/folders
+  - [ ] Validate non-empty names
+  - [ ] Prevent path traversal and paths outside the Assets root
+  - [ ] Prevent duplicate target names
+  - [ ] Refresh tree/content after successful rename
+  - [ ] Preserve selection on the renamed item where practical
+  - [ ] Log success/failure to output
+- [ ] Implement Delete for assets/folders
+  - [ ] Prevent deletion outside the Assets root
+  - [ ] Handle missing paths gracefully
+  - [ ] Decide whether non-empty folders are blocked or deleted recursively; prefer blocking first unless explicitly requested
+  - [ ] Refresh tree/content after successful delete
+  - [ ] Clear or move selection safely after delete
+  - [ ] Log success/failure to output
+- [ ] Verify asset context menu behavior
+  - [ ] Right-click selects the intended item
+  - [ ] Show In Explorer works for files and folders
+  - [ ] Open works for files and folder navigation
+  - [ ] Rename handles invalid/duplicate names cleanly
+  - [ ] Delete handles files, empty folders, missing paths, and non-empty folders safely
+
+### Phase J — Follow-up Refactor Checks
+- [ ] Review `MainWindowViewModel` after context menu and asset browser changes
+  - [ ] Move any new cohesive asset-browser logic back into `AssetBrowserViewModel` or focused services
+  - [ ] Move any new hierarchy command logic into hierarchy/document command helpers where practical
+  - [ ] Keep MainWindowViewModel as orchestration, not a dumping ground
+- [ ] Review document mutation command coverage
+  - [ ] Ensure Duplicate/Paste use the same command safety contracts as add/delete/rename
+  - [ ] Ensure no-op commands are not recorded
+  - [ ] Ensure dirty state changes only for real mutations
+- [ ] Add or update tests for new behavior where practical
+  - [ ] Duplicate creates a new object ID
+  - [ ] Paste creates new object IDs
+  - [ ] Rename/delete no-op cases are not recorded
+  - [ ] Asset browser tree excludes paths outside Assets root
+  - [ ] Asset rename/delete refreshes expected collections
+- [ ] Smoke test full editor flow
+  - [ ] Create/open project
+  - [ ] Refresh assets
+  - [ ] Navigate folders in Assets pane
+  - [ ] Open a `.panel2d` asset
+  - [ ] Use hierarchy context menu rename/delete/duplicate/copy/paste/cut
+  - [ ] Use undo/redo after hierarchy mutations
+  - [ ] Save/reopen and verify panel contents
+
+---
+
 ## Current Focus — Code Review Fixes and Panel2D Model Stabilisation
 
 These tasks come from the Editor code review. Complete them in order. Build and smoke test after each checked task. Keep each task as a small, focused Codex change.
@@ -164,7 +337,6 @@ These tasks come from the Editor code review. Complete them in order. Build and 
   - [ ] duplicate/copy/paste
 - [ ] Begin cabinet import MVP planning
 - [ ] Begin machine assembly MVP planning
-
 
 ---
 
