@@ -73,7 +73,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             () => OnPropertyChanged(nameof(SelectedAsset)),
             NotifyInspectorChanged,
             AddOutputEntry,
-            OpenAssetDocument);
+            OpenAssetDocument,
+            PromptForAssetRename);
         _assetBrowser.StateChanged += OnAssetBrowserStateChanged;
         _inspector = new InspectorViewModel(
             () => SelectedAsset,
@@ -105,6 +106,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OutputEntries = _outputLog.OutputEntries;
         RefreshAssetBrowserCommand = _assetBrowser.RefreshAssetBrowserCommand;
         OpenAssetCommand = _assetBrowser.OpenAssetCommand;
+        ShowAssetInExplorerCommand = _assetBrowser.ShowInExplorerCommand;
+        RenameAssetCommand = _assetBrowser.RenameAssetCommand;
+        DeleteAssetCommand = _assetBrowser.DeleteAssetCommand;
         DeleteSelectedHierarchyItemCommand = new PaneItemCommand<HierarchyItemViewModel>(
             GetSelectedHierarchyEntity,
             item => DeleteHierarchyItem(item),
@@ -134,6 +138,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand CloseSelectedDocumentCommand { get; }
     public ICommand RefreshAssetBrowserCommand { get; }
     public ICommand OpenAssetCommand { get; }
+    public ICommand ShowAssetInExplorerCommand { get; }
+    public ICommand RenameAssetCommand { get; }
+    public ICommand DeleteAssetCommand { get; }
     public ICommand DeleteSelectedHierarchyItemCommand { get; }
     public ICommand RenameSelectedHierarchyItemCommand { get; }
     public ICommand CutSelectedHierarchyItemCommand { get; }
@@ -450,6 +457,19 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         RenameSelectedHierarchyItem(renameDialog.NameText);
+    }
+
+    private string? PromptForAssetRename(string currentName)
+    {
+        var renameDialog = new HierarchyRenameDialog(
+            currentName,
+            "Rename Asset",
+            "Rename asset or folder")
+        {
+            Owner = _ownerWindow
+        };
+
+        return renameDialog.ShowDialog() == true ? renameDialog.NameText : null;
     }
 
     private HierarchyItemViewModel? GetSelectedHierarchyEntity()

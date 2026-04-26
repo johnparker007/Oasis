@@ -18,7 +18,8 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0"
+        <TextBlock x:Name="HeaderTextBlock"
+                   Grid.Row="0"
                    FontSize="16"
                    FontWeight="SemiBold"
                    Text="Rename hierarchy item" />

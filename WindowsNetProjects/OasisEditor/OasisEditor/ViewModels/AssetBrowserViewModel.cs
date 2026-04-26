@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Windows.Input;
@@ -12,6 +13,7 @@ public sealed class AssetBrowserViewModel
     private readonly Action _notifyInspectorChanged;
     private readonly Action<string, OutputLogStatus> _addOutputEntry;
     private readonly Action<AssetBrowserItemViewModel?> _openAsset;
+    private readonly Func<string, string?> _requestAssetRename;
     private AssetBrowserItemViewModel? _selectedAsset;
     private AssetDirectoryNodeViewModel? _selectedDirectory;
     public event Action? StateChanged;
@@ -21,26 +23,41 @@ public sealed class AssetBrowserViewModel
         Action selectionChanged,
         Action notifyInspectorChanged,
         Action<string, OutputLogStatus> addOutputEntry,
-        Action<AssetBrowserItemViewModel?> openAsset)
+        Action<AssetBrowserItemViewModel?> openAsset,
+        Func<string, string?> requestAssetRename)
     {
         _loadedProjectAccessor = loadedProjectAccessor;
         _selectionChanged = selectionChanged;
         _notifyInspectorChanged = notifyInspectorChanged;
         _addOutputEntry = addOutputEntry;
         _openAsset = openAsset;
+        _requestAssetRename = requestAssetRename;
 
         AssetBrowserItems = new ObservableCollection<AssetBrowserItemViewModel>();
         AssetDirectoryTree = new ObservableCollection<AssetDirectoryNodeViewModel>();
         RefreshAssetBrowserCommand = new RelayCommand(RefreshAssetBrowser, CanRefreshAssetBrowser);
         OpenAssetCommand = new PaneItemCommand<AssetBrowserItemViewModel>(
             () => SelectedAsset,
-            asset => OpenAsset(asset));
+            asset => OpenAsset(asset),
+            CanOpenAsset);
+        ShowInExplorerCommand = new PaneItemCommand<AssetBrowserItemViewModel>(
+            () => SelectedAsset,
+            asset => ShowInExplorer(asset));
+        RenameAssetCommand = new PaneItemCommand<AssetBrowserItemViewModel>(
+            () => SelectedAsset,
+            asset => RenameAsset(asset));
+        DeleteAssetCommand = new PaneItemCommand<AssetBrowserItemViewModel>(
+            () => SelectedAsset,
+            asset => DeleteAsset(asset));
     }
 
     public ObservableCollection<AssetBrowserItemViewModel> AssetBrowserItems { get; }
     public ObservableCollection<AssetDirectoryNodeViewModel> AssetDirectoryTree { get; }
     public ICommand RefreshAssetBrowserCommand { get; }
     public ICommand OpenAssetCommand { get; }
+    public ICommand ShowInExplorerCommand { get; }
+    public ICommand RenameAssetCommand { get; }
+    public ICommand DeleteAssetCommand { get; }
 
     public AssetDirectoryNodeViewModel? SelectedDirectory
     {
@@ -74,6 +91,7 @@ public sealed class AssetBrowserViewModel
             _notifyInspectorChanged();
             NotifyRefreshCommand();
             NotifyOpenAssetCommand();
+            NotifyAssetContextCommands();
             StateChanged?.Invoke();
         }
     }
@@ -191,12 +209,31 @@ public sealed class AssetBrowserViewModel
     {
         if (asset.IsDirectory)
         {
+            if (!Directory.Exists(asset.FullPath))
+            {
+                _addOutputEntry($"Cannot open folder; path does not exist: {asset.FullPath}", OutputLogStatus.Warning);
+                return;
+            }
+
             SelectDirectoryByPath(asset.FullPath);
+            return;
+        }
+
+        if (!File.Exists(asset.FullPath))
+        {
+            _addOutputEntry($"Cannot open asset; path does not exist: {asset.FullPath}", OutputLogStatus.Warning);
             return;
         }
 
         SelectedAsset = asset;
         _openAsset(asset);
+    }
+
+    private static bool CanOpenAsset(AssetBrowserItemViewModel asset)
+    {
+        return asset.IsDirectory
+            ? Directory.Exists(asset.FullPath)
+            : File.Exists(asset.FullPath);
     }
 
     private void NotifyOpenAssetCommand()
@@ -205,6 +242,154 @@ public sealed class AssetBrowserViewModel
         {
             openAssetCommand.RaiseCanExecuteChanged();
         }
+    }
+
+    private void NotifyAssetContextCommands()
+    {
+        if (ShowInExplorerCommand is PaneItemCommand<AssetBrowserItemViewModel> showInExplorerCommand)
+        {
+            showInExplorerCommand.RaiseCanExecuteChanged();
+        }
+
+        if (RenameAssetCommand is PaneItemCommand<AssetBrowserItemViewModel> renameAssetCommand)
+        {
+            renameAssetCommand.RaiseCanExecuteChanged();
+        }
+
+        if (DeleteAssetCommand is PaneItemCommand<AssetBrowserItemViewModel> deleteAssetCommand)
+        {
+            deleteAssetCommand.RaiseCanExecuteChanged();
+        }
+    }
+
+    private void ShowInExplorer(AssetBrowserItemViewModel asset)
+    {
+        if (asset.IsDirectory)
+        {
+            if (!Directory.Exists(asset.FullPath))
+            {
+                _addOutputEntry($"Cannot show folder in Explorer; path does not exist: {asset.FullPath}", OutputLogStatus.Warning);
+                return;
+            }
+
+            try
+            {
+                Process.Start(new ProcessStartInfo("explorer.exe", $"\"{asset.FullPath}\"")
+                {
+                    UseShellExecute = true
+                });
+                _addOutputEntry($"Opened folder in Explorer: {asset.DisplayPath}", OutputLogStatus.Info);
+            }
+            catch (Exception ex)
+            {
+                _addOutputEntry($"Failed to open folder in Explorer: {ex.Message}", OutputLogStatus.Warning);
+            }
+
+            return;
+        }
+
+        if (!File.Exists(asset.FullPath))
+        {
+            _addOutputEntry($"Cannot show file in Explorer; path does not exist: {asset.FullPath}", OutputLogStatus.Warning);
+            return;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{asset.FullPath}\"")
+            {
+                UseShellExecute = true
+            });
+            _addOutputEntry($"Selected file in Explorer: {asset.DisplayPath}", OutputLogStatus.Info);
+        }
+        catch (Exception ex)
+        {
+            _addOutputEntry($"Failed to show file in Explorer: {ex.Message}", OutputLogStatus.Warning);
+        }
+    }
+
+    private void RenameAsset(AssetBrowserItemViewModel asset)
+    {
+        var requestedName = _requestAssetRename(asset.DisplayPath);
+        if (string.IsNullOrWhiteSpace(requestedName))
+        {
+            return;
+        }
+
+        var trimmedName = requestedName.Trim();
+        if (trimmedName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0
+            || trimmedName.Contains(Path.DirectorySeparatorChar)
+            || trimmedName.Contains(Path.AltDirectorySeparatorChar))
+        {
+            _addOutputEntry($"Rename failed: invalid asset name '{trimmedName}'.", OutputLogStatus.Warning);
+            return;
+        }
+
+        var parentDirectory = Path.GetDirectoryName(asset.FullPath);
+        if (string.IsNullOrWhiteSpace(parentDirectory))
+        {
+            _addOutputEntry("Rename failed: could not resolve parent directory.", OutputLogStatus.Warning);
+            return;
+        }
+
+        var targetPath = Path.Combine(parentDirectory, trimmedName);
+        var loadedProject = _loadedProjectAccessor();
+        if (loadedProject is null || !IsPathInsideRoot(loadedProject.AssetsDirectory, targetPath))
+        {
+            _addOutputEntry("Rename blocked: target path escapes the Assets root.", OutputLogStatus.Warning);
+            return;
+        }
+
+        if (string.Equals(asset.FullPath, targetPath, StringComparison.OrdinalIgnoreCase))
+        {
+            _addOutputEntry($"Rename skipped: '{asset.DisplayPath}' is unchanged.", OutputLogStatus.Info);
+            return;
+        }
+
+        if (File.Exists(targetPath) || Directory.Exists(targetPath))
+        {
+            _addOutputEntry($"Rename failed: '{trimmedName}' already exists.", OutputLogStatus.Warning);
+            return;
+        }
+
+        try
+        {
+            if (asset.IsDirectory)
+            {
+                if (!Directory.Exists(asset.FullPath))
+                {
+                    _addOutputEntry($"Rename failed: folder not found '{asset.FullPath}'.", OutputLogStatus.Warning);
+                    return;
+                }
+
+                Directory.Move(asset.FullPath, targetPath);
+            }
+            else
+            {
+                if (!File.Exists(asset.FullPath))
+                {
+                    _addOutputEntry($"Rename failed: file not found '{asset.FullPath}'.", OutputLogStatus.Warning);
+                    return;
+                }
+
+                File.Move(asset.FullPath, targetPath);
+            }
+
+            RefreshAssetBrowser();
+            SelectDirectoryByPath(parentDirectory);
+            SelectedAsset = AssetBrowserItems.FirstOrDefault(item =>
+                string.Equals(item.FullPath, targetPath, StringComparison.OrdinalIgnoreCase));
+            _addOutputEntry($"Renamed '{asset.DisplayPath}' to '{trimmedName}'.", OutputLogStatus.Info);
+        }
+        catch (Exception ex)
+        {
+            _addOutputEntry($"Rename failed: {ex.Message}", OutputLogStatus.Warning);
+        }
+    }
+
+    private void DeleteAsset(AssetBrowserItemViewModel asset)
+    {
+        _addOutputEntry($"Delete is not implemented yet ({asset.DisplayPath}).", OutputLogStatus.Info);
     }
 
     private static string GetDirectoryDisplayPath(string assetsRoot, string directoryPath)
