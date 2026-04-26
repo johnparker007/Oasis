@@ -193,8 +193,23 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         get => _selectedDocument;
         set
         {
+            if (ReferenceEquals(_selectedDocument, value))
+            {
+                return;
+            }
+
+            if (_selectedDocument is not null)
+            {
+                _selectedDocument.PropertyChanged -= OnSelectedDocumentPropertyChanged;
+            }
+
             if (SetProperty(ref _selectedDocument, value))
             {
+                if (_selectedDocument is not null)
+                {
+                    _selectedDocument.PropertyChanged += OnSelectedDocumentPropertyChanged;
+                }
+
                 _activeDocumentContext.SetActiveDocument(value);
                 NotifyInspectorChanged();
                 NotifyDocumentCommands();
@@ -851,6 +866,20 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(HierarchyItems));
         OnPropertyChanged(nameof(HasHierarchyItems));
         OnPropertyChanged(nameof(HierarchyEmptyStateMessage));
+    }
+
+    private void OnSelectedDocumentPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(DocumentTabViewModel.PanelLayoutJson)
+            or nameof(DocumentTabViewModel.HierarchySelectedPanelSelection))
+        {
+            RefreshHierarchy();
+        }
+
+        if (e.PropertyName is nameof(DocumentTabViewModel.HierarchySelectedPanelSelection))
+        {
+            NotifyInspectorChanged();
+        }
     }
 
     private DocumentTabViewModel? ApplyInspectorSummary(DocumentTabViewModel _, string summary)
