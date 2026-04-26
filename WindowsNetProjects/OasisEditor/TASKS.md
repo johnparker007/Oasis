@@ -47,8 +47,8 @@ These tasks come from the Editor code review. Complete them in order. Build and 
   - [ ] Keep click-to-place behaviour unchanged
   - [ ] Verify placement works with current pan/zoom transforms
 - [ ] Remove or isolate hardcoded MVP canvas sample visuals
-  - [ ] Ensure non-persisted instructional visuals are not selectable editor objects
-  - [ ] Prefer an overlay/help layer rather than selectable placeholder rectangles/text
+  - [x] Ensure non-persisted instructional visuals are not selectable editor objects
+  - [x] Prefer an overlay/help layer rather than selectable placeholder rectangles/text
   - [ ] Verify hierarchy contains only persisted panel elements
   - [ ] Verify save/load does not include sample visuals
 
