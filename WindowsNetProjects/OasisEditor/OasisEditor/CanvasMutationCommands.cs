@@ -26,6 +26,14 @@ internal static class CanvasMutationCommands
         return new RenameElementMutationCommand(documentId, document, selection, newName);
     }
 
+    public static Commands.ICommand CreateDuplicateElementCommand(
+        Guid documentId,
+        DocumentTabViewModel document,
+        PanelSelectionInfo selection)
+    {
+        return new DuplicateElementMutationCommand(documentId, document, selection);
+    }
+
     private sealed class AddPanelElementMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
     {
         private readonly Guid _documentId;
@@ -255,6 +263,87 @@ internal static class CanvasMutationCommands
         }
     }
 
+    private sealed class DuplicateElementMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
+    {
+        private const double DuplicateOffset = 10.0;
+        private readonly Guid _documentId;
+        private readonly DocumentTabViewModel _document;
+        private readonly PanelSelectionInfo _selection;
+        private PanelElementModel? _duplicatedElement;
+        private int? _insertIndex;
+
+        public DuplicateElementMutationCommand(Guid documentId, DocumentTabViewModel document, PanelSelectionInfo selection)
+        {
+            _documentId = documentId;
+            _document = document;
+            _selection = selection;
+        }
+
+        public Guid DocumentId => _documentId;
+
+        public string Description => "Duplicate element";
+
+        public bool WasExecuted { get; private set; }
+
+        public void Execute()
+        {
+            WasExecuted = false;
+            var elements = _document.GetPanelElements().ToList();
+
+            if (_duplicatedElement is null)
+            {
+                if (!TryFindMatchingElementIndex(elements, _selection, out var sourceIndex))
+                {
+                    return;
+                }
+
+                var sourceElement = elements[sourceIndex];
+                _duplicatedElement = new PanelElementModel
+                {
+                    ObjectId = BuildUniqueObjectId(elements),
+                    Name = BuildDuplicateName(sourceElement, elements),
+                    Kind = sourceElement.Kind,
+                    X = sourceElement.X + DuplicateOffset,
+                    Y = sourceElement.Y + DuplicateOffset,
+                    Width = sourceElement.Width,
+                    Height = sourceElement.Height
+                };
+                _insertIndex = Math.Clamp(sourceIndex + 1, 0, elements.Count);
+            }
+
+            var duplicate = _duplicatedElement;
+            if (duplicate is null || elements.Any(element => string.Equals(element.ObjectId, duplicate.ObjectId, StringComparison.Ordinal)))
+            {
+                return;
+            }
+
+            var insertIndex = Math.Clamp(_insertIndex ?? elements.Count, 0, elements.Count);
+            elements.Insert(insertIndex, duplicate);
+            _document.SetPanelElements(elements);
+            _document.MarkDirty();
+            WasExecuted = true;
+        }
+
+        public void Undo()
+        {
+            var duplicatedElement = _duplicatedElement;
+            if (duplicatedElement is null)
+            {
+                return;
+            }
+
+            var elements = _document.GetPanelElements().ToList();
+            var removed = elements.RemoveAll(element => string.Equals(element.ObjectId, duplicatedElement.ObjectId, StringComparison.Ordinal)) > 0;
+            if (!removed)
+            {
+                return;
+            }
+
+            _document.SetPanelElements(elements);
+            _document.MarkDirty();
+        }
+    }
+
     private static bool TryFindMatchingElementIndex(IReadOnlyList<PanelElementModel> elements, PanelSelectionInfo selection, out int index)
     {
         if (!string.IsNullOrWhiteSpace(selection.ObjectId))
@@ -299,5 +388,45 @@ internal static class CanvasMutationCommands
     private static bool IsMatch(PanelElementModel element, PanelSelectionInfo selection)
     {
         return PanelSelectionContract.IsMatch(Panel2DDocumentStorage.ToStorageElement(element), selection);
+    }
+
+    private static string BuildUniqueObjectId(IReadOnlyList<PanelElementModel> elements)
+    {
+        var existingIds = new HashSet<string>(elements.Select(element => element.ObjectId), StringComparer.Ordinal);
+        string candidate;
+        do
+        {
+            candidate = Guid.NewGuid().ToString("N");
+        } while (existingIds.Contains(candidate));
+
+        return candidate;
+    }
+
+    private static string BuildDuplicateName(PanelElementModel sourceElement, IReadOnlyList<PanelElementModel> elements)
+    {
+        var baseName = string.IsNullOrWhiteSpace(sourceElement.Name)
+            ? Panel2DDocumentStorage.SerializeElementKind(sourceElement.Kind)
+            : sourceElement.Name.Trim();
+
+        var copyBase = $"{baseName} Copy";
+        var existingNames = new HashSet<string>(
+            elements.Select(element => element.Name.Trim()),
+            StringComparer.OrdinalIgnoreCase);
+        if (!existingNames.Contains(copyBase))
+        {
+            return copyBase;
+        }
+
+        var suffix = 2;
+        while (true)
+        {
+            var candidate = $"{copyBase} {suffix}";
+            if (!existingNames.Contains(candidate))
+            {
+                return candidate;
+            }
+
+            suffix++;
+        }
     }
 }

@@ -466,7 +466,21 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private static bool CanPasteHierarchyItem() => false;
 
-    private static bool CanDuplicateSelectedHierarchyItem() => false;
+    private bool CanDuplicateSelectedHierarchyItem()
+    {
+        var selectedDocument = SelectedDocument;
+        if (selectedDocument is null || selectedDocument.Document.DocumentType != EditorDocumentType.Panel2D)
+        {
+            return false;
+        }
+
+        if (selectedDocument.HierarchySelectedPanelSelection is not PanelSelectionInfo selection)
+        {
+            return false;
+        }
+
+        return selectedDocument.HasPanelElement(selection);
+    }
 
     private static void ExecuteCutSelectedHierarchyItem()
     {
@@ -480,8 +494,30 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
     }
 
-    private static void ExecuteDuplicateSelectedHierarchyItem()
+    private void ExecuteDuplicateSelectedHierarchyItem()
     {
+        var selectedDocument = SelectedDocument;
+        if (selectedDocument is null || selectedDocument.Document.DocumentType != EditorDocumentType.Panel2D)
+        {
+            return;
+        }
+
+        if (selectedDocument.HierarchySelectedPanelSelection is not PanelSelectionInfo selection)
+        {
+            return;
+        }
+
+        if (!selectedDocument.HasPanelElement(selection))
+        {
+            return;
+        }
+
+        var command = CanvasMutationCommands.CreateDuplicateElementCommand(
+            selectedDocument.DocumentId,
+            selectedDocument,
+            selection);
+
+        ExecuteDocumentCanvasCommand(selectedDocument.DocumentId, command);
     }
 
     private bool CanOpenUntitledDocument()

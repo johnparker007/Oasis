@@ -283,6 +283,135 @@ public sealed class Panel2DRoundTripTests
         Assert.Equal("Rectangles (0)", rectangleGroupAfterDelete.DisplayName);
     }
 
+    [Fact]
+    public void DeleteElementCommand_TracksExecutionAndSupportsUndoRedo()
+    {
+        var document = CreatePanelDocument(
+            new PanelElementModel
+            {
+                ObjectId = "rect-1",
+                Name = "Rect 1",
+                Kind = PanelElementKind.Rectangle,
+                X = 12,
+                Y = 18,
+                Width = 24,
+                Height = 30
+            });
+
+        var selection = new PanelSelectionInfo("rect-1", "rectangle", 12, 18, 24, 30);
+        var command = CanvasMutationCommands.CreateDeleteElementCommand(document.DocumentId, document, selection);
+
+        Assert.IsAssignableFrom<Commands.IExecutionTrackedCommand>(command);
+        var tracked = (Commands.IExecutionTrackedCommand)command;
+
+        command.Execute();
+        Assert.True(tracked.WasExecuted);
+        Assert.Empty(document.GetPanelElements());
+
+        command.Undo();
+        var restored = Assert.Single(document.GetPanelElements());
+        Assert.Equal("rect-1", restored.ObjectId);
+
+        command.Execute();
+        Assert.True(tracked.WasExecuted);
+        Assert.Empty(document.GetPanelElements());
+    }
+
+    [Fact]
+    public void DeleteElementCommand_NoMatchingSelection_DoesNotExecute()
+    {
+        var document = CreatePanelDocument(
+            new PanelElementModel
+            {
+                ObjectId = "rect-1",
+                Name = "Rect 1",
+                Kind = PanelElementKind.Rectangle,
+                X = 10,
+                Y = 10,
+                Width = 20,
+                Height = 20
+            });
+
+        var missingSelection = new PanelSelectionInfo("missing-id", "rectangle", 10, 10, 20, 20);
+        var command = CanvasMutationCommands.CreateDeleteElementCommand(document.DocumentId, document, missingSelection);
+        var tracked = Assert.IsAssignableFrom<Commands.IExecutionTrackedCommand>(command);
+
+        command.Execute();
+
+        Assert.False(tracked.WasExecuted);
+        Assert.Single(document.GetPanelElements());
+    }
+
+    [Fact]
+    public void DuplicateElementCommand_CreatesOffsetElementWithNewObjectIdAndCopyName()
+    {
+        var document = CreatePanelDocument(
+            new PanelElementModel
+            {
+                ObjectId = "source-id",
+                Name = "Rect Original",
+                Kind = PanelElementKind.Rectangle,
+                X = 30,
+                Y = 40,
+                Width = 50,
+                Height = 60
+            });
+
+        var selection = new PanelSelectionInfo("source-id", "rectangle", 30, 40, 50, 60);
+        var command = CanvasMutationCommands.CreateDuplicateElementCommand(document.DocumentId, document, selection);
+        var tracked = Assert.IsAssignableFrom<Commands.IExecutionTrackedCommand>(command);
+
+        command.Execute();
+
+        Assert.True(tracked.WasExecuted);
+        Assert.Equal(2, document.GetPanelElements().Count);
+
+        var source = document.GetPanelElements().Single(element => element.ObjectId == "source-id");
+        var duplicate = document.GetPanelElements().Single(element => element.ObjectId != "source-id");
+        Assert.Equal("Rect Original Copy", duplicate.Name);
+        Assert.Equal(source.Kind, duplicate.Kind);
+        Assert.Equal(source.X + 10, duplicate.X);
+        Assert.Equal(source.Y + 10, duplicate.Y);
+        Assert.Equal(source.Width, duplicate.Width);
+        Assert.Equal(source.Height, duplicate.Height);
+    }
+
+    [Fact]
+    public void DuplicateElementCommand_UsesIncrementedCopyNameWhenNeeded()
+    {
+        var document = CreatePanelDocument(
+            new PanelElementModel
+            {
+                ObjectId = "source-id",
+                Name = "Rect Original",
+                Kind = PanelElementKind.Rectangle,
+                X = 10,
+                Y = 20,
+                Width = 30,
+                Height = 40
+            },
+            new PanelElementModel
+            {
+                ObjectId = "existing-copy",
+                Name = "Rect Original Copy",
+                Kind = PanelElementKind.Rectangle,
+                X = 100,
+                Y = 100,
+                Width = 30,
+                Height = 40
+            });
+
+        var selection = new PanelSelectionInfo("source-id", "rectangle", 10, 20, 30, 40);
+        var command = CanvasMutationCommands.CreateDuplicateElementCommand(document.DocumentId, document, selection);
+
+        command.Execute();
+
+        var duplicate = document.GetPanelElements().Single(element =>
+            element.ObjectId != "source-id"
+            && element.ObjectId != "existing-copy");
+        Assert.Equal("Rect Original Copy 2", duplicate.Name);
+    }
+
     [Theory]
     [InlineData(0.1, 9.9, 0.0, 10.0)]
     [InlineData(14.9, 15.1, 10.0, 20.0)]
