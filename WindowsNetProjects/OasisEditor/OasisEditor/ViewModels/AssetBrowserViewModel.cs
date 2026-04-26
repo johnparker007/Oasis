@@ -442,7 +442,55 @@ public sealed class AssetBrowserViewModel
             return;
         }
 
-        _addOutputEntry($"Delete is not implemented yet ({asset.DisplayPath}).", OutputLogStatus.Info);
+        var loadedProject = _loadedProjectAccessor();
+        if (loadedProject is null || !IsPathInsideRoot(loadedProject.AssetsDirectory, asset.FullPath))
+        {
+            _addOutputEntry("Delete blocked: target path is outside the Assets root.", OutputLogStatus.Warning);
+            return;
+        }
+
+        var parentDirectory = Path.GetDirectoryName(asset.FullPath) ?? SelectedDirectory?.FullPath ?? loadedProject.AssetsDirectory;
+        var selectedDirectoryPath = SelectedDirectory?.FullPath;
+
+        try
+        {
+            if (asset.IsDirectory)
+            {
+                if (!Directory.Exists(asset.FullPath))
+                {
+                    _addOutputEntry($"Delete skipped: folder not found '{asset.FullPath}'.", OutputLogStatus.Warning);
+                    return;
+                }
+
+                var hasChildren = Directory.EnumerateFileSystemEntries(asset.FullPath).Any();
+                if (hasChildren)
+                {
+                    _addOutputEntry($"Delete blocked: folder '{asset.DisplayPath}' is not empty.", OutputLogStatus.Warning);
+                    return;
+                }
+
+                Directory.Delete(asset.FullPath, recursive: false);
+                _addOutputEntry($"Deleted folder: {asset.DisplayPath}", OutputLogStatus.Info);
+            }
+            else
+            {
+                if (!File.Exists(asset.FullPath))
+                {
+                    _addOutputEntry($"Delete skipped: file not found '{asset.FullPath}'.", OutputLogStatus.Warning);
+                    return;
+                }
+
+                File.Delete(asset.FullPath);
+                _addOutputEntry($"Deleted file: {asset.DisplayPath}", OutputLogStatus.Info);
+            }
+
+            RefreshAssetBrowser();
+            SelectDirectoryByPath(selectedDirectoryPath ?? parentDirectory);
+        }
+        catch (Exception ex)
+        {
+            _addOutputEntry($"Delete failed: {ex.Message}", OutputLogStatus.Warning);
+        }
     }
 
     private static string GetDirectoryDisplayPath(string assetsRoot, string directoryPath)
