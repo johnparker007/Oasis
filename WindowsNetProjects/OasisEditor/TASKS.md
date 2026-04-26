@@ -113,39 +113,39 @@ These tasks come from the latest Editor code review. Complete them in order. Bui
 - [x] Ensure right-clicking an asset item selects it before showing the context menu
   - [x] Support both left-tree directory items and right-pane directory/file items where practical
   - [x] Do not break double-click open/navigation
-- [ ] Add initial asset item context menu items
-  - [ ] Show In Explorer
-  - [ ] Open
-  - [ ] Delete
-  - [ ] Rename
-- [ ] Implement Show In Explorer
-  - [ ] For files, show/select the file in Windows Explorer
-  - [ ] For folders, open the folder in Windows Explorer
-  - [ ] Handle missing paths gracefully and log a useful output message
-- [ ] Implement Open
-  - [ ] Files: use the existing asset document open flow
-  - [ ] Folders: navigate into the folder
-  - [ ] Disable Open where it is not meaningful
-- [ ] Implement Rename for assets/folders
-  - [ ] Validate non-empty names
-  - [ ] Prevent path traversal and paths outside the Assets root
-  - [ ] Prevent duplicate target names
-  - [ ] Refresh tree/content after successful rename
-  - [ ] Preserve selection on the renamed item where practical
-  - [ ] Log success/failure to output
-- [ ] Implement Delete for assets/folders
-  - [ ] Prevent deletion outside the Assets root
-  - [ ] Handle missing paths gracefully
-  - [ ] Decide whether non-empty folders are blocked or deleted recursively; prefer blocking first unless explicitly requested
-  - [ ] Refresh tree/content after successful delete
-  - [ ] Clear or move selection safely after delete
-  - [ ] Log success/failure to output
-- [ ] Verify asset context menu behavior
-  - [ ] Right-click selects the intended item
-  - [ ] Show In Explorer works for files and folders
-  - [ ] Open works for files and folder navigation
-  - [ ] Rename handles invalid/duplicate names cleanly
-  - [ ] Delete handles files, empty folders, missing paths, and non-empty folders safely
+- [x] Add initial asset item context menu items
+  - [x] Show In Explorer
+  - [x] Open
+  - [x] Delete
+  - [x] Rename
+- [x] Implement Show In Explorer
+  - [x] For files, show/select the file in Windows Explorer
+  - [x] For folders, open the folder in Windows Explorer
+  - [x] Handle missing paths gracefully and log a useful output message
+- [x] Implement Open
+  - [x] Files: use the existing asset document open flow
+  - [x] Folders: navigate into the folder
+  - [x] Disable Open where it is not meaningful
+- [x] Implement Rename for assets/folders
+  - [x] Validate non-empty names
+  - [x] Prevent path traversal and paths outside the Assets root
+  - [x] Prevent duplicate target names
+  - [x] Refresh tree/content after successful rename
+  - [x] Preserve selection on the renamed item where practical
+  - [x] Log success/failure to output
+- [x] Implement Delete for assets/folders
+  - [x] Prevent deletion outside the Assets root
+  - [x] Handle missing paths gracefully
+  - [x] Decide whether non-empty folders are blocked or deleted recursively; prefer blocking first unless explicitly requested
+  - [x`] Refresh tree/content after successful delete
+  - [x] Clear or move selection safely after delete
+  - [x] Log success/failure to output
+- [x] Verify asset context menu behavior
+  - [x] Right-click selects the intended item
+  - [x] Show In Explorer works for files and folders
+  - [x] Open works for files and folder navigation
+  - [x] Rename handles invalid/duplicate names cleanly
+  - [x] Delete handles files, empty folders, missing paths, and non-empty folders safely
 
 ### Phase J — Follow-up Refactor Checks
 - [ ] Review `MainWindowViewModel` after context menu and asset browser changes
