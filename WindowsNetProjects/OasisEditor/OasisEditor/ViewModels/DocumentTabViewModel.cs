@@ -117,9 +117,14 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
             Elements = elements.ToArray()
         };
 
-        _panelLayoutJson = Panel2DDocumentStorage.SerializeLayout(
-            Panel2DDocumentStorage.ToStorageElements(_panelDocumentModel));
+        _panelLayoutJson = GetPanelLayoutProjectionJson();
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PanelLayoutJson)));
+    }
+
+    internal string GetPanelLayoutProjectionJson()
+    {
+        return Panel2DDocumentStorage.SerializeLayout(
+            Panel2DDocumentStorage.ToStorageElements(_panelDocumentModel));
     }
 
     public PanelSelectionInfo? HierarchySelectedPanelSelection

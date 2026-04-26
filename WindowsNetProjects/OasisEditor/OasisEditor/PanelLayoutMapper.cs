@@ -75,15 +75,16 @@ public static class PanelLayoutMapper
             return;
         }
 
-        var elements = canvas.Children
-            .OfType<FrameworkElement>()
-            .Where(GetIsPersistedElement)
-            .Select(PanelElementFactory.CreateElementFromVisual)
-            .Where(element => element is not null)
-            .Cast<PanelElementFile>()
-            .ToArray();
-
-        var layoutJson = Panel2DDocumentStorage.SerializeLayout(elements);
+        var layoutJson = canvas.DataContext is DocumentTabViewModel tab
+            ? tab.GetPanelLayoutProjectionJson()
+            : Panel2DDocumentStorage.SerializeLayout(
+                canvas.Children
+                    .OfType<FrameworkElement>()
+                    .Where(GetIsPersistedElement)
+                    .Select(PanelElementFactory.CreateElementFromVisual)
+                    .Where(element => element is not null)
+                    .Cast<PanelElementFile>()
+                    .ToArray());
         canvas.SetValue(IsApplyingLayoutProperty, true);
         try
         {
