@@ -32,7 +32,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly HierarchyViewModel _hierarchy;
     private readonly DocumentWorkspaceViewModel _documentWorkspace;
     private readonly ActiveDocumentContextService _activeDocumentContext;
-    private PanelElementClipboardPayload? _panelClipboardPayload;
+    private readonly HierarchyPanelCommandService _hierarchyPanelCommands;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -85,6 +85,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _hierarchy = new HierarchyViewModel(
             () => SelectedDocument,
             [new Panel2DHierarchyProvider()]);
+        _hierarchyPanelCommands = new HierarchyPanelCommandService(
+            () => SelectedDocument,
+            ExecuteDocumentCanvasCommand,
+            UpdateDocumentPanelSelection,
+            NotifyHierarchyCommands);
 
         var preferences = _preferencesStore.Load();
         _selectedThemePreference = preferences.ThemePreference;
@@ -353,85 +358,17 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public bool DeleteSelectedHierarchyItem()
     {
-        var selectedDocument = SelectedDocument;
-        if (selectedDocument is null || selectedDocument.Document.DocumentType != EditorDocumentType.Panel2D)
-        {
-            return false;
-        }
-
-        if (selectedDocument.HierarchySelectedPanelSelection is not PanelSelectionInfo selection)
-        {
-            return false;
-        }
-
-        if (!selectedDocument.HasPanelElement(selection))
-        {
-            return false;
-        }
-
-        var command = CanvasMutationCommands.CreateDeleteElementCommand(selectedDocument.DocumentId, selectedDocument, selection);
-        var wasDeleted = ExecuteDocumentCanvasCommand(selectedDocument.DocumentId, command);
-        if (wasDeleted)
-        {
-            UpdateDocumentPanelSelection(selectedDocument.DocumentId, null);
-        }
-
-        return wasDeleted;
+        return _hierarchyPanelCommands.DeleteSelected();
     }
 
     public bool TryGetSelectedHierarchyItemName(out string currentName)
     {
-        currentName = string.Empty;
-        var selectedDocument = SelectedDocument;
-        if (selectedDocument is null || selectedDocument.Document.DocumentType != EditorDocumentType.Panel2D)
-        {
-            return false;
-        }
-
-        if (selectedDocument.HierarchySelectedPanelSelection is not PanelSelectionInfo selection)
-        {
-            return false;
-        }
-
-        if (!selectedDocument.TryGetPanelElement(selection, out var matchingElement))
-        {
-            return false;
-        }
-
-        currentName = matchingElement.Name ?? string.Empty;
-        return true;
+        return _hierarchyPanelCommands.TryGetSelectedName(out currentName);
     }
 
     public bool RenameSelectedHierarchyItem(string newName)
     {
-        var selectedDocument = SelectedDocument;
-        if (selectedDocument is null || selectedDocument.Document.DocumentType != EditorDocumentType.Panel2D)
-        {
-            return false;
-        }
-
-        if (selectedDocument.HierarchySelectedPanelSelection is not PanelSelectionInfo selection)
-        {
-            return false;
-        }
-
-        var normalizedName = newName?.Trim();
-        if (string.IsNullOrWhiteSpace(normalizedName))
-        {
-            return false;
-        }
-
-        if (!selectedDocument.HasPanelElement(selection))
-        {
-            return false;
-        }
-
-        var command = CanvasMutationCommands.CreateRenameElementCommand(
-            selectedDocument.DocumentId,
-            selectedDocument,
-            selection,
-            normalizedName);
-        return ExecuteDocumentCanvasCommand(selectedDocument.DocumentId, command);
+        return _hierarchyPanelCommands.RenameSelected(newName);
     }
 
     private bool CanRenameSelectedHierarchyItem()
@@ -519,163 +456,42 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private bool CanCutSelectedHierarchyItem()
     {
-        return CanCopySelectedHierarchyItem();
+        return _hierarchyPanelCommands.CanCutSelected();
     }
 
     private bool CanCopySelectedHierarchyItem()
     {
-        var selectedDocument = SelectedDocument;
-        if (selectedDocument is null || selectedDocument.Document.DocumentType != EditorDocumentType.Panel2D)
-        {
-            return false;
-        }
-
-        if (selectedDocument.HierarchySelectedPanelSelection is not PanelSelectionInfo selection)
-        {
-            return false;
-        }
-
-        return selectedDocument.HasPanelElement(selection);
+        return _hierarchyPanelCommands.CanCopySelected();
     }
 
     private bool CanPasteHierarchyItem()
     {
-        var selectedDocument = SelectedDocument;
-        return selectedDocument is not null
-               && selectedDocument.Document.DocumentType == EditorDocumentType.Panel2D
-               && _panelClipboardPayload is not null;
+        return _hierarchyPanelCommands.CanPasteSelected();
     }
 
     private bool CanDuplicateSelectedHierarchyItem()
     {
-        var selectedDocument = SelectedDocument;
-        if (selectedDocument is null || selectedDocument.Document.DocumentType != EditorDocumentType.Panel2D)
-        {
-            return false;
-        }
-
-        if (selectedDocument.HierarchySelectedPanelSelection is not PanelSelectionInfo selection)
-        {
-            return false;
-        }
-
-        return selectedDocument.HasPanelElement(selection);
+        return _hierarchyPanelCommands.CanDuplicateSelected();
     }
 
     private void ExecuteCutSelectedHierarchyItem()
     {
-        var selectedDocument = SelectedDocument;
-        if (selectedDocument is null || selectedDocument.Document.DocumentType != EditorDocumentType.Panel2D)
-        {
-            return;
-        }
-
-        if (selectedDocument.HierarchySelectedPanelSelection is not PanelSelectionInfo selection)
-        {
-            return;
-        }
-
-        if (!selectedDocument.HasPanelElement(selection))
-        {
-            return;
-        }
-
-        if (!TryCopySelectedHierarchyItemToClipboard())
-        {
-            return;
-        }
-
-        DeleteSelectedHierarchyItem();
+        _hierarchyPanelCommands.ExecuteCutSelected();
     }
 
     private void ExecuteCopySelectedHierarchyItem()
     {
-        if (!TryCopySelectedHierarchyItemToClipboard())
-        {
-            return;
-        }
+        _hierarchyPanelCommands.ExecuteCopySelected();
     }
 
     private void ExecutePasteHierarchyItem()
     {
-        var selectedDocument = SelectedDocument;
-        if (selectedDocument is null || selectedDocument.Document.DocumentType != EditorDocumentType.Panel2D)
-        {
-            return;
-        }
-
-        var clipboardPayload = _panelClipboardPayload;
-        if (clipboardPayload is null)
-        {
-            return;
-        }
-
-        var command = CanvasMutationCommands.CreatePasteElementCommand(
-            selectedDocument.DocumentId,
-            selectedDocument,
-            clipboardPayload.Element);
-        ExecuteDocumentCanvasCommand(selectedDocument.DocumentId, command);
-    }
-
-    private bool TryCopySelectedHierarchyItemToClipboard()
-    {
-        var selectedDocument = SelectedDocument;
-        if (selectedDocument is null || selectedDocument.Document.DocumentType != EditorDocumentType.Panel2D)
-        {
-            return false;
-        }
-
-        if (selectedDocument.HierarchySelectedPanelSelection is not PanelSelectionInfo selection)
-        {
-            return false;
-        }
-
-        if (!selectedDocument.TryGetPanelElement(selection, out var element))
-        {
-            return false;
-        }
-
-        _panelClipboardPayload = new PanelElementClipboardPayload
-        {
-            Element = new PanelElementModel
-            {
-                ObjectId = element.ObjectId,
-                Name = element.Name,
-                Kind = element.Kind,
-                X = element.X,
-                Y = element.Y,
-                Width = element.Width,
-                Height = element.Height
-            }
-        };
-        NotifyHierarchyCommands();
-        return true;
+        _hierarchyPanelCommands.ExecutePasteSelected();
     }
 
     private void ExecuteDuplicateSelectedHierarchyItem()
     {
-        var selectedDocument = SelectedDocument;
-        if (selectedDocument is null || selectedDocument.Document.DocumentType != EditorDocumentType.Panel2D)
-        {
-            return;
-        }
-
-        if (selectedDocument.HierarchySelectedPanelSelection is not PanelSelectionInfo selection)
-        {
-            return;
-        }
-
-        if (!selectedDocument.HasPanelElement(selection))
-        {
-            return;
-        }
-
-        var command = CanvasMutationCommands.CreateDuplicateElementCommand(
-            selectedDocument.DocumentId,
-            selectedDocument,
-            selection);
-
-        ExecuteDocumentCanvasCommand(selectedDocument.DocumentId, command);
+        _hierarchyPanelCommands.ExecuteDuplicateSelected();
     }
 
     private bool CanOpenUntitledDocument()
