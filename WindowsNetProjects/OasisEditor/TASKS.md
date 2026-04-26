@@ -14,28 +14,28 @@ These tasks come from the Editor code review. Complete them in order. Build and 
 - [ ] Add tests where practical; if the project has no test project yet, create the smallest suitable test project under the Editor solution only
 
 ### Phase A — Correctness Fixes Before Larger Refactors
-- [ ] Ensure Panel2D canvas mutations mark the owning document dirty
-  - [ ] Add a focused API on `DocumentTabViewModel` or the workspace to mark the document dirty without replacing unrelated state
-  - [ ] Ensure add rectangle marks the document dirty
-  - [ ] Ensure add image marks the document dirty
-  - [ ] Ensure delete element marks the document dirty only when an element was actually deleted
-  - [ ] Ensure rename element marks the document dirty only when the name actually changed
+- [x] Ensure Panel2D canvas mutations mark the owning document dirty
+  - [x] Add a focused API on `DocumentTabViewModel` or the workspace to mark the document dirty without replacing unrelated state
+  - [x] Ensure add rectangle marks the document dirty
+  - [x] Ensure add image marks the document dirty
+  - [x] Ensure delete element marks the document dirty only when an element was actually deleted
+  - [x] Ensure rename element marks the document dirty only when the name actually changed
   - [ ] Verify the tab title gains `*` after each real canvas mutation
-  - [ ] Verify saving clears the dirty marker
-- [ ] Prevent no-op document commands from entering undo/redo history
-  - [ ] Introduce a minimal success/no-op contract for commands, or an equivalent command-service guard
-  - [ ] Do not record delete when no matching element exists
-  - [ ] Do not record rename when no matching element exists
-  - [ ] Do not record rename when the new name equals the current name after normalisation
+  - [x] Verify saving clears the dirty marker
+- [x] Prevent no-op document commands from entering undo/redo history
+  - [x] Introduce a minimal success/no-op contract for commands, or an equivalent command-service guard
+  - [x] Do not record delete when no matching element exists
+  - [x] Do not record rename when no matching element exists
+  - [x] Do not record rename when the new name equals the current name after normalisation
   - [ ] Verify undo/redo menu labels do not change after no-op commands
 - [x] Preserve command-history integrity when closing and undoing a closed document tab
   - [x] Review whether clearing a document command history inside close-tab execution makes undo of tab close unsafe
   - [x] Adjust close-tab behaviour so undoing a close either restores a usable document safely or the close operation is not undoable
   - [x] Verify closing a tab cannot leave stale document commands executable against a different tab
-- [ ] Replace duplicated add-element command implementations
-  - [ ] Replace separate rectangle/image add commands with a single `AddPanelElementMutationCommand`
+- [x] Replace duplicated add-element command implementations
+  - [x] Replace separate rectangle/image add commands with a single `AddPanelElementMutationCommand`
   - [ ] Preserve existing public factory methods if that keeps callers stable
-  - [ ] Verify add rectangle/image undo/redo still works
+  - [x] Verify add rectangle/image undo/redo still works
 
 ### Phase B — Canvas Behaviour Split Without Changing UX
 - [x] Move canvas command dispatch out of `CanvasPanBehavior`
@@ -43,12 +43,12 @@ These tasks come from the Editor code review. Complete them in order. Build and 
   - [x] Keep `Window.GetWindow(...)` usage contained in one place if it cannot be removed yet
   - [x] Preserve current canvas behaviour and bindings
 - [ ] Move panel tool placement logic out of `CanvasPanBehavior`
-  - [ ] Extract rectangle/image placement decisions into a focused tool/controller class
+  - [x] Extract rectangle/image placement decisions into a focused tool/controller class
   - [ ] Keep click-to-place behaviour unchanged
   - [ ] Verify placement works with current pan/zoom transforms
 - [ ] Remove or isolate hardcoded MVP canvas sample visuals
-  - [ ] Ensure non-persisted instructional visuals are not selectable editor objects
-  - [ ] Prefer an overlay/help layer rather than selectable placeholder rectangles/text
+  - [x] Ensure non-persisted instructional visuals are not selectable editor objects
+  - [x] Prefer an overlay/help layer rather than selectable placeholder rectangles/text
   - [ ] Verify hierarchy contains only persisted panel elements
   - [ ] Verify save/load does not include sample visuals
 
