@@ -85,6 +85,43 @@ public sealed class AssetBrowserViewModelTests
         Assert.Empty(viewModel.AssetBrowserItems);
     }
 
+    [Fact]
+    public void DeleteAssetCommand_WhenFileSelected_DeletesFileAndRefreshes()
+    {
+        using var temp = new TempProjectDirectory();
+        var filePath = Path.Combine(temp.AssetsDirectory, "delete-me.txt");
+        File.WriteAllText(filePath, "test");
+
+        var viewModel = CreateViewModel(temp.Project, _ => { });
+        viewModel.RefreshAssetBrowser();
+        var fileItem = Assert.Single(viewModel.AssetBrowserItems, item => !item.IsDirectory && item.DisplayPath == "delete-me.txt");
+
+        Assert.True(viewModel.DeleteAssetCommand.CanExecute(fileItem));
+        viewModel.DeleteAssetCommand.Execute(fileItem);
+
+        Assert.False(File.Exists(filePath));
+        Assert.DoesNotContain(viewModel.AssetBrowserItems, item => item.DisplayPath == "delete-me.txt");
+    }
+
+    [Fact]
+    public void DeleteAssetCommand_WhenFolderNotEmpty_BlocksDeletion()
+    {
+        using var temp = new TempProjectDirectory();
+        var folderPath = Path.Combine(temp.AssetsDirectory, "Art");
+        Directory.CreateDirectory(folderPath);
+        File.WriteAllText(Path.Combine(folderPath, "panel.panel2d"), "{}");
+
+        var viewModel = CreateViewModel(temp.Project, _ => { });
+        viewModel.RefreshAssetBrowser();
+        var folderItem = Assert.Single(viewModel.AssetBrowserItems, item => item.IsDirectory && item.DisplayPath == "Art");
+
+        Assert.True(viewModel.DeleteAssetCommand.CanExecute(folderItem));
+        viewModel.DeleteAssetCommand.Execute(folderItem);
+
+        Assert.True(Directory.Exists(folderPath));
+        Assert.Contains(viewModel.AssetBrowserItems, item => item.IsDirectory && item.DisplayPath == "Art");
+    }
+
     private static AssetBrowserViewModel CreateViewModel(EditorProject project, Action<AssetBrowserItemViewModel?> openAsset)
     {
         return new AssetBrowserViewModel(
@@ -92,7 +129,8 @@ public sealed class AssetBrowserViewModelTests
             selectionChanged: () => { },
             notifyInspectorChanged: () => { },
             addOutputEntry: (_, _) => { },
-            openAsset: openAsset);
+            openAsset: openAsset,
+            requestAssetRename: _ => null);
     }
 
     private sealed class TempProjectDirectory : IDisposable
