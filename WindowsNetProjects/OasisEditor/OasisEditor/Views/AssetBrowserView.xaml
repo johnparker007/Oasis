@@ -45,6 +45,27 @@
                       Foreground="{DynamicResource TextPrimaryBrush}"
                       BorderBrush="{DynamicResource BorderSubtleBrush}"
                       BorderThickness="1">
+                <TreeView.ContextMenu>
+                    <ContextMenu Style="{StaticResource EditorContextMenuStyle}"
+                                 DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                        <MenuItem Header="Open"
+                                  Style="{StaticResource EditorContextMenuItemStyle}"
+                                  Command="{Binding OpenAssetCommand}"
+                                  CommandParameter="{Binding PlacementTarget.SelectedItem, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}" />
+                        <MenuItem Header="Show In Explorer"
+                                  Style="{StaticResource EditorContextMenuItemStyle}"
+                                  Command="{Binding ShowAssetInExplorerCommand}"
+                                  CommandParameter="{Binding PlacementTarget.SelectedItem, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}" />
+                        <MenuItem Header="Rename"
+                                  Style="{StaticResource EditorContextMenuItemStyle}"
+                                  Command="{Binding RenameAssetCommand}"
+                                  CommandParameter="{Binding PlacementTarget.SelectedItem, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}" />
+                        <MenuItem Header="Delete"
+                                  Style="{StaticResource EditorContextMenuItemStyle}"
+                                  Command="{Binding DeleteAssetCommand}"
+                                  CommandParameter="{Binding PlacementTarget.SelectedItem, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}" />
+                    </ContextMenu>
+                </TreeView.ContextMenu>
                 <TreeView.ItemContainerStyle>
                     <Style TargetType="{x:Type TreeViewItem}">
                         <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />

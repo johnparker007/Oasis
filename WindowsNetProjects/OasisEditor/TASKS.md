@@ -110,9 +110,9 @@ These tasks come from the latest Editor code review. Complete them in order. Bui
   - [x] Double-click file open still works
 
 ### Phase I — Assets Pane Context Menu
-- [ ] Ensure right-clicking an asset item selects it before showing the context menu
-  - [ ] Support both left-tree directory items and right-pane directory/file items where practical
-  - [ ] Do not break double-click open/navigation
+- [x] Ensure right-clicking an asset item selects it before showing the context menu
+  - [x] Support both left-tree directory items and right-pane directory/file items where practical
+  - [x] Do not break double-click open/navigation
 - [ ] Add initial asset item context menu items
   - [ ] Show In Explorer
   - [ ] Open

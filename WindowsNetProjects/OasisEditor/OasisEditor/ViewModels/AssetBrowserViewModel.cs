@@ -36,19 +36,22 @@ public sealed class AssetBrowserViewModel
         AssetBrowserItems = new ObservableCollection<AssetBrowserItemViewModel>();
         AssetDirectoryTree = new ObservableCollection<AssetDirectoryNodeViewModel>();
         RefreshAssetBrowserCommand = new RelayCommand(RefreshAssetBrowser, CanRefreshAssetBrowser);
-        OpenAssetCommand = new PaneItemCommand<AssetBrowserItemViewModel>(
-            () => SelectedAsset,
-            asset => OpenAsset(asset),
-            CanOpenAsset);
-        ShowInExplorerCommand = new PaneItemCommand<AssetBrowserItemViewModel>(
-            () => SelectedAsset,
-            asset => ShowInExplorer(asset));
-        RenameAssetCommand = new PaneItemCommand<AssetBrowserItemViewModel>(
-            () => SelectedAsset,
-            asset => RenameAsset(asset));
-        DeleteAssetCommand = new PaneItemCommand<AssetBrowserItemViewModel>(
-            () => SelectedAsset,
-            asset => DeleteAsset(asset));
+        OpenAssetCommand = new PaneItemCommand<object>(
+            GetSelectedAssetContext,
+            OpenAsset,
+            CanOpenAssetContext);
+        ShowInExplorerCommand = new PaneItemCommand<object>(
+            GetSelectedAssetContext,
+            ShowInExplorer,
+            CanOpenAssetContext);
+        RenameAssetCommand = new PaneItemCommand<object>(
+            GetSelectedAssetContext,
+            RenameAsset,
+            CanOpenAssetContext);
+        DeleteAssetCommand = new PaneItemCommand<object>(
+            GetSelectedAssetContext,
+            DeleteAsset,
+            CanOpenAssetContext);
     }
 
     public ObservableCollection<AssetBrowserItemViewModel> AssetBrowserItems { get; }
@@ -72,6 +75,8 @@ public sealed class AssetBrowserViewModel
             _selectedDirectory = value;
             UpdateDirectorySelectionState(value);
             RefreshDirectoryContents();
+            NotifyOpenAssetCommand();
+            NotifyAssetContextCommands();
             StateChanged?.Invoke();
         }
     }
@@ -205,8 +210,32 @@ public sealed class AssetBrowserViewModel
         StateChanged?.Invoke();
     }
 
-    private void OpenAsset(AssetBrowserItemViewModel asset)
+    private object? GetSelectedAssetContext()
     {
+        return SelectedAsset ?? (object?)SelectedDirectory;
+    }
+
+    private static AssetBrowserItemViewModel? ToAssetContextItem(object? context)
+    {
+        return context switch
+        {
+            AssetBrowserItemViewModel assetItem => assetItem,
+            AssetDirectoryNodeViewModel directoryNode => new AssetBrowserItemViewModel(
+                directoryNode.DisplayPath,
+                directoryNode.FullPath,
+                isDirectory: true),
+            _ => null
+        };
+    }
+
+    private void OpenAsset(object context)
+    {
+        var asset = ToAssetContextItem(context);
+        if (asset is null)
+        {
+            return;
+        }
+
         if (asset.IsDirectory)
         {
             if (!Directory.Exists(asset.FullPath))
@@ -229,8 +258,14 @@ public sealed class AssetBrowserViewModel
         _openAsset(asset);
     }
 
-    private static bool CanOpenAsset(AssetBrowserItemViewModel asset)
+    private static bool CanOpenAssetContext(object context)
     {
+        var asset = ToAssetContextItem(context);
+        if (asset is null)
+        {
+            return false;
+        }
+
         return asset.IsDirectory
             ? Directory.Exists(asset.FullPath)
             : File.Exists(asset.FullPath);
@@ -238,7 +273,7 @@ public sealed class AssetBrowserViewModel
 
     private void NotifyOpenAssetCommand()
     {
-        if (OpenAssetCommand is PaneItemCommand<AssetBrowserItemViewModel> openAssetCommand)
+        if (OpenAssetCommand is PaneItemCommand<object> openAssetCommand)
         {
             openAssetCommand.RaiseCanExecuteChanged();
         }
@@ -246,24 +281,30 @@ public sealed class AssetBrowserViewModel
 
     private void NotifyAssetContextCommands()
     {
-        if (ShowInExplorerCommand is PaneItemCommand<AssetBrowserItemViewModel> showInExplorerCommand)
+        if (ShowInExplorerCommand is PaneItemCommand<object> showInExplorerCommand)
         {
             showInExplorerCommand.RaiseCanExecuteChanged();
         }
 
-        if (RenameAssetCommand is PaneItemCommand<AssetBrowserItemViewModel> renameAssetCommand)
+        if (RenameAssetCommand is PaneItemCommand<object> renameAssetCommand)
         {
             renameAssetCommand.RaiseCanExecuteChanged();
         }
 
-        if (DeleteAssetCommand is PaneItemCommand<AssetBrowserItemViewModel> deleteAssetCommand)
+        if (DeleteAssetCommand is PaneItemCommand<object> deleteAssetCommand)
         {
             deleteAssetCommand.RaiseCanExecuteChanged();
         }
     }
 
-    private void ShowInExplorer(AssetBrowserItemViewModel asset)
+    private void ShowInExplorer(object context)
     {
+        var asset = ToAssetContextItem(context);
+        if (asset is null)
+        {
+            return;
+        }
+
         if (asset.IsDirectory)
         {
             if (!Directory.Exists(asset.FullPath))
@@ -308,8 +349,14 @@ public sealed class AssetBrowserViewModel
         }
     }
 
-    private void RenameAsset(AssetBrowserItemViewModel asset)
+    private void RenameAsset(object context)
     {
+        var asset = ToAssetContextItem(context);
+        if (asset is null)
+        {
+            return;
+        }
+
         var requestedName = _requestAssetRename(asset.DisplayPath);
         if (string.IsNullOrWhiteSpace(requestedName))
         {
@@ -387,8 +434,14 @@ public sealed class AssetBrowserViewModel
         }
     }
 
-    private void DeleteAsset(AssetBrowserItemViewModel asset)
+    private void DeleteAsset(object context)
     {
+        var asset = ToAssetContextItem(context);
+        if (asset is null)
+        {
+            return;
+        }
+
         _addOutputEntry($"Delete is not implemented yet ({asset.DisplayPath}).", OutputLogStatus.Info);
     }
 
