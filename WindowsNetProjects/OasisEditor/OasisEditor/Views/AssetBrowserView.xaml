@@ -37,8 +37,10 @@
                 <ColumnDefinition Width="1.5*" />
             </Grid.ColumnDefinitions>
 
-            <TreeView Grid.Column="0"
+            <TreeView x:Name="DirectoryTreeView"
+                      Grid.Column="0"
                       ItemsSource="{Binding AssetDirectoryTree}"
+                      PreviewMouseRightButtonDown="OnDirectoryTreePreviewMouseRightButtonDown"
                       SelectedItemChanged="OnDirectoryTreeSelectedItemChanged"
                       Background="{DynamicResource PanelBackgroundBrush}"
                       Foreground="{DynamicResource TextPrimaryBrush}"

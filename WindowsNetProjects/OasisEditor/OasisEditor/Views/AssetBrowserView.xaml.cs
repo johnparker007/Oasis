@@ -50,6 +50,34 @@ public partial class AssetBrowserView : UserControl
         listBox.Focus();
     }
 
+    private void OnDirectoryTreePreviewMouseRightButtonDown(object sender, MouseButtonEventArgs eventArgs)
+    {
+        if (sender is not TreeView treeView)
+        {
+            return;
+        }
+
+        if (eventArgs.OriginalSource is not DependencyObject source)
+        {
+            return;
+        }
+
+        var treeViewItem = FindAncestor<TreeViewItem>(source);
+        if (treeViewItem?.DataContext is not AssetDirectoryNodeViewModel directoryNode)
+        {
+            return;
+        }
+
+        treeViewItem.IsSelected = true;
+        treeView.Focus();
+
+        if (DataContext is MainWindowViewModel viewModel)
+        {
+            viewModel.SelectedAssetDirectory = directoryNode;
+            viewModel.SelectedAsset = null;
+        }
+    }
+
     private void OnDirectoryTreeSelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> eventArgs)
     {
         if (DataContext is not MainWindowViewModel viewModel)
