@@ -96,7 +96,7 @@ public sealed class EditorDocument
             false);
     }
 
-    public static EditorDocument CreateFromFile(string filePath, string summary)
+    public static EditorDocument CreateFromFile(string filePath, string summary, string? title = null)
     {
         var extension = System.IO.Path.GetExtension(filePath);
         var normalizedExtension = extension.ToLowerInvariant();
@@ -119,8 +119,12 @@ public sealed class EditorDocument
             documentType = EditorDocumentType.Generic;
         }
 
+        var resolvedTitle = string.IsNullOrWhiteSpace(title)
+            ? System.IO.Path.GetFileName(filePath)
+            : title.Trim();
+
         return new EditorDocument(
-            System.IO.Path.GetFileName(filePath),
+            resolvedTitle,
             documentType,
             filePath,
             summary,
@@ -130,7 +134,10 @@ public sealed class EditorDocument
 
     public EditorDocument SaveAs(string filePath, string summary)
     {
-        return CreateFromFile(filePath, summary);
+        var resolvedTitle = IsUntitled
+            ? System.IO.Path.GetFileName(filePath)
+            : Title;
+        return CreateFromFile(filePath, summary, resolvedTitle);
     }
 
     public EditorDocument MarkDirty()

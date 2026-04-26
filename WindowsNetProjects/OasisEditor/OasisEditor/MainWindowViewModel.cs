@@ -193,8 +193,23 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         get => _selectedDocument;
         set
         {
+            if (ReferenceEquals(_selectedDocument, value))
+            {
+                return;
+            }
+
+            if (_selectedDocument is not null)
+            {
+                _selectedDocument.PropertyChanged -= OnSelectedDocumentPropertyChanged;
+            }
+
             if (SetProperty(ref _selectedDocument, value))
             {
+                if (_selectedDocument is not null)
+                {
+                    _selectedDocument.PropertyChanged += OnSelectedDocumentPropertyChanged;
+                }
+
                 _activeDocumentContext.SetActiveDocument(value);
                 NotifyInspectorChanged();
                 NotifyDocumentCommands();
@@ -442,7 +457,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         var content = File.ReadAllText(path);
         var openData = DocumentWorkspaceViewModel.BuildOpenDocumentData(path, content);
 
-        var openedNewTab = _documentWorkspace.OpenOrSelectDocument(path, openData.Summary, openData.PanelLayoutJson);
+        var openedNewTab = _documentWorkspace.OpenOrSelectDocument(
+            path,
+            openData.Summary,
+            openData.PanelLayoutJson,
+            openData.PanelTitle);
         if (!openedNewTab)
         {
             AddOutputEntry($"Switched to already open document tab for {path}", OutputLogStatus.Info);
@@ -849,6 +868,20 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(HierarchyEmptyStateMessage));
     }
 
+    private void OnSelectedDocumentPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(DocumentTabViewModel.PanelLayoutJson)
+            or nameof(DocumentTabViewModel.HierarchySelectedPanelSelection))
+        {
+            RefreshHierarchy();
+        }
+
+        if (e.PropertyName is nameof(DocumentTabViewModel.HierarchySelectedPanelSelection))
+        {
+            NotifyInspectorChanged();
+        }
+    }
+
     private DocumentTabViewModel? ApplyInspectorSummary(DocumentTabViewModel _, string summary)
     {
         return _documentWorkspace.ApplyInspectorSummary(summary);
@@ -873,4 +906,4 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
 }
 
-internal readonly record struct OpenDocumentData(string Summary, string? PanelLayoutJson);
+internal readonly record struct OpenDocumentData(string Summary, string? PanelLayoutJson, string? PanelTitle = null);
