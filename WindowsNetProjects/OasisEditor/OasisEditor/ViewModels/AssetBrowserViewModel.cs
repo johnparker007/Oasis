@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Windows.Input;
@@ -240,7 +241,48 @@ public sealed class AssetBrowserViewModel
 
     private void ShowInExplorer(AssetBrowserItemViewModel asset)
     {
-        _addOutputEntry($"Show In Explorer is not implemented yet ({asset.DisplayPath}).", OutputLogStatus.Info);
+        if (asset.IsDirectory)
+        {
+            if (!Directory.Exists(asset.FullPath))
+            {
+                _addOutputEntry($"Cannot show folder in Explorer; path does not exist: {asset.FullPath}", OutputLogStatus.Warning);
+                return;
+            }
+
+            try
+            {
+                Process.Start(new ProcessStartInfo("explorer.exe", $"\"{asset.FullPath}\"")
+                {
+                    UseShellExecute = true
+                });
+                _addOutputEntry($"Opened folder in Explorer: {asset.DisplayPath}", OutputLogStatus.Info);
+            }
+            catch (Exception ex)
+            {
+                _addOutputEntry($"Failed to open folder in Explorer: {ex.Message}", OutputLogStatus.Warning);
+            }
+
+            return;
+        }
+
+        if (!File.Exists(asset.FullPath))
+        {
+            _addOutputEntry($"Cannot show file in Explorer; path does not exist: {asset.FullPath}", OutputLogStatus.Warning);
+            return;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{asset.FullPath}\"")
+            {
+                UseShellExecute = true
+            });
+            _addOutputEntry($"Selected file in Explorer: {asset.DisplayPath}", OutputLogStatus.Info);
+        }
+        catch (Exception ex)
+        {
+            _addOutputEntry($"Failed to show file in Explorer: {ex.Message}", OutputLogStatus.Warning);
+        }
     }
 
     private void RenameAsset(AssetBrowserItemViewModel asset)
