@@ -431,10 +431,23 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private HierarchyItemViewModel? GetSelectedHierarchyEntity()
     {
-        return HierarchyItems.FirstOrDefault(item =>
+        return EnumerateHierarchyItems(HierarchyItems).FirstOrDefault(item =>
             item.IsSelected &&
             !item.IsGroup &&
             item.PanelSelection is PanelSelectionInfo);
+    }
+
+    private static IEnumerable<HierarchyItemViewModel> EnumerateHierarchyItems(IEnumerable<HierarchyItemViewModel> roots)
+    {
+        foreach (var item in roots)
+        {
+            yield return item;
+
+            foreach (var child in EnumerateHierarchyItems(item.Children))
+            {
+                yield return child;
+            }
+        }
     }
 
     private bool CanDeleteHierarchyItem(HierarchyItemViewModel hierarchyItem)
