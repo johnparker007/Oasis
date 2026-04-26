@@ -17,11 +17,22 @@
                   ItemsSource="{Binding HierarchyItems}"
                   SelectedItemChanged="OnTreeViewSelectedItemChanged"
                   PreviewKeyDown="OnTreeViewPreviewKeyDown"
+                  PreviewMouseRightButtonDown="OnTreeViewPreviewMouseRightButtonDown"
                   Visibility="{Binding HasHierarchyItems, Converter={StaticResource BoolToVisibility}}"
                   Foreground="{DynamicResource TextPrimaryBrush}"
                   Background="{DynamicResource PanelBackgroundBrush}"
                   BorderBrush="{DynamicResource BorderSubtleBrush}"
                   BorderThickness="1">
+            <TreeView.ContextMenu>
+                <ContextMenu Style="{StaticResource EditorContextMenuStyle}">
+                    <MenuItem Header="Rename"
+                              Style="{StaticResource EditorContextMenuItemStyle}"
+                              Command="{Binding RenameSelectedHierarchyItemCommand}" />
+                    <MenuItem Header="Delete"
+                              Style="{StaticResource EditorContextMenuItemStyle}"
+                              Command="{Binding DeleteSelectedHierarchyItemCommand}" />
+                </ContextMenu>
+            </TreeView.ContextMenu>
             <TreeView.Resources>
                 <Style TargetType="{x:Type TreeViewItem}">
                     <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />

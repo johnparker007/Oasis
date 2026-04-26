@@ -8,6 +8,7 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using Microsoft.Win32;
+using Microsoft.VisualBasic;
 using EditorCommands = OasisEditor.Commands;
 
 namespace OasisEditor;
@@ -105,6 +106,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             GetSelectedHierarchyEntity,
             item => DeleteHierarchyItem(item),
             CanDeleteHierarchyItem);
+        RenameSelectedHierarchyItemCommand = new RelayCommand(
+            RenameSelectedHierarchyItemWithPrompt,
+            CanRenameSelectedHierarchyItem);
         ClearOutputCommand = _outputLog.ClearOutputCommand;
         ApplyInspectorSummaryCommand = _inspector.ApplyInspectorSummaryCommand;
         AddOutputEntry("Editor shell initialized.", OutputLogStatus.Info);
@@ -124,6 +128,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand RefreshAssetBrowserCommand { get; }
     public ICommand OpenAssetCommand { get; }
     public ICommand DeleteSelectedHierarchyItemCommand { get; }
+    public ICommand RenameSelectedHierarchyItemCommand { get; }
     public ICommand ClearOutputCommand { get; }
     public ICommand OpenPreferencesCommand { get; }
     public ICommand OpenProjectSettingsCommand { get; }
@@ -371,6 +376,30 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             selection,
             normalizedName);
         return ExecuteDocumentCanvasCommand(selectedDocument.DocumentId, command);
+    }
+
+    private bool CanRenameSelectedHierarchyItem()
+    {
+        return TryGetSelectedHierarchyItemName(out _);
+    }
+
+    private void RenameSelectedHierarchyItemWithPrompt()
+    {
+        if (!TryGetSelectedHierarchyItemName(out var currentName))
+        {
+            return;
+        }
+
+        var renamed = Interaction.InputBox(
+            "Enter a new name for the selected hierarchy object:",
+            "Rename Hierarchy Item",
+            currentName);
+        if (string.IsNullOrWhiteSpace(renamed))
+        {
+            return;
+        }
+
+        RenameSelectedHierarchyItem(renamed);
     }
 
     private HierarchyItemViewModel? GetSelectedHierarchyEntity()
@@ -788,6 +817,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (DeleteSelectedHierarchyItemCommand is PaneItemCommand<HierarchyItemViewModel> deleteHierarchyCommand)
         {
             deleteHierarchyCommand.RaiseCanExecuteChanged();
+        }
+
+        if (RenameSelectedHierarchyItemCommand is RelayCommand renameHierarchyCommand)
+        {
+            renameHierarchyCommand.RaiseCanExecuteChanged();
         }
     }
 
