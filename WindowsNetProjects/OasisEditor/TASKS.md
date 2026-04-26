@@ -92,8 +92,8 @@ These tasks come from the Editor code review. Complete them in order. Build and 
 - [x] Plan object locking/visibility support only
   - [x] Identify required model fields, canvas hit-test changes, and hierarchy UI changes
   - [ ] Do not implement yet
-- [ ] Plan copy/paste/duplicate support only
-  - [ ] Identify ID-generation and undo/redo requirements
+- [x] Plan copy/paste/duplicate support only
+  - [x] Identify ID-generation and undo/redo requirements
   - [ ] Do not implement yet
 
 ---
