@@ -7,6 +7,48 @@ namespace OasisEditor.Tests;
 public sealed class HierarchyPanelCommandServiceTests
 {
     [Fact]
+    public void SmokeLikeFlow_HierarchyCommandsUndoRedoAndSaveReopen_PreservesPanelElements()
+    {
+        var document = CreatePanelDocument(
+            new PanelElementModel
+            {
+                ObjectId = "source-id",
+                Name = "Rect One",
+                Kind = PanelElementKind.Rectangle,
+                X = 10,
+                Y = 20,
+                Width = 30,
+                Height = 40
+            });
+        var workspace = CreateWorkspace(document, document);
+        var service = CreateService(document, workspace);
+
+        document.HierarchySelectedPanelSelection = new PanelSelectionInfo("source-id", "rectangle", 10, 20, 30, 40);
+        service.ExecuteCopySelected();
+        service.ExecutePasteSelected();
+        service.ExecuteDuplicateSelected();
+        service.ExecuteCutSelected();
+
+        Assert.Equal(2, document.GetPanelElements().Count);
+        Assert.Equal(2, document.GetPanelElements().Select(element => element.ObjectId).Distinct(StringComparer.Ordinal).Count());
+
+        Assert.True(workspace.UndoActiveDocument());
+        Assert.Equal(3, document.GetPanelElements().Count);
+
+        Assert.True(workspace.RedoActiveDocument());
+        Assert.Equal(2, document.GetPanelElements().Count);
+
+        var savedContent = DocumentWorkspaceViewModel.BuildDocumentContent(document);
+        var openData = DocumentWorkspaceViewModel.BuildOpenDocumentData("C:/Repo/TestProject/Assets/panel.panel2d", savedContent);
+        var reopened = new DocumentTabViewModel(
+            EditorDocument.CreateFromFile("C:/Repo/TestProject/Assets/panel.panel2d", openData.Summary, openData.PanelTitle),
+            openData.PanelLayoutJson);
+
+        Assert.Equal(2, reopened.GetPanelElements().Count);
+        Assert.Equal(2, reopened.GetPanelElements().Select(element => element.ObjectId).Distinct(StringComparer.Ordinal).Count());
+    }
+
+    [Fact]
     public void ExecutePasteSelected_AfterCopy_CreatesNewObjectIdAndRecordsCommand()
     {
         var document = CreatePanelDocument(

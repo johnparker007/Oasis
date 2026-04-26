@@ -152,17 +152,18 @@ These tasks come from the latest Editor code review. Complete them in order. Bui
   - [x] Move any new cohesive asset-browser logic back into `AssetBrowserViewModel` or focused services
   - [x] Move any new hierarchy command logic into hierarchy/document command helpers where practical
   - [x] Keep MainWindowViewModel as orchestration, not a dumping ground
-- [ ] Review document mutation command coverage
-  - [ ] Ensure Duplicate/Paste use the same command safety contracts as add/delete/rename
-  - [ ] Ensure no-op commands are not recorded
-  - [ ] Ensure dirty state changes only for real mutations
-- [ ] Add or update tests for new behavior where practical
-  - [ ] Duplicate creates a new object ID
-  - [ ] Paste creates new object IDs
-  - [ ] Rename/delete no-op cases are not recorded
-  - [ ] Asset browser tree excludes paths outside Assets root
-  - [ ] Asset rename/delete refreshes expected collections
+- [x] Review document mutation command coverage
+  - [x] Ensure Duplicate/Paste use the same command safety contracts as add/delete/rename
+  - [x] Ensure no-op commands are not recorded
+  - [x] Ensure dirty state changes only for real mutations
+- [x] Add or update tests for new behavior where practical
+  - [x] Duplicate creates a new object ID
+  - [x] Paste creates new object IDs
+  - [x] Rename/delete no-op cases are not recorded
+  - [x] Asset browser tree excludes paths outside Assets root
+  - [x] Asset rename/delete refreshes expected collections
 - [ ] Smoke test full editor flow
+  - [ ] Blocked in current container; see `PhaseJ.SmokeTestAttempt.md`
   - [ ] Create/open project
   - [ ] Refresh assets
   - [ ] Navigate folders in Assets pane
