@@ -71,6 +71,12 @@ public sealed class CommandService
         var command = _history.GetRedoCandidate();
         ValidateDocumentOwnership(command);
         command.Execute();
+        if (command is IExecutionTrackedCommand executionTrackedCommand
+            && !executionTrackedCommand.WasExecuted)
+        {
+            return false;
+        }
+
         _history.MarkRedone();
         return true;
     }

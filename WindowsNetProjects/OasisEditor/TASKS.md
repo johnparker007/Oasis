@@ -62,7 +62,7 @@ These tasks come from the Editor code review. Complete them in order. Build and 
 - [ ] Move Panel2D mutation commands to operate on the live model first
   - [x] Add element, delete element, and rename element should mutate the model
   - [x] Update JSON/layout sync as a projection of the model, not as the canonical state
-  - [ ] Preserve undo/redo behaviour
+  - [x] Preserve undo/redo behaviour
   - [ ] Verify save/open round-trips existing panel files
 - [ ] Make hierarchy and inspector read from the live Panel2D model where practical
   - [ ] Keep binding-facing property names stable unless a task explicitly allows a rename
