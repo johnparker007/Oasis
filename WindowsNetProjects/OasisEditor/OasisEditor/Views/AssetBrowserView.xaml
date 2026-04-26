@@ -1,5 +1,4 @@
 <UserControl x:Class="OasisEditor.Views.AssetBrowserView"
-             x:Name="Root"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -47,22 +46,23 @@
                       BorderBrush="{DynamicResource BorderSubtleBrush}"
                       BorderThickness="1">
                 <TreeView.ContextMenu>
-                    <ContextMenu Style="{StaticResource EditorContextMenuStyle}">
+                    <ContextMenu Style="{StaticResource EditorContextMenuStyle}"
+                                 DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
                         <MenuItem Header="Open"
                                   Style="{StaticResource EditorContextMenuItemStyle}"
-                                  Command="{Binding DataContext.OpenAssetCommand, Source={x:Reference Root}}"
+                                  Command="{Binding OpenAssetCommand}"
                                   CommandParameter="{Binding PlacementTarget.SelectedItem, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}" />
                         <MenuItem Header="Show In Explorer"
                                   Style="{StaticResource EditorContextMenuItemStyle}"
-                                  Command="{Binding DataContext.ShowAssetInExplorerCommand, Source={x:Reference Root}}"
+                                  Command="{Binding ShowAssetInExplorerCommand}"
                                   CommandParameter="{Binding PlacementTarget.SelectedItem, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}" />
                         <MenuItem Header="Rename"
                                   Style="{StaticResource EditorContextMenuItemStyle}"
-                                  Command="{Binding DataContext.RenameAssetCommand, Source={x:Reference Root}}"
+                                  Command="{Binding RenameAssetCommand}"
                                   CommandParameter="{Binding PlacementTarget.SelectedItem, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}" />
                         <MenuItem Header="Delete"
                                   Style="{StaticResource EditorContextMenuItemStyle}"
-                                  Command="{Binding DataContext.DeleteAssetCommand, Source={x:Reference Root}}"
+                                  Command="{Binding DeleteAssetCommand}"
                                   CommandParameter="{Binding PlacementTarget.SelectedItem, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}" />
                     </ContextMenu>
                 </TreeView.ContextMenu>
