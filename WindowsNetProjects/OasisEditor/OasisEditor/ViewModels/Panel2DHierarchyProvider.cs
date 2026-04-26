@@ -14,7 +14,7 @@ public sealed class Panel2DHierarchyProvider : IDocumentHierarchyProvider
             return [];
         }
 
-        var elements = Panel2DDocumentStorage.DeserializeLayout(document?.PanelLayoutJson);
+        var elements = document.GetPanelElements();
         var groups = new List<HierarchyItemViewModel>
         {
             BuildGroup("Images", elements, PanelElementKind.Image, "Image"),
@@ -28,13 +28,13 @@ public sealed class Panel2DHierarchyProvider : IDocumentHierarchyProvider
 
     private static HierarchyItemViewModel BuildGroup(
         string groupName,
-        IReadOnlyList<PanelElementFile> elements,
+        IReadOnlyList<PanelElementModel> elements,
         PanelElementKind kind,
         string itemPrefix)
     {
         var kindToken = Panel2DDocumentStorage.SerializeElementKind(kind);
         var matches = elements
-            .Where(element => element.ElementKind == kind)
+            .Where(element => element.Kind == kind)
             .Select((element, index) =>
             {
                 var x = Math.Round(element.X);

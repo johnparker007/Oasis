@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Linq;
 using OasisEditor.Commands;
 
 namespace OasisEditor;
@@ -89,6 +90,24 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
         return _panelDocumentModel.Elements;
     }
 
+    internal bool TryGetPanelElement(PanelSelectionInfo selection, out PanelElementModel element)
+    {
+        var match = _panelDocumentModel.Elements.FirstOrDefault(candidate => IsSelectionMatch(candidate, selection));
+        if (match is null)
+        {
+            element = new PanelElementModel();
+            return false;
+        }
+
+        element = match;
+        return true;
+    }
+
+    internal bool HasPanelElement(PanelSelectionInfo selection)
+    {
+        return _panelDocumentModel.Elements.Any(element => IsSelectionMatch(element, selection));
+    }
+
     internal void SetPanelElements(IReadOnlyList<PanelElementModel> elements)
     {
         _panelDocumentModel = new Panel2DDocumentModel
@@ -161,5 +180,17 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
             _panelPanY = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PanelPanY)));
         }
+    }
+
+    private static bool IsSelectionMatch(PanelElementModel element, PanelSelectionInfo selection)
+    {
+        if (!string.IsNullOrWhiteSpace(selection.ObjectId)
+            && string.Equals(element.ObjectId, selection.ObjectId, StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        var storageElement = Panel2DDocumentStorage.ToStorageElement(element);
+        return PanelSelectionContract.IsMatch(storageElement, selection);
     }
 }
