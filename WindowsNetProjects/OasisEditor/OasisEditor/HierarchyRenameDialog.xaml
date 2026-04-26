@@ -3,9 +3,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Rename Hierarchy Item"
         Width="420"
-        Height="180"
+        Height="200"
         MinWidth="360"
-        MinHeight="170"
+        MinHeight="200"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
         Background="{DynamicResource PanelBackgroundBrush}"
@@ -14,7 +14,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
@@ -30,6 +30,9 @@
 
         <TextBox x:Name="NameTextBox"
                  Grid.Row="2"
+                 MinHeight="30"
+                 Padding="8,4"
+                 VerticalContentAlignment="Center"
                  Text="{Binding NameText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
         <StackPanel Grid.Row="3"
