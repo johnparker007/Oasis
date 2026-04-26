@@ -20,21 +20,21 @@ These tasks come from the Editor code review. Complete them in order. Build and 
   - [x] Ensure add image marks the document dirty
   - [x] Ensure delete element marks the document dirty only when an element was actually deleted
   - [x] Ensure rename element marks the document dirty only when the name actually changed
-  - [ ] Verify the tab title gains `*` after each real canvas mutation
+  - [x] Verify the tab title gains `*` after each real canvas mutation
   - [x] Verify saving clears the dirty marker
 - [x] Prevent no-op document commands from entering undo/redo history
   - [x] Introduce a minimal success/no-op contract for commands, or an equivalent command-service guard
   - [x] Do not record delete when no matching element exists
   - [x] Do not record rename when no matching element exists
   - [x] Do not record rename when the new name equals the current name after normalisation
-  - [ ] Verify undo/redo menu labels do not change after no-op commands
+  - [x] Verify undo/redo menu labels do not change after no-op commands
 - [x] Preserve command-history integrity when closing and undoing a closed document tab
   - [x] Review whether clearing a document command history inside close-tab execution makes undo of tab close unsafe
   - [x] Adjust close-tab behaviour so undoing a close either restores a usable document safely or the close operation is not undoable
   - [x] Verify closing a tab cannot leave stale document commands executable against a different tab
 - [x] Replace duplicated add-element command implementations
   - [x] Replace separate rectangle/image add commands with a single `AddPanelElementMutationCommand`
-  - [ ] Preserve existing public factory methods if that keeps callers stable
+  - [x] Preserve existing public factory methods if that keeps callers stable
   - [x] Verify add rectangle/image undo/redo still works
 
 ### Phase B — Canvas Behaviour Split Without Changing UX
@@ -62,7 +62,7 @@ These tasks come from the Editor code review. Complete them in order. Build and 
 - [ ] Move Panel2D mutation commands to operate on the live model first
   - [x] Add element, delete element, and rename element should mutate the model
   - [x] Update JSON/layout sync as a projection of the model, not as the canonical state
-  - [ ] Preserve undo/redo behaviour
+  - [x] Preserve undo/redo behaviour
   - [ ] Verify save/open round-trips existing panel files
 - [ ] Make hierarchy and inspector read from the live Panel2D model where practical
   - [ ] Keep binding-facing property names stable unless a task explicitly allows a rename
