@@ -401,6 +401,34 @@ public sealed class Panel2DRoundTripTests
     }
 
     [Fact]
+    public void ExecuteDocumentCanvasCommand_DuplicateMissingSelection_DoesNotRecordHistory()
+    {
+        var document = CreatePanelDocument(
+            new PanelElementModel
+            {
+                ObjectId = "rect-1",
+                Name = "Rect 1",
+                Kind = PanelElementKind.Rectangle,
+                X = 10,
+                Y = 10,
+                Width = 20,
+                Height = 20
+            });
+        var workspace = CreateWorkspace(document, document);
+
+        var duplicateMissing = CanvasMutationCommands.CreateDuplicateElementCommand(
+            document.DocumentId,
+            document,
+            new PanelSelectionInfo("missing-id", "rectangle", 10, 10, 20, 20));
+
+        var executed = workspace.ExecuteDocumentCanvasCommand(document.DocumentId, duplicateMissing);
+
+        Assert.False(executed);
+        Assert.Empty(document.CommandService.History.Entries);
+        Assert.Single(document.GetPanelElements());
+    }
+
+    [Fact]
     public void DuplicateElementCommand_CreatesOffsetElementWithNewObjectIdAndCopyName()
     {
         var document = CreatePanelDocument(
@@ -502,6 +530,35 @@ public sealed class Panel2DRoundTripTests
 
         command.Undo();
         Assert.Single(document.GetPanelElements());
+    }
+
+    [Fact]
+    public void ExecuteDocumentCanvasCommand_PasteCommand_GeneratesUniqueObjectIdPerExecution()
+    {
+        var document = CreatePanelDocument(
+            new PanelElementModel
+            {
+                ObjectId = "source-id",
+                Name = "Rect Original",
+                Kind = PanelElementKind.Rectangle,
+                X = 30,
+                Y = 40,
+                Width = 50,
+                Height = 60
+            });
+        var workspace = CreateWorkspace(document, document);
+        var source = document.GetPanelElements().Single();
+
+        var firstPaste = CanvasMutationCommands.CreatePasteElementCommand(document.DocumentId, document, source);
+        var secondPaste = CanvasMutationCommands.CreatePasteElementCommand(document.DocumentId, document, source);
+
+        Assert.True(workspace.ExecuteDocumentCanvasCommand(document.DocumentId, firstPaste));
+        Assert.True(workspace.ExecuteDocumentCanvasCommand(document.DocumentId, secondPaste));
+
+        var ids = document.GetPanelElements().Select(element => element.ObjectId).ToList();
+        Assert.Equal(3, ids.Count);
+        Assert.Equal(3, ids.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(2, document.CommandService.History.Entries.Count);
     }
 
     [Fact]
