@@ -33,8 +33,7 @@ public sealed class AssetBrowserViewModel
         RefreshAssetBrowserCommand = new RelayCommand(RefreshAssetBrowser, CanRefreshAssetBrowser);
         OpenAssetCommand = new PaneItemCommand<AssetBrowserItemViewModel>(
             () => SelectedAsset,
-            asset => OpenAsset(asset),
-            asset => !asset.IsDirectory);
+            asset => OpenAsset(asset));
     }
 
     public ObservableCollection<AssetBrowserItemViewModel> AssetBrowserItems { get; }
@@ -82,6 +81,9 @@ public sealed class AssetBrowserViewModel
 
     public void RefreshAssetBrowser()
     {
+        var selectedDirectoryPath = SelectedDirectory?.FullPath;
+        var selectedAssetPath = SelectedAsset?.FullPath;
+
         var loadedProject = _loadedProjectAccessor();
         if (loadedProject is null)
         {
@@ -103,7 +105,8 @@ public sealed class AssetBrowserViewModel
         var rootNode = BuildDirectoryTree(assetDirectory, assetDirectory);
         AssetDirectoryTree.Clear();
         AssetDirectoryTree.Add(rootNode);
-        SelectedDirectory = rootNode;
+        SelectedDirectory = FindDirectoryByPath(rootNode, selectedDirectoryPath) ?? rootNode;
+        RestoreSelectedAsset(selectedAssetPath);
         _notifyInspectorChanged();
         _addOutputEntry($"Asset browser refreshed ({AssetBrowserItems.Count} items).", OutputLogStatus.Info);
     }
@@ -135,6 +138,7 @@ public sealed class AssetBrowserViewModel
 
     private void RefreshDirectoryContents()
     {
+        var selectedAssetPath = SelectedAsset?.FullPath;
         AssetBrowserItems.Clear();
 
         var loadedProject = _loadedProjectAccessor();
@@ -174,13 +178,14 @@ public sealed class AssetBrowserViewModel
                 isDirectory: false));
         }
 
-        SelectedAsset = AssetBrowserItems.FirstOrDefault();
+        RestoreSelectedAsset(selectedAssetPath);
     }
 
     private void OpenAsset(AssetBrowserItemViewModel asset)
     {
         if (asset.IsDirectory)
         {
+            SelectDirectoryByPath(asset.FullPath);
             return;
         }
 
@@ -211,5 +216,58 @@ public sealed class AssetBrowserViewModel
         var relativePath = Path.GetRelativePath(rootDirectory, path);
         return !relativePath.StartsWith("..", StringComparison.Ordinal)
                && !Path.IsPathRooted(relativePath);
+    }
+
+    private void RestoreSelectedAsset(string? selectedAssetPath)
+    {
+        if (!string.IsNullOrWhiteSpace(selectedAssetPath))
+        {
+            var existing = AssetBrowserItems.FirstOrDefault(item =>
+                string.Equals(item.FullPath, selectedAssetPath, StringComparison.OrdinalIgnoreCase));
+            if (existing is not null)
+            {
+                SelectedAsset = existing;
+                return;
+            }
+        }
+
+        SelectedAsset = AssetBrowserItems.FirstOrDefault();
+    }
+
+    private void SelectDirectoryByPath(string path)
+    {
+        foreach (var root in AssetDirectoryTree)
+        {
+            var match = FindDirectoryByPath(root, path);
+            if (match is not null)
+            {
+                SelectedDirectory = match;
+                return;
+            }
+        }
+    }
+
+    private static AssetDirectoryNodeViewModel? FindDirectoryByPath(AssetDirectoryNodeViewModel root, string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return null;
+        }
+
+        if (string.Equals(root.FullPath, path, StringComparison.OrdinalIgnoreCase))
+        {
+            return root;
+        }
+
+        foreach (var child in root.Children)
+        {
+            var match = FindDirectoryByPath(child, path);
+            if (match is not null)
+            {
+                return match;
+            }
+        }
+
+        return null;
     }
 }
