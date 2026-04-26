@@ -121,6 +121,15 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             {
                 if (_activeDocumentContext.ActivePanelSelection is PanelSelectionInfo panelSelection)
                 {
+                    if (selectedDocument.TryGetPanelElement(panelSelection, out var selectedElement))
+                    {
+                        var displayName = string.IsNullOrWhiteSpace(selectedElement.Name)
+                            ? Panel2DDocumentStorage.CreateDefaultElementName(selectedElement.Kind, selectedElement.ObjectId)
+                            : selectedElement.Name.Trim();
+                        var kind = Panel2DDocumentStorage.SerializeElementKind(selectedElement.Kind);
+                        return $"Selected {kind} '{displayName}' at ({selectedElement.X:0.##}, {selectedElement.Y:0.##}) sized {selectedElement.Width:0.##} x {selectedElement.Height:0.##}.";
+                    }
+
                     return $"Selected {panelSelection.Kind} at ({panelSelection.X:0.##}, {panelSelection.Y:0.##}) sized {panelSelection.Width:0.##} x {panelSelection.Height:0.##}.";
                 }
 
