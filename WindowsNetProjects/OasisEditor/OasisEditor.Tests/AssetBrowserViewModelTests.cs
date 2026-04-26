@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using Xunit;
 
@@ -120,6 +121,59 @@ public sealed class AssetBrowserViewModelTests
 
         Assert.True(Directory.Exists(folderPath));
         Assert.Contains(viewModel.AssetBrowserItems, item => item.IsDirectory && item.DisplayPath == "Art");
+    }
+
+    [Fact]
+    public void RenameAssetCommand_WhenFileSelected_RenamesAndRefreshesSelection()
+    {
+        using var temp = new TempProjectDirectory();
+        var filePath = Path.Combine(temp.AssetsDirectory, "old-name.panel2d");
+        File.WriteAllText(filePath, "{}");
+        var expectedPath = Path.Combine(temp.AssetsDirectory, "new-name.panel2d");
+
+        var viewModel = new AssetBrowserViewModel(
+            loadedProjectAccessor: () => temp.Project,
+            selectionChanged: () => { },
+            notifyInspectorChanged: () => { },
+            addOutputEntry: (_, _) => { },
+            openAsset: _ => { },
+            requestAssetRename: _ => "new-name.panel2d");
+
+        viewModel.RefreshAssetBrowser();
+        var fileItem = Assert.Single(viewModel.AssetBrowserItems, item => !item.IsDirectory && item.DisplayPath == "old-name.panel2d");
+
+        Assert.True(viewModel.RenameAssetCommand.CanExecute(fileItem));
+        viewModel.RenameAssetCommand.Execute(fileItem);
+
+        Assert.False(File.Exists(filePath));
+        Assert.True(File.Exists(expectedPath));
+        Assert.Equal("new-name.panel2d", viewModel.SelectedAsset?.DisplayPath);
+        Assert.Contains(viewModel.AssetBrowserItems, item => !item.IsDirectory && item.DisplayPath == "new-name.panel2d");
+    }
+
+    [Fact]
+    public void SelectedDirectory_OutsideAssetsRoot_IsIgnoredForContents()
+    {
+        using var temp = new TempProjectDirectory();
+        File.WriteAllText(Path.Combine(temp.AssetsDirectory, "inside.txt"), "ok");
+        var outsideDirectory = Path.Combine(temp.RootDirectory, "Outside");
+        Directory.CreateDirectory(outsideDirectory);
+        File.WriteAllText(Path.Combine(outsideDirectory, "outside.txt"), "nope");
+
+        var outputEntries = new List<string>();
+        var viewModel = new AssetBrowserViewModel(
+            loadedProjectAccessor: () => temp.Project,
+            selectionChanged: () => { },
+            notifyInspectorChanged: () => { },
+            addOutputEntry: (message, _) => outputEntries.Add(message),
+            openAsset: _ => { },
+            requestAssetRename: _ => null);
+
+        viewModel.RefreshAssetBrowser();
+        viewModel.SelectedDirectory = new AssetDirectoryNodeViewModel("Outside", outsideDirectory);
+
+        Assert.Empty(viewModel.AssetBrowserItems);
+        Assert.Contains(outputEntries, message => message.Contains("outside the Assets root", StringComparison.OrdinalIgnoreCase));
     }
 
     private static AssetBrowserViewModel CreateViewModel(EditorProject project, Action<AssetBrowserItemViewModel?> openAsset)

@@ -344,6 +344,63 @@ public sealed class Panel2DRoundTripTests
     }
 
     [Fact]
+    public void ExecuteDocumentCanvasCommand_RenameNoOp_DoesNotRecordHistory()
+    {
+        var document = CreatePanelDocument(
+            new PanelElementModel
+            {
+                ObjectId = "rect-1",
+                Name = "Rect 1",
+                Kind = PanelElementKind.Rectangle,
+                X = 10,
+                Y = 10,
+                Width = 20,
+                Height = 20
+            });
+        var workspace = CreateWorkspace(document, document);
+
+        var noOpRename = CanvasMutationCommands.CreateRenameElementCommand(
+            document.DocumentId,
+            document,
+            new PanelSelectionInfo("rect-1", "rectangle", 10, 10, 20, 20),
+            "  Rect 1  ");
+
+        var executed = workspace.ExecuteDocumentCanvasCommand(document.DocumentId, noOpRename);
+
+        Assert.False(executed);
+        Assert.Empty(document.CommandService.History.Entries);
+        Assert.Equal("Rect 1", document.GetPanelElements().Single().Name);
+    }
+
+    [Fact]
+    public void ExecuteDocumentCanvasCommand_DeleteMissingSelection_DoesNotRecordHistory()
+    {
+        var document = CreatePanelDocument(
+            new PanelElementModel
+            {
+                ObjectId = "rect-1",
+                Name = "Rect 1",
+                Kind = PanelElementKind.Rectangle,
+                X = 10,
+                Y = 10,
+                Width = 20,
+                Height = 20
+            });
+        var workspace = CreateWorkspace(document, document);
+
+        var deleteMissing = CanvasMutationCommands.CreateDeleteElementCommand(
+            document.DocumentId,
+            document,
+            new PanelSelectionInfo("missing-id", "rectangle", 10, 10, 20, 20));
+
+        var executed = workspace.ExecuteDocumentCanvasCommand(document.DocumentId, deleteMissing);
+
+        Assert.False(executed);
+        Assert.Empty(document.CommandService.History.Entries);
+        Assert.Single(document.GetPanelElements());
+    }
+
+    [Fact]
     public void DuplicateElementCommand_CreatesOffsetElementWithNewObjectIdAndCopyName()
     {
         var document = CreatePanelDocument(
