@@ -8,7 +8,6 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using Microsoft.Win32;
-using Microsoft.VisualBasic;
 using EditorCommands = OasisEditor.Commands;
 
 namespace OasisEditor;
@@ -416,16 +415,17 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        var renamed = Interaction.InputBox(
-            "Enter a new name for the selected hierarchy object:",
-            "Rename Hierarchy Item",
-            currentName);
-        if (string.IsNullOrWhiteSpace(renamed))
+        var renameDialog = new HierarchyRenameDialog(currentName)
+        {
+            Owner = _ownerWindow
+        };
+
+        if (renameDialog.ShowDialog() != true)
         {
             return;
         }
 
-        RenameSelectedHierarchyItem(renamed);
+        RenameSelectedHierarchyItem(renameDialog.NameText);
     }
 
     private HierarchyItemViewModel? GetSelectedHierarchyEntity()
