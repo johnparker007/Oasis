@@ -32,6 +32,8 @@ public partial class MainWindow : Window
         Closing += OnClosing;
         EditorKeyboardShortcuts.RegisterWindowBindings(this);
         _viewModel = new MainWindowViewModel(applicationThemeService, preferencesStore, this, startupProjectFilePath);
+        _viewModel.ToolWindowOpenRequested += OnToolWindowOpenRequested;
+        _viewModel.ToolWindowCloseRequested += OnToolWindowCloseRequested;
         DataContext = _viewModel;
 
         CommandBindings.Add(new CommandBinding(CanvasPanBehavior.UndoCommand, (_, args) =>
@@ -58,6 +60,16 @@ public partial class MainWindow : Window
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         ApplyWindowPlacement();
+    }
+
+    private void OnToolWindowOpenRequested(EditorToolWindowId toolWindowId)
+    {
+        _editorShell.ShowOrFocusToolWindow(toolWindowId);
+    }
+
+    private void OnToolWindowCloseRequested(EditorToolWindowId toolWindowId)
+    {
+        _editorShell.HideToolWindow(toolWindowId);
     }
 
     private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)

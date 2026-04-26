@@ -5,5 +5,7 @@ public enum EditorToolWindowId
     Assets,
     Hierarchy,
     Inspector,
-    Output
+    Output,
+    Preferences,
+    ProjectSettings
 }

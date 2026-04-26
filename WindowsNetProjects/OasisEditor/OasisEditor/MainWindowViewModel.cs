@@ -10,6 +10,7 @@ using System.Windows.Media;
 using System.Collections.Specialized;
 using Microsoft.Win32;
 using EditorCommands = OasisEditor.Commands;
+using OasisEditor.Views;
 
 namespace OasisEditor;
 
@@ -24,8 +25,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private EditorProject? _loadedProject;
     private DocumentTabViewModel? _selectedDocument;
     private ThemePreference _selectedThemePreference;
-    private PreferencesWindow? _preferencesWindow;
-    private ProjectSettingsWindow? _projectSettingsWindow;
     private readonly AssetBrowserViewModel _assetBrowser;
     private readonly OutputLogViewModel _outputLog;
     private readonly InspectorViewModel _inspector;
@@ -35,6 +34,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly HierarchyPanelCommandService _hierarchyPanelCommands;
 
     public event PropertyChangedEventHandler? PropertyChanged;
+    public event Action<EditorToolWindowId>? ToolWindowOpenRequested;
+    public event Action<EditorToolWindowId>? ToolWindowCloseRequested;
 
     public MainWindowViewModel(
         IApplicationThemeService applicationThemeService,
@@ -629,50 +630,24 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void OpenPreferences()
     {
-        if (_preferencesWindow is { IsLoaded: true })
-        {
-            _preferencesWindow.Activate();
-            return;
-        }
-
-        _preferencesWindow = new PreferencesWindow
-        {
-            Owner = _ownerWindow,
-            DataContext = this
-        };
-
-        _preferencesWindow.Closed += (_, _) => _preferencesWindow = null;
-        _preferencesWindow.Show();
-        AddOutputEntry("Opened Preferences window.", OutputLogStatus.Info);
+        ToolWindowOpenRequested?.Invoke(EditorToolWindowId.Preferences);
+        AddOutputEntry("Opened Preferences pane.", OutputLogStatus.Info);
     }
 
     private void OpenProjectSettings()
     {
-        if (_projectSettingsWindow is { IsLoaded: true })
-        {
-            _projectSettingsWindow.Activate();
-            return;
-        }
-
-        _projectSettingsWindow = new ProjectSettingsWindow
-        {
-            Owner = _ownerWindow,
-            DataContext = this
-        };
-
-        _projectSettingsWindow.Closed += (_, _) => _projectSettingsWindow = null;
-        _projectSettingsWindow.Show();
-        AddOutputEntry("Opened Project Settings window.", OutputLogStatus.Info);
+        ToolWindowOpenRequested?.Invoke(EditorToolWindowId.ProjectSettings);
+        AddOutputEntry("Opened Project Settings pane.", OutputLogStatus.Info);
     }
 
     private void ClosePreferences()
     {
-        _preferencesWindow?.Close();
+        ToolWindowCloseRequested?.Invoke(EditorToolWindowId.Preferences);
     }
 
     private void CloseProjectSettings()
     {
-        _projectSettingsWindow?.Close();
+        ToolWindowCloseRequested?.Invoke(EditorToolWindowId.ProjectSettings);
     }
 
     private bool CanCloseProject()
