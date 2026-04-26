@@ -562,6 +562,71 @@ public sealed class Panel2DRoundTripTests
     }
 
     [Fact]
+    public void ExecuteDocumentCanvasCommand_DuplicateCommand_MarksDirtyOnlyForRealMutation()
+    {
+        var document = CreatePanelDocument(
+            new PanelElementModel
+            {
+                ObjectId = "rect-1",
+                Name = "Rect 1",
+                Kind = PanelElementKind.Rectangle,
+                X = 10,
+                Y = 10,
+                Width = 20,
+                Height = 20
+            });
+        var workspace = CreateWorkspace(document, document);
+
+        var missingSelectionDuplicate = CanvasMutationCommands.CreateDuplicateElementCommand(
+            document.DocumentId,
+            document,
+            new PanelSelectionInfo("missing-id", "rectangle", 10, 10, 20, 20));
+        var noOpExecuted = workspace.ExecuteDocumentCanvasCommand(document.DocumentId, missingSelectionDuplicate);
+
+        Assert.False(noOpExecuted);
+        Assert.False(document.IsDirty);
+        Assert.Empty(document.CommandService.History.Entries);
+
+        var validDuplicate = CanvasMutationCommands.CreateDuplicateElementCommand(
+            document.DocumentId,
+            document,
+            new PanelSelectionInfo("rect-1", "rectangle", 10, 10, 20, 20));
+        var duplicateExecuted = workspace.ExecuteDocumentCanvasCommand(document.DocumentId, validDuplicate);
+
+        Assert.True(duplicateExecuted);
+        Assert.True(document.IsDirty);
+        Assert.Equal(1, document.CommandService.History.Entries.Count);
+    }
+
+    [Fact]
+    public void ExecuteDocumentCanvasCommand_PasteCommand_ReExecutingSameCommandDoesNotRecordNoOp()
+    {
+        var document = CreatePanelDocument(
+            new PanelElementModel
+            {
+                ObjectId = "source-id",
+                Name = "Rect Original",
+                Kind = PanelElementKind.Rectangle,
+                X = 30,
+                Y = 40,
+                Width = 50,
+                Height = 60
+            });
+        var workspace = CreateWorkspace(document, document);
+        var source = document.GetPanelElements().Single();
+        var pasteCommand = CanvasMutationCommands.CreatePasteElementCommand(document.DocumentId, document, source);
+
+        var firstExecution = workspace.ExecuteDocumentCanvasCommand(document.DocumentId, pasteCommand);
+        var secondExecution = workspace.ExecuteDocumentCanvasCommand(document.DocumentId, pasteCommand);
+
+        Assert.True(firstExecution);
+        Assert.False(secondExecution);
+        Assert.True(document.IsDirty);
+        Assert.Equal(1, document.CommandService.History.Entries.Count);
+        Assert.Equal(2, document.GetPanelElements().Count);
+    }
+
+    [Fact]
     public void ExecuteDocumentCanvasCommand_TargetingInactiveDocument_ReturnsFalseAndDoesNotMutate()
     {
         var firstDocument = CreatePanelDocument(
