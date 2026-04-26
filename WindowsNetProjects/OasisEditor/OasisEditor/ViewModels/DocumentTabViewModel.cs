@@ -8,6 +8,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     private readonly CommandService _commandService;
     private EditorDocument _document;
     private string? _panelLayoutJson;
+    private Panel2DDocumentModel _panelDocumentModel;
     private PanelSelectionInfo? _hierarchySelectedPanelSelection;
     private double _panelZoom = 1.0;
     private double _panelPanX;
@@ -25,6 +26,12 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
         DocumentId = documentId ?? Guid.NewGuid();
         _commandService = commandService ?? new CommandService(new CommandHistory(), DocumentId);
         _panelLayoutJson = panelLayoutJson;
+        _panelDocumentModel = new Panel2DDocumentModel
+        {
+            Elements = Panel2DDocumentStorage.DeserializeLayout(panelLayoutJson)
+                .Select(Panel2DDocumentStorage.ToModel)
+                .ToArray()
+        };
     }
 
     public EditorDocument Document => _document;
@@ -67,8 +74,33 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
             }
 
             _panelLayoutJson = value;
+            _panelDocumentModel = new Panel2DDocumentModel
+            {
+                Elements = Panel2DDocumentStorage.DeserializeLayout(value)
+                    .Select(Panel2DDocumentStorage.ToModel)
+                    .ToArray()
+            };
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PanelLayoutJson)));
         }
+    }
+
+    public IReadOnlyList<PanelElementModel> GetPanelElements()
+    {
+        return _panelDocumentModel.Elements;
+    }
+
+    public void SetPanelElements(IReadOnlyList<PanelElementModel> elements)
+    {
+        _panelDocumentModel = new Panel2DDocumentModel
+        {
+            Title = _panelDocumentModel.Title,
+            Summary = _panelDocumentModel.Summary,
+            Elements = elements.ToArray()
+        };
+
+        _panelLayoutJson = Panel2DDocumentStorage.SerializeLayout(
+            Panel2DDocumentStorage.ToStorageElements(_panelDocumentModel));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PanelLayoutJson)));
     }
 
     public PanelSelectionInfo? HierarchySelectedPanelSelection
