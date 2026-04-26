@@ -31,8 +31,10 @@ public partial class HierarchyView : UserControl
 
         if (eventArgs.Key == Key.Delete)
         {
-            if (viewModel.DeleteSelectedHierarchyItem())
+            var command = viewModel.DeleteSelectedHierarchyItemCommand;
+            if (command.CanExecute(null))
             {
+                command.Execute(null);
                 eventArgs.Handled = true;
             }
 
