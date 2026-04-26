@@ -281,9 +281,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return false;
         }
 
-        var hasMatchingElement = Panel2DDocumentStorage.DeserializeLayout(selectedDocument.PanelLayoutJson)
-            .Any(element => IsSelectionMatch(element, selection));
-        if (!hasMatchingElement)
+        if (!selectedDocument.HasPanelElement(selection))
         {
             return false;
         }
@@ -312,9 +310,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return false;
         }
 
-        var matchingElement = Panel2DDocumentStorage.DeserializeLayout(selectedDocument.PanelLayoutJson)
-            .FirstOrDefault(element => IsSelectionMatch(element, selection));
-        if (matchingElement is null)
+        if (!selectedDocument.TryGetPanelElement(selection, out var matchingElement))
         {
             return false;
         }
@@ -342,9 +338,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return false;
         }
 
-        var hasMatchingElement = Panel2DDocumentStorage.DeserializeLayout(selectedDocument.PanelLayoutJson)
-            .Any(element => IsSelectionMatch(element, selection));
-        if (!hasMatchingElement)
+        if (!selectedDocument.HasPanelElement(selection))
         {
             return false;
         }
@@ -877,10 +871,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
-    private static bool IsSelectionMatch(PanelElementFile element, PanelSelectionInfo selection)
-    {
-        return PanelSelectionContract.IsMatch(element, selection);
-    }
 }
 
 internal readonly record struct OpenDocumentData(string Summary, string? PanelLayoutJson);
