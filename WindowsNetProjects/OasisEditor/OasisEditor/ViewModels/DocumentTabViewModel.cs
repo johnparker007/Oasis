@@ -84,12 +84,12 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
         }
     }
 
-    public IReadOnlyList<PanelElementModel> GetPanelElements()
+    internal IReadOnlyList<PanelElementModel> GetPanelElements()
     {
         return _panelDocumentModel.Elements;
     }
 
-    public void SetPanelElements(IReadOnlyList<PanelElementModel> elements)
+    internal void SetPanelElements(IReadOnlyList<PanelElementModel> elements)
     {
         _panelDocumentModel = new Panel2DDocumentModel
         {
