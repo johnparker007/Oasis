@@ -113,7 +113,7 @@ public sealed class MfmeImportAssetCopyServiceTests
             }
         ]);
 
-        Assert.Equal(1, result.CopiedAssets.Count);
+        Assert.Single(result.CopiedAssets);
         Assert.Equal(result.Elements[0].AssetPath, result.Elements[1].AssetPath);
     }
 
