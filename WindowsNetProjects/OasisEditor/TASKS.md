@@ -2,9 +2,19 @@
 
 ## Current Focus — MFME Extract Import into Panel2D
 
-Goal: allow the WPF editor to import an existing MFME extract into an empty/new Panel2D document and create WPF editor equivalents for the first supported MFME component set: Background, Lamp, Reel, Seven Seg, and Alpha.
+Goal: allow the WPF editor to import an existing MFME extract into an empty/new Panel2D document and convert the supported legacy MFME components into native Oasis editor components. MFME is a legacy import format only. It must not become part of the core Oasis component model.
 
 Complete these tasks in order. Keep each task small enough for one Codex pass where practical. Build after every implementation task and fix compile, binding, resource, and test errors before moving on.
+
+### Architectural Rule — MFME Is Import-Only
+- [ ] Treat MFME as an abandonware/legacy source format, not as an Oasis runtime/editor domain
+- [ ] Do not introduce MFME-specific fields such as `MfmeSourceType`, `MfmeSourceId`, or `ExtractComponent...` into core Panel2D mutation logic
+- [ ] Do not name native Oasis model fields after MFME concepts unless the same concept is genuinely Oasis-native
+- [ ] Map MFME extract data once at import time into Oasis-native component kinds and Oasis-native component properties
+- [ ] After import, all imported objects must behave as Oasis components only
+- [ ] Rename, duplicate, copy, paste, undo, redo, save, and load must operate on Oasis-native component data, not MFME source metadata
+- [ ] If import provenance is retained, keep it optional, generic, isolated, and unused by normal editor behavior, for example `ImportSource.Format = "MFME"`
+- [ ] Tests must assert preservation of Oasis-native properties, not preservation of MFME metadata
 
 ### MFME Import Guardrails
 - [ ] Only modify files under `Oasis/WindowsNetProjects/OasisEditor` unless a task explicitly says otherwise
@@ -20,27 +30,30 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
 
 ### Phase K — Legacy Import and Extract Format Reconnaissance
 - [ ] Inspect the Unity importer entry point at `UnityProjects/LayoutEditor/Assets/_Project/Scripts/Oasis/MFME/ExtractImporter.cs`
-  - [ ] Document the exact field mappings currently used for Background, Lamp, Reel, SevenSegment, Alpha, AlphaNew, and MatrixAlpha
-  - [ ] Note existing Unity importer quirks that should be preserved initially, such as Reel number `+ 1` and MatrixAlpha importing as Alpha
+  - [ ] Document how each supported MFME extract component is currently converted into the legacy Unity editor's internal component model
+  - [ ] Document the exact source-to-target mappings currently used for Background, Lamp, Reel, SevenSegment, Alpha, AlphaNew, and MatrixAlpha
+  - [ ] Note Unity importer quirks that should inform the WPF converter initially, such as Reel number `+ 1` and MatrixAlpha importing as Alpha
   - [ ] Note behavior that should be deferred, such as runtime-only editor components, complex lamp inputs, and temporary reel overlay compositing
 - [ ] Inspect MFME extract DTOs/helpers under `WindowsNetProjects/MfmeTools/MfmeTools/Shared`
-  - [ ] Identify the minimum DTO fields needed for Background, Lamp, Reel, SevenSegment, Alpha, AlphaNew, and MatrixAlpha
+  - [ ] Identify the minimum legacy extract fields needed to build native Oasis Background, Lamp, Reel, SevenSegment, and Alpha components
   - [ ] Identify how extract image folders and filenames are represented
   - [ ] Identify the extract manifest/layout file format that the WPF editor should read first
 - [ ] Add `Docs/MfmeImportPlan.md` under `WindowsNetProjects/OasisEditor`
+  - [ ] State clearly that MFME is a legacy import format only
   - [ ] Summarise the source extract contract for the first milestone
-  - [ ] Summarise component mapping rules
+  - [ ] Summarise conversion rules from legacy MFME extract components to native Oasis components
   - [ ] Summarise asset-copy conventions
   - [ ] List deferred behavior explicitly
   - [ ] Include a short note that legacy projects are reference-only for this track
 - [ ] Build the WPF solution after the reconnaissance/documentation-only changes if project files changed; otherwise no build is required
 
-### Phase L — MFME Import Domain Boundary
-- [ ] Add a focused MFME import feature folder under the WPF editor project
+### Phase L — Import Domain Boundary
+- [ ] Add a focused legacy import feature folder under the WPF editor project
   - [ ] Suggested location: `OasisEditor/Features/MfmeImport/`
   - [ ] Keep classes internal unless they must be public for tests
+  - [ ] Keep the feature boundary clear: MFME parsing/conversion lives here; native Oasis components live in the normal Panel2D/editor model
 - [ ] Add importer result/diagnostic types
-  - [ ] `MfmeImportResult` with imported elements, copied assets, skipped components, and warnings/errors
+  - [ ] `MfmeImportResult` with native Oasis elements/components, copied assets, skipped legacy components, and warnings/errors
   - [ ] `MfmeImportWarning` or equivalent structured warning type
   - [ ] Ensure warnings are useful for output-log display
 - [ ] Add import options/context types
@@ -51,92 +64,100 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
 - [ ] Add a first-pass extract reader abstraction
   - [ ] Keep parsing independent from WPF UI
   - [ ] Support loading an already-created MFME extract from disk
-  - [ ] Return a neutral in-editor representation rather than old Unity component types
+  - [ ] Return a neutral legacy-extract representation for conversion, not old Unity component types and not core Oasis component types
 - [ ] Add tests for invalid/missing extract paths and basic warning/error reporting
 - [ ] Build and run tests
 
-### Phase M — Minimal MFME Extract DTOs for the WPF Editor
-- [ ] Add minimal WPF-editor-owned DTOs for MFME extract data needed by this feature
+### Phase M — Minimal Legacy MFME Extract DTOs for the Import Adapter
+- [ ] Add minimal WPF-editor-owned DTOs for reading MFME extract data needed by this import adapter
   - [ ] Layout/import root DTO
-  - [ ] Shared component base data: type, position, size, name/source identity if available
-  - [ ] Background DTO
-  - [ ] Lamp DTO including first lamp element data needed by the Unity importer mapping
-  - [ ] Reel DTO
-  - [ ] SevenSegment DTO
-  - [ ] Alpha/AlphaNew/MatrixAlpha DTOs or one normalised Alpha DTO
-- [ ] Add parser/normaliser from the real extract layout format into these DTOs
-  - [ ] Keep the parser tolerant of unsupported components
-  - [ ] Unsupported components should be skipped with warnings, not hard failures
-  - [ ] Missing optional images should produce warnings and usable placeholder elements
-- [ ] Add tests using small hand-written fixture JSON/data for each supported component type
+  - [ ] Shared legacy component base data: type, position, size, and any source identity needed only while converting
+  - [ ] Background extract DTO
+  - [ ] Lamp extract DTO including first lamp element data needed by the Unity importer mapping
+  - [ ] Reel extract DTO
+  - [ ] SevenSegment extract DTO
+  - [ ] Alpha/AlphaNew/MatrixAlpha extract DTOs or one normalised legacy Alpha extract DTO
+- [ ] Add parser/normaliser from the real extract layout format into these legacy DTOs
+  - [ ] Keep the parser tolerant of unsupported legacy components
+  - [ ] Unsupported legacy components should be skipped with warnings, not hard failures
+  - [ ] Missing optional images should produce warnings and still allow native Oasis placeholder components where possible
+- [ ] Ensure these DTOs do not leak into general Panel2D model/mutation code
+- [ ] Add tests using small hand-written fixture JSON/data for each supported legacy component type
 - [ ] Build and run tests
 
-### Phase N — Panel2D Schema and Model Expansion
-- [ ] Design the Panel2D schema extension for imported MFME components before editing storage code
+### Phase N — Native Oasis Panel2D Component Model Expansion
+- [ ] Design the Panel2D schema extension for native Oasis components before editing storage code
   - [ ] Decide whether this feature requires schema version 2
   - [ ] Preserve ability to open schema version 1 files
   - [ ] Define a migration path or explicit version rejection behavior for future schemas
-- [ ] Add new `PanelElementKind` values for imported/editable MFME elements
-  - [ ] Background
+  - [ ] Avoid MFME-specific field names in the core schema
+- [ ] Add native Oasis `PanelElementKind` values or equivalent component kinds
+  - [ ] BackgroundArtwork or Background
   - [ ] Lamp
   - [ ] Reel
-  - [ ] SevenSegment
-  - [ ] Alpha
-- [ ] Extend `PanelElementModel`/storage DTOs with the minimum metadata needed for MFME imports
+  - [ ] SevenSegmentDisplay or SevenSegment
+  - [ ] AlphaDisplay or Alpha
+- [ ] Extend `PanelElementModel`/storage DTOs with native Oasis properties only
   - [ ] Project-relative asset path or paths
-  - [ ] Source MFME component type
-  - [ ] Source MFME component identifier/index if available
-  - [ ] Display/runtime number where applicable, such as lamp/reel/segment number
-  - [ ] Common visual properties needed for placeholders, such as colors/text/reversed/stops
-- [ ] Update validation and normalisation for the new kinds
+  - [ ] Component display/runtime number where applicable, such as lamp/reel/segment number
+  - [ ] Native visual properties needed for placeholders, such as colors, text, reversed, stops, and visible scale
+  - [ ] Generic optional import provenance only if required, isolated from editor behavior and not referenced by rename/duplicate/paste logic
+- [ ] Update validation and normalisation for the new native kinds
   - [ ] Reject invalid dimensions consistently
   - [ ] Preserve stable object IDs and names
   - [ ] Ensure malformed or unsupported files fail with useful messages
 - [ ] Update storage/model round-trip tests
   - [ ] Existing rectangle/image schema version 1 fixtures still load
-  - [ ] New imported component kinds round-trip correctly
+  - [ ] New native component kinds round-trip correctly
+  - [ ] Tests use Oasis-native field names and concepts
   - [ ] Unsupported future schemas produce explicit errors
 - [ ] Build and run tests
 
-### Phase O — Component Mapping from MFME Extract to Panel2D Elements
-- [ ] Add `MfmeComponentMapper` or equivalent pure mapping service
-  - [ ] Input: normalised MFME extract DTOs
-  - [ ] Output: Panel2D model/storage elements ready for command insertion
+### Phase O — Conversion from MFME Extract to Native Oasis Components
+- [ ] Add `MfmeToOasisComponentMapper` or equivalent pure conversion service
+  - [ ] Input: normalised legacy MFME extract DTOs
+  - [ ] Output: native Oasis Panel2D model/storage elements ready for command insertion
   - [ ] No WPF dependencies
-- [ ] Implement Background mapping
+  - [ ] No MFME-specific fields in the output except optional isolated generic provenance if explicitly retained
+- [ ] Implement Background conversion
+  - [ ] Convert MFME background into native Oasis background artwork/component
   - [ ] Position `(0, 0)`
   - [ ] Size from MFME background
   - [ ] Color from MFME background
-  - [ ] Optional image path from the extract Background folder
+  - [ ] Optional image path from the extract Background folder converted into a project-relative asset path later
   - [ ] Name `Background`
-- [ ] Implement Lamp mapping
+- [ ] Implement Lamp conversion
+  - [ ] Convert MFME lamp into native Oasis lamp component
   - [ ] Position and size from MFME lamp
-  - [ ] Number from the first lamp element, matching the Unity importer for milestone 1
-  - [ ] Optional image path from the extract Lamps folder
-  - [ ] On/off/text colors
-  - [ ] Text/font fields where available
-  - [ ] Input metadata stored only if straightforward; no runtime behavior yet
+  - [ ] Lamp number from the first lamp element for milestone 1
+  - [ ] Optional image path from the extract Lamps folder converted into a project-relative asset path later
+  - [ ] On/off/text colors mapped into native Oasis lamp visual properties
+  - [ ] Text/font fields mapped into native Oasis text/display properties where the model supports them
+  - [ ] Input metadata deferred unless there is already an Oasis-native input model to receive it
   - [ ] Name `Lamp` or `Lamp <number>` consistently
-- [ ] Implement Reel mapping
+- [ ] Implement Reel conversion
+  - [ ] Convert MFME reel into native Oasis reel component
   - [ ] Position and size from MFME reel
-  - [ ] Number as MFME number `+ 1`, matching the Unity importer
-  - [ ] Band image path from the extract Reels folder
-  - [ ] Stops and reversed fields
-  - [ ] Visible scale using the Unity importer's first-pass calculation
-  - [ ] Overlay handling deferred or stored as metadata only
+  - [ ] Reel number as MFME number `+ 1`, matching current legacy importer behavior
+  - [ ] Band image path from the extract Reels folder converted into a project-relative asset path later
+  - [ ] Stops and reversed fields mapped into native Oasis reel properties
+  - [ ] Visible scale using the Unity importer's first-pass calculation, stored as a native Oasis reel property
+  - [ ] Overlay handling deferred or converted only if a native Oasis overlay model exists
   - [ ] Name `Reel <number>`
-- [ ] Implement SevenSegment mapping
+- [ ] Implement SevenSegment conversion
+  - [ ] Convert MFME seven-segment component into native Oasis seven-segment display component
   - [ ] Position and size from MFME seven-segment component
-  - [ ] Number from MFME component
-  - [ ] Segment/on color
+  - [ ] Display number from MFME component
+  - [ ] Segment/on color mapped into native Oasis display color
   - [ ] Name `7 Segment <number>`
-- [ ] Implement Alpha mapping
-  - [ ] Map Alpha and AlphaNew to the same WPF Alpha element kind
-  - [ ] Map MatrixAlpha to Alpha for now, matching the Unity importer's temporary behavior
+- [ ] Implement Alpha conversion
+  - [ ] Convert MFME Alpha and AlphaNew into the same native Oasis alpha display component
+  - [ ] Convert MFME MatrixAlpha to native Oasis Alpha for now, matching current legacy importer behavior
   - [ ] Position, size, and reversed where available
   - [ ] Name `Alpha`
-- [ ] Add mapper tests for each supported component type
+- [ ] Add mapper tests for each supported legacy component type
 - [ ] Add tests that unsupported MFME component types are skipped with warnings
+- [ ] Ensure tests assert native Oasis component output, not MFME metadata preservation
 - [ ] Build and run tests
 
 ### Phase P — Project Asset Copy and Relative Path Handling
@@ -146,53 +167,53 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
   - [ ] Copy into `Assets/MfmeImport/<layout-or-extract-name>/Reels/`
   - [ ] Generate safe folder/file names and prevent path traversal
   - [ ] Avoid overwriting distinct files accidentally; use deterministic collision handling
-- [ ] Store project-relative asset paths in Panel2D elements
+- [ ] Store project-relative asset paths in native Oasis Panel2D elements/components
 - [ ] Handle missing source images gracefully
-  - [ ] Import the element anyway when possible
+  - [ ] Import the native Oasis component anyway when possible
   - [ ] Add a warning listing the missing file
   - [ ] Use placeholder visuals later in the visual projection phase
 - [ ] Refresh the Assets pane after successful import/copy
 - [ ] Add tests for root containment, duplicate names, missing files, and project-relative path generation
 - [ ] Build and run tests
 
-### Phase Q — Panel2D Visual Projection for Imported Elements
-- [ ] Update `PanelElementFactory` or introduce focused visual factories for new Panel2D kinds
-  - [ ] Keep WPF-specific visual creation separate from import/domain mapping
+### Phase Q — Panel2D Visual Projection for Native Imported Components
+- [ ] Update `PanelElementFactory` or introduce focused visual factories for new native Panel2D kinds
+  - [ ] Keep WPF-specific visual creation separate from import/domain conversion
   - [ ] Preserve existing Rectangle/Image behavior
-- [ ] Add placeholder visual projection for Background
+- [ ] Add placeholder visual projection for native Background
   - [ ] Use imported image when available
-  - [ ] Fall back to a filled rectangle using imported color when no image is available
-- [ ] Add placeholder visual projection for Lamp
+  - [ ] Fall back to a filled rectangle using imported/native color when no image is available
+- [ ] Add placeholder visual projection for native Lamp
   - [ ] Use imported lamp image when available
   - [ ] Fall back to a colored rectangle with optional text
   - [ ] Keep it selectable/model-backed like existing elements
-- [ ] Add placeholder visual projection for Reel
+- [ ] Add placeholder visual projection for native Reel
   - [ ] Use imported band image when available, clipped/scaled into the element bounds
   - [ ] Fall back to a labeled placeholder rectangle
-- [ ] Add placeholder visual projection for SevenSegment
+- [ ] Add placeholder visual projection for native SevenSegment display
   - [ ] Use a labeled/tinted placeholder visual for now
-  - [ ] Preserve number/color metadata in the model
-- [ ] Add placeholder visual projection for Alpha
+  - [ ] Preserve number/color metadata in the native model
+- [ ] Add placeholder visual projection for native Alpha display
   - [ ] Use a labeled placeholder visual for now
-  - [ ] Preserve reversed metadata in the model
-- [ ] Update hierarchy grouping/display for the new element kinds
+  - [ ] Preserve reversed metadata in the native model
+- [ ] Update hierarchy grouping/display for the new native element kinds
   - [ ] Backgrounds
   - [ ] Lamps
   - [ ] Reels
   - [ ] Seven Segments
   - [ ] Alphas
-- [ ] Verify selection, hierarchy selection, inspector display, save/load, and undo/redo still work for new kinds
+- [ ] Verify selection, hierarchy selection, inspector display, save/load, and undo/redo still work for new native kinds
 - [ ] Build and run tests
 
-### Phase R — Undoable MFME Import Command
+### Phase R — Undoable Import Command
 - [ ] Add `ImportMfmeExtractCommand` or equivalent document-scoped command
   - [ ] Target a specific document ID at creation time
-  - [ ] Insert all imported Panel2D elements as one undoable operation
+  - [ ] Insert all converted native Oasis Panel2D elements as one undoable operation
   - [ ] Record copied assets/import warnings outside undo only if necessary and documented
-  - [ ] Mark the document dirty only when elements are actually added
+  - [ ] Mark the document dirty only when native elements are actually added
   - [ ] Do not record no-op imports in undo history
-- [ ] Ensure undo removes all imported elements from the active document only
-- [ ] Ensure redo restores the same logical imported elements without reusing stale command state incorrectly
+- [ ] Ensure undo removes all imported native elements from the active document only
+- [ ] Ensure redo restores the same logical native elements without reusing stale command state incorrectly
 - [ ] Ensure object IDs remain stable through undo/redo of the same command
 - [ ] Add command tests for import, undo, redo, no-op import, and wrong-document safety
 - [ ] Build and run tests
@@ -204,8 +225,8 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
   - [ ] Use a folder picker or file picker appropriate to the extract contract identified in Phase K
 - [ ] Route UI command through ViewModel/service code, not direct import logic in code-behind
 - [ ] Display import results in the output log
-  - [ ] Count imported components by kind
-  - [ ] Count skipped unsupported components
+  - [ ] Count imported native components by kind
+  - [ ] Count skipped unsupported legacy MFME components
   - [ ] List warnings for missing images or unsupported fields
 - [ ] Ensure import into an empty Panel2D document is the first supported flow
 - [ ] Add a clear message for unsupported active document types
@@ -217,19 +238,20 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
   - [ ] Keep fixture out of git if it is large or not redistributable
 - [ ] Smoke test importing into an empty project/document
   - [ ] Imported assets are copied under the project's `Assets/MfmeImport/...` folder
-  - [ ] Panel2D elements appear at expected positions/sizes
-  - [ ] Hierarchy groups show imported elements
-  - [ ] Selection and inspector work for imported elements
-  - [ ] Save/reopen preserves imported elements and asset paths
+  - [ ] Native Oasis Panel2D elements appear at expected positions/sizes
+  - [ ] Hierarchy groups show imported native elements
+  - [ ] Selection and inspector work for imported native elements
+  - [ ] Save/reopen preserves imported native elements and asset paths
   - [ ] Undo/redo of the import works document-locally
 - [ ] Compare WPF imported output against the Unity importer behavior for the supported first-pass components
+  - [ ] Compare behavior as conversion behavior only, not as MFME becoming part of the Oasis domain
 - [ ] Update `Docs/MfmeImportPlan.md` with any intentional differences from Unity behavior
-- [ ] Add follow-up tasks for deferred rendering/runtime behavior
+- [ ] Add follow-up tasks for deferred native Oasis rendering/runtime behavior
   - [ ] Accurate lamp rendering and masks
   - [ ] Accurate reel viewport/overlay handling
   - [ ] Seven-segment renderer
   - [ ] Alpha renderer
-  - [ ] Button/input mapping
+  - [ ] Native button/input mapping
   - [ ] Runtime/export mapping
 - [ ] Final build and test run
 
