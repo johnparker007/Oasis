@@ -679,6 +679,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         _documentWorkspace.ClearProjectSessionState();
         _activeDocumentContext.ClearAll();
+        PanelElementFactory.ProjectDirectoryPath = null;
 
         AssetBrowserItems.Clear();
         SelectedAsset = null;
@@ -694,6 +695,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         var project = LoadProjectFromFile(startupProjectFilePath);
         LoadedProject = project;
+        PanelElementFactory.ProjectDirectoryPath = project.ProjectDirectory;
         ProjectFilePath = project.ProjectFilePath;
         UpdateRecentProjects(project.ProjectFilePath);
         _documentWorkspace.EnsureProjectOverviewDocument();
