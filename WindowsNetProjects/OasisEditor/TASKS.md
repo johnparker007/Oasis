@@ -161,19 +161,19 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
 - [ ] Build and run tests
 
 ### Phase P — Project Asset Copy and Relative Path Handling
-- [ ] Add an asset-copy service for imported MFME extract images
-  - [ ] Copy into `Assets/MfmeImport/<layout-or-extract-name>/Background/`
-  - [ ] Copy into `Assets/MfmeImport/<layout-or-extract-name>/Lamps/`
-  - [ ] Copy into `Assets/MfmeImport/<layout-or-extract-name>/Reels/`
-  - [ ] Generate safe folder/file names and prevent path traversal
-  - [ ] Avoid overwriting distinct files accidentally; use deterministic collision handling
-- [ ] Store project-relative asset paths in native Oasis Panel2D elements/components
-- [ ] Handle missing source images gracefully
-  - [ ] Import the native Oasis component anyway when possible
-  - [ ] Add a warning listing the missing file
-  - [ ] Use placeholder visuals later in the visual projection phase
+- [x] Add an asset-copy service for imported MFME extract images
+  - [x] Copy into `Assets/MfmeImport/<layout-or-extract-name>/Background/`
+  - [x] Copy into `Assets/MfmeImport/<layout-or-extract-name>/Lamps/`
+  - [x] Copy into `Assets/MfmeImport/<layout-or-extract-name>/Reels/`
+  - [x] Generate safe folder/file names and prevent path traversal
+  - [x] Avoid overwriting distinct files accidentally; use deterministic collision handling
+- [x] Store project-relative asset paths in native Oasis Panel2D elements/components
+- [x] Handle missing source images gracefully
+  - [x] Import the native Oasis component anyway when possible
+  - [x] Add a warning listing the missing file
+  - [x] Use placeholder visuals later in the visual projection phase
 - [ ] Refresh the Assets pane after successful import/copy
-- [ ] Add tests for root containment, duplicate names, missing files, and project-relative path generation
+- [x] Add tests for root containment, duplicate names, missing files, and project-relative path generation
 - [ ] Build and run tests
 
 ### Phase Q — Panel2D Visual Projection for Native Imported Components
