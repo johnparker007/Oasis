@@ -254,7 +254,7 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
   - [x] Alpha renderer
   - [x] Native button/input mapping
   - [x] Runtime/export mapping
-- [ ] Final build and test run
+- [ ] Final build and test run *(blocked in current container; see `PhaseT.FinalBuildAndTestAttempt.md`)*
 
 ---
 
