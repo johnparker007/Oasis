@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using OasisEditor.Features.MfmeImport;
 using Xunit;
