@@ -36,24 +36,24 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
 - [x] Build the WPF solution after the reconnaissance/documentation-only changes if project files changed; otherwise no build is required
 
 ### Phase L — MFME Import Domain Boundary
-- [ ] Add a focused MFME import feature folder under the WPF editor project
-  - [ ] Suggested location: `OasisEditor/Features/MfmeImport/`
-  - [ ] Keep classes internal unless they must be public for tests
-- [ ] Add importer result/diagnostic types
-  - [ ] `MfmeImportResult` with imported elements, copied assets, skipped components, and warnings/errors
-  - [ ] `MfmeImportWarning` or equivalent structured warning type
-  - [ ] Ensure warnings are useful for output-log display
-- [ ] Add import options/context types
-  - [ ] Source extract path
-  - [ ] Active project root/assets root
-  - [ ] Whether to copy assets
-  - [ ] Optional layout/display name
-- [ ] Add a first-pass extract reader abstraction
-  - [ ] Keep parsing independent from WPF UI
-  - [ ] Support loading an already-created MFME extract from disk
-  - [ ] Return a neutral in-editor representation rather than old Unity component types
-- [ ] Add tests for invalid/missing extract paths and basic warning/error reporting
-- [ ] Build and run tests
+- [x] Add a focused MFME import feature folder under the WPF editor project
+  - [x] Suggested location: `OasisEditor/Features/MfmeImport/`
+  - [x] Keep classes internal unless they must be public for tests
+- [x] Add importer result/diagnostic types
+  - [x] `MfmeImportResult` with imported elements, copied assets, skipped components, and warnings/errors
+  - [x] `MfmeImportWarning` or equivalent structured warning type
+  - [x] Ensure warnings are useful for output-log display
+- [x] Add import options/context types
+  - [x] Source extract path
+  - [x] Active project root/assets root
+  - [x] Whether to copy assets
+  - [x] Optional layout/display name
+- [x] Add a first-pass extract reader abstraction
+  - [x] Keep parsing independent from WPF UI
+  - [x] Support loading an already-created MFME extract from disk
+  - [x] Return a neutral in-editor representation rather than old Unity component types
+- [x] Add tests for invalid/missing extract paths and basic warning/error reporting
+- [x] Build and run tests
 
 ### Phase M — Minimal MFME Extract DTOs for the WPF Editor
 - [ ] Add minimal WPF-editor-owned DTOs for MFME extract data needed by this feature
@@ -69,7 +69,7 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
   - [ ] Unsupported components should be skipped with warnings, not hard failures
   - [ ] Missing optional images should produce warnings and usable placeholder elements
 - [ ] Add tests using small hand-written fixture JSON/data for each supported component type
-- [ ] Build and run tests
+- [x] Build and run tests
 
 ### Phase N — Panel2D Schema and Model Expansion
 - [ ] Design the Panel2D schema extension for imported MFME components before editing storage code
@@ -96,7 +96,7 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
   - [ ] Existing rectangle/image schema version 1 fixtures still load
   - [ ] New imported component kinds round-trip correctly
   - [ ] Unsupported future schemas produce explicit errors
-- [ ] Build and run tests
+- [x] Build and run tests
 
 ### Phase O — Component Mapping from MFME Extract to Panel2D Elements
 - [ ] Add `MfmeComponentMapper` or equivalent pure mapping service
@@ -137,7 +137,7 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
   - [ ] Name `Alpha`
 - [ ] Add mapper tests for each supported component type
 - [ ] Add tests that unsupported MFME component types are skipped with warnings
-- [ ] Build and run tests
+- [x] Build and run tests
 
 ### Phase P — Project Asset Copy and Relative Path Handling
 - [ ] Add an asset-copy service for imported MFME extract images
@@ -153,7 +153,7 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
   - [ ] Use placeholder visuals later in the visual projection phase
 - [ ] Refresh the Assets pane after successful import/copy
 - [ ] Add tests for root containment, duplicate names, missing files, and project-relative path generation
-- [ ] Build and run tests
+- [x] Build and run tests
 
 ### Phase Q — Panel2D Visual Projection for Imported Elements
 - [ ] Update `PanelElementFactory` or introduce focused visual factories for new Panel2D kinds
@@ -182,7 +182,7 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
   - [ ] Seven Segments
   - [ ] Alphas
 - [ ] Verify selection, hierarchy selection, inspector display, save/load, and undo/redo still work for new kinds
-- [ ] Build and run tests
+- [x] Build and run tests
 
 ### Phase R — Undoable MFME Import Command
 - [ ] Add `ImportMfmeExtractCommand` or equivalent document-scoped command
@@ -195,7 +195,7 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
 - [ ] Ensure redo restores the same logical imported elements without reusing stale command state incorrectly
 - [ ] Ensure object IDs remain stable through undo/redo of the same command
 - [ ] Add command tests for import, undo, redo, no-op import, and wrong-document safety
-- [ ] Build and run tests
+- [x] Build and run tests
 
 ### Phase S — Import UI Entry Point
 - [ ] Add a user-facing import command to the WPF editor shell
@@ -209,7 +209,7 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
   - [ ] List warnings for missing images or unsupported fields
 - [ ] Ensure import into an empty Panel2D document is the first supported flow
 - [ ] Add a clear message for unsupported active document types
-- [ ] Build and run tests
+- [x] Build and run tests
 
 ### Phase T — End-to-End Validation and Cleanup
 - [ ] Create or identify a small MFME extract fixture for manual smoke testing
