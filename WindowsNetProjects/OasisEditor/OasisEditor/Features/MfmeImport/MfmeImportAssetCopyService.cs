@@ -52,7 +52,7 @@ internal sealed class MfmeImportAssetCopyService
                     Code: "invalid-asset-path",
                     Message: $"Skipped invalid asset path '{element.AssetPath}'.",
                     ContextPath: element.ObjectId));
-                updated.Add(element with { AssetPath = null });
+                updated.Add(CloneWithAssetPath(element, null));
                 continue;
             }
 
@@ -62,13 +62,13 @@ internal sealed class MfmeImportAssetCopyService
                     Code: "missing-asset",
                     Message: $"Missing MFME source image '{sourceAssetPath}'.",
                     ContextPath: element.ObjectId));
-                updated.Add(element with { AssetPath = null });
+                updated.Add(CloneWithAssetPath(element, null));
                 continue;
             }
 
             if (copiedDestinationBySource.TryGetValue(sourceAssetPath, out var existingDestination))
             {
-                updated.Add(element with { AssetPath = ToProjectRelativePath(projectRootFullPath, existingDestination) });
+                updated.Add(CloneWithAssetPath(element, ToProjectRelativePath(projectRootFullPath, existingDestination)));
                 continue;
             }
 
@@ -82,7 +82,7 @@ internal sealed class MfmeImportAssetCopyService
             copied.Add(destinationPath);
             copiedDestinationBySource[sourceAssetPath] = destinationPath;
 
-            updated.Add(element with { AssetPath = ToProjectRelativePath(projectRootFullPath, destinationPath) });
+            updated.Add(CloneWithAssetPath(element, ToProjectRelativePath(projectRootFullPath, destinationPath)));
         }
 
         return new MfmeImportAssetCopyResult
@@ -187,5 +187,30 @@ internal sealed class MfmeImportAssetCopyService
     {
         var relative = Path.GetRelativePath(projectRootPath, absolutePath);
         return relative.Replace('\\', '/');
+    }
+
+    private static PanelElementModel CloneWithAssetPath(PanelElementModel source, string? assetPath)
+    {
+        return new PanelElementModel
+        {
+            ObjectId = source.ObjectId,
+            Name = source.Name,
+            Kind = source.Kind,
+            X = source.X,
+            Y = source.Y,
+            Width = source.Width,
+            Height = source.Height,
+            AssetPath = assetPath,
+            MfmeSourceType = source.MfmeSourceType,
+            MfmeSourceId = source.MfmeSourceId,
+            DisplayNumber = source.DisplayNumber,
+            PrimaryColor = source.PrimaryColor,
+            SecondaryColor = source.SecondaryColor,
+            TextColor = source.TextColor,
+            Text = source.Text,
+            Reversed = source.Reversed,
+            Stops = source.Stops,
+            VisibleScale = source.VisibleScale
+        };
     }
 }
