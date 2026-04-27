@@ -139,6 +139,82 @@ public sealed class PanelElementFactoryTests
         });
     }
 
+    [Fact]
+    public void CreateVisualFromElement_ReelWithoutImage_UsesFallbackLabel()
+    {
+        RunInSta(() =>
+        {
+            var source = new PanelElementFile
+            {
+                ObjectId = "reel-1",
+                Name = "Reel 3",
+                Kind = Panel2DDocumentStorage.SerializeElementKind(PanelElementKind.Reel),
+                Width = 80,
+                Height = 120,
+                DisplayNumber = 3
+            };
+
+            var visual = PanelElementFactory.CreateVisualFromElement(source);
+
+            var border = Assert.IsType<Border>(visual);
+            var stack = Assert.IsType<StackPanel>(border.Child);
+            var title = Assert.IsType<TextBlock>(stack.Children[0]);
+            Assert.Equal("Reel 3", title.Text);
+        });
+    }
+
+    [Fact]
+    public void CreateVisualFromElement_SevenSegment_UsesDisplayColorAndLabel()
+    {
+        RunInSta(() =>
+        {
+            var source = new PanelElementFile
+            {
+                ObjectId = "seven-1",
+                Name = "7 Segment 4",
+                Kind = Panel2DDocumentStorage.SerializeElementKind(PanelElementKind.SevenSegment),
+                Width = 90,
+                Height = 40,
+                DisplayNumber = 4,
+                OnColorHex = "#FFCC2200"
+            };
+
+            var visual = PanelElementFactory.CreateVisualFromElement(source);
+
+            var border = Assert.IsType<Border>(visual);
+            var stack = Assert.IsType<StackPanel>(border.Child);
+            var title = Assert.IsType<TextBlock>(stack.Children[0]);
+            var background = Assert.IsType<SolidColorBrush>(border.Background);
+
+            Assert.Equal("7 Segment 4", title.Text);
+            Assert.Equal(Color.FromArgb(0xFF, 0xCC, 0x22, 0x00), background.Color);
+        });
+    }
+
+    [Fact]
+    public void CreateVisualFromElement_AlphaReversed_UsesReversedLabel()
+    {
+        RunInSta(() =>
+        {
+            var source = new PanelElementFile
+            {
+                ObjectId = "alpha-1",
+                Name = "Alpha",
+                Kind = Panel2DDocumentStorage.SerializeElementKind(PanelElementKind.Alpha),
+                Width = 120,
+                Height = 36,
+                IsReversed = true
+            };
+
+            var visual = PanelElementFactory.CreateVisualFromElement(source);
+
+            var border = Assert.IsType<Border>(visual);
+            var stack = Assert.IsType<StackPanel>(border.Child);
+            var title = Assert.IsType<TextBlock>(stack.Children[0]);
+            Assert.Equal("Alpha (Reversed)", title.Text);
+        });
+    }
+
     private static void RunInSta(Action action)
     {
         Exception? captured = null;

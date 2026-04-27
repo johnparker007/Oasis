@@ -180,22 +180,22 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
 - [x] Update `PanelElementFactory` or introduce focused visual factories for new native Panel2D kinds
   - [x] Keep WPF-specific visual creation separate from import/domain conversion
   - [x] Preserve existing Rectangle/Image behavior
-- [ ] Add placeholder visual projection for native Background
-  - [ ] Use imported image when available
-  - [ ] Fall back to a filled rectangle using imported/native color when no image is available
-- [ ] Add placeholder visual projection for native Lamp
-  - [ ] Use imported lamp image when available
-  - [ ] Fall back to a colored rectangle with optional text
-  - [ ] Keep it selectable/model-backed like existing elements
-- [ ] Add placeholder visual projection for native Reel
-  - [ ] Use imported band image when available, clipped/scaled into the element bounds
-  - [ ] Fall back to a labeled placeholder rectangle
-- [ ] Add placeholder visual projection for native SevenSegment display
-  - [ ] Use a labeled/tinted placeholder visual for now
-  - [ ] Preserve number/color metadata in the native model
-- [ ] Add placeholder visual projection for native Alpha display
-  - [ ] Use a labeled placeholder visual for now
-  - [ ] Preserve reversed metadata in the native model
+- [x] Add placeholder visual projection for native Background
+  - [x] Use imported image when available
+  - [x] Fall back to a filled rectangle using imported/native color when no image is available
+- [x] Add placeholder visual projection for native Lamp
+  - [x] Use imported lamp image when available
+  - [x] Fall back to a colored rectangle with optional text
+  - [x] Keep it selectable/model-backed like existing elements
+- [x] Add placeholder visual projection for native Reel
+  - [x] Use imported band image when available, clipped/scaled into the element bounds
+  - [x] Fall back to a labeled placeholder rectangle
+- [x] Add placeholder visual projection for native SevenSegment display
+  - [x] Use a labeled/tinted placeholder visual for now
+  - [x] Preserve number/color metadata in the native model
+- [x] Add placeholder visual projection for native Alpha display
+  - [x] Use a labeled placeholder visual for now
+  - [x] Preserve reversed metadata in the native model
 - [x] Update hierarchy grouping/display for the new native element kinds
   - [x] Backgrounds
   - [x] Lamps
