@@ -3,7 +3,6 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
-using System.IO;
 
 namespace OasisEditor;
 
@@ -296,7 +295,7 @@ internal static class PanelElementFactory
         }
 
         var candidate = assetPath.Trim();
-        if (!Path.IsPathRooted(candidate))
+        if (!System.IO.Path.IsPathRooted(candidate))
         {
             return false;
         }
