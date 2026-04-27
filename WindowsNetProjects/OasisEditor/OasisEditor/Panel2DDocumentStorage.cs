@@ -356,21 +356,18 @@ internal static class Panel2DDocumentStorage
             Stops = element.Stops,
             VisibleScale = element.VisibleScale,
             ImportSource = importSource,
-            Native = new PanelElementNativeFile
-            {
-                AssetPath = element.AssetPath,
-                SecondaryAssetPath = element.SecondaryAssetPath,
-                Number = element.DisplayNumber,
-                Text = element.DisplayText,
-                TextColorHex = element.TextColorHex,
-                OnColorHex = element.OnColorHex,
-                DisplayColorHex = element.OnColorHex,
-                OffColorHex = element.OffColorHex,
-                Reversed = element.IsReversed,
-                Stops = element.Stops,
-                VisibleScale = element.VisibleScale,
-                ImportSource = importSource
-            }
+            Native = CreateNativeFromLegacyFields(
+                assetPath: element.AssetPath,
+                secondaryAssetPath: element.SecondaryAssetPath,
+                number: element.DisplayNumber,
+                text: element.DisplayText,
+                textColorHex: element.TextColorHex,
+                onColorHex: element.OnColorHex,
+                offColorHex: element.OffColorHex,
+                reversed: element.IsReversed,
+                stops: element.Stops,
+                visibleScale: element.VisibleScale,
+                importSource: importSource)
         });
     }
     public static string SerializeLayout(IReadOnlyList<PanelElementFile> elements)

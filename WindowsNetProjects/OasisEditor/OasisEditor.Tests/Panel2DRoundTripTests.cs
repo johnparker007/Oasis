@@ -180,6 +180,25 @@ public sealed class Panel2DRoundTripTests
     }
 
     [Fact]
+    public void ToStorageElement_WithLegacyRectangle_DoesNotEmitNativePayload()
+    {
+        var model = new PanelElementModel
+        {
+            ObjectId = "rect-1",
+            Name = "Rect 1",
+            Kind = PanelElementKind.Rectangle,
+            X = 10,
+            Y = 20,
+            Width = 30,
+            Height = 40
+        };
+
+        var storage = Panel2DDocumentStorage.ToStorageElement(model);
+
+        Assert.Null(storage.Native);
+    }
+
+    [Fact]
     public void TryReadValidated_WithFutureSchemaVersion_ReturnsUnsupportedVersionError()
     {
         const string sourceJson = """
