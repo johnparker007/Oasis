@@ -1,167 +1,245 @@
 # TASKS.md
 
-## Current Focus — Context Menus and Unity-Style Assets Pane
+## Current Focus — MFME Extract Import into Panel2D
 
-These tasks come from the latest Editor code review. Complete them in order. Build and smoke test after each checked task. Keep each task as a small, focused Codex change.
+Goal: allow the WPF editor to import an existing MFME extract into an empty/new Panel2D document and create WPF editor equivalents for the first supported MFME component set: Background, Lamp, Reel, Seven Seg, and Alpha.
 
-### Feature Guardrails
-- [ ] Only modify files under `Oasis/WindowsNetProjects/OasisEditor`
-- [ ] Keep the app runnable after every task
-- [ ] Build after every task and fix compile/binding/resource errors before continuing
-- [ ] Prefer small diffs and behaviour-preserving refactors unless the task explicitly changes behaviour
-- [ ] Do not start Blender, cabinet import, machine assembly, or Unity export work in this track
-- [ ] Do not introduce new frameworks or dependency injection yet
-- [ ] Do not place command logic in WPF views/code-behind when a ViewModel or focused command service can own it
-- [ ] Reuse existing command paths for keyboard/menu/context-menu entry points instead of duplicating behavior
-- [ ] Add tests where practical; keep tests under the Editor solution only
+Complete these tasks in order. Keep each task small enough for one Codex pass where practical. Build after every implementation task and fix compile, binding, resource, and test errors before moving on.
 
-### Phase F — Shared Context Menu Command Foundation
-- [x] Review current hierarchy keyboard handlers and asset double-click handlers
-  - [x] Identify commands already implemented for rename/delete/open
-  - [x] Identify command gaps for cut/copy/paste/duplicate/show-in-explorer/assets rename/assets delete
-  - [x] Do not change behavior in this review step
-- [x] Add a reusable command pattern for pane item context menus
-  - [x] Keep View code-behind limited to selecting the right-clicked item before opening the menu, if needed
-  - [x] Put command execution and CanExecute logic on the relevant ViewModel or focused service
-  - [x] Ensure unavailable operations are disabled in the menu
-  - [x] Keep keyboard shortcuts and context menus routed through the same command methods
-- [x] Add shared menu item styling/resources if useful
-  - [x] Use semantic theme resources
-  - [x] Ensure context menus work in System, Light, and Dark theme modes
+### MFME Import Guardrails
+- [ ] Only modify files under `Oasis/WindowsNetProjects/OasisEditor` unless a task explicitly says otherwise
+- [ ] Read/reference legacy code from `UnityProjects/LayoutEditor` and `WindowsNetProjects/MfmeTools`, but do not modify those projects in this feature track
+- [ ] Keep import/domain logic UI-agnostic; no WPF controls, brushes, dependency properties, or dialogs in importer/model classes
+- [ ] All document mutations must go through document-scoped commands and preserve undo/redo behavior
+- [ ] Keep `.panel2d` schema version 1 loading correctly; add explicit migration/validation before introducing schema version 2
+- [ ] Prefer placeholder-but-editable WPF visuals first; do not attempt final runtime-accurate lamp/reel/segment rendering in this track
+- [ ] Do not automate MFME or depend on the closed-source MFME executable for this first WPF import milestone
+- [ ] Do not add a direct dependency from the .NET 9 WPF editor to the old .NET Framework `MfmeTools` WinForms app unless a dedicated compatibility task proves it is safe
+- [ ] Copy imported image assets into the active Oasis project rather than permanently referencing the source extract folder
+- [ ] Add/update tests where practical under the existing OasisEditor test project
 
-### Phase G — Hierarchy Entity Context Menu
-- [x] Ensure right-clicking a hierarchy entity selects it before showing the context menu
-  - [x] Do not select non-entity group rows as editable objects
-  - [x] Preserve existing left-click selection behavior
-- [x] Add initial hierarchy entity context menu items
-  - [x] Cut
-  - [x] Copy
-  - [x] Paste
-  - [x] Rename
-  - [x] Duplicate
-  - [x] Delete
-- [x] Route Rename through the existing rename behavior
-  - [x] Preserve F2 rename behavior
-  - [x] Avoid `Microsoft.VisualBasic.Interaction.InputBox` long-term if a simple editor-owned dialog can be added without scope creep
-  - [x] Mark the document dirty only when the name actually changes
-  - [x] Preserve undo/redo behavior
-- [x] Route Delete through the existing delete behavior
-  - [x] Preserve Delete key behavior
-  - [x] Do not record no-op delete commands
-  - [x] Clear selection after successful delete
-  - [x] Preserve undo/redo behavior
-- [x] Implement Duplicate for Panel2D hierarchy entities
-  - [x] Duplicate the selected model-backed element only
-  - [x] Generate a new stable object ID
-  - [x] Generate a useful display name such as `<name> Copy`
-  - [x] Offset the duplicate slightly on the canvas if practical
-  - [x] Execute through the document command system
-  - [x] Preserve undo/redo behavior
-- [x] Implement Copy/Paste for Panel2D hierarchy entities
-  - [x] Use an editor-owned clipboard format for Panel2D element data
-  - [x] Paste must create new stable object IDs
-  - [x] Paste must target the active document only
-  - [x] Disable Paste when clipboard data is missing or incompatible
-  - [x] Execute Paste through the document command system
-  - [x] Preserve undo/redo behavior
-- [x] Implement Cut for Panel2D hierarchy entities
-  - [x] Copy selected entity to the editor clipboard first
-  - [x] Delete through the document command system only after copy succeeds
-  - [x] Preserve undo/redo behavior for the delete portion
-- [x] Verify hierarchy context menu behavior
-  - [x] Right-click selects the intended entity
-  - [x] Group rows do not expose invalid entity actions
-  - [x] Rename/Delete keyboard shortcuts still work
-  - [x] Duplicate/Copy/Paste/Cut preserve object IDs correctly
-  - [x] Undo/redo affects only the active document
+### Phase K — Legacy Import and Extract Format Reconnaissance
+- [ ] Inspect the Unity importer entry point at `UnityProjects/LayoutEditor/Assets/_Project/Scripts/Oasis/MFME/ExtractImporter.cs`
+  - [ ] Document the exact field mappings currently used for Background, Lamp, Reel, SevenSegment, Alpha, AlphaNew, and MatrixAlpha
+  - [ ] Note existing Unity importer quirks that should be preserved initially, such as Reel number `+ 1` and MatrixAlpha importing as Alpha
+  - [ ] Note behavior that should be deferred, such as runtime-only editor components, complex lamp inputs, and temporary reel overlay compositing
+- [ ] Inspect MFME extract DTOs/helpers under `WindowsNetProjects/MfmeTools/MfmeTools/Shared`
+  - [ ] Identify the minimum DTO fields needed for Background, Lamp, Reel, SevenSegment, Alpha, AlphaNew, and MatrixAlpha
+  - [ ] Identify how extract image folders and filenames are represented
+  - [ ] Identify the extract manifest/layout file format that the WPF editor should read first
+- [ ] Add `Docs/MfmeImportPlan.md` under `WindowsNetProjects/OasisEditor`
+  - [ ] Summarise the source extract contract for the first milestone
+  - [ ] Summarise component mapping rules
+  - [ ] Summarise asset-copy conventions
+  - [ ] List deferred behavior explicitly
+  - [ ] Include a short note that legacy projects are reference-only for this track
+- [ ] Build the WPF solution after the reconnaissance/documentation-only changes if project files changed; otherwise no build is required
 
-### Phase H — Asset Browser Model Refactor Toward Unity Project Window
-- [x] Replace the flat all-files asset list model with a tree/content model
-  - [x] Add an asset directory tree ViewModel rooted at the project's Assets directory
-  - [x] Add a selected asset directory property
-  - [x] Add a right-pane collection containing the selected directory's child folders and files
-  - [x] Keep asset paths relative to the Assets root for display and identity where practical
-  - [x] Ensure all full paths are contained inside the project's Assets directory
-- [x] Preserve existing asset open behavior during the model refactor
-  - [x] Double-clicking an asset file opens/loads it through the existing `OpenAsset` flow
-  - [x] Unsupported document types should continue to fail gracefully with output-log/error messages
-  - [x] Refresh should rebuild tree/content state safely
-- [x] Add folder navigation behavior
-  - [x] Selecting a directory in the left tree updates the right pane
-  - [x] Double-clicking a folder in the right pane navigates into that folder
-  - [x] Preserve or restore selection where possible after refresh
-- [x] Add folder/file icon state
-  - [x] Empty folder icon/template
-  - [x] Closed folder icon/template
-  - [x] Open/selected folder icon/template
-  - [x] File icon/template
-  - [x] Use simple built-in glyphs or lightweight templates first; do not add image asset dependencies unless requested
-- [x] Update `AssetBrowserView.xaml` to a two-column layout
-  - [x] Left column: directory tree
-  - [x] Right column: selected directory contents
-  - [x] Keep Refresh available
-  - [x] Use semantic theme resources
-  - [x] Avoid hard-coded colors
-- [x] Verify Unity-style asset browsing flow
-  - [x] Empty Assets folder shows an empty state and root folder
-  - [x] Nested folders appear in the tree
-  - [x] Selected folder contents appear on the right
-  - [x] Double-click folder navigation works
-  - [x] Double-click file open still works
+### Phase L — MFME Import Domain Boundary
+- [ ] Add a focused MFME import feature folder under the WPF editor project
+  - [ ] Suggested location: `OasisEditor/Features/MfmeImport/`
+  - [ ] Keep classes internal unless they must be public for tests
+- [ ] Add importer result/diagnostic types
+  - [ ] `MfmeImportResult` with imported elements, copied assets, skipped components, and warnings/errors
+  - [ ] `MfmeImportWarning` or equivalent structured warning type
+  - [ ] Ensure warnings are useful for output-log display
+- [ ] Add import options/context types
+  - [ ] Source extract path
+  - [ ] Active project root/assets root
+  - [ ] Whether to copy assets
+  - [ ] Optional layout/display name
+- [ ] Add a first-pass extract reader abstraction
+  - [ ] Keep parsing independent from WPF UI
+  - [ ] Support loading an already-created MFME extract from disk
+  - [ ] Return a neutral in-editor representation rather than old Unity component types
+- [ ] Add tests for invalid/missing extract paths and basic warning/error reporting
+- [ ] Build and run tests
 
-### Phase I — Assets Pane Context Menu
-- [x] Ensure right-clicking an asset item selects it before showing the context menu
-  - [x] Support both left-tree directory items and right-pane directory/file items where practical
-  - [x] Do not break double-click open/navigation
-- [x] Add initial asset item context menu items
-  - [x] Show In Explorer
-  - [x] Open
-  - [x] Delete
-  - [x] Rename
-- [x] Implement Show In Explorer
-  - [x] For files, show/select the file in Windows Explorer
-  - [x] For folders, open the folder in Windows Explorer
-  - [x] Handle missing paths gracefully and log a useful output message
-- [x] Implement Open
-  - [x] Files: use the existing asset document open flow
-  - [x] Folders: navigate into the folder
-  - [x] Disable Open where it is not meaningful
-- [x] Implement Rename for assets/folders
-  - [x] Validate non-empty names
-  - [x] Prevent path traversal and paths outside the Assets root
-  - [x] Prevent duplicate target names
-  - [x] Refresh tree/content after successful rename
-  - [x] Preserve selection on the renamed item where practical
-  - [x] Log success/failure to output
-- [x] Implement Delete for assets/folders
-  - [x] Prevent deletion outside the Assets root
-  - [x] Handle missing paths gracefully
-  - [x] Decide whether non-empty folders are blocked or deleted recursively; prefer blocking first unless explicitly requested
-  - [x`] Refresh tree/content after successful delete
-  - [x] Clear or move selection safely after delete
-  - [x] Log success/failure to output
-- [x] Verify asset context menu behavior
-  - [x] Right-click selects the intended item
-  - [x] Show In Explorer works for files and folders
-  - [x] Open works for files and folder navigation
-  - [x] Rename handles invalid/duplicate names cleanly
-  - [x] Delete handles files, empty folders, missing paths, and non-empty folders safely
+### Phase M — Minimal MFME Extract DTOs for the WPF Editor
+- [ ] Add minimal WPF-editor-owned DTOs for MFME extract data needed by this feature
+  - [ ] Layout/import root DTO
+  - [ ] Shared component base data: type, position, size, name/source identity if available
+  - [ ] Background DTO
+  - [ ] Lamp DTO including first lamp element data needed by the Unity importer mapping
+  - [ ] Reel DTO
+  - [ ] SevenSegment DTO
+  - [ ] Alpha/AlphaNew/MatrixAlpha DTOs or one normalised Alpha DTO
+- [ ] Add parser/normaliser from the real extract layout format into these DTOs
+  - [ ] Keep the parser tolerant of unsupported components
+  - [ ] Unsupported components should be skipped with warnings, not hard failures
+  - [ ] Missing optional images should produce warnings and usable placeholder elements
+- [ ] Add tests using small hand-written fixture JSON/data for each supported component type
+- [ ] Build and run tests
 
-### Phase J — Follow-up Refactor Checks
-- [x] Review `MainWindowViewModel` after context menu and asset browser changes
-  - [x] Move any new cohesive asset-browser logic back into `AssetBrowserViewModel` or focused services
-  - [x] Move any new hierarchy command logic into hierarchy/document command helpers where practical
-  - [x] Keep MainWindowViewModel as orchestration, not a dumping ground
-- [x] Review document mutation command coverage
-  - [x] Ensure Duplicate/Paste use the same command safety contracts as add/delete/rename
-  - [x] Ensure no-op commands are not recorded
-  - [x] Ensure dirty state changes only for real mutations
-- [x] Add or update tests for new behavior where practical
-  - [x] Duplicate creates a new object ID
-  - [x] Paste creates new object IDs
-  - [x] Rename/delete no-op cases are not recorded
-  - [x] Asset browser tree excludes paths outside Assets root
-  - [x] Asset rename/delete refreshes expected collections
+### Phase N — Panel2D Schema and Model Expansion
+- [ ] Design the Panel2D schema extension for imported MFME components before editing storage code
+  - [ ] Decide whether this feature requires schema version 2
+  - [ ] Preserve ability to open schema version 1 files
+  - [ ] Define a migration path or explicit version rejection behavior for future schemas
+- [ ] Add new `PanelElementKind` values for imported/editable MFME elements
+  - [ ] Background
+  - [ ] Lamp
+  - [ ] Reel
+  - [ ] SevenSegment
+  - [ ] Alpha
+- [ ] Extend `PanelElementModel`/storage DTOs with the minimum metadata needed for MFME imports
+  - [ ] Project-relative asset path or paths
+  - [ ] Source MFME component type
+  - [ ] Source MFME component identifier/index if available
+  - [ ] Display/runtime number where applicable, such as lamp/reel/segment number
+  - [ ] Common visual properties needed for placeholders, such as colors/text/reversed/stops
+- [ ] Update validation and normalisation for the new kinds
+  - [ ] Reject invalid dimensions consistently
+  - [ ] Preserve stable object IDs and names
+  - [ ] Ensure malformed or unsupported files fail with useful messages
+- [ ] Update storage/model round-trip tests
+  - [ ] Existing rectangle/image schema version 1 fixtures still load
+  - [ ] New imported component kinds round-trip correctly
+  - [ ] Unsupported future schemas produce explicit errors
+- [ ] Build and run tests
+
+### Phase O — Component Mapping from MFME Extract to Panel2D Elements
+- [ ] Add `MfmeComponentMapper` or equivalent pure mapping service
+  - [ ] Input: normalised MFME extract DTOs
+  - [ ] Output: Panel2D model/storage elements ready for command insertion
+  - [ ] No WPF dependencies
+- [ ] Implement Background mapping
+  - [ ] Position `(0, 0)`
+  - [ ] Size from MFME background
+  - [ ] Color from MFME background
+  - [ ] Optional image path from the extract Background folder
+  - [ ] Name `Background`
+- [ ] Implement Lamp mapping
+  - [ ] Position and size from MFME lamp
+  - [ ] Number from the first lamp element, matching the Unity importer for milestone 1
+  - [ ] Optional image path from the extract Lamps folder
+  - [ ] On/off/text colors
+  - [ ] Text/font fields where available
+  - [ ] Input metadata stored only if straightforward; no runtime behavior yet
+  - [ ] Name `Lamp` or `Lamp <number>` consistently
+- [ ] Implement Reel mapping
+  - [ ] Position and size from MFME reel
+  - [ ] Number as MFME number `+ 1`, matching the Unity importer
+  - [ ] Band image path from the extract Reels folder
+  - [ ] Stops and reversed fields
+  - [ ] Visible scale using the Unity importer's first-pass calculation
+  - [ ] Overlay handling deferred or stored as metadata only
+  - [ ] Name `Reel <number>`
+- [ ] Implement SevenSegment mapping
+  - [ ] Position and size from MFME seven-segment component
+  - [ ] Number from MFME component
+  - [ ] Segment/on color
+  - [ ] Name `7 Segment <number>`
+- [ ] Implement Alpha mapping
+  - [ ] Map Alpha and AlphaNew to the same WPF Alpha element kind
+  - [ ] Map MatrixAlpha to Alpha for now, matching the Unity importer's temporary behavior
+  - [ ] Position, size, and reversed where available
+  - [ ] Name `Alpha`
+- [ ] Add mapper tests for each supported component type
+- [ ] Add tests that unsupported MFME component types are skipped with warnings
+- [ ] Build and run tests
+
+### Phase P — Project Asset Copy and Relative Path Handling
+- [ ] Add an asset-copy service for imported MFME extract images
+  - [ ] Copy into `Assets/MfmeImport/<layout-or-extract-name>/Background/`
+  - [ ] Copy into `Assets/MfmeImport/<layout-or-extract-name>/Lamps/`
+  - [ ] Copy into `Assets/MfmeImport/<layout-or-extract-name>/Reels/`
+  - [ ] Generate safe folder/file names and prevent path traversal
+  - [ ] Avoid overwriting distinct files accidentally; use deterministic collision handling
+- [ ] Store project-relative asset paths in Panel2D elements
+- [ ] Handle missing source images gracefully
+  - [ ] Import the element anyway when possible
+  - [ ] Add a warning listing the missing file
+  - [ ] Use placeholder visuals later in the visual projection phase
+- [ ] Refresh the Assets pane after successful import/copy
+- [ ] Add tests for root containment, duplicate names, missing files, and project-relative path generation
+- [ ] Build and run tests
+
+### Phase Q — Panel2D Visual Projection for Imported Elements
+- [ ] Update `PanelElementFactory` or introduce focused visual factories for new Panel2D kinds
+  - [ ] Keep WPF-specific visual creation separate from import/domain mapping
+  - [ ] Preserve existing Rectangle/Image behavior
+- [ ] Add placeholder visual projection for Background
+  - [ ] Use imported image when available
+  - [ ] Fall back to a filled rectangle using imported color when no image is available
+- [ ] Add placeholder visual projection for Lamp
+  - [ ] Use imported lamp image when available
+  - [ ] Fall back to a colored rectangle with optional text
+  - [ ] Keep it selectable/model-backed like existing elements
+- [ ] Add placeholder visual projection for Reel
+  - [ ] Use imported band image when available, clipped/scaled into the element bounds
+  - [ ] Fall back to a labeled placeholder rectangle
+- [ ] Add placeholder visual projection for SevenSegment
+  - [ ] Use a labeled/tinted placeholder visual for now
+  - [ ] Preserve number/color metadata in the model
+- [ ] Add placeholder visual projection for Alpha
+  - [ ] Use a labeled placeholder visual for now
+  - [ ] Preserve reversed metadata in the model
+- [ ] Update hierarchy grouping/display for the new element kinds
+  - [ ] Backgrounds
+  - [ ] Lamps
+  - [ ] Reels
+  - [ ] Seven Segments
+  - [ ] Alphas
+- [ ] Verify selection, hierarchy selection, inspector display, save/load, and undo/redo still work for new kinds
+- [ ] Build and run tests
+
+### Phase R — Undoable MFME Import Command
+- [ ] Add `ImportMfmeExtractCommand` or equivalent document-scoped command
+  - [ ] Target a specific document ID at creation time
+  - [ ] Insert all imported Panel2D elements as one undoable operation
+  - [ ] Record copied assets/import warnings outside undo only if necessary and documented
+  - [ ] Mark the document dirty only when elements are actually added
+  - [ ] Do not record no-op imports in undo history
+- [ ] Ensure undo removes all imported elements from the active document only
+- [ ] Ensure redo restores the same logical imported elements without reusing stale command state incorrectly
+- [ ] Ensure object IDs remain stable through undo/redo of the same command
+- [ ] Add command tests for import, undo, redo, no-op import, and wrong-document safety
+- [ ] Build and run tests
+
+### Phase S — Import UI Entry Point
+- [ ] Add a user-facing import command to the WPF editor shell
+  - [ ] Suggested menu: `File > Import > MFME Extract...`
+  - [ ] Enable only when a project is open and a Panel2D document is active or can be created intentionally
+  - [ ] Use a folder picker or file picker appropriate to the extract contract identified in Phase K
+- [ ] Route UI command through ViewModel/service code, not direct import logic in code-behind
+- [ ] Display import results in the output log
+  - [ ] Count imported components by kind
+  - [ ] Count skipped unsupported components
+  - [ ] List warnings for missing images or unsupported fields
+- [ ] Ensure import into an empty Panel2D document is the first supported flow
+- [ ] Add a clear message for unsupported active document types
+- [ ] Build and run tests
+
+### Phase T — End-to-End Validation and Cleanup
+- [ ] Create or identify a small MFME extract fixture for manual smoke testing
+  - [ ] Must include at least one Background, Lamp, Reel, SevenSegment, and Alpha if possible
+  - [ ] Keep fixture out of git if it is large or not redistributable
+- [ ] Smoke test importing into an empty project/document
+  - [ ] Imported assets are copied under the project's `Assets/MfmeImport/...` folder
+  - [ ] Panel2D elements appear at expected positions/sizes
+  - [ ] Hierarchy groups show imported elements
+  - [ ] Selection and inspector work for imported elements
+  - [ ] Save/reopen preserves imported elements and asset paths
+  - [ ] Undo/redo of the import works document-locally
+- [ ] Compare WPF imported output against the Unity importer behavior for the supported first-pass components
+- [ ] Update `Docs/MfmeImportPlan.md` with any intentional differences from Unity behavior
+- [ ] Add follow-up tasks for deferred rendering/runtime behavior
+  - [ ] Accurate lamp rendering and masks
+  - [ ] Accurate reel viewport/overlay handling
+  - [ ] Seven-segment renderer
+  - [ ] Alpha renderer
+  - [ ] Button/input mapping
+  - [ ] Runtime/export mapping
+- [ ] Final build and test run
+
+---
+
+## Active Carryover — Previous Track Smoke Test
+
+These are the only unfinished tasks from the previous context-menu/assets-pane track. Complete them after the MFME import milestone or when directly relevant.
+
+### Previous Phase J — Follow-up Refactor Checks
 - [ ] Smoke test full editor flow
   - [ ] Blocked in current container; see `PhaseJ.SmokeTestAttempt.md`
   - [ ] Create/open project
@@ -174,105 +252,102 @@ These tasks come from the latest Editor code review. Complete them in order. Bui
 
 ---
 
-## Current Focus — Code Review Fixes and Panel2D Model Stabilisation
+## Completed — Context Menus and Unity-Style Assets Pane
 
-These tasks come from the Editor code review. Complete them in order. Build and smoke test after each checked task. Keep each task as a small, focused Codex change.
+These tasks came from the latest Editor code review and are retained here as completed history.
 
-### Review Fix Guardrails
-- [ ] Only modify files under `Oasis/WindowsNetProjects/OasisEditor`
-- [ ] Keep the app runnable after every task
-- [ ] Build after every task and fix compile/binding/resource errors before continuing
-- [ ] Prefer small diffs and behaviour-preserving changes unless the task explicitly changes behaviour
-- [ ] Do not start Blender, cabinet import, machine assembly, or Unity export work in this track
-- [ ] Do not introduce new frameworks or dependency injection yet
-- [ ] Add tests where practical; if the project has no test project yet, create the smallest suitable test project under the Editor solution only
+### Feature Guardrails
+- [x] Only modify files under `Oasis/WindowsNetProjects/OasisEditor`
+- [x] Keep the app runnable after every task
+- [x] Build after every task and fix compile/binding/resource errors before continuing
+- [x] Prefer small diffs and behaviour-preserving refactors unless the task explicitly changes behaviour
+- [x] Do not start Blender, cabinet import, machine assembly, or Unity export work in this track
+- [x] Do not introduce new frameworks or dependency injection yet
+- [x] Do not place command logic in WPF views/code-behind when a ViewModel or focused command service can own it
+- [x] Reuse existing command paths for keyboard/menu/context-menu entry points instead of duplicating behavior
+- [x] Add tests where practical; keep tests under the Editor solution only
 
-### Phase A — Correctness Fixes Before Larger Refactors
-- [x] Ensure Panel2D canvas mutations mark the owning document dirty
-  - [x] Add a focused API on `DocumentTabViewModel` or the workspace to mark the document dirty without replacing unrelated state
-  - [x] Ensure add rectangle marks the document dirty
-  - [x] Ensure add image marks the document dirty
-  - [x] Ensure delete element marks the document dirty only when an element was actually deleted
-  - [x] Ensure rename element marks the document dirty only when the name actually changed
-  - [x] Verify the tab title gains `*` after each real canvas mutation
-  - [x] Verify saving clears the dirty marker
-- [x] Prevent no-op document commands from entering undo/redo history
-  - [x] Introduce a minimal success/no-op contract for commands, or an equivalent command-service guard
-  - [x] Do not record delete when no matching element exists
-  - [x] Do not record rename when no matching element exists
-  - [x] Do not record rename when the new name equals the current name after normalisation
-  - [x] Verify undo/redo menu labels do not change after no-op commands
-- [x] Preserve command-history integrity when closing and undoing a closed document tab
-  - [x] Review whether clearing a document command history inside close-tab execution makes undo of tab close unsafe
-  - [x] Adjust close-tab behaviour so undoing a close either restores a usable document safely or the close operation is not undoable
-  - [x] Verify closing a tab cannot leave stale document commands executable against a different tab
-- [x] Replace duplicated add-element command implementations
-  - [x] Replace separate rectangle/image add commands with a single `AddPanelElementMutationCommand`
-  - [x] Preserve existing public factory methods if that keeps callers stable
-  - [x] Verify add rectangle/image undo/redo still works
+### Phase F — Shared Context Menu Command Foundation
+- [x] Review current hierarchy keyboard handlers and asset double-click handlers
+- [x] Add a reusable command pattern for pane item context menus
+- [x] Add shared menu item styling/resources if useful
 
-### Phase B — Canvas Behaviour Split Without Changing UX
-- [x] Move canvas command dispatch out of `CanvasPanBehavior`
-  - [x] Create a small canvas command adapter/service responsible for routing commands to the active document shell
-  - [x] Keep `Window.GetWindow(...)` usage contained in one place if it cannot be removed yet
-  - [x] Preserve current canvas behaviour and bindings
-- [x] Move panel tool placement logic out of `CanvasPanBehavior`
-  - [x] Extract rectangle/image placement decisions into a focused tool/controller class
-  - [x] Keep click-to-place behaviour unchanged
-  - [x] Verify placement works with current pan/zoom transforms
-- [x] Remove or isolate hardcoded MVP canvas sample visuals
-  - [x] Ensure non-persisted instructional visuals are not selectable editor objects
-  - [x] Prefer an overlay/help layer rather than selectable placeholder rectangles/text
-  - [x] Verify hierarchy contains only persisted panel elements
-  - [x] Verify save/load does not include sample visuals
+### Phase G — Hierarchy Entity Context Menu
+- [x] Ensure right-clicking a hierarchy entity selects it before showing the context menu
+- [x] Add initial hierarchy entity context menu items: Cut, Copy, Paste, Rename, Duplicate, Delete
+- [x] Route Rename through the existing rename behavior
+- [x] Route Delete through the existing delete behavior
+- [x] Implement Duplicate for Panel2D hierarchy entities
+- [x] Implement Copy/Paste for Panel2D hierarchy entities
+- [x] Implement Cut for Panel2D hierarchy entities
+- [x] Verify hierarchy context menu behavior
 
-### Phase C — Panel2D Live Model Preparation
-- [x] Create a domain-facing Panel2D model separate from JSON storage
-  - [x] Add `Panel2DDocumentModel` with panel title/summary and a collection/list of `PanelElementModel`
-  - [x] Add `PanelElementModel` fields for object ID, name, kind, X, Y, width, and height
-  - [x] Keep the model UI-agnostic: no WPF types, controls, brushes, or dependency properties
-  - [x] Add conversion between the new model and existing `PanelElementFile` storage DTOs
-  - [x] Keep existing `.panel2d` file format working
-- [x] Move Panel2D mutation commands to operate on the live model first
-  - [x] Add element, delete element, and rename element should mutate the model
-  - [x] Update JSON/layout sync as a projection of the model, not as the canonical state
-  - [x] Preserve undo/redo behaviour
-  - [x] Verify save/open round-trips existing panel files
-- [x] Make hierarchy and inspector read from the live Panel2D model where practical
-  - [x] Keep binding-facing property names stable unless a task explicitly allows a rename
-  - [x] Verify selection identity remains object-ID based
-  - [x] Verify hierarchy refreshes after add/delete/rename
+### Phase H — Asset Browser Model Refactor Toward Unity Project Window
+- [x] Replace the flat all-files asset list model with a tree/content model
+- [x] Preserve existing asset open behavior during the model refactor
+- [x] Add folder navigation behavior
+- [x] Add folder/file icon state
+- [x] Update `AssetBrowserView.xaml` to a two-column layout
+- [x] Verify Unity-style asset browsing flow
 
-### Phase D — Storage, Validation, and Migration
-- [x] Add explicit Panel2D schema validation
-  - [x] Validate `SchemaVersion`
-  - [x] Validate required element IDs, names, kinds, and dimensions
-  - [x] Normalise recoverable issues and report unrecoverable ones cleanly
-  - [x] Ensure malformed JSON fails gracefully with a clear output-log/error message
-- [x] Add Panel2D schema migration hooks
-  - [x] Keep schema version 1 as the current format
-  - [x] Add a small migration entry point even if there are no migrations yet
-  - [x] Ensure future schema versions fail with an explicit unsupported-version message
-- [x] Add tests for Panel2D storage/model behaviour
-  - [x] Round-trip rectangle and image elements
-  - [x] Preserve object IDs and names
-  - [x] Normalise missing IDs/names only when intended
-  - [x] Reject or report unsupported schema versions
+### Phase I — Assets Pane Context Menu
+- [x] Ensure right-clicking an asset item selects it before showing the context menu
+- [x] Add initial asset item context menu items: Show In Explorer, Open, Delete, Rename
+- [x] Implement Show In Explorer
+- [x] Implement Open
+- [x] Implement Rename for assets/folders
+- [x] Implement Delete for assets/folders
+- [x] Verify asset context menu behavior
 
-### Phase E — Deferred Planning Only
-- [x] Plan layer ordering support only
-  - [x] Identify required model fields and UI commands
-  - [ ] Do not implement yet
-- [x] Plan object locking/visibility support only
-  - [x] Identify required model fields, canvas hit-test changes, and hierarchy UI changes
-  - [ ] Do not implement yet
-- [x] Plan copy/paste/duplicate support only
-  - [x] Identify ID-generation and undo/redo requirements
-  - [ ] Do not implement yet
+### Phase J — Follow-up Refactor Checks
+- [x] Review `MainWindowViewModel` after context menu and asset browser changes
+- [x] Review document mutation command coverage
+- [x] Add or update tests for new behavior where practical
 
 ---
 
-## Current Focus — Editor Stability and Document Context
+## Completed — Code Review Fixes and Panel2D Model Stabilisation
+
+These tasks came from the Editor code review and are retained here as completed history.
+
+### Review Fix Guardrails
+- [x] Only modify files under `Oasis/WindowsNetProjects/OasisEditor`
+- [x] Keep the app runnable after every task
+- [x] Build after every task and fix compile/binding/resource errors before continuing
+- [x] Prefer small diffs and behaviour-preserving changes unless the task explicitly changes behaviour
+- [x] Do not start Blender, cabinet import, machine assembly, or Unity export work in this track
+- [x] Do not introduce new frameworks or dependency injection yet
+- [x] Add tests where practical; keep tests under the Editor solution only
+
+### Phase A — Correctness Fixes Before Larger Refactors
+- [x] Ensure Panel2D canvas mutations mark the owning document dirty
+- [x] Prevent no-op document commands from entering undo/redo history
+- [x] Preserve command-history integrity when closing and undoing a closed document tab
+- [x] Replace duplicated add-element command implementations
+
+### Phase B — Canvas Behaviour Split Without Changing UX
+- [x] Move canvas command dispatch out of `CanvasPanBehavior`
+- [x] Move panel tool placement logic out of `CanvasPanBehavior`
+- [x] Remove or isolate hardcoded MVP canvas sample visuals
+
+### Phase C — Panel2D Live Model Preparation
+- [x] Create a domain-facing Panel2D model separate from JSON storage
+- [x] Move Panel2D mutation commands to operate on the live model first
+- [x] Make hierarchy and inspector read from the live Panel2D model where practical
+
+### Phase D — Storage, Validation, and Migration
+- [x] Add explicit Panel2D schema validation
+- [x] Add Panel2D schema migration hooks
+- [x] Add tests for Panel2D storage/model behaviour
+
+### Phase E — Deferred Planning Only
+- [x] Plan layer ordering support only
+- [x] Plan object locking/visibility support only
+- [x] Plan copy/paste/duplicate support only
+
+---
+
+## Completed — Editor Stability and Document Context
 
 ### Undo/Redo Robustness
 - [x] Audit current command history ownership
@@ -308,11 +383,7 @@ These tasks come from the Editor code review. Complete them in order. Build and 
 - [x] Rename or repurpose existing panel area as Hierarchy if needed
 - [x] Create document-aware hierarchy provider interface
 - [x] Add Panel2D hierarchy provider
-- [x] Show Panel2D objects grouped by type:
-  - [x] Images
-  - [x] Rectangles
-  - [x] Anchors
-  - [x] Zones
+- [x] Show Panel2D objects grouped by type: Images, Rectangles, Anchors, Zones
 - [x] Update hierarchy when active document changes
 - [x] Update hierarchy when document content changes
 - [x] Selecting an item in hierarchy selects the object on the canvas
@@ -329,29 +400,23 @@ These tasks come from the Editor code review. Complete them in order. Build and 
 - [x] Ensure hierarchy and inspector use the same selected object identity
 - [x] Ensure save/load preserves object IDs and names
 
-## Next Up
-- [ ] Improve panel editor usability:
-  - [x] snapping
-  - [ ] layer ordering
-  - [ ] object locking
-  - [ ] object visibility
-  - [ ] duplicate/copy/paste
+---
+
+## Backlog — Panel Editor Usability and Future Planning
+
+- [x] Snapping
+- [ ] Layer ordering
+- [ ] Object locking
+- [ ] Object visibility
+- [x] Duplicate/copy/paste
 - [ ] Begin cabinet import MVP planning
 - [ ] Begin machine assembly MVP planning
 
 ---
 
-## Refactor Track — WPF Maintainability
+## Completed — Refactor Track: WPF Maintainability
 
-These tasks should be completed one at a time. They are behavior-preserving unless explicitly stated otherwise.
-
-### Refactor Guardrails
-- [ ] Keep behavior and UI appearance unchanged unless a task explicitly says otherwise
-- [ ] Build after each refactor task
-- [ ] Fix compile, binding, and resource errors before moving on
-- [ ] Prefer small diffs over large rewrites
-- [ ] Do not introduce new frameworks or major architecture changes without a separate task
-- [ ] If a task says “plan only”, do not edit code
+These tasks were behavior-preserving unless explicitly stated otherwise.
 
 ### XAML / View Refactors
 - [x] Extract Menu styles from `MainWindow.xaml` into `Styles/Menu.xaml`
@@ -395,7 +460,7 @@ These tasks should be completed one at a time. They are behavior-preserving unle
 
 ---
 
-## Completed
+## Completed — Startup, Project, Shell, Document, Theme, Command, and Panel MVP
 
 ### Startup Flow Refactor
 - [x] Create dedicated Launcher window class and view model
@@ -403,8 +468,7 @@ These tasks should be completed one at a time. They are behavior-preserving unle
 - [x] Move New Project UI into Launcher window
 - [x] Move Open Project UI into Launcher window
 - [x] Move Recent Projects list UI into Launcher window
-- [x] Refactor project creation flow so Launcher opens editor only after success
-- [x] Refactor project open flow so Launcher opens editor only after success
+- [x] Refactor project creation/open flow so Launcher opens editor only after success
 - [x] Refactor recent project selection flow so Launcher opens editor only after success
 - [x] Ensure cancel/failure keeps user in Launcher window
 - [x] Ensure failed project load shows error without opening editor shell
@@ -416,12 +480,7 @@ These tasks should be completed one at a time. They are behavior-preserving unle
 - [x] Close editor shell and return to Launcher window
 - [x] Ensure closing a project clears active document/session state
 - [x] Ensure Launcher refreshes recent projects after returning from editor shell
-- [x] Verify New Project opens editor correctly
-- [x] Verify Open Project opens editor correctly
-- [x] Verify Recent Project opens editor correctly
-- [x] Verify cancel from project selection keeps Launcher open
-- [x] Verify Close Project returns user to Launcher
-- [x] Verify app startup no longer exposes editor UI before project load
+- [x] Verify project creation/open/recent/cancel/close-project startup flows
 
 ### Phase 1 — Project System
 - [x] Create solution structure
@@ -437,47 +496,24 @@ These tasks should be completed one at a time. They are behavior-preserving unle
 - [x] Add toolbar
 - [x] Implement basic dock layout
 - [x] Implement document tab system
-- [x] Add panels:
-  - [x] Asset browser
-  - [x] Inspector
-  - [x] Output/log
+- [x] Add panels: Asset browser, Inspector, Output/log
 
 ### Phase 3 — Document System
 - [x] Define base document model
 - [x] Implement open/save document
 - [x] Implement document dirty state
 - [x] Implement document tabs integration
-- [x] Stub document types:
-  - [x] .panel2d
-  - [x] .cabinet3d
-  - [x] .machine
+- [x] Stub document types: `.panel2d`, `.cabinet3d`, `.machine`
 
 ### Phase 3A — .NET 9 Upgrade and Theme Foundations
 - [x] Update solution target frameworks from .NET 8 to .NET 9
 - [x] Verify solution builds and runs cleanly in Visual Studio 2022
 - [x] Add built-in WPF Fluent theme resources
-- [x] Define application theme service
-- [x] Define theme preference enum:
-  - [x] System
-  - [x] Light
-  - [x] Dark
-- [x] Persist editor theme preference
-- [x] Apply theme preference on startup
-- [x] Add Edit > Preferences menu item
-- [x] Add Edit > Project Settings menu item
-- [x] Create non-modal Preferences window
-- [x] Create non-modal Project Settings window
+- [x] Define application theme service and theme preference enum
+- [x] Persist/apply editor theme preference
+- [x] Add Preferences and Project Settings windows/menu items
 - [x] Add theme selector to Preferences window
-- [x] Define semantic editor brushes:
-  - [x] EditorBackgroundBrush
-  - [x] PanelBackgroundBrush
-  - [x] InspectorBackgroundBrush
-  - [x] ToolBarBackgroundBrush
-  - [x] TextPrimaryBrush
-  - [x] TextSecondaryBrush
-  - [x] BorderSubtleBrush
-  - [x] SelectionBrush
-- [x] Replace shell-level hard-coded colors with semantic theme resources
+- [x] Define and use semantic editor brushes
 - [x] Ensure main window, menu, toolbar, document tabs, and panels respond to theme changes
 
 ### Phase 4 — Command System
@@ -487,7 +523,7 @@ These tasks should be completed one at a time. They are behavior-preserving unle
 - [x] Implement redo
 - [x] Ensure documents update via commands only
 
-### Phase 5 — Panel Editor (MVP)
+### Phase 5 — Panel Editor MVP
 - [x] Render panel canvas
 - [x] Implement pan
 - [x] Implement zoom
