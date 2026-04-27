@@ -595,7 +595,7 @@ public sealed class Panel2DRoundTripTests
 
         Assert.True(duplicateExecuted);
         Assert.True(document.IsDirty);
-        Assert.Equal(1, document.CommandService.History.Entries.Count);
+        Assert.Single(document.CommandService.History.Entries);
     }
 
     [Fact]
@@ -622,7 +622,7 @@ public sealed class Panel2DRoundTripTests
         Assert.True(firstExecution);
         Assert.False(secondExecution);
         Assert.True(document.IsDirty);
-        Assert.Equal(1, document.CommandService.History.Entries.Count);
+        Assert.Single(document.CommandService.History.Entries);
         Assert.Equal(2, document.GetPanelElements().Count);
     }
 
