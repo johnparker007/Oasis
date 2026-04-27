@@ -166,3 +166,62 @@ For this feature track:
 
 - `UnityProjects/LayoutEditor` and `WindowsNetProjects/MfmeTools` are **reference sources** for mapping/parsing behavior.
 - Do not modify those projects as part of OasisEditor MFME import milestones unless a future task explicitly requires it.
+
+
+## Phase K Reconnaissance Notes (2026-04-27)
+
+Reference-only sources inspected:
+
+- `UnityProjects/LayoutEditor/Assets/_Project/Scripts/Oasis/MFME/ExtractImporter.cs`
+- `WindowsNetProjects/MfmeTools/MfmeTools/Shared/Extract/*`
+- `WindowsNetProjects/MfmeTools/MfmeTools/Shared/ExtractComponents/*`
+
+Confirmed Unity importer mapping behavior for currently targeted legacy components:
+
+- `ExtractComponentBackground` -> `ComponentBackground`
+  - Position forced to `(0, 0)`
+  - Size from extract component `Size`
+  - Color from extract component `Color`
+  - Optional image from `background/<BmpImageFilename>` when filename is non-empty
+  - Name set to `Background`
+- `ExtractComponentLamp` -> `ComponentLamp`
+  - Position/size from extract component `Position` + `Size`
+  - Uses only `LampElements[0]` for first-pass number/on-color/image mapping
+  - Lamp image read from `lamps/<LampElements[0].BmpImageFilename>` when present
+  - `OffImageColor`, `TextColor`, text/font fields, and `NoOutline` are mapped
+  - Name set to `Lamp`
+- `ExtractComponentReel` -> `ComponentReel`
+  - Position/size from extract component
+  - Reel number mapped as `Number + 1`
+  - Stops + reversed copied directly
+  - Band image from `reels/<BandBmpImageFilename>`
+  - Visible scale from Unity first-pass formula: `(Height / 50f) / Stops`
+  - Name set to `Reel <number>`
+- `ExtractComponentSevenSegment` -> `Component7Segment`
+  - Position/size from extract component
+  - Number from `Number`
+  - Color from `SegmentOnColor`
+  - Name set to `7 Segment <number>`
+- `ExtractComponentAlpha` and `ExtractComponentAlphaNew` -> `ComponentAlpha`
+  - Position/size from extract component
+  - Reversed from source component
+  - Name set to `Alpha`
+- `ExtractComponentMatrixAlpha` -> `ComponentAlpha` (temporary compatibility path)
+  - Position/size from extract component
+  - Reversed forced to `false`
+  - Name set to `Alpha`
+
+Confirmed extract storage contract details from `MfmeTools.Shared.Extract`:
+
+- Extract root folder name is `.extract`
+- Resource subfolders are `background`, `reels`, `lamps`, `buttons`, `bitmaps`, and `misc`
+- Rom ident filename is `misc/romident.txt`
+- Manifest JSON is written as `.extract/<ASName>.json`
+- JSON serialization uses `TypeNameHandling.Auto`
+
+Deferred/non-goal behaviors to keep out of the first WPF milestone:
+
+- Runtime-only importer behavior for non-target component types (checkbox/button/bandreel/etc.)
+- Temporary reel/bandreel overlay compositing into the imported background image
+- Detailed MFME input routing behavior (button/coin/effect port mapping)
+- MFME-perspective-accurate reel rendering beyond placeholder/native first-pass properties
