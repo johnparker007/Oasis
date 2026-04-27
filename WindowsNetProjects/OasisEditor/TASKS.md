@@ -48,41 +48,41 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
 - [x] Build the WPF solution after the reconnaissance/documentation-only changes if project files changed; otherwise no build is required *(no project file changes in this phase)*
 
 ### Phase L — Import Domain Boundary
-- [ ] Add a focused legacy import feature folder under the WPF editor project
-  - [ ] Suggested location: `OasisEditor/Features/MfmeImport/`
-  - [ ] Keep classes internal unless they must be public for tests
-  - [ ] Keep the feature boundary clear: MFME parsing/conversion lives here; native Oasis components live in the normal Panel2D/editor model
-- [ ] Add importer result/diagnostic types
-  - [ ] `MfmeImportResult` with native Oasis elements/components, copied assets, skipped legacy components, and warnings/errors
-  - [ ] `MfmeImportWarning` or equivalent structured warning type
-  - [ ] Ensure warnings are useful for output-log display
-- [ ] Add import options/context types
-  - [ ] Source extract path
-  - [ ] Active project root/assets root
-  - [ ] Whether to copy assets
-  - [ ] Optional layout/display name
-- [ ] Add a first-pass extract reader abstraction
-  - [ ] Keep parsing independent from WPF UI
-  - [ ] Support loading an already-created MFME extract from disk
-  - [ ] Return a neutral legacy-extract representation for conversion, not old Unity component types and not core Oasis component types
-- [ ] Add tests for invalid/missing extract paths and basic warning/error reporting
+- [x] Add a focused legacy import feature folder under the WPF editor project
+  - [x] Suggested location: `OasisEditor/Features/MfmeImport/`
+  - [x] Keep classes internal unless they must be public for tests
+  - [x] Keep the feature boundary clear: MFME parsing/conversion lives here; native Oasis components live in the normal Panel2D/editor model
+- [x] Add importer result/diagnostic types
+  - [x] `MfmeImportResult` with native Oasis elements/components, copied assets, skipped legacy components, and warnings/errors
+  - [x] `MfmeImportWarning` or equivalent structured warning type
+  - [x] Ensure warnings are useful for output-log display
+- [x] Add import options/context types
+  - [x] Source extract path
+  - [x] Active project root/assets root
+  - [x] Whether to copy assets
+  - [x] Optional layout/display name
+- [x] Add a first-pass extract reader abstraction
+  - [x] Keep parsing independent from WPF UI
+  - [x] Support loading an already-created MFME extract from disk
+  - [x] Return a neutral legacy-extract representation for conversion, not old Unity component types and not core Oasis component types
+- [x] Add tests for invalid/missing extract paths and basic warning/error reporting
 - [ ] Build and run tests
 
 ### Phase M — Minimal Legacy MFME Extract DTOs for the Import Adapter
-- [ ] Add minimal WPF-editor-owned DTOs for reading MFME extract data needed by this import adapter
-  - [ ] Layout/import root DTO
-  - [ ] Shared legacy component base data: type, position, size, and any source identity needed only while converting
-  - [ ] Background extract DTO
-  - [ ] Lamp extract DTO including first lamp element data needed by the Unity importer mapping
-  - [ ] Reel extract DTO
-  - [ ] SevenSegment extract DTO
-  - [ ] Alpha/AlphaNew/MatrixAlpha extract DTOs or one normalised legacy Alpha extract DTO
-- [ ] Add parser/normaliser from the real extract layout format into these legacy DTOs
-  - [ ] Keep the parser tolerant of unsupported legacy components
-  - [ ] Unsupported legacy components should be skipped with warnings, not hard failures
+- [x] Add minimal WPF-editor-owned DTOs for reading MFME extract data needed by this import adapter
+  - [x] Layout/import root DTO
+  - [x] Shared legacy component base data: type, position, size, and any source identity needed only while converting
+  - [x] Background extract DTO
+  - [x] Lamp extract DTO including first lamp element data needed by the Unity importer mapping
+  - [x] Reel extract DTO
+  - [x] SevenSegment extract DTO
+  - [x] Alpha/AlphaNew/MatrixAlpha extract DTOs or one normalised legacy Alpha extract DTO
+- [x] Add parser/normaliser from the real extract layout format into these legacy DTOs
+  - [x] Keep the parser tolerant of unsupported legacy components
+  - [x] Unsupported legacy components should be skipped with warnings, not hard failures
   - [ ] Missing optional images should produce warnings and still allow native Oasis placeholder components where possible
-- [ ] Ensure these DTOs do not leak into general Panel2D model/mutation code
-- [ ] Add tests using small hand-written fixture JSON/data for each supported legacy component type
+- [x] Ensure these DTOs do not leak into general Panel2D model/mutation code
+- [x] Add tests using small hand-written fixture JSON/data for each supported legacy component type
 - [ ] Build and run tests
 
 ### Phase N — Native Oasis Panel2D Component Model Expansion
