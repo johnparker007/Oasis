@@ -67,11 +67,11 @@ internal static class PanelElementFactory
         {
             PanelElementKind.Rectangle => CreateRectangleVisual(element),
             PanelElementKind.Image => CreateImageVisual(element),
-            PanelElementKind.Background => CreatePlaceholderComponentVisual(element, "Background"),
-            PanelElementKind.Lamp => CreatePlaceholderComponentVisual(element, "Lamp"),
-            PanelElementKind.Reel => CreatePlaceholderComponentVisual(element, "Reel"),
-            PanelElementKind.SevenSegment => CreatePlaceholderComponentVisual(element, "7 Segment"),
-            PanelElementKind.Alpha => CreatePlaceholderComponentVisual(element, "Alpha"),
+            PanelElementKind.Background => CreateBackgroundVisual(element),
+            PanelElementKind.Lamp => CreateLampVisual(element),
+            PanelElementKind.Reel => CreateReelVisual(element),
+            PanelElementKind.SevenSegment => CreateSevenSegmentVisual(element),
+            PanelElementKind.Alpha => CreateAlphaVisual(element),
             _ => null
         };
 
@@ -160,7 +160,73 @@ internal static class PanelElementFactory
         };
     }
 
+    private static FrameworkElement CreateBackgroundVisual(PanelElementFile element)
+    {
+        var surface = CreatePlaceholderComponentVisual(element, "Background", element.OffColorHex);
+        if (TryCreateImageSource(element.AssetPath, out var source))
+        {
+            surface.Child = new Image
+            {
+                Stretch = Stretch.Fill,
+                Source = source
+            };
+        }
+
+        return surface;
+    }
+
+    private static FrameworkElement CreateLampVisual(PanelElementFile element)
+    {
+        var label = element.DisplayNumber.HasValue ? $"Lamp {element.DisplayNumber.Value}" : "Lamp";
+        var surface = CreatePlaceholderComponentVisual(element, label, element.OnColorHex ?? element.OffColorHex, element.DisplayText);
+        if (TryCreateImageSource(element.AssetPath, out var source))
+        {
+            surface.Child = new Image
+            {
+                Stretch = Stretch.Fill,
+                Source = source
+            };
+        }
+
+        return surface;
+    }
+
+    private static FrameworkElement CreateReelVisual(PanelElementFile element)
+    {
+        var label = element.DisplayNumber.HasValue ? $"Reel {element.DisplayNumber.Value}" : "Reel";
+        var surface = CreatePlaceholderComponentVisual(element, label, "#1E293B");
+        if (TryCreateImageSource(element.AssetPath, out var source))
+        {
+            surface.Child = new Image
+            {
+                Stretch = Stretch.Fill,
+                Source = source
+            };
+        }
+
+        return surface;
+    }
+
+    private static FrameworkElement CreateSevenSegmentVisual(PanelElementFile element)
+    {
+        var label = element.DisplayNumber.HasValue
+            ? $"7 Segment {element.DisplayNumber.Value}"
+            : "7 Segment";
+        return CreatePlaceholderComponentVisual(element, label, element.OnColorHex, element.DisplayText);
+    }
+
+    private static FrameworkElement CreateAlphaVisual(PanelElementFile element)
+    {
+        var label = element.IsReversed == true ? "Alpha (Reversed)" : "Alpha";
+        return CreatePlaceholderComponentVisual(element, label, "#1F2937", element.DisplayText);
+    }
+
     private static FrameworkElement CreatePlaceholderComponentVisual(PanelElementFile element, string label)
+    {
+        return CreatePlaceholderComponentVisual(element, label, null, null);
+    }
+
+    private static Border CreatePlaceholderComponentVisual(PanelElementFile element, string label, string? backgroundColorHex, string? detailText = null)
     {
         var width = element.Width <= 0 ? NewRectangleWidth : element.Width;
         var height = element.Height <= 0 ? NewRectangleHeight : element.Height;
@@ -171,17 +237,82 @@ internal static class PanelElementFactory
             Height = height,
             BorderThickness = new Thickness(1),
             BorderBrush = Brushes.SlateGray,
-            Background = Brushes.Transparent,
-            Child = new TextBlock
+            Background = TryCreateBrush(backgroundColorHex, Brushes.Transparent),
+            Child = new StackPanel
             {
-                Text = label,
-                HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
-                Foreground = Brushes.LightSteelBlue
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Children =
+                {
+                    new TextBlock
+                    {
+                        Text = label,
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        TextAlignment = TextAlignment.Center,
+                        Foreground = Brushes.LightSteelBlue
+                    },
+                    new TextBlock
+                    {
+                        Text = detailText ?? string.Empty,
+                        Margin = new Thickness(0, 4, 0, 0),
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        TextAlignment = TextAlignment.Center,
+                        Foreground = Brushes.Gainsboro,
+                        FontSize = 10,
+                        Visibility = string.IsNullOrWhiteSpace(detailText) ? Visibility.Collapsed : Visibility.Visible
+                    }
+                }
             }
         };
 
         return border;
+    }
+
+    private static Brush TryCreateBrush(string? colorHex, Brush fallback)
+    {
+        if (string.IsNullOrWhiteSpace(colorHex))
+        {
+            return fallback;
+        }
+
+        try
+        {
+            var color = (Color)ColorConverter.ConvertFromString(colorHex);
+            return new SolidColorBrush(color);
+        }
+        catch
+        {
+            return fallback;
+        }
+    }
+
+    private static bool TryCreateImageSource(string? assetPath, out ImageSource? source)
+    {
+        source = null;
+        if (string.IsNullOrWhiteSpace(assetPath))
+        {
+            return false;
+        }
+
+        var candidate = assetPath.Trim();
+        if (!System.IO.Path.IsPathRooted(candidate))
+        {
+            return false;
+        }
+
+        if (!System.IO.File.Exists(candidate))
+        {
+            return false;
+        }
+
+        var bitmap = new BitmapImage();
+        bitmap.BeginInit();
+        bitmap.UriSource = new Uri(candidate, UriKind.Absolute);
+        bitmap.CacheOption = BitmapCacheOption.OnLoad;
+        bitmap.EndInit();
+        bitmap.Freeze();
+        source = bitmap;
+        return true;
     }
 
     private static ImageSource CreatePlaceholderImageSource()
