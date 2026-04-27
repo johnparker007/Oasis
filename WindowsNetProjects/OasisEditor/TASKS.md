@@ -196,12 +196,12 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
 - [ ] Add placeholder visual projection for native Alpha display
   - [ ] Use a labeled placeholder visual for now
   - [ ] Preserve reversed metadata in the native model
-- [ ] Update hierarchy grouping/display for the new native element kinds
-  - [ ] Backgrounds
-  - [ ] Lamps
-  - [ ] Reels
-  - [ ] Seven Segments
-  - [ ] Alphas
+- [x] Update hierarchy grouping/display for the new native element kinds
+  - [x] Backgrounds
+  - [x] Lamps
+  - [x] Reels
+  - [x] Seven Segments
+  - [x] Alphas
 - [ ] Verify selection, hierarchy selection, inspector display, save/load, and undo/redo still work for new native kinds
 - [ ] Build and run tests
 

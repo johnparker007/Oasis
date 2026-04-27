@@ -18,6 +18,11 @@ public sealed class Panel2DHierarchyProvider : IDocumentHierarchyProvider
         var elements = panelDocument.GetPanelElements();
         var groups = new List<HierarchyItemViewModel>
         {
+            BuildGroup("Backgrounds", elements, PanelElementKind.Background, "Background"),
+            BuildGroup("Lamps", elements, PanelElementKind.Lamp, "Lamp"),
+            BuildGroup("Reels", elements, PanelElementKind.Reel, "Reel"),
+            BuildGroup("Seven Segments", elements, PanelElementKind.SevenSegment, "7 Segment"),
+            BuildGroup("Alphas", elements, PanelElementKind.Alpha, "Alpha"),
             BuildGroup("Images", elements, PanelElementKind.Image, "Image"),
             BuildGroup("Rectangles", elements, PanelElementKind.Rectangle, "Rectangle"),
             BuildGroup("Anchors", elements, PanelElementKind.Anchor, "Anchor"),
