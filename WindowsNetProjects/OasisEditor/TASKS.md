@@ -91,12 +91,12 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
   - [x] Preserve ability to open schema version 1 files
   - [x] Define a migration path or explicit version rejection behavior for future schemas
   - [x] Avoid MFME-specific field names in the core schema
-- [ ] Add native Oasis `PanelElementKind` values or equivalent component kinds
-  - [ ] BackgroundArtwork or Background
-  - [ ] Lamp
-  - [ ] Reel
-  - [ ] SevenSegmentDisplay or SevenSegment
-  - [ ] AlphaDisplay or Alpha
+- [x] Add native Oasis `PanelElementKind` values or equivalent component kinds
+  - [x] BackgroundArtwork or Background
+  - [x] Lamp
+  - [x] Reel
+  - [x] SevenSegmentDisplay or SevenSegment
+  - [x] AlphaDisplay or Alpha
 - [ ] Extend `PanelElementModel`/storage DTOs with native Oasis properties only
   - [ ] Project-relative asset path or paths
   - [ ] Component display/runtime number where applicable, such as lamp/reel/segment number

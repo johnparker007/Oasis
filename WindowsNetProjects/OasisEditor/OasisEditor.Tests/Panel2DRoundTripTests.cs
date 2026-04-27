@@ -170,6 +170,34 @@ public sealed class Panel2DRoundTripTests
         Assert.Contains("unsupported kind", errorMessage, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Theory]
+    [InlineData("background", PanelElementKind.Background)]
+    [InlineData("lamp", PanelElementKind.Lamp)]
+    [InlineData("reel", PanelElementKind.Reel)]
+    [InlineData("sevenSegment", PanelElementKind.SevenSegment)]
+    [InlineData("alpha", PanelElementKind.Alpha)]
+    public void ParseElementKind_WithNativeKinds_ReturnsExpectedKind(string serializedKind, PanelElementKind expectedKind)
+    {
+        var parsedKind = Panel2DDocumentStorage.ParseElementKind(serializedKind);
+        var roundTripKind = Panel2DDocumentStorage.SerializeElementKind(parsedKind);
+
+        Assert.Equal(expectedKind, parsedKind);
+        Assert.Equal(serializedKind, roundTripKind);
+    }
+
+    [Theory]
+    [InlineData(PanelElementKind.Background, "Background ")]
+    [InlineData(PanelElementKind.Lamp, "Lamp ")]
+    [InlineData(PanelElementKind.Reel, "Reel ")]
+    [InlineData(PanelElementKind.SevenSegment, "7 Segment ")]
+    [InlineData(PanelElementKind.Alpha, "Alpha ")]
+    public void CreateDefaultElementName_WithNativeKinds_UsesNativePrefix(PanelElementKind kind, string expectedPrefix)
+    {
+        var name = Panel2DDocumentStorage.CreateDefaultElementName(kind, "abcdef123456");
+
+        Assert.StartsWith(expectedPrefix, name);
+    }
+
     [Fact]
     public void TryReadValidated_WithMissingNameAndObjectId_NormalizesValues()
     {

@@ -29,6 +29,31 @@ internal static class Panel2DDocumentStorage
             return PanelElementKind.Zone;
         }
 
+        if (string.Equals(kind, "background", StringComparison.OrdinalIgnoreCase))
+        {
+            return PanelElementKind.Background;
+        }
+
+        if (string.Equals(kind, "lamp", StringComparison.OrdinalIgnoreCase))
+        {
+            return PanelElementKind.Lamp;
+        }
+
+        if (string.Equals(kind, "reel", StringComparison.OrdinalIgnoreCase))
+        {
+            return PanelElementKind.Reel;
+        }
+
+        if (string.Equals(kind, "sevensegment", StringComparison.OrdinalIgnoreCase))
+        {
+            return PanelElementKind.SevenSegment;
+        }
+
+        if (string.Equals(kind, "alpha", StringComparison.OrdinalIgnoreCase))
+        {
+            return PanelElementKind.Alpha;
+        }
+
         return PanelElementKind.Unknown;
     }
 
@@ -40,6 +65,11 @@ internal static class Panel2DDocumentStorage
             PanelElementKind.Image => "image",
             PanelElementKind.Anchor => "anchor",
             PanelElementKind.Zone => "zone",
+            PanelElementKind.Background => "background",
+            PanelElementKind.Lamp => "lamp",
+            PanelElementKind.Reel => "reel",
+            PanelElementKind.SevenSegment => "sevenSegment",
+            PanelElementKind.Alpha => "alpha",
             _ => string.Empty
         };
     }
@@ -257,9 +287,16 @@ internal static class Panel2DDocumentStorage
 
     internal static string CreateDefaultElementName(PanelElementKind kind, string? objectId)
     {
-        var prefix = kind == PanelElementKind.Image
-            ? "Image"
-            : "Rectangle";
+        var prefix = kind switch
+        {
+            PanelElementKind.Image => "Image",
+            PanelElementKind.Background => "Background",
+            PanelElementKind.Lamp => "Lamp",
+            PanelElementKind.Reel => "Reel",
+            PanelElementKind.SevenSegment => "7 Segment",
+            PanelElementKind.Alpha => "Alpha",
+            _ => "Rectangle"
+        };
 
         if (string.IsNullOrWhiteSpace(objectId))
         {
@@ -293,7 +330,12 @@ internal enum PanelElementKind
     Rectangle,
     Image,
     Anchor,
-    Zone
+    Zone,
+    Background,
+    Lamp,
+    Reel,
+    SevenSegment,
+    Alpha
 }
 
 internal sealed record Panel2DDocumentFile
