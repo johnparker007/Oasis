@@ -153,11 +153,38 @@ public sealed class Panel2DRoundTripTests
     }
 
     [Fact]
+    public void Serialize_WithNativeElementMetadata_WritesSchemaVersion2()
+    {
+        var json = Panel2DDocumentStorage.Serialize(
+            "Panel V2",
+            "Native",
+            [
+                new PanelElementFile
+                {
+                    ObjectId = "lamp-v2",
+                    Name = "Lamp V2",
+                    Kind = "lamp",
+                    X = 1,
+                    Y = 2,
+                    Width = 3,
+                    Height = 4,
+                    Native = new PanelElementNativeFile
+                    {
+                        Number = 12
+                    }
+                }
+            ]);
+
+        Assert.True(Panel2DDocumentStorage.TryRead(json, out var parsed));
+        Assert.Equal(Panel2DDocumentStorage.CurrentSchemaVersion, parsed.SchemaVersion);
+    }
+
+    [Fact]
     public void TryReadValidated_WithFutureSchemaVersion_ReturnsUnsupportedVersionError()
     {
         const string sourceJson = """
         {
-          "SchemaVersion": 2,
+          "SchemaVersion": 3,
           "Title": "Future Panel",
           "Summary": "Future",
           "Elements": []
@@ -167,7 +194,47 @@ public sealed class Panel2DRoundTripTests
         var success = Panel2DDocumentStorage.TryReadValidated(sourceJson, out _, out var errorMessage);
 
         Assert.False(success);
-        Assert.Contains("Unsupported schema version '2'", errorMessage);
+        Assert.Contains("Unsupported schema version '3'", errorMessage);
+    }
+
+    [Fact]
+    public void TryReadValidated_WithSchemaVersion1_MigratesToCurrentSchema()
+    {
+        const string sourceJson = """
+        {
+          "SchemaVersion": 1,
+          "Title": "Legacy Panel",
+          "Summary": "Legacy",
+          "Elements": [
+            {
+              "ObjectId": "legacy-lamp",
+              "Name": "Legacy Lamp",
+              "Kind": "lamp",
+              "X": 10,
+              "Y": 20,
+              "Width": 30,
+              "Height": 40,
+              "AssetPath": " Assets/legacy/lamp.png ",
+              "DisplayNumber": 7,
+              "OnColorHex": " #FFFFFFFF "
+            }
+          ]
+        }
+        """;
+
+        var success = Panel2DDocumentStorage.TryReadValidated(sourceJson, out var parsed, out var errorMessage);
+
+        Assert.True(success);
+        Assert.Equal(string.Empty, errorMessage);
+        Assert.Equal(Panel2DDocumentStorage.CurrentSchemaVersion, parsed.SchemaVersion);
+        var element = Assert.Single(parsed.Elements);
+        Assert.Equal("Assets/legacy/lamp.png", element.AssetPath);
+        Assert.Equal(7, element.DisplayNumber);
+        Assert.Equal("#FFFFFFFF", element.OnColorHex);
+        Assert.NotNull(element.Native);
+        Assert.Equal("Assets/legacy/lamp.png", element.Native!.AssetPath);
+        Assert.Equal(7, element.Native.Number);
+        Assert.Equal("#FFFFFFFF", element.Native.OnColorHex);
     }
 
     [Fact]
