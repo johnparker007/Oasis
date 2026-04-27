@@ -67,6 +67,7 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
   - [x] Return a neutral legacy-extract representation for conversion, not old Unity component types and not core Oasis component types
 - [x] Add tests for invalid/missing extract paths and basic warning/error reporting
 - [ ] Build and run tests
+  - [ ] Blocked in current container; see `MfmeBuildTestAttempt.md`
 
 ### Phase M — Minimal Legacy MFME Extract DTOs for the Import Adapter
 - [x] Add minimal WPF-editor-owned DTOs for reading MFME extract data needed by this import adapter
@@ -84,6 +85,7 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
 - [x] Ensure these DTOs do not leak into general Panel2D model/mutation code
 - [x] Add tests using small hand-written fixture JSON/data for each supported legacy component type
 - [ ] Build and run tests
+  - [ ] Blocked in current container; see `MfmeBuildTestAttempt.md`
 
 ### Phase N — Native Oasis Panel2D Component Model Expansion
 - [x] Design the Panel2D schema extension for native Oasis components before editing storage code
@@ -159,6 +161,7 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
 - [x] Add tests that unsupported MFME component types are skipped with warnings
 - [x] Ensure tests assert native Oasis component output, not MFME metadata preservation
 - [ ] Build and run tests
+  - [ ] Blocked in current container; see `MfmeBuildTestAttempt.md`
 
 ### Phase P — Project Asset Copy and Relative Path Handling
 - [x] Add an asset-copy service for imported MFME extract images
@@ -175,6 +178,7 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
 - [ ] Refresh the Assets pane after successful import/copy
 - [x] Add tests for root containment, duplicate names, missing files, and project-relative path generation
 - [ ] Build and run tests
+  - [ ] Blocked in current container; see `MfmeBuildTestAttempt.md`
 
 ### Phase Q — Panel2D Visual Projection for Native Imported Components
 - [ ] Update `PanelElementFactory` or introduce focused visual factories for new native Panel2D kinds
