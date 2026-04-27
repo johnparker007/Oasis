@@ -172,7 +172,7 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
   - [x] Import the native Oasis component anyway when possible
   - [x] Add a warning listing the missing file
   - [x] Use placeholder visuals later in the visual projection phase
-- [ ] Refresh the Assets pane after successful import/copy
+- [x] Refresh the Assets pane after successful import/copy
 - [x] Add tests for root containment, duplicate names, missing files, and project-relative path generation
 - [ ] Build and run tests
 
@@ -206,30 +206,30 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
 - [ ] Build and run tests
 
 ### Phase R — Undoable Import Command
-- [ ] Add `ImportMfmeExtractCommand` or equivalent document-scoped command
-  - [ ] Target a specific document ID at creation time
-  - [ ] Insert all converted native Oasis Panel2D elements as one undoable operation
-  - [ ] Record copied assets/import warnings outside undo only if necessary and documented
-  - [ ] Mark the document dirty only when native elements are actually added
-  - [ ] Do not record no-op imports in undo history
-- [ ] Ensure undo removes all imported native elements from the active document only
-- [ ] Ensure redo restores the same logical native elements without reusing stale command state incorrectly
-- [ ] Ensure object IDs remain stable through undo/redo of the same command
-- [ ] Add command tests for import, undo, redo, no-op import, and wrong-document safety
+- [x] Add `ImportMfmeExtractCommand` or equivalent document-scoped command
+  - [x] Target a specific document ID at creation time
+  - [x] Insert all converted native Oasis Panel2D elements as one undoable operation
+  - [x] Record copied assets/import warnings outside undo only if necessary and documented
+  - [x] Mark the document dirty only when native elements are actually added
+  - [x] Do not record no-op imports in undo history
+- [x] Ensure undo removes all imported native elements from the active document only
+- [x] Ensure redo restores the same logical native elements without reusing stale command state incorrectly
+- [x] Ensure object IDs remain stable through undo/redo of the same command
+- [x] Add command tests for import, undo, redo, no-op import, and wrong-document safety
 - [ ] Build and run tests
 
 ### Phase S — Import UI Entry Point
-- [ ] Add a user-facing import command to the WPF editor shell
-  - [ ] Suggested menu: `File > Import > MFME Extract...`
-  - [ ] Enable only when a project is open and a Panel2D document is active or can be created intentionally
-  - [ ] Use a folder picker or file picker appropriate to the extract contract identified in Phase K
-- [ ] Route UI command through ViewModel/service code, not direct import logic in code-behind
-- [ ] Display import results in the output log
-  - [ ] Count imported native components by kind
-  - [ ] Count skipped unsupported legacy MFME components
-  - [ ] List warnings for missing images or unsupported fields
-- [ ] Ensure import into an empty Panel2D document is the first supported flow
-- [ ] Add a clear message for unsupported active document types
+- [x] Add a user-facing import command to the WPF editor shell
+  - [x] Suggested menu: `File > Import > MFME Extract...`
+  - [x] Enable only when a project is open and a Panel2D document is active or can be created intentionally
+  - [x] Use a folder picker or file picker appropriate to the extract contract identified in Phase K
+- [x] Route UI command through ViewModel/service code, not direct import logic in code-behind
+- [x] Display import results in the output log
+  - [x] Count imported native components by kind
+  - [x] Count skipped unsupported legacy MFME components
+  - [x] List warnings for missing images or unsupported fields
+- [x] Ensure import into an empty Panel2D document is the first supported flow
+- [x] Add a clear message for unsupported active document types
 - [ ] Build and run tests
 
 ### Phase T — End-to-End Validation and Cleanup

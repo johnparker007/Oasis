@@ -58,6 +58,10 @@
                 <Separator />
                 <MenuItem Header="Open _Document"
                           Command="{Binding OpenDocumentCommand}" />
+                <MenuItem Header="_Import">
+                    <MenuItem Header="_MFME Extract..."
+                              Command="{Binding ImportMfmeExtractCommand}" />
+                </MenuItem>
                 <MenuItem Header="_Save Document"
                           Command="{Binding SaveSelectedDocumentCommand}" />
                 <MenuItem Header="_Close Project"
