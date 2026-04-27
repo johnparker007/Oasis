@@ -16,4 +16,14 @@ internal sealed class PanelElementModel
     public double Y { get; init; }
     public double Width { get; init; }
     public double Height { get; init; }
+    public string? AssetPath { get; init; }
+    public string? MfmeSourceType { get; init; }
+    public string? MfmeSourceId { get; init; }
+    public int? DisplayNumber { get; init; }
+    public string? PrimaryColor { get; init; }
+    public string? SecondaryColor { get; init; }
+    public string? TextColor { get; init; }
+    public string? Text { get; init; }
+    public bool Reversed { get; init; }
+    public int? Stops { get; init; }
 }
