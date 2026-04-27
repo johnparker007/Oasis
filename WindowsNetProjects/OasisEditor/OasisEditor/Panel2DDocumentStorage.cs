@@ -5,7 +5,8 @@ namespace OasisEditor;
 
 internal static class Panel2DDocumentStorage
 {
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 2;
+    public const int LegacySchemaVersion = 1;
 
     internal static PanelElementKind ParseElementKind(string? kind)
     {
@@ -76,9 +77,10 @@ internal static class Panel2DDocumentStorage
 
     public static string Serialize(string title, string summary, IReadOnlyList<PanelElementFile> elements)
     {
+        var schemaVersion = DetermineSchemaVersion(elements);
         var payload = new Panel2DDocumentFile
         {
-            SchemaVersion = CurrentSchemaVersion,
+            SchemaVersion = schemaVersion,
             Title = title,
             Summary = summary,
             SavedAtUtc = DateTime.UtcNow,
@@ -150,6 +152,13 @@ internal static class Panel2DDocumentStorage
             return true;
         }
 
+        if (source.SchemaVersion == LegacySchemaVersion)
+        {
+            migrated = MigrateFromSchemaVersion1(source);
+            errorMessage = string.Empty;
+            return true;
+        }
+
         migrated = new Panel2DDocumentFile();
         errorMessage = source.SchemaVersion > CurrentSchemaVersion
             ? $"Unsupported schema version '{source.SchemaVersion}'. Current supported version is {CurrentSchemaVersion}."
@@ -162,7 +171,7 @@ internal static class Panel2DDocumentStorage
         if (source.SchemaVersion != CurrentSchemaVersion)
         {
             normalized = new Panel2DDocumentFile();
-            errorMessage = $"Unsupported schema version '{source.SchemaVersion}'.";
+            errorMessage = $"Unsupported schema version '{source.SchemaVersion}'. Current supported version is {CurrentSchemaVersion}.";
             return false;
         }
 
@@ -234,6 +243,36 @@ internal static class Panel2DDocumentStorage
         return true;
     }
 
+    private static int DetermineSchemaVersion(IReadOnlyList<PanelElementFile> elements)
+    {
+        foreach (var element in elements)
+        {
+            var kind = ParseElementKind(element.Kind);
+            if (kind is PanelElementKind.Background or PanelElementKind.Lamp or PanelElementKind.Reel or PanelElementKind.SevenSegment or PanelElementKind.Alpha)
+            {
+                return CurrentSchemaVersion;
+            }
+
+            if (element.Native is not null
+                || !string.IsNullOrWhiteSpace(element.AssetPath)
+                || !string.IsNullOrWhiteSpace(element.SecondaryAssetPath)
+                || element.DisplayNumber.HasValue
+                || !string.IsNullOrWhiteSpace(element.OnColorHex)
+                || !string.IsNullOrWhiteSpace(element.OffColorHex)
+                || !string.IsNullOrWhiteSpace(element.TextColorHex)
+                || !string.IsNullOrWhiteSpace(element.DisplayText)
+                || element.IsReversed.HasValue
+                || element.Stops.HasValue
+                || element.VisibleScale.HasValue
+                || element.ImportSource is not null)
+            {
+                return CurrentSchemaVersion;
+            }
+        }
+
+        return LegacySchemaVersion;
+    }
+
 
     public static Panel2DDocumentModel ToModel(Panel2DDocumentFile document)
     {
@@ -289,6 +328,14 @@ internal static class Panel2DDocumentStorage
 
     public static PanelElementFile ToStorageElement(PanelElementModel element)
     {
+        var importSource = element.ImportSource is null
+            ? null
+            : new PanelElementImportSourceFile
+            {
+                Format = element.ImportSource.Format,
+                Reference = element.ImportSource.Reference
+            };
+
         return NormalizeElement(new PanelElementFile
         {
             ObjectId = element.ObjectId,
@@ -308,13 +355,19 @@ internal static class Panel2DDocumentStorage
             IsReversed = element.IsReversed,
             Stops = element.Stops,
             VisibleScale = element.VisibleScale,
-            ImportSource = element.ImportSource is null
-                ? null
-                : new PanelElementImportSourceFile
-                {
-                    Format = element.ImportSource.Format,
-                    Reference = element.ImportSource.Reference
-                }
+            ImportSource = importSource,
+            Native = CreateNativeFromLegacyFields(
+                assetPath: element.AssetPath,
+                secondaryAssetPath: element.SecondaryAssetPath,
+                number: element.DisplayNumber,
+                text: element.DisplayText,
+                textColorHex: element.TextColorHex,
+                onColorHex: element.OnColorHex,
+                offColorHex: element.OffColorHex,
+                reversed: element.IsReversed,
+                stops: element.Stops,
+                visibleScale: element.VisibleScale,
+                importSource: importSource)
         });
     }
     public static string SerializeLayout(IReadOnlyList<PanelElementFile> elements)
@@ -346,19 +399,76 @@ internal static class Panel2DDocumentStorage
             ? Guid.NewGuid().ToString("N")
             : element.ObjectId.Trim();
         var normalizedKind = ParseElementKind(element.Kind);
+        var normalizedNative = NormalizeNative(element.Native);
+        var normalizedImportSource = NormalizeImportSource(normalizedNative?.ImportSource ?? element.ImportSource);
+        var normalizedAssetPath = NormalizeOptionalString(normalizedNative?.AssetPath ?? element.AssetPath);
+        var normalizedSecondaryAssetPath = NormalizeOptionalString(normalizedNative?.SecondaryAssetPath ?? element.SecondaryAssetPath);
+        var normalizedDisplayNumber = normalizedNative?.Number ?? element.DisplayNumber;
+        var normalizedOnColorHex = NormalizeOptionalString(normalizedNative?.OnColorHex ?? normalizedNative?.DisplayColorHex ?? element.OnColorHex);
+        var normalizedOffColorHex = NormalizeOptionalString(normalizedNative?.OffColorHex ?? element.OffColorHex);
+        var normalizedTextColorHex = NormalizeOptionalString(normalizedNative?.TextColorHex ?? element.TextColorHex);
+        var normalizedDisplayText = NormalizeOptionalString(normalizedNative?.Text ?? element.DisplayText);
+        var normalizedIsReversed = normalizedNative?.Reversed ?? element.IsReversed;
+        var normalizedStops = normalizedNative?.Stops ?? element.Stops;
+        var normalizedVisibleScale = normalizedNative?.VisibleScale ?? element.VisibleScale;
+
+        var mergedNative = normalizedNative is null
+            ? CreateNativeFromLegacyFields(
+                normalizedAssetPath,
+                normalizedSecondaryAssetPath,
+                normalizedDisplayNumber,
+                normalizedDisplayText,
+                normalizedTextColorHex,
+                normalizedOnColorHex,
+                normalizedOffColorHex,
+                normalizedIsReversed,
+                normalizedStops,
+                normalizedVisibleScale,
+                normalizedImportSource)
+            : normalizedNative with
+            {
+                AssetPath = normalizedAssetPath,
+                SecondaryAssetPath = normalizedSecondaryAssetPath,
+                Number = normalizedDisplayNumber,
+                Text = normalizedDisplayText,
+                TextColorHex = normalizedTextColorHex,
+                OnColorHex = normalizedOnColorHex,
+                DisplayColorHex = NormalizeOptionalString(normalizedNative.DisplayColorHex ?? normalizedOnColorHex),
+                OffColorHex = normalizedOffColorHex,
+                Reversed = normalizedIsReversed,
+                Stops = normalizedStops,
+                VisibleScale = normalizedVisibleScale,
+                ImportSource = normalizedImportSource
+            };
 
         return element with
         {
             ObjectId = normalizedObjectId,
             Name = NormalizeElementName(element.Name, normalizedKind, normalizedObjectId),
             Kind = SerializeElementKind(normalizedKind),
-            AssetPath = NormalizeOptionalString(element.AssetPath),
-            SecondaryAssetPath = NormalizeOptionalString(element.SecondaryAssetPath),
-            OnColorHex = NormalizeOptionalString(element.OnColorHex),
-            OffColorHex = NormalizeOptionalString(element.OffColorHex),
-            TextColorHex = NormalizeOptionalString(element.TextColorHex),
-            DisplayText = NormalizeOptionalString(element.DisplayText),
-            ImportSource = NormalizeImportSource(element.ImportSource)
+            AssetPath = normalizedAssetPath,
+            SecondaryAssetPath = normalizedSecondaryAssetPath,
+            DisplayNumber = normalizedDisplayNumber,
+            OnColorHex = normalizedOnColorHex,
+            OffColorHex = normalizedOffColorHex,
+            TextColorHex = normalizedTextColorHex,
+            DisplayText = normalizedDisplayText,
+            IsReversed = normalizedIsReversed,
+            Stops = normalizedStops,
+            VisibleScale = normalizedVisibleScale,
+            ImportSource = normalizedImportSource,
+            Native = mergedNative
+        };
+    }
+
+    private static Panel2DDocumentFile MigrateFromSchemaVersion1(Panel2DDocumentFile source)
+    {
+        return source with
+        {
+            SchemaVersion = CurrentSchemaVersion,
+            Elements = (source.Elements ?? [])
+                .Select(NormalizeElement)
+                .ToArray()
         };
     }
 
@@ -443,6 +553,76 @@ internal static class Panel2DDocumentStorage
             Reference = reference
         };
     }
+
+    private static PanelElementNativeFile? NormalizeNative(PanelElementNativeFile? native)
+    {
+        if (native is null)
+        {
+            return null;
+        }
+
+        return new PanelElementNativeFile
+        {
+            AssetPath = NormalizeOptionalString(native.AssetPath),
+            SecondaryAssetPath = NormalizeOptionalString(native.SecondaryAssetPath),
+            Number = native.Number,
+            Text = NormalizeOptionalString(native.Text),
+            TextColorHex = NormalizeOptionalString(native.TextColorHex),
+            OnColorHex = NormalizeOptionalString(native.OnColorHex),
+            OffColorHex = NormalizeOptionalString(native.OffColorHex),
+            DisplayColorHex = NormalizeOptionalString(native.DisplayColorHex),
+            Reversed = native.Reversed,
+            Stops = native.Stops,
+            VisibleScale = native.VisibleScale,
+            Outline = native.Outline,
+            ImportSource = NormalizeImportSource(native.ImportSource)
+        };
+    }
+
+    private static PanelElementNativeFile? CreateNativeFromLegacyFields(
+        string? assetPath,
+        string? secondaryAssetPath,
+        int? number,
+        string? text,
+        string? textColorHex,
+        string? onColorHex,
+        string? offColorHex,
+        bool? reversed,
+        int? stops,
+        double? visibleScale,
+        PanelElementImportSourceFile? importSource)
+    {
+        if (assetPath is null
+            && secondaryAssetPath is null
+            && number is null
+            && text is null
+            && textColorHex is null
+            && onColorHex is null
+            && offColorHex is null
+            && reversed is null
+            && stops is null
+            && visibleScale is null
+            && importSource is null)
+        {
+            return null;
+        }
+
+        return new PanelElementNativeFile
+        {
+            AssetPath = assetPath,
+            SecondaryAssetPath = secondaryAssetPath,
+            Number = number,
+            Text = text,
+            TextColorHex = textColorHex,
+            OnColorHex = onColorHex,
+            OffColorHex = offColorHex,
+            DisplayColorHex = onColorHex,
+            Reversed = reversed,
+            Stops = stops,
+            VisibleScale = visibleScale,
+            ImportSource = importSource
+        };
+    }
 }
 
 internal enum PanelElementKind
@@ -488,9 +668,27 @@ internal sealed record PanelElementFile : IPanelSelectableObject
     public int? Stops { get; init; }
     public double? VisibleScale { get; init; }
     public PanelElementImportSourceFile? ImportSource { get; init; }
+    public PanelElementNativeFile? Native { get; init; }
 
     [JsonIgnore]
     public PanelElementKind ElementKind => Panel2DDocumentStorage.ParseElementKind(Kind);
+}
+
+internal sealed record PanelElementNativeFile
+{
+    public string? AssetPath { get; init; }
+    public string? SecondaryAssetPath { get; init; }
+    public int? Number { get; init; }
+    public string? Text { get; init; }
+    public string? TextColorHex { get; init; }
+    public string? OnColorHex { get; init; }
+    public string? OffColorHex { get; init; }
+    public string? DisplayColorHex { get; init; }
+    public bool? Reversed { get; init; }
+    public int? Stops { get; init; }
+    public double? VisibleScale { get; init; }
+    public bool? Outline { get; init; }
+    public PanelElementImportSourceFile? ImportSource { get; init; }
 }
 
 internal sealed record PanelElementImportSourceFile
