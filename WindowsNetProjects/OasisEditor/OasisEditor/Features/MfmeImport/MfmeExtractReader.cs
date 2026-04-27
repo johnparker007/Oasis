@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -81,14 +80,21 @@ internal sealed class MfmeExtractReader : IMfmeExtractReader
             {
                 foreach (var component in componentsElement.EnumerateArray())
                 {
-                    var parsed = ParseComponent(component);
-                    if (parsed.SourceType == "Unknown")
+                    if (!MfmeExtractComponentParser.TryParse(component, manifestPath, warnings.Add, out var parsed) || parsed is null)
                     {
                         warnings.Add(new MfmeImportWarning(
                             Code: "unsupported-component",
-                            Message: "Skipped component without recognizable MFME type metadata.",
+                            Message: "Skipped unsupported MFME component type.",
                             ContextPath: manifestPath));
-                        skipped.Add(parsed);
+
+                        skipped.Add(new MfmeUnknownComponentData
+                        {
+                            Kind = MfmeComponentKind.Unknown,
+                            SourceType = ReadString(component, "$type") ?? ReadString(component, "Type") ?? "Unknown",
+                            DisplayName = ReadString(component, "TextBoxText"),
+                            RawJson = component.GetRawText()
+                        });
+
                         continue;
                     }
 
@@ -131,39 +137,6 @@ internal sealed class MfmeExtractReader : IMfmeExtractReader
                ?? jsonFiles[0];
     }
 
-    private static MfmeExtractComponentData ParseComponent(JsonElement component)
-    {
-        var sourceType = ReadString(component, "$type")
-            ?? ReadString(component, "Type")
-            ?? "Unknown";
-
-        var position = TryReadPoint(component, "Position");
-        var size = TryReadPoint(component, "Size");
-
-        return new MfmeExtractComponentData
-        {
-            SourceType = sourceType,
-            DisplayName = ReadString(component, "TextBoxText"),
-            X = position.X,
-            Y = position.Y,
-            Width = size.X,
-            Height = size.Y,
-            RawJson = component.GetRawText()
-        };
-    }
-
-    private static (double X, double Y) TryReadPoint(JsonElement root, string propertyName)
-    {
-        if (!root.TryGetProperty(propertyName, out var value) || value.ValueKind != JsonValueKind.Object)
-        {
-            return (0d, 0d);
-        }
-
-        return (
-            TryReadDouble(value, "X"),
-            TryReadDouble(value, "Y"));
-    }
-
     private static string? ReadString(JsonElement root, string propertyName)
     {
         if (!root.TryGetProperty(propertyName, out var value) || value.ValueKind != JsonValueKind.String)
@@ -172,26 +145,5 @@ internal sealed class MfmeExtractReader : IMfmeExtractReader
         }
 
         return value.GetString();
-    }
-
-    private static double TryReadDouble(JsonElement root, string propertyName)
-    {
-        if (!root.TryGetProperty(propertyName, out var value))
-        {
-            return 0d;
-        }
-
-        if (value.ValueKind == JsonValueKind.Number && value.TryGetDouble(out var numericValue))
-        {
-            return numericValue;
-        }
-
-        if (value.ValueKind == JsonValueKind.String &&
-            double.TryParse(value.GetString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var parsedValue))
-        {
-            return parsedValue;
-        }
-
-        return 0d;
     }
 }

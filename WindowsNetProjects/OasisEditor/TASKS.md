@@ -56,19 +56,19 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
 - [x] Build and run tests
 
 ### Phase M — Minimal MFME Extract DTOs for the WPF Editor
-- [ ] Add minimal WPF-editor-owned DTOs for MFME extract data needed by this feature
-  - [ ] Layout/import root DTO
-  - [ ] Shared component base data: type, position, size, name/source identity if available
-  - [ ] Background DTO
-  - [ ] Lamp DTO including first lamp element data needed by the Unity importer mapping
-  - [ ] Reel DTO
-  - [ ] SevenSegment DTO
-  - [ ] Alpha/AlphaNew/MatrixAlpha DTOs or one normalised Alpha DTO
-- [ ] Add parser/normaliser from the real extract layout format into these DTOs
-  - [ ] Keep the parser tolerant of unsupported components
-  - [ ] Unsupported components should be skipped with warnings, not hard failures
-  - [ ] Missing optional images should produce warnings and usable placeholder elements
-- [ ] Add tests using small hand-written fixture JSON/data for each supported component type
+- [x] Add minimal WPF-editor-owned DTOs for MFME extract data needed by this feature
+  - [x] Layout/import root DTO
+  - [x] Shared component base data: type, position, size, name/source identity if available
+  - [x] Background DTO
+  - [x] Lamp DTO including first lamp element data needed by the Unity importer mapping
+  - [x] Reel DTO
+  - [x] SevenSegment DTO
+  - [x] Alpha/AlphaNew/MatrixAlpha DTOs or one normalised Alpha DTO
+- [x] Add parser/normaliser from the real extract layout format into these DTOs
+  - [x] Keep the parser tolerant of unsupported components
+  - [x] Unsupported components should be skipped with warnings, not hard failures
+  - [x] Missing optional images should produce warnings and usable placeholder elements
+- [x] Add tests using small hand-written fixture JSON/data for each supported component type
 - [x] Build and run tests
 
 ### Phase N — Panel2D Schema and Model Expansion
