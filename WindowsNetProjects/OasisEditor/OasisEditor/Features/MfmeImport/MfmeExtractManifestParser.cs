@@ -52,7 +52,12 @@ internal static class MfmeExtractManifestParser
         string extractDirectory,
         List<MfmeImportWarning> warnings)
     {
-        if (!root.TryGetProperty("Components", out var componentsElement) || componentsElement.ValueKind != JsonValueKind.Array)
+        if (!root.TryGetProperty("Components", out var componentsElement))
+        {
+            return [];
+        }
+
+        if (componentsElement.ValueKind != JsonValueKind.Array)
         {
             warnings.Add(new MfmeImportWarning("mfme.extract.components.missing", "Manifest has no Components array."));
             return [];

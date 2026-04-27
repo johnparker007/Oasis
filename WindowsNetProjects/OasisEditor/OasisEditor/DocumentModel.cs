@@ -82,7 +82,7 @@ public sealed class EditorDocument
             filePath,
             contentSummary,
             true,
-            true);
+            false);
     }
 
     public static EditorDocument CreateProjectOverview(EditorProject project)
