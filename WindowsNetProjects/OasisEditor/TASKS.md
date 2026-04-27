@@ -114,50 +114,50 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
 - [ ] Build and run tests
 
 ### Phase O — Conversion from MFME Extract to Native Oasis Components
-- [ ] Add `MfmeToOasisComponentMapper` or equivalent pure conversion service
-  - [ ] Input: normalised legacy MFME extract DTOs
-  - [ ] Output: native Oasis Panel2D model/storage elements ready for command insertion
-  - [ ] No WPF dependencies
-  - [ ] No MFME-specific fields in the output except optional isolated generic provenance if explicitly retained
-- [ ] Implement Background conversion
-  - [ ] Convert MFME background into native Oasis background artwork/component
-  - [ ] Position `(0, 0)`
-  - [ ] Size from MFME background
-  - [ ] Color from MFME background
-  - [ ] Optional image path from the extract Background folder converted into a project-relative asset path later
-  - [ ] Name `Background`
-- [ ] Implement Lamp conversion
-  - [ ] Convert MFME lamp into native Oasis lamp component
-  - [ ] Position and size from MFME lamp
-  - [ ] Lamp number from the first lamp element for milestone 1
-  - [ ] Optional image path from the extract Lamps folder converted into a project-relative asset path later
-  - [ ] On/off/text colors mapped into native Oasis lamp visual properties
-  - [ ] Text/font fields mapped into native Oasis text/display properties where the model supports them
-  - [ ] Input metadata deferred unless there is already an Oasis-native input model to receive it
-  - [ ] Name `Lamp` or `Lamp <number>` consistently
-- [ ] Implement Reel conversion
-  - [ ] Convert MFME reel into native Oasis reel component
-  - [ ] Position and size from MFME reel
-  - [ ] Reel number as MFME number `+ 1`, matching current legacy importer behavior
-  - [ ] Band image path from the extract Reels folder converted into a project-relative asset path later
-  - [ ] Stops and reversed fields mapped into native Oasis reel properties
-  - [ ] Visible scale using the Unity importer's first-pass calculation, stored as a native Oasis reel property
-  - [ ] Overlay handling deferred or converted only if a native Oasis overlay model exists
-  - [ ] Name `Reel <number>`
-- [ ] Implement SevenSegment conversion
-  - [ ] Convert MFME seven-segment component into native Oasis seven-segment display component
-  - [ ] Position and size from MFME seven-segment component
-  - [ ] Display number from MFME component
-  - [ ] Segment/on color mapped into native Oasis display color
-  - [ ] Name `7 Segment <number>`
-- [ ] Implement Alpha conversion
-  - [ ] Convert MFME Alpha and AlphaNew into the same native Oasis alpha display component
-  - [ ] Convert MFME MatrixAlpha to native Oasis Alpha for now, matching current legacy importer behavior
-  - [ ] Position, size, and reversed where available
-  - [ ] Name `Alpha`
-- [ ] Add mapper tests for each supported legacy component type
-- [ ] Add tests that unsupported MFME component types are skipped with warnings
-- [ ] Ensure tests assert native Oasis component output, not MFME metadata preservation
+- [x] Add `MfmeToOasisComponentMapper` or equivalent pure conversion service
+  - [x] Input: normalised legacy MFME extract DTOs
+  - [x] Output: native Oasis Panel2D model/storage elements ready for command insertion
+  - [x] No WPF dependencies
+  - [x] No MFME-specific fields in the output except optional isolated generic provenance if explicitly retained
+- [x] Implement Background conversion
+  - [x] Convert MFME background into native Oasis background artwork/component
+  - [x] Position `(0, 0)`
+  - [x] Size from MFME background
+  - [x] Color from MFME background
+  - [x] Optional image path from the extract Background folder converted into a project-relative asset path later
+  - [x] Name `Background`
+- [x] Implement Lamp conversion
+  - [x] Convert MFME lamp into native Oasis lamp component
+  - [x] Position and size from MFME lamp
+  - [x] Lamp number from the first lamp element for milestone 1
+  - [x] Optional image path from the extract Lamps folder converted into a project-relative asset path later
+  - [x] On/off/text colors mapped into native Oasis lamp visual properties
+  - [x] Text/font fields mapped into native Oasis text/display properties where the model supports them
+  - [x] Input metadata deferred unless there is already an Oasis-native input model to receive it
+  - [x] Name `Lamp` or `Lamp <number>` consistently
+- [x] Implement Reel conversion
+  - [x] Convert MFME reel into native Oasis reel component
+  - [x] Position and size from MFME reel
+  - [x] Reel number as MFME number `+ 1`, matching current legacy importer behavior
+  - [x] Band image path from the extract Reels folder converted into a project-relative asset path later
+  - [x] Stops and reversed fields mapped into native Oasis reel properties
+  - [x] Visible scale using the Unity importer's first-pass calculation, stored as a native Oasis reel property
+  - [x] Overlay handling deferred or converted only if a native Oasis overlay model exists
+  - [x] Name `Reel <number>`
+- [x] Implement SevenSegment conversion
+  - [x] Convert MFME seven-segment component into native Oasis seven-segment display component
+  - [x] Position and size from MFME seven-segment component
+  - [x] Display number from MFME component
+  - [x] Segment/on color mapped into native Oasis display color
+  - [x] Name `7 Segment <number>`
+- [x] Implement Alpha conversion
+  - [x] Convert MFME Alpha and AlphaNew into the same native Oasis alpha display component
+  - [x] Convert MFME MatrixAlpha to native Oasis Alpha for now, matching current legacy importer behavior
+  - [x] Position, size, and reversed where available
+  - [x] Name `Alpha`
+- [x] Add mapper tests for each supported legacy component type
+- [x] Add tests that unsupported MFME component types are skipped with warnings
+- [x] Ensure tests assert native Oasis component output, not MFME metadata preservation
 - [ ] Build and run tests
 
 ### Phase P — Project Asset Copy and Relative Path Handling
