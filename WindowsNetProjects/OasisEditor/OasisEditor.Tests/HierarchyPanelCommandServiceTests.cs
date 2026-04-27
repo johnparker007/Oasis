@@ -103,15 +103,26 @@ public sealed class HierarchyPanelCommandServiceTests
             {
                 ObjectId = "source-id",
                 Name = "Rect One",
-                Kind = PanelElementKind.Rectangle,
+                Kind = PanelElementKind.Lamp,
                 X = 10,
                 Y = 20,
                 Width = 30,
-                Height = 40
+                Height = 40,
+                AssetPath = "Assets/MfmeImport/layout/Lamps/lamp1.png",
+                DisplayNumber = 7,
+                OnColorHex = "#FFFFCC00",
+                OffColorHex = "#FF111111",
+                TextColorHex = "#FFFFFFFF",
+                DisplayText = "HOLD",
+                ImportSource = new PanelElementImportSourceModel
+                {
+                    Format = "MFME",
+                    Reference = "layout:lamp:7"
+                }
             });
 
         var workspace = CreateWorkspace(document, document);
-        document.HierarchySelectedPanelSelection = new PanelSelectionInfo("source-id", "rectangle", 10, 20, 30, 40);
+        document.HierarchySelectedPanelSelection = new PanelSelectionInfo("source-id", "lamp", 10, 20, 30, 40);
 
         var service = CreateService(document, workspace);
 
@@ -123,6 +134,16 @@ public sealed class HierarchyPanelCommandServiceTests
         Assert.Equal(2, document.GetPanelElements().Count);
         var pasted = document.GetPanelElements().Single(element => element.ObjectId != "source-id");
         Assert.NotEqual("source-id", pasted.ObjectId);
+        Assert.Equal(PanelElementKind.Lamp, pasted.Kind);
+        Assert.Equal("Assets/MfmeImport/layout/Lamps/lamp1.png", pasted.AssetPath);
+        Assert.Equal(7, pasted.DisplayNumber);
+        Assert.Equal("#FFFFCC00", pasted.OnColorHex);
+        Assert.Equal("#FF111111", pasted.OffColorHex);
+        Assert.Equal("#FFFFFFFF", pasted.TextColorHex);
+        Assert.Equal("HOLD", pasted.DisplayText);
+        Assert.NotNull(pasted.ImportSource);
+        Assert.Equal("MFME", pasted.ImportSource!.Format);
+        Assert.Equal("layout:lamp:7", pasted.ImportSource.Reference);
         Assert.Single(document.CommandService.History.Entries);
     }
 
@@ -133,24 +154,78 @@ public sealed class HierarchyPanelCommandServiceTests
             new PanelElementModel
             {
                 ObjectId = "dup-source",
-                Name = "Rect Two",
-                Kind = PanelElementKind.Rectangle,
+                Name = "Reel Two",
+                Kind = PanelElementKind.Reel,
                 X = 5,
                 Y = 6,
                 Width = 7,
-                Height = 8
+                Height = 8,
+                AssetPath = "Assets/MfmeImport/layout/Reels/reel2.png",
+                SecondaryAssetPath = "Assets/MfmeImport/layout/Reels/reel2-overlay.png",
+                DisplayNumber = 3,
+                IsReversed = true,
+                Stops = 24,
+                VisibleScale = 0.125
             });
 
         var workspace = CreateWorkspace(document, document);
-        document.HierarchySelectedPanelSelection = new PanelSelectionInfo("dup-source", "rectangle", 5, 6, 7, 8);
+        document.HierarchySelectedPanelSelection = new PanelSelectionInfo("dup-source", "reel", 5, 6, 7, 8);
         var service = CreateService(document, workspace);
 
         service.ExecuteDuplicateSelected();
 
         Assert.Equal(2, document.GetPanelElements().Count);
         Assert.Contains(document.GetPanelElements(), element => element.ObjectId == "dup-source");
-        Assert.Contains(document.GetPanelElements(), element => element.ObjectId != "dup-source");
+        var duplicate = Assert.Single(document.GetPanelElements().Where(element => element.ObjectId != "dup-source"));
+        Assert.Equal(PanelElementKind.Reel, duplicate.Kind);
+        Assert.Equal("Assets/MfmeImport/layout/Reels/reel2.png", duplicate.AssetPath);
+        Assert.Equal("Assets/MfmeImport/layout/Reels/reel2-overlay.png", duplicate.SecondaryAssetPath);
+        Assert.Equal(3, duplicate.DisplayNumber);
+        Assert.True(duplicate.IsReversed);
+        Assert.Equal(24, duplicate.Stops);
+        Assert.Equal(0.125, duplicate.VisibleScale);
         Assert.Single(document.CommandService.History.Entries);
+    }
+
+    [Fact]
+    public void RenameSelected_PreservesNativeProperties()
+    {
+        var document = CreatePanelDocument(
+            new PanelElementModel
+            {
+                ObjectId = "rename-source",
+                Name = "Alpha",
+                Kind = PanelElementKind.Alpha,
+                X = 11,
+                Y = 12,
+                Width = 13,
+                Height = 14,
+                DisplayText = "READY",
+                TextColorHex = "#FF00FF00",
+                IsReversed = true,
+                ImportSource = new PanelElementImportSourceModel
+                {
+                    Format = "MFME",
+                    Reference = "layout:alpha:1"
+                }
+            });
+
+        var workspace = CreateWorkspace(document, document);
+        document.HierarchySelectedPanelSelection = new PanelSelectionInfo("rename-source", "alpha", 11, 12, 13, 14);
+        var service = CreateService(document, workspace);
+
+        var renamed = service.RenameSelected("Alpha Renamed");
+
+        Assert.True(renamed);
+        var updated = Assert.Single(document.GetPanelElements());
+        Assert.Equal("Alpha Renamed", updated.Name);
+        Assert.Equal(PanelElementKind.Alpha, updated.Kind);
+        Assert.Equal("READY", updated.DisplayText);
+        Assert.Equal("#FF00FF00", updated.TextColorHex);
+        Assert.True(updated.IsReversed);
+        Assert.NotNull(updated.ImportSource);
+        Assert.Equal("MFME", updated.ImportSource!.Format);
+        Assert.Equal("layout:alpha:1", updated.ImportSource.Reference);
     }
 
     [Fact]
