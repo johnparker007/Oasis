@@ -80,23 +80,23 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
 - [x] Add parser/normaliser from the real extract layout format into these legacy DTOs
   - [x] Keep the parser tolerant of unsupported legacy components
   - [x] Unsupported legacy components should be skipped with warnings, not hard failures
-  - [ ] Missing optional images should produce warnings and still allow native Oasis placeholder components where possible
+  - [x] Missing optional images should produce warnings and still allow native Oasis placeholder components where possible
 - [x] Ensure these DTOs do not leak into general Panel2D model/mutation code
 - [x] Add tests using small hand-written fixture JSON/data for each supported legacy component type
 - [ ] Build and run tests
 
 ### Phase N — Native Oasis Panel2D Component Model Expansion
-- [ ] Design the Panel2D schema extension for native Oasis components before editing storage code
-  - [ ] Decide whether this feature requires schema version 2
-  - [ ] Preserve ability to open schema version 1 files
-  - [ ] Define a migration path or explicit version rejection behavior for future schemas
-  - [ ] Avoid MFME-specific field names in the core schema
-- [ ] Add native Oasis `PanelElementKind` values or equivalent component kinds
-  - [ ] BackgroundArtwork or Background
-  - [ ] Lamp
-  - [ ] Reel
-  - [ ] SevenSegmentDisplay or SevenSegment
-  - [ ] AlphaDisplay or Alpha
+- [x] Design the Panel2D schema extension for native Oasis components before editing storage code
+  - [x] Decide whether this feature requires schema version 2
+  - [x] Preserve ability to open schema version 1 files
+  - [x] Define a migration path or explicit version rejection behavior for future schemas
+  - [x] Avoid MFME-specific field names in the core schema
+- [x] Add native Oasis `PanelElementKind` values or equivalent component kinds
+  - [x] BackgroundArtwork or Background
+  - [x] Lamp
+  - [x] Reel
+  - [x] SevenSegmentDisplay or SevenSegment
+  - [x] AlphaDisplay or Alpha
 - [ ] Extend `PanelElementModel`/storage DTOs with native Oasis properties only
   - [ ] Project-relative asset path or paths
   - [ ] Component display/runtime number where applicable, such as lamp/reel/segment number

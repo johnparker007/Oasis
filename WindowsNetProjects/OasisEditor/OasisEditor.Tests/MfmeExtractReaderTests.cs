@@ -148,6 +148,13 @@ public sealed class MfmeExtractReaderTests
     {
         var extractDirectory = CreateTempDirectory();
         var manifestPath = Path.Combine(extractDirectory, "layout.json");
+        Directory.CreateDirectory(Path.Combine(extractDirectory, "background"));
+        Directory.CreateDirectory(Path.Combine(extractDirectory, "lamps"));
+        Directory.CreateDirectory(Path.Combine(extractDirectory, "reels"));
+        File.WriteAllText(Path.Combine(extractDirectory, "background", "bg.png"), "placeholder");
+        File.WriteAllText(Path.Combine(extractDirectory, "lamps", "lamp.png"), "placeholder");
+        File.WriteAllText(Path.Combine(extractDirectory, "reels", "band.png"), "placeholder");
+        File.WriteAllText(Path.Combine(extractDirectory, "reels", "overlay.png"), "placeholder");
         File.WriteAllText(manifestPath, CreateSupportedComponentsManifestJson());
 
         try
@@ -191,6 +198,41 @@ public sealed class MfmeExtractReaderTests
 
             var matrixAlpha = Assert.IsType<MfmeLegacyAlphaComponent>(components[6]);
             Assert.Equal("ExtractComponentMatrixAlpha", matrixAlpha.SourceType);
+        }
+        finally
+        {
+            Directory.Delete(extractDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Read_WithMissingOptionalImages_AddsWarningsAndKeepsSupportedComponents()
+    {
+        var extractDirectory = CreateTempDirectory();
+        var manifestPath = Path.Combine(extractDirectory, "layout.json");
+        Directory.CreateDirectory(Path.Combine(extractDirectory, "background"));
+        Directory.CreateDirectory(Path.Combine(extractDirectory, "lamps"));
+        Directory.CreateDirectory(Path.Combine(extractDirectory, "reels"));
+        File.WriteAllText(manifestPath, CreateSupportedComponentsManifestJson());
+
+        try
+        {
+            var reader = new FileSystemMfmeExtractReader();
+            var context = new MfmeImportContext
+            {
+                SourceExtractPath = extractDirectory,
+                ProjectRootPath = "C:/Project",
+                ProjectAssetsPath = "C:/Project/Assets",
+                CopyAssets = true
+            };
+
+            var result = reader.Read(context);
+
+            Assert.True(result.Succeeded);
+            Assert.Empty(result.Errors);
+            Assert.Equal(4, result.Warnings.Count);
+            Assert.All(result.Warnings, warning => Assert.Equal("mfme.extract.asset.missing", warning.Code));
+            Assert.Equal(7, result.Extract!.Components.Count);
         }
         finally
         {
