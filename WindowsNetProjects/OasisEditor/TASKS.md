@@ -56,46 +56,46 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
 - [x] Build and run tests
 
 ### Phase M — Minimal MFME Extract DTOs for the WPF Editor
-- [ ] Add minimal WPF-editor-owned DTOs for MFME extract data needed by this feature
-  - [ ] Layout/import root DTO
-  - [ ] Shared component base data: type, position, size, name/source identity if available
-  - [ ] Background DTO
-  - [ ] Lamp DTO including first lamp element data needed by the Unity importer mapping
-  - [ ] Reel DTO
-  - [ ] SevenSegment DTO
-  - [ ] Alpha/AlphaNew/MatrixAlpha DTOs or one normalised Alpha DTO
-- [ ] Add parser/normaliser from the real extract layout format into these DTOs
-  - [ ] Keep the parser tolerant of unsupported components
-  - [ ] Unsupported components should be skipped with warnings, not hard failures
-  - [ ] Missing optional images should produce warnings and usable placeholder elements
-- [ ] Add tests using small hand-written fixture JSON/data for each supported component type
+- [x] Add minimal WPF-editor-owned DTOs for MFME extract data needed by this feature
+  - [x] Layout/import root DTO
+  - [x] Shared component base data: type, position, size, name/source identity if available
+  - [x] Background DTO
+  - [x] Lamp DTO including first lamp element data needed by the Unity importer mapping
+  - [x] Reel DTO
+  - [x] SevenSegment DTO
+  - [x] Alpha/AlphaNew/MatrixAlpha DTOs or one normalised Alpha DTO
+- [x] Add parser/normaliser from the real extract layout format into these DTOs
+  - [x] Keep the parser tolerant of unsupported components
+  - [x] Unsupported components should be skipped with warnings, not hard failures
+  - [x] Missing optional images should produce warnings and usable placeholder elements
+- [x] Add tests using small hand-written fixture JSON/data for each supported component type
 - [x] Build and run tests
 
 ### Phase N — Panel2D Schema and Model Expansion
-- [ ] Design the Panel2D schema extension for imported MFME components before editing storage code
-  - [ ] Decide whether this feature requires schema version 2
-  - [ ] Preserve ability to open schema version 1 files
-  - [ ] Define a migration path or explicit version rejection behavior for future schemas
-- [ ] Add new `PanelElementKind` values for imported/editable MFME elements
-  - [ ] Background
-  - [ ] Lamp
-  - [ ] Reel
-  - [ ] SevenSegment
-  - [ ] Alpha
-- [ ] Extend `PanelElementModel`/storage DTOs with the minimum metadata needed for MFME imports
-  - [ ] Project-relative asset path or paths
-  - [ ] Source MFME component type
-  - [ ] Source MFME component identifier/index if available
-  - [ ] Display/runtime number where applicable, such as lamp/reel/segment number
-  - [ ] Common visual properties needed for placeholders, such as colors/text/reversed/stops
-- [ ] Update validation and normalisation for the new kinds
-  - [ ] Reject invalid dimensions consistently
-  - [ ] Preserve stable object IDs and names
-  - [ ] Ensure malformed or unsupported files fail with useful messages
-- [ ] Update storage/model round-trip tests
-  - [ ] Existing rectangle/image schema version 1 fixtures still load
-  - [ ] New imported component kinds round-trip correctly
-  - [ ] Unsupported future schemas produce explicit errors
+- [x] Design the Panel2D schema extension for imported MFME components before editing storage code
+  - [x] Decide whether this feature requires schema version 2
+  - [x] Preserve ability to open schema version 1 files
+  - [x] Define a migration path or explicit version rejection behavior for future schemas
+- [x] Add new `PanelElementKind` values for imported/editable MFME elements
+  - [x] Background
+  - [x] Lamp
+  - [x] Reel
+  - [x] SevenSegment
+  - [x] Alpha
+- [x] Extend `PanelElementModel`/storage DTOs with the minimum metadata needed for MFME imports
+  - [x] Project-relative asset path or paths
+  - [x] Source MFME component type
+  - [x] Source MFME component identifier/index if available
+  - [x] Display/runtime number where applicable, such as lamp/reel/segment number
+  - [x] Common visual properties needed for placeholders, such as colors/text/reversed/stops
+- [x] Update validation and normalisation for the new kinds
+  - [x] Reject invalid dimensions consistently
+  - [x] Preserve stable object IDs and names
+  - [x] Ensure malformed or unsupported files fail with useful messages
+- [x] Update storage/model round-trip tests
+  - [x] Existing rectangle/image schema version 1 fixtures still load
+  - [x] New imported component kinds round-trip correctly
+  - [x] Unsupported future schemas produce explicit errors
 - [x] Build and run tests
 
 ### Phase O — Component Mapping from MFME Extract to Panel2D Elements

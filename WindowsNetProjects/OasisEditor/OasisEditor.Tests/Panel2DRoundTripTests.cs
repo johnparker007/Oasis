@@ -106,7 +106,17 @@ public sealed class Panel2DRoundTripTests
                     X = 1,
                     Y = 2,
                     Width = 3,
-                    Height = 4
+                    Height = 4,
+                    AssetPath = "Assets/MfmeImport/layout/background/bg.png",
+                    MfmeSourceType = "ExtractComponentBackground",
+                    MfmeSourceId = "component-1",
+                    DisplayNumber = 4,
+                    PrimaryColor = "#FFFFFF",
+                    SecondaryColor = "#000000",
+                    TextColor = "#FF00FF",
+                    Text = "HELLO",
+                    Reversed = true,
+                    Stops = 20
                 }
             ]
         };
@@ -122,6 +132,99 @@ public sealed class Panel2DRoundTripTests
         Assert.Equal(2, element.Y);
         Assert.Equal(3, element.Width);
         Assert.Equal(4, element.Height);
+        Assert.Equal("Assets/MfmeImport/layout/background/bg.png", element.AssetPath);
+        Assert.Equal("ExtractComponentBackground", element.MfmeSourceType);
+        Assert.Equal("component-1", element.MfmeSourceId);
+        Assert.Equal(4, element.DisplayNumber);
+        Assert.Equal("#FFFFFF", element.PrimaryColor);
+        Assert.Equal("#000000", element.SecondaryColor);
+        Assert.Equal("#FF00FF", element.TextColor);
+        Assert.Equal("HELLO", element.Text);
+        Assert.True(element.Reversed);
+        Assert.Equal(20, element.Stops);
+    }
+
+    [Fact]
+    public void TryReadValidated_WithImportedKindsAndMetadata_RoundTripsSchemaVersion1()
+    {
+        const string sourceJson = """
+        {
+          "SchemaVersion": 1,
+          "Title": "Imported Panel",
+          "Summary": "Imported",
+          "Elements": [
+            {
+              "ObjectId": "bg001",
+              "Name": "Background",
+              "Kind": "background",
+              "X": 0,
+              "Y": 0,
+              "Width": 1280,
+              "Height": 720,
+              "AssetPath": "Assets/MfmeImport/demo/Background/bg.png",
+              "MfmeSourceType": "ExtractComponentBackground",
+              "MfmeSourceId": "bg",
+              "PrimaryColor": "#111111"
+            },
+            {
+              "ObjectId": "lamp001",
+              "Name": "Lamp 1",
+              "Kind": "lamp",
+              "X": 10,
+              "Y": 20,
+              "Width": 30,
+              "Height": 40,
+              "DisplayNumber": 1,
+              "TextColor": "#EEEEEE"
+            },
+            {
+              "ObjectId": "reel001",
+              "Name": "Reel 1",
+              "Kind": "reel",
+              "X": 50,
+              "Y": 60,
+              "Width": 70,
+              "Height": 80,
+              "DisplayNumber": 2,
+              "Reversed": true,
+              "Stops": 24
+            },
+            {
+              "ObjectId": "seg001",
+              "Name": "7 Segment 1",
+              "Kind": "seven-segment",
+              "X": 5,
+              "Y": 6,
+              "Width": 7,
+              "Height": 8,
+              "DisplayNumber": 3
+            },
+            {
+              "ObjectId": "alpha001",
+              "Name": "Alpha",
+              "Kind": "alpha",
+              "X": 15,
+              "Y": 16,
+              "Width": 17,
+              "Height": 18,
+              "DisplayNumber": 4,
+              "Reversed": false
+            }
+          ]
+        }
+        """;
+
+        var success = Panel2DDocumentStorage.TryReadValidated(sourceJson, out var parsed, out var errorMessage);
+
+        Assert.True(success);
+        Assert.Equal(string.Empty, errorMessage);
+        Assert.Collection(
+            parsed.Elements,
+            background => Assert.Equal("background", background.Kind),
+            lamp => Assert.Equal("lamp", lamp.Kind),
+            reel => Assert.Equal("reel", reel.Kind),
+            sevenSegment => Assert.Equal("seven-segment", sevenSegment.Kind),
+            alpha => Assert.Equal("alpha", alpha.Kind));
     }
 
     [Fact]

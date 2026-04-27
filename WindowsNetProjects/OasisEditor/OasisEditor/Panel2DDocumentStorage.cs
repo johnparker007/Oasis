@@ -5,6 +5,7 @@ namespace OasisEditor;
 
 internal static class Panel2DDocumentStorage
 {
+    // Phase N decision: keep schema version 1 and add optional fields for MFME import metadata.
     public const int CurrentSchemaVersion = 1;
 
     internal static PanelElementKind ParseElementKind(string? kind)
@@ -29,6 +30,32 @@ internal static class Panel2DDocumentStorage
             return PanelElementKind.Zone;
         }
 
+        if (string.Equals(kind, "background", StringComparison.OrdinalIgnoreCase))
+        {
+            return PanelElementKind.Background;
+        }
+
+        if (string.Equals(kind, "lamp", StringComparison.OrdinalIgnoreCase))
+        {
+            return PanelElementKind.Lamp;
+        }
+
+        if (string.Equals(kind, "reel", StringComparison.OrdinalIgnoreCase))
+        {
+            return PanelElementKind.Reel;
+        }
+
+        if (string.Equals(kind, "seven-segment", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(kind, "sevensegment", StringComparison.OrdinalIgnoreCase))
+        {
+            return PanelElementKind.SevenSegment;
+        }
+
+        if (string.Equals(kind, "alpha", StringComparison.OrdinalIgnoreCase))
+        {
+            return PanelElementKind.Alpha;
+        }
+
         return PanelElementKind.Unknown;
     }
 
@@ -40,6 +67,11 @@ internal static class Panel2DDocumentStorage
             PanelElementKind.Image => "image",
             PanelElementKind.Anchor => "anchor",
             PanelElementKind.Zone => "zone",
+            PanelElementKind.Background => "background",
+            PanelElementKind.Lamp => "lamp",
+            PanelElementKind.Reel => "reel",
+            PanelElementKind.SevenSegment => "seven-segment",
+            PanelElementKind.Alpha => "alpha",
             _ => string.Empty
         };
     }
@@ -163,7 +195,6 @@ internal static class Panel2DDocumentStorage
         return true;
     }
 
-
     public static Panel2DDocumentModel ToModel(Panel2DDocumentFile document)
     {
         return new Panel2DDocumentModel
@@ -195,7 +226,17 @@ internal static class Panel2DDocumentStorage
             X = normalized.X,
             Y = normalized.Y,
             Width = normalized.Width,
-            Height = normalized.Height
+            Height = normalized.Height,
+            AssetPath = normalized.AssetPath,
+            MfmeSourceType = normalized.MfmeSourceType,
+            MfmeSourceId = normalized.MfmeSourceId,
+            DisplayNumber = normalized.DisplayNumber,
+            PrimaryColor = normalized.PrimaryColor,
+            SecondaryColor = normalized.SecondaryColor,
+            TextColor = normalized.TextColor,
+            Text = normalized.Text,
+            Reversed = normalized.Reversed,
+            Stops = normalized.Stops
         };
     }
 
@@ -209,9 +250,20 @@ internal static class Panel2DDocumentStorage
             X = element.X,
             Y = element.Y,
             Width = element.Width,
-            Height = element.Height
+            Height = element.Height,
+            AssetPath = element.AssetPath,
+            MfmeSourceType = element.MfmeSourceType,
+            MfmeSourceId = element.MfmeSourceId,
+            DisplayNumber = element.DisplayNumber,
+            PrimaryColor = element.PrimaryColor,
+            SecondaryColor = element.SecondaryColor,
+            TextColor = element.TextColor,
+            Text = element.Text,
+            Reversed = element.Reversed,
+            Stops = element.Stops
         });
     }
+
     public static string SerializeLayout(IReadOnlyList<PanelElementFile> elements)
     {
         return JsonSerializer.Serialize(elements);
@@ -246,7 +298,15 @@ internal static class Panel2DDocumentStorage
         {
             ObjectId = normalizedObjectId,
             Name = NormalizeElementName(element.Name, normalizedKind, normalizedObjectId),
-            Kind = SerializeElementKind(normalizedKind)
+            Kind = SerializeElementKind(normalizedKind),
+            AssetPath = NormalizeOptionalToken(element.AssetPath),
+            MfmeSourceType = NormalizeOptionalToken(element.MfmeSourceType),
+            MfmeSourceId = NormalizeOptionalToken(element.MfmeSourceId),
+            PrimaryColor = NormalizeOptionalToken(element.PrimaryColor),
+            SecondaryColor = NormalizeOptionalToken(element.SecondaryColor),
+            TextColor = NormalizeOptionalToken(element.TextColor),
+            Text = NormalizeOptionalToken(element.Text),
+            Stops = element.Stops is > 0 ? element.Stops : null
         };
     }
 
@@ -257,9 +317,16 @@ internal static class Panel2DDocumentStorage
 
     internal static string CreateDefaultElementName(PanelElementKind kind, string? objectId)
     {
-        var prefix = kind == PanelElementKind.Image
-            ? "Image"
-            : "Rectangle";
+        var prefix = kind switch
+        {
+            PanelElementKind.Image => "Image",
+            PanelElementKind.Background => "Background",
+            PanelElementKind.Lamp => "Lamp",
+            PanelElementKind.Reel => "Reel",
+            PanelElementKind.SevenSegment => "7 Segment",
+            PanelElementKind.Alpha => "Alpha",
+            _ => "Rectangle"
+        };
 
         if (string.IsNullOrWhiteSpace(objectId))
         {
@@ -279,6 +346,11 @@ internal static class Panel2DDocumentStorage
             : name.Trim();
     }
 
+    private static string? NormalizeOptionalToken(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
     private static bool IsValidDimension(double value)
     {
         return !double.IsNaN(value)
@@ -293,7 +365,12 @@ internal enum PanelElementKind
     Rectangle,
     Image,
     Anchor,
-    Zone
+    Zone,
+    Background,
+    Lamp,
+    Reel,
+    SevenSegment,
+    Alpha
 }
 
 internal sealed record Panel2DDocumentFile
@@ -314,6 +391,16 @@ internal sealed record PanelElementFile : IPanelSelectableObject
     public double Y { get; init; }
     public double Width { get; init; }
     public double Height { get; init; }
+    public string? AssetPath { get; init; }
+    public string? MfmeSourceType { get; init; }
+    public string? MfmeSourceId { get; init; }
+    public int? DisplayNumber { get; init; }
+    public string? PrimaryColor { get; init; }
+    public string? SecondaryColor { get; init; }
+    public string? TextColor { get; init; }
+    public string? Text { get; init; }
+    public bool Reversed { get; init; }
+    public int? Stops { get; init; }
 
     [JsonIgnore]
     public PanelElementKind ElementKind => Panel2DDocumentStorage.ParseElementKind(Kind);
