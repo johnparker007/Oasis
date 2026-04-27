@@ -203,16 +203,7 @@ internal sealed class HierarchyPanelCommandService
 
         _clipboardPayload = new PanelElementClipboardPayload
         {
-            Element = new PanelElementModel
-            {
-                ObjectId = element.ObjectId,
-                Name = element.Name,
-                Kind = element.Kind,
-                X = element.X,
-                Y = element.Y,
-                Width = element.Width,
-                Height = element.Height
-            }
+            Element = PanelElementModelCloner.Clone(element)
         };
 
         _notifyCanExecuteChanged();

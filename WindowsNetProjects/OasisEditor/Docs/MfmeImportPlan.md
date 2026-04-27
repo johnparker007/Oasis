@@ -225,3 +225,29 @@ Deferred/non-goal behaviors to keep out of the first WPF milestone:
 - Temporary reel/bandreel overlay compositing into the imported background image
 - Detailed MFME input routing behavior (button/coin/effect port mapping)
 - MFME-perspective-accurate reel rendering beyond placeholder/native first-pass properties
+
+## Phase T Comparison Notes (2026-04-27)
+
+This comparison is based on source-level review of:
+
+- Unity legacy importer: `UnityProjects/LayoutEditor/Assets/_Project/Scripts/Oasis/MFME/ExtractImporter.cs`
+- WPF importer path: `OasisEditor/Features/MfmeImport/*`
+
+### Confirmed parity for first-pass supported components
+
+- Background import keeps `Name = Background`, enforces position `(0, 0)`, maps size/color, and uses optional background image path.
+- Lamp import maps position/size, first lamp element number and colors, optional lamp image path, and text field carry-over.
+- Reel import keeps legacy parity for reel number (`Number + 1`), maps stops/reversed, and uses first-pass visible-scale derivation from `Height` and `Stops`.
+- SevenSegment import maps number, position/size, and segment/on color.
+- Alpha/AlphaNew/MatrixAlpha map into native Alpha output for milestone 1 compatibility.
+
+### Intentional WPF differences from Unity importer (current milestone)
+
+- WPF import is **Panel2D-native output only**; Unity-specific runtime/editor component types are not created.
+- WPF does not import `GamFile` platform mapping or `MameRomIdent` into project settings in this milestone.
+- WPF does not map lamp input wiring (`HasButtonInput`, `HasCoinInput`, shortcut/key routing) and keeps that deferred.
+- WPF does not perform reel-overlay compositing onto background pixels; overlay paths are captured as optional secondary asset metadata only.
+- WPF logs unsupported legacy components as structured warnings and continues partial import where possible.
+- WPF naming uses `Lamp <number>` when a number is available, otherwise `Lamp`; Unity used `Lamp` consistently.
+
+These differences are intentional for the current import-only milestone and align with the deferred-behavior scope above.

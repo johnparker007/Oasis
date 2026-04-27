@@ -230,30 +230,31 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
   - [x] List warnings for missing images or unsupported fields
 - [x] Ensure import into an empty Panel2D document is the first supported flow
 - [x] Add a clear message for unsupported active document types
-- [ ] Build and run tests
+- [ ] Build and run tests *(blocked in current container; see `PhaseS.BuildAndTestAttempt.md`)*
 
 ### Phase T — End-to-End Validation and Cleanup
-- [ ] Create or identify a small MFME extract fixture for manual smoke testing
-  - [ ] Must include at least one Background, Lamp, Reel, SevenSegment, and Alpha if possible
+- [x] Create or identify a small MFME extract fixture for manual smoke testing
+  - [x] Must include at least one Background, Lamp, Reel, SevenSegment, and Alpha if possible
   - [ ] Keep fixture out of git if it is large or not redistributable
 - [ ] Smoke test importing into an empty project/document
+  - [ ] Blocked in current container; see `PhaseT.SmokeTestAttempt.md`
   - [ ] Imported assets are copied under the project's `Assets/MfmeImport/...` folder
   - [ ] Native Oasis Panel2D elements appear at expected positions/sizes
   - [ ] Hierarchy groups show imported native elements
   - [ ] Selection and inspector work for imported native elements
   - [ ] Save/reopen preserves imported native elements and asset paths
   - [ ] Undo/redo of the import works document-locally
-- [ ] Compare WPF imported output against the Unity importer behavior for the supported first-pass components
-  - [ ] Compare behavior as conversion behavior only, not as MFME becoming part of the Oasis domain
-- [ ] Update `Docs/MfmeImportPlan.md` with any intentional differences from Unity behavior
-- [ ] Add follow-up tasks for deferred native Oasis rendering/runtime behavior
-  - [ ] Accurate lamp rendering and masks
-  - [ ] Accurate reel viewport/overlay handling
-  - [ ] Seven-segment renderer
-  - [ ] Alpha renderer
-  - [ ] Native button/input mapping
-  - [ ] Runtime/export mapping
-- [ ] Final build and test run
+- [x] Compare WPF imported output against the Unity importer behavior for the supported first-pass components
+  - [x] Compare behavior as conversion behavior only, not as MFME becoming part of the Oasis domain
+- [x] Update `Docs/MfmeImportPlan.md` with any intentional differences from Unity behavior
+- [x] Add follow-up tasks for deferred native Oasis rendering/runtime behavior
+  - [x] Accurate lamp rendering and masks
+  - [x] Accurate reel viewport/overlay handling
+  - [x] Seven-segment renderer
+  - [x] Alpha renderer
+  - [x] Native button/input mapping
+  - [x] Runtime/export mapping
+- [ ] Final build and test run *(blocked in current container; see `PhaseT.FinalBuildAndTestAttempt.md`)*
 
 ---
 
@@ -263,7 +264,7 @@ These are the only unfinished tasks from the previous context-menu/assets-pane t
 
 ### Previous Phase J — Follow-up Refactor Checks
 - [ ] Smoke test full editor flow
-  - [ ] Blocked in current container; see `PhaseJ.SmokeTestAttempt.md`
+  - [x] Blocked in current container; see `PhaseJ.SmokeTestAttempt.md`
   - [ ] Create/open project
   - [ ] Refresh assets
   - [ ] Navigate folders in Assets pane

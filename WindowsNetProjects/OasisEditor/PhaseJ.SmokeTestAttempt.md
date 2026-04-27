@@ -29,3 +29,11 @@ Execute the manual Phase J smoke checklist in `TASKS.md` section:
 - Use hierarchy context menu rename/delete/duplicate/copy/paste/cut
 - Use undo/redo after hierarchy mutations
 - Save/reopen and verify panel contents
+
+## Revalidation attempt (2026-04-27)
+
+Re-checked the environment before proceeding with the next queued task:
+
+- `dotnet --info` -> `/bin/bash: line 1: dotnet: command not found`
+
+The original Phase J smoke-test blocker remains unchanged in this container.
