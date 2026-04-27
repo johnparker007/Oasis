@@ -429,7 +429,8 @@ internal static class CanvasMutationCommands
 
     private static bool TryFindMatchingElementIndex(IReadOnlyList<PanelElementModel> elements, PanelSelectionInfo selection, out int index)
     {
-        if (!string.IsNullOrWhiteSpace(selection.ObjectId))
+        var hasObjectId = !string.IsNullOrWhiteSpace(selection.ObjectId);
+        if (hasObjectId)
         {
             for (var i = 0; i < elements.Count; i++)
             {
@@ -439,6 +440,9 @@ internal static class CanvasMutationCommands
                     return true;
                 }
             }
+
+            index = -1;
+            return false;
         }
 
         for (var i = 0; i < elements.Count; i++)

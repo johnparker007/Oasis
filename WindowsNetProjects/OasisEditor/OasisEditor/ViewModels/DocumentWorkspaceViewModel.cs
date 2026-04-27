@@ -212,6 +212,13 @@ public sealed class DocumentWorkspaceViewModel
         }
 
         activeDocument.CommandService.Execute(command);
+
+        if (command is EditorCommands.IExecutionTrackedCommand executionTrackedCommand
+            && !executionTrackedCommand.WasExecuted)
+        {
+            return false;
+        }
+
         _notifyUndoRedoStateChanged();
         return true;
     }
