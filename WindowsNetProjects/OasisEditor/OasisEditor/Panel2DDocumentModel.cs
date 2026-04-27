@@ -26,4 +26,5 @@ internal sealed class PanelElementModel
     public string? Text { get; init; }
     public bool Reversed { get; init; }
     public int? Stops { get; init; }
+    public double? VisibleScale { get; init; }
 }

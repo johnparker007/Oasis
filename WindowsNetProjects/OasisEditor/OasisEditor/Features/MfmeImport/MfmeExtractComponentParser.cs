@@ -103,6 +103,7 @@ internal static class MfmeExtractComponentParser
                 RawJson = common.RawJson,
                 Number = TryReadInt(component, "Number"),
                 Stops = TryReadInt(component, "Stops"),
+                ReelHeight = TryReadInt(component, "Height"),
                 Reversed = TryReadBool(component, "Reversed"),
                 BandImageFileName = bandImage
             };

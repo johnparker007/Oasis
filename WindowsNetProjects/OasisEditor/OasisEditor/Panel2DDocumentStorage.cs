@@ -236,7 +236,8 @@ internal static class Panel2DDocumentStorage
             TextColor = normalized.TextColor,
             Text = normalized.Text,
             Reversed = normalized.Reversed,
-            Stops = normalized.Stops
+            Stops = normalized.Stops,
+            VisibleScale = normalized.VisibleScale
         };
     }
 
@@ -260,7 +261,8 @@ internal static class Panel2DDocumentStorage
             TextColor = element.TextColor,
             Text = element.Text,
             Reversed = element.Reversed,
-            Stops = element.Stops
+            Stops = element.Stops,
+            VisibleScale = element.VisibleScale
         });
     }
 
@@ -306,7 +308,8 @@ internal static class Panel2DDocumentStorage
             SecondaryColor = NormalizeOptionalToken(element.SecondaryColor),
             TextColor = NormalizeOptionalToken(element.TextColor),
             Text = NormalizeOptionalToken(element.Text),
-            Stops = element.Stops is > 0 ? element.Stops : null
+            Stops = element.Stops is > 0 ? element.Stops : null,
+            VisibleScale = NormalizeOptionalScale(element.VisibleScale)
         };
     }
 
@@ -357,6 +360,22 @@ internal static class Panel2DDocumentStorage
             && !double.IsInfinity(value)
             && value > 0;
     }
+
+    private static double? NormalizeOptionalScale(double? value)
+    {
+        if (!value.HasValue)
+        {
+            return null;
+        }
+
+        var numeric = value.Value;
+        if (double.IsNaN(numeric) || double.IsInfinity(numeric) || numeric <= 0d)
+        {
+            return null;
+        }
+
+        return numeric;
+    }
 }
 
 internal enum PanelElementKind
@@ -401,6 +420,7 @@ internal sealed record PanelElementFile : IPanelSelectableObject
     public string? Text { get; init; }
     public bool Reversed { get; init; }
     public int? Stops { get; init; }
+    public double? VisibleScale { get; init; }
 
     [JsonIgnore]
     public PanelElementKind ElementKind => Panel2DDocumentStorage.ParseElementKind(Kind);
