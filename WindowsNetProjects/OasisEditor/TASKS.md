@@ -233,8 +233,8 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
 - [ ] Build and run tests
 
 ### Phase T — End-to-End Validation and Cleanup
-- [ ] Create or identify a small MFME extract fixture for manual smoke testing
-  - [ ] Must include at least one Background, Lamp, Reel, SevenSegment, and Alpha if possible
+- [x] Create or identify a small MFME extract fixture for manual smoke testing
+  - [x] Must include at least one Background, Lamp, Reel, SevenSegment, and Alpha if possible
   - [ ] Keep fixture out of git if it is large or not redistributable
 - [ ] Smoke test importing into an empty project/document
   - [ ] Imported assets are copied under the project's `Assets/MfmeImport/...` folder
