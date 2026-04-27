@@ -56,7 +56,28 @@ internal sealed class FileSystemMfmeExtractReader : IMfmeExtractReader
                 extractDirectory));
         }
 
-        return Success(CreateExtractData(extractDirectory, manifests[0]), warnings);
+        var result = MfmeExtractManifestParser.Parse(extractDirectory, manifests[0]);
+        if (warnings.Count == 0)
+        {
+            return result;
+        }
+
+        if (result.Warnings.Count == 0)
+        {
+            return new MfmeExtractReadResult
+            {
+                Extract = result.Extract,
+                Warnings = warnings,
+                Errors = result.Errors
+            };
+        }
+
+        return new MfmeExtractReadResult
+        {
+            Extract = result.Extract,
+            Warnings = [.. warnings, .. result.Warnings],
+            Errors = result.Errors
+        };
     }
 
     private static MfmeExtractReadResult ReadFromManifestFile(string manifestPath)
@@ -76,17 +97,7 @@ internal sealed class FileSystemMfmeExtractReader : IMfmeExtractReader
                 $"Unable to resolve extract directory for manifest '{manifestPath}'.");
         }
 
-        return Success(CreateExtractData(extractDirectory, manifestPath), []);
-    }
-
-    private static MfmeLegacyExtractData CreateExtractData(string extractDirectory, string manifestPath)
-    {
-        return new MfmeLegacyExtractData
-        {
-            ExtractRootPath = extractDirectory,
-            ManifestPath = manifestPath,
-            LayoutName = Path.GetFileNameWithoutExtension(manifestPath)
-        };
+        return MfmeExtractManifestParser.Parse(extractDirectory, manifestPath);
     }
 
     private static bool ContainsInvalidPathChars(string path)
@@ -104,13 +115,4 @@ internal sealed class FileSystemMfmeExtractReader : IMfmeExtractReader
         };
     }
 
-    private static MfmeExtractReadResult Success(MfmeLegacyExtractData extract, IReadOnlyList<MfmeImportWarning> warnings)
-    {
-        return new MfmeExtractReadResult
-        {
-            Extract = extract,
-            Warnings = warnings,
-            Errors = []
-        };
-    }
 }
