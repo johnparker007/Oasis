@@ -5,13 +5,14 @@ namespace OasisEditor.Tests;
 public sealed class PanelElementFactoryTests
 {
     [Theory]
-    [InlineData(PanelElementKind.Background)]
-    [InlineData(PanelElementKind.Lamp)]
-    [InlineData(PanelElementKind.Reel)]
-    [InlineData(PanelElementKind.SevenSegment)]
-    [InlineData(PanelElementKind.Alpha)]
-    public void CreateVisualFromElement_ForNativeKinds_PreservesElementKindForRoundTrip(PanelElementKind kind)
+    [InlineData((int)PanelElementKind.Background)]
+    [InlineData((int)PanelElementKind.Lamp)]
+    [InlineData((int)PanelElementKind.Reel)]
+    [InlineData((int)PanelElementKind.SevenSegment)]
+    [InlineData((int)PanelElementKind.Alpha)]
+    public void CreateVisualFromElement_ForNativeKinds_PreservesElementKindForRoundTrip(int kindValue)
     {
+        var kind = (PanelElementKind)kindValue;
         var source = new PanelElementFile
         {
             ObjectId = "obj-1",
