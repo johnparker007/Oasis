@@ -32,6 +32,7 @@ public sealed class MfmeImportServiceTests
         var extract = new MfmeLegacyExtractData
         {
             ExtractRootPath = @"C:\extract",
+            ManifestPath = @"C:\extract\layout.json",
             LayoutName = "Layout",
             Components =
             [
