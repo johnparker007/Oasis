@@ -533,6 +533,71 @@ public sealed class Panel2DRoundTripTests
     }
 
     [Fact]
+    public void HierarchyProvider_IncludesNativeComponentGroups()
+    {
+        var document = CreatePanelDocument(
+            new PanelElementModel
+            {
+                ObjectId = "background-1",
+                Name = "Background",
+                Kind = PanelElementKind.Background,
+                X = 0,
+                Y = 0,
+                Width = 100,
+                Height = 100
+            },
+            new PanelElementModel
+            {
+                ObjectId = "lamp-1",
+                Name = "Lamp 1",
+                Kind = PanelElementKind.Lamp,
+                X = 10,
+                Y = 12,
+                Width = 20,
+                Height = 24
+            },
+            new PanelElementModel
+            {
+                ObjectId = "reel-1",
+                Name = "Reel 1",
+                Kind = PanelElementKind.Reel,
+                X = 32,
+                Y = 16,
+                Width = 26,
+                Height = 60
+            },
+            new PanelElementModel
+            {
+                ObjectId = "seven-1",
+                Name = "7 Segment 2",
+                Kind = PanelElementKind.SevenSegment,
+                X = 64,
+                Y = 20,
+                Width = 30,
+                Height = 16
+            },
+            new PanelElementModel
+            {
+                ObjectId = "alpha-1",
+                Name = "Alpha",
+                Kind = PanelElementKind.Alpha,
+                X = 96,
+                Y = 24,
+                Width = 34,
+                Height = 18
+            });
+
+        var provider = new Panel2DHierarchyProvider();
+        var groups = provider.Build(document);
+
+        Assert.Equal("Backgrounds (1)", groups.Single(g => g.NodeKey == "group:background").DisplayName);
+        Assert.Equal("Lamps (1)", groups.Single(g => g.NodeKey == "group:lamp").DisplayName);
+        Assert.Equal("Reels (1)", groups.Single(g => g.NodeKey == "group:reel").DisplayName);
+        Assert.Equal("Seven Segments (1)", groups.Single(g => g.NodeKey == "group:sevenSegment").DisplayName);
+        Assert.Equal("Alphas (1)", groups.Single(g => g.NodeKey == "group:alpha").DisplayName);
+    }
+
+    [Fact]
     public void DeleteElementCommand_TracksExecutionAndSupportsUndoRedo()
     {
         var document = CreatePanelDocument(
