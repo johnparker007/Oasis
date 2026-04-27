@@ -1,9 +1,11 @@
 using System;
+using System.IO;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using Xunit;
 
 namespace OasisEditor.Tests;
@@ -96,6 +98,47 @@ public sealed class PanelElementFactoryTests
         });
     }
 
+    [Fact]
+    public void CreateVisualFromElement_BackgroundWithProjectRelativeAsset_UsesImage()
+    {
+        RunInSta(() =>
+        {
+            var projectRoot = Path.Combine(Path.GetTempPath(), $"oasis-panel-factory-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(Path.Combine(projectRoot, "Assets"));
+            var imagePath = Path.Combine(projectRoot, "Assets", "bg.png");
+            WriteTestPng(imagePath);
+
+            var previousProjectDirectory = PanelElementFactory.ProjectDirectoryPath;
+
+            try
+            {
+                PanelElementFactory.ProjectDirectoryPath = projectRoot;
+                var source = new PanelElementFile
+                {
+                    ObjectId = "bg-2",
+                    Name = "Background",
+                    Kind = Panel2DDocumentStorage.SerializeElementKind(PanelElementKind.Background),
+                    Width = 320,
+                    Height = 180,
+                    AssetPath = "Assets/bg.png"
+                };
+
+                var visual = PanelElementFactory.CreateVisualFromElement(source);
+                var border = Assert.IsType<Border>(visual);
+
+                Assert.IsType<Image>(border.Child);
+            }
+            finally
+            {
+                PanelElementFactory.ProjectDirectoryPath = previousProjectDirectory;
+                if (Directory.Exists(projectRoot))
+                {
+                    Directory.Delete(projectRoot, recursive: true);
+                }
+            }
+        });
+    }
+
     private static void RunInSta(Action action)
     {
         Exception? captured = null;
@@ -119,5 +162,31 @@ public sealed class PanelElementFactoryTests
         {
             ExceptionDispatchInfo.Capture(captured).Throw();
         }
+    }
+
+    private static void WriteTestPng(string path)
+    {
+        var pixels = new byte[]
+        {
+            0x00, 0x00, 0xFF, 0xFF,
+            0x00, 0xFF, 0x00, 0xFF,
+            0xFF, 0x00, 0x00, 0xFF,
+            0xFF, 0xFF, 0xFF, 0xFF
+        };
+
+        var bitmap = BitmapSource.Create(
+            2,
+            2,
+            96,
+            96,
+            PixelFormats.Bgra32,
+            null,
+            pixels,
+            8);
+
+        using var stream = File.Open(path, FileMode.Create, FileAccess.Write, FileShare.None);
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(bitmap));
+        encoder.Save(stream);
     }
 }

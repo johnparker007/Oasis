@@ -8,6 +8,8 @@ namespace OasisEditor;
 
 internal static class PanelElementFactory
 {
+    private static string? _projectDirectoryPath;
+
     public static readonly DependencyProperty ElementNameProperty =
         DependencyProperty.RegisterAttached(
             "ElementName",
@@ -26,6 +28,12 @@ internal static class PanelElementFactory
     public const double NewRectangleHeight = 120;
     public const double NewImageWidth = 220;
     public const double NewImageHeight = 140;
+
+    public static string? ProjectDirectoryPath
+    {
+        get => _projectDirectoryPath;
+        set => _projectDirectoryPath = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
 
     public static PanelElementFile CreateRectangleElement(Point canvasPoint)
     {
@@ -294,24 +302,50 @@ internal static class PanelElementFactory
             return false;
         }
 
-        var candidate = assetPath.Trim();
-        if (!System.IO.Path.IsPathRooted(candidate))
+        if (!TryResolveAssetPath(assetPath, out var resolvedPath))
         {
             return false;
         }
 
-        if (!System.IO.File.Exists(candidate))
+        if (!System.IO.File.Exists(resolvedPath))
         {
             return false;
         }
 
         var bitmap = new BitmapImage();
         bitmap.BeginInit();
-        bitmap.UriSource = new Uri(candidate, UriKind.Absolute);
+        bitmap.UriSource = new Uri(resolvedPath, UriKind.Absolute);
         bitmap.CacheOption = BitmapCacheOption.OnLoad;
         bitmap.EndInit();
         bitmap.Freeze();
         source = bitmap;
+        return true;
+    }
+
+    private static bool TryResolveAssetPath(string assetPath, out string resolvedPath)
+    {
+        resolvedPath = string.Empty;
+        var candidate = assetPath.Trim();
+        if (string.IsNullOrWhiteSpace(candidate))
+        {
+            return false;
+        }
+
+        if (System.IO.Path.IsPathRooted(candidate))
+        {
+            resolvedPath = candidate;
+            return true;
+        }
+
+        if (string.IsNullOrWhiteSpace(ProjectDirectoryPath))
+        {
+            return false;
+        }
+
+        var relativePath = candidate
+            .Replace('/', System.IO.Path.DirectorySeparatorChar)
+            .Replace('\\', System.IO.Path.DirectorySeparatorChar);
+        resolvedPath = System.IO.Path.GetFullPath(System.IO.Path.Combine(ProjectDirectoryPath, relativePath));
         return true;
     }
 
