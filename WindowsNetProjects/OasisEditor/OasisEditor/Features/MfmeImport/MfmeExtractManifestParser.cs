@@ -1,3 +1,4 @@
+using System.IO;
 using System.Globalization;
 using System.Text.Json;
 
@@ -185,7 +186,7 @@ internal static class MfmeExtractManifestParser
 
         var commaIndex = typeValue.IndexOf(',', StringComparison.Ordinal);
         var qualifiedType = commaIndex >= 0 ? typeValue[..commaIndex] : typeValue;
-        var lastDot = qualifiedType.LastIndexOf('.', StringComparison.Ordinal);
+        var lastDot = qualifiedType.LastIndexOf('.');
         return lastDot >= 0 ? qualifiedType[(lastDot + 1)..] : qualifiedType;
     }
 
