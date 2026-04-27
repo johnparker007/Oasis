@@ -274,7 +274,7 @@ internal sealed class MfmeImportAssetCopier
         var baseName = Path.GetFileNameWithoutExtension(fileName);
         var safeBaseName = SanitizePathSegment(baseName, "asset");
         var safeExtension = string.IsNullOrWhiteSpace(extension) ? string.Empty : SanitizePathSegment(extension, string.Empty);
-        if (!string.IsNullOrEmpty(safeExtension) && !safeExtension.StartsWith('.', StringComparison.Ordinal))
+        if (!string.IsNullOrEmpty(safeExtension) && !safeExtension.StartsWith(".", StringComparison.Ordinal))
         {
             safeExtension = $".{safeExtension}";
         }
