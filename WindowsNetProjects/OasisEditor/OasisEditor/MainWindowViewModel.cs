@@ -9,6 +9,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Collections.Specialized;
 using Microsoft.Win32;
+using OasisEditor.Features.MfmeImport;
 using EditorCommands = OasisEditor.Commands;
 using OasisEditor.Views;
 
@@ -32,6 +33,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly DocumentWorkspaceViewModel _documentWorkspace;
     private readonly ActiveDocumentContextService _activeDocumentContext;
     private readonly HierarchyPanelCommandService _hierarchyPanelCommands;
+    private readonly MfmeImportService _mfmeImportService = new();
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<EditorToolWindowId>? ToolWindowOpenRequested;
@@ -57,6 +59,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OpenCabinet3DStubCommand = new RelayCommand(OpenCabinet3DStubDocument, CanOpenUntitledDocument);
         OpenMachineStubCommand = new RelayCommand(OpenMachineStubDocument, CanOpenUntitledDocument);
         OpenDocumentCommand = new RelayCommand(OpenDocument, CanOpenDocument);
+        ImportMfmeExtractCommand = new RelayCommand(ImportMfmeExtract, CanImportMfmeExtract);
         SaveSelectedDocumentCommand = new RelayCommand(SaveSelectedDocument, CanSaveSelectedDocument);
         CloseSelectedDocumentCommand = new RelayCommand(CloseSelectedDocument, CanCloseSelectedDocument);
         OpenPreferencesCommand = new RelayCommand(OpenPreferences);
@@ -148,6 +151,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand OpenCabinet3DStubCommand { get; }
     public ICommand OpenMachineStubCommand { get; }
     public ICommand OpenDocumentCommand { get; }
+    public ICommand ImportMfmeExtractCommand { get; }
     public ICommand SaveSelectedDocumentCommand { get; }
     public ICommand CloseSelectedDocumentCommand { get; }
     public ICommand RefreshAssetBrowserCommand { get; }
@@ -489,6 +493,104 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             AddOutputEntry($"Open document failed: {ex.Message}", OutputLogStatus.Error);
             MessageBox.Show(ex.Message, "Open Document Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
+    }
+
+    private bool CanImportMfmeExtract()
+    {
+        return LoadedProject is not null
+               && SelectedDocument?.Document.DocumentType == EditorDocumentType.Panel2D;
+    }
+
+    private void ImportMfmeExtract()
+    {
+        if (LoadedProject is null)
+        {
+            return;
+        }
+
+        if (SelectedDocument?.Document.DocumentType != EditorDocumentType.Panel2D)
+        {
+            AddOutputEntry("MFME import is supported only when a Panel2D document is active.", OutputLogStatus.Warning);
+            MessageBox.Show(
+                "MFME import is currently supported only for Panel2D documents.",
+                "Import MFME Extract",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            return;
+        }
+
+        var dialog = new OpenFileDialog
+        {
+            Title = "Import MFME Extract Manifest",
+            Filter = "MFME Extract Manifest|*.json|All Files|*.*",
+            InitialDirectory = LoadedProject.ProjectDirectory,
+            CheckFileExists = true
+        };
+
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        var context = new MfmeImportContext
+        {
+            SourceExtractPath = dialog.FileName,
+            ProjectRootPath = LoadedProject.ProjectDirectory,
+            ProjectAssetsPath = LoadedProject.AssetsDirectory,
+            CopyAssets = true
+        };
+
+        var result = _mfmeImportService.Import(context);
+        foreach (var warning in result.Warnings)
+        {
+            AddOutputEntry($"MFME import warning ({warning.Code}): {warning.Message}", OutputLogStatus.Warning);
+        }
+
+        if (!result.Succeeded)
+        {
+            foreach (var error in result.Errors)
+            {
+                AddOutputEntry($"MFME import failed: {error}", OutputLogStatus.Error);
+            }
+
+            MessageBox.Show(
+                "MFME import failed. See Output for details.",
+                "Import MFME Extract",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        var activeDocument = SelectedDocument;
+        if (activeDocument is null)
+        {
+            return;
+        }
+
+        var importCommand = new ImportMfmeExtractCommand(
+            activeDocument.DocumentId,
+            activeDocument,
+            result.ImportedElements);
+        var inserted = _documentWorkspace.ExecuteDocumentCanvasCommand(activeDocument.DocumentId, importCommand);
+        if (!inserted)
+        {
+            AddOutputEntry("MFME import completed but no elements were inserted.", OutputLogStatus.Warning);
+            return;
+        }
+
+        _assetBrowser.RefreshAssetBrowser();
+        RefreshHierarchy();
+        NotifyInspectorChanged();
+
+        var grouped = result.ImportedElements
+            .GroupBy(element => element.Kind)
+            .OrderBy(group => group.Key.ToString(), StringComparer.Ordinal)
+            .Select(group => $"{group.Key}: {group.Count()}");
+
+        AddOutputEntry($"MFME import completed. Imported {result.ImportedElements.Count} elements.", OutputLogStatus.Info);
+        AddOutputEntry($"MFME import kinds -> {string.Join(", ", grouped)}", OutputLogStatus.Info);
+        AddOutputEntry($"MFME import skipped {result.SkippedLegacyComponentTypes.Count} unsupported components.", OutputLogStatus.Info);
+        AddOutputEntry($"MFME import copied {result.CopiedAssetRelativePaths.Count} assets.", OutputLogStatus.Info);
     }
 
     private void OpenAssetDocument(AssetBrowserItemViewModel? asset)
@@ -900,6 +1002,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (OpenDocumentCommand is RelayCommand openDocumentRelayCommand)
         {
             openDocumentRelayCommand.RaiseCanExecuteChanged();
+        }
+
+        if (ImportMfmeExtractCommand is RelayCommand importMfmeRelayCommand)
+        {
+            importMfmeRelayCommand.RaiseCanExecuteChanged();
         }
 
         if (SaveSelectedDocumentCommand is RelayCommand saveRelayCommand)
