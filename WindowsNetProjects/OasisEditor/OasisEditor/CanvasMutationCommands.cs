@@ -220,16 +220,7 @@ internal static class CanvasMutationCommands
 
             _renamedIndex = index;
             _previousName = existing.Name;
-            elements[index] = new PanelElementModel
-            {
-                ObjectId = existing.ObjectId,
-                Name = normalizedNewName,
-                Kind = existing.Kind,
-                X = existing.X,
-                Y = existing.Y,
-                Width = existing.Width,
-                Height = existing.Height
-            };
+            elements[index] = CloneElement(existing, name: normalizedNewName);
 
             _document.SetPanelElements(elements);
             _document.MarkDirty();
@@ -255,16 +246,7 @@ internal static class CanvasMutationCommands
             }
 
             var existing = elements[index];
-            elements[index] = new PanelElementModel
-            {
-                ObjectId = existing.ObjectId,
-                Name = _previousName ?? string.Empty,
-                Kind = existing.Kind,
-                X = existing.X,
-                Y = existing.Y,
-                Width = existing.Width,
-                Height = existing.Height
-            };
+            elements[index] = CloneElement(existing, name: _previousName ?? string.Empty);
 
             _document.SetPanelElements(elements);
             _document.MarkDirty();
@@ -306,16 +288,12 @@ internal static class CanvasMutationCommands
                 }
 
                 var sourceElement = elements[sourceIndex];
-                _duplicatedElement = new PanelElementModel
-                {
-                    ObjectId = BuildUniqueObjectId(elements),
-                    Name = BuildDuplicateName(sourceElement, elements),
-                    Kind = sourceElement.Kind,
-                    X = sourceElement.X + DuplicateOffset,
-                    Y = sourceElement.Y + DuplicateOffset,
-                    Width = sourceElement.Width,
-                    Height = sourceElement.Height
-                };
+                _duplicatedElement = CloneElement(
+                    sourceElement,
+                    objectId: BuildUniqueObjectId(elements),
+                    name: BuildDuplicateName(sourceElement, elements),
+                    x: sourceElement.X + DuplicateOffset,
+                    y: sourceElement.Y + DuplicateOffset);
                 _insertIndex = Math.Clamp(sourceIndex + 1, 0, elements.Count);
             }
 
@@ -381,16 +359,12 @@ internal static class CanvasMutationCommands
 
             if (_pastedElement is null)
             {
-                _pastedElement = new PanelElementModel
-                {
-                    ObjectId = BuildUniqueObjectId(elements),
-                    Name = BuildUniqueName(_sourceElement.Name, elements),
-                    Kind = _sourceElement.Kind,
-                    X = _sourceElement.X + PasteOffset,
-                    Y = _sourceElement.Y + PasteOffset,
-                    Width = _sourceElement.Width,
-                    Height = _sourceElement.Height
-                };
+                _pastedElement = CloneElement(
+                    _sourceElement,
+                    objectId: BuildUniqueObjectId(elements),
+                    name: BuildUniqueName(_sourceElement.Name, elements),
+                    x: _sourceElement.X + PasteOffset,
+                    y: _sourceElement.Y + PasteOffset);
                 _insertIndex = elements.Count;
             }
 
@@ -537,5 +511,35 @@ internal static class CanvasMutationCommands
 
             suffix++;
         }
+    }
+
+    private static PanelElementModel CloneElement(
+        PanelElementModel source,
+        string? objectId = null,
+        string? name = null,
+        double? x = null,
+        double? y = null)
+    {
+        return new PanelElementModel
+        {
+            ObjectId = objectId ?? source.ObjectId,
+            Name = name ?? source.Name,
+            Kind = source.Kind,
+            X = x ?? source.X,
+            Y = y ?? source.Y,
+            Width = source.Width,
+            Height = source.Height,
+            AssetPath = source.AssetPath,
+            MfmeSourceType = source.MfmeSourceType,
+            MfmeSourceId = source.MfmeSourceId,
+            DisplayNumber = source.DisplayNumber,
+            PrimaryColor = source.PrimaryColor,
+            SecondaryColor = source.SecondaryColor,
+            TextColor = source.TextColor,
+            Text = source.Text,
+            Reversed = source.Reversed,
+            Stops = source.Stops,
+            VisibleScale = source.VisibleScale
+        };
     }
 }

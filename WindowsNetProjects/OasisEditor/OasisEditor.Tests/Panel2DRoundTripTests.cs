@@ -545,7 +545,18 @@ public sealed class Panel2DRoundTripTests
                 X = 30,
                 Y = 40,
                 Width = 50,
-                Height = 60
+                Height = 60,
+                AssetPath = "Assets/MfmeImport/sample.png",
+                MfmeSourceType = "ExtractComponentLamp",
+                MfmeSourceId = "4",
+                DisplayNumber = 4,
+                PrimaryColor = "#00FF00",
+                SecondaryColor = "#001100",
+                TextColor = "#FFFFFF",
+                Text = "HOLD",
+                Reversed = true,
+                Stops = 24,
+                VisibleScale = 0.25
             });
 
         var selection = new PanelSelectionInfo("source-id", "rectangle", 30, 40, 50, 60);
@@ -565,6 +576,17 @@ public sealed class Panel2DRoundTripTests
         Assert.Equal(source.Y + 10, duplicate.Y);
         Assert.Equal(source.Width, duplicate.Width);
         Assert.Equal(source.Height, duplicate.Height);
+        Assert.Equal(source.AssetPath, duplicate.AssetPath);
+        Assert.Equal(source.MfmeSourceType, duplicate.MfmeSourceType);
+        Assert.Equal(source.MfmeSourceId, duplicate.MfmeSourceId);
+        Assert.Equal(source.DisplayNumber, duplicate.DisplayNumber);
+        Assert.Equal(source.PrimaryColor, duplicate.PrimaryColor);
+        Assert.Equal(source.SecondaryColor, duplicate.SecondaryColor);
+        Assert.Equal(source.TextColor, duplicate.TextColor);
+        Assert.Equal(source.Text, duplicate.Text);
+        Assert.Equal(source.Reversed, duplicate.Reversed);
+        Assert.Equal(source.Stops, duplicate.Stops);
+        Assert.Equal(source.VisibleScale, duplicate.VisibleScale);
     }
 
     [Fact]
@@ -615,7 +637,18 @@ public sealed class Panel2DRoundTripTests
                 X = 30,
                 Y = 40,
                 Width = 50,
-                Height = 60
+                Height = 60,
+                AssetPath = "Assets/MfmeImport/source.png",
+                MfmeSourceType = "ExtractComponentReel",
+                MfmeSourceId = "2",
+                DisplayNumber = 3,
+                PrimaryColor = "#111111",
+                SecondaryColor = "#222222",
+                TextColor = "#333333",
+                Text = "Sample",
+                Reversed = true,
+                Stops = 12,
+                VisibleScale = 0.5
             });
 
         var source = document.GetPanelElements().Single();
@@ -632,9 +665,65 @@ public sealed class Panel2DRoundTripTests
         Assert.Equal(50, pasted.Y);
         Assert.Equal(50, pasted.Width);
         Assert.Equal(60, pasted.Height);
+        Assert.Equal(source.AssetPath, pasted.AssetPath);
+        Assert.Equal(source.MfmeSourceType, pasted.MfmeSourceType);
+        Assert.Equal(source.MfmeSourceId, pasted.MfmeSourceId);
+        Assert.Equal(source.DisplayNumber, pasted.DisplayNumber);
+        Assert.Equal(source.PrimaryColor, pasted.PrimaryColor);
+        Assert.Equal(source.SecondaryColor, pasted.SecondaryColor);
+        Assert.Equal(source.TextColor, pasted.TextColor);
+        Assert.Equal(source.Text, pasted.Text);
+        Assert.Equal(source.Reversed, pasted.Reversed);
+        Assert.Equal(source.Stops, pasted.Stops);
+        Assert.Equal(source.VisibleScale, pasted.VisibleScale);
 
         command.Undo();
         Assert.Single(document.GetPanelElements());
+    }
+
+    [Fact]
+    public void RenameElementCommand_PreservesMfmeMetadata()
+    {
+        var document = CreatePanelDocument(
+            new PanelElementModel
+            {
+                ObjectId = "rename-id",
+                Name = "Original",
+                Kind = PanelElementKind.Alpha,
+                X = 5,
+                Y = 6,
+                Width = 7,
+                Height = 8,
+                AssetPath = "Assets/MfmeImport/alpha.png",
+                MfmeSourceType = "ExtractComponentAlpha",
+                MfmeSourceId = "7",
+                DisplayNumber = 7,
+                PrimaryColor = "#AAAAAA",
+                SecondaryColor = "#BBBBBB",
+                TextColor = "#CCCCCC",
+                Text = "ALPHA",
+                Reversed = true,
+                Stops = 30,
+                VisibleScale = 0.2
+            });
+
+        var selection = new PanelSelectionInfo("rename-id", "alpha", 5, 6, 7, 8);
+        var command = CanvasMutationCommands.CreateRenameElementCommand(document.DocumentId, document, selection, "Renamed");
+
+        command.Execute();
+        var renamed = document.GetPanelElements().Single();
+        Assert.Equal("Renamed", renamed.Name);
+        Assert.Equal("Assets/MfmeImport/alpha.png", renamed.AssetPath);
+        Assert.Equal("ExtractComponentAlpha", renamed.MfmeSourceType);
+        Assert.Equal("7", renamed.MfmeSourceId);
+        Assert.Equal(7, renamed.DisplayNumber);
+        Assert.Equal("#AAAAAA", renamed.PrimaryColor);
+        Assert.Equal("#BBBBBB", renamed.SecondaryColor);
+        Assert.Equal("#CCCCCC", renamed.TextColor);
+        Assert.Equal("ALPHA", renamed.Text);
+        Assert.True(renamed.Reversed);
+        Assert.Equal(30, renamed.Stops);
+        Assert.Equal(0.2, renamed.VisibleScale);
     }
 
     [Fact]
