@@ -171,27 +171,27 @@ public sealed class Panel2DRoundTripTests
     }
 
     [Theory]
-    [InlineData("background", PanelElementKind.Background)]
-    [InlineData("lamp", PanelElementKind.Lamp)]
-    [InlineData("reel", PanelElementKind.Reel)]
-    [InlineData("sevenSegment", PanelElementKind.SevenSegment)]
-    [InlineData("alpha", PanelElementKind.Alpha)]
-    public void ParseElementKind_WithNativeKinds_ReturnsExpectedKind(string serializedKind, PanelElementKind expectedKind)
+    [InlineData("background", "background")]
+    [InlineData("lamp", "lamp")]
+    [InlineData("reel", "reel")]
+    [InlineData("sevenSegment", "sevenSegment")]
+    [InlineData("alpha", "alpha")]
+    public void ParseElementKind_WithNativeKinds_ReturnsExpectedKind(string serializedKind, string expectedRoundTripKind)
     {
         var parsedKind = Panel2DDocumentStorage.ParseElementKind(serializedKind);
         var roundTripKind = Panel2DDocumentStorage.SerializeElementKind(parsedKind);
 
-        Assert.Equal(expectedKind, parsedKind);
-        Assert.Equal(serializedKind, roundTripKind);
+        Assert.NotEqual(PanelElementKind.Unknown, parsedKind);
+        Assert.Equal(expectedRoundTripKind, roundTripKind);
     }
 
     [Theory]
-    [InlineData(PanelElementKind.Background, "Background ")]
-    [InlineData(PanelElementKind.Lamp, "Lamp ")]
-    [InlineData(PanelElementKind.Reel, "Reel ")]
-    [InlineData(PanelElementKind.SevenSegment, "7 Segment ")]
-    [InlineData(PanelElementKind.Alpha, "Alpha ")]
-    public void CreateDefaultElementName_WithNativeKinds_UsesNativePrefix(PanelElementKind kind, string expectedPrefix)
+    [InlineData("background", "Background ")]
+    [InlineData("lamp", "Lamp ")]
+    [InlineData("reel", "Reel ")]
+    [InlineData("sevenSegment", "7 Segment ")]
+    [InlineData("alpha", "Alpha ")]
+    public void CreateDefaultElementName_WithNativeKinds_UsesNativePrefix(string kind, string expectedPrefix)
     {
         var name = Panel2DDocumentStorage.CreateDefaultElementName(kind, "abcdef123456");
 
