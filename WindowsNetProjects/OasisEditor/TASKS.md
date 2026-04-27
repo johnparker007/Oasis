@@ -244,16 +244,16 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
   - [ ] Selection and inspector work for imported native elements
   - [ ] Save/reopen preserves imported native elements and asset paths
   - [ ] Undo/redo of the import works document-locally
-- [ ] Compare WPF imported output against the Unity importer behavior for the supported first-pass components
-  - [ ] Compare behavior as conversion behavior only, not as MFME becoming part of the Oasis domain
-- [ ] Update `Docs/MfmeImportPlan.md` with any intentional differences from Unity behavior
-- [ ] Add follow-up tasks for deferred native Oasis rendering/runtime behavior
-  - [ ] Accurate lamp rendering and masks
-  - [ ] Accurate reel viewport/overlay handling
-  - [ ] Seven-segment renderer
-  - [ ] Alpha renderer
-  - [ ] Native button/input mapping
-  - [ ] Runtime/export mapping
+- [x] Compare WPF imported output against the Unity importer behavior for the supported first-pass components
+  - [x] Compare behavior as conversion behavior only, not as MFME becoming part of the Oasis domain
+- [x] Update `Docs/MfmeImportPlan.md` with any intentional differences from Unity behavior
+- [x] Add follow-up tasks for deferred native Oasis rendering/runtime behavior
+  - [x] Accurate lamp rendering and masks
+  - [x] Accurate reel viewport/overlay handling
+  - [x] Seven-segment renderer
+  - [x] Alpha renderer
+  - [x] Native button/input mapping
+  - [x] Runtime/export mapping
 - [ ] Final build and test run
 
 ---
