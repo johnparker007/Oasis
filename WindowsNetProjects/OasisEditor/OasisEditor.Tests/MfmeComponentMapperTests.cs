@@ -29,7 +29,7 @@ public sealed class MfmeComponentMapperTests
         Assert.Equal(0, mapped.Y);
         Assert.Equal(800, mapped.Width);
         Assert.Equal(600, mapped.Height);
-        Assert.Equal("Background/bg.png", mapped.AssetPath);
+        Assert.Equal("background/bg.png", mapped.AssetPath);
         Assert.Equal("#AABBCC", mapped.PrimaryColor);
     }
 
@@ -59,7 +59,7 @@ public sealed class MfmeComponentMapperTests
         Assert.Equal(PanelElementKind.Lamp, mapped.Kind);
         Assert.Equal("Lamp 4", mapped.Name);
         Assert.Equal(4, mapped.DisplayNumber);
-        Assert.Equal("Lamps/lamp4.png", mapped.AssetPath);
+        Assert.Equal("lamps/lamp4.png", mapped.AssetPath);
         Assert.Equal("#00FF00", mapped.PrimaryColor);
         Assert.Equal("#000011", mapped.SecondaryColor);
         Assert.Equal("#FFFFFF", mapped.TextColor);
@@ -80,6 +80,7 @@ public sealed class MfmeComponentMapperTests
             Height = 150,
             Number = 2,
             Stops = 24,
+            ReelHeight = 250,
             Reversed = true,
             BandImageFileName = "band.png"
         };
@@ -93,7 +94,8 @@ public sealed class MfmeComponentMapperTests
         Assert.Equal("2", mapped.MfmeSourceId);
         Assert.Equal(24, mapped.Stops);
         Assert.True(mapped.Reversed);
-        Assert.Equal("Reels/band.png", mapped.AssetPath);
+        Assert.Equal("reels/band.png", mapped.AssetPath);
+        Assert.Equal(5d / 24d, mapped.VisibleScale!.Value, 6);
     }
 
     [Fact]
@@ -139,6 +141,7 @@ public sealed class MfmeComponentMapperTests
         Assert.Equal(7, mapped.DisplayNumber);
         Assert.True(mapped.Reversed);
         Assert.Equal("#DD8800", mapped.PrimaryColor);
+        Assert.Null(mapped.AssetPath);
     }
 
     [Fact]
@@ -176,5 +179,22 @@ public sealed class MfmeComponentMapperTests
         var mapped = Assert.Single(result.Elements);
         Assert.Equal(100, mapped.Width);
         Assert.Equal(100, mapped.Height);
+    }
+
+    [Fact]
+    public void Map_ReelWithoutHeight_DoesNotSetVisibleScale()
+    {
+        var mapper = new MfmeComponentMapper();
+        var component = new MfmeReelComponentData
+        {
+            Kind = MfmeComponentKind.Reel,
+            SourceType = "ExtractComponentReel",
+            Stops = 20
+        };
+
+        var result = mapper.Map([component]);
+
+        var mapped = Assert.Single(result.Elements);
+        Assert.Null(mapped.VisibleScale);
     }
 }

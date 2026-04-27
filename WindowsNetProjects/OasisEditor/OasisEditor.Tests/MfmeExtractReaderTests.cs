@@ -94,6 +94,7 @@ public sealed class MfmeExtractReaderTests
                   "Size": { "X": 120, "Y": 130 },
                   "Number": 2,
                   "Stops": 20,
+                  "Height": 250,
                   "Reversed": true,
                   "BandBmpImageFilename": "reel.png"
                 },
@@ -126,6 +127,7 @@ public sealed class MfmeExtractReaderTests
         Assert.Equal(7, lamp.Number);
         var reel = Assert.IsType<MfmeReelComponentData>(result.ImportedElements[2]);
         Assert.Equal(20, reel.Stops);
+        Assert.Equal(250, reel.ReelHeight);
         Assert.True(reel.Reversed);
         Assert.IsType<MfmeSevenSegmentComponentData>(result.ImportedElements[3]);
         var alpha = Assert.IsType<MfmeAlphaComponentData>(result.ImportedElements[4]);

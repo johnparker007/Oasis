@@ -55,6 +55,8 @@ internal sealed record MfmeReelComponentData : MfmeExtractComponentData
 
     public int? Stops { get; init; }
 
+    public int? ReelHeight { get; init; }
+
     public bool Reversed { get; init; }
 
     public string? BandImageFileName { get; init; }

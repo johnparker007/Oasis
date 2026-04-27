@@ -16,6 +16,7 @@ internal sealed class MfmeComponentMapper
 {
     private const double DefaultWidth = 100d;
     private const double DefaultHeight = 100d;
+    private const int MfmeHeightPerVisibleSymbol = 50;
 
     public MfmeComponentMappingResult Map(IReadOnlyList<MfmeExtractComponentData> components)
     {
@@ -71,7 +72,7 @@ internal sealed class MfmeComponentMapper
             y: 0,
             width: component.Width,
             height: component.Height,
-            assetPath: BuildAssetPath("Background", component.ImageFileName),
+            assetPath: BuildAssetPath("background", component.ImageFileName),
             sourceType: component.SourceType,
             sourceId: null,
             displayNumber: null,
@@ -80,7 +81,8 @@ internal sealed class MfmeComponentMapper
             textColor: null,
             text: null,
             reversed: false,
-            stops: null);
+            stops: null,
+            visibleScale: null);
     }
 
     private static PanelElementModel MapLamp(MfmeLampComponentData component)
@@ -93,7 +95,7 @@ internal sealed class MfmeComponentMapper
             y: component.Y,
             width: component.Width,
             height: component.Height,
-            assetPath: BuildAssetPath("Lamps", component.ImageFileName),
+            assetPath: BuildAssetPath("lamps", component.ImageFileName),
             sourceType: component.SourceType,
             sourceId: component.Number?.ToString(),
             displayNumber: component.Number,
@@ -102,13 +104,15 @@ internal sealed class MfmeComponentMapper
             textColor: component.TextColor,
             text: component.DisplayName,
             reversed: false,
-            stops: null);
+            stops: null,
+            visibleScale: null);
     }
 
     private static PanelElementModel MapReel(MfmeReelComponentData component)
     {
         var reelNumber = component.Number.HasValue ? component.Number.Value + 1 : (int?)null;
         var name = reelNumber.HasValue ? $"Reel {reelNumber.Value}" : "Reel";
+        var visibleScale = TryCalculateVisibleScale(component.Stops, component.ReelHeight);
 
         return CreateElement(
             kind: PanelElementKind.Reel,
@@ -117,7 +121,7 @@ internal sealed class MfmeComponentMapper
             y: component.Y,
             width: component.Width,
             height: component.Height,
-            assetPath: BuildAssetPath("Reels", component.BandImageFileName),
+            assetPath: BuildAssetPath("reels", component.BandImageFileName),
             sourceType: component.SourceType,
             sourceId: component.Number?.ToString(),
             displayNumber: reelNumber,
@@ -126,7 +130,8 @@ internal sealed class MfmeComponentMapper
             textColor: null,
             text: null,
             reversed: component.Reversed,
-            stops: component.Stops is > 0 ? component.Stops : null);
+            stops: component.Stops is > 0 ? component.Stops : null,
+            visibleScale: visibleScale);
     }
 
     private static PanelElementModel MapSevenSegment(MfmeSevenSegmentComponentData component)
@@ -148,7 +153,8 @@ internal sealed class MfmeComponentMapper
             textColor: null,
             text: null,
             reversed: false,
-            stops: null);
+            stops: null,
+            visibleScale: null);
     }
 
     private static PanelElementModel MapAlpha(MfmeAlphaComponentData component)
@@ -160,7 +166,7 @@ internal sealed class MfmeComponentMapper
             y: component.Y,
             width: component.Width,
             height: component.Height,
-            assetPath: BuildAssetPath("Lamps", component.ImageFileName),
+            assetPath: null,
             sourceType: component.SourceType,
             sourceId: component.Number?.ToString(),
             displayNumber: component.Number,
@@ -169,7 +175,8 @@ internal sealed class MfmeComponentMapper
             textColor: null,
             text: null,
             reversed: component.Reversed,
-            stops: null);
+            stops: null,
+            visibleScale: null);
     }
 
     private static PanelElementModel CreateElement(
@@ -188,7 +195,8 @@ internal sealed class MfmeComponentMapper
         string? textColor,
         string? text,
         bool reversed,
-        int? stops)
+        int? stops,
+        double? visibleScale)
     {
         return new PanelElementModel
         {
@@ -208,7 +216,8 @@ internal sealed class MfmeComponentMapper
             TextColor = textColor,
             Text = text,
             Reversed = reversed,
-            Stops = stops
+            Stops = stops,
+            VisibleScale = visibleScale
         };
     }
 
@@ -230,5 +239,17 @@ internal sealed class MfmeComponentMapper
         }
 
         return value;
+    }
+
+    private static double? TryCalculateVisibleScale(int? stops, int? reelHeight)
+    {
+        if (!stops.HasValue || !reelHeight.HasValue || stops.Value <= 0 || reelHeight.Value <= 0)
+        {
+            return null;
+        }
+
+        var visibleSymbols = (double)reelHeight.Value / MfmeHeightPerVisibleSymbol;
+        var scale = visibleSymbols / stops.Value;
+        return scale > 0 ? scale : null;
     }
 }

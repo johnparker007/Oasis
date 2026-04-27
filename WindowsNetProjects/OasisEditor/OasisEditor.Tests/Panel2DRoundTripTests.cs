@@ -116,7 +116,8 @@ public sealed class Panel2DRoundTripTests
                     TextColor = "#FF00FF",
                     Text = "HELLO",
                     Reversed = true,
-                    Stops = 20
+                    Stops = 20,
+                    VisibleScale = 0.25
                 }
             ]
         };
@@ -142,6 +143,7 @@ public sealed class Panel2DRoundTripTests
         Assert.Equal("HELLO", element.Text);
         Assert.True(element.Reversed);
         Assert.Equal(20, element.Stops);
+        Assert.Equal(0.25, element.VisibleScale);
     }
 
     [Fact]
