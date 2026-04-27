@@ -19,21 +19,21 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
 - [ ] Add/update tests where practical under the existing OasisEditor test project
 
 ### Phase K — Legacy Import and Extract Format Reconnaissance
-- [ ] Inspect the Unity importer entry point at `UnityProjects/LayoutEditor/Assets/_Project/Scripts/Oasis/MFME/ExtractImporter.cs`
-  - [ ] Document the exact field mappings currently used for Background, Lamp, Reel, SevenSegment, Alpha, AlphaNew, and MatrixAlpha
-  - [ ] Note existing Unity importer quirks that should be preserved initially, such as Reel number `+ 1` and MatrixAlpha importing as Alpha
-  - [ ] Note behavior that should be deferred, such as runtime-only editor components, complex lamp inputs, and temporary reel overlay compositing
-- [ ] Inspect MFME extract DTOs/helpers under `WindowsNetProjects/MfmeTools/MfmeTools/Shared`
-  - [ ] Identify the minimum DTO fields needed for Background, Lamp, Reel, SevenSegment, Alpha, AlphaNew, and MatrixAlpha
-  - [ ] Identify how extract image folders and filenames are represented
-  - [ ] Identify the extract manifest/layout file format that the WPF editor should read first
-- [ ] Add `Docs/MfmeImportPlan.md` under `WindowsNetProjects/OasisEditor`
-  - [ ] Summarise the source extract contract for the first milestone
-  - [ ] Summarise component mapping rules
-  - [ ] Summarise asset-copy conventions
-  - [ ] List deferred behavior explicitly
-  - [ ] Include a short note that legacy projects are reference-only for this track
-- [ ] Build the WPF solution after the reconnaissance/documentation-only changes if project files changed; otherwise no build is required
+- [x] Inspect the Unity importer entry point at `UnityProjects/LayoutEditor/Assets/_Project/Scripts/Oasis/MFME/ExtractImporter.cs`
+  - [x] Document the exact field mappings currently used for Background, Lamp, Reel, SevenSegment, Alpha, AlphaNew, and MatrixAlpha
+  - [x] Note existing Unity importer quirks that should be preserved initially, such as Reel number `+ 1` and MatrixAlpha importing as Alpha
+  - [x] Note behavior that should be deferred, such as runtime-only editor components, complex lamp inputs, and temporary reel overlay compositing
+- [x] Inspect MFME extract DTOs/helpers under `WindowsNetProjects/MfmeTools/MfmeTools/Shared`
+  - [x] Identify the minimum DTO fields needed for Background, Lamp, Reel, SevenSegment, Alpha, AlphaNew, and MatrixAlpha
+  - [x] Identify how extract image folders and filenames are represented
+  - [x] Identify the extract manifest/layout file format that the WPF editor should read first
+- [x] Add `Docs/MfmeImportPlan.md` under `WindowsNetProjects/OasisEditor`
+  - [x] Summarise the source extract contract for the first milestone
+  - [x] Summarise component mapping rules
+  - [x] Summarise asset-copy conventions
+  - [x] List deferred behavior explicitly
+  - [x] Include a short note that legacy projects are reference-only for this track
+- [x] Build the WPF solution after the reconnaissance/documentation-only changes if project files changed; otherwise no build is required
 
 ### Phase L — MFME Import Domain Boundary
 - [ ] Add a focused MFME import feature folder under the WPF editor project
