@@ -231,6 +231,7 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
 - [x] Ensure import into an empty Panel2D document is the first supported flow
 - [x] Add a clear message for unsupported active document types
 - [ ] Build and run tests
+  - [ ] Blocked in current container; see `PhaseS.BuildAndTestAttempt.md`
 
 ### Phase T — End-to-End Validation and Cleanup
 - [ ] Create or identify a small MFME extract fixture for manual smoke testing
