@@ -300,7 +300,7 @@ internal static class PanelElementFactory
             return false;
         }
 
-        if (!File.Exists(candidate))
+        if (!System.IO.File.Exists(candidate))
         {
             return false;
         }
