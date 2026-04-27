@@ -6,6 +6,26 @@ namespace OasisEditor.Tests;
 public sealed class MfmeExtractReaderTests
 {
     [Fact]
+    public void Read_WithEmptyPath_ReturnsRequiredPathError()
+    {
+        var reader = new FileSystemMfmeExtractReader();
+        var context = new MfmeImportContext
+        {
+            SourceExtractPath = "   ",
+            ProjectRootPath = "C:/Project",
+            ProjectAssetsPath = "C:/Project/Assets",
+            CopyAssets = true
+        };
+
+        var result = reader.Read(context);
+
+        Assert.False(result.Succeeded);
+        Assert.Null(result.Extract);
+        var error = Assert.Single(result.Errors);
+        Assert.Contains("required", error, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void Read_WithMissingPath_ReturnsNotFoundError()
     {
         var reader = new FileSystemMfmeExtractReader();
@@ -23,6 +43,37 @@ public sealed class MfmeExtractReaderTests
         Assert.Null(result.Extract);
         var error = Assert.Single(result.Errors);
         Assert.Contains("not found", error, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Read_WithNonJsonManifestFile_ReturnsManifestExtensionError()
+    {
+        var extractDirectory = CreateTempDirectory();
+        var manifestPath = Path.Combine(extractDirectory, "layout.txt");
+        File.WriteAllText(manifestPath, "manifest");
+
+        try
+        {
+            var reader = new FileSystemMfmeExtractReader();
+            var context = new MfmeImportContext
+            {
+                SourceExtractPath = manifestPath,
+                ProjectRootPath = "C:/Project",
+                ProjectAssetsPath = "C:/Project/Assets",
+                CopyAssets = true
+            };
+
+            var result = reader.Read(context);
+
+            Assert.False(result.Succeeded);
+            Assert.Null(result.Extract);
+            var error = Assert.Single(result.Errors);
+            Assert.Contains(".json", error, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            Directory.Delete(extractDirectory, recursive: true);
+        }
     }
 
     [Fact]
