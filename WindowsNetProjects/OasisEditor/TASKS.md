@@ -177,9 +177,9 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
 - [ ] Build and run tests
 
 ### Phase Q — Panel2D Visual Projection for Native Imported Components
-- [ ] Update `PanelElementFactory` or introduce focused visual factories for new native Panel2D kinds
-  - [ ] Keep WPF-specific visual creation separate from import/domain conversion
-  - [ ] Preserve existing Rectangle/Image behavior
+- [x] Update `PanelElementFactory` or introduce focused visual factories for new native Panel2D kinds
+  - [x] Keep WPF-specific visual creation separate from import/domain conversion
+  - [x] Preserve existing Rectangle/Image behavior
 - [ ] Add placeholder visual projection for native Background
   - [ ] Use imported image when available
   - [ ] Fall back to a filled rectangle using imported/native color when no image is available

@@ -15,6 +15,13 @@ internal static class PanelElementFactory
             typeof(PanelElementFactory),
             new PropertyMetadata(string.Empty));
 
+    public static readonly DependencyProperty ElementKindProperty =
+        DependencyProperty.RegisterAttached(
+            "ElementKind",
+            typeof(PanelElementKind),
+            typeof(PanelElementFactory),
+            new PropertyMetadata(PanelElementKind.Unknown));
+
     public const double NewRectangleWidth = 180;
     public const double NewRectangleHeight = 120;
     public const double NewImageWidth = 220;
@@ -56,40 +63,34 @@ internal static class PanelElementFactory
 
     public static FrameworkElement? CreateVisualFromElement(PanelElementFile element)
     {
-        if (element.ElementKind == PanelElementKind.Rectangle)
+        FrameworkElement? visual = element.ElementKind switch
         {
-            var rectangle = new Rectangle
-            {
-                Uid = element.ObjectId,
-                Width = element.Width <= 0 ? NewRectangleWidth : element.Width,
-                Height = element.Height <= 0 ? NewRectangleHeight : element.Height
-            };
+            PanelElementKind.Rectangle => CreateRectangleVisual(element),
+            PanelElementKind.Image => CreateImageVisual(element),
+            PanelElementKind.Background => CreatePlaceholderComponentVisual(element, "Background"),
+            PanelElementKind.Lamp => CreatePlaceholderComponentVisual(element, "Lamp"),
+            PanelElementKind.Reel => CreatePlaceholderComponentVisual(element, "Reel"),
+            PanelElementKind.SevenSegment => CreatePlaceholderComponentVisual(element, "7 Segment"),
+            PanelElementKind.Alpha => CreatePlaceholderComponentVisual(element, "Alpha"),
+            _ => null
+        };
 
-            SetElementName(rectangle, element.Name);
-            return rectangle;
+        if (visual is null)
+        {
+            return null;
         }
 
-        if (element.ElementKind == PanelElementKind.Image)
-        {
-            var image = new Image
-            {
-                Uid = element.ObjectId,
-                Width = element.Width <= 0 ? NewImageWidth : element.Width,
-                Height = element.Height <= 0 ? NewImageHeight : element.Height,
-                Stretch = Stretch.Fill,
-                Source = CreatePlaceholderImageSource()
-            };
-
-            SetElementName(image, element.Name);
-            return image;
-        }
-
-        return null;
+        SetElementName(visual, element.Name);
+        SetElementKind(visual, element.ElementKind);
+        return visual;
     }
 
     public static PanelElementFile? CreateElementFromVisual(FrameworkElement child)
     {
-        var kind = child switch
+        var attachedKind = GetElementKind(child);
+        var kind = attachedKind != PanelElementKind.Unknown
+            ? attachedKind
+            : child switch
         {
             Rectangle => PanelElementKind.Rectangle,
             Image => PanelElementKind.Image,
@@ -125,6 +126,62 @@ internal static class PanelElementFactory
     public static void SetElementName(DependencyObject dependencyObject, string value)
     {
         dependencyObject.SetValue(ElementNameProperty, value);
+    }
+
+    public static PanelElementKind GetElementKind(DependencyObject dependencyObject)
+    {
+        return (PanelElementKind)dependencyObject.GetValue(ElementKindProperty);
+    }
+
+    public static void SetElementKind(DependencyObject dependencyObject, PanelElementKind value)
+    {
+        dependencyObject.SetValue(ElementKindProperty, value);
+    }
+
+    private static FrameworkElement CreateRectangleVisual(PanelElementFile element)
+    {
+        return new Rectangle
+        {
+            Uid = element.ObjectId,
+            Width = element.Width <= 0 ? NewRectangleWidth : element.Width,
+            Height = element.Height <= 0 ? NewRectangleHeight : element.Height
+        };
+    }
+
+    private static FrameworkElement CreateImageVisual(PanelElementFile element)
+    {
+        return new Image
+        {
+            Uid = element.ObjectId,
+            Width = element.Width <= 0 ? NewImageWidth : element.Width,
+            Height = element.Height <= 0 ? NewImageHeight : element.Height,
+            Stretch = Stretch.Fill,
+            Source = CreatePlaceholderImageSource()
+        };
+    }
+
+    private static FrameworkElement CreatePlaceholderComponentVisual(PanelElementFile element, string label)
+    {
+        var width = element.Width <= 0 ? NewRectangleWidth : element.Width;
+        var height = element.Height <= 0 ? NewRectangleHeight : element.Height;
+        var border = new Border
+        {
+            Uid = element.ObjectId,
+            Width = width,
+            Height = height,
+            BorderThickness = new Thickness(1),
+            BorderBrush = Brushes.SlateGray,
+            Background = Brushes.Transparent,
+            Child = new TextBlock
+            {
+                Text = label,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                Foreground = Brushes.LightSteelBlue
+            }
+        };
+
+        return border;
     }
 
     private static ImageSource CreatePlaceholderImageSource()
