@@ -6,15 +6,25 @@ namespace OasisEditor.Tests;
 
 public sealed class HierarchyPanelCommandServiceTests
 {
-    [Fact]
-    public void SmokeLikeFlow_HierarchyCommandsUndoRedoAndSaveReopen_PreservesPanelElements()
+    [Theory]
+    [InlineData((int)PanelElementKind.Rectangle, "rectangle", "Rect One")]
+    [InlineData((int)PanelElementKind.Background, "background", "Background")]
+    [InlineData((int)PanelElementKind.Lamp, "lamp", "Lamp 7")]
+    [InlineData((int)PanelElementKind.Reel, "reel", "Reel 3")]
+    [InlineData((int)PanelElementKind.SevenSegment, "sevenSegment", "7 Segment 4")]
+    [InlineData((int)PanelElementKind.Alpha, "alpha", "Alpha")]
+    public void SmokeLikeFlow_HierarchyCommandsUndoRedoAndSaveReopen_PreservesPanelElements(
+        int kindValue,
+        string kindToken,
+        string name)
     {
+        var kind = (PanelElementKind)kindValue;
         var document = CreatePanelDocument(
             new PanelElementModel
             {
                 ObjectId = "source-id",
-                Name = "Rect One",
-                Kind = PanelElementKind.Rectangle,
+                Name = name,
+                Kind = kind,
                 X = 10,
                 Y = 20,
                 Width = 30,
@@ -23,7 +33,7 @@ public sealed class HierarchyPanelCommandServiceTests
         var workspace = CreateWorkspace(document, document);
         var service = CreateService(document, workspace);
 
-        document.HierarchySelectedPanelSelection = new PanelSelectionInfo("source-id", "rectangle", 10, 20, 30, 40);
+        document.HierarchySelectedPanelSelection = new PanelSelectionInfo("source-id", kindToken, 10, 20, 30, 40);
         service.ExecuteCopySelected();
         service.ExecutePasteSelected();
         service.ExecuteDuplicateSelected();
@@ -46,6 +56,43 @@ public sealed class HierarchyPanelCommandServiceTests
 
         Assert.Equal(2, reopened.GetPanelElements().Count);
         Assert.Equal(2, reopened.GetPanelElements().Select(element => element.ObjectId).Distinct(StringComparer.Ordinal).Count());
+    }
+
+    [Theory]
+    [InlineData((int)PanelElementKind.Background, "group:background", "background")]
+    [InlineData((int)PanelElementKind.Lamp, "group:lamp", "lamp")]
+    [InlineData((int)PanelElementKind.Reel, "group:reel", "reel")]
+    [InlineData((int)PanelElementKind.SevenSegment, "group:sevenSegment", "sevenSegment")]
+    [InlineData((int)PanelElementKind.Alpha, "group:alpha", "alpha")]
+    public void HierarchyProvider_NativeGroups_ExposeNativeSelectionTokens(
+        int kindValue,
+        string expectedGroupKey,
+        string expectedKindToken)
+    {
+        var document = CreatePanelDocument(
+            new PanelElementModel
+            {
+                ObjectId = "source-id",
+                Name = "Native",
+                Kind = (PanelElementKind)kindValue,
+                X = 10,
+                Y = 20,
+                Width = 30,
+                Height = 40
+            });
+
+        var provider = new Panel2DHierarchyProvider();
+        var groups = provider.Build(document);
+        var group = groups.Single(item => item.NodeKey == expectedGroupKey);
+        var child = Assert.Single(group.Children);
+
+        var selection = Assert.IsType<PanelSelectionInfo>(child.PanelSelection);
+        Assert.Equal("source-id", selection.ObjectId);
+        Assert.Equal(expectedKindToken, selection.KindToken);
+        Assert.Equal(10, selection.X);
+        Assert.Equal(20, selection.Y);
+        Assert.Equal(30, selection.Width);
+        Assert.Equal(40, selection.Height);
     }
 
     [Fact]
