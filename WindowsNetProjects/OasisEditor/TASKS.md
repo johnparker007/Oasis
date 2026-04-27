@@ -264,7 +264,7 @@ These are the only unfinished tasks from the previous context-menu/assets-pane t
 
 ### Previous Phase J — Follow-up Refactor Checks
 - [ ] Smoke test full editor flow
-  - [ ] Blocked in current container; see `PhaseJ.SmokeTestAttempt.md`
+  - [x] Blocked in current container; see `PhaseJ.SmokeTestAttempt.md`
   - [ ] Create/open project
   - [ ] Refresh assets
   - [ ] Navigate folders in Assets pane
