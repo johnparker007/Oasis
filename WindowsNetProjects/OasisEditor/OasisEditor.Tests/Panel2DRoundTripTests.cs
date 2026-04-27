@@ -198,6 +198,112 @@ public sealed class Panel2DRoundTripTests
         Assert.Contains("unsupported kind", errorMessage, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public void TryReadValidated_WithDuplicateObjectIds_ReturnsValidationError()
+    {
+        const string sourceJson = """
+        {
+          "SchemaVersion": 1,
+          "Title": "Duplicate ObjectIds",
+          "Summary": "Invalid",
+          "Elements": [
+            {
+              "ObjectId": "dup-1",
+              "Name": "A",
+              "Kind": "rectangle",
+              "X": 1,
+              "Y": 2,
+              "Width": 3,
+              "Height": 4
+            },
+            {
+              "ObjectId": "dup-1",
+              "Name": "B",
+              "Kind": "image",
+              "X": 5,
+              "Y": 6,
+              "Width": 7,
+              "Height": 8
+            }
+          ]
+        }
+        """;
+
+        var success = Panel2DDocumentStorage.TryReadValidated(sourceJson, out _, out var errorMessage);
+
+        Assert.False(success);
+        Assert.Contains("duplicated", errorMessage, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void TryReadValidated_WithInvalidNativeMetadata_ReturnsValidationError()
+    {
+        const string sourceJson = """
+        {
+          "SchemaVersion": 1,
+          "Title": "Invalid Native Metadata",
+          "Summary": "Invalid",
+          "Elements": [
+            {
+              "ObjectId": "lamp-1",
+              "Name": "Lamp 1",
+              "Kind": "lamp",
+              "X": 1,
+              "Y": 2,
+              "Width": 3,
+              "Height": 4,
+              "DisplayNumber": -1
+            }
+          ]
+        }
+        """;
+
+        var success = Panel2DDocumentStorage.TryReadValidated(sourceJson, out _, out var errorMessage);
+
+        Assert.False(success);
+        Assert.Contains("invalid display number", errorMessage, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void TryReadValidated_NormalizesOptionalNativeMetadata()
+    {
+        const string sourceJson = """
+        {
+          "SchemaVersion": 1,
+          "Title": "Normalize Native Metadata",
+          "Summary": "Normalize",
+          "Elements": [
+            {
+              "ObjectId": "alpha-1",
+              "Name": "Alpha",
+              "Kind": "alpha",
+              "X": 1,
+              "Y": 2,
+              "Width": 3,
+              "Height": 4,
+              "AssetPath": "  Assets/alpha.png  ",
+              "DisplayText": "  HELLO  ",
+              "ImportSource": {
+                "Format": "  MFME  ",
+                "Reference": "  layout.json#alpha-1  "
+              }
+            }
+          ]
+        }
+        """;
+
+        var success = Panel2DDocumentStorage.TryReadValidated(sourceJson, out var normalized, out var errorMessage);
+
+        Assert.True(success);
+        Assert.Equal(string.Empty, errorMessage);
+        var element = Assert.Single(normalized.Elements);
+        Assert.Equal("Assets/alpha.png", element.AssetPath);
+        Assert.Equal("HELLO", element.DisplayText);
+        Assert.NotNull(element.ImportSource);
+        Assert.Equal("MFME", element.ImportSource!.Format);
+        Assert.Equal("layout.json#alpha-1", element.ImportSource.Reference);
+    }
+
     [Theory]
     [InlineData("background", "background")]
     [InlineData("lamp", "lamp")]

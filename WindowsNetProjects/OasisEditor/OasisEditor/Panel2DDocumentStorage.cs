@@ -167,9 +167,13 @@ internal static class Panel2DDocumentStorage
         }
 
         var elements = source.Elements ?? [];
+        var normalizedElements = new List<PanelElementFile>(elements.Length);
+        var objectIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
         foreach (var element in elements)
         {
-            var normalizedKind = ParseElementKind(element.Kind);
+            var normalizedElement = NormalizeElement(element);
+            var normalizedKind = ParseElementKind(normalizedElement.Kind);
             if (normalizedKind == PanelElementKind.Unknown)
             {
                 normalized = new Panel2DDocumentFile();
@@ -177,17 +181,54 @@ internal static class Panel2DDocumentStorage
                 return false;
             }
 
-            if (!IsValidDimension(element.Width) || !IsValidDimension(element.Height))
+            if (!IsValidDimension(normalizedElement.Width) || !IsValidDimension(normalizedElement.Height))
             {
                 normalized = new Panel2DDocumentFile();
-                errorMessage = $"Element '{element.ObjectId}' has invalid dimensions.";
+                errorMessage = $"Element '{normalizedElement.ObjectId}' has invalid dimensions.";
                 return false;
             }
+
+            if (normalizedElement.DisplayNumber is < 0)
+            {
+                normalized = new Panel2DDocumentFile();
+                errorMessage = $"Element '{normalizedElement.ObjectId}' has invalid display number '{normalizedElement.DisplayNumber}'.";
+                return false;
+            }
+
+            if (normalizedElement.Stops is < 0)
+            {
+                normalized = new Panel2DDocumentFile();
+                errorMessage = $"Element '{normalizedElement.ObjectId}' has invalid stops value '{normalizedElement.Stops}'.";
+                return false;
+            }
+
+            if (normalizedElement.VisibleScale.HasValue && !IsValidVisibleScale(normalizedElement.VisibleScale.Value))
+            {
+                normalized = new Panel2DDocumentFile();
+                errorMessage = $"Element '{normalizedElement.ObjectId}' has invalid visible scale '{normalizedElement.VisibleScale}'.";
+                return false;
+            }
+
+            if (normalizedElement.ImportSource is not null && string.IsNullOrWhiteSpace(normalizedElement.ImportSource.Format))
+            {
+                normalized = new Panel2DDocumentFile();
+                errorMessage = $"Element '{normalizedElement.ObjectId}' has import source with missing format.";
+                return false;
+            }
+
+            if (!objectIds.Add(normalizedElement.ObjectId))
+            {
+                normalized = new Panel2DDocumentFile();
+                errorMessage = $"Element '{normalizedElement.ObjectId}' is duplicated. Object IDs must be unique.";
+                return false;
+            }
+
+            normalizedElements.Add(normalizedElement);
         }
 
         normalized = source with
         {
-            Elements = elements.Select(NormalizeElement).ToArray()
+            Elements = normalizedElements.ToArray()
         };
         errorMessage = string.Empty;
         return true;
@@ -310,7 +351,14 @@ internal static class Panel2DDocumentStorage
         {
             ObjectId = normalizedObjectId,
             Name = NormalizeElementName(element.Name, normalizedKind, normalizedObjectId),
-            Kind = SerializeElementKind(normalizedKind)
+            Kind = SerializeElementKind(normalizedKind),
+            AssetPath = NormalizeOptionalString(element.AssetPath),
+            SecondaryAssetPath = NormalizeOptionalString(element.SecondaryAssetPath),
+            OnColorHex = NormalizeOptionalString(element.OnColorHex),
+            OffColorHex = NormalizeOptionalString(element.OffColorHex),
+            TextColorHex = NormalizeOptionalString(element.TextColorHex),
+            DisplayText = NormalizeOptionalString(element.DisplayText),
+            ImportSource = NormalizeImportSource(element.ImportSource)
         };
     }
 
@@ -355,6 +403,45 @@ internal static class Panel2DDocumentStorage
         return !double.IsNaN(value)
             && !double.IsInfinity(value)
             && value > 0;
+    }
+
+    private static bool IsValidVisibleScale(double value)
+    {
+        return !double.IsNaN(value)
+            && !double.IsInfinity(value)
+            && value > 0;
+    }
+
+    private static string? NormalizeOptionalString(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        return value.Trim();
+    }
+
+    private static PanelElementImportSourceFile? NormalizeImportSource(PanelElementImportSourceFile? importSource)
+    {
+        if (importSource is null)
+        {
+            return null;
+        }
+
+        var format = NormalizeOptionalString(importSource.Format);
+        var reference = NormalizeOptionalString(importSource.Reference);
+
+        if (format is null && reference is null)
+        {
+            return null;
+        }
+
+        return new PanelElementImportSourceFile
+        {
+            Format = format ?? string.Empty,
+            Reference = reference
+        };
     }
 }
 
