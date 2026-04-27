@@ -19,7 +19,7 @@ internal static class MfmeExtractManifestParser
             }
 
             var warnings = new List<MfmeImportWarning>();
-            var components = ParseComponents(root, warnings);
+            var components = ParseComponents(root, extractDirectory, warnings);
 
             var layoutName = ReadString(root, "ASName") ?? Path.GetFileNameWithoutExtension(manifestPath);
             var extract = new MfmeLegacyExtractData
@@ -47,7 +47,10 @@ internal static class MfmeExtractManifestParser
         }
     }
 
-    private static IReadOnlyList<MfmeLegacyComponentBase> ParseComponents(JsonElement root, List<MfmeImportWarning> warnings)
+    private static IReadOnlyList<MfmeLegacyComponentBase> ParseComponents(
+        JsonElement root,
+        string extractDirectory,
+        List<MfmeImportWarning> warnings)
     {
         if (!root.TryGetProperty("Components", out var componentsElement) || componentsElement.ValueKind != JsonValueKind.Array)
         {
@@ -70,6 +73,7 @@ internal static class MfmeExtractManifestParser
             if (TryParseSupportedComponent(sourceType, component, out var parsedComponent))
             {
                 components.Add(parsedComponent);
+                AddMissingOptionalImageWarnings(parsedComponent, extractDirectory, index, warnings);
             }
             else
             {
@@ -82,6 +86,79 @@ internal static class MfmeExtractManifestParser
         }
 
         return components;
+    }
+
+    private static void AddMissingOptionalImageWarnings(
+        MfmeLegacyComponentBase component,
+        string extractDirectory,
+        int componentIndex,
+        List<MfmeImportWarning> warnings)
+    {
+        switch (component)
+        {
+            case MfmeLegacyBackgroundComponent background:
+                AddMissingImageWarningIfNeeded(
+                    extractDirectory,
+                    "background",
+                    background.BmpImageFilename,
+                    "Background",
+                    componentIndex,
+                    warnings);
+                break;
+            case MfmeLegacyLampComponent lamp:
+                AddMissingImageWarningIfNeeded(
+                    extractDirectory,
+                    "lamps",
+                    lamp.FirstLampElement?.BmpImageFilename,
+                    "Lamp",
+                    componentIndex,
+                    warnings);
+                break;
+            case MfmeLegacyReelComponent reel:
+                AddMissingImageWarningIfNeeded(
+                    extractDirectory,
+                    "reels",
+                    reel.BandBmpImageFilename,
+                    "Reel band",
+                    componentIndex,
+                    warnings);
+
+                if (reel.HasOverlay)
+                {
+                    AddMissingImageWarningIfNeeded(
+                        extractDirectory,
+                        "reels",
+                        reel.OverlayBmpImageFilename,
+                        "Reel overlay",
+                        componentIndex,
+                        warnings);
+                }
+                break;
+        }
+    }
+
+    private static void AddMissingImageWarningIfNeeded(
+        string extractDirectory,
+        string assetFolder,
+        string? fileName,
+        string assetLabel,
+        int componentIndex,
+        List<MfmeImportWarning> warnings)
+    {
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            return;
+        }
+
+        var candidatePath = Path.Combine(extractDirectory, assetFolder, fileName);
+        if (File.Exists(candidatePath))
+        {
+            return;
+        }
+
+        warnings.Add(new MfmeImportWarning(
+            "mfme.extract.asset.missing",
+            $"{assetLabel} image file '{fileName}' for component index {componentIndex} was not found at '{candidatePath}'."));
     }
 
     private static bool TryParseSupportedComponent(string sourceType, JsonElement component, out MfmeLegacyComponentBase parsedComponent)
