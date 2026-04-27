@@ -237,6 +237,7 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
   - [x] Must include at least one Background, Lamp, Reel, SevenSegment, and Alpha if possible
   - [ ] Keep fixture out of git if it is large or not redistributable
 - [ ] Smoke test importing into an empty project/document
+  - [ ] Blocked in current container; see `PhaseT.SmokeTestAttempt.md`
   - [ ] Imported assets are copied under the project's `Assets/MfmeImport/...` folder
   - [ ] Native Oasis Panel2D elements appear at expected positions/sizes
   - [ ] Hierarchy groups show imported native elements
