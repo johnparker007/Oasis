@@ -16,4 +16,21 @@ internal sealed class PanelElementModel
     public double Y { get; init; }
     public double Width { get; init; }
     public double Height { get; init; }
+    public string? AssetPath { get; init; }
+    public string? SecondaryAssetPath { get; init; }
+    public int? DisplayNumber { get; init; }
+    public string? OnColorHex { get; init; }
+    public string? OffColorHex { get; init; }
+    public string? TextColorHex { get; init; }
+    public string? DisplayText { get; init; }
+    public bool? IsReversed { get; init; }
+    public int? Stops { get; init; }
+    public double? VisibleScale { get; init; }
+    public PanelElementImportSourceModel? ImportSource { get; init; }
+}
+
+internal sealed class PanelElementImportSourceModel
+{
+    public string Format { get; init; } = string.Empty;
+    public string? Reference { get; init; }
 }

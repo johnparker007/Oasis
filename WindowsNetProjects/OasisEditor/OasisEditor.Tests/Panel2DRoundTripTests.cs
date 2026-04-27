@@ -102,11 +102,26 @@ public sealed class Panel2DRoundTripTests
                 {
                     ObjectId = "abc123",
                     Name = "Name 1",
-                    Kind = "rectangle",
+                    Kind = "lamp",
                     X = 1,
                     Y = 2,
                     Width = 3,
-                    Height = 4
+                    Height = 4,
+                    AssetPath = "Assets/MfmeImport/layout/Lamps/lamp.png",
+                    SecondaryAssetPath = "Assets/MfmeImport/layout/Lamps/lamp-off.png",
+                    DisplayNumber = 8,
+                    OnColorHex = "#FFFFFFFF",
+                    OffColorHex = "#FF111111",
+                    TextColorHex = "#FFFF0000",
+                    DisplayText = "HOLD",
+                    IsReversed = true,
+                    Stops = 24,
+                    VisibleScale = 0.75,
+                    ImportSource = new PanelElementImportSourceFile
+                    {
+                        Format = "MFME",
+                        Reference = "layout.json#lamp-8"
+                    }
                 }
             ]
         };
@@ -117,11 +132,24 @@ public sealed class Panel2DRoundTripTests
         var element = Assert.Single(storageElements);
         Assert.Equal("abc123", element.ObjectId);
         Assert.Equal("Name 1", element.Name);
-        Assert.Equal("rectangle", element.Kind);
+        Assert.Equal("lamp", element.Kind);
         Assert.Equal(1, element.X);
         Assert.Equal(2, element.Y);
         Assert.Equal(3, element.Width);
         Assert.Equal(4, element.Height);
+        Assert.Equal("Assets/MfmeImport/layout/Lamps/lamp.png", element.AssetPath);
+        Assert.Equal("Assets/MfmeImport/layout/Lamps/lamp-off.png", element.SecondaryAssetPath);
+        Assert.Equal(8, element.DisplayNumber);
+        Assert.Equal("#FFFFFFFF", element.OnColorHex);
+        Assert.Equal("#FF111111", element.OffColorHex);
+        Assert.Equal("#FFFF0000", element.TextColorHex);
+        Assert.Equal("HOLD", element.DisplayText);
+        Assert.True(element.IsReversed);
+        Assert.Equal(24, element.Stops);
+        Assert.Equal(0.75, element.VisibleScale);
+        Assert.NotNull(element.ImportSource);
+        Assert.Equal("MFME", element.ImportSource!.Format);
+        Assert.Equal("layout.json#lamp-8", element.ImportSource.Reference);
     }
 
     [Fact]
@@ -168,6 +196,112 @@ public sealed class Panel2DRoundTripTests
 
         Assert.False(success);
         Assert.Contains("unsupported kind", errorMessage, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void TryReadValidated_WithDuplicateObjectIds_ReturnsValidationError()
+    {
+        const string sourceJson = """
+        {
+          "SchemaVersion": 1,
+          "Title": "Duplicate ObjectIds",
+          "Summary": "Invalid",
+          "Elements": [
+            {
+              "ObjectId": "dup-1",
+              "Name": "A",
+              "Kind": "rectangle",
+              "X": 1,
+              "Y": 2,
+              "Width": 3,
+              "Height": 4
+            },
+            {
+              "ObjectId": "dup-1",
+              "Name": "B",
+              "Kind": "image",
+              "X": 5,
+              "Y": 6,
+              "Width": 7,
+              "Height": 8
+            }
+          ]
+        }
+        """;
+
+        var success = Panel2DDocumentStorage.TryReadValidated(sourceJson, out _, out var errorMessage);
+
+        Assert.False(success);
+        Assert.Contains("duplicated", errorMessage, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void TryReadValidated_WithInvalidNativeMetadata_ReturnsValidationError()
+    {
+        const string sourceJson = """
+        {
+          "SchemaVersion": 1,
+          "Title": "Invalid Native Metadata",
+          "Summary": "Invalid",
+          "Elements": [
+            {
+              "ObjectId": "lamp-1",
+              "Name": "Lamp 1",
+              "Kind": "lamp",
+              "X": 1,
+              "Y": 2,
+              "Width": 3,
+              "Height": 4,
+              "DisplayNumber": -1
+            }
+          ]
+        }
+        """;
+
+        var success = Panel2DDocumentStorage.TryReadValidated(sourceJson, out _, out var errorMessage);
+
+        Assert.False(success);
+        Assert.Contains("invalid display number", errorMessage, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void TryReadValidated_NormalizesOptionalNativeMetadata()
+    {
+        const string sourceJson = """
+        {
+          "SchemaVersion": 1,
+          "Title": "Normalize Native Metadata",
+          "Summary": "Normalize",
+          "Elements": [
+            {
+              "ObjectId": "alpha-1",
+              "Name": "Alpha",
+              "Kind": "alpha",
+              "X": 1,
+              "Y": 2,
+              "Width": 3,
+              "Height": 4,
+              "AssetPath": "  Assets/alpha.png  ",
+              "DisplayText": "  HELLO  ",
+              "ImportSource": {
+                "Format": "  MFME  ",
+                "Reference": "  layout.json#alpha-1  "
+              }
+            }
+          ]
+        }
+        """;
+
+        var success = Panel2DDocumentStorage.TryReadValidated(sourceJson, out var normalized, out var errorMessage);
+
+        Assert.True(success);
+        Assert.Equal(string.Empty, errorMessage);
+        var element = Assert.Single(normalized.Elements);
+        Assert.Equal("Assets/alpha.png", element.AssetPath);
+        Assert.Equal("HELLO", element.DisplayText);
+        Assert.NotNull(element.ImportSource);
+        Assert.Equal("MFME", element.ImportSource!.Format);
+        Assert.Equal("layout.json#alpha-1", element.ImportSource.Reference);
     }
 
     [Theory]
