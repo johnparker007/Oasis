@@ -88,7 +88,7 @@ public sealed class HierarchyPanelCommandServiceTests
 
         var selection = Assert.IsType<PanelSelectionInfo>(child.PanelSelection);
         Assert.Equal("source-id", selection.ObjectId);
-        Assert.Equal(expectedKindToken, selection.KindToken);
+        Assert.Equal(expectedKindToken, selection.Kind);
         Assert.Equal(10, selection.X);
         Assert.Equal(20, selection.Y);
         Assert.Equal(30, selection.Width);
