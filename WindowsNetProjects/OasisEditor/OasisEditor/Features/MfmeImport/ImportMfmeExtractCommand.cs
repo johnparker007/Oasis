@@ -54,7 +54,7 @@ internal sealed class ImportMfmeExtractCommand : IDocumentCommand, IExecutionTra
         }
 
         var insertIndex = Math.Clamp(_insertIndex, 0, currentElements.Count);
-        currentElements.InsertRange(insertIndex, _importedElements.Select(CloneElement));
+        currentElements.InsertRange(insertIndex, _importedElements.Select(static element => CloneElement(element)));
         _document.SetPanelElements(currentElements);
         _document.MarkDirty();
         WasExecuted = true;

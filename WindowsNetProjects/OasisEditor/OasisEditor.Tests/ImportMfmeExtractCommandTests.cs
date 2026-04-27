@@ -95,7 +95,8 @@ public sealed class ImportMfmeExtractCommandTests
                 }
             ]);
 
-        Assert.Throws<InvalidOperationException>(() => document.CommandService.Execute(command));
+        Action execute = () => document.CommandService.Execute(command);
+        Assert.Throws<InvalidOperationException>(execute);
         Assert.Empty(document.GetPanelElements());
         Assert.Empty(document.CommandService.History.Entries);
     }
