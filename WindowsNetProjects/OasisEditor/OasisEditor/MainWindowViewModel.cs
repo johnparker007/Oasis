@@ -149,6 +149,18 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         SendBackwardHierarchyItemCommand = new RelayCommand(
             () => _hierarchyPanelCommands.ExecuteSendBackwardSelected(),
             () => _hierarchyPanelCommands.CanSendBackwardSelected());
+        LockSelectedHierarchyItemCommand = new RelayCommand(
+            () => _hierarchyPanelCommands.ExecuteLockSelected(),
+            () => _hierarchyPanelCommands.CanLockSelected());
+        UnlockSelectedHierarchyItemCommand = new RelayCommand(
+            () => _hierarchyPanelCommands.ExecuteUnlockSelected(),
+            () => _hierarchyPanelCommands.CanUnlockSelected());
+        HideSelectedHierarchyItemCommand = new RelayCommand(
+            () => _hierarchyPanelCommands.ExecuteHideSelected(),
+            () => _hierarchyPanelCommands.CanHideSelected());
+        ShowSelectedHierarchyItemCommand = new RelayCommand(
+            () => _hierarchyPanelCommands.ExecuteShowSelected(),
+            () => _hierarchyPanelCommands.CanShowSelected());
         ClearOutputCommand = _outputLog.ClearOutputCommand;
         ApplyInspectorSummaryCommand = _inspector.ApplyInspectorSummaryCommand;
         AddOutputEntry("Editor shell initialized.", OutputLogStatus.Info);
@@ -181,6 +193,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand SendToBackHierarchyItemCommand { get; }
     public ICommand BringForwardHierarchyItemCommand { get; }
     public ICommand SendBackwardHierarchyItemCommand { get; }
+    public ICommand LockSelectedHierarchyItemCommand { get; }
+    public ICommand UnlockSelectedHierarchyItemCommand { get; }
+    public ICommand HideSelectedHierarchyItemCommand { get; }
+    public ICommand ShowSelectedHierarchyItemCommand { get; }
     public ICommand ClearOutputCommand { get; }
     public ICommand OpenPreferencesCommand { get; }
     public ICommand OpenProjectSettingsCommand { get; }
@@ -959,6 +975,26 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (SendBackwardHierarchyItemCommand is RelayCommand sendBackwardCommand)
         {
             sendBackwardCommand.RaiseCanExecuteChanged();
+        }
+
+        if (LockSelectedHierarchyItemCommand is RelayCommand lockCommand)
+        {
+            lockCommand.RaiseCanExecuteChanged();
+        }
+
+        if (UnlockSelectedHierarchyItemCommand is RelayCommand unlockCommand)
+        {
+            unlockCommand.RaiseCanExecuteChanged();
+        }
+
+        if (HideSelectedHierarchyItemCommand is RelayCommand hideCommand)
+        {
+            hideCommand.RaiseCanExecuteChanged();
+        }
+
+        if (ShowSelectedHierarchyItemCommand is RelayCommand showCommand)
+        {
+            showCommand.RaiseCanExecuteChanged();
         }
     }
 

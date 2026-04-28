@@ -7,7 +7,9 @@ internal static class PanelElementModelCloner
         string? objectId = null,
         string? name = null,
         double? x = null,
-        double? y = null)
+        double? y = null,
+        bool? isLocked = null,
+        bool? isVisible = null)
     {
         ArgumentNullException.ThrowIfNull(source);
 
@@ -30,6 +32,8 @@ internal static class PanelElementModelCloner
             IsReversed = source.IsReversed,
             Stops = source.Stops,
             VisibleScale = source.VisibleScale,
+            IsLocked = isLocked ?? source.IsLocked,
+            IsVisible = isVisible ?? source.IsVisible,
             ImportSource = CloneImportSource(source.ImportSource)
         };
     }

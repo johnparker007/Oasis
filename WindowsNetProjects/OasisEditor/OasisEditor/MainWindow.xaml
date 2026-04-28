@@ -78,6 +78,44 @@
                           Click="OnRedoMenuItemClicked"
                           InputGestureText="Ctrl+Shift+Z" />
                 <Separator />
+                <MenuItem Header="Cu_t"
+                          Command="{Binding CutSelectedHierarchyItemCommand}"
+                          InputGestureText="Ctrl+X" />
+                <MenuItem Header="_Copy"
+                          Command="{Binding CopySelectedHierarchyItemCommand}"
+                          InputGestureText="Ctrl+C" />
+                <MenuItem Header="_Paste"
+                          Command="{Binding PasteHierarchyItemCommand}"
+                          InputGestureText="Ctrl+V" />
+                <MenuItem Header="_Duplicate"
+                          Command="{Binding DuplicateSelectedHierarchyItemCommand}"
+                          InputGestureText="Ctrl+D" />
+                <MenuItem Header="_Delete"
+                          Command="{Binding DeleteSelectedHierarchyItemCommand}"
+                          InputGestureText="Del" />
+                <Separator />
+                <MenuItem Header="_Arrange">
+                    <MenuItem Header="Bring to _Front"
+                              Command="{Binding BringToFrontHierarchyItemCommand}" />
+                    <MenuItem Header="Bring _Forward"
+                              Command="{Binding BringForwardHierarchyItemCommand}" />
+                    <MenuItem Header="Send _Backward"
+                              Command="{Binding SendBackwardHierarchyItemCommand}" />
+                    <MenuItem Header="Send to _Back"
+                              Command="{Binding SendToBackHierarchyItemCommand}" />
+                </MenuItem>
+                <MenuItem Header="_Object">
+                    <MenuItem Header="_Lock"
+                              Command="{Binding LockSelectedHierarchyItemCommand}" />
+                    <MenuItem Header="_Unlock"
+                              Command="{Binding UnlockSelectedHierarchyItemCommand}" />
+                    <Separator />
+                    <MenuItem Header="_Hide"
+                              Command="{Binding HideSelectedHierarchyItemCommand}" />
+                    <MenuItem Header="_Show"
+                              Command="{Binding ShowSelectedHierarchyItemCommand}" />
+                </MenuItem>
+                <Separator />
                 <MenuItem Header="_Preferences"
                           Command="{Binding OpenPreferencesCommand}" />
                 <MenuItem Header="_Project Settings"

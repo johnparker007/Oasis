@@ -26,6 +26,8 @@ internal sealed class PanelElementModel
     public bool? IsReversed { get; init; }
     public int? Stops { get; init; }
     public double? VisibleScale { get; init; }
+    public bool IsLocked { get; init; }
+    public bool IsVisible { get; init; } = true;
     public PanelElementImportSourceModel? ImportSource { get; init; }
 }
 

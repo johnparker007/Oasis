@@ -50,6 +50,16 @@ public sealed class Panel2DHierarchyProvider : IDocumentHierarchyProvider
                 var displayName = string.IsNullOrWhiteSpace(element.Name)
                     ? $"{itemPrefix} {index + 1} ({width}×{height} at {x}, {y})"
                     : element.Name.Trim();
+                if (element.IsLocked)
+                {
+                    displayName += " [Locked]";
+                }
+
+                if (!element.IsVisible)
+                {
+                    displayName += " [Hidden]";
+                }
+
                 return new HierarchyItemViewModel(
                     displayName,
                     $"{kindToken}:{element.ObjectId}",

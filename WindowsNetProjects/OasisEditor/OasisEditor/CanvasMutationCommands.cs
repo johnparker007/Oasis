@@ -74,6 +74,24 @@ internal static class CanvasMutationCommands
         return new ReorderElementMutationCommand(documentId, document, selection, ReorderDirection.SendBackward);
     }
 
+    public static Commands.ICommand CreateSetLockedCommand(
+        Guid documentId,
+        DocumentTabViewModel document,
+        PanelSelectionInfo selection,
+        bool isLocked)
+    {
+        return new SetElementLockStateMutationCommand(documentId, document, selection, isLocked);
+    }
+
+    public static Commands.ICommand CreateSetVisibleCommand(
+        Guid documentId,
+        DocumentTabViewModel document,
+        PanelSelectionInfo selection,
+        bool isVisible)
+    {
+        return new SetElementVisibilityMutationCommand(documentId, document, selection, isVisible);
+    }
+
     private sealed class AddPanelElementMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
     {
         private readonly Guid _documentId;
@@ -511,6 +529,154 @@ internal static class CanvasMutationCommands
             elements.RemoveAt(currentIndex);
             var restoreIndex = Math.Clamp(fromIndex, 0, elements.Count);
             elements.Insert(restoreIndex, selected);
+            _document.SetPanelElements(elements);
+            _document.MarkDirty();
+        }
+    }
+
+    private sealed class SetElementLockStateMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
+    {
+        private readonly Guid _documentId;
+        private readonly DocumentTabViewModel _document;
+        private readonly PanelSelectionInfo _selection;
+        private readonly bool _isLocked;
+        private int? _updatedIndex;
+        private bool _previousValue;
+
+        public SetElementLockStateMutationCommand(
+            Guid documentId,
+            DocumentTabViewModel document,
+            PanelSelectionInfo selection,
+            bool isLocked)
+        {
+            _documentId = documentId;
+            _document = document;
+            _selection = selection;
+            _isLocked = isLocked;
+        }
+
+        public Guid DocumentId => _documentId;
+
+        public string Description => _isLocked ? "Lock element" : "Unlock element";
+
+        public bool WasExecuted { get; private set; }
+
+        public void Execute()
+        {
+            WasExecuted = false;
+            var elements = _document.GetPanelElements().ToList();
+            if (!TryFindMatchingElementIndex(elements, _selection, out var index))
+            {
+                return;
+            }
+
+            var existing = elements[index];
+            if (existing.IsLocked == _isLocked)
+            {
+                return;
+            }
+
+            _updatedIndex = index;
+            _previousValue = existing.IsLocked;
+            elements[index] = PanelElementModelCloner.Clone(existing, isLocked: _isLocked);
+            _document.SetPanelElements(elements);
+            _document.MarkDirty();
+            WasExecuted = true;
+        }
+
+        public void Undo()
+        {
+            if (_updatedIndex is not int index)
+            {
+                return;
+            }
+
+            var elements = _document.GetPanelElements().ToList();
+            if (index < 0 || index >= elements.Count)
+            {
+                return;
+            }
+
+            if (!PanelSelectionContract.IsMatch(Panel2DDocumentStorage.ToStorageElement(elements[index]), _selection))
+            {
+                return;
+            }
+
+            elements[index] = PanelElementModelCloner.Clone(elements[index], isLocked: _previousValue);
+            _document.SetPanelElements(elements);
+            _document.MarkDirty();
+        }
+    }
+
+    private sealed class SetElementVisibilityMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
+    {
+        private readonly Guid _documentId;
+        private readonly DocumentTabViewModel _document;
+        private readonly PanelSelectionInfo _selection;
+        private readonly bool _isVisible;
+        private int? _updatedIndex;
+        private bool _previousValue;
+
+        public SetElementVisibilityMutationCommand(
+            Guid documentId,
+            DocumentTabViewModel document,
+            PanelSelectionInfo selection,
+            bool isVisible)
+        {
+            _documentId = documentId;
+            _document = document;
+            _selection = selection;
+            _isVisible = isVisible;
+        }
+
+        public Guid DocumentId => _documentId;
+
+        public string Description => _isVisible ? "Show element" : "Hide element";
+
+        public bool WasExecuted { get; private set; }
+
+        public void Execute()
+        {
+            WasExecuted = false;
+            var elements = _document.GetPanelElements().ToList();
+            if (!TryFindMatchingElementIndex(elements, _selection, out var index))
+            {
+                return;
+            }
+
+            var existing = elements[index];
+            if (existing.IsVisible == _isVisible)
+            {
+                return;
+            }
+
+            _updatedIndex = index;
+            _previousValue = existing.IsVisible;
+            elements[index] = PanelElementModelCloner.Clone(existing, isVisible: _isVisible);
+            _document.SetPanelElements(elements);
+            _document.MarkDirty();
+            WasExecuted = true;
+        }
+
+        public void Undo()
+        {
+            if (_updatedIndex is not int index)
+            {
+                return;
+            }
+
+            var elements = _document.GetPanelElements().ToList();
+            if (index < 0 || index >= elements.Count)
+            {
+                return;
+            }
+
+            if (!PanelSelectionContract.IsMatch(Panel2DDocumentStorage.ToStorageElement(elements[index]), _selection))
+            {
+                return;
+            }
+
+            elements[index] = PanelElementModelCloner.Clone(elements[index], isVisible: _previousValue);
             _document.SetPanelElements(elements);
             _document.MarkDirty();
         }
