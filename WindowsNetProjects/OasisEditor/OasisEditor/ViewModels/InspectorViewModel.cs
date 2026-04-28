@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using EditorCommands = OasisEditor.Commands;
@@ -46,13 +47,20 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
     {
         get
         {
+            var selectedDocument = _selectedDocumentAccessor();
+            if (selectedDocument is not null
+                && _activeDocumentContext.ActivePanelSelection is PanelSelectionInfo panelSelection
+                && selectedDocument.TryGetPanelElement(panelSelection, out var selectedElement))
+            {
+                return NicifyElementKind(selectedElement.Kind);
+            }
+
             var selectedAsset = _selectedAssetAccessor();
             if (selectedAsset is not null)
             {
                 return $"Asset: {selectedAsset.DisplayPath}";
             }
 
-            var selectedDocument = _selectedDocumentAccessor();
             if (selectedDocument is not null)
             {
                 return $"Document: {selectedDocument.Title}";
@@ -209,8 +217,6 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             "Common",
             selectedElement.Name,
             commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update name", new PanelElementModelUpdate { Name = value })));
-        _propertyRows.Add(new InspectorInfoPropertyViewModel("Object ID", "Metadata", selectedElement.ObjectId));
-        _propertyRows.Add(new InspectorInfoPropertyViewModel("Kind", "Metadata", selectedElement.Kind.ToString()));
         _propertyRows.Add(new InspectorDoublePropertyViewModel(
             "X",
             "Transform",
@@ -390,6 +396,18 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         }
 
         return value.Trim();
+    }
+
+    private static string NicifyElementKind(PanelElementKind kind)
+    {
+        var serializedKind = Panel2DDocumentStorage.SerializeElementKind(kind);
+        if (string.IsNullOrWhiteSpace(serializedKind))
+        {
+            return kind.ToString();
+        }
+
+        var titleCased = char.ToUpperInvariant(serializedKind[0]) + serializedKind[1..];
+        return Regex.Replace(titleCased, "([a-z0-9])([A-Z])", "$1 $2");
     }
 
     private bool CanApplyInspectorSummary()
