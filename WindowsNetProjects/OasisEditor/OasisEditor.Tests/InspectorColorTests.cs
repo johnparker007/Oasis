@@ -95,7 +95,7 @@ public sealed class InspectorColorTests
 
 
     [Fact]
-    public void InspectorColorProperty_SelectedColor_DoesNotAutoCommit()
+    public void InspectorColorProperty_SelectedColor_AutoCommits()
     {
         var commits = new List<string?>();
         var row = new InspectorColorPropertyViewModel("On Color", "Type-specific", "#112233", commit: value =>
@@ -107,10 +107,6 @@ public sealed class InspectorColorTests
         row.SelectedColor = Color.FromArgb(255, 0x22, 0x33, 0x44);
 
         Assert.Equal("#223344", row.HexValue);
-        Assert.Empty(commits);
-
-        row.Commit();
-
         Assert.Single(commits);
         Assert.Equal("#223344", commits[0]);
     }
