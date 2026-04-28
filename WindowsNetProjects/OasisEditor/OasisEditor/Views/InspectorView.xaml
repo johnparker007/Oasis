@@ -3,9 +3,81 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:OasisEditor"
              mc:Ignorable="d"
              d:DesignHeight="300"
              d:DesignWidth="260">
+    <UserControl.Resources>
+        <DataTemplate DataType="{x:Type vm:InspectorTextPropertyViewModel}">
+            <Grid Margin="0,3,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="120" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock VerticalAlignment="Center"
+                           Text="{Binding DisplayName}" />
+                <TextBox Grid.Column="1"
+                         IsReadOnly="{Binding IsReadOnly}"
+                         Text="{Binding Value, UpdateSourceTrigger=LostFocus}" />
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type vm:InspectorDoublePropertyViewModel}">
+            <Grid Margin="0,3,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="120" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock VerticalAlignment="Center"
+                           Text="{Binding DisplayName}" />
+                <TextBox Grid.Column="1"
+                         IsReadOnly="{Binding IsReadOnly}"
+                         Text="{Binding Value, StringFormat=0.###, UpdateSourceTrigger=LostFocus}" />
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type vm:InspectorIntPropertyViewModel}">
+            <Grid Margin="0,3,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="120" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock VerticalAlignment="Center"
+                           Text="{Binding DisplayName}" />
+                <TextBox Grid.Column="1"
+                         IsReadOnly="{Binding IsReadOnly}"
+                         Text="{Binding Value, UpdateSourceTrigger=LostFocus}" />
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type vm:InspectorBoolPropertyViewModel}">
+            <Grid Margin="0,3,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="120" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock VerticalAlignment="Center"
+                           Text="{Binding DisplayName}" />
+                <CheckBox Grid.Column="1"
+                          IsChecked="{Binding Value}" />
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type vm:InspectorInfoPropertyViewModel}">
+            <Grid Margin="0,3,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="120" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock VerticalAlignment="Center"
+                           Text="{Binding DisplayName}" />
+                <TextBlock Grid.Column="1"
+                           TextWrapping="Wrap"
+                           Text="{Binding Value}" />
+            </Grid>
+        </DataTemplate>
+    </UserControl.Resources>
+
     <Grid>
         <StackPanel>
             <TextBlock FontWeight="SemiBold"
@@ -25,6 +97,10 @@
                 <StackPanel>
                     <TextBlock TextWrapping="Wrap"
                                Text="{Binding InspectorSummary}" />
+
+                    <ItemsControl Margin="0,10,0,0"
+                                  ItemsSource="{Binding InspectorPropertyRows}" />
+
                     <TextBlock Margin="0,10,0,0"
                                FontWeight="SemiBold"
                                Text="Edit Summary" />

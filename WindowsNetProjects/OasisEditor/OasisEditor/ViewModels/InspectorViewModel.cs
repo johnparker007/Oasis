@@ -1,6 +1,6 @@
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 
@@ -13,6 +13,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
     private readonly Func<EditorProject?> _loadedProjectAccessor;
     private readonly ActiveDocumentContextService _activeDocumentContext;
     private readonly Func<DocumentTabViewModel, string, DocumentTabViewModel?> _applySummary;
+    private readonly ObservableCollection<InspectorPropertyRowViewModel> _propertyRows = [];
     private string _inspectorEditableSummary = string.Empty;
 
     public InspectorViewModel(
@@ -33,6 +34,8 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public ICommand ApplyInspectorSummaryCommand { get; }
+
+    public IReadOnlyList<InspectorPropertyRowViewModel> InspectorPropertyRows => _propertyRows;
 
     public string InspectorTitle
     {
@@ -178,8 +181,96 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(InspectorSummary));
         OnPropertyChanged(nameof(CanEditInspectorSummary));
 
+        RebuildPropertyRows();
+
         InspectorEditableSummary = _selectedDocumentAccessor()?.ContentSummary ?? string.Empty;
         NotifyInspectorEditCommand();
+    }
+
+    private void RebuildPropertyRows()
+    {
+        _propertyRows.Clear();
+
+        var selectedDocument = _selectedDocumentAccessor();
+        var selection = _activeDocumentContext.ActivePanelSelection;
+        if (selectedDocument is null || selection is null || !selectedDocument.TryGetPanelElement(selection, out var selectedElement))
+        {
+            OnPropertyChanged(nameof(InspectorPropertyRows));
+            return;
+        }
+
+        _propertyRows.Add(new InspectorTextPropertyViewModel("Name", "Common", selectedElement.Name));
+        _propertyRows.Add(new InspectorInfoPropertyViewModel("Object ID", "Metadata", selectedElement.ObjectId));
+        _propertyRows.Add(new InspectorInfoPropertyViewModel("Kind", "Metadata", selectedElement.Kind.ToString()));
+        _propertyRows.Add(new InspectorDoublePropertyViewModel("X", "Transform", selectedElement.X));
+        _propertyRows.Add(new InspectorDoublePropertyViewModel("Y", "Transform", selectedElement.Y));
+        _propertyRows.Add(new InspectorDoublePropertyViewModel("Width", "Transform", selectedElement.Width));
+        _propertyRows.Add(new InspectorDoublePropertyViewModel("Height", "Transform", selectedElement.Height));
+        _propertyRows.Add(new InspectorBoolPropertyViewModel("Locked", "Common", selectedElement.IsLocked));
+        _propertyRows.Add(new InspectorBoolPropertyViewModel("Visible", "Common", selectedElement.IsVisible));
+
+        AddTypeSpecificRows(selectedElement);
+
+        OnPropertyChanged(nameof(InspectorPropertyRows));
+    }
+
+    private void AddTypeSpecificRows(PanelElementModel selectedElement)
+    {
+        if (selectedElement.DisplayNumber.HasValue)
+        {
+            _propertyRows.Add(new InspectorIntPropertyViewModel("Display Number", "Type-specific", selectedElement.DisplayNumber));
+        }
+
+        if (!string.IsNullOrWhiteSpace(selectedElement.AssetPath))
+        {
+            _propertyRows.Add(new InspectorTextPropertyViewModel("Asset Path", "Type-specific", selectedElement.AssetPath));
+        }
+
+        if (!string.IsNullOrWhiteSpace(selectedElement.SecondaryAssetPath))
+        {
+            _propertyRows.Add(new InspectorTextPropertyViewModel("Secondary Asset", "Type-specific", selectedElement.SecondaryAssetPath));
+        }
+
+        if (!string.IsNullOrWhiteSpace(selectedElement.OnColorHex))
+        {
+            _propertyRows.Add(new InspectorTextPropertyViewModel("On Color", "Type-specific", selectedElement.OnColorHex));
+        }
+
+        if (!string.IsNullOrWhiteSpace(selectedElement.OffColorHex))
+        {
+            _propertyRows.Add(new InspectorTextPropertyViewModel("Off Color", "Type-specific", selectedElement.OffColorHex));
+        }
+
+        if (!string.IsNullOrWhiteSpace(selectedElement.TextColorHex))
+        {
+            _propertyRows.Add(new InspectorTextPropertyViewModel("Text Color", "Type-specific", selectedElement.TextColorHex));
+        }
+
+        if (!string.IsNullOrWhiteSpace(selectedElement.DisplayText))
+        {
+            _propertyRows.Add(new InspectorTextPropertyViewModel("Display Text", "Type-specific", selectedElement.DisplayText));
+        }
+
+        if (selectedElement.Stops.HasValue)
+        {
+            _propertyRows.Add(new InspectorIntPropertyViewModel("Stops", "Type-specific", selectedElement.Stops));
+        }
+
+        if (selectedElement.VisibleScale.HasValue)
+        {
+            _propertyRows.Add(new InspectorDoublePropertyViewModel("Visible Scale", "Type-specific", selectedElement.VisibleScale.Value));
+        }
+
+        if (selectedElement.IsReversed.HasValue)
+        {
+            _propertyRows.Add(new InspectorBoolPropertyViewModel("Reversed", "Type-specific", selectedElement.IsReversed.Value));
+        }
+
+        if (selectedElement.ImportSource is not null)
+        {
+            _propertyRows.Add(new InspectorInfoPropertyViewModel("Import Format", "Metadata", selectedElement.ImportSource.Format));
+            _propertyRows.Add(new InspectorInfoPropertyViewModel("Import Reference", "Metadata", selectedElement.ImportSource.Reference));
+        }
     }
 
     private bool CanApplyInspectorSummary()
