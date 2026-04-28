@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Globalization;
+using System.Windows.Media;
 
 namespace OasisEditor;
 
@@ -219,6 +220,136 @@ public sealed class InspectorIntPropertyViewModel : InspectorEditablePropertyRow
         _committedValue = parsedValue?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
         _value = _committedValue;
         RaisePropertyChanged(nameof(Value));
+    }
+}
+
+
+public sealed class InspectorColorPropertyViewModel : InspectorEditablePropertyRowViewModel
+{
+    private Color _selectedColor;
+    private Color _committedColor;
+    private string _hexValue;
+    private readonly Func<string?, string?>? _commit;
+    private readonly bool _allowEmpty;
+
+    public InspectorColorPropertyViewModel(string displayName, string groupName, string? value, bool isReadOnly = false, bool allowEmpty = true, Func<string?, string?>? commit = null)
+        : base(displayName, groupName, isReadOnly)
+    {
+        _allowEmpty = allowEmpty;
+        _commit = commit;
+
+        if (InspectorColorHex.TryParse(value, out var parsedColor))
+        {
+            _selectedColor = parsedColor;
+            _committedColor = parsedColor;
+            _hexValue = InspectorColorHex.Format(parsedColor);
+            _committedHexValue = _hexValue;
+        }
+        else
+        {
+            _selectedColor = Colors.White;
+            _committedColor = _selectedColor;
+            _hexValue = string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
+            _committedHexValue = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        }
+    }
+
+    public Color SelectedColor
+    {
+        get => _selectedColor;
+        set
+        {
+            if (IsReadOnly || !SetProperty(ref _selectedColor, value))
+            {
+                return;
+            }
+
+            _hexValue = InspectorColorHex.Format(value);
+            RaisePropertyChanged(nameof(HexValue));
+            Commit();
+        }
+    }
+
+    public string HexValue
+    {
+        get => _hexValue;
+        set => SetProperty(ref _hexValue, value);
+    }
+
+    public override void Commit()
+    {
+        if (IsReadOnly)
+        {
+            return;
+        }
+
+        var normalizedHex = NormalizeHex(_hexValue, out var parsedColor, out var parseError);
+        if (!string.IsNullOrWhiteSpace(parseError))
+        {
+            ErrorText = parseError;
+            _hexValue = _committedHexValue ?? string.Empty;
+            _selectedColor = _committedColor;
+            RaisePropertyChanged(nameof(HexValue));
+            RaisePropertyChanged(nameof(SelectedColor));
+            return;
+        }
+
+        if (string.Equals(normalizedHex, _committedHexValue, StringComparison.Ordinal))
+        {
+            ErrorText = string.Empty;
+            return;
+        }
+
+        var error = _commit?.Invoke(normalizedHex);
+        if (!string.IsNullOrWhiteSpace(error))
+        {
+            ErrorText = error;
+            _hexValue = _committedHexValue ?? string.Empty;
+            _selectedColor = _committedColor;
+            RaisePropertyChanged(nameof(HexValue));
+            RaisePropertyChanged(nameof(SelectedColor));
+            return;
+        }
+
+        ErrorText = string.Empty;
+        _hexValue = normalizedHex ?? string.Empty;
+        RaisePropertyChanged(nameof(HexValue));
+
+        if (parsedColor.HasValue)
+        {
+            _selectedColor = parsedColor.Value;
+            RaisePropertyChanged(nameof(SelectedColor));
+            _committedColor = parsedColor.Value;
+        }
+
+        _committedHexValue = normalizedHex;
+    }
+
+    private string? _committedHexValue;
+
+    private string? NormalizeHex(string? value, out Color? parsedColor, out string? error)
+    {
+        parsedColor = null;
+        error = null;
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            if (_allowEmpty)
+            {
+                return null;
+            }
+
+            error = "A color value is required.";
+            return null;
+        }
+
+        if (!InspectorColorHex.TryParse(value, out var color))
+        {
+            error = "Enter a valid hex color (RRGGBB or AARRGGBB).";
+            return null;
+        }
+
+        parsedColor = color;
+        return InspectorColorHex.Format(color);
     }
 }
 

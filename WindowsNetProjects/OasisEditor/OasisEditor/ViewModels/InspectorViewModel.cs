@@ -288,7 +288,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
         if (selectedElement.Kind is PanelElementKind.Lamp or PanelElementKind.SevenSegment or PanelElementKind.Alpha)
         {
-            _propertyRows.Add(new InspectorTextPropertyViewModel(
+            _propertyRows.Add(new InspectorColorPropertyViewModel(
                 "On Color",
                 "Type-specific",
                 selectedElement.OnColorHex ?? string.Empty,
@@ -297,7 +297,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
         if (selectedElement.Kind is PanelElementKind.Lamp)
         {
-            _propertyRows.Add(new InspectorTextPropertyViewModel(
+            _propertyRows.Add(new InspectorColorPropertyViewModel(
                 "Off Color",
                 "Type-specific",
                 selectedElement.OffColorHex ?? string.Empty,
@@ -306,7 +306,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
         if (selectedElement.Kind is PanelElementKind.Lamp or PanelElementKind.Alpha)
         {
-            _propertyRows.Add(new InspectorTextPropertyViewModel(
+            _propertyRows.Add(new InspectorColorPropertyViewModel(
                 "Text Color",
                 "Type-specific",
                 selectedElement.TextColorHex ?? string.Empty,
