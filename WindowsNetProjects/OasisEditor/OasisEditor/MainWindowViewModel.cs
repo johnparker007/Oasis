@@ -924,8 +924,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         _activeDocumentContext.SetPanelSelection(documentId, selection);
+        _hierarchy.SyncSelection(selection);
         NotifyInspectorChanged();
-        RefreshHierarchy();
+        OnPropertyChanged(nameof(HierarchyItems));
     }
 
 
@@ -1148,8 +1149,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void OnSelectedDocumentPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(DocumentTabViewModel.PanelLayoutJson)
-            or nameof(DocumentTabViewModel.HierarchySelectedPanelSelection))
+        if (e.PropertyName is nameof(DocumentTabViewModel.PanelLayoutJson))
         {
             RefreshHierarchy();
             NotifyInspectorChanged();
@@ -1157,6 +1157,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         if (e.PropertyName is nameof(DocumentTabViewModel.HierarchySelectedPanelSelection))
         {
+            _hierarchy.SyncSelection(SelectedDocument?.HierarchySelectedPanelSelection);
+            OnPropertyChanged(nameof(HierarchyItems));
+            NotifyInspectorChanged();
             NotifyHierarchyCommands();
         }
     }

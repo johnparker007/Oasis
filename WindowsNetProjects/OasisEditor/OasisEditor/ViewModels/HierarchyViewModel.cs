@@ -73,6 +73,11 @@ public sealed class HierarchyViewModel : INotifyPropertyChanged
         NotifyCollectionStateChanged();
     }
 
+    public void SyncSelection(PanelSelectionInfo? selection)
+    {
+        ApplySelection(selection);
+    }
+
     public HierarchyItemViewModel? GetSelectedEntity()
     {
         return Flatten(Items).FirstOrDefault(item =>
