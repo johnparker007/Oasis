@@ -1139,11 +1139,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             or nameof(DocumentTabViewModel.HierarchySelectedPanelSelection))
         {
             RefreshHierarchy();
+            NotifyInspectorChanged();
         }
 
         if (e.PropertyName is nameof(DocumentTabViewModel.HierarchySelectedPanelSelection))
         {
-            NotifyInspectorChanged();
             NotifyHierarchyCommands();
         }
     }

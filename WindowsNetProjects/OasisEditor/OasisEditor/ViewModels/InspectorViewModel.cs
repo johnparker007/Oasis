@@ -349,9 +349,9 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             objectId,
             updated,
             description);
-        _executeCanvasCommand(selectedDocument.DocumentId, command);
-        NotifyContextChanged();
-        return null;
+        return _executeCanvasCommand(selectedDocument.DocumentId, command)
+            ? null
+            : "Unable to apply update.";
     }
 
     private static string? NormalizeOptionalText(string? value)
