@@ -105,6 +105,12 @@ public sealed class MfmeToOasisComponentMapperTests
 
         Assert.All(result.Elements, element => Assert.NotEqual(PanelElementKind.Unknown, element.Kind));
         Assert.All(result.Elements, element => Assert.False(string.IsNullOrWhiteSpace(element.ObjectId)));
+        Assert.All(result.Elements, element =>
+        {
+            Assert.NotNull(element.ImportSource);
+            Assert.Equal("LegacyImport", element.ImportSource!.Format);
+            Assert.False(string.IsNullOrWhiteSpace(element.ImportSource.Reference));
+        });
     }
 
     [Fact]
@@ -161,6 +167,13 @@ public sealed class MfmeToOasisComponentMapperTests
         var reel = result.Elements[1];
         Assert.Null(reel.VisibleScale);
         Assert.Equal("Reel 2", reel.Name);
+
+        Assert.All(result.Elements, element =>
+        {
+            Assert.NotNull(element.ImportSource);
+            Assert.Equal("LegacyImport", element.ImportSource!.Format);
+            Assert.False(string.IsNullOrWhiteSpace(element.ImportSource.Reference));
+        });
     }
 
     private sealed record UnsupportedLegacyComponent()
