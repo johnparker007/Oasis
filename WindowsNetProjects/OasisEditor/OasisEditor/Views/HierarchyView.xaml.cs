@@ -76,6 +76,16 @@ public partial class HierarchyView : UserControl
         viewModel.SelectHierarchyItemForContextMenu(hierarchyItem);
     }
 
+    private void OnTreeViewItemSelected(object sender, RoutedEventArgs eventArgs)
+    {
+        if (sender is not TreeViewItem treeViewItem)
+        {
+            return;
+        }
+
+        treeViewItem.BringIntoView();
+    }
+
     private static T? FindAncestor<T>(DependencyObject current)
         where T : DependencyObject
     {
