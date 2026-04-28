@@ -83,7 +83,26 @@ public partial class HierarchyView : UserControl
             return;
         }
 
+        if (IsVerticallyVisible(treeViewItem))
+        {
+            return;
+        }
+
         treeViewItem.BringIntoView();
+    }
+
+    private static bool IsVerticallyVisible(TreeViewItem treeViewItem)
+    {
+        var scrollViewer = FindAncestor<ScrollViewer>(treeViewItem);
+        if (scrollViewer is null || scrollViewer.ViewportHeight <= 0)
+        {
+            return false;
+        }
+
+        var bounds = treeViewItem.TransformToAncestor(scrollViewer)
+            .TransformBounds(new Rect(new Point(0, 0), treeViewItem.RenderSize));
+
+        return bounds.Top >= 0 && bounds.Bottom <= scrollViewer.ViewportHeight;
     }
 
     private static T? FindAncestor<T>(DependencyObject current)
