@@ -253,7 +253,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
     private void AddTypeSpecificRows(PanelElementModel selectedElement)
     {
-        if (selectedElement.DisplayNumber.HasValue)
+        if (selectedElement.Kind is PanelElementKind.Lamp or PanelElementKind.Reel or PanelElementKind.SevenSegment)
         {
             _propertyRows.Add(new InspectorIntPropertyViewModel(
                 "Display Number",
@@ -280,66 +280,66 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                 commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update secondary asset path", new PanelElementModelUpdate { SecondaryAssetPath = NormalizeOptionalText(value) })));
         }
 
-        if (!string.IsNullOrWhiteSpace(selectedElement.OnColorHex))
+        if (selectedElement.Kind is PanelElementKind.Lamp or PanelElementKind.SevenSegment or PanelElementKind.Alpha)
         {
             _propertyRows.Add(new InspectorTextPropertyViewModel(
                 "On Color",
                 "Type-specific",
-                selectedElement.OnColorHex,
+                selectedElement.OnColorHex ?? string.Empty,
                 commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update on color", new PanelElementModelUpdate { OnColorHex = NormalizeOptionalText(value) })));
         }
 
-        if (!string.IsNullOrWhiteSpace(selectedElement.OffColorHex))
+        if (selectedElement.Kind is PanelElementKind.Lamp)
         {
             _propertyRows.Add(new InspectorTextPropertyViewModel(
                 "Off Color",
                 "Type-specific",
-                selectedElement.OffColorHex,
+                selectedElement.OffColorHex ?? string.Empty,
                 commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update off color", new PanelElementModelUpdate { OffColorHex = NormalizeOptionalText(value) })));
         }
 
-        if (!string.IsNullOrWhiteSpace(selectedElement.TextColorHex))
+        if (selectedElement.Kind is PanelElementKind.Lamp or PanelElementKind.Alpha)
         {
             _propertyRows.Add(new InspectorTextPropertyViewModel(
                 "Text Color",
                 "Type-specific",
-                selectedElement.TextColorHex,
+                selectedElement.TextColorHex ?? string.Empty,
                 commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update text color", new PanelElementModelUpdate { TextColorHex = NormalizeOptionalText(value) })));
         }
 
-        if (!string.IsNullOrWhiteSpace(selectedElement.DisplayText))
+        if (selectedElement.Kind is PanelElementKind.Lamp or PanelElementKind.Alpha)
         {
             _propertyRows.Add(new InspectorTextPropertyViewModel(
                 "Display Text",
                 "Type-specific",
-                selectedElement.DisplayText,
+                selectedElement.DisplayText ?? string.Empty,
                 commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update display text", new PanelElementModelUpdate { DisplayText = NormalizeOptionalText(value) })));
         }
 
-        if (selectedElement.Stops.HasValue)
+        if (selectedElement.Kind is PanelElementKind.Reel)
         {
             _propertyRows.Add(new InspectorIntPropertyViewModel(
                 "Stops",
                 "Type-specific",
                 selectedElement.Stops,
                 commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update stops", new PanelElementModelUpdate { Stops = value })));
+
+            if (selectedElement.VisibleScale.HasValue)
+            {
+                _propertyRows.Add(new InspectorDoublePropertyViewModel(
+                    "Visible Scale",
+                    "Type-specific",
+                    selectedElement.VisibleScale.Value,
+                    commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update visible scale", new PanelElementModelUpdate { VisibleScale = value })));
+            }
         }
 
-        if (selectedElement.VisibleScale.HasValue)
-        {
-            _propertyRows.Add(new InspectorDoublePropertyViewModel(
-                "Visible Scale",
-                "Type-specific",
-                selectedElement.VisibleScale.Value,
-                commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update visible scale", new PanelElementModelUpdate { VisibleScale = value })));
-        }
-
-        if (selectedElement.IsReversed.HasValue)
+        if (selectedElement.Kind is PanelElementKind.Reel or PanelElementKind.Alpha)
         {
             _propertyRows.Add(new InspectorBoolPropertyViewModel(
                 "Reversed",
                 "Type-specific",
-                selectedElement.IsReversed.Value,
+                selectedElement.IsReversed ?? false,
                 commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update reversed", new PanelElementModelUpdate { IsReversed = value })));
         }
 

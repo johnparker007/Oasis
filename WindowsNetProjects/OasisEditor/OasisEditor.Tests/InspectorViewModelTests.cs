@@ -101,6 +101,66 @@ public sealed class InspectorViewModelTests
         Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "On Color");
     }
 
+
+    [Fact]
+    public void InspectorPropertyRows_SelectedAlpha_IncludesEditableFieldsEvenWhenUnset()
+    {
+        var selectedDocument = new DocumentTabViewModel(EditorDocument.CreatePanel2DStub("Panel"));
+        selectedDocument.SetPanelElements(
+            [
+                new PanelElementModel
+                {
+                    ObjectId = "alpha-1",
+                    Name = "Alpha",
+                    Kind = PanelElementKind.Alpha,
+                    X = 10,
+                    Y = 20,
+                    Width = 30,
+                    Height = 40
+                }
+            ]);
+
+        var context = new ActiveDocumentContextService();
+        context.SetActiveDocument(selectedDocument);
+        context.SetPanelSelection(selectedDocument.DocumentId, new PanelSelectionInfo("alpha-1", "alpha", 10, 20, 30, 40));
+
+        var viewModel = CreateInspectorViewModel(selectedDocument, context, ExecuteImmediately);
+        viewModel.NotifyContextChanged();
+
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "On Color");
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Text Color");
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Display Text");
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Reversed");
+    }
+
+    [Fact]
+    public void InspectorPropertyRows_SelectedLamp_IncludesDisplayNumberWhenUnset()
+    {
+        var selectedDocument = new DocumentTabViewModel(EditorDocument.CreatePanel2DStub("Panel"));
+        selectedDocument.SetPanelElements(
+            [
+                new PanelElementModel
+                {
+                    ObjectId = "lamp-1",
+                    Name = "Lamp",
+                    Kind = PanelElementKind.Lamp,
+                    X = 10,
+                    Y = 20,
+                    Width = 30,
+                    Height = 40
+                }
+            ]);
+
+        var context = new ActiveDocumentContextService();
+        context.SetActiveDocument(selectedDocument);
+        context.SetPanelSelection(selectedDocument.DocumentId, new PanelSelectionInfo("lamp-1", "lamp", 10, 20, 30, 40));
+
+        var viewModel = CreateInspectorViewModel(selectedDocument, context, ExecuteImmediately);
+        viewModel.NotifyContextChanged();
+
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Display Number");
+    }
+
     [Fact]
     public void InspectorPropertyRows_NoSelection_AreEmpty()
     {
