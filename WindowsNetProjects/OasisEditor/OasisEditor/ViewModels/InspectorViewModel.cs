@@ -51,7 +51,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                 && _activeDocumentContext.ActivePanelSelection is PanelSelectionInfo panelSelection
                 && selectedDocument.TryGetPanelElement(panelSelection, out var selectedElement))
             {
-                return Panel2DDocumentStorage.SerializeElementKind(selectedElement.Kind);
+                return NicifyElementKind(selectedElement.Kind);
             }
 
             var selectedAsset = _selectedAssetAccessor();
@@ -395,6 +395,17 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         }
 
         return value.Trim();
+    }
+
+    private static string NicifyElementKind(PanelElementKind kind)
+    {
+        var serializedKind = Panel2DDocumentStorage.SerializeElementKind(kind);
+        if (string.IsNullOrWhiteSpace(serializedKind))
+        {
+            return kind.ToString();
+        }
+
+        return char.ToUpperInvariant(serializedKind[0]) + serializedKind[1..];
     }
 
     private bool CanApplyInspectorSummary()
