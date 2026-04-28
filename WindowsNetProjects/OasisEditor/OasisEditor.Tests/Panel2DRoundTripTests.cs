@@ -1054,6 +1054,183 @@ public sealed class Panel2DRoundTripTests
     }
 
     [Fact]
+    public void UpdateElementCommand_UpdatesTargetedElementAndSupportsUndoRedo()
+    {
+        var document = CreatePanelDocument(
+            new PanelElementModel
+            {
+                ObjectId = "target-id",
+                Name = "Target",
+                Kind = PanelElementKind.Rectangle,
+                X = 10,
+                Y = 20,
+                Width = 30,
+                Height = 40
+            },
+            new PanelElementModel
+            {
+                ObjectId = "other-id",
+                Name = "Other",
+                Kind = PanelElementKind.Rectangle,
+                X = 1,
+                Y = 2,
+                Width = 3,
+                Height = 4
+            });
+        var workspace = CreateWorkspace(document, document);
+        var updated = new PanelElementModel
+        {
+            ObjectId = "target-id",
+            Name = "Target Renamed",
+            Kind = PanelElementKind.Rectangle,
+            X = 50,
+            Y = 60,
+            Width = 70,
+            Height = 80
+        };
+
+        var command = CanvasMutationCommands.CreateUpdateElementCommand(
+            document.DocumentId,
+            document,
+            "target-id",
+            updated,
+            "Inspector update");
+
+        Assert.True(workspace.ExecuteDocumentCanvasCommand(document.DocumentId, command));
+
+        var mutatedTarget = document.GetPanelElements().Single(element => element.ObjectId == "target-id");
+        var untouched = document.GetPanelElements().Single(element => element.ObjectId == "other-id");
+        Assert.Equal("Target Renamed", mutatedTarget.Name);
+        Assert.Equal(50, mutatedTarget.X);
+        Assert.Equal(60, mutatedTarget.Y);
+        Assert.Equal(70, mutatedTarget.Width);
+        Assert.Equal(80, mutatedTarget.Height);
+        Assert.Equal("Other", untouched.Name);
+
+        Assert.True(workspace.UndoActiveDocument());
+        var restoredTarget = document.GetPanelElements().Single(element => element.ObjectId == "target-id");
+        Assert.Equal("Target", restoredTarget.Name);
+        Assert.Equal(10, restoredTarget.X);
+        Assert.Equal(20, restoredTarget.Y);
+        Assert.Equal(30, restoredTarget.Width);
+        Assert.Equal(40, restoredTarget.Height);
+
+        Assert.True(workspace.RedoActiveDocument());
+        var redoneTarget = document.GetPanelElements().Single(element => element.ObjectId == "target-id");
+        Assert.Equal("Target Renamed", redoneTarget.Name);
+    }
+
+    [Fact]
+    public void ExecuteDocumentCanvasCommand_UpdateElementNoOp_DoesNotRecordHistory()
+    {
+        var document = CreatePanelDocument(
+            new PanelElementModel
+            {
+                ObjectId = "rect-1",
+                Name = "Rect 1",
+                Kind = PanelElementKind.Rectangle,
+                X = 10,
+                Y = 10,
+                Width = 20,
+                Height = 20
+            });
+        var workspace = CreateWorkspace(document, document);
+        var unchanged = document.GetPanelElements().Single();
+
+        var command = CanvasMutationCommands.CreateUpdateElementCommand(
+            document.DocumentId,
+            document,
+            "rect-1",
+            PanelElementModelCloner.Clone(unchanged),
+            "Inspector update");
+
+        var executed = workspace.ExecuteDocumentCanvasCommand(document.DocumentId, command);
+
+        Assert.False(executed);
+        Assert.Empty(document.CommandService.History.Entries);
+        Assert.Equal("Rect 1", document.GetPanelElements().Single().Name);
+    }
+
+    [Fact]
+    public void ExecuteDocumentCanvasCommand_UpdateElementMissingObject_DoesNotRecordHistory()
+    {
+        var document = CreatePanelDocument(
+            new PanelElementModel
+            {
+                ObjectId = "rect-1",
+                Name = "Rect 1",
+                Kind = PanelElementKind.Rectangle,
+                X = 10,
+                Y = 10,
+                Width = 20,
+                Height = 20
+            });
+        var workspace = CreateWorkspace(document, document);
+        var updated = new PanelElementModel
+        {
+            ObjectId = "missing-id",
+            Name = "Renamed",
+            Kind = PanelElementKind.Rectangle,
+            X = 1,
+            Y = 2,
+            Width = 3,
+            Height = 4
+        };
+
+        var command = CanvasMutationCommands.CreateUpdateElementCommand(
+            document.DocumentId,
+            document,
+            "missing-id",
+            updated,
+            "Inspector update");
+
+        var executed = workspace.ExecuteDocumentCanvasCommand(document.DocumentId, command);
+
+        Assert.False(executed);
+        Assert.Empty(document.CommandService.History.Entries);
+    }
+
+    [Fact]
+    public void ExecuteDocumentCanvasCommand_UpdateElementInvalidWidth_DoesNotExecute()
+    {
+        var document = CreatePanelDocument(
+            new PanelElementModel
+            {
+                ObjectId = "rect-1",
+                Name = "Rect 1",
+                Kind = PanelElementKind.Rectangle,
+                X = 10,
+                Y = 10,
+                Width = 20,
+                Height = 20
+            });
+        var workspace = CreateWorkspace(document, document);
+
+        var invalid = new PanelElementModel
+        {
+            ObjectId = "rect-1",
+            Name = "Rect Invalid",
+            Kind = PanelElementKind.Rectangle,
+            X = 10,
+            Y = 10,
+            Width = 0,
+            Height = 20
+        };
+        var command = CanvasMutationCommands.CreateUpdateElementCommand(
+            document.DocumentId,
+            document,
+            "rect-1",
+            invalid,
+            "Inspector update");
+
+        var executed = workspace.ExecuteDocumentCanvasCommand(document.DocumentId, command);
+
+        Assert.False(executed);
+        Assert.Empty(document.CommandService.History.Entries);
+        Assert.Equal(20, document.GetPanelElements().Single().Width);
+    }
+
+    [Fact]
     public void ExecuteDocumentCanvasCommand_TargetingInactiveDocument_ReturnsFalseAndDoesNotMutate()
     {
         var firstDocument = CreatePanelDocument(
