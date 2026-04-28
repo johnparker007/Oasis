@@ -396,11 +396,7 @@ internal sealed class HierarchyPanelCommandService
         }
 
         var command = CanvasMutationCommands.CreateSetVisibleCommand(document.DocumentId, document, selection, isVisible);
-        var changed = _executeCanvasCommand(document.DocumentId, command);
-        if (changed && !isVisible)
-        {
-            _updateDocumentSelection(document.DocumentId, null);
-        }
+        _executeCanvasCommand(document.DocumentId, command);
     }
 
     private enum ReorderAction

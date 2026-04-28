@@ -408,7 +408,7 @@ public sealed class HierarchyPanelCommandServiceTests
 
         var updated = Assert.Single(document.GetPanelElements());
         Assert.False(updated.IsVisible);
-        Assert.Null(document.HierarchySelectedPanelSelection);
+        Assert.NotNull(document.HierarchySelectedPanelSelection);
         Assert.False(service.CanHideSelected());
         Assert.True(service.CanShowSelected());
 
