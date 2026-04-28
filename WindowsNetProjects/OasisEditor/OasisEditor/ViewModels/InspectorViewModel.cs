@@ -193,7 +193,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
         var selectedDocument = _selectedDocumentAccessor();
         var selection = _activeDocumentContext.ActivePanelSelection;
-        if (selectedDocument is null || selection is null || !selectedDocument.TryGetPanelElement(selection, out var selectedElement))
+        if (selectedDocument is null || selection is not PanelSelectionInfo selectedSelection || !selectedDocument.TryGetPanelElement(selectedSelection, out var selectedElement))
         {
             OnPropertyChanged(nameof(InspectorPropertyRows));
             return;
