@@ -440,7 +440,6 @@ internal static class CanvasMutationCommands
         private readonly PanelSelectionInfo _selection;
         private readonly ReorderDirection _direction;
         private int? _fromIndex;
-        private int? _toIndex;
         private string? _objectId;
 
         public ReorderElementMutationCommand(
@@ -477,19 +476,17 @@ internal static class CanvasMutationCommands
                 return;
             }
 
-            var toIndex = ResolveTargetIndex(fromIndex, elements.Count, _direction);
-            if (toIndex == fromIndex)
+            if (!CanReorder(fromIndex, elements.Count, _direction))
             {
                 return;
             }
 
             var selected = elements[fromIndex];
             elements.RemoveAt(fromIndex);
-            var insertIndex = toIndex > fromIndex ? toIndex - 1 : toIndex;
+            var insertIndex = ResolveInsertIndex(fromIndex, elements.Count + 1, _direction);
             elements.Insert(insertIndex, selected);
 
             _fromIndex = fromIndex;
-            _toIndex = insertIndex;
             _objectId = selected.ObjectId;
             _document.SetPanelElements(elements);
             _document.MarkDirty();
@@ -498,17 +495,12 @@ internal static class CanvasMutationCommands
 
         public void Undo()
         {
-            if (_fromIndex is not int fromIndex || _toIndex is not int toIndex || string.IsNullOrWhiteSpace(_objectId))
+            if (_fromIndex is not int fromIndex || string.IsNullOrWhiteSpace(_objectId))
             {
                 return;
             }
 
             var elements = _document.GetPanelElements().ToList();
-            if (toIndex < 0 || toIndex >= elements.Count)
-            {
-                return;
-            }
-
             var currentIndex = elements.FindIndex(element => string.Equals(element.ObjectId, _objectId, StringComparison.Ordinal));
             if (currentIndex < 0)
             {
@@ -640,13 +632,25 @@ internal static class CanvasMutationCommands
         }
     }
 
-    private static int ResolveTargetIndex(int currentIndex, int count, ReorderDirection direction)
+    private static bool CanReorder(int currentIndex, int count, ReorderDirection direction)
     {
         return direction switch
         {
-            ReorderDirection.BringToFront => count - 1,
+            ReorderDirection.BringToFront => currentIndex < count - 1,
+            ReorderDirection.SendToBack => currentIndex > 0,
+            ReorderDirection.BringForward => currentIndex < count - 1,
+            ReorderDirection.SendBackward => currentIndex > 0,
+            _ => false
+        };
+    }
+
+    private static int ResolveInsertIndex(int currentIndex, int originalCount, ReorderDirection direction)
+    {
+        return direction switch
+        {
+            ReorderDirection.BringToFront => originalCount - 1,
             ReorderDirection.SendToBack => 0,
-            ReorderDirection.BringForward => Math.Min(currentIndex + 1, count - 1),
+            ReorderDirection.BringForward => Math.Min(currentIndex + 1, originalCount - 1),
             ReorderDirection.SendBackward => Math.Max(currentIndex - 1, 0),
             _ => currentIndex
         };
