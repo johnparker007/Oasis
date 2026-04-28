@@ -92,6 +92,16 @@ internal static class CanvasMutationCommands
         return new SetElementVisibilityMutationCommand(documentId, document, selection, isVisible);
     }
 
+    public static Commands.ICommand CreateUpdateElementCommand(
+        Guid documentId,
+        DocumentTabViewModel document,
+        string objectId,
+        PanelElementModel updatedElement,
+        string description)
+    {
+        return new UpdateElementMutationCommand(documentId, document, objectId, updatedElement, description);
+    }
+
     private sealed class AddPanelElementMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
     {
         private readonly Guid _documentId;
@@ -677,6 +687,93 @@ internal static class CanvasMutationCommands
             }
 
             elements[index] = PanelElementModelCloner.Clone(elements[index], isVisible: _previousValue);
+            _document.SetPanelElements(elements);
+            _document.MarkDirty();
+        }
+    }
+
+    private sealed class UpdateElementMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
+    {
+        private readonly Guid _documentId;
+        private readonly DocumentTabViewModel _document;
+        private readonly string _objectId;
+        private readonly PanelElementModel _updatedElement;
+        private readonly string _description;
+        private PanelElementModel? _previousElement;
+
+        public UpdateElementMutationCommand(
+            Guid documentId,
+            DocumentTabViewModel document,
+            string objectId,
+            PanelElementModel updatedElement,
+            string description)
+        {
+            _documentId = documentId;
+            _document = document;
+            _objectId = objectId;
+            _updatedElement = updatedElement;
+            _description = string.IsNullOrWhiteSpace(description)
+                ? "Update element"
+                : description;
+        }
+
+        public Guid DocumentId => _documentId;
+
+        public string Description => _description;
+
+        public bool WasExecuted { get; private set; }
+
+        public void Execute()
+        {
+            WasExecuted = false;
+            if (string.IsNullOrWhiteSpace(_objectId))
+            {
+                return;
+            }
+
+            var elements = _document.GetPanelElements().ToList();
+            var index = elements.FindIndex(element => string.Equals(element.ObjectId, _objectId, StringComparison.Ordinal));
+            if (index < 0)
+            {
+                return;
+            }
+
+            var existing = elements[index];
+            if (!string.Equals(_updatedElement.ObjectId, _objectId, StringComparison.Ordinal)
+                || _updatedElement.Kind != existing.Kind
+                || !PanelElementValidation.IsValidForInspectorUpdate(_updatedElement)
+                || PanelElementModelComparer.AreEquivalent(existing, _updatedElement))
+            {
+                return;
+            }
+
+            _previousElement = PanelElementModelCloner.Clone(existing);
+            elements[index] = PanelElementModelCloner.Clone(_updatedElement);
+            _document.SetPanelElements(elements);
+            _document.MarkDirty();
+            WasExecuted = true;
+        }
+
+        public void Undo()
+        {
+            if (_previousElement is null || string.IsNullOrWhiteSpace(_objectId))
+            {
+                return;
+            }
+
+            var elements = _document.GetPanelElements().ToList();
+            var index = elements.FindIndex(element => string.Equals(element.ObjectId, _objectId, StringComparison.Ordinal));
+            if (index < 0)
+            {
+                return;
+            }
+
+            if (PanelElementModelComparer.AreEquivalent(elements[index], _previousElement))
+            {
+                return;
+            }
+
+            elements[index] = PanelElementModelCloner.Clone(_previousElement);
             _document.SetPanelElements(elements);
             _document.MarkDirty();
         }
