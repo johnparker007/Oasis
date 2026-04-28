@@ -24,99 +24,99 @@ Goal: replace the current read-only/summary-style Inspector with a Unity-style p
 ## Phase U — Foundation (DO FIRST)
 
 ### U1 — Element Update Infrastructure
-- [ ] Add `PanelElementModelUpdate` (or equivalent updater structure)
-- [ ] Ensure all editable properties can be represented
-- [ ] Do NOT break existing cloning logic
+- [x] Add `PanelElementModelUpdate` (or equivalent updater structure)
+- [x] Ensure all editable properties can be represented
+- [x] Do NOT break existing cloning logic
 
 ### U2 — Generic Update Command
-- [ ] Add `CreateUpdateElementCommand(...)`
-- [ ] Must:
-  - [ ] target documentId
-  - [ ] target objectId
-  - [ ] store previous + new snapshot
-  - [ ] skip no-op updates
-  - [ ] mark document dirty only when needed
+- [x] Add `CreateUpdateElementCommand(...)`
+- [x] Must:
+  - [x] target documentId
+  - [x] target objectId
+  - [x] store previous + new snapshot
+  - [x] skip no-op updates
+  - [x] mark document dirty only when needed
 
 ### U3 — Validation Layer
-- [ ] Add numeric validation helpers
-- [ ] Width/Height > 0 enforced
-- [ ] Invalid edits must not execute commands
+- [x] Add numeric validation helpers
+- [x] Width/Height > 0 enforced
+- [x] Invalid edits must not execute commands
 
 ### U4 — Tests (logic only)
-- [ ] Update command tests
-- [ ] Undo/redo tests
-- [ ] No-op prevention tests
+- [x] Update command tests
+- [x] Undo/redo tests
+- [x] No-op prevention tests
 
 ---
 
 ## Phase V — Inspector Property System
 
 ### V1 — Property Row ViewModels
-- [ ] Add base property row VM
-- [ ] Add:
-  - [ ] string
-  - [ ] double
-  - [ ] int
-  - [ ] bool
-  - [ ] read-only/info
+- [x] Add base property row VM
+- [x] Add:
+  - [x] string
+  - [x] double
+  - [x] int
+  - [x] bool
+  - [x] read-only/info
 
 ### V2 — Binding Strategy
-- [ ] Property rows must:
-  - [ ] read from selected element
-  - [ ] issue commands on change
-  - [ ] NOT mutate model directly
+- [x] Property rows must:
+  - [x] read from selected element
+  - [x] issue commands on change
+  - [x] NOT mutate model directly
 
 ### V3 — Commit Behavior
-- [ ] Text/numeric commit on Enter or focus loss
-- [ ] Bool commit immediately
-- [ ] Avoid flooding undo stack
+- [x] Text/numeric commit on Enter or focus loss
+- [x] Bool commit immediately
+- [x] Avoid flooding undo stack
 
 ---
 
 ## Phase W — Inspector UI
 
 ### W1 — Replace Summary UI
-- [ ] Replace current InspectorView layout
-- [ ] Add grouped layout:
-  - [ ] Transform
-  - [ ] Common
-  - [ ] Type-specific
-  - [ ] Metadata
+- [x] Replace current InspectorView layout
+- [x] Add grouped layout:
+  - [x] Transform
+  - [x] Common
+  - [x] Type-specific
+  - [x] Metadata
 
 ### W2 — Common Fields
-- [ ] Name
-- [ ] ObjectId (read-only)
-- [ ] Kind (read-only)
-- [ ] X/Y
-- [ ] Width/Height
-- [ ] Locked
-- [ ] Visible
+- [x] Name
+- [x] ObjectId (read-only)
+- [x] Kind (read-only)
+- [x] X/Y
+- [x] Width/Height
+- [x] Locked
+- [x] Visible
 
 ### W3 — Canvas Integration
-- [ ] X/Y changes move element
-- [ ] Width/Height changes resize element
-- [ ] Name updates hierarchy
+- [x] X/Y changes move element
+- [x] Width/Height changes resize element
+- [x] Name updates hierarchy
 
 ---
 
 ## Phase X — Element-Specific Fields
 
-- [ ] Lamp fields
-- [ ] Reel fields
-- [ ] SevenSegment fields
-- [ ] Alpha fields
-- [ ] Image/Background asset fields
+- [x] Lamp fields
+- [x] Reel fields
+- [x] SevenSegment fields
+- [x] Alpha fields
+- [x] Image/Background asset fields
 
-- [ ] Hide irrelevant fields
+- [x] Hide irrelevant fields
 
 ---
 
 ## Phase Y — Integration & Stability
 
-- [ ] Selection change refreshes Inspector
-- [ ] Undo/redo refreshes Inspector
-- [ ] Deleting selection clears Inspector
-- [ ] Save/load preserves edits
+- [x] Selection change refreshes Inspector
+- [x] Undo/redo refreshes Inspector
+- [x] Deleting selection clears Inspector
+- [x] Save/load preserves edits
 
 ---
 

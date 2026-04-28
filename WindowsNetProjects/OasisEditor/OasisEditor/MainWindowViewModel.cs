@@ -1111,6 +1111,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(UndoMenuHeader));
         OnPropertyChanged(nameof(RedoMenuHeader));
         RefreshHierarchy();
+        NotifyInspectorChanged();
         CommandManager.InvalidateRequerySuggested();
     }
 

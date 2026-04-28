@@ -101,6 +101,66 @@ public sealed class InspectorViewModelTests
         Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "On Color");
     }
 
+
+    [Fact]
+    public void InspectorPropertyRows_SelectedAlpha_IncludesEditableFieldsEvenWhenUnset()
+    {
+        var selectedDocument = new DocumentTabViewModel(EditorDocument.CreatePanel2DStub("Panel"));
+        selectedDocument.SetPanelElements(
+            [
+                new PanelElementModel
+                {
+                    ObjectId = "alpha-1",
+                    Name = "Alpha",
+                    Kind = PanelElementKind.Alpha,
+                    X = 10,
+                    Y = 20,
+                    Width = 30,
+                    Height = 40
+                }
+            ]);
+
+        var context = new ActiveDocumentContextService();
+        context.SetActiveDocument(selectedDocument);
+        context.SetPanelSelection(selectedDocument.DocumentId, new PanelSelectionInfo("alpha-1", "alpha", 10, 20, 30, 40));
+
+        var viewModel = CreateInspectorViewModel(selectedDocument, context, ExecuteImmediately);
+        viewModel.NotifyContextChanged();
+
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "On Color");
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Text Color");
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Display Text");
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Reversed");
+    }
+
+    [Fact]
+    public void InspectorPropertyRows_SelectedLamp_IncludesDisplayNumberWhenUnset()
+    {
+        var selectedDocument = new DocumentTabViewModel(EditorDocument.CreatePanel2DStub("Panel"));
+        selectedDocument.SetPanelElements(
+            [
+                new PanelElementModel
+                {
+                    ObjectId = "lamp-1",
+                    Name = "Lamp",
+                    Kind = PanelElementKind.Lamp,
+                    X = 10,
+                    Y = 20,
+                    Width = 30,
+                    Height = 40
+                }
+            ]);
+
+        var context = new ActiveDocumentContextService();
+        context.SetActiveDocument(selectedDocument);
+        context.SetPanelSelection(selectedDocument.DocumentId, new PanelSelectionInfo("lamp-1", "lamp", 10, 20, 30, 40));
+
+        var viewModel = CreateInspectorViewModel(selectedDocument, context, ExecuteImmediately);
+        viewModel.NotifyContextChanged();
+
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Display Number");
+    }
+
     [Fact]
     public void InspectorPropertyRows_NoSelection_AreEmpty()
     {
@@ -143,6 +203,70 @@ public sealed class InspectorViewModelTests
         row.Commit();
 
         Assert.Equal("Renamed", selectedDocument.GetPanelElements().Single().Name);
+    }
+
+
+    [Fact]
+    public void InspectorPropertyRows_EditOnColor_CommitsThroughCanvasCommand()
+    {
+        var selectedDocument = new DocumentTabViewModel(EditorDocument.CreatePanel2DStub("Panel"));
+        selectedDocument.SetPanelElements(
+            [
+                new PanelElementModel
+                {
+                    ObjectId = "lamp-1",
+                    Name = "Lamp 7",
+                    Kind = PanelElementKind.Lamp,
+                    X = 10,
+                    Y = 20,
+                    Width = 30,
+                    Height = 40,
+                    OnColorHex = "#FFFFFF"
+                }
+            ]);
+
+        var context = new ActiveDocumentContextService();
+        context.SetActiveDocument(selectedDocument);
+        context.SetPanelSelection(selectedDocument.DocumentId, new PanelSelectionInfo("lamp-1", "lamp", 10, 20, 30, 40));
+        var viewModel = CreateInspectorViewModel(selectedDocument, context, ExecuteImmediately);
+        viewModel.NotifyContextChanged();
+
+        var row = Assert.IsType<InspectorTextPropertyViewModel>(viewModel.InspectorPropertyRows.Single(x => x.DisplayName == "On Color"));
+        row.Value = "#00FF00";
+        row.Commit();
+
+        Assert.Equal("#00FF00", selectedDocument.GetPanelElements().Single().OnColorHex);
+    }
+
+    [Fact]
+    public void InspectorPropertyRows_EditReversed_CommitsThroughCanvasCommand()
+    {
+        var selectedDocument = new DocumentTabViewModel(EditorDocument.CreatePanel2DStub("Panel"));
+        selectedDocument.SetPanelElements(
+            [
+                new PanelElementModel
+                {
+                    ObjectId = "alpha-1",
+                    Name = "Alpha",
+                    Kind = PanelElementKind.Alpha,
+                    X = 10,
+                    Y = 20,
+                    Width = 30,
+                    Height = 40,
+                    IsReversed = false
+                }
+            ]);
+
+        var context = new ActiveDocumentContextService();
+        context.SetActiveDocument(selectedDocument);
+        context.SetPanelSelection(selectedDocument.DocumentId, new PanelSelectionInfo("alpha-1", "alpha", 10, 20, 30, 40));
+        var viewModel = CreateInspectorViewModel(selectedDocument, context, ExecuteImmediately);
+        viewModel.NotifyContextChanged();
+
+        var row = Assert.IsType<InspectorBoolPropertyViewModel>(viewModel.InspectorPropertyRows.Single(x => x.DisplayName == "Reversed"));
+        row.Value = true;
+
+        Assert.True(selectedDocument.GetPanelElements().Single().IsReversed);
     }
 
     [Fact]
