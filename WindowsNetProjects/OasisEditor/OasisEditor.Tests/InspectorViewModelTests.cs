@@ -1,3 +1,5 @@
+using System.Linq;
+using EditorCommands = OasisEditor.Commands;
 using Xunit;
 
 namespace OasisEditor.Tests;
@@ -112,15 +114,86 @@ public sealed class InspectorViewModelTests
         Assert.Empty(viewModel.InspectorPropertyRows);
     }
 
+    [Fact]
+    public void InspectorPropertyRows_EditName_CommitsThroughCanvasCommand()
+    {
+        var selectedDocument = new DocumentTabViewModel(EditorDocument.CreatePanel2DStub("Panel"));
+        selectedDocument.SetPanelElements(
+            [
+                new PanelElementModel
+                {
+                    ObjectId = "rect-1",
+                    Name = "Original",
+                    Kind = PanelElementKind.Rectangle,
+                    X = 10,
+                    Y = 20,
+                    Width = 30,
+                    Height = 40
+                }
+            ]);
+
+        var context = new ActiveDocumentContextService();
+        context.SetActiveDocument(selectedDocument);
+        context.SetPanelSelection(selectedDocument.DocumentId, new PanelSelectionInfo("rect-1", "rectangle", 10, 20, 30, 40));
+        var viewModel = CreateInspectorViewModel(selectedDocument, context, ExecuteImmediately);
+        viewModel.NotifyContextChanged();
+
+        var row = Assert.IsType<InspectorTextPropertyViewModel>(viewModel.InspectorPropertyRows.Single(x => x.DisplayName == "Name"));
+        row.Value = "Renamed";
+        row.Commit();
+
+        Assert.Equal("Renamed", selectedDocument.GetPanelElements().Single().Name);
+    }
+
+    [Fact]
+    public void InspectorPropertyRows_WidthRejectsNonPositiveValue()
+    {
+        var selectedDocument = new DocumentTabViewModel(EditorDocument.CreatePanel2DStub("Panel"));
+        selectedDocument.SetPanelElements(
+            [
+                new PanelElementModel
+                {
+                    ObjectId = "rect-1",
+                    Name = "Original",
+                    Kind = PanelElementKind.Rectangle,
+                    X = 10,
+                    Y = 20,
+                    Width = 30,
+                    Height = 40
+                }
+            ]);
+
+        var context = new ActiveDocumentContextService();
+        context.SetActiveDocument(selectedDocument);
+        context.SetPanelSelection(selectedDocument.DocumentId, new PanelSelectionInfo("rect-1", "rectangle", 10, 20, 30, 40));
+        var viewModel = CreateInspectorViewModel(selectedDocument, context, ExecuteImmediately);
+        viewModel.NotifyContextChanged();
+
+        var row = Assert.IsType<InspectorDoublePropertyViewModel>(viewModel.InspectorPropertyRows.Single(x => x.DisplayName == "Width"));
+        row.Value = "0";
+        row.Commit();
+
+        Assert.Equal("Width must be greater than zero.", row.ErrorText);
+        Assert.Equal(30, selectedDocument.GetPanelElements().Single().Width);
+    }
+
     private static InspectorViewModel CreateInspectorViewModel(
         DocumentTabViewModel selectedDocument,
-        ActiveDocumentContextService context)
+        ActiveDocumentContextService context,
+        Func<Guid, EditorCommands.ICommand, bool>? executeCanvasCommand = null)
     {
         return new InspectorViewModel(
             selectedAssetAccessor: () => null,
             selectedDocumentAccessor: () => selectedDocument,
             loadedProjectAccessor: () => null,
             activeDocumentContext: context,
+            executeCanvasCommand: executeCanvasCommand ?? ((_, _) => true),
             applySummary: (document, summary) => document);
+    }
+
+    private static bool ExecuteImmediately(Guid _, EditorCommands.ICommand command)
+    {
+        command.Execute();
+        return command is not EditorCommands.IExecutionTrackedCommand tracked || tracked.WasExecuted;
     }
 }

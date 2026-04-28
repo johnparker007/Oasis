@@ -18,7 +18,9 @@
                            Text="{Binding DisplayName}" />
                 <TextBox Grid.Column="1"
                          IsReadOnly="{Binding IsReadOnly}"
-                         Text="{Binding Value, UpdateSourceTrigger=LostFocus}" />
+                         LostFocus="OnEditableTextBoxLostFocus"
+                         KeyDown="OnEditableTextBoxKeyDown"
+                         Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" />
             </Grid>
         </DataTemplate>
 
@@ -32,7 +34,9 @@
                            Text="{Binding DisplayName}" />
                 <TextBox Grid.Column="1"
                          IsReadOnly="{Binding IsReadOnly}"
-                         Text="{Binding Value, StringFormat=0.###, UpdateSourceTrigger=LostFocus}" />
+                         LostFocus="OnEditableTextBoxLostFocus"
+                         KeyDown="OnEditableTextBoxKeyDown"
+                         Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" />
             </Grid>
         </DataTemplate>
 
@@ -46,7 +50,9 @@
                            Text="{Binding DisplayName}" />
                 <TextBox Grid.Column="1"
                          IsReadOnly="{Binding IsReadOnly}"
-                         Text="{Binding Value, UpdateSourceTrigger=LostFocus}" />
+                         LostFocus="OnEditableTextBoxLostFocus"
+                         KeyDown="OnEditableTextBoxKeyDown"
+                         Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" />
             </Grid>
         </DataTemplate>
 

@@ -85,6 +85,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             () => SelectedDocument,
             () => LoadedProject,
             _activeDocumentContext,
+            ExecuteDocumentCanvasCommand,
             ApplyInspectorSummary);
         _hierarchy = new HierarchyViewModel(
             () => SelectedDocument,
