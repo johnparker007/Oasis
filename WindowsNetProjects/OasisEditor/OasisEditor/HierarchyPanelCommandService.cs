@@ -133,6 +133,26 @@ internal sealed class HierarchyPanelCommandService
         return TryGetSelectionDocument(out var document, out var selection) && document.HasPanelElement(selection);
     }
 
+    public bool CanBringToFrontSelected()
+    {
+        return CanReorderSelected(ReorderAction.BringToFront);
+    }
+
+    public bool CanSendToBackSelected()
+    {
+        return CanReorderSelected(ReorderAction.SendToBack);
+    }
+
+    public bool CanBringForwardSelected()
+    {
+        return CanReorderSelected(ReorderAction.BringForward);
+    }
+
+    public bool CanSendBackwardSelected()
+    {
+        return CanReorderSelected(ReorderAction.SendBackward);
+    }
+
     public void ExecuteCutSelected()
     {
         if (!TryGetSelectionDocument(out var document, out var selection) || !document.HasPanelElement(selection))
@@ -189,6 +209,26 @@ internal sealed class HierarchyPanelCommandService
         _executeCanvasCommand(document.DocumentId, command);
     }
 
+    public void ExecuteBringToFrontSelected()
+    {
+        ExecuteReorderSelected(ReorderAction.BringToFront);
+    }
+
+    public void ExecuteSendToBackSelected()
+    {
+        ExecuteReorderSelected(ReorderAction.SendToBack);
+    }
+
+    public void ExecuteBringForwardSelected()
+    {
+        ExecuteReorderSelected(ReorderAction.BringForward);
+    }
+
+    public void ExecuteSendBackwardSelected()
+    {
+        ExecuteReorderSelected(ReorderAction.SendBackward);
+    }
+
     private bool TryCopySelectedToClipboard()
     {
         if (!TryGetSelectionDocument(out var document, out var selection))
@@ -229,5 +269,71 @@ internal sealed class HierarchyPanelCommandService
         document = selectedDocument;
         selection = selected;
         return true;
+    }
+
+    private bool CanReorderSelected(ReorderAction action)
+    {
+        if (!TryGetSelectionDocument(out var document, out var selection) || !document.HasPanelElement(selection))
+        {
+            return false;
+        }
+
+        var elements = document.GetPanelElements();
+        if (elements.Count <= 1)
+        {
+            return false;
+        }
+
+        var selectedIndex = -1;
+        for (var i = 0; i < elements.Count; i++)
+        {
+            if (!PanelSelectionContract.IsMatch(Panel2DDocumentStorage.ToStorageElement(elements[i]), selection))
+            {
+                continue;
+            }
+
+            selectedIndex = i;
+            break;
+        }
+        if (selectedIndex < 0)
+        {
+            return false;
+        }
+
+        return action switch
+        {
+            ReorderAction.BringToFront => selectedIndex < elements.Count - 1,
+            ReorderAction.SendToBack => selectedIndex > 0,
+            ReorderAction.BringForward => selectedIndex < elements.Count - 1,
+            ReorderAction.SendBackward => selectedIndex > 0,
+            _ => false
+        };
+    }
+
+    private void ExecuteReorderSelected(ReorderAction action)
+    {
+        if (!TryGetSelectionDocument(out var document, out var selection) || !document.HasPanelElement(selection))
+        {
+            return;
+        }
+
+        Commands.ICommand command = action switch
+        {
+            ReorderAction.BringToFront => CanvasMutationCommands.CreateBringToFrontCommand(document.DocumentId, document, selection),
+            ReorderAction.SendToBack => CanvasMutationCommands.CreateSendToBackCommand(document.DocumentId, document, selection),
+            ReorderAction.BringForward => CanvasMutationCommands.CreateBringForwardCommand(document.DocumentId, document, selection),
+            ReorderAction.SendBackward => CanvasMutationCommands.CreateSendBackwardCommand(document.DocumentId, document, selection),
+            _ => throw new InvalidOperationException($"Unsupported reorder action '{action}'.")
+        };
+
+        _executeCanvasCommand(document.DocumentId, command);
+    }
+
+    private enum ReorderAction
+    {
+        BringToFront,
+        SendToBack,
+        BringForward,
+        SendBackward
     }
 }

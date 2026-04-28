@@ -137,6 +137,18 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         DuplicateSelectedHierarchyItemCommand = new RelayCommand(
             () => _hierarchyPanelCommands.ExecuteDuplicateSelected(),
             () => _hierarchyPanelCommands.CanDuplicateSelected());
+        BringToFrontHierarchyItemCommand = new RelayCommand(
+            () => _hierarchyPanelCommands.ExecuteBringToFrontSelected(),
+            () => _hierarchyPanelCommands.CanBringToFrontSelected());
+        SendToBackHierarchyItemCommand = new RelayCommand(
+            () => _hierarchyPanelCommands.ExecuteSendToBackSelected(),
+            () => _hierarchyPanelCommands.CanSendToBackSelected());
+        BringForwardHierarchyItemCommand = new RelayCommand(
+            () => _hierarchyPanelCommands.ExecuteBringForwardSelected(),
+            () => _hierarchyPanelCommands.CanBringForwardSelected());
+        SendBackwardHierarchyItemCommand = new RelayCommand(
+            () => _hierarchyPanelCommands.ExecuteSendBackwardSelected(),
+            () => _hierarchyPanelCommands.CanSendBackwardSelected());
         ClearOutputCommand = _outputLog.ClearOutputCommand;
         ApplyInspectorSummaryCommand = _inspector.ApplyInspectorSummaryCommand;
         AddOutputEntry("Editor shell initialized.", OutputLogStatus.Info);
@@ -165,6 +177,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand CopySelectedHierarchyItemCommand { get; }
     public ICommand PasteHierarchyItemCommand { get; }
     public ICommand DuplicateSelectedHierarchyItemCommand { get; }
+    public ICommand BringToFrontHierarchyItemCommand { get; }
+    public ICommand SendToBackHierarchyItemCommand { get; }
+    public ICommand BringForwardHierarchyItemCommand { get; }
+    public ICommand SendBackwardHierarchyItemCommand { get; }
     public ICommand ClearOutputCommand { get; }
     public ICommand OpenPreferencesCommand { get; }
     public ICommand OpenProjectSettingsCommand { get; }
@@ -923,6 +939,26 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (DuplicateSelectedHierarchyItemCommand is RelayCommand duplicateHierarchyCommand)
         {
             duplicateHierarchyCommand.RaiseCanExecuteChanged();
+        }
+
+        if (BringToFrontHierarchyItemCommand is RelayCommand bringToFrontCommand)
+        {
+            bringToFrontCommand.RaiseCanExecuteChanged();
+        }
+
+        if (SendToBackHierarchyItemCommand is RelayCommand sendToBackCommand)
+        {
+            sendToBackCommand.RaiseCanExecuteChanged();
+        }
+
+        if (BringForwardHierarchyItemCommand is RelayCommand bringForwardCommand)
+        {
+            bringForwardCommand.RaiseCanExecuteChanged();
+        }
+
+        if (SendBackwardHierarchyItemCommand is RelayCommand sendBackwardCommand)
+        {
+            sendBackwardCommand.RaiseCanExecuteChanged();
         }
     }
 
