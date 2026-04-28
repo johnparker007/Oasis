@@ -1,8 +1,10 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
+using EditorCommands = OasisEditor.Commands;
 
 namespace OasisEditor;
 
@@ -12,6 +14,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
     private readonly Func<DocumentTabViewModel?> _selectedDocumentAccessor;
     private readonly Func<EditorProject?> _loadedProjectAccessor;
     private readonly ActiveDocumentContextService _activeDocumentContext;
+    private readonly Func<Guid, EditorCommands.ICommand, bool> _executeCanvasCommand;
     private readonly Func<DocumentTabViewModel, string, DocumentTabViewModel?> _applySummary;
     private readonly ObservableCollection<InspectorPropertyRowViewModel> _propertyRows = [];
     private string _inspectorEditableSummary = string.Empty;
@@ -21,12 +24,14 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         Func<DocumentTabViewModel?> selectedDocumentAccessor,
         Func<EditorProject?> loadedProjectAccessor,
         ActiveDocumentContextService activeDocumentContext,
+        Func<Guid, EditorCommands.ICommand, bool> executeCanvasCommand,
         Func<DocumentTabViewModel, string, DocumentTabViewModel?> applySummary)
     {
         _selectedAssetAccessor = selectedAssetAccessor;
         _selectedDocumentAccessor = selectedDocumentAccessor;
         _loadedProjectAccessor = loadedProjectAccessor;
         _activeDocumentContext = activeDocumentContext;
+        _executeCanvasCommand = executeCanvasCommand;
         _applySummary = applySummary;
         ApplyInspectorSummaryCommand = new RelayCommand(ApplyInspectorSummary, CanApplyInspectorSummary);
     }
@@ -199,15 +204,47 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             return;
         }
 
-        _propertyRows.Add(new InspectorTextPropertyViewModel("Name", "Common", selectedElement.Name));
+        _propertyRows.Add(new InspectorTextPropertyViewModel(
+            "Name",
+            "Common",
+            selectedElement.Name,
+            commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update name", new PanelElementModelUpdate { Name = value })));
         _propertyRows.Add(new InspectorInfoPropertyViewModel("Object ID", "Metadata", selectedElement.ObjectId));
         _propertyRows.Add(new InspectorInfoPropertyViewModel("Kind", "Metadata", selectedElement.Kind.ToString()));
-        _propertyRows.Add(new InspectorDoublePropertyViewModel("X", "Transform", selectedElement.X));
-        _propertyRows.Add(new InspectorDoublePropertyViewModel("Y", "Transform", selectedElement.Y));
-        _propertyRows.Add(new InspectorDoublePropertyViewModel("Width", "Transform", selectedElement.Width));
-        _propertyRows.Add(new InspectorDoublePropertyViewModel("Height", "Transform", selectedElement.Height));
-        _propertyRows.Add(new InspectorBoolPropertyViewModel("Locked", "Common", selectedElement.IsLocked));
-        _propertyRows.Add(new InspectorBoolPropertyViewModel("Visible", "Common", selectedElement.IsVisible));
+        _propertyRows.Add(new InspectorDoublePropertyViewModel(
+            "X",
+            "Transform",
+            selectedElement.X,
+            commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update X", new PanelElementModelUpdate { X = value })));
+        _propertyRows.Add(new InspectorDoublePropertyViewModel(
+            "Y",
+            "Transform",
+            selectedElement.Y,
+            commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update Y", new PanelElementModelUpdate { Y = value })));
+        _propertyRows.Add(new InspectorDoublePropertyViewModel(
+            "Width",
+            "Transform",
+            selectedElement.Width,
+            commit: value => value > 0
+                ? TryApplyUpdate(selectedElement.ObjectId, "Update width", new PanelElementModelUpdate { Width = value })
+                : "Width must be greater than zero."));
+        _propertyRows.Add(new InspectorDoublePropertyViewModel(
+            "Height",
+            "Transform",
+            selectedElement.Height,
+            commit: value => value > 0
+                ? TryApplyUpdate(selectedElement.ObjectId, "Update height", new PanelElementModelUpdate { Height = value })
+                : "Height must be greater than zero."));
+        _propertyRows.Add(new InspectorBoolPropertyViewModel(
+            "Locked",
+            "Common",
+            selectedElement.IsLocked,
+            commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update lock state", new PanelElementModelUpdate { IsLocked = value })));
+        _propertyRows.Add(new InspectorBoolPropertyViewModel(
+            "Visible",
+            "Common",
+            selectedElement.IsVisible,
+            commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update visibility", new PanelElementModelUpdate { IsVisible = value })));
 
         AddTypeSpecificRows(selectedElement);
 
@@ -218,17 +255,29 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
     {
         if (selectedElement.DisplayNumber.HasValue)
         {
-            _propertyRows.Add(new InspectorIntPropertyViewModel("Display Number", "Type-specific", selectedElement.DisplayNumber));
+            _propertyRows.Add(new InspectorIntPropertyViewModel(
+                "Display Number",
+                "Type-specific",
+                selectedElement.DisplayNumber,
+                commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update display number", new PanelElementModelUpdate { DisplayNumber = value })));
         }
 
-        if (!string.IsNullOrWhiteSpace(selectedElement.AssetPath))
+        if (selectedElement.Kind is PanelElementKind.Image or PanelElementKind.Background or PanelElementKind.Lamp or PanelElementKind.Reel)
         {
-            _propertyRows.Add(new InspectorTextPropertyViewModel("Asset Path", "Type-specific", selectedElement.AssetPath));
+            _propertyRows.Add(new InspectorTextPropertyViewModel(
+                "Asset Path",
+                "Type-specific",
+                selectedElement.AssetPath ?? string.Empty,
+                commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update asset path", new PanelElementModelUpdate { AssetPath = NormalizeOptionalText(value) })));
         }
 
-        if (!string.IsNullOrWhiteSpace(selectedElement.SecondaryAssetPath))
+        if (selectedElement.Kind is PanelElementKind.Background or PanelElementKind.Reel)
         {
-            _propertyRows.Add(new InspectorTextPropertyViewModel("Secondary Asset", "Type-specific", selectedElement.SecondaryAssetPath));
+            _propertyRows.Add(new InspectorTextPropertyViewModel(
+                "Secondary Asset",
+                "Type-specific",
+                selectedElement.SecondaryAssetPath ?? string.Empty,
+                commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update secondary asset path", new PanelElementModelUpdate { SecondaryAssetPath = NormalizeOptionalText(value) })));
         }
 
         if (!string.IsNullOrWhiteSpace(selectedElement.OnColorHex))
@@ -271,6 +320,48 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             _propertyRows.Add(new InspectorInfoPropertyViewModel("Import Format", "Metadata", selectedElement.ImportSource.Format));
             _propertyRows.Add(new InspectorInfoPropertyViewModel("Import Reference", "Metadata", selectedElement.ImportSource.Reference));
         }
+    }
+
+    private string? TryApplyUpdate(string objectId, string description, PanelElementModelUpdate update)
+    {
+        var selectedDocument = _selectedDocumentAccessor();
+        if (selectedDocument is null)
+        {
+            return "No active document.";
+        }
+
+        var existing = selectedDocument.GetPanelElements()
+            .FirstOrDefault(element => string.Equals(element.ObjectId, objectId, StringComparison.Ordinal));
+        if (existing is null)
+        {
+            return "Selected element no longer exists.";
+        }
+
+        var updated = PanelElementModelUpdater.Apply(existing, update);
+        if (!PanelElementValidation.IsValidForInspectorUpdate(updated))
+        {
+            return "Invalid element dimensions.";
+        }
+
+        var command = CanvasMutationCommands.CreateUpdateElementCommand(
+            selectedDocument.DocumentId,
+            selectedDocument,
+            objectId,
+            updated,
+            description);
+        return _executeCanvasCommand(selectedDocument.DocumentId, command)
+            ? null
+            : "Unable to apply update.";
+    }
+
+    private static string? NormalizeOptionalText(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        return value.Trim();
     }
 
     private bool CanApplyInspectorSummary()
