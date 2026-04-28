@@ -282,37 +282,65 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
         if (!string.IsNullOrWhiteSpace(selectedElement.OnColorHex))
         {
-            _propertyRows.Add(new InspectorTextPropertyViewModel("On Color", "Type-specific", selectedElement.OnColorHex));
+            _propertyRows.Add(new InspectorTextPropertyViewModel(
+                "On Color",
+                "Type-specific",
+                selectedElement.OnColorHex,
+                commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update on color", new PanelElementModelUpdate { OnColorHex = NormalizeOptionalText(value) })));
         }
 
         if (!string.IsNullOrWhiteSpace(selectedElement.OffColorHex))
         {
-            _propertyRows.Add(new InspectorTextPropertyViewModel("Off Color", "Type-specific", selectedElement.OffColorHex));
+            _propertyRows.Add(new InspectorTextPropertyViewModel(
+                "Off Color",
+                "Type-specific",
+                selectedElement.OffColorHex,
+                commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update off color", new PanelElementModelUpdate { OffColorHex = NormalizeOptionalText(value) })));
         }
 
         if (!string.IsNullOrWhiteSpace(selectedElement.TextColorHex))
         {
-            _propertyRows.Add(new InspectorTextPropertyViewModel("Text Color", "Type-specific", selectedElement.TextColorHex));
+            _propertyRows.Add(new InspectorTextPropertyViewModel(
+                "Text Color",
+                "Type-specific",
+                selectedElement.TextColorHex,
+                commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update text color", new PanelElementModelUpdate { TextColorHex = NormalizeOptionalText(value) })));
         }
 
         if (!string.IsNullOrWhiteSpace(selectedElement.DisplayText))
         {
-            _propertyRows.Add(new InspectorTextPropertyViewModel("Display Text", "Type-specific", selectedElement.DisplayText));
+            _propertyRows.Add(new InspectorTextPropertyViewModel(
+                "Display Text",
+                "Type-specific",
+                selectedElement.DisplayText,
+                commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update display text", new PanelElementModelUpdate { DisplayText = NormalizeOptionalText(value) })));
         }
 
         if (selectedElement.Stops.HasValue)
         {
-            _propertyRows.Add(new InspectorIntPropertyViewModel("Stops", "Type-specific", selectedElement.Stops));
+            _propertyRows.Add(new InspectorIntPropertyViewModel(
+                "Stops",
+                "Type-specific",
+                selectedElement.Stops,
+                commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update stops", new PanelElementModelUpdate { Stops = value })));
         }
 
         if (selectedElement.VisibleScale.HasValue)
         {
-            _propertyRows.Add(new InspectorDoublePropertyViewModel("Visible Scale", "Type-specific", selectedElement.VisibleScale.Value));
+            _propertyRows.Add(new InspectorDoublePropertyViewModel(
+                "Visible Scale",
+                "Type-specific",
+                selectedElement.VisibleScale.Value,
+                commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update visible scale", new PanelElementModelUpdate { VisibleScale = value })));
         }
 
         if (selectedElement.IsReversed.HasValue)
         {
-            _propertyRows.Add(new InspectorBoolPropertyViewModel("Reversed", "Type-specific", selectedElement.IsReversed.Value));
+            _propertyRows.Add(new InspectorBoolPropertyViewModel(
+                "Reversed",
+                "Type-specific",
+                selectedElement.IsReversed.Value,
+                commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update reversed", new PanelElementModelUpdate { IsReversed = value })));
         }
 
         if (selectedElement.ImportSource is not null)
