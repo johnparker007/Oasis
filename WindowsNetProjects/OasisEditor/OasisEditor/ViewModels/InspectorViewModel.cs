@@ -123,11 +123,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                 {
                     if (selectedDocument.TryGetPanelElement(panelSelection, out var selectedElement))
                     {
-                        var displayName = string.IsNullOrWhiteSpace(selectedElement.Name)
-                            ? Panel2DDocumentStorage.CreateDefaultElementName(selectedElement.Kind, selectedElement.ObjectId)
-                            : selectedElement.Name.Trim();
-                        var kind = Panel2DDocumentStorage.SerializeElementKind(selectedElement.Kind);
-                        return $"Selected {kind} '{displayName}' at ({selectedElement.X:0.##}, {selectedElement.Y:0.##}) sized {selectedElement.Width:0.##} x {selectedElement.Height:0.##}.";
+                        return BuildSelectedElementSummary(selectedElement);
                     }
 
                     return $"Selected {panelSelection.Kind} at ({panelSelection.X:0.##}, {panelSelection.Y:0.##}) sized {panelSelection.Width:0.##} x {panelSelection.Height:0.##}.";
@@ -217,6 +213,53 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         {
             relayCommand.RaiseCanExecuteChanged();
         }
+    }
+
+    private static string BuildSelectedElementSummary(PanelElementModel selectedElement)
+    {
+        var displayName = string.IsNullOrWhiteSpace(selectedElement.Name)
+            ? Panel2DDocumentStorage.CreateDefaultElementName(selectedElement.Kind, selectedElement.ObjectId)
+            : selectedElement.Name.Trim();
+        var kind = Panel2DDocumentStorage.SerializeElementKind(selectedElement.Kind);
+        var geometrySummary = $"Selected {kind} '{displayName}' at ({selectedElement.X:0.##}, {selectedElement.Y:0.##}) sized {selectedElement.Width:0.##} x {selectedElement.Height:0.##}.";
+
+        return selectedElement.Kind switch
+        {
+            PanelElementKind.Background => string.IsNullOrWhiteSpace(selectedElement.AssetPath)
+                ? $"{geometrySummary} Background fill is color-based."
+                : $"{geometrySummary} Background asset: {selectedElement.AssetPath}.",
+            PanelElementKind.Lamp => selectedElement.DisplayNumber.HasValue
+                ? $"{geometrySummary} Lamp number: {selectedElement.DisplayNumber.Value}."
+                : geometrySummary,
+            PanelElementKind.Reel => BuildReelSummary(geometrySummary, selectedElement),
+            PanelElementKind.SevenSegment => selectedElement.DisplayNumber.HasValue
+                ? $"{geometrySummary} Display number: {selectedElement.DisplayNumber.Value}."
+                : geometrySummary,
+            PanelElementKind.Alpha => selectedElement.IsReversed == true
+                ? $"{geometrySummary} Alpha mode: reversed."
+                : geometrySummary,
+            _ => geometrySummary
+        };
+    }
+
+    private static string BuildReelSummary(string geometrySummary, PanelElementModel selectedElement)
+    {
+        if (selectedElement.DisplayNumber.HasValue && selectedElement.Stops.HasValue)
+        {
+            return $"{geometrySummary} Reel number: {selectedElement.DisplayNumber.Value}, stops: {selectedElement.Stops.Value}.";
+        }
+
+        if (selectedElement.DisplayNumber.HasValue)
+        {
+            return $"{geometrySummary} Reel number: {selectedElement.DisplayNumber.Value}.";
+        }
+
+        if (selectedElement.Stops.HasValue)
+        {
+            return $"{geometrySummary} Reel stops: {selectedElement.Stops.Value}.";
+        }
+
+        return geometrySummary;
     }
 
     private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)

@@ -598,6 +598,120 @@ public sealed class Panel2DRoundTripTests
     }
 
     [Fact]
+    public void NativeImportedKinds_SupportSelectionBasedRenameUndoRedo_AndSaveLoadRoundTrip()
+    {
+        var document = CreatePanelDocument(
+            new PanelElementModel
+            {
+                ObjectId = "background-1",
+                Name = "Background",
+                Kind = PanelElementKind.Background,
+                X = 0,
+                Y = 0,
+                Width = 200,
+                Height = 100
+            },
+            new PanelElementModel
+            {
+                ObjectId = "lamp-1",
+                Name = "Lamp 1",
+                Kind = PanelElementKind.Lamp,
+                X = 10,
+                Y = 20,
+                Width = 30,
+                Height = 40,
+                DisplayNumber = 1
+            },
+            new PanelElementModel
+            {
+                ObjectId = "reel-1",
+                Name = "Reel 2",
+                Kind = PanelElementKind.Reel,
+                X = 50,
+                Y = 60,
+                Width = 70,
+                Height = 80,
+                DisplayNumber = 2
+            },
+            new PanelElementModel
+            {
+                ObjectId = "seven-1",
+                Name = "7 Segment 3",
+                Kind = PanelElementKind.SevenSegment,
+                X = 90,
+                Y = 30,
+                Width = 45,
+                Height = 20,
+                DisplayNumber = 3
+            },
+            new PanelElementModel
+            {
+                ObjectId = "alpha-1",
+                Name = "Alpha",
+                Kind = PanelElementKind.Alpha,
+                X = 130,
+                Y = 50,
+                Width = 55,
+                Height = 25,
+                IsReversed = true
+            });
+        var workspace = CreateWorkspace(document, document);
+
+        var provider = new Panel2DHierarchyProvider();
+        var hierarchyItems = provider.Build(document)
+            .Where(group => group.NodeKey is "group:background" or "group:lamp" or "group:reel" or "group:sevenSegment" or "group:alpha")
+            .SelectMany(group => group.Children)
+            .ToList();
+        Assert.Equal(5, hierarchyItems.Count);
+
+        foreach (var item in hierarchyItems)
+        {
+            Assert.NotNull(item.PanelSelection);
+
+            var selection = item.PanelSelection!.Value;
+            var renameCommand = CanvasMutationCommands.CreateRenameElementCommand(
+                document.DocumentId,
+                document,
+                selection,
+                $"{item.DisplayName} Renamed");
+
+            Assert.True(workspace.ExecuteDocumentCanvasCommand(document.DocumentId, renameCommand));
+        }
+
+        Assert.Equal(5, document.CommandService.History.Entries.Count);
+        Assert.All(document.GetPanelElements(), element => Assert.EndsWith("Renamed", element.Name));
+
+        for (var index = 0; index < 5; index++)
+        {
+            Assert.True(workspace.UndoActiveDocument());
+        }
+
+        Assert.Collection(
+            document.GetPanelElements().OrderBy(element => element.ObjectId),
+            element => Assert.Equal("Alpha", element.Name),
+            element => Assert.Equal("Background", element.Name),
+            element => Assert.Equal("Lamp 1", element.Name),
+            element => Assert.Equal("Reel 2", element.Name),
+            element => Assert.Equal("7 Segment 3", element.Name));
+
+        for (var index = 0; index < 5; index++)
+        {
+            Assert.True(document.CommandService.TryRedo());
+        }
+
+        Assert.All(document.GetPanelElements(), element => Assert.EndsWith("Renamed", element.Name));
+
+        var savedContent = DocumentWorkspaceViewModel.BuildDocumentContent(document);
+        Assert.True(Panel2DDocumentStorage.TryReadValidated(savedContent, out var roundTripped, out var error), error);
+        Assert.Equal(5, roundTripped.Elements.Count());
+        Assert.Contains(roundTripped.Elements, element => element.Kind == "background");
+        Assert.Contains(roundTripped.Elements, element => element.Kind == "lamp");
+        Assert.Contains(roundTripped.Elements, element => element.Kind == "reel");
+        Assert.Contains(roundTripped.Elements, element => element.Kind == "sevenSegment");
+        Assert.Contains(roundTripped.Elements, element => element.Kind == "alpha");
+    }
+
+    [Fact]
     public void DeleteElementCommand_TracksExecutionAndSupportsUndoRedo()
     {
         var document = CreatePanelDocument(
