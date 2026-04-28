@@ -17,6 +17,7 @@
                   ItemsSource="{Binding HierarchyItems}"
                   SelectedItemChanged="OnTreeViewSelectedItemChanged"
                   PreviewKeyDown="OnTreeViewPreviewKeyDown"
+                  PreviewMouseLeftButtonDown="OnTreeViewPreviewMouseLeftButtonDown"
                   PreviewMouseRightButtonDown="OnTreeViewPreviewMouseRightButtonDown"
                   Visibility="{Binding HasHierarchyItems, Converter={StaticResource BoolToVisibility}}"
                   Foreground="{DynamicResource TextPrimaryBrush}"

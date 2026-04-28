@@ -2,11 +2,14 @@ using System.Windows.Controls;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 namespace OasisEditor.Views;
 
 public partial class HierarchyView : UserControl
 {
+    private bool _suppressAutoScrollForUserTreeSelection;
+
     public HierarchyView()
     {
         InitializeComponent();
@@ -76,9 +79,37 @@ public partial class HierarchyView : UserControl
         viewModel.SelectHierarchyItemForContextMenu(hierarchyItem);
     }
 
+    private void OnTreeViewPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs eventArgs)
+    {
+        if (eventArgs.OriginalSource is not DependencyObject source)
+        {
+            return;
+        }
+
+        if (FindAncestor<TreeViewItem>(source) is null)
+        {
+            return;
+        }
+
+        _suppressAutoScrollForUserTreeSelection = true;
+        Dispatcher.BeginInvoke(
+            DispatcherPriority.Input,
+            new Action(() => _suppressAutoScrollForUserTreeSelection = false));
+    }
+
     private void OnTreeViewItemSelected(object sender, RoutedEventArgs eventArgs)
     {
         if (sender is not TreeViewItem treeViewItem)
+        {
+            return;
+        }
+
+        if (!ReferenceEquals(sender, eventArgs.OriginalSource))
+        {
+            return;
+        }
+
+        if (_suppressAutoScrollForUserTreeSelection)
         {
             return;
         }
