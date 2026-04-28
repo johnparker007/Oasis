@@ -114,6 +114,18 @@ public partial class HierarchyView : UserControl
             return;
         }
 
+        Dispatcher.BeginInvoke(
+            DispatcherPriority.Loaded,
+            new Action(() => EnsureTreeViewItemIsVisible(treeViewItem)));
+    }
+
+    private static void EnsureTreeViewItemIsVisible(TreeViewItem treeViewItem)
+    {
+        if (!treeViewItem.IsSelected || !treeViewItem.IsVisible)
+        {
+            return;
+        }
+
         if (IsVerticallyVisible(treeViewItem))
         {
             return;
