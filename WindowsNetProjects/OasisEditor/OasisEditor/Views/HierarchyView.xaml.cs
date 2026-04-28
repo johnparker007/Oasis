@@ -2,11 +2,14 @@ using System.Windows.Controls;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 namespace OasisEditor.Views;
 
 public partial class HierarchyView : UserControl
 {
+    private bool _suppressAutoScrollForUserTreeSelection;
+
     public HierarchyView()
     {
         InitializeComponent();
@@ -74,6 +77,75 @@ public partial class HierarchyView : UserControl
 
         treeViewItem.IsSelected = true;
         viewModel.SelectHierarchyItemForContextMenu(hierarchyItem);
+    }
+
+    private void OnTreeViewPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs eventArgs)
+    {
+        if (eventArgs.OriginalSource is not DependencyObject source)
+        {
+            return;
+        }
+
+        if (FindAncestor<TreeViewItem>(source) is null)
+        {
+            return;
+        }
+
+        _suppressAutoScrollForUserTreeSelection = true;
+        Dispatcher.BeginInvoke(
+            DispatcherPriority.Input,
+            new Action(() => _suppressAutoScrollForUserTreeSelection = false));
+    }
+
+    private void OnTreeViewItemSelected(object sender, RoutedEventArgs eventArgs)
+    {
+        if (sender is not TreeViewItem treeViewItem)
+        {
+            return;
+        }
+
+        if (!ReferenceEquals(sender, eventArgs.OriginalSource))
+        {
+            return;
+        }
+
+        if (_suppressAutoScrollForUserTreeSelection)
+        {
+            return;
+        }
+
+        Dispatcher.BeginInvoke(
+            DispatcherPriority.Loaded,
+            new Action(() => EnsureTreeViewItemIsVisible(treeViewItem)));
+    }
+
+    private static void EnsureTreeViewItemIsVisible(TreeViewItem treeViewItem)
+    {
+        if (!treeViewItem.IsSelected || !treeViewItem.IsVisible)
+        {
+            return;
+        }
+
+        if (IsVerticallyVisible(treeViewItem))
+        {
+            return;
+        }
+
+        treeViewItem.BringIntoView();
+    }
+
+    private static bool IsVerticallyVisible(TreeViewItem treeViewItem)
+    {
+        var scrollViewer = FindAncestor<ScrollViewer>(treeViewItem);
+        if (scrollViewer is null || scrollViewer.ViewportHeight <= 0)
+        {
+            return false;
+        }
+
+        var bounds = treeViewItem.TransformToAncestor(scrollViewer)
+            .TransformBounds(new Rect(new Point(0, 0), treeViewItem.RenderSize));
+
+        return bounds.Top >= 0 && bounds.Bottom <= scrollViewer.ViewportHeight;
     }
 
     private static T? FindAncestor<T>(DependencyObject current)

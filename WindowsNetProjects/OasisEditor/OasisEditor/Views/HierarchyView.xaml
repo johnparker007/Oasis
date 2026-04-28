@@ -17,6 +17,7 @@
                   ItemsSource="{Binding HierarchyItems}"
                   SelectedItemChanged="OnTreeViewSelectedItemChanged"
                   PreviewKeyDown="OnTreeViewPreviewKeyDown"
+                  PreviewMouseLeftButtonDown="OnTreeViewPreviewMouseLeftButtonDown"
                   PreviewMouseRightButtonDown="OnTreeViewPreviewMouseRightButtonDown"
                   Visibility="{Binding HasHierarchyItems, Converter={StaticResource BoolToVisibility}}"
                   Foreground="{DynamicResource TextPrimaryBrush}"
@@ -78,6 +79,7 @@
                     <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
                     <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
                     <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+                    <EventSetter Event="Selected" Handler="OnTreeViewItemSelected" />
                 </Style>
                 <HierarchicalDataTemplate DataType="{x:Type local:HierarchyItemViewModel}"
                                           ItemsSource="{Binding Children}">
