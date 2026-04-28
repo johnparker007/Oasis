@@ -146,4 +146,104 @@ public sealed class ImportMfmeExtractCommandTests
         var redoneImportedId = document.GetPanelElements().Single(element => element.Name == "Imported").ObjectId;
         Assert.Equal(importedId, redoneImportedId);
     }
+
+    [Fact]
+    public void Execute_IntoEmptyPanelDocument_PreservesNativeKindsAcrossHierarchyUndoRedoAndRoundTrip()
+    {
+        var document = new DocumentTabViewModel(EditorDocument.CreatePanel2DStub("Imported Panel"));
+        var importedElements = new[]
+        {
+            new PanelElementModel
+            {
+                ObjectId = "background-1",
+                Name = "Background",
+                Kind = PanelElementKind.Background,
+                X = 0,
+                Y = 0,
+                Width = 640,
+                Height = 360,
+                AssetPath = "Assets/MfmeImport/Layout/Background/bg.png"
+            },
+            new PanelElementModel
+            {
+                ObjectId = "lamp-1",
+                Name = "Lamp 5",
+                Kind = PanelElementKind.Lamp,
+                X = 24,
+                Y = 48,
+                Width = 32,
+                Height = 32,
+                DisplayNumber = 5,
+                AssetPath = "Assets/MfmeImport/Layout/Lamps/lamp.png"
+            },
+            new PanelElementModel
+            {
+                ObjectId = "reel-1",
+                Name = "Reel 3",
+                Kind = PanelElementKind.Reel,
+                X = 120,
+                Y = 80,
+                Width = 96,
+                Height = 128,
+                DisplayNumber = 3,
+                AssetPath = "Assets/MfmeImport/Layout/Reels/reel.png"
+            },
+            new PanelElementModel
+            {
+                ObjectId = "seven-1",
+                Name = "7 Segment 2",
+                Kind = PanelElementKind.SevenSegment,
+                X = 260,
+                Y = 90,
+                Width = 80,
+                Height = 24,
+                DisplayNumber = 2
+            },
+            new PanelElementModel
+            {
+                ObjectId = "alpha-1",
+                Name = "Alpha",
+                Kind = PanelElementKind.Alpha,
+                X = 360,
+                Y = 96,
+                Width = 96,
+                Height = 28,
+                IsReversed = true
+            }
+        };
+
+        var command = new ImportMfmeExtractCommand(document.DocumentId, document, importedElements);
+        document.CommandService.Execute(command);
+
+        Assert.Equal(5, document.GetPanelElements().Count);
+        Assert.Single(document.CommandService.History.Entries);
+
+        var hierarchy = new Panel2DHierarchyProvider();
+        var groups = hierarchy.Build(document);
+        Assert.Equal("Backgrounds (1)", groups.Single(group => group.NodeKey == "group:background").DisplayName);
+        Assert.Equal("Lamps (1)", groups.Single(group => group.NodeKey == "group:lamp").DisplayName);
+        Assert.Equal("Reels (1)", groups.Single(group => group.NodeKey == "group:reel").DisplayName);
+        Assert.Equal("Seven Segments (1)", groups.Single(group => group.NodeKey == "group:sevenSegment").DisplayName);
+        Assert.Equal("Alphas (1)", groups.Single(group => group.NodeKey == "group:alpha").DisplayName);
+
+        Assert.True(document.CommandService.TryUndo());
+        Assert.Empty(document.GetPanelElements());
+
+        Assert.True(document.CommandService.TryRedo());
+        Assert.Equal(5, document.GetPanelElements().Count);
+        Assert.Contains(document.GetPanelElements(), element => element.Kind == PanelElementKind.Background && element.AssetPath is not null);
+        Assert.Contains(document.GetPanelElements(), element => element.Kind == PanelElementKind.Lamp && element.DisplayNumber == 5);
+        Assert.Contains(document.GetPanelElements(), element => element.Kind == PanelElementKind.Reel && element.DisplayNumber == 3);
+        Assert.Contains(document.GetPanelElements(), element => element.Kind == PanelElementKind.SevenSegment && element.DisplayNumber == 2);
+        Assert.Contains(document.GetPanelElements(), element => element.Kind == PanelElementKind.Alpha && element.IsReversed);
+
+        var savedContent = DocumentWorkspaceViewModel.BuildDocumentContent(document);
+        Assert.True(Panel2DDocumentStorage.TryReadValidated(savedContent, out var parsed, out var error), error);
+        Assert.Equal(5, parsed.Elements.Count);
+        Assert.Contains(parsed.Elements, element => element.Kind == "background" && element.AssetPath == "Assets/MfmeImport/Layout/Background/bg.png");
+        Assert.Contains(parsed.Elements, element => element.Kind == "lamp" && element.DisplayNumber == 5);
+        Assert.Contains(parsed.Elements, element => element.Kind == "reel" && element.DisplayNumber == 3);
+        Assert.Contains(parsed.Elements, element => element.Kind == "sevenSegment" && element.DisplayNumber == 2);
+        Assert.Contains(parsed.Elements, element => element.Kind == "alpha" && element.IsReversed);
+    }
 }
