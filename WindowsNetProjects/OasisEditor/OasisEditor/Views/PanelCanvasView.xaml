@@ -132,6 +132,21 @@
                                                         </Trigger>
                                                     </Style.Triggers>
                                                 </Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="BorderBrush"
+                                                            Value="SlateGray" />
+                                                    <Setter Property="BorderThickness"
+                                                            Value="1" />
+                                                    <Style.Triggers>
+                                                        <Trigger Property="local:CanvasSelectionBehavior.IsSelected"
+                                                                 Value="True">
+                                                            <Setter Property="BorderBrush"
+                                                                    Value="{DynamicResource SelectionBrush}" />
+                                                            <Setter Property="BorderThickness"
+                                                                    Value="2.5" />
+                                                        </Trigger>
+                                                    </Style.Triggers>
+                                                </Style>
                                                 <Style TargetType="Image">
                                                     <Setter Property="Opacity"
                                                             Value="0.88" />
