@@ -235,7 +235,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             PanelElementKind.SevenSegment => selectedElement.DisplayNumber.HasValue
                 ? $"{geometrySummary} Display number: {selectedElement.DisplayNumber.Value}."
                 : geometrySummary,
-            PanelElementKind.Alpha => selectedElement.IsReversed
+            PanelElementKind.Alpha => selectedElement.IsReversed == true
                 ? $"{geometrySummary} Alpha mode: reversed."
                 : geometrySummary,
             _ => geometrySummary

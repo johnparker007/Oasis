@@ -235,15 +235,15 @@ public sealed class ImportMfmeExtractCommandTests
         Assert.Contains(document.GetPanelElements(), element => element.Kind == PanelElementKind.Lamp && element.DisplayNumber == 5);
         Assert.Contains(document.GetPanelElements(), element => element.Kind == PanelElementKind.Reel && element.DisplayNumber == 3);
         Assert.Contains(document.GetPanelElements(), element => element.Kind == PanelElementKind.SevenSegment && element.DisplayNumber == 2);
-        Assert.Contains(document.GetPanelElements(), element => element.Kind == PanelElementKind.Alpha && element.IsReversed);
+        Assert.Contains(document.GetPanelElements(), element => element.Kind == PanelElementKind.Alpha && element.IsReversed == true);
 
         var savedContent = DocumentWorkspaceViewModel.BuildDocumentContent(document);
         Assert.True(Panel2DDocumentStorage.TryReadValidated(savedContent, out var parsed, out var error), error);
-        Assert.Equal(5, parsed.Elements.Count);
+        Assert.Equal(5, parsed.Elements.Count());
         Assert.Contains(parsed.Elements, element => element.Kind == "background" && element.AssetPath == "Assets/MfmeImport/Layout/Background/bg.png");
         Assert.Contains(parsed.Elements, element => element.Kind == "lamp" && element.DisplayNumber == 5);
         Assert.Contains(parsed.Elements, element => element.Kind == "reel" && element.DisplayNumber == 3);
         Assert.Contains(parsed.Elements, element => element.Kind == "sevenSegment" && element.DisplayNumber == 2);
-        Assert.Contains(parsed.Elements, element => element.Kind == "alpha" && element.IsReversed);
+        Assert.Contains(parsed.Elements, element => element.Kind == "alpha" && element.IsReversed == true);
     }
 }

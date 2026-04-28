@@ -703,7 +703,7 @@ public sealed class Panel2DRoundTripTests
 
         var savedContent = DocumentWorkspaceViewModel.BuildDocumentContent(document);
         Assert.True(Panel2DDocumentStorage.TryReadValidated(savedContent, out var roundTripped, out var error), error);
-        Assert.Equal(5, roundTripped.Elements.Count);
+        Assert.Equal(5, roundTripped.Elements.Count());
         Assert.Contains(roundTripped.Elements, element => element.Kind == "background");
         Assert.Contains(roundTripped.Elements, element => element.Kind == "lamp");
         Assert.Contains(roundTripped.Elements, element => element.Kind == "reel");
