@@ -266,7 +266,7 @@ public sealed class InspectorColorPropertyViewModel : InspectorEditablePropertyR
 
             _hexValue = InspectorColorHex.Format(value);
             RaisePropertyChanged(nameof(HexValue));
-            Commit();
+            ErrorText = string.Empty;
         }
     }
 

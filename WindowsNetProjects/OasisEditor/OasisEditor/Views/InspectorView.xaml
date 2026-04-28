@@ -71,7 +71,8 @@
                 <colorPicker:PortableColorPicker Grid.Column="1"
                                                  Width="36"
                                                  Height="20"
-                                                 SelectedColor="{Binding SelectedColor, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                 SelectedColor="{Binding SelectedColor, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                 LostMouseCapture="OnEditableColorControlLostMouseCapture" />
                 <TextBox Grid.Column="3"
                          IsReadOnly="{Binding IsReadOnly}"
                          LostFocus="OnEditableTextBoxLostFocus"
