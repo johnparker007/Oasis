@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using EditorCommands = OasisEditor.Commands;
@@ -405,7 +406,8 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             return kind.ToString();
         }
 
-        return char.ToUpperInvariant(serializedKind[0]) + serializedKind[1..];
+        var titleCased = char.ToUpperInvariant(serializedKind[0]) + serializedKind[1..];
+        return Regex.Replace(titleCased, "([a-z0-9])([A-Z])", "$1 $2");
     }
 
     private bool CanApplyInspectorSummary()
