@@ -11,15 +11,17 @@ public partial class InspectorView : UserControl
         InitializeComponent();
     }
 
-
-    private void OnEditableColorControlLostMouseCapture(object sender, MouseEventArgs e)
+    private void OnEditableColorControlIsKeyboardFocusWithinChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
         if (sender is not FrameworkElement element || element.DataContext is not InspectorEditablePropertyRowViewModel row)
         {
             return;
         }
 
-        row.Commit();
+        if (e.NewValue is bool hasFocusWithin && !hasFocusWithin)
+        {
+            row.Commit();
+        }
     }
 
     private void OnEditableTextBoxLostFocus(object sender, RoutedEventArgs e)
