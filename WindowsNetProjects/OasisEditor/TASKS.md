@@ -202,8 +202,8 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
   - [x] Reels
   - [x] Seven Segments
   - [x] Alphas
-- [ ] Verify selection, hierarchy selection, inspector display, save/load, and undo/redo still work for new native kinds
-- [ ] Build and run tests
+- [ ] Verify selection, hierarchy selection, inspector display, save/load, and undo/redo still work for new native kinds *(blocked in current container; see `PhaseQ.VerificationAttempt.md`)*
+- [ ] Build and run tests *(blocked in current container; see `PhaseQ.BuildAndTestAttempt.md`)*
 
 ### Phase R — Undoable Import Command
 - [x] Add `ImportMfmeExtractCommand` or equivalent document-scoped command
@@ -216,7 +216,7 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
 - [x] Ensure redo restores the same logical native elements without reusing stale command state incorrectly
 - [x] Ensure object IDs remain stable through undo/redo of the same command
 - [x] Add command tests for import, undo, redo, no-op import, and wrong-document safety
-- [ ] Build and run tests
+- [ ] Build and run tests *(blocked in current container; see `PhaseR.BuildAndTestAttempt.md`)*
 
 ### Phase S — Import UI Entry Point
 - [x] Add a user-facing import command to the WPF editor shell

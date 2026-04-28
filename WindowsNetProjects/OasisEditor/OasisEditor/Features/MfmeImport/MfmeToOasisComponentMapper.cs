@@ -4,6 +4,8 @@ namespace OasisEditor.Features.MfmeImport;
 
 internal sealed class MfmeToOasisComponentMapper
 {
+    private const string ImportSourceFormat = "LegacyImport";
+
     public MfmeToOasisMapResult Map(MfmeLegacyExtractData extract)
     {
         ArgumentNullException.ThrowIfNull(extract);
@@ -61,7 +63,8 @@ internal sealed class MfmeToOasisComponentMapper
             Width = component.Size.X,
             Height = component.Size.Y,
             AssetPath = BuildExtractRelativePath("background", component.BmpImageFilename),
-            OnColorHex = ToHex(component.Color)
+            OnColorHex = ToHex(component.Color),
+            ImportSource = CreateImportSource(component.SourceType)
         };
     }
 
@@ -97,7 +100,8 @@ internal sealed class MfmeToOasisComponentMapper
             OnColorHex = ToHex(component.FirstLampElement?.OnColor),
             OffColorHex = ToHex(component.OffImageColor),
             TextColorHex = ToHex(component.TextColor),
-            DisplayText = NormalizeOptional(component.TextBoxText)
+            DisplayText = NormalizeOptional(component.TextBoxText),
+            ImportSource = CreateImportSource(number.HasValue ? $"{component.SourceType}:{number.Value}" : component.SourceType)
         };
     }
 
@@ -135,7 +139,8 @@ internal sealed class MfmeToOasisComponentMapper
                 : null,
             Stops = component.Stops,
             IsReversed = component.Reversed,
-            VisibleScale = visibleScale
+            VisibleScale = visibleScale,
+            ImportSource = CreateImportSource($"{component.SourceType}:{mappedNumber}")
         };
     }
 
@@ -151,7 +156,8 @@ internal sealed class MfmeToOasisComponentMapper
             Width = component.Size.X,
             Height = component.Size.Y,
             DisplayNumber = component.Number,
-            OnColorHex = ToHex(component.SegmentOnColor)
+            OnColorHex = ToHex(component.SegmentOnColor),
+            ImportSource = CreateImportSource($"{component.SourceType}:{component.Number}")
         };
     }
 
@@ -166,7 +172,17 @@ internal sealed class MfmeToOasisComponentMapper
             Y = component.Position.Y,
             Width = component.Size.X,
             Height = component.Size.Y,
-            IsReversed = component.Reversed
+            IsReversed = component.Reversed,
+            ImportSource = CreateImportSource(component.SourceType)
+        };
+    }
+
+    private static PanelElementImportSourceModel CreateImportSource(string reference)
+    {
+        return new PanelElementImportSourceModel
+        {
+            Format = ImportSourceFormat,
+            Reference = reference
         };
     }
 

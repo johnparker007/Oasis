@@ -119,7 +119,7 @@ public sealed class Panel2DRoundTripTests
                     VisibleScale = 0.75,
                     ImportSource = new PanelElementImportSourceFile
                     {
-                        Format = "MFME",
+                        Format = "LegacyImport",
                         Reference = "layout.json#lamp-8"
                     }
                 }
@@ -148,7 +148,7 @@ public sealed class Panel2DRoundTripTests
         Assert.Equal(24, element.Stops);
         Assert.Equal(0.75, element.VisibleScale);
         Assert.NotNull(element.ImportSource);
-        Assert.Equal("MFME", element.ImportSource!.Format);
+        Assert.Equal("LegacyImport", element.ImportSource!.Format);
         Assert.Equal("layout.json#lamp-8", element.ImportSource.Reference);
     }
 
@@ -370,7 +370,7 @@ public sealed class Panel2DRoundTripTests
               "AssetPath": "  Assets/alpha.png  ",
               "DisplayText": "  HELLO  ",
               "ImportSource": {
-                "Format": "  MFME  ",
+                "Format": "  LegacyImport  ",
                 "Reference": "  layout.json#alpha-1  "
               }
             }
@@ -386,7 +386,7 @@ public sealed class Panel2DRoundTripTests
         Assert.Equal("Assets/alpha.png", element.AssetPath);
         Assert.Equal("HELLO", element.DisplayText);
         Assert.NotNull(element.ImportSource);
-        Assert.Equal("MFME", element.ImportSource!.Format);
+        Assert.Equal("LegacyImport", element.ImportSource!.Format);
         Assert.Equal("layout.json#alpha-1", element.ImportSource.Reference);
     }
 

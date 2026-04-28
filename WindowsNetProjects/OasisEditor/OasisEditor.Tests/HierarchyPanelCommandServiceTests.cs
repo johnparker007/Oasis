@@ -116,7 +116,7 @@ public sealed class HierarchyPanelCommandServiceTests
                 DisplayText = "HOLD",
                 ImportSource = new PanelElementImportSourceModel
                 {
-                    Format = "MFME",
+                    Format = "LegacyImport",
                     Reference = "layout:lamp:7"
                 }
             });
@@ -142,7 +142,7 @@ public sealed class HierarchyPanelCommandServiceTests
         Assert.Equal("#FFFFFFFF", pasted.TextColorHex);
         Assert.Equal("HOLD", pasted.DisplayText);
         Assert.NotNull(pasted.ImportSource);
-        Assert.Equal("MFME", pasted.ImportSource!.Format);
+        Assert.Equal("LegacyImport", pasted.ImportSource!.Format);
         Assert.Equal("layout:lamp:7", pasted.ImportSource.Reference);
         Assert.Single(document.CommandService.History.Entries);
     }
@@ -205,7 +205,7 @@ public sealed class HierarchyPanelCommandServiceTests
                 IsReversed = true,
                 ImportSource = new PanelElementImportSourceModel
                 {
-                    Format = "MFME",
+                    Format = "LegacyImport",
                     Reference = "layout:alpha:1"
                 }
             });
@@ -224,7 +224,7 @@ public sealed class HierarchyPanelCommandServiceTests
         Assert.Equal("#FF00FF00", updated.TextColorHex);
         Assert.True(updated.IsReversed);
         Assert.NotNull(updated.ImportSource);
-        Assert.Equal("MFME", updated.ImportSource!.Format);
+        Assert.Equal("LegacyImport", updated.ImportSource!.Format);
         Assert.Equal("layout:alpha:1", updated.ImportSource.Reference);
     }
 
