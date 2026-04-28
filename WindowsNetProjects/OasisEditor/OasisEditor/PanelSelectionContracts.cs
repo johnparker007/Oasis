@@ -82,12 +82,15 @@ internal static class PanelSelectionContract
 
     public static bool TryCreateFromVisual(FrameworkElement element, out IPanelSelectableObject selectable)
     {
-        var kind = element switch
-        {
-            Rectangle => PanelElementKind.Rectangle,
-            Image => PanelElementKind.Image,
-            _ => PanelElementKind.Unknown
-        };
+        var attachedKind = PanelElementFactory.GetElementKind(element);
+        var kind = attachedKind != PanelElementKind.Unknown
+            ? attachedKind
+            : element switch
+            {
+                Rectangle => PanelElementKind.Rectangle,
+                Image => PanelElementKind.Image,
+                _ => PanelElementKind.Unknown
+            };
 
         if (kind == PanelElementKind.Unknown)
         {
