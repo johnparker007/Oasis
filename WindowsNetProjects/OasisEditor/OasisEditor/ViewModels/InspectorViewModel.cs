@@ -19,7 +19,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
     private readonly Func<DocumentTabViewModel, string, DocumentTabViewModel?> _applySummary;
     private readonly ObservableCollection<InspectorPropertyRowViewModel> _propertyRows = [];
     private string _inspectorEditableSummary = string.Empty;
-    private bool _suppressPropertyRowRefresh;
+    private DateTime _suppressPropertyRowRefreshUntilUtc;
 
     public InspectorViewModel(
         Func<AssetBrowserItemViewModel?> selectedAssetAccessor,
@@ -195,11 +195,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(InspectorSummary));
         OnPropertyChanged(nameof(CanEditInspectorSummary));
 
-        if (_suppressPropertyRowRefresh)
-        {
-            _suppressPropertyRowRefresh = false;
-        }
-        else
+        if (!ShouldSuppressPropertyRowRefresh())
         {
             RebuildPropertyRows();
         }
@@ -398,17 +394,23 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             description);
         if (suppressInspectorRefresh)
         {
-            _suppressPropertyRowRefresh = true;
+            _suppressPropertyRowRefreshUntilUtc = DateTime.UtcNow.AddSeconds(1);
         }
 
         var executed = _executeCanvasCommand(selectedDocument.DocumentId, command);
         if (!executed)
         {
-            _suppressPropertyRowRefresh = false;
+            _suppressPropertyRowRefreshUntilUtc = DateTime.MinValue;
             return "Unable to apply update.";
         }
 
         return null;
+    }
+
+
+    private bool ShouldSuppressPropertyRowRefresh()
+    {
+        return DateTime.UtcNow < _suppressPropertyRowRefreshUntilUtc;
     }
 
     private static string? NormalizeOptionalText(string? value)
