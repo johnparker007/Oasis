@@ -153,6 +153,34 @@ internal sealed class HierarchyPanelCommandService
         return CanReorderSelected(ReorderAction.SendBackward);
     }
 
+    public bool CanLockSelected()
+    {
+        return TryGetSelectionDocument(out var document, out var selection)
+               && document.TryGetPanelElement(selection, out var element)
+               && !element.IsLocked;
+    }
+
+    public bool CanUnlockSelected()
+    {
+        return TryGetSelectionDocument(out var document, out var selection)
+               && document.TryGetPanelElement(selection, out var element)
+               && element.IsLocked;
+    }
+
+    public bool CanHideSelected()
+    {
+        return TryGetSelectionDocument(out var document, out var selection)
+               && document.TryGetPanelElement(selection, out var element)
+               && element.IsVisible;
+    }
+
+    public bool CanShowSelected()
+    {
+        return TryGetSelectionDocument(out var document, out var selection)
+               && document.TryGetPanelElement(selection, out var element)
+               && !element.IsVisible;
+    }
+
     public void ExecuteCutSelected()
     {
         if (!TryGetSelectionDocument(out var document, out var selection) || !document.HasPanelElement(selection))
@@ -227,6 +255,26 @@ internal sealed class HierarchyPanelCommandService
     public void ExecuteSendBackwardSelected()
     {
         ExecuteReorderSelected(ReorderAction.SendBackward);
+    }
+
+    public void ExecuteLockSelected()
+    {
+        ExecuteSetLockSelected(true);
+    }
+
+    public void ExecuteUnlockSelected()
+    {
+        ExecuteSetLockSelected(false);
+    }
+
+    public void ExecuteHideSelected()
+    {
+        ExecuteSetVisibleSelected(false);
+    }
+
+    public void ExecuteShowSelected()
+    {
+        ExecuteSetVisibleSelected(true);
     }
 
     private bool TryCopySelectedToClipboard()
@@ -326,6 +374,28 @@ internal sealed class HierarchyPanelCommandService
             _ => throw new InvalidOperationException($"Unsupported reorder action '{action}'.")
         };
 
+        _executeCanvasCommand(document.DocumentId, command);
+    }
+
+    private void ExecuteSetLockSelected(bool isLocked)
+    {
+        if (!TryGetSelectionDocument(out var document, out var selection) || !document.HasPanelElement(selection))
+        {
+            return;
+        }
+
+        var command = CanvasMutationCommands.CreateSetLockedCommand(document.DocumentId, document, selection, isLocked);
+        _executeCanvasCommand(document.DocumentId, command);
+    }
+
+    private void ExecuteSetVisibleSelected(bool isVisible)
+    {
+        if (!TryGetSelectionDocument(out var document, out var selection) || !document.HasPanelElement(selection))
+        {
+            return;
+        }
+
+        var command = CanvasMutationCommands.CreateSetVisibleCommand(document.DocumentId, document, selection, isVisible);
         _executeCanvasCommand(document.DocumentId, command);
     }
 

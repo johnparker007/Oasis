@@ -237,7 +237,7 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
   - [x] Must include at least one Background, Lamp, Reel, SevenSegment, and Alpha if possible
   - [x] Keep fixture out of git if it is large or not redistributable
 - [ ] Smoke test importing into an empty project/document
-  - [x] Blocked in current container; see `PhaseT.SmokeTestAttempt.md`
+  - [x] Blocked in current container; see `PhaseT.RevalidationAttempt.md`
   - [ ] Imported assets are copied under the project's `Assets/MfmeImport/...` folder
   - [ ] Native Oasis Panel2D elements appear at expected positions/sizes
   - [ ] Hierarchy groups show imported native elements
@@ -255,7 +255,7 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
   - [x] Native button/input mapping
   - [x] Runtime/export mapping
 - [ ] Final build and test run
-  - [x] Blocked in current container; see `PhaseT.FinalBuildAndTestAttempt.md`
+  - [x] Blocked in current container; see `PhaseT.RevalidationAttempt.md`
 
 ---
 
@@ -429,9 +429,9 @@ These tasks came from the Editor code review and are retained here as completed 
 ## Backlog — Panel Editor Usability and Future Planning
 
 - [x] Snapping
-- [ ] Layer ordering
-- [ ] Object locking
-- [ ] Object visibility
+- [x] Layer ordering
+- [x] Object locking
+- [x] Object visibility
 - [x] Duplicate/copy/paste
 - [ ] Begin cabinet import MVP planning
 - [ ] Begin machine assembly MVP planning

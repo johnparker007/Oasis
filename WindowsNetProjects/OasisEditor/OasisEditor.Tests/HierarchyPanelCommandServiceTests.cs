@@ -96,6 +96,29 @@ public sealed class HierarchyPanelCommandServiceTests
     }
 
     [Fact]
+    public void HierarchyProvider_AppendsLockAndHiddenFlagsToDisplayName()
+    {
+        var document = CreatePanelDocument(
+            new PanelElementModel
+            {
+                ObjectId = "flagged",
+                Name = "Lamp 1",
+                Kind = PanelElementKind.Lamp,
+                X = 1,
+                Y = 2,
+                Width = 3,
+                Height = 4,
+                IsLocked = true,
+                IsVisible = false
+            });
+
+        var provider = new Panel2DHierarchyProvider();
+        var group = provider.Build(document).Single(item => item.NodeKey == "group:lamp");
+        var child = Assert.Single(group.Children);
+        Assert.Equal("Lamp 1 [Locked] [Hidden]", child.DisplayName);
+    }
+
+    [Fact]
     public void ExecutePasteSelected_AfterCopy_CreatesNewObjectIdAndRecordsCommand()
     {
         var document = CreatePanelDocument(
@@ -347,6 +370,51 @@ public sealed class HierarchyPanelCommandServiceTests
 
         Assert.True(workspace.UndoActiveDocument());
         Assert.Equal(["first", "second", "third"], document.GetPanelElements().Select(element => element.ObjectId));
+    }
+
+    [Fact]
+    public void ExecuteLockSelected_UpdatesState_AndUndoRestoresUnlocked()
+    {
+        var document = CreatePanelDocument(
+            new PanelElementModel { ObjectId = "one", Name = "One", Kind = PanelElementKind.Rectangle, X = 0, Y = 0, Width = 10, Height = 10, IsVisible = true });
+        var workspace = CreateWorkspace(document, document);
+        var service = CreateService(document, workspace);
+        document.HierarchySelectedPanelSelection = new PanelSelectionInfo("one", "rectangle", 0, 0, 10, 10);
+
+        Assert.True(service.CanLockSelected());
+        service.ExecuteLockSelected();
+
+        var updated = Assert.Single(document.GetPanelElements());
+        Assert.True(updated.IsLocked);
+        Assert.False(service.CanLockSelected());
+        Assert.True(service.CanUnlockSelected());
+
+        Assert.True(workspace.UndoActiveDocument());
+        updated = Assert.Single(document.GetPanelElements());
+        Assert.False(updated.IsLocked);
+    }
+
+    [Fact]
+    public void ExecuteHideSelected_HidesElement_AndUndoRestoresVisibility()
+    {
+        var document = CreatePanelDocument(
+            new PanelElementModel { ObjectId = "one", Name = "One", Kind = PanelElementKind.Rectangle, X = 0, Y = 0, Width = 10, Height = 10, IsVisible = true });
+        var workspace = CreateWorkspace(document, document);
+        var service = CreateService(document, workspace);
+        document.HierarchySelectedPanelSelection = new PanelSelectionInfo("one", "rectangle", 0, 0, 10, 10);
+
+        Assert.True(service.CanHideSelected());
+        service.ExecuteHideSelected();
+
+        var updated = Assert.Single(document.GetPanelElements());
+        Assert.False(updated.IsVisible);
+        Assert.NotNull(document.HierarchySelectedPanelSelection);
+        Assert.False(service.CanHideSelected());
+        Assert.True(service.CanShowSelected());
+
+        Assert.True(workspace.UndoActiveDocument());
+        updated = Assert.Single(document.GetPanelElements());
+        Assert.True(updated.IsVisible);
     }
 
     private static HierarchyPanelCommandService CreateService(

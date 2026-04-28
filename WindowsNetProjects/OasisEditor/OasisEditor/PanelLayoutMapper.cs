@@ -42,6 +42,11 @@ public static class PanelLayoutMapper
             var elements = Panel2DDocumentStorage.DeserializeLayout(layoutJson);
             foreach (var element in elements)
             {
+                if (element.IsVisible is false)
+                {
+                    continue;
+                }
+
                 var visual = PanelElementFactory.CreateVisualFromElement(element);
                 if (visual is null)
                 {
@@ -49,7 +54,7 @@ public static class PanelLayoutMapper
                 }
 
                 SetIsPersistedElement(visual, true);
-                CanvasSelectionBehavior.SetIsSelectable(visual, true);
+                CanvasSelectionBehavior.SetIsSelectable(visual, !element.IsLocked);
                 CanvasSelectionBehavior.SetIsSelected(visual, false);
                 Canvas.SetLeft(visual, Math.Max(0, element.X));
                 Canvas.SetTop(visual, Math.Max(0, element.Y));

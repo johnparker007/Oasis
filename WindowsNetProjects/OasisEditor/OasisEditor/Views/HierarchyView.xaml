@@ -55,6 +55,19 @@
                               Style="{StaticResource EditorContextMenuItemStyle}"
                               Command="{Binding SendBackwardHierarchyItemCommand}" />
                     <Separator />
+                    <MenuItem Header="Lock"
+                              Style="{StaticResource EditorContextMenuItemStyle}"
+                              Command="{Binding LockSelectedHierarchyItemCommand}" />
+                    <MenuItem Header="Unlock"
+                              Style="{StaticResource EditorContextMenuItemStyle}"
+                              Command="{Binding UnlockSelectedHierarchyItemCommand}" />
+                    <MenuItem Header="Hide"
+                              Style="{StaticResource EditorContextMenuItemStyle}"
+                              Command="{Binding HideSelectedHierarchyItemCommand}" />
+                    <MenuItem Header="Show"
+                              Style="{StaticResource EditorContextMenuItemStyle}"
+                              Command="{Binding ShowSelectedHierarchyItemCommand}" />
+                    <Separator />
                     <MenuItem Header="Delete"
                               Style="{StaticResource EditorContextMenuItemStyle}"
                               Command="{Binding DeleteSelectedHierarchyItemCommand}" />

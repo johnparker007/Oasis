@@ -264,6 +264,8 @@ internal static class Panel2DDocumentStorage
                 || element.IsReversed.HasValue
                 || element.Stops.HasValue
                 || element.VisibleScale.HasValue
+                || element.IsLocked
+                || element.IsVisible is false
                 || element.ImportSource is not null)
             {
                 return CurrentSchemaVersion;
@@ -316,6 +318,8 @@ internal static class Panel2DDocumentStorage
             IsReversed = normalized.IsReversed,
             Stops = normalized.Stops,
             VisibleScale = normalized.VisibleScale,
+            IsLocked = normalized.IsLocked,
+            IsVisible = normalized.IsVisible ?? true,
             ImportSource = normalized.ImportSource is null
                 ? null
                 : new PanelElementImportSourceModel
@@ -355,6 +359,8 @@ internal static class Panel2DDocumentStorage
             IsReversed = element.IsReversed,
             Stops = element.Stops,
             VisibleScale = element.VisibleScale,
+            IsLocked = element.IsLocked,
+            IsVisible = element.IsVisible,
             ImportSource = importSource,
             Native = CreateNativeFromLegacyFields(
                 assetPath: element.AssetPath,
@@ -411,6 +417,8 @@ internal static class Panel2DDocumentStorage
         var normalizedIsReversed = normalizedNative?.Reversed ?? element.IsReversed;
         var normalizedStops = normalizedNative?.Stops ?? element.Stops;
         var normalizedVisibleScale = normalizedNative?.VisibleScale ?? element.VisibleScale;
+        var normalizedIsLocked = element.IsLocked;
+        var normalizedIsVisible = element.IsVisible ?? true;
 
         var mergedNative = normalizedNative is null
             ? CreateNativeFromLegacyFields(
@@ -456,6 +464,8 @@ internal static class Panel2DDocumentStorage
             IsReversed = normalizedIsReversed,
             Stops = normalizedStops,
             VisibleScale = normalizedVisibleScale,
+            IsLocked = normalizedIsLocked,
+            IsVisible = normalizedIsVisible,
             ImportSource = normalizedImportSource,
             Native = mergedNative
         };
@@ -667,6 +677,8 @@ internal sealed record PanelElementFile : IPanelSelectableObject
     public bool? IsReversed { get; init; }
     public int? Stops { get; init; }
     public double? VisibleScale { get; init; }
+    public bool IsLocked { get; init; }
+    public bool? IsVisible { get; init; }
     public PanelElementImportSourceFile? ImportSource { get; init; }
     public PanelElementNativeFile? Native { get; init; }
 
