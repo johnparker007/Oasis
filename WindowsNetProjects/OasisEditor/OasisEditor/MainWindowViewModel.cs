@@ -33,6 +33,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly DocumentWorkspaceViewModel _documentWorkspace;
     private readonly ActiveDocumentContextService _activeDocumentContext;
     private readonly HierarchyPanelCommandService _hierarchyPanelCommands;
+    private bool _isRefreshingHierarchy;
     private readonly MfmeImportService _mfmeImportService = new();
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -1126,11 +1127,23 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void RefreshHierarchy()
     {
-        _hierarchy.Refresh();
-        OnPropertyChanged(nameof(HierarchyItems));
-        OnPropertyChanged(nameof(HasHierarchyItems));
-        OnPropertyChanged(nameof(HierarchyEmptyStateMessage));
-        NotifyHierarchyCommands();
+        if (_isRefreshingHierarchy)
+        {
+            return;
+        }
+
+        _isRefreshingHierarchy = true;
+        try
+        {
+            _hierarchy.Refresh();
+            OnPropertyChanged(nameof(HierarchyItems));
+            OnPropertyChanged(nameof(HasHierarchyItems));
+            OnPropertyChanged(nameof(HierarchyEmptyStateMessage));
+        }
+        finally
+        {
+            _isRefreshingHierarchy = false;
+        }
     }
 
     private void OnSelectedDocumentPropertyChanged(object? sender, PropertyChangedEventArgs e)
