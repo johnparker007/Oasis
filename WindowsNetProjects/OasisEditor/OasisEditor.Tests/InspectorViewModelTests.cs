@@ -63,6 +63,55 @@ public sealed class InspectorViewModelTests
         Assert.Contains("Reel number: 3, stops: 24.", viewModel.InspectorSummary);
     }
 
+    [Fact]
+    public void InspectorPropertyRows_SelectedLamp_IncludesCommonAndLampFields()
+    {
+        var selectedDocument = new DocumentTabViewModel(EditorDocument.CreatePanel2DStub("Panel"));
+        selectedDocument.SetPanelElements(
+            [
+                new PanelElementModel
+                {
+                    ObjectId = "lamp-1",
+                    Name = "Lamp 7",
+                    Kind = PanelElementKind.Lamp,
+                    X = 10,
+                    Y = 20,
+                    Width = 30,
+                    Height = 40,
+                    DisplayNumber = 7,
+                    OnColorHex = "#FFFFFF",
+                    IsLocked = true,
+                    IsVisible = false
+                }
+            ]);
+
+        var context = new ActiveDocumentContextService();
+        context.SetActiveDocument(selectedDocument);
+        context.SetPanelSelection(selectedDocument.DocumentId, new PanelSelectionInfo("lamp-1", "lamp", 10, 20, 30, 40));
+
+        var viewModel = CreateInspectorViewModel(selectedDocument, context);
+        viewModel.NotifyContextChanged();
+
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Name");
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Locked");
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Visible");
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Display Number");
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "On Color");
+    }
+
+    [Fact]
+    public void InspectorPropertyRows_NoSelection_AreEmpty()
+    {
+        var selectedDocument = new DocumentTabViewModel(EditorDocument.CreatePanel2DStub("Panel"));
+        var context = new ActiveDocumentContextService();
+        context.SetActiveDocument(selectedDocument);
+
+        var viewModel = CreateInspectorViewModel(selectedDocument, context);
+        viewModel.NotifyContextChanged();
+
+        Assert.Empty(viewModel.InspectorPropertyRows);
+    }
+
     private static InspectorViewModel CreateInspectorViewModel(
         DocumentTabViewModel selectedDocument,
         ActiveDocumentContextService context)
