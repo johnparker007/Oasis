@@ -235,9 +235,9 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
 ### Phase T — End-to-End Validation and Cleanup
 - [x] Create or identify a small MFME extract fixture for manual smoke testing
   - [x] Must include at least one Background, Lamp, Reel, SevenSegment, and Alpha if possible
-  - [ ] Keep fixture out of git if it is large or not redistributable
+  - [x] Keep fixture out of git if it is large or not redistributable
 - [ ] Smoke test importing into an empty project/document
-  - [ ] Blocked in current container; see `PhaseT.SmokeTestAttempt.md`
+  - [x] Blocked in current container; see `PhaseT.SmokeTestAttempt.md`
   - [ ] Imported assets are copied under the project's `Assets/MfmeImport/...` folder
   - [ ] Native Oasis Panel2D elements appear at expected positions/sizes
   - [ ] Hierarchy groups show imported native elements
@@ -254,7 +254,8 @@ Complete these tasks in order. Keep each task small enough for one Codex pass wh
   - [x] Alpha renderer
   - [x] Native button/input mapping
   - [x] Runtime/export mapping
-- [ ] Final build and test run *(blocked in current container; see `PhaseT.FinalBuildAndTestAttempt.md`)*
+- [ ] Final build and test run
+  - [x] Blocked in current container; see `PhaseT.FinalBuildAndTestAttempt.md`
 
 ---
 

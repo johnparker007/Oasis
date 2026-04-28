@@ -41,6 +41,20 @@
                     <MenuItem Header="Duplicate"
                               Style="{StaticResource EditorContextMenuItemStyle}"
                               Command="{Binding DuplicateSelectedHierarchyItemCommand}" />
+                    <Separator />
+                    <MenuItem Header="Bring to Front"
+                              Style="{StaticResource EditorContextMenuItemStyle}"
+                              Command="{Binding BringToFrontHierarchyItemCommand}" />
+                    <MenuItem Header="Send to Back"
+                              Style="{StaticResource EditorContextMenuItemStyle}"
+                              Command="{Binding SendToBackHierarchyItemCommand}" />
+                    <MenuItem Header="Bring Forward"
+                              Style="{StaticResource EditorContextMenuItemStyle}"
+                              Command="{Binding BringForwardHierarchyItemCommand}" />
+                    <MenuItem Header="Send Backward"
+                              Style="{StaticResource EditorContextMenuItemStyle}"
+                              Command="{Binding SendBackwardHierarchyItemCommand}" />
+                    <Separator />
                     <MenuItem Header="Delete"
                               Style="{StaticResource EditorContextMenuItemStyle}"
                               Command="{Binding DeleteSelectedHierarchyItemCommand}" />

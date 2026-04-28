@@ -42,6 +42,38 @@ internal static class CanvasMutationCommands
         return new PasteElementMutationCommand(documentId, document, sourceElement);
     }
 
+    public static Commands.ICommand CreateBringToFrontCommand(
+        Guid documentId,
+        DocumentTabViewModel document,
+        PanelSelectionInfo selection)
+    {
+        return new ReorderElementMutationCommand(documentId, document, selection, ReorderDirection.BringToFront);
+    }
+
+    public static Commands.ICommand CreateSendToBackCommand(
+        Guid documentId,
+        DocumentTabViewModel document,
+        PanelSelectionInfo selection)
+    {
+        return new ReorderElementMutationCommand(documentId, document, selection, ReorderDirection.SendToBack);
+    }
+
+    public static Commands.ICommand CreateBringForwardCommand(
+        Guid documentId,
+        DocumentTabViewModel document,
+        PanelSelectionInfo selection)
+    {
+        return new ReorderElementMutationCommand(documentId, document, selection, ReorderDirection.BringForward);
+    }
+
+    public static Commands.ICommand CreateSendBackwardCommand(
+        Guid documentId,
+        DocumentTabViewModel document,
+        PanelSelectionInfo selection)
+    {
+        return new ReorderElementMutationCommand(documentId, document, selection, ReorderDirection.SendBackward);
+    }
+
     private sealed class AddPanelElementMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
     {
         private readonly Guid _documentId;
@@ -401,6 +433,89 @@ internal static class CanvasMutationCommands
         }
     }
 
+    private sealed class ReorderElementMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
+    {
+        private readonly Guid _documentId;
+        private readonly DocumentTabViewModel _document;
+        private readonly PanelSelectionInfo _selection;
+        private readonly ReorderDirection _direction;
+        private int? _fromIndex;
+        private string? _objectId;
+
+        public ReorderElementMutationCommand(
+            Guid documentId,
+            DocumentTabViewModel document,
+            PanelSelectionInfo selection,
+            ReorderDirection direction)
+        {
+            _documentId = documentId;
+            _document = document;
+            _selection = selection;
+            _direction = direction;
+        }
+
+        public Guid DocumentId => _documentId;
+
+        public string Description => _direction switch
+        {
+            ReorderDirection.BringToFront => "Bring to front",
+            ReorderDirection.SendToBack => "Send to back",
+            ReorderDirection.BringForward => "Bring forward",
+            ReorderDirection.SendBackward => "Send backward",
+            _ => "Reorder element"
+        };
+
+        public bool WasExecuted { get; private set; }
+
+        public void Execute()
+        {
+            WasExecuted = false;
+            var elements = _document.GetPanelElements().ToList();
+            if (!TryFindMatchingElementIndex(elements, _selection, out var fromIndex))
+            {
+                return;
+            }
+
+            if (!CanReorder(fromIndex, elements.Count, _direction))
+            {
+                return;
+            }
+
+            var selected = elements[fromIndex];
+            elements.RemoveAt(fromIndex);
+            var insertIndex = ResolveInsertIndex(fromIndex, elements.Count + 1, _direction);
+            elements.Insert(insertIndex, selected);
+
+            _fromIndex = fromIndex;
+            _objectId = selected.ObjectId;
+            _document.SetPanelElements(elements);
+            _document.MarkDirty();
+            WasExecuted = true;
+        }
+
+        public void Undo()
+        {
+            if (_fromIndex is not int fromIndex || string.IsNullOrWhiteSpace(_objectId))
+            {
+                return;
+            }
+
+            var elements = _document.GetPanelElements().ToList();
+            var currentIndex = elements.FindIndex(element => string.Equals(element.ObjectId, _objectId, StringComparison.Ordinal));
+            if (currentIndex < 0)
+            {
+                return;
+            }
+
+            var selected = elements[currentIndex];
+            elements.RemoveAt(currentIndex);
+            var restoreIndex = Math.Clamp(fromIndex, 0, elements.Count);
+            elements.Insert(restoreIndex, selected);
+            _document.SetPanelElements(elements);
+            _document.MarkDirty();
+        }
+    }
+
     private static bool TryFindMatchingElementIndex(IReadOnlyList<PanelElementModel> elements, PanelSelectionInfo selection, out int index)
     {
         var hasObjectId = !string.IsNullOrWhiteSpace(selection.ObjectId);
@@ -515,5 +630,37 @@ internal static class CanvasMutationCommands
 
             suffix++;
         }
+    }
+
+    private static bool CanReorder(int currentIndex, int count, ReorderDirection direction)
+    {
+        return direction switch
+        {
+            ReorderDirection.BringToFront => currentIndex < count - 1,
+            ReorderDirection.SendToBack => currentIndex > 0,
+            ReorderDirection.BringForward => currentIndex < count - 1,
+            ReorderDirection.SendBackward => currentIndex > 0,
+            _ => false
+        };
+    }
+
+    private static int ResolveInsertIndex(int currentIndex, int originalCount, ReorderDirection direction)
+    {
+        return direction switch
+        {
+            ReorderDirection.BringToFront => originalCount - 1,
+            ReorderDirection.SendToBack => 0,
+            ReorderDirection.BringForward => Math.Min(currentIndex + 1, originalCount - 1),
+            ReorderDirection.SendBackward => Math.Max(currentIndex - 1, 0),
+            _ => currentIndex
+        };
+    }
+
+    private enum ReorderDirection
+    {
+        BringToFront,
+        SendToBack,
+        BringForward,
+        SendBackward
     }
 }

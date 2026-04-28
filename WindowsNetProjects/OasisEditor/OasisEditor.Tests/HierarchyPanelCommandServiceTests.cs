@@ -306,6 +306,49 @@ public sealed class HierarchyPanelCommandServiceTests
         Assert.Single(document.CommandService.History.Entries);
     }
 
+    [Fact]
+    public void ReorderCanExecute_ReflectsSelectedElementPosition()
+    {
+        var document = CreatePanelDocument(
+            new PanelElementModel { ObjectId = "back", Name = "Back", Kind = PanelElementKind.Rectangle, X = 0, Y = 0, Width = 10, Height = 10 },
+            new PanelElementModel { ObjectId = "middle", Name = "Middle", Kind = PanelElementKind.Rectangle, X = 20, Y = 0, Width = 10, Height = 10 },
+            new PanelElementModel { ObjectId = "front", Name = "Front", Kind = PanelElementKind.Rectangle, X = 40, Y = 0, Width = 10, Height = 10 });
+        var workspace = CreateWorkspace(document, document);
+        var service = CreateService(document, workspace);
+
+        document.HierarchySelectedPanelSelection = new PanelSelectionInfo("middle", "rectangle", 20, 0, 10, 10);
+        Assert.True(service.CanBringToFrontSelected());
+        Assert.True(service.CanBringForwardSelected());
+        Assert.True(service.CanSendToBackSelected());
+        Assert.True(service.CanSendBackwardSelected());
+
+        document.HierarchySelectedPanelSelection = new PanelSelectionInfo("front", "rectangle", 40, 0, 10, 10);
+        Assert.False(service.CanBringToFrontSelected());
+        Assert.False(service.CanBringForwardSelected());
+        Assert.True(service.CanSendToBackSelected());
+        Assert.True(service.CanSendBackwardSelected());
+    }
+
+    [Fact]
+    public void ExecuteBringToFrontSelected_ReordersElement_AndUndoRestoresOrder()
+    {
+        var document = CreatePanelDocument(
+            new PanelElementModel { ObjectId = "first", Name = "First", Kind = PanelElementKind.Rectangle, X = 0, Y = 0, Width = 10, Height = 10 },
+            new PanelElementModel { ObjectId = "second", Name = "Second", Kind = PanelElementKind.Rectangle, X = 20, Y = 0, Width = 10, Height = 10 },
+            new PanelElementModel { ObjectId = "third", Name = "Third", Kind = PanelElementKind.Rectangle, X = 40, Y = 0, Width = 10, Height = 10 });
+        var workspace = CreateWorkspace(document, document);
+        var service = CreateService(document, workspace);
+        document.HierarchySelectedPanelSelection = new PanelSelectionInfo("first", "rectangle", 0, 0, 10, 10);
+
+        service.ExecuteBringToFrontSelected();
+
+        Assert.Equal(["second", "third", "first"], document.GetPanelElements().Select(element => element.ObjectId));
+        Assert.Single(document.CommandService.History.Entries);
+
+        Assert.True(workspace.UndoActiveDocument());
+        Assert.Equal(["first", "second", "third"], document.GetPanelElements().Select(element => element.ObjectId));
+    }
+
     private static HierarchyPanelCommandService CreateService(
         DocumentTabViewModel selectedDocument,
         DocumentWorkspaceViewModel workspace)
