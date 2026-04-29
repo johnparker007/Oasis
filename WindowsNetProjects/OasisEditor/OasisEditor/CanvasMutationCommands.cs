@@ -136,7 +136,7 @@ internal static class CanvasMutationCommands
             var index = Math.Clamp(_insertIndex ?? elements.Count, 0, elements.Count);
             elements.Insert(index, elementModel);
             _insertIndex = index;
-            _document.SetPanelElements(elements);
+            _document.SetPanelElements(elements, CreateStructureChange(_document, elementModel.ObjectId));
             _document.MarkDirty();
             WasExecuted = true;
         }
@@ -176,7 +176,7 @@ internal static class CanvasMutationCommands
 
             if (removed)
             {
-                _document.SetPanelElements(elements);
+                _document.SetPanelElements(elements, CreateStructureChange(_document));
                 _document.MarkDirty();
             }
         }
@@ -215,7 +215,7 @@ internal static class CanvasMutationCommands
             _deletedElement = Panel2DDocumentStorage.ToStorageElement(elements[index]);
             _deletedIndex = index;
             elements.RemoveAt(index);
-            _document.SetPanelElements(elements);
+            _document.SetPanelElements(elements, CreateStructureChange(_document, _deletedElement?.ObjectId));
             _document.MarkDirty();
             WasExecuted = true;
         }
@@ -230,7 +230,7 @@ internal static class CanvasMutationCommands
             var elements = _document.GetPanelElements().ToList();
             var insertIndex = Math.Clamp(index, 0, elements.Count);
             elements.Insert(insertIndex, Panel2DDocumentStorage.ToModel(_deletedElement));
-            _document.SetPanelElements(elements);
+            _document.SetPanelElements(elements, CreateStructureChange(_document, _deletedElement.ObjectId));
             _document.MarkDirty();
         }
     }
@@ -282,7 +282,7 @@ internal static class CanvasMutationCommands
             _previousName = existing.Name;
             elements[index] = PanelElementModelCloner.Clone(existing, name: normalizedNewName);
 
-            _document.SetPanelElements(elements);
+            _document.SetPanelElements(elements, CreateElementChange(_document, existing.ObjectId, PanelChangeProperties.Name, affectsHierarchy: true));
             _document.MarkDirty();
             WasExecuted = true;
         }
@@ -308,7 +308,7 @@ internal static class CanvasMutationCommands
             var existing = elements[index];
             elements[index] = PanelElementModelCloner.Clone(existing, name: _previousName ?? string.Empty);
 
-            _document.SetPanelElements(elements);
+            _document.SetPanelElements(elements, CreateElementChange(_document, existing.ObjectId, PanelChangeProperties.Name, affectsHierarchy: true));
             _document.MarkDirty();
         }
     }
@@ -365,7 +365,7 @@ internal static class CanvasMutationCommands
 
             var insertIndex = Math.Clamp(_insertIndex ?? elements.Count, 0, elements.Count);
             elements.Insert(insertIndex, duplicate);
-            _document.SetPanelElements(elements);
+            _document.SetPanelElements(elements, CreateStructureChange(_document, duplicate.ObjectId));
             _document.MarkDirty();
             WasExecuted = true;
         }
@@ -385,7 +385,7 @@ internal static class CanvasMutationCommands
                 return;
             }
 
-            _document.SetPanelElements(elements);
+            _document.SetPanelElements(elements, CreateStructureChange(_document, duplicatedElement.ObjectId));
             _document.MarkDirty();
         }
     }
@@ -436,7 +436,7 @@ internal static class CanvasMutationCommands
 
             var insertIndex = Math.Clamp(_insertIndex ?? elements.Count, 0, elements.Count);
             elements.Insert(insertIndex, pastedElement);
-            _document.SetPanelElements(elements);
+            _document.SetPanelElements(elements, CreateStructureChange(_document, pastedElement.ObjectId));
             _document.MarkDirty();
             WasExecuted = true;
         }
@@ -456,7 +456,7 @@ internal static class CanvasMutationCommands
                 return;
             }
 
-            _document.SetPanelElements(elements);
+            _document.SetPanelElements(elements, CreateStructureChange(_document, pastedElement.ObjectId));
             _document.MarkDirty();
         }
     }
@@ -516,7 +516,7 @@ internal static class CanvasMutationCommands
 
             _fromIndex = fromIndex;
             _objectId = selected.ObjectId;
-            _document.SetPanelElements(elements);
+            _document.SetPanelElements(elements, CreateElementChange(_document, selected.ObjectId, PanelChangeProperties.Ordering, affectsHierarchy: true));
             _document.MarkDirty();
             WasExecuted = true;
         }
@@ -539,7 +539,7 @@ internal static class CanvasMutationCommands
             elements.RemoveAt(currentIndex);
             var restoreIndex = Math.Clamp(fromIndex, 0, elements.Count);
             elements.Insert(restoreIndex, selected);
-            _document.SetPanelElements(elements);
+            _document.SetPanelElements(elements, CreateElementChange(_document, selected.ObjectId, PanelChangeProperties.Ordering, affectsHierarchy: true));
             _document.MarkDirty();
         }
     }
@@ -589,7 +589,7 @@ internal static class CanvasMutationCommands
             _updatedIndex = index;
             _previousValue = existing.IsLocked;
             elements[index] = PanelElementModelCloner.Clone(existing, isLocked: _isLocked);
-            _document.SetPanelElements(elements);
+            _document.SetPanelElements(elements, CreateElementChange(_document, existing.ObjectId, PanelChangeProperties.LockState, affectsHierarchy: true));
             _document.MarkDirty();
             WasExecuted = true;
         }
@@ -613,7 +613,7 @@ internal static class CanvasMutationCommands
             }
 
             elements[index] = PanelElementModelCloner.Clone(elements[index], isLocked: _previousValue);
-            _document.SetPanelElements(elements);
+            _document.SetPanelElements(elements, CreateElementChange(_document, elements[index].ObjectId, PanelChangeProperties.LockState, affectsHierarchy: true));
             _document.MarkDirty();
         }
     }
@@ -663,7 +663,7 @@ internal static class CanvasMutationCommands
             _updatedIndex = index;
             _previousValue = existing.IsVisible;
             elements[index] = PanelElementModelCloner.Clone(existing, isVisible: _isVisible);
-            _document.SetPanelElements(elements);
+            _document.SetPanelElements(elements, CreateElementChange(_document, existing.ObjectId, PanelChangeProperties.Visibility, affectsHierarchy: true));
             _document.MarkDirty();
             WasExecuted = true;
         }
@@ -687,7 +687,7 @@ internal static class CanvasMutationCommands
             }
 
             elements[index] = PanelElementModelCloner.Clone(elements[index], isVisible: _previousValue);
-            _document.SetPanelElements(elements);
+            _document.SetPanelElements(elements, CreateElementChange(_document, elements[index].ObjectId, PanelChangeProperties.Visibility, affectsHierarchy: true));
             _document.MarkDirty();
         }
     }
@@ -749,7 +749,7 @@ internal static class CanvasMutationCommands
 
             _previousElement = PanelElementModelCloner.Clone(existing);
             elements[index] = PanelElementModelCloner.Clone(_updatedElement);
-            _document.SetPanelElements(elements);
+            _document.SetPanelElements(elements, CreateElementChange(_document, _objectId, PanelChangeProperties.Geometry | PanelChangeProperties.Style | PanelChangeProperties.Metadata));
             _document.MarkDirty();
             WasExecuted = true;
         }
@@ -774,9 +774,20 @@ internal static class CanvasMutationCommands
             }
 
             elements[index] = PanelElementModelCloner.Clone(_previousElement);
-            _document.SetPanelElements(elements);
+            _document.SetPanelElements(elements, CreateElementChange(_document, _objectId, PanelChangeProperties.Geometry | PanelChangeProperties.Style | PanelChangeProperties.Metadata));
             _document.MarkDirty();
         }
+    }
+
+
+    private static PanelChangeEvent CreateElementChange(DocumentTabViewModel document, string? objectId, PanelChangeProperties properties, bool affectsHierarchy = false, bool affectsInspectorRows = true)
+    {
+        return new PanelChangeEvent(document.DocumentId, objectId, properties, AffectsCanvas: true, AffectsHierarchy: affectsHierarchy, AffectsInspectorRows: affectsInspectorRows, AffectsPersistence: true);
+    }
+
+    private static PanelChangeEvent CreateStructureChange(DocumentTabViewModel document, string? objectId = null)
+    {
+        return new PanelChangeEvent(document.DocumentId, objectId, PanelChangeProperties.Structure | PanelChangeProperties.Ordering, AffectsCanvas: true, AffectsHierarchy: true, AffectsInspectorRows: true, AffectsPersistence: true);
     }
 
     private static bool TryFindMatchingElementIndex(IReadOnlyList<PanelElementModel> elements, PanelSelectionInfo selection, out int index)

@@ -55,7 +55,7 @@ internal sealed class ImportMfmeExtractCommand : IDocumentCommand, IExecutionTra
 
         var insertIndex = Math.Clamp(_insertIndex, 0, currentElements.Count);
         currentElements.InsertRange(insertIndex, _importedElements.Select(static element => CloneElement(element)));
-        _document.SetPanelElements(currentElements);
+        _document.SetPanelElements(currentElements, new PanelChangeEvent(_document.DocumentId, null, PanelChangeProperties.Structure, AffectsCanvas: true, AffectsHierarchy: true, AffectsInspectorRows: true, AffectsPersistence: true));
         _document.MarkDirty();
         WasExecuted = true;
     }
@@ -75,7 +75,7 @@ internal sealed class ImportMfmeExtractCommand : IDocumentCommand, IExecutionTra
             return;
         }
 
-        _document.SetPanelElements(elements);
+        _document.SetPanelElements(elements, new PanelChangeEvent(_document.DocumentId, null, PanelChangeProperties.Structure, AffectsCanvas: true, AffectsHierarchy: true, AffectsInspectorRows: true, AffectsPersistence: true));
         _document.MarkDirty();
     }
 

@@ -16,6 +16,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     private double _panelPanY;
 
     public event PropertyChangedEventHandler? PropertyChanged;
+    public event Action<PanelChangeEvent>? PanelChanged;
 
     public DocumentTabViewModel(
         EditorDocument document,
@@ -108,7 +109,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
         return _panelDocumentModel.Elements.Any(element => IsSelectionMatch(element, selection));
     }
 
-    internal void SetPanelElements(IReadOnlyList<PanelElementModel> elements)
+    internal void SetPanelElements(IReadOnlyList<PanelElementModel> elements, PanelChangeEvent? panelChange = null)
     {
         _panelDocumentModel = new Panel2DDocumentModel
         {
@@ -119,6 +120,11 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
 
         _panelLayoutJson = GetPanelLayoutProjectionJson();
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PanelLayoutJson)));
+
+        if (panelChange is PanelChangeEvent change)
+        {
+            PanelChanged?.Invoke(change);
+        }
     }
 
     internal string GetPanelLayoutProjectionJson()
