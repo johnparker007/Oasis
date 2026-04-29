@@ -1105,15 +1105,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         NotifyUndoRedoStateChanged();
         _assetBrowser.NotifyRefreshCommand();
-        RefreshHierarchy();
     }
 
     private void NotifyUndoRedoStateChanged()
     {
         OnPropertyChanged(nameof(UndoMenuHeader));
         OnPropertyChanged(nameof(RedoMenuHeader));
-        RefreshHierarchy();
-        NotifyInspectorChanged();
         CommandManager.InvalidateRequerySuggested();
     }
 
