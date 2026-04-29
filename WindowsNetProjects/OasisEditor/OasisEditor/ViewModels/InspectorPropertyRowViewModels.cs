@@ -99,6 +99,14 @@ public sealed class InspectorTextPropertyViewModel : InspectorEditablePropertyRo
         _committedValue = _value;
     }
 
+    public void SetCommittedValue(string? value)
+    {
+        ErrorText = string.Empty;
+        _value = value ?? string.Empty;
+        _committedValue = _value;
+        RaisePropertyChanged(nameof(Value));
+    }
+
 }
 
 public sealed class InspectorDoublePropertyViewModel : InspectorEditablePropertyRowViewModel
@@ -148,6 +156,14 @@ public sealed class InspectorDoublePropertyViewModel : InspectorEditableProperty
 
         ErrorText = string.Empty;
         _committedValue = parsed.ToString("0.###", CultureInfo.InvariantCulture);
+        _value = _committedValue;
+        RaisePropertyChanged(nameof(Value));
+    }
+
+    public void SetCommittedValue(double value)
+    {
+        ErrorText = string.Empty;
+        _committedValue = value.ToString("0.###", CultureInfo.InvariantCulture);
         _value = _committedValue;
         RaisePropertyChanged(nameof(Value));
     }
@@ -218,6 +234,14 @@ public sealed class InspectorIntPropertyViewModel : InspectorEditablePropertyRow
 
         ErrorText = string.Empty;
         _committedValue = parsedValue?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
+        _value = _committedValue;
+        RaisePropertyChanged(nameof(Value));
+    }
+
+    public void SetCommittedValue(int? value)
+    {
+        ErrorText = string.Empty;
+        _committedValue = value?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
         _value = _committedValue;
         RaisePropertyChanged(nameof(Value));
     }
@@ -351,6 +375,26 @@ public sealed class InspectorColorPropertyViewModel : InspectorEditablePropertyR
         parsedColor = color;
         return InspectorColorHex.Format(color);
     }
+
+    public void SetCommittedValue(string? value)
+    {
+        ErrorText = string.Empty;
+        if (InspectorColorHex.TryParse(value, out var parsedColor))
+        {
+            _selectedColor = parsedColor;
+            _committedColor = parsedColor;
+            _hexValue = InspectorColorHex.Format(parsedColor);
+            _committedHexValue = _hexValue;
+        }
+        else
+        {
+            _hexValue = string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
+            _committedHexValue = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        }
+
+        RaisePropertyChanged(nameof(HexValue));
+        RaisePropertyChanged(nameof(SelectedColor));
+    }
 }
 
 public sealed class InspectorBoolPropertyViewModel : InspectorPropertyRowViewModel
@@ -389,6 +433,13 @@ public sealed class InspectorBoolPropertyViewModel : InspectorPropertyRowViewMod
             _isApplyingChange = false;
         }
     }
+
+    public void SetCommittedValue(bool value)
+    {
+        ErrorText = string.Empty;
+        _value = value;
+        RaisePropertyChanged(nameof(Value));
+    }
 }
 
 public sealed class InspectorInfoPropertyViewModel : InspectorPropertyRowViewModel
@@ -405,5 +456,10 @@ public sealed class InspectorInfoPropertyViewModel : InspectorPropertyRowViewMod
     {
         get => _value;
         set => SetProperty(ref _value, value);
+    }
+
+    public void SetCommittedValue(string value)
+    {
+        Value = value;
     }
 }

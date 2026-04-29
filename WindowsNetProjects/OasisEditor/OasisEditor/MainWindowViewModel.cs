@@ -1176,7 +1176,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         if (panelChange.AffectsInspectorRows)
         {
-            NotifyInspectorChanged();
+            _inspector.NotifyPanelChanged(panelChange);
+            OnPropertyChanged(nameof(InspectorSummary));
+            OnPropertyChanged(nameof(InspectorPropertyRows));
         }
     }
 
