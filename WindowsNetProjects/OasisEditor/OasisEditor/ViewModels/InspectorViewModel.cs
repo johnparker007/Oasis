@@ -204,6 +204,38 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         NotifyInspectorEditCommand();
     }
 
+    public void NotifyPanelChanged(PanelChangeEvent panelChange)
+    {
+        var selectedDocument = _selectedDocumentAccessor();
+        var selection = _activeDocumentContext.ActivePanelSelection;
+        if (selectedDocument is null || selection is not PanelSelectionInfo panelSelection)
+        {
+            NotifyContextChanged();
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(panelChange.ObjectId)
+            && !string.Equals(panelChange.ObjectId, panelSelection.ObjectId, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        if (panelChange.ChangedProperties.HasFlag(PanelChangeProperties.Structure))
+        {
+            RebuildPropertyRows();
+            return;
+        }
+
+        if (!selectedDocument.TryGetPanelElement(panelSelection, out var selectedElement))
+        {
+            RebuildPropertyRows();
+            return;
+        }
+
+        RefreshPropertyRowValues(selectedElement);
+        OnPropertyChanged(nameof(InspectorSummary));
+    }
+
     private void RebuildPropertyRows()
     {
         _propertyRows.Clear();
@@ -357,6 +389,73 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         {
             _propertyRows.Add(new InspectorInfoPropertyViewModel("Import Format", "Metadata", selectedElement.ImportSource.Format));
             _propertyRows.Add(new InspectorInfoPropertyViewModel("Import Reference", "Metadata", selectedElement.ImportSource.Reference));
+        }
+    }
+
+    private void RefreshPropertyRowValues(PanelElementModel selectedElement)
+    {
+        foreach (var row in _propertyRows)
+        {
+            switch (row.DisplayName)
+            {
+                case "Name" when row is InspectorTextPropertyViewModel textRow:
+                    textRow.SetCommittedValue(selectedElement.Name);
+                    break;
+                case "X" when row is InspectorDoublePropertyViewModel doubleRow:
+                    doubleRow.SetCommittedValue(selectedElement.X);
+                    break;
+                case "Y" when row is InspectorDoublePropertyViewModel yRow:
+                    yRow.SetCommittedValue(selectedElement.Y);
+                    break;
+                case "Width" when row is InspectorDoublePropertyViewModel widthRow:
+                    widthRow.SetCommittedValue(selectedElement.Width);
+                    break;
+                case "Height" when row is InspectorDoublePropertyViewModel heightRow:
+                    heightRow.SetCommittedValue(selectedElement.Height);
+                    break;
+                case "Locked" when row is InspectorBoolPropertyViewModel lockedRow:
+                    lockedRow.SetCommittedValue(selectedElement.IsLocked);
+                    break;
+                case "Visible" when row is InspectorBoolPropertyViewModel visibleRow:
+                    visibleRow.SetCommittedValue(selectedElement.IsVisible);
+                    break;
+                case "Display Number" when row is InspectorIntPropertyViewModel displayRow:
+                    displayRow.SetCommittedValue(selectedElement.DisplayNumber);
+                    break;
+                case "Asset Path" when row is InspectorTextPropertyViewModel assetPathRow:
+                    assetPathRow.SetCommittedValue(selectedElement.AssetPath);
+                    break;
+                case "Secondary Asset" when row is InspectorTextPropertyViewModel secondaryRow:
+                    secondaryRow.SetCommittedValue(selectedElement.SecondaryAssetPath);
+                    break;
+                case "On Color" when row is InspectorColorPropertyViewModel onColorRow:
+                    onColorRow.SetCommittedValue(selectedElement.OnColorHex);
+                    break;
+                case "Off Color" when row is InspectorColorPropertyViewModel offColorRow:
+                    offColorRow.SetCommittedValue(selectedElement.OffColorHex);
+                    break;
+                case "Text Color" when row is InspectorColorPropertyViewModel textColorRow:
+                    textColorRow.SetCommittedValue(selectedElement.TextColorHex);
+                    break;
+                case "Display Text" when row is InspectorTextPropertyViewModel displayTextRow:
+                    displayTextRow.SetCommittedValue(selectedElement.DisplayText);
+                    break;
+                case "Stops" when row is InspectorIntPropertyViewModel stopsRow:
+                    stopsRow.SetCommittedValue(selectedElement.Stops);
+                    break;
+                case "Visible Scale" when row is InspectorDoublePropertyViewModel scaleRow && selectedElement.VisibleScale.HasValue:
+                    scaleRow.SetCommittedValue(selectedElement.VisibleScale.Value);
+                    break;
+                case "Reversed" when row is InspectorBoolPropertyViewModel reversedRow:
+                    reversedRow.SetCommittedValue(selectedElement.IsReversed ?? false);
+                    break;
+                case "Import Format" when row is InspectorInfoPropertyViewModel importFormatRow:
+                    importFormatRow.SetCommittedValue(selectedElement.ImportSource?.Format ?? string.Empty);
+                    break;
+                case "Import Reference" when row is InspectorInfoPropertyViewModel importReferenceRow:
+                    importReferenceRow.SetCommittedValue(selectedElement.ImportSource?.Reference ?? string.Empty);
+                    break;
+            }
         }
     }
 

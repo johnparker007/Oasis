@@ -282,6 +282,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             if (_selectedDocument is not null)
             {
                 _selectedDocument.PropertyChanged -= OnSelectedDocumentPropertyChanged;
+                _selectedDocument.PanelChanged -= OnSelectedDocumentPanelChanged;
             }
 
             if (SetProperty(ref _selectedDocument, value))
@@ -289,6 +290,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 if (_selectedDocument is not null)
                 {
                     _selectedDocument.PropertyChanged += OnSelectedDocumentPropertyChanged;
+                    _selectedDocument.PanelChanged += OnSelectedDocumentPanelChanged;
                 }
 
                 _activeDocumentContext.SetActiveDocument(value);
@@ -1103,15 +1105,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         NotifyUndoRedoStateChanged();
         _assetBrowser.NotifyRefreshCommand();
-        RefreshHierarchy();
     }
 
     private void NotifyUndoRedoStateChanged()
     {
         OnPropertyChanged(nameof(UndoMenuHeader));
         OnPropertyChanged(nameof(RedoMenuHeader));
-        RefreshHierarchy();
-        NotifyInspectorChanged();
         CommandManager.InvalidateRequerySuggested();
     }
 
@@ -1150,18 +1149,33 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void OnSelectedDocumentPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(DocumentTabViewModel.PanelLayoutJson))
-        {
-            RefreshHierarchy();
-            NotifyInspectorChanged();
-        }
-
         if (e.PropertyName is nameof(DocumentTabViewModel.HierarchySelectedPanelSelection))
         {
             _hierarchy.SyncSelection(SelectedDocument?.HierarchySelectedPanelSelection);
             OnPropertyChanged(nameof(HierarchyItems));
             NotifyInspectorChanged();
             NotifyHierarchyCommands();
+        }
+    }
+
+    private void OnSelectedDocumentPanelChanged(PanelChangeEvent panelChange)
+    {
+        if (SelectedDocument is null || panelChange.DocumentId != SelectedDocument.DocumentId)
+        {
+            return;
+        }
+
+        if (panelChange.AffectsHierarchy)
+        {
+            RefreshHierarchy();
+            NotifyHierarchyCommands();
+        }
+
+        if (panelChange.AffectsInspectorRows)
+        {
+            _inspector.NotifyPanelChanged(panelChange);
+            OnPropertyChanged(nameof(InspectorSummary));
+            OnPropertyChanged(nameof(InspectorPropertyRows));
         }
     }
 
