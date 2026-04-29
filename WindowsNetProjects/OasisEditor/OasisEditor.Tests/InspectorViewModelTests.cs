@@ -231,8 +231,8 @@ public sealed class InspectorViewModelTests
         var viewModel = CreateInspectorViewModel(selectedDocument, context, ExecuteImmediately);
         viewModel.NotifyContextChanged();
 
-        var row = Assert.IsType<InspectorTextPropertyViewModel>(viewModel.InspectorPropertyRows.Single(x => x.DisplayName == "On Color"));
-        row.Value = "#00FF00";
+        var row = Assert.IsType<InspectorColorPropertyViewModel>(viewModel.InspectorPropertyRows.Single(x => x.DisplayName == "On Color"));
+        row.HexValue = "#00FF00";
         row.Commit();
 
         Assert.Equal("#00FF00", selectedDocument.GetPanelElements().Single().OnColorHex);
@@ -299,6 +299,39 @@ public sealed class InspectorViewModelTests
 
         Assert.Equal("Width must be greater than zero.", row.ErrorText);
         Assert.Equal(30, selectedDocument.GetPanelElements().Single().Width);
+    }
+
+
+    [Fact]
+    public void InspectorPropertyRows_ColorFields_UseColorRows()
+    {
+        var selectedDocument = new DocumentTabViewModel(EditorDocument.CreatePanel2DStub("Panel"));
+        selectedDocument.SetPanelElements(
+            [
+                new PanelElementModel
+                {
+                    ObjectId = "lamp-1",
+                    Name = "Lamp",
+                    Kind = PanelElementKind.Lamp,
+                    X = 10,
+                    Y = 20,
+                    Width = 30,
+                    Height = 40,
+                    OnColorHex = "#00FF00",
+                    OffColorHex = "#000000",
+                    TextColorHex = "#FFFFFF"
+                }
+            ]);
+
+        var context = new ActiveDocumentContextService();
+        context.SetActiveDocument(selectedDocument);
+        context.SetPanelSelection(selectedDocument.DocumentId, new PanelSelectionInfo("lamp-1", "lamp", 10, 20, 30, 40));
+        var viewModel = CreateInspectorViewModel(selectedDocument, context, ExecuteImmediately);
+        viewModel.NotifyContextChanged();
+
+        Assert.IsType<InspectorColorPropertyViewModel>(viewModel.InspectorPropertyRows.Single(x => x.DisplayName == "On Color"));
+        Assert.IsType<InspectorColorPropertyViewModel>(viewModel.InspectorPropertyRows.Single(x => x.DisplayName == "Off Color"));
+        Assert.IsType<InspectorColorPropertyViewModel>(viewModel.InspectorPropertyRows.Single(x => x.DisplayName == "Text Color"));
     }
 
     private static InspectorViewModel CreateInspectorViewModel(

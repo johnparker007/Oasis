@@ -4,6 +4,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:OasisEditor"
+             xmlns:colorPicker="clr-namespace:ColorPicker;assembly=ColorPicker"
              mc:Ignorable="d"
              d:DesignHeight="300"
              d:DesignWidth="260">
@@ -53,6 +54,29 @@
                          LostFocus="OnEditableTextBoxLostFocus"
                          KeyDown="OnEditableTextBoxKeyDown"
                          Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" />
+            </Grid>
+        </DataTemplate>
+
+
+        <DataTemplate DataType="{x:Type vm:InspectorColorPropertyViewModel}">
+            <Grid Margin="0,3,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="120" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="8" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock VerticalAlignment="Center"
+                           Text="{Binding DisplayName}" />
+                <colorPicker:PortableColorPicker Grid.Column="1"
+                                                 Width="36"
+                                                 Height="20"
+                                                 SelectedColor="{Binding SelectedColor, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBox Grid.Column="3"
+                         IsReadOnly="{Binding IsReadOnly}"
+                         LostFocus="OnEditableTextBoxLostFocus"
+                         KeyDown="OnEditableTextBoxKeyDown"
+                         Text="{Binding HexValue, UpdateSourceTrigger=PropertyChanged}" />
             </Grid>
         </DataTemplate>
 

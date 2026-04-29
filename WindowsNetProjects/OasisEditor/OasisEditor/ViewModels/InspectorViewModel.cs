@@ -19,6 +19,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
     private readonly Func<DocumentTabViewModel, string, DocumentTabViewModel?> _applySummary;
     private readonly ObservableCollection<InspectorPropertyRowViewModel> _propertyRows = [];
     private string _inspectorEditableSummary = string.Empty;
+    private DateTime _suppressPropertyRowRefreshUntilUtc;
 
     public InspectorViewModel(
         Func<AssetBrowserItemViewModel?> selectedAssetAccessor,
@@ -194,7 +195,10 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(InspectorSummary));
         OnPropertyChanged(nameof(CanEditInspectorSummary));
 
-        RebuildPropertyRows();
+        if (!ShouldSuppressPropertyRowRefresh())
+        {
+            RebuildPropertyRows();
+        }
 
         InspectorEditableSummary = _selectedDocumentAccessor()?.ContentSummary ?? string.Empty;
         NotifyInspectorEditCommand();
@@ -288,29 +292,29 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
         if (selectedElement.Kind is PanelElementKind.Lamp or PanelElementKind.SevenSegment or PanelElementKind.Alpha)
         {
-            _propertyRows.Add(new InspectorTextPropertyViewModel(
+            _propertyRows.Add(new InspectorColorPropertyViewModel(
                 "On Color",
                 "Type-specific",
                 selectedElement.OnColorHex ?? string.Empty,
-                commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update on color", new PanelElementModelUpdate { OnColorHex = NormalizeOptionalText(value) })));
+                commit: value => TryApplyColorUpdate(selectedElement.ObjectId, "Update on color", new PanelElementModelUpdate { OnColorHex = NormalizeOptionalText(value) })));
         }
 
         if (selectedElement.Kind is PanelElementKind.Lamp)
         {
-            _propertyRows.Add(new InspectorTextPropertyViewModel(
+            _propertyRows.Add(new InspectorColorPropertyViewModel(
                 "Off Color",
                 "Type-specific",
                 selectedElement.OffColorHex ?? string.Empty,
-                commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update off color", new PanelElementModelUpdate { OffColorHex = NormalizeOptionalText(value) })));
+                commit: value => TryApplyColorUpdate(selectedElement.ObjectId, "Update off color", new PanelElementModelUpdate { OffColorHex = NormalizeOptionalText(value) })));
         }
 
         if (selectedElement.Kind is PanelElementKind.Lamp or PanelElementKind.Alpha)
         {
-            _propertyRows.Add(new InspectorTextPropertyViewModel(
+            _propertyRows.Add(new InspectorColorPropertyViewModel(
                 "Text Color",
                 "Type-specific",
                 selectedElement.TextColorHex ?? string.Empty,
-                commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update text color", new PanelElementModelUpdate { TextColorHex = NormalizeOptionalText(value) })));
+                commit: value => TryApplyColorUpdate(selectedElement.ObjectId, "Update text color", new PanelElementModelUpdate { TextColorHex = NormalizeOptionalText(value) })));
         }
 
         if (selectedElement.Kind is PanelElementKind.Lamp or PanelElementKind.Alpha)
@@ -356,7 +360,12 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         }
     }
 
-    private string? TryApplyUpdate(string objectId, string description, PanelElementModelUpdate update)
+    private string? TryApplyColorUpdate(string objectId, string description, PanelElementModelUpdate update)
+    {
+        return TryApplyUpdate(objectId, description, update, suppressInspectorRefresh: true);
+    }
+
+    private string? TryApplyUpdate(string objectId, string description, PanelElementModelUpdate update, bool suppressInspectorRefresh = false)
     {
         var selectedDocument = _selectedDocumentAccessor();
         if (selectedDocument is null)
@@ -383,9 +392,25 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             objectId,
             updated,
             description);
-        return _executeCanvasCommand(selectedDocument.DocumentId, command)
-            ? null
-            : "Unable to apply update.";
+        if (suppressInspectorRefresh)
+        {
+            _suppressPropertyRowRefreshUntilUtc = DateTime.UtcNow.AddSeconds(1);
+        }
+
+        var executed = _executeCanvasCommand(selectedDocument.DocumentId, command);
+        if (!executed)
+        {
+            _suppressPropertyRowRefreshUntilUtc = DateTime.MinValue;
+            return "Unable to apply update.";
+        }
+
+        return null;
+    }
+
+
+    private bool ShouldSuppressPropertyRowRefresh()
+    {
+        return DateTime.UtcNow < _suppressPropertyRowRefreshUntilUtc;
     }
 
     private static string? NormalizeOptionalText(string? value)
