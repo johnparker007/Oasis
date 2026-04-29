@@ -1231,6 +1231,117 @@ public sealed class Panel2DRoundTripTests
     }
 
     [Fact]
+    public void UpdateElementCommand_GeometryOnlyChange_EmitsPanelChangeWithoutHierarchyRefreshFlag()
+    {
+        var document = CreatePanelDocument(
+            new PanelElementModel
+            {
+                ObjectId = "rect-1",
+                Name = "Rect 1",
+                Kind = PanelElementKind.Rectangle,
+                X = 10,
+                Y = 10,
+                Width = 20,
+                Height = 20
+            });
+        var workspace = CreateWorkspace(document, document);
+        var events = new List<PanelChangeEvent>();
+        document.PanelChanged += panelChange => events.Add(panelChange);
+
+        var updated = PanelElementModelCloner.Clone(document.GetPanelElements().Single());
+        updated.X = 42;
+        var command = CanvasMutationCommands.CreateUpdateElementCommand(
+            document.DocumentId,
+            document,
+            "rect-1",
+            updated,
+            "Inspector update");
+
+        Assert.True(workspace.ExecuteDocumentCanvasCommand(document.DocumentId, command));
+        var panelChange = Assert.Single(events);
+        Assert.Equal("rect-1", panelChange.ObjectId);
+        Assert.True(panelChange.ChangedProperties.HasFlag(PanelChangeProperties.Geometry));
+        Assert.False(panelChange.AffectsHierarchy);
+    }
+
+    [Fact]
+    public void UpdateElementCommand_NameChange_EmitsPanelChangeWithHierarchyRefreshFlag()
+    {
+        var document = CreatePanelDocument(
+            new PanelElementModel
+            {
+                ObjectId = "rect-1",
+                Name = "Rect 1",
+                Kind = PanelElementKind.Rectangle,
+                X = 10,
+                Y = 10,
+                Width = 20,
+                Height = 20
+            });
+        var workspace = CreateWorkspace(document, document);
+        var events = new List<PanelChangeEvent>();
+        document.PanelChanged += panelChange => events.Add(panelChange);
+
+        var updated = PanelElementModelCloner.Clone(document.GetPanelElements().Single());
+        updated.Name = "Rect Renamed";
+        var command = CanvasMutationCommands.CreateUpdateElementCommand(
+            document.DocumentId,
+            document,
+            "rect-1",
+            updated,
+            "Inspector update");
+
+        Assert.True(workspace.ExecuteDocumentCanvasCommand(document.DocumentId, command));
+        var panelChange = Assert.Single(events);
+        Assert.Equal("rect-1", panelChange.ObjectId);
+        Assert.True(panelChange.ChangedProperties.HasFlag(PanelChangeProperties.Name));
+        Assert.True(panelChange.AffectsHierarchy);
+    }
+
+    [Fact]
+    public void UpdateElementCommand_ImportSourceChange_EmitsMetadataPanelChange()
+    {
+        var document = CreatePanelDocument(
+            new PanelElementModel
+            {
+                ObjectId = "rect-1",
+                Name = "Rect 1",
+                Kind = PanelElementKind.Rectangle,
+                X = 10,
+                Y = 10,
+                Width = 20,
+                Height = 20,
+                ImportSource = new PanelElementImportSourceModel
+                {
+                    Format = "LegacyImport",
+                    Reference = "layout.json#rect-1"
+                }
+            });
+        var workspace = CreateWorkspace(document, document);
+        var events = new List<PanelChangeEvent>();
+        document.PanelChanged += panelChange => events.Add(panelChange);
+
+        var updated = PanelElementModelCloner.Clone(document.GetPanelElements().Single());
+        updated.ImportSource = new PanelElementImportSourceModel
+        {
+            Format = "LegacyImport",
+            Reference = "layout.json#rect-1-updated"
+        };
+
+        var command = CanvasMutationCommands.CreateUpdateElementCommand(
+            document.DocumentId,
+            document,
+            "rect-1",
+            updated,
+            "Inspector update");
+
+        Assert.True(workspace.ExecuteDocumentCanvasCommand(document.DocumentId, command));
+        var panelChange = Assert.Single(events);
+        Assert.True(panelChange.ChangedProperties.HasFlag(PanelChangeProperties.Metadata));
+        Assert.False(panelChange.AffectsHierarchy);
+    }
+
+    [Fact]
     public void ExecuteDocumentCanvasCommand_TargetingInactiveDocument_ReturnsFalseAndDoesNotMutate()
     {
         var firstDocument = CreatePanelDocument(
