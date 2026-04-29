@@ -749,7 +749,12 @@ internal static class CanvasMutationCommands
 
             _previousElement = PanelElementModelCloner.Clone(existing);
             elements[index] = PanelElementModelCloner.Clone(_updatedElement);
-            _document.SetPanelElements(elements, CreateElementChange(_document, _objectId, PanelChangeProperties.Geometry | PanelChangeProperties.Style | PanelChangeProperties.Metadata));
+            var changedProperties = GetChangedProperties(existing, _updatedElement);
+            var affectsHierarchy = changedProperties.HasFlag(PanelChangeProperties.Name)
+                || changedProperties.HasFlag(PanelChangeProperties.Visibility)
+                || changedProperties.HasFlag(PanelChangeProperties.LockState);
+
+            _document.SetPanelElements(elements, CreateElementChange(_document, _objectId, changedProperties, affectsHierarchy: affectsHierarchy));
             _document.MarkDirty();
             WasExecuted = true;
         }
@@ -773,9 +778,62 @@ internal static class CanvasMutationCommands
                 return;
             }
 
+            var current = elements[index];
+            var changedProperties = GetChangedProperties(current, _previousElement);
+            var affectsHierarchy = changedProperties.HasFlag(PanelChangeProperties.Name)
+                || changedProperties.HasFlag(PanelChangeProperties.Visibility)
+                || changedProperties.HasFlag(PanelChangeProperties.LockState);
+
             elements[index] = PanelElementModelCloner.Clone(_previousElement);
-            _document.SetPanelElements(elements, CreateElementChange(_document, _objectId, PanelChangeProperties.Geometry | PanelChangeProperties.Style | PanelChangeProperties.Metadata));
+            _document.SetPanelElements(elements, CreateElementChange(_document, _objectId, changedProperties, affectsHierarchy: affectsHierarchy));
             _document.MarkDirty();
+        }
+
+        private static PanelChangeProperties GetChangedProperties(PanelElementModel before, PanelElementModel after)
+        {
+            var changed = PanelChangeProperties.None;
+
+            if (!string.Equals(before.Name, after.Name, StringComparison.Ordinal))
+            {
+                changed |= PanelChangeProperties.Name;
+            }
+
+            if (before.X != after.X || before.Y != after.Y || before.Width != after.Width || before.Height != after.Height)
+            {
+                changed |= PanelChangeProperties.Geometry;
+            }
+
+            if (before.IsVisible != after.IsVisible)
+            {
+                changed |= PanelChangeProperties.Visibility;
+            }
+
+            if (before.IsLocked != after.IsLocked)
+            {
+                changed |= PanelChangeProperties.LockState;
+            }
+
+            if (!string.Equals(before.OnColorHex, after.OnColorHex, StringComparison.Ordinal)
+                || !string.Equals(before.OffColorHex, after.OffColorHex, StringComparison.Ordinal)
+                || !string.Equals(before.TextColorHex, after.TextColorHex, StringComparison.Ordinal))
+            {
+                changed |= PanelChangeProperties.Style;
+            }
+
+            if (!string.Equals(before.AssetPath, after.AssetPath, StringComparison.Ordinal)
+                || !string.Equals(before.SecondaryAssetPath, after.SecondaryAssetPath, StringComparison.Ordinal)
+                || before.DisplayNumber != after.DisplayNumber
+                || !string.Equals(before.DisplayText, after.DisplayText, StringComparison.Ordinal)
+                || before.IsReversed != after.IsReversed
+                || before.Stops != after.Stops
+                || before.VisibleScale != after.VisibleScale)
+            {
+                changed |= PanelChangeProperties.Metadata;
+            }
+
+            return changed is PanelChangeProperties.None
+                ? PanelChangeProperties.Metadata
+                : changed;
         }
     }
 
