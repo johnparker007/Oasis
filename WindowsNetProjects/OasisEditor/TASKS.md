@@ -38,17 +38,17 @@ This phase must fix the architecture so that:
 
 ## Phase AA — Diagnose and Map Current Update Flow (DO FIRST)
 
-- [ ] Trace full execution path for a simple Inspector edit (e.g. X position):
-  - [ ] Inspector row -> command creation
-  - [ ] command execution -> document mutation
-  - [ ] where `SetPanelElements` or equivalent is called
-  - [ ] where `PanelLayoutJson` is regenerated
-  - [ ] where PropertyChanged events fire
-  - [ ] where MainWindowViewModel reacts (see `OnSelectedDocumentPropertyChanged`)
-  - [ ] where Hierarchy is refreshed
-  - [ ] where Inspector rows are rebuilt
-- [ ] Document this flow in code comments where appropriate
-- [ ] Confirm that color picker uses the same path (multiple rapid updates)
+- [x] Trace full execution path for a simple Inspector edit (e.g. X position):
+  - [x] Inspector row -> command creation
+  - [x] command execution -> document mutation
+  - [x] where `SetPanelElements` or equivalent is called
+  - [x] where `PanelLayoutJson` is regenerated
+  - [x] where PropertyChanged events fire
+  - [x] where MainWindowViewModel reacts (see `OnSelectedDocumentPropertyChanged`)
+  - [x] where Hierarchy is refreshed
+  - [x] where Inspector rows are rebuilt
+- [x] Document this flow in code comments where appropriate
+- [x] Confirm that color picker uses the same path (multiple rapid updates)
 
 ---
 
@@ -56,18 +56,18 @@ This phase must fix the architecture so that:
 
 Create a new, explicit change notification mechanism for Panel2D documents.
 
-- [ ] Add a `PanelChangeEvent` (or similar) structure containing:
-  - [ ] DocumentId
-  - [ ] ObjectId (nullable for document-level changes)
-  - [ ] ChangedProperties (list or flags)
-  - [ ] Flags:
-    - [ ] AffectsCanvas
-    - [ ] AffectsHierarchy
-    - [ ] AffectsInspectorRows
-    - [ ] AffectsPersistence
-- [ ] Add an event or observable on `DocumentTabViewModel` to publish these changes
-- [ ] Commands must emit a `PanelChangeEvent` after execution
-- [ ] Ensure this works with undo/redo (events fire on undo/redo as well)
+- [x] Add a `PanelChangeEvent` (or similar) structure containing:
+  - [x] DocumentId
+  - [x] ObjectId (nullable for document-level changes)
+  - [x] ChangedProperties (list or flags)
+  - [x] Flags:
+    - [x] AffectsCanvas
+    - [x] AffectsHierarchy
+    - [x] AffectsInspectorRows
+    - [x] AffectsPersistence
+- [x] Add an event or observable on `DocumentTabViewModel` to publish these changes
+- [x] Commands must emit a `PanelChangeEvent` after execution
+- [x] Ensure this works with undo/redo (events fire on undo/redo as well)
 
 ---
 
