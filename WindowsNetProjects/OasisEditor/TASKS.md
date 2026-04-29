@@ -73,29 +73,29 @@ Create a new, explicit change notification mechanism for Panel2D documents.
 
 ## Phase AC — Stop Using PanelLayoutJson as a Live Update Trigger
 
-- [ ] Identify all code paths reacting to `PanelLayoutJson` changes (MainWindowViewModel, others)
-- [ ] Remove or reduce reliance on `PanelLayoutJson` for UI updates
-- [ ] Ensure `PanelLayoutJson` is only used for:
-  - [ ] persistence
-  - [ ] save/load
+- [x] Identify all code paths reacting to `PanelLayoutJson` changes (MainWindowViewModel, others)
+- [x] Remove or reduce reliance on `PanelLayoutJson` for UI updates
+- [x] Ensure `PanelLayoutJson` is only used for:
+  - [x] persistence
+  - [x] save/load
 - [ ] If necessary, defer JSON regeneration until:
   - [ ] save
   - [ ] explicit export
-  - [ ] or mark dirty and lazily rebuild
+  - [x] or mark dirty and lazily rebuild
 
 ---
 
 ## Phase AD — Incremental Inspector Updates
 
-- [ ] Modify `InspectorViewModel` so that:
-  - [ ] it does NOT call `RebuildPropertyRows()` for every property change
-- [ ] Rebuild rows ONLY when:
-  - [ ] selected element changes
-  - [ ] element kind changes
-  - [ ] property set (row structure) changes
-- [ ] For simple property updates:
-  - [ ] update only the affected row value
-- [ ] Ensure bindings reflect live updates without full rebuild
+- [x] Modify `InspectorViewModel` so that:
+  - [x] it does NOT call `RebuildPropertyRows()` for every property change
+- [x] Rebuild rows ONLY when:
+  - [x] selected element changes
+  - [x] element kind changes
+  - [x] property set (row structure) changes
+- [x] For simple property updates:
+  - [x] update only the affected row value
+- [x] Ensure bindings reflect live updates without full rebuild
 
 ---
 
