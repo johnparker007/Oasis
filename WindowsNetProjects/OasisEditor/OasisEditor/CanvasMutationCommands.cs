@@ -752,7 +752,8 @@ internal static class CanvasMutationCommands
             var changedProperties = GetChangedProperties(existing, _updatedElement);
             var affectsHierarchy = changedProperties.HasFlag(PanelChangeProperties.Name)
                 || changedProperties.HasFlag(PanelChangeProperties.Visibility)
-                || changedProperties.HasFlag(PanelChangeProperties.LockState);
+                || changedProperties.HasFlag(PanelChangeProperties.LockState)
+                || changedProperties.HasFlag(PanelChangeProperties.Ordering);
 
             _document.SetPanelElements(elements, CreateElementChange(_document, _objectId, changedProperties, affectsHierarchy: affectsHierarchy));
             _document.MarkDirty();
@@ -782,7 +783,8 @@ internal static class CanvasMutationCommands
             var changedProperties = GetChangedProperties(current, _previousElement);
             var affectsHierarchy = changedProperties.HasFlag(PanelChangeProperties.Name)
                 || changedProperties.HasFlag(PanelChangeProperties.Visibility)
-                || changedProperties.HasFlag(PanelChangeProperties.LockState);
+                || changedProperties.HasFlag(PanelChangeProperties.LockState)
+                || changedProperties.HasFlag(PanelChangeProperties.Ordering);
 
             elements[index] = PanelElementModelCloner.Clone(_previousElement);
             _document.SetPanelElements(elements, CreateElementChange(_document, _objectId, changedProperties, affectsHierarchy: affectsHierarchy));

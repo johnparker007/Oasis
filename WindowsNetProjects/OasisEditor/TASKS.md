@@ -101,16 +101,16 @@ Create a new, explicit change notification mechanism for Panel2D documents.
 
 ## Phase AE — Incremental Hierarchy Updates
 
-- [ ] Modify hierarchy refresh logic so that:
-  - [ ] full `RefreshHierarchy()` is NOT called for simple property changes
-- [ ] Only refresh hierarchy when:
-  - [ ] element added/removed
-  - [ ] reorder/z-index change
+- [x] Modify hierarchy refresh logic so that:
+  - [x] full `RefreshHierarchy()` is NOT called for simple property changes
+- [x] Only refresh hierarchy when:
+  - [x] element added/removed
+  - [x] reorder/z-index change
   - [ ] parent/group change
-  - [ ] name change
-  - [ ] visibility/lock IF shown in hierarchy UI
-- [ ] For non-structural changes:
-  - [ ] skip hierarchy rebuild entirely
+  - [x] name change
+  - [x] visibility/lock IF shown in hierarchy UI
+- [x] For non-structural changes:
+  - [x] skip hierarchy rebuild entirely
 
 ---
 
