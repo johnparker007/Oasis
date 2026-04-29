@@ -87,15 +87,15 @@ Create a new, explicit change notification mechanism for Panel2D documents.
 
 ## Phase AD — Incremental Inspector Updates
 
-- [ ] Modify `InspectorViewModel` so that:
-  - [ ] it does NOT call `RebuildPropertyRows()` for every property change
-- [ ] Rebuild rows ONLY when:
-  - [ ] selected element changes
-  - [ ] element kind changes
-  - [ ] property set (row structure) changes
-- [ ] For simple property updates:
-  - [ ] update only the affected row value
-- [ ] Ensure bindings reflect live updates without full rebuild
+- [x] Modify `InspectorViewModel` so that:
+  - [x] it does NOT call `RebuildPropertyRows()` for every property change
+- [x] Rebuild rows ONLY when:
+  - [x] selected element changes
+  - [x] element kind changes
+  - [x] property set (row structure) changes
+- [x] For simple property updates:
+  - [x] update only the affected row value
+- [x] Ensure bindings reflect live updates without full rebuild
 
 ---
 

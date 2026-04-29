@@ -20,6 +20,9 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
     private readonly ObservableCollection<InspectorPropertyRowViewModel> _propertyRows = [];
     private string _inspectorEditableSummary = string.Empty;
     private DateTime _suppressPropertyRowRefreshUntilUtc;
+    private string? _lastInspectorSelectionObjectId;
+    private PanelElementKind? _lastInspectorSelectionKind;
+    private bool _hadInspectorSelection;
 
     public InspectorViewModel(
         Func<AssetBrowserItemViewModel?> selectedAssetAccessor,
@@ -195,7 +198,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(InspectorSummary));
         OnPropertyChanged(nameof(CanEditInspectorSummary));
 
-        if (!ShouldSuppressPropertyRowRefresh())
+        if (!ShouldSuppressPropertyRowRefresh() && ShouldRebuildRowsForContextChange())
         {
             RebuildPropertyRows();
         }
@@ -244,6 +247,9 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         var selection = _activeDocumentContext.ActivePanelSelection;
         if (selectedDocument is null || selection is not PanelSelectionInfo selectedSelection || !selectedDocument.TryGetPanelElement(selectedSelection, out var selectedElement))
         {
+            _hadInspectorSelection = false;
+            _lastInspectorSelectionObjectId = null;
+            _lastInspectorSelectionKind = null;
             OnPropertyChanged(nameof(InspectorPropertyRows));
             return;
         }
@@ -289,8 +295,29 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update visibility", new PanelElementModelUpdate { IsVisible = value })));
 
         AddTypeSpecificRows(selectedElement);
+        _hadInspectorSelection = true;
+        _lastInspectorSelectionObjectId = selectedElement.ObjectId;
+        _lastInspectorSelectionKind = selectedElement.Kind;
 
         OnPropertyChanged(nameof(InspectorPropertyRows));
+    }
+
+    private bool ShouldRebuildRowsForContextChange()
+    {
+        var selectedDocument = _selectedDocumentAccessor();
+        var selection = _activeDocumentContext.ActivePanelSelection;
+        if (selectedDocument is null || selection is not PanelSelectionInfo selectedSelection || !selectedDocument.TryGetPanelElement(selectedSelection, out var selectedElement))
+        {
+            return _hadInspectorSelection || _propertyRows.Count > 0;
+        }
+
+        if (!_hadInspectorSelection)
+        {
+            return true;
+        }
+
+        return !string.Equals(_lastInspectorSelectionObjectId, selectedElement.ObjectId, StringComparison.Ordinal)
+            || _lastInspectorSelectionKind != selectedElement.Kind;
     }
 
     private void AddTypeSpecificRows(PanelElementModel selectedElement)
