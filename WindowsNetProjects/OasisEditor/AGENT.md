@@ -47,19 +47,42 @@ The solution is structured as:
 - Inspector and hierarchy panels must reflect the active document only
 - Opening and closing document tabs are not part of undo/redo unless explicitly requested later
 
-## Inspector Design Direction (NEW)
+## Inspector Design Direction
 - The Inspector must behave like the Unity Inspector.
 - Selecting a Panel2D element must populate editable fields in the Inspector.
 - Editing a field must:
   - update the underlying PanelElementModel via a document-scoped command
   - update the canvas immediately
-  - update the hierarchy immediately
+  - update only the affected Inspector row/state unless selection or element type changed
+  - update the hierarchy immediately only when hierarchy-visible data changed, such as name, kind, parent/grouping, order, visibility/lock icon state if displayed there, add/delete, or reorder
   - mark the document dirty
   - support undo/redo
 - The Inspector must NOT directly mutate model objects.
 - All edits must go through commands using clone-and-replace semantics.
 - The Inspector must support both shared properties (X, Y, Width, Height, Name, visibility, lock) and type-specific properties (lamp number, reel stops, etc.).
 - Hide irrelevant properties instead of disabling large blocks of UI.
+
+## Performance and Change Notification Rules
+These rules are mandatory for current and future OasisEditor work.
+
+- Do NOT use `PanelLayoutJson` as a broad "everything changed, rebuild all UI" signal.
+- JSON is persistence/save/load data, not the live change bus for routine editor interactions.
+- Small element edits must not synchronously serialize the full panel layout, rebuild the entire Hierarchy, rebuild all Inspector rows, or recreate document panes.
+- High-frequency UI interactions such as color picker slider drag, mouse movement, resize handles, and future drag transforms must have a preview/update path that avoids flooding the undo stack and avoids full panel-level refreshes.
+- Commit one undoable command at the end of a continuous gesture when practical, for example color picker drag completed, transform drag completed, or focus/Enter commit for text fields.
+- Use narrowly scoped document notifications/events for Panel2D changes. At minimum, distinguish:
+  - selection changed
+  - element property changed
+  - element name changed
+  - hierarchy structure changed (add/delete/reorder/group/ungroup/parent changes)
+  - element visual changed
+  - document persistence/dirty state changed
+- For element property changes, include enough metadata for subscribers to decide what to update, such as document ID, object ID, changed property names, and flags like `AffectsCanvas`, `AffectsHierarchy`, `AffectsInspectorRows`, and `AffectsPersistence`.
+- Inspector refresh must be incremental. Do not call `RebuildPropertyRows()` for every property commit unless the selected element identity, element kind, row set, or selection context changed.
+- Hierarchy refresh must be incremental or skipped for non-structural property edits. X/Y/Width/Height/color changes must not rebuild the Hierarchy.
+- Canvas visual updates should update or invalidate only affected element visuals where possible. Pan/zoom staying fast is not proof that the mutation path is healthy.
+- Dirty state and save content must still remain correct. Deferring JSON regeneration is acceptable if save uses the canonical live model or a dirty serialization cache is invalidated and rebuilt only when needed.
+- Tests should lock in the expected notification scope so future changes cannot reintroduce full-refresh behavior for simple edits.
 
 ## Project Model
 The editor is project-based:
@@ -106,6 +129,8 @@ The editor is project-based:
 - Commands must not operate on whichever document happens to be active
 - No-op commands must not be recorded
 - Model updates should use clone-and-replace, not mutation
+- Commands must expose or trigger precise change metadata whenever the UI needs to update after command execution.
+- No command should force unrelated panes to fully rebuild as a side effect of a simple property change.
 
 ## Context Menu Rules
 - Implement right-click menus as reusable WPF resources/styles
@@ -125,10 +150,11 @@ The editor is project-based:
 - Do not attempt to run builds/tests in Codex
 - After implementing a task, specify what should be tested locally
 - Add automated tests for model and command behavior where practical
+- Add regression tests for UI update fanout where practical. Simple property edits must not trigger full Inspector row rebuilds or full Hierarchy rebuilds.
 
 ## Current Focus
 Follow TASKS.md in order.
-Implement Inspector property editing next.
+Current priority: fix OasisEditor Inspector/color-picker performance by replacing broad `PanelLayoutJson`-driven refreshes with scoped Panel2D change notifications and incremental pane updates.
 
 ## How to Work
 - Keep changes minimal and focused
