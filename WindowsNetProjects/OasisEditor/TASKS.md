@@ -73,15 +73,15 @@ Create a new, explicit change notification mechanism for Panel2D documents.
 
 ## Phase AC — Stop Using PanelLayoutJson as a Live Update Trigger
 
-- [ ] Identify all code paths reacting to `PanelLayoutJson` changes (MainWindowViewModel, others)
-- [ ] Remove or reduce reliance on `PanelLayoutJson` for UI updates
-- [ ] Ensure `PanelLayoutJson` is only used for:
-  - [ ] persistence
-  - [ ] save/load
+- [x] Identify all code paths reacting to `PanelLayoutJson` changes (MainWindowViewModel, others)
+- [x] Remove or reduce reliance on `PanelLayoutJson` for UI updates
+- [x] Ensure `PanelLayoutJson` is only used for:
+  - [x] persistence
+  - [x] save/load
 - [ ] If necessary, defer JSON regeneration until:
   - [ ] save
   - [ ] explicit export
-  - [ ] or mark dirty and lazily rebuild
+  - [x] or mark dirty and lazily rebuild
 
 ---
 
