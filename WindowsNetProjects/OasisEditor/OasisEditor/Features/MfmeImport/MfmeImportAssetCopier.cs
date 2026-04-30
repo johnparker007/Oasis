@@ -75,6 +75,7 @@ internal sealed class MfmeImportAssetCopier
         ICollection<string> errors)
     {
         var primary = CopyOneAsset(
+            element.Kind,
             element.AssetPath,
             extractRootPath,
             destinationRoot,
@@ -85,6 +86,7 @@ internal sealed class MfmeImportAssetCopier
             errors);
 
         var secondary = CopyOneAsset(
+            element.Kind,
             element.SecondaryAssetPath,
             extractRootPath,
             destinationRoot,
@@ -93,6 +95,24 @@ internal sealed class MfmeImportAssetCopier
             copied,
             warnings,
             errors);
+
+
+        if (element.Kind == PanelElementKind.Lamp &&
+            !string.IsNullOrWhiteSpace(primary) &&
+            string.Equals(Path.GetExtension(element.AssetPath), ".bmp", StringComparison.OrdinalIgnoreCase))
+        {
+            var sourceLampPath = TryResolveSourceAssetPath(element.AssetPath, extractRootPath);
+            var sourceMaskPath = TryResolveSourceAssetPath(element.SecondaryAssetPath, extractRootPath);
+            var outputLampPath = Path.Combine(projectAssetsRoot, primary["Assets/".Length..].Replace('/', Path.DirectorySeparatorChar));
+
+            if (sourceLampPath is not null && File.Exists(sourceLampPath))
+            {
+                if (!MfmeLampAssetPostProcessor.TryProcessLamp(sourceLampPath, sourceMaskPath, outputLampPath, applyMaskTint: true, out var processingError))
+                {
+                    errors.Add($"Failed to process lamp asset '{element.AssetPath}': {processingError}");
+                }
+            }
+        }
 
         return new PanelElementModel
         {
@@ -118,6 +138,7 @@ internal sealed class MfmeImportAssetCopier
     }
 
     private static string? CopyOneAsset(
+        PanelElementKind elementKind,
         string? extractRelativePath,
         string extractRootPath,
         string destinationRoot,
@@ -176,7 +197,10 @@ internal sealed class MfmeImportAssetCopier
         var destinationFolderPath = Path.Combine(destinationRoot, safeFolder);
         Directory.CreateDirectory(destinationFolderPath);
 
-        var destinationFullPath = GetUniqueDestinationPath(destinationFolderPath, safeFileName);
+        var outputFileName = elementKind == PanelElementKind.Lamp && string.Equals(folder, "lamps", StringComparison.OrdinalIgnoreCase)
+            ? Path.ChangeExtension(safeFileName, ".png")
+            : safeFileName;
+        var destinationFullPath = GetUniqueDestinationPath(destinationFolderPath, outputFileName);
         var destinationFullPathNormalized = Path.GetFullPath(destinationFullPath);
 
         if (!IsPathUnderRoot(destinationFullPathNormalized, projectAssetsRoot))
@@ -192,6 +216,24 @@ internal sealed class MfmeImportAssetCopier
         pathMap[sourceFullPath] = projectRelativePath;
         copied.Add(projectRelativePath);
         return projectRelativePath;
+    }
+
+
+    private static string? TryResolveSourceAssetPath(string? extractRelativePath, string extractRootPath)
+    {
+        if (string.IsNullOrWhiteSpace(extractRelativePath))
+        {
+            return null;
+        }
+
+        var normalized = extractRelativePath.Replace('\\', '/').Trim();
+        if (!TrySplitExtractRelativePath(normalized, out var folder, out var filename))
+        {
+            return null;
+        }
+
+        var sourceFullPath = Path.GetFullPath(Path.Combine(extractRootPath, folder, filename));
+        return IsPathUnderRoot(sourceFullPath, Path.GetFullPath(extractRootPath)) ? sourceFullPath : null;
     }
 
     private static string? EnsureDirectoryAndPath(string path, ICollection<string> errors, string code)
