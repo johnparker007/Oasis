@@ -32,7 +32,7 @@ public sealed class MfmeImportLampPostProcessorTests
             Assert.EndsWith(".png", lampAsset.AssetPath, StringComparison.OrdinalIgnoreCase);
             Assert.NotNull(lampAsset.SecondaryAssetPath);
 
-            var lampPath = Path.Combine(projectRoot, lampAsset.AssetPath!["Assets/".Length..]);
+            var lampPath = Path.Combine(projectRoot, "Assets", lampAsset.AssetPath!["Assets/".Length..]);
             var pixels = ReadBgra32(lampPath, out _);
 
             Assert.Equal((byte)0, pixels[3]); // top-left remained transparent from palette alpha

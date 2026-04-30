@@ -97,7 +97,9 @@ internal sealed class MfmeImportAssetCopier
             errors);
 
 
-        if (element.Kind == PanelElementKind.Lamp && !string.IsNullOrWhiteSpace(primary))
+        if (element.Kind == PanelElementKind.Lamp &&
+            !string.IsNullOrWhiteSpace(primary) &&
+            string.Equals(Path.GetExtension(element.AssetPath), ".bmp", StringComparison.OrdinalIgnoreCase))
         {
             var sourceLampPath = TryResolveSourceAssetPath(element.AssetPath, extractRootPath);
             var sourceMaskPath = TryResolveSourceAssetPath(element.SecondaryAssetPath, extractRootPath);
