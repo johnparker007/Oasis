@@ -91,8 +91,8 @@
     </Grid>
     <UserControl.Triggers>
         <DataTrigger Binding="{Binding Document.DocumentType}" Value="{x:Static local:EditorDocumentType.Panel2D}">
-            <Setter TargetName="PanelCanvasContainer" Property="Visibility" Value="Visible" />
-            <Setter TargetName="DefaultSummaryContainer" Property="Visibility" Value="Collapsed" />
+            <Setter TargetName="PanelCanvasContainer" Property="UIElement.Visibility" Value="Visible" />
+            <Setter TargetName="DefaultSummaryContainer" Property="UIElement.Visibility" Value="Collapsed" />
         </DataTrigger>
     </UserControl.Triggers>
 </UserControl>
