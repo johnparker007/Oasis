@@ -24,6 +24,8 @@
                            BasedOn="{StaticResource EditorContextMenuItemStyle}" />
                 </ResourceDictionary>
             </avalonDock:DockingManager.Resources>
+            
+                >
             <avalonDock:DockingManager.Theme>
                 <themes:Vs2013DarkTheme />
             </avalonDock:DockingManager.Theme>
@@ -42,16 +44,7 @@
                             </layout:LayoutAnchorable>
                         </layout:LayoutAnchorablePane>
 
-                        <layout:LayoutDocumentPane>
-                            <layout:LayoutDocument Title="Document Workspace"
-                                                   ContentId="DocumentWorkspace"
-                                                   CanClose="False">
-                                <Border Padding="10"
-                                        Background="{DynamicResource WorkspaceBackgroundBrush}">
-                                    <views:PanelCanvasView />
-                                </Border>
-                            </layout:LayoutDocument>
-                        </layout:LayoutDocumentPane>
+                        <layout:LayoutDocumentPane x:Name="DocumentPane" />
 
                         <layout:LayoutAnchorablePane DockWidth="280">
                             <layout:LayoutAnchorable Title="Inspector"
