@@ -5,7 +5,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:layout="clr-namespace:AvalonDock.Layout;assembly=AvalonDock"
              xmlns:themes="clr-namespace:AvalonDock.Themes;assembly=AvalonDock.Themes.VS2013"
-             xmlns:views="clr-namespace:OasisEditor.Views"
+             xmlns:views="clr-namespace:OasisEditor.Views;assembly=OasisEditor"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
              d:DesignHeight="450"
@@ -22,7 +22,6 @@
                        BasedOn="{StaticResource EditorContextMenuItemStyle}" />
             </ResourceDictionary>
         </Grid.Resources>
-
         <avalonDock:DockingManager x:Name="DockingManager"
                                    Background="{DynamicResource EditorBackgroundBrush}">
             <avalonDock:DockingManager.Theme>
