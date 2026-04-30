@@ -4,7 +4,8 @@ using System.Windows;
 using System.Windows.Media;
 using OasisEditor;
 
-namespace OasisEditor.Views;
+namespace OasisEditor.Views
+{
 
 public partial class AssetBrowserView : UserControl
 {
@@ -107,4 +108,5 @@ public partial class AssetBrowserView : UserControl
 
         return null;
     }
+}
 }

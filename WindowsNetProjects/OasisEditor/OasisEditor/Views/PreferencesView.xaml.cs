@@ -1,6 +1,7 @@
 using System.Windows.Controls;
 
-namespace OasisEditor.Views;
+namespace OasisEditor.Views
+{
 
 public partial class PreferencesView : UserControl
 {
@@ -8,4 +9,5 @@ public partial class PreferencesView : UserControl
     {
         InitializeComponent();
     }
+}
 }

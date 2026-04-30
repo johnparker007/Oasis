@@ -2,7 +2,8 @@ using System.Windows.Input;
 using System.Windows.Controls;
 using System.Windows;
 
-namespace OasisEditor.Views;
+namespace OasisEditor.Views
+{
 
 public partial class InspectorView : UserControl
 {
@@ -31,4 +32,5 @@ public partial class InspectorView : UserControl
         row.Commit();
         e.Handled = true;
     }
+}
 }

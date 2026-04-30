@@ -4,7 +4,8 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 
-namespace OasisEditor.Views;
+namespace OasisEditor.Views
+{
 
 public partial class HierarchyView : UserControl
 {
@@ -164,4 +165,5 @@ public partial class HierarchyView : UserControl
 
         return null;
     }
+}
 }
