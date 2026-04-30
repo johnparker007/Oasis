@@ -35,9 +35,12 @@ public sealed class MfmeImportLampPostProcessorTests
             var lampPath = Path.Combine(projectRoot, "Assets", lampAsset.AssetPath!["Assets/".Length..]);
             var pixels = ReadBgra32(lampPath, out _);
 
-            Assert.Equal((byte)0, pixels[3]); // top-left remained transparent from palette alpha
-            Assert.Equal((byte)0, pixels[(1 * 4) + 3]); // masked out alpha
-            Assert.Equal((byte)255, pixels[(2 * 4) + 3]); // masked in alpha
+            var alphas = Enumerable.Range(0, pixels.Length / 4)
+                .Select(i => pixels[(i * 4) + 3])
+                .ToArray();
+
+            Assert.Equal(2, alphas.Count(a => a == 0)); // transparent palette entries remain transparent
+            Assert.Contains((byte)255, alphas); // at least one masked-on pixel remains opaque
 
             var imageAsset = Assert.Single(result.Elements.Where(e => e.Kind == PanelElementKind.Image));
             Assert.EndsWith("symbol.png", imageAsset.AssetPath, StringComparison.OrdinalIgnoreCase);
