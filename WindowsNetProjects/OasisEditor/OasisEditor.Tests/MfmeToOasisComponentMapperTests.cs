@@ -120,6 +120,8 @@ public sealed class MfmeToOasisComponentMapperTests
     {
         var extract = new MfmeLegacyExtractData
         {
+            ExtractRootPath = "C:/extract",
+            ManifestPath = "C:/extract/layout.json",
             LayoutName = "layout",
             Components =
             [
