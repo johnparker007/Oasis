@@ -21,15 +21,12 @@ internal static class MfmeLampAssetPostProcessor
         {
             var lamp = LoadBgra32(sourceLampPath, preservePaletteAlpha: true);
             FixTransparentFringePixels(lamp);
+            ApplyDerivedEdgeTransparency(lamp);
 
             if (!string.IsNullOrWhiteSpace(sourceMaskPath) && File.Exists(sourceMaskPath))
             {
                 var mask = LoadBgra32(sourceMaskPath!, preservePaletteAlpha: false);
                 ApplyMask(lamp, mask, applyMaskTint);
-            }
-            else
-            {
-                ApplyDerivedEdgeTransparency(lamp);
             }
 
             var directory = Path.GetDirectoryName(destinationLampPath);
