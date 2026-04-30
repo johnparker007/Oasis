@@ -153,6 +153,7 @@ public sealed class MfmeExtractReaderTests
         Directory.CreateDirectory(Path.Combine(extractDirectory, "reels"));
         File.WriteAllText(Path.Combine(extractDirectory, "background", "bg.png"), "placeholder");
         File.WriteAllText(Path.Combine(extractDirectory, "lamps", "lamp.png"), "placeholder");
+        File.WriteAllText(Path.Combine(extractDirectory, "lamps", "lamp-mask.png"), "placeholder");
         File.WriteAllText(Path.Combine(extractDirectory, "reels", "band.png"), "placeholder");
         File.WriteAllText(Path.Combine(extractDirectory, "reels", "overlay.png"), "placeholder");
         File.WriteAllText(manifestPath, CreateSupportedComponentsManifestJson());
@@ -182,6 +183,7 @@ public sealed class MfmeExtractReaderTests
             var lamp = Assert.IsType<MfmeLegacyLampComponent>(components[1]);
             Assert.Equal(12, lamp.FirstLampElement!.Number);
             Assert.Equal("lamp.png", lamp.FirstLampElement.BmpImageFilename);
+            Assert.Equal("lamp-mask.png", lamp.FirstLampElement.BmpMaskImageFilename);
 
             var reel = Assert.IsType<MfmeLegacyReelComponent>(components[2]);
             Assert.Equal(3, reel.Number);
@@ -230,7 +232,7 @@ public sealed class MfmeExtractReaderTests
 
             Assert.True(result.Succeeded);
             Assert.Empty(result.Errors);
-            Assert.Equal(4, result.Warnings.Count);
+            Assert.Equal(5, result.Warnings.Count);
             Assert.All(result.Warnings, warning => Assert.Equal("mfme.extract.asset.missing", warning.Code));
             Assert.Equal(7, result.Extract!.Components.Count);
         }
@@ -323,7 +325,8 @@ public sealed class MfmeExtractReaderTests
                 {
                   "NumberAsText": "12",
                   "OnColor": { "R": 1, "G": 0, "B": 0, "A": 1 },
-                  "BmpImageFilename": "lamp.png"
+                  "BmpImageFilename": "lamp.png",
+                  "BmpMaskImageFilename": "lamp-mask.png"
                 }
               ]
             },
