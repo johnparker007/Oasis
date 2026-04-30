@@ -19,13 +19,21 @@
                    Text="{Binding FilePath}" />
 
         <Grid Grid.Row="1">
-            <Border x:Name="PanelCanvasContainer"
-                    Padding="12"
+            <Border Padding="12"
                     Background="{DynamicResource EditorBackgroundBrush}"
                     BorderBrush="{DynamicResource BorderSubtleBrush}"
                     BorderThickness="1"
-                    CornerRadius="4"
-                    Visibility="Collapsed">
+                    CornerRadius="4">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Document.DocumentType}" Value="{x:Static local:EditorDocumentType.Panel2D}">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
                 <Grid MinHeight="280"
                       ClipToBounds="True"
                       Background="{DynamicResource PanelBackgroundBrush}">
@@ -79,20 +87,23 @@
                 </Grid>
             </Border>
 
-            <Border x:Name="DefaultSummaryContainer"
-                    Padding="10"
+            <Border Padding="10"
                     CornerRadius="4"
                     Background="{DynamicResource SelectionBrush}"
                     BorderBrush="{DynamicResource BorderSubtleBrush}"
                     BorderThickness="1">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Visibility" Value="Visible" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Document.DocumentType}" Value="{x:Static local:EditorDocumentType.Panel2D}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
                 <TextBlock TextWrapping="Wrap" Text="{Binding ContentSummary}" />
             </Border>
         </Grid>
     </Grid>
-    <UserControl.Triggers>
-        <DataTrigger Binding="{Binding Document.DocumentType}" Value="{x:Static local:EditorDocumentType.Panel2D}">
-            <Setter TargetName="PanelCanvasContainer" Property="UIElement.Visibility" Value="Visible" />
-            <Setter TargetName="DefaultSummaryContainer" Property="UIElement.Visibility" Value="Collapsed" />
-        </DataTrigger>
-    </UserControl.Triggers>
 </UserControl>
