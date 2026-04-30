@@ -1,3 +1,5 @@
+using System;
+using System.IO;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
@@ -34,7 +36,7 @@ internal static class MfmeLampAssetPostProcessor
             SavePng(lamp, destinationLampPath);
             return true;
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException or FileFormatException)
+        catch (Exception ex)
         {
             error = ex.Message;
             return false;
