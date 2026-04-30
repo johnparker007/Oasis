@@ -59,12 +59,20 @@ internal static class MfmeLampAssetPostProcessor
         var pixels = new byte[stride * converted.PixelHeight];
         converted.CopyPixels(pixels, stride, 0);
 
-        if (preservePaletteAlpha && frame.Format.Palettized && frame.Palette is not null)
+        if (preservePaletteAlpha && IsPalettized(frame.Format) && frame.Palette is not null)
         {
             ReapplyIndexedAlpha(frame, pixels, stride);
         }
 
         return new PixelBuffer(converted.PixelWidth, converted.PixelHeight, stride, pixels);
+    }
+
+    private static bool IsPalettized(PixelFormat format)
+    {
+        return format == PixelFormats.Indexed1
+            || format == PixelFormats.Indexed2
+            || format == PixelFormats.Indexed4
+            || format == PixelFormats.Indexed8;
     }
 
     private static void ReapplyIndexedAlpha(BitmapSource frame, byte[] pixels, int stride)
