@@ -184,6 +184,7 @@ public sealed class MfmeExtractReaderTests
             Assert.Equal(12, lamp.FirstLampElement!.Number);
             Assert.Equal("lamp.png", lamp.FirstLampElement.BmpImageFilename);
             Assert.Equal("lamp-mask.png", lamp.FirstLampElement.BmpMaskImageFilename);
+            Assert.True(lamp.FirstLampElement.Graphic);
 
             var reel = Assert.IsType<MfmeLegacyReelComponent>(components[2]);
             Assert.Equal(3, reel.Number);
@@ -321,6 +322,7 @@ public sealed class MfmeExtractReaderTests
               "NoOutline": true,
               "TextColor": { "R": 1, "G": 1, "B": 1, "A": 1 },
               "OffImageColor": { "R": 0, "G": 0, "B": 0, "A": 1 },
+              "Graphic": true,
               "LampElements": [
                 {
                   "NumberAsText": "12",
