@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
@@ -25,6 +26,10 @@ internal static class MfmeLampAssetPostProcessor
             {
                 var mask = LoadBgra32(sourceMaskPath!, preservePaletteAlpha: false);
                 ApplyMask(lamp, mask, applyMaskTint);
+            }
+            else
+            {
+                ApplyDerivedEdgeTransparency(lamp);
             }
 
             var directory = Path.GetDirectoryName(destinationLampPath);
@@ -143,6 +148,74 @@ internal static class MfmeLampAssetPostProcessor
         }
 
         Buffer.BlockCopy(output, 0, image.Pixels, 0, output.Length);
+    }
+
+
+    private static void ApplyDerivedEdgeTransparency(PixelBuffer image)
+    {
+        var hasAnyTransparent = false;
+        for (var i = 3; i < image.Pixels.Length; i += 4)
+        {
+            if (image.Pixels[i] == 0)
+            {
+                hasAnyTransparent = true;
+                break;
+            }
+        }
+
+        if (hasAnyTransparent)
+        {
+            return;
+        }
+
+        var edgeCounts = new Dictionary<int, int>();
+        CountEdgeColors(image, edgeCounts);
+        if (edgeCounts.Count == 0)
+        {
+            return;
+        }
+
+        var transparentKey = edgeCounts.MaxBy(kvp => kvp.Value).Key;
+
+        for (var y = 0; y < image.Height; y++)
+        {
+            for (var x = 0; x < image.Width; x++)
+            {
+                var offset = (y * image.Stride) + (x * 4);
+                var key = (image.Pixels[offset + 2] << 16) | (image.Pixels[offset + 1] << 8) | image.Pixels[offset];
+                if (key == transparentKey)
+                {
+                    image.Pixels[offset + 3] = 0;
+                }
+            }
+        }
+    }
+
+    private static void CountEdgeColors(PixelBuffer image, IDictionary<int, int> counts)
+    {
+        for (var x = 0; x < image.Width; x++)
+        {
+            AccumulateEdgeColor(image, x, 0, counts);
+            AccumulateEdgeColor(image, x, image.Height - 1, counts);
+        }
+
+        for (var y = 1; y < image.Height - 1; y++)
+        {
+            AccumulateEdgeColor(image, 0, y, counts);
+            AccumulateEdgeColor(image, image.Width - 1, y, counts);
+        }
+    }
+
+    private static void AccumulateEdgeColor(PixelBuffer image, int x, int y, IDictionary<int, int> counts)
+    {
+        var offset = (y * image.Stride) + (x * 4);
+        if (image.Pixels[offset + 3] < 255)
+        {
+            return;
+        }
+
+        var key = (image.Pixels[offset + 2] << 16) | (image.Pixels[offset + 1] << 8) | image.Pixels[offset];
+        counts[key] = counts.TryGetValue(key, out var count) ? count + 1 : 1;
     }
 
     private static void ApplyMask(PixelBuffer image, PixelBuffer mask, bool applyMaskTint)

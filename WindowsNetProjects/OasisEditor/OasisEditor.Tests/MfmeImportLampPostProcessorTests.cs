@@ -52,6 +52,40 @@ public sealed class MfmeImportLampPostProcessorTests
         }
     }
 
+
+    [Fact]
+    public void CopyAssets_LampWithoutMask_DerivesTransparentColorFromEdges()
+    {
+        var extractRoot = CreateTempDirectory();
+        var projectRoot = CreateTempDirectory();
+
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(extractRoot, "lamps"));
+            CreateUnmaskedLampBmp(Path.Combine(extractRoot, "lamps", "flat.bmp"));
+
+            var copier = new MfmeImportAssetCopier();
+            var result = copier.CopyAssets(CreateContext(extractRoot, projectRoot), CreateExtract(extractRoot),
+            [
+                new PanelElementModel { ObjectId = "lamp-no-mask", Name = "lamp", Kind = PanelElementKind.Lamp, Width = 3, Height = 3, AssetPath = "lamps/flat.bmp" }
+            ]);
+
+            Assert.True(result.Succeeded);
+            var lampAsset = Assert.Single(result.Elements);
+            var lampPath = Path.Combine(projectRoot, "Assets", lampAsset.AssetPath!["Assets/".Length..]);
+            var pixels = ReadBgra32(lampPath, out _);
+
+            var alphas = Enumerable.Range(0, pixels.Length / 4).Select(i => pixels[(i * 4) + 3]).ToArray();
+            Assert.Equal(0, alphas[0]);
+            Assert.Equal(255, alphas[4]); // center pixel remains visible
+        }
+        finally
+        {
+            Directory.Delete(extractRoot, true);
+            Directory.Delete(projectRoot, true);
+        }
+    }
+
     private static MfmeImportContext CreateContext(string extractRoot, string projectRoot) => new()
     {
         SourceExtractPath = extractRoot,
@@ -73,6 +107,27 @@ public sealed class MfmeImportLampPostProcessorTests
         var palette = new BitmapPalette([Color.FromArgb(0, 255, 0, 0), Color.FromArgb(255, 200, 100, 50)]);
         var pixels = new byte[] { 0, 1, 1, 0 };
         var bitmap = BitmapSource.Create(2, 2, 96, 96, PixelFormats.Indexed8, palette, pixels, 2);
+        SaveBmp(bitmap, path);
+    }
+
+
+    private static void CreateUnmaskedLampBmp(string path)
+    {
+        var pixels = new byte[3 * 3 * 4];
+        for (var y = 0; y < 3; y++)
+        {
+            for (var x = 0; x < 3; x++)
+            {
+                var i = ((y * 3) + x) * 4;
+                var edge = x == 0 || x == 2 || y == 0 || y == 2;
+                pixels[i + 0] = edge ? (byte)255 : (byte)0; // B
+                pixels[i + 1] = edge ? (byte)0 : (byte)255; // G
+                pixels[i + 2] = 0; // R
+                pixels[i + 3] = 255;
+            }
+        }
+
+        var bitmap = BitmapSource.Create(3, 3, 96, 96, PixelFormats.Bgra32, null, pixels, 12);
         SaveBmp(bitmap, path);
     }
 
