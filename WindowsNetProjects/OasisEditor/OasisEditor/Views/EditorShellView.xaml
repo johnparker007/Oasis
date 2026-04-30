@@ -11,19 +11,20 @@
              d:DesignHeight="450"
              d:DesignWidth="900">
     <Grid Background="{DynamicResource EditorBackgroundBrush}">
+        <Grid.Resources>
+            <ResourceDictionary>
+                <ResourceDictionary.MergedDictionaries>
+                    <ResourceDictionary Source="../Styles/AvalonDockVs2013Palette.xaml" />
+                </ResourceDictionary.MergedDictionaries>
+                <Style TargetType="{x:Type ContextMenu}"
+                       BasedOn="{StaticResource EditorContextMenuStyle}" />
+                <Style TargetType="{x:Type MenuItem}"
+                       BasedOn="{StaticResource EditorContextMenuItemStyle}" />
+            </ResourceDictionary>
+        </Grid.Resources>
+
         <avalonDock:DockingManager x:Name="DockingManager"
                                    Background="{DynamicResource EditorBackgroundBrush}">
-            <avalonDock:DockingManager.Resources>
-                <ResourceDictionary>
-                    <ResourceDictionary.MergedDictionaries>
-                        <ResourceDictionary Source="../Styles/AvalonDockVs2013Palette.xaml" />
-                    </ResourceDictionary.MergedDictionaries>
-                    <Style TargetType="{x:Type ContextMenu}"
-                           BasedOn="{StaticResource EditorContextMenuStyle}" />
-                    <Style TargetType="{x:Type MenuItem}"
-                           BasedOn="{StaticResource EditorContextMenuItemStyle}" />
-                </ResourceDictionary>
-            </avalonDock:DockingManager.Resources>
             <avalonDock:DockingManager.Theme>
                 <themes:Vs2013DarkTheme />
             </avalonDock:DockingManager.Theme>

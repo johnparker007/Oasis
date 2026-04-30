@@ -28,7 +28,7 @@ public sealed class MfmeImportLampPostProcessorTests
             ]);
 
             Assert.True(result.Succeeded);
-            var lampAsset = Assert.Single(result.Elements.Where(e => e.Kind == PanelElementKind.Lamp));
+            var lampAsset = Assert.Single(result.Elements, e => e.Kind == PanelElementKind.Lamp);
             Assert.EndsWith(".png", lampAsset.AssetPath, StringComparison.OrdinalIgnoreCase);
             Assert.NotNull(lampAsset.SecondaryAssetPath);
 
@@ -42,7 +42,7 @@ public sealed class MfmeImportLampPostProcessorTests
             Assert.Equal(2, alphas.Count(a => a == 0)); // transparent palette entries remain transparent
             Assert.Contains((byte)255, alphas); // at least one masked-on pixel remains opaque
 
-            var imageAsset = Assert.Single(result.Elements.Where(e => e.Kind == PanelElementKind.Image));
+            var imageAsset = Assert.Single(result.Elements, e => e.Kind == PanelElementKind.Image);
             Assert.EndsWith("symbol.png", imageAsset.AssetPath, StringComparison.OrdinalIgnoreCase);
         }
         finally

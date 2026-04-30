@@ -199,7 +199,7 @@ public sealed class HierarchyPanelCommandServiceTests
 
         Assert.Equal(2, document.GetPanelElements().Count);
         Assert.Contains(document.GetPanelElements(), element => element.ObjectId == "dup-source");
-        var duplicate = Assert.Single(document.GetPanelElements().Where(element => element.ObjectId != "dup-source"));
+        var duplicate = Assert.Single(document.GetPanelElements(), element => element.ObjectId != "dup-source");
         Assert.Equal(PanelElementKind.Reel, duplicate.Kind);
         Assert.Equal("Assets/MfmeImport/layout/Reels/reel2.png", duplicate.AssetPath);
         Assert.Equal("Assets/MfmeImport/layout/Reels/reel2-overlay.png", duplicate.SecondaryAssetPath);

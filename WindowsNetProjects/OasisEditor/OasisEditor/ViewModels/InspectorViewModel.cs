@@ -415,7 +415,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         if (selectedElement.ImportSource is not null)
         {
             _propertyRows.Add(new InspectorInfoPropertyViewModel("Import Format", "Metadata", selectedElement.ImportSource.Format));
-            _propertyRows.Add(new InspectorInfoPropertyViewModel("Import Reference", "Metadata", selectedElement.ImportSource.Reference));
+            _propertyRows.Add(new InspectorInfoPropertyViewModel("Import Reference", "Metadata", selectedElement.ImportSource.Reference ?? string.Empty));
         }
     }
 
