@@ -1248,8 +1248,7 @@ public sealed class Panel2DRoundTripTests
         var events = new List<PanelChangeEvent>();
         document.PanelChanged += panelChange => events.Add(panelChange);
 
-        var updated = PanelElementModelCloner.Clone(document.GetPanelElements().Single());
-        updated.X = 42;
+        var updated = PanelElementModelCloner.Clone(document.GetPanelElements().Single(), x: 42);
         var command = CanvasMutationCommands.CreateUpdateElementCommand(
             document.DocumentId,
             document,
@@ -1282,8 +1281,7 @@ public sealed class Panel2DRoundTripTests
         var events = new List<PanelChangeEvent>();
         document.PanelChanged += panelChange => events.Add(panelChange);
 
-        var updated = PanelElementModelCloner.Clone(document.GetPanelElements().Single());
-        updated.Name = "Rect Renamed";
+        var updated = PanelElementModelCloner.Clone(document.GetPanelElements().Single(), name: "Rect Renamed");
         var command = CanvasMutationCommands.CreateUpdateElementCommand(
             document.DocumentId,
             document,

@@ -118,6 +118,13 @@ internal static class MfmeExtractManifestParser
                     "Lamp",
                     componentIndex,
                     warnings);
+                AddMissingImageWarningIfNeeded(
+                    extractDirectory,
+                    "lamps",
+                    lamp.FirstLampElement?.BmpMaskImageFilename,
+                    "Lamp mask",
+                    componentIndex,
+                    warnings);
                 break;
             case MfmeLegacyReelComponent reel:
                 AddMissingImageWarningIfNeeded(
@@ -252,7 +259,8 @@ internal static class MfmeExtractManifestParser
                 numberAsText,
                 TryParseNullableInt(numberAsText),
                 ReadColor(lampElement, "OnColor"),
-                ReadString(lampElement, "BmpImageFilename"));
+                ReadString(lampElement, "BmpImageFilename"),
+                ReadString(lampElement, "BmpMaskImageFilename"));
         }
 
         return null;

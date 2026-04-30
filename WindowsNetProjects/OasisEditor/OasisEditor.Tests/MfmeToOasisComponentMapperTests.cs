@@ -27,7 +27,7 @@ public sealed class MfmeToOasisComponentMapperTests
                     "Arial",
                     "Regular",
                     "12",
-                    new MfmeLegacyLampElement("8", 8, new MfmeLegacyColor(0f, 1f, 0f, 1f), "lamp.png"),
+                    new MfmeLegacyLampElement("8", 8, new MfmeLegacyColor(0f, 1f, 0f, 1f), "lamp.png", "lamp-mask.png"),
                     new MfmeLegacyColor(0f, 0f, 0f, 1f),
                     new MfmeLegacyColor(1f, 1f, 1f, 1f),
                     NoOutline: false),
@@ -77,6 +77,7 @@ public sealed class MfmeToOasisComponentMapperTests
         Assert.Equal("Lamp 8", lamp.Name);
         Assert.Equal(8, lamp.DisplayNumber);
         Assert.Equal("lamps/lamp.png", lamp.AssetPath);
+        Assert.Equal("lamps/lamp-mask.png", lamp.SecondaryAssetPath);
         Assert.Equal("#FF00FF00", lamp.OnColorHex);
         Assert.Equal("#FF000000", lamp.OffColorHex);
         Assert.Equal("#FFFFFFFF", lamp.TextColorHex);
@@ -130,7 +131,7 @@ public sealed class MfmeToOasisComponentMapperTests
                     null,
                     null,
                     null,
-                    new MfmeLegacyLampElement("NaN", null, null, null),
+                    new MfmeLegacyLampElement("NaN", null, null, null, null),
                     null,
                     null,
                     NoOutline: true),
