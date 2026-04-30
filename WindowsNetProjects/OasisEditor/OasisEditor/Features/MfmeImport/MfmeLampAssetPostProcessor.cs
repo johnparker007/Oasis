@@ -21,15 +21,13 @@ internal static class MfmeLampAssetPostProcessor
         {
             var lamp = LoadBgra32(sourceLampPath, preservePaletteAlpha: true);
             FixTransparentFringePixels(lamp);
+            ApplyDerivedEdgeTransparency(lamp);
+            var preserveExistingTransparency = HasAnyFullyTransparentPixels(lamp);
 
             if (!string.IsNullOrWhiteSpace(sourceMaskPath) && File.Exists(sourceMaskPath))
             {
                 var mask = LoadBgra32(sourceMaskPath!, preservePaletteAlpha: false);
-                ApplyMask(lamp, mask, applyMaskTint);
-            }
-            else
-            {
-                ApplyDerivedEdgeTransparency(lamp);
+                ApplyMask(lamp, mask, applyMaskTint, preserveExistingTransparency);
             }
 
             var directory = Path.GetDirectoryName(destinationLampPath);
@@ -182,17 +180,7 @@ internal static class MfmeLampAssetPostProcessor
 
     private static void ApplyDerivedEdgeTransparency(PixelBuffer image)
     {
-        var hasAnyTransparent = false;
-        for (var i = 3; i < image.Pixels.Length; i += 4)
-        {
-            if (image.Pixels[i] == 0)
-            {
-                hasAnyTransparent = true;
-                break;
-            }
-        }
-
-        if (hasAnyTransparent)
+        if (HasAnyFullyTransparentPixels(image))
         {
             return;
         }
@@ -247,7 +235,20 @@ internal static class MfmeLampAssetPostProcessor
         counts[key] = counts.TryGetValue(key, out var count) ? count + 1 : 1;
     }
 
-    private static void ApplyMask(PixelBuffer image, PixelBuffer mask, bool applyMaskTint)
+    private static bool HasAnyFullyTransparentPixels(PixelBuffer image)
+    {
+        for (var i = 3; i < image.Pixels.Length; i += 4)
+        {
+            if (image.Pixels[i] == 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static void ApplyMask(PixelBuffer image, PixelBuffer mask, bool applyMaskTint, bool preserveExistingTransparency)
     {
         for (var y = 0; y < image.Height; y++)
         {
@@ -266,8 +267,11 @@ internal static class MfmeLampAssetPostProcessor
                 var mb = mask.Pixels[maskOffset];
                 var mg = mask.Pixels[maskOffset + 1];
                 var mr = mask.Pixels[maskOffset + 2];
-
-                image.Pixels[offset + 3] = Math.Max(mr, Math.Max(mg, mb));
+                var maskAlpha = Math.Max(mr, Math.Max(mg, mb));
+                if (!preserveExistingTransparency)
+                {
+                    image.Pixels[offset + 3] = maskAlpha;
+                }
 
                 if (applyMaskTint)
                 {
