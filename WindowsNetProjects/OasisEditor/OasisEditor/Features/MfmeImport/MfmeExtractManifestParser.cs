@@ -197,7 +197,7 @@ internal static class MfmeExtractManifestParser
                     ReadString(component, "TextBoxFontName"),
                     ReadString(component, "TextBoxFontStyle"),
                     ReadString(component, "TextBoxFontSize"),
-                    ReadFirstLampElement(component),
+                    ReadFirstLampElement(component, ReadOptionalBool(component, "Graphic")),
                     ReadColor(component, "OffImageColor"),
                     ReadColor(component, "TextColor"),
                     ReadBool(component, "NoOutline"));
@@ -240,7 +240,7 @@ internal static class MfmeExtractManifestParser
         }
     }
 
-    private static MfmeLegacyLampElement? ReadFirstLampElement(JsonElement component)
+    private static MfmeLegacyLampElement? ReadFirstLampElement(JsonElement component, bool? componentGraphic)
     {
         if (!component.TryGetProperty("LampElements", out var lampElements) || lampElements.ValueKind != JsonValueKind.Array)
         {
@@ -261,7 +261,7 @@ internal static class MfmeExtractManifestParser
                 ReadColor(lampElement, "OnColor"),
                 ReadString(lampElement, "BmpImageFilename"),
                 ReadString(lampElement, "BmpMaskImageFilename"),
-                ReadBool(lampElement, "Graphic"));
+                ReadOptionalBool(lampElement, "Graphic") ?? componentGraphic ?? false);
         }
 
         return null;
@@ -312,6 +312,33 @@ internal static class MfmeExtractManifestParser
         }
 
         return 0;
+    }
+
+
+    private static bool? ReadOptionalBool(JsonElement element, string propertyName)
+    {
+        if (!element.TryGetProperty(propertyName, out var property))
+        {
+            return null;
+        }
+
+        if (property.ValueKind == JsonValueKind.True)
+        {
+            return true;
+        }
+
+        if (property.ValueKind == JsonValueKind.False)
+        {
+            return false;
+        }
+
+        if (property.ValueKind == JsonValueKind.String &&
+            bool.TryParse(property.GetString(), out var parsed))
+        {
+            return parsed;
+        }
+
+        return null;
     }
 
     private static bool ReadBool(JsonElement element, string propertyName)

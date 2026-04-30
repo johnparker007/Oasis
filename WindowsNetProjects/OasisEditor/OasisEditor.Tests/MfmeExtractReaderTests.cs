@@ -322,13 +322,13 @@ public sealed class MfmeExtractReaderTests
               "NoOutline": true,
               "TextColor": { "R": 1, "G": 1, "B": 1, "A": 1 },
               "OffImageColor": { "R": 0, "G": 0, "B": 0, "A": 1 },
+              "Graphic": true,
               "LampElements": [
                 {
                   "NumberAsText": "12",
                   "OnColor": { "R": 1, "G": 0, "B": 0, "A": 1 },
                   "BmpImageFilename": "lamp.png",
-                  "BmpMaskImageFilename": "lamp-mask.png",
-                  "Graphic": true
+                  "BmpMaskImageFilename": "lamp-mask.png"
                 }
               ]
             },
