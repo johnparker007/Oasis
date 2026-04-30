@@ -260,7 +260,8 @@ internal static class MfmeExtractManifestParser
                 TryParseNullableInt(numberAsText),
                 ReadColor(lampElement, "OnColor"),
                 ReadString(lampElement, "BmpImageFilename"),
-                ReadString(lampElement, "BmpMaskImageFilename"));
+                ReadString(lampElement, "BmpMaskImageFilename"),
+                ReadBool(lampElement, "Graphic"));
         }
 
         return null;

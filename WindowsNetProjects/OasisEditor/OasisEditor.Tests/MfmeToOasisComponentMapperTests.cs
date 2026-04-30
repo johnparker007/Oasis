@@ -27,7 +27,7 @@ public sealed class MfmeToOasisComponentMapperTests
                     "Arial",
                     "Regular",
                     "12",
-                    new MfmeLegacyLampElement("8", 8, new MfmeLegacyColor(0f, 1f, 0f, 1f), "lamp.png", "lamp-mask.png"),
+                    new MfmeLegacyLampElement("8", 8, new MfmeLegacyColor(0f, 1f, 0f, 1f), "lamp.png", "lamp-mask.png", Graphic: true),
                     new MfmeLegacyColor(0f, 0f, 0f, 1f),
                     new MfmeLegacyColor(1f, 1f, 1f, 1f),
                     NoOutline: false),
@@ -114,6 +114,40 @@ public sealed class MfmeToOasisComponentMapperTests
         });
     }
 
+
+    [Fact]
+    public void Map_LampWithGraphicFalse_DoesNotMapLampImages()
+    {
+        var extract = new MfmeLegacyExtractData
+        {
+            LayoutName = "layout",
+            Components =
+            [
+                new MfmeLegacyLampComponent(
+                    new MfmeLegacyPoint(100, 200),
+                    new MfmeLegacyPoint(30, 40),
+                    null,
+                    null,
+                    null,
+                    null,
+                    new MfmeLegacyLampElement("8", 8, new MfmeLegacyColor(0f, 1f, 0f, 1f), "lamp.png", "lamp-mask.png", Graphic: false),
+                    new MfmeLegacyColor(0f, 0f, 0f, 1f),
+                    null,
+                    NoOutline: false)
+            ]
+        };
+
+        var mapper = new MfmeToOasisComponentMapper();
+
+        var result = mapper.Map(extract);
+
+        var lamp = Assert.Single(result.Elements);
+        Assert.Equal(PanelElementKind.Lamp, lamp.Kind);
+        Assert.Null(lamp.AssetPath);
+        Assert.Null(lamp.SecondaryAssetPath);
+        Assert.Equal("#FF00FF00", lamp.OnColorHex);
+        Assert.Equal("#FF000000", lamp.OffColorHex);
+    }
     [Fact]
     public void Map_WithInvalidNumbersAndUnsupportedComponent_AddsWarnings()
     {
@@ -131,7 +165,7 @@ public sealed class MfmeToOasisComponentMapperTests
                     null,
                     null,
                     null,
-                    new MfmeLegacyLampElement("NaN", null, null, null, null),
+                    new MfmeLegacyLampElement("NaN", null, null, null, null, Graphic: false),
                     null,
                     null,
                     NoOutline: true),

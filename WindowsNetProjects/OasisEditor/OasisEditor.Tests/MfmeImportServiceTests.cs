@@ -79,7 +79,7 @@ public sealed class MfmeImportServiceTests
                     null,
                     null,
                     null,
-                    new MfmeLegacyLampElement("7", 7, new MfmeLegacyColor(1f, 1f, 0f, 1f), "lamp.bmp", null),
+                    new MfmeLegacyLampElement("7", 7, new MfmeLegacyColor(1f, 1f, 0f, 1f), "lamp.bmp", null, Graphic: true),
                     new MfmeLegacyColor(0f, 0f, 0f, 1f),
                     new MfmeLegacyColor(1f, 1f, 1f, 1f),
                     NoOutline: false),

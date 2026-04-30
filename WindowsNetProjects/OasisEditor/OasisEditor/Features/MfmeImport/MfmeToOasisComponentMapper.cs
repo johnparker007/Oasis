@@ -96,8 +96,12 @@ internal sealed class MfmeToOasisComponentMapper
             Width = component.Size.X,
             Height = component.Size.Y,
             DisplayNumber = number,
-            AssetPath = BuildExtractRelativePath("lamps", component.FirstLampElement?.BmpImageFilename),
-            SecondaryAssetPath = BuildExtractRelativePath("lamps", component.FirstLampElement?.BmpMaskImageFilename),
+            AssetPath = component.FirstLampElement?.Graphic == true
+                ? BuildExtractRelativePath("lamps", component.FirstLampElement.BmpImageFilename)
+                : null,
+            SecondaryAssetPath = component.FirstLampElement?.Graphic == true
+                ? BuildExtractRelativePath("lamps", component.FirstLampElement.BmpMaskImageFilename)
+                : null,
             OnColorHex = ToHex(component.FirstLampElement?.OnColor),
             OffColorHex = ToHex(component.OffImageColor),
             TextColorHex = ToHex(component.TextColor),

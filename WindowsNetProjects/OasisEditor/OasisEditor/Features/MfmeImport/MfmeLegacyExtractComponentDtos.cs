@@ -32,7 +32,8 @@ internal sealed record MfmeLegacyLampElement(
     int? Number,
     MfmeLegacyColor? OnColor,
     string? BmpImageFilename,
-    string? BmpMaskImageFilename);
+    string? BmpMaskImageFilename,
+    bool Graphic);
 
 internal sealed record MfmeLegacyLampComponent(
     MfmeLegacyPoint Position,
