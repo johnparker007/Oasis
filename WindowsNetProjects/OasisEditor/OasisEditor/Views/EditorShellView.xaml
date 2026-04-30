@@ -25,7 +25,6 @@
                 </ResourceDictionary>
             </avalonDock:DockingManager.Resources>
             
-                >
             <avalonDock:DockingManager.Theme>
                 <themes:Vs2013DarkTheme />
             </avalonDock:DockingManager.Theme>
