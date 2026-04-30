@@ -11,23 +11,22 @@
              d:DesignHeight="450"
              d:DesignWidth="900">
     <Grid Background="{DynamicResource EditorBackgroundBrush}">
+        <Grid.Resources>
+            <ResourceDictionary>
+                <ResourceDictionary.MergedDictionaries>
+                    <ResourceDictionary Source="../Styles/AvalonDockVs2013Palette.xaml" />
+                </ResourceDictionary.MergedDictionaries>
+                <Style TargetType="{x:Type ContextMenu}"
+                       BasedOn="{StaticResource EditorContextMenuStyle}" />
+                <Style TargetType="{x:Type MenuItem}"
+                       BasedOn="{StaticResource EditorContextMenuItemStyle}" />
+            </ResourceDictionary>
+        </Grid.Resources>
         <avalonDock:DockingManager x:Name="DockingManager"
                                    Background="{DynamicResource EditorBackgroundBrush}">
-            <avalonDock:DockingManager.Resources>
-                <ResourceDictionary>
-                    <ResourceDictionary.MergedDictionaries>
-                        <ResourceDictionary Source="../Styles/AvalonDockVs2013Palette.xaml" />
-                    </ResourceDictionary.MergedDictionaries>
-                    <Style TargetType="{x:Type ContextMenu}"
-                           BasedOn="{StaticResource EditorContextMenuStyle}" />
-                    <Style TargetType="{x:Type MenuItem}"
-                           BasedOn="{StaticResource EditorContextMenuItemStyle}" />
-                </ResourceDictionary>
-            </avalonDock:DockingManager.Resources>
             <avalonDock:DockingManager.Theme>
                 <themes:Vs2013DarkTheme />
             </avalonDock:DockingManager.Theme>
-
             <layout:LayoutRoot>
                 <layout:LayoutPanel Orientation="Vertical">
                     <layout:LayoutPanel Orientation="Horizontal">
@@ -42,16 +41,7 @@
                             </layout:LayoutAnchorable>
                         </layout:LayoutAnchorablePane>
 
-                        <layout:LayoutDocumentPane>
-                            <layout:LayoutDocument Title="Document Workspace"
-                                                   ContentId="DocumentWorkspace"
-                                                   CanClose="False">
-                                <Border Padding="10"
-                                        Background="{DynamicResource WorkspaceBackgroundBrush}">
-                                    <views:PanelCanvasView />
-                                </Border>
-                            </layout:LayoutDocument>
-                        </layout:LayoutDocumentPane>
+                        <layout:LayoutDocumentPane x:Name="DocumentPane" />
 
                         <layout:LayoutAnchorablePane DockWidth="280">
                             <layout:LayoutAnchorable Title="Inspector"
@@ -63,24 +53,23 @@
                                 </Border>
                             </layout:LayoutAnchorable>
 
-                        <layout:LayoutAnchorable Title="Preferences"
-                                                 ContentId="Preferences"
-                                                 CanClose="True">
-                            <Border Padding="10"
-                                    Background="{DynamicResource InspectorBackgroundBrush}">
-                                <views:PreferencesView />
-                            </Border>
-                        </layout:LayoutAnchorable>
+                            <layout:LayoutAnchorable Title="Preferences"
+                                                     ContentId="Preferences"
+                                                     CanClose="True">
+                                <Border Padding="10"
+                                        Background="{DynamicResource InspectorBackgroundBrush}">
+                                    <views:PreferencesView />
+                                </Border>
+                            </layout:LayoutAnchorable>
 
-                        <layout:LayoutAnchorable Title="Project Settings"
-                                                 ContentId="ProjectSettings"
-                                                 CanClose="True">
-                            <Border Padding="10"
-                                    Background="{DynamicResource InspectorBackgroundBrush}">
-                                <views:ProjectSettingsView />
-                            </Border>
-                        </layout:LayoutAnchorable>
-
+                            <layout:LayoutAnchorable Title="Project Settings"
+                                                     ContentId="ProjectSettings"
+                                                     CanClose="True">
+                                <Border Padding="10"
+                                        Background="{DynamicResource InspectorBackgroundBrush}">
+                                    <views:ProjectSettingsView />
+                                </Border>
+                            </layout:LayoutAnchorable>
                         </layout:LayoutAnchorablePane>
                     </layout:LayoutPanel>
 
@@ -102,7 +91,6 @@
                                 <views:OutputLogView />
                             </Border>
                         </layout:LayoutAnchorable>
-
                     </layout:LayoutAnchorablePane>
                 </layout:LayoutPanel>
             </layout:LayoutRoot>

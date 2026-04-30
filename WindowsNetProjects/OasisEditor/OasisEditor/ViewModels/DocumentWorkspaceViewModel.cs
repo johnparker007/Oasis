@@ -53,7 +53,7 @@ public sealed class DocumentWorkspaceViewModel
     public bool CanSaveSelectedDocument()
     {
         var selectedDocument = _getSelectedDocument();
-        return selectedDocument is not null && selectedDocument.Document.DocumentType != EditorDocumentType.ProjectOverview;
+        return selectedDocument is not null;
     }
 
     public void OpenUntitledDocument()
@@ -143,17 +143,6 @@ public sealed class DocumentWorkspaceViewModel
         ExecuteDocumentMutation(new ReplaceDocumentTabMutationCommand(this, original, updated));
     }
 
-    public void EnsureProjectOverviewDocument()
-    {
-        var loadedProject = _getLoadedProject();
-        if (loadedProject is null)
-        {
-            return;
-        }
-
-        var overviewDocument = new DocumentTabViewModel(EditorDocument.CreateProjectOverview(loadedProject));
-        ExecuteDocumentMutation(new ReplaceOpenDocumentsMutationCommand(this, [overviewDocument], overviewDocument));
-    }
 
     public void ClearProjectSessionState()
     {

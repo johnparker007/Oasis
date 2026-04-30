@@ -838,7 +838,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         PanelElementFactory.ProjectDirectoryPath = project.ProjectDirectory;
         ProjectFilePath = project.ProjectFilePath;
         UpdateRecentProjects(project.ProjectFilePath);
-        _documentWorkspace.EnsureProjectOverviewDocument();
         _assetBrowser.RefreshAssetBrowser();
         StatusMessage = $"Project opened: {project.Name} ({project.ProjectFilePath})";
         AddOutputEntry($"Loaded startup project '{project.Name}' from {project.ProjectFilePath}", OutputLogStatus.Info);
