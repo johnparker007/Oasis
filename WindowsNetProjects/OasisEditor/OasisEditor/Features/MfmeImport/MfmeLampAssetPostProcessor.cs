@@ -59,7 +59,7 @@ internal static class MfmeLampAssetPostProcessor
         var pixels = new byte[stride * converted.PixelHeight];
         converted.CopyPixels(pixels, stride, 0);
 
-        if (preservePaletteAlpha && frame.Format == PixelFormats.Indexed8 && frame.Palette is not null)
+        if (preservePaletteAlpha && frame.Format.Palettized && frame.Palette is not null)
         {
             ReapplyIndexedAlpha(frame, pixels, stride);
         }
@@ -75,7 +75,13 @@ internal static class MfmeLampAssetPostProcessor
             return;
         }
 
-        var indexedStride = (frame.PixelWidth * frame.Format.BitsPerPixel + 7) / 8;
+        var bitsPerPixel = frame.Format.BitsPerPixel;
+        if (bitsPerPixel is not (1 or 2 or 4 or 8))
+        {
+            return;
+        }
+
+        var indexedStride = (frame.PixelWidth * bitsPerPixel + 7) / 8;
         var indices = new byte[indexedStride * frame.PixelHeight];
         frame.CopyPixels(indices, indexedStride, 0);
 
@@ -83,8 +89,8 @@ internal static class MfmeLampAssetPostProcessor
         {
             for (var x = 0; x < frame.PixelWidth; x++)
             {
-                var paletteIndex = indices[(y * indexedStride) + x];
-                if (paletteIndex >= palette.Count)
+                var paletteIndex = ReadPaletteIndex(indices, indexedStride, bitsPerPixel, x, y);
+                if (paletteIndex < 0 || paletteIndex >= palette.Count)
                 {
                     continue;
                 }
@@ -93,6 +99,21 @@ internal static class MfmeLampAssetPostProcessor
                 pixels[(y * stride) + (x * 4) + 3] = color.A;
             }
         }
+    }
+
+    private static int ReadPaletteIndex(byte[] indices, int stride, int bitsPerPixel, int x, int y)
+    {
+        if (bitsPerPixel == 8)
+        {
+            return indices[(y * stride) + x];
+        }
+
+        var bitIndex = x * bitsPerPixel;
+        var byteIndex = (y * stride) + (bitIndex / 8);
+        var bitOffset = bitIndex % 8;
+        var shift = 8 - bitsPerPixel - bitOffset;
+        var mask = (1 << bitsPerPixel) - 1;
+        return (indices[byteIndex] >> shift) & mask;
     }
 
     private static void FixTransparentFringePixels(PixelBuffer image)

@@ -86,6 +86,36 @@ public sealed class MfmeImportLampPostProcessorTests
         }
     }
 
+
+    [Fact]
+    public void CopyAssets_LampIndexed4WithoutMask_PreservesPaletteAlpha()
+    {
+        var extractRoot = CreateTempDirectory();
+        var projectRoot = CreateTempDirectory();
+
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(extractRoot, "lamps"));
+            CreateIndexed4LampBmp(Path.Combine(extractRoot, "lamps", "indexed4.bmp"));
+
+            var copier = new MfmeImportAssetCopier();
+            var result = copier.CopyAssets(CreateContext(extractRoot, projectRoot), CreateExtract(extractRoot),
+            [ new PanelElementModel { ObjectId = "lamp-idx4", Name = "lamp", Kind = PanelElementKind.Lamp, Width = 2, Height = 2, AssetPath = "lamps/indexed4.bmp" } ]);
+
+            Assert.True(result.Succeeded);
+            var lampPath = Path.Combine(projectRoot, "Assets", result.Elements[0].AssetPath!["Assets/".Length..]);
+            var pixels = ReadBgra32(lampPath, out _);
+            var alphas = Enumerable.Range(0, pixels.Length / 4).Select(i => pixels[(i * 4) + 3]).ToArray();
+            Assert.Contains((byte)0, alphas);
+            Assert.Contains((byte)255, alphas);
+        }
+        finally
+        {
+            Directory.Delete(extractRoot, true);
+            Directory.Delete(projectRoot, true);
+        }
+    }
+
     private static MfmeImportContext CreateContext(string extractRoot, string projectRoot) => new()
     {
         SourceExtractPath = extractRoot,
@@ -110,6 +140,25 @@ public sealed class MfmeImportLampPostProcessorTests
         SaveBmp(bitmap, path);
     }
 
+
+
+    private static void CreateIndexed4LampBmp(string path)
+    {
+        var palette = new BitmapPalette(new[]
+        {
+            Color.FromArgb(0, 255, 0, 255),
+            Color.FromArgb(255, 255, 255, 0)
+        });
+
+        var pixels = new byte[]
+        {
+            0x01,
+            0x10
+        };
+
+        var bitmap = BitmapSource.Create(2, 2, 96, 96, PixelFormats.Indexed4, palette, pixels, 1);
+        SaveBmp(bitmap, path);
+    }
 
     private static void CreateUnmaskedLampBmp(string path)
     {
