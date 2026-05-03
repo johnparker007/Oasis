@@ -129,14 +129,16 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
 
     internal void NotifyPanelVisualPreviewChanged()
     {
-        PanelChanged?.Invoke(new PanelChangeEvent(
-            DocumentId,
-            null,
-            PanelChangeProperties.Style,
-            AffectsCanvas: true,
-            AffectsHierarchy: false,
-            AffectsInspectorRows: false,
-            AffectsPersistence: false));
+        SetPanelElements(
+            _panelDocumentModel.Elements,
+            new PanelChangeEvent(
+                DocumentId,
+                null,
+                PanelChangeProperties.Style,
+                AffectsCanvas: true,
+                AffectsHierarchy: false,
+                AffectsInspectorRows: false,
+                AffectsPersistence: false));
     }
 
     internal string GetPanelLayoutProjectionJson()
