@@ -54,7 +54,10 @@ public sealed class MfmeImportAssetCopierTests
                     Kind = PanelElementKind.Lamp,
                     Width = 1,
                     Height = 1,
-                    AssetPath = "lamps/lamp.png"
+                    AssetPath = "lamps/lamp.png",
+                    TextBoxFontName = "Lithograph",
+                    TextBoxFontStyle = "Bold",
+                    TextBoxFontSize = "12"
                 },
                 new PanelElementModel
                 {
@@ -78,6 +81,9 @@ public sealed class MfmeImportAssetCopierTests
             Assert.Equal("Assets/MfmeImport/My Layout/Background/bg.png", result.Elements[0].AssetPath);
             Assert.Equal("Assets/MfmeImport/My Layout/Lamps/lamp.png", result.Elements[1].AssetPath);
             Assert.Equal("Assets/MfmeImport/My Layout/Reels/band.png", result.Elements[2].AssetPath);
+            Assert.Equal("Lithograph", result.Elements[1].TextBoxFontName);
+            Assert.Equal("Bold", result.Elements[1].TextBoxFontStyle);
+            Assert.Equal("12", result.Elements[1].TextBoxFontSize);
         }
         finally
         {
