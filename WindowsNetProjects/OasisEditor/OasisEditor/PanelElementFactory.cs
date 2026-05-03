@@ -71,6 +71,12 @@ internal static class PanelElementFactory
         };
     }
 
+
+    public static FrameworkElement? CreateVisualFromElement(PanelElementFile element)
+    {
+        return CreateVisualFromElement(element, PanelRuntimeState.Default);
+    }
+
     public static FrameworkElement? CreateVisualFromElement(PanelElementFile element, PanelRuntimeState runtimeState)
     {
         FrameworkElement? visual = element.ElementKind switch
