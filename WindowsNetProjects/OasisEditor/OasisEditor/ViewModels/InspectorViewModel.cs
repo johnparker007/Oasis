@@ -205,6 +205,13 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
     public void NotifyContextChanged()
     {
+        if (!ShowLampTestButton && PanelElementFactory.IsLampTestActive)
+        {
+            PanelElementFactory.IsLampTestActive = false;
+            PanelElementFactory.LampTestObjectId = null;
+            _selectedDocumentAccessor()?.NotifyPanelVisualPreviewChanged();
+        }
+
         OnPropertyChanged(nameof(InspectorTitle));
         OnPropertyChanged(nameof(InspectorType));
         OnPropertyChanged(nameof(InspectorPath));
@@ -638,12 +645,19 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
     public void SetLampTestActive(bool isActive)
     {
+        var selectedLampObjectId = _activeDocumentContext.ActivePanelSelection?.ObjectId;
+        if (isActive && string.IsNullOrWhiteSpace(selectedLampObjectId))
+        {
+            return;
+        }
+
         if (PanelElementFactory.IsLampTestActive == isActive)
         {
             return;
         }
 
         PanelElementFactory.IsLampTestActive = isActive;
+        PanelElementFactory.LampTestObjectId = isActive ? selectedLampObjectId : null;
         Debug.WriteLine($"[LampTest] SetLampTestActive={isActive}");
         _selectedDocumentAccessor()?.NotifyPanelVisualPreviewChanged();
     }

@@ -10,6 +10,7 @@ namespace OasisEditor;
 internal static class PanelElementFactory
 {
     public static bool IsLampTestActive { get; set; }
+    public static string? LampTestObjectId { get; set; }
 
     private static string? _projectDirectoryPath;
     private static readonly Dictionary<string, FontFamily> MfmeFontFamilies = new(StringComparer.OrdinalIgnoreCase);
@@ -194,7 +195,9 @@ internal static class PanelElementFactory
     private static FrameworkElement CreateLampVisual(PanelElementFile element)
     {
         var hasGraphic = TryCreateImageSource(element.AssetPath, out var source);
-        var isLampOn = IsLampTestActive;
+        var isLampOn = IsLampTestActive
+            && !string.IsNullOrWhiteSpace(LampTestObjectId)
+            && string.Equals(element.ObjectId, LampTestObjectId, StringComparison.Ordinal);
         var label = hasGraphic ? (element.DisplayNumber.HasValue ? $"Lamp {element.DisplayNumber.Value}" : "Lamp") : (element.DisplayText ?? string.Empty);
         var surface = CreatePlaceholderComponentVisual(
             element,
