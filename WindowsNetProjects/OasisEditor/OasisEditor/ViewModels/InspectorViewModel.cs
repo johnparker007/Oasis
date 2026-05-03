@@ -209,7 +209,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         {
             PanelElementFactory.IsLampTestActive = false;
             PanelElementFactory.LampTestObjectId = null;
-            _selectedDocumentAccessor()?.NotifyPanelVisualPreviewChanged();
+            selectedDocument?.NotifyPanelVisualPreviewChanged();
         }
 
         OnPropertyChanged(nameof(InspectorTitle));
@@ -645,7 +645,18 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
     public void SetLampTestActive(bool isActive)
     {
-        var selectedLampObjectId = _activeDocumentContext.ActivePanelSelection?.ObjectId;
+        var selectedDocument = _selectedDocumentAccessor();
+        var selectedPanelSelection = _activeDocumentContext.ActivePanelSelection;
+        var selectedLampObjectId = selectedPanelSelection?.ObjectId;
+        if (isActive && string.IsNullOrWhiteSpace(selectedLampObjectId)
+            && selectedDocument is not null
+            && selectedPanelSelection is PanelSelectionInfo panelSelection
+            && selectedDocument.TryGetPanelElement(panelSelection, out var selectedElement)
+            && selectedElement.Kind == PanelElementKind.Lamp)
+        {
+            selectedLampObjectId = selectedElement.ObjectId;
+        }
+
         if (isActive && string.IsNullOrWhiteSpace(selectedLampObjectId))
         {
             return;
