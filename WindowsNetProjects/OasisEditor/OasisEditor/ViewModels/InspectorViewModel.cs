@@ -387,9 +387,9 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
         if (selectedElement.Kind is PanelElementKind.Lamp)
         {
-            _propertyRows.Add(new InspectorInfoPropertyViewModel("Text Font Name", "Type-specific", selectedElement.TextBoxFontName));
-            _propertyRows.Add(new InspectorInfoPropertyViewModel("Text Font Style", "Type-specific", selectedElement.TextBoxFontStyle));
-            _propertyRows.Add(new InspectorInfoPropertyViewModel("Text Font Size", "Type-specific", selectedElement.TextBoxFontSize));
+            _propertyRows.Add(new InspectorInfoPropertyViewModel("Text Font Name", "Type-specific", selectedElement.TextBoxFontName ?? "Tahoma"));
+            _propertyRows.Add(new InspectorInfoPropertyViewModel("Text Font Style", "Type-specific", selectedElement.TextBoxFontStyle ?? "Regular"));
+            _propertyRows.Add(new InspectorInfoPropertyViewModel("Text Font Size", "Type-specific", selectedElement.TextBoxFontSize ?? "8"));
         }
 
         if (selectedElement.Kind is PanelElementKind.Reel)
@@ -475,13 +475,13 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                     displayTextRow.SetCommittedValue(selectedElement.DisplayText);
                     break;
                 case "Text Font Name" when row is InspectorInfoPropertyViewModel fontNameRow:
-                    fontNameRow.SetCommittedValue(selectedElement.TextBoxFontName);
+                    fontNameRow.SetCommittedValue(selectedElement.TextBoxFontName ?? "Tahoma");
                     break;
                 case "Text Font Style" when row is InspectorInfoPropertyViewModel fontStyleRow:
-                    fontStyleRow.SetCommittedValue(selectedElement.TextBoxFontStyle);
+                    fontStyleRow.SetCommittedValue(selectedElement.TextBoxFontStyle ?? "Regular");
                     break;
                 case "Text Font Size" when row is InspectorInfoPropertyViewModel fontSizeRow:
-                    fontSizeRow.SetCommittedValue(selectedElement.TextBoxFontSize);
+                    fontSizeRow.SetCommittedValue(selectedElement.TextBoxFontSize ?? "8");
                     break;
                 case "Stops" when row is InspectorIntPropertyViewModel stopsRow:
                     stopsRow.SetCommittedValue(selectedElement.Stops);
