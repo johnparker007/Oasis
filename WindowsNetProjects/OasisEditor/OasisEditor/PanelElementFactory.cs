@@ -274,6 +274,7 @@ internal static class PanelElementFactory
                         Text = label,
                         HorizontalAlignment = HorizontalAlignment.Center,
                         TextAlignment = TextAlignment.Center,
+                        TextWrapping = TextWrapping.WrapWithOverflow,
                         Foreground = TryCreateBrush(labelColorHex, Brushes.LightSteelBlue),
                         FontFamily = labelFontSettings?.FontFamily ?? new FontFamily("Segoe UI"),
                         FontStyle = labelFontSettings?.FontStyle ?? FontStyles.Normal,
@@ -286,6 +287,7 @@ internal static class PanelElementFactory
                         Margin = new Thickness(0, 4, 0, 0),
                         HorizontalAlignment = HorizontalAlignment.Center,
                         TextAlignment = TextAlignment.Center,
+                        TextWrapping = TextWrapping.WrapWithOverflow,
                         Foreground = Brushes.Gainsboro,
                         FontSize = 10,
                         Visibility = string.IsNullOrWhiteSpace(detailText) ? Visibility.Collapsed : Visibility.Visible

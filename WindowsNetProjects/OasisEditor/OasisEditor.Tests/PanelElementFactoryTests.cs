@@ -105,6 +105,33 @@ public sealed class PanelElementFactoryTests
         });
     }
 
+
+    [Fact]
+    public void CreateVisualFromElement_LampWithoutImage_WithLongSingleLineText_UsesWrapWithOverflow()
+    {
+        RunInSta(() =>
+        {
+            var source = new PanelElementFile
+            {
+                ObjectId = "lamp-wrap-1",
+                Name = "Lamp",
+                Kind = Panel2DDocumentStorage.SerializeElementKind(PanelElementKind.Lamp),
+                Width = 40,
+                Height = 40,
+                DisplayText = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890",
+                OnColorHex = "#FF00CC00"
+            };
+
+            var visual = PanelElementFactory.CreateVisualFromElement(source);
+
+            var border = Assert.IsType<Border>(visual);
+            var stack = Assert.IsType<StackPanel>(border.Child);
+            var title = Assert.IsType<TextBlock>(stack.Children[0]);
+
+            Assert.Equal(TextWrapping.WrapWithOverflow, title.TextWrapping);
+        });
+    }
+
     [Fact]
     public void CreateVisualFromElement_BackgroundWithoutImage_UsesConfiguredColor()
     {
