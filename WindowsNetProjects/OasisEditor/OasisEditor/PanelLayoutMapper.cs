@@ -182,16 +182,20 @@ public static class PanelLayoutMapper
 
         if (visual is Border border)
         {
-            var backgroundHex = isOn ? onColorHex : offColorHex ?? onColorHex;
-            border.Background = PanelElementFactory.TryCreateBrushForRuntime(backgroundHex, Brushes.Transparent);
             if (border.Child is Image image)
             {
-                image.Opacity = effectiveOpacity;
                 if (!string.IsNullOrWhiteSpace(assetPath) && image.Source is null)
                 {
                     image.Source = PanelElementFactory.TryCreateImageSourceForRuntime(assetPath);
                 }
+
+                image.Opacity = effectiveOpacity;
+                border.Background = Brushes.Transparent;
+                return;
             }
+
+            var backgroundHex = isOn ? onColorHex : offColorHex ?? onColorHex;
+            border.Background = PanelElementFactory.TryCreateBrushForRuntime(backgroundHex, Brushes.Transparent);
         }
         else if (visual is Image image)
         {
