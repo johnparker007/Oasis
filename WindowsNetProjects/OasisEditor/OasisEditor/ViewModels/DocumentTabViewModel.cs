@@ -17,6 +17,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<PanelChangeEvent>? PanelChanged;
+    public event Action<PanelVisualStateChangedEvent>? PanelVisualStateChanged;
 
     public DocumentTabViewModel(
         EditorDocument document,
@@ -129,15 +130,15 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
 
     internal void NotifyPanelVisualPreviewChanged()
     {
-        PanelLayoutJson = $"{GetPanelLayoutProjectionJson()}\n";
-        PanelChanged?.Invoke(new PanelChangeEvent(
-            DocumentId,
-            null,
-            PanelChangeProperties.Style,
-            AffectsCanvas: true,
-            AffectsHierarchy: false,
-            AffectsInspectorRows: false,
-            AffectsPersistence: false));
+        var visualStateByObjectId = _panelDocumentModel.Elements
+            .Where(element => !string.IsNullOrWhiteSpace(element.ObjectId))
+            .ToDictionary(
+                element => element.ObjectId,
+                element => (object)(PanelElementFactory.IsLampTestActive
+                    && !string.IsNullOrWhiteSpace(PanelElementFactory.LampTestObjectId)
+                    && string.Equals(element.ObjectId, PanelElementFactory.LampTestObjectId, StringComparison.Ordinal)));
+
+        PanelVisualStateChanged?.Invoke(new PanelVisualStateChangedEvent(DocumentId, visualStateByObjectId));
     }
 
     internal string GetPanelLayoutProjectionJson()
@@ -218,3 +219,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
         return PanelSelectionContract.IsMatch(storageElement, selection);
     }
 }
+
+public sealed record PanelVisualStateChangedEvent(
+    Guid DocumentId,
+    IReadOnlyDictionary<string, object> ValuesByObjectId);

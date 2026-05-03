@@ -74,6 +74,13 @@ public static class CanvasPanBehavior
             typeof(CanvasPanBehavior),
             new PropertyMetadata(false));
 
+    private static readonly DependencyProperty SubscribedDocumentTabProperty =
+        DependencyProperty.RegisterAttached(
+            "SubscribedDocumentTab",
+            typeof(DocumentTabViewModel),
+            typeof(CanvasPanBehavior),
+            new PropertyMetadata(null));
+
     public static bool GetIsEnabled(DependencyObject dependencyObject)
     {
         return (bool)dependencyObject.GetValue(IsEnabledProperty);
@@ -172,6 +179,8 @@ public static class CanvasPanBehavior
             element.MouseUp += OnMouseUp;
             element.MouseWheel += OnMouseWheel;
             element.LostMouseCapture += OnLostMouseCapture;
+            element.DataContextChanged += OnCanvasDataContextChanged;
+            AttachVisualStateSubscription(element);
         }
         else
         {
@@ -181,6 +190,75 @@ public static class CanvasPanBehavior
             element.MouseUp -= OnMouseUp;
             element.MouseWheel -= OnMouseWheel;
             element.LostMouseCapture -= OnLostMouseCapture;
+            element.DataContextChanged -= OnCanvasDataContextChanged;
+            DetachVisualStateSubscription(element);
+        }
+    }
+
+    private static void OnCanvasDataContextChanged(object sender, DependencyPropertyChangedEventArgs _)
+    {
+        if (sender is not FrameworkElement element)
+        {
+            return;
+        }
+
+        DetachVisualStateSubscription(element);
+        AttachVisualStateSubscription(element);
+    }
+
+    private static void AttachVisualStateSubscription(FrameworkElement element)
+    {
+        if (element.DataContext is not DocumentTabViewModel tab)
+        {
+            return;
+        }
+
+        tab.PanelVisualStateChanged += OnPanelVisualStateChanged;
+        element.SetValue(SubscribedDocumentTabProperty, tab);
+    }
+
+    private static void DetachVisualStateSubscription(FrameworkElement element)
+    {
+        if (element.GetValue(SubscribedDocumentTabProperty) is not DocumentTabViewModel tab)
+        {
+            return;
+        }
+
+        tab.PanelVisualStateChanged -= OnPanelVisualStateChanged;
+        element.ClearValue(SubscribedDocumentTabProperty);
+    }
+
+    private static void OnPanelVisualStateChanged(PanelVisualStateChangedEvent visualStateChanged)
+    {
+        foreach (Window window in Application.Current.Windows)
+        {
+            foreach (var canvas in FindVisualChildren<Canvas>(window))
+            {
+                if (canvas.DataContext is not DocumentTabViewModel tab || tab.DocumentId != visualStateChanged.DocumentId)
+                {
+                    continue;
+                }
+
+                PanelLayoutMapper.ApplyVisualState(canvas, tab, visualStateChanged);
+            }
+        }
+    }
+
+    private static IEnumerable<T> FindVisualChildren<T>(DependencyObject root) where T : DependencyObject
+    {
+        var childCount = System.Windows.Media.VisualTreeHelper.GetChildrenCount(root);
+        for (var i = 0; i < childCount; i++)
+        {
+            var child = System.Windows.Media.VisualTreeHelper.GetChild(root, i);
+            if (child is T typed)
+            {
+                yield return typed;
+            }
+
+            foreach (var nested in FindVisualChildren<T>(child))
+            {
+                yield return nested;
+            }
         }
     }
 

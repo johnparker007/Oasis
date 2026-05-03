@@ -105,6 +105,54 @@ public static class PanelLayoutMapper
         }
     }
 
+    public static void ApplyVisualState(Canvas canvas, DocumentTabViewModel tab, PanelVisualStateChangedEvent visualStateChange)
+    {
+        if (visualStateChange.ValuesByObjectId.Count == 0)
+        {
+            return;
+        }
+
+        var elementsByObjectId = tab.GetPanelElements()
+            .Where(element => !string.IsNullOrWhiteSpace(element.ObjectId))
+            .ToDictionary(element => element.ObjectId, element => element, StringComparer.Ordinal);
+
+        var currentPersistedChildren = canvas.Children
+            .OfType<FrameworkElement>()
+            .Where(GetIsPersistedElement)
+            .ToArray();
+
+        foreach (var existingVisual in currentPersistedChildren)
+        {
+            var objectId = existingVisual.Uid?.Trim();
+            if (string.IsNullOrWhiteSpace(objectId)
+                || !visualStateChange.ValuesByObjectId.ContainsKey(objectId)
+                || !elementsByObjectId.TryGetValue(objectId, out var sourceModel))
+            {
+                continue;
+            }
+
+            var updatedVisual = PanelElementFactory.CreateVisualFromElement(Panel2DDocumentStorage.ToStorageElement(sourceModel));
+            if (updatedVisual is null)
+            {
+                continue;
+            }
+
+            var childIndex = canvas.Children.IndexOf(existingVisual);
+            if (childIndex < 0)
+            {
+                continue;
+            }
+
+            SetIsPersistedElement(updatedVisual, true);
+            CanvasSelectionBehavior.SetIsSelectable(updatedVisual, CanvasSelectionBehavior.GetIsSelectable(existingVisual));
+            CanvasSelectionBehavior.SetIsSelected(updatedVisual, CanvasSelectionBehavior.GetIsSelected(existingVisual));
+            Canvas.SetLeft(updatedVisual, Canvas.GetLeft(existingVisual));
+            Canvas.SetTop(updatedVisual, Canvas.GetTop(existingVisual));
+            canvas.Children.RemoveAt(childIndex);
+            canvas.Children.Insert(childIndex, updatedVisual);
+        }
+    }
+
     private static bool GetIsPersistedElement(FrameworkElement element)
     {
         return (bool)element.GetValue(IsPersistedElementProperty);
