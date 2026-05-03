@@ -349,6 +349,15 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                 commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update secondary asset path", new PanelElementModelUpdate { SecondaryAssetPath = NormalizeOptionalText(value) })));
         }
 
+        if (selectedElement.Kind is PanelElementKind.Background)
+        {
+            _propertyRows.Add(new InspectorColorPropertyViewModel(
+                "Color",
+                "Type-specific",
+                selectedElement.OnColorHex ?? string.Empty,
+                commit: value => TryApplyColorUpdate(selectedElement.ObjectId, "Update background color", new PanelElementModelUpdate { OnColorHex = NormalizeOptionalText(value) })));
+        }
+
         if (selectedElement.Kind is PanelElementKind.Lamp or PanelElementKind.SevenSegment or PanelElementKind.Alpha)
         {
             _propertyRows.Add(new InspectorColorPropertyViewModel(
@@ -464,6 +473,9 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                     break;
                 case "On Color" when row is InspectorColorPropertyViewModel onColorRow:
                     onColorRow.SetCommittedValue(selectedElement.OnColorHex);
+                    break;
+                case "Color" when row is InspectorColorPropertyViewModel colorRow:
+                    colorRow.SetCommittedValue(selectedElement.OnColorHex);
                     break;
                 case "Off Color" when row is InspectorColorPropertyViewModel offColorRow:
                     offColorRow.SetCommittedValue(selectedElement.OffColorHex);
