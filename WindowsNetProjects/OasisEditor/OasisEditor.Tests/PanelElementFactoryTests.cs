@@ -170,6 +170,35 @@ public sealed class PanelElementFactoryTests
     }
 
     [Fact]
+    public void CreateVisualFromElement_LampWithoutImage_UsesTextColorForLabel()
+    {
+        RunInSta(() =>
+        {
+            var source = new PanelElementFile
+            {
+                ObjectId = "lamp-1",
+                Name = "Lamp",
+                Kind = Panel2DDocumentStorage.SerializeElementKind(PanelElementKind.Lamp),
+                Width = 80,
+                Height = 36,
+                DisplayText = "HOLD",
+                OnColorHex = "#FFAA3300",
+                TextColorHex = "#FF00FF00"
+            };
+
+            var visual = PanelElementFactory.CreateVisualFromElement(source);
+
+            var border = Assert.IsType<Border>(visual);
+            var stack = Assert.IsType<StackPanel>(border.Child);
+            var title = Assert.IsType<TextBlock>(stack.Children[0]);
+            var foreground = Assert.IsType<SolidColorBrush>(title.Foreground);
+
+            Assert.Equal("HOLD", title.Text);
+            Assert.Equal(Color.FromArgb(0xFF, 0x00, 0xFF, 0x00), foreground.Color);
+        });
+    }
+
+    [Fact]
     public void CreateVisualFromElement_ReelWithoutImage_UsesFallbackLabel()
     {
         RunInSta(() =>

@@ -191,7 +191,8 @@ internal static class PanelElementFactory
             element,
             label,
             hasGraphic ? null : element.OnColorHex ?? element.OffColorHex,
-            null);
+            null,
+            hasGraphic ? null : element.TextColorHex);
         if (hasGraphic)
         {
             surface.Child = new Image
@@ -239,7 +240,12 @@ internal static class PanelElementFactory
         return CreatePlaceholderComponentVisual(element, label, null, null);
     }
 
-    private static Border CreatePlaceholderComponentVisual(PanelElementFile element, string label, string? backgroundColorHex, string? detailText = null)
+    private static Border CreatePlaceholderComponentVisual(
+        PanelElementFile element,
+        string label,
+        string? backgroundColorHex,
+        string? detailText = null,
+        string? labelColorHex = null)
     {
         var width = element.Width <= 0 ? NewRectangleWidth : element.Width;
         var height = element.Height <= 0 ? NewRectangleHeight : element.Height;
@@ -262,7 +268,7 @@ internal static class PanelElementFactory
                         Text = label,
                         HorizontalAlignment = HorizontalAlignment.Center,
                         TextAlignment = TextAlignment.Center,
-                        Foreground = Brushes.LightSteelBlue
+                        Foreground = TryCreateBrush(labelColorHex, Brushes.LightSteelBlue)
                     },
                     new TextBlock
                     {
