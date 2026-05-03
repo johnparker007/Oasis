@@ -239,7 +239,7 @@ public static class CanvasPanBehavior
                     continue;
                 }
 
-                PanelLayoutMapper.ApplyVisualState(canvas, tab, visualStateChanged);
+                PanelLayoutMapper.ApplyVisualState(canvas, tab, visualStateChanged, tab.RuntimeState);
             }
         }
     }
@@ -415,7 +415,10 @@ public static class CanvasPanBehavior
             return;
         }
 
-        PanelLayoutMapper.ApplyPersistedLayout(canvas, eventArgs.NewValue as string);
+        var runtimeState = canvas.DataContext is DocumentTabViewModel tab
+            ? tab.RuntimeState
+            : new PanelRuntimeState();
+        PanelLayoutMapper.ApplyPersistedLayout(canvas, eventArgs.NewValue as string, runtimeState);
     }
 
     private static void OnSelectedPanelSelectionChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs eventArgs)

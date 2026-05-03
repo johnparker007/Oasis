@@ -9,9 +9,6 @@ namespace OasisEditor;
 
 internal static class PanelElementFactory
 {
-    public static bool IsLampTestActive { get; set; }
-    public static string? LampTestObjectId { get; set; }
-
     private static string? _projectDirectoryPath;
     private static readonly Dictionary<string, FontFamily> MfmeFontFamilies = new(StringComparer.OrdinalIgnoreCase);
 
@@ -74,14 +71,14 @@ internal static class PanelElementFactory
         };
     }
 
-    public static FrameworkElement? CreateVisualFromElement(PanelElementFile element)
+    public static FrameworkElement? CreateVisualFromElement(PanelElementFile element, PanelRuntimeState runtimeState)
     {
         FrameworkElement? visual = element.ElementKind switch
         {
             PanelElementKind.Rectangle => CreateRectangleVisual(element),
             PanelElementKind.Image => CreateImageVisual(element),
             PanelElementKind.Background => CreateBackgroundVisual(element),
-            PanelElementKind.Lamp => CreateLampVisual(element),
+            PanelElementKind.Lamp => CreateLampVisual(element, runtimeState),
             PanelElementKind.Reel => CreateReelVisual(element),
             PanelElementKind.SevenSegment => CreateSevenSegmentVisual(element),
             PanelElementKind.Alpha => CreateAlphaVisual(element),
@@ -192,12 +189,12 @@ internal static class PanelElementFactory
         return surface;
     }
 
-    private static FrameworkElement CreateLampVisual(PanelElementFile element)
+    private static FrameworkElement CreateLampVisual(PanelElementFile element, PanelRuntimeState runtimeState)
     {
         var hasGraphic = TryCreateImageSource(element.AssetPath, out var source);
-        var isLampOn = IsLampTestActive
-            && !string.IsNullOrWhiteSpace(LampTestObjectId)
-            && string.Equals(element.ObjectId, LampTestObjectId, StringComparison.Ordinal);
+        var isLampOn = runtimeState.IsLampTestActive
+            && !string.IsNullOrWhiteSpace(runtimeState.LampTestObjectId)
+            && string.Equals(element.ObjectId, runtimeState.LampTestObjectId, StringComparison.Ordinal);
 
         if (hasGraphic)
         {

@@ -53,3 +53,30 @@ public readonly record struct PanelSelectionInfo(
     double Y,
     double Width,
     double Height);
+
+
+public sealed class PanelRuntimeStateStore
+{
+    private readonly Dictionary<Guid, PanelRuntimeState> _statesByDocument = new();
+
+    public PanelRuntimeState GetOrCreate(Guid documentId)
+    {
+        if (!_statesByDocument.TryGetValue(documentId, out var state))
+        {
+            state = new PanelRuntimeState();
+            _statesByDocument[documentId] = state;
+        }
+
+        return state;
+    }
+
+    public void ClearDocumentState(Guid documentId)
+    {
+        _statesByDocument.Remove(documentId);
+    }
+
+    public void ClearAll()
+    {
+        _statesByDocument.Clear();
+    }
+}

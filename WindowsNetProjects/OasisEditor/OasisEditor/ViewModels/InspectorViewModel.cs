@@ -205,11 +205,11 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
     public void NotifyContextChanged()
     {
-        if (!ShowLampTestButton && PanelElementFactory.IsLampTestActive)
+        var selectedDocument = _selectedDocumentAccessor();
+        if (!ShowLampTestButton && selectedDocument is not null && selectedDocument.RuntimeState.IsLampTestActive)
         {
-            PanelElementFactory.IsLampTestActive = false;
-            PanelElementFactory.LampTestObjectId = null;
-            _selectedDocumentAccessor()?.NotifyPanelVisualPreviewChanged();
+            selectedDocument.RuntimeState.LampTestObjectId = null;
+            selectedDocument.NotifyPanelVisualPreviewChanged();
         }
 
         OnPropertyChanged(nameof(InspectorTitle));
@@ -652,16 +652,21 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         }
 
         var targetObjectId = isActive ? selectedLampObjectId : null;
-        if (PanelElementFactory.IsLampTestActive == isActive
-            && string.Equals(PanelElementFactory.LampTestObjectId, targetObjectId, StringComparison.Ordinal))
+        var selectedDocument = _selectedDocumentAccessor();
+        if (selectedDocument is null)
         {
             return;
         }
 
-        PanelElementFactory.IsLampTestActive = isActive;
-        PanelElementFactory.LampTestObjectId = targetObjectId;
-        Debug.WriteLine($"[LampTest] SetLampTestActive={isActive}");
-        _selectedDocumentAccessor()?.NotifyPanelVisualPreviewChanged();
+        if (selectedDocument.RuntimeState.IsLampTestActive == isActive
+            && string.Equals(selectedDocument.RuntimeState.LampTestObjectId, targetObjectId, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        selectedDocument.RuntimeState.LampTestObjectId = targetObjectId;
+        Debug.WriteLine($"[LampTest] SetLampTestActive={isActive} document={selectedDocument.DocumentId}");
+        selectedDocument.NotifyPanelVisualPreviewChanged();
     }
 
     private static string BuildSelectedElementSummary(PanelElementModel selectedElement)
