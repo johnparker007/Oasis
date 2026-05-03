@@ -14,6 +14,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     private double _panelZoom = 1.0;
     private double _panelPanX;
     private double _panelPanY;
+    private bool _panelVisualRefreshToggle;
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<PanelChangeEvent>? PanelChanged;
@@ -129,8 +130,11 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
 
     internal void NotifyPanelVisualPreviewChanged()
     {
-        _panelLayoutJson = GetPanelLayoutProjectionJson();
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PanelLayoutJson)));
+        var layoutProjection = GetPanelLayoutProjectionJson();
+        _panelVisualRefreshToggle = !_panelVisualRefreshToggle;
+        PanelLayoutJson = _panelVisualRefreshToggle
+            ? $"{layoutProjection}\n"
+            : $"{layoutProjection}\r\n";
 
         PanelChanged?.Invoke(new PanelChangeEvent(
             DocumentId,
