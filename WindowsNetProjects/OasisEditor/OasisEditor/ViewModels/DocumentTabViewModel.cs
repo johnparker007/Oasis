@@ -14,6 +14,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     private double _panelZoom = 1.0;
     private double _panelPanX;
     private double _panelPanY;
+    private Dictionary<string, object>? _lastVisualStateByObjectId;
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<PanelChangeEvent>? PanelChanged;
@@ -131,14 +132,32 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     internal void NotifyPanelVisualPreviewChanged()
     {
         var visualStateByObjectId = _panelDocumentModel.Elements
-            .Where(element => !string.IsNullOrWhiteSpace(element.ObjectId))
+            .Where(element => !string.IsNullOrWhiteSpace(element.ObjectId)
+                && element.Kind == PanelElementKind.Lamp)
             .ToDictionary(
                 element => element.ObjectId,
                 element => (object)(PanelElementFactory.IsLampTestActive
                     && !string.IsNullOrWhiteSpace(PanelElementFactory.LampTestObjectId)
                     && string.Equals(element.ObjectId, PanelElementFactory.LampTestObjectId, StringComparison.Ordinal)));
 
-        PanelVisualStateChanged?.Invoke(new PanelVisualStateChangedEvent(DocumentId, visualStateByObjectId));
+        var deltaByObjectId = new Dictionary<string, object>(StringComparer.Ordinal);
+        foreach (var kvp in visualStateByObjectId)
+        {
+            if (_lastVisualStateByObjectId is null
+                || !_lastVisualStateByObjectId.TryGetValue(kvp.Key, out var previous)
+                || !Equals(previous, kvp.Value))
+            {
+                deltaByObjectId[kvp.Key] = kvp.Value;
+            }
+        }
+
+        _lastVisualStateByObjectId = visualStateByObjectId;
+        if (deltaByObjectId.Count == 0)
+        {
+            return;
+        }
+
+        PanelVisualStateChanged?.Invoke(new PanelVisualStateChangedEvent(DocumentId, deltaByObjectId));
     }
 
     internal string GetPanelLayoutProjectionJson()

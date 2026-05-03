@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 
 namespace OasisEditor;
 
@@ -18,6 +20,20 @@ public static class PanelLayoutMapper
             typeof(bool),
             typeof(PanelLayoutMapper),
             new PropertyMetadata(false));
+
+    private static readonly DependencyProperty ObjectVisualMapProperty =
+        DependencyProperty.RegisterAttached(
+            "ObjectVisualMap",
+            typeof(Dictionary<string, FrameworkElement>),
+            typeof(PanelLayoutMapper),
+            new PropertyMetadata(null));
+
+    private static readonly DependencyProperty MissingVisualLogSetProperty =
+        DependencyProperty.RegisterAttached(
+            "MissingVisualLogSet",
+            typeof(HashSet<string>),
+            typeof(PanelLayoutMapper),
+            new PropertyMetadata(null));
 
     public static bool IsApplyingLayout(Canvas canvas)
     {
@@ -61,6 +77,7 @@ public static class PanelLayoutMapper
                 canvas.Children.Add(visual);
             }
 
+            RebuildObjectVisualMap(canvas);
             CanvasSelectionBehavior.ClearSelection(canvas);
             if (canvas.DataContext is DocumentTabViewModel tab)
             {
@@ -116,40 +133,74 @@ public static class PanelLayoutMapper
             .Where(element => !string.IsNullOrWhiteSpace(element.ObjectId))
             .ToDictionary(element => element.ObjectId, element => element, StringComparer.Ordinal);
 
-        var currentPersistedChildren = canvas.Children
-            .OfType<FrameworkElement>()
-            .Where(GetIsPersistedElement)
-            .ToArray();
-
-        foreach (var existingVisual in currentPersistedChildren)
+        foreach (var objectId in visualStateChange.ValuesByObjectId.Keys)
         {
-            var objectId = existingVisual.Uid?.Trim();
-            if (string.IsNullOrWhiteSpace(objectId)
-                || !visualStateChange.ValuesByObjectId.ContainsKey(objectId)
-                || !elementsByObjectId.TryGetValue(objectId, out var sourceModel))
+            if (!elementsByObjectId.TryGetValue(objectId, out var sourceModel)
+                || sourceModel.Kind != PanelElementKind.Lamp)
             {
                 continue;
             }
 
-            var updatedVisual = PanelElementFactory.CreateVisualFromElement(Panel2DDocumentStorage.ToStorageElement(sourceModel));
-            if (updatedVisual is null)
+            UpdateLampVisual(
+                canvas,
+                objectId,
+                1.0,
+                visualStateChange.ValuesByObjectId[objectId] is true,
+                sourceModel.OnColorHex,
+                sourceModel.OffColorHex,
+                sourceModel.AssetPath);
+        }
+    }
+
+    public static void UpdateLampVisual(
+        Canvas canvas,
+        string objectId,
+        double intensity,
+        bool isOn,
+        string? onColorHex,
+        string? offColorHex,
+        string? assetPath)
+    {
+        if (string.IsNullOrWhiteSpace(objectId))
+        {
+            return;
+        }
+
+        var objectVisualMap = GetOrCreateObjectVisualMap(canvas);
+        if (!objectVisualMap.TryGetValue(objectId, out var visual))
+        {
+            var missingIds = GetOrCreateMissingVisualLogSet(canvas);
+            if (missingIds.Add(objectId))
             {
-                continue;
+                Debug.WriteLine($"[PanelLayoutMapper] UpdateLampVisual skipped; visual not found for objectId '{objectId}'.");
             }
 
-            var childIndex = canvas.Children.IndexOf(existingVisual);
-            if (childIndex < 0)
+            return;
+        }
+
+        var normalizedIntensity = Math.Clamp(intensity, 0d, 1d);
+        var effectiveOpacity = isOn ? Math.Max(0.1d, normalizedIntensity) : 0d;
+
+        if (visual is Border border)
+        {
+            if (border.Child is Image image)
             {
-                continue;
+                if (!string.IsNullOrWhiteSpace(assetPath) && image.Source is null)
+                {
+                    image.Source = PanelElementFactory.TryCreateImageSourceForRuntime(assetPath);
+                }
+
+                image.Opacity = effectiveOpacity;
+                border.Background = Brushes.Transparent;
+                return;
             }
 
-            SetIsPersistedElement(updatedVisual, true);
-            CanvasSelectionBehavior.SetIsSelectable(updatedVisual, CanvasSelectionBehavior.GetIsSelectable(existingVisual));
-            CanvasSelectionBehavior.SetIsSelected(updatedVisual, CanvasSelectionBehavior.GetIsSelected(existingVisual));
-            Canvas.SetLeft(updatedVisual, Canvas.GetLeft(existingVisual));
-            Canvas.SetTop(updatedVisual, Canvas.GetTop(existingVisual));
-            canvas.Children.RemoveAt(childIndex);
-            canvas.Children.Insert(childIndex, updatedVisual);
+            var backgroundHex = isOn ? onColorHex : offColorHex ?? onColorHex;
+            border.Background = PanelElementFactory.TryCreateBrushForRuntime(backgroundHex, Brushes.Transparent);
+        }
+        else if (visual is Image image)
+        {
+            image.Opacity = effectiveOpacity;
         }
     }
 
@@ -161,5 +212,40 @@ public static class PanelLayoutMapper
     private static void SetIsPersistedElement(FrameworkElement element, bool value)
     {
         element.SetValue(IsPersistedElementProperty, value);
+    }
+
+    private static void RebuildObjectVisualMap(Canvas canvas)
+    {
+        var map = GetOrCreateObjectVisualMap(canvas);
+        map.Clear();
+        foreach (var element in canvas.Children.OfType<FrameworkElement>().Where(GetIsPersistedElement))
+        {
+            if (!string.IsNullOrWhiteSpace(element.Uid))
+            {
+                map[element.Uid.Trim()] = element;
+            }
+        }
+    }
+
+    private static Dictionary<string, FrameworkElement> GetOrCreateObjectVisualMap(Canvas canvas)
+    {
+        if (canvas.GetValue(ObjectVisualMapProperty) is not Dictionary<string, FrameworkElement> map)
+        {
+            map = new Dictionary<string, FrameworkElement>(StringComparer.Ordinal);
+            canvas.SetValue(ObjectVisualMapProperty, map);
+        }
+
+        return map;
+    }
+
+    private static HashSet<string> GetOrCreateMissingVisualLogSet(Canvas canvas)
+    {
+        if (canvas.GetValue(MissingVisualLogSetProperty) is not HashSet<string> missingIds)
+        {
+            missingIds = new HashSet<string>(StringComparer.Ordinal);
+            canvas.SetValue(MissingVisualLogSetProperty, missingIds);
+        }
+
+        return missingIds;
     }
 }

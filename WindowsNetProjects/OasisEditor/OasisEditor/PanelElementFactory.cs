@@ -198,26 +198,35 @@ internal static class PanelElementFactory
         var isLampOn = IsLampTestActive
             && !string.IsNullOrWhiteSpace(LampTestObjectId)
             && string.Equals(element.ObjectId, LampTestObjectId, StringComparison.Ordinal);
-        var label = hasGraphic ? (element.DisplayNumber.HasValue ? $"Lamp {element.DisplayNumber.Value}" : "Lamp") : (element.DisplayText ?? string.Empty);
-        var surface = CreatePlaceholderComponentVisual(
-            element,
-            label,
-            hasGraphic ? null : (isLampOn ? element.OnColorHex : element.OffColorHex ?? element.OnColorHex),
-            null,
-            hasGraphic ? null : element.TextColorHex,
-            hasGraphic
-                ? null
-                : CreateFontSettings(element.TextBoxFontName, element.TextBoxFontStyle, element.TextBoxFontSize));
-        if (hasGraphic && isLampOn)
+
+        if (hasGraphic)
         {
-            surface.Child = new Image
+            var width = element.Width <= 0 ? NewRectangleWidth : element.Width;
+            var height = element.Height <= 0 ? NewRectangleHeight : element.Height;
+            return new Border
             {
-                Stretch = Stretch.Fill,
-                Source = source
+                Uid = element.ObjectId,
+                Width = width,
+                Height = height,
+                BorderThickness = new Thickness(1),
+                BorderBrush = Brushes.SlateGray,
+                Background = Brushes.Transparent,
+                Child = new Image
+                {
+                    Stretch = Stretch.Fill,
+                    Source = source,
+                    Opacity = isLampOn ? 1d : 0d
+                }
             };
         }
 
-        return surface;
+        return CreatePlaceholderComponentVisual(
+            element,
+            element.DisplayText ?? string.Empty,
+            isLampOn ? element.OnColorHex : element.OffColorHex ?? element.OnColorHex,
+            null,
+            element.TextColorHex,
+            CreateFontSettings(element.TextBoxFontName, element.TextBoxFontStyle, element.TextBoxFontSize));
     }
 
     private static FrameworkElement CreateReelVisual(PanelElementFile element)
@@ -307,6 +316,17 @@ internal static class PanelElementFactory
         };
 
         return border;
+    }
+
+
+    public static Brush TryCreateBrushForRuntime(string? colorHex, Brush fallback)
+    {
+        return TryCreateBrush(colorHex, fallback);
+    }
+
+    public static ImageSource? TryCreateImageSourceForRuntime(string? assetPath)
+    {
+        return TryCreateImageSource(assetPath, out var source) ? source : null;
     }
 
     private static Brush TryCreateBrush(string? colorHex, Brush fallback)
