@@ -62,7 +62,7 @@ public sealed class ImportMfmeExtractCommandTests
 
         Assert.True(document.CommandService.TryRedo());
         Assert.Equal(3, document.GetPanelElements().Count);
-        var importedLamp = Assert.Single(document.GetPanelElements().Where(element => element.ObjectId == "import-a"));
+        var importedLamp = Assert.Single(document.GetPanelElements(), element => element.ObjectId == "import-a");
         Assert.Equal("Lithograph", importedLamp.TextBoxFontName);
         Assert.Equal("Bold", importedLamp.TextBoxFontStyle);
         Assert.Equal("12", importedLamp.TextBoxFontSize);
