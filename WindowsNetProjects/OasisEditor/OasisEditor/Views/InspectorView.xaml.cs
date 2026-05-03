@@ -34,25 +34,29 @@ public partial class InspectorView : UserControl
 
     private void OnLampTestMouseDown(object sender, MouseButtonEventArgs e)
     {
-        if (DataContext is InspectorViewModel viewModel)
-        {
-            viewModel.SetLampTestActive(true);
-        }
+        SetLampTestActive(true);
     }
 
     private void OnLampTestMouseUp(object sender, MouseButtonEventArgs e)
     {
-        if (DataContext is InspectorViewModel viewModel)
-        {
-            viewModel.SetLampTestActive(false);
-        }
+        SetLampTestActive(false);
     }
 
     private void OnLampTestMouseLeave(object sender, MouseEventArgs e)
     {
-        if (DataContext is InspectorViewModel viewModel)
+        SetLampTestActive(false);
+    }
+
+    private void SetLampTestActive(bool isActive)
+    {
+        switch (DataContext)
         {
-            viewModel.SetLampTestActive(false);
+            case InspectorViewModel inspectorViewModel:
+                inspectorViewModel.SetLampTestActive(isActive);
+                break;
+            case MainWindowViewModel mainWindowViewModel:
+                mainWindowViewModel.SetLampTestActive(isActive);
+                break;
         }
     }
 }

@@ -347,6 +347,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public bool CanEditInspectorSummary => _inspector.CanEditInspectorSummary;
 
+    public bool ShowLampTestButton => _inspector.ShowLampTestButton;
+
     public IReadOnlyList<InspectorPropertyRowViewModel> InspectorPropertyRows => _inspector.InspectorPropertyRows;
 
     public IReadOnlyList<HierarchyItemViewModel> HierarchyItems => _hierarchy.Items;
@@ -1122,7 +1124,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(InspectorSummary));
         OnPropertyChanged(nameof(InspectorEditableSummary));
         OnPropertyChanged(nameof(CanEditInspectorSummary));
+        OnPropertyChanged(nameof(ShowLampTestButton));
         OnPropertyChanged(nameof(InspectorPropertyRows));
+    }
+
+    public void SetLampTestActive(bool isActive)
+    {
+        _inspector.SetLampTestActive(isActive);
     }
 
     private void RefreshHierarchy()
