@@ -360,7 +360,12 @@ internal static class PanelElementFactory
         foreach (var fontPath in System.IO.Directory.EnumerateFiles(fontsDirectory, "*.ttf"))
         {
             var fontUri = new Uri(fontPath, UriKind.Absolute);
-            if (!GlyphTypeface.TryCreateFromUri(fontUri, out var glyphTypeface))
+            GlyphTypeface glyphTypeface;
+            try
+            {
+                glyphTypeface = new GlyphTypeface(fontUri);
+            }
+            catch
             {
                 continue;
             }
