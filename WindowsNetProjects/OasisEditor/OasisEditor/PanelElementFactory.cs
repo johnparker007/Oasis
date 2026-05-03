@@ -11,6 +11,7 @@ internal static class PanelElementFactory
 {
     private static string? _projectDirectoryPath;
     private static readonly Dictionary<string, FontFamily> MfmeFontFamilies = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly PanelRuntimeState DefaultRuntimeState = new();
 
     public static readonly DependencyProperty ElementNameProperty =
         DependencyProperty.RegisterAttached(
@@ -69,6 +70,12 @@ internal static class PanelElementFactory
             Width = NewImageWidth,
             Height = NewImageHeight
         };
+    }
+
+
+    public static FrameworkElement? CreateVisualFromElement(PanelElementFile element)
+    {
+        return CreateVisualFromElement(element, DefaultRuntimeState);
     }
 
     public static FrameworkElement? CreateVisualFromElement(PanelElementFile element, PanelRuntimeState runtimeState)
@@ -148,7 +155,7 @@ internal static class PanelElementFactory
         dependencyObject.SetValue(ElementKindProperty, value);
     }
 
-    private static FrameworkElement CreateRectangleVisual(PanelElementFile element)
+    private static Rectangle CreateRectangleVisual(PanelElementFile element)
     {
         return new Rectangle
         {
@@ -158,7 +165,7 @@ internal static class PanelElementFactory
         };
     }
 
-    private static FrameworkElement CreateImageVisual(PanelElementFile element)
+    private static Image CreateImageVisual(PanelElementFile element)
     {
         return new Image
         {
@@ -170,7 +177,7 @@ internal static class PanelElementFactory
         };
     }
 
-    private static FrameworkElement CreateBackgroundVisual(PanelElementFile element)
+    private static Border CreateBackgroundVisual(PanelElementFile element)
     {
         var hasImage = TryCreateImageSource(element.AssetPath, out var source);
         var surface = CreatePlaceholderComponentVisual(
@@ -189,7 +196,7 @@ internal static class PanelElementFactory
         return surface;
     }
 
-    private static FrameworkElement CreateLampVisual(PanelElementFile element, PanelRuntimeState runtimeState)
+    private static Border CreateLampVisual(PanelElementFile element, PanelRuntimeState runtimeState)
     {
         var hasGraphic = TryCreateImageSource(element.AssetPath, out var source);
         var isLampOn = runtimeState.IsLampTestActive
@@ -226,7 +233,7 @@ internal static class PanelElementFactory
             CreateFontSettings(element.TextBoxFontName, element.TextBoxFontStyle, element.TextBoxFontSize));
     }
 
-    private static FrameworkElement CreateReelVisual(PanelElementFile element)
+    private static Border CreateReelVisual(PanelElementFile element)
     {
         var label = element.DisplayNumber.HasValue ? $"Reel {element.DisplayNumber.Value}" : "Reel";
         var surface = CreatePlaceholderComponentVisual(element, label, "#1E293B");
@@ -242,7 +249,7 @@ internal static class PanelElementFactory
         return surface;
     }
 
-    private static FrameworkElement CreateSevenSegmentVisual(PanelElementFile element)
+    private static Border CreateSevenSegmentVisual(PanelElementFile element)
     {
         var label = element.DisplayNumber.HasValue
             ? $"7 Segment {element.DisplayNumber.Value}"
@@ -250,13 +257,13 @@ internal static class PanelElementFactory
         return CreatePlaceholderComponentVisual(element, label, element.OnColorHex, element.DisplayText);
     }
 
-    private static FrameworkElement CreateAlphaVisual(PanelElementFile element)
+    private static Border CreateAlphaVisual(PanelElementFile element)
     {
         var label = element.IsReversed == true ? "Alpha (Reversed)" : "Alpha";
         return CreatePlaceholderComponentVisual(element, label, "#1F2937", element.DisplayText);
     }
 
-    private static FrameworkElement CreatePlaceholderComponentVisual(PanelElementFile element, string label)
+    private static Border CreatePlaceholderComponentVisual(PanelElementFile element, string label)
     {
         return CreatePlaceholderComponentVisual(element, label, null, null);
     }
@@ -482,7 +489,7 @@ internal static class PanelElementFactory
         return true;
     }
 
-    private static ImageSource CreatePlaceholderImageSource()
+    private static BitmapSource CreatePlaceholderImageSource()
     {
         const int pixelWidth = 220;
         const int pixelHeight = 140;

@@ -34,6 +34,30 @@ public sealed class DocumentWorkspaceViewModel
         Action notifyUndoRedoStateChanged,
         Action<string> setStatusMessage,
         Action<string, OutputLogStatus> addOutputEntry,
+        Action<Guid>? onDocumentClosed = null)
+        : this(
+            getLoadedProject,
+            setLoadedProject,
+            openDocuments,
+            getSelectedDocument,
+            setSelectedDocument,
+            notifyUndoRedoStateChanged,
+            setStatusMessage,
+            addOutputEntry,
+            new PanelRuntimeStateStore(),
+            onDocumentClosed)
+    {
+    }
+
+    public DocumentWorkspaceViewModel(
+        Func<EditorProject?> getLoadedProject,
+        Action<EditorProject?> setLoadedProject,
+        ObservableCollection<DocumentTabViewModel> openDocuments,
+        Func<DocumentTabViewModel?> getSelectedDocument,
+        Action<DocumentTabViewModel?> setSelectedDocument,
+        Action notifyUndoRedoStateChanged,
+        Action<string> setStatusMessage,
+        Action<string, OutputLogStatus> addOutputEntry,
         PanelRuntimeStateStore runtimeStateStore,
         Action<Guid>? onDocumentClosed = null)
     {
