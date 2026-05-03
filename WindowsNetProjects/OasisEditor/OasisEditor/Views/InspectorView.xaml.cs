@@ -31,4 +31,28 @@ public partial class InspectorView : UserControl
         row.Commit();
         e.Handled = true;
     }
+
+    private void OnLampTestMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (DataContext is InspectorViewModel viewModel)
+        {
+            viewModel.SetLampTestActive(true);
+        }
+    }
+
+    private void OnLampTestMouseUp(object sender, MouseButtonEventArgs e)
+    {
+        if (DataContext is InspectorViewModel viewModel)
+        {
+            viewModel.SetLampTestActive(false);
+        }
+    }
+
+    private void OnLampTestMouseLeave(object sender, MouseEventArgs e)
+    {
+        if (DataContext is InspectorViewModel viewModel)
+        {
+            viewModel.SetLampTestActive(false);
+        }
+    }
 }

@@ -190,6 +190,18 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         }
     }
 
+    public bool ShowLampTestButton
+    {
+        get
+        {
+            var selectedDocument = _selectedDocumentAccessor();
+            return selectedDocument is not null
+                && _activeDocumentContext.ActivePanelSelection is PanelSelectionInfo panelSelection
+                && selectedDocument.TryGetPanelElement(panelSelection, out var selectedElement)
+                && selectedElement.Kind == PanelElementKind.Lamp;
+        }
+    }
+
     public void NotifyContextChanged()
     {
         OnPropertyChanged(nameof(InspectorTitle));
@@ -197,6 +209,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(InspectorPath));
         OnPropertyChanged(nameof(InspectorSummary));
         OnPropertyChanged(nameof(CanEditInspectorSummary));
+        OnPropertyChanged(nameof(ShowLampTestButton));
 
         if (!ShouldSuppressPropertyRowRefresh() && ShouldRebuildRowsForContextChange())
         {
@@ -620,6 +633,17 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         {
             relayCommand.RaiseCanExecuteChanged();
         }
+    }
+
+    public void SetLampTestActive(bool isActive)
+    {
+        if (PanelElementFactory.IsLampTestActive == isActive)
+        {
+            return;
+        }
+
+        PanelElementFactory.IsLampTestActive = isActive;
+        _selectedDocumentAccessor()?.NotifyPanelVisualPreviewChanged();
     }
 
     private static string BuildSelectedElementSummary(PanelElementModel selectedElement)

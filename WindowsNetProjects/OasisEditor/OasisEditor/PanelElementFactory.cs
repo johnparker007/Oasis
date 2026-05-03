@@ -9,6 +9,8 @@ namespace OasisEditor;
 
 internal static class PanelElementFactory
 {
+    public static bool IsLampTestActive { get; set; }
+
     private static string? _projectDirectoryPath;
     private static readonly Dictionary<string, FontFamily> MfmeFontFamilies = new(StringComparer.OrdinalIgnoreCase);
 
@@ -192,17 +194,18 @@ internal static class PanelElementFactory
     private static FrameworkElement CreateLampVisual(PanelElementFile element)
     {
         var hasGraphic = TryCreateImageSource(element.AssetPath, out var source);
+        var isLampOn = IsLampTestActive;
         var label = hasGraphic ? (element.DisplayNumber.HasValue ? $"Lamp {element.DisplayNumber.Value}" : "Lamp") : (element.DisplayText ?? string.Empty);
         var surface = CreatePlaceholderComponentVisual(
             element,
             label,
-            hasGraphic ? null : element.OnColorHex ?? element.OffColorHex,
+            hasGraphic ? null : (isLampOn ? element.OnColorHex : element.OffColorHex ?? element.OnColorHex),
             null,
             hasGraphic ? null : element.TextColorHex,
             hasGraphic
                 ? null
                 : CreateFontSettings(element.TextBoxFontName, element.TextBoxFontStyle, element.TextBoxFontSize));
-        if (hasGraphic)
+        if (hasGraphic && isLampOn)
         {
             surface.Child = new Image
             {
