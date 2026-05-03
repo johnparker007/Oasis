@@ -185,13 +185,13 @@ internal static class PanelElementFactory
 
     private static FrameworkElement CreateLampVisual(PanelElementFile element)
     {
-        var label = element.DisplayNumber.HasValue ? $"Lamp {element.DisplayNumber.Value}" : "Lamp";
         var hasGraphic = TryCreateImageSource(element.AssetPath, out var source);
+        var label = hasGraphic ? (element.DisplayNumber.HasValue ? $"Lamp {element.DisplayNumber.Value}" : "Lamp") : (element.DisplayText ?? string.Empty);
         var surface = CreatePlaceholderComponentVisual(
             element,
             label,
             hasGraphic ? null : element.OnColorHex ?? element.OffColorHex,
-            hasGraphic ? null : element.DisplayText);
+            null);
         if (hasGraphic)
         {
             surface.Child = new Image

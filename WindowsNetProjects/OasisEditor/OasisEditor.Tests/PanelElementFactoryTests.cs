@@ -46,7 +46,7 @@ public sealed class PanelElementFactoryTests
     }
 
     [Fact]
-    public void CreateVisualFromElement_LampWithoutImage_UsesLampNumberAndDisplayText()
+    public void CreateVisualFromElement_LampWithoutImage_WithDisplayText_UsesDisplayTextOnly()
     {
         RunInSta(() =>
         {
@@ -69,9 +69,39 @@ public sealed class PanelElementFactoryTests
             var title = Assert.IsType<TextBlock>(stack.Children[0]);
             var detail = Assert.IsType<TextBlock>(stack.Children[1]);
 
-            Assert.Equal("Lamp 9", title.Text);
-            Assert.Equal("HOLD", detail.Text);
-            Assert.Equal(Visibility.Visible, detail.Visibility);
+            Assert.Equal("HOLD", title.Text);
+            Assert.Equal(string.Empty, detail.Text);
+            Assert.Equal(Visibility.Collapsed, detail.Visibility);
+        });
+    }
+
+    [Fact]
+    public void CreateVisualFromElement_LampWithoutImage_WithoutDisplayText_ShowsNoText()
+    {
+        RunInSta(() =>
+        {
+            var source = new PanelElementFile
+            {
+                ObjectId = "lamp-2",
+                Name = "Lamp 9",
+                Kind = Panel2DDocumentStorage.SerializeElementKind(PanelElementKind.Lamp),
+                Width = 90,
+                Height = 40,
+                DisplayNumber = 9,
+                DisplayText = null,
+                OnColorHex = "#FF00CC00"
+            };
+
+            var visual = PanelElementFactory.CreateVisualFromElement(source);
+
+            var border = Assert.IsType<Border>(visual);
+            var stack = Assert.IsType<StackPanel>(border.Child);
+            var title = Assert.IsType<TextBlock>(stack.Children[0]);
+            var detail = Assert.IsType<TextBlock>(stack.Children[1]);
+
+            Assert.Equal(string.Empty, title.Text);
+            Assert.Equal(string.Empty, detail.Text);
+            Assert.Equal(Visibility.Collapsed, detail.Visibility);
         });
     }
 
