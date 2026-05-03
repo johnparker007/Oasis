@@ -172,7 +172,7 @@ internal static class PanelElementFactory
 
     private static FrameworkElement CreateBackgroundVisual(PanelElementFile element)
     {
-        var surface = CreatePlaceholderComponentVisual(element, "Background", element.OffColorHex);
+        var surface = CreatePlaceholderComponentVisual(element, "Background", element.OnColorHex ?? element.OffColorHex);
         if (TryCreateImageSource(element.AssetPath, out var source))
         {
             surface.Child = new Image

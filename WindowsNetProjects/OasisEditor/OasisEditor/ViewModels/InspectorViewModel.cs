@@ -349,7 +349,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                 commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update secondary asset path", new PanelElementModelUpdate { SecondaryAssetPath = NormalizeOptionalText(value) })));
         }
 
-        if (selectedElement.Kind is PanelElementKind.Lamp or PanelElementKind.SevenSegment or PanelElementKind.Alpha)
+        if (selectedElement.Kind is PanelElementKind.Background or PanelElementKind.Lamp or PanelElementKind.SevenSegment or PanelElementKind.Alpha)
         {
             _propertyRows.Add(new InspectorColorPropertyViewModel(
                 "On Color",
