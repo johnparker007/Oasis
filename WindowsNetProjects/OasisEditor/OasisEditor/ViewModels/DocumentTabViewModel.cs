@@ -14,6 +14,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     private double _panelZoom = 1.0;
     private double _panelPanX;
     private double _panelPanY;
+    private bool _panelPreviewRefreshFlip;
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<PanelChangeEvent>? PanelChanged;
@@ -129,16 +130,19 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
 
     internal void NotifyPanelVisualPreviewChanged()
     {
-        SetPanelElements(
-            _panelDocumentModel.Elements,
-            new PanelChangeEvent(
-                DocumentId,
-                null,
-                PanelChangeProperties.Style,
-                AffectsCanvas: true,
-                AffectsHierarchy: false,
-                AffectsInspectorRows: false,
-                AffectsPersistence: false));
+        _panelPreviewRefreshFlip = !_panelPreviewRefreshFlip;
+        _panelLayoutJson = _panelPreviewRefreshFlip
+            ? $"{GetPanelLayoutProjectionJson()}\n"
+            : GetPanelLayoutProjectionJson();
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PanelLayoutJson)));
+        PanelChanged?.Invoke(new PanelChangeEvent(
+            DocumentId,
+            null,
+            PanelChangeProperties.Style,
+            AffectsCanvas: true,
+            AffectsHierarchy: false,
+            AffectsInspectorRows: false,
+            AffectsPersistence: false));
     }
 
     internal string GetPanelLayoutProjectionJson()
