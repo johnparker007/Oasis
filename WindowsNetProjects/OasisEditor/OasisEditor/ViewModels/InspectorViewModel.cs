@@ -651,13 +651,15 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             return;
         }
 
-        if (PanelElementFactory.IsLampTestActive == isActive)
+        var targetObjectId = isActive ? selectedLampObjectId : null;
+        if (PanelElementFactory.IsLampTestActive == isActive
+            && string.Equals(PanelElementFactory.LampTestObjectId, targetObjectId, StringComparison.Ordinal))
         {
             return;
         }
 
         PanelElementFactory.IsLampTestActive = isActive;
-        PanelElementFactory.LampTestObjectId = isActive ? selectedLampObjectId : null;
+        PanelElementFactory.LampTestObjectId = targetObjectId;
         Debug.WriteLine($"[LampTest] SetLampTestActive={isActive}");
         _selectedDocumentAccessor()?.NotifyPanelVisualPreviewChanged();
     }
