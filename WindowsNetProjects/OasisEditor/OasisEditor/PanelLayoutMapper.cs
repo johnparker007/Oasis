@@ -136,7 +136,7 @@ public static class PanelLayoutMapper
         foreach (var objectId in visualStateChange.ValuesByObjectId.Keys)
         {
             if (!elementsByObjectId.TryGetValue(objectId, out var sourceModel)
-                || Panel2DDocumentStorage.ParseElementKind(sourceModel.Kind) != PanelElementKind.Lamp)
+                || sourceModel.Kind != PanelElementKind.Lamp)
             {
                 continue;
             }
