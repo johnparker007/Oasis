@@ -309,6 +309,17 @@ internal static class PanelElementFactory
         return border;
     }
 
+
+    public static Brush TryCreateBrushForRuntime(string? colorHex, Brush fallback)
+    {
+        return TryCreateBrush(colorHex, fallback);
+    }
+
+    public static ImageSource? TryCreateImageSourceForRuntime(string? assetPath)
+    {
+        return TryCreateImageSource(assetPath, out var source) ? source : null;
+    }
+
     private static Brush TryCreateBrush(string? colorHex, Brush fallback)
     {
         if (string.IsNullOrWhiteSpace(colorHex))
