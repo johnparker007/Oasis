@@ -132,7 +132,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
         PanelChanged?.Invoke(new PanelChangeEvent(
             DocumentId,
             null,
-            PanelChangeProperties.Appearance,
+            PanelChangeProperties.Style,
             AffectsCanvas: true,
             AffectsHierarchy: false,
             AffectsInspectorRows: false,
