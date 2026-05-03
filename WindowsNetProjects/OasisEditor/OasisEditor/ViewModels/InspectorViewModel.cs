@@ -205,6 +205,8 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
     public void NotifyContextChanged()
     {
+        var selectedDocument = _selectedDocumentAccessor();
+
         if (!ShowLampTestButton && PanelElementFactory.IsLampTestActive)
         {
             PanelElementFactory.IsLampTestActive = false;
