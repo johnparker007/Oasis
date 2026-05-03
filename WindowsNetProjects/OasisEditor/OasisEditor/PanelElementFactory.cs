@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using System.Globalization;
 
 namespace OasisEditor;
 
@@ -192,7 +193,10 @@ internal static class PanelElementFactory
             label,
             hasGraphic ? null : element.OnColorHex ?? element.OffColorHex,
             null,
-            hasGraphic ? null : element.TextColorHex);
+            hasGraphic ? null : element.TextColorHex,
+            hasGraphic
+                ? null
+                : CreateFontSettings(element.TextBoxFontName, element.TextBoxFontStyle, element.TextBoxFontSize));
         if (hasGraphic)
         {
             surface.Child = new Image
@@ -245,7 +249,8 @@ internal static class PanelElementFactory
         string label,
         string? backgroundColorHex,
         string? detailText = null,
-        string? labelColorHex = null)
+        string? labelColorHex = null,
+        LampFontSettings? labelFontSettings = null)
     {
         var width = element.Width <= 0 ? NewRectangleWidth : element.Width;
         var height = element.Height <= 0 ? NewRectangleHeight : element.Height;
@@ -268,7 +273,11 @@ internal static class PanelElementFactory
                         Text = label,
                         HorizontalAlignment = HorizontalAlignment.Center,
                         TextAlignment = TextAlignment.Center,
-                        Foreground = TryCreateBrush(labelColorHex, Brushes.LightSteelBlue)
+                        Foreground = TryCreateBrush(labelColorHex, Brushes.LightSteelBlue),
+                        FontFamily = labelFontSettings?.FontFamily ?? new FontFamily("Segoe UI"),
+                        FontStyle = labelFontSettings?.FontStyle ?? FontStyles.Normal,
+                        FontWeight = labelFontSettings?.FontWeight ?? FontWeights.Normal,
+                        FontSize = labelFontSettings?.FontSize ?? 12
                     },
                     new TextBlock
                     {
@@ -304,6 +313,20 @@ internal static class PanelElementFactory
             return fallback;
         }
     }
+
+    private static LampFontSettings CreateFontSettings(string? fontName, string? fontStyle, string? fontSize)
+    {
+        var family = string.IsNullOrWhiteSpace(fontName) ? new FontFamily("Tahoma") : new FontFamily(fontName.Trim());
+        var styleToken = string.IsNullOrWhiteSpace(fontStyle) ? "Regular" : fontStyle.Trim();
+        var style = styleToken.Contains("Italic", StringComparison.OrdinalIgnoreCase) ? FontStyles.Italic : FontStyles.Normal;
+        var weight = styleToken.Contains("Bold", StringComparison.OrdinalIgnoreCase) ? FontWeights.Bold : FontWeights.Normal;
+        var size = double.TryParse(fontSize, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed) && parsed > 0
+            ? parsed
+            : 8d;
+        return new LampFontSettings(family, style, weight, size);
+    }
+
+    private sealed record LampFontSettings(FontFamily FontFamily, FontStyle FontStyle, FontWeight FontWeight, double FontSize);
 
     private static bool TryCreateImageSource(string? assetPath, out ImageSource? source)
     {
