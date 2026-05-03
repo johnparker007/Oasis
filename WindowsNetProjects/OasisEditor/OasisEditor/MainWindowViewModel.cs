@@ -32,6 +32,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly HierarchyViewModel _hierarchy;
     private readonly DocumentWorkspaceViewModel _documentWorkspace;
     private readonly ActiveDocumentContextService _activeDocumentContext;
+    private readonly PanelRuntimeStateStore _panelRuntimeStates;
     private readonly HierarchyPanelCommandService _hierarchyPanelCommands;
     private bool _isRefreshingHierarchy;
     private readonly MfmeImportService _mfmeImportService = new();
@@ -73,6 +74,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _outputLog = new OutputLogViewModel();
         _outputLog.PropertyChanged += OnOutputLogPropertyChanged;
         _activeDocumentContext = new ActiveDocumentContextService();
+        _panelRuntimeStates = new PanelRuntimeStateStore();
         _assetBrowser = new AssetBrowserViewModel(
             () => LoadedProject,
             () => OnPropertyChanged(nameof(SelectedAsset)),
@@ -111,7 +113,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             NotifyUndoRedoStateChanged,
             value => StatusMessage = value,
             AddOutputEntry,
-            documentId => _activeDocumentContext.ClearDocumentState(documentId));
+            _panelRuntimeStates,
+            documentId =>
+            {
+                _activeDocumentContext.ClearDocumentState(documentId);
+                _panelRuntimeStates.ClearDocumentState(documentId);
+            });
         AssetBrowserItems = _assetBrowser.AssetBrowserItems;
         AssetBrowserItems.CollectionChanged += OnAssetBrowserItemsChanged;
         OutputEntries = _outputLog.OutputEntries;
@@ -821,6 +828,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         _documentWorkspace.ClearProjectSessionState();
         _activeDocumentContext.ClearAll();
+        _panelRuntimeStates.ClearAll();
         PanelElementFactory.ProjectDirectoryPath = null;
 
         AssetBrowserItems.Clear();

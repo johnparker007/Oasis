@@ -40,7 +40,7 @@ public static class PanelLayoutMapper
         return (bool)canvas.GetValue(IsApplyingLayoutProperty);
     }
 
-    public static void ApplyPersistedLayout(Canvas canvas, string? layoutJson)
+    public static void ApplyPersistedLayout(Canvas canvas, string? layoutJson, PanelRuntimeState runtimeState)
     {
         canvas.SetValue(IsApplyingLayoutProperty, true);
         try
@@ -63,7 +63,7 @@ public static class PanelLayoutMapper
                     continue;
                 }
 
-                var visual = PanelElementFactory.CreateVisualFromElement(element);
+                var visual = PanelElementFactory.CreateVisualFromElement(element, runtimeState);
                 if (visual is null)
                 {
                     continue;
@@ -122,7 +122,7 @@ public static class PanelLayoutMapper
         }
     }
 
-    public static void ApplyVisualState(Canvas canvas, DocumentTabViewModel tab, PanelVisualStateChangedEvent visualStateChange)
+    public static void ApplyVisualState(Canvas canvas, DocumentTabViewModel tab, PanelVisualStateChangedEvent visualStateChange, PanelRuntimeState runtimeState)
     {
         if (visualStateChange.ValuesByObjectId.Count == 0)
         {
@@ -144,11 +144,12 @@ public static class PanelLayoutMapper
             UpdateLampVisual(
                 canvas,
                 objectId,
-                1.0,
+                runtimeState.GetLampIntensity(objectId),
                 visualStateChange.ValuesByObjectId[objectId] is true,
                 sourceModel.OnColorHex,
                 sourceModel.OffColorHex,
                 sourceModel.AssetPath);
+            runtimeState.SetLampIntensity(objectId, runtimeState.GetLampIntensity(objectId));
         }
     }
 

@@ -18,6 +18,7 @@ public sealed class DocumentWorkspaceViewModel
     private readonly Action<string> _setStatusMessage;
     private readonly Action<string, OutputLogStatus> _addOutputEntry;
     private readonly Action<Guid> _onDocumentClosed;
+    private readonly PanelRuntimeStateStore _runtimeStateStore;
 
     private int _untitledDocumentCounter = 1;
     private int _panelDocumentCounter = 1;
@@ -33,6 +34,7 @@ public sealed class DocumentWorkspaceViewModel
         Action notifyUndoRedoStateChanged,
         Action<string> setStatusMessage,
         Action<string, OutputLogStatus> addOutputEntry,
+        PanelRuntimeStateStore runtimeStateStore,
         Action<Guid>? onDocumentClosed = null)
     {
         _getLoadedProject = getLoadedProject;
@@ -44,6 +46,7 @@ public sealed class DocumentWorkspaceViewModel
         _setStatusMessage = setStatusMessage;
         _addOutputEntry = addOutputEntry;
         _onDocumentClosed = onDocumentClosed ?? (_ => { });
+        _runtimeStateStore = runtimeStateStore;
     }
 
     public bool CanOpenUntitledDocument() => _getLoadedProject() is not null;
@@ -63,7 +66,7 @@ public sealed class DocumentWorkspaceViewModel
             return;
         }
 
-        var document = new DocumentTabViewModel(EditorDocument.CreateUntitled($"Untitled {_untitledDocumentCounter++}"));
+        var document = CreateDocumentTab(EditorDocument.CreateUntitled($"Untitled {_untitledDocumentCounter++}"));
         ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
         _setStatusMessage($"Opened document tab: {document.Title}");
         _addOutputEntry($"Opened document tab: {document.Title}", OutputLogStatus.Info);
@@ -76,7 +79,7 @@ public sealed class DocumentWorkspaceViewModel
             return;
         }
 
-        var document = new DocumentTabViewModel(
+        var document = CreateDocumentTab(
             EditorDocument.CreatePanel2DStub($"Panel {_panelDocumentCounter++}"),
             panelLayoutJson: Panel2DDocumentStorage.SerializeLayout([]));
 
@@ -92,7 +95,7 @@ public sealed class DocumentWorkspaceViewModel
             return;
         }
 
-        var document = new DocumentTabViewModel(EditorDocument.CreateCabinet3DStub($"Cabinet {_cabinetDocumentCounter++}"));
+        var document = CreateDocumentTab(EditorDocument.CreateCabinet3DStub($"Cabinet {_cabinetDocumentCounter++}"));
         ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
         _setStatusMessage($"Opened cabinet document stub: {document.Title}");
         _addOutputEntry($"Opened cabinet document stub: {document.Title}", OutputLogStatus.Info);
@@ -105,7 +108,7 @@ public sealed class DocumentWorkspaceViewModel
             return;
         }
 
-        var document = new DocumentTabViewModel(EditorDocument.CreateMachineStub($"Machine {_machineDocumentCounter++}"));
+        var document = CreateDocumentTab(EditorDocument.CreateMachineStub($"Machine {_machineDocumentCounter++}"));
         ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
         _setStatusMessage($"Opened machine document stub: {document.Title}");
         _addOutputEntry($"Opened machine document stub: {document.Title}", OutputLogStatus.Info);
@@ -133,7 +136,7 @@ public sealed class DocumentWorkspaceViewModel
             return false;
         }
 
-        var document = new DocumentTabViewModel(EditorDocument.CreateFromFile(path, summary, panelTitle), panelLayoutJson);
+        var document = CreateDocumentTab(EditorDocument.CreateFromFile(path, summary, panelTitle), panelLayoutJson);
         ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
         return true;
     }
@@ -224,7 +227,8 @@ public sealed class DocumentWorkspaceViewModel
             selectedDocument.Document.WithContentSummary(summary).MarkDirty(),
             selectedDocument.PanelLayoutJson,
             selectedDocument.DocumentId,
-            selectedDocument.CommandService)
+            selectedDocument.CommandService,
+            selectedDocument.RuntimeState)
         {
             PanelZoom = selectedDocument.PanelZoom,
             PanelPanX = selectedDocument.PanelPanX,
@@ -235,6 +239,16 @@ public sealed class DocumentWorkspaceViewModel
         _setStatusMessage($"Updated inspector summary for {updated.Title}");
         _addOutputEntry($"Inspector summary updated for {updated.Title}", OutputLogStatus.Info);
         return updated;
+    }
+
+    private DocumentTabViewModel CreateDocumentTab(EditorDocument document, string? panelLayoutJson = null)
+    {
+        var documentId = Guid.NewGuid();
+        return new DocumentTabViewModel(
+            document,
+            panelLayoutJson,
+            documentId,
+            runtimeState: _runtimeStateStore.GetOrCreate(documentId));
     }
 
     internal static OpenDocumentData BuildOpenDocumentData(string path, string content)
