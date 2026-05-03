@@ -385,6 +385,13 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                 commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update display text", new PanelElementModelUpdate { DisplayText = NormalizeOptionalText(value) })));
         }
 
+        if (selectedElement.Kind is PanelElementKind.Lamp)
+        {
+            _propertyRows.Add(new InspectorInfoPropertyViewModel("Text Font Name", "Type-specific", selectedElement.TextBoxFontName));
+            _propertyRows.Add(new InspectorInfoPropertyViewModel("Text Font Style", "Type-specific", selectedElement.TextBoxFontStyle));
+            _propertyRows.Add(new InspectorInfoPropertyViewModel("Text Font Size", "Type-specific", selectedElement.TextBoxFontSize));
+        }
+
         if (selectedElement.Kind is PanelElementKind.Reel)
         {
             _propertyRows.Add(new InspectorIntPropertyViewModel(
@@ -466,6 +473,15 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                     break;
                 case "Display Text" when row is InspectorTextPropertyViewModel displayTextRow:
                     displayTextRow.SetCommittedValue(selectedElement.DisplayText);
+                    break;
+                case "Text Font Name" when row is InspectorInfoPropertyViewModel fontNameRow:
+                    fontNameRow.SetCommittedValue(selectedElement.TextBoxFontName);
+                    break;
+                case "Text Font Style" when row is InspectorInfoPropertyViewModel fontStyleRow:
+                    fontStyleRow.SetCommittedValue(selectedElement.TextBoxFontStyle);
+                    break;
+                case "Text Font Size" when row is InspectorInfoPropertyViewModel fontSizeRow:
+                    fontSizeRow.SetCommittedValue(selectedElement.TextBoxFontSize);
                     break;
                 case "Stops" when row is InspectorIntPropertyViewModel stopsRow:
                     stopsRow.SetCommittedValue(selectedElement.Stops);

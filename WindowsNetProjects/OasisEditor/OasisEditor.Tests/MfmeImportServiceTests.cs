@@ -103,6 +103,9 @@ public sealed class MfmeImportServiceTests
         Assert.Equal(PanelElementKind.Lamp, lamp.Kind);
         Assert.Equal(7, lamp.DisplayNumber);
         Assert.Equal("HOLD", lamp.DisplayText);
+        Assert.Equal("Tahoma", lamp.TextBoxFontName);
+        Assert.Equal("Regular", lamp.TextBoxFontStyle);
+        Assert.Equal("8", lamp.TextBoxFontSize);
         Assert.NotNull(lamp.ImportSource);
         Assert.Equal("LegacyImport", lamp.ImportSource!.Format);
         Assert.Equal("Lamp:7", lamp.ImportSource.Reference);

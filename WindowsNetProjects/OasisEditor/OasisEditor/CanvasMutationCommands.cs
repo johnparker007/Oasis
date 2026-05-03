@@ -826,6 +826,9 @@ internal static class CanvasMutationCommands
                 || !string.Equals(before.SecondaryAssetPath, after.SecondaryAssetPath, StringComparison.Ordinal)
                 || before.DisplayNumber != after.DisplayNumber
                 || !string.Equals(before.DisplayText, after.DisplayText, StringComparison.Ordinal)
+                || !string.Equals(before.TextBoxFontName, after.TextBoxFontName, StringComparison.Ordinal)
+                || !string.Equals(before.TextBoxFontStyle, after.TextBoxFontStyle, StringComparison.Ordinal)
+                || !string.Equals(before.TextBoxFontSize, after.TextBoxFontSize, StringComparison.Ordinal)
                 || before.IsReversed != after.IsReversed
                 || before.Stops != after.Stops
                 || before.VisibleScale != after.VisibleScale)

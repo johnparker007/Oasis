@@ -315,6 +315,9 @@ internal static class Panel2DDocumentStorage
             OffColorHex = normalized.OffColorHex,
             TextColorHex = normalized.TextColorHex,
             DisplayText = normalized.DisplayText,
+            TextBoxFontName = normalized.TextBoxFontName,
+            TextBoxFontStyle = normalized.TextBoxFontStyle,
+            TextBoxFontSize = normalized.TextBoxFontSize,
             IsReversed = normalized.IsReversed,
             Stops = normalized.Stops,
             VisibleScale = normalized.VisibleScale,
@@ -356,6 +359,9 @@ internal static class Panel2DDocumentStorage
             OffColorHex = element.OffColorHex,
             TextColorHex = element.TextColorHex,
             DisplayText = element.DisplayText,
+            TextBoxFontName = NormalizeLampFontName(element.TextBoxFontName),
+            TextBoxFontStyle = NormalizeLampFontStyle(element.TextBoxFontStyle),
+            TextBoxFontSize = NormalizeLampFontSize(element.TextBoxFontSize),
             IsReversed = element.IsReversed,
             Stops = element.Stops,
             VisibleScale = element.VisibleScale,
@@ -367,6 +373,9 @@ internal static class Panel2DDocumentStorage
                 secondaryAssetPath: element.SecondaryAssetPath,
                 number: element.DisplayNumber,
                 text: element.DisplayText,
+                textBoxFontName: NormalizeLampFontName(element.TextBoxFontName),
+                textBoxFontStyle: NormalizeLampFontStyle(element.TextBoxFontStyle),
+                textBoxFontSize: NormalizeLampFontSize(element.TextBoxFontSize),
                 textColorHex: element.TextColorHex,
                 onColorHex: element.OnColorHex,
                 offColorHex: element.OffColorHex,
@@ -414,6 +423,9 @@ internal static class Panel2DDocumentStorage
         var normalizedOffColorHex = NormalizeOptionalString(normalizedNative?.OffColorHex ?? element.OffColorHex);
         var normalizedTextColorHex = NormalizeOptionalString(normalizedNative?.TextColorHex ?? element.TextColorHex);
         var normalizedDisplayText = NormalizeOptionalString(normalizedNative?.Text ?? element.DisplayText);
+        var normalizedTextBoxFontName = NormalizeLampFontName(normalizedNative?.TextBoxFontName ?? element.TextBoxFontName);
+        var normalizedTextBoxFontStyle = NormalizeLampFontStyle(normalizedNative?.TextBoxFontStyle ?? element.TextBoxFontStyle);
+        var normalizedTextBoxFontSize = NormalizeLampFontSize(normalizedNative?.TextBoxFontSize ?? element.TextBoxFontSize);
         var normalizedIsReversed = normalizedNative?.Reversed ?? element.IsReversed;
         var normalizedStops = normalizedNative?.Stops ?? element.Stops;
         var normalizedVisibleScale = normalizedNative?.VisibleScale ?? element.VisibleScale;
@@ -426,6 +438,9 @@ internal static class Panel2DDocumentStorage
                 normalizedSecondaryAssetPath,
                 normalizedDisplayNumber,
                 normalizedDisplayText,
+                normalizedTextBoxFontName,
+                normalizedTextBoxFontStyle,
+                normalizedTextBoxFontSize,
                 normalizedTextColorHex,
                 normalizedOnColorHex,
                 normalizedOffColorHex,
@@ -439,6 +454,9 @@ internal static class Panel2DDocumentStorage
                 SecondaryAssetPath = normalizedSecondaryAssetPath,
                 Number = normalizedDisplayNumber,
                 Text = normalizedDisplayText,
+                TextBoxFontName = normalizedTextBoxFontName,
+                TextBoxFontStyle = normalizedTextBoxFontStyle,
+                TextBoxFontSize = normalizedTextBoxFontSize,
                 TextColorHex = normalizedTextColorHex,
                 OnColorHex = normalizedOnColorHex,
                 DisplayColorHex = NormalizeOptionalString(normalizedNative.DisplayColorHex ?? normalizedOnColorHex),
@@ -461,6 +479,9 @@ internal static class Panel2DDocumentStorage
             OffColorHex = normalizedOffColorHex,
             TextColorHex = normalizedTextColorHex,
             DisplayText = normalizedDisplayText,
+            TextBoxFontName = normalizedTextBoxFontName,
+            TextBoxFontStyle = normalizedTextBoxFontStyle,
+            TextBoxFontSize = normalizedTextBoxFontSize,
             IsReversed = normalizedIsReversed,
             Stops = normalizedStops,
             VisibleScale = normalizedVisibleScale,
@@ -577,6 +598,9 @@ internal static class Panel2DDocumentStorage
             SecondaryAssetPath = NormalizeOptionalString(native.SecondaryAssetPath),
             Number = native.Number,
             Text = NormalizeOptionalString(native.Text),
+            TextBoxFontName = NormalizeLampFontName(native.TextBoxFontName),
+            TextBoxFontStyle = NormalizeLampFontStyle(native.TextBoxFontStyle),
+            TextBoxFontSize = NormalizeLampFontSize(native.TextBoxFontSize),
             TextColorHex = NormalizeOptionalString(native.TextColorHex),
             OnColorHex = NormalizeOptionalString(native.OnColorHex),
             OffColorHex = NormalizeOptionalString(native.OffColorHex),
@@ -594,6 +618,9 @@ internal static class Panel2DDocumentStorage
         string? secondaryAssetPath,
         int? number,
         string? text,
+        string? textBoxFontName,
+        string? textBoxFontStyle,
+        string? textBoxFontSize,
         string? textColorHex,
         string? onColorHex,
         string? offColorHex,
@@ -606,6 +633,9 @@ internal static class Panel2DDocumentStorage
             && secondaryAssetPath is null
             && number is null
             && text is null
+            && textBoxFontName is null
+            && textBoxFontStyle is null
+            && textBoxFontSize is null
             && textColorHex is null
             && onColorHex is null
             && offColorHex is null
@@ -623,6 +653,9 @@ internal static class Panel2DDocumentStorage
             SecondaryAssetPath = secondaryAssetPath,
             Number = number,
             Text = text,
+            TextBoxFontName = textBoxFontName,
+            TextBoxFontStyle = textBoxFontStyle,
+            TextBoxFontSize = textBoxFontSize,
             TextColorHex = textColorHex,
             OnColorHex = onColorHex,
             OffColorHex = offColorHex,
@@ -633,6 +666,10 @@ internal static class Panel2DDocumentStorage
             ImportSource = importSource
         };
     }
+
+    private static string NormalizeLampFontName(string? value) => string.IsNullOrWhiteSpace(value) ? "Tahoma" : value.Trim();
+    private static string NormalizeLampFontStyle(string? value) => string.IsNullOrWhiteSpace(value) ? "Regular" : value.Trim();
+    private static string NormalizeLampFontSize(string? value) => string.IsNullOrWhiteSpace(value) ? "8" : value.Trim();
 }
 
 internal enum PanelElementKind
@@ -674,6 +711,9 @@ internal sealed record PanelElementFile : IPanelSelectableObject
     public string? OffColorHex { get; init; }
     public string? TextColorHex { get; init; }
     public string? DisplayText { get; init; }
+    public string TextBoxFontName { get; init; } = "Tahoma";
+    public string TextBoxFontStyle { get; init; } = "Regular";
+    public string TextBoxFontSize { get; init; } = "8";
     public bool? IsReversed { get; init; }
     public int? Stops { get; init; }
     public double? VisibleScale { get; init; }
@@ -692,6 +732,9 @@ internal sealed record PanelElementNativeFile
     public string? SecondaryAssetPath { get; init; }
     public int? Number { get; init; }
     public string? Text { get; init; }
+    public string? TextBoxFontName { get; init; }
+    public string? TextBoxFontStyle { get; init; }
+    public string? TextBoxFontSize { get; init; }
     public string? TextColorHex { get; init; }
     public string? OnColorHex { get; init; }
     public string? OffColorHex { get; init; }
