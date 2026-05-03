@@ -4,7 +4,6 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using System.Globalization;
-using System.IO;
 
 namespace OasisEditor;
 
@@ -351,20 +350,20 @@ internal static class PanelElementFactory
             return true;
         }
 
-        var fontsDirectory = Path.Combine(AppContext.BaseDirectory, "MfmeFonts");
-        if (!Directory.Exists(fontsDirectory))
+        var fontsDirectory = System.IO.Path.Combine(AppContext.BaseDirectory, "MfmeFonts");
+        if (!System.IO.Directory.Exists(fontsDirectory))
         {
             return false;
         }
 
-        foreach (var fontPath in Directory.EnumerateFiles(fontsDirectory, "*.ttf"))
+        foreach (var fontPath in System.IO.Directory.EnumerateFiles(fontsDirectory, "*.ttf"))
         {
-            if (!string.Equals(Path.GetFileNameWithoutExtension(fontPath), fontName, StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(System.IO.Path.GetFileNameWithoutExtension(fontPath), fontName, StringComparison.OrdinalIgnoreCase))
             {
                 continue;
             }
 
-            var fontUri = new Uri(fontsDirectory + Path.DirectorySeparatorChar, UriKind.Absolute);
+            var fontUri = new Uri(fontsDirectory + System.IO.Path.DirectorySeparatorChar);
             fontFamily = new FontFamily(fontUri, $"./#{fontName}");
             MfmeFontFamilies[fontName] = fontFamily;
             return true;
