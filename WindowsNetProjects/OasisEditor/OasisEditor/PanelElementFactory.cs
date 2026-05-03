@@ -317,6 +317,8 @@ internal static class PanelElementFactory
         }
     }
 
+    private const double MfmeLampTextScaleFactor = 1.25d;
+
     private static LampFontSettings CreateFontSettings(string? fontName, string? fontStyle, string? fontSize)
     {
         var styleToken = string.IsNullOrWhiteSpace(fontStyle) ? "Regular" : fontStyle.Trim();
@@ -326,6 +328,7 @@ internal static class PanelElementFactory
         var size = double.TryParse(fontSize, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed) && parsed > 0
             ? parsed
             : 8d;
+        size *= MfmeLampTextScaleFactor;
         return new LampFontSettings(family, style, weight, size);
     }
 
