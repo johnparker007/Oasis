@@ -317,7 +317,7 @@ internal static class PanelElementFactory
         }
     }
 
-    private const double MfmeLampTextScaleFactor = 1.25d;
+    private const double MfmeLampTextScaleFactor = 1.33333333d;
 
     private static LampFontSettings CreateFontSettings(string? fontName, string? fontStyle, string? fontSize)
     {
