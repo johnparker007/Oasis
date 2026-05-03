@@ -317,8 +317,8 @@ internal static class PanelElementFactory
 
     private static LampFontSettings CreateFontSettings(string? fontName, string? fontStyle, string? fontSize)
     {
-        var family = ResolveFontFamily(fontName);
         var styleToken = string.IsNullOrWhiteSpace(fontStyle) ? "Regular" : fontStyle.Trim();
+        var family = ResolveFontFamily(fontName, styleToken);
         var style = styleToken.Contains("Italic", StringComparison.OrdinalIgnoreCase) ? FontStyles.Italic : FontStyles.Normal;
         var weight = styleToken.Contains("Bold", StringComparison.OrdinalIgnoreCase) ? FontWeights.Bold : FontWeights.Normal;
         var size = double.TryParse(fontSize, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed) && parsed > 0
@@ -327,7 +327,7 @@ internal static class PanelElementFactory
         return new LampFontSettings(family, style, weight, size);
     }
 
-    private static FontFamily ResolveFontFamily(string? fontName)
+    private static FontFamily ResolveFontFamily(string? fontName, string styleToken)
     {
         if (string.IsNullOrWhiteSpace(fontName))
         {
@@ -335,7 +335,7 @@ internal static class PanelElementFactory
         }
 
         var trimmedName = fontName.Trim();
-        if (TryResolveMfmeFontFamily(trimmedName, out var mfmeFontFamily))
+        if (TryResolveMfmeFontFamily(trimmedName, styleToken, out var mfmeFontFamily))
         {
             return mfmeFontFamily;
         }
@@ -343,9 +343,10 @@ internal static class PanelElementFactory
         return new FontFamily(trimmedName);
     }
 
-    private static bool TryResolveMfmeFontFamily(string fontName, out FontFamily fontFamily)
+    private static bool TryResolveMfmeFontFamily(string fontName, string styleToken, out FontFamily fontFamily)
     {
-        if (MfmeFontFamilies.TryGetValue(fontName, out fontFamily!))
+        var cacheKey = $"{fontName}|{styleToken}";
+        if (MfmeFontFamilies.TryGetValue(cacheKey, out fontFamily!))
         {
             return true;
         }
@@ -358,14 +359,29 @@ internal static class PanelElementFactory
 
         foreach (var fontPath in System.IO.Directory.EnumerateFiles(fontsDirectory, "*.ttf"))
         {
-            if (!string.Equals(System.IO.Path.GetFileNameWithoutExtension(fontPath), fontName, StringComparison.OrdinalIgnoreCase))
+            var fontUri = new Uri(fontPath, UriKind.Absolute);
+            if (!GlyphTypeface.TryCreateFromUri(fontUri, out var glyphTypeface))
             {
                 continue;
             }
 
-            var fontUri = new Uri(fontsDirectory + System.IO.Path.DirectorySeparatorChar);
-            fontFamily = new FontFamily(fontUri, $"./#{fontName}");
-            MfmeFontFamilies[fontName] = fontFamily;
+            var familyNameMatches = glyphTypeface.Win32FamilyNames.Values.Any(v => string.Equals(v, fontName, StringComparison.OrdinalIgnoreCase));
+            if (!familyNameMatches)
+            {
+                continue;
+            }
+
+            var wantsBold = styleToken.Contains("Bold", StringComparison.OrdinalIgnoreCase);
+            var faceName = glyphTypeface.FaceNames.Values.FirstOrDefault() ?? string.Empty;
+            var isBoldFace = faceName.Contains("Bold", StringComparison.OrdinalIgnoreCase);
+            if (wantsBold != isBoldFace)
+            {
+                continue;
+            }
+
+            var fontFolderUri = new Uri(System.IO.Path.GetDirectoryName(fontPath)! + System.IO.Path.DirectorySeparatorChar, UriKind.Absolute);
+            fontFamily = new FontFamily(fontFolderUri, $"./#{fontName}");
+            MfmeFontFamilies[cacheKey] = fontFamily;
             return true;
         }
 
