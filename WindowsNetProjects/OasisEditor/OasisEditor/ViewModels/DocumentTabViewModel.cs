@@ -131,10 +131,9 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     internal void NotifyPanelVisualPreviewChanged()
     {
         _panelPreviewRefreshFlip = !_panelPreviewRefreshFlip;
-        _panelLayoutJson = _panelPreviewRefreshFlip
+        PanelLayoutJson = _panelPreviewRefreshFlip
             ? $"{GetPanelLayoutProjectionJson()}\n"
             : GetPanelLayoutProjectionJson();
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PanelLayoutJson)));
         PanelChanged?.Invoke(new PanelChangeEvent(
             DocumentId,
             null,

@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using EditorCommands = OasisEditor.Commands;
@@ -643,6 +644,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         }
 
         PanelElementFactory.IsLampTestActive = isActive;
+        Debug.WriteLine($"[LampTest] SetLampTestActive={isActive}");
         _selectedDocumentAccessor()?.NotifyPanelVisualPreviewChanged();
     }
 
