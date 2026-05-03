@@ -4,12 +4,14 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using System.Globalization;
+using System.IO;
 
 namespace OasisEditor;
 
 internal static class PanelElementFactory
 {
     private static string? _projectDirectoryPath;
+    private static readonly Dictionary<string, FontFamily> MfmeFontFamilies = new(StringComparer.OrdinalIgnoreCase);
 
     public static readonly DependencyProperty ElementNameProperty =
         DependencyProperty.RegisterAttached(
@@ -316,7 +318,7 @@ internal static class PanelElementFactory
 
     private static LampFontSettings CreateFontSettings(string? fontName, string? fontStyle, string? fontSize)
     {
-        var family = string.IsNullOrWhiteSpace(fontName) ? new FontFamily("Tahoma") : new FontFamily(fontName.Trim());
+        var family = ResolveFontFamily(fontName);
         var styleToken = string.IsNullOrWhiteSpace(fontStyle) ? "Regular" : fontStyle.Trim();
         var style = styleToken.Contains("Italic", StringComparison.OrdinalIgnoreCase) ? FontStyles.Italic : FontStyles.Normal;
         var weight = styleToken.Contains("Bold", StringComparison.OrdinalIgnoreCase) ? FontWeights.Bold : FontWeights.Normal;
@@ -324,6 +326,51 @@ internal static class PanelElementFactory
             ? parsed
             : 8d;
         return new LampFontSettings(family, style, weight, size);
+    }
+
+    private static FontFamily ResolveFontFamily(string? fontName)
+    {
+        if (string.IsNullOrWhiteSpace(fontName))
+        {
+            return new FontFamily("Tahoma");
+        }
+
+        var trimmedName = fontName.Trim();
+        if (TryResolveMfmeFontFamily(trimmedName, out var mfmeFontFamily))
+        {
+            return mfmeFontFamily;
+        }
+
+        return new FontFamily(trimmedName);
+    }
+
+    private static bool TryResolveMfmeFontFamily(string fontName, out FontFamily fontFamily)
+    {
+        if (MfmeFontFamilies.TryGetValue(fontName, out fontFamily!))
+        {
+            return true;
+        }
+
+        var fontsDirectory = Path.Combine(AppContext.BaseDirectory, "MfmeFonts");
+        if (!Directory.Exists(fontsDirectory))
+        {
+            return false;
+        }
+
+        foreach (var fontPath in Directory.EnumerateFiles(fontsDirectory, "*.ttf"))
+        {
+            if (!string.Equals(Path.GetFileNameWithoutExtension(fontPath), fontName, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var fontUri = new Uri(fontsDirectory + Path.DirectorySeparatorChar, UriKind.Absolute);
+            fontFamily = new FontFamily(fontUri, $"./#{fontName}");
+            MfmeFontFamilies[fontName] = fontFamily;
+            return true;
+        }
+
+        return false;
     }
 
     private sealed record LampFontSettings(FontFamily FontFamily, FontStyle FontStyle, FontWeight FontWeight, double FontSize);
