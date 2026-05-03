@@ -127,6 +127,19 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
         }
     }
 
+    internal void NotifyPanelVisualPreviewChanged()
+    {
+        PanelLayoutJson = $"{GetPanelLayoutProjectionJson()}\n";
+        PanelChanged?.Invoke(new PanelChangeEvent(
+            DocumentId,
+            null,
+            PanelChangeProperties.Style,
+            AffectsCanvas: true,
+            AffectsHierarchy: false,
+            AffectsInspectorRows: false,
+            AffectsPersistence: false));
+    }
+
     internal string GetPanelLayoutProjectionJson()
     {
         return Panel2DDocumentStorage.SerializeLayout(

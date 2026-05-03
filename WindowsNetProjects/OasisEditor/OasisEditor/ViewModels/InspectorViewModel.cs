@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using EditorCommands = OasisEditor.Commands;
@@ -190,13 +191,33 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         }
     }
 
+    public bool ShowLampTestButton
+    {
+        get
+        {
+            var selectedDocument = _selectedDocumentAccessor();
+            return selectedDocument is not null
+                && _activeDocumentContext.ActivePanelSelection is PanelSelectionInfo panelSelection
+                && selectedDocument.TryGetPanelElement(panelSelection, out var selectedElement)
+                && selectedElement.Kind == PanelElementKind.Lamp;
+        }
+    }
+
     public void NotifyContextChanged()
     {
+        if (!ShowLampTestButton && PanelElementFactory.IsLampTestActive)
+        {
+            PanelElementFactory.IsLampTestActive = false;
+            PanelElementFactory.LampTestObjectId = null;
+            _selectedDocumentAccessor()?.NotifyPanelVisualPreviewChanged();
+        }
+
         OnPropertyChanged(nameof(InspectorTitle));
         OnPropertyChanged(nameof(InspectorType));
         OnPropertyChanged(nameof(InspectorPath));
         OnPropertyChanged(nameof(InspectorSummary));
         OnPropertyChanged(nameof(CanEditInspectorSummary));
+        OnPropertyChanged(nameof(ShowLampTestButton));
 
         if (!ShouldSuppressPropertyRowRefresh() && ShouldRebuildRowsForContextChange())
         {
@@ -620,6 +641,27 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         {
             relayCommand.RaiseCanExecuteChanged();
         }
+    }
+
+    public void SetLampTestActive(bool isActive)
+    {
+        var selectedLampObjectId = _activeDocumentContext.ActivePanelSelection?.ObjectId;
+        if (isActive && string.IsNullOrWhiteSpace(selectedLampObjectId))
+        {
+            return;
+        }
+
+        var targetObjectId = isActive ? selectedLampObjectId : null;
+        if (PanelElementFactory.IsLampTestActive == isActive
+            && string.Equals(PanelElementFactory.LampTestObjectId, targetObjectId, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        PanelElementFactory.IsLampTestActive = isActive;
+        PanelElementFactory.LampTestObjectId = targetObjectId;
+        Debug.WriteLine($"[LampTest] SetLampTestActive={isActive}");
+        _selectedDocumentAccessor()?.NotifyPanelVisualPreviewChanged();
     }
 
     private static string BuildSelectedElementSummary(PanelElementModel selectedElement)

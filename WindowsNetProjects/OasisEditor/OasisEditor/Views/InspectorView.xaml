@@ -9,6 +9,7 @@
              d:DesignHeight="300"
              d:DesignWidth="260">
     <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
         <DataTemplate DataType="{x:Type vm:InspectorTextPropertyViewModel}">
             <Grid Margin="0,3,0,0">
                 <Grid.ColumnDefinitions>
@@ -118,6 +119,13 @@
                 <TextBlock FontWeight="SemiBold"
                            FontSize="14"
                            Text="{Binding InspectorTitle}" />
+                <Button Margin="0,8,0,0"
+                        HorizontalAlignment="Left"
+                        Content="Test"
+                        Visibility="{Binding ShowLampTestButton, Converter={StaticResource BoolToVisibility}}"
+                        PreviewMouseLeftButtonDown="OnLampTestMouseDown"
+                        PreviewMouseLeftButtonUp="OnLampTestMouseUp"
+                        MouseLeave="OnLampTestMouseLeave" />
                 <ItemsControl Margin="0,10,0,0"
                               ItemsSource="{Binding InspectorPropertyRows}" />
             </StackPanel>
