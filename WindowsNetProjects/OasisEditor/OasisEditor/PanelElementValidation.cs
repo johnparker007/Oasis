@@ -44,6 +44,9 @@ internal static class PanelElementModelComparer
                && string.Equals(left.OffColorHex, right.OffColorHex, StringComparison.Ordinal)
                && string.Equals(left.TextColorHex, right.TextColorHex, StringComparison.Ordinal)
                && string.Equals(left.DisplayText, right.DisplayText, StringComparison.Ordinal)
+               && string.Equals(left.TextBoxFontName, right.TextBoxFontName, StringComparison.Ordinal)
+               && string.Equals(left.TextBoxFontStyle, right.TextBoxFontStyle, StringComparison.Ordinal)
+               && string.Equals(left.TextBoxFontSize, right.TextBoxFontSize, StringComparison.Ordinal)
                && left.IsReversed == right.IsReversed
                && left.Stops == right.Stops
                && left.VisibleScale == right.VisibleScale

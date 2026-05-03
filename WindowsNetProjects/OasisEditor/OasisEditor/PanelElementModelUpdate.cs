@@ -36,6 +36,9 @@ internal sealed class PanelElementModelUpdate
     public PanelElementOptionalValue<string?> OffColorHex { get; init; }
     public PanelElementOptionalValue<string?> TextColorHex { get; init; }
     public PanelElementOptionalValue<string?> DisplayText { get; init; }
+    public PanelElementOptionalValue<string?> TextBoxFontName { get; init; }
+    public PanelElementOptionalValue<string?> TextBoxFontStyle { get; init; }
+    public PanelElementOptionalValue<string?> TextBoxFontSize { get; init; }
     public PanelElementOptionalValue<bool?> IsReversed { get; init; }
     public PanelElementOptionalValue<int?> Stops { get; init; }
     public PanelElementOptionalValue<double?> VisibleScale { get; init; }
@@ -66,6 +69,9 @@ internal static class PanelElementModelUpdater
             OffColorHex = update.OffColorHex.HasValue ? update.OffColorHex.Value : source.OffColorHex,
             TextColorHex = update.TextColorHex.HasValue ? update.TextColorHex.Value : source.TextColorHex,
             DisplayText = update.DisplayText.HasValue ? update.DisplayText.Value : source.DisplayText,
+            TextBoxFontName = update.TextBoxFontName.HasValue ? NormalizeLampFontName(update.TextBoxFontName.Value) : source.TextBoxFontName,
+            TextBoxFontStyle = update.TextBoxFontStyle.HasValue ? NormalizeLampFontStyle(update.TextBoxFontStyle.Value) : source.TextBoxFontStyle,
+            TextBoxFontSize = update.TextBoxFontSize.HasValue ? NormalizeLampFontSize(update.TextBoxFontSize.Value) : source.TextBoxFontSize,
             IsReversed = update.IsReversed.HasValue ? update.IsReversed.Value : source.IsReversed,
             Stops = update.Stops.HasValue ? update.Stops.Value : source.Stops,
             VisibleScale = update.VisibleScale.HasValue ? update.VisibleScale.Value : source.VisibleScale,
@@ -80,4 +86,8 @@ internal static class PanelElementModelUpdater
                 }
         };
     }
+
+    private static string NormalizeLampFontName(string? value) => string.IsNullOrWhiteSpace(value) ? "Tahoma" : value.Trim();
+    private static string NormalizeLampFontStyle(string? value) => string.IsNullOrWhiteSpace(value) ? "Regular" : value.Trim();
+    private static string NormalizeLampFontSize(string? value) => string.IsNullOrWhiteSpace(value) ? "8" : value.Trim();
 }

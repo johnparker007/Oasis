@@ -82,6 +82,9 @@ public sealed class MfmeToOasisComponentMapperTests
         Assert.Equal("#FF000000", lamp.OffColorHex);
         Assert.Equal("#FFFFFFFF", lamp.TextColorHex);
         Assert.Equal("HOLD", lamp.DisplayText);
+        Assert.Equal("Arial", lamp.TextBoxFontName);
+        Assert.Equal("Regular", lamp.TextBoxFontStyle);
+        Assert.Equal("12", lamp.TextBoxFontSize);
 
         var reel = result.Elements[2];
         Assert.Equal(PanelElementKind.Reel, reel.Kind);
@@ -147,6 +150,9 @@ public sealed class MfmeToOasisComponentMapperTests
         Assert.Equal(PanelElementKind.Lamp, lamp.Kind);
         Assert.Null(lamp.AssetPath);
         Assert.Null(lamp.SecondaryAssetPath);
+        Assert.Equal("Tahoma", lamp.TextBoxFontName);
+        Assert.Equal("Regular", lamp.TextBoxFontStyle);
+        Assert.Equal("8", lamp.TextBoxFontSize);
         Assert.Equal("#FF00FF00", lamp.OnColorHex);
         Assert.Equal("#FF000000", lamp.OffColorHex);
     }

@@ -35,7 +35,10 @@ public sealed class ImportMfmeExtractCommandTests
                     X = 10,
                     Y = 20,
                     Width = 30,
-                    Height = 40
+                    Height = 40,
+                    TextBoxFontName = "Lithograph",
+                    TextBoxFontStyle = "Bold",
+                    TextBoxFontSize = "12"
                 },
                 new PanelElementModel
                 {
@@ -59,7 +62,10 @@ public sealed class ImportMfmeExtractCommandTests
 
         Assert.True(document.CommandService.TryRedo());
         Assert.Equal(3, document.GetPanelElements().Count);
-        Assert.Contains(document.GetPanelElements(), element => element.ObjectId == "import-a");
+        var importedLamp = Assert.Single(document.GetPanelElements().Where(element => element.ObjectId == "import-a"));
+        Assert.Equal("Lithograph", importedLamp.TextBoxFontName);
+        Assert.Equal("Bold", importedLamp.TextBoxFontStyle);
+        Assert.Equal("12", importedLamp.TextBoxFontSize);
         Assert.Contains(document.GetPanelElements(), element => element.ObjectId == "import-b");
     }
 

@@ -106,9 +106,16 @@ internal sealed class MfmeToOasisComponentMapper
             OffColorHex = ToHex(component.OffImageColor),
             TextColorHex = ToHex(component.TextColor),
             DisplayText = NormalizeOptional(component.TextBoxText),
+            TextBoxFontName = NormalizeLampFontName(component.TextBoxFontName),
+            TextBoxFontStyle = NormalizeLampFontStyle(component.TextBoxFontStyle),
+            TextBoxFontSize = NormalizeLampFontSize(component.TextBoxFontSize),
             ImportSource = CreateImportSource(number.HasValue ? $"{component.SourceType}:{number.Value}" : component.SourceType)
         };
     }
+
+    private static string NormalizeLampFontName(string? value) => string.IsNullOrWhiteSpace(value) ? "Tahoma" : value.Trim();
+    private static string NormalizeLampFontStyle(string? value) => string.IsNullOrWhiteSpace(value) ? "Regular" : value.Trim();
+    private static string NormalizeLampFontSize(string? value) => string.IsNullOrWhiteSpace(value) ? "8" : value.Trim();
 
     private static PanelElementModel MapReel(MfmeLegacyReelComponent component, ICollection<MfmeImportWarning> warnings)
     {

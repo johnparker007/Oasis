@@ -23,6 +23,9 @@ internal sealed class PanelElementModel
     public string? OffColorHex { get; init; }
     public string? TextColorHex { get; init; }
     public string? DisplayText { get; init; }
+    public string? TextBoxFontName { get; init; }
+    public string? TextBoxFontStyle { get; init; }
+    public string? TextBoxFontSize { get; init; }
     public bool? IsReversed { get; init; }
     public int? Stops { get; init; }
     public double? VisibleScale { get; init; }
