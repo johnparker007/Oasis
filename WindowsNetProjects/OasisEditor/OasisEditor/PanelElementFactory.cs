@@ -11,6 +11,7 @@ internal static class PanelElementFactory
 {
     private static string? _projectDirectoryPath;
     private static readonly Dictionary<string, FontFamily> MfmeFontFamilies = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly PanelRuntimeState DefaultRuntimeState = new();
 
     public static readonly DependencyProperty ElementNameProperty =
         DependencyProperty.RegisterAttached(
@@ -74,7 +75,7 @@ internal static class PanelElementFactory
 
     public static FrameworkElement? CreateVisualFromElement(PanelElementFile element)
     {
-        return CreateVisualFromElement(element, PanelRuntimeState.Default);
+        return CreateVisualFromElement(element, DefaultRuntimeState);
     }
 
     public static FrameworkElement? CreateVisualFromElement(PanelElementFile element, PanelRuntimeState runtimeState)
