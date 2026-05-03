@@ -132,7 +132,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     internal void NotifyPanelVisualPreviewChanged()
     {
         var visualStateByObjectId = _panelDocumentModel.Elements
-            .Where(element => !string.IsNullOrWhiteSpace(element.ObjectId))
+            .Where(element => !string.IsNullOrWhiteSpace(element.ObjectId)
+                && Panel2DDocumentStorage.ParseElementKind(element.Kind) == PanelElementKind.Lamp)
             .ToDictionary(
                 element => element.ObjectId,
                 element => (object)(PanelElementFactory.IsLampTestActive
