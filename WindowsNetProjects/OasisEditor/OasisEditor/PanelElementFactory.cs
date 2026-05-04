@@ -292,7 +292,7 @@ internal static class PanelElementFactory
             CellCount = 1,
             DisplayText = element.DisplayText,
             LitBrush = TryCreateBrush(element.OnColorHex, Brushes.OrangeRed),
-            UnlitBrush = TryCreateBrush(element.OffColorHex, new SolidColorBrush(Color.FromArgb(48, 255, 69, 0)))
+            UnlitBrush = TryCreateBrush(element.OffColorHex, new SolidColorBrush(Color.FromArgb(160, 70, 70, 70)))
         };
         Grid.SetRow(alphaDisplay, 1);
         layoutRoot.Children.Add(alphaDisplay);

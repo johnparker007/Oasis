@@ -5,6 +5,7 @@ namespace OasisEditor;
 
 internal sealed class AlphaSixteenSegmentDisplayVisual : FrameworkElement
 {
+    private static readonly Pen SegmentPen = CreateSegmentPen();
     private readonly SegmentDisplayDefinition? _definition;
 
     public AlphaSixteenSegmentDisplayVisual()
@@ -59,10 +60,17 @@ internal sealed class AlphaSixteenSegmentDisplayVisual : FrameworkElement
 
                 var lit = (segmentMask & (1 << segment.Index)) != 0;
                 drawingContext.PushTransform(cellTransform);
-                drawingContext.DrawGeometry(lit ? LitBrush : UnlitBrush, null, segment.Geometry);
+                drawingContext.DrawGeometry(lit ? LitBrush : UnlitBrush, SegmentPen, segment.Geometry);
                 drawingContext.Pop();
             }
         }
+    }
+
+    private static Pen CreateSegmentPen()
+    {
+        var pen = new Pen(new SolidColorBrush(Color.FromArgb(120, 18, 18, 18)), 0.4);
+        pen.Freeze();
+        return pen;
     }
 
     private static int GetBasicMaskForChar(char c)
