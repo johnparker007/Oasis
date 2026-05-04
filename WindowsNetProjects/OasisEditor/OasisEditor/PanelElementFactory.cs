@@ -263,13 +263,17 @@ internal static class PanelElementFactory
         var width = element.Width <= 0 ? NewRectangleWidth : element.Width;
         var height = element.Height <= 0 ? NewRectangleHeight : element.Height;
 
-        var stackPanel = new StackPanel
+        var layoutRoot = new Grid
         {
-            VerticalAlignment = VerticalAlignment.Center,
-            HorizontalAlignment = HorizontalAlignment.Center
+            VerticalAlignment = VerticalAlignment.Stretch,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Margin = new Thickness(4)
         };
 
-        stackPanel.Children.Add(new TextBlock
+        layoutRoot.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        layoutRoot.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+
+        var labelBlock = new TextBlock
         {
             Text = label,
             HorizontalAlignment = HorizontalAlignment.Center,
@@ -277,17 +281,21 @@ internal static class PanelElementFactory
             Foreground = Brushes.LightSteelBlue,
             FontSize = 10,
             Margin = new Thickness(0, 0, 0, 4)
-        });
+        };
+        Grid.SetRow(labelBlock, 0);
+        layoutRoot.Children.Add(labelBlock);
 
-        stackPanel.Children.Add(new AlphaSixteenSegmentDisplayVisual
+        var alphaDisplay = new AlphaSixteenSegmentDisplayVisual
         {
-            Width = Math.Max(0, width - 8),
-            Height = Math.Max(0, height - 20),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
             CellCount = 16,
             DisplayText = element.DisplayText,
             LitBrush = TryCreateBrush(element.OnColorHex, Brushes.OrangeRed),
             UnlitBrush = TryCreateBrush(element.OffColorHex, new SolidColorBrush(Color.FromArgb(48, 255, 69, 0)))
-        });
+        };
+        Grid.SetRow(alphaDisplay, 1);
+        layoutRoot.Children.Add(alphaDisplay);
 
         return new Border
         {
@@ -297,7 +305,7 @@ internal static class PanelElementFactory
             BorderThickness = new Thickness(1),
             BorderBrush = Brushes.SlateGray,
             Background = TryCreateBrush("#111827", Brushes.Black),
-            Child = stackPanel
+            Child = layoutRoot
         };
     }
 
