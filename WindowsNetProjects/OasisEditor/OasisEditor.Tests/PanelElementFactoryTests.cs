@@ -278,7 +278,7 @@ public sealed class PanelElementFactoryTests
     }
 
     [Fact]
-    public void CreateVisualFromElement_AlphaReversed_UsesReversedLabel()
+    public void CreateVisualFromElement_AlphaReversed_RendersSegmentDisplayWithoutLabel()
     {
         RunInSta(() =>
         {
@@ -295,9 +295,9 @@ public sealed class PanelElementFactoryTests
             var visual = PanelElementFactory.CreateVisualFromElement(source);
 
             var border = Assert.IsType<Border>(visual);
-            var stack = Assert.IsType<StackPanel>(border.Child);
-            var title = Assert.IsType<TextBlock>(stack.Children[0]);
-            Assert.Equal("Alpha (Reversed)", title.Text);
+            var display = Assert.IsType<AlphaSixteenSegmentDisplayVisual>(border.Child);
+            Assert.Equal(16, display.CellCount);
+            Assert.True(display.ShowDecimalPoint);
         });
     }
 

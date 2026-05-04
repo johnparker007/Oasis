@@ -259,8 +259,29 @@ internal static class PanelElementFactory
 
     private static Border CreateAlphaVisual(PanelElementFile element)
     {
-        var label = element.IsReversed == true ? "Alpha (Reversed)" : "Alpha";
-        return CreatePlaceholderComponentVisual(element, label, "#1F2937", element.DisplayText);
+        var width = element.Width <= 0 ? NewRectangleWidth : element.Width;
+        var height = element.Height <= 0 ? NewRectangleHeight : element.Height;
+
+        return new Border
+        {
+            Uid = element.ObjectId,
+            Width = width,
+            Height = height,
+            BorderThickness = new Thickness(1),
+            BorderBrush = Brushes.SlateGray,
+            Background = TryCreateBrush("#111827", Brushes.Black),
+            Padding = new Thickness(4),
+            Child = new AlphaSixteenSegmentDisplayVisual
+            {
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                VerticalAlignment = VerticalAlignment.Stretch,
+                CellCount = 16,
+                DisplayText = element.DisplayText,
+                LitBrush = TryCreateBrush(element.OnColorHex, Brushes.OrangeRed),
+                UnlitBrush = TryCreateBrush(element.OffColorHex, new SolidColorBrush(Color.FromArgb(160, 70, 70, 70))),
+                ShowDecimalPoint = true
+            }
+        };
     }
 
     private static Border CreatePlaceholderComponentVisual(PanelElementFile element, string label)
