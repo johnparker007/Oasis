@@ -7,16 +7,20 @@ namespace OasisEditor;
 internal static class SegmentDisplayDefinitionLoader
 {
     private const string RelativePath = "Assets/SegmentDisplays/oasis_16_segment_display_definition.json";
-    private static readonly Lazy<SegmentDisplayDefinition> LazyDefinition = new(LoadDefinition);
+    private static readonly Lazy<SegmentDisplayDefinition?> LazyDefinition = new(TryLoadDefinition);
 
-    public static SegmentDisplayDefinition GetDefinition() => LazyDefinition.Value;
+    public static bool TryGetDefinition(out SegmentDisplayDefinition definition)
+    {
+        definition = LazyDefinition.Value!;
+        return definition is not null;
+    }
 
-    private static SegmentDisplayDefinition LoadDefinition()
+    private static SegmentDisplayDefinition? TryLoadDefinition()
     {
         var definitionPath = Path.Combine(AppContext.BaseDirectory, RelativePath);
         if (!File.Exists(definitionPath))
         {
-            throw new InvalidOperationException($"Segment definition asset not found: {definitionPath}");
+            return null;
         }
 
         var json = File.ReadAllText(definitionPath);
@@ -25,8 +29,15 @@ internal static class SegmentDisplayDefinitionLoader
             PropertyNameCaseInsensitive = true
         });
 
-        Validate(definition);
-        return definition!;
+        try
+        {
+            Validate(definition);
+            return definition!;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private static void Validate(SegmentDisplayDefinition? definition)

@@ -5,11 +5,12 @@ namespace OasisEditor;
 
 internal sealed class AlphaSixteenSegmentDisplayVisual : FrameworkElement
 {
-    private readonly SegmentDisplayDefinition _definition;
+    private readonly SegmentDisplayDefinition? _definition;
 
     public AlphaSixteenSegmentDisplayVisual()
     {
-        _definition = SegmentDisplayDefinitionLoader.GetDefinition();
+        SegmentDisplayDefinitionLoader.TryGetDefinition(out var definition);
+        _definition = definition;
         ClipToBounds = true;
         SnapsToDevicePixels = true;
     }
@@ -26,7 +27,7 @@ internal sealed class AlphaSixteenSegmentDisplayVisual : FrameworkElement
     {
         base.OnRender(drawingContext);
 
-        if (_definition.Cell?.Size is null || _definition.Cell.Segments is null)
+        if (_definition?.Cell?.Size is null || _definition.Cell.Segments is null)
         {
             return;
         }

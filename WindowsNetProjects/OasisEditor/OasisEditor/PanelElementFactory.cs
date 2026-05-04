@@ -259,8 +259,35 @@ internal static class PanelElementFactory
 
     private static Border CreateAlphaVisual(PanelElementFile element)
     {
+        var label = element.IsReversed == true ? "Alpha (Reversed)" : "Alpha";
         var width = element.Width <= 0 ? NewRectangleWidth : element.Width;
         var height = element.Height <= 0 ? NewRectangleHeight : element.Height;
+
+        var stackPanel = new StackPanel
+        {
+            VerticalAlignment = VerticalAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Center
+        };
+
+        stackPanel.Children.Add(new TextBlock
+        {
+            Text = label,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            TextAlignment = TextAlignment.Center,
+            Foreground = Brushes.LightSteelBlue,
+            FontSize = 10,
+            Margin = new Thickness(0, 0, 0, 4)
+        });
+
+        stackPanel.Children.Add(new AlphaSixteenSegmentDisplayVisual
+        {
+            Width = Math.Max(0, width - 8),
+            Height = Math.Max(0, height - 20),
+            CellCount = 16,
+            DisplayText = element.DisplayText,
+            LitBrush = TryCreateBrush(element.OnColorHex, Brushes.OrangeRed),
+            UnlitBrush = TryCreateBrush(element.OffColorHex, new SolidColorBrush(Color.FromArgb(48, 255, 69, 0)))
+        });
 
         return new Border
         {
@@ -270,13 +297,7 @@ internal static class PanelElementFactory
             BorderThickness = new Thickness(1),
             BorderBrush = Brushes.SlateGray,
             Background = TryCreateBrush("#111827", Brushes.Black),
-            Child = new AlphaSixteenSegmentDisplayVisual
-            {
-                CellCount = 16,
-                DisplayText = element.DisplayText,
-                LitBrush = TryCreateBrush(element.OnColorHex, Brushes.OrangeRed),
-                UnlitBrush = TryCreateBrush(element.OffColorHex, new SolidColorBrush(Color.FromArgb(48, 255, 69, 0)))
-            }
+            Child = stackPanel
         };
     }
 
