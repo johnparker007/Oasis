@@ -222,14 +222,41 @@
         25,
         42
       ],
-      "pathData": "M 77.09 46.5153 C 77.09 48.328 75.6205 49.7975 73.8078 49.7975 C 71.9951 49.7975 70.5256 48.328 70.5256 46.5153 C 70.5256 44.7026 71.9951 43.2331 73.8078 43.2331 C 75.6205 43.2331 77.09 44.7026 77.09 46.5153 Z",
+      "pathData": "M 57.3522 81.0832 C 57.3522 82.8959 55.8827 84.3654 54.07 84.3654 C 52.2573 84.3654 50.7878 82.8959 50.7878 81.0832 C 50.7878 79.2705 52.2573 77.801 54.07 77.801 C 55.8827 77.801 57.3522 79.2705 57.3522 81.0832 Z",
       "bounds": {
-        "x": 70.5256,
-        "y": 43.2331,
+        "x": 50.7878,
+        "y": 77.801,
         "width": 6.5644,
         "height": 6.5644
       },
-      "note": "The source SVG contains three decimal point paths, but they overlap exactly. This definition stores one reusable decimal point normalized to the right side of a cell."
+      "note": "Decimal point moved left by half its diameter from the prior top-right/bottom-edge alignment; segment paths unchanged.",
+      "positioning": {
+        "horizontalAlignment": "centerXOneRadiusLeftOfRightmostPointOfTopBarRightSegment",
+        "verticalAlignment": "centerYAtBottomEdgeOfBottomSegments",
+        "alignedToSegmentIndices": [
+          3,
+          6,
+          7
+        ],
+        "targetCenter": {
+          "x": 54.07,
+          "y": 81.0832
+        },
+        "previousCenter": {
+          "x": 73.8078,
+          "y": 76.9275
+        },
+        "translationFromPrevious": {
+          "x": -16.4556,
+          "y": 4.1557
+        },
+        "finalAdjustment": {
+          "description": "Moved decimal point left by half its diameter (one radius).",
+          "shiftX": -3.2822,
+          "diameter": 6.5644,
+          "radius": 3.2822
+        }
+      }
     }
   },
   "sampleText": {
