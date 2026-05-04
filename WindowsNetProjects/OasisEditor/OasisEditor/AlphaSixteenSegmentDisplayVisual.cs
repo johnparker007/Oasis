@@ -24,6 +24,8 @@ internal sealed class AlphaSixteenSegmentDisplayVisual : FrameworkElement
 
     public string? DisplayText { get; set; }
 
+    public bool ShowDecimalPoint { get; set; }
+
     protected override void OnRender(DrawingContext drawingContext)
     {
         base.OnRender(drawingContext);
@@ -61,6 +63,13 @@ internal sealed class AlphaSixteenSegmentDisplayVisual : FrameworkElement
                 var lit = (segmentMask & (1 << segment.Index)) != 0;
                 drawingContext.PushTransform(cellTransform);
                 drawingContext.DrawGeometry(lit ? LitBrush : UnlitBrush, SegmentPen, segment.Geometry);
+                drawingContext.Pop();
+            }
+
+            if (ShowDecimalPoint && _definition.Cell.DecimalPoint?.Geometry is not null)
+            {
+                drawingContext.PushTransform(cellTransform);
+                drawingContext.DrawGeometry(UnlitBrush, SegmentPen, _definition.Cell.DecimalPoint.Geometry);
                 drawingContext.Pop();
             }
         }

@@ -259,43 +259,8 @@ internal static class PanelElementFactory
 
     private static Border CreateAlphaVisual(PanelElementFile element)
     {
-        var label = element.IsReversed == true ? "Alpha (Reversed)" : "Alpha";
         var width = element.Width <= 0 ? NewRectangleWidth : element.Width;
         var height = element.Height <= 0 ? NewRectangleHeight : element.Height;
-
-        var layoutRoot = new Grid
-        {
-            VerticalAlignment = VerticalAlignment.Stretch,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            Margin = new Thickness(4)
-        };
-
-        layoutRoot.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        layoutRoot.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-
-        var labelBlock = new TextBlock
-        {
-            Text = label,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            TextAlignment = TextAlignment.Center,
-            Foreground = Brushes.LightSteelBlue,
-            FontSize = 10,
-            Margin = new Thickness(0, 0, 0, 4)
-        };
-        Grid.SetRow(labelBlock, 0);
-        layoutRoot.Children.Add(labelBlock);
-
-        var alphaDisplay = new AlphaSixteenSegmentDisplayVisual
-        {
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            VerticalAlignment = VerticalAlignment.Stretch,
-            CellCount = 1,
-            DisplayText = element.DisplayText,
-            LitBrush = TryCreateBrush(element.OnColorHex, Brushes.OrangeRed),
-            UnlitBrush = TryCreateBrush(element.OffColorHex, new SolidColorBrush(Color.FromArgb(160, 70, 70, 70)))
-        };
-        Grid.SetRow(alphaDisplay, 1);
-        layoutRoot.Children.Add(alphaDisplay);
 
         return new Border
         {
@@ -305,7 +270,17 @@ internal static class PanelElementFactory
             BorderThickness = new Thickness(1),
             BorderBrush = Brushes.SlateGray,
             Background = TryCreateBrush("#111827", Brushes.Black),
-            Child = layoutRoot
+            Padding = new Thickness(4),
+            Child = new AlphaSixteenSegmentDisplayVisual
+            {
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                VerticalAlignment = VerticalAlignment.Stretch,
+                CellCount = 16,
+                DisplayText = element.DisplayText,
+                LitBrush = TryCreateBrush(element.OnColorHex, Brushes.OrangeRed),
+                UnlitBrush = TryCreateBrush(element.OffColorHex, new SolidColorBrush(Color.FromArgb(160, 70, 70, 70))),
+                ShowDecimalPoint = true
+            }
         };
     }
 
