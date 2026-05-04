@@ -19,7 +19,7 @@ internal sealed class AlphaSixteenSegmentDisplayVisual : FrameworkElement
 
     public Brush LitBrush { get; set; } = Brushes.OrangeRed;
 
-    public Brush UnlitBrush { get; set; } = new SolidColorBrush(Color.FromArgb(60, 255, 69, 0));
+    public Brush UnlitBrush { get; set; } = new SolidColorBrush(Color.FromArgb(120, 255, 69, 0));
 
     public string? DisplayText { get; set; }
 

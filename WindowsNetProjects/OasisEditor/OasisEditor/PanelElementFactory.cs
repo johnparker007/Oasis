@@ -289,7 +289,7 @@ internal static class PanelElementFactory
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
-            CellCount = 16,
+            CellCount = 1,
             DisplayText = element.DisplayText,
             LitBrush = TryCreateBrush(element.OnColorHex, Brushes.OrangeRed),
             UnlitBrush = TryCreateBrush(element.OffColorHex, new SolidColorBrush(Color.FromArgb(48, 255, 69, 0)))
