@@ -58,6 +58,10 @@ public sealed class ProjectScaffolder
                 assets = "Assets",
                 machines = "Machines",
                 generated = "Generated"
+            },
+            project_settings = new
+            {
+                FruitMachine_Platform = FruitMachinePlatformType.None.ToString()
             }
         };
 

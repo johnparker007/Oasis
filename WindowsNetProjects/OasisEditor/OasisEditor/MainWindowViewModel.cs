@@ -33,6 +33,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string _mameLuaPluginPath = string.Empty;
     private string _mameCommandLineOverrides = string.Empty;
     private string _mameValidationSummary = "Not validated.";
+    private FruitMachinePlatformType _selectedFruitMachinePlatform = FruitMachinePlatformType.None;
     private readonly AssetBrowserViewModel _assetBrowser;
     private readonly OutputLogViewModel _outputLog;
     private readonly InspectorViewModel _inspector;
@@ -248,7 +249,26 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
 
     public IReadOnlyList<ThemePreference> ThemePreferences { get; } = Enum.GetValues<ThemePreference>();
+    public IReadOnlyList<FruitMachinePlatformType> FruitMachinePlatformTypes { get; } = Enum.GetValues<FruitMachinePlatformType>();
 
+
+    public FruitMachinePlatformType SelectedFruitMachinePlatform
+    {
+        get => _selectedFruitMachinePlatform;
+        set
+        {
+            if (!SetProperty(ref _selectedFruitMachinePlatform, value))
+            {
+                return;
+            }
+
+            if (LoadedProject is not null)
+            {
+                LoadedProject.FruitMachinePlatform = value;
+                SaveLoadedProjectMetadata();
+            }
+        }
+    }
     public ThemePreference SelectedThemePreference
     {
         get => _selectedThemePreference;
@@ -1015,6 +1035,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         var project = LoadProjectFromFile(startupProjectFilePath);
         LoadedProject = project;
+        SelectedFruitMachinePlatform = project.FruitMachinePlatform;
         PanelElementFactory.ProjectDirectoryPath = project.ProjectDirectory;
         ProjectFilePath = project.ProjectFilePath;
         UpdateRecentProjects(project.ProjectFilePath);
@@ -1023,7 +1044,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         AddOutputEntry($"Loaded startup project '{project.Name}' from {project.ProjectFilePath}", OutputLogStatus.Info);
     }
 
-    private static EditorProject LoadProjectFromFile(string projectFilePath)
+    private EditorProject LoadProjectFromFile(string projectFilePath)
     {
         if (!File.Exists(projectFilePath))
         {
@@ -1059,6 +1080,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         var assetsDirectory = ResolveProjectDirectory(projectDirectory, layoutElement, "assets");
         var machinesDirectory = ResolveProjectDirectory(projectDirectory, layoutElement, "machines");
         var generatedDirectory = ResolveProjectDirectory(projectDirectory, layoutElement, "generated");
+        var fruitMachinePlatform = ResolveFruitMachinePlatform(projectDocument.RootElement);
 
         return new EditorProject
         {
@@ -1067,7 +1089,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             ProjectDirectory = projectDirectory,
             AssetsDirectory = assetsDirectory,
             MachinesDirectory = machinesDirectory,
-            GeneratedDirectory = generatedDirectory
+            GeneratedDirectory = generatedDirectory,
+            FruitMachinePlatform = fruitMachinePlatform
         };
     }
 
@@ -1182,6 +1205,107 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             showCommand.RaiseCanExecuteChanged();
         }
+    }
+
+
+    private void SaveLoadedProjectMetadata()
+    {
+        if (LoadedProject is null)
+        {
+            return;
+        }
+
+        var projectFilePath = LoadedProject.ProjectFilePath;
+        var projectJson = File.ReadAllText(projectFilePath);
+        using var projectDocument = JsonDocument.Parse(projectJson);
+
+        var tempPath = Path.GetTempFileName();
+        try
+        {
+            using (var outputStream = File.Create(tempPath))
+            using (var writer = new Utf8JsonWriter(outputStream, new JsonWriterOptions { Indented = true }))
+            {
+                writer.WriteStartObject();
+                var wroteProjectSettings = false;
+
+                foreach (var property in projectDocument.RootElement.EnumerateObject())
+                {
+                    if (property.NameEquals("project_settings"))
+                    {
+                        wroteProjectSettings = true;
+                        writer.WritePropertyName("project_settings");
+                        WriteProjectSettings(writer, property.Value, LoadedProject.FruitMachinePlatform);
+                        continue;
+                    }
+
+                    property.WriteTo(writer);
+                }
+
+                if (!wroteProjectSettings)
+                {
+                    writer.WritePropertyName("project_settings");
+                    writer.WriteStartObject();
+                    writer.WriteString("FruitMachine_Platform", LoadedProject.FruitMachinePlatform.ToString());
+                    writer.WriteEndObject();
+                }
+
+                writer.WriteEndObject();
+            }
+
+            File.Copy(tempPath, projectFilePath, overwrite: true);
+        }
+        finally
+        {
+            File.Delete(tempPath);
+        }
+    }
+
+    private static void WriteProjectSettings(Utf8JsonWriter writer, JsonElement existingProjectSettings, FruitMachinePlatformType platform)
+    {
+        writer.WriteStartObject();
+        var wrotePlatform = false;
+
+        foreach (var settingProperty in existingProjectSettings.EnumerateObject())
+        {
+            if (settingProperty.NameEquals("FruitMachine_Platform"))
+            {
+                writer.WriteString("FruitMachine_Platform", platform.ToString());
+                wrotePlatform = true;
+                continue;
+            }
+
+            settingProperty.WriteTo(writer);
+        }
+
+        if (!wrotePlatform)
+        {
+            writer.WriteString("FruitMachine_Platform", platform.ToString());
+        }
+
+        writer.WriteEndObject();
+    }
+
+    private FruitMachinePlatformType ResolveFruitMachinePlatform(JsonElement root)
+    {
+        if (!root.TryGetProperty("project_settings", out var projectSettingsElement)
+            || !projectSettingsElement.TryGetProperty("FruitMachine_Platform", out var platformElement))
+        {
+            return FruitMachinePlatformType.None;
+        }
+
+        var rawPlatform = platformElement.GetString();
+        if (string.IsNullOrWhiteSpace(rawPlatform))
+        {
+            return FruitMachinePlatformType.None;
+        }
+
+        if (Enum.TryParse<FruitMachinePlatformType>(rawPlatform, true, out var parsed))
+        {
+            return parsed;
+        }
+
+        AddOutputEntry($"Unknown FruitMachine_Platform '{rawPlatform}' in project settings; defaulting to None.", OutputLogStatus.Warning);
+        return FruitMachinePlatformType.None;
     }
 
     private static string ResolveProjectDirectory(string projectDirectory, JsonElement layoutElement, string propertyName)
