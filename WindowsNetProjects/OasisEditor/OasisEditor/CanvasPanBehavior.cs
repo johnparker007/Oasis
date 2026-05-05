@@ -81,6 +81,13 @@ public static class CanvasPanBehavior
             typeof(CanvasPanBehavior),
             new PropertyMetadata(null));
 
+    private static readonly DependencyProperty InputEventHostProperty =
+        DependencyProperty.RegisterAttached(
+            "InputEventHost",
+            typeof(UIElement),
+            typeof(CanvasPanBehavior),
+            new PropertyMetadata(null));
+
     public static bool GetIsEnabled(DependencyObject dependencyObject)
     {
         return (bool)dependencyObject.GetValue(IsEnabledProperty);
@@ -173,26 +180,58 @@ public static class CanvasPanBehavior
         {
             CanvasPanZoomBehavior.EnsureTransformGroup(element);
             ApplyViewportStateToCanvas(element);
-            element.MouseDown += OnMouseDown;
-            element.MouseLeftButtonDown += OnMouseLeftButtonDown;
-            element.MouseMove += OnMouseMove;
-            element.MouseUp += OnMouseUp;
-            element.MouseWheel += OnMouseWheel;
-            element.LostMouseCapture += OnLostMouseCapture;
+            AttachInputHandlers(element);
             element.DataContextChanged += OnCanvasDataContextChanged;
             AttachVisualStateSubscription(element);
         }
         else
         {
-            element.MouseDown -= OnMouseDown;
-            element.MouseLeftButtonDown -= OnMouseLeftButtonDown;
-            element.MouseMove -= OnMouseMove;
-            element.MouseUp -= OnMouseUp;
-            element.MouseWheel -= OnMouseWheel;
-            element.LostMouseCapture -= OnLostMouseCapture;
+            DetachInputHandlers(element);
             element.DataContextChanged -= OnCanvasDataContextChanged;
             DetachVisualStateSubscription(element);
         }
+    }
+
+    private static void AttachInputHandlers(FrameworkElement element)
+    {
+        element.MouseDown += OnMouseDown;
+        element.MouseLeftButtonDown += OnMouseLeftButtonDown;
+        element.MouseMove += OnMouseMove;
+        element.MouseUp += OnMouseUp;
+        element.MouseWheel += OnMouseWheel;
+        element.LostMouseCapture += OnLostMouseCapture;
+
+        if (element.Parent is not UIElement inputHost)
+        {
+            return;
+        }
+
+        inputHost.PreviewMouseDown += OnMouseDown;
+        inputHost.PreviewMouseMove += OnMouseMove;
+        inputHost.PreviewMouseUp += OnMouseUp;
+        inputHost.PreviewMouseWheel += OnMouseWheel;
+        element.SetValue(InputEventHostProperty, inputHost);
+    }
+
+    private static void DetachInputHandlers(FrameworkElement element)
+    {
+        element.MouseDown -= OnMouseDown;
+        element.MouseLeftButtonDown -= OnMouseLeftButtonDown;
+        element.MouseMove -= OnMouseMove;
+        element.MouseUp -= OnMouseUp;
+        element.MouseWheel -= OnMouseWheel;
+        element.LostMouseCapture -= OnLostMouseCapture;
+
+        if (element.GetValue(InputEventHostProperty) is not UIElement inputHost)
+        {
+            return;
+        }
+
+        inputHost.PreviewMouseDown -= OnMouseDown;
+        inputHost.PreviewMouseMove -= OnMouseMove;
+        inputHost.PreviewMouseUp -= OnMouseUp;
+        inputHost.PreviewMouseWheel -= OnMouseWheel;
+        element.ClearValue(InputEventHostProperty);
     }
 
     private static void OnCanvasDataContextChanged(object sender, DependencyPropertyChangedEventArgs _)
@@ -279,7 +318,7 @@ public static class CanvasPanBehavior
 
     private static void OnMouseDown(object sender, MouseButtonEventArgs eventArgs)
     {
-        if (sender is not FrameworkElement element)
+        if (!TryResolveCanvasElement(sender, out var element))
         {
             return;
         }
@@ -290,7 +329,7 @@ public static class CanvasPanBehavior
 
     private static void OnMouseMove(object sender, MouseEventArgs eventArgs)
     {
-        if (sender is not FrameworkElement element)
+        if (!TryResolveCanvasElement(sender, out var element))
         {
             return;
         }
@@ -301,7 +340,12 @@ public static class CanvasPanBehavior
 
     private static void OnMouseLeftButtonDown(object sender, MouseButtonEventArgs eventArgs)
     {
-        if (sender is not FrameworkElement canvas)
+        if (eventArgs.Handled)
+        {
+            return;
+        }
+
+        if (!TryResolveCanvasElement(sender, out var canvas))
         {
             return;
         }
@@ -331,7 +375,7 @@ public static class CanvasPanBehavior
 
     private static void OnMouseWheel(object sender, MouseWheelEventArgs eventArgs)
     {
-        if (sender is not FrameworkElement element)
+        if (!TryResolveCanvasElement(sender, out var element))
         {
             return;
         }
@@ -342,7 +386,7 @@ public static class CanvasPanBehavior
 
     private static void OnMouseUp(object sender, MouseButtonEventArgs eventArgs)
     {
-        if (sender is not FrameworkElement element)
+        if (!TryResolveCanvasElement(sender, out var element))
         {
             return;
         }
@@ -352,7 +396,7 @@ public static class CanvasPanBehavior
 
     private static void OnLostMouseCapture(object sender, MouseEventArgs eventArgs)
     {
-        if (sender is not FrameworkElement element)
+        if (!TryResolveCanvasElement(sender, out var element))
         {
             return;
         }
@@ -479,5 +523,43 @@ public static class CanvasPanBehavior
         }
 
         CanvasCommandDispatcher.NotifyDocumentSelection(canvas, tab, PanelSelectionContract.ToSelectionInfo(selectable));
+    }
+
+    private static bool TryResolveCanvasElement(object sender, out FrameworkElement canvas)
+    {
+        switch (sender)
+        {
+            case FrameworkElement { DataContext: DocumentTabViewModel } element:
+                canvas = element;
+                return true;
+            case DependencyObject dependencyObject:
+                canvas = FindCanvasForSender(dependencyObject);
+                return canvas is not null;
+            default:
+                canvas = null!;
+                return false;
+        }
+    }
+
+    private static FrameworkElement? FindCanvasForSender(DependencyObject sender)
+    {
+        foreach (Window window in Application.Current.Windows)
+        {
+            foreach (var canvas in FindVisualChildren<Canvas>(window))
+            {
+                if (ReferenceEquals(canvas, sender))
+                {
+                    return canvas;
+                }
+
+                if (canvas.GetValue(InputEventHostProperty) is UIElement inputHost
+                    && ReferenceEquals(inputHost, sender))
+                {
+                    return canvas;
+                }
+            }
+        }
+
+        return null;
     }
 }
