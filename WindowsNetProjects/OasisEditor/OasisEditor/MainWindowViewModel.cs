@@ -1215,32 +1215,71 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        using var projectStream = File.OpenRead(LoadedProject.ProjectFilePath);
-        using var projectDocument = JsonDocument.Parse(projectStream);
-        using var outputStream = File.Create(LoadedProject.ProjectFilePath);
-        using var writer = new Utf8JsonWriter(outputStream, new JsonWriterOptions { Indented = true });
+        var projectFilePath = LoadedProject.ProjectFilePath;
+        var projectJson = File.ReadAllText(projectFilePath);
+        using var projectDocument = JsonDocument.Parse(projectJson);
 
-        writer.WriteStartObject();
-        foreach (var property in projectDocument.RootElement.EnumerateObject())
+        var tempPath = Path.GetTempFileName();
+        try
         {
-            if (property.NameEquals("project_settings"))
+            using (var outputStream = File.Create(tempPath))
+            using (var writer = new Utf8JsonWriter(outputStream, new JsonWriterOptions { Indented = true }))
             {
-                writer.WritePropertyName("project_settings");
                 writer.WriteStartObject();
-                writer.WriteString("FruitMachine_Platform", LoadedProject.FruitMachinePlatform.ToString());
+                var wroteProjectSettings = false;
+
+                foreach (var property in projectDocument.RootElement.EnumerateObject())
+                {
+                    if (property.NameEquals("project_settings"))
+                    {
+                        wroteProjectSettings = true;
+                        writer.WritePropertyName("project_settings");
+                        WriteProjectSettings(writer, property.Value, LoadedProject.FruitMachinePlatform);
+                        continue;
+                    }
+
+                    property.WriteTo(writer);
+                }
+
+                if (!wroteProjectSettings)
+                {
+                    writer.WritePropertyName("project_settings");
+                    writer.WriteStartObject();
+                    writer.WriteString("FruitMachine_Platform", LoadedProject.FruitMachinePlatform.ToString());
+                    writer.WriteEndObject();
+                }
+
                 writer.WriteEndObject();
+            }
+
+            File.Copy(tempPath, projectFilePath, overwrite: true);
+        }
+        finally
+        {
+            File.Delete(tempPath);
+        }
+    }
+
+    private static void WriteProjectSettings(Utf8JsonWriter writer, JsonElement existingProjectSettings, FruitMachinePlatformType platform)
+    {
+        writer.WriteStartObject();
+        var wrotePlatform = false;
+
+        foreach (var settingProperty in existingProjectSettings.EnumerateObject())
+        {
+            if (settingProperty.NameEquals("FruitMachine_Platform"))
+            {
+                writer.WriteString("FruitMachine_Platform", platform.ToString());
+                wrotePlatform = true;
                 continue;
             }
 
-            property.WriteTo(writer);
+            settingProperty.WriteTo(writer);
         }
 
-        if (!projectDocument.RootElement.TryGetProperty("project_settings", out _))
+        if (!wrotePlatform)
         {
-            writer.WritePropertyName("project_settings");
-            writer.WriteStartObject();
-            writer.WriteString("FruitMachine_Platform", LoadedProject.FruitMachinePlatform.ToString());
-            writer.WriteEndObject();
+            writer.WriteString("FruitMachine_Platform", platform.ToString());
         }
 
         writer.WriteEndObject();
