@@ -239,14 +239,42 @@ internal static class PanelElementFactory
         var surface = CreatePlaceholderComponentVisual(element, label, "#1E293B");
         if (TryCreateImageSource(element.AssetPath, out var source))
         {
-            surface.Child = new Image
+            var width = element.Width <= 0 ? NewRectangleWidth : element.Width;
+            var height = element.Height <= 0 ? NewRectangleHeight : element.Height;
+            var visibleScale = ResolveVisibleScale(element.VisibleScale);
+
+            var reelImage = new Image
             {
                 Stretch = Stretch.Fill,
-                Source = source
+                Source = source,
+                Width = width,
+                Height = height / visibleScale,
+                VerticalAlignment = VerticalAlignment.Top,
+                HorizontalAlignment = HorizontalAlignment.Stretch
+            };
+
+            surface.Child = new Grid
+            {
+                ClipToBounds = true,
+                Children =
+                {
+                    reelImage
+                }
             };
         }
 
         return surface;
+    }
+
+
+    private static double ResolveVisibleScale(double? visibleScale)
+    {
+        if (!visibleScale.HasValue || double.IsNaN(visibleScale.Value) || double.IsInfinity(visibleScale.Value))
+        {
+            return 1d;
+        }
+
+        return Math.Clamp(visibleScale.Value, 0.01d, 1d);
     }
 
     private static Border CreateSevenSegmentVisual(PanelElementFile element)
