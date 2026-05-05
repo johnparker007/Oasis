@@ -1,7 +1,7 @@
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
+using System.Diagnostics;
 
 namespace OasisEditor;
 
@@ -55,7 +55,8 @@ public sealed class MameDownloadService
             Directory.Delete(installDirectory, recursive: true);
         }
 
-        ZipFile.ExtractToDirectory(archivePath, installDirectory, overwriteFiles: true);
+        Directory.CreateDirectory(installDirectory);
+        await ExtractArchiveAsync(archivePath, installDirectory, cancellationToken).ConfigureAwait(false);
         return Path.Combine(installDirectory, "mame.exe");
     }
 
@@ -75,7 +76,29 @@ public sealed class MameDownloadService
     {
         var numericVersion = int.Parse(normalizedVersion);
         var suffix = numericVersion >= 281 ? "x64" : "64bit";
-        return $"mame{normalizedVersion}b_{suffix}.zip";
+        return $"mame{normalizedVersion}b_{suffix}.exe";
+    }
+
+    private static async Task ExtractArchiveAsync(string archivePath, string installDirectory, CancellationToken cancellationToken)
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = archivePath,
+            Arguments = $"-y -o\"{installDirectory}\"",
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            WorkingDirectory = installDirectory
+        };
+
+        using var process = Process.Start(startInfo) ?? throw new InvalidOperationException("Failed to start MAME extractor executable.");
+        await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+        if (process.ExitCode != 0)
+        {
+            var error = await process.StandardError.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+            throw new InvalidOperationException($"MAME extraction failed with code {process.ExitCode}: {error}");
+        }
     }
 
     private static string NormalizeVersion(string version)
