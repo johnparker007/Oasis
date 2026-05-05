@@ -513,6 +513,11 @@ public static class CanvasPanBehavior
         }
 
         var target = GetPanZoomTarget(element);
+        if (target is null)
+        {
+            target = FindVisualChildren<Canvas>(element).FirstOrDefault();
+        }
+
         if (target is not null)
         {
             canvas = target;
