@@ -566,6 +566,7 @@ public static class CanvasPanBehavior
 
     private static FrameworkElement? FindCanvasForSender(DependencyObject sender)
     {
+        var matches = new List<Canvas>();
         foreach (Window window in Application.Current.Windows)
         {
             foreach (var canvas in FindVisualChildren<Canvas>(window))
@@ -578,11 +579,22 @@ public static class CanvasPanBehavior
                 if (canvas.GetValue(InputEventHostProperty) is UIElement inputHost
                     && ReferenceEquals(inputHost, sender))
                 {
-                    return canvas;
+                    matches.Add(canvas);
                 }
             }
         }
 
-        return null;
+        if (matches.Count == 0)
+        {
+            return null;
+        }
+
+        var visibleMatch = matches.FirstOrDefault(canvas => canvas.IsVisible && canvas.IsLoaded && canvas.IsHitTestVisible);
+        if (visibleMatch is not null)
+        {
+            return visibleMatch;
+        }
+
+        return matches[0];
     }
 }
