@@ -26,6 +26,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private EditorProject? _loadedProject;
     private DocumentTabViewModel? _selectedDocument;
     private ThemePreference _selectedThemePreference;
+    private string _mameVersion = "0267";
+    private string _mameExecutablePath = string.Empty;
+    private string _mameInstallRootDirectory = string.Empty;
+    private string _mameReleaseSource = string.Empty;
+    private string _mameLuaPluginPath = string.Empty;
+    private string _mameCommandLineOverrides = string.Empty;
+    private string _mameValidationSummary = "Not validated.";
     private readonly AssetBrowserViewModel _assetBrowser;
     private readonly OutputLogViewModel _outputLog;
     private readonly InspectorViewModel _inspector;
@@ -67,6 +74,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OpenPreferencesCommand = new RelayCommand(OpenPreferences);
         OpenProjectSettingsCommand = new RelayCommand(OpenProjectSettings);
         ClosePreferencesCommand = new RelayCommand(ClosePreferences);
+        BrowseMameExecutableCommand = new RelayCommand(BrowseMameExecutable);
+        ValidateMamePreferencesCommand = new RelayCommand(ValidateMamePreferences);
         CloseProjectSettingsCommand = new RelayCommand(CloseProjectSettings);
         CloseProjectCommand = new RelayCommand(CloseProject, CanCloseProject);
         ExitCommand = new RelayCommand(ExitApplication);
@@ -101,6 +110,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         var preferences = _preferencesStore.Load();
         _selectedThemePreference = preferences.ThemePreference;
+        _mameVersion = preferences.Mame.Version;
+        _mameExecutablePath = preferences.Mame.ExecutablePath;
+        _mameInstallRootDirectory = preferences.Mame.InstallRootDirectory;
+        _mameReleaseSource = preferences.Mame.ReleaseSource;
+        _mameLuaPluginPath = preferences.Mame.LuaPluginPath;
+        _mameCommandLineOverrides = preferences.Mame.CommandLineOverrides;
 
         RecentProjects = new ObservableCollection<string>(_recentProjectsStore.Load());
         OpenDocuments = new ObservableCollection<DocumentTabViewModel>();
@@ -210,6 +225,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand OpenPreferencesCommand { get; }
     public ICommand OpenProjectSettingsCommand { get; }
     public ICommand ClosePreferencesCommand { get; }
+    public ICommand BrowseMameExecutableCommand { get; }
+    public ICommand ValidateMamePreferencesCommand { get; }
     public ICommand CloseProjectSettingsCommand { get; }
     public ICommand ApplyInspectorSummaryCommand { get; }
     public ICommand CloseProjectCommand { get; }
@@ -234,10 +251,18 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             }
 
             _applicationThemeService.ApplyTheme(Application.Current ?? throw new InvalidOperationException("Application is not initialized."), value);
-            _preferencesStore.Save(new EditorPreferences { ThemePreference = value });
+            SavePreferences();
             AddOutputEntry($"Theme preference changed: {value}", OutputLogStatus.Info);
         }
     }
+
+    public string MameVersion { get => _mameVersion; set { if (SetProperty(ref _mameVersion, value)) SavePreferences(); } }
+    public string MameExecutablePath { get => _mameExecutablePath; set { if (SetProperty(ref _mameExecutablePath, value)) SavePreferences(); } }
+    public string MameInstallRootDirectory { get => _mameInstallRootDirectory; set { if (SetProperty(ref _mameInstallRootDirectory, value)) SavePreferences(); } }
+    public string MameReleaseSource { get => _mameReleaseSource; set { if (SetProperty(ref _mameReleaseSource, value)) SavePreferences(); } }
+    public string MameLuaPluginPath { get => _mameLuaPluginPath; set { if (SetProperty(ref _mameLuaPluginPath, value)) SavePreferences(); } }
+    public string MameCommandLineOverrides { get => _mameCommandLineOverrides; set { if (SetProperty(ref _mameCommandLineOverrides, value)) SavePreferences(); } }
+    public string MameValidationSummary { get => _mameValidationSummary; private set => SetProperty(ref _mameValidationSummary, value); }
 
     public string StatusMessage
     {
@@ -781,6 +806,77 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         ToolWindowOpenRequested?.Invoke(EditorToolWindowId.Preferences);
         AddOutputEntry("Opened Preferences pane.", OutputLogStatus.Info);
+    }
+
+    private void BrowseMameExecutable()
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "Select mame.exe",
+            Filter = "MAME Executable|mame.exe|Executable Files|*.exe|All Files|*.*",
+            CheckFileExists = true,
+            Multiselect = false,
+            FileName = Path.GetFileName(MameExecutablePath)
+        };
+
+        if (dialog.ShowDialog(_ownerWindow) == true)
+        {
+            MameExecutablePath = dialog.FileName;
+            if (string.IsNullOrWhiteSpace(MameInstallRootDirectory))
+            {
+                MameInstallRootDirectory = Path.GetDirectoryName(dialog.FileName) ?? string.Empty;
+            }
+
+            AddOutputEntry($"Selected MAME executable: {dialog.FileName}", OutputLogStatus.Info);
+            ValidateMamePreferences();
+        }
+    }
+
+    private void ValidateMamePreferences()
+    {
+        var errors = new List<string>();
+
+        if (string.IsNullOrWhiteSpace(MameExecutablePath) || !File.Exists(MameExecutablePath))
+            errors.Add("MAME executable is missing or does not exist.");
+        else if (!string.Equals(Path.GetFileName(MameExecutablePath), "mame.exe", StringComparison.OrdinalIgnoreCase))
+            errors.Add("MAME executable path must point to mame.exe.");
+
+        if (string.IsNullOrWhiteSpace(MameInstallRootDirectory) || !Directory.Exists(MameInstallRootDirectory))
+            errors.Add("MAME install root directory is missing or does not exist.");
+
+        if (string.IsNullOrWhiteSpace(MameLuaPluginPath) || !Directory.Exists(MameLuaPluginPath))
+            errors.Add("Lua plugin directory is missing or does not exist.");
+
+        if (string.IsNullOrWhiteSpace(MameVersion) || MameVersion.Any(c => !char.IsDigit(c)))
+            errors.Add("MAME version must be numeric (example: 0267).");
+
+        if (errors.Count == 0)
+        {
+            MameValidationSummary = "MAME preferences validation passed.";
+            AddOutputEntry(MameValidationSummary, OutputLogStatus.Info);
+        }
+        else
+        {
+            MameValidationSummary = string.Join(" ", errors);
+            AddOutputEntry($"MAME preferences validation failed: {MameValidationSummary}", OutputLogStatus.Warning);
+        }
+    }
+
+    private void SavePreferences()
+    {
+        _preferencesStore.Save(new EditorPreferences
+        {
+            ThemePreference = SelectedThemePreference,
+            Mame = new MamePreferences
+            {
+                Version = MameVersion,
+                ExecutablePath = MameExecutablePath,
+                InstallRootDirectory = MameInstallRootDirectory,
+                ReleaseSource = MameReleaseSource,
+                LuaPluginPath = MameLuaPluginPath,
+                CommandLineOverrides = MameCommandLineOverrides
+            }
+        });
     }
 
     private void OpenProjectSettings()
