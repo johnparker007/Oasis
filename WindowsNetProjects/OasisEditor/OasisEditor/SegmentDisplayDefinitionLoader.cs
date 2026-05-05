@@ -6,32 +6,43 @@ namespace OasisEditor;
 
 internal static class SegmentDisplayDefinitionLoader
 {
-    private const string RelativePath = "Assets/SegmentDisplays/oasis_16_segment_display_definition.json";
-    private static readonly Lazy<SegmentDisplayDefinition?> LazyDefinition = new(TryLoadDefinition);
-
-    public static bool TryGetDefinition(out SegmentDisplayDefinition definition)
+    private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        definition = LazyDefinition.Value!;
+        PropertyNameCaseInsensitive = true
+    };
+
+    private static readonly Lazy<SegmentDisplayDefinition?> LazySixteenSegmentDefinition =
+        new(() => TryLoadDefinition("Assets/SegmentDisplays/oasis_16_segment_display_definition.json", 16));
+
+    private static readonly Lazy<SegmentDisplayDefinition?> LazySevenSegmentDefinition =
+        new(() => TryLoadDefinition("Assets/SegmentDisplays/oasis_7_segment_display_definition.json", 7));
+
+    public static bool TryGetSixteenSegmentDefinition(out SegmentDisplayDefinition definition)
+    {
+        definition = LazySixteenSegmentDefinition.Value!;
         return definition is not null;
     }
 
-    private static SegmentDisplayDefinition? TryLoadDefinition()
+    public static bool TryGetSevenSegmentDefinition(out SegmentDisplayDefinition definition)
     {
-        var definitionPath = Path.Combine(AppContext.BaseDirectory, RelativePath);
+        definition = LazySevenSegmentDefinition.Value!;
+        return definition is not null;
+    }
+
+    private static SegmentDisplayDefinition? TryLoadDefinition(string relativePath, int expectedSegmentCount)
+    {
+        var definitionPath = Path.Combine(AppContext.BaseDirectory, relativePath);
         if (!File.Exists(definitionPath))
         {
             return null;
         }
 
         var json = File.ReadAllText(definitionPath);
-        var definition = JsonSerializer.Deserialize<SegmentDisplayDefinition>(json, new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true
-        });
+        var definition = JsonSerializer.Deserialize<SegmentDisplayDefinition>(json, JsonOptions);
 
         try
         {
-            Validate(definition);
+            Validate(definition, expectedSegmentCount);
             return definition!;
         }
         catch
@@ -40,7 +51,7 @@ internal static class SegmentDisplayDefinitionLoader
         }
     }
 
-    private static void Validate(SegmentDisplayDefinition? definition)
+    private static void Validate(SegmentDisplayDefinition? definition, int expectedSegmentCount)
     {
         if (definition?.Cell?.Size is null)
         {
@@ -48,9 +59,9 @@ internal static class SegmentDisplayDefinitionLoader
         }
 
         var segments = definition.Cell.Segments;
-        if (segments is null || segments.Count != 16)
+        if (segments is null || segments.Count != expectedSegmentCount)
         {
-            throw new InvalidOperationException("Segment definition must contain exactly 16 segments.");
+            throw new InvalidOperationException($"Segment definition must contain exactly {expectedSegmentCount} segments.");
         }
 
         foreach (var segment in segments)

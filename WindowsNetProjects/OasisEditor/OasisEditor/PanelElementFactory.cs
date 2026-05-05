@@ -251,10 +251,29 @@ internal static class PanelElementFactory
 
     private static Border CreateSevenSegmentVisual(PanelElementFile element)
     {
-        var label = element.DisplayNumber.HasValue
-            ? $"7 Segment {element.DisplayNumber.Value}"
-            : "7 Segment";
-        return CreatePlaceholderComponentVisual(element, label, element.OnColorHex, element.DisplayText);
+        var width = element.Width <= 0 ? NewRectangleWidth : element.Width;
+        var height = element.Height <= 0 ? NewRectangleHeight : element.Height;
+
+        return new Border
+        {
+            Uid = element.ObjectId,
+            Width = width,
+            Height = height,
+            BorderThickness = new Thickness(1),
+            BorderBrush = Brushes.SlateGray,
+            Background = TryCreateBrush("#111827", Brushes.Black),
+            Padding = new Thickness(4),
+            Child = new SevenSegmentDisplayVisual
+            {
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                VerticalAlignment = VerticalAlignment.Stretch,
+                CellCount = 1,
+                DisplayText = string.IsNullOrWhiteSpace(element.DisplayText) ? "8" : element.DisplayText,
+                LitBrush = TryCreateBrush(element.OnColorHex, Brushes.OrangeRed),
+                UnlitBrush = TryCreateBrush(element.OffColorHex, new SolidColorBrush(Color.FromArgb(160, 70, 70, 70))),
+                ShowDecimalPoint = true
+            }
+        };
     }
 
     private static Border CreateAlphaVisual(PanelElementFile element)
