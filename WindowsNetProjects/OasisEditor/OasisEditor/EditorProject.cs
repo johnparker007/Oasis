@@ -8,4 +8,5 @@ public sealed class EditorProject
     public required string AssetsDirectory { get; init; }
     public required string MachinesDirectory { get; init; }
     public required string GeneratedDirectory { get; init; }
+    public FruitMachinePlatformType FruitMachinePlatform { get; set; } = FruitMachinePlatformType.None;
 }

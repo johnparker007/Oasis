@@ -14,6 +14,8 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
@@ -31,5 +33,11 @@
 
         <TextBlock Grid.Row="5" Margin="0,12,0,4" Text="Assets folder" Foreground="{DynamicResource TextSecondaryBrush}" />
         <TextBlock Grid.Row="6" TextWrapping="Wrap" Text="{Binding LoadedProject.AssetsDirectory, TargetNullValue=Open or create a project first.}" />
+            <TextBlock Grid.Row="7" Margin="0,12,0,4" Text="Fruit machine platform" Foreground="{DynamicResource TextSecondaryBrush}" />
+        <ComboBox Grid.Row="8"
+                  MinWidth="220"
+                  HorizontalAlignment="Left"
+                  ItemsSource="{Binding FruitMachinePlatformTypes}"
+                  SelectedItem="{Binding SelectedFruitMachinePlatform}" />
     </Grid>
 </UserControl>
