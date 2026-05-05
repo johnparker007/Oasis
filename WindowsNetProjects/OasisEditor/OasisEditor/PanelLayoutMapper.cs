@@ -70,8 +70,7 @@ public static class PanelLayoutMapper
                 }
 
                 SetIsPersistedElement(visual, true);
-                var isSelectable = !element.IsLocked && element.ElementKind != PanelElementKind.Background;
-                CanvasSelectionBehavior.SetIsSelectable(visual, isSelectable);
+                CanvasSelectionBehavior.SetIsSelectable(visual, !element.IsLocked);
                 CanvasSelectionBehavior.SetIsSelected(visual, false);
                 Canvas.SetLeft(visual, Math.Max(0, element.X));
                 Canvas.SetTop(visual, Math.Max(0, element.Y));

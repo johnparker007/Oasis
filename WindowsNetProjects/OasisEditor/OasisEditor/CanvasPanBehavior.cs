@@ -201,7 +201,8 @@ public static class CanvasPanBehavior
         element.MouseWheel += OnMouseWheel;
         element.LostMouseCapture += OnLostMouseCapture;
 
-        if (element.Parent is not UIElement inputHost)
+        var inputHost = FindInputHost(element);
+        if (inputHost is null)
         {
             return;
         }
@@ -232,6 +233,28 @@ public static class CanvasPanBehavior
         inputHost.PreviewMouseUp -= OnMouseUp;
         inputHost.PreviewMouseWheel -= OnMouseWheel;
         element.ClearValue(InputEventHostProperty);
+    }
+
+    private static UIElement? FindInputHost(FrameworkElement element)
+    {
+        UIElement? fallback = element.Parent as UIElement;
+        UIElement? bestClipHost = null;
+        DependencyObject? current = element;
+        while (current is not null)
+        {
+            current = System.Windows.Media.VisualTreeHelper.GetParent(current);
+            if (current is not UIElement uiElement)
+            {
+                continue;
+            }
+
+            if (uiElement is FrameworkElement { ClipToBounds: true })
+            {
+                bestClipHost = uiElement;
+            }
+        }
+
+        return bestClipHost ?? fallback;
     }
 
     private static void OnCanvasDataContextChanged(object sender, DependencyPropertyChangedEventArgs _)
