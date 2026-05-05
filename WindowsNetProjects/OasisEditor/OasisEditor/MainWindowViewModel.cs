@@ -43,6 +43,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly HierarchyPanelCommandService _hierarchyPanelCommands;
     private bool _isRefreshingHierarchy;
     private readonly MfmeImportService _mfmeImportService = new();
+    private readonly MameDownloadService _mameDownloadService = new();
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<EditorToolWindowId>? ToolWindowOpenRequested;
@@ -76,6 +77,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ClosePreferencesCommand = new RelayCommand(ClosePreferences);
         BrowseMameExecutableCommand = new RelayCommand(BrowseMameExecutable);
         ValidateMamePreferencesCommand = new RelayCommand(ValidateMamePreferences);
+        RefreshMameVersionsCommand = new RelayCommand(RefreshMameVersions);
+        DownloadMameVersionCommand = new RelayCommand(DownloadMameVersion);
+        OpenMameInstallRootCommand = new RelayCommand(OpenMameInstallRoot);
+        RemoveCachedMameVersionCommand = new RelayCommand(RemoveCachedMameVersion);
         CloseProjectSettingsCommand = new RelayCommand(CloseProjectSettings);
         CloseProjectCommand = new RelayCommand(CloseProject, CanCloseProject);
         ExitCommand = new RelayCommand(ExitApplication);
@@ -227,6 +232,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand ClosePreferencesCommand { get; }
     public ICommand BrowseMameExecutableCommand { get; }
     public ICommand ValidateMamePreferencesCommand { get; }
+    public ICommand RefreshMameVersionsCommand { get; }
+    public ICommand DownloadMameVersionCommand { get; }
+    public ICommand OpenMameInstallRootCommand { get; }
+    public ICommand RemoveCachedMameVersionCommand { get; }
     public ICommand CloseProjectSettingsCommand { get; }
     public ICommand ApplyInspectorSummaryCommand { get; }
     public ICommand CloseProjectCommand { get; }
@@ -862,6 +871,71 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
+
+    private async void RefreshMameVersions()
+    {
+        try
+        {
+            var versions = await _mameDownloadService.GetKnownVersionsAsync(CancellationToken.None);
+            AddOutputEntry($"Known MAME versions: {string.Join(", ", versions)}", OutputLogStatus.Info);
+        }
+        catch (Exception ex)
+        {
+            AddOutputEntry($"Failed to refresh MAME versions: {ex.Message}", OutputLogStatus.Warning);
+        }
+    }
+
+    private async void DownloadMameVersion()
+    {
+        try
+        {
+            ValidateMamePreferences();
+            if (MameValidationSummary.StartsWith("MAME preferences validation failed", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            var executablePath = await _mameDownloadService.DownloadAndExtractAsync(
+                MameReleaseSource,
+                MameVersion,
+                MameInstallRootDirectory,
+                new Progress<string>(message => AddOutputEntry(message, OutputLogStatus.Info)),
+                CancellationToken.None);
+            MameExecutablePath = executablePath;
+            AddOutputEntry($"MAME download completed. Executable: {executablePath}", OutputLogStatus.Info);
+            ValidateMamePreferences();
+        }
+        catch (Exception ex)
+        {
+            AddOutputEntry($"MAME download failed: {ex.Message}", OutputLogStatus.Warning);
+        }
+    }
+
+    private void OpenMameInstallRoot()
+    {
+        if (string.IsNullOrWhiteSpace(MameInstallRootDirectory) || !Directory.Exists(MameInstallRootDirectory))
+        {
+            AddOutputEntry("MAME install root directory does not exist.", OutputLogStatus.Warning);
+            return;
+        }
+
+        System.Diagnostics.Process.Start("explorer.exe", MameInstallRootDirectory);
+    }
+
+    private void RemoveCachedMameVersion()
+    {
+        try
+        {
+            var removed = _mameDownloadService.RemoveCachedVersion(MameInstallRootDirectory, MameVersion);
+            AddOutputEntry(removed
+                ? $"Removed cached MAME version {MameVersion}."
+                : $"No cached MAME version directory found for {MameVersion}.", removed ? OutputLogStatus.Info : OutputLogStatus.Warning);
+        }
+        catch (Exception ex)
+        {
+            AddOutputEntry($"Failed to remove cached MAME version: {ex.Message}", OutputLogStatus.Warning);
+        }
+    }
     private void SavePreferences()
     {
         _preferencesStore.Save(new EditorPreferences
