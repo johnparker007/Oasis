@@ -1,4 +1,6 @@
+using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Net.Http;
 
 namespace OasisEditor;
