@@ -18,6 +18,13 @@ public static class CanvasPanBehavior
             typeof(CanvasPanBehavior),
             new PropertyMetadata(false, OnIsEnabledChanged));
 
+    public static readonly DependencyProperty PanZoomTargetProperty =
+        DependencyProperty.RegisterAttached(
+            "PanZoomTarget",
+            typeof(FrameworkElement),
+            typeof(CanvasPanBehavior),
+            new PropertyMetadata(null));
+
     public static readonly DependencyProperty IsRectangleToolActiveProperty =
         DependencyProperty.RegisterAttached(
             "IsRectangleToolActive",
@@ -81,12 +88,16 @@ public static class CanvasPanBehavior
             typeof(CanvasPanBehavior),
             new PropertyMetadata(null));
 
-    private static readonly DependencyProperty InputEventHostProperty =
-        DependencyProperty.RegisterAttached(
-            "InputEventHost",
-            typeof(UIElement),
-            typeof(CanvasPanBehavior),
-            new PropertyMetadata(null));
+
+    public static FrameworkElement? GetPanZoomTarget(DependencyObject dependencyObject)
+    {
+        return (FrameworkElement?)dependencyObject.GetValue(PanZoomTargetProperty);
+    }
+
+    public static void SetPanZoomTarget(DependencyObject dependencyObject, FrameworkElement? value)
+    {
+        dependencyObject.SetValue(PanZoomTargetProperty, value);
+    }
 
     public static bool GetIsEnabled(DependencyObject dependencyObject)
     {
@@ -180,81 +191,26 @@ public static class CanvasPanBehavior
         {
             CanvasPanZoomBehavior.EnsureTransformGroup(element);
             ApplyViewportStateToCanvas(element);
-            AttachInputHandlers(element);
+            element.MouseDown += OnMouseDown;
+            element.MouseLeftButtonDown += OnMouseLeftButtonDown;
+            element.MouseMove += OnMouseMove;
+            element.MouseUp += OnMouseUp;
+            element.MouseWheel += OnMouseWheel;
+            element.LostMouseCapture += OnLostMouseCapture;
             element.DataContextChanged += OnCanvasDataContextChanged;
             AttachVisualStateSubscription(element);
         }
         else
         {
-            DetachInputHandlers(element);
+            element.MouseDown -= OnMouseDown;
+            element.MouseLeftButtonDown -= OnMouseLeftButtonDown;
+            element.MouseMove -= OnMouseMove;
+            element.MouseUp -= OnMouseUp;
+            element.MouseWheel -= OnMouseWheel;
+            element.LostMouseCapture -= OnLostMouseCapture;
             element.DataContextChanged -= OnCanvasDataContextChanged;
             DetachVisualStateSubscription(element);
         }
-    }
-
-    private static void AttachInputHandlers(FrameworkElement element)
-    {
-        element.MouseDown += OnMouseDown;
-        element.MouseLeftButtonDown += OnMouseLeftButtonDown;
-        element.MouseMove += OnMouseMove;
-        element.MouseUp += OnMouseUp;
-        element.MouseWheel += OnMouseWheel;
-        element.LostMouseCapture += OnLostMouseCapture;
-
-        var inputHost = FindInputHost(element);
-        if (inputHost is null)
-        {
-            return;
-        }
-
-        inputHost.PreviewMouseDown += OnMouseDown;
-        inputHost.PreviewMouseMove += OnMouseMove;
-        inputHost.PreviewMouseUp += OnMouseUp;
-        inputHost.PreviewMouseWheel += OnMouseWheel;
-        element.SetValue(InputEventHostProperty, inputHost);
-    }
-
-    private static void DetachInputHandlers(FrameworkElement element)
-    {
-        element.MouseDown -= OnMouseDown;
-        element.MouseLeftButtonDown -= OnMouseLeftButtonDown;
-        element.MouseMove -= OnMouseMove;
-        element.MouseUp -= OnMouseUp;
-        element.MouseWheel -= OnMouseWheel;
-        element.LostMouseCapture -= OnLostMouseCapture;
-
-        if (element.GetValue(InputEventHostProperty) is not UIElement inputHost)
-        {
-            return;
-        }
-
-        inputHost.PreviewMouseDown -= OnMouseDown;
-        inputHost.PreviewMouseMove -= OnMouseMove;
-        inputHost.PreviewMouseUp -= OnMouseUp;
-        inputHost.PreviewMouseWheel -= OnMouseWheel;
-        element.ClearValue(InputEventHostProperty);
-    }
-
-    private static UIElement? FindInputHost(FrameworkElement element)
-    {
-        UIElement? fallback = element.Parent as UIElement;
-        UIElement? bestClipHost = null;
-        DependencyObject? current = element;
-        while (current is not null)
-        {
-            current = System.Windows.Media.VisualTreeHelper.GetParent(current);
-            if (current is not UIElement uiElement)
-            {
-                continue;
-            }
-
-            if (uiElement is FrameworkElement { ClipToBounds: true })
-            {
-                bestClipHost = uiElement;
-            }
-        }
-
-        return bestClipHost ?? fallback;
     }
 
     private static void OnCanvasDataContextChanged(object sender, DependencyPropertyChangedEventArgs _)
@@ -550,51 +506,20 @@ public static class CanvasPanBehavior
 
     private static bool TryResolveCanvasElement(object sender, out FrameworkElement canvas)
     {
-        switch (sender)
+        if (sender is not FrameworkElement element)
         {
-            case FrameworkElement { DataContext: DocumentTabViewModel } element:
-                canvas = element;
-                return true;
-            case DependencyObject dependencyObject:
-                canvas = FindCanvasForSender(dependencyObject);
-                return canvas is not null;
-            default:
-                canvas = null!;
-                return false;
-        }
-    }
-
-    private static FrameworkElement? FindCanvasForSender(DependencyObject sender)
-    {
-        var matches = new List<Canvas>();
-        foreach (Window window in Application.Current.Windows)
-        {
-            foreach (var canvas in FindVisualChildren<Canvas>(window))
-            {
-                if (ReferenceEquals(canvas, sender))
-                {
-                    return canvas;
-                }
-
-                if (canvas.GetValue(InputEventHostProperty) is UIElement inputHost
-                    && ReferenceEquals(inputHost, sender))
-                {
-                    matches.Add(canvas);
-                }
-            }
+            canvas = null!;
+            return false;
         }
 
-        if (matches.Count == 0)
+        var target = GetPanZoomTarget(element);
+        if (target is not null)
         {
-            return null;
+            canvas = target;
+            return true;
         }
 
-        var visibleMatch = matches.FirstOrDefault(canvas => canvas.IsVisible && canvas.IsLoaded && canvas.IsHitTestVisible);
-        if (visibleMatch is not null)
-        {
-            return visibleMatch;
-        }
-
-        return matches[0];
+        canvas = element;
+        return true;
     }
 }

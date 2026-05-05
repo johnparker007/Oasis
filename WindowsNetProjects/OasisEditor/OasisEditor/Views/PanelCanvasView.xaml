@@ -97,17 +97,19 @@
                                     Visibility="Collapsed">
                                 <Grid MinHeight="280"
                                       ClipToBounds="True"
-                                      Background="{DynamicResource PanelBackgroundBrush}">
+                                      Background="{DynamicResource PanelBackgroundBrush}"
+                                      local:CanvasPanBehavior.IsEnabled="True"
+                                      local:CanvasPanBehavior.IsRectangleToolActive="{Binding IsChecked, ElementName=RectangleToolToggle}"
+                                      local:CanvasPanBehavior.IsImageToolActive="{Binding IsChecked, ElementName=ImageToolToggle}"
+                                      local:CanvasPanBehavior.PanZoomTarget="{Binding ElementName=PanelDocumentCanvas}">
                                     <Border BorderBrush="{DynamicResource BorderSubtleBrush}"
                                             BorderThickness="1"
                                             Background="{DynamicResource PanelBackgroundBrush}">
-                                        <Canvas Width="1400"
+                                        <Canvas x:Name="PanelDocumentCanvas"
+                                                Width="1400"
                                                 Height="900"
                                                 Cursor="SizeAll"
                                                 Focusable="True"
-                                                local:CanvasPanBehavior.IsEnabled="True"
-                                                local:CanvasPanBehavior.IsRectangleToolActive="{Binding IsChecked, ElementName=RectangleToolToggle}"
-                                                local:CanvasPanBehavior.IsImageToolActive="{Binding IsChecked, ElementName=ImageToolToggle}"
                                                 local:CanvasPanBehavior.PanelLayoutJson="{Binding PanelLayoutJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                 local:CanvasPanBehavior.SelectedPanelSelection="{Binding HierarchySelectedPanelSelection, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                 local:CanvasPanBehavior.PanelZoom="{Binding PanelZoom, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
