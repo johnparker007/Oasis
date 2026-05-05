@@ -19,6 +19,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
@@ -62,6 +63,13 @@
         <StackPanel Grid.Row="11" Margin="0,12,0,0" Orientation="Horizontal">
             <Button Padding="10,4" Content="Validate Paths" Command="{Binding ValidateMamePreferencesCommand}" />
             <TextBlock Margin="12,4,0,0" Text="{Binding MameValidationSummary}" TextWrapping="Wrap" />
+        </StackPanel>
+
+        <StackPanel Grid.Row="12" Margin="0,8,0,0" Orientation="Horizontal">
+            <Button Padding="10,4" Margin="0,0,8,0" Content="Refresh Versions" Command="{Binding RefreshMameVersionsCommand}" />
+            <Button Padding="10,4" Margin="0,0,8,0" Content="Download Selected" Command="{Binding DownloadMameVersionCommand}" />
+            <Button Padding="10,4" Margin="0,0,8,0" Content="Open Install Folder" Command="{Binding OpenMameInstallRootCommand}" />
+            <Button Padding="10,4" Content="Remove Cached Version" Command="{Binding RemoveCachedMameVersionCommand}" />
         </StackPanel>
     </Grid>
 </UserControl>

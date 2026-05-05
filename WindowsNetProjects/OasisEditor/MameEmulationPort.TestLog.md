@@ -1,21 +1,23 @@
 # MAME Emulation Port Test Log
 
-## Phase B (Preferences model and UI) - Codex notes
+## Phase C (Download/cache service) - Codex notes
 
 Date: 2026-05-05
 
 ### Manual test steps for maintainer
 
 1. Launch `OasisEditor` and open the Preferences tool window.
-2. Confirm new MAME fields are visible: Version, Executable Path (with Browse), Install Root, Lua Plugin Directory, and Validate Paths status.
-3. Click **Browse...** and select a local `mame.exe`.
-4. Click **Validate Paths**.
-5. Confirm validation feedback appears in the preferences UI and output log.
-6. Set an invalid executable path and invalid plugin directory, click **Validate Paths**, and confirm clear warning output without crashes.
-7. Close and restart the editor; verify values entered in the MAME fields persist.
+2. Set **MAME Install Root** to a writable local directory.
+3. Click **Refresh Versions** and confirm known versions are written to output log.
+4. Set **MAME Version** (for example `0267`) and verify **MAME Release Source** points to the MAME GitHub releases base URL.
+5. Click **Download Selected** and verify progress log entries for download and extraction appear.
+6. Confirm `mame.exe` is extracted under `<install-root>/mame####/mame.exe`, and that **MAME Executable** is auto-filled.
+7. Click **Open Install Folder** and verify Explorer opens at install root.
+8. Click **Remove Cached Version** and verify the version folder is deleted and a corresponding log entry is produced.
+9. Try download with an invalid URL or unwritable install root and confirm failure is logged clearly without editor crash.
 
 ### Untested assumptions
 
-- Preferences tool window uses `Views/PreferencesView.xaml` bindings from `MainWindowViewModel` in all runtime entry paths.
-- Output log warning/info statuses for validation are surfaced as expected by existing output infrastructure.
-- Existing preferences JSON files without a `Mame` object continue to load with defaults via model initialization.
+- Download archive format `mame####b_64bit.zip` / `mame####b_x64.zip` remains valid for target versions and GitHub release layout.
+- `ZipFile.ExtractToDirectory` can extract archives produced by MAME releases without additional staging logic.
+- `explorer.exe` launch is acceptable for target Windows environments.
