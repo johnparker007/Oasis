@@ -1,10 +1,15 @@
+using AvalonDock.Controls;
 using AvalonDock.Layout;
+using System.ComponentModel;
 using System.Windows.Controls;
 
 namespace OasisEditor.Views;
 
 public partial class EditorShellView : UserControl
 {
+    private bool _preferencesHideOnCloseConfigured;
+    private bool _projectSettingsHideOnCloseConfigured;
+
     public EditorShellView()
     {
         InitializeComponent();
@@ -21,15 +26,30 @@ public partial class EditorShellView : UserControl
             return;
         }
 
-        if (target.IsHidden)
+        EnsureToolWindowHasParent(target);
+
+        if (target.IsHidden || !target.IsVisible)
         {
             target.Show();
+        }
+
+        if (toolWindowId is EditorToolWindowId.Preferences or EditorToolWindowId.ProjectSettings)
+        {
             target.Float();
         }
 
-        target.Show();
         target.IsSelected = true;
         target.IsActive = true;
+    }
+
+    private void EnsureToolWindowHasParent(LayoutAnchorable target)
+    {
+        if (target.Parent is not null)
+        {
+            return;
+        }
+
+        target.AddToLayout(DockingManager, AnchorableShowStrategy.Right);
     }
 
     public void HideToolWindow(EditorToolWindowId toolWindowId)
@@ -41,13 +61,24 @@ public partial class EditorShellView : UserControl
     private LayoutAnchorable? FindToolWindow(EditorToolWindowId toolWindowId)
     {
         var contentId = toolWindowId.ToString();
-        return DockingManager.Layout.Descendents()
+        var fromLayout = DockingManager.Layout.Descendents()
+            .OfType<LayoutAnchorable>()
+            .FirstOrDefault(anchorable => string.Equals(anchorable.ContentId, contentId, StringComparison.Ordinal));
+        if (fromLayout is not null)
+        {
+            return fromLayout;
+        }
+
+        return DockingManager.Layout.Hidden
             .OfType<LayoutAnchorable>()
             .FirstOrDefault(anchorable => string.Equals(anchorable.ContentId, contentId, StringComparison.Ordinal));
     }
 
     private void OnLoaded(object sender, System.Windows.RoutedEventArgs e)
     {
+        ConfigureHideOnClose(EditorToolWindowId.Preferences);
+        ConfigureHideOnClose(EditorToolWindowId.ProjectSettings);
+
         if (DataContext is not MainWindowViewModel viewModel)
         {
             return;
@@ -62,6 +93,47 @@ public partial class EditorShellView : UserControl
                 ActivateSelectedDocument(viewModel.SelectedDocument);
             }
         };
+    }
+
+    private void ConfigureHideOnClose(EditorToolWindowId toolWindowId)
+    {
+        var target = FindToolWindow(toolWindowId);
+        if (target is null)
+        {
+            return;
+        }
+
+        if (toolWindowId == EditorToolWindowId.Preferences && _preferencesHideOnCloseConfigured)
+        {
+            return;
+        }
+
+        if (toolWindowId == EditorToolWindowId.ProjectSettings && _projectSettingsHideOnCloseConfigured)
+        {
+            return;
+        }
+
+        target.Closing += OnToolWindowClosingHideInstead;
+
+        if (toolWindowId == EditorToolWindowId.Preferences)
+        {
+            _preferencesHideOnCloseConfigured = true;
+        }
+        else if (toolWindowId == EditorToolWindowId.ProjectSettings)
+        {
+            _projectSettingsHideOnCloseConfigured = true;
+        }
+    }
+
+    private static void OnToolWindowClosingHideInstead(object? sender, CancelEventArgs e)
+    {
+        if (sender is not LayoutAnchorable target)
+        {
+            return;
+        }
+
+        e.Cancel = true;
+        target.Hide();
     }
 
     private void RebuildDocuments(MainWindowViewModel viewModel)
