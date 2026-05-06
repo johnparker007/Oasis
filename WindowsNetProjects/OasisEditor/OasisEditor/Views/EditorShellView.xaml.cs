@@ -1,4 +1,3 @@
-using AvalonDock.Controls;
 using AvalonDock.Layout;
 using System.Windows.Controls;
 
@@ -22,31 +21,18 @@ public partial class EditorShellView : UserControl
             return;
         }
 
-        EnsureToolWindowIsInLayout(target, toolWindowId);
-
         if (target.IsHidden || !target.IsVisible)
         {
             target.Show();
         }
 
-        target.IsSelected = true;
-        target.IsActive = true;
-    }
-
-    private void EnsureToolWindowIsInLayout(LayoutAnchorable target, EditorToolWindowId toolWindowId)
-    {
-        if (target.Parent is not null)
+        if (toolWindowId is EditorToolWindowId.Preferences or EditorToolWindowId.ProjectSettings)
         {
-            return;
+            target.Float();
         }
 
-        var strategy = toolWindowId switch
-        {
-            EditorToolWindowId.Output => AnchorableShowStrategy.Bottom,
-            _ => AnchorableShowStrategy.Right
-        };
-
-        target.AddToLayout(DockingManager, strategy);
+        target.IsSelected = true;
+        target.IsActive = true;
     }
 
     public void HideToolWindow(EditorToolWindowId toolWindowId)
@@ -58,7 +44,15 @@ public partial class EditorShellView : UserControl
     private LayoutAnchorable? FindToolWindow(EditorToolWindowId toolWindowId)
     {
         var contentId = toolWindowId.ToString();
-        return DockingManager.Layout.Descendents()
+        var fromLayout = DockingManager.Layout.Descendents()
+            .OfType<LayoutAnchorable>()
+            .FirstOrDefault(anchorable => string.Equals(anchorable.ContentId, contentId, StringComparison.Ordinal));
+        if (fromLayout is not null)
+        {
+            return fromLayout;
+        }
+
+        return DockingManager.Layout.Hidden
             .OfType<LayoutAnchorable>()
             .FirstOrDefault(anchorable => string.Equals(anchorable.ContentId, contentId, StringComparison.Ordinal));
     }
