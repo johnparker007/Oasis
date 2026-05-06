@@ -7,6 +7,9 @@ namespace OasisEditor.Views;
 
 public partial class EditorShellView : UserControl
 {
+    private bool _preferencesHideOnCloseConfigured;
+    private bool _projectSettingsHideOnCloseConfigured;
+
     public EditorShellView()
     {
         InitializeComponent();
@@ -95,13 +98,31 @@ public partial class EditorShellView : UserControl
     private void ConfigureHideOnClose(EditorToolWindowId toolWindowId)
     {
         var target = FindToolWindow(toolWindowId);
-        if (target is null || target.Tag is string)
+        if (target is null)
+        {
+            return;
+        }
+
+        if (toolWindowId == EditorToolWindowId.Preferences && _preferencesHideOnCloseConfigured)
+        {
+            return;
+        }
+
+        if (toolWindowId == EditorToolWindowId.ProjectSettings && _projectSettingsHideOnCloseConfigured)
         {
             return;
         }
 
         target.Closing += OnToolWindowClosingHideInstead;
-        target.Tag = "HideOnCloseConfigured";
+
+        if (toolWindowId == EditorToolWindowId.Preferences)
+        {
+            _preferencesHideOnCloseConfigured = true;
+        }
+        else if (toolWindowId == EditorToolWindowId.ProjectSettings)
+        {
+            _projectSettingsHideOnCloseConfigured = true;
+        }
     }
 
     private static void OnToolWindowClosingHideInstead(object? sender, CancelEventArgs e)
