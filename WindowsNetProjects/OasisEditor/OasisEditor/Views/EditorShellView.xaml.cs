@@ -1,3 +1,4 @@
+using AvalonDock.Controls;
 using AvalonDock.Layout;
 using System.Windows.Controls;
 
@@ -21,6 +22,8 @@ public partial class EditorShellView : UserControl
             return;
         }
 
+        EnsureToolWindowIsInLayout(target, toolWindowId);
+
         if (target.IsHidden || !target.IsVisible)
         {
             target.Show();
@@ -28,6 +31,22 @@ public partial class EditorShellView : UserControl
 
         target.IsSelected = true;
         target.IsActive = true;
+    }
+
+    private void EnsureToolWindowIsInLayout(LayoutAnchorable target, EditorToolWindowId toolWindowId)
+    {
+        if (target.Parent is not null)
+        {
+            return;
+        }
+
+        var strategy = toolWindowId switch
+        {
+            EditorToolWindowId.Output => AnchorableShowStrategy.Bottom,
+            _ => AnchorableShowStrategy.Right
+        };
+
+        target.AddToLayout(DockingManager, strategy);
     }
 
     public void HideToolWindow(EditorToolWindowId toolWindowId)
