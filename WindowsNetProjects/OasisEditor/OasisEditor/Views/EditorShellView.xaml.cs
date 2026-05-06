@@ -1,5 +1,6 @@
 using AvalonDock.Controls;
 using AvalonDock.Layout;
+using System.ComponentModel;
 using System.Windows.Controls;
 
 namespace OasisEditor.Views;
@@ -72,6 +73,9 @@ public partial class EditorShellView : UserControl
 
     private void OnLoaded(object sender, System.Windows.RoutedEventArgs e)
     {
+        ConfigureHideOnClose(EditorToolWindowId.Preferences);
+        ConfigureHideOnClose(EditorToolWindowId.ProjectSettings);
+
         if (DataContext is not MainWindowViewModel viewModel)
         {
             return;
@@ -86,6 +90,29 @@ public partial class EditorShellView : UserControl
                 ActivateSelectedDocument(viewModel.SelectedDocument);
             }
         };
+    }
+
+    private void ConfigureHideOnClose(EditorToolWindowId toolWindowId)
+    {
+        var target = FindToolWindow(toolWindowId);
+        if (target is null || target.Tag is string)
+        {
+            return;
+        }
+
+        target.Closing += OnToolWindowClosingHideInstead;
+        target.Tag = "HideOnCloseConfigured";
+    }
+
+    private static void OnToolWindowClosingHideInstead(object? sender, CancelEventArgs e)
+    {
+        if (sender is not LayoutAnchorable target)
+        {
+            return;
+        }
+
+        e.Cancel = true;
+        target.Hide();
     }
 
     private void RebuildDocuments(MainWindowViewModel viewModel)
