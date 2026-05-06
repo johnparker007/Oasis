@@ -21,13 +21,11 @@ public partial class EditorShellView : UserControl
             return;
         }
 
-        if (target.IsHidden)
+        if (target.IsHidden || !target.IsVisible)
         {
             target.Show();
-            target.Float();
         }
 
-        target.Show();
         target.IsSelected = true;
         target.IsActive = true;
     }
