@@ -45,6 +45,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private bool _isRefreshingHierarchy;
     private readonly MfmeImportService _mfmeImportService = new();
     private readonly MameDownloadService _mameDownloadService = new();
+    private readonly MamePluginAssetValidator _mamePluginAssetValidator = new();
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<EditorToolWindowId>? ToolWindowOpenRequested;
@@ -120,7 +121,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _mameExecutablePath = preferences.Mame.ExecutablePath;
         _mameInstallRootDirectory = preferences.Mame.InstallRootDirectory;
         _mameReleaseSource = preferences.Mame.ReleaseSource;
-        _mameLuaPluginPath = preferences.Mame.LuaPluginPath;
+        _mameLuaPluginPath = string.IsNullOrWhiteSpace(preferences.Mame.LuaPluginPath)
+            ? GetDefaultLuaPluginPath()
+            : preferences.Mame.LuaPluginPath;
         _mameCommandLineOverrides = preferences.Mame.CommandLineOverrides;
 
         RecentProjects = new ObservableCollection<string>(_recentProjectsStore.Load());
@@ -874,7 +877,17 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             errors.Add("MAME install root directory is missing or does not exist.");
 
         if (string.IsNullOrWhiteSpace(MameLuaPluginPath) || !Directory.Exists(MameLuaPluginPath))
+        {
             errors.Add("Lua plugin directory is missing or does not exist.");
+        }
+        else
+        {
+            var missingPluginFiles = _mamePluginAssetValidator.GetMissingFiles(MameLuaPluginPath);
+            if (missingPluginFiles.Count > 0)
+            {
+                errors.Add($"Lua plugin directory is missing required files: {string.Join(", ", missingPluginFiles)}.");
+            }
+        }
 
         if (string.IsNullOrWhiteSpace(MameVersion) || MameVersion.Any(c => !char.IsDigit(c)))
             errors.Add("MAME version must be numeric (example: 0267).");
@@ -891,6 +904,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
+
+    private static string GetDefaultLuaPluginPath()
+    {
+        var appBaseDirectory = AppContext.BaseDirectory;
+        var candidate = Path.GetFullPath(Path.Combine(appBaseDirectory, "..", "..", "..", "..", "..", "UnityProjects", "LayoutEditor_ExternalAssets", "Windows", "MameLuaPlugins", "oasis"));
+        return Directory.Exists(candidate) ? candidate : string.Empty;
+    }
 
     private async void RefreshMameVersions()
     {
