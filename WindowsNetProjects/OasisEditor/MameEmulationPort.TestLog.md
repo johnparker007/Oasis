@@ -21,3 +21,21 @@ Date: 2026-05-05
 - Download archive format `mame####b_64bit.zip` / `mame####b_x64.zip` remains valid for target versions and GitHub release layout.
 - `ZipFile.ExtractToDirectory` can extract archives produced by MAME releases without additional staging logic.
 - `explorer.exe` launch is acceptable for target Windows environments.
+
+## Phase E (Lua plugin asset staging validation) - Codex notes
+
+Date: 2026-05-06
+
+### Manual test steps for maintainer
+
+1. Launch `OasisEditor` and open the Preferences pane.
+2. Leave **Lua Plugin Directory** empty, click **Validate Paths**, and confirm validation reports the plugin directory as missing.
+3. Set **Lua Plugin Directory** to a folder that exists but does not contain the full `oasis` plugin tree, click **Validate Paths**, and confirm validation reports specific missing files.
+4. Set **Lua Plugin Directory** to a complete `oasis` plugin directory and click **Validate Paths**.
+5. Confirm validation passes and output log includes the success message.
+6. Restart editor and verify that if no plugin path was explicitly saved, the app auto-detects the repo default path `UnityProjects/LayoutEditor_ExternalAssets/Windows/MameLuaPlugins/oasis` when it exists.
+
+### Untested assumptions
+
+- Relative default-path probing from `AppContext.BaseDirectory` to the repo root remains stable for maintainer build/debug layouts.
+- Required file list is sufficient for startup command support currently expected by the editor (excluding optional `snapshot_pixels`).
