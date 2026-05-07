@@ -13,6 +13,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
@@ -34,7 +35,7 @@
                   ItemsSource="{Binding ThemePreferences}"
                   SelectedItem="{Binding SelectedThemePreference, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
-        <StackPanel Grid.Row="3"
+        <StackPanel Grid.Row="4"
                     Margin="0,16,0,0"
                     Orientation="Horizontal"
                     HorizontalAlignment="Right">
