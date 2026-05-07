@@ -79,12 +79,31 @@
                 <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}" />
                 <Setter Property="Padding" Value="8,4" />
+                <Setter Property="TextElement.Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                <Style.Resources>
+                    <SolidColorBrush x:Key="{x:Static SystemColors.WindowBrushKey}" Color="{DynamicResource PanelBackgroundColor}" />
+                    <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="{DynamicResource PanelBackgroundColor}" />
+                    <SolidColorBrush x:Key="{x:Static SystemColors.WindowTextBrushKey}" Color="{DynamicResource TextPrimaryColor}" />
+                    <SolidColorBrush x:Key="{x:Static SystemColors.ControlTextBrushKey}" Color="{DynamicResource TextPrimaryColor}" />
+                    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="{DynamicResource SelectionColor}" />
+                    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="{DynamicResource TextPrimaryColor}" />
+                </Style.Resources>
             </Style>
 
             <Style TargetType="ComboBoxItem">
                 <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
                 <Setter Property="Background" Value="Transparent" />
                 <Setter Property="Padding" Value="8,4" />
+                <Style.Triggers>
+                    <Trigger Property="IsHighlighted" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource ControlHoverBrush}" />
+                        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                    </Trigger>
+                    <Trigger Property="IsSelected" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource SelectionBrush}" />
+                        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                    </Trigger>
+                </Style.Triggers>
             </Style>
 
             <Style TargetType="TabControl">
