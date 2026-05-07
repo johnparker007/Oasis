@@ -41,6 +41,38 @@ public sealed class ApplicationThemeService : IApplicationThemeService
         {
             application.Resources[key] = new SolidColorBrush(color);
         }
+
+        ApplyComboBoxPaletteResources(application, palette);
+    }
+
+    private static void ApplyComboBoxPaletteResources(Application application, IReadOnlyDictionary<string, Color> palette)
+    {
+        var panelBackground = palette["PanelBackgroundBrush"];
+        var textPrimary = palette["TextPrimaryBrush"];
+        var selection = palette["SelectionBrush"];
+        var borderSubtle = palette["BorderSubtleBrush"];
+        var borderStrong = palette["BorderStrongBrush"];
+        var hover = palette["ControlHoverBrush"];
+
+        application.Resources[SystemColors.WindowBrushKey] = new SolidColorBrush(panelBackground);
+        application.Resources[SystemColors.ControlBrushKey] = new SolidColorBrush(panelBackground);
+        application.Resources[SystemColors.WindowTextBrushKey] = new SolidColorBrush(textPrimary);
+        application.Resources[SystemColors.ControlTextBrushKey] = new SolidColorBrush(textPrimary);
+        application.Resources[SystemColors.HighlightBrushKey] = new SolidColorBrush(selection);
+        application.Resources[SystemColors.HighlightTextBrushKey] = new SolidColorBrush(textPrimary);
+
+        application.Resources["ComboBox.Static.Background"] = new SolidColorBrush(panelBackground);
+        application.Resources["ComboBox.Static.Foreground"] = new SolidColorBrush(textPrimary);
+        application.Resources["ComboBox.Static.Border"] = new SolidColorBrush(borderSubtle);
+        application.Resources["ComboBox.Static.Editable.Background"] = new SolidColorBrush(panelBackground);
+        application.Resources["ComboBox.Static.Editable.Border"] = new SolidColorBrush(borderSubtle);
+        application.Resources["ComboBox.MouseOver.Background"] = new SolidColorBrush(hover);
+        application.Resources["ComboBox.MouseOver.Border"] = new SolidColorBrush(borderStrong);
+        application.Resources["ComboBox.Focused.Background"] = new SolidColorBrush(panelBackground);
+        application.Resources["ComboBox.Focused.Border"] = new SolidColorBrush(borderStrong);
+        application.Resources["ComboBox.DropDown.Background"] = new SolidColorBrush(panelBackground);
+        application.Resources["ComboBox.DropDown.Border"] = new SolidColorBrush(borderSubtle);
+        application.Resources["ComboBox.DropDown.Glyph"] = new SolidColorBrush(textPrimary);
     }
 
     private static ThemePreference ResolveEffectiveTheme(ThemePreference preference)
