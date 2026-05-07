@@ -103,12 +103,18 @@
                                               Margin="0,0,10,0"
                                               Fill="{TemplateBinding Foreground}"
                                               Data="M 0 0 L 4 4 L 8 0 Z" />
+                                        <ToggleButton Background="Transparent"
+                                                      BorderThickness="0"
+                                                      Focusable="False"
+                                                      IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                                      ClickMode="Press" />
                                     </Grid>
                                 </Border>
                                 <Popup x:Name="PART_Popup"
                                        AllowsTransparency="False"
                                        IsOpen="{TemplateBinding IsDropDownOpen}"
                                        Placement="Bottom"
+                                       PlacementTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"
                                        PopupAnimation="Slide">
                                     <Border Background="{DynamicResource PanelBackgroundBrush}"
                                             BorderBrush="{DynamicResource BorderSubtleBrush}"
