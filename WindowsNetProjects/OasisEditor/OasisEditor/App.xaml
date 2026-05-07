@@ -51,6 +51,13 @@
                 <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}" />
                 <Setter Property="Padding" Value="8,4" />
                 <Setter Property="TextElement.Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                <Setter Property="ItemTemplate">
+                    <Setter.Value>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                        </DataTemplate>
+                    </Setter.Value>
+                </Setter>
             </Style>
 
             <Style TargetType="ComboBoxItem">
