@@ -115,20 +115,23 @@
                 BorderBrush="{DynamicResource BorderSubtleBrush}"
                 BorderThickness="1"
                 CornerRadius="4">
-            <StackPanel>
-                <TextBlock FontWeight="SemiBold"
-                           FontSize="14"
-                           Text="{Binding InspectorTitle}" />
-                <Button Margin="0,8,0,0"
-                        HorizontalAlignment="Left"
-                        Content="Test"
-                        Visibility="{Binding ShowLampTestButton, Converter={StaticResource BoolToVisibility}}"
-                        PreviewMouseLeftButtonDown="OnLampTestMouseDown"
-                        PreviewMouseLeftButtonUp="OnLampTestMouseUp"
-                        MouseLeave="OnLampTestMouseLeave" />
-                <ItemsControl Margin="0,10,0,0"
-                              ItemsSource="{Binding InspectorPropertyRows}" />
-            </StackPanel>
+            <ScrollViewer VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+                <StackPanel>
+                    <TextBlock FontWeight="SemiBold"
+                               FontSize="14"
+                               Text="{Binding InspectorTitle}" />
+                    <Button Margin="0,8,0,0"
+                            HorizontalAlignment="Left"
+                            Content="Test"
+                            Visibility="{Binding ShowLampTestButton, Converter={StaticResource BoolToVisibility}}"
+                            PreviewMouseLeftButtonDown="OnLampTestMouseDown"
+                            PreviewMouseLeftButtonUp="OnLampTestMouseUp"
+                            MouseLeave="OnLampTestMouseLeave" />
+                    <ItemsControl Margin="0,10,0,0"
+                                  ItemsSource="{Binding InspectorPropertyRows}" />
+                </StackPanel>
+            </ScrollViewer>
         </Border>
     </Grid>
 </UserControl>
