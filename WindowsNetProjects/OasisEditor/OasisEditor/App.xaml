@@ -40,7 +40,7 @@
 
             <Style TargetType="ListBoxItem">
                 <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
-                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="Background" Value="{DynamicResource PanelBackgroundBrush}" />
                 <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                 <Setter Property="Padding" Value="6,4" />
                 <Setter Property="Template">
@@ -81,18 +81,31 @@
                 <Setter Property="Padding" Value="8,4" />
                 <Setter Property="TextElement.Foreground" Value="{DynamicResource TextPrimaryBrush}" />
                 <Style.Resources>
-                    <SolidColorBrush x:Key="{x:Static SystemColors.WindowBrushKey}" Color="{DynamicResource PanelBackgroundColor}" />
-                    <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="{DynamicResource PanelBackgroundColor}" />
-                    <SolidColorBrush x:Key="{x:Static SystemColors.WindowTextBrushKey}" Color="{DynamicResource TextPrimaryColor}" />
-                    <SolidColorBrush x:Key="{x:Static SystemColors.ControlTextBrushKey}" Color="{DynamicResource TextPrimaryColor}" />
-                    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="{DynamicResource SelectionColor}" />
-                    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="{DynamicResource TextPrimaryColor}" />
+                    <StaticResource x:Key="{x:Static SystemColors.WindowBrushKey}" ResourceKey="PanelBackgroundBrush" />
+                    <StaticResource x:Key="{x:Static SystemColors.ControlBrushKey}" ResourceKey="PanelBackgroundBrush" />
+                    <StaticResource x:Key="{x:Static SystemColors.WindowTextBrushKey}" ResourceKey="TextPrimaryBrush" />
+                    <StaticResource x:Key="{x:Static SystemColors.ControlTextBrushKey}" ResourceKey="TextPrimaryBrush" />
+                    <StaticResource x:Key="{x:Static SystemColors.HighlightBrushKey}" ResourceKey="SelectionBrush" />
+                    <StaticResource x:Key="{x:Static SystemColors.HighlightTextBrushKey}" ResourceKey="TextPrimaryBrush" />
+
+                    <StaticResource x:Key="ComboBox.Static.Background" ResourceKey="PanelBackgroundBrush" />
+                    <StaticResource x:Key="ComboBox.Static.Foreground" ResourceKey="TextPrimaryBrush" />
+                    <StaticResource x:Key="ComboBox.Static.Border" ResourceKey="BorderSubtleBrush" />
+                    <StaticResource x:Key="ComboBox.Static.Editable.Background" ResourceKey="PanelBackgroundBrush" />
+                    <StaticResource x:Key="ComboBox.Static.Editable.Border" ResourceKey="BorderSubtleBrush" />
+                    <StaticResource x:Key="ComboBox.MouseOver.Background" ResourceKey="ControlHoverBrush" />
+                    <StaticResource x:Key="ComboBox.MouseOver.Border" ResourceKey="BorderStrongBrush" />
+                    <StaticResource x:Key="ComboBox.Focused.Background" ResourceKey="PanelBackgroundBrush" />
+                    <StaticResource x:Key="ComboBox.Focused.Border" ResourceKey="BorderStrongBrush" />
+                    <StaticResource x:Key="ComboBox.DropDown.Background" ResourceKey="PanelBackgroundBrush" />
+                    <StaticResource x:Key="ComboBox.DropDown.Border" ResourceKey="BorderSubtleBrush" />
+                    <StaticResource x:Key="ComboBox.DropDown.Glyph" ResourceKey="TextPrimaryBrush" />
                 </Style.Resources>
             </Style>
 
             <Style TargetType="ComboBoxItem">
                 <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
-                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="Background" Value="{DynamicResource PanelBackgroundBrush}" />
                 <Setter Property="Padding" Value="8,4" />
                 <Style.Triggers>
                     <Trigger Property="IsHighlighted" Value="True">
