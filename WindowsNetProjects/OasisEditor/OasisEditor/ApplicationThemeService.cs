@@ -53,6 +53,7 @@ public sealed class ApplicationThemeService : IApplicationThemeService
         var borderSubtle = palette["BorderSubtleBrush"];
         var borderStrong = palette["BorderStrongBrush"];
         var hover = palette["ControlHoverBrush"];
+        var textMuted = palette["TextMutedBrush"];
 
         application.Resources[SystemColors.WindowBrushKey] = new SolidColorBrush(panelBackground);
         application.Resources[SystemColors.ControlBrushKey] = new SolidColorBrush(panelBackground);
@@ -65,11 +66,15 @@ public sealed class ApplicationThemeService : IApplicationThemeService
         application.Resources["ComboBox.Static.Foreground"] = new SolidColorBrush(textPrimary);
         application.Resources["ComboBox.Static.Border"] = new SolidColorBrush(borderSubtle);
         application.Resources["ComboBox.Static.Editable.Background"] = new SolidColorBrush(panelBackground);
+        application.Resources["ComboBox.Static.Editable.Foreground"] = new SolidColorBrush(textPrimary);
         application.Resources["ComboBox.Static.Editable.Border"] = new SolidColorBrush(borderSubtle);
         application.Resources["ComboBox.MouseOver.Background"] = new SolidColorBrush(hover);
+        application.Resources["ComboBox.MouseOver.Foreground"] = new SolidColorBrush(textPrimary);
         application.Resources["ComboBox.MouseOver.Border"] = new SolidColorBrush(borderStrong);
         application.Resources["ComboBox.Focused.Background"] = new SolidColorBrush(panelBackground);
+        application.Resources["ComboBox.Focused.Foreground"] = new SolidColorBrush(textPrimary);
         application.Resources["ComboBox.Focused.Border"] = new SolidColorBrush(borderStrong);
+        application.Resources["ComboBox.Disabled.Foreground"] = new SolidColorBrush(textMuted);
         application.Resources["ComboBox.DropDown.Background"] = new SolidColorBrush(panelBackground);
         application.Resources["ComboBox.DropDown.Border"] = new SolidColorBrush(borderSubtle);
         application.Resources["ComboBox.DropDown.Glyph"] = new SolidColorBrush(textPrimary);
