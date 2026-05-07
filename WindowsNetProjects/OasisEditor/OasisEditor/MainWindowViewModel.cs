@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -706,7 +707,18 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         try
         {
-            OpenDocumentFromPath(asset.FullPath);
+            if (ShouldOpenAssetInEditor(asset.FullPath))
+            {
+                OpenDocumentFromPath(asset.FullPath);
+                return;
+            }
+
+            Process.Start(new ProcessStartInfo(asset.FullPath)
+            {
+                UseShellExecute = true
+            });
+            StatusMessage = $"Opened external asset: {asset.DisplayPath}";
+            AddOutputEntry($"Opened asset via Windows association: {asset.FullPath}", OutputLogStatus.Info);
         }
         catch (Exception ex)
         {
@@ -714,6 +726,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             AddOutputEntry($"Open asset failed: {ex.Message}", OutputLogStatus.Error);
             MessageBox.Show(ex.Message, "Open Asset Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
+    }
+
+    private static bool ShouldOpenAssetInEditor(string path)
+    {
+        var extension = Path.GetExtension(path);
+        return string.Equals(extension, ".panel2d", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(extension, ".cabinet3d", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(extension, ".machine", StringComparison.OrdinalIgnoreCase);
     }
 
     private void OpenDocumentFromPath(string path)
