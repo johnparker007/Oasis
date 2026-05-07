@@ -81,25 +81,25 @@
                 <Setter Property="Padding" Value="8,4" />
                 <Setter Property="TextElement.Foreground" Value="{DynamicResource TextPrimaryBrush}" />
                 <Style.Resources>
-                    <StaticResource x:Key="{x:Static SystemColors.WindowBrushKey}" ResourceKey="PanelBackgroundBrush" />
-                    <StaticResource x:Key="{x:Static SystemColors.ControlBrushKey}" ResourceKey="PanelBackgroundBrush" />
-                    <StaticResource x:Key="{x:Static SystemColors.WindowTextBrushKey}" ResourceKey="TextPrimaryBrush" />
-                    <StaticResource x:Key="{x:Static SystemColors.ControlTextBrushKey}" ResourceKey="TextPrimaryBrush" />
-                    <StaticResource x:Key="{x:Static SystemColors.HighlightBrushKey}" ResourceKey="SelectionBrush" />
-                    <StaticResource x:Key="{x:Static SystemColors.HighlightTextBrushKey}" ResourceKey="TextPrimaryBrush" />
+                    <SolidColorBrush x:Key="{x:Static SystemColors.WindowBrushKey}" Color="#FF2A2D31" />
+                    <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#FF2A2D31" />
+                    <SolidColorBrush x:Key="{x:Static SystemColors.WindowTextBrushKey}" Color="#FFF4F4F4" />
+                    <SolidColorBrush x:Key="{x:Static SystemColors.ControlTextBrushKey}" Color="#FFF4F4F4" />
+                    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#FF555A62" />
+                    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="#FFF4F4F4" />
 
-                    <StaticResource x:Key="ComboBox.Static.Background" ResourceKey="PanelBackgroundBrush" />
-                    <StaticResource x:Key="ComboBox.Static.Foreground" ResourceKey="TextPrimaryBrush" />
-                    <StaticResource x:Key="ComboBox.Static.Border" ResourceKey="BorderSubtleBrush" />
-                    <StaticResource x:Key="ComboBox.Static.Editable.Background" ResourceKey="PanelBackgroundBrush" />
-                    <StaticResource x:Key="ComboBox.Static.Editable.Border" ResourceKey="BorderSubtleBrush" />
-                    <StaticResource x:Key="ComboBox.MouseOver.Background" ResourceKey="ControlHoverBrush" />
-                    <StaticResource x:Key="ComboBox.MouseOver.Border" ResourceKey="BorderStrongBrush" />
-                    <StaticResource x:Key="ComboBox.Focused.Background" ResourceKey="PanelBackgroundBrush" />
-                    <StaticResource x:Key="ComboBox.Focused.Border" ResourceKey="BorderStrongBrush" />
-                    <StaticResource x:Key="ComboBox.DropDown.Background" ResourceKey="PanelBackgroundBrush" />
-                    <StaticResource x:Key="ComboBox.DropDown.Border" ResourceKey="BorderSubtleBrush" />
-                    <StaticResource x:Key="ComboBox.DropDown.Glyph" ResourceKey="TextPrimaryBrush" />
+                    <SolidColorBrush x:Key="ComboBox.Static.Background" Color="#FF2A2D31" />
+                    <SolidColorBrush x:Key="ComboBox.Static.Foreground" Color="#FFF4F4F4" />
+                    <SolidColorBrush x:Key="ComboBox.Static.Border" Color="#FF3B3F45" />
+                    <SolidColorBrush x:Key="ComboBox.Static.Editable.Background" Color="#FF2A2D31" />
+                    <SolidColorBrush x:Key="ComboBox.Static.Editable.Border" Color="#FF3B3F45" />
+                    <SolidColorBrush x:Key="ComboBox.MouseOver.Background" Color="#FF3A3E44" />
+                    <SolidColorBrush x:Key="ComboBox.MouseOver.Border" Color="#FF50555C" />
+                    <SolidColorBrush x:Key="ComboBox.Focused.Background" Color="#FF2A2D31" />
+                    <SolidColorBrush x:Key="ComboBox.Focused.Border" Color="#FF50555C" />
+                    <SolidColorBrush x:Key="ComboBox.DropDown.Background" Color="#FF2A2D31" />
+                    <SolidColorBrush x:Key="ComboBox.DropDown.Border" Color="#FF3B3F45" />
+                    <SolidColorBrush x:Key="ComboBox.DropDown.Glyph" Color="#FFF4F4F4" />
                 </Style.Resources>
             </Style>
 
