@@ -10,6 +10,11 @@
                 <ResourceDictionary Source="Styles/AvalonDockVs2013Palette.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
+            <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}"
+                             Color="{Binding Source={StaticResource SelectionBrush}, Path=Color}" />
+            <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightTextBrushKey}"
+                             Color="{Binding Source={StaticResource TextPrimaryBrush}, Path=Color}" />
+
             <Style TargetType="TextBox">
                 <Setter Property="Background" Value="{DynamicResource PanelBackgroundBrush}" />
                 <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
