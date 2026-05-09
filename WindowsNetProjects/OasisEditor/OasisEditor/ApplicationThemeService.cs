@@ -61,6 +61,8 @@ public sealed class ApplicationThemeService : IApplicationThemeService
         application.Resources[SystemColors.ControlTextBrushKey] = new SolidColorBrush(textPrimary);
         application.Resources[SystemColors.HighlightBrushKey] = new SolidColorBrush(selection);
         application.Resources[SystemColors.HighlightTextBrushKey] = new SolidColorBrush(textPrimary);
+        application.Resources[SystemColors.InactiveSelectionHighlightBrushKey] = new SolidColorBrush(selection);
+        application.Resources[SystemColors.InactiveSelectionHighlightTextBrushKey] = new SolidColorBrush(textPrimary);
 
         application.Resources["ComboBox.Static.Background"] = new SolidColorBrush(panelBackground);
         application.Resources["ComboBox.Static.Foreground"] = new SolidColorBrush(textPrimary);
@@ -139,7 +141,7 @@ public sealed class ApplicationThemeService : IApplicationThemeService
             ["TextMutedBrush"] = (Color)ColorConverter.ConvertFromString("#FFA6ABB1"),
             ["BorderSubtleBrush"] = (Color)ColorConverter.ConvertFromString("#FF3B3F45"),
             ["BorderStrongBrush"] = (Color)ColorConverter.ConvertFromString("#FF50555C"),
-            ["SelectionBrush"] = (Color)ColorConverter.ConvertFromString("#FF555A62"),
+            ["SelectionBrush"] = (Color)ColorConverter.ConvertFromString("#FF294859"),
             ["DisabledBrush"] = (Color)ColorConverter.ConvertFromString("#FF6B7077")
         };
     }
