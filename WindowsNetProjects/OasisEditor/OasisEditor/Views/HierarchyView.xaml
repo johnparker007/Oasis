@@ -79,6 +79,16 @@
                     <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
                     <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
                     <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+                    <Style.Triggers>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsSelected" Value="True" />
+                                <Condition Property="Selector.IsSelectionActive" Value="False" />
+                            </MultiTrigger.Conditions>
+                            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                            <Setter Property="Background" Value="{DynamicResource SelectionBrush}" />
+                        </MultiTrigger>
+                    </Style.Triggers>
                     <EventSetter Event="Selected" Handler="OnTreeViewItemSelected" />
                 </Style>
                 <HierarchicalDataTemplate DataType="{x:Type local:HierarchyItemViewModel}"
