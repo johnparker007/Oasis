@@ -25,7 +25,7 @@
         <Setter Property="BorderBrush"
                 Value="{DynamicResource BorderSubtleBrush}" />
         <Setter Property="BorderThickness"
-                Value="1" />
+                Value="0" />
         <Setter Property="Padding"
                 Value="8,4" />
         <Setter Property="FontSize"
@@ -38,7 +38,7 @@
                                 Padding="{TemplateBinding Padding}"
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="1"
+                                BorderThickness="{TemplateBinding BorderThickness}"
                                 CornerRadius="4">
                             <DockPanel LastChildFill="True"
                                        TextElement.Foreground="{TemplateBinding Foreground}">
@@ -80,9 +80,6 @@
                             <Setter TargetName="MenuItemBorder"
                                     Property="Background"
                                     Value="{DynamicResource ControlPressedBrush}" />
-                            <Setter TargetName="MenuItemBorder"
-                                    Property="BorderBrush"
-                                    Value="{DynamicResource BorderStrongBrush}" />
                         </Trigger>
                         <Trigger Property="Role"
                                  Value="TopLevelHeader">
