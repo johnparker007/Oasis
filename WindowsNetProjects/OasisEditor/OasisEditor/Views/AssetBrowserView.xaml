@@ -78,7 +78,7 @@
                                     <Condition Property="Selector.IsSelectionActive" Value="False" />
                                 </MultiTrigger.Conditions>
                                 <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
-                                <Setter Property="Background" Value="{DynamicResource SelectionBrush}" />
+                                <Setter Property="Background" Value="{DynamicResource InactiveSelectionBrush}" />
                             </MultiTrigger>
                         </Style.Triggers>
                     </Style>
