@@ -141,7 +141,7 @@ public sealed class ApplicationThemeService : IApplicationThemeService
             ["TextMutedBrush"] = (Color)ColorConverter.ConvertFromString("#FFA6ABB1"),
             ["BorderSubtleBrush"] = (Color)ColorConverter.ConvertFromString("#FF3B3F45"),
             ["BorderStrongBrush"] = (Color)ColorConverter.ConvertFromString("#FF50555C"),
-            ["SelectionBrush"] = (Color)ColorConverter.ConvertFromString("#FF3B82F6"),
+            ["SelectionBrush"] = (Color)ColorConverter.ConvertFromString("#FF294859"),
             ["DisabledBrush"] = (Color)ColorConverter.ConvertFromString("#FF6B7077")
         };
     }
