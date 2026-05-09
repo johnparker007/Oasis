@@ -50,6 +50,7 @@ public sealed class ApplicationThemeService : IApplicationThemeService
         var panelBackground = palette["PanelBackgroundBrush"];
         var textPrimary = palette["TextPrimaryBrush"];
         var selection = palette["SelectionBrush"];
+        var inactiveSelection = palette["InactiveSelectionBrush"];
         var borderSubtle = palette["BorderSubtleBrush"];
         var borderStrong = palette["BorderStrongBrush"];
         var hover = palette["ControlHoverBrush"];
@@ -61,7 +62,7 @@ public sealed class ApplicationThemeService : IApplicationThemeService
         application.Resources[SystemColors.ControlTextBrushKey] = new SolidColorBrush(textPrimary);
         application.Resources[SystemColors.HighlightBrushKey] = new SolidColorBrush(selection);
         application.Resources[SystemColors.HighlightTextBrushKey] = new SolidColorBrush(textPrimary);
-        application.Resources[SystemColors.InactiveSelectionHighlightBrushKey] = new SolidColorBrush(selection);
+        application.Resources[SystemColors.InactiveSelectionHighlightBrushKey] = new SolidColorBrush(inactiveSelection);
         application.Resources[SystemColors.InactiveSelectionHighlightTextBrushKey] = new SolidColorBrush(textPrimary);
 
         application.Resources["ComboBox.Static.Background"] = new SolidColorBrush(panelBackground);
@@ -121,6 +122,7 @@ public sealed class ApplicationThemeService : IApplicationThemeService
             ["BorderSubtleBrush"] = (Color)ColorConverter.ConvertFromString("#FFD9E0EE"),
             ["BorderStrongBrush"] = (Color)ColorConverter.ConvertFromString("#FFB9C7DA"),
             ["SelectionBrush"] = (Color)ColorConverter.ConvertFromString("#FFCCE0FF"),
+            ["InactiveSelectionBrush"] = (Color)ColorConverter.ConvertFromString("#FFE4E7ED"),
             ["DisabledBrush"] = (Color)ColorConverter.ConvertFromString("#FFB7BFCC")
         };
     }
@@ -142,6 +144,7 @@ public sealed class ApplicationThemeService : IApplicationThemeService
             ["BorderSubtleBrush"] = (Color)ColorConverter.ConvertFromString("#FF3B3F45"),
             ["BorderStrongBrush"] = (Color)ColorConverter.ConvertFromString("#FF50555C"),
             ["SelectionBrush"] = (Color)ColorConverter.ConvertFromString("#FF294859"),
+            ["InactiveSelectionBrush"] = (Color)ColorConverter.ConvertFromString("#FF4A4E53"),
             ["DisabledBrush"] = (Color)ColorConverter.ConvertFromString("#FF6B7077")
         };
     }
