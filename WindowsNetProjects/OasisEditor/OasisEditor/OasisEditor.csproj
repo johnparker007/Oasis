@@ -20,11 +20,11 @@
     </Content>
   </ItemGroup>
 
-  <ItemGroup>
-    <Content Include="..\Assets\SegmentDisplays\*.json">
-      <Link>Assets/SegmentDisplays/%(Filename)%(Extension)</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
+	<ItemGroup>
+	  <Content Include="..\Assets\**\*.*">
+		<Link>Assets\%(RecursiveDir)%(Filename)%(Extension)</Link>
+		<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </Content>
+	</ItemGroup>
 
 </Project>
