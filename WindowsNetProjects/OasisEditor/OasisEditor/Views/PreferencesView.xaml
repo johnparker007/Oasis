@@ -57,33 +57,10 @@
 
 
                 <CheckBox Margin="0,10,0,0"
+                          Foreground="{DynamicResource TextPrimaryBrush}"
                           Content="Keep MAME up to date automatically"
                           IsChecked="{Binding KeepMameUpToDateAutomatically, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
-                <TextBlock Margin="0,8,0,4" Text="MAME Executable" Foreground="{DynamicResource TextSecondaryBrush}" />
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBox Grid.Column="0" Margin="0,0,8,0" Text="{Binding MameExecutablePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                    <Button Grid.Column="1" Padding="10,4" Content="Browse..." Command="{Binding BrowseMameExecutableCommand}" />
-                </Grid>
-
-                <Border Margin="0,12,0,0" Padding="12" CornerRadius="4" Background="#22000000">
-                    <StackPanel>
-                        <TextBlock FontWeight="SemiBold" Text="Editor-managed runtime" />
-                        <TextBlock Margin="0,6,0,0"
-                                   Foreground="{DynamicResource TextSecondaryBrush}"
-                                   Text="MAME installs are managed automatically under %LOCALAPPDATA%\OasisEditor\MAME\." />
-                        <TextBlock Margin="0,4,0,0"
-                                   Foreground="{DynamicResource TextSecondaryBrush}"
-                                   Text="Lua plugin deployment is automatic and no longer configured per-user." />
-                        <TextBlock Margin="0,4,0,0"
-                                   Foreground="{DynamicResource TextSecondaryBrush}"
-                                   Text="Use Diagnostics/Output Log for detailed path troubleshooting." />
-                    </StackPanel>
-                </Border>
 
                 <StackPanel Margin="0,12,0,0" Orientation="Horizontal">
                     <Button Padding="10,4" Content="Validate Setup" Command="{Binding ValidateMamePreferencesCommand}" />
