@@ -939,7 +939,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 }
             }
 
-            await TryAutoProvisionMameAsync(state).ConfigureAwait(false);
+            await TryAutoProvisionMameAsync(state);
         }
     }
 
@@ -973,13 +973,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 MameVersion,
                 MameInstallRootDirectory,
                 new Progress<string>(message => AddOutputEntry($"[Auto-setup] {message}", OutputLogStatus.Info)),
-                CancellationToken.None).ConfigureAwait(false);
+                CancellationToken.None);
 
             MameExecutablePath = executablePath;
             AddOutputEntry($"Auto-provisioning completed. Executable: {executablePath}", OutputLogStatus.Info);
 
             ResyncMamePlugins();
-            await ValidateMamePreferencesAsync().ConfigureAwait(false);
+            await ValidateMamePreferencesAsync();
         }
         catch (Exception ex)
         {
