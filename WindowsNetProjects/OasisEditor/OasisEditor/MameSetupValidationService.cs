@@ -5,12 +5,12 @@ namespace OasisEditor;
 public sealed class MameSetupValidationService : IMameSetupValidationService
 {
     private readonly MamePluginAssetValidator _pluginAssetValidator;
-    private readonly MameDownloadService _downloadService;
+    private readonly IMameVersionCatalogService _versionCatalogService;
 
-    public MameSetupValidationService(MamePluginAssetValidator pluginAssetValidator, MameDownloadService downloadService)
+    public MameSetupValidationService(MamePluginAssetValidator pluginAssetValidator, IMameVersionCatalogService versionCatalogService)
     {
         _pluginAssetValidator = pluginAssetValidator;
-        _downloadService = downloadService;
+        _versionCatalogService = versionCatalogService;
     }
 
     public async Task<MameSetupState> ValidateAsync(MameSetupValidationRequest request, CancellationToken cancellationToken)
@@ -47,8 +47,8 @@ public sealed class MameSetupValidationService : IMameSetupValidationService
         string? latestVersion = null;
         try
         {
-            var versions = await _downloadService.GetKnownVersionsAsync(cancellationToken).ConfigureAwait(false);
-            latestVersion = versions.OrderByDescending(v => v).FirstOrDefault();
+            var latest = await _versionCatalogService.GetLatestVersionAsync(cancellationToken).ConfigureAwait(false);
+            latestVersion = latest.LatestVersion;
         }
         catch
         {
