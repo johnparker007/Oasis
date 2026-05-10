@@ -3,16 +3,18 @@
 Read these documents first:
 
 - `00_CURRENT_PRIORITY.md`
+- `MAME_VERSION_DISCOVERY_PLAN.md`
 - `MAME_ARCHITECTURE_REDESIGN.md`
 - `TASKS_MAME_EMULATION_PORT.md`
 
-The redesign document overrides earlier assumptions around:
+The redesign documents override earlier assumptions around:
 
 - editable install-root settings;
 - editable Lua plugin directory settings;
 - flat Preferences layout;
 - Unity-based runtime plugin sourcing;
-- user-confirmed/manual-first MAME provisioning.
+- user-confirmed/manual-first MAME provisioning;
+- hardcoded latest-version discovery.
 
 ## Current Architectural Direction
 
@@ -20,7 +22,8 @@ The editor now owns:
 
 - automatic MAME provisioning;
 - MAME install management;
-- MAME version discovery;
+- live MAME version discovery;
+- fallback version-catalog handling;
 - plugin deployment;
 - runtime validation;
 - LocalAppData runtime structure.
@@ -31,7 +34,8 @@ The user should not manually manage:
 - working directories;
 - install roots;
 - plugin copying;
-- first-run MAME setup.
+- first-run MAME setup;
+- latest-version lookup.
 
 ## Plugin Source Direction
 
@@ -49,15 +53,53 @@ Codex should no longer use Unity asset folders as runtime plugin dependencies.
 
 The next MAME work should focus on:
 
-1. Preferences/settings stabilization.
-2. Runtime validation architecture.
-3. Plugin deployment service.
-4. Latest-version discovery.
-5. Automatic background setup/provisioning.
-6. Download/install state management.
-7. Background progress UX.
+1. Live version discovery.
+2. Fallback catalog architecture.
+3. Version discovery tests.
+4. Runtime validation architecture.
+5. Plugin deployment service.
+6. Automatic background setup/provisioning.
+7. Download/install state management.
+8. Background progress UX.
 
 Do not jump directly into full runtime emulation integration yet.
+
+## Desired Version Discovery Behavior
+
+Preferred source order:
+
+1. mamedev.org release page.
+2. GitHub MAME releases.
+3. cached LocalAppData catalog.
+4. compiled seed fallback.
+
+The app should:
+
+- discover latest MAME asynchronously;
+- cache successful results;
+- merge discovered versions with cached/seed versions;
+- remain fully usable offline;
+- never crash due to network or parse failure.
+
+## Testing Direction
+
+Codex should begin adding proper unit tests around:
+
+- release-page parsing;
+- GitHub release parsing;
+- version normalization;
+- version ordering;
+- cache compatibility;
+- fallback chain behavior;
+- malformed/unexpected HTML.
+
+Tests should not require live network access.
+
+Prefer:
+
+- fake HTML content;
+- fake service implementations;
+- injected abstractions around HTTP/cache/time.
 
 ## Desired Startup Behavior
 
@@ -106,18 +148,16 @@ Avoid modal blocking dialogs except for:
 
 ## Recommended Next Codex Task
 
-Implement the background-oriented MAME setup/provisioning architecture.
+Implement Step 1 and Step 2 from `MAME_VERSION_DISCOVERY_PLAN.md`.
 
-Suggested scope:
+Specifically:
 
-- introduce a setup/install state model;
-- introduce startup validation service abstraction;
-- introduce plugin deployment service abstraction;
-- introduce setup orchestration abstraction;
-- wire Preferences UI to display current setup/provisioning state;
-- add latest-version discovery plumbing;
-- add output-log diagnostics for startup validation/setup;
-- add background progress state plumbing.
+- extract pure parsing helpers;
+- add normalization helpers;
+- add parser tests;
+- add version ordering tests;
+- extend cache metadata model;
+- preserve backwards compatibility with old cache JSON.
 
 Keep implementation incremental.
 
