@@ -1070,16 +1070,19 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return false;
         }
 
-        var latestInstalledVersion = TryGetLatestInstalledMameVersion();
-        if (string.IsNullOrWhiteSpace(latestInstalledVersion))
+        var selectedOrInstalledVersion = string.IsNullOrWhiteSpace(MameVersion)
+            ? TryGetLatestInstalledMameVersion()
+            : MameVersion;
+
+        if (string.IsNullOrWhiteSpace(selectedOrInstalledVersion))
         {
             return true;
         }
 
-        var ordered = MameVersionParsing.NormalizeSortAndDedupe([latestKnownVersion, latestInstalledVersion]);
+        var ordered = MameVersionParsing.NormalizeSortAndDedupe([latestKnownVersion, selectedOrInstalledVersion]);
         var highestKnown = ordered.FirstOrDefault();
         return string.Equals(highestKnown, latestKnownVersion, StringComparison.OrdinalIgnoreCase)
-            && !string.Equals(latestKnownVersion, latestInstalledVersion, StringComparison.OrdinalIgnoreCase);
+            && !string.Equals(latestKnownVersion, MameVersionParsing.NormalizeVersion(selectedOrInstalledVersion), StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task TryAutoProvisionMameAsync(MameSetupState state)
