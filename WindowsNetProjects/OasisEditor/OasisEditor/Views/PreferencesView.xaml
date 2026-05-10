@@ -65,22 +65,16 @@
 
                 <Border Margin="0,12,0,0" Padding="12" CornerRadius="4" Background="#22000000">
                     <StackPanel>
-                        <TextBlock FontWeight="SemiBold" Text="Editor-managed runtime paths" />
+                        <TextBlock FontWeight="SemiBold" Text="Editor-managed runtime" />
                         <TextBlock Margin="0,6,0,0"
                                    Foreground="{DynamicResource TextSecondaryBrush}"
-                                   Text="MAME runtime root (editor-managed: %LOCALAPPDATA%\OasisEditor\MAME\)" />
-                        <TextBox Margin="0,4,0,0"
-                                 IsReadOnly="True"
-                                 Text="{Binding MameInstallRootDirectory, Mode=OneWay}" />
-                        <TextBlock Margin="0,4,0,0"
-                                   Foreground="{DynamicResource TextSecondaryBrush}"
-                                   Text="Lua plugin source (editor-managed)" />
-                        <TextBox Margin="0,4,0,0"
-                                 IsReadOnly="True"
-                                 Text="{Binding MameLuaPluginPath, Mode=OneWay}" />
+                                   Text="MAME installs are managed automatically under %LOCALAPPDATA%\OasisEditor\MAME\." />
                         <TextBlock Margin="0,4,0,0"
                                    Foreground="{DynamicResource TextSecondaryBrush}"
                                    Text="Lua plugin deployment is automatic and no longer configured per-user." />
+                        <TextBlock Margin="0,4,0,0"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                   Text="Use Diagnostics/Output Log for detailed path troubleshooting." />
                     </StackPanel>
                 </Border>
 
