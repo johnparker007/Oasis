@@ -68,7 +68,7 @@
                         <TextBlock FontWeight="SemiBold" Text="Editor-managed runtime paths" />
                         <TextBlock Margin="0,6,0,0"
                                    Foreground="{DynamicResource TextSecondaryBrush}"
-                                   Text="MAME runtime root (editor-managed)" />
+                                   Text="MAME runtime root (editor-managed: %LOCALAPPDATA%\OasisEditor\MAME\)" />
                         <TextBox Margin="0,4,0,0"
                                  IsReadOnly="True"
                                  Text="{Binding MameInstallRootDirectory, Mode=OneWay}" />
