@@ -58,7 +58,7 @@
                                                      CanClose="True">
                                 <Border Padding="10"
                                         Background="{DynamicResource InspectorBackgroundBrush}">
-                                    <views:PreferencesView />
+                                    <ContentControl x:Name="PreferencesContentHost" />
                                 </Border>
                             </layout:LayoutAnchorable>
 

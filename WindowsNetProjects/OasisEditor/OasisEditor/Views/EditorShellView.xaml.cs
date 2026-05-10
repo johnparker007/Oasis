@@ -20,6 +20,11 @@ public partial class EditorShellView : UserControl
 
     public void ShowOrFocusToolWindow(EditorToolWindowId toolWindowId)
     {
+        if (toolWindowId == EditorToolWindowId.Preferences && PreferencesContentHost.Content is null)
+        {
+            PreferencesContentHost.Content = new PreferencesView();
+        }
+
         var target = FindToolWindow(toolWindowId);
         if (target is null)
         {
