@@ -63,11 +63,17 @@
                     <Button Grid.Column="1" Padding="10,4" Content="Browse..." Command="{Binding BrowseMameExecutableCommand}" />
                 </Grid>
 
-                <TextBlock Margin="0,8,0,4" Text="Managed Runtime Root" Foreground="{DynamicResource TextSecondaryBrush}" />
-                <TextBox IsReadOnly="True" Text="{Binding MameInstallRootDirectory, Mode=OneWay}" />
-
-                <TextBlock Margin="0,8,0,4" Text="Managed Lua Plugin Source" Foreground="{DynamicResource TextSecondaryBrush}" />
-                <TextBox IsReadOnly="True" Text="{Binding MameLuaPluginPath, Mode=OneWay}" />
+                <Border Margin="0,12,0,0" Padding="12" CornerRadius="4" Background="#22000000">
+                    <StackPanel>
+                        <TextBlock FontWeight="SemiBold" Text="Editor-managed runtime paths" />
+                        <TextBlock Margin="0,6,0,0"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                   Text="MAME runtime root is managed automatically at %LOCALAPPDATA%\OasisEditor\MAME\." />
+                        <TextBlock Margin="0,4,0,0"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                   Text="Lua plugin deployment is automatic and no longer configured per-user." />
+                    </StackPanel>
+                </Border>
 
                 <StackPanel Margin="0,12,0,0" Orientation="Horizontal">
                     <Button Padding="10,4" Content="Validate Setup" Command="{Binding ValidateMamePreferencesCommand}" />
