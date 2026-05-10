@@ -52,6 +52,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly IMameSetupOrchestrator _mameSetupOrchestrator;
     private readonly IMameVersionCatalogService _mameVersionCatalogService;
     private MameSetupState _mameSetupState = MameSetupState.NotStarted;
+    private bool _isAutoProvisioningMame;
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<EditorToolWindowId>? ToolWindowOpenRequested;
@@ -937,6 +938,56 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                     AddOutputEntry($"MAME setup issue: {issue}", OutputLogStatus.Warning);
                 }
             }
+
+            await TryAutoProvisionMameAsync(state).ConfigureAwait(false);
+        }
+    }
+
+    private async Task TryAutoProvisionMameAsync(MameSetupState state)
+    {
+        if (_isAutoProvisioningMame)
+        {
+            return;
+        }
+
+        var hasMissingExecutableIssue = state.Issues.Any(issue => issue.Contains("executable", StringComparison.OrdinalIgnoreCase));
+        if (!hasMissingExecutableIssue)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(state.LatestKnownVersion))
+        {
+            AddOutputEntry("Auto-provision skipped: latest MAME version is unknown.", OutputLogStatus.Warning);
+            return;
+        }
+
+        try
+        {
+            _isAutoProvisioningMame = true;
+            MameVersion = state.LatestKnownVersion;
+            AddOutputEntry($"Auto-provisioning MAME {MameVersion} in background...", OutputLogStatus.Info);
+
+            var executablePath = await _mameDownloadService.DownloadAndExtractAsync(
+                MameReleaseSource,
+                MameVersion,
+                MameInstallRootDirectory,
+                new Progress<string>(message => AddOutputEntry($"[Auto-setup] {message}", OutputLogStatus.Info)),
+                CancellationToken.None).ConfigureAwait(false);
+
+            MameExecutablePath = executablePath;
+            AddOutputEntry($"Auto-provisioning completed. Executable: {executablePath}", OutputLogStatus.Info);
+
+            ResyncMamePlugins();
+            await ValidateMamePreferencesAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            AddOutputEntry($"Auto-provisioning failed: {ex.Message}", OutputLogStatus.Warning);
+        }
+        finally
+        {
+            _isAutoProvisioningMame = false;
         }
     }
 
