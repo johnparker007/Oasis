@@ -48,9 +48,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly MfmeImportService _mfmeImportService = new();
     private readonly MameDownloadService _mameDownloadService = new();
     private readonly MamePluginAssetValidator _mamePluginAssetValidator = new();
-    private readonly IMameSetupValidationService _mameSetupValidationService;
-    private MameSetupPhase _mameSetupPhase = MameSetupPhase.NotStarted;
-    private string _mameSetupLatestKnownVersion = "Unknown";
+    private readonly IMameSetupOrchestrator _mameSetupOrchestrator;
+    private MameSetupState _mameSetupState = MameSetupState.NotStarted;
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<EditorToolWindowId>? ToolWindowOpenRequested;
@@ -128,7 +127,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _mameReleaseSource = preferences.Mame.ReleaseSource;
         _mameLuaPluginPath = GetDefaultLuaPluginPath();
         _mameCommandLineOverrides = preferences.Mame.CommandLineOverrides;
-        _mameSetupValidationService = new MameSetupValidationService(_mamePluginAssetValidator, _mameDownloadService);
+        var setupValidationService = new MameSetupValidationService(_mamePluginAssetValidator, _mameDownloadService);
+        _mameSetupOrchestrator = new MameSetupOrchestrator(setupValidationService);
 
         RecentProjects = new ObservableCollection<string>(_recentProjectsStore.Load());
         OpenDocuments = new ObservableCollection<DocumentTabViewModel>();
@@ -301,8 +301,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public string MameLuaPluginPath => _mameLuaPluginPath;
     public string MameCommandLineOverrides { get => _mameCommandLineOverrides; set { if (SetProperty(ref _mameCommandLineOverrides, value)) SavePreferences(); } }
     public string MameValidationSummary { get => _mameValidationSummary; private set => SetProperty(ref _mameValidationSummary, value); }
-    public string MameSetupPhaseDisplay => _mameSetupPhase.ToString();
-    public string MameSetupLatestKnownVersion { get => _mameSetupLatestKnownVersion; private set => SetProperty(ref _mameSetupLatestKnownVersion, value); }
+    public string MameSetupPhaseDisplay => _mameSetupState.Phase.ToString();
+    public string MameSetupLatestKnownVersion => _mameSetupState.LatestKnownVersion;
+    public bool IsMameSetupInProgress => _mameSetupState.IsInProgress;
     public string SelectedPreferencesCategory
     {
         get => _selectedPreferencesCategory;
@@ -898,10 +899,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private async Task ValidateMamePreferencesAsync()
     {
-        _mameSetupPhase = MameSetupPhase.Validating;
+        _mameSetupState = new MameSetupState(MameSetupPhase.Validating, "Validating setup...", MameSetupLatestKnownVersion, true);
         OnPropertyChanged(nameof(MameSetupPhaseDisplay));
+        OnPropertyChanged(nameof(IsMameSetupInProgress));
 
-        var state = await _mameSetupValidationService.ValidateAsync(
+        var state = await _mameSetupOrchestrator.ValidateAsync(
             new MameSetupValidationRequest(
                 MameExecutablePath,
                 MameInstallRootDirectory,
@@ -910,11 +912,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 MameReleaseSource),
             CancellationToken.None);
 
-        _mameSetupPhase = state.Phase;
+        _mameSetupState = state;
         OnPropertyChanged(nameof(MameSetupPhaseDisplay));
-        MameSetupLatestKnownVersion = string.IsNullOrWhiteSpace(state.LatestKnownVersion)
-            ? "Unknown"
-            : state.LatestKnownVersion;
+        OnPropertyChanged(nameof(MameSetupLatestKnownVersion));
+        OnPropertyChanged(nameof(IsMameSetupInProgress));
         MameValidationSummary = state.Summary;
 
         if (state.Phase == MameSetupPhase.Ready)

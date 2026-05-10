@@ -94,6 +94,18 @@
                 <TextBlock Margin="0,2,0,0"
                            Foreground="{DynamicResource TextSecondaryBrush}"
                            Text="{Binding MameSetupLatestKnownVersion, StringFormat=Latest known MAME version: {0}}" />
+                <ProgressBar Margin="0,8,0,0" Height="6" IsIndeterminate="True">
+                    <ProgressBar.Style>
+                        <Style TargetType="ProgressBar">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsMameSetupInProgress}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ProgressBar.Style>
+                </ProgressBar>
 
                 <StackPanel Margin="0,8,0,0" Orientation="Horizontal">
                     <Button Padding="10,4" Margin="0,0,8,0" Content="Refresh Versions" Command="{Binding RefreshMameVersionsCommand}" />
