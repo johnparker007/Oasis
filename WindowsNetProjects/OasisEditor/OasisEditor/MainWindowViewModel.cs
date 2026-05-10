@@ -956,6 +956,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (state.Phase == MameSetupPhase.Ready)
         {
             AddOutputEntry($"MAME preferences validation passed. Latest known version: {MameSetupLatestKnownVersion}.", OutputLogStatus.Info);
+            await TryAutoProvisionMameAsync(state);
         }
         else
         {
