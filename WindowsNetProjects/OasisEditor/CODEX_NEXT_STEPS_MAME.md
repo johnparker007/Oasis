@@ -11,12 +11,14 @@ The redesign document overrides earlier assumptions around:
 - editable install-root settings;
 - editable Lua plugin directory settings;
 - flat Preferences layout;
-- Unity-based runtime plugin sourcing.
+- Unity-based runtime plugin sourcing;
+- user-confirmed/manual-first MAME provisioning.
 
 ## Current Architectural Direction
 
 The editor now owns:
 
+- automatic MAME provisioning;
 - MAME install management;
 - MAME version discovery;
 - plugin deployment;
@@ -28,7 +30,8 @@ The user should not manually manage:
 - plugin directories;
 - working directories;
 - install roots;
-- plugin copying.
+- plugin copying;
+- first-run MAME setup.
 
 ## Plugin Source Direction
 
@@ -50,8 +53,9 @@ The next MAME work should focus on:
 2. Runtime validation architecture.
 3. Plugin deployment service.
 4. Latest-version discovery.
-5. Download/install state management.
-6. Background setup/progress UX.
+5. Automatic background setup/provisioning.
+6. Download/install state management.
+7. Background progress UX.
 
 Do not jump directly into full runtime emulation integration yet.
 
@@ -63,20 +67,24 @@ On launcher/editor startup:
 - determine whether a valid MAME install exists;
 - determine whether plugin deployment is valid;
 - discover latest available MAME version asynchronously;
+- automatically provision latest MAME if no valid install exists;
+- automatically repair/re-sync plugins when possible;
 - update UI/log state without blocking the app.
 
 The editor should remain usable while setup/validation occurs.
 
-## Download Policy
+## Provisioning Policy
 
 Preferred behavior:
 
-- background discovery;
-- explicit user-triggered download/install;
-- visible progress;
-- cancellable operations where safe.
+- background validation;
+- background latest-version discovery;
+- automatic download/install when no valid install exists;
+- visible passive progress;
+- cancellable operations where safe;
+- minimal interruption.
 
-Do not auto-download large MAME archives during startup without explicit user action.
+Do not show a first-run modal dialog just to approve downloading MAME.
 
 ## Progress UX Direction
 
@@ -87,25 +95,29 @@ Use:
 - status text;
 - progress indicators in the MAME Preferences category;
 - output-log messages;
+- passive launcher/editor status indicators;
 - cancellable async tasks.
 
 Avoid modal blocking dialogs except for:
 
 - destructive confirmation;
-- rare fatal errors.
+- unrecoverable setup failure;
+- emulation requested before setup completes.
 
 ## Recommended Next Codex Task
 
-Implement a background-oriented MAME setup state architecture.
+Implement the background-oriented MAME setup/provisioning architecture.
 
 Suggested scope:
 
 - introduce a setup/install state model;
 - introduce startup validation service abstraction;
 - introduce plugin deployment service abstraction;
-- wire Preferences UI to display current setup state;
-- add latest-version placeholder/discovery plumbing;
-- add output-log diagnostics for startup validation.
+- introduce setup orchestration abstraction;
+- wire Preferences UI to display current setup/provisioning state;
+- add latest-version discovery plumbing;
+- add output-log diagnostics for startup validation/setup;
+- add background progress state plumbing.
 
 Keep implementation incremental.
 
