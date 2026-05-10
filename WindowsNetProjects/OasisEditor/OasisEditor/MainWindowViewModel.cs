@@ -33,6 +33,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string _mameReleaseSource = string.Empty;
     private string _mameLuaPluginPath = string.Empty;
     private string _mameCommandLineOverrides = string.Empty;
+    private bool _keepMameUpToDateAutomatically = true;
     private string _mameValidationSummary = "Not validated.";
     private string _selectedPreferencesCategory = "Appearance";
     private FruitMachinePlatformType _selectedFruitMachinePlatform = FruitMachinePlatformType.None;
@@ -131,6 +132,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _mameReleaseSource = preferences.Mame.ReleaseSource;
         _mameLuaPluginPath = MameRuntimePaths.ResolveBundledLuaPluginSourcePath();
         _mameCommandLineOverrides = preferences.Mame.CommandLineOverrides;
+        _keepMameUpToDateAutomatically = preferences.Mame.KeepMameUpToDateAutomatically;
         _mameVersionCatalogService = new MameVersionCatalogService(_mameDownloadService);
         var setupValidationService = new MameSetupValidationService(_mamePluginAssetValidator, _mameVersionCatalogService);
         _mameSetupOrchestrator = new MameSetupOrchestrator(setupValidationService);
@@ -306,6 +308,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public string MameReleaseSource { get => _mameReleaseSource; set { if (SetProperty(ref _mameReleaseSource, value)) SavePreferences(); } }
     public string MameLuaPluginPath => _mameLuaPluginPath;
     public string MameCommandLineOverrides { get => _mameCommandLineOverrides; set { if (SetProperty(ref _mameCommandLineOverrides, value)) SavePreferences(); } }
+    public bool KeepMameUpToDateAutomatically { get => _keepMameUpToDateAutomatically; set { if (SetProperty(ref _keepMameUpToDateAutomatically, value)) SavePreferences(); } }
     public string MameValidationSummary { get => _mameValidationSummary; private set => SetProperty(ref _mameValidationSummary, value); }
     public string MameSetupPhaseDisplay => _mameSetupState.Phase.ToString();
     public string MameSetupLatestKnownVersion => _mameSetupState.LatestKnownVersion;
@@ -992,6 +995,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
+        if (!KeepMameUpToDateAutomatically)
+        {
+            AddOutputEntry("Auto-provision skipped: Keep MAME up to date automatically is disabled.", OutputLogStatus.Info);
+            return;
+        }
+
         var hasMissingExecutableIssue = state.Issues.Any(issue => issue.Contains("executable", StringComparison.OrdinalIgnoreCase));
         if (!hasMissingExecutableIssue)
         {
@@ -1127,7 +1136,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 Version = MameVersion,
                 ExecutablePath = MameExecutablePath,
                 ReleaseSource = MameReleaseSource,
-                CommandLineOverrides = MameCommandLineOverrides
+                CommandLineOverrides = MameCommandLineOverrides,
+                KeepMameUpToDateAutomatically = KeepMameUpToDateAutomatically
             }
         });
     }
