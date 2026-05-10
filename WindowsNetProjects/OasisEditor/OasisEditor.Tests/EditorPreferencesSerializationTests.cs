@@ -34,4 +34,21 @@ public sealed class EditorPreferencesSerializationTests
         Assert.NotNull(preferences);
         Assert.True(preferences!.Mame.KeepMameUpToDateAutomatically);
     }
+    [Fact]
+    public void DeserializingPreferences_WithAutoUpdateFalse_PreservesFalse()
+    {
+        var json = """
+        {
+          "Mame": {
+            "KeepMameUpToDateAutomatically": false
+          }
+        }
+        """;
+
+        var preferences = JsonSerializer.Deserialize<EditorPreferences>(json);
+
+        Assert.NotNull(preferences);
+        Assert.False(preferences!.Mame.KeepMameUpToDateAutomatically);
+    }
+
 }

@@ -51,7 +51,9 @@
                 </StackPanel.Style>
                 <TextBlock FontSize="18" FontWeight="SemiBold" Text="MAME" />
                 <TextBlock Margin="0,16,0,4" Text="MAME Version" Foreground="{DynamicResource TextSecondaryBrush}" />
-                <TextBox Text="{Binding MameVersion, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBox Text="{Binding MameVersion, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         IsReadOnly="{Binding KeepMameUpToDateAutomatically}"
+                         ToolTip="When auto-update is enabled, this value tracks the latest installed MAME version." />
 
 
                 <CheckBox Margin="0,10,0,0"
