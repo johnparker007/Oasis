@@ -50,10 +50,10 @@ public sealed class MameSetupValidationServiceTests
 
     private sealed class StubMameVersionCatalogService(string latestVersion) : IMameVersionCatalogService
     {
-        public Task<MameVersionCatalog> GetCatalogAsync(string releaseSource, CancellationToken cancellationToken)
-            => Task.FromResult(new MameVersionCatalog([latestVersion], latestVersion, DateTimeOffset.UtcNow, false, releaseSource));
+        public Task<MameVersionCatalogResult> GetLatestVersionAsync(CancellationToken cancellationToken)
+            => Task.FromResult(new MameVersionCatalogResult(latestVersion, [latestVersion], false));
 
-        public Task<MameVersionCatalog> GetLatestVersionAsync(CancellationToken cancellationToken)
-            => Task.FromResult(new MameVersionCatalog([latestVersion], latestVersion, DateTimeOffset.UtcNow, false, "stub"));
+        public Task<IReadOnlyList<string>> GetKnownVersionsAsync(CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyList<string>>([latestVersion]);
     }
 }
