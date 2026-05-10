@@ -71,13 +71,13 @@
                                    Text="MAME runtime root (editor-managed)" />
                         <TextBox Margin="0,4,0,0"
                                  IsReadOnly="True"
-                                 Text="{Binding MameInstallRootDirectory}" />
+                                 Text="{Binding MameInstallRootDirectory, Mode=OneWay}" />
                         <TextBlock Margin="0,4,0,0"
                                    Foreground="{DynamicResource TextSecondaryBrush}"
                                    Text="Lua plugin source (editor-managed)" />
                         <TextBox Margin="0,4,0,0"
                                  IsReadOnly="True"
-                                 Text="{Binding MameLuaPluginPath}" />
+                                 Text="{Binding MameLuaPluginPath, Mode=OneWay}" />
                         <TextBlock Margin="0,4,0,0"
                                    Foreground="{DynamicResource TextSecondaryBrush}"
                                    Text="Lua plugin deployment is automatic and no longer configured per-user." />
