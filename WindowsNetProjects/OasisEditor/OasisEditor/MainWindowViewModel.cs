@@ -121,7 +121,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _selectedThemePreference = preferences.ThemePreference;
         _mameVersion = preferences.Mame.Version;
         _mameExecutablePath = preferences.Mame.ExecutablePath;
-        _mameInstallRootDirectory = GetManagedMameRuntimeRootDirectory();
+        _mameInstallRootDirectory = EnsureManagedMameRuntimeRootDirectory();
         _mameReleaseSource = preferences.Mame.ReleaseSource;
         _mameLuaPluginPath = GetDefaultLuaPluginPath();
         _mameCommandLineOverrides = preferences.Mame.CommandLineOverrides;
@@ -893,19 +893,21 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         else if (!string.Equals(Path.GetFileName(MameExecutablePath), "mame.exe", StringComparison.OrdinalIgnoreCase))
             errors.Add("MAME executable path must point to mame.exe.");
 
-        if (string.IsNullOrWhiteSpace(MameInstallRootDirectory) || !Directory.Exists(MameInstallRootDirectory))
-            errors.Add("MAME install root directory is missing or does not exist.");
+        if (string.IsNullOrWhiteSpace(MameInstallRootDirectory))
+            errors.Add("Managed MAME runtime root could not be resolved.");
+        else if (!Directory.Exists(MameInstallRootDirectory))
+            Directory.CreateDirectory(MameInstallRootDirectory);
 
         if (string.IsNullOrWhiteSpace(MameLuaPluginPath) || !Directory.Exists(MameLuaPluginPath))
         {
-            errors.Add("Lua plugin directory is missing or does not exist.");
+            errors.Add("Managed Lua plugin source could not be located in editor assets.");
         }
         else
         {
             var missingPluginFiles = _mamePluginAssetValidator.GetMissingFiles(MameLuaPluginPath);
             if (missingPluginFiles.Count > 0)
             {
-                errors.Add($"Lua plugin directory is missing required files: {string.Join(", ", missingPluginFiles)}.");
+                errors.Add($"Managed Lua plugin source is missing required files: {string.Join(", ", missingPluginFiles)}.");
             }
         }
 
@@ -932,12 +934,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         return Directory.Exists(candidate) ? candidate : string.Empty;
     }
 
-    private static string GetManagedMameRuntimeRootDirectory()
+    private static string EnsureManagedMameRuntimeRootDirectory()
     {
-        return Path.Combine(
+        var root = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "OasisEditor",
             "MAME");
+        Directory.CreateDirectory(root);
+        return root;
     }
 
     private async void RefreshMameVersions()
@@ -1013,9 +1017,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             {
                 Version = MameVersion,
                 ExecutablePath = MameExecutablePath,
-                InstallRootDirectory = MameInstallRootDirectory,
                 ReleaseSource = MameReleaseSource,
-                LuaPluginPath = MameLuaPluginPath,
                 CommandLineOverrides = MameCommandLineOverrides
             }
         });

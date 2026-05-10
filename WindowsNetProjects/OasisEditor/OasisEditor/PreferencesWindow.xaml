@@ -2,47 +2,83 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Preferences"
-        Width="630"
-        Height="220"
-        MinWidth="380"
-        MinHeight="200"
+        Width="760"
+        Height="460"
+        MinWidth="540"
+        MinHeight="360"
         WindowStartupLocation="CenterOwner"
         Background="{DynamicResource PanelBackgroundBrush}"
         Foreground="{DynamicResource TextPrimaryBrush}">
     <Grid Margin="16">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="170" />
+            <ColumnDefinition Width="16" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
 
-        <TextBlock Grid.Row="0"
-                   FontSize="18"
-                   FontWeight="SemiBold"
-                   Foreground="{DynamicResource TextPrimaryBrush}"
-                   Text="Editor Preferences" />
+        <Border Grid.Column="0" Padding="8">
+            <ListBox ItemsSource="{Binding PreferencesCategories}"
+                     SelectedItem="{Binding SelectedPreferencesCategory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+        </Border>
 
-        <TextBlock Grid.Row="1"
-                   Margin="0,16,0,6"
-                   Foreground="{DynamicResource TextSecondaryBrush}"
-                   Text="Theme" />
+        <ContentControl Grid.Column="2">
+            <ContentControl.Style>
+                <Style TargetType="ContentControl">
+                    <Setter Property="Content" Value="{x:Null}" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding SelectedPreferencesCategory}" Value="Appearance">
+                            <Setter Property="ContentTemplate">
+                                <Setter.Value>
+                                    <DataTemplate>
+                                        <StackPanel>
+                                            <TextBlock FontSize="18" FontWeight="SemiBold" Text="Appearance" />
+                                            <TextBlock Margin="0,16,0,6" Foreground="{DynamicResource TextSecondaryBrush}" Text="Theme" />
+                                            <ComboBox Width="180"
+                                                      HorizontalAlignment="Left"
+                                                      ItemsSource="{Binding ThemePreferences}"
+                                                      SelectedItem="{Binding SelectedThemePreference, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding SelectedPreferencesCategory}" Value="MAME">
+                            <Setter Property="ContentTemplate">
+                                <Setter.Value>
+                                    <DataTemplate>
+                                        <StackPanel>
+                                            <TextBlock FontSize="18" FontWeight="SemiBold" Text="MAME" />
+                                            <TextBlock Margin="0,16,0,4" Text="MAME Version" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                            <TextBox Text="{Binding MameVersion, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
-        <ComboBox Grid.Row="2"
-                  Width="180"
-                  HorizontalAlignment="Left"
-                  ItemsSource="{Binding ThemePreferences}"
-                  SelectedItem="{Binding SelectedThemePreference, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                            <TextBlock Margin="0,8,0,4" Text="MAME Executable" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBox Grid.Column="0" Margin="0,0,8,0" Text="{Binding MameExecutablePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                <Button Grid.Column="1" Padding="10,4" Content="Browse..." Command="{Binding BrowseMameExecutableCommand}" />
+                                            </Grid>
 
-        <StackPanel Grid.Row="4"
-                    Margin="0,16,0,0"
-                    Orientation="Horizontal"
-                    HorizontalAlignment="Right">
-            <Button MinWidth="96"
-                    Padding="12,6"
-                    Command="{Binding ClosePreferencesCommand}"
-                    Content="Close" />
-        </StackPanel>
+                                            <TextBlock Margin="0,8,0,4" Text="Managed Runtime Root" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                            <TextBox IsReadOnly="True" Text="{Binding MameInstallRootDirectory, Mode=OneWay}" />
+
+                                            <TextBlock Margin="0,8,0,4" Text="Managed Lua Plugin Source" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                            <TextBox IsReadOnly="True" Text="{Binding MameLuaPluginPath, Mode=OneWay}" />
+
+                                            <StackPanel Margin="0,12,0,0" Orientation="Horizontal">
+                                                <Button Padding="10,4" Content="Validate Setup" Command="{Binding ValidateMamePreferencesCommand}" />
+                                                <TextBlock Margin="12,4,0,0" Text="{Binding MameValidationSummary}" TextWrapping="Wrap" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </ContentControl.Style>
+        </ContentControl>
     </Grid>
 </Window>

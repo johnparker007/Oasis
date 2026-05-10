@@ -13,9 +13,7 @@ public sealed class MamePreferences
 {
     public string Version { get; init; } = "0267";
     public string ExecutablePath { get; init; } = string.Empty;
-    public string InstallRootDirectory { get; init; } = string.Empty;
     public string ReleaseSource { get; init; } = "https://github.com/mamedev/mame/releases";
-    public string LuaPluginPath { get; init; } = string.Empty;
     public string CommandLineOverrides { get; init; } = string.Empty;
 }
 
