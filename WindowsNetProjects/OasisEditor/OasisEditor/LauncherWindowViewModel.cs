@@ -175,9 +175,14 @@ public sealed class LauncherWindowViewModel : INotifyPropertyChanged
             ValidateProjectFile(trimmed);
 
             var mainWindow = new MainWindow(_applicationThemeService, _preferencesStore, trimmed);
+            var app = Application.Current;
+            var previousShutdownMode = app.ShutdownMode;
+
+            app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             Application.Current.MainWindow = mainWindow;
             mainWindow.Show();
             _launcherWindow.Close();
+            app.ShutdownMode = ShutdownMode.OnLastWindowClose;
         }
         catch (Exception ex)
         {
