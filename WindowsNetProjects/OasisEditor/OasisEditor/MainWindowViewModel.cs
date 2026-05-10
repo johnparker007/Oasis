@@ -1037,6 +1037,17 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         var discoveredVersions = new List<string>();
         foreach (var installDirectory in Directory.EnumerateDirectories(MameInstallRootDirectory, "mame*"))
         {
+            var executableCandidates = new[]
+            {
+                Path.Combine(installDirectory, "mame.exe"),
+                Path.Combine(installDirectory, Path.GetFileName(installDirectory), "mame.exe")
+            };
+
+            if (!executableCandidates.Any(File.Exists))
+            {
+                continue;
+            }
+
             var directoryName = Path.GetFileName(installDirectory);
             if (!string.IsNullOrWhiteSpace(directoryName) && directoryName.StartsWith("mame", StringComparison.OrdinalIgnoreCase))
             {
