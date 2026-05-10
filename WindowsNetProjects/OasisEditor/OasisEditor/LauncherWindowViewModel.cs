@@ -175,18 +175,25 @@ public sealed class LauncherWindowViewModel : INotifyPropertyChanged
             ValidateProjectFile(trimmed);
 
             var mainWindow = new MainWindow(_applicationThemeService, _preferencesStore, trimmed);
-            var app = Application.Current;
-            var previousShutdownMode = app.ShutdownMode;
+            _launcherWindow.Hide();
+            mainWindow.Closed += (_, _) =>
+            {
+                if (_launcherWindow.IsVisible)
+                {
+                    return;
+                }
 
-            app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
-            Application.Current.MainWindow = mainWindow;
+                _launcherWindow.Close();
+            };
             mainWindow.Show();
-            _launcherWindow.Close();
-            app.ShutdownMode = ShutdownMode.OnLastWindowClose;
         }
         catch (Exception ex)
         {
             StatusMessage = ex.Message;
+            if (!_launcherWindow.IsVisible)
+            {
+                _launcherWindow.Show();
+            }
             MessageBox.Show(ex.Message, "Open Project Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
