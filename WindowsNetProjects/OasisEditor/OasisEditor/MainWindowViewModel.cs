@@ -34,6 +34,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string _mameLuaPluginPath = string.Empty;
     private string _mameCommandLineOverrides = string.Empty;
     private string _mameValidationSummary = "Not validated.";
+    private string _selectedPreferencesCategory = "Appearance";
     private FruitMachinePlatformType _selectedFruitMachinePlatform = FruitMachinePlatformType.None;
     private readonly AssetBrowserViewModel _assetBrowser;
     private readonly OutputLogViewModel _outputLog;
@@ -120,11 +121,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _selectedThemePreference = preferences.ThemePreference;
         _mameVersion = preferences.Mame.Version;
         _mameExecutablePath = preferences.Mame.ExecutablePath;
-        _mameInstallRootDirectory = preferences.Mame.InstallRootDirectory;
+        _mameInstallRootDirectory = GetManagedMameRuntimeRootDirectory();
         _mameReleaseSource = preferences.Mame.ReleaseSource;
-        _mameLuaPluginPath = string.IsNullOrWhiteSpace(preferences.Mame.LuaPluginPath)
-            ? GetDefaultLuaPluginPath()
-            : preferences.Mame.LuaPluginPath;
+        _mameLuaPluginPath = GetDefaultLuaPluginPath();
         _mameCommandLineOverrides = preferences.Mame.CommandLineOverrides;
 
         RecentProjects = new ObservableCollection<string>(_recentProjectsStore.Load());
@@ -253,6 +252,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
 
     public IReadOnlyList<ThemePreference> ThemePreferences { get; } = Enum.GetValues<ThemePreference>();
+    public IReadOnlyList<string> PreferencesCategories { get; } = ["Appearance", "MAME"];
     public IReadOnlyList<FruitMachinePlatformType> FruitMachinePlatformTypes { get; } = Enum.GetValues<FruitMachinePlatformType>();
 
 
@@ -291,11 +291,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public string MameVersion { get => _mameVersion; set { if (SetProperty(ref _mameVersion, value)) SavePreferences(); } }
     public string MameExecutablePath { get => _mameExecutablePath; set { if (SetProperty(ref _mameExecutablePath, value)) SavePreferences(); } }
-    public string MameInstallRootDirectory { get => _mameInstallRootDirectory; set { if (SetProperty(ref _mameInstallRootDirectory, value)) SavePreferences(); } }
+    public string MameInstallRootDirectory => _mameInstallRootDirectory;
     public string MameReleaseSource { get => _mameReleaseSource; set { if (SetProperty(ref _mameReleaseSource, value)) SavePreferences(); } }
-    public string MameLuaPluginPath { get => _mameLuaPluginPath; set { if (SetProperty(ref _mameLuaPluginPath, value)) SavePreferences(); } }
+    public string MameLuaPluginPath => _mameLuaPluginPath;
     public string MameCommandLineOverrides { get => _mameCommandLineOverrides; set { if (SetProperty(ref _mameCommandLineOverrides, value)) SavePreferences(); } }
     public string MameValidationSummary { get => _mameValidationSummary; private set => SetProperty(ref _mameValidationSummary, value); }
+    public string SelectedPreferencesCategory
+    {
+        get => _selectedPreferencesCategory;
+        set => SetProperty(ref _selectedPreferencesCategory, value);
+    }
 
     public string StatusMessage
     {
@@ -874,11 +879,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (dialog.ShowDialog(_ownerWindow) == true)
         {
             MameExecutablePath = dialog.FileName;
-            if (string.IsNullOrWhiteSpace(MameInstallRootDirectory))
-            {
-                MameInstallRootDirectory = Path.GetDirectoryName(dialog.FileName) ?? string.Empty;
-            }
-
             AddOutputEntry($"Selected MAME executable: {dialog.FileName}", OutputLogStatus.Info);
             ValidateMamePreferences();
         }
@@ -928,8 +928,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private static string GetDefaultLuaPluginPath()
     {
         var appBaseDirectory = AppContext.BaseDirectory;
-        var candidate = Path.GetFullPath(Path.Combine(appBaseDirectory, "..", "..", "..", "..", "..", "UnityProjects", "LayoutEditor_ExternalAssets", "Windows", "MameLuaPlugins", "oasis"));
+        var candidate = Path.GetFullPath(Path.Combine(appBaseDirectory, "..", "..", "..", "Assets", "MAME", "plugins", "oasis"));
         return Directory.Exists(candidate) ? candidate : string.Empty;
+    }
+
+    private static string GetManagedMameRuntimeRootDirectory()
+    {
+        return Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "OasisEditor",
+            "MAME");
     }
 
     private async void RefreshMameVersions()

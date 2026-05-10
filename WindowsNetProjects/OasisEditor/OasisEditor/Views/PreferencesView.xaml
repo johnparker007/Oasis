@@ -7,70 +7,80 @@
              d:DesignHeight="560"
              d:DesignWidth="620">
     <Grid Margin="16">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="170" />
+            <ColumnDefinition Width="16" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
 
-        <TextBlock Grid.Row="0"
-                   FontSize="18"
-                   FontWeight="SemiBold"
-                   Foreground="{DynamicResource TextPrimaryBrush}"
-                   Text="Editor Preferences" />
+        <Border Grid.Column="0" Padding="8">
+            <ListBox ItemsSource="{Binding PreferencesCategories}"
+                     SelectedItem="{Binding SelectedPreferencesCategory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+        </Border>
 
-        <TextBlock Grid.Row="1"
-                   Margin="0,16,0,6"
-                   Foreground="{DynamicResource TextSecondaryBrush}"
-                   Text="Theme" />
+        <Grid Grid.Column="2">
+            <StackPanel>
+                <StackPanel.Style>
+                    <Style TargetType="StackPanel">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding SelectedPreferencesCategory}" Value="Appearance">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </StackPanel.Style>
+                <TextBlock FontSize="18" FontWeight="SemiBold" Text="Appearance" />
+                <TextBlock Margin="0,16,0,6" Foreground="{DynamicResource TextSecondaryBrush}" Text="Theme" />
+                <ComboBox Width="180"
+                          HorizontalAlignment="Left"
+                          ItemsSource="{Binding ThemePreferences}"
+                          SelectedItem="{Binding SelectedThemePreference, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            </StackPanel>
 
-        <ComboBox Grid.Row="2"
-                  Width="180"
-                  VerticalAlignment="Top"
-                  HorizontalAlignment="Left"
-                  ItemsSource="{Binding ThemePreferences}"
-                  SelectedItem="{Binding SelectedThemePreference, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            <StackPanel>
+                <StackPanel.Style>
+                    <Style TargetType="StackPanel">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding SelectedPreferencesCategory}" Value="MAME">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </StackPanel.Style>
+                <TextBlock FontSize="18" FontWeight="SemiBold" Text="MAME" />
+                <TextBlock Margin="0,16,0,4" Text="MAME Version" Foreground="{DynamicResource TextSecondaryBrush}" />
+                <TextBox Text="{Binding MameVersion, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
-        <TextBlock Grid.Row="3" Margin="0,16,0,4" Text="MAME Version" Foreground="{DynamicResource TextSecondaryBrush}" />
-        <TextBox Grid.Row="4" Text="{Binding MameVersion, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock Margin="0,8,0,4" Text="MAME Executable" Foreground="{DynamicResource TextSecondaryBrush}" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox Grid.Column="0" Margin="0,0,8,0" Text="{Binding MameExecutablePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <Button Grid.Column="1" Padding="10,4" Content="Browse..." Command="{Binding BrowseMameExecutableCommand}" />
+                </Grid>
 
-        <TextBlock Grid.Row="5" Margin="0,8,0,4" Text="MAME Executable" Foreground="{DynamicResource TextSecondaryBrush}" />
-        <Grid Grid.Row="6">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-            <TextBox Grid.Column="0" Margin="0,0,8,0" Text="{Binding MameExecutablePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-            <Button Grid.Column="1" Padding="10,4" Content="Browse..." Command="{Binding BrowseMameExecutableCommand}" />
+                <TextBlock Margin="0,8,0,4" Text="Managed Runtime Root" Foreground="{DynamicResource TextSecondaryBrush}" />
+                <TextBox IsReadOnly="True" Text="{Binding MameInstallRootDirectory, Mode=OneWay}" />
+
+                <TextBlock Margin="0,8,0,4" Text="Managed Lua Plugin Source" Foreground="{DynamicResource TextSecondaryBrush}" />
+                <TextBox IsReadOnly="True" Text="{Binding MameLuaPluginPath, Mode=OneWay}" />
+
+                <StackPanel Margin="0,12,0,0" Orientation="Horizontal">
+                    <Button Padding="10,4" Content="Validate Setup" Command="{Binding ValidateMamePreferencesCommand}" />
+                    <TextBlock Margin="12,4,0,0" Text="{Binding MameValidationSummary}" TextWrapping="Wrap" />
+                </StackPanel>
+
+                <StackPanel Margin="0,8,0,0" Orientation="Horizontal">
+                    <Button Padding="10,4" Margin="0,0,8,0" Content="Refresh Versions" Command="{Binding RefreshMameVersionsCommand}" />
+                    <Button Padding="10,4" Margin="0,0,8,0" Content="Download Selected" Command="{Binding DownloadMameVersionCommand}" />
+                    <Button Padding="10,4" Margin="0,0,8,0" Content="Open Install Folder" Command="{Binding OpenMameInstallRootCommand}" />
+                    <Button Padding="10,4" Content="Remove Cached Version" Command="{Binding RemoveCachedMameVersionCommand}" />
+                </StackPanel>
+            </StackPanel>
         </Grid>
-
-        <TextBlock Grid.Row="7" Margin="0,8,0,4" Text="MAME Install Root" Foreground="{DynamicResource TextSecondaryBrush}" />
-        <TextBox Grid.Row="8" Text="{Binding MameInstallRootDirectory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-
-        <TextBlock Grid.Row="9" Margin="0,8,0,4" Text="Lua Plugin Directory" Foreground="{DynamicResource TextSecondaryBrush}" />
-        <TextBox Grid.Row="10" Text="{Binding MameLuaPluginPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-
-        <StackPanel Grid.Row="11" Margin="0,12,0,0" Orientation="Horizontal">
-            <Button Padding="10,4" Content="Validate Paths" Command="{Binding ValidateMamePreferencesCommand}" />
-            <TextBlock Margin="12,4,0,0" Text="{Binding MameValidationSummary}" TextWrapping="Wrap" />
-        </StackPanel>
-
-        <StackPanel Grid.Row="12" Margin="0,8,0,0" Orientation="Horizontal">
-            <Button Padding="10,4" Margin="0,0,8,0" Content="Refresh Versions" Command="{Binding RefreshMameVersionsCommand}" />
-            <Button Padding="10,4" Margin="0,0,8,0" Content="Download Selected" Command="{Binding DownloadMameVersionCommand}" />
-            <Button Padding="10,4" Margin="0,0,8,0" Content="Open Install Folder" Command="{Binding OpenMameInstallRootCommand}" />
-            <Button Padding="10,4" Content="Remove Cached Version" Command="{Binding RemoveCachedMameVersionCommand}" />
-        </StackPanel>
     </Grid>
 </UserControl>
