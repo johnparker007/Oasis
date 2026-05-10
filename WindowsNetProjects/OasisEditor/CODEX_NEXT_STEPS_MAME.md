@@ -2,74 +2,112 @@
 
 Read these documents first:
 
-- `TASKS_MAME_EMULATION_PORT.md`
+- `00_CURRENT_PRIORITY.md`
 - `MAME_ARCHITECTURE_REDESIGN.md`
+- `TASKS_MAME_EMULATION_PORT.md`
 
 The redesign document overrides earlier assumptions around:
 
 - editable install-root settings;
 - editable Lua plugin directory settings;
-- flat Preferences layout.
+- flat Preferences layout;
+- Unity-based runtime plugin sourcing.
 
-## Immediate Priority
+## Current Architectural Direction
 
-Before continuing MAME implementation work:
+The editor now owns:
 
-1. Refactor the Preferences window into a category-based layout.
-2. Move Theme settings into an Appearance category.
-3. Move MAME settings into a MAME category.
-4. Remove editable MAME Install Root UI.
-5. Remove editable Lua Plugin Directory UI.
-6. Introduce automatic LocalAppData-based runtime folder management.
-7. Transition toward editor-managed plugin deployment.
+- MAME install management;
+- MAME version discovery;
+- plugin deployment;
+- runtime validation;
+- LocalAppData runtime structure.
 
-## Desired Preferences UX
+The user should not manually manage:
 
-Left category list:
+- plugin directories;
+- working directories;
+- install roots;
+- plugin copying.
 
-- Appearance
-- MAME
+## Plugin Source Direction
 
-Right content area:
+The Oasis Lua plugin files are now committed under the new editor asset tree and included in the Visual Studio project output.
 
-- category-specific settings.
+Runtime source should resolve from:
 
-## Desired MAME UX
+```text
+AppContext.BaseDirectory\\Assets\\MAME\\plugins\\oasis\\
+```
 
-The user should think in terms of:
+Codex should no longer use Unity asset folders as runtime plugin dependencies.
 
-- installed versions;
-- selected version;
-- download/remove version;
-- validation;
-- diagnostics.
+## Current Priority
 
-The user should NOT normally manage:
+The next MAME work should focus on:
 
-- runtime paths;
-- plugin paths;
-- working directories.
+1. Preferences/settings stabilization.
+2. Runtime validation architecture.
+3. Plugin deployment service.
+4. Latest-version discovery.
+5. Download/install state management.
+6. Background setup/progress UX.
 
-## Runtime Folder Direction
+Do not jump directly into full runtime emulation integration yet.
+
+## Desired Startup Behavior
+
+On launcher/editor startup:
+
+- validate installed/selected MAME state in the background;
+- determine whether a valid MAME install exists;
+- determine whether plugin deployment is valid;
+- discover latest available MAME version asynchronously;
+- update UI/log state without blocking the app.
+
+The editor should remain usable while setup/validation occurs.
+
+## Download Policy
+
+Preferred behavior:
+
+- background discovery;
+- explicit user-triggered download/install;
+- visible progress;
+- cancellable operations where safe.
+
+Do not auto-download large MAME archives during startup without explicit user action.
+
+## Progress UX Direction
+
+Prefer non-modal progress.
 
 Use:
 
-```text
-%LOCALAPPDATA%\\OasisEditor\\MAME\\
-```
+- status text;
+- progress indicators in the MAME Preferences category;
+- output-log messages;
+- cancellable async tasks.
 
-Per-version installs:
+Avoid modal blocking dialogs except for:
 
-```text
-versions\\mame0258\\
-versions\\mame0260\\
-```
+- destructive confirmation;
+- rare fatal errors.
 
-## Lua Plugin Direction
+## Recommended Next Codex Task
 
-The editor owns the canonical plugin source.
+Implement a background-oriented MAME setup state architecture.
 
-The editor deploys/syncs plugins into installed MAME versions automatically.
+Suggested scope:
+
+- introduce a setup/install state model;
+- introduce startup validation service abstraction;
+- introduce plugin deployment service abstraction;
+- wire Preferences UI to display current setup state;
+- add latest-version placeholder/discovery plumbing;
+- add output-log diagnostics for startup validation.
+
+Keep implementation incremental.
 
 ## Important Constraint
 
@@ -82,9 +120,3 @@ All changes should therefore:
 - include manual test steps;
 - include diagnostics/logging;
 - avoid giant rewrites.
-
-## Recommended Next Task
-
-Implement ONLY the Preferences-window redesign and settings-model cleanup.
-
-Do not continue process-launch/runtime integration work until the settings architecture is stabilized.
