@@ -16,6 +16,7 @@ public sealed class MameSetupOrchestrator : IMameSetupOrchestrator
             result.Phase,
             result.Summary,
             string.IsNullOrWhiteSpace(result.LatestKnownVersion) ? "Unknown" : result.LatestKnownVersion,
-            false);
+            false,
+            result.Issues ?? []);
     }
 }
