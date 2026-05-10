@@ -33,6 +33,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string _mameReleaseSource = string.Empty;
     private string _mameLuaPluginPath = string.Empty;
     private string _mameCommandLineOverrides = string.Empty;
+    private bool _keepMameUpToDateAutomatically = true;
     private string _mameValidationSummary = "Not validated.";
     private string _selectedPreferencesCategory = "Appearance";
     private FruitMachinePlatformType _selectedFruitMachinePlatform = FruitMachinePlatformType.None;
@@ -131,9 +132,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _mameReleaseSource = preferences.Mame.ReleaseSource;
         _mameLuaPluginPath = MameRuntimePaths.ResolveBundledLuaPluginSourcePath();
         _mameCommandLineOverrides = preferences.Mame.CommandLineOverrides;
+        _keepMameUpToDateAutomatically = preferences.Mame.KeepMameUpToDateAutomatically;
         _mameVersionCatalogService = new MameVersionCatalogService(_mameDownloadService);
         var setupValidationService = new MameSetupValidationService(_mamePluginAssetValidator, _mameVersionCatalogService);
         _mameSetupOrchestrator = new MameSetupOrchestrator(setupValidationService);
+
+        if (_keepMameUpToDateAutomatically)
+        {
+            SyncMameVersionToLatestInstalled();
+        }
 
         RecentProjects = new ObservableCollection<string>(_recentProjectsStore.Load());
         OpenDocuments = new ObservableCollection<DocumentTabViewModel>();
@@ -306,6 +313,26 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public string MameReleaseSource { get => _mameReleaseSource; set { if (SetProperty(ref _mameReleaseSource, value)) SavePreferences(); } }
     public string MameLuaPluginPath => _mameLuaPluginPath;
     public string MameCommandLineOverrides { get => _mameCommandLineOverrides; set { if (SetProperty(ref _mameCommandLineOverrides, value)) SavePreferences(); } }
+    public bool KeepMameUpToDateAutomatically
+    {
+        get => _keepMameUpToDateAutomatically;
+        set
+        {
+            if (!SetProperty(ref _keepMameUpToDateAutomatically, value))
+            {
+                return;
+            }
+
+            if (value)
+            {
+                SyncMameVersionToLatestInstalled();
+            }
+
+            OnPropertyChanged(nameof(IsMameVersionEditable));
+            SavePreferences();
+        }
+    }
+    public bool IsMameVersionEditable => !KeepMameUpToDateAutomatically;
     public string MameValidationSummary { get => _mameValidationSummary; private set => SetProperty(ref _mameValidationSummary, value); }
     public string MameSetupPhaseDisplay => _mameSetupState.Phase.ToString();
     public string MameSetupLatestKnownVersion => _mameSetupState.LatestKnownVersion;
@@ -929,6 +956,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (state.Phase == MameSetupPhase.Ready)
         {
             AddOutputEntry($"MAME preferences validation passed. Latest known version: {MameSetupLatestKnownVersion}.", OutputLogStatus.Info);
+            await TryAutoProvisionMameAsync(state);
         }
         else
         {
@@ -985,6 +1013,79 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         AddOutputEntry($"Resolved installed MAME executable: {resolvedPath}", OutputLogStatus.Info);
     }
 
+    private void SyncMameVersionToLatestInstalled()
+    {
+        var latestInstalledVersion = TryGetLatestInstalledMameVersion();
+        if (string.IsNullOrWhiteSpace(latestInstalledVersion))
+        {
+            return;
+        }
+
+        if (!string.Equals(MameVersion, latestInstalledVersion, StringComparison.OrdinalIgnoreCase))
+        {
+            MameVersion = latestInstalledVersion;
+            AddOutputEntry($"Auto-update enabled. Using latest installed MAME version: {MameVersion}.", OutputLogStatus.Info);
+        }
+    }
+
+    private string? TryGetLatestInstalledMameVersion()
+    {
+        if (string.IsNullOrWhiteSpace(MameInstallRootDirectory) || !Directory.Exists(MameInstallRootDirectory))
+        {
+            return null;
+        }
+
+        var discoveredVersions = new List<string>();
+        foreach (var installDirectory in Directory.EnumerateDirectories(MameInstallRootDirectory, "mame*"))
+        {
+            var executableCandidates = new[]
+            {
+                Path.Combine(installDirectory, "mame.exe"),
+                Path.Combine(installDirectory, Path.GetFileName(installDirectory), "mame.exe")
+            };
+
+            if (!executableCandidates.Any(File.Exists))
+            {
+                continue;
+            }
+
+            var directoryName = Path.GetFileName(installDirectory);
+            if (!string.IsNullOrWhiteSpace(directoryName) && directoryName.StartsWith("mame", StringComparison.OrdinalIgnoreCase))
+            {
+                var version = directoryName[4..];
+                if (!string.IsNullOrWhiteSpace(version))
+                {
+                    discoveredVersions.Add(version);
+                }
+            }
+        }
+
+        var normalizedVersions = MameVersionParsing.NormalizeSortAndDedupe(discoveredVersions);
+        return normalizedVersions.FirstOrDefault();
+    }
+
+    private bool IsLatestVersionInstallNeeded(string latestKnownVersion)
+    {
+        if (string.IsNullOrWhiteSpace(latestKnownVersion))
+        {
+            return false;
+        }
+
+        var selectedOrInstalledVersion = string.IsNullOrWhiteSpace(MameVersion)
+            ? TryGetLatestInstalledMameVersion()
+            : MameVersion;
+
+        if (string.IsNullOrWhiteSpace(selectedOrInstalledVersion))
+        {
+            return true;
+        }
+
+        var ordered = MameVersionParsing.NormalizeSortAndDedupe([latestKnownVersion, selectedOrInstalledVersion]);
+        var highestKnown = ordered.FirstOrDefault();
+        return string.Equals(highestKnown, latestKnownVersion, StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(latestKnownVersion, MameVersionParsing.NormalizeVersion(selectedOrInstalledVersion), StringComparison.OrdinalIgnoreCase);
+    }
+
     private async Task TryAutoProvisionMameAsync(MameSetupState state)
     {
         if (_isAutoProvisioningMame)
@@ -992,9 +1093,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        var hasMissingExecutableIssue = state.Issues.Any(issue => issue.Contains("executable", StringComparison.OrdinalIgnoreCase));
-        if (!hasMissingExecutableIssue)
+        if (!KeepMameUpToDateAutomatically)
         {
+            AddOutputEntry("Auto-provision skipped: Keep MAME up to date automatically is disabled.", OutputLogStatus.Info);
             return;
         }
 
@@ -1004,9 +1105,21 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
+        var hasMissingExecutableIssue = state.Issues.Any(issue => issue.Contains("executable", StringComparison.OrdinalIgnoreCase));
+        var needsLatestVersionInstall = IsLatestVersionInstallNeeded(state.LatestKnownVersion);
+        if (!hasMissingExecutableIssue && !needsLatestVersionInstall)
+        {
+            return;
+        }
+
         try
         {
             _isAutoProvisioningMame = true;
+            if (needsLatestVersionInstall)
+            {
+                AddOutputEntry($"Auto-update enabled. Latest known version {state.LatestKnownVersion} is newer than installed/selected version {MameVersion}.", OutputLogStatus.Info);
+            }
+
             MameVersion = state.LatestKnownVersion;
             AddOutputEntry($"Auto-provisioning MAME {MameVersion} in background...", OutputLogStatus.Info);
 
@@ -1018,6 +1131,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 CancellationToken.None);
 
             MameExecutablePath = executablePath;
+            SyncMameVersionToLatestInstalled();
             AddOutputEntry($"Auto-provisioning completed. Executable: {executablePath}", OutputLogStatus.Info);
 
             ResyncMamePlugins();
@@ -1111,6 +1225,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             AddOutputEntry(removed
                 ? $"Removed cached MAME version {MameVersion}."
                 : $"No cached MAME version directory found for {MameVersion}.", removed ? OutputLogStatus.Info : OutputLogStatus.Warning);
+
+            if (KeepMameUpToDateAutomatically)
+            {
+                SyncMameVersionToLatestInstalled();
+            }
         }
         catch (Exception ex)
         {
@@ -1127,7 +1246,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 Version = MameVersion,
                 ExecutablePath = MameExecutablePath,
                 ReleaseSource = MameReleaseSource,
-                CommandLineOverrides = MameCommandLineOverrides
+                CommandLineOverrides = MameCommandLineOverrides,
+                KeepMameUpToDateAutomatically = KeepMameUpToDateAutomatically
             }
         });
     }

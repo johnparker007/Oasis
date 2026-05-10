@@ -15,6 +15,7 @@ public sealed class MamePreferences
     public string ExecutablePath { get; init; } = string.Empty;
     public string ReleaseSource { get; init; } = "https://github.com/mamedev/mame/releases";
     public string CommandLineOverrides { get; init; } = string.Empty;
+    public bool KeepMameUpToDateAutomatically { get; init; } = true;
 }
 
 public sealed class ProjectWindowState

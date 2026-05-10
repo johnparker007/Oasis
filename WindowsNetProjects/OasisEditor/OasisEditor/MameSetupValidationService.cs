@@ -22,6 +22,22 @@ public sealed class MameSetupValidationService : IMameSetupValidationService
             issues.Add("MAME executable is missing.");
         }
 
+        if (!string.IsNullOrWhiteSpace(request.SelectedVersion) && !string.IsNullOrWhiteSpace(request.InstallRootDirectory))
+        {
+            var normalizedSelectedVersion = MameVersionParsing.NormalizeVersion(request.SelectedVersion);
+            var expectedInstallDirectory = Path.Combine(request.InstallRootDirectory, $"mame{normalizedSelectedVersion}");
+            var expectedExecutableCandidates = new[]
+            {
+                Path.Combine(expectedInstallDirectory, "mame.exe"),
+                Path.Combine(expectedInstallDirectory, $"mame{normalizedSelectedVersion}", "mame.exe")
+            };
+
+            if (!expectedExecutableCandidates.Any(File.Exists))
+            {
+                issues.Add($"Selected MAME version {normalizedSelectedVersion} is not installed.");
+            }
+        }
+
         if (string.IsNullOrWhiteSpace(request.InstallRootDirectory))
         {
             issues.Add("Managed runtime root is unavailable.");
