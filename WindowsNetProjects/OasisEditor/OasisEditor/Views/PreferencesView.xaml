@@ -68,7 +68,16 @@
                         <TextBlock FontWeight="SemiBold" Text="Editor-managed runtime paths" />
                         <TextBlock Margin="0,6,0,0"
                                    Foreground="{DynamicResource TextSecondaryBrush}"
-                                   Text="MAME runtime root is managed automatically at %LOCALAPPDATA%\OasisEditor\MAME\." />
+                                   Text="MAME runtime root (editor-managed)" />
+                        <TextBox Margin="0,4,0,0"
+                                 IsReadOnly="True"
+                                 Text="{Binding MameInstallRootDirectory}" />
+                        <TextBlock Margin="0,4,0,0"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                   Text="Lua plugin source (editor-managed)" />
+                        <TextBox Margin="0,4,0,0"
+                                 IsReadOnly="True"
+                                 Text="{Binding MameLuaPluginPath}" />
                         <TextBlock Margin="0,4,0,0"
                                    Foreground="{DynamicResource TextSecondaryBrush}"
                                    Text="Lua plugin deployment is automatic and no longer configured per-user." />
@@ -84,6 +93,7 @@
                     <Button Padding="10,4" Margin="0,0,8,0" Content="Refresh Versions" Command="{Binding RefreshMameVersionsCommand}" />
                     <Button Padding="10,4" Margin="0,0,8,0" Content="Download Selected" Command="{Binding DownloadMameVersionCommand}" />
                     <Button Padding="10,4" Margin="0,0,8,0" Content="Open Install Folder" Command="{Binding OpenMameInstallRootCommand}" />
+                    <Button Padding="10,4" Margin="0,0,8,0" Content="Re-sync Lua Plugins (TODO)" IsEnabled="False" ToolTip="Planned editor-managed plugin deployment action." />
                     <Button Padding="10,4" Content="Remove Cached Version" Command="{Binding RemoveCachedMameVersionCommand}" />
                 </StackPanel>
             </StackPanel>
