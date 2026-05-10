@@ -175,7 +175,7 @@ public sealed class LauncherWindowViewModel : INotifyPropertyChanged
             ValidateProjectFile(trimmed);
 
             var mainWindow = new MainWindow(_applicationThemeService, _preferencesStore, trimmed);
-
+            Application.Current.MainWindow = mainWindow;
             mainWindow.Show();
             _launcherWindow.Close();
         }
