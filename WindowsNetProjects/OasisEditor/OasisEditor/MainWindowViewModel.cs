@@ -48,6 +48,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly MfmeImportService _mfmeImportService = new();
     private readonly MameDownloadService _mameDownloadService = new();
     private readonly MamePluginAssetValidator _mamePluginAssetValidator = new();
+    private readonly MamePluginDeploymentService _mamePluginDeploymentService = new();
     private readonly IMameSetupOrchestrator _mameSetupOrchestrator;
     private MameSetupState _mameSetupState = MameSetupState.NotStarted;
 
@@ -86,6 +87,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         RefreshMameVersionsCommand = new RelayCommand(RefreshMameVersions);
         DownloadMameVersionCommand = new RelayCommand(DownloadMameVersion);
         OpenMameInstallRootCommand = new RelayCommand(OpenMameInstallRoot);
+        ResyncMamePluginsCommand = new RelayCommand(ResyncMamePlugins);
         RemoveCachedMameVersionCommand = new RelayCommand(RemoveCachedMameVersion);
         CloseProjectSettingsCommand = new RelayCommand(CloseProjectSettings);
         CloseProjectCommand = new RelayCommand(CloseProject, CanCloseProject);
@@ -244,6 +246,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand RefreshMameVersionsCommand { get; }
     public ICommand DownloadMameVersionCommand { get; }
     public ICommand OpenMameInstallRootCommand { get; }
+    public ICommand ResyncMamePluginsCommand { get; }
     public ICommand RemoveCachedMameVersionCommand { get; }
     public ICommand CloseProjectSettingsCommand { get; }
     public ICommand ApplyInspectorSummaryCommand { get; }
@@ -986,6 +989,20 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         System.Diagnostics.Process.Start("explorer.exe", MameInstallRootDirectory);
     }
 
+
+    private void ResyncMamePlugins()
+    {
+        try
+        {
+            var copied = _mamePluginDeploymentService.SyncPluginFiles(MameLuaPluginPath, MameExecutablePath);
+            AddOutputEntry($"Re-synced Oasis Lua plugins into active MAME install ({copied} files copied).", OutputLogStatus.Info);
+            ValidateMamePreferences();
+        }
+        catch (Exception ex)
+        {
+            AddOutputEntry($"Failed to re-sync Oasis Lua plugins: {ex.Message}", OutputLogStatus.Warning);
+        }
+    }
     private void RemoveCachedMameVersion()
     {
         try
