@@ -50,7 +50,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly MamePluginAssetValidator _mamePluginAssetValidator = new();
     private readonly MamePluginDeploymentService _mamePluginDeploymentService = new();
     private readonly IMameSetupOrchestrator _mameSetupOrchestrator;
+    private readonly IMameVersionCatalogService _mameVersionCatalogService;
     private MameSetupState _mameSetupState = MameSetupState.NotStarted;
+    private bool _isAutoProvisioningMame;
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<EditorToolWindowId>? ToolWindowOpenRequested;
@@ -129,7 +131,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _mameReleaseSource = preferences.Mame.ReleaseSource;
         _mameLuaPluginPath = MameRuntimePaths.ResolveBundledLuaPluginSourcePath();
         _mameCommandLineOverrides = preferences.Mame.CommandLineOverrides;
-        var setupValidationService = new MameSetupValidationService(_mamePluginAssetValidator, _mameDownloadService);
+        _mameVersionCatalogService = new MameVersionCatalogService(_mameDownloadService);
+        var setupValidationService = new MameSetupValidationService(_mamePluginAssetValidator, _mameVersionCatalogService);
         _mameSetupOrchestrator = new MameSetupOrchestrator(setupValidationService);
 
         RecentProjects = new ObservableCollection<string>(_recentProjectsStore.Load());
@@ -935,6 +938,56 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                     AddOutputEntry($"MAME setup issue: {issue}", OutputLogStatus.Warning);
                 }
             }
+
+            await TryAutoProvisionMameAsync(state);
+        }
+    }
+
+    private async Task TryAutoProvisionMameAsync(MameSetupState state)
+    {
+        if (_isAutoProvisioningMame)
+        {
+            return;
+        }
+
+        var hasMissingExecutableIssue = state.Issues.Any(issue => issue.Contains("executable", StringComparison.OrdinalIgnoreCase));
+        if (!hasMissingExecutableIssue)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(state.LatestKnownVersion))
+        {
+            AddOutputEntry("Auto-provision skipped: latest MAME version is unknown.", OutputLogStatus.Warning);
+            return;
+        }
+
+        try
+        {
+            _isAutoProvisioningMame = true;
+            MameVersion = state.LatestKnownVersion;
+            AddOutputEntry($"Auto-provisioning MAME {MameVersion} in background...", OutputLogStatus.Info);
+
+            var executablePath = await _mameDownloadService.DownloadAndExtractAsync(
+                MameReleaseSource,
+                MameVersion,
+                MameInstallRootDirectory,
+                new Progress<string>(message => AddOutputEntry($"[Auto-setup] {message}", OutputLogStatus.Info)),
+                CancellationToken.None);
+
+            MameExecutablePath = executablePath;
+            AddOutputEntry($"Auto-provisioning completed. Executable: {executablePath}", OutputLogStatus.Info);
+
+            ResyncMamePlugins();
+            await ValidateMamePreferencesAsync();
+        }
+        catch (Exception ex)
+        {
+            AddOutputEntry($"Auto-provisioning failed: {ex.Message}", OutputLogStatus.Warning);
+        }
+        finally
+        {
+            _isAutoProvisioningMame = false;
         }
     }
 
@@ -943,8 +996,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         try
         {
-            var versions = await _mameDownloadService.GetKnownVersionsAsync(CancellationToken.None);
-            AddOutputEntry($"Known MAME versions: {string.Join(", ", versions)}", OutputLogStatus.Info);
+            var catalog = await _mameVersionCatalogService.GetLatestVersionAsync(CancellationToken.None);
+            var source = catalog.IsFromCache ? "cache" : "network/service";
+            AddOutputEntry($"Known MAME versions ({source}): {string.Join(", ", catalog.KnownVersions)}", OutputLogStatus.Info);
+            if (!string.IsNullOrWhiteSpace(catalog.LatestVersion))
+            {
+                AddOutputEntry($"Latest known MAME version: {catalog.LatestVersion}", OutputLogStatus.Info);
+            }
         }
         catch (Exception ex)
         {
