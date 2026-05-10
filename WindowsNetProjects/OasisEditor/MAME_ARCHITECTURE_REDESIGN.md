@@ -10,7 +10,8 @@ This document supersedes earlier assumptions in `TASKS_MAME_EMULATION_PORT.md` r
 - Reduce invalid setup states.
 - Keep the Preferences UI scalable as more settings categories are added.
 - Separate editor-owned assets from downloaded runtime assets.
-- Allow the editor to self-provision a working MAME install when possible.
+- Allow the editor to self-provision a working MAME install automatically when possible.
+- Keep MAME setup mostly invisible to the user unless action is required.
 
 ## Preferences Window Redesign
 
@@ -58,10 +59,13 @@ The UI should avoid exposing internal runtime directories unless an advanced/deb
 ## Preferred MAME UI
 
 - Setup status summary
+- Background setup progress, when active
 - Installed MAME versions list
 - Selected active version
 - Latest available version, if known
-- Download latest version
+- Cancel current setup/download, when safe
+- Retry setup, if failed
+- Download/update latest version, manual fallback action
 - Download specific version, optional advanced action
 - Remove selected version
 - Open install folder
@@ -184,8 +188,9 @@ The editor should move away from requiring users to type or know a MAME version 
 Preferred behavior:
 
 - discover the latest official MAME Windows command-line/binary release automatically;
+- cache latest-version metadata in LocalAppData;
 - show the discovered latest version in Preferences;
-- provide a Download Latest action;
+- use the latest known version for automatic first-run/background provisioning;
 - allow a specific version override only as an advanced/debug option.
 
 Implementation guidance:
@@ -201,10 +206,13 @@ Codex should prefer small, testable steps:
 1. introduce catalog service abstraction and data model;
 2. implement latest-version lookup;
 3. cache latest-version metadata;
-4. wire Preferences to display latest/installed/selected state;
-5. then wire Download Latest.
+4. wire Preferences to display latest/installed/selected/setup state;
+5. wire background auto-provisioning when no valid install exists;
+6. then add manual fallback controls.
 
 ## Startup MAME Setup Policy
+
+MAME should be treated as editor-managed runtime infrastructure.
 
 On editor/launcher startup, the app should check MAME setup in the background.
 
@@ -220,20 +228,39 @@ Preferred policy:
 
 1. Do not block the Launcher or Editor just because MAME is missing.
 2. Show MAME setup status in the MAME Preferences page and output log.
-3. If no valid MAME install exists, automatically start discovering the latest version in the background.
-4. Do not automatically download large MAME binaries without a clear user opt-in yet.
-5. Once the user clicks Download Latest, run download/extract/plugin-sync with visible progress.
-6. After download completes, select the new version automatically if no valid version was already selected.
+3. If no valid MAME install exists, automatically discover the latest version in the background.
+4. If a latest version can be determined and no valid install exists, automatically download, extract, install, select, and plugin-sync that version in the background.
+5. If an installed version exists but plugin deployment is missing/stale, automatically re-sync plugins in the background.
+6. If an installed version is invalid but a previously downloaded archive exists, attempt repair/re-extract before downloading again.
+7. After background setup completes, select the new version automatically if no valid version was already selected.
+8. Interrupt the user only when setup fails, when destructive action is requested, or when emulation is requested before setup completes.
 
 Rationale:
 
-- MAME setup may be slow or network-dependent.
-- Users should still be able to use non-emulation editor features.
-- Automatic background discovery is safe; automatic large downloads should wait for explicit user action until UX is more mature.
+- MAME is core runtime infrastructure for playing machines, not an optional user-managed plugin.
+- Oasis is primarily a desktop editor, so a background desktop-sized download is acceptable.
+- Users should still be able to use non-emulation editor features during setup.
+- The best user experience is for emulation infrastructure to be ready by the time the user needs it.
 
-Future option:
+## User Interaction Policy
 
-- add a first-run prompt: `MAME is required for emulation. Download latest MAME now?`
+Do not show a first-run modal prompt just to ask whether MAME should be downloaded.
+
+Use passive/background setup by default.
+
+Only interrupt or prompt the user for:
+
+- setup failure requiring Retry/Open Folder/View Diagnostics;
+- user-requested destructive actions such as removing an installed version;
+- user clicking Play/Start Emulation while setup is still running;
+- user clicking Play/Start Emulation when setup has failed;
+- future advanced configuration overrides.
+
+If emulation is requested while setup is still running, show a clear non-destructive message such as:
+
+```text
+MAME is still being set up. Progress: 42%.
+```
 
 ## Progress UX Policy
 
@@ -242,7 +269,8 @@ Use non-blocking background progress by default.
 Recommended UI:
 
 - MAME Preferences page contains current operation/status/progress.
-- Main launcher/editor may show a small status line or output-log entries.
+- Launcher/editor status area may show a small passive progress/status indicator.
+- Output log receives setup, download, extract, validation, and plugin-sync messages.
 - Long-running operations expose Cancel where safe.
 - Disable only MAME-specific actions while a MAME operation is running.
 - Do not modal-block the whole editor except for critical confirmations or destructive actions.
@@ -250,7 +278,7 @@ Recommended UI:
 Use modal dialogs only for:
 
 - confirming removal of an installed MAME version;
-- first-run optional prompt, if later implemented;
+- notifying setup failure if the user explicitly requested emulation and setup is not recoverable silently;
 - fatal errors requiring user acknowledgement, which should be rare.
 
 ## Download / Install State Machine
@@ -258,15 +286,18 @@ Use modal dialogs only for:
 A MAME install should have explicit states, for example:
 
 - NotInstalled
+- Validating
 - DiscoveringLatest
-- DownloadAvailable
+- DownloadQueued
 - Downloading
 - Downloaded
 - Extracting
 - InstallingPlugins
 - Installed
+- Repairing
 - Invalid
 - Failed
+- Cancelled
 
 The UI and logs should be driven by this state rather than ad-hoc booleans.
 
@@ -291,17 +322,19 @@ Validation errors should:
 
 The editor owns:
 
+- automatic MAME provisioning;
 - downloaded MAME installs;
 - plugin deployment;
 - runtime folder structure;
 - diagnostics;
-- latest-version discovery/cache.
+- latest-version discovery/cache;
+- repair/retry/cancel state.
 
 The user owns:
 
-- choosing whether to download MAME;
 - choosing which installed MAME version to use, if multiple exist;
-- project configuration.
+- project configuration;
+- advanced/manual override actions.
 
 ## Architectural Direction
 
@@ -325,6 +358,7 @@ Suggested services:
 - `MameVersionCatalogService`
 - `MamePluginDeploymentService`
 - `MameStartupValidationService`
+- `MameSetupOrchestrator`
 - `MameProcessService`
 - `MameRuntimeStateService`
 - `MameDiagnosticsService`
@@ -353,7 +387,8 @@ Codex should:
 - deploy plugins automatically into each installed MAME version;
 - build latest-version discovery as a service separate from download/install;
 - perform startup validation in the background;
-- avoid modal-blocking the editor for MAME setup;
+- auto-provision latest MAME in the background when no valid install exists;
+- avoid modal-blocking the editor for normal MAME setup;
 - keep changes incremental and reviewable.
 
 Codex should not:
@@ -361,5 +396,5 @@ Codex should not:
 - hardcode absolute machine-specific paths;
 - require manual Lua plugin copying;
 - expose unnecessary low-level filesystem configuration;
-- auto-download large MAME archives on startup without user opt-in;
+- show a first-run modal prompt just to approve MAME download;
 - continue using Unity asset folders as runtime dependencies.
