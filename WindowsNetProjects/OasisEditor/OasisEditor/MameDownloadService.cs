@@ -11,20 +11,19 @@ public sealed class MameDownloadService
 
     public Task<IReadOnlyList<string>> GetKnownVersionsAsync(CancellationToken cancellationToken)
     {
-        // Phase C seed list aligned with legacy default and current branch conventions.
-        IReadOnlyList<string> versions = ["0258", "0267", "0281"];
+        IReadOnlyList<string> versions = MameVersionParsing.GetSeedVersions();
         return Task.FromResult(versions);
     }
 
     public string GetArchiveUrl(string releaseSource, string version)
     {
-        var normalizedVersion = NormalizeVersion(version);
+        var normalizedVersion = MameVersionParsing.NormalizeVersion(version);
         var archiveName = BuildArchiveFileName(normalizedVersion);
         return $"{releaseSource.TrimEnd('/')}/download/mame{normalizedVersion}/{archiveName}";
     }
 
     public string GetInstallDirectory(string installRootDirectory, string version)
-        => Path.Combine(installRootDirectory, $"mame{NormalizeVersion(version)}");
+        => Path.Combine(installRootDirectory, $"mame{MameVersionParsing.NormalizeVersion(version)}");
 
     public async Task<string> DownloadAndExtractAsync(
         string releaseSource,
@@ -33,7 +32,7 @@ public sealed class MameDownloadService
         IProgress<string>? progress,
         CancellationToken cancellationToken)
     {
-        var normalizedVersion = NormalizeVersion(version);
+        var normalizedVersion = MameVersionParsing.NormalizeVersion(version);
         var installDirectory = GetInstallDirectory(installRootDirectory, normalizedVersion);
         var archiveName = BuildArchiveFileName(normalizedVersion);
         var archiveUrl = GetArchiveUrl(releaseSource, normalizedVersion);
@@ -101,15 +100,4 @@ public sealed class MameDownloadService
         }
     }
 
-    private static string NormalizeVersion(string version)
-    {
-        var numericOnly = new string(version.Where(char.IsDigit).ToArray());
-        if (string.IsNullOrWhiteSpace(numericOnly))
-        {
-            throw new InvalidOperationException("MAME version must contain digits.");
-        }
-
-        var numericVersion = int.Parse(numericOnly);
-        return numericVersion.ToString("0000");
-    }
 }

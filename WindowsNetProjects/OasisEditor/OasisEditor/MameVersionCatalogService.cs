@@ -1,10 +1,12 @@
 using System.IO;
+using System.Net.Http;
 using System.Text.Json;
 
 namespace OasisEditor;
 
 public sealed class MameVersionCatalogService : IMameVersionCatalogService
 {
+    private static readonly HttpClient HttpClient = new();
     private readonly MameDownloadService _downloadService;
     private readonly string _catalogCachePath;
 
@@ -18,24 +20,31 @@ public sealed class MameVersionCatalogService : IMameVersionCatalogService
 
     public async Task<MameVersionCatalogResult> GetLatestVersionAsync(CancellationToken cancellationToken)
     {
-        try
-        {
-            var versions = await _downloadService.GetKnownVersionsAsync(cancellationToken).ConfigureAwait(false);
-            var ordered = versions.OrderByDescending(v => v, StringComparer.Ordinal).ToArray();
-            var latest = ordered.FirstOrDefault();
-            await SaveCacheAsync(new CatalogCacheModel(ordered, latest), cancellationToken).ConfigureAwait(false);
-            return new MameVersionCatalogResult(latest, ordered, false);
-        }
-        catch
-        {
-            var cached = await TryLoadCacheAsync(cancellationToken).ConfigureAwait(false);
-            if (cached is null)
-            {
-                return new MameVersionCatalogResult(null, Array.Empty<string>(), true);
-            }
+        var seed = MameVersionParsing.GetSeedVersions();
+        var cached = await TryLoadCacheAsync(cancellationToken).ConfigureAwait(false);
 
-            return new MameVersionCatalogResult(cached.LatestVersion, cached.KnownVersions ?? Array.Empty<string>(), true);
+        var discovered = await TryFetchLiveVersionAsync(cancellationToken).ConfigureAwait(false);
+        if (discovered is not null)
+        {
+            var merged = MameVersionParsing.NormalizeSortAndDedupe([
+                discovered.LatestVersion,
+                .. discovered.KnownVersions,
+                .. (cached?.KnownVersions ?? []),
+                .. seed]);
+
+            var latest = merged.FirstOrDefault();
+            _ = TrySaveCacheAsync(new CatalogCacheModel(merged, latest, DateTime.UtcNow, discovered.Source), cancellationToken);
+            return new MameVersionCatalogResult(latest, merged, false);
         }
+
+        if (cached is not null)
+        {
+            var mergedCached = MameVersionParsing.NormalizeSortAndDedupe([.. (cached.KnownVersions ?? []), .. seed]);
+            return new MameVersionCatalogResult(cached.LatestVersion ?? mergedCached.FirstOrDefault(), mergedCached, true);
+        }
+
+        var fallback = MameVersionParsing.NormalizeSortAndDedupe(seed);
+        return new MameVersionCatalogResult(fallback.FirstOrDefault(), fallback, true);
     }
 
     public async Task<IReadOnlyList<string>> GetKnownVersionsAsync(CancellationToken cancellationToken)
@@ -44,10 +53,48 @@ public sealed class MameVersionCatalogService : IMameVersionCatalogService
         return result.KnownVersions;
     }
 
-    private async Task SaveCacheAsync(CatalogCacheModel model, CancellationToken cancellationToken)
+    private async Task<LiveDiscoveryResult?> TryFetchLiveVersionAsync(CancellationToken cancellationToken)
     {
-        var json = JsonSerializer.Serialize(model, new JsonSerializerOptions { WriteIndented = true });
-        await File.WriteAllTextAsync(_catalogCachePath, json, cancellationToken).ConfigureAwait(false);
+        var mamedevHtml = await TryGetStringAsync("https://www.mamedev.org/release.html", cancellationToken).ConfigureAwait(false);
+        var mamedevVersion = mamedevHtml is null ? null : MameVersionParsing.TryParseLatestFromMamedevReleasePage(mamedevHtml);
+        if (!string.IsNullOrWhiteSpace(mamedevVersion))
+        {
+            return new LiveDiscoveryResult(mamedevVersion, [mamedevVersion], "MamedevReleasePage");
+        }
+
+        var githubHtml = await TryGetStringAsync("https://github.com/mamedev/mame/releases", cancellationToken).ConfigureAwait(false);
+        var githubVersion = githubHtml is null ? null : MameVersionParsing.TryParseLatestFromGitHubReleases(githubHtml);
+        if (!string.IsNullOrWhiteSpace(githubVersion))
+        {
+            return new LiveDiscoveryResult(githubVersion, [githubVersion], "GitHubReleases");
+        }
+
+        return null;
+    }
+
+    private static async Task<string?> TryGetStringAsync(string url, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await HttpClient.GetStringAsync(url, cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private async Task TrySaveCacheAsync(CatalogCacheModel model, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var json = JsonSerializer.Serialize(model, new JsonSerializerOptions { WriteIndented = true });
+            await File.WriteAllTextAsync(_catalogCachePath, json, cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            // Ignore cache write failures; live result remains valid.
+        }
     }
 
     private async Task<CatalogCacheModel?> TryLoadCacheAsync(CancellationToken cancellationToken)
@@ -68,5 +115,11 @@ public sealed class MameVersionCatalogService : IMameVersionCatalogService
         }
     }
 
-    private sealed record CatalogCacheModel(IReadOnlyList<string> KnownVersions, string? LatestVersion);
+    private sealed record LiveDiscoveryResult(string LatestVersion, IReadOnlyList<string> KnownVersions, string Source);
+
+    private sealed record CatalogCacheModel(
+        IReadOnlyList<string> KnownVersions,
+        string? LatestVersion,
+        DateTime? LastSuccessfulRefreshUtc = null,
+        string? Source = null);
 }
