@@ -111,7 +111,7 @@
                     <Button Padding="10,4" Margin="0,0,8,0" Content="Refresh Versions" Command="{Binding RefreshMameVersionsCommand}" />
                     <Button Padding="10,4" Margin="0,0,8,0" Content="Download Selected" Command="{Binding DownloadMameVersionCommand}" />
                     <Button Padding="10,4" Margin="0,0,8,0" Content="Open Install Folder" Command="{Binding OpenMameInstallRootCommand}" />
-                    <Button Padding="10,4" Margin="0,0,8,0" Content="Re-sync Lua Plugins (TODO)" IsEnabled="False" ToolTip="Planned editor-managed plugin deployment action." />
+                    <Button Padding="10,4" Margin="0,0,8,0" Content="Re-sync Lua Plugins" Command="{Binding ResyncMamePluginsCommand}" ToolTip="Copy bundled Oasis Lua plugin files into the active MAME install." />
                     <Button Padding="10,4" Content="Remove Cached Version" Command="{Binding RemoveCachedMameVersionCommand}" />
                 </StackPanel>
             </StackPanel>
