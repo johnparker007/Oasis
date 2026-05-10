@@ -48,6 +48,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly MfmeImportService _mfmeImportService = new();
     private readonly MameDownloadService _mameDownloadService = new();
     private readonly MamePluginAssetValidator _mamePluginAssetValidator = new();
+    private readonly IMameSetupValidationService _mameSetupValidationService;
+    private MameSetupPhase _mameSetupPhase = MameSetupPhase.NotStarted;
+    private string _mameSetupLatestKnownVersion = "Unknown";
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<EditorToolWindowId>? ToolWindowOpenRequested;
@@ -125,6 +128,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _mameReleaseSource = preferences.Mame.ReleaseSource;
         _mameLuaPluginPath = GetDefaultLuaPluginPath();
         _mameCommandLineOverrides = preferences.Mame.CommandLineOverrides;
+        _mameSetupValidationService = new MameSetupValidationService(_mamePluginAssetValidator, _mameDownloadService);
 
         RecentProjects = new ObservableCollection<string>(_recentProjectsStore.Load());
         OpenDocuments = new ObservableCollection<DocumentTabViewModel>();
@@ -201,6 +205,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         LoadStartupProject(startupProjectFilePath.Trim());
         RefreshHierarchy();
+        _ = ValidateMamePreferencesAsync();
     }
 
     public ICommand OpenUntitledDocumentCommand { get; }
@@ -296,6 +301,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public string MameLuaPluginPath => _mameLuaPluginPath;
     public string MameCommandLineOverrides { get => _mameCommandLineOverrides; set { if (SetProperty(ref _mameCommandLineOverrides, value)) SavePreferences(); } }
     public string MameValidationSummary { get => _mameValidationSummary; private set => SetProperty(ref _mameValidationSummary, value); }
+    public string MameSetupPhaseDisplay => _mameSetupPhase.ToString();
+    public string MameSetupLatestKnownVersion { get => _mameSetupLatestKnownVersion; private set => SetProperty(ref _mameSetupLatestKnownVersion, value); }
     public string SelectedPreferencesCategory
     {
         get => _selectedPreferencesCategory;
@@ -884,45 +891,39 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private void ValidateMamePreferences()
+    private async void ValidateMamePreferences()
     {
-        var errors = new List<string>();
+        await ValidateMamePreferencesAsync();
+    }
 
-        if (string.IsNullOrWhiteSpace(MameExecutablePath) || !File.Exists(MameExecutablePath))
-            errors.Add("MAME executable is missing or does not exist.");
-        else if (!string.Equals(Path.GetFileName(MameExecutablePath), "mame.exe", StringComparison.OrdinalIgnoreCase))
-            errors.Add("MAME executable path must point to mame.exe.");
+    private async Task ValidateMamePreferencesAsync()
+    {
+        _mameSetupPhase = MameSetupPhase.Validating;
+        OnPropertyChanged(nameof(MameSetupPhaseDisplay));
 
-        if (string.IsNullOrWhiteSpace(MameInstallRootDirectory))
-            errors.Add("Managed MAME runtime root could not be resolved.");
-        else if (!Directory.Exists(MameInstallRootDirectory))
-            Directory.CreateDirectory(MameInstallRootDirectory);
+        var state = await _mameSetupValidationService.ValidateAsync(
+            new MameSetupValidationRequest(
+                MameExecutablePath,
+                MameInstallRootDirectory,
+                MameLuaPluginPath,
+                MameVersion,
+                MameReleaseSource),
+            CancellationToken.None);
 
-        if (string.IsNullOrWhiteSpace(MameLuaPluginPath) || !Directory.Exists(MameLuaPluginPath))
+        _mameSetupPhase = state.Phase;
+        OnPropertyChanged(nameof(MameSetupPhaseDisplay));
+        MameSetupLatestKnownVersion = string.IsNullOrWhiteSpace(state.LatestKnownVersion)
+            ? "Unknown"
+            : state.LatestKnownVersion;
+        MameValidationSummary = state.Summary;
+
+        if (state.Phase == MameSetupPhase.Ready)
         {
-            errors.Add("Managed Lua plugin source could not be located in editor assets.");
+            AddOutputEntry($"MAME preferences validation passed. Latest known version: {MameSetupLatestKnownVersion}.", OutputLogStatus.Info);
         }
         else
         {
-            var missingPluginFiles = _mamePluginAssetValidator.GetMissingFiles(MameLuaPluginPath);
-            if (missingPluginFiles.Count > 0)
-            {
-                errors.Add($"Managed Lua plugin source is missing required files: {string.Join(", ", missingPluginFiles)}.");
-            }
-        }
-
-        if (string.IsNullOrWhiteSpace(MameVersion) || MameVersion.Any(c => !char.IsDigit(c)))
-            errors.Add("MAME version must be numeric (example: 0267).");
-
-        if (errors.Count == 0)
-        {
-            MameValidationSummary = "MAME preferences validation passed.";
-            AddOutputEntry(MameValidationSummary, OutputLogStatus.Info);
-        }
-        else
-        {
-            MameValidationSummary = string.Join(" ", errors);
-            AddOutputEntry($"MAME preferences validation failed: {MameValidationSummary}", OutputLogStatus.Warning);
+            AddOutputEntry($"MAME preferences validation requires attention: {state.Summary}", OutputLogStatus.Warning);
         }
     }
 
