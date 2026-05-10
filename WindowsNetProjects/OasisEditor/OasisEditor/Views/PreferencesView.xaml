@@ -64,10 +64,10 @@
                 </Grid>
 
                 <TextBlock Margin="0,8,0,4" Text="Managed Runtime Root" Foreground="{DynamicResource TextSecondaryBrush}" />
-                <TextBox IsReadOnly="True" Text="{Binding MameInstallRootDirectory}" />
+                <TextBox IsReadOnly="True" Text="{Binding MameInstallRootDirectory, Mode=OneWay}" />
 
                 <TextBlock Margin="0,8,0,4" Text="Managed Lua Plugin Source" Foreground="{DynamicResource TextSecondaryBrush}" />
-                <TextBox IsReadOnly="True" Text="{Binding MameLuaPluginPath}" />
+                <TextBox IsReadOnly="True" Text="{Binding MameLuaPluginPath, Mode=OneWay}" />
 
                 <StackPanel Margin="0,12,0,0" Orientation="Horizontal">
                     <Button Padding="10,4" Content="Validate Setup" Command="{Binding ValidateMamePreferencesCommand}" />
