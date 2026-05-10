@@ -905,6 +905,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private async Task ValidateMamePreferencesAsync()
     {
+        AutoResolveManagedMameExecutablePath();
+
         _mameSetupState = new MameSetupState(MameSetupPhase.Validating, "Validating setup...", MameSetupLatestKnownVersion, true, []);
         OnPropertyChanged(nameof(MameSetupPhaseDisplay));
         OnPropertyChanged(nameof(IsMameSetupInProgress));
@@ -941,6 +943,46 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
             await TryAutoProvisionMameAsync(state);
         }
+    }
+
+    private void AutoResolveManagedMameExecutablePath()
+    {
+        if (!string.IsNullOrWhiteSpace(MameExecutablePath) && File.Exists(MameExecutablePath))
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(MameInstallRootDirectory) || !Directory.Exists(MameInstallRootDirectory))
+        {
+            return;
+        }
+
+        var candidates = new List<string>();
+        if (!string.IsNullOrWhiteSpace(MameVersion))
+        {
+            var versionInstallDirectory = _mameDownloadService.GetInstallDirectory(MameInstallRootDirectory, MameVersion);
+            candidates.Add(Path.Combine(versionInstallDirectory, "mame.exe"));
+            candidates.Add(Path.Combine(versionInstallDirectory, $"mame{MameVersion}", "mame.exe"));
+        }
+
+        foreach (var installDirectory in Directory.EnumerateDirectories(MameInstallRootDirectory, "mame*"))
+        {
+            candidates.Add(Path.Combine(installDirectory, "mame.exe"));
+            candidates.Add(Path.Combine(installDirectory, Path.GetFileName(installDirectory), "mame.exe"));
+        }
+
+        var resolvedPath = candidates
+            .Where(path => !string.IsNullOrWhiteSpace(path))
+            .Select(Path.GetFullPath)
+            .FirstOrDefault(File.Exists);
+
+        if (string.IsNullOrWhiteSpace(resolvedPath))
+        {
+            return;
+        }
+
+        MameExecutablePath = resolvedPath;
+        AddOutputEntry($"Resolved installed MAME executable: {resolvedPath}", OutputLogStatus.Info);
     }
 
     private async Task TryAutoProvisionMameAsync(MameSetupState state)
