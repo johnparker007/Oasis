@@ -61,13 +61,15 @@ public sealed class MameSetupValidationService : IMameSetupValidationService
                 MameSetupPhase.NeedsAttention,
                 string.Join(" ", issues),
                 latestVersion,
-                false);
+                false,
+                issues);
         }
 
         return new MameSetupState(
             MameSetupPhase.Ready,
             "MAME setup is valid.",
             latestVersion,
-            false);
+            false,
+            []);
     }
 }

@@ -12,7 +12,8 @@ public sealed record MameSetupState(
     MameSetupPhase Phase,
     string Summary,
     string? LatestKnownVersion,
-    bool IsInProgress)
+    bool IsInProgress,
+    IReadOnlyList<string>? Issues = null)
 {
-    public static MameSetupState NotStarted { get; } = new(MameSetupPhase.NotStarted, "Not started.", "Unknown", false);
+    public static MameSetupState NotStarted { get; } = new(MameSetupPhase.NotStarted, "Not started.", "Unknown", false, []);
 }

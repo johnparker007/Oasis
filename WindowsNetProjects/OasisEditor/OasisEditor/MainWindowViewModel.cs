@@ -899,7 +899,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private async Task ValidateMamePreferencesAsync()
     {
-        _mameSetupState = new MameSetupState(MameSetupPhase.Validating, "Validating setup...", MameSetupLatestKnownVersion, true);
+        _mameSetupState = new MameSetupState(MameSetupPhase.Validating, "Validating setup...", MameSetupLatestKnownVersion, true, []);
         OnPropertyChanged(nameof(MameSetupPhaseDisplay));
         OnPropertyChanged(nameof(IsMameSetupInProgress));
 
@@ -925,6 +925,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         else
         {
             AddOutputEntry($"MAME preferences validation requires attention: {state.Summary}", OutputLogStatus.Warning);
+            if (state.Issues is not null)
+            {
+                foreach (var issue in state.Issues)
+                {
+                    AddOutputEntry($"MAME setup issue: {issue}", OutputLogStatus.Warning);
+                }
+            }
         }
     }
 
