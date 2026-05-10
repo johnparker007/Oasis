@@ -43,7 +43,7 @@
 
                         <layout:LayoutDocumentPane x:Name="DocumentPane" />
 
-                        <layout:LayoutAnchorablePane DockWidth="280">
+                        <layout:LayoutAnchorablePane DockWidth="560">
                             <layout:LayoutAnchorable Title="Inspector"
                                                      ContentId="Inspector"
                                                      CanClose="False">
