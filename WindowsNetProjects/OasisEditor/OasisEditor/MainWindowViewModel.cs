@@ -123,9 +123,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _selectedThemePreference = preferences.ThemePreference;
         _mameVersion = preferences.Mame.Version;
         _mameExecutablePath = preferences.Mame.ExecutablePath;
-        _mameInstallRootDirectory = EnsureManagedMameRuntimeRootDirectory();
+        _mameInstallRootDirectory = MameRuntimePaths.EnsureManagedRuntimeRootDirectory();
         _mameReleaseSource = preferences.Mame.ReleaseSource;
-        _mameLuaPluginPath = GetDefaultLuaPluginPath();
+        _mameLuaPluginPath = MameRuntimePaths.ResolveBundledLuaPluginSourcePath();
         _mameCommandLineOverrides = preferences.Mame.CommandLineOverrides;
         var setupValidationService = new MameSetupValidationService(_mamePluginAssetValidator, _mameDownloadService);
         _mameSetupOrchestrator = new MameSetupOrchestrator(setupValidationService);
@@ -928,23 +928,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-
-    private static string GetDefaultLuaPluginPath()
-    {
-        var appBaseDirectory = AppContext.BaseDirectory;
-        var candidate = Path.GetFullPath(Path.Combine(appBaseDirectory, "..", "..", "..", "Assets", "MAME", "plugins", "oasis"));
-        return Directory.Exists(candidate) ? candidate : string.Empty;
-    }
-
-    private static string EnsureManagedMameRuntimeRootDirectory()
-    {
-        var root = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "OasisEditor",
-            "MAME");
-        Directory.CreateDirectory(root);
-        return root;
-    }
 
     private async void RefreshMameVersions()
     {
