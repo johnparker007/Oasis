@@ -1052,6 +1052,25 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         return normalizedVersions.FirstOrDefault();
     }
 
+    private bool IsLatestVersionInstallNeeded(string latestKnownVersion)
+    {
+        if (string.IsNullOrWhiteSpace(latestKnownVersion))
+        {
+            return false;
+        }
+
+        var latestInstalledVersion = TryGetLatestInstalledMameVersion();
+        if (string.IsNullOrWhiteSpace(latestInstalledVersion))
+        {
+            return true;
+        }
+
+        var ordered = MameVersionParsing.NormalizeSortAndDedupe([latestKnownVersion, latestInstalledVersion]);
+        var highestKnown = ordered.FirstOrDefault();
+        return string.Equals(highestKnown, latestKnownVersion, StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(latestKnownVersion, latestInstalledVersion, StringComparison.OrdinalIgnoreCase);
+    }
+
     private async Task TryAutoProvisionMameAsync(MameSetupState state)
     {
         if (_isAutoProvisioningMame)
@@ -1065,21 +1084,27 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        var hasMissingExecutableIssue = state.Issues.Any(issue => issue.Contains("executable", StringComparison.OrdinalIgnoreCase));
-        if (!hasMissingExecutableIssue)
-        {
-            return;
-        }
-
         if (string.IsNullOrWhiteSpace(state.LatestKnownVersion))
         {
             AddOutputEntry("Auto-provision skipped: latest MAME version is unknown.", OutputLogStatus.Warning);
             return;
         }
 
+        var hasMissingExecutableIssue = state.Issues.Any(issue => issue.Contains("executable", StringComparison.OrdinalIgnoreCase));
+        var needsLatestVersionInstall = IsLatestVersionInstallNeeded(state.LatestKnownVersion);
+        if (!hasMissingExecutableIssue && !needsLatestVersionInstall)
+        {
+            return;
+        }
+
         try
         {
             _isAutoProvisioningMame = true;
+            if (needsLatestVersionInstall)
+            {
+                AddOutputEntry($"Auto-update enabled. Latest known version {state.LatestKnownVersion} is newer than installed/selected version {MameVersion}.", OutputLogStatus.Info);
+            }
+
             MameVersion = state.LatestKnownVersion;
             AddOutputEntry($"Auto-provisioning MAME {MameVersion} in background...", OutputLogStatus.Info);
 
