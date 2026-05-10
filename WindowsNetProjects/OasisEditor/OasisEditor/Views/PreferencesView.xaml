@@ -57,6 +57,7 @@
 
 
                 <CheckBox Margin="0,10,0,0"
+                          Foreground="{DynamicResource TextPrimaryBrush}"
                           Content="Keep MAME up to date automatically"
                           IsChecked="{Binding KeepMameUpToDateAutomatically, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
