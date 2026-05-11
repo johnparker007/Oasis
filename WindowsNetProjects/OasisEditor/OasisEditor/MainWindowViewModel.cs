@@ -1729,6 +1729,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         MameRomStatus = "Downloading";
         AddOutputEntry($"MAME ROM download requested for '{romName}'.", OutputLogStatus.Info);
+        var downloadUrl = _mameRomDownloadService.BuildDownloadUrl(romName);
         try
         {
             var archivePath = await _mameRomDownloadService.DownloadRomAsync(romName, CancellationToken.None);
@@ -1738,7 +1739,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         catch (Exception ex)
         {
             MameRomStatus = "Failed";
-            AddOutputEntry($"MAME ROM download failed for '{romName}': {ex.Message}", OutputLogStatus.Error);
+            AddOutputEntry($"MAME ROM download failed for '{romName}' from '{downloadUrl}': {ex.Message}", OutputLogStatus.Error);
         }
         finally
         {
