@@ -22,4 +22,29 @@ public sealed class MameRomDownloadServiceTests
 
         Assert.Throws<ArgumentException>(new Action(() => sut.BuildRomArchiveFileName("   ")));
     }
+
+    [Fact]
+    public void BuildDownloadUrl_UsesConfiguredBaseUrlAnd7zExtension()
+    {
+        var sut = new MameRomDownloadService
+        {
+            DownloadRootUrl = "https://example.com/roms",
+            ArchiveExtension = ".7z"
+        };
+
+        var url = sut.BuildDownloadUrl("mpu4");
+
+        Assert.Equal("https://example.com/roms/mpu4.7z", url);
+    }
+
+    [Fact]
+    public void BuildRomArchiveFileName_RejectsUnsupportedExtension()
+    {
+        var sut = new MameRomDownloadService
+        {
+            ArchiveExtension = ".rar"
+        };
+
+        Assert.Throws<ArgumentException>(() => sut.BuildRomArchiveFileName("mpu4"));
+    }
 }

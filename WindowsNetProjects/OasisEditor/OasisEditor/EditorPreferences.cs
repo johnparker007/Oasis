@@ -16,6 +16,8 @@ public sealed class MamePreferences
     public string ReleaseSource { get; init; } = "https://github.com/mamedev/mame/releases";
     public string CommandLineOverrides { get; init; } = string.Empty;
     public bool KeepMameUpToDateAutomatically { get; init; } = true;
+    public string RomDownloadBaseUrl { get; init; } = "https://archive.org/download/CentralArquivistaArcade/";
+    public string RomArchiveExtension { get; init; } = ".zip";
 }
 
 public sealed class ProjectWindowState
