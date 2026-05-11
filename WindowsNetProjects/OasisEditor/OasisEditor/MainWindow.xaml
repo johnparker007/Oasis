@@ -131,6 +131,17 @@
                 <MenuItem Header="_Output"
                           Click="OnOutputWindowMenuItemClicked" />
             </MenuItem>
+            <MenuItem Header="_Emulation">
+                <MenuItem Header="_Start"
+                          Command="{Binding StartEmulationCommand}" />
+                <MenuItem Header="S_top"
+                          Command="{Binding StopEmulationCommand}" />
+                <Separator />
+                <MenuItem Header="_Pause"
+                          Command="{Binding PauseEmulationCommand}" />
+                <MenuItem Header="_Resume"
+                          Command="{Binding ResumeEmulationCommand}" />
+            </MenuItem>
         </Menu>
 
         <ContentControl x:Name="EditorShellHost"

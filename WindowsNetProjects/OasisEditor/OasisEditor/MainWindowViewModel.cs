@@ -61,6 +61,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly IMameVersionCatalogService _mameVersionCatalogService;
     private MameSetupState _mameSetupState = MameSetupState.NotStarted;
     private bool _isAutoProvisioningMame;
+    private MameEmulationState _mameEmulationState = MameEmulationState.Stopped;
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<EditorToolWindowId>? ToolWindowOpenRequested;
@@ -104,6 +105,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         CloseProjectSettingsCommand = new RelayCommand(CloseProjectSettings);
         CloseProjectCommand = new RelayCommand(CloseProject, CanCloseProject);
         ExitCommand = new RelayCommand(ExitApplication);
+        StartEmulationCommand = new RelayCommand(StartEmulation, CanStartEmulation);
+        StopEmulationCommand = new RelayCommand(StopEmulation, CanStopEmulation);
+        PauseEmulationCommand = new RelayCommand(PauseEmulation, CanPauseEmulation);
+        ResumeEmulationCommand = new RelayCommand(ResumeEmulation, CanResumeEmulation);
 
         _outputLog = new OutputLogViewModel();
         _outputLog.PropertyChanged += OnOutputLogPropertyChanged;
@@ -277,6 +282,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand ApplyInspectorSummaryCommand { get; }
     public ICommand CloseProjectCommand { get; }
     public ICommand ExitCommand { get; }
+    public ICommand StartEmulationCommand { get; }
+    public ICommand StopEmulationCommand { get; }
+    public ICommand PauseEmulationCommand { get; }
+    public ICommand ResumeEmulationCommand { get; }
     public ObservableCollection<string> RecentProjects { get; }
     public ObservableCollection<DocumentTabViewModel> OpenDocuments { get; }
     public ObservableCollection<AssetBrowserItemViewModel> AssetBrowserItems { get; }
@@ -458,6 +467,17 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     }
 
     public bool HasLoadedProject => LoadedProject is not null;
+    public MameEmulationState EmulationState
+    {
+        get => _mameEmulationState;
+        private set
+        {
+            if (SetProperty(ref _mameEmulationState, value))
+            {
+                NotifyEmulationCommands();
+            }
+        }
+    }
 
     public string ProjectFilePath
     {
@@ -1370,6 +1390,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
+        if (CanStopEmulation())
+        {
+            StopEmulation();
+        }
+
         ClosePreferences();
         CloseProjectSettings();
         ClearProjectSessionState();
@@ -1395,9 +1420,82 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ProjectFilePath = string.Empty;
     }
 
-    private static void ExitApplication()
+    private void ExitApplication()
     {
+        if (CanStopEmulation())
+        {
+            StopEmulation();
+        }
+
         Application.Current.Shutdown();
+    }
+
+    private bool CanStartEmulation()
+    {
+        return MameEmulationCommandStateEvaluator.Evaluate(HasLoadedProject, EmulationState).CanStart;
+    }
+
+    private void StartEmulation()
+    {
+        if (!CanStartEmulation())
+        {
+            return;
+        }
+
+        EmulationState = MameEmulationState.Starting;
+        AddOutputEntry("Emulation start requested (runtime service stub).", OutputLogStatus.Info);
+        EmulationState = MameEmulationState.Running;
+        AddOutputEntry("Emulation state changed to Running (stub).", OutputLogStatus.Info);
+    }
+
+    private bool CanStopEmulation()
+    {
+        return MameEmulationCommandStateEvaluator.Evaluate(HasLoadedProject, EmulationState).CanStop;
+    }
+
+    private void StopEmulation()
+    {
+        if (!CanStopEmulation())
+        {
+            return;
+        }
+
+        EmulationState = MameEmulationState.Stopping;
+        AddOutputEntry("Emulation stop requested (runtime service stub).", OutputLogStatus.Info);
+        EmulationState = MameEmulationState.Stopped;
+        AddOutputEntry("Emulation state changed to Stopped (stub).", OutputLogStatus.Info);
+    }
+
+    private bool CanPauseEmulation()
+    {
+        return MameEmulationCommandStateEvaluator.Evaluate(HasLoadedProject, EmulationState).CanPause;
+    }
+
+    private void PauseEmulation()
+    {
+        if (!CanPauseEmulation())
+        {
+            return;
+        }
+
+        EmulationState = MameEmulationState.Paused;
+        AddOutputEntry("Emulation pause requested (runtime service stub).", OutputLogStatus.Info);
+    }
+
+    private bool CanResumeEmulation()
+    {
+        return MameEmulationCommandStateEvaluator.Evaluate(HasLoadedProject, EmulationState).CanResume;
+    }
+
+    private void ResumeEmulation()
+    {
+        if (!CanResumeEmulation())
+        {
+            return;
+        }
+
+        EmulationState = MameEmulationState.Running;
+        AddOutputEntry("Emulation resume requested (runtime service stub).", OutputLogStatus.Info);
     }
 
     private void LoadStartupProject(string startupProjectFilePath)
@@ -1903,8 +2001,32 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             closeProjectRelayCommand.RaiseCanExecuteChanged();
         }
 
+        NotifyEmulationCommands();
         NotifyUndoRedoStateChanged();
         _assetBrowser.NotifyRefreshCommand();
+    }
+
+    private void NotifyEmulationCommands()
+    {
+        if (StartEmulationCommand is RelayCommand startEmulationCommand)
+        {
+            startEmulationCommand.RaiseCanExecuteChanged();
+        }
+
+        if (StopEmulationCommand is RelayCommand stopEmulationCommand)
+        {
+            stopEmulationCommand.RaiseCanExecuteChanged();
+        }
+
+        if (PauseEmulationCommand is RelayCommand pauseEmulationCommand)
+        {
+            pauseEmulationCommand.RaiseCanExecuteChanged();
+        }
+
+        if (ResumeEmulationCommand is RelayCommand resumeEmulationCommand)
+        {
+            resumeEmulationCommand.RaiseCanExecuteChanged();
+        }
     }
 
     private void NotifyUndoRedoStateChanged()
