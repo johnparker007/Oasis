@@ -12,7 +12,7 @@ public sealed class MameRomDownloadServiceTests
 
         var url = sut.BuildDownloadUrl("mpu4");
 
-        Assert.Equal("https://archive.org/download/CentralArquivistaArcade/mpu4.zip", url);
+        Assert.Equal("https://archive.org/download/mame-0.272-romset-complete-merged/arcade/mpu4.7z", url);
     }
 
     [Fact]

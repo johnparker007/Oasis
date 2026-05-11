@@ -5,8 +5,8 @@ namespace OasisEditor;
 
 public sealed class MameRomDownloadService
 {
-    public const string DefaultDownloadRootUrl = "https://archive.org/download/CentralArquivistaArcade/";
-    public const string DefaultArchiveExtension = ".zip";
+    public const string DefaultDownloadRootUrl = "https://archive.org/download/mame-0.272-romset-complete-merged/arcade/";
+    public const string DefaultArchiveExtension = ".7z";
     private static readonly HttpClient HttpClient = new();
 
     public string DownloadRootUrl { get; set; } = DefaultDownloadRootUrl;
