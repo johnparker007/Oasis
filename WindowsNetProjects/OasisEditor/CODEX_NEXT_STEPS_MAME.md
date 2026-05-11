@@ -3,6 +3,7 @@
 Read these documents first:
 
 - `00_CURRENT_PRIORITY.md`
+- `MAME_ROM_MANAGEMENT_PLAN.md`
 - `MAME_AUTO_UPDATE_POLICY_PLAN.md`
 - `MAME_VERSION_DISCOVERY_PLAN.md`
 - `MAME_ARCHITECTURE_REDESIGN.md`
@@ -27,6 +28,8 @@ The editor now owns:
 - live MAME version discovery;
 - fallback version-catalog handling;
 - plugin deployment;
+- ROM provisioning;
+- ROM validation/state handling;
 - runtime validation;
 - LocalAppData runtime structure.
 
@@ -37,7 +40,8 @@ The user should not manually manage:
 - install roots;
 - plugin copying;
 - first-run MAME setup;
-- latest-version lookup.
+- latest-version lookup;
+- ROM filesystem paths.
 
 ## Plugin Source Direction
 
@@ -55,44 +59,59 @@ Codex should no longer use Unity asset folders as runtime plugin dependencies.
 
 The next MAME work should focus on:
 
-1. Auto-update preference.
-2. Automatic latest-version selection policy.
-3. Auto-update orchestration.
-4. Auto-update tests.
-5. Runtime validation architecture.
-6. Plugin deployment service.
+1. ROM project settings.
+2. ROM status/provisioning UI.
+3. ROM auto-download orchestration.
+4. ROM validation/state architecture.
+5. ROM provisioning tests.
+6. Runtime validation architecture.
 7. Background progress UX.
 
 Do not jump directly into full runtime emulation integration yet.
 
-## Desired Auto-Update Behavior
+## Desired ROM Behavior
 
-Default behavior for new installs:
+Default behavior for projects:
 
-- auto-update enabled;
-- discover latest MAME in background;
-- automatically install latest when needed;
-- automatically select latest after successful install;
-- preserve previous working versions.
+- ROM auto-download enabled;
+- ROM validation on project load;
+- ROM validation after edit completion;
+- background ROM provisioning;
+- passive status/progress updates;
+- managed LocalAppData ROM storage.
 
-If auto-update is disabled:
+If auto-download is disabled:
 
-- do not automatically replace the selected version;
-- still validate selected/current installs;
-- still allow manual update/install actions;
-- still allow plugin repair/sync.
+- do not automatically download missing ROMs;
+- still validate selected ROM;
+- still allow manual Download action;
+- still show status/errors.
+
+## Legacy Porting Direction
+
+The legacy Unity editor already contains working ROM download URL logic using archive.org.
+
+Codex should:
+
+- locate the legacy ROM download implementation under `UnityProjects/LayoutEditor`;
+- port the core archive.org URL logic;
+- modernize async/provisioning architecture;
+- avoid porting Unity coroutine/UI patterns directly.
 
 ## Testing Direction
 
 Codex should add or extend proper unit tests around:
 
-- preference migration/default behavior;
-- auto-update enabled behavior;
-- auto-update disabled behavior;
-- latest-version selection;
-- deferred update while MAME is running;
-- fallback behavior during failed discovery;
-- preserving previous working installs.
+- project setting migration/default behavior;
+- ROM-name persistence;
+- auto-download enabled behavior;
+- auto-download disabled behavior;
+- delayed trigger behavior after edit completion;
+- project-load validation;
+- existing ROM detection;
+- failed download handling;
+- state transitions;
+- preserving working ROMs.
 
 Tests should not require live network access.
 
@@ -100,37 +119,41 @@ Prefer:
 
 - fake services;
 - fake orchestrator dependencies;
-- fake version catalogs;
-- fake runtime state providers.
+- fake download providers;
+- fake runtime state providers;
+- fake filesystem abstractions.
 
-## Desired Startup Behavior
+## Desired Startup / Project-Load Behavior
 
-On launcher/editor startup:
+On project load:
 
-- validate installed/selected MAME state in the background;
-- determine whether a valid MAME install exists;
-- determine whether plugin deployment is valid;
-- discover latest available MAME version asynchronously;
-- automatically provision latest MAME if no valid install exists;
-- automatically install/select latest MAME if auto-update is enabled and a newer version exists;
-- automatically repair/re-sync plugins when possible;
-- update UI/log state without blocking the app.
+- validate configured ROM state in the background;
+- determine whether ROM exists locally;
+- determine whether ROM appears valid/readable;
+- automatically provision/download ROM if missing and auto-download is enabled;
+- update UI/log state without blocking the editor.
 
-The editor should remain usable while setup/validation occurs.
+The editor should remain usable while validation/download occurs.
 
 ## Provisioning Policy
 
 Preferred behavior:
 
 - background validation;
-- background latest-version discovery;
 - automatic download/install when required;
-- automatic latest-version selection when enabled;
 - visible passive progress;
 - cancellable operations where safe;
 - minimal interruption.
 
-Do not show a first-run modal dialog just to approve downloading MAME.
+Do not attempt ROM download on every keypress while editing the ROM name.
+
+Trigger validation/download only after edit completion:
+
+- Enter key;
+- focus loss;
+- explicit Download button;
+- project load;
+- pre-emulation validation.
 
 ## Progress UX Direction
 
@@ -139,7 +162,7 @@ Prefer non-modal progress.
 Use:
 
 - status text;
-- progress indicators in the MAME Preferences category;
+- progress indicators in Project Settings;
 - output-log messages;
 - passive launcher/editor status indicators;
 - cancellable async tasks.
@@ -148,18 +171,22 @@ Avoid modal blocking dialogs except for:
 
 - destructive confirmation;
 - unrecoverable setup failure;
-- emulation requested before setup completes.
+- emulation requested before provisioning completes.
 
 ## Recommended Next Codex Task
 
-Implement Step 1 and Step 2 from `MAME_AUTO_UPDATE_POLICY_PLAN.md`.
+Implement Step 1 and Step 2 from `MAME_ROM_MANAGEMENT_PLAN.md`.
 
 Specifically:
 
-- add `KeepMameUpToDateAutomatically` preference field;
-- default it to true;
-- preserve backwards compatibility with old preferences;
-- add MAME Preferences checkbox UI;
+- add `MameRomName` project setting;
+- add `AutomaticallyDownloadMissingRoms` project setting;
+- default auto-download to true;
+- preserve backwards compatibility with old project files;
+- add ROM textbox UI;
+- add ROM status label;
+- add ROM Download button;
+- add ROM auto-download checkbox;
 - add persistence/migration tests;
 - add manual verification steps.
 
