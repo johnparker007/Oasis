@@ -1,4 +1,5 @@
 using Xunit;
+using OasisEditor;
 
 namespace OasisEditor.Tests;
 
@@ -19,6 +20,6 @@ public sealed class MameRomDownloadServiceTests
     {
         var sut = new MameRomDownloadService();
 
-        Assert.Throws<ArgumentException>(() => sut.BuildRomArchiveFileName("   "));
+        Assert.Throws<ArgumentException>(new Action(() => sut.BuildRomArchiveFileName("   ")));
     }
 }
