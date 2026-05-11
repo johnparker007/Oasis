@@ -1,12 +1,16 @@
-using System.Net.Http;
 using System.IO;
+using System.Net.Http;
 
 namespace OasisEditor;
 
 public sealed class MameRomDownloadService
 {
-    private const string DownloadRootUrl = "https://archive.org/download/CentralArquivistaArcade/";
+    public const string DefaultDownloadRootUrl = "https://archive.org/download/MAME215RomsOnlyMerged/";
+    public const string DefaultArchiveExtension = ".zip";
     private static readonly HttpClient HttpClient = new();
+
+    public string DownloadRootUrl { get; set; } = DefaultDownloadRootUrl;
+    public string ArchiveExtension { get; set; } = DefaultArchiveExtension;
 
     public static string GetRomDownloadDirectory()
     {
@@ -21,12 +25,14 @@ public sealed class MameRomDownloadService
             throw new ArgumentException("ROM name must be provided.", nameof(romName));
         }
 
-        return $"{romName.Trim()}.zip";
+        var extension = NormalizeArchiveExtension(ArchiveExtension);
+        return $"{romName.Trim()}{extension}";
     }
 
     public string BuildDownloadUrl(string romName)
     {
-        return $"{DownloadRootUrl}{BuildRomArchiveFileName(romName)}";
+        var rootUrl = NormalizeDownloadRootUrl(DownloadRootUrl);
+        return $"{rootUrl}{BuildRomArchiveFileName(romName)}";
     }
 
     public string GetRomArchivePath(string romName)
@@ -58,5 +64,35 @@ public sealed class MameRomDownloadService
         await using var targetStream = File.Create(archivePath);
         await sourceStream.CopyToAsync(targetStream, cancellationToken).ConfigureAwait(false);
         return archivePath;
+    }
+
+    private static string NormalizeDownloadRootUrl(string rootUrl)
+    {
+        if (string.IsNullOrWhiteSpace(rootUrl)
+            || !Uri.TryCreate(rootUrl, UriKind.Absolute, out var parsed)
+            || (parsed.Scheme != Uri.UriSchemeHttp && parsed.Scheme != Uri.UriSchemeHttps))
+        {
+            throw new ArgumentException("ROM download base URL must be an absolute HTTP/HTTPS URL.", nameof(rootUrl));
+        }
+
+        return rootUrl.EndsWith("/", StringComparison.Ordinal) ? rootUrl : rootUrl + "/";
+    }
+
+    private static string NormalizeArchiveExtension(string extension)
+    {
+        if (string.IsNullOrWhiteSpace(extension))
+        {
+            throw new ArgumentException("ROM archive extension must be provided.", nameof(extension));
+        }
+
+        var normalized = extension.Trim().ToLowerInvariant();
+        if (!normalized.StartsWith(".", StringComparison.Ordinal))
+        {
+            normalized = "." + normalized;
+        }
+
+        return normalized is ".zip" or ".7z"
+            ? normalized
+            : throw new ArgumentException("ROM archive extension must be .zip or .7z.", nameof(extension));
     }
 }

@@ -62,6 +62,16 @@
                           IsChecked="{Binding KeepMameUpToDateAutomatically, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
 
+                
+                <TextBlock Margin="0,16,0,4" Text="ROM Download Base URL" Foreground="{DynamicResource TextSecondaryBrush}" />
+                <TextBox Text="{Binding MameRomDownloadBaseUrl, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                <TextBlock Margin="0,10,0,4" Text="ROM Archive Extension" Foreground="{DynamicResource TextSecondaryBrush}" />
+                <ComboBox Width="120" HorizontalAlignment="Left" SelectedValuePath="Content" SelectedValue="{Binding MameRomArchiveExtension, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                    <ComboBoxItem Content=".7z" />
+                    <ComboBoxItem Content=".zip" />
+                </ComboBox>
+                <Button Margin="0,10,0,0" Padding="10,4" Content="Reset ROM Source Defaults" Command="{Binding ResetMameRomSourceDefaultsCommand}" />
+
                 <StackPanel Margin="0,12,0,0" Orientation="Horizontal">
                     <Button Padding="10,4" Content="Validate Setup" Command="{Binding ValidateMamePreferencesCommand}" />
                     <TextBlock Margin="12,4,0,0" Text="{Binding MameValidationSummary}" TextWrapping="Wrap" />

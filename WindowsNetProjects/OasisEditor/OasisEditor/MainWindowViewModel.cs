@@ -33,6 +33,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string _mameReleaseSource = string.Empty;
     private string _mameLuaPluginPath = string.Empty;
     private string _mameCommandLineOverrides = string.Empty;
+    private string _mameRomDownloadBaseUrl = MameRomDownloadService.DefaultDownloadRootUrl;
+    private string _mameRomArchiveExtension = MameRomDownloadService.DefaultArchiveExtension;
     private bool _keepMameUpToDateAutomatically = true;
     private string _mameValidationSummary = "Not validated.";
     private string _selectedPreferencesCategory = "Appearance";
@@ -98,6 +100,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ResyncMamePluginsCommand = new RelayCommand(ResyncMamePlugins);
         RemoveCachedMameVersionCommand = new RelayCommand(RemoveCachedMameVersion);
         DownloadMameRomCommand = new RelayCommand(DownloadMameRom, CanDownloadMameRom);
+        ResetMameRomSourceDefaultsCommand = new RelayCommand(ResetMameRomSourceDefaults);
         CloseProjectSettingsCommand = new RelayCommand(CloseProjectSettings);
         CloseProjectCommand = new RelayCommand(CloseProject, CanCloseProject);
         ExitCommand = new RelayCommand(ExitApplication);
@@ -138,6 +141,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _mameReleaseSource = preferences.Mame.ReleaseSource;
         _mameLuaPluginPath = MameRuntimePaths.ResolveBundledLuaPluginSourcePath();
         _mameCommandLineOverrides = preferences.Mame.CommandLineOverrides;
+        _mameRomDownloadBaseUrl = preferences.Mame.RomDownloadBaseUrl;
+        _mameRomArchiveExtension = preferences.Mame.RomArchiveExtension;
+        _mameRomDownloadService.DownloadRootUrl = _mameRomDownloadBaseUrl;
+        _mameRomDownloadService.ArchiveExtension = _mameRomArchiveExtension;
         _keepMameUpToDateAutomatically = preferences.Mame.KeepMameUpToDateAutomatically;
         _mameVersionCatalogService = new MameVersionCatalogService(_mameDownloadService);
         var setupValidationService = new MameSetupValidationService(_mamePluginAssetValidator, _mameVersionCatalogService);
@@ -266,6 +273,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand RemoveCachedMameVersionCommand { get; }
     public ICommand DownloadMameRomCommand { get; }
     public ICommand CloseProjectSettingsCommand { get; }
+    public ICommand ResetMameRomSourceDefaultsCommand { get; }
     public ICommand ApplyInspectorSummaryCommand { get; }
     public ICommand CloseProjectCommand { get; }
     public ICommand ExitCommand { get; }
@@ -320,6 +328,31 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public string MameReleaseSource { get => _mameReleaseSource; set { if (SetProperty(ref _mameReleaseSource, value)) SavePreferences(); } }
     public string MameLuaPluginPath => _mameLuaPluginPath;
     public string MameCommandLineOverrides { get => _mameCommandLineOverrides; set { if (SetProperty(ref _mameCommandLineOverrides, value)) SavePreferences(); } }
+    public string MameRomDownloadBaseUrl
+    {
+        get => _mameRomDownloadBaseUrl;
+        set
+        {
+            if (SetProperty(ref _mameRomDownloadBaseUrl, value))
+            {
+                _mameRomDownloadService.DownloadRootUrl = value;
+                SavePreferences();
+            }
+        }
+    }
+
+    public string MameRomArchiveExtension
+    {
+        get => _mameRomArchiveExtension;
+        set
+        {
+            if (SetProperty(ref _mameRomArchiveExtension, value))
+            {
+                _mameRomDownloadService.ArchiveExtension = value;
+                SavePreferences();
+            }
+        }
+    }
     public bool KeepMameUpToDateAutomatically
     {
         get => _keepMameUpToDateAutomatically;
@@ -1302,7 +1335,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 ExecutablePath = MameExecutablePath,
                 ReleaseSource = MameReleaseSource,
                 CommandLineOverrides = MameCommandLineOverrides,
-                KeepMameUpToDateAutomatically = KeepMameUpToDateAutomatically
+                KeepMameUpToDateAutomatically = KeepMameUpToDateAutomatically,
+                RomDownloadBaseUrl = MameRomDownloadBaseUrl,
+                RomArchiveExtension = MameRomArchiveExtension
             }
         });
     }
@@ -1701,6 +1736,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     }
 
     private bool CanDownloadMameRom() => LoadedProject is not null && !string.IsNullOrWhiteSpace(MameRomName) && !_isMameRomDownloadInProgress;
+
+    private void ResetMameRomSourceDefaults()
+    {
+        MameRomDownloadBaseUrl = MameRomDownloadService.DefaultDownloadRootUrl;
+        MameRomArchiveExtension = MameRomDownloadService.DefaultArchiveExtension;
+        AddOutputEntry("Reset ROM source preferences to defaults.", OutputLogStatus.Info);
+    }
 
     private void DownloadMameRom()
     {
