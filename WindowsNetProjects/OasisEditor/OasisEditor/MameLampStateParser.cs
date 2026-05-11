@@ -19,7 +19,7 @@ public sealed class MameLampStateParser : IMameLampStateParser
 
         var trimmed = line.Trim();
         var tokens = trimmed.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (tokens.Length != 2)
+        if (tokens.Length < 2)
         {
             return false;
         }
@@ -36,7 +36,7 @@ public sealed class MameLampStateParser : IMameLampStateParser
             return false;
         }
 
-        var valueToken = tokens[1];
+        var valueToken = tokens[^1];
 
         if (!int.TryParse(lampToken, out lampId))
         {
