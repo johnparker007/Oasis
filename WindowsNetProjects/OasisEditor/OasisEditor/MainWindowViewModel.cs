@@ -39,6 +39,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private FruitMachinePlatformType _selectedFruitMachinePlatform = FruitMachinePlatformType.None;
     private string _mameRomName = string.Empty;
     private bool _automaticallyDownloadMissingRoms = true;
+    private string _mameRomStatus = "Unknown";
+    private bool _isMameRomDownloadInProgress;
     private readonly AssetBrowserViewModel _assetBrowser;
     private readonly OutputLogViewModel _outputLog;
     private readonly InspectorViewModel _inspector;
@@ -50,6 +52,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private bool _isRefreshingHierarchy;
     private readonly MfmeImportService _mfmeImportService = new();
     private readonly MameDownloadService _mameDownloadService = new();
+    private readonly MameRomDownloadService _mameRomDownloadService = new();
     private readonly MamePluginAssetValidator _mamePluginAssetValidator = new();
     private readonly MamePluginDeploymentService _mamePluginDeploymentService = new();
     private readonly IMameSetupOrchestrator _mameSetupOrchestrator;
@@ -94,6 +97,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OpenMameInstallRootCommand = new RelayCommand(OpenMameInstallRoot);
         ResyncMamePluginsCommand = new RelayCommand(ResyncMamePlugins);
         RemoveCachedMameVersionCommand = new RelayCommand(RemoveCachedMameVersion);
+        DownloadMameRomCommand = new RelayCommand(DownloadMameRom, CanDownloadMameRom);
         CloseProjectSettingsCommand = new RelayCommand(CloseProjectSettings);
         CloseProjectCommand = new RelayCommand(CloseProject, CanCloseProject);
         ExitCommand = new RelayCommand(ExitApplication);
@@ -260,6 +264,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand OpenMameInstallRootCommand { get; }
     public ICommand ResyncMamePluginsCommand { get; }
     public ICommand RemoveCachedMameVersionCommand { get; }
+    public ICommand DownloadMameRomCommand { get; }
     public ICommand CloseProjectSettingsCommand { get; }
     public ICommand ApplyInspectorSummaryCommand { get; }
     public ICommand CloseProjectCommand { get; }
@@ -352,6 +357,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
             LoadedProject.MameRomName = value;
             SaveLoadedProjectMetadata();
+            RefreshMameRomStatus();
+            if (DownloadMameRomCommand is RelayCommand downloadMameRomCommand)
+            {
+                downloadMameRomCommand.RaiseCanExecuteChanged();
+            }
         }
     }
     public bool AutomaticallyDownloadMissingRoms
@@ -372,6 +382,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             LoadedProject.AutomaticallyDownloadMissingRoms = value;
             SaveLoadedProjectMetadata();
         }
+    }
+    public string MameRomStatus
+    {
+        get => _mameRomStatus;
+        private set => SetProperty(ref _mameRomStatus, value);
     }
     public string MameValidationSummary { get => _mameValidationSummary; private set => SetProperty(ref _mameValidationSummary, value); }
     public string MameSetupPhaseDisplay => _mameSetupState.Phase.ToString();
@@ -1357,6 +1372,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         SelectedFruitMachinePlatform = project.FruitMachinePlatform;
         MameRomName = project.MameRomName;
         AutomaticallyDownloadMissingRoms = project.AutomaticallyDownloadMissingRoms;
+        RefreshMameRomStatus();
         PanelElementFactory.ProjectDirectoryPath = project.ProjectDirectory;
         ProjectFilePath = project.ProjectFilePath;
         UpdateRecentProjects(project.ProjectFilePath);
@@ -1682,6 +1698,69 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             JsonValueKind.False => false,
             _ => true
         };
+    }
+
+    private bool CanDownloadMameRom() => LoadedProject is not null && !string.IsNullOrWhiteSpace(MameRomName) && !_isMameRomDownloadInProgress;
+
+    private void DownloadMameRom()
+    {
+        if (_isMameRomDownloadInProgress)
+        {
+            return;
+        }
+
+        if (LoadedProject is null || string.IsNullOrWhiteSpace(MameRomName))
+        {
+            MameRomStatus = "Missing";
+            AddOutputEntry("MAME ROM download skipped: no ROM name configured.", OutputLogStatus.Warning);
+            return;
+        }
+
+        _ = DownloadMameRomAsync(MameRomName.Trim());
+    }
+
+    private async Task DownloadMameRomAsync(string romName)
+    {
+        _isMameRomDownloadInProgress = true;
+        if (DownloadMameRomCommand is RelayCommand downloadMameRomCommand)
+        {
+            downloadMameRomCommand.RaiseCanExecuteChanged();
+        }
+
+        MameRomStatus = "Downloading";
+        AddOutputEntry($"MAME ROM download requested for '{romName}'.", OutputLogStatus.Info);
+        var downloadUrl = _mameRomDownloadService.BuildDownloadUrl(romName);
+        try
+        {
+            var archivePath = await _mameRomDownloadService.DownloadRomAsync(romName, CancellationToken.None);
+            MameRomStatus = "Installed";
+            AddOutputEntry($"MAME ROM downloaded to '{archivePath}'.", OutputLogStatus.Info);
+        }
+        catch (Exception ex)
+        {
+            MameRomStatus = "Failed";
+            AddOutputEntry($"MAME ROM download failed for '{romName}' from '{downloadUrl}': {ex.Message}", OutputLogStatus.Error);
+        }
+        finally
+        {
+            _isMameRomDownloadInProgress = false;
+            if (DownloadMameRomCommand is RelayCommand updatedDownloadMameRomCommand)
+            {
+                updatedDownloadMameRomCommand.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    private void RefreshMameRomStatus()
+    {
+        var romName = MameRomName.Trim();
+        if (string.IsNullOrWhiteSpace(romName))
+        {
+            MameRomStatus = "Missing";
+            return;
+        }
+
+        MameRomStatus = _mameRomDownloadService.IsRomInstalled(romName) ? "Installed" : "Missing";
     }
 
     private static string ResolveProjectDirectory(string projectDirectory, JsonElement layoutElement, string propertyName)
