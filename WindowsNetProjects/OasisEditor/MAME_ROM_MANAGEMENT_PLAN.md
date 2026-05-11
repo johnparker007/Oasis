@@ -1,6 +1,6 @@
 # MAME ROM Management Plan
 
-This document defines the next discrete MAME workstream: project-level ROM management, validation, auto-download behavior, and runtime ROM provisioning.
+This document defines the next discrete MAME workstream: project-level ROM management, global ROM download source preferences, validation, auto-download behavior, and runtime ROM provisioning.
 
 ## Goals
 
@@ -9,6 +9,8 @@ The editor should make ROM management mostly invisible to the user while still a
 Desired behavior:
 
 - the project stores a MAME ROM name;
+- global MAME preferences store where ROMs are downloaded from;
+- global MAME preferences store whether ROM downloads use `.zip` or `.7z`;
 - the editor knows whether the ROM exists locally;
 - the editor can download the ROM automatically or manually;
 - ROM downloads run in the background;
@@ -25,7 +27,7 @@ The design should reuse architectural patterns already introduced for:
 
 ## Project Settings UI
 
-Add a new section to Project Settings.
+Add or maintain a MAME ROM section in Project Settings.
 
 Suggested layout:
 
@@ -39,9 +41,126 @@ Status: Installed / Missing / Downloading / Failed
 [x] Automatically download missing ROMs
 ```
 
+Project Settings should contain project-specific ROM identity and behavior only.
+
+Project Settings should NOT contain the archive.org base URL or archive file extension preference.
+
+## MAME Preferences UI
+
+Add a ROM download source section to:
+
+```text
+Preferences -> MAME
+```
+
+Suggested layout:
+
+```text
+ROM Downloads
+---------------------------------
+Download URL base: [ https://archive.org/download/mame-0.272-romset-complete-merged/arcade ]
+Archive format:    [ .7z v ]
+                 [ Reset to default ]
+```
+
+The URL field is the base path used to construct per-ROM download URLs.
+
+The archive format dropdown should support only:
+
+- `.7z`
+- `.zip`
+
+Default archive format:
+
+```text
+.7z
+```
+
+## Default ROM Download Source
+
+Default full example URL:
+
+```text
+https://archive.org/download/mame-0.272-romset-complete-merged/arcade/j2kingcl.7z
+```
+
+From this, the default configurable pieces should be:
+
+Default base URL:
+
+```text
+https://archive.org/download/mame-0.272-romset-complete-merged/arcade
+```
+
+Default extension:
+
+```text
+.7z
+```
+
+For ROM name:
+
+```text
+j2kingcl
+```
+
+Constructed URL should be:
+
+```text
+https://archive.org/download/mame-0.272-romset-complete-merged/arcade/j2kingcl.7z
+```
+
+## Reset to Default
+
+Add a `Reset to default` button in Preferences -> MAME -> ROM Downloads.
+
+It should restore:
+
+```text
+RomDownloadBaseUrl = https://archive.org/download/mame-0.272-romset-complete-merged/arcade
+RomDownloadArchiveExtension = .7z
+```
+
+The reset should update the UI immediately and persist using the normal preferences save path.
+
+## Preference Model Fields
+
+Add editor/global preference fields:
+
+```text
+RomDownloadBaseUrl
+RomDownloadArchiveExtension
+```
+
+Recommended enum for extension:
+
+```text
+MameRomArchiveExtension
+    SevenZip
+    Zip
+```
+
+or a validated string constrained to:
+
+```text
+.7z
+.zip
+```
+
+Recommended defaults:
+
+```text
+RomDownloadBaseUrl = https://archive.org/download/mame-0.272-romset-complete-merged/arcade
+RomDownloadArchiveExtension = .7z
+```
+
+Preserve backwards compatibility with older preference JSON.
+
+If old preferences do not contain these fields, load defaults.
+
 ## ROM Name Field
 
-Add a string field:
+Add or maintain a project-level string field:
 
 ```text
 RomName
@@ -54,6 +173,31 @@ MameRomName
 ```
 
 This value should persist as part of the project settings.
+
+## Download URL Construction
+
+Do not store a full per-ROM URL in each project.
+
+Construct the download URL from:
+
+- global `RomDownloadBaseUrl` preference;
+- project `MameRomName`;
+- global `RomDownloadArchiveExtension` preference.
+
+Construction rules:
+
+- trim whitespace from ROM name;
+- reject empty ROM names;
+- trim trailing `/` from base URL before combining;
+- ensure extension begins with `.`;
+- only allow `.zip` and `.7z`;
+- do not double-append extension if ROM name already contains `.zip` or `.7z`; instead normalize ROM name to extensionless internally or reject with a clear validation message.
+
+Preferred construction:
+
+```text
+{baseUrl.TrimEnd('/')}/{romNameWithoutExtension}{extension}
+```
 
 ## Download Trigger Behavior
 
@@ -71,7 +215,7 @@ The ROM field should support editing without triggering repeated network request
 
 ## Auto-Download Preference
 
-Add a project-level checkbox:
+Add or maintain a project-level checkbox:
 
 ```text
 Automatically download missing ROMs
@@ -93,7 +237,7 @@ This should be a project setting rather than a global editor preference because 
 
 ## ROM Status Label
 
-Add a visible ROM status field.
+Add or maintain a visible ROM status field.
 
 Suggested states:
 
@@ -123,8 +267,8 @@ Suggested location:
 Examples:
 
 ```text
-%LOCALAPPDATA%\\OasisEditor\\MAME\\roms\\barcrest.zip
-%LOCALAPPDATA%\\OasisEditor\\MAME\\roms\\mpu4.zip
+%LOCALAPPDATA%\\OasisEditor\\MAME\\roms\\j2kingcl.7z
+%LOCALAPPDATA%\\OasisEditor\\MAME\\roms\\j2kingcl.zip
 ```
 
 Avoid storing ROMs inside:
@@ -157,7 +301,8 @@ Codex should:
 UnityProjects/LayoutEditor
 ```
 
-- port the archive.org ROM URL logic;
+- port any still-useful archive.org ROM URL logic;
+- update it to use the new global MAME Preferences base URL and archive extension;
 - modernize the architecture;
 - reuse the newer async/background provisioning patterns;
 - reuse diagnostics/progress patterns from the MAME installer work.
@@ -169,11 +314,17 @@ Do not blindly port Unity coroutine/UI patterns.
 Preferred architecture:
 
 ```text
+Preferences -> MAME ROM Download Source
+    ↓
+Editor Preferences Model
+    ↓
 Project Settings UI
     ↓
 Project Settings ViewModel
     ↓
 MameRomProvisioningService
+    ↓
+MameRomDownloadService
     ↓
 HTTP / Filesystem
 ```
@@ -185,12 +336,16 @@ Suggested services:
 - `MameRomDownloadService`
 - `MameRomStateService`
 - `MameRomDiagnosticsService`
+- `MameRomUrlBuilder`
 
 ## ROM Validation Rules
 
 Validation should confirm:
 
 - ROM name is non-empty;
+- ROM name is valid after trimming/removing extension;
+- base URL is non-empty and absolute HTTP/HTTPS URL;
+- archive extension is either `.zip` or `.7z`;
 - ROM archive exists locally;
 - ROM archive is readable;
 - ROM archive is non-empty;
@@ -199,7 +354,7 @@ Validation should confirm:
 
 Validation failures should:
 
-- appear in Project Settings;
+- appear in Project Settings or Preferences depending on scope;
 - appear in diagnostics/logs;
 - never crash the editor.
 
@@ -218,6 +373,13 @@ If disabled:
 - still validate existence;
 - still allow manual download button;
 - still show missing/error status.
+
+If the global ROM download source settings are invalid:
+
+- do not attempt download;
+- show a clear Preferences/MAME status error;
+- keep Project Settings ROM status in Missing/Invalid Source state;
+- do not crash project load.
 
 ## Background Behavior
 
@@ -239,6 +401,16 @@ If the ROM already exists:
 - validate and mark Installed;
 - optionally compare file size/hash later if corruption handling becomes necessary.
 
+Validation should check both configured extension and, if useful, the alternative supported extension.
+
+Example:
+
+- configured extension is `.7z`;
+- `j2kingcl.zip` exists locally;
+- UI can report that an alternate format exists rather than blindly downloading again.
+
+The initial implementation may keep this simple and only check the configured extension, but Codex should document the chosen behavior.
+
 ## Retry / Failure Behavior
 
 If ROM download fails:
@@ -257,6 +429,7 @@ Suggested ROM states:
 - Checking
 - Installed
 - Missing
+- InvalidSource
 - Queued
 - Downloading
 - Downloaded
@@ -280,6 +453,12 @@ Add tests around:
 - project-load validation;
 - existing ROM detection;
 - failed download handling;
+- URL construction;
+- default ROM source preference values;
+- reset-to-default behavior;
+- `.zip` and `.7z` extension handling;
+- invalid base URL behavior;
+- invalid extension behavior;
 - validation rules;
 - state transitions;
 - preserving working ROMs after failed download;
@@ -296,53 +475,66 @@ Prefer:
 
 ## Recommended Codex Steps
 
-### Step 1 - Add Project Settings Fields
+### Step 1 - Add Global ROM Download Preferences
 
-Add:
+Add editor/global preference fields:
 
-- `MameRomName`
-- `AutomaticallyDownloadMissingRoms`
+- `RomDownloadBaseUrl`
+- `RomDownloadArchiveExtension`
 
-Default auto-download to true.
+Defaults:
 
-Preserve backwards compatibility with older project files.
+- `https://archive.org/download/mame-0.272-romset-complete-merged/arcade`
+- `.7z`
 
-### Step 2 - Add Project Settings UI
+Preserve backwards compatibility with older preference files.
 
-Add:
+### Step 2 - Add MAME Preferences UI
 
-- ROM name textbox;
-- ROM status label;
-- Download button;
-- auto-download checkbox.
+In Preferences -> MAME, add:
+
+- ROM download base URL textbox;
+- archive format dropdown with `.7z` and `.zip` only;
+- Reset to default button.
 
 Persist values correctly.
 
-### Step 3 - Add Validation Service
+### Step 3 - Add URL Builder
 
-Add ROM validation abstraction/service.
+Add a pure/testable URL builder that combines:
 
-Implement:
+- base URL;
+- ROM name;
+- extension.
 
-- ROM existence checks;
-- ROM-path resolution;
-- ROM-state updates.
+Add tests for:
 
-### Step 4 - Port Legacy Download Logic
+- normal `.7z` URL;
+- normal `.zip` URL;
+- trailing slash base URL;
+- ROM name with whitespace;
+- invalid empty ROM;
+- invalid extension;
+- ROM name accidentally containing extension.
 
-Study and port the archive.org ROM URL logic from the Unity project.
+### Step 4 - Wire Download Service To Preferences
 
-Modernize:
+Update ROM download service/provisioning to use the URL builder and global preferences.
 
-- async handling;
-- diagnostics;
-- cancellation;
-- progress reporting;
-- background orchestration.
+Remove hardcoded ROM download source assumptions from project-level logic.
 
-### Step 5 - Add Auto-Download Triggers
+### Step 5 - Add Reset Tests / Preference Tests
 
-Implement:
+Add tests for:
+
+- default values;
+- migration from old preferences;
+- reset-to-default command;
+- persistence of changed URL/extension.
+
+### Step 6 - Continue Project ROM Flow
+
+Continue/finish:
 
 - project-load validation;
 - focus-loss trigger;
@@ -351,17 +543,6 @@ Implement:
 - pre-emulation validation.
 
 Avoid per-keystroke download attempts.
-
-### Step 6 - Add Tests
-
-Add unit tests for:
-
-- project settings migration;
-- trigger behavior;
-- validation behavior;
-- provisioning orchestration;
-- state transitions;
-- failure handling.
 
 ### Step 7 - Integrate With MAME Runtime
 
@@ -378,11 +559,16 @@ Preferred direction:
 After implementation, John should verify:
 
 - ROM name persists correctly;
+- global ROM download base URL persists correctly;
+- archive extension dropdown persists correctly;
+- Reset to default restores archive.org base URL and `.7z`;
+- constructed URL for `j2kingcl` matches the provided archive.org example;
 - status updates correctly;
 - auto-download works on project load;
-- auto-download works after field edit completion;
+- auto-download works after edit completion;
 - downloads do not trigger per keystroke;
 - manual Download button works;
+- both `.zip` and `.7z` settings are accepted;
 - ROMs appear in managed LocalAppData folder;
 - MAME can see downloaded ROMs;
 - failed downloads do not crash the editor;
