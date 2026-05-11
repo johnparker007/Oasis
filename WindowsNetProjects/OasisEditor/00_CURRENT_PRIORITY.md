@@ -10,11 +10,11 @@ We are working in WindowsNetProjects/OasisEditor. Please read the .md files in t
 
 The current active workstream is:
 
-1. MAME auto-update policy.
-2. Auto-update preference UI and persistence.
-3. Automatic latest-version selection behavior.
-4. Auto-update orchestration tests.
-5. Background MAME provisioning stability.
+1. MAME ROM management.
+2. Project-level ROM settings.
+3. ROM auto-download orchestration.
+4. ROM validation/state management.
+5. ROM provisioning tests.
 
 Codex should prioritize this work before continuing older canvas/performance/layout tasks from `TASKS.md` or unrelated editor workstreams.
 
@@ -23,66 +23,74 @@ Codex should prioritize this work before continuing older canvas/performance/lay
 Read these files first, in this order:
 
 1. `00_CURRENT_PRIORITY.md`
-2. `MAME_AUTO_UPDATE_POLICY_PLAN.md`
-3. `MAME_VERSION_DISCOVERY_PLAN.md`
-4. `MAME_ARCHITECTURE_REDESIGN.md`
-5. `CODEX_NEXT_STEPS_MAME.md`
-6. `TASKS_MAME_EMULATION_PORT.md`
-7. `AGENT.md`
-8. `TASKS.md`
+2. `MAME_ROM_MANAGEMENT_PLAN.md`
+3. `MAME_AUTO_UPDATE_POLICY_PLAN.md`
+4. `MAME_VERSION_DISCOVERY_PLAN.md`
+5. `MAME_ARCHITECTURE_REDESIGN.md`
+6. `CODEX_NEXT_STEPS_MAME.md`
+7. `TASKS_MAME_EMULATION_PORT.md`
+8. `AGENT.md`
+9. `TASKS.md`
 
 ## Immediate Task
 
-Implement the MAME auto-update policy incrementally.
+Implement the MAME ROM management system incrementally.
 
 Current desired direction:
 
-- add an auto-update preference;
-- default it to enabled;
-- automatically install/select latest MAME when enabled;
-- keep previous installed versions available;
-- add orchestrator/policy tests;
-- preserve resilient startup behavior.
+- add ROM name project setting;
+- add ROM status UI;
+- add ROM download button;
+- add project-level auto-download checkbox;
+- port archive.org ROM URL logic from the Unity project;
+- modernize the provisioning/download architecture;
+- add validation/state/progress handling;
+- add tests.
 
 ## Current Architectural Goals
 
-- MAME should remain mostly invisible to the user.
-- Latest MAME should normally become active automatically.
-- Existing working versions should not be deleted immediately.
-- Auto-update should not interrupt a running MAME instance.
-- All setup/provisioning should remain async/background-safe.
-- Startup should never crash due to failed discovery/update.
+- ROM management should remain mostly invisible to the user.
+- ROM downloads should run in the background.
+- ROM validation should be automatic.
+- ROM setup should never block the editor.
+- ROM downloads should trigger only after edit completion, not per keypress.
+- The editor should own the managed ROM storage location.
+- Startup/project loading should remain resilient.
 
 ## Testing Direction
 
 Codex should add or extend unit tests around:
 
-- preference migration/default behavior;
-- auto-update enabled behavior;
-- auto-update disabled behavior;
-- latest-version selection behavior;
-- deferred updates while MAME is running;
-- fallback behavior during failed discovery;
-- preserving previous working installs.
+- project setting migration/default behavior;
+- ROM-name persistence;
+- auto-download enabled behavior;
+- auto-download disabled behavior;
+- delayed trigger behavior;
+- project-load validation;
+- existing ROM detection;
+- failed download handling;
+- state transitions;
+- preserving working ROMs.
 
-The tests should not require live internet access or real downloads.
+The tests should not require real internet downloads.
 
-Use fake services and fake orchestrator dependencies where practical.
+Use fake services and fake provisioning/download dependencies where practical.
 
 ## Do Not Work On Yet
 
 Do not continue unrelated canvas, panel layout, performance, copy/paste, ordering, locking, visibility, or general editor tasks unless explicitly instructed.
 
-Do not continue deep MAME runtime/process integration until the provisioning/update foundation is more stable.
+Do not continue deep MAME runtime/process integration until ROM provisioning/validation is more stable.
 
 ## Desired Output From Codex
 
 Codex should produce small focused changes that:
 
-- add the auto-update preference;
-- improve provisioning/update orchestration;
+- add ROM project settings;
+- add ROM provisioning architecture;
+- modernize ROM download handling;
 - add tests;
-- preserve current provisioning behavior;
+- preserve existing provisioning behavior;
 - include diagnostics/logging;
 - include manual verification steps for John.
 
@@ -90,10 +98,14 @@ Codex should produce small focused changes that:
 
 After Codex makes the change, John should verify:
 
-- new installs default to auto-update enabled;
-- the checkbox persists correctly;
-- enabling auto-update installs/selects latest MAME automatically;
-- disabling auto-update preserves selected older versions;
-- previous working installs remain available after update;
-- startup remains stable when offline or discovery fails;
+- ROM name persists correctly;
+- ROM status updates correctly;
+- auto-download works on project load;
+- auto-download works after edit completion;
+- downloads do not trigger per keystroke;
+- manual Download button works;
+- ROMs appear in managed LocalAppData folder;
+- MAME can see downloaded ROMs;
+- failed downloads do not crash the editor;
+- previous working ROMs remain usable;
 - no unrelated editor behavior changed.
