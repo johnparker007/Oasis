@@ -12,7 +12,7 @@ public sealed class MameRomDownloadServiceTests
 
         var url = sut.BuildDownloadUrl("mpu4");
 
-        Assert.Equal("https://archive.org/download/mame-0.272-romset-complete-merged/arcade/mpu4.7z", url);
+        Assert.Equal("https://archive.org/download/MAME215RomsOnlyMerged/mpu4.zip", url);
     }
 
     [Fact]
@@ -29,12 +29,12 @@ public sealed class MameRomDownloadServiceTests
         var sut = new MameRomDownloadService
         {
             DownloadRootUrl = "https://example.com/roms",
-            ArchiveExtension = ".7z"
+            ArchiveExtension = ".zip"
         };
 
         var url = sut.BuildDownloadUrl("mpu4");
 
-        Assert.Equal("https://example.com/roms/mpu4.7z", url);
+        Assert.Equal("https://example.com/roms/mpu4.zip", url);
     }
 
     [Fact]

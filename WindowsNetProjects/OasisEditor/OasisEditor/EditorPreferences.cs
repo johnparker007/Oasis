@@ -16,8 +16,8 @@ public sealed class MamePreferences
     public string ReleaseSource { get; init; } = "https://github.com/mamedev/mame/releases";
     public string CommandLineOverrides { get; init; } = string.Empty;
     public bool KeepMameUpToDateAutomatically { get; init; } = true;
-    public string RomDownloadBaseUrl { get; init; } = "https://archive.org/download/mame-0.272-romset-complete-merged/arcade/";
-    public string RomArchiveExtension { get; init; } = ".7z";
+    public string RomDownloadBaseUrl { get; init; } = "https://archive.org/download/MAME215RomsOnlyMerged/";
+    public string RomArchiveExtension { get; init; } = ".zip";
 }
 
 public sealed class ProjectWindowState
