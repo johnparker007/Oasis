@@ -44,11 +44,17 @@
 
         <TextBlock Grid.Row="9" Margin="0,12,0,4" Text="MAME ROM" Foreground="{DynamicResource TextSecondaryBrush}" />
         <StackPanel Grid.Row="10" Orientation="Vertical">
-            <TextBox Width="220"
-                     HorizontalAlignment="Left"
-                     Text="{Binding MameRomName, UpdateSourceTrigger=LostFocus}" />
+            <StackPanel Orientation="Horizontal">
+                <TextBox Width="220"
+                         HorizontalAlignment="Left"
+                         Text="{Binding MameRomName, UpdateSourceTrigger=LostFocus}" />
+                <Button Margin="8,0,0,0"
+                        Padding="10,2"
+                        Command="{Binding DownloadMameRomCommand}"
+                        Content="Download" />
+            </StackPanel>
             <TextBlock Margin="0,8,0,0"
-                       Text="Status: Unknown"
+                       Text="{Binding MameRomStatus, StringFormat=Status: {0}}"
                        Foreground="{DynamicResource TextSecondaryBrush}" />
             <CheckBox Margin="0,8,0,0"
                       Content="Automatically download missing ROMs"
