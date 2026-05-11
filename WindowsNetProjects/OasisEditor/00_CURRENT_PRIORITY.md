@@ -10,10 +10,10 @@ We are working in WindowsNetProjects/OasisEditor. Please read the .md files in t
 
 The current active workstream is:
 
-1. MAME ROM management.
-2. Project-level ROM settings.
-3. ROM auto-download orchestration.
-4. ROM validation/state management.
+1. Configurable ROM download source preferences.
+2. ROM URL construction architecture.
+3. `.zip` / `.7z` ROM archive handling.
+4. ROM provisioning integration.
 5. ROM provisioning tests.
 
 Codex should prioritize this work before continuing older canvas/performance/layout tasks from `TASKS.md` or unrelated editor workstreams.
@@ -34,16 +34,15 @@ Read these files first, in this order:
 
 ## Immediate Task
 
-Implement the MAME ROM management system incrementally.
+Implement configurable ROM download source preferences incrementally.
 
 Current desired direction:
 
-- add ROM name project setting;
-- add ROM status UI;
-- add ROM download button;
-- add project-level auto-download checkbox;
-- port archive.org ROM URL logic from the Unity project;
-- modernize the provisioning/download architecture;
+- move ROM source URL configuration into Preferences -> MAME;
+- support `.7z` and `.zip` ROM archive formats;
+- add Reset to default behavior;
+- derive URLs from base URL + ROM name + extension;
+- modernize ROM URL construction architecture;
 - add validation/state/progress handling;
 - add tests.
 
@@ -55,22 +54,24 @@ Current desired direction:
 - ROM setup should never block the editor.
 - ROM downloads should trigger only after edit completion, not per keypress.
 - The editor should own the managed ROM storage location.
+- ROM source configuration should be global editor state, not project state.
 - Startup/project loading should remain resilient.
 
 ## Testing Direction
 
 Codex should add or extend unit tests around:
 
-- project setting migration/default behavior;
+- preference migration/default behavior;
+- ROM URL construction;
+- `.zip` and `.7z` extension handling;
+- reset-to-default behavior;
+- invalid URL handling;
+- invalid extension handling;
 - ROM-name persistence;
 - auto-download enabled behavior;
-- auto-download disabled behavior;
 - delayed trigger behavior;
-- project-load validation;
-- existing ROM detection;
 - failed download handling;
-- state transitions;
-- preserving working ROMs.
+- state transitions.
 
 The tests should not require real internet downloads.
 
@@ -86,8 +87,8 @@ Do not continue deep MAME runtime/process integration until ROM provisioning/val
 
 Codex should produce small focused changes that:
 
-- add ROM project settings;
-- add ROM provisioning architecture;
+- add ROM source preferences;
+- add ROM URL construction services;
 - modernize ROM download handling;
 - add tests;
 - preserve existing provisioning behavior;
@@ -98,10 +99,11 @@ Codex should produce small focused changes that:
 
 After Codex makes the change, John should verify:
 
-- ROM name persists correctly;
-- ROM status updates correctly;
-- auto-download works on project load;
-- auto-download works after edit completion;
+- global ROM download base URL persists correctly;
+- `.7z` and `.zip` dropdown values persist correctly;
+- Reset to default restores the archive.org example values correctly;
+- constructed URLs are correct;
+- auto-download still works;
 - downloads do not trigger per keystroke;
 - manual Download button works;
 - ROMs appear in managed LocalAppData folder;
