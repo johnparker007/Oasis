@@ -20,4 +20,12 @@ public static class MameRuntimePaths
         var candidate = Path.GetFullPath(Path.Combine(appBaseDirectory, "Assets", "MAME", "plugins", "oasis"));
         return Directory.Exists(candidate) ? candidate : string.Empty;
     }
+
+    public static string EnsureManagedRomRootDirectory()
+    {
+        var runtimeRoot = EnsureManagedRuntimeRootDirectory();
+        var romRoot = Path.Combine(runtimeRoot, "roms");
+        Directory.CreateDirectory(romRoot);
+        return romRoot;
+    }
 }
