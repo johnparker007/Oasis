@@ -11,15 +11,15 @@ public sealed class MameProcessStartInfoBuilder : IMameProcessStartInfoBuilder
         ArgumentException.ThrowIfNullOrWhiteSpace(request.MameExecutablePath);
         ArgumentException.ThrowIfNullOrWhiteSpace(request.MameRomName);
         ArgumentException.ThrowIfNullOrWhiteSpace(request.MameRomRootPath);
-        ArgumentException.ThrowIfNullOrWhiteSpace(request.OasisPluginPath);
-
         var arguments = new StringBuilder();
         arguments.Append(EscapeArgument(request.MameRomName));
         arguments.Append(" -rompath ");
         arguments.Append(EscapeArgument(request.MameRomRootPath));
+        arguments.Append(" -output console");
         arguments.Append(" -plugin oasis");
-        arguments.Append(" -plugins_path ");
-        arguments.Append(EscapeArgument(request.OasisPluginPath));
+        arguments.Append(" -skip_gameinfo");
+        arguments.Append(" -video none");
+        arguments.Append(" -seconds_to_run 999999999");
 
         if (!string.IsNullOrWhiteSpace(request.AdditionalArguments))
         {

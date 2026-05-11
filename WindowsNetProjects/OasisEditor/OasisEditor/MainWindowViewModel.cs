@@ -59,6 +59,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly MamePluginDeploymentService _mamePluginDeploymentService = new();
     private readonly IMameSetupOrchestrator _mameSetupOrchestrator;
     private readonly IMameVersionCatalogService _mameVersionCatalogService;
+    private readonly IMameEmulationService _mameEmulationService;
     private MameSetupState _mameSetupState = MameSetupState.NotStarted;
     private bool _isAutoProvisioningMame;
     private MameEmulationState _mameEmulationState = MameEmulationState.Stopped;
@@ -154,6 +155,20 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _mameVersionCatalogService = new MameVersionCatalogService(_mameDownloadService);
         var setupValidationService = new MameSetupValidationService(_mamePluginAssetValidator, _mameVersionCatalogService);
         _mameSetupOrchestrator = new MameSetupOrchestrator(setupValidationService);
+        _mameEmulationService = new MameEmulationService(
+            new MameProcessStartInfoBuilder(),
+            new MameProcessRunner(
+                stdoutLogger: line => AddOutputEntry($"[MAME] {line}", OutputLogStatus.Info),
+                stderrLogger: line => AddOutputEntry($"[MAME-ERR] {line}", OutputLogStatus.Warning)),
+            BuildMameLaunchRequest);
+        _mameEmulationService.StateChanged += (_, state) =>
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                EmulationState = state;
+                AddOutputEntry($"Emulation state changed to {state}.", OutputLogStatus.Info);
+            });
+        };
 
         if (_keepMameUpToDateAutomatically)
         {
@@ -1435,17 +1450,22 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         return MameEmulationCommandStateEvaluator.Evaluate(HasLoadedProject, EmulationState).CanStart;
     }
 
-    private void StartEmulation()
+    private async void StartEmulation()
     {
         if (!CanStartEmulation())
         {
             return;
         }
 
-        EmulationState = MameEmulationState.Starting;
-        AddOutputEntry("Emulation start requested (runtime service stub).", OutputLogStatus.Info);
-        EmulationState = MameEmulationState.Running;
-        AddOutputEntry("Emulation state changed to Running (stub).", OutputLogStatus.Info);
+        AddOutputEntry("Emulation start requested.", OutputLogStatus.Info);
+        try
+        {
+            await _mameEmulationService.StartAsync(CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            AddOutputEntry($"Emulation failed to start: {ex.Message}", OutputLogStatus.Error);
+        }
     }
 
     private bool CanStopEmulation()
@@ -1453,17 +1473,22 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         return MameEmulationCommandStateEvaluator.Evaluate(HasLoadedProject, EmulationState).CanStop;
     }
 
-    private void StopEmulation()
+    private async void StopEmulation()
     {
         if (!CanStopEmulation())
         {
             return;
         }
 
-        EmulationState = MameEmulationState.Stopping;
-        AddOutputEntry("Emulation stop requested (runtime service stub).", OutputLogStatus.Info);
-        EmulationState = MameEmulationState.Stopped;
-        AddOutputEntry("Emulation state changed to Stopped (stub).", OutputLogStatus.Info);
+        AddOutputEntry("Emulation stop requested.", OutputLogStatus.Info);
+        try
+        {
+            await _mameEmulationService.StopAsync(CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            AddOutputEntry($"Emulation failed to stop cleanly: {ex.Message}", OutputLogStatus.Error);
+        }
     }
 
     private bool CanPauseEmulation()
@@ -1471,15 +1496,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         return MameEmulationCommandStateEvaluator.Evaluate(HasLoadedProject, EmulationState).CanPause;
     }
 
-    private void PauseEmulation()
+    private async void PauseEmulation()
     {
         if (!CanPauseEmulation())
         {
             return;
         }
 
-        EmulationState = MameEmulationState.Paused;
-        AddOutputEntry("Emulation pause requested (runtime service stub).", OutputLogStatus.Info);
+        AddOutputEntry("Emulation pause requested.", OutputLogStatus.Info);
+        await _mameEmulationService.PauseAsync(CancellationToken.None);
     }
 
     private bool CanResumeEmulation()
@@ -1487,15 +1512,30 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         return MameEmulationCommandStateEvaluator.Evaluate(HasLoadedProject, EmulationState).CanResume;
     }
 
-    private void ResumeEmulation()
+    private async void ResumeEmulation()
     {
         if (!CanResumeEmulation())
         {
             return;
         }
 
-        EmulationState = MameEmulationState.Running;
-        AddOutputEntry("Emulation resume requested (runtime service stub).", OutputLogStatus.Info);
+        AddOutputEntry("Emulation resume requested.", OutputLogStatus.Info);
+        await _mameEmulationService.ResumeAsync(CancellationToken.None);
+    }
+
+    private MameProcessLaunchRequest? BuildMameLaunchRequest()
+    {
+        if (!HasLoadedProject || string.IsNullOrWhiteSpace(MameExecutablePath) || string.IsNullOrWhiteSpace(MameRomName))
+        {
+            return null;
+        }
+
+        return new MameProcessLaunchRequest(
+            MameExecutablePath,
+            MameRomName,
+            MameRuntimePaths.EnsureManagedRomRootDirectory(),
+            MameRuntimePaths.ResolveBundledLuaPluginSourcePath(),
+            MameCommandLineOverrides);
     }
 
     private void LoadStartupProject(string startupProjectFilePath)
