@@ -6,7 +6,7 @@ namespace OasisEditor.Tests;
 public sealed class MameProcessStartInfoBuilderTests
 {
     [Fact]
-    public void Build_IncludesRomAndPluginArguments()
+    public void Build_IncludesRomAndOasisPluginArguments()
     {
         var builder = new MameProcessStartInfoBuilder();
         var request = new MameProcessLaunchRequest(
@@ -23,8 +23,7 @@ public sealed class MameProcessStartInfoBuilderTests
         Assert.Contains("-rompath", startInfo.Arguments);
         Assert.Contains(@"C:\Users\john\AppData\Local\OasisEditor\MAME\roms", startInfo.Arguments);
         Assert.Contains("-plugin oasis", startInfo.Arguments);
-        Assert.Contains("-plugins_path", startInfo.Arguments);
-        Assert.Contains(@"C:\Mame\plugins", startInfo.Arguments);
+        Assert.DoesNotContain("-plugins_path", startInfo.Arguments);
     }
 
     [Fact]
