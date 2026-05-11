@@ -1432,7 +1432,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private bool CanStartEmulation()
     {
-        return HasLoadedProject && EmulationState is MameEmulationState.Stopped or MameEmulationState.Failed;
+        return MameEmulationCommandStateEvaluator.Evaluate(HasLoadedProject, EmulationState).CanStart;
     }
 
     private void StartEmulation()
@@ -1450,10 +1450,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private bool CanStopEmulation()
     {
-        return EmulationState is MameEmulationState.Starting
-            or MameEmulationState.Running
-            or MameEmulationState.Paused
-            or MameEmulationState.Stopping;
+        return MameEmulationCommandStateEvaluator.Evaluate(HasLoadedProject, EmulationState).CanStop;
     }
 
     private void StopEmulation()
@@ -1471,7 +1468,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private bool CanPauseEmulation()
     {
-        return EmulationState == MameEmulationState.Running;
+        return MameEmulationCommandStateEvaluator.Evaluate(HasLoadedProject, EmulationState).CanPause;
     }
 
     private void PauseEmulation()
@@ -1487,7 +1484,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private bool CanResumeEmulation()
     {
-        return EmulationState == MameEmulationState.Paused;
+        return MameEmulationCommandStateEvaluator.Evaluate(HasLoadedProject, EmulationState).CanResume;
     }
 
     private void ResumeEmulation()
