@@ -18,25 +18,25 @@ public sealed class MameLampStateParser : IMameLampStateParser
         }
 
         var trimmed = line.Trim();
-        if (!trimmed.StartsWith("lamp", StringComparison.OrdinalIgnoreCase))
+        var tokens = trimmed.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (tokens.Length != 2)
         {
             return false;
         }
 
-        var firstSpaceIndex = trimmed.IndexOf(' ');
-        if (firstSpaceIndex <= "lamp".Length)
+        var lampTokenWithPrefix = tokens[0];
+        if (!lampTokenWithPrefix.StartsWith("lamp", StringComparison.OrdinalIgnoreCase))
         {
             return false;
         }
 
-        var lastSpaceIndex = trimmed.LastIndexOf(' ');
-        if (lastSpaceIndex <= firstSpaceIndex || lastSpaceIndex >= trimmed.Length - 1)
+        var lampToken = lampTokenWithPrefix["lamp".Length..];
+        if (lampToken.Length == 0)
         {
             return false;
         }
 
-        var lampToken = trimmed.Substring("lamp".Length, firstSpaceIndex - "lamp".Length);
-        var valueToken = trimmed.Substring(lastSpaceIndex + 1);
+        var valueToken = tokens[1];
 
         if (!int.TryParse(lampToken, out lampId))
         {
