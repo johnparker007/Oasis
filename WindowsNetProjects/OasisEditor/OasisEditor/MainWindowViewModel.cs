@@ -40,6 +40,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string _mameRomName = string.Empty;
     private bool _automaticallyDownloadMissingRoms = true;
     private string _mameRomStatus = "Unknown";
+    private bool _isMameRomDownloadInProgress;
     private readonly AssetBrowserViewModel _assetBrowser;
     private readonly OutputLogViewModel _outputLog;
     private readonly InspectorViewModel _inspector;
@@ -51,6 +52,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private bool _isRefreshingHierarchy;
     private readonly MfmeImportService _mfmeImportService = new();
     private readonly MameDownloadService _mameDownloadService = new();
+    private readonly MameRomDownloadService _mameRomDownloadService = new();
     private readonly MamePluginAssetValidator _mamePluginAssetValidator = new();
     private readonly MamePluginDeploymentService _mamePluginDeploymentService = new();
     private readonly IMameSetupOrchestrator _mameSetupOrchestrator;
@@ -1698,20 +1700,54 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         };
     }
 
-    private bool CanDownloadMameRom() => LoadedProject is not null && !string.IsNullOrWhiteSpace(MameRomName);
+    private bool CanDownloadMameRom() => LoadedProject is not null && !string.IsNullOrWhiteSpace(MameRomName) && !_isMameRomDownloadInProgress;
 
     private void DownloadMameRom()
     {
-        if (!CanDownloadMameRom())
+        if (_isMameRomDownloadInProgress)
+        {
+            return;
+        }
+
+        if (LoadedProject is null || string.IsNullOrWhiteSpace(MameRomName))
         {
             MameRomStatus = "Missing";
             AddOutputEntry("MAME ROM download skipped: no ROM name configured.", OutputLogStatus.Warning);
             return;
         }
 
-        MameRomStatus = "Queued";
-        AddOutputEntry($"MAME ROM download requested for '{MameRomName.Trim()}'.", OutputLogStatus.Info);
-        AddOutputEntry("ROM download implementation is pending; request has been queued.", OutputLogStatus.Warning);
+        _ = DownloadMameRomAsync(MameRomName.Trim());
+    }
+
+    private async Task DownloadMameRomAsync(string romName)
+    {
+        _isMameRomDownloadInProgress = true;
+        if (DownloadMameRomCommand is RelayCommand downloadMameRomCommand)
+        {
+            downloadMameRomCommand.RaiseCanExecuteChanged();
+        }
+
+        MameRomStatus = "Downloading";
+        AddOutputEntry($"MAME ROM download requested for '{romName}'.", OutputLogStatus.Info);
+        try
+        {
+            var archivePath = await _mameRomDownloadService.DownloadRomAsync(romName, CancellationToken.None);
+            MameRomStatus = "Installed";
+            AddOutputEntry($"MAME ROM downloaded to '{archivePath}'.", OutputLogStatus.Info);
+        }
+        catch (Exception ex)
+        {
+            MameRomStatus = "Failed";
+            AddOutputEntry($"MAME ROM download failed for '{romName}': {ex.Message}", OutputLogStatus.Error);
+        }
+        finally
+        {
+            _isMameRomDownloadInProgress = false;
+            if (DownloadMameRomCommand is RelayCommand updatedDownloadMameRomCommand)
+            {
+                updatedDownloadMameRomCommand.RaiseCanExecuteChanged();
+            }
+        }
     }
 
     private void RefreshMameRomStatus()
@@ -1723,14 +1759,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        var romFilePath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "OasisEditor",
-            "MAME",
-            "roms",
-            $"{romName}.zip");
-
-        MameRomStatus = File.Exists(romFilePath) ? "Installed" : "Missing";
+        MameRomStatus = _mameRomDownloadService.IsRomInstalled(romName) ? "Installed" : "Missing";
     }
 
     private static string ResolveProjectDirectory(string projectDirectory, JsonElement layoutElement, string propertyName)
