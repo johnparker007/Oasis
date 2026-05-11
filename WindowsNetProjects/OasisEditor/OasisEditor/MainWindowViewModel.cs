@@ -37,6 +37,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string _mameValidationSummary = "Not validated.";
     private string _selectedPreferencesCategory = "Appearance";
     private FruitMachinePlatformType _selectedFruitMachinePlatform = FruitMachinePlatformType.None;
+    private string _mameRomName = string.Empty;
+    private bool _automaticallyDownloadMissingRoms = true;
     private readonly AssetBrowserViewModel _assetBrowser;
     private readonly OutputLogViewModel _outputLog;
     private readonly InspectorViewModel _inspector;
@@ -333,6 +335,44 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
     public bool IsMameVersionEditable => !KeepMameUpToDateAutomatically;
+    public string MameRomName
+    {
+        get => _mameRomName;
+        set
+        {
+            if (!SetProperty(ref _mameRomName, value))
+            {
+                return;
+            }
+
+            if (LoadedProject is null)
+            {
+                return;
+            }
+
+            LoadedProject.MameRomName = value;
+            SaveLoadedProjectMetadata();
+        }
+    }
+    public bool AutomaticallyDownloadMissingRoms
+    {
+        get => _automaticallyDownloadMissingRoms;
+        set
+        {
+            if (!SetProperty(ref _automaticallyDownloadMissingRoms, value))
+            {
+                return;
+            }
+
+            if (LoadedProject is null)
+            {
+                return;
+            }
+
+            LoadedProject.AutomaticallyDownloadMissingRoms = value;
+            SaveLoadedProjectMetadata();
+        }
+    }
     public string MameValidationSummary { get => _mameValidationSummary; private set => SetProperty(ref _mameValidationSummary, value); }
     public string MameSetupPhaseDisplay => _mameSetupState.Phase.ToString();
     public string MameSetupLatestKnownVersion => _mameSetupState.LatestKnownVersion;
@@ -1315,6 +1355,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         var project = LoadProjectFromFile(startupProjectFilePath);
         LoadedProject = project;
         SelectedFruitMachinePlatform = project.FruitMachinePlatform;
+        MameRomName = project.MameRomName;
+        AutomaticallyDownloadMissingRoms = project.AutomaticallyDownloadMissingRoms;
         PanelElementFactory.ProjectDirectoryPath = project.ProjectDirectory;
         ProjectFilePath = project.ProjectFilePath;
         UpdateRecentProjects(project.ProjectFilePath);
@@ -1360,6 +1402,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         var machinesDirectory = ResolveProjectDirectory(projectDirectory, layoutElement, "machines");
         var generatedDirectory = ResolveProjectDirectory(projectDirectory, layoutElement, "generated");
         var fruitMachinePlatform = ResolveFruitMachinePlatform(projectDocument.RootElement);
+        var mameRomName = ResolveMameRomName(projectDocument.RootElement);
+        var automaticallyDownloadMissingRoms = ResolveAutomaticallyDownloadMissingRoms(projectDocument.RootElement);
 
         return new EditorProject
         {
@@ -1369,7 +1413,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             AssetsDirectory = assetsDirectory,
             MachinesDirectory = machinesDirectory,
             GeneratedDirectory = generatedDirectory,
-            FruitMachinePlatform = fruitMachinePlatform
+            FruitMachinePlatform = fruitMachinePlatform,
+            MameRomName = mameRomName,
+            AutomaticallyDownloadMissingRoms = automaticallyDownloadMissingRoms
         };
     }
 
@@ -1513,7 +1559,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                     {
                         wroteProjectSettings = true;
                         writer.WritePropertyName("project_settings");
-                        WriteProjectSettings(writer, property.Value, LoadedProject.FruitMachinePlatform);
+                        WriteProjectSettings(writer, property.Value, LoadedProject.FruitMachinePlatform, LoadedProject.MameRomName, LoadedProject.AutomaticallyDownloadMissingRoms);
                         continue;
                     }
 
@@ -1525,6 +1571,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                     writer.WritePropertyName("project_settings");
                     writer.WriteStartObject();
                     writer.WriteString("FruitMachine_Platform", LoadedProject.FruitMachinePlatform.ToString());
+                    writer.WriteString("MameRomName", LoadedProject.MameRomName);
+                    writer.WriteBoolean("AutomaticallyDownloadMissingRoms", LoadedProject.AutomaticallyDownloadMissingRoms);
                     writer.WriteEndObject();
                 }
 
@@ -1539,10 +1587,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private static void WriteProjectSettings(Utf8JsonWriter writer, JsonElement existingProjectSettings, FruitMachinePlatformType platform)
+    private static void WriteProjectSettings(Utf8JsonWriter writer, JsonElement existingProjectSettings, FruitMachinePlatformType platform, string mameRomName, bool automaticallyDownloadMissingRoms)
     {
         writer.WriteStartObject();
         var wrotePlatform = false;
+        var wroteMameRomName = false;
+        var wroteAutomaticallyDownloadMissingRoms = false;
 
         foreach (var settingProperty in existingProjectSettings.EnumerateObject())
         {
@@ -1552,6 +1602,18 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 wrotePlatform = true;
                 continue;
             }
+            if (settingProperty.NameEquals("MameRomName"))
+            {
+                writer.WriteString("MameRomName", mameRomName);
+                wroteMameRomName = true;
+                continue;
+            }
+            if (settingProperty.NameEquals("AutomaticallyDownloadMissingRoms"))
+            {
+                writer.WriteBoolean("AutomaticallyDownloadMissingRoms", automaticallyDownloadMissingRoms);
+                wroteAutomaticallyDownloadMissingRoms = true;
+                continue;
+            }
 
             settingProperty.WriteTo(writer);
         }
@@ -1559,6 +1621,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (!wrotePlatform)
         {
             writer.WriteString("FruitMachine_Platform", platform.ToString());
+        }
+        if (!wroteMameRomName)
+        {
+            writer.WriteString("MameRomName", mameRomName);
+        }
+        if (!wroteAutomaticallyDownloadMissingRoms)
+        {
+            writer.WriteBoolean("AutomaticallyDownloadMissingRoms", automaticallyDownloadMissingRoms);
         }
 
         writer.WriteEndObject();
@@ -1585,6 +1655,33 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         AddOutputEntry($"Unknown FruitMachine_Platform '{rawPlatform}' in project settings; defaulting to None.", OutputLogStatus.Warning);
         return FruitMachinePlatformType.None;
+    }
+
+    private static string ResolveMameRomName(JsonElement root)
+    {
+        if (!root.TryGetProperty("project_settings", out var projectSettingsElement)
+            || !projectSettingsElement.TryGetProperty("MameRomName", out var romNameElement))
+        {
+            return string.Empty;
+        }
+
+        return romNameElement.GetString() ?? string.Empty;
+    }
+
+    private static bool ResolveAutomaticallyDownloadMissingRoms(JsonElement root)
+    {
+        if (!root.TryGetProperty("project_settings", out var projectSettingsElement)
+            || !projectSettingsElement.TryGetProperty("AutomaticallyDownloadMissingRoms", out var autoDownloadElement))
+        {
+            return true;
+        }
+
+        return autoDownloadElement.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            _ => true
+        };
     }
 
     private static string ResolveProjectDirectory(string projectDirectory, JsonElement layoutElement, string propertyName)
