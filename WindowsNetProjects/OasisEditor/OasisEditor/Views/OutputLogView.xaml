@@ -14,6 +14,15 @@
 
         <DockPanel Grid.Row="0"
                    LastChildFill="False">
+            <Button DockPanel.Dock="Right"
+                    Margin="8,0,0,0"
+                    Padding="10,4"
+                    Click="OnShowLogInExplorerClicked"
+                    Content="Show In Explorer" />
+            <Button DockPanel.Dock="Right"
+                    Padding="10,4"
+                    Click="OnOpenLogClicked"
+                    Content="Open Log" />
             <CheckBox Margin="0,0,8,0"
                       VerticalAlignment="Center"
                       IsChecked="{Binding ShowInfoLogs}"
@@ -32,11 +41,23 @@
                     Content="Clear" />
         </DockPanel>
 
-        <ListBox Grid.Row="1"
+        <ListBox x:Name="OutputList"
+                 Grid.Row="1"
                  Margin="0,8,0,0"
                  BorderThickness="0"
                  ItemsSource="{Binding FilteredEntries}"
-                 SelectionMode="Extended">
+                 SelectionMode="Extended"
+                 SelectionChanged="OnOutputSelectionChanged">
+            <ListBox.ContextMenu>
+                <ContextMenu Style="{StaticResource EditorContextMenuStyle}">
+                    <MenuItem Header="Clear Log"
+                              Style="{StaticResource EditorContextMenuItemStyle}"
+                              Command="{Binding ClearOutputCommand}" />
+                    <MenuItem Header="{Binding CopySelectionHeader}"
+                              Style="{StaticResource EditorContextMenuItemStyle}"
+                              Click="OnCopySelectionClicked" />
+                </ContextMenu>
+            </ListBox.ContextMenu>
             <ListBox.ItemTemplate>
                 <DataTemplate>
                     <StackPanel Orientation="Horizontal">
