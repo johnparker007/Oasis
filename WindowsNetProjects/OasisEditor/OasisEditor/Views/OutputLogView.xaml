@@ -47,7 +47,8 @@
                  BorderThickness="0"
                  ItemsSource="{Binding FilteredEntries}"
                  SelectionMode="Extended"
-                 SelectionChanged="OnOutputSelectionChanged">
+                 SelectionChanged="OnOutputSelectionChanged"
+                 PreviewMouseRightButtonDown="OnOutputListPreviewMouseRightButtonDown">
             <ListBox.ContextMenu>
                 <ContextMenu Style="{StaticResource EditorContextMenuStyle}">
                     <MenuItem Header="Clear Log"

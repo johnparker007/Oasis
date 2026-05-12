@@ -26,6 +26,30 @@ public partial class OutputLogView : UserControl
         ViewModel.UpdateSelectedEntries(OutputList.SelectedItems.Cast<OutputLogEntry>());
     }
 
+
+    private void OnOutputListPreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not ListBox listBox)
+        {
+            return;
+        }
+
+        var source = e.OriginalSource as DependencyObject;
+        var listBoxItem = ItemsControl.ContainerFromElement(listBox, source) as ListBoxItem;
+        if (listBoxItem is null)
+        {
+            return;
+        }
+
+        if (listBoxItem.IsSelected)
+        {
+            return;
+        }
+
+        listBox.SelectedItems.Clear();
+        listBoxItem.IsSelected = true;
+        listBox.Focus();
+    }
     private void OnCopySelectionExecuted(object sender, ExecutedRoutedEventArgs e)
     {
         CopySelection();

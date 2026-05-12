@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using System.IO;
+using OasisEditor;
 using Xunit;
 
 namespace OasisEditor.Tests;
@@ -97,4 +99,65 @@ public sealed class OutputLogEnhancementTests
             Directory.Delete(root, true);
         }
     }
+
+
+    [Fact]
+    public void ViewModel_OpenLog_UsesShellLauncher()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"oasis-tests-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+        try
+        {
+            var launcher = new FakeOutputLogShellLauncher();
+            var vm = new OutputLogViewModel(new OutputLogDiskWriter(root), launcher);
+            var opened = vm.TryOpenCurrentLog(out var failureReason);
+
+            Assert.True(opened);
+            Assert.Null(failureReason);
+            Assert.NotNull(launcher.LastStartInfo);
+            Assert.Equal(vm.CurrentLogPath, launcher.LastStartInfo!.FileName);
+            Assert.True(launcher.LastStartInfo.UseShellExecute);
+        }
+        finally
+        {
+            Directory.Delete(root, true);
+        }
+    }
+
+    [Fact]
+    public void ViewModel_ShowInExplorer_UsesShellLauncher()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"oasis-tests-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+        try
+        {
+            var launcher = new FakeOutputLogShellLauncher();
+            var vm = new OutputLogViewModel(new OutputLogDiskWriter(root), launcher);
+            var opened = vm.TryShowLogInExplorer(out var failureReason);
+
+            Assert.True(opened);
+            Assert.Null(failureReason);
+            Assert.NotNull(launcher.LastStartInfo);
+            Assert.Equal("explorer.exe", launcher.LastStartInfo!.FileName);
+            Assert.Contains(vm.LogDirectoryPath, launcher.LastStartInfo.Arguments);
+            Assert.True(launcher.LastStartInfo.UseShellExecute);
+        }
+        finally
+        {
+            Directory.Delete(root, true);
+        }
+    }
+
+    private sealed class FakeOutputLogShellLauncher : IOutputLogShellLauncher
+    {
+        public ProcessStartInfo? LastStartInfo { get; private set; }
+
+        public bool TryLaunch(ProcessStartInfo startInfo, out string? failureReason)
+        {
+            LastStartInfo = startInfo;
+            failureReason = null;
+            return true;
+        }
+    }
+
 }
