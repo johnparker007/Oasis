@@ -15,7 +15,14 @@ public sealed record OutputLogEntry(DateTime Timestamp, string Message, OutputLo
     private static readonly Brush WarningBrush = Brushes.Gold;
     private static readonly Brush ErrorBrush = Brushes.IndianRed;
 
-    public string FormattedTimestamp => Timestamp.ToString("HH:mm:ss");
+    public string FormattedTimestamp => Timestamp.ToString("HH:mm:ss.fff");
+
+    public string SeverityLabel => Status.ToString();
+
+    public string ToClipboardLine()
+    {
+        return $"[{FormattedTimestamp}] [{SeverityLabel}] {Message}";
+    }
 
     public string IconGlyph => Status switch
     {

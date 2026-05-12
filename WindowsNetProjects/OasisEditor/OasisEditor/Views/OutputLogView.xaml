@@ -14,6 +14,18 @@
 
         <DockPanel Grid.Row="0"
                    LastChildFill="False">
+            <CheckBox Margin="0,0,8,0"
+                      VerticalAlignment="Center"
+                      IsChecked="{Binding ShowInfoLogs}"
+                      Content="Info" />
+            <CheckBox Margin="0,0,8,0"
+                      VerticalAlignment="Center"
+                      IsChecked="{Binding ShowWarningLogs}"
+                      Content="Warning" />
+            <CheckBox Margin="0,0,8,0"
+                      VerticalAlignment="Center"
+                      IsChecked="{Binding ShowErrorLogs}"
+                      Content="Error" />
             <Button DockPanel.Dock="Right"
                     Padding="10,4"
                     Command="{Binding ClearOutputCommand}"
@@ -23,7 +35,8 @@
         <ListBox Grid.Row="1"
                  Margin="0,8,0,0"
                  BorderThickness="0"
-                 ItemsSource="{Binding OutputEntries}">
+                 ItemsSource="{Binding FilteredEntries}"
+                 SelectionMode="Extended">
             <ListBox.ItemTemplate>
                 <DataTemplate>
                     <StackPanel Orientation="Horizontal">
