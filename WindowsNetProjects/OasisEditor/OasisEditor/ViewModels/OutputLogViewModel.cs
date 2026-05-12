@@ -1,5 +1,8 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Data;
 using System.Windows.Input;
@@ -13,6 +16,7 @@ public sealed class OutputLogViewModel : INotifyPropertyChanged
     private bool _showInfoLogs = true;
     private bool _showWarningLogs = true;
     private bool _showErrorLogs = true;
+    private IReadOnlyList<OutputLogEntry> _selectedEntries = Array.Empty<OutputLogEntry>();
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -34,6 +38,9 @@ public sealed class OutputLogViewModel : INotifyPropertyChanged
     public ObservableCollection<OutputLogEntry> OutputEntries { get; }
     public ICollectionView FilteredEntries { get; }
     public ICommand ClearOutputCommand { get; }
+    public string CurrentLogPath => _diskWriter.CurrentLogPath;
+    public string LogDirectoryPath => Path.GetDirectoryName(CurrentLogPath) ?? string.Empty;
+    public string CopySelectionHeader => SelectedEntries.Count == 1 ? "Copy Row" : "Copy Rows";
 
     public bool ShowInfoLogs
     {
@@ -68,6 +75,17 @@ public sealed class OutputLogViewModel : INotifyPropertyChanged
         }
     }
 
+    public IReadOnlyList<OutputLogEntry> SelectedEntries
+    {
+        get => _selectedEntries;
+        private set
+        {
+            _selectedEntries = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(CopySelectionHeader));
+        }
+    }
+
     public void AddOutputEntry(string message, OutputLogStatus status)
     {
         var entry = new OutputLogEntry(DateTime.Now, message, status);
@@ -93,6 +111,42 @@ public sealed class OutputLogViewModel : INotifyPropertyChanged
         }
     }
 
+    public void UpdateSelectedEntries(IEnumerable<OutputLogEntry> selectedEntries)
+    {
+        SelectedEntries = selectedEntries
+            .Where(entry => ShouldShowEntry(entry))
+            .ToList();
+    }
+
+    public string BuildClipboardTextForSelection()
+    {
+        return string.Join(Environment.NewLine, SelectedEntries.Select(entry => entry.ToClipboardLine()));
+    }
+
+    public bool TryOpenCurrentLog(out string? failureReason)
+    {
+        failureReason = null;
+        if (!File.Exists(CurrentLogPath))
+        {
+            failureReason = $"Cannot open log; file does not exist: {CurrentLogPath}";
+            return false;
+        }
+
+        return TryLaunch(new ProcessStartInfo(CurrentLogPath) { UseShellExecute = true }, out failureReason);
+    }
+
+    public bool TryShowLogInExplorer(out string? failureReason)
+    {
+        failureReason = null;
+        if (!Directory.Exists(LogDirectoryPath))
+        {
+            failureReason = $"Cannot show log directory; directory does not exist: {LogDirectoryPath}";
+            return false;
+        }
+
+        return TryLaunch(new ProcessStartInfo("explorer.exe", $"\"{LogDirectoryPath}\"") { UseShellExecute = true }, out failureReason);
+    }
+
     private bool CanClearOutput()
     {
         return OutputEntries.Count > 0;
@@ -103,6 +157,21 @@ public sealed class OutputLogViewModel : INotifyPropertyChanged
         OutputEntries.Clear();
         LastEntry = null;
         AddOutputEntry("Output log cleared.", OutputLogStatus.Info);
+    }
+
+    private static bool TryLaunch(ProcessStartInfo startInfo, out string? failureReason)
+    {
+        failureReason = null;
+        try
+        {
+            Process.Start(startInfo);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            failureReason = ex.Message;
+            return false;
+        }
     }
 
     private bool ShouldShowEntry(object item)

@@ -53,4 +53,48 @@ public sealed class OutputLogEnhancementTests
             Directory.Delete(root, true);
         }
     }
+
+    [Fact]
+    public void ViewModel_CopySelection_ExcludesHiddenFilteredRows()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"oasis-tests-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+        try
+        {
+            var vm = new OutputLogViewModel(new OutputLogDiskWriter(root));
+            vm.AddOutputEntry("info", OutputLogStatus.Info);
+            vm.AddOutputEntry("warn", OutputLogStatus.Warning);
+            vm.AddOutputEntry("error", OutputLogStatus.Error);
+            vm.ShowWarningLogs = false;
+
+            vm.UpdateSelectedEntries(vm.OutputEntries);
+            var text = vm.BuildClipboardTextForSelection();
+
+            Assert.Contains("[Info] info", text);
+            Assert.Contains("[Error] error", text);
+            Assert.DoesNotContain("[Warning] warn", text);
+        }
+        finally
+        {
+            Directory.Delete(root, true);
+        }
+    }
+
+    [Fact]
+    public void ViewModel_CopySelectionHeader_UsesSingularForSingleItem()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"oasis-tests-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+        try
+        {
+            var vm = new OutputLogViewModel(new OutputLogDiskWriter(root));
+            vm.AddOutputEntry("info", OutputLogStatus.Info);
+            vm.UpdateSelectedEntries(vm.OutputEntries.Take(1));
+            Assert.Equal("Copy Row", vm.CopySelectionHeader);
+        }
+        finally
+        {
+            Directory.Delete(root, true);
+        }
+    }
 }
