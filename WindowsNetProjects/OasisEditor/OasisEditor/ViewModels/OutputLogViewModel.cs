@@ -12,6 +12,7 @@ namespace OasisEditor;
 public sealed class OutputLogViewModel : INotifyPropertyChanged
 {
     private readonly OutputLogDiskWriter _diskWriter;
+    private readonly IOutputLogShellLauncher _shellLauncher;
     private OutputLogEntry? _lastEntry;
     private bool _showInfoLogs = true;
     private bool _showWarningLogs = true;
@@ -21,13 +22,14 @@ public sealed class OutputLogViewModel : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public OutputLogViewModel()
-        : this(new OutputLogDiskWriter(MameRuntimePaths.EnsureManagedLogRootDirectory()))
+        : this(new OutputLogDiskWriter(MameRuntimePaths.EnsureManagedLogRootDirectory()), new OutputLogShellLauncher())
     {
     }
 
-    public OutputLogViewModel(OutputLogDiskWriter diskWriter)
+    public OutputLogViewModel(OutputLogDiskWriter diskWriter, IOutputLogShellLauncher? shellLauncher = null)
     {
         _diskWriter = diskWriter;
+        _shellLauncher = shellLauncher ?? new OutputLogShellLauncher();
         OutputEntries = new ObservableCollection<OutputLogEntry>();
         FilteredEntries = CollectionViewSource.GetDefaultView(OutputEntries);
         FilteredEntries.Filter = ShouldShowEntry;
@@ -132,7 +134,7 @@ public sealed class OutputLogViewModel : INotifyPropertyChanged
             return false;
         }
 
-        return TryLaunch(new ProcessStartInfo(CurrentLogPath) { UseShellExecute = true }, out failureReason);
+        return _shellLauncher.TryLaunch(new ProcessStartInfo(CurrentLogPath) { UseShellExecute = true }, out failureReason);
     }
 
     public bool TryShowLogInExplorer(out string? failureReason)
@@ -144,7 +146,7 @@ public sealed class OutputLogViewModel : INotifyPropertyChanged
             return false;
         }
 
-        return TryLaunch(new ProcessStartInfo("explorer.exe", $"\"{LogDirectoryPath}\"") { UseShellExecute = true }, out failureReason);
+        return _shellLauncher.TryLaunch(new ProcessStartInfo("explorer.exe",  "{LogDirectoryPath}"") { UseShellExecute = true }, out failureReason);
     }
 
     private bool CanClearOutput()
@@ -157,21 +159,6 @@ public sealed class OutputLogViewModel : INotifyPropertyChanged
         OutputEntries.Clear();
         LastEntry = null;
         AddOutputEntry("Output log cleared.", OutputLogStatus.Info);
-    }
-
-    private static bool TryLaunch(ProcessStartInfo startInfo, out string? failureReason)
-    {
-        failureReason = null;
-        try
-        {
-            Process.Start(startInfo);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            failureReason = ex.Message;
-            return false;
-        }
     }
 
     private bool ShouldShowEntry(object item)
