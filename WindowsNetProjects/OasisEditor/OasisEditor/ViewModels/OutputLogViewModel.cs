@@ -146,7 +146,7 @@ public sealed class OutputLogViewModel : INotifyPropertyChanged
             return false;
         }
 
-        return _shellLauncher.TryLaunch(new ProcessStartInfo("explorer.exe",  "{LogDirectoryPath}"") { UseShellExecute = true }, out failureReason);
+        return _shellLauncher.TryLaunch(new ProcessStartInfo("explorer.exe", $"\"{LogDirectoryPath}\"") { UseShellExecute = true }, out failureReason);
     }
 
     private bool CanClearOutput()

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using OasisEditor;
 using Xunit;
 
 namespace OasisEditor.Tests;
