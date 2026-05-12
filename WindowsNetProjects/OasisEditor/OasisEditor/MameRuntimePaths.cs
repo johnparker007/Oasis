@@ -28,4 +28,15 @@ public static class MameRuntimePaths
         Directory.CreateDirectory(romRoot);
         return romRoot;
     }
+
+    public static string EnsureManagedLogRootDirectory()
+    {
+        var root = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "OasisEditor",
+            "System",
+            "Logs");
+        Directory.CreateDirectory(root);
+        return root;
+    }
 }
