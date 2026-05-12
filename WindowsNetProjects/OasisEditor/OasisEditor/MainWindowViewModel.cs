@@ -305,6 +305,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ObservableCollection<DocumentTabViewModel> OpenDocuments { get; }
     public ObservableCollection<AssetBrowserItemViewModel> AssetBrowserItems { get; }
     public ObservableCollection<OutputLogEntry> OutputEntries { get; }
+    public OutputLogViewModel OutputLog => _outputLog;
     public IReadOnlyList<AssetDirectoryNodeViewModel> AssetDirectoryTree => _assetBrowser.AssetDirectoryTree;
 
 
