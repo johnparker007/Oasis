@@ -12,12 +12,9 @@ public sealed class MameProcessStartInfoBuilder : IMameProcessStartInfoBuilder
         ArgumentException.ThrowIfNullOrWhiteSpace(request.MameRomName);
         ArgumentException.ThrowIfNullOrWhiteSpace(request.MameRomRootPath);
         var arguments = new StringBuilder();
-        var effectiveRomPath = BuildRomPathArgument(request.MameExecutablePath, request.MameRomRootPath);
-
-        arguments.Append("-rompath ");
-        arguments.Append(EscapeArgument(effectiveRomPath));
-        arguments.Append(' ');
         arguments.Append(EscapeArgument(request.MameRomName));
+        arguments.Append(" -rompath ");
+        arguments.Append(EscapeArgument(request.MameRomRootPath));
         arguments.Append(" -output console");
         arguments.Append(" -plugin oasis");
         arguments.Append(" -skip_gameinfo");
@@ -56,18 +53,4 @@ public sealed class MameProcessStartInfoBuilder : IMameProcessStartInfoBuilder
             : value;
     }
 
-    private static string BuildRomPathArgument(string executablePath, string managedRomRootPath)
-    {
-        var executableDirectory = Path.GetDirectoryName(executablePath) ?? string.Empty;
-        var localRomDirectory = string.IsNullOrWhiteSpace(executableDirectory)
-            ? string.Empty
-            : Path.Combine(executableDirectory, "roms");
-
-        if (string.IsNullOrWhiteSpace(localRomDirectory))
-        {
-            return managedRomRootPath;
-        }
-
-        return string.Join(';', new[] { managedRomRootPath, localRomDirectory });
-    }
 }

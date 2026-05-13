@@ -22,7 +22,6 @@ public sealed class MameProcessStartInfoBuilderTests
         Assert.Contains("myrom", startInfo.Arguments);
         Assert.Contains("-rompath", startInfo.Arguments);
         Assert.Contains(@"C:\Users\john\AppData\Local\OasisEditor\MAME\roms", startInfo.Arguments);
-        Assert.Contains(@"C:\Users\john\AppData\Local\OasisEditor\MAME\roms;C:\Mame\roms", startInfo.Arguments);
         Assert.Contains("-output console", startInfo.Arguments);
         Assert.Contains("-plugin oasis", startInfo.Arguments);
         Assert.Contains("-skip_gameinfo", startInfo.Arguments);
@@ -32,7 +31,7 @@ public sealed class MameProcessStartInfoBuilderTests
     }
 
     [Fact]
-    public void Build_PlacesRomPathBeforeRomName()
+    public void Build_PlacesRomNameBeforeOptionArguments()
     {
         var builder = new MameProcessStartInfoBuilder();
         var request = new MameProcessLaunchRequest(
@@ -43,7 +42,7 @@ public sealed class MameProcessStartInfoBuilderTests
             string.Empty);
 
         var startInfo = builder.Build(request);
-        var expectedPrefix = "-rompath C:\\Shared\\roms;C:\\Mame\\roms myrom";
+        var expectedPrefix = "myrom -rompath C:\\Shared\\roms";
 
         Assert.StartsWith(expectedPrefix, startInfo.Arguments);
     }
