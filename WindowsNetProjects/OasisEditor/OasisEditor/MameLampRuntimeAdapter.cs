@@ -26,7 +26,12 @@ public sealed class MameLampRuntimeAdapter : IMameLampRuntimeAdapter
 
     private void ApplyOnUiThread(int lampId, int lampValue)
     {
-        var normalizedIntensity = Math.Clamp(lampValue / 255d, 0d, 1d);
+        var normalizedIntensity = lampValue switch
+        {
+            <= 0 => 0d,
+            <= 1 => 1d,
+            _ => Math.Clamp(lampValue / 255d, 0d, 1d)
+        };
         if (_debugOutputEnabledProvider())
         {
             _infoLogger($"[MAME-LAMP] lamp{lampId} value={lampValue} intensity={normalizedIntensity:0.###}");
