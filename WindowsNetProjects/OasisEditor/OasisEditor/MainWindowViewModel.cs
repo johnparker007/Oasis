@@ -36,6 +36,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string _mameRomDownloadBaseUrl = MameRomDownloadService.DefaultDownloadRootUrl;
     private string _mameRomArchiveExtension = MameRomDownloadService.DefaultArchiveExtension;
     private bool _keepMameUpToDateAutomatically = true;
+    private bool _debugOutputLamps;
     private string _mameValidationSummary = "Not validated.";
     private string _selectedPreferencesCategory = "Appearance";
     private FruitMachinePlatformType _selectedFruitMachinePlatform = FruitMachinePlatformType.None;
@@ -152,6 +153,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _mameRomDownloadService.DownloadRootUrl = _mameRomDownloadBaseUrl;
         _mameRomDownloadService.ArchiveExtension = _mameRomArchiveExtension;
         _keepMameUpToDateAutomatically = preferences.Mame.KeepMameUpToDateAutomatically;
+        _debugOutputLamps = preferences.Mame.DebugOutputLamps;
         _mameVersionCatalogService = new MameVersionCatalogService(_mameDownloadService);
         var setupValidationService = new MameSetupValidationService(_mamePluginAssetValidator, _mameVersionCatalogService);
         _mameSetupOrchestrator = new MameSetupOrchestrator(setupValidationService);
@@ -159,6 +161,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             new MameLampStateParser(),
             new MameLampRuntimeAdapter(
                 () => OpenDocuments,
+                () => DebugOutputLamps,
+                message => AddOutputEntry(message, OutputLogStatus.Info),
                 work =>
                 {
                     var dispatcher = Application.Current.Dispatcher;
@@ -419,6 +423,17 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
     public bool IsMameVersionEditable => !KeepMameUpToDateAutomatically;
+    public bool DebugOutputLamps
+    {
+        get => _debugOutputLamps;
+        set
+        {
+            if (SetProperty(ref _debugOutputLamps, value))
+            {
+                SavePreferences();
+            }
+        }
+    }
     public string MameRomName
     {
         get => _mameRomName;
@@ -1393,6 +1408,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 ReleaseSource = MameReleaseSource,
                 CommandLineOverrides = MameCommandLineOverrides,
                 KeepMameUpToDateAutomatically = KeepMameUpToDateAutomatically,
+                DebugOutputLamps = DebugOutputLamps,
                 RomDownloadBaseUrl = MameRomDownloadBaseUrl,
                 RomArchiveExtension = MameRomArchiveExtension
             }
