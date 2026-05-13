@@ -8,20 +8,22 @@ public sealed class MameProcessRunner : IMameProcessRunner, IDisposable
 {
     private readonly Func<Process> _processFactory;
     private readonly Action<string>? _stdoutLogger;
+    private readonly Action<string>? _stdinLogger;
     private readonly Action<string>? _stderrLogger;
     private Process? _process;
     private Task? _stdoutPumpTask;
     private Task? _stderrPumpTask;
 
-    public MameProcessRunner(Action<string>? stdoutLogger = null, Action<string>? stderrLogger = null)
-        : this(() => new Process(), stdoutLogger, stderrLogger)
+    public MameProcessRunner(Action<string>? stdoutLogger = null, Action<string>? stdinLogger = null, Action<string>? stderrLogger = null)
+        : this(() => new Process(), stdoutLogger, stdinLogger, stderrLogger)
     {
     }
 
-    internal MameProcessRunner(Func<Process> processFactory, Action<string>? stdoutLogger = null, Action<string>? stderrLogger = null)
+    internal MameProcessRunner(Func<Process> processFactory, Action<string>? stdoutLogger = null, Action<string>? stdinLogger = null, Action<string>? stderrLogger = null)
     {
         _processFactory = processFactory ?? throw new ArgumentNullException(nameof(processFactory));
         _stdoutLogger = stdoutLogger;
+        _stdinLogger = stdinLogger;
         _stderrLogger = stderrLogger;
     }
 
@@ -94,6 +96,7 @@ public sealed class MameProcessRunner : IMameProcessRunner, IDisposable
             throw new InvalidOperationException("Cannot write input because MAME process is not running.");
         }
 
+        _stdinLogger?.Invoke(command);
         await process.StandardInput.WriteLineAsync(new StringBuilder(command), cancellationToken).ConfigureAwait(false);
         await process.StandardInput.FlushAsync(cancellationToken).ConfigureAwait(false);
     }

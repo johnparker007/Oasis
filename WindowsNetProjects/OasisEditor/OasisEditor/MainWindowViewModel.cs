@@ -37,6 +37,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string _mameRomArchiveExtension = MameRomDownloadService.DefaultArchiveExtension;
     private bool _keepMameUpToDateAutomatically = true;
     private bool _debugOutputLamps;
+    private bool _debugOutputStdIn;
+    private bool _debugOutputStdOut;
     private string _mameValidationSummary = "Not validated.";
     private string _selectedPreferencesCategory = "Appearance";
     private FruitMachinePlatformType _selectedFruitMachinePlatform = FruitMachinePlatformType.None;
@@ -154,6 +156,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _mameRomDownloadService.ArchiveExtension = _mameRomArchiveExtension;
         _keepMameUpToDateAutomatically = preferences.Mame.KeepMameUpToDateAutomatically;
         _debugOutputLamps = preferences.Mame.DebugOutputLamps;
+        _debugOutputStdIn = preferences.Mame.DebugOutputStdIn;
+        _debugOutputStdOut = preferences.Mame.DebugOutputStdOut;
         _mameVersionCatalogService = new MameVersionCatalogService(_mameDownloadService);
         var setupValidationService = new MameSetupValidationService(_mamePluginAssetValidator, _mameVersionCatalogService);
         _mameSetupOrchestrator = new MameSetupOrchestrator(setupValidationService);
@@ -181,8 +185,18 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             new MameProcessRunner(
                 stdoutLogger: line =>
                 {
-                    AddOutputEntry($"[MAME] {line}", OutputLogStatus.Info);
+                    if (DebugOutputStdOut)
+                    {
+                        AddOutputEntry($"[MAME-STDOUT] {line}", OutputLogStatus.Info);
+                    }
                     mameStdoutParser.ProcessLine(line);
+                },
+                stdinLogger: line =>
+                {
+                    if (DebugOutputStdIn)
+                    {
+                        AddOutputEntry($"[MAME-STDIN] {line}", OutputLogStatus.Info);
+                    }
                 },
                 stderrLogger: line => AddOutputEntry($"[MAME-ERR] {line}", OutputLogStatus.Warning)),
             BuildMameLaunchRequest);
@@ -429,6 +443,28 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         set
         {
             if (SetProperty(ref _debugOutputLamps, value))
+            {
+                SavePreferences();
+            }
+        }
+    }
+    public bool DebugOutputStdIn
+    {
+        get => _debugOutputStdIn;
+        set
+        {
+            if (SetProperty(ref _debugOutputStdIn, value))
+            {
+                SavePreferences();
+            }
+        }
+    }
+    public bool DebugOutputStdOut
+    {
+        get => _debugOutputStdOut;
+        set
+        {
+            if (SetProperty(ref _debugOutputStdOut, value))
             {
                 SavePreferences();
             }
@@ -1409,6 +1445,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 CommandLineOverrides = MameCommandLineOverrides,
                 KeepMameUpToDateAutomatically = KeepMameUpToDateAutomatically,
                 DebugOutputLamps = DebugOutputLamps,
+                DebugOutputStdIn = DebugOutputStdIn,
+                DebugOutputStdOut = DebugOutputStdOut,
                 RomDownloadBaseUrl = MameRomDownloadBaseUrl,
                 RomArchiveExtension = MameRomArchiveExtension
             }

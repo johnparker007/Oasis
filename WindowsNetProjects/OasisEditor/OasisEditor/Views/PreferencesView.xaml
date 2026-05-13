@@ -64,6 +64,14 @@
                           Foreground="{DynamicResource TextPrimaryBrush}"
                           Content="Debug Output Lamps"
                           IsChecked="{Binding DebugOutputLamps, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <CheckBox Margin="0,8,0,0"
+                          Foreground="{DynamicResource TextPrimaryBrush}"
+                          Content="Debug Output Std Out"
+                          IsChecked="{Binding DebugOutputStdOut, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <CheckBox Margin="0,8,0,0"
+                          Foreground="{DynamicResource TextPrimaryBrush}"
+                          Content="Debug Output Std In"
+                          IsChecked="{Binding DebugOutputStdIn, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
 
                 
