@@ -155,10 +155,31 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _mameVersionCatalogService = new MameVersionCatalogService(_mameDownloadService);
         var setupValidationService = new MameSetupValidationService(_mamePluginAssetValidator, _mameVersionCatalogService);
         _mameSetupOrchestrator = new MameSetupOrchestrator(setupValidationService);
+        var mameStdoutParser = new MameStdoutParser(
+            new MameLampStateParser(),
+            new MameLampRuntimeAdapter(
+                () => OpenDocuments,
+                work =>
+                {
+                    var dispatcher = Application.Current.Dispatcher;
+                    if (dispatcher.CheckAccess())
+                    {
+                        work();
+                    }
+                    else
+                    {
+                        dispatcher.Invoke(work);
+                    }
+                }),
+            diagnosticLogger: line => AddOutputEntry(line, OutputLogStatus.Info));
         _mameEmulationService = new MameEmulationService(
             new MameProcessStartInfoBuilder(),
             new MameProcessRunner(
-                stdoutLogger: line => AddOutputEntry($"[MAME] {line}", OutputLogStatus.Info),
+                stdoutLogger: line =>
+                {
+                    AddOutputEntry($"[MAME] {line}", OutputLogStatus.Info);
+                    mameStdoutParser.ProcessLine(line);
+                },
                 stderrLogger: line => AddOutputEntry($"[MAME-ERR] {line}", OutputLogStatus.Warning)),
             BuildMameLaunchRequest);
         _mameEmulationService.StateChanged += (_, state) =>

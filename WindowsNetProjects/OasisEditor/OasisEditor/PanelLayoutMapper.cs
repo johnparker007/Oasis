@@ -145,7 +145,12 @@ public static class PanelLayoutMapper
                 canvas,
                 objectId,
                 runtimeState.GetLampIntensity(objectId),
-                visualStateChange.ValuesByObjectId[objectId] is true,
+                visualStateChange.ValuesByObjectId[objectId] switch
+                {
+                    LampVisualState state => state.IsLampTestOn,
+                    true => true,
+                    _ => false
+                },
                 sourceModel.OnColorHex,
                 sourceModel.OffColorHex,
                 sourceModel.AssetPath);

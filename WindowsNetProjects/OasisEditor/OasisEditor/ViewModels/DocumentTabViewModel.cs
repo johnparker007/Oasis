@@ -140,9 +140,11 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
                 && element.Kind == PanelElementKind.Lamp)
             .ToDictionary(
                 element => element.ObjectId,
-                element => (object)(_runtimeState.IsLampTestActive
+                element => (object)new LampVisualState(
+                    _runtimeState.IsLampTestActive
                     && !string.IsNullOrWhiteSpace(_runtimeState.LampTestObjectId)
-                    && string.Equals(element.ObjectId, _runtimeState.LampTestObjectId, StringComparison.Ordinal)));
+                    && string.Equals(element.ObjectId, _runtimeState.LampTestObjectId, StringComparison.Ordinal),
+                    _runtimeState.GetLampIntensity(element.ObjectId)));
 
         var deltaByObjectId = new Dictionary<string, object>(StringComparer.Ordinal);
         foreach (var kvp in visualStateByObjectId)
@@ -242,6 +244,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
         return PanelSelectionContract.IsMatch(storageElement, selection);
     }
 }
+
+internal readonly record struct LampVisualState(bool IsLampTestOn, double Intensity);
 
 public sealed record PanelVisualStateChangedEvent(
     Guid DocumentId,
