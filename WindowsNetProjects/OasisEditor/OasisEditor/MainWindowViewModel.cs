@@ -183,14 +183,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _mameEmulationService = new MameEmulationService(
             new MameProcessStartInfoBuilder(),
             new MameProcessRunner(
-                stdoutLogger: line =>
-                {
-                    if (DebugOutputStdOut)
-                    {
-                        AddOutputEntry($"[MAME-STDOUT] {line}", OutputLogStatus.Info);
-                    }
-                    mameStdoutParser.ProcessLine(line);
-                },
+                stdoutLogger: line => ProcessMameStdoutLine(line, mameStdoutParser),
                 stdinLogger: line =>
                 {
                     if (DebugOutputStdIn)
@@ -1451,6 +1444,33 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 RomArchiveExtension = MameRomArchiveExtension
             }
         });
+    }
+
+    private void ProcessMameStdoutLine(string line, IMameStdoutParser parser)
+    {
+        if (string.IsNullOrWhiteSpace(line))
+        {
+            return;
+        }
+
+        var normalized = line.Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace('\r', '\n')
+            .Replace("\\n", "\n", StringComparison.Ordinal);
+        var segments = normalized.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (segments.Length == 0)
+        {
+            return;
+        }
+
+        foreach (var segment in segments)
+        {
+            if (DebugOutputStdOut)
+            {
+                AddOutputEntry($"[MAME-STDOUT] {segment}", OutputLogStatus.Info);
+            }
+
+            parser.ProcessLine(segment);
+        }
     }
 
     private void OpenProjectSettings()
