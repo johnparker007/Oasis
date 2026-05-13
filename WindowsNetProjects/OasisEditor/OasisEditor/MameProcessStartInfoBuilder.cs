@@ -52,4 +52,5 @@ public sealed class MameProcessStartInfoBuilder : IMameProcessStartInfoBuilder
             ? $"\"{value.Replace("\"", "\\\"")}\""
             : value;
     }
+
 }

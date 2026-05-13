@@ -31,6 +31,23 @@ public sealed class MameProcessStartInfoBuilderTests
     }
 
     [Fact]
+    public void Build_PlacesRomNameBeforeOptionArguments()
+    {
+        var builder = new MameProcessStartInfoBuilder();
+        var request = new MameProcessLaunchRequest(
+            @"C:\Mame\mame.exe",
+            "myrom",
+            @"C:\Shared\roms",
+            @"C:\plugins",
+            string.Empty);
+
+        var startInfo = builder.Build(request);
+        var expectedPrefix = "myrom -rompath C:\\Shared\\roms";
+
+        Assert.StartsWith(expectedPrefix, startInfo.Arguments);
+    }
+
+    [Fact]
     public void Build_AppendsAdditionalArguments()
     {
         var builder = new MameProcessStartInfoBuilder();
