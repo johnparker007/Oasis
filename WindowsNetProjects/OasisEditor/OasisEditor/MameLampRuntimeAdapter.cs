@@ -2,10 +2,13 @@ namespace OasisEditor;
 
 public sealed class MameLampRuntimeAdapter : IMameLampRuntimeAdapter
 {
+    private readonly object _pendingSync = new();
     private readonly Func<IEnumerable<DocumentTabViewModel>> _documentProvider;
     private readonly Func<bool> _debugOutputEnabledProvider;
     private readonly Action<string> _infoLogger;
     private readonly Action<Action> _uiDispatch;
+    private readonly Dictionary<int, int> _pendingLampValues = new();
+    private bool _uiUpdateScheduled;
 
     public MameLampRuntimeAdapter(
         Func<IEnumerable<DocumentTabViewModel>> documentProvider,
@@ -21,44 +24,80 @@ public sealed class MameLampRuntimeAdapter : IMameLampRuntimeAdapter
 
     public void ApplyLampState(int lampId, int lampValue)
     {
-        _uiDispatch(() => ApplyOnUiThread(lampId, lampValue));
+        lock (_pendingSync)
+        {
+            _pendingLampValues[lampId] = lampValue;
+            if (_uiUpdateScheduled)
+            {
+                return;
+            }
+
+            _uiUpdateScheduled = true;
+        }
+
+        _uiDispatch(ApplyPendingOnUiThread);
     }
 
-    private void ApplyOnUiThread(int lampId, int lampValue)
+    private void ApplyPendingOnUiThread()
     {
-        var normalizedIntensity = lampValue switch
+        Dictionary<int, int> snapshot;
+        lock (_pendingSync)
         {
-            <= 0 => 0d,
-            <= 1 => 1d,
-            _ => Math.Clamp(lampValue / 255d, 0d, 1d)
-        };
-        if (_debugOutputEnabledProvider())
+            snapshot = new Dictionary<int, int>(_pendingLampValues);
+            _pendingLampValues.Clear();
+            _uiUpdateScheduled = false;
+        }
+
+        if (snapshot.Count == 0)
         {
-            _infoLogger($"[MAME-LAMP] lamp{lampId} value={lampValue} intensity={normalizedIntensity:0.###}");
+            return;
         }
 
         foreach (var document in _documentProvider())
         {
-            var matchingObjectIds = document
+            var matchingObjectIdsByLamp = document
                 .GetPanelElements()
                 .Where(element => element.Kind == PanelElementKind.Lamp
-                    && element.DisplayNumber.GetValueOrDefault() == lampId
-                    && !string.IsNullOrWhiteSpace(element.ObjectId))
-                .Select(element => element.ObjectId)
-                .Distinct(StringComparer.Ordinal)
-                .ToArray();
+                    && !string.IsNullOrWhiteSpace(element.ObjectId)
+                    && element.DisplayNumber.HasValue)
+                .GroupBy(element => element.DisplayNumber.GetValueOrDefault())
+                .ToDictionary(
+                    group => group.Key,
+                    group => group.Select(element => element.ObjectId)
+                        .Distinct(StringComparer.Ordinal)
+                        .ToArray());
 
-            if (matchingObjectIds.Length == 0)
+            var hasAnyApplied = false;
+            foreach (var (pendingLampId, pendingLampValue) in snapshot)
             {
-                continue;
+                if (!matchingObjectIdsByLamp.TryGetValue(pendingLampId, out var matchingObjectIds)
+                    || matchingObjectIds.Length == 0)
+                {
+                    continue;
+                }
+
+                var normalizedIntensity = pendingLampValue switch
+                {
+                    <= 0 => 0d,
+                    <= 1 => 1d,
+                    _ => Math.Clamp(pendingLampValue / 255d, 0d, 1d)
+                };
+                if (_debugOutputEnabledProvider())
+                {
+                    _infoLogger($"[MAME-LAMP] lamp{pendingLampId} value={pendingLampValue} intensity={normalizedIntensity:0.###}");
+                }
+
+                foreach (var objectId in matchingObjectIds)
+                {
+                    document.RuntimeState.SetLampIntensity(objectId, normalizedIntensity);
+                    hasAnyApplied = true;
+                }
             }
 
-            foreach (var objectId in matchingObjectIds)
+            if (hasAnyApplied)
             {
-                document.RuntimeState.SetLampIntensity(objectId, normalizedIntensity);
+                document.NotifyPanelVisualPreviewChanged();
             }
-
-            document.NotifyPanelVisualPreviewChanged();
         }
     }
 }
