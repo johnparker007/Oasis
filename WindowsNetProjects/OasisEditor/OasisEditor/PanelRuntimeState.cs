@@ -27,7 +27,7 @@ public sealed class PanelRuntimeState
             return 0d;
         }
 
-        return _lampIntensityByObjectId.GetValueOrDefault(objectId.Trim(), 1d);
+        return _lampIntensityByObjectId.GetValueOrDefault(objectId.Trim(), 0d);
     }
 
     public void ClearLampIntensity(string objectId)

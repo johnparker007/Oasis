@@ -1,4 +1,5 @@
 namespace OasisEditor;
+using System.Text.RegularExpressions;
 
 public interface IMameLampStateParser
 {
@@ -7,6 +8,10 @@ public interface IMameLampStateParser
 
 public sealed class MameLampStateParser : IMameLampStateParser
 {
+    private static readonly Regex LampLineRegex = new(
+        @"lamp\s*(\d+)\s*=\s*(-?\d+)",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
     public bool TryParse(string line, out int lampId, out int lampValue)
     {
         lampId = 0;
@@ -18,6 +23,14 @@ public sealed class MameLampStateParser : IMameLampStateParser
         }
 
         var trimmed = line.Trim();
+        var regexMatch = LampLineRegex.Match(trimmed);
+        if (regexMatch.Success
+            && int.TryParse(regexMatch.Groups[1].Value, out lampId)
+            && int.TryParse(regexMatch.Groups[2].Value, out lampValue))
+        {
+            return true;
+        }
+
         var tokens = trimmed.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         if (tokens.Length < 2)
         {

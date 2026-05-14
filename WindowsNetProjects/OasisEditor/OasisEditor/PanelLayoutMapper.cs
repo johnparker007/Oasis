@@ -141,11 +141,18 @@ public static class PanelLayoutMapper
                 continue;
             }
 
+            var lampVisualState = visualStateChange.ValuesByObjectId[objectId] switch
+            {
+                LampVisualState state => state,
+                true => new LampVisualState(true, runtimeState.GetLampIntensity(objectId)),
+                _ => new LampVisualState(false, runtimeState.GetLampIntensity(objectId))
+            };
+
             UpdateLampVisual(
                 canvas,
                 objectId,
-                runtimeState.GetLampIntensity(objectId),
-                visualStateChange.ValuesByObjectId[objectId] is true,
+                lampVisualState.Intensity,
+                lampVisualState.IsLampTestOn || lampVisualState.Intensity > 0d,
                 sourceModel.OnColorHex,
                 sourceModel.OffColorHex,
                 sourceModel.AssetPath);
