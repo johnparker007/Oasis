@@ -155,7 +155,6 @@ public static class PanelLayoutMapper
                 sourceModel.OnColorHex,
                 sourceModel.OffColorHex,
                 sourceModel.AssetPath);
-            runtimeState.SetLampIntensity(objectId, runtimeState.GetLampIntensity(objectId));
         }
     }
 
@@ -192,20 +191,27 @@ public static class PanelLayoutMapper
                     image.Source = PanelElementFactory.TryCreateImageSourceForRuntime(assetPath);
                 }
 
-                image.Opacity = effectiveOpacity;
-                border.Background = Brushes.Transparent;
+                SetOpacityIfChanged(image, effectiveOpacity);
+                if (!ReferenceEquals(border.Background, Brushes.Transparent))
+                {
+                    border.Background = Brushes.Transparent;
+                }
                 return;
             }
 
             var cachedBrush = isOn
                 ? GetOrCreateCachedLampOnBrush(border, onColorHex)
                 : GetOrCreateCachedLampOffBrush(border, offColorHex ?? onColorHex);
-            border.Background = cachedBrush;
-            border.Opacity = Math.Max(0.1d, normalizedIntensity);
+            if (!ReferenceEquals(border.Background, cachedBrush))
+            {
+                border.Background = cachedBrush;
+            }
+
+            SetOpacityIfChanged(border, Math.Max(0.1d, normalizedIntensity));
         }
         else if (visual is Image image)
         {
-            image.Opacity = effectiveOpacity;
+            SetOpacityIfChanged(image, effectiveOpacity);
         }
     }
 
@@ -257,5 +263,15 @@ public static class PanelLayoutMapper
         brush = PanelElementFactory.TryCreateBrushForRuntime(offColorHex, Brushes.Transparent);
         border.SetValue(CachedLampOffBrushProperty, brush);
         return brush;
+    }
+
+    private static void SetOpacityIfChanged(UIElement element, double opacity)
+    {
+        if (Math.Abs(element.Opacity - opacity) < 0.0001d)
+        {
+            return;
+        }
+
+        element.Opacity = opacity;
     }
 }

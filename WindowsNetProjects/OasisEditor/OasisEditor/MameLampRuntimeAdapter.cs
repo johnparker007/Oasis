@@ -84,9 +84,11 @@ public sealed class MameLampRuntimeAdapter : IMameLampRuntimeAdapter
 
                 foreach (var objectId in matchingObjectIds)
                 {
-                    document.RuntimeState.SetLampIntensity(objectId, normalizedIntensity);
-                    hasAnyApplied = true;
-                    changedObjectIds.Add(objectId);
+                    if (document.RuntimeState.SetLampIntensityIfChanged(objectId, normalizedIntensity))
+                    {
+                        hasAnyApplied = true;
+                        changedObjectIds.Add(objectId);
+                    }
                 }
             }
 
