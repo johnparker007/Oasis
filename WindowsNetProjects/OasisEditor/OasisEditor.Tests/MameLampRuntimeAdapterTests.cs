@@ -29,10 +29,9 @@ public sealed class MameLampRuntimeAdapterTests
 
     private static DocumentTabViewModel CreateDocument()
     {
-        var panelDocument = new EditorDocument(
-            EditorDocumentType.Panel2D,
-            "panel",
+        var panelDocument = EditorDocument.CreateFromFile(
             "panel.panel2d",
+            "panel",
             "panel");
         var tab = new DocumentTabViewModel(panelDocument);
         tab.SetPanelElements(
