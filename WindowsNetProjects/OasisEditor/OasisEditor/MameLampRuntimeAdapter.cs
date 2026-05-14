@@ -8,6 +8,7 @@ public sealed class MameLampRuntimeAdapter : IMameLampRuntimeAdapter
     private readonly Action<string> _infoLogger;
     private readonly Action<Action> _uiDispatch;
     private readonly Dictionary<int, int> _pendingLampValues = new();
+    private readonly Dictionary<Guid, LampDocumentMappingCacheEntry> _lampMappingsByDocumentId = new();
     private bool _uiUpdateScheduled;
 
     public MameLampRuntimeAdapter(
@@ -53,19 +54,12 @@ public sealed class MameLampRuntimeAdapter : IMameLampRuntimeAdapter
             return;
         }
 
-        foreach (var document in _documentProvider())
+        var documents = _documentProvider().ToArray();
+        PruneDocumentCaches(documents);
+
+        foreach (var document in documents)
         {
-            var matchingObjectIdsByLamp = document
-                .GetPanelElements()
-                .Where(element => element.Kind == PanelElementKind.Lamp
-                    && !string.IsNullOrWhiteSpace(element.ObjectId)
-                    && element.DisplayNumber.HasValue)
-                .GroupBy(element => element.DisplayNumber.GetValueOrDefault())
-                .ToDictionary(
-                    group => group.Key,
-                    group => group.Select(element => element.ObjectId)
-                        .Distinct(StringComparer.Ordinal)
-                        .ToArray());
+            var matchingObjectIdsByLamp = GetOrBuildLampMapping(document);
 
             var hasAnyApplied = false;
             foreach (var (pendingLampId, pendingLampValue) in snapshot)
@@ -98,6 +92,83 @@ public sealed class MameLampRuntimeAdapter : IMameLampRuntimeAdapter
             {
                 document.NotifyPanelVisualPreviewChanged();
             }
+        }
+    }
+
+    private void PruneDocumentCaches(IReadOnlyCollection<DocumentTabViewModel> documents)
+    {
+        var activeIds = documents.Select(document => document.DocumentId).ToHashSet();
+        var staleDocumentIds = _lampMappingsByDocumentId.Keys
+            .Where(documentId => !activeIds.Contains(documentId))
+            .ToArray();
+        foreach (var staleDocumentId in staleDocumentIds)
+        {
+            if (_lampMappingsByDocumentId.Remove(staleDocumentId, out var staleEntry))
+            {
+                staleEntry.Detach();
+            }
+        }
+    }
+
+    private IReadOnlyDictionary<int, string[]> GetOrBuildLampMapping(DocumentTabViewModel document)
+    {
+        if (_lampMappingsByDocumentId.TryGetValue(document.DocumentId, out var cacheEntry)
+            && !cacheEntry.IsDirty)
+        {
+            return cacheEntry.MappingByLampId;
+        }
+
+        var mapping = document
+            .GetPanelElements()
+            .Where(element => element.Kind == PanelElementKind.Lamp
+                && !string.IsNullOrWhiteSpace(element.ObjectId)
+                && element.DisplayNumber.HasValue)
+            .GroupBy(element => element.DisplayNumber.GetValueOrDefault())
+            .ToDictionary(
+                group => group.Key,
+                group => group.Select(element => element.ObjectId)
+                    .Distinct(StringComparer.Ordinal)
+                    .ToArray());
+
+        if (cacheEntry is null)
+        {
+            cacheEntry = new LampDocumentMappingCacheEntry(document, mapping);
+            _lampMappingsByDocumentId[document.DocumentId] = cacheEntry;
+            return cacheEntry.MappingByLampId;
+        }
+
+        cacheEntry.Replace(mapping);
+        return cacheEntry.MappingByLampId;
+    }
+
+    private sealed class LampDocumentMappingCacheEntry
+    {
+        private readonly DocumentTabViewModel _document;
+
+        public LampDocumentMappingCacheEntry(DocumentTabViewModel document, IReadOnlyDictionary<int, string[]> mappingByLampId)
+        {
+            _document = document;
+            MappingByLampId = mappingByLampId;
+            _document.PanelChanged += OnPanelChanged;
+        }
+
+        public IReadOnlyDictionary<int, string[]> MappingByLampId { get; private set; }
+        public bool IsDirty { get; private set; }
+
+        public void Replace(IReadOnlyDictionary<int, string[]> mappingByLampId)
+        {
+            MappingByLampId = mappingByLampId;
+            IsDirty = false;
+        }
+
+        public void OnPanelChanged(PanelChangeEvent _)
+        {
+            IsDirty = true;
+        }
+
+        public void Detach()
+        {
+            _document.PanelChanged -= OnPanelChanged;
         }
     }
 }
