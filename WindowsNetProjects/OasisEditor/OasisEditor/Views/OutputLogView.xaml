@@ -35,6 +35,10 @@
                       VerticalAlignment="Center"
                       IsChecked="{Binding ShowErrorLogs}"
                       Content="Error" />
+            <CheckBox Margin="0,0,8,0"
+                      VerticalAlignment="Center"
+                      IsChecked="{Binding AutoScroll}"
+                      Content="Autoscroll" />
             <Button DockPanel.Dock="Right"
                     Padding="10,4"
                     Command="{Binding ClearOutputCommand}"
