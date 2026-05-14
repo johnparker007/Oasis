@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -21,17 +20,10 @@ public static class PanelLayoutMapper
             typeof(PanelLayoutMapper),
             new PropertyMetadata(false));
 
-    private static readonly DependencyProperty ObjectVisualMapProperty =
+    private static readonly DependencyProperty RuntimeVisualRegistryProperty =
         DependencyProperty.RegisterAttached(
-            "ObjectVisualMap",
-            typeof(Dictionary<string, FrameworkElement>),
-            typeof(PanelLayoutMapper),
-            new PropertyMetadata(null));
-
-    private static readonly DependencyProperty MissingVisualLogSetProperty =
-        DependencyProperty.RegisterAttached(
-            "MissingVisualLogSet",
-            typeof(HashSet<string>),
+            "RuntimeVisualRegistry",
+            typeof(PanelRuntimeVisualRegistry),
             typeof(PanelLayoutMapper),
             new PropertyMetadata(null));
 
@@ -174,15 +166,10 @@ public static class PanelLayoutMapper
             return;
         }
 
-        var objectVisualMap = GetOrCreateObjectVisualMap(canvas);
-        if (!objectVisualMap.TryGetValue(objectId, out var visual))
+        var registry = GetOrCreateRuntimeVisualRegistry(canvas);
+        if (!registry.TryGetVisual(objectId, out var visual))
         {
-            var missingIds = GetOrCreateMissingVisualLogSet(canvas);
-            if (missingIds.Add(objectId))
-            {
-                Debug.WriteLine($"[PanelLayoutMapper] UpdateLampVisual skipped; visual not found for objectId '{objectId}'.");
-            }
-
+            registry.LogMissingObjectIdOnce(objectId);
             return;
         }
 
@@ -224,36 +211,17 @@ public static class PanelLayoutMapper
 
     private static void RebuildObjectVisualMap(Canvas canvas)
     {
-        var map = GetOrCreateObjectVisualMap(canvas);
-        map.Clear();
-        foreach (var element in canvas.Children.OfType<FrameworkElement>().Where(GetIsPersistedElement))
-        {
-            if (!string.IsNullOrWhiteSpace(element.Uid))
-            {
-                map[element.Uid.Trim()] = element;
-            }
-        }
+        GetOrCreateRuntimeVisualRegistry(canvas).Rebuild(canvas, GetIsPersistedElement);
     }
 
-    private static Dictionary<string, FrameworkElement> GetOrCreateObjectVisualMap(Canvas canvas)
+    private static PanelRuntimeVisualRegistry GetOrCreateRuntimeVisualRegistry(Canvas canvas)
     {
-        if (canvas.GetValue(ObjectVisualMapProperty) is not Dictionary<string, FrameworkElement> map)
+        if (canvas.GetValue(RuntimeVisualRegistryProperty) is not PanelRuntimeVisualRegistry registry)
         {
-            map = new Dictionary<string, FrameworkElement>(StringComparer.Ordinal);
-            canvas.SetValue(ObjectVisualMapProperty, map);
+            registry = new PanelRuntimeVisualRegistry();
+            canvas.SetValue(RuntimeVisualRegistryProperty, registry);
         }
 
-        return map;
-    }
-
-    private static HashSet<string> GetOrCreateMissingVisualLogSet(Canvas canvas)
-    {
-        if (canvas.GetValue(MissingVisualLogSetProperty) is not HashSet<string> missingIds)
-        {
-            missingIds = new HashSet<string>(StringComparer.Ordinal);
-            canvas.SetValue(MissingVisualLogSetProperty, missingIds);
-        }
-
-        return missingIds;
+        return registry;
     }
 }
