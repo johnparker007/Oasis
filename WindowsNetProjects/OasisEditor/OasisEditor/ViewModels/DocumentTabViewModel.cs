@@ -135,29 +135,49 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
 
     internal void NotifyPanelVisualPreviewChanged()
     {
-        var visualStateByObjectId = _panelDocumentModel.Elements
+        var changedObjectIds = _panelDocumentModel.Elements
             .Where(element => !string.IsNullOrWhiteSpace(element.ObjectId)
                 && element.Kind == PanelElementKind.Lamp)
-            .ToDictionary(
-                element => element.ObjectId,
-                element => (object)new LampVisualState(
-                    _runtimeState.IsLampTestActive
-                    && !string.IsNullOrWhiteSpace(_runtimeState.LampTestObjectId)
-                    && string.Equals(element.ObjectId, _runtimeState.LampTestObjectId, StringComparison.Ordinal),
-                    _runtimeState.GetLampIntensity(element.ObjectId)));
+            .Select(element => element.ObjectId)
+            .ToArray();
+        NotifyPanelVisualPreviewChanged(changedObjectIds);
+    }
+
+    internal void NotifyPanelVisualPreviewChanged(IReadOnlyCollection<string> changedObjectIds)
+    {
+        if (changedObjectIds.Count == 0)
+        {
+            return;
+        }
+
+        _lastVisualStateByObjectId ??= new Dictionary<string, object>(StringComparer.Ordinal);
+        var lampObjectIds = _panelDocumentModel.Elements
+            .Where(element => !string.IsNullOrWhiteSpace(element.ObjectId)
+                && element.Kind == PanelElementKind.Lamp)
+            .Select(element => element.ObjectId)
+            .ToHashSet(StringComparer.Ordinal);
 
         var deltaByObjectId = new Dictionary<string, object>(StringComparer.Ordinal);
-        foreach (var kvp in visualStateByObjectId)
+        foreach (var objectId in changedObjectIds)
         {
-            if (_lastVisualStateByObjectId is null
-                || !_lastVisualStateByObjectId.TryGetValue(kvp.Key, out var previous)
-                || !Equals(previous, kvp.Value))
+            if (string.IsNullOrWhiteSpace(objectId) || !lampObjectIds.Contains(objectId))
             {
-                deltaByObjectId[kvp.Key] = kvp.Value;
+                continue;
+            }
+
+            var nextState = (object)new LampVisualState(
+                _runtimeState.IsLampTestActive
+                && !string.IsNullOrWhiteSpace(_runtimeState.LampTestObjectId)
+                && string.Equals(objectId, _runtimeState.LampTestObjectId, StringComparison.Ordinal),
+                _runtimeState.GetLampIntensity(objectId));
+            if (!_lastVisualStateByObjectId.TryGetValue(objectId, out var previous)
+                || !Equals(previous, nextState))
+            {
+                _lastVisualStateByObjectId[objectId] = nextState;
+                deltaByObjectId[objectId] = nextState;
             }
         }
 
-        _lastVisualStateByObjectId = visualStateByObjectId;
         if (deltaByObjectId.Count == 0)
         {
             return;

@@ -62,6 +62,7 @@ public sealed class MameLampRuntimeAdapter : IMameLampRuntimeAdapter
             var matchingObjectIdsByLamp = GetOrBuildLampMapping(document);
 
             var hasAnyApplied = false;
+            var changedObjectIds = new HashSet<string>(StringComparer.Ordinal);
             foreach (var (pendingLampId, pendingLampValue) in snapshot)
             {
                 if (!matchingObjectIdsByLamp.TryGetValue(pendingLampId, out var matchingObjectIds)
@@ -85,12 +86,13 @@ public sealed class MameLampRuntimeAdapter : IMameLampRuntimeAdapter
                 {
                     document.RuntimeState.SetLampIntensity(objectId, normalizedIntensity);
                     hasAnyApplied = true;
+                    changedObjectIds.Add(objectId);
                 }
             }
 
             if (hasAnyApplied)
             {
-                document.NotifyPanelVisualPreviewChanged();
+                document.NotifyPanelVisualPreviewChanged(changedObjectIds);
             }
         }
     }

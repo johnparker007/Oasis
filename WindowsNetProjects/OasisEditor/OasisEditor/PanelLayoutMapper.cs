@@ -26,6 +26,18 @@ public static class PanelLayoutMapper
             typeof(PanelRuntimeVisualRegistry),
             typeof(PanelLayoutMapper),
             new PropertyMetadata(null));
+    private static readonly DependencyProperty CachedLampOnBrushProperty =
+        DependencyProperty.RegisterAttached(
+            "CachedLampOnBrush",
+            typeof(Brush),
+            typeof(PanelLayoutMapper),
+            new PropertyMetadata(null));
+    private static readonly DependencyProperty CachedLampOffBrushProperty =
+        DependencyProperty.RegisterAttached(
+            "CachedLampOffBrush",
+            typeof(Brush),
+            typeof(PanelLayoutMapper),
+            new PropertyMetadata(null));
 
     public static bool IsApplyingLayout(Canvas canvas)
     {
@@ -190,8 +202,11 @@ public static class PanelLayoutMapper
                 return;
             }
 
-            var backgroundHex = isOn ? onColorHex : offColorHex ?? onColorHex;
-            border.Background = PanelElementFactory.TryCreateBrushForRuntime(backgroundHex, Brushes.Transparent);
+            var cachedBrush = isOn
+                ? GetOrCreateCachedLampOnBrush(border, onColorHex)
+                : GetOrCreateCachedLampOffBrush(border, offColorHex ?? onColorHex);
+            border.Background = cachedBrush;
+            border.Opacity = Math.Max(0.1d, normalizedIntensity);
         }
         else if (visual is Image image)
         {
@@ -223,5 +238,29 @@ public static class PanelLayoutMapper
         }
 
         return registry;
+    }
+
+    private static Brush GetOrCreateCachedLampOnBrush(Border border, string? onColorHex)
+    {
+        if (border.GetValue(CachedLampOnBrushProperty) is Brush brush)
+        {
+            return brush;
+        }
+
+        brush = PanelElementFactory.TryCreateBrushForRuntime(onColorHex, Brushes.Transparent);
+        border.SetValue(CachedLampOnBrushProperty, brush);
+        return brush;
+    }
+
+    private static Brush GetOrCreateCachedLampOffBrush(Border border, string? offColorHex)
+    {
+        if (border.GetValue(CachedLampOffBrushProperty) is Brush brush)
+        {
+            return brush;
+        }
+
+        brush = PanelElementFactory.TryCreateBrushForRuntime(offColorHex, Brushes.Transparent);
+        border.SetValue(CachedLampOffBrushProperty, brush);
+        return brush;
     }
 }
