@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
 
@@ -91,9 +92,16 @@ public sealed class OutputLogViewModel : INotifyPropertyChanged
     public void AddOutputEntry(string message, OutputLogStatus status)
     {
         var entry = new OutputLogEntry(DateTime.Now, message, status);
-        OutputEntries.Add(entry);
-        LastEntry = entry;
-        NotifyClearCommand();
+
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is not null && !dispatcher.CheckAccess())
+        {
+            dispatcher.Invoke(() => AddEntryOnUiThread(entry));
+        }
+        else
+        {
+            AddEntryOnUiThread(entry);
+        }
 
         try
         {
@@ -115,9 +123,22 @@ public sealed class OutputLogViewModel : INotifyPropertyChanged
 
     public void UpdateSelectedEntries(IEnumerable<OutputLogEntry> selectedEntries)
     {
-        SelectedEntries = selectedEntries
+        var selectedSet = selectedEntries
             .Where(entry => ShouldShowEntry(entry))
+            .ToHashSet();
+
+        if (selectedSet.Count == 0)
+        {
+            SelectedEntries = Array.Empty<OutputLogEntry>();
+            return;
+        }
+
+        var orderedSelection = FilteredEntries
+            .Cast<OutputLogEntry>()
+            .Where(selectedSet.Contains)
             .ToList();
+
+        SelectedEntries = orderedSelection;
     }
 
     public string BuildClipboardTextForSelection()
@@ -149,6 +170,13 @@ public sealed class OutputLogViewModel : INotifyPropertyChanged
         return _shellLauncher.TryLaunch(new ProcessStartInfo("explorer.exe", $"\"{LogDirectoryPath}\"") { UseShellExecute = true }, out failureReason);
     }
 
+
+    private void AddEntryOnUiThread(OutputLogEntry entry)
+    {
+        OutputEntries.Add(entry);
+        LastEntry = entry;
+        NotifyClearCommand();
+    }
     private bool CanClearOutput()
     {
         return OutputEntries.Count > 0;
