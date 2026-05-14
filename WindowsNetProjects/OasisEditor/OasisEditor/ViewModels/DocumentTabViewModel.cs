@@ -10,6 +10,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     private EditorDocument _document;
     private string? _panelLayoutJson;
     private Panel2DDocumentModel _panelDocumentModel;
+    private Dictionary<string, PanelElementModel> _lampElementsByObjectId = new(StringComparer.Ordinal);
+    private HashSet<string> _lampObjectIds = new(StringComparer.Ordinal);
     private PanelSelectionInfo? _hierarchySelectedPanelSelection;
     private double _panelZoom = 1.0;
     private double _panelPanX;
@@ -39,6 +41,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
                 .Select(Panel2DDocumentStorage.ToModel)
                 .ToArray()
         };
+        RebuildLampCaches();
     }
 
     public EditorDocument Document => _document;
@@ -88,6 +91,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
                     .Select(Panel2DDocumentStorage.ToModel)
                     .ToArray()
             };
+            RebuildLampCaches();
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PanelLayoutJson)));
         }
     }
@@ -123,6 +127,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
             Summary = _panelDocumentModel.Summary,
             Elements = elements.ToArray()
         };
+        RebuildLampCaches();
 
         _panelLayoutJson = GetPanelLayoutProjectionJson();
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PanelLayoutJson)));
@@ -135,35 +140,60 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
 
     internal void NotifyPanelVisualPreviewChanged()
     {
-        var visualStateByObjectId = _panelDocumentModel.Elements
+        var changedObjectIds = _panelDocumentModel.Elements
             .Where(element => !string.IsNullOrWhiteSpace(element.ObjectId)
                 && element.Kind == PanelElementKind.Lamp)
-            .ToDictionary(
-                element => element.ObjectId,
-                element => (object)new LampVisualState(
-                    _runtimeState.IsLampTestActive
-                    && !string.IsNullOrWhiteSpace(_runtimeState.LampTestObjectId)
-                    && string.Equals(element.ObjectId, _runtimeState.LampTestObjectId, StringComparison.Ordinal),
-                    _runtimeState.GetLampIntensity(element.ObjectId)));
+            .Select(element => element.ObjectId)
+            .ToArray();
+        NotifyPanelVisualPreviewChanged(changedObjectIds);
+    }
 
-        var deltaByObjectId = new Dictionary<string, object>(StringComparer.Ordinal);
-        foreach (var kvp in visualStateByObjectId)
+    internal void NotifyPanelVisualPreviewChanged(IReadOnlyCollection<string> changedObjectIds)
+    {
+        if (changedObjectIds.Count == 0)
         {
-            if (_lastVisualStateByObjectId is null
-                || !_lastVisualStateByObjectId.TryGetValue(kvp.Key, out var previous)
-                || !Equals(previous, kvp.Value))
+            return;
+        }
+
+        _lastVisualStateByObjectId ??= new Dictionary<string, object>(StringComparer.Ordinal);
+        var deltaByObjectId = new Dictionary<string, object>(StringComparer.Ordinal);
+        foreach (var objectId in changedObjectIds)
+        {
+            if (string.IsNullOrWhiteSpace(objectId) || !_lampObjectIds.Contains(objectId))
             {
-                deltaByObjectId[kvp.Key] = kvp.Value;
+                continue;
+            }
+
+            var nextState = (object)new LampVisualState(
+                _runtimeState.IsLampTestActive
+                && !string.IsNullOrWhiteSpace(_runtimeState.LampTestObjectId)
+                && string.Equals(objectId, _runtimeState.LampTestObjectId, StringComparison.Ordinal),
+                _runtimeState.GetLampIntensity(objectId));
+            if (!_lastVisualStateByObjectId.TryGetValue(objectId, out var previous)
+                || !Equals(previous, nextState))
+            {
+                _lastVisualStateByObjectId[objectId] = nextState;
+                deltaByObjectId[objectId] = nextState;
             }
         }
 
-        _lastVisualStateByObjectId = visualStateByObjectId;
         if (deltaByObjectId.Count == 0)
         {
             return;
         }
 
         PanelVisualStateChanged?.Invoke(new PanelVisualStateChangedEvent(DocumentId, deltaByObjectId));
+    }
+
+    internal bool TryGetLampElement(string objectId, out PanelElementModel element)
+    {
+        if (string.IsNullOrWhiteSpace(objectId))
+        {
+            element = new PanelElementModel();
+            return false;
+        }
+
+        return _lampElementsByObjectId.TryGetValue(objectId, out element!);
     }
 
     internal string GetPanelLayoutProjectionJson()
@@ -242,6 +272,15 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
 
         var storageElement = Panel2DDocumentStorage.ToStorageElement(element);
         return PanelSelectionContract.IsMatch(storageElement, selection);
+    }
+
+    private void RebuildLampCaches()
+    {
+        _lampElementsByObjectId = _panelDocumentModel.Elements
+            .Where(element => element.Kind == PanelElementKind.Lamp
+                && !string.IsNullOrWhiteSpace(element.ObjectId))
+            .ToDictionary(element => element.ObjectId, element => element, StringComparer.Ordinal);
+        _lampObjectIds = _lampElementsByObjectId.Keys.ToHashSet(StringComparer.Ordinal);
     }
 }
 

@@ -10,14 +10,28 @@ public sealed class PanelRuntimeState
 
     public IReadOnlyDictionary<string, double> LampIntensityByObjectId => _lampIntensityByObjectId;
 
-    public void SetLampIntensity(string objectId, double intensity)
+    public bool SetLampIntensityIfChanged(string objectId, double intensity)
     {
         if (string.IsNullOrWhiteSpace(objectId))
         {
-            return;
+            return false;
         }
 
-        _lampIntensityByObjectId[objectId.Trim()] = Math.Clamp(intensity, 0d, 1d);
+        var normalizedObjectId = objectId.Trim();
+        var normalizedIntensity = Math.Clamp(intensity, 0d, 1d);
+        if (_lampIntensityByObjectId.TryGetValue(normalizedObjectId, out var previous)
+            && Math.Abs(previous - normalizedIntensity) < 0.0001d)
+        {
+            return false;
+        }
+
+        _lampIntensityByObjectId[normalizedObjectId] = normalizedIntensity;
+        return true;
+    }
+
+    public void SetLampIntensity(string objectId, double intensity)
+    {
+        SetLampIntensityIfChanged(objectId, intensity);
     }
 
     public double GetLampIntensity(string objectId)

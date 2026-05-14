@@ -2,10 +2,14 @@ namespace OasisEditor;
 
 public sealed class MameLampRuntimeAdapter : IMameLampRuntimeAdapter
 {
+    private readonly object _pendingSync = new();
     private readonly Func<IEnumerable<DocumentTabViewModel>> _documentProvider;
     private readonly Func<bool> _debugOutputEnabledProvider;
     private readonly Action<string> _infoLogger;
     private readonly Action<Action> _uiDispatch;
+    private readonly Dictionary<int, int> _pendingLampValues = new();
+    private readonly Dictionary<Guid, LampDocumentMappingCacheEntry> _lampMappingsByDocumentId = new();
+    private bool _uiUpdateScheduled;
 
     public MameLampRuntimeAdapter(
         Func<IEnumerable<DocumentTabViewModel>> documentProvider,
@@ -21,44 +25,154 @@ public sealed class MameLampRuntimeAdapter : IMameLampRuntimeAdapter
 
     public void ApplyLampState(int lampId, int lampValue)
     {
-        _uiDispatch(() => ApplyOnUiThread(lampId, lampValue));
-    }
+        lock (_pendingSync)
+        {
+            _pendingLampValues[lampId] = lampValue;
+            if (_uiUpdateScheduled)
+            {
+                return;
+            }
 
-    private void ApplyOnUiThread(int lampId, int lampValue)
-    {
-        var normalizedIntensity = lampValue switch
-        {
-            <= 0 => 0d,
-            <= 1 => 1d,
-            _ => Math.Clamp(lampValue / 255d, 0d, 1d)
-        };
-        if (_debugOutputEnabledProvider())
-        {
-            _infoLogger($"[MAME-LAMP] lamp{lampId} value={lampValue} intensity={normalizedIntensity:0.###}");
+            _uiUpdateScheduled = true;
         }
 
-        foreach (var document in _documentProvider())
+        _uiDispatch(ApplyPendingOnUiThread);
+    }
+
+    private void ApplyPendingOnUiThread()
+    {
+        Dictionary<int, int> snapshot;
+        lock (_pendingSync)
         {
-            var matchingObjectIds = document
-                .GetPanelElements()
-                .Where(element => element.Kind == PanelElementKind.Lamp
-                    && element.DisplayNumber.GetValueOrDefault() == lampId
-                    && !string.IsNullOrWhiteSpace(element.ObjectId))
-                .Select(element => element.ObjectId)
-                .Distinct(StringComparer.Ordinal)
-                .ToArray();
+            snapshot = new Dictionary<int, int>(_pendingLampValues);
+            _pendingLampValues.Clear();
+            _uiUpdateScheduled = false;
+        }
 
-            if (matchingObjectIds.Length == 0)
+        if (snapshot.Count == 0)
+        {
+            return;
+        }
+
+        var documents = _documentProvider().ToArray();
+        PruneDocumentCaches(documents);
+
+        foreach (var document in documents)
+        {
+            var matchingObjectIdsByLamp = GetOrBuildLampMapping(document);
+
+            var hasAnyApplied = false;
+            var changedObjectIds = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var (pendingLampId, pendingLampValue) in snapshot)
             {
-                continue;
+                if (!matchingObjectIdsByLamp.TryGetValue(pendingLampId, out var matchingObjectIds)
+                    || matchingObjectIds.Length == 0)
+                {
+                    continue;
+                }
+
+                var normalizedIntensity = pendingLampValue switch
+                {
+                    <= 0 => 0d,
+                    <= 1 => 1d,
+                    _ => Math.Clamp(pendingLampValue / 255d, 0d, 1d)
+                };
+                if (_debugOutputEnabledProvider())
+                {
+                    _infoLogger($"[MAME-LAMP] lamp{pendingLampId} value={pendingLampValue} intensity={normalizedIntensity:0.###}");
+                }
+
+                foreach (var objectId in matchingObjectIds)
+                {
+                    if (document.RuntimeState.SetLampIntensityIfChanged(objectId, normalizedIntensity))
+                    {
+                        hasAnyApplied = true;
+                        changedObjectIds.Add(objectId);
+                    }
+                }
             }
 
-            foreach (var objectId in matchingObjectIds)
+            if (hasAnyApplied)
             {
-                document.RuntimeState.SetLampIntensity(objectId, normalizedIntensity);
+                document.NotifyPanelVisualPreviewChanged(changedObjectIds);
             }
+        }
+    }
 
-            document.NotifyPanelVisualPreviewChanged();
+    private void PruneDocumentCaches(IReadOnlyCollection<DocumentTabViewModel> documents)
+    {
+        var activeIds = documents.Select(document => document.DocumentId).ToHashSet();
+        var staleDocumentIds = _lampMappingsByDocumentId.Keys
+            .Where(documentId => !activeIds.Contains(documentId))
+            .ToArray();
+        foreach (var staleDocumentId in staleDocumentIds)
+        {
+            if (_lampMappingsByDocumentId.Remove(staleDocumentId, out var staleEntry))
+            {
+                staleEntry.Detach();
+            }
+        }
+    }
+
+    private IReadOnlyDictionary<int, string[]> GetOrBuildLampMapping(DocumentTabViewModel document)
+    {
+        if (_lampMappingsByDocumentId.TryGetValue(document.DocumentId, out var cacheEntry)
+            && !cacheEntry.IsDirty)
+        {
+            return cacheEntry.MappingByLampId;
+        }
+
+        var mapping = document
+            .GetPanelElements()
+            .Where(element => element.Kind == PanelElementKind.Lamp
+                && !string.IsNullOrWhiteSpace(element.ObjectId)
+                && element.DisplayNumber.HasValue)
+            .GroupBy(element => element.DisplayNumber.GetValueOrDefault())
+            .ToDictionary(
+                group => group.Key,
+                group => group.Select(element => element.ObjectId)
+                    .Distinct(StringComparer.Ordinal)
+                    .ToArray());
+
+        if (cacheEntry is null)
+        {
+            cacheEntry = new LampDocumentMappingCacheEntry(document, mapping);
+            _lampMappingsByDocumentId[document.DocumentId] = cacheEntry;
+            return cacheEntry.MappingByLampId;
+        }
+
+        cacheEntry.Replace(mapping);
+        return cacheEntry.MappingByLampId;
+    }
+
+    private sealed class LampDocumentMappingCacheEntry
+    {
+        private readonly DocumentTabViewModel _document;
+
+        public LampDocumentMappingCacheEntry(DocumentTabViewModel document, IReadOnlyDictionary<int, string[]> mappingByLampId)
+        {
+            _document = document;
+            MappingByLampId = mappingByLampId;
+            _document.PanelChanged += OnPanelChanged;
+        }
+
+        public IReadOnlyDictionary<int, string[]> MappingByLampId { get; private set; }
+        public bool IsDirty { get; private set; }
+
+        public void Replace(IReadOnlyDictionary<int, string[]> mappingByLampId)
+        {
+            MappingByLampId = mappingByLampId;
+            IsDirty = false;
+        }
+
+        public void OnPanelChanged(PanelChangeEvent _)
+        {
+            IsDirty = true;
+        }
+
+        public void Detach()
+        {
+            _document.PanelChanged -= OnPanelChanged;
         }
     }
 }

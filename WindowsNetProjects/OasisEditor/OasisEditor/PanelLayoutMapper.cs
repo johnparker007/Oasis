@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -21,17 +20,22 @@ public static class PanelLayoutMapper
             typeof(PanelLayoutMapper),
             new PropertyMetadata(false));
 
-    private static readonly DependencyProperty ObjectVisualMapProperty =
+    private static readonly DependencyProperty RuntimeVisualRegistryProperty =
         DependencyProperty.RegisterAttached(
-            "ObjectVisualMap",
-            typeof(Dictionary<string, FrameworkElement>),
+            "RuntimeVisualRegistry",
+            typeof(PanelRuntimeVisualRegistry),
             typeof(PanelLayoutMapper),
             new PropertyMetadata(null));
-
-    private static readonly DependencyProperty MissingVisualLogSetProperty =
+    private static readonly DependencyProperty CachedLampOnBrushProperty =
         DependencyProperty.RegisterAttached(
-            "MissingVisualLogSet",
-            typeof(HashSet<string>),
+            "CachedLampOnBrush",
+            typeof(Brush),
+            typeof(PanelLayoutMapper),
+            new PropertyMetadata(null));
+    private static readonly DependencyProperty CachedLampOffBrushProperty =
+        DependencyProperty.RegisterAttached(
+            "CachedLampOffBrush",
+            typeof(Brush),
             typeof(PanelLayoutMapper),
             new PropertyMetadata(null));
 
@@ -129,14 +133,9 @@ public static class PanelLayoutMapper
             return;
         }
 
-        var elementsByObjectId = tab.GetPanelElements()
-            .Where(element => !string.IsNullOrWhiteSpace(element.ObjectId))
-            .ToDictionary(element => element.ObjectId, element => element, StringComparer.Ordinal);
-
         foreach (var objectId in visualStateChange.ValuesByObjectId.Keys)
         {
-            if (!elementsByObjectId.TryGetValue(objectId, out var sourceModel)
-                || sourceModel.Kind != PanelElementKind.Lamp)
+            if (!tab.TryGetLampElement(objectId, out var sourceModel))
             {
                 continue;
             }
@@ -156,7 +155,6 @@ public static class PanelLayoutMapper
                 sourceModel.OnColorHex,
                 sourceModel.OffColorHex,
                 sourceModel.AssetPath);
-            runtimeState.SetLampIntensity(objectId, runtimeState.GetLampIntensity(objectId));
         }
     }
 
@@ -174,15 +172,10 @@ public static class PanelLayoutMapper
             return;
         }
 
-        var objectVisualMap = GetOrCreateObjectVisualMap(canvas);
-        if (!objectVisualMap.TryGetValue(objectId, out var visual))
+        var registry = GetOrCreateRuntimeVisualRegistry(canvas);
+        if (!registry.TryGetVisual(objectId, out var visual))
         {
-            var missingIds = GetOrCreateMissingVisualLogSet(canvas);
-            if (missingIds.Add(objectId))
-            {
-                Debug.WriteLine($"[PanelLayoutMapper] UpdateLampVisual skipped; visual not found for objectId '{objectId}'.");
-            }
-
+            registry.LogMissingObjectIdOnce(objectId);
             return;
         }
 
@@ -198,17 +191,27 @@ public static class PanelLayoutMapper
                     image.Source = PanelElementFactory.TryCreateImageSourceForRuntime(assetPath);
                 }
 
-                image.Opacity = effectiveOpacity;
-                border.Background = Brushes.Transparent;
+                SetOpacityIfChanged(image, effectiveOpacity);
+                if (!ReferenceEquals(border.Background, Brushes.Transparent))
+                {
+                    border.Background = Brushes.Transparent;
+                }
                 return;
             }
 
-            var backgroundHex = isOn ? onColorHex : offColorHex ?? onColorHex;
-            border.Background = PanelElementFactory.TryCreateBrushForRuntime(backgroundHex, Brushes.Transparent);
+            var cachedBrush = isOn
+                ? GetOrCreateCachedLampOnBrush(border, onColorHex)
+                : GetOrCreateCachedLampOffBrush(border, offColorHex ?? onColorHex);
+            if (!ReferenceEquals(border.Background, cachedBrush))
+            {
+                border.Background = cachedBrush;
+            }
+
+            SetOpacityIfChanged(border, Math.Max(0.1d, normalizedIntensity));
         }
         else if (visual is Image image)
         {
-            image.Opacity = effectiveOpacity;
+            SetOpacityIfChanged(image, effectiveOpacity);
         }
     }
 
@@ -224,36 +227,51 @@ public static class PanelLayoutMapper
 
     private static void RebuildObjectVisualMap(Canvas canvas)
     {
-        var map = GetOrCreateObjectVisualMap(canvas);
-        map.Clear();
-        foreach (var element in canvas.Children.OfType<FrameworkElement>().Where(GetIsPersistedElement))
-        {
-            if (!string.IsNullOrWhiteSpace(element.Uid))
-            {
-                map[element.Uid.Trim()] = element;
-            }
-        }
+        GetOrCreateRuntimeVisualRegistry(canvas).Rebuild(canvas, GetIsPersistedElement);
     }
 
-    private static Dictionary<string, FrameworkElement> GetOrCreateObjectVisualMap(Canvas canvas)
+    private static PanelRuntimeVisualRegistry GetOrCreateRuntimeVisualRegistry(Canvas canvas)
     {
-        if (canvas.GetValue(ObjectVisualMapProperty) is not Dictionary<string, FrameworkElement> map)
+        if (canvas.GetValue(RuntimeVisualRegistryProperty) is not PanelRuntimeVisualRegistry registry)
         {
-            map = new Dictionary<string, FrameworkElement>(StringComparer.Ordinal);
-            canvas.SetValue(ObjectVisualMapProperty, map);
+            registry = new PanelRuntimeVisualRegistry();
+            canvas.SetValue(RuntimeVisualRegistryProperty, registry);
         }
 
-        return map;
+        return registry;
     }
 
-    private static HashSet<string> GetOrCreateMissingVisualLogSet(Canvas canvas)
+    private static Brush GetOrCreateCachedLampOnBrush(Border border, string? onColorHex)
     {
-        if (canvas.GetValue(MissingVisualLogSetProperty) is not HashSet<string> missingIds)
+        if (border.GetValue(CachedLampOnBrushProperty) is Brush brush)
         {
-            missingIds = new HashSet<string>(StringComparer.Ordinal);
-            canvas.SetValue(MissingVisualLogSetProperty, missingIds);
+            return brush;
         }
 
-        return missingIds;
+        brush = PanelElementFactory.TryCreateBrushForRuntime(onColorHex, Brushes.Transparent);
+        border.SetValue(CachedLampOnBrushProperty, brush);
+        return brush;
+    }
+
+    private static Brush GetOrCreateCachedLampOffBrush(Border border, string? offColorHex)
+    {
+        if (border.GetValue(CachedLampOffBrushProperty) is Brush brush)
+        {
+            return brush;
+        }
+
+        brush = PanelElementFactory.TryCreateBrushForRuntime(offColorHex, Brushes.Transparent);
+        border.SetValue(CachedLampOffBrushProperty, brush);
+        return brush;
+    }
+
+    private static void SetOpacityIfChanged(UIElement element, double opacity)
+    {
+        if (Math.Abs(element.Opacity - opacity) < 0.0001d)
+        {
+            return;
+        }
+
+        element.Opacity = opacity;
     }
 }
