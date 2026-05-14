@@ -133,14 +133,9 @@ public static class PanelLayoutMapper
             return;
         }
 
-        var elementsByObjectId = tab.GetPanelElements()
-            .Where(element => !string.IsNullOrWhiteSpace(element.ObjectId))
-            .ToDictionary(element => element.ObjectId, element => element, StringComparer.Ordinal);
-
         foreach (var objectId in visualStateChange.ValuesByObjectId.Keys)
         {
-            if (!elementsByObjectId.TryGetValue(objectId, out var sourceModel)
-                || sourceModel.Kind != PanelElementKind.Lamp)
+            if (!tab.TryGetLampElement(objectId, out var sourceModel))
             {
                 continue;
             }

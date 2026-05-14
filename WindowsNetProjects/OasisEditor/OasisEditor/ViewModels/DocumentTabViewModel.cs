@@ -10,6 +10,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     private EditorDocument _document;
     private string? _panelLayoutJson;
     private Panel2DDocumentModel _panelDocumentModel;
+    private Dictionary<string, PanelElementModel> _lampElementsByObjectId = new(StringComparer.Ordinal);
+    private HashSet<string> _lampObjectIds = new(StringComparer.Ordinal);
     private PanelSelectionInfo? _hierarchySelectedPanelSelection;
     private double _panelZoom = 1.0;
     private double _panelPanX;
@@ -39,6 +41,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
                 .Select(Panel2DDocumentStorage.ToModel)
                 .ToArray()
         };
+        RebuildLampCaches();
     }
 
     public EditorDocument Document => _document;
@@ -88,6 +91,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
                     .Select(Panel2DDocumentStorage.ToModel)
                     .ToArray()
             };
+            RebuildLampCaches();
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PanelLayoutJson)));
         }
     }
@@ -123,6 +127,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
             Summary = _panelDocumentModel.Summary,
             Elements = elements.ToArray()
         };
+        RebuildLampCaches();
 
         _panelLayoutJson = GetPanelLayoutProjectionJson();
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PanelLayoutJson)));
@@ -151,16 +156,10 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
         }
 
         _lastVisualStateByObjectId ??= new Dictionary<string, object>(StringComparer.Ordinal);
-        var lampObjectIds = _panelDocumentModel.Elements
-            .Where(element => !string.IsNullOrWhiteSpace(element.ObjectId)
-                && element.Kind == PanelElementKind.Lamp)
-            .Select(element => element.ObjectId)
-            .ToHashSet(StringComparer.Ordinal);
-
         var deltaByObjectId = new Dictionary<string, object>(StringComparer.Ordinal);
         foreach (var objectId in changedObjectIds)
         {
-            if (string.IsNullOrWhiteSpace(objectId) || !lampObjectIds.Contains(objectId))
+            if (string.IsNullOrWhiteSpace(objectId) || !_lampObjectIds.Contains(objectId))
             {
                 continue;
             }
@@ -184,6 +183,17 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
         }
 
         PanelVisualStateChanged?.Invoke(new PanelVisualStateChangedEvent(DocumentId, deltaByObjectId));
+    }
+
+    internal bool TryGetLampElement(string objectId, out PanelElementModel element)
+    {
+        if (string.IsNullOrWhiteSpace(objectId))
+        {
+            element = new PanelElementModel();
+            return false;
+        }
+
+        return _lampElementsByObjectId.TryGetValue(objectId, out element!);
     }
 
     internal string GetPanelLayoutProjectionJson()
@@ -262,6 +272,15 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
 
         var storageElement = Panel2DDocumentStorage.ToStorageElement(element);
         return PanelSelectionContract.IsMatch(storageElement, selection);
+    }
+
+    private void RebuildLampCaches()
+    {
+        _lampElementsByObjectId = _panelDocumentModel.Elements
+            .Where(element => element.Kind == PanelElementKind.Lamp
+                && !string.IsNullOrWhiteSpace(element.ObjectId))
+            .ToDictionary(element => element.ObjectId, element => element, StringComparer.Ordinal);
+        _lampObjectIds = _lampElementsByObjectId.Keys.ToHashSet(StringComparer.Ordinal);
     }
 }
 
