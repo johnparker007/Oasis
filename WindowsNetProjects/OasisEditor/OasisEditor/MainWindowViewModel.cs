@@ -62,6 +62,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly MamePluginDeploymentService _mamePluginDeploymentService = new();
     private readonly IMameSetupOrchestrator _mameSetupOrchestrator;
     private readonly IMameVersionCatalogService _mameVersionCatalogService;
+    private bool _isLoadingPreferences;
     private readonly IMameEmulationService _mameEmulationService;
     private MameSetupState _mameSetupState = MameSetupState.NotStarted;
     private bool _isAutoProvisioningMame;
@@ -142,26 +143,34 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             UpdateDocumentPanelSelection,
             NotifyHierarchyCommands);
 
-        var preferences = _preferencesStore.Load();
-        _selectedThemePreference = preferences.ThemePreference;
-        _mameVersion = preferences.Mame.Version;
-        _mameExecutablePath = preferences.Mame.ExecutablePath;
-        _mameInstallRootDirectory = MameRuntimePaths.EnsureManagedRuntimeRootDirectory();
-        _mameReleaseSource = preferences.Mame.ReleaseSource;
-        _mameLuaPluginPath = MameRuntimePaths.ResolveBundledLuaPluginSourcePath();
-        _mameCommandLineOverrides = preferences.Mame.CommandLineOverrides;
-        _mameRomDownloadBaseUrl = preferences.Mame.RomDownloadBaseUrl;
-        _mameRomArchiveExtension = preferences.Mame.RomArchiveExtension;
-        _mameRomDownloadService.DownloadRootUrl = _mameRomDownloadBaseUrl;
-        _mameRomDownloadService.ArchiveExtension = _mameRomArchiveExtension;
-        _keepMameUpToDateAutomatically = preferences.Mame.KeepMameUpToDateAutomatically;
-        _debugOutputLamps = preferences.Mame.DebugOutputLamps;
-        _debugOutputStdIn = preferences.Mame.DebugOutputStdIn;
-        _debugOutputStdOut = preferences.Mame.DebugOutputStdOut;
-        _outputLog.ShowInfoLogs = preferences.OutputLog.ShowInfoLogs;
-        _outputLog.ShowWarningLogs = preferences.OutputLog.ShowWarningLogs;
-        _outputLog.ShowErrorLogs = preferences.OutputLog.ShowErrorLogs;
-        _outputLog.AutoScroll = preferences.OutputLog.AutoScroll;
+        _isLoadingPreferences = true;
+        try
+        {
+            var preferences = _preferencesStore.Load();
+            _selectedThemePreference = preferences.ThemePreference;
+            _mameVersion = preferences.Mame.Version;
+            _mameExecutablePath = preferences.Mame.ExecutablePath;
+            _mameInstallRootDirectory = MameRuntimePaths.EnsureManagedRuntimeRootDirectory();
+            _mameReleaseSource = preferences.Mame.ReleaseSource;
+            _mameLuaPluginPath = MameRuntimePaths.ResolveBundledLuaPluginSourcePath();
+            _mameCommandLineOverrides = preferences.Mame.CommandLineOverrides;
+            _mameRomDownloadBaseUrl = preferences.Mame.RomDownloadBaseUrl;
+            _mameRomArchiveExtension = preferences.Mame.RomArchiveExtension;
+            _mameRomDownloadService.DownloadRootUrl = _mameRomDownloadBaseUrl;
+            _mameRomDownloadService.ArchiveExtension = _mameRomArchiveExtension;
+            _keepMameUpToDateAutomatically = preferences.Mame.KeepMameUpToDateAutomatically;
+            _debugOutputLamps = preferences.Mame.DebugOutputLamps;
+            _debugOutputStdIn = preferences.Mame.DebugOutputStdIn;
+            _debugOutputStdOut = preferences.Mame.DebugOutputStdOut;
+            _outputLog.ShowInfoLogs = preferences.OutputLog.ShowInfoLogs;
+            _outputLog.ShowWarningLogs = preferences.OutputLog.ShowWarningLogs;
+            _outputLog.ShowErrorLogs = preferences.OutputLog.ShowErrorLogs;
+            _outputLog.AutoScroll = preferences.OutputLog.AutoScroll;
+        }
+        finally
+        {
+            _isLoadingPreferences = false;
+        }
         _mameVersionCatalogService = new MameVersionCatalogService(_mameDownloadService);
         var setupValidationService = new MameSetupValidationService(_mamePluginAssetValidator, _mameVersionCatalogService);
         _mameSetupOrchestrator = new MameSetupOrchestrator(setupValidationService);
@@ -2090,6 +2099,19 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void OnOutputLogPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName is nameof(OutputLogViewModel.ShowInfoLogs)
+            or nameof(OutputLogViewModel.ShowWarningLogs)
+            or nameof(OutputLogViewModel.ShowErrorLogs)
+            or nameof(OutputLogViewModel.AutoScroll))
+        {
+            if (!_isLoadingPreferences)
+            {
+                SavePreferences();
+            }
+
+            return;
+        }
+
         if (e.PropertyName is not nameof(OutputLogViewModel.LastEntry))
         {
             return;
