@@ -1440,6 +1440,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     }
     private void SavePreferences()
     {
+        var existingPreferences = _preferencesStore.Load();
         _preferencesStore.Save(new EditorPreferences
         {
             ThemePreference = SelectedThemePreference,
@@ -1462,7 +1463,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 ShowWarningLogs = _outputLog.ShowWarningLogs,
                 ShowErrorLogs = _outputLog.ShowErrorLogs,
                 AutoScroll = _outputLog.AutoScroll
-            }
+            },
+            ProjectWindowStates = existingPreferences.ProjectWindowStates
         });
     }
 

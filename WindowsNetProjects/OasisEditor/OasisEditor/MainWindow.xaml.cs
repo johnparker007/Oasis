@@ -150,6 +150,7 @@ public partial class MainWindow : Window
         {
             ThemePreference = preferences.ThemePreference,
             Mame = preferences.Mame,
+            OutputLog = preferences.OutputLog,
             ProjectWindowStates = states
         });
     }
