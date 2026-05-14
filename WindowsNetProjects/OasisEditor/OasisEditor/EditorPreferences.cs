@@ -5,6 +5,7 @@ public sealed class EditorPreferences
     public ThemePreference ThemePreference { get; init; } = ThemePreference.Dark;
 
     public MamePreferences Mame { get; init; } = new();
+    public OutputLogPreferences OutputLog { get; init; } = new();
 
     public Dictionary<string, ProjectWindowState> ProjectWindowStates { get; init; } = new();
 }
@@ -30,4 +31,12 @@ public sealed class ProjectWindowState
     public double Width { get; init; }
     public double Height { get; init; }
     public bool IsMaximized { get; init; }
+}
+
+public sealed class OutputLogPreferences
+{
+    public bool ShowInfoLogs { get; init; } = true;
+    public bool ShowWarningLogs { get; init; } = true;
+    public bool ShowErrorLogs { get; init; } = true;
+    public bool AutoScroll { get; init; } = true;
 }

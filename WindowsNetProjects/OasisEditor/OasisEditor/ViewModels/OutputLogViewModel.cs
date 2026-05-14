@@ -18,6 +18,7 @@ public sealed class OutputLogViewModel : INotifyPropertyChanged
     private bool _showInfoLogs = true;
     private bool _showWarningLogs = true;
     private bool _showErrorLogs = true;
+    private bool _autoScroll = true;
     private IReadOnlyList<OutputLogEntry> _selectedEntries = Array.Empty<OutputLogEntry>();
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -74,6 +75,21 @@ public sealed class OutputLogViewModel : INotifyPropertyChanged
             }
 
             _lastEntry = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public bool AutoScroll
+    {
+        get => _autoScroll;
+        set
+        {
+            if (_autoScroll == value)
+            {
+                return;
+            }
+
+            _autoScroll = value;
             OnPropertyChanged();
         }
     }

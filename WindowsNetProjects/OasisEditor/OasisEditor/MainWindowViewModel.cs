@@ -158,6 +158,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _debugOutputLamps = preferences.Mame.DebugOutputLamps;
         _debugOutputStdIn = preferences.Mame.DebugOutputStdIn;
         _debugOutputStdOut = preferences.Mame.DebugOutputStdOut;
+        _outputLog.ShowInfoLogs = preferences.OutputLog.ShowInfoLogs;
+        _outputLog.ShowWarningLogs = preferences.OutputLog.ShowWarningLogs;
+        _outputLog.ShowErrorLogs = preferences.OutputLog.ShowErrorLogs;
+        _outputLog.AutoScroll = preferences.OutputLog.AutoScroll;
         _mameVersionCatalogService = new MameVersionCatalogService(_mameDownloadService);
         var setupValidationService = new MameSetupValidationService(_mamePluginAssetValidator, _mameVersionCatalogService);
         _mameSetupOrchestrator = new MameSetupOrchestrator(setupValidationService);
@@ -1442,6 +1446,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 DebugOutputStdOut = DebugOutputStdOut,
                 RomDownloadBaseUrl = MameRomDownloadBaseUrl,
                 RomArchiveExtension = MameRomArchiveExtension
+            },
+            OutputLog = new OutputLogPreferences
+            {
+                ShowInfoLogs = _outputLog.ShowInfoLogs,
+                ShowWarningLogs = _outputLog.ShowWarningLogs,
+                ShowErrorLogs = _outputLog.ShowErrorLogs,
+                AutoScroll = _outputLog.AutoScroll
             }
         });
     }
