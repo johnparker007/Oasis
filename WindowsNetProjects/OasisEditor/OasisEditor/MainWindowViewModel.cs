@@ -198,6 +198,21 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                         dispatcher.Invoke(work);
                     }
                 }),
+            new MameReelStateParser(),
+            new MameReelRuntimeAdapter(
+                () => OpenDocuments,
+                work =>
+                {
+                    var dispatcher = Application.Current.Dispatcher;
+                    if (dispatcher.CheckAccess())
+                    {
+                        work();
+                    }
+                    else
+                    {
+                        dispatcher.Invoke(work);
+                    }
+                }),
             diagnosticLogger: line => AddOutputEntry(line, OutputLogStatus.Info));
         _mameEmulationService = new MameEmulationService(
             new MameProcessStartInfoBuilder(),

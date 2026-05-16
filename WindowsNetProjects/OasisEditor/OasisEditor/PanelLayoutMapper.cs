@@ -6,6 +6,7 @@ namespace OasisEditor;
 
 public static class PanelLayoutMapper
 {
+    private const double LegacyReelPositionsPerRevolution = 96d;
     private static readonly DependencyProperty IsApplyingLayoutProperty =
         DependencyProperty.RegisterAttached(
             "IsApplyingLayout",
@@ -135,26 +136,37 @@ public static class PanelLayoutMapper
 
         foreach (var objectId in visualStateChange.ValuesByObjectId.Keys)
         {
-            if (!tab.TryGetLampElement(objectId, out var sourceModel))
+            if (tab.TryGetLampElement(objectId, out var sourceModel))
             {
+                var lampVisualState = visualStateChange.ValuesByObjectId[objectId] switch
+                {
+                    LampVisualState state => state,
+                    true => new LampVisualState(true, runtimeState.GetLampIntensity(objectId)),
+                    _ => new LampVisualState(false, runtimeState.GetLampIntensity(objectId))
+                };
+
+                UpdateLampVisual(
+                    canvas,
+                    objectId,
+                    lampVisualState.Intensity,
+                    lampVisualState.IsLampTestOn || lampVisualState.Intensity > 0d,
+                    sourceModel.OnColorHex,
+                    sourceModel.OffColorHex,
+                    sourceModel.AssetPath);
                 continue;
             }
 
-            var lampVisualState = visualStateChange.ValuesByObjectId[objectId] switch
+            if (tab.TryGetReelElement(objectId, out var reelModel))
             {
-                LampVisualState state => state,
-                true => new LampVisualState(true, runtimeState.GetLampIntensity(objectId)),
-                _ => new LampVisualState(false, runtimeState.GetLampIntensity(objectId))
-            };
+                var reelVisualState = visualStateChange.ValuesByObjectId[objectId] switch
+                {
+                    ReelVisualState state => state,
+                    int value => new ReelVisualState(value),
+                    _ => new ReelVisualState(runtimeState.GetReelPosition(objectId))
+                };
 
-            UpdateLampVisual(
-                canvas,
-                objectId,
-                lampVisualState.Intensity,
-                lampVisualState.IsLampTestOn || lampVisualState.Intensity > 0d,
-                sourceModel.OnColorHex,
-                sourceModel.OffColorHex,
-                sourceModel.AssetPath);
+                UpdateReelVisual(canvas, objectId, reelVisualState.Position, reelModel.Stops.GetValueOrDefault(1));
+            }
         }
     }
 
@@ -219,6 +231,46 @@ public static class PanelLayoutMapper
         {
             SetOpacityIfChanged(image, effectiveOpacity);
         }
+    }
+
+
+    public static void UpdateReelVisual(Canvas canvas, string objectId, int position, int stops)
+    {
+        if (string.IsNullOrWhiteSpace(objectId))
+        {
+            return;
+        }
+
+        var registry = GetOrCreateRuntimeVisualRegistry(canvas);
+        if (!registry.TryGetVisual(objectId, out var visual)
+            || visual is not Border border
+            || border.Child is not Grid grid
+            || grid.Children.Count == 0
+            || grid.Children[0] is not Canvas reelCanvas
+            || reelCanvas.Children.Count < 2
+            || reelCanvas.Children[0] is not Image primaryImage
+            || reelCanvas.Children[1] is not Image wrappedImage)
+        {
+            return;
+        }
+
+        var safeStops = Math.Max(1, stops);
+        var bandHeight = primaryImage.Height;
+        if (bandHeight <= 0d)
+        {
+            return;
+        }
+
+        var positionsPerRevolution = Math.Max(LegacyReelPositionsPerRevolution, safeStops);
+        var stopHeight = bandHeight / safeStops;
+        var subStepHeight = stopHeight / (positionsPerRevolution / safeStops);
+        var rawPosition = ((position % positionsPerRevolution) + positionsPerRevolution) % positionsPerRevolution;
+        var rawOffset = rawPosition * subStepHeight;
+        var wrappedOffset = ((rawOffset % bandHeight) + bandHeight) % bandHeight;
+        var top = -wrappedOffset;
+
+        Canvas.SetTop(primaryImage, top);
+        Canvas.SetTop(wrappedImage, top + bandHeight);
     }
 
     private static bool GetIsPersistedElement(FrameworkElement element)

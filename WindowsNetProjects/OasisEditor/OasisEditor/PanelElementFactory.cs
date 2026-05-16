@@ -254,12 +254,32 @@ internal static class PanelElementFactory
                 HorizontalAlignment = HorizontalAlignment.Stretch
             };
 
+            var wrappedReelImage = new Image
+            {
+                Stretch = Stretch.Fill,
+                Source = source,
+                Width = reelImage.Width,
+                Height = reelImage.Height,
+                VerticalAlignment = VerticalAlignment.Top,
+                HorizontalAlignment = HorizontalAlignment.Stretch
+            };
+
+            var reelCanvas = new Canvas
+            {
+                Width = width,
+                Height = reelImage.Height
+            };
+            Canvas.SetTop(reelImage, 0d);
+            Canvas.SetTop(wrappedReelImage, reelImage.Height);
+            reelCanvas.Children.Add(reelImage);
+            reelCanvas.Children.Add(wrappedReelImage);
+
             surface.Child = new Grid
             {
                 ClipToBounds = true,
                 Children =
                 {
-                    reelImage
+                    reelCanvas
                 }
             };
         }
