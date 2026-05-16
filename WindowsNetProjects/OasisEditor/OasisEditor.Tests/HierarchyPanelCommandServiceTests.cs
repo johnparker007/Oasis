@@ -13,6 +13,7 @@ public sealed class HierarchyPanelCommandServiceTests
     [InlineData((int)PanelElementKind.Reel, "reel", "Reel 3")]
     [InlineData((int)PanelElementKind.SevenSegment, "sevenSegment", "7 Segment 4")]
     [InlineData((int)PanelElementKind.Alpha, "alpha", "Alpha")]
+    [InlineData((int)PanelElementKind.Label, "label", "Label")]
     public void SmokeLikeFlow_HierarchyCommandsUndoRedoAndSaveReopen_PreservesPanelElements(
         int kindValue,
         string kindToken,
@@ -64,6 +65,7 @@ public sealed class HierarchyPanelCommandServiceTests
     [InlineData((int)PanelElementKind.Reel, "group:reel", "reel")]
     [InlineData((int)PanelElementKind.SevenSegment, "group:sevenSegment", "sevenSegment")]
     [InlineData((int)PanelElementKind.Alpha, "group:alpha", "alpha")]
+    [InlineData((int)PanelElementKind.Label, "group:label", "label")]
     public void HierarchyProvider_NativeGroups_ExposeNativeSelectionTokens(
         int kindValue,
         string expectedGroupKey,

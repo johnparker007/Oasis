@@ -101,3 +101,20 @@ internal sealed record MfmeLegacyAlphaComponent(
         null,
         null,
         null);
+
+internal sealed record MfmeLegacyLabelComponent(
+    MfmeLegacyPoint Position,
+    MfmeLegacyPoint Size,
+    string? TextBoxText,
+    string? TextBoxFontName,
+    string? TextBoxFontStyle,
+    string? TextBoxFontSize,
+    MfmeLegacyColor? TextColor)
+    : MfmeLegacyComponentBase(
+        "Label",
+        Position,
+        Size,
+        TextBoxText,
+        TextBoxFontName,
+        TextBoxFontStyle,
+        TextBoxFontSize);

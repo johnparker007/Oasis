@@ -234,6 +234,17 @@ internal static class MfmeExtractManifestParser
                     ReadBool(component, "Reversed"));
                 return true;
 
+            case "extractcomponentlabel":
+                parsedComponent = new MfmeLegacyLabelComponent(
+                    position,
+                    size,
+                    ReadString(component, "TextBoxText"),
+                    ReadString(component, "TextBoxFontName"),
+                    ReadString(component, "TextBoxFontStyle"),
+                    ReadString(component, "TextBoxFontSize"),
+                    ReadColor(component, "TextColor"));
+                return true;
+
             default:
                 parsedComponent = null!;
                 return false;

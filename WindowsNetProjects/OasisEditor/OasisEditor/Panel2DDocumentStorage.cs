@@ -54,6 +54,10 @@ internal static class Panel2DDocumentStorage
         {
             return PanelElementKind.Alpha;
         }
+        if (string.Equals(kind, "label", StringComparison.OrdinalIgnoreCase))
+        {
+            return PanelElementKind.Label;
+        }
 
         return PanelElementKind.Unknown;
     }
@@ -71,6 +75,7 @@ internal static class Panel2DDocumentStorage
             PanelElementKind.Reel => "reel",
             PanelElementKind.SevenSegment => "sevenSegment",
             PanelElementKind.Alpha => "alpha",
+            PanelElementKind.Label => "label",
             _ => string.Empty
         };
     }
@@ -248,7 +253,7 @@ internal static class Panel2DDocumentStorage
         foreach (var element in elements)
         {
             var kind = ParseElementKind(element.Kind);
-            if (kind is PanelElementKind.Background or PanelElementKind.Lamp or PanelElementKind.Reel or PanelElementKind.SevenSegment or PanelElementKind.Alpha)
+            if (kind is PanelElementKind.Background or PanelElementKind.Lamp or PanelElementKind.Reel or PanelElementKind.SevenSegment or PanelElementKind.Alpha or PanelElementKind.Label)
             {
                 return CurrentSchemaVersion;
             }
@@ -524,6 +529,7 @@ internal static class Panel2DDocumentStorage
             PanelElementKind.Reel => "Reel",
             PanelElementKind.SevenSegment => "7 Segment",
             PanelElementKind.Alpha => "Alpha",
+            PanelElementKind.Label => "Label",
             _ => "Rectangle"
         };
 
@@ -689,7 +695,8 @@ internal enum PanelElementKind
     Lamp,
     Reel,
     SevenSegment,
-    Alpha
+    Alpha,
+    Label
 }
 
 internal sealed record Panel2DDocumentFile
