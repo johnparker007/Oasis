@@ -1614,6 +1614,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
+        EnsureOwnerWindowTaskbarVisibility();
+
         AddOutputEntry("Emulation start requested.", OutputLogStatus.Info);
         try
         {
@@ -1645,6 +1647,21 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         catch (Exception ex)
         {
             AddOutputEntry($"Emulation failed to stop cleanly: {ex.Message}", OutputLogStatus.Error);
+        }
+    }
+
+    private void EnsureOwnerWindowTaskbarVisibility()
+    {
+        if (!_ownerWindow.ShowInTaskbar)
+        {
+            _ownerWindow.ShowInTaskbar = true;
+            AddOutputEntry("[UI] Re-enabled editor ShowInTaskbar before emulation start.", OutputLogStatus.Warning);
+        }
+
+        if (!_ownerWindow.IsVisible)
+        {
+            _ownerWindow.Show();
+            AddOutputEntry("[UI] Re-shown editor window before emulation start.", OutputLogStatus.Warning);
         }
     }
 
