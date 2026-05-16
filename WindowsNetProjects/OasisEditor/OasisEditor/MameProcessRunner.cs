@@ -6,6 +6,7 @@ namespace OasisEditor;
 
 public sealed class MameProcessRunner : IMameProcessRunner, IDisposable
 {
+    private static readonly TimeSpan GracefulExitTimeout = TimeSpan.FromSeconds(5);
     private readonly Func<Process> _processFactory;
     private readonly Action<string>? _stdoutLogger;
     private readonly Action<string>? _stdinLogger;
@@ -67,8 +68,13 @@ public sealed class MameProcessRunner : IMameProcessRunner, IDisposable
         {
             if (!process.HasExited)
             {
-                process.Kill(entireProcessTree: true);
-                await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+                await RequestGracefulExitAsync(process, cancellationToken).ConfigureAwait(false);
+
+                if (!process.HasExited)
+                {
+                    process.Kill();
+                    await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+                }
             }
 
             await AwaitPumpAsync(_stdoutPumpTask).ConfigureAwait(false);
@@ -135,6 +141,36 @@ public sealed class MameProcessRunner : IMameProcessRunner, IDisposable
         catch (OperationCanceledException)
         {
             // ignored
+        }
+    }
+
+    private static async Task RequestGracefulExitAsync(Process process, CancellationToken cancellationToken)
+    {
+        if (!process.StartInfo.RedirectStandardInput)
+        {
+            return;
+        }
+
+        using var gracefulExitCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        gracefulExitCts.CancelAfter(GracefulExitTimeout);
+
+        try
+        {
+            await process.StandardInput.WriteLineAsync(new StringBuilder("exit"), cancellationToken).ConfigureAwait(false);
+            await process.StandardInput.FlushAsync(cancellationToken).ConfigureAwait(false);
+            await process.WaitForExitAsync(gracefulExitCts.Token).ConfigureAwait(false);
+        }
+        catch (InvalidOperationException)
+        {
+            // Process input stream no longer available.
+        }
+        catch (OperationCanceledException)
+        {
+            // Timed out while waiting for graceful exit.
+        }
+        catch (ObjectDisposedException)
+        {
+            // Process was disposed while attempting graceful exit.
         }
     }
 }
