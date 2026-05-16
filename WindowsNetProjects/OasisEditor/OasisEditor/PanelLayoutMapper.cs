@@ -6,6 +6,7 @@ namespace OasisEditor;
 
 public static class PanelLayoutMapper
 {
+    private const double LegacyReelPositionsPerRevolution = 96d;
     private static readonly DependencyProperty IsApplyingLayoutProperty =
         DependencyProperty.RegisterAttached(
             "IsApplyingLayout",
@@ -254,15 +255,17 @@ public static class PanelLayoutMapper
         }
 
         var safeStops = Math.Max(1, stops);
-        var normalizedPosition = ((position % safeStops) + safeStops) % safeStops;
         var bandHeight = primaryImage.Height;
         if (bandHeight <= 0d)
         {
             return;
         }
 
+        var positionsPerRevolution = Math.Max(LegacyReelPositionsPerRevolution, safeStops);
         var stopHeight = bandHeight / safeStops;
-        var rawOffset = normalizedPosition * stopHeight;
+        var subStepHeight = stopHeight / (positionsPerRevolution / safeStops);
+        var rawPosition = ((position % positionsPerRevolution) + positionsPerRevolution) % positionsPerRevolution;
+        var rawOffset = rawPosition * subStepHeight;
         var wrappedOffset = ((rawOffset % bandHeight) + bandHeight) % bandHeight;
         var top = -wrappedOffset;
 
@@ -330,4 +333,3 @@ public static class PanelLayoutMapper
         element.Opacity = opacity;
     }
 }
-
