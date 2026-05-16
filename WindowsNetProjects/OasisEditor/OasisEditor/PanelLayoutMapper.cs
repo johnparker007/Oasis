@@ -241,15 +241,33 @@ public static class PanelLayoutMapper
         }
 
         var registry = GetOrCreateRuntimeVisualRegistry(canvas);
-        if (!registry.TryGetVisual(objectId, out var visual) || visual is not Border border || border.Child is not Grid grid || grid.Children.Count == 0 || grid.Children[0] is not Image image)
+        if (!registry.TryGetVisual(objectId, out var visual)
+            || visual is not Border border
+            || border.Child is not Grid grid
+            || grid.Children.Count == 0
+            || grid.Children[0] is not Canvas reelCanvas
+            || reelCanvas.Children.Count < 2
+            || reelCanvas.Children[0] is not Image primaryImage
+            || reelCanvas.Children[1] is not Image wrappedImage)
         {
             return;
         }
 
         var safeStops = Math.Max(1, stops);
         var normalizedPosition = ((position % safeStops) + safeStops) % safeStops;
-        var stopHeight = border.Height / safeStops;
-        image.RenderTransform = new TranslateTransform(0d, -(normalizedPosition * stopHeight));
+        var bandHeight = primaryImage.Height;
+        if (bandHeight <= 0d)
+        {
+            return;
+        }
+
+        var stopHeight = bandHeight / safeStops;
+        var rawOffset = normalizedPosition * stopHeight;
+        var wrappedOffset = ((rawOffset % bandHeight) + bandHeight) % bandHeight;
+        var top = -wrappedOffset;
+
+        Canvas.SetTop(primaryImage, top);
+        Canvas.SetTop(wrappedImage, top + bandHeight);
     }
 
     private static bool GetIsPersistedElement(FrameworkElement element)
@@ -312,5 +330,4 @@ public static class PanelLayoutMapper
         element.Opacity = opacity;
     }
 }
-
 
