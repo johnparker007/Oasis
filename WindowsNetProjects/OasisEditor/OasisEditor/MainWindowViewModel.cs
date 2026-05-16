@@ -1557,10 +1557,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        if (CanStopEmulation())
-        {
-            StopEmulation();
-        }
+        StopEmulationForShutdown();
 
         ClosePreferences();
         CloseProjectSettings();
@@ -1589,10 +1586,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void ExitApplication()
     {
-        if (CanStopEmulation())
-        {
-            StopEmulation();
-        }
+        StopEmulationForShutdown();
 
         Application.Current.Shutdown();
     }
@@ -1625,7 +1619,30 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         return MameEmulationCommandStateEvaluator.Evaluate(HasLoadedProject, EmulationState).CanStop;
     }
 
+    private void StopEmulationForShutdown()
+    {
+        if (!CanStopEmulation())
+        {
+            return;
+        }
+
+        AddOutputEntry("Emulation stop requested.", OutputLogStatus.Info);
+        try
+        {
+            _mameEmulationService.StopAsync(CancellationToken.None).GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            AddOutputEntry($"Emulation failed to stop cleanly: {ex.Message}", OutputLogStatus.Error);
+        }
+    }
+
     private async void StopEmulation()
+    {
+        await StopEmulationAsync().ConfigureAwait(false);
+    }
+
+    private async Task StopEmulationAsync()
     {
         if (!CanStopEmulation())
         {
