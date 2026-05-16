@@ -72,7 +72,7 @@ public sealed class MameProcessRunner : IMameProcessRunner, IDisposable
 
                 if (!process.HasExited)
                 {
-                    process.Kill();
+                    process.Kill(entireProcessTree: true);
                     await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
                 }
             }
@@ -170,6 +170,11 @@ public sealed class MameProcessRunner : IMameProcessRunner, IDisposable
         }
         catch (OperationCanceledException)
         {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+
             // Timed out while waiting for graceful exit.
         }
     }
