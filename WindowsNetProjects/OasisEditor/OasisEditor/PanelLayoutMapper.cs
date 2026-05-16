@@ -180,7 +180,11 @@ public static class PanelLayoutMapper
         }
 
         var normalizedIntensity = Math.Clamp(intensity, 0d, 1d);
-        var effectiveOpacity = isOn ? Math.Max(0.1d, normalizedIntensity) : 0d;
+        var effectiveOpacity = !isOn
+            ? 0d
+            : normalizedIntensity > 0d
+                ? Math.Max(0.1d, normalizedIntensity)
+                : 1d;
 
         if (visual is Border border)
         {
