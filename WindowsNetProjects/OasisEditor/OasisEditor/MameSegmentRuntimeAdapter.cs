@@ -6,6 +6,7 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
     private readonly Func<IEnumerable<DocumentTabViewModel>> _documentProvider;
     private readonly Action<Action> _uiDispatch;
     private readonly Dictionary<int, int> _pendingMasks = new();
+    private readonly Dictionary<int, int> _latestMasksByCell = new();
     private bool _uiUpdateScheduled;
 
     public MameSegmentRuntimeAdapter(Func<IEnumerable<DocumentTabViewModel>> documentProvider, Action<Action> uiDispatch)
@@ -39,22 +40,26 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
         foreach (var document in _documentProvider())
         {
             var changedObjectIds = new HashSet<string>(StringComparer.Ordinal);
+
+            foreach (var (cellId, mask) in snapshot)
+            {
+                _latestMasksByCell[cellId] = mask;
+            }
+
             foreach (var element in document.GetPanelElements().Where(e => e.Kind == PanelElementKind.Alpha && !string.IsNullOrWhiteSpace(e.ObjectId)))
             {
                 var objectId = element.ObjectId!;
                 var baseIndex = element.DisplayNumber.GetValueOrDefault(0);
                 var cellMasks = new int[16];
-                var hasAny = false;
                 for (var i = 0; i < cellMasks.Length; i++)
                 {
-                    if (snapshot.TryGetValue(baseIndex + i, out var mask))
+                    if (_latestMasksByCell.TryGetValue(baseIndex + i, out var mask))
                     {
                         cellMasks[i] = mask;
-                        hasAny = true;
                     }
                 }
 
-                if (hasAny && document.RuntimeState.SetSegmentCellMasksIfChanged(objectId, cellMasks))
+                if (document.RuntimeState.SetSegmentCellMasksIfChanged(objectId, cellMasks))
                 {
                     changedObjectIds.Add(objectId);
                 }
