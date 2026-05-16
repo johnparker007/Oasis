@@ -50,7 +50,15 @@ public sealed class MfmeToOasisComponentMapperTests
                     "ExtractComponentMatrixAlpha",
                     new MfmeLegacyPoint(1, 2),
                     new MfmeLegacyPoint(3, 4),
-                    Reversed: false)
+                    Reversed: false),
+                new MfmeLegacyLabelComponent(
+                    new MfmeLegacyPoint(50, 60),
+                    new MfmeLegacyPoint(120, 24),
+                    "COLLECT",
+                    "Tahoma",
+                    "Bold",
+                    "10",
+                    new MfmeLegacyColor(1f, 1f, 0f, 1f))
             ]
         };
 
@@ -60,7 +68,7 @@ public sealed class MfmeToOasisComponentMapperTests
 
         Assert.Empty(result.Warnings);
         Assert.Empty(result.SkippedLegacyComponentTypes);
-        Assert.Equal(5, result.Elements.Count);
+        Assert.Equal(6, result.Elements.Count);
 
         var background = result.Elements[0];
         Assert.Equal(PanelElementKind.Background, background.Kind);
@@ -106,6 +114,15 @@ public sealed class MfmeToOasisComponentMapperTests
         Assert.Equal(PanelElementKind.Alpha, alpha.Kind);
         Assert.Equal("Alpha", alpha.Name);
         Assert.False(alpha.IsReversed);
+
+        var label = result.Elements[5];
+        Assert.Equal(PanelElementKind.Label, label.Kind);
+        Assert.Equal("Label", label.Name);
+        Assert.Equal("COLLECT", label.DisplayText);
+        Assert.Equal("Tahoma", label.TextBoxFontName);
+        Assert.Equal("Bold", label.TextBoxFontStyle);
+        Assert.Equal("10", label.TextBoxFontSize);
+        Assert.Equal("#FFFFFF00", label.TextColorHex);
 
         Assert.All(result.Elements, element => Assert.NotEqual(PanelElementKind.Unknown, element.Kind));
         Assert.All(result.Elements, element => Assert.False(string.IsNullOrWhiteSpace(element.ObjectId)));

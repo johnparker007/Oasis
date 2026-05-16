@@ -33,6 +33,9 @@ internal sealed class MfmeToOasisComponentMapper
                 case MfmeLegacyAlphaComponent alpha:
                     elements.Add(MapAlpha(alpha));
                     break;
+                case MfmeLegacyLabelComponent label:
+                    elements.Add(MapLabel(label));
+                    break;
                 default:
                     skipped.Add(component.SourceType);
                     warnings.Add(new MfmeImportWarning(
@@ -185,6 +188,26 @@ internal sealed class MfmeToOasisComponentMapper
             Width = component.Size.X,
             Height = component.Size.Y,
             IsReversed = component.Reversed,
+            ImportSource = CreateImportSource(component.SourceType)
+        };
+    }
+
+    private static PanelElementModel MapLabel(MfmeLegacyLabelComponent component)
+    {
+        return new PanelElementModel
+        {
+            ObjectId = Guid.NewGuid().ToString("N"),
+            Name = "Label",
+            Kind = PanelElementKind.Label,
+            X = component.Position.X,
+            Y = component.Position.Y,
+            Width = component.Size.X,
+            Height = component.Size.Y,
+            DisplayText = NormalizeOptional(component.TextBoxText),
+            TextBoxFontName = NormalizeOptional(component.TextBoxFontName),
+            TextBoxFontStyle = NormalizeOptional(component.TextBoxFontStyle),
+            TextBoxFontSize = NormalizeOptional(component.TextBoxFontSize),
+            TextColorHex = ToHex(component.TextColor),
             ImportSource = CreateImportSource(component.SourceType)
         };
     }

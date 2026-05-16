@@ -23,6 +23,7 @@ public sealed class Panel2DHierarchyProvider : IDocumentHierarchyProvider
             BuildGroup("Reels", elements, PanelElementKind.Reel, "Reel"),
             BuildGroup("Seven Segments", elements, PanelElementKind.SevenSegment, "7 Segment"),
             BuildGroup("Alphas", elements, PanelElementKind.Alpha, "Alpha"),
+            BuildGroup("Labels", elements, PanelElementKind.Label, "Label"),
             BuildGroup("Images", elements, PanelElementKind.Image, "Image"),
             BuildGroup("Rectangles", elements, PanelElementKind.Rectangle, "Rectangle"),
             BuildGroup("Anchors", elements, PanelElementKind.Anchor, "Anchor"),

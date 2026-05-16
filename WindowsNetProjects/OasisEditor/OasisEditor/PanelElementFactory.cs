@@ -89,6 +89,7 @@ internal static class PanelElementFactory
             PanelElementKind.Reel => CreateReelVisual(element),
             PanelElementKind.SevenSegment => CreateSevenSegmentVisual(element),
             PanelElementKind.Alpha => CreateAlphaVisual(element),
+            PanelElementKind.Label => CreateLabelVisual(element),
             _ => null
         };
 
@@ -329,6 +330,18 @@ internal static class PanelElementFactory
                 ShowDecimalPoint = true
             }
         };
+    }
+
+    private static Border CreateLabelVisual(PanelElementFile element)
+    {
+        var text = string.IsNullOrWhiteSpace(element.DisplayText) ? "Label" : element.DisplayText;
+        return CreatePlaceholderComponentVisual(
+            element,
+            text,
+            null,
+            null,
+            element.TextColorHex,
+            CreateFontSettings(element.TextBoxFontName, element.TextBoxFontStyle, element.TextBoxFontSize));
     }
 
     private static Border CreatePlaceholderComponentVisual(PanelElementFile element, string label)
