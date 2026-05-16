@@ -171,9 +171,10 @@ public static class PanelLayoutMapper
 
             if (tab.TryGetAlphaElement(objectId, out _))
             {
-                var segmentState = visualStateChange.ValuesByObjectId[objectId] as SegmentVisualState?
-                    ?? new SegmentVisualState(runtimeState.GetSegmentCellMasks(objectId, 16));
-                UpdateSegmentVisual(canvas, objectId, segmentState.Value.CellMasks);
+                var segmentState = visualStateChange.ValuesByObjectId[objectId] is SegmentVisualState state
+                    ? state
+                    : new SegmentVisualState(runtimeState.GetSegmentCellMasks(objectId, 16));
+                UpdateSegmentVisual(canvas, objectId, segmentState.CellMasks);
             }
         }
     }
