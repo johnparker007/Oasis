@@ -14,6 +14,7 @@ public interface IMameEmulationService
 
 public interface IMameProcessRunner
 {
+    int? CurrentProcessId { get; }
     Task StartAsync(ProcessStartInfo startInfo, CancellationToken cancellationToken);
     Task StopAsync(CancellationToken cancellationToken);
     Task WriteStandardInputAsync(string command, CancellationToken cancellationToken);

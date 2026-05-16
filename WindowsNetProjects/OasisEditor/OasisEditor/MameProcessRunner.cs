@@ -15,6 +15,8 @@ public sealed class MameProcessRunner : IMameProcessRunner, IDisposable
     private Task? _stdoutPumpTask;
     private Task? _stderrPumpTask;
 
+    public int? CurrentProcessId => _process is { HasExited: false } process ? process.Id : null;
+
     public MameProcessRunner(Action<string>? stdoutLogger = null, Action<string>? stdinLogger = null, Action<string>? stderrLogger = null)
         : this(() => new Process(), stdoutLogger, stdinLogger, stderrLogger)
     {

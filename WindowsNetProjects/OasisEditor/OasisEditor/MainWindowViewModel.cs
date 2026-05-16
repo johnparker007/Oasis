@@ -199,18 +199,19 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                     }
                 }),
             diagnosticLogger: line => AddOutputEntry(line, OutputLogStatus.Info));
+        var mameProcessRunner = new MameProcessRunner(
+            stdoutLogger: line => ProcessMameStdoutLine(line, mameStdoutParser),
+            stdinLogger: line =>
+            {
+                if (DebugOutputStdIn)
+                {
+                    AddOutputEntry($"[MAME-STDIN] {line}", OutputLogStatus.Info);
+                }
+            },
+            stderrLogger: line => AddOutputEntry($"[MAME-ERR] {line}", OutputLogStatus.Warning));
         _mameEmulationService = new MameEmulationService(
             new MameProcessStartInfoBuilder(),
-            new MameProcessRunner(
-                stdoutLogger: line => ProcessMameStdoutLine(line, mameStdoutParser),
-                stdinLogger: line =>
-                {
-                    if (DebugOutputStdIn)
-                    {
-                        AddOutputEntry($"[MAME-STDIN] {line}", OutputLogStatus.Info);
-                    }
-                },
-                stderrLogger: line => AddOutputEntry($"[MAME-ERR] {line}", OutputLogStatus.Warning)),
+            mameProcessRunner,
             BuildMameLaunchRequest);
         _mameEmulationService.StateChanged += (_, state) =>
         {
@@ -218,6 +219,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             {
                 EmulationState = state;
                 AddOutputEntry($"Emulation state changed to {state}.", OutputLogStatus.Info);
+                if (state is MameEmulationState.Starting or MameEmulationState.Running or MameEmulationState.Stopping or MameEmulationState.Stopped)
+                {
+                    AddOutputEntry($"[MAME-PROC] Active process id: {(mameProcessRunner.CurrentProcessId?.ToString() ?? "none")}", OutputLogStatus.Info);
+                }
             });
         };
 
