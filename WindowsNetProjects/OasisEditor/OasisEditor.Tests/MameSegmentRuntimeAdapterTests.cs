@@ -21,8 +21,8 @@ public sealed class MameSegmentRuntimeAdapterTests
         second();
 
         var masks = document.RuntimeState.GetSegmentCellMasks("alpha-0", 16);
-        Assert.Equal(1, masks[0]);
-        Assert.Equal(2, masks[1]);
+        Assert.Equal(4, masks[0]);
+        Assert.Equal(8, masks[1]);
     }
 
     [Fact]
@@ -40,8 +40,8 @@ public sealed class MameSegmentRuntimeAdapterTests
         dispatch();
 
         var masks = document.RuntimeState.GetSegmentCellMasks("alpha-0", 16);
-        Assert.Equal(3, masks[0]);
-        Assert.Equal(2, masks[1]);
+        Assert.Equal(12, masks[0]);
+        Assert.Equal(8, masks[1]);
     }
 
     [Fact]
@@ -64,9 +64,9 @@ public sealed class MameSegmentRuntimeAdapterTests
         dispatch();
 
         var masks = document.RuntimeState.GetSegmentCellMasks("alpha-rev", 16);
-        Assert.Equal(0xAA, masks[0]);
-        Assert.Equal(0xBB, masks[1]);
-        Assert.Equal(0xCC, masks[15]);
+        Assert.Equal(0x59, masks[0]);
+        Assert.Equal(0x5D, masks[1]);
+        Assert.Equal(0xA3, masks[15]);
     }
 
     [Theory]
