@@ -166,8 +166,36 @@ public static class PanelLayoutMapper
                 };
 
                 UpdateReelVisual(canvas, objectId, reelVisualState.Position, reelModel.Stops.GetValueOrDefault(1));
+                continue;
+            }
+
+            if (tab.TryGetAlphaElement(objectId, out _))
+            {
+                var segmentState = visualStateChange.ValuesByObjectId[objectId] is SegmentVisualState state
+                    ? state
+                    : new SegmentVisualState(runtimeState.GetSegmentCellMasks(objectId, 16));
+                UpdateSegmentVisual(canvas, objectId, segmentState.CellMasks);
             }
         }
+    }
+
+    public static void UpdateSegmentVisual(Canvas canvas, string objectId, int[] cellMasks)
+    {
+        if (string.IsNullOrWhiteSpace(objectId) || cellMasks is null)
+        {
+            return;
+        }
+
+        var registry = GetOrCreateRuntimeVisualRegistry(canvas);
+        if (!registry.TryGetVisual(objectId, out var visual)
+            || visual is not Border border
+            || border.Child is not SegmentDisplayVisualBase segmentVisual)
+        {
+            return;
+        }
+
+        segmentVisual.CellSegmentMasks = cellMasks.ToArray();
+        segmentVisual.InvalidateVisual();
     }
 
     public static void UpdateLampVisual(

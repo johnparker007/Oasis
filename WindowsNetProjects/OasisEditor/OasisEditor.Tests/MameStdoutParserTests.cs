@@ -10,7 +10,8 @@ public sealed class MameStdoutParserTests
     {
         var lampAdapter = new RecordingLampAdapter();
         var reelAdapter = new RecordingReelAdapter();
-        var parser = new MameStdoutParser(new MameLampStateParser(), lampAdapter, new MameReelStateParser(), reelAdapter);
+        var segmentAdapter = new RecordingSegmentAdapter();
+        var parser = new MameStdoutParser(new MameLampStateParser(), lampAdapter, new MameReelStateParser(), reelAdapter, new MameSegmentStateParser(), segmentAdapter);
 
         parser.ProcessLine("lamp7 1");
 
@@ -25,7 +26,8 @@ public sealed class MameStdoutParserTests
     {
         var lampAdapter = new RecordingLampAdapter();
         var reelAdapter = new RecordingReelAdapter();
-        var parser = new MameStdoutParser(new MameLampStateParser(), lampAdapter, new MameReelStateParser(), reelAdapter);
+        var segmentAdapter = new RecordingSegmentAdapter();
+        var parser = new MameStdoutParser(new MameLampStateParser(), lampAdapter, new MameReelStateParser(), reelAdapter, new MameSegmentStateParser(), segmentAdapter);
 
         parser.ProcessLine("reel3 = 94");
 
@@ -40,8 +42,9 @@ public sealed class MameStdoutParserTests
     {
         var lampAdapter = new RecordingLampAdapter();
         var reelAdapter = new RecordingReelAdapter();
+        var segmentAdapter = new RecordingSegmentAdapter();
         string? diagnostic = null;
-        var parser = new MameStdoutParser(new MameLampStateParser(), lampAdapter, new MameReelStateParser(), reelAdapter, message => diagnostic = message);
+        var parser = new MameStdoutParser(new MameLampStateParser(), lampAdapter, new MameReelStateParser(), reelAdapter, new MameSegmentStateParser(), segmentAdapter, message => diagnostic = message);
 
         parser.ProcessLine("unknown output");
 
@@ -49,6 +52,21 @@ public sealed class MameStdoutParserTests
         Assert.Empty(reelAdapter.Calls);
         Assert.NotNull(diagnostic);
         Assert.Contains("Unhandled line", diagnostic);
+    }
+
+    [Fact]
+    public void ProcessLine_WhenSegmentLine_AppliesSegmentState()
+    {
+        var lampAdapter = new RecordingLampAdapter();
+        var reelAdapter = new RecordingReelAdapter();
+        var segmentAdapter = new RecordingSegmentAdapter();
+        var parser = new MameStdoutParser(new MameLampStateParser(), lampAdapter, new MameReelStateParser(), reelAdapter, new MameSegmentStateParser(), segmentAdapter);
+
+        parser.ProcessLine("vfd12 = 769");
+
+        var call = Assert.Single(segmentAdapter.Calls);
+        Assert.Equal(12, call.CellId);
+        Assert.Equal(769, call.Mask);
     }
 
     private sealed class RecordingLampAdapter : IMameLampRuntimeAdapter
@@ -61,5 +79,11 @@ public sealed class MameStdoutParserTests
     {
         public List<(int ReelId, int Value)> Calls { get; } = [];
         public void ApplyReelState(int reelId, int reelValue) => Calls.Add((reelId, reelValue));
+    }
+
+    private sealed class RecordingSegmentAdapter : IMameSegmentRuntimeAdapter
+    {
+        public List<(int CellId, int Mask)> Calls { get; } = [];
+        public void ApplySegmentState(int cellId, int segmentMask) => Calls.Add((cellId, segmentMask));
     }
 }

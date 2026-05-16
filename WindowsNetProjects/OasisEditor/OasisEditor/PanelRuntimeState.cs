@@ -4,6 +4,7 @@ public sealed class PanelRuntimeState
 {
     private readonly Dictionary<string, double> _lampIntensityByObjectId = new(StringComparer.Ordinal);
     private readonly Dictionary<string, int> _reelPositionByObjectId = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, int[]> _segmentMasksByObjectId = new(StringComparer.Ordinal);
 
     public string? LampTestObjectId { get; set; }
 
@@ -11,6 +12,7 @@ public sealed class PanelRuntimeState
 
     public IReadOnlyDictionary<string, double> LampIntensityByObjectId => _lampIntensityByObjectId;
     public IReadOnlyDictionary<string, int> ReelPositionByObjectId => _reelPositionByObjectId;
+    public IReadOnlyDictionary<string, int[]> SegmentMasksByObjectId => _segmentMasksByObjectId;
 
     public bool SetLampIntensityIfChanged(string objectId, double intensity)
     {
@@ -86,5 +88,36 @@ public sealed class PanelRuntimeState
         LampTestObjectId = null;
         _lampIntensityByObjectId.Clear();
         _reelPositionByObjectId.Clear();
+        _segmentMasksByObjectId.Clear();
+    }
+
+    public bool SetSegmentCellMasksIfChanged(string objectId, int[] masks)
+    {
+        if (string.IsNullOrWhiteSpace(objectId) || masks is null)
+        {
+            return false;
+        }
+
+        var normalizedObjectId = objectId.Trim();
+        if (_segmentMasksByObjectId.TryGetValue(normalizedObjectId, out var previous)
+            && previous.SequenceEqual(masks))
+        {
+            return false;
+        }
+
+        _segmentMasksByObjectId[normalizedObjectId] = masks.ToArray();
+        return true;
+    }
+
+    public int[] GetSegmentCellMasks(string objectId, int cellCount)
+    {
+        if (string.IsNullOrWhiteSpace(objectId) || cellCount <= 0)
+        {
+            return Array.Empty<int>();
+        }
+
+        return _segmentMasksByObjectId.TryGetValue(objectId.Trim(), out var value)
+            ? value.ToArray()
+            : new int[cellCount];
     }
 }

@@ -19,6 +19,7 @@ internal abstract class SegmentDisplayVisualBase : FrameworkElement
     public Brush LitBrush { get; set; } = Brushes.OrangeRed;
     public Brush UnlitBrush { get; set; } = new SolidColorBrush(Color.FromArgb(120, 255, 69, 0));
     public string? DisplayText { get; set; }
+    public int[]? CellSegmentMasks { get; set; }
     public bool ShowDecimalPoint { get; set; }
 
     protected override void OnRender(DrawingContext drawingContext)
@@ -44,8 +45,11 @@ internal abstract class SegmentDisplayVisualBase : FrameworkElement
 
         for (var i = 0; i < CellCount; i++)
         {
-            var charIndex = i < (DisplayText?.Length ?? 0) ? i : -1;
-            var segmentMask = charIndex >= 0 ? GetSegmentMaskForChar(DisplayText![charIndex]) : 0;
+            var segmentMask = CellSegmentMasks is not null && i < CellSegmentMasks.Length
+                ? CellSegmentMasks[i]
+                : i < (DisplayText?.Length ?? 0)
+                    ? GetSegmentMaskForChar(DisplayText![i])
+                    : 0;
             var cellTransform = new MatrixTransform(scale, 0, 0, scale, offsetX + (i * pitch * scale), offsetY);
 
             foreach (var segment in _definition.Cell.Segments)

@@ -12,6 +12,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     private Panel2DDocumentModel _panelDocumentModel;
     private Dictionary<string, PanelElementModel> _lampElementsByObjectId = new(StringComparer.Ordinal);
     private Dictionary<string, PanelElementModel> _reelElementsByObjectId = new(StringComparer.Ordinal);
+    private Dictionary<string, PanelElementModel> _alphaElementsByObjectId = new(StringComparer.Ordinal);
     private HashSet<string> _visualStateObjectIds = new(StringComparer.Ordinal);
     private PanelSelectionInfo? _hierarchySelectedPanelSelection;
     private double _panelZoom = 1.0;
@@ -143,7 +144,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     {
         var changedObjectIds = _panelDocumentModel.Elements
             .Where(element => !string.IsNullOrWhiteSpace(element.ObjectId)
-                && (element.Kind == PanelElementKind.Lamp || element.Kind == PanelElementKind.Reel))
+                && (element.Kind == PanelElementKind.Lamp || element.Kind == PanelElementKind.Reel || element.Kind == PanelElementKind.Alpha))
             .Select(element => element.ObjectId)
             .ToArray();
         NotifyPanelVisualPreviewChanged(changedObjectIds);
@@ -171,7 +172,9 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
                 && !string.IsNullOrWhiteSpace(_runtimeState.LampTestObjectId)
                 && string.Equals(objectId, _runtimeState.LampTestObjectId, StringComparison.Ordinal),
                 _runtimeState.GetLampIntensity(objectId))
-                : new ReelVisualState(_runtimeState.GetReelPosition(objectId));
+                : _reelElementsByObjectId.ContainsKey(objectId)
+                    ? new ReelVisualState(_runtimeState.GetReelPosition(objectId))
+                    : new SegmentVisualState(_runtimeState.GetSegmentCellMasks(objectId, 16));
             if (!_lastVisualStateByObjectId.TryGetValue(objectId, out var previous)
                 || !Equals(previous, nextState))
             {
@@ -210,6 +213,17 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
         }
 
         return _reelElementsByObjectId.TryGetValue(objectId, out element!);
+    }
+
+    internal bool TryGetAlphaElement(string objectId, out PanelElementModel element)
+    {
+        if (string.IsNullOrWhiteSpace(objectId))
+        {
+            element = new PanelElementModel();
+            return false;
+        }
+
+        return _alphaElementsByObjectId.TryGetValue(objectId, out element!);
     }
 
     internal string GetPanelLayoutProjectionJson()
@@ -300,14 +314,19 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
             .Where(element => element.Kind == PanelElementKind.Reel
                 && !string.IsNullOrWhiteSpace(element.ObjectId))
             .ToDictionary(element => element.ObjectId, element => element, StringComparer.Ordinal);
+        _alphaElementsByObjectId = _panelDocumentModel.Elements
+            .Where(element => element.Kind == PanelElementKind.Alpha && !string.IsNullOrWhiteSpace(element.ObjectId))
+            .ToDictionary(element => element.ObjectId, element => element, StringComparer.Ordinal);
         _visualStateObjectIds = _lampElementsByObjectId.Keys
             .Concat(_reelElementsByObjectId.Keys)
+            .Concat(_alphaElementsByObjectId.Keys)
             .ToHashSet(StringComparer.Ordinal);
     }
 }
 
 internal readonly record struct LampVisualState(bool IsLampTestOn, double Intensity);
 internal readonly record struct ReelVisualState(int Position);
+internal readonly record struct SegmentVisualState(int[] CellMasks);
 
 public sealed record PanelVisualStateChangedEvent(
     Guid DocumentId,
