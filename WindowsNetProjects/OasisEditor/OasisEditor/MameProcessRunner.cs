@@ -160,6 +160,10 @@ public sealed class MameProcessRunner : IMameProcessRunner, IDisposable
             await process.StandardInput.FlushAsync(cancellationToken).ConfigureAwait(false);
             await process.WaitForExitAsync(gracefulExitCts.Token).ConfigureAwait(false);
         }
+        catch (ObjectDisposedException)
+        {
+            // Process was disposed while attempting graceful exit.
+        }
         catch (InvalidOperationException)
         {
             // Process input stream no longer available.
@@ -167,10 +171,6 @@ public sealed class MameProcessRunner : IMameProcessRunner, IDisposable
         catch (OperationCanceledException)
         {
             // Timed out while waiting for graceful exit.
-        }
-        catch (ObjectDisposedException)
-        {
-            // Process was disposed while attempting graceful exit.
         }
     }
 }
