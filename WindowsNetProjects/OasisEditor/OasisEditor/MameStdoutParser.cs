@@ -6,14 +6,18 @@ public sealed class MameStdoutParser : IMameStdoutParser
     private readonly IMameLampRuntimeAdapter _lampRuntimeAdapter;
     private readonly IMameReelStateParser _reelStateParser;
     private readonly IMameReelRuntimeAdapter _reelRuntimeAdapter;
+    private readonly IMameSegmentStateParser _segmentStateParser;
+    private readonly IMameSegmentRuntimeAdapter _segmentRuntimeAdapter;
     private readonly Action<string>? _diagnosticLogger;
 
-    public MameStdoutParser(IMameLampStateParser lampStateParser, IMameLampRuntimeAdapter lampRuntimeAdapter, IMameReelStateParser reelStateParser, IMameReelRuntimeAdapter reelRuntimeAdapter, Action<string>? diagnosticLogger = null)
+    public MameStdoutParser(IMameLampStateParser lampStateParser, IMameLampRuntimeAdapter lampRuntimeAdapter, IMameReelStateParser reelStateParser, IMameReelRuntimeAdapter reelRuntimeAdapter, IMameSegmentStateParser segmentStateParser, IMameSegmentRuntimeAdapter segmentRuntimeAdapter, Action<string>? diagnosticLogger = null)
     {
         _lampStateParser = lampStateParser ?? throw new ArgumentNullException(nameof(lampStateParser));
         _lampRuntimeAdapter = lampRuntimeAdapter ?? throw new ArgumentNullException(nameof(lampRuntimeAdapter));
         _reelStateParser = reelStateParser ?? throw new ArgumentNullException(nameof(reelStateParser));
         _reelRuntimeAdapter = reelRuntimeAdapter ?? throw new ArgumentNullException(nameof(reelRuntimeAdapter));
+        _segmentStateParser = segmentStateParser ?? throw new ArgumentNullException(nameof(segmentStateParser));
+        _segmentRuntimeAdapter = segmentRuntimeAdapter ?? throw new ArgumentNullException(nameof(segmentRuntimeAdapter));
         _diagnosticLogger = diagnosticLogger;
     }
 
@@ -33,6 +37,12 @@ public sealed class MameStdoutParser : IMameStdoutParser
         if (_reelStateParser.TryParse(line, out var reelId, out var reelValue))
         {
             _reelRuntimeAdapter.ApplyReelState(reelId, reelValue);
+            return;
+        }
+
+        if (_segmentStateParser.TryParse(line, out var cellId, out var segmentMask))
+        {
+            _segmentRuntimeAdapter.ApplySegmentState(cellId, segmentMask);
             return;
         }
 
