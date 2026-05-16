@@ -28,7 +28,7 @@ public sealed class MameProcessRunner : IMameProcessRunner, IDisposable
         _stderrLogger = stderrLogger;
     }
 
-    public Task StartAsync(ProcessStartInfo startInfo, CancellationToken cancellationToken)
+    public async Task StartAsync(ProcessStartInfo startInfo, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(startInfo);
 
@@ -54,7 +54,17 @@ public sealed class MameProcessRunner : IMameProcessRunner, IDisposable
         _stdoutPumpTask = PumpStreamAsync(process.StandardOutput, _stdoutLogger, cancellationToken);
         _stderrPumpTask = PumpStreamAsync(process.StandardError, _stderrLogger, cancellationToken);
 
-        return Task.CompletedTask;
+        await Task.Delay(100, cancellationToken).ConfigureAwait(false);
+        if (process.HasExited)
+        {
+            var exitCode = process.ExitCode;
+            CleanupResidualMameProcesses(startInfo.FileName);
+            _stdoutPumpTask = null;
+            _stderrPumpTask = null;
+            _process = null;
+            process.Dispose();
+            throw new InvalidOperationException($"MAME process exited immediately after start (exit code {exitCode}).");
+        }
     }
 
     public async Task StopAsync(CancellationToken cancellationToken)
