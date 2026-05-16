@@ -40,7 +40,6 @@ public sealed class MameProcessRunner : IMameProcessRunner, IDisposable
         }
 
         cancellationToken.ThrowIfCancellationRequested();
-        CleanupResidualMameProcesses(startInfo.FileName);
 
         var process = _processFactory();
         process.StartInfo = startInfo;
@@ -60,7 +59,6 @@ public sealed class MameProcessRunner : IMameProcessRunner, IDisposable
         if (process.HasExited)
         {
             var exitCode = process.ExitCode;
-            CleanupResidualMameProcesses(startInfo.FileName);
             _stdoutPumpTask = null;
             _stderrPumpTask = null;
             _process = null;
@@ -79,7 +77,6 @@ public sealed class MameProcessRunner : IMameProcessRunner, IDisposable
 
         try
         {
-            var executablePath = process.StartInfo.FileName;
             if (!process.HasExited)
             {
                 await RequestGracefulExitAsync(process, cancellationToken).ConfigureAwait(false);
@@ -93,7 +90,6 @@ public sealed class MameProcessRunner : IMameProcessRunner, IDisposable
 
             await AwaitPumpAsync(_stdoutPumpTask).ConfigureAwait(false);
             await AwaitPumpAsync(_stderrPumpTask).ConfigureAwait(false);
-            CleanupResidualMameProcesses(executablePath);
         }
         finally
         {
@@ -194,43 +190,4 @@ public sealed class MameProcessRunner : IMameProcessRunner, IDisposable
         }
     }
 
-    private static void CleanupResidualMameProcesses(string executablePath)
-    {
-        if (string.IsNullOrWhiteSpace(executablePath))
-        {
-            return;
-        }
-
-        var fullPath = Path.GetFullPath(executablePath);
-        var processName = Path.GetFileNameWithoutExtension(fullPath);
-        var currentProcessId = Environment.ProcessId;
-
-        foreach (var candidate in Process.GetProcessesByName(processName))
-        {
-            try
-            {
-                if (candidate.Id == currentProcessId || candidate.HasExited)
-                {
-                    continue;
-                }
-
-                var candidatePath = candidate.MainModule?.FileName;
-                if (!string.Equals(candidatePath, fullPath, StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                candidate.Kill(entireProcessTree: true);
-                candidate.WaitForExit(2000);
-            }
-            catch
-            {
-                // Best-effort cleanup only.
-            }
-            finally
-            {
-                candidate.Dispose();
-            }
-        }
-    }
 }
