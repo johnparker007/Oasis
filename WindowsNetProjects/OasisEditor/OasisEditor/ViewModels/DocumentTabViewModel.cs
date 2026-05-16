@@ -11,7 +11,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     private string? _panelLayoutJson;
     private Panel2DDocumentModel _panelDocumentModel;
     private Dictionary<string, PanelElementModel> _lampElementsByObjectId = new(StringComparer.Ordinal);
-    private HashSet<string> _lampObjectIds = new(StringComparer.Ordinal);
+    private Dictionary<string, PanelElementModel> _reelElementsByObjectId = new(StringComparer.Ordinal);
+    private HashSet<string> _visualStateObjectIds = new(StringComparer.Ordinal);
     private PanelSelectionInfo? _hierarchySelectedPanelSelection;
     private double _panelZoom = 1.0;
     private double _panelPanX;
@@ -142,7 +143,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     {
         var changedObjectIds = _panelDocumentModel.Elements
             .Where(element => !string.IsNullOrWhiteSpace(element.ObjectId)
-                && element.Kind == PanelElementKind.Lamp)
+                && (element.Kind == PanelElementKind.Lamp || element.Kind == PanelElementKind.Reel))
             .Select(element => element.ObjectId)
             .ToArray();
         NotifyPanelVisualPreviewChanged(changedObjectIds);
@@ -159,16 +160,18 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
         var deltaByObjectId = new Dictionary<string, object>(StringComparer.Ordinal);
         foreach (var objectId in changedObjectIds)
         {
-            if (string.IsNullOrWhiteSpace(objectId) || !_lampObjectIds.Contains(objectId))
+            if (string.IsNullOrWhiteSpace(objectId) || !_visualStateObjectIds.Contains(objectId))
             {
                 continue;
             }
 
-            var nextState = (object)new LampVisualState(
+            var nextState = _lampElementsByObjectId.ContainsKey(objectId)
+                ? (object)new LampVisualState(
                 _runtimeState.IsLampTestActive
                 && !string.IsNullOrWhiteSpace(_runtimeState.LampTestObjectId)
                 && string.Equals(objectId, _runtimeState.LampTestObjectId, StringComparison.Ordinal),
-                _runtimeState.GetLampIntensity(objectId));
+                _runtimeState.GetLampIntensity(objectId))
+                : new ReelVisualState(_runtimeState.GetReelPosition(objectId));
             if (!_lastVisualStateByObjectId.TryGetValue(objectId, out var previous)
                 || !Equals(previous, nextState))
             {
@@ -194,6 +197,19 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
         }
 
         return _lampElementsByObjectId.TryGetValue(objectId, out element!);
+    }
+
+
+
+    internal bool TryGetReelElement(string objectId, out PanelElementModel element)
+    {
+        if (string.IsNullOrWhiteSpace(objectId))
+        {
+            element = new PanelElementModel();
+            return false;
+        }
+
+        return _reelElementsByObjectId.TryGetValue(objectId, out element!);
     }
 
     internal string GetPanelLayoutProjectionJson()
@@ -280,11 +296,18 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
             .Where(element => element.Kind == PanelElementKind.Lamp
                 && !string.IsNullOrWhiteSpace(element.ObjectId))
             .ToDictionary(element => element.ObjectId, element => element, StringComparer.Ordinal);
-        _lampObjectIds = _lampElementsByObjectId.Keys.ToHashSet(StringComparer.Ordinal);
+        _reelElementsByObjectId = _panelDocumentModel.Elements
+            .Where(element => element.Kind == PanelElementKind.Reel
+                && !string.IsNullOrWhiteSpace(element.ObjectId))
+            .ToDictionary(element => element.ObjectId, element => element, StringComparer.Ordinal);
+        _visualStateObjectIds = _lampElementsByObjectId.Keys
+            .Concat(_reelElementsByObjectId.Keys)
+            .ToHashSet(StringComparer.Ordinal);
     }
 }
 
 internal readonly record struct LampVisualState(bool IsLampTestOn, double Intensity);
+internal readonly record struct ReelVisualState(int Position);
 
 public sealed record PanelVisualStateChangedEvent(
     Guid DocumentId,

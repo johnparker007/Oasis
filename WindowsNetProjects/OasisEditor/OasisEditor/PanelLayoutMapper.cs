@@ -135,26 +135,37 @@ public static class PanelLayoutMapper
 
         foreach (var objectId in visualStateChange.ValuesByObjectId.Keys)
         {
-            if (!tab.TryGetLampElement(objectId, out var sourceModel))
+            if (tab.TryGetLampElement(objectId, out var sourceModel))
             {
+                var lampVisualState = visualStateChange.ValuesByObjectId[objectId] switch
+                {
+                    LampVisualState state => state,
+                    true => new LampVisualState(true, runtimeState.GetLampIntensity(objectId)),
+                    _ => new LampVisualState(false, runtimeState.GetLampIntensity(objectId))
+                };
+
+                UpdateLampVisual(
+                    canvas,
+                    objectId,
+                    lampVisualState.Intensity,
+                    lampVisualState.IsLampTestOn || lampVisualState.Intensity > 0d,
+                    sourceModel.OnColorHex,
+                    sourceModel.OffColorHex,
+                    sourceModel.AssetPath);
                 continue;
             }
 
-            var lampVisualState = visualStateChange.ValuesByObjectId[objectId] switch
+            if (tab.TryGetReelElement(objectId, out var reelModel))
             {
-                LampVisualState state => state,
-                true => new LampVisualState(true, runtimeState.GetLampIntensity(objectId)),
-                _ => new LampVisualState(false, runtimeState.GetLampIntensity(objectId))
-            };
+                var reelVisualState = visualStateChange.ValuesByObjectId[objectId] switch
+                {
+                    ReelVisualState state => state,
+                    int value => new ReelVisualState(value),
+                    _ => new ReelVisualState(runtimeState.GetReelPosition(objectId))
+                };
 
-            UpdateLampVisual(
-                canvas,
-                objectId,
-                lampVisualState.Intensity,
-                lampVisualState.IsLampTestOn || lampVisualState.Intensity > 0d,
-                sourceModel.OnColorHex,
-                sourceModel.OffColorHex,
-                sourceModel.AssetPath);
+                UpdateReelVisual(canvas, objectId, reelVisualState.Position, reelModel.Stops.GetValueOrDefault(1));
+            }
         }
     }
 
@@ -221,6 +232,26 @@ public static class PanelLayoutMapper
         }
     }
 
+
+    public static void UpdateReelVisual(Canvas canvas, string objectId, int position, int stops)
+    {
+        if (string.IsNullOrWhiteSpace(objectId))
+        {
+            return;
+        }
+
+        var registry = GetOrCreateRuntimeVisualRegistry(canvas);
+        if (!registry.TryGetVisual(objectId, out var visual) || visual is not Border border || border.Child is not Grid grid || grid.Children.Count == 0 || grid.Children[0] is not Image image)
+        {
+            return;
+        }
+
+        var safeStops = Math.Max(1, stops);
+        var normalizedPosition = ((position % safeStops) + safeStops) % safeStops;
+        var stopHeight = border.Height / safeStops;
+        image.RenderTransform = new TranslateTransform(0d, -(normalizedPosition * stopHeight));
+    }
+
     private static bool GetIsPersistedElement(FrameworkElement element)
     {
         return (bool)element.GetValue(IsPersistedElementProperty);
@@ -281,3 +312,5 @@ public static class PanelLayoutMapper
         element.Opacity = opacity;
     }
 }
+
+

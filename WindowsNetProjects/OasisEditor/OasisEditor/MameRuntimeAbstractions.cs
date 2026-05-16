@@ -34,6 +34,11 @@ public interface IMameLampRuntimeAdapter
     void ApplyLampState(int lampId, int lampValue);
 }
 
+public interface IMameReelRuntimeAdapter
+{
+    void ApplyReelState(int reelId, int reelValue);
+}
+
 public sealed record MameProcessLaunchRequest(
     string MameExecutablePath,
     string MameRomName,
