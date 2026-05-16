@@ -35,6 +35,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string _mameCommandLineOverrides = string.Empty;
     private string _mameRomDownloadBaseUrl = MameRomDownloadService.DefaultDownloadRootUrl;
     private string _mameRomArchiveExtension = MameRomDownloadService.DefaultArchiveExtension;
+    private string _mameLocalRomSourceDirectory = string.Empty;
+    private string _mameLocalRomArchiveExtension = MameRomDownloadService.DefaultArchiveExtension;
     private bool _keepMameUpToDateAutomatically = true;
     private bool _debugOutputLamps;
     private bool _debugOutputStdIn;
@@ -156,8 +158,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             _mameCommandLineOverrides = preferences.Mame.CommandLineOverrides;
             _mameRomDownloadBaseUrl = preferences.Mame.RomDownloadBaseUrl;
             _mameRomArchiveExtension = preferences.Mame.RomArchiveExtension;
+            _mameLocalRomSourceDirectory = preferences.Mame.LocalRomSourceDirectory;
+            _mameLocalRomArchiveExtension = preferences.Mame.LocalRomArchiveExtension;
             _mameRomDownloadService.DownloadRootUrl = _mameRomDownloadBaseUrl;
             _mameRomDownloadService.ArchiveExtension = _mameRomArchiveExtension;
+            _mameRomDownloadService.LocalRomSourceDirectory = _mameLocalRomSourceDirectory;
+            _mameRomDownloadService.LocalRomArchiveExtension = _mameLocalRomArchiveExtension;
             _keepMameUpToDateAutomatically = preferences.Mame.KeepMameUpToDateAutomatically;
             _debugOutputLamps = preferences.Mame.DebugOutputLamps;
             _debugOutputStdIn = preferences.Mame.DebugOutputStdIn;
@@ -419,6 +425,32 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             if (SetProperty(ref _mameRomArchiveExtension, value))
             {
                 _mameRomDownloadService.ArchiveExtension = value;
+                SavePreferences();
+            }
+        }
+    }
+
+    public string MameLocalRomSourceDirectory
+    {
+        get => _mameLocalRomSourceDirectory;
+        set
+        {
+            if (SetProperty(ref _mameLocalRomSourceDirectory, value))
+            {
+                _mameRomDownloadService.LocalRomSourceDirectory = value;
+                SavePreferences();
+            }
+        }
+    }
+
+    public string MameLocalRomArchiveExtension
+    {
+        get => _mameLocalRomArchiveExtension;
+        set
+        {
+            if (SetProperty(ref _mameLocalRomArchiveExtension, value))
+            {
+                _mameRomDownloadService.LocalRomArchiveExtension = value;
                 SavePreferences();
             }
         }
@@ -1455,7 +1487,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 DebugOutputStdIn = DebugOutputStdIn,
                 DebugOutputStdOut = DebugOutputStdOut,
                 RomDownloadBaseUrl = MameRomDownloadBaseUrl,
-                RomArchiveExtension = MameRomArchiveExtension
+                RomArchiveExtension = MameRomArchiveExtension,
+                LocalRomSourceDirectory = MameLocalRomSourceDirectory,
+                LocalRomArchiveExtension = MameLocalRomArchiveExtension
             },
             OutputLog = new OutputLogPreferences
             {
@@ -1997,6 +2031,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         MameRomDownloadBaseUrl = MameRomDownloadService.DefaultDownloadRootUrl;
         MameRomArchiveExtension = MameRomDownloadService.DefaultArchiveExtension;
+        MameLocalRomSourceDirectory = string.Empty;
+        MameLocalRomArchiveExtension = MameRomDownloadService.DefaultArchiveExtension;
         AddOutputEntry("Reset ROM source preferences to defaults.", OutputLogStatus.Info);
     }
 
@@ -2030,9 +2066,17 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         var downloadUrl = _mameRomDownloadService.BuildDownloadUrl(romName);
         try
         {
+            var localSourcePath = _mameRomDownloadService.GetLocalRomArchivePath(romName);
             var archivePath = await _mameRomDownloadService.DownloadRomAsync(romName, CancellationToken.None);
             MameRomStatus = "Installed";
-            AddOutputEntry($"MAME ROM downloaded to '{archivePath}'.", OutputLogStatus.Info);
+            if (!string.IsNullOrWhiteSpace(localSourcePath) && File.Exists(localSourcePath))
+            {
+                AddOutputEntry($"MAME ROM copied from local source '{localSourcePath}' to '{archivePath}'.", OutputLogStatus.Info);
+            }
+            else
+            {
+                AddOutputEntry($"MAME ROM downloaded to '{archivePath}'.", OutputLogStatus.Info);
+            }
         }
         catch (Exception ex)
         {

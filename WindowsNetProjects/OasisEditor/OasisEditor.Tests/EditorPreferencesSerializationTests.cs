@@ -51,4 +51,21 @@ public sealed class EditorPreferencesSerializationTests
         Assert.False(preferences!.Mame.KeepMameUpToDateAutomatically);
     }
 
+    [Fact]
+    public void DeserializingLegacyPreferences_UsesLocalRomDefaults()
+    {
+        var json = """
+        {
+          "Mame": {
+            "RomDownloadBaseUrl": "https://example.com/roms/"
+          }
+        }
+        """;
+
+        var preferences = JsonSerializer.Deserialize<EditorPreferences>(json);
+
+        Assert.NotNull(preferences);
+        Assert.Equal(string.Empty, preferences!.Mame.LocalRomSourceDirectory);
+        Assert.Equal(".zip", preferences.Mame.LocalRomArchiveExtension);
+    }
 }

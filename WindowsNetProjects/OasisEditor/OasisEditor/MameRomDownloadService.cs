@@ -11,6 +11,8 @@ public sealed class MameRomDownloadService
 
     public string DownloadRootUrl { get; set; } = DefaultDownloadRootUrl;
     public string ArchiveExtension { get; set; } = DefaultArchiveExtension;
+    public string LocalRomSourceDirectory { get; set; } = string.Empty;
+    public string LocalRomArchiveExtension { get; set; } = DefaultArchiveExtension;
 
     public static string GetRomDownloadDirectory()
     {
@@ -59,11 +61,31 @@ public sealed class MameRomDownloadService
         }
 
         Directory.CreateDirectory(GetRomDownloadDirectory());
+        var localSourcePath = GetLocalRomArchivePath(romName);
+        if (!string.IsNullOrWhiteSpace(localSourcePath) && File.Exists(localSourcePath))
+        {
+            File.Copy(localSourcePath, archivePath, overwrite: true);
+            return archivePath;
+        }
+
         var downloadUrl = BuildDownloadUrl(romName);
         await using var sourceStream = await HttpClient.GetStreamAsync(downloadUrl, cancellationToken).ConfigureAwait(false);
         await using var targetStream = File.Create(archivePath);
         await sourceStream.CopyToAsync(targetStream, cancellationToken).ConfigureAwait(false);
         return archivePath;
+    }
+
+    public string GetLocalRomArchivePath(string romName)
+    {
+        if (string.IsNullOrWhiteSpace(LocalRomSourceDirectory))
+        {
+            return string.Empty;
+        }
+
+        var directory = LocalRomSourceDirectory.Trim();
+        var extension = NormalizeArchiveExtension(LocalRomArchiveExtension);
+        var fileName = $"{romName.Trim()}{extension}";
+        return Path.Combine(directory, fileName);
     }
 
     private static string NormalizeDownloadRootUrl(string rootUrl)
