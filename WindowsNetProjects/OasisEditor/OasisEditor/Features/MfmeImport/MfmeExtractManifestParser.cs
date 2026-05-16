@@ -227,6 +227,9 @@ internal static class MfmeExtractManifestParser
             case "extractcomponentalpha":
             case "extractcomponentalphanew":
             case "extractcomponentmatrixalpha":
+            case "mfmeextractalpha":
+            case "mfmeextractalphanew":
+            case "mfmeextractmatrixalpha":
                 parsedComponent = new MfmeLegacyAlphaComponent(
                     sourceType,
                     position,

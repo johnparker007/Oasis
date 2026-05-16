@@ -298,6 +298,51 @@ public sealed class MfmeExtractReaderTests
         return path;
     }
 
+
+    [Fact]
+    public void Read_WithMfmeExtractAlphaType_ParsesAsAlphaComponent()
+    {
+        var extractDirectory = CreateTempDirectory();
+        var manifestPath = Path.Combine(extractDirectory, "layout.json");
+        File.WriteAllText(manifestPath, """
+        {
+          "ASName": "AlphaAlias",
+          "Components": [
+            {
+              "$type": "Oasis.MfmeTools.Shared.ExtractComponents.MfmeExtractAlpha, MfmeTools",
+              "Position": { "X": 13, "Y": 14 },
+              "Size": { "X": 15, "Y": 16 },
+              "Reversed": true
+            }
+          ]
+        }
+        """);
+
+        try
+        {
+            var reader = new FileSystemMfmeExtractReader();
+            var context = new MfmeImportContext
+            {
+                SourceExtractPath = extractDirectory,
+                ProjectRootPath = "C:/Project",
+                ProjectAssetsPath = "C:/Project/Assets",
+                CopyAssets = true
+            };
+
+            var result = reader.Read(context);
+
+            Assert.True(result.Succeeded);
+            Assert.Empty(result.Errors);
+            Assert.Empty(result.Warnings);
+            var alpha = Assert.IsType<MfmeLegacyAlphaComponent>(Assert.Single(result.Extract!.Components));
+            Assert.Equal("MfmeExtractAlpha", alpha.SourceType);
+            Assert.True(alpha.Reversed);
+        }
+        finally
+        {
+            Directory.Delete(extractDirectory, recursive: true);
+        }
+    }
     private static string CreateSupportedComponentsManifestJson()
     {
         return """
