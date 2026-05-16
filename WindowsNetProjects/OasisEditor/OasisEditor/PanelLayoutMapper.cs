@@ -207,7 +207,9 @@ public static class PanelLayoutMapper
                 border.Background = cachedBrush;
             }
 
-            SetOpacityIfChanged(border, effectiveOpacity);
+            // Text-based lamps use brush color to represent on/off state; keep full opacity
+            // so they do not fade into the panel background when lamp test toggles.
+            SetOpacityIfChanged(border, 1d);
         }
         else if (visual is Image image)
         {
