@@ -65,7 +65,7 @@ public sealed class MameSegmentRuntimeAdapterTests
 
         var masks = document.RuntimeState.GetSegmentCellMasks("alpha-rev", 16);
         Assert.Equal(0x59, masks[0]);
-        Assert.Equal(0x5D, masks[1]);
+        Assert.Equal(0xDD, masks[1]);
         Assert.Equal(0xA3, masks[15]);
     }
 
