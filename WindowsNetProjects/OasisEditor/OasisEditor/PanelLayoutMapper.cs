@@ -207,7 +207,7 @@ public static class PanelLayoutMapper
                 border.Background = cachedBrush;
             }
 
-            SetOpacityIfChanged(border, Math.Max(0.1d, normalizedIntensity));
+            SetOpacityIfChanged(border, effectiveOpacity);
         }
         else if (visual is Image image)
         {
