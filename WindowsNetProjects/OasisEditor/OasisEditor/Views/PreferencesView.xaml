@@ -82,6 +82,13 @@
                     <ComboBoxItem Content=".7z" />
                     <ComboBoxItem Content=".zip" />
                 </ComboBox>
+                <TextBlock Margin="0,10,0,4" Text="Local ROM Source Directory" Foreground="{DynamicResource TextSecondaryBrush}" />
+                <TextBox Text="{Binding MameLocalRomSourceDirectory, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                <TextBlock Margin="0,10,0,4" Text="Local ROM Archive Extension" Foreground="{DynamicResource TextSecondaryBrush}" />
+                <ComboBox Width="120" HorizontalAlignment="Left" SelectedValuePath="Content" SelectedValue="{Binding MameLocalRomArchiveExtension, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                    <ComboBoxItem Content=".7z" />
+                    <ComboBoxItem Content=".zip" />
+                </ComboBox>
                 <Button Margin="0,10,0,0" Padding="10,4" Content="Reset ROM Source Defaults" Command="{Binding ResetMameRomSourceDefaultsCommand}" />
 
                 <StackPanel Margin="0,12,0,0" Orientation="Horizontal">

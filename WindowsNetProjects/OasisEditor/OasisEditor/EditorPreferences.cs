@@ -22,6 +22,8 @@ public sealed class MamePreferences
     public bool DebugOutputStdOut { get; init; }
     public string RomDownloadBaseUrl { get; init; } = "https://archive.org/download/MAME215RomsOnlyMerged/";
     public string RomArchiveExtension { get; init; } = ".zip";
+    public string LocalRomSourceDirectory { get; init; } = string.Empty;
+    public string LocalRomArchiveExtension { get; init; } = ".zip";
 }
 
 public sealed class ProjectWindowState

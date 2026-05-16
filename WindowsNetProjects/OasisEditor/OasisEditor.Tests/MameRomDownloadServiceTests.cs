@@ -1,3 +1,4 @@
+using System.IO;
 using Xunit;
 using OasisEditor;
 
@@ -46,5 +47,19 @@ public sealed class MameRomDownloadServiceTests
         };
 
         Assert.Throws<ArgumentException>(() => sut.BuildRomArchiveFileName("mpu4"));
+    }
+
+    [Fact]
+    public void GetLocalRomArchivePath_UsesConfiguredDirectoryAndExtension()
+    {
+        var sut = new MameRomDownloadService
+        {
+            LocalRomSourceDirectory = "C:/MAME_ROMS_0261/",
+            LocalRomArchiveExtension = ".7z"
+        };
+
+        var path = sut.GetLocalRomArchivePath("mpu4");
+
+        Assert.Equal(Path.Combine("C:/MAME_ROMS_0261/", "mpu4.7z"), path);
     }
 }
