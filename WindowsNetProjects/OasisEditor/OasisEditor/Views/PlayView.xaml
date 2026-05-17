@@ -26,6 +26,11 @@
                     PreviewKeyUp="OnPlayCanvasPreviewKeyUp"
                     PreviewMouseLeftButtonDown="OnPlayCanvasPreviewMouseLeftButtonDown"
                     PreviewMouseLeftButtonUp="OnPlayCanvasPreviewMouseLeftButtonUp"
+                    MouseDown="OnPlayCanvasMouseDown"
+                    MouseMove="OnPlayCanvasMouseMove"
+                    MouseUp="OnPlayCanvasMouseUp"
+                    MouseWheel="OnPlayCanvasMouseWheel"
+                    LostMouseCapture="OnPlayCanvasLostMouseCapture"
                     LostKeyboardFocus="OnPlayCanvasLostKeyboardFocus"
                     Unloaded="OnPlayCanvasUnloaded" />
         </Border>

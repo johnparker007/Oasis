@@ -124,6 +124,32 @@ public partial class PlayView : UserControl
         await ViewModel.TryHandlePlayViewPointerUpAsync(visualElementId, isFocused: true, CancellationToken.None);
     }
 
+
+    private void OnPlayCanvasMouseDown(object sender, MouseButtonEventArgs eventArgs)
+    {
+        CanvasPanZoomBehavior.HandleMouseDown(PlayCanvas, eventArgs);
+    }
+
+    private void OnPlayCanvasMouseMove(object sender, MouseEventArgs eventArgs)
+    {
+        CanvasPanZoomBehavior.HandleMouseMove(PlayCanvas, eventArgs);
+    }
+
+    private void OnPlayCanvasMouseUp(object sender, MouseButtonEventArgs eventArgs)
+    {
+        CanvasPanZoomBehavior.HandleMouseUp(PlayCanvas, eventArgs);
+    }
+
+    private void OnPlayCanvasMouseWheel(object sender, MouseWheelEventArgs eventArgs)
+    {
+        CanvasPanZoomBehavior.HandleMouseWheel(PlayCanvas, eventArgs);
+    }
+
+    private void OnPlayCanvasLostMouseCapture(object sender, MouseEventArgs eventArgs)
+    {
+        CanvasPanZoomBehavior.HandleLostMouseCapture(PlayCanvas);
+    }
+
     private async void OnPlayCanvasLostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs eventArgs)
     {
         if (ViewModel is null)
