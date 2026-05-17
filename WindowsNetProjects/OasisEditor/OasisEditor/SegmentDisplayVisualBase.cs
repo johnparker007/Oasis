@@ -63,18 +63,8 @@ internal abstract class SegmentDisplayVisualBase : FrameworkElement
 
                 var lit = (segmentMask & (1 << segment.Index)) != 0;
                 drawingContext.PushTransform(cellTransform);
-                if (lit)
-                {
-                    drawingContext.PushOpacity(brightness);
-                }
-
-                drawingContext.DrawGeometry(lit ? LitBrush : UnlitBrush, SegmentPen, segment.Geometry);
-
-                if (lit)
-                {
-                    drawingContext.Pop();
-                }
-
+                var brush = lit ? ResolveLitBrush(brightness) : UnlitBrush;
+                drawingContext.DrawGeometry(brush, SegmentPen, segment.Geometry);
                 drawingContext.Pop();
             }
 
@@ -85,6 +75,41 @@ internal abstract class SegmentDisplayVisualBase : FrameworkElement
                 drawingContext.Pop();
             }
         }
+    }
+
+
+    private Brush ResolveLitBrush(double brightness)
+    {
+        if (brightness >= 0.9999d)
+        {
+            return LitBrush;
+        }
+
+        if (brightness <= 0.0001d)
+        {
+            return UnlitBrush;
+        }
+
+        if (LitBrush is SolidColorBrush litSolid && UnlitBrush is SolidColorBrush unlitSolid)
+        {
+            var color = InterpolateColor(unlitSolid.Color, litSolid.Color, brightness);
+            var interpolated = new SolidColorBrush(color);
+            interpolated.Freeze();
+            return interpolated;
+        }
+
+        return LitBrush;
+    }
+
+    private static Color InterpolateColor(Color from, Color to, double t)
+    {
+        byte lerp(byte a, byte b) => (byte)Math.Clamp(Math.Round(a + ((b - a) * t)), 0d, 255d);
+
+        return Color.FromArgb(
+            lerp(from.A, to.A),
+            lerp(from.R, to.R),
+            lerp(from.G, to.G),
+            lerp(from.B, to.B));
     }
 
     protected abstract int GetSegmentMaskForChar(char c);
