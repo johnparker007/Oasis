@@ -23,9 +23,10 @@ public sealed class PlayViewKeyboardInputRouter
 
             _inputById[input.Id] = input;
 
-            if (!string.IsNullOrWhiteSpace(input.KeyboardShortcut) && !_shortcutToInputId.ContainsKey(input.KeyboardShortcut))
+            var normalizedShortcut = MfmeShortcutKeyMapper.NormalizeShortcutForRouting(input.KeyboardShortcut);
+            if (!string.IsNullOrWhiteSpace(normalizedShortcut) && !_shortcutToInputId.ContainsKey(normalizedShortcut))
             {
-                _shortcutToInputId[input.KeyboardShortcut] = input.Id;
+                _shortcutToInputId[normalizedShortcut] = input.Id;
             }
         }
     }

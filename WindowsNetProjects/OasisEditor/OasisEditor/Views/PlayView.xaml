@@ -8,6 +8,7 @@
              PreviewMouseDown="OnRootPreviewMouseDown"
              PreviewKeyDown="OnRootPreviewKeyDown"
              PreviewKeyUp="OnRootPreviewKeyUp"
+             PreviewTextInput="OnRootPreviewTextInput"
              d:DesignHeight="450"
              d:DesignWidth="700">
     <Grid>
@@ -24,6 +25,7 @@
                     PreviewMouseDown="OnPlayCanvasPreviewMouseDown"
                     PreviewKeyDown="OnPlayCanvasPreviewKeyDown"
                     PreviewKeyUp="OnPlayCanvasPreviewKeyUp"
+                    PreviewTextInput="OnPlayCanvasPreviewTextInput"
                     PreviewMouseLeftButtonDown="OnPlayCanvasPreviewMouseLeftButtonDown"
                     PreviewMouseLeftButtonUp="OnPlayCanvasPreviewMouseLeftButtonUp"
                     MouseDown="OnPlayCanvasMouseDown"
