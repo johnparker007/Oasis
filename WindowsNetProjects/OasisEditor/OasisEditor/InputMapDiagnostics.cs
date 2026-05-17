@@ -33,6 +33,7 @@ public sealed class InputMapDiagnosticsService : IInputMapDiagnosticsService
 
         var diagnostics = new List<InputMapDiagnostic>();
         var keyToInputs = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+        var linkedVisualToInputs = new Dictionary<Guid, List<string>>();
 
         foreach (var input in inputs)
         {
@@ -60,6 +61,17 @@ public sealed class InputMapDiagnosticsService : IInputMapDiagnosticsService
 
                 ids.Add(input.Id);
             }
+
+            if (input.LinkedVisualElementId is Guid linkedVisualId)
+            {
+                if (!linkedVisualToInputs.TryGetValue(linkedVisualId, out var linkedInputIds))
+                {
+                    linkedInputIds = [];
+                    linkedVisualToInputs[linkedVisualId] = linkedInputIds;
+                }
+
+                linkedInputIds.Add(input.Id);
+            }
         }
 
         foreach (var pair in keyToInputs)
@@ -74,6 +86,23 @@ public sealed class InputMapDiagnosticsService : IInputMapDiagnosticsService
                 diagnostics.Add(new InputMapDiagnostic(
                     "input.duplicate_shortcut",
                     $"Keyboard shortcut '{pair.Key}' is used by multiple input definitions.",
+                    inputId,
+                    InputMapDiagnosticSeverity.Warning));
+            }
+        }
+
+        foreach (var pair in linkedVisualToInputs)
+        {
+            if (pair.Value.Count <= 1)
+            {
+                continue;
+            }
+
+            foreach (var inputId in pair.Value)
+            {
+                diagnostics.Add(new InputMapDiagnostic(
+                    "input.duplicate_linked_visual",
+                    $"Linked visual '{pair.Key}' is referenced by multiple input definitions.",
                     inputId,
                     InputMapDiagnosticSeverity.Warning));
             }
