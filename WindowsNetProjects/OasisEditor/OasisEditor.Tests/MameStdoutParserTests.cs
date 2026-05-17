@@ -84,6 +84,23 @@ public sealed class MameStdoutParserTests
         Assert.Equal(16, call.Mask);
     }
 
+
+    [Fact]
+    public void ProcessLine_WhenVfdDutyLine_DoesNotLogUnhandledDiagnostic()
+    {
+        var lampAdapter = new RecordingLampAdapter();
+        var reelAdapter = new RecordingReelAdapter();
+        var segmentAdapter = new RecordingSegmentAdapter();
+        string? diagnostic = null;
+        var parser = new MameStdoutParser(new MameLampStateParser(), lampAdapter, new MameReelStateParser(), reelAdapter, new MameSegmentStateParser(), segmentAdapter, () => FruitMachinePlatformType.MPU4, message => diagnostic = message);
+
+        parser.ProcessLine("vfdduty0 = 31");
+
+        Assert.Empty(lampAdapter.Calls);
+        Assert.Empty(reelAdapter.Calls);
+        Assert.Empty(segmentAdapter.Calls);
+        Assert.Null(diagnostic);
+    }
     private sealed class RecordingLampAdapter : IMameLampRuntimeAdapter
     {
         public List<(int LampId, int Value)> Calls { get; } = [];

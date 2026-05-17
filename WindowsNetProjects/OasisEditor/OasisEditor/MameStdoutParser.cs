@@ -8,9 +8,11 @@ public sealed class MameStdoutParser : IMameStdoutParser
     private readonly IMameReelRuntimeAdapter _reelRuntimeAdapter;
     private readonly IMameSegmentStateParser _segmentStateParser;
     private readonly IMameSegmentRuntimeAdapter _segmentRuntimeAdapter;
+    private readonly MameVfdDutyParser _vfdDutyParser;
+    private readonly Func<FruitMachinePlatformType> _platformProvider;
     private readonly Action<string>? _diagnosticLogger;
 
-    public MameStdoutParser(IMameLampStateParser lampStateParser, IMameLampRuntimeAdapter lampRuntimeAdapter, IMameReelStateParser reelStateParser, IMameReelRuntimeAdapter reelRuntimeAdapter, IMameSegmentStateParser segmentStateParser, IMameSegmentRuntimeAdapter segmentRuntimeAdapter, Action<string>? diagnosticLogger = null)
+    public MameStdoutParser(IMameLampStateParser lampStateParser, IMameLampRuntimeAdapter lampRuntimeAdapter, IMameReelStateParser reelStateParser, IMameReelRuntimeAdapter reelRuntimeAdapter, IMameSegmentStateParser segmentStateParser, IMameSegmentRuntimeAdapter segmentRuntimeAdapter, Func<FruitMachinePlatformType>? platformProvider = null, Action<string>? diagnosticLogger = null)
     {
         _lampStateParser = lampStateParser ?? throw new ArgumentNullException(nameof(lampStateParser));
         _lampRuntimeAdapter = lampRuntimeAdapter ?? throw new ArgumentNullException(nameof(lampRuntimeAdapter));
@@ -18,6 +20,8 @@ public sealed class MameStdoutParser : IMameStdoutParser
         _reelRuntimeAdapter = reelRuntimeAdapter ?? throw new ArgumentNullException(nameof(reelRuntimeAdapter));
         _segmentStateParser = segmentStateParser ?? throw new ArgumentNullException(nameof(segmentStateParser));
         _segmentRuntimeAdapter = segmentRuntimeAdapter ?? throw new ArgumentNullException(nameof(segmentRuntimeAdapter));
+        _vfdDutyParser = new MameVfdDutyParser();
+        _platformProvider = platformProvider ?? (() => FruitMachinePlatformType.MPU4);
         _diagnosticLogger = diagnosticLogger;
     }
 
@@ -43,6 +47,11 @@ public sealed class MameStdoutParser : IMameStdoutParser
         if (_segmentStateParser.TryParse(line, out var cellId, out var segmentMask, out var outputType))
         {
             _segmentRuntimeAdapter.ApplySegmentState(cellId, segmentMask, outputType);
+            return;
+        }
+
+        if (_vfdDutyParser.TryParseNormalized(line, _platformProvider(), out _, out _))
+        {
             return;
         }
 
