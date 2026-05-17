@@ -1205,6 +1205,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public async Task<bool> TryHandlePlayViewKeyDownAsync(string keyboardShortcut, bool isFocused, bool isRepeat, CancellationToken cancellationToken)
     {
+        var canRoute = EnsurePlayViewInputRouter();
         var router = EnsurePlayViewKeyboardInputRouter();
         if (router is null)
         {
@@ -1212,7 +1213,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         var handled = await router.TryHandleKeyDownAsync(SelectedFruitMachinePlatform, keyboardShortcut, isFocused, isRepeat, cancellationToken).ConfigureAwait(false);
-        if (!handled && isFocused && !isRepeat && !string.IsNullOrWhiteSpace(keyboardShortcut))
+        if (!handled && canRoute && isFocused && !isRepeat && !string.IsNullOrWhiteSpace(keyboardShortcut))
         {
             AddOutputEntry($"Play View key input unresolved: '{keyboardShortcut}' on platform '{SelectedFruitMachinePlatform}'.", OutputLogStatus.Warning);
         }
@@ -1233,6 +1234,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public async Task<bool> TryHandlePlayViewPointerDownAsync(Guid visualElementId, bool isFocused, CancellationToken cancellationToken)
     {
+        var canRoute = EnsurePlayViewInputRouter();
         var router = EnsurePlayViewPointerInputRouter();
         if (router is null)
         {
@@ -1240,7 +1242,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         var handled = await router.TryHandlePointerDownAsync(SelectedFruitMachinePlatform, visualElementId, isFocused, cancellationToken).ConfigureAwait(false);
-        if (!handled && isFocused)
+        if (!handled && canRoute && isFocused)
         {
             AddOutputEntry($"Play View pointer input unresolved for visual '{visualElementId}' on platform '{SelectedFruitMachinePlatform}'.", OutputLogStatus.Warning);
         }

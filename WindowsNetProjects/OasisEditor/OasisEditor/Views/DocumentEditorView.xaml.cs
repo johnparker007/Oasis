@@ -23,7 +23,8 @@ public partial class DocumentEditorView : UserControl
             return;
         }
 
-        var handled = await vm.TryHandlePlayViewKeyDownAsync(eventArgs.Key.ToString(), isFocused: true, eventArgs.IsRepeat, CancellationToken.None);
+        var shortcut = ResolveShortcutKey(eventArgs);
+        var handled = await vm.TryHandlePlayViewKeyDownAsync(shortcut, isFocused: true, eventArgs.IsRepeat, CancellationToken.None);
         if (handled)
         {
             eventArgs.Handled = true;
@@ -38,7 +39,8 @@ public partial class DocumentEditorView : UserControl
             return;
         }
 
-        var handled = await vm.TryHandlePlayViewKeyUpAsync(eventArgs.Key.ToString(), isFocused: true, CancellationToken.None);
+        var shortcut = ResolveShortcutKey(eventArgs);
+        var handled = await vm.TryHandlePlayViewKeyUpAsync(shortcut, isFocused: true, CancellationToken.None);
         if (handled)
         {
             eventArgs.Handled = true;
@@ -107,5 +109,11 @@ public partial class DocumentEditorView : UserControl
 
         visualElementId = Guid.Empty;
         return false;
+    }
+
+    private static string ResolveShortcutKey(KeyEventArgs eventArgs)
+    {
+        var key = eventArgs.Key == Key.System ? eventArgs.SystemKey : eventArgs.Key;
+        return key.ToString();
     }
 }
