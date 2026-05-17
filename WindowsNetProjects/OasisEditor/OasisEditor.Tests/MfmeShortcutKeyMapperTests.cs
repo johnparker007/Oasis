@@ -12,6 +12,7 @@ public sealed class MfmeShortcutKeyMapperTests
     [InlineData("RIGHT", Key.Right)]
     [InlineData("ctrl", Key.LeftCtrl)]
     [InlineData("ALT ", Key.LeftAlt)]
+    [InlineData("`", Key.Oem3)]
     public void TryMap_WithSupportedShortcuts_ReturnsMappedKey(string raw, Key expected)
     {
         var ok = MfmeShortcutKeyMapper.TryMap(raw, out var key);
@@ -31,5 +32,14 @@ public sealed class MfmeShortcutKeyMapperTests
 
         Assert.False(ok);
         Assert.Equal(Key.None, key);
+    }
+
+    [Fact]
+    public void TryMapKeyToMfmeShortcut_WithOem3_ReturnsBacktick()
+    {
+        var ok = MfmeShortcutKeyMapper.TryMapKeyToMfmeShortcut(Key.Oem3, out var shortcut);
+
+        Assert.True(ok);
+        Assert.Equal("`", shortcut);
     }
 }

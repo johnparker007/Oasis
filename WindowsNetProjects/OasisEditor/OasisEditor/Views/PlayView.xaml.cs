@@ -259,7 +259,10 @@ public partial class PlayView : UserControl
         }
 
         var key = eventArgs.Key == Key.System ? eventArgs.SystemKey : eventArgs.Key;
-        var handled = await ViewModel.TryHandlePlayViewKeyDownAsync(key.ToString(), isFocused: true, eventArgs.IsRepeat, CancellationToken.None);
+        var shortcut = MfmeShortcutKeyMapper.TryMapKeyToMfmeShortcut(key, out var mappedShortcut)
+            ? mappedShortcut
+            : key.ToString();
+        var handled = await ViewModel.TryHandlePlayViewKeyDownAsync(shortcut, isFocused: true, eventArgs.IsRepeat, CancellationToken.None);
         if (handled)
         {
             eventArgs.Handled = true;
@@ -274,7 +277,10 @@ public partial class PlayView : UserControl
         }
 
         var key = eventArgs.Key == Key.System ? eventArgs.SystemKey : eventArgs.Key;
-        var handled = await ViewModel.TryHandlePlayViewKeyUpAsync(key.ToString(), isFocused: true, CancellationToken.None);
+        var shortcut = MfmeShortcutKeyMapper.TryMapKeyToMfmeShortcut(key, out var mappedShortcut)
+            ? mappedShortcut
+            : key.ToString();
+        var handled = await ViewModel.TryHandlePlayViewKeyUpAsync(shortcut, isFocused: true, CancellationToken.None);
         if (handled)
         {
             eventArgs.Handled = true;

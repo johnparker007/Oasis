@@ -156,9 +156,9 @@ internal sealed class MfmeToOasisComponentMapper
 
         var rawShortcut = component.Shortcut1?.Trim() ?? string.Empty;
         var keyboardShortcut = string.Empty;
-        if (MfmeShortcutKeyMapper.TryMap(rawShortcut, out var mappedKey))
+        if (MfmeShortcutKeyMapper.TryMap(rawShortcut, out _))
         {
-            keyboardShortcut = mappedKey.ToString();
+            keyboardShortcut = rawShortcut.ToUpperInvariant();
         }
 
         return new InputDefinitionModel
