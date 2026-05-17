@@ -258,7 +258,7 @@ public partial class PlayView : UserControl
             return;
         }
 
-        var key = eventArgs.Key == Key.System ? eventArgs.SystemKey : eventArgs.Key;
+        var key = ResolveKey(eventArgs);
         var shortcut = MfmeShortcutKeyMapper.TryMapKeyToMfmeShortcut(key, out var mappedShortcut)
             ? mappedShortcut
             : key.ToString();
@@ -276,7 +276,7 @@ public partial class PlayView : UserControl
             return;
         }
 
-        var key = eventArgs.Key == Key.System ? eventArgs.SystemKey : eventArgs.Key;
+        var key = ResolveKey(eventArgs);
         var shortcut = MfmeShortcutKeyMapper.TryMapKeyToMfmeShortcut(key, out var mappedShortcut)
             ? mappedShortcut
             : key.ToString();
@@ -324,5 +324,20 @@ public partial class PlayView : UserControl
         {
             _ = TryRouteKeyUpAsync(keyEventArgs);
         }
+    }
+
+    private static Key ResolveKey(KeyEventArgs eventArgs)
+    {
+        if (eventArgs.Key == Key.System)
+        {
+            return eventArgs.SystemKey;
+        }
+
+        if (eventArgs.Key == Key.ImeProcessed)
+        {
+            return eventArgs.ImeProcessedKey;
+        }
+
+        return eventArgs.Key;
     }
 }
