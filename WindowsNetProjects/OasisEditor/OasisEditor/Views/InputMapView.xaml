@@ -7,7 +7,13 @@
              d:DesignHeight="320"
              d:DesignWidth="700">
     <Grid>
-        <DataGrid ItemsSource="{Binding InputDefinitions}"
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <DataGrid Grid.Row="0"
+                  ItemsSource="{Binding InputDefinitions}"
                   AutoGenerateColumns="False"
                   IsReadOnly="True"
                   CanUserAddRows="False"
@@ -31,5 +37,30 @@
                 <DataGridTextColumn Header="Notes" Binding="{Binding Notes}" Width="1.3*" />
             </DataGrid.Columns>
         </DataGrid>
+
+        <Border Grid.Row="1"
+                Margin="0,8,0,0"
+                Padding="8"
+                BorderBrush="{DynamicResource DividerBrush}"
+                BorderThickness="1"
+                Background="{DynamicResource SurfaceRaisedBrush}">
+            <StackPanel>
+                <TextBlock FontWeight="SemiBold"
+                           Text="Input Map Diagnostics" />
+                <ItemsControl Margin="0,6,0,0"
+                              ItemsSource="{Binding InputMapDiagnostics}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock TextWrapping="Wrap">
+                                <Run Text="[" />
+                                <Run Text="{Binding Severity}" />
+                                <Run Text="] " />
+                                <Run Text="{Binding Message}" />
+                            </TextBlock>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
     </Grid>
 </UserControl>
