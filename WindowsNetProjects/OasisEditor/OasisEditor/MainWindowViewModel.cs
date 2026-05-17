@@ -106,6 +106,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OpenPreferencesCommand = new RelayCommand(OpenPreferences);
         OpenProjectSettingsCommand = new RelayCommand(OpenProjectSettings);
         OpenInputMapCommand = new RelayCommand(OpenInputMap);
+        OpenPlayViewCommand = new RelayCommand(OpenPlayView);
         ClosePreferencesCommand = new RelayCommand(ClosePreferences);
         BrowseMameExecutableCommand = new RelayCommand(BrowseMameExecutable);
         ValidateMamePreferencesCommand = new RelayCommand(ValidateMamePreferences);
@@ -378,6 +379,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand OpenPreferencesCommand { get; }
     public ICommand OpenProjectSettingsCommand { get; }
     public ICommand OpenInputMapCommand { get; }
+    public ICommand OpenPlayViewCommand { get; }
     public ICommand ClosePreferencesCommand { get; }
     public ICommand BrowseMameExecutableCommand { get; }
     public ICommand ValidateMamePreferencesCommand { get; }
@@ -1727,6 +1729,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         ToolWindowOpenRequested?.Invoke(EditorToolWindowId.InputMap);
         AddOutputEntry("Opened Input Map pane.", OutputLogStatus.Info);
+    }
+
+    private void OpenPlayView()
+    {
+        ToolWindowOpenRequested?.Invoke(EditorToolWindowId.PlayView);
+        AddOutputEntry("Opened Play View pane.", OutputLogStatus.Info);
     }
 
     private void ClosePreferences()

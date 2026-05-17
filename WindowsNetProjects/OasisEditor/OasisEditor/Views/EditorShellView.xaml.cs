@@ -10,6 +10,7 @@ public partial class EditorShellView : UserControl
     private bool _preferencesHideOnCloseConfigured;
     private bool _projectSettingsHideOnCloseConfigured;
     private bool _inputMapHideOnCloseConfigured;
+    private bool _playViewHideOnCloseConfigured;
 
     public EditorShellView()
     {
@@ -18,6 +19,7 @@ public partial class EditorShellView : UserControl
         HideToolWindow(EditorToolWindowId.Preferences);
         HideToolWindow(EditorToolWindowId.ProjectSettings);
         HideToolWindow(EditorToolWindowId.InputMap);
+        HideToolWindow(EditorToolWindowId.PlayView);
     }
 
     public void ShowOrFocusToolWindow(EditorToolWindowId toolWindowId)
@@ -40,7 +42,7 @@ public partial class EditorShellView : UserControl
             target.Show();
         }
 
-        if (toolWindowId is EditorToolWindowId.Preferences or EditorToolWindowId.ProjectSettings or EditorToolWindowId.InputMap)
+        if (toolWindowId is EditorToolWindowId.Preferences or EditorToolWindowId.ProjectSettings or EditorToolWindowId.InputMap or EditorToolWindowId.PlayView)
         {
             target.Float();
         }
@@ -86,6 +88,7 @@ public partial class EditorShellView : UserControl
         ConfigureHideOnClose(EditorToolWindowId.Preferences);
         ConfigureHideOnClose(EditorToolWindowId.ProjectSettings);
         ConfigureHideOnClose(EditorToolWindowId.InputMap);
+        ConfigureHideOnClose(EditorToolWindowId.PlayView);
 
         if (DataContext is not MainWindowViewModel viewModel)
         {
@@ -126,6 +129,11 @@ public partial class EditorShellView : UserControl
             return;
         }
 
+        if (toolWindowId == EditorToolWindowId.PlayView && _playViewHideOnCloseConfigured)
+        {
+            return;
+        }
+
         target.Closing += OnToolWindowClosingHideInstead;
 
         if (toolWindowId == EditorToolWindowId.Preferences)
@@ -139,6 +147,10 @@ public partial class EditorShellView : UserControl
         else if (toolWindowId == EditorToolWindowId.InputMap)
         {
             _inputMapHideOnCloseConfigured = true;
+        }
+        else if (toolWindowId == EditorToolWindowId.PlayView)
+        {
+            _playViewHideOnCloseConfigured = true;
         }
     }
 

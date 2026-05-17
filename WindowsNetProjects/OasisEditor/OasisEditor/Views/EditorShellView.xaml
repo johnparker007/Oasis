@@ -49,6 +49,15 @@
                                 </Border>
                             </layout:LayoutAnchorable>
 
+                            <layout:LayoutAnchorable Title="Play View"
+                                                     ContentId="PlayView"
+                                                     CanClose="True">
+                                <Border Padding="10"
+                                        Background="{DynamicResource InspectorBackgroundBrush}">
+                                    <views:PlayView />
+                                </Border>
+                            </layout:LayoutAnchorable>
+
                         </layout:LayoutAnchorablePane>
 
                         <layout:LayoutDocumentPane x:Name="DocumentPane" />

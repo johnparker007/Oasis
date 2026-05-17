@@ -6,6 +6,7 @@ public enum EditorToolWindowId
     Hierarchy,
     Inspector,
     Output,
+    PlayView,
     Preferences,
     ProjectSettings,
     InputMap

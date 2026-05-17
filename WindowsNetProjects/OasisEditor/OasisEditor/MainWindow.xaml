@@ -130,6 +130,8 @@
                           Click="OnInspectorWindowMenuItemClicked" />
                 <MenuItem Header="_Output"
                           Click="OnOutputWindowMenuItemClicked" />
+                <MenuItem Header="_Play View"
+                          Command="{Binding OpenPlayViewCommand}" />
                 <MenuItem Header="_Input Map"
                           Command="{Binding OpenInputMapCommand}" />
             </MenuItem>

@@ -1,0 +1,35 @@
+<UserControl x:Class="OasisEditor.Views.PlayView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignHeight="450"
+             d:DesignWidth="700">
+    <Grid>
+        <Border x:Name="PanelHostBorder"
+                Padding="8"
+                Background="{DynamicResource EditorBackgroundBrush}"
+                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                BorderThickness="1">
+            <Canvas x:Name="PlayCanvas"
+                    Width="1400"
+                    Height="900"
+                    Background="{DynamicResource PanelBackgroundBrush}"
+                    Focusable="True"
+                    PreviewKeyDown="OnPlayCanvasPreviewKeyDown"
+                    PreviewKeyUp="OnPlayCanvasPreviewKeyUp"
+                    PreviewMouseLeftButtonDown="OnPlayCanvasPreviewMouseLeftButtonDown"
+                    PreviewMouseLeftButtonUp="OnPlayCanvasPreviewMouseLeftButtonUp"
+                    LostKeyboardFocus="OnPlayCanvasLostKeyboardFocus"
+                    Unloaded="OnPlayCanvasUnloaded" />
+        </Border>
+
+        <TextBlock x:Name="EmptyStateText"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   Foreground="{DynamicResource TextSecondaryBrush}"
+                   Text="Open and select a Panel2D document to use Play View."
+                   IsHitTestVisible="False" />
+    </Grid>
+</UserControl>
