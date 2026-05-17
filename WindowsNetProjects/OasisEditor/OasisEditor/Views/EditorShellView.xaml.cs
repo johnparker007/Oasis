@@ -9,6 +9,7 @@ public partial class EditorShellView : UserControl
 {
     private bool _preferencesHideOnCloseConfigured;
     private bool _projectSettingsHideOnCloseConfigured;
+    private bool _inputMapHideOnCloseConfigured;
 
     public EditorShellView()
     {
@@ -16,6 +17,7 @@ public partial class EditorShellView : UserControl
         Loaded += OnLoaded;
         HideToolWindow(EditorToolWindowId.Preferences);
         HideToolWindow(EditorToolWindowId.ProjectSettings);
+        HideToolWindow(EditorToolWindowId.InputMap);
     }
 
     public void ShowOrFocusToolWindow(EditorToolWindowId toolWindowId)
@@ -38,7 +40,7 @@ public partial class EditorShellView : UserControl
             target.Show();
         }
 
-        if (toolWindowId is EditorToolWindowId.Preferences or EditorToolWindowId.ProjectSettings)
+        if (toolWindowId is EditorToolWindowId.Preferences or EditorToolWindowId.ProjectSettings or EditorToolWindowId.InputMap)
         {
             target.Float();
         }
@@ -83,6 +85,7 @@ public partial class EditorShellView : UserControl
     {
         ConfigureHideOnClose(EditorToolWindowId.Preferences);
         ConfigureHideOnClose(EditorToolWindowId.ProjectSettings);
+        ConfigureHideOnClose(EditorToolWindowId.InputMap);
 
         if (DataContext is not MainWindowViewModel viewModel)
         {
@@ -118,6 +121,11 @@ public partial class EditorShellView : UserControl
             return;
         }
 
+        if (toolWindowId == EditorToolWindowId.InputMap && _inputMapHideOnCloseConfigured)
+        {
+            return;
+        }
+
         target.Closing += OnToolWindowClosingHideInstead;
 
         if (toolWindowId == EditorToolWindowId.Preferences)
@@ -127,6 +135,10 @@ public partial class EditorShellView : UserControl
         else if (toolWindowId == EditorToolWindowId.ProjectSettings)
         {
             _projectSettingsHideOnCloseConfigured = true;
+        }
+        else if (toolWindowId == EditorToolWindowId.InputMap)
+        {
+            _inputMapHideOnCloseConfigured = true;
         }
     }
 

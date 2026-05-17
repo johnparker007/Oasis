@@ -7,5 +7,6 @@ public enum EditorToolWindowId
     Inspector,
     Output,
     Preferences,
-    ProjectSettings
+    ProjectSettings,
+    InputMap
 }

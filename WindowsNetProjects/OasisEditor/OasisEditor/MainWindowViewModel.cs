@@ -99,6 +99,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         CloseSelectedDocumentCommand = new RelayCommand(CloseSelectedDocument, CanCloseSelectedDocument);
         OpenPreferencesCommand = new RelayCommand(OpenPreferences);
         OpenProjectSettingsCommand = new RelayCommand(OpenProjectSettings);
+        OpenInputMapCommand = new RelayCommand(OpenInputMap);
         ClosePreferencesCommand = new RelayCommand(ClosePreferences);
         BrowseMameExecutableCommand = new RelayCommand(BrowseMameExecutable);
         ValidateMamePreferencesCommand = new RelayCommand(ValidateMamePreferences);
@@ -364,6 +365,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand ClearOutputCommand { get; }
     public ICommand OpenPreferencesCommand { get; }
     public ICommand OpenProjectSettingsCommand { get; }
+    public ICommand OpenInputMapCommand { get; }
     public ICommand ClosePreferencesCommand { get; }
     public ICommand BrowseMameExecutableCommand { get; }
     public ICommand ValidateMamePreferencesCommand { get; }
@@ -393,6 +395,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public IReadOnlyList<ThemePreference> ThemePreferences { get; } = Enum.GetValues<ThemePreference>();
     public IReadOnlyList<string> PreferencesCategories { get; } = ["Appearance", "MAME"];
     public IReadOnlyList<FruitMachinePlatformType> FruitMachinePlatformTypes { get; } = Enum.GetValues<FruitMachinePlatformType>();
+    public IReadOnlyList<InputDefinitionModel> InputDefinitions => LoadedProject?.InputDefinitions ?? [];
 
 
     public FruitMachinePlatformType SelectedFruitMachinePlatform
@@ -616,6 +619,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             if (SetProperty(ref _loadedProject, value))
             {
                 OnPropertyChanged(nameof(HasLoadedProject));
+                OnPropertyChanged(nameof(InputDefinitions));
                 NotifyInspectorChanged();
                 NotifyDocumentCommands();
             }
@@ -1565,6 +1569,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         AddOutputEntry("Opened Project Settings pane.", OutputLogStatus.Info);
     }
 
+    private void OpenInputMap()
+    {
+        ToolWindowOpenRequested?.Invoke(EditorToolWindowId.InputMap);
+        AddOutputEntry("Opened Input Map pane.", OutputLogStatus.Info);
+    }
+
     private void ClosePreferences()
     {
         ToolWindowCloseRequested?.Invoke(EditorToolWindowId.Preferences);
@@ -1941,6 +1951,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             {
                 writer.WriteStartObject();
                 var wroteProjectSettings = false;
+                var wroteInputDefinitions = false;
 
                 foreach (var property in projectDocument.RootElement.EnumerateObject())
                 {
@@ -1954,6 +1965,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
                     if (property.NameEquals("input_definitions"))
                     {
+                        wroteInputDefinitions = true;
                         writer.WritePropertyName("input_definitions");
                         WriteInputDefinitions(writer, LoadedProject.InputDefinitions);
                         continue;
@@ -1972,8 +1984,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                     writer.WriteEndObject();
                 }
 
-                writer.WritePropertyName("input_definitions");
-                WriteInputDefinitions(writer, LoadedProject.InputDefinitions);
+                if (!wroteInputDefinitions)
+                {
+                    writer.WritePropertyName("input_definitions");
+                    WriteInputDefinitions(writer, LoadedProject.InputDefinitions);
+                }
 
                 writer.WriteEndObject();
             }

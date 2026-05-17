@@ -130,6 +130,8 @@
                           Click="OnInspectorWindowMenuItemClicked" />
                 <MenuItem Header="_Output"
                           Click="OnOutputWindowMenuItemClicked" />
+                <MenuItem Header="_Input Map"
+                          Command="{Binding OpenInputMapCommand}" />
             </MenuItem>
             <MenuItem Header="_Emulation">
                 <MenuItem Header="_Start"

@@ -39,6 +39,16 @@
                                     <views:HierarchyView />
                                 </Border>
                             </layout:LayoutAnchorable>
+
+                            <layout:LayoutAnchorable Title="Input Map"
+                                                     ContentId="InputMap"
+                                                     CanClose="True">
+                                <Border Padding="10"
+                                        Background="{DynamicResource InspectorBackgroundBrush}">
+                                    <views:InputMapView />
+                                </Border>
+                            </layout:LayoutAnchorable>
+
                         </layout:LayoutAnchorablePane>
 
                         <layout:LayoutDocumentPane x:Name="DocumentPane" />
