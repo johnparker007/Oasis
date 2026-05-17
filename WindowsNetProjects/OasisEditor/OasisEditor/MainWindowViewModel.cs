@@ -66,11 +66,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly IMameVersionCatalogService _mameVersionCatalogService;
     private bool _isLoadingPreferences;
     private readonly IMameEmulationService _mameEmulationService;
+    private readonly IMameProcessRunner _mameProcessRunner;
     private MameSetupState _mameSetupState = MameSetupState.NotStarted;
     private bool _isAutoProvisioningMame;
     private MameEmulationState _mameEmulationState = MameEmulationState.Stopped;
     private readonly IInputMapDiagnosticsService _inputMapDiagnosticsService = new InputMapDiagnosticsService(new MameInputPortResolver());
     private IReadOnlyList<InputMapDiagnostic> _inputMapDiagnostics = [];
+    private PlayViewInputRouter? _playViewInputRouter;
+    private PlayViewKeyboardInputRouter? _playViewKeyboardInputRouter;
+    private PlayViewPointerInputRouter? _playViewPointerInputRouter;
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<EditorToolWindowId>? ToolWindowOpenRequested;
@@ -102,6 +106,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OpenPreferencesCommand = new RelayCommand(OpenPreferences);
         OpenProjectSettingsCommand = new RelayCommand(OpenProjectSettings);
         OpenInputMapCommand = new RelayCommand(OpenInputMap);
+        OpenPlayViewCommand = new RelayCommand(OpenPlayView);
         ClosePreferencesCommand = new RelayCommand(ClosePreferences);
         BrowseMameExecutableCommand = new RelayCommand(BrowseMameExecutable);
         ValidateMamePreferencesCommand = new RelayCommand(ValidateMamePreferences);
@@ -232,23 +237,29 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                     }
                 }),
             diagnosticLogger: line => AddOutputEntry(line, OutputLogStatus.Info));
+        _mameProcessRunner = new MameProcessRunner(
+            stdoutLogger: line => ProcessMameStdoutLine(line, mameStdoutParser),
+            stdinLogger: line =>
+            {
+                if (DebugOutputStdIn)
+                {
+                    AddOutputEntry($"[MAME-STDIN] {line}", OutputLogStatus.Info);
+                }
+            },
+            stderrLogger: line => AddOutputEntry($"[MAME-ERR] {line}", OutputLogStatus.Warning));
         _mameEmulationService = new MameEmulationService(
             new MameProcessStartInfoBuilder(),
-            new MameProcessRunner(
-                stdoutLogger: line => ProcessMameStdoutLine(line, mameStdoutParser),
-                stdinLogger: line =>
-                {
-                    if (DebugOutputStdIn)
-                    {
-                        AddOutputEntry($"[MAME-STDIN] {line}", OutputLogStatus.Info);
-                    }
-                },
-                stderrLogger: line => AddOutputEntry($"[MAME-ERR] {line}", OutputLogStatus.Warning)),
+            _mameProcessRunner,
             BuildMameLaunchRequest);
         _mameEmulationService.StateChanged += (_, state) =>
         {
             Application.Current.Dispatcher.Invoke(() =>
             {
+                if (state is MameEmulationState.Stopping or MameEmulationState.Stopped or MameEmulationState.Failed)
+                {
+                    _ = ReleaseAllPlayViewInputsAsync($"emulation state '{state}'", CancellationToken.None);
+                }
+
                 EmulationState = state;
                 AddOutputEntry($"Emulation state changed to {state}.", OutputLogStatus.Info);
             });
@@ -368,6 +379,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand OpenPreferencesCommand { get; }
     public ICommand OpenProjectSettingsCommand { get; }
     public ICommand OpenInputMapCommand { get; }
+    public ICommand OpenPlayViewCommand { get; }
     public ICommand ClosePreferencesCommand { get; }
     public ICommand BrowseMameExecutableCommand { get; }
     public ICommand ValidateMamePreferencesCommand { get; }
@@ -1189,7 +1201,126 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void CloseSelectedDocument()
     {
+        _ = ReleaseAllPlayViewInputsAsync("document close", CancellationToken.None);
         _documentWorkspace.CloseSelectedDocument();
+    }
+
+    public async Task<bool> TryHandlePlayViewKeyDownAsync(string keyboardShortcut, bool isFocused, bool isRepeat, CancellationToken cancellationToken)
+    {
+        var canRoute = EnsurePlayViewInputRouter();
+        var router = EnsurePlayViewKeyboardInputRouter();
+        if (router is null)
+        {
+            return false;
+        }
+
+        var handled = await router.TryHandleKeyDownAsync(SelectedFruitMachinePlatform, keyboardShortcut, isFocused, isRepeat, cancellationToken).ConfigureAwait(false);
+        if (!handled && canRoute && isFocused && !isRepeat && !string.IsNullOrWhiteSpace(keyboardShortcut))
+        {
+            AddOutputEntry($"Play View key input unresolved: '{keyboardShortcut}' on platform '{SelectedFruitMachinePlatform}'.", OutputLogStatus.Warning);
+        }
+
+        return handled;
+    }
+
+    public Task<bool> TryHandlePlayViewKeyUpAsync(string keyboardShortcut, bool isFocused, CancellationToken cancellationToken)
+    {
+        var router = EnsurePlayViewKeyboardInputRouter();
+        if (router is null)
+        {
+            return Task.FromResult(false);
+        }
+
+        return router.TryHandleKeyUpAsync(SelectedFruitMachinePlatform, keyboardShortcut, isFocused, cancellationToken);
+    }
+
+    public async Task<bool> TryHandlePlayViewPointerDownAsync(Guid visualElementId, bool isFocused, CancellationToken cancellationToken)
+    {
+        var canRoute = EnsurePlayViewInputRouter();
+        var router = EnsurePlayViewPointerInputRouter();
+        if (router is null)
+        {
+            return false;
+        }
+
+        var handled = await router.TryHandlePointerDownAsync(SelectedFruitMachinePlatform, visualElementId, isFocused, cancellationToken).ConfigureAwait(false);
+        if (!handled && canRoute && isFocused)
+        {
+            AddOutputEntry($"Play View pointer input unresolved for visual '{visualElementId}' on platform '{SelectedFruitMachinePlatform}'.", OutputLogStatus.Warning);
+        }
+
+        return handled;
+    }
+
+    public Task<bool> TryHandlePlayViewPointerUpAsync(Guid visualElementId, bool isFocused, CancellationToken cancellationToken)
+    {
+        var router = EnsurePlayViewPointerInputRouter();
+        if (router is null)
+        {
+            return Task.FromResult(false);
+        }
+
+        return router.TryHandlePointerUpAsync(SelectedFruitMachinePlatform, visualElementId, isFocused, cancellationToken);
+    }
+
+    public Task<int> ReleaseAllPlayViewInputsAsync(string reason, CancellationToken cancellationToken)
+    {
+        return ReleaseAllPlayViewInputsCoreAsync(reason, cancellationToken);
+    }
+
+    private async Task<int> ReleaseAllPlayViewInputsCoreAsync(string reason, CancellationToken cancellationToken)
+    {
+        if (_playViewInputRouter is null)
+        {
+            return 0;
+        }
+
+        EnsurePlayViewKeyboardInputRouter();
+        EnsurePlayViewPointerInputRouter();
+
+        var byInputId = (LoadedProject?.InputDefinitions ?? [])
+            .Where(definition => !string.IsNullOrWhiteSpace(definition.Id))
+            .ToDictionary(definition => definition.Id, definition => definition, StringComparer.Ordinal);
+        var released = await _playViewInputRouter.ReleaseAllAsync(SelectedFruitMachinePlatform, byInputId, cancellationToken).ConfigureAwait(false);
+        if (released > 0)
+        {
+            AddOutputEntry($"Play View released {released} active input(s) due to {reason}.", OutputLogStatus.Info);
+        }
+
+        return released;
+    }
+
+    private PlayViewKeyboardInputRouter? EnsurePlayViewKeyboardInputRouter()
+    {
+        if (!EnsurePlayViewInputRouter())
+        {
+            return null;
+        }
+
+        _playViewKeyboardInputRouter ??= new PlayViewKeyboardInputRouter(_playViewInputRouter!, LoadedProject?.InputDefinitions ?? []);
+        return _playViewKeyboardInputRouter;
+    }
+
+    private PlayViewPointerInputRouter? EnsurePlayViewPointerInputRouter()
+    {
+        if (!EnsurePlayViewInputRouter())
+        {
+            return null;
+        }
+
+        _playViewPointerInputRouter ??= new PlayViewPointerInputRouter(_playViewInputRouter!, LoadedProject?.InputDefinitions ?? []);
+        return _playViewPointerInputRouter;
+    }
+
+    private bool EnsurePlayViewInputRouter()
+    {
+        if (LoadedProject is null || EmulationState is not MameEmulationState.Running and not MameEmulationState.Paused)
+        {
+            return false;
+        }
+
+        _playViewInputRouter ??= new PlayViewInputRouter(new MameInputCommandService(new MameInputPortResolver()), _mameProcessRunner);
+        return true;
     }
 
 
@@ -1598,6 +1729,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         ToolWindowOpenRequested?.Invoke(EditorToolWindowId.InputMap);
         AddOutputEntry("Opened Input Map pane.", OutputLogStatus.Info);
+    }
+
+    private void OpenPlayView()
+    {
+        ToolWindowOpenRequested?.Invoke(EditorToolWindowId.PlayView);
+        AddOutputEntry("Opened Play View pane.", OutputLogStatus.Info);
     }
 
     private void ClosePreferences()
