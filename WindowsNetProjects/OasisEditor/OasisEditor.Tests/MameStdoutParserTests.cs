@@ -44,7 +44,7 @@ public sealed class MameStdoutParserTests
         var reelAdapter = new RecordingReelAdapter();
         var segmentAdapter = new RecordingSegmentAdapter();
         string? diagnostic = null;
-        var parser = new MameStdoutParser(new MameLampStateParser(), lampAdapter, new MameReelStateParser(), reelAdapter, new MameSegmentStateParser(), segmentAdapter, message => diagnostic = message);
+        var parser = new MameStdoutParser(new MameLampStateParser(), lampAdapter, new MameReelStateParser(), reelAdapter, new MameSegmentStateParser(), segmentAdapter, diagnosticLogger: message => diagnostic = message);
 
         parser.ProcessLine("unknown output");
 
