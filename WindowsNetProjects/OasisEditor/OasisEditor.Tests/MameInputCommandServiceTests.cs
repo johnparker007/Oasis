@@ -16,7 +16,7 @@ public sealed class MameInputCommandServiceTests
 
         Assert.True(wrote);
         Assert.Single(processRunner.Commands);
-        Assert.Equal("set_input_value IN0 0x02 1", processRunner.Commands[0]);
+        Assert.Equal("set_input_value ORANGE1 4 1", processRunner.Commands[0]);
     }
 
     [Fact]
