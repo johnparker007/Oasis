@@ -69,6 +69,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private MameSetupState _mameSetupState = MameSetupState.NotStarted;
     private bool _isAutoProvisioningMame;
     private MameEmulationState _mameEmulationState = MameEmulationState.Stopped;
+    private readonly IInputMapDiagnosticsService _inputMapDiagnosticsService = new InputMapDiagnosticsService(new MameInputPortResolver());
+    private IReadOnlyList<InputMapDiagnostic> _inputMapDiagnostics = [];
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<EditorToolWindowId>? ToolWindowOpenRequested;
@@ -396,6 +398,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public IReadOnlyList<string> PreferencesCategories { get; } = ["Appearance", "MAME"];
     public IReadOnlyList<FruitMachinePlatformType> FruitMachinePlatformTypes { get; } = Enum.GetValues<FruitMachinePlatformType>();
     public IReadOnlyList<InputDefinitionModel> InputDefinitions => LoadedProject?.InputDefinitions ?? [];
+    public IReadOnlyList<InputMapDiagnostic> InputMapDiagnostics
+    {
+        get => _inputMapDiagnostics;
+        private set => SetProperty(ref _inputMapDiagnostics, value);
+    }
+
+    public int InputMapWarningCount => InputMapDiagnostics.Count(d => d.Severity == InputMapDiagnosticSeverity.Warning);
+    public bool HasInputMapDiagnostics => InputMapDiagnostics.Count > 0;
 
 
     public FruitMachinePlatformType SelectedFruitMachinePlatform
@@ -412,6 +422,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             {
                 LoadedProject.FruitMachinePlatform = value;
                 SaveLoadedProjectMetadata();
+                RefreshInputMapDiagnostics();
             }
         }
     }
@@ -996,6 +1007,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
             SaveLoadedProjectMetadata();
             OnPropertyChanged(nameof(InputDefinitions));
+            RefreshInputMapDiagnostics();
             AddOutputEntry($"MFME import created {result.InputDefinitions.Count} input definitions.", OutputLogStatus.Info);
         }
 
@@ -1774,6 +1786,27 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _assetBrowser.RefreshAssetBrowser();
         StatusMessage = $"Project opened: {project.Name} ({project.ProjectFilePath})";
         AddOutputEntry($"Loaded startup project '{project.Name}' from {project.ProjectFilePath}", OutputLogStatus.Info);
+        RefreshInputMapDiagnostics();
+    }
+
+    private void RefreshInputMapDiagnostics()
+    {
+        if (LoadedProject is null)
+        {
+            InputMapDiagnostics = [];
+            OnPropertyChanged(nameof(InputMapWarningCount));
+            OnPropertyChanged(nameof(HasInputMapDiagnostics));
+            return;
+        }
+
+        InputMapDiagnostics = _inputMapDiagnosticsService.Analyze(SelectedFruitMachinePlatform, LoadedProject.InputDefinitions);
+        OnPropertyChanged(nameof(InputMapWarningCount));
+        OnPropertyChanged(nameof(HasInputMapDiagnostics));
+        var warningCount = InputMapWarningCount;
+        if (warningCount > 0)
+        {
+            AddOutputEntry($"Input Map diagnostics reported {warningCount} warning(s).", OutputLogStatus.Warning);
+        }
     }
 
     private EditorProject LoadProjectFromFile(string projectFilePath)
