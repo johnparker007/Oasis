@@ -1792,6 +1792,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         var fruitMachinePlatform = ResolveFruitMachinePlatform(projectDocument.RootElement);
         var mameRomName = ResolveMameRomName(projectDocument.RootElement);
         var automaticallyDownloadMissingRoms = ResolveAutomaticallyDownloadMissingRoms(projectDocument.RootElement);
+        var inputDefinitions = ResolveInputDefinitions(projectDocument.RootElement);
 
         return new EditorProject
         {
@@ -1804,7 +1805,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             FruitMachinePlatform = fruitMachinePlatform,
             MameRomName = mameRomName,
             AutomaticallyDownloadMissingRoms = automaticallyDownloadMissingRoms
-        };
+        }.WithInputDefinitions(inputDefinitions);
     }
 
     public bool CanUndoActiveDocument()
@@ -1951,6 +1952,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                         continue;
                     }
 
+                    if (property.NameEquals("input_definitions"))
+                    {
+                        writer.WritePropertyName("input_definitions");
+                        WriteInputDefinitions(writer, LoadedProject.InputDefinitions);
+                        continue;
+                    }
+
                     property.WriteTo(writer);
                 }
 
@@ -1963,6 +1971,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                     writer.WriteBoolean("AutomaticallyDownloadMissingRoms", LoadedProject.AutomaticallyDownloadMissingRoms);
                     writer.WriteEndObject();
                 }
+
+                writer.WritePropertyName("input_definitions");
+                WriteInputDefinitions(writer, LoadedProject.InputDefinitions);
 
                 writer.WriteEndObject();
             }
@@ -2070,6 +2081,88 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             JsonValueKind.False => false,
             _ => true
         };
+    }
+
+
+    private static void WriteInputDefinitions(Utf8JsonWriter writer, IReadOnlyList<InputDefinitionModel> inputDefinitions)
+    {
+        writer.WriteStartArray();
+
+        foreach (var input in inputDefinitions)
+        {
+            writer.WriteStartObject();
+            writer.WriteString("Id", input.Id);
+            writer.WriteString("Name", input.Name);
+            writer.WriteString("Kind", input.Kind.ToString());
+            writer.WriteString("ButtonNumber", input.ButtonNumber);
+            writer.WriteBoolean("CoinInput", input.CoinInput);
+            writer.WriteBoolean("Inverted", input.Inverted);
+            writer.WriteString("RawMfmeShortcut", input.RawMfmeShortcut);
+            writer.WriteString("KeyboardShortcut", input.KeyboardShortcut);
+            if (input.LinkedVisualElementId.HasValue)
+            {
+                writer.WriteString("LinkedVisualElementId", input.LinkedVisualElementId.Value);
+            }
+            writer.WriteString("MamePortTag", input.MamePortTag);
+            writer.WriteString("MameMask", input.MameMask);
+            writer.WriteString("Notes", input.Notes);
+            writer.WriteEndObject();
+        }
+
+        writer.WriteEndArray();
+    }
+
+    private static List<InputDefinitionModel> ResolveInputDefinitions(JsonElement root)
+    {
+        if (!root.TryGetProperty("input_definitions", out var inputDefinitionsElement)
+            || inputDefinitionsElement.ValueKind != JsonValueKind.Array)
+        {
+            return [];
+        }
+
+        var definitions = new List<InputDefinitionModel>();
+        foreach (var inputElement in inputDefinitionsElement.EnumerateArray())
+        {
+            if (inputElement.ValueKind != JsonValueKind.Object)
+            {
+                continue;
+            }
+
+            var id = inputElement.TryGetProperty("Id", out var idElement) ? idElement.GetString() : null;
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                continue;
+            }
+
+            var kindRaw = inputElement.TryGetProperty("Kind", out var kindElement) ? kindElement.GetString() : null;
+            _ = Enum.TryParse<InputDefinitionKind>(kindRaw, true, out var kind);
+
+            Guid? linkedVisualId = null;
+            if (inputElement.TryGetProperty("LinkedVisualElementId", out var linkedElement)
+                && linkedElement.ValueKind == JsonValueKind.String
+                && Guid.TryParse(linkedElement.GetString(), out var parsedLinkedVisualId))
+            {
+                linkedVisualId = parsedLinkedVisualId;
+            }
+
+            definitions.Add(new InputDefinitionModel
+            {
+                Id = id,
+                Name = inputElement.TryGetProperty("Name", out var nameElement) ? nameElement.GetString() ?? string.Empty : string.Empty,
+                Kind = kind,
+                ButtonNumber = inputElement.TryGetProperty("ButtonNumber", out var buttonNumberElement) ? buttonNumberElement.GetString() ?? string.Empty : string.Empty,
+                CoinInput = inputElement.TryGetProperty("CoinInput", out var coinInputElement) && coinInputElement.ValueKind == JsonValueKind.True,
+                Inverted = inputElement.TryGetProperty("Inverted", out var invertedElement) && invertedElement.ValueKind == JsonValueKind.True,
+                RawMfmeShortcut = inputElement.TryGetProperty("RawMfmeShortcut", out var rawShortcutElement) ? rawShortcutElement.GetString() ?? string.Empty : string.Empty,
+                KeyboardShortcut = inputElement.TryGetProperty("KeyboardShortcut", out var keyboardShortcutElement) ? keyboardShortcutElement.GetString() ?? string.Empty : string.Empty,
+                LinkedVisualElementId = linkedVisualId,
+                MamePortTag = inputElement.TryGetProperty("MamePortTag", out var tagElement) ? tagElement.GetString() ?? string.Empty : string.Empty,
+                MameMask = inputElement.TryGetProperty("MameMask", out var maskElement) ? maskElement.GetString() ?? string.Empty : string.Empty,
+                Notes = inputElement.TryGetProperty("Notes", out var notesElement) ? notesElement.GetString() ?? string.Empty : string.Empty
+            });
+        }
+
+        return definitions;
     }
 
     private bool CanDownloadMameRom() => LoadedProject is not null && !string.IsNullOrWhiteSpace(MameRomName) && !_isMameRomDownloadInProgress;
@@ -2394,3 +2487,18 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 }
 
 internal readonly record struct OpenDocumentData(string Summary, string? PanelLayoutJson, string? PanelTitle = null);
+
+
+internal static class EditorProjectInputDefinitionExtensions
+{
+    public static EditorProject WithInputDefinitions(this EditorProject project, IReadOnlyList<InputDefinitionModel> definitions)
+    {
+        project.InputDefinitions.Clear();
+        foreach (var definition in definitions)
+        {
+            project.InputDefinitions.Add(definition);
+        }
+
+        return project;
+    }
+}
