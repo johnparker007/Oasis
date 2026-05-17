@@ -145,4 +145,26 @@ public static class MfmeShortcutKeyMapper
     {
         return KeyToShortcut.TryGetValue(key, out shortcut!);
     }
+
+    public static string NormalizeShortcutForRouting(string? shortcut)
+    {
+        if (string.IsNullOrWhiteSpace(shortcut))
+        {
+            return string.Empty;
+        }
+
+        var trimmed = shortcut.Trim();
+        if (TryMap(trimmed, out var mappedKey) && TryMapKeyToMfmeShortcut(mappedKey, out var mappedShortcut))
+        {
+            return mappedShortcut;
+        }
+
+        if (Enum.TryParse<Key>(trimmed, ignoreCase: true, out var parsedKey)
+            && TryMapKeyToMfmeShortcut(parsedKey, out var parsedShortcut))
+        {
+            return parsedShortcut;
+        }
+
+        return trimmed;
+    }
 }

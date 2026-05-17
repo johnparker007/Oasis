@@ -42,4 +42,17 @@ public sealed class MfmeShortcutKeyMapperTests
         Assert.True(ok);
         Assert.Equal("`", shortcut);
     }
+
+    [Theory]
+    [InlineData("D1", "1")]
+    [InlineData("D2", "2")]
+    [InlineData("Oem3", "`")]
+    [InlineData("Space", "SPACE")]
+    [InlineData("RIGHT", "RIGHT")]
+    public void NormalizeShortcutForRouting_WithMappedShortcut_ReturnsCanonicalToken(string raw, string expected)
+    {
+        var normalized = MfmeShortcutKeyMapper.NormalizeShortcutForRouting(raw);
+
+        Assert.Equal(expected, normalized);
+    }
 }
