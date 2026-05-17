@@ -11,15 +11,28 @@ namespace OasisEditor.Views;
 public partial class PlayView : UserControl
 {
     private DocumentTabViewModel? _subscribedDocument;
+    private Window? _ownerWindow;
 
     public PlayView()
     {
         InitializeComponent();
-        Loaded += (_, _) => RefreshCanvasFromSelection();
+        Loaded += OnLoaded;
+        Unloaded += OnUnloaded;
         DataContextChanged += OnDataContextChanged;
     }
 
     private MainWindowViewModel? ViewModel => DataContext as MainWindowViewModel;
+
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        RefreshCanvasFromSelection();
+        AttachOwnerWindowKeyHandlers();
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e)
+    {
+        DetachOwnerWindowKeyHandlers();
+    }
 
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
@@ -214,7 +227,7 @@ public partial class PlayView : UserControl
 
     private async Task TryRouteKeyDownAsync(KeyEventArgs eventArgs)
     {
-        if (eventArgs.Handled || ViewModel is null)
+        if (eventArgs.Handled || ViewModel is null || !IsKeyboardFocusWithin)
         {
             return;
         }
@@ -229,7 +242,7 @@ public partial class PlayView : UserControl
 
     private async Task TryRouteKeyUpAsync(KeyEventArgs eventArgs)
     {
-        if (eventArgs.Handled || ViewModel is null)
+        if (eventArgs.Handled || ViewModel is null || !IsKeyboardFocusWithin)
         {
             return;
         }
@@ -240,5 +253,44 @@ public partial class PlayView : UserControl
         {
             eventArgs.Handled = true;
         }
+    }
+
+    private void AttachOwnerWindowKeyHandlers()
+    {
+        if (_ownerWindow is not null)
+        {
+            return;
+        }
+
+        _ownerWindow = Window.GetWindow(this);
+        if (_ownerWindow is null)
+        {
+            return;
+        }
+
+        _ownerWindow.PreviewKeyDown += OnOwnerWindowPreviewKeyDown;
+        _ownerWindow.PreviewKeyUp += OnOwnerWindowPreviewKeyUp;
+    }
+
+    private void DetachOwnerWindowKeyHandlers()
+    {
+        if (_ownerWindow is null)
+        {
+            return;
+        }
+
+        _ownerWindow.PreviewKeyDown -= OnOwnerWindowPreviewKeyDown;
+        _ownerWindow.PreviewKeyUp -= OnOwnerWindowPreviewKeyUp;
+        _ownerWindow = null;
+    }
+
+    private async void OnOwnerWindowPreviewKeyDown(object sender, KeyEventArgs eventArgs)
+    {
+        await TryRouteKeyDownAsync(eventArgs);
+    }
+
+    private async void OnOwnerWindowPreviewKeyUp(object sender, KeyEventArgs eventArgs)
+    {
+        await TryRouteKeyUpAsync(eventArgs);
     }
 }
