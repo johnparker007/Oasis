@@ -69,6 +69,21 @@ public sealed class MameStdoutParserTests
         Assert.Equal(769, call.Mask);
     }
 
+    [Fact]
+    public void ProcessLine_WhenDigitSegmentLine_AppliesSegmentState()
+    {
+        var lampAdapter = new RecordingLampAdapter();
+        var reelAdapter = new RecordingReelAdapter();
+        var segmentAdapter = new RecordingSegmentAdapter();
+        var parser = new MameStdoutParser(new MameLampStateParser(), lampAdapter, new MameReelStateParser(), reelAdapter, new MameSegmentStateParser(), segmentAdapter);
+
+        parser.ProcessLine("digit3 = 16");
+
+        var call = Assert.Single(segmentAdapter.Calls);
+        Assert.Equal(3, call.CellId);
+        Assert.Equal(16, call.Mask);
+    }
+
     private sealed class RecordingLampAdapter : IMameLampRuntimeAdapter
     {
         public List<(int LampId, int Value)> Calls { get; } = [];

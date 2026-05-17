@@ -21,8 +21,8 @@ public sealed class MameSegmentRuntimeAdapterTests
         second();
 
         var masks = document.RuntimeState.GetSegmentCellMasks("alpha-0", 16);
-        Assert.Equal(1, masks[0]);
-        Assert.Equal(2, masks[1]);
+        Assert.Equal(3, masks[0]);
+        Assert.Equal(4, masks[1]);
     }
 
     [Fact]
@@ -40,8 +40,25 @@ public sealed class MameSegmentRuntimeAdapterTests
         dispatch();
 
         var masks = document.RuntimeState.GetSegmentCellMasks("alpha-0", 16);
-        Assert.Equal(3, masks[0]);
-        Assert.Equal(2, masks[1]);
+        Assert.Equal(7, masks[0]);
+        Assert.Equal(4, masks[1]);
+    }
+
+    [Fact]
+    public void ApplySegmentState_UpdatesSevenSegmentFromDigitCell()
+    {
+        var document = CreateDocument();
+        var dispatches = new List<Action>();
+        var adapter = new MameSegmentRuntimeAdapter(() => [document], action => dispatches.Add(action));
+
+        adapter.ApplySegmentState(3, 16);
+
+        var dispatch = Assert.Single(dispatches);
+        dispatch();
+
+        var masks = document.RuntimeState.GetSegmentCellMasks("seven-3", 1);
+        Assert.Single(masks);
+        Assert.Equal(16, masks[0]);
     }
 
     private static DocumentTabViewModel CreateDocument()
@@ -49,7 +66,8 @@ public sealed class MameSegmentRuntimeAdapterTests
         var panelDocument = EditorDocument.CreateFromFile("panel.panel2d", "panel", "panel");
         var tab = new DocumentTabViewModel(panelDocument);
         tab.SetPanelElements([
-            new PanelElementModel { ObjectId = "alpha-0", Kind = PanelElementKind.Alpha, DisplayNumber = 0 }
+            new PanelElementModel { ObjectId = "alpha-0", Kind = PanelElementKind.Alpha, DisplayNumber = 0 },
+            new PanelElementModel { ObjectId = "seven-3", Kind = PanelElementKind.SevenSegment, DisplayNumber = 3 }
         ]);
         return tab;
     }

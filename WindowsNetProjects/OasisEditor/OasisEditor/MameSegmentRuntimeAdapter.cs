@@ -47,16 +47,19 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
                 _latestMasksByCell[cellId] = mask;
             }
 
-            foreach (var element in document.GetPanelElements().Where(e => e.Kind == PanelElementKind.Alpha && !string.IsNullOrWhiteSpace(e.ObjectId)))
+            foreach (var element in document.GetPanelElements().Where(e => (e.Kind == PanelElementKind.Alpha || e.Kind == PanelElementKind.SevenSegment) && !string.IsNullOrWhiteSpace(e.ObjectId)))
             {
                 var objectId = element.ObjectId!;
                 var baseIndex = element.DisplayNumber.GetValueOrDefault(0);
-                var cellMasks = new int[16];
+                var cellCount = element.Kind == PanelElementKind.SevenSegment ? 1 : 16;
+                var cellMasks = new int[cellCount];
                 for (var i = 0; i < cellMasks.Length; i++)
                 {
                     if (_latestMasksByCell.TryGetValue(baseIndex + i, out var mask))
                     {
-                        cellMasks[i] = RemapMameMaskToWpfSegmentOrder(mask);
+                        cellMasks[i] = element.Kind == PanelElementKind.SevenSegment
+                            ? mask
+                            : RemapMameMaskToWpfSegmentOrder(mask);
                     }
                 }
 

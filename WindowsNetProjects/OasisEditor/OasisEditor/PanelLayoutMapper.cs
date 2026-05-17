@@ -169,7 +169,7 @@ public static class PanelLayoutMapper
                 continue;
             }
 
-            if (tab.TryGetAlphaElement(objectId, out _))
+            if (tab.TryGetAlphaElement(objectId, out _) || tab.TryGetSevenSegmentElement(objectId, out _))
             {
                 var segmentState = visualStateChange.ValuesByObjectId[objectId] is SegmentVisualState state
                     ? state
