@@ -12,6 +12,8 @@ public partial class PlayView : UserControl
 {
     private DocumentTabViewModel? _subscribedDocument;
     private bool _isPreProcessInputHooked;
+    private Key? _pendingTextInputKey;
+    private readonly Dictionary<Key, string> _activeShortcutByKey = new();
 
     public PlayView()
     {
@@ -92,6 +94,16 @@ public partial class PlayView : UserControl
     private async void OnRootPreviewKeyUp(object sender, KeyEventArgs eventArgs)
     {
         await TryRouteKeyUpAsync(eventArgs);
+    }
+
+    private async void OnPlayCanvasPreviewTextInput(object sender, TextCompositionEventArgs eventArgs)
+    {
+        await TryRouteTextInputAsync(eventArgs);
+    }
+
+    private async void OnRootPreviewTextInput(object sender, TextCompositionEventArgs eventArgs)
+    {
+        await TryRouteTextInputAsync(eventArgs);
     }
 
     private void OnPlayCanvasPreviewMouseDown(object sender, MouseButtonEventArgs eventArgs)
@@ -265,8 +277,13 @@ public partial class PlayView : UserControl
         var handled = await ViewModel.TryHandlePlayViewKeyDownAsync(shortcut, isFocused: true, eventArgs.IsRepeat, CancellationToken.None);
         if (handled)
         {
+            _activeShortcutByKey[key] = shortcut;
             eventArgs.Handled = true;
+            _pendingTextInputKey = null;
+            return;
         }
+
+        _pendingTextInputKey = key;
     }
 
     private async Task TryRouteKeyUpAsync(KeyEventArgs eventArgs)
@@ -280,6 +297,12 @@ public partial class PlayView : UserControl
         var shortcut = MfmeShortcutKeyMapper.TryMapKeyToMfmeShortcut(key, out var mappedShortcut)
             ? mappedShortcut
             : key.ToString();
+        if (_activeShortcutByKey.TryGetValue(key, out var activeShortcut))
+        {
+            shortcut = activeShortcut;
+            _activeShortcutByKey.Remove(key);
+        }
+
         var handled = await ViewModel.TryHandlePlayViewKeyUpAsync(shortcut, isFocused: true, CancellationToken.None);
         if (handled)
         {
@@ -339,5 +362,30 @@ public partial class PlayView : UserControl
         }
 
         return eventArgs.Key;
+    }
+
+    private async Task TryRouteTextInputAsync(TextCompositionEventArgs eventArgs)
+    {
+        if (eventArgs.Handled || ViewModel is null || !IsKeyboardFocusWithin || _pendingTextInputKey is null)
+        {
+            return;
+        }
+
+        var text = eventArgs.Text?.Trim();
+        if (string.IsNullOrEmpty(text))
+        {
+            return;
+        }
+
+        var shortcut = MfmeShortcutKeyMapper.NormalizeShortcutForRouting(text.ToUpperInvariant());
+        var handled = await ViewModel.TryHandlePlayViewKeyDownAsync(shortcut, isFocused: true, isRepeat: false, CancellationToken.None);
+        if (!handled)
+        {
+            return;
+        }
+
+        _activeShortcutByKey[_pendingTextInputKey.Value] = shortcut;
+        _pendingTextInputKey = null;
+        eventArgs.Handled = true;
     }
 }
