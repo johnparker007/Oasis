@@ -11,4 +11,5 @@ public sealed class EditorProject
     public FruitMachinePlatformType FruitMachinePlatform { get; set; } = FruitMachinePlatformType.None;
     public string MameRomName { get; set; } = string.Empty;
     public bool AutomaticallyDownloadMissingRoms { get; set; } = true;
+    public List<InputDefinitionModel> InputDefinitions { get; } = [];
 }

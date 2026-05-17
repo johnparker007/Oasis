@@ -51,6 +51,23 @@ public sealed class MfmeToOasisComponentMapperTests
                     new MfmeLegacyPoint(1, 2),
                     new MfmeLegacyPoint(3, 4),
                     Reversed: false),
+                new MfmeLegacyButtonComponent(
+                    new MfmeLegacyPoint(120, 220),
+                    new MfmeLegacyPoint(44, 22),
+                    "Start",
+                    "Arial",
+                    "Regular",
+                    "10",
+                    HasButtonInput: true,
+                    HasCoinInput: false,
+                    ButtonNumberAsString: "6",
+                    Inverted: true,
+                    Shortcut1: "SPACE",
+                    Shortcut2: null,
+                    FirstLampElement: new MfmeLegacyLampElement("6", 6, new MfmeLegacyColor(1f,0f,0f,1f), "btn.png", null, Graphic: true),
+                    OffImageColor: new MfmeLegacyColor(0f,0f,0f,1f),
+                    TextColor: new MfmeLegacyColor(1f,1f,1f,1f),
+                    NoOutline: false),
                 new MfmeLegacyLabelComponent(
                     new MfmeLegacyPoint(50, 60),
                     new MfmeLegacyPoint(120, 24),
@@ -68,7 +85,8 @@ public sealed class MfmeToOasisComponentMapperTests
 
         Assert.Empty(result.Warnings);
         Assert.Empty(result.SkippedLegacyComponentTypes);
-        Assert.Equal(6, result.Elements.Count);
+        Assert.Equal(7, result.Elements.Count);
+        Assert.Single(result.InputDefinitions);
 
         var background = result.Elements[0];
         Assert.Equal(PanelElementKind.Background, background.Kind);
@@ -115,7 +133,15 @@ public sealed class MfmeToOasisComponentMapperTests
         Assert.Equal("Alpha", alpha.Name);
         Assert.False(alpha.IsReversed);
 
-        var label = result.Elements[5];
+        var label = result.Elements[6];
+
+        var inputDefinition = result.InputDefinitions[0];
+        Assert.Equal(InputDefinitionKind.Button, inputDefinition.Kind);
+        Assert.Equal("6", inputDefinition.ButtonNumber);
+        Assert.Equal("SPACE", inputDefinition.RawMfmeShortcut);
+        Assert.Equal("Space", inputDefinition.KeyboardShortcut);
+
+
         Assert.Equal(PanelElementKind.Label, label.Kind);
         Assert.Equal("Label", label.Name);
         Assert.Equal("COLLECT", label.DisplayText);

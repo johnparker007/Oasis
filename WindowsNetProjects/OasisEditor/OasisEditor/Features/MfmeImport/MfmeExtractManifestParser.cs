@@ -203,6 +203,26 @@ internal static class MfmeExtractManifestParser
                     ReadBool(component, "NoOutline"));
                 return true;
 
+            case "extractcomponentbutton":
+                parsedComponent = new MfmeLegacyButtonComponent(
+                    position,
+                    size,
+                    ReadString(component, "TextBoxText"),
+                    ReadString(component, "TextBoxFontName"),
+                    ReadString(component, "TextBoxFontStyle"),
+                    ReadString(component, "TextBoxFontSize"),
+                    ReadBool(component, "HasButtonInput"),
+                    ReadBool(component, "HasCoinInput"),
+                    ReadString(component, "ButtonNumberAsString"),
+                    ReadBool(component, "Inverted"),
+                    ReadString(component, "Shortcut1"),
+                    ReadString(component, "Shortcut2"),
+                    ReadFirstLampElement(component, ReadOptionalBool(component, "Graphic")),
+                    ReadColor(component, "OffImageColor"),
+                    ReadColor(component, "TextColor"),
+                    ReadBool(component, "NoOutline"));
+                return true;
+
             case "extractcomponentreel":
                 parsedComponent = new MfmeLegacyReelComponent(
                     position,

@@ -118,3 +118,30 @@ internal sealed record MfmeLegacyLabelComponent(
         TextBoxFontName,
         TextBoxFontStyle,
         TextBoxFontSize);
+
+
+internal sealed record MfmeLegacyButtonComponent(
+    MfmeLegacyPoint Position,
+    MfmeLegacyPoint Size,
+    string? TextBoxText,
+    string? TextBoxFontName,
+    string? TextBoxFontStyle,
+    string? TextBoxFontSize,
+    bool HasButtonInput,
+    bool HasCoinInput,
+    string? ButtonNumberAsString,
+    bool Inverted,
+    string? Shortcut1,
+    string? Shortcut2,
+    MfmeLegacyLampElement? FirstLampElement,
+    MfmeLegacyColor? OffImageColor,
+    MfmeLegacyColor? TextColor,
+    bool NoOutline)
+    : MfmeLegacyComponentBase(
+        "ExtractComponentButton",
+        Position,
+        Size,
+        TextBoxText,
+        TextBoxFontName,
+        TextBoxFontStyle,
+        TextBoxFontSize);

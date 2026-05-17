@@ -244,7 +244,7 @@ public sealed class MfmeExtractReaderTests
     }
 
     [Fact]
-    public void Read_WithUnsupportedComponent_AddsWarningAndSkipsComponent()
+    public void Read_WithUnsupportedComponentType_AddsWarningAndSkipsComponent()
     {
         var extractDirectory = CreateTempDirectory();
         var manifestPath = Path.Combine(extractDirectory, "layout.json");
@@ -258,7 +258,7 @@ public sealed class MfmeExtractReaderTests
               "Size": { "X": 1, "Y": 1 }
             },
             {
-              "$type": "Oasis.MfmeTools.Shared.ExtractComponents.ExtractComponentButton, MfmeTools",
+              "$type": "Oasis.MfmeTools.Shared.ExtractComponents.ExtractComponentCheckbox, MfmeTools",
               "Position": { "X": 2, "Y": 3 },
               "Size": { "X": 4, "Y": 5 }
             }

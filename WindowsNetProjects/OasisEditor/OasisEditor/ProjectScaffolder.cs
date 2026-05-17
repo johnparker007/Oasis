@@ -62,7 +62,8 @@ public sealed class ProjectScaffolder
             project_settings = new
             {
                 FruitMachine_Platform = FruitMachinePlatformType.None.ToString()
-            }
+            },
+            input_definitions = Array.Empty<object>()
         };
 
         var json = JsonSerializer.Serialize(projectMetadata, new JsonSerializerOptions

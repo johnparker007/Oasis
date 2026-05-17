@@ -1,0 +1,35 @@
+using System.Windows.Input;
+using Xunit;
+
+namespace OasisEditor.Tests;
+
+public sealed class MfmeShortcutKeyMapperTests
+{
+    [Theory]
+    [InlineData("SPACE", Key.Space)]
+    [InlineData("1", Key.D1)]
+    [InlineData("A", Key.A)]
+    [InlineData("RIGHT", Key.Right)]
+    [InlineData("ctrl", Key.LeftCtrl)]
+    [InlineData("ALT ", Key.LeftAlt)]
+    public void TryMap_WithSupportedShortcuts_ReturnsMappedKey(string raw, Key expected)
+    {
+        var ok = MfmeShortcutKeyMapper.TryMap(raw, out var key);
+
+        Assert.True(ok);
+        Assert.Equal(expected, key);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("F1")]
+    [InlineData("Shift+3")]
+    public void TryMap_WithUnsupportedShortcuts_ReturnsFalse(string? raw)
+    {
+        var ok = MfmeShortcutKeyMapper.TryMap(raw, out var key);
+
+        Assert.False(ok);
+        Assert.Equal(Key.None, key);
+    }
+}

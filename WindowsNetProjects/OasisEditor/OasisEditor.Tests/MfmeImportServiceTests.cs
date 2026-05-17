@@ -112,6 +112,7 @@ public sealed class MfmeImportServiceTests
 
         Assert.Single(result.SkippedLegacyComponentTypes);
         Assert.Equal("ExtractComponentButton", result.SkippedLegacyComponentTypes[0]);
+        Assert.Empty(result.InputDefinitions);
         Assert.Contains(result.Warnings, warning => warning.Code == "mfme.import.component.unsupported");
     }
 
@@ -151,4 +152,47 @@ public sealed class MfmeImportServiceTests
             return _result;
         }
     }
+
+    [Fact]
+    public void Import_WithMfmeButtonInput_CreatesInputDefinition()
+    {
+        var extract = new MfmeLegacyExtractData
+        {
+            ExtractRootPath = @"C:\extract",
+            ManifestPath = @"C:\extract\layout.json",
+            LayoutName = "Layout",
+            Components =
+            [
+                new MfmeLegacyButtonComponent(
+                    new MfmeLegacyPoint(10, 20),
+                    new MfmeLegacyPoint(30, 40),
+                    "Start",
+                    null,
+                    null,
+                    null,
+                    HasButtonInput: true,
+                    HasCoinInput: false,
+                    ButtonNumberAsString: "5",
+                    Inverted: false,
+                    Shortcut1: "1",
+                    Shortcut2: null,
+                    FirstLampElement: null,
+                    OffImageColor: null,
+                    TextColor: null,
+                    NoOutline: false)
+            ]
+        };
+
+        var service = new MfmeImportService(new StubReader(new MfmeExtractReadResult { Extract = extract, Warnings = [], Errors = [] }));
+
+        var result = service.Import(CreateContext(copyAssets: false));
+
+        Assert.Single(result.ImportedElements);
+        var input = Assert.Single(result.InputDefinitions);
+        Assert.Equal(InputDefinitionKind.Button, input.Kind);
+        Assert.Equal("5", input.ButtonNumber);
+        Assert.Equal("1", input.RawMfmeShortcut);
+        Assert.Equal("D1", input.KeyboardShortcut);
+    }
+
 }
