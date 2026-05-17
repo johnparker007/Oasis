@@ -10,14 +10,14 @@ public sealed class MainWindowViewModelInputDiagnosticsTests
     {
         var vm = CreateUninitializedViewModel();
 
-        var project = new EditorProject(
-            "Test",
-            "C:/temp/test.oasisproj",
-            "C:/temp",
-            "C:/temp/Assets",
-            "C:/temp/Machines",
-            "C:/temp/Generated")
+        var project = new EditorProject
         {
+            Name = "Test",
+            ProjectFilePath = "C:/temp/test.oasisproj",
+            ProjectDirectory = "C:/temp",
+            AssetsDirectory = "C:/temp/Assets",
+            MachinesDirectory = "C:/temp/Machines",
+            GeneratedDirectory = "C:/temp/Generated",
             FruitMachinePlatform = FruitMachinePlatformType.MPU4
         }.WithInputDefinitions(new[]
         {
@@ -38,7 +38,7 @@ public sealed class MainWindowViewModelInputDiagnosticsTests
 
     private static MainWindowViewModel CreateUninitializedViewModel()
     {
-        return (MainWindowViewModel)System.Runtime.Serialization.FormatterServices
+        return (MainWindowViewModel)System.Runtime.CompilerServices.RuntimeHelpers
             .GetUninitializedObject(typeof(MainWindowViewModel));
     }
 
