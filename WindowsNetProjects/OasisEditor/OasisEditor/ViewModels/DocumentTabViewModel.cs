@@ -229,6 +229,18 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
         return _alphaElementsByObjectId.TryGetValue(objectId, out element!);
     }
 
+
+    internal bool TryGetSevenSegmentElement(string objectId, out PanelElementModel element)
+    {
+        if (string.IsNullOrWhiteSpace(objectId))
+        {
+            element = new PanelElementModel();
+            return false;
+        }
+
+        return _sevenSegmentElementsByObjectId.TryGetValue(objectId, out element!);
+    }
+
     internal string GetPanelLayoutProjectionJson()
     {
         return Panel2DDocumentStorage.SerializeLayout(

@@ -317,7 +317,7 @@ internal static class PanelElementFactory
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 VerticalAlignment = VerticalAlignment.Stretch,
                 CellCount = 1,
-                DisplayText = string.IsNullOrWhiteSpace(element.DisplayText) ? "8" : element.DisplayText,
+                DisplayText = string.IsNullOrWhiteSpace(element.DisplayText) ? null : element.DisplayText,
                 LitBrush = TryCreateBrush(element.OnColorHex, Brushes.Red),
                 UnlitBrush = TryCreateBrush(element.OffColorHex, new SolidColorBrush(Color.FromArgb(32, 255, 0, 0))),
                 ShowDecimalPoint = true
