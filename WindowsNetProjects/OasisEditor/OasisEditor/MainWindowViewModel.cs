@@ -986,6 +986,19 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
+        if (LoadedProject is not null && result.InputDefinitions.Count > 0)
+        {
+            LoadedProject.InputDefinitions.Clear();
+            foreach (var inputDefinition in result.InputDefinitions)
+            {
+                LoadedProject.InputDefinitions.Add(inputDefinition);
+            }
+
+            SaveLoadedProjectMetadata();
+            OnPropertyChanged(nameof(InputDefinitions));
+            AddOutputEntry($"MFME import created {result.InputDefinitions.Count} input definitions.", OutputLogStatus.Info);
+        }
+
         var importCommand = new ImportMfmeExtractCommand(
             activeDocument.DocumentId,
             activeDocument,

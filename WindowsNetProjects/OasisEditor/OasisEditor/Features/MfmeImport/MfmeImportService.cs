@@ -35,6 +35,7 @@ internal sealed class MfmeImportService
             {
                 ImportedElements = [],
                 CopiedAssetRelativePaths = [],
+                InputDefinitions = [],
                 SkippedLegacyComponentTypes = [],
                 Warnings = warnings,
                 Errors = errors
@@ -52,6 +53,7 @@ internal sealed class MfmeImportService
         {
             ImportedElements = copyResult.Elements,
             CopiedAssetRelativePaths = copyResult.CopiedAssetRelativePaths,
+            InputDefinitions = mapResult.InputDefinitions,
             SkippedLegacyComponentTypes = mapResult.SkippedLegacyComponentTypes,
             Warnings = warnings,
             Errors = errors

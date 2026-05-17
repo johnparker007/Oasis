@@ -13,6 +13,7 @@ internal sealed class MfmeToOasisComponentMapper
         var elements = new List<PanelElementModel>();
         var warnings = new List<MfmeImportWarning>();
         var skipped = new List<string>();
+        var inputDefinitions = new List<InputDefinitionModel>();
 
         foreach (var component in extract.Components)
         {
@@ -24,6 +25,17 @@ internal sealed class MfmeToOasisComponentMapper
                 case MfmeLegacyLampComponent lamp:
                     elements.Add(MapLamp(lamp, warnings));
                     break;
+                case MfmeLegacyButtonComponent button:
+                    {
+                        var mappedButtonLamp = MapButtonAsLamp(button, warnings);
+                        elements.Add(mappedButtonLamp);
+                        var input = BuildInputDefinition(button, mappedButtonLamp.ObjectId);
+                        if (input is not null)
+                        {
+                            inputDefinitions.Add(input);
+                        }
+                        break;
+                    }
                 case MfmeLegacyReelComponent reel:
                     elements.Add(MapReel(reel, warnings));
                     break;
@@ -50,7 +62,8 @@ internal sealed class MfmeToOasisComponentMapper
         {
             Elements = elements,
             Warnings = warnings,
-            SkippedLegacyComponentTypes = skipped
+            SkippedLegacyComponentTypes = skipped,
+            InputDefinitions = inputDefinitions
         };
     }
 
@@ -113,6 +126,45 @@ internal sealed class MfmeToOasisComponentMapper
             TextBoxFontStyle = NormalizeLampFontStyle(component.TextBoxFontStyle),
             TextBoxFontSize = NormalizeLampFontSize(component.TextBoxFontSize),
             ImportSource = CreateImportSource(number.HasValue ? $"{component.SourceType}:{number.Value}" : component.SourceType)
+        };
+    }
+
+
+    private static PanelElementModel MapButtonAsLamp(MfmeLegacyButtonComponent component, ICollection<MfmeImportWarning> warnings)
+    {
+        var lampEquivalent = new MfmeLegacyLampComponent(
+            component.Position,
+            component.Size,
+            component.TextBoxText,
+            component.TextBoxFontName,
+            component.TextBoxFontStyle,
+            component.TextBoxFontSize,
+            component.FirstLampElement,
+            component.OffImageColor,
+            component.TextColor,
+            component.NoOutline);
+
+        return MapLamp(lampEquivalent, warnings);
+    }
+
+    private static InputDefinitionModel? BuildInputDefinition(MfmeLegacyButtonComponent component, string linkedObjectId)
+    {
+        if (!component.HasButtonInput && !component.HasCoinInput)
+        {
+            return null;
+        }
+
+        return new InputDefinitionModel
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            Name = string.IsNullOrWhiteSpace(component.TextBoxText) ? "Imported Input" : component.TextBoxText.Trim(),
+            Kind = component.HasCoinInput ? InputDefinitionKind.Coin : InputDefinitionKind.Button,
+            ButtonNumber = component.ButtonNumberAsString?.Trim() ?? string.Empty,
+            CoinInput = component.HasCoinInput,
+            Inverted = component.Inverted,
+            RawMfmeShortcut = component.Shortcut1?.Trim() ?? string.Empty,
+            LinkedVisualElementId = Guid.TryParse(linkedObjectId, out var linkedId) ? linkedId : null,
+            Notes = string.IsNullOrWhiteSpace(component.Shortcut2) ? string.Empty : $"Shortcut2: {component.Shortcut2.Trim()}"
         };
     }
 
@@ -261,4 +313,6 @@ internal sealed class MfmeToOasisMapResult
     public required IReadOnlyList<MfmeImportWarning> Warnings { get; init; }
 
     public required IReadOnlyList<string> SkippedLegacyComponentTypes { get; init; }
+
+    public required IReadOnlyList<InputDefinitionModel> InputDefinitions { get; init; }
 }
