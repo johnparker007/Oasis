@@ -28,6 +28,7 @@ public sealed class MainWindowViewModelInputDiagnosticsTests
         SetPrivateField(vm, "_loadedProject", project);
         SetPrivateField(vm, "_selectedFruitMachinePlatform", FruitMachinePlatformType.MPU4);
         SetPrivateField(vm, "_inputMapDiagnosticsService", new InputMapDiagnosticsService(new MameInputPortResolver()));
+        SetPrivateField(vm, "_outputLog", new OutputLogViewModel());
 
         InvokePrivateMethod(vm, "RefreshInputMapDiagnostics");
 
