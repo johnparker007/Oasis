@@ -41,7 +41,7 @@ public interface IMameReelRuntimeAdapter
 
 public interface IMameSegmentRuntimeAdapter
 {
-    void ApplySegmentState(int cellId, int segmentMask);
+    void ApplySegmentState(int cellId, int segmentMask, MameSegmentOutputType outputType);
 }
 
 public sealed record MameProcessLaunchRequest(
