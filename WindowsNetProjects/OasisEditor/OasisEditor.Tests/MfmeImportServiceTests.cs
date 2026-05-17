@@ -192,6 +192,7 @@ public sealed class MfmeImportServiceTests
         Assert.Equal(InputDefinitionKind.Button, input.Kind);
         Assert.Equal("5", input.ButtonNumber);
         Assert.Equal("1", input.RawMfmeShortcut);
+        Assert.Equal("D1", input.KeyboardShortcut);
     }
 
 }

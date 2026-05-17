@@ -139,6 +139,7 @@ public sealed class MfmeToOasisComponentMapperTests
         Assert.Equal(InputDefinitionKind.Button, inputDefinition.Kind);
         Assert.Equal("6", inputDefinition.ButtonNumber);
         Assert.Equal("SPACE", inputDefinition.RawMfmeShortcut);
+        Assert.Equal("Space", inputDefinition.KeyboardShortcut);
 
 
         Assert.Equal(PanelElementKind.Label, label.Kind);

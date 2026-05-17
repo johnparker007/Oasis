@@ -154,6 +154,13 @@ internal sealed class MfmeToOasisComponentMapper
             return null;
         }
 
+        var rawShortcut = component.Shortcut1?.Trim() ?? string.Empty;
+        var keyboardShortcut = string.Empty;
+        if (MfmeShortcutKeyMapper.TryMap(rawShortcut, out var mappedKey))
+        {
+            keyboardShortcut = mappedKey.ToString();
+        }
+
         return new InputDefinitionModel
         {
             Id = Guid.NewGuid().ToString("N"),
@@ -162,7 +169,8 @@ internal sealed class MfmeToOasisComponentMapper
             ButtonNumber = component.ButtonNumberAsString?.Trim() ?? string.Empty,
             CoinInput = component.HasCoinInput,
             Inverted = component.Inverted,
-            RawMfmeShortcut = component.Shortcut1?.Trim() ?? string.Empty,
+            RawMfmeShortcut = rawShortcut,
+            KeyboardShortcut = keyboardShortcut,
             LinkedVisualElementId = Guid.TryParse(linkedObjectId, out var linkedId) ? linkedId : null,
             Notes = string.IsNullOrWhiteSpace(component.Shortcut2) ? string.Empty : $"Shortcut2: {component.Shortcut2.Trim()}"
         };
