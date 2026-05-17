@@ -5,6 +5,7 @@ public sealed class PanelRuntimeState
     private readonly Dictionary<string, double> _lampIntensityByObjectId = new(StringComparer.Ordinal);
     private readonly Dictionary<string, int> _reelPositionByObjectId = new(StringComparer.Ordinal);
     private readonly Dictionary<string, int[]> _segmentMasksByObjectId = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, double[]> _segmentBrightnessByObjectId = new(StringComparer.Ordinal);
 
     public string? LampTestObjectId { get; set; }
 
@@ -13,6 +14,7 @@ public sealed class PanelRuntimeState
     public IReadOnlyDictionary<string, double> LampIntensityByObjectId => _lampIntensityByObjectId;
     public IReadOnlyDictionary<string, int> ReelPositionByObjectId => _reelPositionByObjectId;
     public IReadOnlyDictionary<string, int[]> SegmentMasksByObjectId => _segmentMasksByObjectId;
+    public IReadOnlyDictionary<string, double[]> SegmentBrightnessByObjectId => _segmentBrightnessByObjectId;
 
     public bool SetLampIntensityIfChanged(string objectId, double intensity)
     {
@@ -89,6 +91,7 @@ public sealed class PanelRuntimeState
         _lampIntensityByObjectId.Clear();
         _reelPositionByObjectId.Clear();
         _segmentMasksByObjectId.Clear();
+        _segmentBrightnessByObjectId.Clear();
     }
 
     public bool SetSegmentCellMasksIfChanged(string objectId, int[] masks)
@@ -107,6 +110,38 @@ public sealed class PanelRuntimeState
 
         _segmentMasksByObjectId[normalizedObjectId] = masks.ToArray();
         return true;
+    }
+
+
+    public bool SetSegmentCellBrightnessIfChanged(string objectId, double[] brightnessByCell)
+    {
+        if (string.IsNullOrWhiteSpace(objectId) || brightnessByCell is null)
+        {
+            return false;
+        }
+
+        var normalizedObjectId = objectId.Trim();
+        if (_segmentBrightnessByObjectId.TryGetValue(normalizedObjectId, out var previous)
+            && previous.Length == brightnessByCell.Length
+            && previous.Zip(brightnessByCell, (left, right) => Math.Abs(left - right) < 0.0001d).All(equal => equal))
+        {
+            return false;
+        }
+
+        _segmentBrightnessByObjectId[normalizedObjectId] = brightnessByCell.Select(value => Math.Clamp(value, 0d, 1d)).ToArray();
+        return true;
+    }
+
+    public double[] GetSegmentCellBrightness(string objectId, int cellCount)
+    {
+        if (string.IsNullOrWhiteSpace(objectId) || cellCount <= 0)
+        {
+            return Array.Empty<double>();
+        }
+
+        return _segmentBrightnessByObjectId.TryGetValue(objectId.Trim(), out var value)
+            ? value.ToArray()
+            : Enumerable.Repeat(1d, cellCount).ToArray();
     }
 
     public int[] GetSegmentCellMasks(string objectId, int cellCount)

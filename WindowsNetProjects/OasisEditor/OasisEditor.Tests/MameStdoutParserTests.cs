@@ -44,7 +44,7 @@ public sealed class MameStdoutParserTests
         var reelAdapter = new RecordingReelAdapter();
         var segmentAdapter = new RecordingSegmentAdapter();
         string? diagnostic = null;
-        var parser = new MameStdoutParser(new MameLampStateParser(), lampAdapter, new MameReelStateParser(), reelAdapter, new MameSegmentStateParser(), segmentAdapter, message => diagnostic = message);
+        var parser = new MameStdoutParser(new MameLampStateParser(), lampAdapter, new MameReelStateParser(), reelAdapter, new MameSegmentStateParser(), segmentAdapter, diagnosticLogger: message => diagnostic = message);
 
         parser.ProcessLine("unknown output");
 
@@ -84,6 +84,26 @@ public sealed class MameStdoutParserTests
         Assert.Equal(16, call.Mask);
     }
 
+
+    [Fact]
+    public void ProcessLine_WhenVfdDutyLine_DoesNotLogUnhandledDiagnostic()
+    {
+        var lampAdapter = new RecordingLampAdapter();
+        var reelAdapter = new RecordingReelAdapter();
+        var segmentAdapter = new RecordingSegmentAdapter();
+        string? diagnostic = null;
+        var parser = new MameStdoutParser(new MameLampStateParser(), lampAdapter, new MameReelStateParser(), reelAdapter, new MameSegmentStateParser(), segmentAdapter, () => FruitMachinePlatformType.MPU4, message => diagnostic = message);
+
+        parser.ProcessLine("vfdduty0 = 31");
+
+        Assert.Empty(lampAdapter.Calls);
+        Assert.Empty(reelAdapter.Calls);
+        Assert.Empty(segmentAdapter.Calls);
+        var duty = Assert.Single(segmentAdapter.BrightnessCalls);
+        Assert.Equal(0, duty.CellId);
+        Assert.Equal(1d, duty.Brightness);
+        Assert.Null(diagnostic);
+    }
     private sealed class RecordingLampAdapter : IMameLampRuntimeAdapter
     {
         public List<(int LampId, int Value)> Calls { get; } = [];
@@ -99,6 +119,8 @@ public sealed class MameStdoutParserTests
     private sealed class RecordingSegmentAdapter : IMameSegmentRuntimeAdapter
     {
         public List<(int CellId, int Mask, MameSegmentOutputType OutputType)> Calls { get; } = [];
+        public List<(int CellId, double Brightness)> BrightnessCalls { get; } = [];
         public void ApplySegmentState(int cellId, int segmentMask, MameSegmentOutputType outputType) => Calls.Add((cellId, segmentMask, outputType));
+        public void ApplyVfdBrightness(int cellId, double normalizedBrightness) => BrightnessCalls.Add((cellId, normalizedBrightness));
     }
 }

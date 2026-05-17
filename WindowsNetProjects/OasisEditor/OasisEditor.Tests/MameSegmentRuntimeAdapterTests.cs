@@ -78,6 +78,25 @@ public sealed class MameSegmentRuntimeAdapterTests
         Assert.Equal(0, masks[0]);
     }
 
+    [Fact]
+    public void ApplyVfdBrightness_AppliesPerDisplayBrightnessAcrossAllAlphaCells()
+    {
+        var document = CreateDocument();
+        var dispatches = new List<Action>();
+        var adapter = new MameSegmentRuntimeAdapter(() => [document], action => dispatches.Add(action));
+
+        adapter.ApplySegmentState(0, 1, MameSegmentOutputType.Vfd);
+        adapter.ApplySegmentState(1, 2, MameSegmentOutputType.Vfd);
+        adapter.ApplyVfdBrightness(0, 0.25d);
+
+        var dispatch = Assert.Single(dispatches);
+        dispatch();
+
+        var brightness = document.RuntimeState.GetSegmentCellBrightness("alpha-0", 16);
+        Assert.Equal(16, brightness.Length);
+        Assert.All(brightness, value => Assert.Equal(0.25d, value));
+    }
+
     private static DocumentTabViewModel CreateDocument()
     {
         var panelDocument = EditorDocument.CreateFromFile("panel.panel2d", "panel", "panel");

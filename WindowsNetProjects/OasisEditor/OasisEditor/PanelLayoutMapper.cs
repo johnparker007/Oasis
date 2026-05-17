@@ -174,12 +174,13 @@ public static class PanelLayoutMapper
                 var segmentState = visualStateChange.ValuesByObjectId[objectId] is SegmentVisualState state
                     ? state
                     : new SegmentVisualState(runtimeState.GetSegmentCellMasks(objectId, 16));
-                UpdateSegmentVisual(canvas, objectId, segmentState.CellMasks);
+                var cellCount = tab.TryGetSevenSegmentElement(objectId, out _) ? 1 : 16;
+                UpdateSegmentVisual(canvas, objectId, segmentState.CellMasks, runtimeState.GetSegmentCellBrightness(objectId, cellCount));
             }
         }
     }
 
-    public static void UpdateSegmentVisual(Canvas canvas, string objectId, int[] cellMasks)
+    public static void UpdateSegmentVisual(Canvas canvas, string objectId, int[] cellMasks, double[]? cellBrightness = null)
     {
         if (string.IsNullOrWhiteSpace(objectId) || cellMasks is null)
         {
@@ -195,6 +196,7 @@ public static class PanelLayoutMapper
         }
 
         segmentVisual.CellSegmentMasks = cellMasks.ToArray();
+        segmentVisual.CellBrightness = cellBrightness?.ToArray();
         segmentVisual.InvalidateVisual();
     }
 
