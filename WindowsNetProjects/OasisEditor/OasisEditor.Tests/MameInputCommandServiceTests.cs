@@ -12,7 +12,7 @@ public sealed class MameInputCommandServiceTests
         var service = new MameInputCommandService(resolver);
         var input = new InputDefinitionModel { Id = "input-1", Kind = InputDefinitionKind.Button, ButtonNumber = "2" };
 
-        var wrote = await service.TrySendInputStateAsync(processRunner, FruitMachinePlatformType.Mpu4, input, isPressed: true, CancellationToken.None);
+        var wrote = await service.TrySendInputStateAsync(processRunner, FruitMachinePlatformType.MPU4, input, isPressed: true, CancellationToken.None);
 
         Assert.True(wrote);
         Assert.Single(processRunner.Commands);
@@ -27,7 +27,7 @@ public sealed class MameInputCommandServiceTests
         var service = new MameInputCommandService(resolver);
         var input = new InputDefinitionModel { Id = "input-1", Kind = InputDefinitionKind.Button, ButtonNumber = "ABC" };
 
-        var wrote = await service.TrySendInputStateAsync(processRunner, FruitMachinePlatformType.Mpu4, input, isPressed: true, CancellationToken.None);
+        var wrote = await service.TrySendInputStateAsync(processRunner, FruitMachinePlatformType.MPU4, input, isPressed: true, CancellationToken.None);
 
         Assert.False(wrote);
         Assert.Empty(processRunner.Commands);
@@ -41,7 +41,7 @@ public sealed class MameInputCommandServiceTests
         var service = new MameInputCommandService(resolver);
         var input = new InputDefinitionModel { Id = "input-1", Kind = InputDefinitionKind.Coin, CoinInput = true };
 
-        var wrote = await service.TrySendInputStateAsync(processRunner, FruitMachinePlatformType.Mpu4, input, isPressed: false, CancellationToken.None);
+        var wrote = await service.TrySendInputStateAsync(processRunner, FruitMachinePlatformType.MPU4, input, isPressed: false, CancellationToken.None);
 
         Assert.True(wrote);
         Assert.Single(processRunner.Commands);
