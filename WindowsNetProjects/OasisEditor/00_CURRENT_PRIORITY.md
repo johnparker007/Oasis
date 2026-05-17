@@ -10,12 +10,12 @@ We are working in WindowsNetProjects/OasisEditor. Please read the .md files in t
 
 The current active workstream is:
 
-1. Panel2D runtime state performance.
-2. Runtime-state/document-model separation.
-3. Batched MAME runtime updates.
-4. Runtime visual adapters/registries.
-5. Lamp rendering optimization.
-6. Runtime-state tests and diagnostics.
+1. Input Map architecture.
+2. MFME input import.
+3. Play View runtime input routing.
+4. Platform-specific MAME input mapping.
+5. Keyboard shortcut mapping.
+6. Mouse/keyboard runtime input tests.
 
 Codex should prioritize this work before continuing additional runtime-driven component work or unrelated editor workstreams.
 
@@ -24,91 +24,95 @@ Codex should prioritize this work before continuing additional runtime-driven co
 Read these files first, in this order:
 
 1. `00_CURRENT_PRIORITY.md`
-2. `PANEL2D_RUNTIME_STATE_PERFORMANCE_PLAN.md`
-3. `OUTPUT_LOG_ENHANCEMENT_PLAN.md`
-4. `MAME_EMULATION_RUNTIME_PLAN.md`
-5. `MAME_ROM_MANAGEMENT_PLAN.md`
-6. `MAME_AUTO_UPDATE_POLICY_PLAN.md`
-7. `MAME_VERSION_DISCOVERY_PLAN.md`
-8. `MAME_ARCHITECTURE_REDESIGN.md`
-9. `CODEX_NEXT_STEPS_MAME.md`
-10. `TASKS_MAME_EMULATION_PORT.md`
-11. `AGENT.md`
-12. `TASKS.md`
+2. `MAME_INPUT_MAP_AND_PLAY_VIEW_PLAN.md`
+3. `PANEL2D_RUNTIME_STATE_PERFORMANCE_PLAN.md`
+4. `OUTPUT_LOG_ENHANCEMENT_PLAN.md`
+5. `MAME_EMULATION_RUNTIME_PLAN.md`
+6. `MAME_ROM_MANAGEMENT_PLAN.md`
+7. `MAME_AUTO_UPDATE_POLICY_PLAN.md`
+8. `MAME_VERSION_DISCOVERY_PLAN.md`
+9. `MAME_ARCHITECTURE_REDESIGN.md`
+10. `CODEX_NEXT_STEPS_MAME.md`
+11. `TASKS_MAME_EMULATION_PORT.md`
+12. `AGENT.md`
+13. `TASKS.md`
 
 ## Immediate Task
 
-Implement the runtime-state/render-performance architecture incrementally.
+Implement the Input Map and Play View architecture incrementally.
 
 Current desired direction:
 
-- separate runtime lamp state from the document/edit pipeline;
-- batch/coalesce MAME runtime updates;
-- update existing WPF visuals in place;
-- avoid canvas rebuilds during lamp flashing;
-- avoid undo/redo/dirty-state updates during runtime changes;
-- modernize runtime rendering architecture;
-- add runtime-state tests and diagnostics.
+- centralize imported/runtime inputs into InputDefinitions;
+- import MFME lamp/button input metadata;
+- convert MFME buttons into Oasis lamps;
+- add Input Map UI window;
+- port shortcut key mapping logic;
+- port platform-specific MAME tag/mask resolution logic;
+- add non-editing Play View;
+- route mouse and keyboard input through MAME stdin/Lua commands;
+- add tests and diagnostics.
 
 ## Current Architectural Goals
 
-- Runtime emulation updates should remain asynchronous and non-blocking.
-- Runtime state should not mutate the design-time document model.
-- Lamp flashing should be lightweight enough to avoid maxing out CPU cores.
-- Existing edit Panel2D pane should remain capable of showing live emulation.
-- Runtime visual updates should operate on existing visual instances.
-- UI-thread dispatch frequency should be coalesced/throttled.
-- Runtime failures should never crash the editor.
-- The architecture should support future runtime-driven components.
+- Input identity should be separated from visual representation.
+- One InputDefinition may later drive 2D and 3D button representations.
+- Existing lamp visuals should remain reusable as clickable runtime elements.
+- Play View should remain separate from edit mode.
+- Runtime input should not mutate the document/edit pipeline.
+- Mouse/keyboard routing should be state-driven and safe.
+- Runtime input failures should never crash the editor.
+- The architecture should support future 3D physical buttons.
 
 ## Testing Direction
 
 Codex should add or extend unit tests around:
 
-- runtime-state coalescing;
-- dirty snapshot behavior;
-- runtime visual adapters;
-- missing lamp mappings;
-- runtime updates not marking project dirty;
-- runtime updates not creating undo entries;
-- batched update behavior;
-- layout rebuild/runtime-state reapply behavior.
+- MFME input import behavior;
+- InputDefinition creation;
+- shortcut mapping;
+- platform tag/mask resolution;
+- MAME command formatting;
+- keyboard repeat handling;
+- focus loss releasing active inputs;
+- mouse down/up command behavior;
+- unresolved input handling.
 
-The tests should not require live MAME or heavy WPF visual integration.
+The tests should not require live MAME.
 
-Use fake runtime visual adapters and fake runtime state dependencies where practical.
+Use fake command writers, fake visual targets, and fake resolver dependencies where practical.
 
 ## Do Not Work On Yet
 
-Do not implement a separate Preview/Runtime pane yet.
+Do not implement 3D physical buttons yet.
 
-Do not implement reels/meters/segment displays yet.
+Do not implement edit-view Play Mode yet.
 
 Do not redesign all Panel2D components yet.
 
-Do not continue unrelated canvas/editor tasks unless explicitly instructed.
+Do not continue unrelated editor work unless explicitly instructed.
 
 ## Desired Output From Codex
 
 Codex should produce small focused changes that:
 
-- isolate runtime state from design-time state;
-- modernize runtime visual update architecture;
-- optimize lamp rendering performance;
-- add runtime diagnostics/logging;
-- add tests;
-- preserve editing convenience and workflow;
+- add InputDefinition architecture;
+- modernize MFME input import behavior;
+- add Input Map UI;
+- add Play View runtime input routing;
+- preserve current emulation/runtime work;
+- add tests and diagnostics;
 - include manual verification steps for John.
 
 ## Manual Test Expectations
 
 After Codex makes the change, John should verify:
 
-- lamp flashing no longer maxes out a CPU core;
-- live emulation still appears in the edit Panel2D pane;
-- editor remains responsive while emulation runs;
-- project is not marked dirty by runtime lamp flashing;
-- undo/redo history is not polluted by runtime updates;
-- layout edits still rebuild correctly;
-- stopping emulation leaves the panel in a sensible state;
+- Input Map window appears;
+- MFME lamps/buttons import input definitions correctly;
+- imported buttons are clickable in Play View;
+- keyboard shortcuts work while Play View is focused;
+- inputs send correct MAME commands;
+- inputs release correctly on key-up/focus loss;
+- runtime input does not interfere with editing mode;
 - no unrelated editor behavior changed.
