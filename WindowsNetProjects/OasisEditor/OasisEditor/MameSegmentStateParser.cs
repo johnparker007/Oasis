@@ -9,7 +9,7 @@ public interface IMameSegmentStateParser
 public sealed class MameSegmentStateParser : IMameSegmentStateParser
 {
     private static readonly Regex SegmentLineRegex = new(
-        @"vfd\s*(\d+)\s*=\s*(-?\d+)",
+        @"(?:vfd|digit)\s*(\d+)\s*=\s*(-?\d+)",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     public bool TryParse(string line, out int cellId, out int segmentMask)

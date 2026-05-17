@@ -13,6 +13,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     private Dictionary<string, PanelElementModel> _lampElementsByObjectId = new(StringComparer.Ordinal);
     private Dictionary<string, PanelElementModel> _reelElementsByObjectId = new(StringComparer.Ordinal);
     private Dictionary<string, PanelElementModel> _alphaElementsByObjectId = new(StringComparer.Ordinal);
+    private Dictionary<string, PanelElementModel> _sevenSegmentElementsByObjectId = new(StringComparer.Ordinal);
     private HashSet<string> _visualStateObjectIds = new(StringComparer.Ordinal);
     private PanelSelectionInfo? _hierarchySelectedPanelSelection;
     private double _panelZoom = 1.0;
@@ -144,7 +145,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     {
         var changedObjectIds = _panelDocumentModel.Elements
             .Where(element => !string.IsNullOrWhiteSpace(element.ObjectId)
-                && (element.Kind == PanelElementKind.Lamp || element.Kind == PanelElementKind.Reel || element.Kind == PanelElementKind.Alpha))
+                && (element.Kind == PanelElementKind.Lamp || element.Kind == PanelElementKind.Reel || element.Kind == PanelElementKind.Alpha || element.Kind == PanelElementKind.SevenSegment))
             .Select(element => element.ObjectId)
             .ToArray();
         NotifyPanelVisualPreviewChanged(changedObjectIds);
@@ -174,7 +175,9 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
                 _runtimeState.GetLampIntensity(objectId))
                 : _reelElementsByObjectId.ContainsKey(objectId)
                     ? new ReelVisualState(_runtimeState.GetReelPosition(objectId))
-                    : new SegmentVisualState(_runtimeState.GetSegmentCellMasks(objectId, 16));
+                    : _sevenSegmentElementsByObjectId.ContainsKey(objectId)
+                        ? new SegmentVisualState(_runtimeState.GetSegmentCellMasks(objectId, 1))
+                        : new SegmentVisualState(_runtimeState.GetSegmentCellMasks(objectId, 16));
             if (!_lastVisualStateByObjectId.TryGetValue(objectId, out var previous)
                 || !Equals(previous, nextState))
             {
@@ -317,9 +320,13 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
         _alphaElementsByObjectId = _panelDocumentModel.Elements
             .Where(element => element.Kind == PanelElementKind.Alpha && !string.IsNullOrWhiteSpace(element.ObjectId))
             .ToDictionary(element => element.ObjectId, element => element, StringComparer.Ordinal);
+        _sevenSegmentElementsByObjectId = _panelDocumentModel.Elements
+            .Where(element => element.Kind == PanelElementKind.SevenSegment && !string.IsNullOrWhiteSpace(element.ObjectId))
+            .ToDictionary(element => element.ObjectId, element => element, StringComparer.Ordinal);
         _visualStateObjectIds = _lampElementsByObjectId.Keys
             .Concat(_reelElementsByObjectId.Keys)
             .Concat(_alphaElementsByObjectId.Keys)
+            .Concat(_sevenSegmentElementsByObjectId.Keys)
             .ToHashSet(StringComparer.Ordinal);
     }
 }
