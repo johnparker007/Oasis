@@ -318,8 +318,8 @@ internal static class PanelElementFactory
                 VerticalAlignment = VerticalAlignment.Stretch,
                 CellCount = 1,
                 DisplayText = string.IsNullOrWhiteSpace(element.DisplayText) ? "8" : element.DisplayText,
-                LitBrush = TryCreateBrush(element.OnColorHex, Brushes.OrangeRed),
-                UnlitBrush = TryCreateBrush(element.OffColorHex, new SolidColorBrush(Color.FromArgb(160, 70, 70, 70))),
+                LitBrush = TryCreateBrush(element.OnColorHex, Brushes.Red),
+                UnlitBrush = TryCreateBrush(element.OffColorHex, new SolidColorBrush(Color.FromArgb(32, 255, 0, 0))),
                 ShowDecimalPoint = true
             }
         };
@@ -345,8 +345,8 @@ internal static class PanelElementFactory
                 VerticalAlignment = VerticalAlignment.Stretch,
                 CellCount = 16,
                 DisplayText = element.DisplayText,
-                LitBrush = TryCreateBrush(element.OnColorHex, Brushes.OrangeRed),
-                UnlitBrush = TryCreateBrush(element.OffColorHex, new SolidColorBrush(Color.FromArgb(160, 70, 70, 70))),
+                LitBrush = TryCreateBrush(element.OnColorHex, Brushes.Cyan),
+                UnlitBrush = TryCreateBrush(element.OffColorHex, new SolidColorBrush(Color.FromArgb(32, 0, 255, 255))),
                 ShowDecimalPoint = true
             }
         };

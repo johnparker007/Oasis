@@ -16,8 +16,8 @@ internal abstract class SegmentDisplayVisualBase : FrameworkElement
     }
 
     public int CellCount { get; set; } = 1;
-    public Brush LitBrush { get; set; } = Brushes.OrangeRed;
-    public Brush UnlitBrush { get; set; } = new SolidColorBrush(Color.FromArgb(120, 255, 69, 0));
+    public Brush LitBrush { get; set; } = Brushes.Cyan;
+    public Brush UnlitBrush { get; set; } = Brushes.DarkCyan;
     public string? DisplayText { get; set; }
     public int[]? CellSegmentMasks { get; set; }
     public bool ShowDecimalPoint { get; set; }
