@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Threading;
 using System.Windows;
@@ -8,6 +9,8 @@ namespace OasisEditor.Views;
 
 public partial class PlayView : UserControl
 {
+    private DocumentTabViewModel? _subscribedDocument;
+
     public PlayView()
     {
         InitializeComponent();
@@ -43,6 +46,8 @@ public partial class PlayView : UserControl
     private void RefreshCanvasFromSelection()
     {
         var selected = ViewModel?.SelectedDocument;
+        UpdateSelectedDocumentSubscription(selected);
+
         if (selected is null || selected.Document.DocumentType != EditorDocumentType.Panel2D)
         {
             PlayCanvas.Children.Clear();
@@ -52,6 +57,7 @@ public partial class PlayView : UserControl
 
         EmptyStateText.Visibility = Visibility.Collapsed;
         PanelLayoutMapper.ApplyPersistedLayout(PlayCanvas, selected.PanelLayoutJson, selected.RuntimeState);
+        ApplyClickableCursorHints(selected);
     }
 
     private async void OnPlayCanvasPreviewKeyDown(object sender, KeyEventArgs eventArgs)
@@ -134,5 +140,64 @@ public partial class PlayView : UserControl
 
         visualElementId = Guid.Empty;
         return false;
+    }
+
+    private void UpdateSelectedDocumentSubscription(DocumentTabViewModel? selected)
+    {
+        if (ReferenceEquals(_subscribedDocument, selected))
+        {
+            return;
+        }
+
+        if (_subscribedDocument is not null)
+        {
+            _subscribedDocument.PanelVisualStateChanged -= OnSelectedDocumentPanelVisualStateChanged;
+            _subscribedDocument.PropertyChanged -= OnSelectedDocumentPropertyChanged;
+        }
+
+        _subscribedDocument = selected;
+        if (_subscribedDocument is not null)
+        {
+            _subscribedDocument.PanelVisualStateChanged += OnSelectedDocumentPanelVisualStateChanged;
+            _subscribedDocument.PropertyChanged += OnSelectedDocumentPropertyChanged;
+        }
+    }
+
+    private void OnSelectedDocumentPanelVisualStateChanged(PanelVisualStateChangedEvent visualStateChanged)
+    {
+        if (_subscribedDocument is null || visualStateChanged.DocumentId != _subscribedDocument.DocumentId)
+        {
+            return;
+        }
+
+        Dispatcher.Invoke(() =>
+        {
+            PanelLayoutMapper.ApplyVisualState(PlayCanvas, _subscribedDocument, visualStateChanged, _subscribedDocument.RuntimeState);
+        });
+    }
+
+    private void OnSelectedDocumentPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(DocumentTabViewModel.PanelLayoutJson))
+        {
+            Dispatcher.Invoke(RefreshCanvasFromSelection);
+        }
+    }
+
+    private void ApplyClickableCursorHints(DocumentTabViewModel selectedDocument)
+    {
+        var clickableObjectIds = new HashSet<string>(
+            (ViewModel?.InputDefinitions ?? [])
+                .Where(input => input.LinkedVisualElementId.HasValue)
+                .Select(input => input.LinkedVisualElementId!.Value.ToString("D")),
+            StringComparer.OrdinalIgnoreCase);
+
+        foreach (var visual in PlayCanvas.Children.OfType<FrameworkElement>())
+        {
+            var uid = visual.Uid?.Trim();
+            visual.Cursor = !string.IsNullOrWhiteSpace(uid) && clickableObjectIds.Contains(uid)
+                ? Cursors.Hand
+                : Cursors.Arrow;
+        }
     }
 }
