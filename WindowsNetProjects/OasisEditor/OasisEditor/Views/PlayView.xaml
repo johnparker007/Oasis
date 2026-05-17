@@ -17,6 +17,7 @@
                     Height="900"
                     Background="{DynamicResource PanelBackgroundBrush}"
                     Focusable="True"
+                    PreviewMouseDown="OnPlayCanvasPreviewMouseDown"
                     PreviewKeyDown="OnPlayCanvasPreviewKeyDown"
                     PreviewKeyUp="OnPlayCanvasPreviewKeyUp"
                     PreviewMouseLeftButtonDown="OnPlayCanvasPreviewMouseLeftButtonDown"

@@ -75,6 +75,14 @@ public partial class PlayView : UserControl
         }
     }
 
+    private void OnPlayCanvasPreviewMouseDown(object sender, MouseButtonEventArgs eventArgs)
+    {
+        if (!PlayCanvas.IsKeyboardFocusWithin)
+        {
+            PlayCanvas.Focus();
+        }
+    }
+
     private async void OnPlayCanvasPreviewKeyUp(object sender, KeyEventArgs eventArgs)
     {
         if (ViewModel is null)
@@ -186,16 +194,18 @@ public partial class PlayView : UserControl
 
     private void ApplyClickableCursorHints(DocumentTabViewModel selectedDocument)
     {
-        var clickableObjectIds = new HashSet<string>(
+        var clickableObjectIds = new HashSet<Guid>(
             (ViewModel?.InputDefinitions ?? [])
                 .Where(input => input.LinkedVisualElementId.HasValue)
-                .Select(input => input.LinkedVisualElementId!.Value.ToString("D")),
-            StringComparer.OrdinalIgnoreCase);
+                .Select(input => input.LinkedVisualElementId!.Value));
 
         foreach (var visual in PlayCanvas.Children.OfType<FrameworkElement>())
         {
             var uid = visual.Uid?.Trim();
-            visual.Cursor = !string.IsNullOrWhiteSpace(uid) && clickableObjectIds.Contains(uid)
+            var isClickable = !string.IsNullOrWhiteSpace(uid)
+                && Guid.TryParse(uid, out var visualId)
+                && clickableObjectIds.Contains(visualId);
+            visual.Cursor = isClickable
                 ? Cursors.Hand
                 : Cursors.Arrow;
         }
