@@ -66,6 +66,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly IMameVersionCatalogService _mameVersionCatalogService;
     private bool _isLoadingPreferences;
     private readonly IMameEmulationService _mameEmulationService;
+    private readonly IMameProcessRunner _mameProcessRunner;
     private MameSetupState _mameSetupState = MameSetupState.NotStarted;
     private bool _isAutoProvisioningMame;
     private MameEmulationState _mameEmulationState = MameEmulationState.Stopped;
@@ -235,18 +236,19 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                     }
                 }),
             diagnosticLogger: line => AddOutputEntry(line, OutputLogStatus.Info));
+        _mameProcessRunner = new MameProcessRunner(
+            stdoutLogger: line => ProcessMameStdoutLine(line, mameStdoutParser),
+            stdinLogger: line =>
+            {
+                if (DebugOutputStdIn)
+                {
+                    AddOutputEntry($"[MAME-STDIN] {line}", OutputLogStatus.Info);
+                }
+            },
+            stderrLogger: line => AddOutputEntry($"[MAME-ERR] {line}", OutputLogStatus.Warning));
         _mameEmulationService = new MameEmulationService(
             new MameProcessStartInfoBuilder(),
-            new MameProcessRunner(
-                stdoutLogger: line => ProcessMameStdoutLine(line, mameStdoutParser),
-                stdinLogger: line =>
-                {
-                    if (DebugOutputStdIn)
-                    {
-                        AddOutputEntry($"[MAME-STDIN] {line}", OutputLogStatus.Info);
-                    }
-                },
-                stderrLogger: line => AddOutputEntry($"[MAME-ERR] {line}", OutputLogStatus.Warning)),
+            _mameProcessRunner,
             BuildMameLaunchRequest);
         _mameEmulationService.StateChanged += (_, state) =>
         {
@@ -1313,7 +1315,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return false;
         }
 
-        _playViewInputRouter ??= new PlayViewInputRouter(new MameInputCommandService(new MameInputPortResolver()), _mameEmulationService.ProcessRunner);
+        _playViewInputRouter ??= new PlayViewInputRouter(new MameInputCommandService(new MameInputPortResolver()), _mameProcessRunner);
         return true;
     }
 
