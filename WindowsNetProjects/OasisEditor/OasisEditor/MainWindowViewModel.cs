@@ -404,6 +404,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         private set => SetProperty(ref _inputMapDiagnostics, value);
     }
 
+    public int InputMapWarningCount => InputMapDiagnostics.Count(d => d.Severity == InputMapDiagnosticSeverity.Warning);
+    public bool HasInputMapDiagnostics => InputMapDiagnostics.Count > 0;
+
 
     public FruitMachinePlatformType SelectedFruitMachinePlatform
     {
@@ -1791,11 +1794,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (LoadedProject is null)
         {
             InputMapDiagnostics = [];
+            OnPropertyChanged(nameof(InputMapWarningCount));
+            OnPropertyChanged(nameof(HasInputMapDiagnostics));
             return;
         }
 
         InputMapDiagnostics = _inputMapDiagnosticsService.Analyze(SelectedFruitMachinePlatform, LoadedProject.InputDefinitions);
-        var warningCount = InputMapDiagnostics.Count(d => d.Severity == InputMapDiagnosticSeverity.Warning);
+        OnPropertyChanged(nameof(InputMapWarningCount));
+        OnPropertyChanged(nameof(HasInputMapDiagnostics));
+        var warningCount = InputMapWarningCount;
         if (warningCount > 0)
         {
             AddOutputEntry($"Input Map diagnostics reported {warningCount} warning(s).", OutputLogStatus.Warning);

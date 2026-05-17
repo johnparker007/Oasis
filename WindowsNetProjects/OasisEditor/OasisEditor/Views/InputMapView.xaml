@@ -45,8 +45,13 @@
                 BorderThickness="1"
                 Background="{DynamicResource SurfaceRaisedBrush}">
             <StackPanel>
-                <TextBlock FontWeight="SemiBold"
-                           Text="Input Map Diagnostics" />
+                <DockPanel>
+                    <TextBlock FontWeight="SemiBold"
+                               Text="Input Map Diagnostics" />
+                    <TextBlock HorizontalAlignment="Right"
+                               Foreground="{DynamicResource SecondaryTextBrush}"
+                               Text="{Binding InputMapWarningCount, StringFormat=Warnings: {0}}" />
+                </DockPanel>
                 <ItemsControl Margin="0,6,0,0"
                               ItemsSource="{Binding InputMapDiagnostics}">
                     <ItemsControl.ItemTemplate>
