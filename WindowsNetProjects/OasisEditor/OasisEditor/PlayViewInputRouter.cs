@@ -61,6 +61,7 @@ public sealed class PlayViewInputRouter
         {
             if (!inputDefinitionsById.TryGetValue(inputId, out var definition))
             {
+                _activeInputIds.Remove(inputId);
                 continue;
             }
 
