@@ -99,6 +99,9 @@ public sealed class MameStdoutParserTests
         Assert.Empty(lampAdapter.Calls);
         Assert.Empty(reelAdapter.Calls);
         Assert.Empty(segmentAdapter.Calls);
+        var duty = Assert.Single(segmentAdapter.BrightnessCalls);
+        Assert.Equal(0, duty.CellId);
+        Assert.Equal(1d, duty.Brightness);
         Assert.Null(diagnostic);
     }
     private sealed class RecordingLampAdapter : IMameLampRuntimeAdapter
@@ -116,6 +119,8 @@ public sealed class MameStdoutParserTests
     private sealed class RecordingSegmentAdapter : IMameSegmentRuntimeAdapter
     {
         public List<(int CellId, int Mask, MameSegmentOutputType OutputType)> Calls { get; } = [];
+        public List<(int CellId, double Brightness)> BrightnessCalls { get; } = [];
         public void ApplySegmentState(int cellId, int segmentMask, MameSegmentOutputType outputType) => Calls.Add((cellId, segmentMask, outputType));
+        public void ApplyVfdBrightness(int cellId, double normalizedBrightness) => BrightnessCalls.Add((cellId, normalizedBrightness));
     }
 }

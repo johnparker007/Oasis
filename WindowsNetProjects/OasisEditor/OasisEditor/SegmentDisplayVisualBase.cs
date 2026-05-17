@@ -21,6 +21,7 @@ internal abstract class SegmentDisplayVisualBase : FrameworkElement
     public string? DisplayText { get; set; }
     public int[]? CellSegmentMasks { get; set; }
     public bool ShowDecimalPoint { get; set; }
+    public double[]? CellBrightness { get; set; }
 
     protected override void OnRender(DrawingContext drawingContext)
     {
@@ -51,6 +52,7 @@ internal abstract class SegmentDisplayVisualBase : FrameworkElement
                     ? GetSegmentMaskForChar(DisplayText![i])
                     : 0;
             var cellTransform = new MatrixTransform(scale, 0, 0, scale, offsetX + (i * pitch * scale), offsetY);
+            var brightness = CellBrightness is not null && i < CellBrightness.Length ? Math.Clamp(CellBrightness[i], 0d, 1d) : 1d;
 
             foreach (var segment in _definition.Cell.Segments)
             {
@@ -61,7 +63,18 @@ internal abstract class SegmentDisplayVisualBase : FrameworkElement
 
                 var lit = (segmentMask & (1 << segment.Index)) != 0;
                 drawingContext.PushTransform(cellTransform);
+                if (lit)
+                {
+                    drawingContext.PushOpacity(brightness);
+                }
+
                 drawingContext.DrawGeometry(lit ? LitBrush : UnlitBrush, SegmentPen, segment.Geometry);
+
+                if (lit)
+                {
+                    drawingContext.Pop();
+                }
+
                 drawingContext.Pop();
             }
 

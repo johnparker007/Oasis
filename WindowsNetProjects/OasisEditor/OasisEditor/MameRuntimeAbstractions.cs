@@ -42,6 +42,7 @@ public interface IMameReelRuntimeAdapter
 public interface IMameSegmentRuntimeAdapter
 {
     void ApplySegmentState(int cellId, int segmentMask, MameSegmentOutputType outputType);
+    void ApplyVfdBrightness(int cellId, double normalizedBrightness);
 }
 
 public sealed record MameProcessLaunchRequest(

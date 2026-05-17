@@ -7,8 +7,10 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
     private readonly Func<IEnumerable<DocumentTabViewModel>> _documentProvider;
     private readonly Action<Action> _uiDispatch;
     private readonly Dictionary<int, (int Mask, MameSegmentOutputType OutputType)> _pendingMasks = new();
+    private readonly Dictionary<int, double> _pendingVfdBrightnessByCell = new();
     private readonly Dictionary<int, int> _latestVfdMasksByCell = new();
     private readonly Dictionary<int, int> _latestDigitMasksByCell = new();
+    private readonly Dictionary<int, double> _latestVfdBrightnessByCell = new();
     private bool _uiUpdateScheduled;
 
     public MameSegmentRuntimeAdapter(Func<IEnumerable<DocumentTabViewModel>> documentProvider, Action<Action> uiDispatch)
@@ -29,13 +31,28 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
         _uiDispatch(ApplyPendingOnUiThread);
     }
 
+    public void ApplyVfdBrightness(int cellId, double normalizedBrightness)
+    {
+        lock (_pendingSync)
+        {
+            _pendingVfdBrightnessByCell[cellId] = Math.Clamp(normalizedBrightness, 0d, 1d);
+            if (_uiUpdateScheduled) return;
+            _uiUpdateScheduled = true;
+        }
+
+        _uiDispatch(ApplyPendingOnUiThread);
+    }
+
     private void ApplyPendingOnUiThread()
     {
         Dictionary<int, (int Mask, MameSegmentOutputType OutputType)> snapshot;
+        Dictionary<int, double> brightnessSnapshot;
         lock (_pendingSync)
         {
             snapshot = new(_pendingMasks);
+            brightnessSnapshot = new(_pendingVfdBrightnessByCell);
             _pendingMasks.Clear();
+            _pendingVfdBrightnessByCell.Clear();
             _uiUpdateScheduled = false;
         }
 
@@ -55,12 +72,18 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
                 }
             }
 
+            foreach (var (cellId, brightness) in brightnessSnapshot)
+            {
+                _latestVfdBrightnessByCell[cellId] = brightness;
+            }
+
             foreach (var element in document.GetPanelElements().Where(e => (e.Kind == PanelElementKind.Alpha || e.Kind == PanelElementKind.SevenSegment) && !string.IsNullOrWhiteSpace(e.ObjectId)))
             {
                 var objectId = element.ObjectId!;
                 var baseIndex = element.DisplayNumber.GetValueOrDefault(0);
                 var cellCount = element.Kind == PanelElementKind.SevenSegment ? 1 : 16;
                 var cellMasks = new int[cellCount];
+                var cellBrightness = new double[cellCount];
                 for (var i = 0; i < cellMasks.Length; i++)
                 {
                     var source = element.Kind == PanelElementKind.SevenSegment ? _latestDigitMasksByCell : _latestVfdMasksByCell;
@@ -70,9 +93,21 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
                             ? mask
                             : RemapMameMaskToWpfSegmentOrder(mask);
                     }
+
+                    if (element.Kind == PanelElementKind.Alpha && _latestVfdBrightnessByCell.TryGetValue(baseIndex + i, out var brightness))
+                    {
+                        cellBrightness[i] = brightness;
+                    }
+                    else
+                    {
+                        cellBrightness[i] = 1d;
+                    }
                 }
 
-                if (document.RuntimeState.SetSegmentCellMasksIfChanged(objectId, cellMasks))
+                var maskChanged = document.RuntimeState.SetSegmentCellMasksIfChanged(objectId, cellMasks);
+                var brightnessChanged = element.Kind == PanelElementKind.Alpha
+                    && document.RuntimeState.SetSegmentCellBrightnessIfChanged(objectId, cellBrightness);
+                if (maskChanged || brightnessChanged)
                 {
                     changedObjectIds.Add(objectId);
                 }

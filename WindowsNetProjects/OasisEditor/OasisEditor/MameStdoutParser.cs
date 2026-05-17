@@ -50,8 +50,9 @@ public sealed class MameStdoutParser : IMameStdoutParser
             return;
         }
 
-        if (_vfdDutyParser.TryParseNormalized(line, _platformProvider(), out _, out _))
+        if (_vfdDutyParser.TryParseNormalized(line, _platformProvider(), out var dutyCellId, out var normalizedBrightness))
         {
+            _segmentRuntimeAdapter.ApplyVfdBrightness(dutyCellId, normalizedBrightness);
             return;
         }
 
