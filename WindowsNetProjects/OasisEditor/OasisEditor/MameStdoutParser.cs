@@ -40,9 +40,9 @@ public sealed class MameStdoutParser : IMameStdoutParser
             return;
         }
 
-        if (_segmentStateParser.TryParse(line, out var cellId, out var segmentMask))
+        if (_segmentStateParser.TryParse(line, out var cellId, out var segmentMask, out var outputType))
         {
-            _segmentRuntimeAdapter.ApplySegmentState(cellId, segmentMask);
+            _segmentRuntimeAdapter.ApplySegmentState(cellId, segmentMask, outputType);
             return;
         }
 

@@ -98,7 +98,7 @@ public sealed class MameStdoutParserTests
 
     private sealed class RecordingSegmentAdapter : IMameSegmentRuntimeAdapter
     {
-        public List<(int CellId, int Mask)> Calls { get; } = [];
-        public void ApplySegmentState(int cellId, int segmentMask) => Calls.Add((cellId, segmentMask));
+        public List<(int CellId, int Mask, MameSegmentOutputType OutputType)> Calls { get; } = [];
+        public void ApplySegmentState(int cellId, int segmentMask, MameSegmentOutputType outputType) => Calls.Add((cellId, segmentMask, outputType));
     }
 }

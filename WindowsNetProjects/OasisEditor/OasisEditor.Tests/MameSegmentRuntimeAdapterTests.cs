@@ -12,11 +12,11 @@ public sealed class MameSegmentRuntimeAdapterTests
         var dispatches = new List<Action>();
         var adapter = new MameSegmentRuntimeAdapter(() => [document], action => dispatches.Add(action));
 
-        adapter.ApplySegmentState(0, 1);
+        adapter.ApplySegmentState(0, 1, MameSegmentOutputType.Vfd);
         var first = Assert.Single(dispatches);
         first();
 
-        adapter.ApplySegmentState(1, 2);
+        adapter.ApplySegmentState(1, 2, MameSegmentOutputType.Vfd);
         var second = Assert.Single(dispatches.Skip(1));
         second();
 
@@ -32,9 +32,9 @@ public sealed class MameSegmentRuntimeAdapterTests
         var dispatches = new List<Action>();
         var adapter = new MameSegmentRuntimeAdapter(() => [document], action => dispatches.Add(action));
 
-        adapter.ApplySegmentState(0, 1);
-        adapter.ApplySegmentState(0, 3);
-        adapter.ApplySegmentState(1, 2);
+        adapter.ApplySegmentState(0, 1, MameSegmentOutputType.Vfd);
+        adapter.ApplySegmentState(0, 3, MameSegmentOutputType.Vfd);
+        adapter.ApplySegmentState(1, 2, MameSegmentOutputType.Vfd);
 
         var dispatch = Assert.Single(dispatches);
         dispatch();
@@ -51,7 +51,7 @@ public sealed class MameSegmentRuntimeAdapterTests
         var dispatches = new List<Action>();
         var adapter = new MameSegmentRuntimeAdapter(() => [document], action => dispatches.Add(action));
 
-        adapter.ApplySegmentState(3, 16);
+        adapter.ApplySegmentState(3, 16, MameSegmentOutputType.Digit);
 
         var dispatch = Assert.Single(dispatches);
         dispatch();
@@ -59,6 +59,23 @@ public sealed class MameSegmentRuntimeAdapterTests
         var masks = document.RuntimeState.GetSegmentCellMasks("seven-3", 1);
         Assert.Single(masks);
         Assert.Equal(16, masks[0]);
+    }
+
+    [Fact]
+    public void ApplySegmentState_DoesNotApplyVfdMasksToSevenSegment()
+    {
+        var document = CreateDocument();
+        var dispatches = new List<Action>();
+        var adapter = new MameSegmentRuntimeAdapter(() => [document], action => dispatches.Add(action));
+
+        adapter.ApplySegmentState(3, 255, MameSegmentOutputType.Vfd);
+
+        var dispatch = Assert.Single(dispatches);
+        dispatch();
+
+        var masks = document.RuntimeState.GetSegmentCellMasks("seven-3", 1);
+        Assert.Single(masks);
+        Assert.Equal(0, masks[0]);
     }
 
     private static DocumentTabViewModel CreateDocument()

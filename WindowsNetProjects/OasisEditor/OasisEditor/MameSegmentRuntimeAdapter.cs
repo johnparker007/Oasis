@@ -6,8 +6,9 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
     private readonly object _pendingSync = new();
     private readonly Func<IEnumerable<DocumentTabViewModel>> _documentProvider;
     private readonly Action<Action> _uiDispatch;
-    private readonly Dictionary<int, int> _pendingMasks = new();
-    private readonly Dictionary<int, int> _latestMasksByCell = new();
+    private readonly Dictionary<int, (int Mask, MameSegmentOutputType OutputType)> _pendingMasks = new();
+    private readonly Dictionary<int, int> _latestVfdMasksByCell = new();
+    private readonly Dictionary<int, int> _latestDigitMasksByCell = new();
     private bool _uiUpdateScheduled;
 
     public MameSegmentRuntimeAdapter(Func<IEnumerable<DocumentTabViewModel>> documentProvider, Action<Action> uiDispatch)
@@ -16,11 +17,11 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
         _uiDispatch = uiDispatch ?? throw new ArgumentNullException(nameof(uiDispatch));
     }
 
-    public void ApplySegmentState(int cellId, int segmentMask)
+    public void ApplySegmentState(int cellId, int segmentMask, MameSegmentOutputType outputType)
     {
         lock (_pendingSync)
         {
-            _pendingMasks[cellId] = segmentMask;
+            _pendingMasks[cellId] = (segmentMask, outputType);
             if (_uiUpdateScheduled) return;
             _uiUpdateScheduled = true;
         }
@@ -30,7 +31,7 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
 
     private void ApplyPendingOnUiThread()
     {
-        Dictionary<int, int> snapshot;
+        Dictionary<int, (int Mask, MameSegmentOutputType OutputType)> snapshot;
         lock (_pendingSync)
         {
             snapshot = new(_pendingMasks);
@@ -42,9 +43,16 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
         {
             var changedObjectIds = new HashSet<string>(StringComparer.Ordinal);
 
-            foreach (var (cellId, mask) in snapshot)
+            foreach (var (cellId, state) in snapshot)
             {
-                _latestMasksByCell[cellId] = mask;
+                if (state.OutputType == MameSegmentOutputType.Vfd)
+                {
+                    _latestVfdMasksByCell[cellId] = state.Mask;
+                }
+                else
+                {
+                    _latestDigitMasksByCell[cellId] = state.Mask;
+                }
             }
 
             foreach (var element in document.GetPanelElements().Where(e => (e.Kind == PanelElementKind.Alpha || e.Kind == PanelElementKind.SevenSegment) && !string.IsNullOrWhiteSpace(e.ObjectId)))
@@ -55,7 +63,8 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
                 var cellMasks = new int[cellCount];
                 for (var i = 0; i < cellMasks.Length; i++)
                 {
-                    if (_latestMasksByCell.TryGetValue(baseIndex + i, out var mask))
+                    var source = element.Kind == PanelElementKind.SevenSegment ? _latestDigitMasksByCell : _latestVfdMasksByCell;
+                    if (source.TryGetValue(baseIndex + i, out var mask))
                     {
                         cellMasks[i] = element.Kind == PanelElementKind.SevenSegment
                             ? mask
