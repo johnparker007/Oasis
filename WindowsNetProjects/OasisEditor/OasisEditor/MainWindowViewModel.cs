@@ -71,6 +71,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private MameEmulationState _mameEmulationState = MameEmulationState.Stopped;
     private readonly IInputMapDiagnosticsService _inputMapDiagnosticsService = new InputMapDiagnosticsService(new MameInputPortResolver());
     private IReadOnlyList<InputMapDiagnostic> _inputMapDiagnostics = [];
+    private PlayViewInputRouter? _playViewInputRouter;
+    private PlayViewKeyboardInputRouter? _playViewKeyboardInputRouter;
+    private PlayViewPointerInputRouter? _playViewPointerInputRouter;
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<EditorToolWindowId>? ToolWindowOpenRequested;
@@ -249,6 +252,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             Application.Current.Dispatcher.Invoke(() =>
             {
+                if (state is MameEmulationState.Stopping or MameEmulationState.Stopped or MameEmulationState.Failed)
+                {
+                    _ = ReleaseAllPlayViewInputsAsync($"emulation state '{state}'", CancellationToken.None);
+                }
+
                 EmulationState = state;
                 AddOutputEntry($"Emulation state changed to {state}.", OutputLogStatus.Info);
             });
@@ -1189,7 +1197,124 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void CloseSelectedDocument()
     {
+        _ = ReleaseAllPlayViewInputsAsync("document close", CancellationToken.None);
         _documentWorkspace.CloseSelectedDocument();
+    }
+
+    public async Task<bool> TryHandlePlayViewKeyDownAsync(string keyboardShortcut, bool isFocused, bool isRepeat, CancellationToken cancellationToken)
+    {
+        var router = EnsurePlayViewKeyboardInputRouter();
+        if (router is null)
+        {
+            return false;
+        }
+
+        var handled = await router.TryHandleKeyDownAsync(SelectedFruitMachinePlatform, keyboardShortcut, isFocused, isRepeat, cancellationToken).ConfigureAwait(false);
+        if (!handled && isFocused && !isRepeat && !string.IsNullOrWhiteSpace(keyboardShortcut))
+        {
+            AddOutputEntry($"Play View key input unresolved: '{keyboardShortcut}' on platform '{SelectedFruitMachinePlatform}'.", OutputLogStatus.Warning);
+        }
+
+        return handled;
+    }
+
+    public Task<bool> TryHandlePlayViewKeyUpAsync(string keyboardShortcut, bool isFocused, CancellationToken cancellationToken)
+    {
+        var router = EnsurePlayViewKeyboardInputRouter();
+        if (router is null)
+        {
+            return Task.FromResult(false);
+        }
+
+        return router.TryHandleKeyUpAsync(SelectedFruitMachinePlatform, keyboardShortcut, isFocused, cancellationToken);
+    }
+
+    public async Task<bool> TryHandlePlayViewPointerDownAsync(Guid visualElementId, bool isFocused, CancellationToken cancellationToken)
+    {
+        var router = EnsurePlayViewPointerInputRouter();
+        if (router is null)
+        {
+            return false;
+        }
+
+        var handled = await router.TryHandlePointerDownAsync(SelectedFruitMachinePlatform, visualElementId, isFocused, cancellationToken).ConfigureAwait(false);
+        if (!handled && isFocused)
+        {
+            AddOutputEntry($"Play View pointer input unresolved for visual '{visualElementId}' on platform '{SelectedFruitMachinePlatform}'.", OutputLogStatus.Warning);
+        }
+
+        return handled;
+    }
+
+    public Task<bool> TryHandlePlayViewPointerUpAsync(Guid visualElementId, bool isFocused, CancellationToken cancellationToken)
+    {
+        var router = EnsurePlayViewPointerInputRouter();
+        if (router is null)
+        {
+            return Task.FromResult(false);
+        }
+
+        return router.TryHandlePointerUpAsync(SelectedFruitMachinePlatform, visualElementId, isFocused, cancellationToken);
+    }
+
+    public Task<int> ReleaseAllPlayViewInputsAsync(string reason, CancellationToken cancellationToken)
+    {
+        return ReleaseAllPlayViewInputsCoreAsync(reason, cancellationToken);
+    }
+
+    private async Task<int> ReleaseAllPlayViewInputsCoreAsync(string reason, CancellationToken cancellationToken)
+    {
+        if (_playViewInputRouter is null)
+        {
+            return 0;
+        }
+
+        EnsurePlayViewKeyboardInputRouter();
+        EnsurePlayViewPointerInputRouter();
+
+        var byInputId = (LoadedProject?.InputDefinitions ?? [])
+            .Where(definition => !string.IsNullOrWhiteSpace(definition.Id))
+            .ToDictionary(definition => definition.Id, definition => definition, StringComparer.Ordinal);
+        var released = await _playViewInputRouter.ReleaseAllAsync(SelectedFruitMachinePlatform, byInputId, cancellationToken).ConfigureAwait(false);
+        if (released > 0)
+        {
+            AddOutputEntry($"Play View released {released} active input(s) due to {reason}.", OutputLogStatus.Info);
+        }
+
+        return released;
+    }
+
+    private PlayViewKeyboardInputRouter? EnsurePlayViewKeyboardInputRouter()
+    {
+        if (!EnsurePlayViewInputRouter())
+        {
+            return null;
+        }
+
+        _playViewKeyboardInputRouter ??= new PlayViewKeyboardInputRouter(_playViewInputRouter!, LoadedProject?.InputDefinitions ?? []);
+        return _playViewKeyboardInputRouter;
+    }
+
+    private PlayViewPointerInputRouter? EnsurePlayViewPointerInputRouter()
+    {
+        if (!EnsurePlayViewInputRouter())
+        {
+            return null;
+        }
+
+        _playViewPointerInputRouter ??= new PlayViewPointerInputRouter(_playViewInputRouter!, LoadedProject?.InputDefinitions ?? []);
+        return _playViewPointerInputRouter;
+    }
+
+    private bool EnsurePlayViewInputRouter()
+    {
+        if (LoadedProject is null || EmulationState is not MameEmulationState.Running and not MameEmulationState.Paused)
+        {
+            return false;
+        }
+
+        _playViewInputRouter ??= new PlayViewInputRouter(new MameInputCommandService(new MameInputPortResolver()), _mameEmulationService.ProcessRunner);
+        return true;
     }
 
 
