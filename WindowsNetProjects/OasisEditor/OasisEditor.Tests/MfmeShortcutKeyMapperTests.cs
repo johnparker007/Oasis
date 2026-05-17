@@ -43,6 +43,15 @@ public sealed class MfmeShortcutKeyMapperTests
         Assert.Equal("`", shortcut);
     }
 
+    [Fact]
+    public void TryMapKeyToMfmeShortcut_WithOem8_ReturnsBacktick()
+    {
+        var ok = MfmeShortcutKeyMapper.TryMapKeyToMfmeShortcut(Key.Oem8, out var shortcut);
+
+        Assert.True(ok);
+        Assert.Equal("`", shortcut);
+    }
+
     [Theory]
     [InlineData("D1", "1")]
     [InlineData("D2", "2")]

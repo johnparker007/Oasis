@@ -18,6 +18,7 @@ public static class MfmeShortcutKeyMapper
         [Key.D9] = "9",
         [Key.D0] = "0",
         [Key.Oem3] = "`",
+        [Key.Oem8] = "`",
         [Key.OemMinus] = "-",
         [Key.OemPlus] = "=",
         [Key.A] = "A",
