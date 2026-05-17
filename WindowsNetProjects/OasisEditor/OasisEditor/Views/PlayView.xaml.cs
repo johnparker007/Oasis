@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -62,40 +63,32 @@ public partial class PlayView : UserControl
 
     private async void OnPlayCanvasPreviewKeyDown(object sender, KeyEventArgs eventArgs)
     {
-        if (ViewModel is null)
-        {
-            return;
-        }
-
-        var key = eventArgs.Key == Key.System ? eventArgs.SystemKey : eventArgs.Key;
-        var handled = await ViewModel.TryHandlePlayViewKeyDownAsync(key.ToString(), isFocused: true, eventArgs.IsRepeat, CancellationToken.None);
-        if (handled)
-        {
-            eventArgs.Handled = true;
-        }
-    }
-
-    private void OnPlayCanvasPreviewMouseDown(object sender, MouseButtonEventArgs eventArgs)
-    {
-        if (!PlayCanvas.IsKeyboardFocusWithin)
-        {
-            PlayCanvas.Focus();
-        }
+        await TryRouteKeyDownAsync(eventArgs);
     }
 
     private async void OnPlayCanvasPreviewKeyUp(object sender, KeyEventArgs eventArgs)
     {
-        if (ViewModel is null)
-        {
-            return;
-        }
+        await TryRouteKeyUpAsync(eventArgs);
+    }
 
-        var key = eventArgs.Key == Key.System ? eventArgs.SystemKey : eventArgs.Key;
-        var handled = await ViewModel.TryHandlePlayViewKeyUpAsync(key.ToString(), isFocused: true, CancellationToken.None);
-        if (handled)
-        {
-            eventArgs.Handled = true;
-        }
+    private async void OnRootPreviewKeyDown(object sender, KeyEventArgs eventArgs)
+    {
+        await TryRouteKeyDownAsync(eventArgs);
+    }
+
+    private async void OnRootPreviewKeyUp(object sender, KeyEventArgs eventArgs)
+    {
+        await TryRouteKeyUpAsync(eventArgs);
+    }
+
+    private void OnPlayCanvasPreviewMouseDown(object sender, MouseButtonEventArgs eventArgs)
+    {
+        EnsurePlayCanvasFocused();
+    }
+
+    private void OnRootPreviewMouseDown(object sender, MouseButtonEventArgs eventArgs)
+    {
+        EnsurePlayCanvasFocused();
     }
 
     private async void OnPlayCanvasPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs eventArgs)
@@ -208,6 +201,44 @@ public partial class PlayView : UserControl
             visual.Cursor = isClickable
                 ? Cursors.Hand
                 : Cursors.Arrow;
+        }
+    }
+
+    private void EnsurePlayCanvasFocused()
+    {
+        if (!PlayCanvas.IsKeyboardFocusWithin)
+        {
+            Keyboard.Focus(PlayCanvas);
+        }
+    }
+
+    private async Task TryRouteKeyDownAsync(KeyEventArgs eventArgs)
+    {
+        if (eventArgs.Handled || ViewModel is null)
+        {
+            return;
+        }
+
+        var key = eventArgs.Key == Key.System ? eventArgs.SystemKey : eventArgs.Key;
+        var handled = await ViewModel.TryHandlePlayViewKeyDownAsync(key.ToString(), isFocused: true, eventArgs.IsRepeat, CancellationToken.None);
+        if (handled)
+        {
+            eventArgs.Handled = true;
+        }
+    }
+
+    private async Task TryRouteKeyUpAsync(KeyEventArgs eventArgs)
+    {
+        if (eventArgs.Handled || ViewModel is null)
+        {
+            return;
+        }
+
+        var key = eventArgs.Key == Key.System ? eventArgs.SystemKey : eventArgs.Key;
+        var handled = await ViewModel.TryHandlePlayViewKeyUpAsync(key.ToString(), isFocused: true, CancellationToken.None);
+        if (handled)
+        {
+            eventArgs.Handled = true;
         }
     }
 }
