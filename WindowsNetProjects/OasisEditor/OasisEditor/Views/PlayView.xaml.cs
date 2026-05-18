@@ -5,6 +5,9 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using SkiaSharp;
+using SkiaSharp.Views.Desktop;
+using SkiaSharp.Views.WPF;
 
 namespace OasisEditor.Views;
 
@@ -14,6 +17,11 @@ public partial class PlayView : UserControl
     private bool _isPreProcessInputHooked;
     private Key? _pendingTextInputKey;
     private readonly Dictionary<Key, string> _activeShortcutByKey = new();
+    private double _skiaZoom = 1d;
+    private Vector _skiaPan;
+    private bool _isSkiaPanning;
+    private Point _skiaPanStart;
+    private Vector _skiaPanOrigin;
 
     public PlayView()
     {
@@ -74,6 +82,94 @@ public partial class PlayView : UserControl
         EmptyStateText.Visibility = Visibility.Collapsed;
         PanelLayoutMapper.ApplyPersistedLayout(PlayCanvas, selected.PanelLayoutJson, selected.RuntimeState);
         ApplyClickableCursorHints(selected);
+    }
+
+
+    private void OnPlaySkiaSurfacePaintSurface(object? sender, SKPaintSurfaceEventArgs eventArgs)
+    {
+        var canvas = eventArgs.Surface.Canvas;
+        var info = eventArgs.Info;
+        canvas.Clear(new SKColor(0x1E, 0x1E, 0x1E));
+
+        canvas.Translate((float)_skiaPan.X, (float)_skiaPan.Y);
+        canvas.Scale((float)_skiaZoom, (float)_skiaZoom);
+
+        using var gridPaint = new SKPaint { Color = new SKColor(0x35, 0x35, 0x35), StrokeWidth = 1f, IsAntialias = true };
+        for (var x = 0; x <= 1400; x += 100)
+        {
+            canvas.DrawLine(x, 0, x, 900, gridPaint);
+        }
+
+        for (var y = 0; y <= 900; y += 100)
+        {
+            canvas.DrawLine(0, y, 1400, y, gridPaint);
+        }
+
+        using var panelPaint = new SKPaint { Color = new SKColor(0x2B, 0x2B, 0x2B), Style = SKPaintStyle.Fill };
+        canvas.DrawRect(SKRect.Create(0, 0, 1400, 900), panelPaint);
+
+        using var outlinePaint = new SKPaint { Color = SKColors.DeepSkyBlue, Style = SKPaintStyle.Stroke, StrokeWidth = 3f, IsAntialias = true };
+        canvas.DrawRect(SKRect.Create(50, 50, 260, 160), outlinePaint);
+    }
+
+    private void OnPlaySkiaSurfaceMouseDown(object sender, MouseButtonEventArgs eventArgs)
+    {
+        if (eventArgs.ChangedButton != MouseButton.Middle)
+        {
+            return;
+        }
+
+        _isSkiaPanning = true;
+        _skiaPanStart = eventArgs.GetPosition(PlaySkiaSurface);
+        _skiaPanOrigin = _skiaPan;
+        PlaySkiaSurface.CaptureMouse();
+        eventArgs.Handled = true;
+    }
+
+    private void OnPlaySkiaSurfaceMouseMove(object sender, MouseEventArgs eventArgs)
+    {
+        if (!_isSkiaPanning)
+        {
+            return;
+        }
+
+        var current = eventArgs.GetPosition(PlaySkiaSurface);
+        var delta = current - _skiaPanStart;
+        _skiaPan = _skiaPanOrigin + (Vector)delta;
+        PlaySkiaSurface.InvalidateVisual();
+    }
+
+    private void OnPlaySkiaSurfaceMouseUp(object sender, MouseButtonEventArgs eventArgs)
+    {
+        if (eventArgs.ChangedButton != MouseButton.Middle)
+        {
+            return;
+        }
+
+        _isSkiaPanning = false;
+        PlaySkiaSurface.ReleaseMouseCapture();
+        eventArgs.Handled = true;
+    }
+
+    private void OnPlaySkiaSurfaceMouseWheel(object sender, MouseWheelEventArgs eventArgs)
+    {
+        var zoomFactor = eventArgs.Delta > 0 ? 1.1d : 1d / 1.1d;
+        var previousZoom = _skiaZoom;
+        _skiaZoom = Math.Clamp(_skiaZoom * zoomFactor, 0.25d, 4d);
+        if (Math.Abs(previousZoom - _skiaZoom) < 0.0001d)
+        {
+            return;
+        }
+
+        var pivot = eventArgs.GetPosition(PlaySkiaSurface);
+        var worldX = (pivot.X - _skiaPan.X) / previousZoom;
+        var worldY = (pivot.Y - _skiaPan.Y) / previousZoom;
+
+        _skiaPan = new Vector(
+            pivot.X - (worldX * _skiaZoom),
+            pivot.Y - (worldY * _skiaZoom));
+        PlaySkiaSurface.InvalidateVisual();
+        eventArgs.Handled = true;
     }
 
     private async void OnPlayCanvasPreviewKeyDown(object sender, KeyEventArgs eventArgs)
