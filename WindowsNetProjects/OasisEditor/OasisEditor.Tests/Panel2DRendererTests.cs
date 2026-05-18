@@ -1,6 +1,7 @@
 using OasisEditor.Rendering;
 using SkiaSharp;
 using Xunit;
+using System.IO;
 
 namespace OasisEditor.Tests;
 
@@ -104,6 +105,82 @@ public sealed class Panel2DRendererTests
             ],
             runtimeState,
             PanelViewportTransform.Identity);
+    }
+
+    [Fact]
+    public void Render_WithReelRendererAndMissingAsset_UsesPlaceholderFallback()
+    {
+        var renderer = new Panel2DRenderer([new ReelElementRenderer()]);
+        var runtimeState = new PanelRuntimeState();
+        runtimeState.SetReelPositionIfChanged("reel-1", 31);
+        using var surface = SKSurface.Create(new SKImageInfo(64, 64));
+
+        renderer.Render(
+            surface.Canvas,
+            [
+                new PanelElementModel
+                {
+                    Kind = PanelElementKind.Reel,
+                    IsVisible = true,
+                    ObjectId = "reel-1",
+                    Name = "Reel",
+                    Width = 24,
+                    Height = 24,
+                    Stops = 16,
+                    AssetPath = "Assets/does-not-exist.png"
+                }
+            ],
+            runtimeState,
+            PanelViewportTransform.Identity);
+    }
+
+    [Fact]
+    public void Render_WithReelRendererAndAvailableAsset_UsesAssetStripPath()
+    {
+        var renderer = new Panel2DRenderer([new ReelElementRenderer()]);
+        var runtimeState = new PanelRuntimeState();
+        runtimeState.SetReelPositionIfChanged("reel-1", 17);
+        using var surface = SKSurface.Create(new SKImageInfo(64, 64));
+
+        var projectDirectory = Path.Combine(Path.GetTempPath(), $"oasis-reel-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(Path.Combine(projectDirectory, "Assets"));
+        var assetPath = Path.Combine(projectDirectory, "Assets", "reel-strip.png");
+        using (var imageSurface = SKSurface.Create(new SKImageInfo(16, 16)))
+        {
+            imageSurface.Canvas.Clear(SKColors.Gold);
+            using var image = imageSurface.Snapshot();
+            using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+            using var stream = File.OpenWrite(assetPath);
+            data.SaveTo(stream);
+        }
+
+        var previousProjectDirectory = PanelElementFactory.ProjectDirectoryPath;
+        try
+        {
+            PanelElementFactory.ProjectDirectoryPath = projectDirectory;
+            renderer.Render(
+                surface.Canvas,
+                [
+                    new PanelElementModel
+                    {
+                        Kind = PanelElementKind.Reel,
+                        IsVisible = true,
+                        ObjectId = "reel-1",
+                        Name = "Reel",
+                        Width = 24,
+                        Height = 24,
+                        Stops = 16,
+                        AssetPath = "Assets/reel-strip.png"
+                    }
+                ],
+                runtimeState,
+                PanelViewportTransform.Identity);
+        }
+        finally
+        {
+            PanelElementFactory.ProjectDirectoryPath = previousProjectDirectory;
+            Directory.Delete(projectDirectory, recursive: true);
+        }
     }
 
     [Theory]
