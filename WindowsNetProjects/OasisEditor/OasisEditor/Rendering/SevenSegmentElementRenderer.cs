@@ -66,7 +66,10 @@ internal sealed class SevenSegmentElementRenderer : IPanelElementRenderer
         }
 
         var json = File.ReadAllText(path);
-        var root = JsonSerializer.Deserialize<SevenSegmentDefinitionRoot>(json);
+        var root = JsonSerializer.Deserialize<SevenSegmentDefinitionRoot>(json, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        });
         var cell = root?.Cell;
         if (cell?.Size is null || cell.Segments is null || cell.Segments.Count != 7)
         {
