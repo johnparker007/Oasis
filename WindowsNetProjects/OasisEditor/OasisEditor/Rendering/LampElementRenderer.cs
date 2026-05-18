@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Linq;
 using SkiaSharp;
@@ -6,6 +7,8 @@ namespace OasisEditor.Rendering;
 
 internal sealed class LampElementRenderer : IPanelElementRenderer
 {
+    private static readonly ConcurrentDictionary<string, SKTypeface> TypefaceCache = new(StringComparer.OrdinalIgnoreCase);
+
     public PanelElementKind Kind => PanelElementKind.Lamp;
 
     public void Render(in PanelElementRenderContext context, PanelElementModel element)
@@ -88,17 +91,80 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
     {
         var family = string.IsNullOrWhiteSpace(fontName) ? "Tahoma" : fontName.Trim();
         var styleToken = string.IsNullOrWhiteSpace(fontStyle) ? "Regular" : fontStyle.Trim();
+        var cacheKey = $"{family}|{styleToken}";
+        if (TypefaceCache.TryGetValue(cacheKey, out var cached))
+        {
+            return cached;
+        }
+
         var weight = styleToken.Contains("Bold", StringComparison.OrdinalIgnoreCase)
             ? SKFontStyleWeight.Bold
             : SKFontStyleWeight.Normal;
         var slant = styleToken.Contains("Italic", StringComparison.OrdinalIgnoreCase)
             ? SKFontStyleSlant.Italic
             : SKFontStyleSlant.Upright;
-
         var style = new SKFontStyle(weight, SKFontStyleWidth.Normal, slant);
-        return SKTypeface.FromFamilyName(family, style)
+
+        if (TryResolveMfmeTypeface(family, styleToken, out var mfmeTypeface))
+        {
+            TypefaceCache[cacheKey] = mfmeTypeface;
+            return mfmeTypeface;
+        }
+
+        var resolved = SKTypeface.FromFamilyName(family, style)
             ?? SKTypeface.FromFamilyName("Tahoma", style)
             ?? SKTypeface.Default;
+        TypefaceCache[cacheKey] = resolved;
+        return resolved;
+    }
+
+    private static bool TryResolveMfmeTypeface(string family, string styleToken, out SKTypeface typeface)
+    {
+        var fontsDirectory = Path.Combine(AppContext.BaseDirectory, "MfmeFonts");
+        if (!Directory.Exists(fontsDirectory))
+        {
+            typeface = null!;
+            return false;
+        }
+
+        var wantsBold = styleToken.Contains("Bold", StringComparison.OrdinalIgnoreCase);
+        foreach (var fontPath in Directory.EnumerateFiles(fontsDirectory, "*.ttf"))
+        {
+            SKTypeface? candidate = null;
+            try
+            {
+                candidate = SKTypeface.FromFile(fontPath);
+            }
+            catch
+            {
+                continue;
+            }
+
+            if (candidate is null)
+            {
+                continue;
+            }
+
+            var familyMatches = string.Equals(candidate.FamilyName, family, StringComparison.OrdinalIgnoreCase);
+            if (!familyMatches)
+            {
+                candidate.Dispose();
+                continue;
+            }
+
+            var isBoldFace = candidate.FontWeight >= (int)SKFontStyleWeight.SemiBold;
+            if (wantsBold != isBoldFace)
+            {
+                candidate.Dispose();
+                continue;
+            }
+
+            typeface = candidate;
+            return true;
+        }
+
+        typeface = null!;
+        return false;
     }
 
     private static SKColor Lerp(SKColor from, SKColor to, double t)
