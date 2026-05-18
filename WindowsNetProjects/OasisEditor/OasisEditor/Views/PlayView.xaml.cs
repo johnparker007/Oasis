@@ -5,6 +5,10 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using SkiaSharp;
+using SkiaSharp.Views.Desktop;
+using SkiaSharp.Views.WPF;
+using OasisEditor.Rendering;
 
 namespace OasisEditor.Views;
 
@@ -14,6 +18,12 @@ public partial class PlayView : UserControl
     private bool _isPreProcessInputHooked;
     private Key? _pendingTextInputKey;
     private readonly Dictionary<Key, string> _activeShortcutByKey = new();
+    private double _skiaZoom = 1d;
+    private Vector _skiaPan;
+    private bool _isSkiaPanning;
+    private Point _skiaPanStart;
+    private Vector _skiaPanOrigin;
+    private readonly IPanel2DRenderer _skiaRenderer = new Panel2DRenderer([new BackgroundElementRenderer(), new LampElementRenderer()]);
 
     public PlayView()
     {
@@ -72,8 +82,87 @@ public partial class PlayView : UserControl
         }
 
         EmptyStateText.Visibility = Visibility.Collapsed;
-        PanelLayoutMapper.ApplyPersistedLayout(PlayCanvas, selected.PanelLayoutJson, selected.RuntimeState);
-        ApplyClickableCursorHints(selected);
+        PlaySkiaSurface.InvalidateVisual();
+    }
+
+
+    private void OnPlaySkiaSurfacePaintSurface(object? sender, SKPaintSurfaceEventArgs eventArgs)
+    {
+        var canvas = eventArgs.Surface.Canvas;
+        canvas.Clear(new SKColor(0x1E, 0x1E, 0x1E));
+
+        var selected = ViewModel?.SelectedDocument;
+        if (selected is null || selected.Document.DocumentType != EditorDocumentType.Panel2D)
+        {
+            return;
+        }
+
+        var viewport = new PanelViewportTransform(_skiaZoom, _skiaPan.X, _skiaPan.Y);
+        canvas.Save();
+        canvas.Translate((float)viewport.PanX, (float)viewport.PanY);
+        canvas.Scale((float)viewport.NormalizedZoom, (float)viewport.NormalizedZoom);
+        _skiaRenderer.Render(canvas, selected.GetPanelElements(), selected.RuntimeState, viewport);
+        canvas.Restore();
+    }
+
+    private void OnPlaySkiaSurfaceMouseDown(object sender, MouseButtonEventArgs eventArgs)
+    {
+        if (eventArgs.ChangedButton != MouseButton.Middle)
+        {
+            return;
+        }
+
+        _isSkiaPanning = true;
+        _skiaPanStart = eventArgs.GetPosition(PlaySkiaSurface);
+        _skiaPanOrigin = _skiaPan;
+        PlaySkiaSurface.CaptureMouse();
+        eventArgs.Handled = true;
+    }
+
+    private void OnPlaySkiaSurfaceMouseMove(object sender, MouseEventArgs eventArgs)
+    {
+        if (!_isSkiaPanning)
+        {
+            return;
+        }
+
+        var current = eventArgs.GetPosition(PlaySkiaSurface);
+        var delta = current - _skiaPanStart;
+        _skiaPan = _skiaPanOrigin + (Vector)delta;
+        PlaySkiaSurface.InvalidateVisual();
+    }
+
+    private void OnPlaySkiaSurfaceMouseUp(object sender, MouseButtonEventArgs eventArgs)
+    {
+        if (eventArgs.ChangedButton != MouseButton.Middle)
+        {
+            return;
+        }
+
+        _isSkiaPanning = false;
+        PlaySkiaSurface.ReleaseMouseCapture();
+        eventArgs.Handled = true;
+    }
+
+    private void OnPlaySkiaSurfaceMouseWheel(object sender, MouseWheelEventArgs eventArgs)
+    {
+        var zoomFactor = eventArgs.Delta > 0 ? 1.1d : 1d / 1.1d;
+        var previousZoom = _skiaZoom;
+        _skiaZoom = Math.Clamp(_skiaZoom * zoomFactor, 0.25d, 4d);
+        if (Math.Abs(previousZoom - _skiaZoom) < 0.0001d)
+        {
+            return;
+        }
+
+        var pivot = eventArgs.GetPosition(PlaySkiaSurface);
+        var worldX = (pivot.X - _skiaPan.X) / previousZoom;
+        var worldY = (pivot.Y - _skiaPan.Y) / previousZoom;
+
+        _skiaPan = new Vector(
+            pivot.X - (worldX * _skiaZoom),
+            pivot.Y - (worldY * _skiaZoom));
+        PlaySkiaSurface.InvalidateVisual();
+        eventArgs.Handled = true;
     }
 
     private async void OnPlayCanvasPreviewKeyDown(object sender, KeyEventArgs eventArgs)
@@ -224,7 +313,7 @@ public partial class PlayView : UserControl
 
         Dispatcher.Invoke(() =>
         {
-            PanelLayoutMapper.ApplyVisualState(PlayCanvas, _subscribedDocument, visualStateChanged, _subscribedDocument.RuntimeState);
+            PlaySkiaSurface.InvalidateVisual();
         });
     }
 
