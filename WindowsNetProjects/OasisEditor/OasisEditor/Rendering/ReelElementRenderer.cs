@@ -1,5 +1,6 @@
 using SkiaSharp;
 using System.Collections.Concurrent;
+using System.IO;
 
 namespace OasisEditor.Rendering;
 
