@@ -31,11 +31,25 @@ internal sealed class SevenSegmentElementRenderer : IPanelElementRenderer
 
         var onColor = SkiaColorParser.ParseOrDefault(element.OnColorHex, new SKColor(255, 64, 64));
         var offColor = SkiaColorParser.ParseOrDefault(element.OffColorHex, new SKColor(72, 24, 24));
+
+        using var backgroundPaint = new SKPaint { Color = new SKColor(17, 24, 39), Style = SKPaintStyle.Fill, IsAntialias = true };
+        using var borderPaint = new SKPaint { Color = new SKColor(71, 85, 105), Style = SKPaintStyle.Stroke, StrokeWidth = 1f, IsAntialias = true };
+        context.Canvas.DrawRoundRect(bounds, 2f, 2f, backgroundPaint);
+        context.Canvas.DrawRoundRect(bounds, 2f, 2f, borderPaint);
+
+        var marginX = bounds.Width * 0.1f;
+        var marginY = bounds.Height * 0.1f;
+        var contentBounds = SKRect.Create(
+            bounds.Left + marginX,
+            bounds.Top + marginY,
+            Math.Max(1f, bounds.Width - (marginX * 2f)),
+            Math.Max(1f, bounds.Height - (marginY * 2f)));
+
         using var paint = new SKPaint { Style = SKPaintStyle.Fill, IsAntialias = true };
 
-        var scale = Math.Min(bounds.Width / definition.Width, bounds.Height / definition.Height);
-        var offsetX = bounds.Left + ((bounds.Width - (definition.Width * scale)) * 0.5f);
-        var offsetY = bounds.Top + ((bounds.Height - (definition.Height * scale)) * 0.5f);
+        var scale = Math.Min(contentBounds.Width / definition.Width, contentBounds.Height / definition.Height);
+        var offsetX = contentBounds.Left + ((contentBounds.Width - (definition.Width * scale)) * 0.5f);
+        var offsetY = contentBounds.Top + ((contentBounds.Height - (definition.Height * scale)) * 0.5f);
 
         context.Canvas.Save();
         context.Canvas.Translate(offsetX, offsetY);
