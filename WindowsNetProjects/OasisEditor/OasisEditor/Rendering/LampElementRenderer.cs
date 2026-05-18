@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Linq;
 using SkiaSharp;
 
 namespace OasisEditor.Rendering;
@@ -40,7 +41,8 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
         {
             Color = SkiaColorParser.ParseOrDefault(element.TextColorHex, SKColors.White),
             IsAntialias = true,
-            TextSize = (float)fontSize
+            TextSize = (float)fontSize,
+            Typeface = ResolveTypeface(element.TextBoxFontName, element.TextBoxFontStyle)
         };
 
         var charWidth = Math.Max(1d, fontSize * 0.55d);
@@ -80,6 +82,23 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
         }
 
         return 10.66666664d;
+    }
+
+    private static SKTypeface ResolveTypeface(string? fontName, string? fontStyle)
+    {
+        var family = string.IsNullOrWhiteSpace(fontName) ? "Tahoma" : fontName.Trim();
+        var styleToken = string.IsNullOrWhiteSpace(fontStyle) ? "Regular" : fontStyle.Trim();
+        var weight = styleToken.Contains("Bold", StringComparison.OrdinalIgnoreCase)
+            ? SKFontStyleWeight.Bold
+            : SKFontStyleWeight.Normal;
+        var slant = styleToken.Contains("Italic", StringComparison.OrdinalIgnoreCase)
+            ? SKFontStyleSlant.Italic
+            : SKFontStyleSlant.Upright;
+
+        var style = new SKFontStyle((int)weight, (int)SKFontStyleWidth.Normal, (int)slant);
+        return SKTypeface.FromFamilyName(family, style)
+            ?? SKTypeface.FromFamilyName("Tahoma", style)
+            ?? SKTypeface.Default;
     }
 
     private static SKColor Lerp(SKColor from, SKColor to, double t)

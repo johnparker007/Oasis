@@ -82,8 +82,6 @@ public partial class PlayView : UserControl
         }
 
         EmptyStateText.Visibility = Visibility.Collapsed;
-        PanelLayoutMapper.ApplyPersistedLayout(PlayCanvas, selected.PanelLayoutJson, selected.RuntimeState);
-        ApplyClickableCursorHints(selected);
         PlaySkiaSurface.InvalidateVisual();
     }
 
@@ -315,7 +313,6 @@ public partial class PlayView : UserControl
 
         Dispatcher.Invoke(() =>
         {
-            PanelLayoutMapper.ApplyVisualState(PlayCanvas, _subscribedDocument, visualStateChanged, _subscribedDocument.RuntimeState);
             PlaySkiaSurface.InvalidateVisual();
         });
     }
