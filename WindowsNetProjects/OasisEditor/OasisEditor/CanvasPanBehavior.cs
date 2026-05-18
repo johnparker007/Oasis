@@ -407,7 +407,7 @@ public static class CanvasPanBehavior
 
     private static bool TryHitTestSkiaElement(FrameworkElement canvas, MouseButtonEventArgs eventArgs, out PanelSelectionInfo selection)
     {
-        selection = null!;
+        selection = default;
         if (canvas.DataContext is not DocumentTabViewModel tab)
         {
             return false;
