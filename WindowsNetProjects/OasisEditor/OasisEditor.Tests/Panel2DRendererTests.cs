@@ -70,7 +70,10 @@ public sealed class Panel2DRendererTests
                     Width = 20,
                     Height = 20,
                     OnColorHex = "#FF0000",
-                    OffColorHex = "#110000"
+                    OffColorHex = "#110000",
+                    DisplayText = "HI",
+                    TextColorHex = "#FFFFFF",
+                    TextBoxFontSize = "8"
                 }
             ],
             runtimeState,
