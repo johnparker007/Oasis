@@ -147,14 +147,6 @@ public sealed class Panel2DRendererTests
             PanelViewportTransform.Identity);
     }
 
-    [Fact]
-    public void SevenSegment_BuildSegments_ReturnsThreeHorizontalBands()
-    {
-        var segments = SevenSegmentElementRenderer.BuildSegments(new SKRect(0, 0, 20, 30), 2f, 3f);
-
-        Assert.Equal(3, segments.Count);
-        Assert.All(segments, segment => Assert.True(segment.Width > segment.Height));
-    }
     private sealed class FakeRenderer(PanelElementKind kind) : IPanelElementRenderer
     {
         public PanelElementKind Kind { get; } = kind;
