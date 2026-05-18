@@ -49,6 +49,34 @@ public sealed class Panel2DRendererTests
         Assert.Empty(lampRenderer.Rendered);
     }
 
+
+    [Fact]
+    public void Render_WithLampRenderer_DoesNotThrow()
+    {
+        var renderer = new Panel2DRenderer([new LampElementRenderer()]);
+        var runtimeState = new PanelRuntimeState();
+        runtimeState.SetLampIntensity("lamp-1", 0.75d);
+        using var surface = SKSurface.Create(new SKImageInfo(64, 64));
+
+        renderer.Render(
+            surface.Canvas,
+            [
+                new PanelElementModel
+                {
+                    Kind = PanelElementKind.Lamp,
+                    IsVisible = true,
+                    ObjectId = "lamp-1",
+                    Name = "Lamp",
+                    Width = 20,
+                    Height = 20,
+                    OnColorHex = "#FF0000",
+                    OffColorHex = "#110000"
+                }
+            ],
+            runtimeState,
+            PanelViewportTransform.Identity);
+    }
+
     private sealed class FakeRenderer(PanelElementKind kind) : IPanelElementRenderer
     {
         public PanelElementKind Kind { get; } = kind;
