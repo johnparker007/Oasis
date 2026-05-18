@@ -1,6 +1,7 @@
 using OasisEditor.Rendering;
 using SkiaSharp;
 using Xunit;
+using System.IO;
 
 namespace OasisEditor.Tests;
 
@@ -106,6 +107,82 @@ public sealed class Panel2DRendererTests
             PanelViewportTransform.Identity);
     }
 
+    [Fact]
+    public void Render_WithReelRendererAndMissingAsset_UsesPlaceholderFallback()
+    {
+        var renderer = new Panel2DRenderer([new ReelElementRenderer()]);
+        var runtimeState = new PanelRuntimeState();
+        runtimeState.SetReelPositionIfChanged("reel-1", 31);
+        using var surface = SKSurface.Create(new SKImageInfo(64, 64));
+
+        renderer.Render(
+            surface.Canvas,
+            [
+                new PanelElementModel
+                {
+                    Kind = PanelElementKind.Reel,
+                    IsVisible = true,
+                    ObjectId = "reel-1",
+                    Name = "Reel",
+                    Width = 24,
+                    Height = 24,
+                    Stops = 16,
+                    AssetPath = "Assets/does-not-exist.png"
+                }
+            ],
+            runtimeState,
+            PanelViewportTransform.Identity);
+    }
+
+    [Fact]
+    public void Render_WithReelRendererAndAvailableAsset_UsesAssetStripPath()
+    {
+        var renderer = new Panel2DRenderer([new ReelElementRenderer()]);
+        var runtimeState = new PanelRuntimeState();
+        runtimeState.SetReelPositionIfChanged("reel-1", 17);
+        using var surface = SKSurface.Create(new SKImageInfo(64, 64));
+
+        var projectDirectory = Path.Combine(Path.GetTempPath(), $"oasis-reel-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(Path.Combine(projectDirectory, "Assets"));
+        var assetPath = Path.Combine(projectDirectory, "Assets", "reel-strip.png");
+        using (var imageSurface = SKSurface.Create(new SKImageInfo(16, 16)))
+        {
+            imageSurface.Canvas.Clear(SKColors.Gold);
+            using var image = imageSurface.Snapshot();
+            using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+            using var stream = File.OpenWrite(assetPath);
+            data.SaveTo(stream);
+        }
+
+        var previousProjectDirectory = PanelElementFactory.ProjectDirectoryPath;
+        try
+        {
+            PanelElementFactory.ProjectDirectoryPath = projectDirectory;
+            renderer.Render(
+                surface.Canvas,
+                [
+                    new PanelElementModel
+                    {
+                        Kind = PanelElementKind.Reel,
+                        IsVisible = true,
+                        ObjectId = "reel-1",
+                        Name = "Reel",
+                        Width = 24,
+                        Height = 24,
+                        Stops = 16,
+                        AssetPath = "Assets/reel-strip.png"
+                    }
+                ],
+                runtimeState,
+                PanelViewportTransform.Identity);
+        }
+        finally
+        {
+            PanelElementFactory.ProjectDirectoryPath = previousProjectDirectory;
+            Directory.Delete(projectDirectory, recursive: true);
+        }
+    }
+
     [Theory]
     [InlineData(0, 12, 0d)]
     [InlineData(96, 12, 0d)]
@@ -116,6 +193,29 @@ public sealed class Panel2DRendererTests
         var actual = ReelElementRenderer.ComputeWrappedOffset(position, stops);
 
         Assert.Equal(expected, actual, 4);
+    }
+
+    [Theory]
+    [InlineData(null, 24f)]
+    [InlineData(1d, 24f)]
+    [InlineData(0.5d, 48f)]
+    [InlineData(0d, 2400f)]
+    public void ReelBandHeight_RespectsVisibleScale(double? visibleScale, float expectedHeight)
+    {
+        var actual = ReelElementRenderer.ResolveBandHeight(24f, visibleScale);
+
+        Assert.Equal(expectedHeight, actual, 3);
+    }
+
+    [Theory]
+    [InlineData(24, 12, 48f, 12d)]
+    [InlineData(-1, 12, 48f, 47.5d)]
+    [InlineData(96, 12, 48f, 0d)]
+    public void ReelBandOffset_ComputesExpectedValue(int position, int stops, float bandHeight, double expected)
+    {
+        var actual = ReelElementRenderer.ComputeBandOffset(position, stops, bandHeight);
+
+        Assert.Equal(expected, actual, 3);
     }
 
 

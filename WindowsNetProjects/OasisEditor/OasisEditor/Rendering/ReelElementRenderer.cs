@@ -1,10 +1,13 @@
 using SkiaSharp;
+using System.Collections.Concurrent;
+using System.IO;
 
 namespace OasisEditor.Rendering;
 
 internal sealed class ReelElementRenderer : IPanelElementRenderer
 {
     private const double LegacyReelPositionsPerRevolution = 96d;
+    private static readonly ConcurrentDictionary<string, SKImage?> CachedStripImages = new(StringComparer.OrdinalIgnoreCase);
 
     public PanelElementKind Kind => PanelElementKind.Reel;
 
@@ -27,9 +30,16 @@ internal sealed class ReelElementRenderer : IPanelElementRenderer
         context.Canvas.Save();
         context.Canvas.ClipPath(clipPath);
 
-        var cellHeight = bounds.Height;
-        DrawStrip(context.Canvas, bounds.Left, bounds.Top - (float)(wrappedOffset * cellHeight), bounds.Width, cellHeight, stops);
-        DrawStrip(context.Canvas, bounds.Left, bounds.Top - (float)(wrappedOffset * cellHeight) + cellHeight, bounds.Width, cellHeight, stops);
+        if (TryGetStripImage(element.AssetPath, out var stripImage))
+        {
+            DrawStripImage(context.Canvas, bounds, stripImage, wrappedOffset, reelPosition, stops, element.VisibleScale);
+        }
+        else
+        {
+            var cellHeight = bounds.Height;
+            DrawStripPlaceholder(context.Canvas, bounds.Left, bounds.Top - (float)(wrappedOffset * cellHeight), bounds.Width, cellHeight, stops);
+            DrawStripPlaceholder(context.Canvas, bounds.Left, bounds.Top - (float)(wrappedOffset * cellHeight) + cellHeight, bounds.Width, cellHeight, stops);
+        }
 
         context.Canvas.Restore();
         context.Canvas.DrawRect(bounds, borderPaint);
@@ -43,7 +53,7 @@ internal sealed class ReelElementRenderer : IPanelElementRenderer
         return raw / positionsPerRevolution;
     }
 
-    private static void DrawStrip(SKCanvas canvas, float left, float top, float width, float height, int stops)
+    private static void DrawStripPlaceholder(SKCanvas canvas, float left, float top, float width, float height, int stops)
     {
         var safeStops = Math.Max(1, stops);
         var stopHeight = height / safeStops;
@@ -67,6 +77,108 @@ internal sealed class ReelElementRenderer : IPanelElementRenderer
             var textY = y + (stopHeight * 0.5f) - textBounds.MidY;
             canvas.DrawText(text, textX, textY, label);
         }
+    }
+
+    private static void DrawStripImage(SKCanvas canvas, SKRect bounds, SKImage stripImage, double wrappedOffset, int reelPosition, int stops, double? visibleScale)
+    {
+        var destinationHeight = ResolveBandHeight(bounds.Height, visibleScale);
+        var top = bounds.Top - (float)ComputeBandOffset(reelPosition, stops, destinationHeight);
+        var destinationRect = SKRect.Create(bounds.Left, top, bounds.Width, destinationHeight);
+        var wrappedDestinationRect = SKRect.Create(bounds.Left, top + destinationHeight, bounds.Width, destinationHeight);
+        var sourceRect = SKRect.Create(0f, 0f, stripImage.Width, stripImage.Height);
+
+        canvas.DrawImage(stripImage, sourceRect, destinationRect);
+        canvas.DrawImage(stripImage, sourceRect, wrappedDestinationRect);
+    }
+
+    public static float ResolveBandHeight(float reelHeight, double? visibleScale)
+    {
+        var safeVisibleScale = ResolveVisibleScale(visibleScale);
+        return (float)(reelHeight / safeVisibleScale);
+    }
+
+    public static double ComputeBandOffset(int position, int stops, float bandHeight)
+    {
+        var safeStops = Math.Max(1, stops);
+        var positionsPerRevolution = Math.Max(LegacyReelPositionsPerRevolution, safeStops);
+        var stopHeight = bandHeight / safeStops;
+        var stepsPerStop = positionsPerRevolution / safeStops;
+        var subStepHeight = stopHeight / stepsPerStop;
+        var rawPosition = ((position % positionsPerRevolution) + positionsPerRevolution) % positionsPerRevolution;
+        var rawOffset = rawPosition * subStepHeight;
+        return ((rawOffset % bandHeight) + bandHeight) % bandHeight;
+    }
+
+    private static double ResolveVisibleScale(double? visibleScale)
+    {
+        if (!visibleScale.HasValue || double.IsNaN(visibleScale.Value) || double.IsInfinity(visibleScale.Value))
+        {
+            return 1d;
+        }
+
+        return Math.Clamp(visibleScale.Value, 0.01d, 1d);
+    }
+
+    private static bool TryGetStripImage(string? assetPath, out SKImage stripImage)
+    {
+        stripImage = default!;
+        if (!TryResolveAssetPath(assetPath, out var resolvedPath))
+        {
+            return false;
+        }
+
+        var cached = CachedStripImages.GetOrAdd(resolvedPath, LoadImage);
+        if (cached is null)
+        {
+            return false;
+        }
+
+        stripImage = cached;
+        return true;
+    }
+
+    private static SKImage? LoadImage(string resolvedPath)
+    {
+        if (!File.Exists(resolvedPath))
+        {
+            return null;
+        }
+
+        using var codec = SKCodec.Create(resolvedPath);
+        if (codec is null)
+        {
+            return null;
+        }
+
+        using var bitmap = SKBitmap.Decode(codec);
+        return bitmap is null ? null : SKImage.FromBitmap(bitmap);
+    }
+
+    private static bool TryResolveAssetPath(string? assetPath, out string resolvedPath)
+    {
+        resolvedPath = string.Empty;
+        if (string.IsNullOrWhiteSpace(assetPath))
+        {
+            return false;
+        }
+
+        var candidate = assetPath.Trim();
+        if (Path.IsPathRooted(candidate))
+        {
+            resolvedPath = candidate;
+            return true;
+        }
+
+        if (string.IsNullOrWhiteSpace(PanelElementFactory.ProjectDirectoryPath))
+        {
+            return false;
+        }
+
+        var relativePath = candidate
+            .Replace('/', Path.DirectorySeparatorChar)
+            .Replace('\\', Path.DirectorySeparatorChar);
+        resolvedPath = Path.GetFullPath(Path.Combine(PanelElementFactory.ProjectDirectoryPath, relativePath));
+        return true;
     }
 
     private static SKColor Lerp(SKColor from, SKColor to, double t)
