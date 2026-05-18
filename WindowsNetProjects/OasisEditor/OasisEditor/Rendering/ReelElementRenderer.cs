@@ -32,7 +32,7 @@ internal sealed class ReelElementRenderer : IPanelElementRenderer
 
         if (TryGetStripImage(element.AssetPath, out var stripImage))
         {
-            DrawStripImage(context.Canvas, bounds, stripImage, wrappedOffset);
+            DrawStripImage(context.Canvas, bounds, stripImage, wrappedOffset, reelPosition, stops, element.VisibleScale);
         }
         else
         {
@@ -79,16 +79,44 @@ internal sealed class ReelElementRenderer : IPanelElementRenderer
         }
     }
 
-    private static void DrawStripImage(SKCanvas canvas, SKRect bounds, SKImage stripImage, double wrappedOffset)
+    private static void DrawStripImage(SKCanvas canvas, SKRect bounds, SKImage stripImage, double wrappedOffset, int reelPosition, int stops, double? visibleScale)
     {
-        var destinationHeight = bounds.Height;
-        var top = bounds.Top - (float)(wrappedOffset * destinationHeight);
+        var destinationHeight = ResolveBandHeight(bounds.Height, visibleScale);
+        var top = bounds.Top - (float)ComputeBandOffset(reelPosition, stops, destinationHeight);
         var destinationRect = SKRect.Create(bounds.Left, top, bounds.Width, destinationHeight);
         var wrappedDestinationRect = SKRect.Create(bounds.Left, top + destinationHeight, bounds.Width, destinationHeight);
         var sourceRect = SKRect.Create(0f, 0f, stripImage.Width, stripImage.Height);
 
         canvas.DrawImage(stripImage, sourceRect, destinationRect);
         canvas.DrawImage(stripImage, sourceRect, wrappedDestinationRect);
+    }
+
+    internal static float ResolveBandHeight(float reelHeight, double? visibleScale)
+    {
+        var safeVisibleScale = ResolveVisibleScale(visibleScale);
+        return reelHeight / safeVisibleScale;
+    }
+
+    internal static double ComputeBandOffset(int position, int stops, float bandHeight)
+    {
+        var safeStops = Math.Max(1, stops);
+        var positionsPerRevolution = Math.Max(LegacyReelPositionsPerRevolution, safeStops);
+        var stopHeight = bandHeight / safeStops;
+        var stepsPerStop = positionsPerRevolution / safeStops;
+        var subStepHeight = stopHeight / stepsPerStop;
+        var rawPosition = ((position % positionsPerRevolution) + positionsPerRevolution) % positionsPerRevolution;
+        var rawOffset = rawPosition * subStepHeight;
+        return ((rawOffset % bandHeight) + bandHeight) % bandHeight;
+    }
+
+    private static double ResolveVisibleScale(double? visibleScale)
+    {
+        if (!visibleScale.HasValue || double.IsNaN(visibleScale.Value) || double.IsInfinity(visibleScale.Value))
+        {
+            return 1d;
+        }
+
+        return Math.Clamp(visibleScale.Value, 0.01d, 1d);
     }
 
     private static bool TryGetStripImage(string? assetPath, out SKImage stripImage)

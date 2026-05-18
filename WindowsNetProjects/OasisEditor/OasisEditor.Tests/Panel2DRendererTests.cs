@@ -195,6 +195,29 @@ public sealed class Panel2DRendererTests
         Assert.Equal(expected, actual, 4);
     }
 
+    [Theory]
+    [InlineData(null, 24f)]
+    [InlineData(1d, 24f)]
+    [InlineData(0.5d, 48f)]
+    [InlineData(0d, 2400f)]
+    public void ReelBandHeight_RespectsVisibleScale(double? visibleScale, float expectedHeight)
+    {
+        var actual = ReelElementRenderer.ResolveBandHeight(24f, visibleScale);
+
+        Assert.Equal(expectedHeight, actual, 3);
+    }
+
+    [Theory]
+    [InlineData(24, 12, 48f, 12d)]
+    [InlineData(-1, 12, 48f, 47.5d)]
+    [InlineData(96, 12, 48f, 0d)]
+    public void ReelBandOffset_ComputesExpectedValue(int position, int stops, float bandHeight, double expected)
+    {
+        var actual = ReelElementRenderer.ComputeBandOffset(position, stops, bandHeight);
+
+        Assert.Equal(expected, actual, 3);
+    }
+
 
     [Fact]
     public void Render_WithSevenSegmentRenderer_DoesNotThrow()
