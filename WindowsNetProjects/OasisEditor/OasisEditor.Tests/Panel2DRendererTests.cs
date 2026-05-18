@@ -147,6 +147,35 @@ public sealed class Panel2DRendererTests
             PanelViewportTransform.Identity);
     }
 
+
+    [Fact]
+    public void Render_WithAlphaRenderer_DoesNotThrow()
+    {
+        var renderer = new Panel2DRenderer([new AlphaElementRenderer()]);
+        var runtimeState = new PanelRuntimeState();
+        runtimeState.SetSegmentCellMasksIfChanged("alpha-1", [0x3FFF, 0x0001, 0x00FF]);
+        runtimeState.SetSegmentCellBrightnessIfChanged("alpha-1", [1d, 0.5d, 0.75d]);
+        using var surface = SKSurface.Create(new SKImageInfo(320, 64));
+
+        renderer.Render(
+            surface.Canvas,
+            [
+                new PanelElementModel
+                {
+                    Kind = PanelElementKind.Alpha,
+                    IsVisible = true,
+                    ObjectId = "alpha-1",
+                    Name = "Alpha",
+                    Width = 240,
+                    Height = 32,
+                    OnColorHex = "#FF4444",
+                    OffColorHex = "#220000"
+                }
+            ],
+            runtimeState,
+            PanelViewportTransform.Identity);
+    }
+
     private sealed class FakeRenderer(PanelElementKind kind) : IPanelElementRenderer
     {
         public PanelElementKind Kind { get; } = kind;
