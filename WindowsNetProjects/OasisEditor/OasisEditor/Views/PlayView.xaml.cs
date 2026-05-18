@@ -8,6 +8,7 @@ using System.Windows.Input;
 using SkiaSharp;
 using SkiaSharp.Views.Desktop;
 using SkiaSharp.Views.WPF;
+using OasisEditor.Rendering;
 
 namespace OasisEditor.Views;
 
@@ -22,6 +23,7 @@ public partial class PlayView : UserControl
     private bool _isSkiaPanning;
     private Point _skiaPanStart;
     private Vector _skiaPanOrigin;
+    private readonly IPanel2DRenderer _skiaRenderer = new Panel2DRenderer([new BackgroundElementRenderer(), new LampElementRenderer()]);
 
     public PlayView()
     {
@@ -82,34 +84,27 @@ public partial class PlayView : UserControl
         EmptyStateText.Visibility = Visibility.Collapsed;
         PanelLayoutMapper.ApplyPersistedLayout(PlayCanvas, selected.PanelLayoutJson, selected.RuntimeState);
         ApplyClickableCursorHints(selected);
+        PlaySkiaSurface.InvalidateVisual();
     }
 
 
     private void OnPlaySkiaSurfacePaintSurface(object? sender, SKPaintSurfaceEventArgs eventArgs)
     {
         var canvas = eventArgs.Surface.Canvas;
-        var info = eventArgs.Info;
         canvas.Clear(new SKColor(0x1E, 0x1E, 0x1E));
 
-        canvas.Translate((float)_skiaPan.X, (float)_skiaPan.Y);
-        canvas.Scale((float)_skiaZoom, (float)_skiaZoom);
-
-        using var gridPaint = new SKPaint { Color = new SKColor(0x35, 0x35, 0x35), StrokeWidth = 1f, IsAntialias = true };
-        for (var x = 0; x <= 1400; x += 100)
+        var selected = ViewModel?.SelectedDocument;
+        if (selected is null || selected.Document.DocumentType != EditorDocumentType.Panel2D)
         {
-            canvas.DrawLine(x, 0, x, 900, gridPaint);
+            return;
         }
 
-        for (var y = 0; y <= 900; y += 100)
-        {
-            canvas.DrawLine(0, y, 1400, y, gridPaint);
-        }
-
-        using var panelPaint = new SKPaint { Color = new SKColor(0x2B, 0x2B, 0x2B), Style = SKPaintStyle.Fill };
-        canvas.DrawRect(SKRect.Create(0, 0, 1400, 900), panelPaint);
-
-        using var outlinePaint = new SKPaint { Color = SKColors.DeepSkyBlue, Style = SKPaintStyle.Stroke, StrokeWidth = 3f, IsAntialias = true };
-        canvas.DrawRect(SKRect.Create(50, 50, 260, 160), outlinePaint);
+        var viewport = new PanelViewportTransform(_skiaZoom, _skiaPan.X, _skiaPan.Y);
+        canvas.Save();
+        canvas.Translate((float)viewport.PanX, (float)viewport.PanY);
+        canvas.Scale((float)viewport.NormalizedZoom, (float)viewport.NormalizedZoom);
+        _skiaRenderer.Render(canvas, selected.GetPanelElements(), selected.RuntimeState, viewport);
+        canvas.Restore();
     }
 
     private void OnPlaySkiaSurfaceMouseDown(object sender, MouseButtonEventArgs eventArgs)
@@ -321,6 +316,7 @@ public partial class PlayView : UserControl
         Dispatcher.Invoke(() =>
         {
             PanelLayoutMapper.ApplyVisualState(PlayCanvas, _subscribedDocument, visualStateChanged, _subscribedDocument.RuntimeState);
+            PlaySkiaSurface.InvalidateVisual();
         });
     }
 
