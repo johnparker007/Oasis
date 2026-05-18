@@ -105,8 +105,21 @@ public partial class PlayView : UserControl
         canvas.Restore();
     }
 
-    private void OnPlaySkiaSurfaceMouseDown(object sender, MouseButtonEventArgs eventArgs)
+    private async void OnPlaySkiaSurfaceMouseDown(object sender, MouseButtonEventArgs eventArgs)
     {
+        EnsurePlayViewFocused();
+
+        if (eventArgs.ChangedButton == MouseButton.Left)
+        {
+            if (ViewModel is not null && TryResolveSkiaVisualElementId(eventArgs.GetPosition(PlaySkiaSurface), out var visualElementId))
+            {
+                await ViewModel.TryHandlePlayViewPointerDownAsync(visualElementId, isFocused: true, CancellationToken.None);
+                eventArgs.Handled = true;
+            }
+
+            return;
+        }
+
         if (eventArgs.ChangedButton != MouseButton.Middle)
         {
             return;
@@ -121,19 +134,32 @@ public partial class PlayView : UserControl
 
     private void OnPlaySkiaSurfaceMouseMove(object sender, MouseEventArgs eventArgs)
     {
+        var current = eventArgs.GetPosition(PlaySkiaSurface);
+        var isClickable = TryResolveSkiaVisualElementId(current, out _);
+        PlaySkiaSurface.Cursor = isClickable ? Cursors.Hand : Cursors.Arrow;
+
         if (!_isSkiaPanning)
         {
             return;
         }
-
-        var current = eventArgs.GetPosition(PlaySkiaSurface);
         var delta = current - _skiaPanStart;
         _skiaPan = _skiaPanOrigin + (Vector)delta;
         PlaySkiaSurface.InvalidateVisual();
     }
 
-    private void OnPlaySkiaSurfaceMouseUp(object sender, MouseButtonEventArgs eventArgs)
+    private async void OnPlaySkiaSurfaceMouseUp(object sender, MouseButtonEventArgs eventArgs)
     {
+        if (eventArgs.ChangedButton == MouseButton.Left)
+        {
+            if (ViewModel is not null && TryResolveSkiaVisualElementId(eventArgs.GetPosition(PlaySkiaSurface), out var visualElementId))
+            {
+                await ViewModel.TryHandlePlayViewPointerUpAsync(visualElementId, isFocused: true, CancellationToken.None);
+                eventArgs.Handled = true;
+            }
+
+            return;
+        }
+
         if (eventArgs.ChangedButton != MouseButton.Middle)
         {
             return;
@@ -197,12 +223,12 @@ public partial class PlayView : UserControl
 
     private void OnPlayCanvasPreviewMouseDown(object sender, MouseButtonEventArgs eventArgs)
     {
-        EnsurePlayCanvasFocused();
+        EnsurePlayViewFocused();
     }
 
     private void OnRootPreviewMouseDown(object sender, MouseButtonEventArgs eventArgs)
     {
-        EnsurePlayCanvasFocused();
+        EnsurePlayViewFocused();
     }
 
     private async void OnPlayCanvasPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs eventArgs)
@@ -283,6 +309,51 @@ public partial class PlayView : UserControl
         return false;
     }
 
+
+    private bool TryResolveSkiaVisualElementId(Point screenPoint, out Guid visualElementId)
+    {
+        var selected = ViewModel?.SelectedDocument;
+        if (selected is null)
+        {
+            visualElementId = Guid.Empty;
+            return false;
+        }
+
+        var clickableObjectIds = new HashSet<Guid>(
+            (ViewModel?.InputDefinitions ?? [])
+                .Where(input => input.LinkedVisualElementId.HasValue)
+                .Select(input => input.LinkedVisualElementId!.Value));
+
+        if (clickableObjectIds.Count == 0)
+        {
+            visualElementId = Guid.Empty;
+            return false;
+        }
+
+        var viewport = new PanelViewportTransform(_skiaZoom, _skiaPan.X, _skiaPan.Y);
+        var documentPoint = viewport.ScreenToDocument(screenPoint);
+
+        foreach (var element in selected.GetPanelElements().Reverse())
+        {
+            if (!element.IsVisible || !Guid.TryParse(element.ObjectId, out var elementId) || !clickableObjectIds.Contains(elementId))
+            {
+                continue;
+            }
+
+            if (documentPoint.X >= element.X
+                && documentPoint.X <= element.X + element.Width
+                && documentPoint.Y >= element.Y
+                && documentPoint.Y <= element.Y + element.Height)
+            {
+                visualElementId = elementId;
+                return true;
+            }
+        }
+
+        visualElementId = Guid.Empty;
+        return false;
+    }
+
     private void UpdateSelectedDocumentSubscription(DocumentTabViewModel? selected)
     {
         if (ReferenceEquals(_subscribedDocument, selected))
@@ -325,30 +396,11 @@ public partial class PlayView : UserControl
         }
     }
 
-    private void ApplyClickableCursorHints(DocumentTabViewModel selectedDocument)
+    private void EnsurePlayViewFocused()
     {
-        var clickableObjectIds = new HashSet<Guid>(
-            (ViewModel?.InputDefinitions ?? [])
-                .Where(input => input.LinkedVisualElementId.HasValue)
-                .Select(input => input.LinkedVisualElementId!.Value));
-
-        foreach (var visual in PlayCanvas.Children.OfType<FrameworkElement>())
+        if (!IsKeyboardFocusWithin)
         {
-            var uid = visual.Uid?.Trim();
-            var isClickable = !string.IsNullOrWhiteSpace(uid)
-                && Guid.TryParse(uid, out var visualId)
-                && clickableObjectIds.Contains(visualId);
-            visual.Cursor = isClickable
-                ? Cursors.Hand
-                : Cursors.Arrow;
-        }
-    }
-
-    private void EnsurePlayCanvasFocused()
-    {
-        if (!PlayCanvas.IsKeyboardFocusWithin)
-        {
-            Keyboard.Focus(PlayCanvas);
+            Keyboard.Focus(this);
         }
     }
 
