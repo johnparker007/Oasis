@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Windows;
+using System.Windows.Threading;
 using SkiaSharp;
 using SkiaSharp.Views.Desktop;
 using SkiaSharp.Views.WPF;
@@ -18,6 +19,7 @@ public sealed class Panel2DSkiaElement : SKElement
     private readonly IPanel2DRenderer _renderer;
     private DocumentTabViewModel? _subscribedDocument;
     private bool _isDocumentSubscribed;
+    private bool _isInvalidateQueued;
 
     public Panel2DSkiaElement()
         : this(Panel2DRendererFactory.CreateDefault())
@@ -46,13 +48,13 @@ public sealed class Panel2DSkiaElement : SKElement
         }
 
         element.UpdateDocumentSubscription(eventArgs.NewValue as DocumentTabViewModel);
-        element.InvalidateVisual();
+        element.RequestInvalidate();
     }
 
     private void OnLoaded(object sender, RoutedEventArgs eventArgs)
     {
         UpdateDocumentSubscription(Document);
-        InvalidateVisual();
+        RequestInvalidate();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs eventArgs)
@@ -86,7 +88,7 @@ public sealed class Panel2DSkiaElement : SKElement
             return;
         }
 
-        Dispatcher.Invoke(InvalidateVisual);
+        RequestInvalidate();
     }
 
     private void OnDocumentPropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
@@ -100,7 +102,30 @@ public sealed class Panel2DSkiaElement : SKElement
             return;
         }
 
-        Dispatcher.Invoke(InvalidateVisual);
+        RequestInvalidate();
+    }
+
+    private void RequestInvalidate()
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.BeginInvoke(new Action(RequestInvalidate));
+            return;
+        }
+
+        if (_isInvalidateQueued)
+        {
+            return;
+        }
+
+        _isInvalidateQueued = true;
+        Dispatcher.BeginInvoke(
+            DispatcherPriority.Render,
+            new Action(() =>
+            {
+                _isInvalidateQueued = false;
+                InvalidateVisual();
+            }));
     }
 
     private void OnPaintSurface(object? sender, SKPaintSurfaceEventArgs eventArgs)
