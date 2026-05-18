@@ -32,7 +32,7 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
             IsAntialias = true
         };
 
-        context.Canvas.DrawRoundRect(bounds, 4f, 4f, paint);
+        context.Canvas.DrawRect(bounds, paint);
 
         var displayText = element.DisplayText;
         if (string.IsNullOrWhiteSpace(displayText))
