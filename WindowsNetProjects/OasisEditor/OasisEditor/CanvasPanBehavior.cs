@@ -37,7 +37,7 @@ public static class CanvasPanBehavior
             "IsSkiaRuntimeRenderingEnabled",
             typeof(bool),
             typeof(CanvasPanBehavior),
-            new PropertyMetadata(false, OnSkiaRuntimeRenderingEnabledChanged));
+            new PropertyMetadata(false));
 
     public static readonly DependencyProperty PanelLayoutJsonProperty =
         DependencyProperty.RegisterAttached(
@@ -221,19 +221,6 @@ public static class CanvasPanBehavior
 
         DetachVisualStateSubscription(element);
         AttachVisualStateSubscription(element);
-    }
-
-    private static void OnSkiaRuntimeRenderingEnabledChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs _)
-    {
-        if (dependencyObject is not Canvas canvas)
-        {
-            return;
-        }
-
-        var runtimeState = canvas.DataContext is DocumentTabViewModel tab
-            ? tab.RuntimeState
-            : new PanelRuntimeState();
-        PanelLayoutMapper.ApplyPersistedLayout(canvas, GetPanelLayoutJson(canvas), runtimeState, GetIsSkiaRuntimeRenderingEnabled(canvas));
     }
 
     private static void AttachVisualStateSubscription(FrameworkElement element)

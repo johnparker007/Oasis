@@ -17,14 +17,7 @@ public partial class PanelCanvasView : UserControl
             typeof(PanelCanvasView),
             new PropertyMetadata(null));
 
-    private readonly IPanel2DRenderer _editSkiaRenderer = new Panel2DRenderer(
-    [
-        new BackgroundElementRenderer(),
-        new LampElementRenderer(),
-        new ReelElementRenderer(),
-        new SevenSegmentElementRenderer(),
-        new AlphaElementRenderer()
-    ]);
+    private readonly IPanel2DRenderer _editSkiaRenderer = Panel2DRendererFactory.CreateDefault();
 
     public PanelCanvasView()
     {
