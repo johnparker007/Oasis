@@ -53,36 +53,95 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
         var fontMetrics = textPaint.FontMetrics;
         var measuredLineHeight = Math.Abs(fontMetrics.Ascent) + Math.Abs(fontMetrics.Descent) + Math.Abs(fontMetrics.Leading);
         var lineHeight = Math.Max(1d, measuredLineHeight > 0f ? measuredLineHeight : fontSize * 1.2d);
-        var measuredCharWidth = textPaint.MeasureText("0");
-        var charWidth = Math.Max(1d, measuredCharWidth > 0f ? measuredCharWidth : fontSize * 0.55d);
-        var layout = RuntimeTextLayout.Layout(
-            displayText,
-            textBounds.Width,
-            charWidth,
-            lineHeight,
-            RuntimeTextHorizontalAlignment.Center);
-
-        if (layout.Lines.Count == 0)
+        var lines = WrapTextToPixelWidth(displayText, textBounds.Width, textPaint);
+        if (lines.Count == 0)
         {
             return;
         }
 
-        var totalTextHeight = layout.Lines.Count * lineHeight;
+        var totalTextHeight = lines.Count * lineHeight;
         var baselineOffset = Math.Abs(fontMetrics.Ascent) > 0f
             ? Math.Abs(fontMetrics.Ascent)
             : fontSize;
         var startY = textBounds.Top + ((textBounds.Height - totalTextHeight) / 2d) + baselineOffset;
-        foreach (var line in layout.Lines)
+        for (var lineIndex = 0; lineIndex < lines.Count; lineIndex++)
         {
+            var line = lines[lineIndex];
             if (string.IsNullOrEmpty(line.Text))
             {
                 continue;
             }
 
-            var x = textBounds.Left + line.X;
-            var y = startY + line.Y;
+            var x = textBounds.Left + ((textBounds.Width - line.Width) / 2d);
+            var y = startY + (lineIndex * lineHeight);
             context.Canvas.DrawText(line.Text, (float)x, (float)y, textPaint);
         }
+    }
+
+    internal static List<PixelTextLine> WrapTextToPixelWidth(string text, double maxWidth, SKPaint paint)
+    {
+        if (maxWidth <= 0d)
+        {
+            return [];
+        }
+
+        var normalized = text.Replace("\r\n", "\n");
+        var paragraphs = normalized.Split('\n');
+        var lines = new List<PixelTextLine>();
+        foreach (var paragraph in paragraphs)
+        {
+            var wrapped = WrapParagraphToPixelWidth(paragraph, maxWidth, paint);
+            if (wrapped.Count == 0)
+            {
+                lines.Add(new PixelTextLine(string.Empty, 0f));
+                continue;
+            }
+
+            lines.AddRange(wrapped);
+        }
+
+        return lines;
+    }
+
+    private static List<PixelTextLine> WrapParagraphToPixelWidth(string paragraph, double maxWidth, SKPaint paint)
+    {
+        if (string.IsNullOrEmpty(paragraph))
+        {
+            return [];
+        }
+
+        var words = paragraph.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (words.Length == 0)
+        {
+            return [];
+        }
+
+        var lines = new List<PixelTextLine>();
+        var current = string.Empty;
+        var currentWidth = 0f;
+
+        foreach (var word in words)
+        {
+            var candidate = string.IsNullOrEmpty(current) ? word : $"{current} {word}";
+            var candidateWidth = paint.MeasureText(candidate);
+            if (candidateWidth <= maxWidth || string.IsNullOrEmpty(current))
+            {
+                current = candidate;
+                currentWidth = candidateWidth;
+                continue;
+            }
+
+            lines.Add(new PixelTextLine(current, currentWidth));
+            current = word;
+            currentWidth = paint.MeasureText(word);
+        }
+
+        if (!string.IsNullOrEmpty(current))
+        {
+            lines.Add(new PixelTextLine(current, currentWidth));
+        }
+
+        return lines;
     }
 
     internal static SKRect GetTextBounds(in SKRect lampBounds)
@@ -103,6 +162,8 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
 
         return 10.66666664d;
     }
+
+    internal readonly record struct PixelTextLine(string Text, float Width);
 
     private static SKTypeface ResolveTypeface(string? fontName, string? fontStyle)
     {

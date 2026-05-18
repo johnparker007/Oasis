@@ -37,4 +37,22 @@ public sealed class LampElementRendererTests
         Assert.True(textBounds.Width >= 1f);
         Assert.True(textBounds.Height >= 1f);
     }
+
+    [Fact]
+    public void WrapTextToPixelWidth_KeepsMfmeLikeWordWrapping()
+    {
+        using var paint = new SKPaint
+        {
+            TextSize = 16f,
+            Typeface = SKTypeface.FromFamilyName("Tahoma") ?? SKTypeface.Default,
+            IsAntialias = true
+        };
+
+        var targetWidth = paint.MeasureText("BIFF THE") + 0.5f;
+        var lines = LampElementRenderer.WrapTextToPixelWidth("BIFF THE BOUNCER", targetWidth, paint);
+
+        Assert.Collection(lines,
+            line => Assert.Equal("BIFF THE", line.Text),
+            line => Assert.Equal("BOUNCER", line.Text));
+    }
 }
