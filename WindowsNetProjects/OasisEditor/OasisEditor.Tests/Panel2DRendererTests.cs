@@ -118,6 +118,43 @@ public sealed class Panel2DRendererTests
         Assert.Equal(expected, actual, 4);
     }
 
+
+    [Fact]
+    public void Render_WithSevenSegmentRenderer_DoesNotThrow()
+    {
+        var renderer = new Panel2DRenderer([new SevenSegmentElementRenderer()]);
+        var runtimeState = new PanelRuntimeState();
+        runtimeState.SetSegmentCellMasksIfChanged("seg-1", [0x3F]);
+        runtimeState.SetSegmentCellBrightnessIfChanged("seg-1", [0.8d]);
+        using var surface = SKSurface.Create(new SKImageInfo(64, 64));
+
+        renderer.Render(
+            surface.Canvas,
+            [
+                new PanelElementModel
+                {
+                    Kind = PanelElementKind.SevenSegment,
+                    IsVisible = true,
+                    ObjectId = "seg-1",
+                    Name = "Seven",
+                    Width = 24,
+                    Height = 36,
+                    OnColorHex = "#FF4444",
+                    OffColorHex = "#220000"
+                }
+            ],
+            runtimeState,
+            PanelViewportTransform.Identity);
+    }
+
+    [Fact]
+    public void SevenSegment_BuildSegments_ReturnsThreeHorizontalBands()
+    {
+        var segments = SevenSegmentElementRenderer.BuildSegments(new SKRect(0, 0, 20, 30), 2f, 3f);
+
+        Assert.Equal(3, segments.Count);
+        Assert.All(segments, segment => Assert.True(segment.Width > segment.Height));
+    }
     private sealed class FakeRenderer(PanelElementKind kind) : IPanelElementRenderer
     {
         public PanelElementKind Kind { get; } = kind;
