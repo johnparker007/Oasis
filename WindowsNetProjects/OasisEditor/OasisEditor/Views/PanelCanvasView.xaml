@@ -1,5 +1,6 @@
 <UserControl x:Class="OasisEditor.Views.PanelCanvasView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:sk="clr-namespace:SkiaSharp.Views.WPF;assembly=SkiaSharp.Views.WPF"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:local="clr-namespace:OasisEditor"
@@ -101,7 +102,12 @@
                                     <Border BorderBrush="{DynamicResource BorderSubtleBrush}"
                                             BorderThickness="1"
                                             Background="{DynamicResource PanelBackgroundBrush}">
-                                        <Canvas Width="1400"
+                                        <Grid>
+                                            <sk:SKElement x:Name="EditSkiaSurface"
+                                                          PaintSurface="OnEditSkiaSurfacePaintSurface"
+                                                          Loaded="OnEditSkiaSurfaceLoaded"
+                                                          Unloaded="OnEditSkiaSurfaceUnloaded" />
+                                            <Canvas Width="1400"
                                                 Height="900"
                                                 Cursor="SizeAll"
                                                 Focusable="True"
@@ -113,7 +119,7 @@
                                                 local:CanvasPanBehavior.PanelZoom="{Binding PanelZoom, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                 local:CanvasPanBehavior.PanelPanX="{Binding PanelPanX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                 local:CanvasPanBehavior.PanelPanY="{Binding PanelPanY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                Background="{DynamicResource PanelBackgroundBrush}">
+                                                Background="Transparent">
                                             <Canvas.Resources>
                                                 <Style TargetType="Rectangle">
                                                     <Setter Property="Stroke"
@@ -159,7 +165,8 @@
                                                     </Style.Triggers>
                                                 </Style>
                                             </Canvas.Resources>
-                                        </Canvas>
+                                            </Canvas>
+                                        </Grid>
                                     </Border>
 
                                     <Border Margin="12"
