@@ -91,13 +91,13 @@ internal sealed class ReelElementRenderer : IPanelElementRenderer
         canvas.DrawImage(stripImage, sourceRect, wrappedDestinationRect);
     }
 
-    internal static float ResolveBandHeight(float reelHeight, double? visibleScale)
+    public static float ResolveBandHeight(float reelHeight, double? visibleScale)
     {
         var safeVisibleScale = ResolveVisibleScale(visibleScale);
-        return reelHeight / safeVisibleScale;
+        return (float)(reelHeight / safeVisibleScale);
     }
 
-    internal static double ComputeBandOffset(int position, int stops, float bandHeight)
+    public static double ComputeBandOffset(int position, int stops, float bandHeight)
     {
         var safeStops = Math.Max(1, stops);
         var positionsPerRevolution = Math.Max(LegacyReelPositionsPerRevolution, safeStops);
