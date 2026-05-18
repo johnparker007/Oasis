@@ -80,6 +80,44 @@ public sealed class Panel2DRendererTests
             PanelViewportTransform.Identity);
     }
 
+    [Fact]
+    public void Render_WithReelRenderer_DoesNotThrow()
+    {
+        var renderer = new Panel2DRenderer([new ReelElementRenderer()]);
+        var runtimeState = new PanelRuntimeState();
+        runtimeState.SetReelPositionIfChanged("reel-1", 31);
+        using var surface = SKSurface.Create(new SKImageInfo(64, 64));
+
+        renderer.Render(
+            surface.Canvas,
+            [
+                new PanelElementModel
+                {
+                    Kind = PanelElementKind.Reel,
+                    IsVisible = true,
+                    ObjectId = "reel-1",
+                    Name = "Reel",
+                    Width = 24,
+                    Height = 24,
+                    Stops = 16
+                }
+            ],
+            runtimeState,
+            PanelViewportTransform.Identity);
+    }
+
+    [Theory]
+    [InlineData(0, 12, 0d)]
+    [InlineData(96, 12, 0d)]
+    [InlineData(-1, 12, 95d / 96d)]
+    [InlineData(24, 12, 0.25d)]
+    public void ReelOffset_ComputesExpectedWrappedOffset(int position, int stops, double expected)
+    {
+        var actual = ReelElementRenderer.ComputeWrappedOffset(position, stops);
+
+        Assert.Equal(expected, actual, 4);
+    }
+
     private sealed class FakeRenderer(PanelElementKind kind) : IPanelElementRenderer
     {
         public PanelElementKind Kind { get; } = kind;
