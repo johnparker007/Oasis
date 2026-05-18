@@ -53,7 +53,8 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
         var fontMetrics = textPaint.FontMetrics;
         var measuredLineHeight = Math.Abs(fontMetrics.Ascent) + Math.Abs(fontMetrics.Descent) + Math.Abs(fontMetrics.Leading);
         var lineHeight = Math.Max(1d, measuredLineHeight > 0f ? measuredLineHeight : fontSize * 1.2d);
-        var lines = WrapTextToPixelWidth(displayText, textBounds.Width, textPaint);
+        var wrapWidth = GetEffectiveWrapWidth(displayText, textBounds.Width, bounds.Width, textPaint);
+        var lines = WrapTextToPixelWidth(displayText, wrapWidth, textPaint);
         if (lines.Count == 0)
         {
             return;
@@ -101,6 +102,20 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
         }
 
         return lines;
+    }
+
+    internal static double GetEffectiveWrapWidth(string text, double insetWidth, double lampWidth, SKPaint paint)
+    {
+        var epsilon = 1.5d;
+        var fullWidth = Math.Max(insetWidth, lampWidth);
+        var singleLineWidth = paint.MeasureText(text ?? string.Empty);
+
+        if (singleLineWidth <= fullWidth + epsilon)
+        {
+            return fullWidth + epsilon;
+        }
+
+        return insetWidth + epsilon;
     }
 
     private static List<PixelTextLine> WrapParagraphToPixelWidth(string paragraph, double maxWidth, SKPaint paint)

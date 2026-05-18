@@ -55,4 +55,28 @@ public sealed class LampElementRendererTests
             line => Assert.Equal("BIFF THE", line.Text),
             line => Assert.Equal("BOUNCER", line.Text));
     }
+
+    [Fact]
+    public void GetEffectiveWrapWidth_AllowsSingleLineWhenItFitsLampBounds()
+    {
+        using var paint = new SKPaint { TextSize = 16f, Typeface = SKTypeface.FromFamilyName("Tahoma") ?? SKTypeface.Default };
+        var text = "TO ACTIVATE PICKS";
+        var measured = paint.MeasureText(text);
+
+        var wrapWidth = LampElementRenderer.GetEffectiveWrapWidth(text, insetWidth: measured - 2d, lampWidth: measured, paint);
+
+        Assert.True(wrapWidth >= measured);
+    }
+
+    [Fact]
+    public void GetEffectiveWrapWidth_UsesInsetWidthWhenSingleLineDoesNotFit()
+    {
+        using var paint = new SKPaint { TextSize = 16f, Typeface = SKTypeface.FromFamilyName("Tahoma") ?? SKTypeface.Default };
+        var text = "TO ACTIVATE PICKS";
+        var measured = paint.MeasureText(text);
+
+        var wrapWidth = LampElementRenderer.GetEffectiveWrapWidth(text, insetWidth: measured - 20d, lampWidth: measured - 20d, paint);
+
+        Assert.True(wrapWidth < measured);
+    }
 }
