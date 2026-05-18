@@ -10,12 +10,12 @@ We are working in WindowsNetProjects/OasisEditor. Please read the .md files in t
 
 The current active workstream is:
 
-1. Input Map architecture.
-2. MFME input import.
-3. Play View runtime input routing.
-4. Platform-specific MAME input mapping.
-5. Keyboard shortcut mapping.
-6. Mouse/keyboard runtime input tests.
+1. Shared Skia runtime renderer.
+2. Skia-based Play View.
+3. Shared viewport transform architecture.
+4. Shared text layout engine.
+5. Runtime rendering performance.
+6. Future Edit View renderer migration.
 
 Codex should prioritize this work before continuing additional runtime-driven component work or unrelated editor workstreams.
 
@@ -24,95 +24,91 @@ Codex should prioritize this work before continuing additional runtime-driven co
 Read these files first, in this order:
 
 1. `00_CURRENT_PRIORITY.md`
-2. `MAME_INPUT_MAP_AND_PLAY_VIEW_PLAN.md`
-3. `PANEL2D_RUNTIME_STATE_PERFORMANCE_PLAN.md`
-4. `OUTPUT_LOG_ENHANCEMENT_PLAN.md`
-5. `MAME_EMULATION_RUNTIME_PLAN.md`
-6. `MAME_ROM_MANAGEMENT_PLAN.md`
-7. `MAME_AUTO_UPDATE_POLICY_PLAN.md`
-8. `MAME_VERSION_DISCOVERY_PLAN.md`
-9. `MAME_ARCHITECTURE_REDESIGN.md`
-10. `CODEX_NEXT_STEPS_MAME.md`
-11. `TASKS_MAME_EMULATION_PORT.md`
-12. `AGENT.md`
-13. `TASKS.md`
+2. `SKIA_RUNTIME_RENDERER_PLAN.md`
+3. `MAME_INPUT_MAP_AND_PLAY_VIEW_PLAN.md`
+4. `PANEL2D_RUNTIME_STATE_PERFORMANCE_PLAN.md`
+5. `OUTPUT_LOG_ENHANCEMENT_PLAN.md`
+6. `MAME_EMULATION_RUNTIME_PLAN.md`
+7. `MAME_ROM_MANAGEMENT_PLAN.md`
+8. `MAME_AUTO_UPDATE_POLICY_PLAN.md`
+9. `MAME_VERSION_DISCOVERY_PLAN.md`
+10. `MAME_ARCHITECTURE_REDESIGN.md`
+11. `CODEX_NEXT_STEPS_MAME.md`
+12. `TASKS_MAME_EMULATION_PORT.md`
+13. `AGENT.md`
+14. `TASKS.md`
 
 ## Immediate Task
 
-Implement the Input Map and Play View architecture incrementally.
+Implement the Skia runtime renderer incrementally.
 
 Current desired direction:
 
-- centralize imported/runtime inputs into InputDefinitions;
-- import MFME lamp/button input metadata;
-- convert MFME buttons into Oasis lamps;
-- add Input Map UI window;
-- port shortcut key mapping logic;
-- port platform-specific MAME tag/mask resolution logic;
-- add non-editing Play View;
-- route mouse and keyboard input through MAME stdin/Lua commands;
+- introduce SkiaSharp rendering for Play View;
+- centralize runtime rendering through shared renderer services;
+- add shared viewport transform model;
+- add deterministic shared text layout;
+- render runtime machine visuals through Skia;
+- preserve existing WPF edit workflows initially;
+- prepare for later Edit View migration to shared Skia renderer plus WPF overlay;
 - add tests and diagnostics.
 
 ## Current Architectural Goals
 
-- Input identity should be separated from visual representation.
-- One InputDefinition may later drive 2D and 3D button representations.
-- Existing lamp visuals should remain reusable as clickable runtime elements.
-- Play View should remain separate from edit mode.
-- Runtime input should not mutate the document/edit pipeline.
-- Mouse/keyboard routing should be state-driven and safe.
-- Runtime input failures should never crash the editor.
-- The architecture should support future 3D physical buttons.
+- Skia becomes the canonical machine renderer.
+- WPF remains responsible for editor UI/chrome.
+- Runtime rendering should scale to many rapidly updating components.
+- Existing edit workflows should remain stable during migration.
+- Play View should avoid WPF control trees for runtime visuals.
+- Shared text layout should become deterministic and reusable.
+- Pan/zoom should use one shared viewport transform.
+- Runtime rendering failures should never crash the editor.
 
 ## Testing Direction
 
 Codex should add or extend unit tests around:
 
-- MFME input import behavior;
-- InputDefinition creation;
-- shortcut mapping;
-- platform tag/mask resolution;
-- MAME command formatting;
-- keyboard repeat handling;
-- focus loss releasing active inputs;
-- mouse down/up command behavior;
-- unresolved input handling.
+- viewport transform math;
+- text wrapping/alignment calculations;
+- screen/document coordinate conversion;
+- runtime renderer dispatch;
+- runtime hit-testing math;
+- runtime-state consumption.
 
 The tests should not require live MAME.
 
-Use fake command writers, fake visual targets, and fake resolver dependencies where practical.
+Avoid heavy pixel-perfect rendering tests initially.
 
 ## Do Not Work On Yet
 
-Do not implement 3D physical buttons yet.
+Do not rewrite the entire editor interaction model yet.
 
-Do not implement edit-view Play Mode yet.
+Do not remove WPF from the editor.
 
-Do not redesign all Panel2D components yet.
+Do not introduce GPU shader/HLSL rendering yet.
 
-Do not continue unrelated editor work unless explicitly instructed.
+Do not migrate the Edit View to Skia until the Play View renderer is stable.
 
 ## Desired Output From Codex
 
 Codex should produce small focused changes that:
 
-- add InputDefinition architecture;
-- modernize MFME input import behavior;
-- add Input Map UI;
-- add Play View runtime input routing;
-- preserve current emulation/runtime work;
+- add Skia renderer infrastructure;
+- modernize runtime rendering architecture;
+- improve runtime rendering performance;
+- preserve existing editing workflows;
 - add tests and diagnostics;
+- prepare for future Edit View migration;
 - include manual verification steps for John.
 
 ## Manual Test Expectations
 
 After Codex makes the change, John should verify:
 
-- Input Map window appears;
-- MFME lamps/buttons import input definitions correctly;
-- imported buttons are clickable in Play View;
-- keyboard shortcuts work while Play View is focused;
-- inputs send correct MAME commands;
-- inputs release correctly on key-up/focus loss;
-- runtime input does not interfere with editing mode;
+- Play View renders live machine visuals smoothly;
+- lamp flashing no longer causes severe CPU spikes;
+- alpha displays render smoothly;
+- pan/zoom behaves correctly;
+- clickable inputs still work;
+- runtime visuals visually match existing edit view closely enough;
 - no unrelated editor behavior changed.
