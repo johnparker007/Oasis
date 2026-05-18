@@ -69,7 +69,7 @@ public sealed class CanvasPanBehaviorSkiaOverlayTests
             Assert.Same(Brushes.Transparent, overlay.Background);
             Assert.Null(overlay.Child);
             Assert.True(CanvasSelectionBehavior.GetIsSelectable(overlay));
-            Assert.Equal(layoutJson, document.PanelLayoutJson);
+            Assert.Equal("lamp-1", Assert.Single(document.GetPanelElements()).ObjectId);
         });
     }
 
