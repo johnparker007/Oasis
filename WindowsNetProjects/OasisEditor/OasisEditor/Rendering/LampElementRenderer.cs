@@ -95,7 +95,7 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
             ? SKFontStyleSlant.Italic
             : SKFontStyleSlant.Upright;
 
-        var style = new SKFontStyle((int)weight, (int)SKFontStyleWidth.Normal, (int)slant);
+        var style = new SKFontStyle(weight, SKFontStyleWidth.Normal, slant);
         return SKTypeface.FromFamilyName(family, style)
             ?? SKTypeface.FromFamilyName("Tahoma", style)
             ?? SKTypeface.Default;
