@@ -16,7 +16,7 @@ internal sealed class BackgroundElementRenderer : IPanelElementRenderer
 
         using var paint = new SKPaint
         {
-            Color = SkiaColorParser.ParseOrDefault(element.OnColorHex, new SKColor(0x2B, 0x2B, 0x2B)),
+            Color = SkiaColorParser.ParseOrDefault(element.OnColorHex ?? element.OffColorHex, new SKColor(0x2B, 0x2B, 0x2B)),
             Style = SKPaintStyle.Fill,
             IsAntialias = true
         };

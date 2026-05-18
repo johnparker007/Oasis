@@ -52,6 +52,54 @@ public sealed class Panel2DRendererTests
 
 
     [Fact]
+    public void DefaultRenderer_RendersStaticEditViewKindsWithoutThrowing()
+    {
+        var renderer = Panel2DRendererFactory.CreateDefault();
+        using var surface = SKSurface.Create(new SKImageInfo(128, 128));
+
+        renderer.Render(
+            surface.Canvas,
+            [
+                new PanelElementModel
+                {
+                    Kind = PanelElementKind.Rectangle,
+                    IsVisible = true,
+                    ObjectId = "rect-1",
+                    Name = "Rectangle",
+                    X = 5,
+                    Y = 5,
+                    Width = 30,
+                    Height = 20
+                },
+                new PanelElementModel
+                {
+                    Kind = PanelElementKind.Image,
+                    IsVisible = true,
+                    ObjectId = "image-1",
+                    Name = "Image",
+                    X = 40,
+                    Y = 5,
+                    Width = 30,
+                    Height = 20
+                },
+                new PanelElementModel
+                {
+                    Kind = PanelElementKind.Label,
+                    IsVisible = true,
+                    ObjectId = "label-1",
+                    Name = "Label",
+                    X = 5,
+                    Y = 40,
+                    Width = 80,
+                    Height = 24,
+                    DisplayText = "Hello"
+                }
+            ],
+            new PanelRuntimeState(),
+            PanelViewportTransform.Identity);
+    }
+
+    [Fact]
     public void Render_WithLampRenderer_DoesNotThrow()
     {
         var renderer = new Panel2DRenderer([new LampElementRenderer()]);
