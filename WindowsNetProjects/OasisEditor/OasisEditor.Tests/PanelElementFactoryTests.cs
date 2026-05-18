@@ -45,44 +45,6 @@ public sealed class PanelElementFactoryTests
         });
     }
 
-    [Theory]
-    [InlineData((int)PanelElementKind.Background)]
-    [InlineData((int)PanelElementKind.Lamp)]
-    [InlineData((int)PanelElementKind.Reel)]
-    [InlineData((int)PanelElementKind.SevenSegment)]
-    [InlineData((int)PanelElementKind.Alpha)]
-    public void CreateOverlayVisualFromElement_ForRuntimeKinds_CreatesTransparentSelectableBounds(int kindValue)
-    {
-        RunInSta(() =>
-        {
-            var kind = (PanelElementKind)kindValue;
-            var source = new PanelElementFile
-            {
-                ObjectId = $"overlay-{kind}",
-                Name = $"Overlay {kind}",
-                Kind = Panel2DDocumentStorage.SerializeElementKind(kind),
-                X = 15,
-                Y = 25,
-                Width = 120,
-                Height = 50,
-                DisplayText = "Runtime text should not create WPF text",
-                OnColorHex = "#FFFF0000",
-                OffColorHex = "#FF000000"
-            };
-
-            var visual = PanelElementFactory.CreateOverlayVisualFromElement(source);
-
-            var border = Assert.IsType<Border>(visual);
-            Assert.Equal(source.ObjectId, border.Uid);
-            Assert.Equal(source.Width, border.Width);
-            Assert.Equal(source.Height, border.Height);
-            Assert.Same(Brushes.Transparent, border.Background);
-            Assert.Null(border.Child);
-            Assert.Equal(kind, PanelElementFactory.GetElementKind(border));
-            Assert.Equal(source.Name, PanelElementFactory.GetElementName(border));
-        });
-    }
-
     [Fact]
     public void CreateVisualFromElement_LampWithoutImage_WithDisplayText_UsesDisplayTextOnly()
     {

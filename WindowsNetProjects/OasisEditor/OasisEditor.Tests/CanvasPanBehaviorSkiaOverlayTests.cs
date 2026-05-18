@@ -1,7 +1,6 @@
 using System;
 using System.Threading;
 using System.Windows.Controls;
-using System.Windows.Media;
 using Xunit;
 
 namespace OasisEditor.Tests;
@@ -38,7 +37,7 @@ public sealed class CanvasPanBehaviorSkiaOverlayTests
     }
 
     [Fact]
-    public void EnablingSkiaRuntimeRendering_AfterLayoutBinding_ReplacesWpfRuntimeVisualWithOverlay()
+    public void EnablingSkiaRuntimeRendering_AfterLayoutBinding_RemovesWpfRuntimeVisuals()
     {
         RunInSta(() =>
         {
@@ -64,17 +63,13 @@ public sealed class CanvasPanBehaviorSkiaOverlayTests
 
             CanvasPanBehavior.SetIsSkiaRuntimeRenderingEnabled(canvas, true);
 
-            var overlay = Assert.IsType<Border>(Assert.Single(canvas.Children));
-            Assert.Equal("lamp-1", overlay.Uid);
-            Assert.Same(Brushes.Transparent, overlay.Background);
-            Assert.Null(overlay.Child);
-            Assert.True(CanvasSelectionBehavior.GetIsSelectable(overlay));
+            Assert.Empty(canvas.Children);
             Assert.Equal("lamp-1", Assert.Single(document.GetPanelElements()).ObjectId);
         });
     }
 
     [Fact]
-    public void PanelLayoutJsonChanged_WithSkiaRuntimeRenderingEnabled_CreatesTransparentOverlayVisuals()
+    public void PanelLayoutJsonChanged_WithSkiaRuntimeRenderingEnabled_CreatesNoWpfRuntimeVisuals()
     {
         RunInSta(() =>
         {
@@ -98,13 +93,8 @@ public sealed class CanvasPanBehaviorSkiaOverlayTests
 
             CanvasPanBehavior.SetPanelLayoutJson(canvas, layoutJson);
 
-            var overlay = Assert.IsType<Border>(Assert.Single(canvas.Children));
-            Assert.Equal("lamp-1", overlay.Uid);
-            Assert.Equal(30, overlay.Width);
-            Assert.Equal(40, overlay.Height);
-            Assert.Same(Brushes.Transparent, overlay.Background);
-            Assert.Null(overlay.Child);
-            Assert.True(CanvasSelectionBehavior.GetIsSelectable(overlay));
+            Assert.Empty(canvas.Children);
+            Assert.Equal("lamp-1", Assert.Single(document.GetPanelElements()).ObjectId);
         });
     }
 

@@ -88,6 +88,13 @@ public static class CanvasPanBehavior
             typeof(CanvasPanBehavior),
             new PropertyMetadata(null));
 
+    private static readonly DependencyProperty SkiaSelectionOverlayProperty =
+        DependencyProperty.RegisterAttached(
+            "SkiaSelectionOverlay",
+            typeof(Border),
+            typeof(CanvasPanBehavior),
+            new PropertyMetadata(null));
+
     public static bool GetIsEnabled(DependencyObject dependencyObject)
     {
         return (bool)dependencyObject.GetValue(IsEnabledProperty);
@@ -346,6 +353,12 @@ public static class CanvasPanBehavior
         }
 
         canvas.Focus();
+        if (GetIsSkiaRuntimeRenderingEnabled(canvas))
+        {
+            HandleSkiaMouseLeftButtonDown(canvas, eventArgs);
+            return;
+        }
+
         var clickedElement = CanvasSelectionBehavior.FindSelectableElement(eventArgs.OriginalSource as DependencyObject, canvas);
 
         if (clickedElement is null
@@ -366,6 +379,125 @@ public static class CanvasPanBehavior
         {
             eventArgs.Handled = true;
         }
+    }
+
+    private static void HandleSkiaMouseLeftButtonDown(FrameworkElement canvas, MouseButtonEventArgs eventArgs)
+    {
+        if (TryHitTestSkiaElement(canvas, eventArgs, out var selection))
+        {
+            CanvasSelectionBehavior.ClearSelection(canvas);
+            ShowSkiaSelectionOverlay(canvas, selection);
+            NotifyDocumentSelection(canvas, selection);
+            eventArgs.Handled = true;
+            return;
+        }
+
+        ClearSkiaSelectionOverlay(canvas);
+        NotifyDocumentSelection(canvas, null);
+        if (PanelToolPlacementController.TryHandlePlacement(
+            canvas,
+            eventArgs,
+            GetIsRectangleToolActive(canvas),
+            GetIsImageToolActive(canvas),
+            ExecuteCanvasMutation))
+        {
+            eventArgs.Handled = true;
+        }
+    }
+
+    private static bool TryHitTestSkiaElement(FrameworkElement canvas, MouseButtonEventArgs eventArgs, out PanelSelectionInfo selection)
+    {
+        selection = null!;
+        if (canvas.DataContext is not DocumentTabViewModel tab)
+        {
+            return false;
+        }
+
+        var clickPosition = eventArgs.GetPosition(canvas.Parent as IInputElement ?? canvas);
+        var viewport = new PanelViewportTransform(GetPanelZoom(canvas), GetPanelPanX(canvas), GetPanelPanY(canvas));
+        var documentPoint = viewport.ScreenToDocument(clickPosition);
+        foreach (var element in tab.GetPanelElements().Reverse())
+        {
+            if (!element.IsVisible || element.IsLocked)
+            {
+                continue;
+            }
+
+            if (documentPoint.X < element.X
+                || documentPoint.X > element.X + element.Width
+                || documentPoint.Y < element.Y
+                || documentPoint.Y > element.Y + element.Height)
+            {
+                continue;
+            }
+
+            selection = new PanelSelectionInfo(
+                element.ObjectId,
+                Panel2DDocumentStorage.SerializeElementKind(element.Kind),
+                element.X,
+                element.Y,
+                element.Width,
+                element.Height);
+            return true;
+        }
+
+        return false;
+    }
+
+    private static void NotifyDocumentSelection(FrameworkElement canvas, PanelSelectionInfo? selection)
+    {
+        if (canvas.DataContext is not DocumentTabViewModel tab)
+        {
+            return;
+        }
+
+        CanvasCommandDispatcher.NotifyDocumentSelection(canvas, tab, selection);
+        tab.HierarchySelectedPanelSelection = selection;
+    }
+
+    private static void ShowSkiaSelectionOverlay(FrameworkElement canvas, PanelSelectionInfo selection)
+    {
+        if (canvas is not Canvas panelCanvas)
+        {
+            return;
+        }
+
+        var overlay = GetOrCreateSkiaSelectionOverlay(panelCanvas);
+        overlay.Width = Math.Max(0d, selection.Width);
+        overlay.Height = Math.Max(0d, selection.Height);
+        Canvas.SetLeft(overlay, Math.Max(0d, selection.X));
+        Canvas.SetTop(overlay, Math.Max(0d, selection.Y));
+    }
+
+    private static Border GetOrCreateSkiaSelectionOverlay(Canvas canvas)
+    {
+        if (canvas.GetValue(SkiaSelectionOverlayProperty) is Border existing)
+        {
+            return existing;
+        }
+
+        var overlay = new Border
+        {
+            IsHitTestVisible = false,
+            Background = System.Windows.Media.Brushes.Transparent,
+            BorderBrush = System.Windows.Media.Brushes.DodgerBlue,
+            BorderThickness = new Thickness(2)
+        };
+        canvas.SetValue(SkiaSelectionOverlayProperty, overlay);
+        canvas.Children.Add(overlay);
+        return overlay;
+    }
+
+    private static void ClearSkiaSelectionOverlay(FrameworkElement canvas)
+    {
+        if (canvas is not Canvas panelCanvas
+            || panelCanvas.GetValue(SkiaSelectionOverlayProperty) is not Border overlay)
+        {
+            return;
+        }
+
+        panelCanvas.Children.Remove(overlay);
+        panelCanvas.ClearValue(SkiaSelectionOverlayProperty);
     }
 
     private static void OnMouseWheel(object sender, MouseWheelEventArgs eventArgs)
@@ -470,7 +602,16 @@ public static class CanvasPanBehavior
         if (eventArgs.NewValue is not PanelSelectionInfo selection)
         {
             CanvasSelectionBehavior.ClearSelection(canvas);
+            ClearSkiaSelectionOverlay(canvas);
             NotifyActiveDocumentSelection(canvas, null);
+            return;
+        }
+
+        if (GetIsSkiaRuntimeRenderingEnabled(canvas))
+        {
+            CanvasSelectionBehavior.ClearSelection(canvas);
+            ShowSkiaSelectionOverlay(canvas, selection);
+            NotifyDocumentSelection(canvas, selection);
             return;
         }
 

@@ -61,27 +61,28 @@ public static class PanelLayoutMapper
             }
 
             var elements = Panel2DDocumentStorage.DeserializeLayout(layoutJson);
-            foreach (var element in elements)
+            if (!useOverlayVisuals)
             {
-                if (element.IsVisible is false)
+                foreach (var element in elements)
                 {
-                    continue;
-                }
+                    if (element.IsVisible is false)
+                    {
+                        continue;
+                    }
 
-                var visual = useOverlayVisuals
-                    ? PanelElementFactory.CreateOverlayVisualFromElement(element)
-                    : PanelElementFactory.CreateVisualFromElement(element, runtimeState);
-                if (visual is null)
-                {
-                    continue;
-                }
+                    var visual = PanelElementFactory.CreateVisualFromElement(element, runtimeState);
+                    if (visual is null)
+                    {
+                        continue;
+                    }
 
-                SetIsPersistedElement(visual, true);
-                CanvasSelectionBehavior.SetIsSelectable(visual, !element.IsLocked);
-                CanvasSelectionBehavior.SetIsSelected(visual, false);
-                Canvas.SetLeft(visual, Math.Max(0, element.X));
-                Canvas.SetTop(visual, Math.Max(0, element.Y));
-                canvas.Children.Add(visual);
+                    SetIsPersistedElement(visual, true);
+                    CanvasSelectionBehavior.SetIsSelectable(visual, !element.IsLocked);
+                    CanvasSelectionBehavior.SetIsSelected(visual, false);
+                    Canvas.SetLeft(visual, Math.Max(0, element.X));
+                    Canvas.SetTop(visual, Math.Max(0, element.Y));
+                    canvas.Children.Add(visual);
+                }
             }
 
             RebuildObjectVisualMap(canvas);
