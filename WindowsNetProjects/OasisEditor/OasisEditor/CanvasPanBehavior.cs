@@ -32,6 +32,13 @@ public static class CanvasPanBehavior
             typeof(CanvasPanBehavior),
             new PropertyMetadata(false));
 
+    public static readonly DependencyProperty IsSkiaRuntimeRenderingEnabledProperty =
+        DependencyProperty.RegisterAttached(
+            "IsSkiaRuntimeRenderingEnabled",
+            typeof(bool),
+            typeof(CanvasPanBehavior),
+            new PropertyMetadata(false, OnSkiaRuntimeRenderingEnabledChanged));
+
     public static readonly DependencyProperty PanelLayoutJsonProperty =
         DependencyProperty.RegisterAttached(
             "PanelLayoutJson",
@@ -109,6 +116,16 @@ public static class CanvasPanBehavior
     public static void SetIsImageToolActive(DependencyObject dependencyObject, bool value)
     {
         dependencyObject.SetValue(IsImageToolActiveProperty, value);
+    }
+
+    public static bool GetIsSkiaRuntimeRenderingEnabled(DependencyObject dependencyObject)
+    {
+        return (bool)dependencyObject.GetValue(IsSkiaRuntimeRenderingEnabledProperty);
+    }
+
+    public static void SetIsSkiaRuntimeRenderingEnabled(DependencyObject dependencyObject, bool value)
+    {
+        dependencyObject.SetValue(IsSkiaRuntimeRenderingEnabledProperty, value);
     }
 
     public static string? GetPanelLayoutJson(DependencyObject dependencyObject)
@@ -206,6 +223,19 @@ public static class CanvasPanBehavior
         AttachVisualStateSubscription(element);
     }
 
+    private static void OnSkiaRuntimeRenderingEnabledChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs _)
+    {
+        if (dependencyObject is not Canvas canvas)
+        {
+            return;
+        }
+
+        var runtimeState = canvas.DataContext is DocumentTabViewModel tab
+            ? tab.RuntimeState
+            : new PanelRuntimeState();
+        PanelLayoutMapper.ApplyPersistedLayout(canvas, GetPanelLayoutJson(canvas), runtimeState, GetIsSkiaRuntimeRenderingEnabled(canvas));
+    }
+
     private static void AttachVisualStateSubscription(FrameworkElement element)
     {
         if (element.DataContext is not DocumentTabViewModel tab)
@@ -239,7 +269,10 @@ public static class CanvasPanBehavior
                     continue;
                 }
 
-                PanelLayoutMapper.ApplyVisualState(canvas, tab, visualStateChanged, tab.RuntimeState);
+                if (!GetIsSkiaRuntimeRenderingEnabled(canvas))
+                {
+                    PanelLayoutMapper.ApplyVisualState(canvas, tab, visualStateChanged, tab.RuntimeState);
+                }
             }
         }
     }
@@ -418,7 +451,7 @@ public static class CanvasPanBehavior
         var runtimeState = canvas.DataContext is DocumentTabViewModel tab
             ? tab.RuntimeState
             : new PanelRuntimeState();
-        PanelLayoutMapper.ApplyPersistedLayout(canvas, eventArgs.NewValue as string, runtimeState);
+        PanelLayoutMapper.ApplyPersistedLayout(canvas, eventArgs.NewValue as string, runtimeState, GetIsSkiaRuntimeRenderingEnabled(canvas));
     }
 
     private static void OnSelectedPanelSelectionChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs eventArgs)

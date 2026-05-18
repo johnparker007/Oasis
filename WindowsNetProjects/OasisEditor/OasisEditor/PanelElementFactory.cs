@@ -78,6 +78,28 @@ internal static class PanelElementFactory
         return CreateVisualFromElement(element, DefaultRuntimeState);
     }
 
+    public static FrameworkElement? CreateOverlayVisualFromElement(PanelElementFile element)
+    {
+        if (element.ElementKind == PanelElementKind.Unknown)
+        {
+            return null;
+        }
+
+        var width = element.Width <= 0 ? NewRectangleWidth : element.Width;
+        var height = element.Height <= 0 ? NewRectangleHeight : element.Height;
+        var visual = new Border
+        {
+            Uid = element.ObjectId,
+            Width = width,
+            Height = height,
+            Background = Brushes.Transparent
+        };
+
+        SetElementName(visual, element.Name);
+        SetElementKind(visual, element.ElementKind);
+        return visual;
+    }
+
     public static FrameworkElement? CreateVisualFromElement(PanelElementFile element, PanelRuntimeState runtimeState)
     {
         FrameworkElement? visual = element.ElementKind switch

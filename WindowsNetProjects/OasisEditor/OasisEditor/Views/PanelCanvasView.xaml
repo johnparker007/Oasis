@@ -114,6 +114,7 @@
                                                 local:CanvasPanBehavior.IsEnabled="True"
                                                 local:CanvasPanBehavior.IsRectangleToolActive="{Binding IsChecked, ElementName=RectangleToolToggle}"
                                                 local:CanvasPanBehavior.IsImageToolActive="{Binding IsChecked, ElementName=ImageToolToggle}"
+                                                local:CanvasPanBehavior.IsSkiaRuntimeRenderingEnabled="True"
                                                 local:CanvasPanBehavior.PanelLayoutJson="{Binding PanelLayoutJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                 local:CanvasPanBehavior.SelectedPanelSelection="{Binding HierarchySelectedPanelSelection, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                 local:CanvasPanBehavior.PanelZoom="{Binding PanelZoom, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
@@ -140,7 +141,9 @@
                                                 </Style>
                                                 <Style TargetType="Border">
                                                     <Setter Property="BorderBrush"
-                                                            Value="SlateGray" />
+                                                            Value="Transparent" />
+                                                    <Setter Property="Background"
+                                                            Value="Transparent" />
                                                     <Setter Property="BorderThickness"
                                                             Value="1" />
                                                     <Style.Triggers>

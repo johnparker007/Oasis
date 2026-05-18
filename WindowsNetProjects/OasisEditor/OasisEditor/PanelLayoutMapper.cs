@@ -45,7 +45,7 @@ public static class PanelLayoutMapper
         return (bool)canvas.GetValue(IsApplyingLayoutProperty);
     }
 
-    public static void ApplyPersistedLayout(Canvas canvas, string? layoutJson, PanelRuntimeState runtimeState)
+    public static void ApplyPersistedLayout(Canvas canvas, string? layoutJson, PanelRuntimeState runtimeState, bool useOverlayVisuals = false)
     {
         canvas.SetValue(IsApplyingLayoutProperty, true);
         try
@@ -68,7 +68,9 @@ public static class PanelLayoutMapper
                     continue;
                 }
 
-                var visual = PanelElementFactory.CreateVisualFromElement(element, runtimeState);
+                var visual = useOverlayVisuals
+                    ? PanelElementFactory.CreateOverlayVisualFromElement(element)
+                    : PanelElementFactory.CreateVisualFromElement(element, runtimeState);
                 if (visual is null)
                 {
                     continue;
