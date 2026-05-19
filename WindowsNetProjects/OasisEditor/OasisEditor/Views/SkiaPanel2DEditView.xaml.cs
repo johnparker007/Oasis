@@ -259,7 +259,7 @@ public partial class SkiaPanel2DEditView : UserControl
                 return;
             }
 
-            if (!_isDragSelecting && (_dragSelectionCurrent - _leftMouseDownStart).Length >= DragSelectionStartThreshold)
+            if (!_isDragSelecting && Panel2DViewportInteractionService.ShouldStartDragSelection(_leftMouseDownStart, _dragSelectionCurrent, DragSelectionStartThreshold))
             {
                 _isDragSelecting = true;
             }
@@ -430,8 +430,7 @@ public partial class SkiaPanel2DEditView : UserControl
         var viewport = new PanelViewportTransform(document.PanelZoom, document.PanelPanX, document.PanelPanY);
         var start = viewport.ScreenToDocument(startScreenPoint);
         var end = viewport.ScreenToDocument(endScreenPoint);
-        var delta = end - start;
-        if (Math.Abs(delta.X) < 0.0001d && Math.Abs(delta.Y) < 0.0001d)
+        if (!Panel2DViewportInteractionService.HasDocumentDelta(start, end))
         {
             return;
         }
