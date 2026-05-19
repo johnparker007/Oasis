@@ -12,6 +12,7 @@ namespace OasisEditor.Views;
 public partial class SkiaPanel2DEditView : UserControl
 {
     private const double DragSelectionStartThreshold = 4d;
+    private const double ResizeHandleScreenSize = 10d;
     private DocumentTabViewModel? _subscribedDocument;
     private bool _isPanning;
     private bool _isLeftMouseDown;
@@ -108,6 +109,7 @@ public partial class SkiaPanel2DEditView : UserControl
         canvas.Scale((float)viewport.NormalizedZoom, (float)viewport.NormalizedZoom);
         _renderer.Render(canvas, document.GetPanelElements(), document.RuntimeState, viewport);
         DrawSelectionOutline(canvas, document, viewport);
+        DrawResizeHandles(canvas, document, viewport);
         DrawDragSelectionRect(canvas, viewport);
         canvas.Restore();
     }
@@ -139,6 +141,64 @@ public partial class SkiaPanel2DEditView : UserControl
             (float)Math.Max(0d, selectedElement.Width),
             (float)Math.Max(0d, selectedElement.Height),
             selectionPaint);
+    }
+
+    private static void DrawResizeHandles(SKCanvas canvas, DocumentTabViewModel document, PanelViewportTransform viewport)
+    {
+        var selection = document.HierarchySelectedPanelSelection;
+        if (selection is null)
+        {
+            return;
+        }
+
+        if (!document.TryGetPanelElement(selection.Value, out var selectedElement))
+        {
+            return;
+        }
+
+        var handleSizeDoc = ResizeHandleScreenSize / viewport.NormalizedZoom;
+        var half = handleSizeDoc / 2d;
+        var left = selectedElement.X;
+        var right = selectedElement.X + selectedElement.Width;
+        var top = selectedElement.Y;
+        var bottom = selectedElement.Y + selectedElement.Height;
+
+        Span<(double X, double Y)> points =
+        [
+            (left, top),
+            ((left + right) / 2d, top),
+            (right, top),
+            (left, (top + bottom) / 2d),
+            (right, (top + bottom) / 2d),
+            (left, bottom),
+            ((left + right) / 2d, bottom),
+            (right, bottom)
+        ];
+
+        using var fillPaint = new SKPaint
+        {
+            Style = SKPaintStyle.Fill,
+            Color = new SKColor(0x1E, 0x88, 0xE5),
+            IsAntialias = true
+        };
+        using var strokePaint = new SKPaint
+        {
+            Style = SKPaintStyle.Stroke,
+            Color = SKColors.White,
+            StrokeWidth = (float)(1d / viewport.NormalizedZoom),
+            IsAntialias = true
+        };
+
+        foreach (var point in points)
+        {
+            var rect = SKRect.Create(
+                (float)(point.X - half),
+                (float)(point.Y - half),
+                (float)handleSizeDoc,
+                (float)handleSizeDoc);
+            canvas.DrawRect(rect, fillPaint);
+            canvas.DrawRect(rect, strokePaint);
+        }
     }
 
     private void OnEditSkiaSurfaceMouseDown(object sender, MouseButtonEventArgs eventArgs)
