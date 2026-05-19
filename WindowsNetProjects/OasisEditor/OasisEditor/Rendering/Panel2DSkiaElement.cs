@@ -32,6 +32,7 @@ public sealed class Panel2DSkiaElement : SKElement
         PaintSurface += OnPaintSurface;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
+        DataContextChanged += OnDataContextChanged;
     }
 
     public DocumentTabViewModel? Document
@@ -47,19 +48,35 @@ public sealed class Panel2DSkiaElement : SKElement
             return;
         }
 
-        element.UpdateDocumentSubscription(eventArgs.NewValue as DocumentTabViewModel);
+        element.UpdateDocumentSubscription(element.GetEffectiveDocument());
         element.RequestInvalidate();
     }
 
     private void OnLoaded(object sender, RoutedEventArgs eventArgs)
     {
-        UpdateDocumentSubscription(Document);
+        UpdateDocumentSubscription(GetEffectiveDocument());
         RequestInvalidate();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs eventArgs)
     {
         UpdateDocumentSubscription(null);
+    }
+
+    private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs eventArgs)
+    {
+        if (Document is not null)
+        {
+            return;
+        }
+
+        UpdateDocumentSubscription(GetEffectiveDocument());
+        RequestInvalidate();
+    }
+
+    private DocumentTabViewModel? GetEffectiveDocument()
+    {
+        return Document ?? DataContext as DocumentTabViewModel;
     }
 
     private void UpdateDocumentSubscription(DocumentTabViewModel? document)
@@ -133,7 +150,7 @@ public sealed class Panel2DSkiaElement : SKElement
         var canvas = eventArgs.Surface.Canvas;
         canvas.Clear(new SKColor(0x1E, 0x1E, 0x1E));
 
-        var document = Document ?? DataContext as DocumentTabViewModel;
+        var document = GetEffectiveDocument();
         if (document is null || document.Document.DocumentType != EditorDocumentType.Panel2D)
         {
             return;
