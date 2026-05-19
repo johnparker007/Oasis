@@ -57,6 +57,7 @@ public sealed class CanvasPanBehaviorSkiaOverlayTests
             ]);
             var document = new DocumentTabViewModel(EditorDocument.CreatePanel2DStub("Panel"), layoutJson);
             var canvas = new Canvas { DataContext = document };
+            CanvasPanBehavior.SetIsSkiaRuntimeRenderingEnabled(canvas, false);
             CanvasPanBehavior.SetPanelLayoutJson(canvas, layoutJson);
             var wpfRuntimeVisual = Assert.IsType<Border>(Assert.Single(canvas.Children));
             Assert.NotNull(wpfRuntimeVisual.Child);
