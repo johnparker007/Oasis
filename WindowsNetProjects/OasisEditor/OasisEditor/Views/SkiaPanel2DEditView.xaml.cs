@@ -378,13 +378,13 @@ public partial class SkiaPanel2DEditView : UserControl
         var viewport = new PanelViewportTransform(document.PanelZoom, document.PanelPanX, document.PanelPanY);
         var a = viewport.ScreenToDocument(startScreenPoint);
         var b = viewport.ScreenToDocument(endScreenPoint);
-
-        var minX = Math.Min(a.X, b.X);
-        var maxX = Math.Max(a.X, b.X);
-        var minY = Math.Min(a.Y, b.Y);
-        var maxY = Math.Max(a.Y, b.Y);
-
-        var selection = Panel2DSelectionService.SelectFromRect(document.GetPanelElements(), minX, minY, maxX, maxY);
+        var rect = Panel2DSelectionBoundsService.CreateNormalizedDocumentRect(a, b);
+        var selection = Panel2DSelectionService.SelectFromRect(
+            document.GetPanelElements(),
+            rect.Left,
+            rect.Top,
+            rect.Right,
+            rect.Bottom);
         NotifySelection(document, selection);
     }
 
@@ -397,10 +397,11 @@ public partial class SkiaPanel2DEditView : UserControl
 
         var start = viewport.ScreenToDocument(_leftMouseDownStart);
         var end = viewport.ScreenToDocument(_dragSelectionCurrent);
-        var x = (float)Math.Min(start.X, end.X);
-        var y = (float)Math.Min(start.Y, end.Y);
-        var width = (float)Math.Abs(end.X - start.X);
-        var height = (float)Math.Abs(end.Y - start.Y);
+        var rect = Panel2DSelectionBoundsService.CreateNormalizedDocumentRect(start, end);
+        var x = (float)rect.Left;
+        var y = (float)rect.Top;
+        var width = (float)rect.Width;
+        var height = (float)rect.Height;
 
         using var fill = new SKPaint
         {
