@@ -62,7 +62,9 @@ internal static class SkiaRenderDiagnostics
         int TextLayoutCacheHits,
         int TextLayoutCacheMisses,
         int TextVisualCacheHits,
-        int TextVisualCacheMisses);
+        int TextVisualCacheMisses,
+        int SegmentVisualCacheHits,
+        int SegmentVisualCacheMisses);
 
     internal readonly struct FrameScope(string viewName, Stopwatch stopwatch)
     {
@@ -105,6 +107,8 @@ internal static class SkiaRenderDiagnostics
         private int _textLayoutCacheMisses;
         private int _textVisualCacheHits;
         private int _textVisualCacheMisses;
+        private int _segmentVisualCacheHits;
+        private int _segmentVisualCacheMisses;
 
         public void Accumulate(FrameData data)
         {
@@ -130,6 +134,8 @@ internal static class SkiaRenderDiagnostics
             _textLayoutCacheMisses += data.TextLayoutCacheMisses;
             _textVisualCacheHits += data.TextVisualCacheHits;
             _textVisualCacheMisses += data.TextVisualCacheMisses;
+            _segmentVisualCacheHits += data.SegmentVisualCacheHits;
+            _segmentVisualCacheMisses += data.SegmentVisualCacheMisses;
         }
 
         public bool ShouldReport(TimeSpan interval) => DateTime.UtcNow - _windowStartUtc >= interval && _frames > 0;
@@ -144,6 +150,7 @@ internal static class SkiaRenderDiagnostics
             sb.Append($", textWork/frame: layouts={_textLayouts / (double)_frames:F1} draws={_textDraws / (double)_frames:F1}");
             sb.Append($", textLayoutCache/frame: hits={_textLayoutCacheHits / (double)_frames:F1} misses={_textLayoutCacheMisses / (double)_frames:F1}");
             sb.Append($", textVisualCache/frame: hits={_textVisualCacheHits / (double)_frames:F1} misses={_textVisualCacheMisses / (double)_frames:F1}");
+            sb.Append($", segmentVisualCache/frame: hits={_segmentVisualCacheHits / (double)_frames:F1} misses={_segmentVisualCacheMisses / (double)_frames:F1}");
 
             _windowStartUtc = DateTime.UtcNow;
             _frames = 0;
@@ -151,6 +158,7 @@ internal static class SkiaRenderDiagnostics
             _elements = _backgrounds = _lamps = _textLamps = _alphas = _sevens = _reels = _textLayouts = _textDraws = 0;
             _textLayoutCacheHits = _textLayoutCacheMisses = 0;
             _textVisualCacheHits = _textVisualCacheMisses = 0;
+            _segmentVisualCacheHits = _segmentVisualCacheMisses = 0;
             return sb.ToString();
         }
     }

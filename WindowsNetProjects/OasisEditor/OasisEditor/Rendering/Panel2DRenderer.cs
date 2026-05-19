@@ -22,6 +22,7 @@ internal sealed class Panel2DRenderer : IPanel2DRenderer
         ArgumentNullException.ThrowIfNull(runtimeState);
 
         LampElementRenderer.ResetDiagnosticsCounters();
+        SevenSegmentElementRenderer.ResetDiagnosticsCounters();
         var frame = SkiaRenderDiagnostics.BeginFrame(_viewName);
         var context = new PanelElementRenderContext(canvas, runtimeState, viewportTransform);
 
@@ -103,6 +104,8 @@ internal sealed class Panel2DRenderer : IPanel2DRenderer
             LampElementRenderer.DiagnosticsTextLayoutCacheHits,
             LampElementRenderer.DiagnosticsTextLayoutCacheMisses,
             LampElementRenderer.DiagnosticsTextVisualCacheHits,
-            LampElementRenderer.DiagnosticsTextVisualCacheMisses));
+            LampElementRenderer.DiagnosticsTextVisualCacheMisses,
+            SevenSegmentElementRenderer.DiagnosticsCacheHits,
+            SevenSegmentElementRenderer.DiagnosticsCacheMisses));
     }
 }
