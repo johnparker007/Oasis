@@ -160,22 +160,7 @@ public partial class SkiaPanel2DEditView : UserControl
 
         var handleSizeDoc = ResizeHandleScreenSize / viewport.NormalizedZoom;
         var half = handleSizeDoc / 2d;
-        var left = selectedElement.X;
-        var right = selectedElement.X + selectedElement.Width;
-        var top = selectedElement.Y;
-        var bottom = selectedElement.Y + selectedElement.Height;
-
-        Span<(double X, double Y)> points =
-        [
-            (left, top),
-            ((left + right) / 2d, top),
-            (right, top),
-            (left, (top + bottom) / 2d),
-            (right, (top + bottom) / 2d),
-            (left, bottom),
-            ((left + right) / 2d, bottom),
-            (right, bottom)
-        ];
+        var handles = Panel2DResizeHandleService.GetHandles(selectedElement);
 
         using var fillPaint = new SKPaint
         {
@@ -191,11 +176,11 @@ public partial class SkiaPanel2DEditView : UserControl
             IsAntialias = true
         };
 
-        foreach (var point in points)
+        foreach (var handle in handles)
         {
             var rect = SKRect.Create(
-                (float)(point.X - half),
-                (float)(point.Y - half),
+                (float)(handle.X - half),
+                (float)(handle.Y - half),
                 (float)handleSizeDoc,
                 (float)handleSizeDoc);
             canvas.DrawRect(rect, fillPaint);
@@ -579,24 +564,7 @@ public partial class SkiaPanel2DEditView : UserControl
         var docPoint = viewport.ScreenToDocument(screenPoint);
         var handleSizeDoc = ResizeHandleScreenSize / viewport.NormalizedZoom;
         var half = handleSizeDoc / 2d;
-        var left = selectedElement.X;
-        var right = selectedElement.X + selectedElement.Width;
-        var top = selectedElement.Y;
-        var bottom = selectedElement.Y + selectedElement.Height;
-        var midX = (left + right) / 2d;
-        var midY = (top + bottom) / 2d;
-
-        (ResizeHandleKind Kind, double X, double Y)[] handles =
-        [
-            (ResizeHandleKind.TopLeft, left, top),
-            (ResizeHandleKind.Top, midX, top),
-            (ResizeHandleKind.TopRight, right, top),
-            (ResizeHandleKind.Left, left, midY),
-            (ResizeHandleKind.Right, right, midY),
-            (ResizeHandleKind.BottomLeft, left, bottom),
-            (ResizeHandleKind.Bottom, midX, bottom),
-            (ResizeHandleKind.BottomRight, right, bottom)
-        ];
+        var handles = Panel2DResizeHandleService.GetHandles(selectedElement);
 
         foreach (var handle in handles)
         {
@@ -611,18 +579,5 @@ public partial class SkiaPanel2DEditView : UserControl
         }
 
         return false;
-    }
-
-    private enum ResizeHandleKind
-    {
-        None,
-        TopLeft,
-        Top,
-        TopRight,
-        Left,
-        Right,
-        BottomLeft,
-        Bottom,
-        BottomRight
     }
 }
