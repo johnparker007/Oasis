@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -104,6 +105,13 @@ public partial class SkiaPanel2DEditView : UserControl
 
     private void OnEditSkiaSurfaceMouseDown(object sender, MouseButtonEventArgs eventArgs)
     {
+        if (eventArgs.ChangedButton == MouseButton.Left)
+        {
+            HandleSelectionClick(eventArgs.GetPosition(EditSkiaSurface));
+            eventArgs.Handled = true;
+            return;
+        }
+
         if (eventArgs.ChangedButton != MouseButton.Middle || Document is null)
         {
             return;
@@ -156,5 +164,51 @@ public partial class SkiaPanel2DEditView : UserControl
         Document.PanelPanY = transform.PanY;
         EditSkiaSurface.InvalidateVisual();
         eventArgs.Handled = true;
+    }
+
+    private void HandleSelectionClick(Point screenPoint)
+    {
+        var document = Document;
+        if (document is null)
+        {
+            return;
+        }
+
+        var viewport = new PanelViewportTransform(document.PanelZoom, document.PanelPanX, document.PanelPanY);
+        var documentPoint = viewport.ScreenToDocument(screenPoint);
+        var hitElement = document.GetPanelElements()
+            .Where(element => element.IsVisible && !element.IsLocked)
+            .LastOrDefault(element =>
+                documentPoint.X >= element.X
+                && documentPoint.X <= element.X + element.Width
+                && documentPoint.Y >= element.Y
+                && documentPoint.Y <= element.Y + element.Height);
+
+        if (hitElement is null)
+        {
+            NotifySelection(document, null);
+            return;
+        }
+
+        NotifySelection(
+            document,
+            new PanelSelectionInfo(
+                hitElement.ObjectId,
+                Panel2DDocumentStorage.SerializeElementKind(hitElement.Kind),
+                hitElement.X,
+                hitElement.Y,
+                hitElement.Width,
+                hitElement.Height));
+    }
+
+    private void NotifySelection(DocumentTabViewModel document, PanelSelectionInfo? selection)
+    {
+        if (Window.GetWindow(this)?.DataContext is MainWindowViewModel shellViewModel)
+        {
+            shellViewModel.UpdateDocumentPanelSelection(document.DocumentId, selection);
+            return;
+        }
+
+        document.HierarchySelectedPanelSelection = selection;
     }
 }
