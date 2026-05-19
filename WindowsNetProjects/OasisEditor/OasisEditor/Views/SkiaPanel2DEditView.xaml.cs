@@ -509,44 +509,7 @@ public partial class SkiaPanel2DEditView : UserControl
         var viewport = new PanelViewportTransform(document.PanelZoom, document.PanelPanX, document.PanelPanY);
         var start = viewport.ScreenToDocument(startScreenPoint);
         var end = viewport.ScreenToDocument(endScreenPoint);
-        var dx = end.X - start.X;
-        var dy = end.Y - start.Y;
-
-        var x = _resizeSourceElement.X;
-        var y = _resizeSourceElement.Y;
-        var width = _resizeSourceElement.Width;
-        var height = _resizeSourceElement.Height;
-        const double minSize = 1d;
-
-        if (_activeResizeHandle is ResizeHandleKind.Left or ResizeHandleKind.TopLeft or ResizeHandleKind.BottomLeft)
-        {
-            x += dx;
-            width -= dx;
-        }
-        if (_activeResizeHandle is ResizeHandleKind.Right or ResizeHandleKind.TopRight or ResizeHandleKind.BottomRight)
-        {
-            width += dx;
-        }
-        if (_activeResizeHandle is ResizeHandleKind.Top or ResizeHandleKind.TopLeft or ResizeHandleKind.TopRight)
-        {
-            y += dy;
-            height -= dy;
-        }
-        if (_activeResizeHandle is ResizeHandleKind.Bottom or ResizeHandleKind.BottomLeft or ResizeHandleKind.BottomRight)
-        {
-            height += dy;
-        }
-
-        if (width < minSize)
-        {
-            width = minSize;
-        }
-        if (height < minSize)
-        {
-            height = minSize;
-        }
-
-        var updated = PanelElementModelCloner.Clone(_resizeSourceElement, x: x, y: y, width: width, height: height);
+        var updated = Panel2DResizeComputationService.ComputeResizedElement(_resizeSourceElement, _activeResizeHandle, start, end);
         var command = CanvasMutationCommands.CreateUpdateElementCommand(document.DocumentId, document, _resizeSourceElement.ObjectId, updated, "Resize element");
         document.CommandService.Execute(command);
     }
