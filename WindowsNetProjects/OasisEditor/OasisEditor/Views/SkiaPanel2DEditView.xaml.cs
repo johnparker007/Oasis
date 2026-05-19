@@ -11,10 +11,15 @@ namespace OasisEditor.Views;
 
 public partial class SkiaPanel2DEditView : UserControl
 {
+    private const double DragSelectionStartThreshold = 4d;
     private DocumentTabViewModel? _subscribedDocument;
     private bool _isPanning;
+    private bool _isLeftMouseDown;
+    private bool _isDragSelecting;
     private Point _panStart;
     private Vector _panOrigin;
+    private Point _leftMouseDownStart;
+    private Point _dragSelectionCurrent;
     private readonly IPanel2DRenderer _renderer = new Panel2DRenderer([new BackgroundElementRenderer(), new LampElementRenderer(), new ReelElementRenderer(), new SevenSegmentElementRenderer(), new AlphaElementRenderer()]);
 
     public SkiaPanel2DEditView()
@@ -101,6 +106,7 @@ public partial class SkiaPanel2DEditView : UserControl
         canvas.Scale((float)viewport.NormalizedZoom, (float)viewport.NormalizedZoom);
         _renderer.Render(canvas, document.GetPanelElements(), document.RuntimeState, viewport);
         DrawSelectionOutline(canvas, document, viewport);
+        DrawDragSelectionRect(canvas, viewport);
         canvas.Restore();
     }
 
@@ -137,7 +143,11 @@ public partial class SkiaPanel2DEditView : UserControl
     {
         if (eventArgs.ChangedButton == MouseButton.Left)
         {
-            HandleSelectionClick(eventArgs.GetPosition(EditSkiaSurface));
+            _isLeftMouseDown = true;
+            _isDragSelecting = false;
+            _leftMouseDownStart = eventArgs.GetPosition(EditSkiaSurface);
+            _dragSelectionCurrent = _leftMouseDownStart;
+            EditSkiaSurface.CaptureMouse();
             eventArgs.Handled = true;
             return;
         }
@@ -156,6 +166,22 @@ public partial class SkiaPanel2DEditView : UserControl
 
     private void OnEditSkiaSurfaceMouseMove(object sender, MouseEventArgs eventArgs)
     {
+        if (_isLeftMouseDown)
+        {
+            _dragSelectionCurrent = eventArgs.GetPosition(EditSkiaSurface);
+            if (!_isDragSelecting && (_dragSelectionCurrent - _leftMouseDownStart).Length >= DragSelectionStartThreshold)
+            {
+                _isDragSelecting = true;
+            }
+
+            if (_isDragSelecting)
+            {
+                EditSkiaSurface.InvalidateVisual();
+            }
+
+            return;
+        }
+
         if (!_isPanning || Document is null)
         {
             return;
@@ -169,6 +195,29 @@ public partial class SkiaPanel2DEditView : UserControl
 
     private void OnEditSkiaSurfaceMouseUp(object sender, MouseButtonEventArgs eventArgs)
     {
+        if (eventArgs.ChangedButton == MouseButton.Left)
+        {
+            var document = Document;
+            if (document is not null)
+            {
+                if (_isDragSelecting)
+                {
+                    HandleDragSelection(document, _leftMouseDownStart, _dragSelectionCurrent);
+                }
+                else
+                {
+                    HandleSelectionClick(_leftMouseDownStart);
+                }
+            }
+
+            _isLeftMouseDown = false;
+            _isDragSelecting = false;
+            EditSkiaSurface.ReleaseMouseCapture();
+            EditSkiaSurface.InvalidateVisual();
+            eventArgs.Handled = true;
+            return;
+        }
+
         if (eventArgs.ChangedButton != MouseButton.Middle)
         {
             return;
@@ -240,5 +289,72 @@ public partial class SkiaPanel2DEditView : UserControl
         }
 
         document.HierarchySelectedPanelSelection = selection;
+    }
+
+    private void HandleDragSelection(DocumentTabViewModel document, Point startScreenPoint, Point endScreenPoint)
+    {
+        var viewport = new PanelViewportTransform(document.PanelZoom, document.PanelPanX, document.PanelPanY);
+        var a = viewport.ScreenToDocument(startScreenPoint);
+        var b = viewport.ScreenToDocument(endScreenPoint);
+
+        var minX = Math.Min(a.X, b.X);
+        var maxX = Math.Max(a.X, b.X);
+        var minY = Math.Min(a.Y, b.Y);
+        var maxY = Math.Max(a.Y, b.Y);
+
+        var hit = document.GetPanelElements()
+            .Where(element => element.IsVisible && !element.IsLocked)
+            .LastOrDefault(element =>
+                element.X <= maxX
+                && (element.X + element.Width) >= minX
+                && element.Y <= maxY
+                && (element.Y + element.Height) >= minY);
+
+        if (hit is null)
+        {
+            NotifySelection(document, null);
+            return;
+        }
+
+        NotifySelection(
+            document,
+            new PanelSelectionInfo(
+                hit.ObjectId,
+                Panel2DDocumentStorage.SerializeElementKind(hit.Kind),
+                hit.X,
+                hit.Y,
+                hit.Width,
+                hit.Height));
+    }
+
+    private void DrawDragSelectionRect(SKCanvas canvas, PanelViewportTransform viewport)
+    {
+        if (!_isLeftMouseDown || !_isDragSelecting)
+        {
+            return;
+        }
+
+        var start = viewport.ScreenToDocument(_leftMouseDownStart);
+        var end = viewport.ScreenToDocument(_dragSelectionCurrent);
+        var x = (float)Math.Min(start.X, end.X);
+        var y = (float)Math.Min(start.Y, end.Y);
+        var width = (float)Math.Abs(end.X - start.X);
+        var height = (float)Math.Abs(end.Y - start.Y);
+
+        using var fill = new SKPaint
+        {
+            Style = SKPaintStyle.Fill,
+            Color = new SKColor(0x4F, 0xC3, 0xF7, 0x40)
+        };
+        using var stroke = new SKPaint
+        {
+            Style = SKPaintStyle.Stroke,
+            Color = new SKColor(0x4F, 0xC3, 0xF7, 0xD0),
+            StrokeWidth = (float)(1.5d / viewport.NormalizedZoom),
+            IsAntialias = true
+        };
+
+        canvas.DrawRect(x, y, width, height, fill);
+        canvas.DrawRect(x, y, width, height, stroke);
     }
 }
