@@ -100,7 +100,37 @@ public partial class SkiaPanel2DEditView : UserControl
         canvas.Translate((float)viewport.PanX, (float)viewport.PanY);
         canvas.Scale((float)viewport.NormalizedZoom, (float)viewport.NormalizedZoom);
         _renderer.Render(canvas, document.GetPanelElements(), document.RuntimeState, viewport);
+        DrawSelectionOutline(canvas, document, viewport);
         canvas.Restore();
+    }
+
+    private static void DrawSelectionOutline(SKCanvas canvas, DocumentTabViewModel document, PanelViewportTransform viewport)
+    {
+        var selection = document.HierarchySelectedPanelSelection;
+        if (selection is null)
+        {
+            return;
+        }
+
+        if (!document.TryGetPanelElement(selection.Value, out var selectedElement))
+        {
+            return;
+        }
+
+        using var selectionPaint = new SKPaint
+        {
+            Style = SKPaintStyle.Stroke,
+            Color = new SKColor(0x4F, 0xC3, 0xF7),
+            StrokeWidth = (float)(2d / viewport.NormalizedZoom),
+            IsAntialias = true
+        };
+
+        canvas.DrawRect(
+            (float)selectedElement.X,
+            (float)selectedElement.Y,
+            (float)Math.Max(0d, selectedElement.Width),
+            (float)Math.Max(0d, selectedElement.Height),
+            selectionPaint);
     }
 
     private void OnEditSkiaSurfaceMouseDown(object sender, MouseButtonEventArgs eventArgs)
