@@ -25,6 +25,7 @@ public partial class SkiaPanel2DEditView : UserControl
     private PanelElementModel? _moveSourceElement;
     private PanelElementModel? _resizeSourceElement;
     private ResizeHandleKind _activeResizeHandle;
+    private bool _isRenderQueued;
     private readonly IPanel2DRenderer _renderer = new Panel2DRenderer([new BackgroundElementRenderer(), new LampElementRenderer(), new ReelElementRenderer(), new SevenSegmentElementRenderer(), new AlphaElementRenderer()]);
 
     public SkiaPanel2DEditView()
@@ -40,7 +41,7 @@ public partial class SkiaPanel2DEditView : UserControl
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         UpdateDocumentSubscription(Document);
-        EditSkiaSurface.InvalidateVisual();
+        RequestRender();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
@@ -51,7 +52,7 @@ public partial class SkiaPanel2DEditView : UserControl
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
         UpdateDocumentSubscription(e.NewValue as DocumentTabViewModel);
-        EditSkiaSurface.InvalidateVisual();
+        RequestRender();
     }
 
     private void UpdateDocumentSubscription(DocumentTabViewModel? next)
@@ -76,12 +77,12 @@ public partial class SkiaPanel2DEditView : UserControl
 
     private void OnDocumentPanelChanged(PanelChangeEvent _)
     {
-        Dispatcher.Invoke(EditSkiaSurface.InvalidateVisual);
+        RequestRender();
     }
 
     private void OnDocumentPanelVisualStateChanged(PanelVisualStateChangedEvent _)
     {
-        Dispatcher.Invoke(EditSkiaSurface.InvalidateVisual);
+        RequestRender();
     }
 
     private void OnDocumentPropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
@@ -90,8 +91,23 @@ public partial class SkiaPanel2DEditView : UserControl
             or nameof(DocumentTabViewModel.PanelPanX)
             or nameof(DocumentTabViewModel.PanelPanY))
         {
-            EditSkiaSurface.InvalidateVisual();
+            RequestRender();
         }
+    }
+
+    private void RequestRender()
+    {
+        if (_isRenderQueued)
+        {
+            return;
+        }
+
+        _isRenderQueued = true;
+        Dispatcher.BeginInvoke(() =>
+        {
+            _isRenderQueued = false;
+            EditSkiaSurface.InvalidateVisual();
+        }, System.Windows.Threading.DispatcherPriority.Render);
     }
 
     private void OnEditSkiaSurfacePaintSurface(object? sender, SKPaintSurfaceEventArgs eventArgs)
@@ -266,7 +282,7 @@ public partial class SkiaPanel2DEditView : UserControl
 
             if (_isDragSelecting)
             {
-                EditSkiaSurface.InvalidateVisual();
+                RequestRender();
             }
 
             return;
@@ -280,7 +296,7 @@ public partial class SkiaPanel2DEditView : UserControl
         var delta = eventArgs.GetPosition(EditSkiaSurface) - _panStart;
         Document.PanelPanX = _panOrigin.X + delta.X;
         Document.PanelPanY = _panOrigin.Y + delta.Y;
-        EditSkiaSurface.InvalidateVisual();
+        RequestRender();
     }
 
     private void OnEditSkiaSurfaceMouseUp(object sender, MouseButtonEventArgs eventArgs)
@@ -316,7 +332,7 @@ public partial class SkiaPanel2DEditView : UserControl
             _resizeSourceElement = null;
             _activeResizeHandle = ResizeHandleKind.None;
             EditSkiaSurface.ReleaseMouseCapture();
-            EditSkiaSurface.InvalidateVisual();
+            RequestRender();
             eventArgs.Handled = true;
             return;
         }
@@ -344,7 +360,7 @@ public partial class SkiaPanel2DEditView : UserControl
         Document.PanelZoom = transform.Zoom;
         Document.PanelPanX = transform.PanX;
         Document.PanelPanY = transform.PanY;
-        EditSkiaSurface.InvalidateVisual();
+        RequestRender();
         eventArgs.Handled = true;
     }
 
