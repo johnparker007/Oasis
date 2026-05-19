@@ -439,7 +439,7 @@ public partial class PlayView : UserControl
 
         Dispatcher.Invoke(() =>
         {
-            PlaySkiaSurface.InvalidateVisual();
+            RequestRender();
         });
     }
 
