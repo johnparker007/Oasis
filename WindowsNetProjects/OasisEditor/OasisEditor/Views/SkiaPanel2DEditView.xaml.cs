@@ -18,11 +18,14 @@ public partial class SkiaPanel2DEditView : UserControl
     private bool _isLeftMouseDown;
     private bool _isDragSelecting;
     private bool _isMovingSelection;
+    private bool _isResizingSelection;
     private Point _panStart;
     private Vector _panOrigin;
     private Point _leftMouseDownStart;
     private Point _dragSelectionCurrent;
     private PanelElementModel? _moveSourceElement;
+    private PanelElementModel? _resizeSourceElement;
+    private ResizeHandleKind _activeResizeHandle;
     private readonly IPanel2DRenderer _renderer = new Panel2DRenderer([new BackgroundElementRenderer(), new LampElementRenderer(), new ReelElementRenderer(), new SevenSegmentElementRenderer(), new AlphaElementRenderer()]);
 
     public SkiaPanel2DEditView()
@@ -208,12 +211,29 @@ public partial class SkiaPanel2DEditView : UserControl
             var document = Document;
             var pointer = eventArgs.GetPosition(EditSkiaSurface);
             if (document is not null
+                && TryGetResizeHandleAtPoint(document, pointer, out var resizeHandle, out var resizeElement))
+            {
+                _isLeftMouseDown = true;
+                _isDragSelecting = false;
+                _isMovingSelection = false;
+                _isResizingSelection = true;
+                _resizeSourceElement = resizeElement;
+                _activeResizeHandle = resizeHandle;
+                _leftMouseDownStart = pointer;
+                _dragSelectionCurrent = pointer;
+                EditSkiaSurface.CaptureMouse();
+                eventArgs.Handled = true;
+                return;
+            }
+
+            if (document is not null
                 && TryGetSelectedElement(document, out var selectedElement)
                 && IsPointInsideElement(pointer, selectedElement, new PanelViewportTransform(document.PanelZoom, document.PanelPanX, document.PanelPanY)))
             {
                 _isLeftMouseDown = true;
                 _isDragSelecting = false;
                 _isMovingSelection = true;
+                _isResizingSelection = false;
                 _moveSourceElement = selectedElement;
                 _leftMouseDownStart = pointer;
                 _dragSelectionCurrent = pointer;
@@ -225,6 +245,7 @@ public partial class SkiaPanel2DEditView : UserControl
             _isLeftMouseDown = true;
             _isDragSelecting = false;
             _isMovingSelection = false;
+            _isResizingSelection = false;
             _leftMouseDownStart = eventArgs.GetPosition(EditSkiaSurface);
             _dragSelectionCurrent = _leftMouseDownStart;
             EditSkiaSurface.CaptureMouse();
@@ -293,6 +314,10 @@ public partial class SkiaPanel2DEditView : UserControl
                 {
                     HandleMoveSelection(document, _leftMouseDownStart, _dragSelectionCurrent);
                 }
+                else if (_isResizingSelection)
+                {
+                    HandleResizeSelection(document, _leftMouseDownStart, _dragSelectionCurrent);
+                }
                 else
                 {
                     HandleSelectionClick(_leftMouseDownStart);
@@ -302,7 +327,10 @@ public partial class SkiaPanel2DEditView : UserControl
             _isLeftMouseDown = false;
             _isDragSelecting = false;
             _isMovingSelection = false;
+            _isResizingSelection = false;
             _moveSourceElement = null;
+            _resizeSourceElement = null;
+            _activeResizeHandle = ResizeHandleKind.None;
             EditSkiaSurface.ReleaseMouseCapture();
             EditSkiaSurface.InvalidateVisual();
             eventArgs.Handled = true;
@@ -497,5 +525,117 @@ public partial class SkiaPanel2DEditView : UserControl
                && docPoint.X <= element.X + element.Width
                && docPoint.Y >= element.Y
                && docPoint.Y <= element.Y + element.Height;
+    }
+
+    private void HandleResizeSelection(DocumentTabViewModel document, Point startScreenPoint, Point endScreenPoint)
+    {
+        if (_resizeSourceElement is null || _activeResizeHandle == ResizeHandleKind.None || string.IsNullOrWhiteSpace(_resizeSourceElement.ObjectId))
+        {
+            return;
+        }
+
+        var viewport = new PanelViewportTransform(document.PanelZoom, document.PanelPanX, document.PanelPanY);
+        var start = viewport.ScreenToDocument(startScreenPoint);
+        var end = viewport.ScreenToDocument(endScreenPoint);
+        var dx = end.X - start.X;
+        var dy = end.Y - start.Y;
+
+        var x = _resizeSourceElement.X;
+        var y = _resizeSourceElement.Y;
+        var width = _resizeSourceElement.Width;
+        var height = _resizeSourceElement.Height;
+        const double minSize = 1d;
+
+        if (_activeResizeHandle is ResizeHandleKind.Left or ResizeHandleKind.TopLeft or ResizeHandleKind.BottomLeft)
+        {
+            x += dx;
+            width -= dx;
+        }
+        if (_activeResizeHandle is ResizeHandleKind.Right or ResizeHandleKind.TopRight or ResizeHandleKind.BottomRight)
+        {
+            width += dx;
+        }
+        if (_activeResizeHandle is ResizeHandleKind.Top or ResizeHandleKind.TopLeft or ResizeHandleKind.TopRight)
+        {
+            y += dy;
+            height -= dy;
+        }
+        if (_activeResizeHandle is ResizeHandleKind.Bottom or ResizeHandleKind.BottomLeft or ResizeHandleKind.BottomRight)
+        {
+            height += dy;
+        }
+
+        if (width < minSize)
+        {
+            width = minSize;
+        }
+        if (height < minSize)
+        {
+            height = minSize;
+        }
+
+        var updated = PanelElementModelCloner.Clone(_resizeSourceElement, x: x, y: y, width: width, height: height);
+        var command = CanvasMutationCommands.CreateUpdateElementCommand(document.DocumentId, document, _resizeSourceElement.ObjectId, updated, "Resize element");
+        document.CommandService.Execute(command);
+    }
+
+    private bool TryGetResizeHandleAtPoint(DocumentTabViewModel document, Point screenPoint, out ResizeHandleKind handleKind, out PanelElementModel selectedElement)
+    {
+        handleKind = ResizeHandleKind.None;
+        selectedElement = new PanelElementModel();
+        if (!TryGetSelectedElement(document, out selectedElement))
+        {
+            return false;
+        }
+
+        var viewport = new PanelViewportTransform(document.PanelZoom, document.PanelPanX, document.PanelPanY);
+        var docPoint = viewport.ScreenToDocument(screenPoint);
+        var handleSizeDoc = ResizeHandleScreenSize / viewport.NormalizedZoom;
+        var half = handleSizeDoc / 2d;
+        var left = selectedElement.X;
+        var right = selectedElement.X + selectedElement.Width;
+        var top = selectedElement.Y;
+        var bottom = selectedElement.Y + selectedElement.Height;
+        var midX = (left + right) / 2d;
+        var midY = (top + bottom) / 2d;
+
+        (ResizeHandleKind Kind, double X, double Y)[] handles =
+        [
+            (ResizeHandleKind.TopLeft, left, top),
+            (ResizeHandleKind.Top, midX, top),
+            (ResizeHandleKind.TopRight, right, top),
+            (ResizeHandleKind.Left, left, midY),
+            (ResizeHandleKind.Right, right, midY),
+            (ResizeHandleKind.BottomLeft, left, bottom),
+            (ResizeHandleKind.Bottom, midX, bottom),
+            (ResizeHandleKind.BottomRight, right, bottom)
+        ];
+
+        foreach (var handle in handles)
+        {
+            if (docPoint.X >= handle.X - half
+                && docPoint.X <= handle.X + half
+                && docPoint.Y >= handle.Y - half
+                && docPoint.Y <= handle.Y + half)
+            {
+                handleKind = handle.Kind;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private enum ResizeHandleKind
+    {
+        None,
+        TopLeft,
+        Top,
+        TopRight,
+        Left,
+        Right,
+        BottomLeft,
+        Bottom,
+        BottomRight
     }
 }
