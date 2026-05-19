@@ -364,13 +364,7 @@ public partial class SkiaPanel2DEditView : UserControl
 
     private void NotifySelection(DocumentTabViewModel document, PanelSelectionInfo? selection)
     {
-        if (Window.GetWindow(this)?.DataContext is MainWindowViewModel shellViewModel)
-        {
-            shellViewModel.UpdateDocumentPanelSelection(document.DocumentId, selection);
-            return;
-        }
-
-        document.HierarchySelectedPanelSelection = selection;
+        Panel2DSelectionNotificationService.NotifySelection(this, document, selection);
     }
 
     private void HandleDragSelection(DocumentTabViewModel document, Point startScreenPoint, Point endScreenPoint)
