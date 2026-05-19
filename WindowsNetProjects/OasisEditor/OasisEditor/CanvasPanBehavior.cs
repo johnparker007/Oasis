@@ -171,28 +171,19 @@ public static class CanvasPanBehavior
         var isEnabled = (bool)eventArgs.NewValue;
         if (isEnabled)
         {
-            CanvasPanZoomBehavior.EnsureTransformGroup(element);
-            ApplyViewportStateToCanvas(element);
-            element.MouseDown += OnMouseDown;
-            element.MouseLeftButtonDown += OnMouseLeftButtonDown;
-            element.MouseMove += OnMouseMove;
-            element.MouseUp += OnMouseUp;
-            element.MouseWheel += OnMouseWheel;
-            element.LostMouseCapture += OnLostMouseCapture;
-            element.DataContextChanged += OnCanvasDataContextChanged;
-            AttachVisualStateSubscription(element);
+            // Legacy WPF panel-canvas path has been retired in favor of SkiaPanel2DEditView.
+            // Keep attached property compatibility, but do not attach heavy WPF visual-sync handlers.
+            return;
         }
-        else
-        {
-            element.MouseDown -= OnMouseDown;
-            element.MouseLeftButtonDown -= OnMouseLeftButtonDown;
-            element.MouseMove -= OnMouseMove;
-            element.MouseUp -= OnMouseUp;
-            element.MouseWheel -= OnMouseWheel;
-            element.LostMouseCapture -= OnLostMouseCapture;
-            element.DataContextChanged -= OnCanvasDataContextChanged;
-            DetachVisualStateSubscription(element);
-        }
+
+        element.MouseDown -= OnMouseDown;
+        element.MouseLeftButtonDown -= OnMouseLeftButtonDown;
+        element.MouseMove -= OnMouseMove;
+        element.MouseUp -= OnMouseUp;
+        element.MouseWheel -= OnMouseWheel;
+        element.LostMouseCapture -= OnLostMouseCapture;
+        element.DataContextChanged -= OnCanvasDataContextChanged;
+        DetachVisualStateSubscription(element);
     }
 
     private static void OnCanvasDataContextChanged(object sender, DependencyPropertyChangedEventArgs _)
