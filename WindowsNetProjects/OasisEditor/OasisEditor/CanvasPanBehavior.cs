@@ -37,7 +37,7 @@ public static class CanvasPanBehavior
             "IsSkiaRuntimeRenderingEnabled",
             typeof(bool),
             typeof(CanvasPanBehavior),
-            new PropertyMetadata(false, OnSkiaRuntimeRenderingEnabledChanged));
+            new PropertyMetadata(true, OnSkiaRuntimeRenderingEnabledChanged));
 
     public static readonly DependencyProperty PanelLayoutJsonProperty =
         DependencyProperty.RegisterAttached(
@@ -353,32 +353,7 @@ public static class CanvasPanBehavior
         }
 
         canvas.Focus();
-        if (GetIsSkiaRuntimeRenderingEnabled(canvas))
-        {
-            HandleSkiaMouseLeftButtonDown(canvas, eventArgs);
-            return;
-        }
-
-        var clickedElement = CanvasSelectionBehavior.FindSelectableElement(eventArgs.OriginalSource as DependencyObject, canvas);
-
-        if (clickedElement is null
-            && PanelToolPlacementController.TryHandlePlacement(
-                canvas,
-                eventArgs,
-                GetIsRectangleToolActive(canvas),
-                GetIsImageToolActive(canvas),
-                ExecuteCanvasMutation))
-        {
-            eventArgs.Handled = true;
-            return;
-        }
-
-        CanvasSelectionBehavior.SelectFromSource(canvas, eventArgs.OriginalSource as DependencyObject);
-        NotifyActiveDocumentSelection(canvas, clickedElement);
-        if (clickedElement is not null)
-        {
-            eventArgs.Handled = true;
-        }
+        HandleSkiaMouseLeftButtonDown(canvas, eventArgs);
     }
 
     private static void HandleSkiaMouseLeftButtonDown(FrameworkElement canvas, MouseButtonEventArgs eventArgs)
@@ -607,19 +582,9 @@ public static class CanvasPanBehavior
             return;
         }
 
-        if (GetIsSkiaRuntimeRenderingEnabled(canvas))
-        {
-            CanvasSelectionBehavior.ClearSelection(canvas);
-            ShowSkiaSelectionOverlay(canvas, selection);
-            NotifyDocumentSelection(canvas, selection);
-            return;
-        }
-
-        var matchedElement = canvas.Children
-            .OfType<FrameworkElement>()
-            .FirstOrDefault(element => IsSelectionMatch(element, selection));
-        CanvasSelectionBehavior.SelectElement(canvas, matchedElement);
-        NotifyActiveDocumentSelection(canvas, matchedElement);
+        CanvasSelectionBehavior.ClearSelection(canvas);
+        ShowSkiaSelectionOverlay(canvas, selection);
+        NotifyDocumentSelection(canvas, selection);
     }
 
     private static bool IsSelectionMatch(FrameworkElement element, PanelSelectionInfo selection)
