@@ -16,10 +16,12 @@ public partial class SkiaPanel2DEditView : UserControl
     private bool _isPanning;
     private bool _isLeftMouseDown;
     private bool _isDragSelecting;
+    private bool _isMovingSelection;
     private Point _panStart;
     private Vector _panOrigin;
     private Point _leftMouseDownStart;
     private Point _dragSelectionCurrent;
+    private PanelElementModel? _moveSourceElement;
     private readonly IPanel2DRenderer _renderer = new Panel2DRenderer([new BackgroundElementRenderer(), new LampElementRenderer(), new ReelElementRenderer(), new SevenSegmentElementRenderer(), new AlphaElementRenderer()]);
 
     public SkiaPanel2DEditView()
@@ -143,8 +145,26 @@ public partial class SkiaPanel2DEditView : UserControl
     {
         if (eventArgs.ChangedButton == MouseButton.Left)
         {
+            var document = Document;
+            var pointer = eventArgs.GetPosition(EditSkiaSurface);
+            if (document is not null
+                && TryGetSelectedElement(document, out var selectedElement)
+                && IsPointInsideElement(pointer, selectedElement, new PanelViewportTransform(document.PanelZoom, document.PanelPanX, document.PanelPanY)))
+            {
+                _isLeftMouseDown = true;
+                _isDragSelecting = false;
+                _isMovingSelection = true;
+                _moveSourceElement = selectedElement;
+                _leftMouseDownStart = pointer;
+                _dragSelectionCurrent = pointer;
+                EditSkiaSurface.CaptureMouse();
+                eventArgs.Handled = true;
+                return;
+            }
+
             _isLeftMouseDown = true;
             _isDragSelecting = false;
+            _isMovingSelection = false;
             _leftMouseDownStart = eventArgs.GetPosition(EditSkiaSurface);
             _dragSelectionCurrent = _leftMouseDownStart;
             EditSkiaSurface.CaptureMouse();
@@ -169,6 +189,11 @@ public partial class SkiaPanel2DEditView : UserControl
         if (_isLeftMouseDown)
         {
             _dragSelectionCurrent = eventArgs.GetPosition(EditSkiaSurface);
+            if (_isMovingSelection)
+            {
+                return;
+            }
+
             if (!_isDragSelecting && (_dragSelectionCurrent - _leftMouseDownStart).Length >= DragSelectionStartThreshold)
             {
                 _isDragSelecting = true;
@@ -204,6 +229,10 @@ public partial class SkiaPanel2DEditView : UserControl
                 {
                     HandleDragSelection(document, _leftMouseDownStart, _dragSelectionCurrent);
                 }
+                else if (_isMovingSelection)
+                {
+                    HandleMoveSelection(document, _leftMouseDownStart, _dragSelectionCurrent);
+                }
                 else
                 {
                     HandleSelectionClick(_leftMouseDownStart);
@@ -212,6 +241,8 @@ public partial class SkiaPanel2DEditView : UserControl
 
             _isLeftMouseDown = false;
             _isDragSelecting = false;
+            _isMovingSelection = false;
+            _moveSourceElement = null;
             EditSkiaSurface.ReleaseMouseCapture();
             EditSkiaSurface.InvalidateVisual();
             eventArgs.Handled = true;
@@ -356,5 +387,55 @@ public partial class SkiaPanel2DEditView : UserControl
 
         canvas.DrawRect(x, y, width, height, fill);
         canvas.DrawRect(x, y, width, height, stroke);
+    }
+
+    private void HandleMoveSelection(DocumentTabViewModel document, Point startScreenPoint, Point endScreenPoint)
+    {
+        if (_moveSourceElement is null || string.IsNullOrWhiteSpace(_moveSourceElement.ObjectId))
+        {
+            return;
+        }
+
+        var viewport = new PanelViewportTransform(document.PanelZoom, document.PanelPanX, document.PanelPanY);
+        var start = viewport.ScreenToDocument(startScreenPoint);
+        var end = viewport.ScreenToDocument(endScreenPoint);
+        var delta = end - start;
+        if (Math.Abs(delta.X) < 0.0001d && Math.Abs(delta.Y) < 0.0001d)
+        {
+            return;
+        }
+
+        var updated = PanelElementModelCloner.Clone(
+            _moveSourceElement,
+            x: _moveSourceElement.X + delta.X,
+            y: _moveSourceElement.Y + delta.Y);
+        var moveCommand = CanvasMutationCommands.CreateUpdateElementCommand(
+            document.DocumentId,
+            document,
+            _moveSourceElement.ObjectId,
+            updated,
+            "Move element");
+        document.CommandService.Execute(moveCommand);
+    }
+
+    private static bool TryGetSelectedElement(DocumentTabViewModel document, out PanelElementModel selectedElement)
+    {
+        selectedElement = new PanelElementModel();
+        var selection = document.HierarchySelectedPanelSelection;
+        if (selection is null)
+        {
+            return false;
+        }
+
+        return document.TryGetPanelElement(selection.Value, out selectedElement);
+    }
+
+    private static bool IsPointInsideElement(Point screenPoint, PanelElementModel element, PanelViewportTransform viewport)
+    {
+        var docPoint = viewport.ScreenToDocument(screenPoint);
+        return docPoint.X >= element.X
+               && docPoint.X <= element.X + element.Width
+               && docPoint.Y >= element.Y
+               && docPoint.Y <= element.Y + element.Height;
     }
 }
