@@ -37,7 +37,7 @@ public sealed class CanvasPanBehaviorSkiaOverlayTests
     }
 
     [Fact]
-    public void EnablingSkiaRuntimeRendering_AfterLayoutBinding_RemovesWpfRuntimeVisuals()
+    public void EnablingSkiaRuntimeRendering_AfterLayoutBinding_KeepsCanvasWithoutWpfRuntimeVisuals()
     {
         RunInSta(() =>
         {
@@ -59,8 +59,7 @@ public sealed class CanvasPanBehaviorSkiaOverlayTests
             var canvas = new Canvas { DataContext = document };
             CanvasPanBehavior.SetIsSkiaRuntimeRenderingEnabled(canvas, false);
             CanvasPanBehavior.SetPanelLayoutJson(canvas, layoutJson);
-            var wpfRuntimeVisual = Assert.IsType<Border>(Assert.Single(canvas.Children));
-            Assert.NotNull(wpfRuntimeVisual.Child);
+            Assert.Empty(canvas.Children);
 
             CanvasPanBehavior.SetIsSkiaRuntimeRenderingEnabled(canvas, true);
 
