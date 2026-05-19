@@ -10,6 +10,7 @@ namespace OasisEditor.Rendering;
 internal sealed class LampElementRenderer : IPanelElementRenderer
 {
     private static readonly ConcurrentDictionary<string, SKTypeface> TypefaceCache = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly ConcurrentDictionary<TextLayoutCacheKey, IReadOnlyList<PixelTextLine>> TextLayoutCache = new();
 
     public PanelElementKind Kind => PanelElementKind.Lamp;
     [ThreadStatic]
@@ -18,14 +19,22 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
     private static int _diagnosticsTextDrawCount;
     [ThreadStatic]
     private static long _diagnosticsTextTicks;
+    [ThreadStatic]
+    private static int _diagnosticsTextLayoutCacheHits;
+    [ThreadStatic]
+    private static int _diagnosticsTextLayoutCacheMisses;
     internal static int DiagnosticsTextLayoutCount => _diagnosticsTextLayoutCount;
     internal static int DiagnosticsTextDrawCount => _diagnosticsTextDrawCount;
     internal static TimeSpan DiagnosticsTextElapsed => TimeSpan.FromTicks(_diagnosticsTextTicks);
+    internal static int DiagnosticsTextLayoutCacheHits => _diagnosticsTextLayoutCacheHits;
+    internal static int DiagnosticsTextLayoutCacheMisses => _diagnosticsTextLayoutCacheMisses;
     internal static void ResetDiagnosticsCounters()
     {
         _diagnosticsTextLayoutCount = 0;
         _diagnosticsTextDrawCount = 0;
         _diagnosticsTextTicks = 0;
+        _diagnosticsTextLayoutCacheHits = 0;
+        _diagnosticsTextLayoutCacheMisses = 0;
     }
 
     public void Render(in PanelElementRenderContext context, PanelElementModel element)
@@ -73,8 +82,12 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
             var measuredLineHeight = Math.Abs(fontMetrics.Ascent) + Math.Abs(fontMetrics.Descent) + Math.Abs(fontMetrics.Leading);
             var lineHeight = Math.Max(1d, measuredLineHeight > 0f ? measuredLineHeight : fontSize * 1.2d);
             var wrapWidth = GetEffectiveWrapWidth(displayText, textBounds.Width, bounds.Width, textPaint);
-            var lines = WrapTextToPixelWidth(displayText, wrapWidth, textPaint);
-            _diagnosticsTextLayoutCount++;
+            var cacheKey = new TextLayoutCacheKey(
+                displayText,
+                textPaint.Typeface?.FamilyName ?? string.Empty,
+                textPaint.TextSize,
+                wrapWidth);
+            var lines = GetOrCreateTextLayout(cacheKey, displayText, wrapWidth, textPaint);
             if (lines.Count == 0)
             {
                 return;
@@ -206,6 +219,22 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
     }
 
     internal readonly record struct PixelTextLine(string Text, float Width);
+    private readonly record struct TextLayoutCacheKey(string Text, string FamilyName, float TextSize, double WrapWidth);
+
+    private static IReadOnlyList<PixelTextLine> GetOrCreateTextLayout(TextLayoutCacheKey cacheKey, string text, double wrapWidth, SKPaint paint)
+    {
+        if (TextLayoutCache.TryGetValue(cacheKey, out var cached))
+        {
+            _diagnosticsTextLayoutCacheHits++;
+            return cached;
+        }
+
+        _diagnosticsTextLayoutCacheMisses++;
+        _diagnosticsTextLayoutCount++;
+        var computed = WrapTextToPixelWidth(text, wrapWidth, paint);
+        TextLayoutCache[cacheKey] = computed;
+        return computed;
+    }
 
     private static SKTypeface ResolveTypeface(string? fontName, string? fontStyle)
     {

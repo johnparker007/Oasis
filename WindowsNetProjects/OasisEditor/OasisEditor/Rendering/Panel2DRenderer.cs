@@ -99,6 +99,8 @@ internal sealed class Panel2DRenderer : IPanel2DRenderer
             sevenCount,
             reelCount,
             LampElementRenderer.DiagnosticsTextLayoutCount,
-            LampElementRenderer.DiagnosticsTextDrawCount));
+            LampElementRenderer.DiagnosticsTextDrawCount,
+            LampElementRenderer.DiagnosticsTextLayoutCacheHits,
+            LampElementRenderer.DiagnosticsTextLayoutCacheMisses));
     }
 }
