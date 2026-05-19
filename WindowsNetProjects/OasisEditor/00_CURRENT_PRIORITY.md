@@ -10,11 +10,11 @@ We are working in WindowsNetProjects/OasisEditor. Please read the .md files in t
 
 The current active workstream is:
 
-1. Skia Edit View migration.
-2. Shared Skia renderer consumption.
-3. WPF overlay/editor chrome separation.
-4. Removal of WPF runtime visual trees.
-5. Shared pan/zoom alignment.
+1. Rebuild Edit View from the working Game/Play View foundation.
+2. Replace old WPF-heavy Edit View architecture.
+3. Shared Skia renderer consumption.
+4. Document-space hit testing and selection.
+5. Lightweight editor overlay architecture.
 6. Runtime rendering performance improvements.
 
 Codex should prioritize this work before continuing additional runtime-driven component work or unrelated editor workstreams.
@@ -24,43 +24,41 @@ Codex should prioritize this work before continuing additional runtime-driven co
 Read these files first, in this order:
 
 1. `00_CURRENT_PRIORITY.md`
-2. `SKIA_EDIT_VIEW_MIGRATION_PLAN.md`
-3. `SKIA_RUNTIME_RENDERER_PLAN.md`
-4. `MAME_INPUT_MAP_AND_PLAY_VIEW_PLAN.md`
-5. `PANEL2D_RUNTIME_STATE_PERFORMANCE_PLAN.md`
-6. `OUTPUT_LOG_ENHANCEMENT_PLAN.md`
-7. `MAME_EMULATION_RUNTIME_PLAN.md`
-8. `MAME_ROM_MANAGEMENT_PLAN.md`
-9. `MAME_AUTO_UPDATE_POLICY_PLAN.md`
-10. `MAME_VERSION_DISCOVERY_PLAN.md`
-11. `MAME_ARCHITECTURE_REDESIGN.md`
-12. `CODEX_NEXT_STEPS_MAME.md`
-13. `TASKS_MAME_EMULATION_PORT.md`
-14. `AGENT.md`
-15. `TASKS.md`
+2. `SKIA_EDIT_VIEW_REBUILD_FROM_GAME_VIEW_PLAN.md`
+3. `SKIA_EDIT_VIEW_MIGRATION_PLAN.md`
+4. `SKIA_RUNTIME_RENDERER_PLAN.md`
+5. `MAME_INPUT_MAP_AND_PLAY_VIEW_PLAN.md`
+6. `PANEL2D_RUNTIME_STATE_PERFORMANCE_PLAN.md`
+7. `OUTPUT_LOG_ENHANCEMENT_PLAN.md`
+8. `MAME_EMULATION_RUNTIME_PLAN.md`
+9. `MAME_ROM_MANAGEMENT_PLAN.md`
+10. `MAME_AUTO_UPDATE_POLICY_PLAN.md`
+11. `MAME_VERSION_DISCOVERY_PLAN.md`
+12. `MAME_ARCHITECTURE_REDESIGN.md`
+13. `CODEX_NEXT_STEPS_MAME.md`
+14. `TASKS_MAME_EMULATION_PORT.md`
+15. `AGENT.md`
+16. `TASKS.md`
 
 ## Immediate Task
 
-Migrate the Edit View to use the shared Skia renderer incrementally.
+Stop patching the old Edit View internals.
 
-Current desired direction:
+Instead:
 
-- embed the shared Skia renderer into the Edit View;
-- preserve WPF editor overlays/chrome;
-- remove WPF runtime rendering paths;
-- align Skia rendering and WPF overlays through the shared viewport transform;
-- preserve editing workflows;
-- improve live emulation performance inside the Edit View;
-- add tests and diagnostics.
+- create a new Skia Edit View from the working Game/Play View foundation;
+- reuse the working pan/zoom and Skia renderer path from Game/Play View;
+- rebuild editing interaction incrementally on top;
+- retire the old WPF-heavy Edit View runtime rendering path once replacement is stable.
 
 ## Current Architectural Goals
 
-- Skia becomes the canonical machine renderer.
-- WPF becomes editor overlay/chrome only.
-- Runtime visuals should no longer use large WPF visual trees.
-- Edit View and Play View should share renderer infrastructure.
-- Selection and editing workflows should remain stable.
-- Pan/zoom should remain visually aligned.
+- Game/Play View becomes the rendering foundation for the new Edit View.
+- Skia remains the canonical machine renderer.
+- Runtime machine visuals should no longer use WPF component trees.
+- Editing interaction should become a lightweight overlay layer.
+- Pan/zoom should work consistently everywhere.
+- Document-space hit testing should replace WPF component hit testing.
 - Live emulation should remain smooth inside the Edit View.
 - Runtime rendering failures should never crash the editor.
 
@@ -68,50 +66,49 @@ Current desired direction:
 
 Codex should add or extend unit tests around:
 
-- viewport transform consistency;
-- overlay/document coordinate conversion;
-- selection bounds conversion;
-- hit-testing conversion math;
-- renderer invalidation behavior.
+- viewport transform math;
+- document-space hit testing;
+- selection service behavior;
+- selection rectangle calculations;
+- document-space drag delta calculations;
+- overlay bounds calculations.
 
 Avoid heavy pixel-perfect rendering tests initially.
 
 ## Do Not Work On Yet
 
+Do not continue trying to patch/fix the old WPF Edit View architecture.
+
 Do not remove WPF entirely from the editor.
 
-Do not rewrite the entire editor interaction model.
+Do not rewrite serialization or undo/redo.
 
 Do not introduce GPU shader/HLSL rendering yet.
-
-Do not redesign document serialization or undo/redo.
 
 ## Desired Output From Codex
 
 Codex should produce small focused changes that:
 
-- migrate Edit View rendering to shared Skia renderer;
-- preserve WPF overlay/editor workflows;
+- create a new Skia Edit View based on Game/Play View;
+- preserve working Game/Play View pan/zoom behavior;
+- rebuild selection/edit interaction incrementally;
 - remove WPF runtime rendering overhead;
 - improve runtime rendering performance;
 - add tests and diagnostics;
-- preserve editing convenience and usability;
+- preserve editing usability;
 - include manual verification steps for John.
 
 ## Manual Test Expectations
 
 After Codex makes the change, John should verify:
 
-- Edit View visually matches Play View closely enough;
-- live emulation remains smooth in Edit View;
-- flashing lamps no longer cause severe slowdown;
-- alpha displays render smoothly;
-- segment displays render smoothly;
-- reels remain smooth;
-- selection still works;
-- multi-selection still works;
-- drag/resize still works;
-- pan/zoom remains aligned;
-- context menus still work;
-- inspector integration still works;
+- Panel2D opens in the new Skia Edit View;
+- pan works everywhere;
+- zoom works everywhere;
+- live emulation still renders smoothly;
+- click-to-select works;
+- selection overlay aligns correctly;
+- drag-select multi-select works when implemented;
+- move/resize works when reintroduced;
+- old WPF runtime rendering path is no longer active;
 - no unrelated editor behavior regressed.
