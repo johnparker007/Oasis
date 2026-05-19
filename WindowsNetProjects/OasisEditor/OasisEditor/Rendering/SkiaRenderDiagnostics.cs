@@ -51,6 +51,7 @@ internal static class SkiaRenderDiagnostics
         TimeSpan SevenSegment,
         TimeSpan Reels,
         int ElementCount,
+        int BackgroundCount,
         int LampCount,
         int TextLampCount,
         int AlphaCount,
@@ -88,6 +89,7 @@ internal static class SkiaRenderDiagnostics
         private double _sevenMs;
         private double _reelMs;
         private int _elements;
+        private int _backgrounds;
         private int _lamps;
         private int _textLamps;
         private int _alphas;
@@ -108,6 +110,7 @@ internal static class SkiaRenderDiagnostics
             _sevenMs += data.SevenSegment.TotalMilliseconds;
             _reelMs += data.Reels.TotalMilliseconds;
             _elements += data.ElementCount;
+            _backgrounds += data.BackgroundCount;
             _lamps += data.LampCount;
             _textLamps += data.TextLampCount;
             _alphas += data.AlphaCount;
@@ -125,13 +128,13 @@ internal static class SkiaRenderDiagnostics
             var sb = new StringBuilder();
             sb.Append($"[SkiaDiag] {viewName}: fps~{_frames / seconds:F1}, frameAvg={_totalMs / _frames:F2}ms, frameMax={_maxFrameMs:F2}ms");
             sb.Append($", timing(ms): background={_backgroundMs / _frames:F2} lamps={_lampMs / _frames:F2} textLamps={_textLampMs / _frames:F2} alpha={_alphaMs / _frames:F2} seg7={_sevenMs / _frames:F2} reels={_reelMs / _frames:F2}");
-            sb.Append($", counts/frame: elems={_elements / (double)_frames:F1} lamps={_lamps / (double)_frames:F1} textLamps={_textLamps / (double)_frames:F1} alpha={_alphas / (double)_frames:F1} seg7={_sevens / (double)_frames:F1} reels={_reels / (double)_frames:F1}");
+            sb.Append($", counts/frame: elems={_elements / (double)_frames:F1} background={_backgrounds / (double)_frames:F1} lamps={_lamps / (double)_frames:F1} textLamps={_textLamps / (double)_frames:F1} alpha={_alphas / (double)_frames:F1} seg7={_sevens / (double)_frames:F1} reels={_reels / (double)_frames:F1}");
             sb.Append($", textWork/frame: layouts={_textLayouts / (double)_frames:F1} draws={_textDraws / (double)_frames:F1}");
 
             _windowStartUtc = DateTime.UtcNow;
             _frames = 0;
             _totalMs = _maxFrameMs = _backgroundMs = _lampMs = _textLampMs = _alphaMs = _sevenMs = _reelMs = 0;
-            _elements = _lamps = _textLamps = _alphas = _sevens = _reels = _textLayouts = _textDraws = 0;
+            _elements = _backgrounds = _lamps = _textLamps = _alphas = _sevens = _reels = _textLayouts = _textDraws = 0;
             return sb.ToString();
         }
     }
