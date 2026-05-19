@@ -574,9 +574,7 @@ public partial class SkiaPanel2DEditView : UserControl
             height = minSize;
         }
 
-        var updated = PanelElementModelCloner.Clone(_resizeSourceElement, x: x, y: y);
-        updated.Width = width;
-        updated.Height = height;
+        var updated = PanelElementModelCloner.Clone(_resizeSourceElement, x: x, y: y, width: width, height: height);
         var command = CanvasMutationCommands.CreateUpdateElementCommand(document.DocumentId, document, _resizeSourceElement.ObjectId, updated, "Resize element");
         document.CommandService.Execute(command);
     }

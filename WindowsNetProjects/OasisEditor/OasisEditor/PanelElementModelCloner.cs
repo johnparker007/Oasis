@@ -8,6 +8,8 @@ internal static class PanelElementModelCloner
         string? name = null,
         double? x = null,
         double? y = null,
+        double? width = null,
+        double? height = null,
         bool? isLocked = null,
         bool? isVisible = null)
     {
@@ -20,8 +22,8 @@ internal static class PanelElementModelCloner
             Kind = source.Kind,
             X = x ?? source.X,
             Y = y ?? source.Y,
-            Width = source.Width,
-            Height = source.Height,
+            Width = width ?? source.Width,
+            Height = height ?? source.Height,
             AssetPath = source.AssetPath,
             SecondaryAssetPath = source.SecondaryAssetPath,
             DisplayNumber = source.DisplayNumber,
