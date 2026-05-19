@@ -11,6 +11,18 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
     private static readonly ConcurrentDictionary<string, SKTypeface> TypefaceCache = new(StringComparer.OrdinalIgnoreCase);
 
     public PanelElementKind Kind => PanelElementKind.Lamp;
+    [ThreadStatic]
+    private static int _diagnosticsTextLayoutCount;
+    [ThreadStatic]
+    private static int _diagnosticsTextDrawCount;
+    internal static int DiagnosticsTextLayoutCount => _diagnosticsTextLayoutCount;
+    internal static int DiagnosticsTextDrawCount => _diagnosticsTextDrawCount;
+    internal static void ResetDiagnosticsCounters()
+    {
+        _diagnosticsTextLayoutCount = 0;
+        _diagnosticsTextDrawCount = 0;
+    }
+
 
     public void Render(in PanelElementRenderContext context, PanelElementModel element)
     {
@@ -55,6 +67,7 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
         var lineHeight = Math.Max(1d, measuredLineHeight > 0f ? measuredLineHeight : fontSize * 1.2d);
         var wrapWidth = GetEffectiveWrapWidth(displayText, textBounds.Width, bounds.Width, textPaint);
         var lines = WrapTextToPixelWidth(displayText, wrapWidth, textPaint);
+        _diagnosticsTextLayoutCount++;
         if (lines.Count == 0)
         {
             return;
@@ -76,6 +89,7 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
             var x = textBounds.Left + ((textBounds.Width - line.Width) / 2d);
             var y = startY + (lineIndex * lineHeight);
             context.Canvas.DrawText(line.Text, (float)x, (float)y, textPaint);
+            _diagnosticsTextDrawCount++;
         }
     }
 

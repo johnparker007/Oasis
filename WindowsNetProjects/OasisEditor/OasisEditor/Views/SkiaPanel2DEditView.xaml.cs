@@ -32,7 +32,7 @@ public partial class SkiaPanel2DEditView : UserControl
     private readonly Stopwatch _renderStopwatch = Stopwatch.StartNew();
     private readonly DispatcherTimer _renderThrottleTimer;
     private const double TargetFrameMillis = 16.0;
-    private readonly IPanel2DRenderer _renderer = new Panel2DRenderer([new BackgroundElementRenderer(), new LampElementRenderer(), new ReelElementRenderer(), new SevenSegmentElementRenderer(), new AlphaElementRenderer()]);
+    private readonly IPanel2DRenderer _renderer = new Panel2DRenderer([new BackgroundElementRenderer(), new LampElementRenderer(), new ReelElementRenderer(), new SevenSegmentElementRenderer(), new AlphaElementRenderer()], "EditView");
 
     public SkiaPanel2DEditView()
     {

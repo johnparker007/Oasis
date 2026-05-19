@@ -13,6 +13,7 @@ using Microsoft.Win32;
 using OasisEditor.Features.MfmeImport;
 using EditorCommands = OasisEditor.Commands;
 using OasisEditor.Views;
+using OasisEditor.Rendering;
 
 namespace OasisEditor;
 
@@ -127,6 +128,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         _outputLog = new OutputLogViewModel();
         _outputLog.PropertyChanged += OnOutputLogPropertyChanged;
+        SkiaRenderDiagnostics.IsEnabled = true;
+        SkiaRenderDiagnostics.ReportReady += message => AddOutputEntry(message, OutputLogStatus.Info);
         _activeDocumentContext = new ActiveDocumentContextService();
         _panelRuntimeStates = new PanelRuntimeStateStore();
         _assetBrowser = new AssetBrowserViewModel(

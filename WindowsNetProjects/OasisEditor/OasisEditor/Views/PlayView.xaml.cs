@@ -23,7 +23,7 @@ public partial class PlayView : UserControl
     private bool _isSkiaPanning;
     private Point _skiaPanStart;
     private Vector _skiaPanOrigin;
-    private readonly IPanel2DRenderer _skiaRenderer = new Panel2DRenderer([new BackgroundElementRenderer(), new LampElementRenderer(), new ReelElementRenderer(), new SevenSegmentElementRenderer(), new AlphaElementRenderer()]);
+    private readonly IPanel2DRenderer _skiaRenderer = new Panel2DRenderer([new BackgroundElementRenderer(), new LampElementRenderer(), new ReelElementRenderer(), new SevenSegmentElementRenderer(), new AlphaElementRenderer()], "PlayView");
 
     public PlayView()
     {
