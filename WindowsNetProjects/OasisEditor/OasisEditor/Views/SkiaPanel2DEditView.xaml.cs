@@ -1,7 +1,9 @@
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Threading;
 using OasisEditor.Rendering;
 using SkiaSharp;
 using SkiaSharp.Views.Desktop;
@@ -26,11 +28,17 @@ public partial class SkiaPanel2DEditView : UserControl
     private PanelElementModel? _resizeSourceElement;
     private ResizeHandleKind _activeResizeHandle;
     private bool _isRenderQueued;
+    private bool _isRenderDirty;
+    private readonly Stopwatch _renderStopwatch = Stopwatch.StartNew();
+    private readonly DispatcherTimer _renderThrottleTimer;
+    private const double TargetFrameMillis = 16.0;
     private readonly IPanel2DRenderer _renderer = new Panel2DRenderer([new BackgroundElementRenderer(), new LampElementRenderer(), new ReelElementRenderer(), new SevenSegmentElementRenderer(), new AlphaElementRenderer()]);
 
     public SkiaPanel2DEditView()
     {
         InitializeComponent();
+        _renderThrottleTimer = new DispatcherTimer(DispatcherPriority.Render, Dispatcher);
+        _renderThrottleTimer.Tick += OnRenderThrottleTick;
         DataContextChanged += OnDataContextChanged;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
@@ -46,6 +54,7 @@ public partial class SkiaPanel2DEditView : UserControl
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
+        _renderThrottleTimer.Stop();
         UpdateDocumentSubscription(null);
     }
 
@@ -97,21 +106,46 @@ public partial class SkiaPanel2DEditView : UserControl
 
     private void RequestRender()
     {
-        if (_isRenderQueued)
+        _isRenderDirty = true;
+        if (_isRenderQueued || _renderThrottleTimer.IsEnabled)
         {
             return;
         }
 
+        var elapsedMillis = _renderStopwatch.Elapsed.TotalMilliseconds;
+        if (elapsedMillis < TargetFrameMillis)
+        {
+            _renderThrottleTimer.Interval = TimeSpan.FromMilliseconds(Math.Max(1.0, TargetFrameMillis - elapsedMillis));
+            _renderThrottleTimer.Start();
+            return;
+        }
+
+        QueueRenderNow();
+    }
+
+    private void OnRenderThrottleTick(object? sender, EventArgs e)
+    {
+        _renderThrottleTimer.Stop();
+        if (_isRenderDirty)
+        {
+            QueueRenderNow();
+        }
+    }
+
+    private void QueueRenderNow()
+    {
         _isRenderQueued = true;
         Dispatcher.BeginInvoke(() =>
         {
             _isRenderQueued = false;
+            _renderStopwatch.Restart();
             EditSkiaSurface.InvalidateVisual();
-        }, System.Windows.Threading.DispatcherPriority.Render);
+        }, DispatcherPriority.Render);
     }
 
     private void OnEditSkiaSurfacePaintSurface(object? sender, SKPaintSurfaceEventArgs eventArgs)
     {
+        _isRenderDirty = false;
         var canvas = eventArgs.Surface.Canvas;
         canvas.Clear(new SKColor(0x1E, 0x1E, 0x1E));
 
