@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:local="clr-namespace:OasisEditor"
+             xmlns:views="clr-namespace:OasisEditor.Views"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
              d:DesignHeight="500"
@@ -37,53 +38,7 @@
                 <Grid MinHeight="280"
                       ClipToBounds="True"
                       Background="{DynamicResource PanelBackgroundBrush}">
-                    <Border BorderBrush="{DynamicResource BorderSubtleBrush}"
-                            BorderThickness="1"
-                            Background="{DynamicResource PanelBackgroundBrush}">
-                        <Canvas Width="1400"
-                                Height="900"
-                                Cursor="SizeAll"
-                                Focusable="True"
-                                local:CanvasPanBehavior.IsEnabled="True"
-                                local:CanvasPanBehavior.PanelLayoutJson="{Binding PanelLayoutJson, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                local:CanvasPanBehavior.SelectedPanelSelection="{Binding HierarchySelectedPanelSelection, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                local:CanvasPanBehavior.PanelZoom="{Binding PanelZoom, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                local:CanvasPanBehavior.PanelPanX="{Binding PanelPanX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                local:CanvasPanBehavior.PanelPanY="{Binding PanelPanY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                Background="{DynamicResource PanelBackgroundBrush}">
-                            <Canvas.Resources>
-                                <Style TargetType="Rectangle">
-                                    <Setter Property="Stroke" Value="{DynamicResource BorderSubtleBrush}" />
-                                    <Setter Property="StrokeThickness" Value="1.5" />
-                                    <Setter Property="Fill" Value="{DynamicResource ToolBarBackgroundBrush}" />
-                                    <Style.Triggers>
-                                        <Trigger Property="local:CanvasSelectionBehavior.IsSelected" Value="True">
-                                            <Setter Property="Stroke" Value="{DynamicResource SelectionBrush}" />
-                                            <Setter Property="StrokeThickness" Value="2.5" />
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                                <Style TargetType="Border">
-                                    <Setter Property="BorderBrush" Value="SlateGray" />
-                                    <Setter Property="BorderThickness" Value="1" />
-                                    <Style.Triggers>
-                                        <Trigger Property="local:CanvasSelectionBehavior.IsSelected" Value="True">
-                                            <Setter Property="BorderBrush" Value="{DynamicResource SelectionBrush}" />
-                                            <Setter Property="BorderThickness" Value="2.5" />
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                                <Style TargetType="Image">
-                                    <Setter Property="Opacity" Value="0.88" />
-                                    <Style.Triggers>
-                                        <Trigger Property="local:CanvasSelectionBehavior.IsSelected" Value="True">
-                                            <Setter Property="Opacity" Value="1" />
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Canvas.Resources>
-                        </Canvas>
-                    </Border>
+                    <views:SkiaPanel2DEditView />
                 </Grid>
             </Border>
 
