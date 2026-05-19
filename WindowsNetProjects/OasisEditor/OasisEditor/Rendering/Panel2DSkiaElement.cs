@@ -133,7 +133,7 @@ public sealed class Panel2DSkiaElement : SKElement
         var canvas = eventArgs.Surface.Canvas;
         canvas.Clear(new SKColor(0x1E, 0x1E, 0x1E));
 
-        var document = Document;
+        var document = Document ?? DataContext as DocumentTabViewModel;
         if (document is null || document.Document.DocumentType != EditorDocumentType.Panel2D)
         {
             return;
