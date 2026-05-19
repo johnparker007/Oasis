@@ -358,23 +358,8 @@ public partial class SkiaPanel2DEditView : UserControl
 
         var viewport = new PanelViewportTransform(document.PanelZoom, document.PanelPanX, document.PanelPanY);
         var documentPoint = viewport.ScreenToDocument(screenPoint);
-        var hitElement = Panel2DHitTestService.HitTopmostAtPoint(document.GetPanelElements(), documentPoint);
-
-        if (hitElement is null)
-        {
-            NotifySelection(document, null);
-            return;
-        }
-
-        NotifySelection(
-            document,
-            new PanelSelectionInfo(
-                hitElement.ObjectId,
-                Panel2DDocumentStorage.SerializeElementKind(hitElement.Kind),
-                hitElement.X,
-                hitElement.Y,
-                hitElement.Width,
-                hitElement.Height));
+        var selection = Panel2DSelectionService.SelectFromPoint(document.GetPanelElements(), documentPoint);
+        NotifySelection(document, selection);
     }
 
     private void NotifySelection(DocumentTabViewModel document, PanelSelectionInfo? selection)
@@ -399,23 +384,8 @@ public partial class SkiaPanel2DEditView : UserControl
         var minY = Math.Min(a.Y, b.Y);
         var maxY = Math.Max(a.Y, b.Y);
 
-        var hit = Panel2DHitTestService.HitTopmostIntersectingRect(document.GetPanelElements(), minX, minY, maxX, maxY);
-
-        if (hit is null)
-        {
-            NotifySelection(document, null);
-            return;
-        }
-
-        NotifySelection(
-            document,
-            new PanelSelectionInfo(
-                hit.ObjectId,
-                Panel2DDocumentStorage.SerializeElementKind(hit.Kind),
-                hit.X,
-                hit.Y,
-                hit.Width,
-                hit.Height));
+        var selection = Panel2DSelectionService.SelectFromRect(document.GetPanelElements(), minX, minY, maxX, maxY);
+        NotifySelection(document, selection);
     }
 
     private void DrawDragSelectionRect(SKCanvas canvas, PanelViewportTransform viewport)
