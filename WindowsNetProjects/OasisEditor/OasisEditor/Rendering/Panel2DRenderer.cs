@@ -24,11 +24,18 @@ internal sealed class Panel2DRenderer : IPanel2DRenderer
         LampElementRenderer.ResetDiagnosticsCounters();
         var frame = SkiaRenderDiagnostics.BeginFrame(_viewName);
         var context = new PanelElementRenderContext(canvas, runtimeState, viewportTransform);
+
+        var backgroundElapsed = TimeSpan.Zero;
         var lampElapsed = TimeSpan.Zero;
         var alphaElapsed = TimeSpan.Zero;
         var sevenElapsed = TimeSpan.Zero;
         var reelElapsed = TimeSpan.Zero;
-        var lampCount = 0; var textLampCount = 0; var alphaCount = 0; var sevenCount = 0; var reelCount = 0;
+        var backgroundCount = 0;
+        var lampCount = 0;
+        var textLampCount = 0;
+        var alphaCount = 0;
+        var sevenCount = 0;
+        var reelCount = 0;
 
         foreach (var element in elements)
         {
@@ -48,6 +55,10 @@ internal sealed class Panel2DRenderer : IPanel2DRenderer
 
             switch (element.Kind)
             {
+                case PanelElementKind.Background:
+                    backgroundCount++;
+                    backgroundElapsed += sw.Elapsed;
+                    break;
                 case PanelElementKind.Lamp:
                     lampCount++;
                     lampElapsed += sw.Elapsed;
@@ -56,21 +67,32 @@ internal sealed class Panel2DRenderer : IPanel2DRenderer
                         textLampCount++;
                     }
                     break;
-                case PanelElementKind.Alpha: alphaCount++; alphaElapsed += sw.Elapsed; break;
-                case PanelElementKind.SevenSegment: sevenCount++; sevenElapsed += sw.Elapsed; break;
-                case PanelElementKind.Reel: reelCount++; reelElapsed += sw.Elapsed; break;
+                case PanelElementKind.Alpha:
+                    alphaCount++;
+                    alphaElapsed += sw.Elapsed;
+                    break;
+                case PanelElementKind.SevenSegment:
+                    sevenCount++;
+                    sevenElapsed += sw.Elapsed;
+                    break;
+                case PanelElementKind.Reel:
+                    reelCount++;
+                    reelElapsed += sw.Elapsed;
+                    break;
             }
         }
 
         frame.Complete(new SkiaRenderDiagnostics.FrameData(
             _viewName,
             TimeSpan.Zero,
+            backgroundElapsed,
             lampElapsed,
-            lampElapsed,
+            LampElementRenderer.DiagnosticsTextElapsed,
             alphaElapsed,
             sevenElapsed,
             reelElapsed,
             elements.Count,
+            backgroundCount,
             lampCount,
             textLampCount,
             alphaCount,

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -15,14 +16,17 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
     private static int _diagnosticsTextLayoutCount;
     [ThreadStatic]
     private static int _diagnosticsTextDrawCount;
+    [ThreadStatic]
+    private static long _diagnosticsTextTicks;
     internal static int DiagnosticsTextLayoutCount => _diagnosticsTextLayoutCount;
     internal static int DiagnosticsTextDrawCount => _diagnosticsTextDrawCount;
+    internal static TimeSpan DiagnosticsTextElapsed => TimeSpan.FromTicks(_diagnosticsTextTicks);
     internal static void ResetDiagnosticsCounters()
     {
         _diagnosticsTextLayoutCount = 0;
         _diagnosticsTextDrawCount = 0;
+        _diagnosticsTextTicks = 0;
     }
-
 
     public void Render(in PanelElementRenderContext context, PanelElementModel element)
     {
@@ -52,44 +56,53 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
             return;
         }
 
-        var fontSize = ParseFontSize(element.TextBoxFontSize);
-        var textBounds = GetTextBounds(bounds);
-        using var textPaint = new SKPaint
+        var textStopwatch = Stopwatch.StartNew();
+        try
         {
-            Color = SkiaColorParser.ParseOrDefault(element.TextColorHex, SKColors.White),
-            IsAntialias = true,
-            TextSize = (float)fontSize,
-            Typeface = ResolveTypeface(element.TextBoxFontName, element.TextBoxFontStyle)
-        };
-
-        var fontMetrics = textPaint.FontMetrics;
-        var measuredLineHeight = Math.Abs(fontMetrics.Ascent) + Math.Abs(fontMetrics.Descent) + Math.Abs(fontMetrics.Leading);
-        var lineHeight = Math.Max(1d, measuredLineHeight > 0f ? measuredLineHeight : fontSize * 1.2d);
-        var wrapWidth = GetEffectiveWrapWidth(displayText, textBounds.Width, bounds.Width, textPaint);
-        var lines = WrapTextToPixelWidth(displayText, wrapWidth, textPaint);
-        _diagnosticsTextLayoutCount++;
-        if (lines.Count == 0)
-        {
-            return;
-        }
-
-        var totalTextHeight = lines.Count * lineHeight;
-        var baselineOffset = Math.Abs(fontMetrics.Ascent) > 0f
-            ? Math.Abs(fontMetrics.Ascent)
-            : fontSize;
-        var startY = textBounds.Top + ((textBounds.Height - totalTextHeight) / 2d) + baselineOffset;
-        for (var lineIndex = 0; lineIndex < lines.Count; lineIndex++)
-        {
-            var line = lines[lineIndex];
-            if (string.IsNullOrEmpty(line.Text))
+            var fontSize = ParseFontSize(element.TextBoxFontSize);
+            var textBounds = GetTextBounds(bounds);
+            using var textPaint = new SKPaint
             {
-                continue;
+                Color = SkiaColorParser.ParseOrDefault(element.TextColorHex, SKColors.White),
+                IsAntialias = true,
+                TextSize = (float)fontSize,
+                Typeface = ResolveTypeface(element.TextBoxFontName, element.TextBoxFontStyle)
+            };
+
+            var fontMetrics = textPaint.FontMetrics;
+            var measuredLineHeight = Math.Abs(fontMetrics.Ascent) + Math.Abs(fontMetrics.Descent) + Math.Abs(fontMetrics.Leading);
+            var lineHeight = Math.Max(1d, measuredLineHeight > 0f ? measuredLineHeight : fontSize * 1.2d);
+            var wrapWidth = GetEffectiveWrapWidth(displayText, textBounds.Width, bounds.Width, textPaint);
+            var lines = WrapTextToPixelWidth(displayText, wrapWidth, textPaint);
+            _diagnosticsTextLayoutCount++;
+            if (lines.Count == 0)
+            {
+                return;
             }
 
-            var x = textBounds.Left + ((textBounds.Width - line.Width) / 2d);
-            var y = startY + (lineIndex * lineHeight);
-            context.Canvas.DrawText(line.Text, (float)x, (float)y, textPaint);
-            _diagnosticsTextDrawCount++;
+            var totalTextHeight = lines.Count * lineHeight;
+            var baselineOffset = Math.Abs(fontMetrics.Ascent) > 0f
+                ? Math.Abs(fontMetrics.Ascent)
+                : fontSize;
+            var startY = textBounds.Top + ((textBounds.Height - totalTextHeight) / 2d) + baselineOffset;
+            for (var lineIndex = 0; lineIndex < lines.Count; lineIndex++)
+            {
+                var line = lines[lineIndex];
+                if (string.IsNullOrEmpty(line.Text))
+                {
+                    continue;
+                }
+
+                var x = textBounds.Left + ((textBounds.Width - line.Width) / 2d);
+                var y = startY + (lineIndex * lineHeight);
+                context.Canvas.DrawText(line.Text, (float)x, (float)y, textPaint);
+                _diagnosticsTextDrawCount++;
+            }
+        }
+        finally
+        {
+            textStopwatch.Stop();
+            _diagnosticsTextTicks += textStopwatch.ElapsedTicks;
         }
     }
 

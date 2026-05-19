@@ -19,6 +19,7 @@ namespace OasisEditor;
 
 public sealed class MainWindowViewModel : INotifyPropertyChanged
 {
+    private const bool EnableSkiaRendererDiagnostics = true;
     private readonly RecentProjectsStore _recentProjectsStore = new();
     private readonly IApplicationThemeService _applicationThemeService;
     private readonly EditorPreferencesStore _preferencesStore;
@@ -128,8 +129,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         _outputLog = new OutputLogViewModel();
         _outputLog.PropertyChanged += OnOutputLogPropertyChanged;
-        SkiaRenderDiagnostics.IsEnabled = true;
-        SkiaRenderDiagnostics.ReportReady += message => AddOutputEntry(message, OutputLogStatus.Info);
+        SkiaRenderDiagnostics.IsEnabled = EnableSkiaRendererDiagnostics;
+        if (EnableSkiaRendererDiagnostics)
+        {
+            SkiaRenderDiagnostics.ReportReady += message => AddOutputEntry(message, OutputLogStatus.Info);
+        }
         _activeDocumentContext = new ActiveDocumentContextService();
         _panelRuntimeStates = new PanelRuntimeStateStore();
         _assetBrowser = new AssetBrowserViewModel(

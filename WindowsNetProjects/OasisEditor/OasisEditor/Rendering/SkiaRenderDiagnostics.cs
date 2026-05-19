@@ -44,6 +44,7 @@ internal static class SkiaRenderDiagnostics
     internal readonly record struct FrameData(
         string ViewName,
         TimeSpan Total,
+        TimeSpan Background,
         TimeSpan Lamps,
         TimeSpan TextLamps,
         TimeSpan Alpha,
@@ -79,6 +80,8 @@ internal static class SkiaRenderDiagnostics
         private DateTime _windowStartUtc = DateTime.UtcNow;
         private int _frames;
         private double _totalMs;
+        private double _maxFrameMs;
+        private double _backgroundMs;
         private double _lampMs;
         private double _textLampMs;
         private double _alphaMs;
@@ -97,6 +100,8 @@ internal static class SkiaRenderDiagnostics
         {
             _frames++;
             _totalMs += data.Total.TotalMilliseconds;
+            _maxFrameMs = Math.Max(_maxFrameMs, data.Total.TotalMilliseconds);
+            _backgroundMs += data.Background.TotalMilliseconds;
             _lampMs += data.Lamps.TotalMilliseconds;
             _textLampMs += data.TextLamps.TotalMilliseconds;
             _alphaMs += data.Alpha.TotalMilliseconds;
@@ -118,14 +123,14 @@ internal static class SkiaRenderDiagnostics
         {
             var seconds = Math.Max(0.001, (DateTime.UtcNow - _windowStartUtc).TotalSeconds);
             var sb = new StringBuilder();
-            sb.Append($"[SkiaDiag] {viewName}: fps~{_frames / seconds:F1}, frameAvg={_totalMs / _frames:F2}ms, frameMax={_totalMs:F2}ms/{_frames}f");
-            sb.Append($", timing(ms): lamps={_lampMs / _frames:F2} textLamps={_textLampMs / _frames:F2} alpha={_alphaMs / _frames:F2} seg7={_sevenMs / _frames:F2} reels={_reelMs / _frames:F2}");
+            sb.Append($"[SkiaDiag] {viewName}: fps~{_frames / seconds:F1}, frameAvg={_totalMs / _frames:F2}ms, frameMax={_maxFrameMs:F2}ms");
+            sb.Append($", timing(ms): background={_backgroundMs / _frames:F2} lamps={_lampMs / _frames:F2} textLamps={_textLampMs / _frames:F2} alpha={_alphaMs / _frames:F2} seg7={_sevenMs / _frames:F2} reels={_reelMs / _frames:F2}");
             sb.Append($", counts/frame: elems={_elements / (double)_frames:F1} lamps={_lamps / (double)_frames:F1} textLamps={_textLamps / (double)_frames:F1} alpha={_alphas / (double)_frames:F1} seg7={_sevens / (double)_frames:F1} reels={_reels / (double)_frames:F1}");
             sb.Append($", textWork/frame: layouts={_textLayouts / (double)_frames:F1} draws={_textDraws / (double)_frames:F1}");
 
             _windowStartUtc = DateTime.UtcNow;
             _frames = 0;
-            _totalMs = _lampMs = _textLampMs = _alphaMs = _sevenMs = _reelMs = 0;
+            _totalMs = _maxFrameMs = _backgroundMs = _lampMs = _textLampMs = _alphaMs = _sevenMs = _reelMs = 0;
             _elements = _lamps = _textLamps = _alphas = _sevens = _reels = _textLayouts = _textDraws = 0;
             return sb.ToString();
         }
