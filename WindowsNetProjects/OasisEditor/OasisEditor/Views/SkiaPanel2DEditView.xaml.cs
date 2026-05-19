@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -374,13 +373,7 @@ public partial class SkiaPanel2DEditView : UserControl
 
         var viewport = new PanelViewportTransform(document.PanelZoom, document.PanelPanX, document.PanelPanY);
         var documentPoint = viewport.ScreenToDocument(screenPoint);
-        var hitElement = document.GetPanelElements()
-            .Where(element => element.IsVisible && !element.IsLocked)
-            .LastOrDefault(element =>
-                documentPoint.X >= element.X
-                && documentPoint.X <= element.X + element.Width
-                && documentPoint.Y >= element.Y
-                && documentPoint.Y <= element.Y + element.Height);
+        var hitElement = Panel2DHitTestService.HitTopmostAtPoint(document.GetPanelElements(), documentPoint);
 
         if (hitElement is null)
         {
@@ -421,13 +414,7 @@ public partial class SkiaPanel2DEditView : UserControl
         var minY = Math.Min(a.Y, b.Y);
         var maxY = Math.Max(a.Y, b.Y);
 
-        var hit = document.GetPanelElements()
-            .Where(element => element.IsVisible && !element.IsLocked)
-            .LastOrDefault(element =>
-                element.X <= maxX
-                && (element.X + element.Width) >= minX
-                && element.Y <= maxY
-                && (element.Y + element.Height) >= minY);
+        var hit = Panel2DHitTestService.HitTopmostIntersectingRect(document.GetPanelElements(), minX, minY, maxX, maxY);
 
         if (hit is null)
         {
