@@ -465,10 +465,7 @@ public partial class SkiaPanel2DEditView : UserControl
             return;
         }
 
-        var updated = PanelElementModelCloner.Clone(
-            _moveSourceElement,
-            x: _moveSourceElement.X + delta.X,
-            y: _moveSourceElement.Y + delta.Y);
+        var updated = Panel2DMoveComputationService.ComputeMovedElement(_moveSourceElement, start, end);
         var moveCommand = CanvasMutationCommands.CreateUpdateElementCommand(
             document.DocumentId,
             document,
