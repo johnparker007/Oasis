@@ -47,18 +47,14 @@ internal sealed class AlphaElementRenderer : IPanelElementRenderer
         var cellCount = Math.Max(1, Math.Max(cellMasks.Length, cellBrightness.Length));
         var width = Math.Max(1, (int)Math.Round(bounds.Width));
         var height = Math.Max(1, (int)Math.Round(bounds.Height));
-        for (var cellIndex = 0; cellIndex < cellCount; cellIndex++)
-        {
-            var mask = cellIndex < cellMasks.Length ? cellMasks[cellIndex] : 0;
-            var litAmount = cellIndex < cellBrightness.Length ? Math.Clamp(cellBrightness[cellIndex], 0d, 1d) : 1d;
-            var brightnessBucket = (int)Math.Round(litAmount * 4d);
-            var key = new AlphaVisualCacheKey(width, height, cellCount, cellIndex, mask, brightnessBucket, onColor, offColor);
-            var visual = GetOrCreateVisual(key, definition);
-            context.Canvas.DrawImage(visual, bounds.Left, bounds.Top);
-        }
+        var masksHash = ComputeHash(cellMasks, cellCount);
+        var brightnessHash = ComputeBrightnessHash(cellBrightness, cellCount);
+        var key = new AlphaVisualCacheKey(width, height, cellCount, masksHash, brightnessHash, onColor, offColor);
+        var visual = GetOrCreateVisual(key, definition, cellMasks, cellBrightness);
+        context.Canvas.DrawImage(visual, bounds.Left, bounds.Top);
     }
 
-    private static SKImage GetOrCreateVisual(AlphaVisualCacheKey key, AlphaSkiaDefinition definition)
+    private static SKImage GetOrCreateVisual(AlphaVisualCacheKey key, AlphaSkiaDefinition definition, int[] cellMasks, double[] cellBrightness)
     {
         lock (VisualCacheGate)
         {
@@ -69,7 +65,7 @@ internal sealed class AlphaElementRenderer : IPanelElementRenderer
             }
 
             _diagnosticsCacheMisses++;
-            var created = BuildVisual(key, definition);
+            var created = BuildVisual(key, definition, cellMasks, cellBrightness);
             if (VisualCache.Count > MaxVisualCacheEntries)
             {
                 VisualCache.Clear();
@@ -80,7 +76,7 @@ internal sealed class AlphaElementRenderer : IPanelElementRenderer
         }
     }
 
-    private static SKImage BuildVisual(AlphaVisualCacheKey key, AlphaSkiaDefinition definition)
+    private static SKImage BuildVisual(AlphaVisualCacheKey key, AlphaSkiaDefinition definition, int[] cellMasks, double[] cellBrightness)
     {
         using var surface = SKSurface.Create(new SKImageInfo(key.Width, key.Height));
         var canvas = surface.Canvas;
@@ -102,22 +98,52 @@ internal sealed class AlphaElementRenderer : IPanelElementRenderer
         var originY = contentBounds.Top + ((contentBounds.Height - scaledCellHeight) * 0.5f);
         using var paint = new SKPaint { Style = SKPaintStyle.Fill, IsAntialias = true };
         canvas.Save();
-        canvas.Translate(originX + (key.CellIndex * scaledPitch), originY);
-        canvas.Scale(scale, scale);
-        var litAmount = key.BrightnessBucket / 4d;
-        foreach (var segment in definition.Segments)
+        for (var cellIndex = 0; cellIndex < key.CellCount; cellIndex++)
         {
-            var lit = (key.Mask & (1 << segment.Index)) != 0;
-            paint.Color = lit ? Lerp(key.OffColor, key.OnColor, litAmount) : key.OffColor;
-            canvas.DrawPath(segment.Path, paint);
+            var mask = cellIndex < cellMasks.Length ? cellMasks[cellIndex] : 0;
+            var litAmount = cellIndex < cellBrightness.Length ? Math.Clamp(cellBrightness[cellIndex], 0d, 1d) : 1d;
+            canvas.Save();
+            canvas.Translate(originX + (cellIndex * scaledPitch), originY);
+            canvas.Scale(scale, scale);
+            foreach (var segment in definition.Segments)
+            {
+                var lit = (mask & (1 << segment.Index)) != 0;
+                paint.Color = lit ? Lerp(key.OffColor, key.OnColor, litAmount) : key.OffColor;
+                canvas.DrawPath(segment.Path, paint);
+            }
+            if (definition.DecimalPoint is not null)
+            {
+                paint.Color = key.OffColor;
+                canvas.DrawPath(definition.DecimalPoint, paint);
+            }
+            canvas.Restore();
         }
-        if (definition.DecimalPoint is not null)
-        {
-            paint.Color = key.OffColor;
-            canvas.DrawPath(definition.DecimalPoint, paint);
-        }
-        canvas.Restore();
         return surface.Snapshot();
+    }
+
+    private static int ComputeHash(int[] values, int cellCount)
+    {
+        var hash = new HashCode();
+        hash.Add(cellCount);
+        for (var i = 0; i < cellCount; i++)
+        {
+            hash.Add(i < values.Length ? values[i] : 0);
+        }
+
+        return hash.ToHashCode();
+    }
+
+    private static int ComputeBrightnessHash(double[] values, int cellCount)
+    {
+        var hash = new HashCode();
+        hash.Add(cellCount);
+        for (var i = 0; i < cellCount; i++)
+        {
+            var brightness = i < values.Length ? Math.Clamp(values[i], 0d, 1d) : 1d;
+            hash.Add((int)Math.Round(brightness * 4d));
+        }
+
+        return hash.ToHashCode();
     }
 
     private static AlphaSkiaDefinition? LoadDefinition()
@@ -165,7 +191,7 @@ internal sealed class AlphaElementRenderer : IPanelElementRenderer
     }
 
     private sealed record AlphaSkiaDefinition(float Width, float Height, float RecommendedPitch, IReadOnlyList<AlphaSkiaPath> Segments, SKPath? DecimalPoint);
-    private readonly record struct AlphaVisualCacheKey(int Width, int Height, int CellCount, int CellIndex, int Mask, int BrightnessBucket, SKColor OnColor, SKColor OffColor);
+    private readonly record struct AlphaVisualCacheKey(int Width, int Height, int CellCount, int MasksHash, int BrightnessHash, SKColor OnColor, SKColor OffColor);
     private sealed record AlphaSkiaPath(int Index, SKPath Path);
 
     private sealed class AlphaDefinitionRoot
