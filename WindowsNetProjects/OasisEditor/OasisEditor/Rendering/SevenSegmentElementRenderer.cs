@@ -6,9 +6,23 @@ namespace OasisEditor.Rendering;
 
 internal sealed class SevenSegmentElementRenderer : IPanelElementRenderer
 {
+    private const int MaxVisualCacheEntries = 2048;
     private static readonly Lazy<SevenSegmentSkiaDefinition?> Definition = new(LoadDefinition);
+    private static readonly Dictionary<SegmentVisualCacheKey, SKImage> VisualCache = new();
+    private static readonly object VisualCacheGate = new();
+    [ThreadStatic]
+    private static int _diagnosticsCacheHits;
+    [ThreadStatic]
+    private static int _diagnosticsCacheMisses;
 
     public PanelElementKind Kind => PanelElementKind.SevenSegment;
+    internal static int DiagnosticsCacheHits => _diagnosticsCacheHits;
+    internal static int DiagnosticsCacheMisses => _diagnosticsCacheMisses;
+    internal static void ResetDiagnosticsCounters()
+    {
+        _diagnosticsCacheHits = 0;
+        _diagnosticsCacheMisses = 0;
+    }
 
     public void Render(in PanelElementRenderContext context, PanelElementModel element)
     {
@@ -32,43 +46,69 @@ internal sealed class SevenSegmentElementRenderer : IPanelElementRenderer
         var onColor = SkiaColorParser.ParseOrDefault(element.OnColorHex, new SKColor(255, 64, 64));
         var offColor = SkiaColorParser.ParseOrDefault(element.OffColorHex, new SKColor(72, 24, 24));
 
+        var width = Math.Max(1, (int)Math.Round(bounds.Width));
+        var height = Math.Max(1, (int)Math.Round(bounds.Height));
+        var brightnessBucket = (int)Math.Round(Math.Clamp(litAmount, 0d, 1d) * 4d);
+        var cacheKey = new SegmentVisualCacheKey(width, height, segmentMask, brightnessBucket, onColor, offColor);
+        var visual = GetOrCreateVisual(cacheKey, definition);
+        context.Canvas.DrawImage(visual, bounds.Left, bounds.Top);
+    }
+
+    private static SKImage GetOrCreateVisual(SegmentVisualCacheKey cacheKey, SevenSegmentSkiaDefinition definition)
+    {
+        lock (VisualCacheGate)
+        {
+            if (VisualCache.TryGetValue(cacheKey, out var cached))
+            {
+                _diagnosticsCacheHits++;
+                return cached;
+            }
+
+            _diagnosticsCacheMisses++;
+            var created = BuildVisual(cacheKey, definition);
+            if (VisualCache.Count > MaxVisualCacheEntries)
+            {
+                VisualCache.Clear();
+            }
+
+            VisualCache[cacheKey] = created;
+            return created;
+        }
+    }
+
+    private static SKImage BuildVisual(SegmentVisualCacheKey cacheKey, SevenSegmentSkiaDefinition definition)
+    {
+        using var surface = SKSurface.Create(new SKImageInfo(cacheKey.Width, cacheKey.Height));
+        var canvas = surface.Canvas;
+        var bounds = SKRect.Create(0f, 0f, cacheKey.Width, cacheKey.Height);
         using var backgroundPaint = new SKPaint { Color = new SKColor(17, 24, 39), Style = SKPaintStyle.Fill, IsAntialias = true };
         using var borderPaint = new SKPaint { Color = new SKColor(71, 85, 105), Style = SKPaintStyle.Stroke, StrokeWidth = 1f, IsAntialias = true };
-        context.Canvas.DrawRoundRect(bounds, 2f, 2f, backgroundPaint);
-        context.Canvas.DrawRoundRect(bounds, 2f, 2f, borderPaint);
-
+        canvas.DrawRoundRect(bounds, 2f, 2f, backgroundPaint);
+        canvas.DrawRoundRect(bounds, 2f, 2f, borderPaint);
         var marginX = bounds.Width * 0.1f;
         var marginY = bounds.Height * 0.1f;
-        var contentBounds = SKRect.Create(
-            bounds.Left + marginX,
-            bounds.Top + marginY,
-            Math.Max(1f, bounds.Width - (marginX * 2f)),
-            Math.Max(1f, bounds.Height - (marginY * 2f)));
-
+        var contentBounds = SKRect.Create(bounds.Left + marginX, bounds.Top + marginY, Math.Max(1f, bounds.Width - (marginX * 2f)), Math.Max(1f, bounds.Height - (marginY * 2f)));
         using var paint = new SKPaint { Style = SKPaintStyle.Fill, IsAntialias = true };
-
         var scale = Math.Min(contentBounds.Width / definition.Width, contentBounds.Height / definition.Height);
         var offsetX = contentBounds.Left + ((contentBounds.Width - (definition.Width * scale)) * 0.5f);
         var offsetY = contentBounds.Top + ((contentBounds.Height - (definition.Height * scale)) * 0.5f);
-
-        context.Canvas.Save();
-        context.Canvas.Translate(offsetX, offsetY);
-        context.Canvas.Scale(scale, scale);
-
+        canvas.Save();
+        canvas.Translate(offsetX, offsetY);
+        canvas.Scale(scale, scale);
+        var litAmount = cacheKey.BrightnessBucket / 4d;
         foreach (var segment in definition.Segments)
         {
-            var lit = (segmentMask & (1 << segment.Index)) != 0;
-            paint.Color = lit ? Lerp(offColor, onColor, litAmount) : offColor;
-            context.Canvas.DrawPath(segment.Path, paint);
+            var lit = (cacheKey.SegmentMask & (1 << segment.Index)) != 0;
+            paint.Color = lit ? Lerp(cacheKey.OffColor, cacheKey.OnColor, litAmount) : cacheKey.OffColor;
+            canvas.DrawPath(segment.Path, paint);
         }
-
         if (definition.DecimalPoint is not null)
         {
-            paint.Color = offColor;
-            context.Canvas.DrawPath(definition.DecimalPoint, paint);
+            paint.Color = cacheKey.OffColor;
+            canvas.DrawPath(definition.DecimalPoint, paint);
         }
-
-        context.Canvas.Restore();
+        canvas.Restore();
+        return surface.Snapshot();
     }
 
     private static SevenSegmentSkiaDefinition? LoadDefinition()
@@ -116,6 +156,7 @@ internal sealed class SevenSegmentElementRenderer : IPanelElementRenderer
     }
 
     private sealed record SevenSegmentSkiaDefinition(float Width, float Height, IReadOnlyList<SevenSegmentSkiaPath> Segments, SKPath? DecimalPoint);
+    private readonly record struct SegmentVisualCacheKey(int Width, int Height, int SegmentMask, int BrightnessBucket, SKColor OnColor, SKColor OffColor);
     private sealed record SevenSegmentSkiaPath(int Index, SKPath Path);
 
     private sealed class SevenSegmentDefinitionRoot

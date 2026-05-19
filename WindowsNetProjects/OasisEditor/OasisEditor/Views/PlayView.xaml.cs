@@ -1,10 +1,12 @@
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Threading;
 using SkiaSharp;
 using SkiaSharp.Views.Desktop;
 using SkiaSharp.Views.WPF;
@@ -23,11 +25,18 @@ public partial class PlayView : UserControl
     private bool _isSkiaPanning;
     private Point _skiaPanStart;
     private Vector _skiaPanOrigin;
-    private readonly IPanel2DRenderer _skiaRenderer = new Panel2DRenderer([new BackgroundElementRenderer(), new LampElementRenderer(), new ReelElementRenderer(), new SevenSegmentElementRenderer(), new AlphaElementRenderer()]);
+    private bool _isRenderQueued;
+    private bool _isRenderDirty;
+    private readonly Stopwatch _renderStopwatch = Stopwatch.StartNew();
+    private readonly DispatcherTimer _renderThrottleTimer;
+    private const double TargetFrameMillis = 16.0;
+    private readonly IPanel2DRenderer _skiaRenderer = new Panel2DRenderer([new BackgroundElementRenderer(), new LampElementRenderer(), new ReelElementRenderer(), new SevenSegmentElementRenderer(), new AlphaElementRenderer()], "PlayView");
 
     public PlayView()
     {
         InitializeComponent();
+        _renderThrottleTimer = new DispatcherTimer(DispatcherPriority.Render, Dispatcher);
+        _renderThrottleTimer.Tick += OnRenderThrottleTick;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         DataContextChanged += OnDataContextChanged;
@@ -43,6 +52,7 @@ public partial class PlayView : UserControl
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
+        _renderThrottleTimer.Stop();
         DetachPreProcessInputHandler();
     }
 
@@ -82,12 +92,13 @@ public partial class PlayView : UserControl
         }
 
         EmptyStateText.Visibility = Visibility.Collapsed;
-        PlaySkiaSurface.InvalidateVisual();
+        RequestRender();
     }
 
 
     private void OnPlaySkiaSurfacePaintSurface(object? sender, SKPaintSurfaceEventArgs eventArgs)
     {
+        _isRenderDirty = false;
         var canvas = eventArgs.Surface.Canvas;
         canvas.Clear(new SKColor(0x1E, 0x1E, 0x1E));
 
@@ -103,6 +114,45 @@ public partial class PlayView : UserControl
         canvas.Scale((float)viewport.NormalizedZoom, (float)viewport.NormalizedZoom);
         _skiaRenderer.Render(canvas, selected.GetPanelElements(), selected.RuntimeState, viewport);
         canvas.Restore();
+    }
+
+    private void RequestRender()
+    {
+        _isRenderDirty = true;
+        if (_isRenderQueued || _renderThrottleTimer.IsEnabled)
+        {
+            return;
+        }
+
+        var elapsedMillis = _renderStopwatch.Elapsed.TotalMilliseconds;
+        if (elapsedMillis < TargetFrameMillis)
+        {
+            _renderThrottleTimer.Interval = TimeSpan.FromMilliseconds(Math.Max(1.0, TargetFrameMillis - elapsedMillis));
+            _renderThrottleTimer.Start();
+            return;
+        }
+
+        QueueRenderNow();
+    }
+
+    private void OnRenderThrottleTick(object? sender, EventArgs e)
+    {
+        _renderThrottleTimer.Stop();
+        if (_isRenderDirty)
+        {
+            QueueRenderNow();
+        }
+    }
+
+    private void QueueRenderNow()
+    {
+        _isRenderQueued = true;
+        Dispatcher.BeginInvoke(() =>
+        {
+            _isRenderQueued = false;
+            _renderStopwatch.Restart();
+            PlaySkiaSurface.InvalidateVisual();
+        }, DispatcherPriority.Render);
     }
 
     private async void OnPlaySkiaSurfaceMouseDown(object sender, MouseButtonEventArgs eventArgs)
@@ -144,7 +194,7 @@ public partial class PlayView : UserControl
         }
         var delta = current - _skiaPanStart;
         _skiaPan = _skiaPanOrigin + (Vector)delta;
-        PlaySkiaSurface.InvalidateVisual();
+        RequestRender();
     }
 
     private async void OnPlaySkiaSurfaceMouseUp(object sender, MouseButtonEventArgs eventArgs)
@@ -187,7 +237,7 @@ public partial class PlayView : UserControl
         _skiaPan = new Vector(
             pivot.X - (worldX * _skiaZoom),
             pivot.Y - (worldY * _skiaZoom));
-        PlaySkiaSurface.InvalidateVisual();
+        RequestRender();
         eventArgs.Handled = true;
     }
 
@@ -389,7 +439,7 @@ public partial class PlayView : UserControl
 
         Dispatcher.Invoke(() =>
         {
-            PlaySkiaSurface.InvalidateVisual();
+            RequestRender();
         });
     }
 

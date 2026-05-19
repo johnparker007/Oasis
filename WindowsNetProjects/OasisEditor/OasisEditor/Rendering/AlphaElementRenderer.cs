@@ -6,9 +6,23 @@ namespace OasisEditor.Rendering;
 
 internal sealed class AlphaElementRenderer : IPanelElementRenderer
 {
+    private const int MaxVisualCacheEntries = 4096;
     private static readonly Lazy<AlphaSkiaDefinition?> Definition = new(LoadDefinition);
+    private static readonly Dictionary<AlphaVisualCacheKey, SKImage> VisualCache = new();
+    private static readonly object VisualCacheGate = new();
+    [ThreadStatic]
+    private static int _diagnosticsCacheHits;
+    [ThreadStatic]
+    private static int _diagnosticsCacheMisses;
 
     public PanelElementKind Kind => PanelElementKind.Alpha;
+    internal static int DiagnosticsCacheHits => _diagnosticsCacheHits;
+    internal static int DiagnosticsCacheMisses => _diagnosticsCacheMisses;
+    internal static void ResetDiagnosticsCounters()
+    {
+        _diagnosticsCacheHits = 0;
+        _diagnosticsCacheMisses = 0;
+    }
 
     public void Render(in PanelElementRenderContext context, PanelElementModel element)
     {
@@ -52,32 +66,70 @@ internal sealed class AlphaElementRenderer : IPanelElementRenderer
         var scaledCellHeight = definition.Height * scale;
         var originX = contentBounds.Left + ((contentBounds.Width - ((scaledPitch * cellCount) - Math.Max(0f, scaledPitch - scaledCellWidth))) * 0.5f);
         var originY = contentBounds.Top + ((contentBounds.Height - scaledCellHeight) * 0.5f);
+        var cellPixelWidth = Math.Max(1, (int)Math.Round(scaledCellWidth));
+        var cellPixelHeight = Math.Max(1, (int)Math.Round(scaledCellHeight));
 
-        using var paint = new SKPaint { Style = SKPaintStyle.Fill, IsAntialias = true };
         for (var cellIndex = 0; cellIndex < cellCount; cellIndex++)
         {
             var mask = cellIndex < cellMasks.Length ? cellMasks[cellIndex] : 0;
             var litAmount = cellIndex < cellBrightness.Length ? Math.Clamp(cellBrightness[cellIndex], 0d, 1d) : 1d;
-
-            context.Canvas.Save();
-            context.Canvas.Translate(originX + (cellIndex * scaledPitch), originY);
-            context.Canvas.Scale(scale, scale);
-
-            foreach (var segment in definition.Segments)
-            {
-                var lit = (mask & (1 << segment.Index)) != 0;
-                paint.Color = lit ? Lerp(offColor, onColor, litAmount) : offColor;
-                context.Canvas.DrawPath(segment.Path, paint);
-            }
-
-            if (definition.DecimalPoint is not null)
-            {
-                paint.Color = offColor;
-                context.Canvas.DrawPath(definition.DecimalPoint, paint);
-            }
-
-            context.Canvas.Restore();
+            var brightnessBucket = (int)Math.Round(litAmount * 4d);
+            var key = new AlphaVisualCacheKey(cellPixelWidth, cellPixelHeight, mask, brightnessBucket, onColor, offColor);
+            var visual = GetOrCreateVisual(key, definition);
+            var cellRect = SKRect.Create(originX + (cellIndex * scaledPitch), originY, scaledCellWidth, scaledCellHeight);
+            context.Canvas.DrawImage(visual, cellRect);
         }
+    }
+
+    private static SKImage GetOrCreateVisual(AlphaVisualCacheKey key, AlphaSkiaDefinition definition)
+    {
+        lock (VisualCacheGate)
+        {
+            if (VisualCache.TryGetValue(key, out var cached))
+            {
+                _diagnosticsCacheHits++;
+                return cached;
+            }
+
+            _diagnosticsCacheMisses++;
+            var created = BuildVisual(key, definition);
+            if (VisualCache.Count > MaxVisualCacheEntries)
+            {
+                VisualCache.Clear();
+            }
+
+            VisualCache[key] = created;
+            return created;
+        }
+    }
+
+    private static SKImage BuildVisual(AlphaVisualCacheKey key, AlphaSkiaDefinition definition)
+    {
+        using var surface = SKSurface.Create(new SKImageInfo(key.Width, key.Height));
+        var canvas = surface.Canvas;
+        canvas.Clear(SKColors.Transparent);
+        var bounds = SKRect.Create(0f, 0f, key.Width, key.Height);
+        using var paint = new SKPaint { Style = SKPaintStyle.Fill, IsAntialias = true };
+        var scale = Math.Min(bounds.Width / definition.Width, bounds.Height / definition.Height);
+        var offsetX = (bounds.Width - (definition.Width * scale)) * 0.5f;
+        var offsetY = (bounds.Height - (definition.Height * scale)) * 0.5f;
+        canvas.Save();
+        canvas.Translate(offsetX, offsetY);
+        canvas.Scale(scale, scale);
+        var litAmount = key.BrightnessBucket / 4d;
+        foreach (var segment in definition.Segments)
+        {
+            var lit = (key.Mask & (1 << segment.Index)) != 0;
+            paint.Color = lit ? Lerp(key.OffColor, key.OnColor, litAmount) : key.OffColor;
+            canvas.DrawPath(segment.Path, paint);
+        }
+        if (definition.DecimalPoint is not null)
+        {
+            paint.Color = key.OffColor;
+            canvas.DrawPath(definition.DecimalPoint, paint);
+        }
+        canvas.Restore();
+        return surface.Snapshot();
     }
 
     private static AlphaSkiaDefinition? LoadDefinition()
@@ -125,6 +177,7 @@ internal sealed class AlphaElementRenderer : IPanelElementRenderer
     }
 
     private sealed record AlphaSkiaDefinition(float Width, float Height, float RecommendedPitch, IReadOnlyList<AlphaSkiaPath> Segments, SKPath? DecimalPoint);
+    private readonly record struct AlphaVisualCacheKey(int Width, int Height, int Mask, int BrightnessBucket, SKColor OnColor, SKColor OffColor);
     private sealed record AlphaSkiaPath(int Index, SKPath Path);
 
     private sealed class AlphaDefinitionRoot
