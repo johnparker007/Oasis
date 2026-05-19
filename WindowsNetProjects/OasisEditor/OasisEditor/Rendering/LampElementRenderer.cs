@@ -11,6 +11,8 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
 {
     private static readonly ConcurrentDictionary<string, SKTypeface> TypefaceCache = new(StringComparer.OrdinalIgnoreCase);
     private static readonly ConcurrentDictionary<TextLayoutCacheKey, IReadOnlyList<PixelTextLine>> TextLayoutCache = new();
+    private static readonly ConcurrentDictionary<TextVisualCacheKey, SKImage> TextVisualCache = new();
+    private const int MaxTextVisualCacheEntries = 2048;
 
     public PanelElementKind Kind => PanelElementKind.Lamp;
     [ThreadStatic]
@@ -23,11 +25,17 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
     private static int _diagnosticsTextLayoutCacheHits;
     [ThreadStatic]
     private static int _diagnosticsTextLayoutCacheMisses;
+    [ThreadStatic]
+    private static int _diagnosticsTextVisualCacheHits;
+    [ThreadStatic]
+    private static int _diagnosticsTextVisualCacheMisses;
     internal static int DiagnosticsTextLayoutCount => _diagnosticsTextLayoutCount;
     internal static int DiagnosticsTextDrawCount => _diagnosticsTextDrawCount;
     internal static TimeSpan DiagnosticsTextElapsed => TimeSpan.FromTicks(_diagnosticsTextTicks);
     internal static int DiagnosticsTextLayoutCacheHits => _diagnosticsTextLayoutCacheHits;
     internal static int DiagnosticsTextLayoutCacheMisses => _diagnosticsTextLayoutCacheMisses;
+    internal static int DiagnosticsTextVisualCacheHits => _diagnosticsTextVisualCacheHits;
+    internal static int DiagnosticsTextVisualCacheMisses => _diagnosticsTextVisualCacheMisses;
     internal static void ResetDiagnosticsCounters()
     {
         _diagnosticsTextLayoutCount = 0;
@@ -35,6 +43,8 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
         _diagnosticsTextTicks = 0;
         _diagnosticsTextLayoutCacheHits = 0;
         _diagnosticsTextLayoutCacheMisses = 0;
+        _diagnosticsTextVisualCacheHits = 0;
+        _diagnosticsTextVisualCacheMisses = 0;
     }
 
     public void Render(in PanelElementRenderContext context, PanelElementModel element)
@@ -48,20 +58,13 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
         var intensity = context.RuntimeState.GetLampIntensity(element.ObjectId);
         var onColor = SkiaColorParser.ParseOrDefault(element.OnColorHex, SKColors.Red);
         var offColor = SkiaColorParser.ParseOrDefault(element.OffColorHex, new SKColor(40, 0, 0));
-        var fill = Lerp(offColor, onColor, intensity);
-
-        using var paint = new SKPaint
-        {
-            Color = fill,
-            Style = SKPaintStyle.Fill,
-            IsAntialias = true
-        };
-
-        context.Canvas.DrawRect(bounds, paint);
+        var fillColor = Lerp(offColor, onColor, intensity);
 
         var displayText = element.DisplayText;
         if (string.IsNullOrWhiteSpace(displayText))
         {
+            using var paint = new SKPaint { Color = fillColor, Style = SKPaintStyle.Fill, IsAntialias = true };
+            context.Canvas.DrawRect(bounds, paint);
             return;
         }
 
@@ -69,54 +72,92 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
         try
         {
             var fontSize = ParseFontSize(element.TextBoxFontSize);
-            var textBounds = GetTextBounds(bounds);
-            using var textPaint = new SKPaint
-            {
-                Color = SkiaColorParser.ParseOrDefault(element.TextColorHex, SKColors.White),
-                IsAntialias = true,
-                TextSize = (float)fontSize,
-                Typeface = ResolveTypeface(element.TextBoxFontName, element.TextBoxFontStyle)
-            };
-
-            var fontMetrics = textPaint.FontMetrics;
-            var measuredLineHeight = Math.Abs(fontMetrics.Ascent) + Math.Abs(fontMetrics.Descent) + Math.Abs(fontMetrics.Leading);
-            var lineHeight = Math.Max(1d, measuredLineHeight > 0f ? measuredLineHeight : fontSize * 1.2d);
-            var wrapWidth = GetEffectiveWrapWidth(displayText, textBounds.Width, bounds.Width, textPaint);
-            var cacheKey = new TextLayoutCacheKey(
+            var textColor = SkiaColorParser.ParseOrDefault(element.TextColorHex, SKColors.White);
+            var visualKey = new TextVisualCacheKey(
+                element.ObjectId ?? string.Empty,
+                Math.Max(1, (int)Math.Round(bounds.Width)),
+                Math.Max(1, (int)Math.Round(bounds.Height)),
                 displayText,
-                textPaint.Typeface?.FamilyName ?? string.Empty,
-                textPaint.TextSize,
-                wrapWidth);
-            var lines = GetOrCreateTextLayout(cacheKey, displayText, wrapWidth, textPaint);
-            if (lines.Count == 0)
-            {
-                return;
-            }
+                element.TextBoxFontName ?? string.Empty,
+                element.TextBoxFontStyle ?? string.Empty,
+                (float)fontSize,
+                fillColor,
+                textColor,
+                intensity > 0d);
 
-            var totalTextHeight = lines.Count * lineHeight;
-            var baselineOffset = Math.Abs(fontMetrics.Ascent) > 0f
-                ? Math.Abs(fontMetrics.Ascent)
-                : fontSize;
-            var startY = textBounds.Top + ((textBounds.Height - totalTextHeight) / 2d) + baselineOffset;
-            for (var lineIndex = 0; lineIndex < lines.Count; lineIndex++)
+            if (!TextVisualCache.TryGetValue(visualKey, out var visual))
             {
-                var line = lines[lineIndex];
-                if (string.IsNullOrEmpty(line.Text))
+                _diagnosticsTextVisualCacheMisses++;
+                visual = BuildTextLampVisual(visualKey, displayText, fontSize, fillColor, textColor, element.TextBoxFontName, element.TextBoxFontStyle);
+                if (TextVisualCache.Count > MaxTextVisualCacheEntries)
                 {
-                    continue;
+                    TextVisualCache.Clear();
                 }
 
-                var x = textBounds.Left + ((textBounds.Width - line.Width) / 2d);
-                var y = startY + (lineIndex * lineHeight);
-                context.Canvas.DrawText(line.Text, (float)x, (float)y, textPaint);
-                _diagnosticsTextDrawCount++;
+                TextVisualCache[visualKey] = visual;
             }
+            else
+            {
+                _diagnosticsTextVisualCacheHits++;
+            }
+
+            context.Canvas.DrawImage(visual, bounds.Left, bounds.Top);
         }
         finally
         {
             textStopwatch.Stop();
             _diagnosticsTextTicks += textStopwatch.ElapsedTicks;
         }
+    }
+
+    private static SKImage BuildTextLampVisual(TextVisualCacheKey visualKey, string displayText, double fontSize, SKColor fillColor, SKColor textColor, string? fontName, string? fontStyle)
+    {
+        using var surface = SKSurface.Create(new SKImageInfo(visualKey.Width, visualKey.Height));
+        var canvas = surface.Canvas;
+        canvas.Clear(SKColors.Transparent);
+        var localBounds = SKRect.Create(0f, 0f, visualKey.Width, visualKey.Height);
+
+        using var paint = new SKPaint { Color = fillColor, Style = SKPaintStyle.Fill, IsAntialias = true };
+        canvas.DrawRect(localBounds, paint);
+
+        using var textPaint = new SKPaint
+        {
+            Color = textColor,
+            IsAntialias = true,
+            TextSize = (float)fontSize,
+            Typeface = ResolveTypeface(fontName, fontStyle)
+        };
+
+        var textBounds = GetTextBounds(localBounds);
+        var fontMetrics = textPaint.FontMetrics;
+        var measuredLineHeight = Math.Abs(fontMetrics.Ascent) + Math.Abs(fontMetrics.Descent) + Math.Abs(fontMetrics.Leading);
+        var lineHeight = Math.Max(1d, measuredLineHeight > 0f ? measuredLineHeight : fontSize * 1.2d);
+        var wrapWidth = GetEffectiveWrapWidth(displayText, textBounds.Width, localBounds.Width, textPaint);
+        var cacheKey = new TextLayoutCacheKey(displayText, textPaint.Typeface?.FamilyName ?? string.Empty, textPaint.TextSize, wrapWidth);
+        var lines = GetOrCreateTextLayout(cacheKey, displayText, wrapWidth, textPaint);
+        if (lines.Count == 0)
+        {
+            return surface.Snapshot();
+        }
+
+        var totalTextHeight = lines.Count * lineHeight;
+        var baselineOffset = Math.Abs(fontMetrics.Ascent) > 0f ? Math.Abs(fontMetrics.Ascent) : fontSize;
+        var startY = textBounds.Top + ((textBounds.Height - totalTextHeight) / 2d) + baselineOffset;
+        for (var lineIndex = 0; lineIndex < lines.Count; lineIndex++)
+        {
+            var line = lines[lineIndex];
+            if (string.IsNullOrEmpty(line.Text))
+            {
+                continue;
+            }
+
+            var x = textBounds.Left + ((textBounds.Width - line.Width) / 2d);
+            var y = startY + (lineIndex * lineHeight);
+            canvas.DrawText(line.Text, (float)x, (float)y, textPaint);
+            _diagnosticsTextDrawCount++;
+        }
+
+        return surface.Snapshot();
     }
 
     internal static List<PixelTextLine> WrapTextToPixelWidth(string text, double maxWidth, SKPaint paint)
@@ -220,6 +261,7 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
 
     internal readonly record struct PixelTextLine(string Text, float Width);
     private readonly record struct TextLayoutCacheKey(string Text, string FamilyName, float TextSize, double WrapWidth);
+    private readonly record struct TextVisualCacheKey(string ElementId, int Width, int Height, string Text, string FontName, string FontStyle, float TextSize, SKColor FillColor, SKColor TextColor, bool IsOnBucket);
 
     private static IReadOnlyList<PixelTextLine> GetOrCreateTextLayout(TextLayoutCacheKey cacheKey, string text, double wrapWidth, SKPaint paint)
     {

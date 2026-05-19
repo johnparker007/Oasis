@@ -101,6 +101,8 @@ internal sealed class Panel2DRenderer : IPanel2DRenderer
             LampElementRenderer.DiagnosticsTextLayoutCount,
             LampElementRenderer.DiagnosticsTextDrawCount,
             LampElementRenderer.DiagnosticsTextLayoutCacheHits,
-            LampElementRenderer.DiagnosticsTextLayoutCacheMisses));
+            LampElementRenderer.DiagnosticsTextLayoutCacheMisses,
+            LampElementRenderer.DiagnosticsTextVisualCacheHits,
+            LampElementRenderer.DiagnosticsTextVisualCacheMisses));
     }
 }
