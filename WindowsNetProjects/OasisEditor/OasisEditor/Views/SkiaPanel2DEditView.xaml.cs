@@ -494,21 +494,6 @@ public partial class SkiaPanel2DEditView : UserControl
         var viewport = new PanelViewportTransform(document.PanelZoom, document.PanelPanX, document.PanelPanY);
         var docPoint = viewport.ScreenToDocument(screenPoint);
         var handleSizeDoc = ResizeHandleScreenSize / viewport.NormalizedZoom;
-        var half = handleSizeDoc / 2d;
-        var handles = Panel2DResizeHandleService.GetHandles(selectedElement);
-
-        foreach (var handle in handles)
-        {
-            if (docPoint.X >= handle.X - half
-                && docPoint.X <= handle.X + half
-                && docPoint.Y >= handle.Y - half
-                && docPoint.Y <= handle.Y + half)
-            {
-                handleKind = handle.Kind;
-                return true;
-            }
-        }
-
-        return false;
+        return Panel2DResizeHandleHitTestService.TryHitHandle(selectedElement, docPoint, handleSizeDoc, out handleKind);
     }
 }
