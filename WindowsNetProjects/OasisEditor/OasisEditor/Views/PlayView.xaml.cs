@@ -299,10 +299,15 @@ public partial class PlayView : UserControl
 
     private bool TryResolveVisualElementId(DependencyObject? source, out Guid visualElementId)
     {
-        var selectable = CanvasSelectionBehavior.FindSelectableElement(source, PlayCanvas);
-        if (selectable is not null && Guid.TryParse(selectable.Uid?.Trim(), out visualElementId))
+        while (source is not null && source != PlayCanvas)
         {
-            return true;
+            if (source is FrameworkElement frameworkElement
+                && Guid.TryParse(frameworkElement.Uid?.Trim(), out visualElementId))
+            {
+                return true;
+            }
+
+            source = System.Windows.Media.VisualTreeHelper.GetParent(source);
         }
 
         visualElementId = Guid.Empty;
