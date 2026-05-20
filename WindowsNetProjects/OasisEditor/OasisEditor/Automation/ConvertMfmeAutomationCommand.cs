@@ -1,3 +1,4 @@
+using System.IO;
 namespace OasisEditor.Automation;
 
 internal sealed class ConvertMfmeAutomationState
