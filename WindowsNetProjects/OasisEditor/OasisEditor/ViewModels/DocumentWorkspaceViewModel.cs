@@ -19,6 +19,7 @@ public sealed class DocumentWorkspaceViewModel
     private readonly Action<string, OutputLogStatus> _addOutputEntry;
     private readonly Action<Guid> _onDocumentClosed;
     private readonly PanelRuntimeStateStore _runtimeStateStore;
+    private readonly Automation.IPanel2DDocumentCreationService _panel2dCreationService;
 
     private int _untitledDocumentCounter = 1;
     private int _panelDocumentCounter = 1;
@@ -45,6 +46,7 @@ public sealed class DocumentWorkspaceViewModel
             setStatusMessage,
             addOutputEntry,
             new PanelRuntimeStateStore(),
+            new Automation.Panel2DDocumentCreationService(),
             onDocumentClosed)
     {
     }
@@ -59,6 +61,7 @@ public sealed class DocumentWorkspaceViewModel
         Action<string> setStatusMessage,
         Action<string, OutputLogStatus> addOutputEntry,
         PanelRuntimeStateStore runtimeStateStore,
+        Automation.IPanel2DDocumentCreationService panel2dCreationService,
         Action<Guid>? onDocumentClosed = null)
     {
         _getLoadedProject = getLoadedProject;
@@ -71,6 +74,7 @@ public sealed class DocumentWorkspaceViewModel
         _addOutputEntry = addOutputEntry;
         _onDocumentClosed = onDocumentClosed ?? (_ => { });
         _runtimeStateStore = runtimeStateStore;
+        _panel2dCreationService = panel2dCreationService;
     }
 
     public bool CanOpenUntitledDocument() => _getLoadedProject() is not null;
@@ -103,9 +107,7 @@ public sealed class DocumentWorkspaceViewModel
             return;
         }
 
-        var document = CreateDocumentTab(
-            EditorDocument.CreatePanel2DStub($"Panel {_panelDocumentCounter++}"),
-            panelLayoutJson: Panel2DDocumentStorage.SerializeLayout([]));
+        var document = _panel2dCreationService.CreatePanel2DStubDocument($"Panel {_panelDocumentCounter++}", _panelDocumentCounter - 1);
 
         ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
         _setStatusMessage($"Opened panel document stub: {document.Title}");

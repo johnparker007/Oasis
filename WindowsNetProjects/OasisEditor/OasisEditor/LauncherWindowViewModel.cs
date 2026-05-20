@@ -11,7 +11,7 @@ namespace OasisEditor;
 
 public sealed class LauncherWindowViewModel : INotifyPropertyChanged
 {
-    private readonly ProjectScaffolder _projectScaffolder = new();
+    private readonly Automation.IProjectContainerCreationService _projectContainerCreationService;
     private readonly RecentProjectsStore _recentProjectsStore = new();
     private readonly IApplicationThemeService _applicationThemeService;
     private readonly EditorPreferencesStore _preferencesStore;
@@ -24,9 +24,14 @@ public sealed class LauncherWindowViewModel : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public LauncherWindowViewModel(IApplicationThemeService applicationThemeService, EditorPreferencesStore preferencesStore, Window launcherWindow)
+    public LauncherWindowViewModel(
+        IApplicationThemeService applicationThemeService,
+        EditorPreferencesStore preferencesStore,
+        Window launcherWindow,
+        Automation.IProjectContainerCreationService? projectContainerCreationService = null)
     {
         _applicationThemeService = applicationThemeService;
+        _projectContainerCreationService = projectContainerCreationService ?? new Automation.ProjectContainerCreationService();
         _preferencesStore = preferencesStore;
         _launcherWindow = launcherWindow;
 
@@ -104,7 +109,7 @@ public sealed class LauncherWindowViewModel : INotifyPropertyChanged
     {
         try
         {
-            var projectPath = _projectScaffolder.CreateProject(ProjectName, ProjectLocation);
+            var projectPath = _projectContainerCreationService.CreateProjectContainer(ProjectName, ProjectLocation);
             var projectFilePath = Path.Combine(projectPath, $"{ProjectName.Trim()}.oasisproj");
             OpenEditor(projectFilePath);
         }
