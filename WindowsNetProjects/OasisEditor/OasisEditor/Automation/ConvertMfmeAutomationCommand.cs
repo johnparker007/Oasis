@@ -14,6 +14,7 @@ internal sealed class ConvertMfmeAutomationOptions
     public required string PanelDocumentTitle { get; init; }
     public required string InputExtractPath { get; init; }
     public required string OutputPanelPath { get; init; }
+    public string? ExportLayPath { get; init; }
 }
 
 internal sealed class ConvertMfmeAutomationCommand : IOasisAutomationCommand
@@ -23,6 +24,7 @@ internal sealed class ConvertMfmeAutomationCommand : IOasisAutomationCommand
     private readonly IMfmeExtractImportService _mfmeImportService;
     private readonly IDocumentSaveService _documentSaveService;
     private readonly ConvertMfmeAutomationOptions _options;
+    private readonly IMameLayExportService _mameLayExportService;
     private readonly ConvertMfmeAutomationState _state;
 
     public ConvertMfmeAutomationCommand(
@@ -30,6 +32,7 @@ internal sealed class ConvertMfmeAutomationCommand : IOasisAutomationCommand
         IPanel2DDocumentCreationService panelCreationService,
         IMfmeExtractImportService mfmeImportService,
         IDocumentSaveService documentSaveService,
+        IMameLayExportService mameLayExportService,
         ConvertMfmeAutomationOptions options,
         ConvertMfmeAutomationState? state = null)
     {
@@ -38,6 +41,7 @@ internal sealed class ConvertMfmeAutomationCommand : IOasisAutomationCommand
         _mfmeImportService = mfmeImportService;
         _documentSaveService = documentSaveService;
         _options = options;
+        _mameLayExportService = mameLayExportService;
         _state = state ?? new ConvertMfmeAutomationState();
     }
 
@@ -77,6 +81,17 @@ internal sealed class ConvertMfmeAutomationCommand : IOasisAutomationCommand
 
             _state.PanelDocument = _documentSaveService.SaveDocument(panel, _options.OutputPanelPath);
             context.Logger.Info($"Saved Panel2D document: {_options.OutputPanelPath}");
+
+            if (!string.IsNullOrWhiteSpace(_options.ExportLayPath))
+            {
+                var exportResult = _mameLayExportService.Export(_state.PanelDocument, _options.ExportLayPath);
+                if (!exportResult.Succeeded)
+                {
+                    return Task.FromResult(OasisAutomationCommandResult.Failure(exportResult.Message));
+                }
+
+                context.Logger.Info($"Exported MAME layout: {_options.ExportLayPath}");
+            }
 
             return Task.FromResult(OasisAutomationCommandResult.Success("MFME conversion automation completed."));
         }

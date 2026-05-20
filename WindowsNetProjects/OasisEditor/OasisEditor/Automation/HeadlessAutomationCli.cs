@@ -49,6 +49,7 @@ internal static class HeadlessAutomationCli
         var input = ReadValue(args, "--input");
         var projectFile = ReadValue(args, "--project");
         var panel = ReadValue(args, "--panel");
+        var exportLay = ReadValue(args, "--export-lay");
 
         if (string.IsNullOrWhiteSpace(input) || string.IsNullOrWhiteSpace(projectFile) || string.IsNullOrWhiteSpace(panel))
         {
@@ -80,7 +81,8 @@ internal static class HeadlessAutomationCli
             ProjectRootLocation = projectDirectory,
             InputExtractPath = fullInput,
             PanelDocumentTitle = Path.GetFileNameWithoutExtension(panelRelativeOrName),
-            OutputPanelPath = outputPanelPath
+            OutputPanelPath = outputPanelPath,
+            ExportLayPath = exportLay
         };
 
         return HeadlessCliParseResult.Success(options);
@@ -94,6 +96,7 @@ internal static class HeadlessAutomationCli
             new Panel2DDocumentCreationService(),
             new MfmeExtractImportService(),
             new DocumentSaveService(),
+            new PlaceholderMameLayExportService(),
             options);
 
         var context = new OasisAutomationCommandContext
