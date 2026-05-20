@@ -1,3 +1,4 @@
+using System.IO;
 namespace OasisEditor.Automation;
 
 internal enum HeadlessExitCode
