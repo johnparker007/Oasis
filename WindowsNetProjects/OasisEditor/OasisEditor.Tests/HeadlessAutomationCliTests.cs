@@ -20,7 +20,6 @@ public sealed class HeadlessAutomationCliTests
         Assert.True(result.IsHeadless);
         Assert.Equal(HeadlessExitCode.InvalidArguments, result.ErrorCode);
     }
-}
 
     [Fact]
     public void Parse_WithValidRequiredArgs_ResolvesOptions()
@@ -51,4 +50,4 @@ public sealed class HeadlessAutomationCliTests
             Directory.Delete(tempDir, true);
         }
     }
-
+}
