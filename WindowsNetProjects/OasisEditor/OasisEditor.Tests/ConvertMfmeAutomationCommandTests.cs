@@ -70,7 +70,14 @@ public sealed class ConvertMfmeAutomationCommandTests
         {
             return new MfmeImportResult
             {
-                ImportedElements = succeeded ? [PanelElementFactory.CreateDefaultRectangle("rect-1")] : [],
+                ImportedElements = succeeded ? [new PanelElementModel
+                {
+                    ObjectId = "rect-1",
+                    Name = "Rect 1",
+                    Kind = PanelElementKind.Rectangle,
+                    Width = 10,
+                    Height = 10
+                }] : [],
                 CopiedAssetRelativePaths = [],
                 InputDefinitions = [],
                 SkippedLegacyComponentTypes = [],
