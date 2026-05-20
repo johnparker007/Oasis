@@ -2,12 +2,12 @@ using OasisEditor.Features.MfmeImport;
 
 namespace OasisEditor.Automation;
 
-public interface IMfmeExtractImportService
+internal interface IMfmeExtractImportService
 {
     MfmeImportResult ImportFromExtract(string sourceExtractPath, string projectRootPath, string projectAssetsPath, bool copyAssets = true);
 }
 
-public sealed class MfmeExtractImportService : IMfmeExtractImportService
+internal sealed class MfmeExtractImportService : IMfmeExtractImportService
 {
     private readonly MfmeImportService _mfmeImportService;
 
