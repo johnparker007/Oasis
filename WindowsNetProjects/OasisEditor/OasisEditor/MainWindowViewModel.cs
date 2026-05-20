@@ -59,7 +59,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly PanelRuntimeStateStore _panelRuntimeStates;
     private readonly HierarchyPanelCommandService _hierarchyPanelCommands;
     private bool _isRefreshingHierarchy;
-    private readonly MfmeImportService _mfmeImportService = new();
+    private readonly Automation.IMfmeExtractImportService _mfmeImportService = new Automation.MfmeExtractImportService();
+    private readonly Automation.IDocumentSaveService _documentSaveService = new Automation.DocumentSaveService();
     private readonly MameDownloadService _mameDownloadService = new();
     private readonly MameRomDownloadService _mameRomDownloadService = new();
     private readonly MamePluginAssetValidator _mamePluginAssetValidator = new();
@@ -290,6 +291,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             value => StatusMessage = value,
             AddOutputEntry,
             _panelRuntimeStates,
+            new Automation.Panel2DDocumentCreationService(),
             documentId =>
             {
                 _activeDocumentContext.ClearDocumentState(documentId);
@@ -982,15 +984,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        var context = new MfmeImportContext
-        {
-            SourceExtractPath = dialog.FileName,
-            ProjectRootPath = LoadedProject.ProjectDirectory,
-            ProjectAssetsPath = LoadedProject.AssetsDirectory,
-            CopyAssets = true
-        };
-
-        var result = _mfmeImportService.Import(context);
+        var result = _mfmeImportService.ImportFromExtract(
+            dialog.FileName,
+            LoadedProject.ProjectDirectory,
+            LoadedProject.AssetsDirectory,
+            copyAssets: true);
         foreach (var warning in result.Warnings)
         {
             AddOutputEntry($"MFME import warning ({warning.Code}): {warning.Message}", OutputLogStatus.Warning);
@@ -1154,19 +1152,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         try
         {
-            var content = DocumentWorkspaceViewModel.BuildDocumentContent(current);
-            File.WriteAllText(savePath, content);
-
-            var updatedDocument = new DocumentTabViewModel(
-                current.Document.SaveAs(savePath, current.ContentSummary).MarkClean(),
-                current.PanelLayoutJson,
-                current.DocumentId,
-                current.CommandService)
-            {
-                PanelZoom = current.PanelZoom,
-                PanelPanX = current.PanelPanX,
-                PanelPanY = current.PanelPanY
-            };
+            var updatedDocument = _documentSaveService.SaveDocument(current, savePath);
             _documentWorkspace.ReplaceDocument(current, updatedDocument);
             StatusMessage = $"Saved document: {updatedDocument.Title}";
             AddOutputEntry($"Saved document to {savePath}", OutputLogStatus.Info);
