@@ -5,14 +5,46 @@ This document defines the next architecture workstream: making Oasis Editor proj
 The immediate target is to support future workflows such as:
 
 ```text
-Create project named "xxx.oasisproject"
+Create/open project container named "xxx.oasisproject"
 Create Panel2D named "mfmeimport.panel2d"
 Import MFME extract into active Panel2D
-Save project/panel
+Save Panel2D document using existing document-save workflow
 Export Panel2D to MAME .lay layout
 ```
 
 The MAME `.lay` exporter is not written yet, but the architecture should leave a clean extension point for it.
+
+## Important Clarification About Save Behavior
+
+At the moment, Oasis Editor primarily has:
+
+```text
+File -> Save Document
+```
+
+for saving the currently focused document (such as a `.panel2d` document).
+
+There is not currently a broad explicit `Save Project` workflow in the same sense as some traditional editors/IDEs.
+
+Therefore:
+
+- Codex should not invent a large new project-save system during this workstream;
+- the automation architecture should initially reuse/extract the existing document-save behavior;
+- future project-save/container-save behavior may be added later if the project format evolves.
+
+When this document references project save concepts, treat them as future-facing placeholders unless an existing implementation already exists.
+
+The immediate concrete automation target is:
+
+```text
+SavePanel2DDocument
+```
+
+not:
+
+```text
+FullProjectSaveSystem
+```
 
 ## Key Decision
 
@@ -86,10 +118,10 @@ Prefer extracting UI-independent services first. Move to separate projects once 
 Create enough infrastructure that a future CLI can run this workflow without depending on WPF views:
 
 ```text
-CreateProject
+CreateProjectContainer
 CreatePanel2D
 ImportMfmeExtract
-SaveProject
+SavePanel2DDocument
 ExportMameLay
 ```
 
@@ -115,10 +147,10 @@ These are separate from existing undoable edit commands unless an existing comma
 Automation commands are workflow commands, for example:
 
 ```text
-CreateProjectAutomationCommand
+CreateProjectContainerAutomationCommand
 CreatePanel2DAutomationCommand
 ImportMfmeExtractAutomationCommand
-SaveProjectAutomationCommand
+SavePanel2DDocumentAutomationCommand
 ExportMameLayAutomationCommand
 ```
 
@@ -129,9 +161,9 @@ They may internally call lower-level undoable/editor commands where appropriate,
 Extract UI-independent services:
 
 ```text
-IProjectCreationService
+IProjectContainerCreationService
 IPanel2DCreationService
-IProjectSaveService
+IDocumentSaveService
 IMfmeExtractImportService
 IMameLayExportService
 IProjectLoadService
@@ -265,28 +297,45 @@ ImportLayoutMetadata
 
 Use current behavior as defaults.
 
-## Project / Panel Creation Automation
+## Project Container / Panel Creation Automation
 
 Add services for:
 
 ```text
-Create empty Oasis project at path
-Create Panel2D document in project
+Create empty Oasis project container at path
+Create Panel2D document in project container
 Set active/current document in automation context
 ```
 
 These should not require Launcher UI dialogs.
 
-## Save Automation
+## Document Save Automation
 
-Add service for:
+Add reusable extraction/wrapping for the existing:
 
 ```text
-Save project
-Save document/panel
+File -> Save Document
 ```
 
-It should be callable from UI and CLI.
+workflow.
+
+Suggested abstraction:
+
+```text
+IDocumentSaveService
+```
+
+with automation command:
+
+```text
+SavePanel2DDocumentAutomationCommand
+```
+
+The automation pipeline should initially save documents using the same underlying behavior as the current UI document-save workflow.
+
+Do not invent a large new project-save system during this workstream.
+
+Future project/container save behavior can be added later if the format evolves.
 
 ## MAME .lay Export Placeholder
 
@@ -312,10 +361,10 @@ Suggested tests:
 - pipeline stops on failure;
 - errors are logged;
 - cancellation stops pipeline;
-- create project command creates expected model/path;
-- create panel command adds document to project;
+- create project container command creates expected model/path;
+- create panel command adds document to project container;
 - import command can be invoked through fake importer;
-- save command can be invoked through fake save service;
+- document save command can be invoked through fake save service;
 - export command placeholder returns clear not-implemented result;
 - argument parser maps CLI args to workflow options;
 - invalid missing input path returns deterministic failure.
@@ -328,10 +377,10 @@ Avoid tests that require visible WPF windows.
 
 Document current APIs and UI dependencies for:
 
-- project creation;
+- project container creation;
 - panel creation;
 - MFME extract import;
-- project/document save;
+- current File -> Save Document behavior;
 - export placeholders;
 - existing command/undo systems.
 
@@ -347,9 +396,9 @@ Add small command/result/context abstractions.
 
 Keep them UI-independent.
 
-### Step 3 - Extract Project/Panel Creation Services
+### Step 3 - Extract Project Container / Panel Creation Services
 
-Create reusable services for project and Panel2D creation.
+Create reusable services for project container and Panel2D creation.
 
 Wire existing UI actions through them where practical.
 
@@ -359,9 +408,9 @@ Refactor MFME import so it can be called from automation without WPF dialogs.
 
 Keep existing UI import path working.
 
-### Step 5 - Extract Save Service
+### Step 5 - Extract Document Save Service
 
-Refactor save behavior into a reusable service.
+Refactor the current File -> Save Document behavior into a reusable service.
 
 Keep existing UI save behavior working.
 
@@ -376,7 +425,7 @@ ConvertMfmeToOasisProjectCommand
 It should orchestrate:
 
 ```text
-create project -> create panel -> import -> save
+create project container -> create panel -> import -> save document
 ```
 
 Include export placeholder if requested.
@@ -400,7 +449,7 @@ John should manually verify:
 
 - existing UI project creation still works;
 - existing UI MFME import still works;
-- existing UI save still works;
+- existing UI File -> Save Document still works;
 - automation pipeline can create/import/save without a visible edit workflow;
 - failures produce useful logs/errors.
 
