@@ -16,6 +16,7 @@ public sealed class ConvertMfmeAutomationCommandTests
             new Panel2DDocumentCreationService(),
             new FakeMfmeImportService(succeeded: true),
             saveService,
+            new FakeMameLayExportService(),
             new ConvertMfmeAutomationOptions
             {
                 ProjectName = "DemoProject",
@@ -43,6 +44,7 @@ public sealed class ConvertMfmeAutomationCommandTests
             new Panel2DDocumentCreationService(),
             new FakeMfmeImportService(succeeded: false),
             saveService,
+            new FakeMameLayExportService(),
             new ConvertMfmeAutomationOptions
             {
                 ProjectName = "DemoProject",
@@ -84,6 +86,14 @@ public sealed class ConvertMfmeAutomationCommandTests
                 Warnings = [],
                 Errors = succeeded ? [] : ["import failed"]
             };
+        }
+    }
+
+    private sealed class FakeMameLayExportService : IMameLayExportService
+    {
+        public OasisAutomationCommandResult Export(DocumentTabViewModel panelDocument, string outputLayPath)
+        {
+            return OasisAutomationCommandResult.Success("ok");
         }
     }
 
