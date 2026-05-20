@@ -290,6 +290,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             value => StatusMessage = value,
             AddOutputEntry,
             _panelRuntimeStates,
+            new Automation.Panel2DDocumentCreationService(),
             documentId =>
             {
                 _activeDocumentContext.ClearDocumentState(documentId);
