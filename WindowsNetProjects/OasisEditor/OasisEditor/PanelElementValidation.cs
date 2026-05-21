@@ -40,6 +40,7 @@ internal static class PanelElementModelComparer
                && string.Equals(left.AssetPath, right.AssetPath, StringComparison.Ordinal)
                && string.Equals(left.SecondaryAssetPath, right.SecondaryAssetPath, StringComparison.Ordinal)
                && left.DisplayNumber == right.DisplayNumber
+               && string.Equals(left.SegmentDisplayType, right.SegmentDisplayType, StringComparison.Ordinal)
                && string.Equals(left.OnColorHex, right.OnColorHex, StringComparison.Ordinal)
                && string.Equals(left.OffColorHex, right.OffColorHex, StringComparison.Ordinal)
                && string.Equals(left.TextColorHex, right.TextColorHex, StringComparison.Ordinal)

@@ -27,6 +27,7 @@ internal static class PanelElementModelCloner
             AssetPath = source.AssetPath,
             SecondaryAssetPath = source.SecondaryAssetPath,
             DisplayNumber = source.DisplayNumber,
+            SegmentDisplayType = source.SegmentDisplayType,
             OnColorHex = source.OnColorHex,
             OffColorHex = source.OffColorHex,
             TextColorHex = source.TextColorHex,

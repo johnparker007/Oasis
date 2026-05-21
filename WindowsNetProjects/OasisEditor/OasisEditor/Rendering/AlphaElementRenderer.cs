@@ -5,7 +5,7 @@ namespace OasisEditor.Rendering;
 internal sealed class AlphaElementRenderer : IPanelElementRenderer
 {
     private const int MaxVisualCacheEntries = 4096;
-    private static readonly Lazy<AlphaSkiaDefinition?> Definition = new(LoadDefinition);
+    private static readonly Dictionary<string, Lazy<AlphaSkiaDefinition?>> DefinitionsByType = new(StringComparer.OrdinalIgnoreCase);
     private static readonly Dictionary<AlphaVisualCacheKey, SKImage> VisualCache = new();
     private static readonly object VisualCacheGate = new();
     [ThreadStatic]
@@ -30,7 +30,8 @@ internal sealed class AlphaElementRenderer : IPanelElementRenderer
             return;
         }
 
-        var definition = Definition.Value;
+        var displayType = string.IsNullOrWhiteSpace(element.SegmentDisplayType) ? "led16seg" : element.SegmentDisplayType!;
+        var definition = GetDefinition(displayType);
         if (definition is null)
         {
             return;
@@ -72,7 +73,7 @@ internal sealed class AlphaElementRenderer : IPanelElementRenderer
             var mask = cellIndex < cellMasks.Length ? cellMasks[cellIndex] : 0;
             var litAmount = cellIndex < cellBrightness.Length ? Math.Clamp(cellBrightness[cellIndex], 0d, 1d) : 1d;
             var brightnessBucket = (int)Math.Round(litAmount * 4d);
-            var key = new AlphaVisualCacheKey(cellPixelWidth, cellPixelHeight, mask, brightnessBucket, onColor, offColor);
+            var key = new AlphaVisualCacheKey(displayType, cellPixelWidth, cellPixelHeight, mask, brightnessBucket, onColor, offColor);
             var visual = GetOrCreateVisual(key, definition);
             var cellRect = SKRect.Create(originX + (cellIndex * scaledPitch), originY, scaledCellWidth, scaledCellHeight);
             context.Canvas.DrawImage(visual, cellRect);
@@ -138,9 +139,24 @@ internal sealed class AlphaElementRenderer : IPanelElementRenderer
         return surface.Snapshot();
     }
 
-    private static AlphaSkiaDefinition? LoadDefinition()
+    private static AlphaSkiaDefinition? GetDefinition(string displayType)
     {
-        if (!SegmentDisplayDefinitionLoader.TryGetSixteenSegmentDefinition(out var definition) || definition.Cell is null || definition.Cell.Size is null || definition.Cell.Segments is null)
+        lock (VisualCacheGate)
+        {
+            if (!DefinitionsByType.TryGetValue(displayType, out var lazy))
+            {
+                lazy = new Lazy<AlphaSkiaDefinition?>(() => LoadDefinition(displayType));
+                DefinitionsByType[displayType] = lazy;
+            }
+
+            return lazy.Value;
+        }
+    }
+
+    private static AlphaSkiaDefinition? LoadDefinition(string displayType)
+    {
+        if (!SegmentDisplayDefinitionLoader.TryGetDefinitionByType(displayType, out var definition)
+            || definition.Cell is null || definition.Cell.Size is null || definition.Cell.Segments is null)
         {
             return null;
         }
@@ -177,6 +193,6 @@ internal sealed class AlphaElementRenderer : IPanelElementRenderer
     }
 
     private sealed record AlphaSkiaDefinition(float Width, float Height, float RecommendedPitch, IReadOnlyList<AlphaSkiaPath> Segments, SKPath? DecimalPoint, int DecimalPointBitIndex, SKPath? CommaTail, int CommaTailBitIndex);
-    private readonly record struct AlphaVisualCacheKey(int Width, int Height, int Mask, int BrightnessBucket, SKColor OnColor, SKColor OffColor);
+    private readonly record struct AlphaVisualCacheKey(string DisplayType, int Width, int Height, int Mask, int BrightnessBucket, SKColor OnColor, SKColor OffColor);
     private sealed record AlphaSkiaPath(int Index, SKPath Path);
 }

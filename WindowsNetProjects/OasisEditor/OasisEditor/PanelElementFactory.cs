@@ -339,7 +339,7 @@ internal static class PanelElementFactory
             BorderBrush = Brushes.SlateGray,
             Background = TryCreateBrush("#111827", Brushes.Black),
             Padding = new Thickness(4),
-            Child = new AlphaSixteenSegmentDisplayVisual
+            Child = new AlphaSixteenSegmentDisplayVisual(element.SegmentDisplayType)
             {
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 VerticalAlignment = VerticalAlignment.Stretch,
