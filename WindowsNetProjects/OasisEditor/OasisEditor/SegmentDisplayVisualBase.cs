@@ -23,6 +23,7 @@ internal abstract class SegmentDisplayVisualBase : FrameworkElement
     public bool ShowDecimalPoint { get; set; }
     public bool ShowCommaTail { get; set; }
     public double[]? CellBrightness { get; set; }
+    public bool IsReversed { get; set; }
 
     protected override void OnRender(DrawingContext drawingContext)
     {
@@ -47,10 +48,11 @@ internal abstract class SegmentDisplayVisualBase : FrameworkElement
 
         for (var i = 0; i < CellCount; i++)
         {
-            var segmentMask = CellSegmentMasks is not null && i < CellSegmentMasks.Length
-                ? CellSegmentMasks[i]
-                : i < (DisplayText?.Length ?? 0)
-                    ? GetSegmentMaskForChar(DisplayText![i])
+            var dataIndex = IsReversed ? (CellCount - 1 - i) : i;
+            var segmentMask = CellSegmentMasks is not null && dataIndex < CellSegmentMasks.Length
+                ? CellSegmentMasks[dataIndex]
+                : dataIndex < (DisplayText?.Length ?? 0)
+                    ? GetSegmentMaskForChar(DisplayText![dataIndex])
                     : 0;
             var cellTransform = new MatrixTransform(scale, 0, 0, scale, offsetX + (i * pitch * scale), offsetY);
             var brightness = CellBrightness is not null && i < CellBrightness.Length ? Math.Clamp(CellBrightness[i], 0d, 1d) : 1d;

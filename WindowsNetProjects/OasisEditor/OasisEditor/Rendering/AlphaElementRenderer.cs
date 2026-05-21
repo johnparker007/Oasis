@@ -70,8 +70,9 @@ internal sealed class AlphaElementRenderer : IPanelElementRenderer
 
         for (var cellIndex = 0; cellIndex < cellCount; cellIndex++)
         {
-            var mask = cellIndex < cellMasks.Length ? cellMasks[cellIndex] : 0;
-            var litAmount = cellIndex < cellBrightness.Length ? Math.Clamp(cellBrightness[cellIndex], 0d, 1d) : 1d;
+            var dataIndex = element.IsReversed == true ? (cellCount - 1 - cellIndex) : cellIndex;
+            var mask = dataIndex < cellMasks.Length ? cellMasks[dataIndex] : 0;
+            var litAmount = dataIndex < cellBrightness.Length ? Math.Clamp(cellBrightness[dataIndex], 0d, 1d) : 1d;
             var brightnessBucket = (int)Math.Round(litAmount * 4d);
             var key = new AlphaVisualCacheKey(displayType, cellPixelWidth, cellPixelHeight, mask, brightnessBucket, onColor, offColor, element.ShowDecimalPoint, element.ShowCommaTail);
             var visual = GetOrCreateVisual(key, definition);
