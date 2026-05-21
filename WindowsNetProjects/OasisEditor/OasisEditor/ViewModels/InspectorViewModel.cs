@@ -417,17 +417,15 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
         if (selectedElement.Kind is PanelElementKind.Alpha)
         {
-            var selectedDisplayKind = string.Equals(selectedElement.SegmentDisplayType, "led14seg", StringComparison.OrdinalIgnoreCase)
-                ? "14 Segment"
-                : "16 Segment";
+            var selectedDisplayKind = GetSegmentTypeDisplayName(selectedElement.SegmentDisplayType);
             _propertyRows.Add(new InspectorChoicePropertyViewModel(
                 "Segment Type",
                 "Type-specific",
-                ["14 Segment", "16 Segment"],
+                ["14 Segment", "14 Segment + Semicolon", "16 Segment", "16 Segment + Semicolon"],
                 selectedDisplayKind,
                 commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update segment type", new PanelElementModelUpdate
                 {
-                    SegmentDisplayType = string.Equals(value, "14 Segment", StringComparison.Ordinal) ? "led14seg" : "led16seg"
+                    SegmentDisplayType = GetSegmentDisplayTypeFromDisplayName(value)
                 })));
             _propertyRows.Add(new InspectorBoolPropertyViewModel(
                 "Decimal Point",
@@ -534,7 +532,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                     displayTextRow.SetCommittedValue(selectedElement.DisplayText);
                     break;
                 case "Segment Type" when row is InspectorChoicePropertyViewModel segmentTypeRow:
-                    segmentTypeRow.SetCommittedValue(string.Equals(selectedElement.SegmentDisplayType, "led14seg", StringComparison.OrdinalIgnoreCase) ? "14 Segment" : "16 Segment");
+                    segmentTypeRow.SetCommittedValue(GetSegmentTypeDisplayName(selectedElement.SegmentDisplayType));
                     break;
                 case "Decimal Point" when row is InspectorBoolPropertyViewModel decimalPointRow:
                     decimalPointRow.SetCommittedValue(selectedElement.ShowDecimalPoint);
@@ -570,6 +568,30 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         }
     }
 
+
+    private static string GetSegmentTypeDisplayName(string? segmentDisplayType)
+    {
+        return (segmentDisplayType ?? string.Empty).ToLowerInvariant() switch
+        {
+            "led14seg" => "14 Segment",
+            "led14segsc" => "14 Segment + Semicolon",
+            "led16seg" => "16 Segment",
+            "led16segsc" => "16 Segment + Semicolon",
+            _ => "16 Segment"
+        };
+    }
+
+    private static string GetSegmentDisplayTypeFromDisplayName(string displayName)
+    {
+        return displayName switch
+        {
+            "14 Segment" => "led14seg",
+            "14 Segment + Semicolon" => "led14segsc",
+            "16 Segment" => "led16seg",
+            "16 Segment + Semicolon" => "led16segsc",
+            _ => "led16seg"
+        };
+    }
     private string? TryApplyColorUpdate(string objectId, string description, PanelElementModelUpdate update)
     {
         return TryApplyUpdate(objectId, description, update, suppressInspectorRefresh: true);
