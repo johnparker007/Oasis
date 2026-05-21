@@ -1,6 +1,6 @@
 {
   "schema": "oasis.segmentDisplayDefinition.v1",
-  "name": "16-segment LED display cell from 108870-16-segment-led.svg",
+  "name": "16-segment LED display with semicolon punctuation (placeholder comma tail)",
   "units": "source-svg-user-units-normalized",
   "source": {
     "fileName": "108870-16-segment-led.svg",
@@ -274,6 +274,14 @@
         }
       },
       "bitIndex": 16
+    },
+    "commaTail": {
+      "id": "CT",
+      "bitIndex": 17,
+      "pathData": "M 54 74 L 58 80 L 54 88 L 50 86 L 53 80 L 50 74 Z",
+      "notes": [
+        "TODO: replace with MAME-derived led16segsc comma-tail geometry."
+      ]
     }
   },
   "sampleText": {
@@ -293,5 +301,5 @@
       }
     ]
   },
-  "mameComponentType": "led16seg"
+  "mameComponentType": "led16segsc"
 }
