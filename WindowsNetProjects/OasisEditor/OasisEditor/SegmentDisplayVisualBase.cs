@@ -21,6 +21,7 @@ internal abstract class SegmentDisplayVisualBase : FrameworkElement
     public string? DisplayText { get; set; }
     public int[]? CellSegmentMasks { get; set; }
     public bool ShowDecimalPoint { get; set; }
+    public bool ShowCommaTail { get; set; }
     public double[]? CellBrightness { get; set; }
 
     protected override void OnRender(DrawingContext drawingContext)
@@ -78,7 +79,7 @@ internal abstract class SegmentDisplayVisualBase : FrameworkElement
                 drawingContext.Pop();
             }
 
-            if (ShowDecimalPoint && _definition.Cell.CommaTail?.Geometry is not null)
+            if (ShowCommaTail && _definition.Cell.CommaTail?.Geometry is not null)
             {
                 var bitIndex = _definition.Cell.CommaTail.BitIndex ?? 17;
                 var lit = (segmentMask & (1 << bitIndex)) != 0;

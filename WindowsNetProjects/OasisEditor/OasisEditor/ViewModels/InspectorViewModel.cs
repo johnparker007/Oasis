@@ -415,6 +415,32 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                 commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update display text", new PanelElementModelUpdate { DisplayText = NormalizeOptionalText(value) })));
         }
 
+        if (selectedElement.Kind is PanelElementKind.Alpha)
+        {
+            var selectedDisplayKind = string.Equals(selectedElement.SegmentDisplayType, "led14seg", StringComparison.OrdinalIgnoreCase)
+                ? "14 Segment"
+                : "16 Segment";
+            _propertyRows.Add(new InspectorChoicePropertyViewModel(
+                "Segment Type",
+                "Type-specific",
+                ["14 Segment", "16 Segment"],
+                selectedDisplayKind,
+                commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update segment type", new PanelElementModelUpdate
+                {
+                    SegmentDisplayType = string.Equals(value, "14 Segment", StringComparison.Ordinal) ? "led14seg" : "led16seg"
+                })));
+            _propertyRows.Add(new InspectorBoolPropertyViewModel(
+                "Decimal Point",
+                "Type-specific",
+                selectedElement.ShowDecimalPoint,
+                commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update decimal point visibility", new PanelElementModelUpdate { ShowDecimalPoint = value })));
+            _propertyRows.Add(new InspectorBoolPropertyViewModel(
+                "Comma",
+                "Type-specific",
+                selectedElement.ShowCommaTail,
+                commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update comma visibility", new PanelElementModelUpdate { ShowCommaTail = value })));
+        }
+
         if (selectedElement.Kind is PanelElementKind.Lamp)
         {
             _propertyRows.Add(new InspectorInfoPropertyViewModel("Text Font Name", "Type-specific", selectedElement.TextBoxFontName ?? "Tahoma"));
@@ -506,6 +532,15 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                     break;
                 case "Display Text" when row is InspectorTextPropertyViewModel displayTextRow:
                     displayTextRow.SetCommittedValue(selectedElement.DisplayText);
+                    break;
+                case "Segment Type" when row is InspectorChoicePropertyViewModel segmentTypeRow:
+                    segmentTypeRow.SetCommittedValue(string.Equals(selectedElement.SegmentDisplayType, "led14seg", StringComparison.OrdinalIgnoreCase) ? "14 Segment" : "16 Segment");
+                    break;
+                case "Decimal Point" when row is InspectorBoolPropertyViewModel decimalPointRow:
+                    decimalPointRow.SetCommittedValue(selectedElement.ShowDecimalPoint);
+                    break;
+                case "Comma" when row is InspectorBoolPropertyViewModel commaRow:
+                    commaRow.SetCommittedValue(selectedElement.ShowCommaTail);
                     break;
                 case "Text Font Name" when row is InspectorInfoPropertyViewModel fontNameRow:
                     fontNameRow.SetCommittedValue(selectedElement.TextBoxFontName ?? "Tahoma");

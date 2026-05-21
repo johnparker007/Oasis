@@ -28,6 +28,8 @@ internal static class PanelElementModelCloner
             SecondaryAssetPath = source.SecondaryAssetPath,
             DisplayNumber = source.DisplayNumber,
             SegmentDisplayType = source.SegmentDisplayType,
+            ShowDecimalPoint = source.ShowDecimalPoint,
+            ShowCommaTail = source.ShowCommaTail,
             OnColorHex = source.OnColorHex,
             OffColorHex = source.OffColorHex,
             TextColorHex = source.TextColorHex,

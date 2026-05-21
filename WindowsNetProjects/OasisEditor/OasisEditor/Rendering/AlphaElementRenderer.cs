@@ -73,7 +73,7 @@ internal sealed class AlphaElementRenderer : IPanelElementRenderer
             var mask = cellIndex < cellMasks.Length ? cellMasks[cellIndex] : 0;
             var litAmount = cellIndex < cellBrightness.Length ? Math.Clamp(cellBrightness[cellIndex], 0d, 1d) : 1d;
             var brightnessBucket = (int)Math.Round(litAmount * 4d);
-            var key = new AlphaVisualCacheKey(displayType, cellPixelWidth, cellPixelHeight, mask, brightnessBucket, onColor, offColor);
+            var key = new AlphaVisualCacheKey(displayType, cellPixelWidth, cellPixelHeight, mask, brightnessBucket, onColor, offColor, element.ShowDecimalPoint, element.ShowCommaTail);
             var visual = GetOrCreateVisual(key, definition);
             var cellRect = SKRect.Create(originX + (cellIndex * scaledPitch), originY, scaledCellWidth, scaledCellHeight);
             context.Canvas.DrawImage(visual, cellRect);
@@ -122,14 +122,14 @@ internal sealed class AlphaElementRenderer : IPanelElementRenderer
             paint.Color = lit ? Lerp(key.OffColor, key.OnColor, litAmount) : key.OffColor;
             canvas.DrawPath(segment.Path, paint);
         }
-        if (definition.DecimalPoint is not null)
+        if (definition.DecimalPoint is not null && key.ShowDecimalPoint)
         {
             var lit = (key.Mask & (1 << definition.DecimalPointBitIndex)) != 0;
             paint.Color = lit ? Lerp(key.OffColor, key.OnColor, litAmount) : key.OffColor;
             canvas.DrawPath(definition.DecimalPoint, paint);
         }
 
-        if (definition.CommaTail is not null)
+        if (definition.CommaTail is not null && key.ShowCommaTail)
         {
             var lit = (key.Mask & (1 << definition.CommaTailBitIndex)) != 0;
             paint.Color = lit ? Lerp(key.OffColor, key.OnColor, litAmount) : key.OffColor;
@@ -193,6 +193,6 @@ internal sealed class AlphaElementRenderer : IPanelElementRenderer
     }
 
     private sealed record AlphaSkiaDefinition(float Width, float Height, float RecommendedPitch, IReadOnlyList<AlphaSkiaPath> Segments, SKPath? DecimalPoint, int DecimalPointBitIndex, SKPath? CommaTail, int CommaTailBitIndex);
-    private readonly record struct AlphaVisualCacheKey(string DisplayType, int Width, int Height, int Mask, int BrightnessBucket, SKColor OnColor, SKColor OffColor);
+    private readonly record struct AlphaVisualCacheKey(string DisplayType, int Width, int Height, int Mask, int BrightnessBucket, SKColor OnColor, SKColor OffColor, bool ShowDecimalPoint, bool ShowCommaTail);
     private sealed record AlphaSkiaPath(int Index, SKPath Path);
 }

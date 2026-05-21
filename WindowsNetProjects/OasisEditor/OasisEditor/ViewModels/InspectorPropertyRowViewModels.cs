@@ -463,3 +463,48 @@ public sealed class InspectorInfoPropertyViewModel : InspectorPropertyRowViewMod
         Value = value;
     }
 }
+
+public sealed class InspectorChoicePropertyViewModel : InspectorPropertyRowViewModel
+{
+    private string _value;
+    private readonly Func<string, string?>? _commit;
+    private bool _isApplyingChange;
+
+    public InspectorChoicePropertyViewModel(string displayName, string groupName, IReadOnlyList<string> choices, string value, bool isReadOnly = false, Func<string, string?>? commit = null)
+        : base(displayName, groupName, isReadOnly)
+    {
+        Choices = choices;
+        _value = value;
+        _commit = commit;
+    }
+
+    public IReadOnlyList<string> Choices { get; }
+
+    public string Value
+    {
+        get => _value;
+        set
+        {
+            if (IsReadOnly || _isApplyingChange || !SetProperty(ref _value, value))
+            {
+                return;
+            }
+
+            var error = _commit?.Invoke(value);
+            if (string.IsNullOrWhiteSpace(error))
+            {
+                ErrorText = string.Empty;
+                return;
+            }
+
+            ErrorText = error;
+        }
+    }
+
+    public void SetCommittedValue(string value)
+    {
+        ErrorText = string.Empty;
+        _value = value;
+        RaisePropertyChanged(nameof(Value));
+    }
+}

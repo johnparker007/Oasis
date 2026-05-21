@@ -33,6 +33,8 @@ internal sealed class PanelElementModelUpdate
     public PanelElementOptionalValue<string?> SecondaryAssetPath { get; init; }
     public PanelElementOptionalValue<int?> DisplayNumber { get; init; }
     public PanelElementOptionalValue<string?> SegmentDisplayType { get; init; }
+    public PanelElementOptionalValue<bool> ShowDecimalPoint { get; init; }
+    public PanelElementOptionalValue<bool> ShowCommaTail { get; init; }
     public PanelElementOptionalValue<string?> OnColorHex { get; init; }
     public PanelElementOptionalValue<string?> OffColorHex { get; init; }
     public PanelElementOptionalValue<string?> TextColorHex { get; init; }
@@ -67,6 +69,8 @@ internal static class PanelElementModelUpdater
             SecondaryAssetPath = update.SecondaryAssetPath.HasValue ? update.SecondaryAssetPath.Value : source.SecondaryAssetPath,
             DisplayNumber = update.DisplayNumber.HasValue ? update.DisplayNumber.Value : source.DisplayNumber,
             SegmentDisplayType = update.SegmentDisplayType.HasValue ? update.SegmentDisplayType.Value : source.SegmentDisplayType,
+            ShowDecimalPoint = update.ShowDecimalPoint.HasValue ? update.ShowDecimalPoint.Value : source.ShowDecimalPoint,
+            ShowCommaTail = update.ShowCommaTail.HasValue ? update.ShowCommaTail.Value : source.ShowCommaTail,
             OnColorHex = update.OnColorHex.HasValue ? update.OnColorHex.Value : source.OnColorHex,
             OffColorHex = update.OffColorHex.HasValue ? update.OffColorHex.Value : source.OffColorHex,
             TextColorHex = update.TextColorHex.HasValue ? update.TextColorHex.Value : source.TextColorHex,
