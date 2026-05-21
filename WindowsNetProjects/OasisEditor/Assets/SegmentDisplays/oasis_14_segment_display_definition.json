@@ -1,6 +1,6 @@
 {
   "schema": "oasis.segmentDisplayDefinition.v1",
-  "name": "14-segment LED display (placeholder geometry derived from existing 16-segment asset)",
+  "name": "14-segment LED display derived from 16-segment asset with merged top and bottom bars",
   "units": "source-svg-user-units-normalized",
   "source": {
     "fileName": "108870-16-segment-led.svg",
@@ -8,7 +8,8 @@
     "originalCellCount": 3,
     "notes": [
       "Segment paths were converted to absolute SVG/WPF-compatible path data and normalized to a single reusable cell origin.",
-      "The fill color from the source SVG is not preserved; rendering code should supply lit/unlit brushes."
+      "This 14-segment definition is derived from the existing 16-segment asset, with the two top horizontal half segments merged into one segment and the two bottom horizontal half segments merged into one segment.",
+      "The segment order follows MAME led14seg bit order: top, right-top, right-bottom, bottom, left-bottom, left-top, middle-left, middle-right, vertical-middle-top, vertical-middle-bottom, diagonal-left-bottom, diagonal-left-top, diagonal-right-top, diagonal-right-bottom."
     ]
   },
   "cell": {
@@ -24,33 +25,23 @@
     "segments": [
       {
         "index": 0,
-        "id": "S02",
-        "sourcePathIndex": 36,
-        "pathData": "M 22.492 7.7513 L 30.8972 7.8121 C 31.2343 7.8145 35.8165 3.941 35.8165 3.941 L 32.5795 0.2 L 19.6805 -0 L 17.1665 2.082 Z",
+        "id": "TOP",
+        "sourcePathIndex": [
+          36,
+          37
+        ],
+        "pathData": "M 17.1665 2.082 L 19.6805 0 L 56.1589 0.5207 L 57.3522 2.4402 L 50.261 8.1943 L 22.492 7.7513 Z",
         "bounds": {
           "x": 17.1665,
-          "y": -0.0,
-          "width": 18.65,
-          "height": 7.8145
+          "y": 0.0,
+          "width": 40.1857,
+          "height": 8.1943
         },
         "bitIndex": 0
       },
       {
         "index": 1,
-        "id": "S03",
-        "sourcePathIndex": 37,
-        "pathData": "M 50.261 8.1943 L 41.796 8.1673 C 41.4589 8.1662 38.3604 4.3421 38.3604 4.3421 L 43.3769 0.4065 L 56.1589 0.5207 L 57.3522 2.4402 Z",
-        "bounds": {
-          "x": 38.3604,
-          "y": 0.4065,
-          "width": 18.9918,
-          "height": 7.7878
-        },
-        "bitIndex": 1
-      },
-      {
-        "index": 2,
-        "id": "S01",
+        "id": "RIGHT_TOP",
         "sourcePathIndex": 35,
         "pathData": "M 46.95 35.7343 L 50.1279 39.2024 L 54.7311 35.5365 L 60.2794 5.8275 L 58.5487 3.7153 L 51.9603 8.9879 Z",
         "bounds": {
@@ -59,11 +50,11 @@
           "width": 13.3294,
           "height": 35.4871
         },
-        "bitIndex": 2
+        "bitIndex": 1
       },
       {
-        "index": 3,
-        "id": "S04",
+        "index": 2,
+        "id": "RIGHT_BOTTOM",
         "sourcePathIndex": 38,
         "pathData": "M 40.478 72.6073 L 45.2626 78.0605 L 48.0071 75.9193 L 53.2347 45.0773 L 49.7621 41.7729 L 45.2849 45.3985 Z",
         "bounds": {
@@ -72,37 +63,27 @@
           "width": 12.7567,
           "height": 36.2876
         },
+        "bitIndex": 2
+      },
+      {
+        "index": 3,
+        "id": "BOTTOM",
+        "sourcePathIndex": [
+          40,
+          41
+        ],
+        "pathData": "M 2.777 78.8973 C 3.1909 78.9023 10.2558 72.7959 10.7865 72.9206 C 11.3173 73.0454 38.0881 72.9836 38.6218 72.8718 C 39.1554 72.7601 43.7321 78.6323 44.146 78.6373 L 42.276 81.0709 L 4.5908 81.0832 Z",
+        "bounds": {
+          "x": 2.777,
+          "y": 72.7601,
+          "width": 41.369,
+          "height": 8.3231
+        },
         "bitIndex": 3
       },
       {
         "index": 4,
-        "id": "S07",
-        "sourcePathIndex": 41,
-        "pathData": "M 44.146 78.6373 C 43.7321 78.6323 39.1554 72.7601 38.6218 72.8718 C 38.0881 72.9836 30.137 72.859 30.137 72.859 L 24.8469 77.0641 L 28.616 81.0195 L 42.276 81.0709 Z",
-        "bounds": {
-          "x": 24.8469,
-          "y": 72.7601,
-          "width": 19.2991,
-          "height": 8.3108
-        },
-        "bitIndex": 4
-      },
-      {
-        "index": 5,
-        "id": "S06",
-        "sourcePathIndex": 40,
-        "pathData": "M 2.777 78.8973 C 3.1909 78.9023 10.2558 72.7959 10.7865 72.9206 C 11.3173 73.0454 19.0631 72.8615 19.0631 72.8615 L 22.6248 76.631 C 20.9711 78.0231 19.7239 79.168 17.2478 81.0603 L 4.5908 81.0832 Z",
-        "bounds": {
-          "x": 2.777,
-          "y": 72.7959,
-          "width": 19.8478,
-          "height": 8.2873
-        },
-        "bitIndex": 5
-      },
-      {
-        "index": 6,
-        "id": "S05",
+        "id": "LEFT_BOTTOM",
         "sourcePathIndex": 39,
         "pathData": "M 0 75.6673 L 1.8551 77.8646 L 8.907 72.3049 L 13.8383 45.1819 L 10.6237 41.2952 L 5.8925 45.1686 Z",
         "bounds": {
@@ -111,11 +92,11 @@
           "width": 13.8383,
           "height": 36.5694
         },
-        "bitIndex": 6
+        "bitIndex": 4
       },
       {
-        "index": 7,
-        "id": "S00",
+        "index": 5,
+        "id": "LEFT_TOP",
         "sourcePathIndex": 34,
         "pathData": "M 7.655 35.4743 L 13.2045 5.0543 L 15.8647 2.7583 L 20.7689 8.2731 L 17.9008 23.7381 L 15.9801 35.2091 L 10.7478 38.9938 Z",
         "bounds": {
@@ -124,11 +105,11 @@
           "width": 13.1139,
           "height": 36.2355
         },
-        "bitIndex": 7
+        "bitIndex": 5
       },
       {
-        "index": 8,
-        "id": "S11",
+        "index": 6,
+        "id": "MIDDLE_LEFT",
         "sourcePathIndex": 46,
         "pathData": "M 11.893 40.0933 L 17.0857 36.2236 L 24.1833 36.1919 L 30.1083 40.1677 L 22.786 44.0705 L 15.4515 44.1289 Z",
         "bounds": {
@@ -137,11 +118,11 @@
           "width": 18.2153,
           "height": 7.9369
         },
-        "bitIndex": 8
+        "bitIndex": 6
       },
       {
-        "index": 9,
-        "id": "S12",
+        "index": 7,
+        "id": "MIDDLE_RIGHT",
         "sourcePathIndex": 47,
         "pathData": "M 31.349 40.2443 C 31.4684 40.3365 36.3039 44.0867 36.5148 44.0893 C 36.7257 44.0919 43.8041 44.2993 43.9253 44.2403 C 44.0465 44.1812 48.8568 40.1253 48.8568 40.1253 L 45.4368 36.4823 L 38.2368 36.3343 Z",
         "bounds": {
@@ -150,11 +131,11 @@
           "width": 17.5078,
           "height": 7.965
         },
-        "bitIndex": 9
+        "bitIndex": 7
       },
       {
-        "index": 10,
-        "id": "S15",
+        "index": 8,
+        "id": "VERTICAL_MIDDLE_TOP",
         "sourcePathIndex": 50,
         "pathData": "M 30.634 39.1633 L 29.0793 24.9733 L 32.1908 9.0493 L 36.9403 5.469 L 40.3534 8.9656 L 37.2343 25.3096 Z",
         "bounds": {
@@ -163,11 +144,11 @@
           "width": 11.2741,
           "height": 33.6943
         },
-        "bitIndex": 10
+        "bitIndex": 8
       },
       {
-        "index": 11,
-        "id": "S08",
+        "index": 9,
+        "id": "VERTICAL_MIDDLE_BOTTOM",
         "sourcePathIndex": 43,
         "pathData": "M 30.289 42.0633 L 31.8437 56.2533 L 28.7322 72.1773 L 23.9827 75.7576 L 20.5696 72.261 L 23.6887 55.917 Z",
         "bounds": {
@@ -176,11 +157,11 @@
           "width": 11.2741,
           "height": 33.6943
         },
-        "bitIndex": 11
+        "bitIndex": 9
       },
       {
-        "index": 12,
-        "id": "S09",
+        "index": 10,
+        "id": "DIAGONAL_LEFT_BOTTOM",
         "sourcePathIndex": 44,
         "pathData": "M 23.089 44.5183 L 29.6549 41.0855 L 19.6784 63.5465 L 9.7132 71.3708 L 11.4205 61.6893 Z",
         "bounds": {
@@ -189,16 +170,42 @@
           "width": 19.9417,
           "height": 30.2853
         },
-        "bitIndex": 12
+        "bitIndex": 10
       },
       {
-        "index": 13,
-        "id": "S14",
+        "index": 11,
+        "id": "DIAGONAL_LEFT_TOP",
         "sourcePathIndex": 49,
         "pathData": "M 30.065 39.2223 C 30.065 39.2223 25.5405 36.8013 25.5441 36.5057 C 25.5477 36.21 19.6791 17.9227 19.6791 17.9227 L 21.2088 8.8924 C 21.2088 8.8924 28.6835 16.7314 28.2681 16.8446 C 27.8527 16.9578 30.065 39.2226 30.065 39.2226 Z",
         "bounds": {
           "x": 19.6791,
           "y": 8.8924,
+          "width": 10.3859,
+          "height": 30.3302
+        },
+        "bitIndex": 11
+      },
+      {
+        "index": 12,
+        "id": "DIAGONAL_RIGHT_TOP",
+        "sourcePathIndex": 48,
+        "pathData": "M 37.657 36.4573 L 31.0911 39.8901 L 41.0676 17.4291 L 51.0328 9.6048 L 49.3255 19.2864 Z",
+        "bounds": {
+          "x": 31.0911,
+          "y": 9.6048,
+          "width": 19.9417,
+          "height": 30.2853
+        },
+        "bitIndex": 12
+      },
+      {
+        "index": 13,
+        "id": "DIAGONAL_RIGHT_BOTTOM",
+        "sourcePathIndex": 45,
+        "pathData": "M 30.983 41.1843 C 30.983 41.1843 35.5075 43.6053 35.5039 43.9009 C 35.5003 44.1966 41.3689 62.4839 41.3689 62.4839 L 39.8392 71.5141 C 39.8392 71.5141 32.3645 63.6751 32.7799 63.5619 C 33.1953 63.4487 30.983 41.1839 30.983 41.1839 Z",
+        "bounds": {
+          "x": 30.983,
+          "y": 41.1839,
           "width": 10.3859,
           "height": 30.3302
         },
