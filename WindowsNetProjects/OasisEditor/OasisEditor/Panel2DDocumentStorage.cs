@@ -316,6 +316,9 @@ internal static class Panel2DDocumentStorage
             AssetPath = normalized.AssetPath,
             SecondaryAssetPath = normalized.SecondaryAssetPath,
             DisplayNumber = normalized.DisplayNumber,
+            SegmentDisplayType = normalized.SegmentDisplayType,
+            ShowDecimalPoint = normalized.ShowDecimalPoint ?? false,
+            ShowCommaTail = normalized.ShowCommaTail ?? false,
             OnColorHex = normalized.OnColorHex,
             OffColorHex = normalized.OffColorHex,
             TextColorHex = normalized.TextColorHex,
@@ -360,6 +363,9 @@ internal static class Panel2DDocumentStorage
             AssetPath = element.AssetPath,
             SecondaryAssetPath = element.SecondaryAssetPath,
             DisplayNumber = element.DisplayNumber,
+            SegmentDisplayType = element.SegmentDisplayType,
+            ShowDecimalPoint = element.ShowDecimalPoint,
+            ShowCommaTail = element.ShowCommaTail,
             OnColorHex = element.OnColorHex,
             OffColorHex = element.OffColorHex,
             TextColorHex = element.TextColorHex,
@@ -424,6 +430,9 @@ internal static class Panel2DDocumentStorage
         var normalizedAssetPath = NormalizeOptionalString(normalizedNative?.AssetPath ?? element.AssetPath);
         var normalizedSecondaryAssetPath = NormalizeOptionalString(normalizedNative?.SecondaryAssetPath ?? element.SecondaryAssetPath);
         var normalizedDisplayNumber = normalizedNative?.Number ?? element.DisplayNumber;
+        var normalizedSegmentDisplayType = NormalizeOptionalString(normalizedNative?.SegmentDisplayType ?? element.SegmentDisplayType);
+        var normalizedShowDecimalPoint = normalizedNative?.ShowDecimalPoint ?? element.ShowDecimalPoint ?? false;
+        var normalizedShowCommaTail = normalizedNative?.ShowCommaTail ?? element.ShowCommaTail ?? false;
         var normalizedOnColorHex = NormalizeOptionalString(normalizedNative?.OnColorHex ?? normalizedNative?.DisplayColorHex ?? element.OnColorHex);
         var normalizedOffColorHex = NormalizeOptionalString(normalizedNative?.OffColorHex ?? element.OffColorHex);
         var normalizedTextColorHex = NormalizeOptionalString(normalizedNative?.TextColorHex ?? element.TextColorHex);
@@ -464,6 +473,9 @@ internal static class Panel2DDocumentStorage
                 AssetPath = normalizedAssetPath,
                 SecondaryAssetPath = normalizedSecondaryAssetPath,
                 Number = normalizedDisplayNumber,
+                SegmentDisplayType = normalizedSegmentDisplayType,
+                ShowDecimalPoint = normalizedShowDecimalPoint,
+                ShowCommaTail = normalizedShowCommaTail,
                 Text = normalizedDisplayText,
                 TextBoxFontName = normalizedTextBoxFontName,
                 TextBoxFontStyle = normalizedTextBoxFontStyle,
@@ -486,6 +498,9 @@ internal static class Panel2DDocumentStorage
             AssetPath = normalizedAssetPath,
             SecondaryAssetPath = normalizedSecondaryAssetPath,
             DisplayNumber = normalizedDisplayNumber,
+            SegmentDisplayType = normalizedSegmentDisplayType,
+            ShowDecimalPoint = normalizedShowDecimalPoint,
+            ShowCommaTail = normalizedShowCommaTail,
             OnColorHex = normalizedOnColorHex,
             OffColorHex = normalizedOffColorHex,
             TextColorHex = normalizedTextColorHex,
@@ -720,6 +735,9 @@ internal sealed record PanelElementFile : IPanelSelectableObject
     public string? AssetPath { get; init; }
     public string? SecondaryAssetPath { get; init; }
     public int? DisplayNumber { get; init; }
+    public string? SegmentDisplayType { get; init; }
+    public bool? ShowDecimalPoint { get; init; }
+    public bool? ShowCommaTail { get; init; }
     public string? OnColorHex { get; init; }
     public string? OffColorHex { get; init; }
     public string? TextColorHex { get; init; }
@@ -744,6 +762,9 @@ internal sealed record PanelElementNativeFile
     public string? AssetPath { get; init; }
     public string? SecondaryAssetPath { get; init; }
     public int? Number { get; init; }
+    public string? SegmentDisplayType { get; init; }
+    public bool? ShowDecimalPoint { get; init; }
+    public bool? ShowCommaTail { get; init; }
     public string? Text { get; init; }
     public string? TextBoxFontName { get; init; }
     public string? TextBoxFontStyle { get; init; }

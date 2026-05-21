@@ -1,5 +1,3 @@
-using System.IO;
-using System.Text.Json;
 using SkiaSharp;
 
 namespace OasisEditor.Rendering;
@@ -7,7 +5,7 @@ namespace OasisEditor.Rendering;
 internal sealed class AlphaElementRenderer : IPanelElementRenderer
 {
     private const int MaxVisualCacheEntries = 4096;
-    private static readonly Lazy<AlphaSkiaDefinition?> Definition = new(LoadDefinition);
+    private static readonly Dictionary<string, Lazy<AlphaSkiaDefinition?>> DefinitionsByType = new(StringComparer.OrdinalIgnoreCase);
     private static readonly Dictionary<AlphaVisualCacheKey, SKImage> VisualCache = new();
     private static readonly object VisualCacheGate = new();
     [ThreadStatic]
@@ -32,7 +30,8 @@ internal sealed class AlphaElementRenderer : IPanelElementRenderer
             return;
         }
 
-        var definition = Definition.Value;
+        var displayType = string.IsNullOrWhiteSpace(element.SegmentDisplayType) ? "led16seg" : element.SegmentDisplayType!;
+        var definition = GetDefinition(displayType);
         if (definition is null)
         {
             return;
@@ -74,7 +73,7 @@ internal sealed class AlphaElementRenderer : IPanelElementRenderer
             var mask = cellIndex < cellMasks.Length ? cellMasks[cellIndex] : 0;
             var litAmount = cellIndex < cellBrightness.Length ? Math.Clamp(cellBrightness[cellIndex], 0d, 1d) : 1d;
             var brightnessBucket = (int)Math.Round(litAmount * 4d);
-            var key = new AlphaVisualCacheKey(cellPixelWidth, cellPixelHeight, mask, brightnessBucket, onColor, offColor);
+            var key = new AlphaVisualCacheKey(displayType, cellPixelWidth, cellPixelHeight, mask, brightnessBucket, onColor, offColor, element.ShowDecimalPoint, element.ShowCommaTail);
             var visual = GetOrCreateVisual(key, definition);
             var cellRect = SKRect.Create(originX + (cellIndex * scaledPitch), originY, scaledCellWidth, scaledCellHeight);
             context.Canvas.DrawImage(visual, cellRect);
@@ -123,50 +122,67 @@ internal sealed class AlphaElementRenderer : IPanelElementRenderer
             paint.Color = lit ? Lerp(key.OffColor, key.OnColor, litAmount) : key.OffColor;
             canvas.DrawPath(segment.Path, paint);
         }
-        if (definition.DecimalPoint is not null)
+        if (definition.DecimalPoint is not null && key.ShowDecimalPoint)
         {
-            paint.Color = key.OffColor;
+            var lit = (key.Mask & (1 << definition.DecimalPointBitIndex)) != 0;
+            paint.Color = lit ? Lerp(key.OffColor, key.OnColor, litAmount) : key.OffColor;
             canvas.DrawPath(definition.DecimalPoint, paint);
+        }
+
+        if (definition.CommaTail is not null && key.ShowCommaTail)
+        {
+            var lit = (key.Mask & (1 << definition.CommaTailBitIndex)) != 0;
+            paint.Color = lit ? Lerp(key.OffColor, key.OnColor, litAmount) : key.OffColor;
+            canvas.DrawPath(definition.CommaTail, paint);
         }
         canvas.Restore();
         return surface.Snapshot();
     }
 
-    private static AlphaSkiaDefinition? LoadDefinition()
+    private static AlphaSkiaDefinition? GetDefinition(string displayType)
     {
-        var path = Path.Combine(AppContext.BaseDirectory, "Assets", "SegmentDisplays", "oasis_16_segment_display_definition.json");
-        if (!File.Exists(path))
+        lock (VisualCacheGate)
+        {
+            if (!DefinitionsByType.TryGetValue(displayType, out var lazy))
+            {
+                lazy = new Lazy<AlphaSkiaDefinition?>(() => LoadDefinition(displayType));
+                DefinitionsByType[displayType] = lazy;
+            }
+
+            return lazy.Value;
+        }
+    }
+
+    private static AlphaSkiaDefinition? LoadDefinition(string displayType)
+    {
+        if (!SegmentDisplayDefinitionLoader.TryGetDefinitionByType(displayType, out var definition)
+            || definition.Cell is null || definition.Cell.Size is null || definition.Cell.Segments is null)
         {
             return null;
         }
 
-        var json = File.ReadAllText(path);
-        var root = JsonSerializer.Deserialize<AlphaDefinitionRoot>(json, new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true
-        });
-        var cell = root?.Cell;
-        if (cell?.Size is null || cell.Segments is null || cell.Segments.Count != 16)
-        {
-            return null;
-        }
-
-        var paths = new List<AlphaSkiaPath>(cell.Segments.Count);
-        foreach (var segment in cell.Segments)
+        var paths = new List<AlphaSkiaPath>(definition.Cell.Segments.Count);
+        foreach (var segment in definition.Cell.Segments)
         {
             if (string.IsNullOrWhiteSpace(segment.PathData))
             {
                 return null;
             }
 
-            paths.Add(new AlphaSkiaPath(segment.Index, SKPath.ParseSvgPathData(segment.PathData)));
+            paths.Add(new AlphaSkiaPath(segment.BitIndex ?? segment.Index, SKPath.ParseSvgPathData(segment.PathData)));
         }
 
-        var decimalPath = string.IsNullOrWhiteSpace(cell.DecimalPoint?.PathData)
+        var decimalPoint = string.IsNullOrWhiteSpace(definition.Cell.DecimalPoint?.PathData)
             ? null
-            : SKPath.ParseSvgPathData(cell.DecimalPoint.PathData);
+            : SKPath.ParseSvgPathData(definition.Cell.DecimalPoint.PathData);
+        var decimalPointBitIndex = definition.Cell.DecimalPoint?.BitIndex ?? 16;
 
-        return new AlphaSkiaDefinition((float)cell.Size.Width, (float)cell.Size.Height, (float)cell.RecommendedPitch, paths, decimalPath);
+        var commaTail = string.IsNullOrWhiteSpace(definition.Cell.CommaTail?.PathData)
+            ? null
+            : SKPath.ParseSvgPathData(definition.Cell.CommaTail.PathData);
+        var commaTailBitIndex = definition.Cell.CommaTail?.BitIndex ?? 17;
+
+        return new AlphaSkiaDefinition((float)definition.Cell.Size.Width, (float)definition.Cell.Size.Height, (float)definition.Cell.RecommendedPitch, paths, decimalPoint, decimalPointBitIndex, commaTail, commaTailBitIndex);
     }
 
     private static SKColor Lerp(SKColor from, SKColor to, double t)
@@ -176,37 +192,7 @@ internal sealed class AlphaElementRenderer : IPanelElementRenderer
         return new SKColor(Blend(from.Red, to.Red), Blend(from.Green, to.Green), Blend(from.Blue, to.Blue), 255);
     }
 
-    private sealed record AlphaSkiaDefinition(float Width, float Height, float RecommendedPitch, IReadOnlyList<AlphaSkiaPath> Segments, SKPath? DecimalPoint);
-    private readonly record struct AlphaVisualCacheKey(int Width, int Height, int Mask, int BrightnessBucket, SKColor OnColor, SKColor OffColor);
+    private sealed record AlphaSkiaDefinition(float Width, float Height, float RecommendedPitch, IReadOnlyList<AlphaSkiaPath> Segments, SKPath? DecimalPoint, int DecimalPointBitIndex, SKPath? CommaTail, int CommaTailBitIndex);
+    private readonly record struct AlphaVisualCacheKey(string DisplayType, int Width, int Height, int Mask, int BrightnessBucket, SKColor OnColor, SKColor OffColor, bool ShowDecimalPoint, bool ShowCommaTail);
     private sealed record AlphaSkiaPath(int Index, SKPath Path);
-
-    private sealed class AlphaDefinitionRoot
-    {
-        public AlphaCell? Cell { get; set; }
-    }
-
-    private sealed class AlphaCell
-    {
-        public AlphaSize? Size { get; set; }
-        public double RecommendedPitch { get; set; }
-        public List<AlphaPath>? Segments { get; set; }
-        public AlphaDecimalPoint? DecimalPoint { get; set; }
-    }
-
-    private sealed class AlphaSize
-    {
-        public double Width { get; set; }
-        public double Height { get; set; }
-    }
-
-    private sealed class AlphaPath
-    {
-        public int Index { get; set; }
-        public string? PathData { get; set; }
-    }
-
-    private sealed class AlphaDecimalPoint
-    {
-        public string? PathData { get; set; }
-    }
 }

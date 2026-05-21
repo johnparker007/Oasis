@@ -122,18 +122,20 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
 
     private static int RemapMameMaskToWpfSegmentOrder(int rawMask)
     {
-        var normalizedMask = rawMask & 0xFFFF;
+        var normalizedMask = rawMask & 0x3FFFF;
+        var punctuationMask = normalizedMask & ~0xFFFF;
+        var mainSegmentsMask = normalizedMask & 0xFFFF;
 
-        if ((normalizedMask & 0xC000) == 0)
+        if ((mainSegmentsMask & 0xC000) == 0)
         {
-            return ExpandLed14SegIntoSixteenSegmentMask(normalizedMask);
+            return ExpandLed14SegIntoSixteenSegmentMask(mainSegmentsMask) | punctuationMask;
         }
 
         var remappedMask = 0;
 
         for (var bit = 0; bit < Led16SegBitToWpfSegmentIndexMap.Length; bit++)
         {
-            if ((normalizedMask & (1 << bit)) == 0)
+            if ((mainSegmentsMask & (1 << bit)) == 0)
             {
                 continue;
             }
@@ -141,7 +143,7 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
             remappedMask |= 1 << Led16SegBitToWpfSegmentIndexMap[bit];
         }
 
-        return remappedMask;
+        return remappedMask | punctuationMask;
     }
 
     private static int ExpandLed14SegIntoSixteenSegmentMask(int led14Mask)

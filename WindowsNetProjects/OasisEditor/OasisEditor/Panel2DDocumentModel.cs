@@ -19,6 +19,9 @@ internal sealed class PanelElementModel
     public string? AssetPath { get; init; }
     public string? SecondaryAssetPath { get; init; }
     public int? DisplayNumber { get; init; }
+    public string? SegmentDisplayType { get; init; }
+    public bool ShowDecimalPoint { get; init; }
+    public bool ShowCommaTail { get; init; }
     public string? OnColorHex { get; init; }
     public string? OffColorHex { get; init; }
     public string? TextColorHex { get; init; }

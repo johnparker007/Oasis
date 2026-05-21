@@ -11,39 +11,56 @@ internal static class SegmentDisplayDefinitionLoader
         PropertyNameCaseInsensitive = true
     };
 
-    private static readonly Lazy<SegmentDisplayDefinition?> LazySixteenSegmentDefinition =
-        new(() => TryLoadDefinition("Assets/SegmentDisplays/oasis_16_segment_display_definition.json", 16));
-
-    private static readonly Lazy<SegmentDisplayDefinition?> LazySevenSegmentDefinition =
-        new(() => TryLoadDefinition("Assets/SegmentDisplays/oasis_7_segment_display_definition.json", 7));
-
-    public static bool TryGetSixteenSegmentDefinition(out SegmentDisplayDefinition definition)
+    private static readonly IReadOnlyDictionary<string, SegmentDisplayAssetSpec> AssetSpecs = new Dictionary<string, SegmentDisplayAssetSpec>(StringComparer.OrdinalIgnoreCase)
     {
-        definition = LazySixteenSegmentDefinition.Value!;
-        return definition is not null;
-    }
+        ["led14seg"] = new("Assets/SegmentDisplays/oasis_14_segment_display_definition.json", 14, null, null),
+        ["led14segsc"] = new("Assets/SegmentDisplays/oasis_14_segment_sc_display_definition.json", 14, 14, 15),
+        ["led16seg"] = new("Assets/SegmentDisplays/oasis_16_segment_display_definition.json", 16, null, null),
+        ["led16segsc"] = new("Assets/SegmentDisplays/oasis_16_segment_sc_display_definition.json", 16, 16, 17),
+        ["7seg"] = new("Assets/SegmentDisplays/oasis_7_segment_display_definition.json", 7, null, null)
+    };
 
-    public static bool TryGetSevenSegmentDefinition(out SegmentDisplayDefinition definition)
-    {
-        definition = LazySevenSegmentDefinition.Value!;
-        return definition is not null;
-    }
+    private static readonly Lazy<IReadOnlyDictionary<string, SegmentDisplayDefinition>> LazyDefinitions = new(LoadDefinitions);
 
-    private static SegmentDisplayDefinition? TryLoadDefinition(string relativePath, int expectedSegmentCount)
+    public static bool TryGetSixteenSegmentDefinition(out SegmentDisplayDefinition definition) => TryGetDefinitionByType("led16seg", out definition);
+    public static bool TryGetSevenSegmentDefinition(out SegmentDisplayDefinition definition) => TryGetDefinitionByType("7seg", out definition);
+
+    public static bool TryGetDefinitionByType(string displayType, out SegmentDisplayDefinition definition)
     {
-        var definitionPath = Path.Combine(AppContext.BaseDirectory, relativePath);
-        if (!File.Exists(definitionPath))
+        if (LazyDefinitions.Value.TryGetValue(displayType, out definition!))
         {
-            return null;
+            return true;
         }
 
-        var json = File.ReadAllText(definitionPath);
-        var definition = JsonSerializer.Deserialize<SegmentDisplayDefinition>(json, JsonOptions);
+        definition = null!;
+        return false;
+    }
 
+    private static IReadOnlyDictionary<string, SegmentDisplayDefinition> LoadDefinitions()
+    {
+        var definitions = new Dictionary<string, SegmentDisplayDefinition>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (key, spec) in AssetSpecs)
+        {
+            var definition = TryLoadDefinition(spec);
+            if (definition is not null)
+            {
+                definitions[key] = definition;
+            }
+        }
+
+        return definitions;
+    }
+
+    private static SegmentDisplayDefinition? TryLoadDefinition(SegmentDisplayAssetSpec spec)
+    {
+        var definitionPath = Path.Combine(AppContext.BaseDirectory, spec.RelativePath);
+        if (!File.Exists(definitionPath)) return null;
+
+        var definition = JsonSerializer.Deserialize<SegmentDisplayDefinition>(File.ReadAllText(definitionPath), JsonOptions);
         try
         {
-            Validate(definition, expectedSegmentCount);
-            return definition!;
+            Validate(definition, spec);
+            return definition;
         }
         catch
         {
@@ -51,34 +68,47 @@ internal static class SegmentDisplayDefinitionLoader
         }
     }
 
-    private static void Validate(SegmentDisplayDefinition? definition, int expectedSegmentCount)
+    private static void Validate(SegmentDisplayDefinition? definition, SegmentDisplayAssetSpec spec)
     {
-        if (definition?.Cell?.Size is null)
-        {
-            throw new InvalidOperationException("Segment definition is missing cell.size.");
-        }
-
+        if (definition?.Cell?.Size is null) throw new InvalidOperationException("Segment definition is missing cell.size.");
         var segments = definition.Cell.Segments;
-        if (segments is null || segments.Count != expectedSegmentCount)
+        if (segments is null || segments.Count != spec.ExpectedMainSegmentCount)
         {
-            throw new InvalidOperationException($"Segment definition must contain exactly {expectedSegmentCount} segments.");
+            throw new InvalidOperationException($"Segment definition must contain exactly {spec.ExpectedMainSegmentCount} segments.");
         }
 
         foreach (var segment in segments)
         {
-            if (string.IsNullOrWhiteSpace(segment.PathData))
-            {
-                throw new InvalidOperationException($"Segment {segment.Index} is missing pathData.");
-            }
-
+            if (string.IsNullOrWhiteSpace(segment.PathData)) throw new InvalidOperationException($"Segment {segment.Index} is missing pathData.");
             segment.Geometry = Geometry.Parse(segment.PathData);
             segment.Geometry.Freeze();
         }
 
-        if (!string.IsNullOrWhiteSpace(definition.Cell.DecimalPoint?.PathData))
+        ParsePunctuation(definition.Cell.DecimalPoint, spec.RequiredDecimalPointBitIndex, "decimalPoint");
+        ParsePunctuation(definition.Cell.CommaTail, spec.RequiredCommaTailBitIndex, "commaTail");
+    }
+
+    private static void ParsePunctuation(SegmentDisplayPunctuationDefinition? punctuation, int? requiredBitIndex, string fieldName)
+    {
+        if (requiredBitIndex.HasValue)
         {
-            definition.Cell.DecimalPoint.Geometry = Geometry.Parse(definition.Cell.DecimalPoint.PathData);
-            definition.Cell.DecimalPoint.Geometry.Freeze();
+            if (punctuation is null || string.IsNullOrWhiteSpace(punctuation.PathData))
+            {
+                throw new InvalidOperationException($"Segment definition must contain {fieldName} for this display type.");
+            }
+
+            if (punctuation.BitIndex.GetValueOrDefault(requiredBitIndex.Value) != requiredBitIndex.Value)
+            {
+                throw new InvalidOperationException($"Segment definition {fieldName}.bitIndex must be {requiredBitIndex.Value}.");
+            }
+        }
+
+        if (punctuation is not null && !string.IsNullOrWhiteSpace(punctuation.PathData))
+        {
+            punctuation.Geometry = Geometry.Parse(punctuation.PathData);
+            punctuation.Geometry.Freeze();
         }
     }
+
+    private sealed record SegmentDisplayAssetSpec(string RelativePath, int ExpectedMainSegmentCount, int? RequiredDecimalPointBitIndex, int? RequiredCommaTailBitIndex);
 }

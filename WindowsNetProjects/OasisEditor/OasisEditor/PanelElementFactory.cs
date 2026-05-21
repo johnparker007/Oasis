@@ -320,7 +320,8 @@ internal static class PanelElementFactory
                 DisplayText = string.IsNullOrWhiteSpace(element.DisplayText) ? null : element.DisplayText,
                 LitBrush = TryCreateBrush(element.OnColorHex, Brushes.Red),
                 UnlitBrush = TryCreateBrush(element.OffColorHex, new SolidColorBrush(Color.FromArgb(32, 255, 0, 0))),
-                ShowDecimalPoint = true
+                ShowDecimalPoint = element.ShowDecimalPoint ?? true,
+                ShowCommaTail = element.ShowCommaTail ?? false
             }
         };
     }
@@ -339,7 +340,7 @@ internal static class PanelElementFactory
             BorderBrush = Brushes.SlateGray,
             Background = TryCreateBrush("#111827", Brushes.Black),
             Padding = new Thickness(4),
-            Child = new AlphaSixteenSegmentDisplayVisual
+            Child = new AlphaSixteenSegmentDisplayVisual(element.SegmentDisplayType)
             {
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 VerticalAlignment = VerticalAlignment.Stretch,
@@ -347,7 +348,8 @@ internal static class PanelElementFactory
                 DisplayText = element.DisplayText,
                 LitBrush = TryCreateBrush(element.OnColorHex, Brushes.Cyan),
                 UnlitBrush = TryCreateBrush(element.OffColorHex, new SolidColorBrush(Color.FromArgb(32, 0, 255, 255))),
-                ShowDecimalPoint = true
+                ShowDecimalPoint = element.ShowDecimalPoint ?? true,
+                ShowCommaTail = element.ShowCommaTail ?? false
             }
         };
     }

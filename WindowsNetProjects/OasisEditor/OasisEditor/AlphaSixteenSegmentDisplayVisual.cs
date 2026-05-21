@@ -2,8 +2,8 @@ namespace OasisEditor;
 
 internal sealed class AlphaSixteenSegmentDisplayVisual : SegmentDisplayVisualBase
 {
-    public AlphaSixteenSegmentDisplayVisual()
-        : base(LoadDefinition())
+    public AlphaSixteenSegmentDisplayVisual(string? segmentDisplayType = null)
+        : base(LoadDefinition(segmentDisplayType))
     {
     }
 
@@ -17,8 +17,14 @@ internal sealed class AlphaSixteenSegmentDisplayVisual : SegmentDisplayVisualBas
         };
     }
 
-    private static SegmentDisplayDefinition? LoadDefinition()
+    private static SegmentDisplayDefinition? LoadDefinition(string? segmentDisplayType)
     {
+        if (!string.IsNullOrWhiteSpace(segmentDisplayType)
+            && SegmentDisplayDefinitionLoader.TryGetDefinitionByType(segmentDisplayType, out var mappedDefinition))
+        {
+            return mappedDefinition;
+        }
+
         SegmentDisplayDefinitionLoader.TryGetSixteenSegmentDefinition(out var definition);
         return definition;
     }

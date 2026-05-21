@@ -15,6 +15,9 @@ internal sealed class SegmentDisplayDefinition
     [JsonPropertyName("units")]
     public string? Units { get; set; }
 
+    [JsonPropertyName("mameComponentType")]
+    public string? MameComponentType { get; set; }
+
     [JsonPropertyName("cell")]
     public SegmentDisplayCellDefinition? Cell { get; set; }
 }
@@ -31,7 +34,10 @@ internal sealed class SegmentDisplayCellDefinition
     public List<SegmentDisplaySegmentDefinition>? Segments { get; set; }
 
     [JsonPropertyName("decimalPoint")]
-    public SegmentDisplayDecimalPointDefinition? DecimalPoint { get; set; }
+    public SegmentDisplayPunctuationDefinition? DecimalPoint { get; set; }
+
+    [JsonPropertyName("commaTail")]
+    public SegmentDisplayPunctuationDefinition? CommaTail { get; set; }
 }
 
 internal sealed class SegmentDisplaySegmentDefinition
@@ -42,6 +48,9 @@ internal sealed class SegmentDisplaySegmentDefinition
     [JsonPropertyName("id")]
     public string? Id { get; set; }
 
+    [JsonPropertyName("bitIndex")]
+    public int? BitIndex { get; set; }
+
     [JsonPropertyName("pathData")]
     public string? PathData { get; set; }
 
@@ -49,8 +58,14 @@ internal sealed class SegmentDisplaySegmentDefinition
     public Geometry? Geometry { get; set; }
 }
 
-internal sealed class SegmentDisplayDecimalPointDefinition
+internal sealed class SegmentDisplayPunctuationDefinition
 {
+    [JsonPropertyName("id")]
+    public string? Id { get; set; }
+
+    [JsonPropertyName("bitIndex")]
+    public int? BitIndex { get; set; }
+
     [JsonPropertyName("pathData")]
     public string? PathData { get; set; }
 
