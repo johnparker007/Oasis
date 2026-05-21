@@ -61,7 +61,8 @@ internal abstract class SegmentDisplayVisualBase : FrameworkElement
                     continue;
                 }
 
-                var lit = (segmentMask & (1 << segment.Index)) != 0;
+                var bitIndex = segment.BitIndex ?? segment.Index;
+                var lit = (segmentMask & (1 << bitIndex)) != 0;
                 drawingContext.PushTransform(cellTransform);
                 var brush = lit ? ResolveLitBrush(brightness) : UnlitBrush;
                 drawingContext.DrawGeometry(brush, SegmentPen, segment.Geometry);
@@ -70,8 +71,19 @@ internal abstract class SegmentDisplayVisualBase : FrameworkElement
 
             if (ShowDecimalPoint && _definition.Cell.DecimalPoint?.Geometry is not null)
             {
+                var bitIndex = _definition.Cell.DecimalPoint.BitIndex ?? 16;
+                var lit = (segmentMask & (1 << bitIndex)) != 0;
                 drawingContext.PushTransform(cellTransform);
-                drawingContext.DrawGeometry(UnlitBrush, SegmentPen, _definition.Cell.DecimalPoint.Geometry);
+                drawingContext.DrawGeometry(lit ? ResolveLitBrush(brightness) : UnlitBrush, SegmentPen, _definition.Cell.DecimalPoint.Geometry);
+                drawingContext.Pop();
+            }
+
+            if (ShowDecimalPoint && _definition.Cell.CommaTail?.Geometry is not null)
+            {
+                var bitIndex = _definition.Cell.CommaTail.BitIndex ?? 17;
+                var lit = (segmentMask & (1 << bitIndex)) != 0;
+                drawingContext.PushTransform(cellTransform);
+                drawingContext.DrawGeometry(lit ? ResolveLitBrush(brightness) : UnlitBrush, SegmentPen, _definition.Cell.CommaTail.Geometry);
                 drawingContext.Pop();
             }
         }
