@@ -321,8 +321,7 @@ internal static class PanelElementFactory
                 LitBrush = TryCreateBrush(element.OnColorHex, Brushes.Red),
                 UnlitBrush = TryCreateBrush(element.OffColorHex, new SolidColorBrush(Color.FromArgb(32, 255, 0, 0))),
                 ShowDecimalPoint = element.ShowDecimalPoint ?? true,
-                ShowCommaTail = element.ShowCommaTail ?? false,
-                IsReversed = element.IsReversed == true
+                ShowCommaTail = element.ShowCommaTail ?? false
             }
         };
     }
@@ -350,8 +349,7 @@ internal static class PanelElementFactory
                 LitBrush = TryCreateBrush(element.OnColorHex, Brushes.Cyan),
                 UnlitBrush = TryCreateBrush(element.OffColorHex, new SolidColorBrush(Color.FromArgb(32, 0, 255, 255))),
                 ShowDecimalPoint = element.ShowDecimalPoint ?? true,
-                ShowCommaTail = element.ShowCommaTail ?? false,
-                IsReversed = element.IsReversed == true
+                ShowCommaTail = element.ShowCommaTail ?? false
             }
         };
     }

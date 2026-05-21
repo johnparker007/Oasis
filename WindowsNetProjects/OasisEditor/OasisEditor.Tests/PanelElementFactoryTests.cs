@@ -272,7 +272,6 @@ public sealed class PanelElementFactoryTests
             var display = Assert.IsType<SevenSegmentDisplayVisual>(border.Child);
             Assert.Equal("2", display.DisplayText);
             Assert.True(display.ShowDecimalPoint);
-            Assert.True(display.IsReversed);
         });
     }
 
@@ -298,7 +297,6 @@ public sealed class PanelElementFactoryTests
             var display = Assert.IsType<AlphaSixteenSegmentDisplayVisual>(border.Child);
             Assert.Equal(16, display.CellCount);
             Assert.True(display.ShowDecimalPoint);
-            Assert.True(display.IsReversed);
         });
     }
 
