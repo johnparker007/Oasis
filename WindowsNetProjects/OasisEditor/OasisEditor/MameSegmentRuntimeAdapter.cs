@@ -91,7 +91,7 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
                     {
                         cellMasks[i] = element.Kind == PanelElementKind.SevenSegment
                             ? mask
-                            : RemapMameMaskToWpfSegmentOrder(mask);
+                            : RemapMameMaskToDisplayType(mask, element.SegmentDisplayType);
                     }
 
                     if (element.Kind == PanelElementKind.Alpha && _latestVfdBrightnessByDisplay.TryGetValue(baseIndex, out var brightness))
@@ -120,22 +120,21 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
         }
     }
 
-    private static int RemapMameMaskToWpfSegmentOrder(int rawMask)
+    private static int RemapMameMaskToDisplayType(int rawMask, string? segmentDisplayType)
     {
         var normalizedMask = rawMask & 0x3FFFF;
-        var punctuationMask = normalizedMask & ~0xFFFF;
-        var mainSegmentsMask = normalizedMask & 0xFFFF;
-
-        if ((mainSegmentsMask & 0xC000) == 0)
+        if (string.Equals(segmentDisplayType, "led14seg", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(segmentDisplayType, "led14segsc", StringComparison.OrdinalIgnoreCase))
         {
-            return ExpandLed14SegIntoSixteenSegmentMask(mainSegmentsMask) | punctuationMask;
+            // 14-segment displays are rendered from dedicated 14-segment vector definitions;
+            // keep native MAME bit ordering so top/bottom bars remain single full-width segments.
+            return normalizedMask;
         }
 
         var remappedMask = 0;
-
         for (var bit = 0; bit < Led16SegBitToWpfSegmentIndexMap.Length; bit++)
         {
-            if ((mainSegmentsMask & (1 << bit)) == 0)
+            if ((normalizedMask & (1 << bit)) == 0)
             {
                 continue;
             }
@@ -143,40 +142,6 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
             remappedMask |= 1 << Led16SegBitToWpfSegmentIndexMap[bit];
         }
 
-        return remappedMask | punctuationMask;
-    }
-
-    private static int ExpandLed14SegIntoSixteenSegmentMask(int led14Mask)
-    {
-        var expandedMask = 0;
-
-        // led14seg/led14segsc ordering from legacy Unity renderer:
-        // 0 -> both top split segments
-        // 3 -> both bottom split segments
-        if ((led14Mask & (1 << 0)) != 0)
-        {
-            expandedMask |= (1 << 0) | (1 << 1);
-        }
-
-        if ((led14Mask & (1 << 1)) != 0) expandedMask |= 1 << 2;
-        if ((led14Mask & (1 << 2)) != 0) expandedMask |= 1 << 3;
-
-        if ((led14Mask & (1 << 3)) != 0)
-        {
-            expandedMask |= (1 << 4) | (1 << 5);
-        }
-
-        if ((led14Mask & (1 << 4)) != 0) expandedMask |= 1 << 6;
-        if ((led14Mask & (1 << 5)) != 0) expandedMask |= 1 << 7;
-        if ((led14Mask & (1 << 6)) != 0) expandedMask |= 1 << 8;
-        if ((led14Mask & (1 << 7)) != 0) expandedMask |= 1 << 9;
-        if ((led14Mask & (1 << 8)) != 0) expandedMask |= 1 << 10;
-        if ((led14Mask & (1 << 9)) != 0) expandedMask |= 1 << 11;
-        if ((led14Mask & (1 << 10)) != 0) expandedMask |= 1 << 12;
-        if ((led14Mask & (1 << 11)) != 0) expandedMask |= 1 << 13;
-        if ((led14Mask & (1 << 12)) != 0) expandedMask |= 1 << 14;
-        if ((led14Mask & (1 << 13)) != 0) expandedMask |= 1 << 15;
-
-        return expandedMask;
+        return remappedMask | (normalizedMask & ~0xFFFF);
     }
 }
