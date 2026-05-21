@@ -131,6 +131,18 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
             return normalizedMask;
         }
 
+        if (!string.Equals(segmentDisplayType, "led16seg", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(segmentDisplayType, "led16segsc", StringComparison.OrdinalIgnoreCase))
+        {
+            // Legacy fallback for documents without an explicit display type.
+            var punctuationMask = normalizedMask & ~0xFFFF;
+            var mainSegmentsMask = normalizedMask & 0xFFFF;
+            if ((mainSegmentsMask & 0xC000) == 0)
+            {
+                return ExpandLed14SegIntoSixteenSegmentMask(mainSegmentsMask) | punctuationMask;
+            }
+        }
+
         var remappedMask = 0;
         for (var bit = 0; bit < Led16SegBitToWpfSegmentIndexMap.Length; bit++)
         {
@@ -143,5 +155,39 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
         }
 
         return remappedMask | (normalizedMask & ~0xFFFF);
+    }
+
+    private static int ExpandLed14SegIntoSixteenSegmentMask(int led14Mask)
+    {
+        var expandedMask = 0;
+
+        // led14seg/led14segsc ordering from legacy Unity renderer:
+        // 0 -> both top split segments
+        // 3 -> both bottom split segments
+        if ((led14Mask & (1 << 0)) != 0)
+        {
+            expandedMask |= (1 << 0) | (1 << 1);
+        }
+
+        if ((led14Mask & (1 << 1)) != 0) expandedMask |= 1 << 2;
+        if ((led14Mask & (1 << 2)) != 0) expandedMask |= 1 << 3;
+
+        if ((led14Mask & (1 << 3)) != 0)
+        {
+            expandedMask |= (1 << 4) | (1 << 5);
+        }
+
+        if ((led14Mask & (1 << 4)) != 0) expandedMask |= 1 << 6;
+        if ((led14Mask & (1 << 5)) != 0) expandedMask |= 1 << 7;
+        if ((led14Mask & (1 << 6)) != 0) expandedMask |= 1 << 8;
+        if ((led14Mask & (1 << 7)) != 0) expandedMask |= 1 << 9;
+        if ((led14Mask & (1 << 8)) != 0) expandedMask |= 1 << 10;
+        if ((led14Mask & (1 << 9)) != 0) expandedMask |= 1 << 11;
+        if ((led14Mask & (1 << 10)) != 0) expandedMask |= 1 << 12;
+        if ((led14Mask & (1 << 11)) != 0) expandedMask |= 1 << 13;
+        if ((led14Mask & (1 << 12)) != 0) expandedMask |= 1 << 14;
+        if ((led14Mask & (1 << 13)) != 0) expandedMask |= 1 << 15;
+
+        return expandedMask;
     }
 }
