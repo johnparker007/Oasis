@@ -127,10 +127,61 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
 
         return displayType.ToLowerInvariant() switch
         {
-            "led14seg" => rawMask & 0x3FFF,
-            "led14segsc" => rawMask & 0xFFFF,
-            "led16segsc" => rawMask & 0x3FFFF,
-            _ => rawMask & 0xFFFF
+            // MAME stdout VFD values arrive in the legacy/source ordering used by the ROM/platform,
+            // not necessarily in the same ordering as the selected Oasis geometry asset.
+            // Convert the source mask into the target display geometry's bit order here.
+            "led14seg" => CollapseSixteenSegmentSourceToFourteenSegmentTarget(rawMask) & 0x3FFF,
+            "led14segsc" => CollapseSixteenSegmentSourceToFourteenSegmentTarget(rawMask) & 0xFFFF,
+            "led16segsc" => ExpandFourteenSegmentSourceToSixteenSegmentTarget(rawMask) & 0x3FFFF,
+            _ => ExpandFourteenSegmentSourceToSixteenSegmentTarget(rawMask) & 0xFFFF
         };
+    }
+
+    private static int ExpandFourteenSegmentSourceToSixteenSegmentTarget(int led14Mask)
+    {
+        var expandedMask = 0;
+
+        if ((led14Mask & (1 << 0)) != 0) expandedMask |= (1 << 0) | (1 << 1);
+        if ((led14Mask & (1 << 1)) != 0) expandedMask |= 1 << 2;
+        if ((led14Mask & (1 << 2)) != 0) expandedMask |= 1 << 3;
+        if ((led14Mask & (1 << 3)) != 0) expandedMask |= (1 << 4) | (1 << 5);
+        if ((led14Mask & (1 << 4)) != 0) expandedMask |= 1 << 6;
+        if ((led14Mask & (1 << 5)) != 0) expandedMask |= 1 << 7;
+        if ((led14Mask & (1 << 6)) != 0) expandedMask |= 1 << 8;
+        if ((led14Mask & (1 << 7)) != 0) expandedMask |= 1 << 9;
+        if ((led14Mask & (1 << 8)) != 0) expandedMask |= 1 << 10;
+        if ((led14Mask & (1 << 9)) != 0) expandedMask |= 1 << 11;
+        if ((led14Mask & (1 << 10)) != 0) expandedMask |= 1 << 12;
+        if ((led14Mask & (1 << 11)) != 0) expandedMask |= 1 << 13;
+        if ((led14Mask & (1 << 12)) != 0) expandedMask |= 1 << 14;
+        if ((led14Mask & (1 << 13)) != 0) expandedMask |= 1 << 15;
+        if ((led14Mask & (1 << 14)) != 0) expandedMask |= 1 << 16;
+        if ((led14Mask & (1 << 15)) != 0) expandedMask |= 1 << 17;
+
+        return expandedMask;
+    }
+
+    private static int CollapseSixteenSegmentSourceToFourteenSegmentTarget(int led16Mask)
+    {
+        var collapsedMask = 0;
+
+        if ((led16Mask & ((1 << 0) | (1 << 1))) != 0) collapsedMask |= 1 << 0;
+        if ((led16Mask & (1 << 2)) != 0) collapsedMask |= 1 << 1;
+        if ((led16Mask & (1 << 3)) != 0) collapsedMask |= 1 << 2;
+        if ((led16Mask & ((1 << 4) | (1 << 5))) != 0) collapsedMask |= 1 << 3;
+        if ((led16Mask & (1 << 6)) != 0) collapsedMask |= 1 << 4;
+        if ((led16Mask & (1 << 7)) != 0) collapsedMask |= 1 << 5;
+        if ((led16Mask & (1 << 8)) != 0) collapsedMask |= 1 << 6;
+        if ((led16Mask & (1 << 9)) != 0) collapsedMask |= 1 << 7;
+        if ((led16Mask & (1 << 10)) != 0) collapsedMask |= 1 << 8;
+        if ((led16Mask & (1 << 11)) != 0) collapsedMask |= 1 << 9;
+        if ((led16Mask & (1 << 12)) != 0) collapsedMask |= 1 << 10;
+        if ((led16Mask & (1 << 13)) != 0) collapsedMask |= 1 << 11;
+        if ((led16Mask & (1 << 14)) != 0) collapsedMask |= 1 << 12;
+        if ((led16Mask & (1 << 15)) != 0) collapsedMask |= 1 << 13;
+        if ((led16Mask & (1 << 16)) != 0) collapsedMask |= 1 << 14;
+        if ((led16Mask & (1 << 17)) != 0) collapsedMask |= 1 << 15;
+
+        return collapsedMask;
     }
 }
