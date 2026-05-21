@@ -468,7 +468,6 @@ public sealed class InspectorChoicePropertyViewModel : InspectorPropertyRowViewM
 {
     private string _value;
     private readonly Func<string, string?>? _commit;
-    private bool _isApplyingChange;
 
     public InspectorChoicePropertyViewModel(string displayName, string groupName, IReadOnlyList<string> choices, string value, bool isReadOnly = false, Func<string, string?>? commit = null)
         : base(displayName, groupName, isReadOnly)
@@ -485,7 +484,7 @@ public sealed class InspectorChoicePropertyViewModel : InspectorPropertyRowViewM
         get => _value;
         set
         {
-            if (IsReadOnly || _isApplyingChange || !SetProperty(ref _value, value))
+            if (IsReadOnly || !SetProperty(ref _value, value))
             {
                 return;
             }

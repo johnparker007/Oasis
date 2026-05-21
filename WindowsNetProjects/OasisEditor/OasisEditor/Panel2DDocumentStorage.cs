@@ -474,8 +474,6 @@ internal static class Panel2DDocumentStorage
                 SecondaryAssetPath = normalizedSecondaryAssetPath,
                 Number = normalizedDisplayNumber,
                 SegmentDisplayType = normalizedSegmentDisplayType,
-            ShowDecimalPoint = normalizedShowDecimalPoint,
-            ShowCommaTail = normalizedShowCommaTail,
                 ShowDecimalPoint = normalizedShowDecimalPoint,
                 ShowCommaTail = normalizedShowCommaTail,
                 Text = normalizedDisplayText,
