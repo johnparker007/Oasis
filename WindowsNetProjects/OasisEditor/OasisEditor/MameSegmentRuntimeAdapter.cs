@@ -2,7 +2,6 @@ namespace OasisEditor;
 
 public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
 {
-    private static readonly int[] Led16SegBitToWpfSegmentIndexMap = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
     private readonly object _pendingSync = new();
     private readonly Func<IEnumerable<DocumentTabViewModel>> _documentProvider;
     private readonly Action<Action> _uiDispatch;
@@ -91,7 +90,7 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
                     {
                         cellMasks[i] = element.Kind == PanelElementKind.SevenSegment
                             ? mask
-                            : RemapMameMaskToWpfSegmentOrder(mask);
+                            : NormalizeMameMaskForSelectedDisplayType(mask, element.SegmentDisplayType);
                     }
 
                     if (element.Kind == PanelElementKind.Alpha && _latestVfdBrightnessByDisplay.TryGetValue(baseIndex, out var brightness))
@@ -120,63 +119,18 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
         }
     }
 
-    private static int RemapMameMaskToWpfSegmentOrder(int rawMask)
+    private static int NormalizeMameMaskForSelectedDisplayType(int rawMask, string? segmentDisplayType)
     {
-        var normalizedMask = rawMask & 0x3FFFF;
-        var punctuationMask = normalizedMask & ~0xFFFF;
-        var mainSegmentsMask = normalizedMask & 0xFFFF;
+        var displayType = string.IsNullOrWhiteSpace(segmentDisplayType)
+            ? "led16seg"
+            : segmentDisplayType.Trim();
 
-        if ((mainSegmentsMask & 0xC000) == 0)
+        return displayType.ToLowerInvariant() switch
         {
-            return ExpandLed14SegIntoSixteenSegmentMask(mainSegmentsMask) | punctuationMask;
-        }
-
-        var remappedMask = 0;
-
-        for (var bit = 0; bit < Led16SegBitToWpfSegmentIndexMap.Length; bit++)
-        {
-            if ((mainSegmentsMask & (1 << bit)) == 0)
-            {
-                continue;
-            }
-
-            remappedMask |= 1 << Led16SegBitToWpfSegmentIndexMap[bit];
-        }
-
-        return remappedMask | punctuationMask;
-    }
-
-    private static int ExpandLed14SegIntoSixteenSegmentMask(int led14Mask)
-    {
-        var expandedMask = 0;
-
-        // led14seg/led14segsc ordering from legacy Unity renderer:
-        // 0 -> both top split segments
-        // 3 -> both bottom split segments
-        if ((led14Mask & (1 << 0)) != 0)
-        {
-            expandedMask |= (1 << 0) | (1 << 1);
-        }
-
-        if ((led14Mask & (1 << 1)) != 0) expandedMask |= 1 << 2;
-        if ((led14Mask & (1 << 2)) != 0) expandedMask |= 1 << 3;
-
-        if ((led14Mask & (1 << 3)) != 0)
-        {
-            expandedMask |= (1 << 4) | (1 << 5);
-        }
-
-        if ((led14Mask & (1 << 4)) != 0) expandedMask |= 1 << 6;
-        if ((led14Mask & (1 << 5)) != 0) expandedMask |= 1 << 7;
-        if ((led14Mask & (1 << 6)) != 0) expandedMask |= 1 << 8;
-        if ((led14Mask & (1 << 7)) != 0) expandedMask |= 1 << 9;
-        if ((led14Mask & (1 << 8)) != 0) expandedMask |= 1 << 10;
-        if ((led14Mask & (1 << 9)) != 0) expandedMask |= 1 << 11;
-        if ((led14Mask & (1 << 10)) != 0) expandedMask |= 1 << 12;
-        if ((led14Mask & (1 << 11)) != 0) expandedMask |= 1 << 13;
-        if ((led14Mask & (1 << 12)) != 0) expandedMask |= 1 << 14;
-        if ((led14Mask & (1 << 13)) != 0) expandedMask |= 1 << 15;
-
-        return expandedMask;
+            "led14seg" => rawMask & 0x3FFF,
+            "led14segsc" => rawMask & 0xFFFF,
+            "led16segsc" => rawMask & 0x3FFFF,
+            _ => rawMask & 0xFFFF
+        };
     }
 }
