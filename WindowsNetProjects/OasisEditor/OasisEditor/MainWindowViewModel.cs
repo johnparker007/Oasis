@@ -419,7 +419,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public IReadOnlyList<ThemePreference> ThemePreferences { get; } = Enum.GetValues<ThemePreference>();
     public IReadOnlyList<string> PreferencesCategories { get; } = ["Appearance", "MAME"];
     public IReadOnlyList<FruitMachinePlatformType> FruitMachinePlatformTypes { get; } = Enum.GetValues<FruitMachinePlatformType>();
-    public IReadOnlyList<InputDefinitionModel> InputDefinitions => LoadedProject?.InputDefinitions ?? [];
+    public IReadOnlyList<InputDefinitionModel> InputDefinitions => ResolveActiveInputDefinitions();
     public IReadOnlyList<InputMapDiagnostic> InputMapDiagnostics
     {
         get => _inputMapDiagnostics;
@@ -705,7 +705,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                     _selectedDocument.PanelChanged += OnSelectedDocumentPanelChanged;
                 }
 
+                _ = ReleaseAllPlayViewInputsAsync("document switch", CancellationToken.None);
+                _playViewKeyboardInputRouter = null;
+                _playViewPointerInputRouter = null;
+
                 _activeDocumentContext.SetActiveDocument(value);
+                OnPropertyChanged(nameof(InputDefinitions));
                 NotifyInspectorChanged();
                 NotifyDocumentCommands();
                 RefreshHierarchy();
@@ -1291,7 +1296,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return null;
         }
 
-        _playViewKeyboardInputRouter ??= new PlayViewKeyboardInputRouter(_playViewInputRouter!, LoadedProject?.InputDefinitions ?? []);
+        _playViewKeyboardInputRouter ??= new PlayViewKeyboardInputRouter(_playViewInputRouter!, InputDefinitions);
         return _playViewKeyboardInputRouter;
     }
 
@@ -1302,7 +1307,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return null;
         }
 
-        _playViewPointerInputRouter ??= new PlayViewPointerInputRouter(_playViewInputRouter!, LoadedProject?.InputDefinitions ?? []);
+        _playViewPointerInputRouter ??= new PlayViewPointerInputRouter(_playViewInputRouter!, InputDefinitions);
         return _playViewPointerInputRouter;
     }
 
@@ -2652,6 +2657,38 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(InspectorSummary));
             OnPropertyChanged(nameof(InspectorPropertyRows));
         }
+
+        _playViewKeyboardInputRouter = null;
+        _playViewPointerInputRouter = null;
+        OnPropertyChanged(nameof(InputDefinitions));
+    }
+
+    private IReadOnlyList<InputDefinitionModel> ResolveActiveInputDefinitions()
+    {
+        var allDefinitions = LoadedProject?.InputDefinitions;
+        if (allDefinitions is null || allDefinitions.Count == 0)
+        {
+            return [];
+        }
+
+        var selectedDocument = SelectedDocument;
+        if (selectedDocument is null || selectedDocument.Document.DocumentType != EditorDocumentType.Panel2D)
+        {
+            return allDefinitions;
+        }
+
+        var visualIds = selectedDocument.GetPanelElements()
+            .Select(element => element.Id)
+            .Where(id => id != Guid.Empty)
+            .ToHashSet();
+        if (visualIds.Count == 0)
+        {
+            return [];
+        }
+
+        return allDefinitions
+            .Where(definition => definition.LinkedVisualElementId.HasValue && visualIds.Contains(definition.LinkedVisualElementId.Value))
+            .ToArray();
     }
 
     private DocumentTabViewModel? ApplyInspectorSummary(DocumentTabViewModel _, string summary)
