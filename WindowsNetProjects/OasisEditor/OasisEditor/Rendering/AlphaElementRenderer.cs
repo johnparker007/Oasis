@@ -38,6 +38,7 @@ internal sealed class AlphaElementRenderer : IPanelElementRenderer
         }
 
         var cellMasks = context.RuntimeState.GetSegmentCellMasks(element.ObjectId, 16);
+        var defaultMask = BuildDefaultMask(definition);
         var cellBrightness = context.RuntimeState.GetSegmentCellBrightness(element.ObjectId, 16);
 
         var onColor = SkiaColorParser.ParseOrDefault(element.OnColorHex, new SKColor(255, 64, 64));
@@ -71,7 +72,7 @@ internal sealed class AlphaElementRenderer : IPanelElementRenderer
         for (var cellIndex = 0; cellIndex < cellCount; cellIndex++)
         {
             var dataIndex = element.IsReversed == true ? (cellCount - 1 - cellIndex) : cellIndex;
-            var mask = dataIndex < cellMasks.Length ? cellMasks[dataIndex] : 0;
+            var mask = dataIndex < cellMasks.Length ? cellMasks[dataIndex] : defaultMask;
             var litAmount = dataIndex < cellBrightness.Length ? Math.Clamp(cellBrightness[dataIndex], 0d, 1d) : 1d;
             var brightnessBucket = (int)Math.Round(litAmount * 4d);
             var key = new AlphaVisualCacheKey(displayType, cellPixelWidth, cellPixelHeight, mask, brightnessBucket, onColor, offColor, element.ShowDecimalPoint, element.ShowCommaTail);
@@ -184,6 +185,20 @@ internal sealed class AlphaElementRenderer : IPanelElementRenderer
         var commaTailBitIndex = definition.Cell.CommaTail?.BitIndex ?? 17;
 
         return new AlphaSkiaDefinition((float)definition.Cell.Size.Width, (float)definition.Cell.Size.Height, (float)definition.Cell.RecommendedPitch, paths, decimalPoint, decimalPointBitIndex, commaTail, commaTailBitIndex);
+    }
+
+    private static int BuildDefaultMask(AlphaSkiaDefinition definition)
+    {
+        var mask = 0;
+        foreach (var segment in definition.Segments)
+        {
+            if (segment.Index is >= 0 and < 31)
+            {
+                mask |= 1 << segment.Index;
+            }
+        }
+
+        return mask;
     }
 
     private static SKColor Lerp(SKColor from, SKColor to, double t)

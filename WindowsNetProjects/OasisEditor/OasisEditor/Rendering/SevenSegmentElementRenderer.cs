@@ -40,7 +40,8 @@ internal sealed class SevenSegmentElementRenderer : IPanelElementRenderer
 
         var masks = context.RuntimeState.GetSegmentCellMasks(element.ObjectId, 1);
         var brightness = context.RuntimeState.GetSegmentCellBrightness(element.ObjectId, 1);
-        var segmentMask = masks.Length > 0 ? masks[0] : 0;
+        var defaultMask = BuildDefaultMask(definition.Segments);
+        var segmentMask = masks.Length > 0 ? masks[0] : defaultMask;
         var litAmount = brightness.Length > 0 ? Math.Clamp(brightness[0], 0d, 1d) : 1d;
 
         var onColor = SkiaColorParser.ParseOrDefault(element.OnColorHex, new SKColor(255, 64, 64));
@@ -146,6 +147,20 @@ internal sealed class SevenSegmentElementRenderer : IPanelElementRenderer
             : SKPath.ParseSvgPathData(cell.DecimalPoint.PathData);
 
         return new SevenSegmentSkiaDefinition((float)cell.Size.Width, (float)cell.Size.Height, paths, decimalPath);
+    }
+
+    private static int BuildDefaultMask(IReadOnlyList<SevenSegmentSkiaPath> segments)
+    {
+        var mask = 0;
+        foreach (var segment in segments)
+        {
+            if (segment.Index is >= 0 and < 31)
+            {
+                mask |= 1 << segment.Index;
+            }
+        }
+
+        return mask;
     }
 
     private static SKColor Lerp(SKColor from, SKColor to, double t)
