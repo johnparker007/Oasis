@@ -42,9 +42,10 @@ internal sealed class AlphaElementRenderer : IPanelElementRenderer
         var cellBrightness = context.RuntimeState.GetSegmentCellBrightness(element.ObjectId, 16);
 
         var onColor = SkiaColorParser.ParseOrDefault(element.OnColorHex, new SKColor(255, 64, 64));
-        var offColor = SkiaColorParser.ParseOrDefault(element.OffColorHex, new SKColor(72, 24, 24));
+        var offColor = ScaleBrightness(onColor, 0.10d);
+        var backgroundColor = ScaleBrightness(onColor, 0.04d);
 
-        using var backgroundPaint = new SKPaint { Color = new SKColor(17, 24, 39), Style = SKPaintStyle.Fill, IsAntialias = true };
+        using var backgroundPaint = new SKPaint { Color = backgroundColor, Style = SKPaintStyle.Fill, IsAntialias = true };
         using var borderPaint = new SKPaint { Color = new SKColor(71, 85, 105), Style = SKPaintStyle.Stroke, StrokeWidth = 1f, IsAntialias = true };
         context.Canvas.DrawRoundRect(bounds, 2f, 2f, backgroundPaint);
         context.Canvas.DrawRoundRect(bounds, 2f, 2f, borderPaint);
@@ -199,6 +200,13 @@ internal sealed class AlphaElementRenderer : IPanelElementRenderer
         }
 
         return mask;
+    }
+
+    private static SKColor ScaleBrightness(SKColor color, double factor)
+    {
+        var clamped = Math.Clamp(factor, 0d, 1d);
+        byte Scale(byte value) => (byte)Math.Clamp(Math.Round(value * clamped), 0d, 255d);
+        return new SKColor(Scale(color.Red), Scale(color.Green), Scale(color.Blue), 255);
     }
 
     private static SKColor Lerp(SKColor from, SKColor to, double t)
