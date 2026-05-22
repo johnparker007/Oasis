@@ -195,6 +195,8 @@ public sealed class MfmeExtractReaderTests
 
             var alpha = Assert.IsType<MfmeLegacyAlphaComponent>(components[4]);
             Assert.Equal("ExtractComponentAlpha", alpha.SourceType);
+            Assert.NotNull(alpha.SegmentOnColor);
+            Assert.Equal(0.1f, alpha.SegmentOnColor?.R);
 
             var alphaNew = Assert.IsType<MfmeLegacyAlphaComponent>(components[5]);
             Assert.Equal("ExtractComponentAlphaNew", alphaNew.SourceType);
@@ -355,7 +357,8 @@ public sealed class MfmeExtractReaderTests
               "$type": "Oasis.MfmeTools.Shared.ExtractComponents.ExtractComponentAlpha, MfmeTools",
               "Position": { "X": 1, "Y": 2 },
               "Size": { "X": 3, "Y": 4 },
-              "Reversed": true
+              "Reversed": true,
+              "OnColor": { "R": 0.1, "G": 0.2, "B": 0.3, "A": 1.0 }
             },
             {
               "$type": "Oasis.MfmeTools.Shared.ExtractComponents.ExtractComponentAlphaNew, MfmeTools",

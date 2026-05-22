@@ -251,7 +251,8 @@ internal static class MfmeExtractManifestParser
                     sourceType,
                     position,
                     size,
-                    ReadBool(component, "Reversed"));
+                    ReadBool(component, "Reversed"),
+                    ReadColor(component, "OnColor") ?? ReadColor(component, "SegmentOnColor"));
                 return true;
 
             case "extractcomponentlabel":

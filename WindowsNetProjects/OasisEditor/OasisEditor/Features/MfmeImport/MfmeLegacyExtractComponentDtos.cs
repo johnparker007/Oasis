@@ -92,7 +92,8 @@ internal sealed record MfmeLegacyAlphaComponent(
     string AlphaSourceType,
     MfmeLegacyPoint Position,
     MfmeLegacyPoint Size,
-    bool Reversed)
+    bool Reversed,
+    MfmeLegacyColor? SegmentOnColor)
     : MfmeLegacyComponentBase(
         AlphaSourceType,
         Position,

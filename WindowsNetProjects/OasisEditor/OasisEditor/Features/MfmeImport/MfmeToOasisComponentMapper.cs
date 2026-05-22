@@ -248,6 +248,7 @@ internal sealed class MfmeToOasisComponentMapper
             Width = component.Size.X,
             Height = component.Size.Y,
             IsReversed = component.Reversed,
+            OnColorHex = ToHex(component.SegmentOnColor),
             ImportSource = CreateImportSource(component.SourceType)
         };
     }
