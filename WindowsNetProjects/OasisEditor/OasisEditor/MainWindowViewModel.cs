@@ -2683,12 +2683,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             .ToHashSet();
         if (visualIds.Count == 0)
         {
-            return [];
+            return allDefinitions;
         }
 
-        return allDefinitions
+        var matchedDefinitions = allDefinitions
             .Where(definition => definition.LinkedVisualElementId.HasValue && visualIds.Contains(definition.LinkedVisualElementId.Value))
             .ToArray();
+        return matchedDefinitions.Length > 0 ? matchedDefinitions : allDefinitions;
     }
 
     private DocumentTabViewModel? ApplyInspectorSummary(DocumentTabViewModel _, string summary)
