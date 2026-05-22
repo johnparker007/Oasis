@@ -2678,7 +2678,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         var visualIds = selectedDocument.GetPanelElements()
-            .Select(element => element.Id)
+            .Select(element => Guid.TryParse(element.ObjectId, out var visualId) ? visualId : Guid.Empty)
             .Where(id => id != Guid.Empty)
             .ToHashSet();
         if (visualIds.Count == 0)
