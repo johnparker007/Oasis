@@ -19,6 +19,8 @@ public sealed class OutputLogViewModel : INotifyPropertyChanged
     private bool _showWarningLogs = true;
     private bool _showErrorLogs = true;
     private bool _autoScroll = true;
+    private string _searchText = string.Empty;
+    private string _searchTextNormalized = string.Empty;
     private IReadOnlyList<OutputLogEntry> _selectedEntries = Array.Empty<OutputLogEntry>();
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -62,6 +64,24 @@ public sealed class OutputLogViewModel : INotifyPropertyChanged
     {
         get => _showErrorLogs;
         set => SetFilter(ref _showErrorLogs, value);
+    }
+
+    public string SearchText
+    {
+        get => _searchText;
+        set
+        {
+            var normalized = value?.Trim() ?? string.Empty;
+            if (string.Equals(_searchText, normalized, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _searchText = normalized;
+            _searchTextNormalized = normalized.ToUpperInvariant();
+            OnPropertyChanged();
+            FilteredEntries.Refresh();
+        }
     }
 
     public OutputLogEntry? LastEntry
@@ -212,13 +232,25 @@ public sealed class OutputLogViewModel : INotifyPropertyChanged
             return false;
         }
 
-        return entry.Status switch
+        var matchesSeverity = entry.Status switch
         {
             OutputLogStatus.Info => ShowInfoLogs,
             OutputLogStatus.Warning => ShowWarningLogs,
             OutputLogStatus.Error => ShowErrorLogs,
             _ => true
         };
+
+        if (!matchesSeverity)
+        {
+            return false;
+        }
+
+        if (string.IsNullOrEmpty(_searchTextNormalized))
+        {
+            return true;
+        }
+
+        return entry.Message.Contains(_searchTextNormalized, StringComparison.OrdinalIgnoreCase);
     }
 
     private void SetFilter(ref bool field, bool value, [CallerMemberName] string? propertyName = null)

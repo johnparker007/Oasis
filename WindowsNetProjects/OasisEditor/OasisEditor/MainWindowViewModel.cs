@@ -188,6 +188,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             _outputLog.ShowWarningLogs = preferences.OutputLog.ShowWarningLogs;
             _outputLog.ShowErrorLogs = preferences.OutputLog.ShowErrorLogs;
             _outputLog.AutoScroll = preferences.OutputLog.AutoScroll;
+            _outputLog.SearchText = preferences.OutputLog.SearchText;
         }
         finally
         {
@@ -1680,7 +1681,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 ShowInfoLogs = _outputLog.ShowInfoLogs,
                 ShowWarningLogs = _outputLog.ShowWarningLogs,
                 ShowErrorLogs = _outputLog.ShowErrorLogs,
-                AutoScroll = _outputLog.AutoScroll
+                AutoScroll = _outputLog.AutoScroll,
+                SearchText = _outputLog.SearchText
             },
             ProjectWindowStates = existingPreferences.ProjectWindowStates
         });
@@ -2480,7 +2482,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (e.PropertyName is nameof(OutputLogViewModel.ShowInfoLogs)
             or nameof(OutputLogViewModel.ShowWarningLogs)
             or nameof(OutputLogViewModel.ShowErrorLogs)
-            or nameof(OutputLogViewModel.AutoScroll))
+            or nameof(OutputLogViewModel.AutoScroll)
+            or nameof(OutputLogViewModel.SearchText))
         {
             if (!_isLoadingPreferences)
             {
