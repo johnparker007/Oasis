@@ -462,14 +462,16 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                     "Visible Scale",
                     "Type-specific",
                     selectedElement.VisibleScale.Value,
-                    commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update visible scale", new PanelElementModelUpdate { VisibleScale = value })));
+                    commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update visible scale", new PanelElementModelUpdate { VisibleScale = value }),
+                    format: "G17"));
             }
 
             _propertyRows.Add(new InspectorDoublePropertyViewModel(
                 "Band Offset",
                 "Type-specific",
                 selectedElement.BandOffset ?? 0d,
-                commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update band offset", new PanelElementModelUpdate { BandOffset = value })));
+                commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update band offset", new PanelElementModelUpdate { BandOffset = value }),
+                format: "G17"));
         }
 
         if (selectedElement.Kind is PanelElementKind.Reel or PanelElementKind.Alpha)
