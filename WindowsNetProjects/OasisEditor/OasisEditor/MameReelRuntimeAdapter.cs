@@ -185,6 +185,26 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
         };
     }
 
+    private void OnDocumentPanelChanged()
+    {
+        lock (_pendingSync)
+        {
+            foreach (var (reelId, reelValue) in _latestReelValues)
+            {
+                _pendingReelValues[reelId] = reelValue;
+            }
+
+            if (_uiUpdateScheduled || _pendingReelValues.Count == 0)
+            {
+                return;
+            }
+
+            _uiUpdateScheduled = true;
+        }
+
+        _uiDispatch(ApplyPendingOnUiThread);
+    }
+
     private sealed class ReelDocumentMappingCacheEntry
     {
         private readonly DocumentTabViewModel _document;
@@ -208,22 +228,3 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
         public void Detach() => _document.PanelChanged -= OnPanelChanged;
     }
 }
-    private void OnDocumentPanelChanged()
-    {
-        lock (_pendingSync)
-        {
-            foreach (var (reelId, reelValue) in _latestReelValues)
-            {
-                _pendingReelValues[reelId] = reelValue;
-            }
-
-            if (_uiUpdateScheduled || _pendingReelValues.Count == 0)
-            {
-                return;
-            }
-
-            _uiUpdateScheduled = true;
-        }
-
-        _uiDispatch(ApplyPendingOnUiThread);
-    }
