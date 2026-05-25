@@ -45,6 +45,7 @@ internal sealed class PanelElementModelUpdate
     public PanelElementOptionalValue<bool?> IsReversed { get; init; }
     public PanelElementOptionalValue<int?> Stops { get; init; }
     public PanelElementOptionalValue<double?> VisibleScale { get; init; }
+    public PanelElementOptionalValue<double?> BandOffset { get; init; }
     public PanelElementOptionalValue<bool> IsLocked { get; init; }
     public PanelElementOptionalValue<bool> IsVisible { get; init; }
 }
@@ -81,6 +82,7 @@ internal static class PanelElementModelUpdater
             IsReversed = update.IsReversed.HasValue ? update.IsReversed.Value : source.IsReversed,
             Stops = update.Stops.HasValue ? update.Stops.Value : source.Stops,
             VisibleScale = update.VisibleScale.HasValue ? update.VisibleScale.Value : source.VisibleScale,
+            BandOffset = update.BandOffset.HasValue ? update.BandOffset.Value : source.BandOffset,
             IsLocked = update.IsLocked.HasValue ? update.IsLocked.Value : source.IsLocked,
             IsVisible = update.IsVisible.HasValue ? update.IsVisible.Value : source.IsVisible,
             ImportSource = source.ImportSource is null

@@ -10,6 +10,7 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
     private readonly Action<string> _infoLogger;
     private readonly Action<Action> _uiDispatch;
     private readonly Dictionary<int, int> _pendingReelValues = new();
+    private readonly Dictionary<int, int> _latestReelValues = new();
     private readonly Dictionary<Guid, ReelDocumentMappingCacheEntry> _reelMappingsByDocumentId = new();
     private bool _uiUpdateScheduled;
 
@@ -32,6 +33,7 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
         lock (_pendingSync)
         {
             _pendingReelValues[reelId] = reelValue;
+            _latestReelValues[reelId] = reelValue;
             if (_uiUpdateScheduled)
             {
                 return;
@@ -125,7 +127,7 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
 
         if (cacheEntry is null)
         {
-            cacheEntry = new ReelDocumentMappingCacheEntry(document, mapping);
+            cacheEntry = new ReelDocumentMappingCacheEntry(document, mapping, OnDocumentPanelChanged);
             _reelMappingsByDocumentId[document.DocumentId] = cacheEntry;
             return cacheEntry.MappingByReelId;
         }
@@ -148,13 +150,13 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
         }
 
         stops = reelElement.Stops.Value;
-        effectiveReelValue = ResolveEffectiveReelValue(rawReelValue, reelElement.Stops.Value, reelElement.IsReversed == true);
+        effectiveReelValue = ResolveEffectiveReelValue(rawReelValue, reelElement.Stops.Value, reelElement.IsReversed == true, reelElement.BandOffset ?? 0d);
         var wrappedPosition = ((effectiveReelValue % stops) + stops) % stops;
         normalizedPosition = wrappedPosition / (double)stops;
         return true;
     }
 
-    private int ResolveEffectiveReelValue(int rawReelValue, int stops, bool reelReversed)
+    private int ResolveEffectiveReelValue(int rawReelValue, int stops, bool reelReversed, double reelBandOffset)
     {
         var wrapped = ((rawReelValue % ReelPositionsPerRevolution) + ReelPositionsPerRevolution) % ReelPositionsPerRevolution;
         var platformReversed = RequiresPlatformReversal(_platformProvider());
@@ -162,8 +164,9 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
         var directionAdjusted = shouldReverse && wrapped != 0
             ? ReelPositionsPerRevolution - wrapped
             : wrapped;
-        var platformOffset = -ResolvePlatformBandOffsetNormalized(_platformProvider, stops);
-        var offsetSteps = (int)Math.Round(platformOffset * ReelPositionsPerRevolution, MidpointRounding.AwayFromZero);
+        var platformOffset = ResolvePlatformBandOffsetNormalized(_platformProvider(), stops);
+        var totalOffset = platformOffset + reelBandOffset;
+        var offsetSteps = (int)Math.Round(totalOffset * ReelPositionsPerRevolution, MidpointRounding.AwayFromZero);
         var offsetAdjusted = directionAdjusted + offsetSteps;
         return ((offsetAdjusted % ReelPositionsPerRevolution) + ReelPositionsPerRevolution) % ReelPositionsPerRevolution;
     }
@@ -173,23 +176,11 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
         return platform == FruitMachinePlatformType.MPU4;
     }
 
-    private static double ResolvePlatformBandOffsetNormalized(Func<FruitMachinePlatformType> platformProvider, int stops)
+    private static double ResolvePlatformBandOffsetNormalized(FruitMachinePlatformType platform, int stops)
     {
-        return platformProvider() switch
+        _ = stops;
+        return platform switch
         {
-            FruitMachinePlatformType.Impact => -0.11d,
-            FruitMachinePlatformType.MPU4 => stops switch
-            {
-                12 => -0.102d,
-                16 => -0.153d,
-                _ => 0d
-            },
-            FruitMachinePlatformType.Scorpion4 => stops switch
-            {
-                12 => 0.2d + ((1d / 12d) * 0.4d) - (1d / 12d),
-                16 => 0.1305d,
-                _ => 0d
-            },
             _ => 0d
         };
     }
@@ -197,9 +188,11 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
     private sealed class ReelDocumentMappingCacheEntry
     {
         private readonly DocumentTabViewModel _document;
-        public ReelDocumentMappingCacheEntry(DocumentTabViewModel document, IReadOnlyDictionary<int, string[]> mappingByReelId)
+        private readonly Action _panelChangedCallback;
+        public ReelDocumentMappingCacheEntry(DocumentTabViewModel document, IReadOnlyDictionary<int, string[]> mappingByReelId, Action panelChangedCallback)
         {
             _document = document;
+            _panelChangedCallback = panelChangedCallback;
             MappingByReelId = mappingByReelId;
             _document.PanelChanged += OnPanelChanged;
         }
@@ -207,7 +200,30 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
         public IReadOnlyDictionary<int, string[]> MappingByReelId { get; private set; }
         public bool IsDirty { get; private set; }
         public void Replace(IReadOnlyDictionary<int, string[]> mappingByReelId) { MappingByReelId = mappingByReelId; IsDirty = false; }
-        public void OnPanelChanged(PanelChangeEvent _) => IsDirty = true;
+        public void OnPanelChanged(PanelChangeEvent _)
+        {
+            IsDirty = true;
+            _panelChangedCallback();
+        }
         public void Detach() => _document.PanelChanged -= OnPanelChanged;
     }
 }
+    private void OnDocumentPanelChanged()
+    {
+        lock (_pendingSync)
+        {
+            foreach (var (reelId, reelValue) in _latestReelValues)
+            {
+                _pendingReelValues[reelId] = reelValue;
+            }
+
+            if (_uiUpdateScheduled || _pendingReelValues.Count == 0)
+            {
+                return;
+            }
+
+            _uiUpdateScheduled = true;
+        }
+
+        _uiDispatch(ApplyPendingOnUiThread);
+    }
