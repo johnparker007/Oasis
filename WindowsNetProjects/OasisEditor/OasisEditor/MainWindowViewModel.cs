@@ -218,6 +218,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             new MameReelStateParser(),
             new MameReelRuntimeAdapter(
                 () => OpenDocuments,
+                () => SelectedFruitMachinePlatform,
                 () => DebugOutputStdOut,
                 message => AddOutputEntry(message, OutputLogStatus.Info),
                 work =>

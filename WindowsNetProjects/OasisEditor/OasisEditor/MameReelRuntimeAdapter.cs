@@ -2,8 +2,10 @@ namespace OasisEditor;
 
 public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
 {
+    private const int ReelPositionsPerRevolution = 96;
     private readonly object _pendingSync = new();
     private readonly Func<IEnumerable<DocumentTabViewModel>> _documentProvider;
+    private readonly Func<FruitMachinePlatformType> _platformProvider;
     private readonly Func<bool> _debugOutputEnabledProvider;
     private readonly Action<string> _infoLogger;
     private readonly Action<Action> _uiDispatch;
@@ -13,11 +15,13 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
 
     public MameReelRuntimeAdapter(
         Func<IEnumerable<DocumentTabViewModel>> documentProvider,
+        Func<FruitMachinePlatformType> platformProvider,
         Func<bool> debugOutputEnabledProvider,
         Action<string> infoLogger,
         Action<Action> uiDispatch)
     {
         _documentProvider = documentProvider ?? throw new ArgumentNullException(nameof(documentProvider));
+        _platformProvider = platformProvider ?? throw new ArgumentNullException(nameof(platformProvider));
         _debugOutputEnabledProvider = debugOutputEnabledProvider ?? throw new ArgumentNullException(nameof(debugOutputEnabledProvider));
         _infoLogger = infoLogger ?? throw new ArgumentNullException(nameof(infoLogger));
         _uiDispatch = uiDispatch ?? throw new ArgumentNullException(nameof(uiDispatch));
@@ -71,12 +75,17 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
 
                 foreach (var objectId in objectIds)
                 {
-                    if (_debugOutputEnabledProvider() && TryGetReelDetails(document, objectId, reelValue, out var stops, out var normalizedPosition))
+                    if (!TryResolveEffectiveReelPosition(document, objectId, reelValue, out var effectiveReelValue, out var stops, out var normalizedPosition))
                     {
-                        _infoLogger($"[MAME-REEL] reel{reelId} raw={reelValue} normalized={normalizedPosition:0.###} stops={stops} objectId={objectId}");
+                        continue;
                     }
 
-                    if (document.RuntimeState.SetReelPositionIfChanged(objectId, reelValue))
+                    if (_debugOutputEnabledProvider())
+                    {
+                        _infoLogger($"[MAME-REEL] reel{reelId} raw={reelValue} effective={effectiveReelValue} normalized={normalizedPosition:0.###} stops={stops} objectId={objectId}");
+                    }
+
+                    if (document.RuntimeState.SetReelPositionIfChanged(objectId, effectiveReelValue))
                     {
                         changedObjectIds.Add(objectId);
                     }
@@ -125,8 +134,9 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
         return cacheEntry.MappingByReelId;
     }
 
-    private static bool TryGetReelDetails(DocumentTabViewModel document, string objectId, int rawReelValue, out int stops, out double normalizedPosition)
+    private bool TryResolveEffectiveReelPosition(DocumentTabViewModel document, string objectId, int rawReelValue, out int effectiveReelValue, out int stops, out double normalizedPosition)
     {
+        effectiveReelValue = 0;
         stops = 0;
         normalizedPosition = 0d;
         var reelElement = document.GetPanelElements()
@@ -138,9 +148,25 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
         }
 
         stops = reelElement.Stops.Value;
-        var wrappedPosition = ((rawReelValue % stops) + stops) % stops;
+        effectiveReelValue = ResolveEffectiveReelValue(rawReelValue, reelElement.IsReversed == true);
+        var wrappedPosition = ((effectiveReelValue % stops) + stops) % stops;
         normalizedPosition = wrappedPosition / (double)stops;
         return true;
+    }
+
+    private int ResolveEffectiveReelValue(int rawReelValue, bool reelReversed)
+    {
+        var wrapped = ((rawReelValue % ReelPositionsPerRevolution) + ReelPositionsPerRevolution) % ReelPositionsPerRevolution;
+        var platformReversed = RequiresPlatformReversal(_platformProvider());
+        var shouldReverse = platformReversed ^ reelReversed;
+        return shouldReverse && wrapped != 0
+            ? ReelPositionsPerRevolution - wrapped
+            : wrapped;
+    }
+
+    private static bool RequiresPlatformReversal(FruitMachinePlatformType platform)
+    {
+        return platform == FruitMachinePlatformType.MPU4;
     }
 
     private sealed class ReelDocumentMappingCacheEntry
