@@ -41,4 +41,5 @@ public sealed class OutputLogPreferences
     public bool ShowWarningLogs { get; init; } = true;
     public bool ShowErrorLogs { get; init; } = true;
     public bool AutoScroll { get; init; } = true;
+    public string SearchText { get; init; } = string.Empty;
 }
