@@ -148,25 +148,50 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
         }
 
         stops = reelElement.Stops.Value;
-        effectiveReelValue = ResolveEffectiveReelValue(rawReelValue, reelElement.IsReversed == true);
+        effectiveReelValue = ResolveEffectiveReelValue(rawReelValue, reelElement.Stops.Value, reelElement.IsReversed == true);
         var wrappedPosition = ((effectiveReelValue % stops) + stops) % stops;
         normalizedPosition = wrappedPosition / (double)stops;
         return true;
     }
 
-    private int ResolveEffectiveReelValue(int rawReelValue, bool reelReversed)
+    private int ResolveEffectiveReelValue(int rawReelValue, int stops, bool reelReversed)
     {
         var wrapped = ((rawReelValue % ReelPositionsPerRevolution) + ReelPositionsPerRevolution) % ReelPositionsPerRevolution;
         var platformReversed = RequiresPlatformReversal(_platformProvider());
         var shouldReverse = platformReversed ^ reelReversed;
-        return shouldReverse && wrapped != 0
+        var directionAdjusted = shouldReverse && wrapped != 0
             ? ReelPositionsPerRevolution - wrapped
             : wrapped;
+        var platformOffset = ResolvePlatformBandOffsetNormalized(_platformProvider(), stops);
+        var offsetSteps = (int)Math.Round(platformOffset * ReelPositionsPerRevolution, MidpointRounding.AwayFromZero);
+        var offsetAdjusted = directionAdjusted + offsetSteps;
+        return ((offsetAdjusted % ReelPositionsPerRevolution) + ReelPositionsPerRevolution) % ReelPositionsPerRevolution;
     }
 
     private static bool RequiresPlatformReversal(FruitMachinePlatformType platform)
     {
         return platform == FruitMachinePlatformType.MPU4;
+    }
+
+    private static double ResolvePlatformBandOffsetNormalized(Func<FruitMachinePlatformType> platformProvider, int stops)
+    {
+        return platformProvider() switch
+        {
+            FruitMachinePlatformType.Impact => -0.11d,
+            FruitMachinePlatformType.MPU4 => stops switch
+            {
+                12 => -0.102d,
+                16 => -0.153d,
+                _ => 0d
+            },
+            FruitMachinePlatformType.Scorpion4 => stops switch
+            {
+                12 => 0.2d + ((1d / 12d) * 0.4d) - (1d / 12d),
+                16 => 0.1305d,
+                _ => 0d
+            },
+            _ => 0d
+        };
     }
 
     private sealed class ReelDocumentMappingCacheEntry
