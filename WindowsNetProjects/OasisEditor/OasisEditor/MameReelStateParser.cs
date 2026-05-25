@@ -12,8 +12,6 @@ public sealed partial class MameReelStateParser : IMameReelStateParser
     private const int SreelCycle = 65536;
     private const int LegacyReelPositionsPerRevolution = 96;
 
-    [GeneratedRegex(@"^reel\s*(\d+)\s*=\s*(-?\d+)$", RegexOptions.IgnoreCase)]
-    private static partial Regex ReelEqualsPattern();
     [GeneratedRegex(@"^sreel\s*(\d+)\s*=\s*(-?\d+)$", RegexOptions.IgnoreCase)]
     private static partial Regex SreelEqualsPattern();
 
@@ -37,39 +35,7 @@ public sealed partial class MameReelStateParser : IMameReelStateParser
             return true;
         }
 
-        var regexMatch = ReelEqualsPattern().Match(trimmed);
-        if (regexMatch.Success
-            && int.TryParse(regexMatch.Groups[1].Value, out reelId)
-            && int.TryParse(regexMatch.Groups[2].Value, out reelValue))
-        {
-            return true;
-        }
-
-        var tokens = trimmed.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (tokens.Length < 2)
-        {
-            return false;
-        }
-
-        var tokenWithPrefix = tokens[0];
-        if (!tokenWithPrefix.StartsWith("reel", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        var reelToken = tokenWithPrefix["reel".Length..];
-        if (reelToken.Length == 0)
-        {
-            return false;
-        }
-
-        var valueToken = tokens[^1];
-        if (!int.TryParse(reelToken, out reelId) || !int.TryParse(valueToken, out reelValue))
-        {
-            return false;
-        }
-
-        return true;
+        return false;
     }
 
     private static int ConvertSreelToLegacyReelPosition(int sreelValue)
