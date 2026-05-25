@@ -40,9 +40,12 @@
                           Foreground="{DynamicResource TextPrimaryBrush}"
                           IsChecked="{Binding AutoScroll}"
                           Content="Autoscroll" />
-                            <TextBox Width="220"
+                <TextBlock Margin="8,0,6,0"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource TextPrimaryBrush}"
+                           Text="Search" />
+                <TextBox Width="220"
                          MinWidth="140"
-                         Margin="8,0,0,0"
                          VerticalAlignment="Center"
                          ToolTip="Filter log rows by text"
                          Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
