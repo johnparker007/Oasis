@@ -53,6 +53,7 @@ internal static class PanelElementModelComparer
                && left.IsReversed == right.IsReversed
                && left.Stops == right.Stops
                && left.VisibleScale == right.VisibleScale
+               && left.BandOffset == right.BandOffset
                && left.IsLocked == right.IsLocked
                && left.IsVisible == right.IsVisible
                && AreEquivalent(left.ImportSource, right.ImportSource);

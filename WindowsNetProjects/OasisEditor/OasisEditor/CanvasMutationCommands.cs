@@ -831,7 +831,8 @@ internal static class CanvasMutationCommands
                 || !string.Equals(before.TextBoxFontSize, after.TextBoxFontSize, StringComparison.Ordinal)
                 || before.IsReversed != after.IsReversed
                 || before.Stops != after.Stops
-                || before.VisibleScale != after.VisibleScale)
+                || before.VisibleScale != after.VisibleScale
+                || before.BandOffset != after.BandOffset)
             {
                 changed |= PanelChangeProperties.Metadata;
             }

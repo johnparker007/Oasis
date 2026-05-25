@@ -462,8 +462,16 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                     "Visible Scale",
                     "Type-specific",
                     selectedElement.VisibleScale.Value,
-                    commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update visible scale", new PanelElementModelUpdate { VisibleScale = value })));
+                    commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update visible scale", new PanelElementModelUpdate { VisibleScale = value }),
+                    format: "G17"));
             }
+
+            _propertyRows.Add(new InspectorDoublePropertyViewModel(
+                "Band Offset",
+                "Type-specific",
+                selectedElement.BandOffset ?? 0d,
+                commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update band offset", new PanelElementModelUpdate { BandOffset = value }),
+                format: "G17"));
         }
 
         if (selectedElement.Kind is PanelElementKind.Reel or PanelElementKind.Alpha)
@@ -559,6 +567,9 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                     break;
                 case "Reversed" when row is InspectorBoolPropertyViewModel reversedRow:
                     reversedRow.SetCommittedValue(selectedElement.IsReversed ?? false);
+                    break;
+                case "Band Offset" when row is InspectorDoublePropertyViewModel bandOffsetRow:
+                    bandOffsetRow.SetCommittedValue(selectedElement.BandOffset ?? 0d);
                     break;
                 case "Import Format" when row is InspectorInfoPropertyViewModel importFormatRow:
                     importFormatRow.SetCommittedValue(selectedElement.ImportSource?.Format ?? string.Empty);

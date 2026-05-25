@@ -40,6 +40,7 @@ internal static class PanelElementModelCloner
             IsReversed = source.IsReversed,
             Stops = source.Stops,
             VisibleScale = source.VisibleScale,
+            BandOffset = source.BandOffset,
             IsLocked = isLocked ?? source.IsLocked,
             IsVisible = isVisible ?? source.IsVisible,
             ImportSource = CloneImportSource(source.ImportSource)

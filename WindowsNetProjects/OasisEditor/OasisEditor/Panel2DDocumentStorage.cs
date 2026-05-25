@@ -222,6 +222,12 @@ internal static class Panel2DDocumentStorage
                 errorMessage = $"Element '{normalizedElement.ObjectId}' has invalid visible scale '{normalizedElement.VisibleScale}'.";
                 return false;
             }
+            if (normalizedElement.BandOffset.HasValue && !IsValidBandOffset(normalizedElement.BandOffset.Value))
+            {
+                normalized = new Panel2DDocumentFile();
+                errorMessage = $"Element '{normalizedElement.ObjectId}' has invalid band offset '{normalizedElement.BandOffset}'.";
+                return false;
+            }
 
             if (normalizedElement.ImportSource is not null && string.IsNullOrWhiteSpace(normalizedElement.ImportSource.Format))
             {
@@ -269,6 +275,7 @@ internal static class Panel2DDocumentStorage
                 || element.IsReversed.HasValue
                 || element.Stops.HasValue
                 || element.VisibleScale.HasValue
+                || element.BandOffset.HasValue
                 || element.IsLocked
                 || element.IsVisible is false
                 || element.ImportSource is not null)
@@ -329,6 +336,7 @@ internal static class Panel2DDocumentStorage
             IsReversed = normalized.IsReversed,
             Stops = normalized.Stops,
             VisibleScale = normalized.VisibleScale,
+            BandOffset = normalized.BandOffset,
             IsLocked = normalized.IsLocked,
             IsVisible = normalized.IsVisible ?? true,
             ImportSource = normalized.ImportSource is null
@@ -376,6 +384,7 @@ internal static class Panel2DDocumentStorage
             IsReversed = element.IsReversed,
             Stops = element.Stops,
             VisibleScale = element.VisibleScale,
+            BandOffset = element.BandOffset,
             IsLocked = element.IsLocked,
             IsVisible = element.IsVisible,
             ImportSource = importSource,
@@ -393,6 +402,7 @@ internal static class Panel2DDocumentStorage
                 reversed: element.IsReversed,
                 stops: element.Stops,
                 visibleScale: element.VisibleScale,
+                bandOffset: element.BandOffset,
                 importSource: importSource)
         });
     }
@@ -449,6 +459,7 @@ internal static class Panel2DDocumentStorage
         var normalizedIsReversed = normalizedNative?.Reversed ?? element.IsReversed;
         var normalizedStops = normalizedNative?.Stops ?? element.Stops;
         var normalizedVisibleScale = normalizedNative?.VisibleScale ?? element.VisibleScale;
+        var normalizedBandOffset = normalizedNative?.BandOffset ?? element.BandOffset;
         var normalizedIsLocked = element.IsLocked;
         var normalizedIsVisible = element.IsVisible ?? true;
 
@@ -467,6 +478,7 @@ internal static class Panel2DDocumentStorage
                 normalizedIsReversed,
                 normalizedStops,
                 normalizedVisibleScale,
+                normalizedBandOffset,
                 normalizedImportSource)
             : normalizedNative with
             {
@@ -487,6 +499,7 @@ internal static class Panel2DDocumentStorage
                 Reversed = normalizedIsReversed,
                 Stops = normalizedStops,
                 VisibleScale = normalizedVisibleScale,
+                BandOffset = normalizedBandOffset,
                 ImportSource = normalizedImportSource
             };
 
@@ -511,6 +524,7 @@ internal static class Panel2DDocumentStorage
             IsReversed = normalizedIsReversed,
             Stops = normalizedStops,
             VisibleScale = normalizedVisibleScale,
+            BandOffset = normalizedBandOffset,
             IsLocked = normalizedIsLocked,
             IsVisible = normalizedIsVisible,
             ImportSource = normalizedImportSource,
@@ -580,6 +594,14 @@ internal static class Panel2DDocumentStorage
             && value > 0;
     }
 
+    private static bool IsValidBandOffset(double value)
+    {
+        return !double.IsNaN(value)
+            && !double.IsInfinity(value)
+            && value >= 0
+            && value <= 1;
+    }
+
     private static string? NormalizeOptionalString(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -635,6 +657,7 @@ internal static class Panel2DDocumentStorage
             Reversed = native.Reversed,
             Stops = native.Stops,
             VisibleScale = native.VisibleScale,
+            BandOffset = native.BandOffset,
             Outline = native.Outline,
             ImportSource = NormalizeImportSource(native.ImportSource)
         };
@@ -654,6 +677,7 @@ internal static class Panel2DDocumentStorage
         bool? reversed,
         int? stops,
         double? visibleScale,
+        double? bandOffset,
         PanelElementImportSourceFile? importSource)
     {
         if (assetPath is null
@@ -669,6 +693,7 @@ internal static class Panel2DDocumentStorage
             && reversed is null
             && stops is null
             && visibleScale is null
+            && bandOffset is null
             && importSource is null)
         {
             return null;
@@ -690,6 +715,7 @@ internal static class Panel2DDocumentStorage
             Reversed = reversed,
             Stops = stops,
             VisibleScale = visibleScale,
+            BandOffset = bandOffset,
             ImportSource = importSource
         };
     }
@@ -748,6 +774,7 @@ internal sealed record PanelElementFile : IPanelSelectableObject
     public bool? IsReversed { get; init; }
     public int? Stops { get; init; }
     public double? VisibleScale { get; init; }
+    public double? BandOffset { get; init; }
     public bool IsLocked { get; init; }
     public bool? IsVisible { get; init; }
     public PanelElementImportSourceFile? ImportSource { get; init; }
@@ -776,6 +803,7 @@ internal sealed record PanelElementNativeFile
     public bool? Reversed { get; init; }
     public int? Stops { get; init; }
     public double? VisibleScale { get; init; }
+    public double? BandOffset { get; init; }
     public bool? Outline { get; init; }
     public PanelElementImportSourceFile? ImportSource { get; init; }
 }

@@ -114,11 +114,13 @@ public sealed class InspectorDoublePropertyViewModel : InspectorEditableProperty
     private string _value;
     private string _committedValue;
     private readonly Func<double, string?>? _commit;
+    private readonly string _format;
 
-    public InspectorDoublePropertyViewModel(string displayName, string groupName, double value, bool isReadOnly = false, Func<double, string?>? commit = null)
+    public InspectorDoublePropertyViewModel(string displayName, string groupName, double value, bool isReadOnly = false, Func<double, string?>? commit = null, string format = "0.###")
         : base(displayName, groupName, isReadOnly)
     {
-        _value = value.ToString("0.###", CultureInfo.InvariantCulture);
+        _format = format;
+        _value = value.ToString(_format, CultureInfo.InvariantCulture);
         _committedValue = _value;
         _commit = commit;
     }
@@ -155,7 +157,7 @@ public sealed class InspectorDoublePropertyViewModel : InspectorEditableProperty
         }
 
         ErrorText = string.Empty;
-        _committedValue = parsed.ToString("0.###", CultureInfo.InvariantCulture);
+        _committedValue = parsed.ToString(_format, CultureInfo.InvariantCulture);
         _value = _committedValue;
         RaisePropertyChanged(nameof(Value));
     }
@@ -163,7 +165,7 @@ public sealed class InspectorDoublePropertyViewModel : InspectorEditableProperty
     public void SetCommittedValue(double value)
     {
         ErrorText = string.Empty;
-        _committedValue = value.ToString("0.###", CultureInfo.InvariantCulture);
+        _committedValue = value.ToString(_format, CultureInfo.InvariantCulture);
         _value = _committedValue;
         RaisePropertyChanged(nameof(Value));
     }
