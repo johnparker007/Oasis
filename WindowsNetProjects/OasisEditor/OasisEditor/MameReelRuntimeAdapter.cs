@@ -162,7 +162,7 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
         var directionAdjusted = shouldReverse && wrapped != 0
             ? ReelPositionsPerRevolution - wrapped
             : wrapped;
-        var platformOffset = ResolvePlatformBandOffsetNormalized(_platformProvider(), stops);
+        var platformOffset = ResolvePlatformBandOffsetNormalized(_platformProvider, stops);
         var offsetSteps = (int)Math.Round(platformOffset * ReelPositionsPerRevolution, MidpointRounding.AwayFromZero);
         var offsetAdjusted = directionAdjusted + offsetSteps;
         return ((offsetAdjusted % ReelPositionsPerRevolution) + ReelPositionsPerRevolution) % ReelPositionsPerRevolution;
