@@ -66,6 +66,11 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
         {
             if (TryGetLampImage(element.AssetPath, out var lampImage))
             {
+                if (intensity <= 0d)
+                {
+                    return;
+                }
+
                 context.Canvas.DrawImage(lampImage, bounds);
                 if (intensity < 1d)
                 {
