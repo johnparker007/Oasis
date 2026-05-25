@@ -4,14 +4,22 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
 {
     private readonly object _pendingSync = new();
     private readonly Func<IEnumerable<DocumentTabViewModel>> _documentProvider;
+    private readonly Func<bool> _debugOutputEnabledProvider;
+    private readonly Action<string> _infoLogger;
     private readonly Action<Action> _uiDispatch;
     private readonly Dictionary<int, int> _pendingReelValues = new();
     private readonly Dictionary<Guid, ReelDocumentMappingCacheEntry> _reelMappingsByDocumentId = new();
     private bool _uiUpdateScheduled;
 
-    public MameReelRuntimeAdapter(Func<IEnumerable<DocumentTabViewModel>> documentProvider, Action<Action> uiDispatch)
+    public MameReelRuntimeAdapter(
+        Func<IEnumerable<DocumentTabViewModel>> documentProvider,
+        Func<bool> debugOutputEnabledProvider,
+        Action<string> infoLogger,
+        Action<Action> uiDispatch)
     {
         _documentProvider = documentProvider ?? throw new ArgumentNullException(nameof(documentProvider));
+        _debugOutputEnabledProvider = debugOutputEnabledProvider ?? throw new ArgumentNullException(nameof(debugOutputEnabledProvider));
+        _infoLogger = infoLogger ?? throw new ArgumentNullException(nameof(infoLogger));
         _uiDispatch = uiDispatch ?? throw new ArgumentNullException(nameof(uiDispatch));
     }
 
@@ -63,6 +71,11 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
 
                 foreach (var objectId in objectIds)
                 {
+                    if (_debugOutputEnabledProvider() && TryGetReelDetails(document, objectId, reelValue, out var stops, out var normalizedPosition))
+                    {
+                        _infoLogger($"[MAME-REEL] reel{reelId} raw={reelValue} normalized={normalizedPosition:0.###} stops={stops} objectId={objectId}");
+                    }
+
                     if (document.RuntimeState.SetReelPositionIfChanged(objectId, reelValue))
                     {
                         changedObjectIds.Add(objectId);
@@ -110,6 +123,24 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
 
         cacheEntry.Replace(mapping);
         return cacheEntry.MappingByReelId;
+    }
+
+    private static bool TryGetReelDetails(DocumentTabViewModel document, string objectId, int rawReelValue, out int stops, out double normalizedPosition)
+    {
+        stops = 0;
+        normalizedPosition = 0d;
+        var reelElement = document.GetPanelElements()
+            .FirstOrDefault(element => element.Kind == PanelElementKind.Reel
+                && string.Equals(element.ObjectId, objectId, StringComparison.Ordinal));
+        if (reelElement is null || reelElement.Stops is null or <= 0)
+        {
+            return false;
+        }
+
+        stops = reelElement.Stops.Value;
+        var wrappedPosition = ((rawReelValue % stops) + stops) % stops;
+        normalizedPosition = wrappedPosition / (double)stops;
+        return true;
     }
 
     private sealed class ReelDocumentMappingCacheEntry

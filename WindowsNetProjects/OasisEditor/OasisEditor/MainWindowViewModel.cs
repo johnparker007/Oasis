@@ -218,6 +218,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             new MameReelStateParser(),
             new MameReelRuntimeAdapter(
                 () => OpenDocuments,
+                () => DebugOutputStdOut,
+                message => AddOutputEntry(message, OutputLogStatus.Info),
                 work =>
                 {
                     var dispatcher = Application.Current.Dispatcher;
