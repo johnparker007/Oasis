@@ -10,6 +10,7 @@ namespace OasisEditor.Rendering;
 internal sealed class LampElementRenderer : IPanelElementRenderer
 {
     private static readonly ConcurrentDictionary<string, SKTypeface> TypefaceCache = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly ConcurrentDictionary<string, SKImage?> CachedLampImages = new(StringComparer.OrdinalIgnoreCase);
     private static readonly ConcurrentDictionary<TextLayoutCacheKey, IReadOnlyList<PixelTextLine>> TextLayoutCache = new();
     private static readonly ConcurrentDictionary<TextVisualCacheKey, SKImage> TextVisualCache = new();
     private const int MaxTextVisualCacheEntries = 2048;
@@ -63,6 +64,28 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
         var displayText = element.DisplayText;
         if (string.IsNullOrWhiteSpace(displayText))
         {
+            if (TryGetLampImage(element.AssetPath, out var lampImage))
+            {
+                if (intensity <= 0d)
+                {
+                    return;
+                }
+
+                context.Canvas.DrawImage(lampImage, bounds);
+                if (intensity < 1d)
+                {
+                    using var dimmerPaint = new SKPaint
+                    {
+                        Color = new SKColor(0, 0, 0, (byte)Math.Clamp(Math.Round((1d - intensity) * 255d), 0d, 255d)),
+                        Style = SKPaintStyle.Fill,
+                        IsAntialias = true
+                    };
+                    context.Canvas.DrawRect(bounds, dimmerPaint);
+                }
+
+                return;
+            }
+
             using var paint = new SKPaint { Color = fillColor, Style = SKPaintStyle.Fill, IsAntialias = true };
             context.Canvas.DrawRect(bounds, paint);
             return;
@@ -356,6 +379,69 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
 
         typeface = null!;
         return false;
+    }
+
+
+    private static bool TryGetLampImage(string? assetPath, out SKImage image)
+    {
+        image = default!;
+        if (!TryResolveAssetPath(assetPath, out var resolvedPath))
+        {
+            return false;
+        }
+
+        var cached = CachedLampImages.GetOrAdd(resolvedPath, LoadImage);
+        if (cached is null)
+        {
+            return false;
+        }
+
+        image = cached;
+        return true;
+    }
+
+    private static SKImage? LoadImage(string resolvedPath)
+    {
+        if (!File.Exists(resolvedPath))
+        {
+            return null;
+        }
+
+        using var codec = SKCodec.Create(resolvedPath);
+        if (codec is null)
+        {
+            return null;
+        }
+
+        using var bitmap = SKBitmap.Decode(codec);
+        return bitmap is null ? null : SKImage.FromBitmap(bitmap);
+    }
+
+    private static bool TryResolveAssetPath(string? assetPath, out string resolvedPath)
+    {
+        resolvedPath = string.Empty;
+        if (string.IsNullOrWhiteSpace(assetPath))
+        {
+            return false;
+        }
+
+        var candidate = assetPath.Trim();
+        if (Path.IsPathRooted(candidate))
+        {
+            resolvedPath = candidate;
+            return true;
+        }
+
+        if (string.IsNullOrWhiteSpace(PanelElementFactory.ProjectDirectoryPath))
+        {
+            return false;
+        }
+
+        var relativePath = candidate
+            .Replace('/', Path.DirectorySeparatorChar)
+            .Replace('\\', Path.DirectorySeparatorChar);
+        resolvedPath = Path.GetFullPath(Path.Combine(PanelElementFactory.ProjectDirectoryPath, relativePath));
+        return true;
     }
 
     private static SKColor Lerp(SKColor from, SKColor to, double t)

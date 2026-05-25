@@ -183,6 +183,161 @@ public sealed class Panel2DRendererTests
         }
     }
 
+
+    [Fact]
+    public void Render_WithBackgroundRendererAndAvailableAsset_UsesBackgroundImage()
+    {
+        var renderer = new Panel2DRenderer([new BackgroundElementRenderer()]);
+        using var surface = SKSurface.Create(new SKImageInfo(64, 64));
+
+        var projectDirectory = Path.Combine(Path.GetTempPath(), $"oasis-background-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(Path.Combine(projectDirectory, "Assets"));
+        var assetPath = Path.Combine(projectDirectory, "Assets", "background.png");
+        using (var imageSurface = SKSurface.Create(new SKImageInfo(16, 16)))
+        {
+            imageSurface.Canvas.Clear(SKColors.CornflowerBlue);
+            using var image = imageSurface.Snapshot();
+            using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+            using var stream = File.OpenWrite(assetPath);
+            data.SaveTo(stream);
+        }
+
+        var previousProjectDirectory = PanelElementFactory.ProjectDirectoryPath;
+        try
+        {
+            PanelElementFactory.ProjectDirectoryPath = projectDirectory;
+            renderer.Render(
+                surface.Canvas,
+                [
+                    new PanelElementModel
+                    {
+                        Kind = PanelElementKind.Background,
+                        IsVisible = true,
+                        ObjectId = "background-1",
+                        Name = "Background",
+                        Width = 64,
+                        Height = 64,
+                        AssetPath = "Assets/background.png"
+                    }
+                ],
+                new PanelRuntimeState(),
+                PanelViewportTransform.Identity);
+        }
+        finally
+        {
+            PanelElementFactory.ProjectDirectoryPath = previousProjectDirectory;
+            Directory.Delete(projectDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Render_WithLampRendererAndAvailableAsset_UsesLampImage()
+    {
+        var renderer = new Panel2DRenderer([new LampElementRenderer()]);
+        var runtimeState = new PanelRuntimeState();
+        runtimeState.SetLampIntensity("lamp-image-1", 1d);
+        using var surface = SKSurface.Create(new SKImageInfo(64, 64));
+
+        var projectDirectory = Path.Combine(Path.GetTempPath(), $"oasis-lamp-image-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(Path.Combine(projectDirectory, "Assets"));
+        var assetPath = Path.Combine(projectDirectory, "Assets", "lamp.png");
+        using (var imageSurface = SKSurface.Create(new SKImageInfo(16, 16)))
+        {
+            imageSurface.Canvas.Clear(SKColors.OrangeRed);
+            using var image = imageSurface.Snapshot();
+            using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+            using var stream = File.OpenWrite(assetPath);
+            data.SaveTo(stream);
+        }
+
+        var previousProjectDirectory = PanelElementFactory.ProjectDirectoryPath;
+        try
+        {
+            PanelElementFactory.ProjectDirectoryPath = projectDirectory;
+            renderer.Render(
+                surface.Canvas,
+                [
+                    new PanelElementModel
+                    {
+                        Kind = PanelElementKind.Lamp,
+                        IsVisible = true,
+                        ObjectId = "lamp-image-1",
+                        Name = "Lamp",
+                        Width = 24,
+                        Height = 24,
+                        AssetPath = "Assets/lamp.png",
+                        OnColorHex = "#FF0000",
+                        OffColorHex = "#220000"
+                    }
+                ],
+                runtimeState,
+                PanelViewportTransform.Identity);
+        }
+        finally
+        {
+            PanelElementFactory.ProjectDirectoryPath = previousProjectDirectory;
+            Directory.Delete(projectDirectory, recursive: true);
+        }
+    }
+
+
+    [Fact]
+    public void Render_WithLampRendererGraphicLampOff_DoesNotDrawBlackFallback()
+    {
+        var renderer = new Panel2DRenderer([new LampElementRenderer()]);
+        var runtimeState = new PanelRuntimeState();
+        runtimeState.SetLampIntensity("lamp-image-off-1", 0d);
+        using var surface = SKSurface.Create(new SKImageInfo(64, 64));
+
+        var projectDirectory = Path.Combine(Path.GetTempPath(), $"oasis-lamp-image-off-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(Path.Combine(projectDirectory, "Assets"));
+        var assetPath = Path.Combine(projectDirectory, "Assets", "lamp-off.png");
+        using (var imageSurface = SKSurface.Create(new SKImageInfo(16, 16)))
+        {
+            imageSurface.Canvas.Clear(SKColors.LawnGreen);
+            using var image = imageSurface.Snapshot();
+            using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+            using var stream = File.OpenWrite(assetPath);
+            data.SaveTo(stream);
+        }
+
+        var previousProjectDirectory = PanelElementFactory.ProjectDirectoryPath;
+        try
+        {
+            PanelElementFactory.ProjectDirectoryPath = projectDirectory;
+            renderer.Render(
+                surface.Canvas,
+                [
+                    new PanelElementModel
+                    {
+                        Kind = PanelElementKind.Lamp,
+                        IsVisible = true,
+                        ObjectId = "lamp-image-off-1",
+                        Name = "Lamp Off",
+                        X = 8,
+                        Y = 8,
+                        Width = 24,
+                        Height = 24,
+                        AssetPath = "Assets/lamp-off.png",
+                        OnColorHex = "#FF0000",
+                        OffColorHex = "#220000"
+                    }
+                ],
+                runtimeState,
+                PanelViewportTransform.Identity);
+
+            using var snapshot = surface.Snapshot();
+            using var bitmap = SKBitmap.FromImage(snapshot);
+            var centerPixel = bitmap.GetPixel(20, 20);
+            Assert.Equal(0, centerPixel.Alpha);
+        }
+        finally
+        {
+            PanelElementFactory.ProjectDirectoryPath = previousProjectDirectory;
+            Directory.Delete(projectDirectory, recursive: true);
+        }
+    }
+
     [Theory]
     [InlineData(0, 12, 0d)]
     [InlineData(96, 12, 0d)]
