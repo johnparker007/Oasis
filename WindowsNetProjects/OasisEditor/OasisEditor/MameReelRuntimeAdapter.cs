@@ -180,6 +180,7 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
     {
         return platform switch
         {
+            FruitMachinePlatformType.MPU4 when stops == 16 => -0.05d,
             FruitMachinePlatformType.Scorpion4 when stops == 16 => 0.671d,
             _ => 0d
         };
