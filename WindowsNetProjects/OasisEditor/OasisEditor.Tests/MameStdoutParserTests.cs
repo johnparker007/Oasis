@@ -22,14 +22,14 @@ public sealed class MameStdoutParserTests
     }
 
     [Fact]
-    public void ProcessLine_WhenReelLine_AppliesReelState()
+    public void ProcessLine_WhenSreelLine_AppliesReelState()
     {
         var lampAdapter = new RecordingLampAdapter();
         var reelAdapter = new RecordingReelAdapter();
         var segmentAdapter = new RecordingSegmentAdapter();
         var parser = new MameStdoutParser(new MameLampStateParser(), lampAdapter, new MameReelStateParser(), reelAdapter, new MameSegmentStateParser(), segmentAdapter);
 
-        parser.ProcessLine("reel3 = 94");
+        parser.ProcessLine("sreel3 = 64170");
 
         var call = Assert.Single(reelAdapter.Calls);
         Assert.Equal(3, call.ReelId);
