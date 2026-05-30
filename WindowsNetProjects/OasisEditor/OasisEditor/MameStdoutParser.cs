@@ -10,9 +10,8 @@ public sealed class MameStdoutParser : IMameStdoutParser
     private readonly IMameSegmentRuntimeAdapter _segmentRuntimeAdapter;
     private readonly MameVfdDutyParser _vfdDutyParser;
     private readonly Func<FruitMachinePlatformType> _platformProvider;
-    private readonly Action<string>? _diagnosticLogger;
 
-    public MameStdoutParser(IMameLampStateParser lampStateParser, IMameLampRuntimeAdapter lampRuntimeAdapter, IMameReelStateParser reelStateParser, IMameReelRuntimeAdapter reelRuntimeAdapter, IMameSegmentStateParser segmentStateParser, IMameSegmentRuntimeAdapter segmentRuntimeAdapter, Func<FruitMachinePlatformType>? platformProvider = null, Action<string>? diagnosticLogger = null)
+    public MameStdoutParser(IMameLampStateParser lampStateParser, IMameLampRuntimeAdapter lampRuntimeAdapter, IMameReelStateParser reelStateParser, IMameReelRuntimeAdapter reelRuntimeAdapter, IMameSegmentStateParser segmentStateParser, IMameSegmentRuntimeAdapter segmentRuntimeAdapter, Func<FruitMachinePlatformType>? platformProvider = null)
     {
         _lampStateParser = lampStateParser ?? throw new ArgumentNullException(nameof(lampStateParser));
         _lampRuntimeAdapter = lampRuntimeAdapter ?? throw new ArgumentNullException(nameof(lampRuntimeAdapter));
@@ -22,7 +21,6 @@ public sealed class MameStdoutParser : IMameStdoutParser
         _segmentRuntimeAdapter = segmentRuntimeAdapter ?? throw new ArgumentNullException(nameof(segmentRuntimeAdapter));
         _vfdDutyParser = new MameVfdDutyParser();
         _platformProvider = platformProvider ?? (() => FruitMachinePlatformType.MPU4);
-        _diagnosticLogger = diagnosticLogger;
     }
 
     public void ProcessLine(string line)
@@ -56,6 +54,8 @@ public sealed class MameStdoutParser : IMameStdoutParser
             return;
         }
 
-        _diagnosticLogger?.Invoke($"[MAME-STDOUT] Unhandled line: {line}");
+        // Unknown MAME stdout lines are intentionally ignored for now. Some machines
+        // emit hundreds of currently unsupported lines per second during early
+        // development, and logging each one can stall the editor output window.
     }
 }

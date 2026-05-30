@@ -248,8 +248,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                         dispatcher.Invoke(work);
                     }
                 }),
-            platformProvider: () => SelectedFruitMachinePlatform,
-            diagnosticLogger: line => AddOutputEntry(line, OutputLogStatus.Info));
+            platformProvider: () => SelectedFruitMachinePlatform);
         _mameProcessRunner = new MameProcessRunner(
             stdoutLogger: line => ProcessMameStdoutLine(line, mameStdoutParser),
             stdinLogger: line =>
