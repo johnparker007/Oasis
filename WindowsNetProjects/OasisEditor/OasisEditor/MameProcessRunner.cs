@@ -1,10 +1,13 @@
 using System.Diagnostics;
+using System.IO;
 using System.Text;
 
 namespace OasisEditor;
 
 public sealed class MameProcessRunner : IMameProcessRunner, IDisposable
 {
+    private static readonly TimeSpan GracefulExitTimeout = TimeSpan.FromSeconds(3);
+
     private readonly Func<Process> _processFactory;
     private readonly Action<string>? _stdoutLogger;
     private readonly Action<string>? _stdinLogger;
@@ -84,11 +87,13 @@ public sealed class MameProcessRunner : IMameProcessRunner, IDisposable
         {
             if (!process.HasExited)
             {
-                process.Kill(entireProcessTree: true);
-                await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+                var exitedCleanly = await TryStopCleanlyAsync(process, cancellationToken).ConfigureAwait(false);
+                if (!exitedCleanly && !process.HasExited)
+                {
+                    process.Kill(entireProcessTree: true);
+                    await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+                }
             }
-
-            process.WaitForExit();
         }
         finally
         {
@@ -96,6 +101,38 @@ public sealed class MameProcessRunner : IMameProcessRunner, IDisposable
             _process = null;
             process.Dispose();
         }
+    }
+
+    private async Task<bool> TryStopCleanlyAsync(Process process, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await WriteStandardInputAsync(process, "exit", cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is IOException or InvalidOperationException or ObjectDisposedException)
+        {
+            return false;
+        }
+
+        var waitForExitTask = process.WaitForExitAsync(cancellationToken);
+        var timeoutTask = Task.Delay(GracefulExitTimeout, cancellationToken);
+        var completedTask = await Task.WhenAny(waitForExitTask, timeoutTask).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (completedTask != waitForExitTask)
+        {
+            return false;
+        }
+
+        await waitForExitTask.ConfigureAwait(false);
+        return true;
+    }
+
+    private async Task WriteStandardInputAsync(Process process, string command, CancellationToken cancellationToken)
+    {
+        _stdinLogger?.Invoke(command);
+        await process.StandardInput.WriteLineAsync(new StringBuilder(command), cancellationToken).ConfigureAwait(false);
+        await process.StandardInput.FlushAsync(cancellationToken).ConfigureAwait(false);
     }
 
     public async Task WriteStandardInputAsync(string command, CancellationToken cancellationToken)
@@ -111,9 +148,7 @@ public sealed class MameProcessRunner : IMameProcessRunner, IDisposable
             throw new InvalidOperationException("Cannot write input because MAME process is not running.");
         }
 
-        _stdinLogger?.Invoke(command);
-        await process.StandardInput.WriteLineAsync(new StringBuilder(command), cancellationToken).ConfigureAwait(false);
-        await process.StandardInput.FlushAsync(cancellationToken).ConfigureAwait(false);
+        await WriteStandardInputAsync(process, command, cancellationToken).ConfigureAwait(false);
     }
 
     public void Dispose()

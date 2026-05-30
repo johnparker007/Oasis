@@ -9,6 +9,8 @@ namespace OasisEditor.Views;
 public partial class OutputLogView : UserControl
 {
     private INotifyCollectionChanged? _observedOutputEntries;
+    private OutputLogEntry? _pendingAutoScrollEntry;
+    private bool _isAutoScrollScheduled;
 
     public OutputLogView()
     {
@@ -59,10 +61,35 @@ public partial class OutputLogView : UserControl
 
         if (e.NewItems[e.NewItems.Count - 1] is OutputLogEntry entry)
         {
-            OutputList.ScrollIntoView(entry);
+            ScheduleAutoScroll(entry);
         }
     }
 
+    private void ScheduleAutoScroll(OutputLogEntry entry)
+    {
+        _pendingAutoScrollEntry = entry;
+        if (_isAutoScrollScheduled)
+        {
+            return;
+        }
+
+        _isAutoScrollScheduled = true;
+        Dispatcher.BeginInvoke((Action)PerformPendingAutoScroll);
+    }
+
+    private void PerformPendingAutoScroll()
+    {
+        _isAutoScrollScheduled = false;
+
+        var entry = _pendingAutoScrollEntry;
+        _pendingAutoScrollEntry = null;
+        if (entry is null || ViewModel?.AutoScroll != true)
+        {
+            return;
+        }
+
+        OutputList.ScrollIntoView(entry);
+    }
 
     private void OnOutputListPreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
     {
