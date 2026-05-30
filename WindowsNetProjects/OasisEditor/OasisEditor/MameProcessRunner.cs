@@ -1,4 +1,3 @@
-using System.IO;
 using System.Diagnostics;
 using System.Text;
 
@@ -11,8 +10,8 @@ public sealed class MameProcessRunner : IMameProcessRunner, IDisposable
     private readonly Action<string>? _stdinLogger;
     private readonly Action<string>? _stderrLogger;
     private Process? _process;
-    private Task? _stdoutPumpTask;
-    private Task? _stderrPumpTask;
+    private bool _outputReadStarted;
+    private bool _errorReadStarted;
 
     public MameProcessRunner(Action<string>? stdoutLogger = null, Action<string>? stdinLogger = null, Action<string>? stderrLogger = null)
         : this(() => new Process(), stdoutLogger, stdinLogger, stderrLogger)
@@ -42,15 +41,33 @@ public sealed class MameProcessRunner : IMameProcessRunner, IDisposable
         process.StartInfo = startInfo;
         process.EnableRaisingEvents = true;
 
-        if (!process.Start())
-        {
-            process.Dispose();
-            throw new InvalidOperationException("Failed to start MAME process.");
-        }
+        process.OutputDataReceived += OnOutputDataReceived;
+        process.ErrorDataReceived += OnErrorDataReceived;
 
-        _process = process;
-        _stdoutPumpTask = PumpStreamAsync(process.StandardOutput, _stdoutLogger, cancellationToken);
-        _stderrPumpTask = PumpStreamAsync(process.StandardError, _stderrLogger, cancellationToken);
+        try
+        {
+            if (!process.Start())
+            {
+                throw new InvalidOperationException("Failed to start MAME process.");
+            }
+
+            process.BeginOutputReadLine();
+            _outputReadStarted = true;
+
+            process.BeginErrorReadLine();
+            _errorReadStarted = true;
+
+            _process = process;
+        }
+        catch
+        {
+            process.OutputDataReceived -= OnOutputDataReceived;
+            process.ErrorDataReceived -= OnErrorDataReceived;
+            process.Dispose();
+            _outputReadStarted = false;
+            _errorReadStarted = false;
+            throw;
+        }
 
         return Task.CompletedTask;
     }
@@ -71,13 +88,11 @@ public sealed class MameProcessRunner : IMameProcessRunner, IDisposable
                 await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
             }
 
-            await AwaitPumpAsync(_stdoutPumpTask).ConfigureAwait(false);
-            await AwaitPumpAsync(_stderrPumpTask).ConfigureAwait(false);
+            process.WaitForExit();
         }
         finally
         {
-            _stdoutPumpTask = null;
-            _stderrPumpTask = null;
+            DetachOutputHandlers(process);
             _process = null;
             process.Dispose();
         }
@@ -103,38 +118,61 @@ public sealed class MameProcessRunner : IMameProcessRunner, IDisposable
 
     public void Dispose()
     {
-        _process?.Dispose();
+        var process = _process;
+        if (process is not null)
+        {
+            DetachOutputHandlers(process);
+            process.Dispose();
+        }
+
         _process = null;
     }
 
-    private static async Task PumpStreamAsync(StreamReader reader, Action<string>? logger, CancellationToken cancellationToken)
+    private void OnOutputDataReceived(object sender, DataReceivedEventArgs e)
     {
-        while (!cancellationToken.IsCancellationRequested)
+        if (!string.IsNullOrEmpty(e.Data))
         {
-            var line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
-            if (line is null)
-            {
-                break;
-            }
-
-            logger?.Invoke(line);
+            _stdoutLogger?.Invoke(e.Data);
         }
     }
 
-    private static async Task AwaitPumpAsync(Task? pump)
+    private void OnErrorDataReceived(object sender, DataReceivedEventArgs e)
     {
-        if (pump is null)
+        if (!string.IsNullOrEmpty(e.Data))
         {
-            return;
+            _stderrLogger?.Invoke(e.Data);
+        }
+    }
+
+    private void DetachOutputHandlers(Process process)
+    {
+        if (_outputReadStarted)
+        {
+            try
+            {
+                process.CancelOutputRead();
+            }
+            catch (InvalidOperationException)
+            {
+                // The process may have exited before the async output read was cancelled.
+            }
         }
 
-        try
+        if (_errorReadStarted)
         {
-            await pump.ConfigureAwait(false);
+            try
+            {
+                process.CancelErrorRead();
+            }
+            catch (InvalidOperationException)
+            {
+                // The process may have exited before the async error read was cancelled.
+            }
         }
-        catch (OperationCanceledException)
-        {
-            // ignored
-        }
+
+        process.OutputDataReceived -= OnOutputDataReceived;
+        process.ErrorDataReceived -= OnErrorDataReceived;
+        _outputReadStarted = false;
+        _errorReadStarted = false;
     }
 }
