@@ -203,51 +203,18 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 () => OpenDocuments,
                 () => DebugOutputLamps,
                 message => AddOutputEntry(message, OutputLogStatus.Info),
-                work =>
-                {
-                    var dispatcher = Application.Current.Dispatcher;
-                    if (dispatcher.CheckAccess())
-                    {
-                        work();
-                    }
-                    else
-                    {
-                        dispatcher.Invoke(work);
-                    }
-                }),
+                DispatchToUiThread),
             new MameReelStateParser(),
             new MameReelRuntimeAdapter(
                 () => OpenDocuments,
                 () => SelectedFruitMachinePlatform,
                 () => DebugOutputStdOut,
                 message => AddOutputEntry(message, OutputLogStatus.Info),
-                work =>
-                {
-                    var dispatcher = Application.Current.Dispatcher;
-                    if (dispatcher.CheckAccess())
-                    {
-                        work();
-                    }
-                    else
-                    {
-                        dispatcher.Invoke(work);
-                    }
-                }),
+                DispatchToUiThread),
             new MameSegmentStateParser(),
             new MameSegmentRuntimeAdapter(
                 () => OpenDocuments,
-                work =>
-                {
-                    var dispatcher = Application.Current.Dispatcher;
-                    if (dispatcher.CheckAccess())
-                    {
-                        work();
-                    }
-                    else
-                    {
-                        dispatcher.Invoke(work);
-                    }
-                }),
+                DispatchToUiThread),
             platformProvider: () => SelectedFruitMachinePlatform);
         _mameProcessRunner = new MameProcessRunner(
             stdoutLogger: line => ProcessMameStdoutLine(line, mameStdoutParser),
@@ -265,7 +232,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             BuildMameLaunchRequest);
         _mameEmulationService.StateChanged += (_, state) =>
         {
-            Application.Current.Dispatcher.Invoke(() =>
+            DispatchToUiThread(() =>
             {
                 if (state is MameEmulationState.Stopping or MameEmulationState.Stopped or MameEmulationState.Failed)
                 {
@@ -1740,6 +1707,25 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ToolWindowCloseRequested?.Invoke(EditorToolWindowId.Preferences);
     }
 
+    private static void DispatchToUiThread(Action work)
+    {
+        ArgumentNullException.ThrowIfNull(work);
+
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is null || dispatcher.HasShutdownStarted || dispatcher.HasShutdownFinished)
+        {
+            return;
+        }
+
+        if (dispatcher.CheckAccess())
+        {
+            work();
+            return;
+        }
+
+        _ = dispatcher.BeginInvoke(work);
+    }
+
     private void CloseProjectSettings()
     {
         ToolWindowCloseRequested?.Invoke(EditorToolWindowId.ProjectSettings);
@@ -1757,7 +1743,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        StopEmulationForShutdown();
+        StopEmulationForWindowClose();
 
         ClosePreferences();
         CloseProjectSettings();
@@ -1786,7 +1772,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void ExitApplication()
     {
-        StopEmulationForShutdown();
+        StopEmulationForWindowClose();
 
         Application.Current.Shutdown();
     }
@@ -1819,9 +1805,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         return MameEmulationCommandStateEvaluator.Evaluate(HasLoadedProject, EmulationState).CanStop;
     }
 
-    private void StopEmulationForShutdown()
+    public void StopEmulationForWindowClose()
     {
-        if (!CanStopEmulation())
+        if (_mameEmulationService.State == MameEmulationState.Stopped)
         {
             return;
         }

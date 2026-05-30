@@ -13,6 +13,7 @@ public sealed class MameProcessRunner : IMameProcessRunner, IDisposable
     private readonly Action<string>? _stdinLogger;
     private readonly Action<string>? _stderrLogger;
     private Process? _process;
+    private volatile bool _acceptOutput;
     private bool _outputReadStarted;
     private bool _errorReadStarted;
 
@@ -54,6 +55,7 @@ public sealed class MameProcessRunner : IMameProcessRunner, IDisposable
                 throw new InvalidOperationException("Failed to start MAME process.");
             }
 
+            _acceptOutput = true;
             process.BeginOutputReadLine();
             _outputReadStarted = true;
 
@@ -67,6 +69,7 @@ public sealed class MameProcessRunner : IMameProcessRunner, IDisposable
             process.OutputDataReceived -= OnOutputDataReceived;
             process.ErrorDataReceived -= OnErrorDataReceived;
             process.Dispose();
+            _acceptOutput = false;
             _outputReadStarted = false;
             _errorReadStarted = false;
             throw;
@@ -82,6 +85,8 @@ public sealed class MameProcessRunner : IMameProcessRunner, IDisposable
         {
             return;
         }
+
+        _acceptOutput = false;
 
         try
         {
@@ -153,6 +158,8 @@ public sealed class MameProcessRunner : IMameProcessRunner, IDisposable
 
     public void Dispose()
     {
+        _acceptOutput = false;
+
         var process = _process;
         if (process is not null)
         {
@@ -165,7 +172,7 @@ public sealed class MameProcessRunner : IMameProcessRunner, IDisposable
 
     private void OnOutputDataReceived(object sender, DataReceivedEventArgs e)
     {
-        if (!string.IsNullOrEmpty(e.Data))
+        if (_acceptOutput && !string.IsNullOrEmpty(e.Data))
         {
             _stdoutLogger?.Invoke(e.Data);
         }
@@ -173,7 +180,7 @@ public sealed class MameProcessRunner : IMameProcessRunner, IDisposable
 
     private void OnErrorDataReceived(object sender, DataReceivedEventArgs e)
     {
-        if (!string.IsNullOrEmpty(e.Data))
+        if (_acceptOutput && !string.IsNullOrEmpty(e.Data))
         {
             _stderrLogger?.Invoke(e.Data);
         }
@@ -205,6 +212,7 @@ public sealed class MameProcessRunner : IMameProcessRunner, IDisposable
             }
         }
 
+        _acceptOutput = false;
         process.OutputDataReceived -= OnOutputDataReceived;
         process.ErrorDataReceived -= OnErrorDataReceived;
         _outputReadStarted = false;
