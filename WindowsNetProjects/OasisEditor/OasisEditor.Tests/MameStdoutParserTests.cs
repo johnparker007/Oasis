@@ -38,20 +38,17 @@ public sealed class MameStdoutParserTests
     }
 
     [Fact]
-    public void ProcessLine_WhenUnknownLine_LogsDiagnostic()
+    public void ProcessLine_WhenUnknownLine_IgnoresLineWithoutLoggingDiagnostic()
     {
         var lampAdapter = new RecordingLampAdapter();
         var reelAdapter = new RecordingReelAdapter();
         var segmentAdapter = new RecordingSegmentAdapter();
-        string? diagnostic = null;
-        var parser = new MameStdoutParser(new MameLampStateParser(), lampAdapter, new MameReelStateParser(), reelAdapter, new MameSegmentStateParser(), segmentAdapter, diagnosticLogger: message => diagnostic = message);
+        var parser = new MameStdoutParser(new MameLampStateParser(), lampAdapter, new MameReelStateParser(), reelAdapter, new MameSegmentStateParser(), segmentAdapter);
 
         parser.ProcessLine("unknown output");
 
         Assert.Empty(lampAdapter.Calls);
         Assert.Empty(reelAdapter.Calls);
-        Assert.NotNull(diagnostic);
-        Assert.Contains("Unhandled line", diagnostic);
     }
 
     [Fact]
@@ -91,8 +88,7 @@ public sealed class MameStdoutParserTests
         var lampAdapter = new RecordingLampAdapter();
         var reelAdapter = new RecordingReelAdapter();
         var segmentAdapter = new RecordingSegmentAdapter();
-        string? diagnostic = null;
-        var parser = new MameStdoutParser(new MameLampStateParser(), lampAdapter, new MameReelStateParser(), reelAdapter, new MameSegmentStateParser(), segmentAdapter, () => FruitMachinePlatformType.MPU4, message => diagnostic = message);
+        var parser = new MameStdoutParser(new MameLampStateParser(), lampAdapter, new MameReelStateParser(), reelAdapter, new MameSegmentStateParser(), segmentAdapter, () => FruitMachinePlatformType.MPU4);
 
         parser.ProcessLine("vfdduty0 = 31");
 
@@ -102,7 +98,6 @@ public sealed class MameStdoutParserTests
         var duty = Assert.Single(segmentAdapter.BrightnessCalls);
         Assert.Equal(0, duty.CellId);
         Assert.Equal(1d, duty.Brightness);
-        Assert.Null(diagnostic);
     }
     private sealed class RecordingLampAdapter : IMameLampRuntimeAdapter
     {

@@ -19,7 +19,7 @@ namespace OasisEditor;
 
 public sealed class MainWindowViewModel : INotifyPropertyChanged
 {
-    private const bool EnableSkiaRendererDiagnostics = true;
+    private const bool kDebugSkiaPerformanceOutput = false;
     private readonly RecentProjectsStore _recentProjectsStore = new();
     private readonly IApplicationThemeService _applicationThemeService;
     private readonly EditorPreferencesStore _preferencesStore;
@@ -130,8 +130,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         _outputLog = new OutputLogViewModel();
         _outputLog.PropertyChanged += OnOutputLogPropertyChanged;
-        SkiaRenderDiagnostics.IsEnabled = EnableSkiaRendererDiagnostics;
-        if (EnableSkiaRendererDiagnostics)
+        SkiaRenderDiagnostics.IsEnabled = kDebugSkiaPerformanceOutput;
+        if (kDebugSkiaPerformanceOutput)
         {
             SkiaRenderDiagnostics.ReportReady += message => AddOutputEntry(message, OutputLogStatus.Info);
         }
@@ -248,8 +248,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                         dispatcher.Invoke(work);
                     }
                 }),
-            platformProvider: () => SelectedFruitMachinePlatform,
-            diagnosticLogger: line => AddOutputEntry(line, OutputLogStatus.Info));
+            platformProvider: () => SelectedFruitMachinePlatform);
         _mameProcessRunner = new MameProcessRunner(
             stdoutLogger: line => ProcessMameStdoutLine(line, mameStdoutParser),
             stdinLogger: line =>
