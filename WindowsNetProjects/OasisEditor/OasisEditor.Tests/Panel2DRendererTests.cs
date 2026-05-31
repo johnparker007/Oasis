@@ -343,7 +343,8 @@ public sealed class Panel2DRendererTests
     [InlineData(96, 12, 0d)]
     [InlineData(-1, 12, 95d / 96d)]
     [InlineData(24, 12, 0.25d)]
-    public void ReelOffset_ComputesExpectedWrappedOffset(int position, int stops, double expected)
+    [InlineData(24.5d, 12, 24.5d / 96d)]
+    public void ReelOffset_ComputesExpectedWrappedOffset(double position, int stops, double expected)
     {
         var actual = ReelElementRenderer.ComputeWrappedOffset(position, stops);
 
@@ -366,7 +367,8 @@ public sealed class Panel2DRendererTests
     [InlineData(24, 12, 48f, 12d)]
     [InlineData(-1, 12, 48f, 47.5d)]
     [InlineData(96, 12, 48f, 0d)]
-    public void ReelBandOffset_ComputesExpectedValue(int position, int stops, float bandHeight, double expected)
+    [InlineData(24.5d, 12, 48f, 12.25d)]
+    public void ReelBandOffset_ComputesExpectedValue(double position, int stops, float bandHeight, double expected)
     {
         var actual = ReelElementRenderer.ComputeBandOffset(position, stops, bandHeight);
 

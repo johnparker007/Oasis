@@ -12,6 +12,11 @@ internal static class PanelElementValidation
         return IsFinite(value) && value > 0;
     }
 
+    public static bool IsValidBandOffset(double value)
+    {
+        return IsFinite(value) && value >= -1d && value <= 1d;
+    }
+
     public static bool IsValidForInspectorUpdate(PanelElementModel element)
     {
         ArgumentNullException.ThrowIfNull(element);

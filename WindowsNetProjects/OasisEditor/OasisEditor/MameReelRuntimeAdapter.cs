@@ -77,17 +77,17 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
 
                 foreach (var objectId in objectIds)
                 {
-                    if (!TryResolveEffectiveReelPosition(document, objectId, reelValue, out var effectiveReelValue, out var stops, out var normalizedPosition))
+                    if (!TryResolveEffectiveReelPosition(document, objectId, reelValue, out var effectiveReelPosition, out var stops, out var normalizedPosition))
                     {
                         continue;
                     }
 
                     if (_debugOutputEnabledProvider())
                     {
-                        _infoLogger($"[MAME-REEL] reel{reelId} raw={reelValue} effective={effectiveReelValue} normalized={normalizedPosition:0.###} stops={stops} objectId={objectId}");
+                        _infoLogger($"[MAME-REEL] reel{reelId} raw={reelValue} effective={effectiveReelPosition:0.###} normalized={normalizedPosition:0.###} stops={stops} objectId={objectId}");
                     }
 
-                    if (document.RuntimeState.SetReelPositionIfChanged(objectId, effectiveReelValue))
+                    if (document.RuntimeState.SetReelPositionIfChanged(objectId, effectiveReelPosition))
                     {
                         changedObjectIds.Add(objectId);
                     }
@@ -136,9 +136,9 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
         return cacheEntry.MappingByReelId;
     }
 
-    private bool TryResolveEffectiveReelPosition(DocumentTabViewModel document, string objectId, int rawReelValue, out int effectiveReelValue, out int stops, out double normalizedPosition)
+    private bool TryResolveEffectiveReelPosition(DocumentTabViewModel document, string objectId, int rawReelValue, out double effectiveReelPosition, out int stops, out double normalizedPosition)
     {
-        effectiveReelValue = 0;
+        effectiveReelPosition = 0d;
         stops = 0;
         normalizedPosition = 0d;
         var reelElement = document.GetPanelElements()
@@ -150,13 +150,13 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
         }
 
         stops = reelElement.Stops.Value;
-        effectiveReelValue = ResolveEffectiveReelValue(rawReelValue, reelElement.Stops.Value, reelElement.IsReversed == true, reelElement.BandOffset ?? 0d);
-        var wrappedPosition = ((effectiveReelValue % stops) + stops) % stops;
-        normalizedPosition = wrappedPosition / (double)stops;
+        effectiveReelPosition = ResolveEffectiveReelPosition(rawReelValue, reelElement.Stops.Value, reelElement.IsReversed == true, reelElement.BandOffset ?? 0d);
+        var wrappedPosition = ((effectiveReelPosition % ReelPositionsPerRevolution) + ReelPositionsPerRevolution) % ReelPositionsPerRevolution;
+        normalizedPosition = wrappedPosition / ReelPositionsPerRevolution;
         return true;
     }
 
-    private int ResolveEffectiveReelValue(int rawReelValue, int stops, bool reelReversed, double reelBandOffset)
+    private double ResolveEffectiveReelPosition(int rawReelValue, int stops, bool reelReversed, double reelBandOffset)
     {
         var wrapped = ((rawReelValue % ReelPositionsPerRevolution) + ReelPositionsPerRevolution) % ReelPositionsPerRevolution;
         var platformReversed = RequiresPlatformReversal(_platformProvider());
@@ -166,7 +166,7 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
             : wrapped;
         var platformOffset = ResolvePlatformBandOffsetNormalized(_platformProvider(), stops);
         var totalOffset = platformOffset + reelBandOffset;
-        var offsetSteps = (int)Math.Round(totalOffset * ReelPositionsPerRevolution, MidpointRounding.AwayFromZero);
+        var offsetSteps = totalOffset * ReelPositionsPerRevolution;
         var offsetAdjusted = directionAdjusted + offsetSteps;
         return ((offsetAdjusted % ReelPositionsPerRevolution) + ReelPositionsPerRevolution) % ReelPositionsPerRevolution;
     }
