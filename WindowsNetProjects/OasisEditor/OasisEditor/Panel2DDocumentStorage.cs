@@ -598,7 +598,7 @@ internal static class Panel2DDocumentStorage
     {
         return !double.IsNaN(value)
             && !double.IsInfinity(value)
-            && value >= 0
+            && value >= -1
             && value <= 1;
     }
 

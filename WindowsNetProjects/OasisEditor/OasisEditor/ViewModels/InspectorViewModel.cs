@@ -470,7 +470,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                 "Band Offset",
                 "Type-specific",
                 selectedElement.BandOffset ?? 0d,
-                commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update band offset", new PanelElementModelUpdate { BandOffset = value }),
+                commit: value => TryApplyBandOffsetUpdate(selectedElement.ObjectId, value),
                 format: "G17"));
         }
 
@@ -584,6 +584,16 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
     private string? TryApplyColorUpdate(string objectId, string description, PanelElementModelUpdate update)
     {
         return TryApplyUpdate(objectId, description, update, suppressInspectorRefresh: true);
+    }
+
+    private string? TryApplyBandOffsetUpdate(string objectId, double value)
+    {
+        if (!PanelElementValidation.IsValidBandOffset(value))
+        {
+            return "Enter a value from -1 to 1.";
+        }
+
+        return TryApplyUpdate(objectId, "Update band offset", new PanelElementModelUpdate { BandOffset = value });
     }
 
     private string? TryApplyUpdate(string objectId, string description, PanelElementModelUpdate update, bool suppressInspectorRefresh = false)

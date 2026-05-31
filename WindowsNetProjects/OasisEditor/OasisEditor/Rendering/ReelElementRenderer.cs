@@ -45,7 +45,7 @@ internal sealed class ReelElementRenderer : IPanelElementRenderer
         context.Canvas.DrawRect(bounds, borderPaint);
     }
 
-    internal static double ComputeWrappedOffset(int position, int stops)
+    internal static double ComputeWrappedOffset(double position, int stops)
     {
         var safeStops = Math.Max(1, stops);
         var positionsPerRevolution = Math.Max(LegacyReelPositionsPerRevolution, safeStops);
@@ -79,7 +79,7 @@ internal sealed class ReelElementRenderer : IPanelElementRenderer
         }
     }
 
-    private static void DrawStripImage(SKCanvas canvas, SKRect bounds, SKImage stripImage, double wrappedOffset, int reelPosition, int stops, double? visibleScale)
+    private static void DrawStripImage(SKCanvas canvas, SKRect bounds, SKImage stripImage, double wrappedOffset, double reelPosition, int stops, double? visibleScale)
     {
         var destinationHeight = ResolveBandHeight(bounds.Height, visibleScale);
         var top = bounds.Top - (float)ComputeBandOffset(reelPosition, stops, destinationHeight);
@@ -97,7 +97,7 @@ internal sealed class ReelElementRenderer : IPanelElementRenderer
         return (float)(reelHeight / safeVisibleScale);
     }
 
-    public static double ComputeBandOffset(int position, int stops, float bandHeight)
+    public static double ComputeBandOffset(double position, int stops, float bandHeight)
     {
         var safeStops = Math.Max(1, stops);
         var positionsPerRevolution = Math.Max(LegacyReelPositionsPerRevolution, safeStops);

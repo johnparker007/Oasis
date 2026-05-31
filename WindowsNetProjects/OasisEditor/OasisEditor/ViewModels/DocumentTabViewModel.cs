@@ -344,7 +344,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
 }
 
 internal readonly record struct LampVisualState(bool IsLampTestOn, double Intensity);
-internal readonly record struct ReelVisualState(int Position);
+internal readonly record struct ReelVisualState(double Position);
 internal readonly record struct SegmentVisualState(int[] CellMasks);
 
 public sealed record PanelVisualStateChangedEvent(

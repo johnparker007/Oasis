@@ -3,7 +3,7 @@ namespace OasisEditor;
 public sealed class PanelRuntimeState
 {
     private readonly Dictionary<string, double> _lampIntensityByObjectId = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, int> _reelPositionByObjectId = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, double> _reelPositionByObjectId = new(StringComparer.Ordinal);
     private readonly Dictionary<string, int[]> _segmentMasksByObjectId = new(StringComparer.Ordinal);
     private readonly Dictionary<string, double[]> _segmentBrightnessByObjectId = new(StringComparer.Ordinal);
 
@@ -12,7 +12,7 @@ public sealed class PanelRuntimeState
     public bool IsLampTestActive => !string.IsNullOrWhiteSpace(LampTestObjectId);
 
     public IReadOnlyDictionary<string, double> LampIntensityByObjectId => _lampIntensityByObjectId;
-    public IReadOnlyDictionary<string, int> ReelPositionByObjectId => _reelPositionByObjectId;
+    public IReadOnlyDictionary<string, double> ReelPositionByObjectId => _reelPositionByObjectId;
     public IReadOnlyDictionary<string, int[]> SegmentMasksByObjectId => _segmentMasksByObjectId;
     public IReadOnlyDictionary<string, double[]> SegmentBrightnessByObjectId => _segmentBrightnessByObjectId;
 
@@ -35,7 +35,7 @@ public sealed class PanelRuntimeState
         return true;
     }
 
-    public bool SetReelPositionIfChanged(string objectId, int position)
+    public bool SetReelPositionIfChanged(string objectId, double position)
     {
         if (string.IsNullOrWhiteSpace(objectId))
         {
@@ -43,7 +43,8 @@ public sealed class PanelRuntimeState
         }
 
         var normalizedObjectId = objectId.Trim();
-        if (_reelPositionByObjectId.TryGetValue(normalizedObjectId, out var previous) && previous == position)
+        if (_reelPositionByObjectId.TryGetValue(normalizedObjectId, out var previous)
+            && Math.Abs(previous - position) < 0.0001d)
         {
             return false;
         }
@@ -67,14 +68,14 @@ public sealed class PanelRuntimeState
         return _lampIntensityByObjectId.GetValueOrDefault(objectId.Trim(), 0d);
     }
 
-    public int GetReelPosition(string objectId)
+    public double GetReelPosition(string objectId)
     {
         if (string.IsNullOrWhiteSpace(objectId))
         {
             return 0;
         }
 
-        return _reelPositionByObjectId.GetValueOrDefault(objectId.Trim(), 0);
+        return _reelPositionByObjectId.GetValueOrDefault(objectId.Trim(), 0d);
     }
 
     public void ClearLampIntensity(string objectId)
