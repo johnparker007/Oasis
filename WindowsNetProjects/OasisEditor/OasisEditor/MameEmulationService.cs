@@ -4,6 +4,8 @@ namespace OasisEditor;
 
 public sealed class MameEmulationService : IMameEmulationService
 {
+    private const string OasisSaveStateName = "oasis_save_state";
+
     private readonly IMameProcessStartInfoBuilder _startInfoBuilder;
     private readonly IMameProcessRunner _processRunner;
     private readonly Func<MameProcessLaunchRequest?> _requestFactory;
@@ -33,7 +35,17 @@ public sealed class MameEmulationService : IMameEmulationService
 
     public event EventHandler<MameEmulationState>? StateChanged;
 
-    public async Task StartAsync(CancellationToken cancellationToken)
+    public Task StartAsync(CancellationToken cancellationToken)
+    {
+        return StartCoreAsync(loadState: false, cancellationToken);
+    }
+
+    public Task StartAndLoadStateAsync(CancellationToken cancellationToken)
+    {
+        return StartCoreAsync(loadState: true, cancellationToken);
+    }
+
+    private async Task StartCoreAsync(bool loadState, CancellationToken cancellationToken)
     {
         SetState(MameEmulationState.Starting);
         try
@@ -42,6 +54,17 @@ public sealed class MameEmulationService : IMameEmulationService
             if (request is null)
             {
                 throw new InvalidOperationException("No valid MAME launch request is available.");
+            }
+
+            if (loadState)
+            {
+                var stateArgument = $"-state {OasisSaveStateName}";
+                request = request with
+                {
+                    AdditionalArguments = string.IsNullOrWhiteSpace(request.AdditionalArguments)
+                        ? stateArgument
+                        : $"{request.AdditionalArguments.Trim()} {stateArgument}"
+                };
             }
 
             var startInfo = _startInfoBuilder.Build(request);
@@ -67,18 +90,53 @@ public sealed class MameEmulationService : IMameEmulationService
         SetState(MameEmulationState.Stopped);
     }
 
-    public Task PauseAsync(CancellationToken cancellationToken)
+    public async Task SaveStateAndExitAsync(CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-        SetState(MameEmulationState.Paused);
-        return Task.CompletedTask;
+        await SendCommandAsync($"state_save_and_exit {OasisSaveStateName}", cancellationToken).ConfigureAwait(false);
+        await StopAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    public Task ResumeAsync(CancellationToken cancellationToken)
+    public Task LoadStateAsync(CancellationToken cancellationToken)
+    {
+        return SendCommandAsync($"state_load {OasisSaveStateName}", cancellationToken);
+    }
+
+    public Task SaveStateAsync(CancellationToken cancellationToken)
+    {
+        return SendCommandAsync($"state_save {OasisSaveStateName}", cancellationToken);
+    }
+
+    public async Task PauseAsync(CancellationToken cancellationToken)
+    {
+        await SendCommandAsync("pause", cancellationToken).ConfigureAwait(false);
+        SetState(MameEmulationState.Paused);
+    }
+
+    public async Task ResumeAsync(CancellationToken cancellationToken)
+    {
+        await SendCommandAsync("resume", cancellationToken).ConfigureAwait(false);
+        SetState(MameEmulationState.Running);
+    }
+
+    public Task SetThrottleAsync(bool isThrottled, CancellationToken cancellationToken)
+    {
+        return SendCommandAsync($"throttled {isThrottled.ToString().ToLowerInvariant()}", cancellationToken);
+    }
+
+    public Task SoftResetAsync(CancellationToken cancellationToken)
+    {
+        return SendCommandAsync("soft_reset", cancellationToken);
+    }
+
+    public Task HardResetAsync(CancellationToken cancellationToken)
+    {
+        return SendCommandAsync("hard_reset", cancellationToken);
+    }
+
+    private Task SendCommandAsync(string command, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        SetState(MameEmulationState.Running);
-        return Task.CompletedTask;
+        return _processRunner.WriteStandardInputAsync(command, cancellationToken);
     }
 
     private void SetState(MameEmulationState state)
