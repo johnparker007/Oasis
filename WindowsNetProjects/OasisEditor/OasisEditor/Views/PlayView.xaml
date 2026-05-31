@@ -24,7 +24,8 @@
                               MouseDown="OnPlaySkiaSurfaceMouseDown"
                               MouseMove="OnPlaySkiaSurfaceMouseMove"
                               MouseUp="OnPlaySkiaSurfaceMouseUp"
-                              MouseWheel="OnPlaySkiaSurfaceMouseWheel" />
+                              MouseWheel="OnPlaySkiaSurfaceMouseWheel"
+                              LostMouseCapture="OnPlaySkiaSurfaceLostMouseCapture" />
 
                 <Canvas x:Name="PlayCanvas"
                     Width="1400"

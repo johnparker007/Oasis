@@ -4,6 +4,7 @@ public sealed class PanelRuntimeState
 {
     private readonly Dictionary<string, double> _lampIntensityByObjectId = new(StringComparer.Ordinal);
     private readonly Dictionary<string, double> _reelPositionByObjectId = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, double> _temporaryReelOffsetByObjectId = new(StringComparer.Ordinal);
     private readonly Dictionary<string, int[]> _segmentMasksByObjectId = new(StringComparer.Ordinal);
     private readonly Dictionary<string, double[]> _segmentBrightnessByObjectId = new(StringComparer.Ordinal);
 
@@ -13,6 +14,7 @@ public sealed class PanelRuntimeState
 
     public IReadOnlyDictionary<string, double> LampIntensityByObjectId => _lampIntensityByObjectId;
     public IReadOnlyDictionary<string, double> ReelPositionByObjectId => _reelPositionByObjectId;
+    public IReadOnlyDictionary<string, double> TemporaryReelOffsetByObjectId => _temporaryReelOffsetByObjectId;
     public IReadOnlyDictionary<string, int[]> SegmentMasksByObjectId => _segmentMasksByObjectId;
     public IReadOnlyDictionary<string, double[]> SegmentBrightnessByObjectId => _segmentBrightnessByObjectId;
 
@@ -53,6 +55,34 @@ public sealed class PanelRuntimeState
         return true;
     }
 
+    public bool SetTemporaryReelOffsetIfChanged(string objectId, double offset)
+    {
+        if (string.IsNullOrWhiteSpace(objectId) || double.IsNaN(offset) || double.IsInfinity(offset))
+        {
+            return false;
+        }
+
+        var normalizedObjectId = objectId.Trim();
+        if (_temporaryReelOffsetByObjectId.TryGetValue(normalizedObjectId, out var previous)
+            && Math.Abs(previous - offset) < 0.0001d)
+        {
+            return false;
+        }
+
+        _temporaryReelOffsetByObjectId[normalizedObjectId] = offset;
+        return true;
+    }
+
+    public bool ClearTemporaryReelOffsetIfChanged(string objectId)
+    {
+        if (string.IsNullOrWhiteSpace(objectId))
+        {
+            return false;
+        }
+
+        return _temporaryReelOffsetByObjectId.Remove(objectId.Trim());
+    }
+
     public void SetLampIntensity(string objectId, double intensity)
     {
         SetLampIntensityIfChanged(objectId, intensity);
@@ -78,6 +108,28 @@ public sealed class PanelRuntimeState
         return _reelPositionByObjectId.GetValueOrDefault(objectId.Trim(), 0d);
     }
 
+    public double GetTemporaryReelOffset(string objectId)
+    {
+        if (string.IsNullOrWhiteSpace(objectId))
+        {
+            return 0d;
+        }
+
+        return _temporaryReelOffsetByObjectId.GetValueOrDefault(objectId.Trim(), 0d);
+    }
+
+    public double GetEffectiveReelPosition(string objectId)
+    {
+        if (string.IsNullOrWhiteSpace(objectId))
+        {
+            return 0d;
+        }
+
+        var normalizedObjectId = objectId.Trim();
+        return _reelPositionByObjectId.GetValueOrDefault(normalizedObjectId, 0d)
+            + _temporaryReelOffsetByObjectId.GetValueOrDefault(normalizedObjectId, 0d);
+    }
+
     public void ClearLampIntensity(string objectId)
     {
         if (!string.IsNullOrWhiteSpace(objectId))
@@ -91,6 +143,7 @@ public sealed class PanelRuntimeState
         LampTestObjectId = null;
         _lampIntensityByObjectId.Clear();
         _reelPositionByObjectId.Clear();
+        _temporaryReelOffsetByObjectId.Clear();
         _segmentMasksByObjectId.Clear();
         _segmentBrightnessByObjectId.Clear();
     }
