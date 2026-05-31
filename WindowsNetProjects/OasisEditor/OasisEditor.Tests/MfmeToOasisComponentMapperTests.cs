@@ -30,7 +30,7 @@ public sealed class MfmeToOasisComponentMapperTests
                     new MfmeLegacyLampElement("8", 8, new MfmeLegacyColor(0f, 1f, 0f, 1f), "lamp.png", "lamp-mask.png", Graphic: true),
                     new MfmeLegacyColor(0f, 0f, 0f, 1f),
                     new MfmeLegacyColor(1f, 1f, 1f, 1f),
-                    NoOutline: false),
+                    NoOutline: false, HasButtonInput: false, HasCoinInput: false, ButtonNumberAsString: null, Inverted: false, Shortcut1: null, Shortcut2: null),
                 new MfmeLegacyReelComponent(
                     new MfmeLegacyPoint(10, 30),
                     new MfmeLegacyPoint(90, 120),
@@ -183,7 +183,7 @@ public sealed class MfmeToOasisComponentMapperTests
                     new MfmeLegacyLampElement("8", 8, new MfmeLegacyColor(0f, 1f, 0f, 1f), "lamp.png", "lamp-mask.png", Graphic: false),
                     new MfmeLegacyColor(0f, 0f, 0f, 1f),
                     null,
-                    NoOutline: false)
+                    NoOutline: false, HasButtonInput: false, HasCoinInput: false, ButtonNumberAsString: null, Inverted: false, Shortcut1: null, Shortcut2: null)
             ]
         };
 
@@ -201,6 +201,52 @@ public sealed class MfmeToOasisComponentMapperTests
         Assert.Equal("#FF00FF00", lamp.OnColorHex);
         Assert.Equal("#FF000000", lamp.OffColorHex);
     }
+
+    [Fact]
+    public void Map_LampWithButtonInput_CreatesLinkedInputDefinition()
+    {
+        var extract = new MfmeLegacyExtractData
+        {
+            ExtractRootPath = "C:/extract",
+            ManifestPath = "C:/extract/layout.json",
+            LayoutName = "layout",
+            Components =
+            [
+                new MfmeLegacyLampComponent(
+                    new MfmeLegacyPoint(100, 200),
+                    new MfmeLegacyPoint(30, 40),
+                    "Start",
+                    null,
+                    null,
+                    null,
+                    new MfmeLegacyLampElement("6", 6, new MfmeLegacyColor(1f, 0f, 0f, 1f), "start.png", null, Graphic: true),
+                    new MfmeLegacyColor(0f, 0f, 0f, 1f),
+                    null,
+                    NoOutline: false,
+                    HasButtonInput: true,
+                    HasCoinInput: false,
+                    ButtonNumberAsString: "6",
+                    Inverted: true,
+                    Shortcut1: "SPACE",
+                    Shortcut2: "S")
+            ]
+        };
+
+        var mapper = new MfmeToOasisComponentMapper();
+
+        var result = mapper.Map(extract);
+
+        var lamp = Assert.Single(result.Elements);
+        var inputDefinition = Assert.Single(result.InputDefinitions);
+        Assert.Equal(InputDefinitionKind.Button, inputDefinition.Kind);
+        Assert.Equal("6", inputDefinition.ButtonNumber);
+        Assert.True(inputDefinition.Inverted);
+        Assert.Equal("SPACE", inputDefinition.RawMfmeShortcut);
+        Assert.Equal("Space", inputDefinition.KeyboardShortcut);
+        Assert.Equal(Guid.Parse(lamp.ObjectId), inputDefinition.LinkedVisualElementId);
+        Assert.Equal("Shortcut2: S", inputDefinition.Notes);
+    }
+
     [Fact]
     public void Map_WithInvalidNumbersAndUnsupportedComponent_AddsWarnings()
     {
@@ -221,7 +267,7 @@ public sealed class MfmeToOasisComponentMapperTests
                     new MfmeLegacyLampElement("NaN", null, null, null, null, Graphic: false),
                     null,
                     null,
-                    NoOutline: true),
+                    NoOutline: true, HasButtonInput: false, HasCoinInput: false, ButtonNumberAsString: null, Inverted: false, Shortcut1: null, Shortcut2: null),
                 new MfmeLegacyReelComponent(
                     new MfmeLegacyPoint(1, 2),
                     new MfmeLegacyPoint(30, 40),

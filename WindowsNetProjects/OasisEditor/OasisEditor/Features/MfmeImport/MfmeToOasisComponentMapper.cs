@@ -23,8 +23,16 @@ internal sealed class MfmeToOasisComponentMapper
                     elements.Add(MapBackground(background));
                     break;
                 case MfmeLegacyLampComponent lamp:
-                    elements.Add(MapLamp(lamp, warnings));
-                    break;
+                    {
+                        var mappedLamp = MapLamp(lamp, warnings);
+                        elements.Add(mappedLamp);
+                        var input = BuildInputDefinition(lamp, mappedLamp.ObjectId);
+                        if (input is not null)
+                        {
+                            inputDefinitions.Add(input);
+                        }
+                        break;
+                    }
                 case MfmeLegacyButtonComponent button:
                     {
                         var mappedButtonLamp = MapButtonAsLamp(button, warnings);
@@ -142,19 +150,59 @@ internal sealed class MfmeToOasisComponentMapper
             component.FirstLampElement,
             component.OffImageColor,
             component.TextColor,
-            component.NoOutline);
+            component.NoOutline,
+            component.HasButtonInput,
+            component.HasCoinInput,
+            component.ButtonNumberAsString,
+            component.Inverted,
+            component.Shortcut1,
+            component.Shortcut2);
 
         return MapLamp(lampEquivalent, warnings);
     }
 
+    private static InputDefinitionModel? BuildInputDefinition(MfmeLegacyLampComponent component, string linkedObjectId)
+    {
+        return BuildInputDefinition(
+            component.HasButtonInput,
+            component.HasCoinInput,
+            component.ButtonNumberAsString,
+            component.Inverted,
+            component.Shortcut1,
+            component.Shortcut2,
+            component.TextBoxText,
+            linkedObjectId);
+    }
+
     private static InputDefinitionModel? BuildInputDefinition(MfmeLegacyButtonComponent component, string linkedObjectId)
     {
-        if (!component.HasButtonInput && !component.HasCoinInput)
+        return BuildInputDefinition(
+            component.HasButtonInput,
+            component.HasCoinInput,
+            component.ButtonNumberAsString,
+            component.Inverted,
+            component.Shortcut1,
+            component.Shortcut2,
+            component.TextBoxText,
+            linkedObjectId);
+    }
+
+    private static InputDefinitionModel? BuildInputDefinition(
+        bool hasButtonInput,
+        bool hasCoinInput,
+        string? buttonNumberAsString,
+        bool inverted,
+        string? shortcut1,
+        string? shortcut2,
+        string? displayText,
+        string linkedObjectId)
+    {
+        if (!hasButtonInput && !hasCoinInput)
         {
             return null;
         }
 
-        var rawShortcut = component.Shortcut1?.Trim() ?? string.Empty;
+        var rawShortcut = shortcut1?.Trim() ?? string.Empty;
         var keyboardShortcut = string.Empty;
         if (MfmeShortcutKeyMapper.TryMap(rawShortcut, out var mappedKey))
         {
@@ -164,15 +212,15 @@ internal sealed class MfmeToOasisComponentMapper
         return new InputDefinitionModel
         {
             Id = Guid.NewGuid().ToString("N"),
-            Name = string.IsNullOrWhiteSpace(component.TextBoxText) ? "Imported Input" : component.TextBoxText.Trim(),
-            Kind = component.HasCoinInput ? InputDefinitionKind.Coin : InputDefinitionKind.Button,
-            ButtonNumber = component.ButtonNumberAsString?.Trim() ?? string.Empty,
-            CoinInput = component.HasCoinInput,
-            Inverted = component.Inverted,
+            Name = string.IsNullOrWhiteSpace(displayText) ? "Imported Input" : displayText.Trim(),
+            Kind = hasCoinInput ? InputDefinitionKind.Coin : InputDefinitionKind.Button,
+            ButtonNumber = buttonNumberAsString?.Trim() ?? string.Empty,
+            CoinInput = hasCoinInput,
+            Inverted = inverted,
             RawMfmeShortcut = rawShortcut,
             KeyboardShortcut = keyboardShortcut,
             LinkedVisualElementId = Guid.TryParse(linkedObjectId, out var linkedId) ? linkedId : null,
-            Notes = string.IsNullOrWhiteSpace(component.Shortcut2) ? string.Empty : $"Shortcut2: {component.Shortcut2.Trim()}"
+            Notes = string.IsNullOrWhiteSpace(shortcut2) ? string.Empty : $"Shortcut2: {shortcut2.Trim()}"
         };
     }
 

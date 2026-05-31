@@ -185,6 +185,11 @@ public sealed class MfmeExtractReaderTests
             Assert.Equal("lamp.png", lamp.FirstLampElement.BmpImageFilename);
             Assert.Equal("lamp-mask.png", lamp.FirstLampElement.BmpMaskImageFilename);
             Assert.True(lamp.FirstLampElement.Graphic);
+            Assert.True(lamp.HasButtonInput);
+            Assert.Equal("12", lamp.ButtonNumberAsString);
+            Assert.True(lamp.Inverted);
+            Assert.Equal("SPACE", lamp.Shortcut1);
+            Assert.Equal("S", lamp.Shortcut2);
 
             var reel = Assert.IsType<MfmeLegacyReelComponent>(components[2]);
             Assert.Equal(3, reel.Number);
@@ -325,6 +330,10 @@ public sealed class MfmeExtractReaderTests
               "TextColor": { "R": 1, "G": 1, "B": 1, "A": 1 },
               "OffImageColor": { "R": 0, "G": 0, "B": 0, "A": 1 },
               "Graphic": true,
+              "ButtonNumberAsString": "12",
+              "Inverted": true,
+              "Shortcut1": "SPACE",
+              "Shortcut2": "S",
               "LampElements": [
                 {
                   "NumberAsText": "12",
