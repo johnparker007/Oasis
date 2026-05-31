@@ -10,6 +10,7 @@ public sealed class MameEmulationCommandState
     public bool CanSaveState { get; init; }
     public bool CanPause { get; init; }
     public bool CanResume { get; init; }
+    public bool CanTogglePause { get; init; }
     public bool CanSetThrottle { get; init; }
     public bool CanReset { get; init; }
 }
@@ -34,6 +35,7 @@ public static class MameEmulationCommandStateEvaluator
             CanSaveState = canControlRunningMachine,
             CanPause = canPause,
             CanResume = canResume,
+            CanTogglePause = canControlRunningMachine,
             CanSetThrottle = canControlRunningMachine,
             CanReset = canControlRunningMachine
         };

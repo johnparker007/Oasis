@@ -151,14 +151,14 @@
                           Command="{Binding StopEmulationCommand}" />
                 <Separator />
                 <MenuItem Header="_Pause"
-                          Command="{Binding PauseEmulationCommand}" />
-                <MenuItem Header="_Resume"
-                          Command="{Binding ResumeEmulationCommand}" />
+                          Command="{Binding TogglePauseEmulationCommand}"
+                          IsCheckable="True"
+                          IsChecked="{Binding IsPauseEmulationChecked, Mode=OneWay}" />
                 <Separator />
-                <MenuItem Header="_Throttle"
-                          Command="{Binding ThrottleEmulationCommand}" />
                 <MenuItem Header="_Unthrottle"
-                          Command="{Binding UnthrottleEmulationCommand}" />
+                          Command="{Binding ToggleUnthrottleEmulationCommand}"
+                          IsCheckable="True"
+                          IsChecked="{Binding IsUnthrottleEmulationChecked, Mode=OneWay}" />
                 <Separator />
                 <MenuItem Header="Soft _Reset"
                           Command="{Binding SoftResetEmulationCommand}" />
