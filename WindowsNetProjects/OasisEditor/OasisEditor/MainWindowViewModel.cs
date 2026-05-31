@@ -123,10 +123,18 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         CloseProjectSettingsCommand = new RelayCommand(CloseProjectSettings);
         CloseProjectCommand = new RelayCommand(CloseProject, CanCloseProject);
         ExitCommand = new RelayCommand(ExitApplication);
+        StartAndLoadStateEmulationCommand = new RelayCommand(StartAndLoadStateEmulation, CanStartAndLoadStateEmulation);
+        SaveStateAndExitEmulationCommand = new RelayCommand(SaveStateAndExitEmulation, CanSaveStateAndExitEmulation);
         StartEmulationCommand = new RelayCommand(StartEmulation, CanStartEmulation);
+        LoadStateEmulationCommand = new RelayCommand(LoadStateEmulation, CanLoadStateEmulation);
+        SaveStateEmulationCommand = new RelayCommand(SaveStateEmulation, CanSaveStateEmulation);
         StopEmulationCommand = new RelayCommand(StopEmulation, CanStopEmulation);
         PauseEmulationCommand = new RelayCommand(PauseEmulation, CanPauseEmulation);
         ResumeEmulationCommand = new RelayCommand(ResumeEmulation, CanResumeEmulation);
+        ThrottleEmulationCommand = new RelayCommand(ThrottleEmulation, CanSetThrottleEmulation);
+        UnthrottleEmulationCommand = new RelayCommand(UnthrottleEmulation, CanSetThrottleEmulation);
+        SoftResetEmulationCommand = new RelayCommand(SoftResetEmulation, CanResetEmulation);
+        HardResetEmulationCommand = new RelayCommand(HardResetEmulation, CanResetEmulation);
 
         _outputLog = new OutputLogViewModel();
         _outputLog.PropertyChanged += OnOutputLogPropertyChanged;
@@ -375,10 +383,18 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand ApplyInspectorSummaryCommand { get; }
     public ICommand CloseProjectCommand { get; }
     public ICommand ExitCommand { get; }
+    public ICommand StartAndLoadStateEmulationCommand { get; }
+    public ICommand SaveStateAndExitEmulationCommand { get; }
     public ICommand StartEmulationCommand { get; }
+    public ICommand LoadStateEmulationCommand { get; }
+    public ICommand SaveStateEmulationCommand { get; }
     public ICommand StopEmulationCommand { get; }
     public ICommand PauseEmulationCommand { get; }
     public ICommand ResumeEmulationCommand { get; }
+    public ICommand ThrottleEmulationCommand { get; }
+    public ICommand UnthrottleEmulationCommand { get; }
+    public ICommand SoftResetEmulationCommand { get; }
+    public ICommand HardResetEmulationCommand { get; }
     public ObservableCollection<string> RecentProjects { get; }
     public ObservableCollection<DocumentTabViewModel> OpenDocuments { get; }
     public ObservableCollection<AssetBrowserItemViewModel> AssetBrowserItems { get; }
@@ -1778,9 +1794,58 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         Application.Current.Shutdown();
     }
 
+    private MameEmulationCommandState CurrentEmulationCommandState =>
+        MameEmulationCommandStateEvaluator.Evaluate(HasLoadedProject, EmulationState);
+
+    private bool CanStartAndLoadStateEmulation()
+    {
+        return CurrentEmulationCommandState.CanStartAndLoadState;
+    }
+
+    private async void StartAndLoadStateEmulation()
+    {
+        if (!CanStartAndLoadStateEmulation())
+        {
+            return;
+        }
+
+        AddOutputEntry("Emulation start and load state requested.", OutputLogStatus.Info);
+        try
+        {
+            await _mameEmulationService.StartAndLoadStateAsync(CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            AddOutputEntry($"Emulation failed to start and load state: {ex.Message}", OutputLogStatus.Error);
+        }
+    }
+
+    private bool CanSaveStateAndExitEmulation()
+    {
+        return CurrentEmulationCommandState.CanSaveStateAndExit;
+    }
+
+    private async void SaveStateAndExitEmulation()
+    {
+        if (!CanSaveStateAndExitEmulation())
+        {
+            return;
+        }
+
+        AddOutputEntry("Emulation save state and exit requested.", OutputLogStatus.Info);
+        try
+        {
+            await _mameEmulationService.SaveStateAndExitAsync(CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            AddOutputEntry($"Emulation failed to save state and exit cleanly: {ex.Message}", OutputLogStatus.Error);
+        }
+    }
+
     private bool CanStartEmulation()
     {
-        return MameEmulationCommandStateEvaluator.Evaluate(HasLoadedProject, EmulationState).CanStart;
+        return CurrentEmulationCommandState.CanStart;
     }
 
     private async void StartEmulation()
@@ -1801,9 +1866,37 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
+    private bool CanLoadStateEmulation()
+    {
+        return CurrentEmulationCommandState.CanLoadState;
+    }
+
+    private async void LoadStateEmulation()
+    {
+        await SendEmulationCommandAsync(
+            CanLoadStateEmulation,
+            "Emulation load state requested.",
+            "Emulation failed to load state",
+            cancellationToken => _mameEmulationService.LoadStateAsync(cancellationToken));
+    }
+
+    private bool CanSaveStateEmulation()
+    {
+        return CurrentEmulationCommandState.CanSaveState;
+    }
+
+    private async void SaveStateEmulation()
+    {
+        await SendEmulationCommandAsync(
+            CanSaveStateEmulation,
+            "Emulation save state requested.",
+            "Emulation failed to save state",
+            cancellationToken => _mameEmulationService.SaveStateAsync(cancellationToken));
+    }
+
     private bool CanStopEmulation()
     {
-        return MameEmulationCommandStateEvaluator.Evaluate(HasLoadedProject, EmulationState).CanStop;
+        return CurrentEmulationCommandState.CanStop;
     }
 
     public void StopEmulationForWindowClose()
@@ -1849,34 +1942,98 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private bool CanPauseEmulation()
     {
-        return MameEmulationCommandStateEvaluator.Evaluate(HasLoadedProject, EmulationState).CanPause;
+        return CurrentEmulationCommandState.CanPause;
     }
 
     private async void PauseEmulation()
     {
-        if (!CanPauseEmulation())
-        {
-            return;
-        }
-
-        AddOutputEntry("Emulation pause requested.", OutputLogStatus.Info);
-        await _mameEmulationService.PauseAsync(CancellationToken.None);
+        await SendEmulationCommandAsync(
+            CanPauseEmulation,
+            "Emulation pause requested.",
+            "Emulation failed to pause",
+            cancellationToken => _mameEmulationService.PauseAsync(cancellationToken));
     }
 
     private bool CanResumeEmulation()
     {
-        return MameEmulationCommandStateEvaluator.Evaluate(HasLoadedProject, EmulationState).CanResume;
+        return CurrentEmulationCommandState.CanResume;
     }
 
     private async void ResumeEmulation()
     {
-        if (!CanResumeEmulation())
+        await SendEmulationCommandAsync(
+            CanResumeEmulation,
+            "Emulation resume requested.",
+            "Emulation failed to resume",
+            cancellationToken => _mameEmulationService.ResumeAsync(cancellationToken));
+    }
+
+    private bool CanSetThrottleEmulation()
+    {
+        return CurrentEmulationCommandState.CanSetThrottle;
+    }
+
+    private async void ThrottleEmulation()
+    {
+        await SendEmulationCommandAsync(
+            CanSetThrottleEmulation,
+            "Emulation throttle requested.",
+            "Emulation failed to enable throttle",
+            cancellationToken => _mameEmulationService.SetThrottleAsync(true, cancellationToken));
+    }
+
+    private async void UnthrottleEmulation()
+    {
+        await SendEmulationCommandAsync(
+            CanSetThrottleEmulation,
+            "Emulation unthrottle requested.",
+            "Emulation failed to disable throttle",
+            cancellationToken => _mameEmulationService.SetThrottleAsync(false, cancellationToken));
+    }
+
+    private bool CanResetEmulation()
+    {
+        return CurrentEmulationCommandState.CanReset;
+    }
+
+    private async void SoftResetEmulation()
+    {
+        await SendEmulationCommandAsync(
+            CanResetEmulation,
+            "Emulation soft reset requested.",
+            "Emulation failed to soft reset",
+            cancellationToken => _mameEmulationService.SoftResetAsync(cancellationToken));
+    }
+
+    private async void HardResetEmulation()
+    {
+        await SendEmulationCommandAsync(
+            CanResetEmulation,
+            "Emulation hard reset requested.",
+            "Emulation failed to hard reset",
+            cancellationToken => _mameEmulationService.HardResetAsync(cancellationToken));
+    }
+
+    private async Task SendEmulationCommandAsync(
+        Func<bool> canExecute,
+        string requestedMessage,
+        string failureMessage,
+        Func<CancellationToken, Task> command)
+    {
+        if (!canExecute())
         {
             return;
         }
 
-        AddOutputEntry("Emulation resume requested.", OutputLogStatus.Info);
-        await _mameEmulationService.ResumeAsync(CancellationToken.None);
+        AddOutputEntry(requestedMessage, OutputLogStatus.Info);
+        try
+        {
+            await command(CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            AddOutputEntry($"{failureMessage}: {ex.Message}", OutputLogStatus.Error);
+        }
     }
 
     private MameProcessLaunchRequest? BuildMameLaunchRequest()
@@ -2547,24 +2704,25 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void NotifyEmulationCommands()
     {
-        if (StartEmulationCommand is RelayCommand startEmulationCommand)
-        {
-            startEmulationCommand.RaiseCanExecuteChanged();
-        }
+        RaiseEmulationCommandCanExecuteChanged(StartAndLoadStateEmulationCommand);
+        RaiseEmulationCommandCanExecuteChanged(SaveStateAndExitEmulationCommand);
+        RaiseEmulationCommandCanExecuteChanged(StartEmulationCommand);
+        RaiseEmulationCommandCanExecuteChanged(LoadStateEmulationCommand);
+        RaiseEmulationCommandCanExecuteChanged(SaveStateEmulationCommand);
+        RaiseEmulationCommandCanExecuteChanged(StopEmulationCommand);
+        RaiseEmulationCommandCanExecuteChanged(PauseEmulationCommand);
+        RaiseEmulationCommandCanExecuteChanged(ResumeEmulationCommand);
+        RaiseEmulationCommandCanExecuteChanged(ThrottleEmulationCommand);
+        RaiseEmulationCommandCanExecuteChanged(UnthrottleEmulationCommand);
+        RaiseEmulationCommandCanExecuteChanged(SoftResetEmulationCommand);
+        RaiseEmulationCommandCanExecuteChanged(HardResetEmulationCommand);
+    }
 
-        if (StopEmulationCommand is RelayCommand stopEmulationCommand)
+    private static void RaiseEmulationCommandCanExecuteChanged(ICommand command)
+    {
+        if (command is RelayCommand relayCommand)
         {
-            stopEmulationCommand.RaiseCanExecuteChanged();
-        }
-
-        if (PauseEmulationCommand is RelayCommand pauseEmulationCommand)
-        {
-            pauseEmulationCommand.RaiseCanExecuteChanged();
-        }
-
-        if (ResumeEmulationCommand is RelayCommand resumeEmulationCommand)
-        {
-            resumeEmulationCommand.RaiseCanExecuteChanged();
+            relayCommand.RaiseCanExecuteChanged();
         }
     }
 

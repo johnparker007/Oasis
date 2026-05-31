@@ -7,9 +7,16 @@ public interface IMameEmulationService
     MameEmulationState State { get; }
     event EventHandler<MameEmulationState>? StateChanged;
     Task StartAsync(CancellationToken cancellationToken);
+    Task StartAndLoadStateAsync(CancellationToken cancellationToken);
     Task StopAsync(CancellationToken cancellationToken);
+    Task SaveStateAndExitAsync(CancellationToken cancellationToken);
+    Task LoadStateAsync(CancellationToken cancellationToken);
+    Task SaveStateAsync(CancellationToken cancellationToken);
     Task PauseAsync(CancellationToken cancellationToken);
     Task ResumeAsync(CancellationToken cancellationToken);
+    Task SetThrottleAsync(bool isThrottled, CancellationToken cancellationToken);
+    Task SoftResetAsync(CancellationToken cancellationToken);
+    Task HardResetAsync(CancellationToken cancellationToken);
 }
 
 public interface IMameProcessRunner
