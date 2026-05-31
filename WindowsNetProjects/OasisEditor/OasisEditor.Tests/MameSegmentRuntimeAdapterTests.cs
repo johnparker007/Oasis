@@ -97,6 +97,27 @@ public sealed class MameSegmentRuntimeAdapterTests
         Assert.All(brightness, value => Assert.Equal(0.25d, value));
     }
 
+    [Fact]
+    public void ApplySegmentState_ReversesImpactAlphaCellOrderBeforeRendering()
+    {
+        var document = CreateDocument();
+        var dispatches = new List<Action>();
+        var adapter = new MameSegmentRuntimeAdapter(
+            () => [document],
+            action => dispatches.Add(action),
+            () => FruitMachinePlatformType.Impact);
+
+        adapter.ApplySegmentState(0, 2, MameSegmentOutputType.Vfd);
+        adapter.ApplySegmentState(15, 1, MameSegmentOutputType.Vfd);
+
+        var dispatch = Assert.Single(dispatches);
+        dispatch();
+
+        var masks = document.RuntimeState.GetSegmentCellMasks("alpha-0", 16);
+        Assert.Equal(3, masks[0]);
+        Assert.Equal(4, masks[15]);
+    }
+
     private static DocumentTabViewModel CreateDocument()
     {
         var panelDocument = EditorDocument.CreateFromFile("panel.panel2d", "panel", "panel");
