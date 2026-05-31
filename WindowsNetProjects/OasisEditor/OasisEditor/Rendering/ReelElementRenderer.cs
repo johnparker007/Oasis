@@ -20,7 +20,7 @@ internal sealed class ReelElementRenderer : IPanelElementRenderer
         }
 
         var stops = Math.Max(1, element.Stops.GetValueOrDefault(1));
-        var reelPosition = context.RuntimeState.GetReelPosition(element.ObjectId);
+        var reelPosition = context.RuntimeState.GetEffectiveReelPosition(element.ObjectId);
         var wrappedOffset = ComputeWrappedOffset(reelPosition, stops);
 
         using var borderPaint = new SKPaint { Color = new SKColor(45, 45, 45), Style = SKPaintStyle.Stroke, StrokeWidth = 1f, IsAntialias = true };

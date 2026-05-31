@@ -25,11 +25,16 @@ public partial class PlayView : UserControl
     private bool _isSkiaPanning;
     private Point _skiaPanStart;
     private Vector _skiaPanOrigin;
+    private PanelElementModel? _activeReelDragElement;
+    private Point _reelDragStart;
+    private double _reelDragStartTemporaryOffset;
     private bool _isRenderQueued;
     private bool _isRenderDirty;
     private readonly Stopwatch _renderStopwatch = Stopwatch.StartNew();
     private readonly DispatcherTimer _renderThrottleTimer;
     private const double TargetFrameMillis = 16.0;
+    private const double LegacyReelPositionsPerRevolution = 96d;
+    private const double ReelDragSpeedScale = 3d;
     private readonly IPanel2DRenderer _skiaRenderer = new Panel2DRenderer([new BackgroundElementRenderer(), new LampElementRenderer(), new ReelElementRenderer(), new SevenSegmentElementRenderer(), new AlphaElementRenderer()], "PlayView");
 
     public PlayView()
@@ -161,7 +166,15 @@ public partial class PlayView : UserControl
 
         if (eventArgs.ChangedButton == MouseButton.Left)
         {
-            if (ViewModel is not null && TryResolveSkiaVisualElementId(eventArgs.GetPosition(PlaySkiaSurface), out var visualElementId))
+            var current = eventArgs.GetPosition(PlaySkiaSurface);
+            if (TryResolveSkiaReelElement(current, out var reelElement))
+            {
+                BeginReelDrag(reelElement, current);
+                eventArgs.Handled = true;
+                return;
+            }
+
+            if (ViewModel is not null && TryResolveSkiaVisualElementId(current, out var visualElementId))
             {
                 await ViewModel.TryHandlePlayViewPointerDownAsync(visualElementId, isFocused: true, CancellationToken.None);
                 eventArgs.Handled = true;
@@ -185,8 +198,22 @@ public partial class PlayView : UserControl
     private void OnPlaySkiaSurfaceMouseMove(object sender, MouseEventArgs eventArgs)
     {
         var current = eventArgs.GetPosition(PlaySkiaSurface);
-        var isClickable = TryResolveSkiaVisualElementId(current, out _);
-        PlaySkiaSurface.Cursor = isClickable ? Cursors.Hand : Cursors.Arrow;
+        if (_activeReelDragElement is not null)
+        {
+            UpdateReelDrag(current);
+            eventArgs.Handled = true;
+            return;
+        }
+
+        if (TryResolveSkiaReelElement(current, out _))
+        {
+            PlaySkiaSurface.Cursor = Cursors.ScrollNS;
+        }
+        else
+        {
+            var isClickable = TryResolveSkiaVisualElementId(current, out _);
+            PlaySkiaSurface.Cursor = isClickable ? Cursors.Hand : Cursors.Arrow;
+        }
 
         if (!_isSkiaPanning)
         {
@@ -201,6 +228,13 @@ public partial class PlayView : UserControl
     {
         if (eventArgs.ChangedButton == MouseButton.Left)
         {
+            if (_activeReelDragElement is not null)
+            {
+                EndReelDrag();
+                eventArgs.Handled = true;
+                return;
+            }
+
             if (ViewModel is not null && TryResolveSkiaVisualElementId(eventArgs.GetPosition(PlaySkiaSurface), out var visualElementId))
             {
                 await ViewModel.TryHandlePlayViewPointerUpAsync(visualElementId, isFocused: true, CancellationToken.None);
@@ -327,6 +361,15 @@ public partial class PlayView : UserControl
         CanvasPanZoomBehavior.HandleLostMouseCapture(PlayCanvas);
     }
 
+    private void OnPlaySkiaSurfaceLostMouseCapture(object sender, MouseEventArgs eventArgs)
+    {
+        _isSkiaPanning = false;
+        if (_activeReelDragElement is not null)
+        {
+            EndReelDrag(releaseMouseCapture: false);
+        }
+    }
+
     private async void OnPlayCanvasLostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs eventArgs)
     {
         if (ViewModel is null)
@@ -347,6 +390,68 @@ public partial class PlayView : UserControl
         await ViewModel.ReleaseAllPlayViewInputsAsync("Play View close", CancellationToken.None);
     }
 
+    private void BeginReelDrag(PanelElementModel reelElement, Point current)
+    {
+        _activeReelDragElement = reelElement;
+        _reelDragStart = current;
+        _reelDragStartTemporaryOffset = ViewModel?.SelectedDocument?.RuntimeState.GetTemporaryReelOffset(reelElement.ObjectId) ?? 0d;
+        PlaySkiaSurface.Cursor = Cursors.ScrollNS;
+        PlaySkiaSurface.CaptureMouse();
+    }
+
+    private void UpdateReelDrag(Point current)
+    {
+        if (_activeReelDragElement is null || ViewModel?.SelectedDocument is not { } selected)
+        {
+            return;
+        }
+
+        var bandHeight = ResolveReelBandHeight(_activeReelDragElement);
+        if (bandHeight <= 0d)
+        {
+            return;
+        }
+
+        var positionsPerRevolution = Math.Max(LegacyReelPositionsPerRevolution, _activeReelDragElement.Stops.GetValueOrDefault(1));
+        var dragDelta = current.Y - _reelDragStart.Y;
+        var temporaryOffset = _reelDragStartTemporaryOffset - (dragDelta * positionsPerRevolution * ReelDragSpeedScale / bandHeight);
+        if (selected.RuntimeState.SetTemporaryReelOffsetIfChanged(_activeReelDragElement.ObjectId, temporaryOffset))
+        {
+            RequestRender();
+        }
+    }
+
+    private void EndReelDrag(bool releaseMouseCapture = true)
+    {
+        var reelElement = _activeReelDragElement;
+        _activeReelDragElement = null;
+
+        if (reelElement is not null
+            && ViewModel?.SelectedDocument is { } selected
+            && selected.RuntimeState.ClearTemporaryReelOffsetIfChanged(reelElement.ObjectId))
+        {
+            RequestRender();
+        }
+
+        if (releaseMouseCapture && PlaySkiaSurface.IsMouseCaptured)
+        {
+            PlaySkiaSurface.ReleaseMouseCapture();
+        }
+
+        PlaySkiaSurface.Cursor = Cursors.Arrow;
+    }
+
+    private static double ResolveReelBandHeight(PanelElementModel reelElement)
+    {
+        var visibleScale = reelElement.VisibleScale;
+        if (!visibleScale.HasValue || double.IsNaN(visibleScale.Value) || double.IsInfinity(visibleScale.Value))
+        {
+            return reelElement.Height;
+        }
+
+        return reelElement.Height / Math.Clamp(visibleScale.Value, 0.01d, 1d);
+    }
+
     private bool TryResolveVisualElementId(DependencyObject? source, out Guid visualElementId)
     {
         while (source is not null && source != PlayCanvas)
@@ -364,6 +469,34 @@ public partial class PlayView : UserControl
         return false;
     }
 
+
+    private bool TryResolveSkiaReelElement(Point screenPoint, out PanelElementModel reelElement)
+    {
+        var selected = ViewModel?.SelectedDocument;
+        if (selected is null)
+        {
+            reelElement = new PanelElementModel();
+            return false;
+        }
+
+        var documentPoint = ToDocumentPoint(screenPoint);
+        foreach (var element in selected.GetPanelElements().Reverse())
+        {
+            if (element.Kind != PanelElementKind.Reel || !element.IsVisible)
+            {
+                continue;
+            }
+
+            if (ContainsDocumentPoint(element, documentPoint))
+            {
+                reelElement = element;
+                return true;
+            }
+        }
+
+        reelElement = new PanelElementModel();
+        return false;
+    }
 
     private bool TryResolveSkiaVisualElementId(Point screenPoint, out Guid visualElementId)
     {
@@ -385,8 +518,7 @@ public partial class PlayView : UserControl
             return false;
         }
 
-        var viewport = new PanelViewportTransform(_skiaZoom, _skiaPan.X, _skiaPan.Y);
-        var documentPoint = viewport.ScreenToDocument(screenPoint);
+        var documentPoint = ToDocumentPoint(screenPoint);
 
         foreach (var element in selected.GetPanelElements().Reverse())
         {
@@ -395,10 +527,7 @@ public partial class PlayView : UserControl
                 continue;
             }
 
-            if (documentPoint.X >= element.X
-                && documentPoint.X <= element.X + element.Width
-                && documentPoint.Y >= element.Y
-                && documentPoint.Y <= element.Y + element.Height)
+            if (ContainsDocumentPoint(element, documentPoint))
             {
                 visualElementId = elementId;
                 return true;
@@ -407,6 +536,20 @@ public partial class PlayView : UserControl
 
         visualElementId = Guid.Empty;
         return false;
+    }
+
+    private Point ToDocumentPoint(Point screenPoint)
+    {
+        var viewport = new PanelViewportTransform(_skiaZoom, _skiaPan.X, _skiaPan.Y);
+        return viewport.ScreenToDocument(screenPoint);
+    }
+
+    private static bool ContainsDocumentPoint(PanelElementModel element, Point documentPoint)
+    {
+        return documentPoint.X >= element.X
+            && documentPoint.X <= element.X + element.Width
+            && documentPoint.Y >= element.Y
+            && documentPoint.Y <= element.Y + element.Height;
     }
 
     private void UpdateSelectedDocumentSubscription(DocumentTabViewModel? selected)
