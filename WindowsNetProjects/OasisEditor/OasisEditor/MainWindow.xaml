@@ -169,7 +169,6 @@
                           IsCheckable="True"
                           IsChecked="{Binding IsPauseEmulationChecked, Mode=OneWay}"
                           Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
-                <Separator />
                 <MenuItem Header="_Unthrottle"
                           Command="{Binding ToggleUnthrottleEmulationCommand}"
                           IsCheckable="True"
