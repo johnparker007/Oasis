@@ -136,6 +136,13 @@
                           Command="{Binding OpenInputMapCommand}" />
             </MenuItem>
             <MenuItem Header="_Emulation">
+                <MenuItem.Resources>
+                    <Style TargetType="{x:Type MenuItem}"
+                           BasedOn="{StaticResource EditorMenuItemStyle}">
+                        <Setter Property="Tag"
+                                Value="ReserveCheckGlyph" />
+                    </Style>
+                </MenuItem.Resources>
                 <MenuItem Header="Start And _Load State"
                           Command="{Binding StartAndLoadStateEmulationCommand}" />
                 <MenuItem Header="Save State And E_xit"

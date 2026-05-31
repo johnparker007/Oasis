@@ -83,6 +83,12 @@
                                     Property="Visibility"
                                     Value="Collapsed" />
                         </Trigger>
+                        <Trigger Property="Tag"
+                                 Value="ReserveCheckGlyph">
+                            <Setter TargetName="CheckGlyph"
+                                    Property="Visibility"
+                                    Value="Hidden" />
+                        </Trigger>
                         <Trigger Property="IsCheckable"
                                  Value="True">
                             <Setter TargetName="CheckGlyph"
