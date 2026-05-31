@@ -173,6 +173,16 @@ internal static class MfmeExtractManifestParser
             $"{assetLabel} image file '{fileName}' for component index {componentIndex} was not found at '{candidatePath}'."));
     }
 
+    private static bool HasButtonInput(JsonElement component)
+    {
+        return ReadBool(component, "HasButtonInput") || !string.IsNullOrWhiteSpace(ReadString(component, "ButtonNumberAsString"));
+    }
+
+    private static bool HasCoinInput(JsonElement component)
+    {
+        return ReadBool(component, "HasCoinInput") || !string.IsNullOrWhiteSpace(ReadString(component, "CoinNote"));
+    }
+
     private static bool TryParseSupportedComponent(string sourceType, JsonElement component, out MfmeLegacyComponentBase parsedComponent)
     {
         var position = ReadPoint(component, "Position");
@@ -200,7 +210,13 @@ internal static class MfmeExtractManifestParser
                     ReadFirstLampElement(component, ReadOptionalBool(component, "Graphic")),
                     ReadColor(component, "OffImageColor"),
                     ReadColor(component, "TextColor"),
-                    ReadBool(component, "NoOutline"));
+                    ReadBool(component, "NoOutline"),
+                    HasButtonInput(component),
+                    HasCoinInput(component),
+                    ReadString(component, "ButtonNumberAsString"),
+                    ReadBool(component, "Inverted"),
+                    ReadString(component, "Shortcut1"),
+                    ReadString(component, "Shortcut2"));
                 return true;
 
             case "extractcomponentbutton":
@@ -211,8 +227,8 @@ internal static class MfmeExtractManifestParser
                     ReadString(component, "TextBoxFontName"),
                     ReadString(component, "TextBoxFontStyle"),
                     ReadString(component, "TextBoxFontSize"),
-                    ReadBool(component, "HasButtonInput"),
-                    ReadBool(component, "HasCoinInput"),
+                    HasButtonInput(component),
+                    HasCoinInput(component),
                     ReadString(component, "ButtonNumberAsString"),
                     ReadBool(component, "Inverted"),
                     ReadString(component, "Shortcut1"),

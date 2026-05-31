@@ -82,7 +82,7 @@ public sealed class MfmeImportServiceTests
                     new MfmeLegacyLampElement("7", 7, new MfmeLegacyColor(1f, 1f, 0f, 1f), "lamp.bmp", null, Graphic: true),
                     new MfmeLegacyColor(0f, 0f, 0f, 1f),
                     new MfmeLegacyColor(1f, 1f, 1f, 1f),
-                    NoOutline: false),
+                    NoOutline: false, HasButtonInput: false, HasCoinInput: false, ButtonNumberAsString: null, Inverted: false, Shortcut1: null, Shortcut2: null),
                 new UnsupportedLegacyComponent()
             ]
         };

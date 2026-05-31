@@ -45,7 +45,13 @@ internal sealed record MfmeLegacyLampComponent(
     MfmeLegacyLampElement? FirstLampElement,
     MfmeLegacyColor? OffImageColor,
     MfmeLegacyColor? TextColor,
-    bool NoOutline)
+    bool NoOutline,
+    bool HasButtonInput,
+    bool HasCoinInput,
+    string? ButtonNumberAsString,
+    bool Inverted,
+    string? Shortcut1,
+    string? Shortcut2)
     : MfmeLegacyComponentBase(
         "Lamp",
         Position,
