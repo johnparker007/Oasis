@@ -34,6 +34,7 @@ public partial class PlayView : UserControl
     private readonly DispatcherTimer _renderThrottleTimer;
     private const double TargetFrameMillis = 16.0;
     private const double LegacyReelPositionsPerRevolution = 96d;
+    private const double ReelDragSpeedScale = 3d;
     private readonly IPanel2DRenderer _skiaRenderer = new Panel2DRenderer([new BackgroundElementRenderer(), new LampElementRenderer(), new ReelElementRenderer(), new SevenSegmentElementRenderer(), new AlphaElementRenderer()], "PlayView");
 
     public PlayView()
@@ -413,7 +414,7 @@ public partial class PlayView : UserControl
 
         var positionsPerRevolution = Math.Max(LegacyReelPositionsPerRevolution, _activeReelDragElement.Stops.GetValueOrDefault(1));
         var dragDelta = current.Y - _reelDragStart.Y;
-        var temporaryOffset = _reelDragStartTemporaryOffset - (dragDelta * positionsPerRevolution / bandHeight);
+        var temporaryOffset = _reelDragStartTemporaryOffset - (dragDelta * positionsPerRevolution * ReelDragSpeedScale / bandHeight);
         if (selected.RuntimeState.SetTemporaryReelOffsetIfChanged(_activeReelDragElement.ObjectId, temporaryOffset))
         {
             RequestRender();
