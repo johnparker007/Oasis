@@ -4,6 +4,7 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
 {
     private readonly object _pendingSync = new();
     private readonly Func<IEnumerable<DocumentTabViewModel>> _documentProvider;
+    private readonly Func<FruitMachinePlatformType> _platformProvider;
     private readonly Action<Action> _uiDispatch;
     private readonly Dictionary<int, (int Mask, MameSegmentOutputType OutputType)> _pendingMasks = new();
     private readonly Dictionary<int, double> _pendingVfdBrightnessByDisplay = new();
@@ -12,10 +13,11 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
     private readonly Dictionary<int, double> _latestVfdBrightnessByDisplay = new();
     private bool _uiUpdateScheduled;
 
-    public MameSegmentRuntimeAdapter(Func<IEnumerable<DocumentTabViewModel>> documentProvider, Action<Action> uiDispatch)
+    public MameSegmentRuntimeAdapter(Func<IEnumerable<DocumentTabViewModel>> documentProvider, Action<Action> uiDispatch, Func<FruitMachinePlatformType>? platformProvider = null)
     {
         _documentProvider = documentProvider ?? throw new ArgumentNullException(nameof(documentProvider));
         _uiDispatch = uiDispatch ?? throw new ArgumentNullException(nameof(uiDispatch));
+        _platformProvider = platformProvider ?? (() => FruitMachinePlatformType.MPU4);
     }
 
     public void ApplySegmentState(int cellId, int segmentMask, MameSegmentOutputType outputType)
@@ -83,10 +85,12 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
                 var cellCount = element.Kind == PanelElementKind.SevenSegment ? 1 : 16;
                 var cellMasks = new int[cellCount];
                 var cellBrightness = new double[cellCount];
+                var reversePlatformAlphaCells = element.Kind == PanelElementKind.Alpha && RequiresPlatformAlphaCellReversal(_platformProvider());
                 for (var i = 0; i < cellMasks.Length; i++)
                 {
                     var source = element.Kind == PanelElementKind.SevenSegment ? _latestDigitMasksByCell : _latestVfdMasksByCell;
-                    if (source.TryGetValue(baseIndex + i, out var mask))
+                    var sourceOffset = reversePlatformAlphaCells ? cellMasks.Length - 1 - i : i;
+                    if (source.TryGetValue(baseIndex + sourceOffset, out var mask))
                     {
                         cellMasks[i] = element.Kind == PanelElementKind.SevenSegment
                             ? mask
@@ -117,6 +121,18 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
                 document.NotifyPanelVisualPreviewChanged(changedObjectIds);
             }
         }
+    }
+
+    private static bool RequiresPlatformAlphaCellReversal(FruitMachinePlatformType platform)
+    {
+        return platform switch
+        {
+            // Impact VFD cell IDs arrive from MAME in the opposite left-to-right order
+            // to the Oasis alpha display geometry. Keep the imported per-alpha Reversed
+            // flag as the user/layout transform, and correct the platform source order here.
+            FruitMachinePlatformType.Impact => true,
+            _ => false
+        };
     }
 
     private static int NormalizeMameMaskForSelectedDisplayType(int rawMask, string? segmentDisplayType)

@@ -214,7 +214,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             new MameSegmentStateParser(),
             new MameSegmentRuntimeAdapter(
                 () => OpenDocuments,
-                DispatchToUiThread),
+                DispatchToUiThread,
+                () => SelectedFruitMachinePlatform),
             platformProvider: () => SelectedFruitMachinePlatform);
         _mameProcessRunner = new MameProcessRunner(
             stdoutLogger: line => ProcessMameStdoutLine(line, mameStdoutParser),
