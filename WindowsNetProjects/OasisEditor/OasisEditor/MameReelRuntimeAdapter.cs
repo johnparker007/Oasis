@@ -176,11 +176,13 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
         return platform == FruitMachinePlatformType.MPU4;
     }
 
-    private static double ResolvePlatformBandOffsetNormalized(FruitMachinePlatformType platform, int stops)
+    internal static double ResolvePlatformBandOffsetNormalized(FruitMachinePlatformType platform, int stops)
     {
         return platform switch
         {
             FruitMachinePlatformType.MPU4 when stops == 16 => -0.05d,
+            FruitMachinePlatformType.Impact when stops == 12 => -0.025d,
+            FruitMachinePlatformType.Impact when stops == 16 => -0.08d,
             FruitMachinePlatformType.Scorpion4 when stops == 12 => 0.2d,
             FruitMachinePlatformType.Scorpion4 when stops == 16 => 0.671d,
             _ => 0d
