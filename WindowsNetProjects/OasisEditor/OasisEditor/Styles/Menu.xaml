@@ -42,6 +42,14 @@
                                 CornerRadius="4">
                             <DockPanel LastChildFill="True"
                                        TextElement.Foreground="{TemplateBinding Foreground}">
+                                <TextBlock x:Name="CheckGlyph"
+                                           Width="16"
+                                           Margin="0,0,4,0"
+                                           VerticalAlignment="Center"
+                                           FontWeight="SemiBold"
+                                           Text="✓"
+                                           TextAlignment="Center"
+                                           Visibility="Collapsed" />
                                 <ContentPresenter x:Name="GlyphContent"
                                                   VerticalAlignment="Center"
                                                   Margin="0,0,8,0"
@@ -75,6 +83,29 @@
                                     Property="Visibility"
                                     Value="Collapsed" />
                         </Trigger>
+                        <Trigger Property="Tag"
+                                 Value="ReserveCheckGlyph">
+                            <Setter TargetName="CheckGlyph"
+                                    Property="Visibility"
+                                    Value="Hidden" />
+                        </Trigger>
+                        <Trigger Property="IsCheckable"
+                                 Value="True">
+                            <Setter TargetName="CheckGlyph"
+                                    Property="Visibility"
+                                    Value="Hidden" />
+                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsCheckable"
+                                           Value="True" />
+                                <Condition Property="IsChecked"
+                                           Value="True" />
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="CheckGlyph"
+                                    Property="Visibility"
+                                    Value="Visible" />
+                        </MultiTrigger>
                         <Trigger Property="IsHighlighted"
                                  Value="True">
                             <Setter TargetName="MenuItemBorder"

@@ -17,6 +17,7 @@ public sealed class MameEmulationCommandStateEvaluatorTests
         Assert.False(state.CanSaveState);
         Assert.False(state.CanPause);
         Assert.False(state.CanResume);
+        Assert.False(state.CanTogglePause);
         Assert.False(state.CanSetThrottle);
         Assert.False(state.CanReset);
     }
@@ -34,6 +35,7 @@ public sealed class MameEmulationCommandStateEvaluatorTests
         Assert.False(state.CanSaveState);
         Assert.False(state.CanPause);
         Assert.False(state.CanResume);
+        Assert.False(state.CanTogglePause);
         Assert.False(state.CanSetThrottle);
         Assert.False(state.CanReset);
     }
@@ -51,6 +53,7 @@ public sealed class MameEmulationCommandStateEvaluatorTests
         Assert.True(state.CanSaveState);
         Assert.True(state.CanPause);
         Assert.False(state.CanResume);
+        Assert.True(state.CanTogglePause);
         Assert.True(state.CanSetThrottle);
         Assert.True(state.CanReset);
     }
@@ -68,6 +71,7 @@ public sealed class MameEmulationCommandStateEvaluatorTests
         Assert.True(state.CanSaveState);
         Assert.False(state.CanPause);
         Assert.True(state.CanResume);
+        Assert.True(state.CanTogglePause);
         Assert.True(state.CanSetThrottle);
         Assert.True(state.CanReset);
     }

@@ -72,6 +72,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly IMameProcessRunner _mameProcessRunner;
     private MameSetupState _mameSetupState = MameSetupState.NotStarted;
     private bool _isAutoProvisioningMame;
+    private bool _isMameUnthrottled;
     private MameEmulationState _mameEmulationState = MameEmulationState.Stopped;
     private readonly IInputMapDiagnosticsService _inputMapDiagnosticsService = new InputMapDiagnosticsService(new MameInputPortResolver());
     private IReadOnlyList<InputMapDiagnostic> _inputMapDiagnostics = [];
@@ -129,10 +130,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         LoadStateEmulationCommand = new RelayCommand(LoadStateEmulation, CanLoadStateEmulation);
         SaveStateEmulationCommand = new RelayCommand(SaveStateEmulation, CanSaveStateEmulation);
         StopEmulationCommand = new RelayCommand(StopEmulation, CanStopEmulation);
-        PauseEmulationCommand = new RelayCommand(PauseEmulation, CanPauseEmulation);
-        ResumeEmulationCommand = new RelayCommand(ResumeEmulation, CanResumeEmulation);
-        ThrottleEmulationCommand = new RelayCommand(ThrottleEmulation, CanSetThrottleEmulation);
-        UnthrottleEmulationCommand = new RelayCommand(UnthrottleEmulation, CanSetThrottleEmulation);
+        TogglePauseEmulationCommand = new RelayCommand(TogglePauseEmulation, CanTogglePauseEmulation);
+        ToggleUnthrottleEmulationCommand = new RelayCommand(ToggleUnthrottleEmulation, CanSetThrottleEmulation);
         SoftResetEmulationCommand = new RelayCommand(SoftResetEmulation, CanResetEmulation);
         HardResetEmulationCommand = new RelayCommand(HardResetEmulation, CanResetEmulation);
 
@@ -246,6 +245,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 if (state is MameEmulationState.Stopping or MameEmulationState.Stopped or MameEmulationState.Failed)
                 {
                     _ = ReleaseAllPlayViewInputsAsync($"emulation state '{state}'", CancellationToken.None);
+                }
+
+                if (state is MameEmulationState.Starting or MameEmulationState.Stopped or MameEmulationState.Failed)
+                {
+                    IsUnthrottleEmulationChecked = false;
                 }
 
                 EmulationState = state;
@@ -389,10 +393,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand LoadStateEmulationCommand { get; }
     public ICommand SaveStateEmulationCommand { get; }
     public ICommand StopEmulationCommand { get; }
-    public ICommand PauseEmulationCommand { get; }
-    public ICommand ResumeEmulationCommand { get; }
-    public ICommand ThrottleEmulationCommand { get; }
-    public ICommand UnthrottleEmulationCommand { get; }
+    public ICommand TogglePauseEmulationCommand { get; }
+    public ICommand ToggleUnthrottleEmulationCommand { get; }
     public ICommand SoftResetEmulationCommand { get; }
     public ICommand HardResetEmulationCommand { get; }
     public ObservableCollection<string> RecentProjects { get; }
@@ -654,9 +656,18 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             if (SetProperty(ref _mameEmulationState, value))
             {
+                OnPropertyChanged(nameof(IsPauseEmulationChecked));
                 NotifyEmulationCommands();
             }
         }
+    }
+
+    public bool IsPauseEmulationChecked => EmulationState == MameEmulationState.Paused;
+
+    public bool IsUnthrottleEmulationChecked
+    {
+        get => _isMameUnthrottled;
+        private set => SetProperty(ref _isMameUnthrottled, value);
     }
 
     public string ProjectFilePath
@@ -1940,32 +1951,39 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private bool CanPauseEmulation()
+    private bool CanTogglePauseEmulation()
     {
-        return CurrentEmulationCommandState.CanPause;
+        return CurrentEmulationCommandState.CanTogglePause;
     }
 
-    private async void PauseEmulation()
+    private async void TogglePauseEmulation()
     {
-        await SendEmulationCommandAsync(
-            CanPauseEmulation,
+        if (IsPauseEmulationChecked)
+        {
+            var commandSucceeded = await SendEmulationCommandAsync(
+                CanTogglePauseEmulation,
+                "Emulation resume requested.",
+                "Emulation failed to resume",
+                cancellationToken => _mameEmulationService.ResumeAsync(cancellationToken));
+
+            if (!commandSucceeded)
+            {
+                OnPropertyChanged(nameof(IsPauseEmulationChecked));
+            }
+
+            return;
+        }
+
+        var pauseSucceeded = await SendEmulationCommandAsync(
+            CanTogglePauseEmulation,
             "Emulation pause requested.",
             "Emulation failed to pause",
             cancellationToken => _mameEmulationService.PauseAsync(cancellationToken));
-    }
 
-    private bool CanResumeEmulation()
-    {
-        return CurrentEmulationCommandState.CanResume;
-    }
-
-    private async void ResumeEmulation()
-    {
-        await SendEmulationCommandAsync(
-            CanResumeEmulation,
-            "Emulation resume requested.",
-            "Emulation failed to resume",
-            cancellationToken => _mameEmulationService.ResumeAsync(cancellationToken));
+        if (!pauseSucceeded)
+        {
+            OnPropertyChanged(nameof(IsPauseEmulationChecked));
+        }
     }
 
     private bool CanSetThrottleEmulation()
@@ -1973,22 +1991,23 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         return CurrentEmulationCommandState.CanSetThrottle;
     }
 
-    private async void ThrottleEmulation()
+    private async void ToggleUnthrottleEmulation()
     {
-        await SendEmulationCommandAsync(
+        var shouldUnthrottle = !IsUnthrottleEmulationChecked;
+        var commandSucceeded = await SendEmulationCommandAsync(
             CanSetThrottleEmulation,
-            "Emulation throttle requested.",
-            "Emulation failed to enable throttle",
-            cancellationToken => _mameEmulationService.SetThrottleAsync(true, cancellationToken));
-    }
+            shouldUnthrottle ? "Emulation unthrottle requested." : "Emulation throttle requested.",
+            shouldUnthrottle ? "Emulation failed to disable throttle" : "Emulation failed to enable throttle",
+            cancellationToken => _mameEmulationService.SetThrottleAsync(!shouldUnthrottle, cancellationToken));
 
-    private async void UnthrottleEmulation()
-    {
-        await SendEmulationCommandAsync(
-            CanSetThrottleEmulation,
-            "Emulation unthrottle requested.",
-            "Emulation failed to disable throttle",
-            cancellationToken => _mameEmulationService.SetThrottleAsync(false, cancellationToken));
+        if (commandSucceeded)
+        {
+            IsUnthrottleEmulationChecked = shouldUnthrottle;
+        }
+        else
+        {
+            OnPropertyChanged(nameof(IsUnthrottleEmulationChecked));
+        }
     }
 
     private bool CanResetEmulation()
@@ -2014,7 +2033,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             cancellationToken => _mameEmulationService.HardResetAsync(cancellationToken));
     }
 
-    private async Task SendEmulationCommandAsync(
+    private async Task<bool> SendEmulationCommandAsync(
         Func<bool> canExecute,
         string requestedMessage,
         string failureMessage,
@@ -2022,17 +2041,19 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         if (!canExecute())
         {
-            return;
+            return false;
         }
 
         AddOutputEntry(requestedMessage, OutputLogStatus.Info);
         try
         {
             await command(CancellationToken.None);
+            return true;
         }
         catch (Exception ex)
         {
             AddOutputEntry($"{failureMessage}: {ex.Message}", OutputLogStatus.Error);
+            return false;
         }
     }
 
@@ -2710,10 +2731,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         RaiseEmulationCommandCanExecuteChanged(LoadStateEmulationCommand);
         RaiseEmulationCommandCanExecuteChanged(SaveStateEmulationCommand);
         RaiseEmulationCommandCanExecuteChanged(StopEmulationCommand);
-        RaiseEmulationCommandCanExecuteChanged(PauseEmulationCommand);
-        RaiseEmulationCommandCanExecuteChanged(ResumeEmulationCommand);
-        RaiseEmulationCommandCanExecuteChanged(ThrottleEmulationCommand);
-        RaiseEmulationCommandCanExecuteChanged(UnthrottleEmulationCommand);
+        RaiseEmulationCommandCanExecuteChanged(TogglePauseEmulationCommand);
+        RaiseEmulationCommandCanExecuteChanged(ToggleUnthrottleEmulationCommand);
         RaiseEmulationCommandCanExecuteChanged(SoftResetEmulationCommand);
         RaiseEmulationCommandCanExecuteChanged(HardResetEmulationCommand);
     }
