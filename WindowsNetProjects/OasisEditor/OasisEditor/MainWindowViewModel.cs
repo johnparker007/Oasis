@@ -248,10 +248,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             message => AddOutputEntry(message, OutputLogStatus.Info));
         _mameDebuggerService.DebuggerEventReceived += (_, debuggerEvent) =>
         {
-            DispatchToUiThread(() => AddOutputEntry(
-                $"MAME debugger event: {debuggerEvent.Event} state={debuggerEvent.State ?? "unknown"} cpu={debuggerEvent.Cpu ?? "unknown"} pc={debuggerEvent.Pc?.ToString() ?? "unknown"}.",
-                OutputLogStatus.Info));
-            NotifyEmulationCommands();
+            DispatchToUiThread(() =>
+            {
+                AddOutputEntry(
+                    $"MAME debugger event: {debuggerEvent.Event} state={debuggerEvent.State ?? "unknown"} cpu={debuggerEvent.Cpu ?? "unknown"} pc={debuggerEvent.Pc?.ToString() ?? "unknown"}.",
+                    OutputLogStatus.Info);
+                NotifyEmulationCommands();
+            });
         };
         _mameEmulationService = new MameEmulationService(
             new MameProcessStartInfoBuilder(),
@@ -2861,6 +2864,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void AddOutputEntry(string message, OutputLogStatus status)
     {
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is not null
+            && !dispatcher.HasShutdownStarted
+            && !dispatcher.HasShutdownFinished
+            && !dispatcher.CheckAccess())
+        {
+            _ = dispatcher.BeginInvoke(() => _outputLog.AddOutputEntry(message, status));
+            return;
+        }
+
         _outputLog.AddOutputEntry(message, status);
     }
 
