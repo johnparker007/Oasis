@@ -18,7 +18,7 @@ public interface IMameDebuggerService
 
 public sealed class MameDebuggerService : IMameDebuggerService
 {
-    private static readonly TimeSpan DefaultRequestTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan DefaultRequestTimeout = TimeSpan.FromSeconds(15);
 
     private readonly IMameProcessRunner _processRunner;
     private readonly MameDebuggerStdoutParser _stdoutParser;

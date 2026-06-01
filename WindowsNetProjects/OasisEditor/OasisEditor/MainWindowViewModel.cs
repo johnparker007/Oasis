@@ -1738,6 +1738,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             {
                 AddOutputEntry($"[MAME-STDOUT] {segment}", OutputLogStatus.Info);
             }
+            else if (segment.StartsWith("@ERROR", StringComparison.Ordinal) || segment.StartsWith("@Oasis plugin:", StringComparison.Ordinal))
+            {
+                var status = segment.StartsWith("@ERROR", StringComparison.Ordinal) ? OutputLogStatus.Warning : OutputLogStatus.Info;
+                AddOutputEntry($"[MAME-STDOUT] {segment}", status);
+            }
 
             _mameDebuggerService.ProcessStdoutLine(segment);
             parser.ProcessLine(segment);
@@ -1873,9 +1878,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         AddOutputEntry("Debugger emulation start and load state requested.", OutputLogStatus.Info);
         try
         {
+            if (!TrySyncMamePluginsForDebuggerLaunch())
+            {
+                return;
+            }
+
             await _mameEmulationService.StartDebuggerAndLoadStateAsync(CancellationToken.None);
             _mameDebuggerService.SetDebuggerLaunchActive(true);
-            await LogDebuggerStatusAsync("Debugger launch validation");
+            await TryLogDebuggerStatusAsync("Debugger launch validation");
             NotifyEmulationCommands();
         }
         catch (Exception ex)
@@ -1941,9 +1951,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         AddOutputEntry("Debugger emulation start requested.", OutputLogStatus.Info);
         try
         {
+            if (!TrySyncMamePluginsForDebuggerLaunch())
+            {
+                return;
+            }
+
             await _mameEmulationService.StartDebuggerAsync(CancellationToken.None);
             _mameDebuggerService.SetDebuggerLaunchActive(true);
-            await LogDebuggerStatusAsync("Debugger launch validation");
+            await TryLogDebuggerStatusAsync("Debugger launch validation");
             NotifyEmulationCommands();
         }
         catch (Exception ex)
@@ -2109,6 +2124,21 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             cancellationToken => _mameEmulationService.HardResetAsync(cancellationToken));
     }
 
+    private bool TrySyncMamePluginsForDebuggerLaunch()
+    {
+        try
+        {
+            var copied = _mamePluginDeploymentService.SyncPluginFiles(MameLuaPluginPath, MameExecutablePath);
+            AddOutputEntry($"Debugger launch synced Oasis Lua plugins into active MAME install ({copied} files copied).", OutputLogStatus.Info);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            AddOutputEntry($"Debugger launch blocked because Oasis Lua plugins could not be synced: {ex.Message}", OutputLogStatus.Error);
+            return false;
+        }
+    }
+
     private bool CanQueryDebugger()
     {
         return _mameEmulationService.State is MameEmulationState.Running or MameEmulationState.Paused;
@@ -2183,6 +2213,19 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         var statusLevel = status.Available ? OutputLogStatus.Info : OutputLogStatus.Warning;
         AddOutputEntry($"{prefix}: available={status.Available}, state={status.State}, cpu={status.Cpu ?? "unknown"}, pc={status.Pc?.ToString() ?? "unknown"}.", statusLevel);
     }
+
+    private async Task TryLogDebuggerStatusAsync(string prefix, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await LogDebuggerStatusAsync(prefix, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            AddOutputEntry($"{prefix} did not receive a debugger protocol response yet: {ex.Message}", OutputLogStatus.Warning);
+        }
+    }
+
 
     private async Task<bool> SendDebuggerCommandAsync(
         Func<bool> canExecute,
