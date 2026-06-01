@@ -13,6 +13,7 @@ local command_throttled = require('oasis/system/commands/throttled')
 local command_state_load = require('oasis/system/commands/state_load')
 local command_state_save = require('oasis/system/commands/state_save')
 local command_state_save_and_exit = require('oasis/system/commands/state_save_and_exit')
+local command_debug = require('oasis/system/commands/debug')
 -- local command_snapshot_pixels = require('oasis/system/commands/snapshot_pixels')
 
 
@@ -29,6 +30,7 @@ function lib:invoke_command_line(line)
 		["state_save"]					= command_state_save,
 		["state_save_and_exit"]			= command_state_save_and_exit,
 		["set_input_value"]				= command_set_input_value,
+		["debug"]						= command_debug,
 		 
 		--["snapshot_pixels"]				= command_snapshot_pixels,
 		

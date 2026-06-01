@@ -37,15 +37,25 @@ public sealed class MameEmulationService : IMameEmulationService
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        return StartCoreAsync(loadState: false, cancellationToken);
+        return StartCoreAsync(loadState: false, debuggerEnabled: false, cancellationToken);
     }
 
     public Task StartAndLoadStateAsync(CancellationToken cancellationToken)
     {
-        return StartCoreAsync(loadState: true, cancellationToken);
+        return StartCoreAsync(loadState: true, debuggerEnabled: false, cancellationToken);
     }
 
-    private async Task StartCoreAsync(bool loadState, CancellationToken cancellationToken)
+    public Task StartDebuggerAsync(CancellationToken cancellationToken)
+    {
+        return StartCoreAsync(loadState: false, debuggerEnabled: true, cancellationToken);
+    }
+
+    public Task StartDebuggerAndLoadStateAsync(CancellationToken cancellationToken)
+    {
+        return StartCoreAsync(loadState: true, debuggerEnabled: true, cancellationToken);
+    }
+
+    private async Task StartCoreAsync(bool loadState, bool debuggerEnabled, CancellationToken cancellationToken)
     {
         SetState(MameEmulationState.Starting);
         try
@@ -54,6 +64,11 @@ public sealed class MameEmulationService : IMameEmulationService
             if (request is null)
             {
                 throw new InvalidOperationException("No valid MAME launch request is available.");
+            }
+
+            if (debuggerEnabled)
+            {
+                request = request with { DebuggerEnabled = true };
             }
 
             if (loadState)
