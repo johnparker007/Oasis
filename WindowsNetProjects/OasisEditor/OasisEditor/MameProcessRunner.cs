@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace OasisEditor;
@@ -7,6 +8,8 @@ namespace OasisEditor;
 public sealed class MameProcessRunner : IMameProcessRunner, IDisposable
 {
     private static readonly TimeSpan GracefulExitTimeout = TimeSpan.FromSeconds(3);
+    private static readonly TimeSpan DebuggerWindowHidePollInterval = TimeSpan.FromMilliseconds(250);
+    private const int SwHide = 0;
 
     private readonly Func<Process> _processFactory;
     private readonly Action<string>? _stdoutLogger;
@@ -63,6 +66,15 @@ public sealed class MameProcessRunner : IMameProcessRunner, IDisposable
             _errorReadStarted = true;
 
             _process = process;
+
+            if (IsDebuggerLaunch(startInfo))
+            {
+                // Keep MAME's native debugger windows hidden while Oasis drives the
+                // debugger through the Lua stdin/stdout protocol.  This preserves the
+                // normal emulation/runtime output path while avoiding the visible
+                // Windows debugger UI.
+                _ = HideDebuggerWindowsWhileRunningAsync(process);
+            }
         }
         catch
         {
@@ -77,6 +89,60 @@ public sealed class MameProcessRunner : IMameProcessRunner, IDisposable
 
         return Task.CompletedTask;
     }
+
+    private static bool IsDebuggerLaunch(ProcessStartInfo startInfo)
+    {
+        return startInfo.Arguments.Contains("-debug", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static async Task HideDebuggerWindowsWhileRunningAsync(Process process)
+    {
+        while (!HasExitedOrDisposed(process))
+        {
+            HideVisibleProcessWindows(process.Id);
+            await Task.Delay(DebuggerWindowHidePollInterval).ConfigureAwait(false);
+        }
+    }
+
+    private static bool HasExitedOrDisposed(Process process)
+    {
+        try
+        {
+            return process.HasExited;
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ObjectDisposedException)
+        {
+            return true;
+        }
+    }
+
+    private static void HideVisibleProcessWindows(int processId)
+    {
+        EnumWindows((windowHandle, _) =>
+        {
+            _ = GetWindowThreadProcessId(windowHandle, out var windowProcessId);
+            if (windowProcessId == processId && IsWindowVisible(windowHandle))
+            {
+                _ = ShowWindow(windowHandle, SwHide);
+            }
+
+            return true;
+        }, IntPtr.Zero);
+    }
+
+    [DllImport("user32.dll")]
+    private static extern bool EnumWindows(EnumWindowsProc callback, IntPtr extraData);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr windowHandle, out int processId);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsWindowVisible(IntPtr windowHandle);
+
+    [DllImport("user32.dll")]
+    private static extern bool ShowWindow(IntPtr windowHandle, int command);
+
+    private delegate bool EnumWindowsProc(IntPtr windowHandle, IntPtr extraData);
 
     public async Task StopAsync(CancellationToken cancellationToken)
     {

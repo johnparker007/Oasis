@@ -18,10 +18,6 @@ public sealed class MameProcessStartInfoBuilder : IMameProcessStartInfoBuilder
         if (request.IsDebuggerEnabled)
         {
             arguments.Append(" -debug");
-            // MAME's default Windows debugger module opens the native debugger UI.
-            // Use the GDB stub module as a headless debugger backend while Oasis
-            // continues to communicate over the existing Lua stdin/stdout bridge.
-            arguments.Append(" -debugger gdbstub");
 
             if (!string.IsNullOrWhiteSpace(request.DebuggerScriptPath))
             {

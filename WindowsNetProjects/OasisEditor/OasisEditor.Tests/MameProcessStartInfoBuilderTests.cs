@@ -105,7 +105,7 @@ public sealed class MameProcessStartInfoBuilderDebuggerTests
         var startInfo = builder.Build(request);
 
         Assert.Contains("-debug", startInfo.Arguments);
-        Assert.Contains("-debugger gdbstub", startInfo.Arguments);
+        Assert.DoesNotContain("-debugger gdbstub", startInfo.Arguments);
         Assert.Contains("-debugscript", startInfo.Arguments);
         Assert.Contains(scriptPath, startInfo.Arguments);
         Assert.Equal($"go{Environment.NewLine}", File.ReadAllText(scriptPath));
