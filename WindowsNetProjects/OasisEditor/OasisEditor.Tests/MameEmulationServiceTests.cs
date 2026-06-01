@@ -42,6 +42,8 @@ public sealed class MameEmulationServiceTests
         await service.StartDebuggerAsync(CancellationToken.None);
 
         Assert.Contains("-debug", runner.StartInfo?.Arguments);
+        Assert.Contains("-update_in_pause", runner.StartInfo?.Arguments);
+        Assert.Contains("-debugscript C:\\Plugins\\oasis\\system\\debugger\\debugger_startup.cmd", runner.StartInfo?.Arguments);
         Assert.Contains("-plugin oasis", runner.StartInfo?.Arguments);
         Assert.Contains("-output console", runner.StartInfo?.Arguments);
     }

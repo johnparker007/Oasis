@@ -32,12 +32,7 @@ function lib:start()
 		end	
 	end
 
-	-- register another handler to handle commands after prestart
-	emu.register_periodic(function()
-		utility:protected_call(callback_periodic, "callback_periodic")
-	end)
-	
-	function callback_periodic()
+	function process_pending_command()
 		-- it is essential that we only perform these activities when there
 		-- is an active session!
 		if session_active then
@@ -55,6 +50,17 @@ function lib:start()
 			end
 		end
 	end
+
+	-- register handlers to handle commands after prestart.  Debugger mode enters
+	-- a stopped state at startup, so the frame callback plus -update_in_pause keeps
+	-- the stdin bridge responsive while the MAME debugger is stopped.
+	emu.register_periodic(function()
+		utility:protected_call(process_pending_command, "process_pending_command")
+	end)
+
+	emu.register_frame_done(function()
+		utility:protected_call(process_pending_command, "process_pending_command_frame_done")
+	end)
 	
 	-- -- register another handler to output done frames
 	-- emu.register_frame_done(function()

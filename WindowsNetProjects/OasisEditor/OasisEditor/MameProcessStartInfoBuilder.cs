@@ -20,6 +20,9 @@ public sealed class MameProcessStartInfoBuilder : IMameProcessStartInfoBuilder
         if (request.DebuggerEnabled)
         {
             arguments.Append(" -debug");
+            arguments.Append(" -update_in_pause");
+            arguments.Append(" -debugscript ");
+            arguments.Append(EscapeArgument(Path.Combine(request.OasisPluginPath, "system", "debugger", "debugger_startup.cmd")));
         }
 
         arguments.Append(" -skip_gameinfo");

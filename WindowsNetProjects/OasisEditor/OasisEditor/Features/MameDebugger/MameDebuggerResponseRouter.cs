@@ -14,18 +14,15 @@ public sealed class MameDebuggerResponseRouter
             throw new InvalidOperationException($"Debugger request id {requestId} is already pending.");
         }
 
-        var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        linked.CancelAfter(timeout);
-        linked.Token.Register(() =>
+        var cancellationRegistration = cancellationToken.Register(() =>
         {
             if (_pendingResponses.TryRemove(requestId, out var pending))
             {
-                pending.TrySetCanceled(linked.Token);
+                pending.TrySetCanceled(cancellationToken);
             }
-
-            linked.Dispose();
         });
 
+        _ = CompleteWithTimeoutAsync(requestId, timeout, completion, cancellationRegistration);
         return completion.Task;
     }
 
@@ -49,6 +46,26 @@ public sealed class MameDebuggerResponseRouter
             {
                 completion.TrySetException(exception);
             }
+        }
+    }
+
+    private async Task CompleteWithTimeoutAsync(
+        long requestId,
+        TimeSpan timeout,
+        TaskCompletionSource<MameDebuggerResponse> completion,
+        CancellationTokenRegistration cancellationRegistration)
+    {
+        try
+        {
+            await Task.Delay(timeout).ConfigureAwait(false);
+            if (_pendingResponses.TryRemove(requestId, out _))
+            {
+                completion.TrySetException(new TimeoutException($"Timed out waiting for MAME debugger response id {requestId} after {timeout.TotalSeconds:0.#} seconds."));
+            }
+        }
+        finally
+        {
+            await cancellationRegistration.DisposeAsync().ConfigureAwait(false);
         }
     }
 }

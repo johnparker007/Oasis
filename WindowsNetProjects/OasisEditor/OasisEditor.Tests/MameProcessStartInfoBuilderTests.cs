@@ -77,6 +77,8 @@ public sealed class MameProcessStartInfoBuilderTests
 
         Assert.DoesNotContain("-debug", builder.Build(normalRequest).Arguments);
         Assert.Contains("-debug", builder.Build(debuggerRequest).Arguments);
+        Assert.Contains("-update_in_pause", builder.Build(debuggerRequest).Arguments);
+        Assert.Contains("-debugscript C:\\plugins\\system\\debugger\\debugger_startup.cmd", builder.Build(debuggerRequest).Arguments);
         Assert.Contains("-plugin oasis", builder.Build(debuggerRequest).Arguments);
         Assert.Contains("-output console", builder.Build(debuggerRequest).Arguments);
     }
