@@ -8,6 +8,9 @@ public interface IMameEmulationService
     event EventHandler<MameEmulationState>? StateChanged;
     Task StartAsync(CancellationToken cancellationToken);
     Task StartAndLoadStateAsync(CancellationToken cancellationToken);
+    Task StartDebuggerAsync(CancellationToken cancellationToken);
+    Task StartDebuggerAndLoadStateAsync(CancellationToken cancellationToken);
+    bool IsDebuggerSupportActive { get; }
     Task StopAsync(CancellationToken cancellationToken);
     Task SaveStateAndExitAsync(CancellationToken cancellationToken);
     Task LoadStateAsync(CancellationToken cancellationToken);
@@ -57,4 +60,5 @@ public sealed record MameProcessLaunchRequest(
     string MameRomName,
     string MameRomRootPath,
     string OasisPluginPath,
-    string AdditionalArguments);
+    string AdditionalArguments,
+    bool IsDebuggerEnabled = false);

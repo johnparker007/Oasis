@@ -10,6 +10,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Collections.Specialized;
 using Microsoft.Win32;
+using OasisEditor.Features.MameDebugger;
 using OasisEditor.Features.MfmeImport;
 using EditorCommands = OasisEditor.Commands;
 using OasisEditor.Views;
@@ -79,6 +80,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private PlayViewInputRouter? _playViewInputRouter;
     private PlayViewKeyboardInputRouter? _playViewKeyboardInputRouter;
     private PlayViewPointerInputRouter? _playViewPointerInputRouter;
+    private readonly MameDebuggerService _mameDebuggerService;
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<EditorToolWindowId>? ToolWindowOpenRequested;
@@ -127,6 +129,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         StartAndLoadStateEmulationCommand = new RelayCommand(StartAndLoadStateEmulation, CanStartAndLoadStateEmulation);
         SaveStateAndExitEmulationCommand = new RelayCommand(SaveStateAndExitEmulation, CanSaveStateAndExitEmulation);
         StartEmulationCommand = new RelayCommand(StartEmulation, CanStartEmulation);
+        StartDebuggerEmulationCommand = new RelayCommand(StartDebuggerEmulation, CanStartEmulation);
         LoadStateEmulationCommand = new RelayCommand(LoadStateEmulation, CanLoadStateEmulation);
         SaveStateEmulationCommand = new RelayCommand(SaveStateEmulation, CanSaveStateEmulation);
         StopEmulationCommand = new RelayCommand(StopEmulation, CanStopEmulation);
@@ -238,6 +241,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             new MameProcessStartInfoBuilder(),
             _mameProcessRunner,
             BuildMameLaunchRequest);
+        _mameDebuggerService = new MameDebuggerService(
+            new MameDebuggerStdioTransport(_mameProcessRunner),
+            new MameDebuggerResponseRouter(),
+            new MameDebuggerStdoutParser(),
+            new MameDebuggerState(),
+            () => _mameEmulationService.IsDebuggerSupportActive,
+            message => AddOutputEntry(message, OutputLogStatus.Info));
         _mameEmulationService.StateChanged += (_, state) =>
         {
             DispatchToUiThread(() =>
@@ -390,6 +400,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand StartAndLoadStateEmulationCommand { get; }
     public ICommand SaveStateAndExitEmulationCommand { get; }
     public ICommand StartEmulationCommand { get; }
+    public ICommand StartDebuggerEmulationCommand { get; }
     public ICommand LoadStateEmulationCommand { get; }
     public ICommand SaveStateEmulationCommand { get; }
     public ICommand StopEmulationCommand { get; }
@@ -1708,6 +1719,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 AddOutputEntry($"[MAME-STDOUT] {segment}", OutputLogStatus.Info);
             }
 
+            if (_mameDebuggerService.ProcessStdoutLine(segment))
+            {
+                continue;
+            }
+
             parser.ProcessLine(segment);
         }
     }
@@ -1874,6 +1890,26 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         catch (Exception ex)
         {
             AddOutputEntry($"Emulation failed to start: {ex.Message}", OutputLogStatus.Error);
+        }
+    }
+
+
+    private async void StartDebuggerEmulation()
+    {
+        if (!CanStartEmulation())
+        {
+            return;
+        }
+
+        AddOutputEntry("Debugger emulation start requested.", OutputLogStatus.Info);
+        try
+        {
+            await _mameEmulationService.StartDebuggerAsync(CancellationToken.None);
+            AddOutputEntry("MAME debugger support is active for this process.", OutputLogStatus.Info);
+        }
+        catch (Exception ex)
+        {
+            AddOutputEntry($"Debugger emulation failed to start: {ex.Message}", OutputLogStatus.Error);
         }
     }
 
@@ -2728,6 +2764,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         RaiseEmulationCommandCanExecuteChanged(StartAndLoadStateEmulationCommand);
         RaiseEmulationCommandCanExecuteChanged(SaveStateAndExitEmulationCommand);
         RaiseEmulationCommandCanExecuteChanged(StartEmulationCommand);
+        RaiseEmulationCommandCanExecuteChanged(StartDebuggerEmulationCommand);
         RaiseEmulationCommandCanExecuteChanged(LoadStateEmulationCommand);
         RaiseEmulationCommandCanExecuteChanged(SaveStateEmulationCommand);
         RaiseEmulationCommandCanExecuteChanged(StopEmulationCommand);

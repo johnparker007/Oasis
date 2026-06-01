@@ -11,6 +11,7 @@ public sealed class MameEmulationService : IMameEmulationService
     private readonly Func<MameProcessLaunchRequest?> _requestFactory;
     private readonly object _stateGate = new();
     private MameEmulationState _state = MameEmulationState.Stopped;
+    private bool _isDebuggerSupportActive;
 
     public MameEmulationService(
         IMameProcessStartInfoBuilder startInfoBuilder,
@@ -35,17 +36,38 @@ public sealed class MameEmulationService : IMameEmulationService
 
     public event EventHandler<MameEmulationState>? StateChanged;
 
+    public bool IsDebuggerSupportActive
+    {
+        get
+        {
+            lock (_stateGate)
+            {
+                return _isDebuggerSupportActive;
+            }
+        }
+    }
+
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        return StartCoreAsync(loadState: false, cancellationToken);
+        return StartCoreAsync(loadState: false, debuggerEnabled: false, cancellationToken);
     }
 
     public Task StartAndLoadStateAsync(CancellationToken cancellationToken)
     {
-        return StartCoreAsync(loadState: true, cancellationToken);
+        return StartCoreAsync(loadState: true, debuggerEnabled: false, cancellationToken);
     }
 
-    private async Task StartCoreAsync(bool loadState, CancellationToken cancellationToken)
+    public Task StartDebuggerAsync(CancellationToken cancellationToken)
+    {
+        return StartCoreAsync(loadState: false, debuggerEnabled: true, cancellationToken);
+    }
+
+    public Task StartDebuggerAndLoadStateAsync(CancellationToken cancellationToken)
+    {
+        return StartCoreAsync(loadState: true, debuggerEnabled: true, cancellationToken);
+    }
+
+    private async Task StartCoreAsync(bool loadState, bool debuggerEnabled, CancellationToken cancellationToken)
     {
         SetState(MameEmulationState.Starting);
         try
@@ -54,6 +76,11 @@ public sealed class MameEmulationService : IMameEmulationService
             if (request is null)
             {
                 throw new InvalidOperationException("No valid MAME launch request is available.");
+            }
+
+            if (debuggerEnabled)
+            {
+                request = request with { IsDebuggerEnabled = true };
             }
 
             if (loadState)
@@ -69,10 +96,12 @@ public sealed class MameEmulationService : IMameEmulationService
 
             var startInfo = _startInfoBuilder.Build(request);
             await _processRunner.StartAsync(startInfo, cancellationToken).ConfigureAwait(false);
+            SetDebuggerSupportActive(request.IsDebuggerEnabled);
             SetState(MameEmulationState.Running);
         }
         catch
         {
+            SetDebuggerSupportActive(false);
             SetState(MameEmulationState.Failed);
             throw;
         }
@@ -87,6 +116,7 @@ public sealed class MameEmulationService : IMameEmulationService
 
         SetState(MameEmulationState.Stopping);
         await _processRunner.StopAsync(cancellationToken).ConfigureAwait(false);
+        SetDebuggerSupportActive(false);
         SetState(MameEmulationState.Stopped);
     }
 
@@ -137,6 +167,14 @@ public sealed class MameEmulationService : IMameEmulationService
     {
         cancellationToken.ThrowIfCancellationRequested();
         return _processRunner.WriteStandardInputAsync(command, cancellationToken);
+    }
+
+    private void SetDebuggerSupportActive(bool isActive)
+    {
+        lock (_stateGate)
+        {
+            _isDebuggerSupportActive = isActive;
+        }
     }
 
     private void SetState(MameEmulationState state)

@@ -85,3 +85,25 @@ public sealed class MameProcessStartInfoBuilderTests
         Assert.Equal(@"C:\Mame", startInfo.WorkingDirectory);
     }
 }
+
+public sealed class MameProcessStartInfoBuilderDebuggerTests
+{
+    [Fact]
+    public void Build_DebuggerRequest_IncludesDebugPrerequisites()
+    {
+        var builder = new MameProcessStartInfoBuilder();
+        var request = new MameProcessLaunchRequest(
+            @"C:\Mame\mame.exe",
+            "myrom",
+            @"C:\roms",
+            @"C:\plugins",
+            string.Empty,
+            IsDebuggerEnabled: true);
+
+        var startInfo = builder.Build(request);
+
+        Assert.Contains("-debug", startInfo.Arguments);
+        Assert.Contains("-plugin oasis", startInfo.Arguments);
+        Assert.Contains("-output console", startInfo.Arguments);
+    }
+}
