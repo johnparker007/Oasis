@@ -15,6 +15,11 @@ public sealed class MameProcessStartInfoBuilder : IMameProcessStartInfoBuilder
         arguments.Append(EscapeArgument(request.MameRomName));
         arguments.Append(" -rompath ");
         arguments.Append(EscapeArgument(request.MameRomRootPath));
+        if (request.IsDebuggerEnabled)
+        {
+            arguments.Append(" -debug");
+        }
+
         arguments.Append(" -output console");
         arguments.Append(" -plugin oasis");
         arguments.Append(" -skip_gameinfo");

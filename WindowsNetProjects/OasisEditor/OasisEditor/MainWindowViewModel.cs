@@ -10,6 +10,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Collections.Specialized;
 using Microsoft.Win32;
+using OasisEditor.Features.MameDebugger;
 using OasisEditor.Features.MfmeImport;
 using EditorCommands = OasisEditor.Commands;
 using OasisEditor.Views;
@@ -79,6 +80,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private PlayViewInputRouter? _playViewInputRouter;
     private PlayViewKeyboardInputRouter? _playViewKeyboardInputRouter;
     private PlayViewPointerInputRouter? _playViewPointerInputRouter;
+    private readonly MameDebuggerService _mameDebuggerService;
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<EditorToolWindowId>? ToolWindowOpenRequested;
@@ -127,6 +129,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         StartAndLoadStateEmulationCommand = new RelayCommand(StartAndLoadStateEmulation, CanStartAndLoadStateEmulation);
         SaveStateAndExitEmulationCommand = new RelayCommand(SaveStateAndExitEmulation, CanSaveStateAndExitEmulation);
         StartEmulationCommand = new RelayCommand(StartEmulation, CanStartEmulation);
+        StartDebuggerEmulationCommand = new RelayCommand(StartDebuggerEmulation, CanStartEmulation);
+        DebuggerRunCommand = new RelayCommand(DebuggerRun, CanUseMameDebugger);
+        DebuggerBreakCommand = new RelayCommand(DebuggerBreak, CanUseMameDebugger);
+        DebuggerStepCommand = new RelayCommand(DebuggerStep, CanUseMameDebugger);
+        DebuggerStatusCommand = new RelayCommand(DebuggerStatus, CanQueryMameDebugger);
+        DebuggerCpuListCommand = new RelayCommand(DebuggerCpuList, CanQueryMameDebugger);
         LoadStateEmulationCommand = new RelayCommand(LoadStateEmulation, CanLoadStateEmulation);
         SaveStateEmulationCommand = new RelayCommand(SaveStateEmulation, CanSaveStateEmulation);
         StopEmulationCommand = new RelayCommand(StopEmulation, CanStopEmulation);
@@ -238,6 +246,19 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             new MameProcessStartInfoBuilder(),
             _mameProcessRunner,
             BuildMameLaunchRequest);
+        _mameDebuggerService = new MameDebuggerService(
+            new MameDebuggerStdioTransport(_mameProcessRunner),
+            new MameDebuggerResponseRouter(),
+            new MameDebuggerStdoutParser(),
+            new MameDebuggerState(),
+            () => _mameEmulationService.IsDebuggerSupportActive,
+            message => AddOutputEntry(message, OutputLogStatus.Info));
+        _mameDebuggerService.DebuggerEventReceived += (_, debuggerEvent) =>
+        {
+            DispatchToUiThread(() => AddOutputEntry(
+                $"MAME debugger event: {debuggerEvent.Event} state={debuggerEvent.ExecutionState} cpu={debuggerEvent.Cpu ?? "unknown"} pc={FormatDebuggerProgramCounter(debuggerEvent.ProgramCounter)}",
+                OutputLogStatus.Info));
+        };
         _mameEmulationService.StateChanged += (_, state) =>
         {
             DispatchToUiThread(() =>
@@ -390,6 +411,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand StartAndLoadStateEmulationCommand { get; }
     public ICommand SaveStateAndExitEmulationCommand { get; }
     public ICommand StartEmulationCommand { get; }
+    public ICommand StartDebuggerEmulationCommand { get; }
+    public ICommand DebuggerRunCommand { get; }
+    public ICommand DebuggerBreakCommand { get; }
+    public ICommand DebuggerStepCommand { get; }
+    public ICommand DebuggerStatusCommand { get; }
+    public ICommand DebuggerCpuListCommand { get; }
     public ICommand LoadStateEmulationCommand { get; }
     public ICommand SaveStateEmulationCommand { get; }
     public ICommand StopEmulationCommand { get; }
@@ -1708,6 +1735,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 AddOutputEntry($"[MAME-STDOUT] {segment}", OutputLogStatus.Info);
             }
 
+            if (_mameDebuggerService.ProcessStdoutLine(segment))
+            {
+                continue;
+            }
+
             parser.ProcessLine(segment);
         }
     }
@@ -1875,6 +1907,145 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             AddOutputEntry($"Emulation failed to start: {ex.Message}", OutputLogStatus.Error);
         }
+    }
+
+
+    private async void StartDebuggerEmulation()
+    {
+        if (!CanStartEmulation())
+        {
+            return;
+        }
+
+        AddOutputEntry("Debugger emulation start requested.", OutputLogStatus.Info);
+        try
+        {
+            await _mameEmulationService.StartDebuggerAsync(CancellationToken.None);
+            AddOutputEntry("MAME debugger support is active for this process.", OutputLogStatus.Info);
+        }
+        catch (Exception ex)
+        {
+            AddOutputEntry($"Debugger emulation failed to start: {ex.Message}", OutputLogStatus.Error);
+        }
+    }
+
+    private bool CanQueryMameDebugger()
+    {
+        return _mameEmulationService.State is MameEmulationState.Running or MameEmulationState.Paused;
+    }
+
+    private bool CanUseMameDebugger()
+    {
+        return CanQueryMameDebugger() && _mameEmulationService.IsDebuggerSupportActive;
+    }
+
+    private async void DebuggerRun()
+    {
+        await SendDebuggerCommandAsync(
+            CanUseMameDebugger,
+            "MAME debugger run requested.",
+            "MAME debugger failed to run",
+            cancellationToken => _mameDebuggerService.RunAsync(cancellationToken));
+    }
+
+    private async void DebuggerBreak()
+    {
+        await SendDebuggerCommandAsync(
+            CanUseMameDebugger,
+            "MAME debugger break requested.",
+            "MAME debugger failed to break",
+            cancellationToken => _mameDebuggerService.BreakAsync(cancellationToken));
+    }
+
+    private async void DebuggerStep()
+    {
+        await SendDebuggerCommandAsync(
+            CanUseMameDebugger,
+            "MAME debugger step requested.",
+            "MAME debugger failed to step",
+            cancellationToken => _mameDebuggerService.StepAsync(cancellationToken: cancellationToken));
+    }
+
+    private async void DebuggerStatus()
+    {
+        if (!CanQueryMameDebugger())
+        {
+            return;
+        }
+
+        AddOutputEntry("MAME debugger status requested.", OutputLogStatus.Info);
+        try
+        {
+            var status = await _mameDebuggerService.GetStatusAsync(CancellationToken.None);
+            AddOutputEntry(FormatDebuggerStatus(status), status.IsAvailable ? OutputLogStatus.Info : OutputLogStatus.Warning);
+        }
+        catch (Exception ex)
+        {
+            AddOutputEntry($"MAME debugger failed to get status: {ex.Message}", OutputLogStatus.Error);
+        }
+    }
+
+    private async void DebuggerCpuList()
+    {
+        if (!CanUseMameDebugger())
+        {
+            return;
+        }
+
+        AddOutputEntry("MAME debugger CPU list requested.", OutputLogStatus.Info);
+        try
+        {
+            var cpus = await _mameDebuggerService.GetCpuListAsync(CancellationToken.None);
+            var cpuSummary = cpus.Count == 0
+                ? "no CPUs reported"
+                : string.Join(", ", cpus.Select(cpu => $"{cpu.Tag} ({cpu.Name})"));
+            AddOutputEntry($"MAME debugger CPUs: {cpuSummary}.", OutputLogStatus.Info);
+        }
+        catch (Exception ex)
+        {
+            AddOutputEntry($"MAME debugger failed to get CPU list: {ex.Message}", OutputLogStatus.Error);
+        }
+    }
+
+    private async Task<bool> SendDebuggerCommandAsync(
+        Func<bool> canExecute,
+        string requestedMessage,
+        string failureMessage,
+        Func<CancellationToken, Task> command)
+    {
+        if (!canExecute())
+        {
+            AddOutputEntry(
+                _mameEmulationService.IsDebuggerSupportActive
+                    ? "MAME debugger command skipped: emulation is not running."
+                    : "MAME debugger command skipped: current MAME process was not launched with -debug.",
+                OutputLogStatus.Warning);
+            return false;
+        }
+
+        AddOutputEntry(requestedMessage, OutputLogStatus.Info);
+        try
+        {
+            await command(CancellationToken.None);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            AddOutputEntry($"{failureMessage}: {ex.Message}", OutputLogStatus.Error);
+            return false;
+        }
+    }
+
+    private static string FormatDebuggerStatus(MameDebuggerStatus status)
+    {
+        var availability = status.IsAvailable ? "available" : "unavailable";
+        var cpu = status.CurrentCpu ?? "unknown";
+        return $"MAME debugger status: {availability}; state={status.ExecutionState}; cpu={cpu}; pc={FormatDebuggerProgramCounter(status.ProgramCounter)}; message={status.Message ?? "none"}.";
+    }
+
+    private static string FormatDebuggerProgramCounter(long? programCounter)
+    {
+        return programCounter.HasValue ? $"0x{programCounter.Value:X}" : "unknown";
     }
 
     private bool CanLoadStateEmulation()
@@ -2728,6 +2899,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         RaiseEmulationCommandCanExecuteChanged(StartAndLoadStateEmulationCommand);
         RaiseEmulationCommandCanExecuteChanged(SaveStateAndExitEmulationCommand);
         RaiseEmulationCommandCanExecuteChanged(StartEmulationCommand);
+        RaiseEmulationCommandCanExecuteChanged(StartDebuggerEmulationCommand);
+        RaiseEmulationCommandCanExecuteChanged(DebuggerRunCommand);
+        RaiseEmulationCommandCanExecuteChanged(DebuggerBreakCommand);
+        RaiseEmulationCommandCanExecuteChanged(DebuggerStepCommand);
+        RaiseEmulationCommandCanExecuteChanged(DebuggerStatusCommand);
+        RaiseEmulationCommandCanExecuteChanged(DebuggerCpuListCommand);
         RaiseEmulationCommandCanExecuteChanged(LoadStateEmulationCommand);
         RaiseEmulationCommandCanExecuteChanged(SaveStateEmulationCommand);
         RaiseEmulationCommandCanExecuteChanged(StopEmulationCommand);

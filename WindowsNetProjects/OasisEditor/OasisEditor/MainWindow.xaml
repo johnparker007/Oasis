@@ -154,6 +154,28 @@
                 <MenuItem Header="_Start"
                           Command="{Binding StartEmulationCommand}"
                           Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                <MenuItem Header="Start With _Debugger"
+                          Command="{Binding StartDebuggerEmulationCommand}"
+                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                <MenuItem Header="MAME _Debugger"
+                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}">
+                    <MenuItem Header="_Status"
+                              Command="{Binding DebuggerStatusCommand}"
+                              Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                    <MenuItem Header="_CPUs"
+                              Command="{Binding DebuggerCpuListCommand}"
+                              Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                    <Separator />
+                    <MenuItem Header="_Run"
+                              Command="{Binding DebuggerRunCommand}"
+                              Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                    <MenuItem Header="_Break"
+                              Command="{Binding DebuggerBreakCommand}"
+                              Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                    <MenuItem Header="_Step"
+                              Command="{Binding DebuggerStepCommand}"
+                              Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                </MenuItem>
                 <MenuItem Header="_Load State"
                           Command="{Binding LoadStateEmulationCommand}"
                           Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
