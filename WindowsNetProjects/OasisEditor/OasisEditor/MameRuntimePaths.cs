@@ -14,6 +14,11 @@ public static class MameRuntimePaths
         return root;
     }
 
+    public static string ResolveDebuggerStartupScriptPath()
+    {
+        return Path.Combine(EnsureManagedRuntimeRootDirectory(), "debugger", "oasis_debugger_startup.cmd");
+    }
+
     public static string ResolveBundledLuaPluginSourcePath()
     {
         var appBaseDirectory = AppContext.BaseDirectory;

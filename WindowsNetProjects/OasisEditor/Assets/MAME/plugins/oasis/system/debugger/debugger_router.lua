@@ -27,11 +27,11 @@ local function command_debugger(command)
     return nil
 end
 
-local function machine_is_paused()
-    local paused = try_call(function() return emu.paused() end)
-    if paused ~= nil then return paused end
-    paused = try_call(function() return manager.machine.paused end)
-    if paused ~= nil then return paused end
+local function debugger_execution_state()
+    local debugger = get_debugger()
+    if debugger then
+        return try_call(function() return debugger.execution_state end)
+    end
     return nil
 end
 
@@ -40,7 +40,7 @@ local function get_cpu_devices()
     local devices = try_call(function() return manager.machine.devices end)
     if devices then
         for tag, device in pairs(devices) do
-            local is_cpu = try_call(function() return device.execute ~= nil end)
+            local is_cpu = try_call(function() return device.debug ~= nil end)
             if is_cpu then
                 table.insert(cpus, {
                     tag = tostring(tag),
@@ -57,6 +57,13 @@ local function current_cpu_tag()
     if state.current_cpu then
         return state.current_cpu
     end
+
+    local visible_cpu = try_call(function() return get_debugger().visible_cpu end)
+    if visible_cpu then
+        local tag = try_call(function() return visible_cpu.tag end)
+        if tag then return tostring(tag) end
+    end
+
     local cpus = get_cpu_devices()
     if #cpus > 0 then
         return cpus[1].tag
@@ -82,11 +89,11 @@ local function get_pc(cpu_tag)
 end
 
 local function build_status(message)
-    local paused = machine_is_paused()
+    local raw_state = debugger_execution_state()
     local execution_state = "unknown"
-    if paused == true then
+    if raw_state == "stop" then
         execution_state = "stopped"
-    elseif paused == false then
+    elseif raw_state == "run" then
         execution_state = "running"
     end
 
@@ -132,9 +139,13 @@ function lib:handle(request)
     end
 
     if op == "run" then
-        command_debugger("go")
-        local resumed = try_call(function() return emu.unpause() end)
-        if resumed == nil then try_call(function() emu.resume() end) end
+        local cpu = get_cpu(current_cpu_tag())
+        local ran = try_call(function() cpu.debug:go() end)
+        if ran == nil then
+            local debugger = get_debugger()
+            try_call(function() debugger.execution_state = "run" end)
+            command_debugger("go")
+        end
         local status = build_status(nil)
         if status.executionState == "unknown" then status.executionState = "running"; status.state = "running" end
         emit_transition(status)
@@ -142,8 +153,8 @@ function lib:handle(request)
     end
 
     if op == "break" then
-        command_debugger("stop")
-        try_call(function() emu.pause() end)
+        local debugger = get_debugger()
+        try_call(function() debugger.execution_state = "stop" end)
         local status = build_status(nil)
         if status.executionState == "unknown" then status.executionState = "stopped"; status.state = "stopped" end
         emit_transition(status)
@@ -151,9 +162,13 @@ function lib:handle(request)
     end
 
     if op == "step" then
-        local cpu = request.cpu or (request.params and request.params.cpu) or current_cpu_tag()
-        state.current_cpu = cpu
-        command_debugger("step")
+        local cpu_tag = request.cpu or (request.params and request.params.cpu) or current_cpu_tag()
+        state.current_cpu = cpu_tag
+        local cpu = get_cpu(cpu_tag)
+        local stepped = try_call(function() cpu.debug:step() end)
+        if stepped == nil then
+            command_debugger("step")
+        end
         local status = build_status(nil)
         status.executionState = "stopped"
         status.state = "stopped"

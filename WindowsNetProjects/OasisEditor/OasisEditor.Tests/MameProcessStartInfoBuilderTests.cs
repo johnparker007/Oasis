@@ -92,17 +92,23 @@ public sealed class MameProcessStartInfoBuilderDebuggerTests
     public void Build_DebuggerRequest_IncludesDebugPrerequisites()
     {
         var builder = new MameProcessStartInfoBuilder();
+        var scriptPath = Path.Combine(Path.GetTempPath(), $"oasis-debugger-{Guid.NewGuid():N}.cmd");
         var request = new MameProcessLaunchRequest(
             @"C:\Mame\mame.exe",
             "myrom",
             @"C:\roms",
             @"C:\plugins",
             string.Empty,
-            IsDebuggerEnabled: true);
+            IsDebuggerEnabled: true,
+            DebuggerScriptPath: scriptPath);
 
         var startInfo = builder.Build(request);
 
         Assert.Contains("-debug", startInfo.Arguments);
+        Assert.Contains("-debugger gdbstub", startInfo.Arguments);
+        Assert.Contains("-debugscript", startInfo.Arguments);
+        Assert.Contains(scriptPath, startInfo.Arguments);
+        Assert.Equal($"go{Environment.NewLine}", File.ReadAllText(scriptPath));
         Assert.Contains("-plugin oasis", startInfo.Arguments);
         Assert.Contains("-output console", startInfo.Arguments);
     }

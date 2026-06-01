@@ -61,4 +61,5 @@ public sealed record MameProcessLaunchRequest(
     string MameRomRootPath,
     string OasisPluginPath,
     string AdditionalArguments,
-    bool IsDebuggerEnabled = false);
+    bool IsDebuggerEnabled = false,
+    string? DebuggerScriptPath = null);

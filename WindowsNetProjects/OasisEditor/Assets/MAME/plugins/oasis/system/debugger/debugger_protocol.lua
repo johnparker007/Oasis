@@ -55,7 +55,7 @@ function lib:encode_json(value)
 end
 
 local function read_string(json, key)
-    return json:match('"' .. key .. '"%s*:%s*"([^"\\]*)"')
+    return json:match('"' .. key .. '"%s*:%s*"([^"]*)"')
 end
 
 local function read_number(json, key)

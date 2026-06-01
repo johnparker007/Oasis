@@ -18,6 +18,17 @@ public sealed class MameProcessStartInfoBuilder : IMameProcessStartInfoBuilder
         if (request.IsDebuggerEnabled)
         {
             arguments.Append(" -debug");
+            // MAME's default Windows debugger module opens the native debugger UI.
+            // Use the GDB stub module as a headless debugger backend while Oasis
+            // continues to communicate over the existing Lua stdin/stdout bridge.
+            arguments.Append(" -debugger gdbstub");
+
+            if (!string.IsNullOrWhiteSpace(request.DebuggerScriptPath))
+            {
+                EnsureDebuggerStartupScript(request.DebuggerScriptPath);
+                arguments.Append(" -debugscript ");
+                arguments.Append(EscapeArgument(request.DebuggerScriptPath));
+            }
         }
 
         arguments.Append(" -output console");
@@ -44,6 +55,20 @@ public sealed class MameProcessStartInfoBuilder : IMameProcessStartInfoBuilder
             CreateNoWindow = true,
             WindowStyle = ProcessWindowStyle.Hidden
         };
+    }
+
+    private static void EnsureDebuggerStartupScript(string scriptPath)
+    {
+        var scriptDirectory = Path.GetDirectoryName(scriptPath);
+        if (!string.IsNullOrWhiteSpace(scriptDirectory))
+        {
+            Directory.CreateDirectory(scriptDirectory);
+        }
+
+        // MAME enters the debugger after the initial reset when -debug is active.
+        // Resume immediately so the emulated machine starts running until Oasis
+        // explicitly sends a break/step command.
+        File.WriteAllText(scriptPath, "go" + Environment.NewLine);
     }
 
     private static string EscapeArgument(string value)

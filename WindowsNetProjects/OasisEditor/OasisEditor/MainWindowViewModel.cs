@@ -2240,7 +2240,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             MameRomName,
             MameRuntimePaths.EnsureManagedRomRootDirectory(),
             MameRuntimePaths.ResolveBundledLuaPluginSourcePath(),
-            MameCommandLineOverrides);
+            MameCommandLineOverrides,
+            DebuggerScriptPath: MameRuntimePaths.ResolveDebuggerStartupScriptPath());
     }
 
     private void LoadStartupProject(string startupProjectFilePath)
