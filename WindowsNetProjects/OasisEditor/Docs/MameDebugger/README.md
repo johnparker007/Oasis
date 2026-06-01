@@ -78,9 +78,22 @@ public interface IMameProtocolTransport
 
 The first implementation can wrap the existing `IMameProcessRunner.WriteStandardInputAsync(...)` and stdout parser path.
 
-## MAME debugger requirements
+## Mandatory MAME debugger launch prerequisite
 
-Debugger functionality requires MAME to be launched with debugger support enabled. The launch flow should append or otherwise enable:
+All debugger functionality depends on MAME being launched with debugger support enabled.
+
+Codex must inspect the current launch path before implementing debugger control features:
+
+```text
+BuildMameLaunchRequest()
+MameProcessStartInfoBuilder
+MameEmulationService
+MainWindowViewModel MAME launch command methods
+```
+
+If Oasis does not currently launch MAME with `-debug`, add a debugger-enabled launch mode that appends it.
+
+Debugger-mode launch arguments must include:
 
 ```text
 -debug
@@ -88,7 +101,9 @@ Debugger functionality requires MAME to be launched with debugger support enable
 -output console
 ```
 
-The Oasis debugger UI should handle the case where the current MAME process was launched without `-debug` by showing a clear disabled state and an output-log warning.
+`-debug` is not optional for this subproject. Without it, MAME debugger APIs, breakpoint/watchpoint control, stepping, register inspection, and disassembly may be unavailable or behave inconsistently.
+
+The Oasis debugger UI must handle the case where the current MAME process was not launched in debugger mode by showing a disabled/debugger-unavailable state and logging a clear warning.
 
 ## High-level architecture
 
@@ -125,7 +140,7 @@ Work through these files in order:
 
 The MVP is complete when a developer can:
 
-1. Start MAME from Oasis Editor in debugger mode.
+1. Start MAME from Oasis Editor in debugger mode with `-debug` confirmed in the launch arguments.
 2. Open debugger dock windows.
 3. Select or default to the main CPU.
 4. Break execution.
