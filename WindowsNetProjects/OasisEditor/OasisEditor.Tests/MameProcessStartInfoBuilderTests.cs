@@ -64,6 +64,24 @@ public sealed class MameProcessStartInfoBuilderTests
     }
 
     [Fact]
+    public void Build_IncludesDebugFlagOnlyForDebuggerLaunches()
+    {
+        var builder = new MameProcessStartInfoBuilder();
+        var normalRequest = new MameProcessLaunchRequest(
+            @"C:\Mame\mame.exe",
+            "myrom",
+            @"C:\roms",
+            @"C:\plugins",
+            string.Empty);
+        var debuggerRequest = normalRequest with { DebuggerEnabled = true };
+
+        Assert.DoesNotContain("-debug", builder.Build(normalRequest).Arguments);
+        Assert.Contains("-debug", builder.Build(debuggerRequest).Arguments);
+        Assert.Contains("-plugin oasis", builder.Build(debuggerRequest).Arguments);
+        Assert.Contains("-output console", builder.Build(debuggerRequest).Arguments);
+    }
+
+    [Fact]
     public void Build_ConfiguresHiddenRedirectedProcess()
     {
         var builder = new MameProcessStartInfoBuilder();

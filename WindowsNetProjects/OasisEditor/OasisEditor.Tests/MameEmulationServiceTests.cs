@@ -25,6 +25,27 @@ public sealed class MameEmulationServiceTests
         Assert.Equal(MameEmulationState.Running, service.State);
     }
 
+    [Fact]
+    public async Task StartDebuggerAsync_EnablesDebuggerLaunchArguments()
+    {
+        var runner = new RecordingMameProcessRunner();
+        var service = new MameEmulationService(
+            new MameProcessStartInfoBuilder(),
+            runner,
+            () => new MameProcessLaunchRequest(
+                @"C:\MAME\mame.exe",
+                "m4test",
+                @"C:\MAME\roms",
+                @"C:\Plugins\oasis",
+                string.Empty));
+
+        await service.StartDebuggerAsync(CancellationToken.None);
+
+        Assert.Contains("-debug", runner.StartInfo?.Arguments);
+        Assert.Contains("-plugin oasis", runner.StartInfo?.Arguments);
+        Assert.Contains("-output console", runner.StartInfo?.Arguments);
+    }
+
     [Theory]
     [InlineData(nameof(IMameEmulationService.LoadStateAsync), "state_load oasis_save_state")]
     [InlineData(nameof(IMameEmulationService.SaveStateAsync), "state_save oasis_save_state")]

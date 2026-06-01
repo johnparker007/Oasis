@@ -10,6 +10,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Collections.Specialized;
 using Microsoft.Win32;
+using OasisEditor.Features.MameDebugger;
 using OasisEditor.Features.MfmeImport;
 using EditorCommands = OasisEditor.Commands;
 using OasisEditor.Views;
@@ -70,6 +71,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private bool _isLoadingPreferences;
     private readonly IMameEmulationService _mameEmulationService;
     private readonly IMameProcessRunner _mameProcessRunner;
+    private readonly IMameDebuggerService _mameDebuggerService;
     private MameSetupState _mameSetupState = MameSetupState.NotStarted;
     private bool _isAutoProvisioningMame;
     private bool _isMameUnthrottled;
@@ -234,6 +236,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 }
             },
             stderrLogger: line => AddOutputEntry($"[MAME-ERR] {line}", OutputLogStatus.Warning));
+        _mameDebuggerService = new MameDebuggerService(
+            _mameProcessRunner,
+            message => AddOutputEntry(message, OutputLogStatus.Info));
+        _mameDebuggerService.DebuggerEventReceived += (_, debuggerEvent) =>
+        {
+            DispatchToUiThread(() => AddOutputEntry(
+                $"MAME debugger event: {debuggerEvent.Event} state={debuggerEvent.State ?? "unknown"} cpu={debuggerEvent.Cpu ?? "unknown"} pc={debuggerEvent.Pc?.ToString() ?? "unknown"}.",
+                OutputLogStatus.Info));
+        };
         _mameEmulationService = new MameEmulationService(
             new MameProcessStartInfoBuilder(),
             _mameProcessRunner,
@@ -250,6 +261,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 if (state is MameEmulationState.Starting or MameEmulationState.Stopped or MameEmulationState.Failed)
                 {
                     IsUnthrottleEmulationChecked = false;
+                }
+
+                if (state is MameEmulationState.Stopped or MameEmulationState.Failed)
+                {
+                    _mameDebuggerService.SetDebuggerLaunchActive(false);
                 }
 
                 EmulationState = state;
@@ -1708,6 +1724,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 AddOutputEntry($"[MAME-STDOUT] {segment}", OutputLogStatus.Info);
             }
 
+            _mameDebuggerService.ProcessStdoutLine(segment);
             parser.ProcessLine(segment);
         }
     }

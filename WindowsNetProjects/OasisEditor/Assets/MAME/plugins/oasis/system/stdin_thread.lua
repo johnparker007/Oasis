@@ -4,6 +4,7 @@ local script = "return io.read()"
 
 local utility = require('oasis/system/utility')
 local command_processor = require('oasis/system/command_processor')
+local debugger_state = require('oasis/system/debugger/debugger_state')
 
 function lib:start()
 	local console_thread = emu.thread()
@@ -40,6 +41,8 @@ function lib:start()
 		-- it is essential that we only perform these activities when there
 		-- is an active session!
 		if session_active then
+			debugger_state:emit_transition_if_needed()
+
 			-- do we have a command?
 			if not (console_thread.yield or console_thread.busy) then
 			
