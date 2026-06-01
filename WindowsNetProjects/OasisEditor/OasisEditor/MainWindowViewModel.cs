@@ -127,8 +127,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         CloseProjectCommand = new RelayCommand(CloseProject, CanCloseProject);
         ExitCommand = new RelayCommand(ExitApplication);
         StartAndLoadStateEmulationCommand = new RelayCommand(StartAndLoadStateEmulation, CanStartAndLoadStateEmulation);
+        StartDebuggerAndLoadStateEmulationCommand = new RelayCommand(StartDebuggerAndLoadStateEmulation, CanStartAndLoadStateEmulation);
         SaveStateAndExitEmulationCommand = new RelayCommand(SaveStateAndExitEmulation, CanSaveStateAndExitEmulation);
         StartEmulationCommand = new RelayCommand(StartEmulation, CanStartEmulation);
+        StartDebuggerEmulationCommand = new RelayCommand(StartDebuggerEmulation, CanStartEmulation);
         LoadStateEmulationCommand = new RelayCommand(LoadStateEmulation, CanLoadStateEmulation);
         SaveStateEmulationCommand = new RelayCommand(SaveStateEmulation, CanSaveStateEmulation);
         StopEmulationCommand = new RelayCommand(StopEmulation, CanStopEmulation);
@@ -136,6 +138,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ToggleUnthrottleEmulationCommand = new RelayCommand(ToggleUnthrottleEmulation, CanSetThrottleEmulation);
         SoftResetEmulationCommand = new RelayCommand(SoftResetEmulation, CanResetEmulation);
         HardResetEmulationCommand = new RelayCommand(HardResetEmulation, CanResetEmulation);
+        RefreshDebuggerStatusCommand = new RelayCommand(RefreshDebuggerStatus, CanQueryDebugger);
+        ListDebuggerCpusCommand = new RelayCommand(ListDebuggerCpus, CanQueryDebugger);
+        DebuggerRunCommand = new RelayCommand(DebuggerRun, CanControlDebugger);
+        DebuggerBreakCommand = new RelayCommand(DebuggerBreak, CanControlDebugger);
+        DebuggerStepCommand = new RelayCommand(DebuggerStep, CanControlDebugger);
 
         _outputLog = new OutputLogViewModel();
         _outputLog.PropertyChanged += OnOutputLogPropertyChanged;
@@ -244,6 +251,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             DispatchToUiThread(() => AddOutputEntry(
                 $"MAME debugger event: {debuggerEvent.Event} state={debuggerEvent.State ?? "unknown"} cpu={debuggerEvent.Cpu ?? "unknown"} pc={debuggerEvent.Pc?.ToString() ?? "unknown"}.",
                 OutputLogStatus.Info));
+            NotifyEmulationCommands();
         };
         _mameEmulationService = new MameEmulationService(
             new MameProcessStartInfoBuilder(),
@@ -404,8 +412,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand CloseProjectCommand { get; }
     public ICommand ExitCommand { get; }
     public ICommand StartAndLoadStateEmulationCommand { get; }
+    public ICommand StartDebuggerAndLoadStateEmulationCommand { get; }
     public ICommand SaveStateAndExitEmulationCommand { get; }
     public ICommand StartEmulationCommand { get; }
+    public ICommand StartDebuggerEmulationCommand { get; }
     public ICommand LoadStateEmulationCommand { get; }
     public ICommand SaveStateEmulationCommand { get; }
     public ICommand StopEmulationCommand { get; }
@@ -413,6 +423,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand ToggleUnthrottleEmulationCommand { get; }
     public ICommand SoftResetEmulationCommand { get; }
     public ICommand HardResetEmulationCommand { get; }
+    public ICommand RefreshDebuggerStatusCommand { get; }
+    public ICommand ListDebuggerCpusCommand { get; }
+    public ICommand DebuggerRunCommand { get; }
+    public ICommand DebuggerBreakCommand { get; }
+    public ICommand DebuggerStepCommand { get; }
     public ObservableCollection<string> RecentProjects { get; }
     public ObservableCollection<DocumentTabViewModel> OpenDocuments { get; }
     public ObservableCollection<AssetBrowserItemViewModel> AssetBrowserItems { get; }
@@ -1848,6 +1863,28 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
+    private async void StartDebuggerAndLoadStateEmulation()
+    {
+        if (!CanStartAndLoadStateEmulation())
+        {
+            return;
+        }
+
+        AddOutputEntry("Debugger emulation start and load state requested.", OutputLogStatus.Info);
+        try
+        {
+            await _mameEmulationService.StartDebuggerAndLoadStateAsync(CancellationToken.None);
+            _mameDebuggerService.SetDebuggerLaunchActive(true);
+            await LogDebuggerStatusAsync("Debugger launch validation");
+            NotifyEmulationCommands();
+        }
+        catch (Exception ex)
+        {
+            _mameDebuggerService.SetDebuggerLaunchActive(false);
+            AddOutputEntry($"Debugger emulation failed to start and load state: {ex.Message}", OutputLogStatus.Error);
+        }
+    }
+
     private bool CanSaveStateAndExitEmulation()
     {
         return CurrentEmulationCommandState.CanSaveStateAndExit;
@@ -1891,6 +1928,28 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         catch (Exception ex)
         {
             AddOutputEntry($"Emulation failed to start: {ex.Message}", OutputLogStatus.Error);
+        }
+    }
+
+    private async void StartDebuggerEmulation()
+    {
+        if (!CanStartEmulation())
+        {
+            return;
+        }
+
+        AddOutputEntry("Debugger emulation start requested.", OutputLogStatus.Info);
+        try
+        {
+            await _mameEmulationService.StartDebuggerAsync(CancellationToken.None);
+            _mameDebuggerService.SetDebuggerLaunchActive(true);
+            await LogDebuggerStatusAsync("Debugger launch validation");
+            NotifyEmulationCommands();
+        }
+        catch (Exception ex)
+        {
+            _mameDebuggerService.SetDebuggerLaunchActive(false);
+            AddOutputEntry($"Debugger emulation failed to start: {ex.Message}", OutputLogStatus.Error);
         }
     }
 
@@ -2048,6 +2107,107 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             "Emulation hard reset requested.",
             "Emulation failed to hard reset",
             cancellationToken => _mameEmulationService.HardResetAsync(cancellationToken));
+    }
+
+    private bool CanQueryDebugger()
+    {
+        return _mameEmulationService.State is MameEmulationState.Running or MameEmulationState.Paused;
+    }
+
+    private bool CanControlDebugger()
+    {
+        return CanQueryDebugger() && _mameDebuggerService.State.IsDebuggerLaunchActive;
+    }
+
+    private async void RefreshDebuggerStatus()
+    {
+        await SendDebuggerCommandAsync(
+            CanQueryDebugger,
+            "Debugger status requested.",
+            "Debugger status request failed",
+            async cancellationToken =>
+            {
+                await LogDebuggerStatusAsync("Debugger status", cancellationToken);
+            });
+    }
+
+    private async void ListDebuggerCpus()
+    {
+        await SendDebuggerCommandAsync(
+            CanQueryDebugger,
+            "Debugger CPU list requested.",
+            "Debugger CPU list request failed",
+            async cancellationToken =>
+            {
+                var cpus = await _mameDebuggerService.GetCpuListAsync(cancellationToken);
+                if (cpus.Count == 0)
+                {
+                    AddOutputEntry("Debugger CPU list returned no CPU devices.", OutputLogStatus.Warning);
+                    return;
+                }
+
+                AddOutputEntry($"Debugger CPUs: {string.Join(", ", cpus.Select(cpu => cpu.IsCurrent ? $"{cpu.Tag} ({cpu.Name}, current)" : $"{cpu.Tag} ({cpu.Name})"))}.", OutputLogStatus.Info);
+            });
+    }
+
+    private async void DebuggerRun()
+    {
+        await SendDebuggerCommandAsync(
+            CanControlDebugger,
+            "Debugger run requested.",
+            "Debugger run failed",
+            cancellationToken => _mameDebuggerService.RunAsync(cancellationToken));
+    }
+
+    private async void DebuggerBreak()
+    {
+        await SendDebuggerCommandAsync(
+            CanControlDebugger,
+            "Debugger break requested.",
+            "Debugger break failed",
+            cancellationToken => _mameDebuggerService.BreakAsync(cancellationToken));
+    }
+
+    private async void DebuggerStep()
+    {
+        await SendDebuggerCommandAsync(
+            CanControlDebugger,
+            "Debugger step requested.",
+            "Debugger step failed",
+            cancellationToken => _mameDebuggerService.StepAsync(cancellationToken));
+    }
+
+    private async Task LogDebuggerStatusAsync(string prefix, CancellationToken cancellationToken = default)
+    {
+        var status = await _mameDebuggerService.GetStatusAsync(cancellationToken);
+        var statusLevel = status.Available ? OutputLogStatus.Info : OutputLogStatus.Warning;
+        AddOutputEntry($"{prefix}: available={status.Available}, state={status.State}, cpu={status.Cpu ?? "unknown"}, pc={status.Pc?.ToString() ?? "unknown"}.", statusLevel);
+    }
+
+    private async Task<bool> SendDebuggerCommandAsync(
+        Func<bool> canExecute,
+        string requestedMessage,
+        string failureMessage,
+        Func<CancellationToken, Task> command)
+    {
+        if (!canExecute())
+        {
+            return false;
+        }
+
+        AddOutputEntry(requestedMessage, OutputLogStatus.Info);
+        try
+        {
+            await command(CancellationToken.None);
+            NotifyEmulationCommands();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            AddOutputEntry($"{failureMessage}: {ex.Message}", OutputLogStatus.Error);
+            NotifyEmulationCommands();
+            return false;
+        }
     }
 
     private async Task<bool> SendEmulationCommandAsync(
@@ -2743,8 +2903,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private void NotifyEmulationCommands()
     {
         RaiseEmulationCommandCanExecuteChanged(StartAndLoadStateEmulationCommand);
+        RaiseEmulationCommandCanExecuteChanged(StartDebuggerAndLoadStateEmulationCommand);
         RaiseEmulationCommandCanExecuteChanged(SaveStateAndExitEmulationCommand);
         RaiseEmulationCommandCanExecuteChanged(StartEmulationCommand);
+        RaiseEmulationCommandCanExecuteChanged(StartDebuggerEmulationCommand);
         RaiseEmulationCommandCanExecuteChanged(LoadStateEmulationCommand);
         RaiseEmulationCommandCanExecuteChanged(SaveStateEmulationCommand);
         RaiseEmulationCommandCanExecuteChanged(StopEmulationCommand);
@@ -2752,6 +2914,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         RaiseEmulationCommandCanExecuteChanged(ToggleUnthrottleEmulationCommand);
         RaiseEmulationCommandCanExecuteChanged(SoftResetEmulationCommand);
         RaiseEmulationCommandCanExecuteChanged(HardResetEmulationCommand);
+        RaiseEmulationCommandCanExecuteChanged(RefreshDebuggerStatusCommand);
+        RaiseEmulationCommandCanExecuteChanged(ListDebuggerCpusCommand);
+        RaiseEmulationCommandCanExecuteChanged(DebuggerRunCommand);
+        RaiseEmulationCommandCanExecuteChanged(DebuggerBreakCommand);
+        RaiseEmulationCommandCanExecuteChanged(DebuggerStepCommand);
     }
 
     private static void RaiseEmulationCommandCanExecuteChanged(ICommand command)

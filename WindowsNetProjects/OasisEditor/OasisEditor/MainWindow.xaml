@@ -147,12 +147,18 @@
                 <MenuItem Header="Start And _Load State"
                           Command="{Binding StartAndLoadStateEmulationCommand}"
                           Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                <MenuItem Header="Start _Debugger And Load State"
+                          Command="{Binding StartDebuggerAndLoadStateEmulationCommand}"
+                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
                 <MenuItem Header="Save State And E_xit"
                           Command="{Binding SaveStateAndExitEmulationCommand}"
                           Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
                 <Separator />
                 <MenuItem Header="_Start"
                           Command="{Binding StartEmulationCommand}"
+                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                <MenuItem Header="Start _Debugger"
+                          Command="{Binding StartDebuggerEmulationCommand}"
                           Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
                 <MenuItem Header="_Load State"
                           Command="{Binding LoadStateEmulationCommand}"
@@ -180,6 +186,22 @@
                           Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
                 <MenuItem Header="_Hard Reset"
                           Command="{Binding HardResetEmulationCommand}"
+                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                <Separator />
+                <MenuItem Header="Debugger _Status"
+                          Command="{Binding RefreshDebuggerStatusCommand}"
+                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                <MenuItem Header="Debugger _CPU List"
+                          Command="{Binding ListDebuggerCpusCommand}"
+                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                <MenuItem Header="Debugger _Run"
+                          Command="{Binding DebuggerRunCommand}"
+                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                <MenuItem Header="Debugger _Break"
+                          Command="{Binding DebuggerBreakCommand}"
+                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                <MenuItem Header="Debugger S_tep"
+                          Command="{Binding DebuggerStepCommand}"
                           Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
             </MenuItem>
         </Menu>
