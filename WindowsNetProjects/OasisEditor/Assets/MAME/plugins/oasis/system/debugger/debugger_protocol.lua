@@ -73,6 +73,43 @@ function lib:encode(value)
 	return encode_value(value)
 end
 
+local function unescape_json_string(value)
+	value = value:gsub('\\"', '"')
+	value = value:gsub('\\\\', '\\')
+	value = value:gsub('\\/', '/')
+	value = value:gsub('\\b', '\b')
+	value = value:gsub('\\f', '\f')
+	value = value:gsub('\\n', '\n')
+	value = value:gsub('\\r', '\r')
+	value = value:gsub('\\t', '\t')
+	return value
+end
+
+local function match_json_string_field(payload, field)
+	local _, value_start = payload:find('"' .. field .. '"%s*:%s*"')
+	if not value_start then
+		return nil
+	end
+
+	local value = {}
+	local escaped = false
+	for i = value_start + 1, #payload do
+		local char = payload:sub(i, i)
+		if escaped then
+			value[#value + 1] = '\\' .. char
+			escaped = false
+		elseif char == '\\' then
+			escaped = true
+		elseif char == '"' then
+			return unescape_json_string(table.concat(value))
+		else
+			value[#value + 1] = char
+		end
+	end
+
+	return nil
+end
+
 function lib:decode(payload)
 	if json_module then
 		if json_module.parse then
@@ -87,8 +124,8 @@ function lib:decode(payload)
 	-- the simple request shape emitted by MameDebuggerProtocol.
 	local result = {}
 	local id = payload:match('"id"%s*:%s*(%-?%d+)')
-	local op = payload:match('"op"%s*:%s*"([^"]*)"')
-	local cpu = payload:match('"cpu"%s*:%s*"([^"]*)"')
+	local op = match_json_string_field(payload, "op")
+	local cpu = match_json_string_field(payload, "cpu")
 	if id then
 		result.id = tonumber(id)
 	end

@@ -7,6 +7,7 @@ public interface IMameDebuggerService
 {
     MameDebuggerStateSnapshot State { get; }
     event EventHandler<MameDebuggerEvent>? DebuggerEventReceived;
+    Task<MameDebuggerPing> PingAsync(CancellationToken cancellationToken);
     Task<MameDebuggerStatus> GetStatusAsync(CancellationToken cancellationToken);
     Task<IReadOnlyList<MameDebuggerCpu>> GetCpuListAsync(CancellationToken cancellationToken);
     Task RunAsync(CancellationToken cancellationToken);
@@ -53,6 +54,12 @@ public sealed class MameDebuggerService : IMameDebuggerService
     public void SetDebuggerLaunchActive(bool isActive)
     {
         _state.MarkLaunchMode(isActive);
+    }
+
+    public async Task<MameDebuggerPing> PingAsync(CancellationToken cancellationToken)
+    {
+        var response = await SendRequestAsync("ping", cancellationToken).ConfigureAwait(false);
+        return DeserializeResult<MameDebuggerPing>(response);
     }
 
     public async Task<MameDebuggerStatus> GetStatusAsync(CancellationToken cancellationToken)

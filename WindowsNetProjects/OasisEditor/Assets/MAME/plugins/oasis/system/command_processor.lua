@@ -50,9 +50,13 @@ function lib:invoke_command_line(line)
 			command_lua(line:sub(2))
 		else
 			local args = utility:quoted_string_split(line)
+			local command_name = args[1] and args[1]:lower()
 			
-			if (commands[args[1]:lower()]) then
-				commands[args[1]:lower()]:execute(args)
+			if (command_name == "debug") then
+				local payload = line:match("^%s*%S+%s+(.+)$")
+				command_debug:execute(payload)
+			elseif (command_name and commands[command_name]) then
+				commands[command_name]:execute(args)
 			else
 				command_unknown(args)
 			end
