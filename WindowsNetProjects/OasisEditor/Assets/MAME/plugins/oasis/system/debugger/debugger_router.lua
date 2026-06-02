@@ -79,8 +79,22 @@ local function requested_id(data)
 	return number_value(data.mameId or data.debuggerId or data.id, "mameId", true)
 end
 
-local function address_space(data)
+local function address_space_name(data)
 	return data.addressSpace or data.space or "program"
+end
+
+local function require_address_space(cpu, data)
+	local name = address_space_name(data)
+	if not cpu.spaces then
+		error("CPU device '" .. tostring(cpu.tag) .. "' does not expose address spaces.")
+	end
+
+	local space = cpu.spaces[name]
+	if not space then
+		error("CPU device '" .. tostring(cpu.tag) .. "' does not expose address space '" .. tostring(name) .. "'.")
+	end
+
+	return space, name
 end
 
 local function breakpoint_model(bp, cpu_tag)
@@ -93,6 +107,16 @@ local function breakpoint_model(bp, cpu_tag)
 		condition = bp.condition,
 		action = bp.action
 	}
+end
+
+local function set_breakpoint(debug, address, condition, action)
+	if action ~= nil and action ~= "" then
+		return debug:bpset(address, condition or "", action)
+	elseif condition ~= nil and condition ~= "" then
+		return debug:bpset(address, condition)
+	end
+
+	return debug:bpset(address)
 end
 
 local function breakpoint_list(cpu_tag)
@@ -136,7 +160,7 @@ local function watchpoint_hit_action(cpu_tag)
 	return 'printf "@OASIS_DEBUG_EVENT {\\"event\\":\\"watchpointHit\\",\\"cpu\\":\\"' .. cpu_tag .. '\\",\\"address\\":%d,\\"data\\":%d,\\"size\\":%d}",wpaddr,wpdata,wpsize'
 end
 
-local function watchpoint_model(wp, cpu_tag, space)
+local function watchpoint_model(wp, cpu_tag, space_name)
 	return {
 		debuggerId = wp.index,
 		mameId = wp.index,
@@ -147,16 +171,26 @@ local function watchpoint_model(wp, cpu_tag, space)
 		enabled = wp.enabled,
 		condition = wp.condition,
 		action = wp.action,
-		addressSpace = space
+		addressSpace = space_name
 	}
 end
 
-local function watchpoint_list(cpu_tag, space)
-	local _, debug, tag = require_cpu(cpu_tag)
+local function set_watchpoint(debug, space, type, address, length, condition, action)
+	if action ~= nil and action ~= "" then
+		return debug:wpset(space, type, address, length, condition or "", action)
+	elseif condition ~= nil and condition ~= "" then
+		return debug:wpset(space, type, address, length, condition)
+	end
+
+	return debug:wpset(space, type, address, length)
+end
+
+local function watchpoint_list(cpu_tag, data)
+	local cpu, debug, tag = require_cpu(cpu_tag)
+	local space, space_name = require_address_space(cpu, data or {})
 	local result = {}
-	local selected_space = space or "program"
-	for _, wp in pairs(debug:wplist(selected_space)) do
-		result[#result + 1] = watchpoint_model(wp, tag, selected_space)
+	for _, wp in pairs(debug:wplist(space)) do
+		result[#result + 1] = watchpoint_model(wp, tag, space_name)
 	end
 	table.sort(result, function(a, b) return a.mameId < b.mameId end)
 	return result
@@ -209,7 +243,7 @@ function lib:handle(request)
 		return state:status()
 	elseif op == "bp.set" then
 		local _, debug, tag = require_cpu(data.cpu or request.cpu)
-		local id = debug:bpset(number_value(data.address, "address", true), data.condition, data.action)
+		local id = set_breakpoint(debug, number_value(data.address, "address", true), data.condition, data.action)
 		return breakpoint_model(debug:bplist()[id], tag)
 	elseif op == "bp.list" then
 		return breakpoint_list(data.cpu or request.cpu)
@@ -235,39 +269,39 @@ function lib:handle(request)
 		end
 		return breakpoint_list(tag)
 	elseif op == "wp.set" then
-		local _, debug, tag = require_cpu(data.cpu or request.cpu)
+		local cpu, debug, tag = require_cpu(data.cpu or request.cpu)
 		local action = data.action
 		if action == nil or action == "" then
 			action = watchpoint_hit_action(tag)
 		end
-		local space = address_space(data)
-		local id = debug:wpset(space, watchpoint_type_to_mame(data.type), number_value(data.address, "address", true), number_value(data.length, "length", true), data.condition, action)
-		return watchpoint_model(debug:wplist(space)[id], tag, space)
+		local space, space_name = require_address_space(cpu, data)
+		local id = set_watchpoint(debug, space, watchpoint_type_to_mame(data.type), number_value(data.address, "address", true), number_value(data.length, "length", true), data.condition, action)
+		return watchpoint_model(debug:wplist(space)[id], tag, space_name)
 	elseif op == "wp.list" then
-		return watchpoint_list(data.cpu or request.cpu, address_space(data))
+		return watchpoint_list(data.cpu or request.cpu, data)
 	elseif op == "wp.enable" then
-		local _, debug, tag = require_cpu(data.cpu or request.cpu)
+		local cpu, debug, tag = require_cpu(data.cpu or request.cpu)
 		local id = requested_id(data)
 		if debug:wpenable(id) == false then
 			error("Watchpoint '" .. tostring(id) .. "' was not found.")
 		end
-		local space = address_space(data)
-		return watchpoint_model(debug:wplist(space)[id], tag, space)
+		local space, space_name = require_address_space(cpu, data)
+		return watchpoint_model(debug:wplist(space)[id], tag, space_name)
 	elseif op == "wp.disable" then
-		local _, debug, tag = require_cpu(data.cpu or request.cpu)
+		local cpu, debug, tag = require_cpu(data.cpu or request.cpu)
 		local id = requested_id(data)
 		if debug:wpdisable(id) == false then
 			error("Watchpoint '" .. tostring(id) .. "' was not found.")
 		end
-		local space = address_space(data)
-		return watchpoint_model(debug:wplist(space)[id], tag, space)
+		local space, space_name = require_address_space(cpu, data)
+		return watchpoint_model(debug:wplist(space)[id], tag, space_name)
 	elseif op == "wp.clear" then
-		local _, debug, tag = require_cpu(data.cpu or request.cpu)
+		local cpu, debug, tag = require_cpu(data.cpu or request.cpu)
 		local id = requested_id(data)
 		if debug:wpclear(id) == false then
 			error("Watchpoint '" .. tostring(id) .. "' was not found.")
 		end
-		return watchpoint_list(tag, address_space(data))
+		return watchpoint_list(tag, data)
 	end
 
 	error("Unsupported debugger operation '" .. tostring(op) .. "'.")
