@@ -213,6 +213,13 @@
                 <MenuItem Header="Debugger Add Test Breakpoint At _PC"
                           Command="{Binding AddTestDebuggerBreakpointCommand}"
                           Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                <Separator />
+                <MenuItem Header="Debugger Disassemble Around _PC"
+                          Command="{Binding DisassembleAroundCurrentPcCommand}"
+                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                <MenuItem Header="Debugger Disassemble From _0x0"
+                          Command="{Binding DisassembleFixedAddressTestBlockCommand}"
+                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
             </MenuItem>
         </Menu>
 

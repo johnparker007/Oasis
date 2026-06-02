@@ -268,6 +268,182 @@ local function write_memory(cpu_tag, data)
 	return memory_block(tag, space_name, address, bytes)
 end
 
+
+local function cpu_pc(cpu)
+	if cpu and cpu.state and cpu.state["PC"] then
+		local ok, value = pcall(function() return cpu.state["PC"].value end)
+		if ok then
+			return value
+		end
+	end
+	return nil
+end
+
+local function consolelog_length(dbg)
+	if not (dbg and dbg.consolelog) then
+		return 0
+	end
+	local ok, count = pcall(function() return #dbg.consolelog end)
+	if ok and count then
+		return count
+	end
+	return 0
+end
+
+local function new_consolelog_lines(dbg, before)
+	local result = {}
+	if not (dbg and dbg.consolelog) then
+		return result
+	end
+	local after = consolelog_length(dbg)
+	for i = before + 1, after do
+		local ok, line = pcall(function() return dbg.consolelog[i] end)
+		if ok and line ~= nil then
+			result[#result + 1] = tostring(line)
+		end
+	end
+	return result
+end
+
+local function parse_disassembly_line(cpu_tag, raw_line, current_pc, fallback_address)
+	local raw = tostring(raw_line or "")
+	local trimmed = raw:match("^%s*(.-)%s*$") or raw
+	local is_current = false
+	if trimmed:sub(1, 2) == "=>" then
+		is_current = true
+		trimmed = trimmed:sub(3):match("^%s*(.-)%s*$") or trimmed:sub(3)
+	elseif trimmed:sub(1, 1) == ">" then
+		is_current = true
+		trimmed = trimmed:sub(2):match("^%s*(.-)%s*$") or trimmed:sub(2)
+	end
+
+	local address_text, rest = trimmed:match("^([%x]+)%s*:%s*(.*)$")
+	local address = address_text and tonumber(address_text, 16) or fallback_address or 0
+	if current_pc ~= nil and address == current_pc then
+		is_current = true
+	end
+
+	local opcode_parts = {}
+	local instruction = rest
+	if rest then
+		local remaining = rest:match("^%s*(.-)%s*$") or rest
+		while true do
+			local token, next_remaining = remaining:match("^([%x][%x]+)%s+(.*)$")
+			if not token or (#token % 2) ~= 0 or #token > 8 then
+				break
+			end
+			opcode_parts[#opcode_parts + 1] = token:upper()
+			remaining = next_remaining
+		end
+		instruction = remaining ~= "" and remaining or nil
+	end
+
+	return {
+		cpu = cpu_tag,
+		address = address,
+		rawText = raw,
+		opcodeBytes = #opcode_parts > 0 and table.concat(opcode_parts, " ") or nil,
+		instructionText = instruction,
+		isCurrentPc = is_current,
+		symbol = nil,
+		comment = nil
+	}
+end
+
+local function read_disassembly_file(path)
+	local lines = {}
+	local file = io.open(path, "r")
+	if not file then
+		return lines
+	end
+	for line in file:lines() do
+		lines[#lines + 1] = line
+	end
+	file:close()
+	return lines
+end
+
+local function direct_disassemble(cpu, address, space_name)
+	-- The documented MAME Lua debugger API through 0.288 does not expose a stable
+	-- disassembly method.  Probe likely method names defensively so newer MAME
+	-- builds can use a direct API without breaking older builds.
+	local probes = {
+		function() return cpu.debug:disassemble(address, space_name) end,
+		function() return cpu:disassemble(address, space_name) end
+	}
+	if cpu.spaces and cpu.spaces[space_name] then
+		local space = cpu.spaces[space_name]
+		probes[#probes + 1] = function() return space:disassemble(address) end
+	end
+	for _, probe in ipairs(probes) do
+		local ok, text = pcall(probe)
+		if ok and type(text) == "string" and text ~= "" then
+			return text
+		end
+	end
+	return nil
+end
+
+local function disassemble_block(cpu_tag, data)
+	local cpu, _, tag = require_cpu(cpu_tag)
+	local line_count = number_value(data.lineCount or data.length or data.count, "lineCount", true)
+	if line_count <= 0 then
+		error("Disassembly lineCount must be positive.")
+	end
+	if line_count > 256 then
+		error("Disassembly lineCount " .. tostring(line_count) .. " exceeds the guard rail of 256 lines.")
+	end
+
+	local space_name = address_space_name(data)
+	local pc = cpu_pc(cpu)
+	local start_address = number_value(data.startAddress or data.address, "startAddress", false)
+	if start_address == nil then
+		if data.centerAroundPc ~= false and pc ~= nil then
+			start_address = pc
+		else
+			start_address = 0
+		end
+	end
+
+	local raw_lines = {}
+	local direct_text = direct_disassemble(cpu, start_address, space_name)
+	if direct_text then
+		raw_lines[#raw_lines + 1] = direct_text
+	else
+		local dbg = require_debugger()
+		local before = consolelog_length(dbg)
+		local filename = string.format("oasis_disasm_%d_%d.tmp", os.time(), math.random(100000, 999999))
+		local byte_length = math.max(line_count * 16, 16)
+		local command = string.format("dasm %s,%X,%X,1,%s", filename, start_address, byte_length, tag)
+		dbg.visible_cpu = cpu
+		dbg:command(command)
+		local command_log = new_consolelog_lines(dbg, before)
+		local file_lines = read_disassembly_file(filename)
+		os.remove(filename)
+		for i = 1, #file_lines do
+			raw_lines[#raw_lines + 1] = file_lines[i]
+		end
+		for i = 1, #command_log do
+			raw_lines[#raw_lines + 1] = command_log[i]
+		end
+	end
+
+	local lines = {}
+	for i = 1, math.min(#raw_lines, line_count) do
+		lines[#lines + 1] = parse_disassembly_line(tag, raw_lines[i], pc, start_address + i - 1)
+	end
+
+	return {
+		cpu = tag,
+		addressSpace = space_name,
+		startAddress = start_address,
+		lineCount = line_count,
+		currentPc = pc,
+		lines = lines,
+		rawLines = raw_lines
+	}
+end
+
 local function breakpoint_model(bp, cpu_tag)
 	return {
 		debuggerId = bp.index,
@@ -543,6 +719,8 @@ function lib:handle(request)
 		return read_memory(data.cpu or request.cpu, data)
 	elseif op == "mem.write" then
 		return write_memory(data.cpu or request.cpu, data)
+	elseif op == "disasm" then
+		return disassemble_block(data.cpu or request.cpu, data)
 	end
 
 	error("Unsupported debugger operation '" .. tostring(op) .. "'.")

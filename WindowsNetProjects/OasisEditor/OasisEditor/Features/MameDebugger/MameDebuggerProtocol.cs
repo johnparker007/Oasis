@@ -119,6 +119,32 @@ public sealed record MameDebuggerMemoryBlock(
     IReadOnlyList<byte> Bytes,
     string Hex);
 
+public sealed record MameDebuggerDisassemblyRequest(
+    string? Cpu,
+    long? StartAddress,
+    int LineCount,
+    string? AddressSpace = null,
+    bool? CenterAroundPc = null);
+
+public sealed record MameDebuggerDisassemblyLine(
+    string Cpu,
+    long Address,
+    string RawText,
+    string? OpcodeBytes = null,
+    string? InstructionText = null,
+    bool IsCurrentPc = false,
+    string? Symbol = null,
+    string? Comment = null);
+
+public sealed record MameDebuggerDisassemblyBlock(
+    string Cpu,
+    long StartAddress,
+    int LineCount,
+    long? CurrentPc,
+    IReadOnlyList<MameDebuggerDisassemblyLine> Lines,
+    IReadOnlyList<string>? RawLines = null,
+    string? AddressSpace = null);
+
 public sealed record MameDebuggerBreakpoint(
     long DebuggerId,
     long MameId,
