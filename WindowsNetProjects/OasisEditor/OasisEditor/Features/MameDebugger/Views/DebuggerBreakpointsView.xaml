@@ -1,0 +1,25 @@
+<UserControl x:Class="OasisEditor.Features.MameDebugger.Views.DebuggerBreakpointsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <DockPanel>
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+            <Button Content="Refresh" Command="{Binding RefreshCommand}" Margin="0,0,8,0" />
+            <TextBlock Text="Address" VerticalAlignment="Center" Margin="0,0,4,0" />
+            <TextBox Text="{Binding AddressText, UpdateSourceTrigger=PropertyChanged}" Width="90" Margin="0,0,8,0" FontFamily="Consolas" />
+            <Button Content="Add" Command="{Binding AddCommand}" Margin="0,0,8,0" />
+            <Button Content="Enable" Command="{Binding EnableCommand}" Margin="0,0,8,0" />
+            <Button Content="Disable" Command="{Binding DisableCommand}" Margin="0,0,8,0" />
+            <Button Content="Clear Selected/All" Command="{Binding ClearCommand}" />
+        </StackPanel>
+        <DataGrid ItemsSource="{Binding Breakpoints}" SelectedItem="{Binding SelectedBreakpoint}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" FontFamily="Consolas">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="#" Binding="{Binding MameId}" Width="60" />
+                <DataGridTextColumn Header="CPU" Binding="{Binding Cpu}" Width="120" />
+                <DataGridTextColumn Header="Address" Binding="{Binding Address, StringFormat={}{0:X}}" Width="110" />
+                <DataGridCheckBoxColumn Header="Enabled" Binding="{Binding Enabled, Mode=OneWay}" Width="80" />
+                <DataGridTextColumn Header="Hits" Binding="{Binding HitCount}" Width="70" />
+                <DataGridTextColumn Header="Condition" Binding="{Binding Condition}" Width="*" />
+            </DataGrid.Columns>
+        </DataGrid>
+    </DockPanel>
+</UserControl>

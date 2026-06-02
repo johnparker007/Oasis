@@ -134,6 +134,19 @@
                           Command="{Binding OpenPlayViewCommand}" />
                 <MenuItem Header="_Input Map"
                           Command="{Binding OpenInputMapCommand}" />
+                <Separator />
+                <MenuItem Header="Debugger _Control"
+                          Command="{Binding OpenDebuggerControlCommand}" />
+                <MenuItem Header="Debugger _Disassembly"
+                          Command="{Binding OpenDebuggerDisassemblyCommand}" />
+                <MenuItem Header="Debugger _Registers"
+                          Command="{Binding OpenDebuggerRegistersCommand}" />
+                <MenuItem Header="Debugger _Memory"
+                          Command="{Binding OpenDebuggerMemoryCommand}" />
+                <MenuItem Header="Debugger _Breakpoints"
+                          Command="{Binding OpenDebuggerBreakpointsCommand}" />
+                <MenuItem Header="Debugger _Watchpoints"
+                          Command="{Binding OpenDebuggerWatchpointsCommand}" />
             </MenuItem>
             <MenuItem Header="_Emulation">
                 <MenuItem.Resources>
@@ -187,6 +200,27 @@
                 <MenuItem Header="_Hard Reset"
                           Command="{Binding HardResetEmulationCommand}"
                           Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                <Separator />
+                <MenuItem Header="Open Debugger _Panels">
+                    <MenuItem Header="_Control"
+                              Command="{Binding OpenDebuggerControlCommand}"
+                              Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                    <MenuItem Header="_Disassembly"
+                              Command="{Binding OpenDebuggerDisassemblyCommand}"
+                              Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                    <MenuItem Header="_Registers"
+                              Command="{Binding OpenDebuggerRegistersCommand}"
+                              Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                    <MenuItem Header="_Memory"
+                              Command="{Binding OpenDebuggerMemoryCommand}"
+                              Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                    <MenuItem Header="_Breakpoints"
+                              Command="{Binding OpenDebuggerBreakpointsCommand}"
+                              Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                    <MenuItem Header="_Watchpoints"
+                              Command="{Binding OpenDebuggerWatchpointsCommand}"
+                              Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                </MenuItem>
                 <Separator />
                 <MenuItem Header="Debugger _Status"
                           Command="{Binding RefreshDebuggerStatusCommand}"
