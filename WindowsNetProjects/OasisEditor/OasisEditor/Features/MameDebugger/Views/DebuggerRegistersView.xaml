@@ -8,7 +8,7 @@
                 <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="120" />
                 <DataGridTextColumn Header="Value" Binding="{Binding Value, StringFormat={}{0:X}}" Width="140" />
                 <DataGridTextColumn Header="Display" Binding="{Binding DisplayValue}" Width="*" />
-                <DataGridCheckBoxColumn Header="Editable" Binding="{Binding Editable}" Width="80" />
+                <DataGridCheckBoxColumn Header="Editable" Binding="{Binding Editable, Mode=OneWay}" Width="80" />
             </DataGrid.Columns>
         </DataGrid>
     </DockPanel>

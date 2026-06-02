@@ -24,7 +24,7 @@
                 <DataGridTextColumn Header="Address" Binding="{Binding Address, StringFormat={}{0:X}}" Width="100" />
                 <DataGridTextColumn Header="Length" Binding="{Binding Length}" Width="70" />
                 <DataGridTextColumn Header="Type" Binding="{Binding Type}" Width="90" />
-                <DataGridCheckBoxColumn Header="Enabled" Binding="{Binding Enabled}" Width="80" />
+                <DataGridCheckBoxColumn Header="Enabled" Binding="{Binding Enabled, Mode=OneWay}" Width="80" />
                 <DataGridTextColumn Header="Space" Binding="{Binding AddressSpace}" Width="90" />
                 <DataGridTextColumn Header="Latest Hit" Binding="{Binding LatestHit}" Width="*" />
             </DataGrid.Columns>

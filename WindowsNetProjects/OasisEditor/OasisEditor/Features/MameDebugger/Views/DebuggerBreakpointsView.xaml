@@ -16,7 +16,7 @@
                 <DataGridTextColumn Header="#" Binding="{Binding MameId}" Width="60" />
                 <DataGridTextColumn Header="CPU" Binding="{Binding Cpu}" Width="120" />
                 <DataGridTextColumn Header="Address" Binding="{Binding Address, StringFormat={}{0:X}}" Width="110" />
-                <DataGridCheckBoxColumn Header="Enabled" Binding="{Binding Enabled}" Width="80" />
+                <DataGridCheckBoxColumn Header="Enabled" Binding="{Binding Enabled, Mode=OneWay}" Width="80" />
                 <DataGridTextColumn Header="Hits" Binding="{Binding HitCount}" Width="70" />
                 <DataGridTextColumn Header="Condition" Binding="{Binding Condition}" Width="*" />
             </DataGrid.Columns>

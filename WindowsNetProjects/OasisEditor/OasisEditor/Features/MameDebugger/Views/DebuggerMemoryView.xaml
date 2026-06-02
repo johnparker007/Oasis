@@ -15,6 +15,6 @@
                 <Button Content="Read" Command="{Binding ReadCommand}" />
             </WrapPanel>
         </StackPanel>
-        <TextBox Text="{Binding HexText}" IsReadOnly="True" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" FontFamily="Consolas" TextWrapping="NoWrap" />
+        <TextBox Text="{Binding HexText, Mode=OneWay}" IsReadOnly="True" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" FontFamily="Consolas" TextWrapping="NoWrap" />
     </DockPanel>
 </UserControl>
