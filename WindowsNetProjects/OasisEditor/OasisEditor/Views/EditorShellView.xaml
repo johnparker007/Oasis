@@ -6,6 +6,7 @@
              xmlns:layout="clr-namespace:AvalonDock.Layout;assembly=AvalonDock"
              xmlns:themes="clr-namespace:AvalonDock.Themes;assembly=AvalonDock.Themes.VS2013"
              xmlns:views="clr-namespace:OasisEditor.Views"
+             xmlns:debuggerViews="clr-namespace:OasisEditor.Features.MameDebugger.Views"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
              d:DesignHeight="450"
@@ -89,6 +90,33 @@
                                     <views:ProjectSettingsView />
                                 </Border>
                             </layout:LayoutAnchorable>
+
+                            <layout:LayoutAnchorable Title="Debugger Control"
+                                                     ContentId="DebuggerControl"
+                                                     CanClose="True">
+                                <Border Padding="10"
+                                        Background="{DynamicResource InspectorBackgroundBrush}">
+                                    <debuggerViews:DebuggerControlView DataContext="{Binding DebuggerShell.Control}" />
+                                </Border>
+                            </layout:LayoutAnchorable>
+
+                            <layout:LayoutAnchorable Title="Registers"
+                                                     ContentId="DebuggerRegisters"
+                                                     CanClose="True">
+                                <Border Padding="10"
+                                        Background="{DynamicResource InspectorBackgroundBrush}">
+                                    <debuggerViews:DebuggerRegistersView DataContext="{Binding DebuggerShell.Registers}" />
+                                </Border>
+                            </layout:LayoutAnchorable>
+
+                            <layout:LayoutAnchorable Title="Memory"
+                                                     ContentId="DebuggerMemory"
+                                                     CanClose="True">
+                                <Border Padding="10"
+                                        Background="{DynamicResource InspectorBackgroundBrush}">
+                                    <debuggerViews:DebuggerMemoryView DataContext="{Binding DebuggerShell.Memory}" />
+                                </Border>
+                            </layout:LayoutAnchorable>
                         </layout:LayoutAnchorablePane>
                     </layout:LayoutPanel>
 
@@ -108,6 +136,33 @@
                             <Border Padding="10"
                                     Background="{DynamicResource ToolBarBackgroundBrush}">
                                 <views:OutputLogView DataContext="{Binding OutputLog}" />
+                            </Border>
+                        </layout:LayoutAnchorable>
+
+                        <layout:LayoutAnchorable Title="Disassembly"
+                                                 ContentId="DebuggerDisassembly"
+                                                 CanClose="True">
+                            <Border Padding="10"
+                                    Background="{DynamicResource ToolBarBackgroundBrush}">
+                                <debuggerViews:DebuggerDisassemblyView DataContext="{Binding DebuggerShell.Disassembly}" />
+                            </Border>
+                        </layout:LayoutAnchorable>
+
+                        <layout:LayoutAnchorable Title="Breakpoints"
+                                                 ContentId="DebuggerBreakpoints"
+                                                 CanClose="True">
+                            <Border Padding="10"
+                                    Background="{DynamicResource ToolBarBackgroundBrush}">
+                                <debuggerViews:DebuggerBreakpointsView DataContext="{Binding DebuggerShell.Breakpoints}" />
+                            </Border>
+                        </layout:LayoutAnchorable>
+
+                        <layout:LayoutAnchorable Title="Watchpoints"
+                                                 ContentId="DebuggerWatchpoints"
+                                                 CanClose="True">
+                            <Border Padding="10"
+                                    Background="{DynamicResource ToolBarBackgroundBrush}">
+                                <debuggerViews:DebuggerWatchpointsView DataContext="{Binding DebuggerShell.Watchpoints}" />
                             </Border>
                         </layout:LayoutAnchorable>
                     </layout:LayoutAnchorablePane>

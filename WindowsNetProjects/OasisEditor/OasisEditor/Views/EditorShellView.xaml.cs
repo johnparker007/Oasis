@@ -7,10 +7,7 @@ namespace OasisEditor.Views;
 
 public partial class EditorShellView : UserControl
 {
-    private bool _preferencesHideOnCloseConfigured;
-    private bool _projectSettingsHideOnCloseConfigured;
-    private bool _inputMapHideOnCloseConfigured;
-    private bool _playViewHideOnCloseConfigured;
+    private readonly HashSet<EditorToolWindowId> _hideOnCloseConfigured = [];
 
     public EditorShellView()
     {
@@ -20,6 +17,12 @@ public partial class EditorShellView : UserControl
         HideToolWindow(EditorToolWindowId.ProjectSettings);
         HideToolWindow(EditorToolWindowId.InputMap);
         HideToolWindow(EditorToolWindowId.PlayView);
+        HideToolWindow(EditorToolWindowId.DebuggerControl);
+        HideToolWindow(EditorToolWindowId.DebuggerDisassembly);
+        HideToolWindow(EditorToolWindowId.DebuggerRegisters);
+        HideToolWindow(EditorToolWindowId.DebuggerMemory);
+        HideToolWindow(EditorToolWindowId.DebuggerBreakpoints);
+        HideToolWindow(EditorToolWindowId.DebuggerWatchpoints);
     }
 
     public void ShowOrFocusToolWindow(EditorToolWindowId toolWindowId)
@@ -89,6 +92,12 @@ public partial class EditorShellView : UserControl
         ConfigureHideOnClose(EditorToolWindowId.ProjectSettings);
         ConfigureHideOnClose(EditorToolWindowId.InputMap);
         ConfigureHideOnClose(EditorToolWindowId.PlayView);
+        ConfigureHideOnClose(EditorToolWindowId.DebuggerControl);
+        ConfigureHideOnClose(EditorToolWindowId.DebuggerDisassembly);
+        ConfigureHideOnClose(EditorToolWindowId.DebuggerRegisters);
+        ConfigureHideOnClose(EditorToolWindowId.DebuggerMemory);
+        ConfigureHideOnClose(EditorToolWindowId.DebuggerBreakpoints);
+        ConfigureHideOnClose(EditorToolWindowId.DebuggerWatchpoints);
 
         if (DataContext is not MainWindowViewModel viewModel)
         {
@@ -109,49 +118,12 @@ public partial class EditorShellView : UserControl
     private void ConfigureHideOnClose(EditorToolWindowId toolWindowId)
     {
         var target = FindToolWindow(toolWindowId);
-        if (target is null)
-        {
-            return;
-        }
-
-        if (toolWindowId == EditorToolWindowId.Preferences && _preferencesHideOnCloseConfigured)
-        {
-            return;
-        }
-
-        if (toolWindowId == EditorToolWindowId.ProjectSettings && _projectSettingsHideOnCloseConfigured)
-        {
-            return;
-        }
-
-        if (toolWindowId == EditorToolWindowId.InputMap && _inputMapHideOnCloseConfigured)
-        {
-            return;
-        }
-
-        if (toolWindowId == EditorToolWindowId.PlayView && _playViewHideOnCloseConfigured)
+        if (target is null || !_hideOnCloseConfigured.Add(toolWindowId))
         {
             return;
         }
 
         target.Closing += OnToolWindowClosingHideInstead;
-
-        if (toolWindowId == EditorToolWindowId.Preferences)
-        {
-            _preferencesHideOnCloseConfigured = true;
-        }
-        else if (toolWindowId == EditorToolWindowId.ProjectSettings)
-        {
-            _projectSettingsHideOnCloseConfigured = true;
-        }
-        else if (toolWindowId == EditorToolWindowId.InputMap)
-        {
-            _inputMapHideOnCloseConfigured = true;
-        }
-        else if (toolWindowId == EditorToolWindowId.PlayView)
-        {
-            _playViewHideOnCloseConfigured = true;
-        }
     }
 
     private static void OnToolWindowClosingHideInstead(object? sender, CancelEventArgs e)

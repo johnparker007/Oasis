@@ -11,6 +11,7 @@ using System.Windows.Media;
 using System.Collections.Specialized;
 using Microsoft.Win32;
 using OasisEditor.Features.MameDebugger;
+using OasisEditor.Features.MameDebugger.ViewModels;
 using OasisEditor.Features.MfmeImport;
 using EditorCommands = OasisEditor.Commands;
 using OasisEditor.Views;
@@ -72,6 +73,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly IMameEmulationService _mameEmulationService;
     private readonly IMameProcessRunner _mameProcessRunner;
     private readonly IMameDebuggerService _mameDebuggerService;
+    private readonly MameDebuggerShellViewModel _mameDebuggerShell;
     private MameSetupState _mameSetupState = MameSetupState.NotStarted;
     private bool _isAutoProvisioningMame;
     private bool _isMameUnthrottled;
@@ -113,6 +115,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OpenProjectSettingsCommand = new RelayCommand(OpenProjectSettings);
         OpenInputMapCommand = new RelayCommand(OpenInputMap);
         OpenPlayViewCommand = new RelayCommand(OpenPlayView);
+        OpenDebuggerControlCommand = new RelayCommand(OpenDebuggerControl);
+        OpenDebuggerDisassemblyCommand = new RelayCommand(OpenDebuggerDisassembly);
+        OpenDebuggerRegistersCommand = new RelayCommand(OpenDebuggerRegisters);
+        OpenDebuggerMemoryCommand = new RelayCommand(OpenDebuggerMemory);
+        OpenDebuggerBreakpointsCommand = new RelayCommand(OpenDebuggerBreakpoints);
+        OpenDebuggerWatchpointsCommand = new RelayCommand(OpenDebuggerWatchpoints);
         ClosePreferencesCommand = new RelayCommand(ClosePreferences);
         BrowseMameExecutableCommand = new RelayCommand(BrowseMameExecutable);
         ValidateMamePreferencesCommand = new RelayCommand(ValidateMamePreferences);
@@ -251,6 +259,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _mameDebuggerService = new MameDebuggerService(
             _mameProcessRunner,
             message => AddOutputEntry(message, OutputLogStatus.Info));
+        _mameDebuggerShell = new MameDebuggerShellViewModel(_mameDebuggerService, AddOutputEntry);
         _mameDebuggerService.DebuggerEventReceived += (_, debuggerEvent) =>
         {
             DispatchToUiThread(() =>
@@ -259,6 +268,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                     $"MAME debugger event: {debuggerEvent.Event} state={debuggerEvent.State ?? "unknown"} cpu={debuggerEvent.Cpu ?? "unknown"} pc={debuggerEvent.Pc?.ToString() ?? "unknown"}.",
                     OutputLogStatus.Info);
                 NotifyEmulationCommands();
+                _mameDebuggerShell.NotifyCommandStateChanged();
             });
         };
         _mameEmulationService = new MameEmulationService(
@@ -405,6 +415,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand OpenProjectSettingsCommand { get; }
     public ICommand OpenInputMapCommand { get; }
     public ICommand OpenPlayViewCommand { get; }
+    public ICommand OpenDebuggerControlCommand { get; }
+    public ICommand OpenDebuggerDisassemblyCommand { get; }
+    public ICommand OpenDebuggerRegistersCommand { get; }
+    public ICommand OpenDebuggerMemoryCommand { get; }
+    public ICommand OpenDebuggerBreakpointsCommand { get; }
+    public ICommand OpenDebuggerWatchpointsCommand { get; }
     public ICommand ClosePreferencesCommand { get; }
     public ICommand BrowseMameExecutableCommand { get; }
     public ICommand ValidateMamePreferencesCommand { get; }
@@ -446,6 +462,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ObservableCollection<AssetBrowserItemViewModel> AssetBrowserItems { get; }
     public ObservableCollection<OutputLogEntry> OutputEntries { get; }
     public OutputLogViewModel OutputLog => _outputLog;
+    public MameDebuggerShellViewModel DebuggerShell => _mameDebuggerShell;
     public IReadOnlyList<AssetDirectoryNodeViewModel> AssetDirectoryTree => _assetBrowser.AssetDirectoryTree;
 
 
@@ -1780,6 +1797,42 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         AddOutputEntry("Opened Play View pane.", OutputLogStatus.Info);
     }
 
+    private void OpenDebuggerControl()
+    {
+        ToolWindowOpenRequested?.Invoke(EditorToolWindowId.DebuggerControl);
+        AddOutputEntry("Opened Debugger Control pane.", OutputLogStatus.Info);
+    }
+
+    private void OpenDebuggerDisassembly()
+    {
+        ToolWindowOpenRequested?.Invoke(EditorToolWindowId.DebuggerDisassembly);
+        AddOutputEntry("Opened Disassembly pane.", OutputLogStatus.Info);
+    }
+
+    private void OpenDebuggerRegisters()
+    {
+        ToolWindowOpenRequested?.Invoke(EditorToolWindowId.DebuggerRegisters);
+        AddOutputEntry("Opened Registers pane.", OutputLogStatus.Info);
+    }
+
+    private void OpenDebuggerMemory()
+    {
+        ToolWindowOpenRequested?.Invoke(EditorToolWindowId.DebuggerMemory);
+        AddOutputEntry("Opened Memory pane.", OutputLogStatus.Info);
+    }
+
+    private void OpenDebuggerBreakpoints()
+    {
+        ToolWindowOpenRequested?.Invoke(EditorToolWindowId.DebuggerBreakpoints);
+        AddOutputEntry("Opened Breakpoints pane.", OutputLogStatus.Info);
+    }
+
+    private void OpenDebuggerWatchpoints()
+    {
+        ToolWindowOpenRequested?.Invoke(EditorToolWindowId.DebuggerWatchpoints);
+        AddOutputEntry("Opened Watchpoints pane.", OutputLogStatus.Info);
+    }
+
     private void ClosePreferences()
     {
         ToolWindowCloseRequested?.Invoke(EditorToolWindowId.Preferences);
@@ -3092,6 +3145,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         RaiseEmulationCommandCanExecuteChanged(AddTestDebuggerBreakpointCommand);
         RaiseEmulationCommandCanExecuteChanged(DisassembleAroundCurrentPcCommand);
         RaiseEmulationCommandCanExecuteChanged(DisassembleFixedAddressTestBlockCommand);
+        _mameDebuggerShell.NotifyCommandStateChanged();
     }
 
     private static void RaiseEmulationCommandCanExecuteChanged(ICommand command)

@@ -9,5 +9,11 @@ public enum EditorToolWindowId
     PlayView,
     Preferences,
     ProjectSettings,
-    InputMap
+    InputMap,
+    DebuggerControl,
+    DebuggerDisassembly,
+    DebuggerRegisters,
+    DebuggerMemory,
+    DebuggerBreakpoints,
+    DebuggerWatchpoints
 }
