@@ -146,6 +146,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ListDebuggerBreakpointsCommand = new RelayCommand(ListDebuggerBreakpoints, CanControlDebugger);
         ListDebuggerWatchpointsCommand = new RelayCommand(ListDebuggerWatchpoints, CanControlDebugger);
         AddTestDebuggerBreakpointCommand = new RelayCommand(AddTestDebuggerBreakpoint, CanControlDebugger);
+        DisassembleAroundCurrentPcCommand = new RelayCommand(DisassembleAroundCurrentPc, CanControlDebugger);
+        DisassembleFixedAddressTestBlockCommand = new RelayCommand(DisassembleFixedAddressTestBlock, CanControlDebugger);
 
         _outputLog = new OutputLogViewModel();
         _outputLog.PropertyChanged += OnOutputLogPropertyChanged;
@@ -437,6 +439,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand ListDebuggerBreakpointsCommand { get; }
     public ICommand ListDebuggerWatchpointsCommand { get; }
     public ICommand AddTestDebuggerBreakpointCommand { get; }
+    public ICommand DisassembleAroundCurrentPcCommand { get; }
+    public ICommand DisassembleFixedAddressTestBlockCommand { get; }
     public ObservableCollection<string> RecentProjects { get; }
     public ObservableCollection<DocumentTabViewModel> OpenDocuments { get; }
     public ObservableCollection<AssetBrowserItemViewModel> AssetBrowserItems { get; }
@@ -2270,6 +2274,54 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             });
     }
 
+    private async void DisassembleAroundCurrentPc()
+    {
+        await SendDebuggerCommandAsync(
+            CanControlDebugger,
+            "Debugger disassembly requested around current PC.",
+            "Debugger disassembly around current PC failed",
+            async cancellationToken =>
+            {
+                var status = await _mameDebuggerService.GetStatusAsync(cancellationToken);
+                var block = await _mameDebuggerService.DisassembleAsync(
+                    new MameDebuggerDisassemblyRequest(status.Cpu, null, 16, CenterAroundPc: true),
+                    cancellationToken);
+                LogDisassemblyBlock("Debugger disassembly around PC", block);
+            });
+    }
+
+    private async void DisassembleFixedAddressTestBlock()
+    {
+        await SendDebuggerCommandAsync(
+            CanControlDebugger,
+            "Debugger fixed-address disassembly test requested.",
+            "Debugger fixed-address disassembly test failed",
+            async cancellationToken =>
+            {
+                var status = await _mameDebuggerService.GetStatusAsync(cancellationToken);
+                var block = await _mameDebuggerService.DisassembleAsync(
+                    new MameDebuggerDisassemblyRequest(status.Cpu, 0, 16, CenterAroundPc: false),
+                    cancellationToken);
+                LogDisassemblyBlock("Debugger disassembly from 0x0", block);
+            });
+    }
+
+    private void LogDisassemblyBlock(string prefix, MameDebuggerDisassemblyBlock block)
+    {
+        AddOutputEntry($"{prefix}: cpu={block.Cpu} start=0x{block.StartAddress:X} lines={block.Lines.Count}/{block.LineCount} pc={(block.CurrentPc.HasValue ? $"0x{block.CurrentPc.Value:X}" : "unknown")}", OutputLogStatus.Info);
+        foreach (var line in block.Lines.Take(8))
+        {
+            var current = line.IsCurrentPc ? "=> " : "   ";
+            var instruction = string.IsNullOrWhiteSpace(line.InstructionText) ? line.RawText : line.InstructionText;
+            var opcodes = string.IsNullOrWhiteSpace(line.OpcodeBytes) ? string.Empty : $" [{line.OpcodeBytes}]";
+            AddOutputEntry($"{current}{line.Cpu} 0x{line.Address:X}:{opcodes} {instruction}", OutputLogStatus.Info);
+        }
+        if (block.Lines.Count > 8)
+        {
+            AddOutputEntry($"{prefix}: {block.Lines.Count - 8} additional disassembly lines omitted from temporary Output preview.", OutputLogStatus.Info);
+        }
+    }
+
     private async Task LogDebuggerStatusAsync(string prefix, CancellationToken cancellationToken = default)
     {
         var status = await _mameDebuggerService.GetStatusAsync(cancellationToken);
@@ -3038,6 +3090,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         RaiseEmulationCommandCanExecuteChanged(ListDebuggerBreakpointsCommand);
         RaiseEmulationCommandCanExecuteChanged(ListDebuggerWatchpointsCommand);
         RaiseEmulationCommandCanExecuteChanged(AddTestDebuggerBreakpointCommand);
+        RaiseEmulationCommandCanExecuteChanged(DisassembleAroundCurrentPcCommand);
+        RaiseEmulationCommandCanExecuteChanged(DisassembleFixedAddressTestBlockCommand);
     }
 
     private static void RaiseEmulationCommandCanExecuteChanged(ICommand command)

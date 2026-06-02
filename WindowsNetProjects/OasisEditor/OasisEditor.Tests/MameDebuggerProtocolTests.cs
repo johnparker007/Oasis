@@ -262,6 +262,79 @@ public sealed class MameDebuggerProtocolTests
         Assert.Equal("debug {\"id\":2,\"op\":\"mem.write\",\"payload\":{\"cpu\":\":maincpu\",\"startAddress\":8192,\"bytes\":[18,52],\"addressSpace\":\"program\"}}", runner.Commands[1]);
     }
 
+    [Fact]
+    public void CreateCommand_SerializesDisassemblyRequestWithCpuAddressAndLineCount()
+    {
+        var command = MameDebuggerProtocol.CreateCommand(12, "disasm", new MameDebuggerDisassemblyRequest(":maincpu", 0x1234, 16, "program", false));
+        var payload = command[("debug ".Length)..];
+        var request = System.Text.Json.JsonSerializer.Deserialize<MameDebuggerRequest<MameDebuggerDisassemblyRequest>>(payload, MameDebuggerProtocol.JsonOptions);
+
+        Assert.NotNull(request);
+        Assert.Equal(12, request.Id);
+        Assert.Equal("disasm", request.Op);
+        Assert.Equal(":maincpu", request.Payload.Cpu);
+        Assert.Equal(0x1234, request.Payload.StartAddress);
+        Assert.Equal(16, request.Payload.LineCount);
+        Assert.Equal("program", request.Payload.AddressSpace);
+        Assert.False(request.Payload.CenterAroundPc.GetValueOrDefault());
+        Assert.Contains("\"cpu\":\":maincpu\"", command);
+        Assert.Contains("\"startAddress\":4660", command);
+        Assert.Contains("\"lineCount\":16", command);
+    }
+
+    [Fact]
+    public void ParseResponse_DeserializesDisassemblyBlockAndParsedLines()
+    {
+        var response = MameDebuggerProtocol.ParseResponse(
+            "{\"id\":7,\"ok\":true,\"result\":{\"cpu\":\":maincpu\",\"addressSpace\":\"program\",\"startAddress\":4096,\"lineCount\":2,\"currentPc\":4098,\"rawLines\":[\"1000: 3E 12 ld a,$12\",\"1002: C3 00 10 jp $1000\"],\"lines\":[{\"cpu\":\":maincpu\",\"address\":4096,\"rawText\":\"1000: 3E 12 ld a,$12\",\"opcodeBytes\":\"3E 12\",\"instructionText\":\"ld a,$12\",\"isCurrentPc\":false},{\"cpu\":\":maincpu\",\"address\":4098,\"rawText\":\"1002: C3 00 10 jp $1000\",\"opcodeBytes\":\"C3 00 10\",\"instructionText\":\"jp $1000\",\"isCurrentPc\":true}]}}");
+
+        var block = response.Result!.Value.Deserialize<MameDebuggerDisassemblyBlock>(MameDebuggerProtocol.JsonOptions)!;
+
+        Assert.Equal(":maincpu", block.Cpu);
+        Assert.Equal("program", block.AddressSpace);
+        Assert.Equal(0x1000, block.StartAddress);
+        Assert.Equal(2, block.LineCount);
+        Assert.Equal(0x1002, block.CurrentPc);
+        Assert.Equal(2, block.Lines.Count);
+        Assert.Equal("3E 12", block.Lines[0].OpcodeBytes);
+        Assert.Equal("ld a,$12", block.Lines[0].InstructionText);
+        Assert.True(block.Lines[1].IsCurrentPc);
+        Assert.Equal(2, block.RawLines!.Count);
+    }
+
+    [Fact]
+    public void ParseResponse_DisassemblyLineHandlesRawOnlyFallback()
+    {
+        var response = MameDebuggerProtocol.ParseResponse(
+            "{\"id\":8,\"ok\":true,\"result\":{\"cpu\":\":audiocpu\",\"startAddress\":0,\"lineCount\":1,\"lines\":[{\"cpu\":\":audiocpu\",\"address\":0,\"rawText\":\"unparsed disassembly text\",\"isCurrentPc\":false}],\"rawLines\":[\"unparsed disassembly text\"]}}");
+
+        var block = response.Result!.Value.Deserialize<MameDebuggerDisassemblyBlock>(MameDebuggerProtocol.JsonOptions)!;
+        var line = Assert.Single(block.Lines);
+
+        Assert.Equal(":audiocpu", line.Cpu);
+        Assert.Equal("unparsed disassembly text", line.RawText);
+        Assert.Null(line.OpcodeBytes);
+        Assert.Null(line.InstructionText);
+        Assert.False(line.IsCurrentPc);
+    }
+
+    [Fact]
+    public async Task Service_DisassemblyRequests_CorrelateByRequestId()
+    {
+        var runner = new RecordingMameProcessRunner();
+        var service = new MameDebuggerService(runner);
+        var disasmTask = service.DisassembleAsync(new MameDebuggerDisassemblyRequest(":maincpu", null, 8, CenterAroundPc: true), CancellationToken.None);
+
+        service.ProcessStdoutLine("@OASIS_DEBUG {\"id\":1,\"ok\":true,\"result\":{\"cpu\":\":maincpu\",\"startAddress\":4660,\"lineCount\":8,\"currentPc\":4660,\"lines\":[{\"cpu\":\":maincpu\",\"address\":4660,\"rawText\":\"1234: 00 nop\",\"opcodeBytes\":\"00\",\"instructionText\":\"nop\",\"isCurrentPc\":true}]}}");
+
+        var block = await disasmTask;
+
+        Assert.Equal(":maincpu", block.Cpu);
+        Assert.Equal(0x1234, block.StartAddress);
+        Assert.Equal("nop", Assert.Single(block.Lines).InstructionText);
+        Assert.Equal("debug {\"id\":1,\"op\":\"disasm\",\"payload\":{\"cpu\":\":maincpu\",\"lineCount\":8,\"centerAroundPc\":true}}", Assert.Single(runner.Commands));
+    }
+
     private sealed class RecordingMameProcessRunner : IMameProcessRunner
     {
         public List<string> Commands { get; } = [];

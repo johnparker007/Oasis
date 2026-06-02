@@ -175,6 +175,18 @@ function lib:decode(payload)
 			decoded_payload[field] = values
 		end
 
+		local function read_boolean(field)
+			local value = payload_object:match('"' .. field .. '"%s*:%s*(true)')
+			if value then
+				decoded_payload[field] = true
+				return
+			end
+			value = payload_object:match('"' .. field .. '"%s*:%s*(false)')
+			if value then
+				decoded_payload[field] = false
+			end
+		end
+
 		read_string("cpu")
 		read_string("condition")
 		read_string("action")
@@ -186,9 +198,11 @@ function lib:decode(payload)
 		read_number("address")
 		read_number("startAddress")
 		read_number("length")
+		read_number("lineCount")
 		read_number("value")
 		read_number("mameId")
 		read_number("debuggerId")
+		read_boolean("centerAroundPc")
 		read_number_array("bytes")
 		result.payload = decoded_payload
 	end

@@ -27,6 +27,7 @@ public interface IMameDebuggerService
     Task<MameDebuggerRegister> SetRegisterAsync(MameDebuggerRegisterRequest request, CancellationToken cancellationToken);
     Task<MameDebuggerMemoryBlock> ReadMemoryAsync(MameDebuggerMemoryReadRequest request, CancellationToken cancellationToken);
     Task<MameDebuggerMemoryBlock> WriteMemoryAsync(MameDebuggerMemoryWriteRequest request, CancellationToken cancellationToken);
+    Task<MameDebuggerDisassemblyBlock> DisassembleAsync(MameDebuggerDisassemblyRequest request, CancellationToken cancellationToken);
     void ProcessStdoutLine(string line);
     void SetDebuggerLaunchActive(bool isActive);
 }
@@ -187,6 +188,12 @@ public sealed class MameDebuggerService : IMameDebuggerService
     {
         var response = await SendRequestAsync("mem.write", request, cancellationToken).ConfigureAwait(false);
         return DeserializeResult<MameDebuggerMemoryBlock>(response);
+    }
+
+    public async Task<MameDebuggerDisassemblyBlock> DisassembleAsync(MameDebuggerDisassemblyRequest request, CancellationToken cancellationToken)
+    {
+        var response = await SendRequestAsync("disasm", request, cancellationToken).ConfigureAwait(false);
+        return DeserializeResult<MameDebuggerDisassemblyBlock>(response);
     }
 
     public void ProcessStdoutLine(string line)
