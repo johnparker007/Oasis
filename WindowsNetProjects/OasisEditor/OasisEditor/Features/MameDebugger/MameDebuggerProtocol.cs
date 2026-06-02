@@ -62,4 +62,6 @@ public sealed record MameDebuggerStatus(
     string? Cpu,
     long? Pc);
 
+public sealed record MameDebuggerPing(bool Pong, bool Available);
+
 public sealed record MameDebuggerCpu(string Tag, string Name, bool IsCurrent);

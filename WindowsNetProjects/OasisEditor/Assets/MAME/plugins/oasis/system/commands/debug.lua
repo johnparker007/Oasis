@@ -3,8 +3,7 @@ local lib = {}
 local protocol = require('oasis/system/debugger/debugger_protocol')
 local router = require('oasis/system/debugger/debugger_router')
 
-function lib:execute(args)
-	local payload = args[2]
+function lib:execute(payload)
 	if not payload then
 		protocol:write_response(0, false, {}, { code = "missing_payload", message = "Debugger command requires a JSON payload." })
 		return
