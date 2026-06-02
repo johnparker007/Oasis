@@ -13,6 +13,16 @@ public interface IMameDebuggerService
     Task RunAsync(CancellationToken cancellationToken);
     Task BreakAsync(CancellationToken cancellationToken);
     Task StepAsync(CancellationToken cancellationToken);
+    Task<MameDebuggerBreakpoint> SetBreakpointAsync(MameDebuggerBreakpointRequest request, CancellationToken cancellationToken);
+    Task<IReadOnlyList<MameDebuggerBreakpoint>> GetBreakpointsAsync(string? cpu, CancellationToken cancellationToken);
+    Task<MameDebuggerBreakpoint> EnableBreakpointAsync(MameDebuggerBreakpointRequest request, CancellationToken cancellationToken);
+    Task<MameDebuggerBreakpoint> DisableBreakpointAsync(MameDebuggerBreakpointRequest request, CancellationToken cancellationToken);
+    Task<IReadOnlyList<MameDebuggerBreakpoint>> ClearBreakpointAsync(MameDebuggerBreakpointRequest request, CancellationToken cancellationToken);
+    Task<MameDebuggerWatchpoint> SetWatchpointAsync(MameDebuggerWatchpointRequest request, CancellationToken cancellationToken);
+    Task<IReadOnlyList<MameDebuggerWatchpoint>> GetWatchpointsAsync(string? cpu, CancellationToken cancellationToken, string? addressSpace = null);
+    Task<MameDebuggerWatchpoint> EnableWatchpointAsync(MameDebuggerWatchpointRequest request, CancellationToken cancellationToken);
+    Task<MameDebuggerWatchpoint> DisableWatchpointAsync(MameDebuggerWatchpointRequest request, CancellationToken cancellationToken);
+    Task<IReadOnlyList<MameDebuggerWatchpoint>> ClearWatchpointAsync(MameDebuggerWatchpointRequest request, CancellationToken cancellationToken);
     void ProcessStdoutLine(string line);
     void SetDebuggerLaunchActive(bool isActive);
 }
@@ -91,6 +101,66 @@ public sealed class MameDebuggerService : IMameDebuggerService
         return SendControlRequestAsync("step", cancellationToken);
     }
 
+    public async Task<MameDebuggerBreakpoint> SetBreakpointAsync(MameDebuggerBreakpointRequest request, CancellationToken cancellationToken)
+    {
+        var response = await SendRequestAsync("bp.set", request, cancellationToken).ConfigureAwait(false);
+        return DeserializeResult<MameDebuggerBreakpoint>(response);
+    }
+
+    public async Task<IReadOnlyList<MameDebuggerBreakpoint>> GetBreakpointsAsync(string? cpu, CancellationToken cancellationToken)
+    {
+        var response = await SendRequestAsync("bp.list", new MameDebuggerBreakpointRequest(cpu, 0), cancellationToken).ConfigureAwait(false);
+        return DeserializeResult<List<MameDebuggerBreakpoint>>(response);
+    }
+
+    public async Task<MameDebuggerBreakpoint> EnableBreakpointAsync(MameDebuggerBreakpointRequest request, CancellationToken cancellationToken)
+    {
+        var response = await SendRequestAsync("bp.enable", request, cancellationToken).ConfigureAwait(false);
+        return DeserializeResult<MameDebuggerBreakpoint>(response);
+    }
+
+    public async Task<MameDebuggerBreakpoint> DisableBreakpointAsync(MameDebuggerBreakpointRequest request, CancellationToken cancellationToken)
+    {
+        var response = await SendRequestAsync("bp.disable", request, cancellationToken).ConfigureAwait(false);
+        return DeserializeResult<MameDebuggerBreakpoint>(response);
+    }
+
+    public async Task<IReadOnlyList<MameDebuggerBreakpoint>> ClearBreakpointAsync(MameDebuggerBreakpointRequest request, CancellationToken cancellationToken)
+    {
+        var response = await SendRequestAsync("bp.clear", request, cancellationToken).ConfigureAwait(false);
+        return DeserializeResult<List<MameDebuggerBreakpoint>>(response);
+    }
+
+    public async Task<MameDebuggerWatchpoint> SetWatchpointAsync(MameDebuggerWatchpointRequest request, CancellationToken cancellationToken)
+    {
+        var response = await SendRequestAsync("wp.set", request, cancellationToken).ConfigureAwait(false);
+        return DeserializeResult<MameDebuggerWatchpoint>(response);
+    }
+
+    public async Task<IReadOnlyList<MameDebuggerWatchpoint>> GetWatchpointsAsync(string? cpu, CancellationToken cancellationToken, string? addressSpace = null)
+    {
+        var response = await SendRequestAsync("wp.list", new MameDebuggerWatchpointRequest(cpu, 0, 1, MameDebuggerWatchpointType.ReadWrite, AddressSpace: addressSpace), cancellationToken).ConfigureAwait(false);
+        return DeserializeResult<List<MameDebuggerWatchpoint>>(response);
+    }
+
+    public async Task<MameDebuggerWatchpoint> EnableWatchpointAsync(MameDebuggerWatchpointRequest request, CancellationToken cancellationToken)
+    {
+        var response = await SendRequestAsync("wp.enable", request, cancellationToken).ConfigureAwait(false);
+        return DeserializeResult<MameDebuggerWatchpoint>(response);
+    }
+
+    public async Task<MameDebuggerWatchpoint> DisableWatchpointAsync(MameDebuggerWatchpointRequest request, CancellationToken cancellationToken)
+    {
+        var response = await SendRequestAsync("wp.disable", request, cancellationToken).ConfigureAwait(false);
+        return DeserializeResult<MameDebuggerWatchpoint>(response);
+    }
+
+    public async Task<IReadOnlyList<MameDebuggerWatchpoint>> ClearWatchpointAsync(MameDebuggerWatchpointRequest request, CancellationToken cancellationToken)
+    {
+        var response = await SendRequestAsync("wp.clear", request, cancellationToken).ConfigureAwait(false);
+        return DeserializeResult<List<MameDebuggerWatchpoint>>(response);
+    }
+
     public void ProcessStdoutLine(string line)
     {
         if (!_stdoutParser.TryParse(line, out var message))
@@ -129,12 +199,27 @@ public sealed class MameDebuggerService : IMameDebuggerService
         _state.ApplyStatus(status);
     }
 
-    private async Task<MameDebuggerResponse> SendRequestAsync(string operation, CancellationToken cancellationToken)
+    private Task<MameDebuggerResponse> SendRequestAsync(string operation, CancellationToken cancellationToken)
+    {
+        return SendRequestCoreAsync<object>(operation, payload: null, cancellationToken);
+    }
+
+    private Task<MameDebuggerResponse> SendRequestAsync<TPayload>(string operation, TPayload payload, CancellationToken cancellationToken)
+        where TPayload : class
+    {
+        ArgumentNullException.ThrowIfNull(payload);
+        return SendRequestCoreAsync(operation, payload, cancellationToken);
+    }
+
+    private async Task<MameDebuggerResponse> SendRequestCoreAsync<TPayload>(string operation, TPayload? payload, CancellationToken cancellationToken)
+        where TPayload : class
     {
         cancellationToken.ThrowIfCancellationRequested();
         var requestId = Interlocked.Increment(ref _nextRequestId);
         var responseTask = _responseRouter.RegisterAsync(requestId, DefaultRequestTimeout, cancellationToken);
-        var command = MameDebuggerProtocol.CreateCommand(requestId, operation);
+        var command = payload is null
+            ? MameDebuggerProtocol.CreateCommand(requestId, operation)
+            : MameDebuggerProtocol.CreateCommand(requestId, operation, payload);
         _diagnosticLogger?.Invoke($"[MAME-DEBUG-PROTOCOL ->] {command}");
         await _processRunner.WriteStandardInputAsync(command, cancellationToken).ConfigureAwait(false);
         var response = await responseTask.ConfigureAwait(false);
