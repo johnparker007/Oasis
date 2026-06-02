@@ -143,6 +143,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         DebuggerRunCommand = new RelayCommand(DebuggerRun, CanControlDebugger);
         DebuggerBreakCommand = new RelayCommand(DebuggerBreak, CanControlDebugger);
         DebuggerStepCommand = new RelayCommand(DebuggerStep, CanControlDebugger);
+        ListDebuggerBreakpointsCommand = new RelayCommand(ListDebuggerBreakpoints, CanControlDebugger);
+        ListDebuggerWatchpointsCommand = new RelayCommand(ListDebuggerWatchpoints, CanControlDebugger);
+        AddTestDebuggerBreakpointCommand = new RelayCommand(AddTestDebuggerBreakpoint, CanControlDebugger);
 
         _outputLog = new OutputLogViewModel();
         _outputLog.PropertyChanged += OnOutputLogPropertyChanged;
@@ -431,6 +434,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand DebuggerRunCommand { get; }
     public ICommand DebuggerBreakCommand { get; }
     public ICommand DebuggerStepCommand { get; }
+    public ICommand ListDebuggerBreakpointsCommand { get; }
+    public ICommand ListDebuggerWatchpointsCommand { get; }
+    public ICommand AddTestDebuggerBreakpointCommand { get; }
     public ObservableCollection<string> RecentProjects { get; }
     public ObservableCollection<DocumentTabViewModel> OpenDocuments { get; }
     public ObservableCollection<AssetBrowserItemViewModel> AssetBrowserItems { get; }
@@ -2210,6 +2216,60 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             cancellationToken => _mameDebuggerService.StepAsync(cancellationToken));
     }
 
+    private async void ListDebuggerBreakpoints()
+    {
+        await SendDebuggerCommandAsync(
+            CanControlDebugger,
+            "Debugger breakpoint list requested.",
+            "Debugger breakpoint list failed",
+            async cancellationToken =>
+            {
+                var breakpoints = await _mameDebuggerService.GetBreakpointsAsync(null, cancellationToken);
+                AddOutputEntry(breakpoints.Count == 0
+                    ? "Debugger breakpoints: none."
+                    : $"Debugger breakpoints: {string.Join(", ", breakpoints.Select(bp => $"#{bp.MameId} {bp.Cpu} 0x{bp.Address:X} enabled={bp.Enabled}"))}.",
+                    OutputLogStatus.Info);
+            });
+    }
+
+    private async void ListDebuggerWatchpoints()
+    {
+        await SendDebuggerCommandAsync(
+            CanControlDebugger,
+            "Debugger watchpoint list requested.",
+            "Debugger watchpoint list failed",
+            async cancellationToken =>
+            {
+                var watchpoints = await _mameDebuggerService.GetWatchpointsAsync(null, cancellationToken);
+                AddOutputEntry(watchpoints.Count == 0
+                    ? "Debugger watchpoints: none."
+                    : $"Debugger watchpoints: {string.Join(", ", watchpoints.Select(wp => $"#{wp.MameId} {wp.Cpu} 0x{wp.Address:X}-0x{wp.Address + wp.Length - 1:X} {wp.Type} enabled={wp.Enabled}"))}.",
+                    OutputLogStatus.Info);
+            });
+    }
+
+    private async void AddTestDebuggerBreakpoint()
+    {
+        await SendDebuggerCommandAsync(
+            CanControlDebugger,
+            "Debugger test breakpoint requested at current PC.",
+            "Debugger test breakpoint failed",
+            async cancellationToken =>
+            {
+                var status = await _mameDebuggerService.GetStatusAsync(cancellationToken);
+                if (!status.Pc.HasValue)
+                {
+                    AddOutputEntry("Debugger test breakpoint could not be created because the current PC is unknown.", OutputLogStatus.Warning);
+                    return;
+                }
+
+                var breakpoint = await _mameDebuggerService.SetBreakpointAsync(
+                    new MameDebuggerBreakpointRequest(status.Cpu, status.Pc.Value),
+                    cancellationToken);
+                AddOutputEntry($"Debugger test breakpoint #{breakpoint.MameId} set on {breakpoint.Cpu} at 0x{breakpoint.Address:X}.", OutputLogStatus.Info);
+            });
+    }
+
     private async Task LogDebuggerStatusAsync(string prefix, CancellationToken cancellationToken = default)
     {
         var status = await _mameDebuggerService.GetStatusAsync(cancellationToken);
@@ -2975,6 +3035,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         RaiseEmulationCommandCanExecuteChanged(DebuggerRunCommand);
         RaiseEmulationCommandCanExecuteChanged(DebuggerBreakCommand);
         RaiseEmulationCommandCanExecuteChanged(DebuggerStepCommand);
+        RaiseEmulationCommandCanExecuteChanged(ListDebuggerBreakpointsCommand);
+        RaiseEmulationCommandCanExecuteChanged(ListDebuggerWatchpointsCommand);
+        RaiseEmulationCommandCanExecuteChanged(AddTestDebuggerBreakpointCommand);
     }
 
     private static void RaiseEmulationCommandCanExecuteChanged(ICommand command)

@@ -27,6 +27,15 @@ public static class MameDebuggerProtocol
         return $"{CommandName} {JsonSerializer.Serialize(request, JsonOptions)}";
     }
 
+    public static string CreateCommand<TPayload>(long requestId, string operation, TPayload payload)
+        where TPayload : class
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(operation);
+        ArgumentNullException.ThrowIfNull(payload);
+        var request = new MameDebuggerRequest<TPayload>(requestId, operation, payload);
+        return $"{CommandName} {JsonSerializer.Serialize(request, JsonOptions)}";
+    }
+
     public static MameDebuggerResponse ParseResponse(string json)
     {
         return JsonSerializer.Deserialize<MameDebuggerResponse>(json, JsonOptions)
@@ -42,6 +51,9 @@ public static class MameDebuggerProtocol
 
 public sealed record MameDebuggerRequest(long Id, string Op, string? Cpu = null);
 
+public sealed record MameDebuggerRequest<TPayload>(long Id, string Op, TPayload Payload)
+    where TPayload : class;
+
 public sealed record MameDebuggerResponse(
     long Id,
     bool Ok,
@@ -54,7 +66,11 @@ public sealed record MameDebuggerEvent(
     string Event,
     string? State = null,
     string? Cpu = null,
-    long? Pc = null);
+    long? Pc = null,
+    long? MameId = null,
+    long? Address = null,
+    long? Data = null,
+    int? Size = null);
 
 public sealed record MameDebuggerStatus(
     bool Available,
@@ -65,3 +81,54 @@ public sealed record MameDebuggerStatus(
 public sealed record MameDebuggerPing(bool Pong, bool Available);
 
 public sealed record MameDebuggerCpu(string Tag, string Name, bool IsCurrent);
+
+public sealed record MameDebuggerBreakpoint(
+    long DebuggerId,
+    long MameId,
+    string Cpu,
+    long Address,
+    bool Enabled,
+    string? Condition,
+    string? Action,
+    long? HitCount = null);
+
+public sealed record MameDebuggerWatchpoint(
+    long DebuggerId,
+    long MameId,
+    string Cpu,
+    long Address,
+    long Length,
+    MameDebuggerWatchpointType Type,
+    bool Enabled,
+    string? Condition,
+    string? Action,
+    MameDebuggerWatchpointHit? LatestHit = null,
+    string? AddressSpace = null);
+
+public sealed record MameDebuggerBreakpointRequest(
+    string? Cpu,
+    long Address,
+    string? Condition = null,
+    string? Action = null,
+    long? MameId = null,
+    long? DebuggerId = null);
+
+public sealed record MameDebuggerWatchpointRequest(
+    string? Cpu,
+    long Address,
+    long Length,
+    MameDebuggerWatchpointType Type,
+    string? Condition = null,
+    string? Action = null,
+    string? AddressSpace = null,
+    long? MameId = null,
+    long? DebuggerId = null);
+
+public sealed record MameDebuggerWatchpointHit(long Address, long Data, int Size);
+
+public enum MameDebuggerWatchpointType
+{
+    Read,
+    Write,
+    ReadWrite
+}

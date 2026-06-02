@@ -1,4 +1,3 @@
-local protocol = require('oasis/system/debugger/debugger_protocol')
 local state = require('oasis/system/debugger/debugger_state')
 
 local lib = {}
@@ -10,16 +9,157 @@ local function debugger()
 	return nil
 end
 
-local function current_cpu()
-	return state:current_cpu()
-end
-
 local function require_debugger()
 	local dbg = debugger()
 	if not dbg then
 		error("MAME debugger is not available. Launch MAME with -debug.")
 	end
 	return dbg
+end
+
+local function payload(request)
+	return request.payload or request
+end
+
+local function current_cpu()
+	return state:current_cpu()
+end
+
+local function normalize_cpu_tag(cpu)
+	if cpu and cpu ~= "" then
+		return cpu
+	end
+	local current_tag = state:current_cpu_tag()
+	if current_tag and current_tag ~= "" then
+		return current_tag
+	end
+	return ":maincpu"
+end
+
+local function require_cpu(cpu_tag)
+	local tag = normalize_cpu_tag(cpu_tag)
+	if not (manager and manager.machine and manager.machine.devices) then
+		error("MAME devices are not available.")
+	end
+	local cpu = manager.machine.devices[tag]
+	if not cpu then
+		error("CPU device '" .. tostring(tag) .. "' was not found.")
+	end
+	if not cpu.debug then
+		error("Device '" .. tostring(tag) .. "' does not expose a MAME device_debug interface.")
+	end
+	return cpu, cpu.debug, tag
+end
+
+local function number_value(value, name, required)
+	if value == nil then
+		if required then
+			error("Missing numeric field '" .. name .. "'.")
+		end
+		return nil
+	end
+	local value_type = type(value)
+	if value_type == "number" then
+		return value
+	end
+	if value_type == "string" then
+		local parsed = tonumber(value)
+		if parsed then
+			return parsed
+		end
+		parsed = tonumber(value:match("^0[xX]([0-9a-fA-F]+)$"), 16)
+		if parsed then
+			return parsed
+		end
+	end
+	error("Field '" .. name .. "' must be numeric.")
+end
+
+local function requested_id(data)
+	return number_value(data.mameId or data.debuggerId or data.id, "mameId", true)
+end
+
+local function address_space(data)
+	return data.addressSpace or data.space or "program"
+end
+
+local function breakpoint_model(bp, cpu_tag)
+	return {
+		debuggerId = bp.index,
+		mameId = bp.index,
+		cpu = cpu_tag,
+		address = bp.address,
+		enabled = bp.enabled,
+		condition = bp.condition,
+		action = bp.action
+	}
+end
+
+local function breakpoint_list(cpu_tag)
+	local _, debug, tag = require_cpu(cpu_tag)
+	local result = {}
+	for _, bp in pairs(debug:bplist()) do
+		result[#result + 1] = breakpoint_model(bp, tag)
+	end
+	table.sort(result, function(a, b) return a.mameId < b.mameId end)
+	return result
+end
+
+local function watchpoint_type_to_mame(value)
+	if value == nil then
+		return "rw"
+	end
+	local text = tostring(value):lower()
+	if text == "read" or text == "r" then
+		return "r"
+	elseif text == "write" or text == "w" then
+		return "w"
+	elseif text == "readwrite" or text == "read_write" or text == "rw" then
+		return "rw"
+	end
+	error("Unsupported watchpoint type '" .. tostring(value) .. "'.")
+end
+
+local function watchpoint_type_from_mame(value)
+	if value == "r" then
+		return "read"
+	elseif value == "w" then
+		return "write"
+	end
+	return "readWrite"
+end
+
+local function watchpoint_hit_action(cpu_tag)
+	-- MAME exposes wpaddr/wpdata/wpsize to watchpoint conditions/actions.  If the
+	-- user did not supply an action, emit a structured Oasis event and then allow
+	-- the default debugger stop behavior by not appending a go/run command.
+	return 'printf "@OASIS_DEBUG_EVENT {\\"event\\":\\"watchpointHit\\",\\"cpu\\":\\"' .. cpu_tag .. '\\",\\"address\\":%d,\\"data\\":%d,\\"size\\":%d}",wpaddr,wpdata,wpsize'
+end
+
+local function watchpoint_model(wp, cpu_tag, space)
+	return {
+		debuggerId = wp.index,
+		mameId = wp.index,
+		cpu = cpu_tag,
+		address = wp.address,
+		length = wp.length,
+		type = watchpoint_type_from_mame(wp.type),
+		enabled = wp.enabled,
+		condition = wp.condition,
+		action = wp.action,
+		addressSpace = space
+	}
+end
+
+local function watchpoint_list(cpu_tag, space)
+	local _, debug, tag = require_cpu(cpu_tag)
+	local result = {}
+	local selected_space = space or "program"
+	for _, wp in pairs(debug:wplist(selected_space)) do
+		result[#result + 1] = watchpoint_model(wp, tag, selected_space)
+	end
+	table.sort(result, function(a, b) return a.mameId < b.mameId end)
+	return result
 end
 
 local function cpu_list()
@@ -36,11 +176,13 @@ local function cpu_list()
 			end
 		end
 	end
+	table.sort(result, function(a, b) return a.tag < b.tag end)
 	return result
 end
 
 function lib:handle(request)
 	local op = request.op
+	local data = payload(request)
 	if op == "ping" then
 		return { pong = true, available = state:is_available() }
 	elseif op == "status" then
@@ -65,6 +207,67 @@ function lib:handle(request)
 		end
 		state:emit_transition_if_needed()
 		return state:status()
+	elseif op == "bp.set" then
+		local _, debug, tag = require_cpu(data.cpu or request.cpu)
+		local id = debug:bpset(number_value(data.address, "address", true), data.condition, data.action)
+		return breakpoint_model(debug:bplist()[id], tag)
+	elseif op == "bp.list" then
+		return breakpoint_list(data.cpu or request.cpu)
+	elseif op == "bp.enable" then
+		local _, debug, tag = require_cpu(data.cpu or request.cpu)
+		local id = requested_id(data)
+		if debug:bpenable(id) == false then
+			error("Breakpoint '" .. tostring(id) .. "' was not found.")
+		end
+		return breakpoint_model(debug:bplist()[id], tag)
+	elseif op == "bp.disable" then
+		local _, debug, tag = require_cpu(data.cpu or request.cpu)
+		local id = requested_id(data)
+		if debug:bpdisable(id) == false then
+			error("Breakpoint '" .. tostring(id) .. "' was not found.")
+		end
+		return breakpoint_model(debug:bplist()[id], tag)
+	elseif op == "bp.clear" then
+		local _, debug, tag = require_cpu(data.cpu or request.cpu)
+		local id = requested_id(data)
+		if debug:bpclear(id) == false then
+			error("Breakpoint '" .. tostring(id) .. "' was not found.")
+		end
+		return breakpoint_list(tag)
+	elseif op == "wp.set" then
+		local _, debug, tag = require_cpu(data.cpu or request.cpu)
+		local action = data.action
+		if action == nil or action == "" then
+			action = watchpoint_hit_action(tag)
+		end
+		local space = address_space(data)
+		local id = debug:wpset(space, watchpoint_type_to_mame(data.type), number_value(data.address, "address", true), number_value(data.length, "length", true), data.condition, action)
+		return watchpoint_model(debug:wplist(space)[id], tag, space)
+	elseif op == "wp.list" then
+		return watchpoint_list(data.cpu or request.cpu, address_space(data))
+	elseif op == "wp.enable" then
+		local _, debug, tag = require_cpu(data.cpu or request.cpu)
+		local id = requested_id(data)
+		if debug:wpenable(id) == false then
+			error("Watchpoint '" .. tostring(id) .. "' was not found.")
+		end
+		local space = address_space(data)
+		return watchpoint_model(debug:wplist(space)[id], tag, space)
+	elseif op == "wp.disable" then
+		local _, debug, tag = require_cpu(data.cpu or request.cpu)
+		local id = requested_id(data)
+		if debug:wpdisable(id) == false then
+			error("Watchpoint '" .. tostring(id) .. "' was not found.")
+		end
+		local space = address_space(data)
+		return watchpoint_model(debug:wplist(space)[id], tag, space)
+	elseif op == "wp.clear" then
+		local _, debug, tag = require_cpu(data.cpu or request.cpu)
+		local id = requested_id(data)
+		if debug:wpclear(id) == false then
+			error("Watchpoint '" .. tostring(id) .. "' was not found.")
+		end
+		return watchpoint_list(tag, address_space(data))
 	end
 
 	error("Unsupported debugger operation '" .. tostring(op) .. "'.")

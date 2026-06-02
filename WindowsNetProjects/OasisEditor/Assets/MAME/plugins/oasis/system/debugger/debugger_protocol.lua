@@ -120,8 +120,9 @@ function lib:decode(payload)
 		end
 	end
 
-	-- Fallback decoder for Oasis debugger requests.  It deliberately supports only
-	-- the simple request shape emitted by MameDebuggerProtocol.
+	-- Fallback decoder for Oasis debugger requests.  It supports the request
+	-- shapes emitted by MameDebuggerProtocol, including the flat Phase 1/2
+	-- shape and the Phase 3 payload object shape.
 	local result = {}
 	local id = payload:match('"id"%s*:%s*(%-?%d+)')
 	local op = match_json_string_field(payload, "op")
@@ -135,6 +136,36 @@ function lib:decode(payload)
 	if cpu then
 		result.cpu = cpu
 	end
+
+	local payload_object = payload:match('"payload"%s*:%s*(%b{})')
+	if payload_object then
+		local decoded_payload = {}
+		local function read_number(field)
+			local value = payload_object:match('"' .. field .. '"%s*:%s*(%-?%d+)')
+			if value then
+				decoded_payload[field] = tonumber(value)
+			end
+		end
+
+		local function read_string(field)
+			local value = match_json_string_field(payload_object, field)
+			if value then
+				decoded_payload[field] = value
+			end
+		end
+
+		read_string("cpu")
+		read_string("condition")
+		read_string("action")
+		read_string("type")
+		read_string("addressSpace")
+		read_number("address")
+		read_number("length")
+		read_number("mameId")
+		read_number("debuggerId")
+		result.payload = decoded_payload
+	end
+
 	return result
 end
 

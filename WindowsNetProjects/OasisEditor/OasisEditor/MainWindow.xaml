@@ -203,6 +203,16 @@
                 <MenuItem Header="Debugger S_tep"
                           Command="{Binding DebuggerStepCommand}"
                           Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                <Separator />
+                <MenuItem Header="Debugger List Break_points"
+                          Command="{Binding ListDebuggerBreakpointsCommand}"
+                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                <MenuItem Header="Debugger List _Watchpoints"
+                          Command="{Binding ListDebuggerWatchpointsCommand}"
+                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                <MenuItem Header="Debugger Add Test Breakpoint At _PC"
+                          Command="{Binding AddTestDebuggerBreakpointCommand}"
+                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
             </MenuItem>
         </Menu>
 
