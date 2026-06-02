@@ -110,13 +110,11 @@ local function breakpoint_model(bp, cpu_tag)
 end
 
 local function set_breakpoint(debug, address, condition, action)
-	if action ~= nil and action ~= "" then
-		return debug:bpset(address, condition or "", action)
-	elseif condition ~= nil and condition ~= "" then
-		return debug:bpset(address, condition)
-	end
-
-	return debug:bpset(address)
+	-- MAME's Lua binding advertises condition/action as optional, but MAME 0.288
+	-- can pass omitted/nil strings through to native code as null const char* values.
+	-- Supplying explicit empty strings preserves the debugger's default behavior and
+	-- avoids the native strlen crash seen when setting a PC breakpoint from Oasis.
+	return debug:bpset(address, condition or "", action or "")
 end
 
 local function breakpoint_list(cpu_tag)
@@ -176,13 +174,9 @@ local function watchpoint_model(wp, cpu_tag, space_name)
 end
 
 local function set_watchpoint(debug, space, type, address, length, condition, action)
-	if action ~= nil and action ~= "" then
-		return debug:wpset(space, type, address, length, condition or "", action)
-	elseif condition ~= nil and condition ~= "" then
-		return debug:wpset(space, type, address, length, condition)
-	end
-
-	return debug:wpset(space, type, address, length)
+	-- Keep optional debugger expressions non-null for the native Lua binding, as
+	-- with breakpoints above.
+	return debug:wpset(space, type, address, length, condition or "", action or "")
 end
 
 local function watchpoint_list(cpu_tag, data)
