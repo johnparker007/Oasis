@@ -144,6 +144,14 @@ function lib:decode(payload)
 			local value = payload_object:match('"' .. field .. '"%s*:%s*(%-?%d+)')
 			if value then
 				decoded_payload[field] = tonumber(value)
+				return
+			end
+			value = match_json_string_field(payload_object, field)
+			if value then
+				local parsed = tonumber(value) or tonumber(value:match('^0[xX]([0-9a-fA-F]+)$'), 16)
+				if parsed then
+					decoded_payload[field] = parsed
+				end
 			end
 		end
 
@@ -154,15 +162,34 @@ function lib:decode(payload)
 			end
 		end
 
+		local function read_number_array(field)
+			local array_payload = payload_object:match('"' .. field .. '"%s*:%s*(%b[])')
+			if not array_payload then
+				return
+			end
+
+			local values = {}
+			for value in array_payload:gmatch('%-?%d+') do
+				values[#values + 1] = tonumber(value)
+			end
+			decoded_payload[field] = values
+		end
+
 		read_string("cpu")
 		read_string("condition")
 		read_string("action")
 		read_string("type")
 		read_string("addressSpace")
+		read_string("name")
+		read_string("hex")
+		read_string("bytes")
 		read_number("address")
+		read_number("startAddress")
 		read_number("length")
+		read_number("value")
 		read_number("mameId")
 		read_number("debuggerId")
+		read_number_array("bytes")
 		result.payload = decoded_payload
 	end
 

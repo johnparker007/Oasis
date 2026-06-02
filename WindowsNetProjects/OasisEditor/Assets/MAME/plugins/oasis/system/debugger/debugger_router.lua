@@ -8,6 +8,7 @@ local lib = {}
 -- unstable native list binding.
 local oasis_breakpoints = {}
 local oasis_watchpoints = {}
+local max_memory_transfer_length = 4096
 
 local function debugger()
 	if manager and manager.machine then
@@ -102,6 +103,169 @@ local function require_address_space(cpu, data)
 	end
 
 	return space, name
+end
+
+
+local function hex_value(value, digits)
+	if value == nil then
+		return nil
+	end
+	digits = digits or 0
+	if digits > 0 then
+		return string.format("0x%0" .. tostring(digits) .. "X", value)
+	end
+	return string.format("0x%X", value)
+end
+
+local function byte_hex(bytes)
+	local parts = {}
+	for i = 1, #bytes do
+		parts[#parts + 1] = string.format("%02X", bytes[i] & 0xff)
+	end
+	return table.concat(parts, " ")
+end
+
+local function register_model(entry, cpu_tag)
+	local size = nil
+	local bits = nil
+	local digits = 0
+	if entry.datasize and not entry.is_float then
+		size = entry.datasize
+		bits = size * 8
+		digits = size * 2
+	elseif entry.datamask and not entry.is_float then
+		local mask = entry.datamask
+		bits = 0
+		while mask > 0 do
+			bits = bits + 1
+			mask = mask >> 1
+		end
+		digits = math.max(1, math.floor((bits + 3) / 4))
+	end
+
+	local value = entry.value
+	return {
+		cpu = cpu_tag,
+		name = entry.symbol,
+		value = value,
+		displayValue = entry.is_float and tostring(value) or hex_value(value, digits),
+		size = size,
+		bits = bits,
+		editable = entry.writeable
+	}
+end
+
+local function require_state(cpu)
+	if not cpu.state then
+		error("CPU device '" .. tostring(cpu.tag) .. "' does not expose register state entries.")
+	end
+	return cpu.state
+end
+
+local function require_register(cpu, name)
+	if not name or name == "" then
+		error("Missing register name.")
+	end
+	local cpu_state = require_state(cpu)
+	local entry = cpu_state[name]
+	if not entry then
+		error("Register '" .. tostring(name) .. "' is not available on CPU '" .. tostring(cpu.tag) .. "'.")
+	end
+	return entry
+end
+
+local function register_list(cpu_tag, data)
+	local cpu, _, tag = require_cpu(cpu_tag)
+	local cpu_state = require_state(cpu)
+	local requested_name = data and data.name
+	if requested_name and requested_name ~= "" then
+		return { register_model(require_register(cpu, requested_name), tag) }
+	end
+
+	local result = {}
+	for _, entry in pairs(cpu_state) do
+		if entry.visible ~= false then
+			result[#result + 1] = register_model(entry, tag)
+		end
+	end
+	table.sort(result, function(a, b) return a.name < b.name end)
+	return result
+end
+
+local function bytes_from_hex(text)
+	local result = {}
+	if text == nil then
+		return result
+	end
+	text = tostring(text):gsub("0[xX]", "")
+	for byte in text:gmatch("%x%x") do
+		result[#result + 1] = tonumber(byte, 16)
+	end
+	return result
+end
+
+local function request_bytes(data)
+	local result = {}
+	if type(data.bytes) == "table" then
+		for i = 1, #data.bytes do
+			local byte = number_value(data.bytes[i], "bytes[" .. tostring(i) .. "]", true)
+			if byte < 0 or byte > 255 then
+				error("Memory byte at index " .. tostring(i) .. " must be in the range 0..255.")
+			end
+			result[#result + 1] = byte & 0xff
+		end
+	elseif type(data.bytes) == "string" then
+		result = bytes_from_hex(data.bytes)
+	elseif type(data.hex) == "string" then
+		result = bytes_from_hex(data.hex)
+	end
+	if #result == 0 then
+		error("Memory write requires at least one byte in 'bytes' or 'hex'.")
+	end
+	if #result > max_memory_transfer_length then
+		error("Memory write length " .. tostring(#result) .. " exceeds the guard rail of " .. tostring(max_memory_transfer_length) .. " bytes.")
+	end
+	return result
+end
+
+local function memory_block(cpu_tag, space_name, start_address, bytes)
+	return {
+		cpu = cpu_tag,
+		addressSpace = space_name,
+		startAddress = start_address,
+		length = #bytes,
+		bytes = bytes,
+		hex = byte_hex(bytes)
+	}
+end
+
+local function read_memory(cpu_tag, data)
+	local cpu, _, tag = require_cpu(cpu_tag)
+	local address = number_value(data.startAddress or data.address, "startAddress", true)
+	local length = number_value(data.length, "length", true)
+	if length <= 0 then
+		error("Memory read length must be positive.")
+	end
+	if length > max_memory_transfer_length then
+		error("Memory read length " .. tostring(length) .. " exceeds the guard rail of " .. tostring(max_memory_transfer_length) .. " bytes.")
+	end
+	local space, space_name = require_address_space(cpu, data)
+	local bytes = {}
+	for offset = 0, length - 1 do
+		bytes[#bytes + 1] = space:read_u8(address + offset) & 0xff
+	end
+	return memory_block(tag, space_name, address, bytes)
+end
+
+local function write_memory(cpu_tag, data)
+	local cpu, _, tag = require_cpu(cpu_tag)
+	local address = number_value(data.startAddress or data.address, "startAddress", true)
+	local bytes = request_bytes(data)
+	local space, space_name = require_address_space(cpu, data)
+	for offset = 0, #bytes - 1 do
+		space:write_u8(address + offset, bytes[offset + 1])
+	end
+	return memory_block(tag, space_name, address, bytes)
 end
 
 local function breakpoint_model(bp, cpu_tag)
@@ -365,6 +529,20 @@ function lib:handle(request)
 		end
 		oasis_watchpoints[id] = nil
 		return watchpoint_list(tag, data)
+	elseif op == "regs.get" then
+		return register_list(data.cpu or request.cpu, data)
+	elseif op == "regs.set" then
+		local cpu, _, tag = require_cpu(data.cpu or request.cpu)
+		local entry = require_register(cpu, data.name)
+		if entry.writeable == false then
+			error("Register '" .. tostring(data.name) .. "' on CPU '" .. tostring(tag) .. "' is not editable.")
+		end
+		entry.value = number_value(data.value, "value", true)
+		return register_model(entry, tag)
+	elseif op == "mem.read" then
+		return read_memory(data.cpu or request.cpu, data)
+	elseif op == "mem.write" then
+		return write_memory(data.cpu or request.cpu, data)
 	end
 
 	error("Unsupported debugger operation '" .. tostring(op) .. "'.")
