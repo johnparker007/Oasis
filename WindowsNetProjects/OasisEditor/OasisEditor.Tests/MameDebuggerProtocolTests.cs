@@ -153,6 +153,115 @@ public sealed class MameDebuggerProtocolTests
         Assert.True(ping.Available);
     }
 
+
+    [Fact]
+    public void ParseResponse_DeserializesRegisterModels()
+    {
+        var response = MameDebuggerProtocol.ParseResponse(
+            "{\"id\":5,\"ok\":true,\"result\":[{\"cpu\":\":maincpu\",\"name\":\"PC\",\"value\":4660,\"displayValue\":\"0x1234\",\"size\":2,\"bits\":16,\"editable\":true}]}");
+
+        var registers = response.Result!.Value.Deserialize<List<MameDebuggerRegister>>(MameDebuggerProtocol.JsonOptions)!;
+
+        var register = Assert.Single(registers);
+        Assert.Equal(":maincpu", register.Cpu);
+        Assert.Equal("PC", register.Name);
+        Assert.Equal(0x1234, register.Value);
+        Assert.Equal("0x1234", register.DisplayValue);
+        Assert.Equal(16, register.Bits);
+        Assert.True(register.Editable);
+    }
+
+    [Fact]
+    public void ParseResponse_DeserializesMemoryBlockModels()
+    {
+        var response = MameDebuggerProtocol.ParseResponse(
+            "{\"id\":6,\"ok\":true,\"result\":{\"cpu\":\":maincpu\",\"addressSpace\":\"program\",\"startAddress\":4096,\"length\":4,\"bytes\":[1,32,127,255],\"hex\":\"01 20 7F FF\"}}");
+
+        var block = response.Result!.Value.Deserialize<MameDebuggerMemoryBlock>(MameDebuggerProtocol.JsonOptions)!;
+
+        Assert.Equal(":maincpu", block.Cpu);
+        Assert.Equal("program", block.AddressSpace);
+        Assert.Equal(0x1000, block.StartAddress);
+        Assert.Equal(4, block.Length);
+        Assert.Equal(new byte[] { 1, 32, 127, 255 }, block.Bytes);
+        Assert.Equal("01 20 7F FF", block.Hex);
+    }
+
+    [Fact]
+    public void CreateCommand_SerializesRegisterSetRequest()
+    {
+        var command = MameDebuggerProtocol.CreateCommand(10, "regs.set", new MameDebuggerRegisterRequest(":maincpu", "PC", 0x1234));
+        var payload = command[("debug ".Length)..];
+        var request = System.Text.Json.JsonSerializer.Deserialize<MameDebuggerRequest<MameDebuggerRegisterRequest>>(payload, MameDebuggerProtocol.JsonOptions);
+
+        Assert.NotNull(request);
+        Assert.Equal(10, request.Id);
+        Assert.Equal("regs.set", request.Op);
+        Assert.Equal(":maincpu", request.Payload.Cpu);
+        Assert.Equal("PC", request.Payload.Name);
+        Assert.Equal(0x1234, request.Payload.Value);
+    }
+
+    [Fact]
+    public void CreateCommand_SerializesMemoryWriteRequestWithBytesAndHexEdgeCases()
+    {
+        var command = MameDebuggerProtocol.CreateCommand(
+            11,
+            "mem.write",
+            new MameDebuggerMemoryWriteRequest(":maincpu", 0x2000, [0, 16, 255], "program", "00 10 FF \"quoted\""));
+        var payload = command[("debug ".Length)..];
+        var request = System.Text.Json.JsonSerializer.Deserialize<MameDebuggerRequest<MameDebuggerMemoryWriteRequest>>(payload, MameDebuggerProtocol.JsonOptions);
+
+        Assert.NotNull(request);
+        Assert.Equal(11, request.Id);
+        Assert.Equal("mem.write", request.Op);
+        Assert.Equal(0x2000, request.Payload.StartAddress);
+        Assert.Equal(new byte[] { 0, 16, 255 }, request.Payload.Bytes);
+        Assert.Equal("program", request.Payload.AddressSpace);
+        Assert.Equal("00 10 FF \"quoted\"", request.Payload.Hex);
+        Assert.Contains("\\\"quoted\\\"", command);
+    }
+
+    [Fact]
+    public async Task Service_RegisterAndMemoryRequests_CorrelateByRequestId()
+    {
+        var runner = new RecordingMameProcessRunner();
+        var service = new MameDebuggerService(runner);
+        var registersTask = service.GetRegistersAsync(new MameDebuggerRegisterRequest(":maincpu"), CancellationToken.None);
+        var memoryTask = service.ReadMemoryAsync(new MameDebuggerMemoryReadRequest(":maincpu", 0x1000, 2, "program"), CancellationToken.None);
+
+        service.ProcessStdoutLine("@OASIS_DEBUG {\"id\":2,\"ok\":true,\"result\":{\"cpu\":\":maincpu\",\"addressSpace\":\"program\",\"startAddress\":4096,\"length\":2,\"bytes\":[170,85],\"hex\":\"AA 55\"}}");
+        service.ProcessStdoutLine("@OASIS_DEBUG {\"id\":1,\"ok\":true,\"result\":[{\"cpu\":\":maincpu\",\"name\":\"PC\",\"value\":4660,\"displayValue\":\"0x1234\",\"editable\":true}]}");
+
+        var registers = await registersTask;
+        var block = await memoryTask;
+
+        Assert.Equal("PC", Assert.Single(registers).Name);
+        Assert.Equal(new byte[] { 170, 85 }, block.Bytes);
+        Assert.Equal("debug {\"id\":1,\"op\":\"regs.get\",\"payload\":{\"cpu\":\":maincpu\"}}", runner.Commands[0]);
+        Assert.Equal("debug {\"id\":2,\"op\":\"mem.read\",\"payload\":{\"cpu\":\":maincpu\",\"startAddress\":4096,\"length\":2,\"addressSpace\":\"program\"}}", runner.Commands[1]);
+    }
+
+    [Fact]
+    public async Task Service_SetRegisterAndWriteMemoryRequests_CorrelateByRequestId()
+    {
+        var runner = new RecordingMameProcessRunner();
+        var service = new MameDebuggerService(runner);
+        var registerTask = service.SetRegisterAsync(new MameDebuggerRegisterRequest(":maincpu", "A", 0x42), CancellationToken.None);
+        var writeTask = service.WriteMemoryAsync(new MameDebuggerMemoryWriteRequest(":maincpu", 0x2000, [0x12, 0x34], "program"), CancellationToken.None);
+
+        service.ProcessStdoutLine("@OASIS_DEBUG {\"id\":2,\"ok\":true,\"result\":{\"cpu\":\":maincpu\",\"addressSpace\":\"program\",\"startAddress\":8192,\"length\":2,\"bytes\":[18,52],\"hex\":\"12 34\"}}");
+        service.ProcessStdoutLine("@OASIS_DEBUG {\"id\":1,\"ok\":true,\"result\":{\"cpu\":\":maincpu\",\"name\":\"A\",\"value\":66,\"displayValue\":\"0x42\",\"editable\":true}}");
+
+        var register = await registerTask;
+        var block = await writeTask;
+
+        Assert.Equal("A", register.Name);
+        Assert.Equal(new byte[] { 0x12, 0x34 }, block.Bytes);
+        Assert.Equal("debug {\"id\":1,\"op\":\"regs.set\",\"payload\":{\"cpu\":\":maincpu\",\"name\":\"A\",\"value\":66}}", runner.Commands[0]);
+        Assert.Equal("debug {\"id\":2,\"op\":\"mem.write\",\"payload\":{\"cpu\":\":maincpu\",\"startAddress\":8192,\"bytes\":[18,52],\"addressSpace\":\"program\"}}", runner.Commands[1]);
+    }
+
     private sealed class RecordingMameProcessRunner : IMameProcessRunner
     {
         public List<string> Commands { get; } = [];

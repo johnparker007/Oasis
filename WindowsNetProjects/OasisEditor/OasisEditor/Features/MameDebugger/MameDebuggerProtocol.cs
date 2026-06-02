@@ -84,6 +84,41 @@ public sealed record MameDebuggerPing(bool Pong, bool Available);
 
 public sealed record MameDebuggerCpu(string Tag, string Name, bool IsCurrent);
 
+public sealed record MameDebuggerRegister(
+    string Cpu,
+    string Name,
+    long Value,
+    string DisplayValue,
+    int? Size = null,
+    int? Bits = null,
+    bool? Editable = null);
+
+public sealed record MameDebuggerRegisterRequest(
+    string? Cpu,
+    string? Name = null,
+    long? Value = null);
+
+public sealed record MameDebuggerMemoryReadRequest(
+    string? Cpu,
+    long StartAddress,
+    int Length,
+    string? AddressSpace = null);
+
+public sealed record MameDebuggerMemoryWriteRequest(
+    string? Cpu,
+    long StartAddress,
+    IReadOnlyList<byte>? Bytes = null,
+    string? AddressSpace = null,
+    string? Hex = null);
+
+public sealed record MameDebuggerMemoryBlock(
+    string Cpu,
+    string AddressSpace,
+    long StartAddress,
+    int Length,
+    IReadOnlyList<byte> Bytes,
+    string Hex);
+
 public sealed record MameDebuggerBreakpoint(
     long DebuggerId,
     long MameId,

@@ -23,6 +23,10 @@ public interface IMameDebuggerService
     Task<MameDebuggerWatchpoint> EnableWatchpointAsync(MameDebuggerWatchpointRequest request, CancellationToken cancellationToken);
     Task<MameDebuggerWatchpoint> DisableWatchpointAsync(MameDebuggerWatchpointRequest request, CancellationToken cancellationToken);
     Task<IReadOnlyList<MameDebuggerWatchpoint>> ClearWatchpointAsync(MameDebuggerWatchpointRequest request, CancellationToken cancellationToken);
+    Task<IReadOnlyList<MameDebuggerRegister>> GetRegistersAsync(MameDebuggerRegisterRequest request, CancellationToken cancellationToken);
+    Task<MameDebuggerRegister> SetRegisterAsync(MameDebuggerRegisterRequest request, CancellationToken cancellationToken);
+    Task<MameDebuggerMemoryBlock> ReadMemoryAsync(MameDebuggerMemoryReadRequest request, CancellationToken cancellationToken);
+    Task<MameDebuggerMemoryBlock> WriteMemoryAsync(MameDebuggerMemoryWriteRequest request, CancellationToken cancellationToken);
     void ProcessStdoutLine(string line);
     void SetDebuggerLaunchActive(bool isActive);
 }
@@ -159,6 +163,30 @@ public sealed class MameDebuggerService : IMameDebuggerService
     {
         var response = await SendRequestAsync("wp.clear", request, cancellationToken).ConfigureAwait(false);
         return DeserializeResult<List<MameDebuggerWatchpoint>>(response);
+    }
+
+    public async Task<IReadOnlyList<MameDebuggerRegister>> GetRegistersAsync(MameDebuggerRegisterRequest request, CancellationToken cancellationToken)
+    {
+        var response = await SendRequestAsync("regs.get", request, cancellationToken).ConfigureAwait(false);
+        return DeserializeResult<List<MameDebuggerRegister>>(response);
+    }
+
+    public async Task<MameDebuggerRegister> SetRegisterAsync(MameDebuggerRegisterRequest request, CancellationToken cancellationToken)
+    {
+        var response = await SendRequestAsync("regs.set", request, cancellationToken).ConfigureAwait(false);
+        return DeserializeResult<MameDebuggerRegister>(response);
+    }
+
+    public async Task<MameDebuggerMemoryBlock> ReadMemoryAsync(MameDebuggerMemoryReadRequest request, CancellationToken cancellationToken)
+    {
+        var response = await SendRequestAsync("mem.read", request, cancellationToken).ConfigureAwait(false);
+        return DeserializeResult<MameDebuggerMemoryBlock>(response);
+    }
+
+    public async Task<MameDebuggerMemoryBlock> WriteMemoryAsync(MameDebuggerMemoryWriteRequest request, CancellationToken cancellationToken)
+    {
+        var response = await SendRequestAsync("mem.write", request, cancellationToken).ConfigureAwait(false);
+        return DeserializeResult<MameDebuggerMemoryBlock>(response);
     }
 
     public void ProcessStdoutLine(string line)
