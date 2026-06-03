@@ -31,6 +31,8 @@ internal static class PanelElementFactory
     public const double NewRectangleHeight = 120;
     public const double NewImageWidth = 220;
     public const double NewImageHeight = 140;
+    public const double NewVfdDotMatrixWidth = 480;
+    public const double NewVfdDotMatrixHeight = 80;
 
     public static string? ProjectDirectoryPath
     {
@@ -72,6 +74,24 @@ internal static class PanelElementFactory
         };
     }
 
+    public static PanelElementFile CreateVfdDotMatrixElement(Point canvasPoint)
+    {
+        var x = Math.Max(0, canvasPoint.X - (NewVfdDotMatrixWidth / 2));
+        var y = Math.Max(0, canvasPoint.Y - (NewVfdDotMatrixHeight / 2));
+        var objectId = Guid.NewGuid().ToString("N");
+        return new PanelElementFile
+        {
+            ObjectId = objectId,
+            Name = Panel2DDocumentStorage.CreateDefaultElementName(PanelElementKind.VfdDotMatrix, objectId),
+            Kind = Panel2DDocumentStorage.SerializeElementKind(PanelElementKind.VfdDotMatrix),
+            X = x,
+            Y = y,
+            Width = NewVfdDotMatrixWidth,
+            Height = NewVfdDotMatrixHeight,
+            OnColorHex = "#FF4040"
+        };
+    }
+
 
     public static FrameworkElement? CreateVisualFromElement(PanelElementFile element)
     {
@@ -89,6 +109,7 @@ internal static class PanelElementFactory
             PanelElementKind.Reel => CreateReelVisual(element),
             PanelElementKind.SevenSegment => CreateSevenSegmentVisual(element),
             PanelElementKind.Alpha => CreateAlphaVisual(element),
+            PanelElementKind.VfdDotMatrix => CreateVfdDotMatrixVisual(element),
             PanelElementKind.Label => CreateLabelVisual(element),
             _ => null
         };
@@ -352,6 +373,14 @@ internal static class PanelElementFactory
                 ShowCommaTail = element.ShowCommaTail ?? false
             }
         };
+    }
+
+    private static Border CreateVfdDotMatrixVisual(PanelElementFile element)
+    {
+        return CreatePlaceholderComponentVisual(
+            element,
+            "VFD Dot Matrix 96 x 8",
+            element.OnColorHex ?? "#220909");
     }
 
     private static Border CreateLabelVisual(PanelElementFile element)

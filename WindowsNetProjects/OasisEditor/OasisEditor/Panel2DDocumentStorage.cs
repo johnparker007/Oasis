@@ -54,6 +54,13 @@ internal static class Panel2DDocumentStorage
         {
             return PanelElementKind.Alpha;
         }
+
+        if (string.Equals(kind, "vfddotmatrix", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(kind, "vfdDotMatrix", StringComparison.OrdinalIgnoreCase))
+        {
+            return PanelElementKind.VfdDotMatrix;
+        }
+
         if (string.Equals(kind, "label", StringComparison.OrdinalIgnoreCase))
         {
             return PanelElementKind.Label;
@@ -75,6 +82,7 @@ internal static class Panel2DDocumentStorage
             PanelElementKind.Reel => "reel",
             PanelElementKind.SevenSegment => "sevenSegment",
             PanelElementKind.Alpha => "alpha",
+            PanelElementKind.VfdDotMatrix => "vfdDotMatrix",
             PanelElementKind.Label => "label",
             _ => string.Empty
         };
@@ -259,7 +267,7 @@ internal static class Panel2DDocumentStorage
         foreach (var element in elements)
         {
             var kind = ParseElementKind(element.Kind);
-            if (kind is PanelElementKind.Background or PanelElementKind.Lamp or PanelElementKind.Reel or PanelElementKind.SevenSegment or PanelElementKind.Alpha or PanelElementKind.Label)
+            if (kind is PanelElementKind.Background or PanelElementKind.Lamp or PanelElementKind.Reel or PanelElementKind.SevenSegment or PanelElementKind.Alpha or PanelElementKind.VfdDotMatrix or PanelElementKind.Label)
             {
                 return CurrentSchemaVersion;
             }
@@ -444,7 +452,9 @@ internal static class Panel2DDocumentStorage
         var normalizedShowDecimalPoint = normalizedNative?.ShowDecimalPoint ?? element.ShowDecimalPoint ?? false;
         var normalizedShowCommaTail = normalizedNative?.ShowCommaTail ?? element.ShowCommaTail ?? false;
         var normalizedOnColorHex = NormalizeOptionalString(normalizedNative?.OnColorHex ?? normalizedNative?.DisplayColorHex ?? element.OnColorHex);
-        var normalizedOffColorHex = NormalizeOptionalString(normalizedNative?.OffColorHex ?? element.OffColorHex);
+        var normalizedOffColorHex = normalizedKind == PanelElementKind.VfdDotMatrix
+            ? null
+            : NormalizeOptionalString(normalizedNative?.OffColorHex ?? element.OffColorHex);
         var normalizedTextColorHex = NormalizeOptionalString(normalizedNative?.TextColorHex ?? element.TextColorHex);
         var normalizedDisplayText = NormalizeOptionalString(normalizedNative?.Text ?? element.DisplayText);
         var normalizedTextBoxFontName = normalizedKind == PanelElementKind.Lamp
@@ -558,6 +568,7 @@ internal static class Panel2DDocumentStorage
             PanelElementKind.Reel => "Reel",
             PanelElementKind.SevenSegment => "7 Segment",
             PanelElementKind.Alpha => "Alpha",
+            PanelElementKind.VfdDotMatrix => "VFD Dot Matrix",
             PanelElementKind.Label => "Label",
             _ => "Rectangle"
         };
@@ -737,6 +748,7 @@ internal enum PanelElementKind
     Reel,
     SevenSegment,
     Alpha,
+    VfdDotMatrix,
     Label
 }
 

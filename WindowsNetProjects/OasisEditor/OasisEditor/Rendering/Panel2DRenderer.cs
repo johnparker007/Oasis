@@ -32,12 +32,14 @@ internal sealed class Panel2DRenderer : IPanel2DRenderer
         var alphaElapsed = TimeSpan.Zero;
         var sevenElapsed = TimeSpan.Zero;
         var reelElapsed = TimeSpan.Zero;
+        var vfdDotMatrixElapsed = TimeSpan.Zero;
         var backgroundCount = 0;
         var lampCount = 0;
         var textLampCount = 0;
         var alphaCount = 0;
         var sevenCount = 0;
         var reelCount = 0;
+        var vfdDotMatrixCount = 0;
 
         foreach (var element in elements)
         {
@@ -80,6 +82,10 @@ internal sealed class Panel2DRenderer : IPanel2DRenderer
                 case PanelElementKind.Reel:
                     reelCount++;
                     reelElapsed += sw.Elapsed;
+                    break;
+                case PanelElementKind.VfdDotMatrix:
+                    vfdDotMatrixCount++;
+                    vfdDotMatrixElapsed += sw.Elapsed;
                     break;
             }
         }

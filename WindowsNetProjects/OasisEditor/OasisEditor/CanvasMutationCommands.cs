@@ -12,6 +12,11 @@ internal static class CanvasMutationCommands
         return new AddPanelElementMutationCommand(documentId, document, element, "Add image");
     }
 
+    public static Commands.ICommand CreateAddVfdDotMatrixCommand(Guid documentId, DocumentTabViewModel document, PanelElementFile element)
+    {
+        return new AddPanelElementMutationCommand(documentId, document, element, "Add VFD dot matrix");
+    }
+
     public static Commands.ICommand CreateDeleteElementCommand(Guid documentId, DocumentTabViewModel document, PanelSelectionInfo selection)
     {
         return new DeleteElementMutationCommand(documentId, document, selection);

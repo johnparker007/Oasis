@@ -18,6 +18,7 @@ public sealed class PanelElementFactoryTests
     [InlineData((int)PanelElementKind.Reel)]
     [InlineData((int)PanelElementKind.SevenSegment)]
     [InlineData((int)PanelElementKind.Alpha)]
+    [InlineData((int)PanelElementKind.VfdDotMatrix)]
     public void CreateVisualFromElement_ForNativeKinds_PreservesElementKindForRoundTrip(int kindValue)
     {
         RunInSta(() =>

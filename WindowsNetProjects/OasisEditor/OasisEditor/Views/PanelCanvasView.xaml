@@ -47,6 +47,10 @@
                         Margin="0,0,8,0"
                         Command="{Binding SaveSelectedDocumentCommand}"
                         Content="Save" />
+                <Button Padding="10,4"
+                        Margin="0,0,8,0"
+                        Command="{Binding AddVfdDotMatrixElementCommand}"
+                        Content="Add VFD Dot Matrix" />
                 <ToggleButton x:Name="RectangleToolToggle"
                               Padding="10,4"
                               Margin="0,0,8,0"

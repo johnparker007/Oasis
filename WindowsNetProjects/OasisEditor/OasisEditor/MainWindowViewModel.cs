@@ -109,6 +109,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OpenMachineStubCommand = new RelayCommand(OpenMachineStubDocument, CanOpenUntitledDocument);
         OpenDocumentCommand = new RelayCommand(OpenDocument, CanOpenDocument);
         ImportMfmeExtractCommand = new RelayCommand(ImportMfmeExtract, CanImportMfmeExtract);
+        AddVfdDotMatrixElementCommand = new RelayCommand(AddVfdDotMatrixElement, CanAddVfdDotMatrixElement);
         SaveSelectedDocumentCommand = new RelayCommand(SaveSelectedDocument, CanSaveSelectedDocument);
         CloseSelectedDocumentCommand = new RelayCommand(CloseSelectedDocument, CanCloseSelectedDocument);
         OpenPreferencesCommand = new RelayCommand(OpenPreferences);
@@ -389,6 +390,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand OpenMachineStubCommand { get; }
     public ICommand OpenDocumentCommand { get; }
     public ICommand ImportMfmeExtractCommand { get; }
+    public ICommand AddVfdDotMatrixElementCommand { get; }
     public ICommand SaveSelectedDocumentCommand { get; }
     public ICommand CloseSelectedDocumentCommand { get; }
     public ICommand RefreshAssetBrowserCommand { get; }
@@ -1004,6 +1006,28 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             AddOutputEntry($"Open document failed: {ex.Message}", OutputLogStatus.Error);
             MessageBox.Show(ex.Message, "Open Document Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
+    }
+
+
+    private bool CanAddVfdDotMatrixElement()
+    {
+        return SelectedDocument?.Document.DocumentType == EditorDocumentType.Panel2D;
+    }
+
+    private void AddVfdDotMatrixElement()
+    {
+        var selectedDocument = SelectedDocument;
+        if (selectedDocument?.Document.DocumentType != EditorDocumentType.Panel2D)
+        {
+            return;
+        }
+
+        var element = PanelElementFactory.CreateVfdDotMatrixElement(new Point(
+            Math.Max(PanelElementFactory.NewVfdDotMatrixWidth / 2d, -selectedDocument.PanelPanX + 40d + (PanelElementFactory.NewVfdDotMatrixWidth / 2d)),
+            Math.Max(PanelElementFactory.NewVfdDotMatrixHeight / 2d, -selectedDocument.PanelPanY + 40d + (PanelElementFactory.NewVfdDotMatrixHeight / 2d))));
+        ExecuteDocumentCanvasCommand(
+            selectedDocument.DocumentId,
+            CanvasMutationCommands.CreateAddVfdDotMatrixCommand(selectedDocument.DocumentId, selectedDocument, element));
     }
 
     private bool CanImportMfmeExtract()
@@ -3099,6 +3123,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (ImportMfmeExtractCommand is RelayCommand importMfmeRelayCommand)
         {
             importMfmeRelayCommand.RaiseCanExecuteChanged();
+        }
+
+        if (AddVfdDotMatrixElementCommand is RelayCommand addVfdDotMatrixCommand)
+        {
+            addVfdDotMatrixCommand.RaiseCanExecuteChanged();
         }
 
         if (SaveSelectedDocumentCommand is RelayCommand saveRelayCommand)

@@ -7,6 +7,7 @@ public sealed class PanelRuntimeState
     private readonly Dictionary<string, double> _temporaryReelOffsetByObjectId = new(StringComparer.Ordinal);
     private readonly Dictionary<string, int[]> _segmentMasksByObjectId = new(StringComparer.Ordinal);
     private readonly Dictionary<string, double[]> _segmentBrightnessByObjectId = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, bool[]> _vfdDotMatrixDotsByObjectId = new(StringComparer.Ordinal);
 
     public string? LampTestObjectId { get; set; }
 
@@ -17,6 +18,7 @@ public sealed class PanelRuntimeState
     public IReadOnlyDictionary<string, double> TemporaryReelOffsetByObjectId => _temporaryReelOffsetByObjectId;
     public IReadOnlyDictionary<string, int[]> SegmentMasksByObjectId => _segmentMasksByObjectId;
     public IReadOnlyDictionary<string, double[]> SegmentBrightnessByObjectId => _segmentBrightnessByObjectId;
+    public IReadOnlyDictionary<string, bool[]> VfdDotMatrixDotsByObjectId => _vfdDotMatrixDotsByObjectId;
 
     public bool SetLampIntensityIfChanged(string objectId, double intensity)
     {
@@ -146,6 +148,7 @@ public sealed class PanelRuntimeState
         _temporaryReelOffsetByObjectId.Clear();
         _segmentMasksByObjectId.Clear();
         _segmentBrightnessByObjectId.Clear();
+        _vfdDotMatrixDotsByObjectId.Clear();
     }
 
     public bool SetSegmentCellMasksIfChanged(string objectId, int[] masks)
@@ -208,5 +211,39 @@ public sealed class PanelRuntimeState
         return _segmentMasksByObjectId.TryGetValue(objectId.Trim(), out var value)
             ? value.ToArray()
             : new int[cellCount];
+    }
+    public bool SetVfdDotMatrixDotsIfChanged(string objectId, bool[] dots)
+    {
+        if (string.IsNullOrWhiteSpace(objectId) || dots is null)
+        {
+            return false;
+        }
+
+        var normalizedObjectId = objectId.Trim();
+        if (_vfdDotMatrixDotsByObjectId.TryGetValue(normalizedObjectId, out var previous)
+            && previous.SequenceEqual(dots))
+        {
+            return false;
+        }
+
+        _vfdDotMatrixDotsByObjectId[normalizedObjectId] = dots.ToArray();
+        return true;
+    }
+
+    public bool[] GetVfdDotMatrixDots(string objectId, int dotCount)
+    {
+        if (string.IsNullOrWhiteSpace(objectId) || dotCount <= 0)
+        {
+            return Array.Empty<bool>();
+        }
+
+        if (!_vfdDotMatrixDotsByObjectId.TryGetValue(objectId.Trim(), out var value))
+        {
+            return new bool[dotCount];
+        }
+
+        var dots = new bool[dotCount];
+        Array.Copy(value, dots, Math.Min(value.Length, dots.Length));
+        return dots;
     }
 }

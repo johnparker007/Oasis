@@ -343,6 +343,11 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
     private void AddTypeSpecificRows(PanelElementModel selectedElement)
     {
+        if (selectedElement.Kind is PanelElementKind.VfdDotMatrix)
+        {
+            _propertyRows.Add(new InspectorInfoPropertyViewModel("Display", "Type-specific", "VFD Dot Matrix (96 x 8)"));
+        }
+
         if (selectedElement.Kind is PanelElementKind.Lamp or PanelElementKind.Reel or PanelElementKind.SevenSegment)
         {
             _propertyRows.Add(new InspectorIntPropertyViewModel(
@@ -379,7 +384,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                 commit: value => TryApplyColorUpdate(selectedElement.ObjectId, "Update background color", new PanelElementModelUpdate { OnColorHex = NormalizeOptionalText(value) })));
         }
 
-        if (selectedElement.Kind is PanelElementKind.Lamp or PanelElementKind.SevenSegment or PanelElementKind.Alpha)
+        if (selectedElement.Kind is PanelElementKind.Lamp or PanelElementKind.SevenSegment or PanelElementKind.Alpha or PanelElementKind.VfdDotMatrix)
         {
             _propertyRows.Add(new InspectorColorPropertyViewModel(
                 "On Color",
@@ -516,6 +521,9 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                     break;
                 case "Visible" when row is InspectorBoolPropertyViewModel visibleRow:
                     visibleRow.SetCommittedValue(selectedElement.IsVisible);
+                    break;
+                case "Display" when row is InspectorInfoPropertyViewModel displayInfoRow:
+                    displayInfoRow.SetCommittedValue(selectedElement.Kind == PanelElementKind.VfdDotMatrix ? "VFD Dot Matrix (96 x 8)" : string.Empty);
                     break;
                 case "Display Number" when row is InspectorIntPropertyViewModel displayRow:
                     displayRow.SetCommittedValue(selectedElement.DisplayNumber);
@@ -748,6 +756,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             PanelElementKind.Alpha => selectedElement.IsReversed == true
                 ? $"{geometrySummary} Alpha mode: reversed."
                 : geometrySummary,
+            PanelElementKind.VfdDotMatrix => $"{geometrySummary} VFD dot matrix: 96 x 8 dots.",
             _ => geometrySummary
         };
     }

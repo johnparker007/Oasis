@@ -9,6 +9,7 @@ public sealed class MameStdoutParser : IMameStdoutParser
     private readonly IMameSegmentStateParser _segmentStateParser;
     private readonly IMameSegmentRuntimeAdapter _segmentRuntimeAdapter;
     private readonly MameVfdDutyParser _vfdDutyParser;
+    private readonly IMameVfdDotMatrixStateParser _vfdDotMatrixStateParser;
     private readonly Func<FruitMachinePlatformType> _platformProvider;
 
     public MameStdoutParser(IMameLampStateParser lampStateParser, IMameLampRuntimeAdapter lampRuntimeAdapter, IMameReelStateParser reelStateParser, IMameReelRuntimeAdapter reelRuntimeAdapter, IMameSegmentStateParser segmentStateParser, IMameSegmentRuntimeAdapter segmentRuntimeAdapter, Func<FruitMachinePlatformType>? platformProvider = null)
@@ -20,6 +21,7 @@ public sealed class MameStdoutParser : IMameStdoutParser
         _segmentStateParser = segmentStateParser ?? throw new ArgumentNullException(nameof(segmentStateParser));
         _segmentRuntimeAdapter = segmentRuntimeAdapter ?? throw new ArgumentNullException(nameof(segmentRuntimeAdapter));
         _vfdDutyParser = new MameVfdDutyParser();
+        _vfdDotMatrixStateParser = new MameVfdDotMatrixStateParser();
         _platformProvider = platformProvider ?? (() => FruitMachinePlatformType.MPU4);
     }
 
@@ -45,6 +47,12 @@ public sealed class MameStdoutParser : IMameStdoutParser
         if (_segmentStateParser.TryParse(line, out var cellId, out var segmentMask, out var outputType))
         {
             _segmentRuntimeAdapter.ApplySegmentState(cellId, segmentMask, outputType);
+            return;
+        }
+
+        if (_vfdDotMatrixStateParser.TryParse(line, out var dotIndex, out var isDotOn))
+        {
+            _segmentRuntimeAdapter.ApplyVfdDotMatrixDotState(dotIndex, isDotOn);
             return;
         }
 

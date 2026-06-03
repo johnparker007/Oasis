@@ -75,6 +75,29 @@ public sealed class Panel2DRoundTripTests
     }
 
     [Fact]
+    public void ToStorageElement_VfdDotMatrix_SerializesKindAndClearsOffColor()
+    {
+        var element = Panel2DDocumentStorage.ToStorageElement(new PanelElementModel
+        {
+            ObjectId = "dot-1",
+            Name = "Dot Matrix",
+            Kind = PanelElementKind.VfdDotMatrix,
+            X = 10,
+            Y = 20,
+            Width = 480,
+            Height = 80,
+            OnColorHex = "#FF4040",
+            OffColorHex = "#111111"
+        });
+
+        Assert.Equal("vfdDotMatrix", element.Kind);
+        Assert.Equal("#FF4040", element.OnColorHex);
+        Assert.Null(element.OffColorHex);
+        Assert.Equal("#FF4040", element.Native?.OnColorHex);
+        Assert.Null(element.Native?.OffColorHex);
+    }
+
+    [Fact]
     public void BuildOpenDocumentData_WithInvalidPanelJson_ReturnsClearErrorSummary()
     {
         const string path = "C:/Repo/Assets/bad.panel2d";

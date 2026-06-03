@@ -52,6 +52,7 @@ public interface IMameSegmentRuntimeAdapter
 {
     void ApplySegmentState(int cellId, int segmentMask, MameSegmentOutputType outputType);
     void ApplyVfdBrightness(int cellId, double normalizedBrightness);
+    void ApplyVfdDotMatrixDotState(int dotIndex, bool isOn);
 }
 
 public sealed record MameProcessLaunchRequest(

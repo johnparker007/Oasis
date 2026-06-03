@@ -8,9 +8,11 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
     private readonly Action<Action> _uiDispatch;
     private readonly Dictionary<int, (int Mask, MameSegmentOutputType OutputType)> _pendingMasks = new();
     private readonly Dictionary<int, double> _pendingVfdBrightnessByDisplay = new();
+    private readonly Dictionary<int, bool> _pendingVfdDotMatrixDots = new();
     private readonly Dictionary<int, int> _latestVfdMasksByCell = new();
     private readonly Dictionary<int, int> _latestDigitMasksByCell = new();
     private readonly Dictionary<int, double> _latestVfdBrightnessByDisplay = new();
+    private readonly bool[] _latestVfdDotMatrixDots = new bool[MameVfdDotMatrixStateParser.DotCount];
     private bool _uiUpdateScheduled;
 
     public MameSegmentRuntimeAdapter(Func<IEnumerable<DocumentTabViewModel>> documentProvider, Action<Action> uiDispatch, Func<FruitMachinePlatformType>? platformProvider = null)
@@ -44,16 +46,36 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
         _uiDispatch(ApplyPendingOnUiThread);
     }
 
+    public void ApplyVfdDotMatrixDotState(int dotIndex, bool isOn)
+    {
+        if (dotIndex is < 0 or >= MameVfdDotMatrixStateParser.DotCount)
+        {
+            return;
+        }
+
+        lock (_pendingSync)
+        {
+            _pendingVfdDotMatrixDots[dotIndex] = isOn;
+            if (_uiUpdateScheduled) return;
+            _uiUpdateScheduled = true;
+        }
+
+        _uiDispatch(ApplyPendingOnUiThread);
+    }
+
     private void ApplyPendingOnUiThread()
     {
         Dictionary<int, (int Mask, MameSegmentOutputType OutputType)> snapshot;
         Dictionary<int, double> brightnessSnapshot;
+        Dictionary<int, bool> dotMatrixSnapshot;
         lock (_pendingSync)
         {
             snapshot = new(_pendingMasks);
             brightnessSnapshot = new(_pendingVfdBrightnessByDisplay);
+            dotMatrixSnapshot = new(_pendingVfdDotMatrixDots);
             _pendingMasks.Clear();
             _pendingVfdBrightnessByDisplay.Clear();
+            _pendingVfdDotMatrixDots.Clear();
             _uiUpdateScheduled = false;
         }
 
@@ -76,6 +98,22 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
             foreach (var (cellId, brightness) in brightnessSnapshot)
             {
                 _latestVfdBrightnessByDisplay[cellId] = brightness;
+            }
+
+            foreach (var (dotIndex, isOn) in dotMatrixSnapshot)
+            {
+                _latestVfdDotMatrixDots[dotIndex] = isOn;
+            }
+
+            if (dotMatrixSnapshot.Count > 0)
+            {
+                foreach (var element in document.GetPanelElements().Where(e => e.Kind == PanelElementKind.VfdDotMatrix && !string.IsNullOrWhiteSpace(e.ObjectId)))
+                {
+                    if (document.RuntimeState.SetVfdDotMatrixDotsIfChanged(element.ObjectId, _latestVfdDotMatrixDots))
+                    {
+                        changedObjectIds.Add(element.ObjectId);
+                    }
+                }
             }
 
             foreach (var element in document.GetPanelElements().Where(e => (e.Kind == PanelElementKind.Alpha || e.Kind == PanelElementKind.SevenSegment) && !string.IsNullOrWhiteSpace(e.ObjectId)))

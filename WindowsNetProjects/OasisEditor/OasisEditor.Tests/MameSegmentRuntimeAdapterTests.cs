@@ -118,13 +118,36 @@ public sealed class MameSegmentRuntimeAdapterTests
         Assert.Equal(4, masks[15]);
     }
 
+
+    [Fact]
+    public void ApplyVfdDotMatrixDotState_UpdatesDotMatrixElements()
+    {
+        var document = CreateDocument();
+        var dispatches = new List<Action>();
+        var adapter = new MameSegmentRuntimeAdapter(() => [document], action => dispatches.Add(action));
+
+        adapter.ApplyVfdDotMatrixDotState(0, true);
+        adapter.ApplyVfdDotMatrixDotState(1, false);
+        adapter.ApplyVfdDotMatrixDotState(767, true);
+
+        var dispatch = Assert.Single(dispatches);
+        dispatch();
+
+        var dots = document.RuntimeState.GetVfdDotMatrixDots("vfd-dot-0", MameVfdDotMatrixStateParser.DotCount);
+        Assert.Equal(MameVfdDotMatrixStateParser.DotCount, dots.Length);
+        Assert.True(dots[0]);
+        Assert.False(dots[1]);
+        Assert.True(dots[767]);
+    }
+
     private static DocumentTabViewModel CreateDocument()
     {
         var panelDocument = EditorDocument.CreateFromFile("panel.panel2d", "panel", "panel");
         var tab = new DocumentTabViewModel(panelDocument);
         tab.SetPanelElements([
             new PanelElementModel { ObjectId = "alpha-0", Kind = PanelElementKind.Alpha, DisplayNumber = 0 },
-            new PanelElementModel { ObjectId = "seven-3", Kind = PanelElementKind.SevenSegment, DisplayNumber = 3 }
+            new PanelElementModel { ObjectId = "seven-3", Kind = PanelElementKind.SevenSegment, DisplayNumber = 3 },
+            new PanelElementModel { ObjectId = "vfd-dot-0", Kind = PanelElementKind.VfdDotMatrix }
         ]);
         return tab;
     }
