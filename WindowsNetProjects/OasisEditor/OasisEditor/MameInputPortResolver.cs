@@ -46,6 +46,7 @@ public sealed class MameInputPortResolver : IMameInputPortResolver
         {
             FruitMachinePlatformType.MPU4 => ["ORANGE1", "ORANGE2", "BLACK1", "BLACK2", "AUX1", "AUX2", "DIL1", "DIL2"],
             FruitMachinePlatformType.Impact => ["???", "???", "J10_0", "J10_1", "J10_2", "J9_0", "J9_1", "J9_2", "COIN_SENSE", "COINS"],
+            FruitMachinePlatformType.Epoch => ["IN0", "IN1", "COINS", "STAKE", "REELS", "AUX", "CAB1", "CAB2", "DSW1", "DSW2"],
             FruitMachinePlatformType.Scorpion4 => BuildScorpion4(),
             _ => []
         };
