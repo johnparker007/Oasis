@@ -21,6 +21,7 @@ internal static class CanvasMutationCommands
             PanelElementKind.Reel => "Add reel",
             PanelElementKind.SevenSegment => "Add 7 segment display",
             PanelElementKind.Alpha => "Add segment alpha",
+            PanelElementKind.VfdDotMatrix => "Add VFD dot matrix",
             _ => "Add panel element"
         };
 

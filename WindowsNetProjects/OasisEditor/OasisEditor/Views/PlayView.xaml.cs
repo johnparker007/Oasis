@@ -35,7 +35,7 @@ public partial class PlayView : UserControl
     private const double TargetFrameMillis = 16.0;
     private const double LegacyReelPositionsPerRevolution = 96d;
     private const double ReelDragSpeedScale = 3d;
-    private readonly IPanel2DRenderer _skiaRenderer = new Panel2DRenderer([new BackgroundElementRenderer(), new LampElementRenderer(), new ReelElementRenderer(), new SevenSegmentElementRenderer(), new AlphaElementRenderer()], "PlayView");
+    private readonly IPanel2DRenderer _skiaRenderer = new Panel2DRenderer([new BackgroundElementRenderer(), new LampElementRenderer(), new ReelElementRenderer(), new SevenSegmentElementRenderer(), new AlphaElementRenderer(), new VfdDotMatrixElementRenderer()], "PlayView");
 
     public PlayView()
     {

@@ -112,6 +112,24 @@ public sealed class MameStdoutParserTests
         Assert.Equal(0, duty.CellId);
         Assert.Equal(1d, duty.Brightness);
     }
+
+    [Fact]
+    public void ProcessLine_WhenVfdDotMatrixLine_AppliesDotState()
+    {
+        var lampAdapter = new RecordingLampAdapter();
+        var reelAdapter = new RecordingReelAdapter();
+        var segmentAdapter = new RecordingSegmentAdapter();
+        var dotMatrixAdapter = new RecordingVfdDotMatrixAdapter();
+        var parser = new MameStdoutParser(new MameLampStateParser(), lampAdapter, new MameReelStateParser(), reelAdapter, new MameSegmentStateParser(), segmentAdapter, vfdDotMatrixRuntimeAdapter: dotMatrixAdapter);
+
+        parser.ProcessLine("vfddotmatrix767 = 1");
+
+        var call = Assert.Single(dotMatrixAdapter.Calls);
+        Assert.Equal(767, call.DotIndex);
+        Assert.Equal(1, call.Value);
+        Assert.Empty(segmentAdapter.Calls);
+    }
+
     private sealed class RecordingLampAdapter : IMameLampRuntimeAdapter
     {
         public List<(int LampId, int Value)> Calls { get; } = [];
@@ -122,6 +140,12 @@ public sealed class MameStdoutParserTests
     {
         public List<(int ReelId, int Value)> Calls { get; } = [];
         public void ApplyReelState(int reelId, int reelValue) => Calls.Add((reelId, reelValue));
+    }
+
+    private sealed class RecordingVfdDotMatrixAdapter : IMameVfdDotMatrixRuntimeAdapter
+    {
+        public List<(int DotIndex, int Value)> Calls { get; } = [];
+        public void ApplyDotState(int dotIndex, int dotValue) => Calls.Add((dotIndex, dotValue));
     }
 
     private sealed class RecordingSegmentAdapter : IMameSegmentRuntimeAdapter

@@ -245,7 +245,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 () => OpenDocuments,
                 DispatchToUiThread,
                 () => SelectedFruitMachinePlatform),
-            platformProvider: () => SelectedFruitMachinePlatform);
+            platformProvider: () => SelectedFruitMachinePlatform,
+            vfdDotMatrixStateParser: new MameVfdDotMatrixStateParser(),
+            vfdDotMatrixRuntimeAdapter: new MameVfdDotMatrixRuntimeAdapter(
+                () => OpenDocuments,
+                DispatchToUiThread));
         _mameProcessRunner = new MameProcessRunner(
             stdoutLogger: line => ProcessMameStdoutLine(line, mameStdoutParser),
             stdinLogger: line =>

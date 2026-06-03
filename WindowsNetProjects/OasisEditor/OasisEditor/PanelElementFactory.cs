@@ -39,6 +39,8 @@ internal static class PanelElementFactory
     public const double NewSevenSegmentHeight = 120;
     public const double NewSegmentAlphaWidth = 220;
     public const double NewSegmentAlphaHeight = 60;
+    public const double NewVfdDotMatrixWidth = 480;
+    public const double NewVfdDotMatrixHeight = 80;
 
 
     public static string? ProjectDirectoryPath
@@ -91,6 +93,7 @@ internal static class PanelElementFactory
             AddablePanelElementKind.Reel => CreateReelElement(panelPoint),
             AddablePanelElementKind.SevenSegmentDisplay => CreateSevenSegmentDisplayElement(panelPoint),
             AddablePanelElementKind.SegmentAlpha => CreateSegmentAlphaElement(panelPoint),
+            AddablePanelElementKind.VfdDotMatrix => CreateVfdDotMatrixElement(panelPoint),
             _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unsupported addable Panel2D element kind.")
         };
     }
@@ -142,6 +145,15 @@ internal static class PanelElementFactory
         };
     }
 
+    private static PanelElementFile CreateVfdDotMatrixElement(Point panelPoint)
+    {
+        var objectId = Guid.NewGuid().ToString("N");
+        return CreateBaseElement(PanelElementKind.VfdDotMatrix, objectId, "VFD Dot Matrix", panelPoint, NewVfdDotMatrixWidth, NewVfdDotMatrixHeight) with
+        {
+            OnColorHex = "#FFB000"
+        };
+    }
+
     private static PanelElementFile CreateBaseElement(PanelElementKind kind, string objectId, string name, Point panelPoint, double width, double height)
     {
         return new PanelElementFile
@@ -173,6 +185,7 @@ internal static class PanelElementFactory
             PanelElementKind.Reel => CreateReelVisual(element),
             PanelElementKind.SevenSegment => CreateSevenSegmentVisual(element),
             PanelElementKind.Alpha => CreateAlphaVisual(element),
+            PanelElementKind.VfdDotMatrix => CreateVfdDotMatrixVisual(element),
             PanelElementKind.Label => CreateLabelVisual(element),
             _ => null
         };
@@ -434,6 +447,32 @@ internal static class PanelElementFactory
                 UnlitBrush = TryCreateBrush(element.OffColorHex, new SolidColorBrush(Color.FromArgb(32, 0, 255, 255))),
                 ShowDecimalPoint = element.ShowDecimalPoint ?? true,
                 ShowCommaTail = element.ShowCommaTail ?? false
+            }
+        };
+    }
+
+
+    private static Border CreateVfdDotMatrixVisual(PanelElementFile element)
+    {
+        var width = element.Width <= 0 ? NewVfdDotMatrixWidth : element.Width;
+        var height = element.Height <= 0 ? NewVfdDotMatrixHeight : element.Height;
+
+        return new Border
+        {
+            Uid = element.ObjectId,
+            Width = width,
+            Height = height,
+            BorderThickness = new Thickness(1),
+            BorderBrush = Brushes.SlateGray,
+            Background = TryCreateBrush("#0A0700", Brushes.Black),
+            Padding = new Thickness(4),
+            Child = new TextBlock
+            {
+                Text = "VFD Dot Matrix 96×8",
+                Foreground = TryCreateBrush(element.OnColorHex, Brushes.Orange),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                FontSize = 12
             }
         };
     }
@@ -726,5 +765,6 @@ internal enum AddablePanelElementKind
     Lamp,
     Reel,
     SevenSegmentDisplay,
-    SegmentAlpha
+    SegmentAlpha,
+    VfdDotMatrix
 }

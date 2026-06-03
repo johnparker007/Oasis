@@ -54,6 +54,11 @@ public interface IMameSegmentRuntimeAdapter
     void ApplyVfdBrightness(int cellId, double normalizedBrightness);
 }
 
+public interface IMameVfdDotMatrixRuntimeAdapter
+{
+    void ApplyDotState(int dotIndex, int dotValue);
+}
+
 public sealed record MameProcessLaunchRequest(
     string MameExecutablePath,
     string MameRomName,
