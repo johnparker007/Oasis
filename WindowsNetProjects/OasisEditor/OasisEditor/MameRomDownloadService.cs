@@ -5,7 +5,7 @@ namespace OasisEditor;
 
 public sealed class MameRomDownloadService
 {
-    public const string DefaultDownloadRootUrl = "https://archive.org/download/MAME215RomsOnlyMerged/";
+    public const string DefaultDownloadRootUrl = "https://pub-27184993189541b1b693f1bee5b0c743.r2.dev/MAME%200.288%20ROMs%20(merged)/";
     public const string DefaultArchiveExtension = ".zip";
     private static readonly HttpClient HttpClient = new();
 
