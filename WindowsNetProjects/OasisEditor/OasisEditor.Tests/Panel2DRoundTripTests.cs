@@ -396,6 +396,7 @@ public sealed class Panel2DRoundTripTests
     [InlineData("reel", "reel")]
     [InlineData("sevenSegment", "sevenSegment")]
     [InlineData("alpha", "alpha")]
+    [InlineData("vfdDotMatrix", "vfdDotMatrix")]
     public void ParseElementKind_WithNativeKinds_ReturnsExpectedKind(string serializedKind, string expectedRoundTripKind)
     {
         var parsedKind = Panel2DDocumentStorage.ParseElementKind(serializedKind);
@@ -411,6 +412,7 @@ public sealed class Panel2DRoundTripTests
     [InlineData("reel", "Reel ")]
     [InlineData("sevenSegment", "7 Segment ")]
     [InlineData("alpha", "Alpha ")]
+    [InlineData("vfdDotMatrix", "VFD Dot Matrix ")]
     public void CreateDefaultElementName_WithNativeKinds_UsesNativePrefix(string kind, string expectedPrefix)
     {
         var name = Panel2DDocumentStorage.CreateDefaultElementName(kind, "abcdef123456");
@@ -595,6 +597,7 @@ public sealed class Panel2DRoundTripTests
         Assert.Equal("Reels (1)", groups.Single(g => g.NodeKey == "group:reel").DisplayName);
         Assert.Equal("Seven Segments (1)", groups.Single(g => g.NodeKey == "group:sevenSegment").DisplayName);
         Assert.Equal("Alphas (1)", groups.Single(g => g.NodeKey == "group:alpha").DisplayName);
+        Assert.Equal("VFD Dot Matrices (0)", groups.Single(g => g.NodeKey == "group:vfdDotMatrix").DisplayName);
     }
 
     [Fact]

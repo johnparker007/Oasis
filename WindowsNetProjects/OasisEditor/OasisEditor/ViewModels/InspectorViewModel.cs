@@ -379,7 +379,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                 commit: value => TryApplyColorUpdate(selectedElement.ObjectId, "Update background color", new PanelElementModelUpdate { OnColorHex = NormalizeOptionalText(value) })));
         }
 
-        if (selectedElement.Kind is PanelElementKind.Lamp or PanelElementKind.SevenSegment or PanelElementKind.Alpha)
+        if (selectedElement.Kind is PanelElementKind.Lamp or PanelElementKind.SevenSegment or PanelElementKind.Alpha or PanelElementKind.VfdDotMatrix)
         {
             _propertyRows.Add(new InspectorColorPropertyViewModel(
                 "On Color",
@@ -748,6 +748,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             PanelElementKind.Alpha => selectedElement.IsReversed == true
                 ? $"{geometrySummary} Alpha mode: reversed."
                 : geometrySummary,
+            PanelElementKind.VfdDotMatrix => $"{geometrySummary} VFD dot matrix: 96 x 8 dots, 16 cells.",
             _ => geometrySummary
         };
     }

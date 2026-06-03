@@ -33,7 +33,7 @@ public partial class SkiaPanel2DEditView : UserControl
     private readonly Stopwatch _renderStopwatch = Stopwatch.StartNew();
     private readonly DispatcherTimer _renderThrottleTimer;
     private const double TargetFrameMillis = 16.0;
-    private readonly IPanel2DRenderer _renderer = new Panel2DRenderer([new BackgroundElementRenderer(), new LampElementRenderer(), new ReelElementRenderer(), new SevenSegmentElementRenderer(), new AlphaElementRenderer()], "EditView");
+    private readonly IPanel2DRenderer _renderer = new Panel2DRenderer([new BackgroundElementRenderer(), new LampElementRenderer(), new ReelElementRenderer(), new SevenSegmentElementRenderer(), new AlphaElementRenderer(), new VfdDotMatrixElementRenderer()], "EditView");
 
     public SkiaPanel2DEditView()
     {
@@ -427,6 +427,7 @@ public partial class SkiaPanel2DEditView : UserControl
         AddAddElementMenuItem(contextMenu, "Add Reel", AddablePanelElementKind.Reel, panelPoint);
         AddAddElementMenuItem(contextMenu, "Add 7 Segment Display", AddablePanelElementKind.SevenSegmentDisplay, panelPoint);
         AddAddElementMenuItem(contextMenu, "Add Segment Alpha", AddablePanelElementKind.SegmentAlpha, panelPoint);
+        AddAddElementMenuItem(contextMenu, "Add VFD Dot Matrix", AddablePanelElementKind.VfdDotMatrix, panelPoint);
 
         contextMenu.IsOpen = true;
     }
