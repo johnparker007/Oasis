@@ -8,22 +8,23 @@ Verify that users can create real Panel2D elements directly from the editor via 
 
 ### Branch
 
-TODO
+`work`
 
 ### Commit
 
-TODO
+`b816f3a` (implementation commit; later commits may update this verification document)
 
 ### Build command(s)
 
 ```text
-TODO
+dotnet test OasisEditor.sln
 ```
 
 ### Result
 
 - [ ] Build succeeded
-- [ ] Build warnings reviewed
+- [x] Build could not run in this container because `dotnet` is not installed (`/bin/bash: line 1: dotnet: command not found`).
+- [x] Build warnings reviewed: no compiler warnings were available because the SDK is unavailable; `git diff --check` passed with no whitespace errors.
 
 ## Automated tests
 
@@ -32,18 +33,24 @@ TODO
 List new tests added for this feature.
 
 ```text
-TODO
+OasisEditor.Tests/AddPanel2DElementCommandTests.cs
+- CreateAddableElement_ReturnsValidVisibleElementAtRequestedPosition
+- CreateAddableElement_UsesVisibleDefaultsForEachRealElementType
+- AddPanelElementCommand_AddsSelectsUndoesAndRedoesSameElement
 ```
 
 ### Existing tests run
 
 ```text
-TODO
+dotnet test OasisEditor.sln
+git diff --check
 ```
 
 ### Result
 
 - [ ] All relevant tests passed
+- [x] Automated tests could not run in this container because `dotnet` is not installed.
+- [x] `git diff --check` passed.
 
 ## Manual verification checklist
 
@@ -120,12 +127,21 @@ For at least one instance of each supported type:
 Record final implementation files.
 
 ```text
-TODO
+Docs/AddPanel2DElement.ContextMenu.Investigation.md
+Docs/AddPanel2DElement.ContextMenu.Verification.md
+OasisEditor/CanvasMutationCommands.cs
+OasisEditor/PanelElementFactory.cs
+OasisEditor/Views/SkiaPanel2DEditView.xaml.cs
+OasisEditor.Tests/AddPanel2DElementCommandTests.cs
 ```
 
 ## Notes
 
 Capture any compromises, known limitations, or follow-up work.
+
+- Manual UI verification was not performed in this non-interactive container.
+- Automated build/test verification is blocked by the missing .NET SDK in this container.
+- The UI layer only maps the captured right-click point to a document point and delegates element creation and undoable mutation to shared factory/command paths.
 
 ### Follow-up candidates
 

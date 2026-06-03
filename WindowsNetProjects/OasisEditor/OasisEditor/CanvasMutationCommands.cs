@@ -12,6 +12,21 @@ internal static class CanvasMutationCommands
         return new AddPanelElementMutationCommand(documentId, document, element, "Add image");
     }
 
+    public static Commands.ICommand CreateAddPanelElementCommand(Guid documentId, DocumentTabViewModel document, PanelElementFile element)
+    {
+        var kind = Panel2DDocumentStorage.ParseElementKind(element.Kind);
+        var description = kind switch
+        {
+            PanelElementKind.Lamp => "Add lamp",
+            PanelElementKind.Reel => "Add reel",
+            PanelElementKind.SevenSegment => "Add 7 segment display",
+            PanelElementKind.Alpha => "Add segment alpha",
+            _ => "Add panel element"
+        };
+
+        return new AddPanelElementMutationCommand(documentId, document, element, description);
+    }
+
     public static Commands.ICommand CreateDeleteElementCommand(Guid documentId, DocumentTabViewModel document, PanelSelectionInfo selection)
     {
         return new DeleteElementMutationCommand(documentId, document, selection);
@@ -137,6 +152,7 @@ internal static class CanvasMutationCommands
             elements.Insert(index, elementModel);
             _insertIndex = index;
             _document.SetPanelElements(elements, CreateStructureChange(_document, elementModel.ObjectId));
+            _document.HierarchySelectedPanelSelection = PanelSelectionContract.ToSelectionInfo(Panel2DDocumentStorage.ToStorageElement(elementModel));
             _document.MarkDirty();
             WasExecuted = true;
         }
@@ -177,9 +193,20 @@ internal static class CanvasMutationCommands
             if (removed)
             {
                 _document.SetPanelElements(elements, CreateStructureChange(_document));
+                if (_document.HierarchySelectedPanelSelection is PanelSelectionInfo selection
+                    && IsSelectionForElement(selection, _element))
+                {
+                    _document.HierarchySelectedPanelSelection = null;
+                }
+
                 _document.MarkDirty();
             }
         }
+    }
+
+    private static bool IsSelectionForElement(PanelSelectionInfo selection, PanelElementFile element)
+    {
+        return PanelSelectionContract.IsMatch(element, selection);
     }
 
     private sealed class DeleteElementMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand

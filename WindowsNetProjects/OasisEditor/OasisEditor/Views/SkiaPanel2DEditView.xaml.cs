@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Threading;
 using OasisEditor.Rendering;
@@ -240,6 +241,13 @@ public partial class SkiaPanel2DEditView : UserControl
 
     private void OnEditSkiaSurfaceMouseDown(object sender, MouseButtonEventArgs eventArgs)
     {
+        if (eventArgs.ChangedButton == MouseButton.Right)
+        {
+            ShowAddElementContextMenu(eventArgs.GetPosition(EditSkiaSurface));
+            eventArgs.Handled = true;
+            return;
+        }
+
         if (eventArgs.ChangedButton == MouseButton.Left)
         {
             var document = Document;
@@ -396,6 +404,55 @@ public partial class SkiaPanel2DEditView : UserControl
         Document.PanelPanY = transform.PanY;
         RequestRender();
         eventArgs.Handled = true;
+    }
+
+
+    private void ShowAddElementContextMenu(Point screenPoint)
+    {
+        var document = Document;
+        if (document is null || document.Document.DocumentType != EditorDocumentType.Panel2D)
+        {
+            return;
+        }
+
+        var viewport = new PanelViewportTransform(document.PanelZoom, document.PanelPanX, document.PanelPanY);
+        var panelPoint = viewport.ScreenToDocument(screenPoint);
+        var contextMenu = new ContextMenu
+        {
+            PlacementTarget = EditSkiaSurface,
+            Placement = PlacementMode.MousePoint
+        };
+
+        AddAddElementMenuItem(contextMenu, "Add Lamp", AddablePanelElementKind.Lamp, panelPoint);
+        AddAddElementMenuItem(contextMenu, "Add Reel", AddablePanelElementKind.Reel, panelPoint);
+        AddAddElementMenuItem(contextMenu, "Add 7 Segment Display", AddablePanelElementKind.SevenSegmentDisplay, panelPoint);
+        AddAddElementMenuItem(contextMenu, "Add Segment Alpha", AddablePanelElementKind.SegmentAlpha, panelPoint);
+
+        contextMenu.IsOpen = true;
+    }
+
+    private void AddAddElementMenuItem(ContextMenu contextMenu, string header, AddablePanelElementKind kind, Point panelPoint)
+    {
+        var menuItem = new MenuItem
+        {
+            Header = header
+        };
+        menuItem.Click += (_, _) => AddElementAt(kind, panelPoint);
+        contextMenu.Items.Add(menuItem);
+    }
+
+    private void AddElementAt(AddablePanelElementKind kind, Point panelPoint)
+    {
+        var document = Document;
+        if (document is null || document.Document.DocumentType != EditorDocumentType.Panel2D)
+        {
+            return;
+        }
+
+        var element = PanelElementFactory.CreateAddableElement(kind, panelPoint);
+        var command = CanvasMutationCommands.CreateAddPanelElementCommand(document.DocumentId, document, element);
+        document.CommandService.Execute(command);
+        RequestRender();
     }
 
     private void HandleSelectionClick(Point screenPoint)
