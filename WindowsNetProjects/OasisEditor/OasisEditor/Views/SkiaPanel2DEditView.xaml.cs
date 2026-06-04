@@ -356,7 +356,14 @@ public partial class SkiaPanel2DEditView : UserControl
                 }
                 else if (_isMovingSelection)
                 {
-                    HandleMoveSelection(document, _leftMouseDownStart, _dragSelectionCurrent);
+                    if (HasDraggedSelection(document, _leftMouseDownStart, _dragSelectionCurrent))
+                    {
+                        HandleMoveSelection(document, _leftMouseDownStart, _dragSelectionCurrent);
+                    }
+                    else
+                    {
+                        HandleSelectionClick(_leftMouseDownStart);
+                    }
                 }
                 else if (_isResizingSelection)
                 {
@@ -486,8 +493,19 @@ public partial class SkiaPanel2DEditView : UserControl
 
         var viewport = new PanelViewportTransform(document.PanelZoom, document.PanelPanX, document.PanelPanY);
         var documentPoint = viewport.ScreenToDocument(screenPoint);
-        var selection = Panel2DSelectionService.SelectFromPoint(document.GetPanelElements(), documentPoint);
+        var selection = Panel2DSelectionService.SelectFromPoint(
+            document.GetPanelElements(),
+            documentPoint,
+            document.HierarchySelectedPanelSelection);
         NotifySelection(document, selection);
+    }
+
+    private static bool HasDraggedSelection(DocumentTabViewModel document, Point startScreenPoint, Point endScreenPoint)
+    {
+        var viewport = new PanelViewportTransform(document.PanelZoom, document.PanelPanX, document.PanelPanY);
+        var start = viewport.ScreenToDocument(startScreenPoint);
+        var end = viewport.ScreenToDocument(endScreenPoint);
+        return Panel2DViewportInteractionService.HasDocumentDelta(start, end);
     }
 
     private void NotifySelection(DocumentTabViewModel document, PanelSelectionInfo? selection)
