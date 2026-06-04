@@ -46,9 +46,7 @@ internal sealed class AlphaElementRenderer : IPanelElementRenderer
         var backgroundColor = ScaleBrightness(onColor, 0.04d);
 
         using var backgroundPaint = new SKPaint { Color = backgroundColor, Style = SKPaintStyle.Fill, IsAntialias = true };
-        using var borderPaint = new SKPaint { Color = new SKColor(71, 85, 105), Style = SKPaintStyle.Stroke, StrokeWidth = 1f, IsAntialias = true };
         context.Canvas.DrawRoundRect(bounds, 2f, 2f, backgroundPaint);
-        context.Canvas.DrawRoundRect(bounds, 2f, 2f, borderPaint);
 
         var marginX = bounds.Width * 0.05f;
         var marginY = bounds.Height * 0.1f;

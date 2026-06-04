@@ -23,7 +23,6 @@ internal sealed class ReelElementRenderer : IPanelElementRenderer
         var reelPosition = context.RuntimeState.GetEffectiveReelPosition(element.ObjectId);
         var wrappedOffset = ComputeWrappedOffset(reelPosition, stops);
 
-        using var borderPaint = new SKPaint { Color = new SKColor(45, 45, 45), Style = SKPaintStyle.Stroke, StrokeWidth = 1f, IsAntialias = true };
         using var clipPath = new SKPath();
         clipPath.AddRect(bounds);
 
@@ -42,7 +41,6 @@ internal sealed class ReelElementRenderer : IPanelElementRenderer
         }
 
         context.Canvas.Restore();
-        context.Canvas.DrawRect(bounds, borderPaint);
     }
 
     internal static double ComputeWrappedOffset(double position, int stops)

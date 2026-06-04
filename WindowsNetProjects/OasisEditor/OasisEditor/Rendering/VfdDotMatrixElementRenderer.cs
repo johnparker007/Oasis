@@ -26,9 +26,7 @@ internal sealed class VfdDotMatrixElementRenderer : IPanelElementRenderer
         var dots = context.RuntimeState.GetVfdDotMatrixDots(element.ObjectId, DotCount);
 
         using var backgroundPaint = new SKPaint { Color = backgroundColor, Style = SKPaintStyle.Fill, IsAntialias = true };
-        using var borderPaint = new SKPaint { Color = new SKColor(71, 85, 105), Style = SKPaintStyle.Stroke, StrokeWidth = 1f, IsAntialias = true };
         context.Canvas.DrawRoundRect(bounds, 2f, 2f, backgroundPaint);
-        context.Canvas.DrawRoundRect(bounds, 2f, 2f, borderPaint);
 
         var marginX = bounds.Width * 0.025f;
         var marginY = bounds.Height * 0.12f;

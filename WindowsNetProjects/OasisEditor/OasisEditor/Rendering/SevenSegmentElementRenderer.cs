@@ -84,9 +84,7 @@ internal sealed class SevenSegmentElementRenderer : IPanelElementRenderer
         var bounds = SKRect.Create(0f, 0f, cacheKey.Width, cacheKey.Height);
         var backgroundColor = ScaleBrightness(cacheKey.OnColor, 0.04d);
         using var backgroundPaint = new SKPaint { Color = backgroundColor, Style = SKPaintStyle.Fill, IsAntialias = true };
-        using var borderPaint = new SKPaint { Color = new SKColor(71, 85, 105), Style = SKPaintStyle.Stroke, StrokeWidth = 1f, IsAntialias = true };
         canvas.DrawRoundRect(bounds, 2f, 2f, backgroundPaint);
-        canvas.DrawRoundRect(bounds, 2f, 2f, borderPaint);
         var marginX = bounds.Width * 0.1f;
         var marginY = bounds.Height * 0.1f;
         var contentBounds = SKRect.Create(bounds.Left + marginX, bounds.Top + marginY, Math.Max(1f, bounds.Width - (marginX * 2f)), Math.Max(1f, bounds.Height - (marginY * 2f)));
