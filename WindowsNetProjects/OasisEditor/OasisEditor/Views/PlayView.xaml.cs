@@ -191,6 +191,7 @@ public partial class PlayView : UserControl
         _isSkiaPanning = true;
         _skiaPanStart = eventArgs.GetPosition(PlaySkiaSurface);
         _skiaPanOrigin = _skiaPan;
+        PlaySkiaSurface.Cursor = Cursors.SizeAll;
         PlaySkiaSurface.CaptureMouse();
         eventArgs.Handled = true;
     }
@@ -205,23 +206,16 @@ public partial class PlayView : UserControl
             return;
         }
 
-        if (TryResolveSkiaReelElement(current, out _))
+        if (_isSkiaPanning)
         {
-            PlaySkiaSurface.Cursor = Cursors.ScrollNS;
-        }
-        else
-        {
-            var isClickable = TryResolveSkiaVisualElementId(current, out _);
-            PlaySkiaSurface.Cursor = isClickable ? Cursors.Hand : Cursors.Arrow;
-        }
-
-        if (!_isSkiaPanning)
-        {
+            PlaySkiaSurface.Cursor = Cursors.SizeAll;
+            var delta = current - _skiaPanStart;
+            _skiaPan = _skiaPanOrigin + (Vector)delta;
+            RequestRender();
             return;
         }
-        var delta = current - _skiaPanStart;
-        _skiaPan = _skiaPanOrigin + (Vector)delta;
-        RequestRender();
+
+        UpdatePlaySkiaHoverCursor(current);
     }
 
     private async void OnPlaySkiaSurfaceMouseUp(object sender, MouseButtonEventArgs eventArgs)
@@ -251,6 +245,7 @@ public partial class PlayView : UserControl
 
         _isSkiaPanning = false;
         PlaySkiaSurface.ReleaseMouseCapture();
+        UpdatePlaySkiaHoverCursor(eventArgs.GetPosition(PlaySkiaSurface));
         eventArgs.Handled = true;
     }
 
@@ -363,7 +358,12 @@ public partial class PlayView : UserControl
 
     private void OnPlaySkiaSurfaceLostMouseCapture(object sender, MouseEventArgs eventArgs)
     {
-        _isSkiaPanning = false;
+        if (_isSkiaPanning)
+        {
+            _isSkiaPanning = false;
+            UpdatePlaySkiaHoverCursor(eventArgs.GetPosition(PlaySkiaSurface));
+        }
+
         if (_activeReelDragElement is not null)
         {
             EndReelDrag(releaseMouseCapture: false);
@@ -388,6 +388,18 @@ public partial class PlayView : UserControl
         }
 
         await ViewModel.ReleaseAllPlayViewInputsAsync("Play View close", CancellationToken.None);
+    }
+
+    private void UpdatePlaySkiaHoverCursor(Point current)
+    {
+        if (TryResolveSkiaReelElement(current, out _))
+        {
+            PlaySkiaSurface.Cursor = Cursors.ScrollNS;
+            return;
+        }
+
+        var isClickable = TryResolveSkiaVisualElementId(current, out _);
+        PlaySkiaSurface.Cursor = isClickable ? Cursors.Hand : Cursors.Arrow;
     }
 
     private void BeginReelDrag(PanelElementModel reelElement, Point current)
