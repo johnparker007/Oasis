@@ -38,7 +38,7 @@ public sealed class MameStdoutParserTests
     }
 
     [Fact]
-    public void ProcessLine_WhenLegacySreelLine_IgnoresLine()
+    public void ProcessLine_WhenSreelLine_AppliesConvertedReelState()
     {
         var lampAdapter = new RecordingLampAdapter();
         var reelAdapter = new RecordingReelAdapter();
@@ -47,7 +47,10 @@ public sealed class MameStdoutParserTests
 
         parser.ProcessLine("sreel3 = 64170");
 
-        Assert.Empty(reelAdapter.Calls);
+        var call = Assert.Single(reelAdapter.Calls);
+        Assert.Equal(3, call.ReelId);
+        Assert.Equal(94, call.Value);
+        Assert.Empty(lampAdapter.Calls);
     }
 
     [Fact]
