@@ -303,6 +303,7 @@ public partial class SkiaPanel2DEditView : UserControl
         _isPanning = true;
         _panStart = eventArgs.GetPosition(EditSkiaSurface);
         _panOrigin = new Vector(Document.PanelPanX, Document.PanelPanY);
+        EditSkiaSurface.Cursor = Cursors.SizeAll;
         EditSkiaSurface.CaptureMouse();
         eventArgs.Handled = true;
     }
@@ -335,6 +336,7 @@ public partial class SkiaPanel2DEditView : UserControl
             return;
         }
 
+        EditSkiaSurface.Cursor = Cursors.SizeAll;
         var delta = eventArgs.GetPosition(EditSkiaSurface) - _panStart;
         Document.PanelPanX = _panOrigin.X + delta.X;
         Document.PanelPanY = _panOrigin.Y + delta.Y;
@@ -384,8 +386,7 @@ public partial class SkiaPanel2DEditView : UserControl
             return;
         }
 
-        _isPanning = false;
-        EditSkiaSurface.ReleaseMouseCapture();
+        EndPan();
         eventArgs.Handled = true;
     }
 
@@ -404,6 +405,25 @@ public partial class SkiaPanel2DEditView : UserControl
         Document.PanelPanY = transform.PanY;
         RequestRender();
         eventArgs.Handled = true;
+    }
+
+    private void OnEditSkiaSurfaceLostMouseCapture(object sender, MouseEventArgs eventArgs)
+    {
+        if (_isPanning)
+        {
+            EndPan(releaseMouseCapture: false);
+        }
+    }
+
+    private void EndPan(bool releaseMouseCapture = true)
+    {
+        _isPanning = false;
+        if (releaseMouseCapture && EditSkiaSurface.IsMouseCaptured)
+        {
+            EditSkiaSurface.ReleaseMouseCapture();
+        }
+
+        EditSkiaSurface.Cursor = Cursors.Arrow;
     }
 
 
