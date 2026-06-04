@@ -4,6 +4,7 @@
         Title="Oasis Launcher"
         Height="460"
         Width="680"
+        WindowStartupLocation="CenterScreen"
         MinHeight="420"
         MinWidth="620"
         Background="{DynamicResource EditorBackgroundBrush}"
