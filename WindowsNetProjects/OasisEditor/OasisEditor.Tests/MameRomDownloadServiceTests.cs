@@ -7,13 +7,18 @@ namespace OasisEditor.Tests;
 public sealed class MameRomDownloadServiceTests
 {
     [Fact]
-    public void BuildDownloadUrl_UsesArchiveOrgPattern()
+    public void BuildDownloadUrl_UsesDefaultDownloadRootUrl()
     {
         var sut = new MameRomDownloadService();
 
         var url = sut.BuildDownloadUrl("mpu4");
 
-        Assert.Equal("https://archive.org/download/MAME215RomsOnlyMerged/mpu4.zip", url);
+        var defaultRootUrl = MameRomDownloadService.DefaultDownloadRootUrl;
+        var expectedRootUrl = defaultRootUrl.EndsWith("/", StringComparison.Ordinal)
+            ? defaultRootUrl
+            : defaultRootUrl + "/";
+
+        Assert.Equal($"{expectedRootUrl}mpu4.zip", url);
     }
 
     [Fact]
