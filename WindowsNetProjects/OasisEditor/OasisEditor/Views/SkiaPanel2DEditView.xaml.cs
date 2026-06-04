@@ -315,6 +315,7 @@ public partial class SkiaPanel2DEditView : UserControl
             _dragSelectionCurrent = eventArgs.GetPosition(EditSkiaSurface);
             if (_isMovingSelection)
             {
+                UpdateMoveSelectionPreview(_dragSelectionCurrent);
                 return;
             }
 
@@ -581,8 +582,27 @@ public partial class SkiaPanel2DEditView : UserControl
             document,
             _moveSourceElement.ObjectId,
             updated,
+            _moveSourceElement,
             "Move element");
         document.CommandService.Execute(moveCommand);
+    }
+
+    private void UpdateMoveSelectionPreview(Point currentScreenPoint)
+    {
+        var document = Document;
+        if (document is null || _moveSourceElement is null || string.IsNullOrWhiteSpace(_moveSourceElement.ObjectId))
+        {
+            return;
+        }
+
+        var viewport = new PanelViewportTransform(document.PanelZoom, document.PanelPanX, document.PanelPanY);
+        var start = viewport.ScreenToDocument(_leftMouseDownStart);
+        var current = viewport.ScreenToDocument(currentScreenPoint);
+        var updated = Panel2DMoveComputationService.ComputeMovedElement(_moveSourceElement, start, current);
+        if (PanelElementPreviewMutationService.TryApplyPreview(document, _moveSourceElement.ObjectId, updated))
+        {
+            RequestRender();
+        }
     }
 
     private static bool TryGetSelectedElement(DocumentTabViewModel document, out PanelElementModel selectedElement)

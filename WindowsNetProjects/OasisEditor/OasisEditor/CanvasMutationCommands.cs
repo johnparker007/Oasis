@@ -118,6 +118,17 @@ internal static class CanvasMutationCommands
         return new UpdateElementMutationCommand(documentId, document, objectId, updatedElement, description);
     }
 
+    public static Commands.ICommand CreateUpdateElementCommand(
+        Guid documentId,
+        DocumentTabViewModel document,
+        string objectId,
+        PanelElementModel updatedElement,
+        PanelElementModel originalElement,
+        string description)
+    {
+        return new UpdateElementMutationCommand(documentId, document, objectId, updatedElement, description, originalElement);
+    }
+
     private sealed class AddPanelElementMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
     {
         private readonly Guid _documentId;
@@ -727,6 +738,7 @@ internal static class CanvasMutationCommands
         private readonly string _objectId;
         private readonly PanelElementModel _updatedElement;
         private readonly string _description;
+        private readonly PanelElementModel? _previewOriginalElement;
         private PanelElementModel? _previousElement;
 
         public UpdateElementMutationCommand(
@@ -734,12 +746,16 @@ internal static class CanvasMutationCommands
             DocumentTabViewModel document,
             string objectId,
             PanelElementModel updatedElement,
-            string description)
+            string description,
+            PanelElementModel? previewOriginalElement = null)
         {
             _documentId = documentId;
             _document = document;
             _objectId = objectId;
             _updatedElement = updatedElement;
+            _previewOriginalElement = previewOriginalElement is null
+                ? null
+                : PanelElementModelCloner.Clone(previewOriginalElement);
             _description = string.IsNullOrWhiteSpace(description)
                 ? "Update element"
                 : description;
@@ -769,9 +785,25 @@ internal static class CanvasMutationCommands
             var existing = elements[index];
             if (!string.Equals(_updatedElement.ObjectId, _objectId, StringComparison.Ordinal)
                 || _updatedElement.Kind != existing.Kind
-                || !PanelElementValidation.IsValidForInspectorUpdate(_updatedElement)
-                || PanelElementModelComparer.AreEquivalent(existing, _updatedElement))
+                || !PanelElementValidation.IsValidForInspectorUpdate(_updatedElement))
             {
+                return;
+            }
+
+            if (PanelElementModelComparer.AreEquivalent(existing, _updatedElement))
+            {
+                if (_previewOriginalElement is null
+                    || !string.Equals(_previewOriginalElement.ObjectId, _objectId, StringComparison.Ordinal)
+                    || _previewOriginalElement.Kind != existing.Kind
+                    || !PanelElementValidation.IsValidForInspectorUpdate(_previewOriginalElement)
+                    || PanelElementModelComparer.AreEquivalent(_previewOriginalElement, _updatedElement))
+                {
+                    return;
+                }
+
+                _previousElement = PanelElementModelCloner.Clone(_previewOriginalElement);
+                _document.MarkDirty();
+                WasExecuted = true;
                 return;
             }
 
