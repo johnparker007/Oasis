@@ -17,7 +17,7 @@ public sealed class LauncherWindowViewModel : INotifyPropertyChanged
     private readonly EditorPreferencesStore _preferencesStore;
     private readonly Window _launcherWindow;
     private string _projectName = string.Empty;
-    private string _projectLocation = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+    private string _projectLocation = GetDefaultProjectLocation();
     private string _projectFilePath = string.Empty;
     private string _statusMessage = "Create or open a project to continue.";
     private string? _selectedRecentProject;
@@ -50,6 +50,15 @@ public sealed class LauncherWindowViewModel : INotifyPropertyChanged
     public ICommand OpenRecentProjectCommand { get; }
     public ICommand ExitCommand { get; }
     public ObservableCollection<string> RecentProjects { get; }
+
+    public static string GetDefaultProjectLocation()
+    {
+        return Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+            "Oasis",
+            "Editor",
+            "Projects");
+    }
 
     public string ProjectName
     {
