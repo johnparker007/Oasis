@@ -57,19 +57,33 @@
                         </Style.Triggers>
                     </Style>
                 </Border.Style>
-                <StackPanel>
-                    <TextBlock FontSize="18"
-                               FontWeight="SemiBold"
-                               Foreground="{DynamicResource TextPrimaryBrush}"
-                               Text="Face Editor Placeholder" />
-                    <TextBlock Margin="0,8,0,0"
-                               Foreground="{DynamicResource TextSecondaryBrush}"
-                               TextWrapping="Wrap"
-                               Text="Face documents can be created, opened, and saved. Face Edit View, Face Play View, and 3D preview are intentionally not implemented in Phase 2." />
-                    <TextBlock Margin="0,12,0,0"
-                               TextWrapping="Wrap"
-                               Text="{Binding ContentSummary}" />
-                </StackPanel>
+                <Grid MinHeight="280"
+                      ClipToBounds="True"
+                      Background="{DynamicResource PanelBackgroundBrush}">
+                    <views:SkiaFaceEditView />
+
+                    <Border Margin="12"
+                            Padding="12"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Top"
+                            IsHitTestVisible="False"
+                            CornerRadius="4"
+                            Background="{DynamicResource ToolBarBackgroundBrush}"
+                            BorderBrush="{DynamicResource BorderSubtleBrush}"
+                            BorderThickness="1">
+                        <StackPanel>
+                            <TextBlock FontWeight="SemiBold"
+                                       Text="Face Edit View"
+                                       Foreground="{DynamicResource TextPrimaryBrush}" />
+                            <TextBlock Margin="0,6,0,0"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                       Text="Right-click to add a lamp window. Left-click to select." />
+                            <TextBlock Margin="0,4,0,0"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                       Text="Drag with middle mouse to pan. Use mouse wheel to zoom." />
+                        </StackPanel>
+                    </Border>
+                </Grid>
             </Border>
 
             <Border Padding="10"

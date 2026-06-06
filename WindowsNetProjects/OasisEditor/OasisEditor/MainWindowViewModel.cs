@@ -184,7 +184,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             ApplyInspectorSummary);
         _hierarchy = new HierarchyViewModel(
             () => SelectedDocument,
-            [new Panel2DHierarchyProvider()]);
+            [new Panel2DHierarchyProvider(), new FaceHierarchyProvider()]);
         _hierarchyPanelCommands = new HierarchyPanelCommandService(
             () => SelectedDocument,
             ExecuteDocumentCanvasCommand,
@@ -857,7 +857,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public void SelectHierarchyItem(HierarchyItemViewModel? hierarchyItem)
     {
-        if (SelectedDocument is null || SelectedDocument.Document.DocumentType != EditorDocumentType.Panel2D)
+        if (SelectedDocument is null || SelectedDocument.Document.DocumentType is not (EditorDocumentType.Panel2D or EditorDocumentType.Face))
         {
             return;
         }
@@ -873,7 +873,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public void SelectHierarchyItemForContextMenu(HierarchyItemViewModel? hierarchyItem)
     {
-        if (SelectedDocument is null || SelectedDocument.Document.DocumentType != EditorDocumentType.Panel2D)
+        if (SelectedDocument is null || SelectedDocument.Document.DocumentType is not (EditorDocumentType.Panel2D or EditorDocumentType.Face))
         {
             return;
         }
@@ -3241,6 +3241,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         if (e.PropertyName is nameof(DocumentTabViewModel.HierarchySelectedPanelSelection))
         {
+            if (SelectedDocument is not null)
+            {
+                _activeDocumentContext.SetPanelSelection(SelectedDocument.DocumentId, SelectedDocument.HierarchySelectedPanelSelection);
+            }
+
             _hierarchy.SyncSelection(SelectedDocument?.HierarchySelectedPanelSelection);
             OnPropertyChanged(nameof(HierarchyItems));
             NotifyInspectorChanged();
