@@ -23,6 +23,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
     private DateTime _suppressPropertyRowRefreshUntilUtc;
     private string? _lastInspectorSelectionObjectId;
     private PanelElementKind? _lastInspectorSelectionKind;
+    private string? _lastInspectorFaceSelectionKind;
     private bool _hadInspectorSelection;
 
     public InspectorViewModel(
@@ -54,10 +55,18 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         {
             var selectedDocument = _selectedDocumentAccessor();
             if (selectedDocument is not null
-                && _activeDocumentContext.ActivePanelSelection is PanelSelectionInfo panelSelection
-                && selectedDocument.TryGetPanelElement(panelSelection, out var selectedElement))
+                && _activeDocumentContext.ActivePanelSelection is PanelSelectionInfo panelSelection)
             {
-                return NicifyElementKind(selectedElement.Kind);
+                if (selectedDocument.Document.DocumentType == EditorDocumentType.Face
+                    && selectedDocument.TryGetFaceElement(panelSelection, out var selectedFaceElement))
+                {
+                    return NicifyFaceElementKind(selectedFaceElement);
+                }
+
+                if (selectedDocument.TryGetPanelElement(panelSelection, out var selectedElement))
+                {
+                    return NicifyElementKind(selectedElement.Kind);
+                }
             }
 
             var selectedAsset = _selectedAssetAccessor();
@@ -142,6 +151,12 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             {
                 if (_activeDocumentContext.ActivePanelSelection is PanelSelectionInfo panelSelection)
                 {
+                    if (selectedDocument.Document.DocumentType == EditorDocumentType.Face
+                        && selectedDocument.TryGetFaceElement(panelSelection, out var selectedFaceElement))
+                    {
+                        return BuildSelectedFaceElementSummary(selectedFaceElement);
+                    }
+
                     if (selectedDocument.TryGetPanelElement(panelSelection, out var selectedElement))
                     {
                         return BuildSelectedElementSummary(selectedElement);
@@ -197,6 +212,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         {
             var selectedDocument = _selectedDocumentAccessor();
             return selectedDocument is not null
+                && selectedDocument.Document.DocumentType == EditorDocumentType.Panel2D
                 && _activeDocumentContext.ActivePanelSelection is PanelSelectionInfo panelSelection
                 && selectedDocument.TryGetPanelElement(panelSelection, out var selectedElement)
                 && selectedElement.Kind == PanelElementKind.Lamp;
@@ -250,6 +266,19 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             return;
         }
 
+        if (selectedDocument.Document.DocumentType == EditorDocumentType.Face)
+        {
+            if (!selectedDocument.TryGetFaceElement(panelSelection, out var selectedFaceElement))
+            {
+                RebuildPropertyRows();
+                return;
+            }
+
+            RefreshFacePropertyRowValues(selectedFaceElement);
+            OnPropertyChanged(nameof(InspectorSummary));
+            return;
+        }
+
         if (!selectedDocument.TryGetPanelElement(panelSelection, out var selectedElement))
         {
             RebuildPropertyRows();
@@ -266,15 +295,26 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
         var selectedDocument = _selectedDocumentAccessor();
         var selection = _activeDocumentContext.ActivePanelSelection;
+        if (selectedDocument is not null
+            && selectedDocument.Document.DocumentType == EditorDocumentType.Face
+            && selection is PanelSelectionInfo faceSelection
+            && selectedDocument.TryGetFaceElement(faceSelection, out var selectedFaceElement))
+        {
+            RebuildFacePropertyRows(selectedDocument, selectedFaceElement);
+            return;
+        }
+
         if (selectedDocument is null || selection is not PanelSelectionInfo selectedSelection || !selectedDocument.TryGetPanelElement(selectedSelection, out var selectedElement))
         {
             _hadInspectorSelection = false;
             _lastInspectorSelectionObjectId = null;
             _lastInspectorSelectionKind = null;
+            _lastInspectorFaceSelectionKind = null;
             OnPropertyChanged(nameof(InspectorPropertyRows));
             return;
         }
 
+        _lastInspectorFaceSelectionKind = null;
         _propertyRows.Add(new InspectorTextPropertyViewModel(
             "Name",
             "Common",
@@ -327,6 +367,20 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
     {
         var selectedDocument = _selectedDocumentAccessor();
         var selection = _activeDocumentContext.ActivePanelSelection;
+        if (selectedDocument is not null
+            && selectedDocument.Document.DocumentType == EditorDocumentType.Face
+            && selection is PanelSelectionInfo faceSelection
+            && selectedDocument.TryGetFaceElement(faceSelection, out var selectedFaceElement))
+        {
+            if (!_hadInspectorSelection)
+            {
+                return true;
+            }
+
+            return !string.Equals(_lastInspectorSelectionObjectId, selectedFaceElement.ObjectId, StringComparison.Ordinal)
+                || !string.Equals(_lastInspectorFaceSelectionKind, FaceSelectionService.GetKindToken(selectedFaceElement), StringComparison.Ordinal);
+        }
+
         if (selectedDocument is null || selection is not PanelSelectionInfo selectedSelection || !selectedDocument.TryGetPanelElement(selectedSelection, out var selectedElement))
         {
             return _hadInspectorSelection || _propertyRows.Count > 0;
@@ -490,6 +544,65 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         }
     }
 
+    private void RebuildFacePropertyRows(DocumentTabViewModel selectedDocument, FaceElementModel selectedElement)
+    {
+        _propertyRows.Add(new InspectorTextPropertyViewModel(
+            "Name",
+            "Common",
+            selectedElement.Name,
+            commit: value => TryApplyFaceUpdate(selectedElement.ObjectId, "Update name", new FaceElementModelUpdate { Name = value })));
+        _propertyRows.Add(new InspectorDoublePropertyViewModel(
+            "X",
+            "Transform",
+            selectedElement.X,
+            commit: value => TryApplyFaceUpdate(selectedElement.ObjectId, "Update X", new FaceElementModelUpdate { X = value })));
+        _propertyRows.Add(new InspectorDoublePropertyViewModel(
+            "Y",
+            "Transform",
+            selectedElement.Y,
+            commit: value => TryApplyFaceUpdate(selectedElement.ObjectId, "Update Y", new FaceElementModelUpdate { Y = value })));
+        _propertyRows.Add(new InspectorDoublePropertyViewModel(
+            "Width",
+            "Transform",
+            selectedElement.Width,
+            commit: value => value > 0
+                ? TryApplyFaceUpdate(selectedElement.ObjectId, "Update width", new FaceElementModelUpdate { Width = value })
+                : "Width must be greater than zero."));
+        _propertyRows.Add(new InspectorDoublePropertyViewModel(
+            "Height",
+            "Transform",
+            selectedElement.Height,
+            commit: value => value > 0
+                ? TryApplyFaceUpdate(selectedElement.ObjectId, "Update height", new FaceElementModelUpdate { Height = value })
+                : "Height must be greater than zero."));
+        _propertyRows.Add(new InspectorBoolPropertyViewModel(
+            "Locked",
+            "Common",
+            selectedElement.IsLocked,
+            commit: value => TryApplyFaceUpdate(selectedElement.ObjectId, "Update lock state", new FaceElementModelUpdate { IsLocked = value })));
+        _propertyRows.Add(new InspectorBoolPropertyViewModel(
+            "Visible",
+            "Common",
+            selectedElement.IsVisible,
+            commit: value => TryApplyFaceUpdate(selectedElement.ObjectId, "Update visibility", new FaceElementModelUpdate { IsVisible = value })));
+        _propertyRows.Add(new InspectorTextPropertyViewModel(
+            "Machine Reference",
+            "References",
+            selectedElement.LinkedMachineObjectReference?.ToString() ?? string.Empty,
+            commit: value => TryApplyFaceMachineReferenceUpdate(selectedElement.ObjectId, value)));
+        _propertyRows.Add(new InspectorTextPropertyViewModel(
+            "Linked Panel2D Element",
+            "References",
+            selectedElement.LinkedPanel2DElementId ?? string.Empty,
+            commit: value => TryApplyFaceUpdate(selectedElement.ObjectId, "Update linked Panel2D element", new FaceElementModelUpdate { HasLinkedPanel2DElementId = true, LinkedPanel2DElementId = NormalizeOptionalText(value) })));
+
+        _hadInspectorSelection = true;
+        _lastInspectorSelectionObjectId = selectedElement.ObjectId;
+        _lastInspectorSelectionKind = null;
+        _lastInspectorFaceSelectionKind = FaceSelectionService.GetKindToken(selectedElement);
+        OnPropertyChanged(nameof(InspectorPropertyRows));
+    }
+
     private void RefreshPropertyRowValues(PanelElementModel selectedElement)
     {
         foreach (var row in _propertyRows)
@@ -581,6 +694,43 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         }
     }
 
+    private void RefreshFacePropertyRowValues(FaceElementModel selectedElement)
+    {
+        foreach (var row in _propertyRows)
+        {
+            switch (row.DisplayName)
+            {
+                case "Name" when row is InspectorTextPropertyViewModel textRow:
+                    textRow.SetCommittedValue(selectedElement.Name);
+                    break;
+                case "X" when row is InspectorDoublePropertyViewModel doubleRow:
+                    doubleRow.SetCommittedValue(selectedElement.X);
+                    break;
+                case "Y" when row is InspectorDoublePropertyViewModel yRow:
+                    yRow.SetCommittedValue(selectedElement.Y);
+                    break;
+                case "Width" when row is InspectorDoublePropertyViewModel widthRow:
+                    widthRow.SetCommittedValue(selectedElement.Width);
+                    break;
+                case "Height" when row is InspectorDoublePropertyViewModel heightRow:
+                    heightRow.SetCommittedValue(selectedElement.Height);
+                    break;
+                case "Locked" when row is InspectorBoolPropertyViewModel lockedRow:
+                    lockedRow.SetCommittedValue(selectedElement.IsLocked);
+                    break;
+                case "Visible" when row is InspectorBoolPropertyViewModel visibleRow:
+                    visibleRow.SetCommittedValue(selectedElement.IsVisible);
+                    break;
+                case "Machine Reference" when row is InspectorTextPropertyViewModel referenceRow:
+                    referenceRow.SetCommittedValue(selectedElement.LinkedMachineObjectReference?.ToString() ?? string.Empty);
+                    break;
+                case "Linked Panel2D Element" when row is InspectorTextPropertyViewModel panelRow:
+                    panelRow.SetCommittedValue(selectedElement.LinkedPanel2DElementId ?? string.Empty);
+                    break;
+            }
+        }
+    }
+
     private string? TryApplyColorUpdate(string objectId, string description, PanelElementModelUpdate update)
     {
         return TryApplyUpdate(objectId, description, update, suppressInspectorRefresh: true);
@@ -639,6 +789,66 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
     }
 
 
+    private string? TryApplyFaceMachineReferenceUpdate(string objectId, string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return TryApplyFaceUpdate(objectId, "Update machine reference", new FaceElementModelUpdate
+            {
+                HasLinkedMachineObjectReference = true,
+                LinkedMachineObjectReference = null
+            });
+        }
+
+        if (!MachineObjectReference.TryParse(value, out var reference))
+        {
+            return "Use a machine reference such as lamp:17, reel:2, alpha:0, sevenSegment:12, or input:start.";
+        }
+
+        return TryApplyFaceUpdate(objectId, "Update machine reference", new FaceElementModelUpdate
+        {
+            HasLinkedMachineObjectReference = true,
+            LinkedMachineObjectReference = reference
+        });
+    }
+
+    private string? TryApplyFaceUpdate(string objectId, string description, FaceElementModelUpdate update)
+    {
+        var selectedDocument = _selectedDocumentAccessor();
+        if (selectedDocument is null || selectedDocument.Document.DocumentType != EditorDocumentType.Face)
+        {
+            return "No active face document.";
+        }
+
+        var existing = selectedDocument.GetFaceElements()
+            .FirstOrDefault(element => string.Equals(element.ObjectId, objectId, StringComparison.Ordinal));
+        if (existing is null)
+        {
+            return "Selected face element no longer exists.";
+        }
+
+        var updated = FaceElementModelUpdater.Apply(existing, update);
+        if (!FaceElementValidation.IsValidForInspectorUpdate(updated))
+        {
+            return "Invalid face element dimensions.";
+        }
+
+        var command = FaceMutationCommands.CreateUpdateElementCommand(
+            selectedDocument.DocumentId,
+            selectedDocument,
+            objectId,
+            updated,
+            description);
+
+        var executed = _executeCanvasCommand(selectedDocument.DocumentId, command);
+        if (!executed)
+        {
+            return "Unable to apply update.";
+        }
+
+        return null;
+    }
+
     private bool ShouldSuppressPropertyRowRefresh()
     {
         return DateTime.UtcNow < _suppressPropertyRowRefreshUntilUtc;
@@ -664,6 +874,11 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
         var titleCased = char.ToUpperInvariant(serializedKind[0]) + serializedKind[1..];
         return Regex.Replace(titleCased, "([a-z0-9])([A-Z])", "$1 $2");
+    }
+
+    private static string NicifyFaceElementKind(FaceElementModel element)
+    {
+        return element is FaceLampWindowElement ? "Face Lamp Window" : "Face Element";
     }
 
     private bool CanApplyInspectorSummary()
@@ -723,6 +938,17 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         selectedDocument.RuntimeState.LampTestObjectId = targetObjectId;
         Debug.WriteLine($"[LampTest] SetLampTestActive={isActive} document={selectedDocument.DocumentId}");
         selectedDocument.NotifyPanelVisualPreviewChanged();
+    }
+
+    private static string BuildSelectedFaceElementSummary(FaceElementModel selectedElement)
+    {
+        var displayName = string.IsNullOrWhiteSpace(selectedElement.Name)
+            ? "Lamp Window"
+            : selectedElement.Name.Trim();
+        var reference = selectedElement.LinkedMachineObjectReference is MachineObjectReference machineReference && !machineReference.IsEmpty
+            ? $" Machine reference: {machineReference}."
+            : string.Empty;
+        return $"Selected face lamp window '{displayName}' at ({selectedElement.X:0.##}, {selectedElement.Y:0.##}) sized {selectedElement.Width:0.##} x {selectedElement.Height:0.##}.{reference}";
     }
 
     private static string BuildSelectedElementSummary(PanelElementModel selectedElement)

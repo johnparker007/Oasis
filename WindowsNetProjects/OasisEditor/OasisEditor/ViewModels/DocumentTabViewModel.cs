@@ -20,6 +20,9 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     private HashSet<string> _visualStateObjectIds = new(StringComparer.Ordinal);
     private PanelSelectionInfo? _hierarchySelectedPanelSelection;
     private double _panelZoom = 1.0;
+    private double _faceZoom = 1.0;
+    private double _facePanX;
+    private double _facePanY;
     private double _panelPanX;
     private double _panelPanY;
     private Dictionary<string, object>? _lastVisualStateByObjectId;
@@ -134,6 +137,45 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     public string GetFaceDocumentJson()
     {
         return FaceDocumentStorage.Serialize(_faceDocumentModel);
+    }
+
+    internal IReadOnlyList<FaceElementModel> GetFaceElements()
+    {
+        return _faceDocumentModel.Elements;
+    }
+
+    internal bool TryGetFaceElement(PanelSelectionInfo selection, out FaceElementModel element)
+    {
+        var match = _faceDocumentModel.Elements.FirstOrDefault(candidate =>
+            !string.IsNullOrWhiteSpace(selection.ObjectId)
+            && string.Equals(candidate.ObjectId, selection.ObjectId, StringComparison.Ordinal));
+        if (match is null)
+        {
+            element = new FaceLampWindowElement();
+            return false;
+        }
+
+        element = match;
+        return true;
+    }
+
+    internal void SetFaceElements(IReadOnlyList<FaceElementModel> elements, PanelChangeEvent? faceChange = null)
+    {
+        _faceDocumentModel = new FaceDocumentModel
+        {
+            Id = _faceDocumentModel.Id,
+            Title = _faceDocumentModel.Title,
+            Summary = _faceDocumentModel.Summary,
+            Layers = _faceDocumentModel.Layers,
+            Elements = elements.ToArray()
+        };
+        _faceDocumentJson = GetFaceDocumentJson();
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FaceDocumentJson)));
+
+        if (faceChange is PanelChangeEvent change)
+        {
+            PanelChanged?.Invoke(change);
+        }
     }
 
     internal IReadOnlyList<PanelElementModel> GetPanelElements()
@@ -343,6 +385,51 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
 
             _panelPanY = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PanelPanY)));
+        }
+    }
+
+    public double FaceZoom
+    {
+        get => _faceZoom;
+        set
+        {
+            if (Math.Abs(_faceZoom - value) < 0.0001)
+            {
+                return;
+            }
+
+            _faceZoom = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FaceZoom)));
+        }
+    }
+
+    public double FacePanX
+    {
+        get => _facePanX;
+        set
+        {
+            if (Math.Abs(_facePanX - value) < 0.0001)
+            {
+                return;
+            }
+
+            _facePanX = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FacePanX)));
+        }
+    }
+
+    public double FacePanY
+    {
+        get => _facePanY;
+        set
+        {
+            if (Math.Abs(_facePanY - value) < 0.0001)
+            {
+                return;
+            }
+
+            _facePanY = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FacePanY)));
         }
     }
 
