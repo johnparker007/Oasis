@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.IO;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -121,6 +122,11 @@ internal static class MfmeBackgroundOverlayPostProcessor
 
     private static PixelBuffer LoadBgra32(string path)
     {
+        if (TryLoadUncompressedBgra32Bmp(path, out var bmp))
+        {
+            return bmp;
+        }
+
         using var stream = File.OpenRead(path);
         var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
         var frame = decoder.Frames[0];
@@ -135,6 +141,69 @@ internal static class MfmeBackgroundOverlayPostProcessor
         }
 
         return new PixelBuffer(converted.PixelWidth, converted.PixelHeight, stride, pixels);
+    }
+
+    private static bool TryLoadUncompressedBgra32Bmp(string path, out PixelBuffer image)
+    {
+        image = default!;
+
+        if (!string.Equals(Path.GetExtension(path), ".bmp", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var bytes = File.ReadAllBytes(path);
+        if (bytes.Length < 54 || bytes[0] != (byte)'B' || bytes[1] != (byte)'M')
+        {
+            return false;
+        }
+
+        var pixelDataOffset = ReadInt32LittleEndian(bytes, 10);
+        var dibHeaderSize = ReadInt32LittleEndian(bytes, 14);
+        if (dibHeaderSize < 40 || bytes.Length < 14 + dibHeaderSize)
+        {
+            return false;
+        }
+
+        var width = ReadInt32LittleEndian(bytes, 18);
+        var signedHeight = ReadInt32LittleEndian(bytes, 22);
+        var planes = ReadUInt16LittleEndian(bytes, 26);
+        var bitsPerPixel = ReadUInt16LittleEndian(bytes, 28);
+        var compression = ReadInt32LittleEndian(bytes, 30);
+        if (width <= 0 || signedHeight == 0 || signedHeight == int.MinValue || planes != 1 || bitsPerPixel != 32 || compression != 0 || pixelDataOffset < 0)
+        {
+            return false;
+        }
+
+        var height = Math.Abs(signedHeight);
+        var stride = checked(width * 4);
+        var pixelByteCount = (long)stride * height;
+        var requiredLength = pixelDataOffset + pixelByteCount;
+        if (pixelByteCount > int.MaxValue || requiredLength > bytes.Length)
+        {
+            return false;
+        }
+
+        var pixels = new byte[stride * height];
+        var sourceTopDown = signedHeight < 0;
+        for (var y = 0; y < height; y++)
+        {
+            var sourceY = sourceTopDown ? y : height - 1 - y;
+            Buffer.BlockCopy(bytes, pixelDataOffset + (sourceY * stride), pixels, y * stride, stride);
+        }
+
+        image = new PixelBuffer(width, height, stride, pixels);
+        return true;
+    }
+
+    private static int ReadInt32LittleEndian(byte[] bytes, int offset)
+    {
+        return BinaryPrimitives.ReadInt32LittleEndian(bytes.AsSpan(offset, sizeof(int)));
+    }
+
+    private static ushort ReadUInt16LittleEndian(byte[] bytes, int offset)
+    {
+        return BinaryPrimitives.ReadUInt16LittleEndian(bytes.AsSpan(offset, sizeof(ushort)));
     }
 
     private static bool IsPalettized(PixelFormat format)

@@ -251,7 +251,7 @@ public sealed class MfmeImportAssetCopierTests
 
 
     [Fact]
-    public void CopyAssets_WithReelOverlay_BakesOverlayPixelsAndAlphaIntoBackground()
+    public void CopyAssets_WithReelBmpOverlay_BakesOverlayPixelsAndAlphaIntoBackground()
     {
         var extractRoot = CreateTempDirectory();
         var projectRoot = CreateTempDirectory();
@@ -262,7 +262,7 @@ public sealed class MfmeImportAssetCopierTests
             Directory.CreateDirectory(Path.Combine(extractRoot, "reels"));
             CreatePng(Path.Combine(extractRoot, "background", "bg.png"), 4, 4, _ => Color.FromArgb(255, 10, 20, 30));
             CreatePng(Path.Combine(extractRoot, "reels", "band.png"), 1, 1, _ => Color.FromArgb(255, 1, 2, 3));
-            CreatePng(Path.Combine(extractRoot, "reels", "overlay.png"), 2, 2, index => index switch
+            CreateTopDownBgra32Bmp(Path.Combine(extractRoot, "reels", "overlay.bmp"), 2, 2, index => index switch
             {
                 0 => Color.FromArgb(128, 200, 0, 0),
                 1 => Color.FromArgb(0, 0, 200, 0),
@@ -307,7 +307,7 @@ public sealed class MfmeImportAssetCopierTests
                     Width = 2,
                     Height = 2,
                     AssetPath = "reels/band.png",
-                    SecondaryAssetPath = "reels/overlay.png"
+                    SecondaryAssetPath = "reels/overlay.bmp"
                 }
             };
 
@@ -374,6 +374,41 @@ public sealed class MfmeImportAssetCopierTests
         encoder.Frames.Add(BitmapFrame.Create(bitmap));
         using var stream = File.Create(path);
         encoder.Save(stream);
+    }
+
+    private static void CreateTopDownBgra32Bmp(string path, int width, int height, Func<int, Color> colorFactory)
+    {
+        var pixelDataOffset = 14 + 40;
+        var stride = width * 4;
+        var fileSize = pixelDataOffset + (stride * height);
+
+        using var stream = File.Create(path);
+        using var writer = new BinaryWriter(stream);
+        writer.Write((byte)'B');
+        writer.Write((byte)'M');
+        writer.Write(fileSize);
+        writer.Write(0);
+        writer.Write(pixelDataOffset);
+        writer.Write(40);
+        writer.Write(width);
+        writer.Write(-height);
+        writer.Write((ushort)1);
+        writer.Write((ushort)32);
+        writer.Write(0);
+        writer.Write(stride * height);
+        writer.Write(0);
+        writer.Write(0);
+        writer.Write(0);
+        writer.Write(0);
+
+        for (var index = 0; index < width * height; index++)
+        {
+            var color = colorFactory(index);
+            writer.Write(color.B);
+            writer.Write(color.G);
+            writer.Write(color.R);
+            writer.Write(color.A);
+        }
     }
 
     private static byte[] ReadBgra32(string path, out int stride)
