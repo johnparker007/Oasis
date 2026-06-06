@@ -42,10 +42,50 @@ The primary readiness gaps are naming and ownership seams:
 Recommended readiness path:
 
 1. introduce a lightweight project-level machine object/reference vocabulary before Face elements are persisted;
-2. rename or wrap `PanelRuntimeState` behind a renderer-neutral interface such as `IMachineRuntimeState` / `MachineRuntimeState` without changing behavior;
+2. rename/refactor `PanelRuntimeState` toward `MachineRuntimeState` without changing behavior, and introduce `IMachineRuntimeState` only if a concrete boundary needs it;
 3. split `DocumentTabViewModel` content into per-document content models or adapters instead of adding Face fields directly to it;
 4. reuse Panel2D viewport math and command patterns, but extract the WPF-specific pieces before sharing them with Face;
 5. add Face to document type/open/save only in Phase 2 after those seams exist.
+
+## Machine objects vs visual elements
+
+The long-term architecture should explicitly distinguish logical **Machine Objects** from document-specific **Visual Elements**.
+
+Machine Objects are the logical/runtime things that exist once for the machine:
+
+- `MachineLamp`;
+- `MachineReel`;
+- `MachineAlphaDisplay`;
+- `MachineSevenSegmentDisplay`;
+- `MachineInput`.
+
+Visual Elements are authoring or rendering representations of those machine objects:
+
+- Panel2D lamp elements;
+- Panel2D reel elements;
+- Panel2D display elements;
+- Face lamp windows;
+- Face display windows;
+- Face button elements;
+- future Unity-rendered representations.
+
+The intended relationship is:
+
+```text
+Machine Object
+    <- referenced by Panel2D
+    <- referenced by Face
+    <- referenced by future Unity renderer
+```
+
+The intended relationship is not:
+
+```text
+Face
+    -> permanently references Panel2D elements as its primary runtime identity system
+```
+
+Panel2D element references are still useful as a migration/import path and as optional provenance links, especially for Face-generation workflows. They should not become the permanent primary runtime identity system for Face. Face should eventually reference machine objects directly, with `LinkedPanel2DElementId` remaining optional source/authoring context.
 
 ## Current document architecture
 
@@ -124,9 +164,16 @@ This means a future Face view could observe the same values only if Face element
 
 ### Minimal refactors recommended before Face implementation
 
-- Introduce a renderer-neutral runtime-state interface and/or alias before adding Face views. The smallest safe step is to wrap current `PanelRuntimeState` behind `IMachineRuntimeState` while preserving the current class internally.
+- Prefer a simple rename/refactor path toward `MachineRuntimeState` before introducing a new interface. The current state container is concrete, in-memory, and already renderer-neutral in value types; the main problem is ownership/keying/naming, not multiple runtime-state implementations.
+- Add an interface such as `IMachineRuntimeState` only when there is a concrete consumer-driven need, such as testing code that must fake state, supporting multiple state backends, or deliberately hiding mutation APIs from read-only renderers. Today an interface would mostly add ceremony without fixing the identity problem.
 - Introduce a machine-object mapping layer from runtime source IDs to stable machine references, then map Panel2D elements and future Face elements to those references. Example references: `lamp:17`, `reel:2`, `display:alpha:0`, `display:sevenSegment:12`, `input:<id>`.
 - Keep the current per-document state behavior until a project-level machine runtime store is available, but avoid baking it into Face. Face should consume state through a resolver/service, not directly through `DocumentTabViewModel.RuntimeState`.
+
+### `IMachineRuntimeState` reassessment
+
+An interface is not required as the first Phase 1 cleanup unless Phase 1 introduces a specific boundary that needs it. The immediate problem is that runtime values are named and keyed through Panel2D concepts and are stored per open document. Renaming/refactoring the concrete type toward `MachineRuntimeState`, while preserving behavior, would address the current terminology leak more directly than adding an interface.
+
+A future interface would solve a different problem: separating read-only renderer consumption from mutation-capable runtime adapters, substituting fake runtime state in tests, or allowing a non-MAME backend. Those are valid future needs, but they do not by themselves establish stable machine-object identity. Phase 1 should therefore prioritize reference/key cleanup and a concrete `MachineRuntimeState` direction; add `IMachineRuntimeState` only if a clear call site needs abstraction during that work.
 
 ## Machine object IDs / references inventory
 
@@ -144,6 +191,18 @@ This means a future Face view could observe the same values only if Face element
 - Segment displays use `DisplayNumber` as a base cell/display number and derive cell masks/brightness into Panel2D object IDs.
 - Inputs use persisted input IDs plus MAME tag/mask data; pointer routing currently links an input to a Panel2D visual `Guid`.
 
+### Runtime identity/reference table
+
+| Runtime object type | Runtime source identifier | Current storage identifier | Current mapping path | Recommended future machine reference |
+| --- | --- | --- | --- | --- |
+| Lamps | MAME/MFME lamp number, currently represented on Panel2D elements as `DisplayNumber` | Panel2D element `ObjectId` for runtime-state dictionaries; Panel2D `DisplayNumber` persists the source number | MAME lamp update -> adapter groups Panel2D lamp elements by `DisplayNumber` -> writes intensity by Panel2D `ObjectId` -> notifies Panel2D visual IDs | `MachineLamp` reference, e.g. `lamp:17`, with Panel2D lamp elements and Face lamp windows both pointing to it |
+| Reels | MAME/MFME reel number, currently represented on Panel2D reel elements as `DisplayNumber` | Panel2D element `ObjectId` for runtime-state dictionaries; Panel2D `DisplayNumber` persists the source number | MAME reel update -> adapter groups Panel2D reel elements by `DisplayNumber` -> resolves effective reel position using Panel2D reel settings -> writes position by Panel2D `ObjectId` | `MachineReel` reference, e.g. `reel:2`, with visual-specific reel geometry/settings kept on visual elements where appropriate |
+| Alpha displays | MAME display/cell base identifier, currently represented on Panel2D alpha elements as `DisplayNumber` | Panel2D alpha element `ObjectId` for masks/brightness arrays; `DisplayNumber` persists the base cell/source index | MAME segment/VFD updates -> segment adapter walks Panel2D alpha elements -> derives cell masks/brightness from `DisplayNumber` and display type -> writes arrays by Panel2D `ObjectId` | `MachineAlphaDisplay` reference, e.g. `display:alpha:0`, with display cell layout/render geometry owned by each visual representation |
+| Seven-segment displays | MAME digit/cell identifier, currently represented on Panel2D seven-segment elements as `DisplayNumber` | Panel2D seven-segment element `ObjectId` for segment masks/brightness; `DisplayNumber` persists the source digit/cell | MAME segment updates -> segment adapter walks Panel2D seven-segment elements -> maps source digit/cell masks from `DisplayNumber` -> writes masks by Panel2D `ObjectId` | `MachineSevenSegmentDisplay` reference, e.g. `display:sevenSegment:12`, with renderer-specific geometry separate from identity |
+| Inputs | Project input definition `Id`, plus MAME `MamePortTag`/`MameMask`; imported button number/shortcut metadata where available | `InputDefinitionModel.Id` in project `input_definitions`; optional `LinkedVisualElementId` GUID points at one Panel2D visual | Keyboard path: shortcut -> input ID -> MAME command. Pointer path: Panel2D visual GUID -> input definition -> MAME command | `MachineInput` reference, preferably the existing input ID or `input:<id>`, with visual hit areas in Panel2D/Face linking by input ID or document+element reference |
+
+This table is the key Phase 1 safety check: runtime source identifiers already exist, but most visual state is currently keyed by Panel2D element IDs. The future reference layer should preserve current imported/source identifiers while moving runtime identity above any one visual document.
+
 ### Are machine object IDs stable enough?
 
 Panel2D object IDs are stable enough for linking back to a specific Panel2D element. They are not sufficient as the primary machine object reference system for Face.
@@ -156,6 +215,28 @@ Reason: the same logical runtime object may appear in both Panel2D and Face. If 
 - Use existing imported runtime numbers as default reference sources where available.
 - Keep Panel2D `ObjectId` as `LinkedPanel2DElementId` only, not as the universal machine runtime object ID.
 - Consider migrating `InputDefinitionModel.LinkedVisualElementId` from `Guid?` to a string-backed visual reference or adding a parallel string field. Panel2D `ObjectId` is a string, and Face element IDs are likely to be strings too; requiring `Guid` will unnecessarily constrain generated/imported IDs.
+
+## Future ownership note: Machine Definition
+
+A likely long-term project structure is:
+
+```text
+Project
+    Machine Definition
+    Panel2D Documents
+    Face Documents
+```
+
+In that future architecture, **Machine Definition** becomes the owner of logical machine/runtime objects:
+
+- lamps;
+- reels;
+- alpha and seven-segment displays;
+- inputs.
+
+Panel2D and Face documents then become visual/document representations that reference those owned machine objects. The future Unity renderer should consume the same machine-object identities through Face/export data rather than treating Panel2D as the permanent source of truth.
+
+Do not implement this ownership change now. This is only a direction marker so Phase 1 reference cleanup does not accidentally cement Panel2D documents as the permanent owner of machine identity.
 
 ## Play View architecture inventory
 
@@ -198,6 +279,17 @@ Keyboard routing is input-ID based after shortcut normalization. Pointer routing
 - Add a Face-friendly input target resolver: Face button hit -> Face element -> input ID/reference -> `InputDefinitionModel` -> MAME command.
 - Do not reuse `LinkedVisualElementId` as the only Face linkage. It is `Guid?`, Panel2D-import-shaped, and only supports one visual link per input.
 - Consider adding a small many-to-one link model (`InputId`, `DocumentId`, `ElementId`) or let Face button elements carry `LinkedInputId`.
+
+### `LinkedVisualElementId` reassessment
+
+`InputDefinitionModel.LinkedVisualElementId` is likely to become a Face constraint if it remains the only visual-link mechanism. It assumes a single GUID visual link from an input definition to a visual element, while Face needs at least one additional visual representation and future Unity may need another. It also assumes the visual identifier can be represented as a `Guid`, even though Panel2D `ObjectId` is stored as a string and Face element IDs are expected to be string-backed.
+
+A cleaner future model would avoid making input definitions own a single visual GUID. Better options are:
+
+- let visual elements carry `LinkedInputId`/`MachineInput` references, so many Panel2D/Face/Unity visuals can target the same input; or
+- introduce explicit visual references with `DocumentId + ElementId` when the project needs cross-document links.
+
+For Phase 1, document-only guidance is enough: do not extend the GUID-only assumption into Face. If input-link cleanup is included later, prefer string element IDs or document-scoped visual references over continuing to add more meaning to `LinkedVisualElementId`.
 
 ## Skia rendering architecture inventory
 
@@ -313,7 +405,7 @@ Face can reuse viewport math and high-level Skia interaction patterns. It should
 Minimum recommended pre-implementation refactors:
 
 1. add a string-backed machine object reference model/resolver;
-2. wrap or rename runtime state behind a machine-level interface;
+2. rename/refactor runtime state toward a concrete `MachineRuntimeState` first; add an interface only if a concrete boundary needs it;
 3. introduce document type/open/save metadata helpers;
 4. separate document tab content from Panel2D-only state;
 5. add a non-Panel selection abstraction for future Face hierarchy/inspector integration.
