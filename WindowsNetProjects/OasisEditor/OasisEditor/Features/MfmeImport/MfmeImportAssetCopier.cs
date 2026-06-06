@@ -50,6 +50,11 @@ internal sealed class MfmeImportAssetCopier
             .Select(element => MapElementAssets(element, extract.ExtractRootPath, destinationRoot, projectAssetsRoot, pathMap, copied, warnings, errors))
             .ToArray();
 
+        if (errors.Count == 0)
+        {
+            mappedElements = BakeOverlayImagesIntoBackgrounds(mappedElements, projectAssetsRoot, copied, errors);
+        }
+
         if (errors.Count > 0)
         {
             return CreateError(elements, warnings, errors);
@@ -138,6 +143,88 @@ internal sealed class MfmeImportAssetCopier
             VisibleScale = element.VisibleScale,
             ImportSource = element.ImportSource
         };
+    }
+
+    private static PanelElementModel[] BakeOverlayImagesIntoBackgrounds(
+        PanelElementModel[] elements,
+        string projectAssetsRoot,
+        ICollection<string> copied,
+        ICollection<string> errors)
+    {
+        if (!elements.Any(element => element.Kind == PanelElementKind.Reel && !string.IsNullOrWhiteSpace(element.SecondaryAssetPath)))
+        {
+            return elements;
+        }
+
+        var updatedElements = elements;
+        for (var index = 0; index < updatedElements.Length; index++)
+        {
+            var background = updatedElements[index];
+            if (background.Kind != PanelElementKind.Background || string.IsNullOrWhiteSpace(background.AssetPath))
+            {
+                continue;
+            }
+
+            var backgroundPath = TryResolveProjectAssetPath(background.AssetPath, projectAssetsRoot);
+            if (backgroundPath is null || !File.Exists(backgroundPath))
+            {
+                continue;
+            }
+
+            if (!MfmeBackgroundOverlayPostProcessor.TryBakeReelOverlays(backgroundPath, background, updatedElements, projectAssetsRoot, copied, out var updatedBackgroundPath, out var processingError))
+            {
+                errors.Add($"Failed to bake MFME overlay images into background asset '{background.AssetPath}': {processingError}");
+                continue;
+            }
+
+            if (!string.IsNullOrWhiteSpace(updatedBackgroundPath))
+            {
+                updatedElements = (PanelElementModel[])updatedElements.Clone();
+                updatedElements[index] = CloneWithAssetPath(background, updatedBackgroundPath);
+            }
+        }
+
+        return updatedElements;
+    }
+
+    private static PanelElementModel CloneWithAssetPath(PanelElementModel element, string? assetPath)
+    {
+        return new PanelElementModel
+        {
+            ObjectId = element.ObjectId,
+            Name = element.Name,
+            Kind = element.Kind,
+            X = element.X,
+            Y = element.Y,
+            Width = element.Width,
+            Height = element.Height,
+            AssetPath = assetPath,
+            SecondaryAssetPath = element.SecondaryAssetPath,
+            DisplayNumber = element.DisplayNumber,
+            OnColorHex = element.OnColorHex,
+            OffColorHex = element.OffColorHex,
+            TextColorHex = element.TextColorHex,
+            DisplayText = element.DisplayText,
+            TextBoxFontName = element.TextBoxFontName,
+            TextBoxFontStyle = element.TextBoxFontStyle,
+            TextBoxFontSize = element.TextBoxFontSize,
+            IsReversed = element.IsReversed,
+            Stops = element.Stops,
+            VisibleScale = element.VisibleScale,
+            ImportSource = element.ImportSource
+        };
+    }
+
+    private static string? TryResolveProjectAssetPath(string? projectRelativePath, string projectAssetsRoot)
+    {
+        if (string.IsNullOrWhiteSpace(projectRelativePath) || !projectRelativePath.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        var relativePath = projectRelativePath["Assets/".Length..].Replace('/', Path.DirectorySeparatorChar);
+        var fullPath = Path.GetFullPath(Path.Combine(projectAssetsRoot, relativePath));
+        return IsPathUnderRoot(fullPath, projectAssetsRoot) ? fullPath : null;
     }
 
     private static string? CopyOneAsset(
