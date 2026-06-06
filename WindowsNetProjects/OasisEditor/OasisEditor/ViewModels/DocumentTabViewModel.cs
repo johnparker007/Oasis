@@ -9,7 +9,9 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     private readonly CommandService _commandService;
     private EditorDocument _document;
     private string? _panelLayoutJson;
+    private string? _faceDocumentJson;
     private Panel2DDocumentModel _panelDocumentModel;
+    private FaceDocumentModel _faceDocumentModel;
     private Dictionary<string, PanelElementModel> _lampElementsByObjectId = new(StringComparer.Ordinal);
     private Dictionary<string, PanelElementModel> _reelElementsByObjectId = new(StringComparer.Ordinal);
     private Dictionary<string, PanelElementModel> _alphaElementsByObjectId = new(StringComparer.Ordinal);
@@ -32,12 +34,14 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
         string? panelLayoutJson = null,
         Guid? documentId = null,
         CommandService? commandService = null,
-        MachineRuntimeState? runtimeState = null)
+        MachineRuntimeState? runtimeState = null,
+        string? faceDocumentJson = null)
     {
         _document = document;
         DocumentId = documentId ?? Guid.NewGuid();
         _commandService = commandService ?? new CommandService(new CommandHistory(), DocumentId);
         _panelLayoutJson = panelLayoutJson;
+        _faceDocumentJson = faceDocumentJson;
         _runtimeState = runtimeState ?? new MachineRuntimeState();
         _panelDocumentModel = new Panel2DDocumentModel
         {
@@ -45,6 +49,9 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
                 .Select(Panel2DDocumentStorage.ToModel)
                 .ToArray()
         };
+        _faceDocumentModel = FaceDocumentStorage.TryRead(faceDocumentJson, out var faceDocumentFile)
+            ? FaceDocumentStorage.ToModel(faceDocumentFile)
+            : new FaceDocumentModel();
         RebuildLampCaches();
     }
 
@@ -59,6 +66,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
         EditorDocumentType.Panel2D => "Panel 2D",
         EditorDocumentType.Cabinet3D => "Cabinet 3D",
         EditorDocumentType.Machine => "Machine",
+        EditorDocumentType.Face => "Face",
         _ => "Document Type"
     };
     public string FilePath => Document.FilePath;
@@ -76,6 +84,24 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Document)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsDirty)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Title)));
+    }
+
+    public string? FaceDocumentJson
+    {
+        get => _faceDocumentJson;
+        set
+        {
+            if (string.Equals(_faceDocumentJson, value, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _faceDocumentJson = value;
+            _faceDocumentModel = FaceDocumentStorage.TryRead(value, out var faceDocumentFile)
+                ? FaceDocumentStorage.ToModel(faceDocumentFile)
+                : new FaceDocumentModel();
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FaceDocumentJson)));
+        }
     }
 
     public string? PanelLayoutJson
@@ -98,6 +124,16 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
             RebuildLampCaches();
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PanelLayoutJson)));
         }
+    }
+
+    public FaceDocumentModel GetFaceDocument()
+    {
+        return _faceDocumentModel;
+    }
+
+    public string GetFaceDocumentJson()
+    {
+        return FaceDocumentStorage.Serialize(_faceDocumentModel);
     }
 
     internal IReadOnlyList<PanelElementModel> GetPanelElements()

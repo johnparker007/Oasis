@@ -105,6 +105,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         OpenUntitledDocumentCommand = new RelayCommand(OpenUntitledDocument, CanOpenUntitledDocument);
         OpenPanel2DStubCommand = new RelayCommand(OpenPanel2DStubDocument, CanOpenUntitledDocument);
+        OpenFaceStubCommand = new RelayCommand(OpenFaceStubDocument, CanOpenUntitledDocument);
         OpenCabinet3DStubCommand = new RelayCommand(OpenCabinet3DStubDocument, CanOpenUntitledDocument);
         OpenMachineStubCommand = new RelayCommand(OpenMachineStubDocument, CanOpenUntitledDocument);
         OpenDocumentCommand = new RelayCommand(OpenDocument, CanOpenDocument);
@@ -389,6 +390,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public ICommand OpenUntitledDocumentCommand { get; }
     public ICommand OpenPanel2DStubCommand { get; }
+    public ICommand OpenFaceStubCommand { get; }
     public ICommand OpenCabinet3DStubCommand { get; }
     public ICommand OpenMachineStubCommand { get; }
     public ICommand OpenDocumentCommand { get; }
@@ -961,6 +963,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _documentWorkspace.OpenPanel2DStubDocument();
     }
 
+    private void OpenFaceStubDocument()
+    {
+        _documentWorkspace.OpenFaceStubDocument();
+    }
+
     private void OpenCabinet3DStubDocument()
     {
         _documentWorkspace.OpenCabinet3DStubDocument();
@@ -991,7 +998,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         var dialog = new OpenFileDialog
         {
             Title = "Open Document",
-            Filter = "Editor Documents|*.panel2d;*.cabinet3d;*.machine|All Files|*.*",
+            Filter = "Editor Documents|*.panel2d;*.face;*.cabinet3d;*.machine|All Files|*.*",
             InitialDirectory = LoadedProject.ProjectDirectory,
             CheckFileExists = true
         };
@@ -1155,6 +1162,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         var extension = Path.GetExtension(path);
         return string.Equals(extension, ".panel2d", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(extension, ".face", StringComparison.OrdinalIgnoreCase)
             || string.Equals(extension, ".cabinet3d", StringComparison.OrdinalIgnoreCase)
             || string.Equals(extension, ".machine", StringComparison.OrdinalIgnoreCase);
     }
@@ -1168,7 +1176,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             path,
             openData.Summary,
             openData.PanelLayoutJson,
-            openData.PanelTitle);
+            openData.PanelTitle,
+            openData.FaceDocumentJson);
         if (!openedNewTab)
         {
             AddOutputEntry($"Switched to already open document tab for {path}", OutputLogStatus.Info);
@@ -1242,9 +1251,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         var defaultName = selectedDocument?.Document.Title ?? "Document";
         var (defaultExtension, filter) = selectedDocument?.Document.DocumentType switch
         {
-            EditorDocumentType.Cabinet3D => (".cabinet3d", "Cabinet 3D|*.cabinet3d|Panel 2D|*.panel2d|Machine|*.machine|All Files|*.*"),
-            EditorDocumentType.Machine => (".machine", "Machine|*.machine|Panel 2D|*.panel2d|Cabinet 3D|*.cabinet3d|All Files|*.*"),
-            _ => (".panel2d", "Panel 2D|*.panel2d|Cabinet 3D|*.cabinet3d|Machine|*.machine|All Files|*.*")
+            EditorDocumentType.Face => (".face", "Face|*.face|Panel 2D|*.panel2d|Cabinet 3D|*.cabinet3d|Machine|*.machine|All Files|*.*"),
+            EditorDocumentType.Cabinet3D => (".cabinet3d", "Cabinet 3D|*.cabinet3d|Face|*.face|Panel 2D|*.panel2d|Machine|*.machine|All Files|*.*"),
+            EditorDocumentType.Machine => (".machine", "Machine|*.machine|Face|*.face|Panel 2D|*.panel2d|Cabinet 3D|*.cabinet3d|All Files|*.*"),
+            _ => (".panel2d", "Panel 2D|*.panel2d|Face|*.face|Cabinet 3D|*.cabinet3d|Machine|*.machine|All Files|*.*")
         };
 
         var dialog = new SaveFileDialog
@@ -3101,6 +3111,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             openPanelRelayCommand.RaiseCanExecuteChanged();
         }
 
+        if (OpenFaceStubCommand is RelayCommand openFaceRelayCommand)
+        {
+            openFaceRelayCommand.RaiseCanExecuteChanged();
+        }
+
         if (OpenCabinet3DStubCommand is RelayCommand openCabinetRelayCommand)
         {
             openCabinetRelayCommand.RaiseCanExecuteChanged();
@@ -3286,7 +3301,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
 }
 
-internal readonly record struct OpenDocumentData(string Summary, string? PanelLayoutJson, string? PanelTitle = null);
+internal readonly record struct OpenDocumentData(string Summary, string? PanelLayoutJson, string? PanelTitle = null, string? FaceDocumentJson = null);
 
 
 internal static class EditorProjectInputDefinitionExtensions

@@ -53,7 +53,9 @@ public sealed class DocumentSaveService : IDocumentSaveService
             current.Document.SaveAs(savePath, current.ContentSummary).MarkClean(),
             current.PanelLayoutJson,
             current.DocumentId,
-            current.CommandService)
+            current.CommandService,
+            current.RuntimeState,
+            current.FaceDocumentJson)
         {
             PanelZoom = current.PanelZoom,
             PanelPanX = current.PanelPanX,

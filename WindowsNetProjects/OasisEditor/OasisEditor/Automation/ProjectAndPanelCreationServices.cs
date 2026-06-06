@@ -25,6 +25,11 @@ public interface IPanel2DDocumentCreationService
     DocumentTabViewModel CreatePanel2DStubDocument(string title, int panelIndex);
 }
 
+public interface IFaceDocumentCreationService
+{
+    DocumentTabViewModel CreateFaceStubDocument(string title, int faceIndex);
+}
+
 public sealed class Panel2DDocumentCreationService : IPanel2DDocumentCreationService
 {
     public DocumentTabViewModel CreatePanel2DStubDocument(string title, int panelIndex)
@@ -36,5 +41,19 @@ public sealed class Panel2DDocumentCreationService : IPanel2DDocumentCreationSer
         return new DocumentTabViewModel(
             EditorDocument.CreatePanel2DStub(resolvedTitle),
             panelLayoutJson: Panel2DDocumentStorage.SerializeLayout([]));
+    }
+}
+
+public sealed class FaceDocumentCreationService : IFaceDocumentCreationService
+{
+    public DocumentTabViewModel CreateFaceStubDocument(string title, int faceIndex)
+    {
+        var resolvedTitle = string.IsNullOrWhiteSpace(title)
+            ? $"Face {faceIndex}"
+            : title.Trim();
+
+        return new DocumentTabViewModel(
+            EditorDocument.CreateFaceStub(resolvedTitle),
+            faceDocumentJson: FaceDocumentStorage.Serialize(FaceDocumentStorage.CreateEmpty(resolvedTitle)));
     }
 }
