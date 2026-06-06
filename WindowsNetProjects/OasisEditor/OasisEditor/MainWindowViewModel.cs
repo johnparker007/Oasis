@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -1768,6 +1769,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         foreach (var segment in segments)
         {
+            if (IsReel0StdoutLine(segment))
+            {
+                AddOutputEntry($"[MAME-REEL0-DIAGNOSTIC] {segment}", OutputLogStatus.Info);
+            }
+
             if (DebugOutputStdOut)
             {
                 AddOutputEntry($"[MAME-STDOUT] {segment}", OutputLogStatus.Info);
@@ -1781,6 +1787,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             _mameDebuggerService.ProcessStdoutLine(segment);
             parser.ProcessLine(segment);
         }
+    }
+
+    private static bool IsReel0StdoutLine(string line)
+    {
+        return Regex.IsMatch(line.Trim(), @"^reel\s*0(?:\s*=\s*|\s+)-?\d+\s*$", RegexOptions.IgnoreCase);
     }
 
     private void OpenProjectSettings()
