@@ -6,16 +6,16 @@ namespace OasisEditor.Tests;
 public sealed class MachineObjectReferenceResolverTests
 {
     [Theory]
-    [InlineData(PanelElementKind.Lamp, 17, MachineObjectKind.Lamp, "17")]
-    [InlineData(PanelElementKind.Reel, 2, MachineObjectKind.Reel, "2")]
-    [InlineData(PanelElementKind.Alpha, 0, MachineObjectKind.AlphaDisplay, "0")]
-    [InlineData(PanelElementKind.SevenSegment, 12, MachineObjectKind.SevenSegmentDisplay, "12")]
-    public void TryGetReference_PanelRuntimeElement_UsesDisplayNumberAsSourceIdentifier(PanelElementKind kind, int displayNumber, MachineObjectKind expectedKind, string expectedId)
+    [InlineData("lamp", 17, MachineObjectKind.Lamp, "17")]
+    [InlineData("reel", 2, MachineObjectKind.Reel, "2")]
+    [InlineData("alpha", 0, MachineObjectKind.AlphaDisplay, "0")]
+    [InlineData("sevenSegment", 12, MachineObjectKind.SevenSegmentDisplay, "12")]
+    public void TryGetReference_PanelRuntimeElement_UsesDisplayNumberAsSourceIdentifier(string kindName, int displayNumber, MachineObjectKind expectedKind, string expectedId)
     {
         var element = new PanelElementModel
         {
             ObjectId = "visual-1",
-            Kind = kind,
+            Kind = ResolvePanelElementKind(kindName),
             DisplayNumber = displayNumber
         };
 
@@ -24,6 +24,18 @@ public sealed class MachineObjectReferenceResolverTests
         Assert.True(resolved);
         Assert.Equal(expectedKind, reference.Kind);
         Assert.Equal(expectedId, reference.Id);
+    }
+
+    private static PanelElementKind ResolvePanelElementKind(string kindName)
+    {
+        return kindName switch
+        {
+            "lamp" => PanelElementKind.Lamp,
+            "reel" => PanelElementKind.Reel,
+            "alpha" => PanelElementKind.Alpha,
+            "sevenSegment" => PanelElementKind.SevenSegment,
+            _ => PanelElementKind.Unknown
+        };
     }
 
     [Fact]
