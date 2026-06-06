@@ -707,11 +707,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             {
                 OnPropertyChanged(nameof(HasLoadedProject));
                 OnPropertyChanged(nameof(InputDefinitions));
+                OnPropertyChanged(nameof(WindowTitle));
                 NotifyInspectorChanged();
                 NotifyDocumentCommands();
             }
         }
     }
+
+    public string WindowTitle => FormatWindowTitle(LoadedProject?.Name);
 
     public bool HasLoadedProject => LoadedProject is not null;
     public MameEmulationState EmulationState
@@ -3271,6 +3274,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
+
+    internal static string FormatWindowTitle(string? projectName)
+    {
+        var trimmedProjectName = projectName?.Trim();
+        return string.IsNullOrWhiteSpace(trimmedProjectName)
+            ? "Oasis Editor"
+            : $"{trimmedProjectName} - Oasis Editor";
     }
 
 }
