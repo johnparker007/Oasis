@@ -33,6 +33,10 @@
                         Content="New Panel2D" />
                 <Button Padding="10,4"
                         Margin="0,0,8,0"
+                        Command="{Binding OpenFaceStubCommand}"
+                        Content="New Face" />
+                <Button Padding="10,4"
+                        Margin="0,0,8,0"
                         Command="{Binding OpenCabinet3DStubCommand}"
                         Content="New Cabinet3D" />
                 <Button Padding="10,4"
@@ -125,6 +129,28 @@
                                 </Grid>
                             </Border>
 
+                            <Border x:Name="FacePlaceholderContainer"
+                                    Padding="16"
+                                    CornerRadius="4"
+                                    Background="{DynamicResource EditorBackgroundBrush}"
+                                    BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                    BorderThickness="1"
+                                    Visibility="Collapsed">
+                                <StackPanel>
+                                    <TextBlock FontSize="18"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource TextPrimaryBrush}"
+                                               Text="Face Editor Placeholder" />
+                                    <TextBlock Margin="0,8,0,0"
+                                               Foreground="{DynamicResource TextSecondaryBrush}"
+                                               TextWrapping="Wrap"
+                                               Text="Face documents now round-trip through the editor. Face Edit View, Face Play View, and 3D preview are intentionally not implemented in this phase." />
+                                    <TextBlock Margin="0,12,0,0"
+                                               TextWrapping="Wrap"
+                                               Text="{Binding ContentSummary}" />
+                                </StackPanel>
+                            </Border>
+
                             <Border x:Name="DefaultSummaryContainer"
                                     Padding="10"
                                     CornerRadius="4"
@@ -140,6 +166,15 @@
                         <DataTrigger Binding="{Binding Document.DocumentType}"
                                      Value="{x:Static local:EditorDocumentType.Panel2D}">
                             <Setter TargetName="PanelCanvasContainer"
+                                    Property="Visibility"
+                                    Value="Visible" />
+                            <Setter TargetName="DefaultSummaryContainer"
+                                    Property="Visibility"
+                                    Value="Collapsed" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding Document.DocumentType}"
+                                     Value="{x:Static local:EditorDocumentType.Face}">
+                            <Setter TargetName="FacePlaceholderContainer"
                                     Property="Visibility"
                                     Value="Visible" />
                             <Setter TargetName="DefaultSummaryContainer"

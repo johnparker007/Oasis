@@ -20,11 +20,13 @@ public sealed class DocumentWorkspaceViewModel
     private readonly Action<Guid> _onDocumentClosed;
     private readonly MachineRuntimeStateStore _runtimeStateStore;
     private readonly Automation.IPanel2DDocumentCreationService _panel2dCreationService;
+    private readonly Automation.IFaceDocumentCreationService _faceCreationService;
 
     private int _untitledDocumentCounter = 1;
     private int _panelDocumentCounter = 1;
     private int _cabinetDocumentCounter = 1;
     private int _machineDocumentCounter = 1;
+    private int _faceDocumentCounter = 1;
 
     public DocumentWorkspaceViewModel(
         Func<EditorProject?> getLoadedProject,
@@ -47,7 +49,8 @@ public sealed class DocumentWorkspaceViewModel
             addOutputEntry,
             new MachineRuntimeStateStore(),
             new Automation.Panel2DDocumentCreationService(),
-            onDocumentClosed)
+            onDocumentClosed,
+            new Automation.FaceDocumentCreationService())
     {
     }
 
@@ -62,7 +65,8 @@ public sealed class DocumentWorkspaceViewModel
         Action<string, OutputLogStatus> addOutputEntry,
         MachineRuntimeStateStore runtimeStateStore,
         Automation.IPanel2DDocumentCreationService panel2dCreationService,
-        Action<Guid>? onDocumentClosed = null)
+        Action<Guid>? onDocumentClosed = null,
+        Automation.IFaceDocumentCreationService? faceCreationService = null)
     {
         _getLoadedProject = getLoadedProject;
         _setLoadedProject = setLoadedProject;
@@ -75,6 +79,7 @@ public sealed class DocumentWorkspaceViewModel
         _onDocumentClosed = onDocumentClosed ?? (_ => { });
         _runtimeStateStore = runtimeStateStore;
         _panel2dCreationService = panel2dCreationService;
+        _faceCreationService = faceCreationService ?? new Automation.FaceDocumentCreationService();
     }
 
     public bool CanOpenUntitledDocument() => _getLoadedProject() is not null;
@@ -112,6 +117,19 @@ public sealed class DocumentWorkspaceViewModel
         ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
         _setStatusMessage($"Opened panel document stub: {document.Title}");
         _addOutputEntry($"Opened panel document stub: {document.Title}", OutputLogStatus.Info);
+    }
+
+    public void OpenFaceStubDocument()
+    {
+        if (_getLoadedProject() is null)
+        {
+            return;
+        }
+
+        var document = _faceCreationService.CreateFaceStubDocument($"Face {_faceDocumentCounter++}", _faceDocumentCounter - 1);
+        ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
+        _setStatusMessage($"Opened face document stub: {document.Title}");
+        _addOutputEntry($"Opened face document stub: {document.Title}", OutputLogStatus.Info);
     }
 
     public void OpenCabinet3DStubDocument()
@@ -153,7 +171,7 @@ public sealed class DocumentWorkspaceViewModel
         _addOutputEntry($"Closed document tab: {selectedDocument.Title}", OutputLogStatus.Info);
     }
 
-    public bool OpenOrSelectDocument(string path, string summary, string? panelLayoutJson, string? panelTitle = null)
+    public bool OpenOrSelectDocument(string path, string summary, string? panelLayoutJson, string? panelTitle = null, string? faceDocumentJson = null)
     {
         var existing = _openDocuments.FirstOrDefault(tab => string.Equals(tab.FilePath, path, StringComparison.OrdinalIgnoreCase));
         if (existing is not null)
@@ -162,7 +180,7 @@ public sealed class DocumentWorkspaceViewModel
             return false;
         }
 
-        var document = CreateDocumentTab(EditorDocument.CreateFromFile(path, summary, panelTitle), panelLayoutJson);
+        var document = CreateDocumentTab(EditorDocument.CreateFromFile(path, summary, panelTitle), panelLayoutJson, faceDocumentJson);
         ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
         return true;
     }
@@ -254,7 +272,8 @@ public sealed class DocumentWorkspaceViewModel
             selectedDocument.PanelLayoutJson,
             selectedDocument.DocumentId,
             selectedDocument.CommandService,
-            selectedDocument.RuntimeState)
+            selectedDocument.RuntimeState,
+            selectedDocument.FaceDocumentJson)
         {
             PanelZoom = selectedDocument.PanelZoom,
             PanelPanX = selectedDocument.PanelPanX,
@@ -267,14 +286,15 @@ public sealed class DocumentWorkspaceViewModel
         return updated;
     }
 
-    private DocumentTabViewModel CreateDocumentTab(EditorDocument document, string? panelLayoutJson = null)
+    private DocumentTabViewModel CreateDocumentTab(EditorDocument document, string? panelLayoutJson = null, string? faceDocumentJson = null)
     {
         var documentId = Guid.NewGuid();
         return new DocumentTabViewModel(
             document,
             panelLayoutJson,
             documentId,
-            runtimeState: _runtimeStateStore.GetOrCreate(documentId));
+            runtimeState: _runtimeStateStore.GetOrCreate(documentId),
+            faceDocumentJson: faceDocumentJson);
     }
 
     internal static OpenDocumentData BuildOpenDocumentData(string path, string content)
@@ -298,6 +318,26 @@ public sealed class DocumentWorkspaceViewModel
                 Path.GetFileName(path));
         }
 
+
+        if (string.Equals(Path.GetExtension(path), ".face", StringComparison.OrdinalIgnoreCase))
+        {
+            if (FaceDocumentStorage.TryReadValidated(content, out var faceDocument, out var errorMessage))
+            {
+                var summary = string.IsNullOrWhiteSpace(faceDocument.Summary)
+                    ? "Face document opened."
+                    : faceDocument.Summary.Trim();
+                var title = string.IsNullOrWhiteSpace(faceDocument.Title)
+                    ? Path.GetFileName(path)
+                    : faceDocument.Title.Trim();
+                return new OpenDocumentData(summary, null, title, FaceDocumentStorage.Serialize(faceDocument));
+            }
+
+            return new OpenDocumentData(
+                $"Failed to open face document: {errorMessage}",
+                null,
+                Path.GetFileName(path));
+        }
+
         var preview = content.Length > 300 ? $"{content[..300]}..." : content;
         if (string.IsNullOrWhiteSpace(preview))
         {
@@ -315,6 +355,21 @@ public sealed class DocumentWorkspaceViewModel
                 .Select(Panel2DDocumentStorage.ToStorageElement)
                 .ToArray();
             return Panel2DDocumentStorage.Serialize(document.Document.Title, document.ContentSummary, elements);
+        }
+
+
+        if (document.Document.DocumentType == EditorDocumentType.Face)
+        {
+            var faceDocument = document.GetFaceDocument();
+            var persistedFaceDocument = new FaceDocumentModel
+            {
+                Id = faceDocument.Id,
+                Title = document.Document.Title,
+                Summary = document.ContentSummary,
+                Layers = faceDocument.Layers,
+                Elements = faceDocument.Elements
+            };
+            return FaceDocumentStorage.Serialize(persistedFaceDocument);
         }
 
         var persisted = new

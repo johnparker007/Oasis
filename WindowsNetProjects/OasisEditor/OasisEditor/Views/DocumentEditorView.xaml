@@ -42,6 +42,36 @@
                 </Grid>
             </Border>
 
+            <Border Padding="16"
+                    CornerRadius="4"
+                    Background="{DynamicResource EditorBackgroundBrush}"
+                    BorderBrush="{DynamicResource BorderSubtleBrush}"
+                    BorderThickness="1">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Document.DocumentType}" Value="{x:Static local:EditorDocumentType.Face}">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <StackPanel>
+                    <TextBlock FontSize="18"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
+                               Text="Face Editor Placeholder" />
+                    <TextBlock Margin="0,8,0,0"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
+                               TextWrapping="Wrap"
+                               Text="Face documents can be created, opened, and saved. Face Edit View, Face Play View, and 3D preview are intentionally not implemented in Phase 2." />
+                    <TextBlock Margin="0,12,0,0"
+                               TextWrapping="Wrap"
+                               Text="{Binding ContentSummary}" />
+                </StackPanel>
+            </Border>
+
             <Border Padding="10"
                     CornerRadius="4"
                     Background="{DynamicResource SelectionBrush}"
@@ -52,6 +82,9 @@
                         <Setter Property="Visibility" Value="Visible" />
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding Document.DocumentType}" Value="{x:Static local:EditorDocumentType.Panel2D}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Document.DocumentType}" Value="{x:Static local:EditorDocumentType.Face}">
                                 <Setter Property="Visibility" Value="Collapsed" />
                             </DataTrigger>
                         </Style.Triggers>

@@ -6,7 +6,8 @@ public enum EditorDocumentType
     ProjectOverview,
     Panel2D,
     Cabinet3D,
-    Machine
+    Machine,
+    Face
 }
 
 public sealed class EditorDocument
@@ -70,6 +71,15 @@ public sealed class EditorDocument
             "Machine stub:\n- Reference panel and cabinet docs\n- Configure runtime metadata\n- Set default generated output targets");
     }
 
+    public static EditorDocument CreateFaceStub(string title)
+    {
+        return CreateUntitledWithType(
+            title,
+            EditorDocumentType.Face,
+            "Not saved yet (.face)",
+            "Face document placeholder:\n- Physical presentation model\n- Lamp windows and future glass artwork\n- Links to machine/runtime objects");
+    }
+
     private static EditorDocument CreateUntitledWithType(
         string title,
         EditorDocumentType documentType,
@@ -113,6 +123,10 @@ public sealed class EditorDocument
         else if (normalizedExtension == ".machine")
         {
             documentType = EditorDocumentType.Machine;
+        }
+        else if (normalizedExtension == ".face")
+        {
+            documentType = EditorDocumentType.Face;
         }
         else
         {
