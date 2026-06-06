@@ -109,7 +109,13 @@
                     <ListBox Grid.Row="4"
                              MinHeight="120"
                              ItemsSource="{Binding RecentProjects}"
-                             SelectedItem="{Binding SelectedRecentProject, Mode=TwoWay}" />
+                             SelectedItem="{Binding SelectedRecentProject, Mode=TwoWay}">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="{x:Type ListBoxItem}">
+                                <EventSetter Event="MouseDoubleClick" Handler="RecentProjectListBoxItem_MouseDoubleClick" />
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                    </ListBox>
                 </Grid>
             </GroupBox>
         </Grid>
