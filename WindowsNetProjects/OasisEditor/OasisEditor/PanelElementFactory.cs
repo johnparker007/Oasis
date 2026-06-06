@@ -11,7 +11,7 @@ internal static class PanelElementFactory
 {
     private static string? _projectDirectoryPath;
     private static readonly Dictionary<string, FontFamily> MfmeFontFamilies = new(StringComparer.OrdinalIgnoreCase);
-    private static readonly PanelRuntimeState DefaultRuntimeState = new();
+    private static readonly MachineRuntimeState DefaultRuntimeState = new();
 
     public static readonly DependencyProperty ElementNameProperty =
         DependencyProperty.RegisterAttached(
@@ -174,7 +174,7 @@ internal static class PanelElementFactory
         return CreateVisualFromElement(element, DefaultRuntimeState);
     }
 
-    public static FrameworkElement? CreateVisualFromElement(PanelElementFile element, PanelRuntimeState runtimeState)
+    public static FrameworkElement? CreateVisualFromElement(PanelElementFile element, MachineRuntimeState runtimeState)
     {
         FrameworkElement? visual = element.ElementKind switch
         {
@@ -294,7 +294,7 @@ internal static class PanelElementFactory
         return surface;
     }
 
-    private static Border CreateLampVisual(PanelElementFile element, PanelRuntimeState runtimeState)
+    private static Border CreateLampVisual(PanelElementFile element, MachineRuntimeState runtimeState)
     {
         var hasGraphic = TryCreateImageSource(element.AssetPath, out var source);
         var isLampOn = runtimeState.IsLampTestActive

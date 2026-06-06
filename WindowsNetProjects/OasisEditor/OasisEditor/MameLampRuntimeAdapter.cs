@@ -9,6 +9,7 @@ public sealed class MameLampRuntimeAdapter : IMameLampRuntimeAdapter
     private readonly Action<Action> _uiDispatch;
     private readonly Dictionary<int, int> _pendingLampValues = new();
     private readonly Dictionary<Guid, LampDocumentMappingCacheEntry> _lampMappingsByDocumentId = new();
+    private readonly IMachineObjectReferenceResolver _machineObjectReferenceResolver;
     private bool _uiUpdateScheduled;
 
     public MameLampRuntimeAdapter(
@@ -21,6 +22,7 @@ public sealed class MameLampRuntimeAdapter : IMameLampRuntimeAdapter
         _debugOutputEnabledProvider = debugOutputEnabledProvider ?? throw new ArgumentNullException(nameof(debugOutputEnabledProvider));
         _infoLogger = infoLogger ?? throw new ArgumentNullException(nameof(infoLogger));
         _uiDispatch = uiDispatch ?? throw new ArgumentNullException(nameof(uiDispatch));
+        _machineObjectReferenceResolver = MachineObjectReferenceResolver.Instance;
     }
 
     public void ApplyLampState(int lampId, int lampValue)
@@ -65,7 +67,8 @@ public sealed class MameLampRuntimeAdapter : IMameLampRuntimeAdapter
             var changedObjectIds = new HashSet<string>(StringComparer.Ordinal);
             foreach (var (pendingLampId, pendingLampValue) in snapshot)
             {
-                if (!matchingObjectIdsByLamp.TryGetValue(pendingLampId, out var matchingObjectIds)
+                var lampReference = MachineObjectReference.Lamp(pendingLampId);
+                if (!matchingObjectIdsByLamp.TryGetValue(lampReference, out var matchingObjectIds)
                     || matchingObjectIds.Length == 0)
                 {
                     continue;
@@ -81,6 +84,8 @@ public sealed class MameLampRuntimeAdapter : IMameLampRuntimeAdapter
                 {
                     _infoLogger($"[MAME-LAMP] lamp{pendingLampId} value={pendingLampValue} intensity={normalizedIntensity:0.###}");
                 }
+
+                document.RuntimeState.SetLampIntensityIfChanged(lampReference, normalizedIntensity);
 
                 foreach (var objectId in matchingObjectIds)
                 {
@@ -114,7 +119,7 @@ public sealed class MameLampRuntimeAdapter : IMameLampRuntimeAdapter
         }
     }
 
-    private IReadOnlyDictionary<int, string[]> GetOrBuildLampMapping(DocumentTabViewModel document)
+    private IReadOnlyDictionary<MachineObjectReference, string[]> GetOrBuildLampMapping(DocumentTabViewModel document)
     {
         if (_lampMappingsByDocumentId.TryGetValue(document.DocumentId, out var cacheEntry)
             && !cacheEntry.IsDirty)
@@ -126,8 +131,12 @@ public sealed class MameLampRuntimeAdapter : IMameLampRuntimeAdapter
             .GetPanelElements()
             .Where(element => element.Kind == PanelElementKind.Lamp
                 && !string.IsNullOrWhiteSpace(element.ObjectId)
-                && element.DisplayNumber.HasValue)
-            .GroupBy(element => element.DisplayNumber.GetValueOrDefault())
+                && _machineObjectReferenceResolver.TryGetReference(element, out _))
+            .GroupBy(element =>
+            {
+                _machineObjectReferenceResolver.TryGetReference(element, out var reference);
+                return reference;
+            })
             .ToDictionary(
                 group => group.Key,
                 group => group.Select(element => element.ObjectId)
@@ -149,17 +158,17 @@ public sealed class MameLampRuntimeAdapter : IMameLampRuntimeAdapter
     {
         private readonly DocumentTabViewModel _document;
 
-        public LampDocumentMappingCacheEntry(DocumentTabViewModel document, IReadOnlyDictionary<int, string[]> mappingByLampId)
+        public LampDocumentMappingCacheEntry(DocumentTabViewModel document, IReadOnlyDictionary<MachineObjectReference, string[]> mappingByLampId)
         {
             _document = document;
             MappingByLampId = mappingByLampId;
             _document.PanelChanged += OnPanelChanged;
         }
 
-        public IReadOnlyDictionary<int, string[]> MappingByLampId { get; private set; }
+        public IReadOnlyDictionary<MachineObjectReference, string[]> MappingByLampId { get; private set; }
         public bool IsDirty { get; private set; }
 
-        public void Replace(IReadOnlyDictionary<int, string[]> mappingByLampId)
+        public void Replace(IReadOnlyDictionary<MachineObjectReference, string[]> mappingByLampId)
         {
             MappingByLampId = mappingByLampId;
             IsDirty = false;

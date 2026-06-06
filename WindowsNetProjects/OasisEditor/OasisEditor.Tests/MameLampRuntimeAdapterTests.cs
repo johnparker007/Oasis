@@ -25,6 +25,8 @@ public sealed class MameLampRuntimeAdapterTests
 
         Assert.Equal(0d, document.RuntimeState.GetLampIntensity("lamp-7"));
         Assert.Equal(1d, document.RuntimeState.GetLampIntensity("lamp-8"));
+        Assert.Equal(0d, document.RuntimeState.GetLampIntensity(MachineObjectReference.Lamp(7)));
+        Assert.Equal(1d, document.RuntimeState.GetLampIntensity(MachineObjectReference.Lamp(8)));
     }
 
     [Fact]

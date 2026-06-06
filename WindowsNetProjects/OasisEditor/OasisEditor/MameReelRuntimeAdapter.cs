@@ -12,6 +12,7 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
     private readonly Dictionary<int, int> _pendingReelValues = new();
     private readonly Dictionary<int, int> _latestReelValues = new();
     private readonly Dictionary<Guid, ReelDocumentMappingCacheEntry> _reelMappingsByDocumentId = new();
+    private readonly IMachineObjectReferenceResolver _machineObjectReferenceResolver;
     private bool _uiUpdateScheduled;
 
     public MameReelRuntimeAdapter(
@@ -26,6 +27,7 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
         _debugOutputEnabledProvider = debugOutputEnabledProvider ?? throw new ArgumentNullException(nameof(debugOutputEnabledProvider));
         _infoLogger = infoLogger ?? throw new ArgumentNullException(nameof(infoLogger));
         _uiDispatch = uiDispatch ?? throw new ArgumentNullException(nameof(uiDispatch));
+        _machineObjectReferenceResolver = MachineObjectReferenceResolver.Instance;
     }
 
     public void ApplyReelState(int reelId, int reelValue)
@@ -70,7 +72,8 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
 
             foreach (var (reelId, reelValue) in snapshot)
             {
-                if (!objectIdsByReel.TryGetValue(reelId, out var objectIds) || objectIds.Length == 0)
+                var reelReference = MachineObjectReference.Reel(reelId);
+                if (!objectIdsByReel.TryGetValue(reelReference, out var objectIds) || objectIds.Length == 0)
                 {
                     continue;
                 }
@@ -113,7 +116,7 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
         }
     }
 
-    private IReadOnlyDictionary<int, string[]> GetOrBuildReelMapping(DocumentTabViewModel document)
+    private IReadOnlyDictionary<MachineObjectReference, string[]> GetOrBuildReelMapping(DocumentTabViewModel document)
     {
         if (_reelMappingsByDocumentId.TryGetValue(document.DocumentId, out var cacheEntry) && !cacheEntry.IsDirty)
         {
@@ -121,8 +124,14 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
         }
 
         var mapping = document.GetPanelElements()
-            .Where(element => element.Kind == PanelElementKind.Reel && !string.IsNullOrWhiteSpace(element.ObjectId) && element.DisplayNumber.HasValue)
-            .GroupBy(element => element.DisplayNumber!.Value)
+            .Where(element => element.Kind == PanelElementKind.Reel
+                && !string.IsNullOrWhiteSpace(element.ObjectId)
+                && _machineObjectReferenceResolver.TryGetReference(element, out _))
+            .GroupBy(element =>
+            {
+                _machineObjectReferenceResolver.TryGetReference(element, out var reference);
+                return reference;
+            })
             .ToDictionary(g => g.Key, g => g.Select(x => x.ObjectId).Distinct(StringComparer.Ordinal).ToArray());
 
         if (cacheEntry is null)
@@ -213,7 +222,7 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
     {
         private readonly DocumentTabViewModel _document;
         private readonly Action _panelChangedCallback;
-        public ReelDocumentMappingCacheEntry(DocumentTabViewModel document, IReadOnlyDictionary<int, string[]> mappingByReelId, Action panelChangedCallback)
+        public ReelDocumentMappingCacheEntry(DocumentTabViewModel document, IReadOnlyDictionary<MachineObjectReference, string[]> mappingByReelId, Action panelChangedCallback)
         {
             _document = document;
             _panelChangedCallback = panelChangedCallback;
@@ -221,9 +230,9 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
             _document.PanelChanged += OnPanelChanged;
         }
 
-        public IReadOnlyDictionary<int, string[]> MappingByReelId { get; private set; }
+        public IReadOnlyDictionary<MachineObjectReference, string[]> MappingByReelId { get; private set; }
         public bool IsDirty { get; private set; }
-        public void Replace(IReadOnlyDictionary<int, string[]> mappingByReelId) { MappingByReelId = mappingByReelId; IsDirty = false; }
+        public void Replace(IReadOnlyDictionary<MachineObjectReference, string[]> mappingByReelId) { MappingByReelId = mappingByReelId; IsDirty = false; }
         public void OnPanelChanged(PanelChangeEvent _)
         {
             IsDirty = true;

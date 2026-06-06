@@ -21,7 +21,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     private double _panelPanX;
     private double _panelPanY;
     private Dictionary<string, object>? _lastVisualStateByObjectId;
-    private readonly PanelRuntimeState _runtimeState;
+    private readonly MachineRuntimeState _runtimeState;
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<PanelChangeEvent>? PanelChanged;
@@ -32,13 +32,13 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
         string? panelLayoutJson = null,
         Guid? documentId = null,
         CommandService? commandService = null,
-        PanelRuntimeState? runtimeState = null)
+        MachineRuntimeState? runtimeState = null)
     {
         _document = document;
         DocumentId = documentId ?? Guid.NewGuid();
         _commandService = commandService ?? new CommandService(new CommandHistory(), DocumentId);
         _panelLayoutJson = panelLayoutJson;
-        _runtimeState = runtimeState ?? new PanelRuntimeState();
+        _runtimeState = runtimeState ?? new MachineRuntimeState();
         _panelDocumentModel = new Panel2DDocumentModel
         {
             Elements = Panel2DDocumentStorage.DeserializeLayout(panelLayoutJson)
@@ -51,7 +51,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     public EditorDocument Document => _document;
     public Guid DocumentId { get; }
     public CommandService CommandService => _commandService;
-    public PanelRuntimeState RuntimeState => _runtimeState;
+    public MachineRuntimeState RuntimeState => _runtimeState;
     public string Title => Document.IsDirty ? $"{Document.Title}*" : Document.Title;
     public string TypeLabel => Document.DocumentType switch
     {

@@ -58,7 +58,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly HierarchyViewModel _hierarchy;
     private readonly DocumentWorkspaceViewModel _documentWorkspace;
     private readonly ActiveDocumentContextService _activeDocumentContext;
-    private readonly PanelRuntimeStateStore _panelRuntimeStates;
+    private readonly MachineRuntimeStateStore _machineRuntimeStates;
     private readonly HierarchyPanelCommandService _hierarchyPanelCommands;
     private bool _isRefreshingHierarchy;
     private readonly Automation.IMfmeExtractImportService _mfmeImportService = new Automation.MfmeExtractImportService();
@@ -165,7 +165,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             SkiaRenderDiagnostics.ReportReady += message => AddOutputEntry(message, OutputLogStatus.Info);
         }
         _activeDocumentContext = new ActiveDocumentContextService();
-        _panelRuntimeStates = new PanelRuntimeStateStore();
+        _machineRuntimeStates = new MachineRuntimeStateStore();
         _assetBrowser = new AssetBrowserViewModel(
             () => LoadedProject,
             () => OnPropertyChanged(nameof(SelectedAsset)),
@@ -319,12 +319,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             NotifyUndoRedoStateChanged,
             value => StatusMessage = value,
             AddOutputEntry,
-            _panelRuntimeStates,
+            _machineRuntimeStates,
             new Automation.Panel2DDocumentCreationService(),
             documentId =>
             {
                 _activeDocumentContext.ClearDocumentState(documentId);
-                _panelRuntimeStates.ClearDocumentState(documentId);
+                _machineRuntimeStates.ClearDocumentState(documentId);
             });
         AssetBrowserItems = _assetBrowser.AssetBrowserItems;
         AssetBrowserItems.CollectionChanged += OnAssetBrowserItemsChanged;
@@ -1913,7 +1913,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         _documentWorkspace.ClearProjectSessionState();
         _activeDocumentContext.ClearAll();
-        _panelRuntimeStates.ClearAll();
+        _machineRuntimeStates.ClearAll();
         PanelElementFactory.ProjectDirectoryPath = null;
 
         AssetBrowserItems.Clear();
