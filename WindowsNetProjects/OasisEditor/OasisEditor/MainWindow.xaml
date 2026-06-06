@@ -51,6 +51,8 @@
             <MenuItem Header="_File">
                 <MenuItem Header="New _Panel2D Stub"
                           Command="{Binding OpenPanel2DStubCommand}" />
+                <MenuItem Header="New _Face Stub"
+                          Command="{Binding OpenFaceStubCommand}" />
                 <MenuItem Header="New _Cabinet3D Stub"
                           Command="{Binding OpenCabinet3DStubCommand}" />
                 <MenuItem Header="New _Machine Stub"
