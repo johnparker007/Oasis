@@ -69,18 +69,100 @@
                 <TreeView.ItemContainerStyle>
                     <Style TargetType="{x:Type TreeViewItem}">
                         <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                        <Setter Property="Background" Value="Transparent" />
+                        <Setter Property="BorderBrush" Value="Transparent" />
+                        <Setter Property="BorderThickness" Value="1" />
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                         <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
                         <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
-                        <Style.Triggers>
-                            <MultiTrigger>
-                                <MultiTrigger.Conditions>
-                                    <Condition Property="IsSelected" Value="True" />
-                                    <Condition Property="Selector.IsSelectionActive" Value="False" />
-                                </MultiTrigger.Conditions>
-                                <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
-                                <Setter Property="Background" Value="{DynamicResource InactiveSelectionBrush}" />
-                            </MultiTrigger>
-                        </Style.Triggers>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="{x:Type TreeViewItem}">
+                                    <Grid MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType={x:Type TreeView}}}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="18" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+
+                                        <Border x:Name="RowHighlight"
+                                                Grid.ColumnSpan="2"
+                                                Margin="1"
+                                                Background="{TemplateBinding Background}"
+                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                BorderThickness="{TemplateBinding BorderThickness}"
+                                                CornerRadius="2"
+                                                SnapsToDevicePixels="True" />
+
+                                        <ToggleButton x:Name="Expander"
+                                                      Grid.Column="0"
+                                                      Width="18"
+                                                      Height="22"
+                                                      Focusable="False"
+                                                      IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}}">
+                                            <ToggleButton.Template>
+                                                <ControlTemplate TargetType="{x:Type ToggleButton}">
+                                                    <Border Background="Transparent">
+                                                        <Path x:Name="Arrow"
+                                                              Width="5"
+                                                              Height="8"
+                                                              HorizontalAlignment="Center"
+                                                              VerticalAlignment="Center"
+                                                              Data="M 0 0 L 0 8 L 5 4 Z"
+                                                              Fill="{DynamicResource TextSecondaryBrush}" />
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsChecked" Value="True">
+                                                            <Setter TargetName="Arrow" Property="Width" Value="8" />
+                                                            <Setter TargetName="Arrow" Property="Height" Value="5" />
+                                                            <Setter TargetName="Arrow" Property="Data" Value="M 0 0 L 8 0 L 4 5 Z" />
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </ToggleButton.Template>
+                                        </ToggleButton>
+
+                                        <ContentPresenter x:Name="PART_Header"
+                                                          Grid.Column="1"
+                                                          Margin="0,3,6,3"
+                                                          HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                          ContentSource="Header"
+                                                          RecognizesAccessKey="True" />
+
+                                        <ItemsPresenter x:Name="ItemsHost"
+                                                        Grid.Row="1"
+                                                        Grid.Column="1" />
+                                    </Grid>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="HasItems" Value="False">
+                                            <Setter TargetName="Expander" Property="Visibility" Value="Hidden" />
+                                        </Trigger>
+                                        <Trigger Property="IsExpanded" Value="False">
+                                            <Setter TargetName="ItemsHost" Property="Visibility" Value="Collapsed" />
+                                        </Trigger>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="RowHighlight" Property="Background" Value="{DynamicResource ControlHoverBrush}" />
+                                            <Setter TargetName="RowHighlight" Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}" />
+                                        </Trigger>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter TargetName="RowHighlight" Property="Background" Value="{DynamicResource SelectionBrush}" />
+                                            <Setter TargetName="RowHighlight" Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+                                        </Trigger>
+                                        <MultiTrigger>
+                                            <MultiTrigger.Conditions>
+                                                <Condition Property="IsSelected" Value="True" />
+                                                <Condition Property="Selector.IsSelectionActive" Value="False" />
+                                            </MultiTrigger.Conditions>
+                                            <Setter TargetName="RowHighlight" Property="Background" Value="{DynamicResource InactiveSelectionBrush}" />
+                                            <Setter TargetName="RowHighlight" Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}" />
+                                        </MultiTrigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
                     </Style>
                 </TreeView.ItemContainerStyle>
                 <TreeView.Resources>
