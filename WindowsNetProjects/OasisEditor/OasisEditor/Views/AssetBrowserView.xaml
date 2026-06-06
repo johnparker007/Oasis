@@ -41,6 +41,8 @@
                       ItemsSource="{Binding AssetDirectoryTree}"
                       PreviewMouseRightButtonDown="OnDirectoryTreePreviewMouseRightButtonDown"
                       SelectedItemChanged="OnDirectoryTreeSelectedItemChanged"
+                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                      ScrollViewer.VerticalScrollBarVisibility="Auto"
                       Background="{DynamicResource PanelBackgroundBrush}"
                       Foreground="{DynamicResource TextPrimaryBrush}"
                       BorderBrush="{DynamicResource BorderSubtleBrush}"

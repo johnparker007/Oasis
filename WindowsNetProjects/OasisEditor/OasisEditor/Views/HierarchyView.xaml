@@ -20,6 +20,8 @@
                   PreviewMouseLeftButtonDown="OnTreeViewPreviewMouseLeftButtonDown"
                   PreviewMouseRightButtonDown="OnTreeViewPreviewMouseRightButtonDown"
                   Visibility="{Binding HasHierarchyItems, Converter={StaticResource BoolToVisibility}}"
+                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                  ScrollViewer.VerticalScrollBarVisibility="Auto"
                   Foreground="{DynamicResource TextPrimaryBrush}"
                   Background="{DynamicResource PanelBackgroundBrush}"
                   BorderBrush="{DynamicResource BorderSubtleBrush}"
