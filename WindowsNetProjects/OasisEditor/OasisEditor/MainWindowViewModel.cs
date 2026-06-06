@@ -1272,7 +1272,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         var handled = await router.TryHandleKeyDownAsync(SelectedFruitMachinePlatform, keyboardShortcut, isFocused, isRepeat, cancellationToken).ConfigureAwait(false);
-        if (!handled && canRoute && isFocused && !isRepeat && !string.IsNullOrWhiteSpace(keyboardShortcut))
+        if (!handled && canRoute && isFocused && !isRepeat && !router.CanResolveShortcut(keyboardShortcut))
         {
             AddOutputEntry($"Play View key input unresolved: '{keyboardShortcut}' on platform '{SelectedFruitMachinePlatform}'.", OutputLogStatus.Warning);
         }
@@ -1768,19 +1768,32 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         foreach (var segment in segments)
         {
-            if (DebugOutputStdOut)
+            if (TryClassifyMameStdoutSegment(segment, DebugOutputStdOut, out var status))
             {
-                AddOutputEntry($"[MAME-STDOUT] {segment}", OutputLogStatus.Info);
-            }
-            else if (segment.StartsWith("@ERROR", StringComparison.Ordinal) || segment.StartsWith("@Oasis plugin:", StringComparison.Ordinal))
-            {
-                var status = segment.StartsWith("@ERROR", StringComparison.Ordinal) ? OutputLogStatus.Warning : OutputLogStatus.Info;
                 AddOutputEntry($"[MAME-STDOUT] {segment}", status);
             }
 
             _mameDebuggerService.ProcessStdoutLine(segment);
             parser.ProcessLine(segment);
         }
+    }
+
+    private static bool TryClassifyMameStdoutSegment(string segment, bool debugOutputStdOut, out OutputLogStatus status)
+    {
+        if (debugOutputStdOut)
+        {
+            status = OutputLogStatus.Info;
+            return true;
+        }
+
+        if (segment.StartsWith("@ERROR", StringComparison.Ordinal))
+        {
+            status = OutputLogStatus.Warning;
+            return true;
+        }
+
+        status = OutputLogStatus.Info;
+        return false;
     }
 
     private void OpenProjectSettings()

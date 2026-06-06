@@ -13,6 +13,7 @@ public sealed class PlayViewKeyboardInputRouterUnknownShortcutTests
         var sent = await router.TryHandleKeyDownAsync(FruitMachinePlatformType.MPU4, "F12", isFocused: true, isRepeat: false, CancellationToken.None);
 
         Assert.False(sent);
+        Assert.False(router.CanResolveShortcut("F12"));
         Assert.Empty(runner.Commands);
     }
 

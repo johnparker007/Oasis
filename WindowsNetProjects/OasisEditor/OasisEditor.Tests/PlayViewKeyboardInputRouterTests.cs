@@ -20,6 +20,20 @@ public sealed class PlayViewKeyboardInputRouterTests
     }
 
     [Fact]
+    public async Task TryHandleKeyDownAsync_NormalizedShortcut_SendsCommand()
+    {
+        var runner = new FakeMameProcessRunner();
+        var keyboardRouter = CreateRouter(runner, out _);
+
+        var sent = await keyboardRouter.TryHandleKeyDownAsync(FruitMachinePlatformType.MPU4, "SPACE", isFocused: true, isRepeat: false, CancellationToken.None);
+
+        Assert.True(sent);
+        Assert.True(keyboardRouter.CanResolveShortcut("SPACE"));
+        Assert.Single(runner.Commands);
+        Assert.Equal("set_input_value ORANGE1 4 1", runner.Commands[0]);
+    }
+
+    [Fact]
     public async Task TryHandleKeyUpAsync_FocusedKey_ReleasesInput()
     {
         var runner = new FakeMameProcessRunner();

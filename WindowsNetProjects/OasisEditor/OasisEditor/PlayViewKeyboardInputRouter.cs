@@ -31,14 +31,14 @@ public sealed class PlayViewKeyboardInputRouter
         }
     }
 
+    public bool CanResolveShortcut(string keyboardShortcut)
+    {
+        return TryGetInputForShortcut(keyboardShortcut, out _);
+    }
+
     public Task<bool> TryHandleKeyDownAsync(FruitMachinePlatformType platform, string keyboardShortcut, bool isFocused, bool isRepeat, CancellationToken cancellationToken)
     {
-        if (!isFocused || isRepeat || string.IsNullOrWhiteSpace(keyboardShortcut))
-        {
-            return Task.FromResult(false);
-        }
-
-        if (!_shortcutToInputId.TryGetValue(keyboardShortcut, out var inputId) || !_inputById.TryGetValue(inputId, out var input))
+        if (!isFocused || isRepeat || !TryGetInputForShortcut(keyboardShortcut, out var input))
         {
             return Task.FromResult(false);
         }
@@ -48,17 +48,27 @@ public sealed class PlayViewKeyboardInputRouter
 
     public Task<bool> TryHandleKeyUpAsync(FruitMachinePlatformType platform, string keyboardShortcut, bool isFocused, CancellationToken cancellationToken)
     {
-        if (!isFocused || string.IsNullOrWhiteSpace(keyboardShortcut))
-        {
-            return Task.FromResult(false);
-        }
-
-        if (!_shortcutToInputId.TryGetValue(keyboardShortcut, out var inputId) || !_inputById.TryGetValue(inputId, out var input))
+        if (!isFocused || !TryGetInputForShortcut(keyboardShortcut, out var input))
         {
             return Task.FromResult(false);
         }
 
         return _inputRouter.TryReleaseAsync(platform, input, cancellationToken);
+    }
+
+    private bool TryGetInputForShortcut(string keyboardShortcut, out InputDefinitionModel input)
+    {
+        input = null!;
+
+        var normalizedShortcut = MfmeShortcutKeyMapper.NormalizeShortcutForRouting(keyboardShortcut);
+        if (string.IsNullOrWhiteSpace(normalizedShortcut)
+            || !_shortcutToInputId.TryGetValue(normalizedShortcut, out var inputId)
+            || !_inputById.TryGetValue(inputId, out input))
+        {
+            return false;
+        }
+
+        return true;
     }
 
     public Task<int> ReleaseAllActiveAsync(FruitMachinePlatformType platform, CancellationToken cancellationToken)
