@@ -243,8 +243,9 @@ public sealed class MfmeExtractReaderTests
 
             Assert.True(result.Succeeded);
             Assert.Empty(result.Errors);
-            Assert.Equal(5, result.Warnings.Count);
+            Assert.Equal(6, result.Warnings.Count);
             Assert.All(result.Warnings, warning => Assert.Equal("mfme.extract.asset.missing", warning.Code));
+            Assert.Contains(result.Warnings, warning => warning.Message.Contains("Alpha overlay", StringComparison.OrdinalIgnoreCase));
             Assert.Equal(7, result.Extract!.Components.Count);
         }
         finally
