@@ -156,6 +156,7 @@ public sealed class MfmeExtractReaderTests
         File.WriteAllText(Path.Combine(extractDirectory, "lamps", "lamp-mask.png"), "placeholder");
         File.WriteAllText(Path.Combine(extractDirectory, "reels", "band.png"), "placeholder");
         File.WriteAllText(Path.Combine(extractDirectory, "reels", "overlay.png"), "placeholder");
+        File.WriteAllText(Path.Combine(extractDirectory, "reels", "alpha-overlay.bmp"), "placeholder");
         File.WriteAllText(manifestPath, CreateSupportedComponentsManifestJson());
 
         try
@@ -202,6 +203,8 @@ public sealed class MfmeExtractReaderTests
             Assert.Equal("ExtractComponentAlpha", alpha.SourceType);
             Assert.NotNull(alpha.SegmentOnColor);
             Assert.Equal(0.1f, alpha.SegmentOnColor?.R);
+            Assert.True(alpha.HasOverlay);
+            Assert.Equal("alpha-overlay.bmp", alpha.OverlayBmpImageFilename);
 
             var alphaNew = Assert.IsType<MfmeLegacyAlphaComponent>(components[5]);
             Assert.Equal("ExtractComponentAlphaNew", alphaNew.SourceType);
@@ -240,8 +243,9 @@ public sealed class MfmeExtractReaderTests
 
             Assert.True(result.Succeeded);
             Assert.Empty(result.Errors);
-            Assert.Equal(5, result.Warnings.Count);
+            Assert.Equal(6, result.Warnings.Count);
             Assert.All(result.Warnings, warning => Assert.Equal("mfme.extract.asset.missing", warning.Code));
+            Assert.Contains(result.Warnings, warning => warning.Message.Contains("Alpha overlay", StringComparison.OrdinalIgnoreCase));
             Assert.Equal(7, result.Extract!.Components.Count);
         }
         finally
@@ -367,7 +371,9 @@ public sealed class MfmeExtractReaderTests
               "Position": { "X": 1, "Y": 2 },
               "Size": { "X": 3, "Y": 4 },
               "Reversed": true,
-              "OnColor": { "R": 0.1, "G": 0.2, "B": 0.3, "A": 1.0 }
+              "OnColor": { "R": 0.1, "G": 0.2, "B": 0.3, "A": 1.0 },
+              "HasOverlay": true,
+              "OverlayBmpImageFilename": "alpha-overlay.bmp"
             },
             {
               "$type": "Oasis.MfmeTools.Shared.ExtractComponents.ExtractComponentAlphaNew, MfmeTools",

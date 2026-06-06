@@ -25,7 +25,7 @@ internal sealed class MfmeImportAssetCopier
         {
             return new MfmeAssetCopyResult
             {
-                Elements = elements,
+                Elements = SendReelsAndAlphaDisplaysToBack(elements.ToArray()),
                 CopiedAssetRelativePaths = [],
                 Warnings = [],
                 Errors = []
@@ -50,10 +50,17 @@ internal sealed class MfmeImportAssetCopier
             .Select(element => MapElementAssets(element, extract.ExtractRootPath, destinationRoot, projectAssetsRoot, pathMap, copied, warnings, errors))
             .ToArray();
 
+        if (errors.Count == 0)
+        {
+            mappedElements = BakeDisplayOverlaysIntoBackgrounds(mappedElements, projectAssetsRoot, copied, errors);
+        }
+
         if (errors.Count > 0)
         {
             return CreateError(elements, warnings, errors);
         }
+
+        mappedElements = SendReelsAndAlphaDisplaysToBack(mappedElements);
 
         return new MfmeAssetCopyResult
         {
@@ -126,6 +133,9 @@ internal sealed class MfmeImportAssetCopier
             AssetPath = primary,
             SecondaryAssetPath = secondary,
             DisplayNumber = element.DisplayNumber,
+            SegmentDisplayType = element.SegmentDisplayType,
+            ShowDecimalPoint = element.ShowDecimalPoint,
+            ShowCommaTail = element.ShowCommaTail,
             OnColorHex = element.OnColorHex,
             OffColorHex = element.OffColorHex,
             TextColorHex = element.TextColorHex,
@@ -136,8 +146,117 @@ internal sealed class MfmeImportAssetCopier
             IsReversed = element.IsReversed,
             Stops = element.Stops,
             VisibleScale = element.VisibleScale,
+            BandOffset = element.BandOffset,
+            IsLocked = element.IsLocked,
+            IsVisible = element.IsVisible,
             ImportSource = element.ImportSource
         };
+    }
+
+    private static PanelElementModel[] BakeDisplayOverlaysIntoBackgrounds(
+        PanelElementModel[] elements,
+        string projectAssetsRoot,
+        ICollection<string> copied,
+        ICollection<string> errors)
+    {
+        if (!elements.Any(IsBackgroundCutoutDisplay))
+        {
+            return elements;
+        }
+
+        var updatedElements = elements;
+        for (var index = 0; index < updatedElements.Length; index++)
+        {
+            var background = updatedElements[index];
+            if (background.Kind != PanelElementKind.Background || string.IsNullOrWhiteSpace(background.AssetPath))
+            {
+                continue;
+            }
+
+            var backgroundPath = TryResolveProjectAssetPath(background.AssetPath, projectAssetsRoot);
+            if (backgroundPath is null || !File.Exists(backgroundPath))
+            {
+                continue;
+            }
+
+            if (!MfmeBackgroundOverlayPostProcessor.TryBakeDisplayOverlays(backgroundPath, background, updatedElements, projectAssetsRoot, copied, out var updatedBackgroundPath, out var processingError))
+            {
+                errors.Add($"Failed to bake MFME display overlay/cutout into background asset '{background.AssetPath}': {processingError}");
+                continue;
+            }
+
+            if (!string.IsNullOrWhiteSpace(updatedBackgroundPath))
+            {
+                updatedElements = (PanelElementModel[])updatedElements.Clone();
+                updatedElements[index] = CloneWithAssetPath(background, updatedBackgroundPath);
+            }
+        }
+
+        return updatedElements;
+    }
+
+    private static PanelElementModel[] SendReelsAndAlphaDisplaysToBack(PanelElementModel[] elements)
+    {
+        if (!elements.Any(IsBackgroundCutoutDisplay))
+        {
+            return elements;
+        }
+
+        return elements
+            .Where(IsBackgroundCutoutDisplay)
+            .Concat(elements.Where(element => !IsBackgroundCutoutDisplay(element)))
+            .ToArray();
+    }
+
+    private static bool IsBackgroundCutoutDisplay(PanelElementModel element)
+    {
+        return element.Kind is PanelElementKind.Reel or PanelElementKind.Alpha or PanelElementKind.VfdDotMatrix;
+    }
+
+    private static PanelElementModel CloneWithAssetPath(PanelElementModel element, string? assetPath)
+    {
+        return new PanelElementModel
+        {
+            ObjectId = element.ObjectId,
+            Name = element.Name,
+            Kind = element.Kind,
+            X = element.X,
+            Y = element.Y,
+            Width = element.Width,
+            Height = element.Height,
+            AssetPath = assetPath,
+            SecondaryAssetPath = element.SecondaryAssetPath,
+            DisplayNumber = element.DisplayNumber,
+            SegmentDisplayType = element.SegmentDisplayType,
+            ShowDecimalPoint = element.ShowDecimalPoint,
+            ShowCommaTail = element.ShowCommaTail,
+            OnColorHex = element.OnColorHex,
+            OffColorHex = element.OffColorHex,
+            TextColorHex = element.TextColorHex,
+            DisplayText = element.DisplayText,
+            TextBoxFontName = element.TextBoxFontName,
+            TextBoxFontStyle = element.TextBoxFontStyle,
+            TextBoxFontSize = element.TextBoxFontSize,
+            IsReversed = element.IsReversed,
+            Stops = element.Stops,
+            VisibleScale = element.VisibleScale,
+            BandOffset = element.BandOffset,
+            IsLocked = element.IsLocked,
+            IsVisible = element.IsVisible,
+            ImportSource = element.ImportSource
+        };
+    }
+
+    private static string? TryResolveProjectAssetPath(string? projectRelativePath, string projectAssetsRoot)
+    {
+        if (string.IsNullOrWhiteSpace(projectRelativePath) || !projectRelativePath.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        var relativePath = projectRelativePath["Assets/".Length..].Replace('/', Path.DirectorySeparatorChar);
+        var fullPath = Path.GetFullPath(Path.Combine(projectAssetsRoot, relativePath));
+        return IsPathUnderRoot(fullPath, projectAssetsRoot) ? fullPath : null;
     }
 
     private static string? CopyOneAsset(

@@ -69,6 +69,62 @@ public sealed class ImportMfmeExtractCommandTests
         Assert.Contains(document.GetPanelElements(), element => element.ObjectId == "import-b");
     }
 
+
+    [Fact]
+    public void Execute_WithImportedReelsAndAlphaDisplays_MovesThemBeforeBackgroundSoBackgroundDrawsInFront()
+    {
+        var document = new DocumentTabViewModel(EditorDocument.CreatePanel2DStub("Panel"));
+        document.SetPanelElements(
+            [
+                new PanelElementModel
+                {
+                    ObjectId = "existing",
+                    Name = "Existing",
+                    Kind = PanelElementKind.Lamp,
+                    Width = 1,
+                    Height = 1
+                }
+            ]);
+
+        var command = new ImportMfmeExtractCommand(
+            document.DocumentId,
+            document,
+            [
+                new PanelElementModel
+                {
+                    ObjectId = "background",
+                    Name = "Background",
+                    Kind = PanelElementKind.Background,
+                    Width = 4,
+                    Height = 4
+                },
+                new PanelElementModel
+                {
+                    ObjectId = "reel",
+                    Name = "Reel",
+                    Kind = PanelElementKind.Reel,
+                    Width = 1,
+                    Height = 1
+                },
+                new PanelElementModel
+                {
+                    ObjectId = "alpha",
+                    Name = "Alpha",
+                    Kind = PanelElementKind.Alpha,
+                    Width = 1,
+                    Height = 1
+                }
+            ]);
+
+        document.CommandService.Execute(command);
+
+        var elements = document.GetPanelElements();
+        Assert.Equal("reel", elements[0].ObjectId);
+        Assert.Equal("alpha", elements[1].ObjectId);
+        Assert.Equal("existing", elements[2].ObjectId);
+        Assert.Equal("background", elements[3].ObjectId);
+    }
+
     [Fact]
     public void Execute_WithNoElements_DoesNotMutateOrRecordHistory()
     {

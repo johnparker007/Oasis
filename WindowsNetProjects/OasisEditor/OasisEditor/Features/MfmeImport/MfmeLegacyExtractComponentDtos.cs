@@ -99,7 +99,9 @@ internal sealed record MfmeLegacyAlphaComponent(
     MfmeLegacyPoint Position,
     MfmeLegacyPoint Size,
     bool Reversed,
-    MfmeLegacyColor? SegmentOnColor)
+    MfmeLegacyColor? SegmentOnColor,
+    bool HasOverlay = false,
+    string? OverlayBmpImageFilename = null)
     : MfmeLegacyComponentBase(
         AlphaSourceType,
         Position,
