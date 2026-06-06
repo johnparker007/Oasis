@@ -55,6 +55,7 @@ internal sealed class ImportMfmeExtractCommand : IDocumentCommand, IExecutionTra
 
         var insertIndex = Math.Clamp(_insertIndex, 0, currentElements.Count);
         currentElements.InsertRange(insertIndex, _importedElements.Select(static element => CloneElement(element)));
+        SendImportedReelsAndAlphaDisplaysToBack(currentElements, importedIds);
         _document.SetPanelElements(currentElements, new PanelChangeEvent(_document.DocumentId, null, PanelChangeProperties.Structure, AffectsCanvas: true, AffectsHierarchy: true, AffectsInspectorRows: true, AffectsPersistence: true));
         _document.MarkDirty();
         WasExecuted = true;
@@ -99,6 +100,25 @@ internal sealed class ImportMfmeExtractCommand : IDocumentCommand, IExecutionTra
         return imported;
     }
 
+    private static void SendImportedReelsAndAlphaDisplaysToBack(List<PanelElementModel> elements, ISet<string> importedIds)
+    {
+        var importedDisplays = elements
+            .Where(element => importedIds.Contains(element.ObjectId) && IsImportedBackgroundCutoutDisplay(element))
+            .ToArray();
+        if (importedDisplays.Length == 0)
+        {
+            return;
+        }
+
+        elements.RemoveAll(element => importedIds.Contains(element.ObjectId) && IsImportedBackgroundCutoutDisplay(element));
+        elements.InsertRange(0, importedDisplays);
+    }
+
+    private static bool IsImportedBackgroundCutoutDisplay(PanelElementModel element)
+    {
+        return element.Kind is PanelElementKind.Reel or PanelElementKind.Alpha or PanelElementKind.VfdDotMatrix;
+    }
+
     private static string BuildUniqueObjectId(IReadOnlySet<string> existingIds)
     {
         string candidate;
@@ -124,6 +144,9 @@ internal sealed class ImportMfmeExtractCommand : IDocumentCommand, IExecutionTra
             AssetPath = source.AssetPath,
             SecondaryAssetPath = source.SecondaryAssetPath,
             DisplayNumber = source.DisplayNumber,
+            SegmentDisplayType = source.SegmentDisplayType,
+            ShowDecimalPoint = source.ShowDecimalPoint,
+            ShowCommaTail = source.ShowCommaTail,
             OnColorHex = source.OnColorHex,
             OffColorHex = source.OffColorHex,
             TextColorHex = source.TextColorHex,
@@ -134,6 +157,9 @@ internal sealed class ImportMfmeExtractCommand : IDocumentCommand, IExecutionTra
             IsReversed = source.IsReversed,
             Stops = source.Stops,
             VisibleScale = source.VisibleScale,
+            BandOffset = source.BandOffset,
+            IsLocked = source.IsLocked,
+            IsVisible = source.IsVisible,
             ImportSource = source.ImportSource is null
                 ? null
                 : new PanelElementImportSourceModel

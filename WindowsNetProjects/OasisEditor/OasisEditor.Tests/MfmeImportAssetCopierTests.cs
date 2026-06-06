@@ -18,7 +18,7 @@ public sealed class MfmeImportAssetCopierTests
             Directory.CreateDirectory(Path.Combine(extractRoot, "background"));
             Directory.CreateDirectory(Path.Combine(extractRoot, "lamps"));
             Directory.CreateDirectory(Path.Combine(extractRoot, "reels"));
-            File.WriteAllText(Path.Combine(extractRoot, "background", "bg.png"), "bg");
+            CreatePng(Path.Combine(extractRoot, "background", "bg.png"), 1, 1, _ => Color.FromArgb(255, 10, 20, 30));
             File.WriteAllText(Path.Combine(extractRoot, "lamps", "lamp.png"), "lamp");
             File.WriteAllText(Path.Combine(extractRoot, "reels", "band.png"), "band");
 
@@ -80,12 +80,15 @@ public sealed class MfmeImportAssetCopierTests
             Assert.Equal(3, result.CopiedAssetRelativePaths.Count);
             Assert.All(result.CopiedAssetRelativePaths, path => Assert.StartsWith("Assets/MfmeImport/My Layout/", path));
 
-            Assert.Equal("Assets/MfmeImport/My Layout/Background/bg.png", result.Elements[0].AssetPath);
-            Assert.Equal("Assets/MfmeImport/My Layout/Lamps/lamp.png", result.Elements[1].AssetPath);
-            Assert.Equal("Assets/MfmeImport/My Layout/Reels/band.png", result.Elements[2].AssetPath);
-            Assert.Equal("Lithograph", result.Elements[1].TextBoxFontName);
-            Assert.Equal("Bold", result.Elements[1].TextBoxFontStyle);
-            Assert.Equal("12", result.Elements[1].TextBoxFontSize);
+            var background = Assert.Single(result.Elements, element => element.Kind == PanelElementKind.Background);
+            var lamp = Assert.Single(result.Elements, element => element.Kind == PanelElementKind.Lamp);
+            var reel = Assert.Single(result.Elements, element => element.Kind == PanelElementKind.Reel);
+            Assert.Equal("Assets/MfmeImport/My Layout/Background/bg.png", background.AssetPath);
+            Assert.Equal("Assets/MfmeImport/My Layout/Lamps/lamp.png", lamp.AssetPath);
+            Assert.Equal("Assets/MfmeImport/My Layout/Reels/band.png", reel.AssetPath);
+            Assert.Equal("Lithograph", lamp.TextBoxFontName);
+            Assert.Equal("Bold", lamp.TextBoxFontStyle);
+            Assert.Equal("12", lamp.TextBoxFontSize);
         }
         finally
         {
@@ -316,6 +319,7 @@ public sealed class MfmeImportAssetCopierTests
 
             Assert.True(result.Succeeded);
             Assert.Empty(result.Errors);
+            Assert.Equal(PanelElementKind.Reel, result.Elements[0].Kind);
 
             var background = Assert.Single(result.Elements, element => element.Kind == PanelElementKind.Background);
             var backgroundPath = Path.Combine(projectRoot, "Assets", background.AssetPath!["Assets/".Length..]);
@@ -341,6 +345,93 @@ public sealed class MfmeImportAssetCopierTests
             Assert.Equal(0, opaqueOverlayPixel.R);
             Assert.Equal(0, opaqueOverlayPixel.G);
             Assert.Equal(200, opaqueOverlayPixel.B);
+        }
+        finally
+        {
+            Directory.Delete(extractRoot, recursive: true);
+            Directory.Delete(projectRoot, recursive: true);
+        }
+    }
+
+
+    [Fact]
+    public void CopyAssets_WithReelAndAlphaWithoutOverlay_ClearsBackgroundRectsAndSendsDisplaysBehindBackground()
+    {
+        var extractRoot = CreateTempDirectory();
+        var projectRoot = CreateTempDirectory();
+
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(extractRoot, "background"));
+            Directory.CreateDirectory(Path.Combine(extractRoot, "reels"));
+            CreatePng(Path.Combine(extractRoot, "background", "bg.png"), 5, 4, _ => Color.FromArgb(255, 10, 20, 30));
+            CreatePng(Path.Combine(extractRoot, "reels", "band.png"), 1, 1, _ => Color.FromArgb(255, 1, 2, 3));
+
+            var context = new MfmeImportContext
+            {
+                SourceExtractPath = extractRoot,
+                ProjectRootPath = projectRoot,
+                ProjectAssetsPath = Path.Combine(projectRoot, "Assets"),
+                CopyAssets = true
+            };
+
+            var extract = new MfmeLegacyExtractData
+            {
+                ExtractRootPath = extractRoot,
+                ManifestPath = Path.Combine(extractRoot, "layout.json"),
+                LayoutName = "layout",
+                Components = []
+            };
+
+            var elements = new[]
+            {
+                new PanelElementModel
+                {
+                    ObjectId = "bg",
+                    Name = "Background",
+                    Kind = PanelElementKind.Background,
+                    Width = 5,
+                    Height = 4,
+                    AssetPath = "background/bg.png"
+                },
+                new PanelElementModel
+                {
+                    ObjectId = "reel",
+                    Name = "Reel",
+                    Kind = PanelElementKind.Reel,
+                    X = 1,
+                    Y = 1,
+                    Width = 1,
+                    Height = 1,
+                    AssetPath = "reels/band.png"
+                },
+                new PanelElementModel
+                {
+                    ObjectId = "alpha",
+                    Name = "Alpha",
+                    Kind = PanelElementKind.Alpha,
+                    X = 3,
+                    Y = 2,
+                    Width = 1,
+                    Height = 1
+                }
+            };
+
+            var copier = new MfmeImportAssetCopier();
+            var result = copier.CopyAssets(context, extract, elements);
+
+            Assert.True(result.Succeeded);
+            Assert.Equal(PanelElementKind.Reel, result.Elements[0].Kind);
+            Assert.Equal(PanelElementKind.Alpha, result.Elements[1].Kind);
+            Assert.Equal(PanelElementKind.Background, result.Elements[2].Kind);
+
+            var background = Assert.Single(result.Elements, element => element.Kind == PanelElementKind.Background);
+            var backgroundPath = Path.Combine(projectRoot, "Assets", background.AssetPath!["Assets/".Length..]);
+            var pixels = ReadBgra32(backgroundPath, out var stride);
+
+            Assert.Equal(0, GetPixel(pixels, stride, 1, 1).A);
+            Assert.Equal(0, GetPixel(pixels, stride, 3, 2).A);
+            Assert.Equal(255, GetPixel(pixels, stride, 0, 0).A);
         }
         finally
         {

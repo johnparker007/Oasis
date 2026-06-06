@@ -25,7 +25,7 @@ internal sealed class MfmeImportAssetCopier
         {
             return new MfmeAssetCopyResult
             {
-                Elements = elements,
+                Elements = SendReelsAndAlphaDisplaysToBack(elements.ToArray()),
                 CopiedAssetRelativePaths = [],
                 Warnings = [],
                 Errors = []
@@ -52,13 +52,15 @@ internal sealed class MfmeImportAssetCopier
 
         if (errors.Count == 0)
         {
-            mappedElements = BakeOverlayImagesIntoBackgrounds(mappedElements, projectAssetsRoot, copied, errors);
+            mappedElements = BakeDisplayOverlaysIntoBackgrounds(mappedElements, projectAssetsRoot, copied, errors);
         }
 
         if (errors.Count > 0)
         {
             return CreateError(elements, warnings, errors);
         }
+
+        mappedElements = SendReelsAndAlphaDisplaysToBack(mappedElements);
 
         return new MfmeAssetCopyResult
         {
@@ -131,6 +133,9 @@ internal sealed class MfmeImportAssetCopier
             AssetPath = primary,
             SecondaryAssetPath = secondary,
             DisplayNumber = element.DisplayNumber,
+            SegmentDisplayType = element.SegmentDisplayType,
+            ShowDecimalPoint = element.ShowDecimalPoint,
+            ShowCommaTail = element.ShowCommaTail,
             OnColorHex = element.OnColorHex,
             OffColorHex = element.OffColorHex,
             TextColorHex = element.TextColorHex,
@@ -141,17 +146,20 @@ internal sealed class MfmeImportAssetCopier
             IsReversed = element.IsReversed,
             Stops = element.Stops,
             VisibleScale = element.VisibleScale,
+            BandOffset = element.BandOffset,
+            IsLocked = element.IsLocked,
+            IsVisible = element.IsVisible,
             ImportSource = element.ImportSource
         };
     }
 
-    private static PanelElementModel[] BakeOverlayImagesIntoBackgrounds(
+    private static PanelElementModel[] BakeDisplayOverlaysIntoBackgrounds(
         PanelElementModel[] elements,
         string projectAssetsRoot,
         ICollection<string> copied,
         ICollection<string> errors)
     {
-        if (!elements.Any(element => element.Kind == PanelElementKind.Reel && !string.IsNullOrWhiteSpace(element.SecondaryAssetPath)))
+        if (!elements.Any(IsBackgroundCutoutDisplay))
         {
             return elements;
         }
@@ -171,9 +179,9 @@ internal sealed class MfmeImportAssetCopier
                 continue;
             }
 
-            if (!MfmeBackgroundOverlayPostProcessor.TryBakeReelOverlays(backgroundPath, background, updatedElements, projectAssetsRoot, copied, out var updatedBackgroundPath, out var processingError))
+            if (!MfmeBackgroundOverlayPostProcessor.TryBakeDisplayOverlays(backgroundPath, background, updatedElements, projectAssetsRoot, copied, out var updatedBackgroundPath, out var processingError))
             {
-                errors.Add($"Failed to bake MFME overlay images into background asset '{background.AssetPath}': {processingError}");
+                errors.Add($"Failed to bake MFME display overlay/cutout into background asset '{background.AssetPath}': {processingError}");
                 continue;
             }
 
@@ -185,6 +193,24 @@ internal sealed class MfmeImportAssetCopier
         }
 
         return updatedElements;
+    }
+
+    private static PanelElementModel[] SendReelsAndAlphaDisplaysToBack(PanelElementModel[] elements)
+    {
+        if (!elements.Any(IsBackgroundCutoutDisplay))
+        {
+            return elements;
+        }
+
+        return elements
+            .Where(IsBackgroundCutoutDisplay)
+            .Concat(elements.Where(element => !IsBackgroundCutoutDisplay(element)))
+            .ToArray();
+    }
+
+    private static bool IsBackgroundCutoutDisplay(PanelElementModel element)
+    {
+        return element.Kind is PanelElementKind.Reel or PanelElementKind.Alpha or PanelElementKind.VfdDotMatrix;
     }
 
     private static PanelElementModel CloneWithAssetPath(PanelElementModel element, string? assetPath)
@@ -201,6 +227,9 @@ internal sealed class MfmeImportAssetCopier
             AssetPath = assetPath,
             SecondaryAssetPath = element.SecondaryAssetPath,
             DisplayNumber = element.DisplayNumber,
+            SegmentDisplayType = element.SegmentDisplayType,
+            ShowDecimalPoint = element.ShowDecimalPoint,
+            ShowCommaTail = element.ShowCommaTail,
             OnColorHex = element.OnColorHex,
             OffColorHex = element.OffColorHex,
             TextColorHex = element.TextColorHex,
@@ -211,6 +240,9 @@ internal sealed class MfmeImportAssetCopier
             IsReversed = element.IsReversed,
             Stops = element.Stops,
             VisibleScale = element.VisibleScale,
+            BandOffset = element.BandOffset,
+            IsLocked = element.IsLocked,
+            IsVisible = element.IsVisible,
             ImportSource = element.ImportSource
         };
     }

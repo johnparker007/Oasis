@@ -146,6 +146,18 @@ internal static class MfmeExtractManifestParser
                         warnings);
                 }
                 break;
+            case MfmeLegacyAlphaComponent alpha:
+                if (alpha.HasOverlay)
+                {
+                    AddMissingImageWarningIfNeeded(
+                        extractDirectory,
+                        "reels",
+                        alpha.OverlayBmpImageFilename,
+                        "Alpha overlay",
+                        componentIndex,
+                        warnings);
+                }
+                break;
         }
     }
 
@@ -263,13 +275,18 @@ internal static class MfmeExtractManifestParser
             case "extractcomponentalpha":
             case "extractcomponentalphanew":
             case "extractcomponentmatrixalpha":
-                parsedComponent = new MfmeLegacyAlphaComponent(
-                    sourceType,
-                    position,
-                    size,
-                    ReadBool(component, "Reversed"),
-                    ReadColor(component, "OnColor") ?? ReadColor(component, "SegmentOnColor"));
-                return true;
+                {
+                    var overlayBmpImageFilename = ReadString(component, "OverlayBmpImageFilename") ?? ReadString(component, "BmpImageFilename");
+                    parsedComponent = new MfmeLegacyAlphaComponent(
+                        sourceType,
+                        position,
+                        size,
+                        ReadBool(component, "Reversed"),
+                        ReadColor(component, "OnColor") ?? ReadColor(component, "SegmentOnColor"),
+                        ReadBool(component, "HasOverlay") || !string.IsNullOrWhiteSpace(overlayBmpImageFilename),
+                        overlayBmpImageFilename);
+                    return true;
+                }
 
             case "extractcomponentlabel":
                 parsedComponent = new MfmeLegacyLabelComponent(

@@ -7,7 +7,7 @@ namespace OasisEditor.Features.MfmeImport;
 
 internal static class MfmeBackgroundOverlayPostProcessor
 {
-    public static bool TryBakeReelOverlays(
+    public static bool TryBakeDisplayOverlays(
         string backgroundPath,
         PanelElementModel background,
         IEnumerable<PanelElementModel> elements,
@@ -21,13 +21,11 @@ internal static class MfmeBackgroundOverlayPostProcessor
 
         try
         {
-            var overlays = elements
-                .Where(element => element.Kind == PanelElementKind.Reel && !string.IsNullOrWhiteSpace(element.SecondaryAssetPath))
-                .Select(element => new OverlayPlacement(element, TryResolveProjectAssetPath(element.SecondaryAssetPath, projectAssetsRoot)))
-                .Where(placement => placement.FullPath is not null && File.Exists(placement.FullPath))
+            var displayElements = elements
+                .Where(IsBackgroundCutoutDisplay)
                 .ToArray();
 
-            if (overlays.Length == 0)
+            if (displayElements.Length == 0)
             {
                 return true;
             }
@@ -38,10 +36,17 @@ internal static class MfmeBackgroundOverlayPostProcessor
                 return true;
             }
 
-            foreach (var overlay in overlays)
+            foreach (var displayElement in displayElements)
             {
-                var overlayImage = LoadBgra32(overlay.FullPath!);
-                CopyOverlayIntoBackground(backgroundImage, background, overlay.Element, overlayImage);
+                if (TryResolveProjectAssetPath(displayElement.SecondaryAssetPath, projectAssetsRoot) is { } overlayPath && File.Exists(overlayPath))
+                {
+                    var overlayImage = LoadBgra32(overlayPath);
+                    CopyOverlayIntoBackground(backgroundImage, background, displayElement, overlayImage);
+                }
+                else
+                {
+                    ClearBackgroundRect(backgroundImage, background, displayElement);
+                }
             }
 
             var outputPath = ResolveOutputPath(backgroundPath);
@@ -62,9 +67,14 @@ internal static class MfmeBackgroundOverlayPostProcessor
         }
     }
 
+    private static bool IsBackgroundCutoutDisplay(PanelElementModel element)
+    {
+        return element.Kind is PanelElementKind.Reel or PanelElementKind.Alpha or PanelElementKind.VfdDotMatrix;
+    }
+
     private static void CopyOverlayIntoBackground(PixelBuffer backgroundImage, PanelElementModel background, PanelElementModel overlayElement, PixelBuffer overlayImage)
     {
-        var destinationRect = GetOverlayDestinationRect(backgroundImage, background, overlayElement);
+        var destinationRect = GetElementDestinationRect(backgroundImage, background, overlayElement);
         if (destinationRect.Width <= 0 || destinationRect.Height <= 0)
         {
             return;
@@ -93,7 +103,40 @@ internal static class MfmeBackgroundOverlayPostProcessor
         }
     }
 
-    private static PixelRect GetOverlayDestinationRect(PixelBuffer backgroundImage, PanelElementModel background, PanelElementModel overlayElement)
+    private static void ClearBackgroundRect(PixelBuffer backgroundImage, PanelElementModel background, PanelElementModel displayElement)
+    {
+        var destinationRect = GetElementDestinationRect(backgroundImage, background, displayElement);
+        if (destinationRect.Width <= 0 || destinationRect.Height <= 0)
+        {
+            return;
+        }
+
+        for (var y = 0; y < destinationRect.Height; y++)
+        {
+            var destinationY = destinationRect.Y + y;
+            if (destinationY < 0 || destinationY >= backgroundImage.Height)
+            {
+                continue;
+            }
+
+            for (var x = 0; x < destinationRect.Width; x++)
+            {
+                var destinationX = destinationRect.X + x;
+                if (destinationX < 0 || destinationX >= backgroundImage.Width)
+                {
+                    continue;
+                }
+
+                var destinationOffset = (destinationY * backgroundImage.Stride) + (destinationX * 4);
+                backgroundImage.Pixels[destinationOffset + 0] = 0;
+                backgroundImage.Pixels[destinationOffset + 1] = 0;
+                backgroundImage.Pixels[destinationOffset + 2] = 0;
+                backgroundImage.Pixels[destinationOffset + 3] = 0;
+            }
+        }
+    }
+
+    private static PixelRect GetElementDestinationRect(PixelBuffer backgroundImage, PanelElementModel background, PanelElementModel overlayElement)
     {
         if (background.Width <= 0 || background.Height <= 0 || overlayElement.Width <= 0 || overlayElement.Height <= 0)
         {
@@ -333,8 +376,6 @@ internal static class MfmeBackgroundOverlayPostProcessor
         using var stream = File.Create(destinationPath);
         encoder.Save(stream);
     }
-
-    private sealed record OverlayPlacement(PanelElementModel Element, string? FullPath);
 
     private readonly record struct PixelRect(int X, int Y, int Width, int Height);
 

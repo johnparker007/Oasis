@@ -51,7 +51,9 @@ public sealed class MfmeToOasisComponentMapperTests
                     new MfmeLegacyPoint(1, 2),
                     new MfmeLegacyPoint(3, 4),
                     Reversed: false,
-                    SegmentOnColor: new MfmeLegacyColor(0f, 0f, 1f, 1f)),
+                    SegmentOnColor: new MfmeLegacyColor(0f, 0f, 1f, 1f),
+                    HasOverlay: true,
+                    OverlayBmpImageFilename: "alpha-overlay.bmp"),
                 new MfmeLegacyButtonComponent(
                     new MfmeLegacyPoint(120, 220),
                     new MfmeLegacyPoint(44, 22),
@@ -133,6 +135,7 @@ public sealed class MfmeToOasisComponentMapperTests
         Assert.Equal(PanelElementKind.Alpha, alpha.Kind);
         Assert.Equal("Alpha", alpha.Name);
         Assert.False(alpha.IsReversed);
+        Assert.Equal("reels/alpha-overlay.bmp", alpha.SecondaryAssetPath);
         Assert.Equal("#FF0000FF", alpha.OnColorHex);
 
         var label = result.Elements[6];
