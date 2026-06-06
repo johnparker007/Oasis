@@ -55,15 +55,15 @@ public readonly record struct PanelSelectionInfo(
     double Height);
 
 
-public sealed class PanelRuntimeStateStore
+public class MachineRuntimeStateStore
 {
-    private readonly Dictionary<Guid, PanelRuntimeState> _statesByDocument = new();
+    private readonly Dictionary<Guid, MachineRuntimeState> _statesByDocument = new();
 
-    public PanelRuntimeState GetOrCreate(Guid documentId)
+    public MachineRuntimeState GetOrCreate(Guid documentId)
     {
         if (!_statesByDocument.TryGetValue(documentId, out var state))
         {
-            state = new PanelRuntimeState();
+            state = new MachineRuntimeState();
             _statesByDocument[documentId] = state;
         }
 
@@ -79,4 +79,8 @@ public sealed class PanelRuntimeStateStore
     {
         _statesByDocument.Clear();
     }
+}
+
+public sealed class PanelRuntimeStateStore : MachineRuntimeStateStore
+{
 }

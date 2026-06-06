@@ -15,7 +15,7 @@ internal sealed class Panel2DRenderer : IPanel2DRenderer
         _renderersByKind = renderers.GroupBy(renderer => renderer.Kind).ToDictionary(group => group.Key, group => group.Last());
     }
 
-    public void Render(SKCanvas canvas, IReadOnlyList<PanelElementModel> elements, PanelRuntimeState runtimeState, PanelViewportTransform viewportTransform)
+    public void Render(SKCanvas canvas, IReadOnlyList<PanelElementModel> elements, MachineRuntimeState runtimeState, PanelViewportTransform viewportTransform)
     {
         ArgumentNullException.ThrowIfNull(canvas);
         ArgumentNullException.ThrowIfNull(elements);

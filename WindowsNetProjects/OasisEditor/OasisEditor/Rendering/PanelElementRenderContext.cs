@@ -4,5 +4,5 @@ namespace OasisEditor.Rendering;
 
 internal readonly record struct PanelElementRenderContext(
     SKCanvas Canvas,
-    PanelRuntimeState RuntimeState,
+    MachineRuntimeState RuntimeState,
     PanelViewportTransform ViewportTransform);

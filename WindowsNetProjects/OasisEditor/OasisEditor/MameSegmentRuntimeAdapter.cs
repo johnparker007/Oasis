@@ -6,6 +6,7 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
     private readonly Func<IEnumerable<DocumentTabViewModel>> _documentProvider;
     private readonly Func<FruitMachinePlatformType> _platformProvider;
     private readonly Action<Action> _uiDispatch;
+    private readonly IMachineObjectReferenceResolver _machineObjectReferenceResolver;
     private readonly Dictionary<int, (int Mask, MameSegmentOutputType OutputType)> _pendingMasks = new();
     private readonly Dictionary<int, double> _pendingVfdBrightnessByDisplay = new();
     private readonly Dictionary<int, int> _latestVfdMasksByCell = new();
@@ -13,11 +14,15 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
     private readonly Dictionary<int, double> _latestVfdBrightnessByDisplay = new();
     private bool _uiUpdateScheduled;
 
-    public MameSegmentRuntimeAdapter(Func<IEnumerable<DocumentTabViewModel>> documentProvider, Action<Action> uiDispatch, Func<FruitMachinePlatformType>? platformProvider = null)
+    public MameSegmentRuntimeAdapter(
+        Func<IEnumerable<DocumentTabViewModel>> documentProvider,
+        Action<Action> uiDispatch,
+        Func<FruitMachinePlatformType>? platformProvider = null)
     {
         _documentProvider = documentProvider ?? throw new ArgumentNullException(nameof(documentProvider));
         _uiDispatch = uiDispatch ?? throw new ArgumentNullException(nameof(uiDispatch));
         _platformProvider = platformProvider ?? (() => FruitMachinePlatformType.MPU4);
+        _machineObjectReferenceResolver = MachineObjectReferenceResolver.Instance;
     }
 
     public void ApplySegmentState(int cellId, int segmentMask, MameSegmentOutputType outputType)
@@ -81,7 +86,7 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
             foreach (var element in document.GetPanelElements().Where(e => (e.Kind == PanelElementKind.Alpha || e.Kind == PanelElementKind.SevenSegment) && !string.IsNullOrWhiteSpace(e.ObjectId)))
             {
                 var objectId = element.ObjectId!;
-                var baseIndex = element.DisplayNumber.GetValueOrDefault(0);
+                var baseIndex = ResolveBaseIndex(element);
                 var cellCount = element.Kind == PanelElementKind.SevenSegment ? 1 : 16;
                 var cellMasks = new int[cellCount];
                 var cellBrightness = new double[cellCount];
@@ -121,6 +126,17 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
                 document.NotifyPanelVisualPreviewChanged(changedObjectIds);
             }
         }
+    }
+
+    private int ResolveBaseIndex(PanelElementModel element)
+    {
+        if (_machineObjectReferenceResolver.TryGetReference(element, out var reference)
+            && int.TryParse(reference.Id, out var sourceIndex))
+        {
+            return sourceIndex;
+        }
+
+        return element.DisplayNumber.GetValueOrDefault(0);
     }
 
     private static bool RequiresPlatformAlphaCellReversal(FruitMachinePlatformType platform)

@@ -18,7 +18,7 @@ public sealed class DocumentWorkspaceViewModel
     private readonly Action<string> _setStatusMessage;
     private readonly Action<string, OutputLogStatus> _addOutputEntry;
     private readonly Action<Guid> _onDocumentClosed;
-    private readonly PanelRuntimeStateStore _runtimeStateStore;
+    private readonly MachineRuntimeStateStore _runtimeStateStore;
     private readonly Automation.IPanel2DDocumentCreationService _panel2dCreationService;
 
     private int _untitledDocumentCounter = 1;
@@ -45,7 +45,7 @@ public sealed class DocumentWorkspaceViewModel
             notifyUndoRedoStateChanged,
             setStatusMessage,
             addOutputEntry,
-            new PanelRuntimeStateStore(),
+            new MachineRuntimeStateStore(),
             new Automation.Panel2DDocumentCreationService(),
             onDocumentClosed)
     {
@@ -60,7 +60,7 @@ public sealed class DocumentWorkspaceViewModel
         Action notifyUndoRedoStateChanged,
         Action<string> setStatusMessage,
         Action<string, OutputLogStatus> addOutputEntry,
-        PanelRuntimeStateStore runtimeStateStore,
+        MachineRuntimeStateStore runtimeStateStore,
         Automation.IPanel2DDocumentCreationService panel2dCreationService,
         Action<Guid>? onDocumentClosed = null)
     {
