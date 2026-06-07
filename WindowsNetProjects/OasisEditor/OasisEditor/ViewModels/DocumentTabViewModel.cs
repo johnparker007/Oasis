@@ -183,6 +183,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
             Summary = _faceDocumentModel.Summary,
             SourcePanel2DDocumentId = _faceDocumentModel.SourcePanel2DDocumentId,
             SourceRegion = _faceDocumentModel.SourceRegion,
+            LastRegeneratedAtUtc = _faceDocumentModel.LastRegeneratedAtUtc,
+            MaskLayer = _faceDocumentModel.MaskLayer,
             Layers = _faceDocumentModel.Layers,
             Elements = elements.ToArray()
         }, faceChange);

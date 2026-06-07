@@ -124,7 +124,7 @@ public partial class PlayView : UserControl
         canvas.Scale((float)viewport.NormalizedZoom, (float)viewport.NormalizedZoom);
         if (selected.Document.DocumentType == EditorDocumentType.Face)
         {
-            _faceRenderer.Render(canvas, selected.GetFaceElements(), selected.RuntimeState, viewport);
+            _faceRenderer.Render(canvas, selected.GetFaceDocument(), selected.RuntimeState, viewport);
         }
         else
         {
