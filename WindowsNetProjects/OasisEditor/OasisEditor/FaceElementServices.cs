@@ -61,6 +61,22 @@ internal static class FaceElementModelUpdater
                 LinkedMachineObjectReference = linkedMachineObjectReference,
                 LinkedPanel2DElementId = update.HasLinkedPanel2DElementId ? update.LinkedPanel2DElementId : existing.LinkedPanel2DElementId
             },
+            FaceButtonElement button => new FaceButtonElement
+            {
+                ObjectId = existing.ObjectId,
+                Name = update.Name ?? existing.Name,
+                X = update.X ?? existing.X,
+                Y = update.Y ?? existing.Y,
+                Width = update.Width ?? existing.Width,
+                Height = update.Height ?? existing.Height,
+                IsVisible = update.IsVisible ?? existing.IsVisible,
+                IsLocked = update.IsLocked ?? existing.IsLocked,
+                LinkedMachineObjectReference = linkedMachineObjectReference,
+                LinkedPanel2DElementId = update.HasLinkedPanel2DElementId ? update.LinkedPanel2DElementId : existing.LinkedPanel2DElementId,
+                LinkedInputReference = linkedMachineObjectReference is MachineObjectReference reference && reference.Kind == MachineObjectKind.Input && !reference.IsEmpty
+                    ? new MachineInputReference(reference)
+                    : button.LinkedInputReference
+            },
             _ => existing
         };
     }
@@ -137,6 +153,7 @@ internal static class FaceSelectionService
         return element switch
         {
             FaceArtworkElement => "artwork",
+            FaceButtonElement => "button",
             FaceLampWindowElement => "lampWindow",
             _ => "unknown"
         };

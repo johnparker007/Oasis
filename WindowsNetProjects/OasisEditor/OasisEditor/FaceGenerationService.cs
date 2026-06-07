@@ -50,16 +50,18 @@ public sealed class FaceSourceRegionModel
 
 internal sealed class FaceGenerationResult
 {
-    public FaceGenerationResult(FaceDocumentModel document, int convertedLampCount, int artworkElementCount)
+    public FaceGenerationResult(FaceDocumentModel document, int convertedLampCount, int artworkElementCount, int convertedButtonCount)
     {
         Document = document;
         ConvertedLampCount = convertedLampCount;
         ArtworkElementCount = artworkElementCount;
+        ConvertedButtonCount = convertedButtonCount;
     }
 
     public FaceDocumentModel Document { get; }
     public int ConvertedLampCount { get; }
     public int ArtworkElementCount { get; }
+    public int ConvertedButtonCount { get; }
 }
 
 internal sealed class FaceGenerationService
@@ -75,7 +77,8 @@ internal sealed class FaceGenerationService
         Panel2DDocumentModel sourcePanel,
         FaceSourceRegionModel sourceRegion,
         string title,
-        string? sourcePanel2DDocumentId = null)
+        string? sourcePanel2DDocumentId = null,
+        IReadOnlyList<InputDefinitionModel>? inputDefinitions = null)
     {
         ArgumentNullException.ThrowIfNull(sourcePanel);
         ArgumentNullException.ThrowIfNull(sourceRegion);
@@ -91,6 +94,7 @@ internal sealed class FaceGenerationService
             .Where(element => element.Kind == PanelElementKind.Lamp && IsContainedBy(element, region))
             .Select(element => CreateLampWindow(element, region))
             .ToArray();
+        var buttons = CreateButtonElements(sourcePanel, region, inputDefinitions ?? []);
 
         var resolvedTitle = string.IsNullOrWhiteSpace(title) ? "Generated Face" : title.Trim();
         var document = new FaceDocumentModel
@@ -113,12 +117,18 @@ internal sealed class FaceGenerationService
                     Id = "layer-lamp-windows",
                     Name = "Lamp Windows",
                     IsVisible = true
+                },
+                new FaceLayerModel
+                {
+                    Id = "layer-buttons",
+                    Name = "Buttons",
+                    IsVisible = true
                 }
             ],
-            Elements = artworkElements.Cast<FaceElementModel>().Concat(lampWindows).ToArray()
+            Elements = artworkElements.Cast<FaceElementModel>().Concat(lampWindows).Concat(buttons).ToArray()
         };
 
-        return new FaceGenerationResult(document, lampWindows.Length, artworkElements.Length);
+        return new FaceGenerationResult(document, lampWindows.Length, artworkElements.Length, buttons.Length);
     }
 
     private static FaceArtworkElement[] CreateArtworkElements(
@@ -207,11 +217,70 @@ internal sealed class FaceGenerationService
         };
     }
 
+    private FaceButtonElement[] CreateButtonElements(Panel2DDocumentModel sourcePanel, Rect region, IReadOnlyList<InputDefinitionModel> inputDefinitions)
+    {
+        if (inputDefinitions.Count == 0)
+        {
+            return [];
+        }
+
+        var elementsByGuid = sourcePanel.Elements
+            .Where(element => Guid.TryParse(element.ObjectId, out _))
+            .GroupBy(element => Guid.Parse(element.ObjectId), element => element)
+            .ToDictionary(group => group.Key, group => group.First());
+
+        var buttons = new List<FaceButtonElement>();
+        foreach (var input in inputDefinitions)
+        {
+            if (input is null)
+            {
+                continue;
+            }
+
+            if (input.LinkedVisualElementId is not Guid visualElementId
+                || !elementsByGuid.TryGetValue(visualElementId, out var sourceElement)
+                || !IsContainedBy(sourceElement, region))
+            {
+                continue;
+            }
+
+            _machineObjectReferenceResolver.TryGetReference(input, out var inputReference);
+            if (inputReference.IsEmpty || inputReference.Kind != MachineObjectKind.Input)
+            {
+                continue;
+            }
+
+            buttons.Add(new FaceButtonElement
+            {
+                ObjectId = CreateGeneratedButtonElementId(sourceElement, input),
+                Name = string.IsNullOrWhiteSpace(input.Name) ? sourceElement.Name ?? string.Empty : input.Name.Trim(),
+                X = Math.Round(sourceElement.X - region.X, 2),
+                Y = Math.Round(sourceElement.Y - region.Y, 2),
+                Width = Math.Round(sourceElement.Width, 2),
+                Height = Math.Round(sourceElement.Height, 2),
+                IsVisible = sourceElement.IsVisible,
+                IsLocked = sourceElement.IsLocked,
+                LinkedMachineObjectReference = inputReference,
+                LinkedInputReference = new MachineInputReference(inputReference),
+                LinkedPanel2DElementId = string.IsNullOrWhiteSpace(sourceElement.ObjectId) ? null : sourceElement.ObjectId
+            });
+        }
+
+        return buttons.ToArray();
+    }
+
     private static string CreateGeneratedElementId(PanelElementModel sourceElement)
     {
         return string.IsNullOrWhiteSpace(sourceElement.ObjectId)
             ? Guid.NewGuid().ToString("N")
             : $"face-{sourceElement.ObjectId.Trim()}";
+    }
+
+    private static string CreateGeneratedButtonElementId(PanelElementModel sourceElement, InputDefinitionModel inputDefinition)
+    {
+        var sourcePart = string.IsNullOrWhiteSpace(sourceElement.ObjectId) ? Guid.NewGuid().ToString("N") : sourceElement.ObjectId.Trim();
+        var inputPart = string.IsNullOrWhiteSpace(inputDefinition.Id) ? "input" : inputDefinition.Id.Trim();
+        return $"face-button-{inputPart}-{sourcePart}";
     }
 
     private static string CreateGeneratedArtworkElementId(PanelElementModel sourceElement)

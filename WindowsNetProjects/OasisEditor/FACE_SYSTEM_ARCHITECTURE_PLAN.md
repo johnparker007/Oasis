@@ -473,19 +473,17 @@ Outcome:
 - generated elements may retain `LinkedPanel2DElementId` as provenance for editor/generation workflows;
 - generated runtime behavior must still resolve through machine-object references and `MachineRuntimeState`.
 
-### Phase 7 - Face Input System MVP - Future
+### Phase 7 - Face Input System MVP - Complete
 
-Goal:
+Completed at MVP level.
 
-- harden Face button/input behavior as a first-class Face runtime feature.
+Outcome:
 
-Planned work:
-
-- confirm Face button hit testing resolves to machine input references;
-- ensure pointer down/up/release-all behavior matches Panel2D Play View semantics;
-- support disabled/hidden/locked runtime input behavior consistently;
-- add non-WPF tests for Face input target resolution and hit testing;
-- verify Face input behavior does not depend on `LinkedPanel2DElementId`.
+- `FaceButtonElement` is persisted as a first-class Face element;
+- generated Face documents can create button elements from Panel2D-linked input definitions where source data is available;
+- Face button hit testing resolves through `MachineInputReference`/`MachineObjectReference.Input`;
+- Face Play View pointer down/up uses the shared play input dispatch path and MAME command service;
+- Face runtime input behavior does not depend on `LinkedPanel2DElementId`, which remains provenance/editor metadata.
 
 ### Phase 8 - Keyboard Input Routing - Future
 

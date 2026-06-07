@@ -26,6 +26,7 @@ public partial class PlayView : UserControl
     private Point _skiaPanStart;
     private Vector _skiaPanOrigin;
     private PanelElementModel? _activeReelDragElement;
+    private MachineInputReference? _activeFacePointerInputReference;
     private Point _reelDragStart;
     private double _reelDragStartTemporaryOffset;
     private bool _isRenderQueued;
@@ -37,6 +38,7 @@ public partial class PlayView : UserControl
     private const double ReelDragSpeedScale = 3d;
     private readonly IPanel2DRenderer _skiaRenderer = new Panel2DRenderer([new BackgroundElementRenderer(), new LampElementRenderer(), new ReelElementRenderer(), new SevenSegmentElementRenderer(), new AlphaElementRenderer(), new VfdDotMatrixElementRenderer()], "PlayView");
     private readonly IFace2DRenderer _faceRenderer = new Face2DRenderer();
+    private readonly IFaceInputTargetResolver _faceInputTargetResolver = FaceInputTargetResolver.Instance;
 
     public PlayView()
     {
@@ -176,6 +178,22 @@ public partial class PlayView : UserControl
         if (eventArgs.ChangedButton == MouseButton.Left)
         {
             var current = eventArgs.GetPosition(PlaySkiaSurface);
+            if (ViewModel?.SelectedDocument?.Document.DocumentType == EditorDocumentType.Face)
+            {
+                if (ViewModel is not null && TryResolveSkiaFaceInputReference(current, out var inputReference))
+                {
+                    if (await ViewModel.TryHandleFacePlayViewPointerDownAsync(inputReference, isFocused: true, CancellationToken.None))
+                    {
+                        _activeFacePointerInputReference = inputReference;
+                        PlaySkiaSurface.CaptureMouse();
+                    }
+
+                    eventArgs.Handled = true;
+                }
+
+                return;
+            }
+
             if (TryResolveSkiaReelElement(current, out var reelElement))
             {
                 BeginReelDrag(reelElement, current);
@@ -235,6 +253,28 @@ public partial class PlayView : UserControl
             {
                 EndReelDrag();
                 eventArgs.Handled = true;
+                return;
+            }
+
+            if (_activeFacePointerInputReference is MachineInputReference activeFaceInputReference)
+            {
+                _activeFacePointerInputReference = null;
+                if (ViewModel is not null)
+                {
+                    await ViewModel.TryHandleFacePlayViewPointerUpAsync(activeFaceInputReference, isFocused: true, CancellationToken.None);
+                }
+
+                if (PlaySkiaSurface.IsMouseCaptured)
+                {
+                    PlaySkiaSurface.ReleaseMouseCapture();
+                }
+
+                eventArgs.Handled = true;
+                return;
+            }
+
+            if (ViewModel?.SelectedDocument?.Document.DocumentType == EditorDocumentType.Face)
+            {
                 return;
             }
 
@@ -365,7 +405,7 @@ public partial class PlayView : UserControl
         CanvasPanZoomBehavior.HandleLostMouseCapture(PlayCanvas);
     }
 
-    private void OnPlaySkiaSurfaceLostMouseCapture(object sender, MouseEventArgs eventArgs)
+    private async void OnPlaySkiaSurfaceLostMouseCapture(object sender, MouseEventArgs eventArgs)
     {
         if (_isSkiaPanning)
         {
@@ -376,6 +416,15 @@ public partial class PlayView : UserControl
         if (_activeReelDragElement is not null)
         {
             EndReelDrag(releaseMouseCapture: false);
+        }
+
+        if (_activeFacePointerInputReference is MachineInputReference activeFaceInputReference)
+        {
+            _activeFacePointerInputReference = null;
+            if (ViewModel is not null)
+            {
+                await ViewModel.TryHandleFacePlayViewPointerUpAsync(activeFaceInputReference, isFocused: true, CancellationToken.None);
+            }
         }
     }
 
@@ -401,6 +450,12 @@ public partial class PlayView : UserControl
 
     private void UpdatePlaySkiaHoverCursor(Point current)
     {
+        if (ViewModel?.SelectedDocument?.Document.DocumentType == EditorDocumentType.Face)
+        {
+            PlaySkiaSurface.Cursor = TryResolveSkiaFaceInputReference(current, out _) ? Cursors.Hand : Cursors.Arrow;
+            return;
+        }
+
         if (TryResolveSkiaReelElement(current, out _))
         {
             PlaySkiaSurface.Cursor = Cursors.ScrollNS;
@@ -490,6 +545,19 @@ public partial class PlayView : UserControl
         return false;
     }
 
+
+    private bool TryResolveSkiaFaceInputReference(Point screenPoint, out MachineInputReference inputReference)
+    {
+        var selected = ViewModel?.SelectedDocument;
+        if (selected is null || selected.Document.DocumentType != EditorDocumentType.Face)
+        {
+            inputReference = default;
+            return false;
+        }
+
+        var documentPoint = ToDocumentPoint(screenPoint);
+        return _faceInputTargetResolver.TryResolveInputReference(selected.GetFaceElements(), documentPoint, out inputReference);
+    }
 
     private bool TryResolveSkiaReelElement(Point screenPoint, out PanelElementModel reelElement)
     {
