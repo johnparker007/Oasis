@@ -38,4 +38,41 @@ public sealed class FaceRuntimeStateResolverTests
 
         Assert.Equal(0d, intensity);
     }
+
+    [Fact]
+    public void GetSevenSegmentCellMasks_UsesMachineObjectReference()
+    {
+        var runtimeState = new MachineRuntimeState();
+        runtimeState.SetSegmentCellMasksIfChanged(MachineObjectReference.SevenSegmentDisplay(3), [0x5B]);
+        runtimeState.SetSegmentCellMasksIfChanged("panel-seven-3", [0x06]);
+        var display = new FaceSevenSegmentDisplayElement
+        {
+            ObjectId = "face-seven-3",
+            LinkedMachineObjectReference = MachineObjectReference.SevenSegmentDisplay(3),
+            LinkedPanel2DElementId = "panel-seven-3"
+        };
+
+        var masks = FaceRuntimeStateResolver.Instance.GetSevenSegmentCellMasks(display, runtimeState);
+
+        Assert.Single(masks);
+        Assert.Equal(0x5B, masks[0]);
+    }
+
+    [Fact]
+    public void GetSevenSegmentCellMasks_IgnoresLinkedPanel2DElementIdWhenMachineReferenceIsMissing()
+    {
+        var runtimeState = new MachineRuntimeState();
+        runtimeState.SetSegmentCellMasksIfChanged("panel-seven-3", [0x06]);
+        var display = new FaceSevenSegmentDisplayElement
+        {
+            ObjectId = "face-seven-3",
+            LinkedPanel2DElementId = "panel-seven-3"
+        };
+
+        var masks = FaceRuntimeStateResolver.Instance.GetSevenSegmentCellMasks(display, runtimeState);
+
+        Assert.Single(masks);
+        Assert.Equal(0, masks[0]);
+    }
+
 }

@@ -507,16 +507,19 @@ Outcome:
 - existing Panel2D keyboard behavior is preserved while Face keyboard routing uses the same public dispatch surface;
 - tests cover the shared dispatch facade across Panel2D pointer, Face pointer, keyboard down/up, and release-all behavior.
 
-### Phase 9A - Seven Segment Display MVP - Future
+### Phase 9A - Seven Segment Display MVP - Complete
 
-Goals:
+Completed at MVP level.
 
-- add `FaceSevenSegmentDisplayElement` as the dedicated Face element for seven-segment display visuals;
-- generate Face seven-segment display elements from Panel2D seven-segment displays;
-- support serialization/deserialization for the new element type and its runtime/provenance references;
-- render seven-segment displays in Face Edit View;
-- render seven-segment displays in Face Play View;
-- resolve runtime state via `MachineObjectReference` and `MachineRuntimeState`.
+Outcome:
+
+- `FaceSevenSegmentDisplayElement` is now the dedicated Face element for seven-segment display visuals;
+- generated Face documents create seven-segment Face elements from contained Panel2D seven-segment displays;
+- seven-segment Face elements serialize/deserialize with machine-object references, provenance-only Panel2D element links, and MVP display color metadata;
+- Face Edit View renders seven-segment display elements from `MachineRuntimeState`;
+- Face Play View renders seven-segment display elements from `MachineRuntimeState`;
+- MAME digit output updates Face seven-segment displays live through `MachineObjectReference.SevenSegmentDisplay`;
+- existing lamp and input behavior remain unchanged.
 
 Runtime rule:
 
@@ -652,7 +655,7 @@ Completed MVP checks that should continue to be regression-tested:
 
 Future phase verification should focus on:
 
-- Phase 9A: seven-segment displays serialize, generate, and render from `MachineRuntimeState` through machine-object references;
+- Phase 9A: complete - seven-segment displays serialize, generate, and render from `MachineRuntimeState` through machine-object references;
 - Phase 9B: alpha displays generate and render from `MachineRuntimeState` through machine-object references;
 - Phase 9C: reel displays generate and render from `MachineRuntimeState` through machine-object references, with correctness prioritized over animation fidelity;
 - Phase 10: Face regeneration uses provenance metadata while preserving runtime identity through machine-object references;

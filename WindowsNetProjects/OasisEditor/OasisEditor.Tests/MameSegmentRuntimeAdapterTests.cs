@@ -118,6 +118,34 @@ public sealed class MameSegmentRuntimeAdapterTests
         Assert.Equal(4, masks[15]);
     }
 
+    [Fact]
+    public void ApplySegmentState_UpdatesFaceSevenSegmentThroughMachineReference()
+    {
+        var document = CreateDocument();
+        document.SetFaceElements([
+            new FaceSevenSegmentDisplayElement
+            {
+                ObjectId = "face-seven-3",
+                LinkedMachineObjectReference = MachineObjectReference.SevenSegmentDisplay(3),
+                LinkedPanel2DElementId = "seven-ignored"
+            }
+        ]);
+        var changedFaceIds = new List<string>();
+        document.FaceVisualStateChanged += changed => changedFaceIds.AddRange(changed.ObjectIds);
+        var dispatches = new List<Action>();
+        var adapter = new MameSegmentRuntimeAdapter(() => [document], action => dispatches.Add(action));
+
+        adapter.ApplySegmentState(3, 0x5B, MameSegmentOutputType.Digit);
+
+        var dispatch = Assert.Single(dispatches);
+        dispatch();
+
+        var masks = document.RuntimeState.GetSegmentCellMasks(MachineObjectReference.SevenSegmentDisplay(3), 1);
+        Assert.Single(masks);
+        Assert.Equal(0x5B, masks[0]);
+        Assert.Contains("face-seven-3", changedFaceIds);
+    }
+
     private static DocumentTabViewModel CreateDocument()
     {
         var panelDocument = EditorDocument.CreateFromFile("panel.panel2d", "panel", "panel");

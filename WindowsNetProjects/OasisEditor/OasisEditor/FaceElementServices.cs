@@ -61,6 +61,22 @@ internal static class FaceElementModelUpdater
                 LinkedMachineObjectReference = linkedMachineObjectReference,
                 LinkedPanel2DElementId = update.HasLinkedPanel2DElementId ? update.LinkedPanel2DElementId : existing.LinkedPanel2DElementId
             },
+            FaceSevenSegmentDisplayElement sevenSegmentDisplay => new FaceSevenSegmentDisplayElement
+            {
+                ObjectId = existing.ObjectId,
+                Name = update.Name ?? existing.Name,
+                X = update.X ?? existing.X,
+                Y = update.Y ?? existing.Y,
+                Width = update.Width ?? existing.Width,
+                Height = update.Height ?? existing.Height,
+                IsVisible = update.IsVisible ?? existing.IsVisible,
+                IsLocked = update.IsLocked ?? existing.IsLocked,
+                LinkedMachineObjectReference = linkedMachineObjectReference,
+                LinkedPanel2DElementId = update.HasLinkedPanel2DElementId ? update.LinkedPanel2DElementId : existing.LinkedPanel2DElementId,
+                OnColorHex = sevenSegmentDisplay.OnColorHex,
+                OffColorHex = sevenSegmentDisplay.OffColorHex,
+                ShowDecimalPoint = sevenSegmentDisplay.ShowDecimalPoint
+            },
             FaceButtonElement button => new FaceButtonElement
             {
                 ObjectId = existing.ObjectId,
@@ -154,6 +170,7 @@ internal static class FaceSelectionService
         {
             FaceArtworkElement => "artwork",
             FaceButtonElement => "button",
+            FaceSevenSegmentDisplayElement => "sevenSegmentDisplay",
             FaceLampWindowElement => "lampWindow",
             _ => "unknown"
         };

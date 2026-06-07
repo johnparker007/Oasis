@@ -65,6 +65,8 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
         foreach (var document in _documentProvider())
         {
             var changedObjectIds = new HashSet<string>(StringComparer.Ordinal);
+            var changedFaceObjectIds = new HashSet<string>(StringComparer.Ordinal);
+            var changedMachineReferences = new HashSet<MachineObjectReference>();
 
             foreach (var (cellId, state) in snapshot)
             {
@@ -115,15 +117,53 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
                 var maskChanged = document.RuntimeState.SetSegmentCellMasksIfChanged(objectId, cellMasks);
                 var brightnessChanged = element.Kind == PanelElementKind.Alpha
                     && document.RuntimeState.SetSegmentCellBrightnessIfChanged(objectId, cellBrightness);
+                if (_machineObjectReferenceResolver.TryGetReference(element, out var machineReference)
+                    && !machineReference.IsEmpty)
+                {
+                    var machineMaskChanged = document.RuntimeState.SetSegmentCellMasksIfChanged(machineReference, cellMasks);
+                    var machineBrightnessChanged = element.Kind == PanelElementKind.Alpha
+                        ? document.RuntimeState.SetSegmentCellBrightnessIfChanged(machineReference, cellBrightness)
+                        : document.RuntimeState.SetSegmentCellBrightnessIfChanged(machineReference, [1d]);
+                    if (machineMaskChanged || machineBrightnessChanged)
+                    {
+                        changedMachineReferences.Add(machineReference);
+                    }
+                }
+
                 if (maskChanged || brightnessChanged)
                 {
                     changedObjectIds.Add(objectId);
                 }
             }
 
+            foreach (var faceDisplay in document.GetFaceElements().OfType<FaceSevenSegmentDisplayElement>())
+            {
+                if (string.IsNullOrWhiteSpace(faceDisplay.ObjectId)
+                    || faceDisplay.LinkedMachineObjectReference is not MachineObjectReference reference
+                    || reference.Kind != MachineObjectKind.SevenSegmentDisplay
+                    || reference.IsEmpty
+                    || !int.TryParse(reference.Id, out var cellId)
+                    || !_latestDigitMasksByCell.TryGetValue(cellId, out var mask))
+                {
+                    continue;
+                }
+
+                var maskChanged = document.RuntimeState.SetSegmentCellMasksIfChanged(reference, [mask]);
+                var brightnessChanged = document.RuntimeState.SetSegmentCellBrightnessIfChanged(reference, [1d]);
+                if (maskChanged || brightnessChanged || changedMachineReferences.Contains(reference))
+                {
+                    changedFaceObjectIds.Add(faceDisplay.ObjectId);
+                }
+            }
+
             if (changedObjectIds.Count > 0)
             {
                 document.NotifyPanelVisualPreviewChanged(changedObjectIds);
+            }
+
+            if (changedFaceObjectIds.Count > 0)
+            {
+                document.NotifyFaceVisualPreviewChanged(changedFaceObjectIds);
             }
         }
     }
