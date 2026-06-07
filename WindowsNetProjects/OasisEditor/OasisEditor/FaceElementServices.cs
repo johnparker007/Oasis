@@ -163,6 +163,29 @@ internal static class FaceElementValidation
     }
 }
 
+internal static class FaceMaskLayerSelectionService
+{
+    public const string KindToken = "maskLayer";
+
+    public static PanelSelectionInfo ToSelectionInfo(FaceMaskLayerModel maskLayer)
+    {
+        return new PanelSelectionInfo(
+            string.IsNullOrWhiteSpace(maskLayer.Id) ? "face-mask-layer" : maskLayer.Id,
+            KindToken,
+            0,
+            0,
+            Math.Max(0, maskLayer.Width),
+            Math.Max(0, maskLayer.Height));
+    }
+
+    public static bool IsMaskLayerSelection(PanelSelectionInfo selection)
+    {
+        return string.Equals(selection.Kind, KindToken, StringComparison.Ordinal)
+            || string.Equals(selection.ObjectId, "face-mask-layer", StringComparison.Ordinal)
+            || string.Equals(selection.ObjectId, "layer-face-mask", StringComparison.Ordinal);
+    }
+}
+
 internal static class FaceSelectionService
 {
     public static PanelSelectionInfo? SelectFromPoint(

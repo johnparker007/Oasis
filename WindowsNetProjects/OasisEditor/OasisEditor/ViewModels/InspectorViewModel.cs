@@ -151,10 +151,18 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             {
                 if (_activeDocumentContext.ActivePanelSelection is PanelSelectionInfo panelSelection)
                 {
-                    if (selectedDocument.Document.DocumentType == EditorDocumentType.Face
-                        && selectedDocument.TryGetFaceElement(panelSelection, out var selectedFaceElement))
+                    if (selectedDocument.Document.DocumentType == EditorDocumentType.Face)
                     {
-                        return BuildSelectedFaceElementSummary(selectedFaceElement);
+                        if (selectedDocument.GetFaceDocument().MaskLayer is FaceMaskLayerModel selectedMaskLayer
+                            && FaceMaskLayerSelectionService.IsMaskLayerSelection(panelSelection))
+                        {
+                            return BuildSelectedFaceMaskLayerSummary(selectedMaskLayer);
+                        }
+
+                        if (selectedDocument.TryGetFaceElement(panelSelection, out var selectedFaceElement))
+                        {
+                            return BuildSelectedFaceElementSummary(selectedFaceElement);
+                        }
                     }
 
                     if (selectedDocument.TryGetPanelElement(panelSelection, out var selectedElement))
@@ -297,6 +305,16 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         var selection = _activeDocumentContext.ActivePanelSelection;
         if (selectedDocument is not null
             && selectedDocument.Document.DocumentType == EditorDocumentType.Face
+            && selection is PanelSelectionInfo maskSelection
+            && selectedDocument.GetFaceDocument().MaskLayer is FaceMaskLayerModel selectedMaskLayer
+            && FaceMaskLayerSelectionService.IsMaskLayerSelection(maskSelection))
+        {
+            RebuildFaceMaskLayerPropertyRows(selectedDocument, selectedMaskLayer);
+            return;
+        }
+
+        if (selectedDocument is not null
+            && selectedDocument.Document.DocumentType == EditorDocumentType.Face
             && selection is PanelSelectionInfo faceSelection
             && selectedDocument.TryGetFaceElement(faceSelection, out var selectedFaceElement))
         {
@@ -376,6 +394,21 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
     {
         var selectedDocument = _selectedDocumentAccessor();
         var selection = _activeDocumentContext.ActivePanelSelection;
+        if (selectedDocument is not null
+            && selectedDocument.Document.DocumentType == EditorDocumentType.Face
+            && selection is PanelSelectionInfo maskSelection
+            && selectedDocument.GetFaceDocument().MaskLayer is FaceMaskLayerModel selectedMaskLayer
+            && FaceMaskLayerSelectionService.IsMaskLayerSelection(maskSelection))
+        {
+            if (!_hadInspectorSelection)
+            {
+                return true;
+            }
+
+            return !string.Equals(_lastInspectorSelectionObjectId, selectedMaskLayer.Id, StringComparison.Ordinal)
+                || !string.Equals(_lastInspectorFaceSelectionKind, FaceMaskLayerSelectionService.KindToken, StringComparison.Ordinal);
+        }
+
         if (selectedDocument is not null
             && selectedDocument.Document.DocumentType == EditorDocumentType.Face
             && selection is PanelSelectionInfo faceSelection
@@ -569,7 +602,8 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         _propertyRows.Add(new InspectorInfoPropertyViewModel("Source Region", "Face Provenance", faceDocument.SourceRegion is not null ? FormatSourceRegion(faceDocument.SourceRegion) : string.Empty));
         _propertyRows.Add(new InspectorInfoPropertyViewModel("Generated Element Count", "Face Provenance", CountGeneratedElements(faceDocument).ToString()));
         _propertyRows.Add(new InspectorInfoPropertyViewModel("Last Regenerated", "Face Provenance", FormatTimestamp(faceDocument.LastRegeneratedAtUtc)));
-        _propertyRows.Add(new InspectorInfoPropertyViewModel("Face Commands", "Workflow", "Use File > Regenerate Face or File > Open Source Panel2D."));
+        AddFaceMaskLayerSummaryRows(faceDocument.MaskLayer, "Mask Layer");
+        _propertyRows.Add(new InspectorInfoPropertyViewModel("Face Commands", "Workflow", "Use File > Regenerate Face, File > Validate Face, or File > Open Source Panel2D."));
 
         var missingMachineReferenceCount = CountMissingMachineReferences(faceDocument);
         if (missingMachineReferenceCount > 0)
@@ -582,6 +616,37 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         _lastInspectorSelectionKind = null;
         _lastInspectorFaceSelectionKind = null;
         OnPropertyChanged(nameof(InspectorPropertyRows));
+    }
+
+    private void RebuildFaceMaskLayerPropertyRows(DocumentTabViewModel selectedDocument, FaceMaskLayerModel maskLayer)
+    {
+        _propertyRows.Add(new InspectorInfoPropertyViewModel("Name", "Mask Layer", string.IsNullOrWhiteSpace(maskLayer.Name) ? "Face Mask" : maskLayer.Name));
+        AddFaceMaskLayerSummaryRows(maskLayer, "Mask Layer");
+        _propertyRows.Add(new InspectorInfoPropertyViewModel("Source Panel2D Document", "Mask Provenance", maskLayer.SourcePanel2DDocumentId ?? selectedDocument.GetFaceDocument().SourcePanel2DDocumentId ?? string.Empty));
+        _propertyRows.Add(new InspectorInfoPropertyViewModel("Renderer Contract", "Future Renderer Consumption", "Use this single face-sized mask as an aligned opacity/escape map. Do not infer runtime lamp identity from contribution metadata."));
+        _propertyRows.Add(new InspectorInfoPropertyViewModel("Mask Commands", "Workflow", "Use File > Regenerate Face to regenerate this layer from source metadata, or File > Validate Face to report mask diagnostics."));
+
+        _hadInspectorSelection = true;
+        _lastInspectorSelectionObjectId = maskLayer.Id;
+        _lastInspectorSelectionKind = null;
+        _lastInspectorFaceSelectionKind = FaceMaskLayerSelectionService.KindToken;
+        OnPropertyChanged(nameof(InspectorPropertyRows));
+    }
+
+    private void AddFaceMaskLayerSummaryRows(FaceMaskLayerModel? maskLayer, string category)
+    {
+        if (maskLayer is null)
+        {
+            _propertyRows.Add(new InspectorInfoPropertyViewModel("Mask Layer", category, "No FaceMaskLayer metadata."));
+            return;
+        }
+
+        _propertyRows.Add(new InspectorInfoPropertyViewModel("Asset Path", category, maskLayer.AssetPath ?? string.Empty));
+        _propertyRows.Add(new InspectorInfoPropertyViewModel("Dimensions", category, FormatDimensions(maskLayer.Width, maskLayer.Height)));
+        _propertyRows.Add(new InspectorInfoPropertyViewModel("Source Region", category, maskLayer.SourceRegion is not null ? FormatSourceRegion(maskLayer.SourceRegion) : string.Empty));
+        _propertyRows.Add(new InspectorInfoPropertyViewModel("Threshold", category, maskLayer.ExtractionThreshold.ToString()));
+        _propertyRows.Add(new InspectorInfoPropertyViewModel("Generated", category, FormatTimestamp(maskLayer.GeneratedUtc)));
+        _propertyRows.Add(new InspectorInfoPropertyViewModel("Contribution Count", category, maskLayer.Contributions.Count.ToString()));
     }
 
     private void RebuildFacePropertyRows(DocumentTabViewModel selectedDocument, FaceElementModel selectedElement)
@@ -974,6 +1039,11 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             : string.Empty;
     }
 
+    private static string FormatDimensions(int width, int height)
+    {
+        return width > 0 && height > 0 ? $"{width}×{height}" : string.Empty;
+    }
+
     private static string FormatSourceRegion(FaceSourceRegionModel region)
     {
         return $"{region.Kind}: {Math.Round(region.X, 2)}, {Math.Round(region.Y, 2)}, {Math.Round(region.Width, 2)}×{Math.Round(region.Height, 2)}";
@@ -1036,6 +1106,13 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         selectedDocument.RuntimeState.LampTestObjectId = targetObjectId;
         Debug.WriteLine($"[LampTest] SetLampTestActive={isActive} document={selectedDocument.DocumentId}");
         selectedDocument.NotifyPanelVisualPreviewChanged();
+    }
+
+    private static string BuildSelectedFaceMaskLayerSummary(FaceMaskLayerModel maskLayer)
+    {
+        var displayName = string.IsNullOrWhiteSpace(maskLayer.Name) ? "Face Mask" : maskLayer.Name.Trim();
+        var asset = string.IsNullOrWhiteSpace(maskLayer.AssetPath) ? "No asset path." : $"Asset: {maskLayer.AssetPath}.";
+        return $"Selected face mask layer '{displayName}' sized {maskLayer.Width} x {maskLayer.Height}. {asset} Contributions: {maskLayer.Contributions.Count}.";
     }
 
     private static string BuildSelectedFaceElementSummary(FaceElementModel selectedElement)
