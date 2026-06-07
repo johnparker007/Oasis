@@ -28,6 +28,10 @@ public sealed class FaceHierarchyProvider : IDocumentHierarchyProvider
             .OfType<FaceSevenSegmentDisplayElement>()
             .Select((element, index) => CreateElementItem(element, index, "Seven Segment Display", "sevenSegmentDisplay"))
             .ToArray();
+        var alphaDisplays = faceDocument.GetFaceElements()
+            .OfType<FaceAlphaDisplayElement>()
+            .Select((element, index) => CreateElementItem(element, index, "Alpha Display", "alphaDisplay"))
+            .ToArray();
         var buttons = faceDocument.GetFaceElements()
             .OfType<FaceButtonElement>()
             .Select((element, index) => CreateElementItem(element, index, "Button", "button"))
@@ -47,6 +51,11 @@ public sealed class FaceHierarchyProvider : IDocumentHierarchyProvider
         if (sevenSegmentDisplays.Length > 0)
         {
             groups.Add(new HierarchyItemViewModel($"Seven Segment Displays ({sevenSegmentDisplays.Length})", "group:sevenSegmentDisplay", isGroup: true, children: sevenSegmentDisplays));
+        }
+
+        if (alphaDisplays.Length > 0)
+        {
+            groups.Add(new HierarchyItemViewModel($"Alpha Displays ({alphaDisplays.Length})", "group:alphaDisplay", isGroup: true, children: alphaDisplays));
         }
 
         if (buttons.Length > 0)

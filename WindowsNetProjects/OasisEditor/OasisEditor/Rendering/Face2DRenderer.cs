@@ -46,6 +46,11 @@ public sealed class Face2DRenderer : IFace2DRenderer
             DrawSevenSegmentDisplay(canvas, sevenSegmentDisplay, runtimeState, viewportTransform);
         }
 
+        foreach (var alphaDisplay in elements.OfType<FaceAlphaDisplayElement>())
+        {
+            DrawAlphaDisplay(canvas, alphaDisplay, runtimeState, viewportTransform);
+        }
+
         foreach (var button in elements.OfType<FaceButtonElement>())
         {
             DrawButton(canvas, button, viewportTransform);
@@ -125,6 +130,36 @@ public sealed class Face2DRenderer : IFace2DRenderer
         var masks = _runtimeStateResolver.GetSevenSegmentCellMasks(element, runtimeState);
         var brightness = _runtimeStateResolver.GetSevenSegmentCellBrightness(element, runtimeState);
         SevenSegmentElementRenderer.RenderSegmentDisplay(canvas, rect, masks, brightness, element.OnColorHex, element.OffColorHex);
+    }
+
+    private void DrawAlphaDisplay(SKCanvas canvas, FaceAlphaDisplayElement element, MachineRuntimeState runtimeState, PanelViewportTransform viewport)
+    {
+        var rect = ToRect(element);
+        if (rect.Width <= 0f || rect.Height <= 0f)
+        {
+            return;
+        }
+
+        if (!element.IsVisible)
+        {
+            using var hiddenPaint = new SKPaint { Style = SKPaintStyle.Stroke, Color = new SKColor(0x80, 0x80, 0x80), StrokeWidth = (float)(1d / viewport.NormalizedZoom), IsAntialias = true };
+            canvas.DrawRect(rect, hiddenPaint);
+            return;
+        }
+
+        var masks = _runtimeStateResolver.GetAlphaCellMasks(element, runtimeState);
+        var brightness = _runtimeStateResolver.GetAlphaCellBrightness(element, runtimeState);
+        AlphaElementRenderer.RenderAlphaDisplay(
+            canvas,
+            rect,
+            masks,
+            brightness,
+            element.SegmentDisplayType,
+            element.OnColorHex,
+            element.OffColorHex,
+            element.ShowDecimalPoint,
+            element.ShowCommaTail,
+            element.IsReversed);
     }
 
     private static void DrawButton(SKCanvas canvas, FaceButtonElement element, PanelViewportTransform viewport)

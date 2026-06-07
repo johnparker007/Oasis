@@ -62,6 +62,16 @@ public sealed class FaceSevenSegmentDisplayElement : FaceElementModel
     public bool ShowDecimalPoint { get; init; }
 }
 
+public sealed class FaceAlphaDisplayElement : FaceElementModel
+{
+    public string? SegmentDisplayType { get; init; }
+    public string? OnColorHex { get; init; }
+    public string? OffColorHex { get; init; }
+    public bool ShowDecimalPoint { get; init; }
+    public bool ShowCommaTail { get; init; }
+    public bool IsReversed { get; init; }
+}
+
 public sealed class FaceButtonElement : FaceElementModel
 {
     public MachineInputReference? LinkedInputReference { get; init; }

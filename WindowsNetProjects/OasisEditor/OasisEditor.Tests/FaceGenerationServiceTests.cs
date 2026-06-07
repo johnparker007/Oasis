@@ -199,4 +199,86 @@ public sealed class FaceGenerationServiceTests
         Assert.True(element.ShowDecimalPoint);
     }
 
+    [Fact]
+    public void GenerateFromPanelRegion_ConvertsContainedAlphaDisplaysWithMachineReferences()
+    {
+        var panel = new Panel2DDocumentModel
+        {
+            Elements =
+            [
+                new PanelElementModel
+                {
+                    ObjectId = "alpha-10",
+                    Name = "Message Display",
+                    Kind = PanelElementKind.Alpha,
+                    X = 125,
+                    Y = 235,
+                    Width = 160,
+                    Height = 32,
+                    DisplayNumber = 10,
+                    SegmentDisplayType = "bfm16seg",
+                    OnColorHex = "#FF4040",
+                    OffColorHex = "#200808",
+                    ShowDecimalPoint = true,
+                    ShowCommaTail = true,
+                    IsReversed = true,
+                    IsVisible = true
+                }
+            ]
+        };
+
+        var result = new FaceGenerationService().GenerateFromPanelRegion(
+            panel,
+            FaceSourceRegionModel.FromRect(new Rect(100, 200, 220, 120)),
+            "Generated Face",
+            "panel-doc-1");
+
+        Assert.Equal(1, result.ConvertedAlphaDisplayCount);
+        var element = Assert.IsType<FaceAlphaDisplayElement>(result.Document.Elements[1]);
+        Assert.Equal("face-alpha-10", element.ObjectId);
+        Assert.Equal("Message Display", element.Name);
+        Assert.Equal(25d, element.X);
+        Assert.Equal(35d, element.Y);
+        Assert.Equal("alpha:10", element.LinkedMachineObjectReference?.ToString());
+        Assert.Equal("alpha-10", element.LinkedPanel2DElementId);
+        Assert.Equal("bfm16seg", element.SegmentDisplayType);
+        Assert.Equal("#FF4040", element.OnColorHex);
+        Assert.Equal("#200808", element.OffColorHex);
+        Assert.True(element.ShowDecimalPoint);
+        Assert.True(element.ShowCommaTail);
+        Assert.True(element.IsReversed);
+    }
+
+    [Fact]
+    public void GenerateFromPanelRegion_ConvertsAlphaWithoutDisplayNumberToDefaultMachineReference()
+    {
+        var panel = new Panel2DDocumentModel
+        {
+            Elements =
+            [
+                new PanelElementModel
+                {
+                    ObjectId = "alpha-no-number",
+                    Name = "Segment Alpha",
+                    Kind = PanelElementKind.Alpha,
+                    X = 125,
+                    Y = 235,
+                    Width = 160,
+                    Height = 32,
+                    IsVisible = true
+                }
+            ]
+        };
+
+        var result = new FaceGenerationService().GenerateFromPanelRegion(
+            panel,
+            FaceSourceRegionModel.FromRect(new Rect(100, 200, 220, 120)),
+            "Generated Face",
+            "panel-doc-1");
+
+        var element = Assert.IsType<FaceAlphaDisplayElement>(result.Document.Elements[1]);
+        Assert.Equal("alpha:0", element.LinkedMachineObjectReference?.ToString());
+        Assert.Equal("alpha-no-number", element.LinkedPanel2DElementId);
+    }
+
 }

@@ -26,6 +26,22 @@ public sealed class MachineObjectReferenceResolverTests
         Assert.Equal(expectedId, reference.Id);
     }
 
+    [Fact]
+    public void TryGetReference_AlphaWithoutDisplayNumber_DefaultsToFirstAlphaDisplay()
+    {
+        var element = new PanelElementModel
+        {
+            ObjectId = "alpha-visual-1",
+            Kind = PanelElementKind.Alpha
+        };
+
+        var resolved = MachineObjectReferenceResolver.Instance.TryGetReference(element, out var reference);
+
+        Assert.True(resolved);
+        Assert.Equal(MachineObjectKind.AlphaDisplay, reference.Kind);
+        Assert.Equal("0", reference.Id);
+    }
+
     private static PanelElementKind ResolvePanelElementKind(string kindName)
     {
         return kindName switch

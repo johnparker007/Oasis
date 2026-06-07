@@ -31,22 +31,56 @@ internal sealed class AlphaElementRenderer : IPanelElementRenderer
         }
 
         var displayType = string.IsNullOrWhiteSpace(element.SegmentDisplayType) ? "led16seg" : element.SegmentDisplayType!;
+        var cellMasks = context.RuntimeState.GetSegmentCellMasks(element.ObjectId, 16);
+        var cellBrightness = context.RuntimeState.GetSegmentCellBrightness(element.ObjectId, 16);
+        RenderAlphaDisplay(
+            context.Canvas,
+            bounds,
+            cellMasks,
+            cellBrightness,
+            displayType,
+            element.OnColorHex,
+            element.OffColorHex,
+            element.ShowDecimalPoint,
+            element.ShowCommaTail,
+            element.IsReversed == true);
+    }
+
+    internal static void RenderAlphaDisplay(
+        SKCanvas canvas,
+        SKRect bounds,
+        int[] cellMasks,
+        double[] cellBrightness,
+        string? displayType,
+        string? onColorHex,
+        string? offColorHex,
+        bool showDecimalPoint,
+        bool showCommaTail,
+        bool isReversed)
+    {
+        if (bounds.Width <= 0f || bounds.Height <= 0f)
+        {
+            return;
+        }
+
+        displayType = string.IsNullOrWhiteSpace(displayType) ? "led16seg" : displayType.Trim();
         var definition = GetDefinition(displayType);
         if (definition is null)
         {
             return;
         }
 
-        var cellMasks = context.RuntimeState.GetSegmentCellMasks(element.ObjectId, 16);
+        cellMasks ??= [];
+        cellBrightness ??= [];
         var defaultMask = BuildDefaultMask(definition);
-        var cellBrightness = context.RuntimeState.GetSegmentCellBrightness(element.ObjectId, 16);
 
-        var onColor = SkiaColorParser.ParseOrDefault(element.OnColorHex, new SKColor(255, 64, 64));
+        _ = offColorHex;
+        var onColor = SkiaColorParser.ParseOrDefault(onColorHex, new SKColor(255, 64, 64));
         var offColor = ScaleBrightness(onColor, 0.10d);
         var backgroundColor = ScaleBrightness(onColor, 0.04d);
 
         using var backgroundPaint = new SKPaint { Color = backgroundColor, Style = SKPaintStyle.Fill, IsAntialias = true };
-        context.Canvas.DrawRoundRect(bounds, 2f, 2f, backgroundPaint);
+        canvas.DrawRoundRect(bounds, 2f, 2f, backgroundPaint);
 
         var marginX = bounds.Width * 0.05f;
         var marginY = bounds.Height * 0.1f;
@@ -70,14 +104,14 @@ internal sealed class AlphaElementRenderer : IPanelElementRenderer
 
         for (var cellIndex = 0; cellIndex < cellCount; cellIndex++)
         {
-            var dataIndex = element.IsReversed == true ? (cellCount - 1 - cellIndex) : cellIndex;
+            var dataIndex = isReversed ? (cellCount - 1 - cellIndex) : cellIndex;
             var mask = dataIndex < cellMasks.Length ? cellMasks[dataIndex] : defaultMask;
             var litAmount = dataIndex < cellBrightness.Length ? Math.Clamp(cellBrightness[dataIndex], 0d, 1d) : 1d;
             var brightnessBucket = (int)Math.Round(litAmount * 4d);
-            var key = new AlphaVisualCacheKey(displayType, cellPixelWidth, cellPixelHeight, mask, brightnessBucket, onColor, offColor, element.ShowDecimalPoint, element.ShowCommaTail);
+            var key = new AlphaVisualCacheKey(displayType, cellPixelWidth, cellPixelHeight, mask, brightnessBucket, onColor, offColor, showDecimalPoint, showCommaTail);
             var visual = GetOrCreateVisual(key, definition);
             var cellRect = SKRect.Create(originX + (cellIndex * scaledPitch), originY, scaledCellWidth, scaledCellHeight);
-            context.Canvas.DrawImage(visual, cellRect);
+            canvas.DrawImage(visual, cellRect);
         }
     }
 
