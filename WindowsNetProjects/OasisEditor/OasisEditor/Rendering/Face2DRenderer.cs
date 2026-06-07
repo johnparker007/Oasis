@@ -145,7 +145,8 @@ public sealed class Face2DRenderer : IFace2DRenderer
             return;
         }
 
-        canvas.SaveLayer(bounds);
+        using var layerPaint = new SKPaint();
+        canvas.SaveLayer(layerPaint);
         foreach (var lampWindow in lamps)
         {
             if (!lampWindow.IsVisible)

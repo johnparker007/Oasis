@@ -49,7 +49,15 @@ public sealed class Face2DRendererTests : IDisposable
         using var surface = SKSurface.Create(new SKImageInfo(10, 10));
         surface.Canvas.Clear(SKColors.Black);
 
-        renderer.Render(surface.Canvas, [lamp], maskLayer, runtimeState, PanelViewportTransform.Identity);
+        renderer.Render(
+            surface.Canvas,
+            new FaceDocumentModel
+            {
+                MaskLayer = maskLayer,
+                Elements = [lamp]
+            },
+            runtimeState,
+            PanelViewportTransform.Identity);
         using var image = surface.Snapshot();
         using var bitmap = SKBitmap.FromImage(image);
 
