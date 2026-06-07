@@ -596,6 +596,22 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             selectedElement.LinkedPanel2DElementId ?? string.Empty,
             commit: value => TryApplyFaceUpdate(selectedElement.ObjectId, "Update linked Panel2D element", new FaceElementModelUpdate { HasLinkedPanel2DElementId = true, LinkedPanel2DElementId = NormalizeOptionalText(value) })));
 
+        if (selectedElement is FaceArtworkElement artwork)
+        {
+            _propertyRows.Add(new InspectorInfoPropertyViewModel("Asset Path", "Artwork", artwork.AssetPath ?? string.Empty));
+            _propertyRows.Add(new InspectorInfoPropertyViewModel("Source Panel2D Document", "Artwork", artwork.SourcePanel2DDocumentId ?? string.Empty));
+            if (artwork.SourceRegion is not null)
+            {
+                _propertyRows.Add(new InspectorInfoPropertyViewModel("Source Region", "Artwork", FormatSourceRegion(artwork.SourceRegion)));
+            }
+
+            if (artwork.Provenance is not null)
+            {
+                _propertyRows.Add(new InspectorInfoPropertyViewModel("Artwork Generator", "Provenance", artwork.Provenance.Generator));
+                _propertyRows.Add(new InspectorInfoPropertyViewModel("Source Asset", "Provenance", artwork.Provenance.SourceAssetPath ?? string.Empty));
+            }
+        }
+
         _hadInspectorSelection = true;
         _lastInspectorSelectionObjectId = selectedElement.ObjectId;
         _lastInspectorSelectionKind = null;
@@ -878,7 +894,17 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
     private static string NicifyFaceElementKind(FaceElementModel element)
     {
-        return element is FaceLampWindowElement ? "Face Lamp Window" : "Face Element";
+        return element switch
+        {
+            FaceArtworkElement => "Face Artwork",
+            FaceLampWindowElement => "Face Lamp Window",
+            _ => "Face Element"
+        };
+    }
+
+    private static string FormatSourceRegion(FaceSourceRegionModel region)
+    {
+        return $"{region.Kind}: {Math.Round(region.X, 2)}, {Math.Round(region.Y, 2)}, {Math.Round(region.Width, 2)}×{Math.Round(region.Height, 2)}";
     }
 
     private bool CanApplyInspectorSummary()

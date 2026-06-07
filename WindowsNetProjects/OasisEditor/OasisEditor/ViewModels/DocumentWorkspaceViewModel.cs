@@ -126,8 +126,8 @@ public sealed class DocumentWorkspaceViewModel
         var faceEditorDocument = EditorDocument.CreateFaceStub(title).WithContentSummary(result.Document.Summary ?? "Generated Face document.");
         var document = CreateDocumentTab(faceEditorDocument, faceDocumentJson: faceJson);
         ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
-        _setStatusMessage($"Generated face document from Panel2D region with {result.ConvertedLampCount} lamp window(s).");
-        _addOutputEntry($"Generated face '{document.Title}' from Panel2D region with {result.ConvertedLampCount} lamp window(s).", OutputLogStatus.Info);
+        _setStatusMessage($"Generated face document from Panel2D region with {result.ArtworkElementCount} artwork element(s) and {result.ConvertedLampCount} lamp window(s).");
+        _addOutputEntry($"Generated face '{document.Title}' from Panel2D region with {result.ArtworkElementCount} artwork element(s) and {result.ConvertedLampCount} lamp window(s).", OutputLogStatus.Info);
         return document;
     }
 

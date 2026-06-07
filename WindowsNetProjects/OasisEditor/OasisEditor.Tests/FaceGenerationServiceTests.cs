@@ -15,6 +15,18 @@ public sealed class FaceGenerationServiceTests
             [
                 new PanelElementModel
                 {
+                    ObjectId = "background-1",
+                    Name = "Glass",
+                    Kind = PanelElementKind.Background,
+                    X = 0,
+                    Y = 0,
+                    Width = 400,
+                    Height = 300,
+                    AssetPath = "Assets/Panel2D/glass.png",
+                    IsVisible = true
+                },
+                new PanelElementModel
+                {
                     ObjectId = "lamp-17",
                     Name = "Start Lamp",
                     Kind = PanelElementKind.Lamp,
@@ -60,11 +72,21 @@ public sealed class FaceGenerationServiceTests
             "panel-doc-1");
 
         Assert.Equal(1, result.ConvertedLampCount);
+        Assert.Equal(1, result.ArtworkElementCount);
         Assert.Equal("Generated Face", result.Document.Title);
         Assert.Equal("panel-doc-1", result.Document.SourcePanel2DDocumentId);
         Assert.NotNull(result.Document.SourceRegion);
 
-        var element = Assert.IsType<FaceLampWindowElement>(Assert.Single(result.Document.Elements));
+        var artwork = Assert.IsType<FaceArtworkElement>(result.Document.Elements[0]);
+        Assert.Equal("face-artwork-background-1", artwork.ObjectId);
+        Assert.Equal("Assets/Panel2D/glass.png", artwork.AssetPath);
+        Assert.Equal("panel-doc-1", artwork.SourcePanel2DDocumentId);
+        Assert.Equal(100d, artwork.SourceRegion!.X);
+        Assert.Equal(200d, artwork.SourceRegion.Y);
+        Assert.Equal("background-1", artwork.Provenance!.SourcePanel2DElementId);
+        Assert.Equal("background", artwork.Provenance.SourcePanel2DElementKind);
+
+        var element = Assert.IsType<FaceLampWindowElement>(result.Document.Elements[1]);
         Assert.Equal("face-lamp-17", element.ObjectId);
         Assert.Equal("Start Lamp", element.Name);
         Assert.Equal(10d, element.X);
@@ -82,6 +104,18 @@ public sealed class FaceGenerationServiceTests
         {
             Elements =
             [
+                new PanelElementModel
+                {
+                    ObjectId = "background-1",
+                    Name = "Glass",
+                    Kind = PanelElementKind.Background,
+                    X = 0,
+                    Y = 0,
+                    Width = 200,
+                    Height = 200,
+                    AssetPath = "Assets/Panel2D/glass.png",
+                    IsVisible = true
+                },
                 new PanelElementModel
                 {
                     ObjectId = "lamp-5",
@@ -110,7 +144,12 @@ public sealed class FaceGenerationServiceTests
         Assert.Equal("source-panel", model.SourcePanel2DDocumentId);
         Assert.Equal(20d, model.SourceRegion!.X);
         Assert.Equal(30d, model.SourceRegion!.Y);
-        var element = Assert.Single(model.Elements);
+        var artwork = Assert.IsType<FaceArtworkElement>(model.Elements[0]);
+        Assert.Equal("source-panel", artwork.SourcePanel2DDocumentId);
+        Assert.Equal(20d, artwork.SourceRegion!.X);
+        Assert.Equal("Assets/Panel2D/glass.png", artwork.Provenance!.SourceAssetPath);
+
+        var element = Assert.IsType<FaceLampWindowElement>(model.Elements[1]);
         Assert.Equal("lamp:5", element.LinkedMachineObjectReference?.ToString());
         Assert.Equal("lamp-5", element.LinkedPanel2DElementId);
         Assert.Equal(5d, element.X);

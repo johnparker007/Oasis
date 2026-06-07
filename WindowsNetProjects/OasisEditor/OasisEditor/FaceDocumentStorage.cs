@@ -34,6 +34,12 @@ public static class FaceDocumentStorage
             [
                 new FaceLayerFile
                 {
+                    Id = "layer-artwork",
+                    Name = "Artwork",
+                    IsVisible = true
+                },
+                new FaceLayerFile
+                {
                     Id = "layer-lamp-windows",
                     Name = "Lamp Windows",
                     IsVisible = true
@@ -212,7 +218,25 @@ public static class FaceDocumentStorage
             reference = parsedReference;
         }
 
-        return new FaceLampWindowElement
+        return string.Equals(file.Kind, "artwork", StringComparison.OrdinalIgnoreCase)
+            ? new FaceArtworkElement
+            {
+                ObjectId = file.ObjectId ?? string.Empty,
+                Name = file.Name ?? string.Empty,
+                X = file.X,
+                Y = file.Y,
+                Width = file.Width,
+                Height = file.Height,
+                IsVisible = file.IsVisible,
+                IsLocked = file.IsLocked,
+                LinkedMachineObjectReference = reference,
+                LinkedPanel2DElementId = file.LinkedPanel2DElementId,
+                AssetPath = file.AssetPath,
+                SourcePanel2DDocumentId = file.SourcePanel2DDocumentId,
+                SourceRegion = ToModel(file.SourceRegion),
+                Provenance = ToModel(file.ArtworkProvenance)
+            }
+            : new FaceLampWindowElement
         {
             ObjectId = file.ObjectId ?? string.Empty,
             Name = file.Name ?? string.Empty,
@@ -227,13 +251,36 @@ public static class FaceDocumentStorage
         };
     }
 
+    private static FaceArtworkProvenanceModel? ToModel(FaceArtworkProvenanceFile? file)
+    {
+        if (file is null)
+        {
+            return null;
+        }
+
+        return new FaceArtworkProvenanceModel
+        {
+            Generator = file.Generator ?? string.Empty,
+            GeneratedAtUtc = file.GeneratedAtUtc,
+            SourcePanel2DElementId = file.SourcePanel2DElementId,
+            SourcePanel2DElementKind = file.SourcePanel2DElementKind,
+            SourceAssetPath = file.SourceAssetPath,
+            SourceElementBounds = ToModel(file.SourceElementBounds)
+        };
+    }
+
     private static FaceElementFile ToFile(FaceElementModel model)
     {
         return new FaceElementFile
         {
             ObjectId = model.ObjectId,
             Name = model.Name,
-            Kind = model is FaceLampWindowElement ? "lampWindow" : "unknown",
+            Kind = model switch
+            {
+                FaceArtworkElement => "artwork",
+                FaceLampWindowElement => "lampWindow",
+                _ => "unknown"
+            },
             X = model.X,
             Y = model.Y,
             Width = model.Width,
@@ -241,7 +288,29 @@ public static class FaceDocumentStorage
             IsVisible = model.IsVisible,
             IsLocked = model.IsLocked,
             LinkedMachineObjectReference = model.LinkedMachineObjectReference?.ToString(),
-            LinkedPanel2DElementId = model.LinkedPanel2DElementId
+            LinkedPanel2DElementId = model.LinkedPanel2DElementId,
+            AssetPath = model is FaceArtworkElement artwork ? artwork.AssetPath : null,
+            SourcePanel2DDocumentId = model is FaceArtworkElement artworkSource ? artworkSource.SourcePanel2DDocumentId : null,
+            SourceRegion = model is FaceArtworkElement artworkRegion ? ToFile(artworkRegion.SourceRegion) : null,
+            ArtworkProvenance = model is FaceArtworkElement artworkProvenance ? ToFile(artworkProvenance.Provenance) : null
+        };
+    }
+
+    private static FaceArtworkProvenanceFile? ToFile(FaceArtworkProvenanceModel? model)
+    {
+        if (model is null)
+        {
+            return null;
+        }
+
+        return new FaceArtworkProvenanceFile
+        {
+            Generator = model.Generator,
+            GeneratedAtUtc = model.GeneratedAtUtc,
+            SourcePanel2DElementId = model.SourcePanel2DElementId,
+            SourcePanel2DElementKind = model.SourcePanel2DElementKind,
+            SourceAssetPath = model.SourceAssetPath,
+            SourceElementBounds = ToFile(model.SourceElementBounds)
         };
     }
 }
@@ -289,4 +358,18 @@ public sealed record FaceElementFile
     public bool IsLocked { get; init; }
     public string? LinkedMachineObjectReference { get; init; }
     public string? LinkedPanel2DElementId { get; init; }
+    public string? AssetPath { get; init; }
+    public string? SourcePanel2DDocumentId { get; init; }
+    public FaceSourceRegionFile? SourceRegion { get; init; }
+    public FaceArtworkProvenanceFile? ArtworkProvenance { get; init; }
+}
+
+public sealed record FaceArtworkProvenanceFile
+{
+    public string? Generator { get; init; }
+    public DateTime GeneratedAtUtc { get; init; }
+    public string? SourcePanel2DElementId { get; init; }
+    public string? SourcePanel2DElementKind { get; init; }
+    public string? SourceAssetPath { get; init; }
+    public FaceSourceRegionFile? SourceElementBounds { get; init; }
 }

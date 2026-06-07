@@ -31,6 +31,23 @@ internal static class FaceElementModelUpdater
 
         return existing switch
         {
+            FaceArtworkElement artwork => new FaceArtworkElement
+            {
+                ObjectId = existing.ObjectId,
+                Name = update.Name ?? existing.Name,
+                X = update.X ?? existing.X,
+                Y = update.Y ?? existing.Y,
+                Width = update.Width ?? existing.Width,
+                Height = update.Height ?? existing.Height,
+                IsVisible = update.IsVisible ?? existing.IsVisible,
+                IsLocked = update.IsLocked ?? existing.IsLocked,
+                LinkedMachineObjectReference = linkedMachineObjectReference,
+                LinkedPanel2DElementId = update.HasLinkedPanel2DElementId ? update.LinkedPanel2DElementId : existing.LinkedPanel2DElementId,
+                AssetPath = artwork.AssetPath,
+                SourcePanel2DDocumentId = artwork.SourcePanel2DDocumentId,
+                SourceRegion = artwork.SourceRegion,
+                Provenance = artwork.Provenance
+            },
             FaceLampWindowElement => new FaceLampWindowElement
             {
                 ObjectId = existing.ObjectId,
@@ -117,6 +134,11 @@ internal static class FaceSelectionService
 
     public static string GetKindToken(FaceElementModel element)
     {
-        return element is FaceLampWindowElement ? "lampWindow" : "unknown";
+        return element switch
+        {
+            FaceArtworkElement => "artwork",
+            FaceLampWindowElement => "lampWindow",
+            _ => "unknown"
+        };
     }
 }

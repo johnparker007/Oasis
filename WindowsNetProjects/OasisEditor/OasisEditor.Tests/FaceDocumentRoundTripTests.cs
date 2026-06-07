@@ -25,6 +25,40 @@ public sealed class FaceDocumentRoundTripTests
             ],
             Elements =
             [
+                new FaceArtworkElement
+                {
+                    ObjectId = "artwork-1",
+                    Name = "Glass Artwork",
+                    X = 0,
+                    Y = 0,
+                    Width = 320,
+                    Height = 240,
+                    IsVisible = true,
+                    AssetPath = "Assets/Panel2D/glass.png",
+                    SourcePanel2DDocumentId = "panel-doc-1",
+                    SourceRegion = new FaceSourceRegionModel
+                    {
+                        X = 100,
+                        Y = 200,
+                        Width = 320,
+                        Height = 240
+                    },
+                    Provenance = new FaceArtworkProvenanceModel
+                    {
+                        Generator = "Generate Face From Region",
+                        GeneratedAtUtc = new DateTime(2026, 6, 7, 0, 0, 0, DateTimeKind.Utc),
+                        SourcePanel2DElementId = "background-1",
+                        SourcePanel2DElementKind = "background",
+                        SourceAssetPath = "Assets/Panel2D/glass.png",
+                        SourceElementBounds = new FaceSourceRegionModel
+                        {
+                            X = 0,
+                            Y = 0,
+                            Width = 640,
+                            Height = 480
+                        }
+                    }
+                },
                 new FaceLampWindowElement
                 {
                     ObjectId = "lamp-window-17",
@@ -57,7 +91,16 @@ public sealed class FaceDocumentRoundTripTests
         var layer = Assert.Single(savedDocument.Layers!);
         Assert.Equal("lamps", layer.Id);
         Assert.Equal("Lamp Windows", layer.Name);
-        var element = Assert.Single(savedDocument.Elements!);
+        Assert.Equal(2, savedDocument.Elements!.Count);
+        var artwork = savedDocument.Elements![0];
+        Assert.Equal("artwork-1", artwork.ObjectId);
+        Assert.Equal("artwork", artwork.Kind);
+        Assert.Equal("Assets/Panel2D/glass.png", artwork.AssetPath);
+        Assert.Equal("panel-doc-1", artwork.SourcePanel2DDocumentId);
+        Assert.Equal(100d, artwork.SourceRegion!.X);
+        Assert.Equal("background-1", artwork.ArtworkProvenance!.SourcePanel2DElementId);
+
+        var element = savedDocument.Elements![1];
         Assert.Equal("lamp-window-17", element.ObjectId);
         Assert.Equal("lampWindow", element.Kind);
         Assert.Equal("lamp:17", element.LinkedMachineObjectReference);

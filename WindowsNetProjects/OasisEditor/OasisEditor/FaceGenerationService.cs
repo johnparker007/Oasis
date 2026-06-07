@@ -50,14 +50,16 @@ public sealed class FaceSourceRegionModel
 
 internal sealed class FaceGenerationResult
 {
-    public FaceGenerationResult(FaceDocumentModel document, int convertedLampCount)
+    public FaceGenerationResult(FaceDocumentModel document, int convertedLampCount, int artworkElementCount)
     {
         Document = document;
         ConvertedLampCount = convertedLampCount;
+        ArtworkElementCount = artworkElementCount;
     }
 
     public FaceDocumentModel Document { get; }
     public int ConvertedLampCount { get; }
+    public int ArtworkElementCount { get; }
 }
 
 internal sealed class FaceGenerationService
@@ -84,6 +86,7 @@ internal sealed class FaceGenerationService
         }
 
         var region = sourceRegion.ToRect();
+        var artworkElements = CreateArtworkElements(sourcePanel, region, sourcePanel2DDocumentId);
         var lampWindows = sourcePanel.Elements
             .Where(element => element.Kind == PanelElementKind.Lamp && IsContainedBy(element, region))
             .Select(element => CreateLampWindow(element, region))
@@ -101,15 +104,88 @@ internal sealed class FaceGenerationService
             [
                 new FaceLayerModel
                 {
+                    Id = "layer-artwork",
+                    Name = "Artwork",
+                    IsVisible = true
+                },
+                new FaceLayerModel
+                {
                     Id = "layer-lamp-windows",
                     Name = "Lamp Windows",
                     IsVisible = true
                 }
             ],
-            Elements = lampWindows
+            Elements = artworkElements.Cast<FaceElementModel>().Concat(lampWindows).ToArray()
         };
 
-        return new FaceGenerationResult(document, lampWindows.Length);
+        return new FaceGenerationResult(document, lampWindows.Length, artworkElements.Length);
+    }
+
+    private static FaceArtworkElement[] CreateArtworkElements(
+        Panel2DDocumentModel sourcePanel,
+        Rect region,
+        string? sourcePanel2DDocumentId)
+    {
+        var backgroundArtwork = sourcePanel.Elements
+            .Where(element => element.Kind == PanelElementKind.Background && Intersects(element, region))
+            .Select(element => CreateArtworkElement(element, region, sourcePanel2DDocumentId))
+            .ToArray();
+
+        if (backgroundArtwork.Length > 0)
+        {
+            return backgroundArtwork;
+        }
+
+        return
+        [
+            new FaceArtworkElement
+            {
+                ObjectId = $"face-artwork-{Guid.NewGuid():N}",
+                Name = "Artwork Region",
+                X = 0,
+                Y = 0,
+                Width = Math.Round(region.Width, 2),
+                Height = Math.Round(region.Height, 2),
+                IsVisible = true,
+                SourcePanel2DDocumentId = NormalizeOptional(sourcePanel2DDocumentId),
+                SourceRegion = FaceSourceRegionModel.FromRect(region),
+                Provenance = new FaceArtworkProvenanceModel
+                {
+                    Generator = "Generate Face From Region",
+                    GeneratedAtUtc = DateTime.UtcNow
+                }
+            }
+        ];
+    }
+
+    private static FaceArtworkElement CreateArtworkElement(PanelElementModel sourceElement, Rect region, string? sourcePanel2DDocumentId)
+    {
+        var sourceBounds = new Rect(sourceElement.X, sourceElement.Y, sourceElement.Width, sourceElement.Height);
+        var intersection = Rect.Intersect(sourceBounds, region);
+        return new FaceArtworkElement
+        {
+            ObjectId = CreateGeneratedArtworkElementId(sourceElement),
+            Name = string.IsNullOrWhiteSpace(sourceElement.Name) ? "Artwork" : sourceElement.Name.Trim(),
+            X = Math.Round(intersection.X - region.X, 2),
+            Y = Math.Round(intersection.Y - region.Y, 2),
+            Width = Math.Round(intersection.Width, 2),
+            Height = Math.Round(intersection.Height, 2),
+            IsVisible = sourceElement.IsVisible,
+            IsLocked = sourceElement.IsLocked,
+            LinkedPanel2DElementId = string.IsNullOrWhiteSpace(sourceElement.ObjectId) ? null : sourceElement.ObjectId,
+            AssetPath = sourceElement.AssetPath,
+            SourcePanel2DDocumentId = NormalizeOptional(sourcePanel2DDocumentId),
+            SourceRegion = FaceSourceRegionModel.FromRect(intersection),
+            Provenance = new FaceArtworkProvenanceModel
+            {
+                Generator = "Generate Face From Region",
+                GeneratedAtUtc = DateTime.UtcNow,
+                SourcePanel2DElementId = string.IsNullOrWhiteSpace(sourceElement.ObjectId) ? null : sourceElement.ObjectId,
+                SourcePanel2DElementKind = Panel2DDocumentStorage.SerializeElementKind(sourceElement.Kind),
+                SourceAssetPath = sourceElement.AssetPath,
+                SourceElementBounds = FaceSourceRegionModel.FromRect(sourceBounds)
+            }
+        };
     }
 
     private FaceLampWindowElement CreateLampWindow(PanelElementModel sourceElement, Rect region)
@@ -138,6 +214,13 @@ internal sealed class FaceGenerationService
             : $"face-{sourceElement.ObjectId.Trim()}";
     }
 
+    private static string CreateGeneratedArtworkElementId(PanelElementModel sourceElement)
+    {
+        return string.IsNullOrWhiteSpace(sourceElement.ObjectId)
+            ? $"face-artwork-{Guid.NewGuid():N}"
+            : $"face-artwork-{sourceElement.ObjectId.Trim()}";
+    }
+
     private static bool IsContainedBy(PanelElementModel element, Rect region)
     {
         var left = element.X;
@@ -148,6 +231,21 @@ internal sealed class FaceGenerationService
             && top >= region.Top
             && right <= region.Right
             && bottom <= region.Bottom;
+    }
+
+    private static bool Intersects(PanelElementModel element, Rect region)
+    {
+        if (element.Width <= 0 || element.Height <= 0)
+        {
+            return false;
+        }
+
+        return new Rect(element.X, element.Y, element.Width, element.Height).IntersectsWith(region);
+    }
+
+    private static string? NormalizeOptional(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 
     private static string Format(double value) => Math.Round(value, 2).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
