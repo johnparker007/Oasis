@@ -47,6 +47,48 @@ Recommended readiness path:
 4. reuse Panel2D viewport math and command patterns, but extract the WPF-specific pieces before sharing them with Face;
 5. add Face to document type/open/save only in Phase 2 after those seams exist.
 
+
+## Revised physical Face layer model
+
+The Face architecture is no longer understood as `Artwork + Lamp Windows`. The long-term physical model is:
+
+```text
+Artwork Layer
+Mask Layer
+Runtime Objects
+    Lamps
+    Buttons
+    Displays
+    Reels
+Future Tray Geometry
+```
+
+### Artwork Layer
+
+The artwork layer is the printed visible artwork for the machine face. It is aligned to the source Panel2D region used to generate the Face document and remains separate from machine-controlled runtime state.
+
+### Mask Layer
+
+The mask layer is the opaque printed layer behind the artwork. It is a single face-sized monochrome layer aligned to the artwork/source region. It is not a collection of independent per-lamp mask images. Per-lamp extraction may be used internally to generate the mask, but the persisted Face model stores one unioned `FaceMaskLayer` plus provenance/extraction metadata.
+
+Question: **Where can light escape?**
+
+Answer: **Mask layer.**
+
+### Runtime Objects
+
+Runtime objects are the machine-controlled elements: lamps, buttons/inputs, displays, and reels. They continue to resolve through machine-object references and runtime state rather than through mask pixels.
+
+### Future Tray Geometry
+
+Tray geometry will eventually describe the physical lamp tray/light containment and bulb responsibility behind the mask.
+
+Question: **Which bulb is responsible for the light?**
+
+Answer: **Tray geometry (future).**
+
+Tray extraction is expected to be derived later from the same source data used for mask extraction, including per-lamp contribution bounds and pixel counts where practical. Tray extraction is intentionally outside the scope of Phase 11A.
+
 ## Machine objects vs visual elements
 
 The long-term architecture should explicitly distinguish logical **Machine Objects** from document-specific **Visual Elements**.

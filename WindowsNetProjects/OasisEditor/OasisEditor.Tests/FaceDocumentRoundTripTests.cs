@@ -14,6 +14,40 @@ public sealed class FaceDocumentRoundTripTests
             Id = "face-1",
             Title = "Front Face",
             Summary = "Physical face summary",
+            MaskLayer = new FaceMaskLayerModel
+            {
+                Id = "face-mask-layer",
+                Name = "Face Mask",
+                AssetPath = "Generated/Faces/face-1-mask.png",
+                SourcePanel2DDocumentId = "panel-doc-1",
+                SourceRegion = new FaceSourceRegionModel
+                {
+                    X = 100,
+                    Y = 200,
+                    Width = 320,
+                    Height = 240
+                },
+                ExtractionThreshold = 24,
+                GeneratedUtc = new DateTime(2026, 6, 7, 1, 0, 0, DateTimeKind.Utc),
+                Width = 320,
+                Height = 240,
+                Contributions =
+                [
+                    new FaceMaskContributionModel
+                    {
+                        SourcePanel2DElementId = "panel-lamp-17",
+                        LinkedMachineObjectReference = MachineObjectReference.Lamp(17),
+                        Bounds = new FaceSourceRegionModel
+                        {
+                            X = 10,
+                            Y = 20,
+                            Width = 30,
+                            Height = 40
+                        },
+                        PixelCount = 42
+                    }
+                ]
+            },
             Layers =
             [
                 new FaceLayerModel
@@ -88,6 +122,13 @@ public sealed class FaceDocumentRoundTripTests
         Assert.Equal("face-1", savedDocument.Id);
         Assert.Equal("Front Face", savedDocument.Title);
         Assert.Equal("Physical face summary", savedDocument.Summary);
+        Assert.Equal("Generated/Faces/face-1-mask.png", savedDocument.MaskLayer!.AssetPath);
+        Assert.Equal(24, savedDocument.MaskLayer.ExtractionThreshold);
+        Assert.Equal(320, savedDocument.MaskLayer.Width);
+        var maskContribution = Assert.Single(savedDocument.MaskLayer.Contributions!);
+        Assert.Equal("panel-lamp-17", maskContribution.SourcePanel2DElementId);
+        Assert.Equal("lamp:17", maskContribution.LinkedMachineObjectReference);
+        Assert.Equal(42, maskContribution.PixelCount);
         var layer = Assert.Single(savedDocument.Layers!);
         Assert.Equal("lamps", layer.Id);
         Assert.Equal("Lamp Windows", layer.Name);

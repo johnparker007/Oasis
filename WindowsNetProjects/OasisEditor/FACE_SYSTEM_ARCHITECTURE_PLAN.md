@@ -19,16 +19,27 @@ Current Panel2D work gives Oasis:
 - shared Skia renderer;
 - runtime-state driven visuals.
 
-The Face system should represent the physical/presentation side of the fruit machine:
+The Face system should represent the physical/presentation side of the fruit machine. The long-term physical model is no longer treated as `Artwork + Lamp Windows`; it is:
 
-- glass artwork;
-- lamp mask;
-- lamp tray;
-- physical button locations;
-- reel windows;
-- display windows;
-- depths/materials;
-- future Unity renderer data.
+```text
+FaceArtworkLayer
+FaceMaskLayer
+Runtime Objects
+    Lamps
+    Buttons
+    Displays
+    Reels
+Future Tray Geometry
+```
+
+In this model:
+
+- artwork is the printed artwork layer;
+- mask is the single opaque printed layer behind the artwork, aligned to the same face-sized source region;
+- runtime objects are the machine-controlled lamps, buttons, displays, and reels;
+- tray geometry is a future representation of the physical lamp tray/light containment behind the mask.
+
+Important: the mask layer is one face-sized layer aligned to the artwork. It is not a persisted collection of independent lamp mask images. Per-lamp extraction may be used internally during generation, but persisted Face documents should store one aligned `FaceMaskLayer` plus provenance/extraction metadata.
 
 Recommended user-facing name:
 
@@ -53,7 +64,7 @@ The Face system is no longer only a pre-implementation proposal. The project now
 - machine-object reference types and resolution services;
 - persisted Face documents and Face document storage;
 - Face document creation/open/save support;
-- Face element models, including lamp, reel, display, button, mask/cutout, and artwork elements;
+- Face models, including artwork elements, runtime-linked lamp/reel/display/button elements, and an aligned Face mask layer model;
 - a 2D Face Edit View with document-space rendering and editing workflows;
 - Face generation from Panel2D regions/selections;
 - Face artwork import/rendering support;
@@ -189,6 +200,8 @@ FaceDocument
     Id
     Name
     SourcePanel2DDocumentId optional
+    SourceRegion optional
+    FaceMaskLayer optional
     Layers[]
     Elements[]
 ```
@@ -196,12 +209,14 @@ FaceDocument
 Layer concepts:
 
 ```text
-GlassArtworkLayer
-LampMaskLayer
-LampTrayLayer
-ReelWindowLayer
-DisplayWindowLayer
-ButtonLayer
+FaceArtworkLayer
+FaceMaskLayer
+RuntimeObjectLayers
+    Lamps
+    Buttons
+    Displays
+    Reels
+FutureTrayGeometry
 ```
 
 Element concepts:
@@ -212,7 +227,7 @@ FaceLampWindowElement
 FaceReelWindowElement
 FaceDisplayWindowElement
 FaceButtonElement
-FaceMaskCutoutElement
+FaceMaskLayer metadata (single aligned mask, not per-lamp elements)
 ```
 
 Core fields:
@@ -444,7 +459,7 @@ Outcome:
 - 2D Face Edit View exists;
 - Face elements render in document space;
 - selection/editing workflows exist;
-- Face element models cover the current MVP surface, including lamps, reels, displays, button hit areas, mask/cutout-style geometry, and artwork;
+- Face models cover the current MVP surface, including artwork, an aligned Face mask layer, lamps, reels, displays, and button hit areas;
 - elements can retain editor/source provenance;
 - elements can carry runtime-object references for play/runtime behavior;
 - the implementation remains renderer-neutral and does not require Unity.
@@ -661,7 +676,7 @@ Manual verification steps:
 
 Next recommended phase:
 
-- Phase 10.5 is complete. Phase 11A should start with Lamp Visual Fidelity, focused on lamp presentation improvements without changing the regeneration metadata contract or the `LinkedMachineObjectReference` -> `MachineRuntimeState` runtime contract.
+- Phase 10.5 is complete. Phase 11A should start with Face Mask Layer Extraction MVP, focused on creating one persisted face-sized mask layer aligned to the artwork/source region while preserving the regeneration metadata contract and the `LinkedMachineObjectReference` -> `MachineRuntimeState` runtime contract.
 
 
 ### Phase 10.5 - Face Generation / Regeneration UX - Complete
@@ -704,27 +719,61 @@ Manual verification steps:
 
 Next recommended phase:
 
-- Phase 11A should be **Lamp Visual Fidelity**, focused narrowly on Face lamp presentation improvements such as lamp glow, artwork blending for lit/unlit lamp regions, and lamp-mask/tray presentation where possible. It should not add 3D preview, Unity integration, or runtime identity changes.
+- Phase 11A should be **Face Mask Layer Extraction MVP**, focused on generating and persisting one aligned Face mask layer before visual-fidelity work. Tray geometry remains deferred, and per-lamp extraction is only an implementation detail.
 
-### Phase 11 - Visual Fidelity Layer - Future
+### Phase 11A - Face Mask Layer Extraction MVP - Current
 
-Recommended first slice:
+Purpose:
 
-- Phase 11A - Lamp Visual Fidelity.
+- generate a single monochrome `FaceMaskLayer` asset aligned to the Face artwork/source region;
+- persist mask-layer metadata such as `SourcePanel2DDocumentId`, `SourceRegion`, extraction threshold, generated UTC timestamp, asset path, and useful per-lamp contribution metadata;
+- preserve enough extraction metadata for future tray generation without making per-lamp extraction a runtime dependency.
+
+Important boundaries:
+
+- mask extraction precedes visual-fidelity work;
+- the persisted model is one face-sized mask layer, not one mask asset per lamp;
+- per-lamp extraction is an implementation detail used to build the union mask;
+- tray geometry is intentionally deferred;
+- do not implement glow, bloom, blur, emission rendering, runtime mask rendering, tray extraction, tray simulation, light leakage simulation, 3D preview, or Unity integration in Phase 11A.
+
+Extraction direction:
+
+```text
+For each source lamp participating in Face generation:
+    background/artwork pixels
+    lamp-on pixels
+    brightness delta
+    threshold
+    binary contribution mask
+    union/max composite into the single face-sized FaceMaskLayer
+```
+
+The mask answers: **where can light escape?** Future tray geometry answers: **which bulb is responsible for the light?**
+
+### Phase 11B - Face Mask Layer System - Future
 
 Goals:
 
-- lamp glow;
-- artwork blending;
-- masks;
-- lamp trays;
-- presentation improvements.
+- expose/edit/inspect the Face mask layer as a first-class layer in Face tooling;
+- add mask validation, replacement/regeneration controls, and clearer asset/provenance UX;
+- define how renderers should consume the mask layer later without coupling runtime behavior to per-lamp extraction metadata.
 
-Important:
+### Phase 11C - Lamp Visual Fidelity - Future
 
-- no runtime architecture changes in this phase;
-- rendering quality only;
-- visual-fidelity improvements must not change the `MachineObjectReference` -> `MachineRuntimeState` runtime contract.
+Goals:
+
+- lamp presentation improvements after the mask layer exists;
+- artwork blending and mask-aware lamp rendering investigation;
+- renderer-side quality improvements that preserve the `MachineObjectReference` -> `MachineRuntimeState` contract.
+
+### Phase 11D - Display/Reel Visual Fidelity - Future
+
+Goals:
+
+- display and reel presentation improvements after the mask-layer foundation;
+- improved window/material treatment for displays and reels;
+- no runtime identity or document ownership changes unless separately planned.
 
 ### Phase 12 - 3D Preview Investigation - Future
 

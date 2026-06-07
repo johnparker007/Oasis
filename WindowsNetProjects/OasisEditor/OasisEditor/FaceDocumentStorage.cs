@@ -40,8 +40,14 @@ public static class FaceDocumentStorage
                 },
                 new FaceLayerFile
                 {
-                    Id = "layer-lamp-windows",
-                    Name = "Lamp Windows",
+                    Id = "layer-face-mask",
+                    Name = "Face Mask",
+                    IsVisible = true
+                },
+                new FaceLayerFile
+                {
+                    Id = "layer-runtime-lamps",
+                    Name = "Runtime Lamps",
                     IsVisible = true
                 },
                 new FaceLayerFile
@@ -149,6 +155,7 @@ public static class FaceDocumentStorage
             SourcePanel2DDocumentId = string.IsNullOrWhiteSpace(file.SourcePanel2DDocumentId) ? null : file.SourcePanel2DDocumentId.Trim(),
             SourceRegion = ToModel(file.SourceRegion),
             LastRegeneratedAtUtc = file.LastRegeneratedAtUtc,
+            MaskLayer = ToModel(file.MaskLayer),
             Layers = (file.Layers ?? [])
                 .Select(layer => new FaceLayerModel
                 {
@@ -176,6 +183,7 @@ public static class FaceDocumentStorage
             SourcePanel2DDocumentId = model.SourcePanel2DDocumentId,
             SourceRegion = ToFile(model.SourceRegion),
             LastRegeneratedAtUtc = model.LastRegeneratedAtUtc,
+            MaskLayer = ToFile(model.MaskLayer),
             SavedAtUtc = DateTime.UtcNow,
             Layers = model.Layers.Select(layer => new FaceLayerFile
             {
@@ -185,6 +193,80 @@ public static class FaceDocumentStorage
                 IsLocked = layer.IsLocked
             }).ToArray(),
             Elements = model.Elements.Select(ToFile).ToArray()
+        };
+    }
+
+    private static FaceMaskLayerModel? ToModel(FaceMaskLayerFile? file)
+    {
+        if (file is null)
+        {
+            return null;
+        }
+
+        return new FaceMaskLayerModel
+        {
+            Id = string.IsNullOrWhiteSpace(file.Id) ? "face-mask-layer" : file.Id.Trim(),
+            Name = string.IsNullOrWhiteSpace(file.Name) ? "Face Mask" : file.Name.Trim(),
+            AssetPath = file.AssetPath,
+            SourcePanel2DDocumentId = string.IsNullOrWhiteSpace(file.SourcePanel2DDocumentId) ? null : file.SourcePanel2DDocumentId.Trim(),
+            SourceRegion = ToModel(file.SourceRegion),
+            ExtractionThreshold = file.ExtractionThreshold,
+            GeneratedUtc = file.GeneratedUtc,
+            Width = file.Width,
+            Height = file.Height,
+            Contributions = (file.Contributions ?? [])
+                .Select(ToModel)
+                .ToArray()
+        };
+    }
+
+    private static FaceMaskContributionModel ToModel(FaceMaskContributionFile file)
+    {
+        MachineObjectReference? reference = null;
+        if (MachineObjectReference.TryParse(file.LinkedMachineObjectReference, out var parsedReference))
+        {
+            reference = parsedReference;
+        }
+
+        return new FaceMaskContributionModel
+        {
+            SourcePanel2DElementId = file.SourcePanel2DElementId,
+            LinkedMachineObjectReference = reference,
+            Bounds = ToModel(file.Bounds),
+            PixelCount = file.PixelCount
+        };
+    }
+
+    private static FaceMaskLayerFile? ToFile(FaceMaskLayerModel? model)
+    {
+        if (model is null)
+        {
+            return null;
+        }
+
+        return new FaceMaskLayerFile
+        {
+            Id = model.Id,
+            Name = model.Name,
+            AssetPath = model.AssetPath,
+            SourcePanel2DDocumentId = model.SourcePanel2DDocumentId,
+            SourceRegion = ToFile(model.SourceRegion),
+            ExtractionThreshold = model.ExtractionThreshold,
+            GeneratedUtc = model.GeneratedUtc,
+            Width = model.Width,
+            Height = model.Height,
+            Contributions = model.Contributions.Select(ToFile).ToArray()
+        };
+    }
+
+    private static FaceMaskContributionFile ToFile(FaceMaskContributionModel model)
+    {
+        return new FaceMaskContributionFile
+        {
+            SourcePanel2DElementId = model.SourcePanel2DElementId,
+            LinkedMachineObjectReference = model.LinkedMachineObjectReference?.ToString(),
+            Bounds = ToFile(model.Bounds),
+            PixelCount = model.PixelCount
         };
     }
 
@@ -460,9 +542,32 @@ public sealed record FaceDocumentFile
     public string? SourcePanel2DDocumentId { get; init; }
     public FaceSourceRegionFile? SourceRegion { get; init; }
     public DateTime? LastRegeneratedAtUtc { get; init; }
+    public FaceMaskLayerFile? MaskLayer { get; init; }
     public DateTime SavedAtUtc { get; init; }
     public IReadOnlyList<FaceLayerFile>? Layers { get; init; } = [];
     public IReadOnlyList<FaceElementFile>? Elements { get; init; } = [];
+}
+
+public sealed record FaceMaskLayerFile
+{
+    public string? Id { get; init; }
+    public string? Name { get; init; }
+    public string? AssetPath { get; init; }
+    public string? SourcePanel2DDocumentId { get; init; }
+    public FaceSourceRegionFile? SourceRegion { get; init; }
+    public byte ExtractionThreshold { get; init; }
+    public DateTime GeneratedUtc { get; init; }
+    public int Width { get; init; }
+    public int Height { get; init; }
+    public IReadOnlyList<FaceMaskContributionFile>? Contributions { get; init; } = [];
+}
+
+public sealed record FaceMaskContributionFile
+{
+    public string? SourcePanel2DElementId { get; init; }
+    public string? LinkedMachineObjectReference { get; init; }
+    public FaceSourceRegionFile? Bounds { get; init; }
+    public int PixelCount { get; init; }
 }
 
 public sealed record FaceSourceRegionFile

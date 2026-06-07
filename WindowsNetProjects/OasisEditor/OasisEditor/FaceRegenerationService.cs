@@ -32,7 +32,9 @@ internal sealed class FaceRegenerationService
     public FaceRegenerationResult Regenerate(
         FaceDocumentModel existingFace,
         Panel2DDocumentModel sourcePanel,
-        IReadOnlyList<InputDefinitionModel>? inputDefinitions = null)
+        IReadOnlyList<InputDefinitionModel>? inputDefinitions = null,
+        string? projectDirectory = null,
+        string? generatedDirectory = null)
     {
         ArgumentNullException.ThrowIfNull(existingFace);
         ArgumentNullException.ThrowIfNull(sourcePanel);
@@ -52,7 +54,9 @@ internal sealed class FaceRegenerationService
             sourceRegion,
             existingFace.Title,
             existingFace.SourcePanel2DDocumentId,
-            inputDefinitions ?? []);
+            inputDefinitions ?? [],
+            projectDirectory,
+            generatedDirectory);
 
         var existingGeneratedByKey = existingFace.Elements
             .Select(element => new KeyValuePair<string, FaceElementModel>(CreateRegenerationKey(element), element))
@@ -111,7 +115,8 @@ internal sealed class FaceRegenerationService
             SourcePanel2DDocumentId = existingFace.SourcePanel2DDocumentId,
             SourceRegion = sourceRegion,
             LastRegeneratedAtUtc = DateTime.UtcNow,
-            Layers = existingFace.Layers.Count > 0 ? existingFace.Layers : generated.Document.Layers,
+            MaskLayer = generated.Document.MaskLayer,
+            Layers = EnsureFaceMaskLayer(existingFace.Layers.Count > 0 ? existingFace.Layers : generated.Document.Layers),
             Elements = mergedElements.ToArray()
         };
 
@@ -122,6 +127,20 @@ internal sealed class FaceRegenerationService
             removedGeneratedElementCount,
             preservedManualElements.Count,
             generated);
+    }
+
+    private static IReadOnlyList<FaceLayerModel> EnsureFaceMaskLayer(IReadOnlyList<FaceLayerModel> layers)
+    {
+        if (layers.Any(layer => string.Equals(layer.Id, "layer-face-mask", StringComparison.OrdinalIgnoreCase)))
+        {
+            return layers;
+        }
+
+        return layers
+            .Take(1)
+            .Concat([new FaceLayerModel { Id = "layer-face-mask", Name = "Face Mask", IsVisible = true }])
+            .Concat(layers.Skip(1))
+            .ToArray();
     }
 
     private static FaceElementModel PreserveRuntimeIdentity(FaceElementModel regeneratedElement, FaceElementModel existingElement)

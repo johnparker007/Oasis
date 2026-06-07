@@ -106,7 +106,8 @@ public sealed class DocumentWorkspaceViewModel
     public DocumentTabViewModel? GenerateFaceFromSelectedPanel2DRegion(Rect sourceRect)
     {
         var sourceDocument = _getSelectedDocument();
-        if (_getLoadedProject() is null || sourceDocument is null || sourceDocument.Document.DocumentType != EditorDocumentType.Panel2D)
+        var loadedProject = _getLoadedProject();
+        if (loadedProject is null || sourceDocument is null || sourceDocument.Document.DocumentType != EditorDocumentType.Panel2D)
         {
             return null;
         }
@@ -123,7 +124,9 @@ public sealed class DocumentWorkspaceViewModel
             sourceRegion,
             title,
             sourceDocument.DocumentId.ToString("N"),
-            _getLoadedProject()?.InputDefinitions ?? []);
+            loadedProject.InputDefinitions,
+            loadedProject.ProjectDirectory,
+            loadedProject.GeneratedDirectory);
 
         var faceJson = FaceDocumentStorage.Serialize(result.Document);
         var faceEditorDocument = EditorDocument.CreateFaceStub(title).WithContentSummary(result.Document.Summary ?? "Generated Face document.");
@@ -185,7 +188,8 @@ public sealed class DocumentWorkspaceViewModel
     public bool RegenerateSelectedFace()
     {
         var selectedDocument = _getSelectedDocument();
-        if (_getLoadedProject() is null || selectedDocument is null || selectedDocument.Document.DocumentType != EditorDocumentType.Face)
+        var loadedProject = _getLoadedProject();
+        if (loadedProject is null || selectedDocument is null || selectedDocument.Document.DocumentType != EditorDocumentType.Face)
         {
             return false;
         }
@@ -202,7 +206,9 @@ public sealed class DocumentWorkspaceViewModel
         var result = _faceRegenerationService.Regenerate(
             existingFace,
             sourcePanelDocument.GetPanelDocument(),
-            _getLoadedProject()?.InputDefinitions ?? []);
+            loadedProject.InputDefinitions,
+            loadedProject.ProjectDirectory,
+            loadedProject.GeneratedDirectory);
 
         selectedDocument.SetFaceDocument(
             result.Document,
