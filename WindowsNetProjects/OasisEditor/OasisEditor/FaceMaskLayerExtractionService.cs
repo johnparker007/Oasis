@@ -191,7 +191,9 @@ internal sealed class FaceMaskLayerExtractionService
             return null;
         }
 
-        var facesDirectory = Path.Combine(generatedDirectory, "Faces");
+        var normalizedProjectDirectory = Path.GetFullPath(projectDirectory);
+        var normalizedGeneratedDirectory = Path.GetFullPath(generatedDirectory);
+        var facesDirectory = Path.Combine(normalizedGeneratedDirectory, "Faces");
         Directory.CreateDirectory(facesDirectory);
         var safeId = string.IsNullOrWhiteSpace(faceDocumentId) ? Guid.NewGuid().ToString("N") : SanitizeFileName(faceDocumentId);
         var fullPath = Path.Combine(facesDirectory, $"{safeId}-mask.png");
@@ -211,7 +213,12 @@ internal sealed class FaceMaskLayerExtractionService
         using var stream = File.Open(fullPath, FileMode.Create, FileAccess.Write, FileShare.None);
         data.SaveTo(stream);
 
-        return Path.GetRelativePath(projectDirectory, fullPath).Replace('\\', '/');
+        if (!File.Exists(fullPath))
+        {
+            throw new IOException($"Face mask layer asset was not written: {fullPath}");
+        }
+
+        return Path.GetRelativePath(normalizedProjectDirectory, fullPath).Replace('\\', '/');
     }
 
     private static bool TryResolveAssetPath(string? assetPath, string? projectDirectory, out string resolvedPath)

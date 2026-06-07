@@ -134,6 +134,7 @@ public sealed class DocumentWorkspaceViewModel
         ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
         _setStatusMessage($"Generated face document from Panel2D region with {result.ArtworkElementCount} artwork element(s), {result.ConvertedLampCount} lamp window(s), {result.ConvertedReelDisplayCount} reel display(s), {result.ConvertedSevenSegmentDisplayCount} seven-segment display(s), {result.ConvertedAlphaDisplayCount} alpha display(s), and {result.ConvertedButtonCount} button(s).");
         _addOutputEntry($"Generated face '{document.Title}' from Panel2D region with {result.ArtworkElementCount} artwork element(s), {result.ConvertedLampCount} lamp window(s), {result.ConvertedReelDisplayCount} reel display(s), {result.ConvertedSevenSegmentDisplayCount} seven-segment display(s), {result.ConvertedAlphaDisplayCount} alpha display(s), and {result.ConvertedButtonCount} button(s).", OutputLogStatus.Info);
+        LogFaceMaskLayerStatus(result.Document, loadedProject);
         LogFaceDiagnostics(result.Document);
         return document;
     }
@@ -224,6 +225,7 @@ public sealed class DocumentWorkspaceViewModel
 
         _setStatusMessage($"Regenerated face '{selectedDocument.Title}' from source Panel2D.");
         _addOutputEntry($"Regenerated face '{selectedDocument.Title}' from source Panel2D with {result.UpdatedElementCount} updated generated element(s), {result.AddedElementCount} added generated element(s), {result.RemovedGeneratedElementCount} removed stale generated element(s), and {result.PreservedManualElementCount} preserved manual element(s).", OutputLogStatus.Info);
+        LogFaceMaskLayerStatus(result.Document, loadedProject);
         LogFaceDiagnostics(result.Document);
         return true;
     }
@@ -237,6 +239,44 @@ public sealed class DocumentWorkspaceViewModel
         }
 
         return _faceValidationService.Validate(selectedDocument.GetFaceDocument(), _getLoadedProject(), _openDocuments.ToArray());
+    }
+
+
+    private void LogFaceMaskLayerStatus(FaceDocumentModel faceDocument, EditorProject project)
+    {
+        var maskLayer = faceDocument.MaskLayer;
+        if (maskLayer is null)
+        {
+            _addOutputEntry($"Face '{faceDocument.Title}' has no generated mask layer metadata.", OutputLogStatus.Warning);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(maskLayer.AssetPath))
+        {
+            _addOutputEntry($"Face '{faceDocument.Title}' mask layer metadata was generated, but no mask asset path was written. Check source lamp artwork assets and project Generated folder settings.", OutputLogStatus.Warning);
+            return;
+        }
+
+        var fullPath = ResolveProjectRelativePath(project.ProjectDirectory, maskLayer.AssetPath);
+        if (File.Exists(fullPath))
+        {
+            _addOutputEntry($"Generated face mask layer asset for '{faceDocument.Title}': {fullPath}", OutputLogStatus.Info);
+            return;
+        }
+
+        _addOutputEntry($"Face '{faceDocument.Title}' references mask layer asset '{maskLayer.AssetPath}', but the file was not found at '{fullPath}'.", OutputLogStatus.Warning);
+    }
+
+    private static string ResolveProjectRelativePath(string projectDirectory, string projectRelativePath)
+    {
+        if (Path.IsPathRooted(projectRelativePath))
+        {
+            return projectRelativePath;
+        }
+
+        return Path.GetFullPath(Path.Combine(
+            projectDirectory,
+            projectRelativePath.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar)));
     }
 
     private void LogFaceDiagnostics(FaceDocumentModel faceDocument)
