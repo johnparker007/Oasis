@@ -65,8 +65,10 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
         var documents = _documentProvider().ToArray();
         PruneDocumentCaches(documents);
 
+        var platform = _platformProvider();
         foreach (var document in documents)
         {
+            document.RuntimeState.FruitMachinePlatform = platform;
             var objectIdsByReel = GetOrBuildReelMapping(document);
             var faceObjectIdsByReel = GetFaceReelMapping(document);
             var changedObjectIds = new HashSet<string>(StringComparer.Ordinal);

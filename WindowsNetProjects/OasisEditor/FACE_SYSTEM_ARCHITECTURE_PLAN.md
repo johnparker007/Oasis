@@ -567,6 +567,7 @@ Outcome:
 - Face Edit View renders reel display elements from `MachineRuntimeState`;
 - Face Play View renders reel display elements from `MachineRuntimeState`;
 - MAME reel output updates Face reel displays live through `MachineObjectReference.Reel`;
+- Face reel displays apply the same MVP platform/stop internal reel offsets used by Panel2D reel rendering so Impact, MPU4, Scorpion4, and other stop-count-specific adjustments stay aligned between Panel2D and Face views;
 - existing lamp, input, seven-segment display, and alpha display behavior remain unchanged.
 
 Notes:
@@ -700,9 +701,9 @@ John will test/review after each phase before continuing.
 2. Generate a Face document from a region that fully contains the Panel2D reel.
 3. Confirm the generated Face hierarchy includes a Reel Displays group and a generated reel display element.
 4. Save the Face document, close it, reopen it, and confirm the reel display persists with its machine reference (`reel:<number>`) and provenance-only `LinkedPanel2DElementId`.
-5. Open the Face document in Face Edit View and confirm the reel window renders as either the configured reel strip image or the MVP placeholder strip.
+5. Open the Face document in Face Edit View and confirm the reel window renders as either the configured reel strip image or the MVP placeholder strip, with the same platform/stop offset alignment as the source Panel2D reel.
 6. Open the same Face document in Face Play View and confirm the same reel display renders.
-7. Start MAME for the machine and confirm reel output changes move/update the Face reel display live.
+7. Start MAME for the machine and confirm reel output changes move/update the Face reel display live and remains visually aligned with the corresponding Panel2D reel position for the selected fruit-machine platform and reel stop count.
 8. Confirm lamps, inputs/buttons, seven-segment displays, and alpha displays still update exactly as they did before Phase 9C.
 9. Inspect a generated reel display and confirm runtime behavior still resolves through `MachineObjectReference.Reel` and `MachineRuntimeState`; `LinkedPanel2DElementId` should only identify the source Panel2D element for provenance/editor workflows.
 

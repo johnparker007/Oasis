@@ -140,4 +140,44 @@ public sealed class FaceReelDisplayTests
 
         Assert.Equal(0d, position);
     }
+    [Fact]
+    public void RuntimeResolver_AppliesPlatformAndStopOffsetToMachineReferencePosition()
+    {
+        var runtimeState = new MachineRuntimeState
+        {
+            FruitMachinePlatform = FruitMachinePlatformType.Impact
+        };
+        runtimeState.SetReelPositionIfChanged(MachineObjectReference.Reel(2), 0d);
+        var reel = new FaceReelDisplayElement
+        {
+            ObjectId = "face-reel-2",
+            LinkedMachineObjectReference = MachineObjectReference.Reel(2),
+            Stops = 16
+        };
+
+        var position = FaceRuntimeStateResolver.Instance.GetReelPosition(reel, runtimeState);
+
+        Assert.Equal(88.32d, position, 2);
+    }
+
+    [Fact]
+    public void RuntimeResolver_AppliesMpu4PlatformReversalLikePanelReels()
+    {
+        var runtimeState = new MachineRuntimeState
+        {
+            FruitMachinePlatform = FruitMachinePlatformType.MPU4
+        };
+        runtimeState.SetReelPositionIfChanged(MachineObjectReference.Reel(2), 12d);
+        var reel = new FaceReelDisplayElement
+        {
+            ObjectId = "face-reel-2",
+            LinkedMachineObjectReference = MachineObjectReference.Reel(2),
+            Stops = 16
+        };
+
+        var position = FaceRuntimeStateResolver.Instance.GetReelPosition(reel, runtimeState);
+
+        Assert.Equal(79.2d, position, 2);
+    }
+
 }

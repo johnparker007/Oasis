@@ -497,6 +497,17 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 return;
             }
 
+            foreach (var document in OpenDocuments)
+            {
+                document.RuntimeState.FruitMachinePlatform = value;
+                var faceReelObjectIds = document.GetFaceElements()
+                    .OfType<FaceReelDisplayElement>()
+                    .Select(element => element.ObjectId)
+                    .Where(objectId => !string.IsNullOrWhiteSpace(objectId))
+                    .ToArray();
+                document.NotifyFaceVisualPreviewChanged(faceReelObjectIds);
+            }
+
             if (LoadedProject is not null)
             {
                 LoadedProject.FruitMachinePlatform = value;

@@ -51,16 +51,35 @@ public sealed class FaceRuntimeStateResolver : IFaceRuntimeStateResolver
         ArgumentNullException.ThrowIfNull(reelDisplay);
         ArgumentNullException.ThrowIfNull(runtimeState);
 
-        var position = TryGetReelDisplayReference(reelDisplay, out var reference)
+        var rawPosition = TryGetReelDisplayReference(reelDisplay, out var reference)
             ? runtimeState.GetReelPosition(reference)
             : 0d;
-        var offset = reelDisplay.BandOffset.GetValueOrDefault(0d) * 96d;
-        if (reelDisplay.IsReversed && position != 0d)
-        {
-            position = 96d - (((position % 96d) + 96d) % 96d);
-        }
 
-        return position + offset;
+        return ResolveEffectiveReelPosition(
+            rawPosition,
+            reelDisplay.Stops.GetValueOrDefault(1),
+            reelDisplay.IsReversed,
+            reelDisplay.BandOffset.GetValueOrDefault(0d),
+            runtimeState.FruitMachinePlatform);
+    }
+
+    internal static double ResolveEffectiveReelPosition(double rawReelPosition, int stops, bool reelReversed, double reelBandOffset, FruitMachinePlatformType platform)
+    {
+        const double positionsPerRevolution = 96d;
+        var safeStops = Math.Max(1, stops);
+        var wrapped = ((rawReelPosition % positionsPerRevolution) + positionsPerRevolution) % positionsPerRevolution;
+        var shouldReverse = RequiresPlatformReversal(platform) ^ reelReversed;
+        var directionAdjusted = shouldReverse && wrapped != 0d
+            ? positionsPerRevolution - wrapped
+            : wrapped;
+        var platformOffset = MameReelRuntimeAdapter.ResolvePlatformBandOffsetNormalized(platform, safeStops);
+        var offsetAdjusted = directionAdjusted + ((platformOffset + reelBandOffset) * positionsPerRevolution);
+        return ((offsetAdjusted % positionsPerRevolution) + positionsPerRevolution) % positionsPerRevolution;
+    }
+
+    private static bool RequiresPlatformReversal(FruitMachinePlatformType platform)
+    {
+        return platform == FruitMachinePlatformType.MPU4;
     }
 
     public bool TryGetSevenSegmentDisplayReference(FaceSevenSegmentDisplayElement display, out MachineObjectReference reference)

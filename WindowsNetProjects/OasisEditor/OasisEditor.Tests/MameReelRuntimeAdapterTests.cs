@@ -25,7 +25,7 @@ public sealed class MameReelRuntimeAdapterTests
         var dispatches = new List<Action>();
         var adapter = new MameReelRuntimeAdapter(
             () => [document],
-            () => FruitMachinePlatformType.None,
+            () => FruitMachinePlatformType.Impact,
             () => false,
             _ => { },
             action => dispatches.Add(action));
@@ -37,7 +37,10 @@ public sealed class MameReelRuntimeAdapterTests
         var dispatch = Assert.Single(dispatches);
         dispatch();
 
+        Assert.Equal(FruitMachinePlatformType.Impact, document.RuntimeState.FruitMachinePlatform);
         Assert.Equal(83d, document.RuntimeState.GetReelPosition(MachineObjectReference.Reel(2)));
+        var faceReel = Assert.IsType<FaceReelDisplayElement>(Assert.Single(document.GetFaceElements()));
+        Assert.Equal(75.32d, FaceRuntimeStateResolver.Instance.GetReelPosition(faceReel, document.RuntimeState), 2);
         Assert.NotNull(changedEvent);
         Assert.Contains("face-reel-2", changedEvent!.ObjectIds);
     }
@@ -78,7 +81,8 @@ public sealed class MameReelRuntimeAdapterTests
             {
                 ObjectId = "face-reel-2",
                 LinkedMachineObjectReference = machineReference ?? MachineObjectReference.Reel(2),
-                LinkedPanel2DElementId = linkedPanel2DElementId
+                LinkedPanel2DElementId = linkedPanel2DElementId,
+                Stops = 16
             }
         ]);
         return tab;

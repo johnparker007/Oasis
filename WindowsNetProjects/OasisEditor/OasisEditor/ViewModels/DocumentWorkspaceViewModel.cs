@@ -329,11 +329,13 @@ public sealed class DocumentWorkspaceViewModel
     private DocumentTabViewModel CreateDocumentTab(EditorDocument document, string? panelLayoutJson = null, string? faceDocumentJson = null)
     {
         var documentId = Guid.NewGuid();
+        var runtimeState = _runtimeStateStore.GetOrCreate(documentId);
+        runtimeState.FruitMachinePlatform = _getLoadedProject()?.FruitMachinePlatform ?? FruitMachinePlatformType.None;
         return new DocumentTabViewModel(
             document,
             panelLayoutJson,
             documentId,
-            runtimeState: _runtimeStateStore.GetOrCreate(documentId),
+            runtimeState: runtimeState,
             faceDocumentJson: faceDocumentJson);
     }
 
