@@ -70,7 +70,7 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
         {
             document.RuntimeState.FruitMachinePlatform = platform;
             var objectIdsByReel = GetOrBuildReelMapping(document);
-            var faceObjectIdsByReel = GetFaceReelMapping(document);
+            var faceObjectIdsByReel = FaceRuntimeDisplayReferenceIndex.GetObjectIdsByReference<FaceReelDisplayElement>(document, MachineObjectKind.Reel);
             var changedObjectIds = new HashSet<string>(StringComparer.Ordinal);
             var changedFaceObjectIds = new HashSet<string>(StringComparer.Ordinal);
 
@@ -133,22 +133,6 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
                 staleEntry.Detach();
             }
         }
-    }
-
-    private static IReadOnlyDictionary<MachineObjectReference, string[]> GetFaceReelMapping(DocumentTabViewModel document)
-    {
-        return document.GetFaceElements()
-            .OfType<FaceReelDisplayElement>()
-            .Select(element => new
-            {
-                Element = element,
-                Reference = element.LinkedMachineObjectReference ?? MachineObjectReference.Empty
-            })
-            .Where(item => !string.IsNullOrWhiteSpace(item.Element.ObjectId)
-                && item.Reference.Kind == MachineObjectKind.Reel
-                && !item.Reference.IsEmpty)
-            .GroupBy(item => item.Reference, item => item.Element)
-            .ToDictionary(group => group.Key, group => group.Select(element => element.ObjectId).Distinct(StringComparer.Ordinal).ToArray());
     }
 
     private IReadOnlyDictionary<MachineObjectReference, string[]> GetOrBuildReelMapping(DocumentTabViewModel document)

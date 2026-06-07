@@ -585,6 +585,30 @@ FaceReelDisplayElement
 
 Do not use `LinkedPanel2DElementId` for Face Play View runtime behavior. Retain it only for provenance, generation workflows, and editor workflows.
 
+
+### Phase 9D - Runtime Display Consolidation - Complete
+
+Completed as a focused cleanup, review, consolidation, and documentation phase.
+
+Outcome:
+
+- Face runtime display resolution now has one shared helper for mapping Face runtime display elements back to `MachineObjectReference` values for visual invalidation;
+- reel, seven-segment, and alpha MAME adapters use the shared Face reference-index helper instead of open-coded per-display object-id matching where invalidating Face visuals;
+- `FaceRuntimeStateResolver` uses a single typed machine-reference validation path for lamps, reels, seven-segment displays, and alpha displays;
+- regression coverage verifies that Face runtime display indexing groups machine-reference-linked elements and ignores provenance-only `LinkedPanel2DElementId` links;
+- no new runtime display types, visual-fidelity effects, regeneration behavior, 3D preview, or Unity integration were added.
+
+Runtime rule preserved:
+
+```text
+Face runtime display element
+    -> LinkedMachineObjectReference
+        -> MachineRuntimeState
+            -> shared renderer primitive / input dispatch path
+```
+
+`LinkedPanel2DElementId` remains provenance/editor/regeneration metadata only. Runtime resolution and invalidation should not fall back to Panel2D element IDs.
+
 ### Phase 10 - Face Regeneration - Future
 
 Goals:
@@ -636,6 +660,58 @@ Goals:
 
 Planned output should clearly separate editor/export responsibilities from Unity renderer responsibilities and preserve machine-object identity as the synchronization contract.
 
+
+## Runtime Display Architecture Summary
+
+The current Face runtime-display architecture has three deliberately separate responsibilities.
+
+### 1. Runtime identity and state
+
+`MachineObjectReference` is the identity contract for runtime-linked visuals. Lamps, reels, seven-segment displays, alpha displays, and inputs/buttons are represented by typed machine references, while `MachineRuntimeState` stores renderer-neutral values such as lamp intensity, raw reel position, segment masks, segment brightness, and input state. Panel2D element IDs may still exist in state for legacy Panel2D rendering compatibility, but Face runtime behavior must resolve through machine references.
+
+Reel state has a specific split:
+
+- MAME adapters write the machine-reference reel value as a wrapped raw machine position in the 96-position runtime domain;
+- Face reel rendering resolves a visual-effective position from that raw value using the Face reel element's stops, reversal, band offset, and the current platform;
+- Panel2D continues to keep its legacy object-id keyed effective reel values for existing Panel2D behavior.
+
+This split keeps Face from depending on Panel2D element IDs while preserving Panel2D compatibility.
+
+### 2. Renderer-facing resolution
+
+`FaceRuntimeStateResolver` is the Face renderer-facing adapter for runtime values. It validates that each Face element's `LinkedMachineObjectReference` has the expected kind, then reads the corresponding value from `MachineRuntimeState`. The resolver covers lamps, reels, seven-segment displays, and alpha displays. Buttons use the Face input-target resolver and shared play input router because their runtime behavior is command/input dispatch rather than visual display state.
+
+Face display renderers reuse existing Skia primitives where possible:
+
+- Face reels call the same reel-strip rendering primitive used by Panel2D reels;
+- Face seven-segment displays call the same seven-segment rendering primitive used by Panel2D;
+- Face alpha displays call the same alpha/segment rendering primitive used by Panel2D;
+- Face lamps and buttons remain Face-specific simple MVP shapes until a later visual-fidelity phase explicitly changes presentation.
+
+### 3. Update and invalidation fanout
+
+MAME adapters update `MachineRuntimeState` on the UI thread, then notify the visual surfaces that need repainting. Panel2D invalidation still uses Panel2D object IDs. Face invalidation uses Face element object IDs discovered from machine references through the shared Face runtime display reference index. This keeps invalidation consistent across reels, seven-segment displays, and alpha displays and prevents accidental dependency on `LinkedPanel2DElementId`.
+
+Current taxonomy:
+
+| Runtime category | Panel2D visual | Face visual | Runtime reference | Runtime/display notes |
+| --- | --- | --- | --- | --- |
+| Lamp | `PanelElementKind.Lamp` | `FaceLampWindowElement` | `MachineObjectKind.Lamp` | Resolver reads lamp intensity from `MachineRuntimeState`. |
+| Button/input | input-linked Panel2D visual plus input definition | `FaceButtonElement` | `MachineObjectKind.Input` / `MachineInputReference` | Uses shared play input dispatch; not a display renderer. |
+| Reel | `PanelElementKind.Reel` | `FaceReelDisplayElement` | `MachineObjectKind.Reel` | Machine state is raw 96-step position; Face derives visual-effective position from Face metadata and platform. |
+| Seven segment | `PanelElementKind.SevenSegment` | `FaceSevenSegmentDisplayElement` | `MachineObjectKind.SevenSegmentDisplay` | Resolver reads one mask/brightness cell from `MachineRuntimeState`. |
+| Alpha display | `PanelElementKind.Alpha` | `FaceAlphaDisplayElement` | `MachineObjectKind.AlphaDisplay` | Resolver reads 16 mask/brightness cells from `MachineRuntimeState`; display geometry remains visual metadata. |
+
+### Consolidation guidance
+
+Future work should continue consolidating around these seams instead of adding per-display special cases:
+
+- add runtime-linked Face display invalidation through the shared reference index;
+- add renderer-facing runtime reads through `FaceRuntimeStateResolver`;
+- keep serialization/generation metadata on the Face element models, but keep runtime identity in `LinkedMachineObjectReference`;
+- keep `LinkedPanel2DElementId` as provenance only, especially for Phase 10 regeneration;
+- avoid changing visual fidelity, animation behavior, or renderer ownership during architecture/cleanup phases.
+
 ## Tests
 
 Add non-WPF tests where practical:
@@ -667,6 +743,7 @@ Future phase verification should focus on:
 - Phase 9A: complete - seven-segment displays serialize, generate, and render from `MachineRuntimeState` through machine-object references;
 - Phase 9B: complete - alpha displays serialize, generate, and render from `MachineRuntimeState` through machine-object references;
 - Phase 9C: complete - reel displays serialize, generate, and render from `MachineRuntimeState` through machine-object references, with correctness prioritized over animation fidelity;
+- Phase 9D: complete - runtime display resolution and invalidation are consolidated/documented without adding display types or visual-fidelity behavior;
 - Phase 10: Face regeneration uses provenance metadata while preserving runtime identity through machine-object references;
 - Phase 11: visual-fidelity improvements do not change document/runtime identity contracts;
 - Phase 12: 3D preview investigation does not introduce renderer-specific document coupling;
@@ -695,6 +772,17 @@ Preserve the completed Face MVP architecture when adding future phases: runtime 
 
 John will test/review after each phase before continuing.
 
+## Manual Verification Steps - Phase 9D Runtime Display Consolidation
+
+1. Open an Oasis project containing a Panel2D document with lamps, buttons/inputs, reels, seven-segment displays, and alpha displays.
+2. Open or generate a Face document that contains Face lamp windows, buttons, reel displays, seven-segment displays, and alpha displays linked by machine-object references.
+3. Start MAME for the machine and confirm each Face display updates live from runtime state: lamps change intensity, reels move, seven-segment masks update, and alpha/VFD masks and brightness update.
+4. Confirm the corresponding Panel2D displays continue updating exactly as before.
+5. Confirm Face buttons still dispatch pointer down/up through the shared play input path and that keyboard shortcuts still work in Face Play View.
+6. Save, close, and reopen the Face document and confirm runtime-linked display elements still contain their machine references.
+7. Inspect Face runtime-linked elements and confirm `LinkedPanel2DElementId` is present only as provenance/source metadata; deleting or changing provenance-only links should not be required for live runtime display updates when machine references are valid.
+8. Confirm no new display visual effects, Face Regeneration behavior, 3D preview, or Unity integration behavior appears in this phase.
+
 ## Manual Verification Steps - Phase 9C Reel Display MVP
 
 1. Open an Oasis project containing a Panel2D document with at least one reel element that has a valid display/reel number.
@@ -707,12 +795,17 @@ John will test/review after each phase before continuing.
 8. Confirm lamps, inputs/buttons, seven-segment displays, and alpha displays still update exactly as they did before Phase 9C.
 9. Inspect a generated reel display and confirm runtime behavior still resolves through `MachineObjectReference.Reel` and `MachineRuntimeState`; `LinkedPanel2DElementId` should only identify the source Panel2D element for provenance/editor workflows.
 
-## Runtime Display Consolidation Recommendations Before Face Regeneration
+## Runtime Display Consolidation Status Before Face Regeneration
 
-Before implementing Face Regeneration, add a focused Runtime Display Consolidation phase to reduce duplicated display plumbing while preserving the established runtime contract. Recommended scope:
+Phase 9D completed the low-risk consolidation that should happen before Face Regeneration. Completed items:
 
-- introduce a small shared renderer-facing adapter/helper for Face and Panel2D runtime displays so reels, seven-segment displays, and alpha displays consistently resolve `MachineObjectReference` values before rendering;
-- clarify whether `MachineRuntimeState` reel positions are raw machine positions, platform-normalized positions, or visual-effective positions, then document that contract before regeneration starts preserving/reusing reel metadata;
-- centralize common Face display metadata serialization patterns so future display types do not repeatedly update storage, generation, hierarchy, selection, renderer, and runtime resolver code by hand;
-- keep `LinkedPanel2DElementId` as generation/regeneration provenance only and add regression tests for every runtime display type to prevent accidental fallback to Panel2D element IDs;
-- add a lightweight display notification helper so MAME adapters can publish Face visual invalidations by machine reference without duplicating per-display matching code.
+- Face renderer-facing runtime display resolution is centralized in `FaceRuntimeStateResolver` for lamps, reels, seven-segment displays, and alpha displays;
+- Face visual invalidation by machine reference is centralized through a lightweight reference-index helper used by reel and segment MAME adapters;
+- the reel runtime contract is documented: machine-reference reel positions are raw wrapped 96-position values, and Face elements derive their visual-effective position from element metadata plus platform;
+- regression coverage verifies that the Face reference-index path ignores provenance-only `LinkedPanel2DElementId` links.
+
+Remaining recommendations for Phase 10 and later:
+
+- keep Face Regeneration correlation based on provenance metadata, but preserve runtime identity through `LinkedMachineObjectReference`;
+- consider centralizing Face display metadata serialization/generation patterns only if Phase 10 touches the same storage/generation fields repeatedly;
+- keep visual fidelity, 3D preview, and Unity-facing changes out of Phase 10 unless a later plan explicitly requests them.
