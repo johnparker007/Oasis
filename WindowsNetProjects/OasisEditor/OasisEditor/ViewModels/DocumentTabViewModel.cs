@@ -290,17 +290,16 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
             return;
         }
 
-        var faceLampIds = _faceDocumentModel.Elements
-            .OfType<FaceLampWindowElement>()
+        var faceRuntimeElementIds = _faceDocumentModel.Elements
             .Where(element => !string.IsNullOrWhiteSpace(element.ObjectId)
                 && element.LinkedMachineObjectReference is MachineObjectReference reference
-                && reference.Kind == MachineObjectKind.Lamp
+                && reference.Kind is MachineObjectKind.Lamp or MachineObjectKind.SevenSegmentDisplay
                 && !reference.IsEmpty)
             .Select(element => element.ObjectId)
             .ToHashSet(StringComparer.Ordinal);
 
         var publishedObjectIds = changedObjectIds
-            .Where(objectId => !string.IsNullOrWhiteSpace(objectId) && faceLampIds.Contains(objectId))
+            .Where(objectId => !string.IsNullOrWhiteSpace(objectId) && faceRuntimeElementIds.Contains(objectId))
             .Distinct(StringComparer.Ordinal)
             .ToArray();
         if (publishedObjectIds.Length == 0)

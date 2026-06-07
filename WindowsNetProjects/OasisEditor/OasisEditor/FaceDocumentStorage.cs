@@ -46,6 +46,12 @@ public static class FaceDocumentStorage
                 },
                 new FaceLayerFile
                 {
+                    Id = "layer-displays",
+                    Name = "Displays",
+                    IsVisible = true
+                },
+                new FaceLayerFile
+                {
                     Id = "layer-buttons",
                     Name = "Buttons",
                     IsVisible = true
@@ -245,6 +251,27 @@ public static class FaceDocumentStorage
             };
         }
 
+        if (string.Equals(file.Kind, "sevenSegmentDisplay", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(file.Kind, "sevenSegment", StringComparison.OrdinalIgnoreCase))
+        {
+            return new FaceSevenSegmentDisplayElement
+            {
+                ObjectId = file.ObjectId ?? string.Empty,
+                Name = file.Name ?? string.Empty,
+                X = file.X,
+                Y = file.Y,
+                Width = file.Width,
+                Height = file.Height,
+                IsVisible = file.IsVisible,
+                IsLocked = file.IsLocked,
+                LinkedMachineObjectReference = reference,
+                LinkedPanel2DElementId = file.LinkedPanel2DElementId,
+                OnColorHex = file.OnColorHex,
+                OffColorHex = file.OffColorHex,
+                ShowDecimalPoint = file.ShowDecimalPoint
+            };
+        }
+
         if (string.Equals(file.Kind, "button", StringComparison.OrdinalIgnoreCase))
         {
             var linkedInputReference = ResolveInputReference(file.LinkedInputReference, reference);
@@ -325,6 +352,7 @@ public static class FaceDocumentStorage
             {
                 FaceArtworkElement => "artwork",
                 FaceButtonElement => "button",
+                FaceSevenSegmentDisplayElement => "sevenSegmentDisplay",
                 FaceLampWindowElement => "lampWindow",
                 _ => "unknown"
             },
@@ -337,6 +365,9 @@ public static class FaceDocumentStorage
             LinkedMachineObjectReference = model.LinkedMachineObjectReference?.ToString(),
             LinkedPanel2DElementId = model.LinkedPanel2DElementId,
             LinkedInputReference = model is FaceButtonElement button ? button.LinkedInputReference?.ToString() : null,
+            OnColorHex = model is FaceSevenSegmentDisplayElement sevenSegment ? sevenSegment.OnColorHex : null,
+            OffColorHex = model is FaceSevenSegmentDisplayElement sevenSegmentOff ? sevenSegmentOff.OffColorHex : null,
+            ShowDecimalPoint = model is FaceSevenSegmentDisplayElement sevenSegmentDecimal && sevenSegmentDecimal.ShowDecimalPoint,
             AssetPath = model is FaceArtworkElement artwork ? artwork.AssetPath : null,
             SourcePanel2DDocumentId = model is FaceArtworkElement artworkSource ? artworkSource.SourcePanel2DDocumentId : null,
             SourceRegion = model is FaceArtworkElement artworkRegion ? ToFile(artworkRegion.SourceRegion) : null,
@@ -407,6 +438,9 @@ public sealed record FaceElementFile
     public string? LinkedMachineObjectReference { get; init; }
     public string? LinkedPanel2DElementId { get; init; }
     public string? LinkedInputReference { get; init; }
+    public string? OnColorHex { get; init; }
+    public string? OffColorHex { get; init; }
+    public bool ShowDecimalPoint { get; init; }
     public string? AssetPath { get; init; }
     public string? SourcePanel2DDocumentId { get; init; }
     public FaceSourceRegionFile? SourceRegion { get; init; }

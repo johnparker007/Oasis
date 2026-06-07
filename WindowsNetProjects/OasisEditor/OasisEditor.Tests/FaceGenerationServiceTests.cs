@@ -155,4 +155,48 @@ public sealed class FaceGenerationServiceTests
         Assert.Equal(5d, element.X);
         Assert.Equal(5d, element.Y);
     }
+    [Fact]
+    public void GenerateFromPanelRegion_ConvertsContainedSevenSegmentDisplaysWithMachineReferences()
+    {
+        var panel = new Panel2DDocumentModel
+        {
+            Elements =
+            [
+                new PanelElementModel
+                {
+                    ObjectId = "seven-3",
+                    Name = "Credit Digit",
+                    Kind = PanelElementKind.SevenSegment,
+                    X = 120,
+                    Y = 230,
+                    Width = 24,
+                    Height = 36,
+                    DisplayNumber = 3,
+                    OnColorHex = "#FF2020",
+                    OffColorHex = "#220404",
+                    ShowDecimalPoint = true,
+                    IsVisible = true
+                }
+            ]
+        };
+
+        var result = new FaceGenerationService().GenerateFromPanelRegion(
+            panel,
+            FaceSourceRegionModel.FromRect(new Rect(100, 200, 200, 150)),
+            "Generated Face",
+            "panel-doc-1");
+
+        Assert.Equal(1, result.ConvertedSevenSegmentDisplayCount);
+        var element = Assert.IsType<FaceSevenSegmentDisplayElement>(result.Document.Elements[1]);
+        Assert.Equal("face-seven-3", element.ObjectId);
+        Assert.Equal("Credit Digit", element.Name);
+        Assert.Equal(20d, element.X);
+        Assert.Equal(30d, element.Y);
+        Assert.Equal("sevenSegment:3", element.LinkedMachineObjectReference?.ToString());
+        Assert.Equal("seven-3", element.LinkedPanel2DElementId);
+        Assert.Equal("#FF2020", element.OnColorHex);
+        Assert.Equal("#220404", element.OffColorHex);
+        Assert.True(element.ShowDecimalPoint);
+    }
+
 }

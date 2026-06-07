@@ -154,4 +154,52 @@ public sealed class FaceDocumentRoundTripTests
             if (File.Exists(tempPath)) File.Delete(tempPath);
         }
     }
+
+    [Fact]
+    public void Serialize_AndRead_RoundTripsSevenSegmentDisplayElement()
+    {
+        var source = new FaceDocumentModel
+        {
+            Id = "face-seven",
+            Title = "Displays",
+            Elements =
+            [
+                new FaceSevenSegmentDisplayElement
+                {
+                    ObjectId = "face-seven-3",
+                    Name = "Credit Digit",
+                    X = 10,
+                    Y = 20,
+                    Width = 30,
+                    Height = 40,
+                    IsVisible = true,
+                    IsLocked = true,
+                    LinkedMachineObjectReference = MachineObjectReference.SevenSegmentDisplay(3),
+                    LinkedPanel2DElementId = "panel-seven-3",
+                    OnColorHex = "#FF2020",
+                    OffColorHex = "#220404",
+                    ShowDecimalPoint = true
+                }
+            ]
+        };
+
+        var json = FaceDocumentStorage.Serialize(source);
+        Assert.True(FaceDocumentStorage.TryReadValidated(json, out var file, out var error), error);
+        var saved = Assert.Single(file.Elements!);
+        Assert.Equal("sevenSegmentDisplay", saved.Kind);
+        Assert.Equal("sevenSegment:3", saved.LinkedMachineObjectReference);
+        Assert.Equal("panel-seven-3", saved.LinkedPanel2DElementId);
+        Assert.Equal("#FF2020", saved.OnColorHex);
+        Assert.Equal("#220404", saved.OffColorHex);
+        Assert.True(saved.ShowDecimalPoint);
+
+        var model = FaceDocumentStorage.ToModel(file);
+        var element = Assert.IsType<FaceSevenSegmentDisplayElement>(Assert.Single(model.Elements));
+        Assert.Equal("sevenSegment:3", element.LinkedMachineObjectReference?.ToString());
+        Assert.Equal("panel-seven-3", element.LinkedPanel2DElementId);
+        Assert.Equal("#FF2020", element.OnColorHex);
+        Assert.Equal("#220404", element.OffColorHex);
+        Assert.True(element.ShowDecimalPoint);
+    }
+
 }

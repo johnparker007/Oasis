@@ -41,6 +41,11 @@ public sealed class Face2DRenderer : IFace2DRenderer
             DrawLampWindow(canvas, lampWindow, runtimeState, viewportTransform);
         }
 
+        foreach (var sevenSegmentDisplay in elements.OfType<FaceSevenSegmentDisplayElement>())
+        {
+            DrawSevenSegmentDisplay(canvas, sevenSegmentDisplay, runtimeState, viewportTransform);
+        }
+
         foreach (var button in elements.OfType<FaceButtonElement>())
         {
             DrawButton(canvas, button, viewportTransform);
@@ -99,6 +104,27 @@ public sealed class Face2DRenderer : IFace2DRenderer
         using var strokePaint = new SKPaint { Style = SKPaintStyle.Stroke, Color = strokeColor, StrokeWidth = (float)(1.5d / viewport.NormalizedZoom), IsAntialias = true };
         canvas.DrawRect(rect, fillPaint);
         canvas.DrawRect(rect, strokePaint);
+    }
+
+
+    private void DrawSevenSegmentDisplay(SKCanvas canvas, FaceSevenSegmentDisplayElement element, MachineRuntimeState runtimeState, PanelViewportTransform viewport)
+    {
+        var rect = ToRect(element);
+        if (rect.Width <= 0f || rect.Height <= 0f)
+        {
+            return;
+        }
+
+        if (!element.IsVisible)
+        {
+            using var hiddenPaint = new SKPaint { Style = SKPaintStyle.Stroke, Color = new SKColor(0x80, 0x80, 0x80), StrokeWidth = (float)(1d / viewport.NormalizedZoom), IsAntialias = true };
+            canvas.DrawRect(rect, hiddenPaint);
+            return;
+        }
+
+        var masks = _runtimeStateResolver.GetSevenSegmentCellMasks(element, runtimeState);
+        var brightness = _runtimeStateResolver.GetSevenSegmentCellBrightness(element, runtimeState);
+        SevenSegmentElementRenderer.RenderSegmentDisplay(canvas, rect, masks, brightness, element.OnColorHex, element.OffColorHex);
     }
 
     private static void DrawButton(SKCanvas canvas, FaceButtonElement element, PanelViewportTransform viewport)

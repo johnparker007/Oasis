@@ -32,27 +32,41 @@ internal sealed class SevenSegmentElementRenderer : IPanelElementRenderer
             return;
         }
 
+        var masks = context.RuntimeState.GetSegmentCellMasks(element.ObjectId, 1);
+        var brightness = context.RuntimeState.GetSegmentCellBrightness(element.ObjectId, 1);
+        RenderSegmentDisplay(context.Canvas, bounds, masks, brightness, element.OnColorHex, element.OffColorHex);
+    }
+
+    internal static void RenderSegmentDisplay(SKCanvas canvas, SKRect bounds, int[] masks, double[] brightness, string? onColorHex, string? offColorHex)
+    {
+        ArgumentNullException.ThrowIfNull(canvas);
+
+        if (bounds.Width <= 0f || bounds.Height <= 0f)
+        {
+            return;
+        }
+
         var definition = Definition.Value;
         if (definition is null)
         {
             return;
         }
 
-        var masks = context.RuntimeState.GetSegmentCellMasks(element.ObjectId, 1);
-        var brightness = context.RuntimeState.GetSegmentCellBrightness(element.ObjectId, 1);
         var defaultMask = BuildDefaultMask(definition.Segments);
         var segmentMask = masks.Length > 0 ? masks[0] : defaultMask;
         var litAmount = brightness.Length > 0 ? Math.Clamp(brightness[0], 0d, 1d) : 1d;
 
-        var onColor = SkiaColorParser.ParseOrDefault(element.OnColorHex, new SKColor(255, 64, 64));
-        var offColor = ScaleBrightness(onColor, 0.10d);
+        var onColor = SkiaColorParser.ParseOrDefault(onColorHex, new SKColor(255, 64, 64));
+        var offColor = string.IsNullOrWhiteSpace(offColorHex)
+            ? ScaleBrightness(onColor, 0.10d)
+            : SkiaColorParser.ParseOrDefault(offColorHex, ScaleBrightness(onColor, 0.10d));
 
         var width = Math.Max(1, (int)Math.Round(bounds.Width));
         var height = Math.Max(1, (int)Math.Round(bounds.Height));
         var brightnessBucket = (int)Math.Round(Math.Clamp(litAmount, 0d, 1d) * 4d);
         var cacheKey = new SegmentVisualCacheKey(width, height, segmentMask, brightnessBucket, onColor, offColor);
         var visual = GetOrCreateVisual(cacheKey, definition);
-        context.Canvas.DrawImage(visual, bounds.Left, bounds.Top);
+        canvas.DrawImage(visual, bounds.Left, bounds.Top);
     }
 
     private static SKImage GetOrCreateVisual(SegmentVisualCacheKey cacheKey, SevenSegmentSkiaDefinition definition)

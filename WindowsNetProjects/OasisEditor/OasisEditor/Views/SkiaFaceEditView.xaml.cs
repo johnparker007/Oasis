@@ -9,6 +9,7 @@ using System.Windows.Input;
 using System.Windows.Threading;
 using SkiaSharp;
 using SkiaSharp.Views.Desktop;
+using OasisEditor.Rendering;
 
 namespace OasisEditor.Views;
 
@@ -60,6 +61,7 @@ public partial class SkiaFaceEditView : UserControl
         if (_subscribedDocument is not null)
         {
             _subscribedDocument.PanelChanged -= OnDocumentChanged;
+            _subscribedDocument.FaceVisualStateChanged -= OnDocumentFaceVisualStateChanged;
             _subscribedDocument.PropertyChanged -= OnDocumentPropertyChanged;
         }
 
@@ -70,10 +72,16 @@ public partial class SkiaFaceEditView : UserControl
         }
 
         _subscribedDocument.PanelChanged += OnDocumentChanged;
+        _subscribedDocument.FaceVisualStateChanged += OnDocumentFaceVisualStateChanged;
         _subscribedDocument.PropertyChanged += OnDocumentPropertyChanged;
     }
 
     private void OnDocumentChanged(PanelChangeEvent _)
+    {
+        RequestRender();
+    }
+
+    private void OnDocumentFaceVisualStateChanged(FaceVisualStateChangedEvent _)
     {
         RequestRender();
     }
@@ -162,6 +170,12 @@ public partial class SkiaFaceEditView : UserControl
         foreach (var element in document.GetFaceElements().Where(element => element is not FaceArtworkElement))
         {
             var rect = SKRect.Create((float)element.X, (float)element.Y, (float)Math.Max(0d, element.Width), (float)Math.Max(0d, element.Height));
+            if (element is FaceSevenSegmentDisplayElement sevenSegmentDisplay)
+            {
+                DrawSevenSegmentElement(canvas, document, sevenSegmentDisplay, rect, hiddenPaint);
+                continue;
+            }
+
             if (element.IsVisible)
             {
                 canvas.DrawRect(rect, fillPaint);
@@ -190,6 +204,24 @@ public partial class SkiaFaceEditView : UserControl
                 (float)Math.Max(0d, selectedElement.Height),
                 selectionPaint);
         }
+    }
+
+    private static void DrawSevenSegmentElement(SKCanvas canvas, DocumentTabViewModel document, FaceSevenSegmentDisplayElement element, SKRect rect, SKPaint hiddenPaint)
+    {
+        if (rect.Width <= 0f || rect.Height <= 0f)
+        {
+            return;
+        }
+
+        if (!element.IsVisible)
+        {
+            canvas.DrawRect(rect, hiddenPaint);
+            return;
+        }
+
+        var masks = FaceRuntimeStateResolver.Instance.GetSevenSegmentCellMasks(element, document.RuntimeState);
+        var brightness = FaceRuntimeStateResolver.Instance.GetSevenSegmentCellBrightness(element, document.RuntimeState);
+        SevenSegmentElementRenderer.RenderSegmentDisplay(canvas, rect, masks, brightness, element.OnColorHex, element.OffColorHex);
     }
 
     private static void DrawArtworkElement(SKCanvas canvas, FaceArtworkElement element, PanelViewportTransform viewport, SKPaint hiddenPaint)

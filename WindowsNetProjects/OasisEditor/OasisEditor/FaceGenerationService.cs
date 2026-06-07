@@ -50,18 +50,20 @@ public sealed class FaceSourceRegionModel
 
 internal sealed class FaceGenerationResult
 {
-    public FaceGenerationResult(FaceDocumentModel document, int convertedLampCount, int artworkElementCount, int convertedButtonCount)
+    public FaceGenerationResult(FaceDocumentModel document, int convertedLampCount, int artworkElementCount, int convertedButtonCount, int convertedSevenSegmentDisplayCount)
     {
         Document = document;
         ConvertedLampCount = convertedLampCount;
         ArtworkElementCount = artworkElementCount;
         ConvertedButtonCount = convertedButtonCount;
+        ConvertedSevenSegmentDisplayCount = convertedSevenSegmentDisplayCount;
     }
 
     public FaceDocumentModel Document { get; }
     public int ConvertedLampCount { get; }
     public int ArtworkElementCount { get; }
     public int ConvertedButtonCount { get; }
+    public int ConvertedSevenSegmentDisplayCount { get; }
 }
 
 internal sealed class FaceGenerationService
@@ -94,6 +96,10 @@ internal sealed class FaceGenerationService
             .Where(element => element.Kind == PanelElementKind.Lamp && IsContainedBy(element, region))
             .Select(element => CreateLampWindow(element, region))
             .ToArray();
+        var sevenSegmentDisplays = sourcePanel.Elements
+            .Where(element => element.Kind == PanelElementKind.SevenSegment && IsContainedBy(element, region))
+            .Select(element => CreateSevenSegmentDisplay(element, region))
+            .ToArray();
         var buttons = CreateButtonElements(sourcePanel, region, inputDefinitions ?? []);
 
         var resolvedTitle = string.IsNullOrWhiteSpace(title) ? "Generated Face" : title.Trim();
@@ -120,15 +126,21 @@ internal sealed class FaceGenerationService
                 },
                 new FaceLayerModel
                 {
+                    Id = "layer-displays",
+                    Name = "Displays",
+                    IsVisible = true
+                },
+                new FaceLayerModel
+                {
                     Id = "layer-buttons",
                     Name = "Buttons",
                     IsVisible = true
                 }
             ],
-            Elements = artworkElements.Cast<FaceElementModel>().Concat(lampWindows).Concat(buttons).ToArray()
+            Elements = artworkElements.Cast<FaceElementModel>().Concat(lampWindows).Concat(sevenSegmentDisplays).Concat(buttons).ToArray()
         };
 
-        return new FaceGenerationResult(document, lampWindows.Length, artworkElements.Length, buttons.Length);
+        return new FaceGenerationResult(document, lampWindows.Length, artworkElements.Length, buttons.Length, sevenSegmentDisplays.Length);
     }
 
     private static FaceArtworkElement[] CreateArtworkElements(
@@ -214,6 +226,28 @@ internal sealed class FaceGenerationService
             IsLocked = sourceElement.IsLocked,
             LinkedMachineObjectReference = machineReference.IsEmpty ? null : machineReference,
             LinkedPanel2DElementId = string.IsNullOrWhiteSpace(sourceElement.ObjectId) ? null : sourceElement.ObjectId
+        };
+    }
+
+    private FaceSevenSegmentDisplayElement CreateSevenSegmentDisplay(PanelElementModel sourceElement, Rect region)
+    {
+        _machineObjectReferenceResolver.TryGetReference(sourceElement, out var machineReference);
+
+        return new FaceSevenSegmentDisplayElement
+        {
+            ObjectId = CreateGeneratedElementId(sourceElement),
+            Name = sourceElement.Name ?? string.Empty,
+            X = Math.Round(sourceElement.X - region.X, 2),
+            Y = Math.Round(sourceElement.Y - region.Y, 2),
+            Width = Math.Round(sourceElement.Width, 2),
+            Height = Math.Round(sourceElement.Height, 2),
+            IsVisible = sourceElement.IsVisible,
+            IsLocked = sourceElement.IsLocked,
+            LinkedMachineObjectReference = machineReference.IsEmpty ? null : machineReference,
+            LinkedPanel2DElementId = string.IsNullOrWhiteSpace(sourceElement.ObjectId) ? null : sourceElement.ObjectId,
+            OnColorHex = sourceElement.OnColorHex,
+            OffColorHex = sourceElement.OffColorHex,
+            ShowDecimalPoint = sourceElement.ShowDecimalPoint
         };
     }
 
