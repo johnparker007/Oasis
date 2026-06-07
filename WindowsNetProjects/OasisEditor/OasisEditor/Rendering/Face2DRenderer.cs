@@ -43,8 +43,6 @@ public sealed class Face2DRenderer : IFace2DRenderer
             DrawArtwork(canvas, artwork, viewportTransform);
         }
 
-        DrawMaskLayer(canvas, maskLayer);
-
         DrawLampIllumination(canvas, elements.OfType<FaceLampWindowElement>(), maskLayer, runtimeState, viewportTransform);
 
         foreach (var reelDisplay in elements.OfType<FaceReelDisplayElement>())
@@ -93,28 +91,6 @@ public sealed class Face2DRenderer : IFace2DRenderer
         canvas.DrawRect(destination, strokePaint);
     }
 
-
-    private void DrawMaskLayer(SKCanvas canvas, FaceMaskLayerModel? maskLayer)
-    {
-        if (!TryGetMaskImages(maskLayer, out var maskImages))
-        {
-            return;
-        }
-
-        var bounds = ResolveMaskBounds(maskLayer, maskImages.AlphaMask);
-        if (bounds.Width <= 0f || bounds.Height <= 0f)
-        {
-            return;
-        }
-
-        using var paint = new SKPaint
-        {
-            BlendMode = SKBlendMode.SrcOver,
-            IsAntialias = false,
-            FilterQuality = SKFilterQuality.None
-        };
-        canvas.DrawImage(maskImages.PrintedOverlay, bounds, paint);
-    }
 
     private void DrawLampIllumination(SKCanvas canvas, IEnumerable<FaceLampWindowElement> lampWindows, FaceMaskLayerModel? maskLayer, MachineRuntimeState runtimeState, PanelViewportTransform viewport)
     {
@@ -411,7 +387,6 @@ public sealed class Face2DRenderer : IFace2DRenderer
         }
 
         using var alphaMaskBitmap = new SKBitmap(source.Width, source.Height, SKColorType.Rgba8888, SKAlphaType.Premul);
-        using var printedOverlayBitmap = new SKBitmap(source.Width, source.Height, SKColorType.Rgba8888, SKAlphaType.Premul);
         for (var y = 0; y < source.Height; y++)
         {
             for (var x = 0; x < source.Width; x++)
@@ -419,13 +394,11 @@ public sealed class Face2DRenderer : IFace2DRenderer
                 var pixel = source.GetPixel(x, y);
                 var luminance = (byte)Math.Clamp((int)Math.Round((0.2126 * pixel.Red) + (0.7152 * pixel.Green) + (0.0722 * pixel.Blue)), 0, 255);
                 var escapeAlpha = (byte)Math.Clamp((luminance * pixel.Alpha) / 255, 0, 255);
-                var printedAlpha = (byte)Math.Clamp(((255 - luminance) * pixel.Alpha * 104) / (255 * 255), 0, 104);
                 alphaMaskBitmap.SetPixel(x, y, new SKColor(255, 255, 255, escapeAlpha));
-                printedOverlayBitmap.SetPixel(x, y, new SKColor(0, 0, 0, printedAlpha));
             }
         }
 
-        return new MaskRenderImages(SKImage.FromBitmap(alphaMaskBitmap), SKImage.FromBitmap(printedOverlayBitmap));
+        return new MaskRenderImages(SKImage.FromBitmap(alphaMaskBitmap));
     }
 
     private static SKRect ResolveMaskBounds(FaceMaskLayerModel? maskLayer, SKImage maskImage)
@@ -486,5 +459,5 @@ public sealed class Face2DRenderer : IFace2DRenderer
         return SKRect.Create((float)element.X, (float)element.Y, (float)Math.Max(0d, element.Width), (float)Math.Max(0d, element.Height));
     }
 
-    private sealed record MaskRenderImages(SKImage AlphaMask, SKImage PrintedOverlay);
+    private sealed record MaskRenderImages(SKImage AlphaMask);
 }

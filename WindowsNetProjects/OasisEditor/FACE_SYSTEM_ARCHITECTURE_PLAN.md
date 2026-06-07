@@ -814,7 +814,7 @@ Face Play View
     -> Face2DRenderer.Render(FaceDocumentModel, MachineRuntimeState, viewport)
         -> draw FaceArtworkElement artwork
         -> load FaceDocument.FaceMaskLayer.AssetPath as one aligned monochrome mask
-        -> draw a subtle printed-mask overlay from the same mask for runtime visibility
+        -> keep the mask layer invisible as a standalone layer
         -> draw FaceLampWindowElement illumination into an offscreen layer
         -> apply the mask luminance as the lamp layer alpha/light-escape map
         -> draw displays

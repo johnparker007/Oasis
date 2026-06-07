@@ -67,6 +67,37 @@ public sealed class Face2DRendererTests : IDisposable
         Assert.True(openPixel.Green > closedPixel.Green + 100);
     }
 
+
+    [Fact]
+    public void Render_MaskLayerWithoutLampDoesNotAlterCanvas()
+    {
+        var maskPath = Path.Combine(_tempDirectory, "mask-only.png");
+        SaveMask(maskPath, width: 10, height: 10, isOpen: _ => true);
+        var renderer = new Face2DRenderer(FaceRuntimeStateResolver.Instance, assetPath => assetPath);
+        using var surface = SKSurface.Create(new SKImageInfo(10, 10));
+        var background = new SKColor(0x12, 0x34, 0x56);
+        surface.Canvas.Clear(background);
+
+        renderer.Render(
+            surface.Canvas,
+            new FaceDocumentModel
+            {
+                MaskLayer = new FaceMaskLayerModel
+                {
+                    AssetPath = maskPath,
+                    Width = 10,
+                    Height = 10
+                },
+                Elements = []
+            },
+            new MachineRuntimeState(),
+            PanelViewportTransform.Identity);
+        using var image = surface.Snapshot();
+        using var bitmap = SKBitmap.FromImage(image);
+
+        Assert.Equal(background, bitmap.GetPixel(5, 5));
+    }
+
     private static void SaveMask(string path, int width, int height, Func<int, bool> isOpen)
     {
         using var bitmap = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Opaque);
