@@ -5,6 +5,8 @@ public sealed class FaceDocumentModel
     public string Id { get; init; } = Guid.NewGuid().ToString("N");
     public string Title { get; init; } = string.Empty;
     public string? Summary { get; init; }
+    public string? SourcePanel2DDocumentId { get; init; }
+    public FaceSourceRegionModel? SourceRegion { get; init; }
     public IReadOnlyList<FaceLayerModel> Layers { get; init; } = [];
     public IReadOnlyList<FaceElementModel> Elements { get; init; } = [];
 }

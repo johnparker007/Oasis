@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Windows;
 using EditorCommands = OasisEditor.Commands;
 
 namespace OasisEditor;
@@ -21,6 +22,7 @@ public sealed class DocumentWorkspaceViewModel
     private readonly MachineRuntimeStateStore _runtimeStateStore;
     private readonly Automation.IPanel2DDocumentCreationService _panel2dCreationService;
     private readonly Automation.IFaceDocumentCreationService _faceCreationService;
+    private readonly FaceGenerationService _faceGenerationService = new();
 
     private int _untitledDocumentCounter = 1;
     private int _panelDocumentCounter = 1;
@@ -90,6 +92,43 @@ public sealed class DocumentWorkspaceViewModel
     {
         var selectedDocument = _getSelectedDocument();
         return selectedDocument is not null;
+    }
+
+
+    public bool CanGenerateFaceFromSelectedPanel2DRegion()
+    {
+        return _getLoadedProject() is not null
+            && _getSelectedDocument() is { Document.DocumentType: EditorDocumentType.Panel2D };
+    }
+
+    public DocumentTabViewModel? GenerateFaceFromSelectedPanel2DRegion(Rect sourceRect)
+    {
+        var sourceDocument = _getSelectedDocument();
+        if (_getLoadedProject() is null || sourceDocument is null || sourceDocument.Document.DocumentType != EditorDocumentType.Panel2D)
+        {
+            return null;
+        }
+
+        var sourceRegion = FaceSourceRegionModel.FromRect(sourceRect);
+        if (!sourceRegion.IsValid)
+        {
+            return null;
+        }
+
+        var title = $"{sourceDocument.Title} Face";
+        var result = _faceGenerationService.GenerateFromPanelRegion(
+            sourceDocument.GetPanelDocument(),
+            sourceRegion,
+            title,
+            sourceDocument.DocumentId.ToString("N"));
+
+        var faceJson = FaceDocumentStorage.Serialize(result.Document);
+        var faceEditorDocument = EditorDocument.CreateFaceStub(title).WithContentSummary(result.Document.Summary ?? "Generated Face document.");
+        var document = CreateDocumentTab(faceEditorDocument, faceDocumentJson: faceJson);
+        ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
+        _setStatusMessage($"Generated face document from Panel2D region with {result.ConvertedLampCount} lamp window(s).");
+        _addOutputEntry($"Generated face '{document.Title}' from Panel2D region with {result.ConvertedLampCount} lamp window(s).", OutputLogStatus.Info);
+        return document;
     }
 
     public void OpenUntitledDocument()

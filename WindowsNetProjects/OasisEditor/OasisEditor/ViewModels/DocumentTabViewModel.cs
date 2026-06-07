@@ -166,6 +166,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
             Id = _faceDocumentModel.Id,
             Title = _faceDocumentModel.Title,
             Summary = _faceDocumentModel.Summary,
+            SourcePanel2DDocumentId = _faceDocumentModel.SourcePanel2DDocumentId,
+            SourceRegion = _faceDocumentModel.SourceRegion,
             Layers = _faceDocumentModel.Layers,
             Elements = elements.ToArray()
         };
@@ -176,6 +178,11 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
         {
             PanelChanged?.Invoke(change);
         }
+    }
+
+    internal Panel2DDocumentModel GetPanelDocument()
+    {
+        return _panelDocumentModel;
     }
 
     internal IReadOnlyList<PanelElementModel> GetPanelElements()

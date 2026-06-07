@@ -1,0 +1,119 @@
+using System.Windows;
+using Xunit;
+
+namespace OasisEditor.Tests;
+
+public sealed class FaceGenerationServiceTests
+{
+    [Fact]
+    public void GenerateFromPanelRegion_ConvertsContainedLampsWithRelativeCoordinatesAndReferences()
+    {
+        var panel = new Panel2DDocumentModel
+        {
+            Title = "Panel",
+            Elements =
+            [
+                new PanelElementModel
+                {
+                    ObjectId = "lamp-17",
+                    Name = "Start Lamp",
+                    Kind = PanelElementKind.Lamp,
+                    X = 110,
+                    Y = 220,
+                    Width = 30,
+                    Height = 40,
+                    DisplayNumber = 17,
+                    IsVisible = true
+                },
+                new PanelElementModel
+                {
+                    ObjectId = "reel-1",
+                    Name = "Ignored Reel",
+                    Kind = PanelElementKind.Reel,
+                    X = 120,
+                    Y = 225,
+                    Width = 20,
+                    Height = 20,
+                    DisplayNumber = 1,
+                    IsVisible = true
+                },
+                new PanelElementModel
+                {
+                    ObjectId = "lamp-outside",
+                    Name = "Outside Lamp",
+                    Kind = PanelElementKind.Lamp,
+                    X = 10,
+                    Y = 20,
+                    Width = 30,
+                    Height = 40,
+                    DisplayNumber = 99,
+                    IsVisible = true
+                }
+            ]
+        };
+
+        var service = new FaceGenerationService();
+        var result = service.GenerateFromPanelRegion(
+            panel,
+            FaceSourceRegionModel.FromRect(new Rect(100, 200, 200, 150)),
+            "Generated Face",
+            "panel-doc-1");
+
+        Assert.Equal(1, result.ConvertedLampCount);
+        Assert.Equal("Generated Face", result.Document.Title);
+        Assert.Equal("panel-doc-1", result.Document.SourcePanel2DDocumentId);
+        Assert.NotNull(result.Document.SourceRegion);
+
+        var element = Assert.IsType<FaceLampWindowElement>(Assert.Single(result.Document.Elements));
+        Assert.Equal("face-lamp-17", element.ObjectId);
+        Assert.Equal("Start Lamp", element.Name);
+        Assert.Equal(10d, element.X);
+        Assert.Equal(20d, element.Y);
+        Assert.Equal(30d, element.Width);
+        Assert.Equal(40d, element.Height);
+        Assert.Equal("lamp:17", element.LinkedMachineObjectReference?.ToString());
+        Assert.Equal("lamp-17", element.LinkedPanel2DElementId);
+    }
+
+    [Fact]
+    public void GenerateFromPanelRegion_RoundTripsGeneratedSourceAndElementLinks()
+    {
+        var panel = new Panel2DDocumentModel
+        {
+            Elements =
+            [
+                new PanelElementModel
+                {
+                    ObjectId = "lamp-5",
+                    Name = "Hold Lamp",
+                    Kind = PanelElementKind.Lamp,
+                    X = 25,
+                    Y = 35,
+                    Width = 15,
+                    Height = 20,
+                    DisplayNumber = 5,
+                    IsVisible = true
+                }
+            ]
+        };
+
+        var generated = new FaceGenerationService().GenerateFromPanelRegion(
+            panel,
+            FaceSourceRegionModel.FromRect(new Rect(20, 30, 100, 100)),
+            "Round Trip Face",
+            "source-panel").Document;
+
+        var json = FaceDocumentStorage.Serialize(generated);
+        Assert.True(FaceDocumentStorage.TryReadValidated(json, out var file, out var error), error);
+        var model = FaceDocumentStorage.ToModel(file);
+
+        Assert.Equal("source-panel", model.SourcePanel2DDocumentId);
+        Assert.Equal(20d, model.SourceRegion!.X);
+        Assert.Equal(30d, model.SourceRegion!.Y);
+        var element = Assert.Single(model.Elements);
+        Assert.Equal("lamp:5", element.LinkedMachineObjectReference?.ToString());
+        Assert.Equal("lamp-5", element.LinkedPanel2DElementId);
+        Assert.Equal(5d, element.X);
+        Assert.Equal(5d, element.Y);
+    }
+}

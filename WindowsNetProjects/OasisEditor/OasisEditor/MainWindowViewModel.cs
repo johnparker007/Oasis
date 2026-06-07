@@ -106,6 +106,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OpenUntitledDocumentCommand = new RelayCommand(OpenUntitledDocument, CanOpenUntitledDocument);
         OpenPanel2DStubCommand = new RelayCommand(OpenPanel2DStubDocument, CanOpenUntitledDocument);
         OpenFaceStubCommand = new RelayCommand(OpenFaceStubDocument, CanOpenUntitledDocument);
+        GenerateFaceFromRegionCommand = new RelayCommand(GenerateFaceFromRegion, CanGenerateFaceFromRegion);
         OpenCabinet3DStubCommand = new RelayCommand(OpenCabinet3DStubDocument, CanOpenUntitledDocument);
         OpenMachineStubCommand = new RelayCommand(OpenMachineStubDocument, CanOpenUntitledDocument);
         OpenDocumentCommand = new RelayCommand(OpenDocument, CanOpenDocument);
@@ -391,6 +392,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand OpenUntitledDocumentCommand { get; }
     public ICommand OpenPanel2DStubCommand { get; }
     public ICommand OpenFaceStubCommand { get; }
+    public ICommand GenerateFaceFromRegionCommand { get; }
     public ICommand OpenCabinet3DStubCommand { get; }
     public ICommand OpenMachineStubCommand { get; }
     public ICommand OpenDocumentCommand { get; }
@@ -966,6 +968,31 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private void OpenFaceStubDocument()
     {
         _documentWorkspace.OpenFaceStubDocument();
+    }
+
+    private bool CanGenerateFaceFromRegion()
+    {
+        return _documentWorkspace.CanGenerateFaceFromSelectedPanel2DRegion();
+    }
+
+    private void GenerateFaceFromRegion()
+    {
+        if (!CanGenerateFaceFromRegion())
+        {
+            return;
+        }
+
+        var dialog = new GenerateFaceFromRegionDialog
+        {
+            Owner = _ownerWindow
+        };
+
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        _documentWorkspace.GenerateFaceFromSelectedPanel2DRegion(dialog.SourceRegion);
     }
 
     private void OpenCabinet3DStubDocument()
@@ -3114,6 +3141,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (OpenFaceStubCommand is RelayCommand openFaceRelayCommand)
         {
             openFaceRelayCommand.RaiseCanExecuteChanged();
+        }
+
+        if (GenerateFaceFromRegionCommand is RelayCommand generateFaceRelayCommand)
+        {
+            generateFaceRelayCommand.RaiseCanExecuteChanged();
         }
 
         if (OpenCabinet3DStubCommand is RelayCommand openCabinetRelayCommand)
