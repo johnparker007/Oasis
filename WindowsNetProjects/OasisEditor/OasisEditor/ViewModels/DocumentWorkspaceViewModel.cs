@@ -23,6 +23,7 @@ public sealed class DocumentWorkspaceViewModel
     private readonly Automation.IPanel2DDocumentCreationService _panel2dCreationService;
     private readonly Automation.IFaceDocumentCreationService _faceCreationService;
     private readonly FaceGenerationService _faceGenerationService = new();
+    private readonly FaceRegenerationService _faceRegenerationService = new();
 
     private int _untitledDocumentCounter = 1;
     private int _panelDocumentCounter = 1;
@@ -130,6 +131,75 @@ public sealed class DocumentWorkspaceViewModel
         _setStatusMessage($"Generated face document from Panel2D region with {result.ArtworkElementCount} artwork element(s), {result.ConvertedLampCount} lamp window(s), {result.ConvertedReelDisplayCount} reel display(s), {result.ConvertedSevenSegmentDisplayCount} seven-segment display(s), {result.ConvertedAlphaDisplayCount} alpha display(s), and {result.ConvertedButtonCount} button(s).");
         _addOutputEntry($"Generated face '{document.Title}' from Panel2D region with {result.ArtworkElementCount} artwork element(s), {result.ConvertedLampCount} lamp window(s), {result.ConvertedReelDisplayCount} reel display(s), {result.ConvertedSevenSegmentDisplayCount} seven-segment display(s), {result.ConvertedAlphaDisplayCount} alpha display(s), and {result.ConvertedButtonCount} button(s).", OutputLogStatus.Info);
         return document;
+    }
+
+    public bool CanRegenerateSelectedFace()
+    {
+        var selectedDocument = _getSelectedDocument();
+        return _getLoadedProject() is not null
+            && selectedDocument is { Document.DocumentType: EditorDocumentType.Face }
+            && TryFindSourcePanelDocument(selectedDocument.GetFaceDocument(), out _);
+    }
+
+    public bool RegenerateSelectedFace()
+    {
+        var selectedDocument = _getSelectedDocument();
+        if (_getLoadedProject() is null || selectedDocument is null || selectedDocument.Document.DocumentType != EditorDocumentType.Face)
+        {
+            return false;
+        }
+
+        var existingFace = selectedDocument.GetFaceDocument();
+        if (!TryFindSourcePanelDocument(existingFace, out var sourcePanelDocument))
+        {
+            _setStatusMessage("Unable to regenerate Face: source Panel2D document is not open.");
+            _addOutputEntry("Face regeneration skipped because the source Panel2D document could not be located among open documents.", OutputLogStatus.Warning);
+            return false;
+        }
+
+        var result = _faceRegenerationService.Regenerate(
+            existingFace,
+            sourcePanelDocument.GetPanelDocument(),
+            _getLoadedProject()?.InputDefinitions ?? []);
+
+        selectedDocument.SetFaceDocument(
+            result.Document,
+            new PanelChangeEvent(
+                selectedDocument.DocumentId,
+                null,
+                PanelChangeProperties.Structure | PanelChangeProperties.Geometry | PanelChangeProperties.Metadata,
+                AffectsCanvas: true,
+                AffectsHierarchy: true,
+                AffectsInspectorRows: true,
+                AffectsPersistence: true));
+        selectedDocument.MarkDirty();
+
+        _setStatusMessage($"Regenerated face '{selectedDocument.Title}' from source Panel2D.");
+        _addOutputEntry($"Regenerated face '{selectedDocument.Title}' from source Panel2D with {result.UpdatedElementCount} updated generated element(s), {result.AddedElementCount} added generated element(s), {result.RemovedGeneratedElementCount} removed stale generated element(s), and {result.PreservedManualElementCount} preserved manual element(s).", OutputLogStatus.Info);
+        return true;
+    }
+
+    private bool TryFindSourcePanelDocument(FaceDocumentModel faceDocument, out DocumentTabViewModel sourcePanelDocument)
+    {
+        sourcePanelDocument = null!;
+        var sourceId = faceDocument.SourcePanel2DDocumentId?.Trim();
+        if (string.IsNullOrWhiteSpace(sourceId) || faceDocument.SourceRegion is not { IsValid: true })
+        {
+            return false;
+        }
+
+        var match = _openDocuments.FirstOrDefault(document =>
+            document.Document.DocumentType == EditorDocumentType.Panel2D
+            && (string.Equals(document.DocumentId.ToString("N"), sourceId, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(document.DocumentId.ToString("D"), sourceId, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(document.FilePath, sourceId, StringComparison.OrdinalIgnoreCase)));
+        if (match is null)
+        {
+            return false;
+        }
+
+        sourcePanelDocument = match;
+        return true;
     }
 
     public void OpenUntitledDocument()
@@ -408,6 +478,8 @@ public sealed class DocumentWorkspaceViewModel
                 Id = faceDocument.Id,
                 Title = document.Document.Title,
                 Summary = document.ContentSummary,
+                SourcePanel2DDocumentId = faceDocument.SourcePanel2DDocumentId,
+                SourceRegion = faceDocument.SourceRegion,
                 Layers = faceDocument.Layers,
                 Elements = faceDocument.Elements
             };

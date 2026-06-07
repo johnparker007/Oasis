@@ -609,19 +609,59 @@ Face runtime display element
 
 `LinkedPanel2DElementId` remains provenance/editor/regeneration metadata only. Runtime resolution and invalidation should not fall back to Panel2D element IDs.
 
-### Phase 10 - Face Regeneration - Future
+### Phase 10 - Face Regeneration MVP - Complete
 
-Goals:
+Completed as a workflow/data-management MVP.
 
-- regenerate Face content from source Panel2D data;
-- preserve manual Face edits where practical;
-- use existing provenance metadata:
-  - `SourcePanel2DDocumentId`;
-  - `SourceRegion`;
-  - `LinkedPanel2DElementId`;
-  - `MachineObjectReference`.
+Outcome:
 
-Regeneration may use `LinkedPanel2DElementId` and other provenance fields to correlate generated content with source Panel2D content, but regenerated Face Play View runtime behavior must still resolve through `MachineObjectReference` and `MachineRuntimeState`.
+- added a user-facing **Regenerate Face** command for open Face documents that still carry regeneration metadata;
+- regeneration locates the original open Panel2D source document through `SourcePanel2DDocumentId` and requires a valid `SourceRegion`;
+- regeneration re-runs the existing Panel2D-to-Face generation path rather than adding separate visual-fidelity logic;
+- generated Face artwork, lamp windows, buttons, seven-segment displays, alpha displays, and reel displays are rebuilt from the current Panel2D source region;
+- generated elements are correlated using regeneration metadata, primarily `LinkedPanel2DElementId` plus Face element kind;
+- existing generated Face element object IDs and `LinkedMachineObjectReference` values are preserved when a regenerated match exists, so runtime identity survives regeneration;
+- manual Face-only elements without regeneration keys are appended back to the regenerated document so they are not destroyed unnecessarily;
+- stale generated elements whose provenance no longer appears in the regenerated source set are removed without introducing advanced conflict-resolution UI;
+- Face document saving now preserves document-level `SourcePanel2DDocumentId` and `SourceRegion` metadata.
+
+Regeneration contract:
+
+```text
+FaceDocument
+    SourcePanel2DDocumentId
+    SourceRegion
+    Elements[]
+        LinkedPanel2DElementId
+        LinkedMachineObjectReference
+```
+
+Runtime rule preserved:
+
+```text
+Face Play View
+    -> Face element LinkedMachineObjectReference
+        -> MachineRuntimeState
+```
+
+`LinkedPanel2DElementId` is used only to correlate generated Face content with Panel2D source content during regeneration. It remains provenance/editor/regeneration metadata and is not used for Face Play View runtime state resolution.
+
+Manual verification steps:
+
+1. Open a project with a Panel2D document containing artwork plus lamps, buttons, seven-segment displays, alpha displays, and reels.
+2. Open the source Panel2D document and use **File -> Generate Face From Region...** to create a Face from a valid source region.
+3. Add or move a manual Face-only lamp window or other Face element that does not have `LinkedPanel2DElementId` metadata.
+4. Change the source Panel2D element geometry/properties inside the same source region.
+5. Select the generated Face document and run **File -> Regenerate Face**.
+6. Verify generated artwork, lamps, buttons, seven-segment displays, alpha displays, and reels update to match the source Panel2D region.
+7. Verify matched regenerated elements keep their existing `LinkedMachineObjectReference` values.
+8. Verify the manual Face-only element remains present after regeneration.
+9. Run the existing Face Play View and confirm lamp/display/reel/button behavior is unchanged.
+10. Re-open the Panel2D document and confirm existing Panel2D edit/play behavior is unchanged.
+
+Next recommended phase:
+
+- Phase 11 should remain the Visual Fidelity Layer, focused only on rendering/presentation improvements such as lamp glow, artwork blending, masks, and lamp trays. It should not change the regeneration metadata contract or the `LinkedMachineObjectReference` -> `MachineRuntimeState` runtime contract.
 
 ### Phase 11 - Visual Fidelity Layer - Future
 
