@@ -19,7 +19,7 @@ public sealed class Face2DRendererMaskIlluminationTests : IDisposable
     [Fact]
     public void Render_LampOff_DrawsNoLampRectangleOverArtwork()
     {
-        WriteMask(_maskPath, 20, 20, [(10, 10), (14, 10)]);
+        WriteMask(_maskPath, 20, 20, [(10, 10), (14, 10), (18, 10)]);
         var renderer = new Face2DRenderer(FaceRuntimeStateResolver.Instance, _ => _maskPath);
         var runtimeState = new MachineRuntimeState();
         var document = CreateDocument();
@@ -33,12 +33,13 @@ public sealed class Face2DRendererMaskIlluminationTests : IDisposable
         using var bitmap = SKBitmap.FromImage(snapshot);
         Assert.Equal(SKColors.White, bitmap.GetPixel(10, 10));
         Assert.Equal(SKColors.White, bitmap.GetPixel(14, 10));
+        Assert.Equal(SKColors.White, bitmap.GetPixel(18, 10));
     }
 
     [Fact]
     public void Render_LampOn_UsesRadialMaskIlluminationInsteadOfRectangleShape()
     {
-        WriteMask(_maskPath, 20, 20, [(10, 10), (14, 10)]);
+        WriteMask(_maskPath, 20, 20, [(10, 10), (14, 10), (18, 10)]);
         var renderer = new Face2DRenderer(FaceRuntimeStateResolver.Instance, _ => _maskPath);
         var runtimeState = new MachineRuntimeState();
         runtimeState.SetLampIntensityIfChanged(MachineObjectReference.Lamp(17), 1d);
@@ -54,6 +55,7 @@ public sealed class Face2DRendererMaskIlluminationTests : IDisposable
         Assert.NotEqual(SKColors.White, bitmap.GetPixel(10, 10));
         Assert.NotEqual(SKColors.White, bitmap.GetPixel(14, 10));
         Assert.Equal(SKColors.White, bitmap.GetPixel(12, 10));
+        Assert.Equal(SKColors.White, bitmap.GetPixel(18, 10));
     }
 
     public void Dispose()
@@ -75,7 +77,22 @@ public sealed class Face2DRendererMaskIlluminationTests : IDisposable
                 Name = "Face Mask",
                 AssetPath = "mask.png",
                 Width = 20,
-                Height = 20
+                Height = 20,
+                Contributions =
+                [
+                    new FaceMaskContributionModel
+                    {
+                        LinkedMachineObjectReference = MachineObjectReference.Lamp(17),
+                        Bounds = new FaceSourceRegionModel
+                        {
+                            X = 10,
+                            Y = 10,
+                            Width = 5,
+                            Height = 1
+                        },
+                        PixelCount = 2
+                    }
+                ]
             },
             Elements =
             [
