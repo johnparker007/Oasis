@@ -36,6 +36,7 @@ public partial class PlayView : UserControl
     private const double LegacyReelPositionsPerRevolution = 96d;
     private const double ReelDragSpeedScale = 3d;
     private readonly IPanel2DRenderer _skiaRenderer = new Panel2DRenderer([new BackgroundElementRenderer(), new LampElementRenderer(), new ReelElementRenderer(), new SevenSegmentElementRenderer(), new AlphaElementRenderer(), new VfdDotMatrixElementRenderer()], "PlayView");
+    private readonly IFace2DRenderer _faceRenderer = new Face2DRenderer();
 
     public PlayView()
     {
@@ -89,9 +90,10 @@ public partial class PlayView : UserControl
         var selected = ViewModel?.SelectedDocument;
         UpdateSelectedDocumentSubscription(selected);
 
-        if (selected is null || selected.Document.DocumentType != EditorDocumentType.Panel2D)
+        if (selected is null || selected.Document.DocumentType is not (EditorDocumentType.Panel2D or EditorDocumentType.Face))
         {
             PlayCanvas.Children.Clear();
+            EmptyStateText.Text = "Open and select a Panel2D or Face document to use Play View.";
             EmptyStateText.Visibility = Visibility.Visible;
             return;
         }
@@ -108,7 +110,7 @@ public partial class PlayView : UserControl
         canvas.Clear(new SKColor(0x1E, 0x1E, 0x1E));
 
         var selected = ViewModel?.SelectedDocument;
-        if (selected is null || selected.Document.DocumentType != EditorDocumentType.Panel2D)
+        if (selected is null || selected.Document.DocumentType is not (EditorDocumentType.Panel2D or EditorDocumentType.Face))
         {
             return;
         }
@@ -117,7 +119,14 @@ public partial class PlayView : UserControl
         canvas.Save();
         canvas.Translate((float)viewport.PanX, (float)viewport.PanY);
         canvas.Scale((float)viewport.NormalizedZoom, (float)viewport.NormalizedZoom);
-        _skiaRenderer.Render(canvas, selected.GetPanelElements(), selected.RuntimeState, viewport);
+        if (selected.Document.DocumentType == EditorDocumentType.Face)
+        {
+            _faceRenderer.Render(canvas, selected.GetFaceElements(), selected.RuntimeState, viewport);
+        }
+        else
+        {
+            _skiaRenderer.Render(canvas, selected.GetPanelElements(), selected.RuntimeState, viewport);
+        }
         canvas.Restore();
     }
 
@@ -574,6 +583,7 @@ public partial class PlayView : UserControl
         if (_subscribedDocument is not null)
         {
             _subscribedDocument.PanelVisualStateChanged -= OnSelectedDocumentPanelVisualStateChanged;
+            _subscribedDocument.FaceVisualStateChanged -= OnSelectedDocumentFaceVisualStateChanged;
             _subscribedDocument.PropertyChanged -= OnSelectedDocumentPropertyChanged;
         }
 
@@ -581,6 +591,7 @@ public partial class PlayView : UserControl
         if (_subscribedDocument is not null)
         {
             _subscribedDocument.PanelVisualStateChanged += OnSelectedDocumentPanelVisualStateChanged;
+            _subscribedDocument.FaceVisualStateChanged += OnSelectedDocumentFaceVisualStateChanged;
             _subscribedDocument.PropertyChanged += OnSelectedDocumentPropertyChanged;
         }
     }
@@ -598,9 +609,19 @@ public partial class PlayView : UserControl
         });
     }
 
+    private void OnSelectedDocumentFaceVisualStateChanged(FaceVisualStateChangedEvent visualStateChanged)
+    {
+        if (_subscribedDocument is null || visualStateChanged.DocumentId != _subscribedDocument.DocumentId)
+        {
+            return;
+        }
+
+        Dispatcher.Invoke(() => RequestRender());
+    }
+
     private void OnSelectedDocumentPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(DocumentTabViewModel.PanelLayoutJson))
+        if (e.PropertyName is nameof(DocumentTabViewModel.PanelLayoutJson) or nameof(DocumentTabViewModel.FaceDocumentJson))
         {
             Dispatcher.Invoke(RefreshCanvasFromSelection);
         }
@@ -616,7 +637,7 @@ public partial class PlayView : UserControl
 
     private async Task TryRouteKeyDownAsync(KeyEventArgs eventArgs)
     {
-        if (eventArgs.Handled || ViewModel is null || !IsKeyboardFocusWithin)
+        if (eventArgs.Handled || ViewModel is null || !IsKeyboardFocusWithin || ViewModel.SelectedDocument?.Document.DocumentType == EditorDocumentType.Face)
         {
             return;
         }
@@ -639,7 +660,7 @@ public partial class PlayView : UserControl
 
     private async Task TryRouteKeyUpAsync(KeyEventArgs eventArgs)
     {
-        if (eventArgs.Handled || ViewModel is null || !IsKeyboardFocusWithin)
+        if (eventArgs.Handled || ViewModel is null || !IsKeyboardFocusWithin || ViewModel.SelectedDocument?.Document.DocumentType == EditorDocumentType.Face)
         {
             return;
         }
@@ -717,7 +738,7 @@ public partial class PlayView : UserControl
 
     private async Task TryRouteTextInputAsync(TextCompositionEventArgs eventArgs)
     {
-        if (eventArgs.Handled || ViewModel is null || !IsKeyboardFocusWithin || _pendingTextInputKey is null)
+        if (eventArgs.Handled || ViewModel is null || !IsKeyboardFocusWithin || _pendingTextInputKey is null || ViewModel.SelectedDocument?.Document.DocumentType == EditorDocumentType.Face)
         {
             return;
         }

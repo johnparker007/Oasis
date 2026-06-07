@@ -75,6 +75,52 @@ public sealed class MameLampRuntimeAdapterTests
         Assert.Contains("intensity=1", log);
     }
 
+
+    [Fact]
+    public void ApplyLampState_UpdatesFaceLampWindowsByMachineObjectReference()
+    {
+        var document = CreateFaceDocument();
+        var dispatches = new List<Action>();
+        var adapter = new MameLampRuntimeAdapter(
+            () => [document],
+            () => false,
+            _ => { },
+            action => dispatches.Add(action));
+        FaceVisualStateChangedEvent? changedEvent = null;
+        document.FaceVisualStateChanged += ev => changedEvent = ev;
+
+        adapter.ApplyLampState(7, 255);
+
+        var dispatch = Assert.Single(dispatches);
+        dispatch();
+
+        Assert.Equal(1d, document.RuntimeState.GetLampIntensity(MachineObjectReference.Lamp(7)));
+        Assert.NotNull(changedEvent);
+        Assert.Contains("face-lamp-7", changedEvent!.ObjectIds);
+    }
+
+    [Fact]
+    public void ApplyLampState_DoesNotUpdateFaceLampWindowFromLinkedPanel2DElementIdOnly()
+    {
+        var document = CreateFaceDocument(machineReference: MachineObjectReference.Empty, linkedPanel2DElementId: "lamp-7");
+        var dispatches = new List<Action>();
+        var adapter = new MameLampRuntimeAdapter(
+            () => [document],
+            () => false,
+            _ => { },
+            action => dispatches.Add(action));
+        var eventCount = 0;
+        document.FaceVisualStateChanged += _ => eventCount++;
+
+        adapter.ApplyLampState(7, 255);
+
+        var dispatch = Assert.Single(dispatches);
+        dispatch();
+
+        Assert.Equal(0d, document.RuntimeState.GetLampIntensity(MachineObjectReference.Lamp(7)));
+        Assert.Equal(0, eventCount);
+    }
+
     private static DocumentTabViewModel CreateDocument()
     {
         var panelDocument = EditorDocument.CreateFromFile(
@@ -89,4 +135,24 @@ public sealed class MameLampRuntimeAdapterTests
         ]);
         return tab;
     }
+
+    private static DocumentTabViewModel CreateFaceDocument(MachineObjectReference? machineReference = null, string? linkedPanel2DElementId = null)
+    {
+        var faceDocument = EditorDocument.CreateFromFile(
+            "face.face",
+            "face",
+            "face");
+        var tab = new DocumentTabViewModel(faceDocument);
+        tab.SetFaceElements(
+        [
+            new FaceLampWindowElement
+            {
+                ObjectId = "face-lamp-7",
+                LinkedMachineObjectReference = machineReference ?? MachineObjectReference.Lamp(7),
+                LinkedPanel2DElementId = linkedPanel2DElementId
+            }
+        ]);
+        return tab;
+    }
+
 }
