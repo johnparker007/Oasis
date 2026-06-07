@@ -106,6 +106,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OpenPanel2DStubCommand = new RelayCommand(OpenPanel2DStubDocument, CanOpenUntitledDocument);
         OpenFaceStubCommand = new RelayCommand(OpenFaceStubDocument, CanOpenUntitledDocument);
         GenerateFaceFromRegionCommand = new RelayCommand(GenerateFaceFromRegion, CanGenerateFaceFromRegion);
+        RegenerateFaceCommand = new RelayCommand(RegenerateFace, CanRegenerateFace);
         OpenCabinet3DStubCommand = new RelayCommand(OpenCabinet3DStubDocument, CanOpenUntitledDocument);
         OpenMachineStubCommand = new RelayCommand(OpenMachineStubDocument, CanOpenUntitledDocument);
         OpenDocumentCommand = new RelayCommand(OpenDocument, CanOpenDocument);
@@ -392,6 +393,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand OpenPanel2DStubCommand { get; }
     public ICommand OpenFaceStubCommand { get; }
     public ICommand GenerateFaceFromRegionCommand { get; }
+    public ICommand RegenerateFaceCommand { get; }
     public ICommand OpenCabinet3DStubCommand { get; }
     public ICommand OpenMachineStubCommand { get; }
     public ICommand OpenDocumentCommand { get; }
@@ -1003,6 +1005,21 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         _documentWorkspace.GenerateFaceFromSelectedPanel2DRegion(dialog.SourceRegion);
+    }
+
+    private bool CanRegenerateFace()
+    {
+        return _documentWorkspace.CanRegenerateSelectedFace();
+    }
+
+    private void RegenerateFace()
+    {
+        if (!CanRegenerateFace())
+        {
+            return;
+        }
+
+        _documentWorkspace.RegenerateSelectedFace();
     }
 
     private void OpenCabinet3DStubDocument()
@@ -3182,6 +3199,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (GenerateFaceFromRegionCommand is RelayCommand generateFaceRelayCommand)
         {
             generateFaceRelayCommand.RaiseCanExecuteChanged();
+        }
+
+        if (RegenerateFaceCommand is RelayCommand regenerateFaceRelayCommand)
+        {
+            regenerateFaceRelayCommand.RaiseCanExecuteChanged();
         }
 
         if (OpenCabinet3DStubCommand is RelayCommand openCabinetRelayCommand)

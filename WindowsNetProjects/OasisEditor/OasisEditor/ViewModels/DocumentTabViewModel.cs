@@ -160,9 +160,23 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
         return true;
     }
 
+    internal void SetFaceDocument(FaceDocumentModel model, PanelChangeEvent? faceChange = null)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+
+        _faceDocumentModel = model;
+        _faceDocumentJson = GetFaceDocumentJson();
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FaceDocumentJson)));
+
+        if (faceChange is PanelChangeEvent change)
+        {
+            PanelChanged?.Invoke(change);
+        }
+    }
+
     internal void SetFaceElements(IReadOnlyList<FaceElementModel> elements, PanelChangeEvent? faceChange = null)
     {
-        _faceDocumentModel = new FaceDocumentModel
+        SetFaceDocument(new FaceDocumentModel
         {
             Id = _faceDocumentModel.Id,
             Title = _faceDocumentModel.Title,
@@ -171,14 +185,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
             SourceRegion = _faceDocumentModel.SourceRegion,
             Layers = _faceDocumentModel.Layers,
             Elements = elements.ToArray()
-        };
-        _faceDocumentJson = GetFaceDocumentJson();
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FaceDocumentJson)));
-
-        if (faceChange is PanelChangeEvent change)
-        {
-            PanelChanged?.Invoke(change);
-        }
+        }, faceChange);
     }
 
     internal Panel2DDocumentModel GetPanelDocument()
