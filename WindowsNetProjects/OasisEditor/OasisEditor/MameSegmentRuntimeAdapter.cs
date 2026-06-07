@@ -127,6 +127,7 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
                     if (machineMaskChanged || machineBrightnessChanged)
                     {
                         changedMachineReferences.Add(machineReference);
+                        AddChangedFaceDisplayObjectIds(document, machineReference, changedFaceObjectIds);
                     }
                 }
 
@@ -152,7 +153,7 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
                 var brightnessChanged = document.RuntimeState.SetSegmentCellBrightnessIfChanged(reference, [1d]);
                 if (maskChanged || brightnessChanged || changedMachineReferences.Contains(reference))
                 {
-                    changedFaceObjectIds.Add(faceDisplay.ObjectId);
+                    FaceRuntimeDisplayReferenceIndex.AddObjectIdsForReference<FaceSevenSegmentDisplayElement>(document, reference, changedFaceObjectIds);
                 }
             }
 
@@ -187,7 +188,7 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
                 var brightnessChanged = document.RuntimeState.SetSegmentCellBrightnessIfChanged(reference, cellBrightness);
                 if (maskChanged || brightnessChanged || changedMachineReferences.Contains(reference))
                 {
-                    changedFaceObjectIds.Add(faceDisplay.ObjectId);
+                    FaceRuntimeDisplayReferenceIndex.AddObjectIdsForReference<FaceAlphaDisplayElement>(document, reference, changedFaceObjectIds);
                 }
             }
 
@@ -200,6 +201,21 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
             {
                 document.NotifyFaceVisualPreviewChanged(changedFaceObjectIds);
             }
+        }
+    }
+
+
+    private static void AddChangedFaceDisplayObjectIds(DocumentTabViewModel document, MachineObjectReference reference, ISet<string> changedFaceObjectIds)
+    {
+        if (reference.Kind == MachineObjectKind.SevenSegmentDisplay)
+        {
+            FaceRuntimeDisplayReferenceIndex.AddObjectIdsForReference<FaceSevenSegmentDisplayElement>(document, reference, changedFaceObjectIds);
+            return;
+        }
+
+        if (reference.Kind == MachineObjectKind.AlphaDisplay)
+        {
+            FaceRuntimeDisplayReferenceIndex.AddObjectIdsForReference<FaceAlphaDisplayElement>(document, reference, changedFaceObjectIds);
         }
     }
 

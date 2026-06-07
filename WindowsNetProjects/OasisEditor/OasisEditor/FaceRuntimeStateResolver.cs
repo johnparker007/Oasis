@@ -24,9 +24,7 @@ public sealed class FaceRuntimeStateResolver : IFaceRuntimeStateResolver
 
     public bool TryGetLampReference(FaceLampWindowElement lampWindow, out MachineObjectReference reference)
     {
-        ArgumentNullException.ThrowIfNull(lampWindow);
-        reference = lampWindow.LinkedMachineObjectReference ?? MachineObjectReference.Empty;
-        return reference.Kind == MachineObjectKind.Lamp && !reference.IsEmpty;
+        return TryGetReference(lampWindow, MachineObjectKind.Lamp, out reference);
     }
 
     public double GetLampIntensity(FaceLampWindowElement lampWindow, MachineRuntimeState runtimeState)
@@ -41,9 +39,7 @@ public sealed class FaceRuntimeStateResolver : IFaceRuntimeStateResolver
 
     public bool TryGetReelDisplayReference(FaceReelDisplayElement reelDisplay, out MachineObjectReference reference)
     {
-        ArgumentNullException.ThrowIfNull(reelDisplay);
-        reference = reelDisplay.LinkedMachineObjectReference ?? MachineObjectReference.Empty;
-        return reference.Kind == MachineObjectKind.Reel && !reference.IsEmpty;
+        return TryGetReference(reelDisplay, MachineObjectKind.Reel, out reference);
     }
 
     public double GetReelPosition(FaceReelDisplayElement reelDisplay, MachineRuntimeState runtimeState)
@@ -84,16 +80,19 @@ public sealed class FaceRuntimeStateResolver : IFaceRuntimeStateResolver
 
     public bool TryGetSevenSegmentDisplayReference(FaceSevenSegmentDisplayElement display, out MachineObjectReference reference)
     {
-        ArgumentNullException.ThrowIfNull(display);
-        reference = display.LinkedMachineObjectReference ?? MachineObjectReference.Empty;
-        return reference.Kind == MachineObjectKind.SevenSegmentDisplay && !reference.IsEmpty;
+        return TryGetReference(display, MachineObjectKind.SevenSegmentDisplay, out reference);
     }
 
     public bool TryGetAlphaDisplayReference(FaceAlphaDisplayElement display, out MachineObjectReference reference)
     {
-        ArgumentNullException.ThrowIfNull(display);
-        reference = display.LinkedMachineObjectReference ?? MachineObjectReference.Empty;
-        return reference.Kind == MachineObjectKind.AlphaDisplay && !reference.IsEmpty;
+        return TryGetReference(display, MachineObjectKind.AlphaDisplay, out reference);
+    }
+
+    private static bool TryGetReference(FaceElementModel element, MachineObjectKind expectedKind, out MachineObjectReference reference)
+    {
+        ArgumentNullException.ThrowIfNull(element);
+        reference = element.LinkedMachineObjectReference ?? MachineObjectReference.Empty;
+        return reference.Kind == expectedKind && !reference.IsEmpty;
     }
 
     public int[] GetSevenSegmentCellMasks(FaceSevenSegmentDisplayElement display, MachineRuntimeState runtimeState)
