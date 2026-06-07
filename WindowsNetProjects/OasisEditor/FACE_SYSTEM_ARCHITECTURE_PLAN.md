@@ -661,9 +661,56 @@ Manual verification steps:
 
 Next recommended phase:
 
-- Phase 11 should remain the Visual Fidelity Layer, focused only on rendering/presentation improvements such as lamp glow, artwork blending, masks, and lamp trays. It should not change the regeneration metadata contract or the `LinkedMachineObjectReference` -> `MachineRuntimeState` runtime contract.
+- Phase 10.5 is complete. Phase 11A should start with Lamp Visual Fidelity, focused on lamp presentation improvements without changing the regeneration metadata contract or the `LinkedMachineObjectReference` -> `MachineRuntimeState` runtime contract.
+
+
+### Phase 10.5 - Face Generation / Regeneration UX - Complete
+
+Completed as a small workflow/discoverability phase before visual-fidelity work.
+
+Outcome:
+
+- Face document provenance is visible in the Inspector when a Face document is selected without a specific Face element selected, including source Panel2D document metadata, source region, generated element count, and last regenerated timestamp;
+- generated and regenerated Face documents persist `LastRegeneratedAtUtc` metadata so the user can see when the source region was last replayed;
+- the File menu now exposes both **Regenerate Face** and **Open Source Panel2D**, making the regeneration workflow and source-location workflow discoverable from the active Face document;
+- **Regenerate Face** remains visible/enabled for Faces with regeneration metadata even when the source Panel2D is not currently open, so execution can report a clear missing-source diagnostic instead of silently hiding the workflow;
+- Face validation diagnostics now report missing source Panel2D documents, invalid/missing source regions, missing artwork/reel assets, missing machine references, and mismatched machine-reference kinds through the existing Output log path where appropriate;
+- the Face Inspector surfaces a machine-reference warning count for the selected Face document as a lightweight diagnostic summary.
+
+Regeneration/source UX contract:
+
+```text
+Face document selected
+    -> Inspector shows provenance and diagnostics summary
+    -> File > Open Source Panel2D activates the open source tab when available
+    -> File > Regenerate Face replays SourcePanel2DDocumentId + SourceRegion
+    -> Output log reports missing-source / missing-asset / missing-reference diagnostics
+```
+
+Important boundaries preserved:
+
+- no visual-fidelity changes were added;
+- no 3D preview behavior was added;
+- no Unity integration behavior was added;
+- `LinkedMachineObjectReference` remains the Face runtime identity path, while `LinkedPanel2DElementId` remains provenance/regeneration metadata only.
+
+Manual verification steps:
+
+1. Open a project with a Panel2D source document and a generated Face document.
+2. Select the Face document with no Face element selected and confirm the Inspector shows Source Panel2D Document, Source Region, Generated Element Count, Last Regenerated, and workflow command guidance.
+3. Run **File -> Open Source Panel2D** and confirm the source Panel2D tab is activated when it is open.
+4. Close or do not open the source Panel2D, select the Face, run **File -> Regenerate Face**, and confirm the Output log reports that the source Panel2D could not be located.
+5. Create a Face with a missing artwork/reel asset path or remove a runtime-linked element's machine reference, then regenerate or invoke the source-location workflow and confirm Output log diagnostics identify the missing data.
+
+Next recommended phase:
+
+- Phase 11A should be **Lamp Visual Fidelity**, focused narrowly on Face lamp presentation improvements such as lamp glow, artwork blending for lit/unlit lamp regions, and lamp-mask/tray presentation where possible. It should not add 3D preview, Unity integration, or runtime identity changes.
 
 ### Phase 11 - Visual Fidelity Layer - Future
+
+Recommended first slice:
+
+- Phase 11A - Lamp Visual Fidelity.
 
 Goals:
 

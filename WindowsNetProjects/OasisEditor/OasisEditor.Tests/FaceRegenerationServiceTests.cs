@@ -153,6 +153,7 @@ public sealed class FaceRegenerationServiceTests
 
         Assert.Contains(result.Document.Elements, element => element.ObjectId == "manual-lamp-window");
         Assert.DoesNotContain(result.Document.Elements, element => element.ObjectId == "stale-generated-lamp");
+        Assert.NotNull(result.Document.LastRegeneratedAtUtc);
     }
 
     [Fact]

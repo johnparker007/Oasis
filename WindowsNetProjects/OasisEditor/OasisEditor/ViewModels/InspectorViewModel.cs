@@ -304,6 +304,15 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             return;
         }
 
+        if (selectedDocument is not null
+            && selectedDocument.Document.DocumentType == EditorDocumentType.Face
+            && (selection is not PanelSelectionInfo selectedFaceSelection
+                || !selectedDocument.TryGetFaceElement(selectedFaceSelection, out _)))
+        {
+            RebuildFaceDocumentPropertyRows(selectedDocument);
+            return;
+        }
+
         if (selectedDocument is null || selection is not PanelSelectionInfo selectedSelection || !selectedDocument.TryGetPanelElement(selectedSelection, out var selectedElement))
         {
             _hadInspectorSelection = false;
@@ -379,6 +388,14 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
             return !string.Equals(_lastInspectorSelectionObjectId, selectedFaceElement.ObjectId, StringComparison.Ordinal)
                 || !string.Equals(_lastInspectorFaceSelectionKind, FaceSelectionService.GetKindToken(selectedFaceElement), StringComparison.Ordinal);
+        }
+
+        if (selectedDocument is not null
+            && selectedDocument.Document.DocumentType == EditorDocumentType.Face
+            && (selection is not PanelSelectionInfo selectedFaceSelection
+                || !selectedDocument.TryGetFaceElement(selectedFaceSelection, out _)))
+        {
+            return true;
         }
 
         if (selectedDocument is null || selection is not PanelSelectionInfo selectedSelection || !selectedDocument.TryGetPanelElement(selectedSelection, out var selectedElement))
@@ -542,6 +559,29 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             _propertyRows.Add(new InspectorInfoPropertyViewModel("Import Format", "Metadata", selectedElement.ImportSource.Format));
             _propertyRows.Add(new InspectorInfoPropertyViewModel("Import Reference", "Metadata", selectedElement.ImportSource.Reference ?? string.Empty));
         }
+    }
+
+
+    private void RebuildFaceDocumentPropertyRows(DocumentTabViewModel selectedDocument)
+    {
+        var faceDocument = selectedDocument.GetFaceDocument();
+        _propertyRows.Add(new InspectorInfoPropertyViewModel("Source Panel2D Document", "Face Provenance", faceDocument.SourcePanel2DDocumentId ?? string.Empty));
+        _propertyRows.Add(new InspectorInfoPropertyViewModel("Source Region", "Face Provenance", faceDocument.SourceRegion is not null ? FormatSourceRegion(faceDocument.SourceRegion) : string.Empty));
+        _propertyRows.Add(new InspectorInfoPropertyViewModel("Generated Element Count", "Face Provenance", CountGeneratedElements(faceDocument).ToString()));
+        _propertyRows.Add(new InspectorInfoPropertyViewModel("Last Regenerated", "Face Provenance", FormatTimestamp(faceDocument.LastRegeneratedAtUtc)));
+        _propertyRows.Add(new InspectorInfoPropertyViewModel("Face Commands", "Workflow", "Use File > Regenerate Face or File > Open Source Panel2D."));
+
+        var missingMachineReferenceCount = CountMissingMachineReferences(faceDocument);
+        if (missingMachineReferenceCount > 0)
+        {
+            _propertyRows.Add(new InspectorInfoPropertyViewModel("Machine Reference Warnings", "Diagnostics", $"{missingMachineReferenceCount} runtime-linked element(s) are missing machine references."));
+        }
+
+        _hadInspectorSelection = false;
+        _lastInspectorSelectionObjectId = null;
+        _lastInspectorSelectionKind = null;
+        _lastInspectorFaceSelectionKind = null;
+        OnPropertyChanged(nameof(InspectorPropertyRows));
     }
 
     private void RebuildFacePropertyRows(DocumentTabViewModel selectedDocument, FaceElementModel selectedElement)
@@ -903,6 +943,35 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             FaceButtonElement => "Face Button",
             _ => "Face Element"
         };
+    }
+
+
+    private static int CountGeneratedElements(FaceDocumentModel faceDocument)
+    {
+        return faceDocument.Elements.Count(element => !string.IsNullOrWhiteSpace(element.LinkedPanel2DElementId)
+            || element is FaceArtworkElement { Provenance: not null });
+    }
+
+    private static int CountMissingMachineReferences(FaceDocumentModel faceDocument)
+    {
+        return faceDocument.Elements.Count(element => IsRuntimeLinkedFaceElement(element)
+            && (element.LinkedMachineObjectReference is not MachineObjectReference reference || reference.IsEmpty));
+    }
+
+    private static bool IsRuntimeLinkedFaceElement(FaceElementModel element)
+    {
+        return element is FaceLampWindowElement
+            or FaceReelDisplayElement
+            or FaceSevenSegmentDisplayElement
+            or FaceAlphaDisplayElement
+            or FaceButtonElement;
+    }
+
+    private static string FormatTimestamp(DateTime? timestampUtc)
+    {
+        return timestampUtc.HasValue
+            ? $"{timestampUtc.Value.ToUniversalTime():yyyy-MM-dd HH:mm:ss} UTC"
+            : string.Empty;
     }
 
     private static string FormatSourceRegion(FaceSourceRegionModel region)

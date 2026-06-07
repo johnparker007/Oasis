@@ -57,6 +57,8 @@
                           Command="{Binding GenerateFaceFromRegionCommand}" />
                 <MenuItem Header="_Regenerate Face"
                           Command="{Binding RegenerateFaceCommand}" />
+                <MenuItem Header="Open Source _Panel2D"
+                          Command="{Binding OpenSourcePanel2DCommand}" />
                 <MenuItem Header="New _Cabinet3D Stub"
                           Command="{Binding OpenCabinet3DStubCommand}" />
                 <MenuItem Header="New _Machine Stub"

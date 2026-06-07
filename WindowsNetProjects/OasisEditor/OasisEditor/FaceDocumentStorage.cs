@@ -148,6 +148,7 @@ public static class FaceDocumentStorage
             Summary = file.Summary,
             SourcePanel2DDocumentId = string.IsNullOrWhiteSpace(file.SourcePanel2DDocumentId) ? null : file.SourcePanel2DDocumentId.Trim(),
             SourceRegion = ToModel(file.SourceRegion),
+            LastRegeneratedAtUtc = file.LastRegeneratedAtUtc,
             Layers = (file.Layers ?? [])
                 .Select(layer => new FaceLayerModel
                 {
@@ -174,6 +175,7 @@ public static class FaceDocumentStorage
             Summary = model.Summary,
             SourcePanel2DDocumentId = model.SourcePanel2DDocumentId,
             SourceRegion = ToFile(model.SourceRegion),
+            LastRegeneratedAtUtc = model.LastRegeneratedAtUtc,
             SavedAtUtc = DateTime.UtcNow,
             Layers = model.Layers.Select(layer => new FaceLayerFile
             {
@@ -457,6 +459,7 @@ public sealed record FaceDocumentFile
     public string? Summary { get; init; }
     public string? SourcePanel2DDocumentId { get; init; }
     public FaceSourceRegionFile? SourceRegion { get; init; }
+    public DateTime? LastRegeneratedAtUtc { get; init; }
     public DateTime SavedAtUtc { get; init; }
     public IReadOnlyList<FaceLayerFile>? Layers { get; init; } = [];
     public IReadOnlyList<FaceElementFile>? Elements { get; init; } = [];
