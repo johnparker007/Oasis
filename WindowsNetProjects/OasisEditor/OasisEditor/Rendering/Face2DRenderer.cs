@@ -148,7 +148,7 @@ public sealed class Face2DRenderer : IFace2DRenderer
         {
             BlendMode = SKBlendMode.DstIn,
             IsAntialias = true,
-            FilterQuality = SKFilterQuality.Linear
+            FilterQuality = SKFilterQuality.Medium
         };
 
         canvas.SaveLayer(maskRect, null);
