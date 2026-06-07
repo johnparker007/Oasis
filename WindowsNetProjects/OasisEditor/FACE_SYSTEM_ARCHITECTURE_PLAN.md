@@ -795,13 +795,56 @@ Next recommended phase:
 
 - Phase 11C should be **Lamp Visual Fidelity**, focused on mask-aware lamp presentation and renderer-side quality improvements while preserving the `MachineObjectReference` -> `MachineRuntimeState` runtime contract.
 
-### Phase 11C - Lamp Visual Fidelity - Future
+### Phase 11C - Lamp Visual Fidelity - In Progress
+
+Phase 11C is being split into small renderer-only fidelity increments so runtime architecture remains unchanged.
+
+#### Phase 11C1 - Mask-Aware Lamp Rendering - Complete
+
+Purpose:
+
+- consume the persisted `FaceMaskLayer` during Face Play View rendering;
+- preserve the existing `FaceLampWindowElement.LinkedMachineObjectReference` -> `MachineRuntimeState` runtime-state contract;
+- improve lamp physical accuracy by allowing only mask-open pixels to receive lamp illumination.
+
+Implemented renderer consumption contract:
+
+```text
+Face Play View
+    -> Face2DRenderer.Render(FaceDocumentModel, MachineRuntimeState, viewport)
+        -> draw FaceArtworkElement artwork
+        -> load FaceDocument.FaceMaskLayer.AssetPath as one aligned monochrome mask
+        -> draw a subtle printed-mask overlay from the same mask for runtime visibility
+        -> draw FaceLampWindowElement illumination into an offscreen layer
+        -> apply the mask luminance as the lamp layer alpha/light-escape map
+        -> draw displays
+        -> draw buttons
+```
+
+Runtime lamp rendering now consumes only:
+
+- `FaceMaskLayer` for the aligned light-escape map;
+- `FaceLampWindowElement` for lamp window placement and machine-object reference;
+- `MachineRuntimeState` for lamp intensity.
+
+Important boundaries preserved:
+
+- per-lamp `FaceMaskLayer.Contributions` metadata remains generation/provenance/tray-preparation data and is not used for runtime lamp decisions;
+- Panel2D rendering remains unchanged;
+- Face Edit View mask hierarchy/Inspector behavior remains editable and inspectable;
+- no bloom, post-processing, advanced glow, emission effects, tray simulation, light leakage simulation, 3D preview, or Unity integration was added.
+
+Recommended next visual-fidelity phase:
+
+- Phase 11C2 should be **Basic Lamp Falloff and Color Tuning**, limited to renderer-side quality improvements such as per-window radial falloff, simple color/intensity tuning, and optional authoring-safe diagnostics. It should continue to use the single `FaceMaskLayer` plus runtime elements and must still avoid bloom/post-processing, tray simulation, light leakage simulation, Unity integration, and any dependency on per-lamp extraction metadata.
+
+#### Phase 11C2 - Basic Lamp Falloff and Color Tuning - Future
 
 Goals:
 
-- lamp presentation improvements after the mask layer exists;
-- artwork blending and mask-aware lamp rendering investigation;
-- renderer-side quality improvements that preserve the `MachineObjectReference` -> `MachineRuntimeState` contract.
+- improve the simple solid-fill lamp illumination with low-risk renderer-side falloff/color tuning;
+- keep runtime identity/state unchanged;
+- keep all tray, light-leakage, bloom, post-processing, 3D, and Unity work deferred.
 
 ### Phase 11D - Display/Reel Visual Fidelity - Future
 
