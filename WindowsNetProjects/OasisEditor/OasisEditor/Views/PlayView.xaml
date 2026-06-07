@@ -10,6 +10,7 @@
              PreviewKeyDown="OnRootPreviewKeyDown"
              PreviewKeyUp="OnRootPreviewKeyUp"
              PreviewTextInput="OnRootPreviewTextInput"
+             LostKeyboardFocus="OnRootLostKeyboardFocus"
              d:DesignHeight="450"
              d:DesignWidth="700">
     <Grid>

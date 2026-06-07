@@ -81,9 +81,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly IInputMapDiagnosticsService _inputMapDiagnosticsService = new InputMapDiagnosticsService(new MameInputPortResolver());
     private IReadOnlyList<InputMapDiagnostic> _inputMapDiagnostics = [];
     private PlayViewInputRouter? _playViewInputRouter;
-    private PlayViewKeyboardInputRouter? _playViewKeyboardInputRouter;
-    private PlayViewPointerInputRouter? _playViewPointerInputRouter;
-    private FacePlayViewPointerInputRouter? _facePlayViewPointerInputRouter;
+    private PlayViewInputDispatcher? _playViewInputDispatcher;
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<EditorToolWindowId>? ToolWindowOpenRequested;
@@ -1306,14 +1304,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public async Task<bool> TryHandlePlayViewKeyDownAsync(string keyboardShortcut, bool isFocused, bool isRepeat, CancellationToken cancellationToken)
     {
         var canRoute = EnsurePlayViewInputRouter();
-        var router = EnsurePlayViewKeyboardInputRouter();
-        if (router is null)
+        var dispatcher = EnsurePlayViewInputDispatcher();
+        if (dispatcher is null)
         {
             return false;
         }
 
-        var handled = await router.TryHandleKeyDownAsync(SelectedFruitMachinePlatform, keyboardShortcut, isFocused, isRepeat, cancellationToken).ConfigureAwait(false);
-        if (!handled && canRoute && isFocused && !isRepeat && !router.CanResolveShortcut(keyboardShortcut))
+        var handled = await dispatcher.TryHandleKeyDownAsync(SelectedFruitMachinePlatform, keyboardShortcut, isFocused, isRepeat, cancellationToken).ConfigureAwait(false);
+        if (!handled && canRoute && isFocused && !isRepeat && !dispatcher.CanResolveShortcut(keyboardShortcut))
         {
             AddOutputEntry($"Play View key input unresolved: '{keyboardShortcut}' on platform '{SelectedFruitMachinePlatform}'.", OutputLogStatus.Warning);
         }
@@ -1323,71 +1321,79 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public Task<bool> TryHandlePlayViewKeyUpAsync(string keyboardShortcut, bool isFocused, CancellationToken cancellationToken)
     {
-        var router = EnsurePlayViewKeyboardInputRouter();
-        if (router is null)
+        var dispatcher = EnsurePlayViewInputDispatcher();
+        if (dispatcher is null)
         {
             return Task.FromResult(false);
         }
 
-        return router.TryHandleKeyUpAsync(SelectedFruitMachinePlatform, keyboardShortcut, isFocused, cancellationToken);
+        return dispatcher.TryHandleKeyUpAsync(SelectedFruitMachinePlatform, keyboardShortcut, isFocused, cancellationToken);
     }
 
-    public async Task<bool> TryHandlePlayViewPointerDownAsync(Guid visualElementId, bool isFocused, CancellationToken cancellationToken)
+    public Task<bool> TryHandlePlayViewPointerDownAsync(Guid visualElementId, bool isFocused, CancellationToken cancellationToken)
     {
-        var canRoute = EnsurePlayViewInputRouter();
-        var router = EnsurePlayViewPointerInputRouter();
-        if (router is null)
-        {
-            return false;
-        }
-
-        var handled = await router.TryHandlePointerDownAsync(SelectedFruitMachinePlatform, visualElementId, isFocused, cancellationToken).ConfigureAwait(false);
-        if (!handled && canRoute && isFocused)
-        {
-            AddOutputEntry($"Play View pointer input unresolved for visual '{visualElementId}' on platform '{SelectedFruitMachinePlatform}'.", OutputLogStatus.Warning);
-        }
-
-        return handled;
+        return TryHandlePlayViewPointerDownAsync(
+            PlayInputTarget.ForPanelVisualElement(visualElementId),
+            isFocused,
+            $"Play View pointer input unresolved for visual '{visualElementId}'",
+            cancellationToken);
     }
 
     public Task<bool> TryHandlePlayViewPointerUpAsync(Guid visualElementId, bool isFocused, CancellationToken cancellationToken)
     {
-        var router = EnsurePlayViewPointerInputRouter();
-        if (router is null)
-        {
-            return Task.FromResult(false);
-        }
-
-        return router.TryHandlePointerUpAsync(SelectedFruitMachinePlatform, visualElementId, isFocused, cancellationToken);
+        return TryHandlePlayViewPointerUpAsync(PlayInputTarget.ForPanelVisualElement(visualElementId), isFocused, cancellationToken);
     }
 
-    public async Task<bool> TryHandleFacePlayViewPointerDownAsync(MachineInputReference inputReference, bool isFocused, CancellationToken cancellationToken)
+    public Task<bool> TryHandlePlayViewPointerDownAsync(PlayInputTarget inputTarget, bool isFocused, CancellationToken cancellationToken)
+    {
+        return TryHandlePlayViewPointerDownAsync(
+            inputTarget,
+            isFocused,
+            $"Play View pointer input unresolved for {inputTarget}",
+            cancellationToken);
+    }
+
+    private async Task<bool> TryHandlePlayViewPointerDownAsync(PlayInputTarget inputTarget, bool isFocused, string unresolvedMessage, CancellationToken cancellationToken)
     {
         var canRoute = EnsurePlayViewInputRouter();
-        var router = EnsureFacePlayViewPointerInputRouter();
-        if (router is null)
+        var dispatcher = EnsurePlayViewInputDispatcher();
+        if (dispatcher is null)
         {
             return false;
         }
 
-        var handled = await router.TryHandlePointerDownAsync(SelectedFruitMachinePlatform, inputReference, isFocused, cancellationToken).ConfigureAwait(false);
+        var handled = await dispatcher.TryHandlePointerDownAsync(SelectedFruitMachinePlatform, inputTarget, isFocused, cancellationToken).ConfigureAwait(false);
         if (!handled && canRoute && isFocused)
         {
-            AddOutputEntry($"Face Play View pointer input unresolved for machine input '{inputReference}' on platform '{SelectedFruitMachinePlatform}'.", OutputLogStatus.Warning);
+            AddOutputEntry($"{unresolvedMessage} on platform '{SelectedFruitMachinePlatform}'.", OutputLogStatus.Warning);
         }
 
         return handled;
     }
 
-    public Task<bool> TryHandleFacePlayViewPointerUpAsync(MachineInputReference inputReference, bool isFocused, CancellationToken cancellationToken)
+    public Task<bool> TryHandlePlayViewPointerUpAsync(PlayInputTarget inputTarget, bool isFocused, CancellationToken cancellationToken)
     {
-        var router = EnsureFacePlayViewPointerInputRouter();
-        if (router is null)
+        var dispatcher = EnsurePlayViewInputDispatcher();
+        if (dispatcher is null)
         {
             return Task.FromResult(false);
         }
 
-        return router.TryHandlePointerUpAsync(SelectedFruitMachinePlatform, inputReference, isFocused, cancellationToken);
+        return dispatcher.TryHandlePointerUpAsync(SelectedFruitMachinePlatform, inputTarget, isFocused, cancellationToken);
+    }
+
+    public Task<bool> TryHandleFacePlayViewPointerDownAsync(MachineInputReference inputReference, bool isFocused, CancellationToken cancellationToken)
+    {
+        return TryHandlePlayViewPointerDownAsync(
+            PlayInputTarget.ForMachineInput(inputReference),
+            isFocused,
+            $"Face Play View pointer input unresolved for machine input '{inputReference}'",
+            cancellationToken);
+    }
+
+    public Task<bool> TryHandleFacePlayViewPointerUpAsync(MachineInputReference inputReference, bool isFocused, CancellationToken cancellationToken)
+    {
+        return TryHandlePlayViewPointerUpAsync(PlayInputTarget.ForMachineInput(inputReference), isFocused, cancellationToken);
     }
 
     public Task<int> ReleaseAllPlayViewInputsAsync(string reason, CancellationToken cancellationToken)
@@ -1402,14 +1408,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return 0;
         }
 
-        EnsurePlayViewKeyboardInputRouter();
-        EnsurePlayViewPointerInputRouter();
-        EnsureFacePlayViewPointerInputRouter();
+        var dispatcher = EnsurePlayViewInputDispatcher();
+        if (dispatcher is null)
+        {
+            return 0;
+        }
 
-        var byInputId = (LoadedProject?.InputDefinitions ?? [])
-            .Where(definition => !string.IsNullOrWhiteSpace(definition.Id))
-            .ToDictionary(definition => definition.Id, definition => definition, StringComparer.Ordinal);
-        var released = await _playViewInputRouter.ReleaseAllAsync(SelectedFruitMachinePlatform, byInputId, cancellationToken).ConfigureAwait(false);
+        var released = await dispatcher.ReleaseAllActiveAsync(SelectedFruitMachinePlatform, cancellationToken).ConfigureAwait(false);
         if (released > 0)
         {
             AddOutputEntry($"Play View released {released} active input(s) due to {reason}.", OutputLogStatus.Info);
@@ -1418,37 +1423,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         return released;
     }
 
-    private PlayViewKeyboardInputRouter? EnsurePlayViewKeyboardInputRouter()
+    private PlayViewInputDispatcher? EnsurePlayViewInputDispatcher()
     {
         if (!EnsurePlayViewInputRouter())
         {
             return null;
         }
 
-        _playViewKeyboardInputRouter ??= new PlayViewKeyboardInputRouter(_playViewInputRouter!, LoadedProject?.InputDefinitions ?? []);
-        return _playViewKeyboardInputRouter;
-    }
-
-    private PlayViewPointerInputRouter? EnsurePlayViewPointerInputRouter()
-    {
-        if (!EnsurePlayViewInputRouter())
-        {
-            return null;
-        }
-
-        _playViewPointerInputRouter ??= new PlayViewPointerInputRouter(_playViewInputRouter!, LoadedProject?.InputDefinitions ?? []);
-        return _playViewPointerInputRouter;
-    }
-
-    private FacePlayViewPointerInputRouter? EnsureFacePlayViewPointerInputRouter()
-    {
-        if (!EnsurePlayViewInputRouter())
-        {
-            return null;
-        }
-
-        _facePlayViewPointerInputRouter ??= new FacePlayViewPointerInputRouter(_playViewInputRouter!, LoadedProject?.InputDefinitions ?? []);
-        return _facePlayViewPointerInputRouter;
+        _playViewInputDispatcher ??= new PlayViewInputDispatcher(_playViewInputRouter!, LoadedProject?.InputDefinitions ?? []);
+        return _playViewInputDispatcher;
     }
 
     private bool EnsurePlayViewInputRouter()

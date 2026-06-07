@@ -58,10 +58,11 @@ public partial class PlayView : UserControl
         AttachPreProcessInputHandler();
     }
 
-    private void OnUnloaded(object sender, RoutedEventArgs e)
+    private async void OnUnloaded(object sender, RoutedEventArgs e)
     {
         _renderThrottleTimer.Stop();
         DetachPreProcessInputHandler();
+        await ReleasePlayViewInputsAsync("Play View close");
     }
 
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
@@ -182,7 +183,7 @@ public partial class PlayView : UserControl
             {
                 if (ViewModel is not null && TryResolveSkiaFaceInputReference(current, out var inputReference))
                 {
-                    if (await ViewModel.TryHandleFacePlayViewPointerDownAsync(inputReference, isFocused: true, CancellationToken.None))
+                    if (await ViewModel.TryHandlePlayViewPointerDownAsync(PlayInputTarget.ForMachineInput(inputReference), isFocused: true, CancellationToken.None))
                     {
                         _activeFacePointerInputReference = inputReference;
                         PlaySkiaSurface.CaptureMouse();
@@ -261,7 +262,7 @@ public partial class PlayView : UserControl
                 _activeFacePointerInputReference = null;
                 if (ViewModel is not null)
                 {
-                    await ViewModel.TryHandleFacePlayViewPointerUpAsync(activeFaceInputReference, isFocused: true, CancellationToken.None);
+                    await ViewModel.TryHandlePlayViewPointerUpAsync(PlayInputTarget.ForMachineInput(activeFaceInputReference), isFocused: true, CancellationToken.None);
                 }
 
                 if (PlaySkiaSurface.IsMouseCaptured)
@@ -423,29 +424,42 @@ public partial class PlayView : UserControl
             _activeFacePointerInputReference = null;
             if (ViewModel is not null)
             {
-                await ViewModel.TryHandleFacePlayViewPointerUpAsync(activeFaceInputReference, isFocused: true, CancellationToken.None);
+                await ViewModel.TryHandlePlayViewPointerUpAsync(PlayInputTarget.ForMachineInput(activeFaceInputReference), isFocused: true, CancellationToken.None);
             }
         }
     }
 
     private async void OnPlayCanvasLostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs eventArgs)
     {
-        if (ViewModel is null)
+        await ReleasePlayViewInputsAsync("Play View focus loss");
+    }
+
+    private async void OnRootLostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs eventArgs)
+    {
+        if (IsKeyboardFocusWithin)
         {
             return;
         }
 
-        await ViewModel.ReleaseAllPlayViewInputsAsync("Play View focus loss", CancellationToken.None);
+        await ReleasePlayViewInputsAsync("Play View focus loss");
     }
 
     private async void OnPlayCanvasUnloaded(object sender, RoutedEventArgs eventArgs)
     {
+        await ReleasePlayViewInputsAsync("Play View close");
+    }
+
+    private async Task ReleasePlayViewInputsAsync(string reason)
+    {
+        _pendingTextInputKey = null;
+        _activeShortcutByKey.Clear();
+
         if (ViewModel is null)
         {
             return;
         }
 
-        await ViewModel.ReleaseAllPlayViewInputsAsync("Play View close", CancellationToken.None);
+        await ViewModel.ReleaseAllPlayViewInputsAsync(reason, CancellationToken.None);
     }
 
     private void UpdatePlaySkiaHoverCursor(Point current)
@@ -705,7 +719,7 @@ public partial class PlayView : UserControl
 
     private async Task TryRouteKeyDownAsync(KeyEventArgs eventArgs)
     {
-        if (eventArgs.Handled || ViewModel is null || !IsKeyboardFocusWithin || ViewModel.SelectedDocument?.Document.DocumentType == EditorDocumentType.Face)
+        if (eventArgs.Handled || ViewModel is null || !IsKeyboardFocusWithin)
         {
             return;
         }
@@ -728,7 +742,7 @@ public partial class PlayView : UserControl
 
     private async Task TryRouteKeyUpAsync(KeyEventArgs eventArgs)
     {
-        if (eventArgs.Handled || ViewModel is null || !IsKeyboardFocusWithin || ViewModel.SelectedDocument?.Document.DocumentType == EditorDocumentType.Face)
+        if (eventArgs.Handled || ViewModel is null || !IsKeyboardFocusWithin)
         {
             return;
         }
@@ -806,7 +820,7 @@ public partial class PlayView : UserControl
 
     private async Task TryRouteTextInputAsync(TextCompositionEventArgs eventArgs)
     {
-        if (eventArgs.Handled || ViewModel is null || !IsKeyboardFocusWithin || _pendingTextInputKey is null || ViewModel.SelectedDocument?.Document.DocumentType == EditorDocumentType.Face)
+        if (eventArgs.Handled || ViewModel is null || !IsKeyboardFocusWithin || _pendingTextInputKey is null)
         {
             return;
         }

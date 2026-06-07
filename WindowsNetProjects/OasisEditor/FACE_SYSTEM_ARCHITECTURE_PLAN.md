@@ -485,18 +485,20 @@ Outcome:
 - Face Play View pointer down/up uses the shared play input dispatch path and MAME command service;
 - Face runtime input behavior does not depend on `LinkedPanel2DElementId`, which remains provenance/editor metadata.
 
-### Phase 8 - Keyboard Input Routing - Future
+### Phase 8 - Keyboard Input Routing - Complete
 
 Goal:
 
 - make keyboard shortcuts and focus behavior consistent across Panel2D Play View and Face Play View.
 
-Planned work:
+Outcome:
 
-- route focused Face Play View key down/up events through the shared play input router;
-- normalize shortcut matching with the existing input map behavior;
-- ensure release-all behavior when focus is lost or play mode closes;
-- add tests for keyboard routing where practical.
+- Play View input routing now has a document-neutral dispatch facade for keyboard input, Panel2D pointer targets, and Face machine-input targets;
+- focused Face Play View key down/up events route through the shared play input router;
+- shortcut matching continues to use the existing input map normalization behavior;
+- active play inputs are released when Play View focus is lost or the view closes;
+- existing Panel2D keyboard behavior is preserved while Face keyboard routing uses the same public dispatch surface;
+- tests cover the shared dispatch facade across Panel2D pointer, Face pointer, keyboard down/up, and release-all behavior.
 
 ### Phase 9 - Runtime Displays MVP - Future
 
