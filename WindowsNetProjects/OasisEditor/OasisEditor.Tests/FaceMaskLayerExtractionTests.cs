@@ -57,7 +57,8 @@ public sealed class FaceMaskLayerExtractionTests : IDisposable
             _projectDirectory,
             Path.Combine(_projectDirectory, "Generated"));
 
-        var maskLayer = Assert.NotNull(result.Document.MaskLayer);
+        Assert.NotNull(result.Document.MaskLayer);
+        var maskLayer = result.Document.MaskLayer!;
         Assert.Equal(4, maskLayer.Width);
         Assert.Equal(4, maskLayer.Height);
         Assert.Equal("panel-doc", maskLayer.SourcePanel2DDocumentId);
