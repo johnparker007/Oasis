@@ -249,4 +249,36 @@ public sealed class FaceGenerationServiceTests
         Assert.True(element.IsReversed);
     }
 
+    [Fact]
+    public void GenerateFromPanelRegion_ConvertsAlphaWithoutDisplayNumberToDefaultMachineReference()
+    {
+        var panel = new Panel2DDocumentModel
+        {
+            Elements =
+            [
+                new PanelElementModel
+                {
+                    ObjectId = "alpha-no-number",
+                    Name = "Segment Alpha",
+                    Kind = PanelElementKind.Alpha,
+                    X = 125,
+                    Y = 235,
+                    Width = 160,
+                    Height = 32,
+                    IsVisible = true
+                }
+            ]
+        };
+
+        var result = new FaceGenerationService().GenerateFromPanelRegion(
+            panel,
+            FaceSourceRegionModel.FromRect(new Rect(100, 200, 220, 120)),
+            "Generated Face",
+            "panel-doc-1");
+
+        var element = Assert.IsType<FaceAlphaDisplayElement>(result.Document.Elements[1]);
+        Assert.Equal("alpha:0", element.LinkedMachineObjectReference?.ToString());
+        Assert.Equal("alpha-no-number", element.LinkedPanel2DElementId);
+    }
+
 }
