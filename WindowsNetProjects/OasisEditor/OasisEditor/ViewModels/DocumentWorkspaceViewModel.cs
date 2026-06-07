@@ -557,6 +557,8 @@ public sealed class DocumentWorkspaceViewModel
                 Summary = document.ContentSummary,
                 SourcePanel2DDocumentId = faceDocument.SourcePanel2DDocumentId,
                 SourceRegion = faceDocument.SourceRegion,
+                LastRegeneratedAtUtc = faceDocument.LastRegeneratedAtUtc,
+                MaskLayer = faceDocument.MaskLayer,
                 Layers = faceDocument.Layers,
                 Elements = faceDocument.Elements
             };
