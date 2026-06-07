@@ -66,6 +66,7 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
         {
             var changedObjectIds = new HashSet<string>(StringComparer.Ordinal);
             var changedFaceObjectIds = new HashSet<string>(StringComparer.Ordinal);
+            var changedMachineReferences = new HashSet<MachineObjectReference>();
 
             foreach (var (cellId, state) in snapshot)
             {
@@ -119,14 +120,13 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
                 if (_machineObjectReferenceResolver.TryGetReference(element, out var machineReference)
                     && !machineReference.IsEmpty)
                 {
-                    document.RuntimeState.SetSegmentCellMasksIfChanged(machineReference, cellMasks);
-                    if (element.Kind == PanelElementKind.Alpha)
+                    var machineMaskChanged = document.RuntimeState.SetSegmentCellMasksIfChanged(machineReference, cellMasks);
+                    var machineBrightnessChanged = element.Kind == PanelElementKind.Alpha
+                        ? document.RuntimeState.SetSegmentCellBrightnessIfChanged(machineReference, cellBrightness)
+                        : document.RuntimeState.SetSegmentCellBrightnessIfChanged(machineReference, [1d]);
+                    if (machineMaskChanged || machineBrightnessChanged)
                     {
-                        document.RuntimeState.SetSegmentCellBrightnessIfChanged(machineReference, cellBrightness);
-                    }
-                    else
-                    {
-                        document.RuntimeState.SetSegmentCellBrightnessIfChanged(machineReference, [1d]);
+                        changedMachineReferences.Add(machineReference);
                     }
                 }
 
@@ -150,7 +150,7 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
 
                 var maskChanged = document.RuntimeState.SetSegmentCellMasksIfChanged(reference, [mask]);
                 var brightnessChanged = document.RuntimeState.SetSegmentCellBrightnessIfChanged(reference, [1d]);
-                if (maskChanged || brightnessChanged)
+                if (maskChanged || brightnessChanged || changedMachineReferences.Contains(reference))
                 {
                     changedFaceObjectIds.Add(faceDisplay.ObjectId);
                 }
