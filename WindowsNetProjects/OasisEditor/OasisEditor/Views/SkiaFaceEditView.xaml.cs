@@ -1,5 +1,7 @@
 using System.ComponentModel;
+using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -13,6 +15,7 @@ namespace OasisEditor.Views;
 public partial class SkiaFaceEditView : UserControl
 {
     private const double TargetFrameMillis = 16.0;
+    private static readonly ConcurrentDictionary<string, SKImage?> CachedArtworkImages = new(StringComparer.OrdinalIgnoreCase);
     private DocumentTabViewModel? _subscribedDocument;
     private bool _isPanning;
     private bool _isRenderQueued;
@@ -150,7 +153,13 @@ public partial class SkiaFaceEditView : UserControl
         using var fillPaint = new SKPaint { Style = SKPaintStyle.Fill, Color = new SKColor(0xFF, 0xC1, 0x07, 0x66), IsAntialias = true };
         using var strokePaint = new SKPaint { Style = SKPaintStyle.Stroke, Color = new SKColor(0xFF, 0xD5, 0x4F), StrokeWidth = (float)(1.5d / viewport.NormalizedZoom), IsAntialias = true };
         using var hiddenPaint = new SKPaint { Style = SKPaintStyle.Stroke, Color = new SKColor(0x80, 0x80, 0x80), StrokeWidth = (float)(1d / viewport.NormalizedZoom), IsAntialias = true };
-        foreach (var element in document.GetFaceElements())
+
+        foreach (var element in document.GetFaceElements().OfType<FaceArtworkElement>())
+        {
+            DrawArtworkElement(canvas, element, viewport, hiddenPaint);
+        }
+
+        foreach (var element in document.GetFaceElements().Where(element => element is not FaceArtworkElement))
         {
             var rect = SKRect.Create((float)element.X, (float)element.Y, (float)Math.Max(0d, element.Width), (float)Math.Max(0d, element.Height));
             if (element.IsVisible)
@@ -181,6 +190,117 @@ public partial class SkiaFaceEditView : UserControl
                 (float)Math.Max(0d, selectedElement.Height),
                 selectionPaint);
         }
+    }
+
+    private static void DrawArtworkElement(SKCanvas canvas, FaceArtworkElement element, PanelViewportTransform viewport, SKPaint hiddenPaint)
+    {
+        var destination = SKRect.Create((float)element.X, (float)element.Y, (float)Math.Max(0d, element.Width), (float)Math.Max(0d, element.Height));
+        if (destination.Width <= 0f || destination.Height <= 0f)
+        {
+            return;
+        }
+
+        if (!element.IsVisible)
+        {
+            canvas.DrawRect(destination, hiddenPaint);
+            return;
+        }
+
+        if (TryGetArtworkImage(element.AssetPath, out var image))
+        {
+            var source = ResolveArtworkSourceRect(element, image);
+            canvas.DrawImage(image, source, destination);
+            return;
+        }
+
+        using var fillPaint = new SKPaint { Style = SKPaintStyle.Fill, Color = new SKColor(0x33, 0x33, 0x33), IsAntialias = true };
+        using var strokePaint = new SKPaint { Style = SKPaintStyle.Stroke, Color = new SKColor(0x66, 0x66, 0x66), StrokeWidth = (float)(1d / viewport.NormalizedZoom), IsAntialias = true };
+        canvas.DrawRect(destination, fillPaint);
+        canvas.DrawRect(destination, strokePaint);
+    }
+
+    private static SKRect ResolveArtworkSourceRect(FaceArtworkElement element, SKImage image)
+    {
+        var sourceRegion = element.SourceRegion;
+        var sourceBounds = element.Provenance?.SourceElementBounds;
+        if (sourceRegion is null || sourceBounds is null || sourceBounds.Width <= 0d || sourceBounds.Height <= 0d)
+        {
+            return SKRect.Create(0f, 0f, image.Width, image.Height);
+        }
+
+        var scaleX = image.Width / sourceBounds.Width;
+        var scaleY = image.Height / sourceBounds.Height;
+        var x = (sourceRegion.X - sourceBounds.X) * scaleX;
+        var y = (sourceRegion.Y - sourceBounds.Y) * scaleY;
+        var width = sourceRegion.Width * scaleX;
+        var height = sourceRegion.Height * scaleY;
+        var left = (float)Math.Clamp(x, 0d, image.Width);
+        var top = (float)Math.Clamp(y, 0d, image.Height);
+        var right = (float)Math.Clamp(x + width, left, image.Width);
+        var bottom = (float)Math.Clamp(y + height, top, image.Height);
+        return new SKRect(left, top, right, bottom);
+    }
+
+    private static bool TryGetArtworkImage(string? assetPath, out SKImage image)
+    {
+        image = default!;
+        if (!TryResolveAssetPath(assetPath, out var resolvedPath))
+        {
+            return false;
+        }
+
+        var cached = CachedArtworkImages.GetOrAdd(resolvedPath, LoadArtworkImage);
+        if (cached is null)
+        {
+            return false;
+        }
+
+        image = cached;
+        return true;
+    }
+
+    private static SKImage? LoadArtworkImage(string resolvedPath)
+    {
+        if (!File.Exists(resolvedPath))
+        {
+            return null;
+        }
+
+        using var codec = SKCodec.Create(resolvedPath);
+        if (codec is null)
+        {
+            return null;
+        }
+
+        using var bitmap = SKBitmap.Decode(codec);
+        return bitmap is null ? null : SKImage.FromBitmap(bitmap);
+    }
+
+    private static bool TryResolveAssetPath(string? assetPath, out string resolvedPath)
+    {
+        resolvedPath = string.Empty;
+        if (string.IsNullOrWhiteSpace(assetPath))
+        {
+            return false;
+        }
+
+        var candidate = assetPath.Trim();
+        if (Path.IsPathRooted(candidate))
+        {
+            resolvedPath = candidate;
+            return true;
+        }
+
+        if (string.IsNullOrWhiteSpace(PanelElementFactory.ProjectDirectoryPath))
+        {
+            return false;
+        }
+
+        var relativePath = candidate
+            .Replace('/', Path.DirectorySeparatorChar)
+            .Replace('\\', Path.DirectorySeparatorChar);
+        resolvedPath = Path.GetFullPath(Path.Combine(PanelElementFactory.ProjectDirectoryPath, relativePath));
+        return true;
     }
 
     private void OnFaceSkiaSurfaceMouseDown(object sender, MouseButtonEventArgs eventArgs)

@@ -33,6 +33,24 @@ public abstract class FaceElementModel
     public string? LinkedPanel2DElementId { get; init; }
 }
 
+public sealed class FaceArtworkElement : FaceElementModel
+{
+    public string? AssetPath { get; init; }
+    public string? SourcePanel2DDocumentId { get; init; }
+    public FaceSourceRegionModel? SourceRegion { get; init; }
+    public FaceArtworkProvenanceModel? Provenance { get; init; }
+}
+
+public sealed class FaceArtworkProvenanceModel
+{
+    public string Generator { get; init; } = string.Empty;
+    public DateTime GeneratedAtUtc { get; init; }
+    public string? SourcePanel2DElementId { get; init; }
+    public string? SourcePanel2DElementKind { get; init; }
+    public string? SourceAssetPath { get; init; }
+    public FaceSourceRegionModel? SourceElementBounds { get; init; }
+}
+
 public sealed class FaceLampWindowElement : FaceElementModel
 {
 }
