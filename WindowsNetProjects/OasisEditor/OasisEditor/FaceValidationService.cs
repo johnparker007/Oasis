@@ -1,5 +1,6 @@
 using System.IO;
 using System.Linq;
+using SkiaSharp;
 
 namespace OasisEditor;
 
@@ -25,6 +26,7 @@ public sealed class FaceValidationService
         var diagnostics = new List<FaceValidationDiagnostic>();
         ValidateSourcePanel(faceDocument, openDocuments, diagnostics);
         ValidateArtworkAssets(faceDocument, project, diagnostics);
+        ValidateMaskLayer(faceDocument, project, diagnostics);
         ValidateMachineReferences(faceDocument, diagnostics);
         return diagnostics;
     }
@@ -103,6 +105,127 @@ public sealed class FaceValidationService
                     "Face.ReelAsset.Missing",
                     $"Reel display '{DisplayName(reel)}' references missing asset '{reel.AssetPath}'."));
             }
+        }
+    }
+
+    private static void ValidateMaskLayer(
+        FaceDocumentModel faceDocument,
+        EditorProject? project,
+        List<FaceValidationDiagnostic> diagnostics)
+    {
+        var maskLayer = faceDocument.MaskLayer;
+        if (maskLayer is null)
+        {
+            diagnostics.Add(new FaceValidationDiagnostic(
+                FaceValidationSeverity.Warning,
+                "Face.MaskLayer.Missing",
+                "Face does not contain FaceMaskLayer metadata, so future mask-aware renderers cannot consume an aligned mask asset."));
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(maskLayer.AssetPath))
+        {
+            diagnostics.Add(new FaceValidationDiagnostic(
+                FaceValidationSeverity.Warning,
+                "Face.MaskLayer.AssetPath.Missing",
+                "FaceMaskLayer does not contain an asset path."));
+        }
+        else
+        {
+            var resolvedPath = ResolveProjectPath(project, maskLayer.AssetPath.Trim());
+            if (resolvedPath is null || !File.Exists(resolvedPath))
+            {
+                diagnostics.Add(new FaceValidationDiagnostic(
+                    FaceValidationSeverity.Warning,
+                    "Face.MaskLayer.Asset.Missing",
+                    $"FaceMaskLayer references missing asset '{maskLayer.AssetPath}'."));
+            }
+            else
+            {
+                ValidateMaskAssetDimensions(maskLayer, resolvedPath, diagnostics);
+            }
+        }
+
+        if (maskLayer.Width <= 0 || maskLayer.Height <= 0)
+        {
+            diagnostics.Add(new FaceValidationDiagnostic(
+                FaceValidationSeverity.Warning,
+                "Face.MaskLayer.Dimensions.Invalid",
+                $"FaceMaskLayer has invalid dimensions {maskLayer.Width}x{maskLayer.Height}."));
+        }
+
+        var expectedRegion = maskLayer.SourceRegion ?? faceDocument.SourceRegion;
+        if (expectedRegion is { IsValid: true })
+        {
+            var expectedWidth = Math.Max(1, (int)Math.Ceiling(expectedRegion.Width));
+            var expectedHeight = Math.Max(1, (int)Math.Ceiling(expectedRegion.Height));
+            if (maskLayer.Width > 0
+                && maskLayer.Height > 0
+                && (maskLayer.Width != expectedWidth || maskLayer.Height != expectedHeight))
+            {
+                diagnostics.Add(new FaceValidationDiagnostic(
+                    FaceValidationSeverity.Warning,
+                    "Face.MaskLayer.Dimensions.SourceRegionMismatch",
+                    $"FaceMaskLayer dimensions {maskLayer.Width}x{maskLayer.Height} do not match source region dimensions {expectedWidth}x{expectedHeight}."));
+            }
+        }
+
+        if (maskLayer.Contributions.Count == 0)
+        {
+            diagnostics.Add(new FaceValidationDiagnostic(
+                FaceValidationSeverity.Warning,
+                "Face.MaskLayer.Contributions.Missing",
+                "FaceMaskLayer does not contain contribution metadata."));
+            return;
+        }
+
+        var incompleteContributionCount = maskLayer.Contributions.Count(contribution =>
+            contribution.PixelCount <= 0
+            || contribution.Bounds is not { IsValid: true }
+            || (string.IsNullOrWhiteSpace(contribution.SourcePanel2DElementId)
+                && (contribution.LinkedMachineObjectReference is not MachineObjectReference reference || reference.IsEmpty)));
+        if (incompleteContributionCount > 0)
+        {
+            diagnostics.Add(new FaceValidationDiagnostic(
+                FaceValidationSeverity.Warning,
+                "Face.MaskLayer.Contributions.Incomplete",
+                $"FaceMaskLayer contains {incompleteContributionCount} incomplete contribution metadata entr{(incompleteContributionCount == 1 ? "y" : "ies")}."));
+        }
+    }
+
+    private static void ValidateMaskAssetDimensions(
+        FaceMaskLayerModel maskLayer,
+        string resolvedPath,
+        List<FaceValidationDiagnostic> diagnostics)
+    {
+        try
+        {
+            using var bitmap = SKBitmap.Decode(resolvedPath);
+            if (bitmap is null)
+            {
+                diagnostics.Add(new FaceValidationDiagnostic(
+                    FaceValidationSeverity.Warning,
+                    "Face.MaskLayer.Asset.Unreadable",
+                    $"FaceMaskLayer asset '{maskLayer.AssetPath}' could not be read as an image."));
+                return;
+            }
+
+            if (maskLayer.Width > 0
+                && maskLayer.Height > 0
+                && (bitmap.Width != maskLayer.Width || bitmap.Height != maskLayer.Height))
+            {
+                diagnostics.Add(new FaceValidationDiagnostic(
+                    FaceValidationSeverity.Warning,
+                    "Face.MaskLayer.Dimensions.AssetMismatch",
+                    $"FaceMaskLayer metadata dimensions {maskLayer.Width}x{maskLayer.Height} do not match asset dimensions {bitmap.Width}x{bitmap.Height}."));
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            diagnostics.Add(new FaceValidationDiagnostic(
+                FaceValidationSeverity.Warning,
+                "Face.MaskLayer.Asset.Unreadable",
+                $"FaceMaskLayer asset '{maskLayer.AssetPath}' could not be read: {ex.Message}"));
         }
     }
 

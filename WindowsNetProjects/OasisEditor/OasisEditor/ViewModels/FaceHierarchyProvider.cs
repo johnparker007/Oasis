@@ -42,6 +42,15 @@ public sealed class FaceHierarchyProvider : IDocumentHierarchyProvider
             .ToArray();
 
         var groups = new List<HierarchyItemViewModel>();
+        if (faceDocument.GetFaceDocument().MaskLayer is FaceMaskLayerModel maskLayer)
+        {
+            groups.Add(new HierarchyItemViewModel(
+                "Layers (1)",
+                "group:layers",
+                isGroup: true,
+                children: [CreateMaskLayerItem(maskLayer)]));
+        }
+
         if (artwork.Length > 0)
         {
             groups.Add(new HierarchyItemViewModel($"Artwork ({artwork.Length})", "group:artwork", isGroup: true, children: artwork));
@@ -73,6 +82,25 @@ public sealed class FaceHierarchyProvider : IDocumentHierarchyProvider
         }
 
         return groups;
+    }
+
+    private static HierarchyItemViewModel CreateMaskLayerItem(FaceMaskLayerModel maskLayer)
+    {
+        var displayName = string.IsNullOrWhiteSpace(maskLayer.Name) ? "Face Mask" : maskLayer.Name.Trim();
+        if (maskLayer.Width > 0 && maskLayer.Height > 0)
+        {
+            displayName += $" ({maskLayer.Width}×{maskLayer.Height})";
+        }
+
+        if (string.IsNullOrWhiteSpace(maskLayer.AssetPath))
+        {
+            displayName += " [Missing Asset]";
+        }
+
+        return new HierarchyItemViewModel(
+            displayName,
+            $"maskLayer:{maskLayer.Id}",
+            panelSelection: FaceMaskLayerSelectionService.ToSelectionInfo(maskLayer));
     }
 
     private static HierarchyItemViewModel CreateElementItem(FaceElementModel element, int index, string kindName, string token)

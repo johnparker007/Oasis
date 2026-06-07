@@ -721,7 +721,7 @@ Next recommended phase:
 
 - Phase 11A should be **Face Mask Layer Extraction MVP**, focused on generating and persisting one aligned Face mask layer before visual-fidelity work. Tray geometry remains deferred, and per-lamp extraction is only an implementation detail.
 
-### Phase 11A - Face Mask Layer Extraction MVP - Current
+### Phase 11A - Face Mask Layer Extraction MVP - Complete
 
 Purpose:
 
@@ -751,13 +751,49 @@ For each source lamp participating in Face generation:
 
 The mask answers: **where can light escape?** Future tray geometry answers: **which bulb is responsible for the light?**
 
-### Phase 11B - Face Mask Layer System - Future
+### Phase 11B - Face Mask Layer System - Complete
 
-Goals:
+Completed as a tooling/metadata phase that makes the generated `FaceMaskLayer` a first-class Face asset without changing runtime rendering behavior.
 
-- expose/edit/inspect the Face mask layer as a first-class layer in Face tooling;
-- add mask validation, replacement/regeneration controls, and clearer asset/provenance UX;
-- define how renderers should consume the mask layer later without coupling runtime behavior to per-lamp extraction metadata.
+Outcome:
+
+- Face hierarchy now exposes the mask layer under a Layers group whenever a Face document contains `FaceMaskLayer` metadata;
+- selecting the mask layer shows Inspector metadata for asset path, dimensions, source region, extraction threshold, generated timestamp, contribution count, source Panel2D document, workflow commands, and future renderer-consumption guidance;
+- selecting the Face document also summarizes mask-layer metadata so masks are visible even before selecting the layer node;
+- File menu validation can be run explicitly for the active Face document and reports diagnostics through the existing Output log;
+- validation now covers missing mask metadata, missing mask asset paths/assets, invalid or mismatched mask dimensions, unreadable mask assets, and missing/incomplete contribution metadata;
+- regeneration remains the supported UX for replacing generated mask layers in this phase and continues to replay source Panel2D metadata through the existing Face regeneration workflow.
+
+Important boundaries preserved:
+
+- no lamp glow, bloom, blur, emission rendering, runtime mask rendering, tray extraction/simulation, light leakage simulation, 3D preview, or Unity integration was added;
+- Face Play View runtime state still resolves through `LinkedMachineObjectReference` -> `MachineRuntimeState`;
+- mask contribution metadata remains provenance/regeneration/tray-preparation data, not a runtime identity contract.
+
+Future renderer consumption contract:
+
+```text
+Face renderer
+    -> load FaceDocument.FaceMaskLayer.AssetPath
+    -> verify mask dimensions match FaceMaskLayer.Width/Height and the Face source region/artwork alignment
+    -> sample the single aligned monochrome mask as an opacity/light-escape map in face/document space
+    -> use Face runtime elements and their LinkedMachineObjectReference values for lamp/display/reel/button runtime state
+    -> do not treat FaceMaskLayer.Contributions as per-lamp runtime masks
+```
+
+Renderers may use `FaceMaskLayer.Contributions` later for diagnostics, authoring overlays, or tray-generation preparation, but not to decide which runtime lamp is currently on. That responsibility remains with runtime elements/tray geometry and machine-object references.
+
+Manual verification steps:
+
+1. Open a project with a generated Face document that contains a mask layer.
+2. Confirm the Hierarchy shows **Layers > Face Mask** and selecting it updates the Inspector.
+3. Confirm the Inspector shows asset path, dimensions, source region, threshold, generated timestamp, contribution count, and renderer-consumption guidance.
+4. Run **File > Validate Face** and confirm mask diagnostics are logged for missing assets, dimension mismatches, or missing contribution metadata.
+5. Run **File > Regenerate Face** and confirm the mask layer metadata/assets are regenerated while existing Face Play View behavior remains unchanged.
+
+Next recommended phase:
+
+- Phase 11C should be **Lamp Visual Fidelity**, focused on mask-aware lamp presentation and renderer-side quality improvements while preserving the `MachineObjectReference` -> `MachineRuntimeState` runtime contract.
 
 ### Phase 11C - Lamp Visual Fidelity - Future
 

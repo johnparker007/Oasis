@@ -107,6 +107,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OpenFaceStubCommand = new RelayCommand(OpenFaceStubDocument, CanOpenUntitledDocument);
         GenerateFaceFromRegionCommand = new RelayCommand(GenerateFaceFromRegion, CanGenerateFaceFromRegion);
         RegenerateFaceCommand = new RelayCommand(RegenerateFace, CanRegenerateFace);
+        ValidateFaceCommand = new RelayCommand(ValidateFace, CanValidateFace);
         OpenSourcePanel2DCommand = new RelayCommand(OpenSourcePanel2D, CanOpenSourcePanel2D);
         OpenCabinet3DStubCommand = new RelayCommand(OpenCabinet3DStubDocument, CanOpenUntitledDocument);
         OpenMachineStubCommand = new RelayCommand(OpenMachineStubDocument, CanOpenUntitledDocument);
@@ -395,6 +396,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand OpenFaceStubCommand { get; }
     public ICommand GenerateFaceFromRegionCommand { get; }
     public ICommand RegenerateFaceCommand { get; }
+    public ICommand ValidateFaceCommand { get; }
     public ICommand OpenSourcePanel2DCommand { get; }
     public ICommand OpenCabinet3DStubCommand { get; }
     public ICommand OpenMachineStubCommand { get; }
@@ -1022,6 +1024,31 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         _documentWorkspace.RegenerateSelectedFace();
+    }
+
+    private bool CanValidateFace()
+    {
+        return SelectedDocument?.Document.DocumentType == EditorDocumentType.Face;
+    }
+
+    private void ValidateFace()
+    {
+        if (!CanValidateFace())
+        {
+            return;
+        }
+
+        var diagnostics = _documentWorkspace.ValidateSelectedFace();
+        if (diagnostics.Count == 0)
+        {
+            AddOutputEntry($"Face validation completed for '{SelectedDocument!.Title}' with no warnings.", OutputLogStatus.Info);
+            return;
+        }
+
+        foreach (var diagnostic in diagnostics)
+        {
+            AddOutputEntry($"Face validation ({diagnostic.Code}): {diagnostic.Message}", diagnostic.Severity == FaceValidationSeverity.Error ? OutputLogStatus.Error : OutputLogStatus.Warning);
+        }
     }
 
     private bool CanOpenSourcePanel2D()
@@ -3221,6 +3248,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (RegenerateFaceCommand is RelayCommand regenerateFaceRelayCommand)
         {
             regenerateFaceRelayCommand.RaiseCanExecuteChanged();
+        }
+
+        if (ValidateFaceCommand is RelayCommand validateFaceRelayCommand)
+        {
+            validateFaceRelayCommand.RaiseCanExecuteChanged();
         }
 
         if (OpenSourcePanel2DCommand is RelayCommand openSourcePanelRelayCommand)
