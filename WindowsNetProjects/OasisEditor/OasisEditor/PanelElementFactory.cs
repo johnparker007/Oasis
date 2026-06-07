@@ -9,6 +9,10 @@ namespace OasisEditor;
 
 internal static class PanelElementFactory
 {
+    [ThreadStatic]
+    private static bool _hasThreadProjectDirectoryPath;
+    [ThreadStatic]
+    private static string? _threadProjectDirectoryPath;
     private static string? _projectDirectoryPath;
     private static readonly Dictionary<string, FontFamily> MfmeFontFamilies = new(StringComparer.OrdinalIgnoreCase);
     private static readonly MachineRuntimeState DefaultRuntimeState = new();
@@ -45,8 +49,14 @@ internal static class PanelElementFactory
 
     public static string? ProjectDirectoryPath
     {
-        get => _projectDirectoryPath;
-        set => _projectDirectoryPath = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        get => _hasThreadProjectDirectoryPath ? _threadProjectDirectoryPath : _projectDirectoryPath;
+        set
+        {
+            var normalizedPath = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+            _hasThreadProjectDirectoryPath = true;
+            _threadProjectDirectoryPath = normalizedPath;
+            _projectDirectoryPath = normalizedPath;
+        }
     }
 
     public static PanelElementFile CreateRectangleElement(Point canvasPoint)

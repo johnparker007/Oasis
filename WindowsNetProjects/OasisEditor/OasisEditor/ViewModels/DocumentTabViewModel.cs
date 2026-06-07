@@ -31,6 +31,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<PanelChangeEvent>? PanelChanged;
     public event Action<PanelVisualStateChangedEvent>? PanelVisualStateChanged;
+    public event Action<FaceVisualStateChangedEvent>? FaceVisualStateChanged;
 
     public DocumentTabViewModel(
         EditorDocument document,
@@ -282,6 +283,34 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
         PanelVisualStateChanged?.Invoke(new PanelVisualStateChangedEvent(DocumentId, deltaByObjectId));
     }
 
+    internal void NotifyFaceVisualPreviewChanged(IReadOnlyCollection<string> changedObjectIds)
+    {
+        if (changedObjectIds.Count == 0)
+        {
+            return;
+        }
+
+        var faceLampIds = _faceDocumentModel.Elements
+            .OfType<FaceLampWindowElement>()
+            .Where(element => !string.IsNullOrWhiteSpace(element.ObjectId)
+                && element.LinkedMachineObjectReference is MachineObjectReference reference
+                && reference.Kind == MachineObjectKind.Lamp
+                && !reference.IsEmpty)
+            .Select(element => element.ObjectId)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var publishedObjectIds = changedObjectIds
+            .Where(objectId => !string.IsNullOrWhiteSpace(objectId) && faceLampIds.Contains(objectId))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        if (publishedObjectIds.Length == 0)
+        {
+            return;
+        }
+
+        FaceVisualStateChanged?.Invoke(new FaceVisualStateChangedEvent(DocumentId, publishedObjectIds));
+    }
+
     internal bool TryGetLampElement(string objectId, out PanelElementModel element)
     {
         if (string.IsNullOrWhiteSpace(objectId))
@@ -488,3 +517,7 @@ internal readonly record struct VfdDotMatrixVisualState(int[] Dots);
 public sealed record PanelVisualStateChangedEvent(
     Guid DocumentId,
     IReadOnlyDictionary<string, object> ValuesByObjectId);
+
+public sealed record FaceVisualStateChangedEvent(
+    Guid DocumentId,
+    IReadOnlyCollection<string> ObjectIds);
