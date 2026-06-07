@@ -73,10 +73,12 @@ internal sealed class FaceGenerationResult
 internal sealed class FaceGenerationService
 {
     private readonly IMachineObjectReferenceResolver _machineObjectReferenceResolver;
+    private readonly FaceMaskLayerExtractionService _maskLayerExtractionService;
 
     public FaceGenerationService(IMachineObjectReferenceResolver? machineObjectReferenceResolver = null)
     {
         _machineObjectReferenceResolver = machineObjectReferenceResolver ?? MachineObjectReferenceResolver.Instance;
+        _maskLayerExtractionService = new FaceMaskLayerExtractionService(_machineObjectReferenceResolver);
     }
 
     public FaceGenerationResult GenerateFromPanelRegion(
@@ -84,7 +86,9 @@ internal sealed class FaceGenerationService
         FaceSourceRegionModel sourceRegion,
         string title,
         string? sourcePanel2DDocumentId = null,
-        IReadOnlyList<InputDefinitionModel>? inputDefinitions = null)
+        IReadOnlyList<InputDefinitionModel>? inputDefinitions = null,
+        string? projectDirectory = null,
+        string? generatedDirectory = null)
     {
         ArgumentNullException.ThrowIfNull(sourcePanel);
         ArgumentNullException.ThrowIfNull(sourceRegion);
@@ -115,14 +119,17 @@ internal sealed class FaceGenerationService
         var buttons = CreateButtonElements(sourcePanel, region, inputDefinitions ?? []);
 
         var resolvedTitle = string.IsNullOrWhiteSpace(title) ? "Generated Face" : title.Trim();
+        var faceDocumentId = Guid.NewGuid().ToString("N");
+        var maskLayer = _maskLayerExtractionService.GenerateMaskLayer(sourcePanel, region, faceDocumentId, sourcePanel2DDocumentId, projectDirectory, generatedDirectory);
         var document = new FaceDocumentModel
         {
-            Id = Guid.NewGuid().ToString("N"),
+            Id = faceDocumentId,
             Title = resolvedTitle,
             Summary = $"Generated from Panel2D source region ({Format(region.X)}, {Format(region.Y)}, {Format(region.Width)}, {Format(region.Height)}).",
             SourcePanel2DDocumentId = string.IsNullOrWhiteSpace(sourcePanel2DDocumentId) ? null : sourcePanel2DDocumentId.Trim(),
             SourceRegion = sourceRegion,
             LastRegeneratedAtUtc = DateTime.UtcNow,
+            MaskLayer = maskLayer,
             Layers =
             [
                 new FaceLayerModel
@@ -133,8 +140,14 @@ internal sealed class FaceGenerationService
                 },
                 new FaceLayerModel
                 {
-                    Id = "layer-lamp-windows",
-                    Name = "Lamp Windows",
+                    Id = "layer-face-mask",
+                    Name = "Face Mask",
+                    IsVisible = true
+                },
+                new FaceLayerModel
+                {
+                    Id = "layer-runtime-lamps",
+                    Name = "Runtime Lamps",
                     IsVisible = true
                 },
                 new FaceLayerModel

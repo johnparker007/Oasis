@@ -8,8 +8,31 @@ public sealed class FaceDocumentModel
     public string? SourcePanel2DDocumentId { get; init; }
     public FaceSourceRegionModel? SourceRegion { get; init; }
     public DateTime? LastRegeneratedAtUtc { get; init; }
+    public FaceMaskLayerModel? MaskLayer { get; init; }
     public IReadOnlyList<FaceLayerModel> Layers { get; init; } = [];
     public IReadOnlyList<FaceElementModel> Elements { get; init; } = [];
+}
+
+public sealed class FaceMaskLayerModel
+{
+    public string Id { get; init; } = "face-mask-layer";
+    public string Name { get; init; } = "Face Mask";
+    public string? AssetPath { get; init; }
+    public string? SourcePanel2DDocumentId { get; init; }
+    public FaceSourceRegionModel? SourceRegion { get; init; }
+    public byte ExtractionThreshold { get; init; }
+    public DateTime GeneratedUtc { get; init; }
+    public int Width { get; init; }
+    public int Height { get; init; }
+    public IReadOnlyList<FaceMaskContributionModel> Contributions { get; init; } = [];
+}
+
+public sealed class FaceMaskContributionModel
+{
+    public string? SourcePanel2DElementId { get; init; }
+    public MachineObjectReference? LinkedMachineObjectReference { get; init; }
+    public FaceSourceRegionModel? Bounds { get; init; }
+    public int PixelCount { get; init; }
 }
 
 public sealed class FaceLayerModel
