@@ -98,6 +98,42 @@ public sealed class FaceEditViewModelTests
         Assert.Contains("lamp:1", child.DisplayName);
     }
 
+    [Fact]
+    public void FaceHierarchyProvider_BuildsArtworkAndLampWindowGroupsWhenArtworkExists()
+    {
+        var document = new DocumentTabViewModel(EditorDocument.CreateFaceStub("Face"));
+        document.SetFaceElements(
+            [
+                new FaceArtworkElement
+                {
+                    ObjectId = "face-artwork-1",
+                    Name = "Glass Artwork",
+                    X = 0,
+                    Y = 0,
+                    Width = 200,
+                    Height = 100
+                },
+                new FaceLampWindowElement
+                {
+                    ObjectId = "face-lamp-1",
+                    Name = "Lamp Window",
+                    X = 10,
+                    Y = 20,
+                    Width = 80,
+                    Height = 40
+                }
+            ]);
+
+        var provider = new FaceHierarchyProvider();
+        var roots = provider.Build(document);
+
+        Assert.Equal(2, roots.Count);
+        Assert.Equal("Artwork (1)", roots[0].DisplayName);
+        Assert.Equal("face-artwork-1", Assert.Single(roots[0].Children).PanelSelection?.ObjectId);
+        Assert.Equal("Lamp Windows (1)", roots[1].DisplayName);
+        Assert.Equal("face-lamp-1", Assert.Single(roots[1].Children).PanelSelection?.ObjectId);
+    }
+
     private static InspectorViewModel CreateInspectorViewModel(
         DocumentTabViewModel selectedDocument,
         ActiveDocumentContextService context,

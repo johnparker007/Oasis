@@ -25,11 +25,18 @@ public sealed class FaceHierarchyProvider : IDocumentHierarchyProvider
             .Select((element, index) => CreateElementItem(element, index, "Lamp Window", "lampWindow"))
             .ToArray();
 
-        return
-        [
-            new HierarchyItemViewModel($"Artwork ({artwork.Length})", "group:artwork", isGroup: true, children: artwork),
-            new HierarchyItemViewModel($"Lamp Windows ({lampWindows.Length})", "group:lampWindow", isGroup: true, children: lampWindows)
-        ];
+        var groups = new List<HierarchyItemViewModel>();
+        if (artwork.Length > 0)
+        {
+            groups.Add(new HierarchyItemViewModel($"Artwork ({artwork.Length})", "group:artwork", isGroup: true, children: artwork));
+        }
+
+        if (lampWindows.Length > 0)
+        {
+            groups.Add(new HierarchyItemViewModel($"Lamp Windows ({lampWindows.Length})", "group:lampWindow", isGroup: true, children: lampWindows));
+        }
+
+        return groups;
     }
 
     private static HierarchyItemViewModel CreateElementItem(FaceElementModel element, int index, string kindName, string token)
