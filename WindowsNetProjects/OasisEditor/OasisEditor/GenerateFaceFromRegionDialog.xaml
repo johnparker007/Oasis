@@ -1,0 +1,45 @@
+<Window x:Class="OasisEditor.GenerateFaceFromRegionDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Generate Face From Region"
+        Height="260"
+        Width="360"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource EditorBackgroundBrush}"
+        Foreground="{DynamicResource TextPrimaryBrush}">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="90" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <TextBlock Grid.Row="0" Grid.ColumnSpan="2" TextWrapping="Wrap" Margin="0,0,0,12"
+                   Text="Enter a rectangular Panel2D source region. Contained lamp elements will become Face lamp windows with coordinates relative to this region." />
+
+        <TextBlock Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Text="X" />
+        <TextBox x:Name="XTextBox" Grid.Row="1" Grid.Column="1" Margin="0,2" Text="0" />
+        <TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Text="Y" />
+        <TextBox x:Name="YTextBox" Grid.Row="2" Grid.Column="1" Margin="0,2" Text="0" />
+        <TextBlock Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" Text="Width" />
+        <TextBox x:Name="WidthTextBox" Grid.Row="3" Grid.Column="1" Margin="0,2" Text="800" />
+        <TextBlock Grid.Row="4" Grid.Column="0" VerticalAlignment="Center" Text="Height" />
+        <TextBox x:Name="HeightTextBox" Grid.Row="4" Grid.Column="1" Margin="0,2" Text="600" />
+
+        <TextBlock x:Name="ErrorTextBlock" Grid.Row="5" Grid.ColumnSpan="2" Margin="0,8,0,0" Foreground="#FFFF6B6B" TextWrapping="Wrap" />
+
+        <StackPanel Grid.Row="6" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button Content="Cancel" Width="80" Margin="0,0,8,0" IsCancel="True" />
+            <Button Content="Generate" Width="90" IsDefault="True" Click="OnGenerateClicked" />
+        </StackPanel>
+    </Grid>
+</Window>

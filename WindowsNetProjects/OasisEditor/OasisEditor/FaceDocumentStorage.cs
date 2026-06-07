@@ -128,6 +128,8 @@ public static class FaceDocumentStorage
             Id = string.IsNullOrWhiteSpace(file.Id) ? Guid.NewGuid().ToString("N") : file.Id.Trim(),
             Title = file.Title ?? string.Empty,
             Summary = file.Summary,
+            SourcePanel2DDocumentId = string.IsNullOrWhiteSpace(file.SourcePanel2DDocumentId) ? null : file.SourcePanel2DDocumentId.Trim(),
+            SourceRegion = ToModel(file.SourceRegion),
             Layers = (file.Layers ?? [])
                 .Select(layer => new FaceLayerModel
                 {
@@ -152,6 +154,8 @@ public static class FaceDocumentStorage
             Id = string.IsNullOrWhiteSpace(model.Id) ? Guid.NewGuid().ToString("N") : model.Id.Trim(),
             Title = model.Title,
             Summary = model.Summary,
+            SourcePanel2DDocumentId = model.SourcePanel2DDocumentId,
+            SourceRegion = ToFile(model.SourceRegion),
             SavedAtUtc = DateTime.UtcNow,
             Layers = model.Layers.Select(layer => new FaceLayerFile
             {
@@ -161,6 +165,42 @@ public static class FaceDocumentStorage
                 IsLocked = layer.IsLocked
             }).ToArray(),
             Elements = model.Elements.Select(ToFile).ToArray()
+        };
+    }
+
+    private static FaceSourceRegionModel? ToModel(FaceSourceRegionFile? file)
+    {
+        if (file is null)
+        {
+            return null;
+        }
+
+        var model = new FaceSourceRegionModel
+        {
+            Kind = file.Kind,
+            X = file.X,
+            Y = file.Y,
+            Width = file.Width,
+            Height = file.Height
+        };
+
+        return model.IsValid ? model : null;
+    }
+
+    private static FaceSourceRegionFile? ToFile(FaceSourceRegionModel? model)
+    {
+        if (model is null)
+        {
+            return null;
+        }
+
+        return new FaceSourceRegionFile
+        {
+            Kind = model.Kind,
+            X = model.X,
+            Y = model.Y,
+            Width = model.Width,
+            Height = model.Height
         };
     }
 
@@ -212,9 +252,20 @@ public sealed record FaceDocumentFile
     public string? Id { get; init; }
     public string? Title { get; init; }
     public string? Summary { get; init; }
+    public string? SourcePanel2DDocumentId { get; init; }
+    public FaceSourceRegionFile? SourceRegion { get; init; }
     public DateTime SavedAtUtc { get; init; }
     public IReadOnlyList<FaceLayerFile>? Layers { get; init; } = [];
     public IReadOnlyList<FaceElementFile>? Elements { get; init; } = [];
+}
+
+public sealed record FaceSourceRegionFile
+{
+    public FaceSourceRegionKind Kind { get; init; } = FaceSourceRegionKind.Rect;
+    public double X { get; init; }
+    public double Y { get; init; }
+    public double Width { get; init; }
+    public double Height { get; init; }
 }
 
 public sealed record FaceLayerFile

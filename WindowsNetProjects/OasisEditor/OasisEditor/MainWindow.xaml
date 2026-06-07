@@ -53,6 +53,8 @@
                           Command="{Binding OpenPanel2DStubCommand}" />
                 <MenuItem Header="New _Face Stub"
                           Command="{Binding OpenFaceStubCommand}" />
+                <MenuItem Header="Generate Face From _Region..."
+                          Command="{Binding GenerateFaceFromRegionCommand}" />
                 <MenuItem Header="New _Cabinet3D Stub"
                           Command="{Binding OpenCabinet3DStubCommand}" />
                 <MenuItem Header="New _Machine Stub"
