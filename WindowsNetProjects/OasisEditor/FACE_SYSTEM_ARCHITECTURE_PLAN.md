@@ -531,15 +531,19 @@ FaceSevenSegmentDisplayElement
 
 Do not use `LinkedPanel2DElementId` for Face Play View runtime behavior. Retain it only for provenance, generation workflows, and editor workflows.
 
-### Phase 9B - Alpha Display MVP - Future
+### Phase 9B - Alpha Display MVP - Complete
 
-Goals:
+Completed at MVP level.
 
-- add `FaceAlphaDisplayElement` as the dedicated Face element for alpha display visuals;
-- generate Face alpha display elements from Panel2D alpha displays;
-- update Face alpha display visuals through `MachineRuntimeState`;
-- render alpha displays in Face Edit View;
-- render alpha displays in Face Play View.
+Outcome:
+
+- `FaceAlphaDisplayElement` is now the dedicated Face element for alpha display visuals;
+- generated Face documents create alpha display Face elements from contained Panel2D alpha displays;
+- alpha Face elements serialize/deserialize with machine-object references, provenance-only Panel2D element links, display type, color, decimal-point, comma-tail, and reversal metadata;
+- Face Edit View renders alpha display elements from `MachineRuntimeState`;
+- Face Play View renders alpha display elements from `MachineRuntimeState`;
+- MAME VFD/segment output updates Face alpha displays live through `MachineObjectReference.AlphaDisplay`;
+- existing lamp, seven-segment, and input behavior remain unchanged.
 
 Runtime rule:
 
@@ -656,7 +660,7 @@ Completed MVP checks that should continue to be regression-tested:
 Future phase verification should focus on:
 
 - Phase 9A: complete - seven-segment displays serialize, generate, and render from `MachineRuntimeState` through machine-object references;
-- Phase 9B: alpha displays generate and render from `MachineRuntimeState` through machine-object references;
+- Phase 9B: complete - alpha displays serialize, generate, and render from `MachineRuntimeState` through machine-object references;
 - Phase 9C: reel displays generate and render from `MachineRuntimeState` through machine-object references, with correctness prioritized over animation fidelity;
 - Phase 10: Face regeneration uses provenance metadata while preserving runtime identity through machine-object references;
 - Phase 11: visual-fidelity improvements do not change document/runtime identity contracts;

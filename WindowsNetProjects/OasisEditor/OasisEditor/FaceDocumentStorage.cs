@@ -272,6 +272,30 @@ public static class FaceDocumentStorage
             };
         }
 
+        if (string.Equals(file.Kind, "alphaDisplay", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(file.Kind, "alpha", StringComparison.OrdinalIgnoreCase))
+        {
+            return new FaceAlphaDisplayElement
+            {
+                ObjectId = file.ObjectId ?? string.Empty,
+                Name = file.Name ?? string.Empty,
+                X = file.X,
+                Y = file.Y,
+                Width = file.Width,
+                Height = file.Height,
+                IsVisible = file.IsVisible,
+                IsLocked = file.IsLocked,
+                LinkedMachineObjectReference = reference,
+                LinkedPanel2DElementId = file.LinkedPanel2DElementId,
+                SegmentDisplayType = file.SegmentDisplayType,
+                OnColorHex = file.OnColorHex,
+                OffColorHex = file.OffColorHex,
+                ShowDecimalPoint = file.ShowDecimalPoint,
+                ShowCommaTail = file.ShowCommaTail,
+                IsReversed = file.IsReversed
+            };
+        }
+
         if (string.Equals(file.Kind, "button", StringComparison.OrdinalIgnoreCase))
         {
             var linkedInputReference = ResolveInputReference(file.LinkedInputReference, reference);
@@ -352,6 +376,7 @@ public static class FaceDocumentStorage
             {
                 FaceArtworkElement => "artwork",
                 FaceButtonElement => "button",
+                FaceAlphaDisplayElement => "alphaDisplay",
                 FaceSevenSegmentDisplayElement => "sevenSegmentDisplay",
                 FaceLampWindowElement => "lampWindow",
                 _ => "unknown"
@@ -365,9 +390,12 @@ public static class FaceDocumentStorage
             LinkedMachineObjectReference = model.LinkedMachineObjectReference?.ToString(),
             LinkedPanel2DElementId = model.LinkedPanel2DElementId,
             LinkedInputReference = model is FaceButtonElement button ? button.LinkedInputReference?.ToString() : null,
-            OnColorHex = model is FaceSevenSegmentDisplayElement sevenSegment ? sevenSegment.OnColorHex : null,
-            OffColorHex = model is FaceSevenSegmentDisplayElement sevenSegmentOff ? sevenSegmentOff.OffColorHex : null,
-            ShowDecimalPoint = model is FaceSevenSegmentDisplayElement sevenSegmentDecimal && sevenSegmentDecimal.ShowDecimalPoint,
+            OnColorHex = model switch { FaceSevenSegmentDisplayElement sevenSegment => sevenSegment.OnColorHex, FaceAlphaDisplayElement alpha => alpha.OnColorHex, _ => null },
+            OffColorHex = model switch { FaceSevenSegmentDisplayElement sevenSegment => sevenSegment.OffColorHex, FaceAlphaDisplayElement alpha => alpha.OffColorHex, _ => null },
+            ShowDecimalPoint = model switch { FaceSevenSegmentDisplayElement sevenSegment => sevenSegment.ShowDecimalPoint, FaceAlphaDisplayElement alpha => alpha.ShowDecimalPoint, _ => false },
+            ShowCommaTail = model is FaceAlphaDisplayElement alphaComma && alphaComma.ShowCommaTail,
+            IsReversed = model is FaceAlphaDisplayElement alphaReversed && alphaReversed.IsReversed,
+            SegmentDisplayType = model is FaceAlphaDisplayElement alphaDisplay ? alphaDisplay.SegmentDisplayType : null,
             AssetPath = model is FaceArtworkElement artwork ? artwork.AssetPath : null,
             SourcePanel2DDocumentId = model is FaceArtworkElement artworkSource ? artworkSource.SourcePanel2DDocumentId : null,
             SourceRegion = model is FaceArtworkElement artworkRegion ? ToFile(artworkRegion.SourceRegion) : null,
@@ -441,6 +469,9 @@ public sealed record FaceElementFile
     public string? OnColorHex { get; init; }
     public string? OffColorHex { get; init; }
     public bool ShowDecimalPoint { get; init; }
+    public bool ShowCommaTail { get; init; }
+    public bool IsReversed { get; init; }
+    public string? SegmentDisplayType { get; init; }
     public string? AssetPath { get; init; }
     public string? SourcePanel2DDocumentId { get; init; }
     public FaceSourceRegionFile? SourceRegion { get; init; }

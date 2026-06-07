@@ -75,4 +75,39 @@ public sealed class FaceRuntimeStateResolverTests
         Assert.Equal(0, masks[0]);
     }
 
+    [Fact]
+    public void GetAlphaCellMasks_UsesMachineObjectReference()
+    {
+        var runtimeState = new MachineRuntimeState();
+        runtimeState.SetSegmentCellMasksIfChanged(MachineObjectReference.AlphaDisplay(10), [1, 2, 3]);
+        runtimeState.SetSegmentCellMasksIfChanged("panel-alpha-10", [9, 9, 9]);
+        var display = new FaceAlphaDisplayElement
+        {
+            ObjectId = "face-alpha-10",
+            LinkedMachineObjectReference = MachineObjectReference.AlphaDisplay(10),
+            LinkedPanel2DElementId = "panel-alpha-10"
+        };
+
+        var masks = FaceRuntimeStateResolver.Instance.GetAlphaCellMasks(display, runtimeState);
+
+        Assert.Equal(new[] { 1, 2, 3 }, masks);
+    }
+
+    [Fact]
+    public void GetAlphaCellMasks_IgnoresLinkedPanel2DElementIdWhenMachineReferenceIsMissing()
+    {
+        var runtimeState = new MachineRuntimeState();
+        runtimeState.SetSegmentCellMasksIfChanged("panel-alpha-10", [9, 9, 9]);
+        var display = new FaceAlphaDisplayElement
+        {
+            ObjectId = "face-alpha-10",
+            LinkedPanel2DElementId = "panel-alpha-10"
+        };
+
+        var masks = FaceRuntimeStateResolver.Instance.GetAlphaCellMasks(display, runtimeState);
+
+        Assert.Equal(16, masks.Length);
+        Assert.All(masks, mask => Assert.Equal(0, mask));
+    }
+
 }

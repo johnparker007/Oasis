@@ -898,6 +898,9 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         {
             FaceArtworkElement => "Face Artwork",
             FaceLampWindowElement => "Face Lamp Window",
+            FaceSevenSegmentDisplayElement => "Face Seven Segment Display",
+            FaceAlphaDisplayElement => "Face Alpha Display",
+            FaceButtonElement => "Face Button",
             _ => "Face Element"
         };
     }

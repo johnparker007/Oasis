@@ -202,4 +202,55 @@ public sealed class FaceDocumentRoundTripTests
         Assert.True(element.ShowDecimalPoint);
     }
 
+    [Fact]
+    public void Serialize_AndRead_RoundTripsAlphaDisplayElement()
+    {
+        var source = new FaceDocumentModel
+        {
+            Id = "face-alpha-doc",
+            Title = "Alpha Face",
+            Elements =
+            [
+                new FaceAlphaDisplayElement
+                {
+                    ObjectId = "face-alpha-4",
+                    Name = "Alpha 4",
+                    X = 1,
+                    Y = 2,
+                    Width = 160,
+                    Height = 32,
+                    LinkedMachineObjectReference = MachineObjectReference.AlphaDisplay(4),
+                    LinkedPanel2DElementId = "panel-alpha-4",
+                    SegmentDisplayType = "bfm16seg",
+                    OnColorHex = "#FF4040",
+                    OffColorHex = "#200808",
+                    ShowDecimalPoint = true,
+                    ShowCommaTail = true,
+                    IsReversed = true
+                }
+            ]
+        };
+
+        var json = FaceDocumentStorage.Serialize(source);
+        Assert.True(FaceDocumentStorage.TryReadValidated(json, out var file, out var error), error);
+        var stored = Assert.Single(file.Elements!);
+        Assert.Equal("alphaDisplay", stored.Kind);
+        Assert.Equal("alpha:4", stored.LinkedMachineObjectReference);
+        Assert.Equal("panel-alpha-4", stored.LinkedPanel2DElementId);
+        Assert.Equal("bfm16seg", stored.SegmentDisplayType);
+        Assert.True(stored.ShowCommaTail);
+        Assert.True(stored.IsReversed);
+
+        var model = FaceDocumentStorage.ToModel(file);
+        var alpha = Assert.IsType<FaceAlphaDisplayElement>(Assert.Single(model.Elements));
+        Assert.Equal("alpha:4", alpha.LinkedMachineObjectReference?.ToString());
+        Assert.Equal("panel-alpha-4", alpha.LinkedPanel2DElementId);
+        Assert.Equal("bfm16seg", alpha.SegmentDisplayType);
+        Assert.Equal("#FF4040", alpha.OnColorHex);
+        Assert.Equal("#200808", alpha.OffColorHex);
+        Assert.True(alpha.ShowDecimalPoint);
+        Assert.True(alpha.ShowCommaTail);
+        Assert.True(alpha.IsReversed);
+    }
+
 }

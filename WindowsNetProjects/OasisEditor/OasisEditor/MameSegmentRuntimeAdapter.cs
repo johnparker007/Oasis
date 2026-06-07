@@ -156,6 +156,41 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
                 }
             }
 
+            foreach (var faceDisplay in document.GetFaceElements().OfType<FaceAlphaDisplayElement>())
+            {
+                if (string.IsNullOrWhiteSpace(faceDisplay.ObjectId)
+                    || faceDisplay.LinkedMachineObjectReference is not MachineObjectReference reference
+                    || reference.Kind != MachineObjectKind.AlphaDisplay
+                    || reference.IsEmpty
+                    || !int.TryParse(reference.Id, out var baseIndex))
+                {
+                    continue;
+                }
+
+                var cellMasks = new int[16];
+                var cellBrightness = new double[16];
+                var reversePlatformAlphaCells = RequiresPlatformAlphaCellReversal(_platformProvider());
+                for (var i = 0; i < cellMasks.Length; i++)
+                {
+                    var sourceOffset = reversePlatformAlphaCells ? cellMasks.Length - 1 - i : i;
+                    if (_latestVfdMasksByCell.TryGetValue(baseIndex + sourceOffset, out var mask))
+                    {
+                        cellMasks[i] = NormalizeMameMaskForSelectedDisplayType(mask, faceDisplay.SegmentDisplayType);
+                    }
+
+                    cellBrightness[i] = _latestVfdBrightnessByDisplay.TryGetValue(baseIndex, out var brightness)
+                        ? brightness
+                        : 1d;
+                }
+
+                var maskChanged = document.RuntimeState.SetSegmentCellMasksIfChanged(reference, cellMasks);
+                var brightnessChanged = document.RuntimeState.SetSegmentCellBrightnessIfChanged(reference, cellBrightness);
+                if (maskChanged || brightnessChanged || changedMachineReferences.Contains(reference))
+                {
+                    changedFaceObjectIds.Add(faceDisplay.ObjectId);
+                }
+            }
+
             if (changedObjectIds.Count > 0)
             {
                 document.NotifyPanelVisualPreviewChanged(changedObjectIds);

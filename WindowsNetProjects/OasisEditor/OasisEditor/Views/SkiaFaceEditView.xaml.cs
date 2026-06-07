@@ -176,6 +176,12 @@ public partial class SkiaFaceEditView : UserControl
                 continue;
             }
 
+            if (element is FaceAlphaDisplayElement alphaDisplay)
+            {
+                DrawAlphaElement(canvas, document, alphaDisplay, rect, hiddenPaint);
+                continue;
+            }
+
             if (element.IsVisible)
             {
                 canvas.DrawRect(rect, fillPaint);
@@ -222,6 +228,34 @@ public partial class SkiaFaceEditView : UserControl
         var masks = FaceRuntimeStateResolver.Instance.GetSevenSegmentCellMasks(element, document.RuntimeState);
         var brightness = FaceRuntimeStateResolver.Instance.GetSevenSegmentCellBrightness(element, document.RuntimeState);
         SevenSegmentElementRenderer.RenderSegmentDisplay(canvas, rect, masks, brightness, element.OnColorHex, element.OffColorHex);
+    }
+
+    private static void DrawAlphaElement(SKCanvas canvas, DocumentTabViewModel document, FaceAlphaDisplayElement element, SKRect rect, SKPaint hiddenPaint)
+    {
+        if (rect.Width <= 0f || rect.Height <= 0f)
+        {
+            return;
+        }
+
+        if (!element.IsVisible)
+        {
+            canvas.DrawRect(rect, hiddenPaint);
+            return;
+        }
+
+        var masks = FaceRuntimeStateResolver.Instance.GetAlphaCellMasks(element, document.RuntimeState);
+        var brightness = FaceRuntimeStateResolver.Instance.GetAlphaCellBrightness(element, document.RuntimeState);
+        AlphaElementRenderer.RenderAlphaDisplay(
+            canvas,
+            rect,
+            masks,
+            brightness,
+            element.SegmentDisplayType,
+            element.OnColorHex,
+            element.OffColorHex,
+            element.ShowDecimalPoint,
+            element.ShowCommaTail,
+            element.IsReversed);
     }
 
     private static void DrawArtworkElement(SKCanvas canvas, FaceArtworkElement element, PanelViewportTransform viewport, SKPaint hiddenPaint)
