@@ -127,8 +127,8 @@ public sealed class DocumentWorkspaceViewModel
         var faceEditorDocument = EditorDocument.CreateFaceStub(title).WithContentSummary(result.Document.Summary ?? "Generated Face document.");
         var document = CreateDocumentTab(faceEditorDocument, faceDocumentJson: faceJson);
         ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
-        _setStatusMessage($"Generated face document from Panel2D region with {result.ArtworkElementCount} artwork element(s), {result.ConvertedLampCount} lamp window(s), {result.ConvertedSevenSegmentDisplayCount} seven-segment display(s), {result.ConvertedAlphaDisplayCount} alpha display(s), and {result.ConvertedButtonCount} button(s).");
-        _addOutputEntry($"Generated face '{document.Title}' from Panel2D region with {result.ArtworkElementCount} artwork element(s), {result.ConvertedLampCount} lamp window(s), {result.ConvertedSevenSegmentDisplayCount} seven-segment display(s), {result.ConvertedAlphaDisplayCount} alpha display(s), and {result.ConvertedButtonCount} button(s).", OutputLogStatus.Info);
+        _setStatusMessage($"Generated face document from Panel2D region with {result.ArtworkElementCount} artwork element(s), {result.ConvertedLampCount} lamp window(s), {result.ConvertedReelDisplayCount} reel display(s), {result.ConvertedSevenSegmentDisplayCount} seven-segment display(s), {result.ConvertedAlphaDisplayCount} alpha display(s), and {result.ConvertedButtonCount} button(s).");
+        _addOutputEntry($"Generated face '{document.Title}' from Panel2D region with {result.ArtworkElementCount} artwork element(s), {result.ConvertedLampCount} lamp window(s), {result.ConvertedReelDisplayCount} reel display(s), {result.ConvertedSevenSegmentDisplayCount} seven-segment display(s), {result.ConvertedAlphaDisplayCount} alpha display(s), and {result.ConvertedButtonCount} button(s).", OutputLogStatus.Info);
         return document;
     }
 
@@ -329,11 +329,13 @@ public sealed class DocumentWorkspaceViewModel
     private DocumentTabViewModel CreateDocumentTab(EditorDocument document, string? panelLayoutJson = null, string? faceDocumentJson = null)
     {
         var documentId = Guid.NewGuid();
+        var runtimeState = _runtimeStateStore.GetOrCreate(documentId);
+        runtimeState.FruitMachinePlatform = _getLoadedProject()?.FruitMachinePlatform ?? FruitMachinePlatformType.None;
         return new DocumentTabViewModel(
             document,
             panelLayoutJson,
             documentId,
-            runtimeState: _runtimeStateStore.GetOrCreate(documentId),
+            runtimeState: runtimeState,
             faceDocumentJson: faceDocumentJson);
     }
 

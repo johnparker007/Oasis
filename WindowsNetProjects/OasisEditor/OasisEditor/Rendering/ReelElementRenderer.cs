@@ -21,26 +21,37 @@ internal sealed class ReelElementRenderer : IPanelElementRenderer
 
         var stops = Math.Max(1, element.Stops.GetValueOrDefault(1));
         var reelPosition = context.RuntimeState.GetEffectiveReelPosition(element.ObjectId);
-        var wrappedOffset = ComputeWrappedOffset(reelPosition, stops);
+        RenderReelDisplay(context.Canvas, bounds, element.AssetPath, reelPosition, stops, element.VisibleScale);
+    }
+
+    public static void RenderReelDisplay(SKCanvas canvas, SKRect bounds, string? assetPath, double reelPosition, int stops, double? visibleScale)
+    {
+        if (bounds.Width <= 0f || bounds.Height <= 0f)
+        {
+            return;
+        }
+
+        var safeStops = Math.Max(1, stops);
+        var wrappedOffset = ComputeWrappedOffset(reelPosition, safeStops);
 
         using var clipPath = new SKPath();
         clipPath.AddRect(bounds);
 
-        context.Canvas.Save();
-        context.Canvas.ClipPath(clipPath);
+        canvas.Save();
+        canvas.ClipPath(clipPath);
 
-        if (TryGetStripImage(element.AssetPath, out var stripImage))
+        if (TryGetStripImage(assetPath, out var stripImage))
         {
-            DrawStripImage(context.Canvas, bounds, stripImage, wrappedOffset, reelPosition, stops, element.VisibleScale);
+            DrawStripImage(canvas, bounds, stripImage, wrappedOffset, reelPosition, safeStops, visibleScale);
         }
         else
         {
             var cellHeight = bounds.Height;
-            DrawStripPlaceholder(context.Canvas, bounds.Left, bounds.Top - (float)(wrappedOffset * cellHeight), bounds.Width, cellHeight, stops);
-            DrawStripPlaceholder(context.Canvas, bounds.Left, bounds.Top - (float)(wrappedOffset * cellHeight) + cellHeight, bounds.Width, cellHeight, stops);
+            DrawStripPlaceholder(canvas, bounds.Left, bounds.Top - (float)(wrappedOffset * cellHeight), bounds.Width, cellHeight, safeStops);
+            DrawStripPlaceholder(canvas, bounds.Left, bounds.Top - (float)(wrappedOffset * cellHeight) + cellHeight, bounds.Width, cellHeight, safeStops);
         }
 
-        context.Canvas.Restore();
+        canvas.Restore();
     }
 
     internal static double ComputeWrappedOffset(double position, int stops)

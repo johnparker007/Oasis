@@ -4,6 +4,8 @@ public interface IFaceRuntimeStateResolver
 {
     bool TryGetLampReference(FaceLampWindowElement lampWindow, out MachineObjectReference reference);
     double GetLampIntensity(FaceLampWindowElement lampWindow, MachineRuntimeState runtimeState);
+    bool TryGetReelDisplayReference(FaceReelDisplayElement reelDisplay, out MachineObjectReference reference);
+    double GetReelPosition(FaceReelDisplayElement reelDisplay, MachineRuntimeState runtimeState);
     bool TryGetSevenSegmentDisplayReference(FaceSevenSegmentDisplayElement display, out MachineObjectReference reference);
     bool TryGetAlphaDisplayReference(FaceAlphaDisplayElement display, out MachineObjectReference reference);
     int[] GetSevenSegmentCellMasks(FaceSevenSegmentDisplayElement display, MachineRuntimeState runtimeState);
@@ -35,6 +37,49 @@ public sealed class FaceRuntimeStateResolver : IFaceRuntimeStateResolver
         return TryGetLampReference(lampWindow, out var reference)
             ? runtimeState.GetLampIntensity(reference)
             : 0d;
+    }
+
+    public bool TryGetReelDisplayReference(FaceReelDisplayElement reelDisplay, out MachineObjectReference reference)
+    {
+        ArgumentNullException.ThrowIfNull(reelDisplay);
+        reference = reelDisplay.LinkedMachineObjectReference ?? MachineObjectReference.Empty;
+        return reference.Kind == MachineObjectKind.Reel && !reference.IsEmpty;
+    }
+
+    public double GetReelPosition(FaceReelDisplayElement reelDisplay, MachineRuntimeState runtimeState)
+    {
+        ArgumentNullException.ThrowIfNull(reelDisplay);
+        ArgumentNullException.ThrowIfNull(runtimeState);
+
+        var rawPosition = TryGetReelDisplayReference(reelDisplay, out var reference)
+            ? runtimeState.GetReelPosition(reference)
+            : 0d;
+
+        return ResolveEffectiveReelPosition(
+            rawPosition,
+            reelDisplay.Stops.GetValueOrDefault(1),
+            reelDisplay.IsReversed,
+            reelDisplay.BandOffset.GetValueOrDefault(0d),
+            runtimeState.FruitMachinePlatform);
+    }
+
+    internal static double ResolveEffectiveReelPosition(double rawReelPosition, int stops, bool reelReversed, double reelBandOffset, FruitMachinePlatformType platform)
+    {
+        const double positionsPerRevolution = 96d;
+        var safeStops = Math.Max(1, stops);
+        var wrapped = ((rawReelPosition % positionsPerRevolution) + positionsPerRevolution) % positionsPerRevolution;
+        var shouldReverse = RequiresPlatformReversal(platform) ^ reelReversed;
+        var directionAdjusted = shouldReverse && wrapped != 0d
+            ? positionsPerRevolution - wrapped
+            : wrapped;
+        var platformOffset = MameReelRuntimeAdapter.ResolvePlatformBandOffsetNormalized(platform, safeStops);
+        var offsetAdjusted = directionAdjusted + ((platformOffset + reelBandOffset) * positionsPerRevolution);
+        return ((offsetAdjusted % positionsPerRevolution) + positionsPerRevolution) % positionsPerRevolution;
+    }
+
+    private static bool RequiresPlatformReversal(FruitMachinePlatformType platform)
+    {
+        return platform == FruitMachinePlatformType.MPU4;
     }
 
     public bool TryGetSevenSegmentDisplayReference(FaceSevenSegmentDisplayElement display, out MachineObjectReference reference)

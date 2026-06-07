@@ -48,6 +48,24 @@ internal static class FaceElementModelUpdater
                 SourceRegion = artwork.SourceRegion,
                 Provenance = artwork.Provenance
             },
+            FaceReelDisplayElement reelDisplay => new FaceReelDisplayElement
+            {
+                ObjectId = existing.ObjectId,
+                Name = update.Name ?? existing.Name,
+                X = update.X ?? existing.X,
+                Y = update.Y ?? existing.Y,
+                Width = update.Width ?? existing.Width,
+                Height = update.Height ?? existing.Height,
+                IsVisible = update.IsVisible ?? existing.IsVisible,
+                IsLocked = update.IsLocked ?? existing.IsLocked,
+                LinkedMachineObjectReference = linkedMachineObjectReference,
+                LinkedPanel2DElementId = update.HasLinkedPanel2DElementId ? update.LinkedPanel2DElementId : existing.LinkedPanel2DElementId,
+                AssetPath = reelDisplay.AssetPath,
+                Stops = reelDisplay.Stops,
+                VisibleScale = reelDisplay.VisibleScale,
+                BandOffset = reelDisplay.BandOffset,
+                IsReversed = reelDisplay.IsReversed
+            },
             FaceLampWindowElement => new FaceLampWindowElement
             {
                 ObjectId = existing.ObjectId,
@@ -189,6 +207,7 @@ internal static class FaceSelectionService
         {
             FaceArtworkElement => "artwork",
             FaceButtonElement => "button",
+            FaceReelDisplayElement => "reelDisplay",
             FaceSevenSegmentDisplayElement => "sevenSegmentDisplay",
             FaceAlphaDisplayElement => "alphaDisplay",
             FaceLampWindowElement => "lampWindow",

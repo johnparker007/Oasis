@@ -14,6 +14,7 @@ public class MachineRuntimeState
     private readonly Dictionary<string, double[]> _segmentBrightnessByMachineObjectId = new(StringComparer.Ordinal);
 
     public string? LampTestObjectId { get; set; }
+    public FruitMachinePlatformType FruitMachinePlatform { get; set; } = FruitMachinePlatformType.None;
 
     public bool IsLampTestActive => !string.IsNullOrWhiteSpace(LampTestObjectId);
 
@@ -213,6 +214,7 @@ public class MachineRuntimeState
     public void Clear()
     {
         LampTestObjectId = null;
+        FruitMachinePlatform = FruitMachinePlatformType.None;
         _lampIntensityByObjectId.Clear();
         _reelPositionByObjectId.Clear();
         _temporaryReelOffsetByObjectId.Clear();

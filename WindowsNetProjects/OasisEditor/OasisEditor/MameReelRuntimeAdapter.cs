@@ -65,14 +65,28 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
         var documents = _documentProvider().ToArray();
         PruneDocumentCaches(documents);
 
+        var platform = _platformProvider();
         foreach (var document in documents)
         {
+            document.RuntimeState.FruitMachinePlatform = platform;
             var objectIdsByReel = GetOrBuildReelMapping(document);
+            var faceObjectIdsByReel = GetFaceReelMapping(document);
             var changedObjectIds = new HashSet<string>(StringComparer.Ordinal);
+            var changedFaceObjectIds = new HashSet<string>(StringComparer.Ordinal);
 
             foreach (var (reelId, reelValue) in snapshot)
             {
                 var reelReference = MachineObjectReference.Reel(reelId);
+                var machinePosition = ResolveMachineReelPosition(reelValue);
+                if (document.RuntimeState.SetReelPositionIfChanged(reelReference, machinePosition)
+                    && faceObjectIdsByReel.TryGetValue(reelReference, out var matchingFaceObjectIds))
+                {
+                    foreach (var faceObjectId in matchingFaceObjectIds)
+                    {
+                        changedFaceObjectIds.Add(faceObjectId);
+                    }
+                }
+
                 if (!objectIdsByReel.TryGetValue(reelReference, out var objectIds) || objectIds.Length == 0)
                 {
                     continue;
@@ -101,6 +115,11 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
             {
                 document.NotifyPanelVisualPreviewChanged(changedObjectIds);
             }
+
+            if (changedFaceObjectIds.Count > 0)
+            {
+                document.NotifyFaceVisualPreviewChanged(changedFaceObjectIds);
+            }
         }
     }
 
@@ -114,6 +133,22 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
                 staleEntry.Detach();
             }
         }
+    }
+
+    private static IReadOnlyDictionary<MachineObjectReference, string[]> GetFaceReelMapping(DocumentTabViewModel document)
+    {
+        return document.GetFaceElements()
+            .OfType<FaceReelDisplayElement>()
+            .Select(element => new
+            {
+                Element = element,
+                Reference = element.LinkedMachineObjectReference ?? MachineObjectReference.Empty
+            })
+            .Where(item => !string.IsNullOrWhiteSpace(item.Element.ObjectId)
+                && item.Reference.Kind == MachineObjectKind.Reel
+                && !item.Reference.IsEmpty)
+            .GroupBy(item => item.Reference, item => item.Element)
+            .ToDictionary(group => group.Key, group => group.Select(element => element.ObjectId).Distinct(StringComparer.Ordinal).ToArray());
     }
 
     private IReadOnlyDictionary<MachineObjectReference, string[]> GetOrBuildReelMapping(DocumentTabViewModel document)
@@ -143,6 +178,11 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
 
         cacheEntry.Replace(mapping);
         return cacheEntry.MappingByReelId;
+    }
+
+    private static double ResolveMachineReelPosition(int rawReelValue)
+    {
+        return ((rawReelValue % ReelPositionsPerRevolution) + ReelPositionsPerRevolution) % ReelPositionsPerRevolution;
     }
 
     private bool TryResolveEffectiveReelPosition(DocumentTabViewModel document, string objectId, int rawReelValue, out double effectiveReelPosition, out int stops, out double normalizedPosition)

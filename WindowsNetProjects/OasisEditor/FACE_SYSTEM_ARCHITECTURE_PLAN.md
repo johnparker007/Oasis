@@ -555,20 +555,25 @@ FaceAlphaDisplayElement
 
 Do not use `LinkedPanel2DElementId` for Face Play View runtime behavior. Retain it only for provenance, generation workflows, and editor workflows.
 
-### Phase 9C - Reel Display MVP - Future
+### Phase 9C - Reel Display MVP - Complete
 
-Goals:
+Completed at MVP level.
 
-- add `FaceReelDisplayElement` as the dedicated Face element for reel display/window visuals;
-- generate Face reel display elements from Panel2D reels;
-- update Face reel visuals through `MachineRuntimeState`;
-- render reel displays in Face Edit View;
-- render reel displays in Face Play View.
+Outcome:
+
+- `FaceReelDisplayElement` is now the dedicated Face element for reel display/window visuals;
+- generated Face documents create reel display Face elements from contained Panel2D reels;
+- reel display Face elements serialize/deserialize with machine-object references, provenance-only Panel2D element links, reel strip asset path, stops, visible scale, band offset, and reversal metadata;
+- Face Edit View renders reel display elements from `MachineRuntimeState`;
+- Face Play View renders reel display elements from `MachineRuntimeState`;
+- MAME reel output updates Face reel displays live through `MachineObjectReference.Reel`;
+- Face reel displays apply the same MVP platform/stop internal reel offsets used by Panel2D reel rendering so Impact, MPU4, Scorpion4, and other stop-count-specific adjustments stay aligned between Panel2D and Face views;
+- existing lamp, input, seven-segment display, and alpha display behavior remain unchanged.
 
 Notes:
 
-- reel animation fidelity is not required initially;
-- focus on correctness and runtime plumbing before presentation polish.
+- reel animation fidelity remains intentionally out of scope for the MVP;
+- runtime plumbing correctness is prioritized over presentation polish.
 
 Runtime rule:
 
@@ -661,7 +666,7 @@ Future phase verification should focus on:
 
 - Phase 9A: complete - seven-segment displays serialize, generate, and render from `MachineRuntimeState` through machine-object references;
 - Phase 9B: complete - alpha displays serialize, generate, and render from `MachineRuntimeState` through machine-object references;
-- Phase 9C: reel displays generate and render from `MachineRuntimeState` through machine-object references, with correctness prioritized over animation fidelity;
+- Phase 9C: complete - reel displays serialize, generate, and render from `MachineRuntimeState` through machine-object references, with correctness prioritized over animation fidelity;
 - Phase 10: Face regeneration uses provenance metadata while preserving runtime identity through machine-object references;
 - Phase 11: visual-fidelity improvements do not change document/runtime identity contracts;
 - Phase 12: 3D preview investigation does not introduce renderer-specific document coupling;
@@ -689,3 +694,25 @@ Do not start implementation beyond the current requested phase unless instructed
 Preserve the completed Face MVP architecture when adding future phases: runtime behavior flows through machine-object references and `MachineRuntimeState`; `LinkedPanel2DElementId` remains provenance/editor/generation data only.
 
 John will test/review after each phase before continuing.
+
+## Manual Verification Steps - Phase 9C Reel Display MVP
+
+1. Open an Oasis project containing a Panel2D document with at least one reel element that has a valid display/reel number.
+2. Generate a Face document from a region that fully contains the Panel2D reel.
+3. Confirm the generated Face hierarchy includes a Reel Displays group and a generated reel display element.
+4. Save the Face document, close it, reopen it, and confirm the reel display persists with its machine reference (`reel:<number>`) and provenance-only `LinkedPanel2DElementId`.
+5. Open the Face document in Face Edit View and confirm the reel window renders as either the configured reel strip image or the MVP placeholder strip, with the same platform/stop offset alignment as the source Panel2D reel.
+6. Open the same Face document in Face Play View and confirm the same reel display renders.
+7. Start MAME for the machine and confirm reel output changes move/update the Face reel display live and remains visually aligned with the corresponding Panel2D reel position for the selected fruit-machine platform and reel stop count.
+8. Confirm lamps, inputs/buttons, seven-segment displays, and alpha displays still update exactly as they did before Phase 9C.
+9. Inspect a generated reel display and confirm runtime behavior still resolves through `MachineObjectReference.Reel` and `MachineRuntimeState`; `LinkedPanel2DElementId` should only identify the source Panel2D element for provenance/editor workflows.
+
+## Runtime Display Consolidation Recommendations Before Face Regeneration
+
+Before implementing Face Regeneration, add a focused Runtime Display Consolidation phase to reduce duplicated display plumbing while preserving the established runtime contract. Recommended scope:
+
+- introduce a small shared renderer-facing adapter/helper for Face and Panel2D runtime displays so reels, seven-segment displays, and alpha displays consistently resolve `MachineObjectReference` values before rendering;
+- clarify whether `MachineRuntimeState` reel positions are raw machine positions, platform-normalized positions, or visual-effective positions, then document that contract before regeneration starts preserving/reusing reel metadata;
+- centralize common Face display metadata serialization patterns so future display types do not repeatedly update storage, generation, hierarchy, selection, renderer, and runtime resolver code by hand;
+- keep `LinkedPanel2DElementId` as generation/regeneration provenance only and add regression tests for every runtime display type to prevent accidental fallback to Panel2D element IDs;
+- add a lightweight display notification helper so MAME adapters can publish Face visual invalidations by machine reference without duplicating per-display matching code.
