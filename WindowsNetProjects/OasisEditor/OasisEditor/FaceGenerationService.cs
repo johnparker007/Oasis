@@ -122,6 +122,7 @@ internal sealed class FaceGenerationService
             Summary = $"Generated from Panel2D source region ({Format(region.X)}, {Format(region.Y)}, {Format(region.Width)}, {Format(region.Height)}).",
             SourcePanel2DDocumentId = string.IsNullOrWhiteSpace(sourcePanel2DDocumentId) ? null : sourcePanel2DDocumentId.Trim(),
             SourceRegion = sourceRegion,
+            LastRegeneratedAtUtc = DateTime.UtcNow,
             Layers =
             [
                 new FaceLayerModel

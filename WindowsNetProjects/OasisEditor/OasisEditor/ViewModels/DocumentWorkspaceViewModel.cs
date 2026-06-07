@@ -24,6 +24,7 @@ public sealed class DocumentWorkspaceViewModel
     private readonly Automation.IFaceDocumentCreationService _faceCreationService;
     private readonly FaceGenerationService _faceGenerationService = new();
     private readonly FaceRegenerationService _faceRegenerationService = new();
+    private readonly FaceValidationService _faceValidationService = new();
 
     private int _untitledDocumentCounter = 1;
     private int _panelDocumentCounter = 1;
@@ -130,15 +131,55 @@ public sealed class DocumentWorkspaceViewModel
         ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
         _setStatusMessage($"Generated face document from Panel2D region with {result.ArtworkElementCount} artwork element(s), {result.ConvertedLampCount} lamp window(s), {result.ConvertedReelDisplayCount} reel display(s), {result.ConvertedSevenSegmentDisplayCount} seven-segment display(s), {result.ConvertedAlphaDisplayCount} alpha display(s), and {result.ConvertedButtonCount} button(s).");
         _addOutputEntry($"Generated face '{document.Title}' from Panel2D region with {result.ArtworkElementCount} artwork element(s), {result.ConvertedLampCount} lamp window(s), {result.ConvertedReelDisplayCount} reel display(s), {result.ConvertedSevenSegmentDisplayCount} seven-segment display(s), {result.ConvertedAlphaDisplayCount} alpha display(s), and {result.ConvertedButtonCount} button(s).", OutputLogStatus.Info);
+        LogFaceDiagnostics(result.Document);
         return document;
     }
 
     public bool CanRegenerateSelectedFace()
     {
         var selectedDocument = _getSelectedDocument();
-        return _getLoadedProject() is not null
-            && selectedDocument is { Document.DocumentType: EditorDocumentType.Face }
-            && TryFindSourcePanelDocument(selectedDocument.GetFaceDocument(), out _);
+        if (_getLoadedProject() is null || selectedDocument is not { Document.DocumentType: EditorDocumentType.Face })
+        {
+            return false;
+        }
+
+        var faceDocument = selectedDocument.GetFaceDocument();
+        return !string.IsNullOrWhiteSpace(faceDocument.SourcePanel2DDocumentId)
+            && faceDocument.SourceRegion is { IsValid: true };
+    }
+
+    public bool CanOpenSourcePanel2DForSelectedFace()
+    {
+        var selectedDocument = _getSelectedDocument();
+        if (_getLoadedProject() is null || selectedDocument is not { Document.DocumentType: EditorDocumentType.Face })
+        {
+            return false;
+        }
+
+        return !string.IsNullOrWhiteSpace(selectedDocument.GetFaceDocument().SourcePanel2DDocumentId);
+    }
+
+    public bool OpenSourcePanel2DForSelectedFace()
+    {
+        var selectedDocument = _getSelectedDocument();
+        if (_getLoadedProject() is null || selectedDocument is not { Document.DocumentType: EditorDocumentType.Face })
+        {
+            return false;
+        }
+
+        var faceDocument = selectedDocument.GetFaceDocument();
+        if (!TryFindSourcePanelDocument(faceDocument, out var sourcePanelDocument))
+        {
+            _setStatusMessage("Unable to open Face source: source Panel2D document is not open.");
+            _addOutputEntry(BuildSourcePanelMissingMessage(faceDocument), OutputLogStatus.Warning);
+            LogFaceDiagnostics(faceDocument);
+            return false;
+        }
+
+        _setSelectedDocument(sourcePanelDocument);
+        _setStatusMessage($"Opened source Panel2D for face '{selectedDocument.Title}': {sourcePanelDocument.Title}");
+        _addOutputEntry($"Activated source Panel2D document '{sourcePanelDocument.Title}' for face '{selectedDocument.Title}'.", OutputLogStatus.Info);
+        return true;
     }
 
     public bool RegenerateSelectedFace()
@@ -153,7 +194,8 @@ public sealed class DocumentWorkspaceViewModel
         if (!TryFindSourcePanelDocument(existingFace, out var sourcePanelDocument))
         {
             _setStatusMessage("Unable to regenerate Face: source Panel2D document is not open.");
-            _addOutputEntry("Face regeneration skipped because the source Panel2D document could not be located among open documents.", OutputLogStatus.Warning);
+            _addOutputEntry(BuildSourcePanelMissingMessage(existingFace), OutputLogStatus.Warning);
+            LogFaceDiagnostics(existingFace);
             return false;
         }
 
@@ -176,7 +218,36 @@ public sealed class DocumentWorkspaceViewModel
 
         _setStatusMessage($"Regenerated face '{selectedDocument.Title}' from source Panel2D.");
         _addOutputEntry($"Regenerated face '{selectedDocument.Title}' from source Panel2D with {result.UpdatedElementCount} updated generated element(s), {result.AddedElementCount} added generated element(s), {result.RemovedGeneratedElementCount} removed stale generated element(s), and {result.PreservedManualElementCount} preserved manual element(s).", OutputLogStatus.Info);
+        LogFaceDiagnostics(result.Document);
         return true;
+    }
+
+    public IReadOnlyList<FaceValidationDiagnostic> ValidateSelectedFace()
+    {
+        var selectedDocument = _getSelectedDocument();
+        if (selectedDocument is not { Document.DocumentType: EditorDocumentType.Face })
+        {
+            return [];
+        }
+
+        return _faceValidationService.Validate(selectedDocument.GetFaceDocument(), _getLoadedProject(), _openDocuments.ToArray());
+    }
+
+    private void LogFaceDiagnostics(FaceDocumentModel faceDocument)
+    {
+        var diagnostics = _faceValidationService.Validate(faceDocument, _getLoadedProject(), _openDocuments.ToArray());
+        foreach (var diagnostic in diagnostics)
+        {
+            _addOutputEntry($"Face validation ({diagnostic.Code}): {diagnostic.Message}", diagnostic.Severity == FaceValidationSeverity.Error ? OutputLogStatus.Error : OutputLogStatus.Warning);
+        }
+    }
+
+    private static string BuildSourcePanelMissingMessage(FaceDocumentModel faceDocument)
+    {
+        var sourceId = string.IsNullOrWhiteSpace(faceDocument.SourcePanel2DDocumentId)
+            ? "<missing>"
+            : faceDocument.SourcePanel2DDocumentId.Trim();
+        return $"Face source Panel2D document '{sourceId}' could not be located among open documents. Open the source Panel2D tab, then retry.";
     }
 
     private bool TryFindSourcePanelDocument(FaceDocumentModel faceDocument, out DocumentTabViewModel sourcePanelDocument)

@@ -110,6 +110,7 @@ internal sealed class FaceRegenerationService
             Summary = $"Regenerated from Panel2D source region ({Format(sourceRegion.X)}, {Format(sourceRegion.Y)}, {Format(sourceRegion.Width)}, {Format(sourceRegion.Height)}).",
             SourcePanel2DDocumentId = existingFace.SourcePanel2DDocumentId,
             SourceRegion = sourceRegion,
+            LastRegeneratedAtUtc = DateTime.UtcNow,
             Layers = existingFace.Layers.Count > 0 ? existingFace.Layers : generated.Document.Layers,
             Elements = mergedElements.ToArray()
         };

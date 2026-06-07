@@ -107,6 +107,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OpenFaceStubCommand = new RelayCommand(OpenFaceStubDocument, CanOpenUntitledDocument);
         GenerateFaceFromRegionCommand = new RelayCommand(GenerateFaceFromRegion, CanGenerateFaceFromRegion);
         RegenerateFaceCommand = new RelayCommand(RegenerateFace, CanRegenerateFace);
+        OpenSourcePanel2DCommand = new RelayCommand(OpenSourcePanel2D, CanOpenSourcePanel2D);
         OpenCabinet3DStubCommand = new RelayCommand(OpenCabinet3DStubDocument, CanOpenUntitledDocument);
         OpenMachineStubCommand = new RelayCommand(OpenMachineStubDocument, CanOpenUntitledDocument);
         OpenDocumentCommand = new RelayCommand(OpenDocument, CanOpenDocument);
@@ -394,6 +395,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand OpenFaceStubCommand { get; }
     public ICommand GenerateFaceFromRegionCommand { get; }
     public ICommand RegenerateFaceCommand { get; }
+    public ICommand OpenSourcePanel2DCommand { get; }
     public ICommand OpenCabinet3DStubCommand { get; }
     public ICommand OpenMachineStubCommand { get; }
     public ICommand OpenDocumentCommand { get; }
@@ -1020,6 +1022,21 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         _documentWorkspace.RegenerateSelectedFace();
+    }
+
+    private bool CanOpenSourcePanel2D()
+    {
+        return _documentWorkspace.CanOpenSourcePanel2DForSelectedFace();
+    }
+
+    private void OpenSourcePanel2D()
+    {
+        if (!CanOpenSourcePanel2D())
+        {
+            return;
+        }
+
+        _documentWorkspace.OpenSourcePanel2DForSelectedFace();
     }
 
     private void OpenCabinet3DStubDocument()
@@ -3204,6 +3221,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (RegenerateFaceCommand is RelayCommand regenerateFaceRelayCommand)
         {
             regenerateFaceRelayCommand.RaiseCanExecuteChanged();
+        }
+
+        if (OpenSourcePanel2DCommand is RelayCommand openSourcePanelRelayCommand)
+        {
+            openSourcePanelRelayCommand.RaiseCanExecuteChanged();
         }
 
         if (OpenCabinet3DStubCommand is RelayCommand openCabinetRelayCommand)
