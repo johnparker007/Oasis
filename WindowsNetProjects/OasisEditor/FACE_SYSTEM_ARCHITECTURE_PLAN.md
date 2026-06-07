@@ -59,7 +59,7 @@ The Face system is no longer only a pre-implementation proposal. The project now
 - Face artwork import/rendering support;
 - a 2D Face Play View path that renders Face documents against runtime state.
 
-This plan should now be read as an architecture record plus forward roadmap. Phases 0 through 6 are complete at MVP level unless a later section explicitly calls out hardening or follow-up work.
+This plan should now be read as an architecture record plus forward roadmap. Phases 0 through 8 are complete at MVP level unless a later section explicitly calls out hardening or follow-up work.
 
 ## Core Design Rule
 
@@ -311,10 +311,18 @@ Important rules:
 
 ```text
 Face Play View does not own emulator state.
-Face Play View runtime behavior must resolve through MachineObjectReference and MachineRuntimeState.
+Face Play View runtime behavior must resolve through:
+    MachineObjectReference
+        -> MachineRuntimeState
 Face Play View must not depend on LinkedPanel2DElementId for runtime behavior.
 LinkedPanel2DElementId exists only for provenance, generation, and editor workflows.
 ```
+
+`LinkedPanel2DElementId` exists only for:
+
+- provenance;
+- generation workflows;
+- editor workflows.
 
 Face Play View observes the same runtime state and uses the same input command services as Panel2D Play View.
 
@@ -427,17 +435,7 @@ Outcome:
 - Face documents can be created/opened/saved through the workspace/document flow;
 - Face document tabs/surfaces are integrated with the editor shell.
 
-### Phase 3 - Face Element Model - Complete
-
-Completed at MVP level.
-
-Outcome:
-
-- Face elements exist for artwork, lamp windows, reel windows, display windows, button hit areas, and mask/cutout-style geometry;
-- elements can retain editor/source provenance;
-- elements can carry runtime-object references for play/runtime behavior.
-
-### Phase 4 - Face Edit View 2D Layered MVP - Complete
+### Phase 3 - Face Edit View MVP - Complete
 
 Completed at MVP level.
 
@@ -446,10 +444,34 @@ Outcome:
 - 2D Face Edit View exists;
 - Face elements render in document space;
 - selection/editing workflows exist;
-- Face artwork can be shown in the editor;
+- Face element models cover the current MVP surface, including lamps, reels, displays, button hit areas, mask/cutout-style geometry, and artwork;
+- elements can retain editor/source provenance;
+- elements can carry runtime-object references for play/runtime behavior;
 - the implementation remains renderer-neutral and does not require Unity.
 
-### Phase 5 - Face Play View MVP - Complete
+### Phase 4 - Face Generation MVP - Complete
+
+Completed at MVP level.
+
+Outcome:
+
+- Face documents/elements can be generated from Panel2D regions/selections;
+- generated Face elements can include converted runtime-linked elements where source data is available;
+- generated elements may retain `LinkedPanel2DElementId` as provenance for editor/generation workflows;
+- generated runtime behavior must still resolve through machine-object references and `MachineRuntimeState`.
+
+### Phase 5 - Face Artwork MVP - Complete
+
+Completed at MVP level.
+
+Outcome:
+
+- Face artwork can be imported and persisted;
+- Face artwork elements render in Face Edit View and Face Play View;
+- artwork participates in the layered Face document model without owning runtime state;
+- artwork remains renderer-neutral and suitable for future fidelity/export work.
+
+### Phase 6 - Face Play View MVP - Complete
 
 Completed at MVP level.
 
@@ -459,19 +481,6 @@ Outcome:
 - Face Play View renders Face documents using shared runtime state;
 - live runtime visuals are resolved from `MachineRuntimeState` through machine-object references;
 - provenance-only Panel2D links are not the runtime behavior contract.
-
-Follow-up input work is now tracked in Phase 7 and Phase 8.
-
-### Phase 6 - Face Generation From Panel2D Selection - Complete
-
-Completed at MVP level.
-
-Outcome:
-
-- Face documents/elements can be generated from Panel2D regions/selections;
-- generated Face elements can include artwork and converted lamp windows;
-- generated elements may retain `LinkedPanel2DElementId` as provenance for editor/generation workflows;
-- generated runtime behavior must still resolve through machine-object references and `MachineRuntimeState`.
 
 ### Phase 7 - Face Input System MVP - Complete
 
@@ -487,9 +496,7 @@ Outcome:
 
 ### Phase 8 - Keyboard Input Routing - Complete
 
-Goal:
-
-- make keyboard shortcuts and focus behavior consistent across Panel2D Play View and Face Play View.
+Completed at MVP level.
 
 Outcome:
 
@@ -500,61 +507,122 @@ Outcome:
 - existing Panel2D keyboard behavior is preserved while Face keyboard routing uses the same public dispatch surface;
 - tests cover the shared dispatch facade across Panel2D pointer, Face pointer, keyboard down/up, and release-all behavior.
 
-### Phase 9 - Runtime Displays MVP - Future
+### Phase 9A - Seven Segment Display MVP - Future
 
-Goal:
+Goals:
 
-- complete runtime-driven display rendering for Face Play View.
+- add `FaceSevenSegmentDisplayElement` as the dedicated Face element for seven-segment display visuals;
+- generate Face seven-segment display elements from Panel2D seven-segment displays;
+- support serialization/deserialization for the new element type and its runtime/provenance references;
+- render seven-segment displays in Face Edit View;
+- render seven-segment displays in Face Play View;
+- resolve runtime state via `MachineObjectReference` and `MachineRuntimeState`.
 
-Planned work:
+Runtime rule:
 
-- render alpha/segment display windows from `MachineRuntimeState`;
-- render reel windows from `MachineRuntimeState`;
-- validate display/reel reference resolution through machine-object references;
-- add serialization/defaulting tests for display and reel Face elements;
-- keep display runtime behavior independent of `LinkedPanel2DElementId`.
+```text
+FaceSevenSegmentDisplayElement
+    -> MachineObjectReference
+        -> MachineRuntimeState
+```
 
-### Phase 10 - Visual Fidelity Layer - Future
+Do not use `LinkedPanel2DElementId` for Face Play View runtime behavior. Retain it only for provenance, generation workflows, and editor workflows.
 
-Goal:
+### Phase 9B - Alpha Display MVP - Future
 
-- improve 2D/pseudo-3D visual quality without coupling the Face document format to a specific renderer.
+Goals:
 
-Planned work:
+- add `FaceAlphaDisplayElement` as the dedicated Face element for alpha display visuals;
+- generate Face alpha display elements from Panel2D alpha displays;
+- update Face alpha display visuals through `MachineRuntimeState`;
+- render alpha displays in Face Edit View;
+- render alpha displays in Face Play View.
 
-- refine artwork compositing, lamp mask/tray visuals, opacity, glow, and depth cues;
-- add material/depth metadata only where it is renderer-neutral;
-- improve editor/play visual parity;
-- avoid pixel-perfect tests unless a stable renderer contract exists.
+Runtime rule:
 
-### Phase 11 - 3D Preview Investigation - Future
+```text
+FaceAlphaDisplayElement
+    -> MachineObjectReference
+        -> MachineRuntimeState
+```
 
-Goal:
+Do not use `LinkedPanel2DElementId` for Face Play View runtime behavior. Retain it only for provenance, generation workflows, and editor workflows.
 
-- investigate practical 3D preview options after the Face 2D/edit/play workflows are stable.
+### Phase 9C - Reel Display MVP - Future
 
-Explore:
+Goals:
 
-- in-editor pseudo-3D beyond the current 2D layered view;
-- HelixToolkit or similar WPF-compatible preview technology;
-- Unity-hosted or external preview approaches;
-- export/import constraints for a future renderer pipeline.
+- add `FaceReelDisplayElement` as the dedicated Face element for reel display/window visuals;
+- generate Face reel display elements from Panel2D reels;
+- update Face reel visuals through `MachineRuntimeState`;
+- render reel displays in Face Edit View;
+- render reel displays in Face Play View.
 
-This phase is investigative. Do not commit to Unity-specific document fields during this phase.
+Notes:
 
-### Phase 12 - Unity Renderer Integration Planning - Future
+- reel animation fidelity is not required initially;
+- focus on correctness and runtime plumbing before presentation polish.
 
-Goal:
+Runtime rule:
 
-- plan, but not yet implement, a Unity renderer integration path.
+```text
+FaceReelDisplayElement
+    -> MachineObjectReference
+        -> MachineRuntimeState
+```
 
-Planned work:
+Do not use `LinkedPanel2DElementId` for Face Play View runtime behavior. Retain it only for provenance, generation workflows, and editor workflows.
 
-- define the Face document data Unity would consume;
-- identify required asset packaging and runtime-state bridge boundaries;
-- define how machine-object references map to renderer-side runtime updates;
-- document editor/export responsibilities versus renderer responsibilities;
-- produce an implementation plan before any Unity-specific runtime/editor code is added.
+### Phase 10 - Face Regeneration - Future
+
+Goals:
+
+- regenerate Face content from source Panel2D data;
+- preserve manual Face edits where practical;
+- use existing provenance metadata:
+  - `SourcePanel2DDocumentId`;
+  - `SourceRegion`;
+  - `LinkedPanel2DElementId`;
+  - `MachineObjectReference`.
+
+Regeneration may use `LinkedPanel2DElementId` and other provenance fields to correlate generated content with source Panel2D content, but regenerated Face Play View runtime behavior must still resolve through `MachineObjectReference` and `MachineRuntimeState`.
+
+### Phase 11 - Visual Fidelity Layer - Future
+
+Goals:
+
+- lamp glow;
+- artwork blending;
+- masks;
+- lamp trays;
+- presentation improvements.
+
+Important:
+
+- no runtime architecture changes in this phase;
+- rendering quality only;
+- visual-fidelity improvements must not change the `MachineObjectReference` -> `MachineRuntimeState` runtime contract.
+
+### Phase 12 - 3D Preview Investigation - Future
+
+Goals:
+
+- in-editor 3D preview exploration;
+- HelixToolkit investigation;
+- lightweight preview renderer investigation.
+
+This phase is investigative. Do not commit to Unity-specific document fields or runtime architecture changes during this phase.
+
+### Phase 13 - Unity Renderer Integration Planning - Future
+
+Goals:
+
+- define Face export/import contract;
+- define Unity runtime consumption model;
+- define artwork/material/depth requirements;
+- define synchronization strategy.
+
+Planned output should clearly separate editor/export responsibilities from Unity renderer responsibilities and preserve machine-object identity as the synchronization contract.
 
 ## Tests
 
@@ -584,12 +652,13 @@ Completed MVP checks that should continue to be regression-tested:
 
 Future phase verification should focus on:
 
-- Phase 7: Face pointer/button input resolves through machine-object references;
-- Phase 8: keyboard shortcuts work when Face Play View is focused and release cleanly when focus is lost;
-- Phase 9: reels and displays render from `MachineRuntimeState` through machine-object references;
-- Phase 10: visual-fidelity improvements do not change document/runtime identity contracts;
-- Phase 11: 3D preview investigation does not introduce renderer-specific document coupling;
-- Phase 12: Unity integration planning clearly separates editor/export responsibilities from renderer responsibilities.
+- Phase 9A: seven-segment displays serialize, generate, and render from `MachineRuntimeState` through machine-object references;
+- Phase 9B: alpha displays generate and render from `MachineRuntimeState` through machine-object references;
+- Phase 9C: reel displays generate and render from `MachineRuntimeState` through machine-object references, with correctness prioritized over animation fidelity;
+- Phase 10: Face regeneration uses provenance metadata while preserving runtime identity through machine-object references;
+- Phase 11: visual-fidelity improvements do not change document/runtime identity contracts;
+- Phase 12: 3D preview investigation does not introduce renderer-specific document coupling;
+- Phase 13: Unity integration planning clearly separates editor/export responsibilities from renderer responsibilities.
 
 ## Out Of Scope Initially
 
