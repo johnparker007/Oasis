@@ -251,6 +251,29 @@ public static class FaceDocumentStorage
             };
         }
 
+        if (string.Equals(file.Kind, "reelDisplay", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(file.Kind, "reel", StringComparison.OrdinalIgnoreCase))
+        {
+            return new FaceReelDisplayElement
+            {
+                ObjectId = file.ObjectId ?? string.Empty,
+                Name = file.Name ?? string.Empty,
+                X = file.X,
+                Y = file.Y,
+                Width = file.Width,
+                Height = file.Height,
+                IsVisible = file.IsVisible,
+                IsLocked = file.IsLocked,
+                LinkedMachineObjectReference = reference,
+                LinkedPanel2DElementId = file.LinkedPanel2DElementId,
+                AssetPath = file.AssetPath,
+                Stops = file.Stops,
+                VisibleScale = file.VisibleScale,
+                BandOffset = file.BandOffset,
+                IsReversed = file.IsReversed
+            };
+        }
+
         if (string.Equals(file.Kind, "sevenSegmentDisplay", StringComparison.OrdinalIgnoreCase)
             || string.Equals(file.Kind, "sevenSegment", StringComparison.OrdinalIgnoreCase))
         {
@@ -376,6 +399,7 @@ public static class FaceDocumentStorage
             {
                 FaceArtworkElement => "artwork",
                 FaceButtonElement => "button",
+                FaceReelDisplayElement => "reelDisplay",
                 FaceAlphaDisplayElement => "alphaDisplay",
                 FaceSevenSegmentDisplayElement => "sevenSegmentDisplay",
                 FaceLampWindowElement => "lampWindow",
@@ -394,9 +418,12 @@ public static class FaceDocumentStorage
             OffColorHex = model switch { FaceSevenSegmentDisplayElement sevenSegment => sevenSegment.OffColorHex, FaceAlphaDisplayElement alpha => alpha.OffColorHex, _ => null },
             ShowDecimalPoint = model switch { FaceSevenSegmentDisplayElement sevenSegment => sevenSegment.ShowDecimalPoint, FaceAlphaDisplayElement alpha => alpha.ShowDecimalPoint, _ => false },
             ShowCommaTail = model is FaceAlphaDisplayElement alphaComma && alphaComma.ShowCommaTail,
-            IsReversed = model is FaceAlphaDisplayElement alphaReversed && alphaReversed.IsReversed,
+            IsReversed = model switch { FaceAlphaDisplayElement alphaReversed => alphaReversed.IsReversed, FaceReelDisplayElement reelReversed => reelReversed.IsReversed, _ => false },
             SegmentDisplayType = model is FaceAlphaDisplayElement alphaDisplay ? alphaDisplay.SegmentDisplayType : null,
-            AssetPath = model is FaceArtworkElement artwork ? artwork.AssetPath : null,
+            Stops = model is FaceReelDisplayElement reelDisplay ? reelDisplay.Stops : null,
+            VisibleScale = model is FaceReelDisplayElement reelVisibleScale ? reelVisibleScale.VisibleScale : null,
+            BandOffset = model is FaceReelDisplayElement reelBandOffset ? reelBandOffset.BandOffset : null,
+            AssetPath = model switch { FaceArtworkElement artwork => artwork.AssetPath, FaceReelDisplayElement reel => reel.AssetPath, _ => null },
             SourcePanel2DDocumentId = model is FaceArtworkElement artworkSource ? artworkSource.SourcePanel2DDocumentId : null,
             SourceRegion = model is FaceArtworkElement artworkRegion ? ToFile(artworkRegion.SourceRegion) : null,
             ArtworkProvenance = model is FaceArtworkElement artworkProvenance ? ToFile(artworkProvenance.Provenance) : null
@@ -472,6 +499,9 @@ public sealed record FaceElementFile
     public bool ShowCommaTail { get; init; }
     public bool IsReversed { get; init; }
     public string? SegmentDisplayType { get; init; }
+    public int? Stops { get; init; }
+    public double? VisibleScale { get; init; }
+    public double? BandOffset { get; init; }
     public string? AssetPath { get; init; }
     public string? SourcePanel2DDocumentId { get; init; }
     public FaceSourceRegionFile? SourceRegion { get; init; }

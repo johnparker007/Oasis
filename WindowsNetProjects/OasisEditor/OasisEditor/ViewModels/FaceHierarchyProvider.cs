@@ -24,6 +24,10 @@ public sealed class FaceHierarchyProvider : IDocumentHierarchyProvider
             .OfType<FaceLampWindowElement>()
             .Select((element, index) => CreateElementItem(element, index, "Lamp Window", "lampWindow"))
             .ToArray();
+        var reelDisplays = faceDocument.GetFaceElements()
+            .OfType<FaceReelDisplayElement>()
+            .Select((element, index) => CreateElementItem(element, index, "Reel Display", "reelDisplay"))
+            .ToArray();
         var sevenSegmentDisplays = faceDocument.GetFaceElements()
             .OfType<FaceSevenSegmentDisplayElement>()
             .Select((element, index) => CreateElementItem(element, index, "Seven Segment Display", "sevenSegmentDisplay"))
@@ -46,6 +50,11 @@ public sealed class FaceHierarchyProvider : IDocumentHierarchyProvider
         if (lampWindows.Length > 0)
         {
             groups.Add(new HierarchyItemViewModel($"Lamp Windows ({lampWindows.Length})", "group:lampWindow", isGroup: true, children: lampWindows));
+        }
+
+        if (reelDisplays.Length > 0)
+        {
+            groups.Add(new HierarchyItemViewModel($"Reel Displays ({reelDisplays.Length})", "group:reelDisplay", isGroup: true, children: reelDisplays));
         }
 
         if (sevenSegmentDisplays.Length > 0)

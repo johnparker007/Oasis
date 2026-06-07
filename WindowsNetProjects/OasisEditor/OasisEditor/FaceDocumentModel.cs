@@ -55,6 +55,15 @@ public sealed class FaceLampWindowElement : FaceElementModel
 {
 }
 
+public sealed class FaceReelDisplayElement : FaceElementModel
+{
+    public string? AssetPath { get; init; }
+    public int? Stops { get; init; }
+    public double? VisibleScale { get; init; }
+    public double? BandOffset { get; init; }
+    public bool IsReversed { get; init; }
+}
+
 public sealed class FaceSevenSegmentDisplayElement : FaceElementModel
 {
     public string? OnColorHex { get; init; }

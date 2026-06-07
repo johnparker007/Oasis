@@ -50,7 +50,7 @@ public sealed class FaceSourceRegionModel
 
 internal sealed class FaceGenerationResult
 {
-    public FaceGenerationResult(FaceDocumentModel document, int convertedLampCount, int artworkElementCount, int convertedButtonCount, int convertedSevenSegmentDisplayCount, int convertedAlphaDisplayCount)
+    public FaceGenerationResult(FaceDocumentModel document, int convertedLampCount, int artworkElementCount, int convertedButtonCount, int convertedSevenSegmentDisplayCount, int convertedAlphaDisplayCount, int convertedReelDisplayCount)
     {
         Document = document;
         ConvertedLampCount = convertedLampCount;
@@ -58,6 +58,7 @@ internal sealed class FaceGenerationResult
         ConvertedButtonCount = convertedButtonCount;
         ConvertedSevenSegmentDisplayCount = convertedSevenSegmentDisplayCount;
         ConvertedAlphaDisplayCount = convertedAlphaDisplayCount;
+        ConvertedReelDisplayCount = convertedReelDisplayCount;
     }
 
     public FaceDocumentModel Document { get; }
@@ -66,6 +67,7 @@ internal sealed class FaceGenerationResult
     public int ConvertedButtonCount { get; }
     public int ConvertedSevenSegmentDisplayCount { get; }
     public int ConvertedAlphaDisplayCount { get; }
+    public int ConvertedReelDisplayCount { get; }
 }
 
 internal sealed class FaceGenerationService
@@ -97,6 +99,10 @@ internal sealed class FaceGenerationService
         var lampWindows = sourcePanel.Elements
             .Where(element => element.Kind == PanelElementKind.Lamp && IsContainedBy(element, region))
             .Select(element => CreateLampWindow(element, region))
+            .ToArray();
+        var reelDisplays = sourcePanel.Elements
+            .Where(element => element.Kind == PanelElementKind.Reel && IsContainedBy(element, region))
+            .Select(element => CreateReelDisplay(element, region))
             .ToArray();
         var sevenSegmentDisplays = sourcePanel.Elements
             .Where(element => element.Kind == PanelElementKind.SevenSegment && IsContainedBy(element, region))
@@ -143,10 +149,10 @@ internal sealed class FaceGenerationService
                     IsVisible = true
                 }
             ],
-            Elements = artworkElements.Cast<FaceElementModel>().Concat(lampWindows).Concat(sevenSegmentDisplays).Concat(alphaDisplays).Concat(buttons).ToArray()
+            Elements = artworkElements.Cast<FaceElementModel>().Concat(lampWindows).Concat(reelDisplays).Concat(sevenSegmentDisplays).Concat(alphaDisplays).Concat(buttons).ToArray()
         };
 
-        return new FaceGenerationResult(document, lampWindows.Length, artworkElements.Length, buttons.Length, sevenSegmentDisplays.Length, alphaDisplays.Length);
+        return new FaceGenerationResult(document, lampWindows.Length, artworkElements.Length, buttons.Length, sevenSegmentDisplays.Length, alphaDisplays.Length, reelDisplays.Length);
     }
 
     private static FaceArtworkElement[] CreateArtworkElements(
@@ -232,6 +238,30 @@ internal sealed class FaceGenerationService
             IsLocked = sourceElement.IsLocked,
             LinkedMachineObjectReference = machineReference.IsEmpty ? null : machineReference,
             LinkedPanel2DElementId = string.IsNullOrWhiteSpace(sourceElement.ObjectId) ? null : sourceElement.ObjectId
+        };
+    }
+
+    private FaceReelDisplayElement CreateReelDisplay(PanelElementModel sourceElement, Rect region)
+    {
+        _machineObjectReferenceResolver.TryGetReference(sourceElement, out var machineReference);
+
+        return new FaceReelDisplayElement
+        {
+            ObjectId = CreateGeneratedElementId(sourceElement),
+            Name = string.IsNullOrWhiteSpace(sourceElement.Name) ? "Reel Display" : sourceElement.Name.Trim(),
+            X = Math.Round(sourceElement.X - region.X, 2),
+            Y = Math.Round(sourceElement.Y - region.Y, 2),
+            Width = Math.Round(sourceElement.Width, 2),
+            Height = Math.Round(sourceElement.Height, 2),
+            IsVisible = sourceElement.IsVisible,
+            IsLocked = sourceElement.IsLocked,
+            LinkedMachineObjectReference = machineReference.IsEmpty ? null : machineReference,
+            LinkedPanel2DElementId = string.IsNullOrWhiteSpace(sourceElement.ObjectId) ? null : sourceElement.ObjectId,
+            AssetPath = sourceElement.AssetPath,
+            Stops = sourceElement.Stops,
+            VisibleScale = sourceElement.VisibleScale,
+            BandOffset = sourceElement.BandOffset,
+            IsReversed = sourceElement.IsReversed == true
         };
     }
 

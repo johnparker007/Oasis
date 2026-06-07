@@ -170,6 +170,12 @@ public partial class SkiaFaceEditView : UserControl
         foreach (var element in document.GetFaceElements().Where(element => element is not FaceArtworkElement))
         {
             var rect = SKRect.Create((float)element.X, (float)element.Y, (float)Math.Max(0d, element.Width), (float)Math.Max(0d, element.Height));
+            if (element is FaceReelDisplayElement reelDisplay)
+            {
+                DrawReelElement(canvas, document, reelDisplay, rect, hiddenPaint);
+                continue;
+            }
+
             if (element is FaceSevenSegmentDisplayElement sevenSegmentDisplay)
             {
                 DrawSevenSegmentElement(canvas, document, sevenSegmentDisplay, rect, hiddenPaint);
@@ -210,6 +216,23 @@ public partial class SkiaFaceEditView : UserControl
                 (float)Math.Max(0d, selectedElement.Height),
                 selectionPaint);
         }
+    }
+
+    private static void DrawReelElement(SKCanvas canvas, DocumentTabViewModel document, FaceReelDisplayElement element, SKRect rect, SKPaint hiddenPaint)
+    {
+        if (rect.Width <= 0f || rect.Height <= 0f)
+        {
+            return;
+        }
+
+        if (!element.IsVisible)
+        {
+            canvas.DrawRect(rect, hiddenPaint);
+            return;
+        }
+
+        var position = FaceRuntimeStateResolver.Instance.GetReelPosition(element, document.RuntimeState);
+        ReelElementRenderer.RenderReelDisplay(canvas, rect, element.AssetPath, position, element.Stops.GetValueOrDefault(1), element.VisibleScale);
     }
 
     private static void DrawSevenSegmentElement(SKCanvas canvas, DocumentTabViewModel document, FaceSevenSegmentDisplayElement element, SKRect rect, SKPaint hiddenPaint)

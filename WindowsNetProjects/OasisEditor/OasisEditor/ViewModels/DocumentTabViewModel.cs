@@ -293,7 +293,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
         var faceRuntimeElementIds = _faceDocumentModel.Elements
             .Where(element => !string.IsNullOrWhiteSpace(element.ObjectId)
                 && element.LinkedMachineObjectReference is MachineObjectReference reference
-                && reference.Kind is MachineObjectKind.Lamp or MachineObjectKind.SevenSegmentDisplay or MachineObjectKind.AlphaDisplay
+                && reference.Kind is MachineObjectKind.Lamp or MachineObjectKind.Reel or MachineObjectKind.SevenSegmentDisplay or MachineObjectKind.AlphaDisplay
                 && !reference.IsEmpty)
             .Select(element => element.ObjectId)
             .ToHashSet(StringComparer.Ordinal);

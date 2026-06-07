@@ -41,6 +41,11 @@ public sealed class Face2DRenderer : IFace2DRenderer
             DrawLampWindow(canvas, lampWindow, runtimeState, viewportTransform);
         }
 
+        foreach (var reelDisplay in elements.OfType<FaceReelDisplayElement>())
+        {
+            DrawReelDisplay(canvas, reelDisplay, runtimeState, viewportTransform);
+        }
+
         foreach (var sevenSegmentDisplay in elements.OfType<FaceSevenSegmentDisplayElement>())
         {
             DrawSevenSegmentDisplay(canvas, sevenSegmentDisplay, runtimeState, viewportTransform);
@@ -111,6 +116,25 @@ public sealed class Face2DRenderer : IFace2DRenderer
         canvas.DrawRect(rect, strokePaint);
     }
 
+
+    private void DrawReelDisplay(SKCanvas canvas, FaceReelDisplayElement element, MachineRuntimeState runtimeState, PanelViewportTransform viewport)
+    {
+        var rect = ToRect(element);
+        if (rect.Width <= 0f || rect.Height <= 0f)
+        {
+            return;
+        }
+
+        if (!element.IsVisible)
+        {
+            using var hiddenPaint = new SKPaint { Style = SKPaintStyle.Stroke, Color = new SKColor(0x80, 0x80, 0x80), StrokeWidth = (float)(1d / viewport.NormalizedZoom), IsAntialias = true };
+            canvas.DrawRect(rect, hiddenPaint);
+            return;
+        }
+
+        var position = _runtimeStateResolver.GetReelPosition(element, runtimeState);
+        ReelElementRenderer.RenderReelDisplay(canvas, rect, element.AssetPath, position, element.Stops.GetValueOrDefault(1), element.VisibleScale);
+    }
 
     private void DrawSevenSegmentDisplay(SKCanvas canvas, FaceSevenSegmentDisplayElement element, MachineRuntimeState runtimeState, PanelViewportTransform viewport)
     {
