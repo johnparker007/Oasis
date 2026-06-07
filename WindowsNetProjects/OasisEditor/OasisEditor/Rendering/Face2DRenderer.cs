@@ -40,6 +40,11 @@ public sealed class Face2DRenderer : IFace2DRenderer
         {
             DrawLampWindow(canvas, lampWindow, runtimeState, viewportTransform);
         }
+
+        foreach (var button in elements.OfType<FaceButtonElement>())
+        {
+            DrawButton(canvas, button, viewportTransform);
+        }
     }
 
     private void DrawArtwork(SKCanvas canvas, FaceArtworkElement element, PanelViewportTransform viewport)
@@ -94,6 +99,37 @@ public sealed class Face2DRenderer : IFace2DRenderer
         using var strokePaint = new SKPaint { Style = SKPaintStyle.Stroke, Color = strokeColor, StrokeWidth = (float)(1.5d / viewport.NormalizedZoom), IsAntialias = true };
         canvas.DrawRect(rect, fillPaint);
         canvas.DrawRect(rect, strokePaint);
+    }
+
+    private static void DrawButton(SKCanvas canvas, FaceButtonElement element, PanelViewportTransform viewport)
+    {
+        var rect = ToRect(element);
+        if (rect.Width <= 0f || rect.Height <= 0f)
+        {
+            return;
+        }
+
+        if (!element.IsVisible)
+        {
+            using var hiddenPaint = new SKPaint { Style = SKPaintStyle.Stroke, Color = new SKColor(0x80, 0x80, 0x80), StrokeWidth = (float)(1d / viewport.NormalizedZoom), IsAntialias = true };
+            canvas.DrawRoundRect(rect, 6f, 6f, hiddenPaint);
+            return;
+        }
+
+        var hasInput = FaceInputTargetResolver.TryGetInputReference(element, out _);
+        var fillColor = hasInput
+            ? new SKColor(0x2E, 0x7D, 0x32, 0xD8)
+            : new SKColor(0x55, 0x55, 0x55, 0xC8);
+        var strokeColor = element.IsLocked
+            ? new SKColor(0x9E, 0x9E, 0x9E, 0xF0)
+            : hasInput
+                ? new SKColor(0x81, 0xC7, 0x84, 0xFF)
+                : new SKColor(0xCC, 0xCC, 0xCC, 0xE8);
+
+        using var fillPaint = new SKPaint { Style = SKPaintStyle.Fill, Color = fillColor, IsAntialias = true };
+        using var strokePaint = new SKPaint { Style = SKPaintStyle.Stroke, Color = strokeColor, StrokeWidth = (float)(1.5d / viewport.NormalizedZoom), IsAntialias = true };
+        canvas.DrawRoundRect(rect, 6f, 6f, fillPaint);
+        canvas.DrawRoundRect(rect, 6f, 6f, strokePaint);
     }
 
     private bool TryGetArtworkImage(string? assetPath, out SKImage image)

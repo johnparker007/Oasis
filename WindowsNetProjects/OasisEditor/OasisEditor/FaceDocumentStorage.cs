@@ -43,6 +43,12 @@ public static class FaceDocumentStorage
                     Id = "layer-lamp-windows",
                     Name = "Lamp Windows",
                     IsVisible = true
+                },
+                new FaceLayerFile
+                {
+                    Id = "layer-buttons",
+                    Name = "Buttons",
+                    IsVisible = true
                 }
             ],
             Elements = []
@@ -218,8 +224,9 @@ public static class FaceDocumentStorage
             reference = parsedReference;
         }
 
-        return string.Equals(file.Kind, "artwork", StringComparison.OrdinalIgnoreCase)
-            ? new FaceArtworkElement
+        if (string.Equals(file.Kind, "artwork", StringComparison.OrdinalIgnoreCase))
+        {
+            return new FaceArtworkElement
             {
                 ObjectId = file.ObjectId ?? string.Empty,
                 Name = file.Name ?? string.Empty,
@@ -235,8 +242,29 @@ public static class FaceDocumentStorage
                 SourcePanel2DDocumentId = file.SourcePanel2DDocumentId,
                 SourceRegion = ToModel(file.SourceRegion),
                 Provenance = ToModel(file.ArtworkProvenance)
-            }
-            : new FaceLampWindowElement
+            };
+        }
+
+        if (string.Equals(file.Kind, "button", StringComparison.OrdinalIgnoreCase))
+        {
+            var linkedInputReference = ResolveInputReference(file.LinkedInputReference, reference);
+            return new FaceButtonElement
+            {
+                ObjectId = file.ObjectId ?? string.Empty,
+                Name = file.Name ?? string.Empty,
+                X = file.X,
+                Y = file.Y,
+                Width = file.Width,
+                Height = file.Height,
+                IsVisible = file.IsVisible,
+                IsLocked = file.IsLocked,
+                LinkedMachineObjectReference = linkedInputReference?.Reference ?? reference,
+                LinkedPanel2DElementId = file.LinkedPanel2DElementId,
+                LinkedInputReference = linkedInputReference
+            };
+        }
+
+        return new FaceLampWindowElement
         {
             ObjectId = file.ObjectId ?? string.Empty,
             Name = file.Name ?? string.Empty,
@@ -249,6 +277,24 @@ public static class FaceDocumentStorage
             LinkedMachineObjectReference = reference,
             LinkedPanel2DElementId = file.LinkedPanel2DElementId
         };
+    }
+
+    private static MachineInputReference? ResolveInputReference(string? linkedInputReference, MachineObjectReference? linkedMachineObjectReference)
+    {
+        if (MachineObjectReference.TryParse(linkedInputReference, out var parsedInputReference)
+            && parsedInputReference.Kind == MachineObjectKind.Input)
+        {
+            return new MachineInputReference(parsedInputReference);
+        }
+
+        if (linkedMachineObjectReference is MachineObjectReference reference
+            && reference.Kind == MachineObjectKind.Input
+            && !reference.IsEmpty)
+        {
+            return new MachineInputReference(reference);
+        }
+
+        return null;
     }
 
     private static FaceArtworkProvenanceModel? ToModel(FaceArtworkProvenanceFile? file)
@@ -278,6 +324,7 @@ public static class FaceDocumentStorage
             Kind = model switch
             {
                 FaceArtworkElement => "artwork",
+                FaceButtonElement => "button",
                 FaceLampWindowElement => "lampWindow",
                 _ => "unknown"
             },
@@ -289,6 +336,7 @@ public static class FaceDocumentStorage
             IsLocked = model.IsLocked,
             LinkedMachineObjectReference = model.LinkedMachineObjectReference?.ToString(),
             LinkedPanel2DElementId = model.LinkedPanel2DElementId,
+            LinkedInputReference = model is FaceButtonElement button ? button.LinkedInputReference?.ToString() : null,
             AssetPath = model is FaceArtworkElement artwork ? artwork.AssetPath : null,
             SourcePanel2DDocumentId = model is FaceArtworkElement artworkSource ? artworkSource.SourcePanel2DDocumentId : null,
             SourceRegion = model is FaceArtworkElement artworkRegion ? ToFile(artworkRegion.SourceRegion) : null,
@@ -358,6 +406,7 @@ public sealed record FaceElementFile
     public bool IsLocked { get; init; }
     public string? LinkedMachineObjectReference { get; init; }
     public string? LinkedPanel2DElementId { get; init; }
+    public string? LinkedInputReference { get; init; }
     public string? AssetPath { get; init; }
     public string? SourcePanel2DDocumentId { get; init; }
     public FaceSourceRegionFile? SourceRegion { get; init; }

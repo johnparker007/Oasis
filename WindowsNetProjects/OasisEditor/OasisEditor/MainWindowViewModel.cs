@@ -83,6 +83,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private PlayViewInputRouter? _playViewInputRouter;
     private PlayViewKeyboardInputRouter? _playViewKeyboardInputRouter;
     private PlayViewPointerInputRouter? _playViewPointerInputRouter;
+    private FacePlayViewPointerInputRouter? _facePlayViewPointerInputRouter;
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<EditorToolWindowId>? ToolWindowOpenRequested;
@@ -1360,6 +1361,35 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         return router.TryHandlePointerUpAsync(SelectedFruitMachinePlatform, visualElementId, isFocused, cancellationToken);
     }
 
+    public async Task<bool> TryHandleFacePlayViewPointerDownAsync(MachineInputReference inputReference, bool isFocused, CancellationToken cancellationToken)
+    {
+        var canRoute = EnsurePlayViewInputRouter();
+        var router = EnsureFacePlayViewPointerInputRouter();
+        if (router is null)
+        {
+            return false;
+        }
+
+        var handled = await router.TryHandlePointerDownAsync(SelectedFruitMachinePlatform, inputReference, isFocused, cancellationToken).ConfigureAwait(false);
+        if (!handled && canRoute && isFocused)
+        {
+            AddOutputEntry($"Face Play View pointer input unresolved for machine input '{inputReference}' on platform '{SelectedFruitMachinePlatform}'.", OutputLogStatus.Warning);
+        }
+
+        return handled;
+    }
+
+    public Task<bool> TryHandleFacePlayViewPointerUpAsync(MachineInputReference inputReference, bool isFocused, CancellationToken cancellationToken)
+    {
+        var router = EnsureFacePlayViewPointerInputRouter();
+        if (router is null)
+        {
+            return Task.FromResult(false);
+        }
+
+        return router.TryHandlePointerUpAsync(SelectedFruitMachinePlatform, inputReference, isFocused, cancellationToken);
+    }
+
     public Task<int> ReleaseAllPlayViewInputsAsync(string reason, CancellationToken cancellationToken)
     {
         return ReleaseAllPlayViewInputsCoreAsync(reason, cancellationToken);
@@ -1374,6 +1404,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         EnsurePlayViewKeyboardInputRouter();
         EnsurePlayViewPointerInputRouter();
+        EnsureFacePlayViewPointerInputRouter();
 
         var byInputId = (LoadedProject?.InputDefinitions ?? [])
             .Where(definition => !string.IsNullOrWhiteSpace(definition.Id))
@@ -1407,6 +1438,17 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         _playViewPointerInputRouter ??= new PlayViewPointerInputRouter(_playViewInputRouter!, LoadedProject?.InputDefinitions ?? []);
         return _playViewPointerInputRouter;
+    }
+
+    private FacePlayViewPointerInputRouter? EnsureFacePlayViewPointerInputRouter()
+    {
+        if (!EnsurePlayViewInputRouter())
+        {
+            return null;
+        }
+
+        _facePlayViewPointerInputRouter ??= new FacePlayViewPointerInputRouter(_playViewInputRouter!, LoadedProject?.InputDefinitions ?? []);
+        return _facePlayViewPointerInputRouter;
     }
 
     private bool EnsurePlayViewInputRouter()

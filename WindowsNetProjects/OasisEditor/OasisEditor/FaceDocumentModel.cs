@@ -54,3 +54,8 @@ public sealed class FaceArtworkProvenanceModel
 public sealed class FaceLampWindowElement : FaceElementModel
 {
 }
+
+public sealed class FaceButtonElement : FaceElementModel
+{
+    public MachineInputReference? LinkedInputReference { get; init; }
+}
