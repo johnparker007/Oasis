@@ -205,7 +205,7 @@ public sealed class TrayIdTextureGenerator
             {
                 for (var x = bounds.Left; x < bounds.Right; x++)
                 {
-                    trayBitmap.SetPixel(x, y, new SKColor((byte)tray.TrayId, 0, 0, 0));
+                    trayBitmap.SetPixel(x, y, new SKColor((byte)tray.TrayId, 0, 0, 255));
                     debugBitmap.SetPixel(x, y, debugColor);
                 }
             }
@@ -270,8 +270,8 @@ public sealed class LampInfluenceTextureGenerator
             {
                 for (var x = bounds.Left; x < bounds.Right; x++)
                 {
-                    idsBitmap.SetPixel(x, y, new SKColor((byte)lampId, 0, 0, 0));
-                    weightsBitmap.SetPixel(x, y, new SKColor(255, 0, 0, 0));
+                    idsBitmap.SetPixel(x, y, new SKColor((byte)lampId, 0, 0, 255));
+                    weightsBitmap.SetPixel(x, y, new SKColor(255, 0, 0, 255));
                     debugBitmap.SetPixel(x, y, SKColors.White);
                 }
             }
