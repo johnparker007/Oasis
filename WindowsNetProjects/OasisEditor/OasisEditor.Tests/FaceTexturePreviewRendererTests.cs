@@ -53,7 +53,7 @@ public sealed class FaceTexturePreviewRendererTests : IDisposable
         var runtimeState = new MachineRuntimeState();
         runtimeState.SetLampIntensityIfChanged(MachineObjectReference.Lamp(7), 1d);
 
-        using var result = renderer.Render(CreateDocument(), runtimeState);
+        using var result = renderer.Render(CreateDocument(width: 1, height: 1), runtimeState);
 
         Assert.True(result.Rendered);
         Assert.NotNull(result.Bitmap);
@@ -74,7 +74,7 @@ public sealed class FaceTexturePreviewRendererTests : IDisposable
         WriteSolidPng("lampWeights0.png", 1, 1, new SKColor(255, 0, 0, 255));
         var renderer = CreateRenderer();
 
-        using var result = renderer.Render(CreateDocument(), new MachineRuntimeState());
+        using var result = renderer.Render(CreateDocument(width: 1, height: 1), new MachineRuntimeState());
 
         Assert.True(result.Rendered);
         Assert.NotNull(result.Bitmap);
