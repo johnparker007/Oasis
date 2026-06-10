@@ -29,20 +29,13 @@ public sealed class FaceRuntimeTextureGenerator
 
         var emitters = CreateTemporaryEmitters(faceDocument).ToArray();
         ValidateLampIds(emitters);
+        var lampWindowsById = faceDocument.Elements
+            .OfType<FaceLampWindowElement>()
+            .Where(element => IsValidVisibleLampWindow(element) && !string.IsNullOrWhiteSpace(element.ObjectId))
+            .GroupBy(element => element.ObjectId, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
         var trays = emitters
-            .Select(emitter => new FaceRuntimeTrayElement
-            {
-                TrayId = emitter.TrayId,
-                ObjectId = CreateTemporaryTrayObjectId(emitter),
-                SourceLampWindowObjectId = emitter.SourceLampWindowObjectId,
-                Name = string.IsNullOrWhiteSpace(emitter.Name) ? $"Tray {emitter.TrayId}" : emitter.Name,
-                X = emitter.X,
-                Y = emitter.Y,
-                Width = emitter.Width,
-                Height = emitter.Height,
-                LampEmitterObjectId = emitter.ObjectId,
-                LampId = emitter.LampId
-            })
+            .Select(emitter => CreateTemporaryTray(emitter, lampWindowsById, faceDocument.MaskLayer))
             .ToArray();
 
         ValidateTrayOwnership(trays, width, height);
@@ -77,6 +70,77 @@ public sealed class FaceRuntimeTextureGenerator
             lampWeights0Path,
             trayIdDebugPath,
             lampWeightsDebugPath);
+    }
+
+
+    private static FaceRuntimeTrayElement CreateTemporaryTray(
+        FaceLampEmitterElement emitter,
+        IReadOnlyDictionary<string, FaceLampWindowElement> lampWindowsById,
+        FaceMaskLayerModel? maskLayer)
+    {
+        var bounds = ResolveTemporaryTrayBounds(emitter, lampWindowsById, maskLayer);
+        return new FaceRuntimeTrayElement
+        {
+            TrayId = emitter.TrayId,
+            ObjectId = CreateTemporaryTrayObjectId(emitter),
+            SourceLampWindowObjectId = emitter.SourceLampWindowObjectId,
+            Name = string.IsNullOrWhiteSpace(emitter.Name) ? $"Tray {emitter.TrayId}" : emitter.Name,
+            X = bounds.X,
+            Y = bounds.Y,
+            Width = bounds.Width,
+            Height = bounds.Height,
+            LampEmitterObjectId = emitter.ObjectId,
+            LampId = emitter.LampId
+        };
+    }
+
+    private static RuntimeRect ResolveTemporaryTrayBounds(
+        FaceLampEmitterElement emitter,
+        IReadOnlyDictionary<string, FaceLampWindowElement> lampWindowsById,
+        FaceMaskLayerModel? maskLayer)
+    {
+        if (lampWindowsById.TryGetValue(emitter.SourceLampWindowObjectId, out var lampWindow))
+        {
+            var contribution = FindMaskContribution(lampWindow, maskLayer);
+            if (contribution?.Bounds is { IsValid: true } contributionBounds)
+            {
+                return new RuntimeRect(
+                    contributionBounds.X,
+                    contributionBounds.Y,
+                    contributionBounds.Width,
+                    contributionBounds.Height);
+            }
+        }
+
+        return new RuntimeRect(emitter.X, emitter.Y, emitter.Width, emitter.Height);
+    }
+
+    private static FaceMaskContributionModel? FindMaskContribution(FaceLampWindowElement lampWindow, FaceMaskLayerModel? maskLayer)
+    {
+        if (maskLayer is null)
+        {
+            return null;
+        }
+
+        if (!string.IsNullOrWhiteSpace(lampWindow.LinkedPanel2DElementId))
+        {
+            var linkedPanelElementId = lampWindow.LinkedPanel2DElementId.Trim();
+            var contribution = maskLayer.Contributions.FirstOrDefault(candidate =>
+                string.Equals(candidate.SourcePanel2DElementId, linkedPanelElementId, StringComparison.Ordinal));
+            if (contribution is not null)
+            {
+                return contribution;
+            }
+        }
+
+        var reference = lampWindow.LinkedMachineObjectReference?.ToString();
+        if (string.IsNullOrWhiteSpace(reference))
+        {
+            return null;
+        }
+
+        return maskLayer.Contributions.FirstOrDefault(candidate =>
+            string.Equals(candidate.LinkedMachineObjectReference?.ToString(), reference, StringComparison.Ordinal));
     }
 
     public static IEnumerable<FaceLampEmitterElement> CreateTemporaryEmitters(FaceDocumentModel faceDocument)
@@ -324,6 +388,8 @@ public sealed class FaceRuntimeTrayElement
     public string LampEmitterObjectId { get; init; } = string.Empty;
     public int? LampId { get; init; }
 }
+
+internal readonly record struct RuntimeRect(double X, double Y, double Width, double Height);
 
 internal readonly record struct RasterBounds(int Left, int Top, int Right, int Bottom)
 {

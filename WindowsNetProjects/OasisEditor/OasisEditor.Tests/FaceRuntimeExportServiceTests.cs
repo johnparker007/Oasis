@@ -218,6 +218,84 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         Assert.Equal(255, weightDebug.GetPixel(1, 1).Red);
     }
 
+
+    [Fact]
+    public void CreatePlan_UsesMaskContributionBoundsForTemporaryTrayOwnership()
+    {
+        var document = new FaceDocumentModel
+        {
+            Id = "face-runtime",
+            Title = "Runtime Face",
+            SourceRegion = new FaceSourceRegionModel { X = 0, Y = 0, Width = 4, Height = 4 },
+            MaskLayer = new FaceMaskLayerModel
+            {
+                Width = 4,
+                Height = 4,
+                Contributions =
+                [
+                    new FaceMaskContributionModel
+                    {
+                        SourcePanel2DElementId = "panel-a",
+                        LinkedMachineObjectReference = MachineObjectReference.Lamp(1),
+                        Bounds = new FaceSourceRegionModel { X = 0, Y = 0, Width = 1, Height = 1 },
+                        PixelCount = 1
+                    },
+                    new FaceMaskContributionModel
+                    {
+                        SourcePanel2DElementId = "panel-b",
+                        LinkedMachineObjectReference = MachineObjectReference.Lamp(2),
+                        Bounds = new FaceSourceRegionModel { X = 2, Y = 2, Width = 1, Height = 1 },
+                        PixelCount = 1
+                    }
+                ]
+            },
+            Elements =
+            [
+                new FaceLampWindowElement
+                {
+                    ObjectId = "a",
+                    Name = "A",
+                    X = 0,
+                    Y = 0,
+                    Width = 3,
+                    Height = 3,
+                    LinkedMachineObjectReference = MachineObjectReference.Lamp(1),
+                    LinkedPanel2DElementId = "panel-a"
+                },
+                new FaceLampWindowElement
+                {
+                    ObjectId = "b",
+                    Name = "B",
+                    X = 1,
+                    Y = 1,
+                    Width = 3,
+                    Height = 3,
+                    LinkedMachineObjectReference = MachineObjectReference.Lamp(2),
+                    LinkedPanel2DElementId = "panel-b"
+                }
+            ]
+        };
+
+        var plan = new FaceRuntimeTextureGenerator().CreatePlan(document, 4, 4);
+
+        Assert.Collection(
+            plan.Trays,
+            tray =>
+            {
+                Assert.Equal(0, tray.X);
+                Assert.Equal(0, tray.Y);
+                Assert.Equal(1, tray.Width);
+                Assert.Equal(1, tray.Height);
+            },
+            tray =>
+            {
+                Assert.Equal(2, tray.X);
+                Assert.Equal(2, tray.Y);
+                Assert.Equal(1, tray.Width);
+                Assert.Equal(1, tray.Height);
+            });
+    }
+
     [Fact]
     public void CreatePlan_WithOverlappingTemporaryTrays_ThrowsValidationError()
     {
