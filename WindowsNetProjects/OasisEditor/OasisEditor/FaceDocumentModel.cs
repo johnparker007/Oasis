@@ -24,6 +24,8 @@ public sealed class FaceRuntimeRenderAssetsModel
     public string? LampWeights0Path { get; init; }
     public string? LampIds1Path { get; init; }
     public string? LampWeights1Path { get; init; }
+    public string? TrayIdDebugPath { get; init; }
+    public string? LampWeightsDebugPath { get; init; }
     public int Width { get; init; }
     public int Height { get; init; }
     public DateTime GeneratedUtc { get; init; }
@@ -93,6 +95,15 @@ public sealed class FaceArtworkProvenanceModel
 
 public sealed class FaceLampWindowElement : FaceElementModel
 {
+}
+
+public sealed class FaceLampEmitterElement : FaceElementModel
+{
+    public string SourceLampWindowObjectId { get; init; } = string.Empty;
+    public int TrayId { get; init; }
+    public int? LampId { get; init; }
+    public double CenterX { get; init; }
+    public double CenterY { get; init; }
 }
 
 public sealed class FaceReelDisplayElement : FaceElementModel
