@@ -107,6 +107,112 @@ public sealed class FaceTexturePreviewRendererTests : IDisposable
         Assert.Equal(127, result.Bitmap.GetPixel(1, 0).Alpha);
     }
 
+
+    [Fact]
+    public void Render_ReusesDecodedTextureCacheOnSecondFrame()
+    {
+        WriteSolidPng("artwork.png", 1, 1, new SKColor(100, 40, 20, 255));
+        WriteSolidPng("mask.png", 1, 1, SKColors.White);
+        WriteSolidPng("trayId.png", 1, 1, new SKColor(1, 0, 0, 255));
+        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(7, 0, 0, 255));
+        WriteSolidPng("lampWeights0.png", 1, 1, new SKColor(255, 0, 0, 255));
+        var renderer = CreateRenderer();
+        var runtimeState = new MachineRuntimeState();
+
+        using var first = renderer.Render(CreateDocument(width: 1, height: 1), runtimeState);
+        using var second = renderer.Render(CreateDocument(width: 1, height: 1), runtimeState);
+
+        Assert.True(first.Rendered);
+        Assert.True(second.Rendered);
+        Assert.True(renderer.LastDiagnostics.ReusedTextureCache);
+    }
+
+    [Fact]
+    public void Render_InvalidatesTextureCacheWhenAssetPathChanges()
+    {
+        WriteSolidPng("artwork.png", 1, 1, new SKColor(100, 40, 20, 255));
+        WriteSolidPng("artwork-other.png", 1, 1, new SKColor(200, 80, 40, 255));
+        WriteSolidPng("mask.png", 1, 1, SKColors.White);
+        WriteSolidPng("trayId.png", 1, 1, new SKColor(1, 0, 0, 255));
+        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(7, 0, 0, 255));
+        WriteSolidPng("lampWeights0.png", 1, 1, new SKColor(255, 0, 0, 255));
+        var renderer = CreateRenderer();
+
+        using var first = renderer.Render(CreateDocument(width: 1, height: 1), new MachineRuntimeState());
+        using var second = renderer.Render(CreateDocument(width: 1, height: 1, artworkPath: "artwork-other.png"), new MachineRuntimeState());
+
+        Assert.True(first.Rendered);
+        Assert.True(second.Rendered);
+        Assert.False(renderer.LastDiagnostics.ReusedTextureCache);
+        Assert.Equal(50, second.Bitmap!.GetPixel(0, 0).Red);
+    }
+
+    [Fact]
+    public void Render_InvalidatesTextureCacheWhenDimensionsChange()
+    {
+        WriteSolidPng("artwork.png", 2, 1, new SKColor(100, 40, 20, 255));
+        WriteSolidPng("mask.png", 2, 1, SKColors.White);
+        WriteSolidPng("trayId.png", 2, 1, new SKColor(1, 0, 0, 255));
+        WriteSolidPng("lampIds0.png", 2, 1, new SKColor(7, 0, 0, 255));
+        WriteSolidPng("lampWeights0.png", 2, 1, new SKColor(255, 0, 0, 255));
+        var renderer = CreateRenderer();
+
+        using var first = renderer.Render(CreateDocument(width: 2, height: 1), new MachineRuntimeState());
+        using var second = renderer.Render(CreateDocument(width: 1, height: 1), new MachineRuntimeState());
+
+        Assert.True(first.Rendered);
+        Assert.False(second.Rendered);
+        Assert.Contains("dimension mismatch", second.FallbackReason);
+    }
+
+    [Fact]
+    public void Render_UsesLampLookupTableForConfiguredChannels()
+    {
+        WriteSolidPng("artwork.png", 1, 1, new SKColor(100, 40, 20, 255));
+        WriteSolidPng("mask.png", 1, 1, SKColors.White);
+        WriteSolidPng("trayId.png", 1, 1, new SKColor(1, 0, 0, 255));
+        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(7, 8, 0, 255));
+        WriteSolidPng("lampWeights0.png", 1, 1, new SKColor(128, 128, 0, 255));
+        var renderer = new FaceTexturePreviewRenderer(
+            path => string.IsNullOrWhiteSpace(path) ? null : Path.Combine(_testDirectory, path),
+            new FaceTexturePreviewSettings
+            {
+                AmbientStrength = 0.25d,
+                EmissionStrength = 1d,
+                MaskStrength = 1d,
+                LampIds0ChannelCount = 2
+            });
+        var runtimeState = new MachineRuntimeState();
+        runtimeState.SetLampIntensityIfChanged(MachineObjectReference.Lamp(7), 1d);
+        runtimeState.SetLampIntensityIfChanged(MachineObjectReference.Lamp(8), 1d);
+
+        using var result = renderer.Render(CreateDocument(width: 1, height: 1), runtimeState);
+
+        Assert.True(result.Rendered);
+        Assert.Equal(125, result.Bitmap!.GetPixel(0, 0).Red);
+    }
+
+    [Fact]
+    public void Render_ReusesCompositionWhenLampStateIsUnchanged()
+    {
+        WriteSolidPng("artwork.png", 1, 1, new SKColor(100, 40, 20, 255));
+        WriteSolidPng("mask.png", 1, 1, SKColors.White);
+        WriteSolidPng("trayId.png", 1, 1, new SKColor(1, 0, 0, 255));
+        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(7, 0, 0, 255));
+        WriteSolidPng("lampWeights0.png", 1, 1, new SKColor(255, 0, 0, 255));
+        var renderer = CreateRenderer();
+        var runtimeState = new MachineRuntimeState();
+        runtimeState.SetLampIntensityIfChanged(MachineObjectReference.Lamp(7), 1d);
+
+        using var first = renderer.Render(CreateDocument(width: 1, height: 1), runtimeState);
+        using var second = renderer.Render(CreateDocument(width: 1, height: 1), runtimeState);
+
+        Assert.True(first.Rendered);
+        Assert.True(second.Rendered);
+        Assert.True(renderer.LastDiagnostics.ReusedComposition);
+        Assert.Same(first.Bitmap, second.Bitmap);
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_testDirectory))
@@ -127,13 +233,13 @@ public sealed class FaceTexturePreviewRendererTests : IDisposable
             });
     }
 
-    private static FaceDocumentModel CreateDocument(int width = 2, int height = 2)
+    private static FaceDocumentModel CreateDocument(int width = 2, int height = 2, string artworkPath = "artwork.png")
     {
         return new FaceDocumentModel
         {
             RuntimeRenderAssets = new FaceRuntimeRenderAssetsModel
             {
-                ArtworkPath = "artwork.png",
+                ArtworkPath = artworkPath,
                 MaskPath = "mask.png",
                 TrayIdPath = "trayId.png",
                 LampIds0Path = "lampIds0.png",

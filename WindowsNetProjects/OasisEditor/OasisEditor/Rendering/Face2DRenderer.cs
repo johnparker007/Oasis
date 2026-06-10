@@ -43,14 +43,13 @@ public sealed class Face2DRenderer : IFace2DRenderer
         ArgumentNullException.ThrowIfNull(runtimeState);
 
         var elements = faceDocument.Elements;
-
-        foreach (var artwork in elements.OfType<FaceArtworkElement>())
-        {
-            DrawArtwork(canvas, artwork, viewportTransform);
-        }
-
         if (!TryDrawTextureDrivenLampPreview(canvas, faceDocument, runtimeState))
         {
+            foreach (var artwork in elements.OfType<FaceArtworkElement>())
+            {
+                DrawArtwork(canvas, artwork, viewportTransform);
+            }
+
             DrawLampIllumination(canvas, faceDocument.MaskLayer, elements.OfType<FaceLampWindowElement>(), runtimeState);
         }
 
@@ -91,8 +90,10 @@ public sealed class Face2DRenderer : IFace2DRenderer
         }
 
         LastTexturePreviewFallbackReason = null;
-        using var image = SKImage.FromBitmap(result.Bitmap);
-        canvas.DrawImage(image, SKRect.Create(0f, 0f, image.Width, image.Height));
+        var drawStopwatch = Stopwatch.StartNew();
+        canvas.DrawBitmap(result.Bitmap, SKRect.Create(0f, 0f, result.Bitmap.Width, result.Bitmap.Height));
+        drawStopwatch.Stop();
+        Trace.WriteLineIf(drawStopwatch.ElapsedMilliseconds > 16, $"Face texture-driven preview cached draw took {drawStopwatch.Elapsed.TotalMilliseconds:0.00} ms");
         return true;
     }
 
