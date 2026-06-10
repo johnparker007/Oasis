@@ -297,14 +297,39 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
     }
 
     [Fact]
-    public void CreatePlan_WithOverlappingTemporaryTrays_ThrowsValidationError()
+    public void CreatePlan_WithOverlappingTemporaryTrays_RecordsValidationOverlap()
     {
         var document = CreateDocumentWithLampWindows(
             new FaceLampWindowElement { ObjectId = "a", Name = "A", X = 0, Y = 0, Width = 2, Height = 2, LinkedMachineObjectReference = MachineObjectReference.Lamp(1) },
             new FaceLampWindowElement { ObjectId = "b", Name = "B", X = 1, Y = 1, Width = 2, Height = 2, LinkedMachineObjectReference = MachineObjectReference.Lamp(2) });
 
-        var exception = Assert.Throws<InvalidOperationException>(() => new FaceRuntimeTextureGenerator().CreatePlan(document, 4, 4));
-        Assert.Contains("overlap", exception.Message, StringComparison.OrdinalIgnoreCase);
+        var plan = new FaceRuntimeTextureGenerator().CreatePlan(document, 4, 4);
+
+        var overlap = Assert.Single(plan.Overlaps);
+        Assert.Equal(1, overlap.X);
+        Assert.Equal(1, overlap.Y);
+        Assert.Equal(1, overlap.ExistingTrayId);
+        Assert.Equal(2, overlap.OverlappingTrayId);
+    }
+
+
+    [Fact]
+    public void Generate_WithOverlappingTemporaryTrays_UsesFirstTrayOwnership()
+    {
+        var outputDirectory = Path.Combine(_generatedDirectory, "overlap-texture-test");
+        var document = CreateDocumentWithLampWindows(
+            new FaceLampWindowElement { ObjectId = "a", Name = "A", X = 0, Y = 0, Width = 2, Height = 2, LinkedMachineObjectReference = MachineObjectReference.Lamp(1) },
+            new FaceLampWindowElement { ObjectId = "b", Name = "B", X = 1, Y = 1, Width = 2, Height = 2, LinkedMachineObjectReference = MachineObjectReference.Lamp(2) });
+
+        new FaceRuntimeTextureGenerator().Generate(document, 4, 4, outputDirectory);
+
+        using var trayId = SKBitmap.Decode(Path.Combine(outputDirectory, "trayId.png"));
+        using var lampIds0 = SKBitmap.Decode(Path.Combine(outputDirectory, "lampIds0.png"));
+
+        Assert.Equal(1, trayId.GetPixel(1, 1).Red);
+        Assert.Equal(1, lampIds0.GetPixel(1, 1).Red);
+        Assert.Equal(2, trayId.GetPixel(2, 2).Red);
+        Assert.Equal(2, lampIds0.GetPixel(2, 2).Red);
     }
 
     [Fact]

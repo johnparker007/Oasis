@@ -38,9 +38,9 @@ public sealed class FaceRuntimeTextureGenerator
             .Select(emitter => CreateTemporaryTray(emitter, lampWindowsById, faceDocument.MaskLayer))
             .ToArray();
 
-        ValidateTrayOwnership(trays, width, height);
+        var overlaps = DetectTrayOwnershipOverlaps(trays, width, height);
 
-        return new FaceRuntimeTextureGenerationPlan(width, height, trays, emitters);
+        return new FaceRuntimeTextureGenerationPlan(width, height, trays, emitters, overlaps);
     }
 
     public FaceRuntimeTextureGenerationResult Generate(FaceDocumentModel faceDocument, int width, int height, string outputDirectory)
@@ -196,8 +196,10 @@ public sealed class FaceRuntimeTextureGenerator
         }
     }
 
-    private static void ValidateTrayOwnership(IReadOnlyList<FaceRuntimeTrayElement> trays, int width, int height)
+    private static IReadOnlyList<FaceRuntimeTrayOverlap> DetectTrayOwnershipOverlaps(IReadOnlyList<FaceRuntimeTrayElement> trays, int width, int height)
     {
+        const int maxRecordedOverlaps = 100;
+        var overlaps = new List<FaceRuntimeTrayOverlap>();
         var ownership = new int[width * height];
         foreach (var tray in trays)
         {
@@ -210,13 +212,20 @@ public sealed class FaceRuntimeTextureGenerator
                     var existing = ownership[index];
                     if (existing != 0)
                     {
-                        throw new InvalidOperationException($"Face runtime tray ownership overlap detected at pixel ({x}, {y}) between tray {existing} and tray {tray.TrayId}.");
+                        if (overlaps.Count < maxRecordedOverlaps)
+                        {
+                            overlaps.Add(new FaceRuntimeTrayOverlap(x, y, existing, tray.TrayId));
+                        }
+
+                        continue;
                     }
 
                     ownership[index] = tray.TrayId;
                 }
             }
         }
+
+        return overlaps;
     }
 
     private static bool IsValidVisibleLampWindow(FaceLampWindowElement element)
@@ -261,6 +270,7 @@ public sealed class TrayIdTextureGenerator
         trayBitmap.Erase(SKColors.Transparent);
         debugBitmap.Erase(SKColors.Transparent);
 
+        var ownership = new int[width * height];
         foreach (var tray in trays)
         {
             var bounds = RasterBounds.FromElement(tray, width, height);
@@ -269,6 +279,13 @@ public sealed class TrayIdTextureGenerator
             {
                 for (var x = bounds.Left; x < bounds.Right; x++)
                 {
+                    var index = (y * width) + x;
+                    if (ownership[index] != 0)
+                    {
+                        continue;
+                    }
+
+                    ownership[index] = tray.TrayId;
                     trayBitmap.SetPixel(x, y, new SKColor((byte)tray.TrayId, 0, 0, 255));
                     debugBitmap.SetPixel(x, y, debugColor);
                 }
@@ -322,6 +339,7 @@ public sealed class LampInfluenceTextureGenerator
         weightsBitmap.Erase(SKColors.Transparent);
         debugBitmap.Erase(SKColors.Transparent);
 
+        var ownership = new int[width * height];
         foreach (var tray in trays)
         {
             if (!emittersByTray.TryGetValue(tray.TrayId, out var emitter) || emitter.LampId is not int lampId)
@@ -334,6 +352,13 @@ public sealed class LampInfluenceTextureGenerator
             {
                 for (var x = bounds.Left; x < bounds.Right; x++)
                 {
+                    var index = (y * width) + x;
+                    if (ownership[index] != 0)
+                    {
+                        continue;
+                    }
+
+                    ownership[index] = tray.TrayId;
                     idsBitmap.SetPixel(x, y, new SKColor((byte)lampId, 0, 0, 255));
                     weightsBitmap.SetPixel(x, y, new SKColor(255, 0, 0, 255));
                     debugBitmap.SetPixel(x, y, SKColors.White);
@@ -365,7 +390,10 @@ public sealed record FaceRuntimeTextureGenerationPlan(
     int Width,
     int Height,
     IReadOnlyList<FaceRuntimeTrayElement> Trays,
-    IReadOnlyList<FaceLampEmitterElement> Emitters);
+    IReadOnlyList<FaceLampEmitterElement> Emitters,
+    IReadOnlyList<FaceRuntimeTrayOverlap> Overlaps);
+
+public sealed record FaceRuntimeTrayOverlap(int X, int Y, int ExistingTrayId, int OverlappingTrayId);
 
 public sealed record FaceRuntimeTextureGenerationResult(
     FaceRuntimeTextureGenerationPlan Plan,
