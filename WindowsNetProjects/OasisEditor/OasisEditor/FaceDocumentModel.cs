@@ -8,9 +8,25 @@ public sealed class FaceDocumentModel
     public string? SourcePanel2DDocumentId { get; init; }
     public FaceSourceRegionModel? SourceRegion { get; init; }
     public DateTime? LastRegeneratedAtUtc { get; init; }
+    public FaceRuntimeRenderAssetsModel? RuntimeRenderAssets { get; init; }
     public FaceMaskLayerModel? MaskLayer { get; init; }
     public IReadOnlyList<FaceLayerModel> Layers { get; init; } = [];
     public IReadOnlyList<FaceElementModel> Elements { get; init; } = [];
+}
+
+public sealed class FaceRuntimeRenderAssetsModel
+{
+    public string? ManifestPath { get; init; }
+    public string? ArtworkPath { get; init; }
+    public string? MaskPath { get; init; }
+    public string? TrayIdPath { get; init; }
+    public string? LampIds0Path { get; init; }
+    public string? LampWeights0Path { get; init; }
+    public string? LampIds1Path { get; init; }
+    public string? LampWeights1Path { get; init; }
+    public int Width { get; init; }
+    public int Height { get; init; }
+    public DateTime GeneratedUtc { get; init; }
 }
 
 public sealed class FaceMaskLayerModel
