@@ -125,17 +125,32 @@ public sealed class FaceTexturePreviewRenderer : IFaceTexturePreviewRenderer
             return false;
         }
 
-        if (!TryLoadTexture(assets.ArtworkPath, "artwork", out var artwork, out fallbackReason)
-            || !TryLoadTexture(assets.MaskPath, "mask", out var mask, out fallbackReason)
-            || !TryLoadTexture(assets.TrayIdPath, "trayId", out var trayId, out fallbackReason)
-            || !TryLoadTexture(assets.LampIds0Path, "lampIds0", out var lampIds0, out fallbackReason)
-            || !TryLoadTexture(assets.LampWeights0Path, "lampWeights0", out var lampWeights0, out fallbackReason))
+        if (!TryLoadTexture(assets.ArtworkPath, "artwork", out var artwork, out fallbackReason))
         {
-            artwork?.Dispose();
-            mask?.Dispose();
-            trayId?.Dispose();
-            lampIds0?.Dispose();
-            lampWeights0?.Dispose();
+            return false;
+        }
+
+        if (!TryLoadTexture(assets.MaskPath, "mask", out var mask, out fallbackReason))
+        {
+            artwork.Dispose();
+            return false;
+        }
+
+        if (!TryLoadTexture(assets.TrayIdPath, "trayId", out var trayId, out fallbackReason))
+        {
+            DisposeAll(artwork, mask);
+            return false;
+        }
+
+        if (!TryLoadTexture(assets.LampIds0Path, "lampIds0", out var lampIds0, out fallbackReason))
+        {
+            DisposeAll(artwork, mask, trayId);
+            return false;
+        }
+
+        if (!TryLoadTexture(assets.LampWeights0Path, "lampWeights0", out var lampWeights0, out fallbackReason))
+        {
+            DisposeAll(artwork, mask, trayId, lampIds0);
             return false;
         }
 
