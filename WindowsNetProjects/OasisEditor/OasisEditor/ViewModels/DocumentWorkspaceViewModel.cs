@@ -598,6 +598,7 @@ public sealed class DocumentWorkspaceViewModel
                 SourcePanel2DDocumentId = faceDocument.SourcePanel2DDocumentId,
                 SourceRegion = faceDocument.SourceRegion,
                 LastRegeneratedAtUtc = faceDocument.LastRegeneratedAtUtc,
+                RuntimeRenderAssets = faceDocument.RuntimeRenderAssets,
                 MaskLayer = faceDocument.MaskLayer,
                 Layers = faceDocument.Layers,
                 Elements = faceDocument.Elements

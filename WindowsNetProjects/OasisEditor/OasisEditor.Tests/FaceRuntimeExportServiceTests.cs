@@ -1,5 +1,6 @@
 using System.Text.Json;
 using OasisEditor;
+using OasisEditor.Automation;
 using SkiaSharp;
 using Xunit;
 
@@ -95,6 +96,32 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         using var exportedArtwork = SKBitmap.Decode(result.ArtworkPath);
         Assert.NotNull(exportedArtwork);
         Assert.Equal(128, exportedArtwork.GetPixel(0, 0).Alpha);
+    }
+
+
+    [Fact]
+    public void SaveDocument_ForFaceWithProject_ExportsRuntimePackageAndPersistsAssetReferences()
+    {
+        var artworkPath = Path.Combine(_assetsDirectory, "artwork.png");
+        var maskPath = Path.Combine(_generatedDirectory, "source-mask.png");
+        var facePath = Path.Combine(_projectDirectory, "front.face");
+        WriteSolidPng(artworkPath, 4, 4, new SKColor(0, 255, 0, 192));
+        WriteSolidPng(maskPath, 4, 4, SKColors.White);
+        var document = CreateDocument("Assets/artwork.png", "Generated/source-mask.png");
+        var current = new DocumentTabViewModel(
+            EditorDocument.CreateFaceStub("Front Face").MarkDirty(),
+            faceDocumentJson: FaceDocumentStorage.Serialize(document));
+
+        var saved = new DocumentSaveService().SaveDocument(current, facePath, CreateProject());
+
+        Assert.False(saved.IsDirty);
+        Assert.True(File.Exists(Path.Combine(_generatedDirectory, "Faces", "face-runtime", "runtime", "face.runtime.json")));
+        Assert.True(File.Exists(Path.Combine(_generatedDirectory, "Faces", "face-runtime", "runtime", "artwork.png")));
+        Assert.True(File.Exists(Path.Combine(_generatedDirectory, "Faces", "face-runtime", "runtime", "mask.png")));
+        Assert.True(FaceDocumentStorage.TryReadValidated(File.ReadAllText(facePath), out var persisted, out var error), error);
+        Assert.Equal("Generated/Faces/face-runtime/runtime/face.runtime.json", persisted.RuntimeRenderAssets!.ManifestPath);
+        Assert.Equal("Generated/Faces/face-runtime/runtime/artwork.png", persisted.RuntimeRenderAssets.ArtworkPath);
+        Assert.Equal("Generated/Faces/face-runtime/runtime/mask.png", persisted.RuntimeRenderAssets.MaskPath);
     }
 
     [Fact]
