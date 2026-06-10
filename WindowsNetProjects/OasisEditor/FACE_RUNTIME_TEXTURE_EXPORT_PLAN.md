@@ -13,7 +13,7 @@ Build and validate the runtime face rendering data inside the editor first:
 1. Define the Face runtime export format.
 2. Generate artwork, mask, tray, lamp ID, and lamp weight textures from Face data.
 3. Render a CPU preview in the WPF Face Play view using those generated textures.
-4. Validate tray ownership, multi-bulb trays, lamp state mapping, mask clipping, art transparency, displays, and reels in the editor.
+4. Validate tray ownership, multi-bulb trays, lamp state mapping, mask clipping, art transparency, displays, and reels in the editor. Phase 3a bridge-tray overlaps are diagnostics only; authored physical tray overlaps introduced later receive warning/error validation.
 5. After the data format is stable, implement the equivalent Unity URP shader/runtime loader.
 
 Unity remains the authoritative final player renderer, but the editor must become the authoritative authoring and validation environment.
@@ -161,7 +161,7 @@ ID channels should be read exactly, so keep ID textures uncompressed, non-sRGB, 
 
 Generate optional debug textures during editor export while this system is being developed:
 
-- `trayId_debug.png`: colourised tray ownership, useful for checking tray mapping and overlap.
+- `trayId_debug.png`: colourised tray ownership, useful for checking tray mapping and overlap diagnostics.
 - `lampWeights_debug.png`: visualises stored influence weights, useful for checking whether lamps affect the expected pixels.
 
 These debug textures are editor/export diagnostics. They are not required by the future Unity runtime.
@@ -332,6 +332,13 @@ Before polygon trays are authored, derive temporary tray/emitter data from exist
 - weight is `1.0` everywhere inside that temporary rectangular tray
 - all remaining lamp ID and weight channels are empty/zero
 
+Temporary bridge trays are not authored physical trays. They may overlap because MFME-derived lamp rectangles and current Face lamp windows are only coarse source data, not tray-compartment boundaries. For Phase 3a bridge trays:
+
+- allow overlap
+- record overlap diagnostics for debugging/export inspection
+- use deterministic first-tray ownership for overlapping pixels so generated `trayId.png`, `lampIds0.png`, and `lampWeights0.png` remain internally consistent
+- do not block save/export on bridge-tray overlap
+
 This bridge exists only to prove the exported texture pipeline and CPU preview. It is not the final physical tray model.
 
 ### Tray ID
@@ -342,9 +349,9 @@ For each Face lamp tray polygon in the final model:
 2. Write the tray ID into every covered pixel.
 3. Use `0` outside all trays.
 
-For the Phase 3 bridge, rasterise the temporary rectangular trays derived from `FaceLampWindowElement` bounds.
+For the Phase 3 bridge, rasterise the temporary trays derived from `FaceLampWindowElement` data. These bridge trays may overlap; record diagnostics and resolve overlapping pixels with stable first-tray ownership rather than blocking save/export.
 
-Detect overlapping tray ownership. For Phase 3, treat overlap as an export validation error rather than silently choosing whichever tray is processed last.
+Overlap errors apply only to future authored physical tray geometry, not Phase 3a bridge trays. When authored `FaceLampTrayElement` polygons are introduced, detect overlap between authored trays and surface a warning or error depending on severity. Severe authored-tray overlaps should be treated as validation/export errors because they indicate ambiguous physical tray ownership.
 
 ### Lamp Influence
 
@@ -442,7 +449,7 @@ Do not start Unity shader work until the texture package is proven by the editor
 - Generate `lampIds0.png`.
 - Generate `lampWeights0.png`.
 - Generate optional debug visualisations: `trayId_debug.png` and `lampWeights_debug.png`.
-- Bridge rules: one lamp window = one tray, one tray = one emitter, emitter at lamp window centre, weight `1.0` inside the tray.
+- Bridge rules: one lamp window = one tray, one tray = one emitter, emitter at lamp window centre, weight `1.0` inside the tray. Temporary bridge tray overlaps are allowed, recorded as diagnostics, and resolved with deterministic first-tray ownership; they must not block save/export.
 - Do not implement polygon tray authoring yet.
 - Do not implement multi-bulb tray support yet.
 - Do not implement distance falloff yet.
@@ -466,6 +473,7 @@ Do not start Unity shader work until the texture package is proven by the editor
 ### Phase 5: Polygon Rasterisation and Multi-Bulb Support
 
 - Generate tray/influence textures from tray polygons and authored emitters.
+- Detect overlap between authored physical tray polygons and surface a warning or error depending on severity; severe authored-tray overlaps should block export.
 - Support 2 to 5 bulbs in a larger tray.
 - Add optional `lampIds1/lampWeights1` when more than four emitters influence a pixel.
 - Add real falloff weighting once multi-bulb trays exist.
