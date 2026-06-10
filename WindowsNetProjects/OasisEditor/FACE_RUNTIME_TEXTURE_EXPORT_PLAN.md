@@ -18,6 +18,14 @@ Build and validate the runtime face rendering data inside the editor first:
 
 Unity remains the authoritative final player renderer, but the editor must become the authoritative authoring and validation environment.
 
+## Schema Compatibility Policy
+
+This area is still early prototype work and John is currently the only developer using it.
+
+Do not spend implementation effort preserving compatibility with older `.face` files unless a task explicitly asks for it. It is acceptable to change the Face schema aggressively while this system is being designed.
+
+The required guarantee is only that a Face document created/saved by the latest code can be closed, reopened, and rendered/exported again by the latest code.
+
 ## Existing Architecture Context
 
 Panel2D is currently the source/layout canvas. It stores rectangular visual elements such as backgrounds, lamps, reels, seven segment displays, alpha displays, and metadata such as asset paths, display properties, visibility, lock state, and machine object references.
@@ -195,7 +203,7 @@ public sealed class FaceLampEmitterElement : FaceElementModel
 
 Use UI-agnostic point models, not WPF `Point`, in persisted/domain models.
 
-The existing `FaceLampWindowElement` may remain as a compatibility/fallback concept, but the new tray/emitter model should become the preferred runtime-lighting representation.
+The existing `FaceLampWindowElement` may remain as a temporary/fallback concept, but the new tray/emitter model should become the preferred runtime-lighting representation.
 
 ## Manifest
 
@@ -260,7 +268,7 @@ For each Face lamp tray polygon:
 2. Write the tray ID into every covered pixel.
 3. Use `0` outside all trays.
 
-If no explicit tray polygons exist yet, provide a temporary compatibility path that treats each visible `FaceLampWindowElement` rectangle as a tray. This is only a bridge; real support must allow irregular polygons.
+If no explicit tray polygons exist yet, provide a temporary bridge path that treats each visible `FaceLampWindowElement` rectangle as a tray. This is only to prove the texture pipeline; real support must allow irregular polygons.
 
 ### Lamp Influence
 
@@ -337,8 +345,9 @@ Do not start Unity shader work until the texture package is proven by the editor
 
 - Add the Face runtime export plan document.
 - Add model/file records for runtime render assets.
-- Bump Face document schema if persisted model changes require it.
-- Keep backward compatibility for existing `.face` files.
+- Bump or replace the Face document schema as needed.
+- Do not implement migrations for older `.face` files unless explicitly requested.
+- Ensure Face documents created by the latest code can be saved, closed, reopened, and exported again by the latest code.
 
 ### Phase 2: Runtime Export Service
 
@@ -348,7 +357,7 @@ Do not start Unity shader work until the texture package is proven by the editor
 - Copy/reuse existing `mask.png`.
 - Store generated asset references back into the Face document model where appropriate.
 
-### Phase 3: Temporary Rectangular Compatibility
+### Phase 3: Temporary Rectangular Bridge
 
 - Generate `trayId.png`, `lampIds0.png`, and `lampWeights0.png` from existing `FaceLampWindowElement` rectangles.
 - Treat each lamp window as one tray and one emitter.
@@ -357,7 +366,7 @@ Do not start Unity shader work until the texture package is proven by the editor
 ### Phase 4: Tray and Emitter Authoring Model
 
 - Add explicit Face tray and emitter elements.
-- Add persistence support.
+- Add persistence support for the latest schema only.
 - Add validation.
 - Add hierarchy/inspector support only as much as needed for initial authoring.
 - Ensure models use UI-agnostic data types.
@@ -385,8 +394,8 @@ Codex cannot run the WPF/.NET build in its environment. After implementation, Jo
 
 Suggested local tests:
 
-- existing `.face` files still load
 - generated Face from Panel2D still works
+- a Face saved by the latest code can be closed and reopened by the latest code
 - mask generation still writes the current mask asset
 - runtime export creates all expected files
 - transparent artwork areas stay transparent
