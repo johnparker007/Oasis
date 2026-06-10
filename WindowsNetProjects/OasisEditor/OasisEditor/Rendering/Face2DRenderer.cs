@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using SkiaSharp;
 
@@ -14,6 +15,9 @@ public sealed class Face2DRenderer : IFace2DRenderer
     private readonly Func<string?, string?> _assetPathResolver;
     private readonly Dictionary<string, SKImage?> _cachedArtworkImages = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, SKImage?> _cachedMaskImages = new(StringComparer.OrdinalIgnoreCase);
+    private readonly IFaceTexturePreviewRenderer _texturePreviewRenderer;
+
+    internal string? LastTexturePreviewFallbackReason { get; private set; }
 
     public Face2DRenderer()
         : this(FaceRuntimeStateResolver.Instance, ResolveDefaultAssetPath)
@@ -21,9 +25,15 @@ public sealed class Face2DRenderer : IFace2DRenderer
     }
 
     internal Face2DRenderer(IFaceRuntimeStateResolver runtimeStateResolver, Func<string?, string?> assetPathResolver)
+        : this(runtimeStateResolver, assetPathResolver, new FaceTexturePreviewRenderer(assetPathResolver))
+    {
+    }
+
+    internal Face2DRenderer(IFaceRuntimeStateResolver runtimeStateResolver, Func<string?, string?> assetPathResolver, IFaceTexturePreviewRenderer texturePreviewRenderer)
     {
         _runtimeStateResolver = runtimeStateResolver ?? throw new ArgumentNullException(nameof(runtimeStateResolver));
         _assetPathResolver = assetPathResolver ?? throw new ArgumentNullException(nameof(assetPathResolver));
+        _texturePreviewRenderer = texturePreviewRenderer ?? throw new ArgumentNullException(nameof(texturePreviewRenderer));
     }
 
     public void Render(SKCanvas canvas, FaceDocumentModel faceDocument, MachineRuntimeState runtimeState, PanelViewportTransform viewportTransform)
@@ -39,7 +49,10 @@ public sealed class Face2DRenderer : IFace2DRenderer
             DrawArtwork(canvas, artwork, viewportTransform);
         }
 
-        DrawLampIllumination(canvas, faceDocument.MaskLayer, elements.OfType<FaceLampWindowElement>(), runtimeState);
+        if (!TryDrawTextureDrivenLampPreview(canvas, faceDocument, runtimeState))
+        {
+            DrawLampIllumination(canvas, faceDocument.MaskLayer, elements.OfType<FaceLampWindowElement>(), runtimeState);
+        }
 
         foreach (var reelDisplay in elements.OfType<FaceReelDisplayElement>())
         {
@@ -60,6 +73,27 @@ public sealed class Face2DRenderer : IFace2DRenderer
         {
             DrawButton(canvas, button, viewportTransform);
         }
+    }
+
+
+    private bool TryDrawTextureDrivenLampPreview(SKCanvas canvas, FaceDocumentModel faceDocument, MachineRuntimeState runtimeState)
+    {
+        using var result = _texturePreviewRenderer.Render(faceDocument, runtimeState);
+        if (!result.Rendered || result.Bitmap is null)
+        {
+            LastTexturePreviewFallbackReason = result.FallbackReason;
+            if (!string.IsNullOrWhiteSpace(result.FallbackReason))
+            {
+                Trace.WriteLine($"Face texture-driven preview fallback: {result.FallbackReason}");
+            }
+
+            return false;
+        }
+
+        LastTexturePreviewFallbackReason = null;
+        using var image = SKImage.FromBitmap(result.Bitmap);
+        canvas.DrawImage(image, SKRect.Create(0f, 0f, image.Width, image.Height));
+        return true;
     }
 
     private void DrawArtwork(SKCanvas canvas, FaceArtworkElement element, PanelViewportTransform viewport)

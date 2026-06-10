@@ -1,0 +1,170 @@
+using OasisEditor;
+using OasisEditor.Rendering;
+using SkiaSharp;
+using Xunit;
+
+namespace OasisEditor.Tests;
+
+public sealed class FaceTexturePreviewRendererTests : IDisposable
+{
+    private readonly string _testDirectory;
+
+    public FaceTexturePreviewRendererTests()
+    {
+        _testDirectory = Path.Combine(Path.GetTempPath(), $"OasisFaceTexturePreviewTests-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(_testDirectory);
+    }
+
+    [Fact]
+    public void Render_MissingRuntimeRenderAssets_ReturnsFallbackReason()
+    {
+        var renderer = CreateRenderer();
+        var result = renderer.Render(new FaceDocumentModel(), new MachineRuntimeState());
+
+        Assert.False(result.Rendered);
+        Assert.Equal("missing runtime render assets", result.FallbackReason);
+    }
+
+    [Fact]
+    public void Render_DimensionMismatch_ReturnsFallbackReason()
+    {
+        WriteSolidPng("artwork.png", 2, 2, new SKColor(100, 80, 60, 255));
+        WriteSolidPng("mask.png", 3, 2, SKColors.White);
+        WriteSolidPng("trayId.png", 2, 2, SKColors.Black);
+        WriteSolidPng("lampIds0.png", 2, 2, new SKColor(7, 0, 0, 255));
+        WriteSolidPng("lampWeights0.png", 2, 2, new SKColor(255, 0, 0, 255));
+        var renderer = CreateRenderer();
+
+        using var result = renderer.Render(CreateDocument(), new MachineRuntimeState());
+
+        Assert.False(result.Rendered);
+        Assert.Contains("dimension mismatch", result.FallbackReason);
+    }
+
+    [Fact]
+    public void Render_LampIdAndWeight_ProducesExpectedLitPixel()
+    {
+        WriteSolidPng("artwork.png", 1, 1, new SKColor(100, 40, 20, 192));
+        WriteSolidPng("mask.png", 1, 1, SKColors.White);
+        WriteSolidPng("trayId.png", 1, 1, new SKColor(1, 0, 0, 255));
+        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(7, 0, 0, 255));
+        WriteSolidPng("lampWeights0.png", 1, 1, new SKColor(255, 0, 0, 255));
+        var renderer = CreateRenderer();
+        var runtimeState = new MachineRuntimeState();
+        runtimeState.SetLampIntensityIfChanged(MachineObjectReference.Lamp(7), 1d);
+
+        using var result = renderer.Render(CreateDocument(width: 1, height: 1), runtimeState);
+
+        Assert.True(result.Rendered);
+        Assert.NotNull(result.Bitmap);
+        var pixel = result.Bitmap.GetPixel(0, 0);
+        Assert.Equal(125, pixel.Red);
+        Assert.Equal(50, pixel.Green);
+        Assert.Equal(25, pixel.Blue);
+        Assert.Equal(192, pixel.Alpha);
+    }
+
+    [Fact]
+    public void Render_ZeroLampState_LeavesArtworkAtAmbientOnly()
+    {
+        WriteSolidPng("artwork.png", 1, 1, new SKColor(100, 40, 20, 255));
+        WriteSolidPng("mask.png", 1, 1, SKColors.White);
+        WriteSolidPng("trayId.png", 1, 1, new SKColor(1, 0, 0, 255));
+        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(7, 0, 0, 255));
+        WriteSolidPng("lampWeights0.png", 1, 1, new SKColor(255, 0, 0, 255));
+        var renderer = CreateRenderer();
+
+        using var result = renderer.Render(CreateDocument(width: 1, height: 1), new MachineRuntimeState());
+
+        Assert.True(result.Rendered);
+        Assert.NotNull(result.Bitmap);
+        var pixel = result.Bitmap.GetPixel(0, 0);
+        Assert.Equal(25, pixel.Red);
+        Assert.Equal(10, pixel.Green);
+        Assert.Equal(5, pixel.Blue);
+        Assert.Equal(255, pixel.Alpha);
+    }
+
+    [Fact]
+    public void Render_PreservesArtworkAlpha()
+    {
+        WriteSolidPng("artwork.png", 2, 1, SKColors.Transparent);
+        WritePixel("artwork.png", 0, 0, 2, 1, new SKColor(100, 100, 100, 0));
+        WritePixel("artwork.png", 1, 0, 2, 1, new SKColor(100, 100, 100, 127));
+        WriteSolidPng("mask.png", 2, 1, SKColors.White);
+        WriteSolidPng("trayId.png", 2, 1, new SKColor(1, 0, 0, 255));
+        WriteSolidPng("lampIds0.png", 2, 1, new SKColor(7, 0, 0, 255));
+        WriteSolidPng("lampWeights0.png", 2, 1, new SKColor(255, 0, 0, 255));
+        var renderer = CreateRenderer();
+        var runtimeState = new MachineRuntimeState();
+        runtimeState.SetLampIntensityIfChanged(MachineObjectReference.Lamp(7), 1d);
+
+        using var result = renderer.Render(CreateDocument(width: 2, height: 1), runtimeState);
+
+        Assert.True(result.Rendered);
+        Assert.NotNull(result.Bitmap);
+        Assert.Equal(0, result.Bitmap.GetPixel(0, 0).Alpha);
+        Assert.Equal(127, result.Bitmap.GetPixel(1, 0).Alpha);
+    }
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_testDirectory))
+        {
+            Directory.Delete(_testDirectory, recursive: true);
+        }
+    }
+
+    private FaceTexturePreviewRenderer CreateRenderer()
+    {
+        return new FaceTexturePreviewRenderer(
+            path => string.IsNullOrWhiteSpace(path) ? null : Path.Combine(_testDirectory, path),
+            new FaceTexturePreviewSettings
+            {
+                AmbientStrength = 0.25d,
+                EmissionStrength = 1d,
+                MaskStrength = 1d
+            });
+    }
+
+    private static FaceDocumentModel CreateDocument(int width = 2, int height = 2)
+    {
+        return new FaceDocumentModel
+        {
+            RuntimeRenderAssets = new FaceRuntimeRenderAssetsModel
+            {
+                ArtworkPath = "artwork.png",
+                MaskPath = "mask.png",
+                TrayIdPath = "trayId.png",
+                LampIds0Path = "lampIds0.png",
+                LampWeights0Path = "lampWeights0.png",
+                Width = width,
+                Height = height
+            }
+        };
+    }
+
+    private void WriteSolidPng(string relativePath, int width, int height, SKColor color)
+    {
+        using var bitmap = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+        bitmap.Erase(color);
+        WriteBitmap(relativePath, bitmap);
+    }
+
+    private void WritePixel(string relativePath, int x, int y, int width, int height, SKColor color)
+    {
+        using var bitmap = SKBitmap.Decode(Path.Combine(_testDirectory, relativePath));
+        bitmap.SetPixel(x, y, color);
+        WriteBitmap(relativePath, bitmap);
+    }
+
+    private void WriteBitmap(string relativePath, SKBitmap bitmap)
+    {
+        var path = Path.Combine(_testDirectory, relativePath);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        using var image = SKImage.FromBitmap(bitmap);
+        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+        using var stream = File.Create(path);
+        data.SaveTo(stream);
+    }
+}
