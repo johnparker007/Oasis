@@ -33,12 +33,19 @@ internal sealed class MfmeExtractImportService : IMfmeExtractImportService
 
 public interface IDocumentSaveService
 {
-    DocumentTabViewModel SaveDocument(DocumentTabViewModel current, string savePath);
+    DocumentTabViewModel SaveDocument(DocumentTabViewModel current, string savePath, EditorProject? project = null);
 }
 
 public sealed class DocumentSaveService : IDocumentSaveService
 {
-    public DocumentTabViewModel SaveDocument(DocumentTabViewModel current, string savePath)
+    private readonly FaceRuntimeExportService _faceRuntimeExportService;
+
+    public DocumentSaveService(FaceRuntimeExportService? faceRuntimeExportService = null)
+    {
+        _faceRuntimeExportService = faceRuntimeExportService ?? new FaceRuntimeExportService();
+    }
+
+    public DocumentTabViewModel SaveDocument(DocumentTabViewModel current, string savePath, EditorProject? project = null)
     {
         ArgumentNullException.ThrowIfNull(current);
         if (string.IsNullOrWhiteSpace(savePath))
@@ -46,7 +53,27 @@ public sealed class DocumentSaveService : IDocumentSaveService
             throw new ArgumentException("Save path is required.", nameof(savePath));
         }
 
-        var content = DocumentWorkspaceViewModel.BuildDocumentContent(current);
+        var faceDocumentJson = current.FaceDocumentJson;
+        var contentSource = current;
+        if (current.Document.DocumentType == EditorDocumentType.Face && project is not null)
+        {
+            var exportResult = _faceRuntimeExportService.Export(current.GetFaceDocument(), project);
+            faceDocumentJson = FaceDocumentStorage.Serialize(exportResult.Document);
+            contentSource = new DocumentTabViewModel(
+                current.Document,
+                current.PanelLayoutJson,
+                current.DocumentId,
+                current.CommandService,
+                current.RuntimeState,
+                faceDocumentJson)
+            {
+                PanelZoom = current.PanelZoom,
+                PanelPanX = current.PanelPanX,
+                PanelPanY = current.PanelPanY
+            };
+        }
+
+        var content = DocumentWorkspaceViewModel.BuildDocumentContent(contentSource);
         File.WriteAllText(savePath, content);
 
         return new DocumentTabViewModel(
@@ -55,7 +82,7 @@ public sealed class DocumentSaveService : IDocumentSaveService
             current.DocumentId,
             current.CommandService,
             current.RuntimeState,
-            current.FaceDocumentJson)
+            faceDocumentJson)
         {
             PanelZoom = current.PanelZoom,
             PanelPanX = current.PanelPanX,

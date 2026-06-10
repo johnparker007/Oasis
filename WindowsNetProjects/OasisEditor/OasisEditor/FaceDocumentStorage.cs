@@ -5,7 +5,7 @@ namespace OasisEditor;
 
 public static class FaceDocumentStorage
 {
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 2;
 
     private static readonly JsonSerializerOptions s_readOptions = new()
     {
@@ -155,6 +155,7 @@ public static class FaceDocumentStorage
             SourcePanel2DDocumentId = string.IsNullOrWhiteSpace(file.SourcePanel2DDocumentId) ? null : file.SourcePanel2DDocumentId.Trim(),
             SourceRegion = ToModel(file.SourceRegion),
             LastRegeneratedAtUtc = file.LastRegeneratedAtUtc,
+            RuntimeRenderAssets = ToModel(file.RuntimeRenderAssets),
             MaskLayer = ToModel(file.MaskLayer),
             Layers = (file.Layers ?? [])
                 .Select(layer => new FaceLayerModel
@@ -183,6 +184,7 @@ public static class FaceDocumentStorage
             SourcePanel2DDocumentId = model.SourcePanel2DDocumentId,
             SourceRegion = ToFile(model.SourceRegion),
             LastRegeneratedAtUtc = model.LastRegeneratedAtUtc,
+            RuntimeRenderAssets = ToFile(model.RuntimeRenderAssets),
             MaskLayer = ToFile(model.MaskLayer),
             SavedAtUtc = DateTime.UtcNow,
             Layers = model.Layers.Select(layer => new FaceLayerFile
@@ -193,6 +195,52 @@ public static class FaceDocumentStorage
                 IsLocked = layer.IsLocked
             }).ToArray(),
             Elements = model.Elements.Select(ToFile).ToArray()
+        };
+    }
+
+    private static FaceRuntimeRenderAssetsModel? ToModel(FaceRuntimeRenderAssetsFile? file)
+    {
+        if (file is null)
+        {
+            return null;
+        }
+
+        return new FaceRuntimeRenderAssetsModel
+        {
+            ManifestPath = file.ManifestPath,
+            ArtworkPath = file.ArtworkPath,
+            MaskPath = file.MaskPath,
+            TrayIdPath = file.TrayIdPath,
+            LampIds0Path = file.LampIds0Path,
+            LampWeights0Path = file.LampWeights0Path,
+            LampIds1Path = file.LampIds1Path,
+            LampWeights1Path = file.LampWeights1Path,
+            Width = file.Width,
+            Height = file.Height,
+            GeneratedUtc = file.GeneratedUtc
+        };
+    }
+
+    private static FaceRuntimeRenderAssetsFile? ToFile(FaceRuntimeRenderAssetsModel? model)
+    {
+        if (model is null)
+        {
+            return null;
+        }
+
+        return new FaceRuntimeRenderAssetsFile
+        {
+            ManifestPath = model.ManifestPath,
+            ArtworkPath = model.ArtworkPath,
+            MaskPath = model.MaskPath,
+            TrayIdPath = model.TrayIdPath,
+            LampIds0Path = model.LampIds0Path,
+            LampWeights0Path = model.LampWeights0Path,
+            LampIds1Path = model.LampIds1Path,
+            LampWeights1Path = model.LampWeights1Path,
+            Width = model.Width,
+            Height = model.Height,
+            GeneratedUtc = model.GeneratedUtc
         };
     }
 
@@ -542,10 +590,26 @@ public sealed record FaceDocumentFile
     public string? SourcePanel2DDocumentId { get; init; }
     public FaceSourceRegionFile? SourceRegion { get; init; }
     public DateTime? LastRegeneratedAtUtc { get; init; }
+    public FaceRuntimeRenderAssetsFile? RuntimeRenderAssets { get; init; }
     public FaceMaskLayerFile? MaskLayer { get; init; }
     public DateTime SavedAtUtc { get; init; }
     public IReadOnlyList<FaceLayerFile>? Layers { get; init; } = [];
     public IReadOnlyList<FaceElementFile>? Elements { get; init; } = [];
+}
+
+public sealed record FaceRuntimeRenderAssetsFile
+{
+    public string? ManifestPath { get; init; }
+    public string? ArtworkPath { get; init; }
+    public string? MaskPath { get; init; }
+    public string? TrayIdPath { get; init; }
+    public string? LampIds0Path { get; init; }
+    public string? LampWeights0Path { get; init; }
+    public string? LampIds1Path { get; init; }
+    public string? LampWeights1Path { get; init; }
+    public int Width { get; init; }
+    public int Height { get; init; }
+    public DateTime GeneratedUtc { get; init; }
 }
 
 public sealed record FaceMaskLayerFile

@@ -101,7 +101,7 @@ public sealed class ConvertMfmeAutomationCommandTests
     {
         public bool WasCalled { get; private set; }
 
-        public DocumentTabViewModel SaveDocument(DocumentTabViewModel current, string savePath)
+        public DocumentTabViewModel SaveDocument(DocumentTabViewModel current, string savePath, EditorProject? project = null)
         {
             WasCalled = true;
             return current;

@@ -1325,7 +1325,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         try
         {
-            var updatedDocument = _documentSaveService.SaveDocument(current, savePath);
+            var updatedDocument = _documentSaveService.SaveDocument(current, savePath, LoadedProject);
             _documentWorkspace.ReplaceDocument(current, updatedDocument);
             StatusMessage = $"Saved document: {updatedDocument.Title}";
             AddOutputEntry($"Saved document to {savePath}", OutputLogStatus.Info);
