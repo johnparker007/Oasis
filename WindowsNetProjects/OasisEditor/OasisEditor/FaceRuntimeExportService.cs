@@ -13,6 +13,13 @@ public sealed class FaceRuntimeExportService
     public const string ArtworkFileName = "artwork.png";
     public const string MaskFileName = "mask.png";
 
+    private readonly FaceRuntimeTextureGenerator _runtimeTextureGenerator;
+
+    public FaceRuntimeExportService(FaceRuntimeTextureGenerator? runtimeTextureGenerator = null)
+    {
+        _runtimeTextureGenerator = runtimeTextureGenerator ?? new FaceRuntimeTextureGenerator();
+    }
+
     private static readonly JsonSerializerOptions s_manifestJsonOptions = new()
     {
         WriteIndented = true,
@@ -45,9 +52,10 @@ public sealed class FaceRuntimeExportService
         var maskPath = Path.Combine(outputDirectory, MaskFileName);
         ExportArtwork(faceDocument, project, width, height, artworkPath);
         CopyMask(faceDocument, project, maskPath);
+        var textureResult = _runtimeTextureGenerator.Generate(faceDocument, width, height, outputDirectory);
 
         var generatedUtc = DateTime.UtcNow;
-        var manifest = CreateManifest(faceDocument, width, height);
+        var manifest = CreateManifest(faceDocument, width, height, textureResult.Plan);
         var manifestPath = Path.Combine(outputDirectory, ManifestFileName);
         File.WriteAllText(manifestPath, JsonSerializer.Serialize(manifest, s_manifestJsonOptions));
 
@@ -56,11 +64,13 @@ public sealed class FaceRuntimeExportService
             ManifestPath = ToProjectRelativePath(project, manifestPath),
             ArtworkPath = ToProjectRelativePath(project, artworkPath),
             MaskPath = ToProjectRelativePath(project, maskPath),
-            TrayIdPath = null,
-            LampIds0Path = null,
-            LampWeights0Path = null,
+            TrayIdPath = ToProjectRelativePath(project, textureResult.TrayIdPath),
+            LampIds0Path = ToProjectRelativePath(project, textureResult.LampIds0Path),
+            LampWeights0Path = ToProjectRelativePath(project, textureResult.LampWeights0Path),
             LampIds1Path = null,
             LampWeights1Path = null,
+            TrayIdDebugPath = ToProjectRelativePath(project, textureResult.TrayIdDebugPath),
+            LampWeightsDebugPath = ToProjectRelativePath(project, textureResult.LampWeightsDebugPath),
             Width = width,
             Height = height,
             GeneratedUtc = generatedUtc
@@ -86,6 +96,14 @@ public sealed class FaceRuntimeExportService
     public FaceRuntimeManifest CreateManifest(FaceDocumentModel faceDocument, int width, int height)
     {
         ArgumentNullException.ThrowIfNull(faceDocument);
+        var texturePlan = _runtimeTextureGenerator.CreatePlan(faceDocument, width, height);
+        return CreateManifest(faceDocument, width, height, texturePlan);
+    }
+
+    public FaceRuntimeManifest CreateManifest(FaceDocumentModel faceDocument, int width, int height, FaceRuntimeTextureGenerationPlan texturePlan)
+    {
+        ArgumentNullException.ThrowIfNull(faceDocument);
+        ArgumentNullException.ThrowIfNull(texturePlan);
         if (width <= 0)
         {
             throw new ArgumentOutOfRangeException(nameof(width), width, "Runtime manifest width must be positive.");
@@ -104,13 +122,15 @@ public sealed class FaceRuntimeExportService
             Height = height,
             Artwork = ArtworkFileName,
             Mask = MaskFileName,
-            TrayId = null,
-            LampIds0 = null,
-            LampWeights0 = null,
+            TrayId = FaceRuntimeTextureGenerator.TrayIdFileName,
+            LampIds0 = FaceRuntimeTextureGenerator.LampIds0FileName,
+            LampWeights0 = FaceRuntimeTextureGenerator.LampWeights0FileName,
             LampIds1 = null,
             LampWeights1 = null,
-            Lamps = faceDocument.Elements.OfType<FaceLampWindowElement>().Select(CreateLampManifestEntry).ToArray(),
-            Trays = [],
+            TrayIdDebug = FaceRuntimeTextureGenerator.TrayIdDebugFileName,
+            LampWeightsDebug = FaceRuntimeTextureGenerator.LampWeightsDebugFileName,
+            Lamps = texturePlan.Emitters.Select(CreateLampManifestEntry).ToArray(),
+            Trays = texturePlan.Trays.Select(CreateTrayManifestEntry).ToArray(),
             Reels = faceDocument.Elements.OfType<FaceReelDisplayElement>().Select(CreateDisplayManifestEntry).ToArray(),
             SevenSegmentDisplays = faceDocument.Elements.OfType<FaceSevenSegmentDisplayElement>().Select(CreateDisplayManifestEntry).ToArray(),
             AlphaDisplays = faceDocument.Elements.OfType<FaceAlphaDisplayElement>().Select(CreateDisplayManifestEntry).ToArray(),
@@ -228,17 +248,36 @@ public sealed class FaceRuntimeExportService
         return image;
     }
 
-    private static FaceRuntimeLampManifestEntry CreateLampManifestEntry(FaceLampWindowElement element)
+    private static FaceRuntimeLampManifestEntry CreateLampManifestEntry(FaceLampEmitterElement element)
     {
         var reference = element.LinkedMachineObjectReference?.ToString();
         return new FaceRuntimeLampManifestEntry
         {
-            LampId = TryGetIntId(element.LinkedMachineObjectReference, MachineObjectKind.Lamp),
+            ObjectId = element.ObjectId,
+            SourceLampWindowObjectId = element.SourceLampWindowObjectId,
+            LampId = element.LampId,
             MachineReference = string.IsNullOrWhiteSpace(reference) ? null : reference,
             Name = element.Name,
-            TrayId = null,
-            X = element.X + (element.Width / 2d),
-            Y = element.Y + (element.Height / 2d),
+            TrayId = element.TrayId,
+            X = element.CenterX,
+            Y = element.CenterY,
+            Width = element.Width,
+            Height = element.Height
+        };
+    }
+
+    private static FaceRuntimeTrayManifestEntry CreateTrayManifestEntry(FaceRuntimeTrayElement element)
+    {
+        return new FaceRuntimeTrayManifestEntry
+        {
+            ObjectId = element.ObjectId,
+            SourceLampWindowObjectId = element.SourceLampWindowObjectId,
+            Name = element.Name,
+            TrayId = element.TrayId,
+            LampEmitterObjectId = element.LampEmitterObjectId,
+            LampId = element.LampId,
+            X = element.X,
+            Y = element.Y,
             Width = element.Width,
             Height = element.Height
         };
@@ -271,15 +310,6 @@ public sealed class FaceRuntimeExportService
             Width = element.Width,
             Height = element.Height
         };
-    }
-
-    private static int? TryGetIntId(MachineObjectReference? reference, MachineObjectKind expectedKind)
-    {
-        return reference is MachineObjectReference machineReference
-            && machineReference.Kind == expectedKind
-            && int.TryParse(machineReference.Id, out var id)
-            ? id
-            : null;
     }
 
     private static int ResolveRuntimeWidth(FaceDocumentModel faceDocument)
@@ -372,8 +402,10 @@ public sealed class FaceRuntimeManifest
     public string? LampWeights0 { get; init; }
     public string? LampIds1 { get; init; }
     public string? LampWeights1 { get; init; }
+    public string? TrayIdDebug { get; init; }
+    public string? LampWeightsDebug { get; init; }
     public IReadOnlyList<FaceRuntimeLampManifestEntry> Lamps { get; init; } = [];
-    public IReadOnlyList<FaceRuntimeElementManifestEntry> Trays { get; init; } = [];
+    public IReadOnlyList<FaceRuntimeTrayManifestEntry> Trays { get; init; } = [];
     public IReadOnlyList<FaceRuntimeElementManifestEntry> Reels { get; init; } = [];
     public IReadOnlyList<FaceRuntimeElementManifestEntry> SevenSegmentDisplays { get; init; } = [];
     public IReadOnlyList<FaceRuntimeElementManifestEntry> AlphaDisplays { get; init; } = [];
@@ -382,6 +414,8 @@ public sealed class FaceRuntimeManifest
 
 public sealed class FaceRuntimeLampManifestEntry
 {
+    public string ObjectId { get; init; } = string.Empty;
+    public string SourceLampWindowObjectId { get; init; } = string.Empty;
     public int? LampId { get; init; }
     public string? MachineReference { get; init; }
     public string Name { get; init; } = string.Empty;
@@ -390,6 +424,14 @@ public sealed class FaceRuntimeLampManifestEntry
     public double Y { get; init; }
     public double Width { get; init; }
     public double Height { get; init; }
+}
+
+public sealed class FaceRuntimeTrayManifestEntry : FaceRuntimeElementManifestEntry
+{
+    public int TrayId { get; init; }
+    public string SourceLampWindowObjectId { get; init; } = string.Empty;
+    public string LampEmitterObjectId { get; init; } = string.Empty;
+    public int? LampId { get; init; }
 }
 
 public class FaceRuntimeElementManifestEntry

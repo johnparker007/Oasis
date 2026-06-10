@@ -215,6 +215,8 @@ public static class FaceDocumentStorage
             LampWeights0Path = file.LampWeights0Path,
             LampIds1Path = file.LampIds1Path,
             LampWeights1Path = file.LampWeights1Path,
+            TrayIdDebugPath = file.TrayIdDebugPath,
+            LampWeightsDebugPath = file.LampWeightsDebugPath,
             Width = file.Width,
             Height = file.Height,
             GeneratedUtc = file.GeneratedUtc
@@ -238,6 +240,8 @@ public static class FaceDocumentStorage
             LampWeights0Path = model.LampWeights0Path,
             LampIds1Path = model.LampIds1Path,
             LampWeights1Path = model.LampWeights1Path,
+            TrayIdDebugPath = model.TrayIdDebugPath,
+            LampWeightsDebugPath = model.LampWeightsDebugPath,
             Width = model.Width,
             Height = model.Height,
             GeneratedUtc = model.GeneratedUtc
@@ -607,6 +611,8 @@ public sealed record FaceRuntimeRenderAssetsFile
     public string? LampWeights0Path { get; init; }
     public string? LampIds1Path { get; init; }
     public string? LampWeights1Path { get; init; }
+    public string? TrayIdDebugPath { get; init; }
+    public string? LampWeightsDebugPath { get; init; }
     public int Width { get; init; }
     public int Height { get; init; }
     public DateTime GeneratedUtc { get; init; }
