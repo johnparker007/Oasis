@@ -47,10 +47,10 @@ public sealed class FaceTrayAutoAuthoringTests
         var tray = Assert.Single(document.Trays);
         Assert.True(tray.IsAutoAuthored);
         Assert.Equal("lampWindowBounds", tray.AutoAuthoringSource);
-        Assert.Equal(5d, tray.Bounds!.X);
-        Assert.Equal(5d, tray.Bounds.Y);
-        Assert.Equal(40d, tray.Bounds.Width);
-        Assert.Equal(50d, tray.Bounds.Height);
+        Assert.Equal(-2.6d, tray.Bounds!.X, 3);
+        Assert.Equal(-3.35d, tray.Bounds.Y, 3);
+        Assert.Equal(55.2d, tray.Bounds.Width, 3);
+        Assert.Equal(66.7d, tray.Bounds.Height, 3);
         Assert.Equal(4, tray.Vertices.Count);
 
         var emitter = Assert.Single(document.LampEmitters);
@@ -71,10 +71,10 @@ public sealed class FaceTrayAutoAuthoringTests
 
         var tray = Assert.Single(result.Trays);
         Assert.Equal("maskContributionBounds", tray.AutoAuthoringSource);
-        Assert.Equal(8d, tray.Bounds!.X);
-        Assert.Equal(9d, tray.Bounds.Y);
-        Assert.Equal(11d, tray.Bounds.Width);
-        Assert.Equal(12d, tray.Bounds.Height);
+        Assert.Equal(2.575d, tray.Bounds!.X, 3);
+        Assert.Equal(3.5d, tray.Bounds.Y, 3);
+        Assert.Equal(21.85d, tray.Bounds.Width, 3);
+        Assert.Equal(23d, tray.Bounds.Height, 3);
         Assert.Equal("lamp:3", tray.LinkedMachineObjectReference?.ToString());
 
         var emitter = Assert.Single(result.Emitters);
@@ -185,6 +185,7 @@ public sealed class FaceTrayAutoAuthoringTests
     {
         return new FaceDocumentModel
         {
+            GenerationSettings = FaceGenerationSettingsModel.Default,
             MaskLayer = new FaceMaskLayerModel
             {
                 Contributions =

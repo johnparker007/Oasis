@@ -80,6 +80,15 @@
                 <MenuItem Header="E_xit"
                           Command="{Binding ExitCommand}" />
             </MenuItem>
+
+            <MenuItem Header="_Face">
+                <MenuItem Header="Generation _Settings..."
+                          Command="{Binding OpenFaceGenerationSettingsCommand}" />
+                <MenuItem Header="Generate From _Region..."
+                          Command="{Binding GenerateFaceFromRegionCommand}" />
+                <MenuItem Header="_Regenerate"
+                          Command="{Binding RegenerateFaceCommand}" />
+            </MenuItem>
             <MenuItem Header="_Edit">
                 <MenuItem Header="{Binding UndoMenuHeader}"
                           Click="OnUndoMenuItemClicked"

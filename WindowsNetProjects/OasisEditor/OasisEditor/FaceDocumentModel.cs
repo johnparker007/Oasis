@@ -8,12 +8,42 @@ public sealed class FaceDocumentModel
     public string? SourcePanel2DDocumentId { get; init; }
     public FaceSourceRegionModel? SourceRegion { get; init; }
     public DateTime? LastRegeneratedAtUtc { get; init; }
+    public FaceGenerationSettingsModel GenerationSettings { get; init; } = FaceGenerationSettingsModel.Default;
     public FaceRuntimeRenderAssetsModel? RuntimeRenderAssets { get; init; }
     public FaceMaskLayerModel? MaskLayer { get; init; }
     public IReadOnlyList<FaceTrayModel> Trays { get; init; } = [];
     public IReadOnlyList<FaceLampEmitterElement> LampEmitters { get; init; } = [];
     public IReadOnlyList<FaceLayerModel> Layers { get; init; } = [];
     public IReadOnlyList<FaceElementModel> Elements { get; init; } = [];
+}
+
+
+public sealed class FaceGenerationSettingsModel
+{
+    public const byte DefaultMaskExtractionThreshold = 24;
+    public const double DefaultTrayBoundsInflationPercent = 15d;
+    public const double DefaultTrayBoundsPaddingPixels = 4d;
+    public const bool DefaultClampTrayBoundsToLampWindow = false;
+
+    public static FaceGenerationSettingsModel Default { get; } = new();
+
+    public byte MaskExtractionThreshold { get; init; } = DefaultMaskExtractionThreshold;
+    public double TrayBoundsInflationPercent { get; init; } = DefaultTrayBoundsInflationPercent;
+    public double TrayBoundsPaddingPixels { get; init; } = DefaultTrayBoundsPaddingPixels;
+    public bool ClampTrayBoundsToLampWindow { get; init; } = DefaultClampTrayBoundsToLampWindow;
+
+    public FaceGenerationSettingsModel Normalize()
+    {
+        return new FaceGenerationSettingsModel
+        {
+            MaskExtractionThreshold = MaskExtractionThreshold,
+            TrayBoundsInflationPercent = IsFinite(TrayBoundsInflationPercent) ? Math.Clamp(TrayBoundsInflationPercent, 0d, 1000d) : DefaultTrayBoundsInflationPercent,
+            TrayBoundsPaddingPixels = IsFinite(TrayBoundsPaddingPixels) ? Math.Clamp(TrayBoundsPaddingPixels, 0d, 10000d) : DefaultTrayBoundsPaddingPixels,
+            ClampTrayBoundsToLampWindow = ClampTrayBoundsToLampWindow
+        };
+    }
+
+    private static bool IsFinite(double value) => !double.IsNaN(value) && !double.IsInfinity(value);
 }
 
 public sealed class FaceRuntimeRenderAssetsModel

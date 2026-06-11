@@ -84,6 +84,7 @@ public sealed class FaceRuntimeExportService
             SourcePanel2DDocumentId = faceDocument.SourcePanel2DDocumentId,
             SourceRegion = faceDocument.SourceRegion,
             LastRegeneratedAtUtc = faceDocument.LastRegeneratedAtUtc,
+            GenerationSettings = faceDocument.GenerationSettings,
             RuntimeRenderAssets = runtimeAssets,
             MaskLayer = faceDocument.MaskLayer,
             Trays = faceDocument.Trays,

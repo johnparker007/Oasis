@@ -89,7 +89,8 @@ internal sealed class FaceGenerationService
         string? sourcePanel2DDocumentId = null,
         IReadOnlyList<InputDefinitionModel>? inputDefinitions = null,
         string? projectDirectory = null,
-        string? generatedDirectory = null)
+        string? generatedDirectory = null,
+        FaceGenerationSettingsModel? generationSettings = null)
     {
         ArgumentNullException.ThrowIfNull(sourcePanel);
         ArgumentNullException.ThrowIfNull(sourceRegion);
@@ -99,6 +100,7 @@ internal sealed class FaceGenerationService
             throw new ArgumentException("Face source region must be a non-empty finite rectangle.", nameof(sourceRegion));
         }
 
+        var settings = (generationSettings ?? FaceGenerationSettingsModel.Default).Normalize();
         var region = sourceRegion.ToRect();
         var artworkElements = CreateArtworkElements(sourcePanel, region, sourcePanel2DDocumentId);
         var lampWindows = sourcePanel.Elements
@@ -121,9 +123,9 @@ internal sealed class FaceGenerationService
 
         var resolvedTitle = string.IsNullOrWhiteSpace(title) ? "Generated Face" : title.Trim();
         var faceDocumentId = Guid.NewGuid().ToString("N");
-        var maskLayer = _maskLayerExtractionService.GenerateMaskLayer(sourcePanel, region, faceDocumentId, sourcePanel2DDocumentId, projectDirectory, generatedDirectory);
+        var maskLayer = _maskLayerExtractionService.GenerateMaskLayer(sourcePanel, region, faceDocumentId, sourcePanel2DDocumentId, projectDirectory, generatedDirectory, settings.MaskExtractionThreshold);
         var elements = artworkElements.Cast<FaceElementModel>().Concat(lampWindows).Concat(reelDisplays).Concat(sevenSegmentDisplays).Concat(alphaDisplays).Concat(buttons).ToArray();
-        var autoAuthored = _trayAutoAuthoringService.AutoAuthor(new FaceDocumentModel { MaskLayer = maskLayer, Elements = elements });
+        var autoAuthored = _trayAutoAuthoringService.AutoAuthor(new FaceDocumentModel { GenerationSettings = settings, MaskLayer = maskLayer, Elements = elements });
         var document = new FaceDocumentModel
         {
             Id = faceDocumentId,
@@ -132,6 +134,7 @@ internal sealed class FaceGenerationService
             SourcePanel2DDocumentId = string.IsNullOrWhiteSpace(sourcePanel2DDocumentId) ? null : sourcePanel2DDocumentId.Trim(),
             SourceRegion = sourceRegion,
             LastRegeneratedAtUtc = DateTime.UtcNow,
+            GenerationSettings = settings,
             MaskLayer = maskLayer,
             Trays = autoAuthored.Trays,
             LampEmitters = autoAuthored.Emitters,

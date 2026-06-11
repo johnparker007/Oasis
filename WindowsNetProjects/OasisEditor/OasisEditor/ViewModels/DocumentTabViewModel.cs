@@ -184,6 +184,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
             SourcePanel2DDocumentId = _faceDocumentModel.SourcePanel2DDocumentId,
             SourceRegion = _faceDocumentModel.SourceRegion,
             LastRegeneratedAtUtc = _faceDocumentModel.LastRegeneratedAtUtc,
+            GenerationSettings = _faceDocumentModel.GenerationSettings,
             RuntimeRenderAssets = _faceDocumentModel.RuntimeRenderAssets,
             MaskLayer = _faceDocumentModel.MaskLayer,
             Trays = _faceDocumentModel.Trays,

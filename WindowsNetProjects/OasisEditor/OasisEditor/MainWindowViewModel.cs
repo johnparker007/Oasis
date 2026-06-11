@@ -45,6 +45,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private bool _debugOutputLamps;
     private bool _debugOutputStdIn;
     private bool _debugOutputStdOut;
+    private FaceGenerationSettingsModel _defaultFaceGenerationSettings = FaceGenerationSettingsModel.Default;
+    private bool _showFaceGenerationSettingsBeforeGenerate = true;
+    private bool _showFaceGenerationSettingsBeforeRegenerate = true;
     private string _mameValidationSummary = "Not validated.";
     private string _selectedPreferencesCategory = "Appearance";
     private FruitMachinePlatformType _selectedFruitMachinePlatform = FruitMachinePlatformType.None;
@@ -107,6 +110,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OpenFaceStubCommand = new RelayCommand(OpenFaceStubDocument, CanOpenUntitledDocument);
         GenerateFaceFromRegionCommand = new RelayCommand(GenerateFaceFromRegion, CanGenerateFaceFromRegion);
         RegenerateFaceCommand = new RelayCommand(RegenerateFace, CanRegenerateFace);
+        OpenFaceGenerationSettingsCommand = new RelayCommand(OpenFaceGenerationSettings, CanOpenFaceGenerationSettings);
         ValidateFaceCommand = new RelayCommand(ValidateFace, CanValidateFace);
         OpenSourcePanel2DCommand = new RelayCommand(OpenSourcePanel2D, CanOpenSourcePanel2D);
         OpenCabinet3DStubCommand = new RelayCommand(OpenCabinet3DStubDocument, CanOpenUntitledDocument);
@@ -217,6 +221,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             _debugOutputLamps = preferences.Mame.DebugOutputLamps;
             _debugOutputStdIn = preferences.Mame.DebugOutputStdIn;
             _debugOutputStdOut = preferences.Mame.DebugOutputStdOut;
+            _defaultFaceGenerationSettings = preferences.FaceGeneration.ToSettings();
+            _showFaceGenerationSettingsBeforeGenerate = preferences.FaceGeneration.ShowFaceGenerationSettingsBeforeGenerate;
+            _showFaceGenerationSettingsBeforeRegenerate = preferences.FaceGeneration.ShowFaceGenerationSettingsBeforeRegenerate;
             _outputLog.ShowInfoLogs = preferences.OutputLog.ShowInfoLogs;
             _outputLog.ShowWarningLogs = preferences.OutputLog.ShowWarningLogs;
             _outputLog.ShowErrorLogs = preferences.OutputLog.ShowErrorLogs;
@@ -396,6 +403,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand OpenFaceStubCommand { get; }
     public ICommand GenerateFaceFromRegionCommand { get; }
     public ICommand RegenerateFaceCommand { get; }
+    public ICommand OpenFaceGenerationSettingsCommand { get; }
     public ICommand ValidateFaceCommand { get; }
     public ICommand OpenSourcePanel2DCommand { get; }
     public ICommand OpenCabinet3DStubCommand { get; }
@@ -998,7 +1006,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        var dialog = new GenerateFaceFromRegionDialog
+        var dialog = new GenerateFaceFromRegionDialog(_defaultFaceGenerationSettings, _showFaceGenerationSettingsBeforeGenerate)
         {
             Owner = _ownerWindow
         };
@@ -1008,7 +1016,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        _documentWorkspace.GenerateFaceFromSelectedPanel2DRegion(dialog.SourceRegion);
+        var settings = _showFaceGenerationSettingsBeforeGenerate ? dialog.GenerationSettings : _defaultFaceGenerationSettings;
+        if (_showFaceGenerationSettingsBeforeGenerate)
+        {
+            _defaultFaceGenerationSettings = settings;
+            SavePreferences();
+        }
+
+        _documentWorkspace.GenerateFaceFromSelectedPanel2DRegion(dialog.SourceRegion, settings);
     }
 
     private bool CanRegenerateFace()
@@ -1023,7 +1038,117 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        _documentWorkspace.RegenerateSelectedFace();
+        FaceGenerationSettingsModel? settings = null;
+        if (_showFaceGenerationSettingsBeforeRegenerate)
+        {
+            var existingFace = SelectedDocument?.GetFaceDocument();
+            if (existingFace is null)
+            {
+                return;
+            }
+
+            var dialog = new FaceGenerationSettingsDialog(existingFace.GenerationSettings, "Regenerate")
+            {
+                Owner = _ownerWindow
+            };
+
+            if (dialog.ShowDialog() != true)
+            {
+                return;
+            }
+
+            settings = dialog.Settings;
+        }
+
+        _documentWorkspace.RegenerateSelectedFace(settings);
+    }
+
+    private bool CanOpenFaceGenerationSettings()
+    {
+        return CanGenerateFaceFromRegion() || SelectedDocument?.Document.DocumentType == EditorDocumentType.Face;
+    }
+
+    private void OpenFaceGenerationSettings()
+    {
+        if (SelectedDocument?.Document.DocumentType == EditorDocumentType.Face)
+        {
+            var canRegenerate = CanRegenerateFace();
+            var existingFace = SelectedDocument.GetFaceDocument();
+            var dialog = new FaceGenerationSettingsDialog(existingFace.GenerationSettings, canRegenerate ? "Regenerate" : "Save")
+            {
+                Owner = _ownerWindow
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                if (canRegenerate)
+                {
+                    _documentWorkspace.RegenerateSelectedFace(dialog.Settings);
+                }
+                else
+                {
+                    SaveSelectedFaceGenerationSettings(dialog.Settings);
+                }
+            }
+
+            return;
+        }
+
+        if (!CanGenerateFaceFromRegion())
+        {
+            return;
+        }
+
+        var generateDialog = new GenerateFaceFromRegionDialog(_defaultFaceGenerationSettings, true)
+        {
+            Owner = _ownerWindow
+        };
+
+        if (generateDialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        _defaultFaceGenerationSettings = generateDialog.GenerationSettings;
+        SavePreferences();
+        _documentWorkspace.GenerateFaceFromSelectedPanel2DRegion(generateDialog.SourceRegion, generateDialog.GenerationSettings);
+    }
+
+
+    private void SaveSelectedFaceGenerationSettings(FaceGenerationSettingsModel settings)
+    {
+        if (SelectedDocument?.Document.DocumentType != EditorDocumentType.Face)
+        {
+            return;
+        }
+
+        var faceDocument = SelectedDocument.GetFaceDocument();
+        SelectedDocument.SetFaceDocument(new FaceDocumentModel
+        {
+            Id = faceDocument.Id,
+            Title = faceDocument.Title,
+            Summary = faceDocument.Summary,
+            SourcePanel2DDocumentId = faceDocument.SourcePanel2DDocumentId,
+            SourceRegion = faceDocument.SourceRegion,
+            LastRegeneratedAtUtc = faceDocument.LastRegeneratedAtUtc,
+            GenerationSettings = (settings ?? FaceGenerationSettingsModel.Default).Normalize(),
+            RuntimeRenderAssets = faceDocument.RuntimeRenderAssets,
+            MaskLayer = faceDocument.MaskLayer,
+            Trays = faceDocument.Trays,
+            LampEmitters = faceDocument.LampEmitters,
+            Layers = faceDocument.Layers,
+            Elements = faceDocument.Elements
+        },
+        new PanelChangeEvent(
+            SelectedDocument.DocumentId,
+            null,
+            PanelChangeProperties.Metadata,
+            AffectsCanvas: false,
+            AffectsHierarchy: false,
+            AffectsInspectorRows: true,
+            AffectsPersistence: true));
+        SelectedDocument.MarkDirty();
+        AddOutputEntry($"Updated face generation settings for '{SelectedDocument.Title}'.", OutputLogStatus.Info);
     }
 
     private bool CanValidateFace()
@@ -1875,6 +2000,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 LocalRomSourceDirectory = MameLocalRomSourceDirectory,
                 LocalRomArchiveExtension = MameLocalRomArchiveExtension
             },
+            FaceGeneration = FaceGenerationPreferences.FromSettings(
+                _defaultFaceGenerationSettings,
+                _showFaceGenerationSettingsBeforeGenerate,
+                _showFaceGenerationSettingsBeforeRegenerate),
             OutputLog = new OutputLogPreferences
             {
                 ShowInfoLogs = _outputLog.ShowInfoLogs,
@@ -3248,6 +3377,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (RegenerateFaceCommand is RelayCommand regenerateFaceRelayCommand)
         {
             regenerateFaceRelayCommand.RaiseCanExecuteChanged();
+        }
+
+        if (OpenFaceGenerationSettingsCommand is RelayCommand faceGenerationSettingsRelayCommand)
+        {
+            faceGenerationSettingsRelayCommand.RaiseCanExecuteChanged();
         }
 
         if (ValidateFaceCommand is RelayCommand validateFaceRelayCommand)

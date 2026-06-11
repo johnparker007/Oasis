@@ -35,7 +35,8 @@ internal sealed class FaceRegenerationService
         Panel2DDocumentModel sourcePanel,
         IReadOnlyList<InputDefinitionModel>? inputDefinitions = null,
         string? projectDirectory = null,
-        string? generatedDirectory = null)
+        string? generatedDirectory = null,
+        FaceGenerationSettingsModel? generationSettings = null)
     {
         ArgumentNullException.ThrowIfNull(existingFace);
         ArgumentNullException.ThrowIfNull(sourcePanel);
@@ -50,6 +51,8 @@ internal sealed class FaceRegenerationService
             throw new InvalidOperationException("Face document does not contain a valid SourceRegion regeneration metadata value.");
         }
 
+        var settings = (generationSettings ?? existingFace.GenerationSettings ?? FaceGenerationSettingsModel.Default).Normalize();
+
         var generated = _generationService.GenerateFromPanelRegion(
             sourcePanel,
             sourceRegion,
@@ -57,7 +60,8 @@ internal sealed class FaceRegenerationService
             existingFace.SourcePanel2DDocumentId,
             inputDefinitions ?? [],
             projectDirectory,
-            generatedDirectory);
+            generatedDirectory,
+            settings);
 
         var existingGeneratedByKey = existingFace.Elements
             .Select(element => new KeyValuePair<string, FaceElementModel>(CreateRegenerationKey(element), element))
@@ -107,7 +111,7 @@ internal sealed class FaceRegenerationService
         }
 
         mergedElements.AddRange(preservedManualElements);
-        var autoAuthored = _trayAutoAuthoringService.AutoAuthor(new FaceDocumentModel { MaskLayer = generated.Document.MaskLayer, Elements = mergedElements.ToArray() });
+        var autoAuthored = _trayAutoAuthoringService.AutoAuthor(new FaceDocumentModel { GenerationSettings = settings, MaskLayer = generated.Document.MaskLayer, Elements = mergedElements.ToArray() });
 
         var regeneratedDocument = new FaceDocumentModel
         {
@@ -117,6 +121,7 @@ internal sealed class FaceRegenerationService
             SourcePanel2DDocumentId = existingFace.SourcePanel2DDocumentId,
             SourceRegion = sourceRegion,
             LastRegeneratedAtUtc = DateTime.UtcNow,
+            GenerationSettings = settings,
             MaskLayer = generated.Document.MaskLayer,
             Trays = autoAuthored.Trays,
             LampEmitters = autoAuthored.Emitters,
