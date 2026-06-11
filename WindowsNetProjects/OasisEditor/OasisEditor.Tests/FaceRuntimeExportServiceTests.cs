@@ -50,7 +50,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         var json = FaceDocumentStorage.Serialize(source);
 
         Assert.True(FaceDocumentStorage.TryReadValidated(json, out var file, out var error), error);
-        Assert.Equal(2, file.SchemaVersion);
+        Assert.Equal(FaceDocumentStorage.CurrentSchemaVersion, file.SchemaVersion);
         Assert.Equal("Generated/Faces/face-runtime/runtime/artwork.png", file.RuntimeRenderAssets!.ArtworkPath);
         Assert.Equal(320, file.RuntimeRenderAssets.Width);
         Assert.Equal("Generated/Faces/face-runtime/runtime/trayId_debug.png", file.RuntimeRenderAssets.TrayIdDebugPath);
