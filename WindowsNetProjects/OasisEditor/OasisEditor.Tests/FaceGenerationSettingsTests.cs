@@ -37,6 +37,36 @@ public sealed class FaceGenerationSettingsTests
         Assert.True(model.GenerationSettings.ClampTrayBoundsToLampWindow);
     }
 
+
+    [Fact]
+    public void BuildDocumentContent_PreservesFaceGenerationSettingsOnSave()
+    {
+        var source = new FaceDocumentModel
+        {
+            Id = "face-save-settings",
+            Title = "Settings Face",
+            GenerationSettings = new FaceGenerationSettingsModel
+            {
+                MaskExtractionThreshold = 19,
+                TrayBoundsInflationPercent = 7.5,
+                TrayBoundsPaddingPixels = 2.5,
+                ClampTrayBoundsToLampWindow = true
+            }
+        };
+        var document = new DocumentTabViewModel(
+            EditorDocument.CreateFaceStub("Settings Face"),
+            faceDocumentJson: FaceDocumentStorage.Serialize(source));
+
+        var json = DocumentWorkspaceViewModel.BuildDocumentContent(document);
+
+        Assert.True(FaceDocumentStorage.TryReadValidated(json, out var file, out var error), error);
+        var saved = FaceDocumentStorage.ToModel(file);
+        Assert.Equal(19, saved.GenerationSettings.MaskExtractionThreshold);
+        Assert.Equal(7.5, saved.GenerationSettings.TrayBoundsInflationPercent);
+        Assert.Equal(2.5, saved.GenerationSettings.TrayBoundsPaddingPixels);
+        Assert.True(saved.GenerationSettings.ClampTrayBoundsToLampWindow);
+    }
+
     [Fact]
     public void GenerateFromPanelRegion_CopiesProvidedDefaultsIntoNewFaceAndMaskLayer()
     {
