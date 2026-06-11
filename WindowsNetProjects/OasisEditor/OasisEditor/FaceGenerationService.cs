@@ -74,6 +74,7 @@ internal sealed class FaceGenerationService
 {
     private readonly IMachineObjectReferenceResolver _machineObjectReferenceResolver;
     private readonly FaceMaskLayerExtractionService _maskLayerExtractionService;
+    private readonly FaceTrayAutoAuthoringService _trayAutoAuthoringService = new();
 
     public FaceGenerationService(IMachineObjectReferenceResolver? machineObjectReferenceResolver = null)
     {
@@ -121,6 +122,8 @@ internal sealed class FaceGenerationService
         var resolvedTitle = string.IsNullOrWhiteSpace(title) ? "Generated Face" : title.Trim();
         var faceDocumentId = Guid.NewGuid().ToString("N");
         var maskLayer = _maskLayerExtractionService.GenerateMaskLayer(sourcePanel, region, faceDocumentId, sourcePanel2DDocumentId, projectDirectory, generatedDirectory);
+        var elements = artworkElements.Cast<FaceElementModel>().Concat(lampWindows).Concat(reelDisplays).Concat(sevenSegmentDisplays).Concat(alphaDisplays).Concat(buttons).ToArray();
+        var autoAuthored = _trayAutoAuthoringService.AutoAuthor(new FaceDocumentModel { MaskLayer = maskLayer, Elements = elements });
         var document = new FaceDocumentModel
         {
             Id = faceDocumentId,
@@ -130,6 +133,8 @@ internal sealed class FaceGenerationService
             SourceRegion = sourceRegion,
             LastRegeneratedAtUtc = DateTime.UtcNow,
             MaskLayer = maskLayer,
+            Trays = autoAuthored.Trays,
+            LampEmitters = autoAuthored.Emitters,
             Layers =
             [
                 new FaceLayerModel
@@ -163,7 +168,7 @@ internal sealed class FaceGenerationService
                     IsVisible = true
                 }
             ],
-            Elements = artworkElements.Cast<FaceElementModel>().Concat(lampWindows).Concat(reelDisplays).Concat(sevenSegmentDisplays).Concat(alphaDisplays).Concat(buttons).ToArray()
+            Elements = elements
         };
 
         return new FaceGenerationResult(document, lampWindows.Length, artworkElements.Length, buttons.Length, sevenSegmentDisplays.Length, alphaDisplays.Length, reelDisplays.Length);

@@ -5,7 +5,7 @@ namespace OasisEditor;
 
 public static class FaceDocumentStorage
 {
-    public const int CurrentSchemaVersion = 2;
+    public const int CurrentSchemaVersion = 3;
 
     private static readonly JsonSerializerOptions s_readOptions = new()
     {
@@ -157,6 +157,8 @@ public static class FaceDocumentStorage
             LastRegeneratedAtUtc = file.LastRegeneratedAtUtc,
             RuntimeRenderAssets = ToModel(file.RuntimeRenderAssets),
             MaskLayer = ToModel(file.MaskLayer),
+            Trays = (file.Trays ?? []).Select(ToModel).ToArray(),
+            LampEmitters = (file.LampEmitters ?? []).Select(ToModel).ToArray(),
             Layers = (file.Layers ?? [])
                 .Select(layer => new FaceLayerModel
                 {
@@ -186,6 +188,8 @@ public static class FaceDocumentStorage
             LastRegeneratedAtUtc = model.LastRegeneratedAtUtc,
             RuntimeRenderAssets = ToFile(model.RuntimeRenderAssets),
             MaskLayer = ToFile(model.MaskLayer),
+            Trays = model.Trays.Select(ToFile).ToArray(),
+            LampEmitters = model.LampEmitters.Select(ToFile).ToArray(),
             SavedAtUtc = DateTime.UtcNow,
             Layers = model.Layers.Select(layer => new FaceLayerFile
             {
@@ -320,6 +324,110 @@ public static class FaceDocumentStorage
             Bounds = ToFile(model.Bounds),
             PixelCount = model.PixelCount
         };
+    }
+
+    private static FaceTrayModel ToModel(FaceTrayFile file)
+    {
+        MachineObjectReference? reference = null;
+        if (MachineObjectReference.TryParse(file.LinkedMachineObjectReference, out var parsedReference))
+        {
+            reference = parsedReference;
+        }
+
+        return new FaceTrayModel
+        {
+            ObjectId = file.ObjectId ?? string.Empty,
+            Name = file.Name ?? string.Empty,
+            IsAutoAuthored = file.IsAutoAuthored,
+            AutoAuthoringSource = file.AutoAuthoringSource,
+            SourceLampWindowObjectId = file.SourceLampWindowObjectId,
+            SourcePanel2DElementId = file.SourcePanel2DElementId,
+            LinkedMachineObjectReference = reference,
+            Bounds = ToModel(file.Bounds),
+            Vertices = (file.Vertices ?? []).Select(ToModel).ToArray()
+        };
+    }
+
+    private static FaceTrayFile ToFile(FaceTrayModel model)
+    {
+        return new FaceTrayFile
+        {
+            ObjectId = model.ObjectId,
+            Name = model.Name,
+            IsAutoAuthored = model.IsAutoAuthored,
+            AutoAuthoringSource = model.AutoAuthoringSource,
+            SourceLampWindowObjectId = model.SourceLampWindowObjectId,
+            SourcePanel2DElementId = model.SourcePanel2DElementId,
+            LinkedMachineObjectReference = model.LinkedMachineObjectReference?.ToString(),
+            Bounds = ToFile(model.Bounds),
+            Vertices = model.Vertices.Select(ToFile).ToArray()
+        };
+    }
+
+    private static FaceLampEmitterElement ToModel(FaceLampEmitterFile file)
+    {
+        MachineObjectReference? reference = null;
+        if (MachineObjectReference.TryParse(file.LinkedMachineObjectReference, out var parsedReference))
+        {
+            reference = parsedReference;
+        }
+
+        return new FaceLampEmitterElement
+        {
+            ObjectId = file.ObjectId ?? string.Empty,
+            Name = file.Name ?? string.Empty,
+            X = file.X,
+            Y = file.Y,
+            Width = file.Width,
+            Height = file.Height,
+            IsVisible = file.IsVisible,
+            IsLocked = file.IsLocked,
+            LinkedMachineObjectReference = reference,
+            LinkedPanel2DElementId = file.LinkedPanel2DElementId,
+            SourceLampWindowObjectId = file.SourceLampWindowObjectId ?? string.Empty,
+            TrayObjectId = file.TrayObjectId ?? string.Empty,
+            TrayId = file.TrayId,
+            LampId = file.LampId,
+            CenterX = file.CenterX,
+            CenterY = file.CenterY,
+            IsAutoAuthored = file.IsAutoAuthored,
+            AutoAuthoringSource = file.AutoAuthoringSource
+        };
+    }
+
+    private static FaceLampEmitterFile ToFile(FaceLampEmitterElement model)
+    {
+        return new FaceLampEmitterFile
+        {
+            ObjectId = model.ObjectId,
+            Name = model.Name,
+            X = model.X,
+            Y = model.Y,
+            Width = model.Width,
+            Height = model.Height,
+            IsVisible = model.IsVisible,
+            IsLocked = model.IsLocked,
+            LinkedMachineObjectReference = model.LinkedMachineObjectReference?.ToString(),
+            LinkedPanel2DElementId = model.LinkedPanel2DElementId,
+            SourceLampWindowObjectId = model.SourceLampWindowObjectId,
+            TrayObjectId = model.TrayObjectId,
+            TrayId = model.TrayId,
+            LampId = model.LampId,
+            CenterX = model.CenterX,
+            CenterY = model.CenterY,
+            IsAutoAuthored = model.IsAutoAuthored,
+            AutoAuthoringSource = model.AutoAuthoringSource
+        };
+    }
+
+    private static FacePointModel ToModel(FacePointFile file)
+    {
+        return new FacePointModel { X = file.X, Y = file.Y };
+    }
+
+    private static FacePointFile ToFile(FacePointModel model)
+    {
+        return new FacePointFile { X = model.X, Y = model.Y };
     }
 
     private static FaceSourceRegionModel? ToModel(FaceSourceRegionFile? file)
@@ -596,6 +704,8 @@ public sealed record FaceDocumentFile
     public DateTime? LastRegeneratedAtUtc { get; init; }
     public FaceRuntimeRenderAssetsFile? RuntimeRenderAssets { get; init; }
     public FaceMaskLayerFile? MaskLayer { get; init; }
+    public IReadOnlyList<FaceTrayFile>? Trays { get; init; } = [];
+    public IReadOnlyList<FaceLampEmitterFile>? LampEmitters { get; init; } = [];
     public DateTime SavedAtUtc { get; init; }
     public IReadOnlyList<FaceLayerFile>? Layers { get; init; } = [];
     public IReadOnlyList<FaceElementFile>? Elements { get; init; } = [];
@@ -638,6 +748,47 @@ public sealed record FaceMaskContributionFile
     public string? LinkedMachineObjectReference { get; init; }
     public FaceSourceRegionFile? Bounds { get; init; }
     public int PixelCount { get; init; }
+}
+
+public sealed record FaceTrayFile
+{
+    public string? ObjectId { get; init; }
+    public string? Name { get; init; }
+    public bool IsAutoAuthored { get; init; }
+    public string? AutoAuthoringSource { get; init; }
+    public string? SourceLampWindowObjectId { get; init; }
+    public string? SourcePanel2DElementId { get; init; }
+    public string? LinkedMachineObjectReference { get; init; }
+    public FaceSourceRegionFile? Bounds { get; init; }
+    public IReadOnlyList<FacePointFile>? Vertices { get; init; } = [];
+}
+
+public sealed record FaceLampEmitterFile
+{
+    public string? ObjectId { get; init; }
+    public string? Name { get; init; }
+    public double X { get; init; }
+    public double Y { get; init; }
+    public double Width { get; init; }
+    public double Height { get; init; }
+    public bool IsVisible { get; init; } = true;
+    public bool IsLocked { get; init; }
+    public string? LinkedMachineObjectReference { get; init; }
+    public string? LinkedPanel2DElementId { get; init; }
+    public string? SourceLampWindowObjectId { get; init; }
+    public string? TrayObjectId { get; init; }
+    public int TrayId { get; init; }
+    public int? LampId { get; init; }
+    public double CenterX { get; init; }
+    public double CenterY { get; init; }
+    public bool IsAutoAuthored { get; init; }
+    public string? AutoAuthoringSource { get; init; }
+}
+
+public sealed record FacePointFile
+{
+    public double X { get; init; }
+    public double Y { get; init; }
 }
 
 public sealed record FaceSourceRegionFile

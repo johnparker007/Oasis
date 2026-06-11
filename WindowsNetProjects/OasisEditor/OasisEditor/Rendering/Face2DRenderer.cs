@@ -16,6 +16,7 @@ public sealed class Face2DRenderer : IFace2DRenderer
     private readonly Dictionary<string, SKImage?> _cachedArtworkImages = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, SKImage?> _cachedMaskImages = new(StringComparer.OrdinalIgnoreCase);
     private readonly IFaceTexturePreviewRenderer _texturePreviewRenderer;
+    private readonly FaceTrayDebugOverlayRenderer _trayDebugOverlayRenderer = new();
 
     internal string? LastTexturePreviewFallbackReason { get; private set; }
 
@@ -72,6 +73,8 @@ public sealed class Face2DRenderer : IFace2DRenderer
         {
             DrawButton(canvas, button, viewportTransform);
         }
+
+        _trayDebugOverlayRenderer.Render(canvas, faceDocument, viewportTransform);
     }
 
 

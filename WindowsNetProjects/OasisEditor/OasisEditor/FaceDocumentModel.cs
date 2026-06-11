@@ -10,6 +10,8 @@ public sealed class FaceDocumentModel
     public DateTime? LastRegeneratedAtUtc { get; init; }
     public FaceRuntimeRenderAssetsModel? RuntimeRenderAssets { get; init; }
     public FaceMaskLayerModel? MaskLayer { get; init; }
+    public IReadOnlyList<FaceTrayModel> Trays { get; init; } = [];
+    public IReadOnlyList<FaceLampEmitterElement> LampEmitters { get; init; } = [];
     public IReadOnlyList<FaceLayerModel> Layers { get; init; } = [];
     public IReadOnlyList<FaceElementModel> Elements { get; init; } = [];
 }
@@ -51,6 +53,25 @@ public sealed class FaceMaskContributionModel
     public MachineObjectReference? LinkedMachineObjectReference { get; init; }
     public FaceSourceRegionModel? Bounds { get; init; }
     public int PixelCount { get; init; }
+}
+
+public sealed class FaceTrayModel
+{
+    public string ObjectId { get; init; } = string.Empty;
+    public string Name { get; init; } = string.Empty;
+    public bool IsAutoAuthored { get; init; }
+    public string? AutoAuthoringSource { get; init; }
+    public string? SourceLampWindowObjectId { get; init; }
+    public string? SourcePanel2DElementId { get; init; }
+    public MachineObjectReference? LinkedMachineObjectReference { get; init; }
+    public FaceSourceRegionModel? Bounds { get; init; }
+    public IReadOnlyList<FacePointModel> Vertices { get; init; } = [];
+}
+
+public sealed class FacePointModel
+{
+    public double X { get; init; }
+    public double Y { get; init; }
 }
 
 public sealed class FaceLayerModel
@@ -100,10 +121,13 @@ public sealed class FaceLampWindowElement : FaceElementModel
 public sealed class FaceLampEmitterElement : FaceElementModel
 {
     public string SourceLampWindowObjectId { get; init; } = string.Empty;
+    public string TrayObjectId { get; init; } = string.Empty;
     public int TrayId { get; init; }
     public int? LampId { get; init; }
     public double CenterX { get; init; }
     public double CenterY { get; init; }
+    public bool IsAutoAuthored { get; init; }
+    public string? AutoAuthoringSource { get; init; }
 }
 
 public sealed class FaceReelDisplayElement : FaceElementModel

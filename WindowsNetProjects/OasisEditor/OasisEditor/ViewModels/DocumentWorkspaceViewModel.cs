@@ -600,6 +600,8 @@ public sealed class DocumentWorkspaceViewModel
                 LastRegeneratedAtUtc = faceDocument.LastRegeneratedAtUtc,
                 RuntimeRenderAssets = faceDocument.RuntimeRenderAssets,
                 MaskLayer = faceDocument.MaskLayer,
+                Trays = faceDocument.Trays,
+                LampEmitters = faceDocument.LampEmitters,
                 Layers = faceDocument.Layers,
                 Elements = faceDocument.Elements
             };

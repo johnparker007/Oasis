@@ -86,6 +86,8 @@ public sealed class FaceRuntimeExportService
             LastRegeneratedAtUtc = faceDocument.LastRegeneratedAtUtc,
             RuntimeRenderAssets = runtimeAssets,
             MaskLayer = faceDocument.MaskLayer,
+            Trays = faceDocument.Trays,
+            LampEmitters = faceDocument.LampEmitters,
             Layers = faceDocument.Layers,
             Elements = faceDocument.Elements
         };
