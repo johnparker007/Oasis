@@ -82,6 +82,11 @@ internal sealed class FaceTrayAutoAuthoringService
         var diagnostics = new List<FaceValidationDiagnostic>();
         AddDuplicateDiagnostics(faceDocument.Trays.Select(tray => tray.ObjectId), "Face.Tray.DuplicateId", "tray", diagnostics);
         AddDuplicateDiagnostics(faceDocument.LampEmitters.Select(emitter => emitter.ObjectId), "Face.Emitter.DuplicateId", "emitter", diagnostics);
+        AddDuplicateDiagnostics(
+            faceDocument.LampEmitters.Where(emitter => emitter.TrayId > 0).Select(emitter => emitter.TrayId.ToString()),
+            "Face.Tray.DuplicateNumericId",
+            "numeric tray",
+            diagnostics);
 
         var trayIds = faceDocument.Trays
             .Where(tray => !string.IsNullOrWhiteSpace(tray.ObjectId))
@@ -104,6 +109,17 @@ internal sealed class FaceTrayAutoAuthoringService
                     FaceValidationSeverity.Warning,
                     "Face.Tray.Vertices.Invalid",
                     $"Face tray '{DisplayName(tray.ObjectId, tray.Name)}' has invalid polygon vertices."));
+            }
+        }
+
+        foreach (var tray in faceDocument.Trays.Where(tray => !string.IsNullOrWhiteSpace(tray.ObjectId)))
+        {
+            if (!faceDocument.LampEmitters.Any(emitter => string.Equals(emitter.TrayObjectId?.Trim(), tray.ObjectId.Trim(), StringComparison.Ordinal)))
+            {
+                diagnostics.Add(new FaceValidationDiagnostic(
+                    FaceValidationSeverity.Warning,
+                    "Face.Tray.Emitter.Missing",
+                    $"Face tray '{DisplayName(tray.ObjectId, tray.Name)}' does not have a lamp emitter."));
             }
         }
 

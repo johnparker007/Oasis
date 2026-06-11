@@ -373,6 +373,147 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         Assert.Equal(24, tray.LampId);
     }
 
+
+    [Fact]
+    public void CreatePlan_WithAuthoredTraysAndEmitters_UsesAuthoredExportSource()
+    {
+        var document = CreateDocumentWithAuthoredTrayAndEmitter(
+            trayBounds: new FaceSourceRegionModel { X = 0, Y = 0, Width = 2, Height = 2 },
+            trayId: 7,
+            lampId: 42);
+
+        var plan = new FaceRuntimeTextureGenerator().CreatePlan(document, 4, 4);
+
+        Assert.Equal(FaceRuntimeTextureExportSource.Authored, plan.ExportSource);
+        var tray = Assert.Single(plan.Trays);
+        Assert.Equal("authored-tray", tray.ObjectId);
+        Assert.Equal(7, tray.TrayId);
+        Assert.Equal(42, tray.LampId);
+        var emitter = Assert.Single(plan.Emitters);
+        Assert.Equal("authored-emitter", emitter.ObjectId);
+    }
+
+    [Fact]
+    public void CreatePlan_WithoutAuthoredData_UsesLampWindowBridgeFallback()
+    {
+        var document = CreateDocumentWithLampWindows(
+            new FaceLampWindowElement { ObjectId = "fallback-lamp", X = 1, Y = 1, Width = 2, Height = 2, LinkedMachineObjectReference = MachineObjectReference.Lamp(9) });
+
+        var plan = new FaceRuntimeTextureGenerator().CreatePlan(document, 4, 4);
+
+        Assert.Equal(FaceRuntimeTextureExportSource.LampWindowBridge, plan.ExportSource);
+        Assert.Equal("runtime-tray-fallback-lamp", Assert.Single(plan.Trays).ObjectId);
+        Assert.Equal("runtime-emitter-fallback-lamp", Assert.Single(plan.Emitters).ObjectId);
+    }
+
+    [Fact]
+    public void Generate_WithAuthoredTrayAndEmitter_WritesTrayIdsLampIdsAndBinaryWeightsFromAuthoredGeometry()
+    {
+        var outputDirectory = Path.Combine(_generatedDirectory, "authored-texture-test");
+        var document = CreateDocumentWithAuthoredTrayAndEmitter(
+            trayBounds: new FaceSourceRegionModel { X = 1, Y = 1, Width = 2, Height = 2 },
+            trayId: 5,
+            lampId: 77);
+
+        new FaceRuntimeTextureGenerator().Generate(document, 4, 4, outputDirectory);
+
+        using var trayId = SKBitmap.Decode(Path.Combine(outputDirectory, "trayId.png"));
+        using var lampIds0 = SKBitmap.Decode(Path.Combine(outputDirectory, "lampIds0.png"));
+        using var lampWeights0 = SKBitmap.Decode(Path.Combine(outputDirectory, "lampWeights0.png"));
+
+        Assert.Equal(4, trayId.Width);
+        Assert.Equal(4, trayId.Height);
+        Assert.Equal(4, lampIds0.Width);
+        Assert.Equal(4, lampIds0.Height);
+        Assert.Equal(4, lampWeights0.Width);
+        Assert.Equal(4, lampWeights0.Height);
+        Assert.Equal(5, trayId.GetPixel(1, 1).Red);
+        Assert.Equal(77, lampIds0.GetPixel(1, 1).Red);
+        Assert.Equal(255, lampWeights0.GetPixel(1, 1).Red);
+        Assert.Equal(0, trayId.GetPixel(0, 0).Alpha);
+        Assert.Equal(0, lampIds0.GetPixel(0, 0).Alpha);
+        Assert.Equal(0, lampWeights0.GetPixel(0, 0).Alpha);
+    }
+
+    [Fact]
+    public void Generate_WithAuthoredPolygon_LeavesPixelsOutsidePolygonEmptyInsideBounds()
+    {
+        var outputDirectory = Path.Combine(_generatedDirectory, "authored-polygon-texture-test");
+        var document = CreateDocumentWithAuthoredTrayAndEmitter(
+            trayBounds: new FaceSourceRegionModel { X = 0, Y = 0, Width = 4, Height = 4 },
+            trayId: 3,
+            lampId: 12,
+            vertices:
+            [
+                new FacePointModel { X = 0, Y = 0 },
+                new FacePointModel { X = 4, Y = 0 },
+                new FacePointModel { X = 0, Y = 4 }
+            ]);
+
+        new FaceRuntimeTextureGenerator().Generate(document, 4, 4, outputDirectory);
+
+        using var trayId = SKBitmap.Decode(Path.Combine(outputDirectory, "trayId.png"));
+        using var lampWeights0 = SKBitmap.Decode(Path.Combine(outputDirectory, "lampWeights0.png"));
+
+        Assert.Equal(3, trayId.GetPixel(0, 0).Red);
+        Assert.Equal(255, lampWeights0.GetPixel(0, 0).Red);
+        Assert.Equal(0, trayId.GetPixel(3, 3).Alpha);
+        Assert.Equal(0, lampWeights0.GetPixel(3, 3).Alpha);
+    }
+
+    [Fact]
+    public void CreateManifest_WithAuthoredExport_IncludesAuthoredTrayAndEmitterMetadata()
+    {
+        var document = CreateDocumentWithAuthoredTrayAndEmitter(
+            trayBounds: new FaceSourceRegionModel { X = 1, Y = 1, Width = 2, Height = 2 },
+            trayId: 6,
+            lampId: 31);
+
+        var manifest = new FaceRuntimeExportService().CreateManifest(document, 4, 4);
+
+        var lamp = Assert.Single(manifest.Lamps);
+        Assert.Equal("authored-emitter", lamp.ObjectId);
+        Assert.Equal(6, lamp.TrayId);
+        Assert.Equal(31, lamp.LampId);
+        var tray = Assert.Single(manifest.Trays);
+        Assert.Equal("authored-tray", tray.ObjectId);
+        Assert.Equal("authored-emitter", tray.LampEmitterObjectId);
+        Assert.Equal(6, tray.TrayId);
+        Assert.Equal(31, tray.LampId);
+    }
+
+    [Fact]
+    public void CreatePlan_WithInvalidAuthoredData_ReportsUsefulDiagnostics()
+    {
+        var document = CreateDocumentWithAuthoredTrayAndEmitter(
+            trayBounds: new FaceSourceRegionModel { X = 0, Y = 0, Width = -1, Height = 1 },
+            trayId: 1,
+            lampId: 10);
+        document = new FaceDocumentModel
+        {
+            Id = document.Id,
+            Title = document.Title,
+            SourceRegion = document.SourceRegion,
+            Trays =
+            [
+                document.Trays[0],
+                new FaceTrayModel { ObjectId = "orphan-tray", Name = "Orphan", Bounds = new FaceSourceRegionModel { X = 2, Y = 2, Width = 1, Height = 1 } }
+            ],
+            LampEmitters =
+            [
+                document.LampEmitters[0],
+                new FaceLampEmitterElement { ObjectId = "authored-emitter", TrayObjectId = "missing-tray", TrayId = 2, LampId = 11 }
+            ]
+        };
+
+        var exception = Assert.Throws<InvalidOperationException>(() => new FaceRuntimeTextureGenerator().CreatePlan(document, 4, 4));
+
+        Assert.Contains("invalid tray geometry", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("does not have an emitter", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("references missing tray", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("duplicate emitter ID", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_projectDirectory))
@@ -461,6 +602,48 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
             Title = "Runtime Face",
             SourceRegion = new FaceSourceRegionModel { X = 0, Y = 0, Width = 4, Height = 4 },
             Elements = lampWindows
+        };
+    }
+
+    private static FaceDocumentModel CreateDocumentWithAuthoredTrayAndEmitter(
+        FaceSourceRegionModel trayBounds,
+        int trayId,
+        int lampId,
+        IReadOnlyList<FacePointModel>? vertices = null)
+    {
+        return new FaceDocumentModel
+        {
+            Id = "face-runtime",
+            Title = "Runtime Face",
+            SourceRegion = new FaceSourceRegionModel { X = 0, Y = 0, Width = 4, Height = 4 },
+            Trays =
+            [
+                new FaceTrayModel
+                {
+                    ObjectId = "authored-tray",
+                    Name = "Authored Tray",
+                    SourceLampWindowObjectId = "source-lamp-window",
+                    Bounds = trayBounds,
+                    Vertices = vertices ?? []
+                }
+            ],
+            LampEmitters =
+            [
+                new FaceLampEmitterElement
+                {
+                    ObjectId = "authored-emitter",
+                    Name = "Authored Emitter",
+                    SourceLampWindowObjectId = "source-lamp-window",
+                    TrayObjectId = "authored-tray",
+                    TrayId = trayId,
+                    LampId = lampId,
+                    LinkedMachineObjectReference = MachineObjectReference.Lamp(lampId),
+                    CenterX = trayBounds.X + (trayBounds.Width / 2d),
+                    CenterY = trayBounds.Y + (trayBounds.Height / 2d),
+                    Width = trayBounds.Width,
+                    Height = trayBounds.Height
+                }
+            ]
         };
     }
 
