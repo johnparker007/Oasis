@@ -129,18 +129,26 @@ Do not try to solve all of this in the first PR.
 
 ## Debug Overlays
 
-Before investing heavily in editing tools, add clear overlays so users can understand what was auto-authored.
+Basic tray/emitter visualisation must be available as soon as auto-authoring exists. Otherwise evaluating generated tray quality requires inspecting JSON/model data, which is too slow.
 
-Useful overlays:
+Phase 4A should include a minimal overlay subset whose only goal is immediate visual verification:
 
-- show tray boundaries
-- show tray IDs
-- show emitter positions
-- show lamp IDs
-- show auto-authored vs manually edited styling
-- optionally show generated runtime texture debug images
+- draw tray boundaries as simple outlines
+- draw emitter positions as small markers
+- show tray IDs where practical
+- show lamp IDs where practical
+- visually distinguish auto-authored elements
+- provide enough visibility to judge whether generated trays are plausible
 
-These overlays can appear in the Face editor or Play view, depending on what is simplest in the current UI architecture. Prefer a minimal implementation over a broad UI refactor.
+Keep this first overlay implementation deliberately lightweight:
+
+- no editing interactions
+- no vertex manipulation
+- no new tool modes
+- no broad UI refactor
+- no complex overlay settings UI
+
+A later Phase 4B can improve the overlay experience with toggles, labels, styling options, inspector integration, and generated runtime debug texture views.
 
 ## Export Direction
 
@@ -162,7 +170,7 @@ Do not add multi-bulb falloff until authored trays are visible and editable.
 
 ## Roadmap
 
-### Phase 4A: Auto-author rough trays and emitters
+### Phase 4A: Auto-author rough trays and emitters with minimal overlays
 
 - Add Face-level tray model if not already present.
 - Ensure emitter model is suitable for persistence and later authoring.
@@ -170,16 +178,19 @@ Do not add multi-bulb falloff until authored trays are visible and editable.
 - Use rectangular polygons from mask contribution bounds for the first pass.
 - Mark generated trays/emitters as auto-authored.
 - Save/load latest-schema Face documents with generated tray/emitter elements.
+- Add minimal non-interactive debug visualisation of generated trays and emitters.
+- Show tray outlines, emitter markers, and IDs where practical.
 - Do not add manual editing UI yet.
 - Do not add Unity code.
 - Do not add multi-bulb falloff.
 
-### Phase 4B: Debug overlays
+### Phase 4B: Improved debug overlays and inspection
 
-- Show tray boundaries and emitter positions in the editor/Face view.
-- Show tray IDs and lamp IDs where practical.
-- Make auto-authored tray/emitter data inspectable enough to verify generation quality.
-- Keep this lightweight.
+- Add proper overlay toggles/options if needed.
+- Improve label styling and visibility.
+- Make auto-authored tray/emitter data easier to inspect.
+- Optionally show generated runtime texture debug images.
+- Keep this lighter than manual editing work.
 
 ### Phase 4C: Manual tray editing
 
@@ -225,6 +236,7 @@ Suggested tests for Phase 4A:
 - generated Face saves, closes, reloads, and preserves trays/emitters
 - runtime export still works
 - existing temporary bridge fallback still works when authored trays are absent
+- overlay renderer/service can render tray outlines and emitter markers without requiring visible WPF windows where practical
 
 Avoid tests that require visible WPF windows.
 
@@ -233,6 +245,7 @@ Avoid tests that require visible WPF windows.
 - No Unity implementation.
 - No manual tray editor.
 - No manual emitter editor.
+- No interactive overlay tooling.
 - No complex connected-component tracing.
 - No automatic multi-bulb tray grouping.
 - No physically perfect tray inference.
