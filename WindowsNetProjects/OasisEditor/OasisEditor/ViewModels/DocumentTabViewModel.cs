@@ -186,6 +186,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
             LastRegeneratedAtUtc = _faceDocumentModel.LastRegeneratedAtUtc,
             RuntimeRenderAssets = _faceDocumentModel.RuntimeRenderAssets,
             MaskLayer = _faceDocumentModel.MaskLayer,
+            Trays = _faceDocumentModel.Trays,
+            LampEmitters = _faceDocumentModel.LampEmitters,
             Layers = _faceDocumentModel.Layers,
             Elements = elements.ToArray()
         }, faceChange);

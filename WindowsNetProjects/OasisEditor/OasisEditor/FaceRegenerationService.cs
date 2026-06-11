@@ -23,6 +23,7 @@ internal sealed class FaceRegenerationResult
 internal sealed class FaceRegenerationService
 {
     private readonly FaceGenerationService _generationService;
+    private readonly FaceTrayAutoAuthoringService _trayAutoAuthoringService = new();
 
     public FaceRegenerationService(FaceGenerationService? generationService = null)
     {
@@ -106,6 +107,7 @@ internal sealed class FaceRegenerationService
         }
 
         mergedElements.AddRange(preservedManualElements);
+        var autoAuthored = _trayAutoAuthoringService.AutoAuthor(new FaceDocumentModel { MaskLayer = generated.Document.MaskLayer, Elements = mergedElements.ToArray() });
 
         var regeneratedDocument = new FaceDocumentModel
         {
@@ -116,6 +118,8 @@ internal sealed class FaceRegenerationService
             SourceRegion = sourceRegion,
             LastRegeneratedAtUtc = DateTime.UtcNow,
             MaskLayer = generated.Document.MaskLayer,
+            Trays = autoAuthored.Trays,
+            LampEmitters = autoAuthored.Emitters,
             Layers = EnsureFaceMaskLayer(existingFace.Layers.Count > 0 ? existingFace.Layers : generated.Document.Layers),
             Elements = mergedElements.ToArray()
         };
