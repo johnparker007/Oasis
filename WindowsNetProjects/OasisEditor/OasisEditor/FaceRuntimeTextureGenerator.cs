@@ -27,20 +27,41 @@ public sealed class FaceRuntimeTextureGenerator
         ArgumentNullException.ThrowIfNull(faceDocument);
         ValidateDimensions(width, height);
 
-        var emitters = CreateTemporaryEmitters(faceDocument).ToArray();
-        ValidateLampIds(emitters);
-        var lampWindowsById = faceDocument.Elements
-            .OfType<FaceLampWindowElement>()
-            .Where(element => IsValidVisibleLampWindow(element) && !string.IsNullOrWhiteSpace(element.ObjectId))
-            .GroupBy(element => element.ObjectId, StringComparer.Ordinal)
-            .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
-        var trays = emitters
-            .Select(emitter => CreateTemporaryTray(emitter, lampWindowsById, faceDocument.MaskLayer))
-            .ToArray();
+        FaceRuntimeTrayElement[] trays;
+        FaceLampEmitterElement[] emitters;
+        var exportSource = ResolveExportSource(faceDocument);
+        if (exportSource == FaceRuntimeTextureExportSource.Authored)
+        {
+            ValidateAuthoredExportData(faceDocument);
+            emitters = faceDocument.LampEmitters
+                .OrderBy(emitter => emitter.TrayId)
+                .ThenBy(emitter => emitter.ObjectId, StringComparer.Ordinal)
+                .ToArray();
+            ValidateLampIds(emitters);
+            var emittersByTrayObjectId = emitters.ToDictionary(emitter => emitter.TrayObjectId.Trim(), StringComparer.Ordinal);
+            trays = faceDocument.Trays
+                .OrderBy(tray => emittersByTrayObjectId[tray.ObjectId.Trim()].TrayId)
+                .ThenBy(tray => tray.ObjectId, StringComparer.Ordinal)
+                .Select(tray => CreateAuthoredTray(tray, emittersByTrayObjectId[tray.ObjectId.Trim()]))
+                .ToArray();
+        }
+        else
+        {
+            emitters = CreateTemporaryEmitters(faceDocument).ToArray();
+            ValidateLampIds(emitters);
+            var lampWindowsById = faceDocument.Elements
+                .OfType<FaceLampWindowElement>()
+                .Where(element => IsValidVisibleLampWindow(element) && !string.IsNullOrWhiteSpace(element.ObjectId))
+                .GroupBy(element => element.ObjectId, StringComparer.Ordinal)
+                .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
+            trays = emitters
+                .Select(emitter => CreateTemporaryTray(emitter, lampWindowsById, faceDocument.MaskLayer))
+                .ToArray();
+        }
 
         var overlaps = DetectTrayOwnershipOverlaps(trays, width, height);
 
-        return new FaceRuntimeTextureGenerationPlan(width, height, trays, emitters, overlaps);
+        return new FaceRuntimeTextureGenerationPlan(width, height, trays, emitters, overlaps, exportSource);
     }
 
     public FaceRuntimeTextureGenerationResult Generate(FaceDocumentModel faceDocument, int width, int height, string outputDirectory)
@@ -73,6 +94,45 @@ public sealed class FaceRuntimeTextureGenerator
     }
 
 
+    private static FaceRuntimeTextureExportSource ResolveExportSource(FaceDocumentModel faceDocument)
+    {
+        var hasAuthoredTrays = faceDocument.Trays.Count > 0;
+        var hasAuthoredEmitters = faceDocument.LampEmitters.Count > 0;
+        return hasAuthoredTrays || hasAuthoredEmitters
+            ? FaceRuntimeTextureExportSource.Authored
+            : FaceRuntimeTextureExportSource.LampWindowBridge;
+    }
+
+    private static FaceRuntimeTrayElement CreateAuthoredTray(FaceTrayModel tray, FaceLampEmitterElement emitter)
+    {
+        var bounds = tray.Bounds!;
+        return new FaceRuntimeTrayElement
+        {
+            TrayId = emitter.TrayId,
+            ObjectId = tray.ObjectId.Trim(),
+            SourceLampWindowObjectId = string.IsNullOrWhiteSpace(tray.SourceLampWindowObjectId) ? emitter.SourceLampWindowObjectId : tray.SourceLampWindowObjectId.Trim(),
+            Name = string.IsNullOrWhiteSpace(tray.Name) ? $"Tray {emitter.TrayId}" : tray.Name,
+            X = bounds.X,
+            Y = bounds.Y,
+            Width = bounds.Width,
+            Height = bounds.Height,
+            Vertices = tray.Vertices.Count > 0 ? tray.Vertices.ToArray() : CreateRectangleVertices(bounds),
+            LampEmitterObjectId = emitter.ObjectId,
+            LampId = emitter.LampId
+        };
+    }
+
+    private static IReadOnlyList<FacePointModel> CreateRectangleVertices(FaceSourceRegionModel bounds)
+    {
+        return
+        [
+            new FacePointModel { X = bounds.X, Y = bounds.Y },
+            new FacePointModel { X = bounds.X + bounds.Width, Y = bounds.Y },
+            new FacePointModel { X = bounds.X + bounds.Width, Y = bounds.Y + bounds.Height },
+            new FacePointModel { X = bounds.X, Y = bounds.Y + bounds.Height }
+        ];
+    }
+
     private static FaceRuntimeTrayElement CreateTemporaryTray(
         FaceLampEmitterElement emitter,
         IReadOnlyDictionary<string, FaceLampWindowElement> lampWindowsById,
@@ -89,6 +149,7 @@ public sealed class FaceRuntimeTextureGenerator
             Y = bounds.Y,
             Width = bounds.Width,
             Height = bounds.Height,
+            Vertices = [],
             LampEmitterObjectId = emitter.ObjectId,
             LampId = emitter.LampId
         };
@@ -185,6 +246,135 @@ public sealed class FaceRuntimeTextureGenerator
         }
     }
 
+    private static void ValidateAuthoredExportData(FaceDocumentModel faceDocument)
+    {
+        var diagnostics = new List<string>();
+        if (faceDocument.Trays.Count == 0)
+        {
+            diagnostics.Add("authored export contains emitters but no trays");
+        }
+
+        if (faceDocument.LampEmitters.Count == 0)
+        {
+            diagnostics.Add("authored export contains trays but no emitters");
+        }
+
+        var trayIds = faceDocument.Trays
+            .Where(tray => !string.IsNullOrWhiteSpace(tray.ObjectId))
+            .Select(tray => tray.ObjectId.Trim())
+            .ToArray();
+        var trayIdSet = trayIds.ToHashSet(StringComparer.Ordinal);
+
+        AddDuplicateDiagnostics(trayIds, "duplicate tray ID", diagnostics);
+        AddDuplicateDiagnostics(
+            faceDocument.LampEmitters
+                .Where(emitter => !string.IsNullOrWhiteSpace(emitter.ObjectId))
+                .Select(emitter => emitter.ObjectId.Trim()),
+            "duplicate emitter ID",
+            diagnostics);
+        AddDuplicateDiagnostics(
+            faceDocument.LampEmitters
+                .Where(emitter => emitter.TrayId > 0)
+                .Select(emitter => emitter.TrayId.ToString()),
+            "duplicate numeric tray ID",
+            diagnostics);
+        AddDuplicateDiagnostics(
+            faceDocument.LampEmitters
+                .Where(emitter => !string.IsNullOrWhiteSpace(emitter.TrayObjectId))
+                .Select(emitter => emitter.TrayObjectId.Trim()),
+            "duplicate emitter tray reference",
+            diagnostics);
+
+        foreach (var tray in faceDocument.Trays)
+        {
+            var displayName = DisplayName(tray.ObjectId, tray.Name);
+            if (string.IsNullOrWhiteSpace(tray.ObjectId))
+            {
+                diagnostics.Add($"tray '{displayName}' is missing an ID");
+            }
+
+            if (tray.Bounds is not { IsValid: true } || tray.Bounds.Width <= 0d || tray.Bounds.Height <= 0d)
+            {
+                diagnostics.Add($"tray '{displayName}' has invalid tray geometry bounds");
+            }
+
+            if (tray.Vertices.Count > 0)
+            {
+                if (tray.Vertices.Count < 3
+                    || tray.Vertices.Any(vertex => !PanelElementValidation.IsFinite(vertex.X) || !PanelElementValidation.IsFinite(vertex.Y))
+                    || Math.Abs(PolygonArea(tray.Vertices)) <= double.Epsilon)
+                {
+                    diagnostics.Add($"tray '{displayName}' has invalid tray geometry vertices");
+                }
+            }
+        }
+
+        foreach (var tray in faceDocument.Trays.Where(tray => !string.IsNullOrWhiteSpace(tray.ObjectId)))
+        {
+            if (!faceDocument.LampEmitters.Any(emitter => string.Equals(emitter.TrayObjectId?.Trim(), tray.ObjectId.Trim(), StringComparison.Ordinal)))
+            {
+                diagnostics.Add($"tray '{DisplayName(tray.ObjectId, tray.Name)}' does not have an emitter");
+            }
+        }
+
+        foreach (var emitter in faceDocument.LampEmitters)
+        {
+            var displayName = DisplayName(emitter.ObjectId, emitter.Name);
+            if (string.IsNullOrWhiteSpace(emitter.ObjectId))
+            {
+                diagnostics.Add($"emitter '{displayName}' is missing an ID");
+            }
+
+            if (emitter.TrayId <= 0 || emitter.TrayId > byte.MaxValue)
+            {
+                diagnostics.Add($"emitter '{displayName}' has invalid tray ID '{emitter.TrayId}'");
+            }
+
+            if (string.IsNullOrWhiteSpace(emitter.TrayObjectId) || !trayIdSet.Contains(emitter.TrayObjectId.Trim()))
+            {
+                diagnostics.Add($"emitter '{displayName}' references missing tray '{emitter.TrayObjectId}'");
+            }
+        }
+
+        if (diagnostics.Count > 0)
+        {
+            throw new InvalidOperationException("Face authored runtime texture export data is invalid: " + string.Join("; ", diagnostics) + ".");
+        }
+    }
+
+    private static void AddDuplicateDiagnostics(IEnumerable<string> ids, string label, List<string> diagnostics)
+    {
+        foreach (var duplicate in ids
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Select(id => id.Trim())
+            .GroupBy(id => id, StringComparer.Ordinal)
+            .Where(group => group.Count() > 1)
+            .Select(group => group.Key))
+        {
+            diagnostics.Add($"{label} '{duplicate}'");
+        }
+    }
+
+    private static double PolygonArea(IReadOnlyList<FacePointModel> vertices)
+    {
+        var area = 0d;
+        for (var index = 0; index < vertices.Count; index++)
+        {
+            var current = vertices[index];
+            var next = vertices[(index + 1) % vertices.Count];
+            area += (current.X * next.Y) - (next.X * current.Y);
+        }
+
+        return area / 2d;
+    }
+
+    private static string DisplayName(string objectId, string name)
+    {
+        return string.IsNullOrWhiteSpace(name)
+            ? string.IsNullOrWhiteSpace(objectId) ? "<unnamed>" : objectId.Trim()
+            : name.Trim();
+    }
+
     private static void ValidateLampIds(IReadOnlyList<FaceLampEmitterElement> emitters)
     {
         foreach (var emitter in emitters)
@@ -210,6 +400,11 @@ public sealed class FaceRuntimeTextureGenerator
                 {
                     var index = (y * width) + x;
                     var existing = ownership[index];
+                    if (!RasterGeometry.ContainsPixelCenter(tray, x, y))
+                    {
+                        continue;
+                    }
+
                     if (existing != 0)
                     {
                         if (overlaps.Count < maxRecordedOverlaps)
@@ -280,7 +475,7 @@ public sealed class TrayIdTextureGenerator
                 for (var x = bounds.Left; x < bounds.Right; x++)
                 {
                     var index = (y * width) + x;
-                    if (ownership[index] != 0)
+                    if (ownership[index] != 0 || !RasterGeometry.ContainsPixelCenter(tray, x, y))
                     {
                         continue;
                     }
@@ -353,7 +548,7 @@ public sealed class LampInfluenceTextureGenerator
                 for (var x = bounds.Left; x < bounds.Right; x++)
                 {
                     var index = (y * width) + x;
-                    if (ownership[index] != 0)
+                    if (ownership[index] != 0 || !RasterGeometry.ContainsPixelCenter(tray, x, y))
                     {
                         continue;
                     }
@@ -386,12 +581,19 @@ public sealed class LampInfluenceTextureGenerator
     }
 }
 
+public enum FaceRuntimeTextureExportSource
+{
+    LampWindowBridge,
+    Authored
+}
+
 public sealed record FaceRuntimeTextureGenerationPlan(
     int Width,
     int Height,
     IReadOnlyList<FaceRuntimeTrayElement> Trays,
     IReadOnlyList<FaceLampEmitterElement> Emitters,
-    IReadOnlyList<FaceRuntimeTrayOverlap> Overlaps);
+    IReadOnlyList<FaceRuntimeTrayOverlap> Overlaps,
+    FaceRuntimeTextureExportSource ExportSource);
 
 public sealed record FaceRuntimeTrayOverlap(int X, int Y, int ExistingTrayId, int OverlappingTrayId);
 
@@ -413,11 +615,46 @@ public sealed class FaceRuntimeTrayElement
     public double Y { get; init; }
     public double Width { get; init; }
     public double Height { get; init; }
+    public IReadOnlyList<FacePointModel> Vertices { get; init; } = [];
     public string LampEmitterObjectId { get; init; } = string.Empty;
     public int? LampId { get; init; }
 }
 
 internal readonly record struct RuntimeRect(double X, double Y, double Width, double Height);
+
+
+internal static class RasterGeometry
+{
+    public static bool ContainsPixelCenter(FaceRuntimeTrayElement tray, int x, int y)
+    {
+        if (tray.Vertices.Count == 0)
+        {
+            return true;
+        }
+
+        return ContainsPoint(tray.Vertices, x + 0.5d, y + 0.5d);
+    }
+
+    private static bool ContainsPoint(IReadOnlyList<FacePointModel> vertices, double x, double y)
+    {
+        var inside = false;
+        var previous = vertices.Count - 1;
+        for (var current = 0; current < vertices.Count; current++)
+        {
+            var currentVertex = vertices[current];
+            var previousVertex = vertices[previous];
+            if (((currentVertex.Y > y) != (previousVertex.Y > y))
+                && (x < ((previousVertex.X - currentVertex.X) * (y - currentVertex.Y) / (previousVertex.Y - currentVertex.Y)) + currentVertex.X))
+            {
+                inside = !inside;
+            }
+
+            previous = current;
+        }
+
+        return inside;
+    }
+}
 
 internal readonly record struct RasterBounds(int Left, int Top, int Right, int Bottom)
 {
