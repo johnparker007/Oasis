@@ -103,7 +103,7 @@ public sealed class DocumentWorkspaceViewModel
             && _getSelectedDocument() is { Document.DocumentType: EditorDocumentType.Panel2D };
     }
 
-    public DocumentTabViewModel? GenerateFaceFromSelectedPanel2DRegion(Rect sourceRect)
+    public DocumentTabViewModel? GenerateFaceFromSelectedPanel2DRegion(Rect sourceRect, FaceGenerationSettingsModel? generationSettings = null)
     {
         var sourceDocument = _getSelectedDocument();
         var loadedProject = _getLoadedProject();
@@ -126,7 +126,8 @@ public sealed class DocumentWorkspaceViewModel
             sourceDocument.DocumentId.ToString("N"),
             loadedProject.InputDefinitions,
             loadedProject.ProjectDirectory,
-            loadedProject.GeneratedDirectory);
+            loadedProject.GeneratedDirectory,
+            generationSettings);
 
         var faceJson = FaceDocumentStorage.Serialize(result.Document);
         var faceEditorDocument = EditorDocument.CreateFaceStub(title).WithContentSummary(result.Document.Summary ?? "Generated Face document.");
@@ -186,7 +187,7 @@ public sealed class DocumentWorkspaceViewModel
         return true;
     }
 
-    public bool RegenerateSelectedFace()
+    public bool RegenerateSelectedFace(FaceGenerationSettingsModel? generationSettings = null)
     {
         var selectedDocument = _getSelectedDocument();
         var loadedProject = _getLoadedProject();
@@ -209,7 +210,8 @@ public sealed class DocumentWorkspaceViewModel
             sourcePanelDocument.GetPanelDocument(),
             loadedProject.InputDefinitions,
             loadedProject.ProjectDirectory,
-            loadedProject.GeneratedDirectory);
+            loadedProject.GeneratedDirectory,
+            generationSettings);
 
         selectedDocument.SetFaceDocument(
             result.Document,
@@ -598,6 +600,7 @@ public sealed class DocumentWorkspaceViewModel
                 SourcePanel2DDocumentId = faceDocument.SourcePanel2DDocumentId,
                 SourceRegion = faceDocument.SourceRegion,
                 LastRegeneratedAtUtc = faceDocument.LastRegeneratedAtUtc,
+                GenerationSettings = faceDocument.GenerationSettings,
                 RuntimeRenderAssets = faceDocument.RuntimeRenderAssets,
                 MaskLayer = faceDocument.MaskLayer,
                 Trays = faceDocument.Trays,

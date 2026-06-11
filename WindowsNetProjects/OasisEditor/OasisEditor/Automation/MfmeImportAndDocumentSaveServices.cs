@@ -69,7 +69,10 @@ public sealed class DocumentSaveService : IDocumentSaveService
             {
                 PanelZoom = current.PanelZoom,
                 PanelPanX = current.PanelPanX,
-                PanelPanY = current.PanelPanY
+                PanelPanY = current.PanelPanY,
+                FaceZoom = current.FaceZoom,
+                FacePanX = current.FacePanX,
+                FacePanY = current.FacePanY
             };
         }
 
@@ -86,7 +89,10 @@ public sealed class DocumentSaveService : IDocumentSaveService
         {
             PanelZoom = current.PanelZoom,
             PanelPanX = current.PanelPanX,
-            PanelPanY = current.PanelPanY
+            PanelPanY = current.PanelPanY,
+            FaceZoom = current.FaceZoom,
+            FacePanX = current.FacePanX,
+            FacePanY = current.FacePanY
         };
     }
 }

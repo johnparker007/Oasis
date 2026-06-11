@@ -10,6 +10,7 @@ internal sealed class FaceTrayAutoAuthoringService
     {
         ArgumentNullException.ThrowIfNull(faceDocument);
 
+        var settings = (faceDocument.GenerationSettings ?? FaceGenerationSettingsModel.Default).Normalize();
         var trays = new List<FaceTrayModel>();
         var emitters = new List<FaceLampEmitterElement>();
         var nextTrayNumber = 1;
@@ -20,9 +21,11 @@ internal sealed class FaceTrayAutoAuthoringService
             .OrderBy(CreateLampStableKey, StringComparer.Ordinal))
         {
             var contribution = FindBestContribution(lampWindow, faceDocument.MaskLayer);
-            var bounds = contribution?.Bounds is { IsValid: true } contributionBounds
+            var baseBounds = contribution?.Bounds is { IsValid: true } contributionBounds
                 ? contributionBounds
                 : FaceSourceRegionModel.FromRect(new Rect(lampWindow.X, lampWindow.Y, lampWindow.Width, lampWindow.Height));
+            var lampBounds = FaceSourceRegionModel.FromRect(new Rect(lampWindow.X, lampWindow.Y, lampWindow.Width, lampWindow.Height));
+            var bounds = ExpandBounds(baseBounds, lampBounds, settings);
             var source = contribution?.Bounds is { IsValid: true } ? "maskContributionBounds" : "lampWindowBounds";
             var stableKey = CreateLampStableKey(lampWindow);
             var trayObjectId = CreateStableId("face-tray", stableKey, source, Format(bounds.X), Format(bounds.Y), Format(bounds.Width), Format(bounds.Height));
@@ -179,6 +182,31 @@ internal sealed class FaceTrayAutoAuthoringService
             .OrderByDescending(candidate => OverlapArea(lampBounds, candidate.Bounds!.ToRect()))
             .ThenByDescending(candidate => candidate.PixelCount)
             .FirstOrDefault(candidate => OverlapArea(lampBounds, candidate.Bounds!.ToRect()) > 0d);
+    }
+
+
+    private static FaceSourceRegionModel ExpandBounds(FaceSourceRegionModel baseBounds, FaceSourceRegionModel lampWindowBounds, FaceGenerationSettingsModel settings)
+    {
+        var rect = baseBounds.ToRect();
+        var padding = Math.Max(0d, settings.TrayBoundsPaddingPixels);
+        if (padding > 0d)
+        {
+            rect.Inflate(padding, padding);
+        }
+
+        var inflationPercent = Math.Max(0d, settings.TrayBoundsInflationPercent);
+        if (inflationPercent > 0d)
+        {
+            rect.Inflate(rect.Width * inflationPercent / 100d / 2d, rect.Height * inflationPercent / 100d / 2d);
+        }
+
+        if (settings.ClampTrayBoundsToLampWindow)
+        {
+            var clamped = Rect.Intersect(rect, lampWindowBounds.ToRect());
+            rect = clamped.IsEmpty ? lampWindowBounds.ToRect() : clamped;
+        }
+
+        return FaceSourceRegionModel.FromRect(rect);
     }
 
     private static IReadOnlyList<FacePointModel> CreateRectangleVertices(FaceSourceRegionModel bounds)

@@ -548,7 +548,7 @@ public sealed class FaceTexturePreviewSettings
 {
     public static FaceTexturePreviewSettings Default { get; } = new();
 
-    public double AmbientStrength { get; init; } = 0.35d;
+    public double AmbientStrength { get; init; } = 1d;
     public double EmissionStrength { get; init; } = 1.15d;
     public double MaskStrength { get; init; } = 1d;
     public int LampIds0ChannelCount { get; init; } = 1;

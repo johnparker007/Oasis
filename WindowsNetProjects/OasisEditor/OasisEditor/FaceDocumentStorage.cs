@@ -5,7 +5,7 @@ namespace OasisEditor;
 
 public static class FaceDocumentStorage
 {
-    public const int CurrentSchemaVersion = 3;
+    public const int CurrentSchemaVersion = 4;
 
     private static readonly JsonSerializerOptions s_readOptions = new()
     {
@@ -29,6 +29,7 @@ public static class FaceDocumentStorage
             Id = Guid.NewGuid().ToString("N"),
             Title = resolvedTitle,
             Summary = "Face document placeholder.",
+            GenerationSettings = ToFile(FaceGenerationSettingsModel.Default),
             SavedAtUtc = DateTime.UtcNow,
             Layers =
             [
@@ -100,6 +101,11 @@ public static class FaceDocumentStorage
                 return false;
             }
 
+            if (parsed.SchemaVersion != CurrentSchemaVersion)
+            {
+                return false;
+            }
+
             file = parsed;
             return true;
         }
@@ -128,9 +134,9 @@ public static class FaceDocumentStorage
                 return false;
             }
 
-            if (parsed.SchemaVersion > CurrentSchemaVersion)
+            if (parsed.SchemaVersion != CurrentSchemaVersion)
             {
-                errorMessage = $"Unsupported face schema version '{parsed.SchemaVersion}'. This editor supports up to version {CurrentSchemaVersion}.";
+                errorMessage = $"Unsupported face schema version '{parsed.SchemaVersion}'. This editor supports only version {CurrentSchemaVersion}.";
                 return false;
             }
 
@@ -155,6 +161,7 @@ public static class FaceDocumentStorage
             SourcePanel2DDocumentId = string.IsNullOrWhiteSpace(file.SourcePanel2DDocumentId) ? null : file.SourcePanel2DDocumentId.Trim(),
             SourceRegion = ToModel(file.SourceRegion),
             LastRegeneratedAtUtc = file.LastRegeneratedAtUtc,
+            GenerationSettings = ToModel(file.GenerationSettings),
             RuntimeRenderAssets = ToModel(file.RuntimeRenderAssets),
             MaskLayer = ToModel(file.MaskLayer),
             Trays = (file.Trays ?? []).Select(ToModel).ToArray(),
@@ -186,6 +193,7 @@ public static class FaceDocumentStorage
             SourcePanel2DDocumentId = model.SourcePanel2DDocumentId,
             SourceRegion = ToFile(model.SourceRegion),
             LastRegeneratedAtUtc = model.LastRegeneratedAtUtc,
+            GenerationSettings = ToFile(model.GenerationSettings),
             RuntimeRenderAssets = ToFile(model.RuntimeRenderAssets),
             MaskLayer = ToFile(model.MaskLayer),
             Trays = model.Trays.Select(ToFile).ToArray(),
@@ -199,6 +207,35 @@ public static class FaceDocumentStorage
                 IsLocked = layer.IsLocked
             }).ToArray(),
             Elements = model.Elements.Select(ToFile).ToArray()
+        };
+    }
+
+
+    private static FaceGenerationSettingsModel ToModel(FaceGenerationSettingsFile? file)
+    {
+        if (file is null)
+        {
+            return FaceGenerationSettingsModel.Default;
+        }
+
+        return new FaceGenerationSettingsModel
+        {
+            MaskExtractionThreshold = file.MaskExtractionThreshold,
+            TrayBoundsInflationPercent = file.TrayBoundsInflationPercent,
+            TrayBoundsPaddingPixels = file.TrayBoundsPaddingPixels,
+            ClampTrayBoundsToLampWindow = file.ClampTrayBoundsToLampWindow
+        }.Normalize();
+    }
+
+    private static FaceGenerationSettingsFile ToFile(FaceGenerationSettingsModel model)
+    {
+        var normalized = (model ?? FaceGenerationSettingsModel.Default).Normalize();
+        return new FaceGenerationSettingsFile
+        {
+            MaskExtractionThreshold = normalized.MaskExtractionThreshold,
+            TrayBoundsInflationPercent = normalized.TrayBoundsInflationPercent,
+            TrayBoundsPaddingPixels = normalized.TrayBoundsPaddingPixels,
+            ClampTrayBoundsToLampWindow = normalized.ClampTrayBoundsToLampWindow
         };
     }
 
@@ -702,6 +739,7 @@ public sealed record FaceDocumentFile
     public string? SourcePanel2DDocumentId { get; init; }
     public FaceSourceRegionFile? SourceRegion { get; init; }
     public DateTime? LastRegeneratedAtUtc { get; init; }
+    public FaceGenerationSettingsFile? GenerationSettings { get; init; }
     public FaceRuntimeRenderAssetsFile? RuntimeRenderAssets { get; init; }
     public FaceMaskLayerFile? MaskLayer { get; init; }
     public IReadOnlyList<FaceTrayFile>? Trays { get; init; } = [];
@@ -709,6 +747,15 @@ public sealed record FaceDocumentFile
     public DateTime SavedAtUtc { get; init; }
     public IReadOnlyList<FaceLayerFile>? Layers { get; init; } = [];
     public IReadOnlyList<FaceElementFile>? Elements { get; init; } = [];
+}
+
+
+public sealed record FaceGenerationSettingsFile
+{
+    public byte MaskExtractionThreshold { get; init; } = FaceGenerationSettingsModel.DefaultMaskExtractionThreshold;
+    public double TrayBoundsInflationPercent { get; init; } = FaceGenerationSettingsModel.DefaultTrayBoundsInflationPercent;
+    public double TrayBoundsPaddingPixels { get; init; } = FaceGenerationSettingsModel.DefaultTrayBoundsPaddingPixels;
+    public bool ClampTrayBoundsToLampWindow { get; init; } = FaceGenerationSettingsModel.DefaultClampTrayBoundsToLampWindow;
 }
 
 public sealed record FaceRuntimeRenderAssetsFile

@@ -6,6 +6,7 @@ public sealed class EditorPreferences
 
     public MamePreferences Mame { get; init; } = new();
     public OutputLogPreferences OutputLog { get; init; } = new();
+    public FaceGenerationPreferences FaceGeneration { get; init; } = new();
 
     public Dictionary<string, ProjectWindowState> ProjectWindowStates { get; init; } = new();
 }
@@ -24,6 +25,45 @@ public sealed class MamePreferences
     public string RomArchiveExtension { get; init; } = ".zip";
     public string LocalRomSourceDirectory { get; init; } = string.Empty;
     public string LocalRomArchiveExtension { get; init; } = ".zip";
+}
+
+
+public sealed class FaceGenerationPreferences
+{
+    public byte DefaultMaskExtractionThreshold { get; init; } = FaceGenerationSettingsModel.DefaultMaskExtractionThreshold;
+    public double DefaultTrayBoundsInflationPercent { get; init; } = FaceGenerationSettingsModel.DefaultTrayBoundsInflationPercent;
+    public double DefaultTrayBoundsPaddingPixels { get; init; } = FaceGenerationSettingsModel.DefaultTrayBoundsPaddingPixels;
+    public bool DefaultClampTrayBoundsToLampWindow { get; init; } = FaceGenerationSettingsModel.DefaultClampTrayBoundsToLampWindow;
+    public bool ShowFaceGenerationSettingsBeforeGenerate { get; init; } = true;
+    public bool ShowFaceGenerationSettingsBeforeRegenerate { get; init; } = true;
+
+    public FaceGenerationSettingsModel ToSettings()
+    {
+        return new FaceGenerationSettingsModel
+        {
+            MaskExtractionThreshold = DefaultMaskExtractionThreshold,
+            TrayBoundsInflationPercent = DefaultTrayBoundsInflationPercent,
+            TrayBoundsPaddingPixels = DefaultTrayBoundsPaddingPixels,
+            ClampTrayBoundsToLampWindow = DefaultClampTrayBoundsToLampWindow
+        }.Normalize();
+    }
+
+    public static FaceGenerationPreferences FromSettings(
+        FaceGenerationSettingsModel settings,
+        bool showBeforeGenerate,
+        bool showBeforeRegenerate)
+    {
+        var normalized = (settings ?? FaceGenerationSettingsModel.Default).Normalize();
+        return new FaceGenerationPreferences
+        {
+            DefaultMaskExtractionThreshold = normalized.MaskExtractionThreshold,
+            DefaultTrayBoundsInflationPercent = normalized.TrayBoundsInflationPercent,
+            DefaultTrayBoundsPaddingPixels = normalized.TrayBoundsPaddingPixels,
+            DefaultClampTrayBoundsToLampWindow = normalized.ClampTrayBoundsToLampWindow,
+            ShowFaceGenerationSettingsBeforeGenerate = showBeforeGenerate,
+            ShowFaceGenerationSettingsBeforeRegenerate = showBeforeRegenerate
+        };
+    }
 }
 
 public sealed class ProjectWindowState

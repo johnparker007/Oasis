@@ -85,6 +85,28 @@ public sealed class FaceTexturePreviewRendererTests : IDisposable
         Assert.Equal(255, pixel.Alpha);
     }
 
+
+    [Fact]
+    public void Render_DefaultSettings_ZeroLampStateKeepsArtworkBrightness()
+    {
+        WriteSolidPng("artwork.png", 1, 1, new SKColor(100, 40, 20, 255));
+        WriteSolidPng("mask.png", 1, 1, SKColors.White);
+        WriteSolidPng("trayId.png", 1, 1, new SKColor(1, 0, 0, 255));
+        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(7, 0, 0, 255));
+        WriteSolidPng("lampWeights0.png", 1, 1, new SKColor(255, 0, 0, 255));
+        var renderer = new FaceTexturePreviewRenderer(path => string.IsNullOrWhiteSpace(path) ? null : Path.Combine(_testDirectory, path));
+
+        using var result = renderer.Render(CreateDocument(width: 1, height: 1), new MachineRuntimeState());
+
+        Assert.True(result.Rendered);
+        Assert.NotNull(result.Bitmap);
+        var pixel = result.Bitmap.GetPixel(0, 0);
+        Assert.Equal(100, pixel.Red);
+        Assert.Equal(40, pixel.Green);
+        Assert.Equal(20, pixel.Blue);
+        Assert.Equal(255, pixel.Alpha);
+    }
+
     [Fact]
     public void Render_PreservesArtworkAlpha()
     {
