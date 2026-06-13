@@ -75,7 +75,7 @@ internal static class MfmeExtractManifestParser
             }
 
             var sourceType = ReadSourceType(component);
-            if (TryParseSupportedComponent(sourceType, component, out var parsedComponent))
+            if (TryParseSupportedComponent(sourceType, component, index, out var parsedComponent))
             {
                 components.Add(parsedComponent);
                 AddMissingOptionalImageWarnings(parsedComponent, extractDirectory, index, warnings);
@@ -111,20 +111,23 @@ internal static class MfmeExtractManifestParser
                     warnings);
                 break;
             case MfmeLegacyLampComponent lamp:
-                AddMissingImageWarningIfNeeded(
-                    extractDirectory,
-                    "lamps",
-                    lamp.FirstLampElement?.BmpImageFilename,
-                    "Lamp",
-                    componentIndex,
-                    warnings);
-                AddMissingImageWarningIfNeeded(
-                    extractDirectory,
-                    "lamps",
-                    lamp.FirstLampElement?.BmpMaskImageFilename,
-                    "Lamp mask",
-                    componentIndex,
-                    warnings);
+                foreach (var lampElement in lamp.LampElements ?? [])
+                {
+                    AddMissingImageWarningIfNeeded(
+                        extractDirectory,
+                        "lamps",
+                        lampElement.BmpImageFilename,
+                        "Lamp",
+                        componentIndex,
+                        warnings);
+                    AddMissingImageWarningIfNeeded(
+                        extractDirectory,
+                        "lamps",
+                        lampElement.BmpMaskImageFilename,
+                        "Lamp mask",
+                        componentIndex,
+                        warnings);
+                }
                 break;
             case MfmeLegacyReelComponent reel:
                 AddMissingImageWarningIfNeeded(
@@ -195,7 +198,7 @@ internal static class MfmeExtractManifestParser
         return ReadBool(component, "HasCoinInput") || !string.IsNullOrWhiteSpace(ReadString(component, "CoinNote"));
     }
 
-    private static bool TryParseSupportedComponent(string sourceType, JsonElement component, out MfmeLegacyComponentBase parsedComponent)
+    private static bool TryParseSupportedComponent(string sourceType, JsonElement component, int componentIndex, out MfmeLegacyComponentBase parsedComponent)
     {
         var position = ReadPoint(component, "Position");
         var size = ReadPoint(component, "Size");
@@ -212,44 +215,54 @@ internal static class MfmeExtractManifestParser
                 return true;
 
             case "extractcomponentlamp":
-                parsedComponent = new MfmeLegacyLampComponent(
-                    position,
-                    size,
-                    ReadString(component, "TextBoxText"),
-                    ReadString(component, "TextBoxFontName"),
-                    ReadString(component, "TextBoxFontStyle"),
-                    ReadString(component, "TextBoxFontSize"),
-                    ReadFirstLampElement(component, ReadOptionalBool(component, "Graphic")),
-                    ReadColor(component, "OffImageColor"),
-                    ReadColor(component, "TextColor"),
-                    ReadBool(component, "NoOutline"),
-                    HasButtonInput(component),
-                    HasCoinInput(component),
-                    ReadString(component, "ButtonNumberAsString"),
-                    ReadBool(component, "Inverted"),
-                    ReadString(component, "Shortcut1"),
-                    ReadString(component, "Shortcut2"));
-                return true;
+                {
+                    var lampElements = ReadValidLampElements(component, ReadOptionalBool(component, "Graphic"));
+                    parsedComponent = new MfmeLegacyLampComponent(
+                        position,
+                        size,
+                        ReadString(component, "TextBoxText"),
+                        ReadString(component, "TextBoxFontName"),
+                        ReadString(component, "TextBoxFontStyle"),
+                        ReadString(component, "TextBoxFontSize"),
+                        lampElements.FirstOrDefault(),
+                        ReadColor(component, "OffImageColor"),
+                        ReadColor(component, "TextColor"),
+                        ReadBool(component, "NoOutline"),
+                        HasButtonInput(component),
+                        HasCoinInput(component),
+                        ReadString(component, "ButtonNumberAsString"),
+                        ReadBool(component, "Inverted"),
+                        ReadString(component, "Shortcut1"),
+                        ReadString(component, "Shortcut2"),
+                        lampElements,
+                        componentIndex);
+                    return true;
+                }
 
             case "extractcomponentbutton":
-                parsedComponent = new MfmeLegacyButtonComponent(
-                    position,
-                    size,
-                    ReadString(component, "TextBoxText"),
-                    ReadString(component, "TextBoxFontName"),
-                    ReadString(component, "TextBoxFontStyle"),
-                    ReadString(component, "TextBoxFontSize"),
-                    HasButtonInput(component),
-                    HasCoinInput(component),
-                    ReadString(component, "ButtonNumberAsString"),
-                    ReadBool(component, "Inverted"),
-                    ReadString(component, "Shortcut1"),
-                    ReadString(component, "Shortcut2"),
-                    ReadFirstLampElement(component, ReadOptionalBool(component, "Graphic")),
-                    ReadColor(component, "OffImageColor"),
-                    ReadColor(component, "TextColor"),
-                    ReadBool(component, "NoOutline"));
-                return true;
+                {
+                    var lampElements = ReadValidLampElements(component, ReadOptionalBool(component, "Graphic"));
+                    parsedComponent = new MfmeLegacyButtonComponent(
+                        position,
+                        size,
+                        ReadString(component, "TextBoxText"),
+                        ReadString(component, "TextBoxFontName"),
+                        ReadString(component, "TextBoxFontStyle"),
+                        ReadString(component, "TextBoxFontSize"),
+                        HasButtonInput(component),
+                        HasCoinInput(component),
+                        ReadString(component, "ButtonNumberAsString"),
+                        ReadBool(component, "Inverted"),
+                        ReadString(component, "Shortcut1"),
+                        ReadString(component, "Shortcut2"),
+                        lampElements.FirstOrDefault(),
+                        ReadColor(component, "OffImageColor"),
+                        ReadColor(component, "TextColor"),
+                        ReadBool(component, "NoOutline"),
+                        lampElements,
+                        componentIndex);
+                    return true;
+                }
 
             case "extractcomponentreel":
                 parsedComponent = new MfmeLegacyReelComponent(
@@ -305,31 +318,42 @@ internal static class MfmeExtractManifestParser
         }
     }
 
-    private static MfmeLegacyLampElement? ReadFirstLampElement(JsonElement component, bool? componentGraphic)
+    private static IReadOnlyList<MfmeLegacyLampElement> ReadValidLampElements(JsonElement component, bool? componentGraphic)
     {
         if (!component.TryGetProperty("LampElements", out var lampElements) || lampElements.ValueKind != JsonValueKind.Array)
         {
-            return null;
+            return [];
         }
 
+        var validLampElements = new List<MfmeLegacyLampElement>();
+        var lampElementIndex = 0;
         foreach (var lampElement in lampElements.EnumerateArray())
         {
             if (lampElement.ValueKind != JsonValueKind.Object)
             {
+                lampElementIndex++;
                 continue;
             }
 
             var numberAsText = ReadString(lampElement, "NumberAsText");
-            return new MfmeLegacyLampElement(
+            var parsed = new MfmeLegacyLampElement(
                 numberAsText,
                 TryParseNullableInt(numberAsText),
                 ReadColor(lampElement, "OnColor"),
                 ReadString(lampElement, "BmpImageFilename"),
                 ReadString(lampElement, "BmpMaskImageFilename"),
-                ReadOptionalBool(lampElement, "Graphic") ?? componentGraphic ?? false);
+                ReadOptionalBool(lampElement, "Graphic") ?? componentGraphic ?? false,
+                lampElementIndex);
+
+            if (parsed.HasUsefulIdentityOrImage)
+            {
+                validLampElements.Add(parsed);
+            }
+
+            lampElementIndex++;
         }
 
-        return null;
+        return validLampElements;
     }
 
     private static string ReadSourceType(JsonElement component)

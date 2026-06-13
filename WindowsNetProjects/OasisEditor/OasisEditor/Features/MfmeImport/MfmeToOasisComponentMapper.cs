@@ -24,9 +24,9 @@ internal sealed class MfmeToOasisComponentMapper
                     break;
                 case MfmeLegacyLampComponent lamp:
                     {
-                        var mappedLamp = MapLamp(lamp, warnings);
-                        elements.Add(mappedLamp);
-                        var input = BuildInputDefinition(lamp, mappedLamp.ObjectId);
+                        var mappedLamps = MapLamps(lamp, warnings);
+                        elements.AddRange(mappedLamps);
+                        var input = BuildInputDefinition(lamp, mappedLamps.FirstOrDefault()?.ObjectId ?? string.Empty);
                         if (input is not null)
                         {
                             inputDefinitions.Add(input);
@@ -35,9 +35,9 @@ internal sealed class MfmeToOasisComponentMapper
                     }
                 case MfmeLegacyButtonComponent button:
                     {
-                        var mappedButtonLamp = MapButtonAsLamp(button, warnings);
-                        elements.Add(mappedButtonLamp);
-                        var input = BuildInputDefinition(button, mappedButtonLamp.ObjectId);
+                        var mappedButtonLamps = MapButtonAsLamps(button, warnings);
+                        elements.AddRange(mappedButtonLamps);
+                        var input = BuildInputDefinition(button, mappedButtonLamps.FirstOrDefault()?.ObjectId ?? string.Empty);
                         if (input is not null)
                         {
                             inputDefinitions.Add(input);
@@ -92,12 +92,37 @@ internal sealed class MfmeToOasisComponentMapper
         };
     }
 
-    private static PanelElementModel MapLamp(MfmeLegacyLampComponent component, ICollection<MfmeImportWarning> warnings)
+    private static IReadOnlyList<PanelElementModel> MapLamps(MfmeLegacyLampComponent component, ICollection<MfmeImportWarning> warnings)
     {
-        var number = component.FirstLampElement?.Number;
-        if (number is null && !string.IsNullOrWhiteSpace(component.FirstLampElement?.NumberAsText))
+        IReadOnlyList<MfmeLegacyLampElement> lampElements = component.LampElements is { Count: > 0 } parsedLampElements
+            ? parsedLampElements
+            : component.FirstLampElement is null ? [] : [component.FirstLampElement];
+
+        if (lampElements.Count == 0)
         {
-            if (int.TryParse(component.FirstLampElement.NumberAsText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed))
+            lampElements = [new MfmeLegacyLampElement(null, null, null, null, null, Graphic: false)];
+        }
+
+        var sharedLampSetId = component.SourceComponentIndex >= 0
+            ? $"mfme-component-{component.SourceComponentIndex.ToString(CultureInfo.InvariantCulture)}"
+            : $"mfme-component-{component.Position.X.ToString(CultureInfo.InvariantCulture)}-{component.Position.Y.ToString(CultureInfo.InvariantCulture)}-{component.Size.X.ToString(CultureInfo.InvariantCulture)}-{component.Size.Y.ToString(CultureInfo.InvariantCulture)}";
+
+        return lampElements
+            .Select(lampElement => MapLamp(component, lampElement, lampElements.Count, sharedLampSetId, warnings))
+            .ToArray();
+    }
+
+    private static PanelElementModel MapLamp(
+        MfmeLegacyLampComponent component,
+        MfmeLegacyLampElement? lampElement,
+        int sharedLampSetCount,
+        string sharedLampSetId,
+        ICollection<MfmeImportWarning> warnings)
+    {
+        var number = lampElement?.Number;
+        if (number is null && !string.IsNullOrWhiteSpace(lampElement?.NumberAsText))
+        {
+            if (int.TryParse(lampElement.NumberAsText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed))
             {
                 number = parsed;
             }
@@ -106,7 +131,7 @@ internal sealed class MfmeToOasisComponentMapper
                 warnings.Add(new MfmeImportWarning(
                     "mfme.import.lamp.number.invalid",
                     "Lamp number could not be parsed; number will be omitted.",
-                    component.FirstLampElement.NumberAsText));
+                    lampElement.NumberAsText));
             }
         }
 
@@ -120,25 +145,25 @@ internal sealed class MfmeToOasisComponentMapper
             Width = component.Size.X,
             Height = component.Size.Y,
             DisplayNumber = number,
-            AssetPath = component.FirstLampElement?.Graphic == true
-                ? BuildExtractRelativePath("lamps", component.FirstLampElement.BmpImageFilename)
+            AssetPath = lampElement?.Graphic == true
+                ? BuildExtractRelativePath("lamps", lampElement.BmpImageFilename)
                 : null,
-            SecondaryAssetPath = component.FirstLampElement?.Graphic == true
-                ? BuildExtractRelativePath("lamps", component.FirstLampElement.BmpMaskImageFilename)
+            SecondaryAssetPath = lampElement?.Graphic == true
+                ? BuildExtractRelativePath("lamps", lampElement.BmpMaskImageFilename)
                 : null,
-            OnColorHex = ToHex(component.FirstLampElement?.OnColor),
+            OnColorHex = ToHex(lampElement?.OnColor),
             OffColorHex = ToHex(component.OffImageColor),
             TextColorHex = ToHex(component.TextColor),
             DisplayText = NormalizeOptional(component.TextBoxText),
             TextBoxFontName = NormalizeLampFontName(component.TextBoxFontName),
             TextBoxFontStyle = NormalizeLampFontStyle(component.TextBoxFontStyle),
             TextBoxFontSize = NormalizeLampFontSize(component.TextBoxFontSize),
-            ImportSource = CreateImportSource(number.HasValue ? $"{component.SourceType}:{number.Value}" : component.SourceType)
+            ImportSource = CreateLampImportSource(component, lampElement, number, sharedLampSetId, sharedLampSetCount)
         };
     }
 
 
-    private static PanelElementModel MapButtonAsLamp(MfmeLegacyButtonComponent component, ICollection<MfmeImportWarning> warnings)
+    private static IReadOnlyList<PanelElementModel> MapButtonAsLamps(MfmeLegacyButtonComponent component, ICollection<MfmeImportWarning> warnings)
     {
         var lampEquivalent = new MfmeLegacyLampComponent(
             component.Position,
@@ -156,9 +181,11 @@ internal sealed class MfmeToOasisComponentMapper
             component.ButtonNumberAsString,
             component.Inverted,
             component.Shortcut1,
-            component.Shortcut2);
+            component.Shortcut2,
+            component.LampElements,
+            component.SourceComponentIndex);
 
-        return MapLamp(lampEquivalent, warnings);
+        return MapLamps(lampEquivalent, warnings);
     }
 
     private static InputDefinitionModel? BuildInputDefinition(MfmeLegacyLampComponent component, string linkedObjectId)
@@ -322,6 +349,17 @@ internal sealed class MfmeToOasisComponentMapper
             TextColorHex = ToHex(component.TextColor),
             ImportSource = CreateImportSource(component.SourceType)
         };
+    }
+
+    private static PanelElementImportSourceModel CreateLampImportSource(
+        MfmeLegacyLampComponent component,
+        MfmeLegacyLampElement? lampElement,
+        int? number,
+        string sharedLampSetId,
+        int sharedLampSetCount)
+    {
+        var reference = number.HasValue ? $"{component.SourceType}:{number.Value}" : component.SourceType;
+        return CreateImportSource($"{reference};componentIndex={component.SourceComponentIndex.ToString(CultureInfo.InvariantCulture)};lampElementIndex={(lampElement?.SourceElementIndex ?? -1).ToString(CultureInfo.InvariantCulture)};sharedLampSetId={sharedLampSetId};sharedLampSetCount={sharedLampSetCount.ToString(CultureInfo.InvariantCulture)}");
     }
 
     private static PanelElementImportSourceModel CreateImportSource(string reference)

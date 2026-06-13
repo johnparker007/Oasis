@@ -302,6 +302,62 @@ public sealed class MfmeExtractReaderTests
         }
     }
 
+
+    [Fact]
+    public void Read_WithMultipleLampElements_KeepsAllValidAndIgnoresPlaceholders()
+    {
+        var extractDirectory = CreateTempDirectory();
+        var manifestPath = Path.Combine(extractDirectory, "layout.json");
+        Directory.CreateDirectory(Path.Combine(extractDirectory, "lamps"));
+        File.WriteAllText(Path.Combine(extractDirectory, "lamps", "lamp-147.png"), "placeholder");
+        File.WriteAllText(Path.Combine(extractDirectory, "lamps", "lamp-164.png"), "placeholder");
+        File.WriteAllText(manifestPath, """
+        {
+          "ASName": "MultiLampLayout",
+          "Components": [
+            {
+              "$type": "Oasis.MfmeTools.Shared.ExtractComponents.ExtractComponentLamp, MfmeTools",
+              "Position": { "X": 10, "Y": 20 },
+              "Size": { "X": 300, "Y": 80 },
+              "Graphic": true,
+              "LampElements": [
+                { "NumberAsText": "147", "BmpImageFilename": "lamp-147.png" },
+                { "NumberAsText": "", "BmpImageFilename": "", "BmpMaskImageFilename": "" },
+                { "NumberAsText": "164", "BmpImageFilename": "lamp-164.png" }
+              ]
+            }
+          ]
+        }
+        """);
+
+        try
+        {
+            var result = new FileSystemMfmeExtractReader().Read(new MfmeImportContext
+            {
+                SourceExtractPath = extractDirectory,
+                ProjectRootPath = "C:/Project",
+                ProjectAssetsPath = "C:/Project/Assets",
+                CopyAssets = true
+            });
+
+            Assert.True(result.Succeeded);
+            Assert.Empty(result.Errors);
+            Assert.Empty(result.Warnings);
+            var lamp = Assert.IsType<MfmeLegacyLampComponent>(Assert.Single(result.Extract!.Components));
+            Assert.Equal(2, lamp.LampElements!.Count);
+            Assert.Equal(147, lamp.LampElements[0].Number);
+            Assert.Equal(0, lamp.LampElements[0].SourceElementIndex);
+            Assert.Equal("lamp-147.png", lamp.LampElements[0].BmpImageFilename);
+            Assert.Equal(164, lamp.LampElements[1].Number);
+            Assert.Equal(2, lamp.LampElements[1].SourceElementIndex);
+            Assert.Equal(0, lamp.SourceComponentIndex);
+        }
+        finally
+        {
+            Directory.Delete(extractDirectory, recursive: true);
+        }
+    }
+
     private static string CreateTempDirectory()
     {
         var path = Path.Combine(Path.GetTempPath(), $"oasis-mfme-tests-{Guid.NewGuid():N}");

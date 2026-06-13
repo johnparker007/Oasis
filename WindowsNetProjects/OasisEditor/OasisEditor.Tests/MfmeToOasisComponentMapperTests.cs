@@ -313,6 +313,68 @@ public sealed class MfmeToOasisComponentMapperTests
         });
     }
 
+
+    [Fact]
+    public void Map_WithMultipleValidLampElements_CreatesIndependentSharedBoundsLamps()
+    {
+        var lampElements = new[]
+        {
+            new MfmeLegacyLampElement("147", 147, new MfmeLegacyColor(1f, 0f, 0f, 1f), "jackpot-147.bmp", "jackpot-147-mask.bmp", Graphic: true, SourceElementIndex: 0),
+            new MfmeLegacyLampElement("", null, null, null, null, Graphic: false, SourceElementIndex: 1),
+            new MfmeLegacyLampElement("164", 164, new MfmeLegacyColor(0f, 1f, 0f, 1f), "jackpot-164.bmp", "jackpot-164-mask.bmp", Graphic: true, SourceElementIndex: 2)
+        };
+        var extract = new MfmeLegacyExtractData
+        {
+            ExtractRootPath = "C:/extract",
+            ManifestPath = "C:/extract/layout.json",
+            LayoutName = "layout",
+            Components =
+            [
+                new MfmeLegacyLampComponent(
+                    new MfmeLegacyPoint(100, 200),
+                    new MfmeLegacyPoint(300, 80),
+                    "JACKPOT",
+                    "Arial",
+                    "Regular",
+                    "12",
+                    lampElements[0],
+                    new MfmeLegacyColor(0f, 0f, 0f, 1f),
+                    new MfmeLegacyColor(1f, 1f, 1f, 1f),
+                    NoOutline: false,
+                    HasButtonInput: false,
+                    HasCoinInput: false,
+                    ButtonNumberAsString: null,
+                    Inverted: false,
+                    Shortcut1: null,
+                    Shortcut2: null,
+                    LampElements: lampElements.Where(element => element.HasUsefulIdentityOrImage).ToArray(),
+                    SourceComponentIndex: 12)
+            ]
+        };
+
+        var result = new MfmeToOasisComponentMapper().Map(extract);
+
+        Assert.Empty(result.Warnings);
+        Assert.Equal(2, result.Elements.Count);
+        Assert.All(result.Elements, element =>
+        {
+            Assert.Equal(PanelElementKind.Lamp, element.Kind);
+            Assert.Equal(100, element.X);
+            Assert.Equal(200, element.Y);
+            Assert.Equal(300, element.Width);
+            Assert.Equal(80, element.Height);
+            Assert.Contains("componentIndex=12", element.ImportSource!.Reference);
+            Assert.Contains("sharedLampSetId=mfme-component-12", element.ImportSource.Reference);
+            Assert.Contains("sharedLampSetCount=2", element.ImportSource.Reference);
+        });
+        Assert.Equal(147, result.Elements[0].DisplayNumber);
+        Assert.Equal("lamps/jackpot-147.bmp", result.Elements[0].AssetPath);
+        Assert.Contains("lampElementIndex=0", result.Elements[0].ImportSource!.Reference);
+        Assert.Equal(164, result.Elements[1].DisplayNumber);
+        Assert.Equal("lamps/jackpot-164.bmp", result.Elements[1].AssetPath);
+        Assert.Contains("lampElementIndex=2", result.Elements[1].ImportSource!.Reference);
+    }
+
     private sealed record UnsupportedLegacyComponent()
         : MfmeLegacyComponentBase(
             "ExtractComponentButton",
