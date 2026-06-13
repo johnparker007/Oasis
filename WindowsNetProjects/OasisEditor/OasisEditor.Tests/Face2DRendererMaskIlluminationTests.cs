@@ -121,16 +121,17 @@ public sealed class Face2DRendererMaskIlluminationTests : IDisposable
         var document = CreateDocument();
 
         using var surface = SKSurface.Create(new SKImageInfo(20, 20, SKColorType.Bgra8888, SKAlphaType.Premul));
-        surface.Canvas.Clear(SKColors.White);
+        var background = new SKColor(0x80, 0x80, 0x80);
+        surface.Canvas.Clear(background);
 
         renderer.Render(surface.Canvas, document, runtimeState, new PanelViewportTransform());
 
         using var snapshot = surface.Snapshot();
         using var bitmap = SKBitmap.FromImage(snapshot);
-        Assert.NotEqual(SKColors.White, bitmap.GetPixel(10, 10));
-        Assert.NotEqual(SKColors.White, bitmap.GetPixel(14, 10));
-        Assert.Equal(SKColors.White, bitmap.GetPixel(12, 10));
-        Assert.Equal(SKColors.White, bitmap.GetPixel(18, 10));
+        Assert.NotEqual(background, bitmap.GetPixel(10, 10));
+        Assert.NotEqual(background, bitmap.GetPixel(14, 10));
+        Assert.Equal(background, bitmap.GetPixel(12, 10));
+        Assert.Equal(background, bitmap.GetPixel(18, 10));
     }
 
     public void Dispose()
