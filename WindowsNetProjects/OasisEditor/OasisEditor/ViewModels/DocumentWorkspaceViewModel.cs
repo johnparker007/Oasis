@@ -24,6 +24,7 @@ public sealed class DocumentWorkspaceViewModel
     private readonly Automation.IFaceDocumentCreationService _faceCreationService;
     private readonly FaceGenerationService _faceGenerationService = new();
     private readonly FaceRegenerationService _faceRegenerationService = new();
+    private readonly FaceRuntimeExportService _faceRuntimeExportService = new();
     private readonly FaceValidationService _faceValidationService = new();
 
     private int _untitledDocumentCounter = 1;
@@ -129,15 +130,46 @@ public sealed class DocumentWorkspaceViewModel
             loadedProject.GeneratedDirectory,
             generationSettings);
 
-        var faceJson = FaceDocumentStorage.Serialize(result.Document);
-        var faceEditorDocument = EditorDocument.CreateFaceStub(title).WithContentSummary(result.Document.Summary ?? "Generated Face document.");
+        var generatedFaceDocument = ExportRuntimeAssetsForPreview(result.Document, loadedProject);
+        var faceJson = FaceDocumentStorage.Serialize(generatedFaceDocument);
+        var faceEditorDocument = EditorDocument.CreateFaceStub(title).WithContentSummary(generatedFaceDocument.Summary ?? "Generated Face document.");
         var document = CreateDocumentTab(faceEditorDocument, faceDocumentJson: faceJson);
         ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
         _setStatusMessage($"Generated face document from Panel2D region with {result.ArtworkElementCount} artwork element(s), {result.ConvertedLampCount} lamp window(s), {result.ConvertedReelDisplayCount} reel display(s), {result.ConvertedSevenSegmentDisplayCount} seven-segment display(s), {result.ConvertedAlphaDisplayCount} alpha display(s), and {result.ConvertedButtonCount} button(s).");
         _addOutputEntry($"Generated face '{document.Title}' from Panel2D region with {result.ArtworkElementCount} artwork element(s), {result.ConvertedLampCount} lamp window(s), {result.ConvertedReelDisplayCount} reel display(s), {result.ConvertedSevenSegmentDisplayCount} seven-segment display(s), {result.ConvertedAlphaDisplayCount} alpha display(s), and {result.ConvertedButtonCount} button(s).", OutputLogStatus.Info);
-        LogFaceMaskLayerStatus(result.Document, loadedProject);
-        LogFaceDiagnostics(result.Document);
+        LogFaceMaskLayerStatus(generatedFaceDocument, loadedProject);
+        LogFaceDiagnostics(generatedFaceDocument);
         return document;
+    }
+
+    private FaceDocumentModel ExportRuntimeAssetsForPreview(FaceDocumentModel faceDocument, EditorProject loadedProject)
+    {
+        try
+        {
+            var exportResult = _faceRuntimeExportService.Export(faceDocument, loadedProject);
+            _addOutputEntry($"Generated runtime face preview textures for '{faceDocument.Title}'.", OutputLogStatus.Info);
+            return exportResult.Document;
+        }
+        catch (Exception exception)
+        {
+            _addOutputEntry($"Face runtime preview texture generation failed for '{faceDocument.Title}': {exception.Message}", OutputLogStatus.Warning);
+            return new FaceDocumentModel
+            {
+                Id = faceDocument.Id,
+                Title = faceDocument.Title,
+                Summary = faceDocument.Summary,
+                SourcePanel2DDocumentId = faceDocument.SourcePanel2DDocumentId,
+                SourceRegion = faceDocument.SourceRegion,
+                LastRegeneratedAtUtc = faceDocument.LastRegeneratedAtUtc,
+                GenerationSettings = faceDocument.GenerationSettings,
+                RuntimeRenderAssets = null,
+                MaskLayer = faceDocument.MaskLayer,
+                Trays = faceDocument.Trays,
+                LampEmitters = faceDocument.LampEmitters,
+                Layers = faceDocument.Layers,
+                Elements = faceDocument.Elements
+            };
+        }
     }
 
     public bool CanRegenerateSelectedFace()
@@ -213,8 +245,10 @@ public sealed class DocumentWorkspaceViewModel
             loadedProject.GeneratedDirectory,
             generationSettings);
 
+        var regeneratedFaceDocument = ExportRuntimeAssetsForPreview(result.Document, loadedProject);
+
         selectedDocument.SetFaceDocument(
-            result.Document,
+            regeneratedFaceDocument,
             new PanelChangeEvent(
                 selectedDocument.DocumentId,
                 null,
@@ -227,8 +261,8 @@ public sealed class DocumentWorkspaceViewModel
 
         _setStatusMessage($"Regenerated face '{selectedDocument.Title}' from source Panel2D.");
         _addOutputEntry($"Regenerated face '{selectedDocument.Title}' from source Panel2D with {result.UpdatedElementCount} updated generated element(s), {result.AddedElementCount} added generated element(s), {result.RemovedGeneratedElementCount} removed stale generated element(s), and {result.PreservedManualElementCount} preserved manual element(s).", OutputLogStatus.Info);
-        LogFaceMaskLayerStatus(result.Document, loadedProject);
-        LogFaceDiagnostics(result.Document);
+        LogFaceMaskLayerStatus(regeneratedFaceDocument, loadedProject);
+        LogFaceDiagnostics(regeneratedFaceDocument);
         return true;
     }
 

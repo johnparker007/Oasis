@@ -188,6 +188,30 @@ public sealed class Face2DRendererMaskIlluminationTests : IDisposable
         Assert.Equal(background, bitmap.GetPixel(18, 10));
     }
 
+    [Fact]
+    public void Render_TexturePreviewDefaultSettings_UsesRgbLampInfluenceChannels()
+    {
+        WriteSolidPng(Path.Combine(_testDirectory, "artwork.png"), 1, 1, new SKColor(100, 40, 20, 255));
+        WriteSolidPng(Path.Combine(_testDirectory, "runtime-mask.png"), 1, 1, SKColors.White);
+        WriteSolidPng(Path.Combine(_testDirectory, "trayId.png"), 1, 1, new SKColor(1, 0, 0, 255));
+        WriteSolidPng(Path.Combine(_testDirectory, "lampIds0.png"), 1, 1, new SKColor(214, 215, 0, 255));
+        WriteSolidPng(Path.Combine(_testDirectory, "lampWeights0.png"), 1, 1, new SKColor(128, 127, 0, 255));
+        var renderer = new Face2DRenderer(FaceRuntimeStateResolver.Instance, ResolveTestAssetPath);
+        var runtimeState = new MachineRuntimeState();
+        runtimeState.SetLampIntensityIfChanged(MachineObjectReference.Lamp(214), 1d);
+        runtimeState.SetLampIntensityIfChanged(MachineObjectReference.Lamp(215), 1d);
+        var document = CreateRuntimeTextureDocument();
+
+        using var surface = SKSurface.Create(new SKImageInfo(1, 1, SKColorType.Bgra8888, SKAlphaType.Premul));
+        surface.Canvas.Clear(SKColors.Black);
+
+        renderer.Render(surface.Canvas, document, runtimeState, new PanelViewportTransform());
+
+        using var snapshot = surface.Snapshot();
+        using var bitmap = SKBitmap.FromImage(snapshot);
+        Assert.Equal(215, bitmap.GetPixel(0, 0).Red);
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_testDirectory))
@@ -253,6 +277,24 @@ public sealed class Face2DRendererMaskIlluminationTests : IDisposable
                 ]
             },
             Elements = elements
+        };
+    }
+
+    private static FaceDocumentModel CreateRuntimeTextureDocument()
+    {
+        return new FaceDocumentModel
+        {
+            Title = "Runtime Texture Face",
+            RuntimeRenderAssets = new FaceRuntimeRenderAssetsModel
+            {
+                ArtworkPath = "artwork.png",
+                MaskPath = "runtime-mask.png",
+                TrayIdPath = "trayId.png",
+                LampIds0Path = "lampIds0.png",
+                LampWeights0Path = "lampWeights0.png",
+                Width = 1,
+                Height = 1
+            }
         };
     }
 

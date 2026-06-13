@@ -234,8 +234,8 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         Assert.Equal(1, trayId.GetPixel(0, 0).Red);
         Assert.Equal(11, lampIds0.GetPixel(0, 0).Red);
         Assert.Equal(12, lampIds0.GetPixel(0, 0).Green);
-        Assert.Equal(255, lampWeights0.GetPixel(0, 0).Red);
-        Assert.Equal(255, lampWeights0.GetPixel(0, 0).Green);
+        Assert.True(lampWeights0.GetPixel(0, 0).Red > lampWeights0.GetPixel(0, 0).Green);
+        Assert.True(lampWeights0.GetPixel(0, 0).Red + lampWeights0.GetPixel(0, 0).Green + lampWeights0.GetPixel(0, 0).Blue <= 255);
     }
 
     [Fact]
@@ -490,7 +490,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
     }
 
     [Fact]
-    public void Generate_WithAuthoredTrayAndEmitter_WritesTrayIdsLampIdsAndBinaryWeightsFromAuthoredGeometry()
+    public void Generate_WithAuthoredTrayAndEmitter_WritesTrayIdsLampIdsAndFullSingleEmitterWeightsFromAuthoredGeometry()
     {
         var outputDirectory = Path.Combine(_generatedDirectory, "authored-texture-test");
         var document = CreateDocumentWithAuthoredTrayAndEmitter(
@@ -516,6 +516,68 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         Assert.Equal(0, trayId.GetPixel(0, 0).Alpha);
         Assert.Equal(0, lampIds0.GetPixel(0, 0).Alpha);
         Assert.Equal(0, lampWeights0.GetPixel(0, 0).Alpha);
+    }
+
+    [Fact]
+    public void Generate_WithTwoAuthoredEmitters_WritesSmoothIntensityFalloffWeights()
+    {
+        var outputDirectory = Path.Combine(_generatedDirectory, "authored-smooth-two-emitter-test");
+        var document = CreateDocumentWithAuthoredTrayAndEmitters(
+            new FaceSourceRegionModel { X = 0, Y = 0, Width = 10, Height = 1 },
+            new TestEmitter("left-emitter", 11, 0.5, 0.5, 3),
+            new TestEmitter("right-emitter", 12, 9.5, 0.5, 3));
+
+        new FaceRuntimeTextureGenerator().Generate(document, 10, 1, outputDirectory);
+
+        using var lampIds0 = SKBitmap.Decode(Path.Combine(outputDirectory, "lampIds0.png"));
+        using var lampWeights0 = SKBitmap.Decode(Path.Combine(outputDirectory, "lampWeights0.png"));
+        using var weightDebug = SKBitmap.Decode(Path.Combine(outputDirectory, "lampWeights_debug.png"));
+
+        Assert.Equal(new SKColor(11, 12, 0, 255), lampIds0.GetPixel(0, 0));
+        var nearLeft = lampWeights0.GetPixel(0, 0);
+        var middle = lampWeights0.GetPixel(4, 0);
+        var nearRight = lampWeights0.GetPixel(9, 0);
+        Assert.True(nearLeft.Red > nearLeft.Green);
+        Assert.True(nearRight.Green > nearRight.Red);
+        Assert.True(nearLeft.Red > 200);
+        Assert.True(nearRight.Green > 180);
+        var nearLeftTotal = nearLeft.Red + nearLeft.Green + nearLeft.Blue;
+        var middleTotal = middle.Red + middle.Green + middle.Blue;
+        var nearRightTotal = nearRight.Red + nearRight.Green + nearRight.Blue;
+        Assert.True(nearLeft.Red > middle.Red);
+        Assert.True(nearRight.Green > middle.Green);
+        Assert.True(middleTotal < 255);
+        Assert.True(middleTotal < nearLeftTotal);
+        Assert.True(middleTotal < nearRightTotal);
+        Assert.NotEqual(SKColors.White, weightDebug.GetPixel(4, 0));
+        Assert.Equal(middle, weightDebug.GetPixel(4, 0));
+    }
+
+    [Fact]
+    public void Generate_WithOverlappingAuthoredEmitters_RemainsDeterministicAndCapped()
+    {
+        var firstOutputDirectory = Path.Combine(_generatedDirectory, "authored-overlap-test-a");
+        var secondOutputDirectory = Path.Combine(_generatedDirectory, "authored-overlap-test-b");
+        var document = CreateDocumentWithAuthoredTrayAndEmitters(
+            new FaceSourceRegionModel { X = 0, Y = 0, Width = 3, Height = 1 },
+            new TestEmitter("a-emitter", 21, 1.5, 0.5, 1),
+            new TestEmitter("b-emitter", 22, 1.5, 0.5, 1));
+
+        var generator = new FaceRuntimeTextureGenerator();
+        generator.Generate(document, 3, 1, firstOutputDirectory);
+        generator.Generate(document, 3, 1, secondOutputDirectory);
+
+        using var firstIds = SKBitmap.Decode(Path.Combine(firstOutputDirectory, "lampIds0.png"));
+        using var firstWeights = SKBitmap.Decode(Path.Combine(firstOutputDirectory, "lampWeights0.png"));
+        using var secondIds = SKBitmap.Decode(Path.Combine(secondOutputDirectory, "lampIds0.png"));
+        using var secondWeights = SKBitmap.Decode(Path.Combine(secondOutputDirectory, "lampWeights0.png"));
+
+        Assert.Equal(firstIds.GetPixel(1, 0), secondIds.GetPixel(1, 0));
+        Assert.Equal(firstWeights.GetPixel(1, 0), secondWeights.GetPixel(1, 0));
+        Assert.Equal(new SKColor(21, 22, 0, 255), firstIds.GetPixel(1, 0));
+        Assert.True(firstWeights.GetPixel(1, 0).Red + firstWeights.GetPixel(1, 0).Green + firstWeights.GetPixel(1, 0).Blue <= 255);
+        Assert.InRange(firstWeights.GetPixel(1, 0).Red, 120, 135);
+        Assert.InRange(firstWeights.GetPixel(1, 0).Green, 120, 135);
     }
 
     [Fact]
@@ -729,6 +791,45 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
             ]
         };
     }
+
+    private static FaceDocumentModel CreateDocumentWithAuthoredTrayAndEmitters(FaceSourceRegionModel trayBounds, params TestEmitter[] emitters)
+    {
+        return new FaceDocumentModel
+        {
+            Id = "face-runtime",
+            Title = "Runtime Face",
+            SourceRegion = new FaceSourceRegionModel { X = 0, Y = 0, Width = Math.Max(1, trayBounds.X + trayBounds.Width), Height = Math.Max(1, trayBounds.Y + trayBounds.Height) },
+            Trays =
+            [
+                new FaceTrayModel
+                {
+                    ObjectId = "authored-tray",
+                    Name = "Authored Tray",
+                    SourceLampWindowObjectId = "source-lamp-window",
+                    Bounds = trayBounds
+                }
+            ],
+            LampEmitters = emitters
+                .Select(emitter => new FaceLampEmitterElement
+                {
+                    ObjectId = emitter.ObjectId,
+                    Name = emitter.ObjectId,
+                    SourceLampWindowObjectId = "source-lamp-window",
+                    TrayObjectId = "authored-tray",
+                    TrayId = 5,
+                    LampId = emitter.LampId,
+                    LinkedMachineObjectReference = MachineObjectReference.Lamp(emitter.LampId),
+                    CenterX = emitter.CenterX,
+                    CenterY = emitter.CenterY,
+                    Radius = emitter.Radius,
+                    Width = trayBounds.Width,
+                    Height = trayBounds.Height
+                })
+                .ToArray()
+        };
+    }
+
+    private sealed record TestEmitter(string ObjectId, int LampId, double CenterX, double CenterY, double? Radius = null);
 
     private static void WriteSolidPng(string path, int width, int height, SKColor color)
     {

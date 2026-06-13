@@ -162,6 +162,7 @@ public sealed class FaceTexturePreviewRenderer : IFaceTexturePreviewRenderer, ID
             trayId,
             lampIds0,
             lampWeights0,
+            assets.GeneratedUtc.Ticks,
             Math.Clamp(_settings.AmbientStrength, 0d, 4d),
             Math.Clamp(_settings.EmissionStrength, 0d, 8d),
             Math.Clamp(_settings.MaskStrength, 0d, 4d),
@@ -551,7 +552,7 @@ public sealed class FaceTexturePreviewSettings
     public double AmbientStrength { get; init; } = 1d;
     public double EmissionStrength { get; init; } = 1.15d;
     public double MaskStrength { get; init; } = 1d;
-    public int LampIds0ChannelCount { get; init; } = 1;
+    public int LampIds0ChannelCount { get; init; } = 3;
     public bool EnableDiagnostics { get; init; }
 }
 
@@ -620,6 +621,7 @@ internal readonly record struct FaceTexturePreviewCacheKey(
     FaceTextureStamp TrayId,
     FaceTextureStamp LampIds0,
     FaceTextureStamp LampWeights0,
+    long RuntimeAssetsGeneratedTicks,
     double AmbientStrength,
     double EmissionStrength,
     double MaskStrength,
