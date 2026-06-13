@@ -591,13 +591,6 @@ public sealed class LampInfluenceTextureGenerator
     {
         var idChannels = new byte[SupportedChannelCount];
         var weightChannels = new byte[SupportedChannelCount];
-        if (influences.Count == 1)
-        {
-            idChannels[0] = influences[0].LampId;
-            weightChannels[0] = 255;
-            return (idChannels, weightChannels);
-        }
-
         var retained = influences
             .Select(influence =>
             {
@@ -645,12 +638,16 @@ public sealed class LampInfluenceTextureGenerator
 
     private static double ResolveFallbackRadius(FaceRuntimeTrayElement tray, IReadOnlyList<FaceLampEmitterElement> emitters)
     {
-        var trayRadius = Math.Max(1d, Math.Max(tray.Width, tray.Height) / Math.Max(1d, emitters.Count));
+        var trayDiameter = Math.Max(tray.Width, tray.Height);
         if (emitters.Count < 2)
         {
-            return trayRadius;
+            // Single-emitter trays still use physical distance falloff. When no authored
+            // radius exists, use a deterministic tray-relative radius that lights most
+            // of the tray while preserving visible edge falloff in lampWeights_debug.png.
+            return Math.Max(1d, trayDiameter * 0.65d);
         }
 
+        var trayRadius = Math.Max(1d, trayDiameter / Math.Max(1d, emitters.Count));
         var nearestSpacing = double.PositiveInfinity;
         for (var left = 0; left < emitters.Count; left++)
         {

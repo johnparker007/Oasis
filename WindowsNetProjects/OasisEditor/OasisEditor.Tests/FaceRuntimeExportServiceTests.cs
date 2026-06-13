@@ -189,7 +189,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         using var lampWeights0 = SKBitmap.Decode(Path.Combine(outputDirectory, "lampWeights0.png"));
         Assert.Equal(1, trayId.GetPixel(0, 0).Red);
         Assert.Equal(24, lampIds0.GetPixel(0, 0).Red);
-        Assert.Equal(255, lampWeights0.GetPixel(0, 0).Red);
+        Assert.True(lampWeights0.GetPixel(0, 0).Red > 0);
         Assert.Equal(0, trayId.GetPixel(3, 3).Red);
         Assert.Equal(0, lampIds0.GetPixel(3, 3).Red);
         Assert.Equal(0, lampWeights0.GetPixel(3, 3).Red);
@@ -295,10 +295,10 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         Assert.Equal(1, trayId.GetPixel(1, 1).Red);
         Assert.Equal(24, lampIds0.GetPixel(1, 1).Red);
         Assert.Equal(0, lampIds0.GetPixel(1, 1).Green);
-        Assert.Equal(255, lampWeights0.GetPixel(1, 1).Red);
+        Assert.True(lampWeights0.GetPixel(1, 1).Red > 0);
         Assert.Equal(0, lampWeights0.GetPixel(0, 0).Red);
         Assert.NotEqual(SKColors.Transparent, trayDebug.GetPixel(1, 1));
-        Assert.Equal(255, weightDebug.GetPixel(1, 1).Red);
+        Assert.True(weightDebug.GetPixel(1, 1).Red > 0);
     }
 
 
@@ -490,7 +490,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
     }
 
     [Fact]
-    public void Generate_WithAuthoredTrayAndEmitter_WritesTrayIdsLampIdsAndFullSingleEmitterWeightsFromAuthoredGeometry()
+    public void Generate_WithAuthoredTrayAndEmitter_WritesTrayIdsLampIdsAndFalloffSingleEmitterWeightsFromAuthoredGeometry()
     {
         var outputDirectory = Path.Combine(_generatedDirectory, "authored-texture-test");
         var document = CreateDocumentWithAuthoredTrayAndEmitter(
@@ -512,10 +512,47 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         Assert.Equal(4, lampWeights0.Height);
         Assert.Equal(5, trayId.GetPixel(1, 1).Red);
         Assert.Equal(77, lampIds0.GetPixel(1, 1).Red);
-        Assert.Equal(255, lampWeights0.GetPixel(1, 1).Red);
+        Assert.True(lampWeights0.GetPixel(1, 1).Red > 0);
+        Assert.Equal(0, lampIds0.GetPixel(1, 1).Green);
+        Assert.Equal(0, lampWeights0.GetPixel(1, 1).Green);
+        Assert.Equal(0, lampIds0.GetPixel(1, 1).Blue);
+        Assert.Equal(0, lampWeights0.GetPixel(1, 1).Blue);
         Assert.Equal(0, trayId.GetPixel(0, 0).Alpha);
         Assert.Equal(0, lampIds0.GetPixel(0, 0).Alpha);
         Assert.Equal(0, lampWeights0.GetPixel(0, 0).Alpha);
+    }
+
+    [Fact]
+    public void Generate_WithSingleAuthoredEmitter_UsesDistanceFalloffAndDebugIsNotSolidRed()
+    {
+        var firstOutputDirectory = Path.Combine(_generatedDirectory, "single-emitter-falloff-test-a");
+        var secondOutputDirectory = Path.Combine(_generatedDirectory, "single-emitter-falloff-test-b");
+        var document = CreateDocumentWithAuthoredTrayAndEmitters(
+            new FaceSourceRegionModel { X = 0, Y = 0, Width = 6, Height = 6 },
+            new TestEmitter("center-emitter", 19, 3, 3));
+
+        var generator = new FaceRuntimeTextureGenerator();
+        generator.Generate(document, 6, 6, firstOutputDirectory);
+        generator.Generate(document, 6, 6, secondOutputDirectory);
+
+        using var firstIds = SKBitmap.Decode(Path.Combine(firstOutputDirectory, "lampIds0.png"));
+        using var firstWeights = SKBitmap.Decode(Path.Combine(firstOutputDirectory, "lampWeights0.png"));
+        using var firstDebug = SKBitmap.Decode(Path.Combine(firstOutputDirectory, "lampWeights_debug.png"));
+        using var secondWeights = SKBitmap.Decode(Path.Combine(secondOutputDirectory, "lampWeights0.png"));
+
+        var nearCenter = firstWeights.GetPixel(2, 2);
+        var trayEdge = firstWeights.GetPixel(0, 0);
+
+        Assert.Equal(new SKColor(19, 0, 0, 255), firstIds.GetPixel(2, 2));
+        Assert.True(nearCenter.Red > 160);
+        Assert.True(trayEdge.Red > 0);
+        Assert.True(trayEdge.Red < nearCenter.Red);
+        Assert.Equal(0, nearCenter.Green);
+        Assert.Equal(0, nearCenter.Blue);
+        Assert.NotEqual(new SKColor(255, 0, 0, 255), firstDebug.GetPixel(0, 0));
+        Assert.Equal(firstWeights.GetPixel(0, 0), firstDebug.GetPixel(0, 0));
+        Assert.Equal(firstWeights.GetPixel(0, 0), secondWeights.GetPixel(0, 0));
+        Assert.Equal(firstWeights.GetPixel(2, 2), secondWeights.GetPixel(2, 2));
     }
 
     [Fact]
@@ -601,7 +638,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         using var lampWeights0 = SKBitmap.Decode(Path.Combine(outputDirectory, "lampWeights0.png"));
 
         Assert.Equal(3, trayId.GetPixel(0, 0).Red);
-        Assert.Equal(255, lampWeights0.GetPixel(0, 0).Red);
+        Assert.True(lampWeights0.GetPixel(0, 0).Red > 0);
         Assert.Equal(0, trayId.GetPixel(3, 3).Alpha);
         Assert.Equal(0, lampWeights0.GetPixel(3, 3).Alpha);
     }
