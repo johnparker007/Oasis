@@ -181,6 +181,66 @@ public sealed class FaceTrayAutoAuthoringTests
         Assert.Equal(2, drawCount);
     }
 
+
+    [Fact]
+    public void AutoAuthor_ClipsPartialOverlapsDeterministically()
+    {
+        var document = CreateFaceWithLampWindows(
+            ("left", 1, 0d, 0d, 10d, 10d),
+            ("right", 2, 8d, 0d, 10d, 10d));
+
+        var first = new FaceTrayAutoAuthoringService().AutoAuthor(document);
+        var second = new FaceTrayAutoAuthoringService().AutoAuthor(document);
+
+        Assert.All(first.Trays, tray => Assert.Contains("partial-overlap-clipped", tray.Diagnostics));
+        Assert.Equal(first.Trays.SelectMany(t => t.Vertices.Select(v => (v.X, v.Y))), second.Trays.SelectMany(t => t.Vertices.Select(v => (v.X, v.Y))));
+        Assert.Contains(first.Trays, tray => tray.Vertices.Any(vertex => Math.Abs(vertex.X - 9d) < 0.001d));
+    }
+
+    [Fact]
+    public void AutoAuthor_DerivesOctagonForRoundishIsolatedLamp()
+    {
+        var result = new FaceTrayAutoAuthoringService().AutoAuthor(CreateFaceWithLampWindows(("round", 4, 0d, 0d, 20d, 20d)));
+
+        var tray = Assert.Single(result.Trays);
+        Assert.Equal(8, tray.Vertices.Count);
+        Assert.Contains("isolated-roundish-octagon", tray.Diagnostics);
+    }
+
+    [Fact]
+    public void AutoAuthor_AddsContainmentDiagnosticWithoutMerging()
+    {
+        var result = new FaceTrayAutoAuthoringService().AutoAuthor(CreateFaceWithLampWindows(
+            ("large", 5, 0d, 0d, 40d, 40d),
+            ("small", 6, 10d, 10d, 10d, 10d)));
+
+        Assert.Equal(2, result.Trays.Count);
+        Assert.All(result.Trays, tray => Assert.Contains("contained-tray-candidate", tray.Diagnostics));
+    }
+
+    [Fact]
+    public void AutoAuthor_AddsSharedTrayDiagnosticWithoutMerging()
+    {
+        var result = new FaceTrayAutoAuthoringService().AutoAuthor(CreateFaceWithLampWindows(
+            ("first", 7, 0d, 0d, 20d, 20d),
+            ("second", 8, 2d, 2d, 20d, 20d)));
+
+        Assert.Equal(2, result.Trays.Count);
+        Assert.All(result.Trays, tray => Assert.Contains("possible-shared-tray-candidate", tray.Diagnostics));
+    }
+
+    [Fact]
+    public void Serialize_AndRead_RoundTripsTrayDiagnostics()
+    {
+        var authored = new FaceTrayAutoAuthoringService().AutoAuthor(CreateFaceWithLampWindows(("round", 9, 0d, 0d, 20d, 20d)));
+        var json = FaceDocumentStorage.Serialize(new FaceDocumentModel { Trays = authored.Trays, LampEmitters = authored.Emitters });
+
+        Assert.True(FaceDocumentStorage.TryReadValidated(json, out var file, out var error), error);
+        var model = FaceDocumentStorage.ToModel(file);
+
+        Assert.Contains("isolated-roundish-octagon", Assert.Single(model.Trays).Diagnostics);
+    }
+
     private static FaceDocumentModel CreateFaceWithLampAndContribution()
     {
         return new FaceDocumentModel
@@ -216,6 +276,31 @@ public sealed class FaceTrayAutoAuthoringTests
             ]
         };
     }
+    private static FaceDocumentModel CreateFaceWithLampWindows(params (string Id, int LampId, double X, double Y, double Width, double Height)[] lamps)
+    {
+        return new FaceDocumentModel
+        {
+            GenerationSettings = new FaceGenerationSettingsModel
+            {
+                TrayBoundsInflationPercent = 0,
+                TrayBoundsPaddingPixels = 0,
+                ClampTrayBoundsToLampWindow = false
+            },
+            Elements = lamps.Select(lamp => new FaceLampWindowElement
+            {
+                ObjectId = $"face-{lamp.Id}",
+                Name = lamp.Id,
+                X = lamp.X,
+                Y = lamp.Y,
+                Width = lamp.Width,
+                Height = lamp.Height,
+                IsVisible = true,
+                LinkedMachineObjectReference = MachineObjectReference.Lamp(lamp.LampId),
+                LinkedPanel2DElementId = $"panel-{lamp.Id}"
+            }).ToArray()
+        };
+    }
+
 }
 
 internal static class FaceTrayAutoAuthoringTestExtensions

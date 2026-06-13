@@ -381,7 +381,8 @@ public static class FaceDocumentStorage
             SourcePanel2DElementId = file.SourcePanel2DElementId,
             LinkedMachineObjectReference = reference,
             Bounds = ToModel(file.Bounds),
-            Vertices = (file.Vertices ?? []).Select(ToModel).ToArray()
+            Vertices = (file.Vertices ?? []).Select(ToModel).ToArray(),
+            Diagnostics = (file.Diagnostics ?? []).Where(diagnostic => !string.IsNullOrWhiteSpace(diagnostic)).Select(diagnostic => diagnostic.Trim()).ToArray()
         };
     }
 
@@ -397,7 +398,8 @@ public static class FaceDocumentStorage
             SourcePanel2DElementId = model.SourcePanel2DElementId,
             LinkedMachineObjectReference = model.LinkedMachineObjectReference?.ToString(),
             Bounds = ToFile(model.Bounds),
-            Vertices = model.Vertices.Select(ToFile).ToArray()
+            Vertices = model.Vertices.Select(ToFile).ToArray(),
+            Diagnostics = model.Diagnostics.ToArray()
         };
     }
 
@@ -808,6 +810,7 @@ public sealed record FaceTrayFile
     public string? LinkedMachineObjectReference { get; init; }
     public FaceSourceRegionFile? Bounds { get; init; }
     public IReadOnlyList<FacePointFile>? Vertices { get; init; } = [];
+    public IReadOnlyList<string>? Diagnostics { get; init; } = [];
 }
 
 public sealed record FaceLampEmitterFile
