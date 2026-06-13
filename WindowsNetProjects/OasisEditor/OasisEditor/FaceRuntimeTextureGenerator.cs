@@ -533,13 +533,13 @@ public sealed class LampInfluenceTextureGenerator
                 throw new InvalidOperationException($"Face runtime tray {tray.TrayId} does not have a valid lamp emitter.");
             }
 
-            if (trayEmitters.Length > 4)
+            if (trayEmitters.Length > 3)
             {
-                throw new InvalidOperationException($"Face runtime tray {tray.TrayId} has {trayEmitters.Length} lamp emitters; the current lampIds0/lampWeights0 format supports up to 4 emitters per tray.");
+                throw new InvalidOperationException($"Face runtime tray {tray.TrayId} has {trayEmitters.Length} lamp emitters; the current lampIds0/lampWeights0 PNG writer preserves RGB data channels plus opaque alpha, so it supports up to 3 emitters per tray.");
             }
 
-            var idChannels = new byte[4];
-            var weightChannels = new byte[4];
+            var idChannels = new byte[3];
+            var weightChannels = new byte[3];
             for (var channel = 0; channel < trayEmitters.Length; channel++)
             {
                 idChannels[channel] = (byte)trayEmitters[channel].LampId!.Value;
@@ -558,8 +558,8 @@ public sealed class LampInfluenceTextureGenerator
                     }
 
                     ownership[index] = tray.TrayId;
-                    idsBitmap.SetPixel(x, y, new SKColor(idChannels[0], idChannels[1], idChannels[2], idChannels[3]));
-                    weightsBitmap.SetPixel(x, y, new SKColor(weightChannels[0], weightChannels[1], weightChannels[2], weightChannels[3]));
+                    idsBitmap.SetPixel(x, y, new SKColor(idChannels[0], idChannels[1], idChannels[2], 255));
+                    weightsBitmap.SetPixel(x, y, new SKColor(weightChannels[0], weightChannels[1], weightChannels[2], 255));
                     debugBitmap.SetPixel(x, y, SKColors.White);
                 }
             }
