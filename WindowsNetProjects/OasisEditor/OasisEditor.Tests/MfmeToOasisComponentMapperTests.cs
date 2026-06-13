@@ -363,18 +363,18 @@ public sealed class MfmeToOasisComponentMapperTests
             Assert.Equal(200, element.Y);
             Assert.Equal(300, element.Width);
             Assert.Equal(80, element.Height);
-            Assert.Equal(12, element.ImportSource!.SourceComponentIndex);
-            Assert.Equal("mfme-component-12", element.ImportSource.SharedLampSetId);
-            Assert.Equal(2, element.ImportSource.SharedLampSetCount);
+            Assert.Equal(12, element.SourceComponentIndex);
+            Assert.Equal("mfme-component-12", element.SharedSourceSetId);
+            Assert.Equal(2, element.SharedSourceSetCount);
         });
         Assert.Equal(147, result.Elements[0].DisplayNumber);
         Assert.Equal("lamps/jackpot-147.bmp", result.Elements[0].AssetPath);
         Assert.Equal("Lamp:147", result.Elements[0].ImportSource!.Reference);
-        Assert.Equal(0, result.Elements[0].ImportSource.LampElementIndex);
+        Assert.Equal(0, result.Elements[0].SourceElementIndex);
         Assert.Equal(164, result.Elements[1].DisplayNumber);
         Assert.Equal("lamps/jackpot-164.bmp", result.Elements[1].AssetPath);
         Assert.Equal("Lamp:164", result.Elements[1].ImportSource!.Reference);
-        Assert.Equal(2, result.Elements[1].ImportSource.LampElementIndex);
+        Assert.Equal(2, result.Elements[1].SourceElementIndex);
     }
 
     private sealed record UnsupportedLegacyComponent()

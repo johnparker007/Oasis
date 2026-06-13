@@ -158,7 +158,11 @@ internal sealed class MfmeToOasisComponentMapper
             TextBoxFontName = NormalizeLampFontName(component.TextBoxFontName),
             TextBoxFontStyle = NormalizeLampFontStyle(component.TextBoxFontStyle),
             TextBoxFontSize = NormalizeLampFontSize(component.TextBoxFontSize),
-            ImportSource = CreateLampImportSource(component, lampElement, number, sharedLampSetId, sharedLampSetCount)
+            SourceComponentIndex = component.SourceComponentIndex >= 0 ? component.SourceComponentIndex : null,
+            SourceElementIndex = lampElement?.SourceElementIndex >= 0 ? lampElement.SourceElementIndex : null,
+            SharedSourceSetId = sharedLampSetId,
+            SharedSourceSetCount = sharedLampSetCount,
+            ImportSource = CreateLampImportSource(component, number)
         };
     }
 
@@ -353,20 +357,9 @@ internal sealed class MfmeToOasisComponentMapper
 
     private static PanelElementImportSourceModel CreateLampImportSource(
         MfmeLegacyLampComponent component,
-        MfmeLegacyLampElement? lampElement,
-        int? number,
-        string sharedLampSetId,
-        int sharedLampSetCount)
+        int? number)
     {
-        return new PanelElementImportSourceModel
-        {
-            Format = ImportSourceFormat,
-            Reference = number.HasValue ? $"{component.SourceType}:{number.Value}" : component.SourceType,
-            SourceComponentIndex = component.SourceComponentIndex >= 0 ? component.SourceComponentIndex : null,
-            LampElementIndex = lampElement?.SourceElementIndex >= 0 ? lampElement.SourceElementIndex : null,
-            SharedLampSetId = sharedLampSetId,
-            SharedLampSetCount = sharedLampSetCount
-        };
+        return CreateImportSource(number.HasValue ? $"{component.SourceType}:{number.Value}" : component.SourceType);
     }
 
     private static PanelElementImportSourceModel CreateImportSource(string reference)

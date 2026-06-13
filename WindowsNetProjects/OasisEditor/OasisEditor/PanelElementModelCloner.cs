@@ -43,6 +43,10 @@ internal static class PanelElementModelCloner
             BandOffset = source.BandOffset,
             IsLocked = isLocked ?? source.IsLocked,
             IsVisible = isVisible ?? source.IsVisible,
+            SourceComponentIndex = source.SourceComponentIndex,
+            SourceElementIndex = source.SourceElementIndex,
+            SharedSourceSetId = source.SharedSourceSetId,
+            SharedSourceSetCount = source.SharedSourceSetCount,
             ImportSource = CloneImportSource(source.ImportSource)
         };
     }
@@ -57,11 +61,7 @@ internal static class PanelElementModelCloner
         return new PanelElementImportSourceModel
         {
             Format = source.Format,
-            Reference = source.Reference,
-            SourceComponentIndex = source.SourceComponentIndex,
-            LampElementIndex = source.LampElementIndex,
-            SharedLampSetId = source.SharedLampSetId,
-            SharedLampSetCount = source.SharedLampSetCount
+            Reference = source.Reference
         };
     }
 }

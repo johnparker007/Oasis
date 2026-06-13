@@ -35,6 +35,10 @@ internal sealed class PanelElementModel
     public double? BandOffset { get; init; }
     public bool IsLocked { get; init; }
     public bool IsVisible { get; init; } = true;
+    public int? SourceComponentIndex { get; init; }
+    public int? SourceElementIndex { get; init; }
+    public string? SharedSourceSetId { get; init; }
+    public int? SharedSourceSetCount { get; init; }
     public PanelElementImportSourceModel? ImportSource { get; init; }
 }
 
@@ -42,8 +46,4 @@ internal sealed class PanelElementImportSourceModel
 {
     public string Format { get; init; } = string.Empty;
     public string? Reference { get; init; }
-    public int? SourceComponentIndex { get; init; }
-    public int? LampElementIndex { get; init; }
-    public string? SharedLampSetId { get; init; }
-    public int? SharedLampSetCount { get; init; }
 }

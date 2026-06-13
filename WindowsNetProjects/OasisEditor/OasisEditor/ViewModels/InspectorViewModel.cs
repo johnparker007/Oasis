@@ -592,21 +592,21 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         {
             _propertyRows.Add(new InspectorInfoPropertyViewModel("Import Format", "Metadata", selectedElement.ImportSource.Format));
             _propertyRows.Add(new InspectorInfoPropertyViewModel("Import Reference", "Metadata", selectedElement.ImportSource.Reference ?? string.Empty));
-            if (selectedElement.ImportSource.SourceComponentIndex.HasValue)
+            if (selectedElement.SourceComponentIndex.HasValue)
             {
-                _propertyRows.Add(new InspectorInfoPropertyViewModel("Source Component Index", "Metadata", selectedElement.ImportSource.SourceComponentIndex.Value.ToString(CultureInfo.InvariantCulture)));
+                _propertyRows.Add(new InspectorInfoPropertyViewModel("Source Component Index", "Metadata", selectedElement.SourceComponentIndex.Value.ToString(CultureInfo.InvariantCulture)));
             }
-            if (selectedElement.ImportSource.LampElementIndex.HasValue)
+            if (selectedElement.SourceElementIndex.HasValue)
             {
-                _propertyRows.Add(new InspectorInfoPropertyViewModel("Lamp Element Index", "Metadata", selectedElement.ImportSource.LampElementIndex.Value.ToString(CultureInfo.InvariantCulture)));
+                _propertyRows.Add(new InspectorInfoPropertyViewModel("Source Element Index", "Metadata", selectedElement.SourceElementIndex.Value.ToString(CultureInfo.InvariantCulture)));
             }
-            if (!string.IsNullOrWhiteSpace(selectedElement.ImportSource.SharedLampSetId))
+            if (!string.IsNullOrWhiteSpace(selectedElement.SharedSourceSetId))
             {
-                _propertyRows.Add(new InspectorInfoPropertyViewModel("Shared Lamp Set", "Metadata", selectedElement.ImportSource.SharedLampSetId));
+                _propertyRows.Add(new InspectorInfoPropertyViewModel("Shared Source Set", "Metadata", selectedElement.SharedSourceSetId));
             }
-            if (selectedElement.ImportSource.SharedLampSetCount.HasValue)
+            if (selectedElement.SharedSourceSetCount.HasValue)
             {
-                _propertyRows.Add(new InspectorInfoPropertyViewModel("Shared Lamp Count", "Metadata", selectedElement.ImportSource.SharedLampSetCount.Value.ToString(CultureInfo.InvariantCulture)));
+                _propertyRows.Add(new InspectorInfoPropertyViewModel("Shared Source Count", "Metadata", selectedElement.SharedSourceSetCount.Value.ToString(CultureInfo.InvariantCulture)));
             }
         }
     }
