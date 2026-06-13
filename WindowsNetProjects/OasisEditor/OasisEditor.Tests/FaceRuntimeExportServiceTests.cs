@@ -195,6 +195,49 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         Assert.Equal(0, lampWeights0.GetPixel(3, 3).Red);
     }
 
+
+    [Fact]
+    public void Generate_WithSharedAuthoredTray_WritesMultipleEmitterChannels()
+    {
+        var outputDirectory = Path.Combine(_generatedDirectory, "shared-tray-texture-test");
+        var document = new FaceDocumentModel
+        {
+            Trays =
+            [
+                new FaceTrayModel
+                {
+                    ObjectId = "shared-tray",
+                    Bounds = new FaceSourceRegionModel { X = 0, Y = 0, Width = 2, Height = 2 },
+                    Vertices =
+                    [
+                        new FacePointModel { X = 0, Y = 0 },
+                        new FacePointModel { X = 2, Y = 0 },
+                        new FacePointModel { X = 2, Y = 2 },
+                        new FacePointModel { X = 0, Y = 2 }
+                    ]
+                }
+            ],
+            LampEmitters =
+            [
+                new FaceLampEmitterElement { ObjectId = "emitter-a", TrayObjectId = "shared-tray", TrayId = 1, LampId = 11, CenterX = 0.5, CenterY = 0.5 },
+                new FaceLampEmitterElement { ObjectId = "emitter-b", TrayObjectId = "shared-tray", TrayId = 1, LampId = 12, CenterX = 1.5, CenterY = 1.5 }
+            ]
+        };
+
+        var result = new FaceRuntimeTextureGenerator().Generate(document, 2, 2, outputDirectory);
+
+        Assert.Single(result.Plan.Trays);
+        Assert.Equal(2, result.Plan.Emitters.Count);
+        using var trayId = SKBitmap.Decode(Path.Combine(outputDirectory, "trayId.png"));
+        using var lampIds0 = SKBitmap.Decode(Path.Combine(outputDirectory, "lampIds0.png"));
+        using var lampWeights0 = SKBitmap.Decode(Path.Combine(outputDirectory, "lampWeights0.png"));
+        Assert.Equal(1, trayId.GetPixel(0, 0).Red);
+        Assert.Equal(11, lampIds0.GetPixel(0, 0).Red);
+        Assert.Equal(12, lampIds0.GetPixel(0, 0).Green);
+        Assert.Equal(255, lampWeights0.GetPixel(0, 0).Red);
+        Assert.Equal(255, lampWeights0.GetPixel(0, 0).Green);
+    }
+
     [Fact]
     public void Export_WithMissingArtworkAsset_ThrowsFileNotFoundException()
     {

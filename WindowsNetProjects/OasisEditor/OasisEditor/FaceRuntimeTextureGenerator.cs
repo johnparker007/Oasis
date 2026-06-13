@@ -38,11 +38,13 @@ public sealed class FaceRuntimeTextureGenerator
                 .ThenBy(emitter => emitter.ObjectId, StringComparer.Ordinal)
                 .ToArray();
             ValidateLampIds(emitters);
-            var emittersByTrayObjectId = emitters.ToDictionary(emitter => emitter.TrayObjectId.Trim(), StringComparer.Ordinal);
+            var emittersByTrayObjectId = emitters
+                .GroupBy(emitter => emitter.TrayObjectId.Trim(), StringComparer.Ordinal)
+                .ToDictionary(group => group.Key, group => group.OrderBy(emitter => emitter.ObjectId, StringComparer.Ordinal).ToArray(), StringComparer.Ordinal);
             trays = faceDocument.Trays
-                .OrderBy(tray => emittersByTrayObjectId[tray.ObjectId.Trim()].TrayId)
+                .OrderBy(tray => emittersByTrayObjectId[tray.ObjectId.Trim()][0].TrayId)
                 .ThenBy(tray => tray.ObjectId, StringComparer.Ordinal)
-                .Select(tray => CreateAuthoredTray(tray, emittersByTrayObjectId[tray.ObjectId.Trim()]))
+                .Select(tray => CreateAuthoredTray(tray, emittersByTrayObjectId[tray.ObjectId.Trim()][0]))
                 .ToArray();
         }
         else
@@ -272,19 +274,6 @@ public sealed class FaceRuntimeTextureGenerator
                 .Select(emitter => emitter.ObjectId.Trim()),
             "duplicate emitter ID",
             diagnostics);
-        AddDuplicateDiagnostics(
-            faceDocument.LampEmitters
-                .Where(emitter => emitter.TrayId > 0)
-                .Select(emitter => emitter.TrayId.ToString()),
-            "duplicate numeric tray ID",
-            diagnostics);
-        AddDuplicateDiagnostics(
-            faceDocument.LampEmitters
-                .Where(emitter => !string.IsNullOrWhiteSpace(emitter.TrayObjectId))
-                .Select(emitter => emitter.TrayObjectId.Trim()),
-            "duplicate emitter tray reference",
-            diagnostics);
-
         foreach (var tray in faceDocument.Trays)
         {
             var displayName = DisplayName(tray.ObjectId, tray.Name);
@@ -525,7 +514,9 @@ public sealed class LampInfluenceTextureGenerator
     {
         ArgumentNullException.ThrowIfNull(trays);
         ArgumentNullException.ThrowIfNull(emitters);
-        var emittersByTray = emitters.ToDictionary(emitter => emitter.TrayId);
+        var emittersByTray = emitters
+            .GroupBy(emitter => emitter.TrayId)
+            .ToDictionary(group => group.Key, group => group.OrderBy(emitter => emitter.ObjectId, StringComparer.Ordinal).ToArray());
 
         using var idsBitmap = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
         using var weightsBitmap = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
@@ -537,9 +528,22 @@ public sealed class LampInfluenceTextureGenerator
         var ownership = new int[width * height];
         foreach (var tray in trays)
         {
-            if (!emittersByTray.TryGetValue(tray.TrayId, out var emitter) || emitter.LampId is not int lampId)
+            if (!emittersByTray.TryGetValue(tray.TrayId, out var trayEmitters) || trayEmitters.Length == 0 || trayEmitters.Any(emitter => emitter.LampId is not int))
             {
                 throw new InvalidOperationException($"Face runtime tray {tray.TrayId} does not have a valid lamp emitter.");
+            }
+
+            if (trayEmitters.Length > 4)
+            {
+                throw new InvalidOperationException($"Face runtime tray {tray.TrayId} has {trayEmitters.Length} lamp emitters; the current lampIds0/lampWeights0 format supports up to 4 emitters per tray.");
+            }
+
+            var idChannels = new byte[4];
+            var weightChannels = new byte[4];
+            for (var channel = 0; channel < trayEmitters.Length; channel++)
+            {
+                idChannels[channel] = (byte)trayEmitters[channel].LampId!.Value;
+                weightChannels[channel] = 255;
             }
 
             var bounds = RasterBounds.FromElement(tray, width, height);
@@ -554,8 +558,8 @@ public sealed class LampInfluenceTextureGenerator
                     }
 
                     ownership[index] = tray.TrayId;
-                    idsBitmap.SetPixel(x, y, new SKColor((byte)lampId, 0, 0, 255));
-                    weightsBitmap.SetPixel(x, y, new SKColor(255, 0, 0, 255));
+                    idsBitmap.SetPixel(x, y, new SKColor(idChannels[0], idChannels[1], idChannels[2], idChannels[3]));
+                    weightsBitmap.SetPixel(x, y, new SKColor(weightChannels[0], weightChannels[1], weightChannels[2], weightChannels[3]));
                     debugBitmap.SetPixel(x, y, SKColors.White);
                 }
             }

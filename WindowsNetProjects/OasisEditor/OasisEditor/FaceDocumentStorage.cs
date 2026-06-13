@@ -640,6 +640,9 @@ public static class FaceDocumentStorage
             LinkedMachineObjectReference = reference,
             LinkedPanel2DElementId = file.LinkedPanel2DElementId,
             BulbMaskAssetPath = file.BulbMaskAssetPath,
+            SourceComponentIndex = file.SourceComponentIndex,
+            SharedSourceSetId = string.IsNullOrWhiteSpace(file.SharedSourceSetId) ? null : file.SharedSourceSetId.Trim(),
+            SharedSourceSetCount = file.SharedSourceSetCount,
             SourceBlend = file.SourceBlend
         };
     }
@@ -719,6 +722,9 @@ public static class FaceDocumentStorage
             SourceRegion = model is FaceArtworkElement artworkRegion ? ToFile(artworkRegion.SourceRegion) : null,
             ArtworkProvenance = model is FaceArtworkElement artworkProvenance ? ToFile(artworkProvenance.Provenance) : null,
             BulbMaskAssetPath = model is FaceLampWindowElement lampWindow ? lampWindow.BulbMaskAssetPath : null,
+            SourceComponentIndex = model is FaceLampWindowElement sourceComponentLampWindow ? sourceComponentLampWindow.SourceComponentIndex : null,
+            SharedSourceSetId = model is FaceLampWindowElement sharedSetLampWindow ? sharedSetLampWindow.SharedSourceSetId : null,
+            SharedSourceSetCount = model is FaceLampWindowElement sharedSetCountLampWindow ? sharedSetCountLampWindow.SharedSourceSetCount : null,
             SourceBlend = model is FaceLampWindowElement sourceLampWindow && sourceLampWindow.SourceBlend
         };
     }
@@ -899,6 +905,9 @@ public sealed record FaceElementFile
     public FaceSourceRegionFile? SourceRegion { get; init; }
     public FaceArtworkProvenanceFile? ArtworkProvenance { get; init; }
     public string? BulbMaskAssetPath { get; init; }
+    public int? SourceComponentIndex { get; init; }
+    public string? SharedSourceSetId { get; init; }
+    public int? SharedSourceSetCount { get; init; }
     public bool SourceBlend { get; init; }
 }
 

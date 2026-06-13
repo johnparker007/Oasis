@@ -79,6 +79,9 @@ internal static class FaceElementModelUpdater
                 LinkedMachineObjectReference = linkedMachineObjectReference,
                 LinkedPanel2DElementId = update.HasLinkedPanel2DElementId ? update.LinkedPanel2DElementId : existing.LinkedPanel2DElementId,
                 BulbMaskAssetPath = ((FaceLampWindowElement)existing).BulbMaskAssetPath,
+                SourceComponentIndex = ((FaceLampWindowElement)existing).SourceComponentIndex,
+                SharedSourceSetId = ((FaceLampWindowElement)existing).SharedSourceSetId,
+                SharedSourceSetCount = ((FaceLampWindowElement)existing).SharedSourceSetCount,
                 SourceBlend = ((FaceLampWindowElement)existing).SourceBlend
             },
             FaceSevenSegmentDisplayElement sevenSegmentDisplay => new FaceSevenSegmentDisplayElement

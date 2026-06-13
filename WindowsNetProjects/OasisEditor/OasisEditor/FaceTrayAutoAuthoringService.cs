@@ -14,67 +14,74 @@ internal sealed class FaceTrayAutoAuthoringService
         var trays = new List<FaceTrayModel>();
         var emitters = new List<FaceLampEmitterElement>();
         var nextTrayNumber = 1;
-
-        foreach (var lampWindow in faceDocument.Elements
+        var lampWindows = faceDocument.Elements
             .OfType<FaceLampWindowElement>()
             .Where(IsValidVisibleLampWindow)
-            .OrderBy(CreateLampStableKey, StringComparer.Ordinal))
-        {
-            var contribution = FindBestContribution(lampWindow, faceDocument.MaskLayer);
-            var baseBounds = contribution?.Bounds is { IsValid: true } contributionBounds
-                ? contributionBounds
-                : FaceSourceRegionModel.FromRect(new Rect(lampWindow.X, lampWindow.Y, lampWindow.Width, lampWindow.Height));
-            var lampBounds = FaceSourceRegionModel.FromRect(new Rect(lampWindow.X, lampWindow.Y, lampWindow.Width, lampWindow.Height));
-            var bounds = ExpandBounds(baseBounds, lampBounds, settings);
-            var source = contribution?.Bounds is { IsValid: true } ? "maskContributionBounds" : "lampWindowBounds";
-            var stableKey = CreateLampStableKey(lampWindow);
-            var trayObjectId = CreateStableId("face-tray", stableKey, source, Format(bounds.X), Format(bounds.Y), Format(bounds.Width), Format(bounds.Height));
-            var trayNumber = nextTrayNumber++;
-            var lampId = TryGetLampId(lampWindow.LinkedMachineObjectReference);
+            .OrderBy(CreateLampStableKey, StringComparer.Ordinal)
+            .Select(lampWindow => CreateLampWorkItem(lampWindow, faceDocument.MaskLayer, settings))
+            .ToArray();
 
+        var groupedLampObjectIds = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var group in lampWindows
+            .Where(item => HasValidSharedSetProvenance(item.LampWindow))
+            .GroupBy(item => item.LampWindow.SharedSourceSetId!.Trim(), StringComparer.Ordinal)
+            .OrderBy(group => group.Key, StringComparer.Ordinal))
+        {
+            var members = group.OrderBy(item => item.StableKey, StringComparer.Ordinal).ToArray();
+            if (members.Length < 2 || !members.Any(item => item.LampWindow.SourceBlend || (item.LampWindow.SharedSourceSetCount ?? 0) > 1) || !HaveEquivalentSourceBounds(members))
+            {
+                continue;
+            }
+
+            var bounds = UnionBounds(members.Select(item => item.Bounds));
+            var trayNumber = nextTrayNumber++;
+            var trayObjectId = CreateStableId("face-tray", "mfme-shared-set", group.Key, Format(bounds.X), Format(bounds.Y), Format(bounds.Width), Format(bounds.Height));
+            var first = members[0].LampWindow;
             trays.Add(new FaceTrayModel
             {
                 ObjectId = trayObjectId,
-                Name = string.IsNullOrWhiteSpace(lampWindow.Name)
-                    ? $"Auto Tray {lampId?.ToString() ?? trayNumber.ToString()}"
-                    : $"{lampWindow.Name.Trim()} Tray",
+                Name = $"MFME Shared Lamp Set {group.Key} Tray",
                 IsAutoAuthored = true,
-                AutoAuthoringSource = source,
-                SourceLampWindowObjectId = lampWindow.ObjectId,
-                SourcePanel2DElementId = contribution?.SourcePanel2DElementId ?? lampWindow.LinkedPanel2DElementId,
-                LinkedMachineObjectReference = lampWindow.LinkedMachineObjectReference,
+                AutoAuthoringSource = "shared-tray-from-mfme-component",
+                SourceLampWindowObjectId = string.Join(",", members.Select(item => item.LampWindow.ObjectId).Where(id => !string.IsNullOrWhiteSpace(id)).OrderBy(id => id, StringComparer.Ordinal)),
+                SourcePanel2DElementId = string.Join(",", members.Select(item => item.Contribution?.SourcePanel2DElementId ?? item.LampWindow.LinkedPanel2DElementId).Where(id => !string.IsNullOrWhiteSpace(id)).OrderBy(id => id, StringComparer.Ordinal)),
+                LinkedMachineObjectReference = first.LinkedMachineObjectReference,
                 Bounds = bounds,
-                Vertices = CreateRectangleVertices(bounds)
+                Vertices = CreateRectangleVertices(bounds),
+                Diagnostics = ["mfme-shared-lamp-set-grouped"]
             });
 
-            var placement = ResolveEmitterPlacement(lampWindow, projectDirectory);
-
-            emitters.Add(new FaceLampEmitterElement
+            foreach (var item in members)
             {
-                ObjectId = CreateStableId("face-emitter", stableKey),
-                Name = string.IsNullOrWhiteSpace(lampWindow.Name)
-                    ? $"Lamp {lampId?.ToString() ?? trayNumber.ToString()} Emitter"
-                    : $"{lampWindow.Name.Trim()} Emitter",
-                X = Math.Round(lampWindow.X, 2),
-                Y = Math.Round(lampWindow.Y, 2),
-                Width = Math.Round(lampWindow.Width, 2),
-                Height = Math.Round(lampWindow.Height, 2),
-                IsVisible = lampWindow.IsVisible,
-                IsLocked = true,
-                LinkedMachineObjectReference = lampWindow.LinkedMachineObjectReference,
-                LinkedPanel2DElementId = lampWindow.LinkedPanel2DElementId,
-                SourceLampWindowObjectId = lampWindow.ObjectId,
-                TrayObjectId = trayObjectId,
-                TrayId = trayNumber,
-                LampId = lampId,
-                CenterX = Math.Round(placement.CenterX, 2),
-                CenterY = Math.Round(placement.CenterY, 2),
+                emitters.Add(CreateEmitter(item, trayObjectId, trayNumber, "shared-tray-from-mfme-component", projectDirectory, ["mfme-shared-lamp-set-grouped"]));
+                if (!string.IsNullOrWhiteSpace(item.LampWindow.ObjectId))
+                {
+                    groupedLampObjectIds.Add(item.LampWindow.ObjectId.Trim());
+                }
+            }
+        }
+
+        foreach (var item in lampWindows.Where(item => string.IsNullOrWhiteSpace(item.LampWindow.ObjectId) || !groupedLampObjectIds.Contains(item.LampWindow.ObjectId.Trim())))
+        {
+            var trayNumber = nextTrayNumber++;
+            var trayObjectId = CreateStableId("face-tray", item.StableKey, item.Source, Format(item.Bounds.X), Format(item.Bounds.Y), Format(item.Bounds.Width), Format(item.Bounds.Height));
+            var lampId = TryGetLampId(item.LampWindow.LinkedMachineObjectReference);
+            trays.Add(new FaceTrayModel
+            {
+                ObjectId = trayObjectId,
+                Name = string.IsNullOrWhiteSpace(item.LampWindow.Name)
+                    ? $"Auto Tray {lampId?.ToString() ?? trayNumber.ToString()}"
+                    : $"{item.LampWindow.Name.Trim()} Tray",
                 IsAutoAuthored = true,
-                AutoAuthoringSource = source,
-                EmitterPlacementSource = placement.Source,
-                Radius = placement.Radius is double radius ? Math.Round(radius, 2) : null,
-                Diagnostics = placement.Diagnostics
+                AutoAuthoringSource = item.Source,
+                SourceLampWindowObjectId = item.LampWindow.ObjectId,
+                SourcePanel2DElementId = item.Contribution?.SourcePanel2DElementId ?? item.LampWindow.LinkedPanel2DElementId,
+                LinkedMachineObjectReference = item.LampWindow.LinkedMachineObjectReference,
+                Bounds = item.Bounds,
+                Vertices = CreateRectangleVertices(item.Bounds)
             });
+
+            emitters.Add(CreateEmitter(item, trayObjectId, trayNumber, item.Source, projectDirectory, []));
         }
 
         return new FaceTrayAutoAuthoringResult(DeriveTrayPolygons(trays), emitters);
@@ -87,12 +94,6 @@ internal sealed class FaceTrayAutoAuthoringService
         var diagnostics = new List<FaceValidationDiagnostic>();
         AddDuplicateDiagnostics(faceDocument.Trays.Select(tray => tray.ObjectId), "Face.Tray.DuplicateId", "tray", diagnostics);
         AddDuplicateDiagnostics(faceDocument.LampEmitters.Select(emitter => emitter.ObjectId), "Face.Emitter.DuplicateId", "emitter", diagnostics);
-        AddDuplicateDiagnostics(
-            faceDocument.LampEmitters.Where(emitter => emitter.TrayId > 0).Select(emitter => emitter.TrayId.ToString()),
-            "Face.Tray.DuplicateNumericId",
-            "numeric tray",
-            diagnostics);
-
         var trayIds = faceDocument.Trays
             .Where(tray => !string.IsNullOrWhiteSpace(tray.ObjectId))
             .Select(tray => tray.ObjectId.Trim())
@@ -150,6 +151,92 @@ internal sealed class FaceTrayAutoAuthoringService
         return diagnostics;
     }
 
+    private static LampWorkItem CreateLampWorkItem(FaceLampWindowElement lampWindow, FaceMaskLayerModel? maskLayer, FaceGenerationSettingsModel settings)
+    {
+        var contribution = FindBestContribution(lampWindow, maskLayer);
+        var baseBounds = contribution?.Bounds is { IsValid: true } contributionBounds
+            ? contributionBounds
+            : FaceSourceRegionModel.FromRect(new Rect(lampWindow.X, lampWindow.Y, lampWindow.Width, lampWindow.Height));
+        var lampBounds = FaceSourceRegionModel.FromRect(new Rect(lampWindow.X, lampWindow.Y, lampWindow.Width, lampWindow.Height));
+        var bounds = ExpandBounds(baseBounds, lampBounds, settings);
+        var source = contribution?.Bounds is { IsValid: true } ? "maskContributionBounds" : "lampWindowBounds";
+        return new LampWorkItem(lampWindow, contribution, bounds, source, CreateLampStableKey(lampWindow));
+    }
+
+    private static FaceLampEmitterElement CreateEmitter(
+        LampWorkItem item,
+        string trayObjectId,
+        int trayNumber,
+        string source,
+        string? projectDirectory,
+        IReadOnlyList<string> additionalDiagnostics)
+    {
+        var lampWindow = item.LampWindow;
+        var lampId = TryGetLampId(lampWindow.LinkedMachineObjectReference);
+        var placement = ResolveEmitterPlacement(lampWindow, projectDirectory);
+        var diagnostics = placement.Diagnostics
+            .Concat(additionalDiagnostics)
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(diagnostic => diagnostic, StringComparer.Ordinal)
+            .ToArray();
+
+        return new FaceLampEmitterElement
+        {
+            ObjectId = CreateStableId("face-emitter", item.StableKey),
+            Name = string.IsNullOrWhiteSpace(lampWindow.Name)
+                ? $"Lamp {lampId?.ToString() ?? trayNumber.ToString()} Emitter"
+                : $"{lampWindow.Name.Trim()} Emitter",
+            X = Math.Round(lampWindow.X, 2),
+            Y = Math.Round(lampWindow.Y, 2),
+            Width = Math.Round(lampWindow.Width, 2),
+            Height = Math.Round(lampWindow.Height, 2),
+            IsVisible = lampWindow.IsVisible,
+            IsLocked = true,
+            LinkedMachineObjectReference = lampWindow.LinkedMachineObjectReference,
+            LinkedPanel2DElementId = lampWindow.LinkedPanel2DElementId,
+            SourceLampWindowObjectId = lampWindow.ObjectId,
+            TrayObjectId = trayObjectId,
+            TrayId = trayNumber,
+            LampId = lampId,
+            CenterX = Math.Round(placement.CenterX, 2),
+            CenterY = Math.Round(placement.CenterY, 2),
+            IsAutoAuthored = true,
+            AutoAuthoringSource = source,
+            EmitterPlacementSource = placement.Source,
+            Radius = placement.Radius is double radius ? Math.Round(radius, 2) : null,
+            Diagnostics = diagnostics
+        };
+    }
+
+    private static bool HasValidSharedSetProvenance(FaceLampWindowElement lampWindow)
+    {
+        return !string.IsNullOrWhiteSpace(lampWindow.SharedSourceSetId)
+            && (lampWindow.SourceComponentIndex.HasValue || (lampWindow.SharedSourceSetCount ?? 0) > 1 || lampWindow.SourceBlend);
+    }
+
+    private static bool HaveEquivalentSourceBounds(IReadOnlyList<LampWorkItem> items)
+    {
+        var first = items[0].LampWindow;
+        return items.All(item =>
+            NearlyEqual(item.LampWindow.X, first.X)
+            && NearlyEqual(item.LampWindow.Y, first.Y)
+            && NearlyEqual(item.LampWindow.Width, first.Width)
+            && NearlyEqual(item.LampWindow.Height, first.Height));
+    }
+
+    private static bool NearlyEqual(double left, double right) => Math.Abs(left - right) <= 0.01d;
+
+    private static FaceSourceRegionModel UnionBounds(IEnumerable<FaceSourceRegionModel> bounds)
+    {
+        Rect? union = null;
+        foreach (var bound in bounds.Where(bound => bound.IsValid))
+        {
+            var rect = bound.ToRect();
+            union = union is Rect existing ? Rect.Union(existing, rect) : rect;
+        }
+
+        return FaceSourceRegionModel.FromRect(union ?? Rect.Empty);
+    }
 
     private static EmitterPlacement ResolveEmitterPlacement(FaceLampWindowElement lampWindow, string? projectDirectory)
     {
@@ -190,7 +277,10 @@ internal sealed class FaceTrayAutoAuthoringService
     private static IReadOnlyList<FaceTrayModel> DeriveTrayPolygons(IReadOnlyList<FaceTrayModel> sourceTrays)
     {
         var working = sourceTrays
-            .Select(tray => new TrayPolygonWorkItem(tray, tray.Bounds is { IsValid: true } bounds ? CreateRectangleVertices(bounds).ToList() : tray.Vertices.ToList(), []))
+            .Select(tray => new TrayPolygonWorkItem(
+                tray,
+                tray.Bounds is { IsValid: true } bounds ? CreateRectangleVertices(bounds).ToList() : tray.Vertices.ToList(),
+                tray.Diagnostics.Where(diagnostic => !string.IsNullOrWhiteSpace(diagnostic)).Select(diagnostic => diagnostic.Trim()).ToList()))
             .ToArray();
 
         for (var leftIndex = 0; leftIndex < working.Length; leftIndex++)
@@ -535,5 +625,12 @@ internal sealed class FaceTrayAutoAuthoringService
 internal sealed record FaceTrayAutoAuthoringResult(
     IReadOnlyList<FaceTrayModel> Trays,
     IReadOnlyList<FaceLampEmitterElement> Emitters);
+
+internal sealed record LampWorkItem(
+    FaceLampWindowElement LampWindow,
+    FaceMaskContributionModel? Contribution,
+    FaceSourceRegionModel Bounds,
+    string Source,
+    string StableKey);
 
 internal sealed record EmitterPlacement(double CenterX, double CenterY, string Source, double? Radius, IReadOnlyList<string> Diagnostics);

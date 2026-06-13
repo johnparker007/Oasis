@@ -116,6 +116,33 @@ public sealed class FaceTrayAutoAuthoringTests
         Assert.Equal("lamp:3", emitter.LinkedMachineObjectReference?.ToString());
     }
 
+
+    [Fact]
+    public void Serialize_AndRead_RoundTripsFaceLampWindowSharedMfmeProvenance()
+    {
+        var json = FaceDocumentStorage.Serialize(new FaceDocumentModel
+        {
+            Elements =
+            [
+                new FaceLampWindowElement
+                {
+                    ObjectId = "face-a",
+                    SharedSourceSetId = "mfme-component-42",
+                    SharedSourceSetCount = 2,
+                    SourceComponentIndex = 42,
+                    SourceBlend = true
+                }
+            ]
+        });
+
+        Assert.True(FaceDocumentStorage.TryReadValidated(json, out var file, out var error), error);
+        var lamp = Assert.IsType<FaceLampWindowElement>(Assert.Single(FaceDocumentStorage.ToModel(file).Elements));
+        Assert.Equal("mfme-component-42", lamp.SharedSourceSetId);
+        Assert.Equal(2, lamp.SharedSourceSetCount);
+        Assert.Equal(42, lamp.SourceComponentIndex);
+        Assert.True(lamp.SourceBlend);
+    }
+
     [Fact]
     public void Validate_DetectsDuplicateIdsInvalidBoundsAndMissingTrayReferences()
     {
@@ -241,6 +268,44 @@ public sealed class FaceTrayAutoAuthoringTests
         Assert.Contains("isolated-roundish-octagon", Assert.Single(model.Trays).Diagnostics);
     }
 
+
+    [Fact]
+    public void AutoAuthor_GroupsMfmeSharedLampSetIntoOneTrayWithMultipleEmitters()
+    {
+        var document = new FaceDocumentModel
+        {
+            GenerationSettings = new FaceGenerationSettingsModel { TrayBoundsInflationPercent = 0, TrayBoundsPaddingPixels = 0 },
+            Elements =
+            [
+                new FaceLampWindowElement
+                {
+                    ObjectId = "face-a", Name = "A", X = 10, Y = 20, Width = 30, Height = 40, IsVisible = true,
+                    LinkedMachineObjectReference = MachineObjectReference.Lamp(11), LinkedPanel2DElementId = "panel-a",
+                    SourceComponentIndex = 42, SharedSourceSetId = "mfme-component-42", SharedSourceSetCount = 2, SourceBlend = true
+                },
+                new FaceLampWindowElement
+                {
+                    ObjectId = "face-b", Name = "B", X = 10, Y = 20, Width = 30, Height = 40, IsVisible = true,
+                    LinkedMachineObjectReference = MachineObjectReference.Lamp(12), LinkedPanel2DElementId = "panel-b",
+                    SourceComponentIndex = 42, SharedSourceSetId = "mfme-component-42", SharedSourceSetCount = 2, SourceBlend = true
+                }
+            ]
+        };
+
+        var first = new FaceTrayAutoAuthoringService().AutoAuthor(document);
+        var second = new FaceTrayAutoAuthoringService().AutoAuthor(document);
+
+        var tray = Assert.Single(first.Trays);
+        Assert.Equal("shared-tray-from-mfme-component", tray.AutoAuthoringSource);
+        Assert.Contains("mfme-shared-lamp-set-grouped", tray.Diagnostics);
+        Assert.Equal(first.Trays.Single().ObjectId, second.Trays.Single().ObjectId);
+        Assert.Equal(2, first.Emitters.Count);
+        Assert.All(first.Emitters, emitter => Assert.Equal(tray.ObjectId, emitter.TrayObjectId));
+        Assert.Equal(new int?[] { 11, 12 }, first.Emitters.Select(emitter => emitter.LampId).Order().ToArray());
+        Assert.All(first.Emitters, emitter => Assert.Equal(25d, emitter.CenterX));
+        Assert.All(first.Emitters, emitter => Assert.Equal(40d, emitter.CenterY));
+        Assert.Equal(first.Emitters.Select(emitter => emitter.ObjectId), second.Emitters.Select(emitter => emitter.ObjectId));
+    }
     private static FaceDocumentModel CreateFaceWithLampAndContribution()
     {
         return new FaceDocumentModel
