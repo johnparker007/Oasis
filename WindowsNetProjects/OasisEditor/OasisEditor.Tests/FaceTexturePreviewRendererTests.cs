@@ -322,6 +322,51 @@ public sealed class FaceTexturePreviewRendererTests : IDisposable
     }
 
     [Fact]
+    public void Render_InvalidatesTextureCacheWhenRuntimeAssetGenerationStampChanges()
+    {
+        WriteSolidPng("artwork.png", 1, 1, new SKColor(100, 40, 20, 255));
+        WriteSolidPng("mask.png", 1, 1, SKColors.White);
+        WriteSolidPng("trayId.png", 1, 1, new SKColor(1, 0, 0, 255));
+        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(7, 0, 0, 255));
+        WriteSolidPng("lampWeights0.png", 1, 1, new SKColor(255, 0, 0, 255));
+        var renderer = CreateRenderer();
+        var runtimeState = new MachineRuntimeState();
+
+        using var first = renderer.Render(CreateDocument(width: 1, height: 1, generatedUtc: new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)), runtimeState);
+        using var second = renderer.Render(CreateDocument(width: 1, height: 1, generatedUtc: new DateTime(2026, 1, 1, 0, 0, 1, DateTimeKind.Utc)), runtimeState);
+
+        Assert.True(first.Rendered);
+        Assert.True(second.Rendered);
+        Assert.False(renderer.LastDiagnostics.ReusedTextureCache);
+    }
+
+    [Fact]
+    public void Render_InvalidatesTextureCacheWhenLampWeightsFileIsOverwrittenAtSamePath()
+    {
+        WriteSolidPng("artwork.png", 1, 1, new SKColor(100, 40, 20, 255));
+        WriteSolidPng("mask.png", 1, 1, SKColors.White);
+        WriteSolidPng("trayId.png", 1, 1, new SKColor(1, 0, 0, 255));
+        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(7, 0, 0, 255));
+        WriteSolidPng("lampWeights0.png", 1, 1, new SKColor(255, 0, 0, 255));
+        var renderer = CreateRenderer();
+        var runtimeState = new MachineRuntimeState();
+        runtimeState.SetLampIntensityIfChanged(MachineObjectReference.Lamp(7), 1d);
+        var document = CreateDocument(width: 1, height: 1);
+
+        using var first = renderer.Render(document, runtimeState);
+        Assert.True(first.Rendered);
+        var firstRed = first.Bitmap!.GetPixel(0, 0).Red;
+
+        WriteSolidPng("lampWeights0.png", 1, 1, new SKColor(0, 0, 0, 255));
+        File.SetLastWriteTimeUtc(Path.Combine(_testDirectory, "lampWeights0.png"), DateTime.UtcNow.AddMinutes(1));
+        using var second = renderer.Render(document, runtimeState);
+
+        Assert.True(second.Rendered);
+        Assert.False(renderer.LastDiagnostics.ReusedTextureCache);
+        Assert.True(second.Bitmap!.GetPixel(0, 0).Red < firstRed);
+    }
+
+    [Fact]
     public void Render_ReusesCompositionWhenLampStateIsUnchanged()
     {
         WriteSolidPng("artwork.png", 1, 1, new SKColor(100, 40, 20, 255));
@@ -362,7 +407,7 @@ public sealed class FaceTexturePreviewRendererTests : IDisposable
             });
     }
 
-    private static FaceDocumentModel CreateDocument(int width = 2, int height = 2, string artworkPath = "artwork.png")
+    private static FaceDocumentModel CreateDocument(int width = 2, int height = 2, string artworkPath = "artwork.png", DateTime? generatedUtc = null)
     {
         return new FaceDocumentModel
         {
@@ -374,7 +419,8 @@ public sealed class FaceTexturePreviewRendererTests : IDisposable
                 LampIds0Path = "lampIds0.png",
                 LampWeights0Path = "lampWeights0.png",
                 Width = width,
-                Height = height
+                Height = height,
+                GeneratedUtc = generatedUtc ?? default
             }
         };
     }
