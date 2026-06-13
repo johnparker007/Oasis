@@ -490,7 +490,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
     }
 
     [Fact]
-    public void Generate_WithAuthoredTrayAndEmitter_WritesTrayIdsLampIdsAndBinaryWeightsFromAuthoredGeometry()
+    public void Generate_WithAuthoredTrayAndEmitter_WritesTrayIdsLampIdsAndNormalizedWeightsFromAuthoredGeometry()
     {
         var outputDirectory = Path.Combine(_generatedDirectory, "authored-texture-test");
         var document = CreateDocumentWithAuthoredTrayAndEmitter(

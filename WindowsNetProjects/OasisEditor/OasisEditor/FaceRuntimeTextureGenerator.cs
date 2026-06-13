@@ -542,9 +542,7 @@ public sealed class LampInfluenceTextureGenerator
             }
 
             var bounds = RasterBounds.FromElement(tray, width, height);
-            var influences = trayEmitters.Length == 1
-                ? Array.Empty<LampInfluence>()
-                : CreateInfluences(tray, trayEmitters);
+            var influences = CreateInfluences(tray, trayEmitters);
             for (var y = bounds.Top; y < bounds.Bottom; y++)
             {
                 for (var x = bounds.Left; x < bounds.Right; x++)
@@ -556,9 +554,7 @@ public sealed class LampInfluenceTextureGenerator
                     }
 
                     ownership[index] = tray.TrayId;
-                    var (idChannels, weightChannels) = trayEmitters.Length == 1
-                        ? CreateSingleEmitterChannels(trayEmitters[0])
-                        : CreateMultiEmitterChannels(influences, x + 0.5d, y + 0.5d);
+                    var (idChannels, weightChannels) = CreateEmitterChannels(influences, x + 0.5d, y + 0.5d);
                     idsBitmap.SetPixel(x, y, new SKColor(idChannels[0], idChannels[1], idChannels[2], 255));
                     weightsBitmap.SetPixel(x, y, new SKColor(weightChannels[0], weightChannels[1], weightChannels[2], 255));
                     debugBitmap.SetPixel(x, y, new SKColor(weightChannels[0], weightChannels[1], weightChannels[2], 255));
@@ -569,15 +565,6 @@ public sealed class LampInfluenceTextureGenerator
         WritePng(idsBitmap, lampIds0Path, "lamp ID texture");
         WritePng(weightsBitmap, lampWeights0Path, "lamp weight texture");
         WritePng(debugBitmap, lampWeightsDebugPath, "lamp weight debug texture");
-    }
-
-    private static (byte[] IdChannels, byte[] WeightChannels) CreateSingleEmitterChannels(FaceLampEmitterElement emitter)
-    {
-        var idChannels = new byte[SupportedChannelCount];
-        var weightChannels = new byte[SupportedChannelCount];
-        idChannels[0] = (byte)emitter.LampId!.Value;
-        weightChannels[0] = 255;
-        return (idChannels, weightChannels);
     }
 
     private static IReadOnlyList<LampInfluence> CreateInfluences(FaceRuntimeTrayElement tray, IReadOnlyList<FaceLampEmitterElement> emitters)
@@ -601,7 +588,7 @@ public sealed class LampInfluenceTextureGenerator
             .ToArray();
     }
 
-    private static (byte[] IdChannels, byte[] WeightChannels) CreateMultiEmitterChannels(IReadOnlyList<LampInfluence> influences, double pixelX, double pixelY)
+    private static (byte[] IdChannels, byte[] WeightChannels) CreateEmitterChannels(IReadOnlyList<LampInfluence> influences, double pixelX, double pixelY)
     {
         var retained = influences
             .Select(influence =>
