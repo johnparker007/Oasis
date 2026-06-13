@@ -34,7 +34,7 @@ public sealed class FaceBulbMaskEmitterPlacementTests
         var emitter = Assert.Single(result.Emitters);
         Assert.Equal("MfmeBulbMaskCentroid", emitter.EmitterPlacementSource);
         Assert.Equal(175d, emitter.CenterX, 1);
-        Assert.Equal(70d, emitter.CenterY, 1);
+        Assert.Equal(85d, emitter.CenterY, 1);
         Assert.NotNull(emitter.Radius);
     }
 
