@@ -65,6 +65,7 @@ internal static class PanelElementModelComparer
                && left.SourceElementIndex == right.SourceElementIndex
                && string.Equals(left.SharedSourceSetId, right.SharedSourceSetId, StringComparison.Ordinal)
                && left.SharedSourceSetCount == right.SharedSourceSetCount
+               && left.SourceBlend == right.SourceBlend
                && AreEquivalent(left.ImportSource, right.ImportSource);
     }
 

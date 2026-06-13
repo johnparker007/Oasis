@@ -111,7 +111,7 @@ internal sealed class FaceRegenerationService
         }
 
         mergedElements.AddRange(preservedManualElements);
-        var autoAuthored = _trayAutoAuthoringService.AutoAuthor(new FaceDocumentModel { GenerationSettings = settings, MaskLayer = generated.Document.MaskLayer, Elements = mergedElements.ToArray() });
+        var autoAuthored = _trayAutoAuthoringService.AutoAuthor(new FaceDocumentModel { GenerationSettings = settings, MaskLayer = generated.Document.MaskLayer, Elements = mergedElements.ToArray() }, projectDirectory);
 
         var regeneratedDocument = new FaceDocumentModel
         {
@@ -257,7 +257,9 @@ internal sealed class FaceRegenerationService
                 IsVisible = lamp.IsVisible,
                 IsLocked = lamp.IsLocked,
                 LinkedMachineObjectReference = machineReference,
-                LinkedPanel2DElementId = lamp.LinkedPanel2DElementId
+                LinkedPanel2DElementId = lamp.LinkedPanel2DElementId,
+                BulbMaskAssetPath = lamp.BulbMaskAssetPath,
+                SourceBlend = lamp.SourceBlend
             },
             _ => regeneratedElement
         };

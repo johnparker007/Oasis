@@ -6,7 +6,7 @@ namespace OasisEditor;
 
 internal sealed class FaceTrayAutoAuthoringService
 {
-    public FaceTrayAutoAuthoringResult AutoAuthor(FaceDocumentModel faceDocument)
+    public FaceTrayAutoAuthoringResult AutoAuthor(FaceDocumentModel faceDocument, string? projectDirectory = null)
     {
         ArgumentNullException.ThrowIfNull(faceDocument);
 
@@ -47,6 +47,8 @@ internal sealed class FaceTrayAutoAuthoringService
                 Vertices = CreateRectangleVertices(bounds)
             });
 
+            var placement = ResolveEmitterPlacement(lampWindow, projectDirectory);
+
             emitters.Add(new FaceLampEmitterElement
             {
                 ObjectId = CreateStableId("face-emitter", stableKey),
@@ -65,10 +67,13 @@ internal sealed class FaceTrayAutoAuthoringService
                 TrayObjectId = trayObjectId,
                 TrayId = trayNumber,
                 LampId = lampId,
-                CenterX = Math.Round(lampWindow.X + (lampWindow.Width / 2d), 2),
-                CenterY = Math.Round(lampWindow.Y + (lampWindow.Height / 2d), 2),
+                CenterX = Math.Round(placement.CenterX, 2),
+                CenterY = Math.Round(placement.CenterY, 2),
                 IsAutoAuthored = true,
-                AutoAuthoringSource = source
+                AutoAuthoringSource = source,
+                EmitterPlacementSource = placement.Source,
+                Radius = placement.Radius is double radius ? Math.Round(radius, 2) : null,
+                Diagnostics = placement.Diagnostics
             });
         }
 
@@ -143,6 +148,43 @@ internal sealed class FaceTrayAutoAuthoringService
         }
 
         return diagnostics;
+    }
+
+
+    private static EmitterPlacement ResolveEmitterPlacement(FaceLampWindowElement lampWindow, string? projectDirectory)
+    {
+        var fallbackSource = lampWindow.Width > 0d && lampWindow.Height > 0d
+            ? "ComponentCentreFallback"
+            : "LampWindowCentreFallback";
+        var fallback = new EmitterPlacement(
+            lampWindow.X + (lampWindow.Width / 2d),
+            lampWindow.Y + (lampWindow.Height / 2d),
+            fallbackSource,
+            null,
+            []);
+
+        if (!lampWindow.SourceBlend)
+        {
+            return fallback;
+        }
+
+        if (string.IsNullOrWhiteSpace(lampWindow.BulbMaskAssetPath))
+        {
+            return fallback with { Diagnostics = ["bulb-mask-missing", "centroid-fallback-used"] };
+        }
+
+        var centroid = FaceBulbMaskCentroidAnalyzer.AnalyzeFile(lampWindow.BulbMaskAssetPath, projectDirectory, out var diagnostic);
+        if (centroid is null)
+        {
+            return fallback with { Diagnostics = string.IsNullOrWhiteSpace(diagnostic) ? ["centroid-fallback-used"] : [diagnostic, "centroid-fallback-used"] };
+        }
+
+        return new EmitterPlacement(
+            lampWindow.X + (centroid.NormalizedX * lampWindow.Width),
+            lampWindow.Y + (centroid.NormalizedY * lampWindow.Height),
+            "MfmeBulbMaskCentroid",
+            centroid.NormalizedRadius * Math.Max(lampWindow.Width, lampWindow.Height),
+            []);
     }
 
     private static IReadOnlyList<FaceTrayModel> DeriveTrayPolygons(IReadOnlyList<FaceTrayModel> sourceTrays)
@@ -493,3 +535,5 @@ internal sealed class FaceTrayAutoAuthoringService
 internal sealed record FaceTrayAutoAuthoringResult(
     IReadOnlyList<FaceTrayModel> Trays,
     IReadOnlyList<FaceLampEmitterElement> Emitters);
+
+internal sealed record EmitterPlacement(double CenterX, double CenterY, string Source, double? Radius, IReadOnlyList<string> Diagnostics);

@@ -47,6 +47,7 @@ internal static class PanelElementModelCloner
             SourceElementIndex = source.SourceElementIndex,
             SharedSourceSetId = source.SharedSourceSetId,
             SharedSourceSetCount = source.SharedSourceSetCount,
+            SourceBlend = source.SourceBlend,
             ImportSource = CloneImportSource(source.ImportSource)
         };
     }

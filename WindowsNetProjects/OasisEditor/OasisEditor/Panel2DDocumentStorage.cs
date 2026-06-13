@@ -284,6 +284,7 @@ internal static class Panel2DDocumentStorage
                 || element.BandOffset.HasValue
                 || element.IsLocked
                 || element.IsVisible is false
+                || element.SourceBlend
                 || element.ImportSource is not null)
             {
                 return CurrentSchemaVersion;
@@ -349,6 +350,7 @@ internal static class Panel2DDocumentStorage
             SourceElementIndex = normalized.SourceElementIndex,
             SharedSourceSetId = normalized.SharedSourceSetId,
             SharedSourceSetCount = normalized.SharedSourceSetCount,
+            SourceBlend = normalized.SourceBlend,
             ImportSource = normalized.ImportSource is null
                 ? null
                 : new PanelElementImportSourceModel
@@ -401,6 +403,7 @@ internal static class Panel2DDocumentStorage
             SourceElementIndex = element.SourceElementIndex,
             SharedSourceSetId = element.SharedSourceSetId,
             SharedSourceSetCount = element.SharedSourceSetCount,
+            SourceBlend = element.SourceBlend,
             ImportSource = importSource,
             Native = CreateNativeFromLegacyFields(
                 assetPath: element.AssetPath,
@@ -549,6 +552,7 @@ internal static class Panel2DDocumentStorage
             SourceElementIndex = normalizedSourceElementIndex,
             SharedSourceSetId = normalizedSharedSourceSetId,
             SharedSourceSetCount = normalizedSharedSourceSetCount,
+            SourceBlend = element.SourceBlend,
             ImportSource = normalizedImportSource,
             Native = mergedNative
         };
@@ -805,6 +809,7 @@ internal sealed record PanelElementFile : IPanelSelectableObject
     public int? SourceElementIndex { get; init; }
     public string? SharedSourceSetId { get; init; }
     public int? SharedSourceSetCount { get; init; }
+    public bool SourceBlend { get; init; }
     public PanelElementImportSourceFile? ImportSource { get; init; }
     public PanelElementNativeFile? Native { get; init; }
 

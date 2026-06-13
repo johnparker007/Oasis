@@ -235,7 +235,8 @@ internal static class MfmeExtractManifestParser
                         ReadString(component, "Shortcut1"),
                         ReadString(component, "Shortcut2"),
                         lampElements,
-                        componentIndex);
+                        componentIndex,
+                        ReadBool(component, "Blend"));
                     return true;
                 }
 
@@ -260,7 +261,8 @@ internal static class MfmeExtractManifestParser
                         ReadColor(component, "TextColor"),
                         ReadBool(component, "NoOutline"),
                         lampElements,
-                        componentIndex);
+                        componentIndex,
+                        ReadBool(component, "Blend"));
                     return true;
                 }
 

@@ -125,7 +125,7 @@ internal sealed class FaceGenerationService
         var faceDocumentId = Guid.NewGuid().ToString("N");
         var maskLayer = _maskLayerExtractionService.GenerateMaskLayer(sourcePanel, region, faceDocumentId, sourcePanel2DDocumentId, projectDirectory, generatedDirectory, settings.MaskExtractionThreshold);
         var elements = artworkElements.Cast<FaceElementModel>().Concat(lampWindows).Concat(reelDisplays).Concat(sevenSegmentDisplays).Concat(alphaDisplays).Concat(buttons).ToArray();
-        var autoAuthored = _trayAutoAuthoringService.AutoAuthor(new FaceDocumentModel { GenerationSettings = settings, MaskLayer = maskLayer, Elements = elements });
+        var autoAuthored = _trayAutoAuthoringService.AutoAuthor(new FaceDocumentModel { GenerationSettings = settings, MaskLayer = maskLayer, Elements = elements }, projectDirectory);
         var document = new FaceDocumentModel
         {
             Id = faceDocumentId,
@@ -259,7 +259,9 @@ internal sealed class FaceGenerationService
             IsVisible = sourceElement.IsVisible,
             IsLocked = sourceElement.IsLocked,
             LinkedMachineObjectReference = machineReference.IsEmpty ? null : machineReference,
-            LinkedPanel2DElementId = string.IsNullOrWhiteSpace(sourceElement.ObjectId) ? null : sourceElement.ObjectId
+            LinkedPanel2DElementId = string.IsNullOrWhiteSpace(sourceElement.ObjectId) ? null : sourceElement.ObjectId,
+            BulbMaskAssetPath = sourceElement.SecondaryAssetPath,
+            SourceBlend = sourceElement.SourceBlend
         };
     }
 

@@ -61,7 +61,8 @@ internal sealed record MfmeLegacyLampComponent(
     string? Shortcut1,
     string? Shortcut2,
     IReadOnlyList<MfmeLegacyLampElement>? LampElements = null,
-    int SourceComponentIndex = -1)
+    int SourceComponentIndex = -1,
+    bool Blend = false)
     : MfmeLegacyComponentBase(
         "Lamp",
         Position,
@@ -157,7 +158,8 @@ internal sealed record MfmeLegacyButtonComponent(
     MfmeLegacyColor? TextColor,
     bool NoOutline,
     IReadOnlyList<MfmeLegacyLampElement>? LampElements = null,
-    int SourceComponentIndex = -1)
+    int SourceComponentIndex = -1,
+    bool Blend = false)
     : MfmeLegacyComponentBase(
         "ExtractComponentButton",
         Position,
