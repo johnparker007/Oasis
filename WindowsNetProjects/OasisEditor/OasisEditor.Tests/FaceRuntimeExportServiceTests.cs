@@ -235,7 +235,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         Assert.Equal(11, lampIds0.GetPixel(0, 0).Red);
         Assert.Equal(12, lampIds0.GetPixel(0, 0).Green);
         Assert.True(lampWeights0.GetPixel(0, 0).Red > lampWeights0.GetPixel(0, 0).Green);
-        Assert.Equal(255, lampWeights0.GetPixel(0, 0).Red + lampWeights0.GetPixel(0, 0).Green + lampWeights0.GetPixel(0, 0).Blue);
+        Assert.True(lampWeights0.GetPixel(0, 0).Red + lampWeights0.GetPixel(0, 0).Green + lampWeights0.GetPixel(0, 0).Blue <= 255);
     }
 
     [Fact]
@@ -490,7 +490,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
     }
 
     [Fact]
-    public void Generate_WithAuthoredTrayAndEmitter_WritesTrayIdsLampIdsAndNormalizedWeightsFromAuthoredGeometry()
+    public void Generate_WithAuthoredTrayAndEmitter_WritesTrayIdsLampIdsAndFullSingleEmitterWeightsFromAuthoredGeometry()
     {
         var outputDirectory = Path.Combine(_generatedDirectory, "authored-texture-test");
         var document = CreateDocumentWithAuthoredTrayAndEmitter(
@@ -519,7 +519,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
     }
 
     [Fact]
-    public void Generate_WithTwoAuthoredEmitters_WritesSmoothNormalizedWeights()
+    public void Generate_WithTwoAuthoredEmitters_WritesSmoothIntensityFalloffWeights()
     {
         var outputDirectory = Path.Combine(_generatedDirectory, "authored-smooth-two-emitter-test");
         var document = CreateDocumentWithAuthoredTrayAndEmitters(
@@ -534,16 +534,22 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         using var weightDebug = SKBitmap.Decode(Path.Combine(outputDirectory, "lampWeights_debug.png"));
 
         Assert.Equal(new SKColor(11, 12, 0, 255), lampIds0.GetPixel(0, 0));
-        Assert.True(lampWeights0.GetPixel(0, 0).Red > lampWeights0.GetPixel(0, 0).Green);
-        Assert.True(lampWeights0.GetPixel(9, 0).Green > lampWeights0.GetPixel(9, 0).Red);
-        Assert.InRange(lampWeights0.GetPixel(4, 0).Red, 100, 155);
-        Assert.Equal(255, lampWeights0.GetPixel(4, 0).Red + lampWeights0.GetPixel(4, 0).Green + lampWeights0.GetPixel(4, 0).Blue);
+        var nearLeft = lampWeights0.GetPixel(0, 0);
+        var middle = lampWeights0.GetPixel(4, 0);
+        var nearRight = lampWeights0.GetPixel(9, 0);
+        Assert.True(nearLeft.Red > nearLeft.Green);
+        Assert.True(nearRight.Green > nearRight.Red);
+        Assert.True(nearLeft.Red > 200);
+        Assert.True(nearRight.Green > 180);
+        Assert.True(nearLeft.Red > middle.Red);
+        Assert.True(nearRight.Green > middle.Green);
+        Assert.True(middle.Red + middle.Green + middle.Blue < 255);
         Assert.NotEqual(SKColors.White, weightDebug.GetPixel(4, 0));
-        Assert.Equal(lampWeights0.GetPixel(4, 0), weightDebug.GetPixel(4, 0));
+        Assert.Equal(middle, weightDebug.GetPixel(4, 0));
     }
 
     [Fact]
-    public void Generate_WithOverlappingAuthoredEmitters_RemainsDeterministicAndNormalized()
+    public void Generate_WithOverlappingAuthoredEmitters_RemainsDeterministicAndCapped()
     {
         var firstOutputDirectory = Path.Combine(_generatedDirectory, "authored-overlap-test-a");
         var secondOutputDirectory = Path.Combine(_generatedDirectory, "authored-overlap-test-b");
@@ -564,7 +570,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         Assert.Equal(firstIds.GetPixel(1, 0), secondIds.GetPixel(1, 0));
         Assert.Equal(firstWeights.GetPixel(1, 0), secondWeights.GetPixel(1, 0));
         Assert.Equal(new SKColor(21, 22, 0, 255), firstIds.GetPixel(1, 0));
-        Assert.Equal(255, firstWeights.GetPixel(1, 0).Red + firstWeights.GetPixel(1, 0).Green + firstWeights.GetPixel(1, 0).Blue);
+        Assert.True(firstWeights.GetPixel(1, 0).Red + firstWeights.GetPixel(1, 0).Green + firstWeights.GetPixel(1, 0).Blue <= 255);
         Assert.InRange(firstWeights.GetPixel(1, 0).Red, 120, 135);
         Assert.InRange(firstWeights.GetPixel(1, 0).Green, 120, 135);
     }

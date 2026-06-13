@@ -577,12 +577,12 @@ public sealed class LampInfluenceTextureGenerator
                 var radius = emitter.Radius is double emitterRadius && emitterRadius > 0d && IsFinite(emitterRadius)
                     ? emitterRadius
                     : fallbackRadius;
-                var softness = Math.Max(MinimumSoftness, radius * radius * 0.25d);
+                var radiusSquared = Math.Max(MinimumSoftness, radius * radius);
                 return new LampInfluence(
                     (byte)emitter.LampId!.Value,
                     emitter.CenterX,
                     emitter.CenterY,
-                    softness,
+                    radiusSquared,
                     index);
             })
             .ToArray();
@@ -590,13 +590,22 @@ public sealed class LampInfluenceTextureGenerator
 
     private static (byte[] IdChannels, byte[] WeightChannels) CreateEmitterChannels(IReadOnlyList<LampInfluence> influences, double pixelX, double pixelY)
     {
+        if (influences.Count == 1)
+        {
+            var idChannels = new byte[SupportedChannelCount];
+            var weightChannels = new byte[SupportedChannelCount];
+            idChannels[0] = influences[0].LampId;
+            weightChannels[0] = 255;
+            return (idChannels, weightChannels);
+        }
+
         var retained = influences
             .Select(influence =>
             {
                 var dx = pixelX - influence.CenterX;
                 var dy = pixelY - influence.CenterY;
                 var distanceSquared = (dx * dx) + (dy * dy);
-                var rawWeight = 1d / (distanceSquared + influence.Softness);
+                var rawWeight = Math.Exp(-distanceSquared / (2d * influence.RadiusSquared));
                 return new WeightedLampInfluence(influence, rawWeight);
             })
             .OrderBy(influence => influence.Influence.Order)
@@ -605,25 +614,35 @@ public sealed class LampInfluenceTextureGenerator
 
         var idChannels = new byte[SupportedChannelCount];
         var weightChannels = new byte[SupportedChannelCount];
-        var rawTotal = retained.Sum(influence => influence.RawWeight);
-        if (rawTotal <= 0d || !IsFinite(rawTotal))
+        var rawByteWeights = retained
+            .Select(influence => Math.Clamp(influence.RawWeight * 255d, 0d, 255d))
+            .ToArray();
+        var totalByteWeight = rawByteWeights.Sum();
+        if (totalByteWeight <= 0d || !IsFinite(totalByteWeight))
         {
             return (idChannels, weightChannels);
         }
 
-        var assignedTotal = 0;
+        var scale = totalByteWeight > 255d ? 255d / totalByteWeight : 1d;
         for (var channel = 0; channel < retained.Length; channel++)
         {
             idChannels[channel] = retained[channel].Influence.LampId;
-            var weight = channel == retained.Length - 1
-                ? 255 - assignedTotal
-                : (int)Math.Round(retained[channel].RawWeight / rawTotal * 255d, MidpointRounding.AwayFromZero);
-            weight = Math.Clamp(weight, 0, 255 - assignedTotal);
-            weightChannels[channel] = (byte)weight;
-            assignedTotal += weight;
+            weightChannels[channel] = (byte)Math.Clamp(Math.Round(rawByteWeights[channel] * scale, MidpointRounding.AwayFromZero), 0d, 255d);
         }
 
+        ClampTotalWeight(weightChannels);
         return (idChannels, weightChannels);
+    }
+
+    private static void ClampTotalWeight(byte[] weightChannels)
+    {
+        var overflow = weightChannels.Sum(weight => weight) - 255;
+        for (var channel = weightChannels.Length - 1; channel >= 0 && overflow > 0; channel--)
+        {
+            var reduction = Math.Min(weightChannels[channel], overflow);
+            weightChannels[channel] -= (byte)reduction;
+            overflow -= reduction;
+        }
     }
 
     private static double ResolveFallbackRadius(FaceRuntimeTrayElement tray, IReadOnlyList<FaceLampEmitterElement> emitters)
@@ -659,7 +678,7 @@ public sealed class LampInfluenceTextureGenerator
         return !double.IsNaN(value) && !double.IsInfinity(value);
     }
 
-    private readonly record struct LampInfluence(byte LampId, double CenterX, double CenterY, double Softness, int Order);
+    private readonly record struct LampInfluence(byte LampId, double CenterX, double CenterY, double RadiusSquared, int Order);
 
     private readonly record struct WeightedLampInfluence(LampInfluence Influence, double RawWeight);
 
