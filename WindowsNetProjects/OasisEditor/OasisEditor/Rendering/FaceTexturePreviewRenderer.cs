@@ -551,7 +551,7 @@ public sealed class FaceTexturePreviewSettings
     public double AmbientStrength { get; init; } = 1d;
     public double EmissionStrength { get; init; } = 1.15d;
     public double MaskStrength { get; init; } = 1d;
-    public int LampIds0ChannelCount { get; init; } = 1;
+    public int LampIds0ChannelCount { get; init; } = 3;
     public bool EnableDiagnostics { get; init; }
 }
 

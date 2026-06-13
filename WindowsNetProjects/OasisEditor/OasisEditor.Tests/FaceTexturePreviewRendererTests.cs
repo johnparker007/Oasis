@@ -257,6 +257,49 @@ public sealed class FaceTexturePreviewRendererTests : IDisposable
     }
 
     [Fact]
+    public void Render_DefaultSettings_UsesRgbLampInfluenceChannels()
+    {
+        WriteSolidPng("artwork.png", 1, 1, new SKColor(100, 40, 20, 255));
+        WriteSolidPng("mask.png", 1, 1, SKColors.White);
+        WriteSolidPng("trayId.png", 1, 1, new SKColor(1, 0, 0, 255));
+        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(214, 215, 0, 255));
+        WriteSolidPng("lampWeights0.png", 1, 1, new SKColor(128, 127, 0, 255));
+        var renderer = new FaceTexturePreviewRenderer(path => string.IsNullOrWhiteSpace(path) ? null : Path.Combine(_testDirectory, path));
+        var runtimeState = new MachineRuntimeState();
+        runtimeState.SetLampIntensityIfChanged(MachineObjectReference.Lamp(214), 1d);
+        runtimeState.SetLampIntensityIfChanged(MachineObjectReference.Lamp(215), 1d);
+
+        using var result = renderer.Render(CreateDocument(width: 1, height: 1), runtimeState);
+
+        Assert.True(result.Rendered);
+        Assert.Equal(215, result.Bitmap!.GetPixel(0, 0).Red);
+    }
+
+    [Fact]
+    public void Render_DefaultSettings_IncludesSecondRgbChannelContribution()
+    {
+        WriteSolidPng("artwork.png", 1, 1, new SKColor(100, 40, 20, 255));
+        WriteSolidPng("mask.png", 1, 1, SKColors.White);
+        WriteSolidPng("trayId.png", 1, 1, new SKColor(1, 0, 0, 255));
+        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(214, 215, 0, 255));
+        WriteSolidPng("lampWeights0.png", 1, 1, new SKColor(128, 127, 0, 255));
+        var renderer = new FaceTexturePreviewRenderer(path => string.IsNullOrWhiteSpace(path) ? null : Path.Combine(_testDirectory, path));
+        var runtimeState = new MachineRuntimeState();
+        runtimeState.SetLampIntensityIfChanged(MachineObjectReference.Lamp(214), 1d);
+
+        using var firstChannelOnly = renderer.Render(CreateDocument(width: 1, height: 1), runtimeState);
+        Assert.True(firstChannelOnly.Rendered);
+        var firstChannelRed = firstChannelOnly.Bitmap!.GetPixel(0, 0).Red;
+
+        runtimeState.SetLampIntensityIfChanged(MachineObjectReference.Lamp(215), 1d);
+        using var bothChannels = renderer.Render(CreateDocument(width: 1, height: 1), runtimeState);
+
+        Assert.True(bothChannels.Rendered);
+        Assert.True(bothChannels.Bitmap!.GetPixel(0, 0).Red > firstChannelRed);
+        Assert.Equal(215, bothChannels.Bitmap.GetPixel(0, 0).Red);
+    }
+
+    [Fact]
     public void Render_ReusesCompositionWhenLampStateIsUnchanged()
     {
         WriteSolidPng("artwork.png", 1, 1, new SKColor(100, 40, 20, 255));
