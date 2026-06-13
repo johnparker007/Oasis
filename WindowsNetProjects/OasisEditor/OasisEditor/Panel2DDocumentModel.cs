@@ -39,6 +39,7 @@ internal sealed class PanelElementModel
     public int? SourceElementIndex { get; init; }
     public string? SharedSourceSetId { get; init; }
     public int? SharedSourceSetCount { get; init; }
+    public bool SourceBlend { get; init; }
     public PanelElementImportSourceModel? ImportSource { get; init; }
 }
 

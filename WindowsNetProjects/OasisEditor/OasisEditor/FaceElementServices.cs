@@ -77,7 +77,9 @@ internal static class FaceElementModelUpdater
                 IsVisible = update.IsVisible ?? existing.IsVisible,
                 IsLocked = update.IsLocked ?? existing.IsLocked,
                 LinkedMachineObjectReference = linkedMachineObjectReference,
-                LinkedPanel2DElementId = update.HasLinkedPanel2DElementId ? update.LinkedPanel2DElementId : existing.LinkedPanel2DElementId
+                LinkedPanel2DElementId = update.HasLinkedPanel2DElementId ? update.LinkedPanel2DElementId : existing.LinkedPanel2DElementId,
+                BulbMaskAssetPath = ((FaceLampWindowElement)existing).BulbMaskAssetPath,
+                SourceBlend = ((FaceLampWindowElement)existing).SourceBlend
             },
             FaceSevenSegmentDisplayElement sevenSegmentDisplay => new FaceSevenSegmentDisplayElement
             {

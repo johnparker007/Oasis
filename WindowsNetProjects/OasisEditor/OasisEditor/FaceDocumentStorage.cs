@@ -430,7 +430,10 @@ public static class FaceDocumentStorage
             CenterX = file.CenterX,
             CenterY = file.CenterY,
             IsAutoAuthored = file.IsAutoAuthored,
-            AutoAuthoringSource = file.AutoAuthoringSource
+            AutoAuthoringSource = file.AutoAuthoringSource,
+            EmitterPlacementSource = file.EmitterPlacementSource,
+            Radius = file.Radius,
+            Diagnostics = (file.Diagnostics ?? []).Where(diagnostic => !string.IsNullOrWhiteSpace(diagnostic)).Select(diagnostic => diagnostic.Trim()).ToArray()
         };
     }
 
@@ -455,7 +458,10 @@ public static class FaceDocumentStorage
             CenterX = model.CenterX,
             CenterY = model.CenterY,
             IsAutoAuthored = model.IsAutoAuthored,
-            AutoAuthoringSource = model.AutoAuthoringSource
+            AutoAuthoringSource = model.AutoAuthoringSource,
+            EmitterPlacementSource = model.EmitterPlacementSource,
+            Radius = model.Radius,
+            Diagnostics = model.Diagnostics.ToArray()
         };
     }
 
@@ -632,7 +638,9 @@ public static class FaceDocumentStorage
             IsVisible = file.IsVisible,
             IsLocked = file.IsLocked,
             LinkedMachineObjectReference = reference,
-            LinkedPanel2DElementId = file.LinkedPanel2DElementId
+            LinkedPanel2DElementId = file.LinkedPanel2DElementId,
+            BulbMaskAssetPath = file.BulbMaskAssetPath,
+            SourceBlend = file.SourceBlend
         };
     }
 
@@ -709,7 +717,9 @@ public static class FaceDocumentStorage
             AssetPath = model switch { FaceArtworkElement artwork => artwork.AssetPath, FaceReelDisplayElement reel => reel.AssetPath, _ => null },
             SourcePanel2DDocumentId = model is FaceArtworkElement artworkSource ? artworkSource.SourcePanel2DDocumentId : null,
             SourceRegion = model is FaceArtworkElement artworkRegion ? ToFile(artworkRegion.SourceRegion) : null,
-            ArtworkProvenance = model is FaceArtworkElement artworkProvenance ? ToFile(artworkProvenance.Provenance) : null
+            ArtworkProvenance = model is FaceArtworkElement artworkProvenance ? ToFile(artworkProvenance.Provenance) : null,
+            BulbMaskAssetPath = model is FaceLampWindowElement lampWindow ? lampWindow.BulbMaskAssetPath : null,
+            SourceBlend = model is FaceLampWindowElement sourceLampWindow && sourceLampWindow.SourceBlend
         };
     }
 
@@ -833,6 +843,9 @@ public sealed record FaceLampEmitterFile
     public double CenterY { get; init; }
     public bool IsAutoAuthored { get; init; }
     public string? AutoAuthoringSource { get; init; }
+    public string? EmitterPlacementSource { get; init; }
+    public double? Radius { get; init; }
+    public IReadOnlyList<string>? Diagnostics { get; init; } = [];
 }
 
 public sealed record FacePointFile
@@ -885,6 +898,8 @@ public sealed record FaceElementFile
     public string? SourcePanel2DDocumentId { get; init; }
     public FaceSourceRegionFile? SourceRegion { get; init; }
     public FaceArtworkProvenanceFile? ArtworkProvenance { get; init; }
+    public string? BulbMaskAssetPath { get; init; }
+    public bool SourceBlend { get; init; }
 }
 
 public sealed record FaceArtworkProvenanceFile

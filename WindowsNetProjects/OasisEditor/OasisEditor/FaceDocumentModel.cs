@@ -147,6 +147,8 @@ public sealed class FaceArtworkProvenanceModel
 
 public sealed class FaceLampWindowElement : FaceElementModel
 {
+    public string? BulbMaskAssetPath { get; init; }
+    public bool SourceBlend { get; init; }
 }
 
 public sealed class FaceLampEmitterElement : FaceElementModel
@@ -159,6 +161,9 @@ public sealed class FaceLampEmitterElement : FaceElementModel
     public double CenterY { get; init; }
     public bool IsAutoAuthored { get; init; }
     public string? AutoAuthoringSource { get; init; }
+    public string? EmitterPlacementSource { get; init; }
+    public double? Radius { get; init; }
+    public IReadOnlyList<string> Diagnostics { get; init; } = [];
 }
 
 public sealed class FaceReelDisplayElement : FaceElementModel

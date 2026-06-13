@@ -162,6 +162,7 @@ internal sealed class MfmeToOasisComponentMapper
             SourceElementIndex = lampElement?.SourceElementIndex >= 0 ? lampElement.SourceElementIndex : null,
             SharedSourceSetId = sharedLampSetId,
             SharedSourceSetCount = sharedLampSetCount,
+            SourceBlend = component.Blend,
             ImportSource = CreateLampImportSource(component, number)
         };
     }
@@ -187,7 +188,8 @@ internal sealed class MfmeToOasisComponentMapper
             component.Shortcut1,
             component.Shortcut2,
             component.LampElements,
-            component.SourceComponentIndex);
+            component.SourceComponentIndex,
+            component.Blend);
 
         return MapLamps(lampEquivalent, warnings);
     }

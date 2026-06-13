@@ -149,6 +149,11 @@ internal sealed class MfmeImportAssetCopier
             BandOffset = element.BandOffset,
             IsLocked = element.IsLocked,
             IsVisible = element.IsVisible,
+            SourceComponentIndex = element.SourceComponentIndex,
+            SourceElementIndex = element.SourceElementIndex,
+            SharedSourceSetId = element.SharedSourceSetId,
+            SharedSourceSetCount = element.SharedSourceSetCount,
+            SourceBlend = element.SourceBlend,
             ImportSource = element.ImportSource
         };
     }
@@ -243,6 +248,11 @@ internal sealed class MfmeImportAssetCopier
             BandOffset = element.BandOffset,
             IsLocked = element.IsLocked,
             IsVisible = element.IsVisible,
+            SourceComponentIndex = element.SourceComponentIndex,
+            SourceElementIndex = element.SourceElementIndex,
+            SharedSourceSetId = element.SharedSourceSetId,
+            SharedSourceSetCount = element.SharedSourceSetCount,
+            SourceBlend = element.SourceBlend,
             ImportSource = element.ImportSource
         };
     }
