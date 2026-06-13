@@ -61,6 +61,10 @@ internal static class PanelElementModelComparer
                && left.BandOffset == right.BandOffset
                && left.IsLocked == right.IsLocked
                && left.IsVisible == right.IsVisible
+               && left.SourceComponentIndex == right.SourceComponentIndex
+               && left.SourceElementIndex == right.SourceElementIndex
+               && string.Equals(left.SharedSourceSetId, right.SharedSourceSetId, StringComparison.Ordinal)
+               && left.SharedSourceSetCount == right.SharedSourceSetCount
                && AreEquivalent(left.ImportSource, right.ImportSource);
     }
 

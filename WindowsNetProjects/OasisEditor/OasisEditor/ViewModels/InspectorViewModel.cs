@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Diagnostics;
@@ -591,6 +592,22 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         {
             _propertyRows.Add(new InspectorInfoPropertyViewModel("Import Format", "Metadata", selectedElement.ImportSource.Format));
             _propertyRows.Add(new InspectorInfoPropertyViewModel("Import Reference", "Metadata", selectedElement.ImportSource.Reference ?? string.Empty));
+            if (selectedElement.SourceComponentIndex.HasValue)
+            {
+                _propertyRows.Add(new InspectorInfoPropertyViewModel("Source Component Index", "Metadata", selectedElement.SourceComponentIndex.Value.ToString(CultureInfo.InvariantCulture)));
+            }
+            if (selectedElement.SourceElementIndex.HasValue)
+            {
+                _propertyRows.Add(new InspectorInfoPropertyViewModel("Source Element Index", "Metadata", selectedElement.SourceElementIndex.Value.ToString(CultureInfo.InvariantCulture)));
+            }
+            if (!string.IsNullOrWhiteSpace(selectedElement.SharedSourceSetId))
+            {
+                _propertyRows.Add(new InspectorInfoPropertyViewModel("Shared Source Set", "Metadata", selectedElement.SharedSourceSetId));
+            }
+            if (selectedElement.SharedSourceSetCount.HasValue)
+            {
+                _propertyRows.Add(new InspectorInfoPropertyViewModel("Shared Source Count", "Metadata", selectedElement.SharedSourceSetCount.Value.ToString(CultureInfo.InvariantCulture)));
+            }
         }
     }
 

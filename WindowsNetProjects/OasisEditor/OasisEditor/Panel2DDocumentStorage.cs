@@ -345,6 +345,10 @@ internal static class Panel2DDocumentStorage
             BandOffset = normalized.BandOffset,
             IsLocked = normalized.IsLocked,
             IsVisible = normalized.IsVisible ?? true,
+            SourceComponentIndex = normalized.SourceComponentIndex,
+            SourceElementIndex = normalized.SourceElementIndex,
+            SharedSourceSetId = normalized.SharedSourceSetId,
+            SharedSourceSetCount = normalized.SharedSourceSetCount,
             ImportSource = normalized.ImportSource is null
                 ? null
                 : new PanelElementImportSourceModel
@@ -393,6 +397,10 @@ internal static class Panel2DDocumentStorage
             BandOffset = element.BandOffset,
             IsLocked = element.IsLocked,
             IsVisible = element.IsVisible,
+            SourceComponentIndex = element.SourceComponentIndex,
+            SourceElementIndex = element.SourceElementIndex,
+            SharedSourceSetId = element.SharedSourceSetId,
+            SharedSourceSetCount = element.SharedSourceSetCount,
             ImportSource = importSource,
             Native = CreateNativeFromLegacyFields(
                 assetPath: element.AssetPath,
@@ -468,6 +476,10 @@ internal static class Panel2DDocumentStorage
         var normalizedBandOffset = normalizedNative?.BandOffset ?? element.BandOffset;
         var normalizedIsLocked = element.IsLocked;
         var normalizedIsVisible = element.IsVisible ?? true;
+        var normalizedSourceComponentIndex = element.SourceComponentIndex;
+        var normalizedSourceElementIndex = element.SourceElementIndex;
+        var normalizedSharedSourceSetId = NormalizeOptionalString(element.SharedSourceSetId);
+        var normalizedSharedSourceSetCount = element.SharedSourceSetCount;
 
         var mergedNative = normalizedNative is null
             ? CreateNativeFromLegacyFields(
@@ -533,6 +545,10 @@ internal static class Panel2DDocumentStorage
             BandOffset = normalizedBandOffset,
             IsLocked = normalizedIsLocked,
             IsVisible = normalizedIsVisible,
+            SourceComponentIndex = normalizedSourceComponentIndex,
+            SourceElementIndex = normalizedSourceElementIndex,
+            SharedSourceSetId = normalizedSharedSourceSetId,
+            SharedSourceSetCount = normalizedSharedSourceSetCount,
             ImportSource = normalizedImportSource,
             Native = mergedNative
         };
@@ -785,6 +801,10 @@ internal sealed record PanelElementFile : IPanelSelectableObject
     public double? BandOffset { get; init; }
     public bool IsLocked { get; init; }
     public bool? IsVisible { get; init; }
+    public int? SourceComponentIndex { get; init; }
+    public int? SourceElementIndex { get; init; }
+    public string? SharedSourceSetId { get; init; }
+    public int? SharedSourceSetCount { get; init; }
     public PanelElementImportSourceFile? ImportSource { get; init; }
     public PanelElementNativeFile? Native { get; init; }
 

@@ -85,6 +85,10 @@ internal static class PanelElementModelUpdater
             BandOffset = update.BandOffset.HasValue ? update.BandOffset.Value : source.BandOffset,
             IsLocked = update.IsLocked.HasValue ? update.IsLocked.Value : source.IsLocked,
             IsVisible = update.IsVisible.HasValue ? update.IsVisible.Value : source.IsVisible,
+            SourceComponentIndex = source.SourceComponentIndex,
+            SourceElementIndex = source.SourceElementIndex,
+            SharedSourceSetId = source.SharedSourceSetId,
+            SharedSourceSetCount = source.SharedSourceSetCount,
             ImportSource = source.ImportSource is null
                 ? null
                 : new PanelElementImportSourceModel

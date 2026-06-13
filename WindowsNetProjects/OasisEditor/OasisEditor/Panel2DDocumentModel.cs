@@ -35,6 +35,10 @@ internal sealed class PanelElementModel
     public double? BandOffset { get; init; }
     public bool IsLocked { get; init; }
     public bool IsVisible { get; init; } = true;
+    public int? SourceComponentIndex { get; init; }
+    public int? SourceElementIndex { get; init; }
+    public string? SharedSourceSetId { get; init; }
+    public int? SharedSourceSetCount { get; init; }
     public PanelElementImportSourceModel? ImportSource { get; init; }
 }
 

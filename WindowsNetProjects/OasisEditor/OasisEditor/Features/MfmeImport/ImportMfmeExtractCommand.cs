@@ -160,6 +160,10 @@ internal sealed class ImportMfmeExtractCommand : IDocumentCommand, IExecutionTra
             BandOffset = source.BandOffset,
             IsLocked = source.IsLocked,
             IsVisible = source.IsVisible,
+            SourceComponentIndex = source.SourceComponentIndex,
+            SourceElementIndex = source.SourceElementIndex,
+            SharedSourceSetId = source.SharedSourceSetId,
+            SharedSourceSetCount = source.SharedSourceSetCount,
             ImportSource = source.ImportSource is null
                 ? null
                 : new PanelElementImportSourceModel

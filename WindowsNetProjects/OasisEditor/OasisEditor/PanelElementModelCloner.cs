@@ -43,6 +43,10 @@ internal static class PanelElementModelCloner
             BandOffset = source.BandOffset,
             IsLocked = isLocked ?? source.IsLocked,
             IsVisible = isVisible ?? source.IsVisible,
+            SourceComponentIndex = source.SourceComponentIndex,
+            SourceElementIndex = source.SourceElementIndex,
+            SharedSourceSetId = source.SharedSourceSetId,
+            SharedSourceSetCount = source.SharedSourceSetCount,
             ImportSource = CloneImportSource(source.ImportSource)
         };
     }

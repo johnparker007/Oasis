@@ -33,7 +33,15 @@ internal sealed record MfmeLegacyLampElement(
     MfmeLegacyColor? OnColor,
     string? BmpImageFilename,
     string? BmpMaskImageFilename,
-    bool Graphic);
+    bool Graphic,
+    int SourceElementIndex = -1)
+{
+    public bool HasUsefulIdentityOrImage => Number.HasValue
+        || !string.IsNullOrWhiteSpace(NumberAsText)
+        || !string.IsNullOrWhiteSpace(BmpImageFilename)
+        || !string.IsNullOrWhiteSpace(BmpMaskImageFilename);
+}
+
 
 internal sealed record MfmeLegacyLampComponent(
     MfmeLegacyPoint Position,
@@ -51,7 +59,9 @@ internal sealed record MfmeLegacyLampComponent(
     string? ButtonNumberAsString,
     bool Inverted,
     string? Shortcut1,
-    string? Shortcut2)
+    string? Shortcut2,
+    IReadOnlyList<MfmeLegacyLampElement>? LampElements = null,
+    int SourceComponentIndex = -1)
     : MfmeLegacyComponentBase(
         "Lamp",
         Position,
@@ -145,7 +155,9 @@ internal sealed record MfmeLegacyButtonComponent(
     MfmeLegacyLampElement? FirstLampElement,
     MfmeLegacyColor? OffImageColor,
     MfmeLegacyColor? TextColor,
-    bool NoOutline)
+    bool NoOutline,
+    IReadOnlyList<MfmeLegacyLampElement>? LampElements = null,
+    int SourceComponentIndex = -1)
     : MfmeLegacyComponentBase(
         "ExtractComponentButton",
         Position,
