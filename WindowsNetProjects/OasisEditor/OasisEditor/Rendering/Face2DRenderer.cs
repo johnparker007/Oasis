@@ -248,13 +248,13 @@ public sealed class Face2DRenderer : IFace2DRenderer
         };
         using var restorePaint = new SKPaint
         {
-            BlendMode = SKBlendMode.Luminosity,
+            BlendMode = SKBlendMode.SoftLight,
             IsAntialias = true
         };
 
         // The fallback renderer is only an approximation used when texture-driven preview is unavailable.
-        // Composite the radial pass as luminosity instead of source-over yellow so it boosts the
-        // underlying artwork brightness while preserving the artwork hue and saturation.
+        // Composite the radial pass with soft-light instead of source-over yellow so it brightens
+        // existing artwork channels without painting a strong replacement lamp colour over them.
         canvas.SaveLayer(layerRect, restorePaint);
         canvas.DrawRect(layerRect, illuminationPaint);
         canvas.DrawImage(maskImage, maskSourceRect, layerRect, maskPaint);
