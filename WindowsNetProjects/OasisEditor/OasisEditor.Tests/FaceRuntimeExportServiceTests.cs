@@ -234,8 +234,8 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         Assert.Equal(1, trayId.GetPixel(0, 0).Red);
         Assert.Equal(11, lampIds0.GetPixel(0, 0).Red);
         Assert.Equal(12, lampIds0.GetPixel(0, 0).Green);
-        Assert.Equal(255, lampWeights0.GetPixel(0, 0).Red);
-        Assert.Equal(255, lampWeights0.GetPixel(0, 0).Green);
+        Assert.True(lampWeights0.GetPixel(0, 0).Red > lampWeights0.GetPixel(0, 0).Green);
+        Assert.Equal(255, lampWeights0.GetPixel(0, 0).Red + lampWeights0.GetPixel(0, 0).Green + lampWeights0.GetPixel(0, 0).Blue);
     }
 
     [Fact]

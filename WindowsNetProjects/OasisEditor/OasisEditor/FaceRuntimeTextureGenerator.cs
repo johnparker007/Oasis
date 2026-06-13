@@ -599,8 +599,7 @@ public sealed class LampInfluenceTextureGenerator
                 var rawWeight = 1d / (distanceSquared + influence.Softness);
                 return new WeightedLampInfluence(influence, rawWeight);
             })
-            .OrderByDescending(influence => influence.RawWeight)
-            .ThenBy(influence => influence.Influence.Order)
+            .OrderBy(influence => influence.Influence.Order)
             .Take(SupportedChannelCount)
             .ToArray();
 
