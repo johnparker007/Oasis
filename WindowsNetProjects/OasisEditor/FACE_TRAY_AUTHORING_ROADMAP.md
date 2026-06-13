@@ -16,23 +16,26 @@ Face document
   -> future Unity renderer
 ```
 
-The next major workstream is not more lighting/rendering polish. It is improving the data that feeds the renderer: explicit physical trays and lamp emitters.
+The next major workstream is improving the data that feeds the renderer: explicit physical trays and lamp emitters.
 
-UK slot machine glass panels often have irregular physical lamp trays behind the glass. A tray may contain one bulb, or several individually controllable bulbs. The current bridge derives temporary rectangular trays from `FaceLampWindowElement` instances, which is useful for proving the texture path but is not a good long-term physical model.
+UK slot machine glass panels often have irregular physical lamp trays behind the glass. A tray may contain one bulb, or several individually controllable bulbs. Authored trays and emitters now exist and drive runtime export, so tray/emitter improvements are directly visible in exported textures and CPU preview.
 
 ## Core Direction
 
-Move from temporary generated lamp-window rectangles to authored Face-level tray/emitter data.
+Move from generated rectangular tray guesses toward authored Face-level polygon tray/emitter data.
 
 The editor should support this workflow:
 
 ```text
 Generate Face from Panel2D
+  -> import all MFME lamp elements, including shared lamp sets
+  -> use MFME bulb masks to place emitters when available
   -> auto-author rough trays and emitters from imported/generation data
+  -> derive conservative polygon tray shapes where obvious
   -> show tray/emitter debug overlays
-  -> user corrects rough trays manually
   -> export runtime textures from authored trays/emitters
   -> CPU preview validates result
+  -> user corrects remaining rough trays manually later
   -> future Unity renderer consumes same textures
 ```
 
@@ -40,47 +43,88 @@ The important principle is that auto-authoring is a starting guess, not a source
 
 ## Current Priority
 
-Authored trays and emitters now exist and are persisted, visualised, and regenerated.
+MFME multi-lamp component import is now pulling multiple lamp elements into Oasis Editor. Some MFME lamp components contain several individually controllable lamp elements sharing the same x/y/width/height. These are commonly used for large logos, jackpot values, or other large illuminated areas.
 
-Before investing in smarter tray inference, polygon tracing, overlap analysis, tray merging, or manual editing tools, the authored tray/emitter model must become the source of truth for runtime export.
+For these MFME shared lamp sets, each lamp element may also have a per-element mask image. This MFME bulb mask is not the same thing as the Oasis generated lamp mask. In MFME, when the component `Blend` flag is enabled, these per-element masks control how each lamp-on image is blended into the shared component area.
 
-Current state:
+This mask image is valuable source data for Oasis: its bright/falloff region indicates where the physical bulb likely sits inside the shared tray.
 
-```text
-Authored trays/emitter data
-    ↓
-Overlay visualisation
+Before further polygon tray derivation, use MFME bulb mask images to place emitter centres more accurately.
 
-Runtime export
-    ↓
-Temporary lamp-window bridge
-```
+## MFME Bulb Mask Emitter Placement
 
-Target state:
+When an imported MFME lamp element has an associated mask image, derive the Oasis emitter centre from that image instead of placing every emitter at the centre of the shared component rectangle.
+
+Recommended first heuristic:
 
 ```text
-Authored trays/emitter data
-    ↓
-Runtime export
-    ↓
-Runtime textures
-    ↓
-CPU preview
-    ↓
-Future Unity renderer
+if source component Blend == true
+and lamp element has BmpMaskImageFilename
+and mask image loads
+and mask has enough meaningful pixels
+
+    weight = alpha * luminance
+    centerX = sum(x * weight) / sum(weight)
+    centerY = sum(y * weight) / sum(weight)
+    map mask-space centre into Panel2D/Face coordinates
+    set emitter centre from that mapped point
+
+else
+    fall back to current centre placement
 ```
 
-Once authored trays affect runtime textures directly, improvements to auto-authoring heuristics can be evaluated immediately in the CPU preview.
+Alpha may be opaque in some source images. If so, luminance-only weighting is acceptable.
+
+The derived emitter should record diagnostic/source metadata such as:
+
+```text
+EmitterPlacementSource = MfmeBulbMaskCentroid
+EmitterPlacementSource = ComponentCentreFallback
+EmitterPlacementSource = LampWindowCentreFallback
+```
+
+If practical, also derive an approximate emitter radius from the meaningful mask area or mask bounds. This is not required for current binary weight maps, but will be useful later for multi-bulb influence falloff.
+
+Do not confuse these concepts:
+
+```text
+MFME bulb mask image
+  -> used to infer individual emitter centre/radius
+
+Oasis generated lamp mask
+  -> used to decide visible lit artwork/mask contribution
+```
+
+## Conservative Overlap Interpretation
+
+Do not treat all overlaps the same.
+
+Partial overlap between similarly sized neighbouring trays:
+
+```text
+Likely adjacent physical trays.
+Generate non-overlapping polygons, usually by clipping or diagonal/bevel splitting.
+```
+
+Small tray mostly contained inside a larger tray:
+
+```text
+Ambiguous, but often a valid isolated small cut-out near a larger lit area.
+Preserve both trays. Do not auto-merge. Add a containment diagnostic.
+```
+
+Two or more similarly large trays with heavy/near-full overlap:
+
+```text
+Possible shared physical tray/cavity, but not safe to auto-merge yet.
+Preserve trays for now. Add a possible-shared-tray diagnostic for later multi-emitter/shared-tray work.
+```
+
+This phase should improve obvious geometry while avoiding destructive automatic merges.
 
 ## Export Direction
 
-After auto-authored tray/emitter elements exist, runtime export should use authored trays/emitters instead of temporary `FaceLampWindowElement` bridge rectangles.
-
-Transition plan:
-
-1. If authored trays/emitters exist, export from them.
-2. If none exist, fall back to the current temporary lamp-window bridge.
-3. Once authored tray generation is stable, the fallback can remain as a safety net.
+Runtime export uses authored trays/emitters when present and falls back to the temporary lamp-window bridge only when authored data is absent.
 
 For the first authored-tray export, keep the influence simple:
 
@@ -88,7 +132,7 @@ For the first authored-tray export, keep the influence simple:
 one tray + one emitter -> weight 1.0 inside tray
 ```
 
-Do not add multi-bulb falloff until authored trays are visible and editable.
+Do not add multi-bulb falloff until authored tray geometry and emitter placement quality are good enough to evaluate.
 
 ## Roadmap
 
@@ -96,41 +140,66 @@ Do not add multi-bulb falloff until authored trays are visible and editable.
 
 Completed.
 
-### Phase 4B: Improved debug overlays and inspection
-
-Deferred until authored trays drive runtime export.
-
-### Phase 4C: Manual tray editing
-
-Deferred until authored trays drive runtime export.
-
-### Phase 4D: Manual emitter editing
-
-Deferred until authored trays drive runtime export.
-
 ### Phase 4E: Export from authored trays and emitters
 
-- Make authored trays and emitters the source of truth for runtime texture generation.
-- Generate `trayId.png`, `lampIds0.png`, and `lampWeights0.png` from authored tray/emitter data when present.
-- Preserve the existing lamp-window bridge as fallback.
-- Preserve CPU preview compatibility.
-- Preserve manifest compatibility.
-- Use simple weights initially.
-- One tray + one emitter = weight 1.0 inside tray.
-- No multi-bulb support yet.
-- No falloff weighting yet.
-- Authored tray corrections should immediately affect exported textures and CPU preview results.
+Completed.
 
-### Phase 4F: Auto-authoring refinement
+### Phase 4F: MFME bulb-mask emitter placement
 
-Only after authored trays drive runtime export:
+- Use per-lamp MFME bulb mask images to infer individual emitter centres.
+- Apply this especially for MFME components with `Blend` enabled and multiple lamp elements sharing the same component bounds.
+- Compute a weighted centroid from mask brightness/alpha.
+- Map mask-space centroid to Panel2D/Face coordinates.
+- Store placement-source diagnostics on emitters where practical.
+- Derive approximate emitter radius where practical, but do not change runtime influence maps yet.
+- Preserve existing centre fallback behaviour when masks are missing, invalid, or empty.
+- Do not implement multi-bulb influence/falloff yet.
 
-- improve tray sizing heuristics
-- tray merging heuristics
-- overlap analysis
+### Phase 4G: Conservative polygonal tray derivation
+
+- Keep rectangular generated trays as the fallback.
+- Derive non-rectangular vertices for obvious cases.
+- Generate round/octagonal polygons for isolated round-ish/square-ish lamps where appropriate.
+- Clip or bevel partially overlapping neighbouring trays into non-overlapping polygon shapes.
+- Handle feature-trail corner cases with conservative diagonal cuts where the overlap pattern strongly suggests a turn/corner.
+- Detect small-contained-in-large overlaps and preserve both trays with diagnostics.
+- Detect similarly large near-identical/heavy overlaps and preserve both trays with possible-shared-tray diagnostics.
+- Do not auto-merge trays.
+- Do not implement shared/multi-emitter trays yet.
+- Preserve deterministic output.
+- Ensure overlays, export, and CPU preview use the derived polygon vertices.
+
+### Phase 4H: Auto-authoring refinement
+
+Only after Phase 4F/4G have been evaluated on real machines:
+
+- tune tray sizing heuristics
+- tune overlap thresholds
+- improve tray merging diagnostics
 - connected-component tracing
-- diagonal/polygon inference
+- diagonal/polygon inference improvements
 - confidence scoring
+
+### Phase 4I: Improved debug overlays and inspection
+
+- Add proper overlay toggles/options if needed.
+- Improve label styling and visibility.
+- Make auto-authored tray/emitter data easier to inspect.
+- Optionally show generated runtime texture debug images.
+- Keep this lighter than manual editing work.
+
+### Phase 4J: Manual tray editing
+
+- Add basic create/edit/delete tray operations.
+- Support moving vertices and editing simple polygons.
+- Ensure edits go through document-scoped commands where current editor architecture requires undo/redo.
+- Keep business logic out of WPF code-behind.
+
+### Phase 4K: Manual emitter editing
+
+- Add basic emitter movement and tray assignment.
+- Allow lamp ID/reference correction where needed.
+- Support multiple emitters in a tray.
 
 ### Phase 5: Multi-bulb influence maps
 
