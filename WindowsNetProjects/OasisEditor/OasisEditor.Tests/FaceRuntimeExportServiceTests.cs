@@ -524,8 +524,8 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         var outputDirectory = Path.Combine(_generatedDirectory, "authored-smooth-two-emitter-test");
         var document = CreateDocumentWithAuthoredTrayAndEmitters(
             new FaceSourceRegionModel { X = 0, Y = 0, Width = 10, Height = 1 },
-            new TestEmitter("left-emitter", 11, 1, 0.5, 2),
-            new TestEmitter("right-emitter", 12, 8, 0.5, 2));
+            new TestEmitter("left-emitter", 11, 0.5, 0.5, 3),
+            new TestEmitter("right-emitter", 12, 9.5, 0.5, 3));
 
         new FaceRuntimeTextureGenerator().Generate(document, 10, 1, outputDirectory);
 
@@ -541,9 +541,14 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         Assert.True(nearRight.Green > nearRight.Red);
         Assert.True(nearLeft.Red > 200);
         Assert.True(nearRight.Green > 180);
+        var nearLeftTotal = nearLeft.Red + nearLeft.Green + nearLeft.Blue;
+        var middleTotal = middle.Red + middle.Green + middle.Blue;
+        var nearRightTotal = nearRight.Red + nearRight.Green + nearRight.Blue;
         Assert.True(nearLeft.Red > middle.Red);
         Assert.True(nearRight.Green > middle.Green);
-        Assert.True(middle.Red + middle.Green + middle.Blue < 255);
+        Assert.True(middleTotal < 255);
+        Assert.True(middleTotal < nearLeftTotal);
+        Assert.True(middleTotal < nearRightTotal);
         Assert.NotEqual(SKColors.White, weightDebug.GetPixel(4, 0));
         Assert.Equal(middle, weightDebug.GetPixel(4, 0));
     }

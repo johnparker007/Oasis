@@ -504,7 +504,7 @@ public sealed class TrayIdTextureGenerator
 public sealed class LampInfluenceTextureGenerator
 {
     private const int SupportedChannelCount = 3;
-    private const double MinimumSoftness = 1d;
+    private const double MinimumRadius = 1d;
 
     public void Generate(
         IReadOnlyList<FaceRuntimeTrayElement> trays,
@@ -577,12 +577,11 @@ public sealed class LampInfluenceTextureGenerator
                 var radius = emitter.Radius is double emitterRadius && emitterRadius > 0d && IsFinite(emitterRadius)
                     ? emitterRadius
                     : fallbackRadius;
-                var radiusSquared = Math.Max(MinimumSoftness, radius * radius);
                 return new LampInfluence(
                     (byte)emitter.LampId!.Value,
                     emitter.CenterX,
                     emitter.CenterY,
-                    radiusSquared,
+                    Math.Max(MinimumRadius, radius),
                     index);
             })
             .ToArray();
@@ -604,8 +603,9 @@ public sealed class LampInfluenceTextureGenerator
             {
                 var dx = pixelX - influence.CenterX;
                 var dy = pixelY - influence.CenterY;
-                var distanceSquared = (dx * dx) + (dy * dy);
-                var rawWeight = Math.Exp(-distanceSquared / (2d * influence.RadiusSquared));
+                var distance = Math.Sqrt((dx * dx) + (dy * dy));
+                var normalizedDistance = Math.Clamp(distance / influence.Radius, 0d, 1d);
+                var rawWeight = Math.Pow(1d - normalizedDistance, 2d);
                 return new WeightedLampInfluence(influence, rawWeight);
             })
             .OrderBy(influence => influence.Influence.Order)
@@ -676,7 +676,7 @@ public sealed class LampInfluenceTextureGenerator
         return !double.IsNaN(value) && !double.IsInfinity(value);
     }
 
-    private readonly record struct LampInfluence(byte LampId, double CenterX, double CenterY, double RadiusSquared, int Order);
+    private readonly record struct LampInfluence(byte LampId, double CenterX, double CenterY, double Radius, int Order);
 
     private readonly record struct WeightedLampInfluence(LampInfluence Influence, double RawWeight);
 
