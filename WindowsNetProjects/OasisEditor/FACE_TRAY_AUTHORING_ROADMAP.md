@@ -22,7 +22,7 @@ UK slot machine glass panels often have irregular physical lamp trays behind the
 
 ## Core Direction
 
-Move from generated rectangular tray guesses toward authored Face-level polygon tray/emitter data.
+Move from generated rectangular tray guesses toward authored Face-level polygon tray/emitter data and smooth per-emitter influence maps.
 
 The editor should support this workflow:
 
@@ -31,6 +31,7 @@ Generate Face from Panel2D
   -> import all MFME lamp elements, including shared lamp sets
   -> use MFME bulb masks to place emitters when available
   -> group known MFME shared lamp-set elements into one authored tray
+  -> generate smooth per-emitter influence within shared trays
   -> auto-author rough trays and emitters from imported/generation data
   -> derive conservative polygon tray shapes where obvious
   -> show tray/emitter debug overlays
@@ -44,28 +45,21 @@ The important principle is that auto-authoring is a starting guess, not a source
 
 ## Current Priority
 
-MFME multi-lamp component import is now pulling multiple lamp elements into Oasis Editor. Some MFME lamp components contain several individually controllable lamp elements sharing the same x/y/width/height. These are commonly used for large logos, jackpot values, or other large illuminated areas.
+MFME shared lamp-set grouping now creates one tray with multiple emitters for known shared MFME lamp components.
 
-Per-element MFME bulb mask centroiding now places emitters well for blended multi-lamp components. The next safe improvement is tray grouping for known shared MFME lamp sets.
+This fixes the structural problem, but exposes the next rendering issue: the current runtime influence texture generation still writes hard/binary weights for every emitter inside the tray.
 
-Current likely behaviour in tray auto-authoring:
-
-```text
-MFME shared lamp component
-  -> imported as multiple Oasis/Panel2D lamp elements with the same source bounds/shared-set provenance
-  -> Face generation creates multiple FaceLampWindowElement instances
-  -> tray auto-authoring creates one tray per FaceLampWindowElement
-  -> result is multiple overlapping authored trays for one physical MFME shared lamp area
-```
-
-For MFME lamp elements that are known to come from the same source lamp component/shared set, especially when `Blend` is true, this should usually become:
+Current behaviour for a shared tray with multiple emitters:
 
 ```text
-one authored tray
-  -> multiple authored emitters
+for every pixel inside tray:
+  lampIds0.r/g/b = emitter lamp IDs
+  lampWeights0.r/g/b = 255 for every emitter
 ```
 
-This is safer and more valuable than generic overlap merging because the shared-set provenance tells us the overlap is intentional source data, not just a coincidental geometric overlap.
+That makes all emitters contribute fully across the entire shared tray. Where two or more lamps are on, lighting can spike or form visible hard rectangular/blocked bright regions instead of smoothly blending.
+
+The next priority is to generate smooth per-emitter influence weights inside multi-emitter trays.
 
 ## MFME Bulb Mask Emitter Placement
 
@@ -125,27 +119,44 @@ unknown geometric overlap
   -> keep conservative diagnostics/clip heuristics
 ```
 
-Recommended first heuristic:
+For MFME shared sets, create one authored tray for the group and one emitter per lamp window. Preserve individual lamp IDs and emitter centres.
+
+## Multi-Emitter Influence Maps
+
+Shared trays need smooth influence maps, not binary full-tray weights.
+
+Recommended first runtime export behaviour:
 
 ```text
-if two or more visible FaceLampWindowElement instances have the same non-empty shared MFME lamp set/source component identifier
-and their source bounds are equivalent or near-equivalent
-and the source component indicates Blend == true or has multiple valid lamp elements
+single-emitter tray:
+  one lamp ID
+  weight = 1.0 inside tray
 
-    create one authored tray for the group
-    derive the tray bounds from the shared component bounds or union of contribution bounds
-    create one emitter per lamp window
-    assign all emitters to the shared tray
-    preserve individual lamp IDs and emitter centres
-    record diagnostics/source metadata showing the tray was grouped from an MFME shared lamp set
-
-else
-    keep existing one-lamp-window-to-one-tray behaviour
+multi-emitter tray:
+  for each pixel inside tray:
+    compute distance from pixel to each emitter centre
+    convert distances to smooth raw weights
+    keep the strongest 1-4 emitters supported by lampIds0/lampWeights0
+    normalize retained weights so total influence remains stable
 ```
 
-For the first implementation, keep the tray shape simple: rectangular bounds or existing derived polygon. The main goal is to avoid multiple fully overlapping trays for a known shared MFME lamp component.
+Suggested first weighting formula:
 
-Do not use this as a generic solution for all overlapping trays. Small-contained-in-large overlaps and heavy overlaps without shared-source provenance remain ambiguous and should stay conservative.
+```text
+rawWeight = 1 / (distanceSquared + softness)
+```
+
+or:
+
+```text
+rawWeight = saturate(1 - distance / radius) ^ falloff
+```
+
+Start with a simple deterministic formula. Use emitter radius if available, otherwise derive a reasonable radius from tray bounds and emitter count.
+
+The key visual requirement is that two bulbs in the same tray should blend smoothly without hard rectangular bright blocks. Total intensity should not spike sharply just because two influence regions overlap.
+
+Do not add `lampIds1.png`/`lampWeights1.png` in the first smoothing pass unless required. The current practical target is two to three emitters in one shared tray.
 
 ## Conservative Overlap Interpretation
 
@@ -178,13 +189,7 @@ This phase should improve obvious geometry while avoiding destructive automatic 
 
 Runtime export uses authored trays/emitters when present and falls back to the temporary lamp-window bridge only when authored data is absent.
 
-For the first authored-tray export, keep the influence simple:
-
-```text
-one tray + one or more emitters -> each emitter weight 1.0 inside tray for its lamp slot/channels
-```
-
-Do not add distance-based multi-bulb falloff until authored tray geometry and emitter placement quality are good enough to evaluate.
+For authored shared trays, runtime export should write per-pixel influence weights from emitter positions.
 
 ## Roadmap
 
@@ -202,18 +207,22 @@ Completed.
 
 ### Phase 4G: MFME shared lamp-set tray grouping
 
-- Detect Face lamp windows imported from the same MFME lamp component/shared lamp set.
-- For known shared MFME lamp sets, create one authored tray for the group rather than one tray per lamp element.
-- Assign all lamp emitters in that shared set to the single tray.
-- Preserve individual lamp IDs and emitter centres.
-- Prefer Blend-enabled multi-lamp components, but preserve safe fallback behaviour.
-- Derive tray bounds from shared component bounds or union of mask contribution bounds.
-- Store tray/emitter diagnostics/source metadata where practical.
-- Keep existing one-lamp-window-to-one-tray behaviour for lamps without shared-set provenance.
-- Do not perform generic overlap merging.
-- Do not implement distance falloff yet.
+Completed.
 
-### Phase 4H: Conservative polygonal tray derivation
+### Phase 5A: Smooth multi-emitter influence maps
+
+- Keep single-emitter trays using binary full-tray weight for now.
+- For multi-emitter trays, generate smooth per-pixel influence weights from emitter centres.
+- Preserve lampIds0/lampWeights0 format.
+- Support the current RGB-channel practical limit for up to three emitters in a tray unless the existing alpha-channel handling is revised.
+- Normalize retained weights so total light remains stable.
+- Use deterministic distance-based weighting.
+- Use emitter radius when available, otherwise derive a conservative radius from tray bounds.
+- Update lampWeights_debug.png so the influence distribution can be inspected.
+- Do not add lampIds1/lampWeights1 yet unless explicitly required.
+- Do not implement Unity code.
+
+### Phase 5B: Conservative polygonal tray derivation
 
 - Keep rectangular generated trays as the fallback.
 - Derive non-rectangular vertices for obvious cases.
@@ -227,9 +236,9 @@ Completed.
 - Preserve deterministic output.
 - Ensure overlays, export, and CPU preview use the derived polygon vertices.
 
-### Phase 4I: Auto-authoring refinement
+### Phase 5C: Auto-authoring refinement
 
-Only after Phase 4G/4H have been evaluated on real machines:
+Only after Phase 5A/5B have been evaluated on real machines:
 
 - tune tray sizing heuristics
 - tune overlap thresholds
@@ -238,33 +247,32 @@ Only after Phase 4G/4H have been evaluated on real machines:
 - diagonal/polygon inference improvements
 - confidence scoring
 
-### Phase 4J: Improved debug overlays and inspection
+### Phase 5D: Additional multi-bulb influence capacity
+
+- Add `lampIds1.png`/`lampWeights1.png` only when real data requires more than the current lampIds0 channel capacity.
+- Support four or more bulbs in one tray when needed.
+- Ensure CPU preview and future Unity runtime remain aligned.
+
+### Phase 5E: Improved debug overlays and inspection
 
 - Add proper overlay toggles/options if needed.
 - Improve label styling and visibility.
 - Make auto-authored tray/emitter data easier to inspect.
-- Optionally show generated runtime texture debug images.
+- Optionally show generated runtime debug texture views.
 - Keep this lighter than manual editing work.
 
-### Phase 4K: Manual tray editing
+### Phase 5F: Manual tray editing
 
 - Add basic create/edit/delete tray operations.
 - Support moving vertices and editing simple polygons.
 - Ensure edits go through document-scoped commands where current editor architecture requires undo/redo.
 - Keep business logic out of WPF code-behind.
 
-### Phase 4L: Manual emitter editing
+### Phase 5G: Manual emitter editing
 
 - Add basic emitter movement and tray assignment.
 - Allow lamp ID/reference correction where needed.
 - Support multiple emitters in a tray.
-
-### Phase 5: Multi-bulb influence maps
-
-- Support two to five bulbs in one tray.
-- Generate weighted influence maps from emitter positions.
-- Add `lampIds1.png`/`lampWeights1.png` only when needed.
-- Add falloff/radius tuning.
 
 ### Phase 6: Unity runtime
 
