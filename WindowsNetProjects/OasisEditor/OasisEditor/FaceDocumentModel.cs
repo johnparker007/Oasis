@@ -96,6 +96,7 @@ public sealed class FaceTrayModel
     public MachineObjectReference? LinkedMachineObjectReference { get; init; }
     public FaceSourceRegionModel? Bounds { get; init; }
     public IReadOnlyList<FacePointModel> Vertices { get; init; } = [];
+    public IReadOnlyList<string> Diagnostics { get; init; } = [];
 }
 
 public sealed class FacePointModel

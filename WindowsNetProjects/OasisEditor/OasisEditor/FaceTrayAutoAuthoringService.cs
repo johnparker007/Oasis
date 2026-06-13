@@ -72,7 +72,7 @@ internal sealed class FaceTrayAutoAuthoringService
             });
         }
 
-        return new FaceTrayAutoAuthoringResult(trays, emitters);
+        return new FaceTrayAutoAuthoringResult(DeriveTrayPolygons(trays), emitters);
     }
 
     public IReadOnlyList<FaceValidationDiagnostic> Validate(FaceDocumentModel faceDocument)
@@ -143,6 +143,205 @@ internal sealed class FaceTrayAutoAuthoringService
         }
 
         return diagnostics;
+    }
+
+    private static IReadOnlyList<FaceTrayModel> DeriveTrayPolygons(IReadOnlyList<FaceTrayModel> sourceTrays)
+    {
+        var working = sourceTrays
+            .Select(tray => new TrayPolygonWorkItem(tray, tray.Bounds is { IsValid: true } bounds ? CreateRectangleVertices(bounds).ToList() : tray.Vertices.ToList(), []))
+            .ToArray();
+
+        for (var leftIndex = 0; leftIndex < working.Length; leftIndex++)
+        {
+            for (var rightIndex = leftIndex + 1; rightIndex < working.Length; rightIndex++)
+            {
+                var left = working[leftIndex];
+                var right = working[rightIndex];
+                if (left.Tray.Bounds is not { IsValid: true } leftBounds || right.Tray.Bounds is not { IsValid: true } rightBounds)
+                {
+                    continue;
+                }
+
+                var leftRect = leftBounds.ToRect();
+                var rightRect = rightBounds.ToRect();
+                var overlap = Rect.Intersect(leftRect, rightRect);
+                if (overlap.IsEmpty || overlap.Width <= 0d || overlap.Height <= 0d)
+                {
+                    continue;
+                }
+
+                var smallerArea = Math.Min(leftRect.Width * leftRect.Height, rightRect.Width * rightRect.Height);
+                var largerArea = Math.Max(leftRect.Width * leftRect.Height, rightRect.Width * rightRect.Height);
+                var overlapArea = overlap.Width * overlap.Height;
+                if (smallerArea <= 0d)
+                {
+                    continue;
+                }
+
+                if (overlapArea / smallerArea >= 0.82d && largerArea / smallerArea >= 1.35d)
+                {
+                    left.Diagnostics.Add("contained-tray-candidate");
+                    right.Diagnostics.Add("contained-tray-candidate");
+                    continue;
+                }
+
+                if (overlapArea / smallerArea >= 0.65d)
+                {
+                    left.Diagnostics.Add("possible-shared-tray-candidate");
+                    right.Diagnostics.Add("possible-shared-tray-candidate");
+                    continue;
+                }
+
+                var leftCenter = Center(leftRect);
+                var rightCenter = Center(rightRect);
+                left.Vertices = ClipToNearestSide(left.Vertices, leftCenter, rightCenter);
+                right.Vertices = ClipToNearestSide(right.Vertices, rightCenter, leftCenter);
+                left.Diagnostics.Add("partial-overlap-clipped");
+                right.Diagnostics.Add("partial-overlap-clipped");
+            }
+        }
+
+        return working.Select(item =>
+        {
+            var vertices = item.Vertices.Count >= 3 ? RoundVertices(item.Vertices) : item.Tray.Vertices;
+            if (item.Diagnostics.Count == 0 && string.Equals(item.Tray.AutoAuthoringSource, "lampWindowBounds", StringComparison.Ordinal) && IsRoundishIsolated(item.Tray, sourceTrays))
+            {
+                vertices = CreateOctagonVertices(item.Tray.Bounds!);
+                item.Diagnostics.Add("isolated-roundish-octagon");
+            }
+
+            return new FaceTrayModel
+            {
+                ObjectId = item.Tray.ObjectId,
+                Name = item.Tray.Name,
+                IsAutoAuthored = item.Tray.IsAutoAuthored,
+                AutoAuthoringSource = item.Tray.AutoAuthoringSource,
+                SourceLampWindowObjectId = item.Tray.SourceLampWindowObjectId,
+                SourcePanel2DElementId = item.Tray.SourcePanel2DElementId,
+                LinkedMachineObjectReference = item.Tray.LinkedMachineObjectReference,
+                Bounds = item.Tray.Bounds,
+                Vertices = vertices,
+                Diagnostics = item.Diagnostics.Distinct(StringComparer.Ordinal).OrderBy(diagnostic => diagnostic, StringComparer.Ordinal).ToArray()
+            };
+        }).ToArray();
+    }
+
+    private static List<FacePointModel> ClipToNearestSide(IReadOnlyList<FacePointModel> polygon, Point ownCenter, Point otherCenter)
+    {
+        if (polygon.Count < 3)
+        {
+            return polygon.ToList();
+        }
+
+        var midpoint = new Point((ownCenter.X + otherCenter.X) / 2d, (ownCenter.Y + otherCenter.Y) / 2d);
+        var dx = otherCenter.X - ownCenter.X;
+        var dy = otherCenter.Y - ownCenter.Y;
+        var input = polygon.ToList();
+        var output = new List<FacePointModel>();
+        for (var index = 0; index < input.Count; index++)
+        {
+            var current = input[index];
+            var previous = input[(index + input.Count - 1) % input.Count];
+            var currentInside = IsOwnSide(current, midpoint, dx, dy);
+            var previousInside = IsOwnSide(previous, midpoint, dx, dy);
+            if (currentInside != previousInside)
+            {
+                output.Add(IntersectBisector(previous, current, midpoint, dx, dy));
+            }
+
+            if (currentInside)
+            {
+                output.Add(current);
+            }
+        }
+
+        return output.Count >= 3 ? output : polygon.ToList();
+    }
+
+    private static bool IsOwnSide(FacePointModel point, Point midpoint, double dx, double dy)
+    {
+        return ((point.X - midpoint.X) * dx) + ((point.Y - midpoint.Y) * dy) <= 0.0001d;
+    }
+
+    private static FacePointModel IntersectBisector(FacePointModel start, FacePointModel end, Point midpoint, double dx, double dy)
+    {
+        var sx = start.X - midpoint.X;
+        var sy = start.Y - midpoint.Y;
+        var ex = end.X - start.X;
+        var ey = end.Y - start.Y;
+        var denominator = (ex * dx) + (ey * dy);
+        var t = Math.Abs(denominator) <= double.Epsilon ? 0d : -(((sx * dx) + (sy * dy)) / denominator);
+        t = Math.Clamp(t, 0d, 1d);
+        return new FacePointModel { X = start.X + (ex * t), Y = start.Y + (ey * t) };
+    }
+
+    private static Point Center(Rect rect) => new(rect.X + (rect.Width / 2d), rect.Y + (rect.Height / 2d));
+
+    private static IReadOnlyList<FacePointModel> RoundVertices(IReadOnlyList<FacePointModel> vertices)
+    {
+        return vertices.Select(vertex => new FacePointModel { X = Math.Round(vertex.X, 2), Y = Math.Round(vertex.Y, 2) }).ToArray();
+    }
+
+    private static bool IsRoundishIsolated(FaceTrayModel tray, IReadOnlyList<FaceTrayModel> trays)
+    {
+        if (tray.Bounds is not { IsValid: true } validBounds || validBounds.Width <= 0d || validBounds.Height <= 0d)
+        {
+            return false;
+        }
+
+        var aspect = validBounds.Width / validBounds.Height;
+        if (aspect < 0.9d || aspect > 1.1d)
+        {
+            return false;
+        }
+
+        var rect = validBounds.ToRect();
+        return !trays.Any(otherTray => HasPositiveIntersection(tray, otherTray, rect));
+    }
+
+    private static bool HasPositiveIntersection(FaceTrayModel tray, FaceTrayModel otherTray, Rect rect)
+    {
+        if (string.Equals(otherTray.ObjectId, tray.ObjectId, StringComparison.Ordinal) || otherTray.Bounds is not { IsValid: true } other)
+        {
+            return false;
+        }
+
+        var intersection = Rect.Intersect(rect, other.ToRect());
+        return !intersection.IsEmpty && intersection.Width > 0d && intersection.Height > 0d;
+    }
+
+    private static IReadOnlyList<FacePointModel> CreateOctagonVertices(FaceSourceRegionModel bounds)
+    {
+        var left = bounds.X;
+        var top = bounds.Y;
+        var right = bounds.X + bounds.Width;
+        var bottom = bounds.Y + bounds.Height;
+        var insetX = bounds.Width * 0.2929d;
+        var insetY = bounds.Height * 0.2929d;
+        return RoundVertices([
+            new FacePointModel { X = left + insetX, Y = top },
+            new FacePointModel { X = right - insetX, Y = top },
+            new FacePointModel { X = right, Y = top + insetY },
+            new FacePointModel { X = right, Y = bottom - insetY },
+            new FacePointModel { X = right - insetX, Y = bottom },
+            new FacePointModel { X = left + insetX, Y = bottom },
+            new FacePointModel { X = left, Y = bottom - insetY },
+            new FacePointModel { X = left, Y = top + insetY }
+        ]);
+    }
+
+    private sealed class TrayPolygonWorkItem
+    {
+        public TrayPolygonWorkItem(FaceTrayModel tray, List<FacePointModel> vertices, List<string> diagnostics)
+        {
+            Tray = tray;
+            Vertices = vertices;
+            Diagnostics = diagnostics;
+        }
+
+        public FaceTrayModel Tray { get; }
+        public List<FacePointModel> Vertices { get; set; }
+        public List<string> Diagnostics { get; }
     }
 
     private static void AddDuplicateDiagnostics(IEnumerable<string> ids, string code, string noun, List<FaceValidationDiagnostic> diagnostics)

@@ -155,6 +155,46 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         Assert.Equal("Generated/Faces/face-runtime/runtime/lampWeights_debug.png", persisted.RuntimeRenderAssets.LampWeightsDebugPath);
     }
 
+
+    [Fact]
+    public void Generate_UsesDerivedAuthoredPolygonVerticesForTrayAndLampTextures()
+    {
+        var outputDirectory = Path.Combine(_generatedDirectory, "derived-polygon-texture-test");
+        var document = new FaceDocumentModel
+        {
+            Trays =
+            [
+                new FaceTrayModel
+                {
+                    ObjectId = "triangle-tray",
+                    Bounds = new FaceSourceRegionModel { X = 0, Y = 0, Width = 4, Height = 4 },
+                    Vertices =
+                    [
+                        new FacePointModel { X = 0, Y = 0 },
+                        new FacePointModel { X = 4, Y = 0 },
+                        new FacePointModel { X = 0, Y = 4 }
+                    ]
+                }
+            ],
+            LampEmitters =
+            [
+                new FaceLampEmitterElement { ObjectId = "triangle-emitter", TrayObjectId = "triangle-tray", TrayId = 1, LampId = 24 }
+            ]
+        };
+
+        new FaceRuntimeTextureGenerator().Generate(document, 4, 4, outputDirectory);
+
+        using var trayId = SKBitmap.Decode(Path.Combine(outputDirectory, "trayId.png"));
+        using var lampIds0 = SKBitmap.Decode(Path.Combine(outputDirectory, "lampIds0.png"));
+        using var lampWeights0 = SKBitmap.Decode(Path.Combine(outputDirectory, "lampWeights0.png"));
+        Assert.Equal(1, trayId.GetPixel(0, 0).Red);
+        Assert.Equal(24, lampIds0.GetPixel(0, 0).Red);
+        Assert.Equal(255, lampWeights0.GetPixel(0, 0).Red);
+        Assert.Equal(0, trayId.GetPixel(3, 3).Red);
+        Assert.Equal(0, lampIds0.GetPixel(3, 3).Red);
+        Assert.Equal(0, lampWeights0.GetPixel(3, 3).Red);
+    }
+
     [Fact]
     public void Export_WithMissingArtworkAsset_ThrowsFileNotFoundException()
     {
