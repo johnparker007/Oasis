@@ -148,6 +148,9 @@ public sealed class FaceArtworkProvenanceModel
 public sealed class FaceLampWindowElement : FaceElementModel
 {
     public string? BulbMaskAssetPath { get; init; }
+    public int? SourceComponentIndex { get; init; }
+    public string? SharedSourceSetId { get; init; }
+    public int? SharedSourceSetCount { get; init; }
     public bool SourceBlend { get; init; }
 }
 

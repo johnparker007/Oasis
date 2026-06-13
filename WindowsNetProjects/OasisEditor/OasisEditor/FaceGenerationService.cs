@@ -261,6 +261,9 @@ internal sealed class FaceGenerationService
             LinkedMachineObjectReference = machineReference.IsEmpty ? null : machineReference,
             LinkedPanel2DElementId = string.IsNullOrWhiteSpace(sourceElement.ObjectId) ? null : sourceElement.ObjectId,
             BulbMaskAssetPath = sourceElement.SecondaryAssetPath,
+            SourceComponentIndex = sourceElement.SourceComponentIndex,
+            SharedSourceSetId = NormalizeOptional(sourceElement.SharedSourceSetId),
+            SharedSourceSetCount = sourceElement.SharedSourceSetCount,
             SourceBlend = sourceElement.SourceBlend
         };
     }

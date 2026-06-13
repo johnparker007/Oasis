@@ -259,6 +259,9 @@ internal sealed class FaceRegenerationService
                 LinkedMachineObjectReference = machineReference,
                 LinkedPanel2DElementId = lamp.LinkedPanel2DElementId,
                 BulbMaskAssetPath = lamp.BulbMaskAssetPath,
+                SourceComponentIndex = lamp.SourceComponentIndex,
+                SharedSourceSetId = lamp.SharedSourceSetId,
+                SharedSourceSetCount = lamp.SharedSourceSetCount,
                 SourceBlend = lamp.SourceBlend
             },
             _ => regeneratedElement
