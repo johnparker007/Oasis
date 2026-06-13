@@ -72,6 +72,10 @@ internal static class PanelElementModelComparer
         }
 
         return string.Equals(left.Format, right.Format, StringComparison.Ordinal)
-               && string.Equals(left.Reference, right.Reference, StringComparison.Ordinal);
+               && string.Equals(left.Reference, right.Reference, StringComparison.Ordinal)
+               && left.SourceComponentIndex == right.SourceComponentIndex
+               && left.LampElementIndex == right.LampElementIndex
+               && string.Equals(left.SharedLampSetId, right.SharedLampSetId, StringComparison.Ordinal)
+               && left.SharedLampSetCount == right.SharedLampSetCount;
     }
 }

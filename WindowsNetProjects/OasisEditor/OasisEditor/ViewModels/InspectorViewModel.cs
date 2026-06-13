@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Diagnostics;
@@ -591,6 +592,22 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         {
             _propertyRows.Add(new InspectorInfoPropertyViewModel("Import Format", "Metadata", selectedElement.ImportSource.Format));
             _propertyRows.Add(new InspectorInfoPropertyViewModel("Import Reference", "Metadata", selectedElement.ImportSource.Reference ?? string.Empty));
+            if (selectedElement.ImportSource.SourceComponentIndex.HasValue)
+            {
+                _propertyRows.Add(new InspectorInfoPropertyViewModel("Source Component Index", "Metadata", selectedElement.ImportSource.SourceComponentIndex.Value.ToString(CultureInfo.InvariantCulture)));
+            }
+            if (selectedElement.ImportSource.LampElementIndex.HasValue)
+            {
+                _propertyRows.Add(new InspectorInfoPropertyViewModel("Lamp Element Index", "Metadata", selectedElement.ImportSource.LampElementIndex.Value.ToString(CultureInfo.InvariantCulture)));
+            }
+            if (!string.IsNullOrWhiteSpace(selectedElement.ImportSource.SharedLampSetId))
+            {
+                _propertyRows.Add(new InspectorInfoPropertyViewModel("Shared Lamp Set", "Metadata", selectedElement.ImportSource.SharedLampSetId));
+            }
+            if (selectedElement.ImportSource.SharedLampSetCount.HasValue)
+            {
+                _propertyRows.Add(new InspectorInfoPropertyViewModel("Shared Lamp Count", "Metadata", selectedElement.ImportSource.SharedLampSetCount.Value.ToString(CultureInfo.InvariantCulture)));
+            }
         }
     }
 

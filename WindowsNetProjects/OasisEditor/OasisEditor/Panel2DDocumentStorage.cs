@@ -350,7 +350,11 @@ internal static class Panel2DDocumentStorage
                 : new PanelElementImportSourceModel
                 {
                     Format = normalized.ImportSource.Format,
-                    Reference = normalized.ImportSource.Reference
+                    Reference = normalized.ImportSource.Reference,
+                    SourceComponentIndex = normalized.ImportSource.SourceComponentIndex,
+                    LampElementIndex = normalized.ImportSource.LampElementIndex,
+                    SharedLampSetId = normalized.ImportSource.SharedLampSetId,
+                    SharedLampSetCount = normalized.ImportSource.SharedLampSetCount
                 }
         };
     }
@@ -362,7 +366,11 @@ internal static class Panel2DDocumentStorage
             : new PanelElementImportSourceFile
             {
                 Format = element.ImportSource.Format,
-                Reference = element.ImportSource.Reference
+                Reference = element.ImportSource.Reference,
+                SourceComponentIndex = element.ImportSource.SourceComponentIndex,
+                LampElementIndex = element.ImportSource.LampElementIndex,
+                SharedLampSetId = element.ImportSource.SharedLampSetId,
+                SharedLampSetCount = element.ImportSource.SharedLampSetCount
             };
 
         return NormalizeElement(new PanelElementFile
@@ -637,7 +645,11 @@ internal static class Panel2DDocumentStorage
         return new PanelElementImportSourceFile
         {
             Format = format ?? string.Empty,
-            Reference = reference
+            Reference = reference,
+            SourceComponentIndex = importSource.SourceComponentIndex,
+            LampElementIndex = importSource.LampElementIndex,
+            SharedLampSetId = NormalizeOptionalString(importSource.SharedLampSetId),
+            SharedLampSetCount = importSource.SharedLampSetCount
         };
     }
 
@@ -820,4 +832,8 @@ internal sealed record PanelElementImportSourceFile
 {
     public string Format { get; init; } = string.Empty;
     public string? Reference { get; init; }
+    public int? SourceComponentIndex { get; init; }
+    public int? LampElementIndex { get; init; }
+    public string? SharedLampSetId { get; init; }
+    public int? SharedLampSetCount { get; init; }
 }

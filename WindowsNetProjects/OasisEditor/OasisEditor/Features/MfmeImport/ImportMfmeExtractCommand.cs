@@ -165,7 +165,11 @@ internal sealed class ImportMfmeExtractCommand : IDocumentCommand, IExecutionTra
                 : new PanelElementImportSourceModel
                 {
                     Format = source.ImportSource.Format,
-                    Reference = source.ImportSource.Reference
+                    Reference = source.ImportSource.Reference,
+                    SourceComponentIndex = source.ImportSource.SourceComponentIndex,
+                    LampElementIndex = source.ImportSource.LampElementIndex,
+                    SharedLampSetId = source.ImportSource.SharedLampSetId,
+                    SharedLampSetCount = source.ImportSource.SharedLampSetCount
                 }
         };
     }

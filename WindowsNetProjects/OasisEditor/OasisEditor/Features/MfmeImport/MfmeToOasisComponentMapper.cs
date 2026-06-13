@@ -358,8 +358,15 @@ internal sealed class MfmeToOasisComponentMapper
         string sharedLampSetId,
         int sharedLampSetCount)
     {
-        var reference = number.HasValue ? $"{component.SourceType}:{number.Value}" : component.SourceType;
-        return CreateImportSource($"{reference};componentIndex={component.SourceComponentIndex.ToString(CultureInfo.InvariantCulture)};lampElementIndex={(lampElement?.SourceElementIndex ?? -1).ToString(CultureInfo.InvariantCulture)};sharedLampSetId={sharedLampSetId};sharedLampSetCount={sharedLampSetCount.ToString(CultureInfo.InvariantCulture)}");
+        return new PanelElementImportSourceModel
+        {
+            Format = ImportSourceFormat,
+            Reference = number.HasValue ? $"{component.SourceType}:{number.Value}" : component.SourceType,
+            SourceComponentIndex = component.SourceComponentIndex >= 0 ? component.SourceComponentIndex : null,
+            LampElementIndex = lampElement?.SourceElementIndex >= 0 ? lampElement.SourceElementIndex : null,
+            SharedLampSetId = sharedLampSetId,
+            SharedLampSetCount = sharedLampSetCount
+        };
     }
 
     private static PanelElementImportSourceModel CreateImportSource(string reference)

@@ -57,7 +57,11 @@ internal static class PanelElementModelCloner
         return new PanelElementImportSourceModel
         {
             Format = source.Format,
-            Reference = source.Reference
+            Reference = source.Reference,
+            SourceComponentIndex = source.SourceComponentIndex,
+            LampElementIndex = source.LampElementIndex,
+            SharedLampSetId = source.SharedLampSetId,
+            SharedLampSetCount = source.SharedLampSetCount
         };
     }
 }

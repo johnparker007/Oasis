@@ -42,4 +42,8 @@ internal sealed class PanelElementImportSourceModel
 {
     public string Format { get; init; } = string.Empty;
     public string? Reference { get; init; }
+    public int? SourceComponentIndex { get; init; }
+    public int? LampElementIndex { get; init; }
+    public string? SharedLampSetId { get; init; }
+    public int? SharedLampSetCount { get; init; }
 }
