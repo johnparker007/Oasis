@@ -223,16 +223,16 @@ public sealed class Face2DRenderer : IFace2DRenderer
             return;
         }
 
-        var alpha = (byte)Math.Clamp(28 + (int)(156 * intensity), 0, 184);
-        var inner = new SKColor(0xFF, 0xE8, 0x7A, alpha);
-        var middle = new SKColor(0xFF, 0xC9, 0x3D, (byte)Math.Clamp(alpha * 0.58d, 0d, 255d));
-        var outer = new SKColor(0xFF, 0xA0, 0x20, 0);
+        var alpha = (byte)Math.Clamp(18 + (int)(132 * intensity), 0, 150);
+        var inner = new SKColor(0xFF, 0xFF, 0xF2, alpha);
+        var middle = new SKColor(0xFF, 0xFA, 0xDD, (byte)Math.Clamp(alpha * 0.52d, 0d, 255d));
+        var outer = new SKColor(0xFF, 0xF4, 0xC2, 0);
 
         using var shader = SKShader.CreateRadialGradient(
             center,
             radius,
             [inner, middle, outer],
-            [0f, 0.38f, 1f],
+            [0f, 0.42f, 1f],
             SKShaderTileMode.Clamp);
         using var illuminationPaint = new SKPaint
         {
@@ -246,8 +246,16 @@ public sealed class Face2DRenderer : IFace2DRenderer
             IsAntialias = true,
             FilterQuality = SKFilterQuality.Medium
         };
+        using var restorePaint = new SKPaint
+        {
+            BlendMode = SKBlendMode.Luminosity,
+            IsAntialias = true
+        };
 
-        canvas.SaveLayer(layerRect, null);
+        // The fallback renderer is only an approximation used when texture-driven preview is unavailable.
+        // Composite the radial pass as luminosity instead of source-over yellow so it boosts the
+        // underlying artwork brightness while preserving the artwork hue and saturation.
+        canvas.SaveLayer(layerRect, restorePaint);
         canvas.DrawRect(layerRect, illuminationPaint);
         canvas.DrawImage(maskImage, maskSourceRect, layerRect, maskPaint);
         canvas.Restore();

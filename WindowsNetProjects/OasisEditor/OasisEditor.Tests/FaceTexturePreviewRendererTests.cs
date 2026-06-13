@@ -65,6 +65,48 @@ public sealed class FaceTexturePreviewRendererTests : IDisposable
     }
 
     [Fact]
+    public void Render_LitRedArtwork_RemainsRecognisablyRedAndBrighter()
+    {
+        WriteSolidPng("artwork.png", 1, 1, new SKColor(120, 0, 0, 255));
+        WriteSolidPng("mask.png", 1, 1, SKColors.White);
+        WriteSolidPng("trayId.png", 1, 1, new SKColor(1, 0, 0, 255));
+        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(7, 0, 0, 255));
+        WriteSolidPng("lampWeights0.png", 1, 1, new SKColor(255, 0, 0, 255));
+        var renderer = CreateRenderer();
+        var runtimeState = new MachineRuntimeState();
+        runtimeState.SetLampIntensityIfChanged(MachineObjectReference.Lamp(7), 1d);
+
+        using var result = renderer.Render(CreateDocument(width: 1, height: 1), runtimeState);
+
+        Assert.True(result.Rendered);
+        var pixel = result.Bitmap!.GetPixel(0, 0);
+        Assert.True(pixel.Red > 120);
+        Assert.Equal(0, pixel.Green);
+        Assert.Equal(0, pixel.Blue);
+    }
+
+    [Fact]
+    public void Render_LitBlueArtwork_RemainsRecognisablyBlueAndBrighter()
+    {
+        WriteSolidPng("artwork.png", 1, 1, new SKColor(0, 0, 120, 255));
+        WriteSolidPng("mask.png", 1, 1, SKColors.White);
+        WriteSolidPng("trayId.png", 1, 1, new SKColor(1, 0, 0, 255));
+        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(7, 0, 0, 255));
+        WriteSolidPng("lampWeights0.png", 1, 1, new SKColor(255, 0, 0, 255));
+        var renderer = CreateRenderer();
+        var runtimeState = new MachineRuntimeState();
+        runtimeState.SetLampIntensityIfChanged(MachineObjectReference.Lamp(7), 1d);
+
+        using var result = renderer.Render(CreateDocument(width: 1, height: 1), runtimeState);
+
+        Assert.True(result.Rendered);
+        var pixel = result.Bitmap!.GetPixel(0, 0);
+        Assert.Equal(0, pixel.Red);
+        Assert.Equal(0, pixel.Green);
+        Assert.True(pixel.Blue > 120);
+    }
+
+    [Fact]
     public void Render_ZeroLampState_LeavesArtworkAtAmbientOnly()
     {
         WriteSolidPng("artwork.png", 1, 1, new SKColor(100, 40, 20, 255));
