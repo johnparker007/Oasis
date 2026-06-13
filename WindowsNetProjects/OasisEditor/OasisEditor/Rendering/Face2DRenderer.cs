@@ -223,9 +223,9 @@ public sealed class Face2DRenderer : IFace2DRenderer
             return;
         }
 
-        var alpha = (byte)Math.Clamp(18 + (int)(132 * intensity), 0, 150);
+        var alpha = (byte)Math.Clamp(32 + (int)(188 * intensity), 0, 220);
         var inner = new SKColor(0xFF, 0xFF, 0xF2, alpha);
-        var middle = new SKColor(0xFF, 0xFA, 0xDD, (byte)Math.Clamp(alpha * 0.52d, 0d, 255d));
+        var middle = new SKColor(0xFF, 0xFA, 0xDD, (byte)Math.Clamp(alpha * 0.62d, 0d, 255d));
         var outer = new SKColor(0xFF, 0xF4, 0xC2, 0);
 
         using var shader = SKShader.CreateRadialGradient(

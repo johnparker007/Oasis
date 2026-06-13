@@ -87,6 +87,33 @@ public sealed class Face2DRendererMaskIlluminationTests : IDisposable
     }
 
     [Fact]
+    public void Render_FallbackLampIllumination_ProducesVisibleBrightnessIncreaseOnDimArtwork()
+    {
+        var artworkPath = Path.Combine(_testDirectory, "dim-artwork.png");
+        WriteSolidPng(artworkPath, 20, 20, new SKColor(0x60, 0x55, 0x53));
+        WriteMask(_maskPath, 20, 20, [(10, 10), (11, 10), (12, 10), (13, 10), (14, 10)]);
+        var renderer = new Face2DRenderer(FaceRuntimeStateResolver.Instance, ResolveTestAssetPath);
+        var runtimeState = new MachineRuntimeState();
+        runtimeState.SetLampIntensityIfChanged(MachineObjectReference.Lamp(17), 1d);
+        var document = CreateDocument(artworkPath: "dim-artwork.png");
+
+        using var surface = SKSurface.Create(new SKImageInfo(20, 20, SKColorType.Bgra8888, SKAlphaType.Premul));
+        surface.Canvas.Clear(SKColors.Black);
+
+        renderer.Render(surface.Canvas, document, runtimeState, new PanelViewportTransform());
+
+        using var snapshot = surface.Snapshot();
+        using var bitmap = SKBitmap.FromImage(snapshot);
+        var unlit = bitmap.GetPixel(0, 0);
+        var lit = bitmap.GetPixel(10, 10);
+        Assert.True(lit.Red >= unlit.Red + 35);
+        Assert.True(lit.Green >= unlit.Green + 35);
+        Assert.True(lit.Blue >= unlit.Blue + 30);
+        Assert.True(lit.Red >= lit.Green);
+        Assert.True(lit.Green >= lit.Blue);
+    }
+
+    [Fact]
     public void Render_FallbackLampIllumination_KeepsLitBlueArtworkRecognisablyBlue()
     {
         var artworkPath = Path.Combine(_testDirectory, "blue-artwork.png");
