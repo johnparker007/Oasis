@@ -590,10 +590,10 @@ public sealed class LampInfluenceTextureGenerator
 
     private static (byte[] IdChannels, byte[] WeightChannels) CreateEmitterChannels(IReadOnlyList<LampInfluence> influences, double pixelX, double pixelY)
     {
+        var idChannels = new byte[SupportedChannelCount];
+        var weightChannels = new byte[SupportedChannelCount];
         if (influences.Count == 1)
         {
-            var idChannels = new byte[SupportedChannelCount];
-            var weightChannels = new byte[SupportedChannelCount];
             idChannels[0] = influences[0].LampId;
             weightChannels[0] = 255;
             return (idChannels, weightChannels);
@@ -612,8 +612,6 @@ public sealed class LampInfluenceTextureGenerator
             .Take(SupportedChannelCount)
             .ToArray();
 
-        var idChannels = new byte[SupportedChannelCount];
-        var weightChannels = new byte[SupportedChannelCount];
         var rawByteWeights = retained
             .Select(influence => Math.Clamp(influence.RawWeight * 255d, 0d, 255d))
             .ToArray();
