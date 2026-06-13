@@ -503,6 +503,9 @@ public sealed class TrayIdTextureGenerator
 
 public sealed class LampInfluenceTextureGenerator
 {
+    private const int SupportedChannelCount = 3;
+    private const double MinimumSoftness = 1d;
+
     public void Generate(
         IReadOnlyList<FaceRuntimeTrayElement> trays,
         IReadOnlyList<FaceLampEmitterElement> emitters,
@@ -533,20 +536,15 @@ public sealed class LampInfluenceTextureGenerator
                 throw new InvalidOperationException($"Face runtime tray {tray.TrayId} does not have a valid lamp emitter.");
             }
 
-            if (trayEmitters.Length > 3)
+            if (trayEmitters.Length > SupportedChannelCount)
             {
                 throw new InvalidOperationException($"Face runtime tray {tray.TrayId} has {trayEmitters.Length} lamp emitters; the current lampIds0/lampWeights0 PNG writer preserves RGB data channels plus opaque alpha, so it supports up to 3 emitters per tray.");
             }
 
-            var idChannels = new byte[3];
-            var weightChannels = new byte[3];
-            for (var channel = 0; channel < trayEmitters.Length; channel++)
-            {
-                idChannels[channel] = (byte)trayEmitters[channel].LampId!.Value;
-                weightChannels[channel] = 255;
-            }
-
             var bounds = RasterBounds.FromElement(tray, width, height);
+            var influences = trayEmitters.Length == 1
+                ? Array.Empty<LampInfluence>()
+                : CreateInfluences(tray, trayEmitters);
             for (var y = bounds.Top; y < bounds.Bottom; y++)
             {
                 for (var x = bounds.Left; x < bounds.Right; x++)
@@ -558,9 +556,12 @@ public sealed class LampInfluenceTextureGenerator
                     }
 
                     ownership[index] = tray.TrayId;
+                    var (idChannels, weightChannels) = trayEmitters.Length == 1
+                        ? CreateSingleEmitterChannels(trayEmitters[0])
+                        : CreateMultiEmitterChannels(influences, x + 0.5d, y + 0.5d);
                     idsBitmap.SetPixel(x, y, new SKColor(idChannels[0], idChannels[1], idChannels[2], 255));
                     weightsBitmap.SetPixel(x, y, new SKColor(weightChannels[0], weightChannels[1], weightChannels[2], 255));
-                    debugBitmap.SetPixel(x, y, SKColors.White);
+                    debugBitmap.SetPixel(x, y, new SKColor(weightChannels[0], weightChannels[1], weightChannels[2], 255));
                 }
             }
         }
@@ -569,6 +570,112 @@ public sealed class LampInfluenceTextureGenerator
         WritePng(weightsBitmap, lampWeights0Path, "lamp weight texture");
         WritePng(debugBitmap, lampWeightsDebugPath, "lamp weight debug texture");
     }
+
+    private static (byte[] IdChannels, byte[] WeightChannels) CreateSingleEmitterChannels(FaceLampEmitterElement emitter)
+    {
+        var idChannels = new byte[SupportedChannelCount];
+        var weightChannels = new byte[SupportedChannelCount];
+        idChannels[0] = (byte)emitter.LampId!.Value;
+        weightChannels[0] = 255;
+        return (idChannels, weightChannels);
+    }
+
+    private static IReadOnlyList<LampInfluence> CreateInfluences(FaceRuntimeTrayElement tray, IReadOnlyList<FaceLampEmitterElement> emitters)
+    {
+        var fallbackRadius = ResolveFallbackRadius(tray, emitters);
+        return emitters
+            .OrderBy(emitter => emitter.ObjectId, StringComparer.Ordinal)
+            .Select((emitter, index) =>
+            {
+                var radius = emitter.Radius is double emitterRadius && emitterRadius > 0d && IsFinite(emitterRadius)
+                    ? emitterRadius
+                    : fallbackRadius;
+                var softness = Math.Max(MinimumSoftness, radius * radius * 0.25d);
+                return new LampInfluence(
+                    (byte)emitter.LampId!.Value,
+                    emitter.CenterX,
+                    emitter.CenterY,
+                    softness,
+                    index);
+            })
+            .ToArray();
+    }
+
+    private static (byte[] IdChannels, byte[] WeightChannels) CreateMultiEmitterChannels(IReadOnlyList<LampInfluence> influences, double pixelX, double pixelY)
+    {
+        var retained = influences
+            .Select(influence =>
+            {
+                var dx = pixelX - influence.CenterX;
+                var dy = pixelY - influence.CenterY;
+                var distanceSquared = (dx * dx) + (dy * dy);
+                var rawWeight = 1d / (distanceSquared + influence.Softness);
+                return new WeightedLampInfluence(influence, rawWeight);
+            })
+            .OrderByDescending(influence => influence.RawWeight)
+            .ThenBy(influence => influence.Influence.Order)
+            .Take(SupportedChannelCount)
+            .ToArray();
+
+        var idChannels = new byte[SupportedChannelCount];
+        var weightChannels = new byte[SupportedChannelCount];
+        var rawTotal = retained.Sum(influence => influence.RawWeight);
+        if (rawTotal <= 0d || !IsFinite(rawTotal))
+        {
+            return (idChannels, weightChannels);
+        }
+
+        var assignedTotal = 0;
+        for (var channel = 0; channel < retained.Length; channel++)
+        {
+            idChannels[channel] = retained[channel].Influence.LampId;
+            var weight = channel == retained.Length - 1
+                ? 255 - assignedTotal
+                : (int)Math.Round(retained[channel].RawWeight / rawTotal * 255d, MidpointRounding.AwayFromZero);
+            weight = Math.Clamp(weight, 0, 255 - assignedTotal);
+            weightChannels[channel] = (byte)weight;
+            assignedTotal += weight;
+        }
+
+        return (idChannels, weightChannels);
+    }
+
+    private static double ResolveFallbackRadius(FaceRuntimeTrayElement tray, IReadOnlyList<FaceLampEmitterElement> emitters)
+    {
+        var trayRadius = Math.Max(1d, Math.Max(tray.Width, tray.Height) / Math.Max(1d, emitters.Count));
+        if (emitters.Count < 2)
+        {
+            return trayRadius;
+        }
+
+        var nearestSpacing = double.PositiveInfinity;
+        for (var left = 0; left < emitters.Count; left++)
+        {
+            for (var right = left + 1; right < emitters.Count; right++)
+            {
+                var dx = emitters[left].CenterX - emitters[right].CenterX;
+                var dy = emitters[left].CenterY - emitters[right].CenterY;
+                var spacing = Math.Sqrt((dx * dx) + (dy * dy));
+                if (spacing > 0d && spacing < nearestSpacing)
+                {
+                    nearestSpacing = spacing;
+                }
+            }
+        }
+
+        return IsFinite(nearestSpacing)
+            ? Math.Max(1d, Math.Min(trayRadius, nearestSpacing))
+            : trayRadius;
+    }
+
+    private static bool IsFinite(double value)
+    {
+        return !double.IsNaN(value) && !double.IsInfinity(value);
+    }
+
+    private readonly record struct LampInfluence(byte LampId, double CenterX, double CenterY, double Softness, int Order);
+
+    private readonly record struct WeightedLampInfluence(LampInfluence Influence, double RawWeight);
 
     private static void WritePng(SKBitmap bitmap, string path, string description)
     {
