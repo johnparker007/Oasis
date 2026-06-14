@@ -62,58 +62,73 @@ public sealed class WpfProgressDialogService : IProgressDialogService
         }
     }
 
-    private Task<TResult> RunDialogOperationAsync<TResult>(
+    private async Task<TResult> RunDialogOperationAsync<TResult>(
         EditorProgressRequest request,
         Func<IEditorProgressReporter, CancellationToken, Task<TResult>> operation,
         CancellationToken cancellationToken)
     {
-        var operationCompletion = new TaskCompletionSource<TResult>();
         using var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var currentState = EditorProgressState.FromRequest(request);
-        EditorProgressDialogViewModel? viewModel = null;
-        EditorProgressDialogWindow? dialog = null;
+        var viewModel = new EditorProgressDialogViewModel(currentState, linkedCancellation.Cancel);
         var reporter = new EditorProgressReporter(currentState, state =>
         {
             currentState = state;
-            if (viewModel is null)
-            {
-                return;
-            }
-
             _dispatcher.BeginInvoke(() => viewModel.UpdateState(state), DispatcherPriority.Normal);
         });
 
-        viewModel = new EditorProgressDialogViewModel(currentState, linkedCancellation.Cancel);
-        dialog = new EditorProgressDialogWindow(viewModel)
+        var owner = ResolveOwnerWindow();
+        var ownerWasEnabled = owner?.IsEnabled ?? true;
+        var allowClose = false;
+        var dialog = new EditorProgressDialogWindow(viewModel);
+        if (owner is not null)
         {
-            Owner = _ownerProvider()
-        };
+            dialog.Owner = owner;
+            owner.IsEnabled = false;
+        }
 
         dialog.Closing += (_, eventArgs) =>
         {
-            if (!operationCompletion.Task.IsCompleted)
+            if (!allowClose)
             {
                 eventArgs.Cancel = true;
             }
         };
 
-        dialog.Loaded += async (_, _) =>
+        try
         {
-            try
+            dialog.Show();
+            await _dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+            return await operation(reporter, linkedCancellation.Token).ConfigureAwait(true);
+        }
+        catch (Exception exception)
+        {
+            viewModel.UpdateState(currentState.WithError(exception.Message));
+            throw;
+        }
+        finally
+        {
+            allowClose = true;
+            if (dialog.IsVisible)
             {
-                var result = await operation(reporter, linkedCancellation.Token).ConfigureAwait(true);
-                operationCompletion.TrySetResult(result);
                 dialog.Close();
             }
-            catch (Exception exception)
-            {
-                viewModel.UpdateState(currentState.WithError(exception.Message));
-                operationCompletion.TrySetException(exception);
-                dialog.Close();
-            }
-        };
 
-        dialog.ShowDialog();
-        return operationCompletion.Task;
+            if (owner is not null)
+            {
+                owner.IsEnabled = ownerWasEnabled;
+                owner.Activate();
+            }
+        }
+    }
+
+    private Window? ResolveOwnerWindow()
+    {
+        var owner = _ownerProvider();
+        if (owner is null || !owner.IsVisible)
+        {
+            return null;
+        }
+
+        return owner;
     }
 }
