@@ -1,5 +1,6 @@
 using System.IO;
 using OasisEditor.Features.MfmeImport;
+using OasisEditor.Progress;
 
 namespace OasisEditor.Automation;
 
@@ -33,7 +34,7 @@ internal sealed class MfmeExtractImportService : IMfmeExtractImportService
 
 public interface IDocumentSaveService
 {
-    DocumentTabViewModel SaveDocument(DocumentTabViewModel current, string savePath, EditorProject? project = null);
+    DocumentTabViewModel SaveDocument(DocumentTabViewModel current, string savePath, EditorProject? project = null, IEditorProgressReporter? progress = null);
 }
 
 public sealed class DocumentSaveService : IDocumentSaveService
@@ -45,9 +46,12 @@ public sealed class DocumentSaveService : IDocumentSaveService
         _faceRuntimeExportService = faceRuntimeExportService ?? new FaceRuntimeExportService();
     }
 
-    public DocumentTabViewModel SaveDocument(DocumentTabViewModel current, string savePath, EditorProject? project = null)
+    public DocumentTabViewModel SaveDocument(DocumentTabViewModel current, string savePath, EditorProject? project = null, IEditorProgressReporter? progress = null)
     {
         ArgumentNullException.ThrowIfNull(current);
+        progress ??= NoOpEditorProgressReporter.Instance;
+        progress.Report(0.0, "Preparing document save...");
+
         if (string.IsNullOrWhiteSpace(savePath))
         {
             throw new ArgumentException("Save path is required.", nameof(savePath));
@@ -55,9 +59,11 @@ public sealed class DocumentSaveService : IDocumentSaveService
 
         var faceDocumentJson = current.FaceDocumentJson;
         var contentSource = current;
+        progress.Report(0.1, "Collecting document content...");
         if (current.Document.DocumentType == EditorDocumentType.Face && project is not null)
         {
-            var exportResult = _faceRuntimeExportService.Export(current.GetFaceDocument(), project);
+            progress.Report(0.15, "Exporting Face runtime assets...");
+            var exportResult = _faceRuntimeExportService.Export(current.GetFaceDocument(), project, progress.CreateChild(0.15, 0.75));
             faceDocumentJson = FaceDocumentStorage.Serialize(exportResult.Document);
             contentSource = new DocumentTabViewModel(
                 current.Document,
@@ -76,10 +82,13 @@ public sealed class DocumentSaveService : IDocumentSaveService
             };
         }
 
+        progress.Report(0.8, "Serializing document...");
         var content = DocumentWorkspaceViewModel.BuildDocumentContent(contentSource);
+        progress.Report(0.9, "Writing document file...");
         File.WriteAllText(savePath, content);
+        progress.Report(0.95, "Updating document state...");
 
-        return new DocumentTabViewModel(
+        var savedDocument = new DocumentTabViewModel(
             current.Document.SaveAs(savePath, current.ContentSummary).MarkClean(),
             current.PanelLayoutJson,
             current.DocumentId,
@@ -94,5 +103,8 @@ public sealed class DocumentSaveService : IDocumentSaveService
             FacePanX = current.FacePanX,
             FacePanY = current.FacePanY
         };
+
+        progress.Report(1.0, "Document saved.");
+        return savedDocument;
     }
 }

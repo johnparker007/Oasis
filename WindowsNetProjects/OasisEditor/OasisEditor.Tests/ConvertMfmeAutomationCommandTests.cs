@@ -1,5 +1,6 @@
 using OasisEditor.Automation;
 using OasisEditor.Features.MfmeImport;
+using OasisEditor.Progress;
 using Xunit;
 
 namespace OasisEditor.Tests;
@@ -101,7 +102,7 @@ public sealed class ConvertMfmeAutomationCommandTests
     {
         public bool WasCalled { get; private set; }
 
-        public DocumentTabViewModel SaveDocument(DocumentTabViewModel current, string savePath, EditorProject? project = null)
+        public DocumentTabViewModel SaveDocument(DocumentTabViewModel current, string savePath, EditorProject? project = null, IEditorProgressReporter? progress = null)
         {
             WasCalled = true;
             return current;
