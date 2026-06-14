@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Generate Face From Region"
         Height="430"
-        Width="432"
+        Width="360"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner"
         Background="{DynamicResource EditorBackgroundBrush}"
@@ -24,7 +24,7 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="90" />
+            <ColumnDefinition Width="130" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 

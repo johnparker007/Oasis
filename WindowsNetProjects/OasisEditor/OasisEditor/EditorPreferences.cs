@@ -30,6 +30,10 @@ public sealed class MamePreferences
 
 public sealed class FaceGenerationPreferences
 {
+    private const byte LegacyDefaultMaskExtractionThreshold = 24;
+    private const double LegacyDefaultTrayBoundsInflationPercent = 15d;
+    private const double LegacyDefaultTrayBoundsPaddingPixels = 4d;
+
     public byte DefaultMaskExtractionThreshold { get; init; } = FaceGenerationSettingsModel.DefaultMaskExtractionThreshold;
     public double DefaultTrayBoundsInflationPercent { get; init; } = FaceGenerationSettingsModel.DefaultTrayBoundsInflationPercent;
     public double DefaultTrayBoundsPaddingPixels { get; init; } = FaceGenerationSettingsModel.DefaultTrayBoundsPaddingPixels;
@@ -39,6 +43,11 @@ public sealed class FaceGenerationPreferences
 
     public FaceGenerationSettingsModel ToSettings()
     {
+        if (UsesLegacyDefaultSettings())
+        {
+            return FaceGenerationSettingsModel.Default;
+        }
+
         return new FaceGenerationSettingsModel
         {
             MaskExtractionThreshold = DefaultMaskExtractionThreshold,
@@ -46,6 +55,13 @@ public sealed class FaceGenerationPreferences
             TrayBoundsPaddingPixels = DefaultTrayBoundsPaddingPixels,
             ClampTrayBoundsToLampWindow = DefaultClampTrayBoundsToLampWindow
         }.Normalize();
+    }
+
+    private bool UsesLegacyDefaultSettings()
+    {
+        return DefaultMaskExtractionThreshold == LegacyDefaultMaskExtractionThreshold
+            && DefaultTrayBoundsInflationPercent == LegacyDefaultTrayBoundsInflationPercent
+            && DefaultTrayBoundsPaddingPixels == LegacyDefaultTrayBoundsPaddingPixels;
     }
 
     public static FaceGenerationPreferences FromSettings(
