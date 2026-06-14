@@ -152,7 +152,7 @@ public partial class PlayView : UserControl
             }
 
             await viewModel.RunEditorProgressAsync(
-                new EditorProgressRequest("Opening Face Play View", "Preparing Face Play View...", EditorProgressMode.Indeterminate, ShowDelay: TimeSpan.Zero),
+                new EditorProgressRequest("Generating Face Play View", "Generating Face Play View...", EditorProgressMode.Indeterminate, ShowDelay: TimeSpan.Zero),
                 async (progress, token) =>
                 {
                     token.ThrowIfCancellationRequested();
@@ -168,7 +168,7 @@ public partial class PlayView : UserControl
         }
         catch (Exception ex)
         {
-            viewModel.ReportEditorOperationError($"Open Face Play View failed: {ex.Message}", OutputLogStatus.Error);
+            viewModel.ReportEditorOperationError($"Generate Face Play View failed: {ex.Message}", OutputLogStatus.Error);
             EmptyStateText.Text = ex.Message;
             EmptyStateText.Visibility = Visibility.Visible;
             return;
