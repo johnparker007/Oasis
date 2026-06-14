@@ -62,7 +62,7 @@ public sealed class FaceMaskLayerExtractionTests : IDisposable
         Assert.Equal(4, maskLayer.Width);
         Assert.Equal(4, maskLayer.Height);
         Assert.Equal("panel-doc", maskLayer.SourcePanel2DDocumentId);
-        Assert.Equal(FaceMaskLayerExtractionService.DefaultExtractionThreshold, maskLayer.ExtractionThreshold);
+        Assert.Equal(FaceGenerationSettingsModel.DefaultMaskExtractionThreshold, maskLayer.ExtractionThreshold);
         Assert.StartsWith("Generated/Faces/", maskLayer.AssetPath);
         Assert.True(File.Exists(Path.Combine(_projectDirectory, maskLayer.AssetPath!.Replace('/', Path.DirectorySeparatorChar))));
         var contribution = Assert.Single(maskLayer.Contributions);

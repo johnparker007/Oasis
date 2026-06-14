@@ -47,10 +47,11 @@ public sealed class FaceTrayAutoAuthoringTests
         var tray = Assert.Single(document.Trays);
         Assert.True(tray.IsAutoAuthored);
         Assert.Equal("lampWindowBounds", tray.AutoAuthoringSource);
-        Assert.Equal(-2.6d, tray.Bounds!.X, 3);
-        Assert.Equal(-3.35d, tray.Bounds.Y, 3);
-        Assert.Equal(55.2d, tray.Bounds.Width, 3);
-        Assert.Equal(66.7d, tray.Bounds.Height, 3);
+        var expectedBounds = ExpandBounds(5d, 5d, 40d, 50d, FaceGenerationSettingsModel.Default);
+        Assert.Equal(expectedBounds.X, tray.Bounds!.X, 3);
+        Assert.Equal(expectedBounds.Y, tray.Bounds.Y, 3);
+        Assert.Equal(expectedBounds.Width, tray.Bounds.Width, 3);
+        Assert.Equal(expectedBounds.Height, tray.Bounds.Height, 3);
         Assert.Equal(4, tray.Vertices.Count);
 
         var emitter = Assert.Single(document.LampEmitters);
@@ -71,10 +72,11 @@ public sealed class FaceTrayAutoAuthoringTests
 
         var tray = Assert.Single(result.Trays);
         Assert.Equal("maskContributionBounds", tray.AutoAuthoringSource);
-        Assert.Equal(2.575d, tray.Bounds!.X, 3);
-        Assert.Equal(3.5d, tray.Bounds.Y, 3);
-        Assert.Equal(21.85d, tray.Bounds.Width, 3);
-        Assert.Equal(23d, tray.Bounds.Height, 3);
+        var expectedBounds = ExpandBounds(8d, 9d, 11d, 12d, FaceGenerationSettingsModel.Default);
+        Assert.Equal(expectedBounds.X, tray.Bounds!.X, 3);
+        Assert.Equal(expectedBounds.Y, tray.Bounds.Y, 3);
+        Assert.Equal(expectedBounds.Width, tray.Bounds.Width, 3);
+        Assert.Equal(expectedBounds.Height, tray.Bounds.Height, 3);
         Assert.Equal("lamp:3", tray.LinkedMachineObjectReference?.ToString());
 
         var emitter = Assert.Single(result.Emitters);
@@ -306,6 +308,24 @@ public sealed class FaceTrayAutoAuthoringTests
         Assert.All(first.Emitters, emitter => Assert.Equal(40d, emitter.CenterY));
         Assert.Equal(first.Emitters.Select(emitter => emitter.ObjectId), second.Emitters.Select(emitter => emitter.ObjectId));
     }
+    private static Rect ExpandBounds(double x, double y, double width, double height, FaceGenerationSettingsModel settings)
+    {
+        var normalized = (settings ?? FaceGenerationSettingsModel.Default).Normalize();
+        var paddedX = x - normalized.TrayBoundsPaddingPixels;
+        var paddedY = y - normalized.TrayBoundsPaddingPixels;
+        var paddedWidth = width + (normalized.TrayBoundsPaddingPixels * 2d);
+        var paddedHeight = height + (normalized.TrayBoundsPaddingPixels * 2d);
+        var scale = 1d + (normalized.TrayBoundsInflationPercent / 100d);
+        var inflatedWidth = paddedWidth * scale;
+        var inflatedHeight = paddedHeight * scale;
+
+        return new Rect(
+            paddedX - ((inflatedWidth - paddedWidth) / 2d),
+            paddedY - ((inflatedHeight - paddedHeight) / 2d),
+            inflatedWidth,
+            inflatedHeight);
+    }
+
     private static FaceDocumentModel CreateFaceWithLampAndContribution()
     {
         return new FaceDocumentModel

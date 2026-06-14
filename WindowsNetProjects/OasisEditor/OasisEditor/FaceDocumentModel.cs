@@ -20,9 +20,9 @@ public sealed class FaceDocumentModel
 
 public sealed class FaceGenerationSettingsModel
 {
-    public const byte DefaultMaskExtractionThreshold = 24;
-    public const double DefaultTrayBoundsInflationPercent = 15d;
-    public const double DefaultTrayBoundsPaddingPixels = 4d;
+    public const byte DefaultMaskExtractionThreshold = 1;
+    public const double DefaultTrayBoundsInflationPercent = 0d;
+    public const double DefaultTrayBoundsPaddingPixels = 0d;
     public const bool DefaultClampTrayBoundsToLampWindow = false;
 
     public static FaceGenerationSettingsModel Default { get; } = new();
