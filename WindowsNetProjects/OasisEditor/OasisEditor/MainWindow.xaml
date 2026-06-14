@@ -300,8 +300,8 @@
                                  Height="12"
                                  Minimum="0"
                                  Maximum="100"
-                                 Value="{Binding EditorProgressPercent}"
-                                 IsIndeterminate="{Binding IsEditorProgressIndeterminate}">
+                                 Value="{Binding EditorProgressPercent, Mode=OneWay}"
+                                 IsIndeterminate="{Binding IsEditorProgressIndeterminate, Mode=OneWay}">
                         <ProgressBar.Style>
                             <Style TargetType="{x:Type ProgressBar}">
                                 <Setter Property="Visibility" Value="Collapsed" />
