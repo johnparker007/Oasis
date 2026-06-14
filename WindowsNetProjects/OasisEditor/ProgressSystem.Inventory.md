@@ -128,7 +128,13 @@ public interface IEditorProgressScope : IAsyncDisposable
 
 ## Status-bar progress integration note
 
-- The first visible progress integration uses the main shell status bar rather than the WPF modal progress dialog for workflows that can safely report UI progress without blocking document mutation behind a modal.
-- MFME extract import now shows status-bar progress while the extract/import service runs off the UI thread, then applies document/project mutations back on the UI thread.
+- The main shell status bar remains available for lightweight non-modal progress, while MFME import and Face generation/regeneration now use the shared WPF progress dialog for blocking workflows.
+- MFME extract import shows modal progress while the extract/import service runs off the UI thread, then applies document/project mutations back on the UI thread.
 - Play View opening shows a short indeterminate status-bar progress indicator while the pane is requested. First-render/cache progress remains a later task because renderer preparation does not yet expose safe progress hooks.
-- Face generation/regeneration modal progress remains deferred; those workflows should not be wrapped in the modal progress service until model/export work is split from UI-thread document and tab mutation.
+- Face generation/regeneration modal progress now uses the shared WPF progress dialog as a blocking progress surface while still keeping WPF-bound document/tab mutations on the UI thread. A later refactor should split model/export work from document/tab mutation before moving more work off-thread.
+
+## Modal progress integration update
+
+- MFME import and Face generation/regeneration now use the shared WPF progress dialog so the editor shell is blocked while those operations run.
+- Face generation/regeneration still keep WPF-bound document/tab mutations on the UI thread; the modal dialog is used as a blocking progress surface, not as a background-thread rewrite.
+- Runtime preview export progress is mapped into the Face generation/regeneration progress ranges through child reporters.

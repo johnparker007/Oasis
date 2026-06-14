@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Windows;
 using EditorCommands = OasisEditor.Commands;
+using OasisEditor.Progress;
 
 namespace OasisEditor;
 
@@ -104,7 +105,7 @@ public sealed class DocumentWorkspaceViewModel
             && _getSelectedDocument() is { Document.DocumentType: EditorDocumentType.Panel2D };
     }
 
-    public DocumentTabViewModel? GenerateFaceFromSelectedPanel2DRegion(Rect sourceRect, FaceGenerationSettingsModel? generationSettings = null)
+    public DocumentTabViewModel? GenerateFaceFromSelectedPanel2DRegion(Rect sourceRect, FaceGenerationSettingsModel? generationSettings = null, IEditorProgressReporter? progress = null)
     {
         var sourceDocument = _getSelectedDocument();
         var loadedProject = _getLoadedProject();
@@ -119,7 +120,9 @@ public sealed class DocumentWorkspaceViewModel
             return null;
         }
 
+        progress ??= NoOpEditorProgressReporter.Instance;
         var title = $"{sourceDocument.Title} Face";
+        progress.Report(0.0, "Generating Face from selected Panel2D region...");
         var result = _faceGenerationService.GenerateFromPanelRegion(
             sourceDocument.GetPanelDocument(),
             sourceRegion,
@@ -128,9 +131,12 @@ public sealed class DocumentWorkspaceViewModel
             loadedProject.InputDefinitions,
             loadedProject.ProjectDirectory,
             loadedProject.GeneratedDirectory,
-            generationSettings);
+            generationSettings,
+            progress.CreateChild(0.0, 0.8));
 
-        var generatedFaceDocument = ExportRuntimeAssetsForPreview(result.Document, loadedProject);
+        progress.Report(0.8, "Exporting runtime preview assets...");
+        var generatedFaceDocument = ExportRuntimeAssetsForPreview(result.Document, loadedProject, progress.CreateChild(0.8, 0.95));
+        progress.Report(0.95, "Opening generated Face document...");
         var faceJson = FaceDocumentStorage.Serialize(generatedFaceDocument);
         var faceEditorDocument = EditorDocument.CreateFaceStub(title).WithContentSummary(generatedFaceDocument.Summary ?? "Generated Face document.");
         var document = CreateDocumentTab(faceEditorDocument, faceDocumentJson: faceJson);
@@ -139,14 +145,15 @@ public sealed class DocumentWorkspaceViewModel
         _addOutputEntry($"Generated face '{document.Title}' from Panel2D region with {result.ArtworkElementCount} artwork element(s), {result.ConvertedLampCount} lamp window(s), {result.ConvertedReelDisplayCount} reel display(s), {result.ConvertedSevenSegmentDisplayCount} seven-segment display(s), {result.ConvertedAlphaDisplayCount} alpha display(s), and {result.ConvertedButtonCount} button(s).", OutputLogStatus.Info);
         LogFaceMaskLayerStatus(generatedFaceDocument, loadedProject);
         LogFaceDiagnostics(generatedFaceDocument);
+        progress.Report(1.0, "Face generation complete.");
         return document;
     }
 
-    private FaceDocumentModel ExportRuntimeAssetsForPreview(FaceDocumentModel faceDocument, EditorProject loadedProject)
+    private FaceDocumentModel ExportRuntimeAssetsForPreview(FaceDocumentModel faceDocument, EditorProject loadedProject, IEditorProgressReporter? progress = null)
     {
         try
         {
-            var exportResult = _faceRuntimeExportService.Export(faceDocument, loadedProject);
+            var exportResult = _faceRuntimeExportService.Export(faceDocument, loadedProject, progress);
             _addOutputEntry($"Generated runtime face preview textures for '{faceDocument.Title}'.", OutputLogStatus.Info);
             return exportResult.Document;
         }
@@ -219,7 +226,7 @@ public sealed class DocumentWorkspaceViewModel
         return true;
     }
 
-    public bool RegenerateSelectedFace(FaceGenerationSettingsModel? generationSettings = null)
+    public bool RegenerateSelectedFace(FaceGenerationSettingsModel? generationSettings = null, IEditorProgressReporter? progress = null)
     {
         var selectedDocument = _getSelectedDocument();
         var loadedProject = _getLoadedProject();
@@ -237,15 +244,21 @@ public sealed class DocumentWorkspaceViewModel
             return false;
         }
 
+        progress ??= NoOpEditorProgressReporter.Instance;
+        progress.Report(0.0, "Regenerating selected Face...");
         var result = _faceRegenerationService.Regenerate(
             existingFace,
             sourcePanelDocument.GetPanelDocument(),
             loadedProject.InputDefinitions,
             loadedProject.ProjectDirectory,
             loadedProject.GeneratedDirectory,
-            generationSettings);
+            generationSettings,
+            progress.CreateChild(0.0, 0.8));
 
-        var regeneratedFaceDocument = ExportRuntimeAssetsForPreview(result.Document, loadedProject);
+        progress.Report(0.8, "Exporting regenerated runtime preview assets...");
+        var regeneratedFaceDocument = ExportRuntimeAssetsForPreview(result.Document, loadedProject, progress.CreateChild(0.8, 0.95));
+
+        progress.Report(0.95, "Updating Face document...");
 
         selectedDocument.SetFaceDocument(
             regeneratedFaceDocument,
@@ -263,6 +276,7 @@ public sealed class DocumentWorkspaceViewModel
         _addOutputEntry($"Regenerated face '{selectedDocument.Title}' from source Panel2D with {result.UpdatedElementCount} updated generated element(s), {result.AddedElementCount} added generated element(s), {result.RemovedGeneratedElementCount} removed stale generated element(s), and {result.PreservedManualElementCount} preserved manual element(s).", OutputLogStatus.Info);
         LogFaceMaskLayerStatus(regeneratedFaceDocument, loadedProject);
         LogFaceDiagnostics(regeneratedFaceDocument);
+        progress.Report(1.0, "Face regeneration complete.");
         return true;
     }
 
