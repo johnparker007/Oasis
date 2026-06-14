@@ -33,6 +33,7 @@
         <TextBlock Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" Text="Tray padding pixels" />
         <TextBox Grid.Row="3" Grid.Column="1" Margin="0,2" Text="{Binding TrayBoundsPaddingPixelsText, UpdateSourceTrigger=PropertyChanged}" />
         <CheckBox Grid.Row="4" Grid.ColumnSpan="2" Margin="0,8,0,0"
+                  Foreground="{DynamicResource TextPrimaryBrush}"
                   Content="Clamp tray bounds to lamp window"
                   IsChecked="{Binding ClampTrayBoundsToLampWindow}" />
 
