@@ -37,8 +37,8 @@
                          Height="18"
                          Minimum="0"
                          Maximum="100"
-                         IsIndeterminate="{Binding IsIndeterminate}"
-                         Value="{Binding ProgressPercent}" />
+                         IsIndeterminate="{Binding IsIndeterminate, Mode=OneWay}"
+                         Value="{Binding ProgressPercent, Mode=OneWay}" />
 
             <Grid Grid.Row="3" Margin="0,12,0,0">
                 <Grid.ColumnDefinitions>
