@@ -878,6 +878,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         using var stream = File.Open(path, FileMode.Create, FileAccess.Write, FileShare.None);
         data.SaveTo(stream);
     }
+
     [Fact]
     public void Export_ReportsCoarseProgressStagesWithoutChangingRuntimeAssetReferences()
     {

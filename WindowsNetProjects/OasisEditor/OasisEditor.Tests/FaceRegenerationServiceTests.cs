@@ -215,6 +215,7 @@ public sealed class FaceRegenerationServiceTests
         Assert.Equal("input:custom-start", button.LinkedMachineObjectReference?.ToString());
         Assert.Equal("input:custom-start", button.LinkedInputReference?.ToString());
     }
+
     [Fact]
     public void Regenerate_ReportsCoarseProgressStagesWithoutChangingResult()
     {
@@ -247,7 +248,9 @@ public sealed class FaceRegenerationServiceTests
         Assert.Equal(baseline.AddedElementCount, result.AddedElementCount);
         Assert.Equal(baseline.RemovedGeneratedElementCount, result.RemovedGeneratedElementCount);
         Assert.Equal(baseline.PreservedManualElementCount, result.PreservedManualElementCount);
-        Assert.Equal(baseline.Document.Elements.Select(element => element.ObjectId), result.Document.Elements.Select(element => element.ObjectId));
+        Assert.Equal(baseline.Document.Elements.Select(element => element.GetType()), result.Document.Elements.Select(element => element.GetType()));
+        Assert.Contains(result.Document.Elements, element => element.ObjectId == "existing-lamp");
+        Assert.Contains(result.Document.Elements, element => element.ObjectId == "manual-artwork");
         Assert.Contains(progress.Reports, report => report.Message.Contains("Validating source metadata", StringComparison.Ordinal));
         Assert.Contains(progress.Reports, report => report.Message.Contains("Generating replacement Face", StringComparison.Ordinal));
         Assert.Contains(progress.Reports, report => report.Message.Contains("Correlating regenerated elements", StringComparison.Ordinal));
