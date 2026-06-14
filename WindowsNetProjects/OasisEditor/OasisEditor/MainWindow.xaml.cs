@@ -1,6 +1,8 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Threading;
+using OasisEditor.Progress;
 using OasisEditor.Views;
 
 namespace OasisEditor;
@@ -11,6 +13,7 @@ public partial class MainWindow : Window
     private readonly string _startupProjectFilePath;
     private readonly MainWindowViewModel _viewModel;
     private readonly EditorShellView _editorShell;
+    private bool _suppressWindowPlacementSave;
 
     public MainWindow(
         IApplicationThemeService applicationThemeService,
@@ -57,6 +60,39 @@ public partial class MainWindow : Window
         }));
     }
 
+    public async Task PrepareForFirstShowAsync(IEditorProgressReporter progress, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(progress);
+
+        if (!Dispatcher.CheckAccess())
+        {
+            await Dispatcher.InvokeAsync(
+                () => PrepareForFirstShowAsync(progress, cancellationToken),
+                DispatcherPriority.Normal).Task.Unwrap().ConfigureAwait(true);
+            return;
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        progress.ReportIndeterminate("Preparing editor shell...");
+        ApplyWindowPlacement();
+        UpdateLayout();
+
+        cancellationToken.ThrowIfCancellationRequested();
+        progress.ReportIndeterminate("Loading startup documents...");
+        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Loaded);
+
+        cancellationToken.ThrowIfCancellationRequested();
+        progress.ReportIndeterminate("Finalizing editor...");
+        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+    }
+
+    public void CloseWithoutSavingPlacement()
+    {
+        _suppressWindowPlacementSave = true;
+        Close();
+    }
+
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         ApplyWindowPlacement();
@@ -75,7 +111,10 @@ public partial class MainWindow : Window
     private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
         _viewModel.StopEmulationForWindowClose();
-        SaveWindowPlacement();
+        if (!_suppressWindowPlacementSave)
+        {
+            SaveWindowPlacement();
+        }
     }
 
     private void OnAssetsWindowMenuItemClicked(object sender, RoutedEventArgs e)
