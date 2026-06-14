@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Input;
 using Microsoft.Win32;
+using OasisEditor.Progress;
 
 namespace OasisEditor;
 
@@ -21,6 +22,7 @@ public sealed class LauncherWindowViewModel : INotifyPropertyChanged
     private string _projectFilePath = string.Empty;
     private string _statusMessage = "Create or open a project to continue.";
     private string? _selectedRecentProject;
+    private bool _isOpeningEditor;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -120,7 +122,7 @@ public sealed class LauncherWindowViewModel : INotifyPropertyChanged
         {
             var projectPath = _projectContainerCreationService.CreateProjectContainer(ProjectName, ProjectLocation);
             var projectFilePath = Path.Combine(projectPath, $"{ProjectName.Trim()}.oasisproj");
-            OpenEditor(projectFilePath);
+            BeginOpenEditor(projectFilePath);
         }
         catch (Exception ex)
         {
@@ -131,7 +133,7 @@ public sealed class LauncherWindowViewModel : INotifyPropertyChanged
 
     private bool CanCreateProject()
     {
-        return !string.IsNullOrWhiteSpace(ProjectName) && !string.IsNullOrWhiteSpace(ProjectLocation);
+        return !_isOpeningEditor && !string.IsNullOrWhiteSpace(ProjectName) && !string.IsNullOrWhiteSpace(ProjectLocation);
     }
 
     private void BrowseProjectFile()
@@ -158,12 +160,12 @@ public sealed class LauncherWindowViewModel : INotifyPropertyChanged
 
     private void OpenProject()
     {
-        OpenEditor(ProjectFilePath);
+        BeginOpenEditor(ProjectFilePath);
     }
 
     private bool CanOpenProject()
     {
-        return !string.IsNullOrWhiteSpace(ProjectFilePath);
+        return !_isOpeningEditor && !string.IsNullOrWhiteSpace(ProjectFilePath);
     }
 
     private void OpenSelectedRecentProject()
@@ -173,23 +175,52 @@ public sealed class LauncherWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        OpenEditor(SelectedRecentProject);
+        BeginOpenEditor(SelectedRecentProject);
     }
 
     private bool CanOpenSelectedRecentProject()
     {
-        return !string.IsNullOrWhiteSpace(SelectedRecentProject);
+        return !_isOpeningEditor && !string.IsNullOrWhiteSpace(SelectedRecentProject);
     }
 
-    private void OpenEditor(string projectFilePath)
+    private async void BeginOpenEditor(string projectFilePath)
     {
+        if (_isOpeningEditor)
+        {
+            return;
+        }
+
+        _isOpeningEditor = true;
+        NotifyProjectCommands();
+
+        MainWindow? mainWindow = null;
         try
         {
             var trimmed = projectFilePath.Trim();
-            ValidateProjectFile(trimmed);
+            var progressService = new WpfProgressDialogService(() => _launcherWindow, _launcherWindow.Dispatcher);
+            mainWindow = await progressService.RunAsync(
+                new EditorProgressRequest(
+                    "Starting Editor",
+                    "Starting Editor...",
+                    EditorProgressMode.Indeterminate,
+                    CanCancel: false,
+                    ShowDelay: TimeSpan.Zero),
+                async (progress, token) =>
+                {
+                    progress.ReportIndeterminate("Opening project...");
+                    ValidateProjectFile(trimmed);
 
-            var mainWindow = new MainWindow(_applicationThemeService, _preferencesStore, trimmed);
-            _launcherWindow.Hide();
+                    token.ThrowIfCancellationRequested();
+                    progress.ReportIndeterminate("Preparing editor shell...");
+                    var preparedWindow = new MainWindow(_applicationThemeService, _preferencesStore, trimmed);
+
+                    await preparedWindow.PrepareForFirstShowAsync(progress, token).ConfigureAwait(true);
+
+                    progress.ReportIndeterminate("Finalizing editor...");
+                    await _launcherWindow.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+                    return preparedWindow;
+                }).ConfigureAwait(true);
+
             mainWindow.Closed += (_, _) =>
             {
                 if (_launcherWindow.IsVisible)
@@ -199,16 +230,26 @@ public sealed class LauncherWindowViewModel : INotifyPropertyChanged
 
                 _launcherWindow.Close();
             };
+
+            _launcherWindow.Hide();
             mainWindow.Show();
+            StatusMessage = $"Opened project: {trimmed}";
+            mainWindow = null;
         }
         catch (Exception ex)
         {
+            mainWindow?.CloseWithoutSavingPlacement();
             StatusMessage = ex.Message;
             if (!_launcherWindow.IsVisible)
             {
                 _launcherWindow.Show();
             }
             MessageBox.Show(ex.Message, "Open Project Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally
+        {
+            _isOpeningEditor = false;
+            NotifyProjectCommands();
         }
     }
 
@@ -237,6 +278,13 @@ public sealed class LauncherWindowViewModel : INotifyPropertyChanged
         {
             throw new InvalidOperationException("Project metadata contains an empty 'name' field.");
         }
+    }
+
+    private void NotifyProjectCommands()
+    {
+        NotifyCreateCommand();
+        NotifyOpenCommand();
+        NotifyOpenRecentCommand();
     }
 
     private void NotifyCreateCommand()
