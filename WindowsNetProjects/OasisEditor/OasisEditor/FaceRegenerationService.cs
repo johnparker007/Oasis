@@ -1,3 +1,5 @@
+using OasisEditor.Progress;
+
 namespace OasisEditor;
 
 internal sealed class FaceRegenerationResult
@@ -36,10 +38,13 @@ internal sealed class FaceRegenerationService
         IReadOnlyList<InputDefinitionModel>? inputDefinitions = null,
         string? projectDirectory = null,
         string? generatedDirectory = null,
-        FaceGenerationSettingsModel? generationSettings = null)
+        FaceGenerationSettingsModel? generationSettings = null,
+        IEditorProgressReporter? progress = null)
     {
         ArgumentNullException.ThrowIfNull(existingFace);
         ArgumentNullException.ThrowIfNull(sourcePanel);
+        progress ??= NoOpEditorProgressReporter.Instance;
+        progress.Report(0.0, "Validating source metadata...");
 
         if (string.IsNullOrWhiteSpace(existingFace.SourcePanel2DDocumentId))
         {
@@ -53,6 +58,7 @@ internal sealed class FaceRegenerationService
 
         var settings = (generationSettings ?? existingFace.GenerationSettings ?? FaceGenerationSettingsModel.Default).Normalize();
 
+        progress.Report(0.15, "Generating replacement Face...");
         var generated = _generationService.GenerateFromPanelRegion(
             sourcePanel,
             sourceRegion,
@@ -61,8 +67,10 @@ internal sealed class FaceRegenerationService
             inputDefinitions ?? [],
             projectDirectory,
             generatedDirectory,
-            settings);
+            settings,
+            progress.CreateChild(0.15, 0.45));
 
+        progress.Report(0.45, "Correlating regenerated elements...");
         var existingGeneratedByKey = existingFace.Elements
             .Select(element => new KeyValuePair<string, FaceElementModel>(CreateRegenerationKey(element), element))
             .Where(pair => !string.IsNullOrWhiteSpace(pair.Key))
@@ -93,6 +101,7 @@ internal sealed class FaceRegenerationService
             addedElementCount++;
         }
 
+        progress.Report(0.7, "Preserving manual elements/runtime identity...");
         var preservedManualElements = new List<FaceElementModel>();
         var removedGeneratedElementCount = 0;
         foreach (var existingElement in existingFace.Elements)
@@ -111,6 +120,7 @@ internal sealed class FaceRegenerationService
         }
 
         mergedElements.AddRange(preservedManualElements);
+        progress.Report(0.9, "Auto-authoring trays/emitters...");
         var autoAuthored = _trayAutoAuthoringService.AutoAuthor(new FaceDocumentModel { GenerationSettings = settings, MaskLayer = generated.Document.MaskLayer, Elements = mergedElements.ToArray() }, projectDirectory);
 
         var regeneratedDocument = new FaceDocumentModel
@@ -129,6 +139,7 @@ internal sealed class FaceRegenerationService
             Elements = mergedElements.ToArray()
         };
 
+        progress.Report(1.0, "Face regeneration complete.");
         return new FaceRegenerationResult(
             regeneratedDocument,
             updatedElementCount,

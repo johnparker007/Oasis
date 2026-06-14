@@ -1,4 +1,5 @@
 using System.Windows;
+using OasisEditor.Progress;
 
 namespace OasisEditor;
 
@@ -90,10 +91,13 @@ internal sealed class FaceGenerationService
         IReadOnlyList<InputDefinitionModel>? inputDefinitions = null,
         string? projectDirectory = null,
         string? generatedDirectory = null,
-        FaceGenerationSettingsModel? generationSettings = null)
+        FaceGenerationSettingsModel? generationSettings = null,
+        IEditorProgressReporter? progress = null)
     {
         ArgumentNullException.ThrowIfNull(sourcePanel);
         ArgumentNullException.ThrowIfNull(sourceRegion);
+        progress ??= NoOpEditorProgressReporter.Instance;
+        progress.Report(0.0, "Validating source region...");
 
         if (!sourceRegion.IsValid)
         {
@@ -102,29 +106,37 @@ internal sealed class FaceGenerationService
 
         var settings = (generationSettings ?? FaceGenerationSettingsModel.Default).Normalize();
         var region = sourceRegion.ToRect();
+        progress.Report(0.1, "Creating artwork elements...");
         var artworkElements = CreateArtworkElements(sourcePanel, region, sourcePanel2DDocumentId);
+        progress.Report(0.2, "Converting lamps...");
         var lampWindows = sourcePanel.Elements
             .Where(element => element.Kind == PanelElementKind.Lamp && IsContainedBy(element, region))
             .Select(element => CreateLampWindow(element, region))
             .ToArray();
+        progress.Report(0.3, "Converting reels...");
         var reelDisplays = sourcePanel.Elements
             .Where(element => element.Kind == PanelElementKind.Reel && IsContainedBy(element, region))
             .Select(element => CreateReelDisplay(element, region))
             .ToArray();
+        progress.Report(0.4, "Converting seven-segment displays...");
         var sevenSegmentDisplays = sourcePanel.Elements
             .Where(element => element.Kind == PanelElementKind.SevenSegment && IsContainedBy(element, region))
             .Select(element => CreateSevenSegmentDisplay(element, region))
             .ToArray();
+        progress.Report(0.5, "Converting alpha displays...");
         var alphaDisplays = sourcePanel.Elements
             .Where(element => element.Kind == PanelElementKind.Alpha && IsContainedBy(element, region))
             .Select(element => CreateAlphaDisplay(element, region))
             .ToArray();
+        progress.Report(0.6, "Creating button/input elements...");
         var buttons = CreateButtonElements(sourcePanel, region, inputDefinitions ?? []);
 
         var resolvedTitle = string.IsNullOrWhiteSpace(title) ? "Generated Face" : title.Trim();
         var faceDocumentId = Guid.NewGuid().ToString("N");
+        progress.Report(0.75, "Generating mask layer...");
         var maskLayer = _maskLayerExtractionService.GenerateMaskLayer(sourcePanel, region, faceDocumentId, sourcePanel2DDocumentId, projectDirectory, generatedDirectory, settings.MaskExtractionThreshold);
         var elements = artworkElements.Cast<FaceElementModel>().Concat(lampWindows).Concat(reelDisplays).Concat(sevenSegmentDisplays).Concat(alphaDisplays).Concat(buttons).ToArray();
+        progress.Report(0.9, "Auto-authoring trays/emitters...");
         var autoAuthored = _trayAutoAuthoringService.AutoAuthor(new FaceDocumentModel { GenerationSettings = settings, MaskLayer = maskLayer, Elements = elements }, projectDirectory);
         var document = new FaceDocumentModel
         {
@@ -174,6 +186,7 @@ internal sealed class FaceGenerationService
             Elements = elements
         };
 
+        progress.Report(1.0, "Face generation complete.");
         return new FaceGenerationResult(document, lampWindows.Length, artworkElements.Length, buttons.Length, sevenSegmentDisplays.Length, alphaDisplays.Length, reelDisplays.Length);
     }
 

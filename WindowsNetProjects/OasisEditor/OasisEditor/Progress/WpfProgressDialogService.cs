@@ -73,7 +73,14 @@ public sealed class WpfProgressDialogService : IProgressDialogService
         var reporter = new EditorProgressReporter(currentState, state =>
         {
             currentState = state;
-            _dispatcher.BeginInvoke(() => viewModel.UpdateState(state), DispatcherPriority.Normal);
+            if (_dispatcher.CheckAccess())
+            {
+                viewModel.UpdateState(state);
+            }
+            else
+            {
+                _dispatcher.BeginInvoke(() => viewModel.UpdateState(state), DispatcherPriority.Normal);
+            }
         });
 
         var owner = ResolveOwnerWindow();
@@ -81,10 +88,11 @@ public sealed class WpfProgressDialogService : IProgressDialogService
         var dialog = new EditorProgressDialogWindow(viewModel);
         if (owner is not null)
         {
-            // Keep the progress window owned so it stays above the shell, but do not disable the owner.
-            // Current first-pass integrations still perform WPF-bound document mutations while progress is shown.
             dialog.Owner = owner;
         }
+
+        TResult? result = default;
+        Exception? operationException = null;
 
         dialog.Closing += (_, eventArgs) =>
         {
@@ -94,27 +102,35 @@ public sealed class WpfProgressDialogService : IProgressDialogService
             }
         };
 
-        try
+        dialog.Loaded += async (_, _) =>
         {
-            dialog.Show();
-            await _dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-            return await operation(reporter, linkedCancellation.Token).ConfigureAwait(true);
-        }
-        catch (Exception exception)
-        {
-            viewModel.UpdateState(currentState.WithError(exception.Message));
-            throw;
-        }
-        finally
-        {
-            allowClose = true;
-            if (dialog.IsVisible)
+            try
             {
+                await _dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+                result = await operation(reporter, linkedCancellation.Token).ConfigureAwait(true);
+            }
+            catch (Exception exception)
+            {
+                operationException = exception;
+                viewModel.UpdateState(currentState.WithError(exception.Message));
+            }
+            finally
+            {
+                allowClose = true;
                 dialog.Close();
             }
+        };
 
-            owner?.Activate();
+        dialog.ShowDialog();
+        owner?.Activate();
+
+        if (operationException is not null)
+        {
+            throw operationException;
         }
+
+        await Task.CompletedTask;
+        return result!;
     }
 
     private Window? ResolveOwnerWindow()

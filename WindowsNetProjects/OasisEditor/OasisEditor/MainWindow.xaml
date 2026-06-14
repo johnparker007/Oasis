@@ -294,6 +294,42 @@
                                Foreground="{Binding StatusMessageBrush}" />
                 </StackPanel>
             </StatusBarItem>
+            <StatusBarItem>
+                <StackPanel Orientation="Horizontal">
+                    <ProgressBar Width="160"
+                                 Height="12"
+                                 Minimum="0"
+                                 Maximum="100"
+                                 Value="{Binding EditorProgressPercent, Mode=OneWay}"
+                                 IsIndeterminate="{Binding IsEditorProgressIndeterminate, Mode=OneWay}">
+                        <ProgressBar.Style>
+                            <Style TargetType="{x:Type ProgressBar}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsEditorProgressVisible}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ProgressBar.Style>
+                    </ProgressBar>
+                    <TextBlock Margin="8,0,0,0"
+                               VerticalAlignment="Center"
+                               Text="{Binding EditorProgressMessage}"
+                               Foreground="{DynamicResource TextSecondaryBrush}">
+                        <TextBlock.Style>
+                            <Style TargetType="{x:Type TextBlock}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsEditorProgressVisible}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+            </StatusBarItem>
         </StatusBar>
     </Grid>
 </Window>

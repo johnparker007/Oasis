@@ -878,4 +878,36 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         using var stream = File.Open(path, FileMode.Create, FileAccess.Write, FileShare.None);
         data.SaveTo(stream);
     }
+
+    [Fact]
+    public void Export_ReportsCoarseProgressStagesWithoutChangingRuntimeAssetReferences()
+    {
+        var artworkPath = Path.Combine(_assetsDirectory, "progress-artwork.png");
+        var maskPath = Path.Combine(_generatedDirectory, "progress-mask.png");
+        WriteSolidPng(artworkPath, 4, 4, new SKColor(0, 0, 255, 128));
+        WriteSolidPng(maskPath, 4, 4, SKColors.White);
+        var document = CreateDocument("Assets/progress-artwork.png", "Generated/progress-mask.png");
+        var project = CreateProject();
+        var service = new FaceRuntimeExportService();
+        var baseline = service.Export(document, project);
+        var progress = new RecordingEditorProgressReporter();
+
+        var result = service.Export(document, project, progress);
+
+        Assert.Equal(baseline.Document.RuntimeRenderAssets!.ManifestPath, result.Document.RuntimeRenderAssets!.ManifestPath);
+        Assert.Equal(baseline.Document.RuntimeRenderAssets.ArtworkPath, result.Document.RuntimeRenderAssets.ArtworkPath);
+        Assert.Equal(baseline.Document.RuntimeRenderAssets.MaskPath, result.Document.RuntimeRenderAssets.MaskPath);
+        Assert.Equal(baseline.Document.RuntimeRenderAssets.TrayIdPath, result.Document.RuntimeRenderAssets.TrayIdPath);
+        Assert.Equal(baseline.Document.RuntimeRenderAssets.LampIds0Path, result.Document.RuntimeRenderAssets.LampIds0Path);
+        Assert.Equal(baseline.Document.RuntimeRenderAssets.LampWeights0Path, result.Document.RuntimeRenderAssets.LampWeights0Path);
+        Assert.Contains(progress.Reports, report => report.Message.Contains("Resolving dimensions/output directory", StringComparison.Ordinal));
+        Assert.Contains(progress.Reports, report => report.Message.Contains("Exporting artwork", StringComparison.Ordinal));
+        Assert.Contains(progress.Reports, report => report.Message.Contains("Copying mask", StringComparison.Ordinal));
+        Assert.Contains(progress.Reports, report => report.Message.Contains("Creating runtime texture plan", StringComparison.Ordinal));
+        Assert.Contains(progress.Reports, report => report.Message.Contains("Generating texture files", StringComparison.Ordinal));
+        Assert.Contains(progress.Reports, report => report.Message.Contains("Writing manifest", StringComparison.Ordinal));
+        Assert.Contains(progress.Reports, report => report.Message.Contains("Updating runtime asset references", StringComparison.Ordinal));
+        Assert.All(progress.Reports.Where(report => report.Value.HasValue), report => Assert.InRange(report.Value!.Value, 0d, 1d));
+    }
+
 }
