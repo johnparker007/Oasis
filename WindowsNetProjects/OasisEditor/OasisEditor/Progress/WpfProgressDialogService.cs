@@ -77,13 +77,13 @@ public sealed class WpfProgressDialogService : IProgressDialogService
         });
 
         var owner = ResolveOwnerWindow();
-        var ownerWasEnabled = owner?.IsEnabled ?? true;
         var allowClose = false;
         var dialog = new EditorProgressDialogWindow(viewModel);
         if (owner is not null)
         {
+            // Keep the progress window owned so it stays above the shell, but do not disable the owner.
+            // Current first-pass integrations still perform WPF-bound document mutations while progress is shown.
             dialog.Owner = owner;
-            owner.IsEnabled = false;
         }
 
         dialog.Closing += (_, eventArgs) =>
@@ -113,11 +113,7 @@ public sealed class WpfProgressDialogService : IProgressDialogService
                 dialog.Close();
             }
 
-            if (owner is not null)
-            {
-                owner.IsEnabled = ownerWasEnabled;
-                owner.Activate();
-            }
+            owner?.Activate();
         }
     }
 
