@@ -1590,7 +1590,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         return _documentWorkspace.CanSaveSelectedDocument();
     }
 
-    private void SaveSelectedDocument()
+    private async void SaveSelectedDocument()
     {
         if (SelectedDocument is null)
         {
@@ -1606,7 +1606,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         try
         {
-            var updatedDocument = _documentSaveService.SaveDocument(current, savePath, LoadedProject);
+            var documentTitle = current.Title;
+            var updatedDocument = await _progressDialogService.RunAsync(
+                new EditorProgressRequest($"Saving {documentTitle}", "Saving document...", EditorProgressMode.Determinate, ShowDelay: TimeSpan.Zero),
+                (progress, _) => Task.Run(() => _documentSaveService.SaveDocument(current, savePath, LoadedProject, progress)));
             _documentWorkspace.ReplaceDocument(current, updatedDocument);
             StatusMessage = $"Saved document: {updatedDocument.Title}";
             AddOutputEntry($"Saved document to {savePath}", OutputLogStatus.Info);
