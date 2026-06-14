@@ -1319,7 +1319,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         _isMfmeImportInProgress = true;
-        NotifyCommandCanExecuteChanged();
+        NotifyDocumentCommands();
         BeginEditorProgress("Importing MFME extract...", 0.05);
 
         try
@@ -1416,7 +1416,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             _isMfmeImportInProgress = false;
             EndEditorProgress();
-            NotifyCommandCanExecuteChanged();
+            NotifyDocumentCommands();
         }
     }
 
