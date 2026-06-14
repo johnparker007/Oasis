@@ -11,6 +11,7 @@ using SkiaSharp;
 using SkiaSharp.Views.Desktop;
 using SkiaSharp.Views.WPF;
 using OasisEditor.Rendering;
+using OasisEditor.Progress;
 
 namespace OasisEditor.Views;
 
@@ -31,6 +32,11 @@ public partial class PlayView : UserControl
     private double _reelDragStartTemporaryOffset;
     private bool _isRenderQueued;
     private bool _isRenderDirty;
+    private int _selectionRefreshVersion;
+    private Guid? _preparedFaceDocumentId;
+    private string? _preparedFaceDocumentJson;
+    private Guid? _preparingFaceDocumentId;
+    private string? _preparingFaceDocumentJson;
     private readonly Stopwatch _renderStopwatch = Stopwatch.StartNew();
     private readonly DispatcherTimer _renderThrottleTimer;
     private const double TargetFrameMillis = 16.0;
@@ -102,9 +108,88 @@ public partial class PlayView : UserControl
         }
 
         EmptyStateText.Visibility = Visibility.Collapsed;
+
+        if (selected.Document.DocumentType == EditorDocumentType.Face)
+        {
+            _ = PrepareFacePlayViewAsync(selected, ++_selectionRefreshVersion);
+            return;
+        }
+
+        _selectionRefreshVersion++;
         RequestRender();
     }
 
+    private async Task PrepareFacePlayViewAsync(DocumentTabViewModel selected, int refreshVersion)
+    {
+        if (ViewModel is not { } viewModel)
+        {
+            return;
+        }
+
+        if (_preparedFaceDocumentId == selected.DocumentId
+            && string.Equals(_preparedFaceDocumentJson, selected.FaceDocumentJson, StringComparison.Ordinal))
+        {
+            RequestRender();
+            return;
+        }
+
+        if (_preparingFaceDocumentId == selected.DocumentId
+            && string.Equals(_preparingFaceDocumentJson, selected.FaceDocumentJson, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _preparingFaceDocumentId = selected.DocumentId;
+        _preparingFaceDocumentJson = selected.FaceDocumentJson;
+        try
+        {
+            await viewModel.RunEditorProgressAsync(
+                new EditorProgressRequest("Opening Face Play View", "Preparing Face Play View...", EditorProgressMode.Indeterminate),
+                (progress, token) =>
+                {
+                    token.ThrowIfCancellationRequested();
+                    progress.ReportIndeterminate("Loading Face render assets...");
+                    WarmFacePlayViewRenderCache(selected);
+                    progress.ReportIndeterminate("Finalizing Face Play View...");
+                    return Task.CompletedTask;
+                });
+
+            _preparedFaceDocumentId = selected.DocumentId;
+            _preparedFaceDocumentJson = selected.FaceDocumentJson;
+        }
+        catch (Exception ex)
+        {
+            viewModel.ReportEditorOperationError($"Open Face Play View failed: {ex.Message}", OutputLogStatus.Error);
+            EmptyStateText.Text = ex.Message;
+            EmptyStateText.Visibility = Visibility.Visible;
+            return;
+        }
+        finally
+        {
+            _preparingFaceDocumentId = null;
+            _preparingFaceDocumentJson = null;
+        }
+
+        if (refreshVersion == _selectionRefreshVersion)
+        {
+            RequestRender();
+        }
+    }
+
+    private void WarmFacePlayViewRenderCache(DocumentTabViewModel selected)
+    {
+        using var surface = SKSurface.Create(new SKImageInfo(1, 1));
+        if (surface is null)
+        {
+            return;
+        }
+
+        _faceRenderer.Render(
+            surface.Canvas,
+            selected.GetFaceDocument(),
+            selected.RuntimeState,
+            new PanelViewportTransform(_skiaZoom, _skiaPan.X, _skiaPan.Y));
+    }
 
     private void OnPlaySkiaSurfacePaintSurface(object? sender, SKPaintSurfaceEventArgs eventArgs)
     {

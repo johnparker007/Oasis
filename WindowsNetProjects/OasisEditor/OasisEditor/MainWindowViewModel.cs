@@ -97,6 +97,20 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public event Action<EditorToolWindowId>? ToolWindowOpenRequested;
     public event Action<EditorToolWindowId>? ToolWindowCloseRequested;
 
+    public Task RunEditorProgressAsync(
+        EditorProgressRequest request,
+        Func<IEditorProgressReporter, CancellationToken, Task> operation,
+        CancellationToken cancellationToken = default)
+    {
+        return _progressDialogService.RunAsync(request, operation, cancellationToken);
+    }
+
+    public void ReportEditorOperationError(string message, OutputLogStatus status)
+    {
+        StatusMessage = message;
+        AddOutputEntry(message, status);
+    }
+
     public MainWindowViewModel(
         IApplicationThemeService applicationThemeService,
         EditorPreferencesStore preferencesStore,
