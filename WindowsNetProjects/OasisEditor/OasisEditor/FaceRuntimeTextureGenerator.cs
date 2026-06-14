@@ -550,7 +550,7 @@ public sealed class LampInfluenceTextureGenerator
             }
 
             var bounds = RasterBounds.FromElement(tray, width, height);
-            var influences = CreateInfluences(tray, trayEmitters);
+            var influences = CreateInfluences(trayEmitters);
             for (var y = bounds.Top; y < bounds.Bottom; y++)
             {
                 for (var x = bounds.Left; x < bounds.Right; x++)
@@ -575,24 +575,35 @@ public sealed class LampInfluenceTextureGenerator
         WritePng(debugBitmap, lampWeightsDebugPath, "lamp weight debug texture");
     }
 
-    private static IReadOnlyList<LampInfluence> CreateInfluences(FaceRuntimeTrayElement tray, IReadOnlyList<FaceLampEmitterElement> emitters)
+    private static IReadOnlyList<LampInfluence> CreateInfluences(IReadOnlyList<FaceLampEmitterElement> emitters)
     {
-        var fallbackRadius = ResolveFallbackRadius(tray, emitters);
         return emitters
             .OrderBy(emitter => emitter.ObjectId, StringComparer.Ordinal)
-            .Select((emitter, index) =>
-            {
-                var radius = emitter.Radius is double emitterRadius && emitterRadius > 0d && IsFinite(emitterRadius)
-                    ? emitterRadius
-                    : fallbackRadius;
-                return new LampInfluence(
-                    (byte)emitter.LampId!.Value,
-                    emitter.CenterX,
-                    emitter.CenterY,
-                    Math.Max(MinimumRadius, radius),
-                    index);
-            })
+            .Select((emitter, index) => CreateRawInfluence(emitter, index))
             .ToArray();
+    }
+
+    private static LampInfluence CreateRawInfluence(FaceLampEmitterElement emitter, int order)
+    {
+        var fallbackRadius = Math.Max(MinimumRadius, Math.Max(emitter.Width, emitter.Height) * 0.65d);
+        var radius = emitter.Radius is double emitterRadius && emitterRadius > 0d && IsFinite(emitterRadius)
+            ? emitterRadius
+            : fallbackRadius;
+        return new LampInfluence(
+            (byte)emitter.LampId!.Value,
+            emitter.CenterX,
+            emitter.CenterY,
+            Math.Max(MinimumRadius, radius),
+            order);
+    }
+
+    private static double CalculateRawWeight(LampInfluence influence, double pixelX, double pixelY)
+    {
+        var dx = pixelX - influence.CenterX;
+        var dy = pixelY - influence.CenterY;
+        var distance = Math.Sqrt((dx * dx) + (dy * dy));
+        var normalizedDistance = Math.Clamp(distance / influence.Radius, 0d, 1d);
+        return Math.Pow(1d - normalizedDistance, 2d);
     }
 
     private static (byte[] IdChannels, byte[] WeightChannels) CreateEmitterChannels(IReadOnlyList<LampInfluence> influences, double pixelX, double pixelY)
@@ -602,78 +613,27 @@ public sealed class LampInfluenceTextureGenerator
         var retained = influences
             .Select(influence =>
             {
-                var dx = pixelX - influence.CenterX;
-                var dy = pixelY - influence.CenterY;
-                var distance = Math.Sqrt((dx * dx) + (dy * dy));
-                var normalizedDistance = Math.Clamp(distance / influence.Radius, 0d, 1d);
-                var rawWeight = Math.Pow(1d - normalizedDistance, 2d);
+                var rawWeight = CalculateRawWeight(influence, pixelX, pixelY);
                 return new WeightedLampInfluence(influence, rawWeight);
             })
             .OrderBy(influence => influence.Influence.Order)
             .Take(SupportedChannelCount)
             .ToArray();
 
-        var rawByteWeights = retained
-            .Select(influence => Math.Clamp(influence.RawWeight * 255d, 0d, 255d))
-            .ToArray();
-        var totalByteWeight = rawByteWeights.Sum();
-        if (totalByteWeight <= 0d || !IsFinite(totalByteWeight))
-        {
-            return (idChannels, weightChannels);
-        }
-
-        var scale = totalByteWeight > 255d ? 255d / totalByteWeight : 1d;
         for (var channel = 0; channel < retained.Length; channel++)
         {
             idChannels[channel] = retained[channel].Influence.LampId;
-            weightChannels[channel] = (byte)Math.Clamp(Math.Round(rawByteWeights[channel] * scale, MidpointRounding.AwayFromZero), 0d, 255d);
+            weightChannels[channel] = ToWeightByte(retained[channel].RawWeight);
         }
 
-        ClampTotalWeight(weightChannels);
         return (idChannels, weightChannels);
     }
 
-    private static void ClampTotalWeight(byte[] weightChannels)
+    private static byte ToWeightByte(double rawWeight)
     {
-        var overflow = weightChannels.Sum(weight => weight) - 255;
-        for (var channel = weightChannels.Length - 1; channel >= 0 && overflow > 0; channel--)
-        {
-            var reduction = Math.Min(weightChannels[channel], overflow);
-            weightChannels[channel] -= (byte)reduction;
-            overflow -= reduction;
-        }
-    }
-
-    private static double ResolveFallbackRadius(FaceRuntimeTrayElement tray, IReadOnlyList<FaceLampEmitterElement> emitters)
-    {
-        var trayDiameter = Math.Max(tray.Width, tray.Height);
-        if (emitters.Count < 2)
-        {
-            // Single-emitter trays still use physical distance falloff. When no authored
-            // radius exists, use a deterministic tray-relative radius that lights most
-            // of the tray while preserving visible edge falloff in lampWeights_debug.png.
-            return Math.Max(1d, trayDiameter * 0.65d);
-        }
-
-        var trayRadius = Math.Max(1d, trayDiameter / Math.Max(1d, emitters.Count));
-        var nearestSpacing = double.PositiveInfinity;
-        for (var left = 0; left < emitters.Count; left++)
-        {
-            for (var right = left + 1; right < emitters.Count; right++)
-            {
-                var dx = emitters[left].CenterX - emitters[right].CenterX;
-                var dy = emitters[left].CenterY - emitters[right].CenterY;
-                var spacing = Math.Sqrt((dx * dx) + (dy * dy));
-                if (spacing > 0d && spacing < nearestSpacing)
-                {
-                    nearestSpacing = spacing;
-                }
-            }
-        }
-
-        return IsFinite(nearestSpacing)
-            ? Math.Max(1d, Math.Min(trayRadius, nearestSpacing))
-            : trayRadius;
+        return IsFinite(rawWeight)
+            ? (byte)Math.Clamp(Math.Round(rawWeight * 255d, MidpointRounding.AwayFromZero), 0d, 255d)
+            : (byte)0;
     }
 
     private static bool IsFinite(double value)
