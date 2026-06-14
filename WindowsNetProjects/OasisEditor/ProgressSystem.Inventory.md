@@ -125,3 +125,10 @@ public interface IEditorProgressScope : IAsyncDisposable
 - Face UI modal integration is intentionally deferred because the previous direct WPF modal wiring around Face generation/regeneration caused a fatal `PresentationFramework` `InvalidOperationException` after confirming the Face Generation dialog.
 - The safe current step is limited to UI-independent, service-level progress hooks for Face generation, regeneration, and runtime export. These hooks must not reference WPF dialog/service types and must not change `MainWindowViewModel` behavior.
 - Later UI integration should first split background-safe model/export work from UI-thread document/tab/view-model mutation, then connect a modal progress surface only around the safe portions of the workflow.
+
+## Status-bar progress integration note
+
+- The first visible progress integration uses the main shell status bar rather than the WPF modal progress dialog for workflows that can safely report UI progress without blocking document mutation behind a modal.
+- MFME extract import now shows status-bar progress while the extract/import service runs off the UI thread, then applies document/project mutations back on the UI thread.
+- Play View opening shows a short indeterminate status-bar progress indicator while the pane is requested. First-render/cache progress remains a later task because renderer preparation does not yet expose safe progress hooks.
+- Face generation/regeneration modal progress remains deferred; those workflows should not be wrapped in the modal progress service until model/export work is split from UI-thread document and tab mutation.

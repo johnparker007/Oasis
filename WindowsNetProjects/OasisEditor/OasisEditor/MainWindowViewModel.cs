@@ -55,6 +55,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private bool _automaticallyDownloadMissingRoms = true;
     private string _mameRomStatus = "Unknown";
     private bool _isMameRomDownloadInProgress;
+    private bool _isMfmeImportInProgress;
+    private bool _isEditorProgressVisible;
+    private bool _isEditorProgressIndeterminate;
+    private double _editorProgressPercent;
+    private string _editorProgressMessage = string.Empty;
     private readonly AssetBrowserViewModel _assetBrowser;
     private readonly OutputLogViewModel _outputLog;
     private readonly InspectorViewModel _inspector;
@@ -708,6 +713,31 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public string MameSetupPhaseDisplay => _mameSetupState.Phase.ToString();
     public string MameSetupLatestKnownVersion => _mameSetupState.LatestKnownVersion;
     public bool IsMameSetupInProgress => _mameSetupState.IsInProgress;
+
+    public bool IsEditorProgressVisible
+    {
+        get => _isEditorProgressVisible;
+        private set => SetProperty(ref _isEditorProgressVisible, value);
+    }
+
+    public bool IsEditorProgressIndeterminate
+    {
+        get => _isEditorProgressIndeterminate;
+        private set => SetProperty(ref _isEditorProgressIndeterminate, value);
+    }
+
+    public double EditorProgressPercent
+    {
+        get => _editorProgressPercent;
+        private set => SetProperty(ref _editorProgressPercent, value);
+    }
+
+    public string EditorProgressMessage
+    {
+        get => _editorProgressMessage;
+        private set => SetProperty(ref _editorProgressMessage, value);
+    }
+
     public string SelectedPreferencesCategory
     {
         get => _selectedPreferencesCategory;
@@ -1246,10 +1276,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private bool CanImportMfmeExtract()
     {
         return LoadedProject is not null
+               && !_isMfmeImportInProgress
                && SelectedDocument?.Document.DocumentType == EditorDocumentType.Panel2D;
     }
 
-    private void ImportMfmeExtract()
+    private async void ImportMfmeExtract()
     {
         if (LoadedProject is null)
         {
@@ -1280,75 +1311,113 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        var result = _mfmeImportService.ImportFromExtract(
-            dialog.FileName,
-            LoadedProject.ProjectDirectory,
-            LoadedProject.AssetsDirectory,
-            copyAssets: true);
-        foreach (var warning in result.Warnings)
-        {
-            AddOutputEntry($"MFME import warning ({warning.Code}): {warning.Message}", OutputLogStatus.Warning);
-        }
-
-        if (!result.Succeeded)
-        {
-            foreach (var error in result.Errors)
-            {
-                AddOutputEntry($"MFME import failed: {error}", OutputLogStatus.Error);
-            }
-
-            MessageBox.Show(
-                "MFME import failed. See Output for details.",
-                "Import MFME Extract",
-                MessageBoxButton.OK,
-                MessageBoxImage.Warning);
-            return;
-        }
-
         var activeDocument = SelectedDocument;
-        if (activeDocument is null)
+        var loadedProject = LoadedProject;
+        if (activeDocument is null || loadedProject is null)
         {
             return;
         }
 
-        if (LoadedProject is not null && result.InputDefinitions.Count > 0)
+        _isMfmeImportInProgress = true;
+        NotifyCommandCanExecuteChanged();
+        BeginEditorProgress("Importing MFME extract...", 0.05);
+
+        try
         {
-            LoadedProject.InputDefinitions.Clear();
-            foreach (var inputDefinition in result.InputDefinitions)
+            await YieldForProgressRenderAsync();
+            var manifestPath = dialog.FileName;
+            var projectDirectory = loadedProject.ProjectDirectory;
+            var assetsDirectory = loadedProject.AssetsDirectory;
+
+            ReportEditorProgress("Reading extract and copying assets...", 0.15);
+            var result = await Task.Run(() => _mfmeImportService.ImportFromExtract(
+                manifestPath,
+                projectDirectory,
+                assetsDirectory,
+                copyAssets: true));
+
+            ReportEditorProgress("Processing import diagnostics...", 0.6);
+            foreach (var warning in result.Warnings)
             {
-                LoadedProject.InputDefinitions.Add(inputDefinition);
+                AddOutputEntry($"MFME import warning ({warning.Code}): {warning.Message}", OutputLogStatus.Warning);
             }
 
-            SaveLoadedProjectMetadata();
-            OnPropertyChanged(nameof(InputDefinitions));
-            RefreshInputMapDiagnostics();
-            AddOutputEntry($"MFME import created {result.InputDefinitions.Count} input definitions.", OutputLogStatus.Info);
-        }
+            if (!result.Succeeded)
+            {
+                foreach (var error in result.Errors)
+                {
+                    AddOutputEntry($"MFME import failed: {error}", OutputLogStatus.Error);
+                }
 
-        var importCommand = new ImportMfmeExtractCommand(
-            activeDocument.DocumentId,
-            activeDocument,
-            result.ImportedElements);
-        var inserted = _documentWorkspace.ExecuteDocumentCanvasCommand(activeDocument.DocumentId, importCommand);
-        if (!inserted)
+                MessageBox.Show(
+                    "MFME import failed. See Output for details.",
+                    "Import MFME Extract",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            if (!OpenDocuments.Contains(activeDocument))
+            {
+                AddOutputEntry("MFME import completed but the target document is no longer open.", OutputLogStatus.Warning);
+                return;
+            }
+
+            ReportEditorProgress("Updating project input definitions...", 0.7);
+            if (LoadedProject is not null && ReferenceEquals(LoadedProject, loadedProject) && result.InputDefinitions.Count > 0)
+            {
+                LoadedProject.InputDefinitions.Clear();
+                foreach (var inputDefinition in result.InputDefinitions)
+                {
+                    LoadedProject.InputDefinitions.Add(inputDefinition);
+                }
+
+                SaveLoadedProjectMetadata();
+                OnPropertyChanged(nameof(InputDefinitions));
+                RefreshInputMapDiagnostics();
+                AddOutputEntry($"MFME import created {result.InputDefinitions.Count} input definitions.", OutputLogStatus.Info);
+            }
+
+            ReportEditorProgress("Inserting imported elements...", 0.8);
+            var importCommand = new ImportMfmeExtractCommand(
+                activeDocument.DocumentId,
+                activeDocument,
+                result.ImportedElements);
+            var inserted = _documentWorkspace.ExecuteDocumentCanvasCommand(activeDocument.DocumentId, importCommand);
+            if (!inserted)
+            {
+                AddOutputEntry("MFME import completed but no elements were inserted.", OutputLogStatus.Warning);
+                return;
+            }
+
+            ReportEditorProgress("Refreshing assets and editor panels...", 0.9);
+            _assetBrowser.RefreshAssetBrowser();
+            RefreshHierarchy();
+            NotifyInspectorChanged();
+
+            var grouped = result.ImportedElements
+                .GroupBy(element => element.Kind)
+                .OrderBy(group => group.Key.ToString(), StringComparer.Ordinal)
+                .Select(group => $"{group.Key}: {group.Count()}");
+
+            ReportEditorProgress("MFME import complete.", 1.0);
+            AddOutputEntry($"MFME import completed. Imported {result.ImportedElements.Count} elements.", OutputLogStatus.Info);
+            AddOutputEntry($"MFME import kinds -> {string.Join(", ", grouped)}", OutputLogStatus.Info);
+            AddOutputEntry($"MFME import skipped {result.SkippedLegacyComponentTypes.Count} unsupported components.", OutputLogStatus.Info);
+            AddOutputEntry($"MFME import copied {result.CopiedAssetRelativePaths.Count} assets.", OutputLogStatus.Info);
+        }
+        catch (Exception ex)
         {
-            AddOutputEntry("MFME import completed but no elements were inserted.", OutputLogStatus.Warning);
-            return;
+            StatusMessage = ex.Message;
+            AddOutputEntry($"MFME import failed: {ex.Message}", OutputLogStatus.Error);
+            MessageBox.Show(ex.Message, "Import MFME Extract Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
-
-        _assetBrowser.RefreshAssetBrowser();
-        RefreshHierarchy();
-        NotifyInspectorChanged();
-
-        var grouped = result.ImportedElements
-            .GroupBy(element => element.Kind)
-            .OrderBy(group => group.Key.ToString(), StringComparer.Ordinal)
-            .Select(group => $"{group.Key}: {group.Count()}");
-
-        AddOutputEntry($"MFME import completed. Imported {result.ImportedElements.Count} elements.", OutputLogStatus.Info);
-        AddOutputEntry($"MFME import kinds -> {string.Join(", ", grouped)}", OutputLogStatus.Info);
-        AddOutputEntry($"MFME import skipped {result.SkippedLegacyComponentTypes.Count} unsupported components.", OutputLogStatus.Info);
-        AddOutputEntry($"MFME import copied {result.CopiedAssetRelativePaths.Count} assets.", OutputLogStatus.Info);
+        finally
+        {
+            _isMfmeImportInProgress = false;
+            EndEditorProgress();
+            NotifyCommandCanExecuteChanged();
+        }
     }
 
     private void OpenAssetDocument(AssetBrowserItemViewModel? asset)
@@ -2074,10 +2143,20 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         AddOutputEntry("Opened Input Map pane.", OutputLogStatus.Info);
     }
 
-    private void OpenPlayView()
+    private async void OpenPlayView()
     {
-        ToolWindowOpenRequested?.Invoke(EditorToolWindowId.PlayView);
-        AddOutputEntry("Opened Play View pane.", OutputLogStatus.Info);
+        BeginEditorProgress("Opening Play View...", indeterminate: true);
+        try
+        {
+            await YieldForProgressRenderAsync();
+            ToolWindowOpenRequested?.Invoke(EditorToolWindowId.PlayView);
+            await YieldForProgressRenderAsync();
+            AddOutputEntry("Opened Play View pane.", OutputLogStatus.Info);
+        }
+        finally
+        {
+            EndEditorProgress();
+        }
     }
 
     private void OpenDebuggerControl()
@@ -3567,6 +3646,42 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         field = value;
         OnPropertyChanged(propertyName);
         return true;
+    }
+
+    private void BeginEditorProgress(string message, double progress = 0d, bool indeterminate = false)
+    {
+        EditorProgressMessage = message;
+        EditorProgressPercent = Math.Clamp(progress, 0d, 1d) * 100d;
+        IsEditorProgressIndeterminate = indeterminate;
+        IsEditorProgressVisible = true;
+    }
+
+    private void ReportEditorProgress(string message, double progress)
+    {
+        EditorProgressMessage = message;
+        EditorProgressPercent = Math.Clamp(progress, 0d, 1d) * 100d;
+        IsEditorProgressIndeterminate = false;
+        IsEditorProgressVisible = true;
+    }
+
+    private void EndEditorProgress()
+    {
+        IsEditorProgressVisible = false;
+        IsEditorProgressIndeterminate = false;
+        EditorProgressPercent = 0d;
+        EditorProgressMessage = string.Empty;
+    }
+
+    private static async Task YieldForProgressRenderAsync()
+    {
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is null)
+        {
+            await Task.Yield();
+            return;
+        }
+
+        await dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.Render);
     }
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
