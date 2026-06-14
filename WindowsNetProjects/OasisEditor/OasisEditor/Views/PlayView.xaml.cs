@@ -36,7 +36,6 @@ public partial class PlayView : UserControl
     private Guid? _preparedFaceDocumentId;
     private string? _preparedFaceDocumentJson;
     private Guid? _preparingFaceDocumentId;
-    private string? _preparingFaceDocumentJson;
     private readonly Stopwatch _renderStopwatch = Stopwatch.StartNew();
     private readonly DispatcherTimer _renderThrottleTimer;
     private const double TargetFrameMillis = 16.0;
@@ -119,6 +118,12 @@ public partial class PlayView : UserControl
         RequestRender();
     }
 
+    private bool IsFacePlayViewPrepared(DocumentTabViewModel selected)
+    {
+        return _preparedFaceDocumentId == selected.DocumentId
+            && string.Equals(_preparedFaceDocumentJson, selected.FaceDocumentJson, StringComparison.Ordinal);
+    }
+
     private async Task PrepareFacePlayViewAsync(DocumentTabViewModel selected, int refreshVersion)
     {
         if (ViewModel is not { } viewModel)
@@ -126,32 +131,36 @@ public partial class PlayView : UserControl
             return;
         }
 
-        if (_preparedFaceDocumentId == selected.DocumentId
-            && string.Equals(_preparedFaceDocumentJson, selected.FaceDocumentJson, StringComparison.Ordinal))
+        if (IsFacePlayViewPrepared(selected))
         {
             RequestRender();
             return;
         }
 
-        if (_preparingFaceDocumentId == selected.DocumentId
-            && string.Equals(_preparingFaceDocumentJson, selected.FaceDocumentJson, StringComparison.Ordinal))
+        if (_preparingFaceDocumentId == selected.DocumentId)
         {
             return;
         }
 
         _preparingFaceDocumentId = selected.DocumentId;
-        _preparingFaceDocumentJson = selected.FaceDocumentJson;
         try
         {
+            await WaitForActiveProgressOperationAsync(viewModel);
+            if (refreshVersion != _selectionRefreshVersion || !ReferenceEquals(ViewModel?.SelectedDocument, selected))
+            {
+                return;
+            }
+
             await viewModel.RunEditorProgressAsync(
-                new EditorProgressRequest("Opening Face Play View", "Preparing Face Play View...", EditorProgressMode.Indeterminate),
-                (progress, token) =>
+                new EditorProgressRequest("Opening Face Play View", "Preparing Face Play View...", EditorProgressMode.Indeterminate, ShowDelay: TimeSpan.Zero),
+                async (progress, token) =>
                 {
                     token.ThrowIfCancellationRequested();
                     progress.ReportIndeterminate("Loading Face render assets...");
+                    await Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
+                    token.ThrowIfCancellationRequested();
                     WarmFacePlayViewRenderCache(selected);
                     progress.ReportIndeterminate("Finalizing Face Play View...");
-                    return Task.CompletedTask;
                 });
 
             _preparedFaceDocumentId = selected.DocumentId;
@@ -167,12 +176,19 @@ public partial class PlayView : UserControl
         finally
         {
             _preparingFaceDocumentId = null;
-            _preparingFaceDocumentJson = null;
         }
 
         if (refreshVersion == _selectionRefreshVersion)
         {
             RequestRender();
+        }
+    }
+
+    private static async Task WaitForActiveProgressOperationAsync(MainWindowViewModel viewModel)
+    {
+        while (viewModel.IsEditorProgressOperationActive)
+        {
+            await Task.Delay(50);
         }
     }
 
@@ -209,6 +225,11 @@ public partial class PlayView : UserControl
         canvas.Scale((float)viewport.NormalizedZoom, (float)viewport.NormalizedZoom);
         if (selected.Document.DocumentType == EditorDocumentType.Face)
         {
+            if (!IsFacePlayViewPrepared(selected))
+            {
+                return;
+            }
+
             _faceRenderer.Render(canvas, selected.GetFaceDocument(), selected.RuntimeState, viewport);
         }
         else
@@ -783,7 +804,7 @@ public partial class PlayView : UserControl
             return;
         }
 
-        Dispatcher.Invoke(() => RequestRender());
+        Dispatcher.Invoke(RefreshCanvasFromSelection);
     }
 
     private void OnSelectedDocumentPropertyChanged(object? sender, PropertyChangedEventArgs e)

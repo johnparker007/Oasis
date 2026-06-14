@@ -97,6 +97,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public event Action<EditorToolWindowId>? ToolWindowOpenRequested;
     public event Action<EditorToolWindowId>? ToolWindowCloseRequested;
 
+    public bool IsEditorProgressOperationActive => _progressDialogService.IsOperationActive;
+
     public Task RunEditorProgressAsync(
         EditorProgressRequest request,
         Func<IEditorProgressReporter, CancellationToken, Task> operation,
