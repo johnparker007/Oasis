@@ -54,20 +54,29 @@ public sealed class FaceTexturePreviewRenderer : IFaceTexturePreviewRenderer, ID
                 return FaceTexturePreviewRenderResult.Fallback(fallbackReason);
             }
 
-            var lampLookup = BuildLampLookup(runtimeState);
-            var lampSignature = ComputeLampSignature(lampLookup);
-            var reusedComposition = cache.HasComposedFrame && lampSignature == cache.LampSignature;
+            BuildLampLookup(runtimeState, cache.LampLookup);
+            var dirtyPixelCount = ResolveDirtyPixels(cache);
+            var reusedComposition = cache.HasComposedFrame && dirtyPixelCount == 0;
             var composeMilliseconds = 0d;
             if (!reusedComposition)
             {
                 var composeStopwatch = Stopwatch.StartNew();
-                ComposeFrame(cache, lampLookup, lampSignature);
+                if (!cache.HasComposedFrame)
+                {
+                    ComposeFrame(cache);
+                    dirtyPixelCount = cache.PixelCount;
+                }
+                else
+                {
+                    ComposeDirtyPixels(cache);
+                }
+
                 composeStopwatch.Stop();
                 composeMilliseconds = composeStopwatch.Elapsed.TotalMilliseconds;
             }
 
             stopwatch.Stop();
-            _lastDiagnostics = new FaceTexturePreviewDiagnostics(true, cache.WasReusedForLastRequest, reusedComposition, null, loadMilliseconds, precomputeMilliseconds, composeMilliseconds, stopwatch.Elapsed.TotalMilliseconds);
+            _lastDiagnostics = new FaceTexturePreviewDiagnostics(true, cache.WasReusedForLastRequest, reusedComposition, null, loadMilliseconds, precomputeMilliseconds, composeMilliseconds, stopwatch.Elapsed.TotalMilliseconds, dirtyPixelCount);
             TraceDiagnostics(_lastDiagnostics);
             return FaceTexturePreviewRenderResult.FromCachedBitmap(cache.OutputBitmap);
         }
@@ -279,6 +288,7 @@ public sealed class FaceTexturePreviewRenderer : IFaceTexturePreviewRenderer, ID
         var maskValues = new byte[pixelCount];
         var lampIds = new byte[pixelCount * cacheKey.LampIds0ChannelCount];
         var lampWeights = new byte[pixelCount * cacheKey.LampIds0ChannelCount];
+        var lampPixelBuilders = new List<int>[256];
 
         for (var y = 0; y < textures.Height; y++)
         {
@@ -301,10 +311,12 @@ public sealed class FaceTexturePreviewRenderer : IFaceTexturePreviewRenderer, ID
                 var weights = textures.LampWeights0.GetPixel(x, y);
                 WriteChannels(lampIds, pixelIndex, cacheKey.LampIds0ChannelCount, ids);
                 WriteChannels(lampWeights, pixelIndex, cacheKey.LampIds0ChannelCount, weights);
+                AddLampPixelInfluences(lampPixelBuilders, pixelIndex, cacheKey.LampIds0ChannelCount, ids, weights);
             }
         }
 
-        cache = new FaceTexturePreviewRenderCache(cacheKey, textures.Width, textures.Height, ambientPixels, artworkRgb, maskValues, lampIds, lampWeights);
+        var lampPixelIndex = BuildLampPixelIndex(lampPixelBuilders);
+        cache = new FaceTexturePreviewRenderCache(cacheKey, textures.Width, textures.Height, ambientPixels, artworkRgb, maskValues, lampIds, lampWeights, lampPixelIndex);
         fallbackReason = string.Empty;
         return true;
     }
@@ -329,9 +341,44 @@ public sealed class FaceTexturePreviewRenderer : IFaceTexturePreviewRenderer, ID
         }
     }
 
-    private static double[] BuildLampLookup(MachineRuntimeState runtimeState)
+    private static void AddLampPixelInfluences(List<int>[] lampPixelBuilders, int pixelIndex, int channelCount, SKColor ids, SKColor weights)
     {
-        var lookup = new double[256];
+        Span<byte> idChannels = stackalloc byte[] { ids.Red, ids.Green, ids.Blue, ids.Alpha };
+        Span<byte> weightChannels = stackalloc byte[] { weights.Red, weights.Green, weights.Blue, weights.Alpha };
+        Span<byte> addedLampIds = stackalloc byte[4];
+        var addedCount = 0;
+        for (var channel = 0; channel < channelCount; channel++)
+        {
+            var lampId = idChannels[channel];
+            if (lampId == 0 || weightChannels[channel] == 0)
+            {
+                continue;
+            }
+
+            if (addedLampIds[..addedCount].Contains(lampId))
+            {
+                continue;
+            }
+
+            addedLampIds[addedCount++] = lampId;
+            (lampPixelBuilders[lampId] ??= []).Add(pixelIndex);
+        }
+    }
+
+    private static int[][] BuildLampPixelIndex(List<int>[] lampPixelBuilders)
+    {
+        var index = new int[256][];
+        for (var lampId = 0; lampId < index.Length; lampId++)
+        {
+            index[lampId] = lampPixelBuilders[lampId]?.ToArray() ?? [];
+        }
+
+        return index;
+    }
+
+    private static void BuildLampLookup(MachineRuntimeState runtimeState, double[] lookup)
+    {
+        Array.Clear(lookup, 0, lookup.Length);
         foreach (var entry in runtimeState.LampIntensityByMachineObjectId)
         {
             if (!MachineObjectReference.TryParse(entry.Key, out var reference)
@@ -346,25 +393,59 @@ public sealed class FaceTexturePreviewRenderer : IFaceTexturePreviewRenderer, ID
             lookup[lampId] = Math.Clamp(entry.Value, 0d, 1d);
         }
 
-        return lookup;
     }
 
-    private static long ComputeLampSignature(double[] lampLookup)
+    private static int ResolveDirtyPixels(FaceTexturePreviewRenderCache cache)
     {
-        const long fnvOffsetBasis = unchecked((long)1469598103934665603UL);
-        const long fnvPrime = 1099511628211L;
-        var hash = fnvOffsetBasis;
-        for (var lampId = 1; lampId < lampLookup.Length; lampId++)
+        cache.DirtyPixelCount = 0;
+        BeginDirtyMark(cache);
+        for (var lampId = 1; lampId < cache.LampLookup.Length; lampId++)
         {
-            var quantized = (byte)Math.Clamp(Math.Round(lampLookup[lampId] * 255d, MidpointRounding.AwayFromZero), 0d, 255d);
-            hash ^= ((long)lampId << 8) | quantized;
-            hash *= fnvPrime;
+            var quantized = (byte)Math.Clamp(Math.Round(cache.LampLookup[lampId] * 255d, MidpointRounding.AwayFromZero), 0d, 255d);
+            cache.CurrentQuantizedLampIntensities[lampId] = quantized;
+            if (cache.HasComposedFrame && quantized == cache.PreviousQuantizedLampIntensities[lampId])
+            {
+                continue;
+            }
+
+            MarkDirtyPixels(cache, cache.LampPixelIndex[lampId]);
         }
 
-        return hash;
+        return cache.HasComposedFrame ? cache.DirtyPixelCount : cache.PixelCount;
     }
 
-    private static unsafe void ComposeFrame(FaceTexturePreviewRenderCache cache, double[] lampLookup, long lampSignature)
+    private static void BeginDirtyMark(FaceTexturePreviewRenderCache cache)
+    {
+        if (cache.DirtyMark == int.MaxValue)
+        {
+            Array.Clear(cache.DirtyPixelMarks, 0, cache.DirtyPixelMarks.Length);
+            cache.DirtyMark = 0;
+        }
+
+        cache.DirtyMark++;
+    }
+
+    private static void MarkDirtyPixels(FaceTexturePreviewRenderCache cache, int[] pixelIndices)
+    {
+        if (pixelIndices.Length == 0)
+        {
+            return;
+        }
+
+        var mark = cache.DirtyMark;
+        foreach (var pixelIndex in pixelIndices)
+        {
+            if (cache.DirtyPixelMarks[pixelIndex] == mark)
+            {
+                continue;
+            }
+
+            cache.DirtyPixelMarks[pixelIndex] = mark;
+            cache.DirtyPixels[cache.DirtyPixelCount++] = pixelIndex;
+        }
+    }
+
+    private static unsafe void ComposeFrame(FaceTexturePreviewRenderCache cache)
     {
         var output = cache.OutputBitmap;
         var pixels = (byte*)output.GetPixels().ToPointer();
@@ -389,7 +470,7 @@ public sealed class FaceTexturePreviewRenderer : IFaceTexturePreviewRenderer, ID
                         continue;
                     }
 
-                    visibleLight += lampLookup[lampId] * (weight / 255d);
+                    visibleLight += cache.LampLookup[lampId] * (weight / 255d);
                 }
 
                 var light = (cache.MaskValues[pixelIndex] / 255d) * visibleLight * cache.Key.EmissionStrength;
@@ -411,8 +492,58 @@ public sealed class FaceTexturePreviewRenderer : IFaceTexturePreviewRenderer, ID
             }
         }
 
-        cache.LampSignature = lampSignature;
+        Array.Copy(cache.CurrentQuantizedLampIntensities, cache.PreviousQuantizedLampIntensities, cache.CurrentQuantizedLampIntensities.Length);
         cache.HasComposedFrame = true;
+    }
+
+    private static unsafe void ComposeDirtyPixels(FaceTexturePreviewRenderCache cache)
+    {
+        var output = cache.OutputBitmap;
+        var pixels = (byte*)output.GetPixels().ToPointer();
+        var rowBytes = output.RowBytes;
+        for (var i = 0; i < cache.DirtyPixelCount; i++)
+        {
+            ComposePixel(cache, pixels, rowBytes, cache.DirtyPixels[i]);
+        }
+
+        Array.Copy(cache.CurrentQuantizedLampIntensities, cache.PreviousQuantizedLampIntensities, cache.CurrentQuantizedLampIntensities.Length);
+    }
+
+    private static unsafe void ComposePixel(FaceTexturePreviewRenderCache cache, byte* pixels, int rowBytes, int pixelIndex)
+    {
+        var channelCount = cache.Key.LampIds0ChannelCount;
+        var rgbaIndex = pixelIndex * 4;
+        var rgbIndex = pixelIndex * 3;
+        var visibleLight = 0d;
+        var lampOffset = pixelIndex * channelCount;
+        for (var channel = 0; channel < channelCount; channel++)
+        {
+            var lampId = cache.LampIds[lampOffset + channel];
+            var weight = cache.LampWeights[lampOffset + channel];
+            if (lampId == 0 || weight == 0)
+            {
+                continue;
+            }
+
+            visibleLight += cache.LampLookup[lampId] * (weight / 255d);
+        }
+
+        var light = (cache.MaskValues[pixelIndex] / 255d) * visibleLight * cache.Key.EmissionStrength;
+        var target = pixels + ((pixelIndex / cache.Width) * rowBytes) + ((pixelIndex % cache.Width) * 4);
+        if (light <= 0.000001d)
+        {
+            target[0] = cache.AmbientPixels[rgbaIndex];
+            target[1] = cache.AmbientPixels[rgbaIndex + 1];
+            target[2] = cache.AmbientPixels[rgbaIndex + 2];
+            target[3] = cache.AmbientPixels[rgbaIndex + 3];
+            return;
+        }
+
+        var multiplier = cache.Key.AmbientStrength + light;
+        target[0] = ScaleChannel(cache.ArtworkRgb[rgbIndex], multiplier);
+        target[1] = ScaleChannel(cache.ArtworkRgb[rgbIndex + 1], multiplier);
+        target[2] = ScaleChannel(cache.ArtworkRgb[rgbIndex + 2], multiplier);
+        target[3] = cache.AmbientPixels[rgbaIndex + 3];
     }
 
     private static byte ResolveMaskByte(SKColor maskPixel, double maskStrength)
@@ -462,6 +593,7 @@ public sealed class FaceTexturePreviewRenderer : IFaceTexturePreviewRenderer, ID
             $"Face texture preview timings: textureCacheLoad={diagnostics.TextureCacheLoadMilliseconds:0.00} ms, "
             + $"precompute={diagnostics.PrecomputeMilliseconds:0.00} ms, "
             + $"compose={diagnostics.ComposeMilliseconds:0.00} ms, "
+            + $"dirtyPixels={diagnostics.DirtyPixelCount}, "
             + $"drawCachedImage=pending-canvas-draw, "
             + $"reusedTextures={diagnostics.ReusedTextureCache}, "
             + $"reusedComposition={diagnostics.ReusedComposition}");
@@ -512,7 +644,7 @@ public sealed class FaceTexturePreviewRenderer : IFaceTexturePreviewRenderer, ID
 
     private sealed class FaceTexturePreviewRenderCache : IDisposable
     {
-        public FaceTexturePreviewRenderCache(FaceTexturePreviewCacheKey key, int width, int height, byte[] ambientPixels, byte[] artworkRgb, byte[] maskValues, byte[] lampIds, byte[] lampWeights)
+        public FaceTexturePreviewRenderCache(FaceTexturePreviewCacheKey key, int width, int height, byte[] ambientPixels, byte[] artworkRgb, byte[] maskValues, byte[] lampIds, byte[] lampWeights, int[][] lampPixelIndex)
         {
             Key = key;
             Width = width;
@@ -522,6 +654,13 @@ public sealed class FaceTexturePreviewRenderer : IFaceTexturePreviewRenderer, ID
             MaskValues = maskValues;
             LampIds = lampIds;
             LampWeights = lampWeights;
+            LampPixelIndex = lampPixelIndex;
+            PixelCount = width * height;
+            LampLookup = new double[256];
+            CurrentQuantizedLampIntensities = new byte[256];
+            PreviousQuantizedLampIntensities = new byte[256];
+            DirtyPixelMarks = new int[PixelCount];
+            DirtyPixels = new int[PixelCount];
             OutputBitmap = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
         }
 
@@ -533,11 +672,18 @@ public sealed class FaceTexturePreviewRenderer : IFaceTexturePreviewRenderer, ID
         public byte[] MaskValues { get; }
         public byte[] LampIds { get; }
         public byte[] LampWeights { get; }
+        public int[][] LampPixelIndex { get; }
+        public int PixelCount { get; }
+        public double[] LampLookup { get; }
+        public byte[] CurrentQuantizedLampIntensities { get; }
+        public byte[] PreviousQuantizedLampIntensities { get; }
+        public int[] DirtyPixelMarks { get; }
+        public int[] DirtyPixels { get; }
+        public int DirtyPixelCount { get; set; }
+        public int DirtyMark { get; set; }
         public SKBitmap OutputBitmap { get; }
         public bool WasReusedForLastRequest { get; set; }
         public bool HasComposedFrame { get; set; }
-        public long LampSignature { get; set; }
-
         public void Dispose()
         {
             OutputBitmap.Dispose();
@@ -606,7 +752,8 @@ public readonly record struct FaceTexturePreviewDiagnostics(
     double TextureCacheLoadMilliseconds,
     double PrecomputeMilliseconds,
     double ComposeMilliseconds,
-    double TotalMilliseconds)
+    double TotalMilliseconds,
+    int DirtyPixelCount = 0)
 {
     public static FaceTexturePreviewDiagnostics Empty { get; } = new(false, false, false, null, 0d, 0d, 0d, 0d);
 }
