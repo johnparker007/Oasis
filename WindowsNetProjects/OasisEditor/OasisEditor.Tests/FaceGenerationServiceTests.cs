@@ -281,4 +281,41 @@ public sealed class FaceGenerationServiceTests
         Assert.Equal("alpha-no-number", element.LinkedPanel2DElementId);
     }
 
+    [Fact]
+    public void GenerateFromPanelRegion_ReportsCoarseProgressStagesWithoutChangingResult()
+    {
+        var panel = new Panel2DDocumentModel
+        {
+            Elements =
+            [
+                new PanelElementModel { ObjectId = "lamp-1", Name = "Lamp", Kind = PanelElementKind.Lamp, X = 10, Y = 10, Width = 20, Height = 20, DisplayNumber = 1, IsVisible = true },
+                new PanelElementModel { ObjectId = "reel-1", Name = "Reel", Kind = PanelElementKind.Reel, X = 40, Y = 10, Width = 20, Height = 20, DisplayNumber = 1, IsVisible = true },
+                new PanelElementModel { ObjectId = "seven-1", Name = "Seven", Kind = PanelElementKind.SevenSegment, X = 70, Y = 10, Width = 20, Height = 20, DisplayNumber = 1, IsVisible = true },
+                new PanelElementModel { ObjectId = "alpha-1", Name = "Alpha", Kind = PanelElementKind.Alpha, X = 10, Y = 40, Width = 20, Height = 20, DisplayNumber = 1, IsVisible = true }
+            ]
+        };
+        var service = new FaceGenerationService();
+        var region = FaceSourceRegionModel.FromRect(new Rect(0, 0, 120, 100));
+        var baseline = service.GenerateFromPanelRegion(panel, region, "Progress Face", "panel-doc");
+        var progress = new RecordingEditorProgressReporter();
+
+        var result = service.GenerateFromPanelRegion(panel, region, "Progress Face", "panel-doc", progress: progress);
+
+        Assert.Equal(baseline.ConvertedLampCount, result.ConvertedLampCount);
+        Assert.Equal(baseline.ConvertedReelDisplayCount, result.ConvertedReelDisplayCount);
+        Assert.Equal(baseline.ConvertedSevenSegmentDisplayCount, result.ConvertedSevenSegmentDisplayCount);
+        Assert.Equal(baseline.ConvertedAlphaDisplayCount, result.ConvertedAlphaDisplayCount);
+        Assert.Equal(baseline.Document.Elements.Select(element => element.GetType()), result.Document.Elements.Select(element => element.GetType()));
+        Assert.Contains(progress.Reports, report => report.Message.Contains("Validating source region", StringComparison.Ordinal));
+        Assert.Contains(progress.Reports, report => report.Message.Contains("Creating artwork elements", StringComparison.Ordinal));
+        Assert.Contains(progress.Reports, report => report.Message.Contains("Converting lamps", StringComparison.Ordinal));
+        Assert.Contains(progress.Reports, report => report.Message.Contains("Converting reels", StringComparison.Ordinal));
+        Assert.Contains(progress.Reports, report => report.Message.Contains("Converting seven-segment displays", StringComparison.Ordinal));
+        Assert.Contains(progress.Reports, report => report.Message.Contains("Converting alpha displays", StringComparison.Ordinal));
+        Assert.Contains(progress.Reports, report => report.Message.Contains("Creating button/input elements", StringComparison.Ordinal));
+        Assert.Contains(progress.Reports, report => report.Message.Contains("Generating mask layer", StringComparison.Ordinal));
+        Assert.Contains(progress.Reports, report => report.Message.Contains("Auto-authoring trays/emitters", StringComparison.Ordinal));
+        Assert.All(progress.Reports.Where(report => report.Value.HasValue), report => Assert.InRange(report.Value!.Value, 0d, 1d));
+    }
+
 }

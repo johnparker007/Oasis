@@ -119,3 +119,9 @@ public interface IEditorProgressScope : IAsyncDisposable
 4. Do not add WPF UI in Step 2.
 5. Do not wire feature commands to a modal in Step 2, except optional constructor parameters/default no-op reporters if needed to keep later integration low-risk.
 6. Prepare future integration seams by preferring optional `IEditorProgressReporter? progress = null` parameters on feature services rather than referencing WPF services directly.
+
+## Face progress integration note
+
+- Face UI modal integration is intentionally deferred because the previous direct WPF modal wiring around Face generation/regeneration caused a fatal `PresentationFramework` `InvalidOperationException` after confirming the Face Generation dialog.
+- The safe current step is limited to UI-independent, service-level progress hooks for Face generation, regeneration, and runtime export. These hooks must not reference WPF dialog/service types and must not change `MainWindowViewModel` behavior.
+- Later UI integration should first split background-safe model/export work from UI-thread document/tab/view-model mutation, then connect a modal progress surface only around the safe portions of the workflow.

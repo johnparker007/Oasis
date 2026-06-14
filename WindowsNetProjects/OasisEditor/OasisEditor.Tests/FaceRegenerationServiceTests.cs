@@ -215,4 +215,45 @@ public sealed class FaceRegenerationServiceTests
         Assert.Equal("input:custom-start", button.LinkedMachineObjectReference?.ToString());
         Assert.Equal("input:custom-start", button.LinkedInputReference?.ToString());
     }
+    [Fact]
+    public void Regenerate_ReportsCoarseProgressStagesWithoutChangingResult()
+    {
+        var sourcePanel = new Panel2DDocumentModel
+        {
+            Elements =
+            [
+                new PanelElementModel { ObjectId = "lamp-1", Name = "Lamp", Kind = PanelElementKind.Lamp, X = 10, Y = 10, Width = 20, Height = 20, DisplayNumber = 1, IsVisible = true }
+            ]
+        };
+        var existingFace = new FaceDocumentModel
+        {
+            Id = "face-progress",
+            Title = "Progress Face",
+            SourcePanel2DDocumentId = "panel-doc",
+            SourceRegion = FaceSourceRegionModel.FromRect(new Rect(0, 0, 100, 100)),
+            Elements =
+            [
+                new FaceLampWindowElement { ObjectId = "existing-lamp", LinkedPanel2DElementId = "lamp-1", LinkedMachineObjectReference = MachineObjectReference.Lamp(99) },
+                new FaceArtworkElement { ObjectId = "manual-artwork", Name = "Manual" }
+            ]
+        };
+        var service = new FaceRegenerationService();
+        var baseline = service.Regenerate(existingFace, sourcePanel);
+        var progress = new RecordingEditorProgressReporter();
+
+        var result = service.Regenerate(existingFace, sourcePanel, progress: progress);
+
+        Assert.Equal(baseline.UpdatedElementCount, result.UpdatedElementCount);
+        Assert.Equal(baseline.AddedElementCount, result.AddedElementCount);
+        Assert.Equal(baseline.RemovedGeneratedElementCount, result.RemovedGeneratedElementCount);
+        Assert.Equal(baseline.PreservedManualElementCount, result.PreservedManualElementCount);
+        Assert.Equal(baseline.Document.Elements.Select(element => element.ObjectId), result.Document.Elements.Select(element => element.ObjectId));
+        Assert.Contains(progress.Reports, report => report.Message.Contains("Validating source metadata", StringComparison.Ordinal));
+        Assert.Contains(progress.Reports, report => report.Message.Contains("Generating replacement Face", StringComparison.Ordinal));
+        Assert.Contains(progress.Reports, report => report.Message.Contains("Correlating regenerated elements", StringComparison.Ordinal));
+        Assert.Contains(progress.Reports, report => report.Message.Contains("Preserving manual elements/runtime identity", StringComparison.Ordinal));
+        Assert.Contains(progress.Reports, report => report.Message.Contains("Auto-authoring trays/emitters", StringComparison.Ordinal));
+        Assert.All(progress.Reports.Where(report => report.Value.HasValue), report => Assert.InRange(report.Value!.Value, 0d, 1d));
+    }
+
 }

@@ -1,5 +1,6 @@
 using System.IO;
 using SkiaSharp;
+using OasisEditor.Progress;
 
 namespace OasisEditor;
 
@@ -22,9 +23,11 @@ public sealed class FaceRuntimeTextureGenerator
         _lampInfluenceTextureGenerator = lampInfluenceTextureGenerator ?? new LampInfluenceTextureGenerator();
     }
 
-    public FaceRuntimeTextureGenerationPlan CreatePlan(FaceDocumentModel faceDocument, int width, int height)
+    public FaceRuntimeTextureGenerationPlan CreatePlan(FaceDocumentModel faceDocument, int width, int height, IEditorProgressReporter? progress = null)
     {
         ArgumentNullException.ThrowIfNull(faceDocument);
+        progress ??= NoOpEditorProgressReporter.Instance;
+        progress.Report(0.0, "Creating runtime texture plan...");
         ValidateDimensions(width, height);
 
         FaceRuntimeTrayElement[] trays;
@@ -66,15 +69,17 @@ public sealed class FaceRuntimeTextureGenerator
         return new FaceRuntimeTextureGenerationPlan(width, height, trays, emitters, overlaps, exportSource);
     }
 
-    public FaceRuntimeTextureGenerationResult Generate(FaceDocumentModel faceDocument, int width, int height, string outputDirectory)
+    public FaceRuntimeTextureGenerationResult Generate(FaceDocumentModel faceDocument, int width, int height, string outputDirectory, IEditorProgressReporter? progress = null)
     {
         ArgumentNullException.ThrowIfNull(faceDocument);
+        progress ??= NoOpEditorProgressReporter.Instance;
         if (string.IsNullOrWhiteSpace(outputDirectory))
         {
             throw new ArgumentException("Runtime texture output directory is required.", nameof(outputDirectory));
         }
 
-        var plan = CreatePlan(faceDocument, width, height);
+        progress.Report(0.0, "Creating runtime texture plan...");
+        var plan = CreatePlan(faceDocument, width, height, progress.CreateChild(0.0, 0.2));
         Directory.CreateDirectory(outputDirectory);
 
         var trayIdPath = Path.Combine(outputDirectory, TrayIdFileName);
@@ -83,9 +88,12 @@ public sealed class FaceRuntimeTextureGenerator
         var trayIdDebugPath = Path.Combine(outputDirectory, TrayIdDebugFileName);
         var lampWeightsDebugPath = Path.Combine(outputDirectory, LampWeightsDebugFileName);
 
+        progress.Report(0.35, "Generating texture files...");
         _trayIdTextureGenerator.Generate(plan.Trays, width, height, trayIdPath, trayIdDebugPath);
+        progress.Report(0.65, "Generating texture files...");
         _lampInfluenceTextureGenerator.Generate(plan.Trays, plan.Emitters, width, height, lampIds0Path, lampWeights0Path, lampWeightsDebugPath);
 
+        progress.Report(1.0, "Texture file generation complete.");
         return new FaceRuntimeTextureGenerationResult(
             plan,
             trayIdPath,

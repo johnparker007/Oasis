@@ -2,6 +2,7 @@ using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using SkiaSharp;
+using OasisEditor.Progress;
 
 namespace OasisEditor;
 
@@ -28,10 +29,12 @@ public sealed class FaceRuntimeExportService
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
     };
 
-    public FaceRuntimeExportResult Export(FaceDocumentModel faceDocument, EditorProject project)
+    public FaceRuntimeExportResult Export(FaceDocumentModel faceDocument, EditorProject project, IEditorProgressReporter? progress = null)
     {
         ArgumentNullException.ThrowIfNull(faceDocument);
         ArgumentNullException.ThrowIfNull(project);
+        progress ??= NoOpEditorProgressReporter.Instance;
+        progress.Report(0.0, "Resolving dimensions/output directory...");
 
         if (string.IsNullOrWhiteSpace(project.ProjectDirectory))
         {
@@ -50,15 +53,20 @@ public sealed class FaceRuntimeExportService
 
         var artworkPath = Path.Combine(outputDirectory, ArtworkFileName);
         var maskPath = Path.Combine(outputDirectory, MaskFileName);
+        progress.Report(0.15, "Exporting artwork...");
         ExportArtwork(faceDocument, project, width, height, artworkPath);
+        progress.Report(0.3, "Copying mask...");
         CopyMask(faceDocument, project, maskPath);
-        var textureResult = _runtimeTextureGenerator.Generate(faceDocument, width, height, outputDirectory);
+        progress.Report(0.45, "Creating runtime texture plan...");
+        var textureResult = _runtimeTextureGenerator.Generate(faceDocument, width, height, outputDirectory, progress.CreateChild(0.45, 0.75));
 
         var generatedUtc = DateTime.UtcNow;
+        progress.Report(0.8, "Writing manifest...");
         var manifest = CreateManifest(faceDocument, width, height, textureResult.Plan);
         var manifestPath = Path.Combine(outputDirectory, ManifestFileName);
         File.WriteAllText(manifestPath, JsonSerializer.Serialize(manifest, s_manifestJsonOptions));
 
+        progress.Report(0.9, "Updating runtime asset references...");
         var runtimeAssets = new FaceRuntimeRenderAssetsModel
         {
             ManifestPath = ToProjectRelativePath(project, manifestPath),
@@ -93,6 +101,7 @@ public sealed class FaceRuntimeExportService
             Elements = faceDocument.Elements
         };
 
+        progress.Report(1.0, "Runtime export complete.");
         return new FaceRuntimeExportResult(updatedDocument, manifest, outputDirectory, manifestPath, artworkPath, maskPath);
     }
 
