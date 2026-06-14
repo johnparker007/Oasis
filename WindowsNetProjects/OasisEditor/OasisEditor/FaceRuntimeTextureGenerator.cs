@@ -11,6 +11,7 @@ public sealed class FaceRuntimeTextureGenerator
     public const string LampWeights0FileName = "lampWeights0.png";
     public const string TrayIdDebugFileName = "trayId_debug.png";
     public const string LampWeightsDebugFileName = "lampWeights_debug.png";
+    public const string RawEmitterDebugFileNamePrefix = "debug_raw_emitter_";
 
     private readonly TrayIdTextureGenerator _trayIdTextureGenerator;
     private readonly LampInfluenceTextureGenerator _lampInfluenceTextureGenerator;
@@ -91,7 +92,7 @@ public sealed class FaceRuntimeTextureGenerator
         progress.Report(0.35, "Generating texture files...");
         _trayIdTextureGenerator.Generate(plan.Trays, width, height, trayIdPath, trayIdDebugPath);
         progress.Report(0.65, "Generating texture files...");
-        _lampInfluenceTextureGenerator.Generate(plan.Trays, plan.Emitters, width, height, lampIds0Path, lampWeights0Path, lampWeightsDebugPath);
+        _lampInfluenceTextureGenerator.Generate(plan.Trays, plan.Emitters, width, height, lampIds0Path, lampWeights0Path, lampWeightsDebugPath, outputDirectory);
 
         progress.Report(1.0, "Texture file generation complete.");
         return new FaceRuntimeTextureGenerationResult(
@@ -521,7 +522,8 @@ public sealed class LampInfluenceTextureGenerator
         int height,
         string lampIds0Path,
         string lampWeights0Path,
-        string lampWeightsDebugPath)
+        string lampWeightsDebugPath,
+        string? rawEmitterDebugOutputDirectory = null)
     {
         ArgumentNullException.ThrowIfNull(trays);
         ArgumentNullException.ThrowIfNull(emitters);
@@ -573,6 +575,11 @@ public sealed class LampInfluenceTextureGenerator
         WritePng(idsBitmap, lampIds0Path, "lamp ID texture");
         WritePng(weightsBitmap, lampWeights0Path, "lamp weight texture");
         WritePng(debugBitmap, lampWeightsDebugPath, "lamp weight debug texture");
+
+        if (!string.IsNullOrWhiteSpace(rawEmitterDebugOutputDirectory))
+        {
+            GenerateRawEmitterDebugTextures(emittersByTray, width, height, rawEmitterDebugOutputDirectory);
+        }
     }
 
     private static IReadOnlyList<LampInfluence> CreateInfluences(FaceRuntimeTrayElement tray, IReadOnlyList<FaceLampEmitterElement> emitters)
@@ -595,6 +602,66 @@ public sealed class LampInfluenceTextureGenerator
             .ToArray();
     }
 
+    private static void GenerateRawEmitterDebugTextures(
+        IReadOnlyDictionary<int, FaceLampEmitterElement[]> emittersByTray,
+        int width,
+        int height,
+        string outputDirectory)
+    {
+        var influences = emittersByTray
+            .OrderByDescending(group => group.Value.Length)
+            .ThenBy(group => group.Key)
+            .Select(group => group.Value)
+            .FirstOrDefault()?
+            .OrderBy(emitter => emitter.ObjectId, StringComparer.Ordinal)
+            .Take(SupportedChannelCount)
+            .Select(CreateRawInfluence)
+            .ToArray()
+            ?? [];
+
+        for (var index = 0; index < influences.Length; index++)
+        {
+            using var bitmap = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+            bitmap.Erase(SKColors.Transparent);
+            var influence = influences[index];
+            for (var y = 0; y < height; y++)
+            {
+                for (var x = 0; x < width; x++)
+                {
+                    var rawWeight = CalculateRawWeight(influence, x + 0.5d, y + 0.5d);
+                    var weight = (byte)Math.Clamp(Math.Round(rawWeight * 255d, MidpointRounding.AwayFromZero), 0d, 255d);
+                    bitmap.SetPixel(x, y, new SKColor(weight, weight, weight, 255));
+                }
+            }
+
+            var path = Path.Combine(outputDirectory, $"{FaceRuntimeTextureGenerator.RawEmitterDebugFileNamePrefix}{index}.png");
+            WritePng(bitmap, path, $"raw emitter {index} debug texture");
+        }
+    }
+
+    private static LampInfluence CreateRawInfluence(FaceLampEmitterElement emitter)
+    {
+        var fallbackRadius = Math.Max(MinimumRadius, Math.Max(emitter.Width, emitter.Height) * 0.65d);
+        var radius = emitter.Radius is double emitterRadius && emitterRadius > 0d && IsFinite(emitterRadius)
+            ? emitterRadius
+            : fallbackRadius;
+        return new LampInfluence(
+            (byte)emitter.LampId!.Value,
+            emitter.CenterX,
+            emitter.CenterY,
+            Math.Max(MinimumRadius, radius),
+            0);
+    }
+
+    private static double CalculateRawWeight(LampInfluence influence, double pixelX, double pixelY)
+    {
+        var dx = pixelX - influence.CenterX;
+        var dy = pixelY - influence.CenterY;
+        var distance = Math.Sqrt((dx * dx) + (dy * dy));
+        var normalizedDistance = Math.Clamp(distance / influence.Radius, 0d, 1d);
+        return Math.Pow(1d - normalizedDistance, 2d);
+    }
+
     private static (byte[] IdChannels, byte[] WeightChannels) CreateEmitterChannels(IReadOnlyList<LampInfluence> influences, double pixelX, double pixelY)
     {
         var idChannels = new byte[SupportedChannelCount];
@@ -602,11 +669,7 @@ public sealed class LampInfluenceTextureGenerator
         var retained = influences
             .Select(influence =>
             {
-                var dx = pixelX - influence.CenterX;
-                var dy = pixelY - influence.CenterY;
-                var distance = Math.Sqrt((dx * dx) + (dy * dy));
-                var normalizedDistance = Math.Clamp(distance / influence.Radius, 0d, 1d);
-                var rawWeight = Math.Pow(1d - normalizedDistance, 2d);
+                var rawWeight = CalculateRawWeight(influence, pixelX, pixelY);
                 return new WeightedLampInfluence(influence, rawWeight);
             })
             .OrderBy(influence => influence.Influence.Order)
