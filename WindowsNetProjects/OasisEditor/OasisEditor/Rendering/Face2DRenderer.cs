@@ -17,6 +17,7 @@ public sealed class Face2DRenderer : IFace2DRenderer
     private readonly Dictionary<string, SKImage?> _cachedMaskImages = new(StringComparer.OrdinalIgnoreCase);
     private readonly IFaceTexturePreviewRenderer _texturePreviewRenderer;
     private readonly FaceTrayDebugOverlayRenderer _trayDebugOverlayRenderer = new();
+    private readonly bool _renderTrayDebugOverlay;
 
     internal string? LastTexturePreviewFallbackReason { get; private set; }
 
@@ -30,11 +31,12 @@ public sealed class Face2DRenderer : IFace2DRenderer
     {
     }
 
-    internal Face2DRenderer(IFaceRuntimeStateResolver runtimeStateResolver, Func<string?, string?> assetPathResolver, IFaceTexturePreviewRenderer texturePreviewRenderer)
+    internal Face2DRenderer(IFaceRuntimeStateResolver runtimeStateResolver, Func<string?, string?> assetPathResolver, IFaceTexturePreviewRenderer texturePreviewRenderer, bool renderTrayDebugOverlay = false)
     {
         _runtimeStateResolver = runtimeStateResolver ?? throw new ArgumentNullException(nameof(runtimeStateResolver));
         _assetPathResolver = assetPathResolver ?? throw new ArgumentNullException(nameof(assetPathResolver));
         _texturePreviewRenderer = texturePreviewRenderer ?? throw new ArgumentNullException(nameof(texturePreviewRenderer));
+        _renderTrayDebugOverlay = renderTrayDebugOverlay;
     }
 
     public void Render(SKCanvas canvas, FaceDocumentModel faceDocument, MachineRuntimeState runtimeState, PanelViewportTransform viewportTransform)
@@ -74,7 +76,10 @@ public sealed class Face2DRenderer : IFace2DRenderer
             DrawButton(canvas, button, viewportTransform);
         }
 
-        _trayDebugOverlayRenderer.Render(canvas, faceDocument, viewportTransform);
+        if (_renderTrayDebugOverlay)
+        {
+            _trayDebugOverlayRenderer.Render(canvas, faceDocument, viewportTransform);
+        }
     }
 
 

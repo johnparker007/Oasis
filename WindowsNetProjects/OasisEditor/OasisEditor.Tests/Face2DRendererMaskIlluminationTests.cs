@@ -220,6 +220,38 @@ public sealed class Face2DRendererMaskIlluminationTests : IDisposable
         }
     }
 
+
+    [Fact]
+    public void Render_DoesNotDrawTrayDebugOverlayByDefault()
+    {
+        using var textureBitmap = new SKBitmap(20, 20, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+        textureBitmap.Erase(SKColors.Black);
+        var renderer = new Face2DRenderer(
+            FaceRuntimeStateResolver.Instance,
+            ResolveTestAssetPath,
+            new StubTexturePreviewRenderer(FaceTexturePreviewRenderResult.FromCachedBitmap(textureBitmap)));
+        var document = new FaceDocumentModel
+        {
+            Trays =
+            [
+                new FaceTrayModel
+                {
+                    ObjectId = "tray-1",
+                    Bounds = new FaceSourceRegionModel { X = 2, Y = 2, Width = 10, Height = 10 }
+                }
+            ]
+        };
+
+        using var surface = SKSurface.Create(new SKImageInfo(20, 20, SKColorType.Bgra8888, SKAlphaType.Premul));
+        surface.Canvas.Clear(SKColors.White);
+
+        renderer.Render(surface.Canvas, document, new MachineRuntimeState(), new PanelViewportTransform());
+
+        using var snapshot = surface.Snapshot();
+        using var bitmap = SKBitmap.FromImage(snapshot);
+        Assert.Equal(SKColors.Black, bitmap.GetPixel(2, 2));
+    }
+
     private static FaceDocumentModel CreateDocument(string? artworkPath = null)
     {
         var elements = new List<FaceElementModel>();

@@ -384,7 +384,60 @@ public sealed class FaceTexturePreviewRendererTests : IDisposable
         Assert.True(first.Rendered);
         Assert.True(second.Rendered);
         Assert.True(renderer.LastDiagnostics.ReusedComposition);
+        Assert.Equal(0, renderer.LastDiagnostics.DirtyPixelCount);
         Assert.Same(first.Bitmap, second.Bitmap);
+    }
+
+
+    [Fact]
+    public void Render_ChangingOneLampRecomposesOnlyAffectedPixels()
+    {
+        WriteSolidPng("artwork.png", 3, 1, new SKColor(100, 40, 20, 255));
+        WriteSolidPng("mask.png", 3, 1, SKColors.White);
+        WriteSolidPng("trayId.png", 3, 1, new SKColor(1, 0, 0, 255));
+        WriteSolidPng("lampIds0.png", 3, 1, new SKColor(7, 0, 0, 255));
+        WritePixel("lampIds0.png", 1, 0, 3, 1, new SKColor(8, 0, 0, 255));
+        WritePixel("lampIds0.png", 2, 0, 3, 1, new SKColor(9, 0, 0, 255));
+        WriteSolidPng("lampWeights0.png", 3, 1, new SKColor(255, 0, 0, 255));
+        var renderer = CreateRenderer();
+        var runtimeState = new MachineRuntimeState();
+
+        using var first = renderer.Render(CreateDocument(width: 3, height: 1), runtimeState);
+        runtimeState.SetLampIntensityIfChanged(MachineObjectReference.Lamp(8), 1d);
+        using var second = renderer.Render(CreateDocument(width: 3, height: 1), runtimeState);
+
+        Assert.True(first.Rendered);
+        Assert.True(second.Rendered);
+        Assert.False(renderer.LastDiagnostics.ReusedComposition);
+        Assert.Equal(1, renderer.LastDiagnostics.DirtyPixelCount);
+        Assert.Equal(25, second.Bitmap!.GetPixel(0, 0).Red);
+        Assert.True(second.Bitmap.GetPixel(1, 0).Red > 25);
+        Assert.Equal(25, second.Bitmap.GetPixel(2, 0).Red);
+    }
+
+    [Fact]
+    public void Render_MultiLampPixelRecomputesWithAllCurrentLampContributions()
+    {
+        WriteSolidPng("artwork.png", 1, 1, new SKColor(100, 40, 20, 255));
+        WriteSolidPng("mask.png", 1, 1, SKColors.White);
+        WriteSolidPng("trayId.png", 1, 1, new SKColor(1, 0, 0, 255));
+        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(7, 8, 0, 255));
+        WriteSolidPng("lampWeights0.png", 1, 1, new SKColor(128, 127, 0, 255));
+        var renderer = new FaceTexturePreviewRenderer(
+            path => string.IsNullOrWhiteSpace(path) ? null : Path.Combine(_testDirectory, path),
+            new FaceTexturePreviewSettings { AmbientStrength = 0.25d, EmissionStrength = 1d, MaskStrength = 1d, LampIds0ChannelCount = 2 });
+        var runtimeState = new MachineRuntimeState();
+        runtimeState.SetLampIntensityIfChanged(MachineObjectReference.Lamp(7), 1d);
+        using var first = renderer.Render(CreateDocument(width: 1, height: 1), runtimeState);
+        var firstRed = first.Bitmap!.GetPixel(0, 0).Red;
+
+        runtimeState.SetLampIntensityIfChanged(MachineObjectReference.Lamp(8), 1d);
+        using var second = renderer.Render(CreateDocument(width: 1, height: 1), runtimeState);
+
+        Assert.True(second.Rendered);
+        Assert.Equal(1, renderer.LastDiagnostics.DirtyPixelCount);
+        Assert.True(second.Bitmap!.GetPixel(0, 0).Red > firstRed);
+        Assert.Equal(125, second.Bitmap.GetPixel(0, 0).Red);
     }
 
     public void Dispose()
