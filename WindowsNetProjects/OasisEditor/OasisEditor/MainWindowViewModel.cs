@@ -16,7 +16,6 @@ using OasisEditor.Features.MfmeImport;
 using EditorCommands = OasisEditor.Commands;
 using OasisEditor.Views;
 using OasisEditor.Rendering;
-using OasisEditor.Progress;
 
 namespace OasisEditor;
 
@@ -83,7 +82,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private bool _isMameUnthrottled;
     private MameEmulationState _mameEmulationState = MameEmulationState.Stopped;
     private readonly IInputMapDiagnosticsService _inputMapDiagnosticsService = new InputMapDiagnosticsService(new MameInputPortResolver());
-    private readonly IProgressDialogService _progressDialogService;
     private IReadOnlyList<InputMapDiagnostic> _inputMapDiagnostics = [];
     private PlayViewInputRouter? _playViewInputRouter;
     private PlayViewInputDispatcher? _playViewInputDispatcher;
@@ -96,13 +94,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         IApplicationThemeService applicationThemeService,
         EditorPreferencesStore preferencesStore,
         Window ownerWindow,
-        string startupProjectFilePath,
-        IProgressDialogService? progressDialogService = null)
+        string startupProjectFilePath)
     {
         _applicationThemeService = applicationThemeService;
         _preferencesStore = preferencesStore;
         _ownerWindow = ownerWindow;
-        _progressDialogService = progressDialogService ?? new WpfProgressDialogService(() => _ownerWindow);
 
         if (string.IsNullOrWhiteSpace(startupProjectFilePath))
         {
@@ -1000,11 +996,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private bool CanGenerateFaceFromRegion()
     {
-        return !_progressDialogService.IsOperationActive
-            && _documentWorkspace.CanGenerateFaceFromSelectedPanel2DRegion();
+        return _documentWorkspace.CanGenerateFaceFromSelectedPanel2DRegion();
     }
 
-    private async void GenerateFaceFromRegion()
+    private void GenerateFaceFromRegion()
     {
         if (!CanGenerateFaceFromRegion())
         {
@@ -1028,16 +1023,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             SavePreferences();
         }
 
-        await GenerateFaceFromRegionWithProgressAsync(dialog.SourceRegion, settings);
+        _documentWorkspace.GenerateFaceFromSelectedPanel2DRegion(dialog.SourceRegion, settings);
     }
 
     private bool CanRegenerateFace()
     {
-        return !_progressDialogService.IsOperationActive
-            && _documentWorkspace.CanRegenerateSelectedFace();
+        return _documentWorkspace.CanRegenerateSelectedFace();
     }
 
-    private async void RegenerateFace()
+    private void RegenerateFace()
     {
         if (!CanRegenerateFace())
         {
@@ -1066,16 +1060,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             settings = dialog.Settings;
         }
 
-        await RegenerateFaceWithProgressAsync(settings);
+        _documentWorkspace.RegenerateSelectedFace(settings);
     }
 
     private bool CanOpenFaceGenerationSettings()
     {
-        return !_progressDialogService.IsOperationActive
-            && (CanGenerateFaceFromRegion() || SelectedDocument?.Document.DocumentType == EditorDocumentType.Face);
+        return CanGenerateFaceFromRegion() || SelectedDocument?.Document.DocumentType == EditorDocumentType.Face;
     }
 
-    private async void OpenFaceGenerationSettings()
+    private void OpenFaceGenerationSettings()
     {
         if (SelectedDocument?.Document.DocumentType == EditorDocumentType.Face)
         {
@@ -1090,7 +1083,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             {
                 if (canRegenerate)
                 {
-                    await RegenerateFaceWithProgressAsync(dialog.Settings);
+                    _documentWorkspace.RegenerateSelectedFace(dialog.Settings);
                 }
                 else
                 {
@@ -1118,68 +1111,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         _defaultFaceGenerationSettings = generateDialog.GenerationSettings;
         SavePreferences();
-        await GenerateFaceFromRegionWithProgressAsync(generateDialog.SourceRegion, generateDialog.GenerationSettings);
-    }
-
-    private Task GenerateFaceFromRegionWithProgressAsync(Rect sourceRegion, FaceGenerationSettingsModel settings)
-    {
-        return RunEditorProgressAsync(
-            new EditorProgressRequest(
-                "Generating Face",
-                "Preparing Face generation...",
-                EditorProgressMode.Determinate),
-            async (progress, cancellationToken) =>
-            {
-                progress.Report(0.05d, "Validating source Panel2D region...");
-                await Task.Yield();
-                cancellationToken.ThrowIfCancellationRequested();
-
-                progress.Report(0.20d, "Generating Face elements, mask, and runtime preview assets...");
-                await Task.Yield();
-                _documentWorkspace.GenerateFaceFromSelectedPanel2DRegion(sourceRegion, settings);
-
-                progress.Report(1.0d, "Face generation complete.");
-            },
-            "Generate Face Failed");
-    }
-
-    private Task RegenerateFaceWithProgressAsync(FaceGenerationSettingsModel? settings)
-    {
-        return RunEditorProgressAsync(
-            new EditorProgressRequest(
-                "Regenerating Face",
-                "Preparing Face regeneration...",
-                EditorProgressMode.Determinate),
-            async (progress, cancellationToken) =>
-            {
-                progress.Report(0.05d, "Validating Face provenance and source Panel2D...");
-                await Task.Yield();
-                cancellationToken.ThrowIfCancellationRequested();
-
-                progress.Report(0.20d, "Regenerating Face elements, preserving manual edits, and exporting preview assets...");
-                await Task.Yield();
-                _documentWorkspace.RegenerateSelectedFace(settings);
-
-                progress.Report(1.0d, "Face regeneration complete.");
-            },
-            "Regenerate Face Failed");
-    }
-
-    private async Task RunEditorProgressAsync(
-        EditorProgressRequest request,
-        Func<IEditorProgressReporter, CancellationToken, Task> operation,
-        string failureTitle)
-    {
-        try
-        {
-            await _progressDialogService.RunAsync(request, operation);
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = ex.Message;
-            AddOutputEntry($"{failureTitle}: {ex.Message}", OutputLogStatus.Error);
-            MessageBox.Show(ex.Message, failureTitle, MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
+        _documentWorkspace.GenerateFaceFromSelectedPanel2DRegion(generateDialog.SourceRegion, generateDialog.GenerationSettings);
     }
 
 
@@ -1499,8 +1431,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private bool CanSaveSelectedDocument()
     {
-        return !_progressDialogService.IsOperationActive
-            && _documentWorkspace.CanSaveSelectedDocument();
+        return _documentWorkspace.CanSaveSelectedDocument();
     }
 
     private void SaveSelectedDocument()
