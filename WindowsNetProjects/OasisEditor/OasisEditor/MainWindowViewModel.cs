@@ -22,7 +22,7 @@ namespace OasisEditor;
 
 public sealed class MainWindowViewModel : INotifyPropertyChanged
 {
-    private const bool kDebugSkiaPerformanceOutput = false;
+    private static readonly bool kDebugSkiaPerformanceOutput = false;
     private readonly RecentProjectsStore _recentProjectsStore = new();
     private readonly IApplicationThemeService _applicationThemeService;
     private readonly EditorPreferencesStore _preferencesStore;

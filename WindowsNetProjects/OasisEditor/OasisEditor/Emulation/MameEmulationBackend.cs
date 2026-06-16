@@ -40,11 +40,35 @@ public sealed class MameEmulationBackend : IEmulationBackend
 
     public event EventHandler<EmulationBackendState>? StateChanged;
 
-    public event EventHandler<MachineLampChangedEventArgs>? LampChanged;
-    public event EventHandler<MachineReelChangedEventArgs>? ReelChanged;
-    public event EventHandler<MachineSegmentChangedEventArgs>? SegmentChanged;
-    public event EventHandler<MachineVfdBrightnessChangedEventArgs>? VfdBrightnessChanged;
-    public event EventHandler<MachineDotMatrixChangedEventArgs>? DotMatrixChanged;
+    public event EventHandler<MachineLampChangedEventArgs>? LampChanged
+    {
+        add { }
+        remove { }
+    }
+
+    public event EventHandler<MachineReelChangedEventArgs>? ReelChanged
+    {
+        add { }
+        remove { }
+    }
+
+    public event EventHandler<MachineSegmentChangedEventArgs>? SegmentChanged
+    {
+        add { }
+        remove { }
+    }
+
+    public event EventHandler<MachineVfdBrightnessChangedEventArgs>? VfdBrightnessChanged
+    {
+        add { }
+        remove { }
+    }
+
+    public event EventHandler<MachineDotMatrixChangedEventArgs>? DotMatrixChanged
+    {
+        add { }
+        remove { }
+    }
 
     public Task StartAsync(EmulationLaunchRequest request, CancellationToken cancellationToken)
     {
