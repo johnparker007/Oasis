@@ -5,6 +5,7 @@ public sealed class EditorPreferences
     public ThemePreference ThemePreference { get; init; } = ThemePreference.Dark;
 
     public MamePreferences Mame { get; init; } = new();
+    public NativeEmulationPreferences NativeEmulation { get; init; } = new();
     public OutputLogPreferences OutputLog { get; init; } = new();
     public FaceGenerationPreferences FaceGeneration { get; init; } = new();
 
@@ -27,6 +28,11 @@ public sealed class MamePreferences
     public string LocalRomArchiveExtension { get; init; } = ".zip";
 }
 
+
+public sealed class NativeEmulationPreferences
+{
+    public string System6LibraryPath { get; init; } = string.Empty;
+}
 
 public sealed class FaceGenerationPreferences
 {

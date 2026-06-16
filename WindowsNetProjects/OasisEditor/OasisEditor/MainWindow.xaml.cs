@@ -190,7 +190,9 @@ public partial class MainWindow : Window
         {
             ThemePreference = preferences.ThemePreference,
             Mame = preferences.Mame,
+            NativeEmulation = preferences.NativeEmulation,
             OutputLog = preferences.OutputLog,
+            FaceGeneration = preferences.FaceGeneration,
             ProjectWindowStates = states
         });
     }

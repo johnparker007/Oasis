@@ -122,6 +122,26 @@
                     <Button Padding="10,4" Content="Remove Cached Version" Command="{Binding RemoveCachedMameVersionCommand}" />
                 </StackPanel>
             </StackPanel>
+
+            <StackPanel>
+                <StackPanel.Style>
+                    <Style TargetType="StackPanel">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding SelectedPreferencesCategory}" Value="Native Emulation">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </StackPanel.Style>
+                <TextBlock FontSize="18" FontWeight="SemiBold" Text="Native Emulation" />
+                <TextBlock Margin="0,16,0,4" Text="System6 native core DLL path" Foreground="{DynamicResource TextSecondaryBrush}" />
+                <TextBox Text="{Binding System6NativeLibraryPath, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                <TextBlock Margin="0,8,0,0"
+                           TextWrapping="Wrap"
+                           Foreground="{DynamicResource TextSecondaryBrush}"
+                           Text="Temporary Task 05 setting: Impact projects use this System6 DLL path when provided; otherwise they fall back to MAME." />
+            </StackPanel>
         </Grid>
     </Grid>
 </UserControl>

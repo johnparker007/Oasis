@@ -2,14 +2,20 @@ namespace OasisEditor;
 
 public sealed class PlayViewInputRouter
 {
-    private readonly IMameInputCommandService _commandService;
-    private readonly IMameProcessRunner _processRunner;
+    private readonly IMameInputCommandService? _commandService;
+    private readonly IMameProcessRunner? _processRunner;
+    private readonly IEmulationBackend? _backend;
     private readonly HashSet<string> _activeInputIds = [];
 
     public PlayViewInputRouter(IMameInputCommandService commandService, IMameProcessRunner processRunner)
     {
         _commandService = commandService ?? throw new ArgumentNullException(nameof(commandService));
         _processRunner = processRunner ?? throw new ArgumentNullException(nameof(processRunner));
+    }
+
+    public PlayViewInputRouter(IEmulationBackend backend)
+    {
+        _backend = backend ?? throw new ArgumentNullException(nameof(backend));
     }
 
     public async Task<bool> TryPressAsync(FruitMachinePlatformType platform, InputDefinitionModel inputDefinition, CancellationToken cancellationToken)
@@ -26,7 +32,7 @@ public sealed class PlayViewInputRouter
             return false;
         }
 
-        var wrote = await _commandService.TrySendInputStateAsync(_processRunner, platform, inputDefinition, isPressed: true, cancellationToken).ConfigureAwait(false);
+        var wrote = await TrySendInputStateAsync(platform, inputDefinition, isPressed: true, cancellationToken).ConfigureAwait(false);
         if (!wrote)
         {
             _activeInputIds.Remove(inputDefinition.Id);
@@ -44,7 +50,7 @@ public sealed class PlayViewInputRouter
             return false;
         }
 
-        return await _commandService.TrySendInputStateAsync(_processRunner, platform, inputDefinition, isPressed: false, cancellationToken).ConfigureAwait(false);
+        return await TrySendInputStateAsync(platform, inputDefinition, isPressed: false, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<int> ReleaseAllAsync(FruitMachinePlatformType platform, IReadOnlyDictionary<string, InputDefinitionModel> inputDefinitionsById, CancellationToken cancellationToken)
@@ -66,7 +72,7 @@ public sealed class PlayViewInputRouter
             }
 
             _activeInputIds.Remove(inputId);
-            var wrote = await _commandService.TrySendInputStateAsync(_processRunner, platform, definition, isPressed: false, cancellationToken).ConfigureAwait(false);
+            var wrote = await TrySendInputStateAsync(platform, definition, isPressed: false, cancellationToken).ConfigureAwait(false);
             if (wrote)
             {
                 released++;
@@ -74,5 +80,24 @@ public sealed class PlayViewInputRouter
         }
 
         return released;
+    }
+
+    private async Task<bool> TrySendInputStateAsync(FruitMachinePlatformType platform, InputDefinitionModel inputDefinition, bool isPressed, CancellationToken cancellationToken)
+    {
+        if (_backend is not null)
+        {
+            try
+            {
+                await _backend.SetInputStateAsync(MachineInputReference.FromInputId(inputDefinition.Id), isPressed, cancellationToken).ConfigureAwait(false);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        return _commandService is not null && _processRunner is not null
+            && await _commandService.TrySendInputStateAsync(_processRunner, platform, inputDefinition, isPressed, cancellationToken).ConfigureAwait(false);
     }
 }

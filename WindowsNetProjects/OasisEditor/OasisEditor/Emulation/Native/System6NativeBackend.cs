@@ -77,9 +77,23 @@ public sealed class System6NativeBackend : IEmulationBackend
 
     public event EventHandler<MachineLampChangedEventArgs>? LampChanged;
     public event EventHandler<MachineReelChangedEventArgs>? ReelChanged;
-    public event EventHandler<MachineSegmentChangedEventArgs>? SegmentChanged;
-    public event EventHandler<MachineVfdBrightnessChangedEventArgs>? VfdBrightnessChanged;
-    public event EventHandler<MachineDotMatrixChangedEventArgs>? DotMatrixChanged;
+    public event EventHandler<MachineSegmentChangedEventArgs>? SegmentChanged
+    {
+        add { }
+        remove { }
+    }
+
+    public event EventHandler<MachineVfdBrightnessChangedEventArgs>? VfdBrightnessChanged
+    {
+        add { }
+        remove { }
+    }
+
+    public event EventHandler<MachineDotMatrixChangedEventArgs>? DotMatrixChanged
+    {
+        add { }
+        remove { }
+    }
 
     public Task StartAsync(EmulationLaunchRequest request, CancellationToken cancellationToken)
     {
