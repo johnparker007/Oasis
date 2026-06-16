@@ -38,6 +38,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string _mameReleaseSource = string.Empty;
     private string _mameLuaPluginPath = string.Empty;
     private string _mameCommandLineOverrides = string.Empty;
+    private string _system6NativeLibraryPath = string.Empty;
     private string _mameRomDownloadBaseUrl = MameRomDownloadService.DefaultDownloadRootUrl;
     private string _mameRomArchiveExtension = MameRomDownloadService.DefaultArchiveExtension;
     private string _mameLocalRomSourceDirectory = string.Empty;
@@ -82,6 +83,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private bool _isLoadingPreferences;
     private readonly IMameEmulationService _mameEmulationService;
     private readonly IMameProcessRunner _mameProcessRunner;
+    private readonly IEmulationBackendFactory _emulationBackendFactory;
+    private readonly IMameLampRuntimeAdapter _lampRuntimeAdapter;
+    private readonly IMameReelRuntimeAdapter _reelRuntimeAdapter;
+    private IEmulationBackend? _activeEmulationBackend;
     private readonly IMameDebuggerService _mameDebuggerService;
     private readonly MameDebuggerShellViewModel _mameDebuggerShell;
     private MameSetupState _mameSetupState = MameSetupState.NotStarted;
@@ -233,6 +238,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             _mameReleaseSource = preferences.Mame.ReleaseSource;
             _mameLuaPluginPath = MameRuntimePaths.ResolveBundledLuaPluginSourcePath();
             _mameCommandLineOverrides = preferences.Mame.CommandLineOverrides;
+            _system6NativeLibraryPath = preferences.NativeEmulation.System6LibraryPath;
             _mameRomDownloadBaseUrl = preferences.Mame.RomDownloadBaseUrl;
             _mameRomArchiveExtension = preferences.Mame.RomArchiveExtension;
             _mameLocalRomSourceDirectory = preferences.Mame.LocalRomSourceDirectory;
@@ -261,20 +267,22 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _mameVersionCatalogService = new MameVersionCatalogService(_mameDownloadService);
         var setupValidationService = new MameSetupValidationService(_mamePluginAssetValidator, _mameVersionCatalogService);
         _mameSetupOrchestrator = new MameSetupOrchestrator(setupValidationService);
+        _lampRuntimeAdapter = new MameLampRuntimeAdapter(
+            () => OpenDocuments,
+            () => DebugOutputLamps,
+            message => AddOutputEntry(message, OutputLogStatus.Info),
+            DispatchToUiThread);
+        _reelRuntimeAdapter = new MameReelRuntimeAdapter(
+            () => OpenDocuments,
+            () => SelectedFruitMachinePlatform,
+            () => DebugOutputStdOut,
+            message => AddOutputEntry(message, OutputLogStatus.Info),
+            DispatchToUiThread);
         var mameStdoutParser = new MameStdoutParser(
             new MameLampStateParser(),
-            new MameLampRuntimeAdapter(
-                () => OpenDocuments,
-                () => DebugOutputLamps,
-                message => AddOutputEntry(message, OutputLogStatus.Info),
-                DispatchToUiThread),
+            _lampRuntimeAdapter,
             new MameReelStateParser(),
-            new MameReelRuntimeAdapter(
-                () => OpenDocuments,
-                () => SelectedFruitMachinePlatform,
-                () => DebugOutputStdOut,
-                message => AddOutputEntry(message, OutputLogStatus.Info),
-                DispatchToUiThread),
+            _reelRuntimeAdapter,
             new MameSegmentStateParser(),
             new MameSegmentRuntimeAdapter(
                 () => OpenDocuments,
@@ -314,6 +322,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             new MameProcessStartInfoBuilder(),
             _mameProcessRunner,
             BuildMameLaunchRequest);
+        _emulationBackendFactory = new EmulationBackendFactory(
+            () => new MameEmulationBackend(
+                _mameEmulationService,
+                new MameInputCommandService(new MameInputPortResolver()),
+                _mameProcessRunner,
+                () => SelectedFruitMachinePlatform,
+                input => LoadedProject?.InputDefinitions.FirstOrDefault(definition => string.Equals(definition.Id, input.Id, StringComparison.OrdinalIgnoreCase))),
+            () => System6NativeLibraryPath);
+
         _mameEmulationService.StateChanged += (_, state) =>
         {
             DispatchToUiThread(() =>
@@ -512,7 +529,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
 
     public IReadOnlyList<ThemePreference> ThemePreferences { get; } = Enum.GetValues<ThemePreference>();
-    public IReadOnlyList<string> PreferencesCategories { get; } = ["Appearance", "MAME"];
+    public IReadOnlyList<string> PreferencesCategories { get; } = ["Appearance", "MAME", "Native Emulation"];
     public IReadOnlyList<FruitMachinePlatformType> FruitMachinePlatformTypes { get; } = Enum.GetValues<FruitMachinePlatformType>();
     public IReadOnlyList<InputDefinitionModel> InputDefinitions => LoadedProject?.InputDefinitions ?? [];
     public IReadOnlyList<InputMapDiagnostic> InputMapDiagnostics
@@ -576,6 +593,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public string MameReleaseSource { get => _mameReleaseSource; set { if (SetProperty(ref _mameReleaseSource, value)) SavePreferences(); } }
     public string MameLuaPluginPath => _mameLuaPluginPath;
     public string MameCommandLineOverrides { get => _mameCommandLineOverrides; set { if (SetProperty(ref _mameCommandLineOverrides, value)) SavePreferences(); } }
+    public string System6NativeLibraryPath { get => _system6NativeLibraryPath; set { if (SetProperty(ref _system6NativeLibraryPath, value)) SavePreferences(); } }
     public string MameRomDownloadBaseUrl
     {
         get => _mameRomDownloadBaseUrl;
@@ -1797,7 +1815,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return false;
         }
 
-        _playViewInputRouter ??= new PlayViewInputRouter(new MameInputCommandService(new MameInputPortResolver()), _mameProcessRunner);
+        _playViewInputRouter ??= _activeEmulationBackend is not null
+            ? new PlayViewInputRouter(_activeEmulationBackend)
+            : new PlayViewInputRouter(new MameInputCommandService(new MameInputPortResolver()), _mameProcessRunner);
         return true;
     }
 
@@ -2159,6 +2179,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 LocalRomSourceDirectory = MameLocalRomSourceDirectory,
                 LocalRomArchiveExtension = MameLocalRomArchiveExtension
             },
+            NativeEmulation = new NativeEmulationPreferences
+            {
+                System6LibraryPath = System6NativeLibraryPath
+            },
             FaceGeneration = FaceGenerationPreferences.FromSettings(
                 _defaultFaceGenerationSettings,
                 _showFaceGenerationSettingsBeforeGenerate,
@@ -2451,12 +2475,79 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         AddOutputEntry("Emulation start requested.", OutputLogStatus.Info);
         try
         {
-            await _mameEmulationService.StartAsync(CancellationToken.None);
+            await StartBackendEmulationAsync(CancellationToken.None);
         }
         catch (Exception ex)
         {
             AddOutputEntry($"Emulation failed to start: {ex.Message}", OutputLogStatus.Error);
         }
+    }
+
+    private async Task StartBackendEmulationAsync(CancellationToken cancellationToken)
+    {
+        var backend = _emulationBackendFactory.CreateBackend(SelectedFruitMachinePlatform)
+            ?? throw new InvalidOperationException($"No emulation backend is available for platform '{SelectedFruitMachinePlatform}'.");
+
+        _activeEmulationBackend = backend;
+        backend.StateChanged += OnActiveBackendStateChanged;
+        backend.LampChanged += OnActiveBackendLampChanged;
+        backend.ReelChanged += OnActiveBackendReelChanged;
+        try
+        {
+            await backend.StartAsync(BuildEmulationLaunchRequest(), cancellationToken).ConfigureAwait(false);
+            AddOutputEntry($"Started {backend.GetType().Name} for platform '{SelectedFruitMachinePlatform}'.", OutputLogStatus.Info);
+        }
+        catch
+        {
+            backend.StateChanged -= OnActiveBackendStateChanged;
+            backend.LampChanged -= OnActiveBackendLampChanged;
+            backend.ReelChanged -= OnActiveBackendReelChanged;
+            await backend.DisposeAsync().ConfigureAwait(false);
+            _activeEmulationBackend = null;
+            throw;
+        }
+    }
+
+    private EmulationLaunchRequest BuildEmulationLaunchRequest()
+    {
+        var romRootPath = MameRuntimePaths.EnsureManagedRomRootDirectory();
+        var romPaths = string.IsNullOrWhiteSpace(MameRomName)
+            ? Array.Empty<string>()
+            : new[] { Path.Combine(romRootPath, MameRomName + MameRomArchiveExtension) };
+
+        return new EmulationLaunchRequest(
+            SelectedFruitMachinePlatform,
+            MameRomName,
+            romRootPath,
+            romPaths,
+            MameCommandLineOverrides);
+    }
+
+    private void OnActiveBackendLampChanged(object? sender, MachineLampChangedEventArgs e)
+    {
+        _lampRuntimeAdapter.ApplyLampState(e.LampId, e.Value);
+    }
+
+    private void OnActiveBackendReelChanged(object? sender, MachineReelChangedEventArgs e)
+    {
+        _reelRuntimeAdapter.ApplyReelState(e.ReelId, e.Position);
+    }
+
+    private void OnActiveBackendStateChanged(object? sender, EmulationBackendState state)
+    {
+        DispatchToUiThread(() =>
+        {
+            EmulationState = state switch
+            {
+                EmulationBackendState.Starting => MameEmulationState.Starting,
+                EmulationBackendState.Running => MameEmulationState.Running,
+                EmulationBackendState.Paused => MameEmulationState.Paused,
+                EmulationBackendState.Stopping => MameEmulationState.Stopping,
+                EmulationBackendState.Stopped => MameEmulationState.Stopped,
+                _ => MameEmulationState.Failed
+            };
+            AddOutputEntry($"Emulation backend state changed to {state}.", OutputLogStatus.Info);
+        });
     }
 
     private async void StartDebuggerEmulation()
@@ -2521,7 +2612,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public void StopEmulationForWindowClose()
     {
-        if (_mameEmulationService.State == MameEmulationState.Stopped)
+        if (_activeEmulationBackend is null && _mameEmulationService.State == MameEmulationState.Stopped)
         {
             return;
         }
@@ -2529,7 +2620,22 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         AddOutputEntry("Emulation stop requested.", OutputLogStatus.Info);
         try
         {
-            _mameEmulationService.StopAsync(CancellationToken.None).GetAwaiter().GetResult();
+            if (_activeEmulationBackend is not null)
+            {
+                _activeEmulationBackend.StopAsync(CancellationToken.None).GetAwaiter().GetResult();
+                _activeEmulationBackend.StateChanged -= OnActiveBackendStateChanged;
+                _activeEmulationBackend.LampChanged -= OnActiveBackendLampChanged;
+                _activeEmulationBackend.ReelChanged -= OnActiveBackendReelChanged;
+                _activeEmulationBackend.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                _activeEmulationBackend = null;
+                _playViewInputRouter = null;
+                _playViewInputDispatcher = null;
+                EmulationState = MameEmulationState.Stopped;
+            }
+            else
+            {
+                _mameEmulationService.StopAsync(CancellationToken.None).GetAwaiter().GetResult();
+            }
         }
         catch (Exception ex)
         {
@@ -2552,7 +2658,22 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         AddOutputEntry("Emulation stop requested.", OutputLogStatus.Info);
         try
         {
-            await _mameEmulationService.StopAsync(CancellationToken.None);
+            if (_activeEmulationBackend is not null)
+            {
+                await _activeEmulationBackend.StopAsync(CancellationToken.None);
+                _activeEmulationBackend.StateChanged -= OnActiveBackendStateChanged;
+                _activeEmulationBackend.LampChanged -= OnActiveBackendLampChanged;
+                _activeEmulationBackend.ReelChanged -= OnActiveBackendReelChanged;
+                await _activeEmulationBackend.DisposeAsync();
+                _activeEmulationBackend = null;
+                _playViewInputRouter = null;
+                _playViewInputDispatcher = null;
+                EmulationState = MameEmulationState.Stopped;
+            }
+            else
+            {
+                await _mameEmulationService.StopAsync(CancellationToken.None);
+            }
         }
         catch (Exception ex)
         {
@@ -2573,7 +2694,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 CanTogglePauseEmulation,
                 "Emulation resume requested.",
                 "Emulation failed to resume",
-                cancellationToken => _mameEmulationService.ResumeAsync(cancellationToken));
+                cancellationToken => _activeEmulationBackend?.ResumeAsync(cancellationToken) ?? _mameEmulationService.ResumeAsync(cancellationToken));
 
             if (!commandSucceeded)
             {
@@ -2587,7 +2708,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             CanTogglePauseEmulation,
             "Emulation pause requested.",
             "Emulation failed to pause",
-            cancellationToken => _mameEmulationService.PauseAsync(cancellationToken));
+            cancellationToken => _activeEmulationBackend?.PauseAsync(cancellationToken) ?? _mameEmulationService.PauseAsync(cancellationToken));
 
         if (!pauseSucceeded)
         {
@@ -2630,7 +2751,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             CanResetEmulation,
             "Emulation soft reset requested.",
             "Emulation failed to soft reset",
-            cancellationToken => _mameEmulationService.SoftResetAsync(cancellationToken));
+            cancellationToken => _activeEmulationBackend?.ResetAsync(EmulationResetKind.Soft, cancellationToken) ?? _mameEmulationService.SoftResetAsync(cancellationToken));
     }
 
     private async void HardResetEmulation()
@@ -2639,7 +2760,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             CanResetEmulation,
             "Emulation hard reset requested.",
             "Emulation failed to hard reset",
-            cancellationToken => _mameEmulationService.HardResetAsync(cancellationToken));
+            cancellationToken => _activeEmulationBackend?.ResetAsync(EmulationResetKind.Hard, cancellationToken) ?? _mameEmulationService.HardResetAsync(cancellationToken));
     }
 
     private bool TrySyncMamePluginsForDebuggerLaunch()
