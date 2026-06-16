@@ -58,12 +58,6 @@ public sealed record EmulationLaunchRequest(
     IReadOnlyList<string> RomPaths,
     string AdditionalArguments);
 
-public sealed record MachineInputReference(
-    string Id,
-    int? Index = null,
-    string? Tag = null,
-    int? Mask = null);
-
 public sealed class MachineLampChangedEventArgs : EventArgs
 {
     public MachineLampChangedEventArgs(int lampId, int value)
