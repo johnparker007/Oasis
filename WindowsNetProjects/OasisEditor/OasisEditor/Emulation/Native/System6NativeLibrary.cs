@@ -2,9 +2,19 @@ using System.Runtime.InteropServices;
 
 namespace OasisEditor;
 
-public sealed class System6NativeLibrary : INativeCoreLibrary
+public sealed class System6NativeLibrary : ISystem6NativeLibrary
 {
     private readonly NativeLibraryLoader _loader;
+    private readonly System6InitialiseDelegate _initialise;
+    private readonly System6LoadRomDelegate _loadRom;
+    private readonly System6ResetDelegate _reset;
+    private readonly System6RunDelegate _run;
+    private readonly System6ShutdownDelegate _shutdown;
+    private readonly System6GetLampsOnDelegate _getLampsOn;
+    private readonly System6GetLampBrightnessDelegate _getLampBrightness;
+    private readonly System6GetPosOutDelegate _getPosOut;
+    private readonly System6TurnSwitchOnDelegate _turnSwitchOn;
+    private readonly System6TurnSwitchOffDelegate _turnSwitchOff;
 
     public System6NativeLibrary(string libraryPath)
         : this(new NativeLibraryLoader(libraryPath))
@@ -15,16 +25,16 @@ public sealed class System6NativeLibrary : INativeCoreLibrary
     {
         _loader = loader ?? throw new ArgumentNullException(nameof(loader));
 
-        Initialise = _loader.BindExport<System6InitialiseDelegate>("SYSTEM6Initialise");
-        LoadROM = _loader.BindExport<System6LoadRomDelegate>("SYSTEM6LoadROM");
-        Reset = _loader.BindExport<System6ResetDelegate>("SYSTEM6Reset");
-        Run = _loader.BindExport<System6RunDelegate>("SYSTEM6Run");
-        Shutdown = _loader.BindExport<System6ShutdownDelegate>("SYSTEM6Shutdown");
-        GetLampsOn = _loader.BindExport<System6GetLampsOnDelegate>("SYSTEM6GetLampsOn");
-        GetLampBrightness = _loader.BindExport<System6GetLampBrightnessDelegate>("SYSTEM6GetLampBrightness");
-        GetPosOut = _loader.BindExport<System6GetPosOutDelegate>("SYSTEM6GetPosOut");
-        TurnSwitchOn = _loader.BindExport<System6TurnSwitchOnDelegate>("SYSTEM6TurnSwitchOn");
-        TurnSwitchOff = _loader.BindExport<System6TurnSwitchOffDelegate>("SYSTEM6TurnSwitchOff");
+        _initialise = _loader.BindExport<System6InitialiseDelegate>("SYSTEM6Initialise");
+        _loadRom = _loader.BindExport<System6LoadRomDelegate>("SYSTEM6LoadROM");
+        _reset = _loader.BindExport<System6ResetDelegate>("SYSTEM6Reset");
+        _run = _loader.BindExport<System6RunDelegate>("SYSTEM6Run");
+        _shutdown = _loader.BindExport<System6ShutdownDelegate>("SYSTEM6Shutdown");
+        _getLampsOn = _loader.BindExport<System6GetLampsOnDelegate>("SYSTEM6GetLampsOn");
+        _getLampBrightness = _loader.BindExport<System6GetLampBrightnessDelegate>("SYSTEM6GetLampBrightness");
+        _getPosOut = _loader.BindExport<System6GetPosOutDelegate>("SYSTEM6GetPosOut");
+        _turnSwitchOn = _loader.BindExport<System6TurnSwitchOnDelegate>("SYSTEM6TurnSwitchOn");
+        _turnSwitchOff = _loader.BindExport<System6TurnSwitchOffDelegate>("SYSTEM6TurnSwitchOff");
     }
 
     public string LibraryPath => _loader.LibraryPath;
@@ -33,25 +43,25 @@ public sealed class System6NativeLibrary : INativeCoreLibrary
 
     public bool IsLoaded => _loader.IsLoaded;
 
-    public System6InitialiseDelegate Initialise { get; }
+    public int Initialise() => _initialise();
 
-    public System6LoadRomDelegate LoadROM { get; }
+    public int LoadRom(string romPath) => _loadRom(romPath);
 
-    public System6ResetDelegate Reset { get; }
+    public void Reset() => _reset();
 
-    public System6RunDelegate Run { get; }
+    public void Run(int cycles) => _run(cycles);
 
-    public System6ShutdownDelegate Shutdown { get; }
+    public void Shutdown() => _shutdown();
 
-    public System6GetLampsOnDelegate GetLampsOn { get; }
+    public int GetLampsOn() => _getLampsOn();
 
-    public System6GetLampBrightnessDelegate GetLampBrightness { get; }
+    public int GetLampBrightness(int lampIndex) => _getLampBrightness(lampIndex);
 
-    public System6GetPosOutDelegate GetPosOut { get; }
+    public int GetPosOut(int positionIndex) => _getPosOut(positionIndex);
 
-    public System6TurnSwitchOnDelegate TurnSwitchOn { get; }
+    public void TurnSwitchOn(int switchIndex) => _turnSwitchOn(switchIndex);
 
-    public System6TurnSwitchOffDelegate TurnSwitchOff { get; }
+    public void TurnSwitchOff(int switchIndex) => _turnSwitchOff(switchIndex);
 
     public void Dispose()
     {
@@ -68,7 +78,7 @@ public sealed class System6NativeLibrary : INativeCoreLibrary
     public delegate void System6ResetDelegate();
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    public delegate void System6RunDelegate();
+    public delegate void System6RunDelegate(int cycles);
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     public delegate void System6ShutdownDelegate();
