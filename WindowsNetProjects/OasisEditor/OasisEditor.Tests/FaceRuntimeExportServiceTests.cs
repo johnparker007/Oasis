@@ -591,7 +591,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
     }
 
     [Fact]
-    public void Generate_WithOverlappingAuthoredEmitters_RemainsDeterministicAndCapped()
+    public void Generate_WithOverlappingAuthoredEmitters_RemainsDeterministicWithIndependentChannels()
     {
         var firstOutputDirectory = Path.Combine(_generatedDirectory, "authored-overlap-test-a");
         var secondOutputDirectory = Path.Combine(_generatedDirectory, "authored-overlap-test-b");
@@ -612,9 +612,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         Assert.Equal(firstIds.GetPixel(1, 0), secondIds.GetPixel(1, 0));
         Assert.Equal(firstWeights.GetPixel(1, 0), secondWeights.GetPixel(1, 0));
         Assert.Equal(new SKColor(21, 22, 0, 255), firstIds.GetPixel(1, 0));
-        Assert.True(firstWeights.GetPixel(1, 0).Red + firstWeights.GetPixel(1, 0).Green + firstWeights.GetPixel(1, 0).Blue <= 255);
-        Assert.InRange(firstWeights.GetPixel(1, 0).Red, 120, 135);
-        Assert.InRange(firstWeights.GetPixel(1, 0).Green, 120, 135);
+        Assert.Equal(new SKColor(255, 255, 0, 255), firstWeights.GetPixel(1, 0));
     }
 
     [Fact]

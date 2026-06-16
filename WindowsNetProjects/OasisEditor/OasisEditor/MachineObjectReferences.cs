@@ -111,6 +111,7 @@ public readonly record struct MachineDisplayReference(MachineObjectReference Ref
 
 public readonly record struct MachineInputReference(MachineObjectReference Reference)
 {
+    public string Id => Reference.Id;
     public static MachineInputReference FromInputId(string inputId) => new(MachineObjectReference.Input(inputId));
     public override string ToString() => Reference.ToString();
 }
