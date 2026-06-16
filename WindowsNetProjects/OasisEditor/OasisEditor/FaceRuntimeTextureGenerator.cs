@@ -620,42 +620,20 @@ public sealed class LampInfluenceTextureGenerator
             .Take(SupportedChannelCount)
             .ToArray();
 
-        var weightBytes = ToWeightBytes(retained);
         for (var channel = 0; channel < retained.Length; channel++)
         {
             idChannels[channel] = retained[channel].Influence.LampId;
-            weightChannels[channel] = weightBytes[channel];
+            weightChannels[channel] = ToWeightByte(retained[channel].RawWeight);
         }
 
         return (idChannels, weightChannels);
     }
 
-    private static byte[] ToWeightBytes(IReadOnlyList<WeightedLampInfluence> retained)
+    private static byte ToWeightByte(double rawWeight)
     {
-        var rawWeights = retained
-            .Select(influence => IsFinite(influence.RawWeight) ? Math.Clamp(influence.RawWeight, 0d, 1d) : 0d)
-            .ToArray();
-        var rawTotal = rawWeights.Sum();
-        if (rawTotal <= 1d)
-        {
-            return rawWeights
-                .Select(weight => (byte)Math.Clamp(Math.Round(weight * 255d, MidpointRounding.AwayFromZero), 0d, 255d))
-                .ToArray();
-        }
-
-        var scaledWeights = rawWeights.Select(weight => (weight / rawTotal) * 255d).ToArray();
-        var weightBytes = scaledWeights.Select(weight => (byte)Math.Floor(weight)).ToArray();
-        var remaining = 255 - weightBytes.Sum(weight => weight);
-        foreach (var index in scaledWeights
-            .Select((weight, index) => new { Index = index, Fraction = weight - Math.Floor(weight) })
-            .OrderByDescending(item => item.Fraction)
-            .ThenBy(item => retained[item.Index].Influence.Order)
-            .Take(remaining))
-        {
-            weightBytes[index.Index]++;
-        }
-
-        return weightBytes;
+        return IsFinite(rawWeight)
+            ? (byte)Math.Clamp(Math.Round(rawWeight * 255d, MidpointRounding.AwayFromZero), 0d, 255d)
+            : (byte)0;
     }
 
     private static bool IsFinite(double value)
