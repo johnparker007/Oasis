@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -13,14 +14,15 @@ public sealed class System6NativeBackendTests
     public async Task StartAsyncInitialisesLoadsRomsResetsAndStopShutsDown()
     {
         var library = new FakeSystem6NativeLibrary();
-        var backend = new System6NativeBackend("C:/cores/system6.dll", _ => library);
-        var request = CreateLaunchRequest("C:/roms/a.rom", "C:/roms/b.rom");
+        var (dllPath, rom1, rom2) = CreateNativeFiles(2);
+        var backend = new System6NativeBackend(dllPath, _ => library);
+        var request = CreateLaunchRequest(rom1, rom2);
 
         await backend.StartAsync(request, CancellationToken.None);
         await backend.StopAsync(CancellationToken.None);
 
         Assert.True(library.InitialiseCalled);
-        Assert.Equal(new[] { "C:/roms/a.rom", "C:/roms/b.rom" }, library.LoadedRoms);
+        Assert.Equal(new[] { rom1, rom2, string.Empty, string.Empty }, library.LoadedRoms);
         Assert.True(library.ResetCalled);
         Assert.True(library.ShutdownCalled);
         Assert.True(library.DisposeCalled);
@@ -31,9 +33,10 @@ public sealed class System6NativeBackendTests
     public async Task SetInputStateAsyncMapsNumericInputIdToNativeSwitchCalls()
     {
         var library = new FakeSystem6NativeLibrary();
-        var backend = new System6NativeBackend("C:/cores/system6.dll", _ => library);
+        var (dllPath, rom1, _) = CreateNativeFiles(1);
+        var backend = new System6NativeBackend(dllPath, _ => library);
 
-        await backend.StartAsync(CreateLaunchRequest("C:/roms/a.rom"), CancellationToken.None);
+        await backend.StartAsync(CreateLaunchRequest(rom1), CancellationToken.None);
         await backend.SetInputStateAsync(MachineInputReference.FromInputId("12"), true, CancellationToken.None);
         await backend.SetInputStateAsync(MachineInputReference.FromInputId("12"), false, CancellationToken.None);
         await backend.StopAsync(CancellationToken.None);
@@ -46,7 +49,8 @@ public sealed class System6NativeBackendTests
     public async Task StartAsyncWithoutRomPathsFailsBeforeLoadingNativeLibrary()
     {
         var library = new FakeSystem6NativeLibrary();
-        var backend = new System6NativeBackend("C:/cores/system6.dll", _ => library);
+        var (dllPath, _, _) = CreateNativeFiles(0);
+        var backend = new System6NativeBackend(dllPath, _ => library);
         var request = CreateLaunchRequest();
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => backend.StartAsync(request, CancellationToken.None));
@@ -61,8 +65,26 @@ public sealed class System6NativeBackendTests
             FruitMachinePlatformType.None,
             "test-machine",
             "C:/roms",
-            romPaths,
-            string.Empty);
+            [],
+            string.Empty,
+            new System6NativeRomSettings
+            {
+                ProgramRom1Path = romPaths.Length > 0 ? romPaths[0] : string.Empty,
+                ProgramRom2Path = romPaths.Length > 1 ? romPaths[1] : string.Empty
+            });
+    }
+
+    private static (string DllPath, string Rom1, string Rom2) CreateNativeFiles(int romCount)
+    {
+        var directory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        var dllPath = Path.Combine(directory, "system6.dll");
+        File.WriteAllBytes(dllPath, []);
+        var rom1 = Path.Combine(directory, "a.rom");
+        var rom2 = Path.Combine(directory, "b.rom");
+        if (romCount >= 1) File.WriteAllBytes(rom1, []);
+        if (romCount >= 2) File.WriteAllBytes(rom2, []);
+        return (dllPath, rom1, rom2);
     }
 
     private sealed class FakeSystem6NativeLibrary : ISystem6NativeLibrary
@@ -93,10 +115,15 @@ public sealed class System6NativeBackendTests
             return 0;
         }
 
-        public int LoadRom(string romPath)
+        public int LoadRom(IReadOnlyList<string> programRomPaths, bool flashSwitch)
         {
-            LoadedRoms.Add(romPath);
-            return 0;
+            LoadedRoms.AddRange(programRomPaths);
+            return 1;
+        }
+
+        public int LoadSoundRom(IReadOnlyList<string> soundRomPaths)
+        {
+            return 1;
         }
 
         public void Reset()

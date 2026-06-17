@@ -4,7 +4,9 @@ public interface ISystem6NativeLibrary : INativeCoreLibrary
 {
     int Initialise();
 
-    int LoadRom(string romPath);
+    int LoadRom(IReadOnlyList<string> programRomPaths, bool flashSwitch);
+
+    int LoadSoundRom(IReadOnlyList<string> soundRomPaths);
 
     void Reset();
 
