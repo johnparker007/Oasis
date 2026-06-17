@@ -82,7 +82,9 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
         _loader.Dispose();
     }
 
-    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    // System6 DLL exports are Windows native callbacks. Use StdCall explicitly so
+    // 32-bit cores do not corrupt the stack when called from managed code.
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     public delegate int System6InitialiseDelegate();
 
     private IntPtr[] AllocateRomPathSlots(IReadOnlyList<string> romPaths)
@@ -115,7 +117,7 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
         _romPathBuffers.Clear();
     }
 
-    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     public delegate int System6LoadRomDelegate(
         IntPtr romPath1,
         IntPtr romPath2,
@@ -123,34 +125,34 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
         IntPtr romPath4,
         byte flashSwitch);
 
-    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     public delegate int System6LoadSoundRomDelegate(
         IntPtr romPath1,
         IntPtr romPath2,
         IntPtr romPath3,
         IntPtr romPath4);
 
-    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     public delegate void System6ResetDelegate();
 
-    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     public delegate void System6RunDelegate(int cycles);
 
-    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     public delegate void System6ShutdownDelegate();
 
-    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     public delegate int System6GetLampsOnDelegate();
 
-    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     public delegate int System6GetLampBrightnessDelegate(int lampIndex);
 
-    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     public delegate int System6GetPosOutDelegate(int positionIndex);
 
-    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     public delegate void System6TurnSwitchOnDelegate(int switchIndex);
 
-    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     public delegate void System6TurnSwitchOffDelegate(int switchIndex);
 }
