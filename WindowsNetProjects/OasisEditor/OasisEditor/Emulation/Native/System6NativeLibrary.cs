@@ -8,6 +8,10 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
     private readonly System6InitialiseDelegate _initialise;
     private readonly System6LoadRomDelegate _loadRom;
     private readonly System6LoadSoundRomDelegate _loadSoundRom;
+    private readonly System6SetStepsDelegate _setSteps;
+    private readonly System6SetOptoStartDelegate _setOptoStart;
+    private readonly System6SetOptoEndDelegate _setOptoEnd;
+    private readonly System6SetOptoInvertDelegate _setOptoInvert;
     private readonly System6ResetDelegate _reset;
     private readonly System6RunDelegate _run;
     private readonly System6ShutdownDelegate _shutdown;
@@ -30,6 +34,10 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
         _initialise = _loader.BindExport<System6InitialiseDelegate>("SYSTEM6Initialise");
         _loadRom = _loader.BindExport<System6LoadRomDelegate>("SYSTEM6LoadROM");
         _loadSoundRom = _loader.BindExport<System6LoadSoundRomDelegate>("SYSTEM6LoadSoundROM");
+        _setSteps = _loader.BindExport<System6SetStepsDelegate>("SetSteps");
+        _setOptoStart = _loader.BindExport<System6SetOptoStartDelegate>("SetOptoStart");
+        _setOptoEnd = _loader.BindExport<System6SetOptoEndDelegate>("SetOptoEnd");
+        _setOptoInvert = _loader.BindExport<System6SetOptoInvertDelegate>("SetOptoInvert");
         _reset = _loader.BindExport<System6ResetDelegate>("SYSTEM6Reset");
         _run = _loader.BindExport<System6RunDelegate>("SYSTEM6Run");
         _shutdown = _loader.BindExport<System6ShutdownDelegate>("SYSTEM6Shutdown");
@@ -59,6 +67,14 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
         var paths = AllocateRomPathSlots(soundRomPaths);
         return _loadSoundRom(paths[0], paths[1], paths[2], paths[3]);
     }
+
+    public void SetSteps(byte reelNum, byte steps) => _setSteps(reelNum, steps);
+
+    public void SetOptoStart(byte reelNum, byte start) => _setOptoStart(reelNum, start);
+
+    public void SetOptoEnd(byte reelNum, byte end) => _setOptoEnd(reelNum, end);
+
+    public void SetOptoInvert(byte reelNum, byte state) => _setOptoInvert(reelNum, state);
 
     public void Reset() => _reset();
 
@@ -135,6 +151,18 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
         IntPtr romPath2,
         IntPtr romPath3,
         IntPtr romPath4);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate void System6SetStepsDelegate(byte reelNum, byte steps);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate void System6SetOptoStartDelegate(byte reelNum, byte start);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate void System6SetOptoEndDelegate(byte reelNum, byte end);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate void System6SetOptoInvertDelegate(byte reelNum, byte state);
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     public delegate void System6ResetDelegate();

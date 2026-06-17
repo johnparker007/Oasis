@@ -20,6 +20,8 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
@@ -81,5 +83,28 @@
                 <CheckBox Grid.Row="8" Grid.Column="1" Margin="0,2,0,6" Content="Flash switch" IsChecked="{Binding System6FlashSwitch}" />
                 <TextBlock Grid.Row="9" Grid.Column="0" Grid.ColumnSpan="3" Text="{Binding System6NativeRomStatus, StringFormat=Status: {0}}" Foreground="{DynamicResource TextSecondaryBrush}" />
             </Grid>
+
+            <TextBlock Grid.Row="13" Margin="0,20,0,4" Text="System6 Reel Optos" Foreground="{DynamicResource TextSecondaryBrush}" />
+            <StackPanel Grid.Row="14" Orientation="Vertical">
+                <DataGrid ItemsSource="{Binding System6ReelOptos}"
+                          AutoGenerateColumns="False"
+                          CanUserAddRows="False"
+                          CanUserDeleteRows="False"
+                          HeadersVisibility="Column"
+                          MaxHeight="260">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Reel" Binding="{Binding ReelNumber}" IsReadOnly="True" Width="80" />
+                        <DataGridTextColumn Header="Steps" Binding="{Binding Steps, UpdateSourceTrigger=LostFocus}" Width="100" />
+                        <DataGridTextColumn Header="Opto Start" Binding="{Binding OptoStart, UpdateSourceTrigger=LostFocus}" Width="120" />
+                        <DataGridTextColumn Header="Opto End" Binding="{Binding OptoEnd, UpdateSourceTrigger=LostFocus}" Width="120" />
+                        <DataGridCheckBoxColumn Header="Inverted" Binding="{Binding OptoInvert, UpdateSourceTrigger=PropertyChanged}" Width="100" />
+                    </DataGrid.Columns>
+                </DataGrid>
+                <Button Margin="0,8,0,0"
+                        HorizontalAlignment="Left"
+                        Padding="10,2"
+                        Command="{Binding ResetSystem6ReelOptosCommand}"
+                        Content="Reset Reel Optos To Defaults" />
+            </StackPanel>
     </Grid></ScrollViewer>
 </UserControl>

@@ -18,6 +18,9 @@ public sealed class EditorProject
 
 public sealed class System6NativeRomSettings
 {
+    public const int DefaultReelOptoSlotCount = 8;
+    public List<System6ReelOptoSettings> ReelOptos { get; set; } = CreateDefaultReelOptos();
+
     public string ProgramRom1Path { get; set; } = string.Empty;
     public string ProgramRom2Path { get; set; } = string.Empty;
     public string ProgramRom3Path { get; set; } = string.Empty;
@@ -30,4 +33,38 @@ public sealed class System6NativeRomSettings
 
     public IReadOnlyList<string> ProgramRomPaths => [ProgramRom1Path, ProgramRom2Path, ProgramRom3Path, ProgramRom4Path];
     public IReadOnlyList<string> SoundRomPaths => [SoundRom1Path, SoundRom2Path, SoundRom3Path, SoundRom4Path];
+
+    public static List<System6ReelOptoSettings> CreateDefaultReelOptos()
+    {
+        var reelOptos = new List<System6ReelOptoSettings>(DefaultReelOptoSlotCount);
+        for (var reelIndex = 0; reelIndex < DefaultReelOptoSlotCount; reelIndex++)
+        {
+            reelOptos.Add(System6ReelOptoSettings.CreateDefault(reelIndex));
+        }
+
+        return reelOptos;
+    }
+}
+
+public sealed class System6ReelOptoSettings
+{
+    public const int DefaultSteps = 96;
+    public const int DefaultOptoStart = 5;
+    public const int DefaultOptoEnd = 7;
+    public const bool DefaultOptoInvert = false;
+
+    public int ReelIndex { get; set; }
+    public int Steps { get; set; } = DefaultSteps;
+    public int OptoStart { get; set; } = DefaultOptoStart;
+    public int OptoEnd { get; set; } = DefaultOptoEnd;
+    public bool OptoInvert { get; set; } = DefaultOptoInvert;
+
+    public static System6ReelOptoSettings CreateDefault(int reelIndex) => new()
+    {
+        ReelIndex = reelIndex,
+        Steps = DefaultSteps,
+        OptoStart = DefaultOptoStart,
+        OptoEnd = DefaultOptoEnd,
+        OptoInvert = DefaultOptoInvert
+    };
 }
