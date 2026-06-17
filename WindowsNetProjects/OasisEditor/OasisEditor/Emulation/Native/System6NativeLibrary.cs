@@ -16,6 +16,7 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
     private readonly System6GetPosOutDelegate _getPosOut;
     private readonly System6TurnSwitchOnDelegate _turnSwitchOn;
     private readonly System6TurnSwitchOffDelegate _turnSwitchOff;
+    private readonly List<IntPtr> _romPathBuffers = [];
 
     public System6NativeLibrary(string libraryPath)
         : this(new NativeLibraryLoader(libraryPath))
@@ -49,13 +50,13 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
 
     public int LoadRom(IReadOnlyList<string> programRomPaths, bool flashSwitch)
     {
-        var paths = NormalizeRomSlots(programRomPaths);
+        var paths = AllocateRomPathSlots(programRomPaths);
         return _loadRom(paths[0], paths[1], paths[2], paths[3], flashSwitch ? (byte)1 : (byte)0);
     }
 
     public int LoadSoundRom(IReadOnlyList<string> soundRomPaths)
     {
-        var paths = NormalizeRomSlots(soundRomPaths);
+        var paths = AllocateRomPathSlots(soundRomPaths);
         return _loadSoundRom(paths[0], paths[1], paths[2], paths[3]);
     }
 
@@ -77,37 +78,57 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
 
     public void Dispose()
     {
+        FreeRomPathBuffers();
         _loader.Dispose();
     }
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     public delegate int System6InitialiseDelegate();
 
-    private static string[] NormalizeRomSlots(IReadOnlyList<string> romPaths)
+    private IntPtr[] AllocateRomPathSlots(IReadOnlyList<string> romPaths)
     {
-        var paths = new[] { string.Empty, string.Empty, string.Empty, string.Empty };
-        for (var i = 0; i < Math.Min(paths.Length, romPaths.Count); i++)
+        // Keep ANSI path buffers alive for the lifetime of the native core.
+        // Some legacy System6 DLLs retain the char* values passed to LoadROM
+        // and read them later during Reset/Run rather than copying immediately.
+
+        var paths = new[] { IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero };
+        for (var i = 0; i < paths.Length; i++)
         {
-            paths[i] = romPaths[i] ?? string.Empty;
+            var path = i < romPaths.Count ? romPaths[i] ?? string.Empty : string.Empty;
+            paths[i] = Marshal.StringToHGlobalAnsi(path);
+            _romPathBuffers.Add(paths[i]);
         }
 
         return paths;
     }
 
+    private void FreeRomPathBuffers()
+    {
+        foreach (var buffer in _romPathBuffers)
+        {
+            if (buffer != IntPtr.Zero)
+            {
+                Marshal.FreeHGlobal(buffer);
+            }
+        }
+
+        _romPathBuffers.Clear();
+    }
+
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     public delegate int System6LoadRomDelegate(
-        [MarshalAs(UnmanagedType.LPStr)] string romPath1,
-        [MarshalAs(UnmanagedType.LPStr)] string romPath2,
-        [MarshalAs(UnmanagedType.LPStr)] string romPath3,
-        [MarshalAs(UnmanagedType.LPStr)] string romPath4,
+        IntPtr romPath1,
+        IntPtr romPath2,
+        IntPtr romPath3,
+        IntPtr romPath4,
         byte flashSwitch);
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     public delegate int System6LoadSoundRomDelegate(
-        [MarshalAs(UnmanagedType.LPStr)] string romPath1,
-        [MarshalAs(UnmanagedType.LPStr)] string romPath2,
-        [MarshalAs(UnmanagedType.LPStr)] string romPath3,
-        [MarshalAs(UnmanagedType.LPStr)] string romPath4);
+        IntPtr romPath1,
+        IntPtr romPath2,
+        IntPtr romPath3,
+        IntPtr romPath4);
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     public delegate void System6ResetDelegate();
