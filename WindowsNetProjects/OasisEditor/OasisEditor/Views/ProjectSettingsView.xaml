@@ -4,10 +4,12 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
-             d:DesignHeight="340"
+             d:DesignHeight="640"
              d:DesignWidth="560">
-    <Grid Margin="16">
+    <ScrollViewer VerticalScrollBarVisibility="Auto"><Grid Margin="16">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -60,5 +62,24 @@
                       Content="Automatically download missing ROMs"
                       IsChecked="{Binding AutomaticallyDownloadMissingRoms}" />
         </StackPanel>
-    </Grid>
+            <TextBlock Grid.Row="11" Margin="0,20,0,4" Text="Native DLL ROMs / System6 ROMs" Foreground="{DynamicResource TextSecondaryBrush}" />
+            <Grid Grid.Row="12">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="120" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" Grid.Column="0" Margin="0,0,8,6" VerticalAlignment="Center" Text="Program ROM 1" /><TextBox Grid.Row="0" Grid.Column="1" Margin="0,0,8,6" Text="{Binding System6ProgramRom1Path, UpdateSourceTrigger=LostFocus}" /><Button Grid.Row="0" Grid.Column="2" Margin="0,0,0,6" Padding="10,2" Command="{Binding BrowseSystem6ProgramRom1Command}" Content="Browse" />
+                <TextBlock Grid.Row="1" Grid.Column="0" Margin="0,0,8,6" VerticalAlignment="Center" Text="Program ROM 2" /><TextBox Grid.Row="1" Grid.Column="1" Margin="0,0,8,6" Text="{Binding System6ProgramRom2Path, UpdateSourceTrigger=LostFocus}" /><Button Grid.Row="1" Grid.Column="2" Margin="0,0,0,6" Padding="10,2" Command="{Binding BrowseSystem6ProgramRom2Command}" Content="Browse" />
+                <TextBlock Grid.Row="2" Grid.Column="0" Margin="0,0,8,6" VerticalAlignment="Center" Text="Program ROM 3" /><TextBox Grid.Row="2" Grid.Column="1" Margin="0,0,8,6" Text="{Binding System6ProgramRom3Path, UpdateSourceTrigger=LostFocus}" /><Button Grid.Row="2" Grid.Column="2" Margin="0,0,0,6" Padding="10,2" Command="{Binding BrowseSystem6ProgramRom3Command}" Content="Browse" />
+                <TextBlock Grid.Row="3" Grid.Column="0" Margin="0,0,8,6" VerticalAlignment="Center" Text="Program ROM 4" /><TextBox Grid.Row="3" Grid.Column="1" Margin="0,0,8,6" Text="{Binding System6ProgramRom4Path, UpdateSourceTrigger=LostFocus}" /><Button Grid.Row="3" Grid.Column="2" Margin="0,0,0,6" Padding="10,2" Command="{Binding BrowseSystem6ProgramRom4Command}" Content="Browse" />
+                <TextBlock Grid.Row="4" Grid.Column="0" Margin="0,0,8,6" VerticalAlignment="Center" Text="Sound ROM 1" /><TextBox Grid.Row="4" Grid.Column="1" Margin="0,0,8,6" Text="{Binding System6SoundRom1Path, UpdateSourceTrigger=LostFocus}" /><Button Grid.Row="4" Grid.Column="2" Margin="0,0,0,6" Padding="10,2" Command="{Binding BrowseSystem6SoundRom1Command}" Content="Browse" />
+                <TextBlock Grid.Row="5" Grid.Column="0" Margin="0,0,8,6" VerticalAlignment="Center" Text="Sound ROM 2" /><TextBox Grid.Row="5" Grid.Column="1" Margin="0,0,8,6" Text="{Binding System6SoundRom2Path, UpdateSourceTrigger=LostFocus}" /><Button Grid.Row="5" Grid.Column="2" Margin="0,0,0,6" Padding="10,2" Command="{Binding BrowseSystem6SoundRom2Command}" Content="Browse" />
+                <TextBlock Grid.Row="6" Grid.Column="0" Margin="0,0,8,6" VerticalAlignment="Center" Text="Sound ROM 3" /><TextBox Grid.Row="6" Grid.Column="1" Margin="0,0,8,6" Text="{Binding System6SoundRom3Path, UpdateSourceTrigger=LostFocus}" /><Button Grid.Row="6" Grid.Column="2" Margin="0,0,0,6" Padding="10,2" Command="{Binding BrowseSystem6SoundRom3Command}" Content="Browse" />
+                <TextBlock Grid.Row="7" Grid.Column="0" Margin="0,0,8,6" VerticalAlignment="Center" Text="Sound ROM 4" /><TextBox Grid.Row="7" Grid.Column="1" Margin="0,0,8,6" Text="{Binding System6SoundRom4Path, UpdateSourceTrigger=LostFocus}" /><Button Grid.Row="7" Grid.Column="2" Margin="0,0,0,6" Padding="10,2" Command="{Binding BrowseSystem6SoundRom4Command}" Content="Browse" />
+                <CheckBox Grid.Row="8" Grid.Column="1" Margin="0,2,0,6" Content="Flash switch" IsChecked="{Binding System6FlashSwitch}" />
+                <TextBlock Grid.Row="9" Grid.Column="0" Grid.ColumnSpan="3" Text="{Binding System6NativeRomStatus, StringFormat=Status: {0}}" Foreground="{DynamicResource TextSecondaryBrush}" />
+            </Grid>
+    </Grid></ScrollViewer>
 </UserControl>

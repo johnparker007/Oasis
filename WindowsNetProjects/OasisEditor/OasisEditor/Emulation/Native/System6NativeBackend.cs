@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using System.Globalization;
+using System.IO;
 
 namespace OasisEditor;
 
@@ -8,6 +10,9 @@ public sealed class System6NativeBackend : IEmulationBackend
     private const int System6ClockHz = 8000000;
     private const int LampCount = 32;
     private const int ReelCount = 16;
+    private const string DiagnosticStageEnvironmentVariable = "OASIS_SYSTEM6_STARTUP_STAGE";
+    private static readonly TimeSpan SlowRunWarningThreshold = TimeSpan.FromMilliseconds(250);
+    private static readonly TimeSpan RunWarningThrottleInterval = TimeSpan.FromSeconds(10);
 
     private static readonly EmulationBackendCapabilities System6Capabilities = new(
         SupportsPause: true,
@@ -31,6 +36,7 @@ public sealed class System6NativeBackend : IEmulationBackend
     private CancellationTokenSource? _runLoopCancellation;
     private Task? _runLoopTask;
     private EmulationBackendState _state = EmulationBackendState.Stopped;
+    private DateTime _lastRunWarningUtc = DateTime.MinValue;
 
     public System6NativeBackend(string libraryPath)
         : this(libraryPath, static path => new System6NativeLibrary(path))
@@ -109,44 +115,101 @@ public sealed class System6NativeBackend : IEmulationBackend
 
         try
         {
-            if (request.RomPaths.Count == 0)
+            if (string.IsNullOrWhiteSpace(_libraryPath) || !File.Exists(_libraryPath))
             {
-                throw new InvalidOperationException($"System6 native backend requires at least one ROM path before starting core '{_libraryPath}'.");
+                throw new InvalidOperationException($"System6 native backend DLL path is missing or does not exist: '{_libraryPath}'.");
             }
 
+            var startupStage = ResolveStartupStage();
+            LogStartupStage($"startup diagnostic stage = {startupStage}");
+
             _library = _libraryFactory(_libraryPath);
+            LogStartupStage("native DLL loaded and exports bound");
+            if (startupStage is System6StartupStage.LoadBindOnly)
+            {
+                return CompleteStagedStartup();
+            }
+
             try
             {
-                _library.Initialise();
+                var initialiseResult = _library.Initialise();
+                LogStartupStage($"Initialise returned {initialiseResult}");
+                if (initialiseResult == 0)
+                {
+                    throw new InvalidOperationException("SYSTEM6Initialise returned failure.");
+                }
             }
             catch (Exception ex)
             {
                 throw new InvalidOperationException($"System6 native backend failed to initialise core '{_libraryPath}'.", ex);
             }
-
-            foreach (var romPath in request.RomPaths)
+            if (startupStage is System6StartupStage.InitialiseOnly)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                try
+                return CompleteStagedStartup();
+            }
+
+            var nativeRoms = request.System6NativeRoms
+                ?? throw new InvalidOperationException("System6 native backend requires native DLL ROM settings.");
+            var programRomPaths = ValidateNativeRomPaths(nativeRoms.ProgramRomPaths, true, "program");
+            var soundRomPaths = ValidateNativeRomPaths(nativeRoms.SoundRomPaths, false, "sound");
+
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                var loadRomResult = _library.LoadRom(programRomPaths, nativeRoms.FlashSwitch);
+                LogStartupStage($"LoadROM returned {loadRomResult}");
+                if (loadRomResult == 0)
                 {
-                    _library.LoadRom(romPath);
+                    throw new InvalidOperationException("SYSTEM6LoadROM returned failure.");
                 }
-                catch (Exception ex)
+
+                if (soundRomPaths.Any(path => !string.IsNullOrWhiteSpace(path)))
                 {
-                    throw new InvalidOperationException($"System6 native backend failed to load ROM '{romPath}' with core '{_libraryPath}'.", ex);
+                    var loadSoundRomResult = _library.LoadSoundRom(soundRomPaths);
+                    LogStartupStage($"LoadSoundROM returned {loadSoundRomResult}");
+                    if (loadSoundRomResult == 0)
+                    {
+                        throw new InvalidOperationException("SYSTEM6LoadSoundROM returned failure.");
+                    }
                 }
+                else
+                {
+                    LogStartupStage("LoadSoundROM skipped");
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"System6 native backend failed to load native ROMs with core '{_libraryPath}'.", ex);
+            }
+            if (startupStage is System6StartupStage.LoadRomOnly)
+            {
+                return CompleteStagedStartup();
             }
 
             try
             {
                 _library.Reset();
+                LogStartupStage("Reset completed");
             }
             catch (Exception ex)
             {
                 throw new InvalidOperationException($"System6 native backend failed to reset core '{_libraryPath}' during startup.", ex);
             }
             ResetCachedOutputState();
+            if (startupStage is System6StartupStage.ResetOnly)
+            {
+                LogStartupStage("first Run skipped / pending");
+                return CompleteStagedStartup();
+            }
 
+            if (startupStage is System6StartupStage.OneRunOnly)
+            {
+                var runResult = _library.Run(_cyclesPerFrame);
+                LogStartupStage($"first Run({_cyclesPerFrame}) returned {runResult}");
+                return CompleteStagedStartup();
+            }
+
+            LogStartupStage("first Run skipped / pending");
             _runLoopCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             _runLoopTask = Task.Run(() => RunLoopAsync(_runLoopCancellation.Token), CancellationToken.None);
             SetState(EmulationBackendState.Running);
@@ -261,6 +324,41 @@ public sealed class System6NativeBackend : IEmulationBackend
         await StopAsync(CancellationToken.None).ConfigureAwait(false);
     }
 
+    private Task CompleteStagedStartup()
+    {
+        LogStartupStage("staged startup complete; run loop not started");
+        SetState(EmulationBackendState.Running);
+        return Task.CompletedTask;
+    }
+
+    private static System6StartupStage ResolveStartupStage()
+    {
+        var raw = Environment.GetEnvironmentVariable(DiagnosticStageEnvironmentVariable);
+        return Enum.TryParse<System6StartupStage>(raw, ignoreCase: true, out var stage)
+            ? stage
+            : System6StartupStage.FullRunLoop;
+    }
+
+    private static int ToLampBrightnessValue(float brightness)
+    {
+        if (float.IsNaN(brightness) || brightness <= 0f)
+        {
+            return 0;
+        }
+
+        if (brightness <= 1f)
+        {
+            return (int)MathF.Round(brightness * 255f);
+        }
+
+        return (int)MathF.Round(Math.Min(brightness, 255f));
+    }
+
+    private static void LogStartupStage(string message)
+    {
+        Debug.WriteLine($"System6 native startup: {message}");
+    }
+
     private async Task RunLoopAsync(CancellationToken cancellationToken)
     {
         try
@@ -272,7 +370,14 @@ public sealed class System6NativeBackend : IEmulationBackend
                     var library = _library;
                     if (library is not null)
                     {
-                        library.Run(_cyclesPerFrame);
+                        var stopwatch = Stopwatch.StartNew();
+                        var runResult = library.Run(_cyclesPerFrame);
+                        stopwatch.Stop();
+                        if (runResult == 0)
+                        {
+                            Debug.WriteLine($"System6 native backend Run({_cyclesPerFrame}) returned 0.");
+                        }
+                        WarnIfRunCallIsSlow(stopwatch.Elapsed);
                         PollOutputs(library);
                     }
                 }
@@ -290,13 +395,51 @@ public sealed class System6NativeBackend : IEmulationBackend
         }
     }
 
+    private static IReadOnlyList<string> ValidateNativeRomPaths(IReadOnlyList<string> romPaths, bool requireFirst, string romKind)
+    {
+        if (requireFirst && (romPaths.Count < 2 || string.IsNullOrWhiteSpace(romPaths[0]) || string.IsNullOrWhiteSpace(romPaths[1])))
+        {
+            throw new InvalidOperationException("System6 native backend requires Program ROM 1 and Program ROM 2 before starting.");
+        }
+
+        var validated = new[] { string.Empty, string.Empty, string.Empty, string.Empty };
+        for (var i = 0; i < Math.Min(validated.Length, romPaths.Count); i++)
+        {
+            var path = romPaths[i];
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                continue;
+            }
+
+            if (!File.Exists(path))
+            {
+                throw new FileNotFoundException($"System6 native {romKind} ROM {i + 1} was not found.", path);
+            }
+
+            validated[i] = path;
+        }
+
+        return validated;
+    }
+
+    private void WarnIfRunCallIsSlow(TimeSpan elapsed)
+    {
+        if (elapsed <= SlowRunWarningThreshold || DateTime.UtcNow - _lastRunWarningUtc < RunWarningThrottleInterval)
+        {
+            return;
+        }
+
+        _lastRunWarningUtc = DateTime.UtcNow;
+        Debug.WriteLine($"System6 native backend Run({_cyclesPerFrame}) took {elapsed.TotalMilliseconds:0.0} ms; native core may be pegging a CPU core.");
+    }
+
     private void PollOutputs(ISystem6NativeLibrary library)
     {
-        var lampsOn = library.GetLampsOn();
         for (var lampIndex = 0; lampIndex < LampCount; lampIndex++)
         {
-            var isOn = (lampsOn & (1 << lampIndex)) != 0;
-            var value = isOn ? library.GetLampBrightness(lampIndex) : 0;
+            var nativeLampIndex = checked((ushort)lampIndex);
+            var isOn = library.GetLampsOn(nativeLampIndex);
+            var value = isOn ? ToLampBrightnessValue(library.GetLampBrightness(nativeLampIndex)) : 0;
             if (_lastLampValues[lampIndex] != value)
             {
                 _lastLampValues[lampIndex] = value;
@@ -306,7 +449,7 @@ public sealed class System6NativeBackend : IEmulationBackend
 
         for (var reelIndex = 0; reelIndex < ReelCount; reelIndex++)
         {
-            var position = library.GetPosOut(reelIndex);
+            var position = library.GetPosOut(checked((sbyte)reelIndex));
             if (_lastReelPositions[reelIndex] != position)
             {
                 _lastReelPositions[reelIndex] = position;
@@ -340,7 +483,8 @@ public sealed class System6NativeBackend : IEmulationBackend
 
         try
         {
-            library.Shutdown();
+            var shutdownResult = library.Shutdown();
+            LogStartupStage($"Shutdown returned {shutdownResult}");
         }
         finally
         {
@@ -365,4 +509,15 @@ public sealed class System6NativeBackend : IEmulationBackend
             StateChanged?.Invoke(this, state);
         }
     }
+}
+
+
+internal enum System6StartupStage
+{
+    LoadBindOnly,
+    InitialiseOnly,
+    LoadRomOnly,
+    ResetOnly,
+    OneRunOnly,
+    FullRunLoop
 }

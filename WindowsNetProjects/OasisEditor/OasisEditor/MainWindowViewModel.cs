@@ -55,6 +55,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private FruitMachinePlatformType _selectedFruitMachinePlatform = FruitMachinePlatformType.None;
     private string _mameRomName = string.Empty;
     private bool _automaticallyDownloadMissingRoms = true;
+    private string _system6ProgramRom1Path = string.Empty;
+    private string _system6ProgramRom2Path = string.Empty;
+    private string _system6ProgramRom3Path = string.Empty;
+    private string _system6ProgramRom4Path = string.Empty;
+    private string _system6SoundRom1Path = string.Empty;
+    private string _system6SoundRom2Path = string.Empty;
+    private string _system6SoundRom3Path = string.Empty;
+    private string _system6SoundRom4Path = string.Empty;
+    private bool _system6FlashSwitch;
+    private string _system6NativeRomStatus = "Program ROM 1 and 2 are required for native DLL launch.";
     private string _mameRomStatus = "Unknown";
     private bool _isMameRomDownloadInProgress;
     private bool _isMfmeImportInProgress;
@@ -167,6 +177,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ResyncMamePluginsCommand = new RelayCommand(ResyncMamePlugins);
         RemoveCachedMameVersionCommand = new RelayCommand(RemoveCachedMameVersion);
         DownloadMameRomCommand = new RelayCommand(DownloadMameRom, CanDownloadMameRom);
+        BrowseSystem6ProgramRom1Command = new RelayCommand(() => BrowseSystem6RomPath(1, true));
+        BrowseSystem6ProgramRom2Command = new RelayCommand(() => BrowseSystem6RomPath(2, true));
+        BrowseSystem6ProgramRom3Command = new RelayCommand(() => BrowseSystem6RomPath(3, true));
+        BrowseSystem6ProgramRom4Command = new RelayCommand(() => BrowseSystem6RomPath(4, true));
+        BrowseSystem6SoundRom1Command = new RelayCommand(() => BrowseSystem6RomPath(1, false));
+        BrowseSystem6SoundRom2Command = new RelayCommand(() => BrowseSystem6RomPath(2, false));
+        BrowseSystem6SoundRom3Command = new RelayCommand(() => BrowseSystem6RomPath(3, false));
+        BrowseSystem6SoundRom4Command = new RelayCommand(() => BrowseSystem6RomPath(4, false));
         ResetMameRomSourceDefaultsCommand = new RelayCommand(ResetMameRomSourceDefaults);
         CloseProjectSettingsCommand = new RelayCommand(CloseProjectSettings);
         CloseProjectCommand = new RelayCommand(CloseProject, CanCloseProject);
@@ -492,6 +510,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand ResyncMamePluginsCommand { get; }
     public ICommand RemoveCachedMameVersionCommand { get; }
     public ICommand DownloadMameRomCommand { get; }
+    public ICommand BrowseSystem6ProgramRom1Command { get; }
+    public ICommand BrowseSystem6ProgramRom2Command { get; }
+    public ICommand BrowseSystem6ProgramRom3Command { get; }
+    public ICommand BrowseSystem6ProgramRom4Command { get; }
+    public ICommand BrowseSystem6SoundRom1Command { get; }
+    public ICommand BrowseSystem6SoundRom2Command { get; }
+    public ICommand BrowseSystem6SoundRom3Command { get; }
+    public ICommand BrowseSystem6SoundRom4Command { get; }
     public ICommand CloseProjectSettingsCommand { get; }
     public ICommand ResetMameRomSourceDefaultsCommand { get; }
     public ICommand ApplyInspectorSummaryCommand { get; }
@@ -746,6 +772,27 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         get => _mameRomStatus;
         private set => SetProperty(ref _mameRomStatus, value);
     }
+
+    public string System6ProgramRom1Path { get => _system6ProgramRom1Path; set => SetSystem6RomPath(ref _system6ProgramRom1Path, value, nameof(System6ProgramRom1Path)); }
+    public string System6ProgramRom2Path { get => _system6ProgramRom2Path; set => SetSystem6RomPath(ref _system6ProgramRom2Path, value, nameof(System6ProgramRom2Path)); }
+    public string System6ProgramRom3Path { get => _system6ProgramRom3Path; set => SetSystem6RomPath(ref _system6ProgramRom3Path, value, nameof(System6ProgramRom3Path)); }
+    public string System6ProgramRom4Path { get => _system6ProgramRom4Path; set => SetSystem6RomPath(ref _system6ProgramRom4Path, value, nameof(System6ProgramRom4Path)); }
+    public string System6SoundRom1Path { get => _system6SoundRom1Path; set => SetSystem6RomPath(ref _system6SoundRom1Path, value, nameof(System6SoundRom1Path)); }
+    public string System6SoundRom2Path { get => _system6SoundRom2Path; set => SetSystem6RomPath(ref _system6SoundRom2Path, value, nameof(System6SoundRom2Path)); }
+    public string System6SoundRom3Path { get => _system6SoundRom3Path; set => SetSystem6RomPath(ref _system6SoundRom3Path, value, nameof(System6SoundRom3Path)); }
+    public string System6SoundRom4Path { get => _system6SoundRom4Path; set => SetSystem6RomPath(ref _system6SoundRom4Path, value, nameof(System6SoundRom4Path)); }
+    public bool System6FlashSwitch
+    {
+        get => _system6FlashSwitch;
+        set
+        {
+            if (SetProperty(ref _system6FlashSwitch, value))
+            {
+                SaveSystem6NativeRomSettings();
+            }
+        }
+    }
+    public string System6NativeRomStatus { get => _system6NativeRomStatus; private set => SetProperty(ref _system6NativeRomStatus, value); }
     public string MameValidationSummary { get => _mameValidationSummary; private set => SetProperty(ref _mameValidationSummary, value); }
     public string MameSetupPhaseDisplay => _mameSetupState.Phase.ToString();
     public string MameSetupLatestKnownVersion => _mameSetupState.LatestKnownVersion;
@@ -2520,7 +2567,119 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             MameRomName,
             romRootPath,
             romPaths,
-            MameCommandLineOverrides);
+            MameCommandLineOverrides,
+            BuildSystem6NativeRomSettingsForLaunch());
+    }
+
+    private bool SetSystem6RomPath(ref string field, string value, string propertyName)
+    {
+        if (!SetProperty(ref field, value, propertyName))
+        {
+            return false;
+        }
+
+        SaveSystem6NativeRomSettings();
+        RefreshSystem6NativeRomStatus();
+        return true;
+    }
+
+    private void SaveSystem6NativeRomSettings()
+    {
+        if (LoadedProject is null)
+        {
+            return;
+        }
+
+        LoadedProject.System6NativeRoms = new System6NativeRomSettings
+        {
+            ProgramRom1Path = System6ProgramRom1Path,
+            ProgramRom2Path = System6ProgramRom2Path,
+            ProgramRom3Path = System6ProgramRom3Path,
+            ProgramRom4Path = System6ProgramRom4Path,
+            SoundRom1Path = System6SoundRom1Path,
+            SoundRom2Path = System6SoundRom2Path,
+            SoundRom3Path = System6SoundRom3Path,
+            SoundRom4Path = System6SoundRom4Path,
+            FlashSwitch = System6FlashSwitch
+        };
+        SaveLoadedProjectMetadata();
+    }
+
+    private void ApplySystem6NativeRomSettingsToViewModel(System6NativeRomSettings settings)
+    {
+        _system6ProgramRom1Path = settings.ProgramRom1Path;
+        _system6ProgramRom2Path = settings.ProgramRom2Path;
+        _system6ProgramRom3Path = settings.ProgramRom3Path;
+        _system6ProgramRom4Path = settings.ProgramRom4Path;
+        _system6SoundRom1Path = settings.SoundRom1Path;
+        _system6SoundRom2Path = settings.SoundRom2Path;
+        _system6SoundRom3Path = settings.SoundRom3Path;
+        _system6SoundRom4Path = settings.SoundRom4Path;
+        _system6FlashSwitch = settings.FlashSwitch;
+        OnPropertyChanged(nameof(System6ProgramRom1Path)); OnPropertyChanged(nameof(System6ProgramRom2Path));
+        OnPropertyChanged(nameof(System6ProgramRom3Path)); OnPropertyChanged(nameof(System6ProgramRom4Path));
+        OnPropertyChanged(nameof(System6SoundRom1Path)); OnPropertyChanged(nameof(System6SoundRom2Path));
+        OnPropertyChanged(nameof(System6SoundRom3Path)); OnPropertyChanged(nameof(System6SoundRom4Path));
+        OnPropertyChanged(nameof(System6FlashSwitch));
+    }
+
+    private void RefreshSystem6NativeRomStatus()
+    {
+        System6NativeRomStatus = string.IsNullOrWhiteSpace(System6ProgramRom1Path) || string.IsNullOrWhiteSpace(System6ProgramRom2Path)
+            ? "Program ROM 1 and 2 are required for native DLL launch."
+            : "Configured; paths are validated when native emulation starts.";
+    }
+
+    private void BrowseSystem6RomPath(int slot, bool isProgramRom)
+    {
+        if (LoadedProject is null) return;
+        var dialog = new OpenFileDialog { Title = $"Select System6 {(isProgramRom ? "Program" : "Sound")} ROM {slot}", Filter = "ROM files|*.bin;*.rom;*.p1;*.p2;*.p3;*.p4;*.snd|All files|*.*", InitialDirectory = LoadedProject.ProjectDirectory, CheckFileExists = true };
+        if (dialog.ShowDialog() != true) return;
+        var value = MakeProjectRelativePath(dialog.FileName, LoadedProject.ProjectDirectory);
+        if (isProgramRom)
+        {
+            if (slot == 1) System6ProgramRom1Path = value; else if (slot == 2) System6ProgramRom2Path = value; else if (slot == 3) System6ProgramRom3Path = value; else System6ProgramRom4Path = value;
+        }
+        else
+        {
+            if (slot == 1) System6SoundRom1Path = value; else if (slot == 2) System6SoundRom2Path = value; else if (slot == 3) System6SoundRom3Path = value; else System6SoundRom4Path = value;
+        }
+    }
+
+    private System6NativeRomSettings BuildSystem6NativeRomSettingsForLaunch()
+    {
+        var settings = LoadedProject?.System6NativeRoms ?? new System6NativeRomSettings();
+        if (LoadedProject is null) return settings;
+        return new System6NativeRomSettings
+        {
+            ProgramRom1Path = ResolveProjectRelativePath(settings.ProgramRom1Path, LoadedProject.ProjectDirectory),
+            ProgramRom2Path = ResolveProjectRelativePath(settings.ProgramRom2Path, LoadedProject.ProjectDirectory),
+            ProgramRom3Path = ResolveProjectRelativePath(settings.ProgramRom3Path, LoadedProject.ProjectDirectory),
+            ProgramRom4Path = ResolveProjectRelativePath(settings.ProgramRom4Path, LoadedProject.ProjectDirectory),
+            SoundRom1Path = ResolveProjectRelativePath(settings.SoundRom1Path, LoadedProject.ProjectDirectory),
+            SoundRom2Path = ResolveProjectRelativePath(settings.SoundRom2Path, LoadedProject.ProjectDirectory),
+            SoundRom3Path = ResolveProjectRelativePath(settings.SoundRom3Path, LoadedProject.ProjectDirectory),
+            SoundRom4Path = ResolveProjectRelativePath(settings.SoundRom4Path, LoadedProject.ProjectDirectory),
+            FlashSwitch = settings.FlashSwitch
+        };
+    }
+
+    private static string ResolveProjectRelativePath(string path, string projectDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(path) || Path.IsPathRooted(path)) return path;
+        return Path.GetFullPath(Path.Combine(projectDirectory, path));
+    }
+
+    private static string MakeProjectRelativePath(string path, string projectDirectory)
+    {
+        var fullPath = Path.GetFullPath(path);
+        var fullProjectDirectory = Path.GetFullPath(projectDirectory);
+        var relativePath = Path.GetRelativePath(fullProjectDirectory, fullPath);
+        return !relativePath.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal)
+               && !relativePath.Equals("..", StringComparison.Ordinal)
+               && !Path.IsPathRooted(relativePath)
+            ? relativePath
+            : fullPath;
     }
 
     private void OnActiveBackendLampChanged(object? sender, MachineLampChangedEventArgs e)
@@ -3040,7 +3199,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         SelectedFruitMachinePlatform = project.FruitMachinePlatform;
         MameRomName = project.MameRomName;
         AutomaticallyDownloadMissingRoms = project.AutomaticallyDownloadMissingRoms;
+        ApplySystem6NativeRomSettingsToViewModel(project.System6NativeRoms);
         RefreshMameRomStatus();
+        RefreshSystem6NativeRomStatus();
         PanelElementFactory.ProjectDirectoryPath = project.ProjectDirectory;
         ProjectFilePath = project.ProjectFilePath;
         UpdateRecentProjects(project.ProjectFilePath);
@@ -3109,6 +3270,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         var fruitMachinePlatform = ResolveFruitMachinePlatform(projectDocument.RootElement);
         var mameRomName = ResolveMameRomName(projectDocument.RootElement);
         var automaticallyDownloadMissingRoms = ResolveAutomaticallyDownloadMissingRoms(projectDocument.RootElement);
+        var system6NativeRoms = ResolveSystem6NativeRomSettings(projectDocument.RootElement);
         var inputDefinitions = ResolveInputDefinitions(projectDocument.RootElement);
 
         return new EditorProject
@@ -3121,7 +3283,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             GeneratedDirectory = generatedDirectory,
             FruitMachinePlatform = fruitMachinePlatform,
             MameRomName = mameRomName,
-            AutomaticallyDownloadMissingRoms = automaticallyDownloadMissingRoms
+            AutomaticallyDownloadMissingRoms = automaticallyDownloadMissingRoms,
+            System6NativeRoms = system6NativeRoms
         }.WithInputDefinitions(inputDefinitions);
     }
 
@@ -3266,7 +3429,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                     {
                         wroteProjectSettings = true;
                         writer.WritePropertyName("project_settings");
-                        WriteProjectSettings(writer, property.Value, LoadedProject.FruitMachinePlatform, LoadedProject.MameRomName, LoadedProject.AutomaticallyDownloadMissingRoms);
+                        WriteProjectSettings(writer, property.Value, LoadedProject.FruitMachinePlatform, LoadedProject.MameRomName, LoadedProject.AutomaticallyDownloadMissingRoms, LoadedProject.System6NativeRoms);
                         continue;
                     }
 
@@ -3288,6 +3451,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                     writer.WriteString("FruitMachine_Platform", LoadedProject.FruitMachinePlatform.ToString());
                     writer.WriteString("MameRomName", LoadedProject.MameRomName);
                     writer.WriteBoolean("AutomaticallyDownloadMissingRoms", LoadedProject.AutomaticallyDownloadMissingRoms);
+                    WriteSystem6NativeRomSettings(writer, LoadedProject.System6NativeRoms);
                     writer.WriteEndObject();
                 }
 
@@ -3308,12 +3472,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private static void WriteProjectSettings(Utf8JsonWriter writer, JsonElement existingProjectSettings, FruitMachinePlatformType platform, string mameRomName, bool automaticallyDownloadMissingRoms)
+    private static void WriteProjectSettings(Utf8JsonWriter writer, JsonElement existingProjectSettings, FruitMachinePlatformType platform, string mameRomName, bool automaticallyDownloadMissingRoms, System6NativeRomSettings system6NativeRoms)
     {
         writer.WriteStartObject();
         var wrotePlatform = false;
         var wroteMameRomName = false;
         var wroteAutomaticallyDownloadMissingRoms = false;
+        var wroteSystem6NativeRoms = false;
 
         foreach (var settingProperty in existingProjectSettings.EnumerateObject())
         {
@@ -3335,6 +3500,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 wroteAutomaticallyDownloadMissingRoms = true;
                 continue;
             }
+            if (settingProperty.NameEquals("System6NativeRoms"))
+            {
+                WriteSystem6NativeRomSettings(writer, system6NativeRoms);
+                wroteSystem6NativeRoms = true;
+                continue;
+            }
 
             settingProperty.WriteTo(writer);
         }
@@ -3351,8 +3522,55 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             writer.WriteBoolean("AutomaticallyDownloadMissingRoms", automaticallyDownloadMissingRoms);
         }
+        if (!wroteSystem6NativeRoms)
+        {
+            WriteSystem6NativeRomSettings(writer, system6NativeRoms);
+        }
 
         writer.WriteEndObject();
+    }
+
+    private static void WriteSystem6NativeRomSettings(Utf8JsonWriter writer, System6NativeRomSettings settings)
+    {
+        writer.WritePropertyName("System6NativeRoms");
+        writer.WriteStartObject();
+        writer.WriteString("ProgramRom1Path", settings.ProgramRom1Path);
+        writer.WriteString("ProgramRom2Path", settings.ProgramRom2Path);
+        writer.WriteString("ProgramRom3Path", settings.ProgramRom3Path);
+        writer.WriteString("ProgramRom4Path", settings.ProgramRom4Path);
+        writer.WriteString("SoundRom1Path", settings.SoundRom1Path);
+        writer.WriteString("SoundRom2Path", settings.SoundRom2Path);
+        writer.WriteString("SoundRom3Path", settings.SoundRom3Path);
+        writer.WriteString("SoundRom4Path", settings.SoundRom4Path);
+        writer.WriteBoolean("FlashSwitch", settings.FlashSwitch);
+        writer.WriteEndObject();
+    }
+
+    private static System6NativeRomSettings ResolveSystem6NativeRomSettings(JsonElement root)
+    {
+        if (!root.TryGetProperty("project_settings", out var projectSettingsElement)
+            || !projectSettingsElement.TryGetProperty("System6NativeRoms", out var romsElement))
+        {
+            return new System6NativeRomSettings();
+        }
+
+        return new System6NativeRomSettings
+        {
+            ProgramRom1Path = GetOptionalString(romsElement, "ProgramRom1Path"),
+            ProgramRom2Path = GetOptionalString(romsElement, "ProgramRom2Path"),
+            ProgramRom3Path = GetOptionalString(romsElement, "ProgramRom3Path"),
+            ProgramRom4Path = GetOptionalString(romsElement, "ProgramRom4Path"),
+            SoundRom1Path = GetOptionalString(romsElement, "SoundRom1Path"),
+            SoundRom2Path = GetOptionalString(romsElement, "SoundRom2Path"),
+            SoundRom3Path = GetOptionalString(romsElement, "SoundRom3Path"),
+            SoundRom4Path = GetOptionalString(romsElement, "SoundRom4Path"),
+            FlashSwitch = romsElement.TryGetProperty("FlashSwitch", out var flashElement) && flashElement.ValueKind == JsonValueKind.True
+        };
+    }
+
+    private static string GetOptionalString(JsonElement element, string propertyName)
+    {
+        return element.TryGetProperty(propertyName, out var value) ? value.GetString() ?? string.Empty : string.Empty;
     }
 
     private FruitMachinePlatformType ResolveFruitMachinePlatform(JsonElement root)
