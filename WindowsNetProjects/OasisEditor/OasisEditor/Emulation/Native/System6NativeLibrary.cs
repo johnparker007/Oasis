@@ -46,7 +46,7 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
 
     public bool IsLoaded => _loader.IsLoaded;
 
-    public int Initialise() => _initialise();
+    public byte Initialise() => _initialise();
 
     public int LoadRom(IReadOnlyList<string> programRomPaths, bool flashSwitch)
     {
@@ -62,15 +62,15 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
 
     public void Reset() => _reset();
 
-    public void Run(int cycles) => _run(cycles);
+    public int Run(int cycles) => _run(cycles);
 
-    public void Shutdown() => _shutdown();
+    public byte Shutdown() => _shutdown();
 
-    public int GetLampsOn() => _getLampsOn();
+    public bool GetLampsOn(ushort lampIndex) => _getLampsOn(lampIndex);
 
-    public int GetLampBrightness(int lampIndex) => _getLampBrightness(lampIndex);
+    public float GetLampBrightness(ushort lampIndex) => _getLampBrightness(lampIndex);
 
-    public int GetPosOut(int positionIndex) => _getPosOut(positionIndex);
+    public short GetPosOut(sbyte positionIndex) => _getPosOut(positionIndex);
 
     public void TurnSwitchOn(int switchIndex) => _turnSwitchOn(switchIndex);
 
@@ -82,10 +82,8 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
         _loader.Dispose();
     }
 
-    // System6 DLL exports are Windows native callbacks. Use StdCall explicitly so
-    // 32-bit cores do not corrupt the stack when called from managed code.
-    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    public delegate int System6InitialiseDelegate();
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate byte System6InitialiseDelegate();
 
     private IntPtr[] AllocateRomPathSlots(IReadOnlyList<string> romPaths)
     {
@@ -96,7 +94,13 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
         var paths = new[] { IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero };
         for (var i = 0; i < paths.Length; i++)
         {
-            var path = i < romPaths.Count ? romPaths[i] ?? string.Empty : string.Empty;
+            var path = i < romPaths.Count ? romPaths[i] : string.Empty;
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                paths[i] = IntPtr.Zero;
+                continue;
+            }
+
             paths[i] = Marshal.StringToHGlobalAnsi(path);
             _romPathBuffers.Add(paths[i]);
         }
@@ -117,7 +121,7 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
         _romPathBuffers.Clear();
     }
 
-    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     public delegate int System6LoadRomDelegate(
         IntPtr romPath1,
         IntPtr romPath2,
@@ -125,34 +129,35 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
         IntPtr romPath4,
         byte flashSwitch);
 
-    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     public delegate int System6LoadSoundRomDelegate(
         IntPtr romPath1,
         IntPtr romPath2,
         IntPtr romPath3,
         IntPtr romPath4);
 
-    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     public delegate void System6ResetDelegate();
 
-    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    public delegate void System6RunDelegate(int cycles);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate int System6RunDelegate(int cycles);
 
-    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    public delegate void System6ShutdownDelegate();
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate byte System6ShutdownDelegate();
 
-    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    public delegate int System6GetLampsOnDelegate();
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    public delegate bool System6GetLampsOnDelegate(ushort lampIndex);
 
-    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    public delegate int System6GetLampBrightnessDelegate(int lampIndex);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate float System6GetLampBrightnessDelegate(ushort lampIndex);
 
-    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    public delegate int System6GetPosOutDelegate(int positionIndex);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate short System6GetPosOutDelegate(sbyte positionIndex);
 
-    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     public delegate void System6TurnSwitchOnDelegate(int switchIndex);
 
-    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     public delegate void System6TurnSwitchOffDelegate(int switchIndex);
 }

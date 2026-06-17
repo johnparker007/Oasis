@@ -2,7 +2,7 @@ namespace OasisEditor;
 
 public interface ISystem6NativeLibrary : INativeCoreLibrary
 {
-    int Initialise();
+    byte Initialise();
 
     int LoadRom(IReadOnlyList<string> programRomPaths, bool flashSwitch);
 
@@ -10,15 +10,15 @@ public interface ISystem6NativeLibrary : INativeCoreLibrary
 
     void Reset();
 
-    void Run(int cycles);
+    int Run(int cycles);
 
-    void Shutdown();
+    byte Shutdown();
 
-    int GetLampsOn();
+    bool GetLampsOn(ushort lampIndex);
 
-    int GetLampBrightness(int lampIndex);
+    float GetLampBrightness(ushort lampIndex);
 
-    int GetPosOut(int positionIndex);
+    short GetPosOut(sbyte positionIndex);
 
     void TurnSwitchOn(int switchIndex);
 

@@ -33,10 +33,10 @@ public sealed class System6NativeBackendTests
     public async Task SetInputStateAsyncMapsNumericInputIdToNativeSwitchCalls()
     {
         var library = new FakeSystem6NativeLibrary();
-        var (dllPath, rom1, _) = CreateNativeFiles(1);
+        var (dllPath, rom1, rom2) = CreateNativeFiles(2);
         var backend = new System6NativeBackend(dllPath, _ => library);
 
-        await backend.StartAsync(CreateLaunchRequest(rom1), CancellationToken.None);
+        await backend.StartAsync(CreateLaunchRequest(rom1, rom2), CancellationToken.None);
         await backend.SetInputStateAsync(MachineInputReference.FromInputId("12"), true, CancellationToken.None);
         await backend.SetInputStateAsync(MachineInputReference.FromInputId("12"), false, CancellationToken.None);
         await backend.StopAsync(CancellationToken.None);
@@ -109,10 +109,10 @@ public sealed class System6NativeBackendTests
 
         public List<int> SwitchesTurnedOff { get; } = new();
 
-        public int Initialise()
+        public byte Initialise()
         {
             InitialiseCalled = true;
-            return 0;
+            return 1;
         }
 
         public int LoadRom(IReadOnlyList<string> programRomPaths, bool flashSwitch)
@@ -131,20 +131,22 @@ public sealed class System6NativeBackendTests
             ResetCalled = true;
         }
 
-        public void Run(int cycles)
+        public int Run(int cycles)
         {
+            return 1;
         }
 
-        public void Shutdown()
+        public byte Shutdown()
         {
             ShutdownCalled = true;
+            return 1;
         }
 
-        public int GetLampsOn() => 0;
+        public bool GetLampsOn(ushort lampIndex) => false;
 
-        public int GetLampBrightness(int lampIndex) => 0;
+        public float GetLampBrightness(ushort lampIndex) => 0f;
 
-        public int GetPosOut(int positionIndex) => 0;
+        public short GetPosOut(sbyte positionIndex) => 0;
 
         public void TurnSwitchOn(int switchIndex)
         {

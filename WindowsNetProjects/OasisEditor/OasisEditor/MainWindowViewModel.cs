@@ -64,7 +64,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string _system6SoundRom3Path = string.Empty;
     private string _system6SoundRom4Path = string.Empty;
     private bool _system6FlashSwitch;
-    private string _system6NativeRomStatus = "Program ROM 1 is required for native DLL launch.";
+    private string _system6NativeRomStatus = "Program ROM 1 and 2 are required for native DLL launch.";
     private string _mameRomStatus = "Unknown";
     private bool _isMameRomDownloadInProgress;
     private bool _isMfmeImportInProgress;
@@ -2625,8 +2625,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void RefreshSystem6NativeRomStatus()
     {
-        System6NativeRomStatus = string.IsNullOrWhiteSpace(System6ProgramRom1Path)
-            ? "Program ROM 1 is required for native DLL launch."
+        System6NativeRomStatus = string.IsNullOrWhiteSpace(System6ProgramRom1Path) || string.IsNullOrWhiteSpace(System6ProgramRom2Path)
+            ? "Program ROM 1 and 2 are required for native DLL launch."
             : "Configured; paths are validated when native emulation starts.";
     }
 
