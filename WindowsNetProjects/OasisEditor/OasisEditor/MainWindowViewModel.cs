@@ -65,6 +65,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string _system6SoundRom4Path = string.Empty;
     private bool _system6FlashSwitch;
     private string _system6NativeRomStatus = "Program ROM 1 and 2 are required for native DLL launch.";
+    private ObservableCollection<System6ReelOptoSettingsViewModel> _system6ReelOptos = [];
     private string _mameRomStatus = "Unknown";
     private bool _isMameRomDownloadInProgress;
     private bool _isMfmeImportInProgress;
@@ -185,6 +186,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         BrowseSystem6SoundRom2Command = new RelayCommand(() => BrowseSystem6RomPath(2, false));
         BrowseSystem6SoundRom3Command = new RelayCommand(() => BrowseSystem6RomPath(3, false));
         BrowseSystem6SoundRom4Command = new RelayCommand(() => BrowseSystem6RomPath(4, false));
+        ResetSystem6ReelOptosCommand = new RelayCommand(ResetSystem6ReelOptosToDefaults);
         ResetMameRomSourceDefaultsCommand = new RelayCommand(ResetMameRomSourceDefaults);
         CloseProjectSettingsCommand = new RelayCommand(CloseProjectSettings);
         CloseProjectCommand = new RelayCommand(CloseProject, CanCloseProject);
@@ -519,6 +521,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand BrowseSystem6SoundRom3Command { get; }
     public ICommand BrowseSystem6SoundRom4Command { get; }
     public ICommand CloseProjectSettingsCommand { get; }
+    public ICommand ResetSystem6ReelOptosCommand { get; }
     public ICommand ResetMameRomSourceDefaultsCommand { get; }
     public ICommand ApplyInspectorSummaryCommand { get; }
     public ICommand CloseProjectCommand { get; }
@@ -793,6 +796,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
     public string System6NativeRomStatus { get => _system6NativeRomStatus; private set => SetProperty(ref _system6NativeRomStatus, value); }
+    public ObservableCollection<System6ReelOptoSettingsViewModel> System6ReelOptos { get => _system6ReelOptos; private set => SetProperty(ref _system6ReelOptos, value); }
     public string MameValidationSummary { get => _mameValidationSummary; private set => SetProperty(ref _mameValidationSummary, value); }
     public string MameSetupPhaseDisplay => _mameSetupState.Phase.ToString();
     public string MameSetupLatestKnownVersion => _mameSetupState.LatestKnownVersion;
@@ -2600,7 +2604,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             SoundRom2Path = System6SoundRom2Path,
             SoundRom3Path = System6SoundRom3Path,
             SoundRom4Path = System6SoundRom4Path,
-            FlashSwitch = System6FlashSwitch
+            FlashSwitch = System6FlashSwitch,
+            ReelOptos = System6ReelOptos.Select(reel => reel.ToModel()).ToList()
         };
         SaveLoadedProjectMetadata();
     }
@@ -2616,6 +2621,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _system6SoundRom3Path = settings.SoundRom3Path;
         _system6SoundRom4Path = settings.SoundRom4Path;
         _system6FlashSwitch = settings.FlashSwitch;
+        System6ReelOptos = new ObservableCollection<System6ReelOptoSettingsViewModel>((settings.ReelOptos is { Count: > 0 } ? settings.ReelOptos : System6NativeRomSettings.CreateDefaultReelOptos()).Select(reel => new System6ReelOptoSettingsViewModel(reel, SaveSystem6NativeRomSettings)));
         OnPropertyChanged(nameof(System6ProgramRom1Path)); OnPropertyChanged(nameof(System6ProgramRom2Path));
         OnPropertyChanged(nameof(System6ProgramRom3Path)); OnPropertyChanged(nameof(System6ProgramRom4Path));
         OnPropertyChanged(nameof(System6SoundRom1Path)); OnPropertyChanged(nameof(System6SoundRom2Path));
@@ -2646,6 +2652,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
+    private void ResetSystem6ReelOptosToDefaults()
+    {
+        System6ReelOptos = new ObservableCollection<System6ReelOptoSettingsViewModel>(System6NativeRomSettings.CreateDefaultReelOptos().Select(reel => new System6ReelOptoSettingsViewModel(reel, SaveSystem6NativeRomSettings)));
+        SaveSystem6NativeRomSettings();
+    }
+
     private System6NativeRomSettings BuildSystem6NativeRomSettingsForLaunch()
     {
         var settings = LoadedProject?.System6NativeRoms ?? new System6NativeRomSettings();
@@ -2660,7 +2672,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             SoundRom2Path = ResolveProjectRelativePath(settings.SoundRom2Path, LoadedProject.ProjectDirectory),
             SoundRom3Path = ResolveProjectRelativePath(settings.SoundRom3Path, LoadedProject.ProjectDirectory),
             SoundRom4Path = ResolveProjectRelativePath(settings.SoundRom4Path, LoadedProject.ProjectDirectory),
-            FlashSwitch = settings.FlashSwitch
+            FlashSwitch = settings.FlashSwitch,
+            ReelOptos = (settings.ReelOptos is { Count: > 0 } ? settings.ReelOptos : System6NativeRomSettings.CreateDefaultReelOptos())
+                .Select(reel => new System6ReelOptoSettings { ReelIndex = reel.ReelIndex, Steps = reel.Steps, OptoStart = reel.OptoStart, OptoEnd = reel.OptoEnd, OptoInvert = reel.OptoInvert })
+                .ToList()
         };
     }
 
@@ -3543,6 +3558,19 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         writer.WriteString("SoundRom3Path", settings.SoundRom3Path);
         writer.WriteString("SoundRom4Path", settings.SoundRom4Path);
         writer.WriteBoolean("FlashSwitch", settings.FlashSwitch);
+        writer.WritePropertyName("ReelOptos");
+        writer.WriteStartArray();
+        foreach (var reel in settings.ReelOptos)
+        {
+            writer.WriteStartObject();
+            writer.WriteNumber("ReelIndex", reel.ReelIndex);
+            writer.WriteNumber("Steps", reel.Steps);
+            writer.WriteNumber("OptoStart", reel.OptoStart);
+            writer.WriteNumber("OptoEnd", reel.OptoEnd);
+            writer.WriteBoolean("OptoInvert", reel.OptoInvert);
+            writer.WriteEndObject();
+        }
+        writer.WriteEndArray();
         writer.WriteEndObject();
     }
 
@@ -3564,8 +3592,38 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             SoundRom2Path = GetOptionalString(romsElement, "SoundRom2Path"),
             SoundRom3Path = GetOptionalString(romsElement, "SoundRom3Path"),
             SoundRom4Path = GetOptionalString(romsElement, "SoundRom4Path"),
-            FlashSwitch = romsElement.TryGetProperty("FlashSwitch", out var flashElement) && flashElement.ValueKind == JsonValueKind.True
+            FlashSwitch = romsElement.TryGetProperty("FlashSwitch", out var flashElement) && flashElement.ValueKind == JsonValueKind.True,
+            ReelOptos = ResolveSystem6ReelOptoSettings(romsElement)
         };
+    }
+
+
+    private static List<System6ReelOptoSettings> ResolveSystem6ReelOptoSettings(JsonElement romsElement)
+    {
+        if (!romsElement.TryGetProperty("ReelOptos", out var reelOptosElement) || reelOptosElement.ValueKind != JsonValueKind.Array)
+        {
+            return System6NativeRomSettings.CreateDefaultReelOptos();
+        }
+
+        var reelOptos = new List<System6ReelOptoSettings>();
+        foreach (var reelElement in reelOptosElement.EnumerateArray())
+        {
+            reelOptos.Add(new System6ReelOptoSettings
+            {
+                ReelIndex = GetOptionalInt(reelElement, "ReelIndex"),
+                Steps = GetOptionalInt(reelElement, "Steps", System6ReelOptoSettings.DefaultSteps),
+                OptoStart = GetOptionalInt(reelElement, "OptoStart", System6ReelOptoSettings.DefaultOptoStart),
+                OptoEnd = GetOptionalInt(reelElement, "OptoEnd", System6ReelOptoSettings.DefaultOptoEnd),
+                OptoInvert = reelElement.TryGetProperty("OptoInvert", out var invertElement) && invertElement.ValueKind == JsonValueKind.True
+            });
+        }
+
+        return reelOptos.Count > 0 ? reelOptos : System6NativeRomSettings.CreateDefaultReelOptos();
+    }
+
+    private static int GetOptionalInt(JsonElement element, string propertyName, int defaultValue = 0)
+    {
+        return element.TryGetProperty(propertyName, out var value) && value.TryGetInt32(out var parsed) ? parsed : defaultValue;
     }
 
     private static string GetOptionalString(JsonElement element, string propertyName)
@@ -4142,5 +4200,55 @@ internal static class EditorProjectInputDefinitionExtensions
         }
 
         return project;
+    }
+}
+
+public sealed class System6ReelOptoSettingsViewModel : INotifyPropertyChanged
+{
+    private readonly Action _changed;
+    private int _steps;
+    private int _optoStart;
+    private int _optoEnd;
+    private bool _optoInvert;
+
+    public System6ReelOptoSettingsViewModel(System6ReelOptoSettings model, Action changed)
+    {
+        ReelIndex = model.ReelIndex;
+        _steps = model.Steps;
+        _optoStart = model.OptoStart;
+        _optoEnd = model.OptoEnd;
+        _optoInvert = model.OptoInvert;
+        _changed = changed;
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public int ReelIndex { get; }
+    public int ReelNumber => ReelIndex + 1;
+
+    public int Steps { get => _steps; set => SetAndSave(ref _steps, value, nameof(Steps)); }
+    public int OptoStart { get => _optoStart; set => SetAndSave(ref _optoStart, value, nameof(OptoStart)); }
+    public int OptoEnd { get => _optoEnd; set => SetAndSave(ref _optoEnd, value, nameof(OptoEnd)); }
+    public bool OptoInvert { get => _optoInvert; set => SetAndSave(ref _optoInvert, value, nameof(OptoInvert)); }
+
+    public System6ReelOptoSettings ToModel() => new()
+    {
+        ReelIndex = ReelIndex,
+        Steps = Steps,
+        OptoStart = OptoStart,
+        OptoEnd = OptoEnd,
+        OptoInvert = OptoInvert
+    };
+
+    private void SetAndSave<T>(ref T field, T value, string propertyName)
+    {
+        if (EqualityComparer<T>.Default.Equals(field, value))
+        {
+            return;
+        }
+
+        field = value;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        _changed();
     }
 }

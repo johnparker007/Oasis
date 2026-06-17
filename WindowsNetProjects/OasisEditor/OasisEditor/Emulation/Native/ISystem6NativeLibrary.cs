@@ -8,6 +8,14 @@ public interface ISystem6NativeLibrary : INativeCoreLibrary
 
     int LoadSoundRom(IReadOnlyList<string> soundRomPaths);
 
+    void SetSteps(byte reelNum, byte steps);
+
+    void SetOptoStart(byte reelNum, byte start);
+
+    void SetOptoEnd(byte reelNum, byte end);
+
+    void SetOptoInvert(byte reelNum, byte state);
+
     void Reset();
 
     int Run(int cycles);

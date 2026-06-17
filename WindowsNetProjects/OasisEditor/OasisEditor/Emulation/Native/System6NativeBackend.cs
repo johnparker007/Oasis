@@ -10,6 +10,7 @@ public sealed class System6NativeBackend : IEmulationBackend
     private const int System6ClockHz = 8000000;
     private const int LampCount = 32;
     private const int ReelCount = 16;
+    private const int SupportedReelOptoCount = 8;
     private const string DiagnosticStageEnvironmentVariable = "OASIS_SYSTEM6_STARTUP_STAGE";
     private static readonly TimeSpan SlowRunWarningThreshold = TimeSpan.FromMilliseconds(250);
     private static readonly TimeSpan RunWarningThrottleInterval = TimeSpan.FromSeconds(10);
@@ -152,6 +153,7 @@ public sealed class System6NativeBackend : IEmulationBackend
                 ?? throw new InvalidOperationException("System6 native backend requires native DLL ROM settings.");
             var programRomPaths = ValidateNativeRomPaths(nativeRoms.ProgramRomPaths, true, "program");
             var soundRomPaths = ValidateNativeRomPaths(nativeRoms.SoundRomPaths, false, "sound");
+            var reelOptos = ValidateReelOptos(nativeRoms.ReelOptos);
 
             cancellationToken.ThrowIfCancellationRequested();
             try
@@ -176,6 +178,8 @@ public sealed class System6NativeBackend : IEmulationBackend
                 {
                     LogStartupStage("LoadSoundROM skipped");
                 }
+
+                ApplyReelOptos(_library, reelOptos);
             }
             catch (Exception ex)
             {
@@ -392,6 +396,49 @@ public sealed class System6NativeBackend : IEmulationBackend
         {
             SetState(EmulationBackendState.Failed);
             throw;
+        }
+    }
+
+    private static IReadOnlyList<System6ReelOptoSettings> ValidateReelOptos(IReadOnlyList<System6ReelOptoSettings>? reelOptos)
+    {
+        var settings = reelOptos is { Count: > 0 } ? reelOptos : System6NativeRomSettings.CreateDefaultReelOptos();
+        foreach (var reel in settings)
+        {
+            if (reel.ReelIndex is < 0 or >= SupportedReelOptoCount)
+            {
+                throw new InvalidOperationException($"System6 reel opto setting has invalid reel index {reel.ReelIndex}; supported range is 0-{SupportedReelOptoCount - 1}.");
+            }
+            if (reel.Steps is < 1 or > byte.MaxValue)
+            {
+                throw new InvalidOperationException($"System6 reel {reel.ReelIndex + 1} opto steps must be between 1 and 255.");
+            }
+            if (reel.OptoStart is < 0 or > byte.MaxValue)
+            {
+                throw new InvalidOperationException($"System6 reel {reel.ReelIndex + 1} opto start must be between 0 and 255.");
+            }
+            if (reel.OptoEnd is < 0 or > byte.MaxValue)
+            {
+                throw new InvalidOperationException($"System6 reel {reel.ReelIndex + 1} opto end must be between 0 and 255.");
+            }
+            if (reel.OptoStart >= reel.OptoEnd)
+            {
+                throw new InvalidOperationException($"System6 reel {reel.ReelIndex + 1} opto start must be less than opto end.");
+            }
+        }
+
+        return settings;
+    }
+
+    private static void ApplyReelOptos(ISystem6NativeLibrary library, IReadOnlyList<System6ReelOptoSettings> reelOptos)
+    {
+        foreach (var reel in reelOptos)
+        {
+            var reelNum = checked((byte)reel.ReelIndex);
+            library.SetSteps(reelNum, checked((byte)reel.Steps));
+            library.SetOptoStart(reelNum, checked((byte)reel.OptoStart));
+            library.SetOptoEnd(reelNum, checked((byte)reel.OptoEnd));
+            library.SetOptoInvert(reelNum, reel.OptoInvert ? (byte)1 : (byte)0);
+            LogStartupStage($"System6 reel {reel.ReelIndex + 1} opto: steps={reel.Steps} start={reel.OptoStart} end={reel.OptoEnd} inverted={reel.OptoInvert.ToString(CultureInfo.InvariantCulture).ToLowerInvariant()}");
         }
     }
 

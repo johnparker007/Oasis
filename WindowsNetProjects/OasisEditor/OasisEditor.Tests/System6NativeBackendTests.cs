@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -24,6 +25,8 @@ public sealed class System6NativeBackendTests
         Assert.True(library.InitialiseCalled);
         Assert.Equal(new[] { rom1, rom2, string.Empty, string.Empty }, library.LoadedRoms);
         Assert.True(library.ResetCalled);
+        Assert.Equal(8 * 4, library.Calls.Count(call => call.StartsWith("Set", StringComparison.Ordinal)));
+        Assert.True(library.Calls.IndexOf("SetOptoInvert:7:0") < library.Calls.IndexOf("Reset"));
         Assert.True(library.ShutdownCalled);
         Assert.True(library.DisposeCalled);
         Assert.Equal(EmulationBackendState.Stopped, backend.State);
@@ -59,6 +62,22 @@ public sealed class System6NativeBackendTests
         Assert.Empty(library.LoadedRoms);
         Assert.False(library.ResetCalled);
         Assert.Equal(EmulationBackendState.Failed, backend.State);
+    }
+
+    [Fact]
+    public async Task StartAsyncInvalidReelOptosFailsBeforeResetAndRun()
+    {
+        var library = new FakeSystem6NativeLibrary();
+        var (dllPath, rom1, rom2) = CreateNativeFiles(2);
+        var backend = new System6NativeBackend(dllPath, _ => library);
+        var request = CreateLaunchRequest(rom1, rom2);
+        request.System6NativeRoms!.ReelOptos[0].Steps = 0;
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => backend.StartAsync(request, CancellationToken.None));
+
+        Assert.Contains("steps must be between 1 and 255", ex.Message);
+        Assert.False(library.ResetCalled);
+        Assert.Empty(library.Calls.Where(call => call.StartsWith("Run", StringComparison.Ordinal)));
     }
 
     private static EmulationLaunchRequest CreateLaunchRequest(params string[] romPaths)
@@ -111,14 +130,18 @@ public sealed class System6NativeBackendTests
 
         public List<int> SwitchesTurnedOff { get; } = new();
 
+        public List<string> Calls { get; } = new();
+
         public byte Initialise()
         {
+            Calls.Add("Initialise");
             InitialiseCalled = true;
             return 1;
         }
 
         public int LoadRom(IReadOnlyList<string> programRomPaths, bool flashSwitch)
         {
+            Calls.Add("LoadRom");
             LoadedRoms.AddRange(programRomPaths);
             return 1;
         }
@@ -128,13 +151,23 @@ public sealed class System6NativeBackendTests
             return 1;
         }
 
+        public void SetSteps(byte reelNum, byte steps) => Calls.Add($"SetSteps:{reelNum}:{steps}");
+
+        public void SetOptoStart(byte reelNum, byte start) => Calls.Add($"SetOptoStart:{reelNum}:{start}");
+
+        public void SetOptoEnd(byte reelNum, byte end) => Calls.Add($"SetOptoEnd:{reelNum}:{end}");
+
+        public void SetOptoInvert(byte reelNum, byte state) => Calls.Add($"SetOptoInvert:{reelNum}:{state}");
+
         public void Reset()
         {
+            Calls.Add("Reset");
             ResetCalled = true;
         }
 
         public int Run(int cycles)
         {
+            Calls.Add($"Run:{cycles}");
             return 1;
         }
 
