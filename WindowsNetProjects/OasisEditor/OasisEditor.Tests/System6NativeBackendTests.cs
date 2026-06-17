@@ -46,7 +46,7 @@ public sealed class System6NativeBackendTests
     }
 
     [Fact]
-    public async Task StartAsyncWithoutRomPathsFailsBeforeLoadingNativeLibrary()
+    public async Task StartAsyncWithoutRomPathsFailsBeforeLoadingRoms()
     {
         var library = new FakeSystem6NativeLibrary();
         var (dllPath, _, _) = CreateNativeFiles(0);
@@ -55,7 +55,9 @@ public sealed class System6NativeBackendTests
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => backend.StartAsync(request, CancellationToken.None));
 
-        Assert.False(library.InitialiseCalled);
+        Assert.True(library.InitialiseCalled);
+        Assert.Empty(library.LoadedRoms);
+        Assert.False(library.ResetCalled);
         Assert.Equal(EmulationBackendState.Failed, backend.State);
     }
 
