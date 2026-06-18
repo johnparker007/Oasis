@@ -567,7 +567,10 @@ public sealed class System6NativeBackend : IEmulationBackend
         for (var reelIndex = 0; reelIndex < ReelCount; reelIndex++)
         {
             var nativeReelIndex = reelIndex;
-            var nativePositionSelector = checked((sbyte)(nativeReelIndex + 1));
+            // GetPosOut uses the System 6 position-output selector, which is offset
+            // from the zero-based native reel index. Keep emitted Oasis reel IDs
+            // zero-based while applying the selector offset only at the DLL call.
+            var nativePositionSelector = checked((sbyte)(nativeReelIndex - 1));
             var position = library.GetPosOut(nativePositionSelector);
             if (_lastReelPositions[reelIndex] != position)
             {
@@ -600,7 +603,7 @@ public sealed class System6NativeBackend : IEmulationBackend
 
         _hasLoggedReelPollingMapping = true;
         var mappings = Enumerable.Range(0, Math.Min(ReelCount, DiagnosticMappingSampleCount))
-            .Select(index => $"native {index} -> reel:{index} (GetPosOut selector {index + 1})");
+            .Select(index => $"native {index} -> reel:{index} (GetPosOut selector {index - 1})");
         Debug.WriteLine($"[System6 Reels] mapping sample: {string.Join("; ", mappings)}");
     }
 

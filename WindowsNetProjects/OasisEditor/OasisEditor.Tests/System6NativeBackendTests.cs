@@ -179,8 +179,8 @@ public sealed class System6NativeBackendTests
         {
             var library = new FakeSystem6NativeLibrary();
             library.LampsOnValues[0] = true;
-            library.PositionOutputs[1] = 10;
-            library.PositionOutputs[2] = 20;
+            library.PositionOutputs[-1] = 10;
+            library.PositionOutputs[0] = 20;
             var (dllPath, rom1, rom2) = CreateNativeFiles(2);
             var backend = new System6NativeBackend(dllPath, _ => library);
             var lampEvents = new List<MachineLampChangedEventArgs>();
@@ -195,8 +195,8 @@ public sealed class System6NativeBackendTests
             Assert.Contains(lampEvents, e => e.LampId == 0 && e.Value == 255);
             Assert.Contains(reelEvents, e => e.ReelId == 0 && e.Position == 10);
             Assert.Contains(reelEvents, e => e.ReelId == 1 && e.Position == 20);
-            Assert.Contains("GetPosOut:1", library.Calls);
-            Assert.Contains("GetPosOut:2", library.Calls);
+            Assert.Contains("GetPosOut:-1", library.Calls);
+            Assert.Contains("GetPosOut:0", library.Calls);
         }
         finally
         {
