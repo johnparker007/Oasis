@@ -33,6 +33,44 @@ public sealed class System6NativeBackendTests
     }
 
     [Fact]
+    public async Task StartAsyncSendsZeroBasedNativeReelOptoIndicesForDisplayedReelsOneAndEight()
+    {
+        var library = new FakeSystem6NativeLibrary();
+        var (dllPath, rom1, rom2) = CreateNativeFiles(2);
+        var backend = new System6NativeBackend(dllPath, _ => library);
+
+        await backend.StartAsync(CreateLaunchRequest(rom1, rom2), CancellationToken.None);
+        await backend.StopAsync(CancellationToken.None);
+
+        Assert.Contains("SetSteps:0:96", library.Calls);
+        Assert.Contains("SetOptoStart:0:5", library.Calls);
+        Assert.Contains("SetOptoEnd:0:7", library.Calls);
+        Assert.Contains("SetOptoInvert:0:0", library.Calls);
+        Assert.Contains("SetSteps:7:96", library.Calls);
+        Assert.Contains("SetOptoStart:7:5", library.Calls);
+        Assert.Contains("SetOptoEnd:7:7", library.Calls);
+        Assert.Contains("SetOptoInvert:7:0", library.Calls);
+        Assert.DoesNotContain(library.Calls, call => call.StartsWith("SetSteps:8:", StringComparison.Ordinal));
+        Assert.DoesNotContain(library.Calls, call => call.StartsWith("SetOptoStart:8:", StringComparison.Ordinal));
+        Assert.DoesNotContain(library.Calls, call => call.StartsWith("SetOptoEnd:8:", StringComparison.Ordinal));
+        Assert.DoesNotContain(library.Calls, call => call.StartsWith("SetOptoInvert:8:", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void System6ReelOptoViewModelDisplaysOneBasedReelNumbersFromZeroBasedStoredIndices()
+    {
+        var firstReel = new System6ReelOptoSettingsViewModel(System6ReelOptoSettings.CreateDefault(0), () => { });
+        var eighthReel = new System6ReelOptoSettingsViewModel(System6ReelOptoSettings.CreateDefault(7), () => { });
+
+        Assert.Equal(0, firstReel.ReelIndex);
+        Assert.Equal(1, firstReel.ReelNumber);
+        Assert.Equal(7, eighthReel.ReelIndex);
+        Assert.Equal(8, eighthReel.ReelNumber);
+        Assert.Equal(0, firstReel.ToModel().ReelIndex);
+        Assert.Equal(7, eighthReel.ToModel().ReelIndex);
+    }
+
+    [Fact]
     public async Task SetInputStateAsyncMapsNumericInputIdToNativeSwitchCalls()
     {
         var library = new FakeSystem6NativeLibrary();
