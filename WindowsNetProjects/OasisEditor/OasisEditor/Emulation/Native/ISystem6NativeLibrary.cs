@@ -28,9 +28,13 @@ public interface ISystem6NativeLibrary : INativeCoreLibrary
 
     short GetPosOut(sbyte positionIndex);
 
-    bool IsAlphaCharPollingAvailable { get; }
+    bool IsAlphaSegmentPollingAvailable { get; }
 
-    byte GetAlphaChar(byte index);
+    int GetAlphaSegments(byte index);
+
+    bool IsSetPercentAvailable { get; }
+
+    void SetPercent(byte percent);
 
     void TurnSwitchOn(int switchIndex);
 

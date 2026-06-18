@@ -33,7 +33,7 @@ public sealed class System6NativeBackend : IEmulationBackend
     private readonly object _stateGate = new();
     private readonly int[] _lastLampValues = Enumerable.Repeat(-1, LampCount).ToArray();
     private readonly int[] _lastReelPositions = Enumerable.Repeat(int.MinValue, ReelCount).ToArray();
-    private string? _lastAlphaString;
+    private int[]? _lastAlphaSegments;
     private bool _hasLoggedAlphaUnavailable;
 
     private ISystem6NativeLibrary? _library;
@@ -87,11 +87,7 @@ public sealed class System6NativeBackend : IEmulationBackend
 
     public event EventHandler<MachineLampChangedEventArgs>? LampChanged;
     public event EventHandler<MachineReelChangedEventArgs>? ReelChanged;
-    public event EventHandler<MachineSegmentChangedEventArgs>? SegmentChanged
-    {
-        add { }
-        remove { }
-    }
+    public event EventHandler<MachineSegmentChangedEventArgs>? SegmentChanged;
 
     public event EventHandler<MachineVfdBrightnessChangedEventArgs>? VfdBrightnessChanged
     {
@@ -129,6 +125,8 @@ public sealed class System6NativeBackend : IEmulationBackend
 
             _library = _libraryFactory(_libraryPath);
             LogStartupStage("native DLL loaded and exports bound");
+            LogStartupStage($"SYSTEM6GetAlphaSegments export {(_library.IsAlphaSegmentPollingAvailable ? "available" : "missing")}");
+            LogStartupStage($"SetPercent export {(_library.IsSetPercentAvailable ? "available" : "missing")}");
             if (startupStage is System6StartupStage.LoadBindOnly)
             {
                 return CompleteStagedStartup();
@@ -157,6 +155,7 @@ public sealed class System6NativeBackend : IEmulationBackend
             var programRomPaths = ValidateNativeRomPaths(nativeRoms.ProgramRomPaths, true, "program");
             var soundRomPaths = ValidateNativeRomPaths(nativeRoms.SoundRomPaths, false, "sound");
             var reelOptos = ValidateReelOptos(nativeRoms.ReelOptos);
+            var percentSwitchValue = ValidatePercentSwitchValue(nativeRoms.PercentSwitchValue);
 
             cancellationToken.ThrowIfCancellationRequested();
             try
@@ -209,6 +208,7 @@ public sealed class System6NativeBackend : IEmulationBackend
                 LogStartupStage("Apply reel optos starting after Reset");
                 ApplyReelOptos(_library, reelOptos);
                 LogStartupStage("Apply reel optos completed before first Run");
+                ApplyPercent(_library, percentSwitchValue);
             }
             catch (Exception ex)
             {
@@ -224,6 +224,7 @@ public sealed class System6NativeBackend : IEmulationBackend
             {
                 var runResult = _library.Run(_cyclesPerFrame);
                 LogStartupStage($"first Run({_cyclesPerFrame}) returned {runResult}");
+                PollAlphaDebugOutput(_library);
                 return CompleteStagedStartup();
             }
 
@@ -372,29 +373,10 @@ public sealed class System6NativeBackend : IEmulationBackend
         return (int)MathF.Round(Math.Min(brightness, 255f));
     }
 
-    internal static string FormatAlphaDebugString(IReadOnlyList<byte> rawChars)
+    internal static string FormatAlphaSegments(IReadOnlyList<int> segments)
     {
-        ArgumentNullException.ThrowIfNull(rawChars);
-
-        var chars = new char[rawChars.Count];
-        for (var i = 0; i < rawChars.Count; i++)
-        {
-            var value = rawChars[i];
-            chars[i] = value switch
-            {
-                0 => ' ',
-                >= 32 and <= 126 => (char)value,
-                _ => '?'
-            };
-        }
-
-        return new string(chars);
-    }
-
-    internal static string FormatAlphaRawBytes(IReadOnlyList<byte> rawChars)
-    {
-        ArgumentNullException.ThrowIfNull(rawChars);
-        return string.Join(" ", rawChars.Select(value => value.ToString("X2", CultureInfo.InvariantCulture)));
+        ArgumentNullException.ThrowIfNull(segments);
+        return string.Join(" ", segments.Select((value, index) => $"[{index}]=0x{(value & 0xFFFF):X4}/{value.ToString(CultureInfo.InvariantCulture)}"));
     }
 
     private static void LogStartupStage(string message)
@@ -472,6 +454,16 @@ public sealed class System6NativeBackend : IEmulationBackend
         return settings;
     }
 
+    private static int ValidatePercentSwitchValue(int percentSwitchValue)
+    {
+        if (percentSwitchValue is < 0 or > 15)
+        {
+            throw new InvalidOperationException("System6 percent switch value must be between 0 and 15.");
+        }
+
+        return percentSwitchValue;
+    }
+
     private static void ApplyReelOptos(ISystem6NativeLibrary library, IReadOnlyList<System6ReelOptoSettings> reelOptos)
     {
         foreach (var reel in reelOptos.Where(reel => reel.Enabled))
@@ -484,6 +476,20 @@ public sealed class System6NativeBackend : IEmulationBackend
             library.SetOptoInvert(nativeReelIndex, reel.OptoInvert ? (byte)1 : (byte)0);
             LogStartupStage($"System6 reel {displayReelNumber} -> native index {nativeReelIndex}: steps={reel.Steps} start={reel.OptoStart} end={reel.OptoEnd} inverted={reel.OptoInvert.ToString(CultureInfo.InvariantCulture).ToLowerInvariant()}");
         }
+    }
+
+    private static void ApplyPercent(ISystem6NativeLibrary library, int percentSwitchValue)
+    {
+        LogStartupStage($"SetPercent export {(library.IsSetPercentAvailable ? "available" : "missing")}");
+        LogStartupStage($"configured percent switch value = {percentSwitchValue}");
+        if (!library.IsSetPercentAvailable)
+        {
+            return;
+        }
+
+        var nativeValue = checked((byte)percentSwitchValue);
+        library.SetPercent(nativeValue);
+        LogStartupStage($"SetPercent passed value {nativeValue} (0x{nativeValue:X2}) to DLL");
     }
 
     private static IReadOnlyList<string> ValidateNativeRomPaths(IReadOnlyList<string> romPaths, bool requireFirst, string romKind)
@@ -553,41 +559,42 @@ public sealed class System6NativeBackend : IEmulationBackend
 
     private void PollAlphaDebugOutput(ISystem6NativeLibrary library)
     {
-        if (!library.IsAlphaCharPollingAvailable)
+        if (!library.IsAlphaSegmentPollingAvailable)
         {
             if (!_hasLoggedAlphaUnavailable)
             {
                 _hasLoggedAlphaUnavailable = true;
-                Debug.WriteLine("[System6 Alpha] GetAlphaChar unavailable; alpha debug polling disabled.");
+                Debug.WriteLine("[System6 Alpha] SYSTEM6GetAlphaSegments unavailable; alpha segment polling disabled.");
             }
 
             return;
         }
 
-        var rawChars = new byte[AlphaCharacterCount];
-        for (var index = 0; index < rawChars.Length; index++)
+        var segments = new int[AlphaCharacterCount];
+        for (var index = 0; index < segments.Length; index++)
         {
-            rawChars[index] = library.GetAlphaChar(checked((byte)index));
+            segments[index] = library.GetAlphaSegments(checked((byte)index));
         }
 
-        // The native TechsClass.cpp reference exposes GetAlphaChar(UINT8 num) as a raw byte.
-        // First-pass diagnostics treat printable ASCII values as characters while also logging
-        // raw byte values so we can verify whether the native core returns ASCII or display codes.
-        var alphaString = FormatAlphaDebugString(rawChars);
-        if (string.Equals(_lastAlphaString, alphaString, StringComparison.Ordinal))
+        if (_lastAlphaSegments is not null && segments.SequenceEqual(_lastAlphaSegments))
         {
             return;
         }
 
-        _lastAlphaString = alphaString;
-        Debug.WriteLine($"[System6 Alpha] chars=\"{alphaString}\" raw={FormatAlphaRawBytes(rawChars)}");
+        _lastAlphaSegments = segments;
+        Debug.WriteLine($"System6 alpha segs: {FormatAlphaSegments(segments)}");
+
+        for (var index = 0; index < segments.Length; index++)
+        {
+            SegmentChanged?.Invoke(this, new MachineSegmentChangedEventArgs(index, segments[index], MameSegmentOutputType.Digiti));
+        }
     }
 
     private void ResetCachedOutputState()
     {
         Array.Fill(_lastLampValues, -1);
         Array.Fill(_lastReelPositions, int.MinValue);
-        _lastAlphaString = null;
+        _lastAlphaSegments = null;
         _hasLoggedAlphaUnavailable = false;
     }
 

@@ -25,7 +25,8 @@ public sealed class System6NativeBackendTests
         Assert.True(library.InitialiseCalled);
         Assert.Equal(new[] { rom1, rom2, string.Empty, string.Empty }, library.LoadedRoms);
         Assert.True(library.ResetCalled);
-        Assert.Equal(8 * 4, library.Calls.Count(call => call.StartsWith("Set", StringComparison.Ordinal)));
+        Assert.Equal(8 * 4 + 1, library.Calls.Count(call => call.StartsWith("Set", StringComparison.Ordinal)));
+        Assert.Contains("SetPercent:0", library.Calls);
         Assert.True(library.Calls.IndexOf("Reset") < library.Calls.IndexOf("SetSteps:0:96"));
         Assert.True(library.ShutdownCalled);
         Assert.True(library.DisposeCalled);
@@ -133,7 +134,7 @@ public sealed class System6NativeBackendTests
 
         Assert.DoesNotContain("SetSteps:1:0", library.Calls);
         Assert.DoesNotContain(library.Calls, call => call.StartsWith("SetOptoStart:1:", StringComparison.Ordinal));
-        Assert.Equal(7 * 4, library.Calls.Count(call => call.StartsWith("Set", StringComparison.Ordinal)));
+        Assert.Equal(7 * 4 + 1, library.Calls.Count(call => call.StartsWith("Set", StringComparison.Ordinal)));
         Assert.True(library.ResetCalled);
     }
 
@@ -160,6 +161,7 @@ public sealed class System6NativeBackendTests
                 "SetOptoStart:0:5",
                 "SetOptoEnd:0:7",
                 "SetOptoInvert:0:0",
+                "SetPercent:0",
                 "Run:133333");
         }
         finally
@@ -170,19 +172,26 @@ public sealed class System6NativeBackendTests
 
 
     [Fact]
-    public void FormatAlphaDebugString_MapsZeroToSpacePrintableAsciiToCharsAndNonPrintableToPlaceholder()
+    public void FormatAlphaSegments_FormatsHexAndDecimalValues()
     {
-        var text = System6NativeBackend.FormatAlphaDebugString(new byte[] { 0, 65, 31, 126 });
+        var raw = System6NativeBackend.FormatAlphaSegments(new[] { 0, 17615, -1 });
 
-        Assert.Equal(" A?~", text);
+        Assert.Equal("[0]=0x0000/0 [1]=0x44CF/17615 [2]=0xFFFF/-1", raw);
     }
 
     [Fact]
-    public void FormatAlphaRawBytes_FormatsUppercaseHexBytes()
+    public async Task StartAsyncAppliesConfiguredPercentSwitchValue()
     {
-        var raw = System6NativeBackend.FormatAlphaRawBytes(new byte[] { 0, 65, 255 });
+        var library = new FakeSystem6NativeLibrary();
+        var (dllPath, rom1, rom2) = CreateNativeFiles(2);
+        var backend = new System6NativeBackend(dllPath, _ => library);
+        var request = CreateLaunchRequest(rom1, rom2);
+        request.System6NativeRoms!.PercentSwitchValue = 15;
 
-        Assert.Equal("00 41 FF", raw);
+        await backend.StartAsync(request, CancellationToken.None);
+        await backend.StopAsync(CancellationToken.None);
+
+        Assert.Contains("SetPercent:15", library.Calls);
     }
 
     private static void AssertOrdered(IReadOnlyList<string> calls, params string[] expectedCalls)
@@ -289,6 +298,10 @@ public sealed class System6NativeBackendTests
 
         public void SetOptoInvert(byte reelNum, byte state) => Calls.Add($"SetOptoInvert:{reelNum}:{state}");
 
+        public bool IsSetPercentAvailable => true;
+
+        public void SetPercent(byte percent) => Calls.Add($"SetPercent:{percent}");
+
         public void Reset()
         {
             Calls.Add("Reset");
@@ -313,9 +326,9 @@ public sealed class System6NativeBackendTests
 
         public short GetPosOut(sbyte positionIndex) => 0;
 
-        public bool IsAlphaCharPollingAvailable => false;
+        public bool IsAlphaSegmentPollingAvailable => false;
 
-        public byte GetAlphaChar(byte index) => 0;
+        public int GetAlphaSegments(byte index) => 0;
 
         public void TurnSwitchOn(int switchIndex)
         {

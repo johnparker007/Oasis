@@ -64,6 +64,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string _system6SoundRom3Path = string.Empty;
     private string _system6SoundRom4Path = string.Empty;
     private bool _system6FlashSwitch;
+    private int _system6PercentSwitchValue = System6NativeRomSettings.DefaultPercentSwitchValue;
     private string _system6NativeRomStatus = "Program ROM 1 and 2 are required for native DLL launch.";
     private ObservableCollection<System6ReelOptoSettingsViewModel> _system6ReelOptos = [];
     private string _mameRomStatus = "Unknown";
@@ -790,6 +791,18 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         set
         {
             if (SetProperty(ref _system6FlashSwitch, value))
+            {
+                SaveSystem6NativeRomSettings();
+            }
+        }
+    }
+    public int System6PercentSwitchValue
+    {
+        get => _system6PercentSwitchValue;
+        set
+        {
+            var clamped = Math.Clamp(value, 0, 15);
+            if (SetProperty(ref _system6PercentSwitchValue, clamped))
             {
                 SaveSystem6NativeRomSettings();
             }
@@ -2605,6 +2618,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             SoundRom3Path = System6SoundRom3Path,
             SoundRom4Path = System6SoundRom4Path,
             FlashSwitch = System6FlashSwitch,
+            PercentSwitchValue = System6PercentSwitchValue,
             ReelOptos = System6ReelOptos.Select(reel => reel.ToModel()).ToList()
         };
         SaveLoadedProjectMetadata();
@@ -2621,12 +2635,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _system6SoundRom3Path = settings.SoundRom3Path;
         _system6SoundRom4Path = settings.SoundRom4Path;
         _system6FlashSwitch = settings.FlashSwitch;
+        _system6PercentSwitchValue = Math.Clamp(settings.PercentSwitchValue, 0, 15);
         System6ReelOptos = new ObservableCollection<System6ReelOptoSettingsViewModel>((settings.ReelOptos is { Count: > 0 } ? settings.ReelOptos : System6NativeRomSettings.CreateDefaultReelOptos()).Select(reel => new System6ReelOptoSettingsViewModel(reel, SaveSystem6NativeRomSettings)));
         OnPropertyChanged(nameof(System6ProgramRom1Path)); OnPropertyChanged(nameof(System6ProgramRom2Path));
         OnPropertyChanged(nameof(System6ProgramRom3Path)); OnPropertyChanged(nameof(System6ProgramRom4Path));
         OnPropertyChanged(nameof(System6SoundRom1Path)); OnPropertyChanged(nameof(System6SoundRom2Path));
         OnPropertyChanged(nameof(System6SoundRom3Path)); OnPropertyChanged(nameof(System6SoundRom4Path));
         OnPropertyChanged(nameof(System6FlashSwitch));
+        OnPropertyChanged(nameof(System6PercentSwitchValue));
     }
 
     private void RefreshSystem6NativeRomStatus()
@@ -2673,6 +2689,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             SoundRom3Path = ResolveProjectRelativePath(settings.SoundRom3Path, LoadedProject.ProjectDirectory),
             SoundRom4Path = ResolveProjectRelativePath(settings.SoundRom4Path, LoadedProject.ProjectDirectory),
             FlashSwitch = settings.FlashSwitch,
+            PercentSwitchValue = Math.Clamp(settings.PercentSwitchValue, 0, 15),
             ReelOptos = (settings.ReelOptos is { Count: > 0 } ? settings.ReelOptos : System6NativeRomSettings.CreateDefaultReelOptos())
                 .Select(reel => new System6ReelOptoSettings { ReelIndex = reel.ReelIndex, Enabled = reel.Enabled, Steps = reel.Steps, OptoStart = reel.OptoStart, OptoEnd = reel.OptoEnd, OptoInvert = reel.OptoInvert })
                 .ToList()
@@ -3558,6 +3575,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         writer.WriteString("SoundRom3Path", settings.SoundRom3Path);
         writer.WriteString("SoundRom4Path", settings.SoundRom4Path);
         writer.WriteBoolean("FlashSwitch", settings.FlashSwitch);
+        writer.WriteNumber("PercentSwitchValue", Math.Clamp(settings.PercentSwitchValue, 0, 15));
         writer.WritePropertyName("ReelOptos");
         writer.WriteStartArray();
         foreach (var reel in settings.ReelOptos)
@@ -3594,6 +3612,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             SoundRom3Path = GetOptionalString(romsElement, "SoundRom3Path"),
             SoundRom4Path = GetOptionalString(romsElement, "SoundRom4Path"),
             FlashSwitch = romsElement.TryGetProperty("FlashSwitch", out var flashElement) && flashElement.ValueKind == JsonValueKind.True,
+            PercentSwitchValue = Math.Clamp(GetOptionalInt(romsElement, "PercentSwitchValue", System6NativeRomSettings.DefaultPercentSwitchValue), 0, 15),
             ReelOptos = ResolveSystem6ReelOptoSettings(romsElement)
         };
     }
