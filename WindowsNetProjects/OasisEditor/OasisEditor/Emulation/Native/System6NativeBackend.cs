@@ -10,6 +10,8 @@ public sealed class System6NativeBackend : IEmulationBackend
     private const int System6ClockHz = 8000000;
     private const int LampCount = 32;
     private const int ReelCount = 16;
+    private const int DiagnosticChangedLampSampleCount = 8;
+    private const int DiagnosticMappingSampleCount = 8;
     private const int AlphaCharacterCount = 16;
     private const int SupportedReelOptoCount = 8;
     private const string DiagnosticStageEnvironmentVariable = "OASIS_SYSTEM6_STARTUP_STAGE";
@@ -32,9 +34,12 @@ public sealed class System6NativeBackend : IEmulationBackend
     private readonly int _cyclesPerFrame;
     private readonly object _stateGate = new();
     private readonly int[] _lastLampValues = Enumerable.Repeat(-1, LampCount).ToArray();
+    private readonly int[] _lastLampRawValues = Enumerable.Repeat(-1, LampCount).ToArray();
     private readonly int[] _lastReelPositions = Enumerable.Repeat(int.MinValue, ReelCount).ToArray();
     private int[]? _lastAlphaSegments;
     private bool _hasLoggedAlphaUnavailable;
+    private bool _hasLoggedLampPollingConfiguration;
+    private bool _hasLoggedReelPollingMapping;
 
     private ISystem6NativeLibrary? _library;
     private CancellationTokenSource? _runLoopCancellation;
@@ -127,6 +132,8 @@ public sealed class System6NativeBackend : IEmulationBackend
             LogStartupStage("native DLL loaded and exports bound");
             LogStartupStage($"SYSTEM6GetAlphaSegments export {(_library.IsAlphaSegmentPollingAvailable ? "available" : "missing")}");
             LogStartupStage($"SetPercent export {(_library.IsSetPercentAvailable ? "available" : "missing")}");
+            LogStartupStage($"SYSTEM6UpdateLamps export {FormatOptionalExportStatus(_library.IsLampsUpdateAvailable, _library.LampsUpdateExportName)}");
+            LogStartupStage("SYSTEM6GetLampsOn export available");
             if (startupStage is System6StartupStage.LoadBindOnly)
             {
                 return CompleteStagedStartup();
@@ -224,7 +231,7 @@ public sealed class System6NativeBackend : IEmulationBackend
             {
                 var runResult = _library.Run(_cyclesPerFrame);
                 LogStartupStage($"first Run({_cyclesPerFrame}) returned {runResult}");
-                PollAlphaDebugOutput(_library);
+                PollOutputs(_library);
                 return CompleteStagedStartup();
             }
 
@@ -358,25 +365,18 @@ public sealed class System6NativeBackend : IEmulationBackend
             : System6StartupStage.FullRunLoop;
     }
 
-    private static int ToLampBrightnessValue(float brightness)
-    {
-        if (float.IsNaN(brightness) || brightness <= 0f)
-        {
-            return 0;
-        }
-
-        if (brightness <= 1f)
-        {
-            return (int)MathF.Round(brightness * 255f);
-        }
-
-        return (int)MathF.Round(Math.Min(brightness, 255f));
-    }
 
     internal static string FormatAlphaSegments(IReadOnlyList<int> segments)
     {
         ArgumentNullException.ThrowIfNull(segments);
         return string.Join(" ", segments.Select((value, index) => $"[{index}]=0x{(value & 0xFFFF):X4}/{value.ToString(CultureInfo.InvariantCulture)}"));
+    }
+
+    private static string FormatOptionalExportStatus(bool isAvailable, string? exportName)
+    {
+        return isAvailable && !string.IsNullOrWhiteSpace(exportName)
+            ? $"available ({exportName})"
+            : "missing";
     }
 
     private static void LogStartupStage(string message)
@@ -532,29 +532,98 @@ public sealed class System6NativeBackend : IEmulationBackend
 
     private void PollOutputs(ISystem6NativeLibrary library)
     {
+        PollLampOutputs(library);
+        PollReelOutputs(library);
+        PollAlphaDebugOutput(library);
+    }
+
+    private void PollLampOutputs(ISystem6NativeLibrary library)
+    {
+        LogLampPollingConfiguration(library);
+        if (library.IsLampsUpdateAvailable)
+        {
+            library.LampsUpdate();
+        }
+
+        var changedDiagnostics = new List<string>();
         for (var lampIndex = 0; lampIndex < LampCount; lampIndex++)
         {
             var nativeLampIndex = checked((ushort)lampIndex);
-            var isOn = library.GetLampsOn(nativeLampIndex);
-            var value = isOn ? ToLampBrightnessValue(library.GetLampBrightness(nativeLampIndex)) : 0;
+            var rawValue = library.GetLampsOn(nativeLampIndex) ? 1 : 0;
+            var isOn = rawValue != 0;
+            var value = isOn ? 255 : 0;
+            var diagnosticChanged = _lastLampRawValues[lampIndex] != rawValue;
+            if (diagnosticChanged)
+            {
+                _lastLampRawValues[lampIndex] = rawValue;
+            }
             if (_lastLampValues[lampIndex] != value)
             {
                 _lastLampValues[lampIndex] = value;
                 LampChanged?.Invoke(this, new MachineLampChangedEventArgs(lampIndex, value));
             }
+
+            if (diagnosticChanged && changedDiagnostics.Count < DiagnosticChangedLampSampleCount)
+            {
+                changedDiagnostics.Add(FormatLampChangeDiagnostic(nativeLampIndex, lampIndex, rawValue, isOn, value));
+            }
         }
 
+        if (changedDiagnostics.Count > 0)
+        {
+            Debug.WriteLine($"[System6 Lamps] changed: {string.Join("; ", changedDiagnostics)}");
+        }
+    }
+
+    private static string FormatLampChangeDiagnostic(ushort nativeLampIndex, int lampIndex, int rawValue, bool isOn, int value)
+    {
+        return $"native {nativeLampIndex} -> lamp:{lampIndex} raw={rawValue.ToString(CultureInfo.InvariantCulture)} on={isOn.ToString(CultureInfo.InvariantCulture).ToLowerInvariant()} value={value}";
+    }
+
+    private void PollReelOutputs(ISystem6NativeLibrary library)
+    {
+        LogReelPollingMapping();
         for (var reelIndex = 0; reelIndex < ReelCount; reelIndex++)
         {
-            var position = library.GetPosOut(checked((sbyte)reelIndex));
+            var nativeReelIndex = reelIndex;
+            // GetPosOut uses the System 6 position-output selector, which is offset
+            // from the zero-based native reel index. Keep emitted Oasis reel IDs
+            // zero-based while applying the selector offset only at the DLL call.
+            var nativePositionSelector = checked((sbyte)(nativeReelIndex - 1));
+            var position = library.GetPosOut(nativePositionSelector);
             if (_lastReelPositions[reelIndex] != position)
             {
                 _lastReelPositions[reelIndex] = position;
                 ReelChanged?.Invoke(this, new MachineReelChangedEventArgs(reelIndex, position));
             }
         }
+    }
 
-        PollAlphaDebugOutput(library);
+    private void LogLampPollingConfiguration(ISystem6NativeLibrary library)
+    {
+        if (_hasLoggedLampPollingConfiguration)
+        {
+            return;
+        }
+
+        _hasLoggedLampPollingConfiguration = true;
+        Debug.WriteLine($"[System6 Lamps] SYSTEM6UpdateLamps export {FormatOptionalExportStatus(library.IsLampsUpdateAvailable, library.LampsUpdateExportName)}; SYSTEM6GetLampsOn export available; value source=SYSTEM6GetLampsOn; polling native lamps 0-{LampCount - 1}");
+        var mappings = Enumerable.Range(0, Math.Min(LampCount, DiagnosticMappingSampleCount))
+            .Select(index => $"native {index} -> lamp:{index}");
+        Debug.WriteLine($"[System6 Lamps] mapping sample: {string.Join("; ", mappings)}");
+    }
+
+    private void LogReelPollingMapping()
+    {
+        if (_hasLoggedReelPollingMapping)
+        {
+            return;
+        }
+
+        _hasLoggedReelPollingMapping = true;
+        var mappings = Enumerable.Range(0, Math.Min(ReelCount, DiagnosticMappingSampleCount))
+            .Select(index => $"native {index} -> reel:{index} (GetPosOut selector {index - 1})");
+        Debug.WriteLine($"[System6 Reels] mapping sample: {string.Join("; ", mappings)}");
     }
 
     private void PollAlphaDebugOutput(ISystem6NativeLibrary library)
@@ -593,9 +662,12 @@ public sealed class System6NativeBackend : IEmulationBackend
     private void ResetCachedOutputState()
     {
         Array.Fill(_lastLampValues, -1);
+        Array.Fill(_lastLampRawValues, -1);
         Array.Fill(_lastReelPositions, int.MinValue);
         _lastAlphaSegments = null;
         _hasLoggedAlphaUnavailable = false;
+        _hasLoggedLampPollingConfiguration = false;
+        _hasLoggedReelPollingMapping = false;
     }
 
     private void CleanupLibraryAfterFailedStart()

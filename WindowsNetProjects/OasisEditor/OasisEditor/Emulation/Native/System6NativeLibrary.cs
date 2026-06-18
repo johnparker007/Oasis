@@ -16,6 +16,8 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
     private readonly System6RunDelegate _run;
     private readonly System6ShutdownDelegate _shutdown;
     private readonly System6GetLampsOnDelegate _getLampsOn;
+    private readonly System6LampsUpdateDelegate? _lampsUpdate;
+    private readonly string? _lampsUpdateExportName;
     private readonly System6GetLampBrightnessDelegate _getLampBrightness;
     private readonly System6GetPosOutDelegate _getPosOut;
     private readonly System6GetAlphaSegmentsDelegate? _getAlphaSegments;
@@ -44,6 +46,7 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
         _run = _loader.BindExport<System6RunDelegate>("SYSTEM6Run");
         _shutdown = _loader.BindExport<System6ShutdownDelegate>("SYSTEM6Shutdown");
         _getLampsOn = _loader.BindExport<System6GetLampsOnDelegate>("SYSTEM6GetLampsOn");
+        (_lampsUpdate, _lampsUpdateExportName) = TryBindOptionalExportCandidate<System6LampsUpdateDelegate>("SYSTEM6UpdateLamps");
         _getLampBrightness = _loader.BindExport<System6GetLampBrightnessDelegate>("SYSTEM6GetLampBrightness");
         _getPosOut = _loader.BindExport<System6GetPosOutDelegate>("SYSTEM6GetPosOut");
         _getAlphaSegments = TryBindOptionalExport<System6GetAlphaSegmentsDelegate>("SYSTEM6GetAlphaSegments");
@@ -86,6 +89,16 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
 
     public byte Shutdown() => _shutdown();
 
+    public bool IsLampsUpdateAvailable => _lampsUpdate is not null;
+
+    public string? LampsUpdateExportName => _lampsUpdateExportName;
+
+    public void LampsUpdate()
+    {
+        var lampsUpdate = _lampsUpdate ?? throw new NotSupportedException("System6 native core does not export LampsUpdate.");
+        lampsUpdate();
+    }
+
     public bool GetLampsOn(ushort lampIndex) => _getLampsOn(lampIndex);
 
     public float GetLampBrightness(ushort lampIndex) => _getLampBrightness(lampIndex);
@@ -124,15 +137,23 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
     private TDelegate? TryBindOptionalExport<TDelegate>(string exportName)
         where TDelegate : Delegate
     {
-        try
+        var (export, _) = TryBindOptionalExportCandidate<TDelegate>(exportName);
+        return export;
+    }
+
+    private (TDelegate? Export, string? ExportName) TryBindOptionalExportCandidate<TDelegate>(params string[] exportNames)
+        where TDelegate : Delegate
+    {
+        foreach (var exportName in exportNames)
         {
-            return _loader.BindExport<TDelegate>(exportName);
+            if (_loader.TryBindExport<TDelegate>(exportName, out var export))
+            {
+                return (export, exportName);
+            }
         }
-        catch (NativeCoreExportException ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"System6 native optional export {exportName} unavailable. {ex.Message}");
-            return null;
-        }
+
+        System.Diagnostics.Debug.WriteLine($"System6 native optional exports {string.Join("/", exportNames)} unavailable in '{_loader.LibraryPath}'.");
+        return (null, null);
     }
 
     private IntPtr[] AllocateRomPathSlots(IReadOnlyList<string> romPaths)
@@ -206,6 +227,9 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     public delegate byte System6ShutdownDelegate();
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate void System6LampsUpdateDelegate();
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     [return: MarshalAs(UnmanagedType.I1)]

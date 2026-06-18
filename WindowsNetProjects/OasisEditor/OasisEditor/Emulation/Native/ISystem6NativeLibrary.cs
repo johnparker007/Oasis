@@ -22,6 +22,12 @@ public interface ISystem6NativeLibrary : INativeCoreLibrary
 
     byte Shutdown();
 
+    bool IsLampsUpdateAvailable { get; }
+
+    string? LampsUpdateExportName { get; }
+
+    void LampsUpdate();
+
     bool GetLampsOn(ushort lampIndex);
 
     float GetLampBrightness(ushort lampIndex);
