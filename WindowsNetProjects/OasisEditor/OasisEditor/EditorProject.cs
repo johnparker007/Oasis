@@ -51,9 +51,11 @@ public sealed class System6ReelOptoSettings
     public const int DefaultSteps = 96;
     public const int DefaultOptoStart = 5;
     public const int DefaultOptoEnd = 7;
+    public const bool DefaultEnabled = true;
     public const bool DefaultOptoInvert = false;
 
     public int ReelIndex { get; set; }
+    public bool Enabled { get; set; } = DefaultEnabled;
     public int Steps { get; set; } = DefaultSteps;
     public int OptoStart { get; set; } = DefaultOptoStart;
     public int OptoEnd { get; set; } = DefaultOptoEnd;
@@ -62,6 +64,7 @@ public sealed class System6ReelOptoSettings
     public static System6ReelOptoSettings CreateDefault(int reelIndex) => new()
     {
         ReelIndex = reelIndex,
+        Enabled = DefaultEnabled,
         Steps = DefaultSteps,
         OptoStart = DefaultOptoStart,
         OptoEnd = DefaultOptoEnd,

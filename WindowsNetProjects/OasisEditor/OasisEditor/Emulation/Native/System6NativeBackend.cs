@@ -436,6 +436,10 @@ public sealed class System6NativeBackend : IEmulationBackend
             {
                 throw new InvalidOperationException($"System6 reel opto setting has invalid reel index {reel.ReelIndex}; supported range is 0-{SupportedReelOptoCount - 1}.");
             }
+            if (!reel.Enabled)
+            {
+                continue;
+            }
             if (reel.Steps is < 1 or > byte.MaxValue)
             {
                 throw new InvalidOperationException($"System6 reel {reel.ReelIndex + 1} opto steps must be between 1 and 255.");
@@ -459,7 +463,7 @@ public sealed class System6NativeBackend : IEmulationBackend
 
     private static void ApplyReelOptos(ISystem6NativeLibrary library, IReadOnlyList<System6ReelOptoSettings> reelOptos)
     {
-        foreach (var reel in reelOptos)
+        foreach (var reel in reelOptos.Where(reel => reel.Enabled))
         {
             var reelNum = checked((byte)reel.ReelIndex);
             library.SetSteps(reelNum, checked((byte)reel.Steps));
