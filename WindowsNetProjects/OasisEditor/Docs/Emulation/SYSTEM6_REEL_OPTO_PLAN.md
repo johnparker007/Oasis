@@ -173,7 +173,7 @@ If validation fails, do not start the native backend.
 Log native startup stages:
 
 ```text
-System6 reel opto 1: steps=96 start=5 end=7 inverted=false
+System6 reel 1 -> native index 0: steps=96 start=5 end=7 inverted=false
 ```
 
 Avoid logging every frame. Log only setup/configuration.

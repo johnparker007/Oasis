@@ -465,12 +465,13 @@ public sealed class System6NativeBackend : IEmulationBackend
     {
         foreach (var reel in reelOptos.Where(reel => reel.Enabled))
         {
-            var reelNum = checked((byte)reel.ReelIndex);
-            library.SetSteps(reelNum, checked((byte)reel.Steps));
-            library.SetOptoStart(reelNum, checked((byte)reel.OptoStart));
-            library.SetOptoEnd(reelNum, checked((byte)reel.OptoEnd));
-            library.SetOptoInvert(reelNum, reel.OptoInvert ? (byte)1 : (byte)0);
-            LogStartupStage($"System6 reel {reel.ReelIndex + 1} opto: steps={reel.Steps} start={reel.OptoStart} end={reel.OptoEnd} inverted={reel.OptoInvert.ToString(CultureInfo.InvariantCulture).ToLowerInvariant()}");
+            var nativeReelIndex = checked((byte)reel.ReelIndex);
+            var displayReelNumber = reel.ReelIndex + 1;
+            library.SetSteps(nativeReelIndex, checked((byte)reel.Steps));
+            library.SetOptoStart(nativeReelIndex, checked((byte)reel.OptoStart));
+            library.SetOptoEnd(nativeReelIndex, checked((byte)reel.OptoEnd));
+            library.SetOptoInvert(nativeReelIndex, reel.OptoInvert ? (byte)1 : (byte)0);
+            LogStartupStage($"System6 reel {displayReelNumber} -> native index {nativeReelIndex}: steps={reel.Steps} start={reel.OptoStart} end={reel.OptoEnd} inverted={reel.OptoInvert.ToString(CultureInfo.InvariantCulture).ToLowerInvariant()}");
         }
     }
 
