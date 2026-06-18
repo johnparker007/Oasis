@@ -270,8 +270,23 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
     private int NormalizeAlphaMaskForSelectedDisplayType(int rawMask, string? segmentDisplayType, int cellId)
     {
         return _latestNativeAlphaCells.Contains(cellId)
-            ? rawMask
+            ? NormalizeNativeAlphaMaskForSelectedDisplayType(rawMask, segmentDisplayType)
             : NormalizeMameMaskForSelectedDisplayType(rawMask, segmentDisplayType);
+    }
+
+    private static int NormalizeNativeAlphaMaskForSelectedDisplayType(int canonicalFourteenSegmentMask, string? segmentDisplayType)
+    {
+        var displayType = string.IsNullOrWhiteSpace(segmentDisplayType)
+            ? "led16seg"
+            : segmentDisplayType.Trim();
+
+        return displayType.ToLowerInvariant() switch
+        {
+            "led14seg" => canonicalFourteenSegmentMask & 0x3FFF,
+            "led14segsc" => canonicalFourteenSegmentMask & 0xFFFF,
+            "led16segsc" => ExpandFourteenSegmentSourceToSixteenSegmentTarget(canonicalFourteenSegmentMask) & 0x3FFFF,
+            _ => ExpandFourteenSegmentSourceToSixteenSegmentTarget(canonicalFourteenSegmentMask) & 0xFFFF
+        };
     }
 
     private static int NormalizeMameMaskForSelectedDisplayType(int rawMask, string? segmentDisplayType)
