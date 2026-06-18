@@ -148,15 +148,14 @@ public sealed class MameSegmentRuntimeAdapterTests
 
 
     [Fact]
-    public void ApplySegmentState_NativeAlphaPublishesCanonicalFourteenSegmentMaskToMachineReference()
+    public void ApplySegmentState_NativeAlphaPublishesRawOasisMaskToMachineReference()
     {
         var document = CreateDocument();
         document.SetFaceElements([
             new FaceAlphaDisplayElement
             {
                 ObjectId = "face-alpha-0",
-                LinkedMachineObjectReference = MachineObjectReference.AlphaDisplay(0),
-                SegmentDisplayType = "led14seg"
+                LinkedMachineObjectReference = MachineObjectReference.AlphaDisplay(0)
             }
         ]);
         var changedFaceIds = new List<string>();

@@ -217,7 +217,7 @@ public sealed class System6NativeBackendTests
     [Fact]
     public void System6AlphaSegmentMapper_MapsKnownRawMaskToOasisMask()
     {
-        Assert.Equal((1 << 11) | (1 << 8), System6AlphaSegmentMapper.MapNativeMaskToOasisMask(0x0180));
+        Assert.Equal(0x8003, System6AlphaSegmentMapper.MapNativeMaskToOasisMask(0x8003));
     }
 
     [Fact]
