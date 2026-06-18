@@ -64,6 +64,34 @@ public sealed class NativeLibraryLoader : INativeCoreLibrary
         }
     }
 
+
+    public bool TryBindExport<TDelegate>(string exportName, out TDelegate? export)
+        where TDelegate : Delegate
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        if (string.IsNullOrWhiteSpace(exportName))
+        {
+            throw new ArgumentException("Native core export name must not be empty.", nameof(exportName));
+        }
+
+        export = null;
+        if (!NativeLibrary.TryGetExport(_libraryHandle, exportName, out var exportAddress))
+        {
+            return false;
+        }
+
+        try
+        {
+            export = Marshal.GetDelegateForFunctionPointer<TDelegate>(exportAddress);
+            return true;
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidCastException or MarshalDirectiveException)
+        {
+            throw NativeCoreExportException.CreateInvalidExportBinding(LibraryPath, ProcessArchitecture, exportName, typeof(TDelegate), ex);
+        }
+    }
+
     public void Dispose()
     {
         if (_disposed)

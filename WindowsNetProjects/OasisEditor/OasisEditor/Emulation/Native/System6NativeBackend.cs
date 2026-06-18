@@ -132,8 +132,8 @@ public sealed class System6NativeBackend : IEmulationBackend
             LogStartupStage("native DLL loaded and exports bound");
             LogStartupStage($"SYSTEM6GetAlphaSegments export {(_library.IsAlphaSegmentPollingAvailable ? "available" : "missing")}");
             LogStartupStage($"SetPercent export {(_library.IsSetPercentAvailable ? "available" : "missing")}");
-            LogStartupStage($"LampsUpdate export {(_library.IsLampsUpdateAvailable ? "available" : "missing")}");
-            LogStartupStage($"LampsOn export {(_library.IsLampsOnAvailable ? "available" : "missing")}");
+            LogStartupStage($"LampsUpdate export {FormatOptionalExportStatus(_library.IsLampsUpdateAvailable, _library.LampsUpdateExportName)}");
+            LogStartupStage($"LampsOn export {FormatOptionalExportStatus(_library.IsLampsOnAvailable, _library.LampsOnExportName)}");
             if (startupStage is System6StartupStage.LoadBindOnly)
             {
                 return CompleteStagedStartup();
@@ -371,6 +371,13 @@ public sealed class System6NativeBackend : IEmulationBackend
         return string.Join(" ", segments.Select((value, index) => $"[{index}]=0x{(value & 0xFFFF):X4}/{value.ToString(CultureInfo.InvariantCulture)}"));
     }
 
+    private static string FormatOptionalExportStatus(bool isAvailable, string? exportName)
+    {
+        return isAvailable && !string.IsNullOrWhiteSpace(exportName)
+            ? $"available ({exportName})"
+            : "missing";
+    }
+
     private static void LogStartupStage(string message)
     {
         Debug.WriteLine($"System6 native startup: {message}");
@@ -597,7 +604,7 @@ public sealed class System6NativeBackend : IEmulationBackend
         }
 
         _hasLoggedLampPollingConfiguration = true;
-        Debug.WriteLine($"[System6 Lamps] LampsUpdate export {(library.IsLampsUpdateAvailable ? "available" : "missing")}; LampsOn export {(library.IsLampsOnAvailable ? "available" : "missing")}; polling native lamps 0-{LampCount - 1}");
+        Debug.WriteLine($"[System6 Lamps] LampsUpdate export {FormatOptionalExportStatus(library.IsLampsUpdateAvailable, library.LampsUpdateExportName)}; LampsOn export {FormatOptionalExportStatus(library.IsLampsOnAvailable, library.LampsOnExportName)}; polling native lamps 0-{LampCount - 1}");
         var mappings = Enumerable.Range(0, Math.Min(LampCount, DiagnosticMappingSampleCount))
             .Select(index => $"native {index} -> lamp:{index}");
         Debug.WriteLine($"[System6 Lamps] mapping sample: {string.Join("; ", mappings)}");

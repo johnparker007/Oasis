@@ -24,7 +24,11 @@ public interface ISystem6NativeLibrary : INativeCoreLibrary
 
     bool IsLampsUpdateAvailable { get; }
 
+    string? LampsUpdateExportName { get; }
+
     bool IsLampsOnAvailable { get; }
+
+    string? LampsOnExportName { get; }
 
     void LampsUpdate();
 

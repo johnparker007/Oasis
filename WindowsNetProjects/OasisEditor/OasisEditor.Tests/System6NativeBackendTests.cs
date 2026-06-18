@@ -360,7 +360,11 @@ public sealed class System6NativeBackendTests
 
         public bool IsLampsUpdateAvailable => true;
 
+        public string? LampsUpdateExportName => "LampsUpdate";
+
         public bool IsLampsOnAvailable => true;
+
+        public string? LampsOnExportName => "LampsOn";
 
         public void LampsUpdate() => Calls.Add("LampsUpdate");
 
