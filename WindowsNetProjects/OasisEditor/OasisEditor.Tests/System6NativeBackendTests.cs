@@ -80,6 +80,23 @@ public sealed class System6NativeBackendTests
         Assert.Empty(library.Calls.Where(call => call.StartsWith("Run", StringComparison.Ordinal)));
     }
 
+
+    [Fact]
+    public void FormatAlphaDebugString_MapsZeroToSpacePrintableAsciiToCharsAndNonPrintableToPlaceholder()
+    {
+        var text = System6NativeBackend.FormatAlphaDebugString(new byte[] { 0, 65, 31, 126 });
+
+        Assert.Equal(" A?~", text);
+    }
+
+    [Fact]
+    public void FormatAlphaRawBytes_FormatsUppercaseHexBytes()
+    {
+        var raw = System6NativeBackend.FormatAlphaRawBytes(new byte[] { 0, 65, 255 });
+
+        Assert.Equal("00 41 FF", raw);
+    }
+
     private static EmulationLaunchRequest CreateLaunchRequest(params string[] romPaths)
     {
         return new EmulationLaunchRequest(
@@ -182,6 +199,10 @@ public sealed class System6NativeBackendTests
         public float GetLampBrightness(ushort lampIndex) => 0f;
 
         public short GetPosOut(sbyte positionIndex) => 0;
+
+        public bool IsAlphaCharPollingAvailable => false;
+
+        public byte GetAlphaChar(byte index) => 0;
 
         public void TurnSwitchOn(int switchIndex)
         {

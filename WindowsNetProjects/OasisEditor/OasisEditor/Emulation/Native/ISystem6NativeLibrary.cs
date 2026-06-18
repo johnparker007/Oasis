@@ -28,6 +28,10 @@ public interface ISystem6NativeLibrary : INativeCoreLibrary
 
     short GetPosOut(sbyte positionIndex);
 
+    bool IsAlphaCharPollingAvailable { get; }
+
+    byte GetAlphaChar(byte index);
+
     void TurnSwitchOn(int switchIndex);
 
     void TurnSwitchOff(int switchIndex);

@@ -18,6 +18,7 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
     private readonly System6GetLampsOnDelegate _getLampsOn;
     private readonly System6GetLampBrightnessDelegate _getLampBrightness;
     private readonly System6GetPosOutDelegate _getPosOut;
+    private readonly System6GetAlphaCharDelegate? _getAlphaChar;
     private readonly System6TurnSwitchOnDelegate _turnSwitchOn;
     private readonly System6TurnSwitchOffDelegate _turnSwitchOff;
     private readonly List<IntPtr> _romPathBuffers = [];
@@ -44,6 +45,7 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
         _getLampsOn = _loader.BindExport<System6GetLampsOnDelegate>("SYSTEM6GetLampsOn");
         _getLampBrightness = _loader.BindExport<System6GetLampBrightnessDelegate>("SYSTEM6GetLampBrightness");
         _getPosOut = _loader.BindExport<System6GetPosOutDelegate>("SYSTEM6GetPosOut");
+        _getAlphaChar = TryBindOptionalExport<System6GetAlphaCharDelegate>("GetAlphaChar");
         _turnSwitchOn = _loader.BindExport<System6TurnSwitchOnDelegate>("SYSTEM6TurnSwitchOn");
         _turnSwitchOff = _loader.BindExport<System6TurnSwitchOffDelegate>("SYSTEM6TurnSwitchOff");
     }
@@ -88,6 +90,14 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
 
     public short GetPosOut(sbyte positionIndex) => _getPosOut(positionIndex);
 
+    public bool IsAlphaCharPollingAvailable => _getAlphaChar is not null;
+
+    public byte GetAlphaChar(byte index)
+    {
+        var getAlphaChar = _getAlphaChar ?? throw new NotSupportedException("System6 native core does not export GetAlphaChar.");
+        return getAlphaChar(index);
+    }
+
     public void TurnSwitchOn(int switchIndex) => _turnSwitchOn(switchIndex);
 
     public void TurnSwitchOff(int switchIndex) => _turnSwitchOff(switchIndex);
@@ -100,6 +110,20 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     public delegate byte System6InitialiseDelegate();
+
+    private TDelegate? TryBindOptionalExport<TDelegate>(string exportName)
+        where TDelegate : Delegate
+    {
+        try
+        {
+            return _loader.BindExport<TDelegate>(exportName);
+        }
+        catch (NativeCoreExportException ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"System6 native optional export {exportName} unavailable; alpha debug polling disabled. {ex.Message}");
+            return null;
+        }
+    }
 
     private IntPtr[] AllocateRomPathSlots(IReadOnlyList<string> romPaths)
     {
@@ -182,6 +206,9 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     public delegate short System6GetPosOutDelegate(sbyte positionIndex);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate byte System6GetAlphaCharDelegate(byte index);
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     public delegate void System6TurnSwitchOnDelegate(int switchIndex);
