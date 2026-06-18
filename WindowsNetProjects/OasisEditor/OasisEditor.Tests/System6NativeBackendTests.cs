@@ -26,7 +26,7 @@ public sealed class System6NativeBackendTests
         Assert.Equal(new[] { rom1, rom2, string.Empty, string.Empty }, library.LoadedRoms);
         Assert.True(library.ResetCalled);
         Assert.Equal(8 * 4, library.Calls.Count(call => call.StartsWith("Set", StringComparison.Ordinal)));
-        Assert.True(library.Calls.IndexOf("SetOptoInvert:7:0") < library.Calls.IndexOf("Reset"));
+        Assert.True(library.Calls.IndexOf("Reset") < library.Calls.IndexOf("SetSteps:0:96"));
         Assert.True(library.ShutdownCalled);
         Assert.True(library.DisposeCalled);
         Assert.Equal(EmulationBackendState.Stopped, backend.State);
@@ -137,6 +137,37 @@ public sealed class System6NativeBackendTests
         Assert.True(library.ResetCalled);
     }
 
+    [Fact]
+    public async Task StartAsyncOneRunOnlyAppliesReelOptosAfterResetAndBeforeFirstRun()
+    {
+        var previousStage = Environment.GetEnvironmentVariable("OASIS_SYSTEM6_STARTUP_STAGE");
+        Environment.SetEnvironmentVariable("OASIS_SYSTEM6_STARTUP_STAGE", "OneRunOnly");
+        try
+        {
+            var library = new FakeSystem6NativeLibrary();
+            var (dllPath, rom1, rom2) = CreateNativeFiles(2);
+            var backend = new System6NativeBackend(dllPath, _ => library);
+
+            await backend.StartAsync(CreateLaunchRequest(rom1, rom2), CancellationToken.None);
+            await backend.StopAsync(CancellationToken.None);
+
+            AssertOrdered(
+                library.Calls,
+                "Initialise",
+                "LoadRom",
+                "Reset",
+                "SetSteps:0:96",
+                "SetOptoStart:0:5",
+                "SetOptoEnd:0:7",
+                "SetOptoInvert:0:0",
+                "Run:133333");
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("OASIS_SYSTEM6_STARTUP_STAGE", previousStage);
+        }
+    }
+
 
     [Fact]
     public void FormatAlphaDebugString_MapsZeroToSpacePrintableAsciiToCharsAndNonPrintableToPlaceholder()
@@ -152,6 +183,31 @@ public sealed class System6NativeBackendTests
         var raw = System6NativeBackend.FormatAlphaRawBytes(new byte[] { 0, 65, 255 });
 
         Assert.Equal("00 41 FF", raw);
+    }
+
+    private static void AssertOrdered(IReadOnlyList<string> calls, params string[] expectedCalls)
+    {
+        var previousIndex = -1;
+        foreach (var expectedCall in expectedCalls)
+        {
+            var index = FindCallIndex(calls, expectedCall);
+            Assert.True(index >= 0, $"Expected call '{expectedCall}' was not found. Calls: {string.Join(", ", calls)}");
+            Assert.True(index > previousIndex, $"Expected call '{expectedCall}' after index {previousIndex}. Calls: {string.Join(", ", calls)}");
+            previousIndex = index;
+        }
+    }
+
+    private static int FindCallIndex(IReadOnlyList<string> calls, string expectedCall)
+    {
+        for (var index = 0; index < calls.Count; index++)
+        {
+            if (string.Equals(calls[index], expectedCall, StringComparison.Ordinal))
+            {
+                return index;
+            }
+        }
+
+        return -1;
     }
 
     private static EmulationLaunchRequest CreateLaunchRequest(params string[] romPaths)
