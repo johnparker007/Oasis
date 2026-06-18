@@ -80,6 +80,25 @@ public sealed class System6NativeBackendTests
         Assert.Empty(library.Calls.Where(call => call.StartsWith("Run", StringComparison.Ordinal)));
     }
 
+    [Fact]
+    public async Task StartAsyncSkipsDisabledReelOptos()
+    {
+        var library = new FakeSystem6NativeLibrary();
+        var (dllPath, rom1, rom2) = CreateNativeFiles(2);
+        var backend = new System6NativeBackend(dllPath, _ => library);
+        var request = CreateLaunchRequest(rom1, rom2);
+        request.System6NativeRoms!.ReelOptos[1].Enabled = false;
+        request.System6NativeRoms.ReelOptos[1].Steps = 0;
+
+        await backend.StartAsync(request, CancellationToken.None);
+        await backend.StopAsync(CancellationToken.None);
+
+        Assert.DoesNotContain("SetSteps:1:0", library.Calls);
+        Assert.DoesNotContain(library.Calls, call => call.StartsWith("SetOptoStart:1:", StringComparison.Ordinal));
+        Assert.Equal(7 * 4, library.Calls.Count(call => call.StartsWith("Set", StringComparison.Ordinal)));
+        Assert.True(library.ResetCalled);
+    }
+
 
     [Fact]
     public void FormatAlphaDebugString_MapsZeroToSpacePrintableAsciiToCharsAndNonPrintableToPlaceholder()

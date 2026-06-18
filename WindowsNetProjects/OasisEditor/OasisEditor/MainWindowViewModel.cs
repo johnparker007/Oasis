@@ -2674,7 +2674,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             SoundRom4Path = ResolveProjectRelativePath(settings.SoundRom4Path, LoadedProject.ProjectDirectory),
             FlashSwitch = settings.FlashSwitch,
             ReelOptos = (settings.ReelOptos is { Count: > 0 } ? settings.ReelOptos : System6NativeRomSettings.CreateDefaultReelOptos())
-                .Select(reel => new System6ReelOptoSettings { ReelIndex = reel.ReelIndex, Steps = reel.Steps, OptoStart = reel.OptoStart, OptoEnd = reel.OptoEnd, OptoInvert = reel.OptoInvert })
+                .Select(reel => new System6ReelOptoSettings { ReelIndex = reel.ReelIndex, Enabled = reel.Enabled, Steps = reel.Steps, OptoStart = reel.OptoStart, OptoEnd = reel.OptoEnd, OptoInvert = reel.OptoInvert })
                 .ToList()
         };
     }
@@ -3564,6 +3564,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             writer.WriteStartObject();
             writer.WriteNumber("ReelIndex", reel.ReelIndex);
+            writer.WriteBoolean("Enabled", reel.Enabled);
             writer.WriteNumber("Steps", reel.Steps);
             writer.WriteNumber("OptoStart", reel.OptoStart);
             writer.WriteNumber("OptoEnd", reel.OptoEnd);
@@ -3611,6 +3612,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             reelOptos.Add(new System6ReelOptoSettings
             {
                 ReelIndex = GetOptionalInt(reelElement, "ReelIndex"),
+                Enabled = !reelElement.TryGetProperty("Enabled", out var enabledElement) || enabledElement.ValueKind != JsonValueKind.False,
                 Steps = GetOptionalInt(reelElement, "Steps", System6ReelOptoSettings.DefaultSteps),
                 OptoStart = GetOptionalInt(reelElement, "OptoStart", System6ReelOptoSettings.DefaultOptoStart),
                 OptoEnd = GetOptionalInt(reelElement, "OptoEnd", System6ReelOptoSettings.DefaultOptoEnd),
@@ -4206,6 +4208,7 @@ internal static class EditorProjectInputDefinitionExtensions
 public sealed class System6ReelOptoSettingsViewModel : INotifyPropertyChanged
 {
     private readonly Action _changed;
+    private bool _enabled;
     private int _steps;
     private int _optoStart;
     private int _optoEnd;
@@ -4214,6 +4217,7 @@ public sealed class System6ReelOptoSettingsViewModel : INotifyPropertyChanged
     public System6ReelOptoSettingsViewModel(System6ReelOptoSettings model, Action changed)
     {
         ReelIndex = model.ReelIndex;
+        _enabled = model.Enabled;
         _steps = model.Steps;
         _optoStart = model.OptoStart;
         _optoEnd = model.OptoEnd;
@@ -4226,6 +4230,7 @@ public sealed class System6ReelOptoSettingsViewModel : INotifyPropertyChanged
     public int ReelIndex { get; }
     public int ReelNumber => ReelIndex + 1;
 
+    public bool Enabled { get => _enabled; set => SetAndSave(ref _enabled, value, nameof(Enabled)); }
     public int Steps { get => _steps; set => SetAndSave(ref _steps, value, nameof(Steps)); }
     public int OptoStart { get => _optoStart; set => SetAndSave(ref _optoStart, value, nameof(OptoStart)); }
     public int OptoEnd { get => _optoEnd; set => SetAndSave(ref _optoEnd, value, nameof(OptoEnd)); }
@@ -4234,6 +4239,7 @@ public sealed class System6ReelOptoSettingsViewModel : INotifyPropertyChanged
     public System6ReelOptoSettings ToModel() => new()
     {
         ReelIndex = ReelIndex,
+        Enabled = Enabled,
         Steps = Steps,
         OptoStart = OptoStart,
         OptoEnd = OptoEnd,

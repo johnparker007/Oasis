@@ -94,6 +94,7 @@
                           MaxHeight="260">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Reel" Binding="{Binding ReelNumber}" IsReadOnly="True" Width="80" />
+                        <DataGridCheckBoxColumn Header="Enabled" Binding="{Binding Enabled, UpdateSourceTrigger=PropertyChanged}" Width="90" />
                         <DataGridTextColumn Header="Steps" Binding="{Binding Steps, UpdateSourceTrigger=LostFocus}" Width="100" />
                         <DataGridTextColumn Header="Opto Start" Binding="{Binding OptoStart, UpdateSourceTrigger=LostFocus}" Width="120" />
                         <DataGridTextColumn Header="Opto End" Binding="{Binding OptoEnd, UpdateSourceTrigger=LostFocus}" Width="120" />
