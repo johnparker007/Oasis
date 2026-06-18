@@ -204,6 +204,33 @@ public sealed class System6NativeBackendTests
         }
     }
 
+    [Fact]
+    public async Task StartAsyncOneRunOnlyFallsBackToLampBrightnessWhenLampsOnIsMissing()
+    {
+        var previousStage = Environment.GetEnvironmentVariable("OASIS_SYSTEM6_STARTUP_STAGE");
+        Environment.SetEnvironmentVariable("OASIS_SYSTEM6_STARTUP_STAGE", "OneRunOnly");
+        try
+        {
+            var library = new FakeSystem6NativeLibrary { IsLampsOnAvailableValue = false };
+            library.LampBrightnessValues[0] = 1f;
+            var (dllPath, rom1, rom2) = CreateNativeFiles(2);
+            var backend = new System6NativeBackend(dllPath, _ => library);
+            var lampEvents = new List<MachineLampChangedEventArgs>();
+            backend.LampChanged += (_, e) => lampEvents.Add(e);
+
+            await backend.StartAsync(CreateLaunchRequest(rom1, rom2), CancellationToken.None);
+            await backend.StopAsync(CancellationToken.None);
+
+            Assert.Contains("GetLampBrightness:0", library.Calls);
+            Assert.DoesNotContain("LampsOn:0", library.Calls);
+            Assert.Contains(lampEvents, e => e.LampId == 0 && e.Value == 255);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("OASIS_SYSTEM6_STARTUP_STAGE", previousStage);
+        }
+    }
+
 
     [Fact]
     public void FormatAlphaSegments_FormatsHexAndDecimalValues()
@@ -307,6 +334,8 @@ public sealed class System6NativeBackendTests
 
         public Dictionary<ushort, byte> LampsOnValues { get; } = new();
 
+        public Dictionary<ushort, float> LampBrightnessValues { get; } = new();
+
         public Dictionary<sbyte, short> PositionOutputs { get; } = new();
 
         public byte Initialise()
@@ -362,9 +391,11 @@ public sealed class System6NativeBackendTests
 
         public string? LampsUpdateExportName => "LampsUpdate";
 
-        public bool IsLampsOnAvailable => true;
+        public bool IsLampsOnAvailableValue { get; init; } = true;
 
-        public string? LampsOnExportName => "LampsOn";
+        public bool IsLampsOnAvailable => IsLampsOnAvailableValue;
+
+        public string? LampsOnExportName => IsLampsOnAvailable ? "LampsOn" : null;
 
         public void LampsUpdate() => Calls.Add("LampsUpdate");
 
@@ -378,7 +409,11 @@ public sealed class System6NativeBackendTests
 
         public bool GetLampsOn(ushort lampIndex) => false;
 
-        public float GetLampBrightness(ushort lampIndex) => 0f;
+        public float GetLampBrightness(ushort lampIndex)
+        {
+            Calls.Add($"GetLampBrightness:{lampIndex}");
+            return LampBrightnessValues.TryGetValue(lampIndex, out var brightness) ? brightness : 0f;
+        }
 
         public short GetPosOut(sbyte positionIndex)
         {
