@@ -10,7 +10,8 @@ public enum MameSegmentOutputType
 {
     Digit,
     Digiti,
-    Vfd
+    Vfd,
+    NativeAlpha
 }
 
 public sealed class MameSegmentStateParser : IMameSegmentStateParser

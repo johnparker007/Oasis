@@ -213,6 +213,66 @@ public sealed class System6NativeBackendTests
         Assert.Equal("[0]=0x0000/0 [1]=0x44CF/17615 [2]=0xFFFF/-1", raw);
     }
 
+
+    [Fact]
+    public void System6AlphaSegmentMapper_MapsKnownRawMaskToOasisMask()
+    {
+        Assert.Equal(0x8003, System6AlphaSegmentMapper.MapNativeMaskToOasisMask(0x8003));
+    }
+
+    [Fact]
+    public async Task StartAsyncOneRunOnlyPollsAlphaSegmentsAndPublishesNativeAlphaSegmentMasks()
+    {
+        var previousStage = Environment.GetEnvironmentVariable("OASIS_SYSTEM6_STARTUP_STAGE");
+        Environment.SetEnvironmentVariable("OASIS_SYSTEM6_STARTUP_STAGE", "OneRunOnly");
+        try
+        {
+            var library = new FakeSystem6NativeLibrary { AlphaSegmentPollingAvailable = true };
+            library.AlphaSegments[0] = 0x0001;
+            library.AlphaSegments[1] = 0x8002;
+            var (dllPath, rom1, rom2) = CreateNativeFiles(2);
+            var backend = new System6NativeBackend(dllPath, _ => library);
+            var segmentEvents = new List<MachineSegmentChangedEventArgs>();
+            backend.SegmentChanged += (_, e) => segmentEvents.Add(e);
+
+            await backend.StartAsync(CreateLaunchRequest(rom1, rom2), CancellationToken.None);
+            await backend.StopAsync(CancellationToken.None);
+
+            Assert.Equal(Enumerable.Range(0, 16).ToArray(), library.AlphaSegmentIndices);
+            Assert.Contains(segmentEvents, e => e.CellId == 0 && e.SegmentMask == 0x0001 && e.OutputType == MameSegmentOutputType.NativeAlpha);
+            Assert.Contains(segmentEvents, e => e.CellId == 1 && e.SegmentMask == 0x8002 && e.OutputType == MameSegmentOutputType.NativeAlpha);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("OASIS_SYSTEM6_STARTUP_STAGE", previousStage);
+        }
+    }
+
+    [Fact]
+    public async Task StartAsyncOneRunOnlyDoesNotPublishAlphaSegmentsWhenExportMissing()
+    {
+        var previousStage = Environment.GetEnvironmentVariable("OASIS_SYSTEM6_STARTUP_STAGE");
+        Environment.SetEnvironmentVariable("OASIS_SYSTEM6_STARTUP_STAGE", "OneRunOnly");
+        try
+        {
+            var library = new FakeSystem6NativeLibrary { AlphaSegmentPollingAvailable = false };
+            var (dllPath, rom1, rom2) = CreateNativeFiles(2);
+            var backend = new System6NativeBackend(dllPath, _ => library);
+            var segmentEvents = new List<MachineSegmentChangedEventArgs>();
+            backend.SegmentChanged += (_, e) => segmentEvents.Add(e);
+
+            await backend.StartAsync(CreateLaunchRequest(rom1, rom2), CancellationToken.None);
+            await backend.StopAsync(CancellationToken.None);
+
+            Assert.Empty(library.AlphaSegmentIndices);
+            Assert.Empty(segmentEvents);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("OASIS_SYSTEM6_STARTUP_STAGE", previousStage);
+        }
+    }
+
     [Fact]
     public async Task StartAsyncAppliesConfiguredPercentSwitchValue()
     {
@@ -309,6 +369,12 @@ public sealed class System6NativeBackendTests
 
         public Dictionary<sbyte, short> PositionOutputs { get; } = new();
 
+        public Dictionary<byte, int> AlphaSegments { get; } = new();
+
+        public List<int> AlphaSegmentIndices { get; } = new();
+
+        public bool AlphaSegmentPollingAvailable { get; set; }
+
         public byte Initialise()
         {
             Calls.Add("Initialise");
@@ -378,9 +444,14 @@ public sealed class System6NativeBackendTests
             return PositionOutputs.TryGetValue(positionIndex, out var position) ? position : (short)0;
         }
 
-        public bool IsAlphaSegmentPollingAvailable => false;
+        public bool IsAlphaSegmentPollingAvailable => AlphaSegmentPollingAvailable;
 
-        public int GetAlphaSegments(byte index) => 0;
+        public int GetAlphaSegments(byte index)
+        {
+            Calls.Add($"GetAlphaSegments:{index}");
+            AlphaSegmentIndices.Add(index);
+            return AlphaSegments.TryGetValue(index, out var segments) ? segments : 0;
+        }
 
         public void TurnSwitchOn(int switchIndex)
         {

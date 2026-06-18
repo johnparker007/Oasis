@@ -12,7 +12,7 @@ public sealed class System6NativeBackend : IEmulationBackend
     private const int ReelCount = 16;
     private const int DiagnosticChangedLampSampleCount = 8;
     private const int DiagnosticMappingSampleCount = 8;
-    private const int AlphaCharacterCount = 16;
+    private const int AlphaCellCount = 16;
     private const int SupportedReelOptoCount = 8;
     private const string DiagnosticStageEnvironmentVariable = "OASIS_SYSTEM6_STARTUP_STAGE";
     private static readonly TimeSpan SlowRunWarningThreshold = TimeSpan.FromMilliseconds(250);
@@ -639,10 +639,12 @@ public sealed class System6NativeBackend : IEmulationBackend
             return;
         }
 
-        var segments = new int[AlphaCharacterCount];
+        var segments = new int[AlphaCellCount];
+        var mappedSegments = new int[AlphaCellCount];
         for (var index = 0; index < segments.Length; index++)
         {
             segments[index] = library.GetAlphaSegments(checked((byte)index));
+            mappedSegments[index] = System6AlphaSegmentMapper.MapNativeMaskToOasisMask(segments[index]);
         }
 
         if (_lastAlphaSegments is not null && segments.SequenceEqual(_lastAlphaSegments))
@@ -652,10 +654,12 @@ public sealed class System6NativeBackend : IEmulationBackend
 
         _lastAlphaSegments = segments;
         Debug.WriteLine($"System6 alpha segs: {FormatAlphaSegments(segments)}");
+        Debug.WriteLine($"System6 alpha mapped segs: {FormatAlphaSegments(mappedSegments)}");
 
         for (var index = 0; index < segments.Length; index++)
         {
-            SegmentChanged?.Invoke(this, new MachineSegmentChangedEventArgs(index, segments[index], MameSegmentOutputType.Digiti));
+            Debug.WriteLine($"System6 alpha cell {index} raw=0x{(segments[index] & 0xFFFF):X4} mapped=0x{(mappedSegments[index] & 0xFFFF):X4}");
+            SegmentChanged?.Invoke(this, new MachineSegmentChangedEventArgs(index, mappedSegments[index], MameSegmentOutputType.NativeAlpha));
         }
     }
 
