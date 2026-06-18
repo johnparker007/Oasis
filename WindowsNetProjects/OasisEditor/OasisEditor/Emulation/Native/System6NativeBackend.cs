@@ -10,6 +10,7 @@ public sealed class System6NativeBackend : IEmulationBackend
     private const int System6ClockHz = 8000000;
     private const int LampCount = 32;
     private const int ReelCount = 16;
+    private const int AlphaCharacterCount = 16;
     private const int SupportedReelOptoCount = 8;
     private const string DiagnosticStageEnvironmentVariable = "OASIS_SYSTEM6_STARTUP_STAGE";
     private static readonly TimeSpan SlowRunWarningThreshold = TimeSpan.FromMilliseconds(250);
@@ -32,6 +33,8 @@ public sealed class System6NativeBackend : IEmulationBackend
     private readonly object _stateGate = new();
     private readonly int[] _lastLampValues = Enumerable.Repeat(-1, LampCount).ToArray();
     private readonly int[] _lastReelPositions = Enumerable.Repeat(int.MinValue, ReelCount).ToArray();
+    private string? _lastAlphaString;
+    private bool _hasLoggedAlphaUnavailable;
 
     private ISystem6NativeLibrary? _library;
     private CancellationTokenSource? _runLoopCancellation;
@@ -358,6 +361,31 @@ public sealed class System6NativeBackend : IEmulationBackend
         return (int)MathF.Round(Math.Min(brightness, 255f));
     }
 
+    internal static string FormatAlphaDebugString(IReadOnlyList<byte> rawChars)
+    {
+        ArgumentNullException.ThrowIfNull(rawChars);
+
+        var chars = new char[rawChars.Count];
+        for (var i = 0; i < rawChars.Count; i++)
+        {
+            var value = rawChars[i];
+            chars[i] = value switch
+            {
+                0 => ' ',
+                >= 32 and <= 126 => (char)value,
+                _ => '?'
+            };
+        }
+
+        return new string(chars);
+    }
+
+    internal static string FormatAlphaRawBytes(IReadOnlyList<byte> rawChars)
+    {
+        ArgumentNullException.ThrowIfNull(rawChars);
+        return string.Join(" ", rawChars.Select(value => value.ToString("X2", CultureInfo.InvariantCulture)));
+    }
+
     private static void LogStartupStage(string message)
     {
         Debug.WriteLine($"System6 native startup: {message}");
@@ -503,12 +531,48 @@ public sealed class System6NativeBackend : IEmulationBackend
                 ReelChanged?.Invoke(this, new MachineReelChangedEventArgs(reelIndex, position));
             }
         }
+
+        PollAlphaDebugOutput(library);
+    }
+
+    private void PollAlphaDebugOutput(ISystem6NativeLibrary library)
+    {
+        if (!library.IsAlphaCharPollingAvailable)
+        {
+            if (!_hasLoggedAlphaUnavailable)
+            {
+                _hasLoggedAlphaUnavailable = true;
+                Debug.WriteLine("[System6 Alpha] GetAlphaChar unavailable; alpha debug polling disabled.");
+            }
+
+            return;
+        }
+
+        var rawChars = new byte[AlphaCharacterCount];
+        for (var index = 0; index < rawChars.Length; index++)
+        {
+            rawChars[index] = library.GetAlphaChar(checked((byte)index));
+        }
+
+        // The native TechsClass.cpp reference exposes GetAlphaChar(UINT8 num) as a raw byte.
+        // First-pass diagnostics treat printable ASCII values as characters while also logging
+        // raw byte values so we can verify whether the native core returns ASCII or display codes.
+        var alphaString = FormatAlphaDebugString(rawChars);
+        if (string.Equals(_lastAlphaString, alphaString, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _lastAlphaString = alphaString;
+        Debug.WriteLine($"[System6 Alpha] chars=\"{alphaString}\" raw={FormatAlphaRawBytes(rawChars)}");
     }
 
     private void ResetCachedOutputState()
     {
         Array.Fill(_lastLampValues, -1);
         Array.Fill(_lastReelPositions, int.MinValue);
+        _lastAlphaString = null;
+        _hasLoggedAlphaUnavailable = false;
     }
 
     private void CleanupLibraryAfterFailedStart()
