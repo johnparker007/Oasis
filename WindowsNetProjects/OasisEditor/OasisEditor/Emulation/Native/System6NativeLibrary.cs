@@ -46,7 +46,7 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
         _run = _loader.BindExport<System6RunDelegate>("SYSTEM6Run");
         _shutdown = _loader.BindExport<System6ShutdownDelegate>("SYSTEM6Shutdown");
         _getLampsOn = _loader.BindExport<System6GetLampsOnDelegate>("SYSTEM6GetLampsOn");
-        (_lampsUpdate, _lampsUpdateExportName) = TryBindOptionalExport<System6LampsUpdateDelegate>("SYSTEM6UpdateLamps");
+        (_lampsUpdate, _lampsUpdateExportName) = TryBindOptionalExportCandidate<System6LampsUpdateDelegate>("SYSTEM6UpdateLamps");
         _getLampBrightness = _loader.BindExport<System6GetLampBrightnessDelegate>("SYSTEM6GetLampBrightness");
         _getPosOut = _loader.BindExport<System6GetPosOutDelegate>("SYSTEM6GetPosOut");
         _getAlphaSegments = TryBindOptionalExport<System6GetAlphaSegmentsDelegate>("SYSTEM6GetAlphaSegments");
@@ -137,11 +137,11 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
     private TDelegate? TryBindOptionalExport<TDelegate>(string exportName)
         where TDelegate : Delegate
     {
-        var (export, _) = TryBindOptionalExport<TDelegate>(new[] { exportName });
+        var (export, _) = TryBindOptionalExportCandidate<TDelegate>(exportName);
         return export;
     }
 
-    private (TDelegate? Export, string? ExportName) TryBindOptionalExport<TDelegate>(params string[] exportNames)
+    private (TDelegate? Export, string? ExportName) TryBindOptionalExportCandidate<TDelegate>(params string[] exportNames)
         where TDelegate : Delegate
     {
         foreach (var exportName in exportNames)
