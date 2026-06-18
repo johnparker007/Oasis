@@ -35,7 +35,6 @@ public sealed class System6NativeBackend : IEmulationBackend
     private readonly object _stateGate = new();
     private readonly int[] _lastLampValues = Enumerable.Repeat(-1, LampCount).ToArray();
     private readonly int[] _lastLampRawValues = Enumerable.Repeat(-1, LampCount).ToArray();
-    private readonly float[] _lastLampBrightnessValues = Enumerable.Repeat(float.NaN, LampCount).ToArray();
     private readonly int[] _lastReelPositions = Enumerable.Repeat(int.MinValue, ReelCount).ToArray();
     private int[]? _lastAlphaSegments;
     private bool _hasLoggedAlphaUnavailable;
@@ -133,8 +132,8 @@ public sealed class System6NativeBackend : IEmulationBackend
             LogStartupStage("native DLL loaded and exports bound");
             LogStartupStage($"SYSTEM6GetAlphaSegments export {(_library.IsAlphaSegmentPollingAvailable ? "available" : "missing")}");
             LogStartupStage($"SetPercent export {(_library.IsSetPercentAvailable ? "available" : "missing")}");
-            LogStartupStage($"LampsUpdate export {FormatOptionalExportStatus(_library.IsLampsUpdateAvailable, _library.LampsUpdateExportName)}");
-            LogStartupStage($"LampsOn export {FormatOptionalExportStatus(_library.IsLampsOnAvailable, _library.LampsOnExportName)}");
+            LogStartupStage($"SYSTEM6UpdateLamps export {FormatOptionalExportStatus(_library.IsLampsUpdateAvailable, _library.LampsUpdateExportName)}");
+            LogStartupStage("SYSTEM6GetLampsOn export available");
             if (startupStage is System6StartupStage.LoadBindOnly)
             {
                 return CompleteStagedStartup();
@@ -366,20 +365,6 @@ public sealed class System6NativeBackend : IEmulationBackend
             : System6StartupStage.FullRunLoop;
     }
 
-    private static int ToLampBrightnessValue(float brightness)
-    {
-        if (float.IsNaN(brightness) || brightness <= 0f)
-        {
-            return 0;
-        }
-
-        if (brightness <= 1f)
-        {
-            return (int)MathF.Round(brightness * 255f);
-        }
-
-        return (int)MathF.Round(Math.Min(brightness, 255f));
-    }
 
     internal static string FormatAlphaSegments(IReadOnlyList<int> segments)
     {
@@ -564,33 +549,14 @@ public sealed class System6NativeBackend : IEmulationBackend
         for (var lampIndex = 0; lampIndex < LampCount; lampIndex++)
         {
             var nativeLampIndex = checked((ushort)lampIndex);
-            byte? rawValue = null;
-            float? brightness = null;
-            int value;
-            bool diagnosticChanged;
-            if (library.IsLampsOnAvailable)
+            var rawValue = library.GetLampsOn(nativeLampIndex) ? 1 : 0;
+            var isOn = rawValue != 0;
+            var value = isOn ? 255 : 0;
+            var diagnosticChanged = _lastLampRawValues[lampIndex] != rawValue;
+            if (diagnosticChanged)
             {
-                rawValue = library.LampsOnRaw(nativeLampIndex);
-                value = rawValue.Value != 0 ? 255 : 0;
-                diagnosticChanged = _lastLampRawValues[lampIndex] != rawValue.Value;
-                if (diagnosticChanged)
-                {
-                    _lastLampRawValues[lampIndex] = rawValue.Value;
-                }
+                _lastLampRawValues[lampIndex] = rawValue;
             }
-            else
-            {
-                brightness = library.GetLampBrightness(nativeLampIndex);
-                value = ToLampBrightnessValue(brightness.Value);
-                diagnosticChanged = float.IsNaN(_lastLampBrightnessValues[lampIndex])
-                    || Math.Abs(_lastLampBrightnessValues[lampIndex] - brightness.Value) > 0.0001f;
-                if (diagnosticChanged)
-                {
-                    _lastLampBrightnessValues[lampIndex] = brightness.Value;
-                }
-            }
-
-            var isOn = value > 0;
             if (_lastLampValues[lampIndex] != value)
             {
                 _lastLampValues[lampIndex] = value;
@@ -599,7 +565,7 @@ public sealed class System6NativeBackend : IEmulationBackend
 
             if (diagnosticChanged && changedDiagnostics.Count < DiagnosticChangedLampSampleCount)
             {
-                changedDiagnostics.Add(FormatLampChangeDiagnostic(nativeLampIndex, lampIndex, rawValue, brightness, isOn, value));
+                changedDiagnostics.Add(FormatLampChangeDiagnostic(nativeLampIndex, lampIndex, rawValue, isOn, value));
             }
         }
 
@@ -609,11 +575,9 @@ public sealed class System6NativeBackend : IEmulationBackend
         }
     }
 
-    private static string FormatLampChangeDiagnostic(ushort nativeLampIndex, int lampIndex, byte? rawValue, float? brightness, bool isOn, int value)
+    private static string FormatLampChangeDiagnostic(ushort nativeLampIndex, int lampIndex, int rawValue, bool isOn, int value)
     {
-        var rawText = rawValue.HasValue ? rawValue.Value.ToString(CultureInfo.InvariantCulture) : "n/a";
-        var brightnessText = brightness.HasValue ? brightness.Value.ToString("0.###", CultureInfo.InvariantCulture) : "n/a";
-        return $"native {nativeLampIndex} -> lamp:{lampIndex} raw={rawText} brightness={brightnessText} on={isOn.ToString(CultureInfo.InvariantCulture).ToLowerInvariant()} value={value}";
+        return $"native {nativeLampIndex} -> lamp:{lampIndex} raw={rawValue.ToString(CultureInfo.InvariantCulture)} on={isOn.ToString(CultureInfo.InvariantCulture).ToLowerInvariant()} value={value}";
     }
 
     private void PollReelOutputs(ISystem6NativeLibrary library)
@@ -643,7 +607,7 @@ public sealed class System6NativeBackend : IEmulationBackend
         }
 
         _hasLoggedLampPollingConfiguration = true;
-        Debug.WriteLine($"[System6 Lamps] LampsUpdate export {FormatOptionalExportStatus(library.IsLampsUpdateAvailable, library.LampsUpdateExportName)}; LampsOn export {FormatOptionalExportStatus(library.IsLampsOnAvailable, library.LampsOnExportName)}; value source={(library.IsLampsOnAvailable ? "LampsOnRaw" : "SYSTEM6GetLampBrightness")}; polling native lamps 0-{LampCount - 1}");
+        Debug.WriteLine($"[System6 Lamps] SYSTEM6UpdateLamps export {FormatOptionalExportStatus(library.IsLampsUpdateAvailable, library.LampsUpdateExportName)}; SYSTEM6GetLampsOn export available; value source=SYSTEM6GetLampsOn; polling native lamps 0-{LampCount - 1}");
         var mappings = Enumerable.Range(0, Math.Min(LampCount, DiagnosticMappingSampleCount))
             .Select(index => $"native {index} -> lamp:{index}");
         Debug.WriteLine($"[System6 Lamps] mapping sample: {string.Join("; ", mappings)}");
@@ -699,7 +663,6 @@ public sealed class System6NativeBackend : IEmulationBackend
     {
         Array.Fill(_lastLampValues, -1);
         Array.Fill(_lastLampRawValues, -1);
-        Array.Fill(_lastLampBrightnessValues, float.NaN);
         Array.Fill(_lastReelPositions, int.MinValue);
         _lastAlphaSegments = null;
         _hasLoggedAlphaUnavailable = false;

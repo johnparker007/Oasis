@@ -178,7 +178,7 @@ public sealed class System6NativeBackendTests
         try
         {
             var library = new FakeSystem6NativeLibrary();
-            library.LampsOnValues[0] = 1;
+            library.GetLampsOnValues[0] = true;
             library.PositionOutputs[-1] = 10;
             library.PositionOutputs[0] = 20;
             var (dllPath, rom1, rom2) = CreateNativeFiles(2);
@@ -191,39 +191,12 @@ public sealed class System6NativeBackendTests
             await backend.StartAsync(CreateLaunchRequest(rom1, rom2), CancellationToken.None);
             await backend.StopAsync(CancellationToken.None);
 
-            Assert.True(library.Calls.IndexOf("LampsUpdate") < library.Calls.IndexOf("LampsOn:0"));
+            Assert.True(library.Calls.IndexOf("LampsUpdate") < library.Calls.IndexOf("GetLampsOn:0"));
             Assert.Contains(lampEvents, e => e.LampId == 0 && e.Value == 255);
             Assert.Contains(reelEvents, e => e.ReelId == 0 && e.Position == 10);
             Assert.Contains(reelEvents, e => e.ReelId == 1 && e.Position == 20);
             Assert.Contains("GetPosOut:-1", library.Calls);
             Assert.Contains("GetPosOut:0", library.Calls);
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable("OASIS_SYSTEM6_STARTUP_STAGE", previousStage);
-        }
-    }
-
-    [Fact]
-    public async Task StartAsyncOneRunOnlyFallsBackToLampBrightnessWhenLampsOnIsMissing()
-    {
-        var previousStage = Environment.GetEnvironmentVariable("OASIS_SYSTEM6_STARTUP_STAGE");
-        Environment.SetEnvironmentVariable("OASIS_SYSTEM6_STARTUP_STAGE", "OneRunOnly");
-        try
-        {
-            var library = new FakeSystem6NativeLibrary { IsLampsOnAvailableValue = false };
-            library.LampBrightnessValues[0] = 1f;
-            var (dllPath, rom1, rom2) = CreateNativeFiles(2);
-            var backend = new System6NativeBackend(dllPath, _ => library);
-            var lampEvents = new List<MachineLampChangedEventArgs>();
-            backend.LampChanged += (_, e) => lampEvents.Add(e);
-
-            await backend.StartAsync(CreateLaunchRequest(rom1, rom2), CancellationToken.None);
-            await backend.StopAsync(CancellationToken.None);
-
-            Assert.Contains("GetLampBrightness:0", library.Calls);
-            Assert.DoesNotContain("LampsOn:0", library.Calls);
-            Assert.Contains(lampEvents, e => e.LampId == 0 && e.Value == 255);
         }
         finally
         {
@@ -332,9 +305,7 @@ public sealed class System6NativeBackendTests
 
         public List<string> Calls { get; } = new();
 
-        public Dictionary<ushort, byte> LampsOnValues { get; } = new();
-
-        public Dictionary<ushort, float> LampBrightnessValues { get; } = new();
+        public Dictionary<ushort, bool> GetLampsOnValues { get; } = new();
 
         public Dictionary<sbyte, short> PositionOutputs { get; } = new();
 
@@ -389,31 +360,17 @@ public sealed class System6NativeBackendTests
 
         public bool IsLampsUpdateAvailable => true;
 
-        public string? LampsUpdateExportName => "LampsUpdate";
-
-        public bool IsLampsOnAvailableValue { get; init; } = true;
-
-        public bool IsLampsOnAvailable => IsLampsOnAvailableValue;
-
-        public string? LampsOnExportName => IsLampsOnAvailable ? "LampsOn" : null;
+        public string? LampsUpdateExportName => "SYSTEM6UpdateLamps";
 
         public void LampsUpdate() => Calls.Add("LampsUpdate");
 
-        public bool LampsOn(ushort lampIndex) => LampsOnRaw(lampIndex) != 0;
-
-        public byte LampsOnRaw(ushort lampIndex)
+        public bool GetLampsOn(ushort lampIndex)
         {
-            Calls.Add($"LampsOn:{lampIndex}");
-            return LampsOnValues.TryGetValue(lampIndex, out var rawValue) ? rawValue : (byte)0;
+            Calls.Add($"GetLampsOn:{lampIndex}");
+            return GetLampsOnValues.TryGetValue(lampIndex, out var isOn) && isOn;
         }
 
-        public bool GetLampsOn(ushort lampIndex) => false;
-
-        public float GetLampBrightness(ushort lampIndex)
-        {
-            Calls.Add($"GetLampBrightness:{lampIndex}");
-            return LampBrightnessValues.TryGetValue(lampIndex, out var brightness) ? brightness : 0f;
-        }
+        public float GetLampBrightness(ushort lampIndex) => 0f;
 
         public short GetPosOut(sbyte positionIndex)
         {

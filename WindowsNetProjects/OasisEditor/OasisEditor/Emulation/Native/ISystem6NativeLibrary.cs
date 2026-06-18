@@ -26,15 +26,7 @@ public interface ISystem6NativeLibrary : INativeCoreLibrary
 
     string? LampsUpdateExportName { get; }
 
-    bool IsLampsOnAvailable { get; }
-
-    string? LampsOnExportName { get; }
-
     void LampsUpdate();
-
-    bool LampsOn(ushort lampIndex);
-
-    byte LampsOnRaw(ushort lampIndex);
 
     bool GetLampsOn(ushort lampIndex);
 
