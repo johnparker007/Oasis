@@ -170,6 +170,40 @@ public sealed class System6NativeBackendTests
         }
     }
 
+    [Fact]
+    public async Task StartAsyncOneRunOnlyUpdatesLampsBeforePollingAndUsesZeroBasedOutputEvents()
+    {
+        var previousStage = Environment.GetEnvironmentVariable("OASIS_SYSTEM6_STARTUP_STAGE");
+        Environment.SetEnvironmentVariable("OASIS_SYSTEM6_STARTUP_STAGE", "OneRunOnly");
+        try
+        {
+            var library = new FakeSystem6NativeLibrary();
+            library.LampsOnValues[0] = true;
+            library.PositionOutputs[1] = 10;
+            library.PositionOutputs[2] = 20;
+            var (dllPath, rom1, rom2) = CreateNativeFiles(2);
+            var backend = new System6NativeBackend(dllPath, _ => library);
+            var lampEvents = new List<MachineLampChangedEventArgs>();
+            var reelEvents = new List<MachineReelChangedEventArgs>();
+            backend.LampChanged += (_, e) => lampEvents.Add(e);
+            backend.ReelChanged += (_, e) => reelEvents.Add(e);
+
+            await backend.StartAsync(CreateLaunchRequest(rom1, rom2), CancellationToken.None);
+            await backend.StopAsync(CancellationToken.None);
+
+            Assert.True(library.Calls.IndexOf("LampsUpdate") < library.Calls.IndexOf("LampsOn:0"));
+            Assert.Contains(lampEvents, e => e.LampId == 0 && e.Value == 255);
+            Assert.Contains(reelEvents, e => e.ReelId == 0 && e.Position == 10);
+            Assert.Contains(reelEvents, e => e.ReelId == 1 && e.Position == 20);
+            Assert.Contains("GetPosOut:1", library.Calls);
+            Assert.Contains("GetPosOut:2", library.Calls);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("OASIS_SYSTEM6_STARTUP_STAGE", previousStage);
+        }
+    }
+
 
     [Fact]
     public void FormatAlphaSegments_FormatsHexAndDecimalValues()
@@ -271,6 +305,10 @@ public sealed class System6NativeBackendTests
 
         public List<string> Calls { get; } = new();
 
+        public Dictionary<ushort, bool> LampsOnValues { get; } = new();
+
+        public Dictionary<sbyte, short> PositionOutputs { get; } = new();
+
         public byte Initialise()
         {
             Calls.Add("Initialise");
@@ -320,11 +358,27 @@ public sealed class System6NativeBackendTests
             return 1;
         }
 
+        public bool IsLampsUpdateAvailable => true;
+
+        public bool IsLampsOnAvailable => true;
+
+        public void LampsUpdate() => Calls.Add("LampsUpdate");
+
+        public bool LampsOn(ushort lampIndex)
+        {
+            Calls.Add($"LampsOn:{lampIndex}");
+            return LampsOnValues.TryGetValue(lampIndex, out var isOn) && isOn;
+        }
+
         public bool GetLampsOn(ushort lampIndex) => false;
 
         public float GetLampBrightness(ushort lampIndex) => 0f;
 
-        public short GetPosOut(sbyte positionIndex) => 0;
+        public short GetPosOut(sbyte positionIndex)
+        {
+            Calls.Add($"GetPosOut:{positionIndex}");
+            return PositionOutputs.TryGetValue(positionIndex, out var position) ? position : (short)0;
+        }
 
         public bool IsAlphaSegmentPollingAvailable => false;
 

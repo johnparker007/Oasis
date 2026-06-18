@@ -16,6 +16,8 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
     private readonly System6RunDelegate _run;
     private readonly System6ShutdownDelegate _shutdown;
     private readonly System6GetLampsOnDelegate _getLampsOn;
+    private readonly System6LampsUpdateDelegate? _lampsUpdate;
+    private readonly System6LampsOnDelegate? _lampsOn;
     private readonly System6GetLampBrightnessDelegate _getLampBrightness;
     private readonly System6GetPosOutDelegate _getPosOut;
     private readonly System6GetAlphaSegmentsDelegate? _getAlphaSegments;
@@ -44,6 +46,8 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
         _run = _loader.BindExport<System6RunDelegate>("SYSTEM6Run");
         _shutdown = _loader.BindExport<System6ShutdownDelegate>("SYSTEM6Shutdown");
         _getLampsOn = _loader.BindExport<System6GetLampsOnDelegate>("SYSTEM6GetLampsOn");
+        _lampsUpdate = TryBindOptionalExport<System6LampsUpdateDelegate>("LampsUpdate");
+        _lampsOn = TryBindOptionalExport<System6LampsOnDelegate>("LampsOn");
         _getLampBrightness = _loader.BindExport<System6GetLampBrightnessDelegate>("SYSTEM6GetLampBrightness");
         _getPosOut = _loader.BindExport<System6GetPosOutDelegate>("SYSTEM6GetPosOut");
         _getAlphaSegments = TryBindOptionalExport<System6GetAlphaSegmentsDelegate>("SYSTEM6GetAlphaSegments");
@@ -85,6 +89,22 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
     public int Run(int cycles) => _run(cycles);
 
     public byte Shutdown() => _shutdown();
+
+    public bool IsLampsUpdateAvailable => _lampsUpdate is not null;
+
+    public bool IsLampsOnAvailable => _lampsOn is not null;
+
+    public void LampsUpdate()
+    {
+        var lampsUpdate = _lampsUpdate ?? throw new NotSupportedException("System6 native core does not export LampsUpdate.");
+        lampsUpdate();
+    }
+
+    public bool LampsOn(ushort lampIndex)
+    {
+        var lampsOn = _lampsOn ?? throw new NotSupportedException("System6 native core does not export LampsOn.");
+        return lampsOn(lampIndex);
+    }
 
     public bool GetLampsOn(ushort lampIndex) => _getLampsOn(lampIndex);
 
@@ -206,6 +226,13 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     public delegate byte System6ShutdownDelegate();
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate void System6LampsUpdateDelegate();
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    public delegate bool System6LampsOnDelegate(ushort lampIndex);
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     [return: MarshalAs(UnmanagedType.I1)]
