@@ -30,6 +30,8 @@ public interface ISystem6NativeLibrary : INativeCoreLibrary
 
     bool LampsOn(ushort lampIndex);
 
+    byte LampsOnRaw(ushort lampIndex);
+
     bool GetLampsOn(ushort lampIndex);
 
     float GetLampBrightness(ushort lampIndex);

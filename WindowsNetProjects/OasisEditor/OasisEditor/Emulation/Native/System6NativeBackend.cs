@@ -34,6 +34,7 @@ public sealed class System6NativeBackend : IEmulationBackend
     private readonly int _cyclesPerFrame;
     private readonly object _stateGate = new();
     private readonly int[] _lastLampValues = Enumerable.Repeat(-1, LampCount).ToArray();
+    private readonly int[] _lastLampRawValues = Enumerable.Repeat(-1, LampCount).ToArray();
     private readonly int[] _lastReelPositions = Enumerable.Repeat(int.MinValue, ReelCount).ToArray();
     private int[]? _lastAlphaSegments;
     private bool _hasLoggedAlphaUnavailable;
@@ -540,18 +541,26 @@ public sealed class System6NativeBackend : IEmulationBackend
         for (var lampIndex = 0; lampIndex < LampCount; lampIndex++)
         {
             var nativeLampIndex = checked((ushort)lampIndex);
-            var isOn = library.IsLampsOnAvailable
-                ? library.LampsOn(nativeLampIndex)
-                : library.GetLampsOn(nativeLampIndex);
+            var rawValue = library.IsLampsOnAvailable
+                ? library.LampsOnRaw(nativeLampIndex)
+                : (byte)(library.GetLampsOn(nativeLampIndex) ? 1 : 0);
+            var isOn = rawValue != 0;
             var value = isOn ? 255 : 0;
+            var rawChanged = _lastLampRawValues[lampIndex] != rawValue;
+            if (rawChanged)
+            {
+                _lastLampRawValues[lampIndex] = rawValue;
+            }
+
             if (_lastLampValues[lampIndex] != value)
             {
                 _lastLampValues[lampIndex] = value;
                 LampChanged?.Invoke(this, new MachineLampChangedEventArgs(lampIndex, value));
-                if (changedDiagnostics.Count < DiagnosticChangedLampSampleCount)
-                {
-                    changedDiagnostics.Add($"native {nativeLampIndex} -> lamp:{lampIndex} on={isOn.ToString(CultureInfo.InvariantCulture).ToLowerInvariant()} value={value}");
-                }
+            }
+
+            if (rawChanged && changedDiagnostics.Count < DiagnosticChangedLampSampleCount)
+            {
+                changedDiagnostics.Add($"native {nativeLampIndex} -> lamp:{lampIndex} raw={rawValue} on={isOn.ToString(CultureInfo.InvariantCulture).ToLowerInvariant()} value={value}");
             }
         }
 
@@ -643,6 +652,7 @@ public sealed class System6NativeBackend : IEmulationBackend
     private void ResetCachedOutputState()
     {
         Array.Fill(_lastLampValues, -1);
+        Array.Fill(_lastLampRawValues, -1);
         Array.Fill(_lastReelPositions, int.MinValue);
         _lastAlphaSegments = null;
         _hasLoggedAlphaUnavailable = false;

@@ -178,7 +178,7 @@ public sealed class System6NativeBackendTests
         try
         {
             var library = new FakeSystem6NativeLibrary();
-            library.LampsOnValues[0] = true;
+            library.LampsOnValues[0] = 1;
             library.PositionOutputs[-1] = 10;
             library.PositionOutputs[0] = 20;
             var (dllPath, rom1, rom2) = CreateNativeFiles(2);
@@ -305,7 +305,7 @@ public sealed class System6NativeBackendTests
 
         public List<string> Calls { get; } = new();
 
-        public Dictionary<ushort, bool> LampsOnValues { get; } = new();
+        public Dictionary<ushort, byte> LampsOnValues { get; } = new();
 
         public Dictionary<sbyte, short> PositionOutputs { get; } = new();
 
@@ -364,10 +364,12 @@ public sealed class System6NativeBackendTests
 
         public void LampsUpdate() => Calls.Add("LampsUpdate");
 
-        public bool LampsOn(ushort lampIndex)
+        public bool LampsOn(ushort lampIndex) => LampsOnRaw(lampIndex) != 0;
+
+        public byte LampsOnRaw(ushort lampIndex)
         {
             Calls.Add($"LampsOn:{lampIndex}");
-            return LampsOnValues.TryGetValue(lampIndex, out var isOn) && isOn;
+            return LampsOnValues.TryGetValue(lampIndex, out var rawValue) ? rawValue : (byte)0;
         }
 
         public bool GetLampsOn(ushort lampIndex) => false;

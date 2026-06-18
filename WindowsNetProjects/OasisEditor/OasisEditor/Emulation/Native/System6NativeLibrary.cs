@@ -100,7 +100,9 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
         lampsUpdate();
     }
 
-    public bool LampsOn(ushort lampIndex)
+    public bool LampsOn(ushort lampIndex) => LampsOnRaw(lampIndex) != 0;
+
+    public byte LampsOnRaw(ushort lampIndex)
     {
         var lampsOn = _lampsOn ?? throw new NotSupportedException("System6 native core does not export LampsOn.");
         return lampsOn(lampIndex);
@@ -231,8 +233,7 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
     public delegate void System6LampsUpdateDelegate();
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    [return: MarshalAs(UnmanagedType.I1)]
-    public delegate bool System6LampsOnDelegate(ushort lampIndex);
+    public delegate byte System6LampsOnDelegate(ushort lampIndex);
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     [return: MarshalAs(UnmanagedType.I1)]
