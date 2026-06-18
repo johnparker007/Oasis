@@ -146,6 +146,57 @@ public sealed class MameSegmentRuntimeAdapterTests
         Assert.Contains("face-seven-3", changedFaceIds);
     }
 
+
+    [Fact]
+    public void ApplySegmentState_NativeAlphaPublishesRawOasisMaskToMachineReference()
+    {
+        var document = CreateDocument();
+        document.SetFaceElements([
+            new FaceAlphaDisplayElement
+            {
+                ObjectId = "face-alpha-0",
+                LinkedMachineObjectReference = MachineObjectReference.AlphaDisplay(0)
+            }
+        ]);
+        var changedFaceIds = new List<string>();
+        document.FaceVisualStateChanged += changed => changedFaceIds.AddRange(changed.ObjectIds);
+        var dispatches = new List<Action>();
+        var adapter = new MameSegmentRuntimeAdapter(() => [document], action => dispatches.Add(action));
+
+        adapter.ApplySegmentState(0, 0x8002, MameSegmentOutputType.NativeAlpha);
+
+        var dispatch = Assert.Single(dispatches);
+        dispatch();
+
+        var masks = document.RuntimeState.GetSegmentCellMasks(MachineObjectReference.AlphaDisplay(0), 16);
+        Assert.Equal(0x8002, masks[0]);
+        Assert.Contains("face-alpha-0", changedFaceIds);
+    }
+
+    [Fact]
+    public void ApplySegmentState_UnchangedNativeAlphaMaskDoesNotNotifyFaceAgain()
+    {
+        var document = CreateDocument();
+        document.SetFaceElements([
+            new FaceAlphaDisplayElement
+            {
+                ObjectId = "face-alpha-0",
+                LinkedMachineObjectReference = MachineObjectReference.AlphaDisplay(0)
+            }
+        ]);
+        var notifyCount = 0;
+        document.FaceVisualStateChanged += _ => notifyCount++;
+        var dispatches = new List<Action>();
+        var adapter = new MameSegmentRuntimeAdapter(() => [document], action => dispatches.Add(action));
+
+        adapter.ApplySegmentState(0, 0x1234, MameSegmentOutputType.NativeAlpha);
+        Assert.Single(dispatches)();
+        adapter.ApplySegmentState(0, 0x1234, MameSegmentOutputType.NativeAlpha);
+        Assert.Single(dispatches.Skip(1))();
+
+        Assert.Equal(1, notifyCount);
+    }
+
     private static DocumentTabViewModel CreateDocument()
     {
         var panelDocument = EditorDocument.CreateFromFile("panel.panel2d", "panel", "panel");

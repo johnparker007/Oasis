@@ -98,6 +98,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly IEmulationBackendFactory _emulationBackendFactory;
     private readonly IMameLampRuntimeAdapter _lampRuntimeAdapter;
     private readonly IMameReelRuntimeAdapter _reelRuntimeAdapter;
+    private readonly IMameSegmentRuntimeAdapter _segmentRuntimeAdapter;
     private IEmulationBackend? _activeEmulationBackend;
     private readonly IMameDebuggerService _mameDebuggerService;
     private readonly MameDebuggerShellViewModel _mameDebuggerShell;
@@ -299,16 +300,17 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             () => DebugOutputStdOut,
             message => AddOutputEntry(message, OutputLogStatus.Info),
             DispatchToUiThread);
+        _segmentRuntimeAdapter = new MameSegmentRuntimeAdapter(
+            () => OpenDocuments,
+            DispatchToUiThread,
+            () => SelectedFruitMachinePlatform);
         var mameStdoutParser = new MameStdoutParser(
             new MameLampStateParser(),
             _lampRuntimeAdapter,
             new MameReelStateParser(),
             _reelRuntimeAdapter,
             new MameSegmentStateParser(),
-            new MameSegmentRuntimeAdapter(
-                () => OpenDocuments,
-                DispatchToUiThread,
-                () => SelectedFruitMachinePlatform),
+            _segmentRuntimeAdapter,
             platformProvider: () => SelectedFruitMachinePlatform,
             vfdDotMatrixStateParser: new MameVfdDotMatrixStateParser(),
             vfdDotMatrixRuntimeAdapter: new MameVfdDotMatrixRuntimeAdapter(
@@ -2556,6 +2558,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         backend.StateChanged += OnActiveBackendStateChanged;
         backend.LampChanged += OnActiveBackendLampChanged;
         backend.ReelChanged += OnActiveBackendReelChanged;
+        backend.SegmentChanged += OnActiveBackendSegmentChanged;
         try
         {
             await backend.StartAsync(BuildEmulationLaunchRequest(), cancellationToken).ConfigureAwait(false);
@@ -2566,6 +2569,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             backend.StateChanged -= OnActiveBackendStateChanged;
             backend.LampChanged -= OnActiveBackendLampChanged;
             backend.ReelChanged -= OnActiveBackendReelChanged;
+            backend.SegmentChanged -= OnActiveBackendSegmentChanged;
             await backend.DisposeAsync().ConfigureAwait(false);
             _activeEmulationBackend = null;
             throw;
@@ -2724,6 +2728,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _reelRuntimeAdapter.ApplyReelState(e.ReelId, e.Position);
     }
 
+    private void OnActiveBackendSegmentChanged(object? sender, MachineSegmentChangedEventArgs e)
+    {
+        _segmentRuntimeAdapter.ApplySegmentState(e.CellId, e.SegmentMask, e.OutputType);
+    }
+
     private void OnActiveBackendStateChanged(object? sender, EmulationBackendState state)
     {
         DispatchToUiThread(() =>
@@ -2817,6 +2826,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 _activeEmulationBackend.StateChanged -= OnActiveBackendStateChanged;
                 _activeEmulationBackend.LampChanged -= OnActiveBackendLampChanged;
                 _activeEmulationBackend.ReelChanged -= OnActiveBackendReelChanged;
+                _activeEmulationBackend.SegmentChanged -= OnActiveBackendSegmentChanged;
                 _activeEmulationBackend.DisposeAsync().AsTask().GetAwaiter().GetResult();
                 _activeEmulationBackend = null;
                 _playViewInputRouter = null;
@@ -2855,6 +2865,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 _activeEmulationBackend.StateChanged -= OnActiveBackendStateChanged;
                 _activeEmulationBackend.LampChanged -= OnActiveBackendLampChanged;
                 _activeEmulationBackend.ReelChanged -= OnActiveBackendReelChanged;
+                _activeEmulationBackend.SegmentChanged -= OnActiveBackendSegmentChanged;
                 await _activeEmulationBackend.DisposeAsync();
                 _activeEmulationBackend = null;
                 _playViewInputRouter = null;

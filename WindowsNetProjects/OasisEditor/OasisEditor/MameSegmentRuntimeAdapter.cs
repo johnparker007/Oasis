@@ -12,6 +12,7 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
     private readonly Dictionary<int, int> _latestVfdMasksByCell = new();
     private readonly Dictionary<int, int> _latestDigitMasksByCell = new();
     private readonly Dictionary<int, double> _latestVfdBrightnessByDisplay = new();
+    private readonly HashSet<int> _latestNativeAlphaCells = new();
     private bool _uiUpdateScheduled;
 
     public MameSegmentRuntimeAdapter(
@@ -70,9 +71,17 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
 
             foreach (var (cellId, state) in snapshot)
             {
-                if (state.OutputType == MameSegmentOutputType.Vfd)
+                if (state.OutputType == MameSegmentOutputType.Vfd || state.OutputType == MameSegmentOutputType.NativeAlpha)
                 {
                     _latestVfdMasksByCell[cellId] = state.Mask;
+                    if (state.OutputType == MameSegmentOutputType.NativeAlpha)
+                    {
+                        _latestNativeAlphaCells.Add(cellId);
+                    }
+                    else
+                    {
+                        _latestNativeAlphaCells.Remove(cellId);
+                    }
                 }
                 else
                 {
@@ -92,7 +101,9 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
                 var cellCount = element.Kind == PanelElementKind.SevenSegment ? 1 : 16;
                 var cellMasks = new int[cellCount];
                 var cellBrightness = new double[cellCount];
-                var reversePlatformAlphaCells = element.Kind == PanelElementKind.Alpha && RequiresPlatformAlphaCellReversal(_platformProvider());
+                var reversePlatformAlphaCells = element.Kind == PanelElementKind.Alpha
+                    && RequiresPlatformAlphaCellReversal(_platformProvider())
+                    && !HasNativeAlphaCells(baseIndex, cellMasks.Length);
                 for (var i = 0; i < cellMasks.Length; i++)
                 {
                     var source = element.Kind == PanelElementKind.SevenSegment ? _latestDigitMasksByCell : _latestVfdMasksByCell;
@@ -101,7 +112,7 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
                     {
                         cellMasks[i] = element.Kind == PanelElementKind.SevenSegment
                             ? mask
-                            : NormalizeMameMaskForSelectedDisplayType(mask, element.SegmentDisplayType);
+                            : NormalizeAlphaMaskForSelectedDisplayType(mask, element.SegmentDisplayType, baseIndex + sourceOffset);
                     }
 
                     if (element.Kind == PanelElementKind.Alpha && _latestVfdBrightnessByDisplay.TryGetValue(baseIndex, out var brightness))
@@ -170,13 +181,14 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
 
                 var cellMasks = new int[16];
                 var cellBrightness = new double[16];
-                var reversePlatformAlphaCells = RequiresPlatformAlphaCellReversal(_platformProvider());
+                var reversePlatformAlphaCells = RequiresPlatformAlphaCellReversal(_platformProvider())
+                    && !HasNativeAlphaCells(baseIndex, cellMasks.Length);
                 for (var i = 0; i < cellMasks.Length; i++)
                 {
                     var sourceOffset = reversePlatformAlphaCells ? cellMasks.Length - 1 - i : i;
                     if (_latestVfdMasksByCell.TryGetValue(baseIndex + sourceOffset, out var mask))
                     {
-                        cellMasks[i] = NormalizeMameMaskForSelectedDisplayType(mask, faceDisplay.SegmentDisplayType);
+                        cellMasks[i] = NormalizeAlphaMaskForSelectedDisplayType(mask, faceDisplay.SegmentDisplayType, baseIndex + sourceOffset);
                     }
 
                     cellBrightness[i] = _latestVfdBrightnessByDisplay.TryGetValue(baseIndex, out var brightness)
@@ -230,6 +242,19 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
         return element.DisplayNumber.GetValueOrDefault(0);
     }
 
+    private bool HasNativeAlphaCells(int baseIndex, int cellCount)
+    {
+        for (var offset = 0; offset < cellCount; offset++)
+        {
+            if (_latestNativeAlphaCells.Contains(baseIndex + offset))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private static bool RequiresPlatformAlphaCellReversal(FruitMachinePlatformType platform)
     {
         return platform switch
@@ -240,6 +265,13 @@ public sealed class MameSegmentRuntimeAdapter : IMameSegmentRuntimeAdapter
             FruitMachinePlatformType.Impact => true,
             _ => false
         };
+    }
+
+    private int NormalizeAlphaMaskForSelectedDisplayType(int rawMask, string? segmentDisplayType, int cellId)
+    {
+        return _latestNativeAlphaCells.Contains(cellId)
+            ? rawMask
+            : NormalizeMameMaskForSelectedDisplayType(rawMask, segmentDisplayType);
     }
 
     private static int NormalizeMameMaskForSelectedDisplayType(int rawMask, string? segmentDisplayType)
