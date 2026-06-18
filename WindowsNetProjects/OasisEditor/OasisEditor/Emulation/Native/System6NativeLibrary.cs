@@ -18,7 +18,8 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
     private readonly System6GetLampsOnDelegate _getLampsOn;
     private readonly System6GetLampBrightnessDelegate _getLampBrightness;
     private readonly System6GetPosOutDelegate _getPosOut;
-    private readonly System6GetAlphaCharDelegate? _getAlphaChar;
+    private readonly System6GetAlphaSegmentsDelegate? _getAlphaSegments;
+    private readonly System6SetPercentDelegate? _setPercent;
     private readonly System6TurnSwitchOnDelegate _turnSwitchOn;
     private readonly System6TurnSwitchOffDelegate _turnSwitchOff;
     private readonly List<IntPtr> _romPathBuffers = [];
@@ -45,7 +46,8 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
         _getLampsOn = _loader.BindExport<System6GetLampsOnDelegate>("SYSTEM6GetLampsOn");
         _getLampBrightness = _loader.BindExport<System6GetLampBrightnessDelegate>("SYSTEM6GetLampBrightness");
         _getPosOut = _loader.BindExport<System6GetPosOutDelegate>("SYSTEM6GetPosOut");
-        _getAlphaChar = TryBindOptionalExport<System6GetAlphaCharDelegate>("GetAlphaChar");
+        _getAlphaSegments = TryBindOptionalExport<System6GetAlphaSegmentsDelegate>("SYSTEM6GetAlphaSegments");
+        _setPercent = TryBindOptionalExport<System6SetPercentDelegate>("SetPercent");
         _turnSwitchOn = _loader.BindExport<System6TurnSwitchOnDelegate>("SYSTEM6TurnSwitchOn");
         _turnSwitchOff = _loader.BindExport<System6TurnSwitchOffDelegate>("SYSTEM6TurnSwitchOff");
     }
@@ -90,12 +92,20 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
 
     public short GetPosOut(sbyte positionIndex) => _getPosOut(positionIndex);
 
-    public bool IsAlphaCharPollingAvailable => _getAlphaChar is not null;
+    public bool IsAlphaSegmentPollingAvailable => _getAlphaSegments is not null;
 
-    public byte GetAlphaChar(byte index)
+    public int GetAlphaSegments(byte index)
     {
-        var getAlphaChar = _getAlphaChar ?? throw new NotSupportedException("System6 native core does not export GetAlphaChar.");
-        return getAlphaChar(index);
+        var getAlphaSegments = _getAlphaSegments ?? throw new NotSupportedException("System6 native core does not export SYSTEM6GetAlphaSegments.");
+        return getAlphaSegments(index);
+    }
+
+    public bool IsSetPercentAvailable => _setPercent is not null;
+
+    public void SetPercent(byte percent)
+    {
+        var setPercent = _setPercent ?? throw new NotSupportedException("System6 native core does not export SetPercent.");
+        setPercent(percent);
     }
 
     public void TurnSwitchOn(int switchIndex) => _turnSwitchOn(switchIndex);
@@ -120,7 +130,7 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
         }
         catch (NativeCoreExportException ex)
         {
-            System.Diagnostics.Debug.WriteLine($"System6 native optional export {exportName} unavailable; alpha debug polling disabled. {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"System6 native optional export {exportName} unavailable. {ex.Message}");
             return null;
         }
     }
@@ -208,7 +218,10 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
     public delegate short System6GetPosOutDelegate(sbyte positionIndex);
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    public delegate byte System6GetAlphaCharDelegate(byte index);
+    public delegate int System6GetAlphaSegmentsDelegate(byte index);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate void System6SetPercentDelegate(byte percent);
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     public delegate void System6TurnSwitchOnDelegate(int switchIndex);

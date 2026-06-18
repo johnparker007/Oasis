@@ -19,6 +19,7 @@ public sealed class EditorProject
 public sealed class System6NativeRomSettings
 {
     public const int DefaultReelOptoSlotCount = 8;
+    public const int DefaultPercentSwitchValue = 0;
     public List<System6ReelOptoSettings> ReelOptos { get; set; } = CreateDefaultReelOptos();
 
     public string ProgramRom1Path { get; set; } = string.Empty;
@@ -30,6 +31,7 @@ public sealed class System6NativeRomSettings
     public string SoundRom3Path { get; set; } = string.Empty;
     public string SoundRom4Path { get; set; } = string.Empty;
     public bool FlashSwitch { get; set; }
+    public int PercentSwitchValue { get; set; } = DefaultPercentSwitchValue;
 
     public IReadOnlyList<string> ProgramRomPaths => [ProgramRom1Path, ProgramRom2Path, ProgramRom3Path, ProgramRom4Path];
     public IReadOnlyList<string> SoundRomPaths => [SoundRom1Path, SoundRom2Path, SoundRom3Path, SoundRom4Path];

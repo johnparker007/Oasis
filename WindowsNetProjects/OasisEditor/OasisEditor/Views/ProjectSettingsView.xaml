@@ -70,7 +70,7 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
                 <TextBlock Grid.Row="0" Grid.Column="0" Margin="0,0,8,6" VerticalAlignment="Center" Text="Program ROM 1" /><TextBox Grid.Row="0" Grid.Column="1" Margin="0,0,8,6" Text="{Binding System6ProgramRom1Path, UpdateSourceTrigger=LostFocus}" /><Button Grid.Row="0" Grid.Column="2" Margin="0,0,0,6" Padding="10,2" Command="{Binding BrowseSystem6ProgramRom1Command}" Content="Browse" />
                 <TextBlock Grid.Row="1" Grid.Column="0" Margin="0,0,8,6" VerticalAlignment="Center" Text="Program ROM 2" /><TextBox Grid.Row="1" Grid.Column="1" Margin="0,0,8,6" Text="{Binding System6ProgramRom2Path, UpdateSourceTrigger=LostFocus}" /><Button Grid.Row="1" Grid.Column="2" Margin="0,0,0,6" Padding="10,2" Command="{Binding BrowseSystem6ProgramRom2Command}" Content="Browse" />
@@ -81,7 +81,12 @@
                 <TextBlock Grid.Row="6" Grid.Column="0" Margin="0,0,8,6" VerticalAlignment="Center" Text="Sound ROM 3" /><TextBox Grid.Row="6" Grid.Column="1" Margin="0,0,8,6" Text="{Binding System6SoundRom3Path, UpdateSourceTrigger=LostFocus}" /><Button Grid.Row="6" Grid.Column="2" Margin="0,0,0,6" Padding="10,2" Command="{Binding BrowseSystem6SoundRom3Command}" Content="Browse" />
                 <TextBlock Grid.Row="7" Grid.Column="0" Margin="0,0,8,6" VerticalAlignment="Center" Text="Sound ROM 4" /><TextBox Grid.Row="7" Grid.Column="1" Margin="0,0,8,6" Text="{Binding System6SoundRom4Path, UpdateSourceTrigger=LostFocus}" /><Button Grid.Row="7" Grid.Column="2" Margin="0,0,0,6" Padding="10,2" Command="{Binding BrowseSystem6SoundRom4Command}" Content="Browse" />
                 <CheckBox Grid.Row="8" Grid.Column="1" Margin="0,2,0,6" Content="Flash switch" IsChecked="{Binding System6FlashSwitch}" />
-                <TextBlock Grid.Row="9" Grid.Column="0" Grid.ColumnSpan="3" Text="{Binding System6NativeRomStatus, StringFormat=Status: {0}}" Foreground="{DynamicResource TextSecondaryBrush}" />
+                <TextBlock Grid.Row="9" Grid.Column="0" Margin="0,0,8,6" VerticalAlignment="Center" Text="Percent switch value" />
+                <StackPanel Grid.Row="9" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,0,0,6">
+                    <TextBox Width="80" HorizontalAlignment="Left" Text="{Binding System6PercentSwitchValue, UpdateSourceTrigger=LostFocus}" />
+                    <TextBlock Margin="0,4,0,0" Text="Native System 6 SetPercent value. Low four bits map to DLL percentage switches 8–11." Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+                </StackPanel>
+                <TextBlock Grid.Row="10" Grid.Column="0" Grid.ColumnSpan="3" Text="{Binding System6NativeRomStatus, StringFormat=Status: {0}}" Foreground="{DynamicResource TextSecondaryBrush}" />
             </Grid>
 
             <TextBlock Grid.Row="13" Margin="0,20,0,4" Text="System6 Reel Optos" Foreground="{DynamicResource TextSecondaryBrush}" />
