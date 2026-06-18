@@ -182,7 +182,6 @@ public sealed class System6NativeBackend : IEmulationBackend
                     LogStartupStage("LoadSoundROM skipped");
                 }
 
-                ApplyReelOptos(_library, reelOptos);
             }
             catch (Exception ex)
             {
@@ -195,6 +194,7 @@ public sealed class System6NativeBackend : IEmulationBackend
 
             try
             {
+                LogStartupStage("Reset starting");
                 _library.Reset();
                 LogStartupStage("Reset completed");
             }
@@ -203,6 +203,17 @@ public sealed class System6NativeBackend : IEmulationBackend
                 throw new InvalidOperationException($"System6 native backend failed to reset core '{_libraryPath}' during startup.", ex);
             }
             ResetCachedOutputState();
+
+            try
+            {
+                LogStartupStage("Apply reel optos starting after Reset");
+                ApplyReelOptos(_library, reelOptos);
+                LogStartupStage("Apply reel optos completed before first Run");
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"System6 native backend failed to apply reel optos with core '{_libraryPath}'.", ex);
+            }
             if (startupStage is System6StartupStage.ResetOnly)
             {
                 LogStartupStage("first Run skipped / pending");
