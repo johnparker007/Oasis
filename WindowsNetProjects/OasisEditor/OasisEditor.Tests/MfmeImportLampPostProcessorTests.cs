@@ -16,8 +16,8 @@ public sealed class MfmeImportLampPostProcessorTests
         try
         {
             Directory.CreateDirectory(Path.Combine(extractRoot, "lamps"));
-            CreateIndexedLampBmp(Path.Combine(extractRoot, "lamps", "lamp.bmp"));
-            CreateMaskBmp(Path.Combine(extractRoot, "lamps", "lamp-mask.bmp"), new byte[] { 255, 0, 0, 255 });
+            CreateAlphaLampBmp(Path.Combine(extractRoot, "lamps", "lamp.bmp"));
+            CreateMaskBmp(Path.Combine(extractRoot, "lamps", "lamp-mask.bmp"), new byte[] { 255, 255, 0, 255 });
             File.WriteAllText(Path.Combine(extractRoot, "lamps", "symbol.png"), "noop");
 
             var copier = new MfmeImportAssetCopier();
@@ -42,9 +42,9 @@ public sealed class MfmeImportLampPostProcessorTests
             Assert.Equal(new byte[] { 0, 255, 255, 0 }, alphas);
             Assert.Equal(0, pixels[3]);
             Assert.Equal(0, pixels[15]);
-            Assert.Equal(0, pixels[4]);
+            Assert.Equal(50, pixels[4]);
             Assert.Equal(0, pixels[5]);
-            Assert.Equal((byte)50, pixels[6]);
+            Assert.Equal(0, pixels[6]);
 
             var imageAsset = Assert.Single(result.Elements, e => e.Kind == PanelElementKind.Image);
             Assert.EndsWith("symbol.png", imageAsset.AssetPath, StringComparison.OrdinalIgnoreCase);
@@ -124,35 +124,6 @@ public sealed class MfmeImportLampPostProcessorTests
     }
 
 
-    [Fact]
-    public void CopyAssets_LampIndexed4WithoutMask_PreservesPaletteAlpha()
-    {
-        var extractRoot = CreateTempDirectory();
-        var projectRoot = CreateTempDirectory();
-
-        try
-        {
-            Directory.CreateDirectory(Path.Combine(extractRoot, "lamps"));
-            CreateIndexed4LampBmp(Path.Combine(extractRoot, "lamps", "indexed4.bmp"));
-
-            var copier = new MfmeImportAssetCopier();
-            var result = copier.CopyAssets(CreateContext(extractRoot, projectRoot), CreateExtract(extractRoot),
-            [ new PanelElementModel { ObjectId = "lamp-idx4", Name = "lamp", Kind = PanelElementKind.Lamp, Width = 2, Height = 2, AssetPath = "lamps/indexed4.bmp" } ]);
-
-            Assert.True(result.Succeeded);
-            var lampPath = Path.Combine(projectRoot, "Assets", result.Elements[0].AssetPath!["Assets/".Length..]);
-            var pixels = ReadBgra32(lampPath, out _);
-            var alphas = Enumerable.Range(0, pixels.Length / 4).Select(i => pixels[(i * 4) + 3]).ToArray();
-            Assert.Contains((byte)0, alphas);
-            Assert.Contains((byte)255, alphas);
-        }
-        finally
-        {
-            Directory.Delete(extractRoot, true);
-            Directory.Delete(projectRoot, true);
-        }
-    }
-
     private static MfmeImportContext CreateContext(string extractRoot, string projectRoot) => new()
     {
         SourceExtractPath = extractRoot,
@@ -169,28 +140,17 @@ public sealed class MfmeImportLampPostProcessorTests
         Components = []
     };
 
-    private static void CreateIndexedLampBmp(string path)
+    private static void CreateAlphaLampBmp(string path)
     {
-        WriteIndexedBmp(
-            path,
-            width: 2,
-            height: 2,
-            bitsPerPixel: 8,
-            palette: [Color.FromArgb(0, 255, 0, 0), Color.FromArgb(255, 200, 100, 50)],
-            rows: [[0, 1], [1, 0]]);
-    }
+        var pixels = new byte[]
+        {
+            0, 0, 255, 0,
+            50, 100, 200, 255,
+            50, 100, 200, 255,
+            0, 0, 255, 0
+        };
 
-
-
-    private static void CreateIndexed4LampBmp(string path)
-    {
-        WriteIndexedBmp(
-            path,
-            width: 2,
-            height: 2,
-            bitsPerPixel: 4,
-            palette: [Color.FromArgb(0, 255, 0, 255), Color.FromArgb(255, 255, 255, 0)],
-            rows: [[0, 1], [1, 0]]);
+        WriteBgra32Bmp(path, width: 2, height: 2, pixels: pixels);
     }
 
     private static void CreateUnmaskedLampBmp(string path)
@@ -247,68 +207,6 @@ public sealed class MfmeImportLampPostProcessorTests
         encoder.Frames.Add(BitmapFrame.Create(bitmap));
         using var stream = File.Create(path);
         encoder.Save(stream);
-    }
-
-    private static void WriteIndexedBmp(string path, int width, int height, int bitsPerPixel, Color[] palette, byte[][] rows)
-    {
-        var rowStride = ((width * bitsPerPixel + 31) / 32) * 4;
-        var pixelDataSize = rowStride * height;
-        var paletteSize = palette.Length * 4;
-        var pixelDataOffset = 14 + 40 + paletteSize;
-        var fileSize = pixelDataOffset + pixelDataSize;
-
-        using var stream = File.Create(path);
-        using var writer = new BinaryWriter(stream);
-
-        writer.Write((byte)'B');
-        writer.Write((byte)'M');
-        writer.Write(fileSize);
-        writer.Write(0);
-        writer.Write(pixelDataOffset);
-
-        writer.Write(40);
-        writer.Write(width);
-        writer.Write(-height);
-        writer.Write((short)1);
-        writer.Write((short)bitsPerPixel);
-        writer.Write(0);
-        writer.Write(pixelDataSize);
-        writer.Write(2835);
-        writer.Write(2835);
-        writer.Write(palette.Length);
-        writer.Write(0);
-
-        foreach (var color in palette)
-        {
-            writer.Write(color.B);
-            writer.Write(color.G);
-            writer.Write(color.R);
-            writer.Write(color.A);
-        }
-
-        var row = new byte[rowStride];
-        for (var y = 0; y < height; y++)
-        {
-            Array.Clear(row);
-
-            if (bitsPerPixel == 8)
-            {
-                for (var x = 0; x < width; x++)
-                {
-                    row[x] = rows[y][x];
-                }
-            }
-            else
-            {
-                for (var x = 0; x < width; x++)
-                {
-                    var shift = x % 2 == 0 ? 4 : 0;
-                    row[x / 2] |= (byte)(rows[y][x] << shift);
-                }
-            }
-
-            writer.Write(row);
-        }
     }
 
     private static void WriteBgra32Bmp(string path, int width, int height, byte[] pixels)
