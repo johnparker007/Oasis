@@ -8,7 +8,7 @@ namespace OasisEditor.Tests;
 public sealed class MfmeImportLampPostProcessorTests
 {
     [Fact]
-    public void CopyAssets_LampProcessing_TransparentPixelsRemainTransparent_AndMaskAppliesAlpha()
+    public void CopyAssets_LampProcessing_PreservesSourceAlpha_AndMaskTintUsesVisiblePixels()
     {
         var extractRoot = CreateTempDirectory();
         var projectRoot = CreateTempDirectory();
@@ -39,8 +39,12 @@ public sealed class MfmeImportLampPostProcessorTests
                 .Select(i => pixels[(i * 4) + 3])
                 .ToArray();
 
-            Assert.Equal(2, alphas.Count(a => a == 0)); // transparent palette entries remain transparent
-            Assert.Contains((byte)255, alphas); // at least one masked-on pixel remains opaque
+            Assert.Equal(new byte[] { 0, 255, 255, 0 }, alphas);
+            Assert.Equal(0, pixels[3]);
+            Assert.Equal(0, pixels[15]);
+            Assert.Equal(0, pixels[4]);
+            Assert.Equal(0, pixels[5]);
+            Assert.Equal((byte)50, pixels[6]);
 
             var imageAsset = Assert.Single(result.Elements, e => e.Kind == PanelElementKind.Image);
             Assert.EndsWith("symbol.png", imageAsset.AssetPath, StringComparison.OrdinalIgnoreCase);
@@ -54,7 +58,7 @@ public sealed class MfmeImportLampPostProcessorTests
 
 
     [Fact]
-    public void CopyAssets_LampWithoutMask_DerivesTransparentColorFromEdges()
+    public void CopyAssets_LampWithoutMask_DoesNotDeriveTransparentColorFromEdges()
     {
         var extractRoot = CreateTempDirectory();
         var projectRoot = CreateTempDirectory();
@@ -76,8 +80,41 @@ public sealed class MfmeImportLampPostProcessorTests
             var pixels = ReadBgra32(lampPath, out _);
 
             var alphas = Enumerable.Range(0, pixels.Length / 4).Select(i => pixels[(i * 4) + 3]).ToArray();
-            Assert.Equal(0, alphas[0]);
+            Assert.All(alphas, alpha => Assert.Equal(255, alpha));
             Assert.Equal(255, alphas[4]); // center pixel remains visible
+        }
+        finally
+        {
+            Directory.Delete(extractRoot, true);
+            Directory.Delete(projectRoot, true);
+        }
+    }
+
+
+    [Fact]
+    public void CopyAssets_LampWithoutMask_DoesNotRepairTransparentFringePixels()
+    {
+        var extractRoot = CreateTempDirectory();
+        var projectRoot = CreateTempDirectory();
+
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(extractRoot, "lamps"));
+            CreateTransparentFringeLampBmp(Path.Combine(extractRoot, "lamps", "fringe.bmp"));
+
+            var copier = new MfmeImportAssetCopier();
+            var result = copier.CopyAssets(CreateContext(extractRoot, projectRoot), CreateExtract(extractRoot),
+            [ new PanelElementModel { ObjectId = "lamp-fringe", Name = "lamp", Kind = PanelElementKind.Lamp, Width = 2, Height = 2, AssetPath = "lamps/fringe.bmp" } ]);
+
+            Assert.True(result.Succeeded);
+            var lampPath = Path.Combine(projectRoot, "Assets", result.Elements[0].AssetPath!["Assets/".Length..]);
+            var pixels = ReadBgra32(lampPath, out _);
+
+            Assert.Equal(0, pixels[3]);
+            Assert.Equal(0, pixels[0]);
+            Assert.Equal(0, pixels[1]);
+            Assert.Equal(255, pixels[2]);
+            Assert.Equal(255, pixels[7]);
         }
         finally
         {
@@ -177,6 +214,20 @@ public sealed class MfmeImportLampPostProcessorTests
         }
 
         var bitmap = BitmapSource.Create(3, 3, 96, 96, PixelFormats.Bgra32, null, pixels, 12);
+        SaveBmp(bitmap, path);
+    }
+
+    private static void CreateTransparentFringeLampBmp(string path)
+    {
+        var pixels = new byte[]
+        {
+            0, 0, 255, 0,
+            255, 0, 0, 255,
+            0, 255, 0, 255,
+            255, 255, 255, 255
+        };
+
+        var bitmap = BitmapSource.Create(2, 2, 96, 96, PixelFormats.Bgra32, null, pixels, 8);
         SaveBmp(bitmap, path);
     }
 
