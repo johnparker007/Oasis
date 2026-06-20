@@ -265,6 +265,76 @@ public sealed class System6NativeBackendTests
         }
     }
 
+    [Fact]
+    public async Task StartAsyncOneRunOnlyPollsOnlyEnabledReelOptos()
+    {
+        var previousStage = Environment.GetEnvironmentVariable("OASIS_SYSTEM6_STARTUP_STAGE");
+        Environment.SetEnvironmentVariable("OASIS_SYSTEM6_STARTUP_STAGE", "OneRunOnly");
+        try
+        {
+            var library = new FakeSystem6NativeLibrary();
+            var (dllPath, rom1, rom2) = CreateNativeFiles(2);
+            var backend = new System6NativeBackend(dllPath, _ => library);
+            var request = CreateLaunchRequest(rom1, rom2);
+            foreach (var reel in request.System6NativeRoms!.ReelOptos)
+            {
+                reel.Enabled = reel.ReelIndex is 0 or 2 or 4;
+            }
+
+            await backend.StartAsync(request, CancellationToken.None);
+            await backend.StopAsync(CancellationToken.None);
+
+            Assert.Contains("SetSteps:0:96", library.Calls);
+            Assert.Contains("SetSteps:2:96", library.Calls);
+            Assert.Contains("SetSteps:4:96", library.Calls);
+            Assert.DoesNotContain(library.Calls, call => call.StartsWith("SetSteps:1:", StringComparison.Ordinal));
+            Assert.DoesNotContain(library.Calls, call => call.StartsWith("SetOptoStart:3:", StringComparison.Ordinal));
+            Assert.DoesNotContain(library.Calls, call => call.StartsWith("SetOptoEnd:5:", StringComparison.Ordinal));
+            Assert.DoesNotContain(library.Calls, call => call.StartsWith("SetOptoInvert:7:", StringComparison.Ordinal));
+
+            var getPosOutCalls = library.Calls.Where(call => call.StartsWith("GetPosOut:", StringComparison.Ordinal)).ToArray();
+            Assert.Equal(new[] { "GetPosOut:-1", "GetPosOut:1", "GetPosOut:3" }, getPosOutCalls);
+            Assert.DoesNotContain("GetPosOut:0", library.Calls);
+            Assert.DoesNotContain("GetPosOut:2", library.Calls);
+            Assert.DoesNotContain("GetPosOut:4", library.Calls);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("OASIS_SYSTEM6_STARTUP_STAGE", previousStage);
+        }
+    }
+
+    [Fact]
+    public async Task StartAsyncOneRunOnlyPollsOnlyConfiguredLampIdsIncludingHighLamp()
+    {
+        var previousStage = Environment.GetEnvironmentVariable("OASIS_SYSTEM6_STARTUP_STAGE");
+        Environment.SetEnvironmentVariable("OASIS_SYSTEM6_STARTUP_STAGE", "OneRunOnly");
+        try
+        {
+            var library = new FakeSystem6NativeLibrary();
+            library.GetLampsOnValues[5] = true;
+            library.GetLampsOnValues[255] = true;
+            var (dllPath, rom1, rom2) = CreateNativeFiles(2);
+            var backend = new System6NativeBackend(dllPath, _ => library);
+            var lampEvents = new List<MachineLampChangedEventArgs>();
+            backend.LampChanged += (_, e) => lampEvents.Add(e);
+
+            await backend.StartAsync(CreateLaunchRequest([5, 255], rom1, rom2), CancellationToken.None);
+            await backend.StopAsync(CancellationToken.None);
+
+            var getLampCalls = library.Calls.Where(call => call.StartsWith("GetLampsOn:", StringComparison.Ordinal)).ToArray();
+            Assert.Equal(new[] { "GetLampsOn:5", "GetLampsOn:255" }, getLampCalls);
+            Assert.Contains(lampEvents, e => e.LampId == 5 && e.Value == 255);
+            Assert.Contains(lampEvents, e => e.LampId == 255 && e.Value == 255);
+            Assert.DoesNotContain("GetLampsOn:0", library.Calls);
+            Assert.DoesNotContain("GetLampsOn:31", library.Calls);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("OASIS_SYSTEM6_STARTUP_STAGE", previousStage);
+        }
+    }
+
 
     [Theory]
     [InlineData(0, 96, 0)]
@@ -432,6 +502,11 @@ public sealed class System6NativeBackendTests
 
     private static EmulationLaunchRequest CreateLaunchRequest(params string[] romPaths)
     {
+        return CreateLaunchRequest(null, romPaths);
+    }
+
+    private static EmulationLaunchRequest CreateLaunchRequest(IReadOnlyList<int>? configuredLampIds, params string[] romPaths)
+    {
         return new EmulationLaunchRequest(
             FruitMachinePlatformType.None,
             "test-machine",
@@ -442,7 +517,8 @@ public sealed class System6NativeBackendTests
             {
                 ProgramRom1Path = romPaths.Length > 0 ? romPaths[0] : string.Empty,
                 ProgramRom2Path = romPaths.Length > 1 ? romPaths[1] : string.Empty
-            });
+            },
+            configuredLampIds);
     }
 
     private static (string DllPath, string Rom1, string Rom2) CreateNativeFiles(int romCount)

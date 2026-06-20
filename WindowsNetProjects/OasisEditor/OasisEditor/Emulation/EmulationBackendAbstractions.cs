@@ -65,7 +65,8 @@ public sealed record EmulationLaunchRequest(
     string RomRootPath,
     IReadOnlyList<string> RomPaths,
     string AdditionalArguments,
-    System6NativeRomSettings? System6NativeRoms = null);
+    System6NativeRomSettings? System6NativeRoms = null,
+    IReadOnlyList<int>? ConfiguredLampIds = null);
 
 public sealed class MachineLampChangedEventArgs : EventArgs
 {
