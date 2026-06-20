@@ -20,8 +20,21 @@ internal sealed class ReelElementRenderer : IPanelElementRenderer
         }
 
         var stops = Math.Max(1, element.Stops.GetValueOrDefault(1));
-        var reelPosition = context.RuntimeState.GetEffectiveReelPosition(element.ObjectId);
+        var reelPosition = ResolvePreviewReelPosition(context.RuntimeState, element, stops);
         RenderReelDisplay(context.Canvas, bounds, element.AssetPath, reelPosition, stops, element.VisibleScale);
+    }
+
+    internal static double ResolvePreviewReelPosition(MachineRuntimeState runtimeState, PanelElementModel element, int stops)
+    {
+        if (runtimeState.TryGetReelPosition(element.ObjectId, out var runtimePosition))
+        {
+            return runtimePosition + runtimeState.GetTemporaryReelOffset(element.ObjectId);
+        }
+
+        var platformOffset = MameReelRuntimeAdapter.ResolvePlatformBandOffsetNormalized(runtimeState.FruitMachinePlatform, stops);
+        var bandOffset = element.BandOffset ?? 0d;
+        return ((platformOffset + bandOffset) * LegacyReelPositionsPerRevolution)
+            + runtimeState.GetTemporaryReelOffset(element.ObjectId);
     }
 
     public static void RenderReelDisplay(SKCanvas canvas, SKRect bounds, string? assetPath, double reelPosition, int stops, double? visibleScale)
