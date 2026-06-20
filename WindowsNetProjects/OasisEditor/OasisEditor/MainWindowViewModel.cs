@@ -300,6 +300,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _reelRuntimeAdapter = new MameReelRuntimeAdapter(
             () => OpenDocuments,
             () => SelectedFruitMachinePlatform,
+            () => _activeEmulationBackend?.BackendKind ?? EmulationBackendKind.Mame,
             () => DebugOutputStdOut,
             message => AddOutputEntry(message, OutputLogStatus.Info),
             DispatchToUiThread);

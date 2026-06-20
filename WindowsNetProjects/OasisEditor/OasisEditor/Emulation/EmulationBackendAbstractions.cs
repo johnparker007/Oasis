@@ -2,6 +2,8 @@ namespace OasisEditor;
 
 public interface IEmulationBackend : IAsyncDisposable
 {
+    EmulationBackendKind BackendKind { get; }
+
     EmulationBackendState State { get; }
 
     EmulationBackendCapabilities Capabilities { get; }
@@ -23,6 +25,12 @@ public interface IEmulationBackend : IAsyncDisposable
     Task ResetAsync(EmulationResetKind resetKind, CancellationToken cancellationToken);
 
     Task SetInputStateAsync(InputDefinitionModel inputDefinition, bool isPressed, CancellationToken cancellationToken);
+}
+
+public enum EmulationBackendKind
+{
+    Mame,
+    NativeSystem6
 }
 
 public enum EmulationBackendState

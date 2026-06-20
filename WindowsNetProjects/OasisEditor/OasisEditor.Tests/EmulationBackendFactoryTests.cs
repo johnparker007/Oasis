@@ -41,6 +41,7 @@ public sealed class EmulationBackendFactoryTests
 
     private sealed class FakeBackend : IEmulationBackend
     {
+        public EmulationBackendKind BackendKind => EmulationBackendKind.Mame;
         public EmulationBackendState State => EmulationBackendState.Stopped;
         public EmulationBackendCapabilities Capabilities { get; } = new(false, false, false, false, false, false, false, false);
         public event EventHandler<EmulationBackendState>? StateChanged

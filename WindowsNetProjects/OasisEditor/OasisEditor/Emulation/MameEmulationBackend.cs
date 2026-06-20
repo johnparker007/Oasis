@@ -34,6 +34,8 @@ public sealed class MameEmulationBackend : IEmulationBackend
         _emulationService.StateChanged += OnMameStateChanged;
     }
 
+    public EmulationBackendKind BackendKind => EmulationBackendKind.Mame;
+
     public EmulationBackendState State => MapState(_emulationService.State);
 
     public EmulationBackendCapabilities Capabilities => MameCapabilities;

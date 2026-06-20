@@ -77,6 +77,8 @@ public sealed class System6NativeBackend : IEmulationBackend
         _cyclesPerFrame = System6ClockHz / framesPerSecond;
     }
 
+    public EmulationBackendKind BackendKind => EmulationBackendKind.NativeSystem6;
+
     public EmulationBackendState State
     {
         get
