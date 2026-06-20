@@ -14,6 +14,8 @@ public sealed class System6NativeBackend : IEmulationBackend
     private const int DiagnosticChangedLampSampleCount = 8;
     private const int DiagnosticMappingSampleCount = 8;
     private const int AlphaCellCount = 16;
+    private const int SevenSegmentMaskBits = 8;
+    private const int NativeSevenSegmentCellStride = 16;
     private const int SupportedReelOptoCount = 8;
     private const string DiagnosticStageEnvironmentVariable = "OASIS_SYSTEM6_STARTUP_STAGE";
     private const string TimingDiagnosticsEnvironmentVariable = "OASIS_SYSTEM6_TIMING_DIAGNOSTICS";
@@ -46,6 +48,9 @@ public sealed class System6NativeBackend : IEmulationBackend
     private readonly int[] _lastReelPositions = Enumerable.Repeat(int.MinValue, ReelCount).ToArray();
     private readonly int[] _reelStepCounts = new int[ReelCount];
     private int[]? _lastAlphaSegments;
+    private readonly Dictionary<int, int> _lastSevenSegmentMasks = new();
+    private bool _hasLoggedSevenSegmentUnavailable;
+    private IReadOnlyList<int>? _configuredSevenSegmentDisplayIds;
     private double? _lastAlphaBrightness;
     private bool _hasLoggedAlphaUnavailable;
     private bool _hasLoggedLampPollingConfiguration;
@@ -144,6 +149,7 @@ public sealed class System6NativeBackend : IEmulationBackend
             LogStartupStage("native DLL loaded and exports bound");
             LogStartupStage($"SYSTEM6GetAlphaSegments export {(_library.IsAlphaSegmentPollingAvailable ? "available" : "missing")}");
             LogStartupStage($"SetPercent export {(_library.IsSetPercentAvailable ? "available" : "missing")}");
+            LogStartupStage($"SYSTEM6GetSegOn export {(_library.IsSevenSegmentPollingAvailable ? "available" : "missing")}");
             LogStartupStage($"SYSTEM6UpdateLamps export {FormatOptionalExportStatus(_library.IsLampsUpdateAvailable, _library.LampsUpdateExportName)}");
             LogStartupStage("SYSTEM6GetLampsOn export available");
             if (startupStage is System6StartupStage.LoadBindOnly)
@@ -177,6 +183,7 @@ public sealed class System6NativeBackend : IEmulationBackend
             var coins = ValidateCoins(nativeRoms.Coins);
             var percentSwitchValue = ValidatePercentSwitchValue(nativeRoms.PercentSwitchValue);
             ConfigureLampPolling(request.ConfiguredLampIds);
+            ConfigureSevenSegmentPolling(request.ConfiguredSevenSegmentDisplayIds);
 
             cancellationToken.ThrowIfCancellationRequested();
             try
@@ -712,7 +719,72 @@ public sealed class System6NativeBackend : IEmulationBackend
         nativeInvokeCount += PollLampOutputs(library);
         nativeInvokeCount += PollReelOutputs(library);
         nativeInvokeCount += PollAlphaDebugOutput(library);
+        nativeInvokeCount += PollSevenSegmentOutputs(library);
         return nativeInvokeCount;
+    }
+
+    private int PollSevenSegmentOutputs(ISystem6NativeLibrary library)
+    {
+        var displayIds = _configuredSevenSegmentDisplayIds;
+        if (displayIds is null || displayIds.Count == 0)
+        {
+            return 0;
+        }
+
+        if (!library.IsSevenSegmentPollingAvailable)
+        {
+            if (!_hasLoggedSevenSegmentUnavailable)
+            {
+                _hasLoggedSevenSegmentUnavailable = true;
+                Debug.WriteLine("[System6 7 Segment] SYSTEM6GetSegOn unavailable; seven-segment polling disabled.");
+            }
+
+            return 0;
+        }
+
+        var nativeInvokeCount = 0;
+        try
+        {
+            library.UpdateSegs();
+            nativeInvokeCount++;
+        }
+        catch (NotSupportedException)
+        {
+            // Some cores expose direct segment reads without an explicit update export.
+        }
+
+        foreach (var displayId in displayIds)
+        {
+            var baseIndex = GetNativeSevenSegmentBaseIndex(displayId);
+            var mask = 0;
+            for (var bit = 0; bit < SevenSegmentMaskBits; bit++)
+            {
+                var nativeIndex = checked((ushort)(baseIndex + bit));
+                if (library.GetSegsOn(nativeIndex) != 0)
+                {
+                    mask |= 1 << bit;
+                }
+
+                nativeInvokeCount++;
+            }
+
+            if (!_lastSevenSegmentMasks.TryGetValue(displayId, out var previous) || previous != mask)
+            {
+                _lastSevenSegmentMasks[displayId] = mask;
+                Debug.WriteLine($"[System6 7 Segment] display {displayId} nativeBase={baseIndex} mask=0x{mask:X2}");
+                SegmentChanged?.Invoke(this, new MachineSegmentChangedEventArgs(displayId, mask, MameSegmentOutputType.Digit));
+            }
+        }
+
+        return nativeInvokeCount;
+    }
+
+    internal static int GetNativeSevenSegmentBaseIndex(int displayId)
+    {
+        // The native core exposes Seg7.On[256] as individual segment cells, not
+        // digit-level masks. Each digit occupies a 16-cell block; the first eight
+        // cells map to the canonical Oasis/MAME seven-segment bits.
+        return checked(displayId * NativeSevenSegmentCellStride);
     }
 
     private int PollLampOutputs(ISystem6NativeLibrary library)
@@ -808,6 +880,19 @@ public sealed class System6NativeBackend : IEmulationBackend
         if (_configuredLampPollingIds is { Length: 0 })
         {
             _configuredLampPollingIds = null;
+        }
+    }
+
+    private void ConfigureSevenSegmentPolling(IReadOnlyList<int>? configuredSevenSegmentDisplayIds)
+    {
+        _configuredSevenSegmentDisplayIds = configuredSevenSegmentDisplayIds?
+            .Where(displayId => displayId is >= 0 and <= (ushort.MaxValue / NativeSevenSegmentCellStride))
+            .Distinct()
+            .OrderBy(displayId => displayId)
+            .ToArray();
+        if (_configuredSevenSegmentDisplayIds is { Count: 0 })
+        {
+            _configuredSevenSegmentDisplayIds = null;
         }
     }
 
@@ -948,10 +1033,12 @@ public sealed class System6NativeBackend : IEmulationBackend
         Array.Fill(_lastLampRawValues, -1);
         Array.Fill(_lastReelPositions, int.MinValue);
         _lastAlphaSegments = null;
+        _lastSevenSegmentMasks.Clear();
         _lastAlphaBrightness = null;
         _hasLoggedAlphaUnavailable = false;
         _hasLoggedLampPollingConfiguration = false;
         _hasLoggedReelPollingMapping = false;
+        _hasLoggedSevenSegmentUnavailable = false;
     }
 
     private void CleanupLibraryAfterFailedStart()

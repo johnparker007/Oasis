@@ -23,6 +23,9 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
     private readonly System6GetAlphaSegmentsDelegate? _getAlphaSegments;
     private readonly System6GetAlphaBrightnessDelegate? _getAlphaBrightness;
     private readonly System6SetPercentDelegate? _setPercent;
+    private readonly System6UpdateSegsDelegate? _updateSegs;
+    private readonly System6GetSegsOnDelegate? _getSegsOn;
+    private readonly System6GetSegsBrightDelegate? _getSegsBright;
     private readonly System6SetCoinEnableDelegate _setCoinEnable;
     private readonly System6SetCoinValueDelegate _setCoinValue;
     private readonly System6SetLockoutValDelegate _setLockoutVal;
@@ -64,6 +67,9 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
         _getAlphaSegments = TryBindOptionalExport<System6GetAlphaSegmentsDelegate>("SYSTEM6GetAlphaSegments");
         _getAlphaBrightness = TryBindOptionalExport<System6GetAlphaBrightnessDelegate>("SYSTEM6GetAlphaBright");
         _setPercent = TryBindOptionalExport<System6SetPercentDelegate>("SetPercent");
+        _updateSegs = TryBindOptionalExport<System6UpdateSegsDelegate>("SYSTEM6UpdateSegs");
+        _getSegsOn = TryBindOptionalExport<System6GetSegsOnDelegate>("SYSTEM6GetSegOn");
+        _getSegsBright = TryBindOptionalExport<System6GetSegsBrightDelegate>("SYSTEM6GetSegBright");
         _setCoinEnable = _loader.BindExport<System6SetCoinEnableDelegate>("SYSTEM6SetCoinEnable");
         _setCoinValue = _loader.BindExport<System6SetCoinValueDelegate>("SYSTEM6SetCoinValue");
         _setLockoutVal = _loader.BindExport<System6SetLockoutValDelegate>("SYSTEM6SetLockoutVal");
@@ -146,6 +152,26 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
     }
 
     public bool IsSetPercentAvailable => _setPercent is not null;
+
+    public bool IsSevenSegmentPollingAvailable => _getSegsOn is not null;
+
+    public void UpdateSegs()
+    {
+        var updateSegs = _updateSegs ?? throw new NotSupportedException("System6 native core does not export SYSTEM6UpdateSegs.");
+        updateSegs();
+    }
+
+    public int GetSegsOn(ushort index)
+    {
+        var getSegsOn = _getSegsOn ?? throw new NotSupportedException("System6 native core does not export SYSTEM6GetSegOn.");
+        return getSegsOn(index);
+    }
+
+    public byte GetSegsBright(ushort index)
+    {
+        var getSegsBright = _getSegsBright ?? throw new NotSupportedException("System6 native core does not export SYSTEM6GetSegBright.");
+        return getSegsBright(index);
+    }
 
     public void SetPercent(byte percent)
     {
@@ -303,6 +329,15 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     public delegate void System6SetPercentDelegate(byte percent);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate void System6UpdateSegsDelegate();
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate int System6GetSegsOnDelegate(ushort index);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate byte System6GetSegsBrightDelegate(ushort index);
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     public delegate void System6SetCoinEnableDelegate(byte num, byte coin, byte coinEnable);

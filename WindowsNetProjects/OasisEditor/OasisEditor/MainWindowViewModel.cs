@@ -22,6 +22,7 @@ namespace OasisEditor;
 
 public sealed class MainWindowViewModel : INotifyPropertyChanged
 {
+    private const int NativeSystem6SevenSegmentCellStride = 16;
     private static readonly bool kDebugSkiaPerformanceOutput = false;
     private readonly RecentProjectsStore _recentProjectsStore = new();
     private readonly IApplicationThemeService _applicationThemeService;
@@ -2611,7 +2612,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             romPaths,
             MameCommandLineOverrides,
             BuildSystem6NativeRomSettingsForLaunch(),
-            BuildConfiguredLampIdsForLaunch());
+            BuildConfiguredLampIdsForLaunch(),
+            BuildConfiguredSevenSegmentDisplayIdsForLaunch());
     }
 
     private IReadOnlyList<int>? BuildConfiguredLampIdsForLaunch()
@@ -2637,6 +2639,35 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         return lampIds.Count == 0 ? null : lampIds.ToArray();
+    }
+
+
+    private IReadOnlyList<int>? BuildConfiguredSevenSegmentDisplayIdsForLaunch()
+    {
+        var displayIds = new SortedSet<int>();
+        foreach (var document in OpenDocuments)
+        {
+            foreach (var element in document.GetPanelElements())
+            {
+                if (element.Kind == PanelElementKind.SevenSegment && element.DisplayNumber is int displayId && displayId is >= 0 and <= ushort.MaxValue / NativeSystem6SevenSegmentCellStride)
+                {
+                    displayIds.Add(displayId);
+                }
+            }
+
+            foreach (var faceDisplay in document.GetFaceElements().OfType<FaceSevenSegmentDisplayElement>())
+            {
+                if (faceDisplay.LinkedMachineObjectReference is MachineObjectReference reference
+                    && reference.Kind == MachineObjectKind.SevenSegmentDisplay
+                    && int.TryParse(reference.Id, out var displayId)
+                    && displayId is >= 0 and <= ushort.MaxValue / NativeSystem6SevenSegmentCellStride)
+                {
+                    displayIds.Add(displayId);
+                }
+            }
+        }
+
+        return displayIds.Count == 0 ? null : displayIds.ToArray();
     }
 
     private bool SetSystem6RomPath(ref string field, string value, string propertyName)
