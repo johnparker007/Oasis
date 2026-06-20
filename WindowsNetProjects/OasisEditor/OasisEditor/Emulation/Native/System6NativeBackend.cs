@@ -159,6 +159,7 @@ public sealed class System6NativeBackend : IEmulationBackend
             var programRomPaths = ValidateNativeRomPaths(nativeRoms.ProgramRomPaths, true, "program");
             var soundRomPaths = ValidateNativeRomPaths(nativeRoms.SoundRomPaths, false, "sound");
             var reelOptos = ValidateReelOptos(nativeRoms.ReelOptos);
+            var coins = ValidateCoins(nativeRoms.Coins);
             var percentSwitchValue = ValidatePercentSwitchValue(nativeRoms.PercentSwitchValue);
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -212,6 +213,9 @@ public sealed class System6NativeBackend : IEmulationBackend
                 LogStartupStage("Apply reel optos starting after Reset");
                 ApplyReelOptos(_library, reelOptos);
                 LogStartupStage("Apply reel optos completed before first Run");
+                LogStartupStage("Apply coins starting before first Run");
+                ApplyCoins(_library, coins);
+                LogStartupStage("Apply coins completed before first Run");
                 ApplyPercent(_library, percentSwitchValue);
             }
             catch (Exception ex)
@@ -451,6 +455,46 @@ public sealed class System6NativeBackend : IEmulationBackend
         return settings;
     }
 
+    private static IReadOnlyList<System6CoinSettings> ValidateCoins(IReadOnlyList<System6CoinSettings>? coins)
+    {
+        var defaults = System6NativeRomSettings.CreateDefaultCoins();
+        if (coins is null || coins.Count == 0)
+        {
+            return defaults;
+        }
+
+        var settings = new List<System6CoinSettings>(System6NativeRomSettings.DefaultCoinSlotCount);
+        for (var index = 0; index < System6NativeRomSettings.DefaultCoinSlotCount; index++)
+        {
+            settings.Add(index < coins.Count ? coins[index] : defaults[index]);
+        }
+
+        foreach (var coin in settings.Where(coin => coin.Enabled))
+        {
+            ValidateCoinByte(coin.Num, nameof(coin.Num));
+            ValidateCoinByte(coin.Coin, nameof(coin.Coin));
+            ValidateCoinByte(coin.CoinValue, nameof(coin.CoinValue));
+            ValidateCoinByte(coin.CoinEnable, nameof(coin.CoinEnable));
+            ValidateCoinByte(coin.LockoutValue, nameof(coin.LockoutValue));
+            ValidateCoinByte(coin.LockoutInvert, nameof(coin.LockoutInvert));
+            ValidateCoinByte(coin.CounterIn, nameof(coin.CounterIn));
+            ValidateCoinByte(coin.CounterOut, nameof(coin.CounterOut));
+            ValidateCoinByte(coin.PortIndex, nameof(coin.PortIndex));
+            ValidateCoinByte(coin.Level, nameof(coin.Level));
+            ValidateCoinByte(coin.FullLevel, nameof(coin.FullLevel));
+        }
+
+        return settings;
+    }
+
+    private static void ValidateCoinByte(int value, string propertyName)
+    {
+        if (value is < 0 or > byte.MaxValue)
+        {
+            throw new InvalidOperationException($"System6 coin {propertyName} must be between 0 and 255.");
+        }
+    }
+
     private static int ValidatePercentSwitchValue(int percentSwitchValue)
     {
         if (percentSwitchValue is < 0 or > 15)
@@ -472,6 +516,27 @@ public sealed class System6NativeBackend : IEmulationBackend
             library.SetOptoEnd(nativeReelIndex, checked((byte)reel.OptoEnd));
             library.SetOptoInvert(nativeReelIndex, reel.OptoInvert ? (byte)1 : (byte)0);
             LogStartupStage($"System6 reel {displayReelNumber} -> native index {nativeReelIndex}: steps={reel.Steps} start={reel.OptoStart} end={reel.OptoEnd} inverted={reel.OptoInvert.ToString(CultureInfo.InvariantCulture).ToLowerInvariant()}");
+        }
+    }
+
+    private static void ApplyCoins(ISystem6NativeLibrary library, IReadOnlyList<System6CoinSettings> coins)
+    {
+        foreach (var coin in coins.Where(coin => coin.Enabled))
+        {
+            var num = checked((byte)coin.Num);
+            var channel = checked((byte)coin.Coin);
+            library.SetCoinEnable(num, channel, checked((byte)coin.CoinEnable));
+            library.SetCoinValue(num, channel, checked((byte)coin.CoinValue));
+            library.SetLockoutVal(num, channel, checked((byte)coin.LockoutValue));
+            library.SetLockoutInvert(num, channel, checked((byte)coin.LockoutInvert));
+            library.SetEnable(num, 1);
+            library.SetCounterIn(num, checked((byte)coin.CounterIn));
+            library.SetCounterOut(num, checked((byte)coin.CounterOut));
+            library.SetPortIndex(num, checked((byte)coin.PortIndex));
+            library.SetCoin(num, channel);
+            library.SetLevel(num, checked((byte)coin.Level));
+            library.SetFullLevel(num, checked((byte)coin.FullLevel));
+            LogStartupStage($"System6 coin '{coin.Name}' -> num={coin.Num} coin={coin.Coin} value={coin.CoinValue} enabled={coin.CoinEnable}");
         }
     }
 

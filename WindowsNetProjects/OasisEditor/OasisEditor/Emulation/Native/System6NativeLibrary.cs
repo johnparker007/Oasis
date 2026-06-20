@@ -23,6 +23,17 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
     private readonly System6GetAlphaSegmentsDelegate? _getAlphaSegments;
     private readonly System6GetAlphaBrightnessDelegate? _getAlphaBrightness;
     private readonly System6SetPercentDelegate? _setPercent;
+    private readonly System6SetCoinEnableDelegate _setCoinEnable;
+    private readonly System6SetCoinValueDelegate _setCoinValue;
+    private readonly System6SetLockoutValDelegate _setLockoutVal;
+    private readonly System6SetLockoutInvertDelegate _setLockoutInvert;
+    private readonly System6SetEnableDelegate _setEnable;
+    private readonly System6SetCounterInDelegate _setCounterIn;
+    private readonly System6SetCounterOutDelegate _setCounterOut;
+    private readonly System6SetPortIndexDelegate _setPortIndex;
+    private readonly System6SetCoinDelegate _setCoin;
+    private readonly System6SetLevelDelegate _setLevel;
+    private readonly System6SetFullLevelDelegate _setFullLevel;
     private readonly System6TurnSwitchOnDelegate _turnSwitchOn;
     private readonly System6TurnSwitchOffDelegate _turnSwitchOff;
     private readonly List<IntPtr> _romPathBuffers = [];
@@ -53,6 +64,17 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
         _getAlphaSegments = TryBindOptionalExport<System6GetAlphaSegmentsDelegate>("SYSTEM6GetAlphaSegments");
         _getAlphaBrightness = TryBindOptionalExport<System6GetAlphaBrightnessDelegate>("SYSTEM6GetAlphaBright");
         _setPercent = TryBindOptionalExport<System6SetPercentDelegate>("SetPercent");
+        _setCoinEnable = _loader.BindExport<System6SetCoinEnableDelegate>("SYSTEM6SetCoinEnable");
+        _setCoinValue = _loader.BindExport<System6SetCoinValueDelegate>("SYSTEM6SetCoinValue");
+        _setLockoutVal = _loader.BindExport<System6SetLockoutValDelegate>("SYSTEM6SetLockoutVal");
+        _setLockoutInvert = _loader.BindExport<System6SetLockoutInvertDelegate>("SYSTEM6SetLockoutInvert");
+        _setEnable = _loader.BindExport<System6SetEnableDelegate>("SYSTEM6SetEnable");
+        _setCounterIn = _loader.BindExport<System6SetCounterInDelegate>("SYSTEM6SetCounterIn");
+        _setCounterOut = _loader.BindExport<System6SetCounterOutDelegate>("SYSTEM6SetCounterOut");
+        _setPortIndex = _loader.BindExport<System6SetPortIndexDelegate>("SYSTEM6SetPortIndex");
+        _setCoin = _loader.BindExport<System6SetCoinDelegate>("SYSTEM6SetCoin");
+        _setLevel = _loader.BindExport<System6SetLevelDelegate>("SYSTEM6SetLevel");
+        _setFullLevel = _loader.BindExport<System6SetFullLevelDelegate>("SYSTEM6SetFullLevel");
         _turnSwitchOn = _loader.BindExport<System6TurnSwitchOnDelegate>("SYSTEM6TurnSwitchOn");
         _turnSwitchOff = _loader.BindExport<System6TurnSwitchOffDelegate>("SYSTEM6TurnSwitchOff");
     }
@@ -130,6 +152,28 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
         var setPercent = _setPercent ?? throw new NotSupportedException("System6 native core does not export SetPercent.");
         setPercent(percent);
     }
+
+    public void SetCoinEnable(byte num, byte coin, byte coinEnable) => _setCoinEnable(num, coin, coinEnable);
+
+    public void SetCoinValue(byte num, byte coin, byte coinValue) => _setCoinValue(num, coin, coinValue);
+
+    public void SetLockoutVal(byte num, byte coin, byte lockoutValue) => _setLockoutVal(num, coin, lockoutValue);
+
+    public void SetLockoutInvert(byte num, byte coin, byte lockoutInvert) => _setLockoutInvert(num, coin, lockoutInvert);
+
+    public void SetEnable(byte num, byte enable) => _setEnable(num, enable);
+
+    public void SetCounterIn(byte num, byte counterIn) => _setCounterIn(num, counterIn);
+
+    public void SetCounterOut(byte num, byte counterOut) => _setCounterOut(num, counterOut);
+
+    public void SetPortIndex(byte num, byte portIndex) => _setPortIndex(num, portIndex);
+
+    public void SetCoin(byte num, byte coin) => _setCoin(num, coin);
+
+    public void SetLevel(byte num, byte level) => _setLevel(num, level);
+
+    public void SetFullLevel(byte num, byte fullLevel) => _setFullLevel(num, fullLevel);
 
     public void TurnSwitchOn(int switchIndex) => _turnSwitchOn(switchIndex);
 
@@ -259,6 +303,39 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     public delegate void System6SetPercentDelegate(byte percent);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate void System6SetCoinEnableDelegate(byte num, byte coin, byte coinEnable);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate void System6SetCoinValueDelegate(byte num, byte coin, byte coinValue);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate void System6SetLockoutValDelegate(byte num, byte coin, byte lockoutValue);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate void System6SetLockoutInvertDelegate(byte num, byte coin, byte lockoutInvert);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate void System6SetEnableDelegate(byte num, byte enable);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate void System6SetCounterInDelegate(byte num, byte counterIn);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate void System6SetCounterOutDelegate(byte num, byte counterOut);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate void System6SetPortIndexDelegate(byte num, byte portIndex);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate void System6SetCoinDelegate(byte num, byte coin);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate void System6SetLevelDelegate(byte num, byte level);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate void System6SetFullLevelDelegate(byte num, byte fullLevel);
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     public delegate void System6TurnSwitchOnDelegate(int switchIndex);

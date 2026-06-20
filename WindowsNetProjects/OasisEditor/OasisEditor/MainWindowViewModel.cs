@@ -69,6 +69,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private int _system6PercentSwitchValue = System6NativeRomSettings.DefaultPercentSwitchValue;
     private string _system6NativeRomStatus = "Program ROM 1 and 2 are required for native DLL launch.";
     private ObservableCollection<System6ReelOptoSettingsViewModel> _system6ReelOptos = [];
+    private ObservableCollection<System6CoinSettingsViewModel> _system6Coins = [];
     private string _mameRomStatus = "Unknown";
     private bool _isMameRomDownloadInProgress;
     private bool _isMfmeImportInProgress;
@@ -565,7 +566,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public IReadOnlyList<ThemePreference> ThemePreferences { get; } = Enum.GetValues<ThemePreference>();
     public IReadOnlyList<string> PreferencesCategories { get; } = ["Appearance", "MAME", "Native Emulation"];
     public IReadOnlyList<string> ProjectSettingsCategories { get; } = ["General", "MAME", "Native"];
-    public IReadOnlyList<string> NativeProjectSettingsTabs { get; } = ["ROMS", "Stake/Prize", "Reels"];
+    public IReadOnlyList<string> NativeProjectSettingsTabs { get; } = ["ROMS", "Stake/Prize", "Reels", "Coins"];
     public IReadOnlyList<FruitMachinePlatformType> FruitMachinePlatformTypes { get; } = Enum.GetValues<FruitMachinePlatformType>();
     public IReadOnlyList<InputDefinitionModel> InputDefinitions => LoadedProject?.InputDefinitions ?? [];
     public IReadOnlyList<InputMapDiagnostic> InputMapDiagnostics
@@ -816,6 +817,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     }
     public string System6NativeRomStatus { get => _system6NativeRomStatus; private set => SetProperty(ref _system6NativeRomStatus, value); }
     public ObservableCollection<System6ReelOptoSettingsViewModel> System6ReelOptos { get => _system6ReelOptos; private set => SetProperty(ref _system6ReelOptos, value); }
+    public ObservableCollection<System6CoinSettingsViewModel> System6Coins { get => _system6Coins; private set => SetProperty(ref _system6Coins, value); }
     public string MameValidationSummary { get => _mameValidationSummary; private set => SetProperty(ref _mameValidationSummary, value); }
     public string MameSetupPhaseDisplay => _mameSetupState.Phase.ToString();
     public string MameSetupLatestKnownVersion => _mameSetupState.LatestKnownVersion;
@@ -2641,7 +2643,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             SoundRom4Path = System6SoundRom4Path,
             FlashSwitch = System6FlashSwitch,
             PercentSwitchValue = System6PercentSwitchValue,
-            ReelOptos = System6ReelOptos.Select(reel => reel.ToModel()).ToList()
+            ReelOptos = System6ReelOptos.Select(reel => reel.ToModel()).ToList(),
+            Coins = System6Coins.Select(coin => coin.ToModel()).ToList()
         };
         SaveLoadedProjectMetadata();
     }
@@ -2659,6 +2662,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _system6FlashSwitch = settings.FlashSwitch;
         _system6PercentSwitchValue = Math.Clamp(settings.PercentSwitchValue, 0, 15);
         System6ReelOptos = new ObservableCollection<System6ReelOptoSettingsViewModel>((settings.ReelOptos is { Count: > 0 } ? settings.ReelOptos : System6NativeRomSettings.CreateDefaultReelOptos()).Select(reel => new System6ReelOptoSettingsViewModel(reel, SaveSystem6NativeRomSettings)));
+        System6Coins = new ObservableCollection<System6CoinSettingsViewModel>(NormalizeSystem6CoinSettings(settings.Coins).Select(coin => new System6CoinSettingsViewModel(coin, SaveSystem6NativeRomSettings)));
         OnPropertyChanged(nameof(System6ProgramRom1Path)); OnPropertyChanged(nameof(System6ProgramRom2Path));
         OnPropertyChanged(nameof(System6ProgramRom3Path)); OnPropertyChanged(nameof(System6ProgramRom4Path));
         OnPropertyChanged(nameof(System6SoundRom1Path)); OnPropertyChanged(nameof(System6SoundRom2Path));
@@ -2696,6 +2700,23 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         SaveSystem6NativeRomSettings();
     }
 
+    private static List<System6CoinSettings> NormalizeSystem6CoinSettings(IReadOnlyList<System6CoinSettings>? coins)
+    {
+        var defaults = System6NativeRomSettings.CreateDefaultCoins();
+        if (coins is null || coins.Count == 0)
+        {
+            return defaults;
+        }
+
+        var normalized = new List<System6CoinSettings>(System6NativeRomSettings.DefaultCoinSlotCount);
+        for (var index = 0; index < System6NativeRomSettings.DefaultCoinSlotCount; index++)
+        {
+            normalized.Add(index < coins.Count ? coins[index] : defaults[index]);
+        }
+
+        return normalized;
+    }
+
     private System6NativeRomSettings BuildSystem6NativeRomSettingsForLaunch()
     {
         var settings = LoadedProject?.System6NativeRoms ?? new System6NativeRomSettings();
@@ -2714,6 +2735,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             PercentSwitchValue = Math.Clamp(settings.PercentSwitchValue, 0, 15),
             ReelOptos = (settings.ReelOptos is { Count: > 0 } ? settings.ReelOptos : System6NativeRomSettings.CreateDefaultReelOptos())
                 .Select(reel => new System6ReelOptoSettings { ReelIndex = reel.ReelIndex, Enabled = reel.Enabled, Steps = reel.Steps, OptoStart = reel.OptoStart, OptoEnd = reel.OptoEnd, OptoInvert = reel.OptoInvert })
+                .ToList(),
+            Coins = NormalizeSystem6CoinSettings(settings.Coins)
+                .Select(coin => new System6CoinSettings { Name = coin.Name, Enabled = coin.Enabled, Num = coin.Num, Coin = coin.Coin, CoinValue = coin.CoinValue, CoinEnable = coin.CoinEnable, LockoutValue = coin.LockoutValue, LockoutInvert = coin.LockoutInvert, CounterIn = coin.CounterIn, CounterOut = coin.CounterOut, PortIndex = coin.PortIndex, Level = coin.Level, FullLevel = coin.FullLevel })
                 .ToList()
         };
     }
@@ -3626,6 +3650,27 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             writer.WriteEndObject();
         }
         writer.WriteEndArray();
+        writer.WritePropertyName("Coins");
+        writer.WriteStartArray();
+        foreach (var coin in settings.Coins)
+        {
+            writer.WriteStartObject();
+            writer.WriteString("Name", coin.Name);
+            writer.WriteBoolean("Enabled", coin.Enabled);
+            writer.WriteNumber("Num", coin.Num);
+            writer.WriteNumber("Coin", coin.Coin);
+            writer.WriteNumber("CoinValue", coin.CoinValue);
+            writer.WriteNumber("CoinEnable", coin.CoinEnable);
+            writer.WriteNumber("LockoutValue", coin.LockoutValue);
+            writer.WriteNumber("LockoutInvert", coin.LockoutInvert);
+            writer.WriteNumber("CounterIn", coin.CounterIn);
+            writer.WriteNumber("CounterOut", coin.CounterOut);
+            writer.WriteNumber("PortIndex", coin.PortIndex);
+            writer.WriteNumber("Level", coin.Level);
+            writer.WriteNumber("FullLevel", coin.FullLevel);
+            writer.WriteEndObject();
+        }
+        writer.WriteEndArray();
         writer.WriteEndObject();
     }
 
@@ -3649,7 +3694,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             SoundRom4Path = GetOptionalString(romsElement, "SoundRom4Path"),
             FlashSwitch = romsElement.TryGetProperty("FlashSwitch", out var flashElement) && flashElement.ValueKind == JsonValueKind.True,
             PercentSwitchValue = Math.Clamp(GetOptionalInt(romsElement, "PercentSwitchValue", System6NativeRomSettings.DefaultPercentSwitchValue), 0, 15),
-            ReelOptos = ResolveSystem6ReelOptoSettings(romsElement)
+            ReelOptos = ResolveSystem6ReelOptoSettings(romsElement),
+            Coins = ResolveSystem6CoinSettings(romsElement)
         };
     }
 
@@ -3678,14 +3724,46 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         return reelOptos.Count > 0 ? reelOptos : System6NativeRomSettings.CreateDefaultReelOptos();
     }
 
+    private static List<System6CoinSettings> ResolveSystem6CoinSettings(JsonElement romsElement)
+    {
+        if (!romsElement.TryGetProperty("Coins", out var coinsElement) || coinsElement.ValueKind != JsonValueKind.Array)
+        {
+            return System6NativeRomSettings.CreateDefaultCoins();
+        }
+
+        var coins = new List<System6CoinSettings>();
+        foreach (var coinElement in coinsElement.EnumerateArray().Take(System6NativeRomSettings.DefaultCoinSlotCount))
+        {
+            var coinIndex = coins.Count;
+            coins.Add(new System6CoinSettings
+            {
+                Name = GetOptionalString(coinElement, "Name", $"Coin {coinIndex + 1}"),
+                Enabled = coinElement.TryGetProperty("Enabled", out var enabledElement) && enabledElement.ValueKind == JsonValueKind.True,
+                Num = GetOptionalInt(coinElement, "Num", coinIndex),
+                Coin = GetOptionalInt(coinElement, "Coin", System6CoinSettings.DefaultCoin),
+                CoinValue = GetOptionalInt(coinElement, "CoinValue", System6CoinSettings.DefaultCoinValue),
+                CoinEnable = GetOptionalInt(coinElement, "CoinEnable", System6CoinSettings.DefaultCoinEnable),
+                LockoutValue = GetOptionalInt(coinElement, "LockoutValue", System6CoinSettings.DefaultLockoutValue),
+                LockoutInvert = GetOptionalInt(coinElement, "LockoutInvert", System6CoinSettings.DefaultLockoutInvert),
+                CounterIn = GetOptionalInt(coinElement, "CounterIn"),
+                CounterOut = GetOptionalInt(coinElement, "CounterOut"),
+                PortIndex = GetOptionalInt(coinElement, "PortIndex"),
+                Level = GetOptionalInt(coinElement, "Level"),
+                FullLevel = GetOptionalInt(coinElement, "FullLevel")
+            });
+        }
+
+        return NormalizeSystem6CoinSettings(coins);
+    }
+
     private static int GetOptionalInt(JsonElement element, string propertyName, int defaultValue = 0)
     {
         return element.TryGetProperty(propertyName, out var value) && value.TryGetInt32(out var parsed) ? parsed : defaultValue;
     }
 
-    private static string GetOptionalString(JsonElement element, string propertyName)
+    private static string GetOptionalString(JsonElement element, string propertyName, string defaultValue = "")
     {
-        return element.TryGetProperty(propertyName, out var value) ? value.GetString() ?? string.Empty : string.Empty;
+        return element.TryGetProperty(propertyName, out var value) ? value.GetString() ?? defaultValue : defaultValue;
     }
 
     private FruitMachinePlatformType ResolveFruitMachinePlatform(JsonElement root)
@@ -4257,6 +4335,88 @@ internal static class EditorProjectInputDefinitionExtensions
         }
 
         return project;
+    }
+}
+
+
+public sealed class System6CoinSettingsViewModel : INotifyPropertyChanged
+{
+    private readonly Action _changed;
+    private string _name;
+    private bool _enabled;
+    private int _num;
+    private int _coin;
+    private int _coinValue;
+    private int _coinEnable;
+    private int _lockoutValue;
+    private int _lockoutInvert;
+    private int _counterIn;
+    private int _counterOut;
+    private int _portIndex;
+    private int _level;
+    private int _fullLevel;
+
+    public System6CoinSettingsViewModel(System6CoinSettings model, Action changed)
+    {
+        _name = model.Name;
+        _enabled = model.Enabled;
+        _num = model.Num;
+        _coin = model.Coin;
+        _coinValue = model.CoinValue;
+        _coinEnable = model.CoinEnable;
+        _lockoutValue = model.LockoutValue;
+        _lockoutInvert = model.LockoutInvert;
+        _counterIn = model.CounterIn;
+        _counterOut = model.CounterOut;
+        _portIndex = model.PortIndex;
+        _level = model.Level;
+        _fullLevel = model.FullLevel;
+        _changed = changed;
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public string Name { get => _name; set => SetAndSave(ref _name, value, nameof(Name)); }
+    public bool Enabled { get => _enabled; set => SetAndSave(ref _enabled, value, nameof(Enabled)); }
+    public int Num { get => _num; set => SetAndSave(ref _num, Math.Clamp(value, 0, byte.MaxValue), nameof(Num)); }
+    public int Coin { get => _coin; set => SetAndSave(ref _coin, Math.Clamp(value, 0, byte.MaxValue), nameof(Coin)); }
+    public int CoinValue { get => _coinValue; set => SetAndSave(ref _coinValue, Math.Clamp(value, 0, byte.MaxValue), nameof(CoinValue)); }
+    public int CoinEnable { get => _coinEnable; set => SetAndSave(ref _coinEnable, Math.Clamp(value, 0, byte.MaxValue), nameof(CoinEnable)); }
+    public int LockoutValue { get => _lockoutValue; set => SetAndSave(ref _lockoutValue, Math.Clamp(value, 0, byte.MaxValue), nameof(LockoutValue)); }
+    public int LockoutInvert { get => _lockoutInvert; set => SetAndSave(ref _lockoutInvert, Math.Clamp(value, 0, byte.MaxValue), nameof(LockoutInvert)); }
+    public int CounterIn { get => _counterIn; set => SetAndSave(ref _counterIn, Math.Clamp(value, 0, byte.MaxValue), nameof(CounterIn)); }
+    public int CounterOut { get => _counterOut; set => SetAndSave(ref _counterOut, Math.Clamp(value, 0, byte.MaxValue), nameof(CounterOut)); }
+    public int PortIndex { get => _portIndex; set => SetAndSave(ref _portIndex, Math.Clamp(value, 0, byte.MaxValue), nameof(PortIndex)); }
+    public int Level { get => _level; set => SetAndSave(ref _level, Math.Clamp(value, 0, byte.MaxValue), nameof(Level)); }
+    public int FullLevel { get => _fullLevel; set => SetAndSave(ref _fullLevel, Math.Clamp(value, 0, byte.MaxValue), nameof(FullLevel)); }
+
+    public System6CoinSettings ToModel() => new()
+    {
+        Name = Name,
+        Enabled = Enabled,
+        Num = Num,
+        Coin = Coin,
+        CoinValue = CoinValue,
+        CoinEnable = CoinEnable,
+        LockoutValue = LockoutValue,
+        LockoutInvert = LockoutInvert,
+        CounterIn = CounterIn,
+        CounterOut = CounterOut,
+        PortIndex = PortIndex,
+        Level = Level,
+        FullLevel = FullLevel
+    };
+
+    private void SetAndSave<T>(ref T field, T value, string propertyName)
+    {
+        if (EqualityComparer<T>.Default.Equals(field, value))
+        {
+            return;
+        }
+
+        field = value;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        _changed();
     }
 }
 

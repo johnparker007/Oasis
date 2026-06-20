@@ -71,6 +71,48 @@ public sealed class System6NativeBackendTests
         Assert.Equal(7, eighthReel.ToModel().ReelIndex);
     }
 
+
+    [Fact]
+    public async Task StartAsyncAppliesOnlyEnabledNativeCoinRows()
+    {
+        var library = new FakeSystem6NativeLibrary();
+        var (dllPath, rom1, rom2) = CreateNativeFiles(2);
+        var backend = new System6NativeBackend(dllPath, _ => library);
+        var request = CreateLaunchRequest(rom1, rom2);
+        request.System6NativeRoms!.Coins[0].Enabled = true;
+        request.System6NativeRoms.Coins[0].Name = "10p";
+        request.System6NativeRoms.Coins[0].Num = 2;
+        request.System6NativeRoms.Coins[0].Coin = 3;
+        request.System6NativeRoms.Coins[0].CoinValue = 10;
+        request.System6NativeRoms.Coins[0].CoinEnable = 1;
+        request.System6NativeRoms.Coins[0].LockoutValue = 4;
+        request.System6NativeRoms.Coins[0].LockoutInvert = 5;
+        request.System6NativeRoms.Coins[0].CounterIn = 6;
+        request.System6NativeRoms.Coins[0].CounterOut = 7;
+        request.System6NativeRoms.Coins[0].PortIndex = 8;
+        request.System6NativeRoms.Coins[0].Level = 9;
+        request.System6NativeRoms.Coins[0].FullLevel = 10;
+        request.System6NativeRoms.Coins[1].Enabled = false;
+        request.System6NativeRoms.Coins[1].Num = 9;
+
+        await backend.StartAsync(request, CancellationToken.None);
+        await backend.StopAsync(CancellationToken.None);
+
+        Assert.Contains("SetCoinEnable:2:3:1", library.Calls);
+        Assert.Contains("SetCoinValue:2:3:10", library.Calls);
+        Assert.Contains("SetLockoutVal:2:3:4", library.Calls);
+        Assert.Contains("SetLockoutInvert:2:3:5", library.Calls);
+        Assert.Contains("SetEnable:2:1", library.Calls);
+        Assert.Contains("SetCounterIn:2:6", library.Calls);
+        Assert.Contains("SetCounterOut:2:7", library.Calls);
+        Assert.Contains("SetPortIndex:2:8", library.Calls);
+        Assert.Contains("SetCoin:2:3", library.Calls);
+        Assert.Contains("SetLevel:2:9", library.Calls);
+        Assert.Contains("SetFullLevel:2:10", library.Calls);
+        Assert.DoesNotContain(library.Calls, call => call.StartsWith("SetCoinEnable:9:", StringComparison.Ordinal));
+        Assert.DoesNotContain(library.Calls, call => call.StartsWith("SetEnable:9:", StringComparison.Ordinal));
+    }
+
     [Fact]
     public async Task SetInputStateAsyncMapsNumericInputIdToNativeSwitchCalls()
     {
@@ -453,6 +495,28 @@ public sealed class System6NativeBackendTests
         public bool IsSetPercentAvailable => true;
 
         public void SetPercent(byte percent) => Calls.Add($"SetPercent:{percent}");
+
+        public void SetCoinEnable(byte num, byte coin, byte coinEnable) => Calls.Add($"SetCoinEnable:{num}:{coin}:{coinEnable}");
+
+        public void SetCoinValue(byte num, byte coin, byte coinValue) => Calls.Add($"SetCoinValue:{num}:{coin}:{coinValue}");
+
+        public void SetLockoutVal(byte num, byte coin, byte lockoutValue) => Calls.Add($"SetLockoutVal:{num}:{coin}:{lockoutValue}");
+
+        public void SetLockoutInvert(byte num, byte coin, byte lockoutInvert) => Calls.Add($"SetLockoutInvert:{num}:{coin}:{lockoutInvert}");
+
+        public void SetEnable(byte num, byte enable) => Calls.Add($"SetEnable:{num}:{enable}");
+
+        public void SetCounterIn(byte num, byte counterIn) => Calls.Add($"SetCounterIn:{num}:{counterIn}");
+
+        public void SetCounterOut(byte num, byte counterOut) => Calls.Add($"SetCounterOut:{num}:{counterOut}");
+
+        public void SetPortIndex(byte num, byte portIndex) => Calls.Add($"SetPortIndex:{num}:{portIndex}");
+
+        public void SetCoin(byte num, byte coin) => Calls.Add($"SetCoin:{num}:{coin}");
+
+        public void SetLevel(byte num, byte level) => Calls.Add($"SetLevel:{num}:{level}");
+
+        public void SetFullLevel(byte num, byte fullLevel) => Calls.Add($"SetFullLevel:{num}:{fullLevel}");
 
         public void Reset()
         {
