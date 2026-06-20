@@ -203,6 +203,45 @@
                                 Content="Reset Reel Optos To Defaults" />
                     </StackPanel>
                 </ScrollViewer>
+
+                <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                    <ScrollViewer.Style>
+                        <Style TargetType="ScrollViewer">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SelectedNativeProjectSettingsTab}" Value="Coins">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ScrollViewer.Style>
+                    <StackPanel>
+                        <TextBlock Margin="0,0,0,4" Text="System6 Coin Setup" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <DataGrid ItemsSource="{Binding System6Coins}"
+                                  AutoGenerateColumns="False"
+                                  CanUserAddRows="False"
+                                  CanUserDeleteRows="False"
+                                  HeadersVisibility="Column"
+                                  MaxHeight="260">
+                            <DataGrid.Columns>
+                                <DataGridCheckBoxColumn Header="Enabled" Binding="{Binding Enabled, UpdateSourceTrigger=PropertyChanged}" Width="80" />
+                                <DataGridTextColumn Header="Name" Binding="{Binding Name, UpdateSourceTrigger=LostFocus}" Width="110" />
+                                <DataGridTextColumn Header="Num" Binding="{Binding Num, UpdateSourceTrigger=LostFocus}" Width="70" />
+                                <DataGridTextColumn Header="Coin" Binding="{Binding Coin, UpdateSourceTrigger=LostFocus}" Width="70" />
+                                <DataGridTextColumn Header="Coin Value" Binding="{Binding CoinValue, UpdateSourceTrigger=LostFocus}" Width="90" />
+                                <DataGridTextColumn Header="Coin Enable" Binding="{Binding CoinEnable, UpdateSourceTrigger=LostFocus}" Width="100" />
+                                <DataGridTextColumn Header="Lockout Value" Binding="{Binding LockoutValue, UpdateSourceTrigger=LostFocus}" Width="110" />
+                                <DataGridTextColumn Header="Lockout Invert" Binding="{Binding LockoutInvert, UpdateSourceTrigger=LostFocus}" Width="110" />
+                                <DataGridTextColumn Header="Counter In" Binding="{Binding CounterIn, UpdateSourceTrigger=LostFocus}" Width="90" />
+                                <DataGridTextColumn Header="Counter Out" Binding="{Binding CounterOut, UpdateSourceTrigger=LostFocus}" Width="95" />
+                                <DataGridTextColumn Header="Port Index" Binding="{Binding PortIndex, UpdateSourceTrigger=LostFocus}" Width="90" />
+                                <DataGridTextColumn Header="Level" Binding="{Binding Level, UpdateSourceTrigger=LostFocus}" Width="70" />
+                                <DataGridTextColumn Header="Full Level" Binding="{Binding FullLevel, UpdateSourceTrigger=LostFocus}" Width="85" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <TextBlock Margin="0,8,0,0" Text="Only enabled coin rows are sent to the native System 6 backend at startup." Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+                    </StackPanel>
+                </ScrollViewer>
             </Grid>
         </Grid>
     </Grid>

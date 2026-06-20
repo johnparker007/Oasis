@@ -19,8 +19,10 @@ public sealed class EditorProject
 public sealed class System6NativeRomSettings
 {
     public const int DefaultReelOptoSlotCount = 8;
+    public const int DefaultCoinSlotCount = 4;
     public const int DefaultPercentSwitchValue = 0;
     public List<System6ReelOptoSettings> ReelOptos { get; set; } = CreateDefaultReelOptos();
+    public List<System6CoinSettings> Coins { get; set; } = CreateDefaultCoins();
 
     public string ProgramRom1Path { get; set; } = string.Empty;
     public string ProgramRom2Path { get; set; } = string.Empty;
@@ -45,6 +47,17 @@ public sealed class System6NativeRomSettings
         }
 
         return reelOptos;
+    }
+
+    public static List<System6CoinSettings> CreateDefaultCoins()
+    {
+        var coins = new List<System6CoinSettings>(DefaultCoinSlotCount);
+        for (var coinIndex = 0; coinIndex < DefaultCoinSlotCount; coinIndex++)
+        {
+            coins.Add(System6CoinSettings.CreateDefault(coinIndex));
+        }
+
+        return coins;
     }
 }
 
@@ -71,5 +84,42 @@ public sealed class System6ReelOptoSettings
         OptoStart = DefaultOptoStart,
         OptoEnd = DefaultOptoEnd,
         OptoInvert = DefaultOptoInvert
+    };
+}
+
+
+public sealed class System6CoinSettings
+{
+    public const bool DefaultEnabled = false;
+    public const int DefaultCoin = 0;
+    public const int DefaultCoinValue = 0;
+    public const int DefaultCoinEnable = 1;
+    public const int DefaultLockoutValue = 0;
+    public const int DefaultLockoutInvert = 0;
+
+    public string Name { get; set; } = string.Empty;
+    public bool Enabled { get; set; } = DefaultEnabled;
+    public int Num { get; set; }
+    public int Coin { get; set; } = DefaultCoin;
+    public int CoinValue { get; set; } = DefaultCoinValue;
+    public int CoinEnable { get; set; } = DefaultCoinEnable;
+    public int LockoutValue { get; set; } = DefaultLockoutValue;
+    public int LockoutInvert { get; set; } = DefaultLockoutInvert;
+    public int CounterIn { get; set; }
+    public int CounterOut { get; set; }
+    public int PortIndex { get; set; }
+    public int Level { get; set; }
+    public int FullLevel { get; set; }
+
+    public static System6CoinSettings CreateDefault(int coinIndex) => new()
+    {
+        Name = $"Coin {coinIndex + 1}",
+        Enabled = DefaultEnabled,
+        Num = coinIndex,
+        Coin = DefaultCoin,
+        CoinValue = DefaultCoinValue,
+        CoinEnable = DefaultCoinEnable,
+        LockoutValue = DefaultLockoutValue,
+        LockoutInvert = DefaultLockoutInvert
     };
 }
