@@ -163,12 +163,20 @@ public class MachineRuntimeState
 
     public double GetReelPosition(string objectId)
     {
+        return TryGetReelPosition(objectId, out var position)
+            ? position
+            : 0d;
+    }
+
+    public bool TryGetReelPosition(string objectId, out double position)
+    {
         if (string.IsNullOrWhiteSpace(objectId))
         {
-            return 0;
+            position = 0d;
+            return false;
         }
 
-        return _reelPositionByObjectId.GetValueOrDefault(objectId.Trim(), 0d);
+        return _reelPositionByObjectId.TryGetValue(objectId.Trim(), out position);
     }
 
     public double GetReelPosition(MachineObjectReference machineObjectReference)

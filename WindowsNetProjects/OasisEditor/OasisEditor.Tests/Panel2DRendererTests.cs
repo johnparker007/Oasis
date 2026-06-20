@@ -351,6 +351,42 @@ public sealed class Panel2DRendererTests
         Assert.Equal(expected, actual, 4);
     }
 
+
+    [Fact]
+    public void ReelPreviewPosition_UsesBandOffsetBeforeRuntimeStateExists()
+    {
+        var runtimeState = new PanelRuntimeState();
+        var element = new PanelElementModel
+        {
+            ObjectId = "reel-1",
+            Kind = PanelElementKind.Reel,
+            Stops = 12,
+            BandOffset = 0.25d
+        };
+
+        var actual = ReelElementRenderer.ResolvePreviewReelPosition(runtimeState, element, 12);
+
+        Assert.Equal(24d, actual);
+    }
+
+    [Fact]
+    public void ReelPreviewPosition_PrefersRuntimeStateAfterEmulationUpdatesReel()
+    {
+        var runtimeState = new PanelRuntimeState();
+        runtimeState.SetReelPositionIfChanged("reel-1", 12d);
+        var element = new PanelElementModel
+        {
+            ObjectId = "reel-1",
+            Kind = PanelElementKind.Reel,
+            Stops = 12,
+            BandOffset = 0.25d
+        };
+
+        var actual = ReelElementRenderer.ResolvePreviewReelPosition(runtimeState, element, 12);
+
+        Assert.Equal(12d, actual);
+    }
+
     [Theory]
     [InlineData(null, 24f)]
     [InlineData(1d, 24f)]
