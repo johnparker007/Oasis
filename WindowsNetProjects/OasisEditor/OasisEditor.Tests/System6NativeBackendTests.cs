@@ -273,6 +273,49 @@ public sealed class System6NativeBackendTests
         }
     }
 
+
+    [Theory]
+    [InlineData(0, 1d)]
+    [InlineData(1, 1d / 255d)]
+    [InlineData(128, 128d / 255d)]
+    [InlineData(255, 1d)]
+    public void NormalizeSystem6AlphaBrightness_MapsNativeByteToMameBrightnessRange(int rawBrightness, double expected)
+    {
+        Assert.Equal(expected, System6NativeBackend.NormalizeSystem6AlphaBrightness((byte)rawBrightness), precision: 6);
+    }
+
+    [Fact]
+    public async Task StartAsyncOneRunOnlyPollsAlphaBrightnessAndPublishesVfdBrightness()
+    {
+        var previousStage = Environment.GetEnvironmentVariable("OASIS_SYSTEM6_STARTUP_STAGE");
+        Environment.SetEnvironmentVariable("OASIS_SYSTEM6_STARTUP_STAGE", "OneRunOnly");
+        try
+        {
+            var library = new FakeSystem6NativeLibrary
+            {
+                AlphaSegmentPollingAvailable = true,
+                AlphaBrightnessPollingAvailable = true,
+                AlphaBrightness = 128
+            };
+            var (dllPath, rom1, rom2) = CreateNativeFiles(2);
+            var backend = new System6NativeBackend(dllPath, _ => library);
+            var brightnessEvents = new List<MachineVfdBrightnessChangedEventArgs>();
+            backend.VfdBrightnessChanged += (_, e) => brightnessEvents.Add(e);
+
+            await backend.StartAsync(CreateLaunchRequest(rom1, rom2), CancellationToken.None);
+            await backend.StopAsync(CancellationToken.None);
+
+            var brightnessEvent = Assert.Single(brightnessEvents);
+            Assert.Equal(0, brightnessEvent.CellId);
+            Assert.Equal(128d / 255d, brightnessEvent.NormalizedBrightness, precision: 6);
+            Assert.Contains("GetAlphaBrightness", library.Calls);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("OASIS_SYSTEM6_STARTUP_STAGE", previousStage);
+        }
+    }
+
     [Fact]
     public async Task StartAsyncAppliesConfiguredPercentSwitchValue()
     {
@@ -375,6 +418,10 @@ public sealed class System6NativeBackendTests
 
         public bool AlphaSegmentPollingAvailable { get; set; }
 
+        public bool AlphaBrightnessPollingAvailable { get; set; }
+
+        public byte AlphaBrightness { get; set; } = 255;
+
         public byte Initialise()
         {
             Calls.Add("Initialise");
@@ -451,6 +498,14 @@ public sealed class System6NativeBackendTests
             Calls.Add($"GetAlphaSegments:{index}");
             AlphaSegmentIndices.Add(index);
             return AlphaSegments.TryGetValue(index, out var segments) ? segments : 0;
+        }
+
+        public bool IsAlphaBrightnessPollingAvailable => AlphaBrightnessPollingAvailable;
+
+        public byte GetAlphaBrightness()
+        {
+            Calls.Add("GetAlphaBrightness");
+            return AlphaBrightness;
         }
 
         public void TurnSwitchOn(int switchIndex)

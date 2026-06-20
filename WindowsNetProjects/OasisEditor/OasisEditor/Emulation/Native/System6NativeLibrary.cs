@@ -21,6 +21,7 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
     private readonly System6GetLampBrightnessDelegate _getLampBrightness;
     private readonly System6GetPosOutDelegate _getPosOut;
     private readonly System6GetAlphaSegmentsDelegate? _getAlphaSegments;
+    private readonly System6GetAlphaBrightnessDelegate? _getAlphaBrightness;
     private readonly System6SetPercentDelegate? _setPercent;
     private readonly System6TurnSwitchOnDelegate _turnSwitchOn;
     private readonly System6TurnSwitchOffDelegate _turnSwitchOff;
@@ -50,6 +51,7 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
         _getLampBrightness = _loader.BindExport<System6GetLampBrightnessDelegate>("SYSTEM6GetLampBrightness");
         _getPosOut = _loader.BindExport<System6GetPosOutDelegate>("SYSTEM6GetPosOut");
         _getAlphaSegments = TryBindOptionalExport<System6GetAlphaSegmentsDelegate>("SYSTEM6GetAlphaSegments");
+        _getAlphaBrightness = TryBindOptionalExport<System6GetAlphaBrightnessDelegate>("SYSTEM6GetAlphaBright");
         _setPercent = TryBindOptionalExport<System6SetPercentDelegate>("SetPercent");
         _turnSwitchOn = _loader.BindExport<System6TurnSwitchOnDelegate>("SYSTEM6TurnSwitchOn");
         _turnSwitchOff = _loader.BindExport<System6TurnSwitchOffDelegate>("SYSTEM6TurnSwitchOff");
@@ -111,6 +113,14 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
     {
         var getAlphaSegments = _getAlphaSegments ?? throw new NotSupportedException("System6 native core does not export SYSTEM6GetAlphaSegments.");
         return getAlphaSegments(index);
+    }
+
+    public bool IsAlphaBrightnessPollingAvailable => _getAlphaBrightness is not null;
+
+    public byte GetAlphaBrightness()
+    {
+        var getAlphaBrightness = _getAlphaBrightness ?? throw new NotSupportedException("System6 native core does not export SYSTEM6GetAlphaBright.");
+        return getAlphaBrightness();
     }
 
     public bool IsSetPercentAvailable => _setPercent is not null;
@@ -243,6 +253,9 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     public delegate int System6GetAlphaSegmentsDelegate(byte index);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate byte System6GetAlphaBrightnessDelegate();
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     public delegate void System6SetPercentDelegate(byte percent);

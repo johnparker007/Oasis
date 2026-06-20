@@ -38,6 +38,10 @@ public interface ISystem6NativeLibrary : INativeCoreLibrary
 
     int GetAlphaSegments(byte index);
 
+    bool IsAlphaBrightnessPollingAvailable { get; }
+
+    byte GetAlphaBrightness();
+
     bool IsSetPercentAvailable { get; }
 
     void SetPercent(byte percent);
