@@ -16,14 +16,25 @@ internal static class System6AlphaSegmentMapper
         5,  // 0x0020: bottom-left outer
         6,  // 0x0040: left-lower outer
         7,  // 0x0080: left-upper outer
-        8,  // 0x0100: inside/crossbar/diagonal segment 0
-        9,  // 0x0200: inside/crossbar/diagonal segment 1
-        10, // 0x0400: inside/crossbar/diagonal segment 2
-        11, // 0x0800: inside/crossbar/diagonal segment 3
-        12, // 0x1000: inside/crossbar/diagonal segment 4
-        13, // 0x2000: inside/crossbar/diagonal segment 5
-        14, // 0x4000: inside/crossbar/diagonal segment 6
-        15  // 0x8000: inside/crossbar/diagonal segment 7
+
+        // Inner mappings:
+        // 8 = center-left
+        // 9 = center-right
+        // 10 = upper-center
+        // 11 = lower-center
+        // 12 = lower-left
+        // 13 = upper-left
+        // 14 = upper-right
+        // 15 = lower-right
+
+        10,
+        14,
+        9,
+        15,
+        11,
+        12,
+        8,
+        13,
     ];
 
     public static int MapNativeMaskToOasisMask(int nativeMask)
