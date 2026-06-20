@@ -171,30 +171,26 @@ public sealed class MfmeImportLampPostProcessorTests
 
     private static void CreateIndexedLampBmp(string path)
     {
-        var palette = new BitmapPalette([Color.FromArgb(0, 255, 0, 0), Color.FromArgb(255, 200, 100, 50)]);
-        var pixels = new byte[] { 0, 1, 1, 0 };
-        var bitmap = BitmapSource.Create(2, 2, 96, 96, PixelFormats.Indexed8, palette, pixels, 2);
-        SaveBmp(bitmap, path);
+        WriteIndexedBmp(
+            path,
+            width: 2,
+            height: 2,
+            bitsPerPixel: 8,
+            palette: [Color.FromArgb(0, 255, 0, 0), Color.FromArgb(255, 200, 100, 50)],
+            rows: [[0, 1], [1, 0]]);
     }
 
 
 
     private static void CreateIndexed4LampBmp(string path)
     {
-        var palette = new BitmapPalette(new[]
-        {
-            Color.FromArgb(0, 255, 0, 255),
-            Color.FromArgb(255, 255, 255, 0)
-        });
-
-        var pixels = new byte[]
-        {
-            0x01,
-            0x10
-        };
-
-        var bitmap = BitmapSource.Create(2, 2, 96, 96, PixelFormats.Indexed4, palette, pixels, 1);
-        SaveBmp(bitmap, path);
+        WriteIndexedBmp(
+            path,
+            width: 2,
+            height: 2,
+            bitsPerPixel: 4,
+            palette: [Color.FromArgb(0, 255, 0, 255), Color.FromArgb(255, 255, 255, 0)],
+            rows: [[0, 1], [1, 0]]);
     }
 
     private static void CreateUnmaskedLampBmp(string path)
@@ -227,8 +223,7 @@ public sealed class MfmeImportLampPostProcessorTests
             255, 255, 255, 255
         };
 
-        var bitmap = BitmapSource.Create(2, 2, 96, 96, PixelFormats.Bgra32, null, pixels, 8);
-        SaveBmp(bitmap, path);
+        WriteBgra32Bmp(path, width: 2, height: 2, pixels: pixels);
     }
 
     private static void CreateMaskBmp(string path, byte[] alphas)
@@ -252,6 +247,109 @@ public sealed class MfmeImportLampPostProcessorTests
         encoder.Frames.Add(BitmapFrame.Create(bitmap));
         using var stream = File.Create(path);
         encoder.Save(stream);
+    }
+
+    private static void WriteIndexedBmp(string path, int width, int height, int bitsPerPixel, Color[] palette, byte[][] rows)
+    {
+        var rowStride = ((width * bitsPerPixel + 31) / 32) * 4;
+        var pixelDataSize = rowStride * height;
+        var paletteSize = palette.Length * 4;
+        var pixelDataOffset = 14 + 40 + paletteSize;
+        var fileSize = pixelDataOffset + pixelDataSize;
+
+        using var stream = File.Create(path);
+        using var writer = new BinaryWriter(stream);
+
+        writer.Write((byte)'B');
+        writer.Write((byte)'M');
+        writer.Write(fileSize);
+        writer.Write(0);
+        writer.Write(pixelDataOffset);
+
+        writer.Write(40);
+        writer.Write(width);
+        writer.Write(-height);
+        writer.Write((short)1);
+        writer.Write((short)bitsPerPixel);
+        writer.Write(0);
+        writer.Write(pixelDataSize);
+        writer.Write(2835);
+        writer.Write(2835);
+        writer.Write(palette.Length);
+        writer.Write(0);
+
+        foreach (var color in palette)
+        {
+            writer.Write(color.B);
+            writer.Write(color.G);
+            writer.Write(color.R);
+            writer.Write(color.A);
+        }
+
+        var row = new byte[rowStride];
+        for (var y = 0; y < height; y++)
+        {
+            Array.Clear(row);
+
+            if (bitsPerPixel == 8)
+            {
+                for (var x = 0; x < width; x++)
+                {
+                    row[x] = rows[y][x];
+                }
+            }
+            else
+            {
+                for (var x = 0; x < width; x++)
+                {
+                    var shift = x % 2 == 0 ? 4 : 0;
+                    row[x / 2] |= (byte)(rows[y][x] << shift);
+                }
+            }
+
+            writer.Write(row);
+        }
+    }
+
+    private static void WriteBgra32Bmp(string path, int width, int height, byte[] pixels)
+    {
+        var rowStride = width * 4;
+        var pixelDataSize = rowStride * height;
+        var pixelDataOffset = 14 + 108;
+        var fileSize = pixelDataOffset + pixelDataSize;
+
+        using var stream = File.Create(path);
+        using var writer = new BinaryWriter(stream);
+
+        writer.Write((byte)'B');
+        writer.Write((byte)'M');
+        writer.Write(fileSize);
+        writer.Write(0);
+        writer.Write(pixelDataOffset);
+
+        writer.Write(108);
+        writer.Write(width);
+        writer.Write(-height);
+        writer.Write((short)1);
+        writer.Write((short)32);
+        writer.Write(3);
+        writer.Write(pixelDataSize);
+        writer.Write(2835);
+        writer.Write(2835);
+        writer.Write(0);
+        writer.Write(0);
+        writer.Write(0x00FF0000);
+        writer.Write(0x0000FF00);
+        writer.Write(0x000000FF);
+        writer.Write(unchecked((int)0xFF000000));
+        writer.Write(0x73524742);
+
+        for (var i = 0; i < 12; i++)
+        {
+            writer.Write(0);
+        }
+
+        writer.Write(pixels);
     }
 
     private static byte[] ReadBgra32(string path, out int stride)
