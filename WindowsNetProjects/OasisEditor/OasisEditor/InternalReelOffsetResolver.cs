@@ -33,7 +33,7 @@ internal static class InternalReelOffsetResolver
     {
         return platform switch
         {
-            FruitMachinePlatformType.Impact when stops == 16 => 0.07d,
+            FruitMachinePlatformType.Impact when stops == 16 => -0.01d,
             _ => 0d
         };
     }
