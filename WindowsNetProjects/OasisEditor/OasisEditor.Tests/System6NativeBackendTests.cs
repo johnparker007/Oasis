@@ -38,7 +38,9 @@ public sealed class System6NativeBackendTests
     public async Task StartAsyncWithOutputPollingDisabledRunsCoreWithoutPollingOutputs()
     {
         var previousPolling = Environment.GetEnvironmentVariable("OASIS_SYSTEM6_OUTPUT_POLLING");
+        var previousPump = Environment.GetEnvironmentVariable("OASIS_SYSTEM6_EMULATION_PUMP_HZ");
         Environment.SetEnvironmentVariable("OASIS_SYSTEM6_OUTPUT_POLLING", "0");
+        Environment.SetEnvironmentVariable("OASIS_SYSTEM6_EMULATION_PUMP_HZ", null);
         try
         {
             var library = new FakeSystem6NativeLibrary();
@@ -46,9 +48,10 @@ public sealed class System6NativeBackendTests
             var backend = new System6NativeBackend(dllPath, _ => library);
 
             await backend.StartAsync(CreateLaunchRequest(rom1, rom2), CancellationToken.None);
-            await Task.Delay(25);
+            var observedRun = SpinWait.SpinUntil(() => Volatile.Read(ref library.RunCallCount) > 0, TimeSpan.FromSeconds(1));
             await backend.StopAsync(CancellationToken.None);
 
+            Assert.True(observedRun, "Expected the emulation pump to call Run while output polling was disabled.");
             Assert.Contains("Run:8000", library.Calls);
             Assert.DoesNotContain("LampsUpdate", library.Calls);
             Assert.DoesNotContain(library.Calls, call => call.StartsWith("GetLampsOn:", StringComparison.Ordinal));
@@ -57,6 +60,7 @@ public sealed class System6NativeBackendTests
         finally
         {
             Environment.SetEnvironmentVariable("OASIS_SYSTEM6_OUTPUT_POLLING", previousPolling);
+            Environment.SetEnvironmentVariable("OASIS_SYSTEM6_EMULATION_PUMP_HZ", previousPump);
         }
     }
 
@@ -627,6 +631,8 @@ public sealed class System6NativeBackendTests
 
         public List<string> Calls { get; } = new();
 
+        public int RunCallCount;
+
         public Dictionary<ushort, bool> GetLampsOnValues { get; } = new();
 
         public Dictionary<sbyte, short> PositionOutputs { get; } = new();
@@ -725,6 +731,7 @@ public sealed class System6NativeBackendTests
         public int Run(int cycles)
         {
             Calls.Add($"Run:{cycles}");
+            Interlocked.Increment(ref RunCallCount);
             return 1;
         }
 
