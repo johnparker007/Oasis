@@ -667,7 +667,7 @@ public sealed class System6NativeBackend : IEmulationBackend
             // zero-based while applying the selector offset only at the DLL call.
             var nativePositionSelector = checked((sbyte)(nativeReelIndex - 1));
             var rawPosition = library.GetPosOut(nativePositionSelector);
-            var position = NormalizeNativeSystem6ReelPosition(reelIndex, rawPosition);
+            var position = NormalizeConfiguredNativeSystem6ReelPosition(reelIndex, rawPosition);
             if (_lastReelPositions[reelIndex] != position)
             {
                 _lastReelPositions[reelIndex] = position;
@@ -682,7 +682,7 @@ public sealed class System6NativeBackend : IEmulationBackend
         Array.Clear(_reelStepCounts);
     }
 
-    internal int NormalizeNativeSystem6ReelPosition(int reelIndex, int rawPosition)
+    private int NormalizeConfiguredNativeSystem6ReelPosition(int reelIndex, int rawPosition)
     {
         var steps = reelIndex >= 0 && reelIndex < _reelStepCounts.Length
             ? _reelStepCounts[reelIndex]
