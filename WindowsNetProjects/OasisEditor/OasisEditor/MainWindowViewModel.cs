@@ -52,6 +52,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private bool _showFaceGenerationSettingsBeforeRegenerate = true;
     private string _mameValidationSummary = "Not validated.";
     private string _selectedPreferencesCategory = "Appearance";
+    private string _selectedProjectSettingsCategory = "General";
     private FruitMachinePlatformType _selectedFruitMachinePlatform = FruitMachinePlatformType.None;
     private string _mameRomName = string.Empty;
     private bool _automaticallyDownloadMissingRoms = true;
@@ -562,6 +563,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public IReadOnlyList<ThemePreference> ThemePreferences { get; } = Enum.GetValues<ThemePreference>();
     public IReadOnlyList<string> PreferencesCategories { get; } = ["Appearance", "MAME", "Native Emulation"];
+    public IReadOnlyList<string> ProjectSettingsCategories { get; } = ["General", "MAME", "Native"];
     public IReadOnlyList<FruitMachinePlatformType> FruitMachinePlatformTypes { get; } = Enum.GetValues<FruitMachinePlatformType>();
     public IReadOnlyList<InputDefinitionModel> InputDefinitions => LoadedProject?.InputDefinitions ?? [];
     public IReadOnlyList<InputMapDiagnostic> InputMapDiagnostics
@@ -845,6 +847,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         get => _selectedPreferencesCategory;
         set => SetProperty(ref _selectedPreferencesCategory, value);
+    }
+
+    public string SelectedProjectSettingsCategory
+    {
+        get => _selectedProjectSettingsCategory;
+        set => SetProperty(ref _selectedProjectSettingsCategory, value);
     }
 
     public string StatusMessage
