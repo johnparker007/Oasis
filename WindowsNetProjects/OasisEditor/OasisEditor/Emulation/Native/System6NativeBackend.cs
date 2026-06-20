@@ -664,16 +664,11 @@ public sealed class System6NativeBackend : IEmulationBackend
 
     internal static double NormalizeSystem6AlphaBrightness(byte rawBrightness)
     {
-        // SYSTEM6GetAlphaBright is exposed by the native core as a C char; treat the
-        // marshalled byte as the raw 0-255 brightness range used by the MAME VFD path.
-        // The legacy wrapper returns 0 when unavailable, so fall back to full brightness
-        // rather than making lit alpha segments invisible.
-        if (rawBrightness == 0)
-        {
-            return 1d;
-        }
-
-        return Math.Clamp(rawBrightness / 255d, 0d, 1d);
+        // SYSTEM6GetAlphaBright appears to report the same 0-31 VFD duty range that
+        // MAME exposes for Impact vfdduty outputs. The optional export gate handles
+        // unavailable data; raw 0 is a valid blank/fade-start value, not full brightness.
+        const double maxSystem6AlphaDuty = 31d;
+        return Math.Clamp(rawBrightness / maxSystem6AlphaDuty, 0d, 1d);
     }
 
     private void PollAlphaBrightnessOutput(ISystem6NativeLibrary library)

@@ -275,10 +275,11 @@ public sealed class System6NativeBackendTests
 
 
     [Theory]
-    [InlineData(0, 1d)]
-    [InlineData(1, 1d / 255d)]
-    [InlineData(128, 128d / 255d)]
-    [InlineData(255, 1d)]
+    [InlineData(0, 0d)]
+    [InlineData(1, 1d / 31d)]
+    [InlineData(15, 15d / 31d)]
+    [InlineData(31, 1d)]
+    [InlineData(32, 1d)]
     public void NormalizeSystem6AlphaBrightness_MapsNativeByteToMameBrightnessRange(int rawBrightness, double expected)
     {
         Assert.Equal(expected, System6NativeBackend.NormalizeSystem6AlphaBrightness((byte)rawBrightness), precision: 6);
@@ -295,7 +296,7 @@ public sealed class System6NativeBackendTests
             {
                 AlphaSegmentPollingAvailable = true,
                 AlphaBrightnessPollingAvailable = true,
-                AlphaBrightness = 128
+                AlphaBrightness = 15
             };
             var (dllPath, rom1, rom2) = CreateNativeFiles(2);
             var backend = new System6NativeBackend(dllPath, _ => library);
@@ -307,7 +308,7 @@ public sealed class System6NativeBackendTests
 
             var brightnessEvent = Assert.Single(brightnessEvents);
             Assert.Equal(0, brightnessEvent.CellId);
-            Assert.Equal(128d / 255d, brightnessEvent.NormalizedBrightness, precision: 6);
+            Assert.Equal(15d / 31d, brightnessEvent.NormalizedBrightness, precision: 6);
             Assert.Contains("GetAlphaBrightness", library.Calls);
         }
         finally
