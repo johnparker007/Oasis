@@ -496,9 +496,9 @@ public sealed class System6NativeBackend : IEmulationBackend
             {
                 if (State is not EmulationBackendState.Running || _library is not { } library)
                 {
-                    var now = Stopwatch.GetTimestamp();
-                    nextSliceTimestamp = now + _emulationIntervalTimestampTicks;
-                    nextPollTimestamp = now + _pollIntervalTimestampTicks;
+                    var pausedTimestamp = Stopwatch.GetTimestamp();
+                    nextSliceTimestamp = pausedTimestamp + _emulationIntervalTimestampTicks;
+                    nextPollTimestamp = pausedTimestamp + _pollIntervalTimestampTicks;
                     await Task.Delay(_emulationInterval, cancellationToken).ConfigureAwait(false);
                     continue;
                 }
