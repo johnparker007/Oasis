@@ -2610,7 +2610,33 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             romRootPath,
             romPaths,
             MameCommandLineOverrides,
-            BuildSystem6NativeRomSettingsForLaunch());
+            BuildSystem6NativeRomSettingsForLaunch(),
+            BuildConfiguredLampIdsForLaunch());
+    }
+
+    private IReadOnlyList<int>? BuildConfiguredLampIdsForLaunch()
+    {
+        var lampIds = new SortedSet<int>();
+        foreach (var document in OpenDocuments)
+        {
+            foreach (var element in document.GetPanelElements())
+            {
+                if (element.Kind == PanelElementKind.Lamp && element.DisplayNumber is int lampId && lampId is >= 0 and <= byte.MaxValue)
+                {
+                    lampIds.Add(lampId);
+                }
+            }
+
+            foreach (var emitter in document.GetFaceDocument().LampEmitters)
+            {
+                if (emitter.LampId is int lampId && lampId is >= 0 and <= byte.MaxValue)
+                {
+                    lampIds.Add(lampId);
+                }
+            }
+        }
+
+        return lampIds.Count == 0 ? null : lampIds.ToArray();
     }
 
     private bool SetSystem6RomPath(ref string field, string value, string propertyName)

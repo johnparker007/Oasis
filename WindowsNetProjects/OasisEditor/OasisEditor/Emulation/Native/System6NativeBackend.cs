@@ -8,7 +8,8 @@ public sealed class System6NativeBackend : IEmulationBackend
 {
     private const int DefaultFramesPerSecond = 60;
     private const int System6ClockHz = 8000000;
-    private const int LampCount = 32;
+    private const int FallbackLampCount = 32;
+    private const int MaximumLampId = byte.MaxValue;
     private const int ReelCount = 16;
     private const int DiagnosticChangedLampSampleCount = 8;
     private const int DiagnosticMappingSampleCount = 8;
@@ -40,8 +41,8 @@ public sealed class System6NativeBackend : IEmulationBackend
     private readonly long _frameDurationTimestampTicks;
     private readonly bool _timingDiagnosticsEnabled;
     private readonly object _stateGate = new();
-    private readonly int[] _lastLampValues = Enumerable.Repeat(-1, LampCount).ToArray();
-    private readonly int[] _lastLampRawValues = Enumerable.Repeat(-1, LampCount).ToArray();
+    private readonly int[] _lastLampValues = Enumerable.Repeat(-1, MaximumLampId + 1).ToArray();
+    private readonly int[] _lastLampRawValues = Enumerable.Repeat(-1, MaximumLampId + 1).ToArray();
     private readonly int[] _lastReelPositions = Enumerable.Repeat(int.MinValue, ReelCount).ToArray();
     private readonly int[] _reelStepCounts = new int[ReelCount];
     private int[]? _lastAlphaSegments;
@@ -49,6 +50,8 @@ public sealed class System6NativeBackend : IEmulationBackend
     private bool _hasLoggedAlphaUnavailable;
     private bool _hasLoggedLampPollingConfiguration;
     private bool _hasLoggedReelPollingMapping;
+    private int[]? _configuredLampPollingIds;
+    private int[] _enabledReelPollingIndices = [];
 
     private ISystem6NativeLibrary? _library;
     private CancellationTokenSource? _runLoopCancellation;
@@ -173,6 +176,7 @@ public sealed class System6NativeBackend : IEmulationBackend
             var reelOptos = ValidateReelOptos(nativeRoms.ReelOptos);
             var coins = ValidateCoins(nativeRoms.Coins);
             var percentSwitchValue = ValidatePercentSwitchValue(nativeRoms.PercentSwitchValue);
+            ConfigureLampPolling(request.ConfiguredLampIds);
 
             cancellationToken.ThrowIfCancellationRequested();
             try
@@ -220,6 +224,7 @@ public sealed class System6NativeBackend : IEmulationBackend
             }
             ResetCachedOutputState();
             ResetConfiguredReelStepCounts();
+            ResetEnabledReelPollingIndices();
 
             try
             {
@@ -589,17 +594,21 @@ public sealed class System6NativeBackend : IEmulationBackend
 
     private void ApplyReelOptos(ISystem6NativeLibrary library, IReadOnlyList<System6ReelOptoSettings> reelOptos)
     {
+        var enabledReelIndices = new List<int>();
         foreach (var reel in reelOptos.Where(reel => reel.Enabled))
         {
             var nativeReelIndex = checked((byte)reel.ReelIndex);
             var displayReelNumber = reel.ReelIndex + 1;
             library.SetSteps(nativeReelIndex, checked((byte)reel.Steps));
+            enabledReelIndices.Add(reel.ReelIndex);
             _reelStepCounts[reel.ReelIndex] = reel.Steps;
             library.SetOptoStart(nativeReelIndex, checked((byte)reel.OptoStart));
             library.SetOptoEnd(nativeReelIndex, checked((byte)reel.OptoEnd));
             library.SetOptoInvert(nativeReelIndex, reel.OptoInvert ? (byte)1 : (byte)0);
             LogStartupStage($"System6 reel {displayReelNumber} -> native index {nativeReelIndex}: steps={reel.Steps} start={reel.OptoStart} end={reel.OptoEnd} inverted={reel.OptoInvert.ToString(CultureInfo.InvariantCulture).ToLowerInvariant()}");
         }
+
+        _enabledReelPollingIndices = enabledReelIndices.Distinct().OrderBy(index => index).ToArray();
     }
 
     private static void ApplyCoins(ISystem6NativeLibrary library, IReadOnlyList<System6CoinSettings> coins)
@@ -717,7 +726,7 @@ public sealed class System6NativeBackend : IEmulationBackend
         }
 
         var changedDiagnostics = new List<string>();
-        for (var lampIndex = 0; lampIndex < LampCount; lampIndex++)
+        foreach (var lampIndex in GetLampPollingIds())
         {
             var nativeLampIndex = checked((ushort)lampIndex);
             var rawValue = library.GetLampsOn(nativeLampIndex) ? 1 : 0;
@@ -758,7 +767,7 @@ public sealed class System6NativeBackend : IEmulationBackend
     {
         var nativeInvokeCount = 0;
         LogReelPollingMapping();
-        for (var reelIndex = 0; reelIndex < ReelCount; reelIndex++)
+        foreach (var reelIndex in _enabledReelPollingIndices)
         {
             var nativeReelIndex = reelIndex;
             // GetPosOut uses the System 6 position-output selector, which is offset
@@ -782,6 +791,29 @@ public sealed class System6NativeBackend : IEmulationBackend
     private void ResetConfiguredReelStepCounts()
     {
         Array.Clear(_reelStepCounts);
+    }
+
+    private void ResetEnabledReelPollingIndices()
+    {
+        _enabledReelPollingIndices = [];
+    }
+
+    private void ConfigureLampPolling(IReadOnlyList<int>? configuredLampIds)
+    {
+        _configuredLampPollingIds = configuredLampIds?
+            .Where(lampId => lampId is >= 0 and <= MaximumLampId)
+            .Distinct()
+            .OrderBy(lampId => lampId)
+            .ToArray();
+        if (_configuredLampPollingIds is { Length: 0 })
+        {
+            _configuredLampPollingIds = null;
+        }
+    }
+
+    private IReadOnlyList<int> GetLampPollingIds()
+    {
+        return _configuredLampPollingIds ?? Enumerable.Range(0, FallbackLampCount).ToArray();
     }
 
     private int NormalizeConfiguredNativeSystem6ReelPosition(int reelIndex, int rawPosition)
@@ -820,8 +852,10 @@ public sealed class System6NativeBackend : IEmulationBackend
         }
 
         _hasLoggedLampPollingConfiguration = true;
-        Debug.WriteLine($"[System6 Lamps] SYSTEM6UpdateLamps export {FormatOptionalExportStatus(library.IsLampsUpdateAvailable, library.LampsUpdateExportName)}; SYSTEM6GetLampsOn export available; value source=SYSTEM6GetLampsOn; polling native lamps 0-{LampCount - 1}");
-        var mappings = Enumerable.Range(0, Math.Min(LampCount, DiagnosticMappingSampleCount))
+        var lampIds = GetLampPollingIds();
+        var source = _configuredLampPollingIds is null ? $"fallback native lamps 0-{FallbackLampCount - 1}" : $"configured native lamp IDs ({lampIds.Count} total, range {lampIds.Min()}-{lampIds.Max()})";
+        Debug.WriteLine($"[System6 Lamps] SYSTEM6UpdateLamps export {FormatOptionalExportStatus(library.IsLampsUpdateAvailable, library.LampsUpdateExportName)}; SYSTEM6GetLampsOn export available; value source=SYSTEM6GetLampsOn; polling {source}");
+        var mappings = lampIds.Take(DiagnosticMappingSampleCount)
             .Select(index => $"native {index} -> lamp:{index}");
         Debug.WriteLine($"[System6 Lamps] mapping sample: {string.Join("; ", mappings)}");
     }
@@ -834,7 +868,7 @@ public sealed class System6NativeBackend : IEmulationBackend
         }
 
         _hasLoggedReelPollingMapping = true;
-        var mappings = Enumerable.Range(0, Math.Min(ReelCount, DiagnosticMappingSampleCount))
+        var mappings = _enabledReelPollingIndices.Take(DiagnosticMappingSampleCount)
             .Select(index => $"native {index} -> reel:{index} (GetPosOut selector {index - 1})");
         Debug.WriteLine($"[System6 Reels] mapping sample: {string.Join("; ", mappings)}");
     }
