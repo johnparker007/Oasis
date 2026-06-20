@@ -15,7 +15,12 @@ public sealed class System6NativeBackend : IEmulationBackend
     private const int AlphaCellCount = 16;
     private const int SupportedReelOptoCount = 8;
     private const string DiagnosticStageEnvironmentVariable = "OASIS_SYSTEM6_STARTUP_STAGE";
-    private static readonly TimeSpan SlowRunWarningThreshold = TimeSpan.FromMilliseconds(250);
+    private const string TimingDiagnosticsEnvironmentVariable = "OASIS_SYSTEM6_TIMING_DIAGNOSTICS";
+    private const int MaxCatchUpFramesPerLoop = 4;
+    private const double SlowRunWarningMilliseconds = 8.0d;
+    private const double SlowPollOutputsWarningMilliseconds = 8.0d;
+    private const double SlowFrameWarningMilliseconds = 16.67d;
+    private const double SeverelyBehindWarningMilliseconds = 33.0d;
     private static readonly TimeSpan RunWarningThrottleInterval = TimeSpan.FromSeconds(10);
 
     private static readonly EmulationBackendCapabilities System6Capabilities = new(
@@ -32,6 +37,8 @@ public sealed class System6NativeBackend : IEmulationBackend
     private readonly Func<string, ISystem6NativeLibrary> _libraryFactory;
     private readonly TimeSpan _pollInterval;
     private readonly int _cyclesPerFrame;
+    private readonly long _frameDurationTimestampTicks;
+    private readonly bool _timingDiagnosticsEnabled;
     private readonly object _stateGate = new();
     private readonly int[] _lastLampValues = Enumerable.Repeat(-1, LampCount).ToArray();
     private readonly int[] _lastLampRawValues = Enumerable.Repeat(-1, LampCount).ToArray();
@@ -75,6 +82,8 @@ public sealed class System6NativeBackend : IEmulationBackend
         _libraryFactory = libraryFactory ?? throw new ArgumentNullException(nameof(libraryFactory));
         _pollInterval = TimeSpan.FromMilliseconds(1000.0 / framesPerSecond);
         _cyclesPerFrame = System6ClockHz / framesPerSecond;
+        _frameDurationTimestampTicks = Math.Max(1L, (long)Math.Round((double)Stopwatch.Frequency / framesPerSecond));
+        _timingDiagnosticsEnabled = IsTimingDiagnosticsEnabled();
     }
 
     public EmulationBackendKind BackendKind => EmulationBackendKind.NativeSystem6;
@@ -373,6 +382,14 @@ public sealed class System6NativeBackend : IEmulationBackend
         return Task.CompletedTask;
     }
 
+    private static bool IsTimingDiagnosticsEnabled()
+    {
+        var raw = Environment.GetEnvironmentVariable(TimingDiagnosticsEnvironmentVariable);
+        return bool.TryParse(raw, out var enabled)
+            ? enabled
+            : string.Equals(raw, "1", StringComparison.Ordinal);
+    }
+
     private static System6StartupStage ResolveStartupStage()
     {
         var raw = Environment.GetEnvironmentVariable(DiagnosticStageEnvironmentVariable);
@@ -402,28 +419,56 @@ public sealed class System6NativeBackend : IEmulationBackend
 
     private async Task RunLoopAsync(CancellationToken cancellationToken)
     {
+        var nextFrameTimestamp = Stopwatch.GetTimestamp();
+
         try
         {
             while (!cancellationToken.IsCancellationRequested)
             {
-                if (State is EmulationBackendState.Running)
+                if (State is not EmulationBackendState.Running)
                 {
-                    var library = _library;
-                    if (library is not null)
-                    {
-                        var stopwatch = Stopwatch.StartNew();
-                        var runResult = library.Run(_cyclesPerFrame);
-                        stopwatch.Stop();
-                        if (runResult == 0)
-                        {
-                            Debug.WriteLine($"System6 native backend Run({_cyclesPerFrame}) returned 0.");
-                        }
-                        WarnIfRunCallIsSlow(stopwatch.Elapsed);
-                        PollOutputs(library);
-                    }
+                    nextFrameTimestamp = Stopwatch.GetTimestamp() + _frameDurationTimestampTicks;
+                    await Task.Delay(_pollInterval, cancellationToken).ConfigureAwait(false);
+                    continue;
                 }
 
-                await Task.Delay(_pollInterval, cancellationToken).ConfigureAwait(false);
+                var library = _library;
+                if (library is null)
+                {
+                    nextFrameTimestamp = Stopwatch.GetTimestamp() + _frameDurationTimestampTicks;
+                    await Task.Delay(_pollInterval, cancellationToken).ConfigureAwait(false);
+                    continue;
+                }
+
+                var framesRunThisLoop = 0;
+                do
+                {
+                    RunScheduledFrame(library, nextFrameTimestamp);
+                    framesRunThisLoop++;
+                    nextFrameTimestamp += _frameDurationTimestampTicks;
+                }
+                while (!cancellationToken.IsCancellationRequested
+                    && State is EmulationBackendState.Running
+                    && framesRunThisLoop < MaxCatchUpFramesPerLoop
+                    && Stopwatch.GetTimestamp() >= nextFrameTimestamp);
+
+                var now = Stopwatch.GetTimestamp();
+                if (now >= nextFrameTimestamp)
+                {
+                    var behind = TimestampTicksToTimeSpan(now - nextFrameTimestamp);
+                    WarnIfFrameTimingIsSlow(TimeSpan.Zero, TimeSpan.Zero, TimeSpan.Zero, behind, TimeSpan.Zero, framesRunThisLoop, 0);
+                    if (framesRunThisLoop >= MaxCatchUpFramesPerLoop)
+                    {
+                        // Drop missed frame slots after the bounded catch-up budget so a slow
+                        // native core cannot spiral into an ever-growing backlog.
+                        nextFrameTimestamp = now + _frameDurationTimestampTicks;
+                    }
+
+                    continue;
+                }
+
+                var delay = TimestampTicksToTimeSpan(nextFrameTimestamp - now);
+                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -434,6 +479,28 @@ public sealed class System6NativeBackend : IEmulationBackend
             SetState(EmulationBackendState.Failed);
             throw;
         }
+    }
+
+    private void RunScheduledFrame(ISystem6NativeLibrary library, long scheduledFrameTimestamp)
+    {
+        var frameStartTimestamp = Stopwatch.GetTimestamp();
+        var startBehind = TimestampTicksToTimeSpan(Math.Max(0, frameStartTimestamp - scheduledFrameTimestamp));
+        var startAhead = TimestampTicksToTimeSpan(Math.Max(0, scheduledFrameTimestamp - frameStartTimestamp));
+
+        var runStartTimestamp = Stopwatch.GetTimestamp();
+        var runResult = library.Run(_cyclesPerFrame);
+        var runElapsed = TimestampTicksToTimeSpan(Stopwatch.GetTimestamp() - runStartTimestamp);
+        if (runResult == 0)
+        {
+            Debug.WriteLine($"System6 native backend Run({_cyclesPerFrame}) returned 0.");
+        }
+
+        var pollStartTimestamp = Stopwatch.GetTimestamp();
+        var pollInvokeCount = PollOutputs(library);
+        var pollElapsed = TimestampTicksToTimeSpan(Stopwatch.GetTimestamp() - pollStartTimestamp);
+        var totalElapsed = TimestampTicksToTimeSpan(Stopwatch.GetTimestamp() - frameStartTimestamp);
+
+        WarnIfFrameTimingIsSlow(runElapsed, pollElapsed, totalElapsed, startBehind, startAhead, 1, pollInvokeCount + 1);
     }
 
     private static IReadOnlyList<System6ReelOptoSettings> ValidateReelOptos(IReadOnlyList<System6ReelOptoSettings>? reelOptos)
@@ -597,30 +664,56 @@ public sealed class System6NativeBackend : IEmulationBackend
         return validated;
     }
 
-    private void WarnIfRunCallIsSlow(TimeSpan elapsed)
+    private static TimeSpan TimestampTicksToTimeSpan(long timestampTicks)
     {
-        if (elapsed <= SlowRunWarningThreshold || DateTime.UtcNow - _lastRunWarningUtc < RunWarningThrottleInterval)
+        if (timestampTicks <= 0)
+        {
+            return TimeSpan.Zero;
+        }
+
+        return TimeSpan.FromSeconds((double)timestampTicks / Stopwatch.Frequency);
+    }
+
+    private void WarnIfFrameTimingIsSlow(
+        TimeSpan runElapsed,
+        TimeSpan pollElapsed,
+        TimeSpan totalElapsed,
+        TimeSpan behind,
+        TimeSpan ahead,
+        int framesRun,
+        int nativeInvokeCount)
+    {
+        var shouldLog = _timingDiagnosticsEnabled
+            || runElapsed.TotalMilliseconds > SlowRunWarningMilliseconds
+            || pollElapsed.TotalMilliseconds > SlowPollOutputsWarningMilliseconds
+            || totalElapsed.TotalMilliseconds > SlowFrameWarningMilliseconds
+            || behind.TotalMilliseconds > SeverelyBehindWarningMilliseconds;
+        if (!shouldLog || DateTime.UtcNow - _lastRunWarningUtc < RunWarningThrottleInterval)
         {
             return;
         }
 
         _lastRunWarningUtc = DateTime.UtcNow;
-        Debug.WriteLine($"System6 native backend Run({_cyclesPerFrame}) took {elapsed.TotalMilliseconds:0.0} ms; native core may be pegging a CPU core.");
+        Debug.WriteLine($"System6 native backend frame timing: Run({_cyclesPerFrame})={runElapsed.TotalMilliseconds:0.00} ms; PollOutputs={pollElapsed.TotalMilliseconds:0.00} ms; total={totalElapsed.TotalMilliseconds:0.00} ms; behind={behind.TotalMilliseconds:0.00} ms; ahead={ahead.TotalMilliseconds:0.00} ms; framesThisLoop={framesRun}; nativeCalls={nativeInvokeCount}.");
     }
 
-    private void PollOutputs(ISystem6NativeLibrary library)
+    private int PollOutputs(ISystem6NativeLibrary library)
     {
-        PollLampOutputs(library);
-        PollReelOutputs(library);
-        PollAlphaDebugOutput(library);
+        var nativeInvokeCount = 0;
+        nativeInvokeCount += PollLampOutputs(library);
+        nativeInvokeCount += PollReelOutputs(library);
+        nativeInvokeCount += PollAlphaDebugOutput(library);
+        return nativeInvokeCount;
     }
 
-    private void PollLampOutputs(ISystem6NativeLibrary library)
+    private int PollLampOutputs(ISystem6NativeLibrary library)
     {
+        var nativeInvokeCount = 0;
         LogLampPollingConfiguration(library);
         if (library.IsLampsUpdateAvailable)
         {
             library.LampsUpdate();
+            nativeInvokeCount++;
         }
 
         var changedDiagnostics = new List<string>();
@@ -628,6 +721,7 @@ public sealed class System6NativeBackend : IEmulationBackend
         {
             var nativeLampIndex = checked((ushort)lampIndex);
             var rawValue = library.GetLampsOn(nativeLampIndex) ? 1 : 0;
+            nativeInvokeCount++;
             var isOn = rawValue != 0;
             var value = isOn ? 255 : 0;
             var diagnosticChanged = _lastLampRawValues[lampIndex] != rawValue;
@@ -651,6 +745,8 @@ public sealed class System6NativeBackend : IEmulationBackend
         {
             Debug.WriteLine($"[System6 Lamps] changed: {string.Join("; ", changedDiagnostics)}");
         }
+
+        return nativeInvokeCount;
     }
 
     private static string FormatLampChangeDiagnostic(ushort nativeLampIndex, int lampIndex, int rawValue, bool isOn, int value)
@@ -658,8 +754,9 @@ public sealed class System6NativeBackend : IEmulationBackend
         return $"native {nativeLampIndex} -> lamp:{lampIndex} raw={rawValue.ToString(CultureInfo.InvariantCulture)} on={isOn.ToString(CultureInfo.InvariantCulture).ToLowerInvariant()} value={value}";
     }
 
-    private void PollReelOutputs(ISystem6NativeLibrary library)
+    private int PollReelOutputs(ISystem6NativeLibrary library)
     {
+        var nativeInvokeCount = 0;
         LogReelPollingMapping();
         for (var reelIndex = 0; reelIndex < ReelCount; reelIndex++)
         {
@@ -669,6 +766,7 @@ public sealed class System6NativeBackend : IEmulationBackend
             // zero-based while applying the selector offset only at the DLL call.
             var nativePositionSelector = checked((sbyte)(nativeReelIndex - 1));
             var rawPosition = library.GetPosOut(nativePositionSelector);
+            nativeInvokeCount++;
             var position = NormalizeConfiguredNativeSystem6ReelPosition(reelIndex, rawPosition);
             if (_lastReelPositions[reelIndex] != position)
             {
@@ -676,6 +774,8 @@ public sealed class System6NativeBackend : IEmulationBackend
                 ReelChanged?.Invoke(this, new MachineReelChangedEventArgs(reelIndex, position));
             }
         }
+
+        return nativeInvokeCount;
     }
 
 
@@ -739,9 +839,9 @@ public sealed class System6NativeBackend : IEmulationBackend
         Debug.WriteLine($"[System6 Reels] mapping sample: {string.Join("; ", mappings)}");
     }
 
-    private void PollAlphaDebugOutput(ISystem6NativeLibrary library)
+    private int PollAlphaDebugOutput(ISystem6NativeLibrary library)
     {
-        PollAlphaBrightnessOutput(library);
+        var nativeInvokeCount = PollAlphaBrightnessOutput(library);
 
         if (!library.IsAlphaSegmentPollingAvailable)
         {
@@ -751,7 +851,7 @@ public sealed class System6NativeBackend : IEmulationBackend
                 Debug.WriteLine("[System6 Alpha] SYSTEM6GetAlphaSegments unavailable; alpha segment polling disabled.");
             }
 
-            return;
+            return nativeInvokeCount;
         }
 
         var segments = new int[AlphaCellCount];
@@ -759,12 +859,13 @@ public sealed class System6NativeBackend : IEmulationBackend
         for (var index = 0; index < segments.Length; index++)
         {
             segments[index] = library.GetAlphaSegments(checked((byte)index));
+            nativeInvokeCount++;
             mappedSegments[index] = System6AlphaSegmentMapper.MapNativeMaskToOasisMask(segments[index]);
         }
 
         if (_lastAlphaSegments is not null && segments.SequenceEqual(_lastAlphaSegments))
         {
-            return;
+            return nativeInvokeCount;
         }
 
         _lastAlphaSegments = segments;
@@ -776,6 +877,8 @@ public sealed class System6NativeBackend : IEmulationBackend
             Debug.WriteLine($"System6 alpha cell {index} raw=0x{(segments[index] & 0xFFFF):X4} mapped=0x{(mappedSegments[index] & 0xFFFF):X4}");
             SegmentChanged?.Invoke(this, new MachineSegmentChangedEventArgs(index, mappedSegments[index], MameSegmentOutputType.NativeAlpha));
         }
+
+        return nativeInvokeCount;
     }
 
     internal static double NormalizeSystem6AlphaBrightness(byte rawBrightness)
@@ -787,21 +890,22 @@ public sealed class System6NativeBackend : IEmulationBackend
         return Math.Clamp(rawBrightness / maxSystem6AlphaDuty, 0d, 1d);
     }
 
-    private void PollAlphaBrightnessOutput(ISystem6NativeLibrary library)
+    private int PollAlphaBrightnessOutput(ISystem6NativeLibrary library)
     {
         if (!library.IsAlphaBrightnessPollingAvailable)
         {
-            return;
+            return 0;
         }
 
         var normalizedBrightness = NormalizeSystem6AlphaBrightness(library.GetAlphaBrightness());
         if (_lastAlphaBrightness.HasValue && Math.Abs(_lastAlphaBrightness.Value - normalizedBrightness) < 0.000001d)
         {
-            return;
+            return 1;
         }
 
         _lastAlphaBrightness = normalizedBrightness;
         VfdBrightnessChanged?.Invoke(this, new MachineVfdBrightnessChangedEventArgs(0, normalizedBrightness));
+        return 1;
     }
 
     private void ResetCachedOutputState()
