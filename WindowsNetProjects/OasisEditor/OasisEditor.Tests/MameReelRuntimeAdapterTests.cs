@@ -14,10 +14,21 @@ public sealed class MameReelRuntimeAdapterTests
         int stops,
         double expected)
     {
-        var actual = MameReelRuntimeAdapter.ResolvePlatformBandOffsetNormalized(platform, stops);
+        var actual = MameReelRuntimeAdapter.ResolvePlatformBandOffsetNormalized(EmulationBackendKind.Mame, platform, stops);
 
         Assert.Equal(expected, actual, 6);
     }
+
+    [Fact]
+    public void ResolvePlatformBandOffsetNormalized_NativeSystem6_UsesBackendSpecificSixteenStopCorrection()
+    {
+        var mameOffset = MameReelRuntimeAdapter.ResolvePlatformBandOffsetNormalized(EmulationBackendKind.Mame, FruitMachinePlatformType.Impact, 16);
+        var nativeOffset = MameReelRuntimeAdapter.ResolvePlatformBandOffsetNormalized(EmulationBackendKind.NativeSystem6, FruitMachinePlatformType.Impact, 16);
+
+        Assert.Equal(-0.08d, mameOffset, 6);
+        Assert.Equal(0.07d, nativeOffset, 6);
+    }
+
     [Fact]
     public void ApplyReelState_UpdatesFaceReelDisplaysByMachineObjectReference()
     {
@@ -26,6 +37,7 @@ public sealed class MameReelRuntimeAdapterTests
         var adapter = new MameReelRuntimeAdapter(
             () => [document],
             () => FruitMachinePlatformType.Impact,
+            () => EmulationBackendKind.Mame,
             () => false,
             _ => { },
             action => dispatches.Add(action));
@@ -53,6 +65,7 @@ public sealed class MameReelRuntimeAdapterTests
         var adapter = new MameReelRuntimeAdapter(
             () => [document],
             () => FruitMachinePlatformType.None,
+            () => EmulationBackendKind.Mame,
             () => false,
             _ => { },
             action => dispatches.Add(action));

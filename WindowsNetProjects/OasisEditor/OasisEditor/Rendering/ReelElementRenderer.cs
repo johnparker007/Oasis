@@ -31,7 +31,7 @@ internal sealed class ReelElementRenderer : IPanelElementRenderer
             return runtimePosition + runtimeState.GetTemporaryReelOffset(element.ObjectId);
         }
 
-        var platformOffset = MameReelRuntimeAdapter.ResolvePlatformBandOffsetNormalized(runtimeState.FruitMachinePlatform, stops);
+        var platformOffset = MameReelRuntimeAdapter.ResolvePlatformBandOffsetNormalized(runtimeState.EmulationBackendKind, runtimeState.FruitMachinePlatform, stops);
         var bandOffset = element.BandOffset ?? 0d;
         return ((platformOffset + bandOffset) * LegacyReelPositionsPerRevolution)
             + runtimeState.GetTemporaryReelOffset(element.ObjectId);

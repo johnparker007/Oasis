@@ -6,6 +6,7 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
     private readonly object _pendingSync = new();
     private readonly Func<IEnumerable<DocumentTabViewModel>> _documentProvider;
     private readonly Func<FruitMachinePlatformType> _platformProvider;
+    private readonly Func<EmulationBackendKind> _backendKindProvider;
     private readonly Func<bool> _debugOutputEnabledProvider;
     private readonly Action<string> _infoLogger;
     private readonly Action<Action> _uiDispatch;
@@ -18,12 +19,14 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
     public MameReelRuntimeAdapter(
         Func<IEnumerable<DocumentTabViewModel>> documentProvider,
         Func<FruitMachinePlatformType> platformProvider,
+        Func<EmulationBackendKind> backendKindProvider,
         Func<bool> debugOutputEnabledProvider,
         Action<string> infoLogger,
         Action<Action> uiDispatch)
     {
         _documentProvider = documentProvider ?? throw new ArgumentNullException(nameof(documentProvider));
         _platformProvider = platformProvider ?? throw new ArgumentNullException(nameof(platformProvider));
+        _backendKindProvider = backendKindProvider ?? throw new ArgumentNullException(nameof(backendKindProvider));
         _debugOutputEnabledProvider = debugOutputEnabledProvider ?? throw new ArgumentNullException(nameof(debugOutputEnabledProvider));
         _infoLogger = infoLogger ?? throw new ArgumentNullException(nameof(infoLogger));
         _uiDispatch = uiDispatch ?? throw new ArgumentNullException(nameof(uiDispatch));
@@ -69,6 +72,7 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
         foreach (var document in documents)
         {
             document.RuntimeState.FruitMachinePlatform = platform;
+            document.RuntimeState.EmulationBackendKind = _backendKindProvider();
             var objectIdsByReel = GetOrBuildReelMapping(document);
             var faceObjectIdsByReel = FaceRuntimeDisplayReferenceIndex.GetObjectIdsByReference<FaceReelDisplayElement>(document, MachineObjectKind.Reel);
             var changedObjectIds = new HashSet<string>(StringComparer.Ordinal);
@@ -197,7 +201,7 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
         var directionAdjusted = shouldReverse && wrapped != 0
             ? ReelPositionsPerRevolution - wrapped
             : wrapped;
-        var platformOffset = ResolvePlatformBandOffsetNormalized(_platformProvider(), stops);
+        var platformOffset = ResolvePlatformBandOffsetNormalized(_backendKindProvider(), _platformProvider(), stops);
         var totalOffset = platformOffset + reelBandOffset;
         var offsetSteps = totalOffset * ReelPositionsPerRevolution;
         var offsetAdjusted = directionAdjusted + offsetSteps;
@@ -209,17 +213,9 @@ public sealed class MameReelRuntimeAdapter : IMameReelRuntimeAdapter
         return platform == FruitMachinePlatformType.MPU4;
     }
 
-    internal static double ResolvePlatformBandOffsetNormalized(FruitMachinePlatformType platform, int stops)
+    internal static double ResolvePlatformBandOffsetNormalized(EmulationBackendKind backendKind, FruitMachinePlatformType platform, int stops)
     {
-        return platform switch
-        {
-            FruitMachinePlatformType.MPU4 when stops == 16 => -0.05d,
-            FruitMachinePlatformType.Impact when stops == 12 => -0.025d,
-            FruitMachinePlatformType.Impact when stops == 16 => -0.08d,
-            FruitMachinePlatformType.Scorpion4 when stops == 12 => 0.2d,
-            FruitMachinePlatformType.Scorpion4 when stops == 16 => 0.671d,
-            _ => 0d
-        };
+        return InternalReelOffsetResolver.ResolveBackendReelOffsetNormalized(backendKind, platform, stops);
     }
 
     private void OnDocumentPanelChanged()
