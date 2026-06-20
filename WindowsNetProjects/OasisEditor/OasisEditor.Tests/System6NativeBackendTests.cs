@@ -413,13 +413,52 @@ public sealed class System6NativeBackendTests
             await backend.StopAsync(CancellationToken.None);
 
             Assert.Equal(Enumerable.Range(0, 16).ToArray(), library.AlphaSegmentIndices);
+            Assert.Equal(16, segmentEvents.Count(e => e.OutputType == MameSegmentOutputType.NativeAlpha));
             Assert.Contains(segmentEvents, e => e.CellId == 0 && e.SegmentMask == 0x0001 && e.OutputType == MameSegmentOutputType.NativeAlpha);
             Assert.Contains(segmentEvents, e => e.CellId == 1 && e.SegmentMask == 0x2002 && e.OutputType == MameSegmentOutputType.NativeAlpha);
+            Assert.Contains(segmentEvents, e => e.CellId == 15 && e.SegmentMask == 0x0000 && e.OutputType == MameSegmentOutputType.NativeAlpha);
         }
         finally
         {
             Environment.SetEnvironmentVariable("OASIS_SYSTEM6_STARTUP_STAGE", previousStage);
         }
+    }
+
+
+    [Fact]
+    public async Task NativeCoreOwnerLoopDoesNotRunDuringFullAlphaFrameSnapshot()
+    {
+        var previousPolling = Environment.GetEnvironmentVariable("OASIS_SYSTEM6_OUTPUT_POLLING");
+        var previousPump = Environment.GetEnvironmentVariable("OASIS_SYSTEM6_EMULATION_PUMP_HZ");
+        Environment.SetEnvironmentVariable("OASIS_SYSTEM6_OUTPUT_POLLING", "1");
+        Environment.SetEnvironmentVariable("OASIS_SYSTEM6_EMULATION_PUMP_HZ", "2000");
+        try
+        {
+            var library = new FakeSystem6NativeLibrary { AlphaSegmentPollingAvailable = true };
+            var (dllPath, rom1, rom2) = CreateNativeFiles(2);
+            var backend = new System6NativeBackend(dllPath, _ => library, framesPerSecond: 60);
+
+            await backend.StartAsync(CreateLaunchRequest(rom1, rom2), CancellationToken.None);
+            var observedAlphaFrame = SpinWait.SpinUntil(() => Volatile.Read(ref library.AlphaSegmentPollCount) >= 16, TimeSpan.FromSeconds(1));
+            await backend.StopAsync(CancellationToken.None);
+
+            Assert.True(observedAlphaFrame, "Expected at least one full alpha frame poll.");
+            Assert.False(library.RunObservedDuringAlphaSnapshot);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("OASIS_SYSTEM6_OUTPUT_POLLING", previousPolling);
+            Environment.SetEnvironmentVariable("OASIS_SYSTEM6_EMULATION_PUMP_HZ", previousPump);
+        }
+    }
+
+    [Theory]
+    [InlineData(new[] { 1, 2, 3 }, new[] { 1, 4, 3 }, true)]
+    [InlineData(new[] { 1, 2, 3 }, new[] { 4, 5, 6 }, false)]
+    [InlineData(new[] { 1, 2, 3 }, new[] { 1, 2, 3 }, false)]
+    public void IsPotentialTornAlphaFrame_FlagsMixedPreviousAndChangedCells(int[] previous, int[] current, bool expected)
+    {
+        Assert.Equal(expected, System6NativeBackend.IsPotentialTornAlphaFrame(previous, current));
     }
 
     [Fact]
@@ -633,6 +672,10 @@ public sealed class System6NativeBackendTests
 
         public int RunCallCount;
 
+        public bool AlphaSnapshotInProgress;
+
+        public bool RunObservedDuringAlphaSnapshot;
+
         public Dictionary<ushort, bool> GetLampsOnValues { get; } = new();
 
         public Dictionary<sbyte, short> PositionOutputs { get; } = new();
@@ -640,6 +683,8 @@ public sealed class System6NativeBackendTests
         public Dictionary<byte, int> AlphaSegments { get; } = new();
 
         public List<int> AlphaSegmentIndices { get; } = new();
+
+        public int AlphaSegmentPollCount;
 
         public bool AlphaSegmentPollingAvailable { get; set; }
 
@@ -731,6 +776,11 @@ public sealed class System6NativeBackendTests
         public int Run(int cycles)
         {
             Calls.Add($"Run:{cycles}");
+            if (Volatile.Read(ref AlphaSnapshotInProgress))
+            {
+                RunObservedDuringAlphaSnapshot = true;
+            }
+
             Interlocked.Increment(ref RunCallCount);
             return 1;
         }
@@ -765,9 +815,21 @@ public sealed class System6NativeBackendTests
 
         public int GetAlphaSegments(byte index)
         {
+            if (index == 0)
+            {
+                Volatile.Write(ref AlphaSnapshotInProgress, true);
+            }
+
             Calls.Add($"GetAlphaSegments:{index}");
             AlphaSegmentIndices.Add(index);
-            return AlphaSegments.TryGetValue(index, out var segments) ? segments : 0;
+            Interlocked.Increment(ref AlphaSegmentPollCount);
+            var value = AlphaSegments.TryGetValue(index, out var segments) ? segments : 0;
+            if (index == 15)
+            {
+                Volatile.Write(ref AlphaSnapshotInProgress, false);
+            }
+
+            return value;
         }
 
         public bool IsAlphaBrightnessPollingAvailable => AlphaBrightnessPollingAvailable;
