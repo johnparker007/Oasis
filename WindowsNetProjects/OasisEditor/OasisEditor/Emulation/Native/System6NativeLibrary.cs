@@ -175,9 +175,9 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
 
     public void SetFullLevel(byte num, byte fullLevel) => _setFullLevel(num, fullLevel);
 
-    public void TurnSwitchOn(int switchIndex) => _turnSwitchOn(switchIndex);
+    public void TurnSwitchOn(int switchIndex) => _turnSwitchOn(checked((byte)switchIndex));
 
-    public void TurnSwitchOff(int switchIndex) => _turnSwitchOff(switchIndex);
+    public void TurnSwitchOff(int switchIndex) => _turnSwitchOff(checked((byte)switchIndex));
 
     public void Dispose()
     {
@@ -338,8 +338,8 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
     public delegate void System6SetFullLevelDelegate(byte num, byte fullLevel);
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    public delegate void System6TurnSwitchOnDelegate(int switchIndex);
+    public delegate void System6TurnSwitchOnDelegate(byte switchIndex);
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    public delegate void System6TurnSwitchOffDelegate(int switchIndex);
+    public delegate void System6TurnSwitchOffDelegate(byte switchIndex);
 }

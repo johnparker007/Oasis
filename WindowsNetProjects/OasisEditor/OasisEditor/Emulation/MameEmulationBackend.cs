@@ -101,22 +101,22 @@ public sealed class MameEmulationBackend : IEmulationBackend
         };
     }
 
-    public async Task SetInputStateAsync(MachineInputReference input, bool isPressed, CancellationToken cancellationToken)
+    public async Task SetInputStateAsync(InputDefinitionModel inputDefinition, bool isPressed, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(inputDefinition);
 
-        var inputDefinition = _inputDefinitionResolver(input);
-        if (inputDefinition is null)
+        var resolvedInputDefinition = _inputDefinitionResolver(MachineInputReference.FromInputId(inputDefinition.Id));
+        if (resolvedInputDefinition is null)
         {
-            throw new InvalidOperationException($"No MAME input definition was found for emulation input '{input.Id}'.");
+            throw new InvalidOperationException($"No MAME input definition was found for emulation input '{inputDefinition.Id}'.");
         }
 
         var sent = await _inputCommandService
-            .TrySendInputStateAsync(_processRunner, _platformProvider(), inputDefinition, isPressed, cancellationToken)
+            .TrySendInputStateAsync(_processRunner, _platformProvider(), resolvedInputDefinition, isPressed, cancellationToken)
             .ConfigureAwait(false);
         if (!sent)
         {
-            throw new InvalidOperationException($"MAME input '{input.Id}' could not be resolved to a MAME input command.");
+            throw new InvalidOperationException($"MAME input '{inputDefinition.Id}' could not be resolved to a MAME input command.");
         }
     }
 

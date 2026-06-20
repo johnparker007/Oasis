@@ -83,7 +83,7 @@ public sealed class EmulationBackendFactoryTests
         public Task PauseAsync(CancellationToken cancellationToken) => Task.CompletedTask;
         public Task ResumeAsync(CancellationToken cancellationToken) => Task.CompletedTask;
         public Task ResetAsync(EmulationResetKind resetKind, CancellationToken cancellationToken) => Task.CompletedTask;
-        public Task SetInputStateAsync(MachineInputReference input, bool isPressed, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task SetInputStateAsync(InputDefinitionModel inputDefinition, bool isPressed, CancellationToken cancellationToken) => Task.CompletedTask;
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 }
