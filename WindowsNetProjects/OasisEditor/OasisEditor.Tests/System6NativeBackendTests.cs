@@ -240,8 +240,8 @@ public sealed class System6NativeBackendTests
         {
             var library = new FakeSystem6NativeLibrary();
             library.GetLampsOnValues[0] = true;
-            library.PositionOutputs[-1] = 10;
-            library.PositionOutputs[0] = 20;
+            library.PositionOutputs[0] = 10;
+            library.PositionOutputs[1] = 20;
             var (dllPath, rom1, rom2) = CreateNativeFiles(2);
             var backend = new System6NativeBackend(dllPath, _ => library);
             var lampEvents = new List<MachineLampChangedEventArgs>();
@@ -256,8 +256,8 @@ public sealed class System6NativeBackendTests
             Assert.Contains(lampEvents, e => e.LampId == 0 && e.Value == 255);
             Assert.Contains(reelEvents, e => e.ReelId == 0 && e.Position == 86);
             Assert.Contains(reelEvents, e => e.ReelId == 1 && e.Position == 76);
-            Assert.Contains("GetPosOut:-1", library.Calls);
             Assert.Contains("GetPosOut:0", library.Calls);
+            Assert.Contains("GetPosOut:1", library.Calls);
         }
         finally
         {
@@ -293,10 +293,10 @@ public sealed class System6NativeBackendTests
             Assert.DoesNotContain(library.Calls, call => call.StartsWith("SetOptoInvert:7:", StringComparison.Ordinal));
 
             var getPosOutCalls = library.Calls.Where(call => call.StartsWith("GetPosOut:", StringComparison.Ordinal)).ToArray();
-            Assert.Equal(new[] { "GetPosOut:-1", "GetPosOut:1", "GetPosOut:3" }, getPosOutCalls);
-            Assert.DoesNotContain("GetPosOut:0", library.Calls);
-            Assert.DoesNotContain("GetPosOut:2", library.Calls);
-            Assert.DoesNotContain("GetPosOut:4", library.Calls);
+            Assert.Equal(new[] { "GetPosOut:0", "GetPosOut:2", "GetPosOut:4" }, getPosOutCalls);
+            Assert.DoesNotContain("GetPosOut:1", library.Calls);
+            Assert.DoesNotContain("GetPosOut:3", library.Calls);
+            Assert.DoesNotContain("GetPosOut:5", library.Calls);
         }
         finally
         {

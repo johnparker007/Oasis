@@ -769,11 +769,12 @@ public sealed class System6NativeBackend : IEmulationBackend
         LogReelPollingMapping();
         foreach (var reelIndex in _enabledReelPollingIndices)
         {
-            var nativeReelIndex = reelIndex;
-            // GetPosOut uses the System 6 position-output selector, which is offset
-            // from the zero-based native reel index. Keep emitted Oasis reel IDs
-            // zero-based while applying the selector offset only at the DLL call.
-            var nativePositionSelector = checked((sbyte)(nativeReelIndex - 1));
+            // GetPosOut expects the same zero-based reel selector used by the
+            // native reel opto setup. Keep emitted Oasis reel IDs zero-based and
+            // do not subtract one, otherwise the highest configured reel is never
+            // polled (for example, a four-reel project polls selectors -1..2
+            // instead of 0..3).
+            var nativePositionSelector = checked((sbyte)reelIndex);
             var rawPosition = library.GetPosOut(nativePositionSelector);
             nativeInvokeCount++;
             var position = NormalizeConfiguredNativeSystem6ReelPosition(reelIndex, rawPosition);
@@ -869,7 +870,7 @@ public sealed class System6NativeBackend : IEmulationBackend
 
         _hasLoggedReelPollingMapping = true;
         var mappings = _enabledReelPollingIndices.Take(DiagnosticMappingSampleCount)
-            .Select(index => $"native {index} -> reel:{index} (GetPosOut selector {index - 1})");
+            .Select(index => $"native {index} -> reel:{index} (GetPosOut selector {index})");
         Debug.WriteLine($"[System6 Reels] mapping sample: {string.Join("; ", mappings)}");
     }
 
