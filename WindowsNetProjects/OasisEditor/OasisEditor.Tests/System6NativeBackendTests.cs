@@ -33,6 +33,37 @@ public sealed class System6NativeBackendTests
         Assert.Equal(EmulationBackendState.Stopped, backend.State);
     }
 
+
+    [Fact]
+    public async Task StartAsyncWithOutputPollingDisabledRunsCoreWithoutPollingOutputs()
+    {
+        var previousPolling = Environment.GetEnvironmentVariable("OASIS_SYSTEM6_OUTPUT_POLLING");
+        var previousPump = Environment.GetEnvironmentVariable("OASIS_SYSTEM6_EMULATION_PUMP_HZ");
+        Environment.SetEnvironmentVariable("OASIS_SYSTEM6_OUTPUT_POLLING", "0");
+        Environment.SetEnvironmentVariable("OASIS_SYSTEM6_EMULATION_PUMP_HZ", null);
+        try
+        {
+            var library = new FakeSystem6NativeLibrary();
+            var (dllPath, rom1, rom2) = CreateNativeFiles(2);
+            var backend = new System6NativeBackend(dllPath, _ => library);
+
+            await backend.StartAsync(CreateLaunchRequest(rom1, rom2), CancellationToken.None);
+            var observedRun = SpinWait.SpinUntil(() => Volatile.Read(ref library.RunCallCount) > 0, TimeSpan.FromSeconds(1));
+            await backend.StopAsync(CancellationToken.None);
+
+            Assert.True(observedRun, "Expected the emulation pump to call Run while output polling was disabled.");
+            Assert.Contains("Run:8000", library.Calls);
+            Assert.DoesNotContain("LampsUpdate", library.Calls);
+            Assert.DoesNotContain(library.Calls, call => call.StartsWith("GetLampsOn:", StringComparison.Ordinal));
+            Assert.DoesNotContain(library.Calls, call => call.StartsWith("GetPosOut:", StringComparison.Ordinal));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("OASIS_SYSTEM6_OUTPUT_POLLING", previousPolling);
+            Environment.SetEnvironmentVariable("OASIS_SYSTEM6_EMULATION_PUMP_HZ", previousPump);
+        }
+    }
+
     [Fact]
     public async Task StartAsyncSendsZeroBasedNativeReelOptoIndicesForDisplayedReelsOneAndEight()
     {
@@ -223,7 +254,7 @@ public sealed class System6NativeBackendTests
                 "SetOptoEnd:0:7",
                 "SetOptoInvert:0:0",
                 "SetPercent:0",
-                "Run:133333");
+                "Run:8000");
         }
         finally
         {
@@ -600,6 +631,8 @@ public sealed class System6NativeBackendTests
 
         public List<string> Calls { get; } = new();
 
+        public int RunCallCount;
+
         public Dictionary<ushort, bool> GetLampsOnValues { get; } = new();
 
         public Dictionary<sbyte, short> PositionOutputs { get; } = new();
@@ -698,6 +731,7 @@ public sealed class System6NativeBackendTests
         public int Run(int cycles)
         {
             Calls.Add($"Run:{cycles}");
+            Interlocked.Increment(ref RunCallCount);
             return 1;
         }
 
