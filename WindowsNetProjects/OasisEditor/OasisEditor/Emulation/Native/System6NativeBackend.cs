@@ -36,6 +36,7 @@ public sealed class System6NativeBackend : IEmulationBackend
     private readonly int[] _lastLampValues = Enumerable.Repeat(-1, LampCount).ToArray();
     private readonly int[] _lastLampRawValues = Enumerable.Repeat(-1, LampCount).ToArray();
     private readonly int[] _lastReelPositions = Enumerable.Repeat(int.MinValue, ReelCount).ToArray();
+    private readonly int[] _reelStepCounts = new int[ReelCount];
     private int[]? _lastAlphaSegments;
     private double? _lastAlphaBrightness;
     private bool _hasLoggedAlphaUnavailable;
@@ -207,6 +208,7 @@ public sealed class System6NativeBackend : IEmulationBackend
                 throw new InvalidOperationException($"System6 native backend failed to reset core '{_libraryPath}' during startup.", ex);
             }
             ResetCachedOutputState();
+            ResetConfiguredReelStepCounts();
 
             try
             {
@@ -516,13 +518,14 @@ public sealed class System6NativeBackend : IEmulationBackend
         return percentSwitchValue;
     }
 
-    private static void ApplyReelOptos(ISystem6NativeLibrary library, IReadOnlyList<System6ReelOptoSettings> reelOptos)
+    private void ApplyReelOptos(ISystem6NativeLibrary library, IReadOnlyList<System6ReelOptoSettings> reelOptos)
     {
         foreach (var reel in reelOptos.Where(reel => reel.Enabled))
         {
             var nativeReelIndex = checked((byte)reel.ReelIndex);
             var displayReelNumber = reel.ReelIndex + 1;
             library.SetSteps(nativeReelIndex, checked((byte)reel.Steps));
+            _reelStepCounts[reel.ReelIndex] = reel.Steps;
             library.SetOptoStart(nativeReelIndex, checked((byte)reel.OptoStart));
             library.SetOptoEnd(nativeReelIndex, checked((byte)reel.OptoEnd));
             library.SetOptoInvert(nativeReelIndex, reel.OptoInvert ? (byte)1 : (byte)0);
@@ -663,13 +666,48 @@ public sealed class System6NativeBackend : IEmulationBackend
             // from the zero-based native reel index. Keep emitted Oasis reel IDs
             // zero-based while applying the selector offset only at the DLL call.
             var nativePositionSelector = checked((sbyte)(nativeReelIndex - 1));
-            var position = library.GetPosOut(nativePositionSelector);
+            var rawPosition = library.GetPosOut(nativePositionSelector);
+            var position = NormalizeNativeSystem6ReelPosition(reelIndex, rawPosition);
             if (_lastReelPositions[reelIndex] != position)
             {
                 _lastReelPositions[reelIndex] = position;
                 ReelChanged?.Invoke(this, new MachineReelChangedEventArgs(reelIndex, position));
             }
         }
+    }
+
+
+    private void ResetConfiguredReelStepCounts()
+    {
+        Array.Clear(_reelStepCounts);
+    }
+
+    internal int NormalizeNativeSystem6ReelPosition(int reelIndex, int rawPosition)
+    {
+        var steps = reelIndex >= 0 && reelIndex < _reelStepCounts.Length
+            ? _reelStepCounts[reelIndex]
+            : 0;
+
+        return NormalizeNativeSystem6ReelPosition(rawPosition, steps);
+    }
+
+    internal static int NormalizeNativeSystem6ReelPosition(int rawPosition, int steps)
+    {
+        if (steps <= 0)
+        {
+            return rawPosition;
+        }
+
+        // Native System 6 internals expose reel motion in the opposite direction
+        // to the MAME/Oasis convention. Normalize at the backend boundary so
+        // rendering can treat both emulation backends identically.
+        var positionWithinReel = rawPosition % steps;
+        if (positionWithinReel < 0)
+        {
+            positionWithinReel += steps;
+        }
+
+        return (steps - positionWithinReel) % steps;
     }
 
     private void LogLampPollingConfiguration(ISystem6NativeLibrary library)

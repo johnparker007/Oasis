@@ -254,8 +254,8 @@ public sealed class System6NativeBackendTests
 
             Assert.True(library.Calls.IndexOf("LampsUpdate") < library.Calls.IndexOf("GetLampsOn:0"));
             Assert.Contains(lampEvents, e => e.LampId == 0 && e.Value == 255);
-            Assert.Contains(reelEvents, e => e.ReelId == 0 && e.Position == 10);
-            Assert.Contains(reelEvents, e => e.ReelId == 1 && e.Position == 20);
+            Assert.Contains(reelEvents, e => e.ReelId == 0 && e.Position == 86);
+            Assert.Contains(reelEvents, e => e.ReelId == 1 && e.Position == 76);
             Assert.Contains("GetPosOut:-1", library.Calls);
             Assert.Contains("GetPosOut:0", library.Calls);
         }
@@ -263,6 +263,18 @@ public sealed class System6NativeBackendTests
         {
             Environment.SetEnvironmentVariable("OASIS_SYSTEM6_STARTUP_STAGE", previousStage);
         }
+    }
+
+
+    [Theory]
+    [InlineData(0, 96, 0)]
+    [InlineData(1, 96, 95)]
+    [InlineData(95, 96, 1)]
+    [InlineData(10, 0, 10)]
+    [InlineData(10, -1, 10)]
+    public void NormalizeNativeSystem6ReelPosition_ReversesDirectionWhenStepsAreKnown(int rawPosition, int steps, int expected)
+    {
+        Assert.Equal(expected, System6NativeBackend.NormalizeNativeSystem6ReelPosition(rawPosition, steps));
     }
 
 
