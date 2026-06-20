@@ -88,7 +88,7 @@ public sealed class PlayViewInputRouter
         {
             try
             {
-                await _backend.SetInputStateAsync(MachineInputReference.FromInputId(inputDefinition.Id), isPressed, cancellationToken).ConfigureAwait(false);
+                await _backend.SetInputStateAsync(inputDefinition, isPressed, cancellationToken).ConfigureAwait(false);
                 return true;
             }
             catch

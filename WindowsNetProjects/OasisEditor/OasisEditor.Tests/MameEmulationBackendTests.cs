@@ -64,7 +64,7 @@ public sealed class MameEmulationBackendTests
     {
         var backend = CreateBackend(out _, out var inputService);
 
-        await backend.SetInputStateAsync(MachineInputReference.FromInputId("start"), isPressed: true, CancellationToken.None);
+        await backend.SetInputStateAsync(new InputDefinitionModel { Id = "start", Kind = InputDefinitionKind.Button, ButtonNumber = "1" }, isPressed: true, CancellationToken.None);
 
         var call = Assert.Single(inputService.Calls);
         Assert.Equal(FruitMachinePlatformType.MPU4, call.Platform);

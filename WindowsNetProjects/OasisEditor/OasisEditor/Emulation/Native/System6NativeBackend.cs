@@ -324,14 +324,25 @@ public sealed class System6NativeBackend : IEmulationBackend
         return Task.CompletedTask;
     }
 
-    public Task SetInputStateAsync(MachineInputReference input, bool isPressed, CancellationToken cancellationToken)
+    public Task SetInputStateAsync(InputDefinitionModel inputDefinition, bool isPressed, CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(inputDefinition);
         cancellationToken.ThrowIfCancellationRequested();
 
-        var library = _library ?? throw new InvalidOperationException("System6 native backend cannot set input state before it has started.");
-        if (!int.TryParse(input.Id, NumberStyles.Integer, CultureInfo.InvariantCulture, out var switchIndex))
+        if (inputDefinition.Kind is not InputDefinitionKind.Button || inputDefinition.CoinInput)
         {
-            throw new InvalidOperationException($"System6 native backend input '{input.Id}' is not a numeric switch index.");
+            return Task.CompletedTask;
+        }
+
+        var library = _library ?? throw new InvalidOperationException("System6 native backend cannot set input state before it has started.");
+        if (!int.TryParse(inputDefinition.ButtonNumber, NumberStyles.Integer, CultureInfo.InvariantCulture, out var switchIndex))
+        {
+            throw new InvalidOperationException($"System6 native backend input '{inputDefinition.Id}' button number '{inputDefinition.ButtonNumber}' is not a numeric switch index.");
+        }
+
+        if (switchIndex is < byte.MinValue or > byte.MaxValue)
+        {
+            throw new InvalidOperationException($"System6 native backend input '{inputDefinition.Id}' switch index {switchIndex} is outside the supported range 0-255.");
         }
 
         if (isPressed)

@@ -114,19 +114,38 @@ public sealed class System6NativeBackendTests
     }
 
     [Fact]
-    public async Task SetInputStateAsyncMapsNumericInputIdToNativeSwitchCalls()
+    public async Task SetInputStateAsyncMapsButtonNumberToNativeSwitchCalls()
     {
         var library = new FakeSystem6NativeLibrary();
         var (dllPath, rom1, rom2) = CreateNativeFiles(2);
         var backend = new System6NativeBackend(dllPath, _ => library);
 
         await backend.StartAsync(CreateLaunchRequest(rom1, rom2), CancellationToken.None);
-        await backend.SetInputStateAsync(MachineInputReference.FromInputId("12"), true, CancellationToken.None);
-        await backend.SetInputStateAsync(MachineInputReference.FromInputId("12"), false, CancellationToken.None);
+        var input = new InputDefinitionModel { Id = "btn-1", Kind = InputDefinitionKind.Button, ButtonNumber = "12" };
+
+        await backend.SetInputStateAsync(input, true, CancellationToken.None);
+        await backend.SetInputStateAsync(input, false, CancellationToken.None);
         await backend.StopAsync(CancellationToken.None);
 
         Assert.Equal(new[] { 12 }, library.SwitchesTurnedOn);
         Assert.Equal(new[] { 12 }, library.SwitchesTurnedOff);
+    }
+
+
+    [Fact]
+    public async Task SetInputStateAsyncIgnoresCoinInputs()
+    {
+        var library = new FakeSystem6NativeLibrary();
+        var (dllPath, rom1, rom2) = CreateNativeFiles(2);
+        var backend = new System6NativeBackend(dllPath, _ => library);
+        var input = new InputDefinitionModel { Id = "coin-1", Kind = InputDefinitionKind.Coin, CoinInput = true, ButtonNumber = "1" };
+
+        await backend.StartAsync(CreateLaunchRequest(rom1, rom2), CancellationToken.None);
+        await backend.SetInputStateAsync(input, true, CancellationToken.None);
+        await backend.StopAsync(CancellationToken.None);
+
+        Assert.Empty(library.SwitchesTurnedOn);
+        Assert.Empty(library.SwitchesTurnedOff);
     }
 
     [Fact]
