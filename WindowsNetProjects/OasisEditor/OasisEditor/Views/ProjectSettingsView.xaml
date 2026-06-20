@@ -5,112 +5,150 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
              d:DesignHeight="640"
-             d:DesignWidth="560">
-    <ScrollViewer VerticalScrollBarVisibility="Auto"><Grid Margin="16">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
+             d:DesignWidth="620">
+    <Grid Margin="16">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="170" />
+            <ColumnDefinition Width="16" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
 
-        <TextBlock Grid.Row="0"
-                   FontSize="18"
-                   FontWeight="SemiBold"
-                   Foreground="{DynamicResource TextPrimaryBrush}"
-                   Text="Project Settings" />
+        <Border Grid.Column="0" Padding="8">
+            <ListBox ItemsSource="{Binding ProjectSettingsCategories}"
+                     SelectedItem="{Binding SelectedProjectSettingsCategory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+        </Border>
 
-        <TextBlock Grid.Row="1" Margin="0,14,0,4" Text="Project" Foreground="{DynamicResource TextSecondaryBrush}" />
-        <TextBlock Grid.Row="2" Text="{Binding LoadedProject.Name, TargetNullValue=No project loaded}" />
+        <Grid Grid.Column="2">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ScrollViewer.Style>
+                    <Style TargetType="ScrollViewer">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SelectedProjectSettingsCategory}" Value="General">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                    </Style>
+                </ScrollViewer.Style>
+                <StackPanel>
+                    <TextBlock FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="General" />
 
-        <TextBlock Grid.Row="3" Margin="0,12,0,4" Text="Project file" Foreground="{DynamicResource TextSecondaryBrush}" />
-        <TextBlock Grid.Row="4" TextWrapping="Wrap" Text="{Binding LoadedProject.ProjectFilePath, TargetNullValue=Open or create a project first.}" />
+                    <TextBlock Margin="0,14,0,4" Text="Project" Foreground="{DynamicResource TextSecondaryBrush}" />
+                    <TextBlock Text="{Binding LoadedProject.Name, TargetNullValue=No project loaded}" />
 
-        <TextBlock Grid.Row="5" Margin="0,12,0,4" Text="Assets folder" Foreground="{DynamicResource TextSecondaryBrush}" />
-        <TextBlock Grid.Row="6" TextWrapping="Wrap" Text="{Binding LoadedProject.AssetsDirectory, TargetNullValue=Open or create a project first.}" />
-        <TextBlock Grid.Row="7" Margin="0,12,0,4" Text="Fruit machine platform" Foreground="{DynamicResource TextSecondaryBrush}" />
-        <ComboBox Grid.Row="8"
-                  MinWidth="220"
-                  HorizontalAlignment="Left"
-                  ItemsSource="{Binding FruitMachinePlatformTypes}"
-                  SelectedItem="{Binding SelectedFruitMachinePlatform}" />
+                    <TextBlock Margin="0,12,0,4" Text="Project file" Foreground="{DynamicResource TextSecondaryBrush}" />
+                    <TextBlock TextWrapping="Wrap" Text="{Binding LoadedProject.ProjectFilePath, TargetNullValue=Open or create a project first.}" />
 
-        <TextBlock Grid.Row="9" Margin="0,12,0,4" Text="MAME ROM" Foreground="{DynamicResource TextSecondaryBrush}" />
-        <StackPanel Grid.Row="10" Orientation="Vertical">
-            <StackPanel Orientation="Horizontal">
-                <TextBox Width="220"
-                         HorizontalAlignment="Left"
-                         Text="{Binding MameRomName, UpdateSourceTrigger=LostFocus}" />
-                <Button Margin="8,0,0,0"
-                        Padding="10,2"
-                        Command="{Binding DownloadMameRomCommand}"
-                        Content="Download" />
-            </StackPanel>
-            <TextBlock Margin="0,8,0,0"
-                       Text="{Binding MameRomStatus, StringFormat=Status: {0}}"
-                       Foreground="{DynamicResource TextSecondaryBrush}" />
-            <CheckBox Margin="0,8,0,0"
-                      Content="Automatically download missing ROMs"
-                      IsChecked="{Binding AutomaticallyDownloadMissingRoms}" />
-        </StackPanel>
-            <TextBlock Grid.Row="11" Margin="0,20,0,4" Text="Native DLL ROMs / System6 ROMs" Foreground="{DynamicResource TextSecondaryBrush}" />
-            <Grid Grid.Row="12">
-                <Grid.ColumnDefinitions><ColumnDefinition Width="120" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-                <TextBlock Grid.Row="0" Grid.Column="0" Margin="0,0,8,6" VerticalAlignment="Center" Text="Program ROM 1" /><TextBox Grid.Row="0" Grid.Column="1" Margin="0,0,8,6" Text="{Binding System6ProgramRom1Path, UpdateSourceTrigger=LostFocus}" /><Button Grid.Row="0" Grid.Column="2" Margin="0,0,0,6" Padding="10,2" Command="{Binding BrowseSystem6ProgramRom1Command}" Content="Browse" />
-                <TextBlock Grid.Row="1" Grid.Column="0" Margin="0,0,8,6" VerticalAlignment="Center" Text="Program ROM 2" /><TextBox Grid.Row="1" Grid.Column="1" Margin="0,0,8,6" Text="{Binding System6ProgramRom2Path, UpdateSourceTrigger=LostFocus}" /><Button Grid.Row="1" Grid.Column="2" Margin="0,0,0,6" Padding="10,2" Command="{Binding BrowseSystem6ProgramRom2Command}" Content="Browse" />
-                <TextBlock Grid.Row="2" Grid.Column="0" Margin="0,0,8,6" VerticalAlignment="Center" Text="Program ROM 3" /><TextBox Grid.Row="2" Grid.Column="1" Margin="0,0,8,6" Text="{Binding System6ProgramRom3Path, UpdateSourceTrigger=LostFocus}" /><Button Grid.Row="2" Grid.Column="2" Margin="0,0,0,6" Padding="10,2" Command="{Binding BrowseSystem6ProgramRom3Command}" Content="Browse" />
-                <TextBlock Grid.Row="3" Grid.Column="0" Margin="0,0,8,6" VerticalAlignment="Center" Text="Program ROM 4" /><TextBox Grid.Row="3" Grid.Column="1" Margin="0,0,8,6" Text="{Binding System6ProgramRom4Path, UpdateSourceTrigger=LostFocus}" /><Button Grid.Row="3" Grid.Column="2" Margin="0,0,0,6" Padding="10,2" Command="{Binding BrowseSystem6ProgramRom4Command}" Content="Browse" />
-                <TextBlock Grid.Row="4" Grid.Column="0" Margin="0,0,8,6" VerticalAlignment="Center" Text="Sound ROM 1" /><TextBox Grid.Row="4" Grid.Column="1" Margin="0,0,8,6" Text="{Binding System6SoundRom1Path, UpdateSourceTrigger=LostFocus}" /><Button Grid.Row="4" Grid.Column="2" Margin="0,0,0,6" Padding="10,2" Command="{Binding BrowseSystem6SoundRom1Command}" Content="Browse" />
-                <TextBlock Grid.Row="5" Grid.Column="0" Margin="0,0,8,6" VerticalAlignment="Center" Text="Sound ROM 2" /><TextBox Grid.Row="5" Grid.Column="1" Margin="0,0,8,6" Text="{Binding System6SoundRom2Path, UpdateSourceTrigger=LostFocus}" /><Button Grid.Row="5" Grid.Column="2" Margin="0,0,0,6" Padding="10,2" Command="{Binding BrowseSystem6SoundRom2Command}" Content="Browse" />
-                <TextBlock Grid.Row="6" Grid.Column="0" Margin="0,0,8,6" VerticalAlignment="Center" Text="Sound ROM 3" /><TextBox Grid.Row="6" Grid.Column="1" Margin="0,0,8,6" Text="{Binding System6SoundRom3Path, UpdateSourceTrigger=LostFocus}" /><Button Grid.Row="6" Grid.Column="2" Margin="0,0,0,6" Padding="10,2" Command="{Binding BrowseSystem6SoundRom3Command}" Content="Browse" />
-                <TextBlock Grid.Row="7" Grid.Column="0" Margin="0,0,8,6" VerticalAlignment="Center" Text="Sound ROM 4" /><TextBox Grid.Row="7" Grid.Column="1" Margin="0,0,8,6" Text="{Binding System6SoundRom4Path, UpdateSourceTrigger=LostFocus}" /><Button Grid.Row="7" Grid.Column="2" Margin="0,0,0,6" Padding="10,2" Command="{Binding BrowseSystem6SoundRom4Command}" Content="Browse" />
-                <CheckBox Grid.Row="8" Grid.Column="1" Margin="0,2,0,6" Content="Flash switch" IsChecked="{Binding System6FlashSwitch}" />
-                <TextBlock Grid.Row="9" Grid.Column="0" Margin="0,0,8,6" VerticalAlignment="Center" Text="Percent switch value" />
-                <StackPanel Grid.Row="9" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,0,0,6">
-                    <TextBox Width="80" HorizontalAlignment="Left" Text="{Binding System6PercentSwitchValue, UpdateSourceTrigger=LostFocus}" />
-                    <TextBlock Margin="0,4,0,0" Text="Native System 6 SetPercent value. Low four bits map to DLL percentage switches 8–11." Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+                    <TextBlock Margin="0,12,0,4" Text="Assets folder" Foreground="{DynamicResource TextSecondaryBrush}" />
+                    <TextBlock TextWrapping="Wrap" Text="{Binding LoadedProject.AssetsDirectory, TargetNullValue=Open or create a project first.}" />
+
+                    <TextBlock Margin="0,12,0,4" Text="Fruit machine platform" Foreground="{DynamicResource TextSecondaryBrush}" />
+                    <ComboBox MinWidth="220"
+                              HorizontalAlignment="Left"
+                              ItemsSource="{Binding FruitMachinePlatformTypes}"
+                              SelectedItem="{Binding SelectedFruitMachinePlatform}" />
                 </StackPanel>
-                <TextBlock Grid.Row="10" Grid.Column="0" Grid.ColumnSpan="3" Text="{Binding System6NativeRomStatus, StringFormat=Status: {0}}" Foreground="{DynamicResource TextSecondaryBrush}" />
-            </Grid>
+            </ScrollViewer>
 
-            <TextBlock Grid.Row="13" Margin="0,20,0,4" Text="System6 Reel Optos" Foreground="{DynamicResource TextSecondaryBrush}" />
-            <StackPanel Grid.Row="14" Orientation="Vertical">
-                <DataGrid ItemsSource="{Binding System6ReelOptos}"
-                          AutoGenerateColumns="False"
-                          CanUserAddRows="False"
-                          CanUserDeleteRows="False"
-                          HeadersVisibility="Column"
-                          MaxHeight="260">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="Reel" Binding="{Binding ReelNumber}" IsReadOnly="True" Width="80" />
-                        <DataGridCheckBoxColumn Header="Enabled" Binding="{Binding Enabled, UpdateSourceTrigger=PropertyChanged}" Width="90" />
-                        <DataGridTextColumn Header="Steps" Binding="{Binding Steps, UpdateSourceTrigger=LostFocus}" Width="100" />
-                        <DataGridTextColumn Header="Opto Start" Binding="{Binding OptoStart, UpdateSourceTrigger=LostFocus}" Width="120" />
-                        <DataGridTextColumn Header="Opto End" Binding="{Binding OptoEnd, UpdateSourceTrigger=LostFocus}" Width="120" />
-                        <DataGridCheckBoxColumn Header="Inverted" Binding="{Binding OptoInvert, UpdateSourceTrigger=PropertyChanged}" Width="100" />
-                    </DataGrid.Columns>
-                </DataGrid>
-                <Button Margin="0,8,0,0"
-                        HorizontalAlignment="Left"
-                        Padding="10,2"
-                        Command="{Binding ResetSystem6ReelOptosCommand}"
-                        Content="Reset Reel Optos To Defaults" />
-            </StackPanel>
-    </Grid></ScrollViewer>
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ScrollViewer.Style>
+                    <Style TargetType="ScrollViewer">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SelectedProjectSettingsCategory}" Value="MAME">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                    </Style>
+                </ScrollViewer.Style>
+                <StackPanel>
+                    <TextBlock FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="MAME" />
+
+                    <TextBlock Margin="0,16,0,4" Text="MAME ROM" Foreground="{DynamicResource TextSecondaryBrush}" />
+                    <StackPanel Orientation="Horizontal">
+                        <TextBox Width="220"
+                                 HorizontalAlignment="Left"
+                                 Text="{Binding MameRomName, UpdateSourceTrigger=LostFocus}" />
+                        <Button Margin="8,0,0,0"
+                                Padding="10,2"
+                                Command="{Binding DownloadMameRomCommand}"
+                                Content="Download" />
+                    </StackPanel>
+                    <TextBlock Margin="0,8,0,0"
+                               Text="{Binding MameRomStatus, StringFormat=Status: {0}}"
+                               Foreground="{DynamicResource TextSecondaryBrush}" />
+                    <CheckBox Margin="0,8,0,0"
+                              Content="Automatically download missing ROMs"
+                              IsChecked="{Binding AutomaticallyDownloadMissingRoms}" />
+                </StackPanel>
+            </ScrollViewer>
+
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ScrollViewer.Style>
+                    <Style TargetType="ScrollViewer">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SelectedProjectSettingsCategory}" Value="Native">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                    </Style>
+                </ScrollViewer.Style>
+                <StackPanel>
+                    <TextBlock FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="Native" />
+
+                    <TextBlock Margin="0,16,0,4" Text="Native DLL ROMs / System6 ROMs" Foreground="{DynamicResource TextSecondaryBrush}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="120" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Grid.Column="0" Margin="0,0,8,6" VerticalAlignment="Center" Text="Program ROM 1" /><TextBox Grid.Row="0" Grid.Column="1" Margin="0,0,8,6" Text="{Binding System6ProgramRom1Path, UpdateSourceTrigger=LostFocus}" /><Button Grid.Row="0" Grid.Column="2" Margin="0,0,0,6" Padding="10,2" Command="{Binding BrowseSystem6ProgramRom1Command}" Content="Browse" />
+                        <TextBlock Grid.Row="1" Grid.Column="0" Margin="0,0,8,6" VerticalAlignment="Center" Text="Program ROM 2" /><TextBox Grid.Row="1" Grid.Column="1" Margin="0,0,8,6" Text="{Binding System6ProgramRom2Path, UpdateSourceTrigger=LostFocus}" /><Button Grid.Row="1" Grid.Column="2" Margin="0,0,0,6" Padding="10,2" Command="{Binding BrowseSystem6ProgramRom2Command}" Content="Browse" />
+                        <TextBlock Grid.Row="2" Grid.Column="0" Margin="0,0,8,6" VerticalAlignment="Center" Text="Program ROM 3" /><TextBox Grid.Row="2" Grid.Column="1" Margin="0,0,8,6" Text="{Binding System6ProgramRom3Path, UpdateSourceTrigger=LostFocus}" /><Button Grid.Row="2" Grid.Column="2" Margin="0,0,0,6" Padding="10,2" Command="{Binding BrowseSystem6ProgramRom3Command}" Content="Browse" />
+                        <TextBlock Grid.Row="3" Grid.Column="0" Margin="0,0,8,6" VerticalAlignment="Center" Text="Program ROM 4" /><TextBox Grid.Row="3" Grid.Column="1" Margin="0,0,8,6" Text="{Binding System6ProgramRom4Path, UpdateSourceTrigger=LostFocus}" /><Button Grid.Row="3" Grid.Column="2" Margin="0,0,0,6" Padding="10,2" Command="{Binding BrowseSystem6ProgramRom4Command}" Content="Browse" />
+                        <TextBlock Grid.Row="4" Grid.Column="0" Margin="0,0,8,6" VerticalAlignment="Center" Text="Sound ROM 1" /><TextBox Grid.Row="4" Grid.Column="1" Margin="0,0,8,6" Text="{Binding System6SoundRom1Path, UpdateSourceTrigger=LostFocus}" /><Button Grid.Row="4" Grid.Column="2" Margin="0,0,0,6" Padding="10,2" Command="{Binding BrowseSystem6SoundRom1Command}" Content="Browse" />
+                        <TextBlock Grid.Row="5" Grid.Column="0" Margin="0,0,8,6" VerticalAlignment="Center" Text="Sound ROM 2" /><TextBox Grid.Row="5" Grid.Column="1" Margin="0,0,8,6" Text="{Binding System6SoundRom2Path, UpdateSourceTrigger=LostFocus}" /><Button Grid.Row="5" Grid.Column="2" Margin="0,0,0,6" Padding="10,2" Command="{Binding BrowseSystem6SoundRom2Command}" Content="Browse" />
+                        <TextBlock Grid.Row="6" Grid.Column="0" Margin="0,0,8,6" VerticalAlignment="Center" Text="Sound ROM 3" /><TextBox Grid.Row="6" Grid.Column="1" Margin="0,0,8,6" Text="{Binding System6SoundRom3Path, UpdateSourceTrigger=LostFocus}" /><Button Grid.Row="6" Grid.Column="2" Margin="0,0,0,6" Padding="10,2" Command="{Binding BrowseSystem6SoundRom3Command}" Content="Browse" />
+                        <TextBlock Grid.Row="7" Grid.Column="0" Margin="0,0,8,6" VerticalAlignment="Center" Text="Sound ROM 4" /><TextBox Grid.Row="7" Grid.Column="1" Margin="0,0,8,6" Text="{Binding System6SoundRom4Path, UpdateSourceTrigger=LostFocus}" /><Button Grid.Row="7" Grid.Column="2" Margin="0,0,0,6" Padding="10,2" Command="{Binding BrowseSystem6SoundRom4Command}" Content="Browse" />
+                        <CheckBox Grid.Row="8" Grid.Column="1" Margin="0,2,0,6" Content="Flash switch" IsChecked="{Binding System6FlashSwitch}" />
+                        <TextBlock Grid.Row="9" Grid.Column="0" Margin="0,0,8,6" VerticalAlignment="Center" Text="Percent switch value" />
+                        <StackPanel Grid.Row="9" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,0,0,6">
+                            <TextBox Width="80" HorizontalAlignment="Left" Text="{Binding System6PercentSwitchValue, UpdateSourceTrigger=LostFocus}" />
+                            <TextBlock Margin="0,4,0,0" Text="Native System 6 SetPercent value. Low four bits map to DLL percentage switches 8–11." Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <TextBlock Grid.Row="10" Grid.Column="0" Grid.ColumnSpan="3" Text="{Binding System6NativeRomStatus, StringFormat=Status: {0}}" Foreground="{DynamicResource TextSecondaryBrush}" />
+                    </Grid>
+
+                    <TextBlock Margin="0,20,0,4" Text="System6 Reel Optos" Foreground="{DynamicResource TextSecondaryBrush}" />
+                    <DataGrid ItemsSource="{Binding System6ReelOptos}"
+                              AutoGenerateColumns="False"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              HeadersVisibility="Column"
+                              MaxHeight="260">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Reel" Binding="{Binding ReelNumber}" IsReadOnly="True" Width="80" />
+                            <DataGridCheckBoxColumn Header="Enabled" Binding="{Binding Enabled, UpdateSourceTrigger=PropertyChanged}" Width="90" />
+                            <DataGridTextColumn Header="Steps" Binding="{Binding Steps, UpdateSourceTrigger=LostFocus}" Width="100" />
+                            <DataGridTextColumn Header="Opto Start" Binding="{Binding OptoStart, UpdateSourceTrigger=LostFocus}" Width="120" />
+                            <DataGridTextColumn Header="Opto End" Binding="{Binding OptoEnd, UpdateSourceTrigger=LostFocus}" Width="120" />
+                            <DataGridCheckBoxColumn Header="Inverted" Binding="{Binding OptoInvert, UpdateSourceTrigger=PropertyChanged}" Width="100" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <Button Margin="0,8,0,0"
+                            HorizontalAlignment="Left"
+                            Padding="10,2"
+                            Command="{Binding ResetSystem6ReelOptosCommand}"
+                            Content="Reset Reel Optos To Defaults" />
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+    </Grid>
 </UserControl>
