@@ -452,6 +452,39 @@ public sealed class System6NativeBackendTests
         }
     }
 
+
+    [Fact]
+    public async Task NativeCoreOwnerLoopDoesNotRunDuringFullPollOutputsPass()
+    {
+        var previousPolling = Environment.GetEnvironmentVariable("OASIS_SYSTEM6_OUTPUT_POLLING");
+        var previousPump = Environment.GetEnvironmentVariable("OASIS_SYSTEM6_EMULATION_PUMP_HZ");
+        Environment.SetEnvironmentVariable("OASIS_SYSTEM6_OUTPUT_POLLING", "1");
+        Environment.SetEnvironmentVariable("OASIS_SYSTEM6_EMULATION_PUMP_HZ", "2000");
+        try
+        {
+            var library = new FakeSystem6NativeLibrary
+            {
+                AlphaSegmentPollingAvailable = true,
+                SevenSegmentPollingAvailable = true
+            };
+            var (dllPath, rom1, rom2) = CreateNativeFiles(2);
+            var backend = new System6NativeBackend(dllPath, _ => library, framesPerSecond: 60);
+            var request = CreateLaunchRequest([0], rom1, rom2) with { ConfiguredSevenSegmentDisplayIds = [0] };
+
+            await backend.StartAsync(request, CancellationToken.None);
+            var observedPollPass = SpinWait.SpinUntil(() => Volatile.Read(ref library.PollOutputsPassCount) >= 1, TimeSpan.FromSeconds(1));
+            await backend.StopAsync(CancellationToken.None);
+
+            Assert.True(observedPollPass, "Expected at least one full PollOutputs pass.");
+            Assert.False(library.RunObservedDuringPollOutputs);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("OASIS_SYSTEM6_OUTPUT_POLLING", previousPolling);
+            Environment.SetEnvironmentVariable("OASIS_SYSTEM6_EMULATION_PUMP_HZ", previousPump);
+        }
+    }
+
     [Theory]
     [InlineData(new[] { 1, 2, 3 }, new[] { 1, 4, 3 }, true)]
     [InlineData(new[] { 1, 2, 3 }, new[] { 4, 5, 6 }, false)]
@@ -676,6 +709,12 @@ public sealed class System6NativeBackendTests
 
         public bool RunObservedDuringAlphaSnapshot;
 
+        public bool PollOutputsInProgress;
+
+        public bool RunObservedDuringPollOutputs;
+
+        public int PollOutputsPassCount;
+
         public Dictionary<ushort, bool> GetLampsOnValues { get; } = new();
 
         public Dictionary<sbyte, short> PositionOutputs { get; } = new();
@@ -734,7 +773,14 @@ public sealed class System6NativeBackendTests
         public int GetSegsOn(ushort index)
         {
             Calls.Add($"GetSegsOn:{index}");
-            return SevenSegmentCells.TryGetValue(index, out var isOn) && isOn ? 1 : 0;
+            var value = SevenSegmentCells.TryGetValue(index, out var isOn) && isOn ? 1 : 0;
+            if (index == 7)
+            {
+                Interlocked.Increment(ref PollOutputsPassCount);
+                Volatile.Write(ref PollOutputsInProgress, false);
+            }
+
+            return value;
         }
 
         public byte GetSegsBright(ushort index)
@@ -781,6 +827,11 @@ public sealed class System6NativeBackendTests
                 RunObservedDuringAlphaSnapshot = true;
             }
 
+            if (Volatile.Read(ref PollOutputsInProgress))
+            {
+                RunObservedDuringPollOutputs = true;
+            }
+
             Interlocked.Increment(ref RunCallCount);
             return 1;
         }
@@ -795,7 +846,11 @@ public sealed class System6NativeBackendTests
 
         public string? LampsUpdateExportName => "SYSTEM6UpdateLamps";
 
-        public void LampsUpdate() => Calls.Add("LampsUpdate");
+        public void LampsUpdate()
+        {
+            Volatile.Write(ref PollOutputsInProgress, true);
+            Calls.Add("LampsUpdate");
+        }
 
         public bool GetLampsOn(ushort lampIndex)
         {
