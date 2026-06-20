@@ -2559,6 +2559,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         backend.LampChanged += OnActiveBackendLampChanged;
         backend.ReelChanged += OnActiveBackendReelChanged;
         backend.SegmentChanged += OnActiveBackendSegmentChanged;
+        backend.VfdBrightnessChanged += OnActiveBackendVfdBrightnessChanged;
         try
         {
             await backend.StartAsync(BuildEmulationLaunchRequest(), cancellationToken).ConfigureAwait(false);
@@ -2570,6 +2571,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             backend.LampChanged -= OnActiveBackendLampChanged;
             backend.ReelChanged -= OnActiveBackendReelChanged;
             backend.SegmentChanged -= OnActiveBackendSegmentChanged;
+            backend.VfdBrightnessChanged -= OnActiveBackendVfdBrightnessChanged;
             await backend.DisposeAsync().ConfigureAwait(false);
             _activeEmulationBackend = null;
             throw;
@@ -2733,6 +2735,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _segmentRuntimeAdapter.ApplySegmentState(e.CellId, e.SegmentMask, e.OutputType);
     }
 
+    private void OnActiveBackendVfdBrightnessChanged(object? sender, MachineVfdBrightnessChangedEventArgs e)
+    {
+        _segmentRuntimeAdapter.ApplyVfdBrightness(e.CellId, e.NormalizedBrightness);
+    }
+
     private void OnActiveBackendStateChanged(object? sender, EmulationBackendState state)
     {
         DispatchToUiThread(() =>
@@ -2827,6 +2834,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 _activeEmulationBackend.LampChanged -= OnActiveBackendLampChanged;
                 _activeEmulationBackend.ReelChanged -= OnActiveBackendReelChanged;
                 _activeEmulationBackend.SegmentChanged -= OnActiveBackendSegmentChanged;
+                _activeEmulationBackend.VfdBrightnessChanged -= OnActiveBackendVfdBrightnessChanged;
                 _activeEmulationBackend.DisposeAsync().AsTask().GetAwaiter().GetResult();
                 _activeEmulationBackend = null;
                 _playViewInputRouter = null;
@@ -2866,6 +2874,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 _activeEmulationBackend.LampChanged -= OnActiveBackendLampChanged;
                 _activeEmulationBackend.ReelChanged -= OnActiveBackendReelChanged;
                 _activeEmulationBackend.SegmentChanged -= OnActiveBackendSegmentChanged;
+                _activeEmulationBackend.VfdBrightnessChanged -= OnActiveBackendVfdBrightnessChanged;
                 await _activeEmulationBackend.DisposeAsync();
                 _activeEmulationBackend = null;
                 _playViewInputRouter = null;

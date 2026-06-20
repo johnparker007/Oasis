@@ -37,6 +37,7 @@ public sealed class System6NativeBackend : IEmulationBackend
     private readonly int[] _lastLampRawValues = Enumerable.Repeat(-1, LampCount).ToArray();
     private readonly int[] _lastReelPositions = Enumerable.Repeat(int.MinValue, ReelCount).ToArray();
     private int[]? _lastAlphaSegments;
+    private double? _lastAlphaBrightness;
     private bool _hasLoggedAlphaUnavailable;
     private bool _hasLoggedLampPollingConfiguration;
     private bool _hasLoggedReelPollingMapping;
@@ -94,11 +95,7 @@ public sealed class System6NativeBackend : IEmulationBackend
     public event EventHandler<MachineReelChangedEventArgs>? ReelChanged;
     public event EventHandler<MachineSegmentChangedEventArgs>? SegmentChanged;
 
-    public event EventHandler<MachineVfdBrightnessChangedEventArgs>? VfdBrightnessChanged
-    {
-        add { }
-        remove { }
-    }
+    public event EventHandler<MachineVfdBrightnessChangedEventArgs>? VfdBrightnessChanged;
 
     public event EventHandler<MachineDotMatrixChangedEventArgs>? DotMatrixChanged
     {
@@ -628,6 +625,8 @@ public sealed class System6NativeBackend : IEmulationBackend
 
     private void PollAlphaDebugOutput(ISystem6NativeLibrary library)
     {
+        PollAlphaBrightnessOutput(library);
+
         if (!library.IsAlphaSegmentPollingAvailable)
         {
             if (!_hasLoggedAlphaUnavailable)
@@ -663,12 +662,39 @@ public sealed class System6NativeBackend : IEmulationBackend
         }
     }
 
+    internal static double NormalizeSystem6AlphaBrightness(byte rawBrightness)
+    {
+        // SYSTEM6GetAlphaBright appears to report the same 0-31 VFD duty range that
+        // MAME exposes for Impact vfdduty outputs. The optional export gate handles
+        // unavailable data; raw 0 is a valid blank/fade-start value, not full brightness.
+        const double maxSystem6AlphaDuty = 31d;
+        return Math.Clamp(rawBrightness / maxSystem6AlphaDuty, 0d, 1d);
+    }
+
+    private void PollAlphaBrightnessOutput(ISystem6NativeLibrary library)
+    {
+        if (!library.IsAlphaBrightnessPollingAvailable)
+        {
+            return;
+        }
+
+        var normalizedBrightness = NormalizeSystem6AlphaBrightness(library.GetAlphaBrightness());
+        if (_lastAlphaBrightness.HasValue && Math.Abs(_lastAlphaBrightness.Value - normalizedBrightness) < 0.000001d)
+        {
+            return;
+        }
+
+        _lastAlphaBrightness = normalizedBrightness;
+        VfdBrightnessChanged?.Invoke(this, new MachineVfdBrightnessChangedEventArgs(0, normalizedBrightness));
+    }
+
     private void ResetCachedOutputState()
     {
         Array.Fill(_lastLampValues, -1);
         Array.Fill(_lastLampRawValues, -1);
         Array.Fill(_lastReelPositions, int.MinValue);
         _lastAlphaSegments = null;
+        _lastAlphaBrightness = null;
         _hasLoggedAlphaUnavailable = false;
         _hasLoggedLampPollingConfiguration = false;
         _hasLoggedReelPollingMapping = false;
