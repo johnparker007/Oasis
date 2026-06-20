@@ -70,5 +70,13 @@ public interface ISystem6NativeLibrary : INativeCoreLibrary
 
     void TurnSwitchOn(int switchIndex);
 
+    bool IsSevenSegmentPollingAvailable { get; }
+
+    void UpdateSegs();
+
+    int GetSegsOn(ushort index);
+
+    byte GetSegsBright(ushort index);
+
     void TurnSwitchOff(int switchIndex);
 }

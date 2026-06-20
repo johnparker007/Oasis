@@ -392,6 +392,39 @@ public sealed class System6NativeBackendTests
     }
 
     [Fact]
+    public async Task StartAsyncOneRunOnlyPollsConfiguredSevenSegmentsAndPublishesDigitMasks()
+    {
+        var previousStage = Environment.GetEnvironmentVariable("OASIS_SYSTEM6_STARTUP_STAGE");
+        Environment.SetEnvironmentVariable("OASIS_SYSTEM6_STARTUP_STAGE", "OneRunOnly");
+        try
+        {
+            var library = new FakeSystem6NativeLibrary { SevenSegmentPollingAvailable = true };
+            library.SevenSegmentMasks[2] = 0x3F;
+            library.SevenSegmentMasks[5] = 0x80 | 0x06;
+            library.SevenSegmentBrightness[2] = 7;
+            var (dllPath, rom1, rom2) = CreateNativeFiles(2);
+            var backend = new System6NativeBackend(dllPath, _ => library);
+            var segmentEvents = new List<MachineSegmentChangedEventArgs>();
+            backend.SegmentChanged += (_, e) => segmentEvents.Add(e);
+            var request = CreateLaunchRequest(rom1, rom2) with { ConfiguredSevenSegmentDisplayIds = [2, 5] };
+
+            await backend.StartAsync(request, CancellationToken.None);
+            await backend.StopAsync(CancellationToken.None);
+
+            Assert.Contains("UpdateSegs", library.Calls);
+            Assert.Contains("GetSegsOn:2", library.Calls);
+            Assert.Contains("GetSegsOn:5", library.Calls);
+            Assert.DoesNotContain("GetSegsBright:2", library.Calls);
+            Assert.Contains(segmentEvents, e => e.CellId == 2 && e.SegmentMask == 0x3F && e.OutputType == MameSegmentOutputType.Digit);
+            Assert.Contains(segmentEvents, e => e.CellId == 5 && e.SegmentMask == 0x86 && e.OutputType == MameSegmentOutputType.Digit);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("OASIS_SYSTEM6_STARTUP_STAGE", previousStage);
+        }
+    }
+
+    [Fact]
     public async Task StartAsyncOneRunOnlyDoesNotPublishAlphaSegmentsWhenExportMissing()
     {
         var previousStage = Environment.GetEnvironmentVariable("OASIS_SYSTEM6_STARTUP_STAGE");
@@ -518,7 +551,8 @@ public sealed class System6NativeBackendTests
                 ProgramRom1Path = romPaths.Length > 0 ? romPaths[0] : string.Empty,
                 ProgramRom2Path = romPaths.Length > 1 ? romPaths[1] : string.Empty
             },
-            configuredLampIds);
+            configuredLampIds,
+            null);
     }
 
     private static (string DllPath, string Rom1, string Rom2) CreateNativeFiles(int romCount)
@@ -572,6 +606,12 @@ public sealed class System6NativeBackendTests
 
         public byte AlphaBrightness { get; set; } = 255;
 
+        public bool SevenSegmentPollingAvailable { get; set; }
+
+        public Dictionary<ushort, int> SevenSegmentMasks { get; } = new();
+
+        public Dictionary<ushort, byte> SevenSegmentBrightness { get; } = new();
+
         public byte Initialise()
         {
             Calls.Add("Initialise");
@@ -600,6 +640,22 @@ public sealed class System6NativeBackendTests
         public void SetOptoInvert(byte reelNum, byte state) => Calls.Add($"SetOptoInvert:{reelNum}:{state}");
 
         public bool IsSetPercentAvailable => true;
+
+        public bool IsSevenSegmentPollingAvailable => SevenSegmentPollingAvailable;
+
+        public void UpdateSegs() => Calls.Add("UpdateSegs");
+
+        public int GetSegsOn(ushort index)
+        {
+            Calls.Add($"GetSegsOn:{index}");
+            return SevenSegmentMasks.TryGetValue(index, out var mask) ? mask : 0;
+        }
+
+        public byte GetSegsBright(ushort index)
+        {
+            Calls.Add($"GetSegsBright:{index}");
+            return SevenSegmentBrightness.TryGetValue(index, out var brightness) ? brightness : (byte)0;
+        }
 
         public void SetPercent(byte percent) => Calls.Add($"SetPercent:{percent}");
 
