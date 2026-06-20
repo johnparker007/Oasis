@@ -22,6 +22,7 @@ namespace OasisEditor;
 
 public sealed class MainWindowViewModel : INotifyPropertyChanged
 {
+    private const int NativeSystem6SevenSegmentCellStride = 16;
     private static readonly bool kDebugSkiaPerformanceOutput = false;
     private readonly RecentProjectsStore _recentProjectsStore = new();
     private readonly IApplicationThemeService _applicationThemeService;
@@ -2648,7 +2649,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             foreach (var element in document.GetPanelElements())
             {
-                if (element.Kind == PanelElementKind.SevenSegment && element.DisplayNumber is int displayId && displayId is >= 0 and <= ushort.MaxValue)
+                if (element.Kind == PanelElementKind.SevenSegment && element.DisplayNumber is int displayId && displayId is >= 0 and <= ushort.MaxValue / NativeSystem6SevenSegmentCellStride)
                 {
                     displayIds.Add(displayId);
                 }
@@ -2659,7 +2660,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 if (faceDisplay.LinkedMachineObjectReference is MachineObjectReference reference
                     && reference.Kind == MachineObjectKind.SevenSegmentDisplay
                     && int.TryParse(reference.Id, out var displayId)
-                    && displayId is >= 0 and <= ushort.MaxValue)
+                    && displayId is >= 0 and <= ushort.MaxValue / NativeSystem6SevenSegmentCellStride)
                 {
                     displayIds.Add(displayId);
                 }

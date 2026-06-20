@@ -15,6 +15,7 @@ public sealed class System6NativeBackend : IEmulationBackend
     private const int DiagnosticMappingSampleCount = 8;
     private const int AlphaCellCount = 16;
     private const int SevenSegmentMaskBits = 8;
+    private const int NativeSevenSegmentCellStride = 16;
     private const int SupportedReelOptoCount = 8;
     private const string DiagnosticStageEnvironmentVariable = "OASIS_SYSTEM6_STARTUP_STAGE";
     private const string TimingDiagnosticsEnvironmentVariable = "OASIS_SYSTEM6_TIMING_DIAGNOSTICS";
@@ -754,13 +755,23 @@ public sealed class System6NativeBackend : IEmulationBackend
 
         foreach (var displayId in displayIds)
         {
-            var rawMask = library.GetSegsOn(checked((ushort)displayId));
-            nativeInvokeCount++;
-            var mask = NormalizeNativeSystem6SevenSegmentMask(rawMask);
+            var baseIndex = GetNativeSevenSegmentBaseIndex(displayId);
+            var mask = 0;
+            for (var bit = 0; bit < SevenSegmentMaskBits; bit++)
+            {
+                var nativeIndex = checked((ushort)(baseIndex + bit));
+                if (library.GetSegsOn(nativeIndex) != 0)
+                {
+                    mask |= 1 << bit;
+                }
+
+                nativeInvokeCount++;
+            }
+
             if (!_lastSevenSegmentMasks.TryGetValue(displayId, out var previous) || previous != mask)
             {
                 _lastSevenSegmentMasks[displayId] = mask;
-                Debug.WriteLine($"[System6 7 Segment] display {displayId} raw=0x{rawMask:X4} mask=0x{mask:X2}");
+                Debug.WriteLine($"[System6 7 Segment] display {displayId} nativeBase={baseIndex} mask=0x{mask:X2}");
                 SegmentChanged?.Invoke(this, new MachineSegmentChangedEventArgs(displayId, mask, MameSegmentOutputType.Digit));
             }
         }
@@ -768,12 +779,12 @@ public sealed class System6NativeBackend : IEmulationBackend
         return nativeInvokeCount;
     }
 
-    internal static int NormalizeNativeSystem6SevenSegmentMask(int rawMask)
+    internal static int GetNativeSevenSegmentBaseIndex(int displayId)
     {
-        // The Native System 6 segment bridge exposes the same canonical bit order as
-        // the MAME digit path used by Oasis. Keep normalization at the backend
-        // boundary so a future core-specific remap can be isolated here.
-        return rawMask & ((1 << SevenSegmentMaskBits) - 1);
+        // The native core exposes Seg7.On[256] as individual segment cells, not
+        // digit-level masks. Each digit occupies a 16-cell block; the first eight
+        // cells map to the canonical Oasis/MAME seven-segment bits.
+        return checked(displayId * NativeSevenSegmentCellStride);
     }
 
     private int PollLampOutputs(ISystem6NativeLibrary library)
@@ -875,7 +886,7 @@ public sealed class System6NativeBackend : IEmulationBackend
     private void ConfigureSevenSegmentPolling(IReadOnlyList<int>? configuredSevenSegmentDisplayIds)
     {
         _configuredSevenSegmentDisplayIds = configuredSevenSegmentDisplayIds?
-            .Where(displayId => displayId is >= 0 and <= ushort.MaxValue)
+            .Where(displayId => displayId is >= 0 and <= (ushort.MaxValue / NativeSevenSegmentCellStride))
             .Distinct()
             .OrderBy(displayId => displayId)
             .ToArray();

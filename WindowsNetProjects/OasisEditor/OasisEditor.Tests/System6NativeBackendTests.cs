@@ -399,9 +399,15 @@ public sealed class System6NativeBackendTests
         try
         {
             var library = new FakeSystem6NativeLibrary { SevenSegmentPollingAvailable = true };
-            library.SevenSegmentMasks[2] = 0x3F;
-            library.SevenSegmentMasks[5] = 0x80 | 0x06;
-            library.SevenSegmentBrightness[2] = 7;
+            for (ushort index = 32; index <= 37; index++)
+            {
+                library.SevenSegmentCells[index] = true;
+            }
+
+            library.SevenSegmentCells[80 + 1] = true;
+            library.SevenSegmentCells[80 + 2] = true;
+            library.SevenSegmentCells[80 + 7] = true;
+            library.SevenSegmentBrightness[32] = 7;
             var (dllPath, rom1, rom2) = CreateNativeFiles(2);
             var backend = new System6NativeBackend(dllPath, _ => library);
             var segmentEvents = new List<MachineSegmentChangedEventArgs>();
@@ -412,9 +418,11 @@ public sealed class System6NativeBackendTests
             await backend.StopAsync(CancellationToken.None);
 
             Assert.Contains("UpdateSegs", library.Calls);
-            Assert.Contains("GetSegsOn:2", library.Calls);
-            Assert.Contains("GetSegsOn:5", library.Calls);
-            Assert.DoesNotContain("GetSegsBright:2", library.Calls);
+            Assert.Contains("GetSegsOn:32", library.Calls);
+            Assert.Contains("GetSegsOn:39", library.Calls);
+            Assert.Contains("GetSegsOn:80", library.Calls);
+            Assert.Contains("GetSegsOn:87", library.Calls);
+            Assert.DoesNotContain("GetSegsBright:32", library.Calls);
             Assert.Contains(segmentEvents, e => e.CellId == 2 && e.SegmentMask == 0x3F && e.OutputType == MameSegmentOutputType.Digit);
             Assert.Contains(segmentEvents, e => e.CellId == 5 && e.SegmentMask == 0x86 && e.OutputType == MameSegmentOutputType.Digit);
         }
@@ -608,7 +616,7 @@ public sealed class System6NativeBackendTests
 
         public bool SevenSegmentPollingAvailable { get; set; }
 
-        public Dictionary<ushort, int> SevenSegmentMasks { get; } = new();
+        public Dictionary<ushort, bool> SevenSegmentCells { get; } = new();
 
         public Dictionary<ushort, byte> SevenSegmentBrightness { get; } = new();
 
@@ -648,7 +656,7 @@ public sealed class System6NativeBackendTests
         public int GetSegsOn(ushort index)
         {
             Calls.Add($"GetSegsOn:{index}");
-            return SevenSegmentMasks.TryGetValue(index, out var mask) ? mask : 0;
+            return SevenSegmentCells.TryGetValue(index, out var isOn) && isOn ? 1 : 0;
         }
 
         public byte GetSegsBright(ushort index)
