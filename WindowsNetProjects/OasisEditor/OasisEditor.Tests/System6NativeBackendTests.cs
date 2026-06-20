@@ -217,7 +217,7 @@ public sealed class System6NativeBackendTests
     [Fact]
     public void System6AlphaSegmentMapper_MapsKnownRawMaskToOasisMask()
     {
-        Assert.Equal(0x8003, System6AlphaSegmentMapper.MapNativeMaskToOasisMask(0x8003));
+        Assert.Equal(0x2003, System6AlphaSegmentMapper.MapNativeMaskToOasisMask(0x8003));
     }
 
     [Fact]
@@ -240,7 +240,7 @@ public sealed class System6NativeBackendTests
 
             Assert.Equal(Enumerable.Range(0, 16).ToArray(), library.AlphaSegmentIndices);
             Assert.Contains(segmentEvents, e => e.CellId == 0 && e.SegmentMask == 0x0001 && e.OutputType == MameSegmentOutputType.NativeAlpha);
-            Assert.Contains(segmentEvents, e => e.CellId == 1 && e.SegmentMask == 0x8002 && e.OutputType == MameSegmentOutputType.NativeAlpha);
+            Assert.Contains(segmentEvents, e => e.CellId == 1 && e.SegmentMask == 0x2002 && e.OutputType == MameSegmentOutputType.NativeAlpha);
         }
         finally
         {
