@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using System.Linq;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
@@ -20,8 +19,6 @@ internal static class MfmeLampAssetPostProcessor
         try
         {
             var lamp = LoadBgra32(sourceLampPath, preservePaletteAlpha: true);
-            FixTransparentFringePixels(lamp);
-            ApplyDerivedEdgeTransparency(lamp);
             var preserveExistingTransparency = HasAnyFullyTransparentPixels(lamp);
 
             if (!string.IsNullOrWhiteSpace(sourceMaskPath) && File.Exists(sourceMaskPath))
@@ -48,7 +45,8 @@ internal static class MfmeLampAssetPostProcessor
 
     private static PixelBuffer LoadBgra32(string path, bool preservePaletteAlpha)
     {
-        using var stream = File.OpenRead(path);
+        var sourceBytes = File.ReadAllBytes(path);
+        using var stream = new MemoryStream(sourceBytes);
         var decoder = new BmpBitmapDecoder(stream, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
         var frame = decoder.Frames[0];
 
@@ -60,6 +58,10 @@ internal static class MfmeLampAssetPostProcessor
         if (preservePaletteAlpha && IsPalettized(frame.Format) && frame.Palette is not null)
         {
             ReapplyIndexedAlpha(frame, pixels, stride);
+        }
+        else if (preservePaletteAlpha)
+        {
+            ReapplyBgra32BmpAlpha(sourceBytes, frame.PixelWidth, frame.PixelHeight, pixels, stride);
         }
 
         return new PixelBuffer(converted.PixelWidth, converted.PixelHeight, stride, pixels);
@@ -122,117 +124,86 @@ internal static class MfmeLampAssetPostProcessor
         return (indices[byteIndex] >> shift) & mask;
     }
 
-    private static void FixTransparentFringePixels(PixelBuffer image)
+    private static void ReapplyBgra32BmpAlpha(byte[] sourceBytes, int width, int height, byte[] pixels, int stride)
     {
-        var output = (byte[])image.Pixels.Clone();
-
-        for (var y = 0; y < image.Height; y++)
+        if (sourceBytes.Length < 54 || sourceBytes[0] != 'B' || sourceBytes[1] != 'M')
         {
-            for (var x = 0; x < image.Width; x++)
+            return;
+        }
+
+        var pixelDataOffset = ReadInt32(sourceBytes, 10);
+        var dibHeaderSize = ReadInt32(sourceBytes, 14);
+        if (dibHeaderSize < 40 || sourceBytes.Length < 14 + dibHeaderSize)
+        {
+            return;
+        }
+
+        var bmpWidth = ReadInt32(sourceBytes, 18);
+        var bmpHeight = ReadInt32(sourceBytes, 22);
+        var bitsPerPixel = ReadUInt16(sourceBytes, 28);
+        if (bmpWidth != width || Math.Abs(bmpHeight) != height || bitsPerPixel != 32)
+        {
+            return;
+        }
+
+        var sourceStride = ((bmpWidth * bitsPerPixel + 31) / 32) * 4;
+        if (pixelDataOffset < 0 || pixelDataOffset + (sourceStride * height) > sourceBytes.Length)
+        {
+            return;
+        }
+
+        var hasTransparentAlpha = false;
+        var hasVisibleAlpha = false;
+        for (var y = 0; y < height; y++)
+        {
+            var sourceY = bmpHeight < 0 ? y : height - 1 - y;
+            var sourceRow = pixelDataOffset + (sourceY * sourceStride);
+            for (var x = 0; x < width; x++)
             {
-                var offset = (y * image.Stride) + (x * 4);
-                if (image.Pixels[offset + 3] != 0)
-                {
-                    continue;
-                }
-
-                var b = 0;
-                var g = 0;
-                var r = 0;
-                var samples = 0;
-
-                for (var ny = Math.Max(0, y - 1); ny <= Math.Min(image.Height - 1, y + 1); ny++)
-                {
-                    for (var nx = Math.Max(0, x - 1); nx <= Math.Min(image.Width - 1, x + 1); nx++)
-                    {
-                        if (nx == x && ny == y)
-                        {
-                            continue;
-                        }
-
-                        var neighbourOffset = (ny * image.Stride) + (nx * 4);
-                        if (image.Pixels[neighbourOffset + 3] == 0)
-                        {
-                            continue;
-                        }
-
-                        b += image.Pixels[neighbourOffset];
-                        g += image.Pixels[neighbourOffset + 1];
-                        r += image.Pixels[neighbourOffset + 2];
-                        samples++;
-                    }
-                }
-
-                if (samples == 0)
-                {
-                    continue;
-                }
-
-                output[offset] = (byte)(b / samples);
-                output[offset + 1] = (byte)(g / samples);
-                output[offset + 2] = (byte)(r / samples);
+                var alpha = sourceBytes[sourceRow + (x * 4) + 3];
+                hasTransparentAlpha |= alpha < 255;
+                hasVisibleAlpha |= alpha > 0;
             }
         }
 
-        Buffer.BlockCopy(output, 0, image.Pixels, 0, output.Length);
-    }
-
-
-    private static void ApplyDerivedEdgeTransparency(PixelBuffer image)
-    {
-        if (HasAnyFullyTransparentPixels(image))
+        if (!hasTransparentAlpha || !hasVisibleAlpha)
         {
             return;
         }
 
-        var edgeCounts = new Dictionary<int, int>();
-        CountEdgeColors(image, edgeCounts);
-        if (edgeCounts.Count == 0)
+        for (var y = 0; y < height; y++)
         {
-            return;
-        }
-
-        var transparentKey = edgeCounts.MaxBy(kvp => kvp.Value).Key;
-
-        for (var y = 0; y < image.Height; y++)
-        {
-            for (var x = 0; x < image.Width; x++)
+            var sourceY = bmpHeight < 0 ? y : height - 1 - y;
+            var sourceRow = pixelDataOffset + (sourceY * sourceStride);
+            var destinationRow = y * stride;
+            for (var x = 0; x < width; x++)
             {
-                var offset = (y * image.Stride) + (x * 4);
-                var key = (image.Pixels[offset + 2] << 16) | (image.Pixels[offset + 1] << 8) | image.Pixels[offset];
-                if (key == transparentKey)
-                {
-                    image.Pixels[offset + 3] = 0;
-                }
+                pixels[destinationRow + (x * 4) + 3] = sourceBytes[sourceRow + (x * 4) + 3];
             }
         }
     }
 
-    private static void CountEdgeColors(PixelBuffer image, IDictionary<int, int> counts)
+    private static int ReadInt32(byte[] bytes, int offset)
     {
-        for (var x = 0; x < image.Width; x++)
+        if (offset < 0 || offset + 4 > bytes.Length)
         {
-            AccumulateEdgeColor(image, x, 0, counts);
-            AccumulateEdgeColor(image, x, image.Height - 1, counts);
+            return 0;
         }
 
-        for (var y = 1; y < image.Height - 1; y++)
-        {
-            AccumulateEdgeColor(image, 0, y, counts);
-            AccumulateEdgeColor(image, image.Width - 1, y, counts);
-        }
+        return bytes[offset]
+            | (bytes[offset + 1] << 8)
+            | (bytes[offset + 2] << 16)
+            | (bytes[offset + 3] << 24);
     }
 
-    private static void AccumulateEdgeColor(PixelBuffer image, int x, int y, IDictionary<int, int> counts)
+    private static int ReadUInt16(byte[] bytes, int offset)
     {
-        var offset = (y * image.Stride) + (x * 4);
-        if (image.Pixels[offset + 3] < 255)
+        if (offset < 0 || offset + 2 > bytes.Length)
         {
-            return;
+            return 0;
         }
 
-        var key = (image.Pixels[offset + 2] << 16) | (image.Pixels[offset + 1] << 8) | image.Pixels[offset];
-        counts[key] = counts.TryGetValue(key, out var count) ? count + 1 : 1;
+        return bytes[offset] | (bytes[offset + 1] << 8);
     }
 
     private static bool HasAnyFullyTransparentPixels(PixelBuffer image)
