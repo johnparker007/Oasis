@@ -232,7 +232,7 @@ public sealed class System6NativeBackendTests
     }
 
     [Fact]
-    public async Task StartAsyncOneRunOnlyUpdatesLampsBeforePollingAndUsesZeroBasedOutputEvents()
+    public async Task StartAsyncOneRunOnlyUpdatesLampsBeforePollingAndUsesOneBasedReelOutputEvents()
     {
         var previousStage = Environment.GetEnvironmentVariable("OASIS_SYSTEM6_STARTUP_STAGE");
         Environment.SetEnvironmentVariable("OASIS_SYSTEM6_STARTUP_STAGE", "OneRunOnly");
@@ -254,8 +254,8 @@ public sealed class System6NativeBackendTests
 
             Assert.True(library.Calls.IndexOf("LampsUpdate") < library.Calls.IndexOf("GetLampsOn:0"));
             Assert.Contains(lampEvents, e => e.LampId == 0 && e.Value == 255);
-            Assert.Contains(reelEvents, e => e.ReelId == 0 && e.Position == 86);
-            Assert.Contains(reelEvents, e => e.ReelId == 1 && e.Position == 76);
+            Assert.Contains(reelEvents, e => e.ReelId == 1 && e.Position == 86);
+            Assert.Contains(reelEvents, e => e.ReelId == 2 && e.Position == 76);
             Assert.Contains("GetPosOut:0", library.Calls);
             Assert.Contains("GetPosOut:1", library.Calls);
         }

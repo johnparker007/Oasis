@@ -770,18 +770,17 @@ public sealed class System6NativeBackend : IEmulationBackend
         foreach (var reelIndex in _enabledReelPollingIndices)
         {
             // GetPosOut expects the same zero-based reel selector used by the
-            // native reel opto setup. Keep emitted Oasis reel IDs zero-based and
-            // do not subtract one, otherwise the highest configured reel is never
-            // polled (for example, a four-reel project polls selectors -1..2
-            // instead of 0..3).
+            // native reel opto setup. Oasis machine references use the one-based
+            // display reel number, so translate only the emitted event ID.
             var nativePositionSelector = checked((sbyte)reelIndex);
+            var reelId = reelIndex + 1;
             var rawPosition = library.GetPosOut(nativePositionSelector);
             nativeInvokeCount++;
             var position = NormalizeConfiguredNativeSystem6ReelPosition(reelIndex, rawPosition);
             if (_lastReelPositions[reelIndex] != position)
             {
                 _lastReelPositions[reelIndex] = position;
-                ReelChanged?.Invoke(this, new MachineReelChangedEventArgs(reelIndex, position));
+                ReelChanged?.Invoke(this, new MachineReelChangedEventArgs(reelId, position));
             }
         }
 
@@ -870,7 +869,7 @@ public sealed class System6NativeBackend : IEmulationBackend
 
         _hasLoggedReelPollingMapping = true;
         var mappings = _enabledReelPollingIndices.Take(DiagnosticMappingSampleCount)
-            .Select(index => $"native {index} -> reel:{index} (GetPosOut selector {index})");
+            .Select(index => $"native {index} -> reel:{index + 1} (GetPosOut selector {index})");
         Debug.WriteLine($"[System6 Reels] mapping sample: {string.Join("; ", mappings)}");
     }
 
