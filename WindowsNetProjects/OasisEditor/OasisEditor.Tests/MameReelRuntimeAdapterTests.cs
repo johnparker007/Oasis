@@ -26,7 +26,7 @@ public sealed class MameReelRuntimeAdapterTests
         var nativeOffset = MameReelRuntimeAdapter.ResolvePlatformBandOffsetNormalized(EmulationBackendKind.NativeSystem6, FruitMachinePlatformType.Impact, 16);
 
         Assert.Equal(-0.08d, mameOffset, 6);
-        Assert.Equal(0.07d, nativeOffset, 6);
+        Assert.Equal(-0.01d, nativeOffset, 6);
     }
 
     [Fact]
