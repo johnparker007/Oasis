@@ -213,7 +213,7 @@ public sealed class MfmeImportLampPostProcessorTests
     {
         var rowStride = width * 4;
         var pixelDataSize = rowStride * height;
-        var pixelDataOffset = 14 + 108;
+        var pixelDataOffset = 14 + 40;
         var fileSize = pixelDataOffset + pixelDataSize;
 
         using var stream = File.Create(path);
@@ -225,27 +225,17 @@ public sealed class MfmeImportLampPostProcessorTests
         writer.Write(0);
         writer.Write(pixelDataOffset);
 
-        writer.Write(108);
+        writer.Write(40);
         writer.Write(width);
         writer.Write(-height);
         writer.Write((short)1);
         writer.Write((short)32);
-        writer.Write(3);
+        writer.Write(0);
         writer.Write(pixelDataSize);
         writer.Write(2835);
         writer.Write(2835);
         writer.Write(0);
         writer.Write(0);
-        writer.Write(0x00FF0000);
-        writer.Write(0x0000FF00);
-        writer.Write(0x000000FF);
-        writer.Write(unchecked((int)0xFF000000));
-        writer.Write(0x73524742);
-
-        for (var i = 0; i < 12; i++)
-        {
-            writer.Write(0);
-        }
 
         writer.Write(pixels);
     }

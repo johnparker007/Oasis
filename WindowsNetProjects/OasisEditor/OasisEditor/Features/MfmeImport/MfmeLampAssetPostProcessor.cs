@@ -45,7 +45,8 @@ internal static class MfmeLampAssetPostProcessor
 
     private static PixelBuffer LoadBgra32(string path, bool preservePaletteAlpha)
     {
-        using var stream = File.OpenRead(path);
+        var sourceBytes = File.ReadAllBytes(path);
+        using var stream = new MemoryStream(sourceBytes);
         var decoder = new BmpBitmapDecoder(stream, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
         var frame = decoder.Frames[0];
 
@@ -57,6 +58,10 @@ internal static class MfmeLampAssetPostProcessor
         if (preservePaletteAlpha && IsPalettized(frame.Format) && frame.Palette is not null)
         {
             ReapplyIndexedAlpha(frame, pixels, stride);
+        }
+        else if (preservePaletteAlpha)
+        {
+            ReapplyBgra32BmpAlpha(sourceBytes, frame.PixelWidth, frame.PixelHeight, pixels, stride);
         }
 
         return new PixelBuffer(converted.PixelWidth, converted.PixelHeight, stride, pixels);
@@ -117,6 +122,88 @@ internal static class MfmeLampAssetPostProcessor
         var shift = 8 - bitsPerPixel - bitOffset;
         var mask = (1 << bitsPerPixel) - 1;
         return (indices[byteIndex] >> shift) & mask;
+    }
+
+    private static void ReapplyBgra32BmpAlpha(byte[] sourceBytes, int width, int height, byte[] pixels, int stride)
+    {
+        if (sourceBytes.Length < 54 || sourceBytes[0] != 'B' || sourceBytes[1] != 'M')
+        {
+            return;
+        }
+
+        var pixelDataOffset = ReadInt32(sourceBytes, 10);
+        var dibHeaderSize = ReadInt32(sourceBytes, 14);
+        if (dibHeaderSize < 40 || sourceBytes.Length < 14 + dibHeaderSize)
+        {
+            return;
+        }
+
+        var bmpWidth = ReadInt32(sourceBytes, 18);
+        var bmpHeight = ReadInt32(sourceBytes, 22);
+        var bitsPerPixel = ReadUInt16(sourceBytes, 28);
+        if (bmpWidth != width || Math.Abs(bmpHeight) != height || bitsPerPixel != 32)
+        {
+            return;
+        }
+
+        var sourceStride = ((bmpWidth * bitsPerPixel + 31) / 32) * 4;
+        if (pixelDataOffset < 0 || pixelDataOffset + (sourceStride * height) > sourceBytes.Length)
+        {
+            return;
+        }
+
+        var hasTransparentAlpha = false;
+        var hasVisibleAlpha = false;
+        for (var y = 0; y < height; y++)
+        {
+            var sourceY = bmpHeight < 0 ? y : height - 1 - y;
+            var sourceRow = pixelDataOffset + (sourceY * sourceStride);
+            for (var x = 0; x < width; x++)
+            {
+                var alpha = sourceBytes[sourceRow + (x * 4) + 3];
+                hasTransparentAlpha |= alpha < 255;
+                hasVisibleAlpha |= alpha > 0;
+            }
+        }
+
+        if (!hasTransparentAlpha || !hasVisibleAlpha)
+        {
+            return;
+        }
+
+        for (var y = 0; y < height; y++)
+        {
+            var sourceY = bmpHeight < 0 ? y : height - 1 - y;
+            var sourceRow = pixelDataOffset + (sourceY * sourceStride);
+            var destinationRow = y * stride;
+            for (var x = 0; x < width; x++)
+            {
+                pixels[destinationRow + (x * 4) + 3] = sourceBytes[sourceRow + (x * 4) + 3];
+            }
+        }
+    }
+
+    private static int ReadInt32(byte[] bytes, int offset)
+    {
+        if (offset < 0 || offset + 4 > bytes.Length)
+        {
+            return 0;
+        }
+
+        return bytes[offset]
+            | (bytes[offset + 1] << 8)
+            | (bytes[offset + 2] << 16)
+            | (bytes[offset + 3] << 24);
+    }
+
+    private static int ReadUInt16(byte[] bytes, int offset)
+    {
+        if (offset < 0 || offset + 2 > bytes.Length)
+        {
+            return 0;
+        }
+
+        return bytes[offset] | (bytes[offset + 1] << 8);
     }
 
     private static bool HasAnyFullyTransparentPixels(PixelBuffer image)
