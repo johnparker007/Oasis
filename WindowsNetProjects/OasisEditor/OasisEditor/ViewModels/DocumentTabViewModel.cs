@@ -81,7 +81,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     public bool IsDirty => Document.IsDirty;
     public bool HasCabinetViewer => Document.DocumentType == EditorDocumentType.Cabinet3D && string.Equals(System.IO.Path.GetExtension(Document.FilePath), ".glb", StringComparison.OrdinalIgnoreCase);
     public CabinetModelDocumentViewModel? CabinetViewer => HasCabinetViewer
-        ? _cabinetViewer ??= new CabinetModelDocumentViewModel(new HelixCabinetModelLoader(), Document.FilePath)
+        ? _cabinetViewer ??= new CabinetModelDocumentViewModel(new SharpGltfWpfModelLoader(), Document.FilePath)
         : null;
 
     public void MarkDirty()
