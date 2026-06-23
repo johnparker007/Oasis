@@ -4,6 +4,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:local="clr-namespace:OasisEditor"
              xmlns:views="clr-namespace:OasisEditor.Views"
+             xmlns:cabinetViews="clr-namespace:OasisEditor.Features.CabinetEditor.Views"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
              d:DesignHeight="600"
@@ -165,6 +166,18 @@
                                 </Grid>
                             </Border>
 
+                            <Border x:Name="CabinetViewerContainer"
+                                    Padding="12"
+                                    CornerRadius="4"
+                                    Background="{DynamicResource EditorBackgroundBrush}"
+                                    BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                    BorderThickness="1"
+                                    Visibility="Collapsed">
+                                <Grid MinHeight="280" ClipToBounds="True" Background="{DynamicResource PanelBackgroundBrush}">
+                                    <cabinetViews:CabinetModelDocumentView />
+                                </Grid>
+                            </Border>
+
                             <Border x:Name="DefaultSummaryContainer"
                                     Padding="10"
                                     CornerRadius="4"
@@ -194,6 +207,10 @@
                             <Setter TargetName="DefaultSummaryContainer"
                                     Property="Visibility"
                                     Value="Collapsed" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding HasCabinetViewer}" Value="True">
+                            <Setter TargetName="CabinetViewerContainer" Property="Visibility" Value="Visible" />
+                            <Setter TargetName="DefaultSummaryContainer" Property="Visibility" Value="Collapsed" />
                         </DataTrigger>
                     </DataTemplate.Triggers>
                 </DataTemplate>

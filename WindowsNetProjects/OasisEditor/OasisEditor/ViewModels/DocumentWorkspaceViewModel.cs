@@ -578,6 +578,11 @@ public sealed class DocumentWorkspaceViewModel
 
     internal static OpenDocumentData BuildOpenDocumentData(string path, string content)
     {
+        if (string.Equals(Path.GetExtension(path), ".glb", StringComparison.OrdinalIgnoreCase))
+        {
+            return new OpenDocumentData("Cabinet GLB model opened for viewing. Orbit, pan, zoom, or reset the camera from the viewer toolbar.", null, Path.GetFileName(path));
+        }
+
         if (string.Equals(Path.GetExtension(path), ".panel2d", StringComparison.OrdinalIgnoreCase))
         {
             if (Panel2DDocumentStorage.TryReadValidated(content, out var panelDocument, out var errorMessage))

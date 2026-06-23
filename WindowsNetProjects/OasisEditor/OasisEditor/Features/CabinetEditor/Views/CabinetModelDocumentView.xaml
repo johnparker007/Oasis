@@ -1,0 +1,71 @@
+<UserControl x:Class="OasisEditor.Features.CabinetEditor.Views.CabinetModelDocumentView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:h="http://helix-toolkit.org/wpf"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignHeight="500"
+             d:DesignWidth="700">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <DockPanel Grid.Row="0" Margin="0,0,0,8">
+            <StackPanel DockPanel.Dock="Left">
+                <TextBlock FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding CabinetViewer.DisplayName}" />
+                <TextBlock Margin="0,3,0,0" Foreground="{DynamicResource TextSecondaryBrush}" Text="{Binding CabinetViewer.LoadStatus}" />
+            </StackPanel>
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <Button Padding="10,4" Margin="0,0,8,0" Command="{Binding CabinetViewer.ReloadCommand}" Content="Reload" />
+                <Button Padding="10,4" Command="{Binding CabinetViewer.ResetCameraCommand}" Content="Reset Camera" />
+            </StackPanel>
+        </DockPanel>
+
+        <Grid Grid.Row="1">
+            <h:HelixViewport3D ZoomExtentsWhenLoaded="True" ShowCoordinateSystem="True" ShowViewCube="True" IsHeadLightEnabled="True">
+                <h:HelixViewport3D.Camera>
+                    <PerspectiveCamera Position="{Binding CabinetViewer.Viewport.CameraPosition}"
+                                       LookDirection="{Binding CabinetViewer.Viewport.CameraLookDirection}"
+                                       UpDirection="{Binding CabinetViewer.Viewport.CameraUpDirection}"
+                                       FieldOfView="{Binding CabinetViewer.Viewport.CameraFieldOfView}" />
+                </h:HelixViewport3D.Camera>
+                <h:SunLight />
+                <h:GridLinesVisual3D Width="{Binding CabinetViewer.Viewport.GridWidth}"
+                                     Length="{Binding CabinetViewer.Viewport.GridLength}"
+                                     MinorDistance="{Binding CabinetViewer.Viewport.GridMinorDistance}"
+                                     Thickness="0.01" />
+                <h:CoordinateSystemVisual3D ArrowLengths="1.2" />
+                <ModelVisual3D Content="{Binding CabinetViewer.Viewport.Model}" />
+            </h:HelixViewport3D>
+
+            <Border Margin="12" Padding="12" HorizontalAlignment="Left" VerticalAlignment="Top"
+                    CornerRadius="4" Background="{DynamicResource ToolBarBackgroundBrush}"
+                    BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1">
+                <StackPanel>
+                    <TextBlock FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="Cabinet Model Viewer" />
+                    <TextBlock Margin="0,6,0,0" Foreground="{DynamicResource TextSecondaryBrush}" Text="Left-drag to orbit. Right/middle-drag to pan. Mouse wheel to zoom." />
+                    <TextBlock Margin="0,4,0,0" Foreground="{DynamicResource TextSecondaryBrush}" Text="The .glb is used as geometry only; Oasis metadata will be stored separately later." />
+                </StackPanel>
+            </Border>
+
+            <Border Margin="12" Padding="12" HorizontalAlignment="Stretch" VerticalAlignment="Bottom"
+                    CornerRadius="4" Background="{DynamicResource ToolBarBackgroundBrush}"
+                    BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding CabinetViewer.HasError}" Value="True">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <TextBlock Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap" Text="{Binding CabinetViewer.ErrorMessage}" />
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>
