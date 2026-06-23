@@ -5,6 +5,8 @@ namespace OasisEditor.Features.CabinetEditor.Services;
 
 public sealed class HelixCabinetModelLoader : ICabinetModelLoader
 {
+    private readonly ICabinetModelLoader _fallbackLoader = new SharpGltfWpfModelLoader();
+
     public Task<CabinetModelLoadResult> LoadAsync(string modelPath, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(modelPath))
@@ -31,7 +33,7 @@ public sealed class HelixCabinetModelLoader : ICabinetModelLoader
                 var model = importer.Load(modelPath);
                 if (model.Children.Count == 0)
                 {
-                    return CabinetModelLoadResult.Failure("The .glb loaded, but it did not contain displayable geometry.");
+                    return LoadWithFallback(modelPath, cancellationToken, "Helix loaded the .glb, but it did not contain displayable geometry.");
                 }
 
                 return CabinetModelLoadResult.Success(model);
@@ -42,8 +44,22 @@ public sealed class HelixCabinetModelLoader : ICabinetModelLoader
             }
             catch (Exception ex)
             {
-                return CabinetModelLoadResult.Failure($"Unable to load cabinet model: {ex.Message}");
+                return LoadWithFallback(modelPath, cancellationToken, $"Helix could not load the .glb: {ex.Message}");
             }
         }, cancellationToken);
+    }
+
+    private CabinetModelLoadResult LoadWithFallback(string modelPath, CancellationToken cancellationToken, string helixFailureMessage)
+    {
+        var fallbackResult = _fallbackLoader.LoadAsync(modelPath, cancellationToken).GetAwaiter().GetResult();
+        if (fallbackResult.Succeeded)
+        {
+            return fallbackResult;
+        }
+
+        var fallbackError = string.IsNullOrWhiteSpace(fallbackResult.ErrorMessage)
+            ? "SharpGLTF fallback also failed."
+            : fallbackResult.ErrorMessage;
+        return CabinetModelLoadResult.Failure($"Unable to load cabinet model. {helixFailureMessage} {fallbackError}");
     }
 }
