@@ -25,7 +25,13 @@
         </DockPanel>
 
         <Grid Grid.Row="1">
-            <h:HelixViewport3D ZoomExtentsWhenLoaded="True" ShowCoordinateSystem="False" ShowViewCube="False" IsHeadLightEnabled="True">
+            <h:HelixViewport3D ZoomExtentsWhenLoaded="True"
+                              ShowCoordinateSystem="False"
+                              ShowViewCube="False"
+                              IsHeadLightEnabled="True"
+                              CameraRotationMode="Turntable"
+                              ModelUpDirection="0,1,0"
+                              RotateAroundMouseDownPoint="False">
                 <h:HelixViewport3D.Camera>
                     <PerspectiveCamera Position="{Binding CabinetViewer.Viewport.CameraPosition}"
                                        LookDirection="{Binding CabinetViewer.Viewport.CameraLookDirection}"
@@ -50,7 +56,7 @@
                     BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1">
                 <StackPanel>
                     <TextBlock FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="Cabinet Model Viewer" />
-                    <TextBlock Margin="0,6,0,0" Foreground="{DynamicResource TextSecondaryBrush}" Text="Left-drag to orbit. Right/middle-drag to pan. Mouse wheel to zoom." />
+                    <TextBlock Margin="0,6,0,0" Foreground="{DynamicResource TextSecondaryBrush}" Text="Drag to orbit around the Y-up model. Right/middle-drag to pan. Mouse wheel to zoom." />
                     <TextBlock Margin="0,4,0,0" Foreground="{DynamicResource TextSecondaryBrush}" Text="Y is up to match Unity/glTF. The .glb is used as geometry only; Oasis metadata will be stored separately later." />
                 </StackPanel>
             </Border>
