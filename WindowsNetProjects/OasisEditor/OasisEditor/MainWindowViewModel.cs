@@ -1434,7 +1434,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         var dialog = new OpenFileDialog
         {
             Title = "Open Document",
-            Filter = "Editor Documents|*.panel2d;*.face;*.cabinet3d;*.machine|All Files|*.*",
+            Filter = "Editor Documents and Cabinet Models|*.panel2d;*.face;*.cabinet3d;*.machine;*.glb|Cabinet Models|*.glb|All Files|*.*",
             InitialDirectory = LoadedProject.ProjectDirectory,
             CheckFileExists = true
         };
@@ -1647,12 +1647,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         return string.Equals(extension, ".panel2d", StringComparison.OrdinalIgnoreCase)
             || string.Equals(extension, ".face", StringComparison.OrdinalIgnoreCase)
             || string.Equals(extension, ".cabinet3d", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(extension, ".glb", StringComparison.OrdinalIgnoreCase)
             || string.Equals(extension, ".machine", StringComparison.OrdinalIgnoreCase);
     }
 
     private void OpenDocumentFromPath(string path)
     {
-        var content = File.ReadAllText(path);
+        var content = string.Equals(Path.GetExtension(path), ".glb", StringComparison.OrdinalIgnoreCase)
+            ? string.Empty
+            : File.ReadAllText(path);
         var openData = DocumentWorkspaceViewModel.BuildOpenDocumentData(path, content);
 
         var openedNewTab = _documentWorkspace.OpenOrSelectDocument(

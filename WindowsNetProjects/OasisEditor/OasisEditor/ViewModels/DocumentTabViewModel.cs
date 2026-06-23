@@ -1,6 +1,8 @@
 using System.ComponentModel;
 using System.Linq;
 using OasisEditor.Commands;
+using OasisEditor.Features.CabinetEditor.Services;
+using OasisEditor.Features.CabinetEditor.ViewModels;
 
 namespace OasisEditor;
 
@@ -27,6 +29,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     private double _panelPanY;
     private Dictionary<string, object>? _lastVisualStateByObjectId;
     private readonly MachineRuntimeState _runtimeState;
+    private CabinetModelDocumentViewModel? _cabinetViewer;
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<PanelChangeEvent>? PanelChanged;
@@ -76,6 +79,10 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     public string FilePath => Document.FilePath;
     public string ContentSummary => Document.ContentSummary;
     public bool IsDirty => Document.IsDirty;
+    public bool HasCabinetViewer => Document.DocumentType == EditorDocumentType.Cabinet3D && string.Equals(System.IO.Path.GetExtension(Document.FilePath), ".glb", StringComparison.OrdinalIgnoreCase);
+    public CabinetModelDocumentViewModel? CabinetViewer => HasCabinetViewer
+        ? _cabinetViewer ??= new CabinetModelDocumentViewModel(new HelixCabinetModelLoader(), Document.FilePath)
+        : null;
 
     public void MarkDirty()
     {

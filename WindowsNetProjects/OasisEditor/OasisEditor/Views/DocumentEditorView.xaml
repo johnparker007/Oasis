@@ -4,6 +4,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:local="clr-namespace:OasisEditor"
              xmlns:views="clr-namespace:OasisEditor.Views"
+             xmlns:cabinetViews="clr-namespace:OasisEditor.Features.CabinetEditor.Views"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
              d:DesignHeight="500"
@@ -86,6 +87,28 @@
                 </Grid>
             </Border>
 
+            <Border Padding="12"
+                    CornerRadius="4"
+                    Background="{DynamicResource EditorBackgroundBrush}"
+                    BorderBrush="{DynamicResource BorderSubtleBrush}"
+                    BorderThickness="1">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasCabinetViewer}" Value="True">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <Grid MinHeight="280"
+                      ClipToBounds="True"
+                      Background="{DynamicResource PanelBackgroundBrush}">
+                    <cabinetViews:CabinetModelDocumentView />
+                </Grid>
+            </Border>
+
             <Border Padding="10"
                     CornerRadius="4"
                     Background="{DynamicResource SelectionBrush}"
@@ -99,6 +122,9 @@
                                 <Setter Property="Visibility" Value="Collapsed" />
                             </DataTrigger>
                             <DataTrigger Binding="{Binding Document.DocumentType}" Value="{x:Static local:EditorDocumentType.Face}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding HasCabinetViewer}" Value="True">
                                 <Setter Property="Visibility" Value="Collapsed" />
                             </DataTrigger>
                         </Style.Triggers>

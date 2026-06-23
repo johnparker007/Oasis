@@ -116,7 +116,7 @@ public sealed class EditorDocument
         {
             documentType = EditorDocumentType.Panel2D;
         }
-        else if (normalizedExtension == ".cabinet3d")
+        else if (normalizedExtension == ".cabinet3d" || normalizedExtension == ".glb")
         {
             documentType = EditorDocumentType.Cabinet3D;
         }
