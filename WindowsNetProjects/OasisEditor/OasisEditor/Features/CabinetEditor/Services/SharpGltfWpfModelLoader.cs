@@ -50,13 +50,14 @@ public sealed class SharpGltfWpfModelLoader : ICabinetModelLoader
                 return CabinetModelLoadResult.Failure("The .glb loaded, but it did not contain a scene to display.");
             }
 
-            var primitiveMeshes = new Dictionary<Material?, MeshGeometry3D>();
+            var primitiveMeshes = new Dictionary<int, MeshGeometry3D>();
             var triangleCount = 0;
             foreach (var (a, b, c, material) in scene.EvaluateTriangles())
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var mesh = GetMeshForMaterial(primitiveMeshes, material);
+                var materialIndex = GetLogicalIndex(material);
+                var mesh = GetMeshForMaterial(primitiveMeshes, materialIndex);
                 var pointA = ToPoint3D(a);
                 var pointB = ToPoint3D(b);
                 var pointC = ToPoint3D(c);
@@ -75,15 +76,16 @@ public sealed class SharpGltfWpfModelLoader : ICabinetModelLoader
             }
 
             var group = new Model3DGroup();
-            foreach (var (material, mesh) in primitiveMeshes)
+            foreach (var (materialIndex, mesh) in primitiveMeshes)
             {
                 mesh.Freeze();
-                var wpfMaterial = CreateMaterial(materialInfos.GetMaterialInfo(GetLogicalIndex(material)));
+                var materialInfo = materialInfos.GetMaterialInfo(materialIndex);
+                var wpfMaterial = CreateMaterial(materialInfo);
                 var model = new GeometryModel3D
                 {
                     Geometry = mesh,
                     Material = wpfMaterial,
-                    BackMaterial = materialInfos.GetMaterialInfo(GetLogicalIndex(material)).DoubleSided ? wpfMaterial : null
+                    BackMaterial = materialInfo.DoubleSided ? wpfMaterial : null
                 };
                 model.Freeze();
                 group.Children.Add(model);
@@ -102,12 +104,12 @@ public sealed class SharpGltfWpfModelLoader : ICabinetModelLoader
         }
     }
 
-    private static MeshGeometry3D GetMeshForMaterial(Dictionary<Material?, MeshGeometry3D> meshes, Material? material)
+    private static MeshGeometry3D GetMeshForMaterial(Dictionary<int, MeshGeometry3D> meshes, int materialIndex)
     {
-        if (!meshes.TryGetValue(material, out var mesh))
+        if (!meshes.TryGetValue(materialIndex, out var mesh))
         {
             mesh = new MeshGeometry3D();
-            meshes.Add(material, mesh);
+            meshes.Add(materialIndex, mesh);
         }
 
         return mesh;
@@ -162,7 +164,7 @@ public sealed class SharpGltfWpfModelLoader : ICabinetModelLoader
         return normal;
     }
 
-    private static int GetLogicalIndex(Material? material)
+    private static int GetLogicalIndex(SharpGLTF.Schema2.Material? material)
     {
         if (material is null) return -1;
         try { return material.LogicalIndex; }
