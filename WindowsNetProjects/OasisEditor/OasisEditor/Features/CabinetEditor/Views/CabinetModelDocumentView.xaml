@@ -28,7 +28,7 @@
             <h:HelixViewport3D ZoomExtentsWhenLoaded="True"
                               ShowCoordinateSystem="False"
                               ShowViewCube="False"
-                              IsHeadLightEnabled="True"
+                              IsHeadLightEnabled="False"
                               CameraRotationMode="Turntable"
                               ModelUpDirection="0,1,0"
                               RotateAroundMouseDownPoint="False">
@@ -38,7 +38,15 @@
                                        UpDirection="{Binding CabinetViewer.Viewport.CameraUpDirection, Mode=TwoWay}"
                                        FieldOfView="{Binding CabinetViewer.Viewport.CameraFieldOfView, Mode=TwoWay}" />
                 </h:HelixViewport3D.Camera>
-                <h:SunLight />
+                <ModelVisual3D>
+                    <ModelVisual3D.Content>
+                        <Model3DGroup>
+                            <AmbientLight Color="#666666" />
+                            <DirectionalLight Color="#F4F4F4" Direction="-0.45,-0.8,-0.35" />
+                            <DirectionalLight Color="#8C98AA" Direction="0.6,-0.35,0.55" />
+                        </Model3DGroup>
+                    </ModelVisual3D.Content>
+                </ModelVisual3D>
                 <h:GridLinesVisual3D Width="{Binding CabinetViewer.Viewport.GridWidth}"
                                      Length="{Binding CabinetViewer.Viewport.GridLength}"
                                      MinorDistance="{Binding CabinetViewer.Viewport.GridMinorDistance}"
