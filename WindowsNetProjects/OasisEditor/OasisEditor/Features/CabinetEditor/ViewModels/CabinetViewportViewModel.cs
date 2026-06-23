@@ -9,6 +9,10 @@ public sealed class CabinetViewportViewModel : INotifyPropertyChanged
 {
     private Model3DGroup? _model;
     private Rect3D _modelBounds = Rect3D.Empty;
+    private Point3D _cameraPosition;
+    private Vector3D _cameraLookDirection;
+    private Vector3D _cameraUpDirection = new(0, 1, 0);
+    private double _cameraFieldOfView = 45d;
 
     public CabinetViewportViewModel()
     {
@@ -56,10 +60,49 @@ public sealed class CabinetViewportViewModel : INotifyPropertyChanged
     public Point3D YAxisEnd => new(0, AxisLength, 0);
     public Point3D ZAxisEnd => new(0, 0, AxisLength);
 
-    public Point3D CameraPosition { get; private set; }
-    public Vector3D CameraLookDirection { get; private set; }
-    public Vector3D CameraUpDirection { get; private set; } = new(0, 1, 0);
-    public double CameraFieldOfView { get; private set; } = 45d;
+    public Point3D CameraPosition
+    {
+        get => _cameraPosition;
+        set
+        {
+            if (_cameraPosition == value) return;
+            _cameraPosition = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public Vector3D CameraLookDirection
+    {
+        get => _cameraLookDirection;
+        set
+        {
+            if (_cameraLookDirection == value) return;
+            _cameraLookDirection = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public Vector3D CameraUpDirection
+    {
+        get => _cameraUpDirection;
+        set
+        {
+            if (_cameraUpDirection == value) return;
+            _cameraUpDirection = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public double CameraFieldOfView
+    {
+        get => _cameraFieldOfView;
+        set
+        {
+            if (Math.Abs(_cameraFieldOfView - value) <= double.Epsilon) return;
+            _cameraFieldOfView = value;
+            OnPropertyChanged();
+        }
+    }
     public ICommand ResetCameraCommand { get; }
 
     private void ResetCamera()

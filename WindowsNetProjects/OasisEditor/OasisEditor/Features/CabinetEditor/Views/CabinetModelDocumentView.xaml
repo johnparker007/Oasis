@@ -33,10 +33,10 @@
                               ModelUpDirection="0,1,0"
                               RotateAroundMouseDownPoint="False">
                 <h:HelixViewport3D.Camera>
-                    <PerspectiveCamera Position="{Binding CabinetViewer.Viewport.CameraPosition}"
-                                       LookDirection="{Binding CabinetViewer.Viewport.CameraLookDirection}"
-                                       UpDirection="{Binding CabinetViewer.Viewport.CameraUpDirection}"
-                                       FieldOfView="{Binding CabinetViewer.Viewport.CameraFieldOfView}" />
+                    <PerspectiveCamera Position="{Binding CabinetViewer.Viewport.CameraPosition, Mode=TwoWay}"
+                                       LookDirection="{Binding CabinetViewer.Viewport.CameraLookDirection, Mode=TwoWay}"
+                                       UpDirection="{Binding CabinetViewer.Viewport.CameraUpDirection, Mode=TwoWay}"
+                                       FieldOfView="{Binding CabinetViewer.Viewport.CameraFieldOfView, Mode=TwoWay}" />
                 </h:HelixViewport3D.Camera>
                 <h:SunLight />
                 <h:GridLinesVisual3D Width="{Binding CabinetViewer.Viewport.GridWidth}"
@@ -51,15 +51,6 @@
                 <ModelVisual3D Content="{Binding CabinetViewer.Viewport.Model}" />
             </h:HelixViewport3D>
 
-            <Border Margin="12" Padding="12" HorizontalAlignment="Left" VerticalAlignment="Top"
-                    CornerRadius="4" Background="{DynamicResource ToolBarBackgroundBrush}"
-                    BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1">
-                <StackPanel>
-                    <TextBlock FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="Cabinet Model Viewer" />
-                    <TextBlock Margin="0,6,0,0" Foreground="{DynamicResource TextSecondaryBrush}" Text="Drag to orbit around the Y-up model. Right/middle-drag to pan. Mouse wheel to zoom." />
-                    <TextBlock Margin="0,4,0,0" Foreground="{DynamicResource TextSecondaryBrush}" Text="Y is up to match Unity/glTF. The .glb is used as geometry only; Oasis metadata will be stored separately later." />
-                </StackPanel>
-            </Border>
 
             <Border Margin="12" Padding="12" HorizontalAlignment="Stretch" VerticalAlignment="Bottom"
                     CornerRadius="4" Background="{DynamicResource ToolBarBackgroundBrush}"
