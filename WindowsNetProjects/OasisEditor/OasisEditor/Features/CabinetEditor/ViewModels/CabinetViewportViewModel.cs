@@ -41,12 +41,20 @@ public sealed class CabinetViewportViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(GridWidth));
             OnPropertyChanged(nameof(GridLength));
             OnPropertyChanged(nameof(GridMinorDistance));
+            OnPropertyChanged(nameof(AxisLength));
+            OnPropertyChanged(nameof(XAxisEnd));
+            OnPropertyChanged(nameof(YAxisEnd));
+            OnPropertyChanged(nameof(ZAxisEnd));
         }
     }
 
     public double GridWidth => GetSceneHelperSize();
     public double GridLength => GetSceneHelperSize();
     public double GridMinorDistance => Math.Max(0.1, GetSceneHelperSize() / 20d);
+    public double AxisLength => Math.Max(1d, GetSceneHelperSize() / 4d);
+    public Point3D XAxisEnd => new(AxisLength, 0, 0);
+    public Point3D YAxisEnd => new(0, AxisLength, 0);
+    public Point3D ZAxisEnd => new(0, 0, AxisLength);
 
     public Point3D CameraPosition { get; private set; }
     public Vector3D CameraLookDirection { get; private set; }

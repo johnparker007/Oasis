@@ -25,7 +25,7 @@
         </DockPanel>
 
         <Grid Grid.Row="1">
-            <h:HelixViewport3D ZoomExtentsWhenLoaded="True" ShowCoordinateSystem="True" ShowViewCube="True" IsHeadLightEnabled="True">
+            <h:HelixViewport3D ZoomExtentsWhenLoaded="True" ShowCoordinateSystem="False" ShowViewCube="False" IsHeadLightEnabled="True">
                 <h:HelixViewport3D.Camera>
                     <PerspectiveCamera Position="{Binding CabinetViewer.Viewport.CameraPosition}"
                                        LookDirection="{Binding CabinetViewer.Viewport.CameraLookDirection}"
@@ -36,8 +36,12 @@
                 <h:GridLinesVisual3D Width="{Binding CabinetViewer.Viewport.GridWidth}"
                                      Length="{Binding CabinetViewer.Viewport.GridLength}"
                                      MinorDistance="{Binding CabinetViewer.Viewport.GridMinorDistance}"
+                                     Normal="0,1,0"
+                                     LengthDirection="1,0,0"
                                      Thickness="0.01" />
-                <h:CoordinateSystemVisual3D ArrowLengths="1.2" />
+                <h:ArrowVisual3D Point1="0,0,0" Point2="{Binding CabinetViewer.Viewport.XAxisEnd}" Diameter="0.025" Fill="Red" />
+                <h:ArrowVisual3D Point1="0,0,0" Point2="{Binding CabinetViewer.Viewport.YAxisEnd}" Diameter="0.025" Fill="LimeGreen" />
+                <h:ArrowVisual3D Point1="0,0,0" Point2="{Binding CabinetViewer.Viewport.ZAxisEnd}" Diameter="0.025" Fill="DodgerBlue" />
                 <ModelVisual3D Content="{Binding CabinetViewer.Viewport.Model}" />
             </h:HelixViewport3D>
 
@@ -47,7 +51,7 @@
                 <StackPanel>
                     <TextBlock FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="Cabinet Model Viewer" />
                     <TextBlock Margin="0,6,0,0" Foreground="{DynamicResource TextSecondaryBrush}" Text="Left-drag to orbit. Right/middle-drag to pan. Mouse wheel to zoom." />
-                    <TextBlock Margin="0,4,0,0" Foreground="{DynamicResource TextSecondaryBrush}" Text="The .glb is used as geometry only; Oasis metadata will be stored separately later." />
+                    <TextBlock Margin="0,4,0,0" Foreground="{DynamicResource TextSecondaryBrush}" Text="Y is up to match Unity/glTF. The .glb is used as geometry only; Oasis metadata will be stored separately later." />
                 </StackPanel>
             </Border>
 
