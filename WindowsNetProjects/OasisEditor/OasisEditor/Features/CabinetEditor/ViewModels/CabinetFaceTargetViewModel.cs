@@ -6,6 +6,7 @@ public sealed class CabinetFaceTargetViewModel
 {
     public CabinetFaceTargetViewModel(CabinetFaceTarget target)
     {
+        Target = target;
         Id = target.Id;
         SourceName = target.SourceName;
         DisplayName = target.DisplayName;
@@ -13,6 +14,7 @@ public sealed class CabinetFaceTargetViewModel
         ErrorMessage = target.ErrorMessage;
     }
 
+    public CabinetFaceTarget Target { get; }
     public string Id { get; }
     public string SourceName { get; }
     public string DisplayName { get; }

@@ -391,6 +391,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         RecentProjects = new ObservableCollection<string>(_recentProjectsStore.Load());
         OpenDocuments = new ObservableCollection<DocumentTabViewModel>();
+        OpenDocuments.CollectionChanged += OnOpenDocumentsChanged;
         _documentWorkspace = new DocumentWorkspaceViewModel(
             () => _loadedProject,
             value => LoadedProject = value,
@@ -1687,6 +1688,49 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(SelectedAssetDirectory));
         OnPropertyChanged(nameof(SelectedAssetDirectoryLabel));
         OnPropertyChanged(nameof(HasAssetBrowserItems));
+    }
+
+
+    private void OnOpenDocumentsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.OldItems is not null)
+        {
+            foreach (DocumentTabViewModel document in e.OldItems)
+            {
+                document.PropertyChanged -= OnOpenDocumentPropertyChanged;
+            }
+        }
+
+        if (e.NewItems is not null)
+        {
+            foreach (DocumentTabViewModel document in e.NewItems)
+            {
+                document.PropertyChanged += OnOpenDocumentPropertyChanged;
+            }
+        }
+
+        RefreshCabinetFacePreviews();
+    }
+
+    private void OnOpenDocumentPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (sender is DocumentTabViewModel document
+            && document.Document.DocumentType == EditorDocumentType.Face
+            && string.Equals(e.PropertyName, nameof(DocumentTabViewModel.FaceDocumentJson), StringComparison.Ordinal))
+        {
+            RefreshCabinetFacePreviews();
+        }
+    }
+
+    private void RefreshCabinetFacePreviews()
+    {
+        foreach (var cabinetViewer in OpenDocuments
+            .Where(document => document.Document.DocumentType == EditorDocumentType.Cabinet3D)
+            .Select(document => document.CabinetViewer)
+            .Where(viewer => viewer is not null))
+        {
+            cabinetViewer!.RefreshFacePreviews();
+        }
     }
 
     private void OnAssetBrowserItemsChanged(object? sender, NotifyCollectionChangedEventArgs e)

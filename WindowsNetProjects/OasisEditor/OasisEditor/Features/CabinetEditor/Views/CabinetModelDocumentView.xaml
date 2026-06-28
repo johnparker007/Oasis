@@ -62,6 +62,7 @@
                 <h:ArrowVisual3D Point1="0,0,0" Point2="{Binding CabinetViewer.Viewport.YAxisEnd}" Diameter="0.025" Fill="LimeGreen" />
                 <h:ArrowVisual3D Point1="0,0,0" Point2="{Binding CabinetViewer.Viewport.ZAxisEnd}" Diameter="0.025" Fill="DodgerBlue" />
                 <ModelVisual3D Content="{Binding CabinetViewer.Viewport.Model}" />
+                <ModelVisual3D Content="{Binding CabinetViewer.Viewport.FacePreviewModel}" />
             </h:HelixViewport3D>
 
             <Border Grid.Column="1" Margin="8,0,0,0" Padding="12"

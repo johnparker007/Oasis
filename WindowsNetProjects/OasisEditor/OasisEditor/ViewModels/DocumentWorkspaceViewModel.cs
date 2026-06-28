@@ -569,12 +569,14 @@ public sealed class DocumentWorkspaceViewModel
         var documentId = Guid.NewGuid();
         var runtimeState = _runtimeStateStore.GetOrCreate(documentId);
         runtimeState.FruitMachinePlatform = _getLoadedProject()?.FruitMachinePlatform ?? FruitMachinePlatformType.None;
-        return new DocumentTabViewModel(
+        var tab = new DocumentTabViewModel(
             document,
             panelLayoutJson,
             documentId,
             runtimeState: runtimeState,
             faceDocumentJson: faceDocumentJson);
+        tab.SetOpenDocumentsAccessor(() => _openDocuments);
+        return tab;
     }
 
     internal static OpenDocumentData BuildOpenDocumentData(string path, string content)

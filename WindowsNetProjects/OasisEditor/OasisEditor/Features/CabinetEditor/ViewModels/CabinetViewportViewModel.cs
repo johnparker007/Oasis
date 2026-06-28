@@ -8,6 +8,7 @@ namespace OasisEditor.Features.CabinetEditor.ViewModels;
 public sealed class CabinetViewportViewModel : INotifyPropertyChanged
 {
     private Model3DGroup? _model;
+    private Model3DGroup? _facePreviewModel;
     private Rect3D _modelBounds = Rect3D.Empty;
     private Point3D _cameraPosition;
     private Vector3D _cameraLookDirection;
@@ -32,6 +33,17 @@ public sealed class CabinetViewportViewModel : INotifyPropertyChanged
             OnPropertyChanged();
             ModelBounds = value?.Bounds ?? Rect3D.Empty;
             ResetCamera();
+        }
+    }
+
+    public Model3DGroup? FacePreviewModel
+    {
+        get => _facePreviewModel;
+        set
+        {
+            if (ReferenceEquals(_facePreviewModel, value)) return;
+            _facePreviewModel = value;
+            OnPropertyChanged();
         }
     }
 

@@ -30,6 +30,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     private Dictionary<string, object>? _lastVisualStateByObjectId;
     private readonly MachineRuntimeState _runtimeState;
     private CabinetModelDocumentViewModel? _cabinetViewer;
+    private Func<IReadOnlyList<DocumentTabViewModel>>? _openDocumentsAccessor;
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<PanelChangeEvent>? PanelChanged;
@@ -81,8 +82,13 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     public bool IsDirty => Document.IsDirty;
     public bool HasCabinetViewer => Document.DocumentType == EditorDocumentType.Cabinet3D && string.Equals(System.IO.Path.GetExtension(Document.FilePath), ".glb", StringComparison.OrdinalIgnoreCase);
     public CabinetModelDocumentViewModel? CabinetViewer => HasCabinetViewer
-        ? _cabinetViewer ??= new CabinetModelDocumentViewModel(new SharpGltfWpfModelLoader(), Document.FilePath)
+        ? _cabinetViewer ??= new CabinetModelDocumentViewModel(new SharpGltfWpfModelLoader(), Document.FilePath, _openDocumentsAccessor)
         : null;
+
+    public void SetOpenDocumentsAccessor(Func<IReadOnlyList<DocumentTabViewModel>> openDocumentsAccessor)
+    {
+        _openDocumentsAccessor = openDocumentsAccessor;
+    }
 
     public void MarkDirty()
     {
