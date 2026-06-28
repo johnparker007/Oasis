@@ -55,7 +55,7 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
     public ICommand ReloadCommand { get; }
     public ICommand ResetCameraCommand { get; }
     public IReadOnlyList<string> FrontSideOptions { get; } = new[] { CabinetTargetOverride.NormalFrontSide, CabinetTargetOverride.InvertedFrontSide };
-    public IReadOnlyList<int> TextureRotationOptions { get; } = new[] { 0, 90, 180, 270 };
+    public IReadOnlyList<int> FaceRotationOptions { get; } = new[] { 0, 90, 180, 270 };
 
     public CabinetFaceTargetViewModel? SelectedFaceTarget
     {
@@ -67,7 +67,7 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
             OnPropertyChanged();
             OnPropertyChanged(nameof(HasSelectedFaceTarget));
             OnPropertyChanged(nameof(SelectedFrontSide));
-            OnPropertyChanged(nameof(SelectedTextureRotation));
+            OnPropertyChanged(nameof(SelectedFaceRotation));
         }
     }
 
@@ -83,20 +83,20 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
         }
     }
 
-    public int SelectedTextureRotation
+    public int SelectedFaceRotation
     {
-        get => SelectedFaceTarget is null ? 0 : _document.GetCabinetDocument().GetTargetOverride(SelectedFaceTarget.Id).TextureRotation;
+        get => SelectedFaceTarget is null ? 0 : _document.GetCabinetDocument().GetTargetOverride(SelectedFaceTarget.Id).FaceRotation;
         set
         {
             if (SelectedFaceTarget is null) return;
-            _document.CommandService.Execute(CabinetMutationCommands.CreateSetTargetTextureRotationCommand(_document.DocumentId, _document, SelectedFaceTarget.Id, value));
+            _document.CommandService.Execute(CabinetMutationCommands.CreateSetTargetFaceRotationCommand(_document.DocumentId, _document, SelectedFaceTarget.Id, value));
         }
     }
 
     public void RefreshFromDocument(CabinetDocument document)
     {
         OnPropertyChanged(nameof(SelectedFrontSide));
-        OnPropertyChanged(nameof(SelectedTextureRotation));
+        OnPropertyChanged(nameof(SelectedFaceRotation));
         RefreshFacePreviews();
     }
 
@@ -189,25 +189,33 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
             return false;
         }
 
+        var positions = GetRenderQuadCorners(target.Corners, targetOverride);
+        var triangleIndices = CabinetTargetOverride.NormalizeFrontSide(targetOverride.FrontSide) == CabinetTargetOverride.InvertedFrontSide
+            ? new[] { 0, 2, 1, 0, 3, 2 }
+            : new[] { 0, 1, 2, 0, 2, 3 };
         var mesh = new MeshGeometry3D
         {
-            Positions = new Point3DCollection(target.Corners),
-            TriangleIndices = new Int32Collection(new[] { 0, 1, 2, 0, 2, 3 }),
-            TextureCoordinates = new PointCollection(GetTextureCoordinates(targetOverride.TextureRotation))
+            Positions = new Point3DCollection(positions),
+            TriangleIndices = new Int32Collection(triangleIndices),
+            TextureCoordinates = new PointCollection(new[]
+            {
+                new Point(0, 0),
+                new Point(1, 0),
+                new Point(1, 1),
+                new Point(0, 1)
+            })
         };
         var material = new DiffuseMaterial(new ImageBrush(bitmap));
-        geometry = CabinetTargetOverride.NormalizeFrontSide(targetOverride.FrontSide) == CabinetTargetOverride.InvertedFrontSide
-            ? new GeometryModel3D { Geometry = mesh, BackMaterial = material }
-            : new GeometryModel3D(mesh, material);
+        geometry = new GeometryModel3D(mesh, material);
         return true;
     }
 
-    private static Point[] GetTextureCoordinates(int textureRotation) => CabinetTargetOverride.NormalizeTextureRotation(textureRotation) switch
+    private static Point3D[] GetRenderQuadCorners(IReadOnlyList<Point3D> sourceCorners, CabinetTargetOverride targetOverride) => CabinetTargetOverride.NormalizeFaceRotation(targetOverride.FaceRotation) switch
     {
-        90 => new[] { new Point(1, 0), new Point(1, 1), new Point(0, 1), new Point(0, 0) },
-        180 => new[] { new Point(1, 1), new Point(0, 1), new Point(0, 0), new Point(1, 0) },
-        270 => new[] { new Point(0, 1), new Point(0, 0), new Point(1, 0), new Point(1, 1) },
-        _ => new[] { new Point(0, 0), new Point(1, 0), new Point(1, 1), new Point(0, 1) }
+        90 => new[] { sourceCorners[3], sourceCorners[0], sourceCorners[1], sourceCorners[2] },
+        180 => new[] { sourceCorners[2], sourceCorners[3], sourceCorners[0], sourceCorners[1] },
+        270 => new[] { sourceCorners[1], sourceCorners[2], sourceCorners[3], sourceCorners[0] },
+        _ => new[] { sourceCorners[0], sourceCorners[1], sourceCorners[2], sourceCorners[3] }
     };
 
     private static string? NormalizeTargetId(string? targetId) => string.IsNullOrWhiteSpace(targetId) ? null : targetId.Trim();

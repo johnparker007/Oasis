@@ -9,9 +9,9 @@ internal static class CabinetMutationCommands
         return new SetCabinetTargetOverrideCommand(documentId, document, targetId, CabinetTargetOverride.NormalizeFrontSide(frontSide), null, "Set cabinet target front side");
     }
 
-    public static Commands.ICommand CreateSetTargetTextureRotationCommand(Guid documentId, DocumentTabViewModel document, string targetId, int textureRotation)
+    public static Commands.ICommand CreateSetTargetFaceRotationCommand(Guid documentId, DocumentTabViewModel document, string targetId, int faceRotation)
     {
-        return new SetCabinetTargetOverrideCommand(documentId, document, targetId, null, CabinetTargetOverride.NormalizeTextureRotation(textureRotation), "Set cabinet target texture rotation");
+        return new SetCabinetTargetOverrideCommand(documentId, document, targetId, null, CabinetTargetOverride.NormalizeFaceRotation(faceRotation), "Set cabinet target face rotation");
     }
 
     private sealed class SetCabinetTargetOverrideCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
@@ -20,17 +20,17 @@ internal static class CabinetMutationCommands
         private readonly DocumentTabViewModel _document;
         private readonly string _targetId;
         private readonly string? _frontSide;
-        private readonly int? _textureRotation;
+        private readonly int? _faceRotation;
         private readonly string _description;
         private CabinetDocument? _originalDocument;
 
-        public SetCabinetTargetOverrideCommand(Guid documentId, DocumentTabViewModel document, string targetId, string? frontSide, int? textureRotation, string description)
+        public SetCabinetTargetOverrideCommand(Guid documentId, DocumentTabViewModel document, string targetId, string? frontSide, int? faceRotation, string description)
         {
             _documentId = documentId;
             _document = document;
             _targetId = targetId.Trim();
             _frontSide = frontSide;
-            _textureRotation = textureRotation;
+            _faceRotation = faceRotation;
             _description = description;
         }
 
@@ -51,10 +51,10 @@ internal static class CabinetMutationCommands
             var nextOverride = new CabinetTargetOverride(
                 _targetId,
                 _frontSide ?? currentOverride.FrontSide,
-                _textureRotation ?? currentOverride.TextureRotation).Normalized();
+                _faceRotation ?? currentOverride.FaceRotation).Normalized();
 
             if (string.Equals(currentOverride.FrontSide, nextOverride.FrontSide, StringComparison.OrdinalIgnoreCase)
-                && currentOverride.TextureRotation == nextOverride.TextureRotation)
+                && currentOverride.FaceRotation == nextOverride.FaceRotation)
             {
                 return;
             }
