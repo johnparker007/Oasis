@@ -643,7 +643,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         _propertyRows.Add(new InspectorInfoPropertyViewModel("Generated Element Count", "Face Provenance", CountGeneratedElements(faceDocument).ToString()));
         _propertyRows.Add(new InspectorInfoPropertyViewModel("Last Regenerated", "Face Provenance", FormatTimestamp(faceDocument.LastRegeneratedAtUtc)));
         AddFaceMaskLayerSummaryRows(faceDocument.MaskLayer, "Mask Layer");
-        _propertyRows.Add(new InspectorInfoPropertyViewModel("Face Commands", "Workflow", "Use File > Regenerate Face, File > Validate Face, or File > Open Source Panel2D."));
+        _propertyRows.Add(new InspectorInfoPropertyViewModel("Face Commands", "Workflow", "Use File > Regenerate Face, File > Validate Face, File > Open Source Panel2D, or Cabinet Assignment > Cabinet Face Target."));
 
         var missingMachineReferenceCount = CountMissingMachineReferences(faceDocument);
         if (missingMachineReferenceCount > 0)

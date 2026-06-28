@@ -82,6 +82,9 @@
                             <TextBlock Margin="0,4,0,0"
                                        Foreground="{DynamicResource TextSecondaryBrush}"
                                        Text="Drag with middle mouse to pan. Use mouse wheel to zoom." />
+                            <TextBlock Margin="0,4,0,0"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                       Text="Cabinet target: click empty canvas, then choose Inspector > Cabinet Assignment > Cabinet Face Target." />
                         </StackPanel>
                     </Border>
                 </Grid>
