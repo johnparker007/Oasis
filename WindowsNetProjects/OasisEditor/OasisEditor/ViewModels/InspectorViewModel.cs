@@ -21,6 +21,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
     private readonly ActiveDocumentContextService _activeDocumentContext;
     private readonly Func<Guid, EditorCommands.ICommand, bool> _executeCanvasCommand;
     private readonly Func<DocumentTabViewModel, string, DocumentTabViewModel?> _applySummary;
+    private readonly ICommand? _generateFaceFromSourceShapeCommand;
     private readonly ObservableCollection<InspectorPropertyRowViewModel> _propertyRows = [];
     private string _inspectorEditableSummary = string.Empty;
     private DateTime _suppressPropertyRowRefreshUntilUtc;
@@ -35,7 +36,8 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         Func<EditorProject?> loadedProjectAccessor,
         ActiveDocumentContextService activeDocumentContext,
         Func<Guid, EditorCommands.ICommand, bool> executeCanvasCommand,
-        Func<DocumentTabViewModel, string, DocumentTabViewModel?> applySummary)
+        Func<DocumentTabViewModel, string, DocumentTabViewModel?> applySummary,
+        ICommand? generateFaceFromSourceShapeCommand = null)
         : this(
             selectedAssetAccessor,
             selectedDocumentAccessor,
@@ -43,7 +45,8 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             loadedProjectAccessor,
             activeDocumentContext,
             executeCanvasCommand,
-            applySummary)
+            applySummary,
+            generateFaceFromSourceShapeCommand)
     {
     }
 
@@ -54,7 +57,8 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         Func<EditorProject?> loadedProjectAccessor,
         ActiveDocumentContextService activeDocumentContext,
         Func<Guid, EditorCommands.ICommand, bool> executeCanvasCommand,
-        Func<DocumentTabViewModel, string, DocumentTabViewModel?> applySummary)
+        Func<DocumentTabViewModel, string, DocumentTabViewModel?> applySummary,
+        ICommand? generateFaceFromSourceShapeCommand = null)
     {
         _selectedAssetAccessor = selectedAssetAccessor;
         _selectedDocumentAccessor = selectedDocumentAccessor;
@@ -63,6 +67,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         _activeDocumentContext = activeDocumentContext;
         _executeCanvasCommand = executeCanvasCommand;
         _applySummary = applySummary;
+        _generateFaceFromSourceShapeCommand = generateFaceFromSourceShapeCommand;
         ApplyInspectorSummaryCommand = new RelayCommand(ApplyInspectorSummary, CanApplyInspectorSummary);
     }
 
@@ -354,6 +359,21 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             return;
         }
 
+        if (selectedDocument is not null
+            && selectedDocument.Document.DocumentType == EditorDocumentType.Panel2D
+            && selection is PanelSelectionInfo sourceShapeSelection
+            && string.Equals(sourceShapeSelection.Kind, PanelFaceSourceShapeCommands.SelectionKind, StringComparison.Ordinal)
+            && selectedDocument.TryGetPanelFaceSourceShape(sourceShapeSelection.ObjectId, out var selectedSourceShape))
+        {
+            if (!_hadInspectorSelection)
+            {
+                return true;
+            }
+
+            return !string.Equals(_lastInspectorSelectionObjectId, selectedSourceShape.Id, StringComparison.Ordinal)
+                || !string.Equals(_lastInspectorFaceSelectionKind, PanelFaceSourceShapeCommands.SelectionKind, StringComparison.Ordinal);
+        }
+
         if (selectedDocument is null || selection is not PanelSelectionInfo selectedSelection || !selectedDocument.TryGetPanelElement(selectedSelection, out var selectedElement))
         {
             _hadInspectorSelection = false;
@@ -413,6 +433,67 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(InspectorPropertyRows));
     }
 
+
+    private void RebuildFaceSourceShapePropertyRows(DocumentTabViewModel selectedDocument, PanelFaceSourceShapeModel sourceShape)
+    {
+        _lastInspectorFaceSelectionKind = PanelFaceSourceShapeCommands.SelectionKind;
+        _lastInspectorSelectionObjectId = sourceShape.Id;
+        _lastInspectorSelectionKind = null;
+        _hadInspectorSelection = true;
+
+        if (_generateFaceFromSourceShapeCommand is not null)
+        {
+            _propertyRows.Add(new InspectorActionPropertyViewModel("Create Face from this Source Shape", "Actions", _generateFaceFromSourceShapeCommand));
+        }
+
+        _propertyRows.Add(new InspectorTextPropertyViewModel("Name", "Face Source Shape", sourceShape.Name, commit: value => TryApplyFaceSourceShapeUpdate(selectedDocument, sourceShape, new PanelFaceSourceShapeModel { Id = sourceShape.Id, Name = value, Type = sourceShape.Type, TopLeft = sourceShape.TopLeft, TopRight = sourceShape.TopRight, BottomRight = sourceShape.BottomRight, BottomLeft = sourceShape.BottomLeft })));
+        _propertyRows.Add(new InspectorInfoPropertyViewModel("Type", "Face Source Shape", "Perspective Rectangle"));
+        AddFaceSourceShapePointRows(selectedDocument, sourceShape, "Top Left", 0, sourceShape.TopLeft);
+        AddFaceSourceShapePointRows(selectedDocument, sourceShape, "Top Right", 1, sourceShape.TopRight);
+        AddFaceSourceShapePointRows(selectedDocument, sourceShape, "Bottom Right", 2, sourceShape.BottomRight);
+        AddFaceSourceShapePointRows(selectedDocument, sourceShape, "Bottom Left", 3, sourceShape.BottomLeft);
+        OnPropertyChanged(nameof(InspectorPropertyRows));
+    }
+
+    private void AddFaceSourceShapePointRows(DocumentTabViewModel selectedDocument, PanelFaceSourceShapeModel sourceShape, string label, int pointIndex, FacePointModel point)
+    {
+        _propertyRows.Add(new InspectorDoublePropertyViewModel($"{label} X", "Corners", point.X, commit: value => TryApplyFaceSourceShapePointUpdate(selectedDocument, sourceShape, pointIndex, value, isX: true)));
+        _propertyRows.Add(new InspectorDoublePropertyViewModel($"{label} Y", "Corners", point.Y, commit: value => TryApplyFaceSourceShapePointUpdate(selectedDocument, sourceShape, pointIndex, value, isX: false)));
+    }
+
+    private string? TryApplyFaceSourceShapePointUpdate(DocumentTabViewModel selectedDocument, PanelFaceSourceShapeModel sourceShape, int pointIndex, double value, bool isX)
+    {
+        var current = pointIndex switch
+        {
+            0 => sourceShape.TopLeft,
+            1 => sourceShape.TopRight,
+            2 => sourceShape.BottomRight,
+            _ => sourceShape.BottomLeft
+        };
+        var point = new FacePointModel { X = isX ? value : current.X, Y = isX ? current.Y : value };
+        return TryApplyFaceSourceShapeUpdate(selectedDocument, sourceShape, CreateFaceSourceShapeWithPoint(sourceShape, pointIndex, point));
+    }
+
+    private string? TryApplyFaceSourceShapeUpdate(DocumentTabViewModel selectedDocument, PanelFaceSourceShapeModel sourceShape, PanelFaceSourceShapeModel updated)
+    {
+        var command = PanelFaceSourceShapeCommands.CreateUpdateCommand(selectedDocument.DocumentId, selectedDocument, updated, "Update Face Source Shape");
+        return _executeCanvasCommand(selectedDocument.DocumentId, command) ? null : "Could not update Face Source Shape.";
+    }
+
+    private static PanelFaceSourceShapeModel CreateFaceSourceShapeWithPoint(PanelFaceSourceShapeModel source, int pointIndex, FacePointModel point)
+    {
+        return new PanelFaceSourceShapeModel
+        {
+            Id = source.Id,
+            Name = source.Name,
+            Type = source.Type,
+            TopLeft = pointIndex == 0 ? point : source.TopLeft,
+            TopRight = pointIndex == 1 ? point : source.TopRight,
+            BottomRight = pointIndex == 2 ? point : source.BottomRight,
+            BottomLeft = pointIndex == 3 ? point : source.BottomLeft
+        };
+    }
+
     private bool ShouldRebuildRowsForContextChange()
     {
         var selectedDocument = _selectedDocumentAccessor();
@@ -452,6 +533,21 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                 || !selectedDocument.TryGetFaceElement(selectedFaceSelection, out _)))
         {
             return true;
+        }
+
+        if (selectedDocument is not null
+            && selectedDocument.Document.DocumentType == EditorDocumentType.Panel2D
+            && selection is PanelSelectionInfo sourceShapeSelection
+            && string.Equals(sourceShapeSelection.Kind, PanelFaceSourceShapeCommands.SelectionKind, StringComparison.Ordinal)
+            && selectedDocument.TryGetPanelFaceSourceShape(sourceShapeSelection.ObjectId, out var selectedSourceShape))
+        {
+            if (!_hadInspectorSelection)
+            {
+                return true;
+            }
+
+            return !string.Equals(_lastInspectorSelectionObjectId, selectedSourceShape.Id, StringComparison.Ordinal)
+                || !string.Equals(_lastInspectorFaceSelectionKind, PanelFaceSourceShapeCommands.SelectionKind, StringComparison.Ordinal);
         }
 
         if (selectedDocument is null || selection is not PanelSelectionInfo selectedSelection || !selectedDocument.TryGetPanelElement(selectedSelection, out var selectedElement))

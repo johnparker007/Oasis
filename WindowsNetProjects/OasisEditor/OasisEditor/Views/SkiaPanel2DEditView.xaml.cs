@@ -338,6 +338,12 @@ public partial class SkiaPanel2DEditView : UserControl
                 return;
             }
 
+            if (_isResizingSelection)
+            {
+                RequestRender();
+                return;
+            }
+
             if (!_isDragSelecting && Panel2DViewportInteractionService.ShouldStartDragSelection(_leftMouseDownStart, _dragSelectionCurrent, DragSelectionStartThreshold))
             {
                 _isDragSelecting = true;
@@ -479,7 +485,13 @@ public partial class SkiaPanel2DEditView : UserControl
             Placement = PlacementMode.MousePoint
         };
 
-        if (document.HierarchySelectedPanelSelection is { Kind: PanelFaceSourceShapeCommands.SelectionKind }
+        var shapeAtPoint = document.GetPanelFaceSourceShapes().LastOrDefault(shape => IsInsideShapeBounds(shape, panelPoint));
+        if (shapeAtPoint is not null)
+        {
+            document.HierarchySelectedPanelSelection = PanelFaceSourceShapeCommands.ToSelection(shapeAtPoint);
+        }
+
+        if ((document.HierarchySelectedPanelSelection is { Kind: PanelFaceSourceShapeCommands.SelectionKind } || shapeAtPoint is not null)
             && Window.GetWindow(this)?.DataContext is MainWindowViewModel mainWindow)
         {
             var createFaceItem = new MenuItem { Header = "Create Face from Source Shape", Command = mainWindow.GenerateFaceFromSourceShapeCommand };
@@ -717,13 +729,14 @@ public partial class SkiaPanel2DEditView : UserControl
         return Panel2DResizeHandleHitTestService.TryHitHandle(selectedElement, docPoint, handleSizeDoc, out handleKind);
     }
 
-    private static void DrawFaceSourceShapes(SKCanvas canvas, DocumentTabViewModel document, PanelViewportTransform viewport)
+    private void DrawFaceSourceShapes(SKCanvas canvas, DocumentTabViewModel document, PanelViewportTransform viewport)
     {
         using var linePaint = new SKPaint { Style = SKPaintStyle.Stroke, Color = new SKColor(0xFF, 0xC1, 0x07), StrokeWidth = (float)(2d / viewport.NormalizedZoom), IsAntialias = true };
         using var fillPaint = new SKPaint { Style = SKPaintStyle.Fill, Color = new SKColor(0xFF, 0xC1, 0x07, 0x28), IsAntialias = true };
         using var handlePaint = new SKPaint { Style = SKPaintStyle.Fill, Color = new SKColor(0xFF, 0xA0, 0x00), IsAntialias = true };
-        foreach (var shape in document.GetPanelFaceSourceShapes())
+        foreach (var sourceShape in document.GetPanelFaceSourceShapes())
         {
+            var shape = GetPreviewShape(sourceShape, viewport);
             using var path = new SKPath();
             path.MoveTo((float)shape.TopLeft.X, (float)shape.TopLeft.Y);
             path.LineTo((float)shape.TopRight.X, (float)shape.TopRight.Y);
@@ -735,6 +748,35 @@ public partial class SkiaPanel2DEditView : UserControl
             var radius = (float)(5d / viewport.NormalizedZoom);
             foreach (var point in GetShapePoints(shape)) canvas.DrawCircle((float)point.X, (float)point.Y, radius, handlePaint);
         }
+    }
+
+
+    private PanelFaceSourceShapeModel GetPreviewShape(PanelFaceSourceShapeModel sourceShape, PanelViewportTransform viewport)
+    {
+        if (!_isResizingSelection
+            || _shapeDragSource is null
+            || _activeShapeCornerIndex < 0
+            || !string.Equals(sourceShape.Id, _shapeDragSource.Id, StringComparison.Ordinal))
+        {
+            return sourceShape;
+        }
+
+        var point = viewport.ScreenToDocument(_dragSelectionCurrent);
+        return CreateShapeWithCorner(sourceShape, _activeShapeCornerIndex, new FacePointModel { X = point.X, Y = point.Y });
+    }
+
+    private static PanelFaceSourceShapeModel CreateShapeWithCorner(PanelFaceSourceShapeModel source, int cornerIndex, FacePointModel point)
+    {
+        return new PanelFaceSourceShapeModel
+        {
+            Id = source.Id,
+            Name = source.Name,
+            Type = source.Type,
+            TopLeft = cornerIndex == 0 ? point : source.TopLeft,
+            TopRight = cornerIndex == 1 ? point : source.TopRight,
+            BottomRight = cornerIndex == 2 ? point : source.BottomRight,
+            BottomLeft = cornerIndex == 3 ? point : source.BottomLeft
+        };
     }
 
     private static bool IsInsideShapeBounds(PanelFaceSourceShapeModel shape, Point point)
@@ -776,16 +818,7 @@ public partial class SkiaPanel2DEditView : UserControl
         var viewport = new PanelViewportTransform(document.PanelZoom, document.PanelPanX, document.PanelPanY);
         var point = viewport.ScreenToDocument(screenPoint);
         FacePointModel fp = new() { X = point.X, Y = point.Y };
-        var updated = new PanelFaceSourceShapeModel
-        {
-            Id = _shapeDragSource.Id,
-            Name = _shapeDragSource.Name,
-            Type = _shapeDragSource.Type,
-            TopLeft = _activeShapeCornerIndex == 0 ? fp : _shapeDragSource.TopLeft,
-            TopRight = _activeShapeCornerIndex == 1 ? fp : _shapeDragSource.TopRight,
-            BottomRight = _activeShapeCornerIndex == 2 ? fp : _shapeDragSource.BottomRight,
-            BottomLeft = _activeShapeCornerIndex == 3 ? fp : _shapeDragSource.BottomLeft
-        };
+        var updated = CreateShapeWithCorner(_shapeDragSource, _activeShapeCornerIndex, fp);
         document.CommandService.Execute(PanelFaceSourceShapeCommands.CreateUpdateCommand(document.DocumentId, document, updated, "Move Face Source Shape corner"));
     }
 

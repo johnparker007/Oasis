@@ -245,7 +245,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             () => LoadedProject,
             _activeDocumentContext,
             ExecuteDocumentCanvasCommand,
-            ApplyInspectorSummary);
+            ApplyInspectorSummary,
+            GenerateFaceFromSourceShapeCommand);
         _hierarchy = new HierarchyViewModel(
             () => SelectedDocument,
             [new Panel2DHierarchyProvider(), new FaceHierarchyProvider()]);
