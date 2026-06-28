@@ -6,6 +6,7 @@ namespace OasisEditor.Features.CabinetEditor.Services;
 public sealed class HelixCabinetModelLoader : ICabinetModelLoader
 {
     private readonly ICabinetModelLoader _fallbackLoader = new SharpGltfWpfModelLoader();
+    private readonly ICabinetFaceTargetDetector _faceTargetDetector = new GlbCabinetFaceTargetDetector();
 
     public Task<CabinetModelLoadResult> LoadAsync(string modelPath, CancellationToken cancellationToken = default)
     {
@@ -36,7 +37,8 @@ public sealed class HelixCabinetModelLoader : ICabinetModelLoader
                     return LoadWithFallback(modelPath, cancellationToken, "Helix loaded the .glb, but it did not contain displayable geometry.");
                 }
 
-                return CabinetModelLoadResult.Success(model);
+                var faceTargets = _faceTargetDetector.DetectTargets(modelPath, cancellationToken);
+                return CabinetModelLoadResult.Success(model, faceTargets);
             }
             catch (OperationCanceledException)
             {

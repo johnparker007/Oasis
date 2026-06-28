@@ -15,6 +15,7 @@ namespace OasisEditor.Features.CabinetEditor.Services;
 public sealed class SharpGltfWpfModelLoader : ICabinetModelLoader
 {
     private static readonly DiffuseMaterial DefaultMaterial = CreateDefaultMaterial();
+    private static readonly ICabinetFaceTargetDetector FaceTargetDetector = new GlbCabinetFaceTargetDetector();
 
     public Task<CabinetModelLoadResult> LoadAsync(string modelPath, CancellationToken cancellationToken = default)
     {
@@ -92,7 +93,8 @@ public sealed class SharpGltfWpfModelLoader : ICabinetModelLoader
             }
 
             group.Freeze();
-            return CabinetModelLoadResult.Success(group);
+            var faceTargets = FaceTargetDetector.DetectTargets(modelPath, cancellationToken);
+            return CabinetModelLoadResult.Success(group, faceTargets);
         }
         catch (OperationCanceledException)
         {
