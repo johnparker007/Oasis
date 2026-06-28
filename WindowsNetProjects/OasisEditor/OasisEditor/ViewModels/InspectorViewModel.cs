@@ -32,6 +32,24 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
     public InspectorViewModel(
         Func<AssetBrowserItemViewModel?> selectedAssetAccessor,
         Func<DocumentTabViewModel?> selectedDocumentAccessor,
+        Func<EditorProject?> loadedProjectAccessor,
+        ActiveDocumentContextService activeDocumentContext,
+        Func<Guid, EditorCommands.ICommand, bool> executeCanvasCommand,
+        Func<DocumentTabViewModel, string, DocumentTabViewModel?> applySummary)
+        : this(
+            selectedAssetAccessor,
+            selectedDocumentAccessor,
+            () => [],
+            loadedProjectAccessor,
+            activeDocumentContext,
+            executeCanvasCommand,
+            applySummary)
+    {
+    }
+
+    public InspectorViewModel(
+        Func<AssetBrowserItemViewModel?> selectedAssetAccessor,
+        Func<DocumentTabViewModel?> selectedDocumentAccessor,
         Func<IEnumerable<DocumentTabViewModel>> openDocumentsAccessor,
         Func<EditorProject?> loadedProjectAccessor,
         ActiveDocumentContextService activeDocumentContext,
