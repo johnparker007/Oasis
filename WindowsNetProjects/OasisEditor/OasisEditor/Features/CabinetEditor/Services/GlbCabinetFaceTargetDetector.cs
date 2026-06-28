@@ -210,7 +210,7 @@ public sealed class GlbCabinetFaceTargetDetector : ICabinetFaceTargetDetector
         }
 
         var scale = ReadVector3(node, "scale", new Vector3(1, 1, 1));
-        var rotation = ReadQuaternion(node, "rotation", Quaternion.Identity);
+        var rotation = ReadQuaternion(node, "rotation", System.Numerics.Quaternion.Identity);
         var translation = ReadVector3(node, "translation", Vector3.Zero);
         return Matrix4x4.CreateScale(scale) * Matrix4x4.CreateFromQuaternion(rotation) * Matrix4x4.CreateTranslation(translation);
     }
@@ -265,10 +265,10 @@ public sealed class GlbCabinetFaceTargetDetector : ICabinetFaceTargetDetector
         return new Vector3(array[0].GetSingle(), array[1].GetSingle(), array[2].GetSingle());
     }
 
-    private static Quaternion ReadQuaternion(JsonElement node, string propertyName, Quaternion fallback)
+    private static System.Numerics.Quaternion ReadQuaternion(JsonElement node, string propertyName, System.Numerics.Quaternion fallback)
     {
         if (!node.TryGetProperty(propertyName, out var array) || array.ValueKind != JsonValueKind.Array || array.GetArrayLength() < 4) return fallback;
-        return new Quaternion(array[0].GetSingle(), array[1].GetSingle(), array[2].GetSingle(), array[3].GetSingle());
+        return new System.Numerics.Quaternion(array[0].GetSingle(), array[1].GetSingle(), array[2].GetSingle(), array[3].GetSingle());
     }
 
     private static bool TryGetArrayItem(JsonElement root, string propertyName, int index, out JsonElement item)
