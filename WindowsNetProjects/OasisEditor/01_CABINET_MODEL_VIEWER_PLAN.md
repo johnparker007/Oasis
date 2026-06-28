@@ -4,30 +4,38 @@
 
 Add 3D cabinet support to Oasis Editor.
 
-The first milestone was a simple editor document that can load a `.glb` cabinet model and display it in a usable 3D viewport. That is now in place. The next milestone is to use specially named meshes inside the `.glb` as face target surfaces that Oasis Face documents can be assigned to.
+The first milestones are now in place: Oasis can open/save `.cabinet3d` documents, reference `.glb` cabinet model assets without overwriting them, detect `OasisFace_` target quads inside the GLB, assign Face documents to detected targets, and render static Face previews on those targets.
 
-This feature is part of the longer-term workflow:
+The next design area is per-target mapping metadata: the Editor must let users correct target facing and texture orientation when Blender-authored blank quads are not oriented the way Oasis expects.
+
+## Core workflow
 
 1. Users author/export common cabinet models as `.glb` files.
 2. Cabinet designers add flat quad target meshes in Blender with names such as `OasisFace_TopGlass` and `OasisFace_BottomGlass`.
-3. Oasis Editor loads the `.glb`, renders the cabinet, and detects those `OasisFace_` targets.
-4. Oasis Editor lets users assign existing Face documents to detected cabinet face targets.
-5. Oasis saves assignment metadata separately from the `.glb`.
-6. The later Unity runtime/player loads the same `.glb` plus Oasis metadata and renders the Face backgrounds/lamp textures onto those targets.
+3. Oasis Editor creates/opens a `.cabinet3d` document that references the `.glb`.
+4. Oasis Editor detects `OasisFace_` targets from the GLB.
+5. Users assign existing Face documents to detected cabinet face targets.
+6. Users can correct per-target preview mapping in the `.cabinet3d` document.
+7. The later Unity runtime/player loads the same `.glb` plus Oasis metadata and renders Face backgrounds/lamp textures onto those targets.
 
 ## Current status
 
 Implemented so far:
 
-- `.glb` cabinet files can be opened as Cabinet3D documents.
-- The Cabinet Model Viewer renders the model in-editor.
+- `.cabinet3d` files are the saveable Oasis cabinet documents.
+- `.glb` files are source model assets and must not be overwritten by Oasis save operations.
+- Cabinet3D documents reference `.glb` model assets.
+- The Cabinet Model Viewer renders the referenced model in-editor.
 - The viewer supports orbit, pan, zoom, reset camera, grid/orientation helpers, and safe load errors.
 - GLB loading uses a Helix viewport with SharpGLTF-backed parsing/conversion where needed.
-- Recent material work improved base visual fidelity beyond a single grey mesh.
+- Material work improved base visual fidelity beyond a single grey mesh.
+- `OasisFace_` target meshes are detected and listed.
+- Face documents can store an assigned cabinet face target ID.
+- Static Face background/artwork preview can render onto assigned targets.
 
 ## Core principle
 
-The `.glb` is the cabinet geometry/material asset. Oasis-specific assignments and overrides must be stored separately.
+The `.glb` is the cabinet geometry/material asset. Oasis-specific assignments and overrides must be stored separately in `.cabinet3d` and related Oasis documents.
 
 Do not mutate or re-export the `.glb` just to store Oasis metadata.
 
@@ -38,7 +46,7 @@ Assets/Cabinets/GenesisCabinet.glb
 Assets/Cabinets/GenesisCabinet.cabinet3d
 ```
 
-The `.cabinet3d` file should reference the `.glb` and contain Oasis-specific metadata such as which Face document is assigned to each detected face target.
+The `.cabinet3d` file should reference the `.glb` and contain Oasis-specific metadata such as per-target mapping overrides and preview options.
 
 ## Preferred face target workflow
 
@@ -52,7 +60,7 @@ OasisFace_BottomGlass
 OasisFace_ButtonPanel
 ```
 
-When exported to `.glb`, Oasis Editor should scan the glTF scene/node hierarchy for these named objects and import them as face target candidates.
+When exported to `.glb`, Oasis Editor scans the glTF scene/node hierarchy for these named objects and imports them as face target candidates.
 
 Advantages:
 
@@ -73,7 +81,7 @@ OasisFace_
 The display name should be derived from the suffix:
 
 ```text
-OasisFace_TopGlass -> TopGlass or Top Glass, depending on existing UI naming conventions
+OasisFace_TopGlass -> Top Glass
 ```
 
 Detection should preserve:
@@ -84,18 +92,48 @@ Detection should preserve:
 - bounds/center
 - source mesh/material visibility state where useful
 
-A target should ideally be a single quad. For the first implementation, accept either:
+A target should ideally be a single quad. If the geometry is not usable as a face target, report it as invalid/non-displayable rather than crashing.
 
-- one quad made from two triangles, or
-- any planar mesh where a simple rectangular/quad representation can be derived safely
+## Cabinet document persistence
 
-If the geometry is not usable as a face target, report it as invalid/non-displayable rather than crashing.
+A `.cabinet3d` document is the saveable cabinet metadata file.
+
+Example shape:
+
+```json
+{
+  "version": 1,
+  "model": {
+    "path": "GenesisCabinet.glb",
+    "scale": 1.0,
+    "upAxis": "Y"
+  },
+  "targetOverrides": [
+    {
+      "targetId": "topGlass",
+      "frontSide": "normal",
+      "textureRotation": 0
+    }
+  ],
+  "preview": {
+    "showTargetOverlays": true,
+    "showFaceBackgrounds": true
+  }
+}
+```
+
+Use existing code conventions over this exact JSON shape if the implementation already chose a schema, but preserve these concepts:
+
+- source GLB model reference
+- detected target identity from the GLB
+- per-target Oasis overrides
+- editor preview settings
 
 ## Face target geometry model
 
-The target should ultimately be represented in Oasis as a named quad in cabinet/model coordinates.
+The detected target should be represented in Oasis as a named quad in cabinet/model coordinates.
 
-Example future data shape:
+Example detected target shape:
 
 ```json
 {
@@ -107,70 +145,75 @@ Example future data shape:
     [ 0.42, 1.85, -0.03],
     [ 0.42, 1.20, -0.03],
     [-0.42, 1.20, -0.03]
-  ],
-  "frontSide": "normal"
-}
-```
-
-Corner order defines texture mapping:
-
-```text
-top-left
-top-right
-bottom-right
-bottom-left
-```
-
-The quad normal is derived from corner winding. `frontSide` controls whether the visible/rendered side is the derived normal side or the inverted side.
-
-Do not add `uvRotation`, `uvFlipX`, or `uvFlipY` in the first design. If a real use case appears later, a minimal mapping flag can be added then. For now:
-
-- corner order defines orientation
-- `frontSide` defines physical facing direction
-
-## Face document assignment direction
-
-Any Oasis Face document should eventually be able to choose a target face from the detected `OasisFace_` targets in the active/associated cabinet model.
-
-The assignment should be metadata, not baked into the `.glb`.
-
-Possible future `.cabinet3d` shape:
-
-```json
-{
-  "version": 1,
-  "model": {
-    "path": "GenesisCabinet.glb",
-    "scale": 1.0,
-    "upAxis": "Y"
-  },
-  "targets": [
-    {
-      "id": "topGlass",
-      "sourceName": "OasisFace_TopGlass",
-      "displayName": "Top Glass",
-      "frontSide": "normal"
-    }
-  ],
-  "faceAssignments": [
-    {
-      "faceDocumentPath": "Faces/TopGlass.face",
-      "targetId": "topGlass"
-    }
   ]
 }
 ```
 
-The exact persistence format can evolve, but keep these concepts separate:
+The source quad geometry comes from the GLB. Oasis overrides should not modify the source geometry unless a later explicit editing tool is added.
+
+## Per-target mapping overrides
+
+Because Blender-authored target quads are often blank and hard to visually orient, Oasis should provide per-target mapping controls in the Cabinet3D document.
+
+Recommended first override fields:
+
+```json
+{
+  "targetId": "topGlass",
+  "frontSide": "normal",
+  "textureRotation": 0
+}
+```
+
+Where:
+
+```text
+frontSide: normal | inverted
+textureRotation: 0 | 90 | 180 | 270
+```
+
+`frontSide` controls which side of the target quad receives the Face preview/rendering. This fixes cases where the Face appears on the inside/back side of the quad.
+
+`textureRotation` controls the 2D orientation of the Face preview on the target. This fixes common authoring cases where the plane is spatially correct but the artwork is rotated on the quad.
+
+Do not add arbitrary UV editing in the first version. Avoid `uvFlipX`/`uvFlipY` unless a concrete need appears. Start with front/back plus 90-degree rotation steps.
+
+## Face document assignment direction
+
+Any Oasis Face document can choose a target face from the detected `OasisFace_` targets in an open/associated cabinet model.
+
+The assignment is metadata, not baked into the `.glb`.
+
+The Face document stores the assigned target ID. The Cabinet3D document stores per-target mapping overrides.
+
+Keep these concepts separate:
 
 - detected target geometry from the `.glb`
-- user-facing target identity/name
-- Face document assignment
-- future per-target override data
+- Face document assignment to target ID
+- Cabinet3D per-target mapping overrides
+- future runtime export metadata
+
+## Editor UI direction
+
+The Cabinet3D viewer should expose detected targets as selectable editor items.
+
+Preferred UI direction:
+
+- Show detected `OasisFace_` targets in a Cabinet3D hierarchy/list.
+- Selecting a target should populate the Inspector.
+- The Inspector should allow editing per-target Cabinet3D overrides:
+  - Front Side: Normal/Inverted
+  - Texture Rotation: 0/90/180/270
+- Changes should update the static Face preview immediately where practical.
+- Changes should mark the `.cabinet3d` document dirty.
+- Changes should save/load with the `.cabinet3d` document.
+- Editing should follow existing document command/undo/redo patterns if Cabinet3D already has them.
+
+Do not make these settings part of the Face document. The same Face can be assigned to a correctly configured cabinet target; the target-specific mapping belongs to the cabinet.
 
 ## Editor preview direction
 
-The Editor should eventually show a simple preview of assigned Face documents on top of the cabinet model.
+The Editor should show a simple preview of assigned Face documents on top of the cabinet model.
 
 Recommended preview staging:
 
@@ -178,9 +221,10 @@ Recommended preview staging:
 2. Render target overlays in the Cabinet Model Viewer with simple tint/wireframe/normal indicator.
 3. Let a Face document select one target from detected faces.
 4. Render the Face document's static/background image onto the target in the Cabinet Model Viewer.
-5. Defer full dynamic lamp simulation on the 3D cabinet until the Unity/runtime path is further along.
+5. Add per-target `frontSide` and `textureRotation` controls to correct orientation.
+6. Defer full dynamic lamp simulation on the 3D cabinet until the Unity/runtime path is further along.
 
-Do not make full lamp flashing on the 3D editor cabinet a near-term requirement. It would be useful later, but it is substantially more work because it needs runtime-style face compositing, lamp state simulation, texture updates, and performance handling. A static background preview gives most of the layout confidence for much less risk.
+Do not make full lamp flashing on the 3D editor cabinet a near-term requirement. It would be useful later, but it is substantially more work because it needs runtime-style face compositing, lamp state simulation, texture updates, and performance handling.
 
 ## Future cabinet surface edit modes
 
@@ -189,17 +233,15 @@ Later work may add editor-created or editor-adjusted target surfaces, but this i
 Potential later tools:
 
 - create surface in editor
-- select surface
+- select surface in viewport
 - move/rotate/scale surface
 - edit individual corners
-- flip front/back
 - show normal arrow
 - front/side/top orthographic views
 - selected-surface orthographic view
 - snap quad/corners to model surface
-- preview assigned face document texture
 
-These are future tasks. Do not implement them in the `OasisFace_` detection milestone.
+These are future tasks. Do not implement them as part of the per-target mapping override milestone.
 
 ## Rendering technology guidance
 
@@ -218,7 +260,7 @@ Important requirements:
 
 ## Suggested architecture
 
-Keep a clear split between UI, document state, detected target data, and model loading.
+Keep a clear split between UI, document state, detected target data, mapping overrides, and model loading.
 
 Feature area:
 
@@ -232,21 +274,22 @@ Possible additions:
 Features/CabinetEditor/
   Models/
     CabinetFaceTarget.cs
-    CabinetFaceTargetDetectionResult.cs
-  Services/
-    ICabinetFaceTargetDetector.cs
-    SharpGltfCabinetFaceTargetDetector.cs
+    CabinetFaceTargetOverride.cs
+  Commands/
+    SetCabinetFaceTargetFrontSideCommand.cs
+    SetCabinetFaceTargetTextureRotationCommand.cs
   ViewModels/
     CabinetFaceTargetViewModel.cs
+    CabinetFaceTargetInspectorViewModel.cs
 ```
 
 Adapt names and paths to existing project conventions.
 
-WPF view code-behind should remain thin glue only. Put target detection, load state, commands, and user-facing state in ViewModels/services.
+WPF view code-behind should remain thin glue only. Put target override editing, load state, commands, and user-facing state in ViewModels/services.
 
 ## Camera/view guidance
 
-The current perspective orbit view is enough for the detection milestone.
+The current perspective orbit view is enough for the mapping override milestone.
 
 Design the camera layer so these can be added later:
 
@@ -261,11 +304,11 @@ Avoid hard-coding assumptions that prevent orthographic view modes later.
 
 Expected next-stage UI:
 
-- A list/panel/section showing detected `OasisFace_` targets for the loaded model.
-- A count/status such as `Detected 2 Oasis face targets`.
+- A Cabinet3D target hierarchy/list showing detected `OasisFace_` targets.
+- Selecting a target populates the Inspector.
+- Inspector shows source name, stable target ID, validity, front side, and texture rotation.
+- Preview updates when front side or rotation changes.
 - Clear warning if no `OasisFace_` targets are found.
-- Optional simple overlay rendering of detected targets in the viewport.
-- Optional selection sync between the list and viewport overlay.
 - No hard-coded theme colors.
 
 ## Testing guidance
@@ -277,13 +320,17 @@ John will test locally:
 - solution builds
 - app launches
 - project open/create still works
-- cabinet model viewer still opens `.glb` files
-- existing material/textured rendering still works
-- `.glb` with `OasisFace_` objects reports detected targets
-- `.glb` without `OasisFace_` objects shows a safe empty/warning state
-- invalid `OasisFace_` geometry is reported safely
+- `.cabinet3d` opens and references its `.glb`
+- `.glb` source file is never overwritten by Save Document
+- detected targets appear in the Cabinet3D target list/hierarchy
+- selecting a target shows Inspector properties
+- changing front side moves/changes the visible preview side as expected
+- changing texture rotation rotates the static Face preview 0/90/180/270
+- changes mark the `.cabinet3d` document dirty
+- save/reopen preserves mapping overrides
+- assigned Face static previews still render
 - camera orbit/pan/zoom/reset still work
-- existing Panel2D editor workflow is unaffected
+- existing Panel2D and Face workflows are unaffected
 
 ## Implementation caution
 
@@ -296,4 +343,4 @@ Do not scan every Markdown file. Start with:
 3. this file
 4. the task-specific prompt/document, if one is supplied
 
-Then inspect only source files needed to integrate `OasisFace_` target detection into the existing Cabinet Model Viewer and Face document workflows.
+Then inspect only source files needed to integrate per-target mapping overrides into the existing Cabinet3D document, viewer, hierarchy/list, Inspector, save/load, and preview rendering workflows.
