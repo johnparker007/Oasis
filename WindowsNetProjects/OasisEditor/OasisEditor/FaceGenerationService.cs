@@ -106,6 +106,14 @@ internal sealed class FaceGenerationService
         var assetPath = FaceSourceShapeTransformService.TryGenerateBackground(sourcePanel, sourceShape, output.Width, output.Height, projectDirectory, generatedDirectory);
         var settings = (generationSettings ?? FaceGenerationSettingsModel.Default).Normalize();
         var faceDocumentId = Guid.NewGuid().ToString("N");
+        var maskLayer = _maskLayerExtractionService.GenerateMaskLayer(
+            new Panel2DDocumentModel(),
+            region.ToRect(),
+            faceDocumentId,
+            sourcePanel2DDocumentId,
+            projectDirectory,
+            generatedDirectory,
+            settings.MaskExtractionThreshold);
         var artwork = new FaceArtworkElement
         {
             ObjectId = $"face-artwork-{Guid.NewGuid():N}",
@@ -131,7 +139,12 @@ internal sealed class FaceGenerationService
             SourceRegion = region,
             LastRegeneratedAtUtc = DateTime.UtcNow,
             GenerationSettings = settings,
-            Layers = [new FaceLayerModel { Id = "layer-artwork", Name = "Artwork", IsVisible = true }],
+            MaskLayer = maskLayer,
+            Layers =
+            [
+                new FaceLayerModel { Id = "layer-artwork", Name = "Artwork", IsVisible = true },
+                new FaceLayerModel { Id = "layer-face-mask", Name = "Face Mask", IsVisible = true }
+            ],
             Elements = [artwork]
         };
         progress?.Report(1.0, "Face generation complete.");
