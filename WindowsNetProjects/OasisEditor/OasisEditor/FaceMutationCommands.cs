@@ -47,6 +47,7 @@ internal static class FaceMutationCommands
             Title = faceDocument.Title,
             Summary = faceDocument.Summary,
             SourcePanel2DDocumentId = faceDocument.SourcePanel2DDocumentId,
+            SourceFaceShapeId = faceDocument.SourceFaceShapeId,
             AssignedCabinetFaceTargetId = NormalizeTargetId(assignedTargetId),
             SourceRegion = faceDocument.SourceRegion,
             LastRegeneratedAtUtc = faceDocument.LastRegeneratedAtUtc,

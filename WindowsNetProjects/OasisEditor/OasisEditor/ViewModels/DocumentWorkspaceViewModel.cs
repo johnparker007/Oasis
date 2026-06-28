@@ -150,6 +150,44 @@ public sealed class DocumentWorkspaceViewModel
         return document;
     }
 
+
+    public DocumentTabViewModel? GenerateFaceFromSelectedFaceSourceShape(FaceGenerationSettingsModel? generationSettings = null, IEditorProgressReporter? progress = null)
+    {
+        var sourceDocument = _getSelectedDocument();
+        var loadedProject = _getLoadedProject();
+        if (loadedProject is null || sourceDocument is null || sourceDocument.Document.DocumentType != EditorDocumentType.Panel2D) return null;
+        var selection = sourceDocument.HierarchySelectedPanelSelection;
+        if (selection is null || !string.Equals(selection.Value.Kind, PanelFaceSourceShapeCommands.SelectionKind, StringComparison.Ordinal)) return null;
+        if (!sourceDocument.TryGetPanelFaceSourceShape(selection.Value.ObjectId, out var shape)) return null;
+
+        var target = _openDocuments.Select(d => d.CabinetViewer?.SelectedFaceTarget?.Target).FirstOrDefault(t => t is not null);
+        var targetAspect = target is null || target.Corners.Count < 4
+            ? (double?)null
+            : (target.Corners[1] - target.Corners[0]).Length / Math.Max(0.0001, (target.Corners[3] - target.Corners[0]).Length);
+        progress ??= NoOpEditorProgressReporter.Instance;
+        var title = $"{sourceDocument.Title} Face";
+        var result = _faceGenerationService.GenerateFromPanelFaceSourceShape(
+            sourceDocument.GetPanelDocument(),
+            shape,
+            title,
+            sourceDocument.DocumentId.ToString("N"),
+            target?.Id,
+            targetAspect,
+            loadedProject.ProjectDirectory,
+            loadedProject.GeneratedDirectory,
+            generationSettings,
+            progress.CreateChild(0.0, 0.8));
+        var generatedFaceDocument = ExportRuntimeAssetsForPreview(result.Document, loadedProject, progress.CreateChild(0.8, 0.95));
+        var faceJson = FaceDocumentStorage.Serialize(generatedFaceDocument);
+        var faceEditorDocument = EditorDocument.CreateFaceStub(title).WithContentSummary(generatedFaceDocument.Summary ?? "Generated Face document.");
+        var document = CreateDocumentTab(faceEditorDocument, faceDocumentJson: faceJson);
+        ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
+        _setStatusMessage($"Generated face document from Face Source Shape '{shape.Name}'.");
+        _addOutputEntry($"Generated face '{document.Title}' from Face Source Shape '{shape.Name}'.", OutputLogStatus.Info);
+        progress.Report(1.0, "Face generation complete.");
+        return document;
+    }
+
     private FaceDocumentModel ExportRuntimeAssetsForPreview(FaceDocumentModel faceDocument, EditorProject loadedProject, IEditorProgressReporter? progress = null)
     {
         try
@@ -622,7 +660,7 @@ public sealed class DocumentWorkspaceViewModel
                 var title = string.IsNullOrWhiteSpace(panelDocument.Title)
                     ? Path.GetFileName(path)
                     : panelDocument.Title.Trim();
-                return new OpenDocumentData(summary, Panel2DDocumentStorage.SerializeLayout(panelDocument.Elements), title);
+                return new OpenDocumentData(summary, Panel2DDocumentStorage.Serialize(panelDocument.Title, panelDocument.Summary, panelDocument.Elements, panelDocument.FaceSourceShapes), title);
             }
 
             return new OpenDocumentData(
@@ -667,7 +705,8 @@ public sealed class DocumentWorkspaceViewModel
             var elements = document.GetPanelElements()
                 .Select(Panel2DDocumentStorage.ToStorageElement)
                 .ToArray();
-            return Panel2DDocumentStorage.Serialize(document.Document.Title, document.ContentSummary, elements);
+            var shapes = document.GetPanelFaceSourceShapes().Select(Panel2DDocumentStorage.ToStorageFaceSourceShape).ToArray();
+            return Panel2DDocumentStorage.Serialize(document.Document.Title, document.ContentSummary, elements, shapes);
         }
 
 

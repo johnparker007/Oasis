@@ -129,6 +129,7 @@ internal sealed class FaceRegenerationService
             Title = existingFace.Title,
             Summary = $"Regenerated from Panel2D source region ({Format(sourceRegion.X)}, {Format(sourceRegion.Y)}, {Format(sourceRegion.Width)}, {Format(sourceRegion.Height)}).",
             SourcePanel2DDocumentId = existingFace.SourcePanel2DDocumentId,
+            SourceFaceShapeId = existingFace.SourceFaceShapeId,
             AssignedCabinetFaceTargetId = existingFace.AssignedCabinetFaceTargetId,
             SourceRegion = sourceRegion,
             LastRegeneratedAtUtc = DateTime.UtcNow,

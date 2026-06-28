@@ -105,7 +105,15 @@
                 <ComboBox Grid.Column="1" ItemsSource="{Binding Choices}" SelectedItem="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
             </Grid>
         </DataTemplate>
-<DataTemplate DataType="{x:Type vm:InspectorInfoPropertyViewModel}">
+<DataTemplate DataType="{x:Type vm:InspectorActionPropertyViewModel}">
+            <Button Margin="0,8,0,0"
+                    HorizontalAlignment="Left"
+                    Padding="10,4"
+                    Content="{Binding DisplayName}"
+                    Command="{Binding Command}" />
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type vm:InspectorInfoPropertyViewModel}">
             <Grid Margin="0,3,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="120" />

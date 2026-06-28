@@ -18,6 +18,7 @@ public sealed class Panel2DHierarchyProvider : IDocumentHierarchyProvider
         var elements = panelDocument.GetPanelElements();
         var groups = new List<HierarchyItemViewModel>
         {
+            BuildFaceSourceShapeGroup(panelDocument.GetPanelFaceSourceShapes()),
             BuildGroup("Backgrounds", elements, PanelElementKind.Background, "Background"),
             BuildGroup("Lamps", elements, PanelElementKind.Lamp, "Lamp"),
             BuildGroup("Reels", elements, PanelElementKind.Reel, "Reel"),
@@ -32,6 +33,19 @@ public sealed class Panel2DHierarchyProvider : IDocumentHierarchyProvider
         };
 
         return groups;
+    }
+
+    private static HierarchyItemViewModel BuildFaceSourceShapeGroup(IReadOnlyList<PanelFaceSourceShapeModel> shapes)
+    {
+        var matches = shapes.Select((shape, index) =>
+        {
+            var displayName = string.IsNullOrWhiteSpace(shape.Name) ? $"Face Source Shape {index + 1}" : shape.Name.Trim();
+            return new HierarchyItemViewModel(
+                displayName,
+                $"faceSourceShape:{shape.Id}",
+                panelSelection: PanelFaceSourceShapeCommands.ToSelection(shape));
+        }).ToArray();
+        return new HierarchyItemViewModel($"Face Source Shapes ({matches.Length})", "group:faceSourceShapes", isGroup: true, children: matches);
     }
 
     private static HierarchyItemViewModel BuildGroup(

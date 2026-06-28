@@ -509,3 +509,15 @@ public sealed class InspectorChoicePropertyViewModel : InspectorPropertyRowViewM
         RaisePropertyChanged(nameof(Value));
     }
 }
+
+
+public sealed class InspectorActionPropertyViewModel : InspectorPropertyRowViewModel
+{
+    public InspectorActionPropertyViewModel(string displayName, string groupName, System.Windows.Input.ICommand command)
+        : base(displayName, groupName, false)
+    {
+        Command = command;
+    }
+
+    public System.Windows.Input.ICommand Command { get; }
+}
