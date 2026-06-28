@@ -57,6 +57,12 @@ public sealed class DocumentSaveService : IDocumentSaveService
             throw new ArgumentException("Save path is required.", nameof(savePath));
         }
 
+        if (current.Document.DocumentType == EditorDocumentType.Cabinet3D
+            && string.Equals(Path.GetExtension(savePath), ".glb", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Cabinet3D documents must be saved as .cabinet3d metadata files, never as .glb model assets.");
+        }
+
         var faceDocumentJson = current.FaceDocumentJson;
         var contentSource = current;
         progress.Report(0.1, "Collecting document content...");
@@ -71,7 +77,8 @@ public sealed class DocumentSaveService : IDocumentSaveService
                 current.DocumentId,
                 current.CommandService,
                 current.RuntimeState,
-                faceDocumentJson)
+                faceDocumentJson,
+                current.CabinetDocumentJson)
             {
                 PanelZoom = current.PanelZoom,
                 PanelPanX = current.PanelPanX,
@@ -94,7 +101,8 @@ public sealed class DocumentSaveService : IDocumentSaveService
             current.DocumentId,
             current.CommandService,
             current.RuntimeState,
-            faceDocumentJson)
+            faceDocumentJson,
+            current.CabinetDocumentJson)
         {
             PanelZoom = current.PanelZoom,
             PanelPanX = current.PanelPanX,
