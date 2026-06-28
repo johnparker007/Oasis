@@ -51,17 +51,23 @@ public sealed class SharpGltfWpfModelLoader : ICabinetModelLoader
                 return CabinetModelLoadResult.Failure("The .glb loaded, but it did not contain a scene to display.");
             }
 
+            var faceTargets = FaceTargetDetector.DetectTargets(modelPath, cancellationToken);
             var primitiveMeshes = new Dictionary<int, MeshGeometry3D>();
             var triangleCount = 0;
             foreach (var (a, b, c, material) in scene.EvaluateTriangles())
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var materialIndex = GetLogicalIndex(material);
-                var mesh = GetMeshForMaterial(primitiveMeshes, materialIndex);
                 var pointA = ToPoint3D(a);
                 var pointB = ToPoint3D(b);
                 var pointC = ToPoint3D(c);
+                if (IsFaceTargetLocatorTriangle(pointA, pointB, pointC, faceTargets))
+                {
+                    continue;
+                }
+
+                var materialIndex = GetLogicalIndex(material);
+                var mesh = GetMeshForMaterial(primitiveMeshes, materialIndex);
                 var fallbackNormal = CalculateNormal(pointA, pointB, pointC);
 
                 AddTriangleVertex(mesh, a, pointA, fallbackNormal);
@@ -93,7 +99,6 @@ public sealed class SharpGltfWpfModelLoader : ICabinetModelLoader
             }
 
             group.Freeze();
-            var faceTargets = FaceTargetDetector.DetectTargets(modelPath, cancellationToken);
             return CabinetModelLoadResult.Success(group, faceTargets);
         }
         catch (OperationCanceledException)
@@ -104,6 +109,22 @@ public sealed class SharpGltfWpfModelLoader : ICabinetModelLoader
         {
             return CabinetModelLoadResult.Failure($"SharpGLTF fallback failed: {ex.Message}");
         }
+    }
+
+
+    private static bool IsFaceTargetLocatorTriangle(Point3D a, Point3D b, Point3D c, IReadOnlyList<Models.CabinetFaceTarget> faceTargets)
+    {
+        return faceTargets.Any(target => target.IsValid
+            && target.Corners.Count == 4
+            && IsTargetCorner(a, target.Corners)
+            && IsTargetCorner(b, target.Corners)
+            && IsTargetCorner(c, target.Corners));
+    }
+
+    private static bool IsTargetCorner(Point3D point, IReadOnlyList<Point3D> targetCorners)
+    {
+        const double toleranceSquared = 1e-8;
+        return targetCorners.Any(corner => (corner - point).LengthSquared <= toleranceSquared);
     }
 
     private static MeshGeometry3D GetMeshForMaterial(Dictionary<int, MeshGeometry3D> meshes, int materialIndex)

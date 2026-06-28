@@ -15,14 +15,14 @@ public sealed record CabinetDocument(
         CabinetPreviewSettings.Default);
 }
 
-public sealed record CabinetTargetOverride(string TargetId, string FrontSide, int FaceRotation = 0)
+public sealed record CabinetTargetOverride(string TargetId, string FrontSide, int FaceRotation = 0, bool FaceFlipHorizontal = false)
 {
     public const string NormalFrontSide = "normal";
     public const string InvertedFrontSide = "inverted";
 
-    public static CabinetTargetOverride Default(string targetId) => new(targetId, NormalFrontSide, 0);
+    public static CabinetTargetOverride Default(string targetId) => new(targetId, NormalFrontSide, 0, false);
 
-    public CabinetTargetOverride Normalized() => new(TargetId, NormalizeFrontSide(FrontSide), NormalizeFaceRotation(FaceRotation));
+    public CabinetTargetOverride Normalized() => new(TargetId, NormalizeFrontSide(FrontSide), NormalizeFaceRotation(FaceRotation), FaceFlipHorizontal);
 
     public static string NormalizeFrontSide(string? frontSide)
     {

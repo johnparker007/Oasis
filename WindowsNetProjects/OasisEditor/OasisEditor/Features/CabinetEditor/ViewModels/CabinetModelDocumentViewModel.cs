@@ -68,6 +68,7 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(HasSelectedFaceTarget));
             OnPropertyChanged(nameof(SelectedFrontSide));
             OnPropertyChanged(nameof(SelectedFaceRotation));
+            OnPropertyChanged(nameof(IsSelectedFaceFlippedHorizontally));
         }
     }
 
@@ -93,10 +94,21 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
         }
     }
 
+    public bool IsSelectedFaceFlippedHorizontally
+    {
+        get => SelectedFaceTarget is not null && _document.GetCabinetDocument().GetTargetOverride(SelectedFaceTarget.Id).FaceFlipHorizontal;
+        set
+        {
+            if (SelectedFaceTarget is null) return;
+            _document.CommandService.Execute(CabinetMutationCommands.CreateSetTargetFaceFlipHorizontalCommand(_document.DocumentId, _document, SelectedFaceTarget.Id, value));
+        }
+    }
+
     public void RefreshFromDocument(CabinetDocument document)
     {
         OnPropertyChanged(nameof(SelectedFrontSide));
         OnPropertyChanged(nameof(SelectedFaceRotation));
+        OnPropertyChanged(nameof(IsSelectedFaceFlippedHorizontally));
         RefreshFacePreviews();
     }
 
@@ -190,7 +202,9 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
         }
 
         var positions = GetRenderQuadCorners(target.Corners, targetOverride);
-        var triangleIndices = CabinetTargetOverride.NormalizeFrontSide(targetOverride.FrontSide) == CabinetTargetOverride.InvertedFrontSide
+        var isInverted = CabinetTargetOverride.NormalizeFrontSide(targetOverride.FrontSide) == CabinetTargetOverride.InvertedFrontSide;
+        var reverseWinding = targetOverride.FaceFlipHorizontal ^ isInverted;
+        var triangleIndices = reverseWinding
             ? new[] { 0, 2, 1, 0, 3, 2 }
             : new[] { 0, 1, 2, 0, 2, 3 };
         var mesh = new MeshGeometry3D
@@ -210,13 +224,20 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
         return true;
     }
 
-    private static Point3D[] GetRenderQuadCorners(IReadOnlyList<Point3D> sourceCorners, CabinetTargetOverride targetOverride) => CabinetTargetOverride.NormalizeFaceRotation(targetOverride.FaceRotation) switch
+    private static Point3D[] GetRenderQuadCorners(IReadOnlyList<Point3D> sourceCorners, CabinetTargetOverride targetOverride)
     {
-        90 => new[] { sourceCorners[3], sourceCorners[0], sourceCorners[1], sourceCorners[2] },
-        180 => new[] { sourceCorners[2], sourceCorners[3], sourceCorners[0], sourceCorners[1] },
-        270 => new[] { sourceCorners[1], sourceCorners[2], sourceCorners[3], sourceCorners[0] },
-        _ => new[] { sourceCorners[0], sourceCorners[1], sourceCorners[2], sourceCorners[3] }
-    };
+        var rotated = CabinetTargetOverride.NormalizeFaceRotation(targetOverride.FaceRotation) switch
+        {
+            90 => new[] { sourceCorners[3], sourceCorners[0], sourceCorners[1], sourceCorners[2] },
+            180 => new[] { sourceCorners[2], sourceCorners[3], sourceCorners[0], sourceCorners[1] },
+            270 => new[] { sourceCorners[1], sourceCorners[2], sourceCorners[3], sourceCorners[0] },
+            _ => new[] { sourceCorners[0], sourceCorners[1], sourceCorners[2], sourceCorners[3] }
+        };
+
+        return targetOverride.FaceFlipHorizontal
+            ? new[] { rotated[1], rotated[0], rotated[3], rotated[2] }
+            : rotated;
+    }
 
     private static string? NormalizeTargetId(string? targetId) => string.IsNullOrWhiteSpace(targetId) ? null : targetId.Trim();
 

@@ -89,6 +89,7 @@
                         <ComboBox ItemsSource="{Binding CabinetViewer.FrontSideOptions}" SelectedItem="{Binding CabinetViewer.SelectedFrontSide, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                         <TextBlock Margin="0,8,0,3" Foreground="{DynamicResource TextSecondaryBrush}" Text="Face Rotation" />
                         <ComboBox ItemsSource="{Binding CabinetViewer.FaceRotationOptions}" SelectedItem="{Binding CabinetViewer.SelectedFaceRotation, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <CheckBox Margin="0,10,0,0" Foreground="{DynamicResource TextPrimaryBrush}" Content="Flip Horizontally" IsChecked="{Binding CabinetViewer.IsSelectedFaceFlippedHorizontally, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                     </StackPanel>
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <ListBox ItemsSource="{Binding CabinetViewer.FaceTargets}" SelectedItem="{Binding CabinetViewer.SelectedFaceTarget, Mode=TwoWay}" Background="Transparent" BorderThickness="0">
