@@ -90,6 +90,7 @@ public sealed class FaceRuntimeExportService
             Title = faceDocument.Title,
             Summary = faceDocument.Summary,
             SourcePanel2DDocumentId = faceDocument.SourcePanel2DDocumentId,
+            AssignedCabinetFaceTargetId = faceDocument.AssignedCabinetFaceTargetId,
             SourceRegion = faceDocument.SourceRegion,
             LastRegeneratedAtUtc = faceDocument.LastRegeneratedAtUtc,
             GenerationSettings = faceDocument.GenerationSettings,
