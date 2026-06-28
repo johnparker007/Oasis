@@ -90,7 +90,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     public bool IsDirty => Document.IsDirty;
     public bool HasCabinetViewer => Document.DocumentType == EditorDocumentType.Cabinet3D && !string.IsNullOrWhiteSpace(_cabinetDocumentModel.Model.Path);
     public CabinetModelDocumentViewModel? CabinetViewer => HasCabinetViewer
-        ? _cabinetViewer ??= new CabinetModelDocumentViewModel(new SharpGltfWpfModelLoader(), _cabinetDocumentModel.Model.Path, _openDocumentsAccessor)
+        ? _cabinetViewer ??= new CabinetModelDocumentViewModel(new SharpGltfWpfModelLoader(), this, _openDocumentsAccessor)
         : null;
 
     public void SetOpenDocumentsAccessor(Func<IReadOnlyList<DocumentTabViewModel>> openDocumentsAccessor)
@@ -141,6 +141,17 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     public string GetCabinetDocumentJson()
     {
         return CabinetDocumentStorage.Serialize(_cabinetDocumentModel);
+    }
+
+    internal void SetCabinetDocument(CabinetDocument document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+
+        _cabinetDocumentModel = document;
+        _cabinetDocumentJson = GetCabinetDocumentJson();
+        _cabinetViewer?.RefreshFromDocument(document);
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CabinetDocumentJson)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasCabinetViewer)));
     }
 
     public string? FaceDocumentJson

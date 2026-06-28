@@ -15,17 +15,20 @@ namespace OasisEditor.Features.CabinetEditor.ViewModels;
 public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
 {
     private readonly ICabinetModelLoader _modelLoader;
+    private readonly DocumentTabViewModel _document;
     private readonly Func<IReadOnlyList<DocumentTabViewModel>>? _openDocumentsAccessor;
     private readonly FaceDocumentArtworkPreviewRenderer _previewRenderer = new();
     private string _loadStatus = "No cabinet model loaded.";
     private string? _errorMessage;
     private bool _isLoading;
+    private CabinetFaceTargetViewModel? _selectedFaceTarget;
 
-    public CabinetModelDocumentViewModel(ICabinetModelLoader modelLoader, string? modelPath = null, Func<IReadOnlyList<DocumentTabViewModel>>? openDocumentsAccessor = null)
+    public CabinetModelDocumentViewModel(ICabinetModelLoader modelLoader, DocumentTabViewModel document, Func<IReadOnlyList<DocumentTabViewModel>>? openDocumentsAccessor = null)
     {
         _modelLoader = modelLoader;
+        _document = document;
         _openDocumentsAccessor = openDocumentsAccessor;
-        ModelPath = modelPath ?? string.Empty;
+        ModelPath = document.GetCabinetDocument().Model.Path;
         Viewport = new CabinetViewportViewModel();
         ReloadCommand = new RelayCommand(async () => await LoadAsync(), CanLoad);
         ResetCameraCommand = Viewport.ResetCameraCommand;
@@ -51,6 +54,51 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
     public bool IsLoading { get => _isLoading; private set { _isLoading = value; OnPropertyChanged(); if (ReloadCommand is RelayCommand relay) relay.RaiseCanExecuteChanged(); } }
     public ICommand ReloadCommand { get; }
     public ICommand ResetCameraCommand { get; }
+    public IReadOnlyList<string> FrontSideOptions { get; } = new[] { CabinetTargetOverride.NormalFrontSide, CabinetTargetOverride.InvertedFrontSide };
+    public IReadOnlyList<int> TextureRotationOptions { get; } = new[] { 0, 90, 180, 270 };
+
+    public CabinetFaceTargetViewModel? SelectedFaceTarget
+    {
+        get => _selectedFaceTarget;
+        set
+        {
+            if (ReferenceEquals(_selectedFaceTarget, value)) return;
+            _selectedFaceTarget = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HasSelectedFaceTarget));
+            OnPropertyChanged(nameof(SelectedFrontSide));
+            OnPropertyChanged(nameof(SelectedTextureRotation));
+        }
+    }
+
+    public bool HasSelectedFaceTarget => SelectedFaceTarget is not null;
+
+    public string SelectedFrontSide
+    {
+        get => SelectedFaceTarget is null ? CabinetTargetOverride.NormalFrontSide : _document.GetCabinetDocument().GetTargetOverride(SelectedFaceTarget.Id).FrontSide;
+        set
+        {
+            if (SelectedFaceTarget is null) return;
+            _document.CommandService.Execute(CabinetMutationCommands.CreateSetTargetFrontSideCommand(_document.DocumentId, _document, SelectedFaceTarget.Id, value));
+        }
+    }
+
+    public int SelectedTextureRotation
+    {
+        get => SelectedFaceTarget is null ? 0 : _document.GetCabinetDocument().GetTargetOverride(SelectedFaceTarget.Id).TextureRotation;
+        set
+        {
+            if (SelectedFaceTarget is null) return;
+            _document.CommandService.Execute(CabinetMutationCommands.CreateSetTargetTextureRotationCommand(_document.DocumentId, _document, SelectedFaceTarget.Id, value));
+        }
+    }
+
+    public void RefreshFromDocument(CabinetDocument document)
+    {
+        OnPropertyChanged(nameof(SelectedFrontSide));
+        OnPropertyChanged(nameof(SelectedTextureRotation));
+        RefreshFacePreviews();
+    }
 
     public async Task LoadAsync(CancellationToken cancellationToken = default)
     {
@@ -81,6 +129,7 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
             }
             OnPropertyChanged(nameof(HasFaceTargets));
             OnPropertyChanged(nameof(FaceTargetStatus));
+            SelectedFaceTarget = FaceTargets.FirstOrDefault();
             RefreshFacePreviews();
             LoadStatus = FaceTargets.Count == 0
                 ? $"Loaded {DisplayName}; no Oasis face targets found"
@@ -122,7 +171,8 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
                 continue;
             }
 
-            if (TryCreatePreviewGeometry(target.Target, preview, out var geometry))
+            var targetOverride = _document.GetCabinetDocument().GetTargetOverride(target.Id);
+            if (TryCreatePreviewGeometry(target.Target, targetOverride, preview, out var geometry))
             {
                 previewGroup.Children.Add(geometry);
             }
@@ -131,7 +181,7 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
         Viewport.FacePreviewModel = previewGroup.Children.Count == 0 ? null : previewGroup;
     }
 
-    private static bool TryCreatePreviewGeometry(CabinetFaceTarget target, BitmapSource bitmap, out GeometryModel3D geometry)
+    private static bool TryCreatePreviewGeometry(CabinetFaceTarget target, CabinetTargetOverride targetOverride, BitmapSource bitmap, out GeometryModel3D geometry)
     {
         geometry = default!;
         if (!target.IsValid || target.Corners.Count != 4)
@@ -143,18 +193,22 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
         {
             Positions = new Point3DCollection(target.Corners),
             TriangleIndices = new Int32Collection(new[] { 0, 1, 2, 0, 2, 3 }),
-            TextureCoordinates = new PointCollection(new[]
-            {
-                new Point(0, 0),
-                new Point(1, 0),
-                new Point(1, 1),
-                new Point(0, 1)
-            })
+            TextureCoordinates = new PointCollection(GetTextureCoordinates(targetOverride.TextureRotation))
         };
         var material = new DiffuseMaterial(new ImageBrush(bitmap));
-        geometry = new GeometryModel3D(mesh, material) { BackMaterial = material };
+        geometry = CabinetTargetOverride.NormalizeFrontSide(targetOverride.FrontSide) == CabinetTargetOverride.InvertedFrontSide
+            ? new GeometryModel3D { Geometry = mesh, BackMaterial = material }
+            : new GeometryModel3D(mesh, material);
         return true;
     }
+
+    private static Point[] GetTextureCoordinates(int textureRotation) => CabinetTargetOverride.NormalizeTextureRotation(textureRotation) switch
+    {
+        90 => new[] { new Point(1, 0), new Point(1, 1), new Point(0, 1), new Point(0, 0) },
+        180 => new[] { new Point(1, 1), new Point(0, 1), new Point(0, 0), new Point(1, 0) },
+        270 => new[] { new Point(0, 1), new Point(0, 0), new Point(1, 0), new Point(1, 1) },
+        _ => new[] { new Point(0, 0), new Point(1, 0), new Point(1, 1), new Point(0, 1) }
+    };
 
     private static string? NormalizeTargetId(string? targetId) => string.IsNullOrWhiteSpace(targetId) ? null : targetId.Trim();
 

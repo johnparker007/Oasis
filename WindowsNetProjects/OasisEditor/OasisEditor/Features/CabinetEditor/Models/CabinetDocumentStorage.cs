@@ -34,7 +34,14 @@ public static class CabinetDocumentStorage
                 return false;
             }
 
-            document = parsed;
+            document = parsed with
+            {
+                TargetOverrides = (parsed.TargetOverrides ?? [])
+                    .Where(targetOverride => !string.IsNullOrWhiteSpace(targetOverride.TargetId))
+                    .Select(targetOverride => targetOverride.Normalized())
+                    .ToArray(),
+                Preview = parsed.Preview ?? CabinetPreviewSettings.Default
+            };
             return true;
         }
         catch (JsonException)
