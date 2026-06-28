@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Linq;
 using OasisEditor.Commands;
+using OasisEditor.Features.CabinetEditor.Models;
 using OasisEditor.Features.CabinetEditor.Services;
 using OasisEditor.Features.CabinetEditor.ViewModels;
 
@@ -12,6 +13,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     private EditorDocument _document;
     private string? _panelLayoutJson;
     private string? _faceDocumentJson;
+    private string? _cabinetDocumentJson;
+    private CabinetDocument _cabinetDocumentModel;
     private Panel2DDocumentModel _panelDocumentModel;
     private FaceDocumentModel _faceDocumentModel;
     private Dictionary<string, PanelElementModel> _lampElementsByObjectId = new(StringComparer.Ordinal);
@@ -43,13 +46,15 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
         Guid? documentId = null,
         CommandService? commandService = null,
         MachineRuntimeState? runtimeState = null,
-        string? faceDocumentJson = null)
+        string? faceDocumentJson = null,
+        string? cabinetDocumentJson = null)
     {
         _document = document;
         DocumentId = documentId ?? Guid.NewGuid();
         _commandService = commandService ?? new CommandService(new CommandHistory(), DocumentId);
         _panelLayoutJson = panelLayoutJson;
         _faceDocumentJson = faceDocumentJson;
+        _cabinetDocumentJson = cabinetDocumentJson;
         _runtimeState = runtimeState ?? new MachineRuntimeState();
         _panelDocumentModel = new Panel2DDocumentModel
         {
@@ -60,6 +65,9 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
         _faceDocumentModel = FaceDocumentStorage.TryRead(faceDocumentJson, out var faceDocumentFile)
             ? FaceDocumentStorage.ToModel(faceDocumentFile)
             : new FaceDocumentModel();
+        _cabinetDocumentModel = CabinetDocumentStorage.TryRead(cabinetDocumentJson, out var cabinetDocument)
+            ? cabinetDocument
+            : CabinetDocument.Empty;
         RebuildLampCaches();
     }
 
@@ -80,9 +88,9 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     public string FilePath => Document.FilePath;
     public string ContentSummary => Document.ContentSummary;
     public bool IsDirty => Document.IsDirty;
-    public bool HasCabinetViewer => Document.DocumentType == EditorDocumentType.Cabinet3D && string.Equals(System.IO.Path.GetExtension(Document.FilePath), ".glb", StringComparison.OrdinalIgnoreCase);
+    public bool HasCabinetViewer => Document.DocumentType == EditorDocumentType.Cabinet3D && !string.IsNullOrWhiteSpace(_cabinetDocumentModel.Model.Path);
     public CabinetModelDocumentViewModel? CabinetViewer => HasCabinetViewer
-        ? _cabinetViewer ??= new CabinetModelDocumentViewModel(new SharpGltfWpfModelLoader(), Document.FilePath, _openDocumentsAccessor)
+        ? _cabinetViewer ??= new CabinetModelDocumentViewModel(new SharpGltfWpfModelLoader(), _cabinetDocumentModel.Model.Path, _openDocumentsAccessor)
         : null;
 
     public void SetOpenDocumentsAccessor(Func<IReadOnlyList<DocumentTabViewModel>> openDocumentsAccessor)
@@ -101,6 +109,38 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Document)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsDirty)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Title)));
+    }
+
+
+    public string? CabinetDocumentJson
+    {
+        get => _cabinetDocumentJson;
+        set
+        {
+            if (string.Equals(_cabinetDocumentJson, value, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _cabinetDocumentJson = value;
+            _cabinetDocumentModel = CabinetDocumentStorage.TryRead(value, out var cabinetDocument)
+                ? cabinetDocument
+                : CabinetDocument.Empty;
+            _cabinetViewer = null;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CabinetDocumentJson)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasCabinetViewer)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CabinetViewer)));
+        }
+    }
+
+    public CabinetDocument GetCabinetDocument()
+    {
+        return _cabinetDocumentModel;
+    }
+
+    public string GetCabinetDocumentJson()
+    {
+        return CabinetDocumentStorage.Serialize(_cabinetDocumentModel);
     }
 
     public string? FaceDocumentJson

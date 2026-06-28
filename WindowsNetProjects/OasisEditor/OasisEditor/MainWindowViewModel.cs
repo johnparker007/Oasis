@@ -1666,7 +1666,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             openData.Summary,
             openData.PanelLayoutJson,
             openData.PanelTitle,
-            openData.FaceDocumentJson);
+            openData.FaceDocumentJson,
+            openData.CabinetDocumentJson);
         if (!openedNewTab)
         {
             AddOutputEntry($"Switched to already open document tab for {path}", OutputLogStatus.Info);
@@ -1751,7 +1752,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         var current = SelectedDocument;
-        var savePath = current.Document.IsUntitled ? PromptSavePath() : current.FilePath;
+        var savePath = current.Document.IsUntitled || IsProtectedCabinetModelAssetPath(current) ? PromptSavePath() : current.FilePath;
         if (string.IsNullOrWhiteSpace(savePath))
         {
             return;
@@ -1775,6 +1776,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
+    private static bool IsProtectedCabinetModelAssetPath(DocumentTabViewModel document)
+    {
+        return document.Document.DocumentType == EditorDocumentType.Cabinet3D
+            && string.Equals(Path.GetExtension(document.FilePath), ".glb", StringComparison.OrdinalIgnoreCase);
+    }
+
     private string? PromptSavePath()
     {
         if (LoadedProject is null)
@@ -1784,6 +1791,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         var selectedDocument = SelectedDocument;
         var defaultName = selectedDocument?.Document.Title ?? "Document";
+        if (selectedDocument is not null && IsProtectedCabinetModelAssetPath(selectedDocument))
+        {
+            defaultName = Path.GetFileNameWithoutExtension(selectedDocument.FilePath);
+        }
+
         var (defaultExtension, filter) = selectedDocument?.Document.DocumentType switch
         {
             EditorDocumentType.Face => (".face", "Face|*.face|Panel 2D|*.panel2d|Cabinet 3D|*.cabinet3d|Machine|*.machine|All Files|*.*"),
@@ -4428,7 +4440,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
 }
 
-internal readonly record struct OpenDocumentData(string Summary, string? PanelLayoutJson, string? PanelTitle = null, string? FaceDocumentJson = null);
+internal readonly record struct OpenDocumentData(string Summary, string? PanelLayoutJson, string? PanelTitle = null, string? FaceDocumentJson = null, string? CabinetDocumentJson = null);
 
 
 internal static class EditorProjectInputDefinitionExtensions

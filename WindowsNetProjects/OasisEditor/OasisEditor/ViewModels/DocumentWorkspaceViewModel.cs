@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Windows;
+using OasisEditor.Features.CabinetEditor.Models;
 using EditorCommands = OasisEditor.Commands;
 using OasisEditor.Progress;
 
@@ -449,7 +450,7 @@ public sealed class DocumentWorkspaceViewModel
         _addOutputEntry($"Closed document tab: {selectedDocument.Title}", OutputLogStatus.Info);
     }
 
-    public bool OpenOrSelectDocument(string path, string summary, string? panelLayoutJson, string? panelTitle = null, string? faceDocumentJson = null)
+    public bool OpenOrSelectDocument(string path, string summary, string? panelLayoutJson, string? panelTitle = null, string? faceDocumentJson = null, string? cabinetDocumentJson = null)
     {
         var existing = _openDocuments.FirstOrDefault(tab => string.Equals(tab.FilePath, path, StringComparison.OrdinalIgnoreCase));
         if (existing is not null)
@@ -458,7 +459,7 @@ public sealed class DocumentWorkspaceViewModel
             return false;
         }
 
-        var document = CreateDocumentTab(EditorDocument.CreateFromFile(path, summary, panelTitle), panelLayoutJson, faceDocumentJson);
+        var document = CreateDocumentTab(EditorDocument.CreateFromFile(path, summary, panelTitle), panelLayoutJson, faceDocumentJson, cabinetDocumentJson);
         ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
         return true;
     }
@@ -551,7 +552,8 @@ public sealed class DocumentWorkspaceViewModel
             selectedDocument.DocumentId,
             selectedDocument.CommandService,
             selectedDocument.RuntimeState,
-            selectedDocument.FaceDocumentJson)
+            selectedDocument.FaceDocumentJson,
+            selectedDocument.CabinetDocumentJson)
         {
             PanelZoom = selectedDocument.PanelZoom,
             PanelPanX = selectedDocument.PanelPanX,
@@ -564,7 +566,7 @@ public sealed class DocumentWorkspaceViewModel
         return updated;
     }
 
-    private DocumentTabViewModel CreateDocumentTab(EditorDocument document, string? panelLayoutJson = null, string? faceDocumentJson = null)
+    private DocumentTabViewModel CreateDocumentTab(EditorDocument document, string? panelLayoutJson = null, string? faceDocumentJson = null, string? cabinetDocumentJson = null)
     {
         var documentId = Guid.NewGuid();
         var runtimeState = _runtimeStateStore.GetOrCreate(documentId);
@@ -574,7 +576,8 @@ public sealed class DocumentWorkspaceViewModel
             panelLayoutJson,
             documentId,
             runtimeState: runtimeState,
-            faceDocumentJson: faceDocumentJson);
+            faceDocumentJson: faceDocumentJson,
+            cabinetDocumentJson: cabinetDocumentJson);
         tab.SetOpenDocumentsAccessor(() => _openDocuments);
         return tab;
     }
@@ -583,7 +586,30 @@ public sealed class DocumentWorkspaceViewModel
     {
         if (string.Equals(Path.GetExtension(path), ".glb", StringComparison.OrdinalIgnoreCase))
         {
-            return new OpenDocumentData("Cabinet GLB model opened for viewing. Orbit, pan, zoom, or reset the camera from the viewer toolbar.", null, Path.GetFileName(path));
+            var cabinetDocument = CabinetDocument.FromModelPath(path);
+            return new OpenDocumentData("Cabinet GLB model opened as an unsaved .cabinet3d wrapper. Save Document will save cabinet metadata, not the .glb model asset.", null, Path.GetFileName(path), CabinetDocumentJson: CabinetDocumentStorage.Serialize(cabinetDocument));
+        }
+
+
+        if (string.Equals(Path.GetExtension(path), ".cabinet3d", StringComparison.OrdinalIgnoreCase))
+        {
+            if (CabinetDocumentStorage.TryRead(content, out var cabinetDocument))
+            {
+                var modelPath = cabinetDocument.Model.Path;
+                if (!Path.IsPathFullyQualified(modelPath))
+                {
+                    modelPath = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(path) ?? string.Empty, modelPath));
+                    cabinetDocument = cabinetDocument with { Model = cabinetDocument.Model with { Path = modelPath } };
+                }
+
+                var summary = "Cabinet 3D document opened.";
+                return new OpenDocumentData(summary, null, Path.GetFileName(path), CabinetDocumentJson: CabinetDocumentStorage.Serialize(cabinetDocument));
+            }
+
+            return new OpenDocumentData(
+                "Failed to open cabinet document: invalid .cabinet3d JSON or missing model.path.",
+                null,
+                Path.GetFileName(path));
         }
 
         if (string.Equals(Path.GetExtension(path), ".panel2d", StringComparison.OrdinalIgnoreCase))
@@ -644,6 +670,17 @@ public sealed class DocumentWorkspaceViewModel
             return Panel2DDocumentStorage.Serialize(document.Document.Title, document.ContentSummary, elements);
         }
 
+
+        if (document.Document.DocumentType == EditorDocumentType.Cabinet3D)
+        {
+            var cabinetDocument = document.GetCabinetDocument();
+            if (string.IsNullOrWhiteSpace(cabinetDocument.Model.Path))
+            {
+                cabinetDocument = CabinetDocument.FromModelPath(string.Empty);
+            }
+
+            return CabinetDocumentStorage.Serialize(cabinetDocument);
+        }
 
         if (document.Document.DocumentType == EditorDocumentType.Face)
         {
@@ -875,3 +912,4 @@ public sealed class DocumentWorkspaceViewModel
         }
     }
 }
+
