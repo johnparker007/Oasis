@@ -25,7 +25,12 @@
         </DockPanel>
 
         <Grid Grid.Row="1">
-            <h:HelixViewport3D ZoomExtentsWhenLoaded="True"
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="260" />
+            </Grid.ColumnDefinitions>
+
+            <h:HelixViewport3D Grid.Column="0" ZoomExtentsWhenLoaded="True"
                               ShowCoordinateSystem="False"
                               ShowViewCube="False"
                               IsHeadLightEnabled="False"
@@ -59,8 +64,36 @@
                 <ModelVisual3D Content="{Binding CabinetViewer.Viewport.Model}" />
             </h:HelixViewport3D>
 
+            <Border Grid.Column="1" Margin="8,0,0,0" Padding="12"
+                    Background="{DynamicResource ToolBarBackgroundBrush}"
+                    BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="4">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+                        <TextBlock FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="Oasis Face Targets" />
+                        <TextBlock Margin="0,4,0,0" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Text="{Binding CabinetViewer.FaceTargetStatus}" />
+                    </StackPanel>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding CabinetViewer.FaceTargets}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0,0,0,8" Padding="8"
+                                            Background="{DynamicResource PanelBackgroundBrush}"
+                                            BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="3">
+                                        <StackPanel>
+                                            <TextBlock FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding DisplayName}" />
+                                            <TextBlock Margin="0,3,0,0" Foreground="{DynamicResource TextSecondaryBrush}" Text="{Binding SourceName}" />
+                                            <TextBlock Margin="0,3,0,0" Foreground="{DynamicResource TextSecondaryBrush}" Text="{Binding Id, StringFormat=ID: {0}}" />
+                                            <TextBlock Margin="0,5,0,0" Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap" Text="{Binding StateText}" />
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
 
-            <Border Margin="12" Padding="12" HorizontalAlignment="Stretch" VerticalAlignment="Bottom"
+            <Border Grid.Column="0" Margin="12" Padding="12" HorizontalAlignment="Stretch" VerticalAlignment="Bottom"
                     CornerRadius="4" Background="{DynamicResource ToolBarBackgroundBrush}"
                     BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1">
                 <Border.Style>
