@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
+using OasisEditor.Features.CabinetEditor.ViewModels;
 using EditorCommands = OasisEditor.Commands;
 
 namespace OasisEditor;
@@ -15,6 +16,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 {
     private readonly Func<AssetBrowserItemViewModel?> _selectedAssetAccessor;
     private readonly Func<DocumentTabViewModel?> _selectedDocumentAccessor;
+    private readonly Func<IEnumerable<DocumentTabViewModel>> _openDocumentsAccessor;
     private readonly Func<EditorProject?> _loadedProjectAccessor;
     private readonly ActiveDocumentContextService _activeDocumentContext;
     private readonly Func<Guid, EditorCommands.ICommand, bool> _executeCanvasCommand;
@@ -34,9 +36,29 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         ActiveDocumentContextService activeDocumentContext,
         Func<Guid, EditorCommands.ICommand, bool> executeCanvasCommand,
         Func<DocumentTabViewModel, string, DocumentTabViewModel?> applySummary)
+        : this(
+            selectedAssetAccessor,
+            selectedDocumentAccessor,
+            () => [],
+            loadedProjectAccessor,
+            activeDocumentContext,
+            executeCanvasCommand,
+            applySummary)
+    {
+    }
+
+    public InspectorViewModel(
+        Func<AssetBrowserItemViewModel?> selectedAssetAccessor,
+        Func<DocumentTabViewModel?> selectedDocumentAccessor,
+        Func<IEnumerable<DocumentTabViewModel>> openDocumentsAccessor,
+        Func<EditorProject?> loadedProjectAccessor,
+        ActiveDocumentContextService activeDocumentContext,
+        Func<Guid, EditorCommands.ICommand, bool> executeCanvasCommand,
+        Func<DocumentTabViewModel, string, DocumentTabViewModel?> applySummary)
     {
         _selectedAssetAccessor = selectedAssetAccessor;
         _selectedDocumentAccessor = selectedDocumentAccessor;
+        _openDocumentsAccessor = openDocumentsAccessor;
         _loadedProjectAccessor = loadedProjectAccessor;
         _activeDocumentContext = activeDocumentContext;
         _executeCanvasCommand = executeCanvasCommand;
@@ -615,12 +637,13 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
     private void RebuildFaceDocumentPropertyRows(DocumentTabViewModel selectedDocument)
     {
         var faceDocument = selectedDocument.GetFaceDocument();
+        AddFaceCabinetAssignmentRows(selectedDocument, faceDocument);
         _propertyRows.Add(new InspectorInfoPropertyViewModel("Source Panel2D Document", "Face Provenance", faceDocument.SourcePanel2DDocumentId ?? string.Empty));
         _propertyRows.Add(new InspectorInfoPropertyViewModel("Source Region", "Face Provenance", faceDocument.SourceRegion is not null ? FormatSourceRegion(faceDocument.SourceRegion) : string.Empty));
         _propertyRows.Add(new InspectorInfoPropertyViewModel("Generated Element Count", "Face Provenance", CountGeneratedElements(faceDocument).ToString()));
         _propertyRows.Add(new InspectorInfoPropertyViewModel("Last Regenerated", "Face Provenance", FormatTimestamp(faceDocument.LastRegeneratedAtUtc)));
         AddFaceMaskLayerSummaryRows(faceDocument.MaskLayer, "Mask Layer");
-        _propertyRows.Add(new InspectorInfoPropertyViewModel("Face Commands", "Workflow", "Use File > Regenerate Face, File > Validate Face, or File > Open Source Panel2D."));
+        _propertyRows.Add(new InspectorInfoPropertyViewModel("Face Commands", "Workflow", "Use File > Regenerate Face, File > Validate Face, File > Open Source Panel2D, or Cabinet Assignment > Cabinet Face Target."));
 
         var missingMachineReferenceCount = CountMissingMachineReferences(faceDocument);
         if (missingMachineReferenceCount > 0)
@@ -634,6 +657,103 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         _lastInspectorFaceSelectionKind = null;
         OnPropertyChanged(nameof(InspectorPropertyRows));
     }
+
+    private void AddFaceCabinetAssignmentRows(DocumentTabViewModel selectedDocument, FaceDocumentModel faceDocument)
+    {
+        var availableTargets = GetAvailableCabinetFaceTargets();
+        var assignedTargetId = NormalizeCabinetFaceTargetId(faceDocument.AssignedCabinetFaceTargetId);
+        var choices = new List<string> { "(None)" };
+        var labelsById = new Dictionary<string, string>(StringComparer.Ordinal);
+
+        foreach (var target in availableTargets)
+        {
+            if (string.IsNullOrWhiteSpace(target.Id) || !target.IsValid)
+            {
+                continue;
+            }
+
+            var label = FormatCabinetFaceTargetChoice(target);
+            labelsById[target.Id] = label;
+            choices.Add(label);
+        }
+
+        var currentChoice = "(None)";
+        if (!string.IsNullOrWhiteSpace(assignedTargetId))
+        {
+            if (!labelsById.TryGetValue(assignedTargetId, out currentChoice))
+            {
+                currentChoice = $"{assignedTargetId} (saved; unavailable)";
+                choices.Add(currentChoice);
+            }
+        }
+
+        _propertyRows.Add(new InspectorChoicePropertyViewModel(
+            "Cabinet Face Target",
+            "Cabinet Assignment",
+            choices,
+            currentChoice,
+            commit: choice => TryApplyFaceCabinetTargetAssignment(selectedDocument, choice)));
+
+        _propertyRows.Add(new InspectorInfoPropertyViewModel(
+            "Assigned Target ID",
+            "Cabinet Assignment",
+            assignedTargetId ?? string.Empty));
+
+        if (availableTargets.Count == 0)
+        {
+            _propertyRows.Add(new InspectorInfoPropertyViewModel(
+                "Available Targets",
+                "Cabinet Assignment",
+                "No detected OasisFace targets are currently available from open Cabinet3D model viewers."));
+        }
+    }
+
+    private IReadOnlyList<CabinetFaceTargetViewModel> GetAvailableCabinetFaceTargets()
+    {
+        return (_openDocumentsAccessor() ?? [])
+            .Where(document => document.Document.DocumentType == EditorDocumentType.Cabinet3D)
+            .Select(document => document.CabinetViewer)
+            .Where(viewer => viewer is not null)
+            .SelectMany(viewer => viewer!.FaceTargets)
+            .ToArray();
+    }
+
+    private static string FormatCabinetFaceTargetChoice(CabinetFaceTargetViewModel target)
+    {
+        var displayName = string.IsNullOrWhiteSpace(target.DisplayName) ? target.Id : target.DisplayName.Trim();
+        return $"{displayName} ({target.Id})";
+    }
+
+    private string? TryApplyFaceCabinetTargetAssignment(DocumentTabViewModel selectedDocument, string choice)
+    {
+        var targetId = ParseCabinetFaceTargetChoice(choice);
+        var command = FaceMutationCommands.CreateAssignCabinetFaceTargetCommand(selectedDocument.DocumentId, selectedDocument, targetId);
+        if (!_executeCanvasCommand(selectedDocument.DocumentId, command))
+        {
+            return "Unable to update cabinet face target assignment.";
+        }
+
+        return null;
+    }
+
+    private static string? ParseCabinetFaceTargetChoice(string choice)
+    {
+        if (string.IsNullOrWhiteSpace(choice) || string.Equals(choice, "(None)", StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        const string unavailableSuffix = " (saved; unavailable)";
+        if (choice.EndsWith(unavailableSuffix, StringComparison.Ordinal))
+        {
+            return NormalizeCabinetFaceTargetId(choice[..^unavailableSuffix.Length]);
+        }
+
+        var match = Regex.Match(choice, @"\((?<id>[^()]*)\)\s*$");
+        return match.Success ? NormalizeCabinetFaceTargetId(match.Groups["id"].Value) : NormalizeCabinetFaceTargetId(choice);
+    }
+
+    private static string? NormalizeCabinetFaceTargetId(string? targetId) => string.IsNullOrWhiteSpace(targetId) ? null : targetId.Trim();
 
     private void RebuildFaceMaskLayerPropertyRows(DocumentTabViewModel selectedDocument, FaceMaskLayerModel maskLayer)
     {

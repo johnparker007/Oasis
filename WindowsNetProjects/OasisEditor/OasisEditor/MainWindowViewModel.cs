@@ -240,6 +240,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _inspector = new InspectorViewModel(
             () => SelectedAsset,
             () => SelectedDocument,
+            () => OpenDocuments,
             () => LoadedProject,
             _activeDocumentContext,
             ExecuteDocumentCanvasCommand,
@@ -1342,6 +1343,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             Title = faceDocument.Title,
             Summary = faceDocument.Summary,
             SourcePanel2DDocumentId = faceDocument.SourcePanel2DDocumentId,
+            AssignedCabinetFaceTargetId = faceDocument.AssignedCabinetFaceTargetId,
             SourceRegion = faceDocument.SourceRegion,
             LastRegeneratedAtUtc = faceDocument.LastRegeneratedAtUtc,
             GenerationSettings = (settings ?? FaceGenerationSettingsModel.Default).Normalize(),

@@ -17,6 +17,14 @@ internal static class FaceMutationCommands
         return new UpdateFaceElementMutationCommand(documentId, document, objectId, updatedElement, description);
     }
 
+    public static Commands.ICommand CreateAssignCabinetFaceTargetCommand(
+        Guid documentId,
+        DocumentTabViewModel document,
+        string? assignedTargetId)
+    {
+        return new AssignCabinetFaceTargetMutationCommand(documentId, document, NormalizeTargetId(assignedTargetId));
+    }
+
     private static PanelChangeEvent CreateChange(DocumentTabViewModel document, string? objectId, PanelChangeProperties properties, bool structure = false)
     {
         return new PanelChangeEvent(
@@ -27,6 +35,29 @@ internal static class FaceMutationCommands
             AffectsHierarchy: structure || properties.HasFlag(PanelChangeProperties.Name) || properties.HasFlag(PanelChangeProperties.Visibility) || properties.HasFlag(PanelChangeProperties.LockState),
             AffectsInspectorRows: true,
             AffectsPersistence: true);
+    }
+
+    private static string? NormalizeTargetId(string? targetId) => string.IsNullOrWhiteSpace(targetId) ? null : targetId.Trim();
+
+    private static FaceDocumentModel WithAssignedCabinetFaceTarget(FaceDocumentModel faceDocument, string? assignedTargetId)
+    {
+        return new FaceDocumentModel
+        {
+            Id = faceDocument.Id,
+            Title = faceDocument.Title,
+            Summary = faceDocument.Summary,
+            SourcePanel2DDocumentId = faceDocument.SourcePanel2DDocumentId,
+            AssignedCabinetFaceTargetId = NormalizeTargetId(assignedTargetId),
+            SourceRegion = faceDocument.SourceRegion,
+            LastRegeneratedAtUtc = faceDocument.LastRegeneratedAtUtc,
+            GenerationSettings = faceDocument.GenerationSettings,
+            RuntimeRenderAssets = faceDocument.RuntimeRenderAssets,
+            MaskLayer = faceDocument.MaskLayer,
+            Trays = faceDocument.Trays,
+            LampEmitters = faceDocument.LampEmitters,
+            Layers = faceDocument.Layers,
+            Elements = faceDocument.Elements
+        };
     }
 
     private sealed class AddFaceElementMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
@@ -138,6 +169,52 @@ internal static class FaceMutationCommands
             elements[index] = _originalElement;
             _document.SetFaceElements(elements, CreateChange(_document, _objectId, PanelChangeProperties.Geometry | PanelChangeProperties.Name | PanelChangeProperties.Visibility | PanelChangeProperties.LockState | PanelChangeProperties.Metadata));
             _document.HierarchySelectedPanelSelection = FaceSelectionService.ToSelectionInfo(_originalElement);
+            _document.MarkDirty();
+        }
+    }
+
+    private sealed class AssignCabinetFaceTargetMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
+    {
+        private readonly Guid _documentId;
+        private readonly DocumentTabViewModel _document;
+        private readonly string? _assignedTargetId;
+        private string? _originalTargetId;
+
+        public AssignCabinetFaceTargetMutationCommand(Guid documentId, DocumentTabViewModel document, string? assignedTargetId)
+        {
+            _documentId = documentId;
+            _document = document;
+            _assignedTargetId = assignedTargetId;
+        }
+
+        public Guid DocumentId => _documentId;
+        public string Description => "Assign cabinet face target";
+        public bool WasExecuted { get; private set; }
+
+        public void Execute()
+        {
+            WasExecuted = false;
+            var faceDocument = _document.GetFaceDocument();
+            var currentTargetId = NormalizeTargetId(faceDocument.AssignedCabinetFaceTargetId);
+            if (string.Equals(currentTargetId, _assignedTargetId, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _originalTargetId ??= currentTargetId;
+            _document.SetFaceDocument(
+                WithAssignedCabinetFaceTarget(faceDocument, _assignedTargetId),
+                CreateChange(_document, null, PanelChangeProperties.Metadata));
+            _document.MarkDirty();
+            WasExecuted = true;
+        }
+
+        public void Undo()
+        {
+            var faceDocument = _document.GetFaceDocument();
+            _document.SetFaceDocument(
+                WithAssignedCabinetFaceTarget(faceDocument, _originalTargetId),
+                CreateChange(_document, null, PanelChangeProperties.Metadata));
             _document.MarkDirty();
         }
     }

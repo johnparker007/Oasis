@@ -5,7 +5,7 @@ namespace OasisEditor;
 
 public static class FaceDocumentStorage
 {
-    public const int CurrentSchemaVersion = 4;
+    public const int CurrentSchemaVersion = 5;
 
     private static readonly JsonSerializerOptions s_readOptions = new()
     {
@@ -101,7 +101,7 @@ public static class FaceDocumentStorage
                 return false;
             }
 
-            if (parsed.SchemaVersion != CurrentSchemaVersion)
+            if (parsed.SchemaVersion > CurrentSchemaVersion)
             {
                 return false;
             }
@@ -134,7 +134,7 @@ public static class FaceDocumentStorage
                 return false;
             }
 
-            if (parsed.SchemaVersion != CurrentSchemaVersion)
+            if (parsed.SchemaVersion > CurrentSchemaVersion)
             {
                 errorMessage = $"Unsupported face schema version '{parsed.SchemaVersion}'. This editor supports only version {CurrentSchemaVersion}.";
                 return false;
@@ -159,6 +159,7 @@ public static class FaceDocumentStorage
             Title = file.Title ?? string.Empty,
             Summary = file.Summary,
             SourcePanel2DDocumentId = string.IsNullOrWhiteSpace(file.SourcePanel2DDocumentId) ? null : file.SourcePanel2DDocumentId.Trim(),
+            AssignedCabinetFaceTargetId = string.IsNullOrWhiteSpace(file.AssignedCabinetFaceTargetId) ? null : file.AssignedCabinetFaceTargetId.Trim(),
             SourceRegion = ToModel(file.SourceRegion),
             LastRegeneratedAtUtc = file.LastRegeneratedAtUtc,
             GenerationSettings = ToModel(file.GenerationSettings),
@@ -191,6 +192,7 @@ public static class FaceDocumentStorage
             Title = model.Title,
             Summary = model.Summary,
             SourcePanel2DDocumentId = model.SourcePanel2DDocumentId,
+            AssignedCabinetFaceTargetId = string.IsNullOrWhiteSpace(model.AssignedCabinetFaceTargetId) ? null : model.AssignedCabinetFaceTargetId.Trim(),
             SourceRegion = ToFile(model.SourceRegion),
             LastRegeneratedAtUtc = model.LastRegeneratedAtUtc,
             GenerationSettings = ToFile(model.GenerationSettings),
@@ -755,6 +757,7 @@ public sealed record FaceDocumentFile
     public string? Title { get; init; }
     public string? Summary { get; init; }
     public string? SourcePanel2DDocumentId { get; init; }
+    public string? AssignedCabinetFaceTargetId { get; init; }
     public FaceSourceRegionFile? SourceRegion { get; init; }
     public DateTime? LastRegeneratedAtUtc { get; init; }
     public FaceGenerationSettingsFile? GenerationSettings { get; init; }
