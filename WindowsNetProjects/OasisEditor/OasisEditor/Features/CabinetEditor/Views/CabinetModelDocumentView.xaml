@@ -73,8 +73,26 @@
                         <TextBlock FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="Oasis Face Targets" />
                         <TextBlock Margin="0,4,0,0" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Text="{Binding CabinetViewer.FaceTargetStatus}" />
                     </StackPanel>
+                    <StackPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CabinetViewer.HasSelectedFaceTarget}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+                        <TextBlock FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="Target Mapping" />
+                        <TextBlock Margin="0,8,0,3" Foreground="{DynamicResource TextSecondaryBrush}" Text="Front Side" />
+                        <ComboBox ItemsSource="{Binding CabinetViewer.FrontSideOptions}" SelectedItem="{Binding CabinetViewer.SelectedFrontSide, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBlock Margin="0,8,0,3" Foreground="{DynamicResource TextSecondaryBrush}" Text="Face Rotation" />
+                        <ComboBox ItemsSource="{Binding CabinetViewer.FaceRotationOptions}" SelectedItem="{Binding CabinetViewer.SelectedFaceRotation, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <CheckBox Margin="0,10,0,0" Foreground="{DynamicResource TextPrimaryBrush}" Content="Flip Horizontally" IsChecked="{Binding CabinetViewer.IsSelectedFaceFlippedHorizontally, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    </StackPanel>
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <ItemsControl ItemsSource="{Binding CabinetViewer.FaceTargets}">
+                        <ListBox ItemsSource="{Binding CabinetViewer.FaceTargets}" SelectedItem="{Binding CabinetViewer.SelectedFaceTarget, Mode=TwoWay}" Background="Transparent" BorderThickness="0">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border Margin="0,0,0,8" Padding="8"
@@ -89,7 +107,7 @@
                                     </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                        </ListBox>
                     </ScrollViewer>
                 </DockPanel>
             </Border>
