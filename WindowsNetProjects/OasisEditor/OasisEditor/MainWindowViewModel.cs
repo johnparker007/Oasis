@@ -4440,7 +4440,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
 }
 
-internal readonly record struct OpenDocumentData(string Summary, string? PanelLayoutJson, string? PanelTitle = null, string? FaceDocumentJson = null);
+internal readonly record struct OpenDocumentData(string Summary, string? PanelLayoutJson, string? PanelTitle = null, string? FaceDocumentJson = null, string? CabinetDocumentJson = null);
 
 
 internal static class EditorProjectInputDefinitionExtensions

@@ -913,4 +913,3 @@ public sealed class DocumentWorkspaceViewModel
     }
 }
 
-public sealed record OpenDocumentData(string Summary, string? PanelLayoutJson, string? PanelTitle = null, string? FaceDocumentJson = null, string? CabinetDocumentJson = null);
