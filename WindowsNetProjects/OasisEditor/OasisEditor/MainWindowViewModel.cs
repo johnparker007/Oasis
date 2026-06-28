@@ -155,6 +155,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OpenPanel2DStubCommand = new RelayCommand(OpenPanel2DStubDocument, CanOpenUntitledDocument);
         OpenFaceStubCommand = new RelayCommand(OpenFaceStubDocument, CanOpenUntitledDocument);
         GenerateFaceFromRegionCommand = new RelayCommand(GenerateFaceFromRegion, CanGenerateFaceFromRegion);
+        GenerateFaceFromSourceShapeCommand = new RelayCommand(GenerateFaceFromSourceShape, CanGenerateFaceFromSourceShape);
         RegenerateFaceCommand = new RelayCommand(RegenerateFace, CanRegenerateFace);
         OpenFaceGenerationSettingsCommand = new RelayCommand(OpenFaceGenerationSettings, CanOpenFaceGenerationSettings);
         ValidateFaceCommand = new RelayCommand(ValidateFace, CanValidateFace);
@@ -473,6 +474,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand OpenPanel2DStubCommand { get; }
     public ICommand OpenFaceStubCommand { get; }
     public ICommand GenerateFaceFromRegionCommand { get; }
+    public ICommand GenerateFaceFromSourceShapeCommand { get; }
     public ICommand RegenerateFaceCommand { get; }
     public ICommand OpenFaceGenerationSettingsCommand { get; }
     public ICommand ValidateFaceCommand { get; }
@@ -1196,6 +1198,35 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
+
+
+    private bool CanGenerateFaceFromSourceShape()
+    {
+        return _documentWorkspace.CanGenerateFaceFromSelectedPanel2DRegion()
+            && SelectedDocument?.HierarchySelectedPanelSelection is { Kind: PanelFaceSourceShapeCommands.SelectionKind };
+    }
+
+    private async void GenerateFaceFromSourceShape()
+    {
+        if (!CanGenerateFaceFromSourceShape()) return;
+        try
+        {
+            await _progressDialogService.RunAsync(
+                new EditorProgressRequest("Generating Face", "Generating Face from Face Source Shape...", EditorProgressMode.Determinate),
+                (progress, _) =>
+                {
+                    _documentWorkspace.GenerateFaceFromSelectedFaceSourceShape(_defaultFaceGenerationSettings, progress);
+                    return Task.CompletedTask;
+                });
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = ex.Message;
+            AddOutputEntry($"Generate Face from Source Shape failed: {ex.Message}", OutputLogStatus.Error);
+            MessageBox.Show(ex.Message, "Generate Face Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
     private bool CanRegenerateFace()
     {
         return _documentWorkspace.CanRegenerateSelectedFace();
@@ -1344,6 +1375,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             Title = faceDocument.Title,
             Summary = faceDocument.Summary,
             SourcePanel2DDocumentId = faceDocument.SourcePanel2DDocumentId,
+            SourceFaceShapeId = faceDocument.SourceFaceShapeId,
             AssignedCabinetFaceTargetId = faceDocument.AssignedCabinetFaceTargetId,
             SourceRegion = faceDocument.SourceRegion,
             LastRegeneratedAtUtc = faceDocument.LastRegeneratedAtUtc,

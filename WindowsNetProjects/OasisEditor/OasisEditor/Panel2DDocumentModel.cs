@@ -1,3 +1,5 @@
+using System.Linq;
+
 namespace OasisEditor;
 
 internal sealed class Panel2DDocumentModel
@@ -5,6 +7,28 @@ internal sealed class Panel2DDocumentModel
     public string Title { get; init; } = string.Empty;
     public string Summary { get; init; } = string.Empty;
     public IReadOnlyList<PanelElementModel> Elements { get; init; } = [];
+    public IReadOnlyList<PanelFaceSourceShapeModel> FaceSourceShapes { get; init; } = [];
+}
+
+internal enum PanelFaceSourceShapeType
+{
+    PerspectiveRectangle
+}
+
+internal sealed class PanelFaceSourceShapeModel
+{
+    public string Id { get; init; } = string.Empty;
+    public string Name { get; init; } = string.Empty;
+    public PanelFaceSourceShapeType Type { get; init; } = PanelFaceSourceShapeType.PerspectiveRectangle;
+    public FacePointModel TopLeft { get; init; } = new();
+    public FacePointModel TopRight { get; init; } = new();
+    public FacePointModel BottomRight { get; init; } = new();
+    public FacePointModel BottomLeft { get; init; } = new();
+
+    public double X => new[] { TopLeft.X, TopRight.X, BottomRight.X, BottomLeft.X }.Min();
+    public double Y => new[] { TopLeft.Y, TopRight.Y, BottomRight.Y, BottomLeft.Y }.Min();
+    public double Width => new[] { TopLeft.X, TopRight.X, BottomRight.X, BottomLeft.X }.Max() - X;
+    public double Height => new[] { TopLeft.Y, TopRight.Y, BottomRight.Y, BottomLeft.Y }.Max() - Y;
 }
 
 internal sealed class PanelElementModel

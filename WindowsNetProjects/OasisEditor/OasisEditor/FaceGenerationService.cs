@@ -1,6 +1,8 @@
 using System.Windows;
 using OasisEditor.Progress;
 
+using SkiaSharp;
+
 namespace OasisEditor;
 
 public enum FaceSourceRegionKind
@@ -81,6 +83,59 @@ internal sealed class FaceGenerationService
     {
         _machineObjectReferenceResolver = machineObjectReferenceResolver ?? MachineObjectReferenceResolver.Instance;
         _maskLayerExtractionService = new FaceMaskLayerExtractionService(_machineObjectReferenceResolver);
+    }
+
+
+
+    public FaceGenerationResult GenerateFromPanelFaceSourceShape(
+        Panel2DDocumentModel sourcePanel,
+        PanelFaceSourceShapeModel sourceShape,
+        string title,
+        string? sourcePanel2DDocumentId = null,
+        string? assignedCabinetFaceTargetId = null,
+        double? targetAspectRatio = null,
+        string? projectDirectory = null,
+        string? generatedDirectory = null,
+        FaceGenerationSettingsModel? generationSettings = null,
+        IEditorProgressReporter? progress = null)
+    {
+        ArgumentNullException.ThrowIfNull(sourcePanel);
+        ArgumentNullException.ThrowIfNull(sourceShape);
+        var output = FaceSourceShapeTransformService.EstimateOutputSize(sourceShape, targetAspectRatio);
+        var region = FaceSourceRegionModel.FromRect(new Rect(0, 0, output.Width, output.Height));
+        var assetPath = FaceSourceShapeTransformService.TryGenerateBackground(sourcePanel, sourceShape, output.Width, output.Height, projectDirectory, generatedDirectory);
+        var settings = (generationSettings ?? FaceGenerationSettingsModel.Default).Normalize();
+        var faceDocumentId = Guid.NewGuid().ToString("N");
+        var artwork = new FaceArtworkElement
+        {
+            ObjectId = $"face-artwork-{Guid.NewGuid():N}",
+            Name = "Perspective-corrected artwork",
+            X = 0,
+            Y = 0,
+            Width = output.Width,
+            Height = output.Height,
+            IsVisible = true,
+            AssetPath = assetPath,
+            SourcePanel2DDocumentId = NormalizeOptional(sourcePanel2DDocumentId),
+            SourceRegion = region,
+            Provenance = new FaceArtworkProvenanceModel { Generator = "Generate Face From Face Source Shape", GeneratedAtUtc = DateTime.UtcNow }
+        };
+        var document = new FaceDocumentModel
+        {
+            Id = faceDocumentId,
+            Title = string.IsNullOrWhiteSpace(title) ? "Generated Face" : title.Trim(),
+            Summary = $"Generated from Face Source Shape '{sourceShape.Name}' ({output.Width} x {output.Height}).",
+            SourcePanel2DDocumentId = NormalizeOptional(sourcePanel2DDocumentId),
+            SourceFaceShapeId = NormalizeOptional(sourceShape.Id),
+            AssignedCabinetFaceTargetId = NormalizeOptional(assignedCabinetFaceTargetId),
+            SourceRegion = region,
+            LastRegeneratedAtUtc = DateTime.UtcNow,
+            GenerationSettings = settings,
+            Layers = [new FaceLayerModel { Id = "layer-artwork", Name = "Artwork", IsVisible = true }],
+            Elements = [artwork]
+        };
+        progress?.Report(1.0, "Face generation complete.");
+        return new FaceGenerationResult(document, 0, 1, 0, 0, 0, 0);
     }
 
     public FaceGenerationResult GenerateFromPanelRegion(

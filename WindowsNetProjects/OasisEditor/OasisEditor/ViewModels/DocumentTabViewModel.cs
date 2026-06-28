@@ -56,12 +56,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
         _faceDocumentJson = faceDocumentJson;
         _cabinetDocumentJson = cabinetDocumentJson;
         _runtimeState = runtimeState ?? new MachineRuntimeState();
-        _panelDocumentModel = new Panel2DDocumentModel
-        {
-            Elements = Panel2DDocumentStorage.DeserializeLayout(panelLayoutJson)
-                .Select(Panel2DDocumentStorage.ToModel)
-                .ToArray()
-        };
+        _panelDocumentModel = Panel2DDocumentStorage.DeserializeModel(panelLayoutJson);
         _faceDocumentModel = FaceDocumentStorage.TryRead(faceDocumentJson, out var faceDocumentFile)
             ? FaceDocumentStorage.ToModel(faceDocumentFile)
             : new FaceDocumentModel();
@@ -183,12 +178,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
             }
 
             _panelLayoutJson = value;
-            _panelDocumentModel = new Panel2DDocumentModel
-            {
-                Elements = Panel2DDocumentStorage.DeserializeLayout(value)
-                    .Select(Panel2DDocumentStorage.ToModel)
-                    .ToArray()
-            };
+            _panelDocumentModel = Panel2DDocumentStorage.DeserializeModel(value);
             RebuildLampCaches();
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PanelLayoutJson)));
         }
@@ -246,6 +236,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
             Title = _faceDocumentModel.Title,
             Summary = _faceDocumentModel.Summary,
             SourcePanel2DDocumentId = _faceDocumentModel.SourcePanel2DDocumentId,
+            SourceFaceShapeId = _faceDocumentModel.SourceFaceShapeId,
             AssignedCabinetFaceTargetId = _faceDocumentModel.AssignedCabinetFaceTargetId,
             SourceRegion = _faceDocumentModel.SourceRegion,
             LastRegeneratedAtUtc = _faceDocumentModel.LastRegeneratedAtUtc,
@@ -267,6 +258,31 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     internal IReadOnlyList<PanelElementModel> GetPanelElements()
     {
         return _panelDocumentModel.Elements;
+    }
+
+    internal IReadOnlyList<PanelFaceSourceShapeModel> GetPanelFaceSourceShapes()
+    {
+        return _panelDocumentModel.FaceSourceShapes;
+    }
+
+    internal bool TryGetPanelFaceSourceShape(string id, out PanelFaceSourceShapeModel shape)
+    {
+        shape = _panelDocumentModel.FaceSourceShapes.FirstOrDefault(s => string.Equals(s.Id, id, StringComparison.Ordinal)) ?? new PanelFaceSourceShapeModel();
+        return !string.IsNullOrWhiteSpace(shape.Id);
+    }
+
+    internal void SetPanelFaceSourceShapes(IReadOnlyList<PanelFaceSourceShapeModel> shapes, PanelChangeEvent? panelChange = null)
+    {
+        _panelDocumentModel = new Panel2DDocumentModel
+        {
+            Title = _panelDocumentModel.Title,
+            Summary = _panelDocumentModel.Summary,
+            Elements = _panelDocumentModel.Elements,
+            FaceSourceShapes = shapes.ToArray()
+        };
+        _panelLayoutJson = GetPanelLayoutProjectionJson();
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PanelLayoutJson)));
+        if (panelChange is PanelChangeEvent change) PanelChanged?.Invoke(change);
     }
 
     internal bool TryGetPanelElement(PanelSelectionInfo selection, out PanelElementModel element)
@@ -293,7 +309,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
         {
             Title = _panelDocumentModel.Title,
             Summary = _panelDocumentModel.Summary,
-            Elements = elements.ToArray()
+            Elements = elements.ToArray(),
+            FaceSourceShapes = _panelDocumentModel.FaceSourceShapes
         };
         RebuildLampCaches();
 
@@ -437,8 +454,11 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
 
     internal string GetPanelLayoutProjectionJson()
     {
-        return Panel2DDocumentStorage.SerializeLayout(
-            Panel2DDocumentStorage.ToStorageElements(_panelDocumentModel));
+        return Panel2DDocumentStorage.Serialize(
+            _panelDocumentModel.Title,
+            _panelDocumentModel.Summary,
+            Panel2DDocumentStorage.ToStorageElements(_panelDocumentModel),
+            _panelDocumentModel.FaceSourceShapes.Select(Panel2DDocumentStorage.ToStorageFaceSourceShape).ToArray());
     }
 
     public PanelSelectionInfo? HierarchySelectedPanelSelection

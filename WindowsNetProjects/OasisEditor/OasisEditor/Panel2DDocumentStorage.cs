@@ -86,16 +86,17 @@ internal static class Panel2DDocumentStorage
         };
     }
 
-    public static string Serialize(string title, string summary, IReadOnlyList<PanelElementFile> elements)
+    public static string Serialize(string title, string summary, IReadOnlyList<PanelElementFile> elements, IReadOnlyList<PanelFaceSourceShapeFile>? faceSourceShapes = null)
     {
-        var schemaVersion = DetermineSchemaVersion(elements);
+        var schemaVersion = (faceSourceShapes?.Count ?? 0) > 0 ? CurrentSchemaVersion : DetermineSchemaVersion(elements);
         var payload = new Panel2DDocumentFile
         {
             SchemaVersion = schemaVersion,
             Title = title,
             Summary = summary,
             SavedAtUtc = DateTime.UtcNow,
-            Elements = elements.ToArray()
+            Elements = elements.ToArray(),
+            FaceSourceShapes = (faceSourceShapes ?? []).Select(NormalizeFaceSourceShape).ToArray()
         };
 
         return JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
@@ -254,7 +255,8 @@ internal static class Panel2DDocumentStorage
 
         normalized = source with
         {
-            Elements = normalizedElements.ToArray()
+            Elements = normalizedElements.ToArray(),
+            FaceSourceShapes = (source.FaceSourceShapes ?? []).Select(NormalizeFaceSourceShape).ToArray()
         };
         errorMessage = string.Empty;
         return true;
@@ -304,7 +306,8 @@ internal static class Panel2DDocumentStorage
             Elements = document.Elements
                 .Select(NormalizeElement)
                 .Select(ToModel)
-                .ToArray()
+                .ToArray(),
+            FaceSourceShapes = (document.FaceSourceShapes ?? []).Select(ToModel).ToArray()
         };
     }
 
@@ -442,9 +445,79 @@ internal static class Panel2DDocumentStorage
         }
         catch (JsonException)
         {
-            return [];
+            try
+            {
+                var document = JsonSerializer.Deserialize<Panel2DDocumentFile>(layoutJson) ?? new Panel2DDocumentFile();
+                return document.Elements.Select(NormalizeElement).ToArray();
+            }
+            catch (JsonException)
+            {
+                return [];
+            }
         }
     }
+
+    public static Panel2DDocumentModel DeserializeModel(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return new Panel2DDocumentModel();
+        }
+
+        if (TryReadValidated(json, out var document, out _))
+        {
+            return ToModel(document);
+        }
+
+        return new Panel2DDocumentModel
+        {
+            Elements = DeserializeLayout(json).Select(ToModel).ToArray()
+        };
+    }
+
+    public static PanelFaceSourceShapeFile ToStorageFaceSourceShape(PanelFaceSourceShapeModel shape)
+    {
+        return NormalizeFaceSourceShape(new PanelFaceSourceShapeFile
+        {
+            Id = shape.Id,
+            Name = shape.Name,
+            Type = "perspectiveRectangle",
+            Points = [ToPointFile(shape.TopLeft), ToPointFile(shape.TopRight), ToPointFile(shape.BottomRight), ToPointFile(shape.BottomLeft)]
+        });
+    }
+
+    private static PanelFaceSourceShapeModel ToModel(PanelFaceSourceShapeFile shape)
+    {
+        var normalized = NormalizeFaceSourceShape(shape);
+        return new PanelFaceSourceShapeModel
+        {
+            Id = normalized.Id,
+            Name = normalized.Name,
+            Type = PanelFaceSourceShapeType.PerspectiveRectangle,
+            TopLeft = ToFacePoint(normalized.Points[0]),
+            TopRight = ToFacePoint(normalized.Points[1]),
+            BottomRight = ToFacePoint(normalized.Points[2]),
+            BottomLeft = ToFacePoint(normalized.Points[3])
+        };
+    }
+
+    private static PanelFaceSourceShapeFile NormalizeFaceSourceShape(PanelFaceSourceShapeFile shape)
+    {
+        var id = string.IsNullOrWhiteSpace(shape.Id) ? Guid.NewGuid().ToString("N") : shape.Id.Trim();
+        var points = shape.Points is { Length: 4 } ? shape.Points : [new(0,0), new(100,0), new(100,100), new(0,100)];
+        return shape with
+        {
+            Id = id,
+            Name = string.IsNullOrWhiteSpace(shape.Name) ? "Face Source Shape" : shape.Name.Trim(),
+            Type = "perspectiveRectangle",
+            Points = points.Select(p => new PanelPointFile(IsFinite(p.X) ? p.X : 0d, IsFinite(p.Y) ? p.Y : 0d)).ToArray()
+        };
+    }
+
+    private static PanelPointFile ToPointFile(FacePointModel point) => new(point.X, point.Y);
+    private static FacePointModel ToFacePoint(PanelPointFile point) => new() { X = point.X, Y = point.Y };
+
+    private static bool IsFinite(double value) => !double.IsNaN(value) && !double.IsInfinity(value);
 
     private static PanelElementFile NormalizeElement(PanelElementFile element)
     {
@@ -775,7 +848,18 @@ internal sealed record Panel2DDocumentFile
     public string Summary { get; init; } = string.Empty;
     public DateTime SavedAtUtc { get; init; }
     public PanelElementFile[] Elements { get; init; } = [];
+    public PanelFaceSourceShapeFile[] FaceSourceShapes { get; init; } = [];
 }
+
+internal sealed record PanelFaceSourceShapeFile
+{
+    public string Id { get; init; } = string.Empty;
+    public string Name { get; init; } = string.Empty;
+    public string Type { get; init; } = "perspectiveRectangle";
+    public PanelPointFile[] Points { get; init; } = [];
+}
+
+internal readonly record struct PanelPointFile(double X, double Y);
 
 internal sealed record PanelElementFile : IPanelSelectableObject
 {

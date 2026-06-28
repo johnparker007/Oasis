@@ -27,6 +27,8 @@ public partial class SkiaPanel2DEditView : UserControl
     private Point _dragSelectionCurrent;
     private PanelElementModel? _moveSourceElement;
     private PanelElementModel? _resizeSourceElement;
+    private PanelFaceSourceShapeModel? _shapeDragSource;
+    private int _activeShapeCornerIndex = -1;
     private ResizeHandleKind _activeResizeHandle;
     private bool _isRenderQueued;
     private bool _isRenderDirty;
@@ -161,6 +163,7 @@ public partial class SkiaPanel2DEditView : UserControl
         canvas.Translate((float)viewport.PanX, (float)viewport.PanY);
         canvas.Scale((float)viewport.NormalizedZoom, (float)viewport.NormalizedZoom);
         _renderer.Render(canvas, document.GetPanelElements(), document.RuntimeState, viewport);
+        DrawFaceSourceShapes(canvas, document, viewport);
         DrawSelectionOutline(canvas, document, viewport);
         DrawResizeHandles(canvas, document, viewport);
         DrawDragSelectionRect(canvas, viewport);
@@ -252,6 +255,22 @@ public partial class SkiaPanel2DEditView : UserControl
         {
             var document = Document;
             var pointer = eventArgs.GetPosition(EditSkiaSurface);
+            if (document is not null
+                && TryGetFaceSourceShapeCornerAtPoint(document, pointer, out var shape, out var cornerIndex))
+            {
+                _isLeftMouseDown = true;
+                _isDragSelecting = false;
+                _isMovingSelection = false;
+                _isResizingSelection = true;
+                _shapeDragSource = shape;
+                _activeShapeCornerIndex = cornerIndex;
+                _leftMouseDownStart = pointer;
+                _dragSelectionCurrent = pointer;
+                EditSkiaSurface.CaptureMouse();
+                eventArgs.Handled = true;
+                return;
+            }
+
             if (document is not null
                 && TryGetResizeHandleAtPoint(document, pointer, out var resizeHandle, out var resizeElement))
             {
@@ -368,7 +387,14 @@ public partial class SkiaPanel2DEditView : UserControl
                 }
                 else if (_isResizingSelection)
                 {
-                    HandleResizeSelection(document, _leftMouseDownStart, _dragSelectionCurrent);
+                    if (_shapeDragSource is not null)
+                    {
+                        HandleShapeCornerDrag(document, _dragSelectionCurrent);
+                    }
+                    else
+                    {
+                        HandleResizeSelection(document, _leftMouseDownStart, _dragSelectionCurrent);
+                    }
                 }
                 else
                 {
@@ -382,6 +408,8 @@ public partial class SkiaPanel2DEditView : UserControl
             _isResizingSelection = false;
             _moveSourceElement = null;
             _resizeSourceElement = null;
+            _shapeDragSource = null;
+            _activeShapeCornerIndex = -1;
             _activeResizeHandle = ResizeHandleKind.None;
             EditSkiaSurface.ReleaseMouseCapture();
             RequestRender();
@@ -451,6 +479,19 @@ public partial class SkiaPanel2DEditView : UserControl
             Placement = PlacementMode.MousePoint
         };
 
+        if (document.HierarchySelectedPanelSelection is { Kind: PanelFaceSourceShapeCommands.SelectionKind }
+            && Window.GetWindow(this)?.DataContext is MainWindowViewModel mainWindow)
+        {
+            var createFaceItem = new MenuItem { Header = "Create Face from Source Shape", Command = mainWindow.GenerateFaceFromSourceShapeCommand };
+            contextMenu.Items.Add(createFaceItem);
+            contextMenu.Items.Add(new Separator());
+        }
+
+        var sourceShapeItem = new MenuItem { Header = "Add Face Source Shape" };
+        sourceShapeItem.Click += (_, _) => AddFaceSourceShapeAt(panelPoint);
+        contextMenu.Items.Add(sourceShapeItem);
+        contextMenu.Items.Add(new Separator());
+
         AddAddElementMenuItem(contextMenu, "Add Lamp", AddablePanelElementKind.Lamp, panelPoint);
         AddAddElementMenuItem(contextMenu, "Add Reel", AddablePanelElementKind.Reel, panelPoint);
         AddAddElementMenuItem(contextMenu, "Add 7 Segment Display", AddablePanelElementKind.SevenSegmentDisplay, panelPoint);
@@ -468,6 +509,23 @@ public partial class SkiaPanel2DEditView : UserControl
         };
         menuItem.Click += (_, _) => AddElementAt(kind, panelPoint);
         contextMenu.Items.Add(menuItem);
+    }
+
+    private void AddFaceSourceShapeAt(Point panelPoint)
+    {
+        var document = Document;
+        if (document is null || document.Document.DocumentType != EditorDocumentType.Panel2D) return;
+        var shape = new PanelFaceSourceShapeModel
+        {
+            Id = $"faceSourceShape-{Guid.NewGuid():N}",
+            Name = "Face Source Shape",
+            TopLeft = new FacePointModel { X = panelPoint.X, Y = panelPoint.Y },
+            TopRight = new FacePointModel { X = panelPoint.X + 300, Y = panelPoint.Y },
+            BottomRight = new FacePointModel { X = panelPoint.X + 300, Y = panelPoint.Y + 200 },
+            BottomLeft = new FacePointModel { X = panelPoint.X, Y = panelPoint.Y + 200 }
+        };
+        document.CommandService.Execute(PanelFaceSourceShapeCommands.CreateAddCommand(document.DocumentId, document, shape));
+        RequestRender();
     }
 
     private void AddElementAt(AddablePanelElementKind kind, Point panelPoint)
@@ -494,10 +552,13 @@ public partial class SkiaPanel2DEditView : UserControl
 
         var viewport = new PanelViewportTransform(document.PanelZoom, document.PanelPanX, document.PanelPanY);
         var documentPoint = viewport.ScreenToDocument(screenPoint);
-        var selection = Panel2DSelectionService.SelectFromPoint(
-            document.GetPanelElements(),
-            documentPoint,
-            document.HierarchySelectedPanelSelection);
+        var shapeSelection = document.GetPanelFaceSourceShapes().LastOrDefault(shape => IsInsideShapeBounds(shape, documentPoint));
+        var selection = shapeSelection is not null
+            ? PanelFaceSourceShapeCommands.ToSelection(shapeSelection)
+            : Panel2DSelectionService.SelectFromPoint(
+                document.GetPanelElements(),
+                documentPoint,
+                document.HierarchySelectedPanelSelection);
         NotifySelection(document, selection);
     }
 
@@ -655,4 +716,77 @@ public partial class SkiaPanel2DEditView : UserControl
         var handleSizeDoc = ResizeHandleScreenSize / viewport.NormalizedZoom;
         return Panel2DResizeHandleHitTestService.TryHitHandle(selectedElement, docPoint, handleSizeDoc, out handleKind);
     }
+
+    private static void DrawFaceSourceShapes(SKCanvas canvas, DocumentTabViewModel document, PanelViewportTransform viewport)
+    {
+        using var linePaint = new SKPaint { Style = SKPaintStyle.Stroke, Color = new SKColor(0xFF, 0xC1, 0x07), StrokeWidth = (float)(2d / viewport.NormalizedZoom), IsAntialias = true };
+        using var fillPaint = new SKPaint { Style = SKPaintStyle.Fill, Color = new SKColor(0xFF, 0xC1, 0x07, 0x28), IsAntialias = true };
+        using var handlePaint = new SKPaint { Style = SKPaintStyle.Fill, Color = new SKColor(0xFF, 0xA0, 0x00), IsAntialias = true };
+        foreach (var shape in document.GetPanelFaceSourceShapes())
+        {
+            using var path = new SKPath();
+            path.MoveTo((float)shape.TopLeft.X, (float)shape.TopLeft.Y);
+            path.LineTo((float)shape.TopRight.X, (float)shape.TopRight.Y);
+            path.LineTo((float)shape.BottomRight.X, (float)shape.BottomRight.Y);
+            path.LineTo((float)shape.BottomLeft.X, (float)shape.BottomLeft.Y);
+            path.Close();
+            canvas.DrawPath(path, fillPaint);
+            canvas.DrawPath(path, linePaint);
+            var radius = (float)(5d / viewport.NormalizedZoom);
+            foreach (var point in GetShapePoints(shape)) canvas.DrawCircle((float)point.X, (float)point.Y, radius, handlePaint);
+        }
+    }
+
+    private static bool IsInsideShapeBounds(PanelFaceSourceShapeModel shape, Point point)
+    {
+        return point.X >= shape.X && point.X <= shape.X + shape.Width && point.Y >= shape.Y && point.Y <= shape.Y + shape.Height;
+    }
+
+    private static FacePointModel[] GetShapePoints(PanelFaceSourceShapeModel shape) => [shape.TopLeft, shape.TopRight, shape.BottomRight, shape.BottomLeft];
+
+    private bool TryGetFaceSourceShapeCornerAtPoint(DocumentTabViewModel document, Point screenPoint, out PanelFaceSourceShapeModel shape, out int cornerIndex)
+    {
+        shape = new PanelFaceSourceShapeModel();
+        cornerIndex = -1;
+        var viewport = new PanelViewportTransform(document.PanelZoom, document.PanelPanX, document.PanelPanY);
+        var docPoint = viewport.ScreenToDocument(screenPoint);
+        var hitRadius = 8d / viewport.NormalizedZoom;
+        foreach (var candidate in document.GetPanelFaceSourceShapes().Reverse())
+        {
+            var points = GetShapePoints(candidate);
+            for (var i = 0; i < points.Length; i++)
+            {
+                var dx = points[i].X - docPoint.X;
+                var dy = points[i].Y - docPoint.Y;
+                if (Math.Sqrt(dx * dx + dy * dy) <= hitRadius)
+                {
+                    shape = candidate;
+                    cornerIndex = i;
+                    document.HierarchySelectedPanelSelection = PanelFaceSourceShapeCommands.ToSelection(candidate);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private void HandleShapeCornerDrag(DocumentTabViewModel document, Point screenPoint)
+    {
+        if (_shapeDragSource is null || _activeShapeCornerIndex < 0) return;
+        var viewport = new PanelViewportTransform(document.PanelZoom, document.PanelPanX, document.PanelPanY);
+        var point = viewport.ScreenToDocument(screenPoint);
+        FacePointModel fp = new() { X = point.X, Y = point.Y };
+        var updated = new PanelFaceSourceShapeModel
+        {
+            Id = _shapeDragSource.Id,
+            Name = _shapeDragSource.Name,
+            Type = _shapeDragSource.Type,
+            TopLeft = _activeShapeCornerIndex == 0 ? fp : _shapeDragSource.TopLeft,
+            TopRight = _activeShapeCornerIndex == 1 ? fp : _shapeDragSource.TopRight,
+            BottomRight = _activeShapeCornerIndex == 2 ? fp : _shapeDragSource.BottomRight,
+            BottomLeft = _activeShapeCornerIndex == 3 ? fp : _shapeDragSource.BottomLeft
+        };
+        document.CommandService.Execute(PanelFaceSourceShapeCommands.CreateUpdateCommand(document.DocumentId, document, updated, "Move Face Source Shape corner"));
+    }
+
 }
