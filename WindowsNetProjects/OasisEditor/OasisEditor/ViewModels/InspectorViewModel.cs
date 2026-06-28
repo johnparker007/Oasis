@@ -365,13 +365,8 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             && string.Equals(sourceShapeSelection.Kind, PanelFaceSourceShapeCommands.SelectionKind, StringComparison.Ordinal)
             && selectedDocument.TryGetPanelFaceSourceShape(sourceShapeSelection.ObjectId, out var selectedSourceShape))
         {
-            if (!_hadInspectorSelection)
-            {
-                return true;
-            }
-
-            return !string.Equals(_lastInspectorSelectionObjectId, selectedSourceShape.Id, StringComparison.Ordinal)
-                || !string.Equals(_lastInspectorFaceSelectionKind, PanelFaceSourceShapeCommands.SelectionKind, StringComparison.Ordinal);
+            RebuildFaceSourceShapePropertyRows(selectedDocument, selectedSourceShape);
+            return;
         }
 
         if (selectedDocument is null || selection is not PanelSelectionInfo selectedSelection || !selectedDocument.TryGetPanelElement(selectedSelection, out var selectedElement))
