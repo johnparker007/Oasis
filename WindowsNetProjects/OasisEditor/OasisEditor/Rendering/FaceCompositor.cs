@@ -7,6 +7,10 @@ public interface IFaceCompositor
     FaceCompositorResult Compose(FaceDocumentModel faceDocument, MachineRuntimeState runtimeState, FaceCompositorRenderOptions? options = null);
 
     void Render(SKCanvas canvas, FaceDocumentModel faceDocument, MachineRuntimeState runtimeState, PanelViewportTransform viewportTransform, FaceCompositorRenderOptions? options = null);
+
+    FaceCompositorResult ComposeStaticBase(FaceDocumentModel faceDocument, MachineRuntimeState runtimeState, FaceCompositorRenderOptions? options = null);
+
+    void RenderLampOverlay(SKCanvas canvas, FaceDocumentModel faceDocument, MachineRuntimeState runtimeState);
 }
 
 public sealed class FaceCompositor : IFaceCompositor
@@ -30,37 +34,49 @@ public sealed class FaceCompositor : IFaceCompositor
         ArgumentNullException.ThrowIfNull(faceDocument);
         ArgumentNullException.ThrowIfNull(runtimeState);
 
-        options ??= FaceCompositorRenderOptions.Default;
-        var bounds = ResolveBounds(faceDocument);
-        if (bounds.Width <= 0d || bounds.Height <= 0d)
+        return ComposeCore(faceDocument, runtimeState, options, staticOnly: false);
+    }
+
+    public FaceCompositorResult ComposeStaticBase(FaceDocumentModel faceDocument, MachineRuntimeState runtimeState, FaceCompositorRenderOptions? options = null)
+    {
+        ArgumentNullException.ThrowIfNull(faceDocument);
+        ArgumentNullException.ThrowIfNull(runtimeState);
+
+        return ComposeCore(faceDocument, runtimeState, options, staticOnly: true);
+    }
+
+    private FaceCompositorResult ComposeCore(FaceDocumentModel faceDocument, MachineRuntimeState runtimeState, FaceCompositorRenderOptions? options, bool staticOnly)
+    {
+        if (!TryResolveTarget(faceDocument, options, out var target, out var fallbackReason))
         {
-            return FaceCompositorResult.Empty("Face has no renderable bounds.");
+            return FaceCompositorResult.Empty(fallbackReason);
         }
 
-        var requestedScale = Math.Clamp(options.Scale, 0.01d, 16d);
-        var maxWidthScale = options.MaxWidth > 0 ? options.MaxWidth / bounds.Width : requestedScale;
-        var maxHeightScale = options.MaxHeight > 0 ? options.MaxHeight / bounds.Height : requestedScale;
-        var scale = Math.Max(0.01d, Math.Min(requestedScale, Math.Min(maxWidthScale, maxHeightScale)));
-        var width = Math.Max(1, (int)Math.Ceiling(bounds.Width * scale));
-        var height = Math.Max(1, (int)Math.Ceiling(bounds.Height * scale));
-        using var surface = SKSurface.Create(new SKImageInfo(width, height, SKColorType.Bgra8888, SKAlphaType.Premul));
+        using var surface = SKSurface.Create(new SKImageInfo(target.Width, target.Height, SKColorType.Bgra8888, SKAlphaType.Premul));
         if (surface is null)
         {
             return FaceCompositorResult.Empty("Unable to allocate Face compositing surface.");
         }
 
         var canvas = surface.Canvas;
-        canvas.Clear(options.ClearColor);
-        canvas.Scale((float)(width / bounds.Width), (float)(height / bounds.Height));
-        canvas.Translate((float)-bounds.X, (float)-bounds.Y);
-        _renderer.Render(canvas, faceDocument, runtimeState, PanelViewportTransform.Identity);
+        canvas.Clear(target.ClearColor);
+        ApplyTargetTransform(canvas, target);
+        if (staticOnly)
+        {
+            _renderer.RenderStaticBase(canvas, faceDocument, runtimeState, PanelViewportTransform.Identity);
+        }
+        else
+        {
+            _renderer.Render(canvas, faceDocument, runtimeState, PanelViewportTransform.Identity);
+        }
+
         canvas.Flush();
 
         using var image = surface.Snapshot();
         var bitmap = SKBitmap.FromImage(image);
         return bitmap is null
             ? FaceCompositorResult.Empty("Unable to snapshot Face compositing surface.")
-            : FaceCompositorResult.FromBitmap(bitmap, bounds);
+            : FaceCompositorResult.FromBitmap(bitmap, target.Bounds);
     }
 
     public void Render(SKCanvas canvas, FaceDocumentModel faceDocument, MachineRuntimeState runtimeState, PanelViewportTransform viewportTransform, FaceCompositorRenderOptions? options = null)
@@ -69,6 +85,44 @@ public sealed class FaceCompositor : IFaceCompositor
         ArgumentNullException.ThrowIfNull(faceDocument);
         ArgumentNullException.ThrowIfNull(runtimeState);
         _renderer.Render(canvas, faceDocument, runtimeState, viewportTransform);
+    }
+
+    public void RenderLampOverlay(SKCanvas canvas, FaceDocumentModel faceDocument, MachineRuntimeState runtimeState)
+    {
+        ArgumentNullException.ThrowIfNull(canvas);
+        ArgumentNullException.ThrowIfNull(faceDocument);
+        ArgumentNullException.ThrowIfNull(runtimeState);
+        _renderer.RenderLampOverlay(canvas, faceDocument, runtimeState);
+    }
+
+    public static bool TryResolveTarget(FaceDocumentModel faceDocument, FaceCompositorRenderOptions? options, out FaceCompositorTarget target, out string fallbackReason)
+    {
+        ArgumentNullException.ThrowIfNull(faceDocument);
+        options ??= FaceCompositorRenderOptions.Default;
+        var bounds = ResolveBounds(faceDocument);
+        if (bounds.Width <= 0d || bounds.Height <= 0d)
+        {
+            target = default;
+            fallbackReason = "Face has no renderable bounds.";
+            return false;
+        }
+
+        var requestedScale = Math.Clamp(options.Scale, 0.01d, 16d);
+        var maxWidthScale = options.MaxWidth > 0 ? options.MaxWidth / bounds.Width : requestedScale;
+        var maxHeightScale = options.MaxHeight > 0 ? options.MaxHeight / bounds.Height : requestedScale;
+        var scale = Math.Max(0.01d, Math.Min(requestedScale, Math.Min(maxWidthScale, maxHeightScale)));
+        var width = Math.Max(1, (int)Math.Ceiling(bounds.Width * scale));
+        var height = Math.Max(1, (int)Math.Ceiling(bounds.Height * scale));
+        target = new FaceCompositorTarget(bounds, width, height, options.ClearColor);
+        fallbackReason = string.Empty;
+        return true;
+    }
+
+    public static void ApplyTargetTransform(SKCanvas canvas, FaceCompositorTarget target)
+    {
+        ArgumentNullException.ThrowIfNull(canvas);
+        canvas.Scale((float)(target.Width / target.Bounds.Width), (float)(target.Height / target.Bounds.Height));
+        canvas.Translate((float)-target.Bounds.X, (float)-target.Bounds.Y);
     }
 
     private static FaceCompositorBounds ResolveBounds(FaceDocumentModel faceDocument)
@@ -137,3 +191,5 @@ public sealed class FaceCompositorResult : IDisposable
 }
 
 public readonly record struct FaceCompositorBounds(double X, double Y, double Width, double Height);
+
+public readonly record struct FaceCompositorTarget(FaceCompositorBounds Bounds, int Width, int Height, SKColor ClearColor);

@@ -28,6 +28,7 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
     private readonly HashSet<Guid> _pendingLivePreviewDocumentIds = new();
     private readonly Dictionary<Guid, CabinetFacePreviewEntry> _facePreviewEntriesByDocumentId = new();
     private readonly Dictionary<CabinetStaticPreviewCacheKey, BitmapSource> _staticPreviewCache = new();
+    private readonly Dictionary<CabinetLiveBaseCacheKey, CabinetLiveBaseTexture> _liveBaseCache = new();
     private string _loadStatus = "No cabinet model loaded.";
     private string? _errorMessage;
     private bool _isLoading;
@@ -286,16 +287,14 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
         }
 
         var totalStopwatch = Stopwatch.StartNew();
-        var composeStopwatch = Stopwatch.StartNew();
-        using var result = FaceCompositor.Shared.Compose(faceDocument, document.RuntimeState, FaceDocumentArtworkPreviewRenderer.LivePreviewRenderOptions);
-        composeStopwatch.Stop();
-        if (!result.Rendered || result.Bitmap is null)
+        var frame = ComposeLivePreviewFrame(document, faceDocument, out var stats);
+        if (frame is null)
         {
             return;
         }
 
         var textureStopwatch = Stopwatch.StartNew();
-        var textureRecreated = entry.LivePreviewTexture.Update(result.Bitmap);
+        var textureRecreated = entry.LivePreviewTexture.Update(frame);
         textureStopwatch.Stop();
 
         var materialStopwatch = Stopwatch.StartNew();
@@ -306,7 +305,7 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
         materialStopwatch.Stop();
         totalStopwatch.Stop();
         Trace.WriteLineIf(totalStopwatch.ElapsedMilliseconds > 16,
-            $"Cabinet3D Live preview update face={faceDocumentId} compose={composeStopwatch.Elapsed.TotalMilliseconds:0.00}ms texture={textureStopwatch.Elapsed.TotalMilliseconds:0.00}ms material={materialStopwatch.Elapsed.TotalMilliseconds:0.00}ms total={totalStopwatch.Elapsed.TotalMilliseconds:0.00}ms textureRecreated={textureRecreated}");
+            $"Cabinet3D Live preview update face={faceDocumentId} staticBaseCacheHit={stats.StaticBaseCacheHit} staticBaseRenderMs={stats.StaticBaseRenderMilliseconds:0.00} lampOverlayRenderMs={stats.LampOverlayRenderMilliseconds:0.00} finalComposeOrCopyMs={stats.FinalComposeOrCopyMilliseconds:0.00} textureUploadMs={textureStopwatch.Elapsed.TotalMilliseconds:0.00} materialMs={materialStopwatch.Elapsed.TotalMilliseconds:0.00} totalMs={totalStopwatch.Elapsed.TotalMilliseconds:0.00} textureRecreated={textureRecreated}");
     }
 
     private BitmapSource? ResolvePreviewImage(DocumentTabViewModel document, FaceDocumentModel faceDocument, string previewMode, out CabinetLivePreviewTexture? livePreviewTexture)
@@ -314,13 +313,13 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
         livePreviewTexture = null;
         if (previewMode == CabinetLampPreviewMode.Live)
         {
-            using var result = FaceCompositor.Shared.Compose(faceDocument, document.RuntimeState, FaceDocumentArtworkPreviewRenderer.LivePreviewRenderOptions);
-            if (!result.Rendered || result.Bitmap is null)
+            var frame = ComposeLivePreviewFrame(document, faceDocument, out _);
+            if (frame is null)
             {
                 return null;
             }
 
-            livePreviewTexture = CabinetLivePreviewTexture.Create(result.Bitmap);
+            livePreviewTexture = CabinetLivePreviewTexture.Create(frame);
             return livePreviewTexture.Bitmap;
         }
 
@@ -344,6 +343,72 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
     private void InvalidatePreviewCache()
     {
         _staticPreviewCache.Clear();
+        foreach (var liveBase in _liveBaseCache.Values)
+        {
+            liveBase.Dispose();
+        }
+
+        _liveBaseCache.Clear();
+    }
+
+    private SKBitmap? ComposeLivePreviewFrame(DocumentTabViewModel document, FaceDocumentModel faceDocument, out CabinetLivePreviewFrameStats stats)
+    {
+        stats = CabinetLivePreviewFrameStats.Empty;
+        if (!FaceCompositor.TryResolveTarget(faceDocument, FaceDocumentArtworkPreviewRenderer.LivePreviewRenderOptions, out var target, out _))
+        {
+            return null;
+        }
+
+        var cacheKey = CabinetLiveBaseCacheKey.Create(document.DocumentId, document.FaceDocumentJson, target);
+        var staticBaseCacheHit = _liveBaseCache.TryGetValue(cacheKey, out var liveBase);
+        var staticBaseRenderMilliseconds = 0d;
+        if (!staticBaseCacheHit)
+        {
+            var staticBaseStopwatch = Stopwatch.StartNew();
+            using var staticBaseResult = FaceCompositor.Shared.ComposeStaticBase(faceDocument, document.RuntimeState, FaceDocumentArtworkPreviewRenderer.LivePreviewRenderOptions);
+            staticBaseStopwatch.Stop();
+            staticBaseRenderMilliseconds = staticBaseStopwatch.Elapsed.TotalMilliseconds;
+            if (!staticBaseResult.Rendered || staticBaseResult.Bitmap is null)
+            {
+                return null;
+            }
+
+            RemoveStaleLiveBaseCacheEntries(document.DocumentId, cacheKey);
+            liveBase = new CabinetLiveBaseTexture(staticBaseResult.Bitmap.Copy(), target);
+            _liveBaseCache[cacheKey] = liveBase;
+        }
+
+        var finalCopyStopwatch = Stopwatch.StartNew();
+        liveBase.CopyStaticBaseToWorkingBitmap();
+        finalCopyStopwatch.Stop();
+
+        var lampOverlayStopwatch = Stopwatch.StartNew();
+        using (var canvas = new SKCanvas(liveBase.WorkingBitmap))
+        {
+            FaceCompositor.ApplyTargetTransform(canvas, liveBase.Target);
+            FaceCompositor.Shared.RenderLampOverlay(canvas, faceDocument, document.RuntimeState);
+            canvas.Flush();
+        }
+        lampOverlayStopwatch.Stop();
+
+        stats = new CabinetLivePreviewFrameStats(
+            staticBaseCacheHit,
+            staticBaseRenderMilliseconds,
+            lampOverlayStopwatch.Elapsed.TotalMilliseconds,
+            finalCopyStopwatch.Elapsed.TotalMilliseconds);
+        return liveBase.WorkingBitmap;
+    }
+
+    private void RemoveStaleLiveBaseCacheEntries(Guid faceDocumentId, CabinetLiveBaseCacheKey currentKey)
+    {
+        var staleKeys = _liveBaseCache.Keys
+            .Where(key => key.FaceDocumentId == faceDocumentId && !Equals(key, currentKey))
+            .ToArray();
+        foreach (var staleKey in staleKeys)
+        {
+            _liveBaseCache[staleKey].Dispose();
+            _liveBaseCache.Remove(staleKey);
+        }
     }
 
     private static bool TryCreatePreviewGeometry(CabinetFaceTarget target, CabinetTargetOverride targetOverride, BitmapSource bitmap, out GeometryModel3D geometry, out ImageBrush imageBrush)
@@ -401,6 +466,45 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
 
     private sealed record CabinetFacePreviewEntry(Guid FaceDocumentId, string TargetId, GeometryModel3D Geometry, ImageBrush ImageBrush, CabinetLivePreviewTexture? LivePreviewTexture);
 
+    private sealed record CabinetLivePreviewFrameStats(
+        bool StaticBaseCacheHit,
+        double StaticBaseRenderMilliseconds,
+        double LampOverlayRenderMilliseconds,
+        double FinalComposeOrCopyMilliseconds)
+    {
+        public static CabinetLivePreviewFrameStats Empty { get; } = new(false, 0d, 0d, 0d);
+    }
+
+    private sealed class CabinetLiveBaseTexture : IDisposable
+    {
+        public CabinetLiveBaseTexture(SKBitmap staticBaseBitmap, FaceCompositorTarget target)
+        {
+            StaticBaseBitmap = staticBaseBitmap ?? throw new ArgumentNullException(nameof(staticBaseBitmap));
+            Target = target;
+            WorkingBitmap = new SKBitmap(staticBaseBitmap.Info);
+        }
+
+        public SKBitmap StaticBaseBitmap { get; }
+        public SKBitmap WorkingBitmap { get; }
+        public FaceCompositorTarget Target { get; }
+
+        public void CopyStaticBaseToWorkingBitmap()
+        {
+            StaticBaseBitmap.ReadPixels(
+                WorkingBitmap.Info,
+                WorkingBitmap.GetPixels(),
+                WorkingBitmap.RowBytes,
+                0,
+                0);
+        }
+
+        public void Dispose()
+        {
+            StaticBaseBitmap.Dispose();
+            WorkingBitmap.Dispose();
+        }
+    }
+
     private sealed class CabinetLivePreviewTexture
     {
         private CabinetLivePreviewTexture(WriteableBitmap bitmap)
@@ -456,6 +560,14 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
         public static CabinetStaticPreviewCacheKey Create(Guid faceDocumentId, string? faceDocumentJson, string previewMode)
         {
             return new CabinetStaticPreviewCacheKey(faceDocumentId, faceDocumentJson ?? string.Empty, previewMode);
+        }
+    }
+
+    private sealed record CabinetLiveBaseCacheKey(Guid FaceDocumentId, string FaceDocumentJson, int TextureWidth, int TextureHeight)
+    {
+        public static CabinetLiveBaseCacheKey Create(Guid faceDocumentId, string? faceDocumentJson, FaceCompositorTarget target)
+        {
+            return new CabinetLiveBaseCacheKey(faceDocumentId, faceDocumentJson ?? string.Empty, target.Width, target.Height);
         }
     }
 }
