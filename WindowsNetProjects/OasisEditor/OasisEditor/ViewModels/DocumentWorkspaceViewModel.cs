@@ -99,56 +99,55 @@ public sealed class DocumentWorkspaceViewModel
         return selectedDocument is not null;
     }
 
-
-    public bool CanGenerateFaceFromSelectedPanel2DRegion()
+    public bool CanAddFaceSourceShapeToSelectedPanel2D()
     {
         return _getLoadedProject() is not null
             && _getSelectedDocument() is { Document.DocumentType: EditorDocumentType.Panel2D };
     }
 
-    public DocumentTabViewModel? GenerateFaceFromSelectedPanel2DRegion(Rect sourceRect, FaceGenerationSettingsModel? generationSettings = null, IEditorProgressReporter? progress = null)
+    public bool AddFaceSourceShapeToSelectedPanel2D()
     {
-        var sourceDocument = _getSelectedDocument();
-        var loadedProject = _getLoadedProject();
-        if (loadedProject is null || sourceDocument is null || sourceDocument.Document.DocumentType != EditorDocumentType.Panel2D)
+        var selectedDocument = _getSelectedDocument();
+        if (_getLoadedProject() is null || selectedDocument is not { Document.DocumentType: EditorDocumentType.Panel2D })
         {
-            return null;
+            return false;
         }
 
-        var sourceRegion = FaceSourceRegionModel.FromRect(sourceRect);
-        if (!sourceRegion.IsValid)
+        var origin = GetDefaultFaceSourceShapeOrigin(selectedDocument.GetPanelDocument());
+        var shape = new PanelFaceSourceShapeModel
         {
-            return null;
+            Id = $"faceSourceShape-{Guid.NewGuid():N}",
+            Name = "Face Source Shape",
+            TopLeft = new FacePointModel { X = origin.X, Y = origin.Y },
+            TopRight = new FacePointModel { X = origin.X + 300, Y = origin.Y },
+            BottomRight = new FacePointModel { X = origin.X + 300, Y = origin.Y + 200 },
+            BottomLeft = new FacePointModel { X = origin.X, Y = origin.Y + 200 }
+        };
+
+        selectedDocument.CommandService.Execute(PanelFaceSourceShapeCommands.CreateAddCommand(selectedDocument.DocumentId, selectedDocument, shape));
+        _setStatusMessage("Added Face Source Shape.");
+        _addOutputEntry("Added Face Source Shape to selected Panel2D document.", OutputLogStatus.Info);
+        return true;
+    }
+
+    private static Point GetDefaultFaceSourceShapeOrigin(Panel2DDocumentModel panelDocument)
+    {
+        var background = panelDocument.Elements.FirstOrDefault(element => element.Kind == PanelElementKind.Background && element.Width > 0 && element.Height > 0);
+        if (background is not null)
+        {
+            return new Point(Math.Max(0, background.X + 40), Math.Max(0, background.Y + 40));
         }
 
-        progress ??= NoOpEditorProgressReporter.Instance;
-        var title = $"{sourceDocument.Title} Face";
-        progress.Report(0.0, "Generating legacy Face from selected Panel2D region...");
-        var result = _faceGenerationService.GenerateFromPanelRegion(
-            sourceDocument.GetPanelDocument(),
-            sourceRegion,
-            title,
-            sourceDocument.DocumentId.ToString("N"),
-            loadedProject.InputDefinitions,
-            loadedProject.ProjectDirectory,
-            loadedProject.GeneratedDirectory,
-            generationSettings,
-            progress.CreateChild(0.0, 0.8),
-            sourceDocument.FilePath);
+        return new Point(100, 100);
+    }
 
-        progress.Report(0.8, "Exporting runtime preview assets...");
-        var generatedFaceDocument = ExportRuntimeAssetsForPreview(result.Document, loadedProject, progress.CreateChild(0.8, 0.95));
-        progress.Report(0.95, "Opening generated Face document...");
-        var faceJson = FaceDocumentStorage.Serialize(generatedFaceDocument);
-        var faceEditorDocument = EditorDocument.CreateFaceStub(title).WithContentSummary(generatedFaceDocument.Summary ?? "Generated Face document.");
-        var document = CreateDocumentTab(faceEditorDocument, faceDocumentJson: faceJson);
-        ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
-        _setStatusMessage($"Generated face document from Panel2D region with {result.ArtworkElementCount} artwork element(s), {result.ConvertedLampCount} lamp window(s), {result.ConvertedReelDisplayCount} reel display(s), {result.ConvertedSevenSegmentDisplayCount} seven-segment display(s), {result.ConvertedAlphaDisplayCount} alpha display(s), and {result.ConvertedButtonCount} button(s).");
-        _addOutputEntry($"Generated face '{document.Title}' from Panel2D region with {result.ArtworkElementCount} artwork element(s), {result.ConvertedLampCount} lamp window(s), {result.ConvertedReelDisplayCount} reel display(s), {result.ConvertedSevenSegmentDisplayCount} seven-segment display(s), {result.ConvertedAlphaDisplayCount} alpha display(s), and {result.ConvertedButtonCount} button(s).", OutputLogStatus.Info);
-        LogFaceMaskLayerStatus(generatedFaceDocument, loadedProject);
-        LogFaceDiagnostics(generatedFaceDocument);
-        progress.Report(1.0, "Legacy Face generation from selected Panel2D region complete.");
-        return document;
+
+    public bool CanCreateFaceFromSelectedFaceSourceShape()
+    {
+        var selectedDocument = _getSelectedDocument();
+        return _getLoadedProject() is not null
+            && selectedDocument is { Document.DocumentType: EditorDocumentType.Panel2D }
+            && selectedDocument.HierarchySelectedPanelSelection is { Kind: PanelFaceSourceShapeCommands.SelectionKind };
     }
 
 
@@ -233,6 +232,7 @@ public sealed class DocumentWorkspaceViewModel
 
         var faceDocument = selectedDocument.GetFaceDocument();
         return !string.IsNullOrWhiteSpace(faceDocument.SourcePanel2DDocumentId)
+            && !string.IsNullOrWhiteSpace(faceDocument.SourceFaceShapeId)
             && faceDocument.SourceRegion is { IsValid: true };
     }
 
@@ -289,11 +289,10 @@ public sealed class DocumentWorkspaceViewModel
         }
 
         progress ??= NoOpEditorProgressReporter.Instance;
-        progress.Report(0.0, "Regenerating selected Face...");
+        progress.Report(0.0, "Regenerating selected Face from Face Source Shape...");
         var result = _faceRegenerationService.Regenerate(
             existingFace,
             sourcePanelDocument.GetPanelDocument(),
-            loadedProject.InputDefinitions,
             loadedProject.ProjectDirectory,
             loadedProject.GeneratedDirectory,
             generationSettings,
@@ -398,7 +397,9 @@ public sealed class DocumentWorkspaceViewModel
         sourcePanelDocument = null!;
         var sourceId = faceDocument.SourcePanel2DDocumentId?.Trim();
         var sourcePath = faceDocument.SourcePanel2DDocumentPath?.Trim();
-        if ((string.IsNullOrWhiteSpace(sourceId) && string.IsNullOrWhiteSpace(sourcePath)) || faceDocument.SourceRegion is not { IsValid: true })
+        if ((string.IsNullOrWhiteSpace(sourceId) && string.IsNullOrWhiteSpace(sourcePath))
+            || string.IsNullOrWhiteSpace(faceDocument.SourceFaceShapeId)
+            || faceDocument.SourceRegion is not { IsValid: true })
         {
             return false;
         }

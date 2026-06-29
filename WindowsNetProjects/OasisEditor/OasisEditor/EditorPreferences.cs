@@ -40,7 +40,6 @@ public sealed class FaceGenerationPreferences
     public double DefaultTrayBoundsInflationPercent { get; init; } = FaceGenerationSettingsModel.DefaultTrayBoundsInflationPercent;
     public double DefaultTrayBoundsPaddingPixels { get; init; } = FaceGenerationSettingsModel.DefaultTrayBoundsPaddingPixels;
     public bool DefaultClampTrayBoundsToLampWindow { get; init; } = FaceGenerationSettingsModel.DefaultClampTrayBoundsToLampWindow;
-    public bool ShowFaceGenerationSettingsBeforeGenerate { get; init; } = true;
     public bool ShowFaceGenerationSettingsBeforeRegenerate { get; init; } = true;
 
     public FaceGenerationSettingsModel ToSettings()
@@ -56,7 +55,6 @@ public sealed class FaceGenerationPreferences
 
     public static FaceGenerationPreferences FromSettings(
         FaceGenerationSettingsModel settings,
-        bool showBeforeGenerate,
         bool showBeforeRegenerate)
     {
         var normalized = (settings ?? FaceGenerationSettingsModel.Default).Normalize();
@@ -66,7 +64,6 @@ public sealed class FaceGenerationPreferences
             DefaultTrayBoundsInflationPercent = normalized.TrayBoundsInflationPercent,
             DefaultTrayBoundsPaddingPixels = normalized.TrayBoundsPaddingPixels,
             DefaultClampTrayBoundsToLampWindow = normalized.ClampTrayBoundsToLampWindow,
-            ShowFaceGenerationSettingsBeforeGenerate = showBeforeGenerate,
             ShowFaceGenerationSettingsBeforeRegenerate = showBeforeRegenerate
         };
     }

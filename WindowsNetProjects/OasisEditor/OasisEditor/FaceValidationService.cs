@@ -52,7 +52,7 @@ public sealed class FaceValidationService
             diagnostics.Add(new FaceValidationDiagnostic(
                 FaceValidationSeverity.Warning,
                 "Face.SourceRegion.Missing",
-                "Face does not contain a valid source region, so regeneration cannot be replayed."));
+                "Face does not contain valid Face Source Shape output bounds, so regeneration cannot be replayed."));
         }
 
         var sourceIsOpen = openDocuments.Any(document =>
@@ -167,7 +167,7 @@ public sealed class FaceValidationService
                 diagnostics.Add(new FaceValidationDiagnostic(
                     FaceValidationSeverity.Warning,
                     "Face.MaskLayer.Dimensions.SourceRegionMismatch",
-                    $"FaceMaskLayer dimensions {maskLayer.Width}x{maskLayer.Height} do not match source region dimensions {expectedWidth}x{expectedHeight}."));
+                    $"FaceMaskLayer dimensions {maskLayer.Width}x{maskLayer.Height} do not match Face Source Shape output bounds {expectedWidth}x{expectedHeight}."));
             }
         }
 

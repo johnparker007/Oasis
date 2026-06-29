@@ -730,7 +730,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         var faceDocument = selectedDocument.GetFaceDocument();
         AddFaceCabinetAssignmentRows(selectedDocument, faceDocument);
         _propertyRows.Add(new InspectorInfoPropertyViewModel("Source Panel2D Document", "Face Provenance", faceDocument.SourcePanel2DDocumentId ?? string.Empty));
-        _propertyRows.Add(new InspectorInfoPropertyViewModel("Source Region", "Face Provenance", faceDocument.SourceRegion is not null ? FormatSourceRegion(faceDocument.SourceRegion) : string.Empty));
+        _propertyRows.Add(new InspectorInfoPropertyViewModel("Face Source Shape Output Bounds", "Face Provenance", faceDocument.SourceRegion is not null ? FormatSourceRegion(faceDocument.SourceRegion) : string.Empty));
         _propertyRows.Add(new InspectorInfoPropertyViewModel("Generated Element Count", "Face Provenance", CountGeneratedElements(faceDocument).ToString()));
         _propertyRows.Add(new InspectorInfoPropertyViewModel("Last Regenerated", "Face Provenance", FormatTimestamp(faceDocument.LastRegeneratedAtUtc)));
         AddFaceMaskLayerSummaryRows(faceDocument.MaskLayer, "Mask Layer");
@@ -871,7 +871,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
         _propertyRows.Add(new InspectorInfoPropertyViewModel("Asset Path", category, maskLayer.AssetPath ?? string.Empty));
         _propertyRows.Add(new InspectorInfoPropertyViewModel("Dimensions", category, FormatDimensions(maskLayer.Width, maskLayer.Height)));
-        _propertyRows.Add(new InspectorInfoPropertyViewModel("Source Region", category, maskLayer.SourceRegion is not null ? FormatSourceRegion(maskLayer.SourceRegion) : string.Empty));
+        _propertyRows.Add(new InspectorInfoPropertyViewModel("Face Source Shape Output Bounds", category, maskLayer.SourceRegion is not null ? FormatSourceRegion(maskLayer.SourceRegion) : string.Empty));
         _propertyRows.Add(new InspectorInfoPropertyViewModel("Threshold", category, maskLayer.ExtractionThreshold.ToString()));
         _propertyRows.Add(new InspectorInfoPropertyViewModel("Generated", category, FormatTimestamp(maskLayer.GeneratedUtc)));
         _propertyRows.Add(new InspectorInfoPropertyViewModel("Contribution Count", category, maskLayer.Contributions.Count.ToString()));
@@ -935,7 +935,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             _propertyRows.Add(new InspectorInfoPropertyViewModel("Source Panel2D Document", "Artwork", artwork.SourcePanel2DDocumentId ?? string.Empty));
             if (artwork.SourceRegion is not null)
             {
-                _propertyRows.Add(new InspectorInfoPropertyViewModel("Source Region", "Artwork", FormatSourceRegion(artwork.SourceRegion)));
+                _propertyRows.Add(new InspectorInfoPropertyViewModel("Face Source Shape Output Bounds", "Artwork", FormatSourceRegion(artwork.SourceRegion)));
             }
 
             if (artwork.Provenance is not null)

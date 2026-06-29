@@ -67,29 +67,6 @@ public sealed class FaceGenerationSettingsTests
         Assert.True(saved.GenerationSettings.ClampTrayBoundsToLampWindow);
     }
 
-    [Fact]
-    public void GenerateFromPanelRegion_CopiesProvidedDefaultsIntoNewFaceAndMaskLayer()
-    {
-        var settings = new FaceGenerationSettingsModel
-        {
-            MaskExtractionThreshold = 9,
-            TrayBoundsInflationPercent = 0,
-            TrayBoundsPaddingPixels = 0,
-            ClampTrayBoundsToLampWindow = false
-        };
-
-        var result = new FaceGenerationService().GenerateFromPanelRegion(
-            new Panel2DDocumentModel(),
-            FaceSourceRegionModel.FromRect(new Rect(0, 0, 100, 100)),
-            "Face",
-            "panel-doc",
-            generationSettings: settings);
-
-        Assert.Equal(9, result.Document.GenerationSettings.MaskExtractionThreshold);
-        Assert.Equal(9, result.Document.MaskLayer!.ExtractionThreshold);
-        Assert.Equal(0, result.Document.GenerationSettings.TrayBoundsInflationPercent);
-        Assert.Equal(0, result.Document.GenerationSettings.TrayBoundsPaddingPixels);
-    }
 
     [Fact]
     public void Regenerate_UsesExistingFaceSettingsWhenNoOverrideIsProvided()
@@ -99,6 +76,7 @@ public sealed class FaceGenerationSettingsTests
             Id = "face-1",
             Title = "Face",
             SourcePanel2DDocumentId = "panel-doc",
+            SourceFaceShapeId = "shape-1",
             SourceRegion = FaceSourceRegionModel.FromRect(new Rect(0, 0, 100, 100)),
             GenerationSettings = new FaceGenerationSettingsModel
             {
@@ -108,10 +86,9 @@ public sealed class FaceGenerationSettingsTests
             }
         };
 
-        var result = new FaceRegenerationService().Regenerate(existingFace, new Panel2DDocumentModel());
+        var result = new FaceRegenerationService().Regenerate(existingFace, CreatePanelWithFaceSourceShape());
 
         Assert.Equal(13, result.Document.GenerationSettings.MaskExtractionThreshold);
-        Assert.Equal(13, result.Document.MaskLayer!.ExtractionThreshold);
     }
 
     [Fact]
@@ -122,13 +99,14 @@ public sealed class FaceGenerationSettingsTests
             Id = "face-1",
             Title = "Face",
             SourcePanel2DDocumentId = "panel-doc",
+            SourceFaceShapeId = "shape-1",
             SourceRegion = FaceSourceRegionModel.FromRect(new Rect(0, 0, 100, 100)),
             GenerationSettings = new FaceGenerationSettingsModel { MaskExtractionThreshold = 13 }
         };
 
         var result = new FaceRegenerationService().Regenerate(
             existingFace,
-            new Panel2DDocumentModel(),
+            CreatePanelWithFaceSourceShape(),
             generationSettings: new FaceGenerationSettingsModel
             {
                 MaskExtractionThreshold = 31,
@@ -137,7 +115,6 @@ public sealed class FaceGenerationSettingsTests
             });
 
         Assert.Equal(31, result.Document.GenerationSettings.MaskExtractionThreshold);
-        Assert.Equal(31, result.Document.MaskLayer!.ExtractionThreshold);
     }
 
     [Fact]
@@ -212,5 +189,24 @@ public sealed class FaceGenerationSettingsTests
         Assert.Equal(20, settings.TrayBoundsInflationPercent);
         Assert.Equal(5, settings.TrayBoundsPaddingPixels);
         Assert.False(settings.ClampTrayBoundsToLampWindow);
+    }
+
+    private static Panel2DDocumentModel CreatePanelWithFaceSourceShape()
+    {
+        return new Panel2DDocumentModel
+        {
+            FaceSourceShapes =
+            [
+                new PanelFaceSourceShapeModel
+                {
+                    Id = "shape-1",
+                    Name = "Main Glass Source",
+                    TopLeft = new FacePointModel { X = 0, Y = 0 },
+                    TopRight = new FacePointModel { X = 100, Y = 0 },
+                    BottomRight = new FacePointModel { X = 100, Y = 100 },
+                    BottomLeft = new FacePointModel { X = 0, Y = 100 }
+                }
+            ]
+        };
     }
 }
