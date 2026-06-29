@@ -488,14 +488,27 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
         public SKBitmap WorkingBitmap { get; }
         public FaceCompositorTarget Target { get; }
 
-        public void CopyStaticBaseToWorkingBitmap()
+        public unsafe void CopyStaticBaseToWorkingBitmap()
         {
-            StaticBaseBitmap.ReadPixels(
-                WorkingBitmap.Info,
-                WorkingBitmap.GetPixels(),
-                WorkingBitmap.RowBytes,
-                0,
-                0);
+            var sourcePixels = (byte*)StaticBaseBitmap.GetPixels().ToPointer();
+            var destinationPixels = (byte*)WorkingBitmap.GetPixels().ToPointer();
+            if (sourcePixels == null || destinationPixels == null)
+            {
+                return;
+            }
+
+            var height = Math.Min(StaticBaseBitmap.Height, WorkingBitmap.Height);
+            var sourceRowBytes = StaticBaseBitmap.RowBytes;
+            var destinationRowBytes = WorkingBitmap.RowBytes;
+            var copyRowBytes = Math.Min(sourceRowBytes, destinationRowBytes);
+            for (var y = 0; y < height; y++)
+            {
+                Buffer.MemoryCopy(
+                    sourcePixels + (y * sourceRowBytes),
+                    destinationPixels + (y * destinationRowBytes),
+                    destinationRowBytes,
+                    copyRowBytes);
+            }
         }
 
         public void Dispose()
