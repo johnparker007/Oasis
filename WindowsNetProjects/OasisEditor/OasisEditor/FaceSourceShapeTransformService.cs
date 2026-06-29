@@ -33,13 +33,16 @@ internal static class FaceSourceShapeTransformService
         for (var y = 0; y < height; y++)
         for (var x = 0; x < width; x++)
         {
-            var u = width <= 1 ? 0d : x / (double)(width - 1);
-            var v = height <= 1 ? 0d : y / (double)(height - 1);
-            var px = Bilinear(shape.TopLeft.X, shape.TopRight.X, shape.BottomRight.X, shape.BottomLeft.X, u, v) - background.X;
-            var py = Bilinear(shape.TopLeft.Y, shape.TopRight.Y, shape.BottomRight.Y, shape.BottomLeft.Y, u, v) - background.Y;
+            if (!TryTransformFacePointToPanel(shape, width, height, x, y, out var panelPoint))
+            {
+                output.SetPixel(x, y, SKColors.Transparent);
+                continue;
+            }
+
+            var px = panelPoint.X - background.X;
+            var py = panelPoint.Y - background.Y;
             output.SetPixel(x, y, SampleBicubic(source, px / Math.Max(1d, background.Width) * source.Width, py / Math.Max(1d, background.Height) * source.Height));
         }
-        var generatedRoot = string.IsNullOrWhiteSpace(generatedDirectory) ? Path.Combine(projectDirectory, "Generated") : generatedDirectory;
         var relative = Path.Combine("Generated", "Faces", $"face-source-shape-{Guid.NewGuid():N}.png");
         var path = Path.Combine(projectDirectory, relative);
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
@@ -48,6 +51,79 @@ internal static class FaceSourceShapeTransformService
         using var stream = File.Create(path);
         data.SaveTo(stream);
         return relative.Replace(Path.DirectorySeparatorChar, '/');
+    }
+
+    public static string? TryGenerateTransformedElementAsset(
+        PanelElementModel sourceElement,
+        string? sourceAssetPath,
+        PanelFaceSourceShapeModel shape,
+        int faceWidth,
+        int faceHeight,
+        FaceSourceRegionModel faceBounds,
+        string? projectDirectory,
+        string fileNamePrefix)
+    {
+        if (string.IsNullOrWhiteSpace(sourceAssetPath) || string.IsNullOrWhiteSpace(projectDirectory) || !faceBounds.IsValid)
+        {
+            return null;
+        }
+
+        var sourcePath = Path.IsPathRooted(sourceAssetPath!) ? sourceAssetPath! : Path.Combine(projectDirectory, sourceAssetPath!);
+        if (!File.Exists(sourcePath))
+        {
+            return null;
+        }
+
+        using var source = SKBitmap.Decode(sourcePath);
+        if (source is null)
+        {
+            return null;
+        }
+
+        var outputWidth = Math.Max(1, (int)Math.Ceiling(faceBounds.Width));
+        var outputHeight = Math.Max(1, (int)Math.Ceiling(faceBounds.Height));
+        using var output = new SKBitmap(outputWidth, outputHeight, SKColorType.Rgba8888, SKAlphaType.Premul);
+        output.Erase(SKColors.Transparent);
+
+        for (var y = 0; y < outputHeight; y++)
+        for (var x = 0; x < outputWidth; x++)
+        {
+            var faceX = faceBounds.X + x;
+            var faceY = faceBounds.Y + y;
+            if (!TryTransformFacePointToPanel(shape, faceWidth, faceHeight, faceX, faceY, out var panelPoint)
+                || panelPoint.X < sourceElement.X
+                || panelPoint.Y < sourceElement.Y
+                || panelPoint.X > sourceElement.X + sourceElement.Width
+                || panelPoint.Y > sourceElement.Y + sourceElement.Height)
+            {
+                continue;
+            }
+
+            var sourceX = (panelPoint.X - sourceElement.X) / Math.Max(1d, sourceElement.Width) * source.Width;
+            var sourceY = (panelPoint.Y - sourceElement.Y) / Math.Max(1d, sourceElement.Height) * source.Height;
+            output.SetPixel(x, y, SampleBicubic(source, sourceX, sourceY));
+        }
+
+        var safePrefix = string.IsNullOrWhiteSpace(fileNamePrefix) ? "face-source-shape-asset" : fileNamePrefix.Trim();
+        var relative = Path.Combine("Generated", "Faces", $"{safePrefix}-{Guid.NewGuid():N}.png");
+        var path = Path.Combine(projectDirectory, relative);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        using var image = SKImage.FromBitmap(output);
+        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+        using var stream = File.Create(path);
+        data.SaveTo(stream);
+        return relative.Replace(Path.DirectorySeparatorChar, '/');
+    }
+
+    public static bool TryTransformFacePointToPanel(PanelFaceSourceShapeModel shape, int width, int height, double faceX, double faceY, out FacePointModel panelPoint)
+    {
+        panelPoint = new FacePointModel();
+        if (!TryCreateFaceToPanelHomography(shape, width, height, out var h))
+        {
+            return false;
+        }
+
+        return TryApplyHomography(h, faceX, faceY, out panelPoint);
     }
 
 
@@ -59,21 +135,7 @@ internal static class FaceSourceShapeTransformService
             return false;
         }
 
-        var denominator = (h[6] * panelX) + (h[7] * panelY) + h[8];
-        if (!IsFinite(denominator) || Math.Abs(denominator) < 1e-9)
-        {
-            return false;
-        }
-
-        var x = ((h[0] * panelX) + (h[1] * panelY) + h[2]) / denominator;
-        var y = ((h[3] * panelX) + (h[4] * panelY) + h[5]) / denominator;
-        if (!IsFinite(x) || !IsFinite(y))
-        {
-            return false;
-        }
-
-        facePoint = new FacePointModel { X = x, Y = y };
-        return true;
+        return TryApplyHomography(h, panelX, panelY, out facePoint);
     }
 
     public static bool ContainsPanelPoint(PanelFaceSourceShapeModel shape, double panelX, double panelY)
@@ -96,16 +158,29 @@ internal static class FaceSourceShapeTransformService
 
     private static bool TryCreatePanelToFaceHomography(PanelFaceSourceShapeModel shape, int width, int height, out double[] h)
     {
-        h = new double[9];
         var source = new[] { shape.TopLeft, shape.TopRight, shape.BottomRight, shape.BottomLeft };
-        var destination = new[]
-        {
-            new FacePointModel { X = 0, Y = 0 },
-            new FacePointModel { X = Math.Max(0, width), Y = 0 },
-            new FacePointModel { X = Math.Max(0, width), Y = Math.Max(0, height) },
-            new FacePointModel { X = 0, Y = Math.Max(0, height) }
-        };
+        var destination = CreateFaceCorners(width, height);
+        return TryCreateHomography(source, destination, out h);
+    }
 
+    private static bool TryCreateFaceToPanelHomography(PanelFaceSourceShapeModel shape, int width, int height, out double[] h)
+    {
+        var source = CreateFaceCorners(width, height);
+        var destination = new[] { shape.TopLeft, shape.TopRight, shape.BottomRight, shape.BottomLeft };
+        return TryCreateHomography(source, destination, out h);
+    }
+
+    private static FacePointModel[] CreateFaceCorners(int width, int height) =>
+    [
+        new FacePointModel { X = 0, Y = 0 },
+        new FacePointModel { X = Math.Max(0, width), Y = 0 },
+        new FacePointModel { X = Math.Max(0, width), Y = Math.Max(0, height) },
+        new FacePointModel { X = 0, Y = Math.Max(0, height) }
+    ];
+
+    private static bool TryCreateHomography(IReadOnlyList<FacePointModel> source, IReadOnlyList<FacePointModel> destination, out double[] h)
+    {
+        h = new double[9];
         var a = new double[8, 9];
         for (var i = 0; i < 4; i++)
         {
@@ -147,15 +222,32 @@ internal static class FaceSourceShapeTransformService
         return h.All(IsFinite);
     }
 
+    private static bool TryApplyHomography(double[] h, double sourceX, double sourceY, out FacePointModel point)
+    {
+        point = new FacePointModel();
+        var denominator = (h[6] * sourceX) + (h[7] * sourceY) + h[8];
+        if (!IsFinite(denominator) || Math.Abs(denominator) < 1e-9)
+        {
+            return false;
+        }
+
+        var x = ((h[0] * sourceX) + (h[1] * sourceY) + h[2]) / denominator;
+        var y = ((h[3] * sourceX) + (h[4] * sourceY) + h[5]) / denominator;
+        if (!IsFinite(x) || !IsFinite(y))
+        {
+            return false;
+        }
+
+        point = new FacePointModel { X = x, Y = y };
+        return true;
+    }
+
     private static bool IsFinite(double value) => !double.IsNaN(value) && !double.IsInfinity(value);
 
     private static double Distance(FacePointModel a, FacePointModel b)
     {
         var dx = a.X - b.X; var dy = a.Y - b.Y; return Math.Sqrt(dx * dx + dy * dy);
     }
-
-    private static double Bilinear(double tl, double tr, double br, double bl, double u, double v) =>
-        tl * (1 - u) * (1 - v) + tr * u * (1 - v) + br * u * v + bl * (1 - u) * v;
 
     private static SKColor SampleBicubic(SKBitmap bitmap, double x, double y)
     {
