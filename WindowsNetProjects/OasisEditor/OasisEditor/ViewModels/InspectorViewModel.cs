@@ -438,7 +438,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
         if (_generateFaceFromSourceShapeCommand is not null)
         {
-            _propertyRows.Add(new InspectorActionPropertyViewModel("Create Face from this Source Shape", "Actions", _generateFaceFromSourceShapeCommand));
+            _propertyRows.Add(new InspectorActionPropertyViewModel("Create Face from this Face Source Shape", "Actions", _generateFaceFromSourceShapeCommand));
         }
 
         _propertyRows.Add(new InspectorTextPropertyViewModel("Name", "Face Source Shape", sourceShape.Name, commit: value => TryApplyFaceSourceShapeUpdate(selectedDocument, sourceShape, new PanelFaceSourceShapeModel { Id = sourceShape.Id, Name = value, Type = sourceShape.Type, TopLeft = sourceShape.TopLeft, TopRight = sourceShape.TopRight, BottomRight = sourceShape.BottomRight, BottomLeft = sourceShape.BottomLeft })));

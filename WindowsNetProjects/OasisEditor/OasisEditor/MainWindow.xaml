@@ -53,9 +53,9 @@
                           Command="{Binding OpenPanel2DStubCommand}" />
                 <MenuItem Header="New _Face Stub"
                           Command="{Binding OpenFaceStubCommand}" />
-                <MenuItem Header="Generate Face From _Region..."
-                          Command="{Binding GenerateFaceFromRegionCommand}" />
-                <MenuItem Header="_Regenerate Face"
+                <MenuItem Header="Create Face from Face Source _Shape"
+                          Command="{Binding GenerateFaceFromSourceShapeCommand}" />
+                <MenuItem Header="_Regenerate Face from Source Shape"
                           Command="{Binding RegenerateFaceCommand}" />
                 <MenuItem Header="_Validate Face"
                           Command="{Binding ValidateFaceCommand}" />
@@ -84,9 +84,9 @@
             <MenuItem Header="_Face">
                 <MenuItem Header="Generation _Settings..."
                           Command="{Binding OpenFaceGenerationSettingsCommand}" />
-                <MenuItem Header="Generate From _Region..."
-                          Command="{Binding GenerateFaceFromRegionCommand}" />
-                <MenuItem Header="_Regenerate"
+                <MenuItem Header="Create Face from Face Source _Shape"
+                          Command="{Binding GenerateFaceFromSourceShapeCommand}" />
+                <MenuItem Header="_Regenerate from Source Shape"
                           Command="{Binding RegenerateFaceCommand}" />
             </MenuItem>
             <MenuItem Header="_Edit">

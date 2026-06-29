@@ -1213,7 +1213,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         try
         {
             await _progressDialogService.RunAsync(
-                new EditorProgressRequest("Generating Face", "Generating Face from Face Source Shape...", EditorProgressMode.Determinate),
+                new EditorProgressRequest("Creating Face", "Creating Face from Face Source Shape...", EditorProgressMode.Determinate),
                 (progress, _) =>
                 {
                     _documentWorkspace.GenerateFaceFromSelectedFaceSourceShape(_defaultFaceGenerationSettings, progress);
@@ -1223,8 +1223,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         catch (Exception ex)
         {
             StatusMessage = ex.Message;
-            AddOutputEntry($"Generate Face from Source Shape failed: {ex.Message}", OutputLogStatus.Error);
-            MessageBox.Show(ex.Message, "Generate Face Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+            AddOutputEntry($"Create Face from Face Source Shape failed: {ex.Message}", OutputLogStatus.Error);
+            MessageBox.Show(ex.Message, "Create Face from Face Source Shape Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -1265,7 +1265,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         try
         {
             await _progressDialogService.RunAsync(
-                new EditorProgressRequest("Regenerating Face", "Regenerating selected Face...", EditorProgressMode.Determinate),
+                new EditorProgressRequest("Regenerating Face", "Regenerating selected Face from Face Source Shape...", EditorProgressMode.Determinate),
                 (progress, _) =>
                 {
                     _documentWorkspace.RegenerateSelectedFace(settings, progress);
@@ -1282,7 +1282,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private bool CanOpenFaceGenerationSettings()
     {
-        return CanGenerateFaceFromRegion() || SelectedDocument?.Document.DocumentType == EditorDocumentType.Face;
+        return CanGenerateFaceFromSourceShape() || SelectedDocument?.Document.DocumentType == EditorDocumentType.Face;
     }
 
     private async void OpenFaceGenerationSettings()
@@ -1303,7 +1303,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                     try
                     {
                         await _progressDialogService.RunAsync(
-                            new EditorProgressRequest("Regenerating Face", "Regenerating selected Face...", EditorProgressMode.Determinate),
+                            new EditorProgressRequest("Regenerating Face", "Regenerating selected Face from Face Source Shape...", EditorProgressMode.Determinate),
                             (progress, _) =>
                             {
                                 _documentWorkspace.RegenerateSelectedFace(dialog.Settings, progress);
@@ -1326,12 +1326,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        if (!CanGenerateFaceFromRegion())
+        if (!CanGenerateFaceFromSourceShape())
         {
             return;
         }
 
-        var generateDialog = new GenerateFaceFromRegionDialog(_defaultFaceGenerationSettings, true)
+        var generateDialog = new FaceGenerationSettingsDialog(_defaultFaceGenerationSettings, "Create Face from Face Source Shape")
         {
             Owner = _ownerWindow
         };
@@ -1341,23 +1341,23 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        _defaultFaceGenerationSettings = generateDialog.GenerationSettings;
+        _defaultFaceGenerationSettings = generateDialog.Settings;
         SavePreferences();
         try
         {
             await _progressDialogService.RunAsync(
-                new EditorProgressRequest("Generating Face", "Generating Face from selected Panel2D region...", EditorProgressMode.Determinate),
+                new EditorProgressRequest("Creating Face", "Creating Face from Face Source Shape...", EditorProgressMode.Determinate),
                 (progress, _) =>
                 {
-                    _documentWorkspace.GenerateFaceFromSelectedPanel2DRegion(generateDialog.SourceRegion, generateDialog.GenerationSettings, progress);
+                    _documentWorkspace.GenerateFaceFromSelectedFaceSourceShape(generateDialog.Settings, progress);
                     return Task.CompletedTask;
                 });
         }
         catch (Exception ex)
         {
             StatusMessage = ex.Message;
-            AddOutputEntry($"Generate Face failed: {ex.Message}", OutputLogStatus.Error);
-            MessageBox.Show(ex.Message, "Generate Face Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+            AddOutputEntry($"Create Face from Face Source Shape failed: {ex.Message}", OutputLogStatus.Error);
+            MessageBox.Show(ex.Message, "Create Face from Face Source Shape Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -4226,6 +4226,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (GenerateFaceFromRegionCommand is RelayCommand generateFaceRelayCommand)
         {
             generateFaceRelayCommand.RaiseCanExecuteChanged();
+        }
+
+        if (GenerateFaceFromSourceShapeCommand is RelayCommand generateFaceFromSourceShapeRelayCommand)
+        {
+            generateFaceFromSourceShapeRelayCommand.RaiseCanExecuteChanged();
         }
 
         if (RegenerateFaceCommand is RelayCommand regenerateFaceRelayCommand)

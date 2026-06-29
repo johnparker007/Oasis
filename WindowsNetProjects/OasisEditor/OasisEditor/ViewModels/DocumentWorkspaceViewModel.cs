@@ -123,7 +123,7 @@ public sealed class DocumentWorkspaceViewModel
 
         progress ??= NoOpEditorProgressReporter.Instance;
         var title = $"{sourceDocument.Title} Face";
-        progress.Report(0.0, "Generating Face from selected Panel2D region...");
+        progress.Report(0.0, "Generating legacy Face from selected Panel2D region...");
         var result = _faceGenerationService.GenerateFromPanelRegion(
             sourceDocument.GetPanelDocument(),
             sourceRegion,
@@ -147,7 +147,7 @@ public sealed class DocumentWorkspaceViewModel
         _addOutputEntry($"Generated face '{document.Title}' from Panel2D region with {result.ArtworkElementCount} artwork element(s), {result.ConvertedLampCount} lamp window(s), {result.ConvertedReelDisplayCount} reel display(s), {result.ConvertedSevenSegmentDisplayCount} seven-segment display(s), {result.ConvertedAlphaDisplayCount} alpha display(s), and {result.ConvertedButtonCount} button(s).", OutputLogStatus.Info);
         LogFaceMaskLayerStatus(generatedFaceDocument, loadedProject);
         LogFaceDiagnostics(generatedFaceDocument);
-        progress.Report(1.0, "Face generation complete.");
+        progress.Report(1.0, "Legacy Face generation from selected Panel2D region complete.");
         return document;
     }
 
@@ -186,7 +186,7 @@ public sealed class DocumentWorkspaceViewModel
         ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
         _setStatusMessage($"Generated face document from Face Source Shape '{shape.Name}'.");
         _addOutputEntry($"Generated face '{document.Title}' from Face Source Shape '{shape.Name}'.", OutputLogStatus.Info);
-        progress.Report(1.0, "Face generation complete.");
+        progress.Report(1.0, "Face creation from Face Source Shape complete.");
         return document;
     }
 
@@ -316,8 +316,8 @@ public sealed class DocumentWorkspaceViewModel
                 AffectsPersistence: true));
         selectedDocument.MarkDirty();
 
-        _setStatusMessage($"Regenerated face '{selectedDocument.Title}' from source Panel2D.");
-        _addOutputEntry($"Regenerated face '{selectedDocument.Title}' from source Panel2D with {result.UpdatedElementCount} updated generated element(s), {result.AddedElementCount} added generated element(s), {result.RemovedGeneratedElementCount} removed stale generated element(s), and {result.PreservedManualElementCount} preserved manual element(s).", OutputLogStatus.Info);
+        _setStatusMessage($"Regenerated face '{selectedDocument.Title}' from Face Source Shape/source Panel2D metadata.");
+        _addOutputEntry($"Regenerated face '{selectedDocument.Title}' from Face Source Shape/source Panel2D metadata with {result.UpdatedElementCount} updated generated element(s), {result.AddedElementCount} added generated element(s), {result.RemovedGeneratedElementCount} removed stale generated element(s), and {result.PreservedManualElementCount} preserved manual element(s).", OutputLogStatus.Info);
         LogFaceMaskLayerStatus(regeneratedFaceDocument, loadedProject);
         LogFaceDiagnostics(regeneratedFaceDocument);
         progress.Report(1.0, "Face regeneration complete.");
