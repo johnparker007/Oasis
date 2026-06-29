@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows;
@@ -10,6 +11,8 @@ using System.Windows.Media.Media3D;
 using System.Windows.Threading;
 using OasisEditor.Features.CabinetEditor.Models;
 using OasisEditor.Features.CabinetEditor.Services;
+using OasisEditor.Rendering;
+using SkiaSharp;
 
 namespace OasisEditor.Features.CabinetEditor.ViewModels;
 
@@ -202,7 +205,7 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
             }
 
             var previewMode = SelectedLampPreviewMode;
-            var preview = ResolvePreviewImage(document, faceDocument, previewMode);
+            var preview = ResolvePreviewImage(document, faceDocument, previewMode, out var livePreviewTexture);
             if (preview is null)
             {
                 continue;
@@ -211,7 +214,7 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
             var targetOverride = _document.GetCabinetDocument().GetTargetOverride(target.Id);
             if (TryCreatePreviewGeometry(target.Target, targetOverride, preview, out var geometry, out var imageBrush))
             {
-                _facePreviewEntriesByDocumentId[document.DocumentId] = new CabinetFacePreviewEntry(document.DocumentId, target.Id, geometry, imageBrush);
+                _facePreviewEntriesByDocumentId[document.DocumentId] = new CabinetFacePreviewEntry(document.DocumentId, target.Id, geometry, imageBrush, livePreviewTexture);
                 previewGroup.Children.Add(geometry);
             }
         }
@@ -277,28 +280,48 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
             return;
         }
 
-        var preview = _previewRenderer.RenderPreview(
-            faceDocument,
-            document.RuntimeState,
-            CabinetLampPreviewMode.Live,
-            FaceDocumentArtworkPreviewRenderer.LivePreviewRenderOptions);
-        if (preview is null)
+        if (entry.LivePreviewTexture is null)
         {
             return;
         }
 
-        entry.ImageBrush.ImageSource = preview;
+        var totalStopwatch = Stopwatch.StartNew();
+        var composeStopwatch = Stopwatch.StartNew();
+        using var result = FaceCompositor.Shared.Compose(faceDocument, document.RuntimeState, FaceDocumentArtworkPreviewRenderer.LivePreviewRenderOptions);
+        composeStopwatch.Stop();
+        if (!result.Rendered || result.Bitmap is null)
+        {
+            return;
+        }
+
+        var textureStopwatch = Stopwatch.StartNew();
+        var textureRecreated = entry.LivePreviewTexture.Update(result.Bitmap);
+        textureStopwatch.Stop();
+
+        var materialStopwatch = Stopwatch.StartNew();
+        if (textureRecreated)
+        {
+            entry.ImageBrush.ImageSource = entry.LivePreviewTexture.Bitmap;
+        }
+        materialStopwatch.Stop();
+        totalStopwatch.Stop();
+        Trace.WriteLineIf(totalStopwatch.ElapsedMilliseconds > 16,
+            $"Cabinet3D Live preview update face={faceDocumentId} compose={composeStopwatch.Elapsed.TotalMilliseconds:0.00}ms texture={textureStopwatch.Elapsed.TotalMilliseconds:0.00}ms material={materialStopwatch.Elapsed.TotalMilliseconds:0.00}ms total={totalStopwatch.Elapsed.TotalMilliseconds:0.00}ms textureRecreated={textureRecreated}");
     }
 
-    private BitmapSource? ResolvePreviewImage(DocumentTabViewModel document, FaceDocumentModel faceDocument, string previewMode)
+    private BitmapSource? ResolvePreviewImage(DocumentTabViewModel document, FaceDocumentModel faceDocument, string previewMode, out CabinetLivePreviewTexture? livePreviewTexture)
     {
+        livePreviewTexture = null;
         if (previewMode == CabinetLampPreviewMode.Live)
         {
-            return _previewRenderer.RenderPreview(
-                faceDocument,
-                document.RuntimeState,
-                previewMode,
-                FaceDocumentArtworkPreviewRenderer.LivePreviewRenderOptions);
+            using var result = FaceCompositor.Shared.Compose(faceDocument, document.RuntimeState, FaceDocumentArtworkPreviewRenderer.LivePreviewRenderOptions);
+            if (!result.Rendered || result.Bitmap is null)
+            {
+                return null;
+            }
+
+            livePreviewTexture = CabinetLivePreviewTexture.Create(result.Bitmap);
+            return livePreviewTexture.Bitmap;
         }
 
         var cacheKey = CabinetStaticPreviewCacheKey.Create(document.DocumentId, document.FaceDocumentJson, previewMode);
@@ -376,7 +399,57 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
     private bool CanLoad() => !IsLoading && !string.IsNullOrWhiteSpace(ModelPath);
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 
-    private sealed record CabinetFacePreviewEntry(Guid FaceDocumentId, string TargetId, GeometryModel3D Geometry, ImageBrush ImageBrush);
+    private sealed record CabinetFacePreviewEntry(Guid FaceDocumentId, string TargetId, GeometryModel3D Geometry, ImageBrush ImageBrush, CabinetLivePreviewTexture? LivePreviewTexture);
+
+    private sealed class CabinetLivePreviewTexture
+    {
+        private CabinetLivePreviewTexture(WriteableBitmap bitmap)
+        {
+            Bitmap = bitmap;
+        }
+
+        public WriteableBitmap Bitmap { get; private set; }
+
+        public static CabinetLivePreviewTexture Create(SKBitmap source)
+        {
+            var texture = new CabinetLivePreviewTexture(CreateBitmap(source.Width, source.Height));
+            texture.WritePixels(source);
+            return texture;
+        }
+
+        public bool Update(SKBitmap source)
+        {
+            if (Bitmap.PixelWidth != source.Width || Bitmap.PixelHeight != source.Height)
+            {
+                Bitmap = CreateBitmap(source.Width, source.Height);
+                WritePixels(source);
+                return true;
+            }
+
+            WritePixels(source);
+            return false;
+        }
+
+        private void WritePixels(SKBitmap source)
+        {
+            var pixels = source.GetPixels();
+            if (pixels == IntPtr.Zero)
+            {
+                return;
+            }
+
+            Bitmap.WritePixels(
+                new Int32Rect(0, 0, source.Width, source.Height),
+                pixels,
+                source.ByteCount,
+                source.RowBytes);
+        }
+
+        private static WriteableBitmap CreateBitmap(int width, int height)
+        {
+            return new WriteableBitmap(width, height, 96d, 96d, PixelFormats.Pbgra32, null);
+        }
+    }
 
     private sealed record CabinetStaticPreviewCacheKey(Guid FaceDocumentId, string FaceDocumentJson, string PreviewMode)
     {

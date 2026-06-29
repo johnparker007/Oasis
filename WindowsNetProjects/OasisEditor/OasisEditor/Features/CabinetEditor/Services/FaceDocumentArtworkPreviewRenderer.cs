@@ -8,7 +8,7 @@ namespace OasisEditor.Features.CabinetEditor.Services;
 
 public sealed class FaceDocumentArtworkPreviewRenderer
 {
-    public static FaceCompositorRenderOptions LivePreviewRenderOptions { get; } = new() { MaxWidth = 512, MaxHeight = 512 };
+    public static FaceCompositorRenderOptions LivePreviewRenderOptions { get; } = FaceCompositorRenderOptions.Default;
     public static FaceCompositorRenderOptions StaticPreviewRenderOptions { get; } = new() { MaxWidth = 1024, MaxHeight = 1024 };
 
     private const int DefaultPreviewWidth = 1024;
