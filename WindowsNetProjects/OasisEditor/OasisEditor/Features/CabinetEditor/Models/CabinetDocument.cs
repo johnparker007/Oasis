@@ -60,7 +60,26 @@ public static class CabinetDocumentTargetOverrideExtensions
     }
 }
 
-public sealed record CabinetPreviewSettings(bool ShowTargetOverlays, bool ShowFaceBackgrounds)
+public sealed record CabinetPreviewSettings(bool ShowTargetOverlays, bool ShowFaceBackgrounds, string LampPreviewMode = CabinetLampPreviewMode.BackgroundOnly)
 {
-    public static CabinetPreviewSettings Default => new(true, true);
+    public static CabinetPreviewSettings Default => new(true, true, CabinetLampPreviewMode.BackgroundOnly);
+
+    public CabinetPreviewSettings Normalized() => new(ShowTargetOverlays, ShowFaceBackgrounds, CabinetLampPreviewMode.Normalize(LampPreviewMode));
+}
+
+public static class CabinetLampPreviewMode
+{
+    public const string BackgroundOnly = "Background Only";
+    public const string LampsOff = "Lamps Off";
+    public const string LampsAllOn = "Lamps All On";
+
+    public static string Normalize(string? mode)
+    {
+        return mode?.Trim() switch
+        {
+            LampsOff => LampsOff,
+            LampsAllOn => LampsAllOn,
+            _ => BackgroundOnly
+        };
+    }
 }

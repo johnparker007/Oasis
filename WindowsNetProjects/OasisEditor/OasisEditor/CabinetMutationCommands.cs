@@ -19,6 +19,56 @@ internal static class CabinetMutationCommands
         return new SetCabinetTargetOverrideCommand(documentId, document, targetId, null, null, faceFlipHorizontal, "Set cabinet target horizontal flip");
     }
 
+    public static Commands.ICommand CreateSetPreviewLampModeCommand(Guid documentId, DocumentTabViewModel document, string lampPreviewMode)
+    {
+        return new SetCabinetPreviewLampModeCommand(documentId, document, CabinetLampPreviewMode.Normalize(lampPreviewMode));
+    }
+
+    private sealed class SetCabinetPreviewLampModeCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
+    {
+        private readonly Guid _documentId;
+        private readonly DocumentTabViewModel _document;
+        private readonly string _lampPreviewMode;
+        private CabinetDocument? _originalDocument;
+
+        public SetCabinetPreviewLampModeCommand(Guid documentId, DocumentTabViewModel document, string lampPreviewMode)
+        {
+            _documentId = documentId;
+            _document = document;
+            _lampPreviewMode = CabinetLampPreviewMode.Normalize(lampPreviewMode);
+        }
+
+        public Guid DocumentId => _documentId;
+        public string Description => "Set cabinet lamp preview mode";
+        public bool WasExecuted { get; private set; }
+
+        public void Execute()
+        {
+            WasExecuted = false;
+            var current = _document.GetCabinetDocument();
+            if (string.Equals(CabinetLampPreviewMode.Normalize(current.Preview.LampPreviewMode), _lampPreviewMode, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _originalDocument ??= current;
+            _document.SetCabinetDocument(current with { Preview = current.Preview with { LampPreviewMode = _lampPreviewMode } });
+            _document.MarkDirty();
+            WasExecuted = true;
+        }
+
+        public void Undo()
+        {
+            if (_originalDocument is null)
+            {
+                return;
+            }
+
+            _document.SetCabinetDocument(_originalDocument);
+            _document.MarkDirty();
+        }
+    }
+
     private sealed class SetCabinetTargetOverrideCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
     {
         private readonly Guid _documentId;

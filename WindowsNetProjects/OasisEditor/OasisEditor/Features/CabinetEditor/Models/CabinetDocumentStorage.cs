@@ -40,7 +40,7 @@ public static class CabinetDocumentStorage
                     .Where(targetOverride => !string.IsNullOrWhiteSpace(targetOverride.TargetId))
                     .Select(targetOverride => targetOverride.Normalized())
                     .ToArray(),
-                Preview = parsed.Preview ?? CabinetPreviewSettings.Default
+                Preview = (parsed.Preview ?? CabinetPreviewSettings.Default).Normalized()
             };
             return true;
         }

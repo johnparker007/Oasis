@@ -56,6 +56,7 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
     public ICommand ResetCameraCommand { get; }
     public IReadOnlyList<string> FrontSideOptions { get; } = new[] { CabinetTargetOverride.NormalFrontSide, CabinetTargetOverride.InvertedFrontSide };
     public IReadOnlyList<int> FaceRotationOptions { get; } = new[] { 0, 90, 180, 270 };
+    public IReadOnlyList<string> LampPreviewModeOptions { get; } = new[] { CabinetLampPreviewMode.BackgroundOnly, CabinetLampPreviewMode.LampsOff, CabinetLampPreviewMode.LampsAllOn };
 
     public CabinetFaceTargetViewModel? SelectedFaceTarget
     {
@@ -70,6 +71,12 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(SelectedFaceRotation));
             OnPropertyChanged(nameof(IsSelectedFaceFlippedHorizontally));
         }
+    }
+
+    public string SelectedLampPreviewMode
+    {
+        get => CabinetLampPreviewMode.Normalize(_document.GetCabinetDocument().Preview.LampPreviewMode);
+        set => _document.CommandService.Execute(CabinetMutationCommands.CreateSetPreviewLampModeCommand(_document.DocumentId, _document, value));
     }
 
     public bool HasSelectedFaceTarget => SelectedFaceTarget is not null;
@@ -109,6 +116,7 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(SelectedFrontSide));
         OnPropertyChanged(nameof(SelectedFaceRotation));
         OnPropertyChanged(nameof(IsSelectedFaceFlippedHorizontally));
+        OnPropertyChanged(nameof(SelectedLampPreviewMode));
         RefreshFacePreviews();
     }
 
@@ -177,7 +185,7 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
                 continue;
             }
 
-            var preview = _previewRenderer.RenderPreview(faceDocument);
+            var preview = _previewRenderer.RenderPreview(faceDocument, _document.GetCabinetDocument().Preview.LampPreviewMode);
             if (preview is null)
             {
                 continue;
