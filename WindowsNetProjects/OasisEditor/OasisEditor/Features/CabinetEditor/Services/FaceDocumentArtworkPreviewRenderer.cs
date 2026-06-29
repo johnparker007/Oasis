@@ -8,16 +8,20 @@ namespace OasisEditor.Features.CabinetEditor.Services;
 
 public sealed class FaceDocumentArtworkPreviewRenderer
 {
+    public static FaceCompositorRenderOptions LivePreviewRenderOptions { get; } = FaceCompositorRenderOptions.Default;
+    public static FaceCompositorRenderOptions StaticPreviewRenderOptions { get; } = new() { MaxWidth = 1024, MaxHeight = 1024 };
+
     private const int DefaultPreviewWidth = 1024;
     private const int DefaultPreviewHeight = 1024;
 
-    public BitmapSource? RenderPreview(FaceDocumentModel faceDocument, string? lampPreviewMode = null)
+    public BitmapSource? RenderPreview(FaceDocumentModel faceDocument, MachineRuntimeState runtimeState, string? lampPreviewMode = null, FaceCompositorRenderOptions? renderOptions = null)
     {
         ArgumentNullException.ThrowIfNull(faceDocument);
+        ArgumentNullException.ThrowIfNull(runtimeState);
 
         var normalizedMode = CabinetLampPreviewMode.Normalize(lampPreviewMode);
         if (normalizedMode != CabinetLampPreviewMode.BackgroundOnly
-            && TryRenderRuntimeTexturePreview(faceDocument, normalizedMode, out var runtimePreview))
+            && TryRenderCompositedPreview(faceDocument, runtimeState, normalizedMode, renderOptions, out var runtimePreview))
         {
             return runtimePreview;
         }
@@ -73,9 +77,28 @@ public sealed class FaceDocumentArtworkPreviewRenderer
     }
 
 
-    private static bool TryRenderRuntimeTexturePreview(FaceDocumentModel faceDocument, string lampPreviewMode, out BitmapSource? preview)
+    private static bool TryRenderCompositedPreview(FaceDocumentModel faceDocument, MachineRuntimeState runtimeState, string lampPreviewMode, FaceCompositorRenderOptions? renderOptions, out BitmapSource? preview)
     {
         preview = null;
+        var compositorRuntimeState = runtimeState;
+        if (lampPreviewMode != CabinetLampPreviewMode.Live)
+        {
+            compositorRuntimeState = CreateStaticPreviewRuntimeState(faceDocument, lampPreviewMode);
+        }
+
+        renderOptions ??= lampPreviewMode == CabinetLampPreviewMode.Live ? LivePreviewRenderOptions : StaticPreviewRenderOptions;
+        using var result = FaceCompositor.Shared.Compose(faceDocument, compositorRuntimeState, renderOptions);
+        if (!result.Rendered || result.Bitmap is null)
+        {
+            return false;
+        }
+
+        preview = ToBitmapSource(result.Bitmap);
+        return preview is not null;
+    }
+
+    private static MachineRuntimeState CreateStaticPreviewRuntimeState(FaceDocumentModel faceDocument, string lampPreviewMode)
+    {
         var runtimeState = new MachineRuntimeState();
         if (lampPreviewMode == CabinetLampPreviewMode.LampsAllOn)
         {
@@ -88,15 +111,7 @@ public sealed class FaceDocumentArtworkPreviewRenderer
             }
         }
 
-        using var renderer = new FaceTexturePreviewRenderer(ResolveAssetPathOrNull);
-        using var result = renderer.Render(faceDocument, runtimeState);
-        if (!result.Rendered || result.Bitmap is null)
-        {
-            return false;
-        }
-
-        preview = ToBitmapSource(result.Bitmap);
-        return preview is not null;
+        return runtimeState;
     }
 
     private static BitmapSource? ToBitmapSource(SKBitmap bitmap)

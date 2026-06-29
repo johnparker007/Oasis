@@ -7,6 +7,10 @@ namespace OasisEditor.Rendering;
 public interface IFace2DRenderer
 {
     void Render(SKCanvas canvas, FaceDocumentModel faceDocument, MachineRuntimeState runtimeState, PanelViewportTransform viewportTransform);
+
+    void RenderStaticBase(SKCanvas canvas, FaceDocumentModel faceDocument, MachineRuntimeState runtimeState, PanelViewportTransform viewportTransform);
+
+    void RenderLampOverlay(SKCanvas canvas, FaceDocumentModel faceDocument, MachineRuntimeState runtimeState);
 }
 
 public sealed class Face2DRenderer : IFace2DRenderer
@@ -80,6 +84,53 @@ public sealed class Face2DRenderer : IFace2DRenderer
         {
             _trayDebugOverlayRenderer.Render(canvas, faceDocument, viewportTransform);
         }
+    }
+
+    public void RenderStaticBase(SKCanvas canvas, FaceDocumentModel faceDocument, MachineRuntimeState runtimeState, PanelViewportTransform viewportTransform)
+    {
+        ArgumentNullException.ThrowIfNull(canvas);
+        ArgumentNullException.ThrowIfNull(faceDocument);
+        ArgumentNullException.ThrowIfNull(runtimeState);
+
+        var elements = faceDocument.Elements;
+        foreach (var artwork in elements.OfType<FaceArtworkElement>())
+        {
+            DrawArtwork(canvas, artwork, viewportTransform);
+        }
+
+        foreach (var reelDisplay in elements.OfType<FaceReelDisplayElement>())
+        {
+            DrawReelDisplay(canvas, reelDisplay, runtimeState, viewportTransform);
+        }
+
+        foreach (var sevenSegmentDisplay in elements.OfType<FaceSevenSegmentDisplayElement>())
+        {
+            DrawSevenSegmentDisplay(canvas, sevenSegmentDisplay, runtimeState, viewportTransform);
+        }
+
+        foreach (var alphaDisplay in elements.OfType<FaceAlphaDisplayElement>())
+        {
+            DrawAlphaDisplay(canvas, alphaDisplay, runtimeState, viewportTransform);
+        }
+
+        foreach (var button in elements.OfType<FaceButtonElement>())
+        {
+            DrawButton(canvas, button, viewportTransform);
+        }
+
+        if (_renderTrayDebugOverlay)
+        {
+            _trayDebugOverlayRenderer.Render(canvas, faceDocument, viewportTransform);
+        }
+    }
+
+    public void RenderLampOverlay(SKCanvas canvas, FaceDocumentModel faceDocument, MachineRuntimeState runtimeState)
+    {
+        ArgumentNullException.ThrowIfNull(canvas);
+        ArgumentNullException.ThrowIfNull(faceDocument);
+        ArgumentNullException.ThrowIfNull(runtimeState);
+
+        DrawLampIllumination(canvas, faceDocument.MaskLayer, faceDocument.Elements.OfType<FaceLampWindowElement>(), runtimeState);
     }
 
 

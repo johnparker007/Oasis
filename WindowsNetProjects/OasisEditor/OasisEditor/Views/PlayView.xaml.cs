@@ -42,7 +42,7 @@ public partial class PlayView : UserControl
     private const double LegacyReelPositionsPerRevolution = 96d;
     private const double ReelDragSpeedScale = 3d;
     private readonly IPanel2DRenderer _skiaRenderer = new Panel2DRenderer([new BackgroundElementRenderer(), new LampElementRenderer(), new ReelElementRenderer(), new SevenSegmentElementRenderer(), new AlphaElementRenderer(), new VfdDotMatrixElementRenderer()], "PlayView");
-    private readonly IFace2DRenderer _faceRenderer = new Face2DRenderer();
+    private readonly IFaceCompositor _faceCompositor = FaceCompositor.Shared;
     private readonly IFaceInputTargetResolver _faceInputTargetResolver = FaceInputTargetResolver.Instance;
 
     public PlayView()
@@ -200,7 +200,7 @@ public partial class PlayView : UserControl
             return;
         }
 
-        _faceRenderer.Render(
+        _faceCompositor.Render(
             surface.Canvas,
             selected.GetFaceDocument(),
             selected.RuntimeState,
@@ -230,7 +230,7 @@ public partial class PlayView : UserControl
                 return;
             }
 
-            _faceRenderer.Render(canvas, selected.GetFaceDocument(), selected.RuntimeState, viewport);
+            _faceCompositor.Render(canvas, selected.GetFaceDocument(), selected.RuntimeState, viewport);
         }
         else
         {

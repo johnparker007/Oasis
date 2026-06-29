@@ -1691,6 +1691,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             foreach (DocumentTabViewModel document in e.OldItems)
             {
                 document.PropertyChanged -= OnOpenDocumentPropertyChanged;
+                document.FaceVisualStateChanged -= OnOpenDocumentFaceVisualStateChanged;
             }
         }
 
@@ -1699,6 +1700,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             foreach (DocumentTabViewModel document in e.NewItems)
             {
                 document.PropertyChanged += OnOpenDocumentPropertyChanged;
+                document.FaceVisualStateChanged += OnOpenDocumentFaceVisualStateChanged;
             }
         }
 
@@ -1712,6 +1714,17 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             && string.Equals(e.PropertyName, nameof(DocumentTabViewModel.FaceDocumentJson), StringComparison.Ordinal))
         {
             RefreshCabinetFacePreviews();
+        }
+    }
+
+    private void OnOpenDocumentFaceVisualStateChanged(FaceVisualStateChangedEvent visualStateChanged)
+    {
+        foreach (var cabinetViewer in OpenDocuments
+            .Where(document => document.Document.DocumentType == EditorDocumentType.Cabinet3D)
+            .Select(document => document.ExistingCabinetViewer)
+            .Where(viewer => viewer is not null))
+        {
+            cabinetViewer!.QueueFaceRuntimePreviewRefresh(visualStateChanged.DocumentId);
         }
     }
 

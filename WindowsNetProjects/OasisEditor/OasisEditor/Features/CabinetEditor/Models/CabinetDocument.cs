@@ -69,6 +69,7 @@ public sealed record CabinetPreviewSettings(bool ShowTargetOverlays, bool ShowFa
 
 public static class CabinetLampPreviewMode
 {
+    public const string Live = "Live";
     public const string BackgroundOnly = "Background Only";
     public const string LampsOff = "Lamps Off";
     public const string LampsAllOn = "Lamps All On";
@@ -77,6 +78,7 @@ public static class CabinetLampPreviewMode
     {
         return mode?.Trim() switch
         {
+            Live => Live,
             LampsOff => LampsOff,
             LampsAllOn => LampsAllOn,
             _ => BackgroundOnly
