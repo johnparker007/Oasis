@@ -1691,6 +1691,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             foreach (DocumentTabViewModel document in e.OldItems)
             {
                 document.PropertyChanged -= OnOpenDocumentPropertyChanged;
+                document.FaceVisualStateChanged -= OnOpenDocumentFaceVisualStateChanged;
             }
         }
 
@@ -1699,6 +1700,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             foreach (DocumentTabViewModel document in e.NewItems)
             {
                 document.PropertyChanged += OnOpenDocumentPropertyChanged;
+                document.FaceVisualStateChanged += OnOpenDocumentFaceVisualStateChanged;
             }
         }
 
@@ -1713,6 +1715,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             RefreshCabinetFacePreviews();
         }
+    }
+
+    private void OnOpenDocumentFaceVisualStateChanged(FaceVisualStateChangedEvent _)
+    {
+        RefreshCabinetFacePreviews();
     }
 
     private void RefreshCabinetFacePreviews()

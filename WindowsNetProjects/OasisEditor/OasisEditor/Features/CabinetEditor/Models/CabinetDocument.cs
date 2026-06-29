@@ -62,13 +62,14 @@ public static class CabinetDocumentTargetOverrideExtensions
 
 public sealed record CabinetPreviewSettings(bool ShowTargetOverlays, bool ShowFaceBackgrounds, string LampPreviewMode = CabinetLampPreviewMode.BackgroundOnly)
 {
-    public static CabinetPreviewSettings Default => new(true, true, CabinetLampPreviewMode.BackgroundOnly);
+    public static CabinetPreviewSettings Default => new(true, true, CabinetLampPreviewMode.Live);
 
     public CabinetPreviewSettings Normalized() => new(ShowTargetOverlays, ShowFaceBackgrounds, CabinetLampPreviewMode.Normalize(LampPreviewMode));
 }
 
 public static class CabinetLampPreviewMode
 {
+    public const string Live = "Live";
     public const string BackgroundOnly = "Background Only";
     public const string LampsOff = "Lamps Off";
     public const string LampsAllOn = "Lamps All On";
@@ -77,6 +78,7 @@ public static class CabinetLampPreviewMode
     {
         return mode?.Trim() switch
         {
+            Live => Live,
             LampsOff => LampsOff,
             LampsAllOn => LampsAllOn,
             _ => BackgroundOnly

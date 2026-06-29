@@ -56,7 +56,7 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
     public ICommand ResetCameraCommand { get; }
     public IReadOnlyList<string> FrontSideOptions { get; } = new[] { CabinetTargetOverride.NormalFrontSide, CabinetTargetOverride.InvertedFrontSide };
     public IReadOnlyList<int> FaceRotationOptions { get; } = new[] { 0, 90, 180, 270 };
-    public IReadOnlyList<string> LampPreviewModeOptions { get; } = new[] { CabinetLampPreviewMode.BackgroundOnly, CabinetLampPreviewMode.LampsOff, CabinetLampPreviewMode.LampsAllOn };
+    public IReadOnlyList<string> LampPreviewModeOptions { get; } = new[] { CabinetLampPreviewMode.Live, CabinetLampPreviewMode.BackgroundOnly, CabinetLampPreviewMode.LampsOff, CabinetLampPreviewMode.LampsAllOn };
 
     public CabinetFaceTargetViewModel? SelectedFaceTarget
     {
@@ -175,17 +175,17 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
         }
 
         var previewGroup = new Model3DGroup();
-        foreach (var faceDocument in _openDocumentsAccessor()
-            .Where(document => document.Document.DocumentType == EditorDocumentType.Face)
-            .Select(document => document.GetFaceDocument()))
+        foreach (var document in _openDocumentsAccessor()
+            .Where(document => document.Document.DocumentType == EditorDocumentType.Face))
         {
+            var faceDocument = document.GetFaceDocument();
             var targetId = NormalizeTargetId(faceDocument.AssignedCabinetFaceTargetId);
             if (targetId is null || !validTargets.TryGetValue(targetId, out var target))
             {
                 continue;
             }
 
-            var preview = _previewRenderer.RenderPreview(faceDocument, _document.GetCabinetDocument().Preview.LampPreviewMode);
+            var preview = _previewRenderer.RenderPreview(faceDocument, document.RuntimeState, _document.GetCabinetDocument().Preview.LampPreviewMode);
             if (preview is null)
             {
                 continue;
