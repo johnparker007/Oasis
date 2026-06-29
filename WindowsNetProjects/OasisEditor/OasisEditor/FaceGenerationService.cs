@@ -106,6 +106,12 @@ internal sealed class FaceGenerationService
         var assetPath = FaceSourceShapeTransformService.TryGenerateBackground(sourcePanel, sourceShape, output.Width, output.Height, projectDirectory, generatedDirectory);
         var settings = (generationSettings ?? FaceGenerationSettingsModel.Default).Normalize();
         var faceDocumentId = Guid.NewGuid().ToString("N");
+        progress?.Report(0.2, "Converting source-shape lamps...");
+        var lampWindows = sourcePanel.Elements
+            .Where(element => element.Kind == PanelElementKind.Lamp && IsCenterInsideSourceShape(element, sourceShape))
+            .Select(element => CreateLampWindowFromSourceShape(element, sourceShape, output.Width, output.Height))
+            .OfType<FaceLampWindowElement>()
+            .ToArray();
         var maskLayer = _maskLayerExtractionService.GenerateMaskLayer(
             new Panel2DDocumentModel(),
             region.ToRect(),
@@ -143,12 +149,13 @@ internal sealed class FaceGenerationService
             Layers =
             [
                 new FaceLayerModel { Id = "layer-artwork", Name = "Artwork", IsVisible = true },
-                new FaceLayerModel { Id = "layer-face-mask", Name = "Face Mask", IsVisible = true }
+                new FaceLayerModel { Id = "layer-face-mask", Name = "Face Mask", IsVisible = true },
+                new FaceLayerModel { Id = "layer-runtime-lamps", Name = "Runtime Lamps", IsVisible = true }
             ],
-            Elements = [artwork]
+            Elements = [artwork, .. lampWindows]
         };
         progress?.Report(1.0, "Face generation complete.");
-        return new FaceGenerationResult(document, 0, 1, 0, 0, 0, 0);
+        return new FaceGenerationResult(document, lampWindows.Length, 1, 0, 0, 0, 0);
     }
 
     public FaceGenerationResult GenerateFromPanelRegion(
@@ -325,6 +332,56 @@ internal sealed class FaceGenerationService
         };
     }
 
+    private FaceLampWindowElement? CreateLampWindowFromSourceShape(PanelElementModel sourceElement, PanelFaceSourceShapeModel sourceShape, int faceWidth, int faceHeight)
+    {
+        var sourceCorners = new[]
+        {
+            (X: sourceElement.X, Y: sourceElement.Y),
+            (X: sourceElement.X + sourceElement.Width, Y: sourceElement.Y),
+            (X: sourceElement.X + sourceElement.Width, Y: sourceElement.Y + sourceElement.Height),
+            (X: sourceElement.X, Y: sourceElement.Y + sourceElement.Height)
+        };
+        var transformed = new List<FacePointModel>(4);
+        foreach (var corner in sourceCorners)
+        {
+            if (!FaceSourceShapeTransformService.TryTransformPanelPointToFace(sourceShape, faceWidth, faceHeight, corner.X, corner.Y, out var point))
+            {
+                return null;
+            }
+
+            transformed.Add(point);
+        }
+
+        var minX = transformed.Min(point => point.X);
+        var minY = transformed.Min(point => point.Y);
+        var maxX = transformed.Max(point => point.X);
+        var maxY = transformed.Max(point => point.Y);
+        if (!PanelElementValidation.IsFinite(minX) || !PanelElementValidation.IsFinite(minY) || !PanelElementValidation.IsFinite(maxX) || !PanelElementValidation.IsFinite(maxY) || maxX <= minX || maxY <= minY)
+        {
+            return null;
+        }
+
+        _machineObjectReferenceResolver.TryGetReference(sourceElement, out var machineReference);
+        return new FaceLampWindowElement
+        {
+            ObjectId = CreateGeneratedElementId(sourceElement),
+            Name = sourceElement.Name ?? string.Empty,
+            X = Math.Round(minX, 2),
+            Y = Math.Round(minY, 2),
+            Width = Math.Round(maxX - minX, 2),
+            Height = Math.Round(maxY - minY, 2),
+            IsVisible = sourceElement.IsVisible,
+            IsLocked = sourceElement.IsLocked,
+            LinkedMachineObjectReference = machineReference.IsEmpty ? null : machineReference,
+            LinkedPanel2DElementId = string.IsNullOrWhiteSpace(sourceElement.ObjectId) ? null : sourceElement.ObjectId,
+            BulbMaskAssetPath = null,
+            SourceComponentIndex = sourceElement.SourceComponentIndex,
+            SharedSourceSetId = NormalizeOptional(sourceElement.SharedSourceSetId),
+            SharedSourceSetCount = sourceElement.SharedSourceSetCount,
+            SourceBlend = sourceElement.SourceBlend
+        };
+    }
+
     private FaceLampWindowElement CreateLampWindow(PanelElementModel sourceElement, Rect region)
     {
         _machineObjectReferenceResolver.TryGetReference(sourceElement, out var machineReference);
@@ -491,6 +548,16 @@ internal sealed class FaceGenerationService
         return string.IsNullOrWhiteSpace(sourceElement.ObjectId)
             ? $"face-artwork-{Guid.NewGuid():N}"
             : $"face-artwork-{sourceElement.ObjectId.Trim()}";
+    }
+
+    private static bool IsCenterInsideSourceShape(PanelElementModel element, PanelFaceSourceShapeModel sourceShape)
+    {
+        if (element.Width <= 0 || element.Height <= 0)
+        {
+            return false;
+        }
+
+        return FaceSourceShapeTransformService.ContainsPanelPoint(sourceShape, element.X + (element.Width / 2d), element.Y + (element.Height / 2d));
     }
 
     private static bool IsContainedBy(PanelElementModel element, Rect region)
