@@ -80,7 +80,7 @@ internal static class FaceSourceShapeTransformService
     {
         var points = new[] { shape.TopLeft, shape.TopRight, shape.BottomRight, shape.BottomLeft };
         var inside = false;
-        for (var i = 0, j = points.Length - 1; i < points.Length; j = i++)
+        for (int i = 0, j = points.Length - 1; i < points.Length; j = i++)
         {
             var pi = points[i];
             var pj = points[j];
