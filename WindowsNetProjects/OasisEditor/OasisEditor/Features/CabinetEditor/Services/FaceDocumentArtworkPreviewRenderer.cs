@@ -1,5 +1,7 @@
 using System.IO;
 using System.Windows.Media.Imaging;
+using OasisEditor.Features.CabinetEditor.Models;
+using OasisEditor.Rendering;
 using SkiaSharp;
 
 namespace OasisEditor.Features.CabinetEditor.Services;
@@ -9,9 +11,16 @@ public sealed class FaceDocumentArtworkPreviewRenderer
     private const int DefaultPreviewWidth = 1024;
     private const int DefaultPreviewHeight = 1024;
 
-    public BitmapSource? RenderPreview(FaceDocumentModel faceDocument)
+    public BitmapSource? RenderPreview(FaceDocumentModel faceDocument, string? lampPreviewMode = null)
     {
         ArgumentNullException.ThrowIfNull(faceDocument);
+
+        var normalizedMode = CabinetLampPreviewMode.Normalize(lampPreviewMode);
+        if (normalizedMode != CabinetLampPreviewMode.BackgroundOnly
+            && TryRenderRuntimeTexturePreview(faceDocument, normalizedMode, out var runtimePreview))
+        {
+            return runtimePreview;
+        }
 
         var bounds = ResolveBounds(faceDocument);
         if (bounds.Width <= 0d || bounds.Height <= 0d)
@@ -61,6 +70,52 @@ public sealed class FaceDocumentArtworkPreviewRenderer
         bitmap.EndInit();
         bitmap.Freeze();
         return bitmap;
+    }
+
+
+    private static bool TryRenderRuntimeTexturePreview(FaceDocumentModel faceDocument, string lampPreviewMode, out BitmapSource? preview)
+    {
+        preview = null;
+        var runtimeState = new MachineRuntimeState();
+        if (lampPreviewMode == CabinetLampPreviewMode.LampsAllOn)
+        {
+            foreach (var lampWindow in faceDocument.Elements.OfType<FaceLampWindowElement>())
+            {
+                if (lampWindow.LinkedMachineObjectReference is MachineObjectReference { Kind: MachineObjectKind.Lamp } reference && !reference.IsEmpty)
+                {
+                    runtimeState.SetLampIntensity(reference, 1d);
+                }
+            }
+        }
+
+        using var renderer = new FaceTexturePreviewRenderer(ResolveAssetPathOrNull);
+        using var result = renderer.Render(faceDocument, runtimeState);
+        if (!result.Rendered || result.Bitmap is null)
+        {
+            return false;
+        }
+
+        preview = ToBitmapSource(result.Bitmap);
+        return preview is not null;
+    }
+
+    private static BitmapSource? ToBitmapSource(SKBitmap bitmap)
+    {
+        using var image = SKImage.FromBitmap(bitmap);
+        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+        if (data is null)
+        {
+            return null;
+        }
+
+        using var stream = new MemoryStream(data.ToArray());
+        var source = new BitmapImage();
+        source.BeginInit();
+        source.CacheOption = BitmapCacheOption.OnLoad;
+        source.StreamSource = stream;
+        source.EndInit();
+        source.Freeze();
+        return source;
     }
 
     private static FacePreviewBounds ResolveBounds(FaceDocumentModel faceDocument)
@@ -150,6 +205,11 @@ public sealed class FaceDocumentArtworkPreviewRenderer
 
         image = SKImage.FromBitmap(bitmap);
         return true;
+    }
+
+    private static string? ResolveAssetPathOrNull(string? assetPath)
+    {
+        return TryResolveAssetPath(assetPath, out var resolvedPath) ? resolvedPath : null;
     }
 
     private static bool TryResolveAssetPath(string? assetPath, out string resolvedPath)

@@ -71,7 +71,9 @@
                 <DockPanel>
                     <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
                         <TextBlock FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="Oasis Face Targets" />
-                        <TextBlock Margin="0,4,0,0" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Text="{Binding CabinetViewer.FaceTargetStatus}" />
+                        <TextBlock Margin="0,8,0,3" Foreground="{DynamicResource TextSecondaryBrush}" Text="Lamp Preview" />
+                        <ComboBox ItemsSource="{Binding CabinetViewer.LampPreviewModeOptions}" SelectedItem="{Binding CabinetViewer.SelectedLampPreviewMode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBlock Margin="0,8,0,0" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Text="{Binding CabinetViewer.FaceTargetStatus}" />
                     </StackPanel>
                     <StackPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
                         <StackPanel.Style>
