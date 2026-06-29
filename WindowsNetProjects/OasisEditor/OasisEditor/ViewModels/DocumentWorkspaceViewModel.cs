@@ -133,7 +133,8 @@ public sealed class DocumentWorkspaceViewModel
             loadedProject.ProjectDirectory,
             loadedProject.GeneratedDirectory,
             generationSettings,
-            progress.CreateChild(0.0, 0.8));
+            progress.CreateChild(0.0, 0.8),
+            sourceDocument.FilePath);
 
         progress.Report(0.8, "Exporting runtime preview assets...");
         var generatedFaceDocument = ExportRuntimeAssetsForPreview(result.Document, loadedProject, progress.CreateChild(0.8, 0.95));
@@ -176,7 +177,8 @@ public sealed class DocumentWorkspaceViewModel
             loadedProject.ProjectDirectory,
             loadedProject.GeneratedDirectory,
             generationSettings,
-            progress.CreateChild(0.0, 0.8));
+            progress.CreateChild(0.0, 0.8),
+            sourceDocument.FilePath);
         var generatedFaceDocument = ExportRuntimeAssetsForPreview(result.Document, loadedProject, progress.CreateChild(0.8, 0.95));
         var faceJson = FaceDocumentStorage.Serialize(generatedFaceDocument);
         var faceEditorDocument = EditorDocument.CreateFaceStub(title).WithContentSummary(generatedFaceDocument.Summary ?? "Generated Face document.");
@@ -205,6 +207,8 @@ public sealed class DocumentWorkspaceViewModel
                 Title = faceDocument.Title,
                 Summary = faceDocument.Summary,
                 SourcePanel2DDocumentId = faceDocument.SourcePanel2DDocumentId,
+                SourcePanel2DDocumentPath = faceDocument.SourcePanel2DDocumentPath,
+                SourceFaceShapeId = faceDocument.SourceFaceShapeId,
                 AssignedCabinetFaceTargetId = faceDocument.AssignedCabinetFaceTargetId,
                 SourceRegion = faceDocument.SourceRegion,
                 LastRegeneratedAtUtc = faceDocument.LastRegeneratedAtUtc,
@@ -381,25 +385,32 @@ public sealed class DocumentWorkspaceViewModel
     private static string BuildSourcePanelMissingMessage(FaceDocumentModel faceDocument)
     {
         var sourceId = string.IsNullOrWhiteSpace(faceDocument.SourcePanel2DDocumentId)
-            ? "<missing>"
+            ? "<missing id>"
             : faceDocument.SourcePanel2DDocumentId.Trim();
-        return $"Face source Panel2D document '{sourceId}' could not be located among open documents. Open the source Panel2D tab, then retry.";
+        var sourcePath = string.IsNullOrWhiteSpace(faceDocument.SourcePanel2DDocumentPath)
+            ? "<missing path>"
+            : faceDocument.SourcePanel2DDocumentPath.Trim();
+        return $"Face source Panel2D document '{sourceId}' at '{sourcePath}' could not be located among open documents. Open the source Panel2D tab, then retry.";
     }
 
     private bool TryFindSourcePanelDocument(FaceDocumentModel faceDocument, out DocumentTabViewModel sourcePanelDocument)
     {
         sourcePanelDocument = null!;
         var sourceId = faceDocument.SourcePanel2DDocumentId?.Trim();
-        if (string.IsNullOrWhiteSpace(sourceId) || faceDocument.SourceRegion is not { IsValid: true })
+        var sourcePath = faceDocument.SourcePanel2DDocumentPath?.Trim();
+        if ((string.IsNullOrWhiteSpace(sourceId) && string.IsNullOrWhiteSpace(sourcePath)) || faceDocument.SourceRegion is not { IsValid: true })
         {
             return false;
         }
 
         var match = _openDocuments.FirstOrDefault(document =>
             document.Document.DocumentType == EditorDocumentType.Panel2D
-            && (string.Equals(document.DocumentId.ToString("N"), sourceId, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(document.DocumentId.ToString("D"), sourceId, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(document.FilePath, sourceId, StringComparison.OrdinalIgnoreCase)));
+            && ((!string.IsNullOrWhiteSpace(sourceId)
+                    && (string.Equals(document.DocumentId.ToString("N"), sourceId, StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(document.DocumentId.ToString("D"), sourceId, StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(document.FilePath, sourceId, StringComparison.OrdinalIgnoreCase)))
+                || (!string.IsNullOrWhiteSpace(sourcePath)
+                    && string.Equals(document.FilePath, sourcePath, StringComparison.OrdinalIgnoreCase))));
         if (match is null)
         {
             return false;
@@ -730,6 +741,8 @@ public sealed class DocumentWorkspaceViewModel
                 Title = document.Document.Title,
                 Summary = document.ContentSummary,
                 SourcePanel2DDocumentId = faceDocument.SourcePanel2DDocumentId,
+                SourcePanel2DDocumentPath = faceDocument.SourcePanel2DDocumentPath,
+                SourceFaceShapeId = faceDocument.SourceFaceShapeId,
                 AssignedCabinetFaceTargetId = faceDocument.AssignedCabinetFaceTargetId,
                 SourceRegion = faceDocument.SourceRegion,
                 LastRegeneratedAtUtc = faceDocument.LastRegeneratedAtUtc,

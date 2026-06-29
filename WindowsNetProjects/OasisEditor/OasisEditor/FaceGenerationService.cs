@@ -97,7 +97,8 @@ internal sealed class FaceGenerationService
         string? projectDirectory = null,
         string? generatedDirectory = null,
         FaceGenerationSettingsModel? generationSettings = null,
-        IEditorProgressReporter? progress = null)
+        IEditorProgressReporter? progress = null,
+        string? sourcePanel2DDocumentPath = null)
     {
         ArgumentNullException.ThrowIfNull(sourcePanel);
         ArgumentNullException.ThrowIfNull(sourceShape);
@@ -146,6 +147,7 @@ internal sealed class FaceGenerationService
             Summary = $"Generated from Face Source Shape '{sourceShape.Name}' ({output.Width} x {output.Height}).",
             SourcePanel2DDocumentId = NormalizeOptional(sourcePanel2DDocumentId),
             SourceFaceShapeId = NormalizeOptional(sourceShape.Id),
+            SourcePanel2DDocumentPath = NormalizeOptional(sourcePanel2DDocumentPath),
             AssignedCabinetFaceTargetId = NormalizeOptional(assignedCabinetFaceTargetId),
             SourceRegion = region,
             LastRegeneratedAtUtc = DateTime.UtcNow,
@@ -250,7 +252,8 @@ internal sealed class FaceGenerationService
         string? projectDirectory = null,
         string? generatedDirectory = null,
         FaceGenerationSettingsModel? generationSettings = null,
-        IEditorProgressReporter? progress = null)
+        IEditorProgressReporter? progress = null,
+        string? sourcePanel2DDocumentPath = null)
     {
         ArgumentNullException.ThrowIfNull(sourcePanel);
         ArgumentNullException.ThrowIfNull(sourceRegion);
@@ -302,6 +305,7 @@ internal sealed class FaceGenerationService
             Title = resolvedTitle,
             Summary = $"Generated from Panel2D source region ({Format(region.X)}, {Format(region.Y)}, {Format(region.Width)}, {Format(region.Height)}).",
             SourcePanel2DDocumentId = string.IsNullOrWhiteSpace(sourcePanel2DDocumentId) ? null : sourcePanel2DDocumentId.Trim(),
+            SourcePanel2DDocumentPath = NormalizeOptional(sourcePanel2DDocumentPath),
             SourceRegion = sourceRegion,
             LastRegeneratedAtUtc = DateTime.UtcNow,
             GenerationSettings = settings,

@@ -159,6 +159,7 @@ public static class FaceDocumentStorage
             Title = file.Title ?? string.Empty,
             Summary = file.Summary,
             SourcePanel2DDocumentId = string.IsNullOrWhiteSpace(file.SourcePanel2DDocumentId) ? null : file.SourcePanel2DDocumentId.Trim(),
+            SourcePanel2DDocumentPath = string.IsNullOrWhiteSpace(file.SourcePanel2DDocumentPath) ? null : file.SourcePanel2DDocumentPath.Trim(),
             SourceFaceShapeId = string.IsNullOrWhiteSpace(file.SourceFaceShapeId) ? null : file.SourceFaceShapeId.Trim(),
             AssignedCabinetFaceTargetId = string.IsNullOrWhiteSpace(file.AssignedCabinetFaceTargetId) ? null : file.AssignedCabinetFaceTargetId.Trim(),
             SourceRegion = ToModel(file.SourceRegion),
@@ -193,6 +194,7 @@ public static class FaceDocumentStorage
             Title = model.Title,
             Summary = model.Summary,
             SourcePanel2DDocumentId = model.SourcePanel2DDocumentId,
+            SourcePanel2DDocumentPath = string.IsNullOrWhiteSpace(model.SourcePanel2DDocumentPath) ? null : model.SourcePanel2DDocumentPath.Trim(),
             SourceFaceShapeId = model.SourceFaceShapeId,
             AssignedCabinetFaceTargetId = string.IsNullOrWhiteSpace(model.AssignedCabinetFaceTargetId) ? null : model.AssignedCabinetFaceTargetId.Trim(),
             SourceRegion = ToFile(model.SourceRegion),
@@ -759,6 +761,7 @@ public sealed record FaceDocumentFile
     public string? Title { get; init; }
     public string? Summary { get; init; }
     public string? SourcePanel2DDocumentId { get; init; }
+    public string? SourcePanel2DDocumentPath { get; init; }
     public string? SourceFaceShapeId { get; init; }
     public string? AssignedCabinetFaceTargetId { get; init; }
     public FaceSourceRegionFile? SourceRegion { get; init; }

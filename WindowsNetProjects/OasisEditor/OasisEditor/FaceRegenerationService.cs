@@ -59,16 +59,47 @@ internal sealed class FaceRegenerationService
         var settings = (generationSettings ?? existingFace.GenerationSettings ?? FaceGenerationSettingsModel.Default).Normalize();
 
         progress.Report(0.15, "Generating replacement Face...");
-        var generated = _generationService.GenerateFromPanelRegion(
-            sourcePanel,
-            sourceRegion,
-            existingFace.Title,
-            existingFace.SourcePanel2DDocumentId,
-            inputDefinitions ?? [],
-            projectDirectory,
-            generatedDirectory,
-            settings,
-            progress.CreateChild(0.15, 0.45));
+        FaceGenerationResult generated;
+        if (!string.IsNullOrWhiteSpace(existingFace.SourceFaceShapeId))
+        {
+            var sourceShapeId = existingFace.SourceFaceShapeId.Trim();
+            var sourceShape = sourcePanel.FaceSourceShapes.FirstOrDefault(shape =>
+                string.Equals(shape.Id, sourceShapeId, StringComparison.OrdinalIgnoreCase));
+            if (sourceShape is null)
+            {
+                throw new InvalidOperationException($"Face source shape '{sourceShapeId}' could not be found in the source Panel2D document.");
+            }
+
+            var targetAspectRatio = sourceRegion.Width > 0 && sourceRegion.Height > 0
+                ? sourceRegion.Width / sourceRegion.Height
+                : (double?)null;
+            generated = _generationService.GenerateFromPanelFaceSourceShape(
+                sourcePanel,
+                sourceShape,
+                existingFace.Title,
+                existingFace.SourcePanel2DDocumentId,
+                existingFace.AssignedCabinetFaceTargetId,
+                targetAspectRatio,
+                projectDirectory,
+                generatedDirectory,
+                settings,
+                progress.CreateChild(0.15, 0.45),
+                existingFace.SourcePanel2DDocumentPath);
+        }
+        else
+        {
+            generated = _generationService.GenerateFromPanelRegion(
+                sourcePanel,
+                sourceRegion,
+                existingFace.Title,
+                existingFace.SourcePanel2DDocumentId,
+                inputDefinitions ?? [],
+                projectDirectory,
+                generatedDirectory,
+                settings,
+                progress.CreateChild(0.15, 0.45),
+                existingFace.SourcePanel2DDocumentPath);
+        }
 
         progress.Report(0.45, "Correlating regenerated elements...");
         var existingGeneratedByKey = existingFace.Elements
@@ -127,11 +158,12 @@ internal sealed class FaceRegenerationService
         {
             Id = existingFace.Id,
             Title = existingFace.Title,
-            Summary = $"Regenerated from Panel2D source region ({Format(sourceRegion.X)}, {Format(sourceRegion.Y)}, {Format(sourceRegion.Width)}, {Format(sourceRegion.Height)}).",
+            Summary = generated.Document.Summary ?? $"Regenerated from Panel2D source region ({Format(sourceRegion.X)}, {Format(sourceRegion.Y)}, {Format(sourceRegion.Width)}, {Format(sourceRegion.Height)}).",
             SourcePanel2DDocumentId = existingFace.SourcePanel2DDocumentId,
+            SourcePanel2DDocumentPath = existingFace.SourcePanel2DDocumentPath,
             SourceFaceShapeId = existingFace.SourceFaceShapeId,
             AssignedCabinetFaceTargetId = existingFace.AssignedCabinetFaceTargetId,
-            SourceRegion = sourceRegion,
+            SourceRegion = generated.Document.SourceRegion ?? sourceRegion,
             LastRegeneratedAtUtc = DateTime.UtcNow,
             GenerationSettings = settings,
             MaskLayer = generated.Document.MaskLayer,
