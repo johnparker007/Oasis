@@ -79,7 +79,7 @@ public sealed class FaceDocumentRoundTripTests
                     },
                     Provenance = new FaceArtworkProvenanceModel
                     {
-                        Generator = "Generate Face From Region",
+                        Generator = "Create Face from Face Source Shape",
                         GeneratedAtUtc = new DateTime(2026, 6, 7, 0, 0, 0, DateTimeKind.Utc),
                         SourcePanel2DElementId = "background-1",
                         SourcePanel2DElementKind = "background",

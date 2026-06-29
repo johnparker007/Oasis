@@ -35,7 +35,6 @@ internal sealed class FaceRegenerationService
     public FaceRegenerationResult Regenerate(
         FaceDocumentModel existingFace,
         Panel2DDocumentModel sourcePanel,
-        IReadOnlyList<InputDefinitionModel>? inputDefinitions = null,
         string? projectDirectory = null,
         string? generatedDirectory = null,
         FaceGenerationSettingsModel? generationSettings = null,
@@ -53,53 +52,40 @@ internal sealed class FaceRegenerationService
 
         if (existingFace.SourceRegion is not { IsValid: true } sourceRegion)
         {
-            throw new InvalidOperationException("Face document does not contain a valid SourceRegion regeneration metadata value.");
+            throw new InvalidOperationException("Face document does not contain valid Face Source Shape output bounds metadata.");
         }
 
         var settings = (generationSettings ?? existingFace.GenerationSettings ?? FaceGenerationSettingsModel.Default).Normalize();
 
         progress.Report(0.15, "Generating replacement Face...");
-        FaceGenerationResult generated;
-        if (!string.IsNullOrWhiteSpace(existingFace.SourceFaceShapeId))
+        if (string.IsNullOrWhiteSpace(existingFace.SourceFaceShapeId))
         {
-            var sourceShapeId = existingFace.SourceFaceShapeId.Trim();
-            var sourceShape = sourcePanel.FaceSourceShapes.FirstOrDefault(shape =>
-                string.Equals(shape.Id, sourceShapeId, StringComparison.OrdinalIgnoreCase));
-            if (sourceShape is null)
-            {
-                throw new InvalidOperationException($"Face source shape '{sourceShapeId}' could not be found in the source Panel2D document.");
-            }
+            throw new InvalidOperationException("Face document does not contain SourceFaceShapeId regeneration metadata.");
+        }
 
-            var targetAspectRatio = sourceRegion.Width > 0 && sourceRegion.Height > 0
-                ? sourceRegion.Width / sourceRegion.Height
-                : (double?)null;
-            generated = _generationService.GenerateFromPanelFaceSourceShape(
-                sourcePanel,
-                sourceShape,
-                existingFace.Title,
-                existingFace.SourcePanel2DDocumentId,
-                existingFace.AssignedCabinetFaceTargetId,
-                targetAspectRatio,
-                projectDirectory,
-                generatedDirectory,
-                settings,
-                progress.CreateChild(0.15, 0.45),
-                existingFace.SourcePanel2DDocumentPath);
-        }
-        else
+        var sourceShapeId = existingFace.SourceFaceShapeId.Trim();
+        var sourceShape = sourcePanel.FaceSourceShapes.FirstOrDefault(shape =>
+            string.Equals(shape.Id, sourceShapeId, StringComparison.OrdinalIgnoreCase));
+        if (sourceShape is null)
         {
-            generated = _generationService.GenerateFromPanelRegion(
-                sourcePanel,
-                sourceRegion,
-                existingFace.Title,
-                existingFace.SourcePanel2DDocumentId,
-                inputDefinitions ?? [],
-                projectDirectory,
-                generatedDirectory,
-                settings,
-                progress.CreateChild(0.15, 0.45),
-                existingFace.SourcePanel2DDocumentPath);
+            throw new InvalidOperationException($"Face Source Shape '{sourceShapeId}' could not be found in the source Panel2D document.");
         }
+
+        var targetAspectRatio = sourceRegion.Width > 0 && sourceRegion.Height > 0
+            ? sourceRegion.Width / sourceRegion.Height
+            : (double?)null;
+        var generated = _generationService.GenerateFromPanelFaceSourceShape(
+            sourcePanel,
+            sourceShape,
+            existingFace.Title,
+            existingFace.SourcePanel2DDocumentId,
+            existingFace.AssignedCabinetFaceTargetId,
+            targetAspectRatio,
+            projectDirectory,
+            generatedDirectory,
+            settings,
+            progress.CreateChild(0.15, 0.45),
+            existingFace.SourcePanel2DDocumentPath);
 
         progress.Report(0.45, "Correlating regenerated elements...");
         var existingGeneratedByKey = existingFace.Elements
@@ -158,7 +144,7 @@ internal sealed class FaceRegenerationService
         {
             Id = existingFace.Id,
             Title = existingFace.Title,
-            Summary = generated.Document.Summary ?? $"Regenerated from Panel2D source region ({Format(sourceRegion.X)}, {Format(sourceRegion.Y)}, {Format(sourceRegion.Width)}, {Format(sourceRegion.Height)}).",
+            Summary = generated.Document.Summary ?? $"Regenerated from Face Source Shape.",
             SourcePanel2DDocumentId = existingFace.SourcePanel2DDocumentId,
             SourcePanel2DDocumentPath = existingFace.SourcePanel2DDocumentPath,
             SourceFaceShapeId = existingFace.SourceFaceShapeId,

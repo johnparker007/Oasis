@@ -85,54 +85,6 @@ public sealed class FaceInputSystemTests
         Assert.False(resolved);
     }
 
-    [Fact]
-    public void GenerateFromPanelRegion_CreatesButtonsFromLinkedInputVisuals()
-    {
-        var visualId = Guid.NewGuid();
-        var panel = new Panel2DDocumentModel
-        {
-            Elements =
-            [
-                new PanelElementModel
-                {
-                    ObjectId = visualId.ToString("D"),
-                    Name = "Panel Start",
-                    Kind = PanelElementKind.Rectangle,
-                    X = 110,
-                    Y = 220,
-                    Width = 40,
-                    Height = 30,
-                    IsVisible = true
-                }
-            ]
-        };
-        var inputs = new[]
-        {
-            new InputDefinitionModel
-            {
-                Id = "start",
-                Name = "Start",
-                Kind = InputDefinitionKind.Button,
-                ButtonNumber = "2",
-                LinkedVisualElementId = visualId
-            }
-        };
-
-        var result = new FaceGenerationService().GenerateFromPanelRegion(
-            panel,
-            FaceSourceRegionModel.FromRect(new Rect(100, 200, 100, 100)),
-            "Generated",
-            "panel-doc",
-            inputs);
-
-        Assert.Equal(1, result.ConvertedButtonCount);
-        var button = Assert.IsType<FaceButtonElement>(Assert.Single(result.Document.Elements.OfType<FaceButtonElement>()));
-        Assert.Equal("Start", button.Name);
-        Assert.Equal(10d, button.X);
-        Assert.Equal(20d, button.Y);
-        Assert.Equal("input:start", button.LinkedInputReference?.ToString());
-        Assert.Equal(visualId.ToString("D"), button.LinkedPanel2DElementId);
-    }
 
     [Fact]
     public async Task FacePlayViewPointerInputRouter_RoutesThroughExistingMameInputPath()

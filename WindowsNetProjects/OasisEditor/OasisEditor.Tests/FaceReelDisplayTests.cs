@@ -6,53 +6,6 @@ namespace OasisEditor.Tests;
 
 public sealed class FaceReelDisplayTests
 {
-    [Fact]
-    public void GenerateFromPanelRegion_ConvertsContainedReelsWithMachineReferences()
-    {
-        var panel = new Panel2DDocumentModel
-        {
-            Elements =
-            [
-                new PanelElementModel
-                {
-                    ObjectId = "reel-2",
-                    Name = "Reel 2",
-                    Kind = PanelElementKind.Reel,
-                    X = 120,
-                    Y = 230,
-                    Width = 48,
-                    Height = 120,
-                    DisplayNumber = 2,
-                    AssetPath = "Assets/Reels/reel2.png",
-                    Stops = 16,
-                    VisibleScale = 0.33d,
-                    BandOffset = 0.125d,
-                    IsReversed = true,
-                    IsVisible = true
-                }
-            ]
-        };
-
-        var result = new FaceGenerationService().GenerateFromPanelRegion(
-            panel,
-            FaceSourceRegionModel.FromRect(new Rect(100, 200, 200, 200)),
-            "Generated Face",
-            "panel-doc-1");
-
-        Assert.Equal(1, result.ConvertedReelDisplayCount);
-        var element = Assert.IsType<FaceReelDisplayElement>(result.Document.Elements[1]);
-        Assert.Equal("face-reel-2", element.ObjectId);
-        Assert.Equal("Reel 2", element.Name);
-        Assert.Equal(20d, element.X);
-        Assert.Equal(30d, element.Y);
-        Assert.Equal("reel:2", element.LinkedMachineObjectReference?.ToString());
-        Assert.Equal("reel-2", element.LinkedPanel2DElementId);
-        Assert.Equal("Assets/Reels/reel2.png", element.AssetPath);
-        Assert.Equal(16, element.Stops);
-        Assert.Equal(0.33d, element.VisibleScale);
-        Assert.Equal(0.125d, element.BandOffset);
-        Assert.True(element.IsReversed);
-    }
 
     [Fact]
     public void Serialize_AndRead_RoundTripsReelDisplayElement()

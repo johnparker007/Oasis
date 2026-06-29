@@ -494,7 +494,7 @@ public partial class SkiaPanel2DEditView : UserControl
         if ((document.HierarchySelectedPanelSelection is { Kind: PanelFaceSourceShapeCommands.SelectionKind } || shapeAtPoint is not null)
             && Window.GetWindow(this)?.DataContext is MainWindowViewModel mainWindow)
         {
-            var createFaceItem = new MenuItem { Header = "Create Face from Source Shape", Command = mainWindow.GenerateFaceFromSourceShapeCommand };
+            var createFaceItem = new MenuItem { Header = "Create Face from Face Source Shape", Command = mainWindow.GenerateFaceFromSourceShapeCommand };
             contextMenu.Items.Add(createFaceItem);
             contextMenu.Items.Add(new Separator());
         }

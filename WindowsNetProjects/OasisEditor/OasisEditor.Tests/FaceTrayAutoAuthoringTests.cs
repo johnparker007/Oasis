@@ -7,61 +7,6 @@ namespace OasisEditor.Tests;
 
 public sealed class FaceTrayAutoAuthoringTests
 {
-    [Fact]
-    public void GenerateFromPanelRegion_AutoAuthorsTrayAndEmitterForLampWindowFallback()
-    {
-        var panel = new Panel2DDocumentModel
-        {
-            Elements =
-            [
-                new PanelElementModel
-                {
-                    ObjectId = "lamp-7",
-                    Name = "Collect",
-                    Kind = PanelElementKind.Lamp,
-                    X = 25,
-                    Y = 35,
-                    Width = 40,
-                    Height = 50,
-                    DisplayNumber = 7,
-                    IsVisible = true
-                }
-            ]
-        };
-
-        var region = FaceSourceRegionModel.FromRect(new Rect(20, 30, 100, 100));
-        var document = new FaceGenerationService().GenerateFromPanelRegion(
-            panel,
-            region,
-            "Face",
-            "panel-doc").Document;
-        var regenerated = new FaceGenerationService().GenerateFromPanelRegion(
-            panel,
-            region,
-            "Face",
-            "panel-doc").Document;
-
-        Assert.Equal(document.Trays.Single().ObjectId, regenerated.Trays.Single().ObjectId);
-        Assert.Equal(document.LampEmitters.Single().ObjectId, regenerated.LampEmitters.Single().ObjectId);
-
-        var tray = Assert.Single(document.Trays);
-        Assert.True(tray.IsAutoAuthored);
-        Assert.Equal("lampWindowBounds", tray.AutoAuthoringSource);
-        var expectedBounds = ExpandBounds(5d, 5d, 40d, 50d, FaceGenerationSettingsModel.Default);
-        Assert.Equal(expectedBounds.X, tray.Bounds!.X, 3);
-        Assert.Equal(expectedBounds.Y, tray.Bounds.Y, 3);
-        Assert.Equal(expectedBounds.Width, tray.Bounds.Width, 3);
-        Assert.Equal(expectedBounds.Height, tray.Bounds.Height, 3);
-        Assert.Equal(4, tray.Vertices.Count);
-
-        var emitter = Assert.Single(document.LampEmitters);
-        Assert.True(emitter.IsAutoAuthored);
-        Assert.Equal(tray.ObjectId, emitter.TrayObjectId);
-        Assert.Equal("lamp:7", emitter.LinkedMachineObjectReference?.ToString());
-        Assert.Equal(7, emitter.LampId);
-        Assert.Equal(25d, emitter.CenterX);
-        Assert.Equal(30d, emitter.CenterY);
-    }
 
     [Fact]
     public void AutoAuthor_PrefersMatchingMaskContributionBounds()
