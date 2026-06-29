@@ -84,6 +84,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     public string ContentSummary => Document.ContentSummary;
     public bool IsDirty => Document.IsDirty;
     public bool HasCabinetViewer => Document.DocumentType == EditorDocumentType.Cabinet3D && !string.IsNullOrWhiteSpace(_cabinetDocumentModel.Model.Path);
+    public CabinetModelDocumentViewModel? ExistingCabinetViewer => _cabinetViewer;
     public CabinetModelDocumentViewModel? CabinetViewer => HasCabinetViewer
         ? _cabinetViewer ??= new CabinetModelDocumentViewModel(new SharpGltfWpfModelLoader(), this, _openDocumentsAccessor)
         : null;

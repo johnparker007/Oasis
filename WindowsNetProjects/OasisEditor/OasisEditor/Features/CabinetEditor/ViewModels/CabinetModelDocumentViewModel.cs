@@ -7,6 +7,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Media.Media3D;
+using System.Windows.Threading;
 using OasisEditor.Features.CabinetEditor.Models;
 using OasisEditor.Features.CabinetEditor.Services;
 
@@ -14,10 +15,16 @@ namespace OasisEditor.Features.CabinetEditor.ViewModels;
 
 public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
 {
+    private static readonly TimeSpan LivePreviewRefreshInterval = TimeSpan.FromMilliseconds(1000d / 15d);
+
     private readonly ICabinetModelLoader _modelLoader;
     private readonly DocumentTabViewModel _document;
     private readonly Func<IReadOnlyList<DocumentTabViewModel>>? _openDocumentsAccessor;
     private readonly FaceDocumentArtworkPreviewRenderer _previewRenderer = new();
+    private readonly DispatcherTimer _livePreviewRefreshTimer;
+    private readonly HashSet<Guid> _pendingLivePreviewDocumentIds = new();
+    private readonly Dictionary<Guid, CabinetFacePreviewEntry> _facePreviewEntriesByDocumentId = new();
+    private readonly Dictionary<CabinetStaticPreviewCacheKey, BitmapSource> _staticPreviewCache = new();
     private string _loadStatus = "No cabinet model loaded.";
     private string? _errorMessage;
     private bool _isLoading;
@@ -30,6 +37,11 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
         _openDocumentsAccessor = openDocumentsAccessor;
         ModelPath = document.GetCabinetDocument().Model.Path;
         Viewport = new CabinetViewportViewModel();
+        _livePreviewRefreshTimer = new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = LivePreviewRefreshInterval
+        };
+        _livePreviewRefreshTimer.Tick += OnLivePreviewRefreshTimerTick;
         ReloadCommand = new RelayCommand(async () => await LoadAsync(), CanLoad);
         ResetCameraCommand = Viewport.ResetCameraCommand;
         if (!string.IsNullOrWhiteSpace(ModelPath))
@@ -117,6 +129,7 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(SelectedFaceRotation));
         OnPropertyChanged(nameof(IsSelectedFaceFlippedHorizontally));
         OnPropertyChanged(nameof(SelectedLampPreviewMode));
+        InvalidatePreviewCache();
         RefreshFacePreviews();
     }
 
@@ -167,6 +180,9 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
 
     public void RefreshFacePreviews()
     {
+        _pendingLivePreviewDocumentIds.Clear();
+        _livePreviewRefreshTimer.Stop();
+        _facePreviewEntriesByDocumentId.Clear();
         var validTargets = FaceTargets.Where(target => target.IsValid).ToDictionary(target => target.Id, StringComparer.Ordinal);
         if (validTargets.Count == 0 || _openDocumentsAccessor is null)
         {
@@ -185,15 +201,17 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
                 continue;
             }
 
-            var preview = _previewRenderer.RenderPreview(faceDocument, document.RuntimeState, _document.GetCabinetDocument().Preview.LampPreviewMode);
+            var previewMode = SelectedLampPreviewMode;
+            var preview = ResolvePreviewImage(document, faceDocument, previewMode);
             if (preview is null)
             {
                 continue;
             }
 
             var targetOverride = _document.GetCabinetDocument().GetTargetOverride(target.Id);
-            if (TryCreatePreviewGeometry(target.Target, targetOverride, preview, out var geometry))
+            if (TryCreatePreviewGeometry(target.Target, targetOverride, preview, out var geometry, out var imageBrush))
             {
+                _facePreviewEntriesByDocumentId[document.DocumentId] = new CabinetFacePreviewEntry(document.DocumentId, target.Id, geometry, imageBrush);
                 previewGroup.Children.Add(geometry);
             }
         }
@@ -201,9 +219,114 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
         Viewport.FacePreviewModel = previewGroup.Children.Count == 0 ? null : previewGroup;
     }
 
-    private static bool TryCreatePreviewGeometry(CabinetFaceTarget target, CabinetTargetOverride targetOverride, BitmapSource bitmap, out GeometryModel3D geometry)
+    public void QueueFaceRuntimePreviewRefresh(Guid faceDocumentId)
+    {
+        if (SelectedLampPreviewMode != CabinetLampPreviewMode.Live)
+        {
+            return;
+        }
+
+        if (!_facePreviewEntriesByDocumentId.ContainsKey(faceDocumentId))
+        {
+            return;
+        }
+
+        _pendingLivePreviewDocumentIds.Add(faceDocumentId);
+        if (!_livePreviewRefreshTimer.IsEnabled)
+        {
+            _livePreviewRefreshTimer.Start();
+        }
+    }
+
+    private void OnLivePreviewRefreshTimerTick(object? sender, EventArgs e)
+    {
+        _livePreviewRefreshTimer.Stop();
+        if (_pendingLivePreviewDocumentIds.Count == 0)
+        {
+            return;
+        }
+
+        var pendingDocumentIds = _pendingLivePreviewDocumentIds.ToArray();
+        _pendingLivePreviewDocumentIds.Clear();
+        foreach (var documentId in pendingDocumentIds)
+        {
+            RefreshLivePreviewImage(documentId);
+        }
+    }
+
+    private void RefreshLivePreviewImage(Guid faceDocumentId)
+    {
+        if (_openDocumentsAccessor is null
+            || !_facePreviewEntriesByDocumentId.TryGetValue(faceDocumentId, out var entry))
+        {
+            return;
+        }
+
+        var document = _openDocumentsAccessor()
+            .FirstOrDefault(candidate => candidate.DocumentId == faceDocumentId && candidate.Document.DocumentType == EditorDocumentType.Face);
+        if (document is null)
+        {
+            return;
+        }
+
+        var faceDocument = document.GetFaceDocument();
+        var assignedTargetId = NormalizeTargetId(faceDocument.AssignedCabinetFaceTargetId);
+        if (!string.Equals(assignedTargetId, entry.TargetId, StringComparison.Ordinal))
+        {
+            RefreshFacePreviews();
+            return;
+        }
+
+        var preview = _previewRenderer.RenderPreview(
+            faceDocument,
+            document.RuntimeState,
+            CabinetLampPreviewMode.Live,
+            FaceDocumentArtworkPreviewRenderer.LivePreviewRenderOptions);
+        if (preview is null)
+        {
+            return;
+        }
+
+        entry.ImageBrush.ImageSource = preview;
+    }
+
+    private BitmapSource? ResolvePreviewImage(DocumentTabViewModel document, FaceDocumentModel faceDocument, string previewMode)
+    {
+        if (previewMode == CabinetLampPreviewMode.Live)
+        {
+            return _previewRenderer.RenderPreview(
+                faceDocument,
+                document.RuntimeState,
+                previewMode,
+                FaceDocumentArtworkPreviewRenderer.LivePreviewRenderOptions);
+        }
+
+        var cacheKey = CabinetStaticPreviewCacheKey.Create(document.DocumentId, document.FaceDocumentJson, previewMode);
+        if (!_staticPreviewCache.TryGetValue(cacheKey, out var preview))
+        {
+            preview = _previewRenderer.RenderPreview(
+                faceDocument,
+                document.RuntimeState,
+                previewMode,
+                FaceDocumentArtworkPreviewRenderer.StaticPreviewRenderOptions);
+            if (preview is not null)
+            {
+                _staticPreviewCache[cacheKey] = preview;
+            }
+        }
+
+        return preview;
+    }
+
+    private void InvalidatePreviewCache()
+    {
+        _staticPreviewCache.Clear();
+    }
+
+    private static bool TryCreatePreviewGeometry(CabinetFaceTarget target, CabinetTargetOverride targetOverride, BitmapSource bitmap, out GeometryModel3D geometry, out ImageBrush imageBrush)
     {
         geometry = default!;
+        imageBrush = default!;
         if (!target.IsValid || target.Corners.Count != 4)
         {
             return false;
@@ -227,7 +350,8 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
                 new Point(0, 1)
             })
         };
-        var material = new DiffuseMaterial(new ImageBrush(bitmap));
+        imageBrush = new ImageBrush(bitmap);
+        var material = new DiffuseMaterial(imageBrush);
         geometry = new GeometryModel3D(mesh, material);
         return true;
     }
@@ -251,4 +375,14 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
 
     private bool CanLoad() => !IsLoading && !string.IsNullOrWhiteSpace(ModelPath);
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+    private sealed record CabinetFacePreviewEntry(Guid FaceDocumentId, string TargetId, GeometryModel3D Geometry, ImageBrush ImageBrush);
+
+    private sealed record CabinetStaticPreviewCacheKey(Guid FaceDocumentId, string FaceDocumentJson, string PreviewMode)
+    {
+        public static CabinetStaticPreviewCacheKey Create(Guid faceDocumentId, string? faceDocumentJson, string previewMode)
+        {
+            return new CabinetStaticPreviewCacheKey(faceDocumentId, faceDocumentJson ?? string.Empty, previewMode);
+        }
+    }
 }

@@ -37,9 +37,12 @@ public sealed class FaceCompositor : IFaceCompositor
             return FaceCompositorResult.Empty("Face has no renderable bounds.");
         }
 
-        var scale = Math.Clamp(options.Scale, 0.01d, 16d);
-        var width = Math.Clamp((int)Math.Ceiling(bounds.Width * scale), 1, options.MaxWidth);
-        var height = Math.Clamp((int)Math.Ceiling(bounds.Height * scale), 1, options.MaxHeight);
+        var requestedScale = Math.Clamp(options.Scale, 0.01d, 16d);
+        var maxWidthScale = options.MaxWidth > 0 ? options.MaxWidth / bounds.Width : requestedScale;
+        var maxHeightScale = options.MaxHeight > 0 ? options.MaxHeight / bounds.Height : requestedScale;
+        var scale = Math.Max(0.01d, Math.Min(requestedScale, Math.Min(maxWidthScale, maxHeightScale)));
+        var width = Math.Max(1, (int)Math.Ceiling(bounds.Width * scale));
+        var height = Math.Max(1, (int)Math.Ceiling(bounds.Height * scale));
         using var surface = SKSurface.Create(new SKImageInfo(width, height, SKColorType.Bgra8888, SKAlphaType.Premul));
         if (surface is null)
         {

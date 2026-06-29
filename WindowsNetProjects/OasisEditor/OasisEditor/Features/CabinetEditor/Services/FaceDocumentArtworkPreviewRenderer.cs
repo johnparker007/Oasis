@@ -8,17 +8,20 @@ namespace OasisEditor.Features.CabinetEditor.Services;
 
 public sealed class FaceDocumentArtworkPreviewRenderer
 {
+    public static FaceCompositorRenderOptions LivePreviewRenderOptions { get; } = new() { MaxWidth = 512, MaxHeight = 512 };
+    public static FaceCompositorRenderOptions StaticPreviewRenderOptions { get; } = new() { MaxWidth = 1024, MaxHeight = 1024 };
+
     private const int DefaultPreviewWidth = 1024;
     private const int DefaultPreviewHeight = 1024;
 
-    public BitmapSource? RenderPreview(FaceDocumentModel faceDocument, MachineRuntimeState runtimeState, string? lampPreviewMode = null)
+    public BitmapSource? RenderPreview(FaceDocumentModel faceDocument, MachineRuntimeState runtimeState, string? lampPreviewMode = null, FaceCompositorRenderOptions? renderOptions = null)
     {
         ArgumentNullException.ThrowIfNull(faceDocument);
         ArgumentNullException.ThrowIfNull(runtimeState);
 
         var normalizedMode = CabinetLampPreviewMode.Normalize(lampPreviewMode);
         if (normalizedMode != CabinetLampPreviewMode.BackgroundOnly
-            && TryRenderCompositedPreview(faceDocument, runtimeState, normalizedMode, out var runtimePreview))
+            && TryRenderCompositedPreview(faceDocument, runtimeState, normalizedMode, renderOptions, out var runtimePreview))
         {
             return runtimePreview;
         }
@@ -74,7 +77,7 @@ public sealed class FaceDocumentArtworkPreviewRenderer
     }
 
 
-    private static bool TryRenderCompositedPreview(FaceDocumentModel faceDocument, MachineRuntimeState runtimeState, string lampPreviewMode, out BitmapSource? preview)
+    private static bool TryRenderCompositedPreview(FaceDocumentModel faceDocument, MachineRuntimeState runtimeState, string lampPreviewMode, FaceCompositorRenderOptions? renderOptions, out BitmapSource? preview)
     {
         preview = null;
         var compositorRuntimeState = runtimeState;
@@ -83,7 +86,8 @@ public sealed class FaceDocumentArtworkPreviewRenderer
             compositorRuntimeState = CreateStaticPreviewRuntimeState(faceDocument, lampPreviewMode);
         }
 
-        using var result = FaceCompositor.Shared.Compose(faceDocument, compositorRuntimeState);
+        renderOptions ??= lampPreviewMode == CabinetLampPreviewMode.Live ? LivePreviewRenderOptions : StaticPreviewRenderOptions;
+        using var result = FaceCompositor.Shared.Compose(faceDocument, compositorRuntimeState, renderOptions);
         if (!result.Rendered || result.Bitmap is null)
         {
             return false;

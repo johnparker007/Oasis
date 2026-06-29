@@ -1717,9 +1717,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private void OnOpenDocumentFaceVisualStateChanged(FaceVisualStateChangedEvent _)
+    private void OnOpenDocumentFaceVisualStateChanged(FaceVisualStateChangedEvent visualStateChanged)
     {
-        RefreshCabinetFacePreviews();
+        foreach (var cabinetViewer in OpenDocuments
+            .Where(document => document.Document.DocumentType == EditorDocumentType.Cabinet3D)
+            .Select(document => document.ExistingCabinetViewer)
+            .Where(viewer => viewer is not null))
+        {
+            cabinetViewer!.QueueFaceRuntimePreviewRefresh(visualStateChanged.DocumentId);
+        }
     }
 
     private void RefreshCabinetFacePreviews()
