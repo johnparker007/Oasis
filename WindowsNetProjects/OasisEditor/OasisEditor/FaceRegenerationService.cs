@@ -78,13 +78,13 @@ internal sealed class FaceRegenerationService
                 sourceShape,
                 existingFace.Title,
                 existingFace.SourcePanel2DDocumentId,
-                existingFace.SourcePanel2DDocumentPath,
                 existingFace.AssignedCabinetFaceTargetId,
                 targetAspectRatio,
                 projectDirectory,
                 generatedDirectory,
                 settings,
-                progress.CreateChild(0.15, 0.45));
+                progress.CreateChild(0.15, 0.45),
+                existingFace.SourcePanel2DDocumentPath);
         }
         else
         {
@@ -93,12 +93,12 @@ internal sealed class FaceRegenerationService
                 sourceRegion,
                 existingFace.Title,
                 existingFace.SourcePanel2DDocumentId,
-                existingFace.SourcePanel2DDocumentPath,
                 inputDefinitions ?? [],
                 projectDirectory,
                 generatedDirectory,
                 settings,
-                progress.CreateChild(0.15, 0.45));
+                progress.CreateChild(0.15, 0.45),
+                existingFace.SourcePanel2DDocumentPath);
         }
 
         progress.Report(0.45, "Correlating regenerated elements...");

@@ -92,13 +92,13 @@ internal sealed class FaceGenerationService
         PanelFaceSourceShapeModel sourceShape,
         string title,
         string? sourcePanel2DDocumentId = null,
-        string? sourcePanel2DDocumentPath = null,
         string? assignedCabinetFaceTargetId = null,
         double? targetAspectRatio = null,
         string? projectDirectory = null,
         string? generatedDirectory = null,
         FaceGenerationSettingsModel? generationSettings = null,
-        IEditorProgressReporter? progress = null)
+        IEditorProgressReporter? progress = null,
+        string? sourcePanel2DDocumentPath = null)
     {
         ArgumentNullException.ThrowIfNull(sourcePanel);
         ArgumentNullException.ThrowIfNull(sourceShape);
@@ -248,12 +248,12 @@ internal sealed class FaceGenerationService
         FaceSourceRegionModel sourceRegion,
         string title,
         string? sourcePanel2DDocumentId = null,
-        string? sourcePanel2DDocumentPath = null,
         IReadOnlyList<InputDefinitionModel>? inputDefinitions = null,
         string? projectDirectory = null,
         string? generatedDirectory = null,
         FaceGenerationSettingsModel? generationSettings = null,
-        IEditorProgressReporter? progress = null)
+        IEditorProgressReporter? progress = null,
+        string? sourcePanel2DDocumentPath = null)
     {
         ArgumentNullException.ThrowIfNull(sourcePanel);
         ArgumentNullException.ThrowIfNull(sourceRegion);

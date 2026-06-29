@@ -129,12 +129,12 @@ public sealed class DocumentWorkspaceViewModel
             sourceRegion,
             title,
             sourceDocument.DocumentId.ToString("N"),
-            sourceDocument.FilePath,
             loadedProject.InputDefinitions,
             loadedProject.ProjectDirectory,
             loadedProject.GeneratedDirectory,
             generationSettings,
-            progress.CreateChild(0.0, 0.8));
+            progress.CreateChild(0.0, 0.8),
+            sourceDocument.FilePath);
 
         progress.Report(0.8, "Exporting runtime preview assets...");
         var generatedFaceDocument = ExportRuntimeAssetsForPreview(result.Document, loadedProject, progress.CreateChild(0.8, 0.95));
@@ -172,13 +172,13 @@ public sealed class DocumentWorkspaceViewModel
             shape,
             title,
             sourceDocument.DocumentId.ToString("N"),
-            sourceDocument.FilePath,
             target?.Id,
             targetAspect,
             loadedProject.ProjectDirectory,
             loadedProject.GeneratedDirectory,
             generationSettings,
-            progress.CreateChild(0.0, 0.8));
+            progress.CreateChild(0.0, 0.8),
+            sourceDocument.FilePath);
         var generatedFaceDocument = ExportRuntimeAssetsForPreview(result.Document, loadedProject, progress.CreateChild(0.8, 0.95));
         var faceJson = FaceDocumentStorage.Serialize(generatedFaceDocument);
         var faceEditorDocument = EditorDocument.CreateFaceStub(title).WithContentSummary(generatedFaceDocument.Summary ?? "Generated Face document.");
