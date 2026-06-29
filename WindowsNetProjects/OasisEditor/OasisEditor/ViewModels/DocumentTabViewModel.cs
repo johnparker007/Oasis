@@ -236,6 +236,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
             Title = _faceDocumentModel.Title,
             Summary = _faceDocumentModel.Summary,
             SourcePanel2DDocumentId = _faceDocumentModel.SourcePanel2DDocumentId,
+            SourcePanel2DDocumentPath = _faceDocumentModel.SourcePanel2DDocumentPath,
             SourceFaceShapeId = _faceDocumentModel.SourceFaceShapeId,
             AssignedCabinetFaceTargetId = _faceDocumentModel.AssignedCabinetFaceTargetId,
             SourceRegion = _faceDocumentModel.SourceRegion,

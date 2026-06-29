@@ -90,6 +90,7 @@ public sealed class FaceRuntimeExportService
             Title = faceDocument.Title,
             Summary = faceDocument.Summary,
             SourcePanel2DDocumentId = faceDocument.SourcePanel2DDocumentId,
+            SourcePanel2DDocumentPath = faceDocument.SourcePanel2DDocumentPath,
             SourceFaceShapeId = faceDocument.SourceFaceShapeId,
             AssignedCabinetFaceTargetId = faceDocument.AssignedCabinetFaceTargetId,
             SourceRegion = faceDocument.SourceRegion,

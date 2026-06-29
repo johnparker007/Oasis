@@ -6,6 +6,7 @@ public sealed class FaceDocumentModel
     public string Title { get; init; } = string.Empty;
     public string? Summary { get; init; }
     public string? SourcePanel2DDocumentId { get; init; }
+    public string? SourcePanel2DDocumentPath { get; init; }
     public string? SourceFaceShapeId { get; init; }
     public string? AssignedCabinetFaceTargetId { get; init; }
     public FaceSourceRegionModel? SourceRegion { get; init; }
