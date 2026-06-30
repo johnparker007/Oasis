@@ -21,7 +21,7 @@ internal static class FaceSourceShapeTransformService
         return new FaceSourceShapeOutputSize(Math.Max(1, (int)Math.Ceiling(sourceWidth)), Math.Max(1, (int)Math.Ceiling(sourceHeight)));
     }
 
-    public static string? TryGenerateBackground(Panel2DDocumentModel panel, PanelFaceSourceShapeModel shape, int width, int height, string? projectDirectory, string? generatedDirectory)
+    public static string? TryGenerateBackground(Panel2DDocumentModel panel, PanelFaceSourceShapeModel shape, int width, int height, string? projectDirectory, string? outputPath = null)
     {
         var background = panel.Elements.FirstOrDefault(e => e.Kind == PanelElementKind.Background && !string.IsNullOrWhiteSpace(e.AssetPath));
         if (background is null || string.IsNullOrWhiteSpace(projectDirectory)) return null;
@@ -43,8 +43,10 @@ internal static class FaceSourceShapeTransformService
             var py = panelPoint.Y - background.Y;
             output.SetPixel(x, y, SampleBicubic(source, px / Math.Max(1d, background.Width) * source.Width, py / Math.Max(1d, background.Height) * source.Height));
         }
-        var relative = Path.Combine("Generated", "Faces", $"face-source-shape-{Guid.NewGuid():N}.png");
-        var path = Path.Combine(projectDirectory, relative);
+        var path = string.IsNullOrWhiteSpace(outputPath)
+            ? Path.Combine(projectDirectory, "Generated", "Faces", $"face-source-shape-{Guid.NewGuid():N}.png")
+            : outputPath;
+        var relative = Path.GetRelativePath(projectDirectory, path);
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         using var image = SKImage.FromBitmap(output);
         using var data = image.Encode(SKEncodedImageFormat.Png, 100);

@@ -1174,7 +1174,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 new EditorProgressRequest("Creating Face", "Creating Face from Face Source Shape...", EditorProgressMode.Determinate),
                 (progress, _) =>
                 {
-                    _documentWorkspace.GenerateFaceFromSelectedFaceSourceShape(_defaultFaceGenerationSettings, progress);
+                    _documentWorkspace.GenerateFaceFromSelectedFaceSourceShape(null, _defaultFaceGenerationSettings, progress);
                     return Task.CompletedTask;
                 });
         }
@@ -1299,6 +1299,17 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
+        var faceNameDialog = new HierarchyRenameDialog("New Face", "Create Face Asset", "Face asset name")
+        {
+            Owner = _ownerWindow
+        };
+
+        if (faceNameDialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        var faceAssetName = faceNameDialog.NameText;
         _defaultFaceGenerationSettings = generateDialog.Settings;
         SavePreferences();
         try
@@ -1307,7 +1318,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 new EditorProgressRequest("Creating Face", "Creating Face from Face Source Shape...", EditorProgressMode.Determinate),
                 (progress, _) =>
                 {
-                    _documentWorkspace.GenerateFaceFromSelectedFaceSourceShape(generateDialog.Settings, progress);
+                    _documentWorkspace.GenerateFaceFromSelectedFaceSourceShape(faceAssetName, generateDialog.Settings, progress);
                     return Task.CompletedTask;
                 });
         }
@@ -1801,21 +1812,37 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             defaultName = Path.GetFileNameWithoutExtension(selectedDocument.FilePath);
         }
 
-        var (defaultExtension, filter) = selectedDocument?.Document.DocumentType switch
+        if (selectedDocument?.Document.DocumentType is EditorDocumentType.Panel2D or EditorDocumentType.Cabinet3D or EditorDocumentType.Face)
         {
-            EditorDocumentType.Face => (".face", "Face|*.face|Panel 2D|*.panel2d|Cabinet 3D|*.cabinet3d|Machine|*.machine|All Files|*.*"),
-            EditorDocumentType.Cabinet3D => (".cabinet3d", "Cabinet 3D|*.cabinet3d|Face|*.face|Panel 2D|*.panel2d|Machine|*.machine|All Files|*.*"),
-            EditorDocumentType.Machine => (".machine", "Machine|*.machine|Face|*.face|Panel 2D|*.panel2d|Cabinet 3D|*.cabinet3d|All Files|*.*"),
-            _ => (".panel2d", "Panel 2D|*.panel2d|Face|*.face|Cabinet 3D|*.cabinet3d|Machine|*.machine|All Files|*.*")
-        };
+            var nameDialog = new HierarchyRenameDialog(defaultName, "Save Asset", "Asset name")
+            {
+                Owner = _ownerWindow
+            };
+
+            if (nameDialog.ShowDialog() != true)
+            {
+                return null;
+            }
+
+            var pathService = new ProjectAssetPathService();
+            var assetType = selectedDocument.Document.DocumentType switch
+            {
+                EditorDocumentType.Face => EditorAssetType.Face,
+                EditorDocumentType.Cabinet3D => EditorAssetType.Cabinet3D,
+                _ => EditorAssetType.Panel2D
+            };
+            var assetName = pathService.EnsureUniqueAssetName(LoadedProject, assetType, nameDialog.NameText);
+            pathService.CreateAssetPackageDirectory(LoadedProject, assetType, assetName);
+            return pathService.GetAssetManifestPath(LoadedProject, assetType, assetName);
+        }
 
         var dialog = new SaveFileDialog
         {
             Title = "Save Document",
             InitialDirectory = LoadedProject.AssetsDirectory,
-            FileName = $"{defaultName}{defaultExtension}",
-            DefaultExt = defaultExtension,
-            Filter = filter
+            FileName = $"{defaultName}.machine",
+            DefaultExt = ".machine",
+            Filter = "Machine|*.machine|All Files|*.*"
         };
 
         return dialog.ShowDialog() == true ? dialog.FileName : null;

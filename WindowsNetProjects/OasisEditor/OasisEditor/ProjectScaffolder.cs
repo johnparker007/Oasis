@@ -13,6 +13,7 @@ public sealed class ProjectScaffolder
         "Assets/Fonts",
         "Assets/Panel2D",
         "Assets/Cabinet3D",
+        "Assets/Faces",
         "Machines",
         "Generated",
         "Generated/Build",

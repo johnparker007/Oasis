@@ -213,8 +213,10 @@ public sealed class FaceRuntimeExportService
             throw new IOException($"Project Generated directory points to a file: {generatedDirectory}");
         }
 
-        var safeFaceId = SanitizePathSegment(string.IsNullOrWhiteSpace(faceDocument.Id) ? Guid.NewGuid().ToString("N") : faceDocument.Id.Trim());
-        return Path.Combine(generatedDirectory, "Faces", safeFaceId, RuntimeDirectoryName);
+        var faceName = string.IsNullOrWhiteSpace(faceDocument.Title)
+            ? (string.IsNullOrWhiteSpace(faceDocument.Id) ? Guid.NewGuid().ToString("N") : faceDocument.Id.Trim())
+            : faceDocument.Title.Trim();
+        return new ProjectAssetPathService().GetFaceRuntimeDirectory(project, faceName);
     }
 
     private static string ResolveExistingProjectPath(EditorProject project, string? projectPath, string description)

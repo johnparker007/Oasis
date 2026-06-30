@@ -94,6 +94,7 @@ internal sealed class FaceGenerationService
         double? targetAspectRatio = null,
         string? projectDirectory = null,
         string? generatedDirectory = null,
+        string? faceAssetName = null,
         FaceGenerationSettingsModel? generationSettings = null,
         IEditorProgressReporter? progress = null,
         string? sourcePanel2DDocumentPath = null)
@@ -101,8 +102,13 @@ internal sealed class FaceGenerationService
         ArgumentNullException.ThrowIfNull(sourcePanel);
         ArgumentNullException.ThrowIfNull(sourceShape);
         var output = FaceSourceShapeTransformService.EstimateOutputSize(sourceShape, targetAspectRatio);
+        var pathService = new ProjectAssetPathService();
+        var resolvedFaceAssetName = pathService.SanitizePathSegment(string.IsNullOrWhiteSpace(faceAssetName) ? title : faceAssetName);
+        var faceArtworkPath = !string.IsNullOrWhiteSpace(projectDirectory)
+            ? pathService.GetFaceArtworkPath(CreatePathProject(projectDirectory, generatedDirectory), resolvedFaceAssetName)
+            : null;
         var region = FaceSourceRegionModel.FromRect(new Rect(0, 0, output.Width, output.Height));
-        var assetPath = FaceSourceShapeTransformService.TryGenerateBackground(sourcePanel, sourceShape, output.Width, output.Height, projectDirectory, generatedDirectory);
+        var assetPath = FaceSourceShapeTransformService.TryGenerateBackground(sourcePanel, sourceShape, output.Width, output.Height, projectDirectory, faceArtworkPath);
         var settings = (generationSettings ?? FaceGenerationSettingsModel.Default).Normalize();
         var faceDocumentId = Guid.NewGuid().ToString("N");
         progress?.Report(0.2, "Converting source-shape lamps...");
@@ -120,6 +126,7 @@ internal sealed class FaceGenerationService
             faceDocumentId,
             sourcePanel2DDocumentId,
             projectDirectory,
+            resolvedFaceAssetName,
             settings.MaskExtractionThreshold);
         var artwork = new FaceArtworkElement
         {
@@ -141,7 +148,7 @@ internal sealed class FaceGenerationService
         var document = new FaceDocumentModel
         {
             Id = faceDocumentId,
-            Title = string.IsNullOrWhiteSpace(title) ? "Generated Face" : title.Trim(),
+            Title = resolvedFaceAssetName,
             Summary = $"Generated from Face Source Shape '{sourceShape.Name}' ({output.Width} x {output.Height}).",
             SourcePanel2DDocumentId = NormalizeOptional(sourcePanel2DDocumentId),
             SourceFaceShapeId = NormalizeOptional(sourceShape.Id),
@@ -174,6 +181,7 @@ internal sealed class FaceGenerationService
         string faceDocumentId,
         string? sourcePanel2DDocumentId,
         string? projectDirectory,
+        string faceAssetName,
         byte extractionThreshold)
     {
         if (string.IsNullOrWhiteSpace(projectDirectory) || faceWidth <= 0 || faceHeight <= 0)
@@ -225,7 +233,7 @@ internal sealed class FaceGenerationService
             });
         }
 
-        var assetPath = SaveSourceShapeMask(maskPixels, faceWidth, faceHeight, faceDocumentId, projectDirectory);
+        var assetPath = SaveSourceShapeMask(maskPixels, faceWidth, faceHeight, faceDocumentId, projectDirectory, faceAssetName);
         return new FaceMaskLayerModel
         {
             Id = "face-mask-layer",
@@ -303,7 +311,7 @@ internal sealed class FaceGenerationService
         return new SourceShapeMaskContribution(bounds, count);
     }
 
-    private static string SaveSourceShapeMask(byte[] maskPixels, int width, int height, string faceDocumentId, string projectDirectory)
+    private static string SaveSourceShapeMask(byte[] maskPixels, int width, int height, string faceDocumentId, string projectDirectory, string faceAssetName)
     {
         using var bitmap = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
         for (var y = 0; y < height; y++)
@@ -313,14 +321,30 @@ internal sealed class FaceGenerationService
             bitmap.SetPixel(x, y, new SKColor(value, value, value, value));
         }
 
-        var relative = System.IO.Path.Combine("Generated", "Faces", $"{faceDocumentId}-face-source-shape-mask.png");
-        var path = System.IO.Path.Combine(projectDirectory, relative);
+        var pathService = new ProjectAssetPathService();
+        var project = CreatePathProject(projectDirectory, null);
+        var path = pathService.GetFaceMaskPath(project, faceAssetName);
+        var relative = pathService.ToProjectRelativePath(project, path);
         System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path)!);
         using var image = SKImage.FromBitmap(bitmap);
         using var data = image.Encode(SKEncodedImageFormat.Png, 100);
         using var stream = System.IO.File.Create(path);
         data.SaveTo(stream);
-        return relative.Replace(System.IO.Path.DirectorySeparatorChar, '/');
+        return ProjectAssetPathService.NormalizeProjectRelativePath(relative);
+    }
+
+    private static EditorProject CreatePathProject(string projectDirectory, string? generatedDirectory)
+    {
+        var root = System.IO.Path.GetFullPath(projectDirectory);
+        return new EditorProject
+        {
+            Name = System.IO.Path.GetFileName(root),
+            ProjectFilePath = System.IO.Path.Combine(root, $"{System.IO.Path.GetFileName(root)}.oasisproj"),
+            ProjectDirectory = root,
+            AssetsDirectory = System.IO.Path.Combine(root, "Assets"),
+            MachinesDirectory = System.IO.Path.Combine(root, "Machines"),
+            GeneratedDirectory = string.IsNullOrWhiteSpace(generatedDirectory) ? System.IO.Path.Combine(root, "Generated") : generatedDirectory
+        };
     }
 
     private FaceLampWindowElement? CreateLampWindowFromSourceShape(PanelElementModel sourceElement, PanelFaceSourceShapeModel sourceShape, int faceWidth, int faceHeight, string? projectDirectory)

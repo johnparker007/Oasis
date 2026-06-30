@@ -78,14 +78,15 @@ internal sealed class FaceRegenerationService
             sourcePanel,
             sourceShape,
             existingFace.Title,
-            existingFace.SourcePanel2DDocumentId,
-            existingFace.AssignedCabinetFaceTargetId,
-            targetAspectRatio,
-            projectDirectory,
-            generatedDirectory,
-            settings,
-            progress.CreateChild(0.15, 0.45),
-            existingFace.SourcePanel2DDocumentPath);
+            sourcePanel2DDocumentId: existingFace.SourcePanel2DDocumentId,
+            assignedCabinetFaceTargetId: existingFace.AssignedCabinetFaceTargetId,
+            targetAspectRatio: targetAspectRatio,
+            projectDirectory: projectDirectory,
+            generatedDirectory: generatedDirectory,
+            faceAssetName: existingFace.Title,
+            generationSettings: settings,
+            progress: progress.CreateChild(0.15, 0.45),
+            sourcePanel2DDocumentPath: existingFace.SourcePanel2DDocumentPath);
 
         progress.Report(0.45, "Correlating regenerated elements...");
         var existingGeneratedByKey = existingFace.Elements
