@@ -1,1 +1,1 @@
-See AGENT.md and TASKS.md for development guidance.
+See AGENTS.md and 00_CURRENT_PRIORITY.md for development guidance.
