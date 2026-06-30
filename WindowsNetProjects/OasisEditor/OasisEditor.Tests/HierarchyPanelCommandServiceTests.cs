@@ -50,9 +50,9 @@ public sealed class HierarchyPanelCommandServiceTests
         Assert.Equal(2, document.GetPanelElements().Count);
 
         var savedContent = DocumentWorkspaceViewModel.BuildDocumentContent(document);
-        var openData = DocumentWorkspaceViewModel.BuildOpenDocumentData("C:/Repo/TestProject/Assets/panel.panel2d", savedContent);
+        var openData = DocumentWorkspaceViewModel.BuildOpenDocumentData("C:/Repo/TestProject/Assets/Panel2D/Panel/asset.panel2d", savedContent);
         var reopened = new DocumentTabViewModel(
-            EditorDocument.CreateFromFile("C:/Repo/TestProject/Assets/panel.panel2d", openData.Summary, openData.PanelTitle),
+            EditorDocument.CreateFromFile("C:/Repo/TestProject/Assets/Panel2D/Panel/asset.panel2d", openData.Summary, openData.PanelTitle),
             openData.PanelLayoutJson);
 
         Assert.Equal(2, reopened.GetPanelElements().Count);

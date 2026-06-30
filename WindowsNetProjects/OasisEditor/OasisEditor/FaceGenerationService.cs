@@ -95,6 +95,7 @@ internal sealed class FaceGenerationService
         string? projectDirectory = null,
         string? generatedDirectory = null,
         string? faceAssetName = null,
+        string? faceAssetDirectory = null,
         FaceGenerationSettingsModel? generationSettings = null,
         IEditorProgressReporter? progress = null,
         string? sourcePanel2DDocumentPath = null)
@@ -104,9 +105,7 @@ internal sealed class FaceGenerationService
         var output = FaceSourceShapeTransformService.EstimateOutputSize(sourceShape, targetAspectRatio);
         var pathService = new ProjectAssetPathService();
         var resolvedFaceAssetName = pathService.SanitizePathSegment(string.IsNullOrWhiteSpace(faceAssetName) ? title : faceAssetName);
-        var faceArtworkPath = !string.IsNullOrWhiteSpace(projectDirectory)
-            ? pathService.GetFaceArtworkPath(CreatePathProject(projectDirectory, generatedDirectory), resolvedFaceAssetName)
-            : null;
+        var faceArtworkPath = ResolveFaceAuthoredAssetPath(projectDirectory, generatedDirectory, faceAssetDirectory, resolvedFaceAssetName, ProjectAssetPathService.FaceArtworkFileName);
         var region = FaceSourceRegionModel.FromRect(new Rect(0, 0, output.Width, output.Height));
         var assetPath = FaceSourceShapeTransformService.TryGenerateBackground(sourcePanel, sourceShape, output.Width, output.Height, projectDirectory, faceArtworkPath);
         var settings = (generationSettings ?? FaceGenerationSettingsModel.Default).Normalize();
@@ -127,6 +126,7 @@ internal sealed class FaceGenerationService
             sourcePanel2DDocumentId,
             projectDirectory,
             resolvedFaceAssetName,
+            ResolveFaceAuthoredAssetPath(projectDirectory, generatedDirectory, faceAssetDirectory, resolvedFaceAssetName, ProjectAssetPathService.FaceMaskFileName),
             settings.MaskExtractionThreshold);
         var artwork = new FaceArtworkElement
         {
@@ -182,6 +182,7 @@ internal sealed class FaceGenerationService
         string? sourcePanel2DDocumentId,
         string? projectDirectory,
         string faceAssetName,
+        string? outputPath,
         byte extractionThreshold)
     {
         if (string.IsNullOrWhiteSpace(projectDirectory) || faceWidth <= 0 || faceHeight <= 0)
@@ -233,7 +234,7 @@ internal sealed class FaceGenerationService
             });
         }
 
-        var assetPath = SaveSourceShapeMask(maskPixels, faceWidth, faceHeight, faceDocumentId, projectDirectory, faceAssetName);
+        var assetPath = SaveSourceShapeMask(maskPixels, faceWidth, faceHeight, projectDirectory, faceAssetName, outputPath);
         return new FaceMaskLayerModel
         {
             Id = "face-mask-layer",
@@ -311,7 +312,7 @@ internal sealed class FaceGenerationService
         return new SourceShapeMaskContribution(bounds, count);
     }
 
-    private static string SaveSourceShapeMask(byte[] maskPixels, int width, int height, string faceDocumentId, string projectDirectory, string faceAssetName)
+    private static string SaveSourceShapeMask(byte[] maskPixels, int width, int height, string projectDirectory, string faceAssetName, string? outputPath = null)
     {
         using var bitmap = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
         for (var y = 0; y < height; y++)
@@ -323,7 +324,7 @@ internal sealed class FaceGenerationService
 
         var pathService = new ProjectAssetPathService();
         var project = CreatePathProject(projectDirectory, null);
-        var path = pathService.GetFaceMaskPath(project, faceAssetName);
+        var path = string.IsNullOrWhiteSpace(outputPath) ? pathService.GetFaceMaskPath(project, faceAssetName) : outputPath;
         var relative = pathService.ToProjectRelativePath(project, path);
         System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path)!);
         using var image = SKImage.FromBitmap(bitmap);
@@ -331,6 +332,26 @@ internal sealed class FaceGenerationService
         using var stream = System.IO.File.Create(path);
         data.SaveTo(stream);
         return ProjectAssetPathService.NormalizeProjectRelativePath(relative);
+    }
+
+
+    private static string? ResolveFaceAuthoredAssetPath(string? projectDirectory, string? generatedDirectory, string? faceAssetDirectory, string faceAssetName, string fileName)
+    {
+        if (string.IsNullOrWhiteSpace(projectDirectory))
+        {
+            return null;
+        }
+
+        if (!string.IsNullOrWhiteSpace(faceAssetDirectory))
+        {
+            return System.IO.Path.Combine(faceAssetDirectory, fileName);
+        }
+
+        var pathService = new ProjectAssetPathService();
+        var project = CreatePathProject(projectDirectory, generatedDirectory);
+        return string.Equals(fileName, ProjectAssetPathService.FaceMaskFileName, StringComparison.OrdinalIgnoreCase)
+            ? pathService.GetFaceMaskPath(project, faceAssetName)
+            : pathService.GetFaceArtworkPath(project, faceAssetName);
     }
 
     private static EditorProject CreatePathProject(string projectDirectory, string? generatedDirectory)

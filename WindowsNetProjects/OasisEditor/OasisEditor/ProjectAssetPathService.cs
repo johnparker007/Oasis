@@ -63,6 +63,18 @@ public sealed class ProjectAssetPathService
         return Path.GetFileName(packageDirectory);
     }
 
+
+    public static string? GetDocumentTitleFromManifestPath(string manifestPath)
+    {
+        foreach (var assetType in Enum.GetValues<EditorAssetType>())
+        {
+            var assetName = GetPackageAssetNameFromManifestPath(manifestPath, assetType);
+            if (!string.IsNullOrWhiteSpace(assetName)) return assetName;
+        }
+
+        return null;
+    }
+
     public string EnsureUniqueAssetName(EditorProject project, EditorAssetType assetType, string requestedName)
     {
         var safe = SanitizePathSegment(requestedName);
