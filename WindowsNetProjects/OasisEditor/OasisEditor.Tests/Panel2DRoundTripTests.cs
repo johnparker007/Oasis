@@ -9,7 +9,7 @@ public sealed class Panel2DRoundTripTests
     [Fact]
     public void BuildOpenDocumentData_AndBuildDocumentContent_RoundTripExistingPanelFile()
     {
-        const string path = "C:/Repo/Assets/sample.panel2d";
+        const string path = "C:/Repo/Assets/Panel2D/Sample Panel/asset.panel2d";
         var sourceJson = """
         {
           "SchemaVersion": 1,
@@ -77,13 +77,13 @@ public sealed class Panel2DRoundTripTests
     [Fact]
     public void BuildOpenDocumentData_WithInvalidPanelJson_ReturnsClearErrorSummary()
     {
-        const string path = "C:/Repo/Assets/bad.panel2d";
+        const string path = "C:/Repo/Assets/Panel2D/Bad Panel/asset.panel2d";
         const string invalidJson = "{ not valid json";
 
         var openData = DocumentWorkspaceViewModel.BuildOpenDocumentData(path, invalidJson);
 
         Assert.Null(openData.PanelLayoutJson);
-        Assert.Equal("bad.panel2d", openData.PanelTitle);
+        Assert.Equal("asset.panel2d", openData.PanelTitle);
         Assert.Contains("Malformed JSON", openData.Summary);
     }
 
