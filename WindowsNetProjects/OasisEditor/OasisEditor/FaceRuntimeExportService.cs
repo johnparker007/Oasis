@@ -29,7 +29,7 @@ public sealed class FaceRuntimeExportService
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
     };
 
-    public FaceRuntimeExportResult Export(FaceDocumentModel faceDocument, EditorProject project, IEditorProgressReporter? progress = null)
+    public FaceRuntimeExportResult Export(FaceDocumentModel faceDocument, EditorProject project, string? documentPath = null, IEditorProgressReporter? progress = null)
     {
         ArgumentNullException.ThrowIfNull(faceDocument);
         ArgumentNullException.ThrowIfNull(project);
@@ -43,7 +43,7 @@ public sealed class FaceRuntimeExportService
 
         var width = ResolveRuntimeWidth(faceDocument);
         var height = ResolveRuntimeHeight(faceDocument);
-        var outputDirectory = ResolveRuntimeOutputDirectory(faceDocument, project);
+        var outputDirectory = ResolveRuntimeOutputDirectory(project, documentPath);
         Directory.CreateDirectory(outputDirectory);
 
         if (!Directory.Exists(outputDirectory))
@@ -88,7 +88,6 @@ public sealed class FaceRuntimeExportService
         {
             Id = faceDocument.Id,
             Title = faceDocument.Title,
-            AssetName = faceDocument.AssetName,
             Summary = faceDocument.Summary,
             SourcePanel2DDocumentId = faceDocument.SourcePanel2DDocumentId,
             SourcePanel2DDocumentPath = faceDocument.SourcePanel2DDocumentPath,
@@ -201,7 +200,7 @@ public sealed class FaceRuntimeExportService
         File.Copy(sourcePath, outputPath, overwrite: true);
     }
 
-    private static string ResolveRuntimeOutputDirectory(FaceDocumentModel faceDocument, EditorProject project)
+    private static string ResolveRuntimeOutputDirectory(EditorProject project, string? documentPath)
     {
         if (string.IsNullOrWhiteSpace(project.GeneratedDirectory))
         {
@@ -214,39 +213,13 @@ public sealed class FaceRuntimeExportService
             throw new IOException($"Project Generated directory points to a file: {generatedDirectory}");
         }
 
-        var faceName = ResolveFaceAssetName(faceDocument);
+        var faceName = ProjectAssetPathService.GetPackageAssetNameFromManifestPath(documentPath ?? string.Empty, EditorAssetType.Face);
+        if (string.IsNullOrWhiteSpace(faceName))
+        {
+            throw new InvalidOperationException("Face runtime export requires a Face package manifest path: Assets/Faces/<AssetName>/asset.face.");
+        }
+
         return new ProjectAssetPathService().GetFaceRuntimeDirectory(project, faceName);
-    }
-
-    private static string ResolveFaceAssetName(FaceDocumentModel faceDocument)
-    {
-        if (!string.IsNullOrWhiteSpace(faceDocument.AssetName))
-        {
-            return faceDocument.AssetName.Trim();
-        }
-
-        var packageAssetName = TryGetAssetNameFromFacePackagePath(faceDocument.MaskLayer?.AssetPath)
-            ?? faceDocument.Elements.OfType<FaceArtworkElement>().Select(element => TryGetAssetNameFromFacePackagePath(element.AssetPath)).FirstOrDefault(name => !string.IsNullOrWhiteSpace(name));
-        if (!string.IsNullOrWhiteSpace(packageAssetName))
-        {
-            return packageAssetName;
-        }
-
-        return string.IsNullOrWhiteSpace(faceDocument.Title)
-            ? (string.IsNullOrWhiteSpace(faceDocument.Id) ? Guid.NewGuid().ToString("N") : faceDocument.Id.Trim())
-            : faceDocument.Title.Trim();
-    }
-
-    private static string? TryGetAssetNameFromFacePackagePath(string? path)
-    {
-        if (string.IsNullOrWhiteSpace(path)) return null;
-        var normalized = ProjectAssetPathService.NormalizeProjectRelativePath(path.Trim());
-        var parts = normalized.Split('/', StringSplitOptions.RemoveEmptyEntries);
-        return parts.Length >= 4
-            && string.Equals(parts[0], "Assets", StringComparison.OrdinalIgnoreCase)
-            && string.Equals(parts[1], "Faces", StringComparison.OrdinalIgnoreCase)
-            ? parts[2]
-            : null;
     }
 
     private static string ResolveExistingProjectPath(EditorProject project, string? projectPath, string description)

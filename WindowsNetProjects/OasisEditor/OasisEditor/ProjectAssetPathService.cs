@@ -51,6 +51,18 @@ public sealed class ProjectAssetPathService
     public string GetFaceMaskPath(EditorProject project, string assetName) => Path.Combine(GetAssetPackageDirectory(project, EditorAssetType.Face, assetName), FaceMaskFileName);
     public string GetFaceRuntimeDirectory(EditorProject project, string assetName) => Path.Combine(project.GeneratedDirectory, "Faces", SanitizePathSegment(assetName), FaceRuntimeExportService.RuntimeDirectoryName);
 
+    public static string? GetPackageAssetNameFromManifestPath(string manifestPath, EditorAssetType assetType)
+    {
+        if (string.IsNullOrWhiteSpace(manifestPath)) return null;
+        var fullPath = Path.GetFullPath(manifestPath);
+        if (!string.Equals(Path.GetFileName(fullPath), GetManifestFileName(assetType), StringComparison.OrdinalIgnoreCase)) return null;
+        var packageDirectory = Path.GetDirectoryName(fullPath);
+        var typeDirectory = packageDirectory is null ? null : Path.GetDirectoryName(packageDirectory);
+        if (string.IsNullOrWhiteSpace(packageDirectory) || string.IsNullOrWhiteSpace(typeDirectory)) return null;
+        if (!string.Equals(Path.GetFileName(typeDirectory), GetAssetTypeFolderName(assetType), StringComparison.OrdinalIgnoreCase)) return null;
+        return Path.GetFileName(packageDirectory);
+    }
+
     public string EnsureUniqueAssetName(EditorProject project, EditorAssetType assetType, string requestedName)
     {
         var safe = SanitizePathSegment(requestedName);

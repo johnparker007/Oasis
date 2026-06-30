@@ -157,7 +157,6 @@ public static class FaceDocumentStorage
         {
             Id = string.IsNullOrWhiteSpace(file.Id) ? Guid.NewGuid().ToString("N") : file.Id.Trim(),
             Title = file.Title ?? string.Empty,
-            AssetName = string.IsNullOrWhiteSpace(file.AssetName) ? null : file.AssetName.Trim(),
             Summary = file.Summary,
             SourcePanel2DDocumentId = string.IsNullOrWhiteSpace(file.SourcePanel2DDocumentId) ? null : file.SourcePanel2DDocumentId.Trim(),
             SourcePanel2DDocumentPath = string.IsNullOrWhiteSpace(file.SourcePanel2DDocumentPath) ? null : file.SourcePanel2DDocumentPath.Trim(),
@@ -193,7 +192,6 @@ public static class FaceDocumentStorage
             SchemaVersion = CurrentSchemaVersion,
             Id = string.IsNullOrWhiteSpace(model.Id) ? Guid.NewGuid().ToString("N") : model.Id.Trim(),
             Title = model.Title,
-            AssetName = string.IsNullOrWhiteSpace(model.AssetName) ? null : model.AssetName.Trim(),
             Summary = model.Summary,
             SourcePanel2DDocumentId = model.SourcePanel2DDocumentId,
             SourcePanel2DDocumentPath = string.IsNullOrWhiteSpace(model.SourcePanel2DDocumentPath) ? null : model.SourcePanel2DDocumentPath.Trim(),
@@ -761,7 +759,6 @@ public sealed record FaceDocumentFile
     public int SchemaVersion { get; init; } = FaceDocumentStorage.CurrentSchemaVersion;
     public string? Id { get; init; }
     public string? Title { get; init; }
-    public string? AssetName { get; init; }
     public string? Summary { get; init; }
     public string? SourcePanel2DDocumentId { get; init; }
     public string? SourcePanel2DDocumentPath { get; init; }

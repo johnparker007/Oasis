@@ -181,9 +181,9 @@ public sealed class DocumentWorkspaceViewModel
             generationSettings: generationSettings,
             progress: progress.CreateChild(0.0, 0.8),
             sourcePanel2DDocumentPath: sourceDocument.FilePath);
-        var generatedFaceDocument = ExportRuntimeAssetsForPreview(result.Document, loadedProject, progress.CreateChild(0.8, 0.95));
-        var faceJson = FaceDocumentStorage.Serialize(generatedFaceDocument);
         var manifestPath = pathService.GetFaceManifestPath(loadedProject, title);
+        var generatedFaceDocument = ExportRuntimeAssetsForPreview(result.Document, loadedProject, manifestPath, progress.CreateChild(0.8, 0.95));
+        var faceJson = FaceDocumentStorage.Serialize(generatedFaceDocument);
         System.IO.File.WriteAllText(manifestPath, faceJson);
         var faceEditorDocument = EditorDocument.CreateFromFile(manifestPath, generatedFaceDocument.Summary ?? "Generated Face document.", title);
         var document = CreateDocumentTab(faceEditorDocument, faceDocumentJson: faceJson);
@@ -194,11 +194,11 @@ public sealed class DocumentWorkspaceViewModel
         return document;
     }
 
-    private FaceDocumentModel ExportRuntimeAssetsForPreview(FaceDocumentModel faceDocument, EditorProject loadedProject, IEditorProgressReporter? progress = null)
+    private FaceDocumentModel ExportRuntimeAssetsForPreview(FaceDocumentModel faceDocument, EditorProject loadedProject, string documentPath, IEditorProgressReporter? progress = null)
     {
         try
         {
-            var exportResult = _faceRuntimeExportService.Export(faceDocument, loadedProject, progress);
+            var exportResult = _faceRuntimeExportService.Export(faceDocument, loadedProject, documentPath, progress);
             _addOutputEntry($"Generated runtime face preview textures for '{faceDocument.Title}'.", OutputLogStatus.Info);
             return exportResult.Document;
         }
@@ -209,7 +209,6 @@ public sealed class DocumentWorkspaceViewModel
             {
                 Id = faceDocument.Id,
                 Title = faceDocument.Title,
-                AssetName = faceDocument.AssetName,
                 Summary = faceDocument.Summary,
                 SourcePanel2DDocumentId = faceDocument.SourcePanel2DDocumentId,
                 SourcePanel2DDocumentPath = faceDocument.SourcePanel2DDocumentPath,
@@ -302,10 +301,11 @@ public sealed class DocumentWorkspaceViewModel
             loadedProject.ProjectDirectory,
             loadedProject.GeneratedDirectory,
             generationSettings,
-            progress.CreateChild(0.0, 0.8));
+            progress.CreateChild(0.0, 0.8),
+            selectedDocument.FilePath);
 
         progress.Report(0.8, "Exporting regenerated runtime preview assets...");
-        var regeneratedFaceDocument = ExportRuntimeAssetsForPreview(result.Document, loadedProject, progress.CreateChild(0.8, 0.95));
+        var regeneratedFaceDocument = ExportRuntimeAssetsForPreview(result.Document, loadedProject, selectedDocument.FilePath, progress.CreateChild(0.8, 0.95));
 
         progress.Report(0.95, "Updating Face document...");
 
@@ -695,14 +695,16 @@ public sealed class DocumentWorkspaceViewModel
                 var summary = string.IsNullOrWhiteSpace(faceDocument.Summary)
                     ? "Face document opened."
                     : faceDocument.Summary.Trim();
-                var title = string.IsNullOrWhiteSpace(faceDocument.Title)
-                    ? Path.GetFileName(path)
-                    : faceDocument.Title.Trim();
-                var assetName = string.IsNullOrWhiteSpace(faceDocument.AssetName)
-                    ? Path.GetFileName(Path.GetDirectoryName(path) ?? string.Empty)
-                    : faceDocument.AssetName.Trim();
-                faceDocument = faceDocument with { AssetName = string.IsNullOrWhiteSpace(assetName) ? null : assetName };
-                return new OpenDocumentData(summary, null, title, FaceDocumentStorage.Serialize(faceDocument));
+                var assetName = ProjectAssetPathService.GetPackageAssetNameFromManifestPath(path, EditorAssetType.Face);
+                if (string.IsNullOrWhiteSpace(assetName))
+                {
+                    return new OpenDocumentData(
+                        "Failed to open face document: Face manifests must be stored as Assets/Faces/<AssetName>/asset.face.",
+                        null,
+                        Path.GetFileName(path));
+                }
+
+                return new OpenDocumentData(summary, null, assetName, FaceDocumentStorage.Serialize(faceDocument));
             }
 
             return new OpenDocumentData(
@@ -750,7 +752,6 @@ public sealed class DocumentWorkspaceViewModel
             {
                 Id = faceDocument.Id,
                 Title = document.Document.Title,
-                AssetName = faceDocument.AssetName,
                 Summary = document.ContentSummary,
                 SourcePanel2DDocumentId = faceDocument.SourcePanel2DDocumentId,
                 SourcePanel2DDocumentPath = faceDocument.SourcePanel2DDocumentPath,

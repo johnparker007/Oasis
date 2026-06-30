@@ -8,12 +8,11 @@ public sealed class FaceDocumentRoundTripTests
     [Fact]
     public void Serialize_AndOpen_RoundTripsFaceDocument()
     {
-        const string path = "C:/Repo/Assets/sample.face";
+        const string path = "C:/Repo/Assets/Faces/Front Face/asset.face";
         var source = new FaceDocumentModel
         {
             Id = "face-1",
             Title = "Front Face",
-            AssetName = "Front Face Package",
             Summary = "Physical face summary",
             MaskLayer = new FaceMaskLayerModel
             {
@@ -119,7 +118,6 @@ public sealed class FaceDocumentRoundTripTests
         var savedContent = DocumentWorkspaceViewModel.BuildDocumentContent(document);
 
         Assert.True(FaceDocumentStorage.TryRead(savedContent, out var savedDocument));
-        Assert.Equal("Front Face Package", savedDocument.AssetName);
         Assert.Equal(FaceDocumentStorage.CurrentSchemaVersion, savedDocument.SchemaVersion);
         Assert.Equal("face-1", savedDocument.Id);
         Assert.Equal("Front Face", savedDocument.Title);
