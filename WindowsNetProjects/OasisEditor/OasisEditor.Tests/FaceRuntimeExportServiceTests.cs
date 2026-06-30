@@ -64,6 +64,30 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
     }
 
     [Fact]
+    public void Export_UsesStableFaceAssetNameWhenTitleChanges_AndDoesNotOverwriteAuthoredAssets()
+    {
+        var authoredDirectory = Path.Combine(_assetsDirectory, "Faces", "Stable Face");
+        var authoredArtworkPath = Path.Combine(authoredDirectory, "artwork.png");
+        var authoredMaskPath = Path.Combine(authoredDirectory, "mask.png");
+        WriteSolidPng(authoredArtworkPath, 4, 4, SKColors.Red);
+        WriteSolidPng(authoredMaskPath, 4, 4, SKColors.White);
+        var artworkBefore = File.ReadAllBytes(authoredArtworkPath);
+        var maskBefore = File.ReadAllBytes(authoredMaskPath);
+
+        var document = CreateDocument("Assets/Faces/Stable Face/artwork.png", "Assets/Faces/Stable Face/mask.png", "Stable Face", "Renamed In Inspector");
+
+        var result = new FaceRuntimeExportService().Export(document, CreateProject());
+
+        Assert.Equal(Path.Combine(_generatedDirectory, "Faces", "Stable Face", "runtime"), result.OutputDirectory);
+        Assert.True(File.Exists(Path.Combine(_generatedDirectory, "Faces", "Stable Face", "runtime", "artwork.png")));
+        Assert.True(File.Exists(Path.Combine(_generatedDirectory, "Faces", "Stable Face", "runtime", "mask.png")));
+        Assert.Equal("Generated/Faces/Stable Face/runtime/artwork.png", result.Document.RuntimeRenderAssets!.ArtworkPath);
+        Assert.Equal(artworkBefore, File.ReadAllBytes(authoredArtworkPath));
+        Assert.Equal(maskBefore, File.ReadAllBytes(authoredMaskPath));
+        Assert.False(Directory.Exists(Path.Combine(_generatedDirectory, "Faces", "Renamed In Inspector")));
+    }
+
+    [Fact]
     public void Export_WritesManifestArtworkAndMask_AndUpdatesDocumentRuntimeAssets()
     {
         var artworkPath = Path.Combine(_assetsDirectory, "artwork.png");
@@ -715,12 +739,13 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         };
     }
 
-    private static FaceDocumentModel CreateDocument(string artworkAssetPath, string maskAssetPath)
+    private static FaceDocumentModel CreateDocument(string artworkAssetPath, string maskAssetPath, string? assetName = null, string title = "Runtime Face")
     {
         return new FaceDocumentModel
         {
             Id = "face-runtime",
-            Title = "Runtime Face",
+            Title = title,
+            AssetName = assetName,
             SourceRegion = new FaceSourceRegionModel
             {
                 X = 0,

@@ -69,6 +69,38 @@ public sealed class FaceGenerationSettingsTests
 
 
     [Fact]
+    public void Regenerate_UsesStableAssetNameWhenTitleChanges()
+    {
+        var projectDirectory = Path.Combine(Path.GetTempPath(), $"OasisFaceRegenerationTests-{Guid.NewGuid():N}");
+        try
+        {
+            Directory.CreateDirectory(projectDirectory);
+            var existingFace = new FaceDocumentModel
+            {
+                Id = "face-1",
+                Title = "Renamed Face",
+                AssetName = "Stable Face",
+                SourcePanel2DDocumentId = "panel-doc",
+                SourceFaceShapeId = "shape-1",
+                SourceRegion = FaceSourceRegionModel.FromRect(new Rect(0, 0, 100, 100)),
+                GenerationSettings = FaceGenerationSettingsModel.Default
+            };
+
+            var result = new FaceRegenerationService().Regenerate(existingFace, CreatePanelWithFaceSourceShape(), projectDirectory, Path.Combine(projectDirectory, "Generated"));
+
+            Assert.Equal("Renamed Face", result.Document.Title);
+            Assert.Equal("Stable Face", result.Document.AssetName);
+            Assert.Equal("Assets/Faces/Stable Face/mask.png", result.Document.MaskLayer!.AssetPath);
+            Assert.True(File.Exists(Path.Combine(projectDirectory, "Assets", "Faces", "Stable Face", "mask.png")));
+            Assert.False(Directory.Exists(Path.Combine(projectDirectory, "Assets", "Faces", "Renamed Face")));
+        }
+        finally
+        {
+            if (Directory.Exists(projectDirectory)) Directory.Delete(projectDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
     public void Regenerate_UsesExistingFaceSettingsWhenNoOverrideIsProvided()
     {
         var existingFace = new FaceDocumentModel

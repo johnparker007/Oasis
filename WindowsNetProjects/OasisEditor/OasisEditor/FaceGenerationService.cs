@@ -149,6 +149,7 @@ internal sealed class FaceGenerationService
         {
             Id = faceDocumentId,
             Title = resolvedFaceAssetName,
+            AssetName = resolvedFaceAssetName,
             Summary = $"Generated from Face Source Shape '{sourceShape.Name}' ({output.Width} x {output.Height}).",
             SourcePanel2DDocumentId = NormalizeOptional(sourcePanel2DDocumentId),
             SourceFaceShapeId = NormalizeOptional(sourceShape.Id),

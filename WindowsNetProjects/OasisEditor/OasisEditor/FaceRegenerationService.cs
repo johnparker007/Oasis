@@ -83,7 +83,7 @@ internal sealed class FaceRegenerationService
             targetAspectRatio: targetAspectRatio,
             projectDirectory: projectDirectory,
             generatedDirectory: generatedDirectory,
-            faceAssetName: existingFace.Title,
+            faceAssetName: ResolveFaceAssetName(existingFace),
             generationSettings: settings,
             progress: progress.CreateChild(0.15, 0.45),
             sourcePanel2DDocumentPath: existingFace.SourcePanel2DDocumentPath);
@@ -145,6 +145,7 @@ internal sealed class FaceRegenerationService
         {
             Id = existingFace.Id,
             Title = existingFace.Title,
+            AssetName = ResolveFaceAssetName(existingFace),
             Summary = generated.Document.Summary ?? $"Regenerated from Face Source Shape.",
             SourcePanel2DDocumentId = existingFace.SourcePanel2DDocumentId,
             SourcePanel2DDocumentPath = existingFace.SourcePanel2DDocumentPath,
@@ -168,6 +169,36 @@ internal sealed class FaceRegenerationService
             removedGeneratedElementCount,
             preservedManualElements.Count,
             generated);
+    }
+
+
+    private static string ResolveFaceAssetName(FaceDocumentModel faceDocument)
+    {
+        if (!string.IsNullOrWhiteSpace(faceDocument.AssetName))
+        {
+            return faceDocument.AssetName.Trim();
+        }
+
+        var packageAssetName = TryGetAssetNameFromFacePackagePath(faceDocument.MaskLayer?.AssetPath)
+            ?? faceDocument.Elements.OfType<FaceArtworkElement>().Select(element => TryGetAssetNameFromFacePackagePath(element.AssetPath)).FirstOrDefault(name => !string.IsNullOrWhiteSpace(name));
+        if (!string.IsNullOrWhiteSpace(packageAssetName))
+        {
+            return packageAssetName;
+        }
+
+        return string.IsNullOrWhiteSpace(faceDocument.Title) ? faceDocument.Id : faceDocument.Title.Trim();
+    }
+
+    private static string? TryGetAssetNameFromFacePackagePath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return null;
+        var normalized = ProjectAssetPathService.NormalizeProjectRelativePath(path.Trim());
+        var parts = normalized.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length >= 4
+            && string.Equals(parts[0], "Assets", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(parts[1], "Faces", StringComparison.OrdinalIgnoreCase)
+            ? parts[2]
+            : null;
     }
 
     private static IReadOnlyList<FaceLayerModel> EnsureFaceMaskLayer(IReadOnlyList<FaceLayerModel> layers)

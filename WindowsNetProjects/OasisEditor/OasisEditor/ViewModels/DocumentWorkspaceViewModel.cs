@@ -209,6 +209,7 @@ public sealed class DocumentWorkspaceViewModel
             {
                 Id = faceDocument.Id,
                 Title = faceDocument.Title,
+                AssetName = faceDocument.AssetName,
                 Summary = faceDocument.Summary,
                 SourcePanel2DDocumentId = faceDocument.SourcePanel2DDocumentId,
                 SourcePanel2DDocumentPath = faceDocument.SourcePanel2DDocumentPath,
@@ -697,6 +698,10 @@ public sealed class DocumentWorkspaceViewModel
                 var title = string.IsNullOrWhiteSpace(faceDocument.Title)
                     ? Path.GetFileName(path)
                     : faceDocument.Title.Trim();
+                var assetName = string.IsNullOrWhiteSpace(faceDocument.AssetName)
+                    ? Path.GetFileName(Path.GetDirectoryName(path) ?? string.Empty)
+                    : faceDocument.AssetName.Trim();
+                faceDocument = faceDocument with { AssetName = string.IsNullOrWhiteSpace(assetName) ? null : assetName };
                 return new OpenDocumentData(summary, null, title, FaceDocumentStorage.Serialize(faceDocument));
             }
 
@@ -745,6 +750,7 @@ public sealed class DocumentWorkspaceViewModel
             {
                 Id = faceDocument.Id,
                 Title = document.Document.Title,
+                AssetName = faceDocument.AssetName,
                 Summary = document.ContentSummary,
                 SourcePanel2DDocumentId = faceDocument.SourcePanel2DDocumentId,
                 SourcePanel2DDocumentPath = faceDocument.SourcePanel2DDocumentPath,
