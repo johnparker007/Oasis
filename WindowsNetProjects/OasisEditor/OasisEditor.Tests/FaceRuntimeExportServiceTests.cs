@@ -74,9 +74,9 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         var artworkBefore = File.ReadAllBytes(authoredArtworkPath);
         var maskBefore = File.ReadAllBytes(authoredMaskPath);
 
-        var document = CreateDocument("Assets/Faces/Stable Face/artwork.png", "Assets/Faces/Stable Face/mask.png", "Stable Face", "Renamed In Inspector");
+        var document = CreateDocument("Assets/Faces/Stable Face/artwork.png", "Assets/Faces/Stable Face/mask.png", "Renamed In Inspector");
 
-        var result = new FaceRuntimeExportService().Export(document, CreateProject());
+        var result = new FaceRuntimeExportService().Export(document, CreateProject(), GetFaceManifestPath("Stable Face"));
 
         Assert.Equal(Path.Combine(_generatedDirectory, "Faces", "Stable Face", "runtime"), result.OutputDirectory);
         Assert.True(File.Exists(Path.Combine(_generatedDirectory, "Faces", "Stable Face", "runtime", "artwork.png")));
@@ -97,7 +97,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         var document = CreateDocument("Assets/artwork.png", "Generated/source-mask.png");
         var project = CreateProject();
 
-        var result = new FaceRuntimeExportService().Export(document, project);
+        var result = new FaceRuntimeExportService().Export(document, project, GetFaceManifestPath());
 
         Assert.True(File.Exists(result.ManifestPath));
         Assert.True(File.Exists(result.ArtworkPath));
@@ -149,7 +149,8 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
     {
         var artworkPath = Path.Combine(_assetsDirectory, "artwork.png");
         var maskPath = Path.Combine(_generatedDirectory, "source-mask.png");
-        var facePath = Path.Combine(_projectDirectory, "front.face");
+        var facePath = GetFaceManifestPath();
+        Directory.CreateDirectory(Path.GetDirectoryName(facePath)!);
         WriteSolidPng(artworkPath, 4, 4, new SKColor(0, 255, 0, 192));
         WriteSolidPng(maskPath, 4, 4, SKColors.White);
         var document = CreateDocument("Assets/artwork.png", "Generated/source-mask.png");
@@ -269,7 +270,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         WriteSolidPng(maskPath, 4, 4, SKColors.White);
         var document = CreateDocument("Assets/missing.png", "Generated/source-mask.png");
 
-        var exception = Assert.Throws<FileNotFoundException>(() => new FaceRuntimeExportService().Export(document, CreateProject()));
+        var exception = Assert.Throws<FileNotFoundException>(() => new FaceRuntimeExportService().Export(document, CreateProject(), GetFaceManifestPath()));
         Assert.Contains("Artwork element", exception.Message);
     }
 
@@ -280,7 +281,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         WriteSolidPng(artworkPath, 4, 4, SKColors.Red);
         var document = CreateDocument("Assets/artwork.png", "Generated/missing-mask.png");
 
-        var exception = Assert.Throws<FileNotFoundException>(() => new FaceRuntimeExportService().Export(document, CreateProject()));
+        var exception = Assert.Throws<FileNotFoundException>(() => new FaceRuntimeExportService().Export(document, CreateProject(), GetFaceManifestPath()));
         Assert.Contains("Face mask layer", exception.Message);
     }
 
@@ -739,13 +740,14 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         };
     }
 
-    private static FaceDocumentModel CreateDocument(string artworkAssetPath, string maskAssetPath, string? assetName = null, string title = "Runtime Face")
+    private string GetFaceManifestPath(string assetName = "Runtime Face") => Path.Combine(_assetsDirectory, "Faces", assetName, "asset.face");
+
+    private static FaceDocumentModel CreateDocument(string artworkAssetPath, string maskAssetPath, string title = "Runtime Face")
     {
         return new FaceDocumentModel
         {
             Id = "face-runtime",
             Title = title,
-            AssetName = assetName,
             SourceRegion = new FaceSourceRegionModel
             {
                 X = 0,
@@ -799,6 +801,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
 
 
 
+
     private static FaceDocumentModel CreateDocumentWithLampWindows(params FaceLampWindowElement[] lampWindows)
     {
         return new FaceDocumentModel
@@ -809,6 +812,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
             Elements = lampWindows
         };
     }
+
 
     private static FaceDocumentModel CreateDocumentWithAuthoredTrayAndEmitter(
         FaceSourceRegionModel trayBounds,
@@ -851,6 +855,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
             ]
         };
     }
+
 
     private static FaceDocumentModel CreateDocumentWithAuthoredTrayAndEmitters(FaceSourceRegionModel trayBounds, params TestEmitter[] emitters)
     {
@@ -912,10 +917,10 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         var document = CreateDocument("Assets/progress-artwork.png", "Generated/progress-mask.png");
         var project = CreateProject();
         var service = new FaceRuntimeExportService();
-        var baseline = service.Export(document, project);
+        var baseline = service.Export(document, project, GetFaceManifestPath());
         var progress = new RecordingEditorProgressReporter();
 
-        var result = service.Export(document, project, progress);
+        var result = service.Export(document, project, GetFaceManifestPath(), progress);
 
         Assert.Equal(baseline.Document.RuntimeRenderAssets!.ManifestPath, result.Document.RuntimeRenderAssets!.ManifestPath);
         Assert.Equal(baseline.Document.RuntimeRenderAssets.ArtworkPath, result.Document.RuntimeRenderAssets.ArtworkPath);

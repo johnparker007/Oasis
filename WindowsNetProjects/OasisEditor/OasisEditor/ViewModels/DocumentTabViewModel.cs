@@ -60,6 +60,28 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
         _faceDocumentModel = FaceDocumentStorage.TryRead(faceDocumentJson, out var faceDocumentFile)
             ? FaceDocumentStorage.ToModel(faceDocumentFile)
             : new FaceDocumentModel();
+        if (document.DocumentType == EditorDocumentType.Face)
+        {
+            _faceDocumentModel = new FaceDocumentModel
+            {
+                Id = _faceDocumentModel.Id,
+                Title = document.Title,
+                Summary = _faceDocumentModel.Summary,
+                SourcePanel2DDocumentId = _faceDocumentModel.SourcePanel2DDocumentId,
+                SourcePanel2DDocumentPath = _faceDocumentModel.SourcePanel2DDocumentPath,
+                SourceFaceShapeId = _faceDocumentModel.SourceFaceShapeId,
+                AssignedCabinetFaceTargetId = _faceDocumentModel.AssignedCabinetFaceTargetId,
+                SourceRegion = _faceDocumentModel.SourceRegion,
+                LastRegeneratedAtUtc = _faceDocumentModel.LastRegeneratedAtUtc,
+                GenerationSettings = _faceDocumentModel.GenerationSettings,
+                RuntimeRenderAssets = _faceDocumentModel.RuntimeRenderAssets,
+                MaskLayer = _faceDocumentModel.MaskLayer,
+                Trays = _faceDocumentModel.Trays,
+                LampEmitters = _faceDocumentModel.LampEmitters,
+                Layers = _faceDocumentModel.Layers,
+                Elements = _faceDocumentModel.Elements
+            };
+        }
         _cabinetDocumentModel = CabinetDocumentStorage.TryRead(cabinetDocumentJson, out var cabinetDocument)
             ? cabinetDocument
             : CabinetDocument.Empty;

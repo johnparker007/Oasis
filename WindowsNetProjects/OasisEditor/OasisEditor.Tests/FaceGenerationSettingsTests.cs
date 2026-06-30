@@ -69,7 +69,7 @@ public sealed class FaceGenerationSettingsTests
 
 
     [Fact]
-    public void Regenerate_UsesStableAssetNameWhenTitleChanges()
+    public void Regenerate_UsesFacePackageFolderNameWhenTitleChanges()
     {
         var projectDirectory = Path.Combine(Path.GetTempPath(), $"OasisFaceRegenerationTests-{Guid.NewGuid():N}");
         try
@@ -79,17 +79,15 @@ public sealed class FaceGenerationSettingsTests
             {
                 Id = "face-1",
                 Title = "Renamed Face",
-                AssetName = "Stable Face",
                 SourcePanel2DDocumentId = "panel-doc",
                 SourceFaceShapeId = "shape-1",
                 SourceRegion = FaceSourceRegionModel.FromRect(new Rect(0, 0, 100, 100)),
                 GenerationSettings = FaceGenerationSettingsModel.Default
             };
 
-            var result = new FaceRegenerationService().Regenerate(existingFace, CreatePanelWithFaceSourceShape(), projectDirectory, Path.Combine(projectDirectory, "Generated"));
+            var result = new FaceRegenerationService().Regenerate(existingFace, CreatePanelWithFaceSourceShape(), projectDirectory, Path.Combine(projectDirectory, "Generated"), documentPath: Path.Combine(projectDirectory, "Assets", "Faces", "Stable Face", "asset.face"));
 
             Assert.Equal("Renamed Face", result.Document.Title);
-            Assert.Equal("Stable Face", result.Document.AssetName);
             Assert.Equal("Assets/Faces/Stable Face/mask.png", result.Document.MaskLayer!.AssetPath);
             Assert.True(File.Exists(Path.Combine(projectDirectory, "Assets", "Faces", "Stable Face", "mask.png")));
             Assert.False(Directory.Exists(Path.Combine(projectDirectory, "Assets", "Faces", "Renamed Face")));
@@ -118,7 +116,7 @@ public sealed class FaceGenerationSettingsTests
             }
         };
 
-        var result = new FaceRegenerationService().Regenerate(existingFace, CreatePanelWithFaceSourceShape());
+        var result = new FaceRegenerationService().Regenerate(existingFace, CreatePanelWithFaceSourceShape(), documentPath: "Assets/Faces/Face/asset.face");
 
         Assert.Equal(13, result.Document.GenerationSettings.MaskExtractionThreshold);
     }
@@ -144,7 +142,8 @@ public sealed class FaceGenerationSettingsTests
                 MaskExtractionThreshold = 31,
                 TrayBoundsInflationPercent = 0,
                 TrayBoundsPaddingPixels = 0
-            });
+            },
+            documentPath: "Assets/Faces/Face/asset.face");
 
         Assert.Equal(31, result.Document.GenerationSettings.MaskExtractionThreshold);
     }
