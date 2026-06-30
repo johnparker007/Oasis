@@ -800,7 +800,6 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
 
 
 
-    private string GetFaceManifestPath(string assetName = "Runtime Face") => Path.Combine(_assetsDirectory, "Faces", assetName, "asset.face");
 
     private static FaceDocumentModel CreateDocumentWithLampWindows(params FaceLampWindowElement[] lampWindows)
     {
@@ -813,7 +812,6 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         };
     }
 
-    private string GetFaceManifestPath(string assetName = "Runtime Face") => Path.Combine(_assetsDirectory, "Faces", assetName, "asset.face");
 
     private static FaceDocumentModel CreateDocumentWithAuthoredTrayAndEmitter(
         FaceSourceRegionModel trayBounds,
@@ -857,7 +855,6 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         };
     }
 
-    private string GetFaceManifestPath(string assetName = "Runtime Face") => Path.Combine(_assetsDirectory, "Faces", assetName, "asset.face");
 
     private static FaceDocumentModel CreateDocumentWithAuthoredTrayAndEmitters(FaceSourceRegionModel trayBounds, params TestEmitter[] emitters)
     {
