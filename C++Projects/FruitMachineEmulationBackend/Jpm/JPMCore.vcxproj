@@ -1,0 +1,291 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{BFFAE424-F086-45C4-9D90-20F6594CA4B9}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>JPMCore</RootNamespace>
+    <ProjectName>Sys6Core</ProjectName>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <Import Project="$(SolutionDir)BuildSupport\AmberRuntimeDeps.props" Condition="Exists('$(SolutionDir)BuildSupport\AmberRuntimeDeps.props')" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+    <IncludePath>C:\Program Files %28x86%29\Microsoft DirectX SDK %28June 2010%29\Include;$(SolutionDir)Engine\zlib-1.2.11;$(SolutionDir)Engine\bass24\c;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\Program Files %28x86%29\Microsoft DirectX SDK %28June 2010%29\Lib\x86;$(SolutionDir)Engine\bass24\c;$(SolutionDir)Engine\zlib-1.2.11\contrib\vstudio\vc14\x86\ZlibStatDebug;$(LibraryPath)</LibraryPath>
+    <OutDir>$(SolutionDir)$(Configuration)32\</OutDir>
+    <IntDir>$(Configuration)32\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <IncludePath>C:\Program Files %28x86%29\Microsoft DirectX SDK %28June 2010%29\Include;$(SolutionDir)Engine\zlib-1.2.11;$(SolutionDir)Engine\bass24\c;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\Program Files %28x86%29\Microsoft DirectX SDK %28June 2010%29\Lib\x64;$(SolutionDir)Engine\bass24\c\x64;$(SolutionDir)Engine\zlib-1.2.11\contrib\vstudio\vc14\x64\ZlibStatDebug;$(LibraryPath)</LibraryPath>
+    <OutDir>$(SolutionDir)$(Configuration)64\</OutDir>
+    <IntDir>$(Configuration)64\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+    <IncludePath>C:\Program Files %28x86%29\Microsoft DirectX SDK %28June 2010%29\Include;$(SolutionDir)Engine\bass24\c;$(SolutionDir)Engine\zlib-1.2.11;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\Program Files %28x86%29\Microsoft DirectX SDK %28June 2010%29\Lib\x86;$(SolutionDir)Engine\bass24\c;$(SolutionDir)Engine\zlib-1.2.11\contrib\vstudio\vc14\x86\ZlibStatReleaseWithoutAsm;$(LibraryPath)</LibraryPath>
+    <OutDir>$(SolutionDir)$(Configuration)32\</OutDir>
+    <IntDir>$(Configuration)32\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <IncludePath>C:\Program Files %28x86%29\Microsoft DirectX SDK %28June 2010%29\Include;$(SolutionDir)Engine\zlib-1.2.11;$(SolutionDir)Engine\bass24\c;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\Program Files %28x86%29\Microsoft DirectX SDK %28June 2010%29\Lib\x64;$(SolutionDir)Engine\zlib-1.2.11\contrib\vstudio\vc14\x64\ZlibStatRelease;$(SolutionDir)Engine\bass24\c\x64;$(LibraryPath)</LibraryPath>
+    <OutDir>$(SolutionDir)$(Configuration)64\</OutDir>
+    <IntDir>$(Configuration)64\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;_DEBUG;_WINDOWS;_USRDLL;JPMCORE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+      <CallingConvention>Cdecl</CallingConvention>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <Optimization>Disabled</Optimization>
+      <MultiProcessorCompilation>false</MultiProcessorCompilation>
+      <DisableSpecificWarnings>4005;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;_DEBUG;_WINDOWS;_USRDLL;JPMCORE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+      <CallingConvention>Cdecl</CallingConvention>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <Optimization>Disabled</Optimization>
+      <MultiProcessorCompilation>false</MultiProcessorCompilation>
+      <DisableSpecificWarnings>4005;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <Optimization>Full</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;NDEBUG;_WINDOWS;_USRDLL;JPMCORE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <DisableSpecificWarnings>4005;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <IgnoreSpecificDefaultLibraries>MSVCRTD;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <Optimization>Full</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;NDEBUG;_WINDOWS;_USRDLL;JPMCORE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <DisableSpecificWarnings>4005;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <IgnoreSpecificDefaultLibraries>MSVCRTD;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="AlphaDisplayClass.h" />
+    <ClInclude Include="CashBox.h" />
+    <ClInclude Include="CoinMechs.h" />
+    <ClInclude Include="DevicePPI8255.h" />
+    <ClInclude Include="EDC.h" />
+    <ClInclude Include="Hoppers.h" />
+    <ClInclude Include="Interface.h" />
+    <ClInclude Include="Lamps.h" />
+    <ClInclude Include="LoadSaveCompressDLLClass_SAFE.h" />
+    <ClInclude Include="m68k.h" />
+    <ClInclude Include="m68kconf.h" />
+    <ClInclude Include="m68kcpu.h" />
+    <ClInclude Include="Solenoids.h" />
+    <ClInclude Include="SoundMain.h" />
+    <ClInclude Include="SwitchMatrix.h" />
+    <ClInclude Include="Meters.h" />
+    <ClInclude Include="Reels.h" />
+    <ClInclude Include="SCN68681.h" />
+    <ClInclude Include="Segments.h" />
+    <ClInclude Include="stdafx.h" />
+    <ClInclude Include="System6.h" />
+    <ClInclude Include="targetver.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="AlphaDisplayClass.cpp" />
+    <ClCompile Include="CashBox.cpp" />
+    <ClCompile Include="CoinMechs.cpp" />
+    <ClCompile Include="DevicePPI8255.cpp" />
+    <ClCompile Include="EDC.cpp" />
+    <ClCompile Include="Hoppers.cpp" />
+    <ClCompile Include="Interface.cpp">
+      <CompileAsManaged Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</CompileAsManaged>
+      <CompileAsManaged Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</CompileAsManaged>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+      </PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+      </PrecompiledHeader>
+      <CompileAsManaged Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</CompileAsManaged>
+      <CompileAsManaged Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</CompileAsManaged>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+      </PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+      </PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Lamps.cpp" />
+    <ClCompile Include="LoadSaveCompressDLLClass_SAFE.cpp" />
+    <ClCompile Include="m68kcpu.cpp" />
+    <ClCompile Include="m68kdasm.cpp" />
+    <ClCompile Include="m68kopac.cpp" />
+    <ClCompile Include="m68kopdm.cpp" />
+    <ClCompile Include="m68kopnz.cpp" />
+    <ClCompile Include="m68kops.cpp" />
+    <ClCompile Include="Meters.cpp" />
+    <ClCompile Include="Reels.cpp" />
+    <ClCompile Include="SCN68681.cpp" />
+    <ClCompile Include="Segments.cpp" />
+    <ClCompile Include="Solenoids.cpp" />
+    <ClCompile Include="SoundMain.cpp" />
+    <ClCompile Include="stdafx.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="SwitchMatrix.cpp" />
+    <ClCompile Include="System6.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="..\Engine\bass24\c\bass.lib">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</ExcludedFromBuild>
+    </Library>
+    <Library Include="..\Engine\bass24\c\x64\bass.lib">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </Library>
+    <Library Include="..\Engine\zlib-1.2.11\contrib\vstudio\vc14\x64\ZlibStatDebug\zlibstatDebugx64.lib">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </Library>
+    <Library Include="..\Engine\zlib-1.2.11\contrib\vstudio\vc14\x64\ZlibStatRelease\zlibstatReleasex64.lib">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </Library>
+    <Library Include="..\Engine\zlib-1.2.11\contrib\vstudio\vc14\x86\ZlibStatDebug\zlibstatDebugWin32.lib">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </Library>
+    <Library Include="..\Engine\zlib-1.2.11\contrib\vstudio\vc14\x86\ZlibStatReleaseWithoutAsm\zlibstatReleaseWithoutAsmWin32.lib">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </Library>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

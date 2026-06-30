@@ -1,0 +1,167 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="stdafx.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="targetver.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Interface.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="System6.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="m68k.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="m68kconf.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="m68kcpu.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SCN68681.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DevicePPI8255.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="AlphaDisplayClass.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Reels.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Lamps.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Segments.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Meters.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SwitchMatrix.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CoinMechs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SoundMain.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Solenoids.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CashBox.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Hoppers.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="EDC.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="LoadSaveCompressDLLClass_SAFE.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="stdafx.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Interface.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="System6.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="m68kcpu.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="m68kdasm.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="m68kopac.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="m68kopdm.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="m68kopnz.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="m68kops.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SCN68681.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DevicePPI8255.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="AlphaDisplayClass.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Reels.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Lamps.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Segments.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Meters.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SwitchMatrix.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CoinMechs.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SoundMain.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Solenoids.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CashBox.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Hoppers.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="EDC.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="LoadSaveCompressDLLClass_SAFE.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="..\Engine\zlib-1.2.11\contrib\vstudio\vc14\x86\ZlibStatDebug\zlibstatDebugWin32.lib" />
+    <Library Include="..\Engine\zlib-1.2.11\contrib\vstudio\vc14\x64\ZlibStatDebug\zlibstatDebugx64.lib" />
+    <Library Include="..\Engine\bass24\c\bass.lib" />
+    <Library Include="..\Engine\bass24\c\x64\bass.lib" />
+    <Library Include="..\Engine\zlib-1.2.11\contrib\vstudio\vc14\x86\ZlibStatRelease\zlibstatReleaseWin32.lib" />
+    <Library Include="..\Engine\zlib-1.2.11\contrib\vstudio\vc14\x64\ZlibStatRelease\zlibstatReleasex64.lib" />
+  </ItemGroup>
+</Project>
