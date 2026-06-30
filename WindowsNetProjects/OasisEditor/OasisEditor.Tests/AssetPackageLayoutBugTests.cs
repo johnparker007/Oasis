@@ -1,5 +1,6 @@
 using OasisEditor;
 using OasisEditor.Automation;
+using OasisEditor.Features.CabinetEditor.Models;
 using Xunit;
 
 namespace OasisEditor.Tests;
