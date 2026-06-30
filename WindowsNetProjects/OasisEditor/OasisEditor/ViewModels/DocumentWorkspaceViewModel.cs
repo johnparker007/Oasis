@@ -166,6 +166,7 @@ public sealed class DocumentWorkspaceViewModel
             : (target.Corners[1] - target.Corners[0]).Length / Math.Max(0.0001, (target.Corners[3] - target.Corners[0]).Length);
         progress ??= NoOpEditorProgressReporter.Instance;
         var title = string.IsNullOrWhiteSpace(faceAssetName) ? $"{sourceDocument.Title} Face" : faceAssetName.Trim();
+        var pendingFaceAssetDirectory = Path.Combine(loadedProject.GeneratedDirectory, "Faces", "_unsaved", Guid.NewGuid().ToString("N"));
         var result = _faceGenerationService.GenerateFromPanelFaceSourceShape(
             sourceDocument.GetPanelDocument(),
             shape,
@@ -173,9 +174,10 @@ public sealed class DocumentWorkspaceViewModel
             sourcePanel2DDocumentId: sourceDocument.DocumentId.ToString("N"),
             assignedCabinetFaceTargetId: target?.Id,
             targetAspectRatio: targetAspect,
-            projectDirectory: null,
-            generatedDirectory: null,
+            projectDirectory: loadedProject.ProjectDirectory,
+            generatedDirectory: loadedProject.GeneratedDirectory,
             faceAssetName: title,
+            faceAssetDirectory: pendingFaceAssetDirectory,
             generationSettings: generationSettings,
             progress: progress.CreateChild(0.0, 0.8),
             sourcePanel2DDocumentPath: sourceDocument.FilePath);

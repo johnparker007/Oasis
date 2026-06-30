@@ -1,6 +1,7 @@
 using OasisEditor;
 using OasisEditor.Automation;
 using OasisEditor.Features.CabinetEditor.Models;
+using SkiaSharp;
 using Xunit;
 
 namespace OasisEditor.Tests;
@@ -74,9 +75,75 @@ public sealed class AssetPackageLayoutBugTests : IDisposable
         Assert.True(File.Exists(Path.Combine(project.AssetsDirectory, "Faces", "Saved Face", "mask.png")));
     }
 
+
+    [Fact]
+    public void GenerateFaceFromSourceShape_WritesPendingArtworkWithSourcePixelsBeforeFirstSave()
+    {
+        var project = CreateProject();
+        var sourceArtworkPath = Path.Combine(project.AssetsDirectory, "source.png");
+        WriteSolidPng(sourceArtworkPath, 4, 4, SKColors.Red);
+        var panel = new Panel2DDocumentModel
+        {
+            Elements =
+            [
+                new PanelElementModel
+                {
+                    ObjectId = "background",
+                    Name = "Background",
+                    Kind = PanelElementKind.Background,
+                    X = 0,
+                    Y = 0,
+                    Width = 4,
+                    Height = 4,
+                    AssetPath = "Assets/source.png"
+                }
+            ]
+        };
+        var sourceShape = new PanelFaceSourceShapeModel
+        {
+            Id = "shape",
+            Name = "Glass",
+            TopLeft = new FacePointModel { X = 0, Y = 0 },
+            TopRight = new FacePointModel { X = 4, Y = 0 },
+            BottomRight = new FacePointModel { X = 4, Y = 4 },
+            BottomLeft = new FacePointModel { X = 0, Y = 4 }
+        };
+        var pendingDirectory = Path.Combine(project.GeneratedDirectory, "Faces", "_unsaved", "pending-face");
+
+        var result = new FaceGenerationService().GenerateFromPanelFaceSourceShape(
+            panel,
+            sourceShape,
+            "Unsaved Face",
+            projectDirectory: project.ProjectDirectory,
+            generatedDirectory: project.GeneratedDirectory,
+            faceAssetName: "Unsaved Face",
+            faceAssetDirectory: pendingDirectory);
+
+        var artwork = Assert.IsType<FaceArtworkElement>(Assert.Single(result.Document.Elements.OfType<FaceArtworkElement>()));
+        var artworkPath = Path.Combine(project.ProjectDirectory, artwork.AssetPath!.Replace('/', Path.DirectorySeparatorChar));
+        Assert.StartsWith("Generated/Faces/_unsaved/pending-face/", artwork.AssetPath);
+        Assert.True(File.Exists(artworkPath));
+        using var bitmap = SKBitmap.Decode(artworkPath);
+        Assert.NotNull(bitmap);
+        Assert.Equal(SKColors.Red, bitmap.GetPixel(1, 1));
+        Assert.False(Directory.Exists(Path.Combine(project.AssetsDirectory, "Faces", "Unsaved Face")));
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_root)) Directory.Delete(_root, recursive: true);
+    }
+
+
+    private static void WriteSolidPng(string path, int width, int height, SKColor color)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        using var bitmap = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
+        bitmap.Erase(color);
+        using var image = SKImage.FromBitmap(bitmap);
+        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+        using var stream = File.Create(path);
+        data.SaveTo(stream);
     }
 
     private EditorProject CreateProject()
