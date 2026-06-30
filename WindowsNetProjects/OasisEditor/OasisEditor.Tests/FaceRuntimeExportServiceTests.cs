@@ -149,7 +149,8 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
     {
         var artworkPath = Path.Combine(_assetsDirectory, "artwork.png");
         var maskPath = Path.Combine(_generatedDirectory, "source-mask.png");
-        var facePath = Path.Combine(_projectDirectory, "front.face");
+        var facePath = GetFaceManifestPath();
+        Directory.CreateDirectory(Path.GetDirectoryName(facePath)!);
         WriteSolidPng(artworkPath, 4, 4, new SKColor(0, 255, 0, 192));
         WriteSolidPng(maskPath, 4, 4, SKColors.White);
         var document = CreateDocument("Assets/artwork.png", "Generated/source-mask.png");

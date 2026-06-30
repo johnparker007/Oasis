@@ -69,7 +69,7 @@ public sealed class DocumentSaveService : IDocumentSaveService
         if (current.Document.DocumentType == EditorDocumentType.Face && project is not null)
         {
             progress.Report(0.15, "Exporting Face runtime assets...");
-            var exportResult = _faceRuntimeExportService.Export(current.GetFaceDocument(), project, current.Document.FilePath, progress.CreateChild(0.15, 0.75));
+            var exportResult = _faceRuntimeExportService.Export(current.GetFaceDocument(), project, savePath, progress.CreateChild(0.15, 0.75));
             faceDocumentJson = FaceDocumentStorage.Serialize(exportResult.Document);
             contentSource = new DocumentTabViewModel(
                 current.Document,
