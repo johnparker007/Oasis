@@ -83,6 +83,7 @@ internal sealed class FaceRegenerationService
             targetAspectRatio,
             projectDirectory,
             generatedDirectory,
+            existingFace.Title,
             settings,
             progress.CreateChild(0.15, 0.45),
             existingFace.SourcePanel2DDocumentPath);

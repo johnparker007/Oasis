@@ -31,16 +31,16 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
             Title = "Runtime Face",
             RuntimeRenderAssets = new FaceRuntimeRenderAssetsModel
             {
-                ManifestPath = "Generated/Faces/face-runtime/runtime/face.runtime.json",
-                ArtworkPath = "Generated/Faces/face-runtime/runtime/artwork.png",
-                MaskPath = "Generated/Faces/face-runtime/runtime/mask.png",
-                TrayIdPath = "Generated/Faces/face-runtime/runtime/trayId.png",
-                LampIds0Path = "Generated/Faces/face-runtime/runtime/lampIds0.png",
-                LampWeights0Path = "Generated/Faces/face-runtime/runtime/lampWeights0.png",
+                ManifestPath = "Generated/Faces/Runtime Face/runtime/face.runtime.json",
+                ArtworkPath = "Generated/Faces/Runtime Face/runtime/artwork.png",
+                MaskPath = "Generated/Faces/Runtime Face/runtime/mask.png",
+                TrayIdPath = "Generated/Faces/Runtime Face/runtime/trayId.png",
+                LampIds0Path = "Generated/Faces/Runtime Face/runtime/lampIds0.png",
+                LampWeights0Path = "Generated/Faces/Runtime Face/runtime/lampWeights0.png",
                 LampIds1Path = null,
                 LampWeights1Path = null,
-                TrayIdDebugPath = "Generated/Faces/face-runtime/runtime/trayId_debug.png",
-                LampWeightsDebugPath = "Generated/Faces/face-runtime/runtime/lampWeights_debug.png",
+                TrayIdDebugPath = "Generated/Faces/Runtime Face/runtime/trayId_debug.png",
+                LampWeightsDebugPath = "Generated/Faces/Runtime Face/runtime/lampWeights_debug.png",
                 Width = 320,
                 Height = 240,
                 GeneratedUtc = generatedUtc
@@ -51,16 +51,16 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
 
         Assert.True(FaceDocumentStorage.TryReadValidated(json, out var file, out var error), error);
         Assert.Equal(FaceDocumentStorage.CurrentSchemaVersion, file.SchemaVersion);
-        Assert.Equal("Generated/Faces/face-runtime/runtime/artwork.png", file.RuntimeRenderAssets!.ArtworkPath);
+        Assert.Equal("Generated/Faces/Runtime Face/runtime/artwork.png", file.RuntimeRenderAssets!.ArtworkPath);
         Assert.Equal(320, file.RuntimeRenderAssets.Width);
-        Assert.Equal("Generated/Faces/face-runtime/runtime/trayId_debug.png", file.RuntimeRenderAssets.TrayIdDebugPath);
+        Assert.Equal("Generated/Faces/Runtime Face/runtime/trayId_debug.png", file.RuntimeRenderAssets.TrayIdDebugPath);
 
         var model = FaceDocumentStorage.ToModel(file);
-        Assert.Equal("Generated/Faces/face-runtime/runtime/face.runtime.json", model.RuntimeRenderAssets!.ManifestPath);
-        Assert.Equal("Generated/Faces/face-runtime/runtime/mask.png", model.RuntimeRenderAssets.MaskPath);
+        Assert.Equal("Generated/Faces/Runtime Face/runtime/face.runtime.json", model.RuntimeRenderAssets!.ManifestPath);
+        Assert.Equal("Generated/Faces/Runtime Face/runtime/mask.png", model.RuntimeRenderAssets.MaskPath);
         Assert.Equal(240, model.RuntimeRenderAssets.Height);
         Assert.Equal(generatedUtc, model.RuntimeRenderAssets.GeneratedUtc);
-        Assert.Equal("Generated/Faces/face-runtime/runtime/lampWeights_debug.png", model.RuntimeRenderAssets.LampWeightsDebugPath);
+        Assert.Equal("Generated/Faces/Runtime Face/runtime/lampWeights_debug.png", model.RuntimeRenderAssets.LampWeightsDebugPath);
     }
 
     [Fact]
@@ -83,14 +83,14 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         Assert.True(File.Exists(Path.Combine(result.OutputDirectory, "lampWeights0.png")));
         Assert.True(File.Exists(Path.Combine(result.OutputDirectory, "trayId_debug.png")));
         Assert.True(File.Exists(Path.Combine(result.OutputDirectory, "lampWeights_debug.png")));
-        Assert.Equal("Generated/Faces/face-runtime/runtime/face.runtime.json", result.Document.RuntimeRenderAssets!.ManifestPath);
-        Assert.Equal("Generated/Faces/face-runtime/runtime/artwork.png", result.Document.RuntimeRenderAssets.ArtworkPath);
-        Assert.Equal("Generated/Faces/face-runtime/runtime/mask.png", result.Document.RuntimeRenderAssets.MaskPath);
-        Assert.Equal("Generated/Faces/face-runtime/runtime/trayId.png", result.Document.RuntimeRenderAssets.TrayIdPath);
-        Assert.Equal("Generated/Faces/face-runtime/runtime/lampIds0.png", result.Document.RuntimeRenderAssets.LampIds0Path);
-        Assert.Equal("Generated/Faces/face-runtime/runtime/lampWeights0.png", result.Document.RuntimeRenderAssets.LampWeights0Path);
-        Assert.Equal("Generated/Faces/face-runtime/runtime/trayId_debug.png", result.Document.RuntimeRenderAssets.TrayIdDebugPath);
-        Assert.Equal("Generated/Faces/face-runtime/runtime/lampWeights_debug.png", result.Document.RuntimeRenderAssets.LampWeightsDebugPath);
+        Assert.Equal("Generated/Faces/Runtime Face/runtime/face.runtime.json", result.Document.RuntimeRenderAssets!.ManifestPath);
+        Assert.Equal("Generated/Faces/Runtime Face/runtime/artwork.png", result.Document.RuntimeRenderAssets.ArtworkPath);
+        Assert.Equal("Generated/Faces/Runtime Face/runtime/mask.png", result.Document.RuntimeRenderAssets.MaskPath);
+        Assert.Equal("Generated/Faces/Runtime Face/runtime/trayId.png", result.Document.RuntimeRenderAssets.TrayIdPath);
+        Assert.Equal("Generated/Faces/Runtime Face/runtime/lampIds0.png", result.Document.RuntimeRenderAssets.LampIds0Path);
+        Assert.Equal("Generated/Faces/Runtime Face/runtime/lampWeights0.png", result.Document.RuntimeRenderAssets.LampWeights0Path);
+        Assert.Equal("Generated/Faces/Runtime Face/runtime/trayId_debug.png", result.Document.RuntimeRenderAssets.TrayIdDebugPath);
+        Assert.Equal("Generated/Faces/Runtime Face/runtime/lampWeights_debug.png", result.Document.RuntimeRenderAssets.LampWeightsDebugPath);
         Assert.Equal(4, result.Document.RuntimeRenderAssets.Width);
         Assert.Equal(4, result.Document.RuntimeRenderAssets.Height);
 
@@ -136,23 +136,23 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         var saved = new DocumentSaveService().SaveDocument(current, facePath, CreateProject());
 
         Assert.False(saved.IsDirty);
-        Assert.True(File.Exists(Path.Combine(_generatedDirectory, "Faces", "face-runtime", "runtime", "face.runtime.json")));
-        Assert.True(File.Exists(Path.Combine(_generatedDirectory, "Faces", "face-runtime", "runtime", "artwork.png")));
-        Assert.True(File.Exists(Path.Combine(_generatedDirectory, "Faces", "face-runtime", "runtime", "mask.png")));
-        Assert.True(File.Exists(Path.Combine(_generatedDirectory, "Faces", "face-runtime", "runtime", "trayId.png")));
-        Assert.True(File.Exists(Path.Combine(_generatedDirectory, "Faces", "face-runtime", "runtime", "lampIds0.png")));
-        Assert.True(File.Exists(Path.Combine(_generatedDirectory, "Faces", "face-runtime", "runtime", "lampWeights0.png")));
-        Assert.True(File.Exists(Path.Combine(_generatedDirectory, "Faces", "face-runtime", "runtime", "trayId_debug.png")));
-        Assert.True(File.Exists(Path.Combine(_generatedDirectory, "Faces", "face-runtime", "runtime", "lampWeights_debug.png")));
+        Assert.True(File.Exists(Path.Combine(_generatedDirectory, "Faces", "Runtime Face", "runtime", "face.runtime.json")));
+        Assert.True(File.Exists(Path.Combine(_generatedDirectory, "Faces", "Runtime Face", "runtime", "artwork.png")));
+        Assert.True(File.Exists(Path.Combine(_generatedDirectory, "Faces", "Runtime Face", "runtime", "mask.png")));
+        Assert.True(File.Exists(Path.Combine(_generatedDirectory, "Faces", "Runtime Face", "runtime", "trayId.png")));
+        Assert.True(File.Exists(Path.Combine(_generatedDirectory, "Faces", "Runtime Face", "runtime", "lampIds0.png")));
+        Assert.True(File.Exists(Path.Combine(_generatedDirectory, "Faces", "Runtime Face", "runtime", "lampWeights0.png")));
+        Assert.True(File.Exists(Path.Combine(_generatedDirectory, "Faces", "Runtime Face", "runtime", "trayId_debug.png")));
+        Assert.True(File.Exists(Path.Combine(_generatedDirectory, "Faces", "Runtime Face", "runtime", "lampWeights_debug.png")));
         Assert.True(FaceDocumentStorage.TryReadValidated(File.ReadAllText(facePath), out var persisted, out var error), error);
-        Assert.Equal("Generated/Faces/face-runtime/runtime/face.runtime.json", persisted.RuntimeRenderAssets!.ManifestPath);
-        Assert.Equal("Generated/Faces/face-runtime/runtime/artwork.png", persisted.RuntimeRenderAssets.ArtworkPath);
-        Assert.Equal("Generated/Faces/face-runtime/runtime/mask.png", persisted.RuntimeRenderAssets.MaskPath);
-        Assert.Equal("Generated/Faces/face-runtime/runtime/trayId.png", persisted.RuntimeRenderAssets.TrayIdPath);
-        Assert.Equal("Generated/Faces/face-runtime/runtime/lampIds0.png", persisted.RuntimeRenderAssets.LampIds0Path);
-        Assert.Equal("Generated/Faces/face-runtime/runtime/lampWeights0.png", persisted.RuntimeRenderAssets.LampWeights0Path);
-        Assert.Equal("Generated/Faces/face-runtime/runtime/trayId_debug.png", persisted.RuntimeRenderAssets.TrayIdDebugPath);
-        Assert.Equal("Generated/Faces/face-runtime/runtime/lampWeights_debug.png", persisted.RuntimeRenderAssets.LampWeightsDebugPath);
+        Assert.Equal("Generated/Faces/Runtime Face/runtime/face.runtime.json", persisted.RuntimeRenderAssets!.ManifestPath);
+        Assert.Equal("Generated/Faces/Runtime Face/runtime/artwork.png", persisted.RuntimeRenderAssets.ArtworkPath);
+        Assert.Equal("Generated/Faces/Runtime Face/runtime/mask.png", persisted.RuntimeRenderAssets.MaskPath);
+        Assert.Equal("Generated/Faces/Runtime Face/runtime/trayId.png", persisted.RuntimeRenderAssets.TrayIdPath);
+        Assert.Equal("Generated/Faces/Runtime Face/runtime/lampIds0.png", persisted.RuntimeRenderAssets.LampIds0Path);
+        Assert.Equal("Generated/Faces/Runtime Face/runtime/lampWeights0.png", persisted.RuntimeRenderAssets.LampWeights0Path);
+        Assert.Equal("Generated/Faces/Runtime Face/runtime/trayId_debug.png", persisted.RuntimeRenderAssets.TrayIdDebugPath);
+        Assert.Equal("Generated/Faces/Runtime Face/runtime/lampWeights_debug.png", persisted.RuntimeRenderAssets.LampWeightsDebugPath);
     }
 
 

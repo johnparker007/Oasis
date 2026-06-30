@@ -151,7 +151,7 @@ public sealed class DocumentWorkspaceViewModel
     }
 
 
-    public DocumentTabViewModel? GenerateFaceFromSelectedFaceSourceShape(FaceGenerationSettingsModel? generationSettings = null, IEditorProgressReporter? progress = null)
+    public DocumentTabViewModel? GenerateFaceFromSelectedFaceSourceShape(string? faceAssetName = null, FaceGenerationSettingsModel? generationSettings = null, IEditorProgressReporter? progress = null)
     {
         var sourceDocument = _getSelectedDocument();
         var loadedProject = _getLoadedProject();
@@ -165,7 +165,9 @@ public sealed class DocumentWorkspaceViewModel
             ? (double?)null
             : (target.Corners[1] - target.Corners[0]).Length / Math.Max(0.0001, (target.Corners[3] - target.Corners[0]).Length);
         progress ??= NoOpEditorProgressReporter.Instance;
-        var title = $"{sourceDocument.Title} Face";
+        var pathService = new ProjectAssetPathService();
+        var title = pathService.EnsureUniqueAssetName(loadedProject, EditorAssetType.Face, string.IsNullOrWhiteSpace(faceAssetName) ? $"{sourceDocument.Title} Face" : faceAssetName);
+        pathService.CreateAssetPackageDirectory(loadedProject, EditorAssetType.Face, title);
         var result = _faceGenerationService.GenerateFromPanelFaceSourceShape(
             sourceDocument.GetPanelDocument(),
             shape,
@@ -175,12 +177,15 @@ public sealed class DocumentWorkspaceViewModel
             targetAspect,
             loadedProject.ProjectDirectory,
             loadedProject.GeneratedDirectory,
+            title,
             generationSettings,
             progress.CreateChild(0.0, 0.8),
             sourceDocument.FilePath);
         var generatedFaceDocument = ExportRuntimeAssetsForPreview(result.Document, loadedProject, progress.CreateChild(0.8, 0.95));
         var faceJson = FaceDocumentStorage.Serialize(generatedFaceDocument);
-        var faceEditorDocument = EditorDocument.CreateFaceStub(title).WithContentSummary(generatedFaceDocument.Summary ?? "Generated Face document.");
+        var manifestPath = pathService.GetFaceManifestPath(loadedProject, title);
+        System.IO.File.WriteAllText(manifestPath, faceJson);
+        var faceEditorDocument = EditorDocument.CreateFromFile(manifestPath, generatedFaceDocument.Summary ?? "Generated Face document.", title);
         var document = CreateDocumentTab(faceEditorDocument, faceDocumentJson: faceJson);
         ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
         _setStatusMessage($"Generated face document from Face Source Shape '{shape.Name}'.");
@@ -295,6 +300,7 @@ public sealed class DocumentWorkspaceViewModel
             sourcePanelDocument.GetPanelDocument(),
             loadedProject.ProjectDirectory,
             loadedProject.GeneratedDirectory,
+            title,
             generationSettings,
             progress.CreateChild(0.0, 0.8));
 
