@@ -172,14 +172,15 @@ public sealed class DocumentWorkspaceViewModel
             sourceDocument.GetPanelDocument(),
             shape,
             title,
-            sourceDocument.DocumentId.ToString("N"),
-            target?.Id,
-            targetAspect,
-            loadedProject.ProjectDirectory,
-            loadedProject.GeneratedDirectory,
-            generationSettings,
-            progress.CreateChild(0.0, 0.8),
-            sourceDocument.FilePath);
+            sourcePanel2DDocumentId: sourceDocument.DocumentId.ToString("N"),
+            assignedCabinetFaceTargetId: target?.Id,
+            targetAspectRatio: targetAspect,
+            projectDirectory: loadedProject.ProjectDirectory,
+            generatedDirectory: loadedProject.GeneratedDirectory,
+            faceAssetName: title,
+            generationSettings: generationSettings,
+            progress: progress.CreateChild(0.0, 0.8),
+            sourcePanel2DDocumentPath: sourceDocument.FilePath);
         var generatedFaceDocument = ExportRuntimeAssetsForPreview(result.Document, loadedProject, progress.CreateChild(0.8, 0.95));
         var faceJson = FaceDocumentStorage.Serialize(generatedFaceDocument);
         var manifestPath = pathService.GetFaceManifestPath(loadedProject, title);
