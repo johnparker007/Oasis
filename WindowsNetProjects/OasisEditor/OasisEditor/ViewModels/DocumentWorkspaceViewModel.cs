@@ -177,7 +177,6 @@ public sealed class DocumentWorkspaceViewModel
             targetAspect,
             loadedProject.ProjectDirectory,
             loadedProject.GeneratedDirectory,
-            title,
             generationSettings,
             progress.CreateChild(0.0, 0.8),
             sourceDocument.FilePath);
@@ -300,7 +299,6 @@ public sealed class DocumentWorkspaceViewModel
             sourcePanelDocument.GetPanelDocument(),
             loadedProject.ProjectDirectory,
             loadedProject.GeneratedDirectory,
-            title,
             generationSettings,
             progress.CreateChild(0.0, 0.8));
 
