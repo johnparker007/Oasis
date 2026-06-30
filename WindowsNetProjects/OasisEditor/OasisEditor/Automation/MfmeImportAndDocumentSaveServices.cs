@@ -1,6 +1,7 @@
 using System.IO;
 using OasisEditor.Features.MfmeImport;
 using OasisEditor.Progress;
+using SkiaSharp;
 
 namespace OasisEditor.Automation;
 
@@ -69,7 +70,8 @@ public sealed class DocumentSaveService : IDocumentSaveService
         if (current.Document.DocumentType == EditorDocumentType.Face && project is not null)
         {
             progress.Report(0.15, "Exporting Face runtime assets...");
-            var exportResult = _faceRuntimeExportService.Export(current.GetFaceDocument(), project, savePath, progress.CreateChild(0.15, 0.75));
+            var faceWithAuthoredAssets = EnsureFaceAuthoredPackageAssets(current.GetFaceDocument(), project, savePath);
+            var exportResult = _faceRuntimeExportService.Export(faceWithAuthoredAssets, project, savePath, progress.CreateChild(0.15, 0.75));
             faceDocumentJson = FaceDocumentStorage.Serialize(exportResult.Document);
             contentSource = new DocumentTabViewModel(
                 current.Document,
@@ -115,4 +117,121 @@ public sealed class DocumentSaveService : IDocumentSaveService
         progress.Report(1.0, "Document saved.");
         return savedDocument;
     }
+
+    private static FaceDocumentModel EnsureFaceAuthoredPackageAssets(FaceDocumentModel faceDocument, EditorProject project, string savePath)
+    {
+        var assetName = ProjectAssetPathService.GetPackageAssetNameFromManifestPath(savePath, EditorAssetType.Face);
+        if (string.IsNullOrWhiteSpace(assetName))
+        {
+            return faceDocument;
+        }
+
+        var pathService = new ProjectAssetPathService();
+        var artworkPath = pathService.GetFaceArtworkPath(project, assetName);
+        var maskPath = pathService.GetFaceMaskPath(project, assetName);
+        Directory.CreateDirectory(Path.GetDirectoryName(savePath)!);
+        Directory.CreateDirectory(Path.GetDirectoryName(artworkPath)!);
+
+        CopyOrCreatePng(project, faceDocument.Elements.OfType<FaceArtworkElement>().FirstOrDefault()?.AssetPath, artworkPath, faceDocument);
+        CopyOrCreatePng(project, faceDocument.MaskLayer?.AssetPath, maskPath, faceDocument);
+
+        var artworkRelative = pathService.ToProjectRelativePath(project, artworkPath);
+        var maskRelative = pathService.ToProjectRelativePath(project, maskPath);
+        var elements = faceDocument.Elements.Select(element => element is FaceArtworkElement artwork
+            ? new FaceArtworkElement
+            {
+                ObjectId = artwork.ObjectId,
+                Name = artwork.Name,
+                X = artwork.X,
+                Y = artwork.Y,
+                Width = artwork.Width,
+                Height = artwork.Height,
+                IsVisible = artwork.IsVisible,
+                IsLocked = artwork.IsLocked,
+                LinkedMachineObjectReference = artwork.LinkedMachineObjectReference,
+                LinkedPanel2DElementId = artwork.LinkedPanel2DElementId,
+                AssetPath = artworkRelative,
+                SourcePanel2DDocumentId = artwork.SourcePanel2DDocumentId,
+                SourceRegion = artwork.SourceRegion,
+                Provenance = artwork.Provenance
+            }
+            : element).ToArray();
+        var maskLayer = faceDocument.MaskLayer is null
+            ? new FaceMaskLayerModel
+            {
+                Id = "face-mask-layer",
+                Name = "Face Mask",
+                AssetPath = maskRelative,
+                SourcePanel2DDocumentId = faceDocument.SourcePanel2DDocumentId,
+                SourceRegion = faceDocument.SourceRegion,
+                Width = Math.Max(1, (int)Math.Ceiling(faceDocument.SourceRegion?.Width ?? 1)),
+                Height = Math.Max(1, (int)Math.Ceiling(faceDocument.SourceRegion?.Height ?? 1)),
+                GeneratedUtc = DateTime.UtcNow,
+                Contributions = []
+            }
+            : new FaceMaskLayerModel
+            {
+                Id = faceDocument.MaskLayer.Id,
+                Name = faceDocument.MaskLayer.Name,
+                AssetPath = maskRelative,
+                SourcePanel2DDocumentId = faceDocument.MaskLayer.SourcePanel2DDocumentId,
+                SourceRegion = faceDocument.MaskLayer.SourceRegion,
+                ExtractionThreshold = faceDocument.MaskLayer.ExtractionThreshold,
+                GeneratedUtc = faceDocument.MaskLayer.GeneratedUtc,
+                Width = faceDocument.MaskLayer.Width,
+                Height = faceDocument.MaskLayer.Height,
+                Contributions = faceDocument.MaskLayer.Contributions
+            };
+
+        return new FaceDocumentModel
+        {
+            Id = faceDocument.Id,
+            Title = assetName,
+            Summary = faceDocument.Summary,
+            SourcePanel2DDocumentId = faceDocument.SourcePanel2DDocumentId,
+            SourcePanel2DDocumentPath = faceDocument.SourcePanel2DDocumentPath,
+            SourceFaceShapeId = faceDocument.SourceFaceShapeId,
+            AssignedCabinetFaceTargetId = faceDocument.AssignedCabinetFaceTargetId,
+            SourceRegion = faceDocument.SourceRegion,
+            LastRegeneratedAtUtc = faceDocument.LastRegeneratedAtUtc,
+            GenerationSettings = faceDocument.GenerationSettings,
+            RuntimeRenderAssets = faceDocument.RuntimeRenderAssets,
+            MaskLayer = maskLayer,
+            Trays = faceDocument.Trays,
+            LampEmitters = faceDocument.LampEmitters,
+            Layers = faceDocument.Layers,
+            Elements = elements
+        };
+    }
+
+    private static void CopyOrCreatePng(EditorProject project, string? sourceAssetPath, string destinationPath, FaceDocumentModel faceDocument)
+    {
+        var sourcePath = ResolveExistingProjectPath(project, sourceAssetPath);
+        if (!string.IsNullOrWhiteSpace(sourcePath) && File.Exists(sourcePath))
+        {
+            if (!string.Equals(Path.GetFullPath(sourcePath), Path.GetFullPath(destinationPath), StringComparison.OrdinalIgnoreCase))
+            {
+                File.Copy(sourcePath, destinationPath, overwrite: true);
+            }
+            return;
+        }
+
+        var width = Math.Max(1, (int)Math.Ceiling(faceDocument.SourceRegion?.Width ?? 1));
+        var height = Math.Max(1, (int)Math.Ceiling(faceDocument.SourceRegion?.Height ?? 1));
+        using var bitmap = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
+        bitmap.Erase(SKColors.Transparent);
+        using var image = SKImage.FromBitmap(bitmap);
+        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+        using var stream = File.Create(destinationPath);
+        data.SaveTo(stream);
+    }
+
+    private static string? ResolveExistingProjectPath(EditorProject project, string? assetPath)
+    {
+        if (string.IsNullOrWhiteSpace(assetPath)) return null;
+        return Path.IsPathRooted(assetPath)
+            ? assetPath
+            : Path.GetFullPath(Path.Combine(project.ProjectDirectory, assetPath.Replace('/', Path.DirectorySeparatorChar)));
+    }
+
 }

@@ -165,9 +165,7 @@ public sealed class DocumentWorkspaceViewModel
             ? (double?)null
             : (target.Corners[1] - target.Corners[0]).Length / Math.Max(0.0001, (target.Corners[3] - target.Corners[0]).Length);
         progress ??= NoOpEditorProgressReporter.Instance;
-        var pathService = new ProjectAssetPathService();
-        var title = pathService.EnsureUniqueAssetName(loadedProject, EditorAssetType.Face, string.IsNullOrWhiteSpace(faceAssetName) ? $"{sourceDocument.Title} Face" : faceAssetName);
-        pathService.CreateAssetPackageDirectory(loadedProject, EditorAssetType.Face, title);
+        var title = string.IsNullOrWhiteSpace(faceAssetName) ? $"{sourceDocument.Title} Face" : faceAssetName.Trim();
         var result = _faceGenerationService.GenerateFromPanelFaceSourceShape(
             sourceDocument.GetPanelDocument(),
             shape,
@@ -175,17 +173,15 @@ public sealed class DocumentWorkspaceViewModel
             sourcePanel2DDocumentId: sourceDocument.DocumentId.ToString("N"),
             assignedCabinetFaceTargetId: target?.Id,
             targetAspectRatio: targetAspect,
-            projectDirectory: loadedProject.ProjectDirectory,
-            generatedDirectory: loadedProject.GeneratedDirectory,
+            projectDirectory: null,
+            generatedDirectory: null,
             faceAssetName: title,
             generationSettings: generationSettings,
             progress: progress.CreateChild(0.0, 0.8),
             sourcePanel2DDocumentPath: sourceDocument.FilePath);
-        var manifestPath = pathService.GetFaceManifestPath(loadedProject, title);
-        var generatedFaceDocument = ExportRuntimeAssetsForPreview(result.Document, loadedProject, manifestPath, progress.CreateChild(0.8, 0.95));
+        var generatedFaceDocument = result.Document;
         var faceJson = FaceDocumentStorage.Serialize(generatedFaceDocument);
-        System.IO.File.WriteAllText(manifestPath, faceJson);
-        var faceEditorDocument = EditorDocument.CreateFromFile(manifestPath, generatedFaceDocument.Summary ?? "Generated Face document.", title);
+        var faceEditorDocument = EditorDocument.CreateFaceStub(title).MarkDirty();
         var document = CreateDocumentTab(faceEditorDocument, faceDocumentJson: faceJson);
         ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
         _setStatusMessage($"Generated face document from Face Source Shape '{shape.Name}'.");
@@ -659,7 +655,16 @@ public sealed class DocumentWorkspaceViewModel
                 }
 
                 var summary = "Cabinet 3D document opened.";
-                return new OpenDocumentData(summary, null, Path.GetFileName(path), CabinetDocumentJson: CabinetDocumentStorage.Serialize(cabinetDocument));
+                var assetName = ProjectAssetPathService.GetPackageAssetNameFromManifestPath(path, EditorAssetType.Cabinet3D);
+                if (string.IsNullOrWhiteSpace(assetName))
+                {
+                    return new OpenDocumentData(
+                        "Failed to open cabinet document: Cabinet3D manifests must be stored as Assets/Cabinet3D/<AssetName>/asset.cabinet3d.",
+                        null,
+                        Path.GetFileName(path));
+                }
+
+                return new OpenDocumentData(summary, null, assetName, CabinetDocumentJson: CabinetDocumentStorage.Serialize(cabinetDocument));
             }
 
             return new OpenDocumentData(
@@ -675,10 +680,16 @@ public sealed class DocumentWorkspaceViewModel
                 var summary = string.IsNullOrWhiteSpace(panelDocument.Summary)
                     ? "Panel document opened."
                     : panelDocument.Summary.Trim();
-                var title = string.IsNullOrWhiteSpace(panelDocument.Title)
-                    ? Path.GetFileName(path)
-                    : panelDocument.Title.Trim();
-                return new OpenDocumentData(summary, Panel2DDocumentStorage.Serialize(panelDocument.Title, panelDocument.Summary, panelDocument.Elements, panelDocument.FaceSourceShapes), title);
+                var assetName = ProjectAssetPathService.GetPackageAssetNameFromManifestPath(path, EditorAssetType.Panel2D);
+                if (string.IsNullOrWhiteSpace(assetName))
+                {
+                    return new OpenDocumentData(
+                        "Failed to open panel document: Panel2D manifests must be stored as Assets/Panel2D/<AssetName>/asset.panel2d.",
+                        null,
+                        Path.GetFileName(path));
+                }
+
+                return new OpenDocumentData(summary, Panel2DDocumentStorage.Serialize(assetName, panelDocument.Summary, panelDocument.Elements, panelDocument.FaceSourceShapes), assetName);
             }
 
             return new OpenDocumentData(

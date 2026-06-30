@@ -8,9 +8,6 @@ public sealed class ProjectScaffolder
     private static readonly string[] ProjectFolders =
     [
         "Assets",
-        "Assets/Images",
-        "Assets/Audio",
-        "Assets/Fonts",
         "Assets/Panel2D",
         "Assets/Cabinet3D",
         "Assets/Faces",

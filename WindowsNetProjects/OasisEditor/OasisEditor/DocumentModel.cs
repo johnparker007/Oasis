@@ -133,9 +133,12 @@ public sealed class EditorDocument
             documentType = EditorDocumentType.Generic;
         }
 
-        var resolvedTitle = string.IsNullOrWhiteSpace(title)
-            ? System.IO.Path.GetFileName(filePath)
-            : title.Trim();
+        var packageTitle = ProjectAssetPathService.GetDocumentTitleFromManifestPath(filePath);
+        var resolvedTitle = !string.IsNullOrWhiteSpace(packageTitle)
+            ? packageTitle
+            : string.IsNullOrWhiteSpace(title)
+                ? System.IO.Path.GetFileName(filePath)
+                : title.Trim();
 
         return new EditorDocument(
             resolvedTitle,
@@ -148,9 +151,12 @@ public sealed class EditorDocument
 
     public EditorDocument SaveAs(string filePath, string summary)
     {
-        var resolvedTitle = IsUntitled
-            ? System.IO.Path.GetFileName(filePath)
-            : Title;
+        var packageTitle = ProjectAssetPathService.GetDocumentTitleFromManifestPath(filePath);
+        var resolvedTitle = !string.IsNullOrWhiteSpace(packageTitle)
+            ? packageTitle
+            : IsUntitled
+                ? System.IO.Path.GetFileName(filePath)
+                : Title;
         return CreateFromFile(filePath, summary, resolvedTitle);
     }
 
