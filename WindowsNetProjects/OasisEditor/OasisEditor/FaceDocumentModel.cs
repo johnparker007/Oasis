@@ -4,6 +4,7 @@ public sealed class FaceDocumentModel
 {
     public string Id { get; init; } = Guid.NewGuid().ToString("N");
     public string Title { get; init; } = string.Empty;
+    public string? AssetName { get; init; }
     public string? Summary { get; init; }
     public string? SourcePanel2DDocumentId { get; init; }
     public string? SourcePanel2DDocumentPath { get; init; }

@@ -88,6 +88,7 @@ public sealed class FaceRuntimeExportService
         {
             Id = faceDocument.Id,
             Title = faceDocument.Title,
+            AssetName = faceDocument.AssetName,
             Summary = faceDocument.Summary,
             SourcePanel2DDocumentId = faceDocument.SourcePanel2DDocumentId,
             SourcePanel2DDocumentPath = faceDocument.SourcePanel2DDocumentPath,
@@ -213,10 +214,39 @@ public sealed class FaceRuntimeExportService
             throw new IOException($"Project Generated directory points to a file: {generatedDirectory}");
         }
 
-        var faceName = string.IsNullOrWhiteSpace(faceDocument.Title)
+        var faceName = ResolveFaceAssetName(faceDocument);
+        return new ProjectAssetPathService().GetFaceRuntimeDirectory(project, faceName);
+    }
+
+    private static string ResolveFaceAssetName(FaceDocumentModel faceDocument)
+    {
+        if (!string.IsNullOrWhiteSpace(faceDocument.AssetName))
+        {
+            return faceDocument.AssetName.Trim();
+        }
+
+        var packageAssetName = TryGetAssetNameFromFacePackagePath(faceDocument.MaskLayer?.AssetPath)
+            ?? faceDocument.Elements.OfType<FaceArtworkElement>().Select(element => TryGetAssetNameFromFacePackagePath(element.AssetPath)).FirstOrDefault(name => !string.IsNullOrWhiteSpace(name));
+        if (!string.IsNullOrWhiteSpace(packageAssetName))
+        {
+            return packageAssetName;
+        }
+
+        return string.IsNullOrWhiteSpace(faceDocument.Title)
             ? (string.IsNullOrWhiteSpace(faceDocument.Id) ? Guid.NewGuid().ToString("N") : faceDocument.Id.Trim())
             : faceDocument.Title.Trim();
-        return new ProjectAssetPathService().GetFaceRuntimeDirectory(project, faceName);
+    }
+
+    private static string? TryGetAssetNameFromFacePackagePath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return null;
+        var normalized = ProjectAssetPathService.NormalizeProjectRelativePath(path.Trim());
+        var parts = normalized.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length >= 4
+            && string.Equals(parts[0], "Assets", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(parts[1], "Faces", StringComparison.OrdinalIgnoreCase)
+            ? parts[2]
+            : null;
     }
 
     private static string ResolveExistingProjectPath(EditorProject project, string? projectPath, string description)
