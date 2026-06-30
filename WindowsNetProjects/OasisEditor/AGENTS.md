@@ -2,161 +2,114 @@
 
 Guidance for Codex and other coding agents working in `WindowsNetProjects/OasisEditor`.
 
+## Read Order
+
+Start with only:
+
+1. `AGENTS.md`
+2. `00_CURRENT_PRIORITY.md`
+
+Do not scan every Markdown file in this directory by default.
+
+Read additional planning/task documents only when directed by `00_CURRENT_PRIORITY.md` or when they are directly relevant to the current task.
+
 ## Project Overview
 
-This is a WPF-based desktop editor for designing slot machine content.
+Oasis Editor is a WPF desktop application for creating and editing slot machine content.
 
 The editor supports:
-- 2D panel layout (`.panel2d`)
-- 3D cabinet integration (`.cabinet3d`)
-- machine assembly (`.machine`)
-- export to a runtime format for a Unity-based arcade application
 
-Current product direction:
-- Focus first on the 2D design workflow for panels containing artwork, lamp backlighting, and masks.
-- Keep cabinet/3D model work planned but deferred. Blender-authored 3D models will come later.
-- The editor should feel familiar to users of the Unity Editor where that improves usability, especially around hierarchy, inspector, project/assets browsing, and context menus.
+- Panel2D assets
+- Face assets
+- Cabinet3D assets
+- Machine assembly
+- Export to a Unity-based runtime
 
-## Critical Environment Constraint
+The editor is moving to a folder-as-asset storage model. Current implementation details and active workstreams are described in the current planning documents rather than this file.
 
-- The Codex execution environment does NOT have the required Windows/.NET/WPF toolchain.
-- Do NOT attempt to build, run, or execute tests locally in Codex after making changes.
-- Do NOT create or update `BuildAndTestAttempt` style files.
-- After completing a task, describe what should be tested, and John will run builds/tests locally.
-- Focus on correctness of code changes, not local execution in Codex.
+## Environment Constraints
 
-## Context Budget Rules
+The Codex execution environment does **not** contain the required Windows/.NET/WPF toolchain.
 
-- Start with this file and `00_CURRENT_PRIORITY.md` only.
-- Do not read every Markdown file in this directory by default.
-- Read additional plan/task documents only when the current task specifically requires them.
-- Prefer targeted source-code inspection over broad repository scans.
-- Avoid generated documentation, Doxygen output, archived plans, build outputs, logs, and binary/generated assets unless explicitly relevant.
+Do not:
 
-## Architecture
+- attempt to build the solution
+- attempt to run the application
+- attempt to execute unit tests
+- create `BuildAndTestAttempt`-style Markdown files
 
-The solution is structured as:
+After completing a task, describe what should be tested locally.
 
-- `Editor.Core` -> domain logic, no WPF dependencies
-- `Editor.Shell.Wpf` -> UI shell only
-- Feature modules:
-  - `PanelEditor`
-  - `CabinetEditor`
-  - `MachineEditor`
+## Context Rules
 
-## Key Principles
+Prefer targeted source inspection over broad repository scans.
 
-- All mutations must go through `ICommand` for undo/redo support.
-- Do NOT put business logic in WPF views or code-behind.
-- Keep Core fully UI-agnostic.
-- Prefer small, testable classes.
-- Prefer simple implementations over over-engineering.
-- Keep changes minimal and focused.
+Avoid reading archived plans, generated documentation, build outputs, logs, generated assets, or unrelated Markdown unless the current task requires them.
+
+## Architecture Principles
+
+- Keep business logic UI-independent.
+- Do not place business logic in WPF views or code-behind.
+- Prefer small, focused, testable classes.
+- Extend existing patterns where appropriate.
+- Keep changes minimal and task-focused.
 - Do not refactor unrelated systems.
-- Prefer extending existing patterns.
-
-## Document Context Rules
-
-- Each open document owns its own command history.
-- Undo/redo must operate only on the active document.
-- Commands must be bound to the document they were created for.
-- Commands must never apply to whichever document happens to be active later.
-- Selection state is document-specific.
-- Inspector and hierarchy panels must reflect the active document only.
-- Opening and closing document tabs are not part of undo/redo unless explicitly requested later.
-
-## Inspector Design Direction
-
-- The Inspector must behave like the Unity Inspector.
-- Selecting a Panel2D element must populate editable fields in the Inspector.
-- The Inspector must NOT directly mutate model objects.
-- All edits must go through commands using clone-and-replace semantics.
-- Editing a field must update the model through a document-scoped command, update the canvas, mark the document dirty, and support undo/redo.
-- Hide irrelevant properties instead of disabling large blocks of UI.
-
-## Performance and Change Notification Rules
-
-- Do NOT use `PanelLayoutJson` as a broad "everything changed, rebuild all UI" signal.
-- JSON is persistence/save/load data, not the live change bus for routine editor interactions.
-- Small element edits must not synchronously serialize the full panel layout, rebuild the entire Hierarchy, rebuild all Inspector rows, or recreate document panes.
-- Use narrowly scoped document notifications/events for Panel2D changes.
-- Inspector refresh must be incremental.
-- Hierarchy refresh must be incremental or skipped for non-structural property edits.
-- Canvas visual updates should update or invalidate only affected element visuals where possible.
-- Dirty state and save content must remain correct.
 
 ## Project Model
 
-- Users must open/create a project before editing.
-- Projects contain `Assets/`, `Machines/`, `Generated/`, etc.
+Projects contain folders such as:
 
-## Startup Flow Rules
+```text
+Assets/
+Generated/
+Machines/
 
-- The application must start in a Launcher window.
-- The editor shell must NOT open without an active project.
-- Project creation/opening UI belongs in the Launcher window only.
-- Closing a project should return the user to the Launcher window.
-- The editor shell must assume a valid loaded project at all times.
+General rules:
 
-## Theme Rules
+User-authored content belongs under Assets/.
+Disposable runtime/cache/export output belongs under Generated/.
+The asset package is the user-facing asset.
+The manifest describes the asset.
+Prefer stable internal asset IDs where appropriate.
 
-- Do not hard-code UI colors in views or code-behind.
-- Use semantic theme resources for editor UI colors.
-- New UI must work in System, Light, and Dark modes.
-- Prefer app-defined semantic brushes over direct Fluent resource usage in feature views.
+The current package layout and storage conventions are defined by the active planning documents.
 
-## WPF Maintainability Rules
+Commands and Undo
 
-- Large XAML files should not be preserved solely to give Codex more context.
-- `MainWindow.xaml` should act primarily as the application shell.
-- Use UserControls for cohesive UI regions.
-- Use ResourceDictionaries for shared styles, brushes, templates, and repeated UI resources.
-- Preserve existing bindings, commands, DataContext assumptions, and visual appearance during view extraction.
-- Prefer one view extraction per task.
+Where the existing architecture supports undo/redo:
 
-## ViewModel Maintainability Rules
+edits should be implemented as document-scoped commands
+commands must target the correct document
+no-op commands should not be recorded
+dirty state should only reflect real changes
+Inspector
 
-- Avoid allowing `MainWindowViewModel` to become the owner of every editor concern.
-- Move cohesive child concepts into separate ViewModels when they have distinct state, commands, or responsibilities.
-- Keep public behavior and binding-facing property names stable during refactors unless a task explicitly allows a rename.
-- Prefer composition over broad rewrites.
+The Inspector should behave similarly to the Unity Inspector.
 
-## Canvas Behavior Rules
+Inspector edits should update the underlying model through the existing command architecture rather than mutating models directly.
 
-- `CanvasPanBehavior.cs` should remain coordination/glue only.
-- Tool placement, command dispatch, selection, pan/zoom, visual mapping, and persistence mapping should stay in separate focused classes.
-- Canvas visuals are projections of the Panel2D model.
+Performance
 
-## Command and Mutation Rules
+Avoid broad rebuilds for small edits.
 
-- All Panel2D edits must be implemented as document-scoped commands.
-- Commands must be undoable and redoable.
-- Commands must target a specific document ID.
-- Commands must not operate on whichever document happens to be active.
-- No-op commands must not be recorded.
-- Model updates should use clone-and-replace, not mutation.
-- Commands must expose or trigger precise change metadata whenever the UI needs to update after command execution.
-- No command should force unrelated panes to fully rebuild as a side effect of a simple property change.
+Prefer:
 
-## Context Menu Rules
+incremental notifications
+incremental Inspector refresh
+incremental hierarchy refresh
+updating only affected visuals
+Theme
 
-- Implement right-click menus as reusable WPF resources/styles.
-- Commands must live in ViewModels or command services, not code-behind.
-- Do not duplicate keyboard/menu/context-menu behavior.
-- Commands must expose correct `CanExecute` state.
+Do not hard-code UI colours.
 
-## Code Review Rules
+Use the application's semantic theme resources.
 
-- The live editor state must be a UI-agnostic model.
-- JSON is persistence only, not the canonical model.
-- Panel2D elements must have stable IDs.
-- WPF types must not leak into domain models.
-- Dirty state must only reflect real changes.
-- Invalid operations must fail safely and visibly.
+New UI should function correctly in System, Light, and Dark themes.
 
-## Testing Rules
+Testing
 
-- Do not attempt to run builds/tests in Codex.
-- After implementing a task, specify what should be tested locally.
-- Add automated tests for model and command behavior where practical.
-- Add regression tests for UI update fanout where practical.
+Add automated tests where practical.
+
+After completing implementation, describe the local verification steps required.
+
+Do not attempt to execute builds or tests within Codex.
