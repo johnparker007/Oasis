@@ -566,15 +566,8 @@ public sealed class AssetBrowserViewModel : IDisposable
                     return;
                 }
 
-                var hasChildren = Directory.EnumerateFileSystemEntries(asset.FullPath).Any();
-                if (hasChildren)
-                {
-                    _addOutputEntry($"Delete blocked: folder '{asset.DisplayPath}' is not empty.", OutputLogStatus.Warning);
-                    return;
-                }
-
-                Directory.Delete(asset.FullPath, recursive: false);
-                _addOutputEntry($"Deleted folder: {asset.DisplayPath}", OutputLogStatus.Info);
+                Directory.Delete(asset.FullPath, recursive: true);
+                _addOutputEntry($"Deleted folder and contents: {asset.DisplayPath}", OutputLogStatus.Info);
             }
             else
             {
@@ -588,13 +581,37 @@ public sealed class AssetBrowserViewModel : IDisposable
                 _addOutputEntry($"Deleted file: {asset.DisplayPath}", OutputLogStatus.Info);
             }
 
+            var directoryToSelect = ResolvePostDeleteDirectoryPath(
+                loadedProject.AssetsDirectory,
+                selectedDirectoryPath,
+                parentDirectory);
+
             RefreshAssetBrowserPreservingState();
-            SelectDirectoryByPath(selectedDirectoryPath ?? parentDirectory);
+            SelectDirectoryByPath(directoryToSelect);
         }
         catch (Exception ex)
         {
             _addOutputEntry($"Delete failed: {ex.Message}", OutputLogStatus.Warning);
         }
+    }
+
+    private static string ResolvePostDeleteDirectoryPath(
+        string assetsRoot,
+        string? selectedDirectoryPath,
+        string parentDirectory)
+    {
+        if (!string.IsNullOrWhiteSpace(selectedDirectoryPath)
+            && Directory.Exists(selectedDirectoryPath))
+        {
+            return selectedDirectoryPath;
+        }
+
+        if (Directory.Exists(parentDirectory))
+        {
+            return parentDirectory;
+        }
+
+        return assetsRoot;
     }
 
     private static string GetDirectoryDisplayPath(string assetsRoot, string directoryPath)
