@@ -1790,6 +1790,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 new EditorProgressRequest($"Saving {documentTitle}", "Saving document...", EditorProgressMode.Determinate, ShowDelay: TimeSpan.Zero),
                 (progress, _) => Task.Run(() => _documentSaveService.SaveDocument(current, savePath, LoadedProject, progress)));
             _documentWorkspace.ReplaceDocument(current, updatedDocument);
+            _assetBrowser.ScheduleRefreshFromDisk();
             StatusMessage = $"Saved document: {updatedDocument.Title}";
             AddOutputEntry($"Saved document to {savePath}", OutputLogStatus.Info);
         }
@@ -2548,6 +2549,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _activeDocumentContext.ClearAll();
         _machineRuntimeStates.ClearAll();
         PanelElementFactory.ProjectDirectoryPath = null;
+        _assetBrowser.Dispose();
 
         AssetBrowserItems.Clear();
         SelectedAsset = null;
