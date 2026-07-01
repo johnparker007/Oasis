@@ -13,6 +13,7 @@ using Microsoft.Win32;
 using OasisEditor.Features.MameDebugger;
 using OasisEditor.Features.MameDebugger.ViewModels;
 using OasisEditor.Features.MfmeImport;
+using OasisEditor.Features.CabinetEditor.Models;
 using EditorCommands = OasisEditor.Commands;
 using OasisEditor.Views;
 using OasisEditor.Rendering;
@@ -161,8 +162,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OpenSourcePanel2DCommand = new RelayCommand(OpenSourcePanel2D, CanOpenSourcePanel2D);
         OpenCabinet3DStubCommand = new RelayCommand(OpenCabinet3DStubDocument, CanOpenUntitledDocument);
         OpenMachineStubCommand = new RelayCommand(OpenMachineStubDocument, CanOpenUntitledDocument);
-        OpenDocumentCommand = new RelayCommand(OpenDocument, CanOpenDocument);
         ImportMfmeExtractCommand = new RelayCommand(ImportMfmeExtract, CanImportMfmeExtract);
+        ImportGlbModelCommand = new RelayCommand(ImportGlbModel, CanImportGlbModel);
         SaveSelectedDocumentCommand = new RelayCommand(SaveSelectedDocument, CanSaveSelectedDocument);
         CloseSelectedDocumentCommand = new RelayCommand(CloseSelectedDocument, CanCloseSelectedDocument);
         OpenPreferencesCommand = new RelayCommand(OpenPreferences);
@@ -480,8 +481,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand OpenSourcePanel2DCommand { get; }
     public ICommand OpenCabinet3DStubCommand { get; }
     public ICommand OpenMachineStubCommand { get; }
-    public ICommand OpenDocumentCommand { get; }
     public ICommand ImportMfmeExtractCommand { get; }
+    public ICommand ImportGlbModelCommand { get; }
     public ICommand SaveSelectedDocumentCommand { get; }
     public ICommand CloseSelectedDocumentCommand { get; }
     public ICommand RefreshAssetBrowserCommand { get; }
@@ -1425,22 +1426,43 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         return _documentWorkspace.CanCloseSelectedDocument();
     }
 
-    private bool CanOpenDocument()
+    private bool CanImportMfmeExtract()
     {
-        return _documentWorkspace.CanOpenDocument();
+        return LoadedProject is not null
+               && !_isMfmeImportInProgress
+               && SelectedDocument?.Document.DocumentType == EditorDocumentType.Panel2D;
     }
 
-    private void OpenDocument()
+
+    private bool CanImportGlbModel()
+    {
+        return LoadedProject is not null
+               && SelectedDocument?.Document.DocumentType == EditorDocumentType.Cabinet3D;
+    }
+
+    private void ImportGlbModel()
     {
         if (LoadedProject is null)
         {
             return;
         }
 
+        var activeDocument = SelectedDocument;
+        if (activeDocument?.Document.DocumentType != EditorDocumentType.Cabinet3D)
+        {
+            AddOutputEntry("GLB import is supported only when a Cabinet3D document is active.", OutputLogStatus.Warning);
+            MessageBox.Show(
+                "GLB import is currently supported only for Cabinet3D documents.",
+                "Import GLB Model",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            return;
+        }
+
         var dialog = new OpenFileDialog
         {
-            Title = "Open Document",
-            Filter = "Editor Documents and Cabinet Models|*.panel2d;*.face;*.cabinet3d;*.machine;*.glb|Cabinet Models|*.glb|All Files|*.*",
+            Title = "Import GLB Model",
+            Filter = "GLB Models|*.glb|All Files|*.*",
             InitialDirectory = LoadedProject.ProjectDirectory,
             CheckFileExists = true
         };
@@ -1450,23 +1472,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        try
-        {
-            OpenDocumentFromPath(dialog.FileName);
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = ex.Message;
-            AddOutputEntry($"Open document failed: {ex.Message}", OutputLogStatus.Error);
-            MessageBox.Show(ex.Message, "Open Document Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
-    }
+        activeDocument.SetCabinetDocument(CabinetDocument.FromModelPath(dialog.FileName));
+        activeDocument.MarkDirty();
+        NotifyInspectorChanged();
+        NotifyDocumentCommands();
 
-    private bool CanImportMfmeExtract()
-    {
-        return LoadedProject is not null
-               && !_isMfmeImportInProgress
-               && SelectedDocument?.Document.DocumentType == EditorDocumentType.Panel2D;
+        StatusMessage = $"Imported GLB model into Cabinet3D asset: {dialog.FileName}";
+        AddOutputEntry($"Imported GLB model into Cabinet3D asset: {dialog.FileName}", OutputLogStatus.Info);
     }
 
     private async void ImportMfmeExtract()
@@ -1653,15 +1665,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         return string.Equals(extension, ".panel2d", StringComparison.OrdinalIgnoreCase)
             || string.Equals(extension, ".face", StringComparison.OrdinalIgnoreCase)
             || string.Equals(extension, ".cabinet3d", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(extension, ".glb", StringComparison.OrdinalIgnoreCase)
             || string.Equals(extension, ".machine", StringComparison.OrdinalIgnoreCase);
     }
 
     private void OpenDocumentFromPath(string path)
     {
-        var content = string.Equals(Path.GetExtension(path), ".glb", StringComparison.OrdinalIgnoreCase)
-            ? string.Empty
-            : File.ReadAllText(path);
+        var content = File.ReadAllText(path);
         var openData = DocumentWorkspaceViewModel.BuildOpenDocumentData(path, content);
 
         var openedNewTab = _documentWorkspace.OpenOrSelectDocument(
@@ -1768,7 +1777,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         var current = SelectedDocument;
-        var savePath = current.Document.IsUntitled || IsProtectedCabinetModelAssetPath(current) ? PromptSavePath() : current.FilePath;
+        var savePath = current.Document.IsUntitled ? PromptSavePath() : current.FilePath;
         if (string.IsNullOrWhiteSpace(savePath))
         {
             return;
@@ -1792,12 +1801,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private static bool IsProtectedCabinetModelAssetPath(DocumentTabViewModel document)
-    {
-        return document.Document.DocumentType == EditorDocumentType.Cabinet3D
-            && string.Equals(Path.GetExtension(document.FilePath), ".glb", StringComparison.OrdinalIgnoreCase);
-    }
-
     private string? PromptSavePath()
     {
         if (LoadedProject is null)
@@ -1807,10 +1810,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         var selectedDocument = SelectedDocument;
         var defaultName = selectedDocument?.Document.Title ?? "Document";
-        if (selectedDocument is not null && IsProtectedCabinetModelAssetPath(selectedDocument))
-        {
-            defaultName = Path.GetFileNameWithoutExtension(selectedDocument.FilePath);
-        }
 
         if (selectedDocument?.Document.DocumentType is EditorDocumentType.Panel2D or EditorDocumentType.Cabinet3D or EditorDocumentType.Face)
         {
@@ -4260,14 +4259,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             openMachineRelayCommand.RaiseCanExecuteChanged();
         }
 
-        if (OpenDocumentCommand is RelayCommand openDocumentRelayCommand)
-        {
-            openDocumentRelayCommand.RaiseCanExecuteChanged();
-        }
-
         if (ImportMfmeExtractCommand is RelayCommand importMfmeRelayCommand)
         {
             importMfmeRelayCommand.RaiseCanExecuteChanged();
+        }
+
+        if (ImportGlbModelCommand is RelayCommand importGlbRelayCommand)
+        {
+            importGlbRelayCommand.RaiseCanExecuteChanged();
         }
 
         if (SaveSelectedDocumentCommand is RelayCommand saveRelayCommand)

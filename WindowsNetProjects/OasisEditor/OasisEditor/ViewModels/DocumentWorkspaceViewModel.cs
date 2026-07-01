@@ -90,7 +90,6 @@ public sealed class DocumentWorkspaceViewModel
     }
 
     public bool CanOpenUntitledDocument() => _getLoadedProject() is not null;
-    public bool CanOpenDocument() => _getLoadedProject() is not null;
     public bool CanCloseSelectedDocument() => _getSelectedDocument() is not null;
 
     public bool CanSaveSelectedDocument()
@@ -638,13 +637,6 @@ public sealed class DocumentWorkspaceViewModel
 
     internal static OpenDocumentData BuildOpenDocumentData(string path, string content)
     {
-        if (string.Equals(Path.GetExtension(path), ".glb", StringComparison.OrdinalIgnoreCase))
-        {
-            var cabinetDocument = CabinetDocument.FromModelPath(path);
-            return new OpenDocumentData("Cabinet GLB model opened as an unsaved .cabinet3d wrapper. Save Document will save cabinet metadata, not the .glb model asset.", null, Path.GetFileName(path), CabinetDocumentJson: CabinetDocumentStorage.Serialize(cabinetDocument));
-        }
-
-
         if (string.Equals(Path.GetExtension(path), ".cabinet3d", StringComparison.OrdinalIgnoreCase))
         {
             if (CabinetDocumentStorage.TryRead(content, out var cabinetDocument))
