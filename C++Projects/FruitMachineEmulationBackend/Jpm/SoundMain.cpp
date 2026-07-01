@@ -2,23 +2,22 @@
 #include "SoundMain.h"
 #include "iostream"
 
-
 SampledSound::SampledSound(void) {
 
-	ZeroMemory(Playing, NUMCHANNELS * sizeof(unsigned char));
-	ZeroMemory(Looping, NUMCHANNELS * sizeof(unsigned char));
-	ZeroMemory(Stopped, NUMCHANNELS * sizeof(unsigned char));
-	ZeroMemory(EndOfSample, NUMCHANNELS * sizeof(unsigned char));
-	ZeroMemory(Restarted, NUMCHANNELS * sizeof(unsigned char));
-	ZeroMemory(NowPlaying, NUMCHANNELS * sizeof(unsigned char));
-	ZeroMemory(PositionL, NUMCHANNELS * sizeof(signed long));
-	ZeroMemory(PositionR, NUMCHANNELS * sizeof(signed long));
-	ZeroMemory(Frequency, NUMCHANNELS * sizeof(signed long));
-	
+	Playing = 0;
+	Looping = 0;
+	Stopped = 0;
+	EndOfSample = 0;
+	Restarted = 0;
+	NowPlaying = 0;
+	PositionL = 0;
+	PositionR = 0;
+	Frequency = 0;
+	EndOfSample = 1;
 
-	ZeroMemory(SampleBank, MAXSAMPLES * sizeof(unsigned char));
-	ZeroMemory(SampleIndex, MAXSAMPLES * sizeof(unsigned char));
-	ZeroMemory(SampleDummy, MAXSAMPLES * sizeof(unsigned char));
+	ZeroMemory(SampleBank, MAXSAMPLES * sizeof(UINT8));
+	ZeroMemory(SampleIndex, MAXSAMPLES * sizeof(UINT8));
+	ZeroMemory(SampleDummy, MAXSAMPLES * sizeof(UINT8));
 	ZeroMemory(SampleStart, MAXSAMPLES * sizeof(signed long));
 	ZeroMemory(SampleEnd, MAXSAMPLES * sizeof(signed long));
 	ZeroMemory(SampleRate, MAXSAMPLES * sizeof(signed long));
@@ -26,92 +25,10 @@ SampledSound::SampledSound(void) {
 	ZeroMemory(SampleLengthBytes, MAXSAMPLES * sizeof(signed long));
 	ZeroMemory(SampleLengthSamples, MAXSAMPLES * sizeof(signed long));
 	ZeroMemory(SampleSeconds, MAXSAMPLES * sizeof(float));
-	ZeroMemory(Sample_Space, MAXSAMPLES * sizeof(signed short));
-	
-	ZeroMemory(Memory_Space, SOUNDMEMORYSIZE * sizeof(unsigned char));
-
-	ZeroMemory(TuneLookup, PAGES * 128 * sizeof(unsigned char));
+	ZeroMemory(Sample_Space, MAXSAMPLES * sizeof(signed short));	
+	ZeroMemory(Memory_Space, SOUNDMEMORYSIZE * sizeof(UINT8));
+	ZeroMemory(TuneLookup, PAGES * 128 * sizeof(UINT8));
 	ZeroMemory(SamplesInPage, PAGES * sizeof(signed long));
-
-	for (int i = 0; i < NUMCHANNELS; i++) {
-		EndOfSample[i] = 1;
-	}
-
-}
-
-SampledSound::~SampledSound(void) {
-
-	for (int i = 0; i < MAXSAMPLES; i++){
-		if (Sample_Space[i]) {
-			free(Sample_Space[i]);
-		}
-	}
-}
-
-void SampledSound::ExtractROM(void){
-
-	signed long cnt;
-	signed long cnt2;	
-	signed long Position;
-	signed long ByteCount;
-	signed long SampleCount;
-
-	
-	//OKI Table Setups
-	StepSizes[0] = 16;
-	StepSizes[1] = 17;
-	StepSizes[2] = 19;
-	StepSizes[3] = 21;
-	StepSizes[4] = 23;
-	StepSizes[5] = 25;
-	StepSizes[6] = 28;
-	StepSizes[7] = 31;
-	StepSizes[8] = 34;
-	StepSizes[9] = 37;
-        
-	StepSizes[10] = 41;
-	StepSizes[11] = 45;
-	StepSizes[12] = 50;
-	StepSizes[13] = 55;
-	StepSizes[14] = 60;
-	StepSizes[15] = 66;
-	StepSizes[16] = 73;
-	StepSizes[17] = 80;
-	StepSizes[18] = 88;
-	StepSizes[19] = 97;
-        
-	StepSizes[20] = 107;
-	StepSizes[21] = 118;
-	StepSizes[22] = 130;
-	StepSizes[23] = 143;
-	StepSizes[24] = 157;
-	StepSizes[25] = 173;
-	StepSizes[26] = 190;
-	StepSizes[27] = 209;
-	StepSizes[28] = 230;
-	StepSizes[29] = 253;
-        
-	StepSizes[30] = 279;
-	StepSizes[31] = 307;
-	StepSizes[32] = 337;
-	StepSizes[33] = 371;
-	StepSizes[34] = 408;
-	StepSizes[35] = 449;
-	StepSizes[36] = 494;
-	StepSizes[37] = 544;
-	StepSizes[38] = 598;
-	StepSizes[39] = 658;
-        
-	StepSizes[40] = 724;
-	StepSizes[41] = 796;
-	StepSizes[42] = 876;
-	StepSizes[43] = 963;
-	StepSizes[44] = 1060;
-	StepSizes[45] = 1166;
-	StepSizes[46] = 1282;
-	StepSizes[47] = 1411;
-	StepSizes[48] = 1552;
-
 
 	//NEC Table Setups        
 	SamplesInPage[0] = 0;
@@ -122,7 +39,7 @@ void SampledSound::ExtractROM(void){
 	SamplesInPage[5] = 0;
 	SamplesInPage[6] = 0;
 	SamplesInPage[7] = 0;
-        
+
 	Step7759[0][0] = 0;
 	Step7759[0][1] = 0;
 	Step7759[0][2] = 1;
@@ -139,7 +56,7 @@ void SampledSound::ExtractROM(void){
 	Step7759[0][13] = -5;
 	Step7759[0][14] = -7;
 	Step7759[0][15] = -10;
-        
+
 	Step7759[1][0] = 0;
 	Step7759[1][1] = 1;
 	Step7759[1][2] = 2;
@@ -156,7 +73,7 @@ void SampledSound::ExtractROM(void){
 	Step7759[1][13] = -6;
 	Step7759[1][14] = -8;
 	Step7759[1][15] = -13;
-        
+
 	Step7759[2][0] = 0;
 	Step7759[2][1] = 1;
 	Step7759[2][2] = 2;
@@ -173,7 +90,7 @@ void SampledSound::ExtractROM(void){
 	Step7759[2][13] = -7;
 	Step7759[2][14] = -10;
 	Step7759[2][15] = -15;
-        
+
 	Step7759[3][0] = 0;
 	Step7759[3][1] = 1;
 	Step7759[3][2] = 3;
@@ -190,7 +107,7 @@ void SampledSound::ExtractROM(void){
 	Step7759[3][13] = -9;
 	Step7759[3][14] = -13;
 	Step7759[3][15] = -19;
-        
+
 	Step7759[4][0] = 0;
 	Step7759[4][1] = 2;
 	Step7759[4][2] = 3;
@@ -207,7 +124,7 @@ void SampledSound::ExtractROM(void){
 	Step7759[4][13] = -11;
 	Step7759[4][14] = -15;
 	Step7759[4][15] = -23;
-        
+
 	Step7759[5][0] = 0;
 	Step7759[5][1] = 2;
 	Step7759[5][2] = 4;
@@ -224,7 +141,7 @@ void SampledSound::ExtractROM(void){
 	Step7759[5][13] = -14;
 	Step7759[5][14] = -19;
 	Step7759[5][15] = -29;
-        
+
 	Step7759[6][0] = 0;
 	Step7759[6][1] = 3;
 	Step7759[6][2] = 5;
@@ -241,7 +158,7 @@ void SampledSound::ExtractROM(void){
 	Step7759[6][13] = -16;
 	Step7759[6][14] = -22;
 	Step7759[6][15] = -33;
-        
+
 	Step7759[7][0] = 1;
 	Step7759[7][1] = 4;
 	Step7759[7][2] = 7;
@@ -258,7 +175,7 @@ void SampledSound::ExtractROM(void){
 	Step7759[7][13] = -20;
 	Step7759[7][14] = -29;
 	Step7759[7][15] = -43;
-        
+
 	Step7759[8][0] = 1;
 	Step7759[8][1] = 4;
 	Step7759[8][2] = 8;
@@ -275,7 +192,7 @@ void SampledSound::ExtractROM(void){
 	Step7759[8][13] = -25;
 	Step7759[8][14] = -35;
 	Step7759[8][15] = -53;
-        
+
 	Step7759[9][0] = 1;
 	Step7759[9][1] = 6;
 	Step7759[9][2] = 10;
@@ -292,7 +209,7 @@ void SampledSound::ExtractROM(void){
 	Step7759[9][13] = -31;
 	Step7759[9][14] = -43;
 	Step7759[9][15] = -64;
-        
+
 	Step7759[10][0] = 2;
 	Step7759[10][1] = 7;
 	Step7759[10][2] = 12;
@@ -309,7 +226,7 @@ void SampledSound::ExtractROM(void){
 	Step7759[10][13] = -37;
 	Step7759[10][14] = -51;
 	Step7759[10][15] = -76;
-        
+
 	Step7759[11][0] = 2;
 	Step7759[11][1] = 9;
 	Step7759[11][2] = 16;
@@ -326,7 +243,7 @@ void SampledSound::ExtractROM(void){
 	Step7759[11][13] = -46;
 	Step7759[11][14] = -64;
 	Step7759[11][15] = -96;
-        
+
 	Step7759[12][0] = 3;
 	Step7759[12][1] = 11;
 	Step7759[12][2] = 19;
@@ -343,7 +260,7 @@ void SampledSound::ExtractROM(void){
 	Step7759[12][13] = -57;
 	Step7759[12][14] = -79;
 	Step7759[12][15] = -117;
-        
+
 	Step7759[13][0] = 4;
 	Step7759[13][1] = 13;
 	Step7759[13][2] = 24;
@@ -360,7 +277,7 @@ void SampledSound::ExtractROM(void){
 	Step7759[13][13] = -69;
 	Step7759[13][14] = -96;
 	Step7759[13][15] = -143;
-        
+
 	Step7759[14][0] = 4;
 	Step7759[14][1] = 16;
 	Step7759[14][2] = 29;
@@ -377,7 +294,7 @@ void SampledSound::ExtractROM(void){
 	Step7759[14][13] = -85;
 	Step7759[14][14] = -118;
 	Step7759[14][15] = -175;
-        
+
 	Step7759[15][0] = 6;
 	Step7759[15][1] = 20;
 	Step7759[15][2] = 36;
@@ -394,7 +311,7 @@ void SampledSound::ExtractROM(void){
 	Step7759[15][13] = -104;
 	Step7759[15][14] = -144;
 	Step7759[15][15] = -214;
-        
+
 	State[0] = -1;
 	State[1] = -1;
 	State[2] = 0;
@@ -411,23 +328,37 @@ void SampledSound::ExtractROM(void){
 	State[13] = 2;
 	State[14] = 2;
 	State[15] = 3;
+}
 
-//NEC
+SampledSound::~SampledSound(void) {
 
-	unsigned char PageTemp;
-	unsigned char Pages;
-	signed long Page;		
-	unsigned long Header;
-	unsigned char Repeat;
-	unsigned char Value;
-	unsigned char ValidHeader;
-	signed long RepeatOffset;
-	signed long SilenceLength;
-	signed long MyRate = 8000; //Set a reasonable value in case of error
-	
+	for (int i = 0; i < MAXSAMPLES; i++){
+		if (Sample_Space[i]) {
+			delete(Sample_Space[i]);
+		}
+	}
+}
 
-	unsigned short Nibbles;
-	signed long NibbleCount;
+void SampledSound::ExtractROM(void){
+
+	UINT32 cnt;
+	UINT32 cnt2;	
+	UINT32 Position;
+	UINT32 ByteCount;
+	UINT32 SampleCount;
+	UINT8 PageTemp;
+	UINT8 Pages;
+	UINT32 Page;		
+	UINT32 Header;
+	UINT8 Repeat;
+	UINT8 Value;
+	UINT8 ValidHeader;
+	UINT32 RepeatOffset;
+	UINT32 SilenceLength;
+	UINT32 MyRate = 8000; //Set a reasonable value in case of error
+
+	UINT16 Nibbles;
+	UINT32 NibbleCount;
 
 	for (cnt = 0; cnt < 8; cnt++){
 		for (cnt2 = 0; cnt2 < 128; cnt2++){
@@ -469,7 +400,9 @@ void SampledSound::ExtractROM(void){
 					for (cnt = 0; cnt <= SamplesInPage[Pages]; cnt++){						
 						TotalSamples++;
 
-						short * SampleTemp = (signed short*)calloc(0x80000, sizeof(signed short)); //Temp
+						INT16 * SampleTemp = new INT16[0x80000]; //Temp
+						ZeroMemory(SampleTemp, 0x80000 * sizeof(INT16));
+
 						if (SampleTemp) {
 							//Reset Repeat Flag
 							Repeat = 0;
@@ -633,7 +566,7 @@ void SampledSound::ExtractROM(void){
 								memcpy_s(Sample_Space[TotalSamples], (SampleLengthSamples[TotalSamples] * 2), SampleTemp, (SampleLengthSamples[TotalSamples] * 2));
 							}
 
-							free(SampleTemp);
+							delete(SampleTemp);
 						}
 					}	
 					//fprintf(DebugFile, "Samples In Page %d \n", SamplesInPage[Pages]);   
@@ -654,7 +587,7 @@ void SampledSound::ExtractROM(void){
 }
 
 
-signed short SampledSound::NECDecodeNibble(unsigned char Nibble){
+signed short SampledSound::NECDecodeNibble(UINT8 Nibble){
 	
 	signed long Sample;
 
@@ -691,7 +624,7 @@ void SampledSound::NECReset(void){
 }
 void SampledSound::NECInit(LoadSaveClass * LSCIn){
 	
-	unsigned char cnt;
+	UINT8 cnt;
 
 	LSC = LSCIn;
 	BankSwitch = 0;
@@ -726,32 +659,32 @@ void SampledSound::NECInit(LoadSaveClass * LSCIn){
 void SampledSound::NECStop(void){
 
 	//Reset Positions
-	PositionL[0] = 0;
-	PositionR[0] = 0;
+	PositionL = 0;
+	PositionR = 0;
 	//Clear Playing Flag
-	Playing[0] = 0;
+	Playing = 0;
 	//Clear Looping Flag
-	Looping[0] = 0;
+	Looping = 0;
 	//Set End Of Sample Flag
-	EndOfSample[0] = 1;	
+	EndOfSample = 1;	
 }
 void SampledSound::NECPlay(void){
 
 	//Set Now Playing Tune
-	NowPlaying[0] = Tune;
+	NowPlaying = Tune;
 	//Reset Positions
-	PositionL[0] = 0;
-	PositionR[0] = 0;
+	PositionL = 0;
+	PositionR = 0;
 	//Reset End Of Sample Flag
-	EndOfSample[0] = 0;	
+	EndOfSample = 0;	
 	//Set Playing Flag
-	Playing[0] = 1;
+	Playing = 1;
 	//Set Busy
 	Busy = 0;
 	//Clear Looping Flag
-	Looping[0] = 0;
+	Looping = 0;
 	//Frequency
-	Frequency[0] = SampleRate[Tune];
+	Frequency = SampleRate[Tune];
 
 }
 
@@ -767,17 +700,17 @@ void SampledSound::NECRun(signed short Cycles){
 
 }
 
-void SampledSound::NECSetTune(unsigned char TuneIn){
+void SampledSound::NECSetTune(UINT8 TuneIn){
 	Tune = TuneLookup[BankSwitch][TuneIn];
 }
-void SampledSound::NECSetBank(unsigned char BankIn){
+void SampledSound::NECSetBank(UINT8 BankIn){
 	BankSwitch = BankIn;
 }
 
 
 bool SampledSound::NECUpdate(void){
 
-	INT32 BufferUsed, BufferLength = 0, BufferCount, SampleCount;
+	INT32 BufferLength = 0, BufferCount, SampleCount;
 
 	//Get Bytes Used
 	//BufferUsed = (BASS_ChannelGetData(SampledHandle[0], 0, BASS_DATA_AVAILABLE) * NUMSPEAKERS);
@@ -800,24 +733,24 @@ bool SampledSound::NECUpdate(void){
 
 		SampleCount = 0;
 
-		if (Playing[0]) {
+		if (Playing) {
 
 			for (BufferCount = 0; BufferCount < BufferLength; BufferCount++) {
 				//Buffer Loop
-				if (PositionL[0] >= SampleLengthSamples[NowPlaying[0]]) {
+				if (PositionL >= SampleLengthSamples[NowPlaying]) {
 					//Sample Has Finished
-					EndOfSample[0] = 1;
+					EndOfSample = 1;
 					Busy = 1;
-					if (Looping[0]) {
+					if (Looping) {
 						//Replay
 						//Reset Position
-						PositionL[0] = 0;
+						PositionL = 0;
 						//Reset End Of Sample Flag
-						EndOfSample[0] = 0;
+						EndOfSample = 0;
 					}
 					else {
 						//Fill buffer with Zero Data;				
-						Playing[0] = 0;
+						Playing = 0;
 						SampledBuffer[SampleCount] = 0;
 						SampleCount++;
 						SampledBuffer[SampleCount] = 0;
@@ -828,20 +761,20 @@ bool SampledSound::NECUpdate(void){
 				{
 
 					//Sample Playback
-					if (Sample_Space[NowPlaying[0]]) {
+					if (Sample_Space[NowPlaying]) {
 						//Left Channel
-						SampledBuffer[SampleCount] = Sample_Space[NowPlaying[0]][PositionL[0]];
+						SampledBuffer[SampleCount] = Sample_Space[NowPlaying][PositionL];
 					}
 
 					SampleCount++;
 
-					if (Sample_Space[NowPlaying[0]]) {
+					if (Sample_Space[NowPlaying]) {
 						//Right Channel
-						SampledBuffer[SampleCount] = Sample_Space[NowPlaying[0]][PositionL[0]];
+						SampledBuffer[SampleCount] = Sample_Space[NowPlaying][PositionL];
 					}
 
 					SampleCount++;
-					PositionL[0]++;
+					PositionL++;
 				}
 			}
 
@@ -861,51 +794,57 @@ bool SampledSound::NECUpdate(void){
 		//Set The Data
 		//BASS_StreamPutData(SampledHandle[0], SampledBuffer, (BufferLength * sizeof(INT16) * NUMSPEAKERS));
 
-		//Free audio buffer
-		free(SampledBuffer);
+		//Delete audio buffer
+		delete(SampledBuffer);
 
 	}
 
 	return true;
 }
 
+UINT8 SampledSound::GetBusy()
+{
+	return Busy;
+}
+
+void SampledSound::SetMemory(UINT32 pos, UINT8 value)
+{
+	Memory_Space[pos] = value;
+}
+
+void SampledSound::SetROMSize(UINT32 size)
+{
+	ROMSize = size;
+}
+
 void SampledSound::SaveState(){
 
-	for (int i = 0; i < NUMCHANNELS; i++){
-
-		LSC->SaveToBuffer(Playing[i]);
-		LSC->SaveToBuffer(Looping[i]);
-		LSC->SaveToBuffer(Stopped[i]);	
-		LSC->SaveToBuffer(PositionL[i]);
-		LSC->SaveToBuffer(PositionR[i]);
-		LSC->SaveToBuffer(EndOfSample[i]);
-		LSC->SaveToBuffer(Restarted[i]);
-		LSC->SaveToBuffer(NowPlaying[i]);	
-		LSC->SaveToBuffer(Frequency[i]);
-	}
-
+	LSC->SaveToBuffer(Playing);
+	LSC->SaveToBuffer(Looping);
+	LSC->SaveToBuffer(Stopped);	
+	LSC->SaveToBuffer(PositionL);
+	LSC->SaveToBuffer(PositionR);
+	LSC->SaveToBuffer(EndOfSample);
+	LSC->SaveToBuffer(Restarted);
+	LSC->SaveToBuffer(NowPlaying);	
+	LSC->SaveToBuffer(Frequency);	
 	LSC->SaveToBuffer(BankSwitch);
 	LSC->SaveToBuffer(Busy);
 	LSC->SaveToBuffer(BusyTimer);
 	LSC->SaveToBuffer(Tune);
-
 }
 
 void SampledSound::LoadState(){
 	
-	for (int i = 0; i < NUMCHANNELS; i++){
-
-		LSC->LoadFromBuffer(Playing[i]);
-		LSC->LoadFromBuffer(Looping[i]);
-		LSC->LoadFromBuffer(Stopped[i]);	
-		LSC->LoadFromBuffer(PositionL[i]);
-		LSC->LoadFromBuffer(PositionR[i]);
-		LSC->LoadFromBuffer(EndOfSample[i]);
-		LSC->LoadFromBuffer(Restarted[i]);
-		LSC->LoadFromBuffer(NowPlaying[i]);	
-		LSC->LoadFromBuffer(Frequency[i]);
-	}
-
+	LSC->LoadFromBuffer(Playing);
+	LSC->LoadFromBuffer(Looping);
+	LSC->LoadFromBuffer(Stopped);	
+	LSC->LoadFromBuffer(PositionL);
+	LSC->LoadFromBuffer(PositionR);
+	LSC->LoadFromBuffer(EndOfSample);
+	LSC->LoadFromBuffer(Restarted);
+	LSC->LoadFromBuffer(NowPlaying);	
+	LSC->LoadFromBuffer(Frequency);
 	LSC->LoadFromBuffer(BankSwitch);
 	LSC->LoadFromBuffer(Busy);
 	LSC->LoadFromBuffer(BusyTimer);

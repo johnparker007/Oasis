@@ -8,7 +8,7 @@ HopperPayout::HopperPayout(){
 	ZeroMemory(PrevMotor, FITTEDHOPPERS * sizeof(UINT8));
 	ZeroMemory(OptoEnable, FITTEDHOPPERS * sizeof(UINT8));
 	ZeroMemory(OptoFlag, FITTEDHOPPERS * sizeof(UINT8));
-	ZeroMemory(Timer, FITTEDHOPPERS * sizeof(long));
+	ZeroMemory(Timer, FITTEDHOPPERS * sizeof(UINT64));
 	ZeroMemory(State, FITTEDHOPPERS * sizeof(UINT8));
 	ZeroMemory(Enable, FITTEDHOPPERS * sizeof(UINT8));
 	ZeroMemory(CoinSelect, FITTEDHOPPERS * sizeof(UINT8));
@@ -117,7 +117,7 @@ UINT8 HopperPayout::ReadOpto(UINT8 HNum){
 	
 	return Ret;
 }
-void HopperPayout::Update(UINT8 HNum, unsigned short Cycles){
+void HopperPayout::Update(UINT8 HNum, UINT32 Cycles){
 
 	if (Enable[HNum]){
 		//Protect Array
@@ -218,7 +218,7 @@ UINT8 HopperPayout::CoinIn(UINT8 CoinCode){
     Case &H3F: TStr = "£10 Token In"
 	*/
 
-	signed short cnt;
+	INT16 cnt;
 	UINT8 HopIndex;
 	UINT8 CoinDrop;
 	HopIndex = 0xff;

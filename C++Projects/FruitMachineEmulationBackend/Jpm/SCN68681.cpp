@@ -174,7 +174,7 @@ void DuartScn68681::LoadState(){
 
 }
 
-char * DuartScn68681::GetEDCString(void){
+UINT8 * DuartScn68681::GetEDCString(void){
        
     return 0;
 

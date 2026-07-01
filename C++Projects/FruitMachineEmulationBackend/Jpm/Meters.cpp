@@ -3,27 +3,27 @@
 
 CoinMeter::CoinMeter(){
 
-	ZeroMemory(On, FITTEDMETERS * sizeof(unsigned char));
-	ZeroMemory(TimeOn, FITTEDMETERS * sizeof(unsigned long));
-	ZeroMemory(Pin, FITTEDMETERS * sizeof(unsigned char));
-	ZeroMemory(PrevPin, FITTEDMETERS * sizeof(unsigned char));
-	ZeroMemory(Enable, FITTEDMETERS * sizeof(unsigned char));
-	ZeroMemory(Counter, FITTEDMETERS * sizeof(unsigned long));
-	ZeroMemory(PortIndex, FITTEDMETERS * sizeof(unsigned char));
+	ZeroMemory(On, FITTEDMETERS * sizeof(UINT8));
+	ZeroMemory(TimeOn, FITTEDMETERS * sizeof(UINT32));
+	ZeroMemory(Pin, FITTEDMETERS * sizeof(UINT8));
+	ZeroMemory(PrevPin, FITTEDMETERS * sizeof(UINT8));
+	ZeroMemory(Enable, FITTEDMETERS * sizeof(UINT8));
+	ZeroMemory(Counter, FITTEDMETERS * sizeof(UINT32));
+	ZeroMemory(PortIndex, FITTEDMETERS * sizeof(UINT8));
 }
 
 CoinMeter::~CoinMeter(){
 
 }
 
-unsigned long CoinMeter::GetCounter(unsigned char Num){
+UINT32 CoinMeter::GetCounter(UINT8 Num){
 	return Counter[Num];	
 }
-void CoinMeter::SetCounter(unsigned char Num, unsigned long Value){
+void CoinMeter::SetCounter(UINT8 Num, UINT32 Value){
 	Counter[Num] = Value;
 }
 
-void CoinMeter::Write(unsigned char Index, unsigned char PinIn){
+void CoinMeter::Write(UINT8 Index, UINT8 PinIn){
 
 	if (Enable[Index]){
 		if (PinIn){
@@ -60,7 +60,7 @@ void CoinMeter::Write(unsigned char Index, unsigned char PinIn){
 	
 }
 
-void CoinMeter::Run(unsigned short Cycles){
+void CoinMeter::Run(UINT32 Cycles){
 
 	int Cnt;
 
@@ -74,10 +74,10 @@ void CoinMeter::Run(unsigned short Cycles){
 
 }
 
-unsigned char CoinMeter::Check(void){
+UINT8 CoinMeter::Check(void){
 
 	int Cnt;
-	unsigned char Ret;
+	UINT8 Ret;
 
 	Ret = 0;
 

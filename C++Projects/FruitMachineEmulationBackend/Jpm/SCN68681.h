@@ -33,62 +33,62 @@ class DuartScn68681 {
 
 // Internal registers
 private:
-    unsigned char mr1a, mr1b;
-    unsigned char sra, srb;
-    unsigned char mr2a, mr2b;
-    unsigned char ipcr, opcr;
-    unsigned char csra, csrb;
-    unsigned char cra, crb;
+    UINT8 mr1a = 0, mr1b = 0;
+    UINT8 sra = 0, srb = 0;
+    UINT8 mr2a = 0, mr2b = 0;
+    UINT8 ipcr = 0, opcr = 0;
+    UINT8 csra = 0, csrb = 0;
+    UINT8 cra = 0, crb = 0;
     
-    int prescaler;
-    bool toggle;
-    int clk;
-    bool RxA, RxB, TxA, TxB;
+    INT32 prescaler = 0;
+    bool toggle = 0;
+    INT32 clk = 0;
+    bool RxA = 0, RxB = 0, TxA = 0, TxB = 0;
 
     EDCUNIT EDC;
 
 public:
-    unsigned char acr;
-    unsigned char ctur, ctlr;
-    unsigned char isr, imr, ivr;
-    unsigned char ip, op;
-    unsigned char opr;
-	unsigned char tba, tbb;
-    unsigned char rba, rbb;
-    unsigned char op_changed;
-    signed short counter;
-    unsigned char bufferA[BUFFER_SIZE], lenA;
-    unsigned char send_buffA[BUFFER_SIZE];
-    unsigned char bufferB[BUFFER_SIZE], lenB;
-    unsigned char send_buffB[BUFFER_SIZE];
-    bool recva, recvb;
+    UINT8 acr = 0;
+    UINT8 ctur = 0, ctlr = 0;
+    UINT8 isr = 0, imr = 0, ivr = 0;
+    UINT8 ip = 0, op = 0;
+    UINT8 opr = 0;
+	UINT8 tba = 0, tbb = 0;
+    UINT8 rba = 0, rbb = 0;
+    UINT8 op_changed = 0;
+    INT16 counter = 0;
+    UINT8 bufferA[BUFFER_SIZE], lenA = 0;
+    UINT8 send_buffA[BUFFER_SIZE];
+    UINT8 bufferB[BUFFER_SIZE], lenB = 0;
+    UINT8 send_buffB[BUFFER_SIZE];
+    bool recva = 0, recvb = 0;
 
 // Initialisation functions
 protected:
-    unsigned char chana, chanb;
-    bool counter_running;
-    bool transmitA, delayA;
-    bool transmitB, delayB;
-    unsigned char rtsa, rtsb;
-    unsigned char txa, txb;
-    unsigned char buffposA, send_countA, send_posA, send_delayA;
-    unsigned char buffposB, send_countB, send_posB, send_delayB;
+    UINT8 chana = 0, chanb = 0;
+    bool counter_running = 0;
+    bool transmitA = 0, delayA = 0;
+    bool transmitB = 0, delayB = 0;
+    UINT8 rtsa = 0, rtsb = 0;
+    UINT8 txa = 0, txb = 0;
+    UINT8 buffposA = 0, send_countA = 0, send_posA = 0, send_delayA = 0;
+    UINT8 buffposB = 0, send_countB = 0, send_posB = 0, send_delayB = 0;
 
 
 // Read and write functions
 public:
-    void ReceiveCharA(unsigned char ch);
-    void ReceiveCharB(unsigned char ch);
-	void reset(LoadSaveClass * LSCIn);
-    void tick(unsigned int num_clks);
-    void write(unsigned char offset, unsigned int value);
-    unsigned int read(unsigned char addr);
+    void __fastcall ReceiveCharA(UINT8 ch);
+    void __fastcall ReceiveCharB(UINT8 ch);
+	void __fastcall reset(LoadSaveClass * LSCIn);
+    void __fastcall tick(unsigned int num_clks);
+    void __fastcall write(UINT8 offset, unsigned int value);
+    unsigned int __fastcall read(UINT8 addr);
 
-	void SaveState();
-	void LoadState();
+	void __fastcall SaveState();
+	void __fastcall LoadState();
 
-    char * GetEDCString(void);
-    UINT8 GetEDCAvailable(void);
+    UINT8* __fastcall GetEDCString(void);
+    UINT8 __fastcall GetEDCAvailable(void);
 
 private:
 	LoadSaveClass * LSC;

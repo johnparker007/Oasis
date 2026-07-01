@@ -3,7 +3,7 @@
 
 SwitchMatrix::SwitchMatrix(){	
 
-	ZeroMemory(Matrix, MATRIXSIZE * sizeof(unsigned char));
+	ZeroMemory(Matrix, MATRIXSIZE * sizeof(UINT8));
 
 }
 
@@ -13,7 +13,7 @@ SwitchMatrix::~SwitchMatrix(){
 
 void SwitchMatrix::Init(){
 
-	unsigned int Cnt;
+	UINT32 Cnt;
 
 	for (Cnt = 0; Cnt < MATRIXSIZE; Cnt++){
 		Matrix[Cnt] = 0;	
@@ -21,25 +21,25 @@ void SwitchMatrix::Init(){
 
 }
 
-void SwitchMatrix::TurnSwitchOn(unsigned char num){
+void SwitchMatrix::TurnSwitchOn(UINT8 num){
 	Matrix[num] = 1;
 }
 
-void SwitchMatrix::TurnSwitchOff(unsigned char num){
+void SwitchMatrix::TurnSwitchOff(UINT8 num){
 	Matrix[num] = 0;
 }
 
-unsigned char SwitchMatrix::ReadSwitch(unsigned char num){
+UINT8 SwitchMatrix::ReadSwitch(UINT8 num){
 
-	unsigned char ret;
+	UINT8 ret;
 
 	ret = Matrix[num];
 	return ret;
 }
 
-unsigned char SwitchMatrix::ReadMatrix(unsigned char num){
+UINT8 SwitchMatrix::ReadMatrix(UINT8 num){
 
-	unsigned char ret;
+	UINT8 ret;
 	int loop;
 
 	ret = Matrix[(num * 8) + 7];

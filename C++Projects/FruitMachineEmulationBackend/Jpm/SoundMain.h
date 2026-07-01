@@ -1,10 +1,8 @@
-#ifndef SoundMainH
-#define SoundMainH
+#pragma once
 
 #include "LoadSave.h"
 
 #define BASSBUFFERSIZE 6000
-#define NUMCHANNELS 1
 #define PAGES 8
 #define MAXSAMPLES 224 // ???
 #define SOUNDMEMORYSIZE 0x800000
@@ -13,71 +11,26 @@
 
 class SampledSound {
 public:	
-	
-	unsigned char Memory_Space[SOUNDMEMORYSIZE];	//8MB ROM Space 
-	signed short * Sample_Space[MAXSAMPLES];		//Sample Generation Data 
-	
-	signed short * SampledBuffer;					//Playback buffer
-
-	//Sample Data Tables
-	float SampleSeconds[MAXSAMPLES];
-	unsigned char SampleBank[MAXSAMPLES];
-	unsigned char SampleIndex[MAXSAMPLES];
-	signed long SampleStart[MAXSAMPLES];
-	signed long SampleEnd[MAXSAMPLES];
-	signed long SampleRate[MAXSAMPLES];
-	signed long SampleRateDivisor[MAXSAMPLES];
-	signed long SampleLengthBytes[MAXSAMPLES];
-	signed long SampleLengthSamples[MAXSAMPLES];
-	unsigned char SampleDummy[MAXSAMPLES];
-	signed long TotalSamples = 0;
-	signed long ROMSize = 0;
-	
-	//ADPCM Conversion	
-	signed short StepSizes[49];
-	signed long ADPCMIndex = 0;
-	signed long ADPCMLast = 0;
-
-	//NEC Decodes
-	signed long Step7759[16][16];
-	signed long State[16];
-	unsigned char TuneLookup[PAGES][128];
-	signed long SamplesInPage[PAGES];
-
-	//Emulation
-	unsigned char BankSwitch = 0;
-	//Busy Flag
-	unsigned char Busy = 0;
-	//Busy Timer
-	signed long BusyTimer = 0;
-
-	//NEC has 1 Channel	
-	unsigned char Looping[NUMCHANNELS];
-	unsigned char Playing[NUMCHANNELS];
-	unsigned char Stopped[NUMCHANNELS];
-	signed long PositionL[NUMCHANNELS];
-	signed long PositionR[NUMCHANNELS];
-	unsigned char EndOfSample[NUMCHANNELS];
-	unsigned char Restarted[NUMCHANNELS];
-	unsigned char NowPlaying[NUMCHANNELS];
-	signed long Frequency[NUMCHANNELS];
-	unsigned char Tune = 0;
 
 	void ExtractROM(void);	
 	void NECReset(void);
 	void NECInit(LoadSaveClass * LSCIn);
-	void NECWriteLatch(unsigned char LatchVal);
-	void NECWriteControl(unsigned char ResetIn, unsigned char STIn);
+	void NECWriteLatch(UINT8 LatchVal);
+	void NECWriteControl(UINT8 ResetIn, UINT8 STIn);
 	void NECStop(void);
 	void NECPlay(void);
 	void NECRun(signed short Cycles);
-	void NECSerialWrite(unsigned char Reset, unsigned char Clock, unsigned char Data);
+	void NECSerialWrite(UINT8 Reset, UINT8 Clock, UINT8 Data);
 	void NECSerialReset(void);
-	void NECSerialDataByte(unsigned char Data);
-	void NECSetBank(unsigned char Bank);
-	void NECSetTune(unsigned char Tune);
-	signed short NECDecodeNibble(unsigned char Nibble);
+	void NECSerialDataByte(UINT8 Data);
+	void NECSetBank(UINT8 Bank);
+	void NECSetTune(UINT8 Tune);
+	signed short NECDecodeNibble(UINT8 Nibble);
 	bool NECUpdate(void);
+
+	UINT8 GetBusy();
+	void SetMemory(UINT32 pos, UINT8 value);
+	void SetROMSize(UINT32 size);
 	//Con/De structors
 	SampledSound(void);
 	~SampledSound(void);
@@ -87,9 +40,52 @@ public:
 
 private:
 
+	UINT8 Memory_Space[SOUNDMEMORYSIZE];	 //8MB ROM Space 
+	signed short* Sample_Space[MAXSAMPLES];	 //Sample Generation Data 	
+	signed short* SampledBuffer = NULL;		 //Playback buffer
+
+	//Sample Data Tables
+	float SampleSeconds[MAXSAMPLES];
+	UINT8 SampleBank[MAXSAMPLES];
+	UINT8 SampleIndex[MAXSAMPLES];
+	UINT32 SampleStart[MAXSAMPLES];
+	UINT32 SampleEnd[MAXSAMPLES];
+	UINT32 SampleRate[MAXSAMPLES];
+	UINT32 SampleRateDivisor[MAXSAMPLES];
+	UINT32 SampleLengthBytes[MAXSAMPLES];
+	UINT32 SampleLengthSamples[MAXSAMPLES];
+	UINT8 SampleDummy[MAXSAMPLES];
+	UINT32 TotalSamples = 0;
+	UINT32 ROMSize = 0;
+
+	//ADPCM Conversion	
+	UINT32 ADPCMIndex = 0;
+	UINT32 ADPCMLast = 0;
+
+	//NEC Decodes
+	INT16 Step7759[16][16];
+	INT16 State[16];
+	UINT8 TuneLookup[PAGES][128];
+	UINT32 SamplesInPage[PAGES];
+
+	//Emulation
+	UINT8 BankSwitch = 0;
+	//Busy Flag
+	UINT8 Busy = 0;
+	//Busy Timer
+	UINT32 BusyTimer = 0;
+
+	//NEC has 1 Channel	
+	UINT8 Looping;
+	UINT8 Playing;
+	UINT8 Stopped;
+	UINT32 PositionL;
+	UINT32 PositionR;
+	UINT8 EndOfSample;
+	UINT8 Restarted;
+	UINT8 NowPlaying;
+	UINT32 Frequency;
+	UINT8 Tune = 0;
+
 	LoadSaveClass* LSC = NULL;
-
-
 };
-
-#endif SoundMainH

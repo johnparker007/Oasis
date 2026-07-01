@@ -1,5 +1,4 @@
-#ifndef DEVICEEDCUNIT
-#define DEVICEEDCUNIT
+#pragma once
 
 #include "LoadSave.h"
 
@@ -28,5 +27,3 @@ private:
 	LoadSaveClass* LSC = NULL;
 
 };
-
-#endif // DEVICEEDCUNIT

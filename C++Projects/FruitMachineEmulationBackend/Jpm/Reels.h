@@ -6,57 +6,57 @@
 class ReelDrive {
 private:
 	//Bounce Stuff		
-	signed short BounceEnable[8];
-	signed short BounceStage[8];
-	signed short BounceCounter[8];
-	signed short BounceOffset[8];
-	signed short BounceLevel[8];
-	signed short BounceTable[16][8];
-	signed short BounceStart[8];
-	signed short BouncePointer[8];
+	INT16 BounceEnable[8];
+	INT16 BounceStage[8];
+	INT16 BounceCounter[8];
+	INT16 BounceOffset[8];
+	INT16 BounceLevel[8];
+	INT16 BounceTable[16][8];
+	INT16 BounceStart[8];
+	INT16 BouncePointer[8];
 	//Internals
-	signed short Position[8];
-	signed short PrevPosition[8];
-	signed short Direction[8];
-	signed short Speed[8];
-	signed short PrevSpeed[8];
-	signed short Stopped[8];
-	signed short PosOut[8];	
-	signed short Split[8];
-	signed short UnevenStopOffset[8];
-	signed short Opto[8];
+	INT16 Position[8];
+	INT16 PrevPosition[8];
+	INT16 Direction[8];
+	INT16 Speed[8];
+	INT16 PrevSpeed[8];
+	INT16 Stopped[8];
+	INT16 PosOut[8];	
+	INT16 Split[8];
+	INT16 UnevenStopOffset[8];
+	INT16 Opto[8];
 	//## Variables ##
-	signed short StarpointReel[8][16];
-	unsigned char PrevData[8][8];
-	unsigned char CurrentData[8];
-	signed long DataChangedCycles[8];
-	signed long PrevDataChangedCycles[8];
-	signed long DataChangedCounter[8];
+	INT16 StarpointReel[8][16];
+	UINT8 PrevData[8][8];
+	UINT8 CurrentData[8];
+	UINT32 DataChangedCycles[8];
+	UINT32 PrevDataChangedCycles[8];
+	UINT32 DataChangedCounter[8];
 
 	LoadSaveClass * LSC;
 
 public:		
 
 	//External Settings	
-	signed short Steps[8];
-	signed short MaxBounceOffset[8];
-	signed short BounceMax[8];
-	signed short BounceMin[8];
-	signed short BounceReelEnable[8];
-	signed short BounceDelay[8];
-	signed short ExtenderType;
-	unsigned char ExtenderPort;
-	signed short OptoInvert[8];
-	signed short OptoStart[8];
-	signed short OptoEnd[8];	
+	INT16 Steps[8];
+	INT16 MaxBounceOffset[8];
+	INT16 BounceMax[8];
+	INT16 BounceMin[8];
+	INT16 BounceReelEnable[8];
+	INT16 BounceDelay[8];
+	INT16 ExtenderType;
+	UINT8 ExtenderPort;
+	INT16 OptoInvert[8];
+	INT16 OptoStart[8];
+	INT16 OptoEnd[8];	
 
 	//## Subroutines / Functions ##
 	void Initialise(LoadSaveClass * LSCIn);
-	void WriteJPMReel(unsigned char data, unsigned char num);
-	void RunJPMReel(unsigned char maxreel, unsigned short cycles);
-	unsigned short UpdateBounce(unsigned short levelin);
-	signed short GetPosOut(unsigned char num);
-	unsigned char GetOptos(void);
+	void WriteJPMReel(UINT8 data, UINT8 num);
+	void RunJPMReel(UINT8 maxreel, UINT16 cycles);
+	UINT16 UpdateBounce(UINT16 levelin);
+	INT16 GetPosOut(UINT8 num);
+	UINT8 GetOptos(void);
 	void SetOptoInvert(UINT8 ReelNum, UINT8 State);
 	void SetOptoStart(UINT8 ReelNum, UINT8 Start);
 	void SetOptoEnd(UINT8 ReelNum, UINT8 End);

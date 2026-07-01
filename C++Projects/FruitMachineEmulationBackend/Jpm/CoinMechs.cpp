@@ -20,7 +20,8 @@ void ElecronicCoinMech::SaveState(){
 
 	LSC->SaveToBuffer(LockoutPort);
 	LSC->SaveToBuffer(SelectedCoin);
-	LSC->SaveToBuffer(LampOnOff[1]);//Need to add to this at next layout update
+	LSC->SaveToBuffer(LampOnOff[0]);
+	LSC->SaveToBuffer(LampOnOff[1]);
 	LSC->SaveToBuffer(CoinsIn2p);
 	LSC->SaveToBuffer(CoinsIn5p);
 	LSC->SaveToBuffer(CoinsIn10p);
@@ -58,7 +59,8 @@ void ElecronicCoinMech::LoadState(){
 
 	LSC->LoadFromBuffer(LockoutPort);
 	LSC->LoadFromBuffer(SelectedCoin);
-	LSC->LoadFromBuffer(LampOnOff[1]);//Need to add to this at next layout update
+	LSC->LoadFromBuffer(LampOnOff[0]);
+	LSC->LoadFromBuffer(LampOnOff[1]);
 	LSC->LoadFromBuffer(CoinsIn2p);
 	LSC->LoadFromBuffer(CoinsIn5p);
 	LSC->LoadFromBuffer(CoinsIn10p);
@@ -78,11 +80,11 @@ void ElecronicCoinMech::LoadState(){
 }
 ElecronicCoinMech::ElecronicCoinMech(){
 	
-	ZeroMemory(LockoutVal, NUMCOINS * sizeof(unsigned char));
-	ZeroMemory(LockoutInvert, NUMCOINS * sizeof(unsigned char));
-	ZeroMemory(CoinValue, NUMCOINS * sizeof(unsigned char));
-	ZeroMemory(CoinEnable, NUMCOINS * sizeof(unsigned char));	
-	ZeroMemory(LampOnOff, 2 * sizeof(unsigned char));
+	ZeroMemory(LockoutVal, NUMCOINS * sizeof(UINT8));
+	ZeroMemory(LockoutInvert, NUMCOINS * sizeof(UINT8));
+	ZeroMemory(CoinValue, NUMCOINS * sizeof(UINT8));
+	ZeroMemory(CoinEnable, NUMCOINS * sizeof(UINT8));	
+	ZeroMemory(LampOnOff, 2 * sizeof(UINT8));
 	
 }
 
@@ -90,28 +92,28 @@ ElecronicCoinMech::~ElecronicCoinMech(){
 
 }
 
-void ElecronicCoinMech::SetSelectedCoin(unsigned char Coin){
+void ElecronicCoinMech::SetSelectedCoin(UINT8 Coin){
 	SelectedCoin = Coin;
 }
 
-unsigned char ElecronicCoinMech::GetSelectedCoin(){
+UINT8 ElecronicCoinMech::GetSelectedCoin(){
 	return SelectedCoin;
 }
 
-unsigned char ElecronicCoinMech::GetLampOnOff(unsigned char Num){
-	unsigned char ret;
+UINT8 ElecronicCoinMech::GetLampOnOff(UINT8 Num){
+	UINT8 ret;
 	ret = LampOnOff[Num];
 	return ret;
 }
 
-void ElecronicCoinMech::SetCoinValue(unsigned char Num, unsigned char Value){
+void ElecronicCoinMech::SetCoinValue(UINT8 Num, UINT8 Value){
 	CoinValue[Num] = Value;
 }
 
-void ElecronicCoinMech::SetCoinEnable(unsigned char Num, unsigned char Value){
+void ElecronicCoinMech::SetCoinEnable(UINT8 Num, UINT8 Value){
 		CoinEnable[Num] = Value;
 }
-void ElecronicCoinMech::SetLockoutPort(unsigned char Port){
+void ElecronicCoinMech::SetLockoutPort(UINT8 Port){
 	
 	int tokensEnabled = 0, 
 		cashEnabled = 0, 
@@ -151,7 +153,7 @@ void ElecronicCoinMech::SetLockoutPort(unsigned char Port){
 
 }
 
-unsigned char ElecronicCoinMech::CoinIn(unsigned char Coin){
+UINT8 ElecronicCoinMech::CoinIn(UINT8 Coin){
 	
 	int LockoutBin;
 
@@ -236,16 +238,16 @@ UINT8 ElecronicCoinMech::GetCommStyle(){
 UINT8 ElecronicCoinMech::GetCommInvert(){
 	return CommInvert;
 }
-unsigned char ElecronicCoinMech::Run(unsigned short Cycles){
+UINT8 ElecronicCoinMech::Run(UINT32 Cycles){
 
-	unsigned char ret = 0;
+	UINT8 ret = 0;
 
 	if (InputCounter){
 		ret = 1;
 		InputCounter -= Cycles;
 		if (InputCounter < 0){
 			InputCounter = 0;
-			LockCounter = 2000000; //Quarter second
+			LockCounter = 2000000; //Quarter second = 8,000,000 / 4
 		}
 	}
 
@@ -261,21 +263,21 @@ unsigned char ElecronicCoinMech::Run(unsigned short Cycles){
 void ElecronicCoinMech::Init(LoadSaveClass * LSCIn){
 	LSC = LSCIn;
 }	
-void ElecronicCoinMech::SetCommStyle(unsigned char Style){
+void ElecronicCoinMech::SetCommStyle(UINT8 Style){
 	CommStyle = Style;
 }
-void ElecronicCoinMech::SetCommInvert(unsigned char Invert){
+void ElecronicCoinMech::SetCommInvert(UINT8 Invert){
 	CommInvert = Invert;
 }
-void ElecronicCoinMech::SetCycles(unsigned int Cycles){
+void ElecronicCoinMech::SetCycles(UINT32 Cycles){
 	PulseCycles = Cycles;
 }
-void ElecronicCoinMech::SetEDCEnable(unsigned char Enable){
+void ElecronicCoinMech::SetEDCEnable(UINT8 Enable){
 	EDCEnable = Enable;
 }
-void ElecronicCoinMech::SetLockoutVal(unsigned char Coin, unsigned char Value){
+void ElecronicCoinMech::SetLockoutVal(UINT8 Coin, UINT8 Value){
 	LockoutVal[Coin] = Value;
 }
-void ElecronicCoinMech::SetLockoutInvert(unsigned char Coin, unsigned char Invert){
+void ElecronicCoinMech::SetLockoutInvert(UINT8 Coin, UINT8 Invert){
 	LockoutInvert[Coin] = Invert;
 }

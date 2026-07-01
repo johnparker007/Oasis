@@ -30,14 +30,14 @@ static int ImpactTraceSlot(unsigned int pc)
 	return (pc & 0xFFFFFE) >> 1;
 }
 
-static unsigned short ImpactTraceReadWord(const unsigned char* rom, unsigned int pc)
+static unsigned short ImpactTraceReadWord(const UINT8* rom, unsigned int pc)
 {
 	if (pc + 1 >= IMPACT_TRACE_ROM_LIMIT)
 		return 0;
 	return ((unsigned short)rom[pc] << 8) | rom[pc + 1];
 }
 
-static unsigned int ImpactTraceReadLong(const unsigned char* rom, unsigned int pc)
+static unsigned int ImpactTraceReadLong(const UINT8* rom, unsigned int pc)
 {
 	unsigned int hi = ImpactTraceReadWord(rom, pc);
 	unsigned int lo = ImpactTraceReadWord(rom, pc + 2);
@@ -131,7 +131,7 @@ static void ImpactTraceDumpFiles(void)
 	}
 }
 
-static void ImpactTraceInstruction(unsigned int pc, const unsigned char* rom)
+static void ImpactTraceInstruction(unsigned int pc, const UINT8* rom)
 {
 	if (!g_impactFunctionDiscoveryEnabled)
 		return;
@@ -281,13 +281,13 @@ SYSTEM6::~SYSTEM6()
 	delete LSC;
 }
 
-void SYSTEM6::SetCFolder(char* Folder) {
+void SYSTEM6::SetCFolder(UINT8* Folder) {
 
 	CFolder = Folder;
 
 }
 
-void SYSTEM6::SetCFileName(char* FileName) {
+void SYSTEM6::SetCFileName(UINT8* FileName) {
 
 	CFileName = FileName;
 
@@ -295,30 +295,20 @@ void SYSTEM6::SetCFileName(char* FileName) {
 
 
 void SYSTEM6::LoadState(void) {
-
-	int loop;
-	char* OutStr = nullptr;
+	
+	UINT8* OutStr = nullptr;
 	int OutLen;
-
-	//Decompress State
-	OutLen = CombineStrings(OutStr, CFolder, "STATECMP");
-	LSC->DeCompressFiles(CFolder, OutStr);
-	if (OutLen > 0) {
-		free(OutStr);
-	}
-
+	
 	//Load State
-	OutLen = CombineStrings(OutStr, CFolder, "STATE");
+	OutLen = CombineStrings(OutStr, CFolder, (UINT8*)"STATE");
 	LSC->LoadInit(OutStr);
 	if (OutLen > 0) {
-		free(OutStr);
+		delete(OutStr);
 	}
 
 	//Retrieve from buffer
-	Lamps.LoadState();
-	for (loop = 0; loop < NUMMECHS; loop++) {
-		Mars[loop].LoadState();
-	}
+	Lamps.LoadState();	
+	Mars.LoadState();	
 	Alpha1.LoadState();
 	PPIO.LoadState();
 	LoadCPUState();
@@ -329,6 +319,7 @@ void SYSTEM6::LoadState(void) {
 	Seg7.LoadState();
 	Tubes.LoadState();
 	Sound.LoadState();
+	CashBox.LoadState();
 
 	//SYSTEM6 stuff
 	LSC->LoadFromBuffer(StatusLED);
@@ -342,13 +333,13 @@ void SYSTEM6::LoadState(void) {
 
 }
 
-int SYSTEM6::CombineStrings(char*& OutStr, char* In1, char* In2) {
+UINT32 SYSTEM6::CombineStrings(UINT8*& OutStr, UINT8* In1, UINT8* In2) {
 
-	size_t len1, len2, outlen, loop;
+	UINT32 len1, len2, outlen, loop;
 
 	//Get input string lengths
-	len1 = strlen(In1);
-	len2 = strlen(In2);
+	len1 = strlen((char*)In1);
+	len2 = strlen((char*)In2);
 
 	if (len1 <= 0) return 0;
 	if (len2 <= 0) return 0;
@@ -356,7 +347,7 @@ int SYSTEM6::CombineStrings(char*& OutStr, char* In1, char* In2) {
 	//Set output length
 	outlen = len1 + len2;
 	//allocate memory
-	OutStr = (char*)malloc(outlen + 1);
+	OutStr = new UINT8[outlen + 1];
 
 	if (OutStr) {
 		//Clear Memory
@@ -368,7 +359,6 @@ int SYSTEM6::CombineStrings(char*& OutStr, char* In1, char* In2) {
 				OutStr[loop] = In1[loop];
 			else
 				OutStr[loop] = In2[loop - len1];
-
 		}
 	}
 
@@ -379,18 +369,15 @@ int SYSTEM6::CombineStrings(char*& OutStr, char* In1, char* In2) {
 
 void SYSTEM6::SaveState(void) {
 
-	int loop;
-	char* OutStr = nullptr;
-	int OutLen;
+	UINT8* OutStr = nullptr;
+	UINT32 OutLen;
 
 	//Initialize
 	LSC->SaveInit(0x100000);
 
 	//Dump to buffer
-	Lamps.SaveState();
-	for (loop = 0; loop < NUMMECHS; loop++) {
-		Mars[loop].SaveState();
-	}
+	Lamps.SaveState();	
+	Mars.SaveState();	
 	Alpha1.SaveState();
 	PPIO.SaveState();
 	SaveCPUState();
@@ -401,6 +388,7 @@ void SYSTEM6::SaveState(void) {
 	Seg7.SaveState();
 	Tubes.SaveState();
 	Sound.SaveState();
+	CashBox.SaveState();
 
 	//SYSTEM6 stuff
 	LSC->SaveToBuffer(StatusLED);
@@ -411,23 +399,16 @@ void SYSTEM6::SaveState(void) {
 
 
 	//Save Layout Info
-	OutLen = CombineStrings(OutStr, CFolder, "STATE");
-	LSC->SaveToFile(OutStr);
+	OutLen = CombineStrings(OutStr, CFolder, (UINT8 *)"STATE");
+	LSC->SaveToFile((UINT8*)OutStr);
 	if (OutLen > 0) {
-		free(OutStr);
-	}
-
-	//Save Compressed Layout
-	OutLen = CombineStrings(OutStr, CFolder, "STATECMP");
-	LSC->CompressFiles(CFolder, OutStr);
-	if (OutLen > 0) {
-		free(OutStr);
-	}
+		delete(OutStr);
+	}	
 }
 
 void SYSTEM6::SaveCPUState(void) {
 
-	int loop;
+	UINT32 loop;
 
 	//Do Switches Here
 	for (loop = 0; loop < 256; loop++) {
@@ -484,7 +465,7 @@ void SYSTEM6::SaveCPUState(void) {
 void SYSTEM6::LoadCPUState(void) {
 
 	int loop;
-	unsigned char temp;
+	UINT8 temp;
 
 	//Do Switches Here
 	for (loop = 0; loop < 256; loop++) {
@@ -545,18 +526,13 @@ void SYSTEM6::LoadCPUState(void) {
 
 }
 
-unsigned char SYSTEM6::GetStatusLED(void) {
+UINT8 SYSTEM6::GetStatusLED(void) {
 	return StatusLED;
 }
 
 void SYSTEM6::Init(void)
 {
-	int loop;
-
-	for (loop = 0; loop < NUMMECHS; loop++) {
-		Mars[loop].Init(LSC);
-	}
-
+	Mars.Init(LSC);
 	Alpha1.Initialise(LSC);
 	Reels.Initialise(LSC);
 	Meters.Init(LSC);
@@ -567,6 +543,7 @@ void SYSTEM6::Init(void)
 	Seg7.Reset(LSC);
 	Tubes.Init(LSC);
 	Sound.NECInit(LSC);
+	CashBox.Init(LSC);
 }
 
 int SYSTEM6::Run(int Cycles) {
@@ -583,20 +560,20 @@ void SYSTEM6::Reset() {
 	this->m68k_pulse_reset();
 
 }
-void SYSTEM6::SaveRAM(char* FileString) {
+void SYSTEM6::SaveRAM(UINT8* FileString) {
 
 	unsigned long Cnt;
 	streampos size;
-	char* memblock;
+	UINT8* memblock;
 
-	ofstream file(FileString, ios::out | ios::binary | ios::trunc);
+	ofstream file((char*)FileString, ios::out | ios::binary | ios::trunc);
 	if (file.is_open()) {
 		size = 0x4000;
-		memblock = new char[0x4000];
+		memblock = new UINT8[0x4000];
 		for (Cnt = 0; Cnt < size; Cnt++) {
 			memblock[Cnt] = (RAM[Cnt] & 0xff);
 		}
-		file.write(memblock, size);
+		file.write((char*)memblock, size);
 		file.close();
 
 		delete[] memblock;
@@ -604,18 +581,18 @@ void SYSTEM6::SaveRAM(char* FileString) {
 
 }
 
-void SYSTEM6::LoadRAM(char* FileString) {
+void SYSTEM6::LoadRAM(UINT8* FileString) {
 
 	unsigned long Cnt;
 	streampos size;
-	char* memblock;
+	UINT8* memblock;
 
-	ifstream file(FileString, ios::in | ios::binary | ios::ate);
+	ifstream file((char*)FileString, ios::in | ios::binary | ios::ate);
 	if (file.is_open()) {
 		size = file.tellg();
-		memblock = new char[0x4000];
+		memblock = new UINT8[0x4000];
 		file.seekg(0, ios::beg);
-		file.read(memblock, size);
+		file.read((char*)memblock, size);
 		file.close();
 		for (Cnt = 0; Cnt < 0x4000; Cnt++) {
 			RAM[Cnt] = (memblock[Cnt] & 0xff);
@@ -627,24 +604,22 @@ void SYSTEM6::LoadRAM(char* FileString) {
 UINT8 SYSTEM6::GetAlphaChar(UINT8 num) {
 	return 0;
 }
-int SYSTEM6::GetAlphaSegs(char CharIn) {
-	int ret;
-	ret = Alpha1.GetAlphaSegments(CharIn);
+UINT32 SYSTEM6::GetAlphaSegs(UINT8 CharIn) {	
+	UINT32 ret = Alpha1.GetAlphaSegments(CharIn);
 	return ret;
 }
-char SYSTEM6::GetAlphaDotComma(char SegIn) {
+UINT8 SYSTEM6::GetAlphaDotComma(UINT8 SegIn) {
 	char ret;
 	ret = Alpha1.GetAlphaDotComma(SegIn);
 	return ret;
 }
-char SYSTEM6::GetAlphaBright() {
+UINT8 SYSTEM6::GetAlphaBright() {
 	char ret;
 	ret = Alpha1.GetAlphaBright();
 	return ret;
 }
-short SYSTEM6::GetPosOut(char num) {
-	short ret;
-	ret = Reels.GetPosOut(num);
+INT16 SYSTEM6::GetPosOut(UINT8 num) {
+	INT16 ret = Reels.GetPosOut(num);
 	return ret;
 }
 
@@ -660,7 +635,7 @@ float SYSTEM6::GetLampBrightness(UINT16 num) {
 bool SYSTEM6::GetLampsOn(UINT16 num) {
 	return Lamps.GetLampsOn(num);
 }
-D3DXVECTOR3 SYSTEM6::GetFilamentColour(UINT16 num) {
+float3 SYSTEM6::GetFilamentColour(UINT16 num) {
 	return Lamps.GetFilamentColour(num);
 }
 void SYSTEM6::UpdateSegs(void) {
@@ -668,39 +643,37 @@ void SYSTEM6::UpdateSegs(void) {
 	Seg7.Update();
 
 }
-unsigned char SYSTEM6::GetSegOn(unsigned short num) {
-	char ret;
+UINT8 SYSTEM6::GetSegOn(unsigned short num) {	
 	if (num > 255) return 0;
-	ret = Seg7.On[(num & 0xff)];
+	UINT8 ret = Seg7.GetOn(num & 0xff);
 	return ret;
 }
-unsigned char SYSTEM6::GetSegBright(unsigned short num) {
-	char ret;
+UINT8 SYSTEM6::GetSegBright(unsigned short num) {	
 	if (num > 255) return 0;
-	ret = Seg7.Brightness[(num & 0xff)];
+	UINT8 ret = Seg7.GetBrightness(num & 0xff);
 	return ret;
 }
-unsigned int SYSTEM6::GetMeterCounter(unsigned char num) {
+unsigned int SYSTEM6::GetMeterCounter(UINT8 num) {
 	unsigned int ret;
 	ret = Meters.GetCounter(num);
 	return ret;
 }
-void SYSTEM6::TurnSwitchOn(unsigned char num) {
+void SYSTEM6::TurnSwitchOn(UINT8 num) {
 	Switches.TurnSwitchOn(num);
 }
 
-void SYSTEM6::TurnSwitchOff(unsigned char num) {
+void SYSTEM6::TurnSwitchOff(UINT8 num) {
 	Switches.TurnSwitchOff(num);
 }
 
-unsigned char SYSTEM6::ReadSwitch(unsigned char num) {
-	unsigned char ret;
+UINT8 SYSTEM6::ReadSwitch(UINT8 num) {
+	UINT8 ret;
 	ret = Switches.ReadSwitch(num);
 	return ret;
 }
-unsigned char SYSTEM6::CoinIn(unsigned char Num, unsigned char Coin, unsigned char CoinValue) {
-	Mars[Num].SetSelectedCoin(Coin);
-	if (Mars[Num].CoinIn(Coin)) {
+UINT8 SYSTEM6::CoinIn(UINT8 Coin, UINT8 CoinValue) {
+	Mars.SetSelectedCoin(Coin);
+	if (Mars.CoinIn(Coin)) {
 		if (Tubes.CoinIn(CoinValue) == 0xff) {
 			if (Hoppers.CoinIn(CoinValue) == 0xff) {
 				CashBox.CoinIn(CoinValue);
@@ -710,36 +683,35 @@ unsigned char SYSTEM6::CoinIn(unsigned char Num, unsigned char Coin, unsigned ch
 	}
 	return 0;//Coin Rejected
 }
-void SYSTEM6::SetCommStyle(unsigned char Num, unsigned char Style) {
-	Mars[Num].SetCommStyle(Style);
+void SYSTEM6::SetCommStyle(UINT8 Style) {
+	Mars.SetCommStyle(Style);
 }
-void SYSTEM6::SetCommInvert(unsigned char Num, unsigned char Invert) {
-	Mars[Num].SetCommInvert(Invert);
+void SYSTEM6::SetCommInvert(UINT8 Invert) {
+	Mars.SetCommInvert(Invert);
 }
-void SYSTEM6::SetCycles(unsigned char Num, unsigned int Cycles) {
-	Mars[Num].SetCycles(Cycles);
+void SYSTEM6::SetCycles(UINT32 Cycles) {
+	Mars.SetCycles(Cycles);
 }
-void SYSTEM6::SetEDCEnable(unsigned char Num, unsigned char Enable) {
-	Mars[Num].SetEDCEnable(Enable);
+void SYSTEM6::SetEDCEnable(UINT8 Enable) {
+	Mars.SetEDCEnable(Enable);
 }
-void SYSTEM6::SetLockoutVal(unsigned char Num, unsigned char Coin, unsigned char Value) {
-	Mars[Num].SetLockoutVal(Coin, Value);
+void SYSTEM6::SetLockoutVal(UINT8 Coin, UINT8 Value) {
+	Mars.SetLockoutVal(Coin, Value);
 }
-void SYSTEM6::SetLockoutInvert(unsigned char Num, unsigned char Coin, unsigned char Invert) {
-	Mars[Num].SetLockoutInvert(Coin, Invert);
+void SYSTEM6::SetLockoutInvert(UINT8 Coin, UINT8 Invert) {
+	Mars.SetLockoutInvert(Coin, Invert);
 }
-void SYSTEM6::SetCoinValue(unsigned char Num, unsigned char CoinNum, unsigned char Value)
+void SYSTEM6::SetCoinValue(UINT8 CoinNum, UINT8 Value)
 {
-	Mars[Num].SetCoinValue(CoinNum, Value);
+	Mars.SetCoinValue(CoinNum, Value);
 }
-void SYSTEM6::SetCoinEnable(unsigned char Num, unsigned char CoinNum, unsigned char Value)
+void SYSTEM6::SetCoinEnable(UINT8 CoinNum, UINT8 Value)
 {
-	Mars[Num].SetCoinEnable(CoinNum, Value);
+	Mars.SetCoinEnable(CoinNum, Value);
 }
-unsigned char SYSTEM6::GetLampOnOff(unsigned char Num, unsigned char LampNum)
+UINT8 SYSTEM6::GetCoinLampOnOff(UINT8 LampNum)
 {
-	unsigned char ret;
-	ret = Mars[Num].GetLampOnOff(LampNum);
+	UINT8 ret = Mars.GetLampOnOff(LampNum);
 	return ret;
 }
 
@@ -762,7 +734,7 @@ int __fastcall  SYSTEM6::cpu_irq_ack(int level)
 	return res;
 }
 
-void __fastcall		SYSTEM6::cpu_set_fc(int discard)
+void __fastcall	SYSTEM6::cpu_set_fc(int discard)
 {
 
 }
@@ -804,24 +776,24 @@ void __fastcall  SYSTEM6::cpu_inst_hook(int cycles)
 	Seg7.RunJPMSegs(cycles, TotalCycles);
 	Meters.Run(cycles);
 
-	unsigned char SelCoin;
+	UINT8 SelCoin;
 
 	//Coin Mech
-	SelCoin = Mars[0].GetSelectedCoin();
-	if (Mars[0].GetCommStyle() == 0) {
+	SelCoin = Mars.GetSelectedCoin();
+	if (Mars.GetCommStyle() == 0) {
 		//Parallel
-		if (Mars[0].Run(cycles)) {
+		if (Mars.Run(cycles)) {
 			TurnSwitchOn(72 + SelCoin);
 		}
 		else {
 			TurnSwitchOff(72 + SelCoin);
 		}
 	}
-	else if (Mars[0].GetCommStyle() == 1) {
+	else if (Mars.GetCommStyle() == 1) {
 		//BCD
 		//Parallel		
-		if (Mars[0].Run(cycles)) {
-			UINT8 TBCD = Mars[0].GetBCD();
+		if (Mars.Run(cycles)) {
+			UINT8 TBCD = Mars.GetBCD();
 			for (loop = 0; loop < 8; loop++) {
 				if (TBCD & (1 << loop)) {
 					TurnSwitchOn(72 + loop);
@@ -1050,7 +1022,7 @@ UINT8 __fastcall 	SYSTEM6::cpu_read_byte(int address)
 	}
 	else if (address >= 0x480020 && address < 0x480034)//Switch Matrix
 	{
-		unsigned char index = ((address - 0x480020) >> 1);
+		UINT8 index = ((address - 0x480020) >> 1);
 
 		value = ~(Switches.ReadMatrix(index));
 	}
@@ -1060,7 +1032,7 @@ UINT8 __fastcall 	SYSTEM6::cpu_read_byte(int address)
 	}
 	else if (address == 0x480085)//Sample Status
 	{
-		value = Sound.Busy;
+		value = Sound.GetBusy();
 	}
 	else if (address == 0x480035)//Valid Coin Switches
 	{
@@ -1229,16 +1201,15 @@ void __fastcall 	SYSTEM6::cpu_write_byte(int address, UINT8 value)
 	{
 		DUART.write(((address - 0x480000) >> 1), value);
 		if (DUART.op_changed) {
-			Mars[0].SetLockoutPort(value);
+			Mars.SetLockoutPort(value);
 		}
 	}
 	else if (address == 0x480081)//Sound Sample Value + Play
 	{
 		Sound.NECSetTune(value);
-		if (Sound.Busy) {//Busy is inverted
+		if (Sound.GetBusy()) {//Busy is inverted
 			Sound.NECPlay();
 		}
-
 	}
 	else if (address == 0x480083)//Sound Control
 	{
@@ -1262,8 +1233,8 @@ void __fastcall 	SYSTEM6::cpu_write_byte(int address, UINT8 value)
 			Lamps.WriteStrobe((value + 1) & 0xf);
 
 			//7 Segs
-			Seg7.LastMuxValue = Lamps.StrobeVal;
-			Seg7.MuxValue = ((value + 1) & 0xf);
+			Seg7.SetLastMuxValue(Lamps.StrobeVal);
+			Seg7.SetMuxValue((value + 1) & 0xf);
 		}
 		if (value & 0x20)//Intensity Enable
 		{
@@ -1387,125 +1358,110 @@ void __fastcall 	SYSTEM6::cpu_write_long(int address, UINT32 value)
 	}
 }
 
-void SYSTEM6::SetEnable(unsigned char Num, unsigned char Enabl) {
+void SYSTEM6::SetEnable(UINT8 Num, UINT8 Enabl) {
 	Tubes.SetEnable(Num, Enabl);
 }
-void SYSTEM6::SetCounterIn(unsigned char Num, unsigned long Count) {
+void SYSTEM6::SetCounterIn(UINT8 Num, UINT32 Count) {
 	Tubes.SetCounterIn(Num, Count);
 }
-void SYSTEM6::SetCounterOut(unsigned char Num, unsigned long Count) {
+void SYSTEM6::SetCounterOut(UINT8 Num, UINT32 Count) {
 	Tubes.SetCounterOut(Num, Count);
 }
-void SYSTEM6::SetPortIndex(unsigned char Num, unsigned char Index) {
+void SYSTEM6::SetPortIndex(UINT8 Num, UINT8 Index) {
 	Tubes.SetPortIndex(Num, Index);
 }
-void SYSTEM6::SetCoin(unsigned char Num, unsigned char CoinIn) {
+void SYSTEM6::SetCoin(UINT8 Num, UINT8 CoinIn) {
 	Tubes.SetCoin(Num, CoinIn);
 }
-void SYSTEM6::SetLevel(unsigned char Num, unsigned char LevelIn) {
+void SYSTEM6::SetLevel(UINT8 Num, UINT8 LevelIn) {
 	Tubes.SetLevel(Num, LevelIn);
 }
-void SYSTEM6::SetFullLevel(unsigned char Num, unsigned char LevelIn) {
+void SYSTEM6::SetFullLevel(UINT8 Num, UINT8 LevelIn) {
 	Tubes.SetFullLevel(Num, LevelIn);
 }
-void SYSTEM6::SetLoEnable(unsigned char Num, unsigned char Enabl) {
+void SYSTEM6::SetLoEnable(UINT8 Num, UINT8 Enabl) {
 	Tubes.SetLoEnable(Num, Enabl);
 }
-void SYSTEM6::SetLoInvert(unsigned char Num, unsigned char Invert) {
+void SYSTEM6::SetLoInvert(UINT8 Num, UINT8 Invert) {
 	Tubes.SetLoInvert(Num, Invert);
 }
-void SYSTEM6::SetLoSwitch(unsigned char Num, unsigned char Switch) {
+void SYSTEM6::SetLoSwitch(UINT8 Num, UINT8 Switch) {
 	Tubes.SetLoSwitch(Num, Switch);
 }
-void SYSTEM6::SetLoLevel(unsigned char Num, signed long LevelIn) {
+void SYSTEM6::SetLoLevel(UINT8 Num, UINT32 LevelIn) {
 	Tubes.SetLoLevel(Num, LevelIn);
 }
-void SYSTEM6::SetHiEnable(unsigned char Num, unsigned char Enabl) {
+void SYSTEM6::SetHiEnable(UINT8 Num, UINT8 Enabl) {
 	Tubes.SetHiEnable(Num, Enabl);
 }
-void SYSTEM6::SetHiInvert(unsigned char Num, unsigned char Invert) {
+void SYSTEM6::SetHiInvert(UINT8 Num, UINT8 Invert) {
 	Tubes.SetHiInvert(Num, Invert);
 }
-void SYSTEM6::SetHiSwitch(unsigned char Num, unsigned char Switch) {
+void SYSTEM6::SetHiSwitch(UINT8 Num, UINT8 Switch) {
 	Tubes.SetHiSwitch(Num, Switch);
 }
-void SYSTEM6::SetHiLevel(unsigned char Num, signed long LevelIn) {
+void SYSTEM6::SetHiLevel(UINT8 Num, UINT32 LevelIn) {
 	Tubes.SetHiLevel(Num, LevelIn);
 }
 
-unsigned char SYSTEM6::GetEnable(unsigned char Num) {
-	unsigned char ret;
-	ret = Tubes.GetEnable(Num);
+UINT8 SYSTEM6::GetEnable(UINT8 Num) {
+	UINT8 ret = Tubes.GetEnable(Num);
 	return ret;
 }
-unsigned long SYSTEM6::GetCounterIn(unsigned char Num) {
-	unsigned long ret;
-	ret = Tubes.GetCounterIn(Num);
+UINT32 SYSTEM6::GetCounterIn(UINT8 Num) {	
+	UINT32 ret = Tubes.GetCounterIn(Num);
 	return ret;
 }
-unsigned long SYSTEM6::GetCounterOut(unsigned char Num) {
-	unsigned long ret;
-	ret = Tubes.GetCounterOut(Num);
+UINT32 SYSTEM6::GetCounterOut(UINT8 Num) {
+	UINT32 ret = Tubes.GetCounterOut(Num);
 	return ret;
 }
-unsigned char SYSTEM6::GetPortIndex(unsigned char Num) {
-	unsigned char ret;
-	ret = Tubes.GetPortIndex(Num);
+UINT8 SYSTEM6::GetPortIndex(UINT8 Num) {
+	UINT8 ret = Tubes.GetPortIndex(Num);
 	return ret;
 }
-unsigned char SYSTEM6::GetCoin(unsigned char Num) {
-	unsigned char ret;
-	ret = Tubes.GetCoin(Num);
+UINT8 SYSTEM6::GetCoin(UINT8 Num) {
+	UINT8 ret = Tubes.GetCoin(Num);
 	return ret;
 }
-long SYSTEM6::GetLevel(unsigned char Num) {
-	long ret;
-	ret = Tubes.GetLevel(Num);
+UINT32 SYSTEM6::GetLevel(UINT8 Num) {
+	UINT32 ret = Tubes.GetLevel(Num);
 	return ret;
 }
-long SYSTEM6::GetFullLevel(unsigned char Num) {
-	long ret;
-	ret = Tubes.GetFullLevel(Num);
+UINT32 SYSTEM6::GetFullLevel(UINT8 Num) {	
+	UINT32 ret = Tubes.GetFullLevel(Num);
 	return ret;
 }
-unsigned char SYSTEM6::GetLoEnable(unsigned char Num) {
-	unsigned char ret;
-	ret = Tubes.GetLoEnable(Num);
+UINT8 SYSTEM6::GetLoEnable(UINT8 Num) {
+	UINT8 ret = Tubes.GetLoEnable(Num);
 	return ret;
 }
-unsigned char SYSTEM6::GetLoInvert(unsigned char Num) {
-	unsigned char ret;
-	ret = Tubes.GetLoInvert(Num);
+UINT8 SYSTEM6::GetLoInvert(UINT8 Num) {
+	UINT8 ret = Tubes.GetLoInvert(Num);
 	return ret;
 }
-unsigned char SYSTEM6::GetLoSwitch(unsigned char Num) {
-	unsigned char ret;
-	ret = Tubes.GetLoSwitch(Num);
+UINT8 SYSTEM6::GetLoSwitch(UINT8 Num) {
+	UINT8 ret = Tubes.GetLoSwitch(Num);
 	return ret;
 }
-signed long SYSTEM6::GetLoLevel(unsigned char Num) {
-	signed long ret;
-	ret = Tubes.GetLoLevel(Num);
+UINT32 SYSTEM6::GetLoLevel(UINT8 Num) {
+	UINT32 ret = Tubes.GetLoLevel(Num);
 	return ret;
 }
-unsigned char SYSTEM6::GetHiEnable(unsigned char Num) {
-	unsigned char ret;
-	ret = Tubes.GetHiEnable(Num);
+UINT8 SYSTEM6::GetHiEnable(UINT8 Num) {
+	UINT8 ret = Tubes.GetHiEnable(Num);
 	return ret;
 }
-unsigned char SYSTEM6::GetHiInvert(unsigned char Num) {
-	unsigned char ret;
-	ret = Tubes.GetHiInvert(Num);
+UINT8 SYSTEM6::GetHiInvert(UINT8 Num) {
+	UINT8 ret = Tubes.GetHiInvert(Num);
 	return ret;
 }
-unsigned char SYSTEM6::GetHiSwitch(unsigned char Num) {
-	unsigned char ret;
-	ret = Tubes.GetHiSwitch(Num);
+UINT8 SYSTEM6::GetHiSwitch(UINT8 Num) {
+	UINT8 ret = Tubes.GetHiSwitch(Num);
 	return ret;
 }
-signed long SYSTEM6::GetHiLevel(unsigned char Num) {
-	signed long ret;
-	ret = Tubes.GetHiLevel(Num);
+UINT32 SYSTEM6::GetHiLevel(UINT8 Num) {
+	UINT32 ret = Tubes.GetHiLevel(Num);
 	return ret;
 }
 void SYSTEM6::SetOptoInvert(UINT8 ReelNum, UINT8 State) {
@@ -1695,9 +1651,9 @@ UINT8 SYSTEM6::GetHopperLoIndicator(UINT8 Num) {
 	return ret;
 }
 
-void SYSTEM6::SetStake(char StakeIn) {
+void SYSTEM6::SetStake(UINT8 StakeIn) {
 
-	int loop;
+	UINT8 loop;
 
 	for (loop = 0; loop < 4; loop++) {
 		if (StakeIn & (1 << loop)) {
@@ -1709,9 +1665,9 @@ void SYSTEM6::SetStake(char StakeIn) {
 	}
 }
 
-void SYSTEM6::SetPrize(char PrizeIn) {
+void SYSTEM6::SetPrize(UINT8 PrizeIn) {
 
-	int loop;
+	UINT8 loop;
 
 	for (loop = 0; loop < 4; loop++) {
 		if (PrizeIn & (1 << loop)) {
@@ -1723,9 +1679,9 @@ void SYSTEM6::SetPrize(char PrizeIn) {
 	}
 }
 
-void SYSTEM6::SetPercent(char PercentIn) {
+void SYSTEM6::SetPercent(UINT8 PercentIn) {
 
-	int loop;
+	UINT8 loop;
 
 	for (loop = 0; loop < 4; loop++) {
 		if (PercentIn & (1 << loop)) {
@@ -1737,7 +1693,7 @@ void SYSTEM6::SetPercent(char PercentIn) {
 	}
 }
 
-char* SYSTEM6::GetEDCString(void) {
+UINT8* SYSTEM6::GetEDCString(void) {
 
 	return DUART.GetEDCString();
 

@@ -1,14 +1,12 @@
 /////////////////////////////////////////////////////////////////////////////
-// Filename: LoadSaveCompressDLLClass.h
+// Filename: LoadSaveClass.h
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef _LSCCLASS_H_
-#define _LSCCLASS_H_
+#pragma once
 
-#include <stddef.h>
 #include <cstdio>
 
 ////////////////////////////////////////////////////////////////////////////////
-// Class name: LoadSaveCompressDLLClass
+// Class name: LoadSaveClass
 ////////////////////////////////////////////////////////////////////////////////
 #define FORMATVERSION 0
 #define NUMFILES 1
@@ -22,42 +20,39 @@ public:
     ~LoadSaveClass();
 
     // Save
-    void SaveInit(unsigned int BufferSize);
-    void SaveToFile(char* FileString);
-    void SaveToBuffer(char Var);
-    void SaveToBuffer(unsigned char Var);
-    void SaveToBuffer(short Var);
-    void SaveToBuffer(unsigned short Var);
-    void SaveToBuffer(int Var);
-    void SaveToBuffer(unsigned int Var);
-    void SaveToBuffer(long Var);
-    void SaveToBuffer(unsigned long Var);
+    void SaveInit(UINT32 BufferSize);
+    void SaveToFile(UINT8* FileString);
+    void SaveToBuffer(INT8 Var);
+    void SaveToBuffer(UINT8 Var);
+    void SaveToBuffer(INT16 Var);
+    void SaveToBuffer(UINT16 Var);
+    void SaveToBuffer(INT32 Var);
+    void SaveToBuffer(UINT32 Var);
+    void SaveToBuffer(INT64 Var);
+    void SaveToBuffer(UINT64 Var);
     void SaveToBuffer(bool Var);
-    void SaveToBuffer(char* Var);
+    void SaveToBuffer(UINT8* Var);
     void SaveVersionToBuffer();
 
-    // De/Compress
-    void CompressFiles(char* FolderString, char* SaveFileString);
-    void DeCompressFiles(char* FolderString, char* LoadFileString);
-
     // Load
-    void LoadInit(char* FileString);
+    void LoadInit(UINT8* FileString);
     void LoadEnd();
-    void LoadFromBuffer(char& Var);
-    void LoadFromBuffer(unsigned char& Var);
-    void LoadFromBuffer(short& Var);
-    void LoadFromBuffer(unsigned short& Var);
-    void LoadFromBuffer(int& Var);
-    void LoadFromBuffer(unsigned int& Var);
-    void LoadFromBuffer(long& Var);
-    void LoadFromBuffer(unsigned long& Var);
+    void LoadFromBuffer(INT8& Var);
+    void LoadFromBuffer(UINT8& Var);
+    void LoadFromBuffer(INT16& Var);
+    void LoadFromBuffer(UINT16& Var);
+    void LoadFromBuffer(INT32& Var);
+    void LoadFromBuffer(UINT32& Var);
+    void LoadFromBuffer(INT64& Var);
+    void LoadFromBuffer(UINT64& Var);
     void LoadFromBuffer(bool& Var);
-    void LoadStringFromBuffer(char* Var);
+    void LoadStringFromBuffer(UINT8* Var);
     void LoadVersionFromBuffer();
 
 private:
     // Kept as a member for source compatibility with older code, but the safe
     // implementation uses local FILE* handles wherever possible.
+
     FILE* IOFile = 0;
 
     size_t loadPointer = 0;
@@ -65,13 +60,11 @@ private:
     size_t loadSize = 0;
     size_t saveCapacity = 0;
 
-    int LoadedFormatVersion = 0;
+    INT32 LoadedFormatVersion = 0;
 
-    unsigned char* loadBuffer = 0;
-    unsigned char* saveBuffer = 0;
+    UINT8* loadBuffer = 0;
+    UINT8* saveBuffer = 0;
 
     bool EnsureSaveCapacity(size_t bytesToAdd);
     bool CanLoadBytes(size_t bytesToRead) const;
 };
-
-#endif

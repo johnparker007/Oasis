@@ -1194,7 +1194,7 @@ void mc68000::m68ki_set_ccr(uint value)
 {
 	FLAG_X = BIT_4(value)  << 4;
 	FLAG_N = BIT_3(value)  << 4;
-	FLAG_Z = !BIT_2(value);
+	FLAG_Z = ~BIT_2(value);
 	FLAG_V = BIT_1(value)  << 6;
 	FLAG_C = BIT_0(value)  << 8;
 }

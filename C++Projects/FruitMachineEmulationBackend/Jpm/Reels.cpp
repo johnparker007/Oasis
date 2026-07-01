@@ -154,7 +154,7 @@ void ReelDrive::Initialise(LoadSaveClass * LSCIn){
     StarpointReel[7][14] = 0;
     StarpointReel[7][15] = 0;
 	
-	signed short num;
+	INT16 num;
 
 	for (num = 0; num < 8; num++) {
 		 Position[num] = 0;
@@ -212,12 +212,12 @@ void ReelDrive::SetSteps(UINT8 ReelNum, UINT8 StepsIn){
 	Steps[ReelNum] = StepsIn;
 }
 
-void ReelDrive::WriteJPMReel(unsigned char data, unsigned char num){
+void ReelDrive::WriteJPMReel(UINT8 data, UINT8 num){
 	
-	signed short cnt;
-	signed short PhaseVal;
-	signed short Offset;
-	signed short temp;
+	INT16 cnt;
+	INT16 PhaseVal;
+	INT16 Offset;
+	INT16 temp;
 	try {
 		if (num > 7) { 
 			return;
@@ -325,10 +325,10 @@ void ReelDrive::WriteJPMReel(unsigned char data, unsigned char num){
 }
 
 
-unsigned short ReelDrive::UpdateBounce(unsigned short levelin){
+UINT16 ReelDrive::UpdateBounce(UINT16 levelin){
 
-	unsigned short Ret;
-	unsigned short Val;
+	UINT16 Ret;
+	UINT16 Val;
 
 	Val = (levelin - 1);
 	
@@ -341,23 +341,23 @@ unsigned short ReelDrive::UpdateBounce(unsigned short levelin){
 	return Ret;
 }
 
-unsigned char ReelDrive::GetOptos(void){
+UINT8 ReelDrive::GetOptos(void){
 
-	unsigned char ret;
+	UINT8 ret;
 	ret = (Opto[7]) << 7 | (Opto[6] << 6) | (Opto[5] << 5) | (Opto[4] << 4) | (Opto[3] << 3) | (Opto[2] << 2) | (Opto[1] << 1) | (Opto[0]) ;
 	return ret;
 }
 
-signed short ReelDrive::GetPosOut(unsigned char num){
+INT16 ReelDrive::GetPosOut(UINT8 num){
 
-	signed short ret;
+	INT16 ret;
 	ret = PosOut[num];
 	return ret;	
 }
 
 void ReelDrive::LoadState(){
 
-	int loop, loop2;
+	UINT32 loop, loop2;
 
 	for (loop = 0; loop < 8; loop++){
 		for (loop2 = 0; loop2 < 16; loop2++){
@@ -396,7 +396,7 @@ void ReelDrive::LoadState(){
 
 void ReelDrive::SaveState(){
 	
-	int loop, loop2;
+	UINT32 loop, loop2;
 
 	for (loop = 0; loop < 8; loop++){
 		for (loop2 = 0; loop2 < 16; loop2++){

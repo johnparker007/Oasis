@@ -12,81 +12,81 @@ extern "C"
 	float DLLVersion = 1.0000;
 	Interface_API float GetDLLVersion(void);
 	//IMPACT Controls
-	Interface_API unsigned char SYSTEM6Initialise(void);
-	Interface_API unsigned char SYSTEM6Shutdown(void);
-	Interface_API void SYSTEM6Reset(void);
-	Interface_API int SYSTEM6Run(int Cycles);
-	Interface_API signed long SYSTEM6LoadROM(char*, char*, char*, char*, char);
+	Interface_API UINT8 Initialise(void);
+	Interface_API UINT8 Shutdown(void);
+	Interface_API void Reset(void);
+	Interface_API INT32 Run(UINT32 Cycles);
+	Interface_API INT64	LoadROM(INT8*, INT8*, INT8*, INT8*, INT8);
 	//Alpha
-	Interface_API int SYSTEM6GetAlphaSegments(char);
-	Interface_API char SYSTEM6GetAlphaDotComma(char);
-	Interface_API char SYSTEM6GetAlphaBright();
+	Interface_API int GetAlphaSegments(UINT8);
+	Interface_API UINT8 GetAlphaDotComma(UINT8);
+	Interface_API UINT8 GetAlphaBright();
 	//Reels
-	Interface_API signed short SYSTEM6GetPosOut(char);
+	Interface_API INT16 GetPosOut(INT8);
 	Interface_API void SetOptoInvert(UINT8 ReelNum, UINT8 State);
 	Interface_API void SetOptoStart(UINT8 ReelNum, UINT8 Start);
 	Interface_API void SetOptoEnd(UINT8 ReelNum, UINT8 End);
 	Interface_API void SetSteps(UINT8 ReelNum, UINT8 State);
 	//Lamps
-	Interface_API void SYSTEM6UpdateLamps(void);
-	Interface_API bool SYSTEM6GetLampsOn(UINT16);
+	Interface_API void UpdateLamps(void);
+	Interface_API bool GetLampsOn(UINT16);
 	//These Floats should be returned in the range 0.f to 1.f
-	Interface_API float SYSTEM6GetFilamentColourR(UINT16);
-	Interface_API float SYSTEM6GetFilamentColourG(UINT16);
-	Interface_API float SYSTEM6GetFilamentColourB(UINT16);
-	Interface_API float SYSTEM6GetLampBrightness(UINT16);
+	Interface_API float GetFilamentColourR(UINT16);
+	Interface_API float GetFilamentColourG(UINT16);
+	Interface_API float GetFilamentColourB(UINT16);
+	Interface_API float GetLampBrightness(UINT16);
 	//7 Seg Displays + LEDs
-	Interface_API void SYSTEM6UpdateSegs(void);
-	Interface_API unsigned char SYSTEM6GetSegOn(unsigned short);
-	Interface_API unsigned char SYSTEM6GetSegBright(unsigned short);
+	Interface_API void UpdateSegs(void);
+	Interface_API UINT8 GetSegOn(UINT16);
+	Interface_API UINT8 GetSegBright(UINT16);
 	//Meters
-	Interface_API unsigned int SYSTEM6GetMeterCounter(unsigned char);
-	Interface_API void SYSTEM6TurnSwitchOn(int);
-	Interface_API void SYSTEM6TurnSwitchOff(int);
-	Interface_API unsigned char SYSTEM6ReadSwitch(unsigned char);
+	Interface_API UINT32 GetMeterCounter(UINT8);
+	Interface_API void TurnSwitchOn(UINT16);
+	Interface_API void TurnSwitchOff(UINT16);
+	Interface_API UINT8 ReadSwitch(UINT8);
 	//Coin Mechs
-	Interface_API void SYSTEM6SetCommStyle(unsigned char Num, unsigned char Style);
-	Interface_API void SYSTEM6SetCommInvert(unsigned char Num, unsigned char Invert);
-	Interface_API void SYSTEM6SetCycles(unsigned char Num, unsigned int Cycles);
-	Interface_API void SYSTEM6SetEDCEnable(unsigned char Num, unsigned char Enable);
-	Interface_API void SYSTEM6SetLockoutVal(unsigned char Num, unsigned char Coin, unsigned char Value);
-	Interface_API void SYSTEM6SetLockoutInvert(unsigned char Num, unsigned char Coin, unsigned char Invert);
-	Interface_API unsigned char SYSTEM6CoinIn(unsigned char Num, unsigned char Coin, unsigned char CoinValue);
-	Interface_API void SYSTEM6SetCoinValue(unsigned char Num, unsigned char CoinNum, unsigned char Value);
-	Interface_API void SYSTEM6SetCoinEnable(unsigned char Num, unsigned char CoinNum, unsigned char Value);
-	Interface_API unsigned char SYSTEM6GetLampOnOff(unsigned char Num, unsigned char LampNum);	
+	Interface_API void SetCommStyle(UINT8 Style);
+	Interface_API void SetCommInvert(UINT8 Invert);
+	Interface_API void SetCycles(UINT32 Cycles);
+	Interface_API void SetEDCEnable(UINT8 Enable);
+	Interface_API void SetLockoutVal(UINT8 Coin, UINT8 Value);
+	Interface_API void SetLockoutInvert(UINT8 Coin, UINT8 Invert);
+	Interface_API UINT8 CoinIn(UINT8 Coin, UINT8 CoinValue);
+	Interface_API void SetCoinValue(UINT8 CoinNum, UINT8 Value);
+	Interface_API void SetCoinEnable(UINT8 CoinNum, UINT8 Value);
+	Interface_API UINT8 GetCoinLampOnOff(UINT8 LampNum);	
 	//Coin Tubes - Set
-	Interface_API void SYSTEM6SetEnable(unsigned char Num, unsigned char Enable);
-	Interface_API void SYSTEM6SetCounterIn(unsigned char Num, unsigned long Count);
-	Interface_API void SYSTEM6SetCounterOut(unsigned char Num, unsigned long Count);
-	Interface_API void SYSTEM6SetPortIndex(unsigned char Num, unsigned char Index);
-	Interface_API void SYSTEM6SetCoin(unsigned char Num, unsigned char Coin);
-	Interface_API void SYSTEM6SetLevel(unsigned char Num, unsigned char Level);
-	Interface_API void SYSTEM6SetFullLevel(unsigned char Num, unsigned char Level);
-	Interface_API void SYSTEM6SetLoEnable(unsigned char Num, unsigned char Enable);
-	Interface_API void SYSTEM6SetLoInvert(unsigned char Num, unsigned char Invert);
-	Interface_API void SYSTEM6SetLoSwitch(unsigned char Num, unsigned char Switch);
-	Interface_API void SYSTEM6SetLoLevel(unsigned char Num, signed long Level);
-	Interface_API void SYSTEM6SetHiEnable(unsigned char Num, unsigned char Enable);
-	Interface_API void SYSTEM6SetHiInvert(unsigned char Num, unsigned char Invert);
-	Interface_API void SYSTEM6SetHiSwitch(unsigned char Num, unsigned char Switch);
-	Interface_API void SYSTEM6SetHiLevel(unsigned char Num, signed long Level);
+	Interface_API void SetEnable(UINT8 Num, UINT8 Enable);
+	Interface_API void SetCounterIn(UINT8 Num, UINT32 Count);
+	Interface_API void SetCounterOut(UINT8 Num, UINT32 Count);
+	Interface_API void SetPortIndex(UINT8 Num, UINT8 Index);
+	Interface_API void SetCoin(UINT8 Num, UINT8 Coin);
+	Interface_API void SetLevel(UINT8 Num, UINT8 Level);
+	Interface_API void SetFullLevel(UINT8 Num, UINT8 Level);
+	Interface_API void SetLoEnable(UINT8 Num, UINT8 Enable);
+	Interface_API void SetLoInvert(UINT8 Num, UINT8 Invert);
+	Interface_API void SetLoSwitch(UINT8 Num, UINT8 Switch);
+	Interface_API void SetLoLevel(UINT8 Num, UINT32 Level);
+	Interface_API void SetHiEnable(UINT8 Num, UINT8 Enable);
+	Interface_API void SetHiInvert(UINT8 Num, UINT8 Invert);
+	Interface_API void SetHiSwitch(UINT8 Num, UINT8 Switch);
+	Interface_API void SetHiLevel(UINT8 Num, UINT32 Level);
 	//Coin Tubes - Get
-	Interface_API unsigned char SYSTEM6GetEnable(unsigned char Num);
-	Interface_API unsigned long SYSTEM6GetCounterIn(unsigned char Num);
-	Interface_API unsigned long SYSTEM6GetCounterOut(unsigned char Num);
-	Interface_API unsigned char SYSTEM6GetPortIndex(unsigned char Num);
-	Interface_API unsigned char SYSTEM6GetCoin(unsigned char Num);
-	Interface_API long SYSTEM6GetLevel(unsigned char Num);
-	Interface_API long SYSTEM6GetFullLevel(unsigned char Num);
-	Interface_API unsigned char SYSTEM6GetLoEnable(unsigned char Num);
-	Interface_API unsigned char SYSTEM6GetLoInvert(unsigned char Num);
-	Interface_API unsigned char SYSTEM6GetLoSwitch(unsigned char Num);
-	Interface_API signed long SYSTEM6GetLoLevel(unsigned char Num);
-	Interface_API unsigned char SYSTEM6GetHiEnable(unsigned char Num);
-	Interface_API unsigned char SYSTEM6GetHiInvert(unsigned char Num);
-	Interface_API unsigned char SYSTEM6GetHiSwitch(unsigned char Num);
-	Interface_API signed long SYSTEM6GetHiLevel(unsigned char Num);
+	Interface_API UINT8 GetEnable(UINT8 Num);
+	Interface_API UINT32 GetCounterIn(UINT8 Num);
+	Interface_API UINT32 GetCounterOut(UINT8 Num);
+	Interface_API UINT8 GetPortIndex(UINT8 Num);
+	Interface_API UINT8 GetCoin(UINT8 Num);
+	Interface_API UINT32 GetLevel(UINT8 Num);
+	Interface_API UINT32 GetFullLevel(UINT8 Num);
+	Interface_API UINT8 GetLoEnable(UINT8 Num);
+	Interface_API UINT8 GetLoInvert(UINT8 Num);
+	Interface_API UINT8 GetLoSwitch(UINT8 Num);
+	Interface_API UINT32 GetLoLevel(UINT8 Num);
+	Interface_API UINT8 GetHiEnable(UINT8 Num);
+	Interface_API UINT8 GetHiInvert(UINT8 Num);
+	Interface_API UINT8 GetHiSwitch(UINT8 Num);
+	Interface_API UINT32 GetHiLevel(UINT8 Num);
 	
 	//Hopper Set
 	Interface_API void SetHopperEnable(UINT8 Num, UINT8 Value);
@@ -131,28 +131,28 @@ extern "C"
 	Interface_API UINT8 GetHopperHiIndicator(UINT8 Num);
 	Interface_API UINT8 GetHopperLoIndicator(UINT8 Num);
 	//Keys
-	Interface_API void SetStake(char Stake);
-	Interface_API void SetPrize(char Prize);
-	Interface_API void SetPercent(char Percent);
+	Interface_API void SetStake(INT8 Stake);
+	Interface_API void SetPrize(INT8 Prize);
+	Interface_API void SetPercent(INT8 Percent);
 	//State Save
-	Interface_API void SYSTEM6LoadState(void);
-	Interface_API void SYSTEM6SaveState(void);
+	Interface_API void LoadState(void);
+	Interface_API void SaveState(void);
 	//DIPS
 	Interface_API void SetDIP(UINT8 Num, UINT8 Value);
 	//Sound
-	Interface_API signed long SYSTEM6LoadSoundROM(char *name1, char *name2, char *name3, char *name4);
+	Interface_API INT32 LoadSoundROM(INT8 *name1, INT8 *name2, INT8 *name3, INT8 *name4);
 	//Status LED
-	Interface_API unsigned char SYSTEM6GetStatusLED(void);
+	Interface_API UINT8 GetStatusLED(void);
 	//RAM Load/Save
-	Interface_API void SYSTEM6SaveRAM(char * FileString);
-	Interface_API void SYSTEM6LoadRAM(char * FileString);
+	Interface_API void SaveRAM(INT8 * FileString);
+	Interface_API void LoadRAM(INT8 * FileString);
 	//Folder/File Name
-	Interface_API void SYSTEM6SetCFolder(char * Folder);
-	Interface_API void SYSTEM6SetCFileName(char * FileName);
+	Interface_API void SetCFolder(INT8 * Folder);
+	Interface_API void SetCFileName(INT8 * FileName);
 	//Alpha Display
 	Interface_API UINT8 GetAlphaChar(UINT8 Num);
 	//EDC Unit
-	Interface_API char* GetEDCString();	
+	Interface_API UINT8* GetEDCString();	
 
 #ifdef __cplusplus
 }

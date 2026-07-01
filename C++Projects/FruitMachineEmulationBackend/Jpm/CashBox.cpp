@@ -1,6 +1,6 @@
 #include "stdafx.h"
 #include "CashBox.h"
-/*
+
 void CashBoxClass::SaveState(){
 	
 	LSC->SaveToBuffer(CoinsIn2p);
@@ -40,9 +40,10 @@ void CashBoxClass::LoadState(){
 	LSC->LoadFromBuffer(CoinsIn);
 	LSC->LoadFromBuffer(TotalIn);
 }
-*/
+
 CashBoxClass::CashBoxClass(){
 
+	LSC = NULL;
 	CoinsIn2p = 0;
 	CoinsIn5p = 0;
 	CoinsIn10p = 0;
@@ -94,8 +95,7 @@ UINT32 CashBoxClass::GetTotalIn(){
 	return TotalIn;
 }
 
-/*
-void ElecronicCoinMech::Init(LoadSaveCompressDLLClass * LSCIn){
+void CashBoxClass::Init(LoadSaveClass * LSCIn){
 	LSC = LSCIn;
 }
-*/
+

@@ -1,5 +1,6 @@
-#ifndef CASHBOXH
-#define CASHBOXH
+#pragma once
+
+#include "LoadSave.h"
 
 class CashBoxClass {
 private:	
@@ -19,6 +20,8 @@ private:
 	UINT32	TokensIn200p;
 	UINT32  TokensIn, CoinsIn, TotalIn;
 	
+	LoadSaveClass* LSC;
+
 public:	
 
 	~CashBoxClass();
@@ -28,10 +31,8 @@ public:
 	UINT32 GetCoinsIn();
 	UINT32 GetTokensIn();
 	UINT32 GetTotalIn();
+	void Init(LoadSaveClass* LSCIn);
 
-
-	//void SaveState();
-	//void LoadState();
+	void SaveState();
+	void LoadState();
 };
-
-#endif CASHBOXH

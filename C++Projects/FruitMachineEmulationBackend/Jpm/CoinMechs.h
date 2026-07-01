@@ -1,5 +1,4 @@
-#ifndef CoinMechsH
-#define CoinMechsH
+#pragma once
 
 #include "LoadSave.h"
 
@@ -11,21 +10,21 @@ public:
 	~ElecronicCoinMech();
 	ElecronicCoinMech();
 
-	unsigned char CoinIn(unsigned char Coin);
-	unsigned char Run(unsigned short Cycles);
+	UINT8 CoinIn(UINT8 Coin);
+	UINT8 Run(UINT32 Cycles);
 	void Init(LoadSaveClass* LSCIn);
-	void SetCommStyle(unsigned char Style);
-	void SetCommInvert(unsigned char Invert);
-	void SetCycles(unsigned int Cycles);
-	void SetEDCEnable(unsigned char Enable);
-	void SetLockoutVal(unsigned char Coin, unsigned char Value);
-	void SetLockoutInvert(unsigned char Coin, unsigned char Invert);
-	void SetLockoutPort(unsigned char Port);
-	void SetSelectedCoin(unsigned char Coin);
-	void SetCoinValue(unsigned char Num, unsigned char Value);
-	void SetCoinEnable(unsigned char Num, unsigned char Value);
-	unsigned char GetLampOnOff(unsigned char Num);
-	unsigned char GetSelectedCoin();
+	void SetCommStyle(UINT8 Style);
+	void SetCommInvert(UINT8 Invert);
+	void SetCycles(UINT32 Cycles);
+	void SetEDCEnable(UINT8 Enable);
+	void SetLockoutVal(UINT8 Coin, UINT8 Value);
+	void SetLockoutInvert(UINT8 Coin, UINT8 Invert);
+	void SetLockoutPort(UINT8 Port);
+	void SetSelectedCoin(UINT8 Coin);
+	void SetCoinValue(UINT8 Num, UINT8 Value);
+	void SetCoinEnable(UINT8 Num, UINT8 Value);
+	UINT8 GetLampOnOff(UINT8 Num);
+	UINT8 GetSelectedCoin();
 	UINT8 GetCommStyle();
 	UINT8 GetCommInvert();
 	UINT8 GetBCD();
@@ -35,19 +34,19 @@ public:
 
 private:
 
-	int InputCounter = 0;
-	int LockCounter = 0;
-	unsigned char CommStyle = 0;
-	unsigned char CommInvert = 0;
-	unsigned int PulseCycles = 0;
-	unsigned char EDCEnable = 0;
-	unsigned char LockoutVal[NUMCOINS];
-	unsigned char LockoutInvert[NUMCOINS];
-	unsigned char CoinValue[NUMCOINS];
-	unsigned char CoinEnable[NUMCOINS];
-	unsigned char LockoutPort = 0;
-	unsigned char SelectedCoin = 0;
-	unsigned char LampOnOff[2];
+	INT32 InputCounter = 0;
+	INT32 LockCounter = 0;
+	UINT8 CommStyle = 0;
+	UINT8 CommInvert = 0;
+	UINT32 PulseCycles = 0;
+	UINT8 EDCEnable = 0;
+	UINT8 LockoutVal[NUMCOINS];
+	UINT8 LockoutInvert[NUMCOINS];
+	UINT8 CoinValue[NUMCOINS];
+	UINT8 CoinEnable[NUMCOINS];
+	UINT8 LockoutPort = 0;
+	UINT8 SelectedCoin = 0;
+	UINT8 LampOnOff[2];
 	
 	int	CoinsIn2p = 0,
 		CoinsIn5p = 0,
@@ -70,25 +69,3 @@ private:
 
 	LoadSaveClass * LSC = NULL;
 };
-
-class ElecronicNoteMech {
-private:
-	
-public:	
-	
-	//char CoinIn(unsigned char Coin);	
-	//void Run(unsigned short Cycles);	
-	//void Init(void);
-};
-
-class ElectroMechanicalCoin {
-private:
-	
-public:	
-
-	//char CoinIn(unsigned char Coin);
-	//void Run(unsigned short Cycles);	
-	//void Init(void);
-};
-
-#endif CoinMechsH

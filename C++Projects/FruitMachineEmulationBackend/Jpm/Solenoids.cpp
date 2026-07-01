@@ -4,31 +4,31 @@
 
 SolenoidPayout::SolenoidPayout(){
 
-	ZeroMemory(Pin, NUMSOLENOIDS * sizeof(unsigned char));
-	ZeroMemory(Enable, NUMSOLENOIDS * sizeof(unsigned char));
-	ZeroMemory(PrevPin, NUMSOLENOIDS * sizeof(unsigned char));
-	ZeroMemory(CounterIn, NUMSOLENOIDS * sizeof(unsigned long));
-	ZeroMemory(CounterOut, NUMSOLENOIDS * sizeof(unsigned long));
-	ZeroMemory(PortIndex, NUMSOLENOIDS * sizeof(unsigned char));
-	ZeroMemory(Coin, NUMSOLENOIDS * sizeof(unsigned char));
-	ZeroMemory(Level, NUMSOLENOIDS * sizeof(signed long));
-	ZeroMemory(LoEnable, NUMSOLENOIDS * sizeof(unsigned char));
-	ZeroMemory(LoSwitch, NUMSOLENOIDS * sizeof(unsigned char));
-	ZeroMemory(LoState, NUMSOLENOIDS * sizeof(unsigned char));
-	ZeroMemory(LoInvert, NUMSOLENOIDS * sizeof(unsigned char));
-	ZeroMemory(LoLevel, NUMSOLENOIDS * sizeof(signed long));
-	ZeroMemory(HiEnable, NUMSOLENOIDS * sizeof(unsigned char));
-	ZeroMemory(HiSwitch, NUMSOLENOIDS * sizeof(unsigned char));
-	ZeroMemory(HiLevel, NUMSOLENOIDS * sizeof(signed long));
-	ZeroMemory(HiState, NUMSOLENOIDS * sizeof(unsigned char));
-	ZeroMemory(HiInvert, NUMSOLENOIDS * sizeof(unsigned char));	
-	ZeroMemory(FullLevel, NUMSOLENOIDS * sizeof(signed long));
+	ZeroMemory(Pin, NUMSOLENOIDS * sizeof(UINT8));
+	ZeroMemory(Enable, NUMSOLENOIDS * sizeof(UINT8));
+	ZeroMemory(PrevPin, NUMSOLENOIDS * sizeof(UINT8));
+	ZeroMemory(CounterIn, NUMSOLENOIDS * sizeof(UINT32));
+	ZeroMemory(CounterOut, NUMSOLENOIDS * sizeof(UINT32));
+	ZeroMemory(PortIndex, NUMSOLENOIDS * sizeof(UINT8));
+	ZeroMemory(Coin, NUMSOLENOIDS * sizeof(UINT8));
+	ZeroMemory(Level, NUMSOLENOIDS * sizeof(UINT32));
+	ZeroMemory(LoEnable, NUMSOLENOIDS * sizeof(UINT8));
+	ZeroMemory(LoSwitch, NUMSOLENOIDS * sizeof(UINT8));
+	ZeroMemory(LoState, NUMSOLENOIDS * sizeof(UINT8));
+	ZeroMemory(LoInvert, NUMSOLENOIDS * sizeof(UINT8));
+	ZeroMemory(LoLevel, NUMSOLENOIDS * sizeof(UINT32));
+	ZeroMemory(HiEnable, NUMSOLENOIDS * sizeof(UINT8));
+	ZeroMemory(HiSwitch, NUMSOLENOIDS * sizeof(UINT8));
+	ZeroMemory(HiLevel, NUMSOLENOIDS * sizeof(UINT32));
+	ZeroMemory(HiState, NUMSOLENOIDS * sizeof(UINT8));
+	ZeroMemory(HiInvert, NUMSOLENOIDS * sizeof(UINT8));	
+	ZeroMemory(FullLevel, NUMSOLENOIDS * sizeof(UINT32));
 }
 
 SolenoidPayout::~SolenoidPayout(){
 }
 
-void SolenoidPayout::Write(unsigned char PinIn){
+void SolenoidPayout::Write(UINT8 PinIn){
 
 	int loop;
 
@@ -61,7 +61,7 @@ void SolenoidPayout::Write(unsigned char PinIn){
 
 void SolenoidPayout::Update(void){
 
-	unsigned char cnt;
+	UINT8 cnt;
 
 	for (cnt = 0; cnt < NUMSOLENOIDS; cnt++){
 		//Is Lo Switch Enabled
@@ -101,7 +101,7 @@ void SolenoidPayout::Init(LoadSaveClass * LSCIn){
 
 	LSC = LSCIn;
 
-	unsigned char cnt;
+	UINT8 cnt;
 
 	for (cnt = 0; cnt < NUMSOLENOIDS; cnt++){
 		Pin[cnt] = 0;
@@ -112,7 +112,7 @@ void SolenoidPayout::Init(LoadSaveClass * LSCIn){
 
 }
 
-unsigned char SolenoidPayout::CoinIn(unsigned char CoinCode){
+UINT8 SolenoidPayout::CoinIn(UINT8 CoinCode){
 	
 	/*
 	Case 0: TStr = "2p Cash In"
@@ -131,8 +131,8 @@ unsigned char SolenoidPayout::CoinIn(unsigned char CoinCode){
 	*/
 
 	signed short cnt;
-	unsigned char SolIndex;
-	unsigned char CoinDrop;
+	UINT8 SolIndex;
+	UINT8 CoinDrop;
 	SolIndex = 0xff;
 	CoinDrop = 0;
 	
@@ -177,149 +177,135 @@ unsigned char SolenoidPayout::CoinIn(unsigned char CoinCode){
 	return SolIndex;
 
 }
-unsigned char SolenoidPayout::GetLoState(unsigned char Num){
+UINT8 SolenoidPayout::GetLoState(UINT8 Num){
 	return LoState[Num];
 }
-unsigned char SolenoidPayout::GetHiState(unsigned char Num){
+UINT8 SolenoidPayout::GetHiState(UINT8 Num){
 	return HiState[Num];
 }
-void SolenoidPayout::SetEnable(unsigned char Num, unsigned char Enabl){
+void SolenoidPayout::SetEnable(UINT8 Num, UINT8 Enabl){
 	Enable[Num] = Enabl;
 	Update();
 }
-void SolenoidPayout::SetCounterIn(unsigned char Num, unsigned long Count){
+void SolenoidPayout::SetCounterIn(UINT8 Num, UINT32 Count){
 	CounterIn[Num] = Count;
 }
-void SolenoidPayout::SetCounterOut(unsigned char Num, unsigned long Count){
+void SolenoidPayout::SetCounterOut(UINT8 Num, UINT32 Count){
 	CounterOut[Num] = Count;
 }
-void SolenoidPayout::SetPortIndex(unsigned char Num, unsigned char Index){
+void SolenoidPayout::SetPortIndex(UINT8 Num, UINT8 Index){
 	PortIndex[Num] = Index;
 	Update();
 }
-void SolenoidPayout::SetCoin(unsigned char Num, unsigned char CoinIn){
+void SolenoidPayout::SetCoin(UINT8 Num, UINT8 CoinIn){
 	Coin[Num] = CoinIn;
 }
-void SolenoidPayout::SetLevel(unsigned char Num, unsigned char LevelIn){
+void SolenoidPayout::SetLevel(UINT8 Num, UINT8 LevelIn){
 	Level[Num] = LevelIn;
 }
-void SolenoidPayout::SetFullLevel(unsigned char Num, unsigned char Level){
+void SolenoidPayout::SetFullLevel(UINT8 Num, UINT8 Level){
 	FullLevel[Num] = Level;
 }
-void SolenoidPayout::SetLoEnable(unsigned char Num, unsigned char Enabl){
+void SolenoidPayout::SetLoEnable(UINT8 Num, UINT8 Enabl){
 	LoEnable[Num] = Enabl;
 	Update();
 }
-void SolenoidPayout::SetLoInvert(unsigned char Num, unsigned char Invert){
+void SolenoidPayout::SetLoInvert(UINT8 Num, UINT8 Invert){
 	LoInvert[Num] = Invert;
 	Update();
 }
-void SolenoidPayout::SetLoSwitch(unsigned char Num, unsigned char Switch){
+void SolenoidPayout::SetLoSwitch(UINT8 Num, UINT8 Switch){
 	LoSwitch[Num] = Switch;
 	Update();
 }
-void SolenoidPayout::SetLoLevel(unsigned char Num, signed long LevelIn){
+void SolenoidPayout::SetLoLevel(UINT8 Num, UINT32 LevelIn){
 	LoLevel[Num] = LevelIn;
 	Update();
 }
-void SolenoidPayout::SetHiEnable(unsigned char Num, unsigned char Enabl){
+void SolenoidPayout::SetHiEnable(UINT8 Num, UINT8 Enabl){
 	HiEnable[Num] = Enabl;
 	Update();
 }
-void SolenoidPayout::SetHiInvert(unsigned char Num, unsigned char Invert){
+void SolenoidPayout::SetHiInvert(UINT8 Num, UINT8 Invert){
 	HiInvert[Num] = Invert;
 	Update();
 }
-void SolenoidPayout::SetHiSwitch(unsigned char Num, unsigned char Switch){
+void SolenoidPayout::SetHiSwitch(UINT8 Num, UINT8 Switch){
 	HiSwitch[Num] = Switch;
 	Update();
 }
-void SolenoidPayout::SetHiLevel(unsigned char Num, signed long LevelIn){
+void SolenoidPayout::SetHiLevel(UINT8 Num, UINT32 LevelIn){
 	HiLevel[Num] = LevelIn;
 	Update();
 }
-void SolenoidPayout::SetPort(unsigned char Port){
+void SolenoidPayout::SetPort(UINT8 Port){
 
 }
-unsigned char SolenoidPayout::GetEnable(unsigned char Num){
-	unsigned char ret;
+UINT8 SolenoidPayout::GetEnable(UINT8 Num){
+	UINT8 ret;
 	ret = Enable[Num];
 	return ret;
 }
-unsigned long SolenoidPayout::GetCounterIn(unsigned char Num){
-	unsigned long ret;
-	ret = CounterIn[Num];
+UINT32 SolenoidPayout::GetCounterIn(UINT8 Num){
+	UINT32 ret = CounterIn[Num];
 	return ret;
 }
-unsigned long SolenoidPayout::GetCounterOut(unsigned char Num){
-	unsigned long ret;
-	ret = CounterOut[Num];
+UINT32 SolenoidPayout::GetCounterOut(UINT8 Num){
+	UINT32 ret = CounterOut[Num];
 	return ret;
 }
-unsigned char SolenoidPayout::GetPortIndex(unsigned char Num){
-	unsigned char ret;
-	ret = PortIndex[Num];
+UINT8 SolenoidPayout::GetPortIndex(UINT8 Num){
+	UINT8 ret = PortIndex[Num];
 	return ret;
 }
-unsigned char SolenoidPayout::GetCoin(unsigned char Num){
-	unsigned char ret;
-	ret = Coin[Num];
+UINT8 SolenoidPayout::GetCoin(UINT8 Num){
+	UINT8 ret = Coin[Num];
 	return ret;
 }
-signed long SolenoidPayout::GetLevel(unsigned char Num){
-	signed long ret;
-	ret = Level[Num];
+UINT32 SolenoidPayout::GetLevel(UINT8 Num){
+	UINT32 ret = Level[Num];
 	return ret;
 }
-signed long SolenoidPayout::GetFullLevel(unsigned char Num){
-	signed long ret;
-	ret = FullLevel[Num];
+UINT32 SolenoidPayout::GetFullLevel(UINT8 Num){
+	UINT32 ret = FullLevel[Num];
 	return ret;
 }
-unsigned char SolenoidPayout::GetLoEnable(unsigned char Num){
-	unsigned char ret;
-	ret = LoEnable[Num];
+UINT8 SolenoidPayout::GetLoEnable(UINT8 Num){
+	UINT8 ret = LoEnable[Num];
 	return ret;
 }
-unsigned char SolenoidPayout::GetLoInvert(unsigned char Num){
-	unsigned char ret;
-	ret = LoInvert[Num];
+UINT8 SolenoidPayout::GetLoInvert(UINT8 Num){
+	UINT8 ret = LoInvert[Num];
 	return ret;
 }
-unsigned char SolenoidPayout::GetLoSwitch(unsigned char Num){
-	unsigned char ret;
-	ret = LoSwitch[Num];
+UINT8 SolenoidPayout::GetLoSwitch(UINT8 Num){
+	UINT8 ret = LoSwitch[Num];
 	return ret;
 }
-signed long SolenoidPayout::GetLoLevel(unsigned char Num){
-	signed long ret;
-	ret = LoLevel[Num];
+UINT32 SolenoidPayout::GetLoLevel(UINT8 Num){
+	UINT32 ret = LoLevel[Num];
 	return ret;
 }
-unsigned char SolenoidPayout::GetHiEnable(unsigned char Num){
-	unsigned char ret;
-	ret = HiEnable[Num];
+UINT8 SolenoidPayout::GetHiEnable(UINT8 Num){
+	UINT8 ret = HiEnable[Num];
 	return ret;
 }
-unsigned char SolenoidPayout::GetHiInvert(unsigned char Num){
-	unsigned char ret;
-	ret = HiInvert[Num];
+UINT8 SolenoidPayout::GetHiInvert(UINT8 Num){
+	UINT8 ret = HiInvert[Num];
 	return ret;
 }
-unsigned char SolenoidPayout::GetHiSwitch(unsigned char Num){
-	unsigned char ret;
-	ret = HiSwitch[Num];
+UINT8 SolenoidPayout::GetHiSwitch(UINT8 Num){
+	UINT8 ret = HiSwitch[Num];
 	return ret;
 }
-signed long SolenoidPayout::GetHiLevel(unsigned char Num){
-	signed long ret;
-	ret = HiLevel[Num];
+UINT32 SolenoidPayout::GetHiLevel(UINT8 Num){
+	UINT32 ret = HiLevel[Num];
 	return ret;
 }
 
 void SolenoidPayout::SaveState(){
 
-	int loop;
+	UINT32 loop;
 
 	for (loop = 0; loop < NUMSOLENOIDS; loop++){
 		LSC->SaveToBuffer(Pin[loop]);	
@@ -347,7 +333,7 @@ void SolenoidPayout::SaveState(){
 
 void SolenoidPayout::LoadState(){
 
-	int loop;
+	UINT32 loop;
 
 	for (loop = 0; loop < NUMSOLENOIDS; loop++){
 		LSC->LoadFromBuffer(Pin[loop]);	

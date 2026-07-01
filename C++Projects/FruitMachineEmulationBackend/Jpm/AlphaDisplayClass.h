@@ -1,19 +1,19 @@
-#ifndef AlphaH
-#define AlphaH
+#pragma once
 
 #include "LoadSave.h"
+
 class AlphanumericDisplay {
 public:
 
 	AlphanumericDisplay();
 	~AlphanumericDisplay();
 
-	int GetAlphaSegments(char SegNum);
-	UINT8 GetAlphaDotComma(char SegNum);
-	char GetAlphaBright();
+	UINT16 GetAlphaSegments(UINT8 SegNum);
+	UINT8 GetAlphaDotComma(UINT8 SegNum);
+	UINT8 GetAlphaBright();
 
-	void WriteAlphaBits(unsigned char Reset, unsigned char Clock, unsigned char Data);
-	void WriteAlphaByte(unsigned char Reset, unsigned char Data);
+	void WriteAlphaBits(UINT8 Reset, UINT8 Clock, UINT8 Data);
+	void WriteAlphaByte(UINT8 Reset, UINT8 Data);
 
 	void Initialise(LoadSaveClass* LSC);
 
@@ -23,22 +23,20 @@ public:
 private:
 
 	//Internal Variables
-	unsigned char PrevClock = 0;
-	unsigned char PrevPointer = 0;
-	unsigned char InCounter = 0;
-	unsigned char Buffer = 0;
-	unsigned char Character = 0;
-	unsigned char Pointer = 0;
-	unsigned char DigitCounter = 0;
-	unsigned char CharBuffer[16];
-	unsigned char CharBuffer2[16];
-	unsigned char Brightness = 0;
+	UINT8 PrevClock = 0;
+	UINT8 PrevPointer = 0;
+	UINT8 InCounter = 0;
+	UINT8 Buffer = 0;
+	UINT8 Character = 0;
+	UINT8 Pointer = 0;
+	UINT8 DigitCounter = 0;
+	UINT8 CharBuffer[16];
+	UINT8 DotCommaBuffer[16];
+	UINT8 Brightness = 0;
 
 	//
-	unsigned char GetAlphaCharacter(char SegNum);
+	UINT8 GetAlphaCharacter(UINT8 SegNum);
 
 	LoadSaveClass * LSC = NULL;
 
 };
-
-#endif AlphaH

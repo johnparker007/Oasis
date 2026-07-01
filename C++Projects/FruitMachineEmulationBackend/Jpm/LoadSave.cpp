@@ -1,24 +1,11 @@
 #include "stdafx.h"
 #include "LoadSave.h"
 
-#include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <limits.h>
-#include <stdint.h>
+
 #include <string>
-
-
-
-#ifndef UINT8
-typedef unsigned char UINT8;
-#endif
-#ifndef UINT16
-typedef unsigned short UINT16;
-#endif
-#ifndef UINT32
-typedef unsigned int UINT32;
-#endif
 
 namespace
 {
@@ -32,7 +19,7 @@ namespace
     static unsigned char* AllocBytes(size_t bytes)
     {
         if (bytes == 0) bytes = 1;
-        return static_cast<unsigned char*>(malloc(bytes));
+        return static_cast<UINT8*>(new UINT8[bytes]);
     }
 
     static std::string BuildPath(const char* folder, const char* file)
@@ -74,11 +61,11 @@ LoadSaveClass::~LoadSaveClass()
         IOFile = NULL;
     }
     if (loadBuffer) {
-        free(loadBuffer);
+        delete(loadBuffer);
         loadBuffer = NULL;
     }
     if (saveBuffer) {
-        free(saveBuffer);
+        delete(saveBuffer);
         saveBuffer = NULL;
     }
     loadPointer = 0;
@@ -133,7 +120,7 @@ bool LoadSaveClass::CanLoadBytes(size_t bytesToRead) const
 void LoadSaveClass::SaveInit(unsigned int BufferSize)
 {
     if (saveBuffer) {
-        free(saveBuffer);
+        delete(saveBuffer);
         saveBuffer = NULL;
     }
 
@@ -145,11 +132,11 @@ void LoadSaveClass::SaveInit(unsigned int BufferSize)
     }
 }
 
-void LoadSaveClass::SaveToFile(char* FileString)
+void LoadSaveClass::SaveToFile(UINT8* FileString)
 {
     if (!FileString || !saveBuffer) {
         if (saveBuffer) {
-            free(saveBuffer);
+            delete(saveBuffer);
             saveBuffer = NULL;
         }
         savePointer = 0;
@@ -158,7 +145,7 @@ void LoadSaveClass::SaveToFile(char* FileString)
     }
 
     FILE* file = NULL;
-    fopen_s(&file, FileString, "wb");
+    fopen_s(&file, (char*)FileString, "wb");
     if (file) {
         if (savePointer > 0) {
             fwrite(saveBuffer, 1, savePointer, file);
@@ -166,7 +153,7 @@ void LoadSaveClass::SaveToFile(char* FileString)
         fclose(file);
     }
 
-    free(saveBuffer);
+    delete(saveBuffer);
     saveBuffer = NULL;
     savePointer = 0;
     saveCapacity = 0;
@@ -184,172 +171,14 @@ void LoadSaveClass::LoadVersionFromBuffer()
     LoadedFormatVersion = static_cast<int>(val);
 }
 
-void LoadSaveClass::CompressFiles(char* FolderString, char* SaveFileString)
-{
-    UINT8 inUse[NUMFILES] = { 0 };
-    UINT32 fileLens[NUMFILES] = { 0 };
-    size_t estimatedLength = 0;
-
-    for (UINT32 fileLoop = 0; fileLoop < NUMFILES; ++fileLoop) {
-        const char* fileName = FileNames[fileLoop];
-        if (!fileName) break;
-
-        estimatedLength += FileHeaderBytes;
-
-        std::string wholeName = BuildPath(FolderString, fileName);
-        FILE* file = NULL;
-        fopen_s(&file, wholeName.c_str(), "rb");
-        if (!file) {
-            inUse[fileLoop] = 0;
-            fileLens[fileLoop] = 0;
-            continue;
-        }
-
-        
-        fclose(file);
-    }
-
-    if (estimatedLength > UINT_MAX) {
-        return;
-    }
-
-    SaveInit(static_cast<unsigned int>(estimatedLength + 1));
-    if (!saveBuffer) return;
-
-    for (UINT32 fileLoop = 0; fileLoop < NUMFILES; ++fileLoop) {
-        const char* fileName = FileNames[fileLoop];
-        if (!fileName) break;
-
-        UINT32 ULength = 0;
-        UINT32 UCRC = 0;
-        UINT32 CCRC = 0;
-        UINT32 CLength = 0;
-        UINT32 StartPos = 0; // Kept for binary compatibility with existing save files.
-
-        std::string wholeName = BuildPath(FolderString, fileName);
-        FILE* file = NULL;
-        fopen_s(&file, wholeName.c_str(), "rb");
-
-        if (!file) {
-            SaveToBuffer(static_cast<UINT8>(0));
-            SaveToBuffer(ULength);
-            SaveToBuffer(UCRC);
-            SaveToBuffer(CLength);
-            SaveToBuffer(CCRC);
-            SaveToBuffer(StartPos);
-            continue;
-        }
-
-        UINT32 fileLen = 0;
-        if (!GetFileLength(file, fileLen)) {
-            fclose(file);
-            SaveToBuffer(static_cast<UINT8>(0));
-            SaveToBuffer(ULength);
-            SaveToBuffer(UCRC);
-            SaveToBuffer(CLength);
-            SaveToBuffer(CCRC);
-            SaveToBuffer(StartPos);
-            continue;
-        }
-
-        unsigned char* openBuff = AllocBytes(fileLen);
-        if (!openBuff) {
-            fclose(file);
-            return;
-        }
-
-        bool readOk = ReadExact(file, openBuff, fileLen);
-        fclose(file);
-        if (!readOk) {
-            free(openBuff);
-            return;
-        }
-
-        ULength = fileLen;
-        
-
-        SaveToBuffer(inUse[fileLoop]);
-        SaveToBuffer(ULength);
-        SaveToBuffer(UCRC);
-        SaveToBuffer(CLength);
-        SaveToBuffer(CCRC);
-        SaveToBuffer(StartPos);
-
-        free(openBuff);
-    }
-
-    SaveToFile(SaveFileString);
-}
-
-void LoadSaveClass::DeCompressFiles(char* FolderString, char* LoadFileString)
-{
-    LoadInit(LoadFileString);
-    if (!loadBuffer) return;
-
-    for (UINT32 fileLoop = 0; fileLoop < NUMFILES; ++fileLoop) {
-        const char* fileName = FileNames[fileLoop];
-        if (!fileName) break;
-
-        UINT8 InUse = 0;
-        UINT32 ULength = 0;
-        UINT32 UCRC = 0;
-        UINT32 CLength = 0;
-        UINT32 CCRC = 0;
-        UINT32 StartPos = 0;
-
-        if (!CanLoadBytes(FileHeaderBytes)) {
-            LoadEnd();
-            return;
-        }
-
-        LoadFromBuffer(InUse);
-        LoadFromBuffer(ULength);
-        LoadFromBuffer(UCRC);
-        LoadFromBuffer(CLength);
-        LoadFromBuffer(CCRC);
-        LoadFromBuffer(StartPos);
-
-        if (!InUse) {
-            continue;
-        }
-
-        if (CLength == 0 || !CanLoadBytes(CLength)) {
-            LoadEnd();
-            return;
-        }
-
-        unsigned char* cmpBuff = AllocBytes(CLength);
-        if (!cmpBuff) {
-            LoadEnd();
-            return;
-        }
-
-        memcpy(cmpBuff, loadBuffer + loadPointer, CLength);
-        loadPointer += CLength;        
-
-        SaveInit(ULength + 1);
-        if (!saveBuffer) {
-            free(cmpBuff);
-            LoadEnd();
-            return;
-        }                
-
-        savePointer = ULength;
-        std::string wholeName = BuildPath(FolderString, fileName);
-        SaveToFile(const_cast<char*>(wholeName.c_str()));
-    }
-
-    LoadEnd();
-}
-
-void LoadSaveClass::SaveToBuffer(char* Var)
+void LoadSaveClass::SaveToBuffer(UINT8* Var)
 {
     if (!Var) {
         SaveToBuffer(static_cast<char>(0));
         return;
     }
 
-    size_t length = strlen(Var);
+    size_t length = strlen((char *)Var);
     if (!EnsureSaveCapacity(length + 1)) return;
 
     memcpy(saveBuffer + savePointer, Var, length);
@@ -362,36 +191,36 @@ void LoadSaveClass::SaveToBuffer(bool Var)
     SaveToBuffer(static_cast<UINT8>(Var ? 1 : 0));
 }
 
-void LoadSaveClass::SaveToBuffer(char Var)
-{
-    if (!EnsureSaveCapacity(1)) return;
-    saveBuffer[savePointer++] = static_cast<UINT8>(Var);
-}
-
-void LoadSaveClass::SaveToBuffer(unsigned char Var)
+void LoadSaveClass::SaveToBuffer(INT8 Var)
 {
     if (!EnsureSaveCapacity(1)) return;
     saveBuffer[savePointer++] = Var;
 }
 
-void LoadSaveClass::SaveToBuffer(short Var)
+void LoadSaveClass::SaveToBuffer(UINT8 Var)
+{
+    if (!EnsureSaveCapacity(1)) return;
+    saveBuffer[savePointer++] = Var;
+}
+
+void LoadSaveClass::SaveToBuffer(INT16 Var)
 {
     SaveToBuffer(static_cast<UINT16>(Var));
 }
 
-void LoadSaveClass::SaveToBuffer(unsigned short Var)
+void LoadSaveClass::SaveToBuffer(UINT16 Var)
 {
     if (!EnsureSaveCapacity(2)) return;
     saveBuffer[savePointer++] = static_cast<UINT8>(Var & 0xff);
     saveBuffer[savePointer++] = static_cast<UINT8>((Var >> 8) & 0xff);
 }
 
-void LoadSaveClass::SaveToBuffer(int Var)
+void LoadSaveClass::SaveToBuffer(INT32 Var)
 {
     SaveToBuffer(static_cast<UINT32>(Var));
 }
 
-void LoadSaveClass::SaveToBuffer(unsigned int Var)
+void LoadSaveClass::SaveToBuffer(UINT32 Var)
 {
     if (!EnsureSaveCapacity(4)) return;
     saveBuffer[savePointer++] = static_cast<UINT8>(Var & 0xff);
@@ -400,31 +229,39 @@ void LoadSaveClass::SaveToBuffer(unsigned int Var)
     saveBuffer[savePointer++] = static_cast<UINT8>((Var >> 24) & 0xff);
 }
 
-void LoadSaveClass::SaveToBuffer(long Var)
+void LoadSaveClass::SaveToBuffer(INT64 Var)
 {
-    SaveToBuffer(static_cast<UINT32>(Var));
+    SaveToBuffer(static_cast<UINT64>(Var));
 }
 
-void LoadSaveClass::SaveToBuffer(unsigned long Var)
+void LoadSaveClass::SaveToBuffer(UINT64 Var)
 {
-    SaveToBuffer(static_cast<UINT32>(Var));
+    if (!EnsureSaveCapacity(8)) return;
+    saveBuffer[savePointer++] = static_cast<UINT8>(Var & 0xff);
+    saveBuffer[savePointer++] = static_cast<UINT8>((Var >> 8) & 0xff);
+    saveBuffer[savePointer++] = static_cast<UINT8>((Var >> 16) & 0xff);
+    saveBuffer[savePointer++] = static_cast<UINT8>((Var >> 24) & 0xff);
+    saveBuffer[savePointer++] = static_cast<UINT8>((Var >> 32) & 0xff);
+    saveBuffer[savePointer++] = static_cast<UINT8>((Var >> 40) & 0xff);
+    saveBuffer[savePointer++] = static_cast<UINT8>((Var >> 48) & 0xff);
+    saveBuffer[savePointer++] = static_cast<UINT8>((Var >> 56) & 0xff);
 }
 
 // LOADS
-void LoadSaveClass::LoadInit(char* FileString)
+void LoadSaveClass::LoadInit(UINT8* FileString)
 {
     loadPointer = 0;
     loadSize = 0;
 
     if (loadBuffer) {
-        free(loadBuffer);
+        delete(loadBuffer);
         loadBuffer = NULL;
     }
 
     if (!FileString) return;
 
     FILE* file = NULL;
-    fopen_s(&file, FileString, "rb");
+    fopen_s(&file, (char*)FileString, "rb");
     if (!file) return;
 
     UINT32 fileLen = 0;
@@ -441,7 +278,7 @@ void LoadSaveClass::LoadInit(char* FileString)
 
     if (!ReadExact(file, loadBuffer, fileLen)) {
         fclose(file);
-        free(loadBuffer);
+        delete(loadBuffer);
         loadBuffer = NULL;
         loadPointer = 0;
         loadSize = 0;
@@ -455,14 +292,14 @@ void LoadSaveClass::LoadInit(char* FileString)
 void LoadSaveClass::LoadEnd()
 {
     if (loadBuffer) {
-        free(loadBuffer);
+        delete(loadBuffer);
         loadBuffer = NULL;
     }
     loadPointer = 0;
     loadSize = 0;
 }
 
-void LoadSaveClass::LoadFromBuffer(char& Var)
+void LoadSaveClass::LoadFromBuffer(INT8& Var)
 {
     UINT8 tmp = 0;
     LoadFromBuffer(tmp);
@@ -476,7 +313,7 @@ void LoadSaveClass::LoadFromBuffer(bool& Var)
     Var = tmp ? true : false;
 }
 
-void LoadSaveClass::LoadFromBuffer(unsigned char& Var)
+void LoadSaveClass::LoadFromBuffer(UINT8& Var)
 {
     if (!CanLoadBytes(1)) {
         Var = 0;
@@ -485,32 +322,32 @@ void LoadSaveClass::LoadFromBuffer(unsigned char& Var)
     Var = loadBuffer[loadPointer++];
 }
 
-void LoadSaveClass::LoadFromBuffer(short& Var)
+void LoadSaveClass::LoadFromBuffer(INT16& Var)
 {
     UINT16 tmp = 0;
     LoadFromBuffer(tmp);
-    Var = static_cast<short>(tmp);
+    Var = static_cast<INT16>(tmp);
 }
 
-void LoadSaveClass::LoadFromBuffer(unsigned short& Var)
+void LoadSaveClass::LoadFromBuffer(UINT16& Var)
 {
     if (!CanLoadBytes(2)) {
         Var = 0;
         return;
     }
-    UINT32 val = loadBuffer[loadPointer++];
-    val |= static_cast<UINT32>(loadBuffer[loadPointer++]) << 8;
-    Var = static_cast<UINT16>(val);
+    UINT16 val = loadBuffer[loadPointer++];
+    val |= static_cast<UINT16>(loadBuffer[loadPointer++]) << 8;
+    Var = val;
 }
 
-void LoadSaveClass::LoadFromBuffer(int& Var)
+void LoadSaveClass::LoadFromBuffer(INT32& Var)
 {
     UINT32 tmp = 0;
     LoadFromBuffer(tmp);
-    Var = static_cast<int>(tmp);
+    Var = static_cast<INT32>(tmp);
 }
 
-void LoadSaveClass::LoadFromBuffer(unsigned int& Var)
+void LoadSaveClass::LoadFromBuffer(UINT32& Var)
 {
     if (!CanLoadBytes(4)) {
         Var = 0;
@@ -523,31 +360,41 @@ void LoadSaveClass::LoadFromBuffer(unsigned int& Var)
     Var = val;
 }
 
-void LoadSaveClass::LoadFromBuffer(long& Var)
+void LoadSaveClass::LoadFromBuffer(INT64& Var)
 {
-    UINT32 tmp = 0;
+    UINT64 tmp = 0;
     LoadFromBuffer(tmp);
-    Var = static_cast<long>(tmp);
+    Var = static_cast<INT64>(tmp);
 }
 
-void LoadSaveClass::LoadFromBuffer(unsigned long& Var)
+void LoadSaveClass::LoadFromBuffer(UINT64& Var)
 {
-    UINT32 tmp = 0;
-    LoadFromBuffer(tmp);
-    Var = static_cast<unsigned long>(tmp);
+    if (!CanLoadBytes(8)) {
+        Var = 0;
+        return;
+    }
+    UINT64 val = loadBuffer[loadPointer++];
+    val |= static_cast<UINT64>(loadBuffer[loadPointer++]) << 8;
+    val |= static_cast<UINT64>(loadBuffer[loadPointer++]) << 16;
+    val |= static_cast<UINT64>(loadBuffer[loadPointer++]) << 24;
+    val |= static_cast<UINT64>(loadBuffer[loadPointer++]) << 32;
+    val |= static_cast<UINT64>(loadBuffer[loadPointer++]) << 40;
+    val |= static_cast<UINT64>(loadBuffer[loadPointer++]) << 48;
+    val |= static_cast<UINT64>(loadBuffer[loadPointer++]) << 56;
+    
+    Var = val;
 }
 
-void LoadSaveClass::LoadStringFromBuffer(char* Var)
+void LoadSaveClass::LoadStringFromBuffer(UINT8* Var)
 {
     if (!Var) return;
 
-    int cnt = 0;
+    UINT32 cnt = 0;
     while (CanLoadBytes(1)) {
-        unsigned char ch = loadBuffer[loadPointer++];
-        Var[cnt++] = static_cast<char>(ch);
+        UINT8 ch = loadBuffer[loadPointer++];
+        Var[cnt++] = ch;
         if (ch == 0) return;
     }
-
     // Truncated string in save file. Null terminate the caller's buffer.
     Var[cnt] = 0;
 }

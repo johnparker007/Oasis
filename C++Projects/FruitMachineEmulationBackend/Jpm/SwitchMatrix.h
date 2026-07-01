@@ -1,5 +1,4 @@
-#ifndef SwitchMatrixH
-#define SwitchMatrixH
+#pragma once
 
 #define MATRIXSIZE 256
 
@@ -8,16 +7,14 @@ public:
 
 	SwitchMatrix();
 	~SwitchMatrix();
-	void TurnSwitchOn(unsigned char num);
-	void TurnSwitchOff(unsigned char num);
-	unsigned char ReadSwitch(unsigned char num);
-	unsigned char ReadMatrix(unsigned char num);
+	void TurnSwitchOn(UINT8 num);
+	void TurnSwitchOff(UINT8 num);
+	UINT8 ReadSwitch(UINT8 num);
+	UINT8 ReadMatrix(UINT8 num);
 	void Init(void);
 
 private:
 
-	unsigned char Matrix[MATRIXSIZE];
+	UINT8 Matrix[MATRIXSIZE];
 
 };
-
-#endif SwitchMatrixH

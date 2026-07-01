@@ -90,7 +90,7 @@ void Lamping::Update(){
 	//Called once per frame
 	int cnt;
 	double Temperature;
-	D3DXVECTOR3 TempColor;
+	float3 TempColor;
 
 
 	//Inputs
@@ -276,20 +276,20 @@ void Lamping::Update(){
 				Bulbs[cnt].Colour = TempColor;
 			}
 			else {
-				Bulbs[cnt].Colour = D3DXVECTOR3(0.0f, 0.0f, 0.0f);
+				Bulbs[cnt].Colour = float3();
 			}
 
 		}
 		else {
-			Bulbs[cnt].Colour = D3DXVECTOR3(0.0f, 0.0f, 0.0f);
+			Bulbs[cnt].Colour = float3();
 			Bulbs[cnt].Brightness = (0.0f);
 		}
 
 	}
 }
 
-D3DXVECTOR3 Lamping::GetFilamentColour(UINT16 Num){	
-	if (Num >= NUMLAMPS) return D3DXVECTOR3(0.f, 0.f, 0.f);
+float3 Lamping::GetFilamentColour(UINT16 Num){	
+	if (Num >= NUMLAMPS) return float3();
 	return Bulbs[(Num & 0xff)].Colour;
 }
 

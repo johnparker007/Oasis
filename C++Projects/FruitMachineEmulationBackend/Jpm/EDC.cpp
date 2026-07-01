@@ -29,6 +29,11 @@ void __fastcall EDCUNIT::Write(UINT8 ByteIn) {
 	FILE* EdcFile;
 	fopen_s(&EdcFile, "EDC.txt", "a");
 
+	if (!EdcFile)
+	{
+		return;
+	}
+
 	if (Mode == 0)
 	{
 		Mode = ByteIn;

@@ -1,74 +1,81 @@
-#ifndef SEGMENTSH
-#define SEGMENTSH
+#pragma once
 
 #include "LoadSave.h"
+
+#define NUMSTROBELINES			16										//16 Strobe Lines
+#define NUMDATALINES			16										//16 Data Lines
+#define NUMSEGMENTS				(NUMSTROBELINES * NUMDATALINES)			//Total Number of Lamps
+
 class Segs {
 protected:
 
 private:
-	LoadSaveClass * LSC;
-public:	
-
 	//## Variables ##
 
 	//These 2 Variables will be called externally and displayed
 	//All the others are internal to the dll
 
-	unsigned char On[256];				//Lamp On / Off 
-	unsigned char Brightness[256];		//Lamp Brightness
-	
+	UINT8 On[NUMSEGMENTS];				//Lamp On / Off 
+	UINT8 Brightness[NUMSEGMENTS];		//Lamp Brightness
+
 	//Dimming Stuff
-	unsigned char MuxValue;				//Multiplexer Value 0-7
-	unsigned char LastMuxValue;			//Last Multiplexer Value 0-7
-	signed long State[256];				//Dimming State
-	signed long SavedState[256];		//Saved Dimming State
-	signed long LastState[256];			//Last Dimming State
-	signed long MaxOnCount[256];		//Maximum On Count
-	signed long	OnCount[256];			//On Count
-	signed long OffCount[256];			//Off Count
-	signed long LastOnCount[256];		//Last On Count
-	signed long LastOffCount[256];		//Last Off Count
-	signed long MaxTimeOn[256];			//Max Time On
-	signed long MaxTimeOff[256];		//Max Time Off
+	UINT8 MuxValue;				//Multiplexer Value 0-7
+	UINT8 LastMuxValue;			//Last Multiplexer Value 0-7
+	UINT32 State[NUMSEGMENTS];				//Dimming State
+	UINT32 SavedState[NUMSEGMENTS];		//Saved Dimming State
+	UINT32 LastState[NUMSEGMENTS];			//Last Dimming State
+	INT32 MaxOnCount[NUMSEGMENTS];		//Maximum On Count
+	INT32 OnCount[NUMSEGMENTS];			//On Count
+	INT32 OffCount[NUMSEGMENTS];			//Off Count
+	INT32 LastOnCount[NUMSEGMENTS];		//Last On Count
+	INT32 LastOffCount[NUMSEGMENTS];		//Last Off Count
+	UINT32 MaxTimeOn[NUMSEGMENTS];			//Max Time On
+	UINT32 MaxTimeOff[NUMSEGMENTS];		//Max Time Off
 
 	//Options
-	signed long FadeTime[256];			//Fade Time
-	signed long GlowTime[256];			//Glow Time	
-	signed long FadeTimeStore[256];		//Fade Time
-	signed long GlowTimeStore[256];		//Glow Time	
-	unsigned char MinDimLevel[256];		//Minium Dimming Level
+	UINT32 FadeTime[NUMSEGMENTS];			//Fade Time
+	UINT32 GlowTime[NUMSEGMENTS];			//Glow Time	
+	UINT32 FadeTimeStore[NUMSEGMENTS];		//Fade Time
+	UINT32 GlowTimeStore[NUMSEGMENTS];		//Glow Time	
+	UINT8 MinDimLevel[NUMSEGMENTS];		//Minium Dimming Level
 
 	//Super Bright Stuff
-	signed long MuxStart;				//Mux Start Value
-	signed long MuxEnd;					//Mux End Value
-	signed long SuperBrightMux;			//Super Bright Mux Value
-	signed long MuxGapStat;				//Mux Gap State
-	signed long MuxGapCount[16];		//Mux Gap Count
-	signed long SuperBrightEnable[16];	//Super Bright Enable
-	signed long SuperBrightLevel;		//Super Bright Level
+	UINT64 MuxStart;				//Mux Start Value
+	UINT64 MuxEnd;					//Mux End Value
+	UINT32 SuperBrightMux;			//Super Bright Mux Value
+	UINT64 MuxGapStat;				//Mux Gap State
+	UINT64 MuxGapCount[NUMSTROBELINES];		//Mux Gap Count
+	UINT32 SuperBrightEnable[NUMSTROBELINES];	//Super Bright Enable
+	UINT64 SuperBrightLevel;		//Super Bright Level
 
 	//General Stuff	
-	signed long SegColumnData[16];		//Lamp Column Data
-	signed long LastSegColumnData[16];	//Last Lamp Column Data
-	signed long TimeSinceDataChange;	//Time Since Data Change
-	signed long MuxDrive;	
-	unsigned char Toggle;
+	UINT32 SegColumnData[NUMSTROBELINES];		//Lamp Column Data
+	UINT32 LastSegColumnData[NUMSTROBELINES];	//Last Lamp Column Data
+	UINT32 TimeSinceDataChange;	//Time Since Data Change
+	UINT32 MuxDrive;
+	UINT8 Toggle;
 
-	unsigned char Intensity;
+	UINT8 Intensity;
+
+	LoadSaveClass * LSC;
+public:	
+
+	
 
 	//## Subroutines / Functions ##
 	void Reset(LoadSaveClass * LSCIn);							//Reset Subroutine
-	void WriteJPMSegs(unsigned short data);	//	
-	void RunJPMSegs(unsigned short InstructionCycles, unsigned long TotalCycles);//Run Lamps
-	signed long GetSegState(unsigned short Num, signed long OnCycles, signed long OffCycles); //Lamp Brightness Calculation Sub
+	void WriteJPMSegs(UINT16 data);	//	
+	void RunJPMSegs(UINT16 InstructionCycles, UINT64 TotalCycles);//Run Lamps
+	INT32 GetSegState(UINT16 Num, UINT32 OnCycles, UINT32 OffCycles); //Lamp Brightness Calculation Sub
 	void Update(void);
-	void SetIntensity(unsigned char Intens);
+	void SetIntensity(UINT8 Intens);
+	UINT8 GetOn(UINT8 segNum);
+	UINT8 GetBrightness(UINT8 segNum);
 
+	void SetMuxValue(UINT8 value);
+	void SetLastMuxValue(UINT8 value);
 
 	void SaveState();
 	void LoadState();
 
-	//Help
 };
-
-#endif SEGMENTSH

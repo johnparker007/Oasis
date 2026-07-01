@@ -10,25 +10,25 @@ protected:
 private:
 
 	//Solenoids
-	unsigned char Pin[NUMSOLENOIDS];	
-	unsigned char Enable[NUMSOLENOIDS];	
-	unsigned char PrevPin[NUMSOLENOIDS];		
-	unsigned long CounterIn[NUMSOLENOIDS];
-	unsigned long CounterOut[NUMSOLENOIDS];	
-	unsigned char PortIndex[NUMSOLENOIDS];	
-	unsigned char Coin[NUMSOLENOIDS];	
-	signed long Level[NUMSOLENOIDS];
-	unsigned char LoEnable[NUMSOLENOIDS];
-	unsigned char LoSwitch[NUMSOLENOIDS];
-	unsigned char LoState[NUMSOLENOIDS];
-	unsigned char LoInvert[NUMSOLENOIDS];
-	signed long LoLevel[NUMSOLENOIDS];
-	unsigned char HiEnable[NUMSOLENOIDS];
-	unsigned char HiSwitch[NUMSOLENOIDS];
-	signed long HiLevel[NUMSOLENOIDS];
-	unsigned char HiState[NUMSOLENOIDS];
-	unsigned char HiInvert[NUMSOLENOIDS];
-	signed long FullLevel[NUMSOLENOIDS];
+	UINT8 Pin[NUMSOLENOIDS];	
+	UINT8 Enable[NUMSOLENOIDS];	
+	UINT8 PrevPin[NUMSOLENOIDS];		
+	UINT32 CounterIn[NUMSOLENOIDS];
+	UINT32 CounterOut[NUMSOLENOIDS];	
+	UINT8 PortIndex[NUMSOLENOIDS];	
+	UINT8 Coin[NUMSOLENOIDS];	
+	UINT32 Level[NUMSOLENOIDS];
+	UINT8 LoEnable[NUMSOLENOIDS];
+	UINT8 LoSwitch[NUMSOLENOIDS];
+	UINT8 LoState[NUMSOLENOIDS];
+	UINT8 LoInvert[NUMSOLENOIDS];
+	UINT32 LoLevel[NUMSOLENOIDS];
+	UINT8 HiEnable[NUMSOLENOIDS];
+	UINT8 HiSwitch[NUMSOLENOIDS];
+	UINT32 HiLevel[NUMSOLENOIDS];
+	UINT8 HiState[NUMSOLENOIDS];
+	UINT8 HiInvert[NUMSOLENOIDS];
+	UINT32 FullLevel[NUMSOLENOIDS];
 
 	LoadSaveClass * LSC = NULL;
 
@@ -38,46 +38,46 @@ public:
 	~SolenoidPayout();	
 
 	//Set Subs
-	void SetEnable(unsigned char Num, unsigned char Enable);
-	void SetCounterIn(unsigned char Num, unsigned long Count);
-	void SetCounterOut(unsigned char Num, unsigned long Count);
-	void SetPortIndex(unsigned char Num, unsigned char Index);
-	void SetCoin(unsigned char Num, unsigned char Coin);
-	void SetLevel(unsigned char Num, unsigned char Level);
-	void SetFullLevel(unsigned char Num, unsigned char Level);
-	void SetLoEnable(unsigned char Num, unsigned char Enable);
-	void SetLoInvert(unsigned char Num, unsigned char Invert);
-	void SetLoSwitch(unsigned char Num, unsigned char Switch);
-	void SetLoLevel(unsigned char Num, signed long Level);
-	void SetHiEnable(unsigned char Num, unsigned char Enable);
-	void SetHiInvert(unsigned char Num, unsigned char Invert);
-	void SetHiSwitch(unsigned char Num, unsigned char Switch);
-	void SetHiLevel(unsigned char Num, signed long Level);
-	void SetPort(unsigned char Port);
+	void SetEnable(UINT8 Num, UINT8 Enable);
+	void SetCounterIn(UINT8 Num, UINT32 Count);
+	void SetCounterOut(UINT8 Num, UINT32 Count);
+	void SetPortIndex(UINT8 Num, UINT8 Index);
+	void SetCoin(UINT8 Num, UINT8 Coin);
+	void SetLevel(UINT8 Num, UINT8 Level);
+	void SetFullLevel(UINT8 Num, UINT8 Level);
+	void SetLoEnable(UINT8 Num, UINT8 Enable);
+	void SetLoInvert(UINT8 Num, UINT8 Invert);
+	void SetLoSwitch(UINT8 Num, UINT8 Switch);
+	void SetLoLevel(UINT8 Num, UINT32 Level);
+	void SetHiEnable(UINT8 Num, UINT8 Enable);
+	void SetHiInvert(UINT8 Num, UINT8 Invert);
+	void SetHiSwitch(UINT8 Num, UINT8 Switch);
+	void SetHiLevel(UINT8 Num, UINT32 Level);
+	void SetPort(UINT8 Port);
 
 	//Get Functions
-	unsigned char GetEnable(unsigned char Num);
-	unsigned long GetCounterIn(unsigned char Num);
-	unsigned long GetCounterOut(unsigned char Num);
-	unsigned char GetPortIndex(unsigned char Num);
-	unsigned char GetCoin(unsigned char Num);
-	signed long GetLevel(unsigned char Num);
-	signed long GetFullLevel(unsigned char Num);
-	unsigned char GetLoEnable(unsigned char Num);
-	unsigned char GetLoInvert(unsigned char Num);
-	unsigned char GetLoSwitch(unsigned char Num);
-	signed long GetLoLevel(unsigned char Num);
-	unsigned char GetLoState(unsigned char Num);
-	unsigned char GetHiEnable(unsigned char Num);
-	unsigned char GetHiInvert(unsigned char Num);
-	unsigned char GetHiSwitch(unsigned char Num);
-	unsigned char GetHiState(unsigned char Num);
-	signed long GetHiLevel(unsigned char Num);
-	unsigned char GetPort(void);
+	UINT8 GetEnable(UINT8 Num);
+	UINT32 GetCounterIn(UINT8 Num);
+	UINT32 GetCounterOut(UINT8 Num);
+	UINT8 GetPortIndex(UINT8 Num);
+	UINT8 GetCoin(UINT8 Num);
+	UINT32 GetLevel(UINT8 Num);
+	UINT32 GetFullLevel(UINT8 Num);
+	UINT8 GetLoEnable(UINT8 Num);
+	UINT8 GetLoInvert(UINT8 Num);
+	UINT8 GetLoSwitch(UINT8 Num);
+	UINT32 GetLoLevel(UINT8 Num);
+	UINT8 GetLoState(UINT8 Num);
+	UINT8 GetHiEnable(UINT8 Num);
+	UINT8 GetHiInvert(UINT8 Num);
+	UINT8 GetHiSwitch(UINT8 Num);
+	UINT8 GetHiState(UINT8 Num);
+	UINT32 GetHiLevel(UINT8 Num);
+	UINT8 GetPort(void);
 
 	//Main Subs
-	void Write(unsigned char Port);
-	unsigned char CoinIn(unsigned char CoinCode);
+	void Write(UINT8 Port);
+	UINT8 CoinIn(UINT8 CoinCode);
 	void Init(LoadSaveClass * LSCIn);
 	void Update(void);
 

@@ -15,7 +15,7 @@ private:
 	UINT8	PrevMotor[FITTEDHOPPERS];
 	UINT8	OptoEnable[FITTEDHOPPERS];
 	UINT8	OptoFlag[FITTEDHOPPERS];
-	long	Timer[FITTEDHOPPERS];
+	UINT64	Timer[FITTEDHOPPERS];
 	UINT8	State[FITTEDHOPPERS];
 	
 	UINT8	CoinSelect[FITTEDHOPPERS];
@@ -53,7 +53,7 @@ public:
 	//Reset Sub
 	void Reset(UINT8 HNum);
 	//Update The Hopper
-	void Update(UINT8 HNum, unsigned short Cycles);
+	void Update(UINT8 HNum, UINT32 Cycles);
 	//Insert A Coin
 	UINT8 CoinIn(UINT8 CoinCode);
 

@@ -4,11 +4,11 @@
 
 void Segs::Reset(LoadSaveClass * LSCIn){
 
-	signed long cnt;
+	INT32 cnt;
 
 	LSC = LSCIn;
 
-	for (cnt = 0; cnt < 256; cnt++) {		
+	for (cnt = 0; cnt < NUMSEGMENTS; cnt++) {		
 		On[cnt] = 0;
 		Brightness[cnt] = 0;
 		State[cnt] = 0;
@@ -49,13 +49,13 @@ void Segs::Reset(LoadSaveClass * LSCIn){
 	Toggle = 0;
 }
 
-void Segs::WriteJPMSegs(unsigned short data){
+void Segs::WriteJPMSegs(UINT16 data){
 //This sub should be called every time data is written to the lamps
 
-	signed long cnt;
-	signed long cnt2;
-	signed long tval;
-	signed long tval2;
+	INT32 cnt;
+	INT32 cnt2;
+	INT32 tval;
+	INT32 tval2;
 
 	LastSegColumnData[MuxValue] = SegColumnData[MuxValue];
 	SegColumnData[MuxValue] = data;
@@ -120,14 +120,14 @@ void Segs::WriteJPMSegs(unsigned short data){
 
 
 
- signed long Segs::GetSegState(unsigned short Num, signed long OnCycles, signed long OffCycles){
+ INT32 Segs::GetSegState(UINT16 Num, UINT32 OnCycles, UINT32 OffCycles){
 //This sub gets the current lamp brightness for a given lamp number.
 
-	signed long cnt;
-	signed long Ret;
-	signed long Ret2;
-	signed long TMaxOn;
-	signed long TMaxOff;
+	INT32 cnt;
+	UINT32 Ret;
+	UINT32 Ret2;
+	UINT32 TMaxOn;
+	UINT32 TMaxOff;
 
 	 MaxTimeOff[Num] = (FadeTime[Num] / 63);
 	 MaxTimeOn[Num] = (GlowTime[Num] / 63);
@@ -172,13 +172,13 @@ void Segs::WriteJPMSegs(unsigned short data){
 	 return Ret;
  }
 
- void Segs::RunJPMSegs(unsigned short InstructionCycles, unsigned long TotalCycles){
+ void Segs::RunJPMSegs(UINT16 InstructionCycles, UINT64 TotalCycles){
 //This sub should be run after every instruction.
 
-	unsigned short cnt;
-	signed long cnt2;
-	signed long tval;
-	signed long tval2;
+	UINT16 cnt;
+	INT32 cnt2;
+	INT32 tval;
+	INT32 tval2;
 
 	TimeSinceDataChange += InstructionCycles;
 	
@@ -284,7 +284,7 @@ void Segs::WriteJPMSegs(unsigned short data){
 void Segs::Update(){
 
 	signed short cnt;
-	signed long LampTemp;
+	INT32 LampTemp;
 	float LampIntensity;
 
 	for (cnt = 0; cnt < 256; cnt++){			
@@ -320,8 +320,28 @@ void Segs::Update(){
 
 }
 
-void Segs::SetIntensity(unsigned char Intense){
+void Segs::SetIntensity(UINT8 Intense){
 	Intensity = Intense;
+}
+
+UINT8 Segs::GetOn(UINT8 segNum)
+{
+	return On[segNum];
+}
+
+UINT8 Segs::GetBrightness(UINT8 segNum)
+{
+	return Brightness[segNum];
+}
+
+void Segs::SetMuxValue(UINT8 value)
+{
+	MuxValue = value;
+}
+
+void Segs::SetLastMuxValue(UINT8 value)
+{
+	LastMuxValue = value;
 }
 
 void Segs::SaveState(){
