@@ -176,12 +176,13 @@
                                             <DataTrigger Binding="{Binding Children.Count}" Value="0">
                                                 <Setter Property="Text" Value="🗀" />
                                             </DataTrigger>
-                                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                            <MultiDataTrigger>
+                                                <MultiDataTrigger.Conditions>
+                                                    <Condition Binding="{Binding IsExpanded}" Value="True" />
+                                                    <Condition Binding="{Binding HasChildDirectories}" Value="True" />
+                                                </MultiDataTrigger.Conditions>
                                                 <Setter Property="Text" Value="📂" />
-                                            </DataTrigger>
-                                            <DataTrigger Binding="{Binding IsExpanded}" Value="True">
-                                                <Setter Property="Text" Value="📂" />
-                                            </DataTrigger>
+                                            </MultiDataTrigger>
                                         </Style.Triggers>
                                     </Style>
                                 </TextBlock.Style>
