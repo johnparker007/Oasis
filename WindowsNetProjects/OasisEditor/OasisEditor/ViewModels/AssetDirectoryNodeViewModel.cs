@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Collections.Specialized;
 
 namespace OasisEditor;
 
@@ -13,6 +14,7 @@ public sealed class AssetDirectoryNodeViewModel : INotifyPropertyChanged
         DisplayPath = displayPath;
         FullPath = fullPath;
         Children = new ObservableCollection<AssetDirectoryNodeViewModel>();
+        Children.CollectionChanged += OnChildrenChanged;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -20,6 +22,7 @@ public sealed class AssetDirectoryNodeViewModel : INotifyPropertyChanged
     public string DisplayPath { get; }
     public string FullPath { get; }
     public ObservableCollection<AssetDirectoryNodeViewModel> Children { get; }
+    public bool HasChildDirectories => Children.Count > 0;
 
     public bool IsExpanded
     {
@@ -34,6 +37,11 @@ public sealed class AssetDirectoryNodeViewModel : INotifyPropertyChanged
             _isExpanded = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsExpanded)));
         }
+    }
+
+    private void OnChildrenChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasChildDirectories)));
     }
 
     public bool IsSelected
