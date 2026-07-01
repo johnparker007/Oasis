@@ -170,6 +170,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
         _cabinetViewer?.RefreshFromDocument(document);
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CabinetDocumentJson)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasCabinetViewer)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CabinetViewer)));
     }
 
     public string? FaceDocumentJson

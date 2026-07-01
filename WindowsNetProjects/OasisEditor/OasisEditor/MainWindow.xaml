@@ -60,11 +60,11 @@
                               Command="{Binding OpenMachineStubCommand}" />
                 </MenuItem>
                 <Separator />
-                <MenuItem Header="Open _Asset"
-                          Command="{Binding OpenDocumentCommand}" />
                 <MenuItem Header="_Import">
                     <MenuItem Header="_MFME Extract..."
                               Command="{Binding ImportMfmeExtractCommand}" />
+                    <MenuItem Header="_GLB Model..."
+                              Command="{Binding ImportGlbModelCommand}" />
                 </MenuItem>
                 <MenuItem Header="_Save Asset"
                           Command="{Binding SaveSelectedDocumentCommand}" />
