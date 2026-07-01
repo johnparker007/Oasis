@@ -1,8 +1,6 @@
 //	Original (C) C.J.Wren 2000
 //  Modified Nick Sanders June/July 2014
-
-#ifndef DuartH
-#define DuartH
+#pragma once
 
 #include "LoadSave.h"
 #include "EDC.h"
@@ -93,5 +91,3 @@ public:
 private:
 	LoadSaveClass * LSC;
 };
-
-#endif DuartH

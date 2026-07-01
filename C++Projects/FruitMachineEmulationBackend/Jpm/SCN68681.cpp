@@ -206,12 +206,7 @@ bool check = true;
         counter--;
       if ( !counter )
       {
-//        if ( acr & 0x40 ) { // Timer Mode
-//          toggle = !toggle;
-//          if ( !toggle )
-//            isr |= 0x8;
-//        } else
-          isr |= 0x8;
+        isr |= 0x8;
         counter = (ctur << 8) + ctlr;
         counter -= diff;
       }
@@ -221,18 +216,14 @@ bool check = true;
   if ( txa ) {
     txa--;
     if ( !txa && (sra & TxRDY) ) {
-      sra |= TxEMT; // TEmp
+      sra |= TxEMT; // Temp
       recva = true;
-//      isr |= RxRDYA;
-//      lenA = buffposA;
-//      buffposA = 0;
       if ( mr2a & 0x20 ) {
         TxA = false;
         rtsa = 0;
         isr &= ~TxRDYA;
         sra &= ~TxRDY;
       }
-//      printf("Timed out\n"); // Timed out
     }
   } else {
     if ( (sra & TxRDY) == 0 && TxA ) {
@@ -247,10 +238,8 @@ bool check = true;
   if ( txb ) {
     txb--;
     if ( !txb && (srb & TxRDY) ) {
-      srb |= TxEMT; // TEmp
+      srb |= TxEMT; // Temp
       recvb = true;
-//      isr |= RxRDYB;
-//      rbb = tbb;
       lenB = buffposB;
       buffposB = 0;
       if ( mr2b & 0x20 ) {
@@ -259,7 +248,6 @@ bool check = true;
         isr &= ~TxRDYB;
         srb &= ~TxRDY;
       }
-//      printf("Timed out\n"); // Timed out
     }
   } else {
     if ( (srb & TxRDY) == 0 && TxB ) {
@@ -428,10 +416,6 @@ void DuartScn68681::write(unsigned char offset, unsigned int value)
       } else {
         srb &= ~(TxRDY + TxEMT);
         isr &= ~TxRDYB;
-//        sprintf(buffer, "uart char b %02x", tbb);
-//        DataWindow->AddMessage((AnsiString)buffer, 0xb0);
-//        printf("Char transmitted %d\n", thra);
-//        dp_buffer[pos++] = thrb;
       }
       break;
     case 0x0c:
@@ -509,8 +493,6 @@ unsigned int value = 0;
       value = rbb;
       isr &= ~RxRDYB;
       sra &= ~(FFULL + RxRDY);
-//      sprintf(buffer, "uart char read");
-//      DataWindow->AddMessage((AnsiString)buffer, 0xb0);
       break;
     case 0x0c:
       value = ivr;

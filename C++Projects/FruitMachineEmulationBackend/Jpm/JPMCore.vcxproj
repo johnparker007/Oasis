@@ -180,7 +180,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="AlphaDisplayClass.h" />
+    <ClInclude Include="AlphaDisplay.h" />
     <ClInclude Include="CashBox.h" />
     <ClInclude Include="CoinMechs.h" />
     <ClInclude Include="DevicePPI8255.h" />
@@ -204,7 +204,7 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="AlphaDisplayClass.cpp" />
+    <ClCompile Include="AlphaDisplay.cpp" />
     <ClCompile Include="CashBox.cpp" />
     <ClCompile Include="CoinMechs.cpp" />
     <ClCompile Include="DevicePPI8255.cpp" />

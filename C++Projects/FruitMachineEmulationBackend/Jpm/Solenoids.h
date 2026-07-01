@@ -1,5 +1,4 @@
-#ifndef SolenoidsH
-#define SolenoidsH
+#pragma once
 
 #include "LoadSave.h"
 
@@ -84,5 +83,3 @@ public:
 	void SaveState();
 	void LoadState();
 };
-
-#endif SolenoidsH

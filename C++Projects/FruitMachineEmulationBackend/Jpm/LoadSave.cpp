@@ -191,6 +191,17 @@ void LoadSaveClass::SaveToBuffer(bool Var)
     SaveToBuffer(static_cast<UINT8>(Var ? 1 : 0));
 }
 
+void LoadSaveClass::SaveToBuffer(float Var)
+{
+    if (!EnsureSaveCapacity(4)) return;
+    unsigned char bytes[sizeof(float)];
+    memcpy(bytes, &Var, sizeof(float));
+    saveBuffer[savePointer++] = bytes[0];
+    saveBuffer[savePointer++] = bytes[1];
+    saveBuffer[savePointer++] = bytes[2];
+    saveBuffer[savePointer++] = bytes[3];
+}
+
 void LoadSaveClass::SaveToBuffer(INT8 Var)
 {
     if (!EnsureSaveCapacity(1)) return;
@@ -311,6 +322,23 @@ void LoadSaveClass::LoadFromBuffer(bool& Var)
     UINT8 tmp = 0;
     LoadFromBuffer(tmp);
     Var = tmp ? true : false;
+}
+
+void LoadSaveClass::LoadFromBuffer(float& Var)
+{
+    if (!CanLoadBytes(4)) {
+        Var = 0;
+        return;
+    }
+    // Read 4 bytes from the buffer into a temporary byte array
+    unsigned char bytes[4];
+    bytes[0] = loadBuffer[loadPointer++];
+    bytes[1] = loadBuffer[loadPointer++];
+    bytes[2] = loadBuffer[loadPointer++];
+    bytes[3] = loadBuffer[loadPointer++];
+
+    // Safely copy the bytes back into the float variable
+    std::memcpy(&Var, bytes, sizeof(float));
 }
 
 void LoadSaveClass::LoadFromBuffer(UINT8& Var)

@@ -2,7 +2,7 @@
 #include "CoinMechs.h"
 
 void ElecronicCoinMech::SaveState(){
-	int loop;
+	UINT32 loop;
 
 	LSC->SaveToBuffer(InputCounter);
 	LSC->SaveToBuffer(LockCounter);
@@ -41,7 +41,7 @@ void ElecronicCoinMech::SaveState(){
 }
 
 void ElecronicCoinMech::LoadState(){
-	int loop;
+	UINT32 loop;
 
 	LSC->LoadFromBuffer(InputCounter);
 	LSC->LoadFromBuffer(LockCounter);
@@ -115,14 +115,14 @@ void ElecronicCoinMech::SetCoinEnable(UINT8 Num, UINT8 Value){
 }
 void ElecronicCoinMech::SetLockoutPort(UINT8 Port){
 	
-	int tokensEnabled = 0, 
+	UINT32 tokensEnabled = 0,
 		cashEnabled = 0, 
 		tokensLocked = 0, 
 		cashLocked = 0;
 
 	LockoutPort = Port;
 
-	for (int i = 0; i < NUMCOINS; i++){
+	for (UINT32 i = 0; i < NUMCOINS; i++){
 		if (CoinEnable[i]){
 			if (CoinValue[i] < 7){
 				cashEnabled += 1;
@@ -155,7 +155,7 @@ void ElecronicCoinMech::SetLockoutPort(UINT8 Port){
 
 UINT8 ElecronicCoinMech::CoinIn(UINT8 Coin){
 	
-	int LockoutBin;
+	UINT32 LockoutBin;
 
 	if (InputCounter == 0){
 		if (LockCounter == 0){

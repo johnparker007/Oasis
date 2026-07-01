@@ -381,8 +381,6 @@ Interface_API signed long LoadSoundROM(UINT8*name1, UINT8*name2, UINT8*name3, UI
 		//Open file
 		file1 = fopen((char*)name1, "rb");
 		if (!file1){
-			fclose(file1);
-			//fclose(DebugFile2);
 			return 0;
 		}
 	
@@ -414,8 +412,6 @@ Interface_API signed long LoadSoundROM(UINT8*name1, UINT8*name2, UINT8*name3, UI
 		//Open file
 		file2 = fopen((char*)name2, "rb");
 		if (!file2){
-			fclose(file2);
-			//fclose (DebugFile2);
 			return 0;
 		}
 	
@@ -447,8 +443,6 @@ Interface_API signed long LoadSoundROM(UINT8*name1, UINT8*name2, UINT8*name3, UI
 		//Open file
 		file3 = fopen((char*)name3, "rb");
 		if (!file3){
-			fclose(file3);
-			//fclose (DebugFile2);
 			return 0;
 		}
 		
@@ -479,8 +473,7 @@ Interface_API signed long LoadSoundROM(UINT8*name1, UINT8*name2, UINT8*name3, UI
 	if (Enable4){
 		//Open file
 		file4 = fopen((char*)name4, "rb");
-		if (!file4){
-			fclose(file4);			
+		if (!file4){			
 			return 0;
 		}
 	

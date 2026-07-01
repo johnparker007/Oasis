@@ -19,8 +19,7 @@
  * http://kstenerud.cjb.net
  */
 
-#ifndef M68KCONF__HEADER
-#define M68KCONF__HEADER
+#pragma once
 
 /* Configuration switches.
  * Use OPT_SPECIFY_HANDLER for configuration options that allow callbacks.
@@ -167,5 +166,3 @@
 /* ======================================================================== */
 /* ============================== END OF FILE ============================= */
 /* ======================================================================== */
-
-#endif /* M68KCONF__HEADER */

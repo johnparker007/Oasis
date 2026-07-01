@@ -699,6 +699,7 @@ void __fastcall EDCUNIT::Write(UINT8 ByteIn) {
 
 	fclose(EdcFile);
 }
+
 void __fastcall		EDCUNIT::Reset(LoadSaveClass* LSCIn) {
 	LSC = LSCIn;
 }

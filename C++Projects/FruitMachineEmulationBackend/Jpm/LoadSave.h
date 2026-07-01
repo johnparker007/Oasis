@@ -31,6 +31,7 @@ public:
     void SaveToBuffer(INT64 Var);
     void SaveToBuffer(UINT64 Var);
     void SaveToBuffer(bool Var);
+    void SaveToBuffer(float Var);
     void SaveToBuffer(UINT8* Var);
     void SaveVersionToBuffer();
 
@@ -46,6 +47,7 @@ public:
     void LoadFromBuffer(INT64& Var);
     void LoadFromBuffer(UINT64& Var);
     void LoadFromBuffer(bool& Var);
+    void LoadFromBuffer(float& Var);
     void LoadStringFromBuffer(UINT8* Var);
     void LoadVersionFromBuffer();
 

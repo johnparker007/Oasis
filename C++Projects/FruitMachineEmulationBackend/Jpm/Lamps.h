@@ -1,5 +1,4 @@
-#ifndef LampsH
-#define LampsH
+#pragma once
 
 #include "LoadSave.h"
 
@@ -46,39 +45,40 @@ private:
 	
 	float InputRMSVoltage = 0.f;
 
-public:	
-	
-	Lamping();	
-	~Lamping();
-		
 	//General Stuff	
 	UINT8 StrobeVal = 0;							//Current Strobe Value
 	UINT8 PrevStrobe = 0;							//Previous Strobe Value
 	UINT16 DataVal[NUMSTROBELINES];					//Lamp Data
 
 	//Internal Values
-	unsigned char Intensity;						//Internal value part of IMPACT board
-	unsigned char IntensityEnable;					//Enable Intensity
-		
+	UINT8 Intensity = 0;							//Internal value part of IMPACT board
+	UINT8 IntensityEnable = 0;						//Enable Intensity
+
+public:	
+	
+	Lamping();	
+	~Lamping();
+	
 	//Subroutines / Functions
-	void Reset(LoadSaveClass * LSCIn);				//Reset Subroutine
-	void WriteData(UINT16 data);					//Matrix Data	
-	void WriteStrobe(UINT8 strobe);					//Matrix Strobe
-	void Run(UINT16 InstructionCycles);				//Run Lamps		
-	void Update(void);								//Update
+	void __fastcall Reset(LoadSaveClass * LSCIn);			//Reset Subroutine
+	void __fastcall WriteData(UINT16 data);					//Matrix Data	
+	void __fastcall WriteStrobe(UINT8 strobe);				//Matrix Strobe
+	void __fastcall Run(UINT16 InstructionCycles);			//Run Lamps		
+	void __fastcall Update(void);							//Update
 	
 	//Input Functions
-	void SetIntensity(UINT8);						//Sets internal value
+	void __fastcall SetIntensity(UINT8);					//Sets internal value
 	
 	//Output Functions
-	float GetLampBrightness(UINT16 Num);			//Returns brightness of requested lamp 
-	bool GetLampsOn(UINT16 Num);					//Returns status of requested lamp (On or Off)
-	float3 GetFilamentColour(UINT16 Num);		//Returns colour of requested lamp filament
+	float __fastcall GetLampBrightness(UINT16 Num);			//Returns brightness of requested lamp 
+	bool __fastcall GetLampsOn(UINT16 Num);					//Returns status of requested lamp (On or Off)
+	float3 __fastcall GetFilamentColour(UINT16 Num);		//Returns colour of requested lamp filament
+	UINT8 __fastcall GetStrobeVal();
+	UINT8 __fastcall GetIntensityEnable();
+	void __fastcall SetIntensityEnable(UINT8 value);
 
 	//State Save & Load
-	void SaveState();
-	void LoadState();
+	void __fastcall SaveState();
+	void __fastcall LoadState();
 
 };
-
-#endif LampsH

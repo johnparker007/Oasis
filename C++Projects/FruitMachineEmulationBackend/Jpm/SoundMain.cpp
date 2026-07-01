@@ -18,17 +18,17 @@ SampledSound::SampledSound(void) {
 	ZeroMemory(SampleBank, MAXSAMPLES * sizeof(UINT8));
 	ZeroMemory(SampleIndex, MAXSAMPLES * sizeof(UINT8));
 	ZeroMemory(SampleDummy, MAXSAMPLES * sizeof(UINT8));
-	ZeroMemory(SampleStart, MAXSAMPLES * sizeof(signed long));
-	ZeroMemory(SampleEnd, MAXSAMPLES * sizeof(signed long));
-	ZeroMemory(SampleRate, MAXSAMPLES * sizeof(signed long));
-	ZeroMemory(SampleRateDivisor, MAXSAMPLES * sizeof(signed long));
-	ZeroMemory(SampleLengthBytes, MAXSAMPLES * sizeof(signed long));
-	ZeroMemory(SampleLengthSamples, MAXSAMPLES * sizeof(signed long));
+	ZeroMemory(SampleStart, MAXSAMPLES * sizeof(UINT32));
+	ZeroMemory(SampleEnd, MAXSAMPLES * sizeof(UINT32));
+	ZeroMemory(SampleRate, MAXSAMPLES * sizeof(UINT32));
+	ZeroMemory(SampleRateDivisor, MAXSAMPLES * sizeof(UINT32));
+	ZeroMemory(SampleLengthBytes, MAXSAMPLES * sizeof(UINT32));
+	ZeroMemory(SampleLengthSamples, MAXSAMPLES * sizeof(UINT32));
 	ZeroMemory(SampleSeconds, MAXSAMPLES * sizeof(float));
-	ZeroMemory(Sample_Space, MAXSAMPLES * sizeof(signed short));	
+	ZeroMemory(Sample_Space, MAXSAMPLES * sizeof(INT16));	
 	ZeroMemory(Memory_Space, SOUNDMEMORYSIZE * sizeof(UINT8));
 	ZeroMemory(TuneLookup, PAGES * 128 * sizeof(UINT8));
-	ZeroMemory(SamplesInPage, PAGES * sizeof(signed long));
+	ZeroMemory(SamplesInPage, PAGES * sizeof(UINT32));
 
 	//NEC Table Setups        
 	SamplesInPage[0] = 0;

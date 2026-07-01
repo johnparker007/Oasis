@@ -18,12 +18,7 @@
  * The latest version of this code can be obtained at:
  * http://kstenerud.cjb.net
  */
-
-
-
-
-#ifndef m68kcpuH
-#define m68kcpuH
+#pragma once
 
 //#include <Classes.hpp>
 #include <stdio.h>
@@ -3277,5 +3272,3 @@ extern uint8          m68ki_ea_idx_cycle_table[];
 		virtual void __fastcall 	cpu_write_word(int address, UINT16 value) = 0;
 		virtual void __fastcall 	cpu_write_long(int address, UINT32 value) = 0;
 };
-
-#endif // m68kcpuH

@@ -6,12 +6,9 @@
 // # ALL RIGHTS RESERVED
 // #
 // ###########################################################################
-
-#ifndef DevicePPI8255H
-#define DevicePPI8255H
+#pragma once
 
 #include "LoadSave.h"
-
 
 class DevicePPI8255 {
 public:
@@ -55,5 +52,3 @@ private:
 	LoadSaveClass * LSC = NULL;
 
 };
-
-#endif // DevicePPI8255H

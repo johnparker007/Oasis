@@ -1,5 +1,4 @@
-#ifndef HoppersH
-#define HoppersH
+#pragma once
 
 #define FITTEDHOPPERS 2
 #define STAGE1TIME 3000000
@@ -102,5 +101,3 @@ public:
 	HopperPayout();
 	~HopperPayout();
 };
-
-#endif HoppersH

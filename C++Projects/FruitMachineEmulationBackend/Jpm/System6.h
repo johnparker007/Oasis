@@ -2,7 +2,7 @@
 
 #include "SCN68681.h"
 #include "DevicePPI8255.h"
-#include "AlphaDisplayClass.h"
+#include "AlphaDisplay.h"
 #include "Reels.h"
 #include "Lamps.h"
 #include "Segments.h"

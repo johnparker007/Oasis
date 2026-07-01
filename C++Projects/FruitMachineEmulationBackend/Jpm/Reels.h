@@ -1,5 +1,4 @@
-#ifndef ReelsH
-#define ReelsH
+#pragma once
 
 #include "LoadSave.h"
 
@@ -66,5 +65,3 @@ public:
 	void SaveState();
 
 };
-
-#endif ReelsH

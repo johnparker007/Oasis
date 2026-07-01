@@ -46,9 +46,7 @@ void Lamping::WriteStrobe(UINT8 strobe){
 		}
 
 		StrobeVal = strobe;
-
 	}
-
 }
 
 void Lamping::WriteData(UINT16 data){
@@ -117,18 +115,10 @@ void Lamping::Update(){
 	//Power / Lumens Quadratic
 	float Power, Lumens;
 
-
-
-	
-
-
-
 	// *** Quadratic for Lumens / Power
 
 	// y = ax^2+bx+c
 	
-
-
 	/*
 	Vectors
 	x     y
@@ -212,15 +202,12 @@ void Lamping::Update(){
 
 		if (Bulbs[cnt].Lit) {
 
-
-
 			//Where X is Power Y is Lumens
 			//Power = 1.20f;
 			Power = Voltage * I; //TODO: get the correct Amperage this will do for now
 			Lumens = (5.0680415263749f * (Power * Power)) - (1.9549663299663f * Power);
 
-			Bulbs[cnt].Brightness = (Lumens / 6.25f); //Divide by max value to get value between 0 and 1
-			
+			Bulbs[cnt].Brightness = (Lumens / 6.25f); //Divide by max value to get value between 0 and 1			
 
 			//Find R when operating
 			R = (Voltage / I);
@@ -293,6 +280,21 @@ float3 Lamping::GetFilamentColour(UINT16 Num){
 	return Bulbs[(Num & 0xff)].Colour;
 }
 
+UINT8 __fastcall Lamping::GetStrobeVal()
+{
+	return StrobeVal;
+}
+
+UINT8 __fastcall Lamping::GetIntensityEnable()
+{
+	return IntensityEnable;
+}
+
+void __fastcall Lamping::SetIntensityEnable(UINT8 value)
+{
+	IntensityEnable = value;
+}
+
 float Lamping::GetLampBrightness(UINT16 Num) {
 	if (Num >= NUMLAMPS) return 0.f;
 	return Bulbs[(Num & 0xff)].Brightness;
@@ -309,8 +311,27 @@ void Lamping::SaveState(){
 	int loop;
 
 	for (loop = 0; loop < NUMLAMPS; loop++){
-		//LSC->SaveToBuffer(Bulbs[loop].Temperature);	
+		LSC->SaveToBuffer(Bulbs[loop].DutyCycles);	
+		LSC->SaveToBuffer(Bulbs[loop].Lit);
+		LSC->SaveToBuffer(Bulbs[loop].OffCycles);
+		LSC->SaveToBuffer(Bulbs[loop].OnCycles);
+		LSC->SaveToBuffer(Bulbs[loop].Period);
+		LSC->SaveToBuffer(Bulbs[loop].Powered);
+		LSC->SaveToBuffer(Bulbs[loop].Brightness);
+		LSC->SaveToBuffer(Bulbs[loop].Colour.x);//R
+		LSC->SaveToBuffer(Bulbs[loop].Colour.y);//G
+		LSC->SaveToBuffer(Bulbs[loop].Colour.z);//B
 	}
+
+	for (loop = 0; loop < NUMSTROBELINES; loop++) {
+		LSC->SaveToBuffer(DataVal[loop]);
+	}
+	
+	LSC->SaveToBuffer(InputRMSVoltage);
+	LSC->SaveToBuffer(StrobeVal);
+	LSC->SaveToBuffer(PrevStrobe);
+	LSC->SaveToBuffer(Intensity);
+	LSC->SaveToBuffer(IntensityEnable);
 
 }
 
@@ -319,8 +340,25 @@ void Lamping::LoadState(){
 	int loop;
 
 	for (loop = 0; loop < NUMLAMPS; loop++){
-		//LSC->LoadFromBuffer(On[loop]);
-
+		LSC->LoadFromBuffer(Bulbs[loop].DutyCycles);
+		LSC->LoadFromBuffer(Bulbs[loop].Lit);
+		LSC->LoadFromBuffer(Bulbs[loop].OffCycles);
+		LSC->LoadFromBuffer(Bulbs[loop].OnCycles);
+		LSC->LoadFromBuffer(Bulbs[loop].Period);
+		LSC->LoadFromBuffer(Bulbs[loop].Powered);
+		LSC->LoadFromBuffer(Bulbs[loop].Brightness);
+		LSC->LoadFromBuffer(Bulbs[loop].Colour.x);
+		LSC->LoadFromBuffer(Bulbs[loop].Colour.y);
+		LSC->LoadFromBuffer(Bulbs[loop].Colour.z);
 	}
 
+	for (loop = 0; loop < NUMSTROBELINES; loop++) {
+		LSC->LoadFromBuffer(DataVal[loop]);
+	}
+
+	LSC->LoadFromBuffer(InputRMSVoltage);
+	LSC->LoadFromBuffer(StrobeVal);
+	LSC->LoadFromBuffer(PrevStrobe);
+	LSC->LoadFromBuffer(Intensity);
+	LSC->LoadFromBuffer(IntensityEnable);
 }

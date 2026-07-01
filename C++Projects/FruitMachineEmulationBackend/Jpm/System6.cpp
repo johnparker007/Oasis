@@ -1233,20 +1233,20 @@ void __fastcall 	SYSTEM6::cpu_write_byte(int address, UINT8 value)
 			Lamps.WriteStrobe((value + 1) & 0xf);
 
 			//7 Segs
-			Seg7.SetLastMuxValue(Lamps.StrobeVal);
+			Seg7.SetLastMuxValue(Lamps.GetStrobeVal());
 			Seg7.SetMuxValue((value + 1) & 0xf);
 		}
 		if (value & 0x20)//Intensity Enable
 		{
 			//If any value written at all then this is IMPACT3?
 			IMPACT3 = 1;
-			Lamps.IntensityEnable = (value & 0xf);
+			Lamps.SetIntensityEnable(value & 0xf);
 		}
 	}
 	else if (address == 0x4800ad)//Lamp Intensity
 	{
 		if (IMPACT3) {
-			if (Lamps.IntensityEnable) {
+			if (Lamps.GetIntensityEnable()) {
 				Lamps.SetIntensity(value);
 				Seg7.SetIntensity(value);
 			}
