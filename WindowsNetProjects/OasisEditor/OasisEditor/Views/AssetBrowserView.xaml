@@ -24,10 +24,6 @@
                        VerticalAlignment="Center"
                        Foreground="{DynamicResource TextSecondaryBrush}"
                        Text="{Binding SelectedAssetDirectoryLabel, StringFormat=Folder: {0}}" />
-            <Button DockPanel.Dock="Right"
-                    Padding="10,4"
-                    Command="{Binding RefreshAssetBrowserCommand}"
-                    Content="Refresh" />
         </DockPanel>
 
         <Grid Grid.Row="1">
