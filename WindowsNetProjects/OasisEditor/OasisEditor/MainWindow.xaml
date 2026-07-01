@@ -1,0 +1,333 @@
+<Window x:Class="OasisEditor.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="{Binding WindowTitle, FallbackValue=Oasis Editor}"
+        Height="780"
+        Width="1200"
+        MinHeight="620"
+        MinWidth="900"
+        Background="{DynamicResource EditorBackgroundBrush}"
+        Foreground="{DynamicResource TextPrimaryBrush}">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Menu Grid.Row="0"
+              MinHeight="24"
+              BorderThickness="0,0,0,1"
+              Padding="0"
+              Style="{DynamicResource EditorMenuStyle}">
+            <Menu.Resources>
+                <Style TargetType="{x:Type MenuItem}"
+                       BasedOn="{StaticResource EditorMenuItemStyle}">
+                    <Style.Triggers>
+                        <Trigger Property="Role"
+                                 Value="TopLevelHeader">
+                            <Setter Property="Padding"
+                                    Value="6,0" />
+                            <Setter Property="MinWidth"
+                                    Value="0" />
+                            <Setter Property="Margin"
+                                    Value="0" />
+                        </Trigger>
+                        <Trigger Property="Role"
+                                 Value="TopLevelItem">
+                            <Setter Property="Padding"
+                                    Value="6,0" />
+                            <Setter Property="MinWidth"
+                                    Value="0" />
+                            <Setter Property="Margin"
+                                    Value="0" />
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
+            </Menu.Resources>
+            <MenuItem Header="_File">
+                <MenuItem Header="_New">
+                    <MenuItem Header="_Panel2D"
+                              Command="{Binding OpenPanel2DStubCommand}" />
+                    <MenuItem Header="_Face"
+                              Command="{Binding OpenFaceStubCommand}" />
+                    <MenuItem Header="_Cabinet3D"
+                              Command="{Binding OpenCabinet3DStubCommand}" />
+                    <MenuItem Header="_Machine"
+                              Command="{Binding OpenMachineStubCommand}" />
+                </MenuItem>
+                <Separator />
+                <MenuItem Header="_Import">
+                    <MenuItem Header="_MFME Extract..."
+                              Command="{Binding ImportMfmeExtractCommand}" />
+                    <MenuItem Header="_GLB Model..."
+                              Command="{Binding ImportGlbModelCommand}" />
+                </MenuItem>
+                <MenuItem Header="_Save Asset"
+                          Command="{Binding SaveSelectedDocumentCommand}" />
+                <MenuItem Header="_Close Project"
+                          Command="{Binding CloseProjectCommand}" />
+                <Separator />
+                <MenuItem Header="E_xit"
+                          Command="{Binding ExitCommand}" />
+            </MenuItem>
+
+            <MenuItem Header="_Face">
+                <MenuItem Header="Generation _Settings..."
+                          Command="{Binding OpenFaceGenerationSettingsCommand}" />
+                <MenuItem Header="Add Face Source _Shape"
+                          Command="{Binding AddFaceSourceShapeCommand}" />
+                <MenuItem Header="Create Face from Face Source _Shape"
+                          Command="{Binding GenerateFaceFromSourceShapeCommand}" />
+                <MenuItem Header="_Regenerate from Source Shape"
+                          Command="{Binding RegenerateFaceCommand}" />
+                <MenuItem Header="_Validate Face"
+                          Command="{Binding ValidateFaceCommand}" />
+            </MenuItem>
+            <MenuItem Header="_Edit">
+                <MenuItem Header="{Binding UndoMenuHeader}"
+                          Click="OnUndoMenuItemClicked"
+                          InputGestureText="Ctrl+Z" />
+                <MenuItem Header="{Binding RedoMenuHeader}"
+                          Click="OnRedoMenuItemClicked"
+                          InputGestureText="Ctrl+Shift+Z" />
+                <Separator />
+                <MenuItem Header="Cu_t"
+                          Command="{Binding CutSelectedHierarchyItemCommand}"
+                          InputGestureText="Ctrl+X" />
+                <MenuItem Header="_Copy"
+                          Command="{Binding CopySelectedHierarchyItemCommand}"
+                          InputGestureText="Ctrl+C" />
+                <MenuItem Header="_Paste"
+                          Command="{Binding PasteHierarchyItemCommand}"
+                          InputGestureText="Ctrl+V" />
+                <MenuItem Header="_Duplicate"
+                          Command="{Binding DuplicateSelectedHierarchyItemCommand}"
+                          InputGestureText="Ctrl+D" />
+                <MenuItem Header="_Delete"
+                          Command="{Binding DeleteSelectedHierarchyItemCommand}"
+                          InputGestureText="Del" />
+                <Separator />
+                <MenuItem Header="_Arrange">
+                    <MenuItem Header="Bring to _Front"
+                              Command="{Binding BringToFrontHierarchyItemCommand}" />
+                    <MenuItem Header="Bring _Forward"
+                              Command="{Binding BringForwardHierarchyItemCommand}" />
+                    <MenuItem Header="Send _Backward"
+                              Command="{Binding SendBackwardHierarchyItemCommand}" />
+                    <MenuItem Header="Send to _Back"
+                              Command="{Binding SendToBackHierarchyItemCommand}" />
+                </MenuItem>
+                <MenuItem Header="_Object">
+                    <MenuItem Header="_Lock"
+                              Command="{Binding LockSelectedHierarchyItemCommand}" />
+                    <MenuItem Header="_Unlock"
+                              Command="{Binding UnlockSelectedHierarchyItemCommand}" />
+                    <Separator />
+                    <MenuItem Header="_Hide"
+                              Command="{Binding HideSelectedHierarchyItemCommand}" />
+                    <MenuItem Header="_Show"
+                              Command="{Binding ShowSelectedHierarchyItemCommand}" />
+                </MenuItem>
+                <Separator />
+                <MenuItem Header="_Preferences"
+                          Command="{Binding OpenPreferencesCommand}" />
+                <MenuItem Header="_Project Settings"
+                          Command="{Binding OpenProjectSettingsCommand}" />
+            </MenuItem>
+            <MenuItem Header="_Window">
+                <MenuItem Header="_Assets"
+                          Click="OnAssetsWindowMenuItemClicked" />
+                <MenuItem Header="_Hierarchy"
+                          Click="OnHierarchyWindowMenuItemClicked" />
+                <MenuItem Header="_Inspector"
+                          Click="OnInspectorWindowMenuItemClicked" />
+                <MenuItem Header="_Output"
+                          Click="OnOutputWindowMenuItemClicked" />
+                <MenuItem Header="_Play View"
+                          Command="{Binding OpenPlayViewCommand}" />
+                <MenuItem Header="_Input Map"
+                          Command="{Binding OpenInputMapCommand}" />
+                <Separator />
+                <MenuItem Header="Debugger _Control"
+                          Command="{Binding OpenDebuggerControlCommand}" />
+                <MenuItem Header="Debugger _Disassembly"
+                          Command="{Binding OpenDebuggerDisassemblyCommand}" />
+                <MenuItem Header="Debugger _Registers"
+                          Command="{Binding OpenDebuggerRegistersCommand}" />
+                <MenuItem Header="Debugger _Memory"
+                          Command="{Binding OpenDebuggerMemoryCommand}" />
+                <MenuItem Header="Debugger _Breakpoints"
+                          Command="{Binding OpenDebuggerBreakpointsCommand}" />
+                <MenuItem Header="Debugger _Watchpoints"
+                          Command="{Binding OpenDebuggerWatchpointsCommand}" />
+            </MenuItem>
+            <MenuItem Header="_Emulation">
+                <MenuItem.Resources>
+                    <Style x:Key="EmulationMenuItemWithCheckSlotStyle"
+                           TargetType="{x:Type MenuItem}"
+                           BasedOn="{StaticResource EditorMenuItemStyle}">
+                        <Setter Property="Tag"
+                                Value="ReserveCheckGlyph" />
+                    </Style>
+                </MenuItem.Resources>
+                <MenuItem Header="Start And _Load State"
+                          Command="{Binding StartAndLoadStateEmulationCommand}"
+                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                <MenuItem Header="Start _Debugger And Load State"
+                          Command="{Binding StartDebuggerAndLoadStateEmulationCommand}"
+                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                <MenuItem Header="Save State And E_xit"
+                          Command="{Binding SaveStateAndExitEmulationCommand}"
+                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                <Separator />
+                <MenuItem Header="_Start"
+                          Command="{Binding StartEmulationCommand}"
+                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                <MenuItem Header="Start _Debugger"
+                          Command="{Binding StartDebuggerEmulationCommand}"
+                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                <MenuItem Header="_Load State"
+                          Command="{Binding LoadStateEmulationCommand}"
+                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                <MenuItem Header="Save _State"
+                          Command="{Binding SaveStateEmulationCommand}"
+                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                <MenuItem Header="_Exit"
+                          Command="{Binding StopEmulationCommand}"
+                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                <Separator />
+                <MenuItem Header="_Pause"
+                          Command="{Binding TogglePauseEmulationCommand}"
+                          IsCheckable="True"
+                          IsChecked="{Binding IsPauseEmulationChecked, Mode=OneWay}"
+                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                <MenuItem Header="_Unthrottle"
+                          Command="{Binding ToggleUnthrottleEmulationCommand}"
+                          IsCheckable="True"
+                          IsChecked="{Binding IsUnthrottleEmulationChecked, Mode=OneWay}"
+                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                <Separator />
+                <MenuItem Header="Soft _Reset"
+                          Command="{Binding SoftResetEmulationCommand}"
+                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                <MenuItem Header="_Hard Reset"
+                          Command="{Binding HardResetEmulationCommand}"
+                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                <Separator />
+                <MenuItem Header="Open Debugger _Panels">
+                    <MenuItem Header="_Control"
+                              Command="{Binding OpenDebuggerControlCommand}"
+                              Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                    <MenuItem Header="_Disassembly"
+                              Command="{Binding OpenDebuggerDisassemblyCommand}"
+                              Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                    <MenuItem Header="_Registers"
+                              Command="{Binding OpenDebuggerRegistersCommand}"
+                              Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                    <MenuItem Header="_Memory"
+                              Command="{Binding OpenDebuggerMemoryCommand}"
+                              Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                    <MenuItem Header="_Breakpoints"
+                              Command="{Binding OpenDebuggerBreakpointsCommand}"
+                              Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                    <MenuItem Header="_Watchpoints"
+                              Command="{Binding OpenDebuggerWatchpointsCommand}"
+                              Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                </MenuItem>
+                <Separator />
+                <MenuItem Header="Debugger _Status"
+                          Command="{Binding RefreshDebuggerStatusCommand}"
+                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                <MenuItem Header="Debugger _CPU List"
+                          Command="{Binding ListDebuggerCpusCommand}"
+                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                <MenuItem Header="Debugger _Run"
+                          Command="{Binding DebuggerRunCommand}"
+                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                <MenuItem Header="Debugger _Break"
+                          Command="{Binding DebuggerBreakCommand}"
+                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                <MenuItem Header="Debugger S_tep"
+                          Command="{Binding DebuggerStepCommand}"
+                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                <Separator />
+                <MenuItem Header="Debugger List Break_points"
+                          Command="{Binding ListDebuggerBreakpointsCommand}"
+                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                <MenuItem Header="Debugger List _Watchpoints"
+                          Command="{Binding ListDebuggerWatchpointsCommand}"
+                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                <MenuItem Header="Debugger Add Test Breakpoint At _PC"
+                          Command="{Binding AddTestDebuggerBreakpointCommand}"
+                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                <Separator />
+                <MenuItem Header="Debugger Disassemble Around _PC"
+                          Command="{Binding DisassembleAroundCurrentPcCommand}"
+                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                <MenuItem Header="Debugger Disassemble From _0x0"
+                          Command="{Binding DisassembleFixedAddressTestBlockCommand}"
+                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+            </MenuItem>
+        </Menu>
+
+        <ContentControl x:Name="EditorShellHost"
+                        Grid.Row="1"
+                        Margin="0" />
+
+        <StatusBar Grid.Row="2"
+                   Margin="0"
+                   Background="{DynamicResource ToolBarBackgroundBrush}"
+                   Foreground="{DynamicResource TextPrimaryBrush}">
+            <StatusBarItem>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock FontFamily="Segoe MDL2 Assets"
+                               Text="{Binding StatusIconGlyph}"
+                               Foreground="{Binding StatusMessageBrush}" />
+                    <TextBlock Margin="8,0,0,0"
+                               Text="{Binding StatusMessage}"
+                               Foreground="{Binding StatusMessageBrush}" />
+                </StackPanel>
+            </StatusBarItem>
+            <StatusBarItem>
+                <StackPanel Orientation="Horizontal">
+                    <ProgressBar Width="160"
+                                 Height="12"
+                                 Minimum="0"
+                                 Maximum="100"
+                                 Value="{Binding EditorProgressPercent, Mode=OneWay}"
+                                 IsIndeterminate="{Binding IsEditorProgressIndeterminate, Mode=OneWay}">
+                        <ProgressBar.Style>
+                            <Style TargetType="{x:Type ProgressBar}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsEditorProgressVisible}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ProgressBar.Style>
+                    </ProgressBar>
+                    <TextBlock Margin="8,0,0,0"
+                               VerticalAlignment="Center"
+                               Text="{Binding EditorProgressMessage}"
+                               Foreground="{DynamicResource TextSecondaryBrush}">
+                        <TextBlock.Style>
+                            <Style TargetType="{x:Type TextBlock}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsEditorProgressVisible}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+            </StatusBarItem>
+        </StatusBar>
+    </Grid>
+</Window>
