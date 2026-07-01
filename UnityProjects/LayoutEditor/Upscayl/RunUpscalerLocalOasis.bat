@@ -1,1 +1,0 @@
-resources\bin\upscayl-realesrgan.exe -i "test_image.png" -o "test_image_UPSCALE_TEST.png" -s "4" -m "resources\models" -n "ultrasharp"

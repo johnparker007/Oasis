@@ -1,1 +1,0 @@
-This folder contains the default Reel Lamp and Reel Gradient masks that are applied when using the Default Option in the properties Window
