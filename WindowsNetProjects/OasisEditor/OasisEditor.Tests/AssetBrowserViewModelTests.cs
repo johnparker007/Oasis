@@ -105,7 +105,7 @@ public sealed class AssetBrowserViewModelTests
     }
 
     [Fact]
-    public void DeleteAssetCommand_WhenFolderNotEmpty_BlocksDeletion()
+    public void DeleteAssetCommand_WhenFolderNotEmpty_DeletesFolderAndContents()
     {
         using var temp = new TempProjectDirectory();
         var folderPath = Path.Combine(temp.AssetsDirectory, "Art");
@@ -119,8 +119,8 @@ public sealed class AssetBrowserViewModelTests
         Assert.True(viewModel.DeleteAssetCommand.CanExecute(folderItem));
         viewModel.DeleteAssetCommand.Execute(folderItem);
 
-        Assert.True(Directory.Exists(folderPath));
-        Assert.Contains(viewModel.AssetBrowserItems, item => item.IsDirectory && item.DisplayPath == "Art");
+        Assert.False(Directory.Exists(folderPath));
+        Assert.DoesNotContain(viewModel.AssetBrowserItems, item => item.IsDirectory && item.DisplayPath == "Art");
     }
 
     [Fact]
