@@ -24,17 +24,13 @@
                        VerticalAlignment="Center"
                        Foreground="{DynamicResource TextSecondaryBrush}"
                        Text="{Binding SelectedAssetDirectoryLabel, StringFormat=Folder: {0}}" />
-            <Button DockPanel.Dock="Right"
-                    Padding="10,4"
-                    Command="{Binding RefreshAssetBrowserCommand}"
-                    Content="Refresh" />
         </DockPanel>
 
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="8" />
-                <ColumnDefinition Width="1.5*" />
+                <ColumnDefinition Width="*" MinWidth="120" />
+                <ColumnDefinition Width="6" />
+                <ColumnDefinition Width="1.5*" MinWidth="160" />
             </Grid.ColumnDefinitions>
 
             <TreeView Grid.Column="0"
@@ -171,30 +167,87 @@
                     <HierarchicalDataTemplate DataType="{x:Type local:AssetDirectoryNodeViewModel}"
                                               ItemsSource="{Binding Children}">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Margin="0,0,6,0"
-                                       Foreground="{DynamicResource TextSecondaryBrush}">
-                                <TextBlock.Style>
-                                    <Style TargetType="{x:Type TextBlock}">
-                                        <Setter Property="Text" Value="📁" />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding Children.Count}" Value="0">
-                                                <Setter Property="Text" Value="🗀" />
-                                            </DataTrigger>
-                                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                                <Setter Property="Text" Value="📂" />
-                                            </DataTrigger>
-                                            <DataTrigger Binding="{Binding IsExpanded}" Value="True">
-                                                <Setter Property="Text" Value="📂" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
+                            <Grid Width="16"
+                                  Height="16"
+                                  Margin="0,1,6,0">
+                                <Canvas Width="16"
+                                        Height="16">
+                                    <Canvas.Style>
+                                        <Style TargetType="{x:Type Canvas}">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                            <Style.Triggers>
+                                                <MultiDataTrigger>
+                                                    <MultiDataTrigger.Conditions>
+                                                        <Condition Binding="{Binding IsExpanded}" Value="True" />
+                                                        <Condition Binding="{Binding HasChildDirectories}" Value="True" />
+                                                    </MultiDataTrigger.Conditions>
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </MultiDataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Canvas.Style>
+                                    <Path Data="M1.5,5.5 H6 L7.5,7.5 H14.5 V14.5 H1.5 Z"
+                                          Stroke="{DynamicResource TextSecondaryBrush}"
+                                          StrokeThickness="1.4"
+                                          StrokeLineJoin="Round" />
+                                    <Path Data="M1.5,7.5 H14.5"
+                                          Stroke="{DynamicResource TextSecondaryBrush}"
+                                          StrokeThickness="1.4" />
+                                </Canvas>
+                                <Canvas Width="16"
+                                        Height="16">
+                                    <Canvas.Style>
+                                        <Style TargetType="{x:Type Canvas}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <MultiDataTrigger>
+                                                    <MultiDataTrigger.Conditions>
+                                                        <Condition Binding="{Binding IsExpanded}" Value="True" />
+                                                        <Condition Binding="{Binding HasChildDirectories}" Value="True" />
+                                                    </MultiDataTrigger.Conditions>
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </MultiDataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Canvas.Style>
+                                    <Path Data="M1.5,6.5 H6 L7.5,4.5 H14.5 V7.5"
+                                          Stroke="{DynamicResource TextSecondaryBrush}"
+                                          StrokeThickness="1.4"
+                                          StrokeLineJoin="Round" />
+                                    <Path Data="M1.5,7.5 H15.5 L13.5,14.5 H1.5 Z"
+                                          Stroke="{DynamicResource TextSecondaryBrush}"
+                                          StrokeThickness="1.4"
+                                          StrokeLineJoin="Round" />
+                                </Canvas>
+                            </Grid>
                             <TextBlock Text="{Binding DisplayPath}" />
                         </StackPanel>
                     </HierarchicalDataTemplate>
                 </TreeView.Resources>
             </TreeView>
+
+            <GridSplitter Grid.Column="1"
+                          Width="6"
+                          HorizontalAlignment="Stretch"
+                          VerticalAlignment="Stretch"
+                          Background="Transparent"
+                          ResizeBehavior="PreviousAndNext"
+                          ResizeDirection="Columns"
+                          ShowsPreview="True"
+                          KeyboardIncrement="8"
+                          DragIncrement="1"
+                          Cursor="SizeWE"
+                          ToolTip="Drag to resize the asset folder tree and contents panes">
+                <GridSplitter.Template>
+                    <ControlTemplate TargetType="{x:Type GridSplitter}">
+                        <Border Background="{TemplateBinding Background}">
+                            <Border Width="1"
+                                    HorizontalAlignment="Center"
+                                    Background="{DynamicResource BorderSubtleBrush}" />
+                        </Border>
+                    </ControlTemplate>
+                </GridSplitter.Template>
+            </GridSplitter>
 
             <Border Grid.Column="2"
                     BorderBrush="{DynamicResource BorderSubtleBrush}"
@@ -207,7 +260,9 @@
                              MouseDoubleClick="OnAssetListMouseDoubleClick"
                              Background="Transparent"
                              BorderThickness="0"
-                             Foreground="{DynamicResource TextPrimaryBrush}">
+                             Foreground="{DynamicResource TextPrimaryBrush}"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto">
                         <ListBox.ContextMenu>
                             <ContextMenu Style="{StaticResource EditorContextMenuStyle}">
                                 <MenuItem Header="Open"
@@ -227,19 +282,51 @@
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Margin="0,0,6,0"
-                                               Foreground="{DynamicResource TextSecondaryBrush}">
-                                        <TextBlock.Style>
-                                            <Style TargetType="{x:Type TextBlock}">
-                                                <Setter Property="Text" Value="📄" />
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsDirectory}" Value="True">
-                                                        <Setter Property="Text" Value="📁" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
+                                    <Grid Width="16"
+                                          Height="16"
+                                          Margin="0,1,6,0">
+                                        <Canvas Width="16"
+                                                Height="16">
+                                            <Canvas.Style>
+                                                <Style TargetType="{x:Type Canvas}">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsDirectory}" Value="True">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Canvas.Style>
+                                            <Path Data="M3.5,1.5 H10.5 L14.5,5.5 V14.5 H3.5 Z"
+                                                  Stroke="{DynamicResource TextSecondaryBrush}"
+                                                  StrokeThickness="1.4"
+                                                  StrokeLineJoin="Round" />
+                                            <Path Data="M10.5,1.5 V5.5 H14.5"
+                                                  Stroke="{DynamicResource TextSecondaryBrush}"
+                                                  StrokeThickness="1.4"
+                                                  StrokeLineJoin="Round" />
+                                        </Canvas>
+                                        <Canvas Width="16"
+                                                Height="16">
+                                            <Canvas.Style>
+                                                <Style TargetType="{x:Type Canvas}">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsDirectory}" Value="True">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Canvas.Style>
+                                            <Path Data="M1.5,5.5 H6 L7.5,7.5 H14.5 V14.5 H1.5 Z"
+                                                  Stroke="{DynamicResource TextSecondaryBrush}"
+                                                  StrokeThickness="1.4"
+                                                  StrokeLineJoin="Round" />
+                                            <Path Data="M1.5,7.5 H14.5"
+                                                  Stroke="{DynamicResource TextSecondaryBrush}"
+                                                  StrokeThickness="1.4" />
+                                        </Canvas>
+                                    </Grid>
                                     <TextBlock Text="{Binding DisplayPath}" />
                                 </StackPanel>
                             </DataTemplate>

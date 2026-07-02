@@ -1,12 +1,15 @@
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Windows;
 using System.Windows.Input;
+using System.Windows.Threading;
 
 namespace OasisEditor;
 
-public sealed class AssetBrowserViewModel
+public sealed class AssetBrowserViewModel : IDisposable
 {
     private readonly Func<EditorProject?> _loadedProjectAccessor;
     private readonly Action _selectionChanged;
@@ -16,6 +19,9 @@ public sealed class AssetBrowserViewModel
     private readonly Func<string, string?> _requestAssetRename;
     private AssetBrowserItemViewModel? _selectedAsset;
     private AssetDirectoryNodeViewModel? _selectedDirectory;
+    private FileSystemWatcher? _assetsWatcher;
+    private string? _watchedAssetsDirectory;
+    private readonly DispatcherTimer _refreshDebounceTimer;
     public event Action? StateChanged;
 
     public AssetBrowserViewModel(
@@ -32,10 +38,15 @@ public sealed class AssetBrowserViewModel
         _addOutputEntry = addOutputEntry;
         _openAsset = openAsset;
         _requestAssetRename = requestAssetRename;
+        _refreshDebounceTimer = new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = TimeSpan.FromMilliseconds(200)
+        };
+        _refreshDebounceTimer.Tick += OnRefreshDebounceTimerTick;
 
         AssetBrowserItems = new ObservableCollection<AssetBrowserItemViewModel>();
         AssetDirectoryTree = new ObservableCollection<AssetDirectoryNodeViewModel>();
-        RefreshAssetBrowserCommand = new RelayCommand(RefreshAssetBrowser, CanRefreshAssetBrowser);
+        RefreshAssetBrowserCommand = new RelayCommand(RefreshAssetBrowserPreservingState, CanRefreshAssetBrowser);
         OpenAssetCommand = new PaneItemCommand<object>(
             GetSelectedAssetContext,
             OpenAsset,
@@ -108,8 +119,14 @@ public sealed class AssetBrowserViewModel
 
     public void RefreshAssetBrowser()
     {
+        RefreshAssetBrowserPreservingState();
+    }
+
+    public void RefreshAssetBrowserPreservingState()
+    {
         var selectedDirectoryPath = SelectedDirectory?.FullPath;
         var selectedAssetPath = SelectedAsset?.FullPath;
+        var expandedDirectoryPaths = CaptureExpandedDirectoryPaths();
 
         var loadedProject = _loadedProjectAccessor();
         if (loadedProject is null)
@@ -119,6 +136,7 @@ public sealed class AssetBrowserViewModel
             SelectedDirectory = null;
             SelectedAsset = null;
             _notifyInspectorChanged();
+            StopWatchingAssetsDirectory();
             _addOutputEntry("Asset browser cleared (no project loaded).", OutputLogStatus.Info);
             return;
         }
@@ -129,14 +147,100 @@ public sealed class AssetBrowserViewModel
             Directory.CreateDirectory(assetDirectory);
         }
 
+        StartWatchingAssetsDirectory(assetDirectory);
+
         var rootNode = BuildDirectoryTree(assetDirectory, assetDirectory);
+        RestoreExpandedDirectoryPaths(rootNode, expandedDirectoryPaths);
         AssetDirectoryTree.Clear();
         AssetDirectoryTree.Add(rootNode);
-        SelectedDirectory = FindDirectoryByPath(rootNode, selectedDirectoryPath) ?? rootNode;
+        SelectedDirectory = FindDirectoryByPath(rootNode, selectedDirectoryPath)
+            ?? FindNearestExistingDirectory(rootNode, selectedDirectoryPath)
+            ?? rootNode;
         RestoreSelectedAsset(selectedAssetPath);
         _notifyInspectorChanged();
         _addOutputEntry($"Asset browser refreshed ({AssetBrowserItems.Count} items).", OutputLogStatus.Info);
         StateChanged?.Invoke();
+    }
+
+
+    public void ScheduleRefreshFromDisk()
+    {
+        var dispatcher = Application.Current?.Dispatcher ?? Dispatcher.CurrentDispatcher;
+        if (dispatcher.CheckAccess())
+        {
+            RestartRefreshDebounceTimer();
+            return;
+        }
+
+        _ = dispatcher.BeginInvoke((Action)RestartRefreshDebounceTimer);
+    }
+
+    public void Dispose()
+    {
+        StopWatchingAssetsDirectory();
+        _refreshDebounceTimer.Stop();
+        _refreshDebounceTimer.Tick -= OnRefreshDebounceTimerTick;
+    }
+
+    private void StartWatchingAssetsDirectory(string assetsDirectory)
+    {
+        var fullAssetsDirectory = Path.GetFullPath(assetsDirectory);
+        if (_assetsWatcher is not null
+            && string.Equals(_watchedAssetsDirectory, fullAssetsDirectory, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        StopWatchingAssetsDirectory();
+
+        _assetsWatcher = new FileSystemWatcher(fullAssetsDirectory)
+        {
+            IncludeSubdirectories = true,
+            NotifyFilter = NotifyFilters.DirectoryName
+                           | NotifyFilters.FileName
+                           | NotifyFilters.LastWrite
+                           | NotifyFilters.CreationTime
+        };
+        _assetsWatcher.Created += OnAssetsWatcherChanged;
+        _assetsWatcher.Deleted += OnAssetsWatcherChanged;
+        _assetsWatcher.Changed += OnAssetsWatcherChanged;
+        _assetsWatcher.Renamed += OnAssetsWatcherRenamed;
+        _assetsWatcher.EnableRaisingEvents = true;
+        _watchedAssetsDirectory = fullAssetsDirectory;
+    }
+
+    private void StopWatchingAssetsDirectory()
+    {
+        if (_assetsWatcher is null)
+        {
+            _watchedAssetsDirectory = null;
+            return;
+        }
+
+        _assetsWatcher.EnableRaisingEvents = false;
+        _assetsWatcher.Created -= OnAssetsWatcherChanged;
+        _assetsWatcher.Deleted -= OnAssetsWatcherChanged;
+        _assetsWatcher.Changed -= OnAssetsWatcherChanged;
+        _assetsWatcher.Renamed -= OnAssetsWatcherRenamed;
+        _assetsWatcher.Dispose();
+        _assetsWatcher = null;
+        _watchedAssetsDirectory = null;
+    }
+
+    private void OnAssetsWatcherChanged(object sender, FileSystemEventArgs e) => ScheduleRefreshFromDisk();
+
+    private void OnAssetsWatcherRenamed(object sender, RenamedEventArgs e) => ScheduleRefreshFromDisk();
+
+    private void RestartRefreshDebounceTimer()
+    {
+        _refreshDebounceTimer.Stop();
+        _refreshDebounceTimer.Start();
+    }
+
+    private void OnRefreshDebounceTimerTick(object? sender, EventArgs e)
+    {
+        _refreshDebounceTimer.Stop();
+        RefreshAssetBrowserPreservingState();
     }
 
     public void NotifyRefreshCommand()
@@ -422,7 +526,7 @@ public sealed class AssetBrowserViewModel
                 File.Move(asset.FullPath, targetPath);
             }
 
-            RefreshAssetBrowser();
+            RefreshAssetBrowserPreservingState();
             SelectDirectoryByPath(parentDirectory);
             SelectedAsset = AssetBrowserItems.FirstOrDefault(item =>
                 string.Equals(item.FullPath, targetPath, StringComparison.OrdinalIgnoreCase));
@@ -462,15 +566,8 @@ public sealed class AssetBrowserViewModel
                     return;
                 }
 
-                var hasChildren = Directory.EnumerateFileSystemEntries(asset.FullPath).Any();
-                if (hasChildren)
-                {
-                    _addOutputEntry($"Delete blocked: folder '{asset.DisplayPath}' is not empty.", OutputLogStatus.Warning);
-                    return;
-                }
-
-                Directory.Delete(asset.FullPath, recursive: false);
-                _addOutputEntry($"Deleted folder: {asset.DisplayPath}", OutputLogStatus.Info);
+                Directory.Delete(asset.FullPath, recursive: true);
+                _addOutputEntry($"Deleted folder and contents: {asset.DisplayPath}", OutputLogStatus.Info);
             }
             else
             {
@@ -484,13 +581,37 @@ public sealed class AssetBrowserViewModel
                 _addOutputEntry($"Deleted file: {asset.DisplayPath}", OutputLogStatus.Info);
             }
 
-            RefreshAssetBrowser();
-            SelectDirectoryByPath(selectedDirectoryPath ?? parentDirectory);
+            var directoryToSelect = ResolvePostDeleteDirectoryPath(
+                loadedProject.AssetsDirectory,
+                selectedDirectoryPath,
+                parentDirectory);
+
+            RefreshAssetBrowserPreservingState();
+            SelectDirectoryByPath(directoryToSelect);
         }
         catch (Exception ex)
         {
             _addOutputEntry($"Delete failed: {ex.Message}", OutputLogStatus.Warning);
         }
+    }
+
+    private static string ResolvePostDeleteDirectoryPath(
+        string assetsRoot,
+        string? selectedDirectoryPath,
+        string parentDirectory)
+    {
+        if (!string.IsNullOrWhiteSpace(selectedDirectoryPath)
+            && Directory.Exists(selectedDirectoryPath))
+        {
+            return selectedDirectoryPath;
+        }
+
+        if (Directory.Exists(parentDirectory))
+        {
+            return parentDirectory;
+        }
+
+        return assetsRoot;
     }
 
     private static string GetDirectoryDisplayPath(string assetsRoot, string directoryPath)
@@ -526,7 +647,69 @@ public sealed class AssetBrowserViewModel
         SelectedAsset = AssetBrowserItems.FirstOrDefault();
     }
 
-    private void SelectDirectoryByPath(string path)
+
+    private HashSet<string> CaptureExpandedDirectoryPaths()
+    {
+        var expandedDirectoryPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var root in AssetDirectoryTree)
+        {
+            CaptureExpandedDirectoryPathsRecursive(root, expandedDirectoryPaths);
+        }
+
+        return expandedDirectoryPaths;
+    }
+
+    private static void CaptureExpandedDirectoryPathsRecursive(
+        AssetDirectoryNodeViewModel node,
+        ISet<string> expandedDirectoryPaths)
+    {
+        if (node.IsExpanded)
+        {
+            expandedDirectoryPaths.Add(node.FullPath);
+        }
+
+        foreach (var child in node.Children)
+        {
+            CaptureExpandedDirectoryPathsRecursive(child, expandedDirectoryPaths);
+        }
+    }
+
+    private static void RestoreExpandedDirectoryPaths(
+        AssetDirectoryNodeViewModel node,
+        ISet<string> expandedDirectoryPaths)
+    {
+        node.IsExpanded = expandedDirectoryPaths.Contains(node.FullPath);
+        foreach (var child in node.Children)
+        {
+            RestoreExpandedDirectoryPaths(child, expandedDirectoryPaths);
+        }
+    }
+
+    private static AssetDirectoryNodeViewModel? FindNearestExistingDirectory(
+        AssetDirectoryNodeViewModel root,
+        string? requestedPath)
+    {
+        if (string.IsNullOrWhiteSpace(requestedPath))
+        {
+            return null;
+        }
+
+        var currentPath = requestedPath;
+        while (!string.IsNullOrWhiteSpace(currentPath))
+        {
+            var match = FindDirectoryByPath(root, currentPath);
+            if (match is not null)
+            {
+                return match;
+            }
+
+            currentPath = Path.GetDirectoryName(currentPath);
+        }
+
+        return null;
+    }
+
+    public void SelectDirectoryByPath(string path)
     {
         foreach (var root in AssetDirectoryTree)
         {

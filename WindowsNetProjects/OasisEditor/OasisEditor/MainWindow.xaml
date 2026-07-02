@@ -49,32 +49,24 @@
                 </Style>
             </Menu.Resources>
             <MenuItem Header="_File">
-                <MenuItem Header="New _Panel2D Stub"
-                          Command="{Binding OpenPanel2DStubCommand}" />
-                <MenuItem Header="New _Face Stub"
-                          Command="{Binding OpenFaceStubCommand}" />
-                <MenuItem Header="Add Face Source _Shape"
-                          Command="{Binding AddFaceSourceShapeCommand}" />
-                <MenuItem Header="Create Face from Face Source _Shape"
-                          Command="{Binding GenerateFaceFromSourceShapeCommand}" />
-                <MenuItem Header="_Regenerate Face from Source Shape"
-                          Command="{Binding RegenerateFaceCommand}" />
-                <MenuItem Header="_Validate Face"
-                          Command="{Binding ValidateFaceCommand}" />
-                <MenuItem Header="Open Source _Panel2D"
-                          Command="{Binding OpenSourcePanel2DCommand}" />
-                <MenuItem Header="New _Cabinet3D Stub"
-                          Command="{Binding OpenCabinet3DStubCommand}" />
-                <MenuItem Header="New _Machine Stub"
-                          Command="{Binding OpenMachineStubCommand}" />
+                <MenuItem Header="_New">
+                    <MenuItem Header="_Panel2D"
+                              Command="{Binding OpenPanel2DStubCommand}" />
+                    <MenuItem Header="_Face"
+                              Command="{Binding OpenFaceStubCommand}" />
+                    <MenuItem Header="_Cabinet3D"
+                              Command="{Binding OpenCabinet3DStubCommand}" />
+                    <MenuItem Header="_Machine"
+                              Command="{Binding OpenMachineStubCommand}" />
+                </MenuItem>
                 <Separator />
-                <MenuItem Header="Open _Document"
-                          Command="{Binding OpenDocumentCommand}" />
                 <MenuItem Header="_Import">
                     <MenuItem Header="_MFME Extract..."
                               Command="{Binding ImportMfmeExtractCommand}" />
+                    <MenuItem Header="_GLB Model..."
+                              Command="{Binding ImportGlbModelCommand}" />
                 </MenuItem>
-                <MenuItem Header="_Save Document"
+                <MenuItem Header="_Save Asset"
                           Command="{Binding SaveSelectedDocumentCommand}" />
                 <MenuItem Header="_Close Project"
                           Command="{Binding CloseProjectCommand}" />
@@ -92,6 +84,8 @@
                           Command="{Binding GenerateFaceFromSourceShapeCommand}" />
                 <MenuItem Header="_Regenerate from Source Shape"
                           Command="{Binding RegenerateFaceCommand}" />
+                <MenuItem Header="_Validate Face"
+                          Command="{Binding ValidateFaceCommand}" />
             </MenuItem>
             <MenuItem Header="_Edit">
                 <MenuItem Header="{Binding UndoMenuHeader}"

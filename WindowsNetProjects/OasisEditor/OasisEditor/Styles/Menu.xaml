@@ -42,6 +42,12 @@
                                 CornerRadius="4">
                             <DockPanel LastChildFill="True"
                                        TextElement.Foreground="{TemplateBinding Foreground}">
+                                <TextBlock x:Name="SubmenuArrow"
+                                           DockPanel.Dock="Right"
+                                           Margin="16,0,0,0"
+                                           VerticalAlignment="Center"
+                                           Text=">"
+                                           Visibility="Collapsed" />
                                 <TextBlock x:Name="CheckGlyph"
                                            Width="16"
                                            Margin="0,0,4,0"
@@ -123,6 +129,9 @@
                             <Setter TargetName="SubMenuPopup"
                                     Property="Placement"
                                     Value="Right" />
+                            <Setter TargetName="SubmenuArrow"
+                                    Property="Visibility"
+                                    Value="Visible" />
                         </Trigger>
                         <Trigger Property="Role"
                                  Value="TopLevelItem">
