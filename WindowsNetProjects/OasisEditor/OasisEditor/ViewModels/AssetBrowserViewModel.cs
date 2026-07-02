@@ -566,7 +566,7 @@ public sealed class AssetBrowserViewModel : IDisposable
                     return;
                 }
 
-                Directory.Delete(asset.FullPath, recursive: true);
+                DeleteDirectoryAndContents(asset.FullPath);
                 _addOutputEntry($"Deleted folder and contents: {asset.DisplayPath}", OutputLogStatus.Info);
             }
             else
@@ -593,6 +593,12 @@ public sealed class AssetBrowserViewModel : IDisposable
         {
             _addOutputEntry($"Delete failed: {ex.Message}", OutputLogStatus.Warning);
         }
+    }
+
+    private static void DeleteDirectoryAndContents(string directoryPath)
+    {
+        // Asset folder deletion is intentionally recursive so non-empty folders can be removed.
+        Directory.Delete(directoryPath, recursive: true);
     }
 
     private static string ResolvePostDeleteDirectoryPath(
