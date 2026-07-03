@@ -31,6 +31,8 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
     private readonly System6SetByteByteDelegate _setFullLevel;
     private readonly System6SetByteDelegate _turnSwitchOn;
     private readonly System6SetByteDelegate _turnSwitchOff;
+    private readonly System6GetAudioFormatDelegate? _getAudioFormat;
+    private readonly System6FillAudioFramesDelegate? _fillAudioFrames;
     private readonly List<IntPtr> _romPathBuffers = [];
 
     public System6NativeLibrary(string libraryPath) : this(new NativeLibraryLoader(libraryPath)) { }
@@ -64,6 +66,8 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
         _setFullLevel = _loader.BindExport<System6SetByteByteDelegate>("SetFullLevel");
         _turnSwitchOn = _loader.BindExport<System6SetByteDelegate>("TurnSwitchOn");
         _turnSwitchOff = _loader.BindExport<System6SetByteDelegate>("TurnSwitchOff");
+        _getAudioFormat = TryBindOptionalExport<System6GetAudioFormatDelegate>("GetAudioFormat");
+        _fillAudioFrames = TryBindOptionalExport<System6FillAudioFramesDelegate>("FillAudioFrames");
     }
 
     public string LibraryPath => _loader.LibraryPath;
@@ -121,6 +125,42 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
     public void TurnSwitchOn(int switchIndex) => _turnSwitchOn(checked((byte)switchIndex));
     public void TurnSwitchOff(int switchIndex) => _turnSwitchOff(checked((byte)switchIndex));
 
+    public bool IsAudioAvailable => _getAudioFormat is not null && _fillAudioFrames is not null;
+
+    public System6NativeAudioFormat GetAudioFormat()
+    {
+        if (_getAudioFormat is null)
+        {
+            throw new NotSupportedException("OasisEmulator does not export GetAudioFormat.");
+        }
+
+        var format = new System6NativeAudioFormat();
+        var size = checked((uint)Marshal.SizeOf<System6NativeAudioFormat>());
+        var written = _getAudioFormat(ref format, size);
+        if (written == 0 || format.Version != System6NativeAudioFormat.VersionValue)
+        {
+            throw new InvalidOperationException($"OasisEmulator GetAudioFormat failed or returned unsupported audio format version {format.Version}.");
+        }
+
+        return format;
+    }
+
+    public uint FillAudioFrames(Span<short> interleavedStereoFrames, uint framesRequired)
+    {
+        if (_fillAudioFrames is null)
+        {
+            throw new NotSupportedException("OasisEmulator does not export FillAudioFrames.");
+        }
+
+        unsafe
+        {
+            fixed (short* buffer = interleavedStereoFrames)
+            {
+                return _fillAudioFrames(buffer, framesRequired);
+            }
+        }
+    }
+
     public void Dispose()
     {
         FreeRomPathBuffers();
@@ -163,4 +203,6 @@ public sealed class System6NativeLibrary : ISystem6NativeLibrary
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] public delegate void System6SetByteDelegate(byte value);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] public delegate void System6SetByteByteDelegate(byte first, byte second);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] public delegate void System6SetByteUIntDelegate(byte first, uint second);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] public delegate uint System6GetAudioFormatDelegate(ref System6NativeAudioFormat outBuffer, uint outBufferSize);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] public unsafe delegate uint System6FillAudioFramesDelegate(short* outInterleavedStereo, uint framesRequired);
 }

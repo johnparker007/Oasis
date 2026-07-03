@@ -34,6 +34,84 @@ public sealed class System6NativeBackendTests
     }
 
 
+
+    [Fact]
+    public async Task StartAsyncStartsAudioSinkWithNativeFormatAndStreamsPcm()
+    {
+        var library = new FakeSystem6NativeLibrary { AudioAvailable = true };
+        var sink = new FakeAudioSink();
+        var (dllPath, rom1, rom2) = CreateNativeFiles(2);
+        var backend = new System6NativeBackend(dllPath, _ => library, 60, () => sink);
+
+        await backend.StartAsync(CreateLaunchRequest(rom1, rom2), CancellationToken.None);
+        var observedAudio = SpinWait.SpinUntil(() => sink.PushedBytes.Count > 0, TimeSpan.FromSeconds(1));
+        await backend.StopAsync(CancellationToken.None);
+
+        Assert.True(observedAudio, "Expected the emulation pump to pull native audio and push PCM bytes.");
+        Assert.Equal(new EmulationAudioFormat(48000, 2, 16), sink.StartedFormats.Single());
+        Assert.Contains((short)100, sink.PushedSamples);
+        Assert.Contains((short)-100, sink.PushedSamples);
+    }
+
+    [Fact]
+    public async Task PauseResetAndStopClearAudioPlayback()
+    {
+        var library = new FakeSystem6NativeLibrary { AudioAvailable = true };
+        var sink = new FakeAudioSink();
+        var (dllPath, rom1, rom2) = CreateNativeFiles(2);
+        var backend = new System6NativeBackend(dllPath, _ => library, 60, () => sink);
+
+        await backend.StartAsync(CreateLaunchRequest(rom1, rom2), CancellationToken.None);
+        await backend.PauseAsync(CancellationToken.None);
+        await backend.ResumeAsync(CancellationToken.None);
+        await backend.ResetAsync(EmulationResetKind.Soft, CancellationToken.None);
+        await backend.StopAsync(CancellationToken.None);
+
+        Assert.True(sink.ClearCount >= 3);
+        Assert.True(sink.StopCount >= 2);
+        Assert.True(sink.DisposeCalled);
+    }
+
+    [Fact]
+    public async Task StartAsyncContinuesWithoutAudioSinkWhenNativeAudioUnavailable()
+    {
+        var library = new FakeSystem6NativeLibrary { AudioAvailable = false };
+        var (dllPath, rom1, rom2) = CreateNativeFiles(2);
+        var backend = new System6NativeBackend(dllPath, _ => library, 60, () => throw new InvalidOperationException("Audio sink should not be created."));
+
+        await backend.StartAsync(CreateLaunchRequest(rom1, rom2), CancellationToken.None);
+        await backend.StopAsync(CancellationToken.None);
+
+        Assert.DoesNotContain("GetAudioFormat", library.Calls);
+    }
+
+    [Fact]
+    public async Task StartAsyncFailsCleanlyForMalformedNativeAudioFormat()
+    {
+        var library = new FakeSystem6NativeLibrary
+        {
+            AudioAvailable = true,
+            AudioFormat = new System6NativeAudioFormat
+            {
+                SizeBytes = (uint)Marshal.SizeOf<System6NativeAudioFormat>(),
+                Version = System6NativeAudioFormat.VersionValue,
+                SampleRate = 0,
+                Channels = 2,
+                BitsPerSample = 16,
+                Format = System6NativeAudioFormat.PcmS16FormatValue
+            }
+        };
+        var sink = new FakeAudioSink();
+        var (dllPath, rom1, rom2) = CreateNativeFiles(2);
+        var backend = new System6NativeBackend(dllPath, _ => library, 60, () => sink);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => backend.StartAsync(CreateLaunchRequest(rom1, rom2), CancellationToken.None));
+
+        Assert.Contains("audio format", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.True(library.DisposeCalled);
+        Assert.Empty(sink.StartedFormats);
+    }
+
     [Fact]
     public async Task StartAsyncWithOutputPollingDisabledRunsCoreWithoutPollingOutputs()
     {
@@ -596,6 +674,32 @@ public sealed class System6NativeBackendTests
         return (dllPath, rom1, rom2);
     }
 
+    private sealed class FakeAudioSink : IEmulationAudioSink
+    {
+        public List<EmulationAudioFormat> StartedFormats { get; } = new();
+        public List<byte[]> PushedBytes { get; } = new();
+        public List<short> PushedSamples { get; } = new();
+        public int ClearCount { get; private set; }
+        public int StopCount { get; private set; }
+        public bool DisposeCalled { get; private set; }
+
+        public void Start(EmulationAudioFormat format) => StartedFormats.Add(format);
+
+        public void PushPcm(ReadOnlySpan<byte> pcmBytes)
+        {
+            var copy = pcmBytes.ToArray();
+            PushedBytes.Add(copy);
+            for (var i = 0; i + 1 < copy.Length; i += 2)
+            {
+                PushedSamples.Add(BitConverter.ToInt16(copy, i));
+            }
+        }
+
+        public void Stop() => StopCount++;
+        public void Clear() => ClearCount++;
+        public void Dispose() => DisposeCalled = true;
+    }
+
     private sealed class FakeSystem6NativeLibrary : ISystem6NativeLibrary
     {
         public string LibraryPath => "C:/cores/system6.dll";
@@ -637,6 +741,20 @@ public sealed class System6NativeBackendTests
         public byte AlphaBrightness { get; set; } = 255;
 
         public bool SevenSegmentPollingAvailable { get; set; }
+
+        public bool AudioAvailable { get; set; }
+
+        public System6NativeAudioFormat AudioFormat { get; set; } = new()
+        {
+            SizeBytes = (uint)Marshal.SizeOf<System6NativeAudioFormat>(),
+            Version = System6NativeAudioFormat.VersionValue,
+            SampleRate = 48000,
+            Channels = 2,
+            BitsPerSample = 16,
+            Format = System6NativeAudioFormat.PcmS16FormatValue
+        };
+
+        public short[] AudioSamples { get; set; } = [100, -100, 200, -200];
 
         public Dictionary<ushort, bool> SevenSegmentCells { get; } = new();
 
@@ -827,6 +945,27 @@ public sealed class System6NativeBackendTests
         public void TurnSwitchOff(int switchIndex)
         {
             SwitchesTurnedOff.Add(switchIndex);
+        }
+
+        public bool IsAudioAvailable => AudioAvailable;
+
+        public System6NativeAudioFormat GetAudioFormat()
+        {
+            Calls.Add("GetAudioFormat");
+            return AudioFormat;
+        }
+
+        public uint FillAudioFrames(Span<short> interleavedStereoFrames, uint framesRequired)
+        {
+            Calls.Add($"FillAudioFrames:{framesRequired}");
+            if (!AudioAvailable || AudioSamples.Length == 0)
+            {
+                return 0;
+            }
+
+            var framesToWrite = Math.Min((int)framesRequired, AudioSamples.Length / 2);
+            AudioSamples.AsSpan(0, framesToWrite * 2).CopyTo(interleavedStereoFrames);
+            return (uint)framesToWrite;
         }
 
         public void Dispose()

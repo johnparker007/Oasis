@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Runtime.InteropServices;
 
 namespace OasisEditor;
 
@@ -40,6 +41,7 @@ public sealed class System6NativeBackend : IEmulationBackend
 
     private readonly string _libraryPath;
     private readonly Func<string, ISystem6NativeLibrary> _libraryFactory;
+    private readonly Func<IEmulationAudioSink?> _audioSinkFactory;
     private readonly TimeSpan _emulationInterval;
     private readonly TimeSpan _pollInterval;
     private readonly int _emulationPumpHz;
@@ -70,9 +72,12 @@ public sealed class System6NativeBackend : IEmulationBackend
     private Task? _pollLoopTask;
     private EmulationBackendState _state = EmulationBackendState.Stopped;
     private DateTime _lastRunWarningUtc = DateTime.MinValue;
+    private IEmulationAudioSink? _audioSink;
+    private EmulationAudioFormat? _audioFormat;
+    private short[] _audioFrameBuffer = [];
 
     public System6NativeBackend(string libraryPath)
-        : this(libraryPath, static path => new System6NativeLibrary(path))
+        : this(libraryPath, static path => new System6NativeLibrary(path), DefaultOutputPollsPerSecond, static () => new NAudioEmulationAudioSink())
     {
     }
 
@@ -82,6 +87,11 @@ public sealed class System6NativeBackend : IEmulationBackend
     }
 
     public System6NativeBackend(string libraryPath, Func<string, ISystem6NativeLibrary> libraryFactory, int framesPerSecond)
+        : this(libraryPath, libraryFactory, framesPerSecond, static () => null)
+    {
+    }
+
+    public System6NativeBackend(string libraryPath, Func<string, ISystem6NativeLibrary> libraryFactory, int framesPerSecond, Func<IEmulationAudioSink?> audioSinkFactory)
     {
         if (string.IsNullOrWhiteSpace(libraryPath))
         {
@@ -95,6 +105,7 @@ public sealed class System6NativeBackend : IEmulationBackend
 
         _libraryPath = libraryPath;
         _libraryFactory = libraryFactory ?? throw new ArgumentNullException(nameof(libraryFactory));
+        _audioSinkFactory = audioSinkFactory ?? throw new ArgumentNullException(nameof(audioSinkFactory));
         _timingDiagnosticsEnabled = IsTimingDiagnosticsEnabled();
         _outputPollingEnabled = ResolveOutputPollingEnabled();
         _outputPollsPerSecond = ResolveOutputPollingRate(framesPerSecond);
@@ -240,6 +251,7 @@ public sealed class System6NativeBackend : IEmulationBackend
             ResetCachedOutputState();
             ResetConfiguredReelStepCounts();
             ResetEnabledReelPollingIndices();
+            StartAudioIfAvailable(_library);
 
             try
             {
@@ -278,6 +290,7 @@ public sealed class System6NativeBackend : IEmulationBackend
             {
                 _pollLoopTask = Task.Run(() => PollLoopAsync(_runLoopCancellation.Token), CancellationToken.None);
             }
+            _audioSink?.Clear();
             SetState(EmulationBackendState.Running);
             return Task.CompletedTask;
         }
@@ -334,6 +347,7 @@ public sealed class System6NativeBackend : IEmulationBackend
             }
         }
 
+        StopAndDisposeAudio();
         ShutdownAndDisposeLibrary();
         _runLoopCancellation?.Dispose();
         _runLoopCancellation = null;
@@ -348,6 +362,8 @@ public sealed class System6NativeBackend : IEmulationBackend
         if (State is EmulationBackendState.Running)
         {
             SetState(EmulationBackendState.Paused);
+            _audioSink?.Clear();
+            _audioSink?.Stop();
         }
 
         return Task.CompletedTask;
@@ -358,6 +374,11 @@ public sealed class System6NativeBackend : IEmulationBackend
         cancellationToken.ThrowIfCancellationRequested();
         if (State is EmulationBackendState.Paused)
         {
+            _audioSink?.Clear();
+            if (_audioSink is not null && _audioFormat is { } audioFormat)
+            {
+                _audioSink.Start(audioFormat);
+            }
             SetState(EmulationBackendState.Running);
         }
 
@@ -374,6 +395,7 @@ public sealed class System6NativeBackend : IEmulationBackend
 
         var library = _library ?? throw new InvalidOperationException("System6 native backend cannot reset before it has started.");
         library.Reset();
+        _audioSink?.Clear();
         ResetCachedOutputState();
         return Task.CompletedTask;
     }
@@ -529,6 +551,7 @@ public sealed class System6NativeBackend : IEmulationBackend
                         Debug.WriteLine($"System6 native backend Run({cycles}) returned 0.");
                     }
 
+                    PullAudioFrames(library);
                     WarnIfEmulationTimingIsSlow(cycles, runElapsed, Stopwatch.GetTimestamp() - diagnosticsStartedAt, diagnosticsCycles, 0);
                     nextSliceTimestamp += _emulationIntervalTimestampTicks;
                     slicesRunThisLoop++;
@@ -1070,8 +1093,89 @@ public sealed class System6NativeBackend : IEmulationBackend
         _hasLoggedSevenSegmentUnavailable = false;
     }
 
+
+    private void StartAudioIfAvailable(ISystem6NativeLibrary library)
+    {
+        if (!library.IsAudioAvailable)
+        {
+            LogStartupStage("audio exports missing; playback disabled");
+            return;
+        }
+
+        var nativeFormat = library.GetAudioFormat();
+        var format = ValidateNativeAudioFormat(nativeFormat);
+        _audioSink = _audioSinkFactory();
+        if (_audioSink is null)
+        {
+            LogStartupStage("audio sink unavailable; playback disabled");
+            return;
+        }
+
+        _audioFormat = format;
+        _audioFrameBuffer = new short[Math.Max(1, (int)Math.Ceiling((double)format.SampleRate / _emulationPumpHz)) * format.Channels];
+        _audioSink.Start(format);
+        _audioSink.Clear();
+        LogStartupStage($"audio enabled: {format.SampleRate} Hz, {format.Channels} channels, {format.BitsPerSample}-bit PCM");
+    }
+
+    private static EmulationAudioFormat ValidateNativeAudioFormat(System6NativeAudioFormat nativeFormat)
+    {
+        if (nativeFormat.SampleRate is 0 || nativeFormat.Channels is 0 || nativeFormat.BitsPerSample is 0)
+        {
+            throw new InvalidOperationException($"OasisEmulator reported an invalid audio format: sampleRate={nativeFormat.SampleRate}, channels={nativeFormat.Channels}, bits={nativeFormat.BitsPerSample}.");
+        }
+
+        if (nativeFormat.Format != System6NativeAudioFormat.PcmS16FormatValue || nativeFormat.BitsPerSample != 16)
+        {
+            throw new NotSupportedException($"OasisEmulator reported unsupported audio format {nativeFormat.Format} with {nativeFormat.BitsPerSample} bits per sample; only PCM signed 16-bit is supported.");
+        }
+
+        if (nativeFormat.Channels > 8 || nativeFormat.SampleRate > 384000)
+        {
+            throw new InvalidOperationException($"OasisEmulator reported an unreasonable audio format: sampleRate={nativeFormat.SampleRate}, channels={nativeFormat.Channels}.");
+        }
+
+        return new EmulationAudioFormat(checked((int)nativeFormat.SampleRate), checked((int)nativeFormat.Channels), checked((int)nativeFormat.BitsPerSample));
+    }
+
+    private void PullAudioFrames(ISystem6NativeLibrary library)
+    {
+        if (_audioSink is null || _audioFormat is not { } format || _audioFrameBuffer.Length == 0)
+        {
+            return;
+        }
+
+        var framesRequested = checked((uint)(_audioFrameBuffer.Length / format.Channels));
+        var framesWritten = library.FillAudioFrames(_audioFrameBuffer, framesRequested);
+        if (framesWritten == 0)
+        {
+            return;
+        }
+
+        var clampedFrames = Math.Min(framesWritten, framesRequested);
+        var bytesWritten = checked((int)clampedFrames * format.Channels * (format.BitsPerSample / 8));
+        _audioSink.PushPcm(MemoryMarshal.AsBytes(_audioFrameBuffer.AsSpan(0, bytesWritten / sizeof(short))));
+    }
+
+    private void StopAndDisposeAudio()
+    {
+        var sink = _audioSink;
+        _audioSink = null;
+        _audioFormat = null;
+        _audioFrameBuffer = [];
+        if (sink is null)
+        {
+            return;
+        }
+
+        sink.Clear();
+        sink.Stop();
+        sink.Dispose();
+    }
+
     private void CleanupLibraryAfterFailedStart()
     {
+        StopAndDisposeAudio();
         ShutdownAndDisposeLibrary();
         _runLoopCancellation?.Dispose();
         _runLoopCancellation = null;
