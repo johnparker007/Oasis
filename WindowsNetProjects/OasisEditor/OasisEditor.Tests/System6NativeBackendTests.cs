@@ -54,8 +54,8 @@ public sealed class System6NativeBackendTests
             Assert.True(observedRun, "Expected the emulation pump to call Run while output polling was disabled.");
             Assert.Contains("Run:8000", library.Calls);
             Assert.DoesNotContain("LampsUpdate", library.Calls);
-            Assert.DoesNotContain(library.Calls, call => call.StartsWith("GetLampsOn:", StringComparison.Ordinal));
-            Assert.DoesNotContain(library.Calls, call => call.StartsWith("GetPosOut:", StringComparison.Ordinal));
+            Assert.DoesNotContain("GetOutputSnapshot", library.Calls);
+            
         }
         finally
         {
@@ -129,10 +129,10 @@ public sealed class System6NativeBackendTests
         await backend.StartAsync(request, CancellationToken.None);
         await backend.StopAsync(CancellationToken.None);
 
-        Assert.Contains("SetCoinEnable:2:3:1", library.Calls);
-        Assert.Contains("SetCoinValue:2:3:10", library.Calls);
-        Assert.Contains("SetLockoutVal:2:3:4", library.Calls);
-        Assert.Contains("SetLockoutInvert:2:3:5", library.Calls);
+        Assert.Contains("SetCoinEnable:3:1", library.Calls);
+        Assert.Contains("SetCoinValue:3:10", library.Calls);
+        Assert.Contains("SetLockoutVal:3:4", library.Calls);
+        Assert.Contains("SetLockoutInvert:3:5", library.Calls);
         Assert.Contains("SetEnable:2:1", library.Calls);
         Assert.Contains("SetCounterIn:2:6", library.Calls);
         Assert.Contains("SetCounterOut:2:7", library.Calls);
@@ -283,12 +283,12 @@ public sealed class System6NativeBackendTests
             await backend.StartAsync(CreateLaunchRequest(rom1, rom2), CancellationToken.None);
             await backend.StopAsync(CancellationToken.None);
 
-            Assert.True(library.Calls.IndexOf("LampsUpdate") < library.Calls.IndexOf("GetLampsOn:0"));
+            Assert.Contains("GetOutputSnapshot", library.Calls);
             Assert.Contains(lampEvents, e => e.LampId == 0 && e.Value == 255);
             Assert.Contains(reelEvents, e => e.ReelId == 1 && e.Position == 86);
             Assert.Contains(reelEvents, e => e.ReelId == 2 && e.Position == 76);
-            Assert.Contains("GetPosOut:0", library.Calls);
-            Assert.Contains("GetPosOut:1", library.Calls);
+            Assert.Contains("GetOutputSnapshot", library.Calls);
+            
         }
         finally
         {
@@ -323,11 +323,7 @@ public sealed class System6NativeBackendTests
             Assert.DoesNotContain(library.Calls, call => call.StartsWith("SetOptoEnd:5:", StringComparison.Ordinal));
             Assert.DoesNotContain(library.Calls, call => call.StartsWith("SetOptoInvert:7:", StringComparison.Ordinal));
 
-            var getPosOutCalls = library.Calls.Where(call => call.StartsWith("GetPosOut:", StringComparison.Ordinal)).ToArray();
-            Assert.Equal(new[] { "GetPosOut:0", "GetPosOut:2", "GetPosOut:4" }, getPosOutCalls);
-            Assert.DoesNotContain("GetPosOut:1", library.Calls);
-            Assert.DoesNotContain("GetPosOut:3", library.Calls);
-            Assert.DoesNotContain("GetPosOut:5", library.Calls);
+            Assert.Contains("GetOutputSnapshot", library.Calls);
         }
         finally
         {
@@ -353,12 +349,10 @@ public sealed class System6NativeBackendTests
             await backend.StartAsync(CreateLaunchRequest([5, 255], rom1, rom2), CancellationToken.None);
             await backend.StopAsync(CancellationToken.None);
 
-            var getLampCalls = library.Calls.Where(call => call.StartsWith("GetLampsOn:", StringComparison.Ordinal)).ToArray();
-            Assert.Equal(new[] { "GetLampsOn:5", "GetLampsOn:255" }, getLampCalls);
+            Assert.Contains("GetOutputSnapshot", library.Calls);
             Assert.Contains(lampEvents, e => e.LampId == 5 && e.Value == 255);
             Assert.Contains(lampEvents, e => e.LampId == 255 && e.Value == 255);
-            Assert.DoesNotContain("GetLampsOn:0", library.Calls);
-            Assert.DoesNotContain("GetLampsOn:31", library.Calls);
+            
         }
         finally
         {
@@ -448,12 +442,7 @@ public sealed class System6NativeBackendTests
             await backend.StartAsync(request, CancellationToken.None);
             await backend.StopAsync(CancellationToken.None);
 
-            Assert.Contains("UpdateSegs", library.Calls);
-            Assert.Contains("GetSegsOn:32", library.Calls);
-            Assert.Contains("GetSegsOn:39", library.Calls);
-            Assert.Contains("GetSegsOn:80", library.Calls);
-            Assert.Contains("GetSegsOn:87", library.Calls);
-            Assert.DoesNotContain("GetSegsBright:32", library.Calls);
+            Assert.Contains("GetOutputSnapshot", library.Calls);
             Assert.Contains(segmentEvents, e => e.CellId == 2 && e.SegmentMask == 0x3F && e.OutputType == MameSegmentOutputType.Digit);
             Assert.Contains(segmentEvents, e => e.CellId == 5 && e.SegmentMask == 0x86 && e.OutputType == MameSegmentOutputType.Digit);
         }
@@ -524,7 +513,7 @@ public sealed class System6NativeBackendTests
             var brightnessEvent = Assert.Single(brightnessEvents);
             Assert.Equal(0, brightnessEvent.CellId);
             Assert.Equal(15d / 31d, brightnessEvent.NormalizedBrightness, precision: 6);
-            Assert.Contains("GetAlphaBrightness", library.Calls);
+            Assert.Contains("GetOutputSnapshot", library.Calls);
         }
         finally
         {
@@ -653,6 +642,58 @@ public sealed class System6NativeBackendTests
 
         public Dictionary<ushort, byte> SevenSegmentBrightness { get; } = new();
 
+        public uint GetOutputSnapshotSize() => (uint)Marshal.SizeOf<System6NativeOutputSnapshot>();
+
+        public System6NativeOutputSnapshot GetOutputSnapshot()
+        {
+            Calls.Add("GetOutputSnapshot");
+            var snapshot = new System6NativeOutputSnapshot
+            {
+                SizeBytes = (uint)Marshal.SizeOf<System6NativeOutputSnapshot>(),
+                Version = System6NativeOutputSnapshot.VersionValue,
+                MatrixLampCount = System6NativeOutputSnapshot.MatrixLampCapacity,
+                ReelCount = System6NativeOutputSnapshot.ReelCapacity,
+                AlphaSegmentedDisplayCount = AlphaSegmentPollingAvailable || AlphaBrightnessPollingAvailable ? 1u : 0u,
+                LedDisplayCount = SevenSegmentPollingAvailable ? System6NativeOutputSnapshot.LedDisplayCapacity : 0u
+            };
+
+            foreach (var (index, isOn) in GetLampsOnValues)
+            {
+                snapshot.SetMatrixLamp(index, new System6NativeLampState { OnOff = isOn ? (byte)1 : (byte)0, Brightness = isOn ? 1f : 0f });
+            }
+
+            foreach (var (index, position) in PositionOutputs)
+            {
+                snapshot.SetReelPosition(index, position);
+            }
+
+            if (AlphaSegmentPollingAvailable || AlphaBrightnessPollingAvailable)
+            {
+                var alpha = new System6NativeAlphaSegmentedState { Brightness = AlphaBrightnessPollingAvailable ? (float)System6NativeBackend.NormalizeSystem6AlphaBrightness(AlphaBrightness) : 1f };
+                unsafe
+                {
+                    foreach (var (index, segments) in AlphaSegments)
+                    {
+                        alpha.Segments[index] = (ushort)segments;
+                        AlphaSegmentIndices.Add(index);
+                    }
+                }
+                snapshot.SetAlphaSegmented(0, alpha);
+            }
+
+            foreach (var group in SevenSegmentCells.GroupBy(cell => cell.Key / 16))
+            {
+                uint mask = 0;
+                foreach (var cell in group.Where(cell => cell.Value))
+                {
+                    mask |= 1u << (cell.Key % 16);
+                }
+                snapshot.SetLedDisplay(group.Key, new System6NativeLedDisplayState { OnOff = mask, Brightness = 1f });
+            }
+
+            return snapshot;
+        }
+
         public byte Initialise()
         {
             Calls.Add("Initialise");
@@ -700,13 +741,13 @@ public sealed class System6NativeBackendTests
 
         public void SetPercent(byte percent) => Calls.Add($"SetPercent:{percent}");
 
-        public void SetCoinEnable(byte num, byte coin, byte coinEnable) => Calls.Add($"SetCoinEnable:{num}:{coin}:{coinEnable}");
+        public void SetCoinEnable(byte coin, byte coinEnable) => Calls.Add($"SetCoinEnable:{coin}:{coinEnable}");
 
-        public void SetCoinValue(byte num, byte coin, byte coinValue) => Calls.Add($"SetCoinValue:{num}:{coin}:{coinValue}");
+        public void SetCoinValue(byte coin, byte coinValue) => Calls.Add($"SetCoinValue:{coin}:{coinValue}");
 
-        public void SetLockoutVal(byte num, byte coin, byte lockoutValue) => Calls.Add($"SetLockoutVal:{num}:{coin}:{lockoutValue}");
+        public void SetLockoutVal(byte coin, byte lockoutValue) => Calls.Add($"SetLockoutVal:{coin}:{lockoutValue}");
 
-        public void SetLockoutInvert(byte num, byte coin, byte lockoutInvert) => Calls.Add($"SetLockoutInvert:{num}:{coin}:{lockoutInvert}");
+        public void SetLockoutInvert(byte coin, byte lockoutInvert) => Calls.Add($"SetLockoutInvert:{coin}:{lockoutInvert}");
 
         public void SetEnable(byte num, byte enable) => Calls.Add($"SetEnable:{num}:{enable}");
 
