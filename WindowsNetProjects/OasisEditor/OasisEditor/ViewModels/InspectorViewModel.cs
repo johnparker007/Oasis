@@ -15,6 +15,7 @@ namespace OasisEditor;
 public sealed class InspectorViewModel : INotifyPropertyChanged
 {
     private readonly Func<AssetBrowserItemViewModel?> _selectedAssetAccessor;
+    private readonly Func<AssetDirectoryNodeViewModel?> _selectedAssetDirectoryAccessor;
     private readonly Func<DocumentTabViewModel?> _selectedDocumentAccessor;
     private readonly Func<IEnumerable<DocumentTabViewModel>> _openDocumentsAccessor;
     private readonly Func<EditorProject?> _loadedProjectAccessor;
@@ -32,6 +33,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
     public InspectorViewModel(
         Func<AssetBrowserItemViewModel?> selectedAssetAccessor,
+        Func<AssetDirectoryNodeViewModel?> selectedAssetDirectoryAccessor,
         Func<DocumentTabViewModel?> selectedDocumentAccessor,
         Func<EditorProject?> loadedProjectAccessor,
         ActiveDocumentContextService activeDocumentContext,
@@ -40,6 +42,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         ICommand? generateFaceFromSourceShapeCommand = null)
         : this(
             selectedAssetAccessor,
+            selectedAssetDirectoryAccessor,
             selectedDocumentAccessor,
             () => [],
             loadedProjectAccessor,
@@ -52,6 +55,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
     public InspectorViewModel(
         Func<AssetBrowserItemViewModel?> selectedAssetAccessor,
+        Func<AssetDirectoryNodeViewModel?> selectedAssetDirectoryAccessor,
         Func<DocumentTabViewModel?> selectedDocumentAccessor,
         Func<IEnumerable<DocumentTabViewModel>> openDocumentsAccessor,
         Func<EditorProject?> loadedProjectAccessor,
@@ -61,6 +65,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         ICommand? generateFaceFromSourceShapeCommand = null)
     {
         _selectedAssetAccessor = selectedAssetAccessor;
+        _selectedAssetDirectoryAccessor = selectedAssetDirectoryAccessor;
         _selectedDocumentAccessor = selectedDocumentAccessor;
         _openDocumentsAccessor = openDocumentsAccessor;
         _loadedProjectAccessor = loadedProjectAccessor;
@@ -81,6 +86,24 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
     {
         get
         {
+            var selectedAsset = _selectedAssetAccessor();
+            if (selectedAsset is not null)
+            {
+                var loadedProjectForAsset = _loadedProjectAccessor();
+                return loadedProjectForAsset is not null
+                    ? AssetInspectorDetailsBuilder.GetTitle(loadedProjectForAsset, selectedAsset.FullPath, selectedAsset.IsDirectory)
+                    : $"Asset: {selectedAsset.DisplayPath}";
+            }
+
+            var selectedAssetDirectory = _selectedAssetDirectoryAccessor();
+            if (selectedAssetDirectory is not null)
+            {
+                var loadedProjectForDirectory = _loadedProjectAccessor();
+                return loadedProjectForDirectory is not null
+                    ? AssetInspectorDetailsBuilder.GetTitle(loadedProjectForDirectory, selectedAssetDirectory.FullPath, isDirectory: true)
+                    : $"Folder: {selectedAssetDirectory.DisplayPath}";
+            }
+
             var selectedDocument = _selectedDocumentAccessor();
             if (selectedDocument is not null
                 && _activeDocumentContext.ActivePanelSelection is PanelSelectionInfo panelSelection)
@@ -95,12 +118,6 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                 {
                     return NicifyElementKind(selectedElement.Kind);
                 }
-            }
-
-            var selectedAsset = _selectedAssetAccessor();
-            if (selectedAsset is not null)
-            {
-                return $"Asset: {selectedAsset.DisplayPath}";
             }
 
             if (selectedDocument is not null)
@@ -125,7 +142,13 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             var selectedAsset = _selectedAssetAccessor();
             if (selectedAsset is not null)
             {
-                return "Asset File";
+                return AssetInspectorDetailsBuilder.GetType(selectedAsset.FullPath, selectedAsset.IsDirectory);
+            }
+
+            var selectedAssetDirectory = _selectedAssetDirectoryAccessor();
+            if (selectedAssetDirectory is not null)
+            {
+                return AssetInspectorDetailsBuilder.GetType(selectedAssetDirectory.FullPath, isDirectory: true);
             }
 
             var selectedDocument = _selectedDocumentAccessor();
@@ -154,6 +177,12 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                 return selectedAsset.FullPath;
             }
 
+            var selectedAssetDirectory = _selectedAssetDirectoryAccessor();
+            if (selectedAssetDirectory is not null)
+            {
+                return selectedAssetDirectory.FullPath;
+            }
+
             var selectedDocument = _selectedDocumentAccessor();
             if (selectedDocument is not null)
             {
@@ -174,6 +203,20 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
     {
         get
         {
+            var selectedAssetForSummary = _selectedAssetAccessor();
+            if (selectedAssetForSummary is not null)
+            {
+                return selectedAssetForSummary.IsDirectory
+                    ? "Selected asset folder details are shown below."
+                    : "Selected asset file details are shown below.";
+            }
+
+            var selectedAssetDirectoryForSummary = _selectedAssetDirectoryAccessor();
+            if (selectedAssetDirectoryForSummary is not null)
+            {
+                return "Selected asset folder details are shown below.";
+            }
+
             var selectedDocument = _selectedDocumentAccessor();
             if (selectedDocument is not null)
             {
@@ -204,11 +247,6 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                 return selectedDocument.ContentSummary;
             }
 
-            var selectedAsset = _selectedAssetAccessor();
-            if (selectedAsset is not null)
-            {
-                return "Use this panel as the starting point for future property editing.";
-            }
 
             var loadedProject = _loadedProjectAccessor();
             if (loadedProject is not null)
@@ -236,6 +274,11 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
     {
         get
         {
+            if (_selectedAssetAccessor() is not null || _selectedAssetDirectoryAccessor() is not null)
+            {
+                return false;
+            }
+
             var selectedDocument = _selectedDocumentAccessor();
             return selectedDocument is not null
                 && selectedDocument.Document.DocumentType != EditorDocumentType.ProjectOverview;
@@ -246,6 +289,11 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
     {
         get
         {
+            if (_selectedAssetAccessor() is not null || _selectedAssetDirectoryAccessor() is not null)
+            {
+                return false;
+            }
+
             var selectedDocument = _selectedDocumentAccessor();
             return selectedDocument is not null
                 && selectedDocument.Document.DocumentType == EditorDocumentType.Panel2D
@@ -329,6 +377,23 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
     {
         _propertyRows.Clear();
 
+        var loadedProjectForAsset = _loadedProjectAccessor();
+        var selectedAssetForRows = _selectedAssetAccessor();
+        if (loadedProjectForAsset is not null && selectedAssetForRows is not null)
+        {
+            AssetInspectorDetailsBuilder.BuildRows(_propertyRows, loadedProjectForAsset, selectedAssetForRows.FullPath, selectedAssetForRows.IsDirectory);
+            OnPropertyChanged(nameof(InspectorPropertyRows));
+            return;
+        }
+
+        var selectedDirectoryForRows = _selectedAssetDirectoryAccessor();
+        if (loadedProjectForAsset is not null && selectedDirectoryForRows is not null)
+        {
+            AssetInspectorDetailsBuilder.BuildRows(_propertyRows, loadedProjectForAsset, selectedDirectoryForRows.FullPath, isDirectory: true);
+            OnPropertyChanged(nameof(InspectorPropertyRows));
+            return;
+        }
+
         var selectedDocument = _selectedDocumentAccessor();
         var selection = _activeDocumentContext.ActivePanelSelection;
         if (selectedDocument is not null
@@ -367,6 +432,26 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         {
             RebuildFaceSourceShapePropertyRows(selectedDocument, selectedSourceShape);
             return;
+        }
+
+        if (selectedDocument is null)
+        {
+            var loadedProject = _loadedProjectAccessor();
+            var selectedAsset = _selectedAssetAccessor();
+            if (loadedProject is not null && selectedAsset is not null)
+            {
+                AssetInspectorDetailsBuilder.BuildRows(_propertyRows, loadedProject, selectedAsset.FullPath, selectedAsset.IsDirectory);
+                OnPropertyChanged(nameof(InspectorPropertyRows));
+                return;
+            }
+
+            var selectedAssetDirectory = _selectedAssetDirectoryAccessor();
+            if (loadedProject is not null && selectedAssetDirectory is not null)
+            {
+                AssetInspectorDetailsBuilder.BuildRows(_propertyRows, loadedProject, selectedAssetDirectory.FullPath, isDirectory: true);
+                OnPropertyChanged(nameof(InspectorPropertyRows));
+                return;
+            }
         }
 
         if (selectedDocument is null || selection is not PanelSelectionInfo selectedSelection || !selectedDocument.TryGetPanelElement(selectedSelection, out var selectedElement))

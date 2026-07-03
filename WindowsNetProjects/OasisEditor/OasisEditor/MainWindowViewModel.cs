@@ -240,6 +240,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _assetBrowser.StateChanged += OnAssetBrowserStateChanged;
         _inspector = new InspectorViewModel(
             () => SelectedAsset,
+            () => _assetBrowser.SelectedDirectory,
             () => SelectedDocument,
             () => OpenDocuments,
             () => LoadedProject,
