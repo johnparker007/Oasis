@@ -29,4 +29,7 @@ public interface ISystem6NativeLibrary : INativeCoreLibrary
     void SetFullLevel(byte num, byte fullLevel);
     void TurnSwitchOn(int switchIndex);
     void TurnSwitchOff(int switchIndex);
+    bool IsAudioAvailable { get; }
+    System6NativeAudioFormat GetAudioFormat();
+    uint FillAudioFrames(Span<short> interleavedStereoFrames, uint framesRequired);
 }
