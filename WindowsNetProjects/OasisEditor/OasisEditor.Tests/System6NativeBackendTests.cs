@@ -49,8 +49,8 @@ public sealed class System6NativeBackendTests
 
         Assert.True(observedAudio, "Expected the emulation pump to pull native audio and push PCM bytes.");
         Assert.Equal(new EmulationAudioFormat(48000, 2, 16), sink.StartedFormats.Single());
-        Assert.Contains(100, sink.PushedSamples);
-        Assert.Contains(-100, sink.PushedSamples);
+        Assert.Contains((short)100, sink.PushedSamples);
+        Assert.Contains((short)-100, sink.PushedSamples);
     }
 
     [Fact]
