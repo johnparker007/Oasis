@@ -33,6 +33,26 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
     public InspectorViewModel(
         Func<AssetBrowserItemViewModel?> selectedAssetAccessor,
+        Func<DocumentTabViewModel?> selectedDocumentAccessor,
+        Func<EditorProject?> loadedProjectAccessor,
+        ActiveDocumentContextService activeDocumentContext,
+        Func<Guid, EditorCommands.ICommand, bool> executeCanvasCommand,
+        Func<DocumentTabViewModel, string, DocumentTabViewModel?> applySummary,
+        ICommand? generateFaceFromSourceShapeCommand = null)
+        : this(
+            selectedAssetAccessor,
+            () => null,
+            selectedDocumentAccessor,
+            loadedProjectAccessor,
+            activeDocumentContext,
+            executeCanvasCommand,
+            applySummary,
+            generateFaceFromSourceShapeCommand)
+    {
+    }
+
+    public InspectorViewModel(
+        Func<AssetBrowserItemViewModel?> selectedAssetAccessor,
         Func<AssetDirectoryNodeViewModel?> selectedAssetDirectoryAccessor,
         Func<DocumentTabViewModel?> selectedDocumentAccessor,
         Func<EditorProject?> loadedProjectAccessor,
