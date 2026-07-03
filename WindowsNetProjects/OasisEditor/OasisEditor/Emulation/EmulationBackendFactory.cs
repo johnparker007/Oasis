@@ -18,7 +18,7 @@ public sealed class EmulationBackendFactory : IEmulationBackendFactory
     {
         _mameBackendFactory = mameBackendFactory ?? throw new ArgumentNullException(nameof(mameBackendFactory));
         _system6LibraryPathProvider = system6LibraryPathProvider ?? throw new ArgumentNullException(nameof(system6LibraryPathProvider));
-        _system6AudioBufferLengthMillisecondsProvider = system6AudioBufferLengthMillisecondsProvider ?? static () => NativeEmulationPreferences.DefaultAudioBufferLengthMilliseconds;
+        _system6AudioBufferLengthMillisecondsProvider = system6AudioBufferLengthMillisecondsProvider ?? (() => NativeEmulationPreferences.DefaultAudioBufferLengthMilliseconds);
     }
 
     public IEmulationBackend? CreateBackend(FruitMachinePlatformType platform)
