@@ -309,6 +309,19 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         }
     }
 
+
+    public void ActivateAssetInspection()
+    {
+        if (_selectedAssetAccessor() is not { IsDirectory: false })
+        {
+            return;
+        }
+
+        _activeInspectorSource = InspectorSelectionSource.Asset;
+        _lastObservedAssetPath = null;
+        NotifyContextChanged();
+    }
+
     public void NotifyContextChanged()
     {
         UpdateActiveInspectorSource();

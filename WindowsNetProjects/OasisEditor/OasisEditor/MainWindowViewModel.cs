@@ -976,6 +976,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
+
+    public void ActivateSelectedAssetInspector()
+    {
+        _inspector.ActivateAssetInspection();
+    }
+
     public AssetDirectoryNodeViewModel? SelectedAssetDirectory
     {
         get => _assetBrowser.SelectedDirectory;
