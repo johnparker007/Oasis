@@ -158,11 +158,8 @@ public sealed class System6NativeBackend : IEmulationBackend
 
             _library = _libraryFactory(_libraryPath);
             LogStartupStage("native DLL loaded and exports bound");
-            LogStartupStage($"SYSTEM6GetAlphaSegments export {(_library.IsAlphaSegmentPollingAvailable ? "available" : "missing")}");
+            LogStartupStage($"GetOutputSnapshot size={_library.GetOutputSnapshotSize()} bytes");
             LogStartupStage($"SetPercent export {(_library.IsSetPercentAvailable ? "available" : "missing")}");
-            LogStartupStage($"SYSTEM6GetSegOn export {(_library.IsSevenSegmentPollingAvailable ? "available" : "missing")}");
-            LogStartupStage($"SYSTEM6UpdateLamps export {FormatOptionalExportStatus(_library.IsLampsUpdateAvailable, _library.LampsUpdateExportName)}");
-            LogStartupStage("SYSTEM6GetLampsOn export available");
             if (startupStage is System6StartupStage.LoadBindOnly)
             {
                 return CompleteStagedStartup();
@@ -174,7 +171,7 @@ public sealed class System6NativeBackend : IEmulationBackend
                 LogStartupStage($"Initialise returned {initialiseResult}");
                 if (initialiseResult == 0)
                 {
-                    throw new InvalidOperationException("SYSTEM6Initialise returned failure.");
+                    throw new InvalidOperationException("Initialise returned failure.");
                 }
             }
             catch (Exception ex)
@@ -203,7 +200,7 @@ public sealed class System6NativeBackend : IEmulationBackend
                 LogStartupStage($"LoadROM returned {loadRomResult}");
                 if (loadRomResult == 0)
                 {
-                    throw new InvalidOperationException("SYSTEM6LoadROM returned failure.");
+                    throw new InvalidOperationException("LoadROM returned failure.");
                 }
 
                 if (soundRomPaths.Any(path => !string.IsNullOrWhiteSpace(path)))
@@ -212,7 +209,7 @@ public sealed class System6NativeBackend : IEmulationBackend
                     LogStartupStage($"LoadSoundROM returned {loadSoundRomResult}");
                     if (loadSoundRomResult == 0)
                     {
-                        throw new InvalidOperationException("SYSTEM6LoadSoundROM returned failure.");
+                        throw new InvalidOperationException("LoadSoundROM returned failure.");
                     }
                 }
                 else
@@ -730,10 +727,10 @@ public sealed class System6NativeBackend : IEmulationBackend
         {
             var num = checked((byte)coin.Num);
             var channel = checked((byte)coin.Coin);
-            library.SetCoinEnable(num, channel, checked((byte)coin.CoinEnable));
-            library.SetCoinValue(num, channel, checked((byte)coin.CoinValue));
-            library.SetLockoutVal(num, channel, checked((byte)coin.LockoutValue));
-            library.SetLockoutInvert(num, channel, checked((byte)coin.LockoutInvert));
+            library.SetCoinEnable(channel, checked((byte)coin.CoinEnable));
+            library.SetCoinValue(channel, checked((byte)coin.CoinValue));
+            library.SetLockoutVal(channel, checked((byte)coin.LockoutValue));
+            library.SetLockoutInvert(channel, checked((byte)coin.LockoutInvert));
             library.SetEnable(num, 1);
             library.SetCounterIn(num, checked((byte)coin.CounterIn));
             library.SetCounterOut(num, checked((byte)coin.CounterOut));
@@ -826,17 +823,18 @@ public sealed class System6NativeBackend : IEmulationBackend
         Debug.WriteLine($"System6 native backend output timing: pollHz={_outputPollsPerSecond}; PollOutputs={pollElapsed.TotalMilliseconds:0.00} ms; skippedVisualPolls={skippedPolls}; nativeCalls={nativeInvokeCount}.");
     }
 
-    private int PollOutputs(ISystem6NativeLibrary library)
+    private unsafe int PollOutputs(ISystem6NativeLibrary library)
     {
-        var nativeInvokeCount = 0;
-        nativeInvokeCount += PollLampOutputs(library);
-        nativeInvokeCount += PollReelOutputs(library);
-        nativeInvokeCount += PollAlphaDebugOutput(library);
-        nativeInvokeCount += PollSevenSegmentOutputs(library);
+        var snapshot = library.GetOutputSnapshot();
+        var nativeInvokeCount = 1;
+        nativeInvokeCount += PollLampOutputs(snapshot);
+        nativeInvokeCount += PollReelOutputs(snapshot);
+        nativeInvokeCount += PollAlphaOutputs(snapshot);
+        nativeInvokeCount += PollSevenSegmentOutputs(snapshot);
         return nativeInvokeCount;
     }
 
-    private int PollSevenSegmentOutputs(ISystem6NativeLibrary library)
+    private unsafe int PollSevenSegmentOutputs(System6NativeOutputSnapshot snapshot)
     {
         var displayIds = _configuredSevenSegmentDisplayIds;
         if (displayIds is null || displayIds.Count == 0)
@@ -844,84 +842,36 @@ public sealed class System6NativeBackend : IEmulationBackend
             return 0;
         }
 
-        if (!library.IsSevenSegmentPollingAvailable)
-        {
-            if (!_hasLoggedSevenSegmentUnavailable)
-            {
-                _hasLoggedSevenSegmentUnavailable = true;
-                Debug.WriteLine("[System6 7 Segment] SYSTEM6GetSegOn unavailable; seven-segment polling disabled.");
-            }
-
-            return 0;
-        }
-
-        var nativeInvokeCount = 0;
-        try
-        {
-            library.UpdateSegs();
-            nativeInvokeCount++;
-        }
-        catch (NotSupportedException)
-        {
-            // Some cores expose direct segment reads without an explicit update export.
-        }
-
         foreach (var displayId in displayIds)
         {
-            var baseIndex = GetNativeSevenSegmentBaseIndex(displayId);
-            var mask = 0;
-            for (var bit = 0; bit < SevenSegmentMaskBits; bit++)
+            if (displayId >= snapshot.LedDisplayCount || displayId >= System6NativeOutputSnapshot.LedDisplayCapacity)
             {
-                var nativeIndex = checked((ushort)(baseIndex + bit));
-                if (library.GetSegsOn(nativeIndex) != 0)
-                {
-                    mask |= 1 << bit;
-                }
-
-                nativeInvokeCount++;
+                continue;
             }
 
+            var ledDisplay = snapshot.GetLedDisplay(displayId);
+            var mask = unchecked((int)ledDisplay.OnOff);
             if (!_lastSevenSegmentMasks.TryGetValue(displayId, out var previous) || previous != mask)
             {
                 _lastSevenSegmentMasks[displayId] = mask;
-                if (_timingDiagnosticsEnabled)
-                {
-                    Debug.WriteLine($"[System6 7 Segment] display {displayId} nativeBase={baseIndex} mask=0x{mask:X2}");
-                }
-
                 SegmentChanged?.Invoke(this, new MachineSegmentChangedEventArgs(displayId, mask, MameSegmentOutputType.Digit));
             }
         }
 
-        return nativeInvokeCount;
+        return 0;
     }
 
-    internal static int GetNativeSevenSegmentBaseIndex(int displayId)
-    {
-        // The native core exposes Seg7.On[256] as individual segment cells, not
-        // digit-level masks. Each digit occupies a 16-cell block; the first eight
-        // cells map to the canonical Oasis/MAME seven-segment bits.
-        return checked(displayId * NativeSevenSegmentCellStride);
-    }
+    internal static int GetNativeSevenSegmentBaseIndex(int displayId) => displayId;
 
-    private int PollLampOutputs(ISystem6NativeLibrary library)
+    private int PollLampOutputs(System6NativeOutputSnapshot snapshot)
     {
-        var nativeInvokeCount = 0;
-        LogLampPollingConfiguration(library);
-        if (library.IsLampsUpdateAvailable)
-        {
-            library.LampsUpdate();
-            nativeInvokeCount++;
-        }
-
         var changedDiagnostics = new List<string>();
-        foreach (var lampIndex in GetLampPollingIds())
+        var lampCount = (int)Math.Min(snapshot.MatrixLampCount, (uint)System6NativeOutputSnapshot.MatrixLampCapacity);
+        foreach (var lampIndex in GetLampPollingIds().Where(id => id < lampCount))
         {
-            var nativeLampIndex = checked((ushort)lampIndex);
-            var rawValue = library.GetLampsOn(nativeLampIndex) ? 1 : 0;
-            nativeInvokeCount++;
-            var isOn = rawValue != 0;
-            var value = isOn ? 255 : 0;
+            var lamp = snapshot.GetMatrixLamp(lampIndex);
+            var rawValue = lamp.OnOff != 0 ? 1 : 0;
+            var value = NormalizeLampBrightness(lamp);
             var diagnosticChanged = _lastLampRawValues[lampIndex] != rawValue;
             if (diagnosticChanged)
             {
@@ -935,7 +885,7 @@ public sealed class System6NativeBackend : IEmulationBackend
 
             if (diagnosticChanged && changedDiagnostics.Count < DiagnosticChangedLampSampleCount)
             {
-                changedDiagnostics.Add(FormatLampChangeDiagnostic(nativeLampIndex, lampIndex, rawValue, isOn, value));
+                changedDiagnostics.Add(FormatLampChangeDiagnostic((ushort)lampIndex, lampIndex, rawValue, value > 0, value));
             }
         }
 
@@ -944,7 +894,17 @@ public sealed class System6NativeBackend : IEmulationBackend
             Debug.WriteLine($"[System6 Lamps] changed: {string.Join("; ", changedDiagnostics)}");
         }
 
-        return nativeInvokeCount;
+        return 0;
+    }
+
+    private static int NormalizeLampBrightness(System6NativeLampState lamp)
+    {
+        if (lamp.Brightness > 0f)
+        {
+            return Math.Clamp((int)Math.Round(lamp.Brightness * 255f), 0, 255);
+        }
+
+        return lamp.OnOff != 0 ? 255 : 0;
     }
 
     private static string FormatLampChangeDiagnostic(ushort nativeLampIndex, int lampIndex, int rawValue, bool isOn, int value)
@@ -952,19 +912,14 @@ public sealed class System6NativeBackend : IEmulationBackend
         return $"native {nativeLampIndex} -> lamp:{lampIndex} raw={rawValue.ToString(CultureInfo.InvariantCulture)} on={isOn.ToString(CultureInfo.InvariantCulture).ToLowerInvariant()} value={value}";
     }
 
-    private int PollReelOutputs(ISystem6NativeLibrary library)
+    private int PollReelOutputs(System6NativeOutputSnapshot snapshot)
     {
-        var nativeInvokeCount = 0;
         LogReelPollingMapping();
-        foreach (var reelIndex in _enabledReelPollingIndices)
+        var reelCount = (int)Math.Min(snapshot.ReelCount, (uint)System6NativeOutputSnapshot.ReelCapacity);
+        foreach (var reelIndex in _enabledReelPollingIndices.Where(index => index < reelCount))
         {
-            // GetPosOut expects the same zero-based reel selector used by the
-            // native reel opto setup. Oasis machine references use the one-based
-            // display reel number, so translate only the emitted event ID.
-            var nativePositionSelector = checked((sbyte)reelIndex);
             var reelId = reelIndex + 1;
-            var rawPosition = library.GetPosOut(nativePositionSelector);
-            nativeInvokeCount++;
+            var rawPosition = snapshot.GetReelPosition(reelIndex);
             var position = NormalizeConfiguredNativeSystem6ReelPosition(reelIndex, rawPosition);
             if (_lastReelPositions[reelIndex] != position)
             {
@@ -973,9 +928,45 @@ public sealed class System6NativeBackend : IEmulationBackend
             }
         }
 
-        return nativeInvokeCount;
+        return 0;
     }
 
+    private unsafe int PollAlphaOutputs(System6NativeOutputSnapshot snapshot)
+    {
+        if (snapshot.AlphaSegmentedDisplayCount == 0)
+        {
+            return 0;
+        }
+
+        var alpha = snapshot.GetAlphaSegmented(0);
+        var normalizedBrightness = Math.Clamp(alpha.Brightness, 0d, 1d);
+        if (!_lastAlphaBrightness.HasValue || Math.Abs(_lastAlphaBrightness.Value - normalizedBrightness) >= 0.000001d)
+        {
+            _lastAlphaBrightness = normalizedBrightness;
+            VfdBrightnessChanged?.Invoke(this, new MachineVfdBrightnessChangedEventArgs(0, normalizedBrightness));
+        }
+
+        var segments = new int[AlphaCellCount];
+        var mappedSegments = new int[AlphaCellCount];
+        for (var index = 0; index < segments.Length; index++)
+        {
+            segments[index] = alpha.Segments[index];
+            mappedSegments[index] = System6AlphaSegmentMapper.MapNativeMaskToOasisMask(segments[index]);
+        }
+
+        if (_lastAlphaSegments is not null && segments.SequenceEqual(_lastAlphaSegments))
+        {
+            return 0;
+        }
+
+        _lastAlphaSegments = segments;
+        for (var index = 0; index < segments.Length; index++)
+        {
+            SegmentChanged?.Invoke(this, new MachineSegmentChangedEventArgs(index, mappedSegments[index], MameSegmentOutputType.NativeAlpha));
+        }
+
+        return 0;
+    }
 
     private void ResetConfiguredReelStepCounts()
     {
@@ -1046,22 +1037,6 @@ public sealed class System6NativeBackend : IEmulationBackend
         return (steps - positionWithinReel) % steps;
     }
 
-    private void LogLampPollingConfiguration(ISystem6NativeLibrary library)
-    {
-        if (_hasLoggedLampPollingConfiguration)
-        {
-            return;
-        }
-
-        _hasLoggedLampPollingConfiguration = true;
-        var lampIds = GetLampPollingIds();
-        var source = _configuredLampPollingIds is null ? $"fallback native lamps 0-{FallbackLampCount - 1}" : $"configured native lamp IDs ({lampIds.Count} total, range {lampIds.Min()}-{lampIds.Max()})";
-        Debug.WriteLine($"[System6 Lamps] SYSTEM6UpdateLamps export {FormatOptionalExportStatus(library.IsLampsUpdateAvailable, library.LampsUpdateExportName)}; SYSTEM6GetLampsOn export available; value source=SYSTEM6GetLampsOn; polling {source}");
-        var mappings = lampIds.Take(DiagnosticMappingSampleCount)
-            .Select(index => $"native {index} -> lamp:{index}");
-        Debug.WriteLine($"[System6 Lamps] mapping sample: {string.Join("; ", mappings)}");
-    }
-
     private void LogReelPollingMapping()
     {
         if (_hasLoggedReelPollingMapping)
@@ -1075,80 +1050,10 @@ public sealed class System6NativeBackend : IEmulationBackend
         Debug.WriteLine($"[System6 Reels] mapping sample: {string.Join("; ", mappings)}");
     }
 
-    private int PollAlphaDebugOutput(ISystem6NativeLibrary library)
-    {
-        var nativeInvokeCount = PollAlphaBrightnessOutput(library);
-
-        if (!library.IsAlphaSegmentPollingAvailable)
-        {
-            if (!_hasLoggedAlphaUnavailable)
-            {
-                _hasLoggedAlphaUnavailable = true;
-                Debug.WriteLine("[System6 Alpha] SYSTEM6GetAlphaSegments unavailable; alpha segment polling disabled.");
-            }
-
-            return nativeInvokeCount;
-        }
-
-        var segments = new int[AlphaCellCount];
-        var mappedSegments = new int[AlphaCellCount];
-        for (var index = 0; index < segments.Length; index++)
-        {
-            segments[index] = library.GetAlphaSegments(checked((byte)index));
-            nativeInvokeCount++;
-            mappedSegments[index] = System6AlphaSegmentMapper.MapNativeMaskToOasisMask(segments[index]);
-        }
-
-        if (_lastAlphaSegments is not null && segments.SequenceEqual(_lastAlphaSegments))
-        {
-            return nativeInvokeCount;
-        }
-
-        _lastAlphaSegments = segments;
-        if (_timingDiagnosticsEnabled)
-        {
-            Debug.WriteLine($"System6 alpha segs: {FormatAlphaSegments(segments)}");
-            Debug.WriteLine($"System6 alpha mapped segs: {FormatAlphaSegments(mappedSegments)}");
-        }
-
-        for (var index = 0; index < segments.Length; index++)
-        {
-            if (_timingDiagnosticsEnabled)
-            {
-                Debug.WriteLine($"System6 alpha cell {index} raw=0x{(segments[index] & 0xFFFF):X4} mapped=0x{(mappedSegments[index] & 0xFFFF):X4}");
-            }
-
-            SegmentChanged?.Invoke(this, new MachineSegmentChangedEventArgs(index, mappedSegments[index], MameSegmentOutputType.NativeAlpha));
-        }
-
-        return nativeInvokeCount;
-    }
-
     internal static double NormalizeSystem6AlphaBrightness(byte rawBrightness)
     {
-        // SYSTEM6GetAlphaBright appears to report the same 0-31 VFD duty range that
-        // MAME exposes for Impact vfdduty outputs. The optional export gate handles
-        // unavailable data; raw 0 is a valid blank/fade-start value, not full brightness.
         const double maxSystem6AlphaDuty = 31d;
         return Math.Clamp(rawBrightness / maxSystem6AlphaDuty, 0d, 1d);
-    }
-
-    private int PollAlphaBrightnessOutput(ISystem6NativeLibrary library)
-    {
-        if (!library.IsAlphaBrightnessPollingAvailable)
-        {
-            return 0;
-        }
-
-        var normalizedBrightness = NormalizeSystem6AlphaBrightness(library.GetAlphaBrightness());
-        if (_lastAlphaBrightness.HasValue && Math.Abs(_lastAlphaBrightness.Value - normalizedBrightness) < 0.000001d)
-        {
-            return 1;
-        }
-
-        _lastAlphaBrightness = normalizedBrightness;
-        VfdBrightnessChanged?.Invoke(this, new MachineVfdBrightnessChangedEventArgs(0, normalizedBrightness));
-        return 1;
     }
 
     private void ResetCachedOutputState()
