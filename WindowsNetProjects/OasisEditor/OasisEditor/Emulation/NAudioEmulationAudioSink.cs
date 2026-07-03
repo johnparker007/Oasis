@@ -5,12 +5,21 @@ namespace OasisEditor;
 
 public sealed class NAudioEmulationAudioSink : IEmulationAudioSink
 {
-    private const int DesiredBufferMilliseconds = 200;
-    private const int DiscardThresholdMilliseconds = 250;
+    private readonly int _bufferLengthMilliseconds;
 
     private BufferedWaveProvider? _buffer;
     private WasapiOut? _output;
     private EmulationAudioFormat? _format;
+
+    public NAudioEmulationAudioSink(int bufferLengthMilliseconds = NativeEmulationPreferences.DefaultAudioBufferLengthMilliseconds)
+    {
+        if (bufferLengthMilliseconds <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(bufferLengthMilliseconds), bufferLengthMilliseconds, "Audio buffer length must be greater than zero.");
+        }
+
+        _bufferLengthMilliseconds = bufferLengthMilliseconds;
+    }
 
     public void Start(EmulationAudioFormat format)
     {
@@ -20,10 +29,10 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink
         var waveFormat = new WaveFormat(format.SampleRate, format.BitsPerSample, format.Channels);
         _buffer = new BufferedWaveProvider(waveFormat)
         {
-            BufferDuration = TimeSpan.FromMilliseconds(DesiredBufferMilliseconds),
+            BufferDuration = TimeSpan.FromMilliseconds(_bufferLengthMilliseconds),
             DiscardOnBufferOverflow = true
         };
-        _output = new WasapiOut(AudioClientShareMode.Shared, DesiredBufferMilliseconds);
+        _output = new WasapiOut(AudioClientShareMode.Shared, _bufferLengthMilliseconds);
         _output.Init(_buffer);
         _output.Play();
         _format = format;
@@ -37,8 +46,8 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink
         }
 
         var format = _format ?? throw new InvalidOperationException("Audio sink has not been started.");
-        var discardThresholdBytes = format.SampleRate * format.Channels * (format.BitsPerSample / 8) * DiscardThresholdMilliseconds / 1000;
-        if (_buffer.BufferedBytes > discardThresholdBytes)
+        var configuredBufferBytes = format.SampleRate * format.Channels * (format.BitsPerSample / 8) * _bufferLengthMilliseconds / 1000;
+        if (_buffer.BufferedBytes > configuredBufferBytes)
         {
             _buffer.ClearBuffer();
         }

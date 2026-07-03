@@ -137,6 +137,14 @@
                 <TextBlock FontSize="18" FontWeight="SemiBold" Text="Native Emulation" />
                 <TextBlock Margin="0,16,0,4" Text="System6 native core DLL path" Foreground="{DynamicResource TextSecondaryBrush}" />
                 <TextBox Text="{Binding System6NativeLibraryPath, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                <TextBlock Margin="0,16,0,4" Text="Audio Buffer Length (ms)" Foreground="{DynamicResource TextSecondaryBrush}" />
+                <TextBox Width="120"
+                         HorizontalAlignment="Left"
+                         Text="{Binding System6AudioBufferLengthMilliseconds, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                <TextBlock Margin="0,4,0,0"
+                           TextWrapping="Wrap"
+                           Foreground="{DynamicResource TextSecondaryBrush}"
+                           Text="Playback buffering for native System6 audio. Lower values reduce latency; higher values can help if audio crackles." />
                 <TextBlock Margin="0,8,0,0"
                            TextWrapping="Wrap"
                            Foreground="{DynamicResource TextSecondaryBrush}"

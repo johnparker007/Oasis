@@ -31,7 +31,10 @@ public sealed class MamePreferences
 
 public sealed class NativeEmulationPreferences
 {
+    public const int DefaultAudioBufferLengthMilliseconds = 50;
+
     public string System6LibraryPath { get; init; } = string.Empty;
+    public int AudioBufferLengthMilliseconds { get; init; } = DefaultAudioBufferLengthMilliseconds;
 }
 
 public sealed class FaceGenerationPreferences

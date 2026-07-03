@@ -41,6 +41,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string _mameLuaPluginPath = string.Empty;
     private string _mameCommandLineOverrides = string.Empty;
     private string _system6NativeLibraryPath = string.Empty;
+    private int _system6AudioBufferLengthMilliseconds = NativeEmulationPreferences.DefaultAudioBufferLengthMilliseconds;
     private string _mameRomDownloadBaseUrl = MameRomDownloadService.DefaultDownloadRootUrl;
     private string _mameRomArchiveExtension = MameRomDownloadService.DefaultArchiveExtension;
     private string _mameLocalRomSourceDirectory = string.Empty;
@@ -269,6 +270,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             _mameLuaPluginPath = MameRuntimePaths.ResolveBundledLuaPluginSourcePath();
             _mameCommandLineOverrides = preferences.Mame.CommandLineOverrides;
             _system6NativeLibraryPath = preferences.NativeEmulation.System6LibraryPath;
+            _system6AudioBufferLengthMilliseconds = NormalizeSystem6AudioBufferLengthMilliseconds(preferences.NativeEmulation.AudioBufferLengthMilliseconds);
             _mameRomDownloadBaseUrl = preferences.Mame.RomDownloadBaseUrl;
             _mameRomArchiveExtension = preferences.Mame.RomArchiveExtension;
             _mameLocalRomSourceDirectory = preferences.Mame.LocalRomSourceDirectory;
@@ -360,7 +362,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 _mameProcessRunner,
                 () => SelectedFruitMachinePlatform,
                 input => LoadedProject?.InputDefinitions.FirstOrDefault(definition => string.Equals(definition.Id, input.Id, StringComparison.OrdinalIgnoreCase))),
-            () => System6NativeLibraryPath);
+            () => System6NativeLibraryPath,
+            () => System6AudioBufferLengthMilliseconds);
 
         _mameEmulationService.StateChanged += (_, state) =>
         {
@@ -638,6 +641,18 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public string MameLuaPluginPath => _mameLuaPluginPath;
     public string MameCommandLineOverrides { get => _mameCommandLineOverrides; set { if (SetProperty(ref _mameCommandLineOverrides, value)) SavePreferences(); } }
     public string System6NativeLibraryPath { get => _system6NativeLibraryPath; set { if (SetProperty(ref _system6NativeLibraryPath, value)) SavePreferences(); } }
+    public int System6AudioBufferLengthMilliseconds
+    {
+        get => _system6AudioBufferLengthMilliseconds;
+        set
+        {
+            var normalized = NormalizeSystem6AudioBufferLengthMilliseconds(value);
+            if (SetProperty(ref _system6AudioBufferLengthMilliseconds, normalized))
+            {
+                SavePreferences();
+            }
+        }
+    }
     public string MameRomDownloadBaseUrl
     {
         get => _mameRomDownloadBaseUrl;
@@ -2345,6 +2360,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             AddOutputEntry($"Failed to remove cached MAME version: {ex.Message}", OutputLogStatus.Warning);
         }
     }
+
+    private static int NormalizeSystem6AudioBufferLengthMilliseconds(int value)
+        => Math.Clamp(value, 10, 1000);
+
     private void SavePreferences()
     {
         var existingPreferences = _preferencesStore.Load();
@@ -2368,7 +2387,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             },
             NativeEmulation = new NativeEmulationPreferences
             {
-                System6LibraryPath = System6NativeLibraryPath
+                System6LibraryPath = System6NativeLibraryPath,
+                AudioBufferLengthMilliseconds = System6AudioBufferLengthMilliseconds
             },
             FaceGeneration = FaceGenerationPreferences.FromSettings(
                 _defaultFaceGenerationSettings,
