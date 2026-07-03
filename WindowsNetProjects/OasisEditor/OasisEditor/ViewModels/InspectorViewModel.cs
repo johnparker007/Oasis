@@ -310,6 +310,13 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
     }
 
 
+
+    public void ActivateDocumentInspection()
+    {
+        _activeInspectorSource = InspectorSelectionSource.Document;
+        _lastObservedDocumentSelectionKey = null;
+    }
+
     public void ActivateAssetInspection()
     {
         if (_selectedAssetAccessor() is not { IsDirectory: false })

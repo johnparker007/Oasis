@@ -980,6 +980,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public void ActivateSelectedAssetInspector()
     {
         _inspector.ActivateAssetInspection();
+        NotifyInspectorChanged();
     }
 
     public AssetDirectoryNodeViewModel? SelectedAssetDirectory
@@ -3572,6 +3573,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         _activeDocumentContext.SetPanelSelection(documentId, selection);
+        _inspector.ActivateDocumentInspection();
         _hierarchy.SyncSelection(selection);
         NotifyInspectorChanged();
         OnPropertyChanged(nameof(HierarchyItems));
