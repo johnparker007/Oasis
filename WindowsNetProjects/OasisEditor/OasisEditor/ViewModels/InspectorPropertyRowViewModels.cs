@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Globalization;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 namespace OasisEditor;
 
@@ -520,4 +521,18 @@ public sealed class InspectorActionPropertyViewModel : InspectorPropertyRowViewM
     }
 
     public System.Windows.Input.ICommand Command { get; }
+}
+
+public sealed class InspectorImagePreviewPropertyViewModel : InspectorPropertyRowViewModel
+{
+    public InspectorImagePreviewPropertyViewModel(string displayName, string groupName, BitmapSource image, string? caption = null)
+        : base(displayName, groupName, true)
+    {
+        Image = image;
+        Caption = caption ?? $"{image.PixelWidth:0} x {image.PixelHeight:0}";
+    }
+
+    public BitmapSource Image { get; }
+
+    public string Caption { get; }
 }

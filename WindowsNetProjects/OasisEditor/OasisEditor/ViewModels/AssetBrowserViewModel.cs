@@ -104,7 +104,10 @@ public sealed class AssetBrowserViewModel : IDisposable
 
             _selectedAsset = value;
             _selectionChanged();
-            _notifyInspectorChanged();
+            if (value is not null && !value.IsDirectory)
+            {
+                _notifyInspectorChanged();
+            }
             NotifyRefreshCommand();
             NotifyOpenAssetCommand();
             NotifyAssetContextCommands();
@@ -644,7 +647,7 @@ public sealed class AssetBrowserViewModel : IDisposable
             }
         }
 
-        SelectedAsset = AssetBrowserItems.FirstOrDefault();
+        SelectedAsset = null;
     }
 
 

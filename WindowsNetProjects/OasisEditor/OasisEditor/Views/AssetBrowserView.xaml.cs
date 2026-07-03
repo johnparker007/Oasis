@@ -28,6 +28,33 @@ public partial class AssetBrowserView : UserControl
         }
     }
 
+
+    private void OnAssetListPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs eventArgs)
+    {
+        if (DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        if (eventArgs.OriginalSource is not DependencyObject source)
+        {
+            return;
+        }
+
+        var listBoxItem = FindAncestor<ListBoxItem>(source);
+        if (listBoxItem?.DataContext is not AssetBrowserItemViewModel asset || asset.IsDirectory)
+        {
+            return;
+        }
+
+        var wasAlreadySelected = ReferenceEquals(viewModel.SelectedAsset, asset);
+        viewModel.SelectedAsset = asset;
+        if (wasAlreadySelected)
+        {
+            viewModel.ActivateSelectedAssetInspector();
+        }
+    }
+
     private void OnAssetListPreviewMouseRightButtonDown(object sender, MouseButtonEventArgs eventArgs)
     {
         if (sender is not ListBox listBox)

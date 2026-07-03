@@ -126,6 +126,27 @@
                            Text="{Binding Value}" />
             </Grid>
         </DataTemplate>
+
+        <DataTemplate DataType="{x:Type vm:InspectorImagePreviewPropertyViewModel}">
+            <StackPanel Margin="0,8,0,0">
+                <TextBlock Margin="0,0,0,4"
+                           Foreground="{DynamicResource TextSecondaryBrush}"
+                           Text="{Binding DisplayName}" />
+                <Border BorderBrush="{DynamicResource BorderSubtleBrush}"
+                        BorderThickness="1"
+                        Background="{DynamicResource PanelBackgroundBrush}"
+                        ClipToBounds="True">
+                    <Image MaxWidth="{Binding RelativeSource={RelativeSource AncestorType=ScrollViewer}, Path=ViewportWidth}"
+                           Source="{Binding Image}"
+                           Stretch="Uniform"
+                           HorizontalAlignment="Stretch" />
+                </Border>
+                <TextBlock Margin="0,4,0,0"
+                           Foreground="{DynamicResource TextSecondaryBrush}"
+                           TextWrapping="Wrap"
+                           Text="{Binding Caption}" />
+            </StackPanel>
+        </DataTemplate>
     </UserControl.Resources>
 
     <Grid>

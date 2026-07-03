@@ -256,6 +256,7 @@
                 <Grid>
                     <ListBox ItemsSource="{Binding AssetBrowserItems}"
                              SelectedItem="{Binding SelectedAsset, Mode=TwoWay}"
+                             PreviewMouseLeftButtonDown="OnAssetListPreviewMouseLeftButtonDown"
                              PreviewMouseRightButtonDown="OnAssetListPreviewMouseRightButtonDown"
                              MouseDoubleClick="OnAssetListMouseDoubleClick"
                              Background="Transparent"
