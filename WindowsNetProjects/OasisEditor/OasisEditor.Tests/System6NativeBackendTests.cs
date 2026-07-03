@@ -484,9 +484,16 @@ public sealed class System6NativeBackendTests
             await backend.StartAsync(CreateLaunchRequest(rom1, rom2), CancellationToken.None);
             await backend.StopAsync(CancellationToken.None);
 
-            Assert.Equal(Enumerable.Range(0, 16).ToArray(), library.AlphaSegmentIndices);
-            Assert.Contains(segmentEvents, e => e.CellId == 0 && e.SegmentMask == 0x0001 && e.OutputType == MameSegmentOutputType.NativeAlpha);
-            Assert.Contains(segmentEvents, e => e.CellId == 1 && e.SegmentMask == 0x2002 && e.OutputType == MameSegmentOutputType.NativeAlpha);
+            var nativeAlphaEvents = segmentEvents
+                .Where(e => e.OutputType == MameSegmentOutputType.NativeAlpha)
+                .OrderBy(e => e.CellId)
+                .ToArray();
+
+            Assert.Contains("GetOutputSnapshot", library.Calls);
+            Assert.Equal(16, nativeAlphaEvents.Length);
+            Assert.Equal(Enumerable.Range(0, 16).ToArray(), nativeAlphaEvents.Select(e => e.CellId).ToArray());
+            Assert.Contains(nativeAlphaEvents, e => e.CellId == 0 && e.SegmentMask == 0x0001);
+            Assert.Contains(nativeAlphaEvents, e => e.CellId == 1 && e.SegmentMask == 0x2002);
         }
         finally
         {
