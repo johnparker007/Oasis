@@ -29,7 +29,16 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
     private string? _lastInspectorSelectionObjectId;
     private PanelElementKind? _lastInspectorSelectionKind;
     private string? _lastInspectorFaceSelectionKind;
+    private InspectorSelectionSource _activeInspectorSource = InspectorSelectionSource.Document;
+    private string? _lastObservedAssetPath;
+    private string? _lastObservedDocumentSelectionKey;
     private bool _hadInspectorSelection;
+
+    private enum InspectorSelectionSource
+    {
+        Document,
+        Asset
+    }
 
     public InspectorViewModel(
         Func<AssetBrowserItemViewModel?> selectedAssetAccessor,
@@ -302,6 +311,8 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
     public void NotifyContextChanged()
     {
+        UpdateActiveInspectorSource();
+
         var selectedDocument = _selectedDocumentAccessor();
         if (!ShowLampTestButton && selectedDocument is not null && selectedDocument.RuntimeState.IsLampTestActive)
         {
@@ -559,8 +570,49 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
     private AssetBrowserItemViewModel? GetSelectedInspectableAsset()
     {
+        if (_activeInspectorSource != InspectorSelectionSource.Asset)
+        {
+            return null;
+        }
+
         var selectedAsset = _selectedAssetAccessor();
         return selectedAsset is { IsDirectory: false } ? selectedAsset : null;
+    }
+
+    private void UpdateActiveInspectorSource()
+    {
+        var selectedAsset = _selectedAssetAccessor();
+        var assetPath = selectedAsset is { IsDirectory: false } ? selectedAsset.FullPath : null;
+        var documentSelectionKey = GetDocumentSelectionKey();
+
+        if (!string.Equals(assetPath, _lastObservedAssetPath, StringComparison.OrdinalIgnoreCase))
+        {
+            _activeInspectorSource = assetPath is not null
+                ? InspectorSelectionSource.Asset
+                : InspectorSelectionSource.Document;
+        }
+        else if (!string.Equals(documentSelectionKey, _lastObservedDocumentSelectionKey, StringComparison.Ordinal))
+        {
+            _activeInspectorSource = documentSelectionKey is not null
+                ? InspectorSelectionSource.Document
+                : _activeInspectorSource;
+        }
+
+        _lastObservedAssetPath = assetPath;
+        _lastObservedDocumentSelectionKey = documentSelectionKey;
+    }
+
+    private string? GetDocumentSelectionKey()
+    {
+        var selectedDocument = _selectedDocumentAccessor();
+        if (selectedDocument is null)
+        {
+            return null;
+        }
+
+        return _activeDocumentContext.ActivePanelSelection is PanelSelectionInfo selection
+            ? $"{selectedDocument.DocumentId:N}:{selection.Kind}:{selection.ObjectId}"
+            : $"{selectedDocument.DocumentId:N}:document";
     }
 
     private bool ShouldRebuildRowsForContextChange()
