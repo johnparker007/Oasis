@@ -1,11 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
-using MfmeFmlDecoder.Decryption;
-using MfmeFmlDecoder.Decoder;
-using MfmeFmlDecoder.src.Decoder.Component;
 using MfmeFmlDecoder.Utilities;
-using MfmeFmlDecoder.src.Decoder.Component.Core;
 
 namespace MfmeFmlDecoder.Application
 {
@@ -28,47 +23,28 @@ namespace MfmeFmlDecoder.Application
             RunLog.Quiet = writeLayoutJson;
             try
             {
-                string inputPath = Path.GetFullPath(fileName);
-                if (!File.Exists(inputPath))
+                var result = new FmlDecoderService().DecodeToJson(fileName, offset);
+                foreach (var warning in result.Warnings)
                 {
-                    throw new FileNotFoundException(inputPath);
+                    RunLog.WriteErrorLine($"Warning: {warning}");
                 }
 
-                var componentParser = new ComponentParser();
-                var fileWalker = new FileWalker(
-                    new ComponentWalker(
-                        componentParser
-                    )
-                );
+                if (!result.Succeeded)
+                {
+                    foreach (var error in result.Errors)
+                    {
+                        RunLog.WriteErrorLine($"Error: {error}");
+                    }
 
-                if (string.Equals(Path.GetExtension(inputPath), ".fml", StringComparison.OrdinalIgnoreCase))
-                {
-                    byte[] decrypted = FmlDecryptor.Decrypt(ReadFileBytes(inputPath));
-                    fileWalker.WalkTlv(decrypted, offset);
-                }
-                else
-                {
-                    fileWalker.WalkTlv(inputPath, offset);
+                    return 1;
                 }
 
                 if (writeLayoutJson)
                 {
-                    var layout = componentParser.ToLayout();
-                    string json = layout.ToJson(indented: true);
-                    Console.Out.Write(json);
+                    Console.Out.Write(result.Json);
                 }
 
                 return 0;
-            }
-            catch (FileNotFoundException ex)
-            {
-                RunLog.WriteErrorLine($"Error: File not found - {ex.Message}");
-                return 1;
-            }
-            catch (Exception ex)
-            {
-                RunLog.WriteErrorLine($"Error: {ex.Message}");
-                return 1;
             }
             finally
             {
@@ -166,41 +142,6 @@ namespace MfmeFmlDecoder.Application
             {
                 return false;
             }
-        }
-
-        private static byte[] ReadFileBytes(string fullInputPath)
-        {
-            using FileStream stream = new FileStream(
-                fullInputPath,
-                FileMode.Open,
-                FileAccess.Read,
-                FileShare.Read,
-                bufferSize: 1024 * 1024,
-                options: FileOptions.SequentialScan);
-
-            if (stream.Length == 0)
-                return Array.Empty<byte>();
-
-            if (stream.Length > int.MaxValue)
-                throw new InvalidOperationException($"File is too large: {fullInputPath}");
-
-            byte[] buffer = new byte[(int)stream.Length];
-            int readOffset = 0;
-            int remaining = buffer.Length;
-            while (remaining > 0)
-            {
-                int read = stream.Read(buffer, readOffset, remaining);
-                if (read == 0)
-                {
-                    throw new EndOfStreamException(
-                        $"Unexpected EOF reading file '{fullInputPath}' (read {readOffset} of {buffer.Length} bytes).");
-                }
-
-                readOffset += read;
-                remaining -= read;
-            }
-
-            return buffer;
         }
 
         private static void PrintUsage()

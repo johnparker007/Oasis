@@ -13,6 +13,7 @@ using Microsoft.Win32;
 using OasisEditor.Features.MameDebugger;
 using OasisEditor.Features.MameDebugger.ViewModels;
 using OasisEditor.Features.MfmeImport;
+using OasisEditor.Features.FmlImport;
 using OasisEditor.Features.CabinetEditor.Models;
 using EditorCommands = OasisEditor.Commands;
 using OasisEditor.Views;
@@ -89,6 +90,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly HierarchyPanelCommandService _hierarchyPanelCommands;
     private bool _isRefreshingHierarchy;
     private readonly Automation.IMfmeExtractImportService _mfmeImportService = new Automation.MfmeExtractImportService();
+    private readonly IFmlImportService _fmlImportService = new FmlImportService();
     private readonly Automation.IDocumentSaveService _documentSaveService = new Automation.DocumentSaveService();
     private readonly IProgressDialogService _progressDialogService;
     private readonly MameDownloadService _mameDownloadService = new();
@@ -164,6 +166,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OpenCabinet3DStubCommand = new RelayCommand(OpenCabinet3DStubDocument, CanOpenUntitledDocument);
         OpenMachineStubCommand = new RelayCommand(OpenMachineStubDocument, CanOpenUntitledDocument);
         ImportMfmeExtractCommand = new RelayCommand(ImportMfmeExtract, CanImportMfmeExtract);
+        ImportMfmeFmlCommand = new RelayCommand(ImportMfmeFml, CanImportMfmeExtract);
         ImportGlbModelCommand = new RelayCommand(ImportGlbModel, CanImportGlbModel);
         SaveSelectedDocumentCommand = new RelayCommand(SaveSelectedDocument, CanSaveSelectedDocument);
         CloseSelectedDocumentCommand = new RelayCommand(CloseSelectedDocument, CanCloseSelectedDocument);
@@ -486,6 +489,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand OpenCabinet3DStubCommand { get; }
     public ICommand OpenMachineStubCommand { get; }
     public ICommand ImportMfmeExtractCommand { get; }
+    public ICommand ImportMfmeFmlCommand { get; }
     public ICommand ImportGlbModelCommand { get; }
     public ICommand SaveSelectedDocumentCommand { get; }
     public ICommand CloseSelectedDocumentCommand { get; }
@@ -1643,6 +1647,154 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             StatusMessage = ex.Message;
             AddOutputEntry($"MFME import failed: {ex.Message}", OutputLogStatus.Error);
             MessageBox.Show(ex.Message, "Import MFME Extract Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally
+        {
+            _isMfmeImportInProgress = false;
+            EndEditorProgress();
+            NotifyDocumentCommands();
+        }
+    }
+
+    private async void ImportMfmeFml()
+    {
+        if (LoadedProject is null)
+        {
+            return;
+        }
+
+        if (SelectedDocument?.Document.DocumentType != EditorDocumentType.Panel2D)
+        {
+            AddOutputEntry("MFME FML import is supported only when a Panel2D document is active.", OutputLogStatus.Warning);
+            MessageBox.Show(
+                "MFME FML import is currently supported only for Panel2D documents.",
+                "Import MFME FML",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            return;
+        }
+
+        var dialog = new OpenFileDialog
+        {
+            Title = "Import MFME FML",
+            Filter = "MFME FML Layout|*.fml|All Files|*.*",
+            InitialDirectory = LoadedProject.ProjectDirectory,
+            CheckFileExists = true
+        };
+
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        var activeDocument = SelectedDocument;
+        var loadedProject = LoadedProject;
+        if (activeDocument is null || loadedProject is null)
+        {
+            return;
+        }
+
+        _isMfmeImportInProgress = true;
+        NotifyDocumentCommands();
+        BeginEditorProgress("Importing MFME FML...", 0.05);
+
+        try
+        {
+            await YieldForProgressRenderAsync();
+            var fmlPath = dialog.FileName;
+            var projectDirectory = loadedProject.ProjectDirectory;
+            var assetsDirectory = loadedProject.AssetsDirectory;
+
+            ReportEditorProgress("Decoding FML and copying assets...", 0.15);
+            var result = await _progressDialogService.RunAsync(
+                new EditorProgressRequest("Importing MFME FML", "Decoding FML and copying assets...", EditorProgressMode.Determinate),
+                async (progress, _) =>
+                {
+                    progress.Report(0.1, "Decoding FML layout...");
+                    var importResult = await Task.Run(() => _fmlImportService.ImportFromFml(
+                        fmlPath,
+                        projectDirectory,
+                        assetsDirectory,
+                        copyAssets: true));
+                    progress.Report(0.6, "Processing import diagnostics...");
+                    return importResult;
+                });
+
+            ReportEditorProgress("Processing import diagnostics...", 0.6);
+            foreach (var warning in result.Warnings)
+            {
+                AddOutputEntry($"MFME FML import warning ({warning.Code}): {warning.Message}", OutputLogStatus.Warning);
+            }
+
+            if (!result.Succeeded)
+            {
+                foreach (var error in result.Errors)
+                {
+                    AddOutputEntry($"MFME FML import failed: {error}", OutputLogStatus.Error);
+                }
+
+                MessageBox.Show(
+                    "MFME FML import failed. See Output for details.",
+                    "Import MFME FML",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            if (!OpenDocuments.Contains(activeDocument))
+            {
+                AddOutputEntry("MFME FML import completed but the target document is no longer open.", OutputLogStatus.Warning);
+                return;
+            }
+
+            ReportEditorProgress("Updating project input definitions...", 0.7);
+            if (LoadedProject is not null && ReferenceEquals(LoadedProject, loadedProject) && result.InputDefinitions.Count > 0)
+            {
+                LoadedProject.InputDefinitions.Clear();
+                foreach (var inputDefinition in result.InputDefinitions)
+                {
+                    LoadedProject.InputDefinitions.Add(inputDefinition);
+                }
+
+                SaveLoadedProjectMetadata();
+                OnPropertyChanged(nameof(InputDefinitions));
+                RefreshInputMapDiagnostics();
+                AddOutputEntry($"MFME FML import created {result.InputDefinitions.Count} input definitions.", OutputLogStatus.Info);
+            }
+
+            ReportEditorProgress("Inserting imported elements...", 0.8);
+            var importCommand = new ImportMfmeExtractCommand(
+                activeDocument.DocumentId,
+                activeDocument,
+                result.ImportedElements);
+            var inserted = _documentWorkspace.ExecuteDocumentCanvasCommand(activeDocument.DocumentId, importCommand);
+            if (!inserted)
+            {
+                AddOutputEntry("MFME FML import completed but no elements were inserted.", OutputLogStatus.Warning);
+                return;
+            }
+
+            ReportEditorProgress("Refreshing assets and editor panels...", 0.9);
+            _assetBrowser.RefreshAssetBrowser();
+            RefreshHierarchy();
+            NotifyInspectorChanged();
+
+            var grouped = result.ImportedElements
+                .GroupBy(element => element.Kind)
+                .OrderBy(group => group.Key.ToString(), StringComparer.Ordinal)
+                .Select(group => $"{group.Key}: {group.Count()}");
+
+            ReportEditorProgress("MFME FML import complete.", 1.0);
+            AddOutputEntry($"MFME FML import completed. Imported {result.ImportedElements.Count} elements.", OutputLogStatus.Info);
+            AddOutputEntry($"MFME FML import kinds -> {string.Join(", ", grouped)}", OutputLogStatus.Info);
+            AddOutputEntry($"MFME FML import skipped {result.SkippedLegacyComponentTypes.Count} unsupported components.", OutputLogStatus.Info);
+            AddOutputEntry($"MFME FML import copied {result.CopiedAssetRelativePaths.Count} assets.", OutputLogStatus.Info);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = ex.Message;
+            AddOutputEntry($"MFME FML import failed: {ex.Message}", OutputLogStatus.Error);
+            MessageBox.Show(ex.Message, "Import MFME FML Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
         finally
         {
@@ -4293,6 +4445,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (ImportMfmeExtractCommand is RelayCommand importMfmeRelayCommand)
         {
             importMfmeRelayCommand.RaiseCanExecuteChanged();
+        }
+
+        if (ImportMfmeFmlCommand is RelayCommand importMfmeFmlRelayCommand)
+        {
+            importMfmeFmlRelayCommand.RaiseCanExecuteChanged();
         }
 
         if (ImportGlbModelCommand is RelayCommand importGlbRelayCommand)
