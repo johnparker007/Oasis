@@ -63,6 +63,8 @@
                 <MenuItem Header="_Import">
                     <MenuItem Header="_MFME Extract..."
                               Command="{Binding ImportMfmeExtractCommand}" />
+                    <MenuItem Header="MFME ._FML..."
+                              Command="{Binding ImportMfmeFmlCommand}" />
                     <MenuItem Header="_GLB Model..."
                               Command="{Binding ImportGlbModelCommand}" />
                 </MenuItem>
