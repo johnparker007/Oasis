@@ -1,6 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
+using MfmeFmlDecoder.Decryption;
+using MfmeFmlDecoder.Decoder;
+using MfmeFmlDecoder.src.Decoder.Component;
 using MfmeFmlDecoder.Utilities;
+using MfmeFmlDecoder.src.Decoder.Component.Core;
 
 namespace MfmeFmlDecoder.Application
 {
@@ -12,7 +17,14 @@ namespace MfmeFmlDecoder.Application
 
         public int Run(string[] args)
         {
-            if (!TryParseArgs(args, out string fileName, out uint offset, out bool writeLayoutJson, out string parseError))
+            if (!TryParseArgs(
+                    args,
+                    out string fileName,
+                    out uint offset,
+                    out bool writeLayoutJson,
+                    out bool exportLayout,
+                    out string exportOutputPath,
+                    out string parseError))
             {
                 if (!string.IsNullOrEmpty(parseError))
                     RunLog.WriteErrorLine(parseError);
@@ -20,31 +32,61 @@ namespace MfmeFmlDecoder.Application
                 return 1;
             }
 
-            RunLog.Quiet = writeLayoutJson;
+            RunLog.Quiet = writeLayoutJson || exportLayout;
             try
             {
-                var result = new FmlDecoderService().DecodeToJson(fileName, offset);
-                foreach (var warning in result.Warnings)
+                string inputPath = Path.GetFullPath(fileName);
+                if (!File.Exists(inputPath))
                 {
-                    RunLog.WriteErrorLine($"Warning: {warning}");
+                    throw new FileNotFoundException(inputPath);
                 }
 
-                if (!result.Succeeded)
+                var componentParser = new ComponentParser();
+                var fileWalker = new FileWalker(
+                    new ComponentWalker(
+                        componentParser
+                    )
+                );
+
+                if (string.Equals(Path.GetExtension(inputPath), ".fml", StringComparison.OrdinalIgnoreCase))
                 {
-                    foreach (var error in result.Errors)
+                    byte[] decrypted = FmlDecryptor.Decrypt(ReadFileBytes(inputPath));
+                    fileWalker.WalkTlv(decrypted, offset);
+                }
+                else
+                {
+                    fileWalker.WalkTlv(inputPath, offset);
+                }
+
+                if (writeLayoutJson || exportLayout)
+                {
+                    var layout = componentParser.ToLayout();
+
+                    if (writeLayoutJson)
                     {
-                        RunLog.WriteErrorLine($"Error: {error}");
+                        string json = layout.ToJson(indented: true);
+                        Console.Out.Write(json);
                     }
 
-                    return 1;
-                }
-
-                if (writeLayoutJson)
-                {
-                    Console.Out.Write(result.Json);
+                    if (exportLayout)
+                    {
+                        string outputZipPath = exportOutputPath ?? Path.ChangeExtension(inputPath, ".zip");
+                        LayoutExporter.ExportToZip(layout, outputZipPath);
+                        RunLog.WriteDiagnosticLine($"Exported layout to {Path.GetFullPath(outputZipPath)}");
+                    }
                 }
 
                 return 0;
+            }
+            catch (FileNotFoundException ex)
+            {
+                RunLog.WriteErrorLine($"Error: File not found - {ex.Message}");
+                return 1;
+            }
+            catch (Exception ex)
+            {
+                RunLog.WriteErrorLine($"Error: {ex.Message}");
+                return 1;
             }
             finally
             {
@@ -52,11 +94,20 @@ namespace MfmeFmlDecoder.Application
             }
         }
 
-        private static bool TryParseArgs(string[] args, out string fileName, out uint offset, out bool writeLayoutJson, out string error)
+        private static bool TryParseArgs(
+            string[] args,
+            out string fileName,
+            out uint offset,
+            out bool writeLayoutJson,
+            out bool exportLayout,
+            out string exportOutputPath,
+            out string error)
         {
             fileName = null;
             offset = 0;
             writeLayoutJson = false;
+            exportLayout = false;
+            exportOutputPath = null;
             error = null;
 
             var positionals = new List<string>();
@@ -79,6 +130,22 @@ namespace MfmeFmlDecoder.Application
                     }
 
                     writeLayoutJson = true;
+                }
+                else if (a == "--export")
+                {
+                    exportLayout = true;
+                }
+                else if (a.StartsWith("--export=", StringComparison.Ordinal))
+                {
+                    string value = a.Substring("--export=".Length).Trim();
+                    if (value.Length == 0)
+                    {
+                        error = "Export output path must not be empty when using --export=.";
+                        return false;
+                    }
+
+                    exportLayout = true;
+                    exportOutputPath = value;
                 }
                 else if (!a.StartsWith("-", StringComparison.Ordinal))
                 {
@@ -144,6 +211,41 @@ namespace MfmeFmlDecoder.Application
             }
         }
 
+        private static byte[] ReadFileBytes(string fullInputPath)
+        {
+            using FileStream stream = new FileStream(
+                fullInputPath,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read,
+                bufferSize: 1024 * 1024,
+                options: FileOptions.SequentialScan);
+
+            if (stream.Length == 0)
+                return Array.Empty<byte>();
+
+            if (stream.Length > int.MaxValue)
+                throw new InvalidOperationException($"File is too large: {fullInputPath}");
+
+            byte[] buffer = new byte[(int)stream.Length];
+            int readOffset = 0;
+            int remaining = buffer.Length;
+            while (remaining > 0)
+            {
+                int read = stream.Read(buffer, readOffset, remaining);
+                if (read == 0)
+                {
+                    throw new EndOfStreamException(
+                        $"Unexpected EOF reading file '{fullInputPath}' (read {readOffset} of {buffer.Length} bytes).");
+                }
+
+                readOffset += read;
+                remaining -= read;
+            }
+
+            return buffer;
+        }
+
         private static void PrintUsage()
         {
             Console.WriteLine("Usage:");
@@ -151,11 +253,15 @@ namespace MfmeFmlDecoder.Application
             Console.WriteLine();
             Console.WriteLine("Options:");
             Console.WriteLine("  --json, -j          Emit decoded layout as JSON on standard output only; errors go to stderr.");
+            Console.WriteLine("  --export[=path]     Write layout.json and component images to a zip file.");
+            Console.WriteLine("                      Default output: <input-file>.zip in the same directory as the input file.");
             Console.WriteLine();
             Console.WriteLine("Examples:");
             Console.WriteLine("  MfmeFmlDecoder file.dat --json");
             Console.WriteLine("  MfmeFmlDecoder file.dat --json > layout.json");
             Console.WriteLine("  MfmeFmlDecoder file.dat 0x1000 --json");
+            Console.WriteLine("  MfmeFmlDecoder file.dat --export");
+            Console.WriteLine("  MfmeFmlDecoder file.dat --export=C:\\out\\layout.zip");
         }
 
     }

@@ -1721,6 +1721,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 });
 
             ReportEditorProgress("Processing import diagnostics...", 0.6);
+            foreach (var diagnostic in result.DebugDiagnostics)
+            {
+                AddOutputEntry($"MFME FML import debug: {diagnostic}", OutputLogStatus.Info);
+            }
+
             foreach (var warning in result.Warnings)
             {
                 AddOutputEntry($"MFME FML import warning ({warning.Code}): {warning.Message}", OutputLogStatus.Warning);
