@@ -7,8 +7,6 @@ namespace MfmeFmlDecoder.Decoder
     internal sealed class FileWalker
     {
         private const uint TlvTerminationTag = 0xFFFFFFFF;
-        private const uint TagWithExtraData = 0x43;
-        private const int ExtraDataLengthAfterTag43 = 0x303;
 
         private ComponentWalker _componentWalker;
         public FileWalker(ComponentWalker componentWalker)
@@ -64,14 +62,12 @@ namespace MfmeFmlDecoder.Decoder
 
                 OnRecordRead(recordStartOffset, tag, length, values);
 
-                if (tag == TagWithExtraData)
+                if (LengthPrefixedStringTableScanner.IsFileLevelTag(tag))
                 {
-                    byte[] trailingBytes = reader.ReadBytes(ExtraDataLengthAfterTag43);
-                    if (trailingBytes.Length != ExtraDataLengthAfterTag43)
-                    {
-                        throw new EndOfStreamException(
-                            $"Unexpected EOF reading trailing bytes for tag 0x43 at offset 0x{recordStartOffset:X8}.");
-                    }
+                    LengthPrefixedStringTableScanner.SkipContinuation(
+                        reader,
+                        hostTagKeyByte: (byte)tag,
+                        scanEndExclusive: fileStream.Length);
                 }
 
                 if (tag == TlvTerminationTag)

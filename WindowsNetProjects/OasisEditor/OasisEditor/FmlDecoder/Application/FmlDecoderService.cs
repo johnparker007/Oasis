@@ -5,6 +5,7 @@ using MfmeFmlDecoder.Decryption;
 using MfmeFmlDecoder.Decoder;
 using MfmeFmlDecoder.src.Decoder.Component;
 using MfmeFmlDecoder.src.Decoder.Component.Core;
+using MfmeFmlDecoder.src.Model;
 
 namespace MfmeFmlDecoder.Application
 {
@@ -35,37 +36,54 @@ namespace MfmeFmlDecoder.Application
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(inputPath))
-                {
-                    return FmlDecodeResult.Failure(new[] { "Input path is required." });
-                }
-
-                string fullInputPath = Path.GetFullPath(inputPath);
-                if (!File.Exists(fullInputPath))
-                {
-                    return FmlDecodeResult.Failure(new[] { $"File not found: {fullInputPath}" });
-                }
-
-                var componentParser = new ComponentParser();
-                var fileWalker = new FileWalker(new ComponentWalker(componentParser));
-
-                if (string.Equals(Path.GetExtension(fullInputPath), ".fml", StringComparison.OrdinalIgnoreCase))
-                {
-                    byte[] decrypted = FmlDecryptor.Decrypt(ReadFileBytes(fullInputPath));
-                    fileWalker.WalkTlv(decrypted, offset);
-                }
-                else
-                {
-                    fileWalker.WalkTlv(fullInputPath, offset);
-                }
-
-                string json = componentParser.ToLayout().ToJson(indented: true);
+                string json = DecodeLayout(inputPath, offset).ToJson(indented: true);
                 return FmlDecodeResult.Success(json, Array.Empty<string>());
             }
             catch (Exception ex)
             {
                 return FmlDecodeResult.Failure(new[] { ex.Message });
             }
+        }
+
+        internal FmlLayoutDecodeResult DecodeToLayout(string inputPath, uint offset = 0)
+        {
+            try
+            {
+                return FmlLayoutDecodeResult.Success(DecodeLayout(inputPath, offset), Array.Empty<string>());
+            }
+            catch (Exception ex)
+            {
+                return FmlLayoutDecodeResult.Failure(new[] { ex.Message });
+            }
+        }
+
+        private static Layout DecodeLayout(string inputPath, uint offset)
+        {
+            if (string.IsNullOrWhiteSpace(inputPath))
+            {
+                throw new ArgumentException("Input path is required.", nameof(inputPath));
+            }
+
+            string fullInputPath = Path.GetFullPath(inputPath);
+            if (!File.Exists(fullInputPath))
+            {
+                throw new FileNotFoundException($"File not found: {fullInputPath}", fullInputPath);
+            }
+
+            var componentParser = new ComponentParser();
+            var fileWalker = new FileWalker(new ComponentWalker(componentParser));
+
+            if (string.Equals(Path.GetExtension(fullInputPath), ".fml", StringComparison.OrdinalIgnoreCase))
+            {
+                byte[] decrypted = FmlDecryptor.Decrypt(ReadFileBytes(fullInputPath));
+                fileWalker.WalkTlv(decrypted, offset);
+            }
+            else
+            {
+                fileWalker.WalkTlv(fullInputPath, offset);
+            }
+
+            return componentParser.ToLayout();
         }
 
         private static byte[] ReadFileBytes(string fullInputPath)
@@ -102,5 +120,26 @@ namespace MfmeFmlDecoder.Application
 
             return buffer;
         }
+    }
+
+    internal sealed class FmlLayoutDecodeResult
+    {
+        public bool Succeeded => Errors.Count == 0 && Layout is not null;
+        public Layout? Layout { get; }
+        public IReadOnlyList<string> Errors { get; }
+        public IReadOnlyList<string> Warnings { get; }
+
+        private FmlLayoutDecodeResult(Layout? layout, IReadOnlyList<string> errors, IReadOnlyList<string> warnings)
+        {
+            Layout = layout;
+            Errors = errors;
+            Warnings = warnings;
+        }
+
+        public static FmlLayoutDecodeResult Success(Layout layout, IReadOnlyList<string> warnings)
+            => new FmlLayoutDecodeResult(layout, Array.Empty<string>(), warnings ?? Array.Empty<string>());
+
+        public static FmlLayoutDecodeResult Failure(IReadOnlyList<string> errors, IReadOnlyList<string>? warnings = null)
+            => new FmlLayoutDecodeResult(null, errors ?? Array.Empty<string>(), warnings ?? Array.Empty<string>());
     }
 }

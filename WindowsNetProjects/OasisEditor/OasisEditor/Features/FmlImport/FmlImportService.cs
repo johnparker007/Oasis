@@ -2,6 +2,8 @@ using System.IO;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using MfmeFmlDecoder.Application;
+using MfmeFmlDecoder.src.Model;
+using MfmeFmlDecoder.src.Model.Component;
 using OasisEditor.Features.MfmeImport;
 
 namespace OasisEditor.Features.FmlImport;
@@ -35,7 +37,7 @@ internal sealed class FmlImportService : IFmlImportService
             return Failure($"FML file was not found: '{fullFmlPath}'.");
         }
 
-        var decodeResult = _decoderService.DecodeToJson(fullFmlPath);
+        var decodeResult = _decoderService.DecodeToLayout(fullFmlPath);
         if (!decodeResult.Succeeded)
         {
             return new MfmeImportResult
@@ -52,7 +54,13 @@ internal sealed class FmlImportService : IFmlImportService
         var stagingDirectory = CreateStagingDirectory();
         Directory.CreateDirectory(stagingDirectory);
         var manifestPath = Path.Combine(stagingDirectory, "layout.json");
-        File.WriteAllText(manifestPath, FmlDecodedLayoutAdapter.ToMfmeExtractManifestJson(decodeResult.Json, Path.GetFileNameWithoutExtension(fullFmlPath)));
+        var imagePaths = FmlDecodedAssetExporter.ExportImages(decodeResult.Layout!, stagingDirectory);
+        File.WriteAllText(
+            manifestPath,
+            FmlDecodedLayoutAdapter.ToMfmeExtractManifestJson(
+                decodeResult.Layout!.ToJson(indented: true),
+                Path.GetFileNameWithoutExtension(fullFmlPath),
+                imagePaths));
 
         var context = new MfmeImportContext
         {
@@ -95,7 +103,10 @@ internal sealed class FmlImportService : IFmlImportService
 
 internal static class FmlDecodedLayoutAdapter
 {
-    public static string ToMfmeExtractManifestJson(string decodedJson, string layoutName)
+    public static string ToMfmeExtractManifestJson(
+        string decodedJson,
+        string layoutName,
+        IReadOnlyDictionary<FmlDecodedImageKey, string>? imagePaths = null)
     {
         var root = JsonNode.Parse(decodedJson)?.AsObject() ?? new JsonObject();
         var manifest = new JsonObject
@@ -109,14 +120,17 @@ internal static class FmlDecodedLayoutAdapter
         {
             foreach (var component in components.OfType<JsonObject>())
             {
-                output.Add(ConvertComponent(component));
+                output.Add(ConvertComponent(component, imagePaths, output.Count));
             }
         }
 
         return manifest.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
     }
 
-    private static JsonObject ConvertComponent(JsonObject component)
+    private static JsonObject ConvertComponent(
+        JsonObject component,
+        IReadOnlyDictionary<FmlDecodedImageKey, string>? imagePaths,
+        int componentIndex)
     {
         var type = component["Type"]?.GetValue<string>() ?? "Unknown";
         var legacy = new JsonObject
@@ -153,6 +167,7 @@ internal static class FmlDecodedLayoutAdapter
         CopyColor(component, legacy, "Color", "TextColor");
         CopyColor(component, legacy, "OnColour", "SegmentOnColor");
         CopyColor(component, legacy, "OnColor", "SegmentOnColor");
+        CopyImageReferences(component, legacy, type, imagePaths, componentIndex);
 
         return legacy;
     }
@@ -200,5 +215,105 @@ internal static class FmlDecodedLayoutAdapter
         }
 
         return source["Values"] is JsonObject values && values.TryGetPropertyValue(name, out var nested) ? nested : null;
+    }
+
+    private static void CopyImageReferences(
+        JsonObject component,
+        JsonObject legacy,
+        string type,
+        IReadOnlyDictionary<FmlDecodedImageKey, string>? imagePaths,
+        int componentIndex)
+    {
+        if (imagePaths is null || component["Images"] is not JsonObject images || images.Count == 0)
+        {
+            return;
+        }
+
+        var keys = images.Select(kvp => kvp.Key).OrderBy(key => key, StringComparer.Ordinal).ToArray();
+        if (keys.Length == 0)
+        {
+            return;
+        }
+
+        string? first = FindExportedImage(imagePaths, componentIndex, keys[0]);
+        string? mask = keys.Select(key => new { Key = key, Path = FindExportedImage(imagePaths, componentIndex, key) })
+            .FirstOrDefault(entry => entry.Path is not null && entry.Key.Contains("mask", StringComparison.OrdinalIgnoreCase))
+            ?.Path;
+        string? overlay = keys.Select(key => new { Key = key, Path = FindExportedImage(imagePaths, componentIndex, key) })
+            .FirstOrDefault(entry => entry.Path is not null && !string.Equals(entry.Path, first, StringComparison.OrdinalIgnoreCase))
+            ?.Path;
+
+        switch (MapType(type))
+        {
+            case "Background":
+                legacy["BmpImageFilename"] = FileNameFromRelativePath(first);
+                break;
+            case "Lamp":
+                legacy["BmpImageFilename"] = FileNameFromRelativePath(first);
+                legacy["BmpMaskImageFilename"] = FileNameFromRelativePath(mask);
+                legacy["Graphic"] = first is not null;
+                break;
+            case "Reel":
+                legacy["BandBmpImageFilename"] = FileNameFromRelativePath(first);
+                legacy["HasOverlay"] = overlay is not null;
+                legacy["OverlayBmpImageFilename"] = FileNameFromRelativePath(overlay);
+                break;
+            case "Alpha":
+            case "SevenSegment":
+                legacy["HasOverlay"] = first is not null;
+                legacy["OverlayBmpImageFilename"] = FileNameFromRelativePath(first);
+                break;
+        }
+    }
+
+    private static string? FindExportedImage(IReadOnlyDictionary<FmlDecodedImageKey, string> imagePaths, int componentIndex, string imageName)
+        => imagePaths.TryGetValue(new FmlDecodedImageKey(componentIndex, imageName), out var path) ? path : null;
+
+    private static string? FileNameFromRelativePath(string? relativePath)
+        => string.IsNullOrWhiteSpace(relativePath) ? null : Path.GetFileName(relativePath);
+}
+
+internal readonly record struct FmlDecodedImageKey(int ComponentIndex, string ImageName);
+
+internal static class FmlDecodedAssetExporter
+{
+    public static IReadOnlyDictionary<FmlDecodedImageKey, string> ExportImages(Layout layout, string stagingDirectory)
+    {
+        var imagePaths = new Dictionary<FmlDecodedImageKey, string>();
+        for (var componentIndex = 0; componentIndex < layout.Components.Count; componentIndex++)
+        {
+            var component = layout.Components[componentIndex];
+            foreach (var image in component.Images.OrderBy(entry => entry.Key, StringComparer.Ordinal))
+            {
+                var folder = GetLegacyImageFolder(component);
+                var fileName = $"{componentIndex:D4}_{SanitizeFileName(image.Key)}.bmp";
+                var relativePath = $"{folder}/{fileName}";
+                var outputPath = Path.Combine(stagingDirectory, folder, fileName);
+                Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
+                File.WriteAllBytes(outputPath, image.Value.Bytes);
+                imagePaths[new FmlDecodedImageKey(componentIndex, image.Key)] = relativePath;
+            }
+        }
+
+        return imagePaths;
+    }
+
+    private static string GetLegacyImageFolder(BaseComponent component)
+    {
+        var type = component.GetType().Name;
+        return type switch
+        {
+            "Lamp" or "PrismLamp" => "lamps",
+            "Reel" or "BandReel" or "DiscReel" or "FlipReel" => "reels",
+            "Alpha" or "AlphaNew" or "MatrixAlpha" or "DotAlpha" or "BFMAlpha" or "SevenSeg" or "SevenSegBlock" => "reels",
+            _ => "background"
+        };
+    }
+
+    private static string SanitizeFileName(string value)
+    {
+        var invalid = Path.GetInvalidFileNameChars();
+        var sanitized = new string(value.Select(ch => invalid.Contains(ch) ? '_' : ch).ToArray()).Trim();
+        return string.IsNullOrWhiteSpace(sanitized) ? "image" : sanitized;
     }
 }
