@@ -59,9 +59,13 @@ internal sealed class FmlImportService : IFmlImportService
 
         var stagingDirectory = CreateStagingDirectory();
         Directory.CreateDirectory(stagingDirectory);
+        var decodedLayoutPath = Path.Combine(stagingDirectory, "decoded-layout.json");
         var manifestPath = Path.Combine(stagingDirectory, "layout.json");
         var imagePaths = FmlDecodedAssetExporter.ExportImages(decodeResult.Layout!, stagingDirectory);
         var decodedJson = decodeResult.Layout!.ToJson(indented: true);
+        File.WriteAllText(
+            decodedLayoutPath,
+            decodedJson);
         var adaptedManifestJson = FmlDecodedLayoutAdapter.ToMfmeExtractManifestJson(
             decodedJson,
             Path.GetFileNameWithoutExtension(fullFmlPath),
@@ -71,6 +75,7 @@ internal sealed class FmlImportService : IFmlImportService
             adaptedManifestJson);
 
         diagnostics.Add($"Temp staging directory: {stagingDirectory}");
+        diagnostics.Add($"Decoded layout JSON path: {decodedLayoutPath}");
         diagnostics.Add($"Generated layout JSON path: {manifestPath}");
         diagnostics.Add($"Generated image count: {imagePaths.Count}; image root: {stagingDirectory}; image paths: {FormatImagePaths(imagePaths.Values)}");
         diagnostics.Add($"Decoded FML component counts by Type: {FormatCounts(CountDecodedTypes(decodedJson))}");
