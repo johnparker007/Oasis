@@ -449,10 +449,9 @@ internal static class FmlDecodedLayoutAdapter
         int sublampIndex,
         bool? isMask)
     {
-        var sublampText = $"Sublamp {sublampIndex} ";
         foreach (var imageKey in imageKeys)
         {
-            if (!imageKey.StartsWith(sublampText, StringComparison.OrdinalIgnoreCase) || !MatchesMask(imageKey, isMask))
+            if (!IsSublampImageKey(imageKey, sublampIndex) || !MatchesMask(imageKey, isMask))
             {
                 continue;
             }
@@ -465,6 +464,13 @@ internal static class FmlDecodedLayoutAdapter
         }
 
         return null;
+    }
+
+    private static bool IsSublampImageKey(string imageKey, int sublampIndex)
+    {
+        var normalizedKey = NormalizeImageKey(imageKey);
+        return normalizedKey.StartsWith($"sublamp_{sublampIndex}_", StringComparison.Ordinal)
+            || imageKey.StartsWith($"Sublamp {sublampIndex} ", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string? FindFirstLampImage(
@@ -497,8 +503,24 @@ internal static class FmlDecodedLayoutAdapter
             return true;
         }
 
-        var keyIsMask = imageKey.Contains("mask", StringComparison.OrdinalIgnoreCase);
+        var normalizedKey = NormalizeImageKey(imageKey);
+        var keyIsMask = normalizedKey.Contains("mask", StringComparison.Ordinal);
         return keyIsMask == isMask.Value;
+    }
+
+    private static string NormalizeImageKey(string imageKey)
+    {
+        var chars = imageKey
+            .Select(ch => char.IsLetterOrDigit(ch) ? char.ToLowerInvariant(ch) : '_')
+            .ToArray();
+
+        var normalized = new string(chars);
+        while (normalized.Contains("__", StringComparison.Ordinal))
+        {
+            normalized = normalized.Replace("__", "_", StringComparison.Ordinal);
+        }
+
+        return normalized.Trim('_');
     }
 }
 
@@ -542,7 +564,17 @@ internal static class FmlDecodedAssetExporter
     private static string SanitizeFileName(string value)
     {
         var invalid = Path.GetInvalidFileNameChars();
-        var sanitized = new string(value.Select(ch => invalid.Contains(ch) ? '_' : ch).ToArray()).Trim();
+        var sanitized = new string(value
+            .Select(ch => char.IsLetterOrDigit(ch) || ch == '-' || ch == '_' ? char.ToLowerInvariant(ch) : '_')
+            .Select(ch => invalid.Contains(ch) ? '_' : ch)
+            .ToArray())
+            .Trim('_');
+
+        while (sanitized.Contains("__", StringComparison.Ordinal))
+        {
+            sanitized = sanitized.Replace("__", "_", StringComparison.Ordinal);
+        }
+
         return string.IsNullOrWhiteSpace(sanitized) ? "image" : sanitized;
     }
 }
