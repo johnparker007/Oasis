@@ -37,6 +37,11 @@ internal sealed class FmlImportService : IFmlImportService
             return Failure($"FML file was not found: '{fullFmlPath}'.");
         }
 
+        var diagnostics = new List<string>
+        {
+            $"FML source path: {fullFmlPath}"
+        };
+
         var decodeResult = _decoderService.DecodeToLayout(fullFmlPath);
         if (!decodeResult.Succeeded)
         {
@@ -47,7 +52,8 @@ internal sealed class FmlImportService : IFmlImportService
                 InputDefinitions = [],
                 SkippedLegacyComponentTypes = [],
                 Warnings = decodeResult.Warnings.Select(w => new MfmeImportWarning("fml.decode.warning", w)).ToArray(),
-                Errors = decodeResult.Errors.Count > 0 ? decodeResult.Errors : ["FML decode failed."]
+                Errors = decodeResult.Errors.Count > 0 ? decodeResult.Errors : ["FML decode failed."],
+                DebugDiagnostics = diagnostics
             };
         }
 
@@ -55,12 +61,20 @@ internal sealed class FmlImportService : IFmlImportService
         Directory.CreateDirectory(stagingDirectory);
         var manifestPath = Path.Combine(stagingDirectory, "layout.json");
         var imagePaths = FmlDecodedAssetExporter.ExportImages(decodeResult.Layout!, stagingDirectory);
+        var decodedJson = decodeResult.Layout!.ToJson(indented: true);
+        var adaptedManifestJson = FmlDecodedLayoutAdapter.ToMfmeExtractManifestJson(
+            decodedJson,
+            Path.GetFileNameWithoutExtension(fullFmlPath),
+            imagePaths);
         File.WriteAllText(
             manifestPath,
-            FmlDecodedLayoutAdapter.ToMfmeExtractManifestJson(
-                decodeResult.Layout!.ToJson(indented: true),
-                Path.GetFileNameWithoutExtension(fullFmlPath),
-                imagePaths));
+            adaptedManifestJson);
+
+        diagnostics.Add($"Temp staging directory: {stagingDirectory}");
+        diagnostics.Add($"Generated layout JSON path: {manifestPath}");
+        diagnostics.Add($"Generated image count: {imagePaths.Count}; image root: {stagingDirectory}; image paths: {FormatImagePaths(imagePaths.Values)}");
+        diagnostics.Add($"Decoded FML component counts by Type: {FormatCounts(CountDecodedTypes(decodedJson))}");
+        diagnostics.Add($"Adapted manifest component counts by legacy $type: {FormatCounts(CountAdaptedTypes(adaptedManifestJson))}");
 
         var context = new MfmeImportContext
         {
@@ -71,6 +85,7 @@ internal sealed class FmlImportService : IFmlImportService
         };
 
         var result = _mfmeImportService.Import(context);
+        result.DebugDiagnostics = diagnostics;
         if (decodeResult.Warnings.Count == 0)
         {
             return result;
@@ -83,7 +98,8 @@ internal sealed class FmlImportService : IFmlImportService
             InputDefinitions = result.InputDefinitions,
             SkippedLegacyComponentTypes = result.SkippedLegacyComponentTypes,
             Warnings = [.. decodeResult.Warnings.Select(w => new MfmeImportWarning("fml.decode.warning", w)), .. result.Warnings],
-            Errors = result.Errors
+            Errors = result.Errors,
+            DebugDiagnostics = diagnostics
         };
     }
 
@@ -99,6 +115,51 @@ internal sealed class FmlImportService : IFmlImportService
         Warnings = [],
         Errors = [error]
     };
+
+    private static string FormatImagePaths(IEnumerable<string> imagePaths)
+    {
+        var paths = imagePaths.OrderBy(path => path, StringComparer.Ordinal).ToArray();
+        return paths.Length == 0 ? "(none)" : string.Join(", ", paths);
+    }
+
+    private static IReadOnlyDictionary<string, int> CountDecodedTypes(string decodedJson)
+        => CountComponentsByProperty(decodedJson, "Type");
+
+    private static IReadOnlyDictionary<string, int> CountAdaptedTypes(string adaptedManifestJson)
+        => CountComponentsByProperty(adaptedManifestJson, "$type", static value =>
+        {
+            var commaIndex = value.IndexOf(',', StringComparison.Ordinal);
+            var qualified = commaIndex >= 0 ? value[..commaIndex] : value;
+            var lastDot = qualified.LastIndexOf('.');
+            return lastDot >= 0 ? qualified[(lastDot + 1)..] : qualified;
+        });
+
+    private static IReadOnlyDictionary<string, int> CountComponentsByProperty(
+        string json,
+        string propertyName,
+        Func<string, string>? normalize = null)
+    {
+        var root = JsonNode.Parse(json)?.AsObject();
+        if (root?["Components"] is not JsonArray components)
+        {
+            return new Dictionary<string, int>();
+        }
+
+        var counts = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var component in components.OfType<JsonObject>())
+        {
+            var key = component[propertyName]?.GetValue<string>() ?? "(missing)";
+            key = normalize?.Invoke(key) ?? key;
+            counts[key] = counts.TryGetValue(key, out var count) ? count + 1 : 1;
+        }
+
+        return counts;
+    }
+
+    private static string FormatCounts(IReadOnlyDictionary<string, int> counts)
+        => counts.Count == 0
+            ? "(none)"
+            : string.Join(", ", counts.OrderBy(kvp => kvp.Key, StringComparer.Ordinal).Select(kvp => $"{kvp.Key}: {kvp.Value}"));
 }
 
 internal static class FmlDecodedLayoutAdapter
@@ -236,9 +297,6 @@ internal static class FmlDecodedLayoutAdapter
         }
 
         string? first = FindExportedImage(imagePaths, componentIndex, keys[0]);
-        string? mask = keys.Select(key => new { Key = key, Path = FindExportedImage(imagePaths, componentIndex, key) })
-            .FirstOrDefault(entry => entry.Path is not null && entry.Key.Contains("mask", StringComparison.OrdinalIgnoreCase))
-            ?.Path;
         string? overlay = keys.Select(key => new { Key = key, Path = FindExportedImage(imagePaths, componentIndex, key) })
             .FirstOrDefault(entry => entry.Path is not null && !string.Equals(entry.Path, first, StringComparison.OrdinalIgnoreCase))
             ?.Path;
@@ -249,9 +307,8 @@ internal static class FmlDecodedLayoutAdapter
                 legacy["BmpImageFilename"] = FileNameFromRelativePath(first);
                 break;
             case "Lamp":
-                legacy["BmpImageFilename"] = FileNameFromRelativePath(first);
-                legacy["BmpMaskImageFilename"] = FileNameFromRelativePath(mask);
-                legacy["Graphic"] = first is not null;
+                legacy["Graphic"] = keys.Any(key => FindExportedImage(imagePaths, componentIndex, key) is not null);
+                legacy["LampElements"] = BuildLampElements(component, imagePaths, componentIndex, keys);
                 break;
             case "Reel":
                 legacy["BandBmpImageFilename"] = FileNameFromRelativePath(first);
@@ -271,6 +328,178 @@ internal static class FmlDecodedLayoutAdapter
 
     private static string? FileNameFromRelativePath(string? relativePath)
         => string.IsNullOrWhiteSpace(relativePath) ? null : Path.GetFileName(relativePath);
+
+    private static JsonArray BuildLampElements(
+        JsonObject component,
+        IReadOnlyDictionary<FmlDecodedImageKey, string> imagePaths,
+        int componentIndex,
+        IReadOnlyList<string> imageKeys)
+    {
+        var elements = new JsonArray();
+        var sublampNumbers = ReadSublampNumbers(component);
+
+        if (sublampNumbers.Count > 0)
+        {
+            foreach (var entry in sublampNumbers.OrderBy(kvp => kvp.Key))
+            {
+                var mainImage = FindLampImage(imagePaths, componentIndex, imageKeys, entry.Key, isMask: false)
+                    ?? FindLampImage(imagePaths, componentIndex, imageKeys, entry.Key, isMask: null);
+                var maskImage = FindLampImage(imagePaths, componentIndex, imageKeys, entry.Key, isMask: true);
+                elements.Add(CreateLampElement(entry.Value, mainImage, maskImage));
+            }
+        }
+
+        if (elements.Count == 0)
+        {
+            var lampNumber = FindLampNumber(component);
+            var mainImage = FindFirstLampImage(imagePaths, componentIndex, imageKeys, isMask: false);
+            var maskImage = FindFirstLampImage(imagePaths, componentIndex, imageKeys, isMask: true);
+            elements.Add(CreateLampElement(lampNumber, mainImage, maskImage));
+        }
+
+        return elements;
+    }
+
+    private static JsonObject CreateLampElement(int? number, string? imagePath, string? maskPath)
+    {
+        var lampElement = new JsonObject
+        {
+            ["NumberAsText"] = number?.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["BmpImageFilename"] = FileNameFromRelativePath(imagePath),
+            ["BmpMaskImageFilename"] = FileNameFromRelativePath(maskPath),
+            ["Graphic"] = imagePath is not null
+        };
+
+        return lampElement;
+    }
+
+    private static IReadOnlyDictionary<int, int> ReadSublampNumbers(JsonObject component)
+    {
+        var numbers = new Dictionary<int, int>();
+        if (component["SubLampNumberTable"] is not JsonObject table)
+        {
+            return numbers;
+        }
+
+        foreach (var kvp in table)
+        {
+            const string prefix = "Lamp";
+            if (!kvp.Key.StartsWith(prefix, StringComparison.Ordinal)
+                || !int.TryParse(kvp.Key[prefix.Length..], out var sublampIndex)
+                || kvp.Value is not JsonValue value
+                || !value.TryGetValue<int>(out var sublampNumber))
+            {
+                continue;
+            }
+
+            numbers[sublampIndex] = sublampNumber;
+        }
+
+        return numbers;
+    }
+
+    private static int? FindLampNumber(JsonObject component)
+    {
+        var number = FindValue(component, "Number");
+        if (TryGetInt(number, out var parsedNumber))
+        {
+            return parsedNumber;
+        }
+
+        if (component["Geometry"] is JsonObject geometry && TryGetInt(geometry["Number"], out var geometryNumber) && geometryNumber != 0)
+        {
+            return geometryNumber;
+        }
+
+        return null;
+    }
+
+    private static bool TryGetInt(JsonNode? node, out int value)
+    {
+        value = 0;
+        if (node is not JsonValue jsonValue)
+        {
+            return false;
+        }
+
+        if (jsonValue.TryGetValue<int>(out value))
+        {
+            return true;
+        }
+
+        if (jsonValue.TryGetValue<double>(out var doubleValue))
+        {
+            value = (int)Math.Round(doubleValue);
+            return true;
+        }
+
+        if (jsonValue.TryGetValue<string>(out var stringValue)
+            && int.TryParse(stringValue, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out value))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private static string? FindLampImage(
+        IReadOnlyDictionary<FmlDecodedImageKey, string> imagePaths,
+        int componentIndex,
+        IEnumerable<string> imageKeys,
+        int sublampIndex,
+        bool? isMask)
+    {
+        var sublampText = $"Sublamp {sublampIndex} ";
+        foreach (var imageKey in imageKeys)
+        {
+            if (!imageKey.StartsWith(sublampText, StringComparison.OrdinalIgnoreCase) || !MatchesMask(imageKey, isMask))
+            {
+                continue;
+            }
+
+            var path = FindExportedImage(imagePaths, componentIndex, imageKey);
+            if (path is not null)
+            {
+                return path;
+            }
+        }
+
+        return null;
+    }
+
+    private static string? FindFirstLampImage(
+        IReadOnlyDictionary<FmlDecodedImageKey, string> imagePaths,
+        int componentIndex,
+        IEnumerable<string> imageKeys,
+        bool? isMask)
+    {
+        foreach (var imageKey in imageKeys)
+        {
+            if (!MatchesMask(imageKey, isMask))
+            {
+                continue;
+            }
+
+            var path = FindExportedImage(imagePaths, componentIndex, imageKey);
+            if (path is not null)
+            {
+                return path;
+            }
+        }
+
+        return null;
+    }
+
+    private static bool MatchesMask(string imageKey, bool? isMask)
+    {
+        if (isMask is null)
+        {
+            return true;
+        }
+
+        var keyIsMask = imageKey.Contains("mask", StringComparison.OrdinalIgnoreCase);
+        return keyIsMask == isMask.Value;
+    }
 }
 
 internal readonly record struct FmlDecodedImageKey(int ComponentIndex, string ImageName);

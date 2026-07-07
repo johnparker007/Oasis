@@ -14,5 +14,7 @@ internal sealed class MfmeImportResult
 
     public required IReadOnlyList<string> Errors { get; init; }
 
+    public IReadOnlyList<string> DebugDiagnostics { get; set; } = [];
+
     public bool Succeeded => Errors.Count == 0;
 }
