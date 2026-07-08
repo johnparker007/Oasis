@@ -109,6 +109,10 @@ namespace MfmeFmlDecoder.src.Decoder.Component
                 { 0x07, new TagInfo(0x01, "Graphic", new byte[] { 0x00 }, ValueRole.BOOLEAN) },
                 { 0x17, new TagInfo(0x01, "Blend", new byte[] { 0x00 }, ValueRole.BOOLEAN) },
                 { 0x23, new TagInfo(0x01, "ClickAll", new byte[] { 0x00 }, ValueRole.BOOLEAN) },
+                { 0x5C, new TagInfo(0x14, "Unknown 0x5C", new byte[] { 0x00 }, ValueRole.RAW) },
+                { 0x5D, new TagInfo(0x14, "Unknown 0x5D", new byte[] { 0x00 }, ValueRole.RAW) },
+                { 0x5E, new TagInfo(0x14, "Unknown 0x5E", new byte[] { 0x00 }, ValueRole.RAW) },
+                //{ 0x5C, new TagInfo(0x04, "Unknown 0x5C", new byte[] { 0x00 }, ValueRole.UINT32) },
             });
 
         public Lamp Parse(long componentOffset, uint componentId, byte[] data)
