@@ -68,4 +68,34 @@ public sealed class EditorPreferencesSerializationTests
         Assert.Equal(string.Empty, preferences!.Mame.LocalRomSourceDirectory);
         Assert.Equal(".zip", preferences.Mame.LocalRomArchiveExtension);
     }
+
+    [Fact]
+    public void DeserializingLegacyPreferences_UsesEmptyMfmeFmlImportDirectory()
+    {
+        var json = """
+        {
+          "ThemePreference": 2
+        }
+        """;
+
+        var preferences = JsonSerializer.Deserialize<EditorPreferences>(json);
+
+        Assert.NotNull(preferences);
+        Assert.Equal(string.Empty, preferences!.LastMfmeFmlImportDirectory);
+    }
+
+    [Fact]
+    public void SerializingPreferences_PreservesMfmeFmlImportDirectory()
+    {
+        var preferences = new EditorPreferences
+        {
+            LastMfmeFmlImportDirectory = "C:\\\\Layouts"
+        };
+
+        var json = JsonSerializer.Serialize(preferences);
+        var roundTripped = JsonSerializer.Deserialize<EditorPreferences>(json);
+
+        Assert.NotNull(roundTripped);
+        Assert.Equal("C:\\\\Layouts", roundTripped!.LastMfmeFmlImportDirectory);
+    }
 }
