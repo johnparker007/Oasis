@@ -19,6 +19,7 @@ namespace MfmeFmlDecoder.src.Decoder.Component
             { 0x02, new TagInfo(0x01, "Unknown 0x02", new byte[] { 0x00 }, ValueRole.BOOLEAN) },
             { 0x27, new TagInfo(0x00, "PrimaryFont", Array.Empty<byte>(), ValueRole.FONT) },
             { 0x38, new TagInfo(0x04, "Unknown 0x38", new byte[] { 0x00, 0x00, 0x00, 0x00 }, ValueRole.UINT32) },
+            { 0x1C, new TagInfo(0x04, "Unknown 0x1C", new byte[] { 0x00, 0x00, 0x00, 0x00 }, ValueRole.UINT32) },
         };
 
         public Label Parse(long componentOffset, uint componentId, byte[] data)
@@ -30,7 +31,7 @@ namespace MfmeFmlDecoder.src.Decoder.Component
                 data,
                 normalizationRule: new GeometryAngleNormalization.Rule(
                     RewriteBytesAfterNormalizedAngle: new byte[] { 0x00, 0x01 },
-                    RewriteTriggerOffsetDelta: 5,
+                    RewriteTriggerOffsetDelta: 0,
                     ValidAngleOffsetDelta: 5));
 
             DumpRemaining(componentOffset, parseData, offset);
