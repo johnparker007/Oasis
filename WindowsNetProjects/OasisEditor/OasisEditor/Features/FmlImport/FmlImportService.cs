@@ -226,7 +226,7 @@ internal static class FmlDecodedLayoutAdapter
         CopyValue(component, legacy, "Reversed", "Reversed");
         CopyValue(component, legacy, "Reverse", "Reversed");
         CopyValue(component, legacy, "Stops", "Stops");
-        CopyValue(component, legacy, "Height", "Height");
+        CopyReelHeight(component, legacy, type);
         CopyValue(component, legacy, "ButtonNumber", "ButtonNumberAsString");
         CopyValue(component, legacy, "Button", "ButtonNumberAsString");
         CopyColor(component, legacy, "Colour", "TextColor");
@@ -295,6 +295,20 @@ internal static class FmlDecodedLayoutAdapter
         if (value is not null && !target.ContainsKey(targetName))
         {
             target[targetName] = JsonNode.Parse(value.ToJsonString());
+        }
+    }
+
+    private static void CopyReelHeight(JsonObject source, JsonObject target, string type)
+    {
+        if (!string.Equals(MapType(type), "Reel", StringComparison.Ordinal) || target.ContainsKey("Height"))
+        {
+            return;
+        }
+
+        var reelHeight = FindValue(source, "ReelHeight") ?? FindValue(source, "Height");
+        if (reelHeight is not null)
+        {
+            target["Height"] = JsonNode.Parse(reelHeight.ToJsonString());
         }
     }
 
