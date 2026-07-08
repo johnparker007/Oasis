@@ -67,13 +67,13 @@ namespace MfmeFmlDecoder.src.Decoder.Component.Core
                         offset += 4;
                         break;
 
-                    case 0x03: // Width
-                        width = BitConverter.ToUInt32(data, (int)offset);
+                    case 0x03: // Height
+                        height = BitConverter.ToUInt32(data, (int)offset);
                         offset += 4;
                         break;
 
-                    case 0x04: // Height
-                        height = BitConverter.ToUInt32(data, (int)offset);
+                    case 0x04: // Width
+                        width = BitConverter.ToUInt32(data, (int)offset);
                         offset += 4;
                         break;
 
