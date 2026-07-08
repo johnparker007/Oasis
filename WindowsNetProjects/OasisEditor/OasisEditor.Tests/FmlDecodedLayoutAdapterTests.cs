@@ -151,4 +151,92 @@ public sealed class FmlDecodedLayoutAdapterTests
         Assert.Equal("0000_sublamp_1_mask_image.bmp", lampElement["BmpMaskImageFilename"]!.GetValue<string>());
         Assert.True(lampElement["Graphic"]!.GetValue<bool>());
     }
+
+    [Fact]
+    public void ToMfmeExtractManifestJson_WithFmlReelBandAndOverlay_MapsBandPrimaryAndOverlaySecondary()
+    {
+        const string decodedJson = """
+        {
+          "Components": [
+            {
+              "Type": "Reel",
+              "Geometry": { "X": 10, "Y": 20, "Width": 30, "Height": 40, "Number": 2 },
+              "Images": {
+                "reel_band_gradient_image": { "Width": 16, "Height": 64, "BitsPerPixel": 32 },
+                "window_overlay_image": { "Width": 16, "Height": 16, "BitsPerPixel": 32 }
+              }
+            }
+          ]
+        }
+        """;
+        var imagePaths = new Dictionary<FmlDecodedImageKey, string>
+        {
+            [new(0, "reel_band_gradient_image")] = "reels/0000_reel_band_gradient_image.bmp",
+            [new(0, "window_overlay_image")] = "reels/0000_window_overlay_image.bmp"
+        };
+
+        var manifestJson = FmlDecodedLayoutAdapter.ToMfmeExtractManifestJson(decodedJson, "layout", imagePaths);
+
+        var component = JsonNode.Parse(manifestJson)!["Components"]!.AsArray()[0]!.AsObject();
+        Assert.Equal("0000_reel_band_gradient_image.bmp", component["BandBmpImageFilename"]!.GetValue<string>());
+        Assert.True(component["HasOverlay"]!.GetValue<bool>());
+        Assert.Equal("0000_window_overlay_image.bmp", component["OverlayBmpImageFilename"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void ToMfmeExtractManifestJson_WithFmlReelOnlyBand_DoesNotUseBandAsOverlay()
+    {
+        const string decodedJson = """
+        {
+          "Components": [
+            {
+              "Type": "Reel",
+              "Geometry": { "X": 10, "Y": 20, "Width": 30, "Height": 40, "Number": 2 },
+              "Images": {
+                "reel_band_gradient_image": { "Width": 16, "Height": 64, "BitsPerPixel": 32 }
+              }
+            }
+          ]
+        }
+        """;
+        var imagePaths = new Dictionary<FmlDecodedImageKey, string>
+        {
+            [new(0, "reel_band_gradient_image")] = "reels/0000_reel_band_gradient_image.bmp"
+        };
+
+        var manifestJson = FmlDecodedLayoutAdapter.ToMfmeExtractManifestJson(decodedJson, "layout", imagePaths);
+
+        var component = JsonNode.Parse(manifestJson)!["Components"]!.AsArray()[0]!.AsObject();
+        Assert.Equal("0000_reel_band_gradient_image.bmp", component["BandBmpImageFilename"]!.GetValue<string>());
+        Assert.False(component["HasOverlay"]!.GetValue<bool>());
+        Assert.Null(component["OverlayBmpImageFilename"]?.GetValue<string>());
+    }
+
+    [Fact]
+    public void ToMfmeExtractManifestJson_WithFmlAlphaOverlay_MapsOverlay()
+    {
+        const string decodedJson = """
+        {
+          "Components": [
+            {
+              "Type": "Alpha",
+              "Geometry": { "X": 10, "Y": 20, "Width": 30, "Height": 12, "Number": 0 },
+              "Images": {
+                "display_overlay": { "Width": 30, "Height": 12, "BitsPerPixel": 32 }
+              }
+            }
+          ]
+        }
+        """;
+        var imagePaths = new Dictionary<FmlDecodedImageKey, string>
+        {
+            [new(0, "display_overlay")] = "reels/0000_display_overlay.bmp"
+        };
+
+        var manifestJson = FmlDecodedLayoutAdapter.ToMfmeExtractManifestJson(decodedJson, "layout", imagePaths);
+
+        var component = JsonNode.Parse(manifestJson)!["Components"]!.AsArray()[0]!.AsObject();
+        Assert.True(component["HasOverlay"]!.GetValue<bool>());
+        Assert.Equal("0000_display_overlay.bmp", component["OverlayBmpImageFilename"]!.GetValue<string>());
+    }
 }

@@ -312,6 +312,9 @@ internal sealed class MfmeToOasisComponentMapper
             Width = component.Size.X,
             Height = component.Size.Y,
             DisplayNumber = component.Number,
+            SecondaryAssetPath = component.HasOverlay
+                ? BuildExtractRelativePath("reels", component.OverlayBmpImageFilename)
+                : null,
             OnColorHex = ToHex(component.SegmentOnColor),
             ImportSource = CreateImportSource($"{component.SourceType}:{component.Number}")
         };
