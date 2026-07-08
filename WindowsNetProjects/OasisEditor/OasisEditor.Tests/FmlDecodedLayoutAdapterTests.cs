@@ -7,6 +7,81 @@ namespace OasisEditor.Tests;
 public sealed class FmlDecodedLayoutAdapterTests
 {
     [Fact]
+    public void ToMfmeExtractManifestJson_WithBackgroundImageDimensions_UsesImageSize()
+    {
+        const string decodedJson = """
+        {
+          "Components": [
+            {
+              "Type": "Background",
+              "Geometry": { "X": 0, "Y": 0, "Width": 1069, "Height": 965, "Number": 0 },
+              "Images": {
+                "background_image": { "Width": 1071, "Height": 990, "BitsPerPixel": 32 }
+              }
+            }
+          ]
+        }
+        """;
+
+        var manifestJson = FmlDecodedLayoutAdapter.ToMfmeExtractManifestJson(decodedJson, "layout");
+
+        var component = JsonNode.Parse(manifestJson)!["Components"]!.AsArray()[0]!.AsObject();
+        Assert.Equal(0, component["Position"]!["X"]!.GetValue<int>());
+        Assert.Equal(0, component["Position"]!["Y"]!.GetValue<int>());
+        Assert.Equal(1071, component["Size"]!["X"]!.GetValue<int>());
+        Assert.Equal(990, component["Size"]!["Y"]!.GetValue<int>());
+    }
+
+    [Fact]
+    public void ToMfmeExtractManifestJson_WithBackgroundWithoutImageDimensions_UsesGeometrySize()
+    {
+        const string decodedJson = """
+        {
+          "Components": [
+            {
+              "Type": "Background",
+              "Geometry": { "X": 12, "Y": 34, "Width": 1069, "Height": 965, "Number": 0 }
+            }
+          ]
+        }
+        """;
+
+        var manifestJson = FmlDecodedLayoutAdapter.ToMfmeExtractManifestJson(decodedJson, "layout");
+
+        var component = JsonNode.Parse(manifestJson)!["Components"]!.AsArray()[0]!.AsObject();
+        Assert.Equal(12, component["Position"]!["X"]!.GetValue<int>());
+        Assert.Equal(34, component["Position"]!["Y"]!.GetValue<int>());
+        Assert.Equal(1069, component["Size"]!["X"]!.GetValue<int>());
+        Assert.Equal(965, component["Size"]!["Y"]!.GetValue<int>());
+    }
+
+    [Fact]
+    public void ToMfmeExtractManifestJson_WithInvalidBackgroundImageDimensions_UsesGeometrySize()
+    {
+        const string decodedJson = """
+        {
+          "Components": [
+            {
+              "Type": "Background",
+              "Geometry": { "X": 12, "Y": 34, "Width": 1069, "Height": 965, "Number": 0 },
+              "Images": {
+                "background_image": { "Width": 0, "BitsPerPixel": 32 }
+              }
+            }
+          ]
+        }
+        """;
+
+        var manifestJson = FmlDecodedLayoutAdapter.ToMfmeExtractManifestJson(decodedJson, "layout");
+
+        var component = JsonNode.Parse(manifestJson)!["Components"]!.AsArray()[0]!.AsObject();
+        Assert.Equal(12, component["Position"]!["X"]!.GetValue<int>());
+        Assert.Equal(34, component["Position"]!["Y"]!.GetValue<int>());
+        Assert.Equal(1069, component["Size"]!["X"]!.GetValue<int>());
+        Assert.Equal(965, component["Size"]!["Y"]!.GetValue<int>());
+    }
+
+    [Fact]
     public void ToMfmeExtractManifestJson_WithFmlLampImages_MapsLampElementNumberAndBitmapFilenames()
     {
         const string decodedJson = """
