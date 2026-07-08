@@ -336,9 +336,8 @@ internal static class FmlDecodedLayoutAdapter
         }
 
         string? first = FindExportedImage(imagePaths, componentIndex, keys[0]);
-        string? overlay = keys.Select(key => new { Key = key, Path = FindExportedImage(imagePaths, componentIndex, key) })
-            .FirstOrDefault(entry => entry.Path is not null && !string.Equals(entry.Path, first, StringComparison.OrdinalIgnoreCase))
-            ?.Path;
+        string? reelBand = FindFirstImageByKeyRole(imagePaths, componentIndex, keys, IsReelBandImageKey) ?? first;
+        string? overlay = FindFirstImageByKeyRole(imagePaths, componentIndex, keys, IsOverlayImageKey);
 
         switch (MapType(type))
         {
@@ -350,16 +349,60 @@ internal static class FmlDecodedLayoutAdapter
                 legacy["LampElements"] = BuildLampElements(component, imagePaths, componentIndex, keys);
                 break;
             case "Reel":
-                legacy["BandBmpImageFilename"] = FileNameFromRelativePath(first);
+                legacy["BandBmpImageFilename"] = FileNameFromRelativePath(reelBand);
                 legacy["HasOverlay"] = overlay is not null;
                 legacy["OverlayBmpImageFilename"] = FileNameFromRelativePath(overlay);
                 break;
             case "Alpha":
             case "SevenSegment":
-                legacy["HasOverlay"] = first is not null;
-                legacy["OverlayBmpImageFilename"] = FileNameFromRelativePath(first);
+                legacy["HasOverlay"] = overlay is not null;
+                legacy["OverlayBmpImageFilename"] = FileNameFromRelativePath(overlay);
                 break;
         }
+    }
+
+    private static string? FindFirstImageByKeyRole(
+        IReadOnlyDictionary<FmlDecodedImageKey, string> imagePaths,
+        int componentIndex,
+        IEnumerable<string> imageKeys,
+        Func<string, bool> matchesRole)
+    {
+        foreach (var imageKey in imageKeys)
+        {
+            if (!matchesRole(imageKey))
+            {
+                continue;
+            }
+
+            var path = FindExportedImage(imagePaths, componentIndex, imageKey);
+            if (path is not null)
+            {
+                return path;
+            }
+        }
+
+        return null;
+    }
+
+    private static bool IsReelBandImageKey(string imageKey)
+    {
+        var normalizedKey = NormalizeImageKey(imageKey);
+        return normalizedKey.Contains("band", StringComparison.Ordinal)
+            || normalizedKey.Contains("gradient", StringComparison.Ordinal)
+            || normalizedKey.Contains("strip", StringComparison.Ordinal)
+            || normalizedKey.Contains("reel_image", StringComparison.Ordinal)
+            || normalizedKey.EndsWith("reel", StringComparison.Ordinal);
+    }
+
+    private static bool IsOverlayImageKey(string imageKey)
+    {
+        var normalizedKey = NormalizeImageKey(imageKey);
+        return normalizedKey.Contains("overlay", StringComparison.Ordinal)
+            || normalizedKey.Contains("over_lay", StringComparison.Ordinal)
+            || normalizedKey.Contains("window", StringComparison.Ordinal)
+            || normalizedKey.Contains("cutout", StringComparison.Ordinal)
+            || normalizedKey.Contains("cut_out", StringComparison.Ordinal)
+            || normalizedKey.Contains("mask_overlay", StringComparison.Ordinal);
     }
 
     private static string? FindExportedImage(IReadOnlyDictionary<FmlDecodedImageKey, string> imagePaths, int componentIndex, string imageName)

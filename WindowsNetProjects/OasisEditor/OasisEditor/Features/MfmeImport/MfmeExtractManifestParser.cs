@@ -280,12 +280,17 @@ internal static class MfmeExtractManifestParser
                 return true;
 
             case "extractcomponentsevensegment":
-                parsedComponent = new MfmeLegacySevenSegmentComponent(
-                    position,
-                    size,
-                    ReadInt(component, "Number"),
-                    ReadColor(component, "SegmentOnColor"));
-                return true;
+                {
+                    var overlayBmpImageFilename = ReadString(component, "OverlayBmpImageFilename") ?? ReadString(component, "BmpImageFilename");
+                    parsedComponent = new MfmeLegacySevenSegmentComponent(
+                        position,
+                        size,
+                        ReadInt(component, "Number"),
+                        ReadColor(component, "SegmentOnColor"),
+                        ReadBool(component, "HasOverlay") || !string.IsNullOrWhiteSpace(overlayBmpImageFilename),
+                        overlayBmpImageFilename);
+                    return true;
+                }
 
             case "extractcomponentalpha":
             case "extractcomponentalphanew":

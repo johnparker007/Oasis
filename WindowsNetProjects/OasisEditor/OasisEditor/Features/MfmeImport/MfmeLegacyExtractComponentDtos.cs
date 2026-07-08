@@ -95,7 +95,9 @@ internal sealed record MfmeLegacySevenSegmentComponent(
     MfmeLegacyPoint Position,
     MfmeLegacyPoint Size,
     int Number,
-    MfmeLegacyColor? SegmentOnColor)
+    MfmeLegacyColor? SegmentOnColor,
+    bool HasOverlay = false,
+    string? OverlayBmpImageFilename = null)
     : MfmeLegacyComponentBase(
         "SevenSegment",
         Position,
