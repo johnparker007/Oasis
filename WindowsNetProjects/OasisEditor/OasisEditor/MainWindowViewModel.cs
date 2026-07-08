@@ -51,6 +51,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private bool _debugOutputLamps;
     private bool _debugOutputStdIn;
     private bool _debugOutputStdOut;
+    private string _lastMfmeFmlImportDirectory = string.Empty;
     private FaceGenerationSettingsModel _defaultFaceGenerationSettings = FaceGenerationSettingsModel.Default;
     private bool _showFaceGenerationSettingsBeforeRegenerate = true;
     private string _mameValidationSummary = "Not validated.";
@@ -286,6 +287,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             _debugOutputLamps = preferences.Mame.DebugOutputLamps;
             _debugOutputStdIn = preferences.Mame.DebugOutputStdIn;
             _debugOutputStdOut = preferences.Mame.DebugOutputStdOut;
+            _lastMfmeFmlImportDirectory = preferences.LastMfmeFmlImportDirectory;
             _defaultFaceGenerationSettings = preferences.FaceGeneration.ToSettings();
             _showFaceGenerationSettingsBeforeRegenerate = preferences.FaceGeneration.ShowFaceGenerationSettingsBeforeRegenerate;
             _outputLog.ShowInfoLogs = preferences.OutputLog.ShowInfoLogs;
@@ -1678,13 +1680,22 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             Title = "Import MFME FML",
             Filter = "MFME FML Layout|*.fml|All Files|*.*",
-            InitialDirectory = LoadedProject.ProjectDirectory,
+            InitialDirectory = ResolveMfmeFmlImportInitialDirectory(
+                _lastMfmeFmlImportDirectory,
+                LoadedProject.ProjectDirectory),
             CheckFileExists = true
         };
 
         if (dialog.ShowDialog() != true)
         {
             return;
+        }
+
+        var selectedDirectory = Path.GetDirectoryName(dialog.FileName);
+        if (!string.IsNullOrWhiteSpace(selectedDirectory))
+        {
+            _lastMfmeFmlImportDirectory = selectedDirectory;
+            SavePreferences();
         }
 
         var activeDocument = SelectedDocument;
@@ -1807,6 +1818,19 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             EndEditorProgress();
             NotifyDocumentCommands();
         }
+    }
+
+    public static string ResolveMfmeFmlImportInitialDirectory(
+        string? lastMfmeFmlImportDirectory,
+        string projectDirectory)
+    {
+        if (!string.IsNullOrWhiteSpace(lastMfmeFmlImportDirectory)
+            && Directory.Exists(lastMfmeFmlImportDirectory))
+        {
+            return lastMfmeFmlImportDirectory;
+        }
+
+        return projectDirectory;
     }
 
     private void OpenAssetDocument(AssetBrowserItemViewModel? asset)
@@ -2527,6 +2551,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _preferencesStore.Save(new EditorPreferences
         {
             ThemePreference = SelectedThemePreference,
+            LastMfmeFmlImportDirectory = _lastMfmeFmlImportDirectory,
             Mame = new MamePreferences
             {
                 Version = MameVersion,

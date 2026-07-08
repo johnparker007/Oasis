@@ -209,8 +209,8 @@ internal static class FmlDecodedLayoutAdapter
             },
             ["Size"] = new JsonObject
             {
-                ["X"] = Math.Max(1, ReadNumber(component, "Geometry", "Width")),
-                ["Y"] = Math.Max(1, ReadNumber(component, "Geometry", "Height"))
+                ["X"] = Math.Max(1, ReadComponentWidth(component, type)),
+                ["Y"] = Math.Max(1, ReadComponentHeight(component, type))
             }
         };
 
@@ -226,7 +226,7 @@ internal static class FmlDecodedLayoutAdapter
         CopyValue(component, legacy, "Reversed", "Reversed");
         CopyValue(component, legacy, "Reverse", "Reversed");
         CopyValue(component, legacy, "Stops", "Stops");
-        CopyValue(component, legacy, "Height", "Height");
+        CopyReelHeight(component, legacy, type);
         CopyValue(component, legacy, "ButtonNumber", "ButtonNumberAsString");
         CopyValue(component, legacy, "Button", "ButtonNumberAsString");
         CopyColor(component, legacy, "Colour", "TextColor");
@@ -255,12 +255,60 @@ internal static class FmlDecodedLayoutAdapter
             ? (int)Math.Round(number)
             : 0;
 
+    private static int ReadComponentWidth(JsonObject component, string type)
+        => ReadComponentSize(component, type, "Width");
+
+    private static int ReadComponentHeight(JsonObject component, string type)
+        => ReadComponentSize(component, type, "Height");
+
+    private static int ReadComponentSize(JsonObject component, string type, string propertyName)
+    {
+        if (string.Equals(MapType(type), "Background", StringComparison.Ordinal))
+        {
+            var backgroundImageWidth = ReadBackgroundImageSize(component, "Width");
+            var backgroundImageHeight = ReadBackgroundImageSize(component, "Height");
+            if (backgroundImageWidth > 0 && backgroundImageHeight > 0)
+            {
+                return string.Equals(propertyName, "Width", StringComparison.Ordinal)
+                    ? backgroundImageWidth
+                    : backgroundImageHeight;
+            }
+        }
+
+        return ReadGeometrySize(component, propertyName);
+    }
+
+    private static int ReadGeometrySize(JsonObject component, string propertyName)
+        => ReadNumber(component, "Geometry", propertyName);
+
+    private static int ReadBackgroundImageSize(JsonObject component, string propertyName)
+        => component["Images"] is JsonObject images
+            && images["background_image"] is JsonObject backgroundImage
+            && backgroundImage[propertyName] is JsonValue value
+            && value.TryGetValue<double>(out var number)
+            ? (int)Math.Round(number)
+            : 0;
+
     private static void CopyValue(JsonObject source, JsonObject target, string sourceName, string targetName)
     {
         var value = FindValue(source, sourceName);
         if (value is not null && !target.ContainsKey(targetName))
         {
             target[targetName] = JsonNode.Parse(value.ToJsonString());
+        }
+    }
+
+    private static void CopyReelHeight(JsonObject source, JsonObject target, string type)
+    {
+        if (!string.Equals(MapType(type), "Reel", StringComparison.Ordinal) || target.ContainsKey("Height"))
+        {
+            return;
+        }
+
+        var reelHeight = FindValue(source, "ReelHeight") ?? FindValue(source, "Height");
+        if (reelHeight is not null)
+        {
+            target["Height"] = JsonNode.Parse(reelHeight.ToJsonString());
         }
     }
 
@@ -302,9 +350,8 @@ internal static class FmlDecodedLayoutAdapter
         }
 
         string? first = FindExportedImage(imagePaths, componentIndex, keys[0]);
-        string? overlay = keys.Select(key => new { Key = key, Path = FindExportedImage(imagePaths, componentIndex, key) })
-            .FirstOrDefault(entry => entry.Path is not null && !string.Equals(entry.Path, first, StringComparison.OrdinalIgnoreCase))
-            ?.Path;
+        string? reelBand = FindFirstImageByKeyRole(imagePaths, componentIndex, keys, IsReelBandImageKey) ?? first;
+        string? overlay = FindFirstImageByKeyRole(imagePaths, componentIndex, keys, IsOverlayImageKey);
 
         switch (MapType(type))
         {
@@ -316,16 +363,60 @@ internal static class FmlDecodedLayoutAdapter
                 legacy["LampElements"] = BuildLampElements(component, imagePaths, componentIndex, keys);
                 break;
             case "Reel":
-                legacy["BandBmpImageFilename"] = FileNameFromRelativePath(first);
+                legacy["BandBmpImageFilename"] = FileNameFromRelativePath(reelBand);
                 legacy["HasOverlay"] = overlay is not null;
                 legacy["OverlayBmpImageFilename"] = FileNameFromRelativePath(overlay);
                 break;
             case "Alpha":
             case "SevenSegment":
-                legacy["HasOverlay"] = first is not null;
-                legacy["OverlayBmpImageFilename"] = FileNameFromRelativePath(first);
+                legacy["HasOverlay"] = overlay is not null;
+                legacy["OverlayBmpImageFilename"] = FileNameFromRelativePath(overlay);
                 break;
         }
+    }
+
+    private static string? FindFirstImageByKeyRole(
+        IReadOnlyDictionary<FmlDecodedImageKey, string> imagePaths,
+        int componentIndex,
+        IEnumerable<string> imageKeys,
+        Func<string, bool> matchesRole)
+    {
+        foreach (var imageKey in imageKeys)
+        {
+            if (!matchesRole(imageKey))
+            {
+                continue;
+            }
+
+            var path = FindExportedImage(imagePaths, componentIndex, imageKey);
+            if (path is not null)
+            {
+                return path;
+            }
+        }
+
+        return null;
+    }
+
+    private static bool IsReelBandImageKey(string imageKey)
+    {
+        var normalizedKey = NormalizeImageKey(imageKey);
+        return normalizedKey.Contains("band", StringComparison.Ordinal)
+            || normalizedKey.Contains("gradient", StringComparison.Ordinal)
+            || normalizedKey.Contains("strip", StringComparison.Ordinal)
+            || normalizedKey.Contains("reel_image", StringComparison.Ordinal)
+            || normalizedKey.EndsWith("reel", StringComparison.Ordinal);
+    }
+
+    private static bool IsOverlayImageKey(string imageKey)
+    {
+        var normalizedKey = NormalizeImageKey(imageKey);
+        return normalizedKey.Contains("overlay", StringComparison.Ordinal)
+            || normalizedKey.Contains("over_lay", StringComparison.Ordinal)
+            || normalizedKey.Contains("window", StringComparison.Ordinal)
+            || normalizedKey.Contains("cutout", StringComparison.Ordinal)
+            || normalizedKey.Contains("cut_out", StringComparison.Ordinal)
+            || normalizedKey.Contains("mask_overlay", StringComparison.Ordinal);
     }
 
     private static string? FindExportedImage(IReadOnlyDictionary<FmlDecodedImageKey, string> imagePaths, int componentIndex, string imageName)

@@ -1,4 +1,6 @@
+using System.Text.Json;
 using System.Text.Json.Nodes;
+using OasisEditor.Features.MfmeImport;
 using OasisEditor.Features.FmlImport;
 using Xunit;
 
@@ -6,6 +8,81 @@ namespace OasisEditor.Tests;
 
 public sealed class FmlDecodedLayoutAdapterTests
 {
+    [Fact]
+    public void ToMfmeExtractManifestJson_WithBackgroundImageDimensions_UsesImageSize()
+    {
+        const string decodedJson = """
+        {
+          "Components": [
+            {
+              "Type": "Background",
+              "Geometry": { "X": 0, "Y": 0, "Width": 1069, "Height": 965, "Number": 0 },
+              "Images": {
+                "background_image": { "Width": 1071, "Height": 990, "BitsPerPixel": 32 }
+              }
+            }
+          ]
+        }
+        """;
+
+        var manifestJson = FmlDecodedLayoutAdapter.ToMfmeExtractManifestJson(decodedJson, "layout");
+
+        var component = JsonNode.Parse(manifestJson)!["Components"]!.AsArray()[0]!.AsObject();
+        Assert.Equal(0, component["Position"]!["X"]!.GetValue<int>());
+        Assert.Equal(0, component["Position"]!["Y"]!.GetValue<int>());
+        Assert.Equal(1071, component["Size"]!["X"]!.GetValue<int>());
+        Assert.Equal(990, component["Size"]!["Y"]!.GetValue<int>());
+    }
+
+    [Fact]
+    public void ToMfmeExtractManifestJson_WithBackgroundWithoutImageDimensions_UsesGeometrySize()
+    {
+        const string decodedJson = """
+        {
+          "Components": [
+            {
+              "Type": "Background",
+              "Geometry": { "X": 12, "Y": 34, "Width": 1069, "Height": 965, "Number": 0 }
+            }
+          ]
+        }
+        """;
+
+        var manifestJson = FmlDecodedLayoutAdapter.ToMfmeExtractManifestJson(decodedJson, "layout");
+
+        var component = JsonNode.Parse(manifestJson)!["Components"]!.AsArray()[0]!.AsObject();
+        Assert.Equal(12, component["Position"]!["X"]!.GetValue<int>());
+        Assert.Equal(34, component["Position"]!["Y"]!.GetValue<int>());
+        Assert.Equal(1069, component["Size"]!["X"]!.GetValue<int>());
+        Assert.Equal(965, component["Size"]!["Y"]!.GetValue<int>());
+    }
+
+    [Fact]
+    public void ToMfmeExtractManifestJson_WithInvalidBackgroundImageDimensions_UsesGeometrySize()
+    {
+        const string decodedJson = """
+        {
+          "Components": [
+            {
+              "Type": "Background",
+              "Geometry": { "X": 12, "Y": 34, "Width": 1069, "Height": 965, "Number": 0 },
+              "Images": {
+                "background_image": { "Width": 0, "BitsPerPixel": 32 }
+              }
+            }
+          ]
+        }
+        """;
+
+        var manifestJson = FmlDecodedLayoutAdapter.ToMfmeExtractManifestJson(decodedJson, "layout");
+
+        var component = JsonNode.Parse(manifestJson)!["Components"]!.AsArray()[0]!.AsObject();
+        Assert.Equal(12, component["Position"]!["X"]!.GetValue<int>());
+        Assert.Equal(34, component["Position"]!["Y"]!.GetValue<int>());
+        Assert.Equal(1069, component["Size"]!["X"]!.GetValue<int>());
+        Assert.Equal(965, component["Size"]!["Y"]!.GetValue<int>());
+    }
+
     [Fact]
     public void ToMfmeExtractManifestJson_WithFmlLampImages_MapsLampElementNumberAndBitmapFilenames()
     {
@@ -76,4 +153,173 @@ public sealed class FmlDecodedLayoutAdapterTests
         Assert.Equal("0000_sublamp_1_mask_image.bmp", lampElement["BmpMaskImageFilename"]!.GetValue<string>());
         Assert.True(lampElement["Graphic"]!.GetValue<bool>());
     }
+
+    [Fact]
+    public void ToMfmeExtractManifestJson_WithFmlReelBandAndOverlay_MapsBandPrimaryAndOverlaySecondary()
+    {
+        const string decodedJson = """
+        {
+          "Components": [
+            {
+              "Type": "Reel",
+              "Geometry": { "X": 10, "Y": 20, "Width": 30, "Height": 40, "Number": 2 },
+              "Images": {
+                "reel_band_gradient_image": { "Width": 16, "Height": 64, "BitsPerPixel": 32 },
+                "window_overlay_image": { "Width": 16, "Height": 16, "BitsPerPixel": 32 }
+              }
+            }
+          ]
+        }
+        """;
+        var imagePaths = new Dictionary<FmlDecodedImageKey, string>
+        {
+            [new(0, "reel_band_gradient_image")] = "reels/0000_reel_band_gradient_image.bmp",
+            [new(0, "window_overlay_image")] = "reels/0000_window_overlay_image.bmp"
+        };
+
+        var manifestJson = FmlDecodedLayoutAdapter.ToMfmeExtractManifestJson(decodedJson, "layout", imagePaths);
+
+        var component = JsonNode.Parse(manifestJson)!["Components"]!.AsArray()[0]!.AsObject();
+        Assert.Equal("0000_reel_band_gradient_image.bmp", component["BandBmpImageFilename"]!.GetValue<string>());
+        Assert.True(component["HasOverlay"]!.GetValue<bool>());
+        Assert.Equal("0000_window_overlay_image.bmp", component["OverlayBmpImageFilename"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void ToMfmeExtractManifestJson_WithFmlReelOnlyBand_DoesNotUseBandAsOverlay()
+    {
+        const string decodedJson = """
+        {
+          "Components": [
+            {
+              "Type": "Reel",
+              "Geometry": { "X": 10, "Y": 20, "Width": 30, "Height": 40, "Number": 2 },
+              "Images": {
+                "reel_band_gradient_image": { "Width": 16, "Height": 64, "BitsPerPixel": 32 }
+              }
+            }
+          ]
+        }
+        """;
+        var imagePaths = new Dictionary<FmlDecodedImageKey, string>
+        {
+            [new(0, "reel_band_gradient_image")] = "reels/0000_reel_band_gradient_image.bmp"
+        };
+
+        var manifestJson = FmlDecodedLayoutAdapter.ToMfmeExtractManifestJson(decodedJson, "layout", imagePaths);
+
+        var component = JsonNode.Parse(manifestJson)!["Components"]!.AsArray()[0]!.AsObject();
+        Assert.Equal("0000_reel_band_gradient_image.bmp", component["BandBmpImageFilename"]!.GetValue<string>());
+        Assert.False(component["HasOverlay"]!.GetValue<bool>());
+        Assert.Null(component["OverlayBmpImageFilename"]?.GetValue<string>());
+    }
+
+    [Fact]
+    public void ToMfmeExtractManifestJson_WithFmlAlphaOverlay_MapsOverlay()
+    {
+        const string decodedJson = """
+        {
+          "Components": [
+            {
+              "Type": "Alpha",
+              "Geometry": { "X": 10, "Y": 20, "Width": 30, "Height": 12, "Number": 0 },
+              "Images": {
+                "display_overlay": { "Width": 30, "Height": 12, "BitsPerPixel": 32 }
+              }
+            }
+          ]
+        }
+        """;
+        var imagePaths = new Dictionary<FmlDecodedImageKey, string>
+        {
+            [new(0, "display_overlay")] = "reels/0000_display_overlay.bmp"
+        };
+
+        var manifestJson = FmlDecodedLayoutAdapter.ToMfmeExtractManifestJson(decodedJson, "layout", imagePaths);
+
+        var component = JsonNode.Parse(manifestJson)!["Components"]!.AsArray()[0]!.AsObject();
+        Assert.True(component["HasOverlay"]!.GetValue<bool>());
+        Assert.Equal("0000_display_overlay.bmp", component["OverlayBmpImageFilename"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void ToMfmeExtractManifestJson_WithFmlReelHeight_MapsLegacyHeightForSharedVisibleScaleCalculation()
+    {
+        const string decodedJson = """
+        {
+          "Components": [
+            {
+              "Type": "Reel",
+              "Geometry": { "X": 10, "Y": 20, "Width": 30, "Height": 40, "Number": 2 },
+              "Values": { "Stops": 24, "ReelHeight": 100 },
+              "Reversed": false
+            }
+          ]
+        }
+        """;
+
+        var manifestJson = FmlDecodedLayoutAdapter.ToMfmeExtractManifestJson(decodedJson, "layout");
+
+        var component = JsonNode.Parse(manifestJson)!["Components"]!.AsArray()[0]!.AsObject();
+        Assert.Equal(24, component["Stops"]!.GetValue<int>());
+        Assert.Equal(100, component["Height"]!.GetValue<int>());
+        Assert.Null(component["VisibleScale"]);
+    }
+
+    [Fact]
+    public void ToMfmeExtractManifestJson_WithFmlReelHeight_ProducesVisibleScaleThroughLegacyMapper()
+    {
+        const string decodedJson = """
+        {
+          "Components": [
+            {
+              "Type": "Reel",
+              "Geometry": { "X": 10, "Y": 20, "Width": 30, "Height": 40, "Number": 2 },
+              "Values": { "Stops": 24, "ReelHeight": 100 },
+              "Reversed": false,
+              "Images": {
+                "reel_band_gradient_image": { "Width": 16, "Height": 64, "BitsPerPixel": 32 }
+              }
+            }
+          ]
+        }
+        """;
+        var imagePaths = new Dictionary<FmlDecodedImageKey, string>
+        {
+            [new(0, "reel_band_gradient_image")] = "reels/0000_reel_band_gradient_image.bmp"
+        };
+        var manifestJson = FmlDecodedLayoutAdapter.ToMfmeExtractManifestJson(decodedJson, "layout", imagePaths);
+        using var document = JsonDocument.Parse(manifestJson);
+        var component = document.RootElement.GetProperty("Components")[0];
+        var overlayBmpImageFilename = component.TryGetProperty("OverlayBmpImageFilename", out var overlayElement)
+            ? overlayElement.GetString()
+            : null;
+        var legacyReel = new MfmeLegacyReelComponent(
+            new MfmeLegacyPoint(
+                component.GetProperty("Position").GetProperty("X").GetInt32(),
+                component.GetProperty("Position").GetProperty("Y").GetInt32()),
+            new MfmeLegacyPoint(
+                component.GetProperty("Size").GetProperty("X").GetInt32(),
+                component.GetProperty("Size").GetProperty("Y").GetInt32()),
+            component.GetProperty("Number").GetInt32(),
+            component.GetProperty("Stops").GetInt32(),
+            component.GetProperty("Reversed").GetBoolean(),
+            component.GetProperty("Height").GetInt32(),
+            component.GetProperty("BandBmpImageFilename").GetString(),
+            component.GetProperty("HasOverlay").GetBoolean(),
+            overlayBmpImageFilename);
+        var mapper = new MfmeToOasisComponentMapper();
+
+        var result = mapper.Map(new MfmeLegacyExtractData
+        {
+            ExtractRootPath = "C:/extract",
+            ManifestPath = "C:/extract/layout.json",
+            LayoutName = "layout",
+            Components = [legacyReel]
+        });
+
+        var reel = Assert.Single(result.Elements);
+        Assert.Equal(100d / 50d / 24d, reel.VisibleScale);
+    }
+
 }

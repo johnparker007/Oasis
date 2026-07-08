@@ -8,6 +8,7 @@ public sealed class EditorPreferences
     public NativeEmulationPreferences NativeEmulation { get; init; } = new();
     public OutputLogPreferences OutputLog { get; init; } = new();
     public FaceGenerationPreferences FaceGeneration { get; init; } = new();
+    public string LastMfmeFmlImportDirectory { get; init; } = string.Empty;
 
     public Dictionary<string, ProjectWindowState> ProjectWindowStates { get; init; } = new();
 }

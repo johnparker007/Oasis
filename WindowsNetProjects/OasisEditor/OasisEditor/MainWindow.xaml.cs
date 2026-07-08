@@ -193,6 +193,7 @@ public partial class MainWindow : Window
             NativeEmulation = preferences.NativeEmulation,
             OutputLog = preferences.OutputLog,
             FaceGeneration = preferences.FaceGeneration,
+            LastMfmeFmlImportDirectory = preferences.LastMfmeFmlImportDirectory,
             ProjectWindowStates = states
         });
     }

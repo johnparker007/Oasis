@@ -440,6 +440,153 @@ public sealed class MfmeImportAssetCopierTests
         }
     }
 
+    [Fact]
+    public void CopyAssets_WithSevenSegmentWithoutOverlay_ClearsBackgroundRectAndSendsDisplayBehindBackground()
+    {
+        var extractRoot = CreateTempDirectory();
+        var projectRoot = CreateTempDirectory();
+
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(extractRoot, "background"));
+            CreatePng(Path.Combine(extractRoot, "background", "bg.png"), 4, 4, _ => Color.FromArgb(255, 10, 20, 30));
+
+            var context = new MfmeImportContext
+            {
+                SourceExtractPath = extractRoot,
+                ProjectRootPath = projectRoot,
+                ProjectAssetsPath = Path.Combine(projectRoot, "Assets"),
+                CopyAssets = true
+            };
+
+            var extract = new MfmeLegacyExtractData
+            {
+                ExtractRootPath = extractRoot,
+                ManifestPath = Path.Combine(extractRoot, "layout.json"),
+                LayoutName = "layout",
+                Components = []
+            };
+
+            var elements = new[]
+            {
+                new PanelElementModel
+                {
+                    ObjectId = "bg",
+                    Name = "Background",
+                    Kind = PanelElementKind.Background,
+                    Width = 4,
+                    Height = 4,
+                    AssetPath = "background/bg.png"
+                },
+                new PanelElementModel
+                {
+                    ObjectId = "seven",
+                    Name = "7 Segment",
+                    Kind = PanelElementKind.SevenSegment,
+                    X = 1,
+                    Y = 1,
+                    Width = 2,
+                    Height = 1
+                }
+            };
+
+            var copier = new MfmeImportAssetCopier();
+            var result = copier.CopyAssets(context, extract, elements);
+
+            Assert.True(result.Succeeded);
+            Assert.Equal(PanelElementKind.SevenSegment, result.Elements[0].Kind);
+            Assert.Equal(PanelElementKind.Background, result.Elements[1].Kind);
+
+            var background = Assert.Single(result.Elements, element => element.Kind == PanelElementKind.Background);
+            var backgroundPath = Path.Combine(projectRoot, "Assets", background.AssetPath!["Assets/".Length..]);
+            var pixels = ReadBgra32(backgroundPath, out var stride);
+
+            Assert.Equal(0, GetPixel(pixels, stride, 1, 1).A);
+            Assert.Equal(0, GetPixel(pixels, stride, 2, 1).A);
+            Assert.Equal(255, GetPixel(pixels, stride, 0, 0).A);
+        }
+        finally
+        {
+            Directory.Delete(extractRoot, recursive: true);
+            Directory.Delete(projectRoot, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void CopyAssets_WithAlphaOverlay_BakesOverlayIntoBackground()
+    {
+        var extractRoot = CreateTempDirectory();
+        var projectRoot = CreateTempDirectory();
+
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(extractRoot, "background"));
+            Directory.CreateDirectory(Path.Combine(extractRoot, "reels"));
+            CreatePng(Path.Combine(extractRoot, "background", "bg.png"), 3, 3, _ => Color.FromArgb(255, 10, 20, 30));
+            CreatePng(Path.Combine(extractRoot, "reels", "alpha-overlay.png"), 1, 1, _ => Color.FromArgb(200, 50, 60, 70));
+
+            var context = new MfmeImportContext
+            {
+                SourceExtractPath = extractRoot,
+                ProjectRootPath = projectRoot,
+                ProjectAssetsPath = Path.Combine(projectRoot, "Assets"),
+                CopyAssets = true
+            };
+
+            var extract = new MfmeLegacyExtractData
+            {
+                ExtractRootPath = extractRoot,
+                ManifestPath = Path.Combine(extractRoot, "layout.json"),
+                LayoutName = "layout",
+                Components = []
+            };
+
+            var elements = new[]
+            {
+                new PanelElementModel
+                {
+                    ObjectId = "bg",
+                    Name = "Background",
+                    Kind = PanelElementKind.Background,
+                    Width = 3,
+                    Height = 3,
+                    AssetPath = "background/bg.png"
+                },
+                new PanelElementModel
+                {
+                    ObjectId = "alpha",
+                    Name = "Alpha",
+                    Kind = PanelElementKind.Alpha,
+                    X = 1,
+                    Y = 1,
+                    Width = 1,
+                    Height = 1,
+                    SecondaryAssetPath = "reels/alpha-overlay.png"
+                }
+            };
+
+            var copier = new MfmeImportAssetCopier();
+            var result = copier.CopyAssets(context, extract, elements);
+
+            Assert.True(result.Succeeded);
+
+            var background = Assert.Single(result.Elements, element => element.Kind == PanelElementKind.Background);
+            var backgroundPath = Path.Combine(projectRoot, "Assets", background.AssetPath!["Assets/".Length..]);
+            var pixels = ReadBgra32(backgroundPath, out var stride);
+            var overlayPixel = GetPixel(pixels, stride, 1, 1);
+
+            Assert.Equal(200, overlayPixel.A);
+            Assert.Equal(50, overlayPixel.R);
+            Assert.Equal(60, overlayPixel.G);
+            Assert.Equal(70, overlayPixel.B);
+        }
+        finally
+        {
+            Directory.Delete(extractRoot, recursive: true);
+            Directory.Delete(projectRoot, recursive: true);
+        }
+    }
+
     private static string CreateTempDirectory()
     {
         var path = Path.Combine(Path.GetTempPath(), $"oasis-mfme-copy-{Guid.NewGuid():N}");

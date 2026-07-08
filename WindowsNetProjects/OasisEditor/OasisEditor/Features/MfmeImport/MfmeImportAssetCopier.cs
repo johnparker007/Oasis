@@ -215,7 +215,7 @@ internal sealed class MfmeImportAssetCopier
 
     private static bool IsBackgroundCutoutDisplay(PanelElementModel element)
     {
-        return element.Kind is PanelElementKind.Reel or PanelElementKind.Alpha or PanelElementKind.VfdDotMatrix;
+        return element.Kind is PanelElementKind.Reel or PanelElementKind.Alpha or PanelElementKind.SevenSegment or PanelElementKind.VfdDotMatrix;
     }
 
     private static PanelElementModel CloneWithAssetPath(PanelElementModel element, string? assetPath)
