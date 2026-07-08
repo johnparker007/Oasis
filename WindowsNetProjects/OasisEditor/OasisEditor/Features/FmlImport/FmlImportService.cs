@@ -209,8 +209,8 @@ internal static class FmlDecodedLayoutAdapter
             },
             ["Size"] = new JsonObject
             {
-                ["X"] = Math.Max(1, ReadNumber(component, "Geometry", "Width")),
-                ["Y"] = Math.Max(1, ReadNumber(component, "Geometry", "Height"))
+                ["X"] = Math.Max(1, ReadComponentWidth(component, type)),
+                ["Y"] = Math.Max(1, ReadComponentHeight(component, type))
             }
         };
 
@@ -252,6 +252,40 @@ internal static class FmlDecodedLayoutAdapter
 
     private static int ReadNumber(JsonObject component, string objectName, string propertyName)
         => component[objectName] is JsonObject obj && obj[propertyName] is JsonValue value && value.TryGetValue<double>(out var number)
+            ? (int)Math.Round(number)
+            : 0;
+
+    private static int ReadComponentWidth(JsonObject component, string type)
+        => ReadComponentSize(component, type, "Width");
+
+    private static int ReadComponentHeight(JsonObject component, string type)
+        => ReadComponentSize(component, type, "Height");
+
+    private static int ReadComponentSize(JsonObject component, string type, string propertyName)
+    {
+        if (string.Equals(MapType(type), "Background", StringComparison.Ordinal))
+        {
+            var backgroundImageWidth = ReadBackgroundImageSize(component, "Width");
+            var backgroundImageHeight = ReadBackgroundImageSize(component, "Height");
+            if (backgroundImageWidth > 0 && backgroundImageHeight > 0)
+            {
+                return string.Equals(propertyName, "Width", StringComparison.Ordinal)
+                    ? backgroundImageWidth
+                    : backgroundImageHeight;
+            }
+        }
+
+        return ReadGeometrySize(component, propertyName);
+    }
+
+    private static int ReadGeometrySize(JsonObject component, string propertyName)
+        => ReadNumber(component, "Geometry", propertyName);
+
+    private static int ReadBackgroundImageSize(JsonObject component, string propertyName)
+        => component["Images"] is JsonObject images
+            && images["background_image"] is JsonObject backgroundImage
+            && backgroundImage[propertyName] is JsonValue value
+            && value.TryGetValue<double>(out var number)
             ? (int)Math.Round(number)
             : 0;
 
