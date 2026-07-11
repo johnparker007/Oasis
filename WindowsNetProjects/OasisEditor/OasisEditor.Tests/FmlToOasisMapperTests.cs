@@ -112,7 +112,7 @@ public sealed class FmlToOasisMapperTests
         lamp.Colours["Sublamp1Colour"] = "#112233FF";
         var button = new Button { X = 5, Y = 6, Width = 20, Height = 20, SublampTable = [new LampSublampTableEntry(1, 12)] };
         button.Strings["ButtonNumber"] = "1";
-        button.Strings["Text"] = "START";
+        button.Strings["Label"] = "START";
 
         var images = new Dictionary<FmlDecodedImageKey, string>
         {
@@ -128,6 +128,45 @@ public sealed class FmlToOasisMapperTests
         Assert.Equal("#FF112233", graphicalLamp.OnColorHex);
         Assert.Contains(result.Elements, e => e.Kind == PanelElementKind.Lamp && e.DisplayNumber == 12 && e.DisplayText == "START");
         Assert.Single(result.InputDefinitions);
+    }
+
+    [Fact]
+    public void Map_WithButtonLabel_MapsToLampDisplayTextAndInputDefinition()
+    {
+        var button = new Button { X = 5, Y = 6, Width = 20, Height = 20, SublampTable = [new LampSublampTableEntry(1, 12)] };
+        button.Strings["ButtonNumber"] = "1";
+        button.Strings["Label"] = "START";
+
+        var result = new FmlToOasisMapper().Map(new Layout([button]), new Dictionary<FmlDecodedImageKey, string>());
+
+        var element = Assert.Single(result.Elements);
+        Assert.Equal(PanelElementKind.Lamp, element.Kind);
+        Assert.Equal(12, element.DisplayNumber);
+        Assert.Equal("START", element.DisplayText);
+        var input = Assert.Single(result.InputDefinitions);
+        Assert.Equal("1", input.ButtonNumber);
+        Assert.Equal(element.ObjectId, input.LinkedVisualElementId?.ToString("N"));
+    }
+
+    [Fact]
+    public void Map_WithLampSpecificTextAndLabel_PrefersLampSpecificText()
+    {
+        var lamp = new Lamp
+        {
+            X = 1,
+            Y = 2,
+            Width = 30,
+            Height = 40,
+            SublampTable = [new LampSublampTableEntry(1, 9)]
+        };
+        lamp.Strings["OffText"] = "HOLD";
+        lamp.Strings["Label"] = "START";
+
+        var result = new FmlToOasisMapper().Map(new Layout([lamp]), new Dictionary<FmlDecodedImageKey, string>());
+
+        var element = Assert.Single(result.Elements);
+        Assert.Equal(PanelElementKind.Lamp, element.Kind);
+        Assert.Equal("HOLD", element.DisplayText);
     }
 
 
