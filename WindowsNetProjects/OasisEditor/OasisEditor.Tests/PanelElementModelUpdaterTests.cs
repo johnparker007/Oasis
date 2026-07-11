@@ -66,6 +66,16 @@ public sealed class PanelElementModelUpdaterTests
         Assert.True(updated.HasBorder);
     }
 
+
+    [Fact]
+    public void AreEquivalent_TreatsHasBorderDifferencesAsModelChanges()
+    {
+        var left = new PanelElementModel { ObjectId = "lamp", Kind = PanelElementKind.Lamp, Width = 10, Height = 10, HasBorder = true };
+        var right = PanelElementModelUpdater.Apply(left, new PanelElementModelUpdate { HasBorder = false });
+
+        Assert.False(PanelElementModelComparer.AreEquivalent(left, right));
+    }
+
     [Theory]
     [InlineData(1, 1, 1, 1, true)]
     [InlineData(double.NaN, 1, 1, 1, false)]
