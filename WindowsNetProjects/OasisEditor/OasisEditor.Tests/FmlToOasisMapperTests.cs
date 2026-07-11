@@ -1,6 +1,7 @@
 using MfmeFmlDecoder.src.Model;
 using MfmeFmlDecoder.src.Model.Component;
 using OasisEditor.Features.FmlImport;
+using System.Windows.Media;
 using Xunit;
 
 namespace OasisEditor.Tests;
@@ -16,11 +17,12 @@ public sealed class FmlToOasisMapperTests
             Y = 20,
             Width = 30,
             Height = 40,
-            SublampTable = [new LampSublampTableEntry(0, 42)]
+            SublampTable = [new LampSublampTableEntry(1, 42)]
         };
         lamp.Strings["OffText"] = "HOLD";
-        lamp.Colours["Sublamp0Colour"] = "#11223344";
-        lamp.Fonts["Primary"] = new FontTagEntry(0, "Primary", "Arial", 12, 0, "Western", "#FF010203", 0);
+        lamp.Colours["Sublamp1Colour"] = "#0000FFFF";
+        lamp.Colours["OffImageColour"] = "#204060FF";
+        lamp.Fonts["Primary"] = new FontTagEntry(0, "Primary", "Arial", 12, 0, "Western", "#0080C0FF", 0);
 
         var result = new FmlToOasisMapper().Map(new Layout([lamp]), new Dictionary<FmlDecodedImageKey, string>());
 
@@ -28,7 +30,12 @@ public sealed class FmlToOasisMapperTests
         Assert.Equal(PanelElementKind.Lamp, element.Kind);
         Assert.Equal(42, element.DisplayNumber);
         Assert.Equal("HOLD", element.DisplayText);
-        Assert.Equal("#11223344", element.OnColorHex);
+        Assert.Equal("#FF0000FF", element.OnColorHex);
+        Assert.Equal("#FF204060", element.OffColorHex);
+        Assert.Equal("#FF0080C0", element.TextColorHex);
+        AssertOasisArgbChannels(element.OnColorHex, 255, 0, 0, 255);
+        AssertOasisArgbChannels(element.OffColorHex, 255, 32, 64, 96);
+        AssertOasisArgbChannels(element.TextColorHex, 255, 0, 128, 192);
         Assert.Null(element.AssetPath);
         Assert.Null(element.SecondaryAssetPath);
         Assert.Equal("Arial", element.TextBoxFontName);
@@ -46,13 +53,13 @@ public sealed class FmlToOasisMapperTests
             Height = 4,
             SublampTable =
             [
-                new LampSublampTableEntry(0, 10),
-                new LampSublampTableEntry(1, 11),
-                new LampSublampTableEntry(2, -2)
+                new LampSublampTableEntry(1, 10),
+                new LampSublampTableEntry(2, 11),
+                new LampSublampTableEntry(3, -2)
             ]
         };
-        lamp.Colours["Sublamp0Colour"] = "#FF102030";
-        lamp.Colours["Sublamp1Colour"] = "#FF405060";
+        lamp.Colours["Sublamp1Colour"] = "#102030FF";
+        lamp.Colours["Sublamp2Colour"] = "#40506080";
 
         var result = new FmlToOasisMapper().Map(new Layout([lamp]), new Dictionary<FmlDecodedImageKey, string>());
 
@@ -60,7 +67,7 @@ public sealed class FmlToOasisMapperTests
         Assert.Equal(10, result.Elements[0].DisplayNumber);
         Assert.Equal("#FF102030", result.Elements[0].OnColorHex);
         Assert.Equal(11, result.Elements[1].DisplayNumber);
-        Assert.Equal("#FF405060", result.Elements[1].OnColorHex);
+        Assert.Equal("#80405060", result.Elements[1].OnColorHex);
         Assert.Equal(result.Elements[0].SharedSourceSetId, result.Elements[1].SharedSourceSetId);
         Assert.All(result.Elements, element => Assert.Equal(2, element.SharedSourceSetCount));
     }
@@ -73,12 +80,12 @@ public sealed class FmlToOasisMapperTests
         reel.UInt32s["Stops"] = 20;
         reel.Booleans["Reverse"] = true;
         var sevenSeg = new SevenSeg { X = 3, Y = 4, Width = 50, Height = 12, Number = 7 };
-        sevenSeg.Colours["OnColour"] = "#FFAA0001";
+        sevenSeg.Colours["OnColour"] = "#AA0001FF";
         var alpha = new Alpha { X = 5, Y = 6, Width = 70, Height = 20 };
-        alpha.Colours["OnColour"] = "#FF00AA02";
+        alpha.Colours["OnColour"] = "#00AA02FF";
         var label = new Label { X = 7, Y = 8, Width = 90, Height = 24 };
         label.Strings["Caption"] = "HELLO";
-        label.Fonts["Primary"] = new FontTagEntry(0, "Primary", "Tahoma", 9, 0, "Western", "#FF010203", 0);
+        label.Fonts["Primary"] = new FontTagEntry(0, "Primary", "Tahoma", 9, 0, "Western", "#010203FF", 0);
 
         var images = new Dictionary<FmlDecodedImageKey, string>
         {
@@ -101,16 +108,16 @@ public sealed class FmlToOasisMapperTests
     [Fact]
     public void Map_WithGraphicalLampAndButton_PreservesAssetsAndInputDefinition()
     {
-        var lamp = new Lamp { X = 1, Y = 2, Width = 30, Height = 40, SublampTable = [new LampSublampTableEntry(0, 9)] };
-        lamp.Colours["Sublamp0Colour"] = "#FF112233";
-        var button = new Button { X = 5, Y = 6, Width = 20, Height = 20, SublampTable = [new LampSublampTableEntry(0, 12)] };
+        var lamp = new Lamp { X = 1, Y = 2, Width = 30, Height = 40, SublampTable = [new LampSublampTableEntry(1, 9)] };
+        lamp.Colours["Sublamp1Colour"] = "#112233FF";
+        var button = new Button { X = 5, Y = 6, Width = 20, Height = 20, SublampTable = [new LampSublampTableEntry(1, 12)] };
         button.Strings["ButtonNumber"] = "1";
         button.Strings["Text"] = "START";
 
         var images = new Dictionary<FmlDecodedImageKey, string>
         {
-            [new FmlDecodedImageKey(0, "Sublamp 0 Main")] = "lamps/lamp.bmp",
-            [new FmlDecodedImageKey(0, "Sublamp 0 Mask")] = "lamps/lamp-mask.bmp"
+            [new FmlDecodedImageKey(0, "Sublamp 1 Main")] = "lamps/lamp.bmp",
+            [new FmlDecodedImageKey(0, "Sublamp 1 Mask")] = "lamps/lamp-mask.bmp"
         };
 
         var result = new FmlToOasisMapper().Map(new Layout([lamp, button]), images);
@@ -123,6 +130,72 @@ public sealed class FmlToOasisMapperTests
         Assert.Single(result.InputDefinitions);
     }
 
+
+    [Theory]
+    [InlineData("OffImageColour", "#204060FF", "#FF204060", 255, 32, 64, 96)]
+    [InlineData("OffImageColor", "#20406080", "#80204060", 128, 32, 64, 96)]
+    public void Map_WithLampOffImageColorAliases_MapsOffColor(string key, string decoderValue, string expected, byte a, byte r, byte g, byte b)
+    {
+        var lamp = new Lamp
+        {
+            X = 1,
+            Y = 2,
+            Width = 30,
+            Height = 40,
+            SublampTable = [new LampSublampTableEntry(1, 9)]
+        };
+        lamp.Colours["Sublamp1Colour"] = "#0000FFFF";
+        lamp.Colours[key] = decoderValue;
+
+        var result = new FmlToOasisMapper().Map(new Layout([lamp]), new Dictionary<FmlDecodedImageKey, string>());
+
+        var element = Assert.Single(result.Elements);
+        Assert.Equal(expected, element.OffColorHex);
+        AssertOasisArgbChannels(element.OffColorHex, a, r, g, b);
+    }
+
+    [Fact]
+    public void Map_WithLampOffImageColour_PrefersDecoderKeyOverLegacyAliases()
+    {
+        var lamp = new Lamp
+        {
+            X = 1,
+            Y = 2,
+            Width = 30,
+            Height = 40,
+            SublampTable = [new LampSublampTableEntry(1, 9)]
+        };
+        lamp.Colours["Sublamp1Colour"] = "#0000FFFF";
+        lamp.Colours["OffImageColour"] = "#204060FF";
+        lamp.Colours["OffColour"] = "#010203FF";
+
+        var result = new FmlToOasisMapper().Map(new Layout([lamp]), new Dictionary<FmlDecodedImageKey, string>());
+
+        var element = Assert.Single(result.Elements);
+        Assert.Equal("#FF204060", element.OffColorHex);
+    }
+
+    [Fact]
+    public void Map_WithMalformedLampOffImageColour_LeavesOffColorUnset()
+    {
+        var lamp = new Lamp
+        {
+            X = 1,
+            Y = 2,
+            Width = 30,
+            Height = 40,
+            SublampTable = [new LampSublampTableEntry(1, 9)]
+        };
+        lamp.Colours["Sublamp1Colour"] = "#0000FFFF";
+        lamp.Colours["OffImageColour"] = "#20406GFF";
+        lamp.Colours["OffColour"] = "#010203FF";
+
+        var result = new FmlToOasisMapper().Map(new Layout([lamp]), new Dictionary<FmlDecodedImageKey, string>());
+
+        var element = Assert.Single(result.Elements);
+        Assert.Null(element.OffColorHex);
+    }
+
     [Fact]
     public void Map_WithUnsupportedComponent_AddsWarningAndSkipsComponent()
     {
@@ -132,6 +205,37 @@ public sealed class FmlToOasisMapperTests
 
         Assert.Empty(result.Elements);
         Assert.Contains(result.Warnings, warning => warning.Code == "fml.import.component.unsupported" && warning.Context == nameof(Border));
+    }
+
+    [Theory]
+    [InlineData("#0080C0FF", "#FF0080C0", 255, 0, 128, 192)]
+    [InlineData("#12345678", "#78123456", 0x78, 0x12, 0x34, 0x56)]
+    [InlineData("#123456", "#FF123456", 255, 0x12, 0x34, 0x56)]
+    public void ConvertDecoderRgbaToOasisArgb_ReordersChannels(string decoderValue, string expected, byte a, byte r, byte g, byte b)
+    {
+        var converted = FmlToOasisMapper.ConvertDecoderRgbaToOasisArgb(decoderValue);
+
+        Assert.Equal(expected, converted);
+        AssertOasisArgbChannels(converted, a, r, g, b);
+    }
+
+    [Theory]
+    [InlineData("#12345")]
+    [InlineData("#1234567890")]
+    [InlineData("#12345G")]
+    [InlineData("123456")]
+    public void ConvertDecoderRgbaToOasisArgb_RejectsMalformedValues(string decoderValue)
+    {
+        Assert.Null(FmlToOasisMapper.ConvertDecoderRgbaToOasisArgb(decoderValue));
+    }
+
+    private static void AssertOasisArgbChannels(string? value, byte a, byte r, byte g, byte b)
+    {
+        Assert.True(InspectorColorHex.TryParse(value, out Color color));
+        Assert.Equal(a, color.A);
+        Assert.Equal(r, color.R);
+        Assert.Equal(g, color.G);
+        Assert.Equal(b, color.B);
     }
 
 }
