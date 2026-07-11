@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text;
+using OasisEditor.Features.FmlImport;
 
 namespace OasisEditor.Features.LayoutImport;
 
@@ -11,7 +12,8 @@ internal sealed class LayoutImportAssetCopier
         string layoutName,
         string projectAssetsPath,
         bool copyAssets,
-        IReadOnlyList<PanelElementModel> elements)
+        IReadOnlyList<PanelElementModel> elements,
+        FmlBackgroundMode backgroundMode = FmlBackgroundMode.ImageBackedBackground)
     {
         ArgumentNullException.ThrowIfNull(elements);
 
@@ -19,7 +21,7 @@ internal sealed class LayoutImportAssetCopier
         {
             return new LayoutAssetCopyResult
             {
-                Elements = SendReelsAndAlphaDisplaysToBack(elements.ToArray()),
+                Elements = FmlPanelElementOrdering.ArrangeForBackgroundMode(elements.ToArray(), backgroundMode),
                 CopiedAssetRelativePaths = [],
                 Warnings = [],
                 Errors = []
@@ -44,7 +46,9 @@ internal sealed class LayoutImportAssetCopier
 
         if (errors.Count == 0)
         {
-            mappedElements = BakeDisplayOverlaysIntoBackgrounds(mappedElements, projectAssetsRoot, copied, errors);
+            mappedElements = backgroundMode == FmlBackgroundMode.ImageBackedBackground
+                ? BakeDisplayOverlaysIntoBackgrounds(mappedElements, projectAssetsRoot, copied, errors)
+                : mappedElements;
         }
 
         if (errors.Count > 0)
@@ -52,7 +56,7 @@ internal sealed class LayoutImportAssetCopier
             return CreateError(elements, warnings, errors);
         }
 
-        mappedElements = SendReelsAndAlphaDisplaysToBack(mappedElements);
+        mappedElements = FmlPanelElementOrdering.ArrangeForBackgroundMode(mappedElements, backgroundMode).ToArray();
         return new LayoutAssetCopyResult
         {
             Elements = mappedElements,
