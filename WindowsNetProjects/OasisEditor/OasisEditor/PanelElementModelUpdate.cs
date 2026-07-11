@@ -32,6 +32,7 @@ internal sealed class PanelElementModelUpdate
     public PanelElementOptionalValue<string?> AssetPath { get; init; }
     public PanelElementOptionalValue<string?> SecondaryAssetPath { get; init; }
     public PanelElementOptionalValue<int?> DisplayNumber { get; init; }
+    public PanelElementOptionalValue<int?> LampNumber { get; init; }
     public PanelElementOptionalValue<string?> SegmentDisplayType { get; init; }
     public PanelElementOptionalValue<bool> ShowDecimalPoint { get; init; }
     public PanelElementOptionalValue<bool> ShowCommaTail { get; init; }
@@ -69,6 +70,7 @@ internal static class PanelElementModelUpdater
             AssetPath = update.AssetPath.HasValue ? update.AssetPath.Value : source.AssetPath,
             SecondaryAssetPath = update.SecondaryAssetPath.HasValue ? update.SecondaryAssetPath.Value : source.SecondaryAssetPath,
             DisplayNumber = update.DisplayNumber.HasValue ? update.DisplayNumber.Value : source.DisplayNumber,
+            LampNumber = update.LampNumber.HasValue ? update.LampNumber.Value : source.LampNumber,
             SegmentDisplayType = update.SegmentDisplayType.HasValue ? update.SegmentDisplayType.Value : source.SegmentDisplayType,
             ShowDecimalPoint = update.ShowDecimalPoint.HasValue ? update.ShowDecimalPoint.Value : source.ShowDecimalPoint,
             ShowCommaTail = update.ShowCommaTail.HasValue ? update.ShowCommaTail.Value : source.ShowCommaTail,

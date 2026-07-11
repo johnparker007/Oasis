@@ -885,6 +885,7 @@ internal static class CanvasMutationCommands
             if (!string.Equals(before.AssetPath, after.AssetPath, StringComparison.Ordinal)
                 || !string.Equals(before.SecondaryAssetPath, after.SecondaryAssetPath, StringComparison.Ordinal)
                 || before.DisplayNumber != after.DisplayNumber
+                || before.LampNumber != after.LampNumber
                 || !string.Equals(before.DisplayText, after.DisplayText, StringComparison.Ordinal)
                 || !string.Equals(before.TextBoxFontName, after.TextBoxFontName, StringComparison.Ordinal)
                 || !string.Equals(before.TextBoxFontStyle, after.TextBoxFontStyle, StringComparison.Ordinal)
