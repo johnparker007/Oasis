@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Windows.Media;
 using EditorCommands = OasisEditor.Commands;
 using Xunit;
 
@@ -332,6 +333,74 @@ public sealed class InspectorViewModelTests
         Assert.IsType<InspectorColorPropertyViewModel>(viewModel.InspectorPropertyRows.Single(x => x.DisplayName == "On Color"));
         Assert.IsType<InspectorColorPropertyViewModel>(viewModel.InspectorPropertyRows.Single(x => x.DisplayName == "Off Color"));
         Assert.IsType<InspectorColorPropertyViewModel>(viewModel.InspectorPropertyRows.Single(x => x.DisplayName == "Text Color"));
+    }
+
+
+    [Fact]
+    public void InspectorPropertyRows_SelectedLamp_InitializesOffColorStringAndPicker()
+    {
+        var selectedDocument = new DocumentTabViewModel(EditorDocument.CreatePanel2DStub("Panel"));
+        selectedDocument.SetPanelElements(
+            [
+                new PanelElementModel
+                {
+                    ObjectId = "lamp-1",
+                    Name = "Lamp",
+                    Kind = PanelElementKind.Lamp,
+                    X = 10,
+                    Y = 20,
+                    Width = 30,
+                    Height = 40,
+                    OffColorHex = "#FF204060"
+                }
+            ]);
+
+        var context = new ActiveDocumentContextService();
+        context.SetActiveDocument(selectedDocument);
+        context.SetPanelSelection(selectedDocument.DocumentId, new PanelSelectionInfo("lamp-1", "lamp", 10, 20, 30, 40));
+        var viewModel = CreateInspectorViewModel(selectedDocument, context, ExecuteImmediately);
+        viewModel.NotifyContextChanged();
+
+        var row = Assert.IsType<InspectorColorPropertyViewModel>(viewModel.InspectorPropertyRows.Single(x => x.DisplayName == "Off Color"));
+        Assert.Equal("#204060", row.HexValue);
+        Assert.Equal(255, row.SelectedColor.A);
+        Assert.Equal(32, row.SelectedColor.R);
+        Assert.Equal(64, row.SelectedColor.G);
+        Assert.Equal(96, row.SelectedColor.B);
+
+        row.SelectedColor = Color.FromArgb(255, 1, 2, 3);
+
+        Assert.Equal("#010203", row.HexValue);
+        Assert.Equal("#010203", selectedDocument.GetPanelElements().Single().OffColorHex);
+    }
+
+    [Fact]
+    public void InspectorPropertyRows_SelectedLamp_WithUnsetOffColor_DocumentsBlankOptionalColor()
+    {
+        var selectedDocument = new DocumentTabViewModel(EditorDocument.CreatePanel2DStub("Panel"));
+        selectedDocument.SetPanelElements(
+            [
+                new PanelElementModel
+                {
+                    ObjectId = "lamp-1",
+                    Name = "Lamp",
+                    Kind = PanelElementKind.Lamp,
+                    X = 10,
+                    Y = 20,
+                    Width = 30,
+                    Height = 40
+                }
+            ]);
+
+        var context = new ActiveDocumentContextService();
+        context.SetActiveDocument(selectedDocument);
+        context.SetPanelSelection(selectedDocument.DocumentId, new PanelSelectionInfo("lamp-1", "lamp", 10, 20, 30, 40));
+        var viewModel = CreateInspectorViewModel(selectedDocument, context, ExecuteImmediately);
+        viewModel.NotifyContextChanged();
+
+        var row = Assert.IsType<InspectorColorPropertyViewModel>(viewModel.InspectorPropertyRows.Single(x => x.DisplayName == "Off Color"));
+        Assert.Equal(string.Empty, row.HexValue);
+        Assert.Equal(Colors.White, row.SelectedColor);
     }
 
     private static InspectorViewModel CreateInspectorViewModel(

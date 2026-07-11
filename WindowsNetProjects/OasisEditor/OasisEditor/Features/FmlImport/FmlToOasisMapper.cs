@@ -9,6 +9,10 @@ internal sealed class FmlToOasisMapper
 {
     private const int UndefinedSublampNumber = -2;
     private const string ImportSourceFormat = "FML";
+    private const string LampOffImageColourKey = "OffImageColour";
+    private const string LampOffImageColorKey = "OffImageColor";
+    private const string OffColourKey = "OffColour";
+    private const string OffColorKey = "OffColor";
 
     public FmlToOasisMapResult Map(Layout layout, IReadOnlyDictionary<FmlDecodedImageKey, string> exportedImages)
     {
@@ -82,7 +86,7 @@ internal sealed class FmlToOasisMapper
                 X = c.X, Y = c.Y, Width = Math.Max(1, c.Width), Height = Math.Max(1, c.Height), DisplayNumber = displayNumber,
                 AssetPath = main, SecondaryAssetPath = main is null ? null : mask,
                 OnColorHex = SublampColor(c, entry.SublampIndex) ?? Color(c, "OnColour") ?? Color(c, "OnColor") ?? Color(c, "Colour") ?? Color(c, "Color"),
-                OffColorHex = Color(c, "OffColour") ?? Color(c, "OffColor"), TextColorHex = TextColor(c),
+                OffColorHex = LampOffColor(c), TextColorHex = TextColor(c),
                 DisplayText = LampText(c), TextBoxFontName = font?.FontName ?? "Tahoma", TextBoxFontStyle = FontStyle(font), TextBoxFontSize = font?.FontSize.ToString(CultureInfo.InvariantCulture) ?? "8",
                 SourceComponentIndex = index, SourceElementIndex = entry.SublampIndex, SharedSourceSetId = sharedSetId, SharedSourceSetCount = entries.Length, ImportSource = Source(c, index, displayNumber)
             });
@@ -111,6 +115,7 @@ internal sealed class FmlToOasisMapper
     private static FontTagEntry? Font(BaseComponent c) => c.Fonts.Values.FirstOrDefault(f => f.Role.Contains("off", StringComparison.OrdinalIgnoreCase)) ?? c.Fonts.Values.FirstOrDefault();
     private static string? FontStyle(FontTagEntry? font) => font is null ? null : font.FontStyle == 1 ? "Bold" : "Regular";
     private static string? TextColor(BaseComponent c) => ConvertDecoderRgbaToOasisArgb(Font(c)?.TextColour) ?? Color(c, "TextColour") ?? Color(c, "TextColor") ?? Color(c, "Colour") ?? Color(c, "Color");
+    private static string? LampOffColor(BaseComponent c) => FirstPresentColor(c, LampOffImageColourKey, LampOffImageColorKey, OffColourKey, OffColorKey);
     private static string? SublampColor(BaseComponent c, int i)
     {
         var oneBasedIndex = Math.Max(1, i);
@@ -121,6 +126,18 @@ internal sealed class FmlToOasisMapper
             ?? (i == 0 ? Color(c, "Sublamp0Colour") ?? Color(c, "Sublamp0Color") : null);
     }
     private static string? Color(BaseComponent c, string key) => c.Colours.TryGetValue(key, out var value) ? ConvertDecoderRgbaToOasisArgb(value) : null;
+    private static string? FirstPresentColor(BaseComponent c, params string[] keys)
+    {
+        foreach (var key in keys)
+        {
+            if (c.Colours.TryGetValue(key, out var value))
+            {
+                return ConvertDecoderRgbaToOasisArgb(value);
+            }
+        }
+
+        return null;
+    }
 
     /// <summary>
     /// Converts FML decoder color strings (#RRGGBB or #RRGGBBAA) to Oasis/WPF-compatible #AARRGGBB.

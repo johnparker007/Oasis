@@ -152,6 +152,39 @@ public sealed class Panel2DRoundTripTests
         Assert.Equal("layout.json#lamp-8", element.ImportSource.Reference);
     }
 
+
+    [Fact]
+    public void Serialize_AndRead_RoundTripsLampOffColorHexWithoutReconversion()
+    {
+        var json = Panel2DDocumentStorage.Serialize(
+            "Panel",
+            "Panel with imported lamp off color",
+            [
+                new PanelElementFile
+                {
+                    ObjectId = "lamp-off-color",
+                    Name = "Lamp",
+                    Kind = "lamp",
+                    X = 1,
+                    Y = 2,
+                    Width = 30,
+                    Height = 40,
+                    OnColorHex = "#FF0000FF",
+                    OffColorHex = "#FF204060",
+                    TextColorHex = "#FFFFFFFF"
+                }
+            ]);
+
+        Assert.True(Panel2DDocumentStorage.TryReadValidated(json, out var parsed, out var error), error);
+
+        var model = Panel2DDocumentStorage.ToModel(parsed);
+        var element = Assert.Single(model.Elements);
+        Assert.Equal("#FF204060", element.OffColorHex);
+
+        var storageElement = Assert.Single(Panel2DDocumentStorage.ToStorageElements(model));
+        Assert.Equal("#FF204060", storageElement.OffColorHex);
+    }
+
     [Fact]
     public void Serialize_WithNativeElementMetadata_WritesSchemaVersion2()
     {
