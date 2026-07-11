@@ -428,7 +428,7 @@ internal static class Panel2DDocumentStorage
                 stops: element.Stops,
                 visibleScale: element.VisibleScale,
                 bandOffset: element.BandOffset,
-                hasBorder: element.HasBorder,
+                hasBorder: element.HasBorder ? true : null,
                 importSource: importSource)
         });
     }
@@ -582,7 +582,7 @@ internal static class Panel2DDocumentStorage
                 normalizedStops,
                 normalizedVisibleScale,
                 normalizedBandOffset,
-                normalizedHasBorder,
+                normalizedHasBorder ? true : null,
                 normalizedImportSource)
             : normalizedNative with
             {
