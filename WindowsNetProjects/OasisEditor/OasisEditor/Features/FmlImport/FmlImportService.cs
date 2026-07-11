@@ -84,6 +84,7 @@ internal sealed class FmlImportService : IFmlImportService
         var layout = decodeResult.Layout!;
         _diagnosticsWriter.WriteDecodedLayout(layout, stagingDirectory);
         var imagePaths = FmlDecodedAssetExporter.ExportImages(layout, stagingDirectory);
+        var backgroundClassification = FmlBackgroundClassifier.Classify(layout, imagePaths);
 
         FmlToOasisMapResult mapResult;
         var mappingStopwatch = Stopwatch.StartNew();
@@ -103,6 +104,7 @@ internal sealed class FmlImportService : IFmlImportService
                 Layout = layout,
                 ImagePaths = imagePaths,
                 DecoderWarnings = decodeResult.Warnings,
+                BackgroundClassification = backgroundClassification,
                 MapperWarnings = [new LayoutImportWarning("fml.mapping.exception", ex.Message)],
                 DecodeElapsed = decodeStopwatch.Elapsed,
                 MappingElapsed = mappingStopwatch.Elapsed,
@@ -132,7 +134,8 @@ internal sealed class FmlImportService : IFmlImportService
             Path.GetFileNameWithoutExtension(fullFmlPath),
             projectAssetsPath,
             copyAssets,
-            mapResult.Elements);
+            mapResult.Elements,
+            backgroundClassification.Mode);
         assetCopyStopwatch.Stop();
         totalStopwatch.Stop();
 
@@ -143,9 +146,11 @@ internal sealed class FmlImportService : IFmlImportService
             StagingDirectory = stagingDirectory,
             Layout = layout,
             MapResult = mapResult,
+            FinalElements = assetResult.Elements,
+            BackgroundClassification = backgroundClassification,
             ImagePaths = imagePaths,
             DecoderWarnings = decodeResult.Warnings,
-            MapperWarnings = mapResult.Warnings,
+            MapperWarnings = [.. mapResult.Warnings, .. backgroundClassification.Warnings],
             AssetCopyWarnings = assetResult.Warnings,
             UnsupportedComponentTypes = mapResult.UnsupportedComponentTypes,
             ImportedAssetCount = assetResult.CopiedAssetRelativePaths.Count,
@@ -161,7 +166,7 @@ internal sealed class FmlImportService : IFmlImportService
             CopiedAssetRelativePaths = assetResult.CopiedAssetRelativePaths,
             InputDefinitions = mapResult.InputDefinitions,
             UnsupportedComponentTypes = mapResult.UnsupportedComponentTypes,
-            Warnings = [.. decodeResult.Warnings.Select(w => new LayoutImportWarning("fml.decode.warning", w)), .. mapResult.Warnings, .. assetResult.Warnings],
+            Warnings = [.. decodeResult.Warnings.Select(w => new LayoutImportWarning("fml.decode.warning", w)), .. mapResult.Warnings, .. backgroundClassification.Warnings, .. assetResult.Warnings],
             Errors = assetResult.Errors,
             DebugDiagnostics = diagnostics
         };

@@ -138,6 +138,24 @@ internal sealed class FmlImportDiagnosticsWriter
         AppendList(sb, "Panel element counts", CountStrings(report.MapResult?.Elements.Select(e => e.Kind.ToString()) ?? []).Select(kvp => $"{kvp.Key}: {kvp.Value}"));
         AppendLine(sb, "Input definition count", (report.MapResult?.InputDefinitions.Count ?? 0).ToString());
         AppendLine(sb, "Imported asset count", report.ImportedAssetCount.ToString());
+        AppendBackgroundDiagnostics(sb, report);
+        sb.AppendLine();
+
+        AppendSection(sb, "Final Render Ordering");
+        var finalElements = report.FinalElements.Count > 0 ? report.FinalElements : report.MapResult?.Elements ?? [];
+        if (finalElements.Count == 0)
+        {
+            sb.AppendLine("(none)");
+        }
+        else
+        {
+            for (var i = 0; i < finalElements.Count; i++)
+            {
+                var element = finalElements[i];
+                var component = TryGetComponent(report.Layout, element.SourceComponentIndex);
+                sb.AppendLine($"{i}: {element.Kind} component {FormatNullable(element.SourceComponentIndex)}, image={!string.IsNullOrWhiteSpace(element.AssetPath)} source={component?.GetType().Name ?? "(unknown)"}");
+            }
+        }
         sb.AppendLine();
 
         AppendSection(sb, "Mapped Elements");
@@ -157,6 +175,19 @@ internal sealed class FmlImportDiagnosticsWriter
 
         AppendLampColourDiagnostics(sb, report);
         return sb.ToString();
+    }
+
+    private static void AppendBackgroundDiagnostics(StringBuilder sb, FmlImportDiagnosticsReport report)
+    {
+        var classification = report.BackgroundClassification;
+        AppendLine(sb, "Background mode", classification?.Mode.ToString() ?? "(not classified)");
+        AppendLine(sb, "Main background component index", classification?.MainBackgroundComponentIndex?.ToString() ?? "(none)");
+        AppendLine(sb, "Main background image path", classification?.MainBackgroundImagePath ?? "(none)");
+        AppendLine(sb, "Decoded background colour", classification?.DecodedBackgroundColour ?? "(none)");
+        AppendLine(sb, "Mapped background colour", classification?.MappedBackgroundColour ?? "(none)");
+        var cutoutCount = report.FinalElements.Count(element => element.Kind is PanelElementKind.Reel or PanelElementKind.SevenSegment or PanelElementKind.Alpha or PanelElementKind.VfdDotMatrix);
+        AppendLine(sb, "Cut-out processing applied", (classification?.Mode == FmlBackgroundMode.ImageBackedBackground).ToString());
+        AppendLine(sb, "Cut-out component count", cutoutCount.ToString());
     }
 
     private static void AppendLampColourDiagnostics(StringBuilder sb, FmlImportDiagnosticsReport report)
@@ -229,6 +260,8 @@ internal sealed class FmlImportDiagnosticsReport
     public required string StagingDirectory { get; init; }
     public Layout? Layout { get; init; }
     public FmlToOasisMapResult? MapResult { get; init; }
+    public IReadOnlyList<PanelElementModel> FinalElements { get; init; } = [];
+    public FmlBackgroundClassification? BackgroundClassification { get; init; }
     public IReadOnlyDictionary<FmlDecodedImageKey, string> ImagePaths { get; init; } = new Dictionary<FmlDecodedImageKey, string>();
     public IReadOnlyList<string> DecoderErrors { get; init; } = [];
     public IReadOnlyList<string> DecoderWarnings { get; init; } = [];
