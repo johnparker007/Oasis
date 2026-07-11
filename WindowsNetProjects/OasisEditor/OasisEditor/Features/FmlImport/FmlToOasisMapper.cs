@@ -105,15 +105,37 @@ internal sealed class FmlToOasisMapper
     private static PanelElementModel MapLabel(BaseComponent c, int index) { var font = Font(c); return new PanelElementModel { ObjectId = Guid.NewGuid().ToString("N"), Name = "Label", Kind = PanelElementKind.Label, X = c.X, Y = c.Y, Width = Math.Max(1, c.Width), Height = Math.Max(1, c.Height), DisplayText = Text(c), TextBoxFontName = font?.FontName, TextBoxFontStyle = FontStyle(font), TextBoxFontSize = font?.FontSize.ToString(CultureInfo.InvariantCulture), TextColorHex = TextColor(c), ImportSource = Source(c, index) }; }
 
     private static IReadOnlyList<LampSublampTableEntry> GetSublamps(BaseComponent c) => c switch { Lamp l => l.SublampTable, Button b => b.SublampTable, Reel r => r.SublampTable, DiscReel d => d.SublampTable, PrismLamp p => Build(p.SubLamp1Number, p.SubLamp2Number), FlipReel f => Build(f.SubLamp1Number, f.SubLamp2Number, f.SubLamp3Number), _ => [] };
-    private static LampSublampTableEntry[] Build(params uint[] values) => values.Select((v, i) => new LampSublampTableEntry(i, unchecked((int)v))).ToArray();
+    private static LampSublampTableEntry[] Build(params uint[] values) => values.Select((v, i) => new LampSublampTableEntry(i + 1, unchecked((int)v))).ToArray();
     private static string? LampText(BaseComponent c) => Str(c, "OffText") ?? Str(c, "On1Text") ?? Str(c, "On2Text") ?? Str(c, "On3Text") ?? Text(c);
     private static string? Text(BaseComponent c) => Str(c, "Text") ?? Str(c, "Caption") ?? Str(c, "TextBoxText");
     private static FontTagEntry? Font(BaseComponent c) => c.Fonts.Values.FirstOrDefault(f => f.Role.Contains("off", StringComparison.OrdinalIgnoreCase)) ?? c.Fonts.Values.FirstOrDefault();
     private static string? FontStyle(FontTagEntry? font) => font is null ? null : font.FontStyle == 1 ? "Bold" : "Regular";
-    private static string? TextColor(BaseComponent c) => Font(c)?.TextColour ?? Color(c, "TextColour") ?? Color(c, "TextColor") ?? Color(c, "Colour") ?? Color(c, "Color");
-    private static string? SublampColor(BaseComponent c, int i) => Color(c, $"Sublamp{i}Colour") ?? Color(c, $"Sublamp{i}Color") ?? Color(c, $"On{i + 1}Colour") ?? Color(c, $"On{i + 1}Color");
-    private static string? Color(BaseComponent c, string key) => c.Colours.TryGetValue(key, out var value) ? NormalizeColor(value) : null;
-    private static string? NormalizeColor(string? value) { if (string.IsNullOrWhiteSpace(value)) return null; var v = value.Trim(); if (v.StartsWith('#') && (v.Length == 7 || v.Length == 9)) return v.Length == 7 ? $"#FF{v[1..]}" : v; return v; }
+    private static string? TextColor(BaseComponent c) => ConvertDecoderRgbaToOasisArgb(Font(c)?.TextColour) ?? Color(c, "TextColour") ?? Color(c, "TextColor") ?? Color(c, "Colour") ?? Color(c, "Color");
+    private static string? SublampColor(BaseComponent c, int i)
+    {
+        var oneBasedIndex = Math.Max(1, i);
+        return Color(c, $"Sublamp{oneBasedIndex}Colour")
+            ?? Color(c, $"Sublamp{oneBasedIndex}Color")
+            ?? Color(c, $"On{oneBasedIndex}Colour")
+            ?? Color(c, $"On{oneBasedIndex}Color")
+            ?? (i == 0 ? Color(c, "Sublamp0Colour") ?? Color(c, "Sublamp0Color") : null);
+    }
+    private static string? Color(BaseComponent c, string key) => c.Colours.TryGetValue(key, out var value) ? ConvertDecoderRgbaToOasisArgb(value) : null;
+
+    /// <summary>
+    /// Converts FML decoder color strings (#RRGGBB or #RRGGBBAA) to Oasis/WPF-compatible #AARRGGBB.
+    /// </summary>
+    internal static string? ConvertDecoderRgbaToOasisArgb(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+        var hex = value.Trim();
+        if (!hex.StartsWith('#')) return null;
+        hex = hex[1..];
+        if (hex.Length != 6 && hex.Length != 8) return null;
+        if (!hex.All(static c => Uri.IsHexDigit(c))) return null;
+        hex = hex.ToUpperInvariant();
+        return hex.Length == 6 ? $"#FF{hex}" : $"#{hex[6..8]}{hex[..6]}";
+    }
     private static string? Str(BaseComponent c, string key) => c.Strings.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value) ? value.Trim() : null;
     private static uint? UInt(BaseComponent c, string key) => c.UInt32s.TryGetValue(key, out var v) ? v : null;
     private static double? Double(BaseComponent c, string key) => c.Floats.TryGetValue(key, out var f) ? f : c.UInt32s.TryGetValue(key, out var u) ? u : null;
