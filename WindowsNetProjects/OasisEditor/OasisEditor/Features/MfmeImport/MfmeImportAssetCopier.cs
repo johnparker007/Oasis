@@ -5,6 +5,63 @@ namespace OasisEditor.Features.MfmeImport;
 
 internal sealed class MfmeImportAssetCopier
 {
+
+    public MfmeAssetCopyResult CopyAssetsFromStaging(
+        string stagingRootPath,
+        string layoutName,
+        string projectAssetsPath,
+        bool copyAssets,
+        IReadOnlyList<PanelElementModel> elements)
+    {
+        ArgumentNullException.ThrowIfNull(elements);
+
+        if (!copyAssets)
+        {
+            return new MfmeAssetCopyResult
+            {
+                Elements = SendReelsAndAlphaDisplaysToBack(elements.ToArray()),
+                CopiedAssetRelativePaths = [],
+                Warnings = [],
+                Errors = []
+            };
+        }
+
+        var warnings = new List<MfmeImportWarning>();
+        var errors = new List<string>();
+        var copied = new List<string>();
+        var projectAssetsRoot = EnsureDirectoryAndPath(projectAssetsPath, errors, "layout.import.assetsRoot.invalid");
+        if (projectAssetsRoot is null)
+        {
+            return CreateError(elements, warnings, errors);
+        }
+
+        var layoutSegment = SanitizePathSegment(layoutName, "layout");
+        var destinationRoot = Path.Combine(projectAssetsRoot, "FmlImport", layoutSegment);
+        var pathMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var mappedElements = elements
+            .Select(element => MapElementAssets(element, stagingRootPath, destinationRoot, projectAssetsRoot, pathMap, copied, warnings, errors))
+            .ToArray();
+
+        if (errors.Count == 0)
+        {
+            mappedElements = BakeDisplayOverlaysIntoBackgrounds(mappedElements, projectAssetsRoot, copied, errors);
+        }
+
+        if (errors.Count > 0)
+        {
+            return CreateError(elements, warnings, errors);
+        }
+
+        mappedElements = SendReelsAndAlphaDisplaysToBack(mappedElements);
+        return new MfmeAssetCopyResult
+        {
+            Elements = mappedElements,
+            CopiedAssetRelativePaths = copied,
+            Warnings = warnings,
+            Errors = []
+        };
+    }
+
     private static readonly IReadOnlyDictionary<string, string> ExtractFolderToProjectFolder = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
         ["background"] = "Background",
