@@ -94,7 +94,7 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
         var textStopwatch = Stopwatch.StartNew();
         try
         {
-            var fontSize = ParseFontSize(element.TextBoxFontSize);
+            var fontSize = TextElementRendererHelper.ParseFontSize(element.TextBoxFontSize);
             var textColor = SkiaColorParser.ParseOrDefault(element.TextColorHex, SKColors.White);
             var visualKey = new TextVisualCacheKey(
                 element.ObjectId ?? string.Empty,
@@ -148,37 +148,11 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
             Color = textColor,
             IsAntialias = true,
             TextSize = (float)fontSize,
-            Typeface = ResolveTypeface(fontName, fontStyle)
+            Typeface = TextElementRendererHelper.ResolveTypeface(fontName, fontStyle)
         };
 
-        var textBounds = GetTextBounds(localBounds);
-        var fontMetrics = textPaint.FontMetrics;
-        var measuredLineHeight = Math.Abs(fontMetrics.Ascent) + Math.Abs(fontMetrics.Descent) + Math.Abs(fontMetrics.Leading);
-        var lineHeight = Math.Max(1d, measuredLineHeight > 0f ? measuredLineHeight : fontSize * 1.2d);
-        var wrapWidth = GetEffectiveWrapWidth(displayText, textBounds.Width, localBounds.Width, textPaint);
-        var cacheKey = new TextLayoutCacheKey(displayText, textPaint.Typeface?.FamilyName ?? string.Empty, textPaint.TextSize, wrapWidth);
-        var lines = GetOrCreateTextLayout(cacheKey, displayText, wrapWidth, textPaint);
-        if (lines.Count == 0)
-        {
-            return surface.Snapshot();
-        }
-
-        var totalTextHeight = lines.Count * lineHeight;
-        var baselineOffset = Math.Abs(fontMetrics.Ascent) > 0f ? Math.Abs(fontMetrics.Ascent) : fontSize;
-        var startY = textBounds.Top + ((textBounds.Height - totalTextHeight) / 2d) + baselineOffset;
-        for (var lineIndex = 0; lineIndex < lines.Count; lineIndex++)
-        {
-            var line = lines[lineIndex];
-            if (string.IsNullOrEmpty(line.Text))
-            {
-                continue;
-            }
-
-            var x = textBounds.Left + ((textBounds.Width - line.Width) / 2d);
-            var y = startY + (lineIndex * lineHeight);
-            canvas.DrawText(line.Text, (float)x, (float)y, textPaint);
-            _diagnosticsTextDrawCount++;
-        }
+        var textBounds = TextElementRendererHelper.GetInsetTextBounds(localBounds);
+        _diagnosticsTextDrawCount += TextElementRendererHelper.DrawCenteredWrappedText(canvas, displayText, localBounds, textBounds, textPaint);
 
         return surface.Snapshot();
     }

@@ -469,6 +469,130 @@ public sealed class Panel2DRendererTests
             PanelViewportTransform.Identity);
     }
 
+
+    [Fact]
+    public void Render_WithLabelRenderer_DrawsBackgroundAndText()
+    {
+        using var surface = SKSurface.Create(new SKImageInfo(120, 60));
+        surface.Canvas.Clear(SKColors.Transparent);
+        var renderer = new Panel2DRenderer([new LabelElementRenderer()]);
+
+        renderer.Render(surface.Canvas, [CreateLabel()], new PanelRuntimeState(), PanelViewportTransform.Identity);
+
+        using var image = surface.Snapshot();
+        using var bitmap = SKBitmap.FromImage(image);
+        Assert.Equal(new SKColor(0, 0, 255), bitmap.GetPixel(2, 2));
+        Assert.True(CountPixels(bitmap, c => c.Red > 200 && c.Green < 80 && c.Blue < 80) > 0);
+    }
+
+    [Fact]
+    public void Render_WithLabelRenderer_IsIndependentOfLampIntensity()
+    {
+        using var offSurface = SKSurface.Create(new SKImageInfo(120, 60));
+        using var onSurface = SKSurface.Create(new SKImageInfo(120, 60));
+        var renderer = new Panel2DRenderer([new LabelElementRenderer()]);
+        var offState = new PanelRuntimeState();
+        offState.SetLampIntensity("label-1", 0d);
+        var onState = new PanelRuntimeState();
+        onState.SetLampIntensity("label-1", 1d);
+
+        renderer.Render(offSurface.Canvas, [CreateLabel()], offState, PanelViewportTransform.Identity);
+        renderer.Render(onSurface.Canvas, [CreateLabel()], onState, PanelViewportTransform.Identity);
+
+        using var offImage = offSurface.Snapshot();
+        using var onImage = onSurface.Snapshot();
+        using var offBitmap = SKBitmap.FromImage(offImage);
+        using var onBitmap = SKBitmap.FromImage(onImage);
+        Assert.Equal(CountPixels(offBitmap, c => c.Alpha > 0), CountPixels(onBitmap, c => c.Alpha > 0));
+    }
+
+    [Fact]
+    public void Render_WithLabelRenderer_EmptyOrInvalidValuesDoNotThrowAndClipToBounds()
+    {
+        using var surface = SKSurface.Create(new SKImageInfo(120, 60));
+        surface.Canvas.Clear(SKColors.Transparent);
+        var renderer = new Panel2DRenderer([new LabelElementRenderer()]);
+
+        renderer.Render(
+            surface.Canvas,
+            [
+                new PanelElementModel
+                {
+                    Kind = PanelElementKind.Label,
+                    IsVisible = true,
+                    ObjectId = "label-empty",
+                    Name = "Empty Label",
+                    X = 10,
+                    Y = 10,
+                    Width = 20,
+                    Height = 20,
+                    DisplayText = string.Empty,
+                    OnColorHex = "not-a-color",
+                    TextColorHex = "also-bad",
+                    TextBoxFontName = "DefinitelyMissingFont",
+                    TextBoxFontSize = "bad"
+                },
+                new PanelElementModel
+                {
+                    Kind = PanelElementKind.Label,
+                    IsVisible = true,
+                    ObjectId = "label-long",
+                    Name = "Long Label",
+                    X = 40,
+                    Y = 10,
+                    Width = 20,
+                    Height = 20,
+                    DisplayText = "A very long label that should be clipped to bounds",
+                    OnColorHex = "#FF00FF00",
+                    TextColorHex = "#FFFF0000",
+                    TextBoxFontName = "DefinitelyMissingFont",
+                    TextBoxFontSize = "30"
+                }
+            ],
+            new PanelRuntimeState(),
+            PanelViewportTransform.Identity);
+
+        using var image = surface.Snapshot();
+        using var bitmap = SKBitmap.FromImage(image);
+        Assert.Equal(0, CountPixelsOutside(bitmap, new SKRectI(40, 10, 60, 30), c => c.Alpha > 0));
+    }
+
+    private static PanelElementModel CreateLabel() => new()
+    {
+        Kind = PanelElementKind.Label,
+        IsVisible = true,
+        ObjectId = "label-1",
+        Name = "Label",
+        X = 0,
+        Y = 0,
+        Width = 100,
+        Height = 40,
+        DisplayText = "HI",
+        OnColorHex = "#FF0000FF",
+        TextColorHex = "#FFFF0000",
+        TextBoxFontName = "DefinitelyMissingFont",
+        TextBoxFontStyle = "Regular",
+        TextBoxFontSize = "16"
+    };
+
+    private static int CountPixels(SKBitmap bitmap, Func<SKColor, bool> predicate)
+    {
+        var count = 0;
+        for (var y = 0; y < bitmap.Height; y++)
+        for (var x = 0; x < bitmap.Width; x++)
+            if (predicate(bitmap.GetPixel(x, y))) count++;
+        return count;
+    }
+
+    private static int CountPixelsOutside(SKBitmap bitmap, SKRectI allowedBounds, Func<SKColor, bool> predicate)
+    {
+        var count = 0;
+        for (var y = 0; y < bitmap.Height; y++)
+        for (var x = 0; x < bitmap.Width; x++)
+            if ((x < allowedBounds.Left || x >= allowedBounds.Right || y < allowedBounds.Top || y >= allowedBounds.Bottom) && predicate(bitmap.GetPixel(x, y))) count++;
+        return count;
+    }
+
     private sealed class FakeRenderer(PanelElementKind kind) : IPanelElementRenderer
     {
         public PanelElementKind Kind { get; } = kind;

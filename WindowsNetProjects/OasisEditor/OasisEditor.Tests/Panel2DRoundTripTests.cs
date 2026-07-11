@@ -102,7 +102,7 @@ public sealed class Panel2DRoundTripTests
                 {
                     ObjectId = "abc123",
                     Name = "Name 1",
-                    Kind = "lamp",
+                    Kind = "label",
                     X = 1,
                     Y = 2,
                     Width = 3,
@@ -114,6 +114,9 @@ public sealed class Panel2DRoundTripTests
                     OffColorHex = "#FF111111",
                     TextColorHex = "#FFFF0000",
                     DisplayText = "HOLD",
+                    TextBoxFontName = "Tahoma",
+                    TextBoxFontStyle = "Bold",
+                    TextBoxFontSize = "9",
                     IsReversed = true,
                     Stops = 24,
                     VisibleScale = 0.75,
@@ -132,7 +135,7 @@ public sealed class Panel2DRoundTripTests
         var element = Assert.Single(storageElements);
         Assert.Equal("abc123", element.ObjectId);
         Assert.Equal("Name 1", element.Name);
-        Assert.Equal("lamp", element.Kind);
+        Assert.Equal("label", element.Kind);
         Assert.Equal(1, element.X);
         Assert.Equal(2, element.Y);
         Assert.Equal(3, element.Width);
@@ -144,6 +147,9 @@ public sealed class Panel2DRoundTripTests
         Assert.Equal("#FF111111", element.OffColorHex);
         Assert.Equal("#FFFF0000", element.TextColorHex);
         Assert.Equal("HOLD", element.DisplayText);
+        Assert.Equal("Tahoma", element.TextBoxFontName);
+        Assert.Equal("Bold", element.TextBoxFontStyle);
+        Assert.Equal("9", element.TextBoxFontSize);
         Assert.True(element.IsReversed);
         Assert.Equal(24, element.Stops);
         Assert.Equal(0.75, element.VisibleScale);
@@ -164,7 +170,7 @@ public sealed class Panel2DRoundTripTests
                 {
                     ObjectId = "lamp-off-color",
                     Name = "Lamp",
-                    Kind = "lamp",
+                    Kind = "label",
                     X = 1,
                     Y = 2,
                     Width = 30,
@@ -196,7 +202,7 @@ public sealed class Panel2DRoundTripTests
                 {
                     ObjectId = "lamp-v2",
                     Name = "Lamp V2",
-                    Kind = "lamp",
+                    Kind = "label",
                     X = 1,
                     Y = 2,
                     Width = 3,

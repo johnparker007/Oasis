@@ -739,10 +739,10 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                 commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update secondary asset path", new PanelElementModelUpdate { SecondaryAssetPath = NormalizeOptionalText(value) })));
         }
 
-        if (selectedElement.Kind is PanelElementKind.Background)
+        if (selectedElement.Kind is PanelElementKind.Background or PanelElementKind.Label)
         {
             _propertyRows.Add(new InspectorColorPropertyViewModel(
-                "Color",
+                selectedElement.Kind is PanelElementKind.Label ? "Background Color" : "Color",
                 "Type-specific",
                 selectedElement.OnColorHex ?? string.Empty,
                 commit: value => TryApplyColorUpdate(selectedElement.ObjectId, "Update background color", new PanelElementModelUpdate { OnColorHex = NormalizeOptionalText(value) })));
@@ -766,7 +766,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                 commit: value => TryApplyColorUpdate(selectedElement.ObjectId, "Update off color", new PanelElementModelUpdate { OffColorHex = NormalizeOptionalText(value) })));
         }
 
-        if (selectedElement.Kind is PanelElementKind.Lamp or PanelElementKind.Alpha)
+        if (selectedElement.Kind is PanelElementKind.Lamp or PanelElementKind.Alpha or PanelElementKind.Label)
         {
             _propertyRows.Add(new InspectorColorPropertyViewModel(
                 "Text Color",
@@ -775,7 +775,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                 commit: value => TryApplyColorUpdate(selectedElement.ObjectId, "Update text color", new PanelElementModelUpdate { TextColorHex = NormalizeOptionalText(value) })));
         }
 
-        if (selectedElement.Kind is PanelElementKind.Lamp or PanelElementKind.Alpha)
+        if (selectedElement.Kind is PanelElementKind.Lamp or PanelElementKind.Alpha or PanelElementKind.Label)
         {
             _propertyRows.Add(new InspectorTextPropertyViewModel(
                 "Display Text",
@@ -810,7 +810,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                 commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update comma visibility", new PanelElementModelUpdate { ShowCommaTail = value })));
         }
 
-        if (selectedElement.Kind is PanelElementKind.Lamp)
+        if (selectedElement.Kind is PanelElementKind.Lamp or PanelElementKind.Label)
         {
             _propertyRows.Add(new InspectorInfoPropertyViewModel("Text Font Name", "Type-specific", selectedElement.TextBoxFontName ?? "Tahoma"));
             _propertyRows.Add(new InspectorInfoPropertyViewModel("Text Font Style", "Type-specific", selectedElement.TextBoxFontStyle ?? "Regular"));
@@ -1144,6 +1144,9 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                     break;
                 case "Color" when row is InspectorColorPropertyViewModel colorRow:
                     colorRow.SetCommittedValue(selectedElement.OnColorHex);
+                    break;
+                case "Background Color" when row is InspectorColorPropertyViewModel backgroundColorRow:
+                    backgroundColorRow.SetCommittedValue(selectedElement.OnColorHex);
                     break;
                 case "Off Color" when row is InspectorColorPropertyViewModel offColorRow:
                     offColorRow.SetCommittedValue(selectedElement.OffColorHex);

@@ -84,8 +84,9 @@ public sealed class FmlToOasisMapperTests
         var alpha = new Alpha { X = 5, Y = 6, Width = 70, Height = 20 };
         alpha.Colours["OnColour"] = "#00AA02FF";
         var label = new Label { X = 7, Y = 8, Width = 90, Height = 24 };
-        label.Strings["Caption"] = "HELLO";
+        label.Strings["Label"] = "HELLO";
         label.Fonts["Primary"] = new FontTagEntry(0, "Primary", "Tahoma", 9, 0, "Western", "#010203FF", 0);
+        label.Colours["BackgroundColour"] = "#203040FF";
 
         var images = new Dictionary<FmlDecodedImageKey, string>
         {
@@ -102,7 +103,7 @@ public sealed class FmlToOasisMapperTests
         Assert.Contains(result.Elements, e => e.Kind == PanelElementKind.Reel && e.AssetPath == "reels/band.bmp" && e.SecondaryAssetPath == "reels/overlay.bmp" && e.IsReversed == true && e.VisibleScale == 0.1d);
         Assert.Contains(result.Elements, e => e.Kind == PanelElementKind.SevenSegment && e.DisplayNumber == 7 && e.OnColorHex == "#FFAA0001" && e.SecondaryAssetPath == "reels/seg-overlay.bmp");
         Assert.Contains(result.Elements, e => e.Kind == PanelElementKind.Alpha && e.OnColorHex == "#FF00AA02" && e.SecondaryAssetPath == "reels/alpha-overlay.bmp");
-        Assert.Contains(result.Elements, e => e.Kind == PanelElementKind.Label && e.DisplayText == "HELLO" && e.TextBoxFontName == "Tahoma");
+        Assert.Contains(result.Elements, e => e.Kind == PanelElementKind.Label && e.DisplayText == "HELLO" && e.TextBoxFontName == "Tahoma" && e.TextColorHex == "#FF010203" && e.OnColorHex == "#FF203040");
     }
 
     [Fact]
@@ -185,6 +186,43 @@ public sealed class FmlToOasisMapperTests
         Assert.Equal("HOLD", element.DisplayText);
     }
 
+    [Theory]
+    [InlineData("Label")]
+    [InlineData("Label (UTF-16)")]
+    [InlineData("Text")]
+    [InlineData("Caption")]
+    [InlineData("TextBoxText")]
+    public void Map_WithLabelTextAliases_MapsDisplayText(string key)
+    {
+        var label = new Label { X = 1, Y = 2, Width = 30, Height = 12 };
+        label.Strings[key] = "HELLO";
+        label.Fonts["Primary"] = new FontTagEntry(0, "Primary", "Tahoma", 9, 1, "Western", "#010203FF", 0);
+        label.Colours["BackgroundColour"] = "#203040FF";
+
+        var result = new FmlToOasisMapper().Map(new Layout([label]), new Dictionary<FmlDecodedImageKey, string>());
+
+        var element = Assert.Single(result.Elements);
+        Assert.Equal(PanelElementKind.Label, element.Kind);
+        Assert.Equal("HELLO", element.DisplayText);
+        Assert.Equal("#FF010203", element.TextColorHex);
+        Assert.Equal("Tahoma", element.TextBoxFontName);
+        Assert.Equal("Bold", element.TextBoxFontStyle);
+        Assert.Equal("9", element.TextBoxFontSize);
+        Assert.Equal("#FF203040", element.OnColorHex);
+    }
+
+    [Fact]
+    public void Map_WithLabelBackgroundColorAlias_MapsOnColor()
+    {
+        var label = new Label { X = 1, Y = 2, Width = 30, Height = 12 };
+        label.Strings["Label"] = "HELLO";
+        label.Colours["BackgroundColor"] = "#20304080";
+
+        var result = new FmlToOasisMapper().Map(new Layout([label]), new Dictionary<FmlDecodedImageKey, string>());
+
+        var element = Assert.Single(result.Elements);
+        Assert.Equal("#80203040", element.OnColorHex);
+    }
 
     [Theory]
     [InlineData("OffImageColour", "#204060FF", "#FF204060", 255, 32, 64, 96)]

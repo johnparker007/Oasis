@@ -135,6 +135,59 @@ public sealed class InspectorViewModelTests
     }
 
     [Fact]
+    public void InspectorPropertyRows_SelectedLabel_IncludesEditableTextColorBackgroundAndFontRows()
+    {
+        var selectedDocument = new DocumentTabViewModel(EditorDocument.CreatePanel2DStub("Panel"));
+        selectedDocument.SetPanelElements(
+            [
+                new PanelElementModel
+                {
+                    ObjectId = "label-1",
+                    Name = "Label",
+                    Kind = PanelElementKind.Label,
+                    X = 10,
+                    Y = 20,
+                    Width = 30,
+                    Height = 40,
+                    DisplayText = "Old",
+                    TextColorHex = "#FFFFFFFF",
+                    OnColorHex = "#FF000000",
+                    TextBoxFontName = "Tahoma",
+                    TextBoxFontStyle = "Bold",
+                    TextBoxFontSize = "9"
+                }
+            ]);
+
+        var context = new ActiveDocumentContextService();
+        context.SetActiveDocument(selectedDocument);
+        context.SetPanelSelection(selectedDocument.DocumentId, new PanelSelectionInfo("label-1", "label", 10, 20, 30, 40));
+        var viewModel = CreateInspectorViewModel(selectedDocument, context, ExecuteImmediately);
+        viewModel.NotifyContextChanged();
+
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Display Text");
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Text Color");
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Background Color");
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Text Font Name");
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Text Font Style");
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Text Font Size");
+
+        var textRow = Assert.IsType<InspectorTextPropertyViewModel>(viewModel.InspectorPropertyRows.Single(x => x.DisplayName == "Display Text"));
+        textRow.Value = "New";
+        textRow.Commit();
+        Assert.Equal("New", selectedDocument.GetPanelElements().Single().DisplayText);
+
+        var textColorRow = Assert.IsType<InspectorColorPropertyViewModel>(viewModel.InspectorPropertyRows.Single(x => x.DisplayName == "Text Color"));
+        textColorRow.HexValue = "#FF0000";
+        textColorRow.Commit();
+        Assert.Equal("#FF0000", selectedDocument.GetPanelElements().Single().TextColorHex);
+
+        var backgroundRow = Assert.IsType<InspectorColorPropertyViewModel>(viewModel.InspectorPropertyRows.Single(x => x.DisplayName == "Background Color"));
+        backgroundRow.HexValue = "#00FF00";
+        backgroundRow.Commit();
+        Assert.Equal("#00FF00", selectedDocument.GetPanelElements().Single().OnColorHex);
+    }
+
+    [Fact]
     public void InspectorPropertyRows_SelectedLamp_IncludesDisplayNumberWhenUnset()
     {
         var selectedDocument = new DocumentTabViewModel(EditorDocument.CreatePanel2DStub("Panel"));
