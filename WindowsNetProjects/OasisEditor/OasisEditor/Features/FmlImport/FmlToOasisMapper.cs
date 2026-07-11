@@ -110,7 +110,8 @@ internal sealed class FmlToOasisMapper
 
     private static IReadOnlyList<LampSublampTableEntry> GetSublamps(BaseComponent c) => c switch { Lamp l => l.SublampTable, Button b => b.SublampTable, Reel r => r.SublampTable, DiscReel d => d.SublampTable, PrismLamp p => Build(p.SubLamp1Number, p.SubLamp2Number), FlipReel f => Build(f.SubLamp1Number, f.SubLamp2Number, f.SubLamp3Number), _ => [] };
     private static LampSublampTableEntry[] Build(params uint[] values) => values.Select((v, i) => new LampSublampTableEntry(i + 1, unchecked((int)v))).ToArray();
-    private static string? LampText(BaseComponent c) => Str(c, "OffText") ?? Str(c, "On1Text") ?? Str(c, "On2Text") ?? Str(c, "On3Text") ?? Str(c, "Label") ?? Text(c);
+    private static string? LampText(BaseComponent c) => Str(c, "OffText") ?? Str(c, "On1Text") ?? Str(c, "On2Text") ?? Str(c, "On3Text") ?? ButtonLabelText(c) ?? Text(c);
+    private static string? ButtonLabelText(BaseComponent c) => Str(c, "Label") ?? Str(c, "Label (UTF-16)");
     private static string? Text(BaseComponent c) => Str(c, "Text") ?? Str(c, "Caption") ?? Str(c, "TextBoxText");
     private static FontTagEntry? Font(BaseComponent c) => c.Fonts.Values.FirstOrDefault(f => f.Role.Contains("off", StringComparison.OrdinalIgnoreCase)) ?? c.Fonts.Values.FirstOrDefault();
     private static string? FontStyle(FontTagEntry? font) => font is null ? null : font.FontStyle == 1 ? "Bold" : "Regular";

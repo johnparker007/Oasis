@@ -149,6 +149,21 @@ public sealed class FmlToOasisMapperTests
     }
 
     [Fact]
+    public void Map_WithDecodedButtonUtf16Label_MapsToLampDisplayText()
+    {
+        var button = new Button { X = 5, Y = 6, Width = 20, Height = 20, SublampTable = [new LampSublampTableEntry(1, 12)] };
+        button.Strings["ButtonNumber"] = "1";
+        button.Strings["Label (UTF-16)"] = "START";
+
+        var result = new FmlToOasisMapper().Map(new Layout([button]), new Dictionary<FmlDecodedImageKey, string>());
+
+        var element = Assert.Single(result.Elements);
+        Assert.Equal(PanelElementKind.Lamp, element.Kind);
+        Assert.Equal("START", element.DisplayText);
+        Assert.Single(result.InputDefinitions);
+    }
+
+    [Fact]
     public void Map_WithLampSpecificTextAndLabel_PrefersLampSpecificText()
     {
         var lamp = new Lamp
@@ -161,6 +176,7 @@ public sealed class FmlToOasisMapperTests
         };
         lamp.Strings["OffText"] = "HOLD";
         lamp.Strings["Label"] = "START";
+        lamp.Strings["Label (UTF-16)"] = "COLLECT";
 
         var result = new FmlToOasisMapper().Map(new Layout([lamp]), new Dictionary<FmlDecodedImageKey, string>());
 
