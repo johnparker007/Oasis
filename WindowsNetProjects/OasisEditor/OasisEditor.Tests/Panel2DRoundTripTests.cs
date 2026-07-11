@@ -107,8 +107,8 @@ public sealed class Panel2DRoundTripTests
                     Y = 2,
                     Width = 3,
                     Height = 4,
-                    AssetPath = "Assets/MfmeImport/layout/Lamps/lamp.png",
-                    SecondaryAssetPath = "Assets/MfmeImport/layout/Lamps/lamp-off.png",
+                    AssetPath = "Assets/FmlImport/layout/Lamps/lamp.png",
+                    SecondaryAssetPath = "Assets/FmlImport/layout/Lamps/lamp-off.png",
                     DisplayNumber = 8,
                     OnColorHex = "#FFFFFFFF",
                     OffColorHex = "#FF111111",
@@ -137,8 +137,8 @@ public sealed class Panel2DRoundTripTests
         Assert.Equal(2, element.Y);
         Assert.Equal(3, element.Width);
         Assert.Equal(4, element.Height);
-        Assert.Equal("Assets/MfmeImport/layout/Lamps/lamp.png", element.AssetPath);
-        Assert.Equal("Assets/MfmeImport/layout/Lamps/lamp-off.png", element.SecondaryAssetPath);
+        Assert.Equal("Assets/FmlImport/layout/Lamps/lamp.png", element.AssetPath);
+        Assert.Equal("Assets/FmlImport/layout/Lamps/lamp-off.png", element.SecondaryAssetPath);
         Assert.Equal(8, element.DisplayNumber);
         Assert.Equal("#FFFFFFFF", element.OnColorHex);
         Assert.Equal("#FF111111", element.OffColorHex);

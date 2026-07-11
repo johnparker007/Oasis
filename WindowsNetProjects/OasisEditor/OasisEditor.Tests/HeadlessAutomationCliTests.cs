@@ -16,7 +16,7 @@ public sealed class HeadlessAutomationCliTests
     [Fact]
     public void Parse_HeadlessMissingRequiredArgs_ReturnsInvalidArguments()
     {
-        var result = HeadlessAutomationCli.Parse(["--headless", "convert-mfme"]);
+        var result = HeadlessAutomationCli.Parse(["--headless", "convert-fml"]);
         Assert.True(result.IsHeadless);
         Assert.Equal(HeadlessExitCode.InvalidArguments, result.ErrorCode);
     }
@@ -26,24 +26,24 @@ public sealed class HeadlessAutomationCliTests
     {
         var tempDir = Path.Combine(Path.GetTempPath(), $"oasis-cli-{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
-        var inputPath = Path.Combine(tempDir, "extract.json");
+        var inputPath = Path.Combine(tempDir, "layout.fml");
         File.WriteAllText(inputPath, "{}");
         var projectPath = Path.Combine(tempDir, "demo.oasisproj");
 
         try
         {
             var result = HeadlessAutomationCli.Parse([
-                "--headless", "convert-mfme",
+                "--headless", "convert-fml",
                 "--input", inputPath,
                 "--project", projectPath,
-                "--panel", "mfmeimport.panel2d",
+                "--panel", "fmlimport.panel2d",
                 "--export-lay", "out.lay"]);
 
             Assert.True(result.IsHeadless);
             Assert.NotNull(result.Options);
             Assert.Equal(HeadlessExitCode.Success, result.ErrorCode);
             Assert.Equal("out.lay", result.Options!.ExportLayPath);
-            Assert.Equal(Path.Combine(tempDir, "Assets", "mfmeimport.panel2d"), result.Options.OutputPanelPath);
+            Assert.Equal(Path.Combine(tempDir, "Assets", "fmlimport.panel2d"), result.Options.OutputPanelPath);
         }
         finally
         {

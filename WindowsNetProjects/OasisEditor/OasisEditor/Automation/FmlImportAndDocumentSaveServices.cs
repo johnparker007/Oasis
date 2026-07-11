@@ -1,37 +1,29 @@
 using System.IO;
-using OasisEditor.Features.MfmeImport;
+using OasisEditor.Features.LayoutImport;
+using OasisEditor.Features.FmlImport;
 using OasisEditor.Progress;
 using SkiaSharp;
 
 namespace OasisEditor.Automation;
 
-internal interface IMfmeExtractImportService
+internal interface IFmlAutomationImportService
 {
-    MfmeImportResult ImportFromExtract(string sourceExtractPath, string projectRootPath, string projectAssetsPath, bool copyAssets = true);
+    LayoutImportResult ImportFromFml(string fmlPath, string projectRootPath, string projectAssetsPath, bool copyAssets = true);
 }
 
-internal sealed class MfmeExtractImportService : IMfmeExtractImportService
+internal sealed class FmlAutomationImportService : IFmlAutomationImportService
 {
-    private readonly MfmeImportService _mfmeImportService;
+    private readonly IFmlImportService _fmlImportService;
 
-    public MfmeExtractImportService(MfmeImportService? mfmeImportService = null)
+    public FmlAutomationImportService(IFmlImportService? fmlImportService = null)
     {
-        _mfmeImportService = mfmeImportService ?? new MfmeImportService();
+        _fmlImportService = fmlImportService ?? new FmlImportService();
     }
 
-    public MfmeImportResult ImportFromExtract(string sourceExtractPath, string projectRootPath, string projectAssetsPath, bool copyAssets = true)
-    {
-        var context = new MfmeImportContext
-        {
-            SourceExtractPath = sourceExtractPath,
-            ProjectRootPath = projectRootPath,
-            ProjectAssetsPath = projectAssetsPath,
-            CopyAssets = copyAssets
-        };
-
-        return _mfmeImportService.Import(context);
-    }
+    public LayoutImportResult ImportFromFml(string fmlPath, string projectRootPath, string projectAssetsPath, bool copyAssets = true)
+        => _fmlImportService.ImportFromFml(fmlPath, projectRootPath, projectAssetsPath, copyAssets);
 }
+
 
 public interface IDocumentSaveService
 {

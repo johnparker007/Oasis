@@ -1,29 +1,29 @@
 using OasisEditor.Automation;
-using OasisEditor.Features.MfmeImport;
+using OasisEditor.Features.LayoutImport;
 using OasisEditor.Progress;
 using Xunit;
 
 namespace OasisEditor.Tests;
 
-public sealed class ConvertMfmeAutomationCommandTests
+public sealed class ConvertFmlAutomationCommandTests
 {
     [Fact]
     public async Task ExecuteAsync_WhenImportSucceeds_SavesPanelDocument()
     {
-        var state = new ConvertMfmeAutomationState();
+        var state = new ConvertFmlAutomationState();
         var saveService = new FakeSaveService();
-        var command = new ConvertMfmeAutomationCommand(
+        var command = new ConvertFmlAutomationCommand(
             new FakeProjectCreationService(),
             new Panel2DDocumentCreationService(),
-            new FakeMfmeImportService(succeeded: true),
+            new FakeFmlImportService(succeeded: true),
             saveService,
             new FakeMameLayExportService(),
-            new ConvertMfmeAutomationOptions
+            new ConvertFmlAutomationOptions
             {
                 ProjectName = "DemoProject",
                 ProjectRootLocation = "C:/Temp",
-                PanelDocumentTitle = "mfmeimport.panel2d",
-                InputExtractPath = "input.json",
+                PanelDocumentTitle = "fmlimport.panel2d",
+                InputFmlPath = "input.fml",
                 OutputPanelPath = "output.panel2d"
             },
             state);
@@ -40,18 +40,18 @@ public sealed class ConvertMfmeAutomationCommandTests
     public async Task ExecuteAsync_WhenImportFails_ReturnsFailureAndDoesNotSave()
     {
         var saveService = new FakeSaveService();
-        var command = new ConvertMfmeAutomationCommand(
+        var command = new ConvertFmlAutomationCommand(
             new FakeProjectCreationService(),
             new Panel2DDocumentCreationService(),
-            new FakeMfmeImportService(succeeded: false),
+            new FakeFmlImportService(succeeded: false),
             saveService,
             new FakeMameLayExportService(),
-            new ConvertMfmeAutomationOptions
+            new ConvertFmlAutomationOptions
             {
                 ProjectName = "DemoProject",
                 ProjectRootLocation = "C:/Temp",
-                PanelDocumentTitle = "mfmeimport.panel2d",
-                InputExtractPath = "input.json",
+                PanelDocumentTitle = "fmlimport.panel2d",
+                InputFmlPath = "input.fml",
                 OutputPanelPath = "output.panel2d"
             });
 
@@ -67,11 +67,11 @@ public sealed class ConvertMfmeAutomationCommandTests
         public string CreateProjectContainer(string projectName, string rootLocation) => Path.Combine(rootLocation, projectName);
     }
 
-    private sealed class FakeMfmeImportService(bool succeeded) : IMfmeExtractImportService
+    private sealed class FakeFmlImportService(bool succeeded) : IFmlAutomationImportService
     {
-        public MfmeImportResult ImportFromExtract(string sourceExtractPath, string projectRootPath, string projectAssetsPath, bool copyAssets = true)
+        public LayoutImportResult ImportFromFml(string fmlPath, string projectRootPath, string projectAssetsPath, bool copyAssets = true)
         {
-            return new MfmeImportResult
+            return new LayoutImportResult
             {
                 ImportedElements = succeeded ? [new PanelElementModel
                 {
@@ -83,7 +83,7 @@ public sealed class ConvertMfmeAutomationCommandTests
                 }] : [],
                 CopiedAssetRelativePaths = [],
                 InputDefinitions = [],
-                SkippedLegacyComponentTypes = [],
+                UnsupportedComponentTypes = [],
                 Warnings = [],
                 Errors = succeeded ? [] : ["import failed"]
             };

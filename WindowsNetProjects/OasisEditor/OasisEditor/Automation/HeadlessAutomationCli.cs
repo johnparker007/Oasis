@@ -12,10 +12,10 @@ internal enum HeadlessExitCode
     UnexpectedError = 10
 }
 
-internal sealed record HeadlessCliParseResult(bool IsHeadless, ConvertMfmeAutomationOptions? Options, string? ErrorMessage, HeadlessExitCode ErrorCode)
+internal sealed record HeadlessCliParseResult(bool IsHeadless, ConvertFmlAutomationOptions? Options, string? ErrorMessage, HeadlessExitCode ErrorCode)
 {
     public static HeadlessCliParseResult NotHeadless() => new(false, null, null, HeadlessExitCode.Success);
-    public static HeadlessCliParseResult Success(ConvertMfmeAutomationOptions options) => new(true, options, null, HeadlessExitCode.Success);
+    public static HeadlessCliParseResult Success(ConvertFmlAutomationOptions options) => new(true, options, null, HeadlessExitCode.Success);
     public static HeadlessCliParseResult Failure(string errorMessage, HeadlessExitCode code) => new(true, null, errorMessage, code);
 }
 
@@ -28,9 +28,9 @@ internal static class HeadlessAutomationCli
             return HeadlessCliParseResult.NotHeadless();
         }
 
-        if (!args.Contains("convert-mfme", StringComparer.OrdinalIgnoreCase))
+        if (!args.Contains("convert-fml", StringComparer.OrdinalIgnoreCase))
         {
-            return HeadlessCliParseResult.Failure("Missing command. Expected: convert-mfme", HeadlessExitCode.InvalidArguments);
+            return HeadlessCliParseResult.Failure("Missing command. Expected: convert-fml", HeadlessExitCode.InvalidArguments);
         }
 
         static string? ReadValue(string[] source, string key)
@@ -59,7 +59,7 @@ internal static class HeadlessAutomationCli
         var fullInput = Path.GetFullPath(input);
         if (!File.Exists(fullInput))
         {
-            return HeadlessCliParseResult.Failure($"Input MFME extract not found: {fullInput}", HeadlessExitCode.InputFileNotFound);
+            return HeadlessCliParseResult.Failure($"Input MFME FML not found: {fullInput}", HeadlessExitCode.InputFileNotFound);
         }
 
         var projectFullPath = Path.GetFullPath(projectFile);
@@ -75,11 +75,11 @@ internal static class HeadlessAutomationCli
             ? panelRelativeOrName
             : Path.Combine(projectDirectory, "Assets", panelRelativeOrName);
 
-        var options = new ConvertMfmeAutomationOptions
+        var options = new ConvertFmlAutomationOptions
         {
             ProjectName = projectName,
             ProjectRootLocation = projectDirectory,
-            InputExtractPath = fullInput,
+            InputFmlPath = fullInput,
             PanelDocumentTitle = Path.GetFileNameWithoutExtension(panelRelativeOrName),
             OutputPanelPath = outputPanelPath,
             ExportLayPath = exportLay
@@ -88,13 +88,13 @@ internal static class HeadlessAutomationCli
         return HeadlessCliParseResult.Success(options);
     }
 
-    public static async Task<HeadlessExitCode> RunAsync(ConvertMfmeAutomationOptions options)
+    public static async Task<HeadlessExitCode> RunAsync(ConvertFmlAutomationOptions options)
     {
         var runner = new OasisAutomationCommandRunner();
-        var command = new ConvertMfmeAutomationCommand(
+        var command = new ConvertFmlAutomationCommand(
             new ProjectContainerCreationService(),
             new Panel2DDocumentCreationService(),
-            new MfmeExtractImportService(),
+            new FmlAutomationImportService(),
             new DocumentSaveService(),
             new PlaceholderMameLayExportService(),
             options);

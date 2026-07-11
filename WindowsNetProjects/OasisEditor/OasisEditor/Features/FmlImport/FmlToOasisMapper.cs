@@ -1,7 +1,7 @@
 using System.Globalization;
 using MfmeFmlDecoder.src.Model;
 using MfmeFmlDecoder.src.Model.Component;
-using OasisEditor.Features.MfmeImport;
+using OasisEditor.Features.LayoutImport;
 
 namespace OasisEditor.Features.FmlImport;
 
@@ -16,8 +16,9 @@ internal sealed class FmlToOasisMapper
         ArgumentNullException.ThrowIfNull(exportedImages);
 
         var elements = new List<PanelElementModel>();
-        var warnings = new List<MfmeImportWarning>();
+        var warnings = new List<LayoutImportWarning>();
         var inputs = new List<InputDefinitionModel>();
+        var unsupported = new List<string>();
 
         for (var index = 0; index < layout.Components.Count; index++)
         {
@@ -43,12 +44,13 @@ internal sealed class FmlToOasisMapper
                     elements.Add(MapLabel(component, index));
                     break;
                 default:
-                    warnings.Add(new MfmeImportWarning("fml.import.component.unsupported", $"Unsupported FML component '{component.GetType().Name}' was skipped.", component.GetType().Name));
+                    unsupported.Add(component.GetType().Name);
+                    warnings.Add(new LayoutImportWarning("fml.import.component.unsupported", $"Unsupported FML component '{component.GetType().Name}' was skipped.", component.GetType().Name));
                     break;
             }
         }
 
-        return new FmlToOasisMapResult { Elements = elements, Warnings = warnings, InputDefinitions = inputs };
+        return new FmlToOasisMapResult { Elements = elements, Warnings = warnings, InputDefinitions = inputs, UnsupportedComponentTypes = unsupported };
     }
 
     private static PanelElementModel MapBackground(BaseComponent c, int index, IReadOnlyDictionary<FmlDecodedImageKey, string> images) => new()
@@ -70,8 +72,8 @@ internal sealed class FmlToOasisMapper
         var sharedSetId = $"fml-component-{index.ToString(CultureInfo.InvariantCulture)}";
         foreach (var entry in entries)
         {
-            var main = FindLampImage(images, index, entry.SublampIndex, isMask: false) ?? FindLampImage(images, index, entry.SublampIndex, isMask: null);
-            var mask = FindLampImage(images, index, entry.SublampIndex, isMask: true);
+            var main = FindLampImage(images, index, entry.SublampIndex, isMask: false) ?? FindLampImage(images, index, entry.SublampIndex, isMask: null) ?? FirstLampImage(images, index, isMask: false);
+            var mask = FindLampImage(images, index, entry.SublampIndex, isMask: true) ?? FirstLampImage(images, index, isMask: true);
             var displayNumber = entry.SublampNumber >= 0 ? entry.SublampNumber : (int?)null;
             var font = Font(c);
             elements.Add(new PanelElementModel
@@ -90,11 +92,11 @@ internal sealed class FmlToOasisMapper
         if (input is not null) inputs.Add(input);
     }
 
-    private static PanelElementModel MapReel(BaseComponent c, int index, IReadOnlyDictionary<FmlDecodedImageKey, string> images, ICollection<MfmeImportWarning> warnings)
+    private static PanelElementModel MapReel(BaseComponent c, int index, IReadOnlyDictionary<FmlDecodedImageKey, string> images, ICollection<LayoutImportWarning> warnings)
     {
         var stops = UInt(c, "Stops") ?? (c as DiscReel)?.Stops ?? (c as FlipReel)?.Stops ?? 0;
         double? scale = stops > 0 ? ((Double(c, "Height") ?? c.Height) / 50d) / stops : null;
-        if (stops == 0) warnings.Add(new MfmeImportWarning("fml.import.reel.stops.invalid", "Reel stops must be greater than zero to calculate visible scale.", index.ToString(CultureInfo.InvariantCulture)));
+        if (stops == 0) warnings.Add(new LayoutImportWarning("fml.import.reel.stops.invalid", "Reel stops must be greater than zero to calculate visible scale.", index.ToString(CultureInfo.InvariantCulture)));
         return new PanelElementModel { ObjectId = Guid.NewGuid().ToString("N"), Name = $"Reel {Number(c).GetValueOrDefault(c.Number) + 1}", Kind = PanelElementKind.Reel, X = c.X, Y = c.Y, Width = Math.Max(1, c.Width), Height = Math.Max(1, c.Height), DisplayNumber = Number(c).GetValueOrDefault(c.Number) + 1, AssetPath = FirstRoleImage(images, index, IsReelBand) ?? FirstImage(images, index), SecondaryAssetPath = FirstRoleImage(images, index, IsOverlay), Stops = (int)stops, IsReversed = Bool(c, "Reversed") ?? Bool(c, "Reverse") ?? false, VisibleScale = scale, ImportSource = Source(c, index) };
     }
 
@@ -120,6 +122,7 @@ internal sealed class FmlToOasisMapper
     private static string? FirstImage(IReadOnlyDictionary<FmlDecodedImageKey, string> images, int index) => images.Where(k => k.Key.ComponentIndex == index).OrderBy(k => k.Key.ImageName, StringComparer.Ordinal).Select(k => k.Value).FirstOrDefault();
     private static string? FirstRoleImage(IReadOnlyDictionary<FmlDecodedImageKey, string> images, int index, Func<string, bool> role) => images.Where(k => k.Key.ComponentIndex == index && role(k.Key.ImageName)).OrderBy(k => k.Key.ImageName, StringComparer.Ordinal).Select(k => k.Value).FirstOrDefault();
     private static string? FindLampImage(IReadOnlyDictionary<FmlDecodedImageKey, string> images, int index, int sub, bool? isMask) => images.Where(k => k.Key.ComponentIndex == index && IsSublamp(k.Key.ImageName, sub) && MatchesMask(k.Key.ImageName, isMask)).OrderBy(k => k.Key.ImageName, StringComparer.Ordinal).Select(k => k.Value).FirstOrDefault();
+    private static string? FirstLampImage(IReadOnlyDictionary<FmlDecodedImageKey, string> images, int index, bool? isMask) => images.Where(k => k.Key.ComponentIndex == index && MatchesMask(k.Key.ImageName, isMask)).OrderBy(k => k.Key.ImageName, StringComparer.Ordinal).Select(k => k.Value).FirstOrDefault();
     private static bool IsSublamp(string key, int sub) { var n = Norm(key); return n.StartsWith($"sublamp_{sub}_", StringComparison.Ordinal) || key.StartsWith($"Sublamp {sub} ", StringComparison.OrdinalIgnoreCase); }
     private static bool MatchesMask(string key, bool? mask) => mask is null || Norm(key).Contains("mask", StringComparison.Ordinal) == mask.Value;
     private static bool IsReelBand(string k) { var n = Norm(k); return n.Contains("band") || n.Contains("gradient") || n.Contains("strip") || n.Contains("reel_image") || n.EndsWith("reel"); }
@@ -132,6 +135,7 @@ internal sealed class FmlToOasisMapper
 internal sealed class FmlToOasisMapResult
 {
     public required IReadOnlyList<PanelElementModel> Elements { get; init; }
-    public required IReadOnlyList<MfmeImportWarning> Warnings { get; init; }
+    public required IReadOnlyList<LayoutImportWarning> Warnings { get; init; }
     public required IReadOnlyList<InputDefinitionModel> InputDefinitions { get; init; }
+    public required IReadOnlyList<string> UnsupportedComponentTypes { get; init; }
 }

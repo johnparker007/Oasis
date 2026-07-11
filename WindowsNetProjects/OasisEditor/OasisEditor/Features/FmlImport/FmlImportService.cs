@@ -4,29 +4,29 @@ using System.Text.Json.Nodes;
 using MfmeFmlDecoder.Application;
 using MfmeFmlDecoder.src.Model;
 using MfmeFmlDecoder.src.Model.Component;
-using OasisEditor.Features.MfmeImport;
+using OasisEditor.Features.LayoutImport;
 
 namespace OasisEditor.Features.FmlImport;
 
 internal interface IFmlImportService
 {
-    MfmeImportResult ImportFromFml(string fmlPath, string projectRootPath, string projectAssetsPath, bool copyAssets = true);
+    LayoutImportResult ImportFromFml(string fmlPath, string projectRootPath, string projectAssetsPath, bool copyAssets = true);
 }
 
 internal sealed class FmlImportService : IFmlImportService
 {
     private readonly FmlDecoderService _decoderService;
     private readonly FmlToOasisMapper _mapper;
-    private readonly MfmeImportAssetCopier _assetCopier;
+    private readonly LayoutImportAssetCopier _assetCopier;
 
-    public FmlImportService(FmlDecoderService? decoderService = null, FmlToOasisMapper? mapper = null, MfmeImportAssetCopier? assetCopier = null)
+    public FmlImportService(FmlDecoderService? decoderService = null, FmlToOasisMapper? mapper = null, LayoutImportAssetCopier? assetCopier = null)
     {
         _decoderService = decoderService ?? new FmlDecoderService();
         _mapper = mapper ?? new FmlToOasisMapper();
-        _assetCopier = assetCopier ?? new MfmeImportAssetCopier();
+        _assetCopier = assetCopier ?? new LayoutImportAssetCopier();
     }
 
-    public MfmeImportResult ImportFromFml(string fmlPath, string projectRootPath, string projectAssetsPath, bool copyAssets = true)
+    public LayoutImportResult ImportFromFml(string fmlPath, string projectRootPath, string projectAssetsPath, bool copyAssets = true)
     {
         if (string.IsNullOrWhiteSpace(fmlPath))
         {
@@ -47,13 +47,13 @@ internal sealed class FmlImportService : IFmlImportService
         var decodeResult = _decoderService.DecodeToLayout(fullFmlPath);
         if (!decodeResult.Succeeded)
         {
-            return new MfmeImportResult
+            return new LayoutImportResult
             {
                 ImportedElements = [],
                 CopiedAssetRelativePaths = [],
                 InputDefinitions = [],
-                SkippedLegacyComponentTypes = [],
-                Warnings = decodeResult.Warnings.Select(w => new MfmeImportWarning("fml.decode.warning", w)).ToArray(),
+                UnsupportedComponentTypes = [],
+                Warnings = decodeResult.Warnings.Select(w => new LayoutImportWarning("fml.decode.warning", w)).ToArray(),
                 Errors = decodeResult.Errors.Count > 0 ? decodeResult.Errors : ["FML decode failed."],
                 DebugDiagnostics = diagnostics
             };
@@ -75,13 +75,13 @@ internal sealed class FmlImportService : IFmlImportService
             copyAssets,
             mapResult.Elements);
 
-        return new MfmeImportResult
+        return new LayoutImportResult
         {
             ImportedElements = assetResult.Elements,
             CopiedAssetRelativePaths = assetResult.CopiedAssetRelativePaths,
             InputDefinitions = mapResult.InputDefinitions,
-            SkippedLegacyComponentTypes = [],
-            Warnings = [.. decodeResult.Warnings.Select(w => new MfmeImportWarning("fml.decode.warning", w)), .. mapResult.Warnings, .. assetResult.Warnings],
+            UnsupportedComponentTypes = mapResult.UnsupportedComponentTypes,
+            Warnings = [.. decodeResult.Warnings.Select(w => new LayoutImportWarning("fml.decode.warning", w)), .. mapResult.Warnings, .. assetResult.Warnings],
             Errors = assetResult.Errors,
             DebugDiagnostics = diagnostics
         };
@@ -90,12 +90,12 @@ internal sealed class FmlImportService : IFmlImportService
     private static string CreateStagingDirectory()
         => Path.Combine(Path.GetTempPath(), "OasisEditor", "FmlImport", Guid.NewGuid().ToString("N"));
 
-    private static MfmeImportResult Failure(string error) => new()
+    private static LayoutImportResult Failure(string error) => new()
     {
         ImportedElements = [],
         CopiedAssetRelativePaths = [],
         InputDefinitions = [],
-        SkippedLegacyComponentTypes = [],
+        UnsupportedComponentTypes = [],
         Warnings = [],
         Errors = [error]
     };

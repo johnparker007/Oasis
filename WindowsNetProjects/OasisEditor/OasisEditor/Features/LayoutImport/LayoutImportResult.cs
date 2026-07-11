@@ -1,6 +1,6 @@
-namespace OasisEditor.Features.MfmeImport;
+namespace OasisEditor.Features.LayoutImport;
 
-internal sealed class MfmeImportResult
+internal sealed class LayoutImportResult
 {
     public required IReadOnlyList<PanelElementModel> ImportedElements { get; init; }
 
@@ -8,9 +8,9 @@ internal sealed class MfmeImportResult
 
     public required IReadOnlyList<InputDefinitionModel> InputDefinitions { get; init; }
 
-    public required IReadOnlyList<string> SkippedLegacyComponentTypes { get; init; }
+    public required IReadOnlyList<string> UnsupportedComponentTypes { get; init; }
 
-    public required IReadOnlyList<MfmeImportWarning> Warnings { get; init; }
+    public required IReadOnlyList<LayoutImportWarning> Warnings { get; init; }
 
     public required IReadOnlyList<string> Errors { get; init; }
 
