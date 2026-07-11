@@ -78,7 +78,8 @@ public sealed class LabelElementRendererTests
         var bounds = SKRect.Create(0f, 0f, 120f, 48f);
         var textBounds = LampElementRenderer.GetTextBounds(bounds);
         var fontMetrics = textPaint.FontMetrics;
-        var lineHeight = Math.Max(1d, Math.Abs(fontMetrics.Ascent) + Math.Abs(fontMetrics.Descent) + Math.Abs(fontMetrics.Leading));
+        var measuredLineHeight = Math.Abs(fontMetrics.Ascent) + Math.Abs(fontMetrics.Descent) + Math.Abs(fontMetrics.Leading);
+        var lineHeight = Math.Max(1d, measuredLineHeight > 0f ? measuredLineHeight : textPaint.TextSize * 1.2d);
         var wrapWidth = LampElementRenderer.GetEffectiveWrapWidth(element.DisplayText, textBounds.Width, bounds.Width, textPaint);
         var line = Assert.Single(LampElementRenderer.WrapTextToPixelWidth(element.DisplayText, wrapWidth, textPaint));
         var baselineOffset = Math.Abs(fontMetrics.Ascent) > 0f ? Math.Abs(fontMetrics.Ascent) : textPaint.TextSize;
