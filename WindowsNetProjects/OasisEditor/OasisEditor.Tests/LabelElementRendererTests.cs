@@ -75,7 +75,7 @@ public sealed class LabelElementRendererTests
             TextSize = (float)LampElementRenderer.ParseFontSize(element.TextBoxFontSize),
             Typeface = MfmeTypefaceResolver.Resolve(element.TextBoxFontName, element.TextBoxFontStyle)
         };
-        var bounds = SKRect.Create(0f, 0f, 120f, 48f);
+        var bounds = SKRect.Create((float)element.X, (float)element.Y, (float)element.Width, (float)element.Height);
         var textBounds = LampElementRenderer.GetTextBounds(bounds);
         var fontMetrics = textPaint.FontMetrics;
         var measuredLineHeight = Math.Abs(fontMetrics.Ascent) + Math.Abs(fontMetrics.Descent) + Math.Abs(fontMetrics.Leading);
