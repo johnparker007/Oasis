@@ -333,6 +333,7 @@ internal static class Panel2DDocumentStorage
             AssetPath = normalized.AssetPath,
             SecondaryAssetPath = normalized.SecondaryAssetPath,
             DisplayNumber = normalized.DisplayNumber,
+            LampNumber = normalized.LampNumber,
             SegmentDisplayType = normalized.SegmentDisplayType,
             ShowDecimalPoint = normalized.ShowDecimalPoint ?? false,
             ShowCommaTail = normalized.ShowCommaTail ?? false,
@@ -386,6 +387,7 @@ internal static class Panel2DDocumentStorage
             AssetPath = element.AssetPath,
             SecondaryAssetPath = element.SecondaryAssetPath,
             DisplayNumber = element.DisplayNumber,
+            LampNumber = element.LampNumber,
             SegmentDisplayType = element.SegmentDisplayType,
             ShowDecimalPoint = element.ShowDecimalPoint,
             ShowCommaTail = element.ShowCommaTail,
@@ -412,6 +414,7 @@ internal static class Panel2DDocumentStorage
                 assetPath: element.AssetPath,
                 secondaryAssetPath: element.SecondaryAssetPath,
                 number: element.DisplayNumber,
+                lampNumber: element.LampNumber,
                 text: element.DisplayText,
                 textBoxFontName: element.Kind == PanelElementKind.Lamp ? NormalizeLampFontName(element.TextBoxFontName) : NormalizeOptionalString(element.TextBoxFontName),
                 textBoxFontStyle: element.Kind == PanelElementKind.Lamp ? NormalizeLampFontStyle(element.TextBoxFontStyle) : NormalizeOptionalString(element.TextBoxFontStyle),
@@ -530,6 +533,7 @@ internal static class Panel2DDocumentStorage
         var normalizedAssetPath = NormalizeOptionalString(normalizedNative?.AssetPath ?? element.AssetPath);
         var normalizedSecondaryAssetPath = NormalizeOptionalString(normalizedNative?.SecondaryAssetPath ?? element.SecondaryAssetPath);
         var normalizedDisplayNumber = normalizedNative?.Number ?? element.DisplayNumber;
+        var normalizedLampNumber = normalizedNative?.LampNumber ?? element.LampNumber;
         var normalizedSegmentDisplayType = NormalizeOptionalString(normalizedNative?.SegmentDisplayType ?? element.SegmentDisplayType);
         var normalizedShowDecimalPoint = normalizedNative?.ShowDecimalPoint ?? element.ShowDecimalPoint ?? false;
         var normalizedShowCommaTail = normalizedNative?.ShowCommaTail ?? element.ShowCommaTail ?? false;
@@ -562,6 +566,7 @@ internal static class Panel2DDocumentStorage
                 normalizedAssetPath,
                 normalizedSecondaryAssetPath,
                 normalizedDisplayNumber,
+                normalizedLampNumber,
                 normalizedDisplayText,
                 normalizedTextBoxFontName,
                 normalizedTextBoxFontStyle,
@@ -579,6 +584,7 @@ internal static class Panel2DDocumentStorage
                 AssetPath = normalizedAssetPath,
                 SecondaryAssetPath = normalizedSecondaryAssetPath,
                 Number = normalizedDisplayNumber,
+                LampNumber = normalizedLampNumber,
                 SegmentDisplayType = normalizedSegmentDisplayType,
                 ShowDecimalPoint = normalizedShowDecimalPoint,
                 ShowCommaTail = normalizedShowCommaTail,
@@ -605,6 +611,7 @@ internal static class Panel2DDocumentStorage
             AssetPath = normalizedAssetPath,
             SecondaryAssetPath = normalizedSecondaryAssetPath,
             DisplayNumber = normalizedDisplayNumber,
+            LampNumber = normalizedLampNumber,
             SegmentDisplayType = normalizedSegmentDisplayType,
             ShowDecimalPoint = normalizedShowDecimalPoint,
             ShowCommaTail = normalizedShowCommaTail,
@@ -746,6 +753,7 @@ internal static class Panel2DDocumentStorage
             AssetPath = NormalizeOptionalString(native.AssetPath),
             SecondaryAssetPath = NormalizeOptionalString(native.SecondaryAssetPath),
             Number = native.Number,
+            LampNumber = native.LampNumber,
             Text = NormalizeOptionalString(native.Text),
             TextBoxFontName = NormalizeOptionalString(native.TextBoxFontName),
             TextBoxFontStyle = NormalizeOptionalString(native.TextBoxFontStyle),
@@ -767,6 +775,7 @@ internal static class Panel2DDocumentStorage
         string? assetPath,
         string? secondaryAssetPath,
         int? number,
+        int? lampNumber,
         string? text,
         string? textBoxFontName,
         string? textBoxFontStyle,
@@ -783,6 +792,7 @@ internal static class Panel2DDocumentStorage
         if (assetPath is null
             && secondaryAssetPath is null
             && number is null
+            && lampNumber is null
             && text is null
             && textBoxFontName is null
             && textBoxFontStyle is null
@@ -804,6 +814,7 @@ internal static class Panel2DDocumentStorage
             AssetPath = assetPath,
             SecondaryAssetPath = secondaryAssetPath,
             Number = number,
+            LampNumber = lampNumber,
             Text = text,
             TextBoxFontName = textBoxFontName,
             TextBoxFontStyle = textBoxFontStyle,
@@ -873,6 +884,7 @@ internal sealed record PanelElementFile : IPanelSelectableObject
     public string? AssetPath { get; init; }
     public string? SecondaryAssetPath { get; init; }
     public int? DisplayNumber { get; init; }
+    public int? LampNumber { get; init; }
     public string? SegmentDisplayType { get; init; }
     public bool? ShowDecimalPoint { get; init; }
     public bool? ShowCommaTail { get; init; }
@@ -906,6 +918,7 @@ internal sealed record PanelElementNativeFile
     public string? AssetPath { get; init; }
     public string? SecondaryAssetPath { get; init; }
     public int? Number { get; init; }
+    public int? LampNumber { get; init; }
     public string? SegmentDisplayType { get; init; }
     public bool? ShowDecimalPoint { get; init; }
     public bool? ShowCommaTail { get; init; }

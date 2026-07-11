@@ -162,6 +162,59 @@ public sealed class InspectorViewModelTests
         Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Display Number");
     }
 
+
+    [Fact]
+    public void InspectorPropertyRows_SelectedLabel_IncludesAndEditsTextColorFontAndLampNumber()
+    {
+        var selectedDocument = new DocumentTabViewModel(EditorDocument.CreatePanel2DStub("Panel"));
+        selectedDocument.SetPanelElements(
+            [
+                new PanelElementModel
+                {
+                    ObjectId = "label-1",
+                    Name = "Label",
+                    Kind = PanelElementKind.Label,
+                    X = 10,
+                    Y = 20,
+                    Width = 30,
+                    Height = 40,
+                    DisplayText = "OLD",
+                    TextColorHex = "#FFFFFFFF",
+                    TextBoxFontName = "Tahoma",
+                    TextBoxFontStyle = "Regular",
+                    TextBoxFontSize = "8",
+                    LampNumber = 4
+                }
+            ]);
+
+        var context = new ActiveDocumentContextService();
+        context.SetActiveDocument(selectedDocument);
+        context.SetPanelSelection(selectedDocument.DocumentId, new PanelSelectionInfo("label-1", "label", 10, 20, 30, 40));
+        var viewModel = CreateInspectorViewModel(selectedDocument, context, ExecuteImmediately);
+        viewModel.NotifyContextChanged();
+
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Display Text");
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Text Color");
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Lamp Number");
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Text Font Name");
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Text Font Style");
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Text Font Size");
+
+        var textRow = Assert.IsType<InspectorTextPropertyViewModel>(viewModel.InspectorPropertyRows.Single(x => x.DisplayName == "Display Text"));
+        textRow.Value = "COLLECT";
+        textRow.Commit();
+
+        var lampRow = Assert.IsType<InspectorIntPropertyViewModel>(viewModel.InspectorPropertyRows.Single(x => x.DisplayName == "Lamp Number"));
+        lampRow.Value = "0";
+        lampRow.Commit();
+        Assert.Equal("COLLECT", selectedDocument.GetPanelElements().Single().DisplayText);
+        Assert.Equal(0, selectedDocument.GetPanelElements().Single().LampNumber);
+
+        lampRow.Value = string.Empty;
+        lampRow.Commit();
+        Assert.Null(selectedDocument.GetPanelElements().Single().LampNumber);
+    }
+
     [Fact]
     public void InspectorPropertyRows_NoSelection_AreEmpty()
     {

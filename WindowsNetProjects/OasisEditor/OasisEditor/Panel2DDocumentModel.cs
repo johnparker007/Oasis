@@ -43,6 +43,7 @@ internal sealed class PanelElementModel
     public string? AssetPath { get; init; }
     public string? SecondaryAssetPath { get; init; }
     public int? DisplayNumber { get; init; }
+    public int? LampNumber { get; init; }
     public string? SegmentDisplayType { get; init; }
     public bool ShowDecimalPoint { get; init; }
     public bool ShowCommaTail { get; init; }

@@ -106,12 +106,25 @@ internal sealed class FmlToOasisMapper
 
     private static PanelElementModel MapSegment(BaseComponent c, int index, IReadOnlyDictionary<FmlDecodedImageKey, string> images) => new() { ObjectId = Guid.NewGuid().ToString("N"), Name = $"7 Segment {Number(c).GetValueOrDefault(c.Number)}", Kind = PanelElementKind.SevenSegment, X = c.X, Y = c.Y, Width = Math.Max(1, c.Width), Height = Math.Max(1, c.Height), DisplayNumber = Number(c).GetValueOrDefault(c.Number), SecondaryAssetPath = FirstRoleImage(images, index, IsOverlay), OnColorHex = Color(c, "OnColour") ?? Color(c, "OnColor"), SourceComponentIndex = index, ImportSource = Source(c, index) };
     private static PanelElementModel MapAlpha(BaseComponent c, int index, IReadOnlyDictionary<FmlDecodedImageKey, string> images) => new() { ObjectId = Guid.NewGuid().ToString("N"), Name = "Alpha", Kind = PanelElementKind.Alpha, X = c.X, Y = c.Y, Width = Math.Max(1, c.Width), Height = Math.Max(1, c.Height), IsReversed = Bool(c, "Reversed") ?? false, SecondaryAssetPath = FirstRoleImage(images, index, IsOverlay), OnColorHex = Color(c, "OnColour") ?? Color(c, "OnColor"), SourceComponentIndex = index, ImportSource = Source(c, index) };
-    private static PanelElementModel MapLabel(BaseComponent c, int index) { var font = Font(c); return new PanelElementModel { ObjectId = Guid.NewGuid().ToString("N"), Name = "Label", Kind = PanelElementKind.Label, X = c.X, Y = c.Y, Width = Math.Max(1, c.Width), Height = Math.Max(1, c.Height), DisplayText = Text(c), TextBoxFontName = font?.FontName, TextBoxFontStyle = FontStyle(font), TextBoxFontSize = font?.FontSize.ToString(CultureInfo.InvariantCulture), TextColorHex = TextColor(c), SourceComponentIndex = index, ImportSource = Source(c, index) }; }
+    private static PanelElementModel MapLabel(BaseComponent c, int index)
+    {
+        var font = Font(c);
+        return new PanelElementModel
+        {
+            ObjectId = Guid.NewGuid().ToString("N"), Name = "Label", Kind = PanelElementKind.Label,
+            X = c.X, Y = c.Y, Width = Math.Max(1, c.Width), Height = Math.Max(1, c.Height),
+            DisplayText = LabelText(c), LampNumber = LabelLampNumber(c),
+            TextBoxFontName = font?.FontName, TextBoxFontStyle = FontStyle(font), TextBoxFontSize = font?.FontSize.ToString(CultureInfo.InvariantCulture),
+            TextColorHex = TextColor(c), SourceComponentIndex = index, ImportSource = Source(c, index)
+        };
+    }
 
     private static IReadOnlyList<LampSublampTableEntry> GetSublamps(BaseComponent c) => c switch { Lamp l => l.SublampTable, Button b => b.SublampTable, Reel r => r.SublampTable, DiscReel d => d.SublampTable, PrismLamp p => Build(p.SubLamp1Number, p.SubLamp2Number), FlipReel f => Build(f.SubLamp1Number, f.SubLamp2Number, f.SubLamp3Number), _ => [] };
     private static LampSublampTableEntry[] Build(params uint[] values) => values.Select((v, i) => new LampSublampTableEntry(i + 1, unchecked((int)v))).ToArray();
     private static string? LampText(BaseComponent c) => Str(c, "OffText") ?? Str(c, "On1Text") ?? Str(c, "On2Text") ?? Str(c, "On3Text") ?? ButtonLabelText(c) ?? Text(c);
     private static string? ButtonLabelText(BaseComponent c) => Str(c, "Label") ?? Str(c, "Label (UTF-16)");
+    private static string? LabelText(BaseComponent c) => Str(c, "Label") ?? Str(c, "Label (UTF-16)") ?? Text(c);
+    private static int? LabelLampNumber(BaseComponent c) => UInt(c, "Lamp") is uint lamp ? unchecked((int)lamp) : null;
     private static string? Text(BaseComponent c) => Str(c, "Text") ?? Str(c, "Caption") ?? Str(c, "TextBoxText");
     private static FontTagEntry? Font(BaseComponent c) => c.Fonts.Values.FirstOrDefault(f => f.Role.Contains("off", StringComparison.OrdinalIgnoreCase)) ?? c.Fonts.Values.FirstOrDefault();
     private static string? FontStyle(FontTagEntry? font) => font is null ? null : font.FontStyle == 1 ? "Bold" : "Regular";

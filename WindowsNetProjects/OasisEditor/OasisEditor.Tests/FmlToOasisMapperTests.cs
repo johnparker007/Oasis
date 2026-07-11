@@ -105,6 +105,40 @@ public sealed class FmlToOasisMapperTests
         Assert.Contains(result.Elements, e => e.Kind == PanelElementKind.Label && e.DisplayText == "HELLO" && e.TextBoxFontName == "Tahoma");
     }
 
+
+    [Fact]
+    public void Map_WithDecodedMfmeLabel_UsesLabelKeyFontTextColourAndLampNumber()
+    {
+        var label = new Label { X = 7, Y = 8, Width = 90, Height = 24 };
+        label.Strings["Label"] = "COLLECT";
+        label.UInt32s["Lamp"] = 0;
+        label.Fonts["Primary"] = new FontTagEntry(0, "Primary", "Tahoma", 9, 0, "Western", "#010203FF", 1);
+
+        var result = new FmlToOasisMapper().Map(new Layout([label]), new Dictionary<FmlDecodedImageKey, string>());
+
+        var element = Assert.Single(result.Elements);
+        Assert.Equal(PanelElementKind.Label, element.Kind);
+        Assert.Equal("COLLECT", element.DisplayText);
+        Assert.Equal(0, element.LampNumber);
+        Assert.Equal("Tahoma", element.TextBoxFontName);
+        Assert.Equal("Bold", element.TextBoxFontStyle);
+        Assert.Equal("9", element.TextBoxFontSize);
+        Assert.Equal("#FF010203", element.TextColorHex);
+    }
+
+    [Fact]
+    public void Map_WithStaticMfmeLabel_LeavesLampNumberNullAndKeepsCompatibilityAliases()
+    {
+        var label = new Label { X = 7, Y = 8, Width = 90, Height = 24 };
+        label.Strings["Label (UTF-16)"] = "NUDGE";
+
+        var result = new FmlToOasisMapper().Map(new Layout([label]), new Dictionary<FmlDecodedImageKey, string>());
+
+        var element = Assert.Single(result.Elements);
+        Assert.Equal(PanelElementKind.Label, element.Kind);
+        Assert.Equal("NUDGE", element.DisplayText);
+        Assert.Null(element.LampNumber);
+    }
     [Fact]
     public void Map_WithGraphicalLampAndButton_PreservesAssetsAndInputDefinition()
     {

@@ -110,6 +110,7 @@ public sealed class Panel2DRoundTripTests
                     AssetPath = "Assets/FmlImport/layout/Lamps/lamp.png",
                     SecondaryAssetPath = "Assets/FmlImport/layout/Lamps/lamp-off.png",
                     DisplayNumber = 8,
+                    LampNumber = 0,
                     OnColorHex = "#FFFFFFFF",
                     OffColorHex = "#FF111111",
                     TextColorHex = "#FFFF0000",
@@ -140,6 +141,7 @@ public sealed class Panel2DRoundTripTests
         Assert.Equal("Assets/FmlImport/layout/Lamps/lamp.png", element.AssetPath);
         Assert.Equal("Assets/FmlImport/layout/Lamps/lamp-off.png", element.SecondaryAssetPath);
         Assert.Equal(8, element.DisplayNumber);
+        Assert.Equal(0, element.LampNumber);
         Assert.Equal("#FFFFFFFF", element.OnColorHex);
         Assert.Equal("#FF111111", element.OffColorHex);
         Assert.Equal("#FFFF0000", element.TextColorHex);
@@ -152,6 +154,32 @@ public sealed class Panel2DRoundTripTests
         Assert.Equal("layout.json#lamp-8", element.ImportSource.Reference);
     }
 
+
+
+    [Fact]
+    public void LabelLampNumber_NullZeroAndPositive_RoundTripThroughStorageElements()
+    {
+        var model = new Panel2DDocumentModel
+        {
+            Title = "Panel",
+            Elements =
+            [
+                new PanelElementModel { ObjectId = "label-null", Name = "Static", Kind = PanelElementKind.Label, Width = 10, Height = 10, DisplayText = "A" },
+                new PanelElementModel { ObjectId = "label-zero", Name = "Lamp Zero", Kind = PanelElementKind.Label, Width = 10, Height = 10, DisplayText = "B", LampNumber = 0 },
+                new PanelElementModel { ObjectId = "label-five", Name = "Lamp Five", Kind = PanelElementKind.Label, Width = 10, Height = 10, DisplayText = "C", LampNumber = 5 }
+            ]
+        };
+
+        var roundTripped = Panel2DDocumentStorage.ToModel(new Panel2DDocumentFile
+        {
+            SchemaVersion = 1,
+            Elements = Panel2DDocumentStorage.ToStorageElements(model).ToArray()
+        });
+
+        Assert.Null(roundTripped.Elements[0].LampNumber);
+        Assert.Equal(0, roundTripped.Elements[1].LampNumber);
+        Assert.Equal(5, roundTripped.Elements[2].LampNumber);
+    }
 
     [Fact]
     public void Serialize_AndRead_RoundTripsLampOffColorHexWithoutReconversion()

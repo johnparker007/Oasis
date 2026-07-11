@@ -162,6 +162,7 @@ internal sealed class ImportPanelElementsCommand : IDocumentCommand, IExecutionT
             AssetPath = source.AssetPath,
             SecondaryAssetPath = source.SecondaryAssetPath,
             DisplayNumber = source.DisplayNumber,
+            LampNumber = source.LampNumber,
             SegmentDisplayType = source.SegmentDisplayType,
             ShowDecimalPoint = source.ShowDecimalPoint,
             ShowCommaTail = source.ShowCommaTail,
