@@ -31,6 +31,7 @@ internal static class PanelElementModelCloner
             SegmentDisplayType = source.SegmentDisplayType,
             ShowDecimalPoint = source.ShowDecimalPoint,
             ShowCommaTail = source.ShowCommaTail,
+            HasBorder = source.HasBorder,
             OnColorHex = source.OnColorHex,
             OffColorHex = source.OffColorHex,
             TextColorHex = source.TextColorHex,

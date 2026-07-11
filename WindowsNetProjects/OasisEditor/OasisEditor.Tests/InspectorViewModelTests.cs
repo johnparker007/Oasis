@@ -100,6 +100,7 @@ public sealed class InspectorViewModelTests
         Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Visible");
         Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Display Number");
         Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "On Color");
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Border");
     }
 
 

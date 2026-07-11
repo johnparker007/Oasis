@@ -47,6 +47,7 @@ internal sealed class PanelElementModel
     public string? SegmentDisplayType { get; init; }
     public bool ShowDecimalPoint { get; init; }
     public bool ShowCommaTail { get; init; }
+    public bool HasBorder { get; init; }
     public string? OnColorHex { get; init; }
     public string? OffColorHex { get; init; }
     public string? TextColorHex { get; init; }
