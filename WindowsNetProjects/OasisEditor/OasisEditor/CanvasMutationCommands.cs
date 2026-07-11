@@ -807,7 +807,9 @@ internal static class CanvasMutationCommands
                 return;
             }
 
-            _previousElement = PanelElementModelCloner.Clone(existing);
+            _previousElement = IsValidPreviewOriginal(existing)
+                ? PanelElementModelCloner.Clone(_previewOriginalElement!)
+                : PanelElementModelCloner.Clone(existing);
             elements[index] = PanelElementModelCloner.Clone(_updatedElement);
             var changedProperties = GetChangedProperties(existing, _updatedElement);
             var affectsHierarchy = changedProperties.HasFlag(PanelChangeProperties.Name)
@@ -818,6 +820,15 @@ internal static class CanvasMutationCommands
             _document.SetPanelElements(elements, CreateElementChange(_document, _objectId, changedProperties, affectsHierarchy: affectsHierarchy));
             _document.MarkDirty();
             WasExecuted = true;
+        }
+
+        private bool IsValidPreviewOriginal(PanelElementModel existing)
+        {
+            return _previewOriginalElement is not null
+                   && string.Equals(_previewOriginalElement.ObjectId, _objectId, StringComparison.Ordinal)
+                   && _previewOriginalElement.Kind == existing.Kind
+                   && PanelElementValidation.IsValidForInspectorUpdate(_previewOriginalElement)
+                   && !PanelElementModelComparer.AreEquivalent(_previewOriginalElement, _updatedElement);
         }
 
         public void Undo()
