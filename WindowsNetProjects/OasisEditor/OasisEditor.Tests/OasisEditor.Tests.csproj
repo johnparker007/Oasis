@@ -18,4 +18,9 @@
     <ProjectReference Include="..\OasisEditor\OasisEditor.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="..\OasisEditor\MfmeFonts\*.ttf" Link="MfmeFonts\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\OasisEditor\MfmeFonts\*.TTF" Link="MfmeFonts\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

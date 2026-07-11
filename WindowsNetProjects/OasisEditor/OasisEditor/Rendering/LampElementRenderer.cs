@@ -9,7 +9,6 @@ namespace OasisEditor.Rendering;
 
 internal sealed class LampElementRenderer : IPanelElementRenderer
 {
-    private static readonly ConcurrentDictionary<string, SKTypeface> TypefaceCache = new(StringComparer.OrdinalIgnoreCase);
     private static readonly ConcurrentDictionary<string, SKImage?> CachedLampImages = new(StringComparer.OrdinalIgnoreCase);
     private static readonly ConcurrentDictionary<TextLayoutCacheKey, IReadOnlyList<PixelTextLine>> TextLayoutCache = new();
     private static readonly ConcurrentDictionary<TextVisualCacheKey, SKImage> TextVisualCache = new();
@@ -148,7 +147,7 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
             Color = textColor,
             IsAntialias = true,
             TextSize = (float)fontSize,
-            Typeface = ResolveTypeface(fontName, fontStyle)
+            Typeface = MfmeTypefaceResolver.Resolve(fontName, fontStyle)
         };
 
         var textBounds = GetTextBounds(localBounds);
@@ -300,87 +299,6 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
         TextLayoutCache[cacheKey] = computed;
         return computed;
     }
-
-    private static SKTypeface ResolveTypeface(string? fontName, string? fontStyle)
-    {
-        var family = string.IsNullOrWhiteSpace(fontName) ? "Tahoma" : fontName.Trim();
-        var styleToken = string.IsNullOrWhiteSpace(fontStyle) ? "Regular" : fontStyle.Trim();
-        var cacheKey = $"{family}|{styleToken}";
-        if (TypefaceCache.TryGetValue(cacheKey, out var cached))
-        {
-            return cached;
-        }
-
-        var weight = styleToken.Contains("Bold", StringComparison.OrdinalIgnoreCase)
-            ? SKFontStyleWeight.Bold
-            : SKFontStyleWeight.Normal;
-        var slant = styleToken.Contains("Italic", StringComparison.OrdinalIgnoreCase)
-            ? SKFontStyleSlant.Italic
-            : SKFontStyleSlant.Upright;
-        var style = new SKFontStyle(weight, SKFontStyleWidth.Normal, slant);
-
-        if (TryResolveMfmeTypeface(family, styleToken, out var mfmeTypeface))
-        {
-            TypefaceCache[cacheKey] = mfmeTypeface;
-            return mfmeTypeface;
-        }
-
-        var resolved = SKTypeface.FromFamilyName(family, style)
-            ?? SKTypeface.FromFamilyName("Tahoma", style)
-            ?? SKTypeface.Default;
-        TypefaceCache[cacheKey] = resolved;
-        return resolved;
-    }
-
-    private static bool TryResolveMfmeTypeface(string family, string styleToken, out SKTypeface typeface)
-    {
-        var fontsDirectory = Path.Combine(AppContext.BaseDirectory, "MfmeFonts");
-        if (!Directory.Exists(fontsDirectory))
-        {
-            typeface = null!;
-            return false;
-        }
-
-        var wantsBold = styleToken.Contains("Bold", StringComparison.OrdinalIgnoreCase);
-        foreach (var fontPath in Directory.EnumerateFiles(fontsDirectory, "*.ttf"))
-        {
-            SKTypeface? candidate = null;
-            try
-            {
-                candidate = SKTypeface.FromFile(fontPath);
-            }
-            catch
-            {
-                continue;
-            }
-
-            if (candidate is null)
-            {
-                continue;
-            }
-
-            var familyMatches = string.Equals(candidate.FamilyName, family, StringComparison.OrdinalIgnoreCase);
-            if (!familyMatches)
-            {
-                candidate.Dispose();
-                continue;
-            }
-
-            var isBoldFace = candidate.FontWeight >= (int)SKFontStyleWeight.SemiBold;
-            if (wantsBold != isBoldFace)
-            {
-                candidate.Dispose();
-                continue;
-            }
-
-            typeface = candidate;
-            return true;
-        }
-
-        typeface = null!;
-        return false;
-    }
-
 
     private static bool TryGetLampImage(string? assetPath, out SKImage image)
     {

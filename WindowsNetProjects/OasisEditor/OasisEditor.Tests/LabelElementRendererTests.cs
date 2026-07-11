@@ -53,6 +53,44 @@ public sealed class LabelElementRendererTests
     }
 
     [Fact]
+    public void Render_BundledMfmeFont_MatchesSharedTypefaceRendering()
+    {
+        using var actualSurface = SKSurface.Create(new SKImageInfo(120, 48));
+        actualSurface.Canvas.Clear(SKColors.Transparent);
+        var element = CreateLabel(
+            displayText: "MFME",
+            textColorHex: "#FFFFFFFF",
+            textBoxFontName: "MFME",
+            textBoxFontStyle: "Regular",
+            textBoxFontSize: "14");
+
+        new LabelElementRenderer().Render(new PanelElementRenderContext(actualSurface.Canvas, new PanelRuntimeState(), PanelViewportTransform.Identity), element);
+
+        using var expectedSurface = SKSurface.Create(new SKImageInfo(120, 48));
+        expectedSurface.Canvas.Clear(SKColors.Transparent);
+        using var textPaint = new SKPaint
+        {
+            Color = SKColors.White,
+            IsAntialias = true,
+            TextSize = (float)LampElementRenderer.ParseFontSize(element.TextBoxFontSize),
+            Typeface = MfmeTypefaceResolver.Resolve(element.TextBoxFontName, element.TextBoxFontStyle)
+        };
+        var bounds = SKRect.Create((float)element.X, (float)element.Y, (float)element.Width, (float)element.Height);
+        var textBounds = LampElementRenderer.GetTextBounds(bounds);
+        var fontMetrics = textPaint.FontMetrics;
+        var measuredLineHeight = Math.Abs(fontMetrics.Ascent) + Math.Abs(fontMetrics.Descent) + Math.Abs(fontMetrics.Leading);
+        var lineHeight = Math.Max(1d, measuredLineHeight > 0f ? measuredLineHeight : textPaint.TextSize * 1.2d);
+        var wrapWidth = LampElementRenderer.GetEffectiveWrapWidth(element.DisplayText, textBounds.Width, bounds.Width, textPaint);
+        var line = Assert.Single(LampElementRenderer.WrapTextToPixelWidth(element.DisplayText, wrapWidth, textPaint));
+        var baselineOffset = Math.Abs(fontMetrics.Ascent) > 0f ? Math.Abs(fontMetrics.Ascent) : textPaint.TextSize;
+        var x = textBounds.Left + ((textBounds.Width - line.Width) / 2d);
+        var y = textBounds.Top + ((textBounds.Height - lineHeight) / 2d) + baselineOffset;
+        expectedSurface.Canvas.DrawText(line.Text, (float)x, (float)y, textPaint);
+
+        Assert.Equal(ReadPixels(expectedSurface), ReadPixels(actualSurface));
+    }
+
+    [Fact]
     public void Render_InvalidFontAndColor_DoesNotThrow()
     {
         using var surface = SKSurface.Create(new SKImageInfo(80, 32));
@@ -70,7 +108,13 @@ public sealed class LabelElementRendererTests
         Assert.Null(exception);
     }
 
-    private static PanelElementModel CreateLabel(string displayText = "TEST", string? textColorHex = "#FFFFFFFF", int? lampNumber = null) => new()
+    private static PanelElementModel CreateLabel(
+        string displayText = "TEST",
+        string? textColorHex = "#FFFFFFFF",
+        int? lampNumber = null,
+        string? textBoxFontName = "Tahoma",
+        string? textBoxFontStyle = "Regular",
+        string? textBoxFontSize = "12") => new()
     {
         ObjectId = "label-1",
         Kind = PanelElementKind.Label,
@@ -80,9 +124,9 @@ public sealed class LabelElementRendererTests
         Height = 32,
         DisplayText = displayText,
         TextColorHex = textColorHex,
-        TextBoxFontName = "Tahoma",
-        TextBoxFontStyle = "Regular",
-        TextBoxFontSize = "12",
+        TextBoxFontName = textBoxFontName,
+        TextBoxFontStyle = textBoxFontStyle,
+        TextBoxFontSize = textBoxFontSize,
         LampNumber = lampNumber,
         IsVisible = true
     };
