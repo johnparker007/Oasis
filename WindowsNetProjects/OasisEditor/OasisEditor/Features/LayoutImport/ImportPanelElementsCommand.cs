@@ -121,7 +121,15 @@ internal sealed class ImportPanelElementsCommand : IDocumentCommand, IExecutionT
 
     private static bool IsImportedImageBackedBackground(PanelElementModel element)
     {
-        return element.Kind == PanelElementKind.Background && !string.IsNullOrWhiteSpace(element.AssetPath);
+        return element.Kind == PanelElementKind.Background
+            && !string.IsNullOrWhiteSpace(element.AssetPath)
+            && (element.ImportSource is null || IsImportedMfmeBackgroundComponent(element.ImportSource));
+    }
+
+    private static bool IsImportedMfmeBackgroundComponent(PanelElementImportSourceModel importSource)
+    {
+        return string.Equals(importSource.Format, "FML", StringComparison.OrdinalIgnoreCase)
+            && importSource.Reference.StartsWith("Background:", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsImportedBackgroundCutoutDisplay(PanelElementModel element)

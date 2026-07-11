@@ -180,6 +180,65 @@ public sealed class ImportPanelElementsCommandTests
         Assert.Equal("alpha", elements[3].ObjectId);
     }
 
+
+    [Fact]
+    public void Execute_WithSolidColourBackgroundAndBitmapOverlay_DoesNotTreatBitmapAsImageBackedBackground()
+    {
+        var document = new DocumentTabViewModel(EditorDocument.CreatePanel2DStub("Panel"));
+
+        var command = new ImportPanelElementsCommand(
+            document.DocumentId,
+            document,
+            [
+                new PanelElementModel
+                {
+                    ObjectId = "background",
+                    Name = "Background",
+                    Kind = PanelElementKind.Background,
+                    Width = 4,
+                    Height = 4,
+                    OnColorHex = "#FFF0F0F0",
+                    ImportSource = new PanelElementImportSourceModel { Format = "FML", Reference = "Background:0" }
+                },
+                new PanelElementModel
+                {
+                    ObjectId = "reel",
+                    Name = "Reel",
+                    Kind = PanelElementKind.Reel,
+                    Width = 1,
+                    Height = 1,
+                    ImportSource = new PanelElementImportSourceModel { Format = "FML", Reference = "Reel:1" }
+                },
+                new PanelElementModel
+                {
+                    ObjectId = "seven",
+                    Name = "Seven Segment",
+                    Kind = PanelElementKind.SevenSegment,
+                    Width = 1,
+                    Height = 1,
+                    ImportSource = new PanelElementImportSourceModel { Format = "FML", Reference = "SevenSeg:2" }
+                },
+                new PanelElementModel
+                {
+                    ObjectId = "bitmap-overlay",
+                    Name = "Bitmap Overlay",
+                    Kind = PanelElementKind.Background,
+                    Width = 1,
+                    Height = 1,
+                    AssetPath = "Assets/FmlImport/Layout/Background/overlay.png",
+                    ImportSource = new PanelElementImportSourceModel { Format = "FML", Reference = "Bitmap:3" }
+                }
+            ]);
+
+        document.CommandService.Execute(command);
+
+        var elements = document.GetPanelElements();
+        Assert.Equal("background", elements[0].ObjectId);
+        Assert.Equal("reel", elements[1].ObjectId);
+        Assert.Equal("seven", elements[2].ObjectId);
+        Assert.Equal("bitmap-overlay", elements[3].ObjectId);
+    }
+
     [Fact]
     public void Execute_WithNoElements_DoesNotMutateOrRecordHistory()
     {
