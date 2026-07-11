@@ -1,6 +1,5 @@
+using System.Diagnostics;
 using System.IO;
-using System.Text.Json;
-using System.Text.Json.Nodes;
 using MfmeFmlDecoder.Application;
 using MfmeFmlDecoder.src.Model;
 using MfmeFmlDecoder.src.Model.Component;
@@ -18,12 +17,14 @@ internal sealed class FmlImportService : IFmlImportService
     private readonly FmlDecoderService _decoderService;
     private readonly FmlToOasisMapper _mapper;
     private readonly LayoutImportAssetCopier _assetCopier;
+    private readonly FmlImportDiagnosticsWriter _diagnosticsWriter;
 
-    public FmlImportService(FmlDecoderService? decoderService = null, FmlToOasisMapper? mapper = null, LayoutImportAssetCopier? assetCopier = null)
+    public FmlImportService(FmlDecoderService? decoderService = null, FmlToOasisMapper? mapper = null, LayoutImportAssetCopier? assetCopier = null, FmlImportDiagnosticsWriter? diagnosticsWriter = null)
     {
         _decoderService = decoderService ?? new FmlDecoderService();
         _mapper = mapper ?? new FmlToOasisMapper();
         _assetCopier = assetCopier ?? new LayoutImportAssetCopier();
+        _diagnosticsWriter = diagnosticsWriter ?? new FmlImportDiagnosticsWriter();
     }
 
     public LayoutImportResult ImportFromFml(string fmlPath, string projectRootPath, string projectAssetsPath, bool copyAssets = true)
@@ -39,14 +40,35 @@ internal sealed class FmlImportService : IFmlImportService
             return Failure($"FML file was not found: '{fullFmlPath}'.");
         }
 
+        var importStartedUtc = DateTimeOffset.UtcNow;
+        var totalStopwatch = Stopwatch.StartNew();
+        var stagingDirectory = CreateStagingDirectory();
+        Directory.CreateDirectory(stagingDirectory);
+
         var diagnostics = new List<string>
         {
-            $"FML source path: {fullFmlPath}"
+            $"FML source path: {fullFmlPath}",
+            $"Persistent staging directory: {stagingDirectory}"
         };
 
+        var decodeStopwatch = Stopwatch.StartNew();
         var decodeResult = _decoderService.DecodeToLayout(fullFmlPath);
+        decodeStopwatch.Stop();
+
         if (!decodeResult.Succeeded)
         {
+            totalStopwatch.Stop();
+            _diagnosticsWriter.WriteReport(new FmlImportDiagnosticsReport
+            {
+                FmlPath = fullFmlPath,
+                ImportTimestampUtc = importStartedUtc,
+                StagingDirectory = stagingDirectory,
+                DecoderErrors = decodeResult.Errors,
+                DecoderWarnings = decodeResult.Warnings,
+                DecodeElapsed = decodeStopwatch.Elapsed,
+                TotalElapsed = totalStopwatch.Elapsed
+            });
+
             return new LayoutImportResult
             {
                 ImportedElements = [],
@@ -59,21 +81,79 @@ internal sealed class FmlImportService : IFmlImportService
             };
         }
 
-        var stagingDirectory = CreateStagingDirectory();
-        Directory.CreateDirectory(stagingDirectory);
-        var imagePaths = FmlDecodedAssetExporter.ExportImages(decodeResult.Layout!, stagingDirectory);
-        var mapResult = _mapper.Map(decodeResult.Layout!, imagePaths);
+        var layout = decodeResult.Layout!;
+        _diagnosticsWriter.WriteDecodedLayout(layout, stagingDirectory);
+        var imagePaths = FmlDecodedAssetExporter.ExportImages(layout, stagingDirectory);
 
-        diagnostics.Add($"Temp staging directory: {stagingDirectory}");
+        FmlToOasisMapResult mapResult;
+        var mappingStopwatch = Stopwatch.StartNew();
+        try
+        {
+            mapResult = _mapper.Map(layout, imagePaths);
+        }
+        catch (Exception ex)
+        {
+            mappingStopwatch.Stop();
+            totalStopwatch.Stop();
+            _diagnosticsWriter.WriteReport(new FmlImportDiagnosticsReport
+            {
+                FmlPath = fullFmlPath,
+                ImportTimestampUtc = importStartedUtc,
+                StagingDirectory = stagingDirectory,
+                Layout = layout,
+                ImagePaths = imagePaths,
+                DecoderWarnings = decodeResult.Warnings,
+                MapperWarnings = [new LayoutImportWarning("fml.mapping.exception", ex.Message)],
+                DecodeElapsed = decodeStopwatch.Elapsed,
+                MappingElapsed = mappingStopwatch.Elapsed,
+                TotalElapsed = totalStopwatch.Elapsed
+            });
+
+            return new LayoutImportResult
+            {
+                ImportedElements = [],
+                CopiedAssetRelativePaths = [],
+                InputDefinitions = [],
+                UnsupportedComponentTypes = [],
+                Warnings = decodeResult.Warnings.Select(w => new LayoutImportWarning("fml.decode.warning", w)).ToArray(),
+                Errors = [$"FML mapping failed: {ex.Message}"],
+                DebugDiagnostics = diagnostics
+            };
+        }
+        mappingStopwatch.Stop();
+        _diagnosticsWriter.WriteMappedElements(mapResult, layout, imagePaths, stagingDirectory);
+
         diagnostics.Add($"Generated image count: {imagePaths.Count}; image root: {stagingDirectory}; image paths: {FormatImagePaths(imagePaths.Values)}");
-        diagnostics.Add($"Decoded FML component counts by Type: {FormatCounts(CountDecodedTypes(decodeResult.Layout!.ToJson(indented: false)))}");
+        diagnostics.Add($"Decoded FML component counts by Type: {FormatCounts(CountDecodedTypes(layout))}");
 
+        var assetCopyStopwatch = Stopwatch.StartNew();
         var assetResult = _assetCopier.CopyAssetsFromStaging(
             stagingDirectory,
             Path.GetFileNameWithoutExtension(fullFmlPath),
             projectAssetsPath,
             copyAssets,
             mapResult.Elements);
+        assetCopyStopwatch.Stop();
+        totalStopwatch.Stop();
+
+        _diagnosticsWriter.WriteReport(new FmlImportDiagnosticsReport
+        {
+            FmlPath = fullFmlPath,
+            ImportTimestampUtc = importStartedUtc,
+            StagingDirectory = stagingDirectory,
+            Layout = layout,
+            MapResult = mapResult,
+            ImagePaths = imagePaths,
+            DecoderWarnings = decodeResult.Warnings,
+            MapperWarnings = mapResult.Warnings,
+            AssetCopyWarnings = assetResult.Warnings,
+            UnsupportedComponentTypes = mapResult.UnsupportedComponentTypes,
+            ImportedAssetCount = assetResult.CopiedAssetRelativePaths.Count,
+            DecodeElapsed = decodeStopwatch.Elapsed,
+            MappingElapsed = mappingStopwatch.Elapsed,
+            AssetCopyElapsed = assetCopyStopwatch.Elapsed,
+            TotalElapsed = totalStopwatch.Elapsed
+        });
 
         return new LayoutImportResult
         {
@@ -106,31 +186,11 @@ internal sealed class FmlImportService : IFmlImportService
         return paths.Length == 0 ? "(none)" : string.Join(", ", paths);
     }
 
-    private static IReadOnlyDictionary<string, int> CountDecodedTypes(string decodedJson)
-        => CountComponentsByProperty(decodedJson, "Type");
-
-
-    private static IReadOnlyDictionary<string, int> CountComponentsByProperty(
-        string json,
-        string propertyName,
-        Func<string, string>? normalize = null)
-    {
-        var root = JsonNode.Parse(json)?.AsObject();
-        if (root?["Components"] is not JsonArray components)
-        {
-            return new Dictionary<string, int>();
-        }
-
-        var counts = new Dictionary<string, int>(StringComparer.Ordinal);
-        foreach (var component in components.OfType<JsonObject>())
-        {
-            var key = component[propertyName]?.GetValue<string>() ?? "(missing)";
-            key = normalize?.Invoke(key) ?? key;
-            counts[key] = counts.TryGetValue(key, out var count) ? count + 1 : 1;
-        }
-
-        return counts;
-    }
+    private static IReadOnlyDictionary<string, int> CountDecodedTypes(Layout layout)
+        => layout.Components
+            .GroupBy(component => component.GetType().Name, StringComparer.Ordinal)
+            .OrderBy(group => group.Key, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.Count(), StringComparer.Ordinal);
 
     private static string FormatCounts(IReadOnlyDictionary<string, int> counts)
         => counts.Count == 0
