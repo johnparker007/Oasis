@@ -1,12 +1,9 @@
-using System.Collections.Concurrent;
 using SkiaSharp;
 
 namespace OasisEditor.Rendering;
 
 internal sealed class LabelElementRenderer : IPanelElementRenderer
 {
-    private static readonly ConcurrentDictionary<string, SKTypeface> TypefaceCache = new(StringComparer.OrdinalIgnoreCase);
-
     public PanelElementKind Kind => PanelElementKind.Label;
 
     public void Render(in PanelElementRenderContext context, PanelElementModel element)
@@ -33,7 +30,7 @@ internal sealed class LabelElementRenderer : IPanelElementRenderer
             Color = SkiaColorParser.ParseOrDefault(element.TextColorHex, SKColors.White),
             IsAntialias = true,
             TextSize = (float)LampElementRenderer.ParseFontSize(element.TextBoxFontSize),
-            Typeface = ResolveTypeface(element.TextBoxFontName, element.TextBoxFontStyle)
+            Typeface = MfmeTypefaceResolver.Resolve(element.TextBoxFontName, element.TextBoxFontStyle)
         };
 
         var textBounds = LampElementRenderer.GetTextBounds(bounds);
@@ -64,23 +61,4 @@ internal sealed class LabelElementRenderer : IPanelElementRenderer
         }
     }
 
-    private static SKTypeface ResolveTypeface(string? fontName, string? fontStyle)
-    {
-        var family = string.IsNullOrWhiteSpace(fontName) ? "Tahoma" : fontName.Trim();
-        var styleToken = string.IsNullOrWhiteSpace(fontStyle) ? "Regular" : fontStyle.Trim();
-        var cacheKey = $"{family}|{styleToken}";
-        return TypefaceCache.GetOrAdd(cacheKey, _ =>
-        {
-            var weight = styleToken.Contains("Bold", StringComparison.OrdinalIgnoreCase)
-                ? SKFontStyleWeight.Bold
-                : SKFontStyleWeight.Normal;
-            var slant = styleToken.Contains("Italic", StringComparison.OrdinalIgnoreCase)
-                ? SKFontStyleSlant.Italic
-                : SKFontStyleSlant.Upright;
-            var style = new SKFontStyle(weight, SKFontStyleWidth.Normal, slant);
-            return SKTypeface.FromFamilyName(family, style)
-                ?? SKTypeface.FromFamilyName("Tahoma", style)
-                ?? SKTypeface.Default;
-        });
-    }
 }
