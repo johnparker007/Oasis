@@ -257,3 +257,14 @@ The refactor is complete when:
 - undo/redo and editor refresh behavior still work;
 - MFME Extract UI and obsolete code are removed;
 - the full relevant test suite passes.
+
+## Implementation status
+
+The refactor is now implemented in the editor codebase:
+
+- MFME Extract import is removed as a supported user-facing workflow.
+- MFME `.fml` is the supported source format for importing MFME layouts.
+- FML decoding produces a typed `Layout`; `FmlToOasisMapper` maps decoder components directly to Oasis panel elements and input definitions.
+- Temporary staging is used only for decoded/exported image files and diagnostic paths under the OS temporary directory.
+- Production FML import no longer creates, writes, reads, or parses a compatibility `layout.json` manifest.
+- Legacy extract DTOs, parser, file-system reader, and legacy-to-Oasis mapper are obsolete and should not be reintroduced.

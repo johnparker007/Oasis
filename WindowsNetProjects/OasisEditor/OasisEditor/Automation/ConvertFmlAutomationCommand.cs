@@ -1,51 +1,51 @@
 using System.IO;
 namespace OasisEditor.Automation;
 
-internal sealed class ConvertMfmeAutomationState
+internal sealed class ConvertFmlAutomationState
 {
     public string? ProjectDirectory { get; set; }
     public DocumentTabViewModel? PanelDocument { get; set; }
 }
 
-internal sealed class ConvertMfmeAutomationOptions
+internal sealed class ConvertFmlAutomationOptions
 {
     public required string ProjectName { get; init; }
     public required string ProjectRootLocation { get; init; }
     public required string PanelDocumentTitle { get; init; }
-    public required string InputExtractPath { get; init; }
+    public required string InputFmlPath { get; init; }
     public required string OutputPanelPath { get; init; }
     public string? ExportLayPath { get; init; }
 }
 
-internal sealed class ConvertMfmeAutomationCommand : IOasisAutomationCommand
+internal sealed class ConvertFmlAutomationCommand : IOasisAutomationCommand
 {
     private readonly IProjectContainerCreationService _projectCreationService;
     private readonly IPanel2DDocumentCreationService _panelCreationService;
-    private readonly IMfmeExtractImportService _mfmeImportService;
+    private readonly IFmlAutomationImportService _fmlImportService;
     private readonly IDocumentSaveService _documentSaveService;
-    private readonly ConvertMfmeAutomationOptions _options;
+    private readonly ConvertFmlAutomationOptions _options;
     private readonly IMameLayExportService _mameLayExportService;
-    private readonly ConvertMfmeAutomationState _state;
+    private readonly ConvertFmlAutomationState _state;
 
-    public ConvertMfmeAutomationCommand(
+    public ConvertFmlAutomationCommand(
         IProjectContainerCreationService projectCreationService,
         IPanel2DDocumentCreationService panelCreationService,
-        IMfmeExtractImportService mfmeImportService,
+        IFmlAutomationImportService fmlImportService,
         IDocumentSaveService documentSaveService,
         IMameLayExportService mameLayExportService,
-        ConvertMfmeAutomationOptions options,
-        ConvertMfmeAutomationState? state = null)
+        ConvertFmlAutomationOptions options,
+        ConvertFmlAutomationState? state = null)
     {
         _projectCreationService = projectCreationService;
         _panelCreationService = panelCreationService;
-        _mfmeImportService = mfmeImportService;
+        _fmlImportService = fmlImportService;
         _documentSaveService = documentSaveService;
         _options = options;
         _mameLayExportService = mameLayExportService;
-        _state = state ?? new ConvertMfmeAutomationState();
+        _state = state ?? new ConvertFmlAutomationState();
     }
 
-    public string Name => "ConvertMfme";
+    public string Name => "ConvertFml";
 
     public Task<OasisAutomationCommandResult> ExecuteAsync(OasisAutomationCommandContext context)
     {
@@ -61,8 +61,8 @@ internal sealed class ConvertMfmeAutomationCommand : IOasisAutomationCommand
             _state.PanelDocument = panel;
             context.Logger.Info($"Created Panel2D document: {panel.Title}");
 
-            var importResult = _mfmeImportService.ImportFromExtract(
-                _options.InputExtractPath,
+            var importResult = _fmlImportService.ImportFromFml(
+                _options.InputFmlPath,
                 projectDirectory,
                 Path.Combine(projectDirectory, "Assets"),
                 copyAssets: true);
@@ -71,13 +71,13 @@ internal sealed class ConvertMfmeAutomationCommand : IOasisAutomationCommand
             {
                 var message = importResult.Errors.Count > 0
                     ? string.Join("; ", importResult.Errors)
-                    : "MFME import failed.";
+                    : "MFME FML import failed.";
                 return Task.FromResult(OasisAutomationCommandResult.Failure(message));
             }
 
-            var importCommand = new Features.MfmeImport.ImportMfmeExtractCommand(panel.DocumentId, panel, importResult.ImportedElements);
+            var importCommand = new Features.LayoutImport.ImportPanelElementsCommand(panel.DocumentId, panel, importResult.ImportedElements);
             panel.CommandService.Execute(importCommand);
-            context.Logger.Info($"Imported MFME extract elements: {importResult.ImportedElements.Count}");
+            context.Logger.Info($"Imported MFME FML elements: {importResult.ImportedElements.Count}");
 
             _state.PanelDocument = _documentSaveService.SaveDocument(panel, _options.OutputPanelPath);
             context.Logger.Info($"Saved Panel2D document: {_options.OutputPanelPath}");
@@ -93,11 +93,11 @@ internal sealed class ConvertMfmeAutomationCommand : IOasisAutomationCommand
                 context.Logger.Info($"Exported MAME layout: {_options.ExportLayPath}");
             }
 
-            return Task.FromResult(OasisAutomationCommandResult.Success("MFME conversion automation completed."));
+            return Task.FromResult(OasisAutomationCommandResult.Success("MFME FML conversion automation completed."));
         }
         catch (Exception ex)
         {
-            context.Logger.Error("MFME conversion automation failed.", ex);
+            context.Logger.Error("MFME FML conversion automation failed.", ex);
             return Task.FromResult(OasisAutomationCommandResult.Failure(ex.Message));
         }
     }

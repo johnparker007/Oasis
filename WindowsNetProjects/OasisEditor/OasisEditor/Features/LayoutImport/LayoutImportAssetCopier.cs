@@ -1,29 +1,23 @@
 using System.IO;
 using System.Text;
 
-namespace OasisEditor.Features.MfmeImport;
+namespace OasisEditor.Features.LayoutImport;
 
-internal sealed class MfmeImportAssetCopier
+internal sealed class LayoutImportAssetCopier
 {
-    private static readonly IReadOnlyDictionary<string, string> ExtractFolderToProjectFolder = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-    {
-        ["background"] = "Background",
-        ["lamps"] = "Lamps",
-        ["reels"] = "Reels"
-    };
 
-    public MfmeAssetCopyResult CopyAssets(
-        MfmeImportContext context,
-        MfmeLegacyExtractData extract,
+    public LayoutAssetCopyResult CopyAssetsFromStaging(
+        string stagingRootPath,
+        string layoutName,
+        string projectAssetsPath,
+        bool copyAssets,
         IReadOnlyList<PanelElementModel> elements)
     {
-        ArgumentNullException.ThrowIfNull(context);
-        ArgumentNullException.ThrowIfNull(extract);
         ArgumentNullException.ThrowIfNull(elements);
 
-        if (!context.CopyAssets)
+        if (!copyAssets)
         {
-            return new MfmeAssetCopyResult
+            return new LayoutAssetCopyResult
             {
                 Elements = SendReelsAndAlphaDisplaysToBack(elements.ToArray()),
                 CopiedAssetRelativePaths = [],
@@ -32,22 +26,20 @@ internal sealed class MfmeImportAssetCopier
             };
         }
 
-        var warnings = new List<MfmeImportWarning>();
+        var warnings = new List<LayoutImportWarning>();
         var errors = new List<string>();
         var copied = new List<string>();
-
-        var projectAssetsRoot = EnsureDirectoryAndPath(context.ProjectAssetsPath, errors, "mfme.import.assetsRoot.invalid");
+        var projectAssetsRoot = EnsureDirectoryAndPath(projectAssetsPath, errors, "layout.import.assetsRoot.invalid");
         if (projectAssetsRoot is null)
         {
             return CreateError(elements, warnings, errors);
         }
 
-        var layoutSegment = SanitizePathSegment(extract.LayoutName, "extract");
-        var destinationRoot = Path.Combine(projectAssetsRoot, "MfmeImport", layoutSegment);
-
+        var layoutSegment = SanitizePathSegment(layoutName, "layout");
+        var destinationRoot = Path.Combine(projectAssetsRoot, "FmlImport", layoutSegment);
         var pathMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var mappedElements = elements
-            .Select(element => MapElementAssets(element, extract.ExtractRootPath, destinationRoot, projectAssetsRoot, pathMap, copied, warnings, errors))
+            .Select(element => MapElementAssets(element, stagingRootPath, destinationRoot, projectAssetsRoot, pathMap, copied, warnings, errors))
             .ToArray();
 
         if (errors.Count == 0)
@@ -61,8 +53,7 @@ internal sealed class MfmeImportAssetCopier
         }
 
         mappedElements = SendReelsAndAlphaDisplaysToBack(mappedElements);
-
-        return new MfmeAssetCopyResult
+        return new LayoutAssetCopyResult
         {
             Elements = mappedElements,
             CopiedAssetRelativePaths = copied,
@@ -71,20 +62,27 @@ internal sealed class MfmeImportAssetCopier
         };
     }
 
+    private static readonly IReadOnlyDictionary<string, string> StagingFolderToProjectFolder = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["background"] = "Background",
+        ["lamps"] = "Lamps",
+        ["reels"] = "Reels"
+    };
+
     private static PanelElementModel MapElementAssets(
         PanelElementModel element,
-        string extractRootPath,
+        string stagingRootPath,
         string destinationRoot,
         string projectAssetsRoot,
         IDictionary<string, string> pathMap,
         ICollection<string> copied,
-        ICollection<MfmeImportWarning> warnings,
+        ICollection<LayoutImportWarning> warnings,
         ICollection<string> errors)
     {
         var primary = CopyOneAsset(
             element.Kind,
             element.AssetPath,
-            extractRootPath,
+            stagingRootPath,
             destinationRoot,
             projectAssetsRoot,
             pathMap,
@@ -95,7 +93,7 @@ internal sealed class MfmeImportAssetCopier
         var secondary = CopyOneAsset(
             element.Kind,
             element.SecondaryAssetPath,
-            extractRootPath,
+            stagingRootPath,
             destinationRoot,
             projectAssetsRoot,
             pathMap,
@@ -108,8 +106,8 @@ internal sealed class MfmeImportAssetCopier
             !string.IsNullOrWhiteSpace(primary) &&
             string.Equals(Path.GetExtension(element.AssetPath), ".bmp", StringComparison.OrdinalIgnoreCase))
         {
-            var sourceLampPath = TryResolveSourceAssetPath(element.AssetPath, extractRootPath);
-            var sourceMaskPath = TryResolveSourceAssetPath(element.SecondaryAssetPath, extractRootPath);
+            var sourceLampPath = TryResolveSourceAssetPath(element.AssetPath, stagingRootPath);
+            var sourceMaskPath = TryResolveSourceAssetPath(element.SecondaryAssetPath, stagingRootPath);
             var outputLampPath = Path.Combine(projectAssetsRoot, primary["Assets/".Length..].Replace('/', Path.DirectorySeparatorChar));
 
             if (sourceLampPath is not null && File.Exists(sourceLampPath))
@@ -271,53 +269,53 @@ internal sealed class MfmeImportAssetCopier
 
     private static string? CopyOneAsset(
         PanelElementKind elementKind,
-        string? extractRelativePath,
-        string extractRootPath,
+        string? stagingRelativePath,
+        string stagingRootPath,
         string destinationRoot,
         string projectAssetsRoot,
         IDictionary<string, string> pathMap,
         ICollection<string> copied,
-        ICollection<MfmeImportWarning> warnings,
+        ICollection<LayoutImportWarning> warnings,
         ICollection<string> errors)
     {
-        if (string.IsNullOrWhiteSpace(extractRelativePath))
+        if (string.IsNullOrWhiteSpace(stagingRelativePath))
         {
             return null;
         }
 
-        var normalizedRelativePath = extractRelativePath.Replace('\\', '/').Trim();
-        if (!TrySplitExtractRelativePath(normalizedRelativePath, out var folder, out var filename))
+        var normalizedRelativePath = stagingRelativePath.Replace('\\', '/').Trim();
+        if (!TrySplitStagingRelativePath(normalizedRelativePath, out var folder, out var filename))
         {
-            warnings.Add(new MfmeImportWarning(
-                "mfme.import.asset.path.invalid",
-                $"Asset path '{extractRelativePath}' is invalid and was skipped.",
-                extractRelativePath));
+            warnings.Add(new LayoutImportWarning(
+                "layout.import.asset.path.invalid",
+                $"Asset path '{stagingRelativePath}' is invalid and was skipped.",
+                stagingRelativePath));
             return null;
         }
 
-        var safeFolder = ExtractFolderToProjectFolder.TryGetValue(folder, out var mappedFolder)
+        var safeFolder = StagingFolderToProjectFolder.TryGetValue(folder, out var mappedFolder)
             ? mappedFolder
             : SanitizePathSegment(folder, "Misc");
         var safeFileName = SanitizeFileName(filename);
 
-        var sourceFullPath = Path.GetFullPath(Path.Combine(extractRootPath, folder, filename));
-        var extractRootFullPath = Path.GetFullPath(extractRootPath);
+        var sourceFullPath = Path.GetFullPath(Path.Combine(stagingRootPath, folder, filename));
+        var stagingRootFullPath = Path.GetFullPath(stagingRootPath);
 
-        if (!IsPathUnderRoot(sourceFullPath, extractRootFullPath))
+        if (!IsPathUnderRoot(sourceFullPath, stagingRootFullPath))
         {
-            warnings.Add(new MfmeImportWarning(
-                "mfme.import.asset.path.escape",
-                $"Asset path '{extractRelativePath}' escapes extract root and was skipped.",
-                extractRelativePath));
+            warnings.Add(new LayoutImportWarning(
+                "layout.import.asset.path.escape",
+                $"Asset path '{stagingRelativePath}' escapes staging root and was skipped.",
+                stagingRelativePath));
             return null;
         }
 
         if (!File.Exists(sourceFullPath))
         {
-            warnings.Add(new MfmeImportWarning(
-                "mfme.import.asset.missing",
-                $"Asset file '{extractRelativePath}' was not found in extract and was skipped.",
-                extractRelativePath));
+            warnings.Add(new LayoutImportWarning(
+                "layout.import.asset.missing",
+                $"Asset file '{stagingRelativePath}' was not found in staging and was skipped.",
+                stagingRelativePath));
             return null;
         }
 
@@ -351,28 +349,28 @@ internal sealed class MfmeImportAssetCopier
     }
 
 
-    private static string? TryResolveSourceAssetPath(string? extractRelativePath, string extractRootPath)
+    private static string? TryResolveSourceAssetPath(string? stagingRelativePath, string stagingRootPath)
     {
-        if (string.IsNullOrWhiteSpace(extractRelativePath))
+        if (string.IsNullOrWhiteSpace(stagingRelativePath))
         {
             return null;
         }
 
-        var normalized = extractRelativePath.Replace('\\', '/').Trim();
-        if (!TrySplitExtractRelativePath(normalized, out var folder, out var filename))
+        var normalized = stagingRelativePath.Replace('\\', '/').Trim();
+        if (!TrySplitStagingRelativePath(normalized, out var folder, out var filename))
         {
             return null;
         }
 
-        var sourceFullPath = Path.GetFullPath(Path.Combine(extractRootPath, folder, filename));
-        return IsPathUnderRoot(sourceFullPath, Path.GetFullPath(extractRootPath)) ? sourceFullPath : null;
+        var sourceFullPath = Path.GetFullPath(Path.Combine(stagingRootPath, folder, filename));
+        return IsPathUnderRoot(sourceFullPath, Path.GetFullPath(stagingRootPath)) ? sourceFullPath : null;
     }
 
     private static string? EnsureDirectoryAndPath(string path, ICollection<string> errors, string code)
     {
         if (string.IsNullOrWhiteSpace(path))
         {
-            errors.Add(new MfmeImportWarning(code, "Project assets path is required.").Message);
+            errors.Add(new LayoutImportWarning(code, "Project assets path is required.").Message);
             return null;
         }
 
@@ -384,24 +382,24 @@ internal sealed class MfmeImportAssetCopier
         }
         catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException or NotSupportedException)
         {
-            errors.Add(new MfmeImportWarning(code, $"Unable to prepare project assets path '{path}': {ex.Message}").Message);
+            errors.Add(new LayoutImportWarning(code, $"Unable to prepare project assets path '{path}': {ex.Message}").Message);
             return null;
         }
     }
 
-    private static bool TrySplitExtractRelativePath(string extractRelativePath, out string folder, out string filename)
+    private static bool TrySplitStagingRelativePath(string stagingRelativePath, out string folder, out string filename)
     {
         folder = string.Empty;
         filename = string.Empty;
 
-        var slashIndex = extractRelativePath.IndexOf('/');
-        if (slashIndex <= 0 || slashIndex == extractRelativePath.Length - 1)
+        var slashIndex = stagingRelativePath.IndexOf('/');
+        if (slashIndex <= 0 || slashIndex == stagingRelativePath.Length - 1)
         {
             return false;
         }
 
-        folder = extractRelativePath[..slashIndex].Trim();
-        filename = extractRelativePath[(slashIndex + 1)..].Trim();
+        folder = stagingRelativePath[..slashIndex].Trim();
+        filename = stagingRelativePath[(slashIndex + 1)..].Trim();
         if (string.IsNullOrWhiteSpace(folder) || string.IsNullOrWhiteSpace(filename))
         {
             return false;
@@ -478,12 +476,12 @@ internal sealed class MfmeImportAssetCopier
             || string.Equals(path, root, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static MfmeAssetCopyResult CreateError(
+    private static LayoutAssetCopyResult CreateError(
         IReadOnlyList<PanelElementModel> elements,
-        IReadOnlyList<MfmeImportWarning> warnings,
+        IReadOnlyList<LayoutImportWarning> warnings,
         IReadOnlyList<string> errors)
     {
-        return new MfmeAssetCopyResult
+        return new LayoutAssetCopyResult
         {
             Elements = elements,
             CopiedAssetRelativePaths = [],
@@ -493,13 +491,13 @@ internal sealed class MfmeImportAssetCopier
     }
 }
 
-internal sealed class MfmeAssetCopyResult
+internal sealed class LayoutAssetCopyResult
 {
     public required IReadOnlyList<PanelElementModel> Elements { get; init; }
 
     public required IReadOnlyList<string> CopiedAssetRelativePaths { get; init; }
 
-    public required IReadOnlyList<MfmeImportWarning> Warnings { get; init; }
+    public required IReadOnlyList<LayoutImportWarning> Warnings { get; init; }
 
     public required IReadOnlyList<string> Errors { get; init; }
 

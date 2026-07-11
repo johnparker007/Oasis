@@ -1,9 +1,9 @@
-using OasisEditor.Features.MfmeImport;
+using OasisEditor.Features.LayoutImport;
 using Xunit;
 
 namespace OasisEditor.Tests;
 
-public sealed class ImportMfmeExtractCommandTests
+public sealed class ImportPanelElementsCommandTests
 {
     [Fact]
     public void Execute_WithImportedElements_AddsAllAsSingleUndoableMutation()
@@ -23,7 +23,7 @@ public sealed class ImportMfmeExtractCommandTests
                 }
             ]);
 
-        var command = new ImportMfmeExtractCommand(
+        var command = new ImportPanelElementsCommand(
             document.DocumentId,
             document,
             [
@@ -86,7 +86,7 @@ public sealed class ImportMfmeExtractCommandTests
                 }
             ]);
 
-        var command = new ImportMfmeExtractCommand(
+        var command = new ImportPanelElementsCommand(
             document.DocumentId,
             document,
             [
@@ -129,7 +129,7 @@ public sealed class ImportMfmeExtractCommandTests
     public void Execute_WithNoElements_DoesNotMutateOrRecordHistory()
     {
         var document = new DocumentTabViewModel(EditorDocument.CreatePanel2DStub("Panel"));
-        var command = new ImportMfmeExtractCommand(document.DocumentId, document, []);
+        var command = new ImportPanelElementsCommand(document.DocumentId, document, []);
 
         document.CommandService.Execute(command);
 
@@ -141,7 +141,7 @@ public sealed class ImportMfmeExtractCommandTests
     public void Execute_WithWrongDocumentId_ThrowsAndDoesNotMutateTargetDocument()
     {
         var document = new DocumentTabViewModel(EditorDocument.CreatePanel2DStub("Panel"));
-        var command = new ImportMfmeExtractCommand(
+        var command = new ImportPanelElementsCommand(
             Guid.NewGuid(),
             document,
             [
@@ -181,7 +181,7 @@ public sealed class ImportMfmeExtractCommandTests
                 }
             ]);
 
-        var command = new ImportMfmeExtractCommand(
+        var command = new ImportPanelElementsCommand(
             document.DocumentId,
             document,
             [
@@ -224,7 +224,7 @@ public sealed class ImportMfmeExtractCommandTests
                 Y = 0,
                 Width = 640,
                 Height = 360,
-                AssetPath = "Assets/MfmeImport/Layout/Background/bg.png"
+                AssetPath = "Assets/FmlImport/Layout/Background/bg.png"
             },
             new PanelElementModel
             {
@@ -236,7 +236,7 @@ public sealed class ImportMfmeExtractCommandTests
                 Width = 32,
                 Height = 32,
                 DisplayNumber = 5,
-                AssetPath = "Assets/MfmeImport/Layout/Lamps/lamp.png"
+                AssetPath = "Assets/FmlImport/Layout/Lamps/lamp.png"
             },
             new PanelElementModel
             {
@@ -248,7 +248,7 @@ public sealed class ImportMfmeExtractCommandTests
                 Width = 96,
                 Height = 128,
                 DisplayNumber = 3,
-                AssetPath = "Assets/MfmeImport/Layout/Reels/reel.png"
+                AssetPath = "Assets/FmlImport/Layout/Reels/reel.png"
             },
             new PanelElementModel
             {
@@ -274,7 +274,7 @@ public sealed class ImportMfmeExtractCommandTests
             }
         };
 
-        var command = new ImportMfmeExtractCommand(document.DocumentId, document, importedElements);
+        var command = new ImportPanelElementsCommand(document.DocumentId, document, importedElements);
         document.CommandService.Execute(command);
 
         Assert.Equal(5, document.GetPanelElements().Count);
@@ -302,7 +302,7 @@ public sealed class ImportMfmeExtractCommandTests
         var savedContent = DocumentWorkspaceViewModel.BuildDocumentContent(document);
         Assert.True(Panel2DDocumentStorage.TryReadValidated(savedContent, out var parsed, out var error), error);
         Assert.Equal(5, parsed.Elements.Count());
-        Assert.Contains(parsed.Elements, element => element.Kind == "background" && element.AssetPath == "Assets/MfmeImport/Layout/Background/bg.png");
+        Assert.Contains(parsed.Elements, element => element.Kind == "background" && element.AssetPath == "Assets/FmlImport/Layout/Background/bg.png");
         Assert.Contains(parsed.Elements, element => element.Kind == "lamp" && element.DisplayNumber == 5);
         Assert.Contains(parsed.Elements, element => element.Kind == "reel" && element.DisplayNumber == 3);
         Assert.Contains(parsed.Elements, element => element.Kind == "sevenSegment" && element.DisplayNumber == 2);

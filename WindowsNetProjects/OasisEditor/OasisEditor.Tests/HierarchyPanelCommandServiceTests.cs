@@ -133,7 +133,7 @@ public sealed class HierarchyPanelCommandServiceTests
                 Y = 20,
                 Width = 30,
                 Height = 40,
-                AssetPath = "Assets/MfmeImport/layout/Lamps/lamp1.png",
+                AssetPath = "Assets/FmlImport/layout/Lamps/lamp1.png",
                 DisplayNumber = 7,
                 OnColorHex = "#FFFFCC00",
                 OffColorHex = "#FF111111",
@@ -160,7 +160,7 @@ public sealed class HierarchyPanelCommandServiceTests
         var pasted = document.GetPanelElements().Single(element => element.ObjectId != "source-id");
         Assert.NotEqual("source-id", pasted.ObjectId);
         Assert.Equal(PanelElementKind.Lamp, pasted.Kind);
-        Assert.Equal("Assets/MfmeImport/layout/Lamps/lamp1.png", pasted.AssetPath);
+        Assert.Equal("Assets/FmlImport/layout/Lamps/lamp1.png", pasted.AssetPath);
         Assert.Equal(7, pasted.DisplayNumber);
         Assert.Equal("#FFFFCC00", pasted.OnColorHex);
         Assert.Equal("#FF111111", pasted.OffColorHex);
@@ -185,8 +185,8 @@ public sealed class HierarchyPanelCommandServiceTests
                 Y = 6,
                 Width = 7,
                 Height = 8,
-                AssetPath = "Assets/MfmeImport/layout/Reels/reel2.png",
-                SecondaryAssetPath = "Assets/MfmeImport/layout/Reels/reel2-overlay.png",
+                AssetPath = "Assets/FmlImport/layout/Reels/reel2.png",
+                SecondaryAssetPath = "Assets/FmlImport/layout/Reels/reel2-overlay.png",
                 DisplayNumber = 3,
                 IsReversed = true,
                 Stops = 24,
@@ -203,8 +203,8 @@ public sealed class HierarchyPanelCommandServiceTests
         Assert.Contains(document.GetPanelElements(), element => element.ObjectId == "dup-source");
         var duplicate = Assert.Single(document.GetPanelElements(), element => element.ObjectId != "dup-source");
         Assert.Equal(PanelElementKind.Reel, duplicate.Kind);
-        Assert.Equal("Assets/MfmeImport/layout/Reels/reel2.png", duplicate.AssetPath);
-        Assert.Equal("Assets/MfmeImport/layout/Reels/reel2-overlay.png", duplicate.SecondaryAssetPath);
+        Assert.Equal("Assets/FmlImport/layout/Reels/reel2.png", duplicate.AssetPath);
+        Assert.Equal("Assets/FmlImport/layout/Reels/reel2-overlay.png", duplicate.SecondaryAssetPath);
         Assert.Equal(3, duplicate.DisplayNumber);
         Assert.True(duplicate.IsReversed);
         Assert.Equal(24, duplicate.Stops);

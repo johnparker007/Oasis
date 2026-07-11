@@ -1,8 +1,8 @@
 using OasisEditor.Commands;
 
-namespace OasisEditor.Features.MfmeImport;
+namespace OasisEditor.Features.LayoutImport;
 
-internal sealed class ImportMfmeExtractCommand : IDocumentCommand, IExecutionTrackedCommand
+internal sealed class ImportPanelElementsCommand : IDocumentCommand, IExecutionTrackedCommand
 {
     private readonly Guid _documentId;
     private readonly DocumentTabViewModel _document;
@@ -10,7 +10,7 @@ internal sealed class ImportMfmeExtractCommand : IDocumentCommand, IExecutionTra
     private IReadOnlyList<PanelElementModel>? _importedElements;
     private int _insertIndex;
 
-    public ImportMfmeExtractCommand(
+    public ImportPanelElementsCommand(
         Guid documentId,
         DocumentTabViewModel document,
         IReadOnlyList<PanelElementModel> sourceElements)
@@ -22,7 +22,7 @@ internal sealed class ImportMfmeExtractCommand : IDocumentCommand, IExecutionTra
 
     public Guid DocumentId => _documentId;
 
-    public string Description => "Import MFME extract";
+    public string Description => "Import panel elements";
 
     public bool WasExecuted { get; private set; }
 
