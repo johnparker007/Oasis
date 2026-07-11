@@ -82,6 +82,144 @@ public sealed class PanelElementPreviewMutationServiceTests
         Assert.Equal(55, document.GetPanelElements().Single().Y);
     }
 
+
+    [Fact]
+    public void ResizePreview_UpdatesGeometryWithoutRecordingUndoHistoryOrDirtyingDocument()
+    {
+        var document = CreateDocument(new PanelElementModel
+        {
+            ObjectId = "lamp-1",
+            Name = "Lamp 1",
+            Kind = PanelElementKind.Lamp,
+            X = 10,
+            Y = 20,
+            Width = 30,
+            Height = 40,
+            IsVisible = true
+        });
+        var original = PanelElementModelCloner.Clone(document.GetPanelElements().Single());
+        var resized = PanelElementModelCloner.Clone(original, x: 5, y: 15, width: 35, height: 45);
+
+        Assert.True(PanelElementPreviewMutationService.TryApplyPreview(document, "lamp-1", resized));
+
+        var element = document.GetPanelElements().Single();
+        Assert.Equal(5, element.X);
+        Assert.Equal(15, element.Y);
+        Assert.Equal(35, element.Width);
+        Assert.Equal(45, element.Height);
+        Assert.False(document.IsDirty);
+        Assert.Empty(document.CommandService.History.Entries);
+    }
+
+    [Fact]
+    public void PreviewedResizeCommand_RecordsSingleUndoableActionFromOriginalToFinalGeometry()
+    {
+        var document = CreateDocument(new PanelElementModel
+        {
+            ObjectId = "reel-1",
+            Name = "Reel 1",
+            Kind = PanelElementKind.Reel,
+            X = 10,
+            Y = 20,
+            Width = 30,
+            Height = 40,
+            IsVisible = true
+        });
+        var original = PanelElementModelCloner.Clone(document.GetPanelElements().Single());
+        var previewed = PanelElementModelCloner.Clone(original, x: 5, y: 15, width: 35, height: 45);
+        var final = PanelElementModelCloner.Clone(original, x: 1, y: 2, width: 39, height: 58);
+
+        Assert.True(PanelElementPreviewMutationService.TryApplyPreview(document, "reel-1", previewed));
+        var command = CanvasMutationCommands.CreateUpdateElementCommand(
+            document.DocumentId,
+            document,
+            "reel-1",
+            final,
+            original,
+            "Resize element");
+
+        document.CommandService.Execute(command);
+
+        Assert.Single(document.CommandService.History.Entries);
+        Assert.Equal(1, document.GetPanelElements().Single().X);
+        Assert.Equal(2, document.GetPanelElements().Single().Y);
+        Assert.Equal(39, document.GetPanelElements().Single().Width);
+        Assert.Equal(58, document.GetPanelElements().Single().Height);
+
+        Assert.True(document.CommandService.TryUndo());
+        Assert.Equal(10, document.GetPanelElements().Single().X);
+        Assert.Equal(20, document.GetPanelElements().Single().Y);
+        Assert.Equal(30, document.GetPanelElements().Single().Width);
+        Assert.Equal(40, document.GetPanelElements().Single().Height);
+
+        Assert.True(document.CommandService.TryRedo());
+        Assert.Equal(1, document.GetPanelElements().Single().X);
+        Assert.Equal(2, document.GetPanelElements().Single().Y);
+        Assert.Equal(39, document.GetPanelElements().Single().Width);
+        Assert.Equal(58, document.GetPanelElements().Single().Height);
+    }
+
+    [Fact]
+    public void PreviewedResizeCommand_NoOpFinalGeometryDoesNotRecordUndoHistory()
+    {
+        var document = CreateDocument(new PanelElementModel
+        {
+            ObjectId = "lamp-1",
+            Name = "Lamp 1",
+            Kind = PanelElementKind.Lamp,
+            X = 10,
+            Y = 20,
+            Width = 30,
+            Height = 40,
+            IsVisible = true
+        });
+        var original = PanelElementModelCloner.Clone(document.GetPanelElements().Single());
+        var previewed = PanelElementModelCloner.Clone(original, x: 5, y: 15, width: 35, height: 45);
+
+        Assert.True(PanelElementPreviewMutationService.TryApplyPreview(document, "lamp-1", previewed));
+        Assert.True(PanelElementPreviewMutationService.TryApplyPreview(document, "lamp-1", original));
+
+        var command = CanvasMutationCommands.CreateUpdateElementCommand(
+            document.DocumentId,
+            document,
+            "lamp-1",
+            original,
+            original,
+            "Resize element");
+        document.CommandService.Execute(command);
+
+        Assert.Empty(document.CommandService.History.Entries);
+    }
+
+    [Fact]
+    public void CancelledResizePreview_RestoresOriginalWithoutRecordingUndoHistoryOrDirtyingDocument()
+    {
+        var document = CreateDocument(new PanelElementModel
+        {
+            ObjectId = "lamp-1",
+            Name = "Lamp 1",
+            Kind = PanelElementKind.Lamp,
+            X = 10,
+            Y = 20,
+            Width = 30,
+            Height = 40,
+            IsVisible = true
+        });
+        var original = PanelElementModelCloner.Clone(document.GetPanelElements().Single());
+        var previewed = PanelElementModelCloner.Clone(original, x: 5, y: 15, width: 35, height: 45);
+
+        Assert.True(PanelElementPreviewMutationService.TryApplyPreview(document, "lamp-1", previewed));
+        Assert.True(PanelElementPreviewMutationService.TryApplyPreview(document, "lamp-1", original));
+
+        var element = document.GetPanelElements().Single();
+        Assert.Equal(10, element.X);
+        Assert.Equal(20, element.Y);
+        Assert.Equal(30, element.Width);
+        Assert.Equal(40, element.Height);
+        Assert.False(document.IsDirty);
+        Assert.Empty(document.CommandService.History.Entries);
+    }
+
     private static DocumentTabViewModel CreateDocument(params PanelElementModel[] elements)
     {
         var document = new DocumentTabViewModel(EditorDocument.CreatePanel2DStub("Panel"));
