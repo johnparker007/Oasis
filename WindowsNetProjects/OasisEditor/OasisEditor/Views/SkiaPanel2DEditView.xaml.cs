@@ -280,6 +280,7 @@ public partial class SkiaPanel2DEditView : UserControl
                 _isResizingSelection = true;
                 _resizeSourceElement = resizeElement;
                 _activeResizeHandle = resizeHandle;
+                EditSkiaSurface.Cursor = GetCursorForResizeHandle(resizeHandle);
                 _leftMouseDownStart = pointer;
                 _dragSelectionCurrent = pointer;
                 EditSkiaSurface.CaptureMouse();
@@ -340,7 +341,16 @@ public partial class SkiaPanel2DEditView : UserControl
 
             if (_isResizingSelection)
             {
-                RequestRender();
+                if (_shapeDragSource is not null)
+                {
+                    RequestRender();
+                }
+                else
+                {
+                    UpdateResizeSelectionPreview(_dragSelectionCurrent);
+                    EditSkiaSurface.Cursor = GetCursorForResizeHandle(_activeResizeHandle);
+                }
+
                 return;
             }
 
@@ -359,6 +369,7 @@ public partial class SkiaPanel2DEditView : UserControl
 
         if (!_isPanning || Document is null)
         {
+            UpdateHoverCursor(eventArgs.GetPosition(EditSkiaSurface));
             return;
         }
 
@@ -418,6 +429,7 @@ public partial class SkiaPanel2DEditView : UserControl
             _activeShapeCornerIndex = -1;
             _activeResizeHandle = ResizeHandleKind.None;
             EditSkiaSurface.ReleaseMouseCapture();
+            UpdateHoverCursor(eventArgs.GetPosition(EditSkiaSurface));
             RequestRender();
             eventArgs.Handled = true;
             return;
@@ -454,6 +466,19 @@ public partial class SkiaPanel2DEditView : UserControl
         if (_isPanning)
         {
             EndPan(releaseMouseCapture: false);
+        }
+
+        if (_isLeftMouseDown && _isResizingSelection && _shapeDragSource is null)
+        {
+            CancelActiveElementResizePreview();
+        }
+    }
+
+    private void OnEditSkiaSurfaceMouseLeave(object sender, MouseEventArgs eventArgs)
+    {
+        if (!_isPanning && !(_isLeftMouseDown && _isResizingSelection && _shapeDragSource is null))
+        {
+            EditSkiaSurface.Cursor = Cursors.Arrow;
         }
     }
 
@@ -710,8 +735,85 @@ public partial class SkiaPanel2DEditView : UserControl
         var start = viewport.ScreenToDocument(startScreenPoint);
         var end = viewport.ScreenToDocument(endScreenPoint);
         var updated = Panel2DResizeComputationService.ComputeResizedElement(_resizeSourceElement, _activeResizeHandle, start, end);
-        var command = CanvasMutationCommands.CreateUpdateElementCommand(document.DocumentId, document, _resizeSourceElement.ObjectId, updated, "Resize element");
+        var command = CanvasMutationCommands.CreateUpdateElementCommand(
+            document.DocumentId,
+            document,
+            _resizeSourceElement.ObjectId,
+            updated,
+            _resizeSourceElement,
+            "Resize element");
         document.CommandService.Execute(command);
+    }
+
+
+    private void UpdateResizeSelectionPreview(Point currentScreenPoint)
+    {
+        var document = Document;
+        if (document is null
+            || _resizeSourceElement is null
+            || _activeResizeHandle == ResizeHandleKind.None
+            || string.IsNullOrWhiteSpace(_resizeSourceElement.ObjectId))
+        {
+            return;
+        }
+
+        var viewport = new PanelViewportTransform(document.PanelZoom, document.PanelPanX, document.PanelPanY);
+        var start = viewport.ScreenToDocument(_leftMouseDownStart);
+        var current = viewport.ScreenToDocument(currentScreenPoint);
+        var updated = Panel2DResizeComputationService.ComputeResizedElement(_resizeSourceElement, _activeResizeHandle, start, current);
+        if (PanelElementPreviewMutationService.TryApplyPreview(document, _resizeSourceElement.ObjectId, updated))
+        {
+            RequestRender();
+        }
+    }
+
+    private void CancelActiveElementResizePreview()
+    {
+        var document = Document;
+        if (document is not null
+            && _resizeSourceElement is not null
+            && !string.IsNullOrWhiteSpace(_resizeSourceElement.ObjectId)
+            && PanelElementPreviewMutationService.TryApplyPreview(document, _resizeSourceElement.ObjectId, _resizeSourceElement))
+        {
+            RequestRender();
+        }
+
+        _isLeftMouseDown = false;
+        _isDragSelecting = false;
+        _isMovingSelection = false;
+        _isResizingSelection = false;
+        _resizeSourceElement = null;
+        _activeResizeHandle = ResizeHandleKind.None;
+        EditSkiaSurface.Cursor = Cursors.Arrow;
+    }
+
+    private void UpdateHoverCursor(Point screenPoint)
+    {
+        if (_isPanning || (_isLeftMouseDown && _isResizingSelection && _shapeDragSource is null))
+        {
+            return;
+        }
+
+        var document = Document;
+        if (document is not null && TryGetResizeHandleAtPoint(document, screenPoint, out var handleKind, out _))
+        {
+            EditSkiaSurface.Cursor = GetCursorForResizeHandle(handleKind);
+            return;
+        }
+
+        EditSkiaSurface.Cursor = Cursors.Arrow;
+    }
+
+    private static Cursor GetCursorForResizeHandle(ResizeHandleKind handleKind)
+    {
+        return ResizeHandleCursorService.GetCursorKind(handleKind) switch
+        {
+            ResizeHandleCursorKind.SizeWE => Cursors.SizeWE,
+            ResizeHandleCursorKind.SizeNS => Cursors.SizeNS,
+            ResizeHandleCursorKind.SizeNWSE => Cursors.SizeNWSE,
+            ResizeHandleCursorKind.SizeNESW => Cursors.SizeNESW,
+            _ => Cursors.Arrow
+        };
     }
 
     private bool TryGetResizeHandleAtPoint(DocumentTabViewModel document, Point screenPoint, out ResizeHandleKind handleKind, out PanelElementModel selectedElement)

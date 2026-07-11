@@ -18,7 +18,8 @@
                           MouseMove="OnEditSkiaSurfaceMouseMove"
                           MouseUp="OnEditSkiaSurfaceMouseUp"
                           MouseWheel="OnEditSkiaSurfaceMouseWheel"
-                          LostMouseCapture="OnEditSkiaSurfaceLostMouseCapture" />
+                          LostMouseCapture="OnEditSkiaSurfaceLostMouseCapture"
+                          MouseLeave="OnEditSkiaSurfaceMouseLeave" />
         </Border>
     </Grid>
 </UserControl>
