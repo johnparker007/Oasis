@@ -71,7 +71,7 @@ public sealed class ImportPanelElementsCommandTests
 
 
     [Fact]
-    public void Execute_WithImportedReelsAndAlphaDisplays_MovesThemBeforeBackgroundSoBackgroundDrawsInFront()
+    public void Execute_WithImportedReelsAndAlphaDisplaysForImageBackedBackground_MovesThemBeforeBackgroundSoBackgroundDrawsInFront()
     {
         var document = new DocumentTabViewModel(EditorDocument.CreatePanel2DStub("Panel"));
         document.SetPanelElements(
@@ -96,7 +96,8 @@ public sealed class ImportPanelElementsCommandTests
                     Name = "Background",
                     Kind = PanelElementKind.Background,
                     Width = 4,
-                    Height = 4
+                    Height = 4,
+                    AssetPath = "Assets/FmlImport/Layout/Background/bg.png"
                 },
                 new PanelElementModel
                 {
@@ -123,6 +124,60 @@ public sealed class ImportPanelElementsCommandTests
         Assert.Equal("alpha", elements[1].ObjectId);
         Assert.Equal("existing", elements[2].ObjectId);
         Assert.Equal("background", elements[3].ObjectId);
+    }
+
+
+    [Fact]
+    public void Execute_WithImportedSolidColourBackground_PreservesImporterOrderingSoReelsStayInFront()
+    {
+        var document = new DocumentTabViewModel(EditorDocument.CreatePanel2DStub("Panel"));
+
+        var command = new ImportPanelElementsCommand(
+            document.DocumentId,
+            document,
+            [
+                new PanelElementModel
+                {
+                    ObjectId = "background",
+                    Name = "Background",
+                    Kind = PanelElementKind.Background,
+                    Width = 4,
+                    Height = 4,
+                    OnColorHex = "#FFF0F0F0"
+                },
+                new PanelElementModel
+                {
+                    ObjectId = "reel",
+                    Name = "Reel",
+                    Kind = PanelElementKind.Reel,
+                    Width = 1,
+                    Height = 1
+                },
+                new PanelElementModel
+                {
+                    ObjectId = "seven",
+                    Name = "Seven Segment",
+                    Kind = PanelElementKind.SevenSegment,
+                    Width = 1,
+                    Height = 1
+                },
+                new PanelElementModel
+                {
+                    ObjectId = "alpha",
+                    Name = "Alpha",
+                    Kind = PanelElementKind.Alpha,
+                    Width = 1,
+                    Height = 1
+                }
+            ]);
+
+        document.CommandService.Execute(command);
+
+        var elements = document.GetPanelElements();
+        Assert.Equal("background", elements[0].ObjectId);
+        Assert.Equal("reel", elements[1].ObjectId);
+        Assert.Equal("seven", elements[2].ObjectId);
+        Assert.Equal("alpha", elements[3].ObjectId);
     }
 
     [Fact]

@@ -55,7 +55,7 @@ internal sealed class ImportPanelElementsCommand : IDocumentCommand, IExecutionT
 
         var insertIndex = Math.Clamp(_insertIndex, 0, currentElements.Count);
         currentElements.InsertRange(insertIndex, _importedElements.Select(static element => CloneElement(element)));
-        SendImportedReelsAndAlphaDisplaysToBack(currentElements, importedIds);
+        SendImportedDisplaysBehindImageBackedBackgroundArtwork(currentElements, importedIds);
         _document.SetPanelElements(currentElements, new PanelChangeEvent(_document.DocumentId, null, PanelChangeProperties.Structure, AffectsCanvas: true, AffectsHierarchy: true, AffectsInspectorRows: true, AffectsPersistence: true));
         _document.MarkDirty();
         WasExecuted = true;
@@ -100,8 +100,13 @@ internal sealed class ImportPanelElementsCommand : IDocumentCommand, IExecutionT
         return imported;
     }
 
-    private static void SendImportedReelsAndAlphaDisplaysToBack(List<PanelElementModel> elements, ISet<string> importedIds)
+    private static void SendImportedDisplaysBehindImageBackedBackgroundArtwork(List<PanelElementModel> elements, ISet<string> importedIds)
     {
+        if (!elements.Any(element => importedIds.Contains(element.ObjectId) && IsImportedImageBackedBackground(element)))
+        {
+            return;
+        }
+
         var importedDisplays = elements
             .Where(element => importedIds.Contains(element.ObjectId) && IsImportedBackgroundCutoutDisplay(element))
             .ToArray();
@@ -114,9 +119,14 @@ internal sealed class ImportPanelElementsCommand : IDocumentCommand, IExecutionT
         elements.InsertRange(0, importedDisplays);
     }
 
+    private static bool IsImportedImageBackedBackground(PanelElementModel element)
+    {
+        return element.Kind == PanelElementKind.Background && !string.IsNullOrWhiteSpace(element.AssetPath);
+    }
+
     private static bool IsImportedBackgroundCutoutDisplay(PanelElementModel element)
     {
-        return element.Kind is PanelElementKind.Reel or PanelElementKind.Alpha or PanelElementKind.VfdDotMatrix;
+        return element.Kind is PanelElementKind.Reel or PanelElementKind.SevenSegment or PanelElementKind.Alpha or PanelElementKind.VfdDotMatrix;
     }
 
     private static string BuildUniqueObjectId(IReadOnlySet<string> existingIds)
