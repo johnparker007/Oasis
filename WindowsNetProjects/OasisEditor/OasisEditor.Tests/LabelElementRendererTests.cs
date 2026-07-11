@@ -57,10 +57,12 @@ public sealed class LabelElementRendererTests
     {
         using var actualSurface = SKSurface.Create(new SKImageInfo(120, 48));
         actualSurface.Canvas.Clear(SKColors.Transparent);
-        var element = CreateLabel(displayText: "MFME", textColorHex: "#FFFFFFFF");
-        element.TextBoxFontName = "MFME";
-        element.TextBoxFontStyle = "Regular";
-        element.TextBoxFontSize = "14";
+        var element = CreateLabel(
+            displayText: "MFME",
+            textColorHex: "#FFFFFFFF",
+            textBoxFontName: "MFME",
+            textBoxFontStyle: "Regular",
+            textBoxFontSize: "14");
 
         new LabelElementRenderer().Render(new PanelElementRenderContext(actualSurface.Canvas, new PanelRuntimeState(), PanelViewportTransform.Identity), element);
 
@@ -105,7 +107,13 @@ public sealed class LabelElementRendererTests
         Assert.Null(exception);
     }
 
-    private static PanelElementModel CreateLabel(string displayText = "TEST", string? textColorHex = "#FFFFFFFF", int? lampNumber = null) => new()
+    private static PanelElementModel CreateLabel(
+        string displayText = "TEST",
+        string? textColorHex = "#FFFFFFFF",
+        int? lampNumber = null,
+        string? textBoxFontName = "Tahoma",
+        string? textBoxFontStyle = "Regular",
+        string? textBoxFontSize = "12") => new()
     {
         ObjectId = "label-1",
         Kind = PanelElementKind.Label,
@@ -115,9 +123,9 @@ public sealed class LabelElementRendererTests
         Height = 32,
         DisplayText = displayText,
         TextColorHex = textColorHex,
-        TextBoxFontName = "Tahoma",
-        TextBoxFontStyle = "Regular",
-        TextBoxFontSize = "12",
+        TextBoxFontName = textBoxFontName,
+        TextBoxFontStyle = textBoxFontStyle,
+        TextBoxFontSize = textBoxFontSize,
         LampNumber = lampNumber,
         IsVisible = true
     };
