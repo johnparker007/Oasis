@@ -166,6 +166,7 @@ internal sealed class ImportPanelElementsCommand : IDocumentCommand, IExecutionT
             SegmentDisplayType = source.SegmentDisplayType,
             ShowDecimalPoint = source.ShowDecimalPoint,
             ShowCommaTail = source.ShowCommaTail,
+            HasBorder = source.HasBorder,
             OnColorHex = source.OnColorHex,
             OffColorHex = source.OffColorHex,
             TextColorHex = source.TextColorHex,

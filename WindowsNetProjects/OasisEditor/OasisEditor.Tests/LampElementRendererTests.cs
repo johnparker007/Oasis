@@ -1,3 +1,5 @@
+using System;
+using System.IO;
 using OasisEditor.Rendering;
 using SkiaSharp;
 using Xunit;
@@ -137,6 +139,61 @@ public sealed class LampElementRendererTests
         Assert.Equal(0, pixel.Green);
         Assert.Equal(0, pixel.Blue);
         Assert.Equal(255, pixel.Alpha);
+    }
+
+    [Fact]
+    public void Render_PlainFill_DrawsBorderOnlyWhenEnabled()
+    {
+        using var disabled = RenderLamp(new PanelElementModel { ObjectId = "lamp-no-border", Kind = PanelElementKind.Lamp, Width = 20, Height = 20, OnColorHex = "#FFFFFFFF", OffColorHex = "#FFFFFFFF", HasBorder = false }, 1d);
+        using var enabled = RenderLamp(new PanelElementModel { ObjectId = "lamp-border", Kind = PanelElementKind.Lamp, Width = 20, Height = 20, OnColorHex = "#FFFFFFFF", OffColorHex = "#FFFFFFFF", HasBorder = true }, 1d);
+
+        Assert.NotEqual(SKColors.Black, disabled.GetPixel(10, 0));
+        Assert.Equal(SKColors.Black, enabled.GetPixel(10, 0));
+    }
+
+    [Fact]
+    public void Render_TextLamp_DrawsBorderWhenEnabled()
+    {
+        using var bitmap = RenderLamp(new PanelElementModel { ObjectId = "lamp-text-border", Kind = PanelElementKind.Lamp, Width = 30, Height = 20, DisplayText = "HI", OnColorHex = "#FFFFFFFF", OffColorHex = "#FFFFFFFF", TextColorHex = "#FFFFFFFF", HasBorder = true }, 1d);
+
+        Assert.Equal(SKColors.Black, bitmap.GetPixel(15, 0));
+    }
+
+    [Fact]
+    public void Render_ImageBackedLamp_DrawsBorderWhenEnabledAndKeepsBorderAtZeroIntensity()
+    {
+        var imagePath = Path.Combine(Path.GetTempPath(), $"oasis-lamp-border-{Guid.NewGuid():N}.png");
+        try
+        {
+            using (var image = SKSurface.Create(new SKImageInfo(4, 4)))
+            {
+                image.Canvas.Clear(SKColors.White);
+                using var data = image.Snapshot().Encode(SKEncodedImageFormat.Png, 100);
+                using var stream = File.Create(imagePath);
+                data.SaveTo(stream);
+            }
+
+            using var onBitmap = RenderLamp(new PanelElementModel { ObjectId = "lamp-image-border", Kind = PanelElementKind.Lamp, Width = 20, Height = 20, AssetPath = imagePath, HasBorder = true }, 1d);
+            using var offBitmap = RenderLamp(new PanelElementModel { ObjectId = "lamp-image-zero-border", Kind = PanelElementKind.Lamp, Width = 20, Height = 20, AssetPath = imagePath, HasBorder = true }, 0d);
+
+            Assert.Equal(SKColors.Black, onBitmap.GetPixel(10, 0));
+            Assert.Equal(SKColors.Black, offBitmap.GetPixel(10, 0));
+            Assert.Equal(SKColors.Transparent, offBitmap.GetPixel(10, 10));
+        }
+        finally
+        {
+            if (File.Exists(imagePath)) File.Delete(imagePath);
+        }
+    }
+
+    private static SKBitmap RenderLamp(PanelElementModel element, double intensity)
+    {
+        using var surface = SKSurface.Create(new SKImageInfo(Math.Max(1, (int)element.Width), Math.Max(1, (int)element.Height)));
+        surface.Canvas.Clear(SKColors.Transparent);
+        var runtimeState = new PanelRuntimeState();
+        runtimeState.SetLampIntensity(element.ObjectId, intensity);
+        new LampElementRenderer().Render(new PanelElementRenderContext(surface.Canvas, runtimeState, PanelViewportTransform.Identity), element);
+        return SKBitmap.FromImage(surface.Snapshot());
     }
 
 }

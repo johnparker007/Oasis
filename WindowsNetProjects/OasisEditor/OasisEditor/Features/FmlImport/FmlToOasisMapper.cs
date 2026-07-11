@@ -74,6 +74,8 @@ internal sealed class FmlToOasisMapper
         }
 
         var sharedSetId = $"fml-component-{index.ToString(CultureInfo.InvariantCulture)}";
+        var noOutline = Bool(c, "NoOutline");
+        var hasBorder = noOutline.HasValue ? !noOutline.Value : c is Button;
         foreach (var entry in entries)
         {
             var main = FindLampImage(images, index, entry.SublampIndex, isMask: false) ?? FindLampImage(images, index, entry.SublampIndex, isMask: null) ?? FirstLampImage(images, index, isMask: false);
@@ -87,7 +89,7 @@ internal sealed class FmlToOasisMapper
                 AssetPath = main, SecondaryAssetPath = main is null ? null : mask,
                 OnColorHex = SublampColor(c, entry.SublampIndex) ?? Color(c, "OnColour") ?? Color(c, "OnColor") ?? Color(c, "Colour") ?? Color(c, "Color"),
                 OffColorHex = LampOffColor(c), TextColorHex = TextColor(c),
-                DisplayText = LampText(c), TextBoxFontName = font?.FontName ?? "Tahoma", TextBoxFontStyle = FontStyle(font), TextBoxFontSize = font?.FontSize.ToString(CultureInfo.InvariantCulture) ?? "8",
+                DisplayText = LampText(c), HasBorder = hasBorder, TextBoxFontName = font?.FontName ?? "Tahoma", TextBoxFontStyle = FontStyle(font), TextBoxFontSize = font?.FontSize.ToString(CultureInfo.InvariantCulture) ?? "8",
                 SourceComponentIndex = index, SourceElementIndex = entry.SublampIndex, SharedSourceSetId = sharedSetId, SharedSourceSetCount = entries.Length, ImportSource = Source(c, index, displayNumber)
             });
         }

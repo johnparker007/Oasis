@@ -65,28 +65,28 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
         {
             if (TryGetLampImage(element.AssetPath, out var lampImage))
             {
-                if (intensity <= 0d)
+                if (intensity > 0d)
                 {
-                    return;
-                }
-
-                context.Canvas.DrawImage(lampImage, bounds);
-                if (intensity < 1d)
-                {
-                    using var dimmerPaint = new SKPaint
+                    context.Canvas.DrawImage(lampImage, bounds);
+                    if (intensity < 1d)
                     {
-                        Color = new SKColor(0, 0, 0, (byte)Math.Clamp(Math.Round((1d - intensity) * 255d), 0d, 255d)),
-                        Style = SKPaintStyle.Fill,
-                        IsAntialias = true
-                    };
-                    context.Canvas.DrawRect(bounds, dimmerPaint);
+                        using var dimmerPaint = new SKPaint
+                        {
+                            Color = new SKColor(0, 0, 0, (byte)Math.Clamp(Math.Round((1d - intensity) * 255d), 0d, 255d)),
+                            Style = SKPaintStyle.Fill,
+                            IsAntialias = true
+                        };
+                        context.Canvas.DrawRect(bounds, dimmerPaint);
+                    }
                 }
-
-                return;
+            }
+            else
+            {
+                using var paint = new SKPaint { Color = fillColor, Style = SKPaintStyle.Fill, IsAntialias = true };
+                context.Canvas.DrawRect(bounds, paint);
             }
 
-            using var paint = new SKPaint { Color = fillColor, Style = SKPaintStyle.Fill, IsAntialias = true };
-            context.Canvas.DrawRect(bounds, paint);
+            DrawBorderIfNeeded(context.Canvas, bounds, element.HasBorder);
             return;
         }
 
@@ -130,6 +130,26 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
             textStopwatch.Stop();
             _diagnosticsTextTicks += textStopwatch.ElapsedTicks;
         }
+
+        DrawBorderIfNeeded(context.Canvas, bounds, element.HasBorder);
+    }
+
+    private static void DrawBorderIfNeeded(SKCanvas canvas, SKRect bounds, bool hasBorder)
+    {
+        if (!hasBorder)
+        {
+            return;
+        }
+
+        using var borderPaint = new SKPaint
+        {
+            Color = SKColors.Black,
+            Style = SKPaintStyle.Stroke,
+            StrokeWidth = 1f,
+            IsAntialias = true
+        };
+        var inset = borderPaint.StrokeWidth / 2f;
+        canvas.DrawRect(SKRect.Create(bounds.Left + inset, bounds.Top + inset, Math.Max(0f, bounds.Width - borderPaint.StrokeWidth), Math.Max(0f, bounds.Height - borderPaint.StrokeWidth)), borderPaint);
     }
 
     private static SKImage BuildTextLampVisual(TextVisualCacheKey visualKey, string displayText, double fontSize, SKColor fillColor, SKColor textColor, string? fontName, string? fontStyle)

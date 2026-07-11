@@ -764,6 +764,11 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                 "Type-specific",
                 selectedElement.OffColorHex ?? string.Empty,
                 commit: value => TryApplyColorUpdate(selectedElement.ObjectId, "Update off color", new PanelElementModelUpdate { OffColorHex = NormalizeOptionalText(value) })));
+            _propertyRows.Add(new InspectorBoolPropertyViewModel(
+                "Border",
+                "Type-specific",
+                selectedElement.HasBorder,
+                commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update lamp border", new PanelElementModelUpdate { HasBorder = value })));
         }
 
         if (selectedElement.Kind is PanelElementKind.Lamp or PanelElementKind.Alpha or PanelElementKind.Label)
@@ -1158,6 +1163,9 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                     break;
                 case "Off Color" when row is InspectorColorPropertyViewModel offColorRow:
                     offColorRow.SetCommittedValue(selectedElement.OffColorHex);
+                    break;
+                case "Border" when row is InspectorBoolPropertyViewModel borderRow:
+                    borderRow.SetCommittedValue(selectedElement.HasBorder);
                     break;
                 case "Text Color" when row is InspectorColorPropertyViewModel textColorRow:
                     textColorRow.SetCommittedValue(selectedElement.TextColorHex);

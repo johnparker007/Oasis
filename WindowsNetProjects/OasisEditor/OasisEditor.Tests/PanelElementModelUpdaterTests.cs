@@ -27,7 +27,8 @@ public sealed class PanelElementModelUpdaterTests
             Stops = 24,
             VisibleScale = 1.5,
             IsLocked = false,
-            IsVisible = true
+            IsVisible = true,
+            HasBorder = true
         };
 
         var updated = PanelElementModelUpdater.Apply(
@@ -52,6 +53,27 @@ public sealed class PanelElementModelUpdaterTests
         Assert.True(updated.IsLocked);
         Assert.False(updated.IsVisible);
         Assert.Equal("#111111", updated.OffColorHex);
+        Assert.True(updated.HasBorder);
+    }
+
+    [Fact]
+    public void Apply_UpdatesHasBorder_WhenRequested()
+    {
+        var updated = PanelElementModelUpdater.Apply(
+            new PanelElementModel { ObjectId = "lamp", Kind = PanelElementKind.Lamp, HasBorder = false },
+            new PanelElementModelUpdate { HasBorder = true });
+
+        Assert.True(updated.HasBorder);
+    }
+
+
+    [Fact]
+    public void AreEquivalent_TreatsHasBorderDifferencesAsModelChanges()
+    {
+        var left = new PanelElementModel { ObjectId = "lamp", Kind = PanelElementKind.Lamp, Width = 10, Height = 10, HasBorder = true };
+        var right = PanelElementModelUpdater.Apply(left, new PanelElementModelUpdate { HasBorder = false });
+
+        Assert.False(PanelElementModelComparer.AreEquivalent(left, right));
     }
 
     [Theory]

@@ -327,4 +327,44 @@ public sealed class FmlToOasisMapperTests
         Assert.Equal(b, color.B);
     }
 
+    [Theory]
+    [InlineData(null, true)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public void Map_Button_MapsBorderFromNoOutlineWithButtonDefault(bool? noOutline, bool expectedHasBorder)
+    {
+        var button = new Button { SublampTable = [new LampSublampTableEntry(1, 5)] };
+        if (noOutline.HasValue) button.Booleans["NoOutline"] = noOutline.Value;
+
+        var result = new FmlToOasisMapper().Map(new Layout([button]), new Dictionary<FmlDecodedImageKey, string>());
+
+        Assert.Equal(expectedHasBorder, Assert.Single(result.Elements).HasBorder);
+    }
+
+    [Theory]
+    [InlineData(null, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public void Map_Lamp_MapsBorderFromNoOutlineWithDefaultDisabled(bool? noOutline, bool expectedHasBorder)
+    {
+        var lamp = new Lamp { SublampTable = [new LampSublampTableEntry(1, 5)] };
+        if (noOutline.HasValue) lamp.Booleans["NoOutline"] = noOutline.Value;
+
+        var result = new FmlToOasisMapper().Map(new Layout([lamp]), new Dictionary<FmlDecodedImageKey, string>());
+
+        Assert.Equal(expectedHasBorder, Assert.Single(result.Elements).HasBorder);
+    }
+
+    [Fact]
+    public void Map_MultiSublamp_AppliesBorderToEveryGeneratedLamp()
+    {
+        var lamp = new Lamp { SublampTable = [new LampSublampTableEntry(1, 5), new LampSublampTableEntry(2, 6)] };
+        lamp.Booleans["NoOutline"] = false;
+
+        var result = new FmlToOasisMapper().Map(new Layout([lamp]), new Dictionary<FmlDecodedImageKey, string>());
+
+        Assert.Equal(2, result.Elements.Count);
+        Assert.All(result.Elements, element => Assert.True(element.HasBorder));
+    }
+
 }

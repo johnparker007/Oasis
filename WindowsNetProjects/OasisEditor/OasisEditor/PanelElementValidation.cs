@@ -49,6 +49,7 @@ internal static class PanelElementModelComparer
                && string.Equals(left.SegmentDisplayType, right.SegmentDisplayType, StringComparison.Ordinal)
                && left.ShowDecimalPoint == right.ShowDecimalPoint
                && left.ShowCommaTail == right.ShowCommaTail
+               && left.HasBorder == right.HasBorder
                && string.Equals(left.OnColorHex, right.OnColorHex, StringComparison.Ordinal)
                && string.Equals(left.OffColorHex, right.OffColorHex, StringComparison.Ordinal)
                && string.Equals(left.TextColorHex, right.TextColorHex, StringComparison.Ordinal)

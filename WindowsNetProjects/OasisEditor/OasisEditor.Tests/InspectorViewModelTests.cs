@@ -100,8 +100,44 @@ public sealed class InspectorViewModelTests
         Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Visible");
         Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Display Number");
         Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "On Color");
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Border");
     }
 
+
+
+    [Fact]
+    public void InspectorPropertyRows_TogglingLampBorder_PersistsThroughCommandAndRefresh()
+    {
+        var selectedDocument = new DocumentTabViewModel(EditorDocument.CreatePanel2DStub("Panel"));
+        selectedDocument.SetPanelElements(
+            [
+                new PanelElementModel
+                {
+                    ObjectId = "lamp-1",
+                    Name = "Lamp",
+                    Kind = PanelElementKind.Lamp,
+                    X = 10,
+                    Y = 20,
+                    Width = 30,
+                    Height = 40,
+                    HasBorder = true
+                }
+            ]);
+
+        var context = new ActiveDocumentContextService();
+        context.SetActiveDocument(selectedDocument);
+        context.SetPanelSelection(selectedDocument.DocumentId, new PanelSelectionInfo("lamp-1", "lamp", 10, 20, 30, 40));
+
+        var viewModel = CreateInspectorViewModel(selectedDocument, context, ExecuteImmediately);
+        viewModel.NotifyContextChanged();
+        var row = Assert.IsType<InspectorBoolPropertyViewModel>(viewModel.InspectorPropertyRows.Single(x => x.DisplayName == "Border"));
+
+        row.Value = false;
+        viewModel.NotifyContextChanged();
+
+        Assert.False(selectedDocument.GetPanelElements().Single().HasBorder);
+        Assert.False(row.Value);
+    }
 
     [Fact]
     public void InspectorPropertyRows_SelectedAlpha_IncludesEditableFieldsEvenWhenUnset()

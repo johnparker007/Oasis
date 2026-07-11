@@ -337,6 +337,7 @@ internal static class Panel2DDocumentStorage
             SegmentDisplayType = normalized.SegmentDisplayType,
             ShowDecimalPoint = normalized.ShowDecimalPoint ?? false,
             ShowCommaTail = normalized.ShowCommaTail ?? false,
+            HasBorder = normalized.HasBorder ?? false,
             OnColorHex = normalized.OnColorHex,
             OffColorHex = normalized.OffColorHex,
             TextColorHex = normalized.TextColorHex,
@@ -391,6 +392,7 @@ internal static class Panel2DDocumentStorage
             SegmentDisplayType = element.SegmentDisplayType,
             ShowDecimalPoint = element.ShowDecimalPoint,
             ShowCommaTail = element.ShowCommaTail,
+            HasBorder = element.HasBorder,
             OnColorHex = element.OnColorHex,
             OffColorHex = element.OffColorHex,
             TextColorHex = element.TextColorHex,
@@ -426,6 +428,7 @@ internal static class Panel2DDocumentStorage
                 stops: element.Stops,
                 visibleScale: element.VisibleScale,
                 bandOffset: element.BandOffset,
+                hasBorder: element.HasBorder ? true : null,
                 importSource: importSource)
         });
     }
@@ -537,6 +540,7 @@ internal static class Panel2DDocumentStorage
         var normalizedSegmentDisplayType = NormalizeOptionalString(normalizedNative?.SegmentDisplayType ?? element.SegmentDisplayType);
         var normalizedShowDecimalPoint = normalizedNative?.ShowDecimalPoint ?? element.ShowDecimalPoint ?? false;
         var normalizedShowCommaTail = normalizedNative?.ShowCommaTail ?? element.ShowCommaTail ?? false;
+        var normalizedHasBorder = normalizedNative?.HasBorder ?? element.HasBorder ?? false;
         var normalizedOnColorHex = NormalizeOptionalString(normalizedNative?.OnColorHex ?? normalizedNative?.DisplayColorHex ?? element.OnColorHex);
         var normalizedOffColorHex = NormalizeOptionalString(normalizedNative?.OffColorHex ?? element.OffColorHex);
         var normalizedTextColorHex = NormalizeOptionalString(normalizedNative?.TextColorHex ?? element.TextColorHex);
@@ -578,6 +582,7 @@ internal static class Panel2DDocumentStorage
                 normalizedStops,
                 normalizedVisibleScale,
                 normalizedBandOffset,
+                normalizedHasBorder ? true : null,
                 normalizedImportSource)
             : normalizedNative with
             {
@@ -588,6 +593,7 @@ internal static class Panel2DDocumentStorage
                 SegmentDisplayType = normalizedSegmentDisplayType,
                 ShowDecimalPoint = normalizedShowDecimalPoint,
                 ShowCommaTail = normalizedShowCommaTail,
+                HasBorder = normalizedHasBorder,
                 Text = normalizedDisplayText,
                 TextBoxFontName = normalizedTextBoxFontName,
                 TextBoxFontStyle = normalizedTextBoxFontStyle,
@@ -615,6 +621,7 @@ internal static class Panel2DDocumentStorage
             SegmentDisplayType = normalizedSegmentDisplayType,
             ShowDecimalPoint = normalizedShowDecimalPoint,
             ShowCommaTail = normalizedShowCommaTail,
+            HasBorder = normalizedHasBorder,
             OnColorHex = normalizedOnColorHex,
             OffColorHex = normalizedOffColorHex,
             TextColorHex = normalizedTextColorHex,
@@ -766,6 +773,7 @@ internal static class Panel2DDocumentStorage
             Stops = native.Stops,
             VisibleScale = native.VisibleScale,
             BandOffset = native.BandOffset,
+            HasBorder = native.HasBorder,
             Outline = native.Outline,
             ImportSource = NormalizeImportSource(native.ImportSource)
         };
@@ -787,6 +795,7 @@ internal static class Panel2DDocumentStorage
         int? stops,
         double? visibleScale,
         double? bandOffset,
+        bool? hasBorder,
         PanelElementImportSourceFile? importSource)
     {
         if (assetPath is null
@@ -804,6 +813,7 @@ internal static class Panel2DDocumentStorage
             && stops is null
             && visibleScale is null
             && bandOffset is null
+            && hasBorder is null
             && importSource is null)
         {
             return null;
@@ -827,6 +837,7 @@ internal static class Panel2DDocumentStorage
             Stops = stops,
             VisibleScale = visibleScale,
             BandOffset = bandOffset,
+            HasBorder = hasBorder,
             ImportSource = importSource
         };
     }
@@ -888,6 +899,7 @@ internal sealed record PanelElementFile : IPanelSelectableObject
     public string? SegmentDisplayType { get; init; }
     public bool? ShowDecimalPoint { get; init; }
     public bool? ShowCommaTail { get; init; }
+    public bool? HasBorder { get; init; }
     public string? OnColorHex { get; init; }
     public string? OffColorHex { get; init; }
     public string? TextColorHex { get; init; }
@@ -922,6 +934,7 @@ internal sealed record PanelElementNativeFile
     public string? SegmentDisplayType { get; init; }
     public bool? ShowDecimalPoint { get; init; }
     public bool? ShowCommaTail { get; init; }
+    public bool? HasBorder { get; init; }
     public string? Text { get; init; }
     public string? TextBoxFontName { get; init; }
     public string? TextBoxFontStyle { get; init; }
