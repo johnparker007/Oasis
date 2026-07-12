@@ -2,47 +2,64 @@
 
 ## Purpose
 
-This document defines the planned selection-system refactor for Oasis Editor.
+This document defines the phased Unity-style multi-selection refactor for Oasis Editor across:
 
-The goal is to introduce a consistent Unity-style multi-selection workflow across:
-
-- Panel2D edit views
-- Face edit views
-- Hierarchy tree views
-- Inspector editing
-- Move and delete commands
+- Panel2D
+- Face
+- Hierarchy
+- Inspector
+- Delete
 - Undo and redo
 
-The work should be implemented in numbered phases. Each phase should be completed, tested by the user, and reviewed before the next phase begins.
+Implement one numbered task at a time. Each task must stop for user testing and review before the next task begins.
 
-## Current Problem
+## Current State
 
-The Editor currently treats selection as one nullable `PanelSelectionInfo`.
+Task 01 has been implemented and merged.
 
-That single-selection assumption is embedded in:
+The editor now has a document-scoped selection foundation built around:
 
-- `DocumentTabViewModel.HierarchySelectedPanelSelection`
-- `ActiveDocumentContextService.ActivePanelSelection`
-- `HierarchyViewModel`
-- `InspectorViewModel`
-- Panel2D selection outlines
-- Face selection outlines
-- Panel2D move and resize handling
-- Hierarchy delete and context commands
+- `DocumentSelectionState`
+- `EditorSelectionItem`
+- ordered selection items
+- a primary item
+- a hierarchy range anchor
+- selection-change notifications
+- selection reconciliation
+- transform-lock semantics
 
-Panel2D and Face selection behaviour has also drifted apart.
+`DocumentTabViewModel.HierarchySelectedPanelSelection` remains temporarily as a phased implementation bridge to the authoritative `DocumentSelectionState`. It is not a backward-compatibility feature and must be removed in Task 06 after all consumers have migrated.
 
-Panel2D currently supports click selection, rectangle selection, movement, and resize. Face currently has a more limited click-selection path. Both views should eventually present the same core selection behaviour.
+## Compatibility Policy
 
-There is also a current Panel2D bug: selecting an element from the Hierarchy updates the logical selection but does not immediately redraw the Panel2D selection outline. The selected element can still be dragged, confirming that the state changed but the viewport was not invalidated.
+No backward compatibility is required for previous Oasis asset schemas, old selection implementations, or old lock implementations.
+
+This is a solo project with no customer asset base. Existing old layouts are temporary test data and may stop loading.
+
+Therefore:
+
+- Do not preserve the old `IsLocked` property or its serialized representation.
+- Do not add schema migration code.
+- Do not add compatibility aliases.
+- Do not add fallback deserializers.
+- Do not retain old selection APIs for persisted compatibility.
+- Do not add tests whose purpose is reopening assets written by previous Oasis versions.
+- Remove obsolete code rather than building migration layers around it.
+
+The only lock concept should be:
+
+- Runtime/model property: `IsTransformLocked`
+- Inspector label: `Lock Transform`
+
+Temporary bridges used solely to stage this six-task refactor may remain only until their planned removal task.
 
 ## Core Architectural Decision
 
-Introduce one authoritative, document-scoped selection state.
+There is one authoritative document-scoped selection state.
 
-The Hierarchy, Inspector, Panel2D view, and Face view must all read and update the same selection state. Do not maintain separate parallel selection collections for different UI surfaces.
+Hierarchy, Inspector, Panel2D, and Face must all read and update the same `DocumentSelectionState`. Do not create separate authoritative selection collections for different UI surfaces.
 
-Suggested conceptual shape:
+Conceptually:
 
 ```csharp
 public sealed class DocumentSelectionState
@@ -53,13 +70,13 @@ public sealed class DocumentSelectionState
 }
 ```
 
-The exact names may change to fit project conventions.
+The exact API should follow repository conventions.
 
-### Selection Identity
+## Selection Identity
 
-Selection items should identify objects using stable identity rather than copied bounds.
+Selection is identity-based rather than geometry-based.
 
-Suggested conceptual shape:
+Conceptually:
 
 ```csharp
 public readonly record struct EditorSelectionItem(
@@ -67,293 +84,191 @@ public readonly record struct EditorSelectionItem(
     string ObjectId);
 ```
 
-Possible domains include:
+Possible domains include Panel elements, Face elements, Panel Face Source Shapes, and Face mask layers.
 
-- Panel element
-- Face element
-- Panel Face Source Shape
-- Face mask layer
+Do not store copied X, Y, Width, or Height values as authoritative selection state. Resolve the current model whenever geometry or properties are needed.
 
-Do not rely on copied X, Y, Width, or Height values as the authoritative selection state. Resolve the current model when geometry or properties are needed.
+## Primary Item and Hierarchy Anchor
 
-### Primary Selection
+The primary item is normally the last item clicked or focused. It drives Inspector context, hierarchy focus, primary rendering, and single-item resize handles.
 
-The selection state must track a primary item separately from the selected set.
+The hierarchy anchor is tracked separately for Shift-range selection. It may often match the primary item but is not the same concept.
 
-The primary item is normally the last item clicked or focused. It is useful for:
+## Document Scope and Reconciliation
 
-- Inspector titles and type decisions
-- Hierarchy keyboard focus
-- Context-menu behaviour later
-- Single-item resize handles
-- Distinguishing one selection outline from the rest
+Each open document owns its own selection state. Switching tabs restores that document's selection.
 
-### Hierarchy Range Anchor
+After document mutations:
 
-The selection state or hierarchy selection controller must track an anchor item for Shift-range selection.
-
-The anchor is distinct from the primary item, although they will often be the same.
-
-## Document Scope
-
-Selection belongs to a document.
-
-Each open document should retain its own selection state. Switching tabs must restore that document's selection rather than transferring IDs from another document.
-
-When document content changes:
-
-- Remove selections whose objects no longer exist.
-- Preserve surviving selections.
-- Preserve the primary item when it still exists.
-- Choose a deterministic replacement primary item when necessary.
+- remove identities whose objects no longer exist
+- preserve surviving selections
+- preserve the primary item when possible
+- choose a deterministic replacement primary item when required
+- reconcile the hierarchy anchor when required
 
 ## Required Selection Operations
 
-Selection changes should be expressed as explicit operations rather than scattered collection mutations.
+Selection changes should use explicit operations rather than scattered collection mutation:
 
-At minimum, support:
+- replace
+- add one or many
+- remove
+- toggle
+- clear
+- set primary
+- set hierarchy anchor
+- reconcile
 
-- Replace selection
-- Add item
-- Add range or collection
-- Remove item
-- Toggle item
-- Clear selection
-- Set primary item
-- Set hierarchy anchor
-- Reconcile selection after model changes
-
-Selection changes must raise a dedicated notification that causes all relevant UI surfaces to refresh.
+Every meaningful selection change must raise a dedicated notification consumed by relevant UI surfaces.
 
 ## Viewport Selection Behaviour
 
 ### Click
 
-- Click an unselected component: replace the selection with that component.
-- Click a selected component: keep the complete selection.
-- Ctrl-click an unselected component: add it and make it primary.
-- Ctrl-click a selected component: remove only that component.
-- Click empty space without Ctrl: clear selection.
-- Ctrl-click empty space: preserve the selection.
+- Clicking an unselected component replaces the selection.
+- Clicking an already selected component preserves the complete selection.
+- Ctrl-clicking an unselected component adds it and makes it primary.
+- Ctrl-clicking a selected component removes only that component.
+- Clicking empty space without Ctrl clears selection.
+- Ctrl-clicking empty space preserves selection.
 
-Keeping the full selection when clicking an already-selected component is required so a group drag can begin without collapsing the group.
+Preserving the full selection when clicking an already selected component allows group movement to begin without collapsing the group.
 
 ### Rectangle Selection
 
-- Rectangle without Ctrl: replace the selection with all matching eligible components.
-- Ctrl+rectangle: add matching components.
-- Ctrl+rectangle never toggles or removes already-selected components.
-- Shift modifiers in the viewport are deferred.
+- Rectangle without Ctrl replaces the selection.
+- Ctrl+rectangle adds matching components.
+- Ctrl+rectangle never toggles or removes existing components.
+- Shift viewport modifiers are deferred.
+- Initially select components whose bounds are fully enclosed by the rectangle.
 
-Use a shared, tested geometry rule. For the initial implementation, select components whose bounds are fully enclosed by the rectangle. This avoids a large background or artwork element being selected merely because the rectangle crosses it.
-
-Special non-rectangular editing objects such as Panel Face Source Shapes may retain their existing specialised selection behaviour unless a task explicitly includes them.
+Special non-rectangular objects such as Panel Face Source Shapes may retain specialised selection behaviour unless a task explicitly includes them.
 
 ### Gesture Priority
 
-Pointer interaction should resolve in this order:
+Resolve pointer interaction in this order:
 
 1. Special editing handle, such as a Face Source Shape corner
 2. Single-selection resize handle
-3. Drag on a selected, transform-unlocked component
+3. Drag on a selected transform-unlocked component
 4. Potential click selection
-5. Rectangle selection after the drag threshold is exceeded
+5. Rectangle selection after the drag threshold
 
 ## Multi-Selection Rendering
 
 - Draw an outline around every selected component.
-- Draw the primary item's outline with a visually stronger treatment.
-- Show resize handles only when exactly one transformable component is selected.
-- Do not implement group resizing in this work.
-- Ensure selection changes from the Hierarchy immediately invalidate Panel2D and Face viewports.
+- Give the primary item a stronger treatment.
+- Show resize handles only when exactly one eligible transform-unlocked component is selected.
+- Do not implement group resizing.
+- Hierarchy-driven selection changes must immediately invalidate Panel2D and Face viewports.
 
 ## Group Movement
 
-Dragging any selected, transform-unlocked component should move the selected transform-unlocked group by the same document-space delta.
-
-Implementation requirements:
-
-- Capture immutable original models or bounds at drag start.
-- Calculate all previews from the original state.
-- Do not accumulate preview deltas from already-mutated preview models.
-- Commit the group move as one undoable command.
-- Cancel or lost-capture handling must restore all previewed models.
-- Locked items may remain selected but do not move.
-- Dragging a locked selected item must not initiate group movement.
-
-## Transform Lock
-
-The old `IsLocked` behaviour is not wanted.
-
-Current observed behaviour prevents a locked component from being selected after the user clicks away. Remove that old selection-exclusion behaviour.
-
-Replace the concept with an explicit transform lock:
-
-- Prefer a model/property name such as `IsTransformLocked`.
-- Inspector label: `Lock Transform`.
-- A transform-locked component remains selectable.
-- It remains inspectable.
-- Non-transform properties remain editable.
-- It cannot be moved or resized in the viewport.
-- Transform fields in the Inspector should be disabled or rejected for locked items according to the multi-edit rules.
-
-Preserve asset compatibility where practical. If persisted data currently uses `IsLocked`, introduce a deliberate migration or serialization compatibility mapping rather than silently breaking existing assets.
-
-Background components should default to transform locked when newly created or imported. Do not automatically rewrite every existing background on each load.
-
-## Hierarchy Behaviour
-
-The WPF `TreeView` is single-selection by default, so multi-selection must be represented by view-model state rather than relying on native `TreeViewItem.IsSelected` as the authoritative source.
-
-Required behaviour:
-
-- Click: replace selection.
-- Ctrl-click: toggle one component.
-- Shift-click: select the continuous visible range from the anchor to the clicked item.
-- Ctrl+Shift-click: add the continuous visible range.
-- Range selection uses currently visible hierarchy rows.
-- Descendants hidden inside collapsed groups are not included.
-- Group nodes do not become component selections in the initial implementation.
-- Programmatic selection from a viewport must update all matching hierarchy row visuals.
-
-The native TreeView selection may be retained only for keyboard focus/navigation if useful.
-
-## Inspector Multi-Edit
-
-The Inspector should aggregate selected component properties.
-
-A property has one of these conceptual states:
-
-- Common value
-- Mixed value
-- Unavailable
-
-Do not store the dash character as a value. The UI may display `-` for a mixed numeric or text field, but the internal state must explicitly represent a mixed value.
-
-For boolean properties, use an indeterminate three-state checkbox for mixed values.
-
-### Same-Type Selection
-
-When all selected elements have the same concrete type:
-
-- Show common/base properties.
-- Show meaningful type-specific properties.
-- Show a common value when all values match.
-- Show mixed state when values differ.
-- Entering a value applies it to every eligible selected item.
-
-### Mixed-Type Selection
-
-Initially show only safe common properties:
-
-- X
-- Y
-- Width
-- Height
-- Visible
-- Lock Transform
-
-Do not bulk-edit Name in the initial mixed-type implementation.
-
-### Transform Editing
-
-X, Y, Width, and Height edits are absolute assignments.
-
-For example, if selected items have different Y values and the user enters `10`, all eligible selected items receive Y = 10.
-
-Do not add relative-expression syntax in this work.
-
-A multi-object Inspector edit must be committed as one undoable command.
-
-## Bulk Delete
-
-Delete should operate on all selected deletable components.
+Dragging any selected transform-unlocked component moves all selected transform-unlocked components in that viewport by the same document-space delta.
 
 Requirements:
 
-- One delete action removes the selected set.
-- One undo restores the complete set.
-- Preserve deterministic ordering when restoring.
-- Ignore or reject non-deletable selection domains explicitly.
-- After deletion, reconcile the selection state.
-- Hierarchy Delete-key behaviour and any existing viewport Delete-key path should use the same bulk-delete command.
+- capture immutable originals at drag start
+- calculate every preview from the original state
+- never accumulate movement from already preview-mutated models
+- commit one atomic undoable command
+- restore every previewed model on cancellation or lost capture
+- keep locked items selected but stationary
+- do not begin group movement when the drag starts on a selected locked item
+
+Shared computation and bulk mutation infrastructure should be reusable by Panel2D and Face.
+
+## Transform Lock
+
+The old `IsLocked` concept and storage may be removed completely.
+
+`IsTransformLocked` means only that viewport transforms are blocked:
+
+- the component remains selectable
+- the component remains inspectable
+- non-transform properties remain editable
+- viewport move and resize are blocked
+- Inspector transform editing is disabled or rejected according to multi-edit rules
+
+Newly created or imported background components should default to transform locked where appropriate.
+
+Do not preserve or migrate old `IsLocked` serialized data.
+
+## Hierarchy Behaviour
+
+The WPF `TreeView` native single-selection state is not authoritative. Multi-selection must be represented through `DocumentSelectionState` and row visual state.
+
+Required behaviour:
+
+- click replaces selection
+- Ctrl-click toggles one component
+- Shift-click selects the visible continuous range from the anchor
+- Ctrl+Shift-click adds that visible range
+- collapsed descendants are excluded
+- group nodes are not component selections in the initial implementation
+- viewport-originated changes update all corresponding hierarchy row visuals
+
+Native `TreeViewItem.IsSelected` may remain only for keyboard focus or navigation if useful.
+
+## Inspector Multi-Edit
+
+Inspector properties have explicit common, mixed, or unavailable states.
+
+Do not store a display dash as a value. Boolean mixed values use an indeterminate three-state checkbox.
+
+For same-type selections, show common/base and meaningful type-specific properties. For mixed-type selections, initially expose only safe common properties such as X, Y, Width, Height, Visible, and Lock Transform.
+
+Transform edits are absolute assignments. One multi-object edit creates one undo entry.
+
+## Bulk Delete
+
+Delete operates on all selected deletable components through one shared command path.
+
+- one action removes the selected set
+- one undo restores the complete set and deterministic ordering
+- unsupported selection domains are handled explicitly
+- selection is reconciled after deletion
+- Hierarchy and viewport Delete paths use the same command
 
 ## Shared Logic and View-Specific Logic
 
-Share domain logic between Panel2D and Face, including:
+Share domain logic for selection operations, modifier interpretation, rectangle matching, group movement, bulk mutations, Inspector aggregation, and outline styling where practical.
 
-- Selection state
-- Selection mutation operations
-- Modifier interpretation
-- Rectangle bounds matching
-- Group move computation
-- Bulk mutation commands
-- Inspector aggregation
-- Selection outline styling helpers where practical
-
-Do not force the complete Panel2D and Face WPF controls into one inheritance hierarchy during this refactor. Their current gesture and rendering responsibilities differ. Keep view-specific event adapters thin and route them into shared services.
+Do not force Panel2D and Face controls into one inheritance hierarchy. Keep view-specific event adapters thin and route them into shared services.
 
 ## Undo and Preview Requirements
 
-Multi-object operations must be atomic from the user's perspective.
+One user action creates one undo entry for group movement, multi-object Inspector editing, or bulk deletion.
 
-One user action should create one undo entry for:
-
-- Group move
-- Multi-object Inspector edit
-- Bulk delete
-
-Preview mutations must not become separate command-history entries.
+Preview mutations must never create command-history entries.
 
 ## Deferred Work
 
-Do not include the following in this core selection work:
+Do not include:
 
-- Group resize or scale
-- Alignment and distribution tools
-- Duplicate or copy/paste workflows
-- Full context-menu redesign
-- Multi-selection context-menu command matrices
+- group resize or scale
+- alignment and distribution
+- duplicate or copy/paste
+- context-menu redesign
 - Shift selection in Panel2D or Face viewports
-- Rectangle-selection toggle behaviour
-- Relative Inspector expressions such as `+=10`
-- Selecting hierarchy group nodes as component groups
-- Cross-document selections
-
-A minimal right-click preservation rule may be added only if required to prevent the new selection state being accidentally collapsed, but context-menu redesign remains separate.
+- rectangle toggle behaviour
+- relative Inspector expressions
+- hierarchy group-node component selection
+- cross-document selection
 
 ## Testing Expectations
 
-Add focused unit tests for:
+Add focused tests for selection operations, primary and anchor behaviour, reconciliation, rectangle matching, modifier interpretation, group movement, transform-lock exclusion, Inspector aggregation, atomic mutation commands, atomic deletion, hierarchy visible ranges, document isolation, cross-surface synchronization, and Panel2D/Face parity.
 
-- Replace, add, remove, toggle, and clear operations
-- Primary and anchor behaviour
-- Selection reconciliation after deletion
-- Rectangle enclosure matching
-- Modifier interpretation
-- Group move calculations
-- Locked-item movement exclusion
-- Inspector common and mixed value aggregation
-- Atomic bulk update commands
-- Atomic bulk delete and undo restoration
-- Hierarchy visible-range calculation
-
-Add view-model or integration tests where practical for:
-
-- Hierarchy-to-viewport selection refresh
-- Viewport-to-hierarchy multi-selection sync
-- Document tab selection isolation
-- Panel2D and Face parity
+Do not add compatibility or migration tests for obsolete Oasis asset schemas or `IsLocked` storage.
 
 ## Delivery Process
-
-Implement one numbered task at a time.
 
 For each task:
 
 1. Read this context file and the current numbered task.
 2. Inspect the current implementation before changing code.
 3. Keep the change focused on that task.
-4. Run relevant targeted tests and the full test suite where practical.
-5. Report files changed, tests run, deviations, risks, and manual test instructions.
-6. Stop and wait for user testing and review before starting the next task.
+4. Run relevant targeted tests and the full suite where practical.
+5. Report files changed, tests run, deviations, risks, and manual checks.
+6. Stop for user testing and review before starting the next task.
