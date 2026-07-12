@@ -89,12 +89,17 @@ internal sealed class FmlToOasisMapper
 
     private static bool HasAssignedLampNumber(BaseComponent c)
     {
+        if (c is Lamp && UInt(c, "NumberOfDefinedLampNumbers") is uint definedCount)
+        {
+            return definedCount > 0 && GetSublamps(c).Any(e => e.SublampNumber != UndefinedSublampNumber && e.SublampNumber >= 0);
+        }
+
         if (GetSublamps(c).Any(e => e.SublampNumber != UndefinedSublampNumber && e.SublampNumber >= 0))
         {
             return true;
         }
 
-        return Number(c).HasValue;
+        return Number(c) is int number && number >= 0;
     }
 
     private static string ComponentIdentifier(BaseComponent c, int index)

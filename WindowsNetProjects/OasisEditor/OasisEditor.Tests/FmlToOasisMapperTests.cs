@@ -491,7 +491,19 @@ public sealed class FmlToOasisMapperTests
     [Fact]
     public void Map_WithInvalidOnlyLampNumbers_ImportsAsImage()
     {
-        var lamp = new Lamp { SublampTable = [new LampSublampTableEntry(1, -1), new LampSublampTableEntry(2, -2)] };
+        var lamp = new Lamp { SublampTable = [new LampSublampTableEntry(1, 0), new LampSublampTableEntry(2, -2)] };
+        lamp.UInt32s["NumberOfDefinedLampNumbers"] = 0;
+
+        var result = new FmlToOasisMapper().Map(new Layout([lamp]), new Dictionary<FmlDecodedImageKey, string>());
+
+        Assert.Equal(PanelElementKind.Image, Assert.Single(result.Elements).Kind);
+        Assert.DoesNotContain(result.Elements, e => e.Kind == PanelElementKind.Lamp);
+    }
+
+    [Fact]
+    public void Map_WithNegativeFallbackNumber_ImportsLampAsImage()
+    {
+        var lamp = new Lamp { Number = -1 };
 
         var result = new FmlToOasisMapper().Map(new Layout([lamp]), new Dictionary<FmlDecodedImageKey, string>());
 
