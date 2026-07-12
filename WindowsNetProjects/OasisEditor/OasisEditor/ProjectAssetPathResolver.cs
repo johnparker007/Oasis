@@ -1,3 +1,5 @@
+using System.IO;
+
 namespace OasisEditor;
 
 internal static class ProjectAssetPathResolver
