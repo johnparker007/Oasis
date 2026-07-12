@@ -60,11 +60,17 @@ public abstract class InspectorEditablePropertyRowViewModel : InspectorPropertyR
     public abstract void Commit();
 }
 
-public sealed class InspectorTextPropertyViewModel : InspectorEditablePropertyRowViewModel
+public interface IInspectorAggregatePropertyRow
+{
+    bool IsMixed { get; }
+}
+
+public sealed class InspectorTextPropertyViewModel : InspectorEditablePropertyRowViewModel, IInspectorAggregatePropertyRow
 {
     private string _value;
     private string _committedValue;
     private readonly Func<string, string?>? _commit;
+    private bool _isMixed;
 
     public InspectorTextPropertyViewModel(string displayName, string groupName, string value, bool isReadOnly = false, Func<string, string?>? commit = null)
         : base(displayName, groupName, isReadOnly)
@@ -78,6 +84,12 @@ public sealed class InspectorTextPropertyViewModel : InspectorEditablePropertyRo
     {
         get => _value;
         set => SetProperty(ref _value, value);
+    }
+
+    public bool IsMixed
+    {
+        get => _isMixed;
+        private set => SetProperty(ref _isMixed, value);
     }
 
     public override void Commit()
@@ -98,6 +110,7 @@ public sealed class InspectorTextPropertyViewModel : InspectorEditablePropertyRo
 
         ErrorText = string.Empty;
         _committedValue = _value;
+        IsMixed = false;
     }
 
     public void SetCommittedValue(string? value)
@@ -105,17 +118,28 @@ public sealed class InspectorTextPropertyViewModel : InspectorEditablePropertyRo
         ErrorText = string.Empty;
         _value = value ?? string.Empty;
         _committedValue = _value;
+        IsMixed = false;
+        RaisePropertyChanged(nameof(Value));
+    }
+
+    public void SetMixedValue(string placeholder = "—")
+    {
+        ErrorText = string.Empty;
+        _value = placeholder;
+        _committedValue = placeholder;
+        IsMixed = true;
         RaisePropertyChanged(nameof(Value));
     }
 
 }
 
-public sealed class InspectorDoublePropertyViewModel : InspectorEditablePropertyRowViewModel
+public sealed class InspectorDoublePropertyViewModel : InspectorEditablePropertyRowViewModel, IInspectorAggregatePropertyRow
 {
     private string _value;
     private string _committedValue;
     private readonly Func<double, string?>? _commit;
     private readonly string _format;
+    private bool _isMixed;
 
     public InspectorDoublePropertyViewModel(string displayName, string groupName, double value, bool isReadOnly = false, Func<double, string?>? commit = null, string format = "0.###")
         : base(displayName, groupName, isReadOnly)
@@ -130,6 +154,12 @@ public sealed class InspectorDoublePropertyViewModel : InspectorEditableProperty
     {
         get => _value;
         set => SetProperty(ref _value, value);
+    }
+
+    public bool IsMixed
+    {
+        get => _isMixed;
+        private set => SetProperty(ref _isMixed, value);
     }
 
     public override void Commit()
@@ -160,6 +190,7 @@ public sealed class InspectorDoublePropertyViewModel : InspectorEditableProperty
         ErrorText = string.Empty;
         _committedValue = parsed.ToString(_format, CultureInfo.InvariantCulture);
         _value = _committedValue;
+        IsMixed = false;
         RaisePropertyChanged(nameof(Value));
     }
 
@@ -168,16 +199,27 @@ public sealed class InspectorDoublePropertyViewModel : InspectorEditableProperty
         ErrorText = string.Empty;
         _committedValue = value.ToString(_format, CultureInfo.InvariantCulture);
         _value = _committedValue;
+        IsMixed = false;
+        RaisePropertyChanged(nameof(Value));
+    }
+
+    public void SetMixedValue(string placeholder = "—")
+    {
+        ErrorText = string.Empty;
+        _committedValue = placeholder;
+        _value = placeholder;
+        IsMixed = true;
         RaisePropertyChanged(nameof(Value));
     }
 }
 
-public sealed class InspectorIntPropertyViewModel : InspectorEditablePropertyRowViewModel
+public sealed class InspectorIntPropertyViewModel : InspectorEditablePropertyRowViewModel, IInspectorAggregatePropertyRow
 {
     private string _value;
     private string _committedValue;
     private readonly bool _allowEmpty;
     private readonly Func<int?, string?>? _commit;
+    private bool _isMixed;
 
     public InspectorIntPropertyViewModel(string displayName, string groupName, int? value, bool isReadOnly = false, bool allowEmpty = true, Func<int?, string?>? commit = null)
         : base(displayName, groupName, isReadOnly)
@@ -192,6 +234,12 @@ public sealed class InspectorIntPropertyViewModel : InspectorEditablePropertyRow
     {
         get => _value;
         set => SetProperty(ref _value, value);
+    }
+
+    public bool IsMixed
+    {
+        get => _isMixed;
+        private set => SetProperty(ref _isMixed, value);
     }
 
     public override void Commit()
@@ -238,6 +286,7 @@ public sealed class InspectorIntPropertyViewModel : InspectorEditablePropertyRow
         ErrorText = string.Empty;
         _committedValue = parsedValue?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
         _value = _committedValue;
+        IsMixed = false;
         RaisePropertyChanged(nameof(Value));
     }
 
@@ -246,18 +295,29 @@ public sealed class InspectorIntPropertyViewModel : InspectorEditablePropertyRow
         ErrorText = string.Empty;
         _committedValue = value?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
         _value = _committedValue;
+        IsMixed = false;
+        RaisePropertyChanged(nameof(Value));
+    }
+
+    public void SetMixedValue(string placeholder = "—")
+    {
+        ErrorText = string.Empty;
+        _committedValue = placeholder;
+        _value = placeholder;
+        IsMixed = true;
         RaisePropertyChanged(nameof(Value));
     }
 }
 
 
-public sealed class InspectorColorPropertyViewModel : InspectorEditablePropertyRowViewModel
+public sealed class InspectorColorPropertyViewModel : InspectorEditablePropertyRowViewModel, IInspectorAggregatePropertyRow
 {
     private Color _selectedColor;
     private Color _committedColor;
     private string _hexValue;
     private readonly Func<string?, string?>? _commit;
     private readonly bool _allowEmpty;
+    private bool _isMixed;
 
     public InspectorColorPropertyViewModel(string displayName, string groupName, string? value, bool isReadOnly = false, bool allowEmpty = true, Func<string?, string?>? commit = null)
         : base(displayName, groupName, isReadOnly)
@@ -301,6 +361,12 @@ public sealed class InspectorColorPropertyViewModel : InspectorEditablePropertyR
     {
         get => _hexValue;
         set => SetProperty(ref _hexValue, value);
+    }
+
+    public bool IsMixed
+    {
+        get => _isMixed;
+        private set => SetProperty(ref _isMixed, value);
     }
 
     public override void Commit()
@@ -350,6 +416,7 @@ public sealed class InspectorColorPropertyViewModel : InspectorEditablePropertyR
         }
 
         _committedHexValue = normalizedHex;
+        IsMixed = false;
     }
 
     private string? _committedHexValue;
@@ -397,14 +464,25 @@ public sealed class InspectorColorPropertyViewModel : InspectorEditablePropertyR
 
         RaisePropertyChanged(nameof(HexValue));
         RaisePropertyChanged(nameof(SelectedColor));
+        IsMixed = false;
+    }
+
+    public void SetMixedValue(string placeholder = "—")
+    {
+        ErrorText = string.Empty;
+        _hexValue = placeholder;
+        _committedHexValue = placeholder;
+        IsMixed = true;
+        RaisePropertyChanged(nameof(HexValue));
     }
 }
 
-public sealed class InspectorBoolPropertyViewModel : InspectorPropertyRowViewModel
+public sealed class InspectorBoolPropertyViewModel : InspectorPropertyRowViewModel, IInspectorAggregatePropertyRow
 {
-    private bool _value;
+    private bool? _value;
     private readonly Func<bool, string?>? _commit;
     private bool _isApplyingChange;
+    private bool _isMixed;
 
     public InspectorBoolPropertyViewModel(string displayName, string groupName, bool value, bool isReadOnly = false, Func<bool, string?>? commit = null)
         : base(displayName, groupName, isReadOnly)
@@ -413,7 +491,7 @@ public sealed class InspectorBoolPropertyViewModel : InspectorPropertyRowViewMod
         _commit = commit;
     }
 
-    public bool Value
+    public bool? Value
     {
         get => _value;
         set
@@ -422,25 +500,46 @@ public sealed class InspectorBoolPropertyViewModel : InspectorPropertyRowViewMod
             {
                 return;
             }
+            if (!value.HasValue)
+            {
+                IsMixed = true;
+                return;
+            }
 
-            var error = _commit?.Invoke(value);
+            var error = _commit?.Invoke(value.Value);
             if (string.IsNullOrWhiteSpace(error))
             {
                 ErrorText = string.Empty;
+                IsMixed = false;
                 return;
             }
 
             ErrorText = error;
             _isApplyingChange = true;
-            Value = !value;
+            Value = !value.Value;
             _isApplyingChange = false;
         }
+    }
+
+    public bool IsMixed
+    {
+        get => _isMixed;
+        private set => SetProperty(ref _isMixed, value);
     }
 
     public void SetCommittedValue(bool value)
     {
         ErrorText = string.Empty;
         _value = value;
+        IsMixed = false;
+        RaisePropertyChanged(nameof(Value));
+    }
+
+    public void SetMixedValue()
+    {
+        ErrorText = string.Empty;
+        _value = null;
+        IsMixed = true;
         RaisePropertyChanged(nameof(Value));
     }
 }

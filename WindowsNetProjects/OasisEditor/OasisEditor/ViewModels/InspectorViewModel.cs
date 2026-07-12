@@ -126,6 +126,15 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
 
             var selectedDocument = _selectedDocumentAccessor();
+            if (selectedDocument is not null)
+            {
+                var aggregate = TryCreateAggregateSelection(selectedDocument);
+                if (aggregate.Count > 1)
+                {
+                    return aggregate.IsSupported ? BuildAggregateTitle(aggregate) : $"{aggregate.Count} Selected Items";
+                }
+            }
+
             if (selectedDocument is not null
                 && _activeDocumentContext.ActivePanelSelection is PanelSelectionInfo panelSelection)
             {
@@ -226,6 +235,19 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             var selectedDocument = _selectedDocumentAccessor();
             if (selectedDocument is not null)
             {
+                var aggregate = TryCreateAggregateSelection(selectedDocument);
+                if (aggregate.Count > 1)
+                {
+                    if (!aggregate.IsSupported)
+                    {
+                        return "This mixed selection is read-only in the Inspector. Select only Panel2D components or only Face components to multi-edit.";
+                    }
+
+                    var locked = aggregate.TransformLockedCount;
+                    return $"{aggregate.Count} {aggregate.DomainLabel} selected for multi-edit."
+                        + (locked > 0 ? $" Transform edits will skip {locked} locked selected object(s)." : string.Empty);
+                }
+
                 if (_activeDocumentContext.ActivePanelSelection is PanelSelectionInfo panelSelection)
                 {
                     if (selectedDocument.Document.DocumentType == EditorDocumentType.Face)
@@ -366,6 +388,24 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             return;
         }
 
+        var aggregate = TryCreateAggregateSelection(selectedDocument);
+        if (aggregate.Count > 1)
+        {
+            if (!string.IsNullOrWhiteSpace(panelChange.ObjectId)
+                && !selectedDocument.SelectionState.Items.Any(item => string.Equals(item.ObjectId, panelChange.ObjectId, StringComparison.Ordinal)))
+            {
+                return;
+            }
+
+            if (!ShouldSuppressPropertyRowRefresh())
+            {
+                RebuildPropertyRows();
+            }
+
+            OnPropertyChanged(nameof(InspectorSummary));
+            return;
+        }
+
         if (!string.IsNullOrWhiteSpace(panelChange.ObjectId)
             && !string.Equals(panelChange.ObjectId, panelSelection.ObjectId, StringComparison.Ordinal))
         {
@@ -417,6 +457,27 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
         var selectedDocument = _selectedDocumentAccessor();
         var selection = _activeDocumentContext.ActivePanelSelection;
+        var aggregateSelection = selectedDocument is not null ? TryCreateAggregateSelection(selectedDocument) : default;
+        if (selectedDocument is not null && aggregateSelection.Count > 1)
+        {
+            if (aggregateSelection.IsSupported)
+            {
+                RebuildAggregatePropertyRows(selectedDocument, aggregateSelection);
+            }
+            else
+            {
+                _propertyRows.Add(new InspectorInfoPropertyViewModel("Selection", "Multi-Edit", $"{aggregateSelection.Count} selected items cannot be edited together."));
+                _propertyRows.Add(new InspectorInfoPropertyViewModel("Supported Multi-Edit", "Multi-Edit", "Select only Panel2D components or only Face components."));
+                _hadInspectorSelection = true;
+                _lastInspectorSelectionObjectId = GetDocumentSelectionKey();
+                _lastInspectorSelectionKind = null;
+                _lastInspectorFaceSelectionKind = "unsupported-multi";
+                OnPropertyChanged(nameof(InspectorPropertyRows));
+            }
+
+            return;
+        }
+
         if (selectedDocument is not null
             && selectedDocument.Document.DocumentType == EditorDocumentType.Face
             && selection is PanelSelectionInfo maskSelection
@@ -527,6 +588,226 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(InspectorPropertyRows));
     }
 
+    private readonly record struct AggregateSelection(
+        EditorSelectionDomain? Domain,
+        IReadOnlyList<PanelElementModel> PanelElements,
+        IReadOnlyList<FaceElementModel> FaceElements,
+        bool IsUnsupported,
+        int UnsupportedCount = 0)
+    {
+        public int Count => IsUnsupported ? UnsupportedCount : (PanelElements?.Count ?? 0) + (FaceElements?.Count ?? 0);
+        public bool IsSupported => !IsUnsupported && Domain is EditorSelectionDomain.PanelElement or EditorSelectionDomain.FaceElement && Count > 0;
+        public string DomainLabel => Domain == EditorSelectionDomain.FaceElement ? "Face Elements" : "Panel2D Components";
+        public bool IsSameConcreteType => Domain == EditorSelectionDomain.PanelElement
+            ? (PanelElements?.Select(element => element.Kind).Distinct().Count() ?? 0) == 1
+            : (FaceElements?.Select(element => element.GetType()).Distinct().Count() ?? 0) == 1;
+        public int TransformLockedCount => Domain == EditorSelectionDomain.PanelElement
+            ? PanelElements?.Count(element => element.IsTransformLocked) ?? 0
+            : FaceElements?.Count(element => element.IsTransformLocked) ?? 0;
+    }
+
+    private AggregateSelection TryCreateAggregateSelection(DocumentTabViewModel document)
+    {
+        var items = document.SelectionState.Items;
+        if (items.Count == 0)
+        {
+            return default;
+        }
+
+        var domains = items.Select(item => item.Domain).Distinct().ToArray();
+        if (domains.Length != 1 || domains[0] is not (EditorSelectionDomain.PanelElement or EditorSelectionDomain.FaceElement))
+        {
+            return new AggregateSelection(null, [], [], IsUnsupported: true, UnsupportedCount: items.Count);
+        }
+
+        if (domains[0] == EditorSelectionDomain.PanelElement)
+        {
+            var elements = new List<PanelElementModel>();
+            foreach (var item in items)
+            {
+                if (!document.TryGetPanelElementByObjectId(item.ObjectId, out var element))
+                {
+                    return new AggregateSelection(null, [], [], IsUnsupported: true, UnsupportedCount: items.Count);
+                }
+
+                elements.Add(element);
+            }
+
+            return new AggregateSelection(EditorSelectionDomain.PanelElement, elements, [], IsUnsupported: false);
+        }
+
+        var faceElements = new List<FaceElementModel>();
+        foreach (var item in items)
+        {
+            if (!document.TryGetFaceElementByObjectId(item.ObjectId, out var element))
+            {
+                return new AggregateSelection(null, [], [], IsUnsupported: true, UnsupportedCount: items.Count);
+            }
+
+            faceElements.Add(element);
+        }
+
+        return new AggregateSelection(EditorSelectionDomain.FaceElement, [], faceElements, IsUnsupported: false);
+    }
+
+    private static string BuildAggregateTitle(AggregateSelection selection)
+    {
+        if (selection.Domain == EditorSelectionDomain.PanelElement && selection.IsSameConcreteType)
+        {
+            return $"{selection.Count} {Pluralize(NicifyElementKind(selection.PanelElements[0].Kind))}";
+        }
+
+        if (selection.Domain == EditorSelectionDomain.FaceElement && selection.IsSameConcreteType)
+        {
+            return $"{selection.Count} {Pluralize(NicifyFaceElementKind(selection.FaceElements[0]))}";
+        }
+
+        return $"{selection.Count} Components";
+    }
+
+    private static string Pluralize(string value) => value.EndsWith("s", StringComparison.OrdinalIgnoreCase) ? value : $"{value}s";
+
+    private void RebuildAggregatePropertyRows(DocumentTabViewModel document, AggregateSelection selection)
+    {
+        if (selection.Domain == EditorSelectionDomain.PanelElement)
+        {
+            AddPanelAggregateRows(document, selection.PanelElements, includeSameTypeRows: selection.IsSameConcreteType);
+        }
+        else
+        {
+            AddFaceAggregateRows(document, selection.FaceElements, includeSameTypeRows: selection.IsSameConcreteType);
+        }
+
+        if (selection.TransformLockedCount > 0)
+        {
+            _propertyRows.Add(new InspectorInfoPropertyViewModel("Transform Lock Note", "Multi-Edit", "X, Y, Width, and Height edits apply only to unlocked selected objects."));
+        }
+
+        _hadInspectorSelection = true;
+        _lastInspectorSelectionObjectId = GetDocumentSelectionKey();
+        _lastInspectorSelectionKind = selection.Domain == EditorSelectionDomain.PanelElement && selection.IsSameConcreteType ? selection.PanelElements[0].Kind : null;
+        _lastInspectorFaceSelectionKind = selection.Domain == EditorSelectionDomain.FaceElement && selection.IsSameConcreteType ? FaceSelectionService.GetKindToken(selection.FaceElements[0]) : "multi";
+        OnPropertyChanged(nameof(InspectorPropertyRows));
+    }
+
+    private void AddPanelAggregateRows(DocumentTabViewModel document, IReadOnlyList<PanelElementModel> elements, bool includeSameTypeRows)
+    {
+        if (includeSameTypeRows)
+        {
+            AddAggregateText("Name", "Common", InspectorAggregateValue.From(elements.Select(e => e.Name)), value => TryApplyPanelAggregateUpdate(document, elements, "Update names", new PanelElementModelUpdate { Name = value }, includeLockedTransforms: true));
+        }
+
+        AddAggregateDouble("X", "Transform", InspectorAggregateValue.From(elements.Select(e => e.X)), value => TryApplyPanelAggregateUpdate(document, elements, "Update X", new PanelElementModelUpdate { X = value }, includeLockedTransforms: false));
+        AddAggregateDouble("Y", "Transform", InspectorAggregateValue.From(elements.Select(e => e.Y)), value => TryApplyPanelAggregateUpdate(document, elements, "Update Y", new PanelElementModelUpdate { Y = value }, includeLockedTransforms: false));
+        AddAggregateDouble("Width", "Transform", InspectorAggregateValue.From(elements.Select(e => e.Width)), value => value > 0 ? TryApplyPanelAggregateUpdate(document, elements, "Update width", new PanelElementModelUpdate { Width = value }, includeLockedTransforms: false) : "Width must be greater than zero.");
+        AddAggregateDouble("Height", "Transform", InspectorAggregateValue.From(elements.Select(e => e.Height)), value => value > 0 ? TryApplyPanelAggregateUpdate(document, elements, "Update height", new PanelElementModelUpdate { Height = value }, includeLockedTransforms: false) : "Height must be greater than zero.");
+        AddAggregateBool("Lock Transform", "Common", InspectorAggregateValue.From(elements.Select(e => e.IsTransformLocked)), value => TryApplyPanelAggregateUpdate(document, elements, "Update transform lock state", new PanelElementModelUpdate { IsTransformLocked = value }, includeLockedTransforms: true));
+        AddAggregateBool("Visible", "Common", InspectorAggregateValue.From(elements.Select(e => e.IsVisible)), value => TryApplyPanelAggregateUpdate(document, elements, "Update visibility", new PanelElementModelUpdate { IsVisible = value }, includeLockedTransforms: true));
+
+        if (includeSameTypeRows)
+        {
+            AddPanelTypeSpecificAggregateRows(document, elements);
+        }
+    }
+
+    private void AddPanelTypeSpecificAggregateRows(DocumentTabViewModel document, IReadOnlyList<PanelElementModel> elements)
+    {
+        var kind = elements[0].Kind;
+        if (kind is PanelElementKind.Lamp or PanelElementKind.Reel or PanelElementKind.SevenSegment)
+            AddAggregateInt("Display Number", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.DisplayNumber)), value => TryApplyPanelAggregateUpdate(document, elements, "Update display number", new PanelElementModelUpdate { DisplayNumber = value }, true));
+        if (kind is PanelElementKind.Image or PanelElementKind.Background or PanelElementKind.Lamp or PanelElementKind.Reel)
+            AddAggregateText("Asset Path", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.AssetPath ?? string.Empty)), value => TryApplyPanelAggregateUpdate(document, elements, "Update asset path", new PanelElementModelUpdate { AssetPath = NormalizeOptionalText(value) }, true));
+        if (kind is PanelElementKind.Lamp)
+        {
+            AddAggregateColor("On Color", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.OnColorHex ?? string.Empty)), value => TryApplyPanelAggregateUpdate(document, elements, "Update on color", new PanelElementModelUpdate { OnColorHex = NormalizeOptionalText(value) }, true));
+            AddAggregateColor("Off Color", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.OffColorHex ?? string.Empty)), value => TryApplyPanelAggregateUpdate(document, elements, "Update off color", new PanelElementModelUpdate { OffColorHex = NormalizeOptionalText(value) }, true));
+            AddAggregateBool("Border", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.HasBorder)), value => TryApplyPanelAggregateUpdate(document, elements, "Update lamp border", new PanelElementModelUpdate { HasBorder = value }, true));
+        }
+        if (kind is PanelElementKind.Alpha)
+        {
+            AddAggregateColor("On Color", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.OnColorHex ?? string.Empty)), value => TryApplyPanelAggregateUpdate(document, elements, "Update on color", new PanelElementModelUpdate { OnColorHex = NormalizeOptionalText(value) }, true));
+            AddAggregateBool("Decimal Point", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.ShowDecimalPoint)), value => TryApplyPanelAggregateUpdate(document, elements, "Update decimal point visibility", new PanelElementModelUpdate { ShowDecimalPoint = value }, true));
+            AddAggregateBool("Comma", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.ShowCommaTail)), value => TryApplyPanelAggregateUpdate(document, elements, "Update comma visibility", new PanelElementModelUpdate { ShowCommaTail = value }, true));
+            AddAggregateBool("Reversed", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.IsReversed ?? false)), value => TryApplyPanelAggregateUpdate(document, elements, "Update reversed", new PanelElementModelUpdate { IsReversed = value }, true));
+        }
+        if (kind is PanelElementKind.Label)
+        {
+            AddAggregateText("Display Text", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.DisplayText ?? string.Empty)), value => TryApplyPanelAggregateUpdate(document, elements, "Update display text", new PanelElementModelUpdate { DisplayText = NormalizeOptionalText(value) }, true));
+            AddAggregateColor("Text Color", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.TextColorHex ?? string.Empty)), value => TryApplyPanelAggregateUpdate(document, elements, "Update text color", new PanelElementModelUpdate { TextColorHex = NormalizeOptionalText(value) }, true));
+            AddAggregateInt("Lamp Number", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.LampNumber)), value => value < 0 ? "Lamp Number must be zero or greater." : TryApplyPanelAggregateUpdate(document, elements, "Update lamp number", new PanelElementModelUpdate { LampNumber = value }, true));
+        }
+        if (kind is PanelElementKind.Reel)
+        {
+            AddAggregateInt("Stops", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.Stops)), value => TryApplyPanelAggregateUpdate(document, elements, "Update stops", new PanelElementModelUpdate { Stops = value }, true));
+            AddAggregateDouble("Band Offset", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.BandOffset ?? 0d)), value => PanelElementValidation.IsValidBandOffset(value) ? TryApplyPanelAggregateUpdate(document, elements, "Update band offset", new PanelElementModelUpdate { BandOffset = value }, true) : "Enter a value from -1 to 1.", "G17");
+            AddAggregateBool("Reversed", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.IsReversed ?? false)), value => TryApplyPanelAggregateUpdate(document, elements, "Update reversed", new PanelElementModelUpdate { IsReversed = value }, true));
+        }
+    }
+
+    private void AddFaceAggregateRows(DocumentTabViewModel document, IReadOnlyList<FaceElementModel> elements, bool includeSameTypeRows)
+    {
+        if (includeSameTypeRows)
+            AddAggregateText("Name", "Common", InspectorAggregateValue.From(elements.Select(e => e.Name)), value => TryApplyFaceAggregateUpdate(document, elements, "Update names", new FaceElementModelUpdate { Name = value }, true));
+        AddAggregateDouble("X", "Transform", InspectorAggregateValue.From(elements.Select(e => e.X)), value => TryApplyFaceAggregateUpdate(document, elements, "Update X", new FaceElementModelUpdate { X = value }, false));
+        AddAggregateDouble("Y", "Transform", InspectorAggregateValue.From(elements.Select(e => e.Y)), value => TryApplyFaceAggregateUpdate(document, elements, "Update Y", new FaceElementModelUpdate { Y = value }, false));
+        AddAggregateDouble("Width", "Transform", InspectorAggregateValue.From(elements.Select(e => e.Width)), value => value > 0 ? TryApplyFaceAggregateUpdate(document, elements, "Update width", new FaceElementModelUpdate { Width = value }, false) : "Width must be greater than zero.");
+        AddAggregateDouble("Height", "Transform", InspectorAggregateValue.From(elements.Select(e => e.Height)), value => value > 0 ? TryApplyFaceAggregateUpdate(document, elements, "Update height", new FaceElementModelUpdate { Height = value }, false) : "Height must be greater than zero.");
+        AddAggregateBool("Lock Transform", "Common", InspectorAggregateValue.From(elements.Select(e => e.IsTransformLocked)), value => TryApplyFaceAggregateUpdate(document, elements, "Update transform lock state", new FaceElementModelUpdate { IsTransformLocked = value }, true));
+        AddAggregateBool("Visible", "Common", InspectorAggregateValue.From(elements.Select(e => e.IsVisible)), value => TryApplyFaceAggregateUpdate(document, elements, "Update visibility", new FaceElementModelUpdate { IsVisible = value }, true));
+        if (includeSameTypeRows)
+        {
+            AddAggregateText("Machine Reference", "References", InspectorAggregateValue.From(elements.Select(e => e.LinkedMachineObjectReference?.ToString() ?? string.Empty)), value => TryApplyFaceAggregateMachineReferenceUpdate(document, elements, value));
+            AddAggregateText("Linked Panel2D Element", "References", InspectorAggregateValue.From(elements.Select(e => e.LinkedPanel2DElementId ?? string.Empty)), value => TryApplyFaceAggregateUpdate(document, elements, "Update linked Panel2D element", new FaceElementModelUpdate { HasLinkedPanel2DElementId = true, LinkedPanel2DElementId = NormalizeOptionalText(value) }, true));
+        }
+    }
+
+    private void AddAggregateText(string name, string group, InspectorAggregateValue<string> value, Func<string, string?> commit) { var row = new InspectorTextPropertyViewModel(name, group, value.IsCommon ? value.Value ?? string.Empty : string.Empty, commit: commit); if (value.IsMixed) row.SetMixedValue(); _propertyRows.Add(row); }
+    private void AddAggregateDouble(string name, string group, InspectorAggregateValue<double> value, Func<double, string?> commit, string format = "0.###") { var row = new InspectorDoublePropertyViewModel(name, group, value.IsCommon ? value.Value : 0d, commit: commit, format: format); if (value.IsMixed) row.SetMixedValue(); _propertyRows.Add(row); }
+    private void AddAggregateInt(string name, string group, InspectorAggregateValue<int?> value, Func<int?, string?> commit) { var row = new InspectorIntPropertyViewModel(name, group, value.IsCommon ? value.Value : null, commit: commit); if (value.IsMixed) row.SetMixedValue(); _propertyRows.Add(row); }
+    private void AddAggregateColor(string name, string group, InspectorAggregateValue<string> value, Func<string?, string?> commit) { var row = new InspectorColorPropertyViewModel(name, group, value.IsCommon ? value.Value : string.Empty, commit: commit); if (value.IsMixed) row.SetMixedValue(); _propertyRows.Add(row); }
+    private void AddAggregateBool(string name, string group, InspectorAggregateValue<bool> value, Func<bool, string?> commit) { var row = new InspectorBoolPropertyViewModel(name, group, value.IsCommon && value.Value == true, commit: commit); if (value.IsMixed) row.SetMixedValue(); _propertyRows.Add(row); }
+
+    private string? TryApplyPanelAggregateUpdate(DocumentTabViewModel document, IReadOnlyList<PanelElementModel> elements, string description, PanelElementModelUpdate update, bool includeLockedTransforms)
+    {
+        var originals = new Dictionary<string, PanelElementModel>();
+        var updated = new Dictionary<string, PanelElementModel>();
+        foreach (var element in elements.Where(e => includeLockedTransforms || !e.IsTransformLocked))
+        {
+            var next = PanelElementModelUpdater.Apply(element, update);
+            if (!PanelElementValidation.IsValidForInspectorUpdate(next)) return "Invalid element dimensions.";
+            if (PanelElementModelComparer.AreEquivalent(element, next)) continue;
+            originals[element.ObjectId] = element;
+            updated[element.ObjectId] = next;
+        }
+        if (updated.Count == 0) return null;
+        return _executeCanvasCommand(document.DocumentId, CanvasMutationCommands.CreateBulkUpdateElementsCommand(document.DocumentId, document, updated, originals, description)) ? null : "Unable to apply update.";
+    }
+
+    private string? TryApplyFaceAggregateMachineReferenceUpdate(DocumentTabViewModel document, IReadOnlyList<FaceElementModel> elements, string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return TryApplyFaceAggregateUpdate(document, elements, "Update machine reference", new FaceElementModelUpdate { HasLinkedMachineObjectReference = true, LinkedMachineObjectReference = null }, true);
+        return MachineObjectReference.TryParse(value, out var reference)
+            ? TryApplyFaceAggregateUpdate(document, elements, "Update machine reference", new FaceElementModelUpdate { HasLinkedMachineObjectReference = true, LinkedMachineObjectReference = reference }, true)
+            : "Use a machine reference such as lamp:17, reel:2, alpha:0, sevenSegment:12, or input:start.";
+    }
+
+    private string? TryApplyFaceAggregateUpdate(DocumentTabViewModel document, IReadOnlyList<FaceElementModel> elements, string description, FaceElementModelUpdate update, bool includeLockedTransforms)
+    {
+        var originals = new Dictionary<string, FaceElementModel>();
+        var updated = new Dictionary<string, FaceElementModel>();
+        foreach (var element in elements.Where(e => includeLockedTransforms || !e.IsTransformLocked))
+        {
+            var next = FaceElementModelUpdater.Apply(element, update);
+            if (!FaceElementValidation.IsValidForInspectorUpdate(next)) return "Invalid face element dimensions.";
+            if (FaceElementModelComparer.AreEquivalent(element, next)) continue;
+            originals[element.ObjectId] = element;
+            updated[element.ObjectId] = next;
+        }
+        if (updated.Count == 0) return null;
+        return _executeCanvasCommand(document.DocumentId, FaceMutationCommands.CreateBulkUpdateElementsCommand(document.DocumentId, document, updated, originals, description)) ? null : "Unable to apply update.";
+    }
+
 
     private void RebuildFaceSourceShapePropertyRows(DocumentTabViewModel selectedDocument, PanelFaceSourceShapeModel sourceShape)
     {
@@ -630,7 +911,9 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             return null;
         }
 
-        return _activeDocumentContext.ActivePanelSelection is PanelSelectionInfo selection
+        return selectedDocument.SelectionState.Items.Count > 0
+            ? $"{selectedDocument.DocumentId:N}:{string.Join("|", selectedDocument.SelectionState.Items.Select(item => $"{item.Domain}:{item.ObjectId}"))}:p={selectedDocument.SelectionState.PrimaryItem?.Domain}:{selectedDocument.SelectionState.PrimaryItem?.ObjectId}"
+            : _activeDocumentContext.ActivePanelSelection is PanelSelectionInfo selection
             ? $"{selectedDocument.DocumentId:N}:{selection.Kind}:{selection.ObjectId}"
             : $"{selectedDocument.DocumentId:N}:document";
     }
@@ -644,6 +927,14 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
         var selectedDocument = _selectedDocumentAccessor();
         var selection = _activeDocumentContext.ActivePanelSelection;
+        if (selectedDocument is not null && TryCreateAggregateSelection(selectedDocument) is { Count: > 1 } aggregateSelection)
+        {
+            return !_hadInspectorSelection
+                || !string.Equals(_lastInspectorSelectionObjectId, GetDocumentSelectionKey(), StringComparison.Ordinal)
+                || (aggregateSelection.IsSupported && aggregateSelection.Domain == EditorSelectionDomain.PanelElement && aggregateSelection.IsSameConcreteType && _lastInspectorSelectionKind != aggregateSelection.PanelElements[0].Kind)
+                || (aggregateSelection.IsSupported && aggregateSelection.Domain == EditorSelectionDomain.FaceElement && aggregateSelection.IsSameConcreteType && !string.Equals(_lastInspectorFaceSelectionKind, FaceSelectionService.GetKindToken(aggregateSelection.FaceElements[0]), StringComparison.Ordinal));
+        }
+
         if (selectedDocument is not null
             && selectedDocument.Document.DocumentType == EditorDocumentType.Face
             && selection is PanelSelectionInfo maskSelection

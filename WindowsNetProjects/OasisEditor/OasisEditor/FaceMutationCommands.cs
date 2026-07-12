@@ -213,6 +213,7 @@ internal static class FaceMutationCommands
             WasExecuted = false;
             var elements = _document.GetFaceElements().ToList();
             var previous = new Dictionary<string, FaceElementModel>();
+            var changed = false;
             for (var i = 0; i < elements.Count; i++)
             {
                 var existing = elements[i];
@@ -224,14 +225,18 @@ internal static class FaceMutationCommands
                 if (!FaceElementModelComparer.AreEquivalent(existing, updated))
                 {
                     elements[i] = FaceElementModelCloner.Clone(updated);
+                    changed = true;
                 }
             }
 
             if (previous.Count == 0) return;
             _previousElements = previous;
-            _document.SetFaceElements(elements, CreateChange(_document, null, PanelChangeProperties.Geometry));
-            _document.MarkDirty();
-            WasExecuted = true;
+            if (changed)
+            {
+                _document.SetFaceElements(elements, CreateChange(_document, null, PanelChangeProperties.Geometry | PanelChangeProperties.Name | PanelChangeProperties.Visibility | PanelChangeProperties.TransformLockState | PanelChangeProperties.Metadata));
+                _document.MarkDirty();
+                WasExecuted = true;
+            }
         }
 
         public void Undo()
@@ -245,7 +250,7 @@ internal static class FaceMutationCommands
                     elements[i] = FaceElementModelCloner.Clone(previous);
                 }
             }
-            _document.SetFaceElements(elements, CreateChange(_document, null, PanelChangeProperties.Geometry));
+            _document.SetFaceElements(elements, CreateChange(_document, null, PanelChangeProperties.Geometry | PanelChangeProperties.Name | PanelChangeProperties.Visibility | PanelChangeProperties.TransformLockState | PanelChangeProperties.Metadata));
             _document.MarkDirty();
         }
     }

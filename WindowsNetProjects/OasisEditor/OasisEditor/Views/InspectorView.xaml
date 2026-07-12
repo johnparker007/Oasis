@@ -90,7 +90,8 @@
                 <TextBlock VerticalAlignment="Center"
                            Text="{Binding DisplayName}" />
                 <CheckBox Grid.Column="1"
-                          IsChecked="{Binding Value}" />
+                          IsThreeState="True"
+                          IsChecked="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
             </Grid>
         </DataTemplate>
 
