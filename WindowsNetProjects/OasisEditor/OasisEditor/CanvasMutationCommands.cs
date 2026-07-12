@@ -236,7 +236,7 @@ internal static class CanvasMutationCommands
 
             if (changed)
             {
-                _document.SetPanelElements(elements, CreateElementChange(_document, null, PanelChangeProperties.Geometry));
+                _document.SetPanelElements(elements, CreateElementChange(_document, null, PanelChangeProperties.Geometry | PanelChangeProperties.Name | PanelChangeProperties.Visibility | PanelChangeProperties.TransformLockState | PanelChangeProperties.Metadata));
                 _document.MarkDirty();
             }
         }
