@@ -775,6 +775,58 @@ public sealed class Panel2DRoundTripTests
         Assert.Contains(roundTripped.Elements, element => element.Kind == "alpha");
     }
 
+
+    [Fact]
+    public void BulkDeleteSelectionCommand_DeletesPanelSelectionAtomicallyAndRestoresOrder()
+    {
+        var document = CreatePanelDocument(
+            new PanelElementModel { ObjectId = "first", Name = "First", Kind = PanelElementKind.Rectangle, X = 0, Y = 0, Width = 10, Height = 10 },
+            new PanelElementModel { ObjectId = "second", Name = "Second", Kind = PanelElementKind.Lamp, X = 10, Y = 0, Width = 10, Height = 10, LampNumber = 7 },
+            new PanelElementModel { ObjectId = "third", Name = "Third", Kind = PanelElementKind.Rectangle, X = 20, Y = 0, Width = 10, Height = 10 });
+        document.SelectionState.Replace(new[]
+        {
+            new EditorSelectionItem(EditorSelectionDomain.PanelElement, "third"),
+            new EditorSelectionItem(EditorSelectionDomain.PanelFaceSourceShape, "unsupported-shape"),
+            new EditorSelectionItem(EditorSelectionDomain.PanelElement, "first")
+        }, new EditorSelectionItem(EditorSelectionDomain.PanelElement, "first"));
+
+        var command = new BulkDeleteSelectionCommand(document.DocumentId, document, document.SelectionState.Items);
+        var tracked = Assert.IsAssignableFrom<Commands.IExecutionTrackedCommand>(command);
+
+        command.Execute();
+
+        Assert.True(tracked.WasExecuted);
+        Assert.Equal(new[] { "second" }, document.GetPanelElements().Select(element => element.ObjectId));
+        Assert.Empty(document.SelectionState.Items);
+
+        command.Undo();
+
+        Assert.Equal(new[] { "first", "second", "third" }, document.GetPanelElements().Select(element => element.ObjectId));
+        var restoredLamp = Assert.IsType<PanelElementModel>(document.GetPanelElements()[1]);
+        Assert.Equal(7, restoredLamp.LampNumber);
+        Assert.Empty(document.SelectionState.Items);
+
+        command.Execute();
+
+        Assert.Equal(new[] { "second" }, document.GetPanelElements().Select(element => element.ObjectId));
+    }
+
+    [Fact]
+    public void BulkDeleteSelectionCommand_NoDeletableSelection_DoesNotExecute()
+    {
+        var document = CreatePanelDocument(new PanelElementModel { ObjectId = "first", Name = "First", Kind = PanelElementKind.Rectangle, X = 0, Y = 0, Width = 10, Height = 10 });
+        var command = new BulkDeleteSelectionCommand(
+            document.DocumentId,
+            document,
+            new[] { new EditorSelectionItem(EditorSelectionDomain.PanelFaceSourceShape, "shape") });
+        var tracked = Assert.IsAssignableFrom<Commands.IExecutionTrackedCommand>(command);
+
+        command.Execute();
+
+        Assert.False(tracked.WasExecuted);
+        Assert.Equal(new[] { "first" }, document.GetPanelElements().Select(element => element.ObjectId));
+    }
+
     [Fact]
     public void DeleteElementCommand_TracksExecutionAndSupportsUndoRedo()
     {

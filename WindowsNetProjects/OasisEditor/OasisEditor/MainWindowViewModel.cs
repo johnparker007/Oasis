@@ -1165,9 +1165,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private HierarchyItemViewModel? GetSelectedHierarchyEntity() => _hierarchy.GetSelectedEntity();
 
-    private bool CanDeleteHierarchyItem(HierarchyItemViewModel hierarchyItem) => _hierarchyPanelCommands.CanDeleteItem(hierarchyItem);
+    private bool CanDeleteHierarchyItem(HierarchyItemViewModel hierarchyItem) => _hierarchyPanelCommands.CanDeleteSelected() || _hierarchyPanelCommands.CanDeleteItem(hierarchyItem);
 
-    private void DeleteHierarchyItem(HierarchyItemViewModel hierarchyItem) => _hierarchyPanelCommands.DeleteItem(hierarchyItem);
+    private void DeleteHierarchyItem(HierarchyItemViewModel hierarchyItem) => _hierarchyPanelCommands.DeleteSelected();
 
     private bool CanOpenUntitledDocument()
     {
