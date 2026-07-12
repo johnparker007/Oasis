@@ -23,6 +23,7 @@ public partial class SkiaFaceEditView : UserControl
     private bool _isLeftMouseDown;
     private bool _isDragSelecting;
     private bool _isMovingSelection;
+    private bool _isCommittingMoveSelection;
     private Point _leftMouseDownStart;
     private Point _dragSelectionCurrent;
     private FaceElementModel? _moveSourceElement;
@@ -513,7 +514,15 @@ public partial class SkiaFaceEditView : UserControl
                 {
                     if (HasDraggedSelection(document, _leftMouseDownStart, _dragSelectionCurrent))
                     {
-                        HandleMoveSelection(document, _leftMouseDownStart, _dragSelectionCurrent);
+                        _isCommittingMoveSelection = true;
+                        try
+                        {
+                            HandleMoveSelection(document, _leftMouseDownStart, _dragSelectionCurrent);
+                        }
+                        finally
+                        {
+                            _isCommittingMoveSelection = false;
+                        }
                     }
                     else
                     {
@@ -571,7 +580,7 @@ public partial class SkiaFaceEditView : UserControl
             EndPan(releaseMouseCapture: false);
         }
 
-        if (_isLeftMouseDown && _isMovingSelection)
+        if (_isLeftMouseDown && _isMovingSelection && !_isCommittingMoveSelection)
         {
             CancelActiveMovePreview();
         }
@@ -715,6 +724,7 @@ public partial class SkiaFaceEditView : UserControl
         _isLeftMouseDown = false;
         _isDragSelecting = false;
         _isMovingSelection = false;
+        _isCommittingMoveSelection = false;
         _moveSourceElement = null;
         _moveSnapshots = [];
         FaceSkiaSurface.Cursor = Cursors.Arrow;
