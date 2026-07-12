@@ -17,6 +17,17 @@ internal static class FaceMutationCommands
         return new UpdateFaceElementMutationCommand(documentId, document, objectId, updatedElement, description);
     }
 
+
+    public static Commands.ICommand CreateBulkUpdateElementsCommand(
+        Guid documentId,
+        DocumentTabViewModel document,
+        IReadOnlyDictionary<string, FaceElementModel> updatedElements,
+        IReadOnlyDictionary<string, FaceElementModel> originalElements,
+        string description)
+    {
+        return new BulkUpdateFaceElementsMutationCommand(documentId, document, updatedElements, originalElements, description);
+    }
+
     public static Commands.ICommand CreateAssignCabinetFaceTargetCommand(
         Guid documentId,
         DocumentTabViewModel document,
@@ -171,6 +182,70 @@ internal static class FaceMutationCommands
             elements[index] = _originalElement;
             _document.SetFaceElements(elements, CreateChange(_document, _objectId, PanelChangeProperties.Geometry | PanelChangeProperties.Name | PanelChangeProperties.Visibility | PanelChangeProperties.TransformLockState | PanelChangeProperties.Metadata));
             _document.HierarchySelectedPanelSelection = FaceSelectionService.ToSelectionInfo(_originalElement);
+            _document.MarkDirty();
+        }
+    }
+
+    private sealed class BulkUpdateFaceElementsMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
+    {
+        private readonly Guid _documentId;
+        private readonly DocumentTabViewModel _document;
+        private readonly Dictionary<string, FaceElementModel> _updatedElements;
+        private readonly Dictionary<string, FaceElementModel> _originalElements;
+        private readonly string _description;
+        private Dictionary<string, FaceElementModel>? _previousElements;
+
+        public BulkUpdateFaceElementsMutationCommand(Guid documentId, DocumentTabViewModel document, IReadOnlyDictionary<string, FaceElementModel> updatedElements, IReadOnlyDictionary<string, FaceElementModel> originalElements, string description)
+        {
+            _documentId = documentId;
+            _document = document;
+            _updatedElements = updatedElements.ToDictionary(pair => pair.Key, pair => FaceElementModelCloner.Clone(pair.Value));
+            _originalElements = originalElements.ToDictionary(pair => pair.Key, pair => FaceElementModelCloner.Clone(pair.Value));
+            _description = string.IsNullOrWhiteSpace(description) ? "Update face elements" : description;
+        }
+
+        public Guid DocumentId => _documentId;
+        public string Description => _description;
+        public bool WasExecuted { get; private set; }
+
+        public void Execute()
+        {
+            WasExecuted = false;
+            var elements = _document.GetFaceElements().ToList();
+            var previous = new Dictionary<string, FaceElementModel>();
+            for (var i = 0; i < elements.Count; i++)
+            {
+                var existing = elements[i];
+                if (string.IsNullOrWhiteSpace(existing.ObjectId) || !_updatedElements.TryGetValue(existing.ObjectId, out var updated)) continue;
+                if (updated.GetType() != existing.GetType() || !FaceElementValidation.IsValidForInspectorUpdate(updated)) continue;
+                previous[existing.ObjectId] = _originalElements.TryGetValue(existing.ObjectId, out var original) && original.GetType() == existing.GetType()
+                    ? FaceElementModelCloner.Clone(original)
+                    : FaceElementModelCloner.Clone(existing);
+                if (!FaceElementModelComparer.AreEquivalent(existing, updated))
+                {
+                    elements[i] = FaceElementModelCloner.Clone(updated);
+                }
+            }
+
+            if (previous.Count == 0) return;
+            _previousElements = previous;
+            _document.SetFaceElements(elements, CreateChange(_document, null, PanelChangeProperties.Geometry));
+            _document.MarkDirty();
+            WasExecuted = true;
+        }
+
+        public void Undo()
+        {
+            if (_previousElements is null || _previousElements.Count == 0) return;
+            var elements = _document.GetFaceElements().ToList();
+            for (var i = 0; i < elements.Count; i++)
+            {
+                if (_previousElements.TryGetValue(elements[i].ObjectId, out var previous))
+                {
+                    elements[i] = FaceElementModelCloner.Clone(previous);
+                }
+            }
+            _document.SetFaceElements(elements, CreateChange(_document, null, PanelChangeProperties.Geometry));
             _document.MarkDirty();
         }
     }

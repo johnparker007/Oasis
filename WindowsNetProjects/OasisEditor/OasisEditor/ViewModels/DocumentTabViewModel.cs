@@ -240,14 +240,17 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
         return true;
     }
 
-    internal void SetFaceDocument(FaceDocumentModel model, PanelChangeEvent? faceChange = null)
+    internal void SetFaceDocument(FaceDocumentModel model, PanelChangeEvent? faceChange = null, bool updateSerializedDocument = true)
     {
         ArgumentNullException.ThrowIfNull(model);
 
         _faceDocumentModel = model;
-        _faceDocumentJson = GetFaceDocumentJson();
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FaceDocumentJson)));
-        ReconcileSelection();
+        if (updateSerializedDocument)
+        {
+            _faceDocumentJson = GetFaceDocumentJson();
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FaceDocumentJson)));
+            ReconcileSelection();
+        }
 
         if (faceChange is PanelChangeEvent change)
         {
@@ -255,7 +258,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
         }
     }
 
-    internal void SetFaceElements(IReadOnlyList<FaceElementModel> elements, PanelChangeEvent? faceChange = null)
+    internal void SetFaceElements(IReadOnlyList<FaceElementModel> elements, PanelChangeEvent? faceChange = null, bool updateSerializedDocument = true)
     {
         SetFaceDocument(new FaceDocumentModel
         {
@@ -275,7 +278,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
             LampEmitters = _faceDocumentModel.LampEmitters,
             Layers = _faceDocumentModel.Layers,
             Elements = elements.ToArray()
-        }, faceChange);
+        }, faceChange, updateSerializedDocument);
     }
 
     internal Panel2DDocumentModel GetPanelDocument()

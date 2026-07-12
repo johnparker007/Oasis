@@ -16,9 +16,18 @@ namespace OasisEditor.Views;
 public partial class SkiaFaceEditView : UserControl
 {
     private const double TargetFrameMillis = 16.0;
+    private const double DragSelectionStartThreshold = 4d;
     private static readonly ConcurrentDictionary<string, SKImage?> CachedArtworkImages = new(StringComparer.OrdinalIgnoreCase);
     private DocumentTabViewModel? _subscribedDocument;
     private bool _isPanning;
+    private bool _isLeftMouseDown;
+    private bool _isDragSelecting;
+    private bool _isMovingSelection;
+    private bool _isCommittingMoveSelection;
+    private Point _leftMouseDownStart;
+    private Point _dragSelectionCurrent;
+    private FaceElementModel? _moveSourceElement;
+    private IReadOnlyList<FaceElementMoveSnapshot> _moveSnapshots = [];
     private bool _isRenderQueued;
     private bool _isRenderDirty;
     private Point _panStart;
@@ -160,6 +169,8 @@ public partial class SkiaFaceEditView : UserControl
         canvas.Translate((float)viewport.PanX, (float)viewport.PanY);
         canvas.Scale((float)viewport.NormalizedZoom, (float)viewport.NormalizedZoom);
         DrawFaceElements(canvas, document, viewport);
+        DrawSelectionOutline(canvas, document, viewport);
+        DrawDragSelectionRect(canvas, viewport);
         canvas.Restore();
     }
 
@@ -206,22 +217,22 @@ public partial class SkiaFaceEditView : UserControl
             }
         }
 
-        if (document.HierarchySelectedPanelSelection is PanelSelectionInfo selection
-            && document.TryGetFaceElement(selection, out var selectedElement))
+    }
+
+    private static void DrawSelectionOutline(SKCanvas canvas, DocumentTabViewModel document, PanelViewportTransform viewport)
+    {
+        foreach (var item in document.SelectionState.Items.Where(item => item.Domain == EditorSelectionDomain.FaceElement))
         {
+            if (!document.TryGetFaceElementByObjectId(item.ObjectId, out var selectedElement)) continue;
+            var isPrimary = document.SelectionState.PrimaryItem == item;
             using var selectionPaint = new SKPaint
             {
                 Style = SKPaintStyle.Stroke,
-                Color = new SKColor(0x4F, 0xC3, 0xF7),
-                StrokeWidth = (float)(2d / viewport.NormalizedZoom),
+                Color = isPrimary ? new SKColor(0xFF, 0xEA, 0x00) : new SKColor(0x4F, 0xC3, 0xF7),
+                StrokeWidth = (float)((isPrimary ? 3d : 2d) / viewport.NormalizedZoom),
                 IsAntialias = true
             };
-            canvas.DrawRect(
-                (float)selectedElement.X,
-                (float)selectedElement.Y,
-                (float)Math.Max(0d, selectedElement.Width),
-                (float)Math.Max(0d, selectedElement.Height),
-                selectionPaint);
+            canvas.DrawRect((float)selectedElement.X, (float)selectedElement.Y, (float)Math.Max(0d, selectedElement.Width), (float)Math.Max(0d, selectedElement.Height), selectionPaint);
         }
     }
 
@@ -416,7 +427,28 @@ public partial class SkiaFaceEditView : UserControl
 
         if (eventArgs.ChangedButton == MouseButton.Left)
         {
-            HandleSelectionClick(eventArgs.GetPosition(FaceSkiaSurface));
+            var pointer = eventArgs.GetPosition(FaceSkiaSurface);
+            if (TryGetSelectedElementAtPoint(document, pointer, out var selectedElement)
+                && FaceSelectionInteractionService.CanStartGroupMoveFrom(selectedElement, document.SelectionState))
+            {
+                _isLeftMouseDown = true;
+                _isDragSelecting = false;
+                _isMovingSelection = true;
+                _moveSourceElement = selectedElement;
+                _moveSnapshots = FaceElementBulkMoveService.CaptureMovableSelection(document);
+                _leftMouseDownStart = pointer;
+                _dragSelectionCurrent = pointer;
+                FaceSkiaSurface.CaptureMouse();
+                eventArgs.Handled = true;
+                return;
+            }
+
+            _isLeftMouseDown = true;
+            _isDragSelecting = false;
+            _isMovingSelection = false;
+            _leftMouseDownStart = pointer;
+            _dragSelectionCurrent = pointer;
+            FaceSkiaSurface.CaptureMouse();
             eventArgs.Handled = true;
             return;
         }
@@ -436,6 +468,24 @@ public partial class SkiaFaceEditView : UserControl
 
     private void OnFaceSkiaSurfaceMouseMove(object sender, MouseEventArgs eventArgs)
     {
+        if (_isLeftMouseDown)
+        {
+            _dragSelectionCurrent = eventArgs.GetPosition(FaceSkiaSurface);
+            if (_isMovingSelection)
+            {
+                UpdateMoveSelectionPreview(_dragSelectionCurrent);
+                return;
+            }
+
+            if (!_isDragSelecting && Panel2DViewportInteractionService.ShouldStartDragSelection(_leftMouseDownStart, _dragSelectionCurrent, DragSelectionStartThreshold))
+            {
+                _isDragSelecting = true;
+            }
+
+            if (_isDragSelecting) RequestRender();
+            return;
+        }
+
         var document = Document;
         if (!_isPanning || document is null)
         {
@@ -451,6 +501,51 @@ public partial class SkiaFaceEditView : UserControl
 
     private void OnFaceSkiaSurfaceMouseUp(object sender, MouseButtonEventArgs eventArgs)
     {
+        if (eventArgs.ChangedButton == MouseButton.Left)
+        {
+            var document = Document;
+            if (document is not null)
+            {
+                if (_isDragSelecting)
+                {
+                    HandleDragSelection(document, _leftMouseDownStart, _dragSelectionCurrent);
+                }
+                else if (_isMovingSelection)
+                {
+                    if (HasDraggedSelection(document, _leftMouseDownStart, _dragSelectionCurrent))
+                    {
+                        _isCommittingMoveSelection = true;
+                        try
+                        {
+                            HandleMoveSelection(document, _leftMouseDownStart, _dragSelectionCurrent);
+                        }
+                        finally
+                        {
+                            _isCommittingMoveSelection = false;
+                        }
+                    }
+                    else
+                    {
+                        HandleSelectionClick(_leftMouseDownStart);
+                    }
+                }
+                else
+                {
+                    HandleSelectionClick(_leftMouseDownStart);
+                }
+            }
+
+            _isLeftMouseDown = false;
+            _isDragSelecting = false;
+            _isMovingSelection = false;
+            _moveSourceElement = null;
+            _moveSnapshots = [];
+            if (FaceSkiaSurface.IsMouseCaptured) FaceSkiaSurface.ReleaseMouseCapture();
+            RequestRender();
+            eventArgs.Handled = true;
+            return;
+        }
+
         if (eventArgs.ChangedButton != MouseButton.Middle)
         {
             return;
@@ -483,6 +578,11 @@ public partial class SkiaFaceEditView : UserControl
         if (_isPanning)
         {
             EndPan(releaseMouseCapture: false);
+        }
+
+        if (_isLeftMouseDown && _isMovingSelection && !_isCommittingMoveSelection)
+        {
+            CancelActiveMovePreview();
         }
     }
 
@@ -525,8 +625,109 @@ public partial class SkiaFaceEditView : UserControl
 
         var viewport = new PanelViewportTransform(document.FaceZoom, document.FacePanX, document.FacePanY);
         var selection = FaceSelectionService.SelectFromPoint(document.GetFaceElements(), viewport.ScreenToDocument(screenPoint), document.HierarchySelectedPanelSelection);
-        Panel2DSelectionNotificationService.NotifySelection(this, document, selection);
+        var isCtrl = (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control;
+        if (selection is not { } selected)
+        {
+            if (!isCtrl) document.SelectionState.Clear();
+            RequestRender();
+            return;
+        }
+
+        var item = new EditorSelectionItem(EditorSelectionDomain.FaceElement, selected.ObjectId);
+        if (isCtrl)
+        {
+            document.SelectionState.Toggle(item);
+        }
+        else if (!document.SelectionState.Items.Contains(item))
+        {
+            document.SelectionState.Replace(item);
+        }
+        else
+        {
+            document.SelectionState.SetPrimary(item);
+        }
         RequestRender();
+    }
+
+    private static bool HasDraggedSelection(DocumentTabViewModel document, Point startScreenPoint, Point endScreenPoint)
+    {
+        var viewport = new PanelViewportTransform(document.FaceZoom, document.FacePanX, document.FacePanY);
+        return Panel2DViewportInteractionService.HasDocumentDelta(viewport.ScreenToDocument(startScreenPoint), viewport.ScreenToDocument(endScreenPoint));
+    }
+
+    private void HandleDragSelection(DocumentTabViewModel document, Point startScreenPoint, Point endScreenPoint)
+    {
+        var viewport = new PanelViewportTransform(document.FaceZoom, document.FacePanX, document.FacePanY);
+        var rect = Panel2DSelectionBoundsService.CreateNormalizedDocumentRect(viewport.ScreenToDocument(startScreenPoint), viewport.ScreenToDocument(endScreenPoint));
+        var items = FaceSelectionInteractionService.SelectItemsFromRect(document.GetFaceElements(), rect);
+        if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control) document.SelectionState.AddRange(items);
+        else document.SelectionState.Replace(items);
+    }
+
+    private void DrawDragSelectionRect(SKCanvas canvas, PanelViewportTransform viewport)
+    {
+        if (!_isLeftMouseDown || !_isDragSelecting) return;
+        var rect = Panel2DSelectionBoundsService.CreateNormalizedDocumentRect(viewport.ScreenToDocument(_leftMouseDownStart), viewport.ScreenToDocument(_dragSelectionCurrent));
+        using var fill = new SKPaint { Style = SKPaintStyle.Fill, Color = new SKColor(0x4F, 0xC3, 0xF7, 0x40) };
+        using var stroke = new SKPaint { Style = SKPaintStyle.Stroke, Color = new SKColor(0x4F, 0xC3, 0xF7, 0xD0), StrokeWidth = (float)(1.5d / viewport.NormalizedZoom), IsAntialias = true };
+        canvas.DrawRect((float)rect.Left, (float)rect.Top, (float)rect.Width, (float)rect.Height, fill);
+        canvas.DrawRect((float)rect.Left, (float)rect.Top, (float)rect.Width, (float)rect.Height, stroke);
+    }
+
+    private void HandleMoveSelection(DocumentTabViewModel document, Point startScreenPoint, Point endScreenPoint)
+    {
+        if (_moveSnapshots.Count == 0) return;
+        var viewport = new PanelViewportTransform(document.FaceZoom, document.FacePanX, document.FacePanY);
+        var start = viewport.ScreenToDocument(startScreenPoint);
+        var end = viewport.ScreenToDocument(endScreenPoint);
+        if (!Panel2DViewportInteractionService.HasDocumentDelta(start, end)) return;
+        var updated = FaceElementBulkMoveService.ComputeMovedElements(_moveSnapshots, start, end);
+        var originals = _moveSnapshots.ToDictionary(snapshot => snapshot.ObjectId, snapshot => snapshot.OriginalElement);
+        document.CommandService.Execute(FaceMutationCommands.CreateBulkUpdateElementsCommand(document.DocumentId, document, updated, originals, updated.Count == 1 ? "Move face element" : "Move face elements"));
+    }
+
+    private void UpdateMoveSelectionPreview(Point currentScreenPoint)
+    {
+        var document = Document;
+        if (document is null || _moveSnapshots.Count == 0) return;
+        var viewport = new PanelViewportTransform(document.FaceZoom, document.FacePanX, document.FacePanY);
+        var updated = FaceElementBulkMoveService.ComputeMovedElements(_moveSnapshots, viewport.ScreenToDocument(_leftMouseDownStart), viewport.ScreenToDocument(currentScreenPoint));
+        if (FaceElementPreviewMutationService.TryApplyPreviews(document, updated)) RequestRender();
+    }
+
+    private static bool TryGetSelectedElementAtPoint(DocumentTabViewModel document, Point screenPoint, out FaceElementModel selectedElement)
+    {
+        selectedElement = new FaceLampWindowElement();
+        var viewport = new PanelViewportTransform(document.FaceZoom, document.FacePanX, document.FacePanY);
+        var documentPoint = viewport.ScreenToDocument(screenPoint);
+        foreach (var item in document.SelectionState.Items.Where(item => item.Domain == EditorSelectionDomain.FaceElement).Reverse())
+        {
+            if (document.TryGetFaceElementByObjectId(item.ObjectId, out var element)
+                && documentPoint.X >= element.X && documentPoint.X <= element.X + element.Width
+                && documentPoint.Y >= element.Y && documentPoint.Y <= element.Y + element.Height)
+            {
+                selectedElement = element;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void CancelActiveMovePreview()
+    {
+        var document = Document;
+        if (document is not null && _moveSnapshots.Count > 0)
+        {
+            var originals = _moveSnapshots.ToDictionary(snapshot => snapshot.ObjectId, snapshot => snapshot.OriginalElement);
+            if (FaceElementPreviewMutationService.TryApplyPreviews(document, originals)) RequestRender();
+        }
+        _isLeftMouseDown = false;
+        _isDragSelecting = false;
+        _isMovingSelection = false;
+        _isCommittingMoveSelection = false;
+        _moveSourceElement = null;
+        _moveSnapshots = [];
+        FaceSkiaSurface.Cursor = Cursors.Arrow;
     }
 
     private void EndPan(bool releaseMouseCapture = true)
