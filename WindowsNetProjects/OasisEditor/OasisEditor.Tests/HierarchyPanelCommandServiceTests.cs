@@ -110,14 +110,14 @@ public sealed class HierarchyPanelCommandServiceTests
                 Y = 2,
                 Width = 3,
                 Height = 4,
-                IsLocked = true,
+                IsTransformLocked = true,
                 IsVisible = false
             });
 
         var provider = new Panel2DHierarchyProvider();
         var group = provider.Build(document).Single(item => item.NodeKey == "group:lamp");
         var child = Assert.Single(group.Children);
-        Assert.Equal("Lamp 1 [Locked] [Hidden]", child.DisplayName);
+        Assert.Equal("Lamp 1 [Transform Lock] [Hidden]", child.DisplayName);
     }
 
     [Fact]
@@ -387,13 +387,13 @@ public sealed class HierarchyPanelCommandServiceTests
         service.ExecuteLockSelected();
 
         var updated = Assert.Single(document.GetPanelElements());
-        Assert.True(updated.IsLocked);
+        Assert.True(updated.IsTransformLocked);
         Assert.False(service.CanLockSelected());
         Assert.True(service.CanUnlockSelected());
 
         Assert.True(workspace.UndoActiveDocument());
         updated = Assert.Single(document.GetPanelElements());
-        Assert.False(updated.IsLocked);
+        Assert.False(updated.IsTransformLocked);
     }
 
     [Fact]

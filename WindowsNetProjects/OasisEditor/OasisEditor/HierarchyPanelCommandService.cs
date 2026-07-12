@@ -157,14 +157,14 @@ internal sealed class HierarchyPanelCommandService
     {
         return TryGetSelectionDocument(out var document, out var selection)
                && document.TryGetPanelElement(selection, out var element)
-               && !element.IsLocked;
+               && !element.IsTransformLocked;
     }
 
     public bool CanUnlockSelected()
     {
         return TryGetSelectionDocument(out var document, out var selection)
                && document.TryGetPanelElement(selection, out var element)
-               && element.IsLocked;
+               && element.IsTransformLocked;
     }
 
     public bool CanHideSelected()
@@ -377,14 +377,14 @@ internal sealed class HierarchyPanelCommandService
         _executeCanvasCommand(document.DocumentId, command);
     }
 
-    private void ExecuteSetLockSelected(bool isLocked)
+    private void ExecuteSetLockSelected(bool isTransformLocked)
     {
         if (!TryGetSelectionDocument(out var document, out var selection) || !document.HasPanelElement(selection))
         {
             return;
         }
 
-        var command = CanvasMutationCommands.CreateSetLockedCommand(document.DocumentId, document, selection, isLocked);
+        var command = CanvasMutationCommands.CreateSetTransformLockedCommand(document.DocumentId, document, selection, isTransformLocked);
         _executeCanvasCommand(document.DocumentId, command);
     }
 

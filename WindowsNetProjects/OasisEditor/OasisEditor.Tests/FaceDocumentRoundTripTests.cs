@@ -102,7 +102,7 @@ public sealed class FaceDocumentRoundTripTests
                     Width = 30,
                     Height = 40,
                     IsVisible = true,
-                    IsLocked = true,
+                    IsTransformLocked = true,
                     LinkedMachineObjectReference = MachineObjectReference.Lamp(17),
                     LinkedPanel2DElementId = "panel-lamp-17"
                 }
@@ -146,7 +146,7 @@ public sealed class FaceDocumentRoundTripTests
         Assert.Equal("lampWindow", element.Kind);
         Assert.Equal("lamp:17", element.LinkedMachineObjectReference);
         Assert.Equal("panel-lamp-17", element.LinkedPanel2DElementId);
-        Assert.True(element.IsLocked);
+        Assert.True(element.IsTransformLocked);
     }
 
     [Fact]
@@ -214,7 +214,7 @@ public sealed class FaceDocumentRoundTripTests
                     Width = 30,
                     Height = 40,
                     IsVisible = true,
-                    IsLocked = true,
+                    IsTransformLocked = true,
                     LinkedMachineObjectReference = MachineObjectReference.SevenSegmentDisplay(3),
                     LinkedPanel2DElementId = "panel-seven-3",
                     OnColorHex = "#FF2020",

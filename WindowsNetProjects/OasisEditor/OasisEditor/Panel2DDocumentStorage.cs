@@ -284,7 +284,7 @@ internal static class Panel2DDocumentStorage
                 || element.Stops.HasValue
                 || element.VisibleScale.HasValue
                 || element.BandOffset.HasValue
-                || element.IsLocked
+                || element.LockTransform
                 || element.IsVisible is false
                 || element.SourceBlend
                 || element.ImportSource is not null)
@@ -349,7 +349,7 @@ internal static class Panel2DDocumentStorage
             Stops = normalized.Stops,
             VisibleScale = normalized.VisibleScale,
             BandOffset = normalized.BandOffset,
-            IsLocked = normalized.IsLocked,
+            IsTransformLocked = normalized.LockTransform,
             IsVisible = normalized.IsVisible ?? true,
             SourceComponentIndex = normalized.SourceComponentIndex,
             SourceElementIndex = normalized.SourceElementIndex,
@@ -404,7 +404,7 @@ internal static class Panel2DDocumentStorage
             Stops = element.Stops,
             VisibleScale = element.VisibleScale,
             BandOffset = element.BandOffset,
-            IsLocked = element.IsLocked,
+            LockTransform = element.IsTransformLocked,
             IsVisible = element.IsVisible,
             SourceComponentIndex = element.SourceComponentIndex,
             SourceElementIndex = element.SourceElementIndex,
@@ -558,7 +558,7 @@ internal static class Panel2DDocumentStorage
         var normalizedStops = normalizedNative?.Stops ?? element.Stops;
         var normalizedVisibleScale = normalizedNative?.VisibleScale ?? element.VisibleScale;
         var normalizedBandOffset = normalizedNative?.BandOffset ?? element.BandOffset;
-        var normalizedIsLocked = element.IsLocked;
+        var normalizedLockTransform = element.LockTransform;
         var normalizedIsVisible = element.IsVisible ?? true;
         var normalizedSourceComponentIndex = element.SourceComponentIndex;
         var normalizedSourceElementIndex = element.SourceElementIndex;
@@ -633,7 +633,7 @@ internal static class Panel2DDocumentStorage
             Stops = normalizedStops,
             VisibleScale = normalizedVisibleScale,
             BandOffset = normalizedBandOffset,
-            IsLocked = normalizedIsLocked,
+            LockTransform = normalizedLockTransform,
             IsVisible = normalizedIsVisible,
             SourceComponentIndex = normalizedSourceComponentIndex,
             SourceElementIndex = normalizedSourceElementIndex,
@@ -911,7 +911,7 @@ internal sealed record PanelElementFile : IPanelSelectableObject
     public int? Stops { get; init; }
     public double? VisibleScale { get; init; }
     public double? BandOffset { get; init; }
-    public bool IsLocked { get; init; }
+    public bool LockTransform { get; init; }
     public bool? IsVisible { get; init; }
     public int? SourceComponentIndex { get; init; }
     public int? SourceElementIndex { get; init; }

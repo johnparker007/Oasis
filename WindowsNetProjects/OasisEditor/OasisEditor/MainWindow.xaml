@@ -122,9 +122,9 @@
                               Command="{Binding SendToBackHierarchyItemCommand}" />
                 </MenuItem>
                 <MenuItem Header="_Object">
-                    <MenuItem Header="_Lock"
+                    <MenuItem Header="_Lock Transform"
                               Command="{Binding LockSelectedHierarchyItemCommand}" />
-                    <MenuItem Header="_Unlock"
+                    <MenuItem Header="_Unlock Transform"
                               Command="{Binding UnlockSelectedHierarchyItemCommand}" />
                     <Separator />
                     <MenuItem Header="_Hide"

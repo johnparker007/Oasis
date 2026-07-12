@@ -511,8 +511,8 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         _propertyRows.Add(new InspectorBoolPropertyViewModel(
             "Lock Transform",
             "Common",
-            selectedElement.IsLocked,
-            commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update transform lock state", new PanelElementModelUpdate { IsLocked = value })));
+            selectedElement.IsTransformLocked,
+            commit: value => TryApplyUpdate(selectedElement.ObjectId, "Update transform lock state", new PanelElementModelUpdate { IsTransformLocked = value })));
         _propertyRows.Add(new InspectorBoolPropertyViewModel(
             "Visible",
             "Common",
@@ -1078,8 +1078,8 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         _propertyRows.Add(new InspectorBoolPropertyViewModel(
             "Lock Transform",
             "Common",
-            selectedElement.IsLocked,
-            commit: value => TryApplyFaceUpdate(selectedElement.ObjectId, "Update transform lock state", new FaceElementModelUpdate { IsLocked = value })));
+            selectedElement.IsTransformLocked,
+            commit: value => TryApplyFaceUpdate(selectedElement.ObjectId, "Update transform lock state", new FaceElementModelUpdate { IsTransformLocked = value })));
         _propertyRows.Add(new InspectorBoolPropertyViewModel(
             "Visible",
             "Common",
@@ -1141,7 +1141,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                     heightRow.SetCommittedValue(selectedElement.Height);
                     break;
                 case "Lock Transform" when row is InspectorBoolPropertyViewModel lockedRow:
-                    lockedRow.SetCommittedValue(selectedElement.IsLocked);
+                    lockedRow.SetCommittedValue(selectedElement.IsTransformLocked);
                     break;
                 case "Visible" when row is InspectorBoolPropertyViewModel visibleRow:
                     visibleRow.SetCommittedValue(selectedElement.IsVisible);
@@ -1238,7 +1238,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                     heightRow.SetCommittedValue(selectedElement.Height);
                     break;
                 case "Lock Transform" when row is InspectorBoolPropertyViewModel lockedRow:
-                    lockedRow.SetCommittedValue(selectedElement.IsLocked);
+                    lockedRow.SetCommittedValue(selectedElement.IsTransformLocked);
                     break;
                 case "Visible" when row is InspectorBoolPropertyViewModel visibleRow:
                     visibleRow.SetCommittedValue(selectedElement.IsVisible);

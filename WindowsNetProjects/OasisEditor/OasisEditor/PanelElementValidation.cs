@@ -61,7 +61,7 @@ internal static class PanelElementModelComparer
                && left.Stops == right.Stops
                && left.VisibleScale == right.VisibleScale
                && left.BandOffset == right.BandOffset
-               && left.IsLocked == right.IsLocked
+               && left.IsTransformLocked == right.IsTransformLocked
                && left.IsVisible == right.IsVisible
                && left.SourceComponentIndex == right.SourceComponentIndex
                && left.SourceElementIndex == right.SourceElementIndex

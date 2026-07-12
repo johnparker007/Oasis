@@ -58,10 +58,10 @@
                               Style="{StaticResource EditorContextMenuItemStyle}"
                               Command="{Binding SendBackwardHierarchyItemCommand}" />
                     <Separator />
-                    <MenuItem Header="Lock"
+                    <MenuItem Header="Lock Transform"
                               Style="{StaticResource EditorContextMenuItemStyle}"
                               Command="{Binding LockSelectedHierarchyItemCommand}" />
-                    <MenuItem Header="Unlock"
+                    <MenuItem Header="Unlock Transform"
                               Style="{StaticResource EditorContextMenuItemStyle}"
                               Command="{Binding UnlockSelectedHierarchyItemCommand}" />
                     <MenuItem Header="Hide"

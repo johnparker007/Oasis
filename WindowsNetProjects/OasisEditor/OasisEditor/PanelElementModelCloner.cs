@@ -10,7 +10,7 @@ internal static class PanelElementModelCloner
         double? y = null,
         double? width = null,
         double? height = null,
-        bool? isLocked = null,
+        bool? isTransformLocked = null,
         bool? isVisible = null)
     {
         ArgumentNullException.ThrowIfNull(source);
@@ -43,7 +43,7 @@ internal static class PanelElementModelCloner
             Stops = source.Stops,
             VisibleScale = source.VisibleScale,
             BandOffset = source.BandOffset,
-            IsLocked = isLocked ?? source.IsLocked,
+            IsTransformLocked = isTransformLocked ?? source.IsTransformLocked,
             IsVisible = isVisible ?? source.IsVisible,
             SourceComponentIndex = source.SourceComponentIndex,
             SourceElementIndex = source.SourceElementIndex,

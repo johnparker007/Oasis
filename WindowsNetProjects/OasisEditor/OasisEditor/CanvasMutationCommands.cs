@@ -90,13 +90,13 @@ internal static class CanvasMutationCommands
         return new ReorderElementMutationCommand(documentId, document, selection, ReorderDirection.SendBackward);
     }
 
-    public static Commands.ICommand CreateSetLockedCommand(
+    public static Commands.ICommand CreateSetTransformLockedCommand(
         Guid documentId,
         DocumentTabViewModel document,
         PanelSelectionInfo selection,
-        bool isLocked)
+        bool isTransformLocked)
     {
-        return new SetElementLockStateMutationCommand(documentId, document, selection, isLocked);
+        return new SetElementTransformLockStateMutationCommand(documentId, document, selection, isTransformLocked);
     }
 
     public static Commands.ICommand CreateSetVisibleCommand(
@@ -583,30 +583,30 @@ internal static class CanvasMutationCommands
         }
     }
 
-    private sealed class SetElementLockStateMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
+    private sealed class SetElementTransformLockStateMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
     {
         private readonly Guid _documentId;
         private readonly DocumentTabViewModel _document;
         private readonly PanelSelectionInfo _selection;
-        private readonly bool _isLocked;
+        private readonly bool _isTransformLocked;
         private int? _updatedIndex;
         private bool _previousValue;
 
-        public SetElementLockStateMutationCommand(
+        public SetElementTransformLockStateMutationCommand(
             Guid documentId,
             DocumentTabViewModel document,
             PanelSelectionInfo selection,
-            bool isLocked)
+            bool isTransformLocked)
         {
             _documentId = documentId;
             _document = document;
             _selection = selection;
-            _isLocked = isLocked;
+            _isTransformLocked = isTransformLocked;
         }
 
         public Guid DocumentId => _documentId;
 
-        public string Description => _isLocked ? "Lock element" : "Unlock element";
+        public string Description => _isTransformLocked ? "Lock transform" : "Unlock transform";
 
         public bool WasExecuted { get; private set; }
 
@@ -620,15 +620,15 @@ internal static class CanvasMutationCommands
             }
 
             var existing = elements[index];
-            if (existing.IsLocked == _isLocked)
+            if (existing.IsTransformLocked == _isTransformLocked)
             {
                 return;
             }
 
             _updatedIndex = index;
-            _previousValue = existing.IsLocked;
-            elements[index] = PanelElementModelCloner.Clone(existing, isLocked: _isLocked);
-            _document.SetPanelElements(elements, CreateElementChange(_document, existing.ObjectId, PanelChangeProperties.LockState, affectsHierarchy: true));
+            _previousValue = existing.IsTransformLocked;
+            elements[index] = PanelElementModelCloner.Clone(existing, isTransformLocked: _isTransformLocked);
+            _document.SetPanelElements(elements, CreateElementChange(_document, existing.ObjectId, PanelChangeProperties.TransformLockState, affectsHierarchy: true));
             _document.MarkDirty();
             WasExecuted = true;
         }
@@ -651,8 +651,8 @@ internal static class CanvasMutationCommands
                 return;
             }
 
-            elements[index] = PanelElementModelCloner.Clone(elements[index], isLocked: _previousValue);
-            _document.SetPanelElements(elements, CreateElementChange(_document, elements[index].ObjectId, PanelChangeProperties.LockState, affectsHierarchy: true));
+            elements[index] = PanelElementModelCloner.Clone(elements[index], isTransformLocked: _previousValue);
+            _document.SetPanelElements(elements, CreateElementChange(_document, elements[index].ObjectId, PanelChangeProperties.TransformLockState, affectsHierarchy: true));
             _document.MarkDirty();
         }
     }
@@ -814,7 +814,7 @@ internal static class CanvasMutationCommands
             var changedProperties = GetChangedProperties(existing, _updatedElement);
             var affectsHierarchy = changedProperties.HasFlag(PanelChangeProperties.Name)
                 || changedProperties.HasFlag(PanelChangeProperties.Visibility)
-                || changedProperties.HasFlag(PanelChangeProperties.LockState)
+                || changedProperties.HasFlag(PanelChangeProperties.TransformLockState)
                 || changedProperties.HasFlag(PanelChangeProperties.Ordering);
 
             _document.SetPanelElements(elements, CreateElementChange(_document, _objectId, changedProperties, affectsHierarchy: affectsHierarchy));
@@ -854,7 +854,7 @@ internal static class CanvasMutationCommands
             var changedProperties = GetChangedProperties(current, _previousElement);
             var affectsHierarchy = changedProperties.HasFlag(PanelChangeProperties.Name)
                 || changedProperties.HasFlag(PanelChangeProperties.Visibility)
-                || changedProperties.HasFlag(PanelChangeProperties.LockState)
+                || changedProperties.HasFlag(PanelChangeProperties.TransformLockState)
                 || changedProperties.HasFlag(PanelChangeProperties.Ordering);
 
             elements[index] = PanelElementModelCloner.Clone(_previousElement);
@@ -881,9 +881,9 @@ internal static class CanvasMutationCommands
                 changed |= PanelChangeProperties.Visibility;
             }
 
-            if (before.IsLocked != after.IsLocked)
+            if (before.IsTransformLocked != after.IsTransformLocked)
             {
-                changed |= PanelChangeProperties.LockState;
+                changed |= PanelChangeProperties.TransformLockState;
             }
 
             if (!string.Equals(before.OnColorHex, after.OnColorHex, StringComparison.Ordinal)

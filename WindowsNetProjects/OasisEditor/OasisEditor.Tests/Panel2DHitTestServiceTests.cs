@@ -19,10 +19,10 @@ public sealed class Panel2DHitTestServiceTests
     }
 
     [Fact]
-    public void HitTopmostAtPoint_IncludesLockedButSkipsHiddenElements()
+    public void HitTopmostAtPoint_IncludesTransformLockedButSkipsHiddenElements()
     {
         var visible = new PanelElementModel { ObjectId = "visible", Kind = PanelElementKind.Lamp, X = 0, Y = 0, Width = 20, Height = 20, IsVisible = true };
-        var locked = new PanelElementModel { ObjectId = "locked", Kind = PanelElementKind.Lamp, X = 0, Y = 0, Width = 20, Height = 20, IsVisible = true, IsLocked = true };
+        var locked = new PanelElementModel { ObjectId = "locked", Kind = PanelElementKind.Lamp, X = 0, Y = 0, Width = 20, Height = 20, IsVisible = true, IsTransformLocked = true };
         var hidden = new PanelElementModel { ObjectId = "hidden", Kind = PanelElementKind.Lamp, X = 0, Y = 0, Width = 20, Height = 20, IsVisible = false };
         var elements = new[] { visible, locked, hidden };
 

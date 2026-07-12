@@ -7,7 +7,7 @@ public enum PanelChangeProperties
     Geometry = 1 << 0,
     Name = 1 << 1,
     Visibility = 1 << 2,
-    LockState = 1 << 3,
+    TransformLockState = 1 << 3,
     Ordering = 1 << 4,
     Style = 1 << 5,
     Metadata = 1 << 6,

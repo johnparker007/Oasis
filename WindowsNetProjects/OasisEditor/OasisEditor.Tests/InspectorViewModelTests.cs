@@ -83,7 +83,7 @@ public sealed class InspectorViewModelTests
                     Height = 40,
                     DisplayNumber = 7,
                     OnColorHex = "#FFFFFF",
-                    IsLocked = true,
+                    IsTransformLocked = true,
                     IsVisible = false
                 }
             ]);

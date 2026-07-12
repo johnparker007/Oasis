@@ -235,7 +235,7 @@ public sealed class FaceRuntimeTextureGenerator
                 Width = lampWindow.Width,
                 Height = lampWindow.Height,
                 IsVisible = lampWindow.IsVisible,
-                IsLocked = true,
+                IsTransformLocked = true,
                 LinkedMachineObjectReference = lampWindow.LinkedMachineObjectReference,
                 LinkedPanel2DElementId = lampWindow.LinkedPanel2DElementId,
                 SourceLampWindowObjectId = lampWindow.ObjectId,

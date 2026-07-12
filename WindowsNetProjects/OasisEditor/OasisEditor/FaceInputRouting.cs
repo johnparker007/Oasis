@@ -22,7 +22,7 @@ public sealed class FaceInputTargetResolver : IFaceInputTargetResolver
 
         foreach (var button in elements.OfType<FaceButtonElement>().Reverse())
         {
-            if (!button.IsVisible || button.IsLocked || !Contains(button, documentPoint))
+            if (!button.IsVisible || !Contains(button, documentPoint))
             {
                 continue;
             }

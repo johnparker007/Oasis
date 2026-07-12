@@ -113,8 +113,7 @@ public sealed class FaceLayerModel
     public string Id { get; init; } = Guid.NewGuid().ToString("N");
     public string Name { get; init; } = string.Empty;
     public bool IsVisible { get; init; } = true;
-    public bool IsLocked { get; init; }
-    public bool IsTransformLocked => IsLocked;
+    public bool IsTransformLocked { get; init; }
 }
 
 public abstract class FaceElementModel
@@ -126,8 +125,7 @@ public abstract class FaceElementModel
     public double Width { get; init; }
     public double Height { get; init; }
     public bool IsVisible { get; init; } = true;
-    public bool IsLocked { get; init; }
-    public bool IsTransformLocked => IsLocked;
+    public bool IsTransformLocked { get; init; }
     public MachineObjectReference? LinkedMachineObjectReference { get; init; }
     public string? LinkedPanel2DElementId { get; init; }
 }
