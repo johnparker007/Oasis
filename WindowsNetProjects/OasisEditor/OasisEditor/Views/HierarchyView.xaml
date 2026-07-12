@@ -84,7 +84,6 @@
                     <Setter Property="BorderThickness" Value="1" />
                     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                     <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
-                    <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
                     <Setter Property="Template">
                         <Setter.Value>
                             <ControlTemplate TargetType="{x:Type TreeViewItem}">
@@ -157,18 +156,13 @@
                                         <Setter TargetName="RowHighlight" Property="Background" Value="{DynamicResource ControlHoverBrush}" />
                                         <Setter TargetName="RowHighlight" Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}" />
                                     </Trigger>
-                                    <Trigger Property="IsSelected" Value="True">
+                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
                                         <Setter TargetName="RowHighlight" Property="Background" Value="{DynamicResource SelectionBrush}" />
                                         <Setter TargetName="RowHighlight" Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
-                                    </Trigger>
-                                    <MultiTrigger>
-                                        <MultiTrigger.Conditions>
-                                            <Condition Property="IsSelected" Value="True" />
-                                            <Condition Property="Selector.IsSelectionActive" Value="False" />
-                                        </MultiTrigger.Conditions>
-                                        <Setter TargetName="RowHighlight" Property="Background" Value="{DynamicResource InactiveSelectionBrush}" />
-                                        <Setter TargetName="RowHighlight" Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}" />
-                                    </MultiTrigger>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsPrimarySelected}" Value="True">
+                                        <Setter TargetName="RowHighlight" Property="BorderThickness" Value="2" />
+                                    </DataTrigger>
                                 </ControlTemplate.Triggers>
                             </ControlTemplate>
                         </Setter.Value>

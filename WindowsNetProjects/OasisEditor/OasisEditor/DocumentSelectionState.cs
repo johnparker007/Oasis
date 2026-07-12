@@ -6,7 +6,8 @@ public enum EditorSelectionDomain
 {
     PanelElement,
     FaceElement,
-    PanelFaceSourceShape
+    PanelFaceSourceShape,
+    FaceMaskLayer
 }
 
 public readonly record struct EditorSelectionItem(EditorSelectionDomain Domain, string ObjectId)
@@ -60,15 +61,20 @@ public sealed class DocumentSelectionState
         RaiseChanged();
     }
 
-    public void Replace(IEnumerable<EditorSelectionItem> items, EditorSelectionItem? primaryItem = null)
+    public void Replace(IEnumerable<EditorSelectionItem> items, EditorSelectionItem? primaryItem = null, bool updateHierarchyAnchor = true)
     {
         ArgumentNullException.ThrowIfNull(items);
         var distinct = items.Where(item => item.IsValid).Distinct().ToList();
         var primary = primaryItem is { IsValid: true } validPrimary && distinct.Contains(validPrimary)
             ? validPrimary
             : distinct.Count > 0 ? distinct[^1] : (EditorSelectionItem?)null;
+        var anchor = updateHierarchyAnchor ? primary : _hierarchyAnchorItem;
+        if (anchor is { } existingAnchor && !distinct.Contains(existingAnchor))
+        {
+            anchor = primary;
+        }
 
-        if (_items.SequenceEqual(distinct) && _primaryItem == primary && _hierarchyAnchorItem == primary)
+        if (_items.SequenceEqual(distinct) && _primaryItem == primary && _hierarchyAnchorItem == anchor)
         {
             return;
         }
@@ -76,7 +82,7 @@ public sealed class DocumentSelectionState
         _items.Clear();
         _items.AddRange(distinct);
         _primaryItem = primary;
-        _hierarchyAnchorItem = primary;
+        _hierarchyAnchorItem = anchor;
         RaiseChanged();
     }
 
@@ -85,7 +91,7 @@ public sealed class DocumentSelectionState
         AddRange([item], item);
     }
 
-    public void AddRange(IEnumerable<EditorSelectionItem> items, EditorSelectionItem? primaryItem = null)
+    public void AddRange(IEnumerable<EditorSelectionItem> items, EditorSelectionItem? primaryItem = null, bool updateHierarchyAnchor = false)
     {
         ArgumentNullException.ThrowIfNull(items);
         var changed = false;
@@ -109,10 +115,13 @@ public sealed class DocumentSelectionState
             changed = true;
         }
 
-        if (_hierarchyAnchorItem is null && _primaryItem is { } currentPrimary)
+        if ((updateHierarchyAnchor || _hierarchyAnchorItem is null) && _primaryItem is { } currentPrimary)
         {
-            _hierarchyAnchorItem = currentPrimary;
-            changed = true;
+            if (_hierarchyAnchorItem != currentPrimary)
+            {
+                _hierarchyAnchorItem = currentPrimary;
+                changed = true;
+            }
         }
 
         if (changed) RaiseChanged();

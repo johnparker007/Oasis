@@ -7,6 +7,7 @@ public sealed class HierarchyItemViewModel : INotifyPropertyChanged
 {
     private bool _isExpanded;
     private bool _isSelected;
+    private bool _isPrimarySelected;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -29,6 +30,7 @@ public sealed class HierarchyItemViewModel : INotifyPropertyChanged
     public bool IsGroup { get; }
     public ObservableCollection<HierarchyItemViewModel> Children { get; }
     public PanelSelectionInfo? PanelSelection { get; }
+    public EditorSelectionItem? SelectionItem => HierarchySelectionIdentityService.ToSelectionItem(PanelSelection);
 
     public bool IsExpanded
     {
@@ -57,6 +59,21 @@ public sealed class HierarchyItemViewModel : INotifyPropertyChanged
 
             _isSelected = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsSelected)));
+        }
+    }
+
+    public bool IsPrimarySelected
+    {
+        get => _isPrimarySelected;
+        set
+        {
+            if (_isPrimarySelected == value)
+            {
+                return;
+            }
+
+            _isPrimarySelected = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsPrimarySelected)));
         }
     }
 }

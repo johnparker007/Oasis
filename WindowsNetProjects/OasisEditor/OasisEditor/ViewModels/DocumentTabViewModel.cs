@@ -355,6 +355,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
             EditorSelectionDomain.PanelElement => _panelDocumentModel.Elements.Any(element => string.Equals(element.ObjectId, item.ObjectId, StringComparison.Ordinal)),
             EditorSelectionDomain.FaceElement => _faceDocumentModel.Elements.Any(element => string.Equals(element.ObjectId, item.ObjectId, StringComparison.Ordinal)),
             EditorSelectionDomain.PanelFaceSourceShape => _panelDocumentModel.FaceSourceShapes.Any(shape => string.Equals(shape.Id, item.ObjectId, StringComparison.Ordinal)),
+            EditorSelectionDomain.FaceMaskLayer => _faceDocumentModel.MaskLayer is { } maskLayer && string.Equals(FaceMaskLayerSelectionService.ToSelectionInfo(maskLayer).ObjectId, item.ObjectId, StringComparison.Ordinal),
             _ => false
         });
     }
@@ -533,7 +534,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
         {
             if (value is PanelSelectionInfo selection)
             {
-                SelectionState.Replace(ToSelectionItem(selection));
+                SelectionState.Replace(HierarchySelectionIdentityService.ToSelectionItem(selection));
             }
             else
             {
@@ -572,20 +573,18 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
                 selection = PanelFaceSourceShapeCommands.ToSelection(shape);
                 return true;
             }
+
+            if (item.Domain == EditorSelectionDomain.FaceMaskLayer
+                && _faceDocumentModel.MaskLayer is { } maskLayer
+                && string.Equals(FaceMaskLayerSelectionService.ToSelectionInfo(maskLayer).ObjectId, item.ObjectId, StringComparison.Ordinal))
+            {
+                selection = FaceMaskLayerSelectionService.ToSelectionInfo(maskLayer);
+                return true;
+            }
         }
 
         selection = default;
         return false;
-    }
-
-    private static EditorSelectionItem ToSelectionItem(PanelSelectionInfo selection)
-    {
-        var domain = string.Equals(selection.Kind, PanelFaceSourceShapeCommands.SelectionKind, StringComparison.Ordinal)
-            ? EditorSelectionDomain.PanelFaceSourceShape
-            : FaceSelectionService.IsFaceSelectionKind(selection.Kind)
-                ? EditorSelectionDomain.FaceElement
-                : EditorSelectionDomain.PanelElement;
-        return new EditorSelectionItem(domain, selection.ObjectId);
     }
 
     public double PanelZoom
