@@ -3618,16 +3618,33 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public void UpdateDocumentPanelSelection(Guid documentId, PanelSelectionInfo? selection)
     {
         var document = OpenDocuments.FirstOrDefault(tab => tab.DocumentId == documentId);
+        var selectionChanged = true;
         if (document is not null)
         {
-            document.HierarchySelectedPanelSelection = selection;
+            var currentSelection = document.HierarchySelectedPanelSelection;
+            selectionChanged = !ArePanelSelectionsEqual(currentSelection, selection);
+            if (selectionChanged)
+            {
+                document.HierarchySelectedPanelSelection = selection;
+            }
         }
 
         _activeDocumentContext.SetPanelSelection(documentId, selection);
         _inspector.ActivateDocumentInspection();
-        _hierarchy.SyncSelection(selection);
+        if (selectionChanged)
+        {
+            _hierarchy.SyncSelection(selection);
+        }
         NotifyInspectorChanged();
         OnPropertyChanged(nameof(HierarchyItems));
+    }
+
+    private static bool ArePanelSelectionsEqual(PanelSelectionInfo? left, PanelSelectionInfo? right)
+    {
+        return left is null
+            ? right is null
+            : right is PanelSelectionInfo rightSelection
+              && PanelSelectionContract.IsSameSelection(left.Value, rightSelection);
     }
 
 
