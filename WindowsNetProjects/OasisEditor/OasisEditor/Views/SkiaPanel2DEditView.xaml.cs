@@ -592,7 +592,7 @@ public partial class SkiaPanel2DEditView : UserControl
             return;
         }
 
-        var element = PanelElementFactory.CreateAddableElement(kind, panelPoint);
+        var element = PanelElementModelFactory.CreateAddableElement(kind, panelPoint);
         var command = CanvasMutationCommands.CreateAddPanelElementCommand(document.DocumentId, document, element);
         document.CommandService.Execute(command);
         RequestRender();

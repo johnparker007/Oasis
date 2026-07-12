@@ -7,10 +7,10 @@ public sealed class AddPanel2DElementCommandTests
 {
     public static IEnumerable<object[]> AddableElementCases =>
     [
-        [AddablePanelElementKind.Lamp, PanelElementKind.Lamp, PanelElementFactory.NewLampWidth, PanelElementFactory.NewLampHeight],
-        [AddablePanelElementKind.Reel, PanelElementKind.Reel, PanelElementFactory.NewReelWidth, PanelElementFactory.NewReelHeight],
-        [AddablePanelElementKind.SevenSegmentDisplay, PanelElementKind.SevenSegment, PanelElementFactory.NewSevenSegmentWidth, PanelElementFactory.NewSevenSegmentHeight],
-        [AddablePanelElementKind.SegmentAlpha, PanelElementKind.Alpha, PanelElementFactory.NewSegmentAlphaWidth, PanelElementFactory.NewSegmentAlphaHeight]
+        [AddablePanelElementKind.Lamp, PanelElementKind.Lamp, PanelElementModelFactory.NewLampWidth, PanelElementModelFactory.NewLampHeight],
+        [AddablePanelElementKind.Reel, PanelElementKind.Reel, PanelElementModelFactory.NewReelWidth, PanelElementModelFactory.NewReelHeight],
+        [AddablePanelElementKind.SevenSegmentDisplay, PanelElementKind.SevenSegment, PanelElementModelFactory.NewSevenSegmentWidth, PanelElementModelFactory.NewSevenSegmentHeight],
+        [AddablePanelElementKind.SegmentAlpha, PanelElementKind.Alpha, PanelElementModelFactory.NewSegmentAlphaWidth, PanelElementModelFactory.NewSegmentAlphaHeight]
     ];
 
     [Theory]
@@ -25,7 +25,7 @@ public sealed class AddPanel2DElementCommandTests
         var expectedKind = (PanelElementKind)expectedKindObject;
         var panelPoint = new Point(123.5, 45.25);
 
-        var element = PanelElementFactory.CreateAddableElement(addableKind, panelPoint);
+        var element = PanelElementModelFactory.CreateAddableElement(addableKind, panelPoint);
 
         Assert.False(string.IsNullOrWhiteSpace(element.ObjectId));
         Assert.False(string.IsNullOrWhiteSpace(element.Name));
@@ -40,10 +40,10 @@ public sealed class AddPanel2DElementCommandTests
     [Fact]
     public void CreateAddableElement_UsesVisibleDefaultsForEachRealElementType()
     {
-        var lamp = PanelElementFactory.CreateAddableElement(AddablePanelElementKind.Lamp, new Point());
-        var reel = PanelElementFactory.CreateAddableElement(AddablePanelElementKind.Reel, new Point());
-        var sevenSegment = PanelElementFactory.CreateAddableElement(AddablePanelElementKind.SevenSegmentDisplay, new Point());
-        var alpha = PanelElementFactory.CreateAddableElement(AddablePanelElementKind.SegmentAlpha, new Point());
+        var lamp = PanelElementModelFactory.CreateAddableElement(AddablePanelElementKind.Lamp, new Point());
+        var reel = PanelElementModelFactory.CreateAddableElement(AddablePanelElementKind.Reel, new Point());
+        var sevenSegment = PanelElementModelFactory.CreateAddableElement(AddablePanelElementKind.SevenSegmentDisplay, new Point());
+        var alpha = PanelElementModelFactory.CreateAddableElement(AddablePanelElementKind.SegmentAlpha, new Point());
 
         Assert.Equal("#FF3030", lamp.OnColorHex);
         Assert.Equal("#2A0505", lamp.OffColorHex);
@@ -71,7 +71,7 @@ public sealed class AddPanel2DElementCommandTests
         var changedEvents = new List<PanelChangeEvent>();
         document.PanelChanged += changedEvents.Add;
         var panelPoint = new Point(321.5, 654.25);
-        var element = PanelElementFactory.CreateAddableElement(addableKind, panelPoint);
+        var element = PanelElementModelFactory.CreateAddableElement(addableKind, panelPoint);
         var command = CanvasMutationCommands.CreateAddPanelElementCommand(document.DocumentId, document, element);
 
         document.CommandService.Execute(command);

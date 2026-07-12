@@ -567,26 +567,9 @@ public sealed class Face2DRenderer : IFace2DRenderer
 
     private static string? ResolveDefaultAssetPath(string? assetPath)
     {
-        if (string.IsNullOrWhiteSpace(assetPath))
-        {
-            return null;
-        }
-
-        var candidate = assetPath.Trim();
-        if (Path.IsPathRooted(candidate))
-        {
-            return candidate;
-        }
-
-        if (string.IsNullOrWhiteSpace(PanelElementFactory.ProjectDirectoryPath))
-        {
-            return null;
-        }
-
-        var relativePath = candidate
-            .Replace('/', Path.DirectorySeparatorChar)
-            .Replace('\\', Path.DirectorySeparatorChar);
-        return Path.GetFullPath(Path.Combine(PanelElementFactory.ProjectDirectoryPath, relativePath));
+        return ProjectAssetPathResolver.TryResolveAssetPath(assetPath, out var resolvedPath)
+            ? resolvedPath
+            : null;
     }
 
     private static SKRect ResolveMaskDestinationRect(FaceMaskLayerModel maskLayer, SKImage maskImage)
