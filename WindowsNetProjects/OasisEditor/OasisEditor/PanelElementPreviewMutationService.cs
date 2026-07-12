@@ -2,6 +2,20 @@ namespace OasisEditor;
 
 internal static class PanelElementPreviewMutationService
 {
+    public static bool TryApplyPreviews(DocumentTabViewModel document, IReadOnlyDictionary<string, PanelElementModel> updatedElements)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(updatedElements);
+
+        var changed = false;
+        foreach (var update in updatedElements)
+        {
+            changed |= TryApplyPreview(document, update.Key, update.Value);
+        }
+
+        return changed;
+    }
+
     public static bool TryApplyPreview(DocumentTabViewModel document, string objectId, PanelElementModel updatedElement)
     {
         ArgumentNullException.ThrowIfNull(document);

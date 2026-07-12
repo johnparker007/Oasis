@@ -26,6 +26,7 @@ public partial class SkiaPanel2DEditView : UserControl
     private Point _leftMouseDownStart;
     private Point _dragSelectionCurrent;
     private PanelElementModel? _moveSourceElement;
+    private IReadOnlyList<PanelElementMoveSnapshot> _moveSnapshots = [];
     private PanelElementModel? _resizeSourceElement;
     private PanelFaceSourceShapeModel? _shapeDragSource;
     private int _activeShapeCornerIndex = -1;
@@ -179,31 +180,29 @@ public partial class SkiaPanel2DEditView : UserControl
 
     private static void DrawSelectionOutline(SKCanvas canvas, DocumentTabViewModel document, PanelViewportTransform viewport)
     {
-        var selection = document.HierarchySelectedPanelSelection;
-        if (selection is null)
+        foreach (var item in document.SelectionState.Items.Where(item => item.Domain == EditorSelectionDomain.PanelElement))
         {
-            return;
+            if (!document.TryGetPanelElementByObjectId(item.ObjectId, out var selectedElement))
+            {
+                continue;
+            }
+
+            var isPrimary = document.SelectionState.PrimaryItem == item;
+            using var selectionPaint = new SKPaint
+            {
+                Style = SKPaintStyle.Stroke,
+                Color = isPrimary ? new SKColor(0xFF, 0xEA, 0x00) : new SKColor(0x4F, 0xC3, 0xF7),
+                StrokeWidth = (float)((isPrimary ? 3d : 2d) / viewport.NormalizedZoom),
+                IsAntialias = true
+            };
+
+            canvas.DrawRect(
+                (float)selectedElement.X,
+                (float)selectedElement.Y,
+                (float)Math.Max(0d, selectedElement.Width),
+                (float)Math.Max(0d, selectedElement.Height),
+                selectionPaint);
         }
-
-        if (!document.TryGetPanelElement(selection.Value, out var selectedElement))
-        {
-            return;
-        }
-
-        using var selectionPaint = new SKPaint
-        {
-            Style = SKPaintStyle.Stroke,
-            Color = new SKColor(0x4F, 0xC3, 0xF7),
-            StrokeWidth = (float)(2d / viewport.NormalizedZoom),
-            IsAntialias = true
-        };
-
-        canvas.DrawRect(
-            (float)selectedElement.X,
-            (float)selectedElement.Y,
-            (float)Math.Max(0d, selectedElement.Width),
-            (float)Math.Max(0d, selectedElement.Height),
-            selectionPaint);
     }
 
     private static void DrawResizeHandles(SKCanvas canvas, DocumentTabViewModel document, PanelViewportTransform viewport)
@@ -219,7 +218,7 @@ public partial class SkiaPanel2DEditView : UserControl
             return;
         }
 
-        if (!TransformLockInteractionService.CanMoveOrResize(selectedElement))
+        if (!Panel2DSelectionInteractionService.CanShowResizeHandles(document.SelectionState.Items, selectedElement))
         {
             return;
         }
@@ -302,15 +301,15 @@ public partial class SkiaPanel2DEditView : UserControl
             }
 
             if (document is not null
-                && TryGetSelectedElement(document, out var selectedElement)
-                && IsPointInsideElement(pointer, selectedElement, new PanelViewportTransform(document.PanelZoom, document.PanelPanX, document.PanelPanY))
-                && TransformLockInteractionService.CanMoveOrResize(selectedElement))
+                && TryGetSelectedElementAtPoint(document, pointer, out var selectedElement)
+                && Panel2DSelectionInteractionService.CanStartGroupMoveFrom(selectedElement, document.SelectionState))
             {
                 _isLeftMouseDown = true;
                 _isDragSelecting = false;
                 _isMovingSelection = true;
                 _isResizingSelection = false;
                 _moveSourceElement = selectedElement;
+                _moveSnapshots = PanelElementBulkMoveService.CaptureMovableSelection(document);
                 _leftMouseDownStart = pointer;
                 _dragSelectionCurrent = pointer;
                 EditSkiaSurface.CaptureMouse();
@@ -438,6 +437,7 @@ public partial class SkiaPanel2DEditView : UserControl
             _isMovingSelection = false;
             _isResizingSelection = false;
             _moveSourceElement = null;
+            _moveSnapshots = [];
             _resizeSourceElement = null;
             _shapeDragSource = null;
             _activeShapeCornerIndex = -1;
@@ -480,6 +480,11 @@ public partial class SkiaPanel2DEditView : UserControl
         if (_isPanning)
         {
             EndPan(releaseMouseCapture: false);
+        }
+
+        if (_isLeftMouseDown && _isMovingSelection)
+        {
+            CancelActiveMovePreview();
         }
 
         if (_isLeftMouseDown && _isResizingSelection && _shapeDragSource is null)
@@ -603,14 +608,34 @@ public partial class SkiaPanel2DEditView : UserControl
 
         var viewport = new PanelViewportTransform(document.PanelZoom, document.PanelPanX, document.PanelPanY);
         var documentPoint = viewport.ScreenToDocument(screenPoint);
+        var isCtrl = (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control;
         var shapeSelection = document.GetPanelFaceSourceShapes().LastOrDefault(shape => IsInsideShapeBounds(shape, documentPoint));
-        var selection = shapeSelection is not null
-            ? PanelFaceSourceShapeCommands.ToSelection(shapeSelection)
-            : Panel2DSelectionService.SelectFromPoint(
-                document.GetPanelElements(),
-                documentPoint,
-                document.HierarchySelectedPanelSelection);
-        NotifySelection(document, selection);
+        if (shapeSelection is not null)
+        {
+            NotifySelection(document, PanelFaceSourceShapeCommands.ToSelection(shapeSelection));
+            return;
+        }
+
+        var selection = Panel2DSelectionService.SelectFromPoint(document.GetPanelElements(), documentPoint, document.HierarchySelectedPanelSelection);
+        if (selection is not { } selected)
+        {
+            if (!isCtrl) document.SelectionState.Clear();
+            return;
+        }
+
+        var item = new EditorSelectionItem(EditorSelectionDomain.PanelElement, selected.ObjectId);
+        if (isCtrl)
+        {
+            document.SelectionState.Toggle(item);
+        }
+        else if (!document.SelectionState.Items.Contains(item))
+        {
+            document.SelectionState.Replace(item);
+        }
+        else
+        {
+            document.SelectionState.SetPrimary(item);
+        }
     }
 
     private static bool HasDraggedSelection(DocumentTabViewModel document, Point startScreenPoint, Point endScreenPoint)
@@ -632,13 +657,15 @@ public partial class SkiaPanel2DEditView : UserControl
         var a = viewport.ScreenToDocument(startScreenPoint);
         var b = viewport.ScreenToDocument(endScreenPoint);
         var rect = Panel2DSelectionBoundsService.CreateNormalizedDocumentRect(a, b);
-        var selection = Panel2DSelectionService.SelectFromRect(
-            document.GetPanelElements(),
-            rect.Left,
-            rect.Top,
-            rect.Right,
-            rect.Bottom);
-        NotifySelection(document, selection);
+        var items = Panel2DSelectionInteractionService.SelectItemsFromRect(document.GetPanelElements(), rect);
+        if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+        {
+            document.SelectionState.AddRange(items);
+        }
+        else
+        {
+            document.SelectionState.Replace(items);
+        }
     }
 
     private void DrawDragSelectionRect(SKCanvas canvas, PanelViewportTransform viewport)
@@ -675,7 +702,7 @@ public partial class SkiaPanel2DEditView : UserControl
 
     private void HandleMoveSelection(DocumentTabViewModel document, Point startScreenPoint, Point endScreenPoint)
     {
-        if (_moveSourceElement is null || string.IsNullOrWhiteSpace(_moveSourceElement.ObjectId))
+        if (_moveSnapshots.Count == 0)
         {
             return;
         }
@@ -688,21 +715,16 @@ public partial class SkiaPanel2DEditView : UserControl
             return;
         }
 
-        var updated = Panel2DMoveComputationService.ComputeMovedElement(_moveSourceElement, start, end);
-        var moveCommand = CanvasMutationCommands.CreateUpdateElementCommand(
-            document.DocumentId,
-            document,
-            _moveSourceElement.ObjectId,
-            updated,
-            _moveSourceElement,
-            "Move element");
+        var updated = PanelElementBulkMoveService.ComputeMovedElements(_moveSnapshots, start, end);
+        var originals = _moveSnapshots.ToDictionary(snapshot => snapshot.ObjectId, snapshot => snapshot.OriginalElement);
+        var moveCommand = CanvasMutationCommands.CreateBulkUpdateElementsCommand(document.DocumentId, document, updated, originals, updated.Count == 1 ? "Move element" : "Move elements");
         document.CommandService.Execute(moveCommand);
     }
 
     private void UpdateMoveSelectionPreview(Point currentScreenPoint)
     {
         var document = Document;
-        if (document is null || _moveSourceElement is null || string.IsNullOrWhiteSpace(_moveSourceElement.ObjectId))
+        if (document is null || _moveSnapshots.Count == 0)
         {
             return;
         }
@@ -710,14 +732,14 @@ public partial class SkiaPanel2DEditView : UserControl
         var viewport = new PanelViewportTransform(document.PanelZoom, document.PanelPanX, document.PanelPanY);
         var start = viewport.ScreenToDocument(_leftMouseDownStart);
         var current = viewport.ScreenToDocument(currentScreenPoint);
-        var updated = Panel2DMoveComputationService.ComputeMovedElement(_moveSourceElement, start, current);
-        if (PanelElementPreviewMutationService.TryApplyPreview(document, _moveSourceElement.ObjectId, updated))
+        var updated = PanelElementBulkMoveService.ComputeMovedElements(_moveSnapshots, start, current);
+        if (PanelElementPreviewMutationService.TryApplyPreviews(document, updated))
         {
             RequestRender();
         }
     }
 
-    private static bool TryGetSelectedElement(DocumentTabViewModel document, out PanelElementModel selectedElement)
+    private static bool TryGetPrimarySelectedElement(DocumentTabViewModel document, out PanelElementModel selectedElement)
     {
         selectedElement = new PanelElementModel();
         var selection = document.HierarchySelectedPanelSelection;
@@ -727,6 +749,21 @@ public partial class SkiaPanel2DEditView : UserControl
         }
 
         return document.TryGetPanelElement(selection.Value, out selectedElement);
+    }
+
+    private static bool TryGetSelectedElementAtPoint(DocumentTabViewModel document, Point screenPoint, out PanelElementModel selectedElement)
+    {
+        selectedElement = new PanelElementModel();
+        var viewport = new PanelViewportTransform(document.PanelZoom, document.PanelPanX, document.PanelPanY);
+        foreach (var item in document.SelectionState.Items.Where(item => item.Domain == EditorSelectionDomain.PanelElement).Reverse())
+        {
+            if (document.TryGetPanelElementByObjectId(item.ObjectId, out var element) && IsPointInsideElement(screenPoint, element, viewport))
+            {
+                selectedElement = element;
+                return true;
+            }
+        }
+        return false;
     }
 
     private static bool IsPointInsideElement(Point screenPoint, PanelElementModel element, PanelViewportTransform viewport)
@@ -801,6 +838,27 @@ public partial class SkiaPanel2DEditView : UserControl
         EditSkiaSurface.Cursor = Cursors.Arrow;
     }
 
+    private void CancelActiveMovePreview()
+    {
+        var document = Document;
+        if (document is not null && _moveSnapshots.Count > 0)
+        {
+            var originals = _moveSnapshots.ToDictionary(snapshot => snapshot.ObjectId, snapshot => snapshot.OriginalElement);
+            if (PanelElementPreviewMutationService.TryApplyPreviews(document, originals))
+            {
+                RequestRender();
+            }
+        }
+
+        _isLeftMouseDown = false;
+        _isDragSelecting = false;
+        _isMovingSelection = false;
+        _isResizingSelection = false;
+        _moveSourceElement = null;
+        _moveSnapshots = [];
+        EditSkiaSurface.Cursor = Cursors.Arrow;
+    }
+
     private void UpdateHoverCursor(Point screenPoint)
     {
         if (_isPanning || (_isLeftMouseDown && _isResizingSelection && _shapeDragSource is null))
@@ -834,14 +892,14 @@ public partial class SkiaPanel2DEditView : UserControl
     {
         handleKind = ResizeHandleKind.None;
         selectedElement = new PanelElementModel();
-        if (!TryGetSelectedElement(document, out selectedElement))
+        if (!TryGetPrimarySelectedElement(document, out selectedElement))
         {
             return false;
         }
 
         var viewport = new PanelViewportTransform(document.PanelZoom, document.PanelPanX, document.PanelPanY);
         var docPoint = viewport.ScreenToDocument(screenPoint);
-        if (!TransformLockInteractionService.CanMoveOrResize(selectedElement))
+        if (!Panel2DSelectionInteractionService.CanShowResizeHandles(document.SelectionState.Items, selectedElement))
         {
             return false;
         }
