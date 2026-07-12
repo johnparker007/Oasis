@@ -146,7 +146,7 @@ public sealed class FaceDocumentRoundTripTests
         Assert.Equal("lampWindow", element.Kind);
         Assert.Equal("lamp:17", element.LinkedMachineObjectReference);
         Assert.Equal("panel-lamp-17", element.LinkedPanel2DElementId);
-        Assert.True(element.IsTransformLocked);
+        Assert.True(element.LockTransform);
     }
 
     [Fact]

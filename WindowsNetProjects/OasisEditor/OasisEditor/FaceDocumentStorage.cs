@@ -210,7 +210,7 @@ public static class FaceDocumentStorage
                 Id = layer.Id,
                 Name = layer.Name,
                 IsVisible = layer.IsVisible,
-                IsTransformLocked = layer.LockTransform
+                LockTransform = layer.IsTransformLocked
             }).ToArray(),
             Elements = model.Elements.Select(ToFile).ToArray()
         };
