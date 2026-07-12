@@ -30,7 +30,7 @@ internal static class CanvasMutationCommands
 
     public static Commands.ICommand CreateDeleteElementCommand(Guid documentId, DocumentTabViewModel document, PanelSelectionInfo selection)
     {
-        return new DeleteElementMutationCommand(documentId, document, selection);
+        return new BulkDeleteSelectionCommand(documentId, document, [HierarchySelectionIdentityService.ToSelectionItem(selection)]);
     }
 
     public static Commands.ICommand CreateRenameElementCommand(

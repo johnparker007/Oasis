@@ -22,7 +22,9 @@ internal sealed class HierarchyPanelCommandService
 
     public bool CanDeleteSelected()
     {
-        return TryGetSelectionDocument(out var document, out var selection) && document.HasPanelElement(selection);
+        var document = _selectedDocumentAccessor();
+        return document is not null
+            && document.SelectionState.Items.Any(IsBulkDeletableSelectionItem);
     }
 
     public bool CanDeleteItem(HierarchyItemViewModel hierarchyItem)
@@ -57,19 +59,25 @@ internal sealed class HierarchyPanelCommandService
 
     public bool DeleteSelected()
     {
-        if (!TryGetSelectionDocument(out var document, out var selection) || !document.HasPanelElement(selection))
+        var document = _selectedDocumentAccessor();
+        if (document is null)
         {
             return false;
         }
 
-        var command = CanvasMutationCommands.CreateDeleteElementCommand(document.DocumentId, document, selection);
-        var wasDeleted = _executeCanvasCommand(document.DocumentId, command);
-        if (wasDeleted)
+        var selectionSnapshot = document.SelectionState.Items.ToArray();
+        if (!selectionSnapshot.Any(IsBulkDeletableSelectionItem))
         {
-            _updateDocumentSelection(document.DocumentId, null);
+            return false;
         }
 
-        return wasDeleted;
+        var command = new BulkDeleteSelectionCommand(document.DocumentId, document, selectionSnapshot);
+        return _executeCanvasCommand(document.DocumentId, command);
+    }
+
+    private static bool IsBulkDeletableSelectionItem(EditorSelectionItem item)
+    {
+        return item.Domain is EditorSelectionDomain.PanelElement or EditorSelectionDomain.FaceElement;
     }
 
     public bool TryGetSelectedName(out string currentName)

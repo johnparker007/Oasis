@@ -187,6 +187,41 @@ public sealed class FaceMultiSelectionInteractionTests
         Assert.False(document.IsDirty);
     }
 
+
+    [Fact]
+    public void BulkDeleteSelectionCommand_DeletesFaceSelectionAtomicallyAndRestoresOrder()
+    {
+        var document = CreateDocument(
+            new FaceLampWindowElement { ObjectId = "first", Name = "First", X = 0, Y = 0, Width = 10, Height = 10, SourceComponentIndex = 1, IsVisible = true },
+            new FaceLampWindowElement { ObjectId = "second", Name = "Second", X = 10, Y = 0, Width = 10, Height = 10, SourceComponentIndex = 2, IsVisible = true },
+            new FaceLampWindowElement { ObjectId = "third", Name = "Third", X = 20, Y = 0, Width = 10, Height = 10, SourceComponentIndex = 3, IsVisible = true });
+        document.SelectionState.Replace(new[]
+        {
+            new EditorSelectionItem(EditorSelectionDomain.FaceElement, "third"),
+            new EditorSelectionItem(EditorSelectionDomain.FaceMaskLayer, "mask"),
+            new EditorSelectionItem(EditorSelectionDomain.FaceElement, "first")
+        }, new EditorSelectionItem(EditorSelectionDomain.FaceElement, "first"));
+
+        var command = new BulkDeleteSelectionCommand(document.DocumentId, document, document.SelectionState.Items);
+        var tracked = Assert.IsAssignableFrom<Commands.IExecutionTrackedCommand>(command);
+
+        command.Execute();
+
+        Assert.True(tracked.WasExecuted);
+        Assert.Equal(new[] { "second" }, document.GetFaceElements().Select(element => element.ObjectId));
+        Assert.Empty(document.SelectionState.Items);
+
+        command.Undo();
+
+        Assert.Equal(new[] { "first", "second", "third" }, document.GetFaceElements().Select(element => element.ObjectId));
+        Assert.Equal(3, Assert.IsType<FaceLampWindowElement>(document.GetFaceElements()[2]).SourceComponentIndex);
+        Assert.Empty(document.SelectionState.Items);
+
+        command.Execute();
+
+        Assert.Equal(new[] { "second" }, document.GetFaceElements().Select(element => element.ObjectId));
+    }
+
     private static DocumentTabViewModel CreateDocument(params FaceElementModel[] elements)
     {
         var document = new DocumentTabViewModel(EditorDocument.CreateFaceStub("Face"));
