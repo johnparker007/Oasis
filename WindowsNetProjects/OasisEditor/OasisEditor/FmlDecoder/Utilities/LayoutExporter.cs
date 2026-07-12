@@ -42,15 +42,15 @@ namespace MfmeFmlDecoder.Utilities
 
         private static void WriteComponentImages(Layout layout, string tempDir)
         {
-            for (int zOrder = 0; zOrder < layout.Components.Count; zOrder++)
+            for (int ordinalComponentIdentifier = 0; ordinalComponentIdentifier < layout.Components.Count; ordinalComponentIdentifier++)
             {
-                BaseComponent component = layout.Components[zOrder];
+                BaseComponent component = layout.Components[ordinalComponentIdentifier];
                 if (component.Images.Count == 0)
                 {
                     continue;
                 }
 
-                string imageDir = Path.Combine(tempDir, "images", zOrder.ToString());
+                string imageDir = Path.Combine(tempDir, "images", ordinalComponentIdentifier.ToString());
                 Directory.CreateDirectory(imageDir);
 
                 foreach (var kvp in component.Images)

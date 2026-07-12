@@ -26,6 +26,7 @@
         EpochDotAlpha = 0x16,
         AlphaNew = 0x19,
         MatrixAlpha = 0x1A,
+        Border = 0x1B,
         SevenSegBlock = 0x1C,
         BFMVideo = 0x1F,
         IGTVfd = 0x20,

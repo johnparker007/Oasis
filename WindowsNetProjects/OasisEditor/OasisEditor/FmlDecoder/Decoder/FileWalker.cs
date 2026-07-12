@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using MfmeFmlDecoder.Model;
 using MfmeFmlDecoder.Utilities;
 
 namespace MfmeFmlDecoder.Decoder
@@ -7,6 +8,7 @@ namespace MfmeFmlDecoder.Decoder
     internal sealed class FileWalker
     {
         private const uint TlvTerminationTag = 0xFFFFFFFF;
+        private const string SupportedMfmeVersion = "20.1";
 
         private ComponentWalker _componentWalker;
         public FileWalker(ComponentWalker componentWalker)
@@ -62,6 +64,11 @@ namespace MfmeFmlDecoder.Decoder
 
                 OnRecordRead(recordStartOffset, tag, length, values);
 
+                if (tag == MfmeVersionReader.MfmeVersionTag)
+                {
+                    ValidateMfmeVersion(recordStartOffset, values);
+                }
+
                 if (LengthPrefixedStringTableScanner.IsFileLevelTag(tag))
                 {
                     LengthPrefixedStringTableScanner.SkipContinuation(
@@ -88,6 +95,17 @@ namespace MfmeFmlDecoder.Decoder
         {
             RunLog.WriteLine($"Offset: 0x{offset:X8}, Tag: 0x{tag:X2}, Length: 0x{length:X2}");
             HexDumpUtility.PrintHexDump((uint)(offset + 8), values, maxBytes: 0xFF);
+        }
+
+        private static void ValidateMfmeVersion(long recordStartOffset, byte[] values)
+        {
+            string version = MfmeVersionReader.FormatVersion(values);
+            if (string.Equals(version, SupportedMfmeVersion, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            throw new UnsupportedMfmeVersionException(recordStartOffset, values);
         }
     }
 }
