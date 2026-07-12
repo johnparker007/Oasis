@@ -1,6 +1,6 @@
 namespace OasisEditor;
 
-internal sealed class BulkDeleteSelectionCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
+public sealed class BulkDeleteSelectionCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
 {
     private readonly Guid _documentId;
     private readonly DocumentTabViewModel _document;
@@ -34,7 +34,7 @@ internal sealed class BulkDeleteSelectionCommand : Commands.IDocumentCommand, Co
             var ids = _deletedPanelElements.Select(item => item.Element.ObjectId).ToHashSet(StringComparer.Ordinal);
             var elements = _document.GetPanelElements()
                 .Where(element => !ids.Contains(element.ObjectId))
-                .Select(PanelElementModelCloner.Clone)
+                .Select(element => PanelElementModelCloner.Clone(element))
                 .ToArray();
             _document.SetPanelElements(elements, CreateStructureChange(_document));
             changed = true;
@@ -45,7 +45,7 @@ internal sealed class BulkDeleteSelectionCommand : Commands.IDocumentCommand, Co
             var ids = _deletedFaceElements.Select(item => item.Element.ObjectId).ToHashSet(StringComparer.Ordinal);
             var elements = _document.GetFaceElements()
                 .Where(element => !ids.Contains(element.ObjectId))
-                .Select(FaceElementModelCloner.Clone)
+                .Select(element => FaceElementModelCloner.Clone(element))
                 .ToArray();
             _document.SetFaceElements(elements, CreateStructureChange(_document));
             changed = true;
@@ -63,7 +63,7 @@ internal sealed class BulkDeleteSelectionCommand : Commands.IDocumentCommand, Co
         var changed = false;
         if (_deletedPanelElements.Count > 0)
         {
-            var elements = _document.GetPanelElements().Select(PanelElementModelCloner.Clone).ToList();
+            var elements = _document.GetPanelElements().Select(element => PanelElementModelCloner.Clone(element)).ToList();
             foreach (var deleted in _deletedPanelElements.OrderBy(item => item.Index))
             {
                 if (elements.Any(element => string.Equals(element.ObjectId, deleted.Element.ObjectId, StringComparison.Ordinal)))
@@ -83,7 +83,7 @@ internal sealed class BulkDeleteSelectionCommand : Commands.IDocumentCommand, Co
         var faceChanged = false;
         if (_deletedFaceElements.Count > 0)
         {
-            var elements = _document.GetFaceElements().Select(FaceElementModelCloner.Clone).ToList();
+            var elements = _document.GetFaceElements().Select(element => FaceElementModelCloner.Clone(element)).ToList();
             foreach (var deleted in _deletedFaceElements.OrderBy(item => item.Index))
             {
                 if (elements.Any(element => string.Equals(element.ObjectId, deleted.Element.ObjectId, StringComparison.Ordinal)))
