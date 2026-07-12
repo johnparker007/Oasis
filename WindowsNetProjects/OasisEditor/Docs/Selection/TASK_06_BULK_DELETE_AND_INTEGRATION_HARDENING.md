@@ -2,7 +2,7 @@
 
 ## Goal
 
-Complete the core multi-selection feature by making Delete operate atomically on selected components and hardening selection behaviour across undo/redo, document changes, and existing editor workflows.
+Complete the core multi-selection feature by making Delete operate atomically on selected components, hardening behaviour across editor workflows, and removing temporary phased compatibility code.
 
 ## Bulk Delete
 
@@ -16,60 +16,72 @@ Requirements:
 - Restore original ordering and hierarchy placement deterministically.
 - Redo removes the same set again.
 - Reconcile selection after deletion.
-- Do not delete unsupported special selection domains accidentally.
-- If a selection mixes deletable and non-deletable domains, handle this explicitly and consistently.
+- Do not accidentally delete unsupported special selection domains.
+- Handle mixed deletable and non-deletable selections explicitly and consistently.
 
 Use the same command path from:
 
 - Hierarchy Delete key
-- Any existing viewport Delete key handling
-- Existing delete command bindings that represent component deletion
+- any existing viewport Delete key handling
+- existing component-delete command bindings
 
-Do not add a new context-menu redesign.
+Do not redesign context menus.
 
 ## Integration Hardening
 
 Review and fix selection behaviour for:
 
-- Undo and redo after group move
-- Undo and redo after Inspector multi-edit
-- Undo and redo after bulk delete
-- Document reload or structure refresh
-- Hierarchy rebuild
-- Switching between open documents
-- Closing a selected document
-- Deleting the primary item
-- Deleting the hierarchy anchor
-- Selection changes during active preview gestures
-- Lost mouse capture and cancelled drags
-- Locked and hidden components
+- undo and redo after group move
+- undo and redo after Inspector multi-edit
+- undo and redo after bulk delete
+- document reload or structure refresh
+- hierarchy rebuild
+- switching between open documents
+- closing a selected document
+- deleting the primary item
+- deleting the hierarchy anchor
+- selection changes during active previews
+- lost mouse capture and cancelled drags
+- locked and hidden components
 
 ## Compatibility Cleanup
 
-Review temporary single-selection compatibility members introduced in Task 01.
+Once all consumers use `DocumentSelectionState`, remove every temporary compatibility member introduced to support phased implementation.
 
-- Remove them where all consumers have migrated.
-- Retain only compatibility that is still required for persisted data or clearly documented external behaviour.
-- Ensure there is still one authoritative selection state.
+Completely remove obsolete selection and lock code, including:
 
-Review old `IsLocked` names and behaviour:
+- `HierarchySelectedPanelSelection` and any equivalent primary-selection bridge
+- old singular selection aliases
+- old `IsLocked` properties and storage
+- compatibility serializers
+- compatibility aliases
+- migration code
+- fallback deserializers
+- obsolete compatibility tests
 
-- Remove obsolete selection-exclusion code.
-- Keep only intentional persisted-data compatibility.
-- Ensure UI and runtime terminology consistently use `Lock Transform` / `IsTransformLocked` where applicable.
+No backward compatibility is required for previous Oasis asset schemas, old selection models, or old lock implementations.
+
+Do not retain compatibility members for persisted data. Remove obsolete code rather than introducing or preserving migration layers.
+
+After cleanup:
+
+- `DocumentSelectionState` is the only authoritative selection state.
+- `IsTransformLocked` is the only lock property.
+- `Lock Transform` is the consistent UI terminology.
+- There is no remaining old-schema selection or lock compatibility layer.
 
 ## Behaviour Consistency Review
 
 Confirm Panel2D and Face agree on:
 
-- Click selection
+- click selection
 - Ctrl-click selection
-- Empty-space behaviour
-- Rectangle replace/add
-- Primary selection rendering
-- Group move
-- Transform-lock handling
-- Selection clearing after deletion
+- empty-space behaviour
+- rectangle replace/add
+- primary selection rendering
+- group move
+- transform-lock handling
+- selection clearing after deletion
 
 Confirm Hierarchy and Inspector remain synchronized with both views.
 
@@ -79,39 +91,42 @@ Test representative larger documents.
 
 Avoid:
 
-- Rebuilding the full hierarchy on every mouse move
-- Rebuilding all Inspector rows on every preview frame
-- Creating one command per selected object
-- Repeatedly resolving the same object identities inside inner rendering loops when a local snapshot would suffice
+- rebuilding the full hierarchy on every mouse move
+- rebuilding all Inspector rows on every preview frame
+- creating one command per selected object
+- repeatedly resolving the same object identities inside inner rendering loops when a local snapshot would suffice
 
-Do not introduce speculative caching unless profiling or obvious hot paths justify it.
+Do not add speculative caching without profiling or an obvious hot path.
 
 ## Out of Scope
 
-- Group resize
-- Alignment/distribution
-- Duplicate/copy/paste
-- Full context-menu redesign
+- group resize
+- alignment/distribution
+- duplicate/copy/paste
+- full context-menu redesign
 - Shift modifiers in viewports
-- Relative Inspector expressions
-- Group-node selection
+- relative Inspector expressions
+- group-node selection
 
 ## Tests
 
 Add or update tests for:
 
-- Atomic bulk delete
-- Ordering restoration on undo
-- Redo
-- Mixed deletable/non-deletable handling
-- Primary and anchor reconciliation
-- Selection state after undo/redo
-- Document switching and closing
-- Lost-capture preview restoration
-- Compatibility cleanup
+- atomic bulk delete
+- ordering restoration on undo
+- redo
+- mixed deletable/non-deletable handling
+- primary and anchor reconciliation
+- selection state after undo/redo
+- document switching and closing
+- lost-capture preview restoration
+- complete temporary-bridge removal
+- complete old `IsLocked` removal
 - Panel2D/Face behaviour parity
 
-Run the full OasisEditor test suite.
+Delete obsolete tests that assert old schema, old serializer, old lock, or old singular-selection compatibility.
+
+Run the full OasisEditor test suite where the Windows/.NET environment permits it.
 
 ## Manual Regression Checklist
 
@@ -126,17 +141,19 @@ Run the full OasisEditor test suite.
 - Test hidden components where supported.
 - Confirm Face Source Shapes, mask layers, asset inspection, resize, pan, zoom, and existing add commands still work.
 - Confirm no old lock behaviour makes an item unselectable.
+- Confirm no consumer still uses the temporary singular-selection bridge.
 
 ## Completion Report
 
 Report:
 
-- Files changed
-- Bulk delete command design
-- Compatibility members removed or retained
-- Full test results
-- Manual regression results requested
-- Remaining known limitations
-- Deferred follow-up recommendations
+- files changed
+- bulk-delete command design
+- temporary compatibility members removed
+- obsolete `IsLocked` and serializer/migration code removed
+- full test results
+- manual regression checks requested
+- remaining known limitations
+- deferred follow-up recommendations
 
 Stop after Task 06 for final user testing and review.
