@@ -60,6 +60,7 @@ internal sealed class PanelElementModel
     public double? VisibleScale { get; init; }
     public double? BandOffset { get; init; }
     public bool IsLocked { get; init; }
+    public bool IsTransformLocked => IsLocked;
     public bool IsVisible { get; init; } = true;
     public int? SourceComponentIndex { get; init; }
     public int? SourceElementIndex { get; init; }

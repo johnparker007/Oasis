@@ -1076,7 +1076,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        SelectedDocument.HierarchySelectedPanelSelection = selection;
+        UpdateDocumentPanelSelection(SelectedDocument.DocumentId, selection);
         NotifyHierarchyCommands();
     }
 
@@ -1089,12 +1089,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         if (hierarchyItem is null || hierarchyItem.IsGroup || hierarchyItem.PanelSelection is not PanelSelectionInfo selection)
         {
-            SelectedDocument.HierarchySelectedPanelSelection = null;
+            UpdateDocumentPanelSelection(SelectedDocument.DocumentId, null);
             NotifyHierarchyCommands();
             return;
         }
 
-        SelectedDocument.HierarchySelectedPanelSelection = selection;
+        UpdateDocumentPanelSelection(SelectedDocument.DocumentId, selection);
         NotifyHierarchyCommands();
     }
 

@@ -73,6 +73,7 @@ public partial class SkiaPanel2DEditView : UserControl
         {
             _subscribedDocument!.PanelChanged -= OnDocumentPanelChanged;
             _subscribedDocument.PanelVisualStateChanged -= OnDocumentPanelVisualStateChanged;
+            _subscribedDocument.SelectionChanged -= OnDocumentSelectionChanged;
             _subscribedDocument.PropertyChanged -= OnDocumentPropertyChanged;
         }
 
@@ -84,6 +85,7 @@ public partial class SkiaPanel2DEditView : UserControl
 
         _subscribedDocument.PanelChanged += OnDocumentPanelChanged;
         _subscribedDocument.PanelVisualStateChanged += OnDocumentPanelVisualStateChanged;
+        _subscribedDocument.SelectionChanged += OnDocumentSelectionChanged;
         _subscribedDocument.PropertyChanged += OnDocumentPropertyChanged;
     }
 
@@ -93,6 +95,11 @@ public partial class SkiaPanel2DEditView : UserControl
     }
 
     private void OnDocumentPanelVisualStateChanged(PanelVisualStateChangedEvent _)
+    {
+        RequestRender();
+    }
+
+    private void OnDocumentSelectionChanged(object? sender, DocumentSelectionChangedEventArgs eventArgs)
     {
         RequestRender();
     }
@@ -212,6 +219,11 @@ public partial class SkiaPanel2DEditView : UserControl
             return;
         }
 
+        if (!TransformLockInteractionService.CanMoveOrResize(selectedElement))
+        {
+            return;
+        }
+
         var handleSizeDoc = ResizeHandleScreenSize / viewport.NormalizedZoom;
         var half = handleSizeDoc / 2d;
         var handles = Panel2DResizeHandleService.GetHandles(selectedElement);
@@ -272,7 +284,8 @@ public partial class SkiaPanel2DEditView : UserControl
             }
 
             if (document is not null
-                && TryGetResizeHandleAtPoint(document, pointer, out var resizeHandle, out var resizeElement))
+                && TryGetResizeHandleAtPoint(document, pointer, out var resizeHandle, out var resizeElement)
+                && TransformLockInteractionService.CanMoveOrResize(resizeElement))
             {
                 _isLeftMouseDown = true;
                 _isDragSelecting = false;
@@ -290,7 +303,8 @@ public partial class SkiaPanel2DEditView : UserControl
 
             if (document is not null
                 && TryGetSelectedElement(document, out var selectedElement)
-                && IsPointInsideElement(pointer, selectedElement, new PanelViewportTransform(document.PanelZoom, document.PanelPanX, document.PanelPanY)))
+                && IsPointInsideElement(pointer, selectedElement, new PanelViewportTransform(document.PanelZoom, document.PanelPanX, document.PanelPanY))
+                && TransformLockInteractionService.CanMoveOrResize(selectedElement))
             {
                 _isLeftMouseDown = true;
                 _isDragSelecting = false;
@@ -827,6 +841,11 @@ public partial class SkiaPanel2DEditView : UserControl
 
         var viewport = new PanelViewportTransform(document.PanelZoom, document.PanelPanX, document.PanelPanY);
         var docPoint = viewport.ScreenToDocument(screenPoint);
+        if (!TransformLockInteractionService.CanMoveOrResize(selectedElement))
+        {
+            return;
+        }
+
         var handleSizeDoc = ResizeHandleScreenSize / viewport.NormalizedZoom;
         return Panel2DResizeHandleHitTestService.TryHitHandle(selectedElement, docPoint, handleSizeDoc, out handleKind);
     }

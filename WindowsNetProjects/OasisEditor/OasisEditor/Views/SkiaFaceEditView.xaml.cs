@@ -62,6 +62,7 @@ public partial class SkiaFaceEditView : UserControl
         {
             _subscribedDocument.PanelChanged -= OnDocumentChanged;
             _subscribedDocument.FaceVisualStateChanged -= OnDocumentFaceVisualStateChanged;
+            _subscribedDocument.SelectionChanged -= OnDocumentSelectionChanged;
             _subscribedDocument.PropertyChanged -= OnDocumentPropertyChanged;
         }
 
@@ -73,6 +74,7 @@ public partial class SkiaFaceEditView : UserControl
 
         _subscribedDocument.PanelChanged += OnDocumentChanged;
         _subscribedDocument.FaceVisualStateChanged += OnDocumentFaceVisualStateChanged;
+        _subscribedDocument.SelectionChanged += OnDocumentSelectionChanged;
         _subscribedDocument.PropertyChanged += OnDocumentPropertyChanged;
     }
 
@@ -82,6 +84,11 @@ public partial class SkiaFaceEditView : UserControl
     }
 
     private void OnDocumentFaceVisualStateChanged(FaceVisualStateChangedEvent _)
+    {
+        RequestRender();
+    }
+
+    private void OnDocumentSelectionChanged(object? sender, DocumentSelectionChangedEventArgs eventArgs)
     {
         RequestRender();
     }

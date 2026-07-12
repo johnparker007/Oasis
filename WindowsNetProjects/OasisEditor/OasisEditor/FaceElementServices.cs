@@ -200,7 +200,7 @@ internal static class FaceSelectionService
     {
         foreach (var element in elements.Reverse())
         {
-            if (!element.IsVisible || element.IsLocked)
+            if (!element.IsVisible)
             {
                 continue;
             }
@@ -227,6 +227,16 @@ internal static class FaceSelectionService
             element.Y,
             element.Width,
             element.Height);
+    }
+
+    public static bool IsFaceSelectionKind(string kind)
+    {
+        return string.Equals(kind, "artwork", StringComparison.Ordinal)
+            || string.Equals(kind, "button", StringComparison.Ordinal)
+            || string.Equals(kind, "reelDisplay", StringComparison.Ordinal)
+            || string.Equals(kind, "sevenSegmentDisplay", StringComparison.Ordinal)
+            || string.Equals(kind, "alphaDisplay", StringComparison.Ordinal)
+            || string.Equals(kind, "lampWindow", StringComparison.Ordinal);
     }
 
     public static string GetKindToken(FaceElementModel element)
