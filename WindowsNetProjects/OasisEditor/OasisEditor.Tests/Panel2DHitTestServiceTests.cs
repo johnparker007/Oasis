@@ -19,7 +19,7 @@ public sealed class Panel2DHitTestServiceTests
     }
 
     [Fact]
-    public void HitTopmostAtPoint_SkipsLockedAndHiddenElements()
+    public void HitTopmostAtPoint_IncludesLockedButSkipsHiddenElements()
     {
         var visible = new PanelElementModel { ObjectId = "visible", Kind = PanelElementKind.Lamp, X = 0, Y = 0, Width = 20, Height = 20, IsVisible = true };
         var locked = new PanelElementModel { ObjectId = "locked", Kind = PanelElementKind.Lamp, X = 0, Y = 0, Width = 20, Height = 20, IsVisible = true, IsLocked = true };
@@ -29,7 +29,7 @@ public sealed class Panel2DHitTestServiceTests
         var hit = Panel2DHitTestService.HitTopmostAtPoint(elements, new Point(10, 10));
 
         Assert.NotNull(hit);
-        Assert.Equal("visible", hit!.ObjectId);
+        Assert.Equal("locked", hit!.ObjectId);
     }
 
     [Fact]
