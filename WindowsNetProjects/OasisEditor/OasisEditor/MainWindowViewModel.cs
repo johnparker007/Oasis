@@ -1064,19 +1064,26 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    public void SelectHierarchyItem(HierarchyItemViewModel? hierarchyItem)
+    public void SelectHierarchyItem(HierarchyItemViewModel? hierarchyItem, HierarchySelectionModifier modifier = HierarchySelectionModifier.None)
     {
         if (SelectedDocument is null || SelectedDocument.Document.DocumentType is not (EditorDocumentType.Panel2D or EditorDocumentType.Face))
         {
             return;
         }
 
-        if (hierarchyItem is null || hierarchyItem.IsGroup || hierarchyItem.PanelSelection is not PanelSelectionInfo selection)
+        if (hierarchyItem is null || hierarchyItem.IsGroup || hierarchyItem.SelectionItem is null)
         {
             return;
         }
 
-        UpdateDocumentPanelSelection(SelectedDocument.DocumentId, selection);
+        HierarchyMouseSelectionService.ApplySelection(
+            SelectedDocument.SelectionState,
+            _hierarchy.GetVisibleRows(),
+            hierarchyItem,
+            modifier);
+        _activeDocumentContext.SetPanelSelection(SelectedDocument.DocumentId, SelectedDocument.HierarchySelectedPanelSelection);
+        _inspector.ActivateDocumentInspection();
+        NotifyInspectorChanged();
         NotifyHierarchyCommands();
     }
 
@@ -1087,14 +1094,19 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        if (hierarchyItem is null || hierarchyItem.IsGroup || hierarchyItem.PanelSelection is not PanelSelectionInfo selection)
+        if (hierarchyItem is null || hierarchyItem.IsGroup || hierarchyItem.SelectionItem is not { } selectionItem)
         {
-            UpdateDocumentPanelSelection(SelectedDocument.DocumentId, null);
             NotifyHierarchyCommands();
             return;
         }
 
-        UpdateDocumentPanelSelection(SelectedDocument.DocumentId, selection);
+        if (!SelectedDocument.SelectionState.Items.Contains(selectionItem))
+        {
+            SelectedDocument.SelectionState.Replace(selectionItem);
+            _activeDocumentContext.SetPanelSelection(SelectedDocument.DocumentId, SelectedDocument.HierarchySelectedPanelSelection);
+            _inspector.ActivateDocumentInspection();
+            NotifyInspectorChanged();
+        }
         NotifyHierarchyCommands();
     }
 
@@ -3633,7 +3645,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _inspector.ActivateDocumentInspection();
         if (selectionChanged)
         {
-            _hierarchy.SyncSelection(selection);
+            _hierarchy.SyncSelection(document?.SelectionState);
         }
         NotifyInspectorChanged();
         OnPropertyChanged(nameof(HierarchyItems));
@@ -4458,7 +4470,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 _activeDocumentContext.SetPanelSelection(SelectedDocument.DocumentId, SelectedDocument.HierarchySelectedPanelSelection);
             }
 
-            _hierarchy.SyncSelection(SelectedDocument?.HierarchySelectedPanelSelection);
+            _hierarchy.SyncSelection(SelectedDocument?.SelectionState);
             OnPropertyChanged(nameof(HierarchyItems));
             NotifyInspectorChanged();
             NotifyHierarchyCommands();

@@ -68,14 +68,19 @@ public sealed class HierarchyViewModel : INotifyPropertyChanged
             Items.Add(item);
         }
 
-        ApplySelection(selectedDocument?.HierarchySelectedPanelSelection);
+        ApplySelection(selectedDocument?.SelectionState);
         EmptyStateMessage = Items.Count > 0 ? string.Empty : "This document has no hierarchy items yet.";
         NotifyCollectionStateChanged();
     }
 
-    public void SyncSelection(PanelSelectionInfo? selection)
+    public void SyncSelection(DocumentSelectionState? selectionState)
     {
-        ApplySelection(selection);
+        ApplySelection(selectionState);
+    }
+
+    public IReadOnlyList<HierarchyItemViewModel> GetVisibleRows()
+    {
+        return HierarchyVisibleRowService.FlattenVisible(Items);
     }
 
     public HierarchyItemViewModel? GetSelectedEntity()
@@ -109,29 +114,28 @@ public sealed class HierarchyViewModel : INotifyPropertyChanged
         }
     }
 
-    private void ApplySelection(PanelSelectionInfo? selection)
+    private void ApplySelection(DocumentSelectionState? selectionState)
     {
+        var selected = selectionState?.Items.ToHashSet() ?? new HashSet<EditorSelectionItem>();
+        var primary = selectionState?.PrimaryItem;
+
         foreach (var item in Flatten(Items))
         {
-            item.IsSelected = false;
+            var selectionItem = item.SelectionItem;
+            item.IsSelected = selectionItem is { } value && selected.Contains(value);
+            item.IsPrimarySelected = selectionItem is { } primaryValue && primary == primaryValue;
         }
 
-        if (selection is not PanelSelectionInfo targetSelection)
+        if (primary is not { } targetPrimary)
         {
             return;
         }
 
-        var selectedItem = Flatten(Items)
-            .FirstOrDefault(item => item.PanelSelection is PanelSelectionInfo itemSelection
-                && IsSelectionMatch(itemSelection, targetSelection));
-
-        if (selectedItem is null)
+        var primaryItem = Flatten(Items).FirstOrDefault(item => item.SelectionItem == targetPrimary);
+        if (primaryItem is not null)
         {
-            return;
+            ExpandParents(Items, primaryItem.NodeKey);
         }
-
-        selectedItem.IsSelected = true;
-        ExpandParents(Items, selectedItem.NodeKey);
     }
 
     private static bool ExpandParents(IEnumerable<HierarchyItemViewModel> roots, string targetNodeKey)
@@ -151,11 +155,6 @@ public sealed class HierarchyViewModel : INotifyPropertyChanged
         }
 
         return false;
-    }
-
-    private static bool IsSelectionMatch(PanelSelectionInfo left, PanelSelectionInfo right)
-    {
-        return PanelSelectionContract.IsSameSelection(left, right);
     }
 
     private static IEnumerable<HierarchyItemViewModel> Flatten(IEnumerable<HierarchyItemViewModel> items)

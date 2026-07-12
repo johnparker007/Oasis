@@ -17,12 +17,7 @@ public partial class HierarchyView : UserControl
 
     private void OnTreeViewSelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> eventArgs)
     {
-        if (DataContext is not MainWindowViewModel viewModel)
-        {
-            return;
-        }
-
-        viewModel.SelectHierarchyItem(eventArgs.NewValue as HierarchyItemViewModel);
+        // Native TreeView selection is focus/navigation only. DocumentSelectionState is updated by explicit mouse gestures.
     }
 
     private void OnTreeViewPreviewKeyDown(object sender, KeyEventArgs eventArgs)
@@ -75,7 +70,7 @@ public partial class HierarchyView : UserControl
             return;
         }
 
-        treeViewItem.IsSelected = true;
+        treeViewItem.Focus();
         viewModel.SelectHierarchyItemForContextMenu(hierarchyItem);
     }
 
@@ -86,15 +81,37 @@ public partial class HierarchyView : UserControl
             return;
         }
 
-        if (FindAncestor<TreeViewItem>(source) is null)
+        var treeViewItem = FindAncestor<TreeViewItem>(source);
+        if (treeViewItem?.DataContext is not HierarchyItemViewModel hierarchyItem)
         {
             return;
+        }
+
+        treeViewItem.Focus();
+        if (DataContext is MainWindowViewModel viewModel)
+        {
+            viewModel.SelectHierarchyItem(hierarchyItem, GetSelectionModifier());
+            eventArgs.Handled = hierarchyItem.SelectionItem is not null;
         }
 
         _suppressAutoScrollForUserTreeSelection = true;
         Dispatcher.BeginInvoke(
             DispatcherPriority.Input,
             new Action(() => _suppressAutoScrollForUserTreeSelection = false));
+    }
+
+    private static HierarchySelectionModifier GetSelectionModifier()
+    {
+        var modifiers = Keyboard.Modifiers;
+        var ctrl = (modifiers & ModifierKeys.Control) == ModifierKeys.Control;
+        var shift = (modifiers & ModifierKeys.Shift) == ModifierKeys.Shift;
+        return (ctrl, shift) switch
+        {
+            (true, true) => HierarchySelectionModifier.ControlShift,
+            (true, false) => HierarchySelectionModifier.Control,
+            (false, true) => HierarchySelectionModifier.Shift,
+            _ => HierarchySelectionModifier.None
+        };
     }
 
     private void OnTreeViewItemSelected(object sender, RoutedEventArgs eventArgs)
