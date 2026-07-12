@@ -275,13 +275,14 @@ internal static class PanelElementFactory
 
     private static Image CreateImageVisual(PanelElementFile element)
     {
+        var hasImage = TryCreateImageSource(element.AssetPath, out var source);
         return new Image
         {
             Uid = element.ObjectId,
             Width = element.Width <= 0 ? NewImageWidth : element.Width,
             Height = element.Height <= 0 ? NewImageHeight : element.Height,
             Stretch = Stretch.Fill,
-            Source = CreatePlaceholderImageSource()
+            Source = hasImage ? source : CreatePlaceholderImageSource()
         };
     }
 

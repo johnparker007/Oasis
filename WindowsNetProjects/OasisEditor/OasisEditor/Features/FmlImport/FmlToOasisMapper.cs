@@ -29,8 +29,14 @@ internal sealed class FmlToOasisMapper
             var component = layout.Components[index];
             switch (component)
             {
-                case Background or Bitmap or Frame:
+                case Background:
                     elements.Add(MapBackground(component, index, exportedImages));
+                    break;
+                case Bitmap:
+                    elements.Add(MapImage(component, index, exportedImages));
+                    break;
+                case Frame or Border:
+                    AddUnsupportedComponent(component, unsupported, warnings);
                     break;
                 case Lamp or PrismLamp or Button or Checkbox:
                     MapLampLike(component, index, exportedImages, elements, inputs);
@@ -48,8 +54,7 @@ internal sealed class FmlToOasisMapper
                     elements.Add(MapLabel(component, index));
                     break;
                 default:
-                    unsupported.Add(component.GetType().Name);
-                    warnings.Add(new LayoutImportWarning("fml.import.component.unsupported", $"Unsupported FML component '{component.GetType().Name}' was skipped.", component.GetType().Name));
+                    AddUnsupportedComponent(component, unsupported, warnings);
                     break;
             }
         }
@@ -63,6 +68,20 @@ internal sealed class FmlToOasisMapper
         X = c.X, Y = c.Y, Width = Math.Max(1, c.Width), Height = Math.Max(1, c.Height),
         AssetPath = BackgroundAssetPath(c, images, index), IsTransformLocked = true, OnColorHex = Color(c, "Colour") ?? Color(c, "Color") ?? Color(c, "BackgroundColour") ?? Color(c, "BackgroundColor"), SourceComponentIndex = index, ImportSource = Source(c, index)
     };
+
+    private static PanelElementModel MapImage(BaseComponent c, int index, IReadOnlyDictionary<FmlDecodedImageKey, string> images) => new()
+    {
+        ObjectId = Guid.NewGuid().ToString("N"), Name = "Image", Kind = PanelElementKind.Image,
+        X = c.X, Y = c.Y, Width = Math.Max(1, c.Width), Height = Math.Max(1, c.Height),
+        AssetPath = FirstImage(images, index), IsTransformLocked = false, SourceComponentIndex = index, ImportSource = Source(c, index)
+    };
+
+    private static void AddUnsupportedComponent(BaseComponent component, ICollection<string> unsupported, ICollection<LayoutImportWarning> warnings)
+    {
+        var componentType = component.GetType().Name;
+        unsupported.Add(componentType);
+        warnings.Add(new LayoutImportWarning("fml.import.component.unsupported", $"Unsupported FML component '{componentType}' was skipped.", componentType));
+    }
 
     private static void MapLampLike(BaseComponent c, int index, IReadOnlyDictionary<FmlDecodedImageKey, string> images, List<PanelElementModel> elements, List<InputDefinitionModel> inputs)
     {

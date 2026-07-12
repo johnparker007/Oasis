@@ -197,6 +197,48 @@ public sealed class PanelElementFactoryTests
     }
 
     [Fact]
+    public void ImportedImageVisual_LoadsAssetPath()
+    {
+        RunInSta(() =>
+        {
+            var projectRoot = Path.Combine(Path.GetTempPath(), $"oasis-panel-image-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(Path.Combine(projectRoot, "Assets"));
+            var imagePath = Path.Combine(projectRoot, "Assets", "image.png");
+            WriteTestPng(imagePath);
+
+            var previousProjectDirectory = PanelElementFactory.ProjectDirectoryPath;
+
+            try
+            {
+                PanelElementFactory.ProjectDirectoryPath = projectRoot;
+                var source = new PanelElementFile
+                {
+                    ObjectId = "image-asset-1",
+                    Name = "Image",
+                    Kind = Panel2DDocumentStorage.SerializeElementKind(PanelElementKind.Image),
+                    Width = 32,
+                    Height = 24,
+                    AssetPath = "Assets/image.png"
+                };
+
+                var visual = Assert.IsType<Image>(PanelElementFactory.CreateVisualFromElement(source));
+                var bitmap = Assert.IsType<BitmapImage>(visual.Source);
+
+                Assert.Equal(new Uri(imagePath, UriKind.Absolute), bitmap.UriSource);
+                Assert.Equal(Stretch.Fill, visual.Stretch);
+            }
+            finally
+            {
+                PanelElementFactory.ProjectDirectoryPath = previousProjectDirectory;
+                if (Directory.Exists(projectRoot))
+                {
+                    Directory.Delete(projectRoot, recursive: true);
+                }
+            }
+        });
+    }
+
+    [Fact]
     public void CreateVisualFromElement_LampWithoutImage_UsesTextColorForLabel()
     {
         RunInSta(() =>
