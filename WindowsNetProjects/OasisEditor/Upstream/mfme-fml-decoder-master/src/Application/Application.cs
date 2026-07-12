@@ -24,6 +24,7 @@ namespace MfmeFmlDecoder.Application
                     out bool writeLayoutJson,
                     out bool exportLayout,
                     out string exportOutputPath,
+                    out bool printMfmeVersion,
                     out string parseError))
             {
                 if (!string.IsNullOrEmpty(parseError))
@@ -32,13 +33,20 @@ namespace MfmeFmlDecoder.Application
                 return 1;
             }
 
-            RunLog.Quiet = writeLayoutJson || exportLayout;
+            RunLog.Quiet = writeLayoutJson || exportLayout || printMfmeVersion;
             try
             {
                 string inputPath = Path.GetFullPath(fileName);
                 if (!File.Exists(inputPath))
                 {
                     throw new FileNotFoundException(inputPath);
+                }
+
+                if (printMfmeVersion)
+                {
+                    string version = ReadMfmeVersion(inputPath, offset);
+                    Console.Out.WriteLine(version);
+                    return 0;
                 }
 
                 var componentParser = new ComponentParser();
@@ -94,6 +102,17 @@ namespace MfmeFmlDecoder.Application
             }
         }
 
+        private static string ReadMfmeVersion(string inputPath, uint offset)
+        {
+            if (string.Equals(Path.GetExtension(inputPath), ".fml", StringComparison.OrdinalIgnoreCase))
+            {
+                byte[] decrypted = FmlDecryptor.Decrypt(ReadFileBytes(inputPath));
+                return MfmeVersionReader.Read(decrypted, offset);
+            }
+
+            return MfmeVersionReader.Read(inputPath, offset);
+        }
+
         private static bool TryParseArgs(
             string[] args,
             out string fileName,
@@ -101,6 +120,7 @@ namespace MfmeFmlDecoder.Application
             out bool writeLayoutJson,
             out bool exportLayout,
             out string exportOutputPath,
+            out bool printMfmeVersion,
             out string error)
         {
             fileName = null;
@@ -108,6 +128,7 @@ namespace MfmeFmlDecoder.Application
             writeLayoutJson = false;
             exportLayout = false;
             exportOutputPath = null;
+            printMfmeVersion = false;
             error = null;
 
             var positionals = new List<string>();
@@ -147,6 +168,10 @@ namespace MfmeFmlDecoder.Application
                     exportLayout = true;
                     exportOutputPath = value;
                 }
+                else if (a == "--mfme-version")
+                {
+                    printMfmeVersion = true;
+                }
                 else if (!a.StartsWith("-", StringComparison.Ordinal))
                 {
                     positionals.Add(a);
@@ -178,6 +203,12 @@ namespace MfmeFmlDecoder.Application
             if (positionals.Count > 2)
             {
                 error = "Too many positional arguments (expected <file> [offset]).";
+                return false;
+            }
+
+            if (printMfmeVersion && (writeLayoutJson || exportLayout))
+            {
+                error = "--mfme-version cannot be combined with --json or --export.";
                 return false;
             }
 
@@ -249,12 +280,13 @@ namespace MfmeFmlDecoder.Application
         private static void PrintUsage()
         {
             Console.WriteLine("Usage:");
-            Console.WriteLine("  MfmeFmlDecoder <filename.(dat|fml)> [offset] [--json]");
+            Console.WriteLine("  MfmeFmlDecoder <filename.(dat|fml)> [offset] [--json] [--export]");
             Console.WriteLine();
             Console.WriteLine("Options:");
             Console.WriteLine("  --json, -j          Emit decoded layout as JSON on standard output only; errors go to stderr.");
             Console.WriteLine("  --export[=path]     Write layout.json and component images to a zip file.");
             Console.WriteLine("                      Default output: <input-file>.zip in the same directory as the input file.");
+            Console.WriteLine("  --mfme-version      Print the MFME version from the layout file (TLV tag 0x2F) on standard output.");
             Console.WriteLine();
             Console.WriteLine("Examples:");
             Console.WriteLine("  MfmeFmlDecoder file.dat --json");
@@ -262,6 +294,7 @@ namespace MfmeFmlDecoder.Application
             Console.WriteLine("  MfmeFmlDecoder file.dat 0x1000 --json");
             Console.WriteLine("  MfmeFmlDecoder file.dat --export");
             Console.WriteLine("  MfmeFmlDecoder file.dat --export=C:\\out\\layout.zip");
+            Console.WriteLine("  MfmeFmlDecoder file.fml --mfme-version");
         }
 
     }

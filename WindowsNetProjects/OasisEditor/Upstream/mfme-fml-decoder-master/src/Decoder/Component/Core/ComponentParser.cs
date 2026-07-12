@@ -1,4 +1,5 @@
 using MfmeFmlDecoder.Model;
+using MfmeFmlDecoder.src.Decoder.Component.Helper;
 using MfmeFmlDecoder.src.Model;
 using MfmeFmlDecoder.src.Model.Component;
 using System;
@@ -31,6 +32,7 @@ namespace MfmeFmlDecoder.src.Decoder.Component.Core
         private readonly EpochDotAlphaParser epochDotAlphaParser = new();
         private readonly AlphaNewParser alphaNewParser = new();
         private readonly MatrixAlphaParser matrixAlphaParser = new();
+        private readonly BorderParser borderParser = new();
         private readonly SevenSegBlockParser sevenSegBlockParser = new();
         private readonly BFMVideoParser bfmVideoParser = new();
         private readonly IGTVfdParser igtVfdParser = new();
@@ -141,6 +143,9 @@ namespace MfmeFmlDecoder.src.Decoder.Component.Core
                 case (uint)MFMEComponentType.MatrixAlpha:
                     components.Add(matrixAlphaParser.Parse(componentOffset, componentId, data));
                     break;
+                case (uint)MFMEComponentType.Border:
+                    components.Add(borderParser.Parse(componentOffset, componentId, data));
+                    break;
                 case (uint)MFMEComponentType.SevenSegBlock:
                     components.Add(sevenSegBlockParser.Parse(componentOffset, componentId, data));
                     break;
@@ -191,6 +196,10 @@ namespace MfmeFmlDecoder.src.Decoder.Component.Core
             }
         }
 
-        public Layout ToLayout() => new Layout(components);
+        public Layout ToLayout()
+        {
+            BorderOwnershipAssigner.Annotate(components);
+            return new Layout(components);
+        }
     }
 }

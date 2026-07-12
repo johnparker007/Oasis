@@ -30,7 +30,7 @@ namespace MfmeFmlDecoder.src.Model
             for (int i = 0; i < Components.Count; i++)
             {
                 BaseComponent component = Components[i];
-                component.SerializationZOrder = i;
+                component.OrdinalComponentIdentifier = i;
                 component.WriteTo(writer, options, propertyIndentSpaces: indented ? 6 : 0);
             }
 
