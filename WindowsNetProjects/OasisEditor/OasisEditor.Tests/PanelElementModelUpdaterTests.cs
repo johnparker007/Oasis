@@ -26,7 +26,7 @@ public sealed class PanelElementModelUpdaterTests
             IsReversed = true,
             Stops = 24,
             VisibleScale = 1.5,
-            IsLocked = false,
+            IsTransformLocked = false,
             IsVisible = true,
             HasBorder = true
         };
@@ -39,7 +39,7 @@ public sealed class PanelElementModelUpdaterTests
                 X = 99.5,
                 AssetPath = (string?)null,
                 DisplayNumber = (int?)null,
-                IsLocked = true,
+                IsTransformLocked = true,
                 IsVisible = false
             });
 
@@ -50,7 +50,7 @@ public sealed class PanelElementModelUpdaterTests
         Assert.Equal(20, updated.Y);
         Assert.Null(updated.AssetPath);
         Assert.Null(updated.DisplayNumber);
-        Assert.True(updated.IsLocked);
+        Assert.True(updated.IsTransformLocked);
         Assert.False(updated.IsVisible);
         Assert.Equal("#111111", updated.OffColorHex);
         Assert.True(updated.HasBorder);

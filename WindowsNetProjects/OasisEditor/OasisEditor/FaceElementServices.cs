@@ -40,7 +40,7 @@ internal static class FaceElementModelUpdater
                 Width = update.Width ?? existing.Width,
                 Height = update.Height ?? existing.Height,
                 IsVisible = update.IsVisible ?? existing.IsVisible,
-                IsLocked = update.IsLocked ?? existing.IsLocked,
+                IsTransformLocked = update.IsTransformLocked ?? existing.IsTransformLocked,
                 LinkedMachineObjectReference = linkedMachineObjectReference,
                 LinkedPanel2DElementId = update.HasLinkedPanel2DElementId ? update.LinkedPanel2DElementId : existing.LinkedPanel2DElementId,
                 AssetPath = artwork.AssetPath,
@@ -57,7 +57,7 @@ internal static class FaceElementModelUpdater
                 Width = update.Width ?? existing.Width,
                 Height = update.Height ?? existing.Height,
                 IsVisible = update.IsVisible ?? existing.IsVisible,
-                IsLocked = update.IsLocked ?? existing.IsLocked,
+                IsTransformLocked = update.IsTransformLocked ?? existing.IsTransformLocked,
                 LinkedMachineObjectReference = linkedMachineObjectReference,
                 LinkedPanel2DElementId = update.HasLinkedPanel2DElementId ? update.LinkedPanel2DElementId : existing.LinkedPanel2DElementId,
                 AssetPath = reelDisplay.AssetPath,
@@ -75,7 +75,7 @@ internal static class FaceElementModelUpdater
                 Width = update.Width ?? existing.Width,
                 Height = update.Height ?? existing.Height,
                 IsVisible = update.IsVisible ?? existing.IsVisible,
-                IsLocked = update.IsLocked ?? existing.IsLocked,
+                IsTransformLocked = update.IsTransformLocked ?? existing.IsTransformLocked,
                 LinkedMachineObjectReference = linkedMachineObjectReference,
                 LinkedPanel2DElementId = update.HasLinkedPanel2DElementId ? update.LinkedPanel2DElementId : existing.LinkedPanel2DElementId,
                 BulbMaskAssetPath = ((FaceLampWindowElement)existing).BulbMaskAssetPath,
@@ -93,7 +93,7 @@ internal static class FaceElementModelUpdater
                 Width = update.Width ?? existing.Width,
                 Height = update.Height ?? existing.Height,
                 IsVisible = update.IsVisible ?? existing.IsVisible,
-                IsLocked = update.IsLocked ?? existing.IsLocked,
+                IsTransformLocked = update.IsTransformLocked ?? existing.IsTransformLocked,
                 LinkedMachineObjectReference = linkedMachineObjectReference,
                 LinkedPanel2DElementId = update.HasLinkedPanel2DElementId ? update.LinkedPanel2DElementId : existing.LinkedPanel2DElementId,
                 OnColorHex = sevenSegmentDisplay.OnColorHex,
@@ -109,7 +109,7 @@ internal static class FaceElementModelUpdater
                 Width = update.Width ?? existing.Width,
                 Height = update.Height ?? existing.Height,
                 IsVisible = update.IsVisible ?? existing.IsVisible,
-                IsLocked = update.IsLocked ?? existing.IsLocked,
+                IsTransformLocked = update.IsTransformLocked ?? existing.IsTransformLocked,
                 LinkedMachineObjectReference = linkedMachineObjectReference,
                 LinkedPanel2DElementId = update.HasLinkedPanel2DElementId ? update.LinkedPanel2DElementId : existing.LinkedPanel2DElementId,
                 SegmentDisplayType = alphaDisplay.SegmentDisplayType,
@@ -128,7 +128,7 @@ internal static class FaceElementModelUpdater
                 Width = update.Width ?? existing.Width,
                 Height = update.Height ?? existing.Height,
                 IsVisible = update.IsVisible ?? existing.IsVisible,
-                IsLocked = update.IsLocked ?? existing.IsLocked,
+                IsTransformLocked = update.IsTransformLocked ?? existing.IsTransformLocked,
                 LinkedMachineObjectReference = linkedMachineObjectReference,
                 LinkedPanel2DElementId = update.HasLinkedPanel2DElementId ? update.LinkedPanel2DElementId : existing.LinkedPanel2DElementId,
                 LinkedInputReference = linkedMachineObjectReference is MachineObjectReference reference && reference.Kind == MachineObjectKind.Input && !reference.IsEmpty
@@ -148,7 +148,7 @@ internal sealed class FaceElementModelUpdate
     public double? Width { get; init; }
     public double? Height { get; init; }
     public bool? IsVisible { get; init; }
-    public bool? IsLocked { get; init; }
+    public bool? IsTransformLocked { get; init; }
     public bool HasLinkedMachineObjectReference { get; init; }
     public MachineObjectReference? LinkedMachineObjectReference { get; init; }
     public bool HasLinkedPanel2DElementId { get; init; }
@@ -200,7 +200,7 @@ internal static class FaceSelectionService
     {
         foreach (var element in elements.Reverse())
         {
-            if (!element.IsVisible || element.IsLocked)
+            if (!element.IsVisible)
             {
                 continue;
             }
@@ -227,6 +227,16 @@ internal static class FaceSelectionService
             element.Y,
             element.Width,
             element.Height);
+    }
+
+    public static bool IsFaceSelectionKind(string kind)
+    {
+        return string.Equals(kind, "artwork", StringComparison.Ordinal)
+            || string.Equals(kind, "button", StringComparison.Ordinal)
+            || string.Equals(kind, "reelDisplay", StringComparison.Ordinal)
+            || string.Equals(kind, "sevenSegmentDisplay", StringComparison.Ordinal)
+            || string.Equals(kind, "alphaDisplay", StringComparison.Ordinal)
+            || string.Equals(kind, "lampWindow", StringComparison.Ordinal);
     }
 
     public static string GetKindToken(FaceElementModel element)

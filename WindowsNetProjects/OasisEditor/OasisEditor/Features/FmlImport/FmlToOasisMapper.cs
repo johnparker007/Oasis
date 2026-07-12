@@ -61,7 +61,7 @@ internal sealed class FmlToOasisMapper
     {
         ObjectId = Guid.NewGuid().ToString("N"), Name = "Background", Kind = PanelElementKind.Background,
         X = c.X, Y = c.Y, Width = Math.Max(1, c.Width), Height = Math.Max(1, c.Height),
-        AssetPath = BackgroundAssetPath(c, images, index), OnColorHex = Color(c, "Colour") ?? Color(c, "Color") ?? Color(c, "BackgroundColour") ?? Color(c, "BackgroundColor"), SourceComponentIndex = index, ImportSource = Source(c, index)
+        AssetPath = BackgroundAssetPath(c, images, index), IsTransformLocked = true, OnColorHex = Color(c, "Colour") ?? Color(c, "Color") ?? Color(c, "BackgroundColour") ?? Color(c, "BackgroundColor"), SourceComponentIndex = index, ImportSource = Source(c, index)
     };
 
     private static void MapLampLike(BaseComponent c, int index, IReadOnlyDictionary<FmlDecodedImageKey, string> images, List<PanelElementModel> elements, List<InputDefinitionModel> inputs)

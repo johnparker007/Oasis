@@ -175,7 +175,7 @@ public static class FaceDocumentStorage
                     Id = string.IsNullOrWhiteSpace(layer.Id) ? Guid.NewGuid().ToString("N") : layer.Id.Trim(),
                     Name = layer.Name ?? string.Empty,
                     IsVisible = layer.IsVisible,
-                    IsLocked = layer.IsLocked
+                    IsTransformLocked = layer.LockTransform
                 })
                 .ToArray(),
             Elements = (file.Elements ?? [])
@@ -210,7 +210,7 @@ public static class FaceDocumentStorage
                 Id = layer.Id,
                 Name = layer.Name,
                 IsVisible = layer.IsVisible,
-                IsLocked = layer.IsLocked
+                LockTransform = layer.IsTransformLocked
             }).ToArray(),
             Elements = model.Elements.Select(ToFile).ToArray()
         };
@@ -426,7 +426,7 @@ public static class FaceDocumentStorage
             Width = file.Width,
             Height = file.Height,
             IsVisible = file.IsVisible,
-            IsLocked = file.IsLocked,
+            IsTransformLocked = file.LockTransform,
             LinkedMachineObjectReference = reference,
             LinkedPanel2DElementId = file.LinkedPanel2DElementId,
             SourceLampWindowObjectId = file.SourceLampWindowObjectId ?? string.Empty,
@@ -454,7 +454,7 @@ public static class FaceDocumentStorage
             Width = model.Width,
             Height = model.Height,
             IsVisible = model.IsVisible,
-            IsLocked = model.IsLocked,
+            LockTransform = model.IsTransformLocked,
             LinkedMachineObjectReference = model.LinkedMachineObjectReference?.ToString(),
             LinkedPanel2DElementId = model.LinkedPanel2DElementId,
             SourceLampWindowObjectId = model.SourceLampWindowObjectId,
@@ -536,7 +536,7 @@ public static class FaceDocumentStorage
                 Width = file.Width,
                 Height = file.Height,
                 IsVisible = file.IsVisible,
-                IsLocked = file.IsLocked,
+                IsTransformLocked = file.LockTransform,
                 LinkedMachineObjectReference = reference,
                 LinkedPanel2DElementId = file.LinkedPanel2DElementId,
                 AssetPath = file.AssetPath,
@@ -558,7 +558,7 @@ public static class FaceDocumentStorage
                 Width = file.Width,
                 Height = file.Height,
                 IsVisible = file.IsVisible,
-                IsLocked = file.IsLocked,
+                IsTransformLocked = file.LockTransform,
                 LinkedMachineObjectReference = reference,
                 LinkedPanel2DElementId = file.LinkedPanel2DElementId,
                 AssetPath = file.AssetPath,
@@ -581,7 +581,7 @@ public static class FaceDocumentStorage
                 Width = file.Width,
                 Height = file.Height,
                 IsVisible = file.IsVisible,
-                IsLocked = file.IsLocked,
+                IsTransformLocked = file.LockTransform,
                 LinkedMachineObjectReference = reference,
                 LinkedPanel2DElementId = file.LinkedPanel2DElementId,
                 OnColorHex = file.OnColorHex,
@@ -602,7 +602,7 @@ public static class FaceDocumentStorage
                 Width = file.Width,
                 Height = file.Height,
                 IsVisible = file.IsVisible,
-                IsLocked = file.IsLocked,
+                IsTransformLocked = file.LockTransform,
                 LinkedMachineObjectReference = reference,
                 LinkedPanel2DElementId = file.LinkedPanel2DElementId,
                 SegmentDisplayType = file.SegmentDisplayType,
@@ -626,7 +626,7 @@ public static class FaceDocumentStorage
                 Width = file.Width,
                 Height = file.Height,
                 IsVisible = file.IsVisible,
-                IsLocked = file.IsLocked,
+                IsTransformLocked = file.LockTransform,
                 LinkedMachineObjectReference = linkedInputReference?.Reference ?? reference,
                 LinkedPanel2DElementId = file.LinkedPanel2DElementId,
                 LinkedInputReference = linkedInputReference
@@ -642,7 +642,7 @@ public static class FaceDocumentStorage
             Width = file.Width,
             Height = file.Height,
             IsVisible = file.IsVisible,
-            IsLocked = file.IsLocked,
+            IsTransformLocked = file.LockTransform,
             LinkedMachineObjectReference = reference,
             LinkedPanel2DElementId = file.LinkedPanel2DElementId,
             BulbMaskAssetPath = file.BulbMaskAssetPath,
@@ -710,7 +710,7 @@ public static class FaceDocumentStorage
             Width = model.Width,
             Height = model.Height,
             IsVisible = model.IsVisible,
-            IsLocked = model.IsLocked,
+            LockTransform = model.IsTransformLocked,
             LinkedMachineObjectReference = model.LinkedMachineObjectReference?.ToString(),
             LinkedPanel2DElementId = model.LinkedPanel2DElementId,
             LinkedInputReference = model is FaceButtonElement button ? button.LinkedInputReference?.ToString() : null,
@@ -847,7 +847,7 @@ public sealed record FaceLampEmitterFile
     public double Width { get; init; }
     public double Height { get; init; }
     public bool IsVisible { get; init; } = true;
-    public bool IsLocked { get; init; }
+    public bool LockTransform { get; init; }
     public string? LinkedMachineObjectReference { get; init; }
     public string? LinkedPanel2DElementId { get; init; }
     public string? SourceLampWindowObjectId { get; init; }
@@ -883,7 +883,7 @@ public sealed record FaceLayerFile
     public string? Id { get; init; }
     public string? Name { get; init; }
     public bool IsVisible { get; init; } = true;
-    public bool IsLocked { get; init; }
+    public bool LockTransform { get; init; }
 }
 
 public sealed record FaceElementFile
@@ -896,7 +896,7 @@ public sealed record FaceElementFile
     public double Width { get; init; }
     public double Height { get; init; }
     public bool IsVisible { get; init; } = true;
-    public bool IsLocked { get; init; }
+    public bool LockTransform { get; init; }
     public string? LinkedMachineObjectReference { get; init; }
     public string? LinkedPanel2DElementId { get; init; }
     public string? LinkedInputReference { get; init; }

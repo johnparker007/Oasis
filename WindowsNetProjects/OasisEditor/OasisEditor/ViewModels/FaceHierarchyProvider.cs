@@ -112,9 +112,9 @@ public sealed class FaceHierarchyProvider : IDocumentHierarchyProvider
         var displayName = string.IsNullOrWhiteSpace(element.Name)
             ? $"{kindName} {index + 1} ({width}×{height} at {x}, {y})"
             : element.Name.Trim();
-        if (element.IsLocked)
+        if (element.IsTransformLocked)
         {
-            displayName += " [Locked]";
+            displayName += " [Transform Lock]";
         }
 
         if (!element.IsVisible)

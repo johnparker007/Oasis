@@ -139,7 +139,7 @@ public sealed class DocumentSaveService : IDocumentSaveService
                 Width = artwork.Width,
                 Height = artwork.Height,
                 IsVisible = artwork.IsVisible,
-                IsLocked = artwork.IsLocked,
+                IsTransformLocked = artwork.IsTransformLocked,
                 LinkedMachineObjectReference = artwork.LinkedMachineObjectReference,
                 LinkedPanel2DElementId = artwork.LinkedPanel2DElementId,
                 AssetPath = artworkRelative,

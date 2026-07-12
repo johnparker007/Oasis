@@ -83,7 +83,7 @@ public sealed class InspectorViewModelTests
                     Height = 40,
                     DisplayNumber = 7,
                     OnColorHex = "#FFFFFF",
-                    IsLocked = true,
+                    IsTransformLocked = true,
                     IsVisible = false
                 }
             ]);
@@ -96,7 +96,7 @@ public sealed class InspectorViewModelTests
         viewModel.NotifyContextChanged();
 
         Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Name");
-        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Locked");
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Lock Transform");
         Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Visible");
         Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Display Number");
         Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "On Color");

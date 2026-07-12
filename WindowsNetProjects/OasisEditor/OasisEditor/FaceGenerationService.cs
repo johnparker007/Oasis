@@ -418,7 +418,7 @@ internal sealed class FaceGenerationService
             Width = Math.Round(maxX - minX, 2),
             Height = Math.Round(maxY - minY, 2),
             IsVisible = sourceElement.IsVisible,
-            IsLocked = sourceElement.IsLocked,
+            IsTransformLocked = sourceElement.IsTransformLocked,
             LinkedMachineObjectReference = machineReference.IsEmpty ? null : machineReference,
             LinkedPanel2DElementId = string.IsNullOrWhiteSpace(sourceElement.ObjectId) ? null : sourceElement.ObjectId,
             BulbMaskAssetPath = bulbMaskAssetPath,

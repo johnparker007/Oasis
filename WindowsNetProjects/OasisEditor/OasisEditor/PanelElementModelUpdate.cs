@@ -48,7 +48,7 @@ internal sealed class PanelElementModelUpdate
     public PanelElementOptionalValue<int?> Stops { get; init; }
     public PanelElementOptionalValue<double?> VisibleScale { get; init; }
     public PanelElementOptionalValue<double?> BandOffset { get; init; }
-    public PanelElementOptionalValue<bool> IsLocked { get; init; }
+    public PanelElementOptionalValue<bool> IsTransformLocked { get; init; }
     public PanelElementOptionalValue<bool> IsVisible { get; init; }
 }
 
@@ -87,7 +87,7 @@ internal static class PanelElementModelUpdater
             Stops = update.Stops.HasValue ? update.Stops.Value : source.Stops,
             VisibleScale = update.VisibleScale.HasValue ? update.VisibleScale.Value : source.VisibleScale,
             BandOffset = update.BandOffset.HasValue ? update.BandOffset.Value : source.BandOffset,
-            IsLocked = update.IsLocked.HasValue ? update.IsLocked.Value : source.IsLocked,
+            IsTransformLocked = update.IsTransformLocked.HasValue ? update.IsTransformLocked.Value : source.IsTransformLocked,
             IsVisible = update.IsVisible.HasValue ? update.IsVisible.Value : source.IsVisible,
             SourceComponentIndex = source.SourceComponentIndex,
             SourceElementIndex = source.SourceElementIndex,

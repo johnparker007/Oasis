@@ -178,7 +178,7 @@ internal sealed class ImportPanelElementsCommand : IDocumentCommand, IExecutionT
             Stops = source.Stops,
             VisibleScale = source.VisibleScale,
             BandOffset = source.BandOffset,
-            IsLocked = source.IsLocked,
+            IsTransformLocked = source.IsTransformLocked,
             IsVisible = source.IsVisible,
             SourceComponentIndex = source.SourceComponentIndex,
             SourceElementIndex = source.SourceElementIndex,

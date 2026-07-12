@@ -11,7 +11,7 @@ internal static class Panel2DHitTestService
         for (var i = elements.Count - 1; i >= 0; i--)
         {
             var element = elements[i];
-            if (!element.IsVisible || element.IsLocked)
+            if (!element.IsVisible)
             {
                 continue;
             }
@@ -36,7 +36,7 @@ internal static class Panel2DHitTestService
         for (var i = elements.Count - 1; i >= 0; i--)
         {
             var element = elements[i];
-            if (!element.IsVisible || element.IsLocked)
+            if (!element.IsVisible)
             {
                 continue;
             }
@@ -65,7 +65,7 @@ internal static class Panel2DHitTestService
         for (var i = elements.Count - 1; i >= 0; i--)
         {
             var element = elements[i];
-            if (!element.IsVisible || element.IsLocked)
+            if (!element.IsVisible)
             {
                 continue;
             }

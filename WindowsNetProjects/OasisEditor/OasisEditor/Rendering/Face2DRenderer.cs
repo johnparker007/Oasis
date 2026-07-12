@@ -461,7 +461,7 @@ public sealed class Face2DRenderer : IFace2DRenderer
         var fillColor = hasInput
             ? new SKColor(0x2E, 0x7D, 0x32, 0xD8)
             : new SKColor(0x55, 0x55, 0x55, 0xC8);
-        var strokeColor = element.IsLocked
+        var strokeColor = element.IsTransformLocked
             ? new SKColor(0x9E, 0x9E, 0x9E, 0xF0)
             : hasInput
                 ? new SKColor(0x81, 0xC7, 0x84, 0xFF)

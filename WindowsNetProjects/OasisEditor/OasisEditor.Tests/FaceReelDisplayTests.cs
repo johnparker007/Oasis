@@ -25,7 +25,7 @@ public sealed class FaceReelDisplayTests
                     Width = 50,
                     Height = 120,
                     IsVisible = true,
-                    IsLocked = true,
+                    IsTransformLocked = true,
                     LinkedMachineObjectReference = MachineObjectReference.Reel(2),
                     LinkedPanel2DElementId = "panel-reel-2",
                     AssetPath = "Assets/Reels/reel2.png",

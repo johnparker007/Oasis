@@ -23,7 +23,6 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     private Dictionary<string, PanelElementModel> _sevenSegmentElementsByObjectId = new(StringComparer.Ordinal);
     private Dictionary<string, PanelElementModel> _vfdDotMatrixElementsByObjectId = new(StringComparer.Ordinal);
     private HashSet<string> _visualStateObjectIds = new(StringComparer.Ordinal);
-    private PanelSelectionInfo? _hierarchySelectedPanelSelection;
     private double _panelZoom = 1.0;
     private double _faceZoom = 1.0;
     private double _facePanX;
@@ -39,6 +38,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     public event Action<PanelChangeEvent>? PanelChanged;
     public event Action<PanelVisualStateChangedEvent>? PanelVisualStateChanged;
     public event Action<FaceVisualStateChangedEvent>? FaceVisualStateChanged;
+    public event EventHandler<DocumentSelectionChangedEventArgs>? SelectionChanged;
 
     public DocumentTabViewModel(
         EditorDocument document,
@@ -57,6 +57,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
         _cabinetDocumentJson = cabinetDocumentJson;
         _runtimeState = runtimeState ?? new MachineRuntimeState();
         _panelDocumentModel = Panel2DDocumentStorage.DeserializeModel(panelLayoutJson);
+        SelectionState.SelectionChanged += OnSelectionStateChanged;
         _faceDocumentModel = FaceDocumentStorage.TryRead(faceDocumentJson, out var faceDocumentFile)
             ? FaceDocumentStorage.ToModel(faceDocumentFile)
             : new FaceDocumentModel();
@@ -92,6 +93,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     public Guid DocumentId { get; }
     public CommandService CommandService => _commandService;
     public MachineRuntimeState RuntimeState => _runtimeState;
+    public DocumentSelectionState SelectionState { get; } = new();
     public string Title => Document.IsDirty ? $"{Document.Title}*" : Document.Title;
     public string TypeLabel => Document.DocumentType switch
     {
@@ -245,6 +247,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
         _faceDocumentModel = model;
         _faceDocumentJson = GetFaceDocumentJson();
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FaceDocumentJson)));
+        ReconcileSelection();
 
         if (faceChange is PanelChangeEvent change)
         {
@@ -307,6 +310,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
         };
         _panelLayoutJson = GetPanelLayoutProjectionJson();
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PanelLayoutJson)));
+        ReconcileSelection();
         if (panelChange is PanelChangeEvent change) PanelChanged?.Invoke(change);
     }
 
@@ -321,6 +325,35 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
 
         element = match;
         return true;
+    }
+
+    internal bool TryGetPanelElementByObjectId(string objectId, out PanelElementModel element)
+    {
+        var match = _panelDocumentModel.Elements.FirstOrDefault(candidate =>
+            !string.IsNullOrWhiteSpace(objectId)
+            && string.Equals(candidate.ObjectId, objectId, StringComparison.Ordinal));
+        element = match ?? new PanelElementModel();
+        return match is not null;
+    }
+
+    internal bool TryGetFaceElementByObjectId(string objectId, out FaceElementModel element)
+    {
+        var match = _faceDocumentModel.Elements.FirstOrDefault(candidate =>
+            !string.IsNullOrWhiteSpace(objectId)
+            && string.Equals(candidate.ObjectId, objectId, StringComparison.Ordinal));
+        element = match ?? new FaceLampWindowElement();
+        return match is not null;
+    }
+
+    internal void ReconcileSelection()
+    {
+        SelectionState.Reconcile(item => item.Domain switch
+        {
+            EditorSelectionDomain.PanelElement => _panelDocumentModel.Elements.Any(element => string.Equals(element.ObjectId, item.ObjectId, StringComparison.Ordinal)),
+            EditorSelectionDomain.FaceElement => _faceDocumentModel.Elements.Any(element => string.Equals(element.ObjectId, item.ObjectId, StringComparison.Ordinal)),
+            EditorSelectionDomain.PanelFaceSourceShape => _panelDocumentModel.FaceSourceShapes.Any(shape => string.Equals(shape.Id, item.ObjectId, StringComparison.Ordinal)),
+            _ => false
+        });
     }
 
     internal bool HasPanelElement(PanelSelectionInfo selection)
@@ -342,6 +375,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
         _panelLayoutJson = GetPanelLayoutProjectionJson();
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PanelLayoutJson)));
 
+        ReconcileSelection();
         if (panelChange is PanelChangeEvent change)
         {
             PanelChanged?.Invoke(change);
@@ -486,19 +520,69 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
             _panelDocumentModel.FaceSourceShapes.Select(Panel2DDocumentStorage.ToStorageFaceSourceShape).ToArray());
     }
 
+    /// <summary>
+    /// Temporary single-selection compatibility shim. The document SelectionState is authoritative; this property mirrors only its primary item.
+    /// </summary>
     public PanelSelectionInfo? HierarchySelectedPanelSelection
     {
-        get => _hierarchySelectedPanelSelection;
+        get => TryGetPrimaryPanelSelection(out var selection) ? selection : null;
         set
         {
-            if (_hierarchySelectedPanelSelection == value)
+            if (value is PanelSelectionInfo selection)
             {
-                return;
+                SelectionState.Replace(ToSelectionItem(selection));
+            }
+            else
+            {
+                SelectionState.Clear();
+            }
+        }
+    }
+
+    private void OnSelectionStateChanged(object? sender, DocumentSelectionChangedEventArgs eventArgs)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HierarchySelectedPanelSelection)));
+        SelectionChanged?.Invoke(this, eventArgs);
+    }
+
+    private bool TryGetPrimaryPanelSelection(out PanelSelectionInfo selection)
+    {
+        if (SelectionState.PrimaryItem is { } item)
+        {
+            if (item.Domain == EditorSelectionDomain.PanelElement
+                && TryGetPanelElementByObjectId(item.ObjectId, out var panelElement))
+            {
+                selection = PanelSelectionContract.ToSelectionInfo(Panel2DDocumentStorage.ToStorageElement(panelElement));
+                return true;
             }
 
-            _hierarchySelectedPanelSelection = value;
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HierarchySelectedPanelSelection)));
+            if (item.Domain == EditorSelectionDomain.FaceElement
+                && TryGetFaceElementByObjectId(item.ObjectId, out var faceElement))
+            {
+                selection = FaceSelectionService.ToSelectionInfo(faceElement);
+                return true;
+            }
+
+            if (item.Domain == EditorSelectionDomain.PanelFaceSourceShape
+                && TryGetPanelFaceSourceShape(item.ObjectId, out var shape))
+            {
+                selection = PanelFaceSourceShapeCommands.ToSelection(shape);
+                return true;
+            }
         }
+
+        selection = default;
+        return false;
+    }
+
+    private static EditorSelectionItem ToSelectionItem(PanelSelectionInfo selection)
+    {
+        var domain = string.Equals(selection.Kind, PanelFaceSourceShapeCommands.SelectionKind, StringComparison.Ordinal)
+            ? EditorSelectionDomain.PanelFaceSourceShape
+            : FaceSelectionService.IsFaceSelectionKind(selection.Kind)
+                ? EditorSelectionDomain.FaceElement
+                : EditorSelectionDomain.PanelElement;
+        return new EditorSelectionItem(domain, selection.ObjectId);
     }
 
     public double PanelZoom

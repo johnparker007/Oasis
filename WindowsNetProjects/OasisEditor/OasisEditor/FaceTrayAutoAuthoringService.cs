@@ -191,7 +191,7 @@ internal sealed class FaceTrayAutoAuthoringService
             Width = Math.Round(lampWindow.Width, 2),
             Height = Math.Round(lampWindow.Height, 2),
             IsVisible = lampWindow.IsVisible,
-            IsLocked = true,
+            IsTransformLocked = true,
             LinkedMachineObjectReference = lampWindow.LinkedMachineObjectReference,
             LinkedPanel2DElementId = lampWindow.LinkedPanel2DElementId,
             SourceLampWindowObjectId = lampWindow.ObjectId,

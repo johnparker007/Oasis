@@ -32,7 +32,7 @@ internal static class FaceMutationCommands
             objectId,
             properties,
             AffectsCanvas: true,
-            AffectsHierarchy: structure || properties.HasFlag(PanelChangeProperties.Name) || properties.HasFlag(PanelChangeProperties.Visibility) || properties.HasFlag(PanelChangeProperties.LockState),
+            AffectsHierarchy: structure || properties.HasFlag(PanelChangeProperties.Name) || properties.HasFlag(PanelChangeProperties.Visibility) || properties.HasFlag(PanelChangeProperties.TransformLockState),
             AffectsInspectorRows: true,
             AffectsPersistence: true);
     }
@@ -148,7 +148,7 @@ internal static class FaceMutationCommands
 
             _originalElement ??= elements[index];
             elements[index] = _updatedElement;
-            _document.SetFaceElements(elements, CreateChange(_document, _objectId, PanelChangeProperties.Geometry | PanelChangeProperties.Name | PanelChangeProperties.Visibility | PanelChangeProperties.LockState | PanelChangeProperties.Metadata));
+            _document.SetFaceElements(elements, CreateChange(_document, _objectId, PanelChangeProperties.Geometry | PanelChangeProperties.Name | PanelChangeProperties.Visibility | PanelChangeProperties.TransformLockState | PanelChangeProperties.Metadata));
             _document.HierarchySelectedPanelSelection = FaceSelectionService.ToSelectionInfo(_updatedElement);
             _document.MarkDirty();
             WasExecuted = true;
@@ -169,7 +169,7 @@ internal static class FaceMutationCommands
             }
 
             elements[index] = _originalElement;
-            _document.SetFaceElements(elements, CreateChange(_document, _objectId, PanelChangeProperties.Geometry | PanelChangeProperties.Name | PanelChangeProperties.Visibility | PanelChangeProperties.LockState | PanelChangeProperties.Metadata));
+            _document.SetFaceElements(elements, CreateChange(_document, _objectId, PanelChangeProperties.Geometry | PanelChangeProperties.Name | PanelChangeProperties.Visibility | PanelChangeProperties.TransformLockState | PanelChangeProperties.Metadata));
             _document.HierarchySelectedPanelSelection = FaceSelectionService.ToSelectionInfo(_originalElement);
             _document.MarkDirty();
         }
