@@ -129,6 +129,119 @@ internal static class CanvasMutationCommands
         return new UpdateElementMutationCommand(documentId, document, objectId, updatedElement, description, originalElement);
     }
 
+    public static Commands.ICommand CreateBulkUpdateElementsCommand(
+        Guid documentId,
+        DocumentTabViewModel document,
+        IReadOnlyDictionary<string, PanelElementModel> updatedElements,
+        IReadOnlyDictionary<string, PanelElementModel> originalElements,
+        string description)
+    {
+        return new BulkUpdateElementsMutationCommand(documentId, document, updatedElements, originalElements, description);
+    }
+
+
+    private sealed class BulkUpdateElementsMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
+    {
+        private readonly Guid _documentId;
+        private readonly DocumentTabViewModel _document;
+        private readonly Dictionary<string, PanelElementModel> _updatedElements;
+        private readonly Dictionary<string, PanelElementModel> _originalElements;
+        private readonly string _description;
+        private Dictionary<string, PanelElementModel>? _previousElements;
+
+        public BulkUpdateElementsMutationCommand(Guid documentId, DocumentTabViewModel document, IReadOnlyDictionary<string, PanelElementModel> updatedElements, IReadOnlyDictionary<string, PanelElementModel> originalElements, string description)
+        {
+            _documentId = documentId;
+            _document = document;
+            _updatedElements = updatedElements.ToDictionary(pair => pair.Key, pair => PanelElementModelCloner.Clone(pair.Value));
+            _originalElements = originalElements.ToDictionary(pair => pair.Key, pair => PanelElementModelCloner.Clone(pair.Value));
+            _description = string.IsNullOrWhiteSpace(description) ? "Update elements" : description;
+        }
+
+        public Guid DocumentId => _documentId;
+        public string Description => _description;
+        public bool WasExecuted { get; private set; }
+
+        public void Execute()
+        {
+            WasExecuted = false;
+            var elements = _document.GetPanelElements().ToList();
+            var previous = new Dictionary<string, PanelElementModel>();
+            var changedProperties = PanelChangeProperties.None;
+            var changed = false;
+
+            for (var i = 0; i < elements.Count; i++)
+            {
+                var existing = elements[i];
+                if (string.IsNullOrWhiteSpace(existing.ObjectId) || !_updatedElements.TryGetValue(existing.ObjectId, out var updated))
+                {
+                    continue;
+                }
+
+                if (updated.Kind != existing.Kind || !PanelElementValidation.IsValidForInspectorUpdate(updated))
+                {
+                    continue;
+                }
+
+                if (_originalElements.TryGetValue(existing.ObjectId, out var original) && original.Kind == existing.Kind && PanelElementValidation.IsValidForInspectorUpdate(original))
+                {
+                    previous[existing.ObjectId] = PanelElementModelCloner.Clone(original);
+                }
+                else
+                {
+                    previous[existing.ObjectId] = PanelElementModelCloner.Clone(existing);
+                }
+
+                if (!PanelElementModelComparer.AreEquivalent(existing, updated))
+                {
+                    elements[i] = PanelElementModelCloner.Clone(updated);
+                    changed = true;
+                }
+
+                changedProperties |= UpdateElementMutationCommand.GetChangedProperties(previous[existing.ObjectId], updated);
+            }
+
+            if (previous.Count == 0)
+            {
+                return;
+            }
+
+            _previousElements = previous;
+            if (changed)
+            {
+                _document.SetPanelElements(elements, CreateElementChange(_document, null, changedProperties));
+            }
+            _document.MarkDirty();
+            WasExecuted = true;
+        }
+
+        public void Undo()
+        {
+            if (_previousElements is null || _previousElements.Count == 0)
+            {
+                return;
+            }
+
+            var elements = _document.GetPanelElements().ToList();
+            var changed = false;
+            foreach (var previous in _previousElements)
+            {
+                var index = elements.FindIndex(element => string.Equals(element.ObjectId, previous.Key, StringComparison.Ordinal));
+                if (index >= 0 && !PanelElementModelComparer.AreEquivalent(elements[index], previous.Value))
+                {
+                    elements[index] = PanelElementModelCloner.Clone(previous.Value);
+                    changed = true;
+                }
+            }
+
+            if (changed)
+            {
+                _document.SetPanelElements(elements, CreateElementChange(_document, null, PanelChangeProperties.Geometry));
+                _document.MarkDirty();
+            }
+        }
+    }
+
     private sealed class AddPanelElementMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
     {
         private readonly Guid _documentId;
@@ -862,7 +975,7 @@ internal static class CanvasMutationCommands
             _document.MarkDirty();
         }
 
-        private static PanelChangeProperties GetChangedProperties(PanelElementModel before, PanelElementModel after)
+        internal static PanelChangeProperties GetChangedProperties(PanelElementModel before, PanelElementModel after)
         {
             var changed = PanelChangeProperties.None;
 

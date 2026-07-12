@@ -60,25 +60,58 @@ public sealed class DocumentSelectionState
         RaiseChanged();
     }
 
+    public void Replace(IEnumerable<EditorSelectionItem> items, EditorSelectionItem? primaryItem = null)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        var distinct = items.Where(item => item.IsValid).Distinct().ToList();
+        var primary = primaryItem is { IsValid: true } validPrimary && distinct.Contains(validPrimary)
+            ? validPrimary
+            : distinct.Count > 0 ? distinct[^1] : (EditorSelectionItem?)null;
+
+        if (_items.SequenceEqual(distinct) && _primaryItem == primary && _hierarchyAnchorItem == primary)
+        {
+            return;
+        }
+
+        _items.Clear();
+        _items.AddRange(distinct);
+        _primaryItem = primary;
+        _hierarchyAnchorItem = primary;
+        RaiseChanged();
+    }
+
     public void Add(EditorSelectionItem item)
     {
-        if (!item.IsValid) return;
+        AddRange([item], item);
+    }
+
+    public void AddRange(IEnumerable<EditorSelectionItem> items, EditorSelectionItem? primaryItem = null)
+    {
+        ArgumentNullException.ThrowIfNull(items);
         var changed = false;
-        if (!_items.Contains(item))
+        EditorSelectionItem? lastAdded = null;
+        foreach (var item in items.Where(item => item.IsValid).Distinct())
         {
-            _items.Add(item);
+            if (!_items.Contains(item))
+            {
+                _items.Add(item);
+                changed = true;
+            }
+            lastAdded = item;
+        }
+
+        var requestedPrimary = primaryItem is { IsValid: true } validPrimary && _items.Contains(validPrimary)
+            ? validPrimary
+            : lastAdded is { } added && _items.Contains(added) ? added : (EditorSelectionItem?)null;
+        if (requestedPrimary is { } primary && _primaryItem != primary)
+        {
+            _primaryItem = primary;
             changed = true;
         }
 
-        if (_primaryItem != item)
+        if (_hierarchyAnchorItem is null && _primaryItem is { } currentPrimary)
         {
-            _primaryItem = item;
-            changed = true;
-        }
-
-        if (_hierarchyAnchorItem is null)
-        {
-            _hierarchyAnchorItem = item;
+            _hierarchyAnchorItem = currentPrimary;
             changed = true;
         }
 
