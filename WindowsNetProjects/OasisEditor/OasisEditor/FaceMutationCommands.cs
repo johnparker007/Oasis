@@ -213,8 +213,6 @@ internal static class FaceMutationCommands
             WasExecuted = false;
             var elements = _document.GetFaceElements().ToList();
             var previous = new Dictionary<string, FaceElementModel>();
-            var changed = false;
-
             for (var i = 0; i < elements.Count; i++)
             {
                 var existing = elements[i];
@@ -226,13 +224,12 @@ internal static class FaceMutationCommands
                 if (!FaceElementModelComparer.AreEquivalent(existing, updated))
                 {
                     elements[i] = FaceElementModelCloner.Clone(updated);
-                    changed = true;
                 }
             }
 
             if (previous.Count == 0) return;
             _previousElements = previous;
-            if (changed) _document.SetFaceElements(elements, CreateChange(_document, null, PanelChangeProperties.Geometry));
+            _document.SetFaceElements(elements, CreateChange(_document, null, PanelChangeProperties.Geometry));
             _document.MarkDirty();
             WasExecuted = true;
         }
@@ -241,16 +238,14 @@ internal static class FaceMutationCommands
         {
             if (_previousElements is null || _previousElements.Count == 0) return;
             var elements = _document.GetFaceElements().ToList();
-            var changed = false;
             for (var i = 0; i < elements.Count; i++)
             {
                 if (_previousElements.TryGetValue(elements[i].ObjectId, out var previous))
                 {
                     elements[i] = FaceElementModelCloner.Clone(previous);
-                    changed = true;
                 }
             }
-            if (changed) _document.SetFaceElements(elements, CreateChange(_document, null, PanelChangeProperties.Geometry));
+            _document.SetFaceElements(elements, CreateChange(_document, null, PanelChangeProperties.Geometry));
             _document.MarkDirty();
         }
     }

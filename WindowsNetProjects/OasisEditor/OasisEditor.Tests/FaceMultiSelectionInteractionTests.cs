@@ -93,11 +93,15 @@ public sealed class FaceMultiSelectionInteractionTests
         var originals = document.GetFaceElements().ToDictionary(element => element.ObjectId, element => FaceElementModelCloner.Clone(element));
         var moved = originals.ToDictionary(pair => pair.Key, pair => FaceElementModelCloner.Clone(pair.Value, x: pair.Value.X + 3, y: pair.Value.Y + 4));
 
+        var originalJson = document.FaceDocumentJson;
         Assert.True(FaceElementPreviewMutationService.TryApplyPreviews(document, moved));
+        Assert.Equal(originalJson, document.FaceDocumentJson);
         Assert.True(FaceElementPreviewMutationService.TryApplyPreviews(document, originals));
+        Assert.Equal(originalJson, document.FaceDocumentJson);
         Assert.Empty(document.CommandService.History.Entries);
 
         document.CommandService.Execute(FaceMutationCommands.CreateBulkUpdateElementsCommand(document.DocumentId, document, moved, originals, "Move face elements"));
+        Assert.NotEqual(originalJson, document.FaceDocumentJson);
 
         Assert.Single(document.CommandService.History.Entries);
         Assert.Equal(3, document.GetFaceElements()[0].X);

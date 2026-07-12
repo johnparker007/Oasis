@@ -24,7 +24,10 @@ internal static class FaceElementPreviewMutationService
             || !FaceElementValidation.IsValidForInspectorUpdate(updatedElement)
             || FaceElementModelComparer.AreEquivalent(existing, updatedElement)) return false;
         elements[index] = FaceElementModelCloner.Clone(updatedElement);
-        document.SetFaceElements(elements, new PanelChangeEvent(document.DocumentId, objectId, PanelChangeProperties.Geometry, true, false, true, false));
+        document.SetFaceElements(
+            elements,
+            new PanelChangeEvent(document.DocumentId, objectId, PanelChangeProperties.Geometry, true, false, true, false),
+            updateSerializedDocument: false);
         return true;
     }
 }
