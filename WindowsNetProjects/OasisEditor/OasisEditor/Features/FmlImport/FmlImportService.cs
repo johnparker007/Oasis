@@ -127,6 +127,7 @@ internal sealed class FmlImportService : IFmlImportService
 
         diagnostics.Add($"Generated image count: {imagePaths.Count}; image root: {stagingDirectory}; image paths: {FormatImagePaths(imagePaths.Values)}");
         diagnostics.Add($"Decoded FML component counts by Type: {FormatCounts(CountDecodedTypes(layout))}");
+        diagnostics.AddRange(mapResult.InformationalDiagnostics);
 
         var assetCopyStopwatch = Stopwatch.StartNew();
         var assetResult = _assetCopier.CopyAssetsFromStaging(
@@ -151,6 +152,7 @@ internal sealed class FmlImportService : IFmlImportService
             ImagePaths = imagePaths,
             DecoderWarnings = decodeResult.Warnings,
             MapperWarnings = [.. mapResult.Warnings, .. backgroundClassification.Warnings],
+            MapperInformationalDiagnostics = mapResult.InformationalDiagnostics,
             AssetCopyWarnings = assetResult.Warnings,
             UnsupportedComponentTypes = mapResult.UnsupportedComponentTypes,
             ImportedAssetCount = assetResult.CopiedAssetRelativePaths.Count,
