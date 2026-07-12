@@ -86,7 +86,36 @@ public sealed class FmlBackgroundImportTests
         Assert.Null(classification.MainBackgroundImagePath);
         Assert.Equal(PanelElementKind.Background, ordered[0].Kind);
         Assert.Null(ordered[0].AssetPath);
+        var bitmapImage = Assert.Single(mapResult.Elements.Where(element => element.Kind == PanelElementKind.Image));
+        Assert.Equal("background/overlay.bmp", bitmapImage.AssetPath);
+        Assert.DoesNotContain(mapResult.Elements.Where(element => element.AssetPath == "background/overlay.bmp"), element => element.Kind == PanelElementKind.Background);
         Assert.True(Array.FindIndex(ordered, element => element.AssetPath == "background/overlay.bmp") > Array.FindIndex(ordered, element => element.Kind == PanelElementKind.Reel));
+    }
+
+    [Fact]
+    public void SolidColourBackground_WithLaterBitmap_KeepsImageOutOfBackgroundLayer()
+    {
+        var background = new Background { X = 0, Y = 0, Width = 300, Height = 200 };
+        background.Colours["Colour"] = "#F0F0F0FF";
+        var lamp = new Lamp { X = 20, Y = 20, Width = 30, Height = 30, SublampTable = [new LampSublampTableEntry(1, 1)] };
+        var bitmap = new Bitmap { X = 50, Y = 50, Width = 40, Height = 40 };
+        var layout = new Layout([background, lamp, bitmap]);
+        var images = new Dictionary<FmlDecodedImageKey, string>
+        {
+            [new FmlDecodedImageKey(2, "Bitmap")] = "background/overlay.bmp"
+        };
+
+        var classification = FmlBackgroundClassifier.Classify(layout, images);
+        var mapResult = new FmlToOasisMapper().Map(layout, images);
+        var ordered = FmlPanelElementOrdering.ArrangeForBackgroundMode(mapResult.Elements, classification.Mode).ToArray();
+
+        var backgroundIndex = Array.FindIndex(ordered, element => element.Kind == PanelElementKind.Background);
+        var lampIndex = Array.FindIndex(ordered, element => element.Kind == PanelElementKind.Lamp);
+        var imageIndex = Array.FindIndex(ordered, element => element.Kind == PanelElementKind.Image);
+        Assert.Equal(0, backgroundIndex);
+        Assert.True(lampIndex > backgroundIndex);
+        Assert.True(imageIndex > lampIndex);
+        Assert.Equal(2, ordered[imageIndex].SourceComponentIndex);
     }
 
     [Fact]

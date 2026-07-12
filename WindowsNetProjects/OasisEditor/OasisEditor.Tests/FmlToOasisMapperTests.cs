@@ -106,6 +106,78 @@ public sealed class FmlToOasisMapperTests
     }
 
 
+
+    [Fact]
+    public void Bitmap_MapsToImageNotBackground()
+    {
+        var bitmap = new Bitmap { X = 11, Y = 22, Width = 33, Height = 44 };
+        var images = new Dictionary<FmlDecodedImageKey, string>
+        {
+            [new FmlDecodedImageKey(0, "Bitmap")] = "images/bitmap.png"
+        };
+
+        var result = new FmlToOasisMapper().Map(new Layout([bitmap]), images);
+
+        var element = Assert.Single(result.Elements);
+        Assert.Equal(PanelElementKind.Image, element.Kind);
+        Assert.Equal("Image", element.Name);
+        Assert.Equal("images/bitmap.png", element.AssetPath);
+        Assert.Equal(11, element.X);
+        Assert.Equal(22, element.Y);
+        Assert.Equal(33, element.Width);
+        Assert.Equal(44, element.Height);
+        Assert.False(element.IsTransformLocked);
+        Assert.Equal(0, element.SourceComponentIndex);
+        Assert.DoesNotContain(result.Elements, e => e.Kind == PanelElementKind.Background);
+    }
+
+    [Fact]
+    public void OnlyMfmeBackground_MapsToOasisBackground()
+    {
+        var background = new Background { X = 0, Y = 0, Width = 100, Height = 100 };
+        var firstBitmap = new Bitmap { X = 1, Y = 2, Width = 3, Height = 4 };
+        var secondBitmap = new Bitmap { X = 5, Y = 6, Width = 7, Height = 8 };
+        var images = new Dictionary<FmlDecodedImageKey, string>
+        {
+            [new FmlDecodedImageKey(0, "Background")] = "images/background.png",
+            [new FmlDecodedImageKey(1, "Bitmap")] = "images/first.png",
+            [new FmlDecodedImageKey(2, "Bitmap")] = "images/second.png"
+        };
+
+        var result = new FmlToOasisMapper().Map(new Layout([background, firstBitmap, secondBitmap]), images);
+
+        Assert.Single(result.Elements.Where(e => e.Kind == PanelElementKind.Background));
+        Assert.Equal(2, result.Elements.Count(e => e.Kind == PanelElementKind.Image));
+        Assert.Contains(result.Elements, e => e.Kind == PanelElementKind.Image && e.AssetPath == "images/first.png");
+        Assert.Contains(result.Elements, e => e.Kind == PanelElementKind.Image && e.AssetPath == "images/second.png");
+    }
+
+    [Fact]
+    public void Frame_IsReportedAsUnsupported()
+    {
+        var frame = new Frame { X = 1, Y = 2, Width = 3, Height = 4 };
+
+        var result = new FmlToOasisMapper().Map(new Layout([frame]), new Dictionary<FmlDecodedImageKey, string>());
+
+        Assert.Empty(result.Elements);
+        Assert.Contains(nameof(Frame), result.UnsupportedComponentTypes);
+        Assert.Contains(result.Warnings, warning => warning.Code == "fml.import.component.unsupported" && warning.Context == nameof(Frame));
+        Assert.DoesNotContain(result.Elements, e => e.Kind is PanelElementKind.Background or PanelElementKind.Image);
+    }
+
+    [Fact]
+    public void Border_IsReportedAsUnsupported()
+    {
+        var border = new Border { X = 1, Y = 2, Width = 3, Height = 4 };
+
+        var result = new FmlToOasisMapper().Map(new Layout([border]), new Dictionary<FmlDecodedImageKey, string>());
+
+        Assert.Empty(result.Elements);
+        Assert.Contains(nameof(Border), result.UnsupportedComponentTypes);
+        Assert.Contains(result.Warnings, warning => warning.Code == "fml.import.component.unsupported" && warning.Context == nameof(Border));
+        Assert.DoesNotContain(result.Elements, e => e.Kind is PanelElementKind.Background or PanelElementKind.Image);
+    }
+
     [Fact]
     public void Map_WithDecodedMfmeLabel_UsesLabelKeyFontTextColourAndLampNumber()
     {
