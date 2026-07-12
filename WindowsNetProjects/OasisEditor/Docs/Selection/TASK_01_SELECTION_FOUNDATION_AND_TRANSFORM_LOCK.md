@@ -1,10 +1,16 @@
 # Task 01 - Selection Foundation and Transform Lock
 
+## Status
+
+Implemented and merged.
+
+This document records the intended Task 01 scope and the current compatibility direction for later cleanup.
+
 ## Goal
 
-Introduce the document-scoped selection foundation, fix current selection refresh behaviour, and replace the unwanted old lock semantics with an explicit transform lock.
+Introduce the document-scoped selection foundation, fix selection refresh behaviour, and replace the old lock semantics with an explicit transform lock.
 
-Do not implement user-facing multi-select gestures yet.
+Task 01 must not implement user-facing multi-select gestures.
 
 ## Required Work
 
@@ -14,48 +20,47 @@ Create the authoritative document-scoped selection state described in `MULTI_SEL
 
 It must support:
 
-- Ordered selected items
-- Primary item
-- Hierarchy range anchor
-- Replace, add, remove, toggle, clear, and reconcile operations
-- Dedicated selection-change notifications
-- Per-document selection isolation
+- ordered selected items
+- primary item
+- hierarchy range anchor
+- replace, add, remove, toggle, clear, and reconcile operations
+- dedicated selection-change notifications
+- per-document selection isolation
 
 Use stable object identity and a selection domain. Do not use copied geometry as authoritative selection state.
 
-### Compatibility Bridge
+### Temporary Phased Bridge
 
-Existing code currently expects one `HierarchySelectedPanelSelection` / active selection.
+Existing code initially expected one `HierarchySelectedPanelSelection` / active selection.
 
-Provide a temporary compatibility path where useful, but new code must treat the selection state as authoritative. The compatibility property should represent the primary item only and should not become a second source of truth.
+A temporary bridge may represent the primary selection for consumers not yet migrated, but `DocumentSelectionState` is authoritative and the bridge must never become a second source of truth.
 
-Document any temporary compatibility members so they can be removed after later tasks migrate all consumers.
+This bridge is not old-schema or persisted-data compatibility. It exists only to support phased implementation and must be removed in Task 06 after all consumers use `DocumentSelectionState`.
 
-### Fix Current Panel2D Refresh Bug
+### Fix Panel2D Refresh
 
-Selecting a Panel2D element from the Hierarchy must immediately redraw its viewport selection outline.
+Selecting a Panel2D element from the Hierarchy must immediately redraw its viewport selection outline through the dedicated selection notification path.
 
-Use the new dedicated selection notification rather than adding more ad hoc redraw conditions where practical.
+### Transform Lock
 
-### Replace Old Lock Semantics
+Remove the behaviour where the old lock prevents an element from being selected.
 
-Remove the behaviour where `IsLocked` prevents an element from being selected.
+The only intended lock concept is:
 
-Introduce explicit transform-lock semantics:
+- runtime/model property: `IsTransformLocked`
+- Inspector label: `Lock Transform`
 
-- Prefer `IsTransformLocked` in runtime/model APIs.
-- Inspector label should eventually be `Lock Transform`.
-- Locked elements remain selectable and inspectable.
-- Locked elements cannot be moved or resized.
-- Non-transform properties remain editable.
+Transform-locked elements remain selectable and inspectable. Non-transform properties remain editable. Viewport movement and resize are blocked.
 
-Preserve persisted asset compatibility. If the serialized property is currently named `IsLocked`, add an intentional compatibility mapping or migration. Do not silently drop existing values.
+Old `IsLocked` behaviour and storage may be removed completely.
 
-Newly created/imported background components should default to transform locked. Existing assets must not be rewritten on every load.
+No backward compatibility is required for old Oasis asset schemas or lock serialization. Do not add compatibility mapping, aliases, migrations, fallback deserializers, or old-asset reopening tests.
+
+Newly created or imported background components should default to transform locked where appropriate.
 
 ### Selection Reconciliation
 
-Add a service or method that removes stale selection identities after document structure changes while preserving surviving selections and the primary item when possible.
+Remove stale selection identities after document structure changes while preserving surviving selections and the primary item when possible.
 
 ## Out of Scope
 
@@ -69,38 +74,38 @@ Add a service or method that removes stale selection identities after document s
 
 ## Tests
 
-Add tests covering:
+Cover:
 
-- Selection replace/add/remove/toggle/clear
-- Primary item updates
-- Anchor updates
-- Duplicate prevention
-- Per-document isolation
-- Reconciliation after selected objects are removed
-- Locked elements remain selectable
-- Locked elements are rejected by move/resize eligibility checks
-- Existing serialized lock data remains compatible
-- Hierarchy-originated selection invalidates Panel2D rendering through the new notification path where practical
+- replace/add/remove/toggle/clear
+- primary item updates
+- anchor updates
+- duplicate prevention
+- per-document isolation
+- stale-item reconciliation
+- transform-locked elements remain selectable
+- transform-locked elements are rejected by move/resize eligibility checks
+- hierarchy-originated selection invalidates Panel2D rendering
+
+Do not add tests for compatibility with old `IsLocked` storage or previous Oasis asset schemas.
 
 ## Manual Test Checklist
 
 - Select a Panel2D item in the Hierarchy and confirm the outline appears immediately.
-- Enable Lock Transform, click away, then reselect the component from both viewport and Hierarchy.
+- Enable Lock Transform, click away, then reselect the component from viewport and Hierarchy.
 - Confirm the component remains inspectable.
 - Confirm a locked component cannot be moved or resized.
-- Confirm a newly created/imported background starts transform locked.
-- Reopen an existing asset containing old lock data and confirm the lock value is preserved.
+- Confirm a newly created or imported background starts transform locked where applicable.
 
 ## Completion Report
 
 Report:
 
-- Files added and modified
-- New selection-state API
-- Compatibility members retained
-- Lock serialization/migration approach
-- Tests added and run
-- Manual tests requested
-- Deviations or risks
+- files added and modified
+- selection-state API introduced
+- temporary phased bridges retained
+- obsolete lock behaviour removed
+- tests added and run
+- manual checks requested
+- deviations or risks
 
 Stop after Task 01 for user testing and review.
