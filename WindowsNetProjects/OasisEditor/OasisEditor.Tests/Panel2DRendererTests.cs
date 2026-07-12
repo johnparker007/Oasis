@@ -469,6 +469,176 @@ public sealed class Panel2DRendererTests
             PanelViewportTransform.Identity);
     }
 
+    [Fact]
+    public void ImageElementRenderer_DrawsImageAsset()
+    {
+        var projectDirectory = CreateProjectWithImage("test-image.png", SKColors.LimeGreen);
+        var previousProjectDirectory = PanelElementFactory.ProjectDirectoryPath;
+        try
+        {
+            PanelElementFactory.ProjectDirectoryPath = projectDirectory;
+            using var surface = SKSurface.Create(new SKImageInfo(32, 32, SKColorType.Bgra8888, SKAlphaType.Premul));
+            surface.Canvas.Clear(SKColors.Black);
+
+            new ImageElementRenderer().Render(
+                new PanelElementRenderContext(surface.Canvas, new PanelRuntimeState(), PanelViewportTransform.Identity),
+                new PanelElementModel
+                {
+                    Kind = PanelElementKind.Image,
+                    IsVisible = true,
+                    ObjectId = "image-1",
+                    Name = "Image",
+                    X = 8,
+                    Y = 8,
+                    Width = 16,
+                    Height = 16,
+                    AssetPath = "Assets/test-image.png"
+                });
+
+            var pixel = ReadPixel(surface, 16, 16);
+            Assert.Equal(SKColors.LimeGreen.Red, pixel.Red);
+            Assert.Equal(SKColors.LimeGreen.Green, pixel.Green);
+            Assert.Equal(SKColors.LimeGreen.Blue, pixel.Blue);
+        }
+        finally
+        {
+            PanelElementFactory.ProjectDirectoryPath = previousProjectDirectory;
+            Directory.Delete(projectDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void ImageElementRenderer_PreservesAlpha()
+    {
+        var projectDirectory = CreateProjectWithImage("alpha-image.png", new SKColor(255, 0, 0, 128));
+        var previousProjectDirectory = PanelElementFactory.ProjectDirectoryPath;
+        try
+        {
+            PanelElementFactory.ProjectDirectoryPath = projectDirectory;
+            using var surface = SKSurface.Create(new SKImageInfo(16, 16, SKColorType.Bgra8888, SKAlphaType.Premul));
+            surface.Canvas.Clear(SKColors.White);
+
+            new ImageElementRenderer().Render(
+                new PanelElementRenderContext(surface.Canvas, new PanelRuntimeState(), PanelViewportTransform.Identity),
+                new PanelElementModel
+                {
+                    Kind = PanelElementKind.Image,
+                    IsVisible = true,
+                    ObjectId = "image-alpha-1",
+                    Name = "Image",
+                    Width = 16,
+                    Height = 16,
+                    AssetPath = "Assets/alpha-image.png"
+                });
+
+            var pixel = ReadPixel(surface, 8, 8);
+            Assert.Equal(255, pixel.Alpha);
+            Assert.True(pixel.Red > 240, $"Expected red channel to stay high after alpha blend, got {pixel.Red}.");
+            Assert.InRange(pixel.Green, 120, 140);
+            Assert.InRange(pixel.Blue, 120, 140);
+        }
+        finally
+        {
+            PanelElementFactory.ProjectDirectoryPath = previousProjectDirectory;
+            Directory.Delete(projectDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void ImageElementRenderer_MissingAsset_DoesNotThrow()
+    {
+        using var surface = SKSurface.Create(new SKImageInfo(16, 16, SKColorType.Bgra8888, SKAlphaType.Premul));
+        surface.Canvas.Clear(SKColors.MidnightBlue);
+
+        var exception = Record.Exception(() => new ImageElementRenderer().Render(
+            new PanelElementRenderContext(surface.Canvas, new PanelRuntimeState(), PanelViewportTransform.Identity),
+            new PanelElementModel
+            {
+                Kind = PanelElementKind.Image,
+                IsVisible = true,
+                ObjectId = "missing-image-1",
+                Name = "Image",
+                Width = 16,
+                Height = 16,
+                AssetPath = "Assets/missing.png"
+            }));
+
+        Assert.Null(exception);
+        Assert.Equal(SKColors.MidnightBlue, ReadPixel(surface, 8, 8));
+    }
+
+    [Fact]
+    public void Panel2DRenderer_RendersImageKind()
+    {
+        var projectDirectory = CreateProjectWithImage("panel-image.png", SKColors.HotPink);
+        var previousProjectDirectory = PanelElementFactory.ProjectDirectoryPath;
+        try
+        {
+            PanelElementFactory.ProjectDirectoryPath = projectDirectory;
+            var renderer = new Panel2DRenderer([new ImageElementRenderer()]);
+            using var surface = SKSurface.Create(new SKImageInfo(24, 24, SKColorType.Bgra8888, SKAlphaType.Premul));
+            surface.Canvas.Clear(SKColors.Black);
+
+            renderer.Render(
+                surface.Canvas,
+                [
+                    new PanelElementModel
+                    {
+                        Kind = PanelElementKind.Image,
+                        IsVisible = true,
+                        ObjectId = "panel-image-1",
+                        Name = "Image",
+                        X = 4,
+                        Y = 4,
+                        Width = 16,
+                        Height = 16,
+                        AssetPath = "Assets/panel-image.png"
+                    }
+                ],
+                new PanelRuntimeState(),
+                PanelViewportTransform.Identity);
+
+            Assert.Equal(SKColors.HotPink, ReadPixel(surface, 12, 12));
+        }
+        finally
+        {
+            PanelElementFactory.ProjectDirectoryPath = previousProjectDirectory;
+            Directory.Delete(projectDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Panel2DRendererFactory_DefaultRenderersContainOneImageRenderer()
+    {
+        var imageRenderers = Panel2DRendererFactory.CreateDefaultRenderers()
+            .Where(renderer => renderer.Kind == PanelElementKind.Image)
+            .ToArray();
+
+        var renderer = Assert.Single(imageRenderers);
+        Assert.IsType<ImageElementRenderer>(renderer);
+    }
+
+    private static string CreateProjectWithImage(string fileName, SKColor color)
+    {
+        var projectDirectory = Path.Combine(Path.GetTempPath(), $"oasis-image-renderer-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(Path.Combine(projectDirectory, "Assets"));
+        var assetPath = Path.Combine(projectDirectory, "Assets", fileName);
+        using var bitmap = new SKBitmap(4, 4, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+        bitmap.Erase(color);
+        using var image = SKImage.FromBitmap(bitmap);
+        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+        using var stream = File.OpenWrite(assetPath);
+        data.SaveTo(stream);
+        return projectDirectory;
+    }
+
+    private static SKColor ReadPixel(SKSurface surface, int x, int y)
+    {
+        using var snapshot = surface.Snapshot();
+        using var bitmap = SKBitmap.FromImage(snapshot);
+        return bitmap.GetPixel(x, y);
+    }
+
     private sealed class FakeRenderer(PanelElementKind kind) : IPanelElementRenderer
     {
         public PanelElementKind Kind { get; } = kind;
