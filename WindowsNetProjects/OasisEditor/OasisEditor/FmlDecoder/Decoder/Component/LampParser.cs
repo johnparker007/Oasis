@@ -97,6 +97,7 @@ namespace MfmeFmlDecoder.src.Decoder.Component
                 { 0x25, new TagInfo(0x04, "OutlineColour", new byte[ ] { 0x00, 0x00, 0x00, 0x00 }, ValueRole.ARGB_COLOR) },
                 { 0x0B, new TagInfo(0x04, "ShapeParamter", new byte[ ] { 0x00, 0x00, 0x00, 0x00 }, ValueRole.UINT32) }, // TODO: Add a half number mode for this type.
                 { 0x0D, new TagInfo(0x04, "ShapeAngle", new byte[ ] { 0x00, 0x00, 0x00, 0x00 }, ValueRole.UINT32) },
+                { 0x0E, new TagInfo(0x04, "Unknown 0x0E", new byte[ ] { 0x00, 0x00, 0x00, 0x00 }, ValueRole.UINT32) },
                 { 0x6A, new TagInfo(0x04, "PieSize", new byte[ ] { 0x78, 0x00, 0x00, 0x00 }, ValueRole.UINT32) },
                 { 0x6B, new TagInfo(0x04, "PieStart", new byte[ ] { 0x00, 0x00, 0x00, 0x00 }, ValueRole.UINT32) },
                 { 0x68, new TagInfo(0x00, "Unknown 0x68 (TLV Block)", new byte[ ] { }, ValueRole.TLVBLOCK) },

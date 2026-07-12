@@ -158,7 +158,7 @@ namespace MfmeFmlDecoder.src.Decoder.Component.Core
 
                     offset++;
                     IReadOnlyDictionary<string, string> flagDropdownSelectionsByName =
-                        ResolveFlagDropdownSelections(options, encounteredTags, valuesByTag);
+                        ResolveFlagDropdownSelections(options, encounteredTags, valuesByTag, nestedTagBlockResult);
                     ApplyDefaultsFromMap(
                         componentTagMap,
                         valuesByTag,
@@ -413,7 +413,7 @@ namespace MfmeFmlDecoder.src.Decoder.Component.Core
             if (offset == data.Length)
             {
                 IReadOnlyDictionary<string, string> flagDropdownSelectionsByName =
-                    ResolveFlagDropdownSelections(options, encounteredTags, valuesByTag);
+                    ResolveFlagDropdownSelections(options, encounteredTags, valuesByTag, nestedTagBlockResult);
                 ApplyDefaultsFromMap(
                     componentTagMap,
                     valuesByTag,
@@ -1073,7 +1073,7 @@ namespace MfmeFmlDecoder.src.Decoder.Component.Core
                         : "FLOAT tag has no attribute name.");
             }
 
-            if (attributeName.StartsWith("Unknown", StringComparison.Ordinal))
+            if (attributeName.StartsWith("Unknown", StringComparison.OrdinalIgnoreCase))
             {
                 return;
             }
@@ -1103,7 +1103,7 @@ namespace MfmeFmlDecoder.src.Decoder.Component.Core
                         : "UINT32 tag has no attribute name.");
             }
 
-            if (attributeName.StartsWith("Unknown", StringComparison.Ordinal))
+            if (attributeName.StartsWith("Unknown", StringComparison.OrdinalIgnoreCase))
             {
                 return;
             }
@@ -1133,7 +1133,7 @@ namespace MfmeFmlDecoder.src.Decoder.Component.Core
                         : "INT32 tag has no attribute name.");
             }
 
-            if (attributeName.StartsWith("Unknown", StringComparison.Ordinal))
+            if (attributeName.StartsWith("Unknown", StringComparison.OrdinalIgnoreCase))
             {
                 return;
             }
@@ -1163,7 +1163,7 @@ namespace MfmeFmlDecoder.src.Decoder.Component.Core
                         : "UINT16 tag has no attribute name.");
             }
 
-            if (attributeName.StartsWith("Unknown", StringComparison.Ordinal))
+            if (attributeName.StartsWith("Unknown", StringComparison.OrdinalIgnoreCase))
             {
                 return;
             }
@@ -1193,7 +1193,7 @@ namespace MfmeFmlDecoder.src.Decoder.Component.Core
                         : "BOOLEAN tag has no attribute name.");
             }
 
-            if (attributeName.StartsWith("Unknown", StringComparison.Ordinal))
+            if (attributeName.StartsWith("Unknown", StringComparison.OrdinalIgnoreCase))
             {
                 return;
             }
@@ -1223,7 +1223,7 @@ namespace MfmeFmlDecoder.src.Decoder.Component.Core
                         : "BYTE tag has no attribute name.");
             }
 
-            if (attributeName.StartsWith("Unknown", StringComparison.Ordinal))
+            if (attributeName.StartsWith("Unknown", StringComparison.OrdinalIgnoreCase))
             {
                 return;
             }
@@ -1278,6 +1278,11 @@ namespace MfmeFmlDecoder.src.Decoder.Component.Core
                         : "ARGB_COLOR tag has no attribute name.");
             }
 
+            if (attributeName.StartsWith("Unknown", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
             if (coloursByAttributeName.TryGetValue(attributeName, out string existing))
             {
                 string tagSuffix = tag.HasValue ? $" from tag 0x{tag.Value:X2}" : string.Empty;
@@ -1291,11 +1296,33 @@ namespace MfmeFmlDecoder.src.Decoder.Component.Core
         private static IReadOnlyDictionary<string, string> ResolveFlagDropdownSelections(
             Options options,
             IReadOnlySet<uint> encounteredTags,
-            IReadOnlyDictionary<uint, object> valuesByTag)
+            IReadOnlyDictionary<uint, object> valuesByTag,
+            ParseResult nestedTagBlockResult = null)
         {
             if (options?.FlagDropdownsByName is null || options.FlagDropdownsByName.Count == 0)
             {
                 return new Dictionary<string, string>(StringComparer.Ordinal);
+            }
+
+            IReadOnlySet<uint> effectiveEncounteredTags = encounteredTags;
+            IReadOnlyDictionary<uint, object> effectiveValuesByTag = valuesByTag;
+            if (nestedTagBlockResult?.ValuesByTag is not null && nestedTagBlockResult.ValuesByTag.Count > 0)
+            {
+                HashSet<uint> mergedTags = encounteredTags is null
+                    ? new HashSet<uint>()
+                    : new HashSet<uint>(encounteredTags);
+                Dictionary<uint, object> mergedValues = valuesByTag is null
+                    ? new Dictionary<uint, object>()
+                    : new Dictionary<uint, object>(valuesByTag);
+                foreach (var nestedKvp in nestedTagBlockResult.ValuesByTag)
+                {
+                    mergedTags.Add(nestedKvp.Key);
+                    // Nested values win on tag-id collision so dropdown sources inside 4C ?? 00 are visible.
+                    mergedValues[nestedKvp.Key] = nestedKvp.Value;
+                }
+
+                effectiveEncounteredTags = mergedTags;
+                effectiveValuesByTag = mergedValues;
             }
 
             Dictionary<string, string> selectedByDropdownName = new(StringComparer.Ordinal);
@@ -1309,12 +1336,12 @@ namespace MfmeFmlDecoder.src.Decoder.Component.Core
                 bool hasMatch = false;
                 foreach (var optionByTag in definition.OptionByTag)
                 {
-                    if (!encounteredTags.Contains(optionByTag.Key))
+                    if (!effectiveEncounteredTags.Contains(optionByTag.Key))
                     {
                         continue;
                     }
 
-                    if (valuesByTag.TryGetValue(optionByTag.Key, out object parsedValue))
+                    if (effectiveValuesByTag.TryGetValue(optionByTag.Key, out object parsedValue))
                     {
                         // Support "flag based" dropdowns where source tags are boolean-like fields.
                         if (parsedValue is bool boolValue && !boolValue)

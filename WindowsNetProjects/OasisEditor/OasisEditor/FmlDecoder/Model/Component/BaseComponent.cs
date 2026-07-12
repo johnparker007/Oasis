@@ -32,7 +32,7 @@ namespace MfmeFmlDecoder.src.Model.Component
         /// Set by <see cref="Layout"/> when emitting the component list; not part of parsed FML data.
         /// </summary>
         [JsonIgnore]
-        internal int? SerializationZOrder { get; set; }
+        internal int? OrdinalComponentIdentifier { get; set; }
 
         public Dictionary<string, FontTagEntry> Fonts { get; } = new Dictionary<string, FontTagEntry>();
         [JsonIgnore]
@@ -124,9 +124,9 @@ namespace MfmeFmlDecoder.src.Model.Component
             {
                 ["Type"] = GetType().Name,
             };
-            if (SerializationZOrder.HasValue)
+            if (OrdinalComponentIdentifier.HasValue)
             {
-                ordered["ZOrder"] = SerializationZOrder.Value;
+                ordered["OrdinalComponentIdentifier"] = OrdinalComponentIdentifier.Value;
             }
 
             ordered["Geometry"] = BuildGeometryNode();
@@ -228,6 +228,11 @@ namespace MfmeFmlDecoder.src.Model.Component
         {
             foreach (var kvp in source.OrderBy(entry => entry.Key, StringComparer.Ordinal))
             {
+                if (kvp.Key.StartsWith("Unknown", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
                 if (target.ContainsKey(kvp.Key))
                 {
                     throw new InvalidOperationException($"Duplicate Values key '{kvp.Key}'.");
