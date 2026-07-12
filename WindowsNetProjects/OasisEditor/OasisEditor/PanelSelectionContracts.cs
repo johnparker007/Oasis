@@ -1,6 +1,3 @@
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Shapes;
 
 namespace OasisEditor;
 
@@ -80,44 +77,9 @@ internal static class PanelSelectionContract
             && AreClose(left.Height, right.Height);
     }
 
-    public static bool TryCreateFromVisual(FrameworkElement element, out IPanelSelectableObject selectable)
-    {
-        var attachedKind = PanelElementFactory.GetElementKind(element);
-        var kind = attachedKind != PanelElementKind.Unknown
-            ? attachedKind
-            : element switch
-            {
-                Rectangle => PanelElementKind.Rectangle,
-                Image => PanelElementKind.Image,
-                _ => PanelElementKind.Unknown
-            };
-
-        if (kind == PanelElementKind.Unknown)
-        {
-            selectable = null!;
-            return false;
-        }
-
-        selectable = new VisualPanelSelectableObject(
-            element.Uid?.Trim() ?? string.Empty,
-            kind,
-            Canvas.GetLeft(element),
-            Canvas.GetTop(element),
-            element.Width,
-            element.Height);
-        return true;
-    }
-
     private static bool AreClose(double left, double right)
     {
         return Math.Abs(left - right) < 0.01d;
     }
 
-    private sealed record VisualPanelSelectableObject(
-        string ObjectId,
-        PanelElementKind ElementKind,
-        double X,
-        double Y,
-        double Width,
-        double Height) : IPanelSelectableObject;
 }

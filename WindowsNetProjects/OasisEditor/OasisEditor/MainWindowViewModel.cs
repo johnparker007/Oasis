@@ -2619,7 +2619,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _documentWorkspace.ClearProjectSessionState();
         _activeDocumentContext.ClearAll();
         _machineRuntimeStates.ClearAll();
-        PanelElementFactory.ProjectDirectoryPath = null;
+        ProjectAssetPathResolver.ProjectDirectoryPath = null;
         _assetBrowser.Dispose();
 
         AssetBrowserItems.Clear();
@@ -3516,7 +3516,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ApplySystem6NativeRomSettingsToViewModel(project.System6NativeRoms);
         RefreshMameRomStatus();
         RefreshSystem6NativeRomStatus();
-        PanelElementFactory.ProjectDirectoryPath = project.ProjectDirectory;
+        ProjectAssetPathResolver.ProjectDirectoryPath = project.ProjectDirectory;
         ProjectFilePath = project.ProjectFilePath;
         UpdateRecentProjects(project.ProjectFilePath);
         _assetBrowser.RefreshAssetBrowser();

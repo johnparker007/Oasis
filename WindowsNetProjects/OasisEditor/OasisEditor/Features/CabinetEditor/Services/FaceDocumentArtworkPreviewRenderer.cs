@@ -229,27 +229,7 @@ public sealed class FaceDocumentArtworkPreviewRenderer
 
     private static bool TryResolveAssetPath(string? assetPath, out string resolvedPath)
     {
-        resolvedPath = string.Empty;
-        if (string.IsNullOrWhiteSpace(assetPath))
-        {
-            return false;
-        }
-
-        var candidate = assetPath.Trim();
-        if (Path.IsPathRooted(candidate))
-        {
-            resolvedPath = candidate;
-            return true;
-        }
-
-        if (string.IsNullOrWhiteSpace(PanelElementFactory.ProjectDirectoryPath))
-        {
-            return false;
-        }
-
-        var relativePath = candidate.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
-        resolvedPath = Path.GetFullPath(Path.Combine(PanelElementFactory.ProjectDirectoryPath, relativePath));
-        return true;
+        return ProjectAssetPathResolver.TryResolveAssetPath(assetPath, out resolvedPath);
     }
 
     private readonly record struct FacePreviewBounds(double X, double Y, double Width, double Height);

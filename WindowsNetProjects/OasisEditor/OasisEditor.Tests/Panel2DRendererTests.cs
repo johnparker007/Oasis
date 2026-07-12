@@ -154,10 +154,10 @@ public sealed class Panel2DRendererTests
             data.SaveTo(stream);
         }
 
-        var previousProjectDirectory = PanelElementFactory.ProjectDirectoryPath;
+        var previousProjectDirectory = ProjectAssetPathResolver.ProjectDirectoryPath;
         try
         {
-            PanelElementFactory.ProjectDirectoryPath = projectDirectory;
+            ProjectAssetPathResolver.ProjectDirectoryPath = projectDirectory;
             renderer.Render(
                 surface.Canvas,
                 [
@@ -178,7 +178,7 @@ public sealed class Panel2DRendererTests
         }
         finally
         {
-            PanelElementFactory.ProjectDirectoryPath = previousProjectDirectory;
+            ProjectAssetPathResolver.ProjectDirectoryPath = previousProjectDirectory;
             Directory.Delete(projectDirectory, recursive: true);
         }
     }
@@ -202,10 +202,10 @@ public sealed class Panel2DRendererTests
             data.SaveTo(stream);
         }
 
-        var previousProjectDirectory = PanelElementFactory.ProjectDirectoryPath;
+        var previousProjectDirectory = ProjectAssetPathResolver.ProjectDirectoryPath;
         try
         {
-            PanelElementFactory.ProjectDirectoryPath = projectDirectory;
+            ProjectAssetPathResolver.ProjectDirectoryPath = projectDirectory;
             renderer.Render(
                 surface.Canvas,
                 [
@@ -225,7 +225,7 @@ public sealed class Panel2DRendererTests
         }
         finally
         {
-            PanelElementFactory.ProjectDirectoryPath = previousProjectDirectory;
+            ProjectAssetPathResolver.ProjectDirectoryPath = previousProjectDirectory;
             Directory.Delete(projectDirectory, recursive: true);
         }
     }
@@ -250,10 +250,10 @@ public sealed class Panel2DRendererTests
             data.SaveTo(stream);
         }
 
-        var previousProjectDirectory = PanelElementFactory.ProjectDirectoryPath;
+        var previousProjectDirectory = ProjectAssetPathResolver.ProjectDirectoryPath;
         try
         {
-            PanelElementFactory.ProjectDirectoryPath = projectDirectory;
+            ProjectAssetPathResolver.ProjectDirectoryPath = projectDirectory;
             renderer.Render(
                 surface.Canvas,
                 [
@@ -275,7 +275,7 @@ public sealed class Panel2DRendererTests
         }
         finally
         {
-            PanelElementFactory.ProjectDirectoryPath = previousProjectDirectory;
+            ProjectAssetPathResolver.ProjectDirectoryPath = previousProjectDirectory;
             Directory.Delete(projectDirectory, recursive: true);
         }
     }
@@ -301,10 +301,10 @@ public sealed class Panel2DRendererTests
             data.SaveTo(stream);
         }
 
-        var previousProjectDirectory = PanelElementFactory.ProjectDirectoryPath;
+        var previousProjectDirectory = ProjectAssetPathResolver.ProjectDirectoryPath;
         try
         {
-            PanelElementFactory.ProjectDirectoryPath = projectDirectory;
+            ProjectAssetPathResolver.ProjectDirectoryPath = projectDirectory;
             renderer.Render(
                 surface.Canvas,
                 [
@@ -333,7 +333,7 @@ public sealed class Panel2DRendererTests
         }
         finally
         {
-            PanelElementFactory.ProjectDirectoryPath = previousProjectDirectory;
+            ProjectAssetPathResolver.ProjectDirectoryPath = previousProjectDirectory;
             Directory.Delete(projectDirectory, recursive: true);
         }
     }
@@ -473,10 +473,10 @@ public sealed class Panel2DRendererTests
     public void ImageElementRenderer_DrawsImageAsset()
     {
         var projectDirectory = CreateProjectWithImage("test-image.png", SKColors.LimeGreen);
-        var previousProjectDirectory = PanelElementFactory.ProjectDirectoryPath;
+        var previousProjectDirectory = ProjectAssetPathResolver.ProjectDirectoryPath;
         try
         {
-            PanelElementFactory.ProjectDirectoryPath = projectDirectory;
+            ProjectAssetPathResolver.ProjectDirectoryPath = projectDirectory;
             using var surface = SKSurface.Create(new SKImageInfo(32, 32, SKColorType.Bgra8888, SKAlphaType.Premul));
             surface.Canvas.Clear(SKColors.Black);
 
@@ -502,7 +502,7 @@ public sealed class Panel2DRendererTests
         }
         finally
         {
-            PanelElementFactory.ProjectDirectoryPath = previousProjectDirectory;
+            ProjectAssetPathResolver.ProjectDirectoryPath = previousProjectDirectory;
             Directory.Delete(projectDirectory, recursive: true);
         }
     }
@@ -511,10 +511,10 @@ public sealed class Panel2DRendererTests
     public void ImageElementRenderer_PreservesAlpha()
     {
         var projectDirectory = CreateProjectWithImage("alpha-image.png", new SKColor(255, 0, 0, 128));
-        var previousProjectDirectory = PanelElementFactory.ProjectDirectoryPath;
+        var previousProjectDirectory = ProjectAssetPathResolver.ProjectDirectoryPath;
         try
         {
-            PanelElementFactory.ProjectDirectoryPath = projectDirectory;
+            ProjectAssetPathResolver.ProjectDirectoryPath = projectDirectory;
             using var surface = SKSurface.Create(new SKImageInfo(16, 16, SKColorType.Bgra8888, SKAlphaType.Premul));
             surface.Canvas.Clear(SKColors.White);
 
@@ -539,7 +539,7 @@ public sealed class Panel2DRendererTests
         }
         finally
         {
-            PanelElementFactory.ProjectDirectoryPath = previousProjectDirectory;
+            ProjectAssetPathResolver.ProjectDirectoryPath = previousProjectDirectory;
             Directory.Delete(projectDirectory, recursive: true);
         }
     }
@@ -571,10 +571,10 @@ public sealed class Panel2DRendererTests
     public void Panel2DRenderer_RendersImageKind()
     {
         var projectDirectory = CreateProjectWithImage("panel-image.png", SKColors.HotPink);
-        var previousProjectDirectory = PanelElementFactory.ProjectDirectoryPath;
+        var previousProjectDirectory = ProjectAssetPathResolver.ProjectDirectoryPath;
         try
         {
-            PanelElementFactory.ProjectDirectoryPath = projectDirectory;
+            ProjectAssetPathResolver.ProjectDirectoryPath = projectDirectory;
             var renderer = new Panel2DRenderer([new ImageElementRenderer()]);
             using var surface = SKSurface.Create(new SKImageInfo(24, 24, SKColorType.Bgra8888, SKAlphaType.Premul));
             surface.Canvas.Clear(SKColors.Black);
@@ -602,7 +602,7 @@ public sealed class Panel2DRendererTests
         }
         finally
         {
-            PanelElementFactory.ProjectDirectoryPath = previousProjectDirectory;
+            ProjectAssetPathResolver.ProjectDirectoryPath = previousProjectDirectory;
             Directory.Delete(projectDirectory, recursive: true);
         }
     }
