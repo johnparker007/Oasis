@@ -137,6 +137,7 @@ internal sealed class FaceGenerationService
             Width = output.Width,
             Height = output.Height,
             IsVisible = true,
+            IsTransformLocked = true,
             AssetPath = assetPath,
             SourcePanel2DDocumentId = NormalizeOptional(sourcePanel2DDocumentId),
             SourceRegion = region,
