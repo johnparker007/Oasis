@@ -221,7 +221,7 @@ public partial class SkiaPanel2DEditView : UserControl
 
         if (!TransformLockInteractionService.CanMoveOrResize(selectedElement))
         {
-            return false;
+            return;
         }
 
         var handleSizeDoc = ResizeHandleScreenSize / viewport.NormalizedZoom;
