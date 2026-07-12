@@ -7,13 +7,63 @@ internal static class PanelElementPreviewMutationService
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(updatedElements);
 
+        if (updatedElements.Count == 0)
+        {
+            return false;
+        }
+
+        var elements = document.GetPanelElements().ToList();
+        var elementIndexes = new Dictionary<string, int>(StringComparer.Ordinal);
+        for (var i = 0; i < elements.Count; i++)
+        {
+            var element = elements[i];
+            if (!string.IsNullOrWhiteSpace(element.ObjectId))
+            {
+                elementIndexes[element.ObjectId] = i;
+            }
+        }
+
+        var changedProperties = PanelChangeProperties.None;
         var changed = false;
         foreach (var update in updatedElements)
         {
-            changed |= TryApplyPreview(document, update.Key, update.Value);
+            if (string.IsNullOrWhiteSpace(update.Key)
+                || !elementIndexes.TryGetValue(update.Key, out var index))
+            {
+                continue;
+            }
+
+            var updatedElement = update.Value;
+            var existing = elements[index];
+            if (!string.Equals(updatedElement.ObjectId, update.Key, StringComparison.Ordinal)
+                || updatedElement.Kind != existing.Kind
+                || !PanelElementValidation.IsValidForInspectorUpdate(updatedElement)
+                || PanelElementModelComparer.AreEquivalent(existing, updatedElement))
+            {
+                continue;
+            }
+
+            changedProperties |= GetChangedProperties(existing, updatedElement);
+            elements[index] = PanelElementModelCloner.Clone(updatedElement);
+            changed = true;
         }
 
-        return changed;
+        if (!changed)
+        {
+            return false;
+        }
+
+        document.SetPanelElements(
+            elements,
+            new PanelChangeEvent(
+                document.DocumentId,
+                null,
+                changedProperties,
+                AffectsCanvas: true,
+                AffectsHierarchy: false,
+                AffectsInspectorRows: true,
+                AffectsPersistence: false));
+        return true;
     }
 
     public static bool TryApplyPreview(DocumentTabViewModel document, string objectId, PanelElementModel updatedElement)
