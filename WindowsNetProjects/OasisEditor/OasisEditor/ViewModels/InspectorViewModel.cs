@@ -595,15 +595,15 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         bool IsUnsupported,
         int UnsupportedCount = 0)
     {
-        public int Count => IsUnsupported ? UnsupportedCount : PanelElements.Count + FaceElements.Count;
+        public int Count => IsUnsupported ? UnsupportedCount : (PanelElements?.Count ?? 0) + (FaceElements?.Count ?? 0);
         public bool IsSupported => !IsUnsupported && Domain is EditorSelectionDomain.PanelElement or EditorSelectionDomain.FaceElement && Count > 0;
         public string DomainLabel => Domain == EditorSelectionDomain.FaceElement ? "Face Elements" : "Panel2D Components";
         public bool IsSameConcreteType => Domain == EditorSelectionDomain.PanelElement
-            ? PanelElements.Select(element => element.Kind).Distinct().Count() == 1
-            : FaceElements.Select(element => element.GetType()).Distinct().Count() == 1;
+            ? (PanelElements?.Select(element => element.Kind).Distinct().Count() ?? 0) == 1
+            : (FaceElements?.Select(element => element.GetType()).Distinct().Count() ?? 0) == 1;
         public int TransformLockedCount => Domain == EditorSelectionDomain.PanelElement
-            ? PanelElements.Count(element => element.IsTransformLocked)
-            : FaceElements.Count(element => element.IsTransformLocked);
+            ? PanelElements?.Count(element => element.IsTransformLocked) ?? 0
+            : FaceElements?.Count(element => element.IsTransformLocked) ?? 0;
     }
 
     private AggregateSelection TryCreateAggregateSelection(DocumentTabViewModel document)
