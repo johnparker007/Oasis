@@ -213,45 +213,74 @@ internal static class FaceMutationCommands
             WasExecuted = false;
             var elements = _document.GetFaceElements().ToList();
             var previous = new Dictionary<string, FaceElementModel>();
-            var changed = false;
+            var logicalChanged = false;
+
             for (var i = 0; i < elements.Count; i++)
             {
                 var existing = elements[i];
-                if (string.IsNullOrWhiteSpace(existing.ObjectId) || !_updatedElements.TryGetValue(existing.ObjectId, out var updated)) continue;
-                if (updated.GetType() != existing.GetType() || !FaceElementValidation.IsValidForInspectorUpdate(updated)) continue;
-                previous[existing.ObjectId] = _originalElements.TryGetValue(existing.ObjectId, out var original) && original.GetType() == existing.GetType()
-                    ? FaceElementModelCloner.Clone(original)
-                    : FaceElementModelCloner.Clone(existing);
+                if (string.IsNullOrWhiteSpace(existing.ObjectId) || !_updatedElements.TryGetValue(existing.ObjectId, out var updated))
+                {
+                    continue;
+                }
+
+                if (updated.GetType() != existing.GetType() || !FaceElementValidation.IsValidForInspectorUpdate(updated))
+                {
+                    continue;
+                }
+
+                var previousElement = _originalElements.TryGetValue(existing.ObjectId, out var original)
+                    && original.GetType() == existing.GetType()
+                    && FaceElementValidation.IsValidForInspectorUpdate(original)
+                        ? FaceElementModelCloner.Clone(original)
+                        : FaceElementModelCloner.Clone(existing);
+                previous[existing.ObjectId] = previousElement;
+
+                if (!FaceElementModelComparer.AreEquivalent(previousElement, updated))
+                {
+                    logicalChanged = true;
+                }
+
                 if (!FaceElementModelComparer.AreEquivalent(existing, updated))
                 {
                     elements[i] = FaceElementModelCloner.Clone(updated);
-                    changed = true;
                 }
             }
 
-            if (previous.Count == 0) return;
-            _previousElements = previous;
-            if (changed)
+            if (previous.Count == 0 || !logicalChanged)
             {
-                _document.SetFaceElements(elements, CreateChange(_document, null, PanelChangeProperties.Geometry | PanelChangeProperties.Name | PanelChangeProperties.Visibility | PanelChangeProperties.TransformLockState | PanelChangeProperties.Metadata));
-                _document.MarkDirty();
-                WasExecuted = true;
+                return;
             }
+
+            _previousElements = previous;
+            _document.SetFaceElements(elements, CreateChange(_document, null, PanelChangeProperties.Geometry | PanelChangeProperties.Name | PanelChangeProperties.Visibility | PanelChangeProperties.TransformLockState | PanelChangeProperties.Metadata));
+            _document.MarkDirty();
+            WasExecuted = true;
         }
 
         public void Undo()
         {
-            if (_previousElements is null || _previousElements.Count == 0) return;
-            var elements = _document.GetFaceElements().ToList();
-            for (var i = 0; i < elements.Count; i++)
+            if (_previousElements is null || _previousElements.Count == 0)
             {
-                if (_previousElements.TryGetValue(elements[i].ObjectId, out var previous))
+                return;
+            }
+
+            var elements = _document.GetFaceElements().ToList();
+            var changed = false;
+            foreach (var previous in _previousElements)
+            {
+                var index = elements.FindIndex(element => string.Equals(element.ObjectId, previous.Key, StringComparison.Ordinal));
+                if (index >= 0 && !FaceElementModelComparer.AreEquivalent(elements[index], previous.Value))
                 {
-                    elements[i] = FaceElementModelCloner.Clone(previous);
+                    elements[index] = FaceElementModelCloner.Clone(previous.Value);
+                    changed = true;
                 }
             }
-            _document.SetFaceElements(elements, CreateChange(_document, null, PanelChangeProperties.Geometry | PanelChangeProperties.Name | PanelChangeProperties.Visibility | PanelChangeProperties.TransformLockState | PanelChangeProperties.Metadata));
-            _document.MarkDirty();
+
+            if (changed)
+            {
+                _document.SetFaceElements(elements, CreateChange(_document, null, PanelChangeProperties.Geometry | PanelChangeProperties.Name | PanelChangeProperties.Visibility | PanelChangeProperties.TransformLockState | PanelChangeProperties.Metadata));
+                _document.MarkDirty();
+            }
         }
     }
 

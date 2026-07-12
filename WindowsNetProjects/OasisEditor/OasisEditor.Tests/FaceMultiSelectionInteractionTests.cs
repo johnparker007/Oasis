@@ -116,6 +116,77 @@ public sealed class FaceMultiSelectionInteractionTests
         Assert.Equal(13, document.GetFaceElements()[1].X);
     }
 
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void PreviewedBulkMoveCommand_RecordsOneUndoEntryWhenLiveGeometryAlreadyEqualsFinal(int selectedCount)
+    {
+        var document = CreateDocument(
+            new FaceLampWindowElement { ObjectId = "a", X = 0, Y = 0, Width = 5, Height = 5, IsVisible = true },
+            new FaceReelDisplayElement { ObjectId = "b", X = 10, Y = 10, Width = 5, Height = 5, IsVisible = true });
+        var originals = document.GetFaceElements()
+            .Take(selectedCount)
+            .ToDictionary(element => element.ObjectId, element => FaceElementModelCloner.Clone(element));
+        var moved = originals.ToDictionary(pair => pair.Key, pair => FaceElementModelCloner.Clone(pair.Value, x: pair.Value.X + 3, y: pair.Value.Y + 4));
+
+        Assert.True(FaceElementPreviewMutationService.TryApplyPreviews(document, moved));
+        Assert.Empty(document.CommandService.History.Entries);
+
+        document.CommandService.Execute(FaceMutationCommands.CreateBulkUpdateElementsCommand(document.DocumentId, document, moved, originals, "Move face elements"));
+
+        Assert.Single(document.CommandService.History.Entries);
+        foreach (var pair in moved)
+        {
+            var element = Assert.Single(document.GetFaceElements(), faceElement => faceElement.ObjectId == pair.Key);
+            Assert.True(FaceElementModelComparer.AreEquivalent(pair.Value, element));
+        }
+
+        Assert.True(document.CommandService.TryUndo());
+        foreach (var pair in originals)
+        {
+            var element = Assert.Single(document.GetFaceElements(), faceElement => faceElement.ObjectId == pair.Key);
+            Assert.True(FaceElementModelComparer.AreEquivalent(pair.Value, element));
+        }
+
+        Assert.True(document.CommandService.TryRedo());
+        foreach (var pair in moved)
+        {
+            var element = Assert.Single(document.GetFaceElements(), faceElement => faceElement.ObjectId == pair.Key);
+            Assert.True(FaceElementModelComparer.AreEquivalent(pair.Value, element));
+        }
+    }
+
+    [Fact]
+    public void BulkMoveCommand_EquivalentOriginalAndFinalSnapshotsDoesNotRecordUndoHistory()
+    {
+        var document = CreateDocument(new FaceLampWindowElement { ObjectId = "a", X = 0, Y = 0, Width = 5, Height = 5, IsVisible = true });
+        var originals = document.GetFaceElements().ToDictionary(element => element.ObjectId, element => FaceElementModelCloner.Clone(element));
+        var equivalentFinal = originals.ToDictionary(pair => pair.Key, pair => FaceElementModelCloner.Clone(pair.Value));
+
+        document.CommandService.Execute(FaceMutationCommands.CreateBulkUpdateElementsCommand(document.DocumentId, document, equivalentFinal, originals, "Move face elements"));
+
+        Assert.Empty(document.CommandService.History.Entries);
+        Assert.False(document.IsDirty);
+    }
+
+    [Fact]
+    public void BulkPreviewCancellation_RestoresOriginalsWithoutUndoHistory()
+    {
+        var document = CreateDocument(
+            new FaceLampWindowElement { ObjectId = "a", X = 0, Y = 0, Width = 5, Height = 5, IsVisible = true },
+            new FaceReelDisplayElement { ObjectId = "b", X = 10, Y = 10, Width = 5, Height = 5, IsVisible = true });
+        var originals = document.GetFaceElements().ToDictionary(element => element.ObjectId, element => FaceElementModelCloner.Clone(element));
+        var preview = originals.ToDictionary(pair => pair.Key, pair => FaceElementModelCloner.Clone(pair.Value, x: pair.Value.X + 5, y: pair.Value.Y + 6));
+
+        Assert.True(FaceElementPreviewMutationService.TryApplyPreviews(document, preview));
+        Assert.True(FaceElementPreviewMutationService.TryApplyPreviews(document, originals));
+
+        Assert.Equal(0, document.GetFaceElements()[0].X);
+        Assert.Equal(10, document.GetFaceElements()[1].X);
+        Assert.Empty(document.CommandService.History.Entries);
+        Assert.False(document.IsDirty);
+    }
+
     private static DocumentTabViewModel CreateDocument(params FaceElementModel[] elements)
     {
         var document = new DocumentTabViewModel(EditorDocument.CreateFaceStub("Face"));

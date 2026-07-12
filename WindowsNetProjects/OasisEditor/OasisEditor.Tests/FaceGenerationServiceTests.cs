@@ -79,4 +79,68 @@ public sealed class FaceGenerationServiceTests
         Assert.True(lamp.SourceBlend);
     }
 
+
+    [Fact]
+    public void GenerateFromPanelFaceSourceShape_LocksGeneratedArtworkTransformByDefault()
+    {
+        var result = new FaceGenerationService().GenerateFromPanelFaceSourceShape(CreatePanelWithFaceSourceShape(), CreateSourceShape(), "Face", "panel-doc-1");
+
+        var artwork = Assert.IsType<FaceArtworkElement>(Assert.Single(result.Document.Elements.OfType<FaceArtworkElement>()));
+        Assert.True(artwork.IsTransformLocked);
+    }
+
+    [Fact]
+    public void Regenerate_LocksReplacementGeneratedArtworkTransformByDefault()
+    {
+        var existingFace = new FaceDocumentModel
+        {
+            Id = "face-1",
+            Title = "Face",
+            SourcePanel2DDocumentId = "panel-doc-1",
+            SourceFaceShapeId = "shape-1",
+            SourceRegion = FaceSourceRegionModel.FromRect(new Rect(0, 0, 100, 100)),
+            Elements =
+            [
+                new FaceArtworkElement
+                {
+                    ObjectId = "existing-artwork",
+                    Name = "Existing Artwork",
+                    X = 0,
+                    Y = 0,
+                    Width = 100,
+                    Height = 100,
+                    IsVisible = true,
+                    SourcePanel2DDocumentId = "panel-doc-1"
+                }
+            ]
+        };
+
+        var result = new FaceRegenerationService().Regenerate(existingFace, CreatePanelWithFaceSourceShape(), documentPath: "Assets/Faces/Face/asset.face");
+
+        var artwork = Assert.IsType<FaceArtworkElement>(Assert.Single(result.Document.Elements.OfType<FaceArtworkElement>()));
+        Assert.Equal("existing-artwork", artwork.ObjectId);
+        Assert.True(artwork.IsTransformLocked);
+    }
+
+    private static Panel2DDocumentModel CreatePanelWithFaceSourceShape()
+    {
+        return new Panel2DDocumentModel
+        {
+            FaceSourceShapes = [CreateSourceShape()]
+        };
+    }
+
+    private static PanelFaceSourceShapeModel CreateSourceShape()
+    {
+        return new PanelFaceSourceShapeModel
+        {
+            Id = "shape-1",
+            Name = "Glass",
+            TopLeft = new FacePointModel { X = 0, Y = 0 },
+            TopRight = new FacePointModel { X = 100, Y = 0 },
+            BottomRight = new FacePointModel { X = 100, Y = 100 },
+            BottomLeft = new FacePointModel { X = 0, Y = 100 }
+        };
+    }
+
 }
