@@ -399,7 +399,11 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
             if (!ShouldSuppressPropertyRowRefresh())
             {
-                RebuildPropertyRows();
+                if (ShouldRebuildAggregateRows(panelChange, aggregate)
+                    || !TryRefreshAggregatePropertyRowValues(selectedDocument, aggregate))
+                {
+                    RebuildPropertyRows();
+                }
             }
 
             OnPropertyChanged(nameof(InspectorSummary));
@@ -669,19 +673,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
     private void RebuildAggregatePropertyRows(DocumentTabViewModel document, AggregateSelection selection)
     {
-        if (selection.Domain == EditorSelectionDomain.PanelElement)
-        {
-            AddPanelAggregateRows(document, selection.PanelElements, includeSameTypeRows: selection.IsSameConcreteType);
-        }
-        else
-        {
-            AddFaceAggregateRows(document, selection.FaceElements, includeSameTypeRows: selection.IsSameConcreteType);
-        }
-
-        if (selection.TransformLockedCount > 0)
-        {
-            _propertyRows.Add(new InspectorInfoPropertyViewModel("Transform Lock Note", "Multi-Edit", "X, Y, Width, and Height edits apply only to unlocked selected objects."));
-        }
+        AddAggregateRows(document, selection, _propertyRows);
 
         _hadInspectorSelection = true;
         _lastInspectorSelectionObjectId = GetDocumentSelectionKey();
@@ -690,82 +682,181 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(InspectorPropertyRows));
     }
 
-    private void AddPanelAggregateRows(DocumentTabViewModel document, IReadOnlyList<PanelElementModel> elements, bool includeSameTypeRows)
+    private void AddAggregateRows(DocumentTabViewModel document, AggregateSelection selection, ICollection<InspectorPropertyRowViewModel> rows)
     {
-        if (includeSameTypeRows)
+        if (selection.Domain == EditorSelectionDomain.PanelElement)
         {
-            AddAggregateText("Name", "Common", InspectorAggregateValue.From(elements.Select(e => e.Name)), value => TryApplyPanelAggregateUpdate(document, elements, "Update names", new PanelElementModelUpdate { Name = value }, includeLockedTransforms: true));
+            AddPanelAggregateRows(document, selection.PanelElements, includeSameTypeRows: selection.IsSameConcreteType, rows);
+        }
+        else
+        {
+            AddFaceAggregateRows(document, selection.FaceElements, includeSameTypeRows: selection.IsSameConcreteType, rows);
         }
 
-        AddAggregateDouble("X", "Transform", InspectorAggregateValue.From(elements.Select(e => e.X)), value => TryApplyPanelAggregateUpdate(document, elements, "Update X", new PanelElementModelUpdate { X = value }, includeLockedTransforms: false));
-        AddAggregateDouble("Y", "Transform", InspectorAggregateValue.From(elements.Select(e => e.Y)), value => TryApplyPanelAggregateUpdate(document, elements, "Update Y", new PanelElementModelUpdate { Y = value }, includeLockedTransforms: false));
-        AddAggregateDouble("Width", "Transform", InspectorAggregateValue.From(elements.Select(e => e.Width)), value => value > 0 ? TryApplyPanelAggregateUpdate(document, elements, "Update width", new PanelElementModelUpdate { Width = value }, includeLockedTransforms: false) : "Width must be greater than zero.");
-        AddAggregateDouble("Height", "Transform", InspectorAggregateValue.From(elements.Select(e => e.Height)), value => value > 0 ? TryApplyPanelAggregateUpdate(document, elements, "Update height", new PanelElementModelUpdate { Height = value }, includeLockedTransforms: false) : "Height must be greater than zero.");
-        AddAggregateBool("Lock Transform", "Common", InspectorAggregateValue.From(elements.Select(e => e.IsTransformLocked)), value => TryApplyPanelAggregateUpdate(document, elements, "Update transform lock state", new PanelElementModelUpdate { IsTransformLocked = value }, includeLockedTransforms: true));
-        AddAggregateBool("Visible", "Common", InspectorAggregateValue.From(elements.Select(e => e.IsVisible)), value => TryApplyPanelAggregateUpdate(document, elements, "Update visibility", new PanelElementModelUpdate { IsVisible = value }, includeLockedTransforms: true));
-
-        if (includeSameTypeRows)
+        if (selection.TransformLockedCount > 0)
         {
-            AddPanelTypeSpecificAggregateRows(document, elements);
+            rows.Add(new InspectorInfoPropertyViewModel("Transform Lock Note", "Multi-Edit", "X, Y, Width, and Height edits apply only to unlocked selected objects."));
         }
     }
 
-    private void AddPanelTypeSpecificAggregateRows(DocumentTabViewModel document, IReadOnlyList<PanelElementModel> elements)
+    private static bool ShouldRebuildAggregateRows(PanelChangeEvent panelChange, AggregateSelection selection)
+    {
+        if (!selection.IsSupported)
+        {
+            return true;
+        }
+
+        var structuralProperties = PanelChangeProperties.Structure | PanelChangeProperties.Ordering;
+        return panelChange.ChangedProperties.HasFlag(PanelChangeProperties.Structure)
+            || (panelChange.ChangedProperties & structuralProperties) != PanelChangeProperties.None;
+    }
+
+    private bool TryRefreshAggregatePropertyRowValues(DocumentTabViewModel document, AggregateSelection selection)
+    {
+        if (!selection.IsSupported)
+        {
+            return false;
+        }
+
+        var expectedRows = new List<InspectorPropertyRowViewModel>();
+        AddAggregateRows(document, selection, expectedRows);
+
+        if (_propertyRows.Count != expectedRows.Count)
+        {
+            return false;
+        }
+
+        for (var i = 0; i < expectedRows.Count; i++)
+        {
+            if (!HasSameAggregateRowSchema(_propertyRows[i], expectedRows[i]))
+            {
+                return false;
+            }
+        }
+
+        for (var i = 0; i < expectedRows.Count; i++)
+        {
+            RefreshAggregateRowValue(_propertyRows[i], expectedRows[i]);
+        }
+
+        _hadInspectorSelection = true;
+        _lastInspectorSelectionObjectId = GetDocumentSelectionKey();
+        _lastInspectorSelectionKind = selection.Domain == EditorSelectionDomain.PanelElement && selection.IsSameConcreteType ? selection.PanelElements[0].Kind : null;
+        _lastInspectorFaceSelectionKind = selection.Domain == EditorSelectionDomain.FaceElement && selection.IsSameConcreteType ? FaceSelectionService.GetKindToken(selection.FaceElements[0]) : "multi";
+        return true;
+    }
+
+    private static bool HasSameAggregateRowSchema(InspectorPropertyRowViewModel current, InspectorPropertyRowViewModel expected)
+    {
+        return current.GetType() == expected.GetType()
+            && string.Equals(current.DisplayName, expected.DisplayName, StringComparison.Ordinal)
+            && string.Equals(current.GroupName, expected.GroupName, StringComparison.Ordinal)
+            && current.IsReadOnly == expected.IsReadOnly;
+    }
+
+    private static void RefreshAggregateRowValue(InspectorPropertyRowViewModel current, InspectorPropertyRowViewModel expected)
+    {
+        switch (current, expected)
+        {
+            case (InspectorTextPropertyViewModel textRow, InspectorTextPropertyViewModel expectedText):
+                if (expectedText.IsMixed) textRow.SetMixedValue(); else textRow.SetCommittedValue(expectedText.Value);
+                break;
+            case (InspectorDoublePropertyViewModel doubleRow, InspectorDoublePropertyViewModel expectedDouble):
+                if (expectedDouble.IsMixed) doubleRow.SetMixedValue(); else if (double.TryParse(expectedDouble.Value, NumberStyles.Float | NumberStyles.AllowThousands, CultureInfo.InvariantCulture, out var value)) doubleRow.SetCommittedValue(value);
+                break;
+            case (InspectorIntPropertyViewModel intRow, InspectorIntPropertyViewModel expectedInt):
+                if (expectedInt.IsMixed) intRow.SetMixedValue(); else if (int.TryParse(expectedInt.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)) intRow.SetCommittedValue(value); else intRow.SetCommittedValue(null);
+                break;
+            case (InspectorColorPropertyViewModel colorRow, InspectorColorPropertyViewModel expectedColor):
+                if (expectedColor.IsMixed) colorRow.SetMixedValue(); else colorRow.SetCommittedValue(expectedColor.HexValue);
+                break;
+            case (InspectorBoolPropertyViewModel boolRow, InspectorBoolPropertyViewModel expectedBool):
+                if (expectedBool.IsMixed) boolRow.SetMixedValue(); else boolRow.SetCommittedValue(expectedBool.Value == true);
+                break;
+            case (InspectorInfoPropertyViewModel infoRow, InspectorInfoPropertyViewModel expectedInfo):
+                infoRow.SetCommittedValue(expectedInfo.Value);
+                break;
+        }
+    }
+
+    private void AddPanelAggregateRows(DocumentTabViewModel document, IReadOnlyList<PanelElementModel> elements, bool includeSameTypeRows, ICollection<InspectorPropertyRowViewModel>? rows = null)
+    {
+        rows ??= _propertyRows;
+        if (includeSameTypeRows)
+        {
+            AddAggregateText(rows, "Name", "Common", InspectorAggregateValue.From(elements.Select(e => e.Name)), value => TryApplyPanelAggregateUpdate(document, elements, "Update names", new PanelElementModelUpdate { Name = value }, includeLockedTransforms: true));
+        }
+
+        AddAggregateDouble(rows, "X", "Transform", InspectorAggregateValue.From(elements.Select(e => e.X)), value => TryApplyPanelAggregateUpdate(document, elements, "Update X", new PanelElementModelUpdate { X = value }, includeLockedTransforms: false));
+        AddAggregateDouble(rows, "Y", "Transform", InspectorAggregateValue.From(elements.Select(e => e.Y)), value => TryApplyPanelAggregateUpdate(document, elements, "Update Y", new PanelElementModelUpdate { Y = value }, includeLockedTransforms: false));
+        AddAggregateDouble(rows, "Width", "Transform", InspectorAggregateValue.From(elements.Select(e => e.Width)), value => value > 0 ? TryApplyPanelAggregateUpdate(document, elements, "Update width", new PanelElementModelUpdate { Width = value }, includeLockedTransforms: false) : "Width must be greater than zero.");
+        AddAggregateDouble(rows, "Height", "Transform", InspectorAggregateValue.From(elements.Select(e => e.Height)), value => value > 0 ? TryApplyPanelAggregateUpdate(document, elements, "Update height", new PanelElementModelUpdate { Height = value }, includeLockedTransforms: false) : "Height must be greater than zero.");
+        AddAggregateBool(rows, "Lock Transform", "Common", InspectorAggregateValue.From(elements.Select(e => e.IsTransformLocked)), value => TryApplyPanelAggregateUpdate(document, elements, "Update transform lock state", new PanelElementModelUpdate { IsTransformLocked = value }, includeLockedTransforms: true));
+        AddAggregateBool(rows, "Visible", "Common", InspectorAggregateValue.From(elements.Select(e => e.IsVisible)), value => TryApplyPanelAggregateUpdate(document, elements, "Update visibility", new PanelElementModelUpdate { IsVisible = value }, includeLockedTransforms: true));
+
+        if (includeSameTypeRows)
+        {
+            AddPanelTypeSpecificAggregateRows(document, elements, rows);
+        }
+    }
+
+    private void AddPanelTypeSpecificAggregateRows(DocumentTabViewModel document, IReadOnlyList<PanelElementModel> elements, ICollection<InspectorPropertyRowViewModel> rows)
     {
         var kind = elements[0].Kind;
         if (kind is PanelElementKind.Lamp or PanelElementKind.Reel or PanelElementKind.SevenSegment)
-            AddAggregateInt("Display Number", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.DisplayNumber)), value => TryApplyPanelAggregateUpdate(document, elements, "Update display number", new PanelElementModelUpdate { DisplayNumber = value }, true));
+            AddAggregateInt(rows, "Display Number", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.DisplayNumber)), value => TryApplyPanelAggregateUpdate(document, elements, "Update display number", new PanelElementModelUpdate { DisplayNumber = value }, true));
         if (kind is PanelElementKind.Image or PanelElementKind.Background or PanelElementKind.Lamp or PanelElementKind.Reel)
-            AddAggregateText("Asset Path", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.AssetPath ?? string.Empty)), value => TryApplyPanelAggregateUpdate(document, elements, "Update asset path", new PanelElementModelUpdate { AssetPath = NormalizeOptionalText(value) }, true));
+            AddAggregateText(rows, "Asset Path", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.AssetPath ?? string.Empty)), value => TryApplyPanelAggregateUpdate(document, elements, "Update asset path", new PanelElementModelUpdate { AssetPath = NormalizeOptionalText(value) }, true));
         if (kind is PanelElementKind.Lamp)
         {
-            AddAggregateColor("On Color", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.OnColorHex ?? string.Empty)), value => TryApplyPanelAggregateUpdate(document, elements, "Update on color", new PanelElementModelUpdate { OnColorHex = NormalizeOptionalText(value) }, true));
-            AddAggregateColor("Off Color", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.OffColorHex ?? string.Empty)), value => TryApplyPanelAggregateUpdate(document, elements, "Update off color", new PanelElementModelUpdate { OffColorHex = NormalizeOptionalText(value) }, true));
-            AddAggregateBool("Border", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.HasBorder)), value => TryApplyPanelAggregateUpdate(document, elements, "Update lamp border", new PanelElementModelUpdate { HasBorder = value }, true));
+            AddAggregateColor(rows, "On Color", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.OnColorHex ?? string.Empty)), value => TryApplyPanelAggregateUpdate(document, elements, "Update on color", new PanelElementModelUpdate { OnColorHex = NormalizeOptionalText(value) }, true));
+            AddAggregateColor(rows, "Off Color", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.OffColorHex ?? string.Empty)), value => TryApplyPanelAggregateUpdate(document, elements, "Update off color", new PanelElementModelUpdate { OffColorHex = NormalizeOptionalText(value) }, true));
+            AddAggregateBool(rows, "Border", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.HasBorder)), value => TryApplyPanelAggregateUpdate(document, elements, "Update lamp border", new PanelElementModelUpdate { HasBorder = value }, true));
         }
         if (kind is PanelElementKind.Alpha)
         {
-            AddAggregateColor("On Color", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.OnColorHex ?? string.Empty)), value => TryApplyPanelAggregateUpdate(document, elements, "Update on color", new PanelElementModelUpdate { OnColorHex = NormalizeOptionalText(value) }, true));
-            AddAggregateBool("Decimal Point", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.ShowDecimalPoint)), value => TryApplyPanelAggregateUpdate(document, elements, "Update decimal point visibility", new PanelElementModelUpdate { ShowDecimalPoint = value }, true));
-            AddAggregateBool("Comma", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.ShowCommaTail)), value => TryApplyPanelAggregateUpdate(document, elements, "Update comma visibility", new PanelElementModelUpdate { ShowCommaTail = value }, true));
-            AddAggregateBool("Reversed", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.IsReversed ?? false)), value => TryApplyPanelAggregateUpdate(document, elements, "Update reversed", new PanelElementModelUpdate { IsReversed = value }, true));
+            AddAggregateColor(rows, "On Color", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.OnColorHex ?? string.Empty)), value => TryApplyPanelAggregateUpdate(document, elements, "Update on color", new PanelElementModelUpdate { OnColorHex = NormalizeOptionalText(value) }, true));
+            AddAggregateBool(rows, "Decimal Point", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.ShowDecimalPoint)), value => TryApplyPanelAggregateUpdate(document, elements, "Update decimal point visibility", new PanelElementModelUpdate { ShowDecimalPoint = value }, true));
+            AddAggregateBool(rows, "Comma", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.ShowCommaTail)), value => TryApplyPanelAggregateUpdate(document, elements, "Update comma visibility", new PanelElementModelUpdate { ShowCommaTail = value }, true));
+            AddAggregateBool(rows, "Reversed", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.IsReversed ?? false)), value => TryApplyPanelAggregateUpdate(document, elements, "Update reversed", new PanelElementModelUpdate { IsReversed = value }, true));
         }
         if (kind is PanelElementKind.Label)
         {
-            AddAggregateText("Display Text", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.DisplayText ?? string.Empty)), value => TryApplyPanelAggregateUpdate(document, elements, "Update display text", new PanelElementModelUpdate { DisplayText = NormalizeOptionalText(value) }, true));
-            AddAggregateColor("Text Color", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.TextColorHex ?? string.Empty)), value => TryApplyPanelAggregateUpdate(document, elements, "Update text color", new PanelElementModelUpdate { TextColorHex = NormalizeOptionalText(value) }, true));
-            AddAggregateInt("Lamp Number", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.LampNumber)), value => value < 0 ? "Lamp Number must be zero or greater." : TryApplyPanelAggregateUpdate(document, elements, "Update lamp number", new PanelElementModelUpdate { LampNumber = value }, true));
+            AddAggregateText(rows, "Display Text", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.DisplayText ?? string.Empty)), value => TryApplyPanelAggregateUpdate(document, elements, "Update display text", new PanelElementModelUpdate { DisplayText = NormalizeOptionalText(value) }, true));
+            AddAggregateColor(rows, "Text Color", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.TextColorHex ?? string.Empty)), value => TryApplyPanelAggregateUpdate(document, elements, "Update text color", new PanelElementModelUpdate { TextColorHex = NormalizeOptionalText(value) }, true));
+            AddAggregateInt(rows, "Lamp Number", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.LampNumber)), value => value < 0 ? "Lamp Number must be zero or greater." : TryApplyPanelAggregateUpdate(document, elements, "Update lamp number", new PanelElementModelUpdate { LampNumber = value }, true));
         }
         if (kind is PanelElementKind.Reel)
         {
-            AddAggregateInt("Stops", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.Stops)), value => TryApplyPanelAggregateUpdate(document, elements, "Update stops", new PanelElementModelUpdate { Stops = value }, true));
-            AddAggregateDouble("Band Offset", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.BandOffset ?? 0d)), value => PanelElementValidation.IsValidBandOffset(value) ? TryApplyPanelAggregateUpdate(document, elements, "Update band offset", new PanelElementModelUpdate { BandOffset = value }, true) : "Enter a value from -1 to 1.", "G17");
-            AddAggregateBool("Reversed", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.IsReversed ?? false)), value => TryApplyPanelAggregateUpdate(document, elements, "Update reversed", new PanelElementModelUpdate { IsReversed = value }, true));
+            AddAggregateInt(rows, "Stops", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.Stops)), value => TryApplyPanelAggregateUpdate(document, elements, "Update stops", new PanelElementModelUpdate { Stops = value }, true));
+            AddAggregateDouble(rows, "Band Offset", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.BandOffset ?? 0d)), value => PanelElementValidation.IsValidBandOffset(value) ? TryApplyPanelAggregateUpdate(document, elements, "Update band offset", new PanelElementModelUpdate { BandOffset = value }, true) : "Enter a value from -1 to 1.", "G17");
+            AddAggregateBool(rows, "Reversed", "Type-specific", InspectorAggregateValue.From(elements.Select(e => e.IsReversed ?? false)), value => TryApplyPanelAggregateUpdate(document, elements, "Update reversed", new PanelElementModelUpdate { IsReversed = value }, true));
         }
     }
 
-    private void AddFaceAggregateRows(DocumentTabViewModel document, IReadOnlyList<FaceElementModel> elements, bool includeSameTypeRows)
+    private void AddFaceAggregateRows(DocumentTabViewModel document, IReadOnlyList<FaceElementModel> elements, bool includeSameTypeRows, ICollection<InspectorPropertyRowViewModel>? rows = null)
     {
+        rows ??= _propertyRows;
         if (includeSameTypeRows)
-            AddAggregateText("Name", "Common", InspectorAggregateValue.From(elements.Select(e => e.Name)), value => TryApplyFaceAggregateUpdate(document, elements, "Update names", new FaceElementModelUpdate { Name = value }, true));
-        AddAggregateDouble("X", "Transform", InspectorAggregateValue.From(elements.Select(e => e.X)), value => TryApplyFaceAggregateUpdate(document, elements, "Update X", new FaceElementModelUpdate { X = value }, false));
-        AddAggregateDouble("Y", "Transform", InspectorAggregateValue.From(elements.Select(e => e.Y)), value => TryApplyFaceAggregateUpdate(document, elements, "Update Y", new FaceElementModelUpdate { Y = value }, false));
-        AddAggregateDouble("Width", "Transform", InspectorAggregateValue.From(elements.Select(e => e.Width)), value => value > 0 ? TryApplyFaceAggregateUpdate(document, elements, "Update width", new FaceElementModelUpdate { Width = value }, false) : "Width must be greater than zero.");
-        AddAggregateDouble("Height", "Transform", InspectorAggregateValue.From(elements.Select(e => e.Height)), value => value > 0 ? TryApplyFaceAggregateUpdate(document, elements, "Update height", new FaceElementModelUpdate { Height = value }, false) : "Height must be greater than zero.");
-        AddAggregateBool("Lock Transform", "Common", InspectorAggregateValue.From(elements.Select(e => e.IsTransformLocked)), value => TryApplyFaceAggregateUpdate(document, elements, "Update transform lock state", new FaceElementModelUpdate { IsTransformLocked = value }, true));
-        AddAggregateBool("Visible", "Common", InspectorAggregateValue.From(elements.Select(e => e.IsVisible)), value => TryApplyFaceAggregateUpdate(document, elements, "Update visibility", new FaceElementModelUpdate { IsVisible = value }, true));
+            AddAggregateText(rows, "Name", "Common", InspectorAggregateValue.From(elements.Select(e => e.Name)), value => TryApplyFaceAggregateUpdate(document, elements, "Update names", new FaceElementModelUpdate { Name = value }, true));
+        AddAggregateDouble(rows, "X", "Transform", InspectorAggregateValue.From(elements.Select(e => e.X)), value => TryApplyFaceAggregateUpdate(document, elements, "Update X", new FaceElementModelUpdate { X = value }, false));
+        AddAggregateDouble(rows, "Y", "Transform", InspectorAggregateValue.From(elements.Select(e => e.Y)), value => TryApplyFaceAggregateUpdate(document, elements, "Update Y", new FaceElementModelUpdate { Y = value }, false));
+        AddAggregateDouble(rows, "Width", "Transform", InspectorAggregateValue.From(elements.Select(e => e.Width)), value => value > 0 ? TryApplyFaceAggregateUpdate(document, elements, "Update width", new FaceElementModelUpdate { Width = value }, false) : "Width must be greater than zero.");
+        AddAggregateDouble(rows, "Height", "Transform", InspectorAggregateValue.From(elements.Select(e => e.Height)), value => value > 0 ? TryApplyFaceAggregateUpdate(document, elements, "Update height", new FaceElementModelUpdate { Height = value }, false) : "Height must be greater than zero.");
+        AddAggregateBool(rows, "Lock Transform", "Common", InspectorAggregateValue.From(elements.Select(e => e.IsTransformLocked)), value => TryApplyFaceAggregateUpdate(document, elements, "Update transform lock state", new FaceElementModelUpdate { IsTransformLocked = value }, true));
+        AddAggregateBool(rows, "Visible", "Common", InspectorAggregateValue.From(elements.Select(e => e.IsVisible)), value => TryApplyFaceAggregateUpdate(document, elements, "Update visibility", new FaceElementModelUpdate { IsVisible = value }, true));
         if (includeSameTypeRows)
         {
-            AddAggregateText("Machine Reference", "References", InspectorAggregateValue.From(elements.Select(e => e.LinkedMachineObjectReference?.ToString() ?? string.Empty)), value => TryApplyFaceAggregateMachineReferenceUpdate(document, elements, value));
-            AddAggregateText("Linked Panel2D Element", "References", InspectorAggregateValue.From(elements.Select(e => e.LinkedPanel2DElementId ?? string.Empty)), value => TryApplyFaceAggregateUpdate(document, elements, "Update linked Panel2D element", new FaceElementModelUpdate { HasLinkedPanel2DElementId = true, LinkedPanel2DElementId = NormalizeOptionalText(value) }, true));
+            AddAggregateText(rows, "Machine Reference", "References", InspectorAggregateValue.From(elements.Select(e => e.LinkedMachineObjectReference?.ToString() ?? string.Empty)), value => TryApplyFaceAggregateMachineReferenceUpdate(document, elements, value));
+            AddAggregateText(rows, "Linked Panel2D Element", "References", InspectorAggregateValue.From(elements.Select(e => e.LinkedPanel2DElementId ?? string.Empty)), value => TryApplyFaceAggregateUpdate(document, elements, "Update linked Panel2D element", new FaceElementModelUpdate { HasLinkedPanel2DElementId = true, LinkedPanel2DElementId = NormalizeOptionalText(value) }, true));
         }
     }
 
-    private void AddAggregateText(string name, string group, InspectorAggregateValue<string> value, Func<string, string?> commit) { var row = new InspectorTextPropertyViewModel(name, group, value.IsCommon ? value.Value ?? string.Empty : string.Empty, commit: commit); if (value.IsMixed) row.SetMixedValue(); _propertyRows.Add(row); }
-    private void AddAggregateDouble(string name, string group, InspectorAggregateValue<double> value, Func<double, string?> commit, string format = "0.###") { var row = new InspectorDoublePropertyViewModel(name, group, value.IsCommon ? value.Value : 0d, commit: commit, format: format); if (value.IsMixed) row.SetMixedValue(); _propertyRows.Add(row); }
-    private void AddAggregateInt(string name, string group, InspectorAggregateValue<int?> value, Func<int?, string?> commit) { var row = new InspectorIntPropertyViewModel(name, group, value.IsCommon ? value.Value : null, commit: commit); if (value.IsMixed) row.SetMixedValue(); _propertyRows.Add(row); }
-    private void AddAggregateColor(string name, string group, InspectorAggregateValue<string> value, Func<string?, string?> commit) { var row = new InspectorColorPropertyViewModel(name, group, value.IsCommon ? value.Value : string.Empty, commit: commit); if (value.IsMixed) row.SetMixedValue(); _propertyRows.Add(row); }
-    private void AddAggregateBool(string name, string group, InspectorAggregateValue<bool> value, Func<bool, string?> commit) { var row = new InspectorBoolPropertyViewModel(name, group, value.IsCommon && value.Value == true, commit: commit); if (value.IsMixed) row.SetMixedValue(); _propertyRows.Add(row); }
+    private void AddAggregateText(ICollection<InspectorPropertyRowViewModel> rows, string name, string group, InspectorAggregateValue<string> value, Func<string, string?> commit) { var row = new InspectorTextPropertyViewModel(name, group, value.IsCommon ? value.Value ?? string.Empty : string.Empty, commit: commit); if (value.IsMixed) row.SetMixedValue(); rows.Add(row); }
+    private void AddAggregateDouble(ICollection<InspectorPropertyRowViewModel> rows, string name, string group, InspectorAggregateValue<double> value, Func<double, string?> commit, string format = "0.###") { var row = new InspectorDoublePropertyViewModel(name, group, value.IsCommon ? value.Value : 0d, commit: commit, format: format); if (value.IsMixed) row.SetMixedValue(); rows.Add(row); }
+    private void AddAggregateInt(ICollection<InspectorPropertyRowViewModel> rows, string name, string group, InspectorAggregateValue<int?> value, Func<int?, string?> commit) { var row = new InspectorIntPropertyViewModel(name, group, value.IsCommon ? value.Value : null, commit: commit); if (value.IsMixed) row.SetMixedValue(); rows.Add(row); }
+    private void AddAggregateColor(ICollection<InspectorPropertyRowViewModel> rows, string name, string group, InspectorAggregateValue<string> value, Func<string?, string?> commit) { var row = new InspectorColorPropertyViewModel(name, group, value.IsCommon ? value.Value : string.Empty, commit: commit); if (value.IsMixed) row.SetMixedValue(); rows.Add(row); }
+    private void AddAggregateBool(ICollection<InspectorPropertyRowViewModel> rows, string name, string group, InspectorAggregateValue<bool> value, Func<bool, string?> commit) { var row = new InspectorBoolPropertyViewModel(name, group, value.IsCommon && value.Value == true, commit: commit); if (value.IsMixed) row.SetMixedValue(); rows.Add(row); }
 
     private string? TryApplyPanelAggregateUpdate(DocumentTabViewModel document, IReadOnlyList<PanelElementModel> elements, string description, PanelElementModelUpdate update, bool includeLockedTransforms)
     {
