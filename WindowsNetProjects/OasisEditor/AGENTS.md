@@ -40,6 +40,20 @@ Do not:
 
 After completing a task, describe what should be tested locally.
 
+## Unity Language Compatibility
+
+Code under `UnityProjects/OasisPlayer` must target the Unity project's default/recommended scripting environment.
+
+- Use C# 9 syntax only.
+- Use block-scoped namespaces.
+- Do not use file-scoped namespaces.
+- Do not use global using directives.
+- Do not use `required` members.
+- Do not use other C# 10 or newer language features.
+- Do not change the Unity project's scripting runtime, API compatibility level, or related .NET settings merely to support newer generated syntax.
+
+When sharing contracts or DTO concepts between Oasis Editor and Oasis Player, ensure the Unity-side implementation remains valid C# 9 even if the Editor project supports newer language features.
+
 ## Context Rules
 
 Prefer targeted source inspection over broad repository scans.
@@ -63,6 +77,7 @@ Projects contain folders such as:
 Assets/
 Generated/
 Machines/
+```
 
 General rules:
 
