@@ -16,76 +16,97 @@ Open additional Phase 1 task documents only as directed by `Docs/OasisPlayerPhas
 
 Priority workstream:
 
-- Oasis Editor machine build/export
-- versioned runtime machine and cabinet manifests
-- external cabinet GLB packaging
-- Oasis Player command-line startup
-- windowed single-machine preview mode
-- runtime GLB loading into the existing Unity preview room
+- Oasis Editor Player preferences
+- persisted Oasis Player executable path
+- preview window/fullscreen settings
+- build-then-launch workflow
+- `File > Preview in Oasis Player`
+- safe command-line argument construction
+- clear launch validation and errors
 
-This work spans:
+Primary implementation project:
 
 ```text
 WindowsNetProjects/OasisEditor
+```
+
+Existing Player command-line implementation to inspect for compatibility:
+
+```text
 UnityProjects/OasisPlayer
 ```
 
 ## Immediate Direction
 
-Implement the two Phase 1 checkpoints described in:
+Complete the Phase 1 launch-integration task described in:
 
 ```text
 Docs/OasisPlayerPhase1/CODEX_START_PROMPT.md
+Docs/OasisPlayerPhase1/TASK_03_EDITOR_PLAYER_LAUNCH_INTEGRATION.md
 ```
 
-Required order:
-
-1. establish the Editor's deterministic machine-build contract
-2. implement Player startup and runtime cabinet loading against that contract
+The earlier machine-build and Player cabinet-loading checkpoints are already merged.
 
 Core target flow:
 
 ```text
-Oasis Editor project
-    -> generated machine build directory
-    -> OasisPlayer.exe --mode machine-preview --build <path>
-    -> Bootstrap scene
-    -> MachinePreview scene
-    -> cabinet instantiated beneath MachineSpawn
+Preferences > Player
+    -> configure OasisPlayer.exe
+
+File > Preview in Oasis Player
+    -> build selected saved Cabinet3D asset
+    -> launch OasisPlayer.exe
+       --mode machine-preview
+       --build <absolute generated build path>
+       --windowed or --fullscreen
+       --width <pixels>
+       --height <pixels>
+```
+
+Keep the existing command:
+
+```text
+File > Build Oasis Player Machine
 ```
 
 ## Architectural Boundaries
 
-- Cabinet content remains standard GLB/glTF with ordinary PBR materials.
-- Oasis-specific Face rendering is a later phase.
-- Preserve imported node hierarchy, node names, mesh boundaries, and material slots for future Face target binding.
-- Keep display mode independent from content mode.
-- Treat build output as disposable generated content, not authored `Assets/` content.
-- Treat the build directory as read-only in Oasis Player.
-- Do not recreate or regenerate the manually committed Unity scenes, `.meta` files, GUIDs, `StartupController` script asset, or `MachineSpawn` transform.
+- Store the Player executable path as a user/machine preference, not project or asset data.
+- Extend the existing Preferences and settings architecture rather than adding a second settings system.
+- Reuse `MachineRuntimeBuildService`; do not duplicate build logic.
+- Keep process-launch logic out of WPF code-behind.
+- Prefer a focused testable launch service and injectable process-start boundary.
+- Pass process arguments separately; do not manually quote a single argument string.
+- Do not assume the Player executable lives at a repository-relative path.
+- Keep the launch fire-and-forget for this MVP.
 
 ## Explicit Non-Goals
 
 Do not implement in this priority:
 
-- Face shaders or Face material replacement
-- lamps, reels, displays, buttons, or emulation
-- arcade layout loading or multiple machines
-- player navigation
-- remote downloads or archive packaging
+- automatic Unity Player builds
+- Unity installation discovery
+- launching the Unity Editor
 - live Editor-to-Player IPC or hot reload
+- reuse, shutdown, or monitoring of an already-running Player
+- arcade mode or multiple machines
+- Face shaders or material replacement
+- lamps, reels, displays, buttons, or emulation
+- remote downloads or archive packaging
 
 ## Testing Direction
 
 Prefer focused tests around:
 
-- deterministic Editor build paths and output replacement
-- versioned manifest serialization and validation
-- relative path safety
-- Cabinet3D GLB copying and model corrections
-- command-line parsing and option precedence
-- Player manifest loading and traversal rejection
-- mode-to-scene selection
-- runtime resource ownership and cleanup boundaries
+- Player preference defaults and persistence
+- missing/invalid executable validation
+- paths containing spaces
+- windowed and fullscreen arguments
+- width and height propagation
+- build failure preventing launch
+- successful build passing the exact returned build root
+- process-start failure reporting
 
-Do not attempt to build the WPF application in Codex. Do not claim Unity visual verification unless it was actually performed. John will run builds, tests, Unity package imports, and visual checks locally.
+Do not launch the real Player from automated tests.
+
+Do not attempt to build the WPF application in Codex. Do not claim process-launch or visual verification unless it was actually performed. John will run builds, tests, Unity Player builds, and end-to-end checks locally.
