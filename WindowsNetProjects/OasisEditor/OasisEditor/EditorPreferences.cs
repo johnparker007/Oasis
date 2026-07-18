@@ -8,6 +8,7 @@ public sealed class EditorPreferences
     public NativeEmulationPreferences NativeEmulation { get; init; } = new();
     public OutputLogPreferences OutputLog { get; init; } = new();
     public FaceGenerationPreferences FaceGeneration { get; init; } = new();
+    public OasisPlayerPreferences Player { get; init; } = new();
     public string LastMfmeFmlImportDirectory { get; init; } = string.Empty;
 
     public Dictionary<string, ProjectWindowState> ProjectWindowStates { get; init; } = new();
@@ -29,6 +30,14 @@ public sealed class MamePreferences
     public string LocalRomArchiveExtension { get; init; } = ".zip";
 }
 
+
+public sealed class OasisPlayerPreferences
+{
+    public string ExecutablePath { get; init; } = string.Empty;
+    public bool Fullscreen { get; init; }
+    public int PreviewWidth { get; init; } = OasisPlayerLaunchService.DefaultPreviewWidth;
+    public int PreviewHeight { get; init; } = OasisPlayerLaunchService.DefaultPreviewHeight;
+}
 
 public sealed class NativeEmulationPreferences
 {

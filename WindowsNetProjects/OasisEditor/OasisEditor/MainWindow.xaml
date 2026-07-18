@@ -69,6 +69,8 @@
                 <Separator />
                 <MenuItem Header="Build Oasis _Player Machine"
                           Command="{Binding BuildOasisPlayerMachineCommand}" />
+                <MenuItem Header="Preview in Oasis _Player"
+                          Command="{Binding PreviewInOasisPlayerCommand}" />
                 <MenuItem Header="_Save Asset"
                           Command="{Binding SaveSelectedDocumentCommand}" />
                 <MenuItem Header="_Close Project"

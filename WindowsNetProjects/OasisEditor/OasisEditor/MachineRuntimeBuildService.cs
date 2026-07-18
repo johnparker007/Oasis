@@ -5,7 +5,12 @@ using OasisEditor.Features.CabinetEditor.Models;
 
 namespace OasisEditor;
 
-public sealed class MachineRuntimeBuildService
+public interface IMachineRuntimeBuildService
+{
+    MachineRuntimeBuildResult BuildFromCabinetDocument(EditorProject project, string cabinetManifestPath);
+}
+
+public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
 {
     public const string MachineManifestFileName = "machine.runtime.json";
     public const string CabinetDirectoryName = "cabinet";
