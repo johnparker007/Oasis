@@ -163,6 +163,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: aa0526de9c562df4c93a50a3efd114ac, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  editorDevelopmentArguments:
+  - --mode
+  - machine-preview
+  - --build
+  - C:\Users\John\Documents\Oasis\Editor\Projects\Bonanza\Generated\Builds\VogueCabFolderAsAsset
 --- !u!1 &1458514836
 GameObject:
   m_ObjectHideFlags: 0
