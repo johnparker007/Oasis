@@ -167,6 +167,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OpenMachineStubCommand = new RelayCommand(OpenMachineStubDocument, CanOpenUntitledDocument);
         ImportMfmeFmlCommand = new RelayCommand(ImportMfmeFml, CanImportMfmeFml);
         ImportGlbModelCommand = new RelayCommand(ImportGlbModel, CanImportGlbModel);
+        BuildOasisPlayerMachineCommand = new RelayCommand(BuildOasisPlayerMachine, CanBuildOasisPlayerMachine);
         SaveSelectedDocumentCommand = new RelayCommand(SaveSelectedDocument, CanSaveSelectedDocument);
         CloseSelectedDocumentCommand = new RelayCommand(CloseSelectedDocument, CanCloseSelectedDocument);
         OpenPreferencesCommand = new RelayCommand(OpenPreferences);
@@ -490,6 +491,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand OpenMachineStubCommand { get; }
     public ICommand ImportMfmeFmlCommand { get; }
     public ICommand ImportGlbModelCommand { get; }
+    public ICommand BuildOasisPlayerMachineCommand { get; }
     public ICommand SaveSelectedDocumentCommand { get; }
     public ICommand CloseSelectedDocumentCommand { get; }
     public ICommand RefreshAssetBrowserCommand { get; }
@@ -1471,6 +1473,39 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                && SelectedDocument?.Document.DocumentType == EditorDocumentType.Panel2D;
     }
 
+
+    private void BuildOasisPlayerMachine()
+    {
+        if (LoadedProject is null)
+        {
+            ReportEditorOperationError("Open a project before building for Oasis Player.", OutputLogStatus.Warning);
+            return;
+        }
+
+        var selectedDocument = SelectedDocument;
+        if (selectedDocument?.Document.DocumentType != EditorDocumentType.Cabinet3D || selectedDocument.Document.IsUntitled)
+        {
+            ReportEditorOperationError("Select a saved Cabinet3D asset before building for Oasis Player.", OutputLogStatus.Warning);
+            return;
+        }
+
+        var result = new MachineRuntimeBuildService().BuildFromCabinetDocument(LoadedProject, selectedDocument.Document.FilePath);
+        if (!result.Success)
+        {
+            ReportEditorOperationError(result.ErrorMessage ?? "Failed to build Oasis Player runtime output.", OutputLogStatus.Error);
+            return;
+        }
+
+        StatusMessage = $"Oasis Player machine build written: {result.BuildRoot}";
+        AddOutputEntry($"Oasis Player machine build written: {result.BuildRoot}", OutputLogStatus.Info);
+    }
+
+    private bool CanBuildOasisPlayerMachine()
+    {
+        return LoadedProject is not null
+               && SelectedDocument?.Document.DocumentType == EditorDocumentType.Cabinet3D
+               && SelectedDocument.Document.IsUntitled == false;
+    }
 
     private bool CanImportGlbModel()
     {
@@ -4358,6 +4393,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (ImportGlbModelCommand is RelayCommand importGlbRelayCommand)
         {
             importGlbRelayCommand.RaiseCanExecuteChanged();
+        }
+
+        if (BuildOasisPlayerMachineCommand is RelayCommand buildOasisPlayerRelayCommand)
+        {
+            buildOasisPlayerRelayCommand.RaiseCanExecuteChanged();
         }
 
         if (SaveSelectedDocumentCommand is RelayCommand saveRelayCommand)
