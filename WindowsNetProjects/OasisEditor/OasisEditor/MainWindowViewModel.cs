@@ -55,6 +55,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private FaceGenerationSettingsModel _defaultFaceGenerationSettings = FaceGenerationSettingsModel.Default;
     private bool _showFaceGenerationSettingsBeforeRegenerate = true;
     private string _mameValidationSummary = "Not validated.";
+    private string _oasisPlayerExecutablePath = string.Empty;
+    private bool _oasisPlayerFullscreen;
+    private int _oasisPlayerPreviewWidth = OasisPlayerLaunchService.DefaultPreviewWidth;
+    private int _oasisPlayerPreviewHeight = OasisPlayerLaunchService.DefaultPreviewHeight;
     private string _selectedPreferencesCategory = "Appearance";
     private string _selectedProjectSettingsCategory = "General";
     private string _selectedNativeProjectSettingsTab = "ROMS";
@@ -114,6 +118,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private bool _isMameUnthrottled;
     private MameEmulationState _mameEmulationState = MameEmulationState.Stopped;
     private readonly IInputMapDiagnosticsService _inputMapDiagnosticsService = new InputMapDiagnosticsService(new MameInputPortResolver());
+    private readonly OasisPlayerPreviewService _oasisPlayerPreviewService = new();
     private IReadOnlyList<InputMapDiagnostic> _inputMapDiagnostics = [];
     private PlayViewInputRouter? _playViewInputRouter;
     private PlayViewInputDispatcher? _playViewInputDispatcher;
@@ -168,6 +173,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ImportMfmeFmlCommand = new RelayCommand(ImportMfmeFml, CanImportMfmeFml);
         ImportGlbModelCommand = new RelayCommand(ImportGlbModel, CanImportGlbModel);
         BuildOasisPlayerMachineCommand = new RelayCommand(BuildOasisPlayerMachine, CanBuildOasisPlayerMachine);
+        PreviewInOasisPlayerCommand = new RelayCommand(PreviewInOasisPlayer, CanBuildOasisPlayerMachine);
         SaveSelectedDocumentCommand = new RelayCommand(SaveSelectedDocument, CanSaveSelectedDocument);
         CloseSelectedDocumentCommand = new RelayCommand(CloseSelectedDocument, CanCloseSelectedDocument);
         OpenPreferencesCommand = new RelayCommand(OpenPreferences);
@@ -182,6 +188,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OpenDebuggerWatchpointsCommand = new RelayCommand(OpenDebuggerWatchpoints);
         ClosePreferencesCommand = new RelayCommand(ClosePreferences);
         BrowseMameExecutableCommand = new RelayCommand(BrowseMameExecutable);
+        BrowseOasisPlayerExecutableCommand = new RelayCommand(BrowseOasisPlayerExecutable);
         ValidateMamePreferencesCommand = new RelayCommand(ValidateMamePreferences);
         RefreshMameVersionsCommand = new RelayCommand(RefreshMameVersions);
         DownloadMameVersionCommand = new RelayCommand(DownloadMameVersion);
@@ -492,6 +499,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand ImportMfmeFmlCommand { get; }
     public ICommand ImportGlbModelCommand { get; }
     public ICommand BuildOasisPlayerMachineCommand { get; }
+    public ICommand PreviewInOasisPlayerCommand { get; }
     public ICommand SaveSelectedDocumentCommand { get; }
     public ICommand CloseSelectedDocumentCommand { get; }
     public ICommand RefreshAssetBrowserCommand { get; }
@@ -526,6 +534,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand OpenDebuggerWatchpointsCommand { get; }
     public ICommand ClosePreferencesCommand { get; }
     public ICommand BrowseMameExecutableCommand { get; }
+    public ICommand BrowseOasisPlayerExecutableCommand { get; }
     public ICommand ValidateMamePreferencesCommand { get; }
     public ICommand RefreshMameVersionsCommand { get; }
     public ICommand DownloadMameVersionCommand { get; }
@@ -579,7 +588,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
 
     public IReadOnlyList<ThemePreference> ThemePreferences { get; } = Enum.GetValues<ThemePreference>();
-    public IReadOnlyList<string> PreferencesCategories { get; } = ["Appearance", "MAME", "Native Emulation"];
+    public IReadOnlyList<string> PreferencesCategories { get; } = ["Appearance", "Player", "MAME", "Native Emulation"];
     public IReadOnlyList<string> ProjectSettingsCategories { get; } = ["General", "MAME", "Native"];
     public IReadOnlyList<string> NativeProjectSettingsTabs { get; } = ["ROMS", "Stake/Prize", "Reels", "Coins"];
     public IReadOnlyList<FruitMachinePlatformType> FruitMachinePlatformTypes { get; } = Enum.GetValues<FruitMachinePlatformType>();
@@ -640,6 +649,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     }
 
     public string MameVersion { get => _mameVersion; set { if (SetProperty(ref _mameVersion, value)) SavePreferences(); } }
+    public string OasisPlayerExecutablePath { get => _oasisPlayerExecutablePath; set { if (SetProperty(ref _oasisPlayerExecutablePath, value)) SavePreferences(); } }
+    public bool OasisPlayerFullscreen { get => _oasisPlayerFullscreen; set { if (SetProperty(ref _oasisPlayerFullscreen, value)) SavePreferences(); } }
+    public int OasisPlayerPreviewWidth { get => _oasisPlayerPreviewWidth; set { if (SetProperty(ref _oasisPlayerPreviewWidth, value)) SavePreferences(); } }
+    public int OasisPlayerPreviewHeight { get => _oasisPlayerPreviewHeight; set { if (SetProperty(ref _oasisPlayerPreviewHeight, value)) SavePreferences(); } }
     public string MameExecutablePath { get => _mameExecutablePath; set { if (SetProperty(ref _mameExecutablePath, value)) SavePreferences(); } }
     public string MameInstallRootDirectory => _mameInstallRootDirectory;
     public string MameReleaseSource { get => _mameReleaseSource; set { if (SetProperty(ref _mameReleaseSource, value)) SavePreferences(); } }
@@ -1500,6 +1513,42 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         AddOutputEntry($"Oasis Player machine build written: {result.BuildRoot}", OutputLogStatus.Info);
     }
 
+
+    private void PreviewInOasisPlayer()
+    {
+        if (LoadedProject is null)
+        {
+            ReportEditorOperationError("Open a project before previewing in Oasis Player.", OutputLogStatus.Warning);
+            return;
+        }
+
+        var selectedDocument = SelectedDocument;
+        if (selectedDocument?.Document.DocumentType != EditorDocumentType.Cabinet3D || selectedDocument.Document.IsUntitled)
+        {
+            ReportEditorOperationError("Select a saved Cabinet3D asset before previewing in Oasis Player.", OutputLogStatus.Warning);
+            return;
+        }
+
+        var result = _oasisPlayerPreviewService.Preview(LoadedProject, selectedDocument.Document.FilePath, new OasisPlayerPreferences
+        {
+            ExecutablePath = OasisPlayerExecutablePath,
+            Fullscreen = OasisPlayerFullscreen,
+            PreviewWidth = OasisPlayerPreviewWidth,
+            PreviewHeight = OasisPlayerPreviewHeight
+        });
+
+        if (!result.Success)
+        {
+            ReportEditorOperationError(result.ErrorMessage ?? "Failed to preview in Oasis Player.", OutputLogStatus.Error);
+            return;
+        }
+
+        var arguments = string.Join(" ", result.Arguments);
+        StatusMessage = $"Oasis Player preview launched: {result.BuildRoot}";
+        AddOutputEntry($"Oasis Player machine build written: {result.BuildRoot}", OutputLogStatus.Info);
+        AddOutputEntry($"Oasis Player preview launched: {result.ExecutablePath} {arguments}", OutputLogStatus.Info);
+    }
+
     private bool CanBuildOasisPlayerMachine()
     {
         return LoadedProject is not null
@@ -2126,6 +2175,28 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
+
+    private void BrowseOasisPlayerExecutable()
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "Select Oasis Player executable",
+            Filter = "Oasis Player executable|*.exe|All files|*.*",
+            CheckFileExists = true
+        };
+
+        if (!string.IsNullOrWhiteSpace(OasisPlayerExecutablePath))
+        {
+            dialog.InitialDirectory = Path.GetDirectoryName(OasisPlayerExecutablePath);
+        }
+
+        if (dialog.ShowDialog(_ownerWindow) == true)
+        {
+            OasisPlayerExecutablePath = dialog.FileName;
+            AddOutputEntry($"Oasis Player executable path set to: {OasisPlayerExecutablePath}", OutputLogStatus.Info);
+        }
+    }
+
     private async void ValidateMamePreferences()
     {
         await ValidateMamePreferencesAsync();
@@ -2467,6 +2538,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             {
                 System6LibraryPath = System6NativeLibraryPath,
                 AudioBufferLengthMilliseconds = System6AudioBufferLengthMilliseconds
+            },
+            Player = new OasisPlayerPreferences
+            {
+                ExecutablePath = OasisPlayerExecutablePath,
+                Fullscreen = OasisPlayerFullscreen,
+                PreviewWidth = OasisPlayerPreviewWidth,
+                PreviewHeight = OasisPlayerPreviewHeight
             },
             FaceGeneration = FaceGenerationPreferences.FromSettings(
                 _defaultFaceGenerationSettings,
@@ -4398,6 +4476,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (BuildOasisPlayerMachineCommand is RelayCommand buildOasisPlayerRelayCommand)
         {
             buildOasisPlayerRelayCommand.RaiseCanExecuteChanged();
+        }
+
+        if (PreviewInOasisPlayerCommand is RelayCommand previewInOasisPlayerRelayCommand)
+        {
+            previewInOasisPlayerRelayCommand.RaiseCanExecuteChanged();
         }
 
         if (SaveSelectedDocumentCommand is RelayCommand saveRelayCommand)
