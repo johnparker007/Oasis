@@ -6,63 +6,86 @@ Read only:
 
 1. `AGENTS.md`
 2. `00_CURRENT_PRIORITY.md`
-3. `Docs/AssetLayout/CODEX_START_PROMPT.md`
+3. `Docs/OasisPlayerPhase1/CODEX_START_PROMPT.md`
 
 Do not scan all Markdown files in this directory.
 
-Open additional AssetLayout task documents only as directed by `Docs/AssetLayout/CODEX_START_PROMPT.md` or when directly relevant to the requested work.
+Open additional Phase 1 task documents only as directed by `Docs/OasisPlayerPhase1/CODEX_START_PROMPT.md` or when directly relevant to the requested work.
 
 ## Current Focus
 
 Priority workstream:
 
-- Asset package layout redesign
-- Folder-as-asset storage model
-- Fixed asset manifest filenames
-- Authored assets under `Assets/`
-- Disposable runtime/cache/export files under `Generated/`
-- Panel2D, Face, and Cabinet3D first-save/package creation flow
+- Oasis Editor machine build/export
+- versioned runtime machine and cabinet manifests
+- external cabinet GLB packaging
+- Oasis Player command-line startup
+- windowed single-machine preview mode
+- runtime GLB loading into the existing Unity preview room
+
+This work spans:
+
+```text
+WindowsNetProjects/OasisEditor
+UnityProjects/OasisPlayer
+```
 
 ## Immediate Direction
 
-Implement the folder-as-asset package model described in:
+Implement the two Phase 1 checkpoints described in:
 
 ```text
-Docs/AssetLayout/CODEX_START_PROMPT.md
+Docs/OasisPlayerPhase1/CODEX_START_PROMPT.md
 ```
 
-Core target layout:
+Required order:
+
+1. establish the Editor's deterministic machine-build contract
+2. implement Player startup and runtime cabinet loading against that contract
+
+Core target flow:
 
 ```text
-Assets/Panel2D/<AssetName>/asset.panel2d
-Assets/Faces/<AssetName>/asset.face
-Assets/Faces/<AssetName>/artwork.png
-Assets/Faces/<AssetName>/mask.png
-Assets/Cabinet3D/<AssetName>/asset.cabinet3d
-Generated/Faces/<AssetName>/runtime/
+Oasis Editor project
+    -> generated machine build directory
+    -> OasisPlayer.exe --mode machine-preview --build <path>
+    -> Bootstrap scene
+    -> MachinePreview scene
+    -> cabinet instantiated beneath MachineSpawn
 ```
 
-Do not add migration code for old generated/document layouts unless it makes tests or current code clearer.
+## Architectural Boundaries
 
-## Architectural Goals
+- Cabinet content remains standard GLB/glTF with ordinary PBR materials.
+- Oasis-specific Face rendering is a later phase.
+- Preserve imported node hierarchy, node names, mesh boundaries, and material slots for future Face target binding.
+- Keep display mode independent from content mode.
+- Treat build output as disposable generated content, not authored `Assets/` content.
+- Treat the build directory as read-only in Oasis Player.
+- Do not recreate or regenerate the manually committed Unity scenes, `.meta` files, GUIDs, `StartupController` script asset, or `MachineSpawn` transform.
 
-- The asset folder is the asset.
-- The manifest file inside the folder describes the asset.
-- Use stable internal asset IDs in manifests where practical.
-- Keep authored/user-editable files under `Assets/`.
-- Keep disposable runtime/export/cache files under `Generated/`.
-- Keep Cabinet3D GLB reference/protection behavior intact.
-- Do not silently overwrite user-edited Face `artwork.png` or `mask.png` outside explicit regeneration.
+## Explicit Non-Goals
+
+Do not implement in this priority:
+
+- Face shaders or Face material replacement
+- lamps, reels, displays, buttons, or emulation
+- arcade layout loading or multiple machines
+- player navigation
+- remote downloads or archive packaging
+- live Editor-to-Player IPC or hot reload
 
 ## Testing Direction
 
-Prefer tests around:
+Prefer focused tests around:
 
-- asset package path service behavior
-- path sanitization and collision handling
-- first-save/package creation paths for Panel2D, Face, and Cabinet3D
-- Face Source Shape generation writing authored Face files under `Assets/Faces/<AssetName>/`
-- runtime export writing only under `Generated/Faces/<AssetName>/runtime/`
-- old GUID/generated authored-output assumptions being removed
+- deterministic Editor build paths and output replacement
+- versioned manifest serialization and validation
+- relative path safety
+- Cabinet3D GLB copying and model corrections
+- command-line parsing and option precedence
+- Player manifest loading and traversal rejection
+- mode-to-scene selection
+- runtime resource ownership and cleanup boundaries
 
-Do not attempt to run builds/tests in Codex. John will run builds/tests locally.
+Do not attempt to build the WPF application in Codex. Do not claim Unity visual verification unless it was actually performed. John will run builds, tests, Unity package imports, and visual checks locally.
