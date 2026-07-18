@@ -66,6 +66,9 @@
                     <MenuItem Header="_GLB Model..."
                               Command="{Binding ImportGlbModelCommand}" />
                 </MenuItem>
+                <Separator />
+                <MenuItem Header="Build Oasis _Player Machine"
+                          Command="{Binding BuildOasisPlayerMachineCommand}" />
                 <MenuItem Header="_Save Asset"
                           Command="{Binding SaveSelectedDocumentCommand}" />
                 <MenuItem Header="_Close Project"
