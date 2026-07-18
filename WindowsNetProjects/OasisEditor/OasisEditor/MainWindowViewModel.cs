@@ -289,6 +289,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             _mameRomDownloadService.ArchiveExtension = _mameRomArchiveExtension;
             _mameRomDownloadService.LocalRomSourceDirectory = _mameLocalRomSourceDirectory;
             _mameRomDownloadService.LocalRomArchiveExtension = _mameLocalRomArchiveExtension;
+            _oasisPlayerExecutablePath = preferences.Player.ExecutablePath;
+            _oasisPlayerFullscreen = preferences.Player.Fullscreen;
+            _oasisPlayerPreviewWidth = preferences.Player.PreviewWidth;
+            _oasisPlayerPreviewHeight = preferences.Player.PreviewHeight;
             _keepMameUpToDateAutomatically = preferences.Mame.KeepMameUpToDateAutomatically;
             _debugOutputLamps = preferences.Mame.DebugOutputLamps;
             _debugOutputStdIn = preferences.Mame.DebugOutputStdIn;
