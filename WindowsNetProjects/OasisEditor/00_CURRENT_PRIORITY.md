@@ -6,23 +6,19 @@ Read only:
 
 1. `AGENTS.md`
 2. `00_CURRENT_PRIORITY.md`
-3. `Docs/OasisPlayerPhase1/CODEX_START_PROMPT.md`
+3. `Docs/OasisPlayerPhase2/CODEX_START_PROMPT.md`
 
 Do not scan all Markdown files in this directory.
 
-Open additional Phase 1 task documents only as directed by `Docs/OasisPlayerPhase1/CODEX_START_PROMPT.md` or when directly relevant to the requested work.
+Open additional Phase 2 task documents only as directed by `Docs/OasisPlayerPhase2/CODEX_START_PROMPT.md` or when directly relevant to the requested work.
 
 ## Current Focus
 
 Priority workstream:
 
-- Oasis Editor Player preferences
-- persisted Oasis Player executable path
-- preview window/fullscreen settings
-- build-then-launch workflow
-- `File > Preview in Oasis Player`
-- safe command-line argument construction
-- clear launch validation and errors
+- Oasis Player Phase 2: Face Runtime Integration
+- deterministic Editor-generated Face runtime build contract
+- Face runtime manifests and texture/image export in generated machine builds
 
 Primary implementation project:
 
@@ -30,83 +26,39 @@ Primary implementation project:
 WindowsNetProjects/OasisEditor
 ```
 
-Existing Player command-line implementation to inspect for compatibility:
-
-```text
-UnityProjects/OasisPlayer
-```
-
 ## Immediate Direction
 
-Complete the Phase 1 launch-integration task described in:
+Implement only Phase 2 Task 01:
 
 ```text
-Docs/OasisPlayerPhase1/CODEX_START_PROMPT.md
-Docs/OasisPlayerPhase1/TASK_03_EDITOR_PLAYER_LAUNCH_INTEGRATION.md
+Docs/OasisPlayerPhase2/TASK_01_RUNTIME_FACE_EXPORT.md
 ```
 
-The earlier machine-build and Player cabinet-loading checkpoints are already merged.
-
-Core target flow:
-
-```text
-Preferences > Player
-    -> configure OasisPlayer.exe
-
-File > Preview in Oasis Player
-    -> build selected saved Cabinet3D asset
-    -> launch OasisPlayer.exe
-       --mode machine-preview
-       --build <absolute generated build path>
-       --windowed or --fullscreen
-       --width <pixels>
-       --height <pixels>
-```
-
-Keep the existing command:
-
-```text
-File > Build Oasis Player Machine
-```
-
-## Architectural Boundaries
-
-- Store the Player executable path as a user/machine preference, not project or asset data.
-- Extend the existing Preferences and settings architecture rather than adding a second settings system.
-- Reuse `MachineRuntimeBuildService`; do not duplicate build logic.
-- Keep process-launch logic out of WPF code-behind.
-- Prefer a focused testable launch service and injectable process-start boundary.
-- Pass process arguments separately; do not manually quote a single argument string.
-- Do not assume the Player executable lives at a repository-relative path.
-- Keep the launch fire-and-forget for this MVP.
+The Phase 1 cabinet runtime build and Player launch flow are complete and merged.
 
 ## Explicit Non-Goals
 
 Do not implement in this priority:
 
-- automatic Unity Player builds
-- Unity installation discovery
-- launching the Unity Editor
-- live Editor-to-Player IPC or hot reload
-- reuse, shutdown, or monitoring of an already-running Player
-- arcade mode or multiple machines
-- Face shaders or material replacement
-- lamps, reels, displays, buttons, or emulation
-- remote downloads or archive packaging
+- Player-side Face loading
+- runtime Face rendering
+- Unity material changes
+- lamp rendering
+- display rendering
+- reels
+- buttons
+- shaders
+- emulation integration
+- Player hot reload or IPC
 
 ## Testing Direction
 
 Prefer focused tests around:
 
-- Player preference defaults and persistence
-- missing/invalid executable validation
-- paths containing spaces
-- windowed and fullscreen arguments
-- width and height propagation
-- build failure preventing launch
-- successful build passing the exact returned build root
-- process-start failure reporting
+- machine manifests listing exported Face runtime manifests
+- deterministic Face output paths under generated machine builds
+- copied artwork and mask images
+- copied existing Face runtime metadata/textures required for later reconstruction
+- clear failures for invalid or missing Face runtime source data
 
-Do not launch the real Player from automated tests.
-
-Do not attempt to build the WPF application in Codex. Do not claim process-launch or visual verification unless it was actually performed. John will run builds, tests, Unity Player builds, and end-to-end checks locally.
+Do not attempt to build the WPF application in Codex. Do not claim WPF, Unity Player, or visual verification unless it was actually performed locally.
