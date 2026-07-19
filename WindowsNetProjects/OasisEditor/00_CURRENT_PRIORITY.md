@@ -34,7 +34,7 @@ WindowsNetProjects/OasisEditor
 
 ## Immediate Direction
 
-Implement only Phase 2 Task 04:
+Phase 2 Task 04 is complete:
 
 ```text
 Docs/OasisPlayerPhase2/TASK_04_FACE_RENDERER_INFRASTRUCTURE.md
@@ -53,7 +53,6 @@ Do not implement in this priority:
 - display rendering
 - reels
 - buttons
-- shaders
 - emulation integration
 - Player hot reload or IPC
 
@@ -76,4 +75,4 @@ Do not claim WPF, Unity Player, or visual verification unless it was actually pe
 
 ## Completed Checkpoint
 
-Phase 2 Task 03 (Static Face Rendering) is implemented and ready for local Unity verification. RuntimeFaces are rendered with runtime-owned material instances on safely resolved single-renderer/single-slot OasisFace targets.
+Phase 2 Task 04 (Face Renderer Infrastructure) is implemented and ready for local Unity verification. RuntimeFaces render static artwork through the dedicated Oasis/Face shader with explicit texture binding, cleanup, and future dynamic-state infrastructure.

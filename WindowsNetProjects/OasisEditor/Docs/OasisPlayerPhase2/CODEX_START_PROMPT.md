@@ -5,7 +5,7 @@ Read only these Phase 2 documents before implementation unless a task requires s
 1. `PHASE_02_CONTEXT.md`
 2. The task document for the requested Phase 2 task
 
-For the current checkpoint, implement only Task 04: Face Renderer Infrastructure.
+Current checkpoint complete: Task 04 Face Renderer Infrastructure. Do not automatically begin lamp rendering; the next likely checkpoint is narrowly scoped dynamic lamp rendering design/implementation.
 
 Respect these boundaries:
 
@@ -20,4 +20,4 @@ Respect these boundaries:
 
 ## Completed Checkpoint
 
-Task 03: Static Face Rendering is implemented. The Player now binds loaded RuntimeFaces to resolved OasisFace targets using runtime-owned material instances and displays the exported artwork texture statically. The exported mask remains loaded and owned by RuntimeFace for later renderer infrastructure; Task 03 does not combine it into the static material.
+Task 04: Face Renderer Infrastructure is implemented. The Player now uses a dedicated Oasis/Face shader and runtime-owned per-Face material instances, binds artwork/mask/production lookup textures, preserves static artwork output, and prepares a minimal dynamic-state update seam without implementing lamp rendering.
