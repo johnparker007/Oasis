@@ -1,93 +1,139 @@
 using System;
 using OasisPlayer.Settings;
+using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace OasisPlayer.UI.Controllers
 {
     public sealed class GraphicsSettingsController
     {
-        private readonly PlayerSettingsService _settings;
         private readonly Action _close;
-        private PlayerGraphicsSettings _baseline;
-        private PlayerGraphicsSettings _editable;
+        private readonly GraphicsSettingsTransaction _transaction;
         private Slider _lampExposure;
         private Label _lampExposureValue;
         private Toggle _bloomEnabled;
+        private VisualElement _bloomIntensityRow;
         private Slider _bloomIntensity;
         private Label _bloomIntensityValue;
 
         public GraphicsSettingsController(PlayerSettingsService settings, Action close)
         {
-            _settings = settings;
             _close = close;
+            _transaction = new GraphicsSettingsTransaction(settings);
         }
+
+        public bool IsBloomIntensityEnabled => _transaction.IsBloomIntensityEnabled;
+        public PlayerGraphicsSettings Baseline => _transaction.Baseline;
+        public PlayerGraphicsSettings Editable => _transaction.Editable;
 
         public void Bind(VisualElement root)
         {
-            _baseline = _settings.Graphics;
-            _editable = _baseline.Clone();
-            _lampExposure = root.Q<Slider>("lamp-exposure");
-            _lampExposureValue = root.Q<Label>("lamp-exposure-value");
-            _bloomEnabled = root.Q<Toggle>("bloom-enabled");
-            _bloomIntensity = root.Q<Slider>("bloom-intensity");
-            _bloomIntensityValue = root.Q<Label>("bloom-intensity-value");
+            Open();
+            _lampExposure = Require<Slider>(root, "lamp-exposure");
+            _lampExposureValue = Require<Label>(root, "lamp-exposure-value");
+            _bloomEnabled = Require<Toggle>(root, "bloom-enabled");
+            _bloomIntensityRow = Require<VisualElement>(root, "bloom-intensity-row");
+            _bloomIntensity = Require<Slider>(root, "bloom-intensity");
+            _bloomIntensityValue = Require<Label>(root, "bloom-intensity-value");
 
-            SetControls(_editable);
-            _lampExposure.RegisterValueChangedCallback(e => { _editable.LampExposureStops = e.newValue; Preview(); });
-            _bloomEnabled.RegisterValueChangedCallback(e => { _editable.BloomEnabled = e.newValue; Preview(); });
-            _bloomIntensity.RegisterValueChangedCallback(e => { _editable.BloomIntensity = e.newValue; Preview(); });
-            root.Q<Button>("restore-defaults-button").clicked += RestoreDefaults;
-            root.Q<Button>("cancel-button").clicked += Cancel;
-            root.Q<Button>("apply-button").clicked += Apply;
-            root.RegisterCallback<KeyDownEvent>(OnKeyDown);
+            ConfigureRanges();
+            SetControls(_transaction.Editable);
+            _lampExposure.RegisterValueChangedCallback(e => SetLampExposure(e.newValue));
+            _bloomEnabled.RegisterValueChangedCallback(e => SetBloomEnabled(e.newValue));
+            _bloomIntensity.RegisterValueChangedCallback(e => SetBloomIntensity(e.newValue));
+            Require<Button>(root, "close-button").clicked += Cancel;
+            Require<Button>(root, "restore-defaults-button").clicked += RestoreDefaults;
+            Require<Button>(root, "cancel-button").clicked += Cancel;
+            Require<Button>(root, "apply-button").clicked += () => Apply();
             _lampExposure.Focus();
+        }
+
+        public void Open()
+        {
+            _transaction.Open();
+        }
+
+        public void SetLampExposure(float value)
+        {
+            SetControls(_transaction.SetLampExposure(value));
+        }
+
+        public void SetBloomEnabled(bool value)
+        {
+            SetControls(_transaction.SetBloomEnabled(value));
+        }
+
+        public void SetBloomIntensity(float value)
+        {
+            SetControls(_transaction.SetBloomIntensity(value));
         }
 
         public void Cancel()
         {
-            _settings.PreviewGraphics(_baseline);
+            _transaction.Cancel();
             _close?.Invoke();
         }
 
-        private void Apply()
+        public bool Apply()
         {
-            if (_settings.ApplyGraphics(_editable)) _baseline = _editable.Clone();
-            _close?.Invoke();
+            var saved = _transaction.Apply();
+            if (saved)
+            {
+                _close?.Invoke();
+            }
+            else
+            {
+                Debug.LogError("Oasis Player graphics settings could not be saved. The settings menu will remain open so the values can be retried or cancelled.");
+            }
+
+            return saved;
         }
 
-        private void RestoreDefaults()
+        public void RestoreDefaults()
         {
-            _editable = _settings.DefaultsForGraphics();
-            SetControls(_editable);
-            Preview();
+            SetControls(_transaction.RestoreDefaults());
         }
 
-        private void Preview()
+        private void ConfigureRanges()
         {
-            _editable.Validate();
-            UpdateValueLabels();
-            _settings.PreviewGraphics(_editable);
+            _lampExposure.lowValue = PlayerGraphicsSettings.MinLampExposureStops;
+            _lampExposure.highValue = PlayerGraphicsSettings.MaxLampExposureStops;
+            _bloomIntensity.lowValue = PlayerGraphicsSettings.MinBloomIntensity;
+            _bloomIntensity.highValue = PlayerGraphicsSettings.MaxBloomIntensity;
         }
 
         private void SetControls(PlayerGraphicsSettings settings)
         {
-            _lampExposure.SetValueWithoutNotify(settings.LampExposureStops);
-            _bloomEnabled.SetValueWithoutNotify(settings.BloomEnabled);
-            _bloomIntensity.SetValueWithoutNotify(settings.BloomIntensity);
+            settings.Validate();
+            if (_lampExposure != null) _lampExposure.SetValueWithoutNotify(settings.LampExposureStops);
+            if (_bloomEnabled != null) _bloomEnabled.SetValueWithoutNotify(settings.BloomEnabled);
+            if (_bloomIntensity != null) _bloomIntensity.SetValueWithoutNotify(settings.BloomIntensity);
             UpdateValueLabels();
+            UpdateEnabledStates();
         }
 
         private void UpdateValueLabels()
         {
-            _lampExposureValue.text = $"{_editable.LampExposureStops:0.0} stops";
-            _bloomIntensityValue.text = _editable.BloomIntensity.ToString("0.0");
+            var editable = _transaction.Editable;
+            if (editable == null) return;
+            if (_lampExposureValue != null) _lampExposureValue.text = $"{editable.LampExposureStops:0.0} stops";
+            if (_bloomIntensityValue != null) _bloomIntensityValue.text = editable.BloomIntensity.ToString("0.0");
         }
 
-        private void OnKeyDown(KeyDownEvent evt)
+        private void UpdateEnabledStates()
         {
-            if (evt.keyCode != UnityEngine.KeyCode.Escape) return;
-            evt.StopPropagation();
-            Cancel();
+            var enabled = _transaction.IsBloomIntensityEnabled;
+            if (_bloomIntensity != null) _bloomIntensity.SetEnabled(enabled);
+            if (_bloomIntensityRow == null) return;
+            _bloomIntensityRow.EnableInClassList("oasis-disabled-row", !enabled);
+        }
+
+        private static T Require<T>(VisualElement root, string name) where T : VisualElement
+        {
+            var element = root.Q<T>(name);
+            if (element != null) return element;
+
+            throw new InvalidOperationException($"Graphics Settings UXML is missing required {typeof(T).Name} '{name}'.");
         }
     }
 }

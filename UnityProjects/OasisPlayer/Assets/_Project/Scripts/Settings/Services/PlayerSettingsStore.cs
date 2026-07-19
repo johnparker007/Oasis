@@ -38,7 +38,8 @@ namespace OasisPlayer.Settings
             {
                 var copy = (settings ?? PlayerSettings.Defaults()).Clone();
                 copy.Validate();
-                Directory.CreateDirectory(Path.GetDirectoryName(SettingsPath));
+                var directory = Path.GetDirectoryName(SettingsPath);
+                if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
                 File.WriteAllText(SettingsPath, JsonUtility.ToJson(copy, true));
                 return true;
             }
