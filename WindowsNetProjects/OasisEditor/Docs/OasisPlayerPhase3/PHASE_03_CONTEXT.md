@@ -34,7 +34,18 @@ The Editor texture preview was inspected and continues to provide an SDR authori
 
 ## Task 03 second-pass and PR 561 follow-up Face shader refinement
 
-The Player `Oasis/Face` shader now renders Face output in two transparent passes. The base pass is single-sided (`Cull Back`) and scene-lit by URP spherical-harmonic ambient lighting, the main light, and URP additional per-pixel lights such as point/spot lights. The emission pass is also single-sided/depth-tested but additive (`Blend One One`, `ColorMask RGB`), so lamp RGB is not multiplied by artwork alpha.
+The Player `Oasis/Face` shader now renders Face output in one premultiplied transparent `UniversalForward` pass. The pass is single-sided (`Cull Back`) and scene-lit by URP spherical-harmonic ambient lighting, the main light, and URP additional per-pixel lights such as point/spot lights. A previous two-pass attempt used a `SRPDefaultUnlit` additive lamp pass, but manual Unity testing showed no visible dynamic lamp output while the base `UniversalForward` pass rendered. The single-pass design guarantees base and lamp calculations execute together without adding renderer features or duplicate draw infrastructure.
+
+The final blend/output equation is:
+
+```text
+outputRgb = baseRgb * artwork.a + lampEmission
+outputAlpha = artwork.a
+Blend One OneMinusSrcAlpha
+dst.rgb = outputRgb + dst.rgb * (1 - outputAlpha)
+```
+
+Only the base artwork is premultiplied by artwork alpha. Dynamic lamp emission is not attenuated by artwork alpha, scene lighting, light attenuation, or normal direction; it is attenuated by the exported lamp mask, decoded lamp IDs/weights, runtime lamp brightness, and explicit emission controls.
 
 The final base formula is:
 

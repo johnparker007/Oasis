@@ -177,9 +177,9 @@ Shader "Oasis/Face"
 
         Pass
         {
-            Name "OasisFaceBaseForwardLit"
+            Name "OasisFaceForwardLit"
             Tags { "LightMode" = "UniversalForward" }
-            Blend SrcAlpha OneMinusSrcAlpha
+            Blend One OneMinusSrcAlpha
             Cull Back
             ZWrite Off
             ZTest LEqual
@@ -197,28 +197,9 @@ Shader "Oasis/Face"
             {
                 half4 artwork = SAMPLE_TEXTURE2D(_OasisArtworkTex, sampler_OasisArtworkTex, input.uv);
                 float3 baseRgb = artwork.rgb * _OasisStaticBrightness * EvaluateBaseLighting(input);
-                return half4(baseRgb, artwork.a);
-            }
-            ENDHLSL
-        }
-
-        Pass
-        {
-            Name "OasisFaceLampEmission"
-            Tags { "LightMode" = "SRPDefaultUnlit" }
-            Blend One One
-            ColorMask RGB
-            Cull Back
-            ZWrite Off
-            ZTest LEqual
-
-            HLSLPROGRAM
-            #pragma vertex vert
-            #pragma fragment frag
-
-            half4 frag(Varyings input) : SV_Target
-            {
-                return half4(EvaluateLampEmission(input.uv), 0.0);
+                float3 basePremultiplied = baseRgb * artwork.a;
+                float3 lampEmission = EvaluateLampEmission(input.uv);
+                return half4(basePremultiplied + lampEmission, artwork.a);
             }
             ENDHLSL
         }

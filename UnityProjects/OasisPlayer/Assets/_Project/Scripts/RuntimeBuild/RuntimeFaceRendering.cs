@@ -168,8 +168,8 @@ namespace OasisPlayer.RuntimeBuild
             material.name = $"RuntimeFace_{(face.Reference != null ? face.Reference.faceId : "Face")}_OasisFace";
             BindTextures(material, face);
             if (lampStateTexture != null && lampStateTexture.Texture != null) AssignTexture(material, RuntimeFaceShaderProperties.LampStateTexture, lampStateTexture.Texture);
-            // Keep the base artwork scene-lit while adding a separate lamp emission pass.
-            // Lamp luminance controls preserve artwork hue at high intensity and keep dark ink visible
+            // Keep the base artwork scene-lit while adding alpha-independent lamp emission in the
+            // shader's single premultiplied forward pass. Lamp luminance controls preserve artwork hue
             // without requiring per-lamp colours or illuminated artwork textures in the runtime export.
             if (material.HasProperty(RuntimeFaceShaderProperties.StaticBrightness)) material.SetFloat(RuntimeFaceShaderProperties.StaticBrightness, DefaultStaticBrightness);
             if (material.HasProperty(RuntimeFaceShaderProperties.MaskStrength)) material.SetFloat(RuntimeFaceShaderProperties.MaskStrength, DefaultMaskStrength);

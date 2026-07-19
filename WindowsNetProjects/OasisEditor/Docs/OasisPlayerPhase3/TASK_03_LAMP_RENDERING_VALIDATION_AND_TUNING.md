@@ -24,49 +24,30 @@ Implemented checkpoint for validating and tuning Player lamp rendering after the
 
 1. **Local point and spot lights were missing.** The shader had no `GetAdditionalLightsCount()`/`GetAdditionalLight(...)` path, so additional URP lights that lit the cabinet could not affect the Face base artwork.
 2. **The Face was treated as double-sided.** `Cull Off` plus `abs(dot(normal, lightDirection))` made both sides light as if front-facing. This hid orientation errors and did not match the single-sided printed-artwork model.
-3. **Lamp emission was attenuated by artwork alpha.** Returning `baseRgb + lampEmission` through `Blend SrcAlpha OneMinusSrcAlpha` multiplied all source RGB, including emission, by `artwork.a`. This violated the rule that lamps are attenuated only by mask, lamp lookup/state, and explicit lamp controls.
+3. **Lamp emission was attenuated by artwork alpha, then briefly regressed to no visible output.** Returning `baseRgb + lampEmission` through `Blend SrcAlpha OneMinusSrcAlpha` multiplied all source RGB, including emission, by `artwork.a`. The attempted two-pass fix moved lamps into a second `SRPDefaultUnlit` pass, but manual Unity testing showed URP was submitting the visible `UniversalForward` base pass and not producing visible output from the second pass for this material/renderer path. A single `UniversalForward` pass with premultiplied-alpha blending guarantees base and lamp calculations run in the same forward draw.
 4. **Lamp colour could still become pale/white.** Luminance normalization (`artwork.rgb / artworkLuminance`) can produce colour-direction channels far above `1.0`, and the broad warm fallback blended dark coloured regions toward cream. Additive HDR output and tonemapping then had an easier path to white/pale results.
 
-## Final Player pass design and blend equations
+## Final Player pass design and blend equation
 
-`Oasis/Face` now uses two transparent passes with identical UVs, depth test, and single-sided culling:
-
-### Pass 1: `OasisFaceBaseForwardLit`
+`Oasis/Face` now uses one transparent `UniversalForward` pass so URP submits both the scene-lit base artwork and dynamic lamp emission in the same forward material draw:
 
 - `LightMode = UniversalForward`
-- `Blend SrcAlpha OneMinusSrcAlpha`
+- `Blend One OneMinusSrcAlpha`
 - `Cull Back`
 - `ZWrite Off`
 - `ZTest LEqual`
-- Output: `half4(baseRgb, artwork.a)`
+- Output: `half4(baseRgb * artwork.a + lampEmission, artwork.a)`
 
 Blend equation:
 
 ```text
-dst.rgb = baseRgb * artwork.a + dst.rgb * (1 - artwork.a)
+dst.rgb = (baseRgb * artwork.a + lampEmission) + dst.rgb * (1 - artwork.a)
 dst.a   = artwork.a + dst.a * (1 - artwork.a)
 ```
 
-This keeps normal transparent Face artwork and antialiased base edges alpha-controlled.
+This preserves normal alpha-controlled base artwork edges while keeping lamp emission independent of artwork alpha. Lamp emission is still spatially restricted to rendered single-sided Face geometry and numerically restricted by the exported lamp mask, decoded lamp IDs, decoded lamp weights, runtime lamp brightness, and explicit emission controls.
 
-### Pass 2: `OasisFaceLampEmission`
-
-- `LightMode = SRPDefaultUnlit`
-- `Blend One One`
-- `ColorMask RGB`
-- `Cull Back`
-- `ZWrite Off`
-- `ZTest LEqual`
-- Output: `half4(lampEmission, 0)`
-
-Blend equation:
-
-```text
-dst.rgb = lampEmission + dst.rgb
-dst.a   = unchanged because ColorMask RGB disables alpha writes
-```
-
-This makes lamp emission independent of artwork alpha, scene lighting, light attenuation, normal direction, and ambient lighting. It is still spatially restricted by the rendered single-sided Face geometry, depth-tested against the scene, and numerically restricted by the exported lamp mask, decoded lamp IDs, decoded lamp weights, runtime brightness, and explicit lamp controls.
+The abandoned two-pass approach used a `UniversalForward` base pass plus a `SRPDefaultUnlit` additive emission pass. Manual Unity validation showed the base pass rendered but no lamp emission appeared during the automatic diagnostic, consistent with the second pass not being submitted through the active URP transparent draw path. The final implementation removes that separate pass instead of adding renderer features, command buffers, duplicate geometry, second materials, bloom, or post-processing.
 
 ## Final base-lighting formula
 
@@ -186,7 +167,7 @@ For all visual checks, compare hue preservation, saturation, luminance, detail r
 
 - Unity shader compilation and visual tone mapping must still be verified inside Unity because this repository environment does not include the Unity editor/batchmode compiler.
 - Runtime manifests still lack the Editor's Face target orientation overrides. A future small, backward-compatible export should carry `FrontSide`, `FaceRotation`, and `FaceFlipHorizontal` to Player and apply them outside the fragment shader.
-- The custom Face shader now covers ambient, main light, and URP additional per-pixel lights; it intentionally does not implement normal maps, metallic/glossy PBR, cookies, or custom glow halos.
+- The custom Face shader now covers ambient, main light, and URP additional per-pixel lights in a single forward pass; it intentionally does not implement normal maps, metallic/glossy PBR, cookies, or custom glow halos.
 - Additional-light shadows depend on the active URP asset/platform support; the PC asset supports them, while the mobile asset currently does not.
 - Bloom/glow halos remain optional future polish.
 - Emulator lamp integration remains the next Phase 3 bridge task and is not complete.
