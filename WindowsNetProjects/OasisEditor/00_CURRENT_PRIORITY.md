@@ -17,10 +17,16 @@ Open additional Phase 2 task documents only as directed by `Docs/OasisPlayerPhas
 Priority workstream:
 
 - Oasis Player Phase 2: Face Runtime Integration
-- deterministic Editor-generated Face runtime build contract
-- Face runtime manifests and texture/image export in generated machine builds
+- Player-side loading and validation of exported Face runtime assets
+- in-memory RuntimeFace model registration after cabinet instantiation
 
 Primary implementation project:
+
+```text
+UnityProjects/OasisPlayer
+```
+
+Related contract producer:
 
 ```text
 WindowsNetProjects/OasisEditor
@@ -28,21 +34,22 @@ WindowsNetProjects/OasisEditor
 
 ## Immediate Direction
 
-Implement only Phase 2 Task 01:
+Implement only Phase 2 Task 02:
 
 ```text
-Docs/OasisPlayerPhase2/TASK_01_RUNTIME_FACE_EXPORT.md
+Docs/OasisPlayerPhase2/TASK_02_PLAYER_FACE_LOADING.md
 ```
 
-The Phase 1 cabinet runtime build and Player launch flow are complete and merged.
+Phase 2 Task 01 is complete. Do not modify the runtime Face export contract unless a genuine defect is discovered.
 
 ## Explicit Non-Goals
 
 Do not implement in this priority:
 
-- Player-side Face loading
 - runtime Face rendering
 - Unity material changes
+- RenderTextures
+- mesh replacement or mesh modification
 - lamp rendering
 - display rendering
 - reels
@@ -55,10 +62,14 @@ Do not implement in this priority:
 
 Prefer focused tests around:
 
-- machine manifests listing exported Face runtime manifests
-- deterministic Face output paths under generated machine builds
-- copied artwork and mask images
-- copied existing Face runtime metadata/textures required for later reconstruction
-- clear failures for invalid or missing Face runtime source data
+- valid machine manifests with multiple Faces
+- missing `face.runtime.json`
+- unsupported Face manifest schema version
+- missing artwork or mask image files
+- duplicate Face identifiers
+- duplicate cabinet target assignments
+- missing cabinet target mesh warnings
+- successful RuntimeFace registration
+- continued loading after invalid Face entries
 
-Do not attempt to build the WPF application in Codex. Do not claim WPF, Unity Player, or visual verification unless it was actually performed locally.
+Do not claim WPF, Unity Player, or visual verification unless it was actually performed locally.
