@@ -24,22 +24,50 @@ Semantics:
 
 - Task 01 proves dynamic lamp rendering without emulator integration.
 - Task 02 will bridge emulation output into the runtime lamp-state model.
-- Task 03 will validate and tune rendering behaviour visually and with more robust render tests.
+- Task 03 validates and tunes rendering behaviour visually and with more robust render tests.
 
-## Task 03 lamp rendering tuning result
+## Task 03 first-pass lamp rendering tuning result
 
-Task 03 kept the Phase 3 runtime data contract intact and tuned only the Player Face composition model. The Editor texture preview was inspected and continues to provide an SDR authoring preview using `artwork.rgb * (ambientStrength + mask * visibleLight * emissionStrength)`, clamped to 8-bit output, with no per-lamp colours, illuminated artwork layer, exposure, HDR, bloom, or tonemapping controls.
+The first Task 03 pass kept the Phase 3 runtime data contract intact and tuned only the Player Face composition model. It changed Player rendering from a clamped multiplier to additive lamp emission derived from artwork plus `_OasisLampLift`. That made dynamic lamp regions clearly visible, but the shader was still unlit and bright lamps could trend toward white because `_OasisLampLift` deliberately mixed every lamp colour toward white before adding HDR emission.
 
-The Player shader now separates lamp-off artwork from dynamic lamp emission. The final runtime formula is:
+The Editor texture preview was inspected and continues to provide an SDR authoring preview using `artwork.rgb * (ambientStrength + mask * visibleLight * emissionStrength)`, clamped to 8-bit output, with no per-lamp colours, illuminated artwork layer, exposure, HDR, bloom, or tonemapping controls.
+
+## Task 03 second-pass Face shader refinement
+
+The Player `Oasis/Face` shader now separates scene-lit printed artwork from dynamic lamp emission:
 
 ```text
 visibleLight = sum(lampBrightness[lampId] * weight)
 maskedLamp = mask * saturate(visibleLight)
-baseRgb = artwork.rgb * _OasisStaticBrightness
-lampColour = lerp(artwork.rgb, white, _OasisLampLift)
-lampEmission = lampColour * maskedLamp * _OasisEmissionStrength
+baseLighting = SampleSH(normalWS) * _OasisBaseAmbientStrength
+             + mainLight.color * abs(dot(normalWS, mainLight.direction))
+               * mainLight.distanceAttenuation * _OasisBaseMainLightStrength
+baseRgb = artwork.rgb * _OasisStaticBrightness * max(baseLighting, 0)
+artworkLuminance = max(dot(artwork.rgb, Rec709Luminance), 0.001)
+hueDirection = artwork.rgb / artworkLuminance
+darkBlend = saturate((_OasisLampMinLuminance - artworkLuminance) / _OasisLampMinLuminance)
+lampColourDirection = lerp(hueDirection, warmNeutralFallback, darkBlend)
+compressedLamp = 1 - exp2(-maskedLamp * _OasisLampCompression)
+lampLuminance = max(dot(artwork.rgb, Rec709Luminance), _OasisLampMinLuminance)
+              * min(compressedLamp * _OasisEmissionStrength, _OasisLampMaxLuminance)
+lampEmission = lampColourDirection * lampLuminance
 finalRgb = baseRgb + lampEmission
 finalAlpha = artwork.a
 ```
 
-The default runtime controls are `_OasisStaticBrightness = 1.0`, `_OasisMaskStrength = 1.0`, `_OasisEmissionStrength = 1.75`, and `_OasisLampLift = 0.35`. `_OasisLampLift` compensates for the current lack of separate lamp colours or illuminated artwork textures by lifting dark artwork pixels toward white only in masked, assigned lamp regions. The shader intentionally does not clamp final RGB before return, so HDR/overbright output is available where supported. Bloom and post-processing remain optional future work and were not enabled as part of this task.
+Default runtime controls are centralized in `RuntimeFaceMaterialFactory` and mirrored by shader defaults:
+
+- `_OasisStaticBrightness = 1.0`: authored albedo scale for lamps-off artwork before local lighting.
+- `_OasisBaseAmbientStrength = 1.0`: scale for URP spherical-harmonic ambient lighting.
+- `_OasisBaseMainLightStrength = 1.0`: scale for the URP main-light diffuse term.
+- `_OasisMaskStrength = 1.0`: preserves exported mask semantics.
+- `_OasisEmissionStrength = 1.75`: overall emissive lamp luminance scale.
+- `_OasisLampMinLuminance = 0.18`: minimum source luminance used for active lamps so dark artwork can still illuminate.
+- `_OasisLampMaxLuminance = 2.5`: practical cap for lamp luminance contribution before output, still allowing HDR values.
+- `_OasisLampCompression = 2.25`: soft-knee response; higher lamp controls produce diminishing luminance growth rather than immediate channel saturation.
+
+Colour-space assumptions remain unchanged: artwork is loaded as colour/sRGB-style data; mask, lamp lookup, and lamp-state textures are loaded or created as linear data. Lookup textures remain point-filtered; artwork and mask remain bilinear-filtered; runtime textures remain clamped and mip-free.
+
+The transparent render state remains `Blend SrcAlpha OneMinusSrcAlpha`, `ZWrite Off`, `ZTest LEqual`, and `Cull Off`. The shader preserves `artwork.a` and does not let lamp state alter alpha. RGB, including emissive RGB, is still source-alpha blended by Unity's transparent blending at antialiased edges; this preserves existing transparent-edge behaviour rather than creating opaque glow fringes.
+
+Bloom, glow halos, post-processing, and the emulator lamp bridge remain future work. The emulator bridge is not complete.

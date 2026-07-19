@@ -5,7 +5,7 @@ Read:
 1. `PHASE_03_CONTEXT.md`
 2. The current task document named by `00_CURRENT_PRIORITY.md`
 
-Current checkpoint complete: Task 03 Lamp Rendering Validation and Tuning. The Player shader now uses additive lamp emission derived from artwork plus `_OasisLampLift`; the Editor preview remains an SDR authoring preview.
+Current checkpoint complete: Task 03 Lamp Rendering Validation and Tuning, including the second-pass `Oasis/Face` refinement. The Player shader now uses URP ambient/main-light diffuse lighting for base artwork plus hue-preserving, soft-knee dynamic lamp emission; the Editor preview remains an SDR authoring preview.
 
 Next checkpoint:
 

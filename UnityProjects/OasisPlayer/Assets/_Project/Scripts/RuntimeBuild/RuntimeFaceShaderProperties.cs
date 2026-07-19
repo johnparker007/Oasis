@@ -13,7 +13,11 @@ namespace OasisPlayer.RuntimeBuild
         public const string LampStateTextureName = "_OasisLampStateTex";
         public const string EmissionStrengthName = "_OasisEmissionStrength";
         public const string StaticBrightnessName = "_OasisStaticBrightness";
-        public const string LampLiftName = "_OasisLampLift";
+        public const string LampMinLuminanceName = "_OasisLampMinLuminance";
+        public const string LampMaxLuminanceName = "_OasisLampMaxLuminance";
+        public const string LampCompressionName = "_OasisLampCompression";
+        public const string BaseAmbientStrengthName = "_OasisBaseAmbientStrength";
+        public const string BaseMainLightStrengthName = "_OasisBaseMainLightStrength";
         public const string MaskStrengthName = "_OasisMaskStrength";
 
         public static readonly int ArtworkTexture = Shader.PropertyToID(ArtworkTextureName);
@@ -24,7 +28,11 @@ namespace OasisPlayer.RuntimeBuild
         public static readonly int LampStateTexture = Shader.PropertyToID(LampStateTextureName);
         public static readonly int EmissionStrength = Shader.PropertyToID(EmissionStrengthName);
         public static readonly int StaticBrightness = Shader.PropertyToID(StaticBrightnessName);
-        public static readonly int LampLift = Shader.PropertyToID(LampLiftName);
+        public static readonly int LampMinLuminance = Shader.PropertyToID(LampMinLuminanceName);
+        public static readonly int LampMaxLuminance = Shader.PropertyToID(LampMaxLuminanceName);
+        public static readonly int LampCompression = Shader.PropertyToID(LampCompressionName);
+        public static readonly int BaseAmbientStrength = Shader.PropertyToID(BaseAmbientStrengthName);
+        public static readonly int BaseMainLightStrength = Shader.PropertyToID(BaseMainLightStrengthName);
         public static readonly int MaskStrength = Shader.PropertyToID(MaskStrengthName);
     }
 }
