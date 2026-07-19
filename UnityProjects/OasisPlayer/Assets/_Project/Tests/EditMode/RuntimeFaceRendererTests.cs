@@ -39,6 +39,8 @@ namespace OasisPlayer.Tests
                 Assert.AreEqual(Vector2.zero, runtimeMaterial.GetTextureOffset(RuntimeFaceShaderProperties.MaskTexture));
                 Assert.AreEqual((int)UnityEngine.Rendering.CullMode.Front, runtimeMaterial.GetInt(RuntimeFaceShaderProperties.CullMode));
                 Assert.AreEqual(-1f, runtimeMaterial.GetFloat(RuntimeFaceShaderProperties.NormalSign));
+                Assert.AreEqual(0, runtimeMaterial.GetInt(RuntimeFaceShaderProperties.FaceRotationQuarterTurns));
+                Assert.AreEqual(0f, runtimeMaterial.GetFloat(RuntimeFaceShaderProperties.FaceFlipHorizontal));
             }
             finally
             {
@@ -165,6 +167,8 @@ namespace OasisPlayer.Tests
             {
                 var face = CreateFace(target.transform, texture, mask, "inverted");
                 face.Reference.frontSide = RuntimeFaceFrontSideExtensions.InvertedValue;
+                face.Reference.faceRotation = 270;
+                face.Reference.faceFlipHorizontal = true;
                 var sut = new RuntimeFaceRenderer(new RuntimeFaceMaterialFactory());
 
                 Assert.True(sut.TryRender(CreateMachine(face), face, out var warning), warning);
@@ -172,6 +176,8 @@ namespace OasisPlayer.Tests
                 var runtimeMaterial = face.RenderBinding.RuntimeMaterial;
                 Assert.AreEqual((int)UnityEngine.Rendering.CullMode.Back, runtimeMaterial.GetInt(RuntimeFaceShaderProperties.CullMode));
                 Assert.AreEqual(1f, runtimeMaterial.GetFloat(RuntimeFaceShaderProperties.NormalSign));
+                Assert.AreEqual(3, runtimeMaterial.GetInt(RuntimeFaceShaderProperties.FaceRotationQuarterTurns));
+                Assert.AreEqual(1f, runtimeMaterial.GetFloat(RuntimeFaceShaderProperties.FaceFlipHorizontal));
             }
             finally
             {
@@ -180,6 +186,33 @@ namespace OasisPlayer.Tests
                 Object.DestroyImmediate(texture);
                 Object.DestroyImmediate(mask);
             }
+        }
+
+
+        [Test]
+        public void TextureOrientationTransformsUvCornersLikeEditorPreview()
+        {
+            var uv00 = new Vector2(0f, 0f);
+            var uv10 = new Vector2(1f, 0f);
+            var uv11 = new Vector2(1f, 1f);
+            var uv01 = new Vector2(0f, 1f);
+
+            AssertCorners(new RuntimeFaceTextureOrientation(0, false), uv00, uv10, uv11, uv01);
+            AssertCorners(new RuntimeFaceTextureOrientation(90, false), uv10, uv11, uv01, uv00);
+            AssertCorners(new RuntimeFaceTextureOrientation(180, false), uv11, uv01, uv00, uv10);
+            AssertCorners(new RuntimeFaceTextureOrientation(270, false), uv01, uv00, uv10, uv11);
+            AssertCorners(new RuntimeFaceTextureOrientation(0, true), uv10, uv00, uv01, uv11);
+            AssertCorners(new RuntimeFaceTextureOrientation(90, true), uv00, uv01, uv11, uv10);
+            AssertCorners(new RuntimeFaceTextureOrientation(180, true), uv01, uv11, uv10, uv00);
+            AssertCorners(new RuntimeFaceTextureOrientation(270, true), uv11, uv10, uv00, uv01);
+        }
+
+        private static void AssertCorners(RuntimeFaceTextureOrientation orientation, Vector2 source0, Vector2 source1, Vector2 source2, Vector2 source3)
+        {
+            Assert.AreEqual(source0, orientation.TransformUv(new Vector2(0f, 0f)));
+            Assert.AreEqual(source1, orientation.TransformUv(new Vector2(1f, 0f)));
+            Assert.AreEqual(source2, orientation.TransformUv(new Vector2(1f, 1f)));
+            Assert.AreEqual(source3, orientation.TransformUv(new Vector2(0f, 1f)));
         }
 
         private static GameObject CreateTarget(string name)

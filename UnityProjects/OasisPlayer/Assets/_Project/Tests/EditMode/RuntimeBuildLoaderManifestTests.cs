@@ -26,6 +26,8 @@ namespace OasisPlayer.Tests
                 Assert.AreEqual(frontSide, reference.frontSide);
                 Assert.AreEqual(expected, RuntimeFaceFrontSideExtensions.Parse(reference.frontSide));
                 Assert.AreEqual(expectedInverted, reference.IsInverted());
+                Assert.AreEqual(90, reference.faceRotation);
+                Assert.True(reference.faceFlipHorizontal);
 
                 var target = new GameObject("OasisFace_Target");
                 var artworkTexture = new Texture2D(1, 1, TextureFormat.RGBA32, false);
@@ -41,6 +43,8 @@ namespace OasisPlayer.Tests
 
                     Assert.AreSame(reference, runtimeFace.Reference);
                     Assert.AreEqual(expectedInverted, runtimeFace.Reference.IsInverted());
+                    Assert.AreEqual(90, runtimeFace.Reference.faceRotation);
+                    Assert.True(runtimeFace.Reference.faceFlipHorizontal);
                 }
                 finally
                 {

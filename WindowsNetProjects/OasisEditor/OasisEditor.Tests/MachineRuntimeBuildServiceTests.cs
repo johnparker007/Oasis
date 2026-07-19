@@ -49,7 +49,7 @@ public sealed class MachineRuntimeBuildServiceTests
         var cabinetDir = Directory.CreateDirectory(Path.Combine(project.AssetsDirectory, "Cabinet3D", "Test Cabinet")).FullName;
         var sourceGlb = Path.Combine(cabinetDir, "source.glb");
         File.WriteAllBytes(sourceGlb, [1, 2, 3]);
-        File.WriteAllText(Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName), CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("source.glb").WithTargetOverride(new CabinetTargetOverride("target-front", " INVERTED "))));
+        File.WriteAllText(Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName), CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("source.glb").WithTargetOverride(new CabinetTargetOverride("target-front", " INVERTED ", 450, true))));
         var faceDir = Directory.CreateDirectory(Path.Combine(project.AssetsDirectory, "Faces", "Front Face")).FullName;
         WriteSolidPng(Path.Combine(faceDir, "artwork.png"), 4, 4, SKColors.Red);
         WriteSolidPng(Path.Combine(faceDir, "mask.png"), 4, 4, SKColors.White);
@@ -78,17 +78,23 @@ public sealed class MachineRuntimeBuildServiceTests
         Assert.Equal("Front Face", face.GetProperty("assetName").GetString());
         Assert.Equal("target-front", face.GetProperty("cabinetFaceTargetId").GetString());
         Assert.Equal("inverted", face.GetProperty("frontSide").GetString());
+        Assert.Equal(90, face.GetProperty("faceRotation").GetInt32());
+        Assert.True(face.GetProperty("faceFlipHorizontal").GetBoolean());
         Assert.Equal("faces/Front Face/face.runtime.json", face.GetProperty("manifest").GetString());
         var normalFace = Assert.Single(faces, candidate => candidate.GetProperty("faceId").GetString() == "face-runtime-back");
         Assert.Equal("target-back", normalFace.GetProperty("cabinetFaceTargetId").GetString());
         Assert.Equal("normal", normalFace.GetProperty("frontSide").GetString());
+        Assert.Equal(0, normalFace.GetProperty("faceRotation").GetInt32());
+        Assert.False(normalFace.GetProperty("faceFlipHorizontal").GetBoolean());
 
-        File.WriteAllText(Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName), CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("source.glb").WithTargetOverride(new CabinetTargetOverride("target-front", CabinetTargetOverride.NormalFrontSide))));
+        File.WriteAllText(Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName), CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("source.glb").WithTargetOverride(new CabinetTargetOverride("target-front", CabinetTargetOverride.NormalFrontSide, 270, false))));
         var normalResult = new MachineRuntimeBuildService().BuildFromCabinetDocument(project, Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName));
         Assert.True(normalResult.Success, normalResult.ErrorMessage);
         using var normalMachine = JsonDocument.Parse(File.ReadAllText(Path.Combine(normalResult.BuildRoot!, "machine.runtime.json")));
         var changedFace = Assert.Single(normalMachine.RootElement.GetProperty("faces").EnumerateArray(), candidate => candidate.GetProperty("faceId").GetString() == "face-runtime");
         Assert.Equal("normal", changedFace.GetProperty("frontSide").GetString());
+        Assert.Equal(270, changedFace.GetProperty("faceRotation").GetInt32());
+        Assert.False(changedFace.GetProperty("faceFlipHorizontal").GetBoolean());
 
         using var faceManifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(faceBuildDirectory, "face.runtime.json")));
         Assert.Equal(1, faceManifest.RootElement.GetProperty("schemaVersion").GetInt32());
@@ -119,12 +125,14 @@ public sealed class MachineRuntimeBuildServiceTests
         var normalFace = Assert.Single(normalMachine.RootElement.GetProperty("faces").EnumerateArray());
         Assert.Equal("normal", normalFace.GetProperty("frontSide").GetString());
 
-        var unsavedCabinetDocument = CabinetDocument.FromModelPath("source.glb").WithTargetOverride(new CabinetTargetOverride("topGlass1", CabinetTargetOverride.InvertedFrontSide));
+        var unsavedCabinetDocument = CabinetDocument.FromModelPath("source.glb").WithTargetOverride(new CabinetTargetOverride("topGlass1", CabinetTargetOverride.InvertedFrontSide, 180, true));
         var invertedResult = service.BuildFromCabinetDocument(project, manifestPath, unsavedCabinetDocument);
         Assert.True(invertedResult.Success, invertedResult.ErrorMessage);
         using var invertedMachine = JsonDocument.Parse(File.ReadAllText(Path.Combine(invertedResult.BuildRoot!, "machine.runtime.json")));
         var invertedFace = Assert.Single(invertedMachine.RootElement.GetProperty("faces").EnumerateArray());
         Assert.Equal("inverted", invertedFace.GetProperty("frontSide").GetString());
+        Assert.Equal(180, invertedFace.GetProperty("faceRotation").GetInt32());
+        Assert.True(invertedFace.GetProperty("faceFlipHorizontal").GetBoolean());
     }
 
     [Fact]

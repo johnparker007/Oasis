@@ -23,6 +23,8 @@ namespace OasisPlayer.RuntimeBuild
         public string assetName = string.Empty;
         public string cabinetFaceTargetId = string.Empty;
         public string frontSide = RuntimeFaceFrontSideExtensions.NormalValue;
+        public int faceRotation;
+        public bool faceFlipHorizontal;
         public string manifest = string.Empty;
 
         public string ResolvedManifestPath

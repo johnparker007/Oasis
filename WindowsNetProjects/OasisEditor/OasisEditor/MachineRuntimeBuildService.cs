@@ -118,6 +118,8 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
                 faceAssetName,
                 targetId,
                 targetOverride.FrontSide,
+                targetOverride.FaceRotation,
+                targetOverride.FaceFlipHorizontal,
                 ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine("faces", _pathService.SanitizePathSegment(faceAssetName), FaceRuntimeExportService.ManifestFileName))));
         }
 
@@ -178,5 +180,5 @@ public sealed record MachineRuntimeBuildResult(bool Success, string? BuildRoot, 
 }
 
 public sealed record MachineRuntimeManifest(string Schema, int SchemaVersion, string MachineId, string DisplayName, string CabinetManifest, IReadOnlyList<MachineRuntimeFaceReference> Faces);
-public sealed record MachineRuntimeFaceReference(string FaceId, string AssetName, string CabinetFaceTargetId, string FrontSide, string Manifest);
+public sealed record MachineRuntimeFaceReference(string FaceId, string AssetName, string CabinetFaceTargetId, string FrontSide, int FaceRotation, bool FaceFlipHorizontal, string Manifest);
 public sealed record CabinetRuntimeManifest(string Schema, int SchemaVersion, string CabinetId, string Glb, double Scale, string UpAxis);
