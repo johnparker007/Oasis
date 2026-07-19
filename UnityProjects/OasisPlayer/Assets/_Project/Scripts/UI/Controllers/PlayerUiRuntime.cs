@@ -33,7 +33,14 @@ namespace OasisPlayer.UI.Controllers
             _document = gameObject.AddComponent<UIDocument>();
             _document.panelSettings = CreateRuntimePanelSettings(_panelSettingsAsset, _runtimeTheme);
             _document.visualTreeAsset = null;
-            _document.enabled = false;
+            _document.enabled = _document.panelSettings != null;
+            if (_document.enabled)
+            {
+                var root = _document.rootVisualElement;
+                FillPanel(root);
+                root.Clear();
+                root.pickingMode = PickingMode.Ignore;
+            }
         }
 
         private void Update()
@@ -94,13 +101,17 @@ namespace OasisPlayer.UI.Controllers
 
             var root = _document.rootVisualElement;
             root.Clear();
+            FillPanel(root);
             if (!_themeAttached)
             {
                 root.styleSheets.Add(_theme);
                 _themeAttached = true;
             }
             root.pickingMode = PickingMode.Position;
-            _graphicsView.CloneTree(root);
+
+            var container = _graphicsView.Instantiate();
+            FillPanel(container);
+            root.Add(container);
 
             Debug.Log($"Oasis Player UI diagnostics: viewLoaded=True stylesheetLoaded=True runtimeThemeLoaded=True panelSettingsLoaded=True rootChildCount={root.childCount} graphicsRoot={Exists<VisualElement>(root, "graphics-settings-root")} lampExposure={Exists<Slider>(root, "lamp-exposure")} bloomEnabled={Exists<Toggle>(root, "bloom-enabled")} applyButton={Exists<Button>(root, "apply-button")}");
 
@@ -137,6 +148,13 @@ namespace OasisPlayer.UI.Controllers
             panelSettings.match = 0.5f;
             panelSettings.sortingOrder = short.MaxValue;
             return panelSettings;
+        }
+
+        private static void FillPanel(VisualElement element)
+        {
+            element.style.flexGrow = 1f;
+            element.style.width = Length.Percent(100f);
+            element.style.height = Length.Percent(100f);
         }
 
         private static void ValidateConstructedTree(VisualElement root)
