@@ -64,10 +64,10 @@ namespace OasisPlayer.UI.Controllers
                 return;
             }
 
-            _previousCursorVisible = Cursor.visible;
-            _previousLockMode = Cursor.lockState;
-            Cursor.visible = true;
-            Cursor.lockState = CursorLockMode.None;
+            _previousCursorVisible = UnityEngine.Cursor.visible;
+            _previousLockMode = UnityEngine.Cursor.lockState;
+            UnityEngine.Cursor.visible = true;
+            UnityEngine.Cursor.lockState = CursorLockMode.None;
 
             if (!_documentHost.activeSelf) _documentHost.SetActive(true);
             _document.sortingOrder = short.MaxValue;
@@ -107,8 +107,8 @@ namespace OasisPlayer.UI.Controllers
             CloseDocumentRoot();
             _controller = null;
             _open = false;
-            Cursor.visible = _previousCursorVisible;
-            Cursor.lockState = _previousLockMode;
+            UnityEngine.Cursor.visible = _previousCursorVisible;
+            UnityEngine.Cursor.lockState = _previousLockMode;
         }
 
         private void CloseDocumentRoot()
