@@ -23,6 +23,7 @@ namespace OasisPlayer.UI.Controllers
         private bool _previousCursorVisible;
         private bool _themeAttached;
         private bool _escapeConsumed;
+        private int _openVersion;
         private CursorLockMode _previousLockMode;
 
         private void Awake()
@@ -39,6 +40,7 @@ namespace OasisPlayer.UI.Controllers
             _document = _documentHost.AddComponent<UIDocument>();
             _document.panelSettings = CreateRuntimePanelSettings(_panelSettingsAsset, _runtimeTheme);
             _document.visualTreeAsset = null;
+            _document.sortingOrder = short.MaxValue;
             _document.enabled = true;
 
             if (_document.panelSettings != null)
@@ -64,7 +66,8 @@ namespace OasisPlayer.UI.Controllers
                 if (_open)
                 {
                     _escapeConsumed = true;
-                    _controller?.Cancel();
+                    if (_controller != null) _controller.Cancel();
+                    else CloseGraphicsSettings();
                     return;
                 }
 
@@ -105,27 +108,38 @@ namespace OasisPlayer.UI.Controllers
             UnityEngine.Cursor.lockState = CursorLockMode.None;
 
             if (!_documentHost.activeSelf) _documentHost.SetActive(true);
-            _document.visualTreeAsset = null;
+            _document.sortingOrder = short.MaxValue;
 
             var root = _document.rootVisualElement;
             root.Clear();
             FillPanel(root);
-            if (!_themeAttached)
-            {
-                root.styleSheets.Add(_theme);
-                _themeAttached = true;
-            }
             root.pickingMode = PickingMode.Position;
 
-            var container = _graphicsView.Instantiate();
-            FillPanel(container);
-            root.Add(container);
+            _open = true;
+            _openVersion++;
+            var openVersion = _openVersion;
+            _document.visualTreeAsset = _graphicsView;
+            root.schedule.Execute(() => CompleteOpen(openVersion)).ExecuteLater(0);
+        }
 
-            Debug.Log($"Oasis Player UI diagnostics: viewLoaded=True stylesheetLoaded=True runtimeThemeLoaded=True panelSettingsLoaded=True rootChildCount={root.childCount} graphicsRoot={Exists<VisualElement>(root, "graphics-settings-root")} lampExposure={Exists<Slider>(root, "lamp-exposure")} bloomEnabled={Exists<Toggle>(root, "bloom-enabled")} applyButton={Exists<Button>(root, "apply-button")}");
+        private void CompleteOpen(int openVersion)
+        {
+            if (!_open || openVersion != _openVersion) return;
+
+            var root = _document.rootVisualElement;
+            FillPanel(root);
+            if (!root.styleSheets.Contains(_theme)) root.styleSheets.Add(_theme);
+            _themeAttached = true;
+
+            foreach (var child in root.Children())
+            {
+                FillPanel(child);
+            }
+
+            Debug.Log($"Oasis Player UI diagnostics: viewLoaded=True stylesheetLoaded=True runtimeThemeLoaded=True panelSettingsLoaded=True sourceAssetAssigned={_document.visualTreeAsset != null} sortOrder={_document.sortingOrder} rootChildCount={root.childCount} graphicsRoot={Exists<VisualElement>(root, "graphics-settings-root")} lampExposure={Exists<Slider>(root, "lamp-exposure")} bloomEnabled={Exists<Toggle>(root, "bloom-enabled")} applyButton={Exists<Button>(root, "apply-button")}");
 
             ValidateConstructedTree(root);
 
-            _open = true;
             _controller = new GraphicsSettingsController(PlayerSettingsService.EnsureGlobal(), CloseGraphicsSettings);
             _controller.Bind(root);
             Debug.Log("Oasis Player UI diagnostics: GraphicsSettingsController.Bind completed.");
@@ -133,6 +147,8 @@ namespace OasisPlayer.UI.Controllers
 
         private void CloseGraphicsSettings()
         {
+            _openVersion++;
+            _document.visualTreeAsset = null;
             var root = _document.rootVisualElement;
             root.Clear();
             root.pickingMode = PickingMode.Ignore;
