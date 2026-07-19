@@ -18,7 +18,7 @@ Priority workstream:
 
 - Oasis Player Phase 2: Face Runtime Integration
 - Player-side loading and validation of exported Face runtime assets
-- in-memory RuntimeFace model registration after cabinet instantiation
+- static RuntimeFace artwork rendering on resolved cabinet targets
 
 Primary implementation project:
 
@@ -34,10 +34,10 @@ WindowsNetProjects/OasisEditor
 
 ## Immediate Direction
 
-Implement only Phase 2 Task 02:
+Implement only Phase 2 Task 04:
 
 ```text
-Docs/OasisPlayerPhase2/TASK_02_PLAYER_FACE_LOADING.md
+Docs/OasisPlayerPhase2/TASK_04_FACE_RENDERER_INFRASTRUCTURE.md
 ```
 
 Phase 2 Task 01 is complete. Do not modify the runtime Face export contract unless a genuine defect is discovered.
@@ -46,8 +46,7 @@ Phase 2 Task 01 is complete. Do not modify the runtime Face export contract unle
 
 Do not implement in this priority:
 
-- runtime Face rendering
-- Unity material changes
+- lamp/display dynamic Face rendering
 - RenderTextures
 - mesh replacement or mesh modification
 - lamp rendering
@@ -73,3 +72,8 @@ Prefer focused tests around:
 - continued loading after invalid Face entries
 
 Do not claim WPF, Unity Player, or visual verification unless it was actually performed locally.
+
+
+## Completed Checkpoint
+
+Phase 2 Task 03 (Static Face Rendering) is implemented and ready for local Unity verification. RuntimeFaces are rendered with runtime-owned material instances on safely resolved single-renderer/single-slot OasisFace targets.

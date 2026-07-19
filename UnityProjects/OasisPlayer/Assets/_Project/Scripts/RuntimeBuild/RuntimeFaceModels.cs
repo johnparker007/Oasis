@@ -57,9 +57,21 @@ namespace OasisPlayer.RuntimeBuild
         public Transform CabinetTarget { get; private set; }
         public RuntimeTextureAsset Artwork { get; private set; }
         public RuntimeTextureAsset Mask { get; private set; }
+        public RuntimeFaceRenderBinding RenderBinding { get; private set; }
+
+        public void SetRenderBinding(RuntimeFaceRenderBinding renderBinding)
+        {
+            RenderBinding = renderBinding;
+        }
 
         public void UnloadAssets()
         {
+            if (RenderBinding != null)
+            {
+                RenderBinding.Dispose();
+                RenderBinding = null;
+            }
+
             if (Artwork != null) Artwork.Unload();
             if (Mask != null) Mask.Unload();
         }
@@ -80,7 +92,8 @@ namespace OasisPlayer.RuntimeBuild
         {
             if (Texture != null)
             {
-                UnityEngine.Object.Destroy(Texture);
+                if (Application.isPlaying) UnityEngine.Object.Destroy(Texture);
+                else UnityEngine.Object.DestroyImmediate(Texture);
                 Texture = null;
             }
         }

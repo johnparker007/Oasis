@@ -10,18 +10,25 @@ namespace OasisPlayer.Loading
     {
         private readonly ICabinetModelLoader _modelLoader;
         private readonly RuntimeFaceLoader _faceLoader;
+        private readonly RuntimeFaceRenderer _faceRenderer;
         private GameObject _current;
         private RuntimeMachine _runtimeMachine;
 
         public MachinePreviewLoader(ICabinetModelLoader modelLoader)
-            : this(modelLoader, new RuntimeFaceLoader(new PngRuntimeTextureAssetLoader()))
+            : this(modelLoader, new RuntimeFaceLoader(new PngRuntimeTextureAssetLoader()), new RuntimeFaceRenderer(new RuntimeFaceMaterialFactory()))
         {
         }
 
         public MachinePreviewLoader(ICabinetModelLoader modelLoader, RuntimeFaceLoader faceLoader)
+            : this(modelLoader, faceLoader, new RuntimeFaceRenderer(new RuntimeFaceMaterialFactory()))
+        {
+        }
+
+        public MachinePreviewLoader(ICabinetModelLoader modelLoader, RuntimeFaceLoader faceLoader, RuntimeFaceRenderer faceRenderer)
         {
             _modelLoader = modelLoader;
             _faceLoader = faceLoader;
+            _faceRenderer = faceRenderer;
         }
 
         public async Task<RuntimeMachine> LoadAsync(ResolvedRuntimeBuild build)
@@ -46,6 +53,7 @@ namespace OasisPlayer.Loading
             var machine = new RuntimeMachine(build, cabinet);
             _runtimeMachine = machine;
             _faceLoader.LoadFaces(machine);
+            _faceRenderer.RenderFaces(machine);
             foreach (var warning in machine.Warnings) Debug.LogWarning(warning);
             return machine;
         }

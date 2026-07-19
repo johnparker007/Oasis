@@ -1,0 +1,22 @@
+{
+    "name": "OasisPlayer.EditMode.Tests",
+    "rootNamespace": "OasisPlayer.Tests",
+    "references": [
+        "Assembly-CSharp"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
