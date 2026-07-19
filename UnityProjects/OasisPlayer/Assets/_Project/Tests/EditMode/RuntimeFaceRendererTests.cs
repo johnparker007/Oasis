@@ -37,8 +37,8 @@ namespace OasisPlayer.Tests
                 Assert.AreEqual(Vector2.zero, runtimeMaterial.GetTextureOffset(RuntimeFaceShaderProperties.ArtworkTexture));
                 Assert.AreEqual(Vector2.one, runtimeMaterial.GetTextureScale(RuntimeFaceShaderProperties.MaskTexture));
                 Assert.AreEqual(Vector2.zero, runtimeMaterial.GetTextureOffset(RuntimeFaceShaderProperties.MaskTexture));
-                Assert.AreEqual((int)UnityEngine.Rendering.CullMode.Back, runtimeMaterial.GetInt(RuntimeFaceShaderProperties.CullMode));
-                Assert.AreEqual(1f, runtimeMaterial.GetFloat(RuntimeFaceShaderProperties.NormalSign));
+                Assert.AreEqual((int)UnityEngine.Rendering.CullMode.Front, runtimeMaterial.GetInt(RuntimeFaceShaderProperties.CullMode));
+                Assert.AreEqual(-1f, runtimeMaterial.GetFloat(RuntimeFaceShaderProperties.NormalSign));
             }
             finally
             {
@@ -170,8 +170,8 @@ namespace OasisPlayer.Tests
                 Assert.True(sut.TryRender(CreateMachine(face), face, out var warning), warning);
 
                 var runtimeMaterial = face.RenderBinding.RuntimeMaterial;
-                Assert.AreEqual((int)UnityEngine.Rendering.CullMode.Front, runtimeMaterial.GetInt(RuntimeFaceShaderProperties.CullMode));
-                Assert.AreEqual(-1f, runtimeMaterial.GetFloat(RuntimeFaceShaderProperties.NormalSign));
+                Assert.AreEqual((int)UnityEngine.Rendering.CullMode.Back, runtimeMaterial.GetInt(RuntimeFaceShaderProperties.CullMode));
+                Assert.AreEqual(1f, runtimeMaterial.GetFloat(RuntimeFaceShaderProperties.NormalSign));
             }
             finally
             {

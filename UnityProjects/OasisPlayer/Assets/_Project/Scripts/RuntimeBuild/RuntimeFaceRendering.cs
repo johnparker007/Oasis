@@ -165,7 +165,7 @@ namespace OasisPlayer.RuntimeBuild
                 return false;
             }
 
-            var frontSideInverted = face.Reference != null && face.Reference.IsInverted();
+            var frontSide = face.Reference != null ? RuntimeFaceFrontSideExtensions.Parse(face.Reference.frontSide) : RuntimeFaceFrontSide.Normal;
             var shader = Shader.Find(_shaderName);
             if (shader == null)
             {
@@ -189,7 +189,7 @@ namespace OasisPlayer.RuntimeBuild
             if (material.HasProperty(RuntimeFaceShaderProperties.BaseAmbientStrength)) material.SetFloat(RuntimeFaceShaderProperties.BaseAmbientStrength, DefaultBaseAmbientStrength);
             if (material.HasProperty(RuntimeFaceShaderProperties.BaseMainLightStrength)) material.SetFloat(RuntimeFaceShaderProperties.BaseMainLightStrength, DefaultBaseMainLightStrength);
             if (material.HasProperty(RuntimeFaceShaderProperties.BaseAdditionalLightStrength)) material.SetFloat(RuntimeFaceShaderProperties.BaseAdditionalLightStrength, DefaultBaseAdditionalLightStrength);
-            if (!ApplyFrontSide(material, face, frontSideInverted, out warning))
+            if (!ApplyFrontSide(material, face, frontSide, out warning))
             {
                 DestroyOwned(material);
                 material = null;
@@ -200,19 +200,31 @@ namespace OasisPlayer.RuntimeBuild
         }
 
 
-        private static bool ApplyFrontSide(Material material, RuntimeFace face, bool inverted, out string warning)
+        private static bool ApplyFrontSide(Material material, RuntimeFace face, RuntimeFaceFrontSide frontSide, out string warning)
         {
             warning = string.Empty;
             if (!RequireProperty(material, RuntimeFaceShaderProperties.CullMode, RuntimeFaceShaderProperties.CullModeName, face, out warning)) return false;
             if (!RequireProperty(material, RuntimeFaceShaderProperties.NormalSign, RuntimeFaceShaderProperties.NormalSignName, face, out warning)) return false;
 
-            material.SetInt(RuntimeFaceShaderProperties.CullMode, (int)(inverted ? CullMode.Front : CullMode.Back));
-            material.SetFloat(RuntimeFaceShaderProperties.NormalSign, inverted ? -1f : 1f);
+            var orientation = ResolveUnityOrientation(frontSide);
+            material.SetInt(RuntimeFaceShaderProperties.CullMode, (int)orientation.CullMode);
+            material.SetFloat(RuntimeFaceShaderProperties.NormalSign, orientation.NormalSign);
             if (Debug.isDebugBuild)
             {
-                Debug.Log($"Oasis Face orientation material: faceId='{(face != null && face.Reference != null ? face.Reference.faceId : "<unknown>")}', cabinetFaceTargetId='{(face != null && face.Reference != null ? face.Reference.cabinetFaceTargetId : "<unknown>")}', rawFrontSide='{(face != null && face.Reference != null ? face.Reference.frontSide : string.Empty)}', isInverted={inverted}, shader='{material.shader.name}', hasCull={material.HasProperty(RuntimeFaceShaderProperties.CullMode)}, cull={material.GetInt(RuntimeFaceShaderProperties.CullMode)}, hasNormalSign={material.HasProperty(RuntimeFaceShaderProperties.NormalSign)}, normalSign={material.GetFloat(RuntimeFaceShaderProperties.NormalSign)}, target='{(face != null && face.CabinetTarget != null ? face.CabinetTarget.name : "<none>")}', materialInstanceId={material.GetInstanceID()}.");
+                Debug.Log($"Oasis Face orientation material: faceId='{(face != null && face.Reference != null ? face.Reference.faceId : "<unknown>")}', cabinetFaceTargetId='{(face != null && face.Reference != null ? face.Reference.cabinetFaceTargetId : "<unknown>")}', rawFrontSide='{(face != null && face.Reference != null ? face.Reference.frontSide : string.Empty)}', parsedFrontSide={frontSide}, isInverted={frontSide == RuntimeFaceFrontSide.Inverted}, shader='{material.shader.name}', hasCull={material.HasProperty(RuntimeFaceShaderProperties.CullMode)}, cull={material.GetInt(RuntimeFaceShaderProperties.CullMode)}, hasNormalSign={material.HasProperty(RuntimeFaceShaderProperties.NormalSign)}, normalSign={material.GetFloat(RuntimeFaceShaderProperties.NormalSign)}, target='{(face != null && face.CabinetTarget != null ? face.CabinetTarget.name : "<none>")}', materialInstanceId={material.GetInstanceID()}.");
             }
             return true;
+        }
+
+        private static RuntimeFaceUnityOrientation ResolveUnityOrientation(RuntimeFaceFrontSide frontSide)
+        {
+            // The Editor preview defines the authoring semantics. Unity's imported GLB Face target
+            // winding is opposite to the Editor preview winding, so Player maps the semantic front
+            // side to the opposite Unity cull state while keeping the lighting normal aligned with
+            // the side that remains visible.
+            return frontSide == RuntimeFaceFrontSide.Inverted
+                ? new RuntimeFaceUnityOrientation(CullMode.Back, 1f)
+                : new RuntimeFaceUnityOrientation(CullMode.Front, -1f);
         }
 
         private static bool RequireProperty(Material material, int propertyId, string propertyName, RuntimeFace face, out string warning)
@@ -246,6 +258,18 @@ namespace OasisPlayer.RuntimeBuild
             material.SetTextureScale(propertyId, Vector2.one);
             material.SetTextureOffset(propertyId, Vector2.zero);
         }
+    }
+
+    internal readonly struct RuntimeFaceUnityOrientation
+    {
+        public RuntimeFaceUnityOrientation(CullMode cullMode, float normalSign)
+        {
+            CullMode = cullMode;
+            NormalSign = normalSign;
+        }
+
+        public CullMode CullMode { get; }
+        public float NormalSign { get; }
     }
 
     public sealed class RuntimeFaceRenderBinding
