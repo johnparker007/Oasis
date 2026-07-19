@@ -2,7 +2,7 @@
     "name": "OasisPlayer.EditMode.Tests",
     "rootNamespace": "OasisPlayer.Tests",
     "references": [
-        "Assembly-CSharp"
+        "OasisPlayer.RuntimeBuild"
     ],
     "includePlatforms": [
         "Editor"
