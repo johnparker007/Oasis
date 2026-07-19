@@ -43,6 +43,12 @@ namespace OasisPlayer.RuntimeBuild
                 return false;
             }
 
+            if (face.Mask == null || face.Mask.Texture == null)
+            {
+                warning = $"Runtime Face '{FaceId(face)}' has no valid mask texture.";
+                return false;
+            }
+
             if (!TryResolveRenderer(face, out var renderer, out warning)) return false;
             if (!TryResolveMaterialSlot(face, renderer, out var slotIndex, out warning)) return false;
             if (!_materialFactory.TryCreate(face, out var runtimeMaterial, out warning)) return false;
@@ -52,7 +58,7 @@ namespace OasisPlayer.RuntimeBuild
             replacementMaterials[slotIndex] = runtimeMaterial;
             renderer.sharedMaterials = replacementMaterials;
 
-            face.SetRenderBinding(new RuntimeFaceRenderBinding(renderer, originalMaterials, slotIndex, runtimeMaterial, null));
+            face.SetRenderBinding(new RuntimeFaceRenderBinding(renderer, originalMaterials, slotIndex, runtimeMaterial));
             return true;
         }
 
@@ -79,7 +85,7 @@ namespace OasisPlayer.RuntimeBuild
             renderer = null;
             warning = usableCount == 0
                 ? $"Cabinet target '{TargetId(face)}' for Runtime Face '{FaceId(face)}' has no usable renderer."
-                : $"Cabinet target '{TargetId(face)}' for Runtime Face '{FaceId(face)}' has {usableCount} usable renderers; static Face rendering skipped to avoid ambiguous material replacement.";
+                : $"Cabinet target '{TargetId(face)}' for Runtime Face '{FaceId(face)}' has {usableCount} usable renderers; Face rendering skipped to avoid ambiguous material replacement.";
             return false;
         }
 
@@ -100,7 +106,7 @@ namespace OasisPlayer.RuntimeBuild
                 return true;
             }
 
-            warning = $"Cabinet target '{TargetId(face)}' for Runtime Face '{FaceId(face)}' has {materials.Length} material slots; static Face rendering skipped because the intended slot cannot be determined safely.";
+            warning = $"Cabinet target '{TargetId(face)}' for Runtime Face '{FaceId(face)}' has {materials.Length} material slots; Face rendering skipped because the intended slot cannot be determined safely.";
             return false;
         }
 
@@ -117,102 +123,96 @@ namespace OasisPlayer.RuntimeBuild
 
     public sealed class RuntimeFaceMaterialFactory
     {
-        public const string BaseMapProperty = "_BaseMap";
-        public const string MainTexProperty = "_MainTex";
+        private readonly string _shaderName;
+
+        public RuntimeFaceMaterialFactory()
+            : this(RuntimeFaceShaderProperties.ShaderName)
+        {
+        }
+
+        public RuntimeFaceMaterialFactory(string shaderName)
+        {
+            _shaderName = string.IsNullOrWhiteSpace(shaderName) ? RuntimeFaceShaderProperties.ShaderName : shaderName;
+        }
 
         public bool TryCreate(RuntimeFace face, out Material material, out string warning)
         {
             material = null;
             warning = string.Empty;
-            if (face == null || face.Artwork == null || face.Artwork.Texture == null)
+            if (face == null || face.Artwork == null || face.Artwork.Texture == null || face.Mask == null || face.Mask.Texture == null)
             {
-                warning = "Runtime Face material creation failed because artwork texture is invalid.";
+                warning = "Runtime Face material creation failed because required Face textures are invalid.";
                 return false;
             }
 
-            var shader = Shader.Find("Universal Render Pipeline/Lit");
-            if (shader == null) shader = Shader.Find("Standard");
+            var shader = Shader.Find(_shaderName);
             if (shader == null)
             {
-                warning = $"Runtime Face '{(face.Reference != null ? face.Reference.faceId : "<unknown>")}' could not render because no compatible Lit shader was available.";
+                warning = $"Runtime Face '{(face.Reference != null ? face.Reference.faceId : "<unknown>")}' could not render because the dedicated '{_shaderName}' shader was unavailable.";
                 return false;
             }
 
             material = new Material(shader);
-            material.name = $"RuntimeFace_{(face.Reference != null ? face.Reference.faceId : "Face")}_Static";
-            AssignTexture(material, face.Artwork.Texture);
-            ConfigureColor(material);
-            ConfigureTransparency(material);
-            ConfigureCulling(material);
+            material.name = $"RuntimeFace_{(face.Reference != null ? face.Reference.faceId : "Face")}_OasisFace";
+            BindTextures(material, face);
+            if (material.HasProperty(RuntimeFaceShaderProperties.StaticBrightness)) material.SetFloat(RuntimeFaceShaderProperties.StaticBrightness, 1f);
+            if (material.HasProperty(RuntimeFaceShaderProperties.MaskStrength)) material.SetFloat(RuntimeFaceShaderProperties.MaskStrength, 1f);
+            material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
             return true;
         }
 
-        private static void ConfigureColor(Material material)
+        private static void BindTextures(Material material, RuntimeFace face)
         {
-            if (material.HasProperty("_BaseColor")) material.SetColor("_BaseColor", Color.white);
-            if (material.HasProperty("_Color")) material.SetColor("_Color", Color.white);
+            AssignTexture(material, RuntimeFaceShaderProperties.ArtworkTexture, face.Artwork.Texture);
+            AssignTexture(material, RuntimeFaceShaderProperties.MaskTexture, face.Mask.Texture);
+            if (face.TrayId != null) AssignTexture(material, RuntimeFaceShaderProperties.TrayIdTexture, face.TrayId.Texture);
+            if (face.LampIds0 != null) AssignTexture(material, RuntimeFaceShaderProperties.LampIds0Texture, face.LampIds0.Texture);
+            if (face.LampWeights0 != null) AssignTexture(material, RuntimeFaceShaderProperties.LampWeights0Texture, face.LampWeights0.Texture);
         }
 
-        private static void ConfigureCulling(Material material)
+        private static void AssignTexture(Material material, int propertyId, Texture texture)
         {
-            if (!material.HasProperty("_Cull")) return;
-            material.SetFloat("_Cull", (float)UnityEngine.Rendering.CullMode.Off);
-        }
-
-        private static void ConfigureTransparency(Material material)
-        {
-            if (material.HasProperty("_Surface")) material.SetFloat("_Surface", 1f);
-            if (material.HasProperty("_Blend")) material.SetFloat("_Blend", 0f);
-            if (material.HasProperty("_SrcBlend")) material.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
-            if (material.HasProperty("_DstBlend")) material.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-            if (material.HasProperty("_ZWrite")) material.SetFloat("_ZWrite", 0f);
-            material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-            material.EnableKeyword("_ALPHABLEND_ON");
-            material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
-        }
-
-        private static void AssignTexture(Material material, Texture texture)
-        {
-            if (material.HasProperty(BaseMapProperty)) material.SetTexture(BaseMapProperty, texture);
-            if (material.HasProperty(MainTexProperty)) material.SetTexture(MainTexProperty, texture);
-            SetScaleOffset(material, BaseMapProperty);
-            SetScaleOffset(material, MainTexProperty);
-        }
-
-        private static void SetScaleOffset(Material material, string propertyName)
-        {
-            if (!material.HasProperty(propertyName)) return;
-            material.SetTextureScale(propertyName, Vector2.one);
-            material.SetTextureOffset(propertyName, Vector2.zero);
+            if (!material.HasProperty(propertyId)) return;
+            material.SetTexture(propertyId, texture);
+            material.SetTextureScale(propertyId, Vector2.one);
+            material.SetTextureOffset(propertyId, Vector2.zero);
         }
     }
 
     public sealed class RuntimeFaceRenderBinding
     {
-        public RuntimeFaceRenderBinding(Renderer renderer, Material[] originalMaterials, int materialSlotIndex, Material runtimeMaterial, Texture2D generatedTexture)
+        public RuntimeFaceRenderBinding(Renderer renderer, Material[] originalMaterials, int materialSlotIndex, Material runtimeMaterial)
         {
             Renderer = renderer;
             OriginalMaterials = originalMaterials != null ? (Material[])originalMaterials.Clone() : Array.Empty<Material>();
             MaterialSlotIndex = materialSlotIndex;
             RuntimeMaterial = runtimeMaterial;
-            GeneratedTexture = generatedTexture;
         }
 
         public Renderer Renderer { get; private set; }
         public Material[] OriginalMaterials { get; private set; }
         public int MaterialSlotIndex { get; private set; }
         public Material RuntimeMaterial { get; private set; }
-        public Texture2D GeneratedTexture { get; private set; }
+        public bool HasDynamicState { get; private set; }
+
+        public void MarkDynamicStateDirty()
+        {
+            HasDynamicState = true;
+        }
+
+        public void ApplyDynamicState()
+        {
+            HasDynamicState = false;
+        }
 
         public void Dispose()
         {
             if (Renderer != null && OriginalMaterials != null) Renderer.sharedMaterials = (Material[])OriginalMaterials.Clone();
             DestroyOwned(RuntimeMaterial);
-            DestroyOwned(GeneratedTexture);
             Renderer = null;
             OriginalMaterials = Array.Empty<Material>();
             RuntimeMaterial = null;
-            GeneratedTexture = null;
+            HasDynamicState = false;
         }
 
         private static void DestroyOwned(UnityEngine.Object obj)

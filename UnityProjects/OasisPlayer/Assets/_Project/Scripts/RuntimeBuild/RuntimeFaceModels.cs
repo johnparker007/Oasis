@@ -44,12 +44,20 @@ namespace OasisPlayer.RuntimeBuild
     public sealed class RuntimeFace
     {
         public RuntimeFace(MachineRuntimeFaceReference reference, FaceRuntimeManifest manifest, Transform cabinetTarget, RuntimeTextureAsset artwork, RuntimeTextureAsset mask)
+            : this(reference, manifest, cabinetTarget, artwork, mask, null, null, null)
+        {
+        }
+
+        public RuntimeFace(MachineRuntimeFaceReference reference, FaceRuntimeManifest manifest, Transform cabinetTarget, RuntimeTextureAsset artwork, RuntimeTextureAsset mask, RuntimeTextureAsset trayId, RuntimeTextureAsset lampIds0, RuntimeTextureAsset lampWeights0)
         {
             Reference = reference;
             Manifest = manifest;
             CabinetTarget = cabinetTarget;
             Artwork = artwork;
             Mask = mask;
+            TrayId = trayId;
+            LampIds0 = lampIds0;
+            LampWeights0 = lampWeights0;
         }
 
         public MachineRuntimeFaceReference Reference { get; private set; }
@@ -57,6 +65,9 @@ namespace OasisPlayer.RuntimeBuild
         public Transform CabinetTarget { get; private set; }
         public RuntimeTextureAsset Artwork { get; private set; }
         public RuntimeTextureAsset Mask { get; private set; }
+        public RuntimeTextureAsset TrayId { get; private set; }
+        public RuntimeTextureAsset LampIds0 { get; private set; }
+        public RuntimeTextureAsset LampWeights0 { get; private set; }
         public RuntimeFaceRenderBinding RenderBinding { get; private set; }
 
         public void SetRenderBinding(RuntimeFaceRenderBinding renderBinding)
@@ -74,6 +85,9 @@ namespace OasisPlayer.RuntimeBuild
 
             if (Artwork != null) Artwork.Unload();
             if (Mask != null) Mask.Unload();
+            if (TrayId != null) TrayId.Unload();
+            if (LampIds0 != null) LampIds0.Unload();
+            if (LampWeights0 != null) LampWeights0.Unload();
         }
     }
 

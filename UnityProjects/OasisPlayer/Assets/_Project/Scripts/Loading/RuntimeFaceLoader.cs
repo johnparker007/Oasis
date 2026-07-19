@@ -9,12 +9,12 @@ namespace OasisPlayer.Loading
 {
     public interface IRuntimeTextureAssetLoader
     {
-        bool TryLoad(string path, out RuntimeTextureAsset asset, out string error);
+        bool TryLoad(string path, RuntimeTextureRole role, out RuntimeTextureAsset asset, out string error);
     }
 
     public sealed class PngRuntimeTextureAssetLoader : IRuntimeTextureAssetLoader
     {
-        public bool TryLoad(string path, out RuntimeTextureAsset asset, out string error)
+        public bool TryLoad(string path, RuntimeTextureRole role, out RuntimeTextureAsset asset, out string error)
         {
             asset = null;
             error = string.Empty;
@@ -27,7 +27,7 @@ namespace OasisPlayer.Loading
             try
             {
                 var bytes = File.ReadAllBytes(path);
-                var texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+                var texture = new Texture2D(2, 2, TextureFormat.RGBA32, false, role != RuntimeTextureRole.Artwork);
                 if (!texture.LoadImage(bytes, false))
                 {
                     UnityEngine.Object.Destroy(texture);
@@ -35,6 +35,7 @@ namespace OasisPlayer.Loading
                     return false;
                 }
 
+                ConfigureTexture(texture, role);
                 texture.name = System.IO.Path.GetFileName(path);
                 asset = new RuntimeTextureAsset(path, texture);
                 return true;
@@ -45,6 +46,19 @@ namespace OasisPlayer.Loading
                 return false;
             }
         }
+
+        private static void ConfigureTexture(Texture2D texture, RuntimeTextureRole role)
+        {
+            texture.wrapMode = TextureWrapMode.Clamp;
+            texture.filterMode = role == RuntimeTextureRole.LookupData ? FilterMode.Point : FilterMode.Bilinear;
+        }
+    }
+
+    public enum RuntimeTextureRole
+    {
+        Artwork,
+        Mask,
+        LookupData
     }
 
     public sealed class RuntimeFaceLoader
@@ -131,21 +145,49 @@ namespace OasisPlayer.Loading
                     continue;
                 }
 
-                if (!_assetLoader.TryLoad(artworkPath, out var artwork, out error))
+                if (!_assetLoader.TryLoad(artworkPath, RuntimeTextureRole.Artwork, out var artwork, out error))
                 {
                     machine.AddWarning($"Artwork for Face '{referenceFaceId}' could not be loaded. {error}");
                     continue;
                 }
 
-                if (!_assetLoader.TryLoad(maskPath, out var mask, out error))
+                if (!_assetLoader.TryLoad(maskPath, RuntimeTextureRole.Mask, out var mask, out error))
                 {
                     artwork.Unload();
                     machine.AddWarning($"Mask for Face '{referenceFaceId}' could not be loaded. {error}");
                     continue;
                 }
 
-                machine.RegisterFace(new RuntimeFace(reference, manifest, target, artwork, mask));
+                var trayId = LoadOptionalTexture(machine, manifest, manifest.trayId, manifestDirectory, referenceFaceId, "tray ID", RuntimeTextureRole.LookupData);
+                var lampIds0 = LoadOptionalTexture(machine, manifest, manifest.lampIds0, manifestDirectory, referenceFaceId, "lamp IDs 0", RuntimeTextureRole.LookupData);
+                var lampWeights0 = LoadOptionalTexture(machine, manifest, manifest.lampWeights0, manifestDirectory, referenceFaceId, "lamp weights 0", RuntimeTextureRole.LookupData);
+
+                machine.RegisterFace(new RuntimeFace(reference, manifest, target, artwork, mask, trayId, lampIds0, lampWeights0));
             }
+        }
+
+
+        private RuntimeTextureAsset LoadOptionalTexture(RuntimeMachine machine, FaceRuntimeManifest manifest, string relativePath, string manifestDirectory, string faceId, string description, RuntimeTextureRole role)
+        {
+            if (string.IsNullOrWhiteSpace(relativePath))
+            {
+                machine.AddWarning($"Face '{faceId}' does not declare a {description} runtime texture; future dynamic Face rendering data will be unavailable.");
+                return null;
+            }
+
+            if (!TryResolveContained(machine.Build.BuildRoot, manifestDirectory, relativePath, out var texturePath, out var error))
+            {
+                machine.AddWarning($"Invalid {description} path for Face '{faceId}': {error}");
+                return null;
+            }
+
+            if (!_assetLoader.TryLoad(texturePath, role, out var asset, out error))
+            {
+                machine.AddWarning($"{description} texture for Face '{faceId}' could not be loaded. {error}");
+                return null;
+            }
+
+            return asset;
         }
 
         private static bool TryLoadFaceManifest(string buildRoot, string manifestPath, string faceId, out FaceRuntimeManifest manifest, out string manifestDirectory, out string error)

@@ -29,16 +29,13 @@ namespace OasisPlayer.Tests
                 Assert.AreSame(sharedMaterial, face.RenderBinding.OriginalMaterials[0]);
                 Assert.AreNotSame(sharedMaterial, renderer.sharedMaterials[0]);
                 var runtimeMaterial = renderer.sharedMaterials[0];
-                var textureProperty = runtimeMaterial.HasProperty(RuntimeFaceMaterialFactory.BaseMapProperty)
-                    ? RuntimeFaceMaterialFactory.BaseMapProperty
-                    : RuntimeFaceMaterialFactory.MainTexProperty;
-                Assert.AreSame(texture, runtimeMaterial.GetTexture(textureProperty));
-                Assert.AreEqual(Vector2.one, runtimeMaterial.GetTextureScale(textureProperty));
-                Assert.AreEqual(Vector2.zero, runtimeMaterial.GetTextureOffset(textureProperty));
-                if (runtimeMaterial.HasProperty("_Cull"))
-                {
-                    Assert.AreEqual((float)UnityEngine.Rendering.CullMode.Off, runtimeMaterial.GetFloat("_Cull"));
-                }
+                Assert.AreEqual(RuntimeFaceShaderProperties.ShaderName, runtimeMaterial.shader.name);
+                Assert.AreSame(texture, runtimeMaterial.GetTexture(RuntimeFaceShaderProperties.ArtworkTexture));
+                Assert.AreSame(mask, runtimeMaterial.GetTexture(RuntimeFaceShaderProperties.MaskTexture));
+                Assert.AreEqual(Vector2.one, runtimeMaterial.GetTextureScale(RuntimeFaceShaderProperties.ArtworkTexture));
+                Assert.AreEqual(Vector2.zero, runtimeMaterial.GetTextureOffset(RuntimeFaceShaderProperties.ArtworkTexture));
+                Assert.AreEqual(Vector2.one, runtimeMaterial.GetTextureScale(RuntimeFaceShaderProperties.MaskTexture));
+                Assert.AreEqual(Vector2.zero, runtimeMaterial.GetTextureOffset(RuntimeFaceShaderProperties.MaskTexture));
             }
             finally
             {
@@ -166,6 +163,106 @@ namespace OasisPlayer.Tests
                 target,
                 new RuntimeTextureAsset("artwork.png", texture),
                 new RuntimeTextureAsset("mask.png", mask));
+        }
+
+
+        [Test]
+        public void LookupTexturesAreBoundWhenRuntimeFaceOwnsThem()
+        {
+            var target = CreateTarget("OasisFace_Front");
+            var texture = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+            var mask = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+            var trayId = new Texture2D(1, 1, TextureFormat.RGBA32, false, true);
+            var lampIds0 = new Texture2D(1, 1, TextureFormat.RGBA32, false, true);
+            var lampWeights0 = new Texture2D(1, 1, TextureFormat.RGBA32, false, true);
+
+            try
+            {
+                var face = new RuntimeFace(
+                    new MachineRuntimeFaceReference { faceId = "front", cabinetFaceTargetId = "front" },
+                    new FaceRuntimeManifest { schemaVersion = 1, faceId = "front", width = 1, height = 1, artwork = "artwork.png", mask = "mask.png", trayId = "trayId.png", lampIds0 = "lampIds0.png", lampWeights0 = "lampWeights0.png" },
+                    target.transform,
+                    new RuntimeTextureAsset("artwork.png", texture),
+                    new RuntimeTextureAsset("mask.png", mask),
+                    new RuntimeTextureAsset("trayId.png", trayId),
+                    new RuntimeTextureAsset("lampIds0.png", lampIds0),
+                    new RuntimeTextureAsset("lampWeights0.png", lampWeights0));
+
+                var sut = new RuntimeFaceRenderer(new RuntimeFaceMaterialFactory());
+                Assert.True(sut.TryRender(face, out var warning), warning);
+                var runtimeMaterial = face.RenderBinding.RuntimeMaterial;
+
+                Assert.AreSame(trayId, runtimeMaterial.GetTexture(RuntimeFaceShaderProperties.TrayIdTexture));
+                Assert.AreSame(lampIds0, runtimeMaterial.GetTexture(RuntimeFaceShaderProperties.LampIds0Texture));
+                Assert.AreSame(lampWeights0, runtimeMaterial.GetTexture(RuntimeFaceShaderProperties.LampWeights0Texture));
+                Assert.AreEqual(Vector2.one, runtimeMaterial.GetTextureScale(RuntimeFaceShaderProperties.LampIds0Texture));
+                Assert.AreEqual(Vector2.zero, runtimeMaterial.GetTextureOffset(RuntimeFaceShaderProperties.LampIds0Texture));
+            }
+            finally
+            {
+                Object.DestroyImmediate(target.GetComponent<MeshRenderer>().sharedMaterial);
+                Object.DestroyImmediate(target);
+                Object.DestroyImmediate(texture);
+                Object.DestroyImmediate(mask);
+                Object.DestroyImmediate(trayId);
+                Object.DestroyImmediate(lampIds0);
+                Object.DestroyImmediate(lampWeights0);
+            }
+        }
+
+        [Test]
+        public void MissingDedicatedShaderWarnsWithoutReplacingMaterial()
+        {
+            var target = CreateTarget("OasisFace_Front");
+            var original = target.GetComponent<MeshRenderer>().sharedMaterial;
+            var texture = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+            var mask = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+
+            try
+            {
+                var face = CreateFace(target.transform, texture, mask);
+                var sut = new RuntimeFaceRenderer(new RuntimeFaceMaterialFactory("Oasis/MissingFaceShaderForTest"));
+
+                var rendered = sut.TryRender(face, out var warning);
+
+                Assert.False(rendered);
+                Assert.That(warning, Does.Contain("dedicated"));
+                Assert.AreSame(original, target.GetComponent<MeshRenderer>().sharedMaterial);
+                Assert.Null(face.RenderBinding);
+            }
+            finally
+            {
+                Object.DestroyImmediate(original);
+                Object.DestroyImmediate(target);
+                Object.DestroyImmediate(texture);
+                Object.DestroyImmediate(mask);
+            }
+        }
+
+        [Test]
+        public void DynamicStateSeamCanMarkAndApplyPendingState()
+        {
+            var target = CreateTarget("OasisFace_Front");
+            var texture = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+            var mask = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+
+            try
+            {
+                var face = CreateFace(target.transform, texture, mask);
+                var sut = new RuntimeFaceRenderer(new RuntimeFaceMaterialFactory());
+                Assert.True(sut.TryRender(face, out var warning), warning);
+
+                face.RenderBinding.MarkDynamicStateDirty();
+                Assert.True(face.RenderBinding.HasDynamicState);
+                face.RenderBinding.ApplyDynamicState();
+                Assert.False(face.RenderBinding.HasDynamicState);
+            }
+            finally
+            {
+                if (target != null) Object.DestroyImmediate(target);
+                Object.DestroyImmediate(texture);
+                Object.DestroyImmediate(mask);
+            }
         }
     }
 }
