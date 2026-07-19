@@ -20,8 +20,9 @@ namespace OasisPlayer.Tests
                 renderer.sharedMaterial = sharedMaterial;
                 var face = CreateFace(target.transform, texture, mask);
                 var sut = new RuntimeFaceRenderer(new RuntimeFaceMaterialFactory());
+                var machine = CreateMachine(face);
 
-                var rendered = sut.TryRender(face, out var warning);
+                var rendered = sut.TryRender(machine, face, out var warning);
 
                 Assert.True(rendered, warning);
                 Assert.NotNull(face.RenderBinding);
@@ -57,8 +58,9 @@ namespace OasisPlayer.Tests
             {
                 var face = CreateFace(target.transform, texture, mask);
                 var sut = new RuntimeFaceRenderer(new RuntimeFaceMaterialFactory());
+                var machine = CreateMachine(face);
 
-                var rendered = sut.TryRender(face, out var warning);
+                var rendered = sut.TryRender(machine, face, out var warning);
 
                 Assert.False(rendered);
                 Assert.That(warning, Does.Contain("has no usable renderer"));
@@ -90,8 +92,10 @@ namespace OasisPlayer.Tests
                 var firstFace = CreateFace(first.transform, firstTexture, firstMask, "first");
                 var secondFace = CreateFace(second.transform, secondTexture, secondMask, "second");
 
-                Assert.True(sut.TryRender(firstFace, out var firstWarning), firstWarning);
-                Assert.True(sut.TryRender(secondFace, out var secondWarning), secondWarning);
+                var firstMachine = CreateMachine(firstFace);
+                var secondMachine = CreateMachine(secondFace);
+                Assert.True(sut.TryRender(firstMachine, firstFace, out var firstWarning), firstWarning);
+                Assert.True(sut.TryRender(secondMachine, secondFace, out var secondWarning), secondWarning);
                 Assert.AreNotSame(first.GetComponent<MeshRenderer>().sharedMaterial, second.GetComponent<MeshRenderer>().sharedMaterial);
 
                 firstFace.RenderBinding.Dispose();
@@ -128,8 +132,9 @@ namespace OasisPlayer.Tests
             {
                 var face = CreateFace(target.transform, texture, mask);
                 var sut = new RuntimeFaceRenderer(new RuntimeFaceMaterialFactory());
+                var machine = CreateMachine(face);
 
-                var rendered = sut.TryRender(face, out var warning);
+                var rendered = sut.TryRender(machine, face, out var warning);
 
                 Assert.False(rendered);
                 Assert.That(warning, Does.Contain("material slots"));
@@ -153,6 +158,13 @@ namespace OasisPlayer.Tests
             renderer.sharedMaterial = new Material(Shader.Find("Standard"));
             target.AddComponent<MeshFilter>();
             return target;
+        }
+
+        private static RuntimeMachine CreateMachine(RuntimeFace face)
+        {
+            var machine = new RuntimeMachine(new ResolvedRuntimeBuild(string.Empty, new MachineRuntimeManifest(), string.Empty, new CabinetRuntimeManifest(), string.Empty, new MachineRuntimeFaceReference[0]), null);
+            machine.RegisterFace(face);
+            return machine;
         }
 
         private static RuntimeFace CreateFace(Transform target, Texture2D texture, Texture2D mask, string id = "front")
@@ -189,7 +201,7 @@ namespace OasisPlayer.Tests
                     new RuntimeTextureAsset("lampWeights0.png", lampWeights0));
 
                 var sut = new RuntimeFaceRenderer(new RuntimeFaceMaterialFactory());
-                Assert.True(sut.TryRender(face, out var warning), warning);
+                Assert.True(sut.TryRender(CreateMachine(face), face, out var warning), warning);
                 var runtimeMaterial = face.RenderBinding.RuntimeMaterial;
 
                 Assert.AreSame(trayId, runtimeMaterial.GetTexture(RuntimeFaceShaderProperties.TrayIdTexture));
@@ -223,7 +235,7 @@ namespace OasisPlayer.Tests
                 var face = CreateFace(target.transform, texture, mask);
                 var sut = new RuntimeFaceRenderer(new RuntimeFaceMaterialFactory("Oasis/MissingFaceShaderForTest"));
 
-                var rendered = sut.TryRender(face, out var warning);
+                var rendered = sut.TryRender(CreateMachine(face), face, out var warning);
 
                 Assert.False(rendered);
                 Assert.That(warning, Does.Contain("dedicated"));
@@ -250,7 +262,7 @@ namespace OasisPlayer.Tests
             {
                 var face = CreateFace(target.transform, texture, mask);
                 var sut = new RuntimeFaceRenderer(new RuntimeFaceMaterialFactory());
-                Assert.True(sut.TryRender(face, out var warning), warning);
+                Assert.True(sut.TryRender(CreateMachine(face), face, out var warning), warning);
 
                 face.RenderBinding.MarkDynamicStateDirty();
                 Assert.True(face.RenderBinding.HasDynamicState);

@@ -6,19 +6,16 @@ Read only:
 
 1. `AGENTS.md`
 2. `00_CURRENT_PRIORITY.md`
-3. `Docs/OasisPlayerPhase2/CODEX_START_PROMPT.md`
+3. `Docs/OasisPlayerPhase3/CODEX_START_PROMPT.md`
 
-Do not scan all Markdown files in this directory.
-
-Open additional Phase 2 task documents only as directed by `Docs/OasisPlayerPhase2/CODEX_START_PROMPT.md` or when directly relevant to the requested work.
+Open additional Phase 3 task documents only as directed by `Docs/OasisPlayerPhase3/CODEX_START_PROMPT.md` or when directly relevant to the requested work.
 
 ## Current Focus
 
 Priority workstream:
 
-- Oasis Player Phase 2: Face Runtime Integration
-- Player-side loading and validation of exported Face runtime assets
-- static RuntimeFace artwork rendering on resolved cabinet targets
+- Oasis Player Phase 3: Dynamic Face Lamps
+- Next checkpoint: `Docs/OasisPlayerPhase3/TASK_02_EMULATION_LAMP_BRIDGE.md`
 
 Primary implementation project:
 
@@ -32,47 +29,22 @@ Related contract producer:
 WindowsNetProjects/OasisEditor
 ```
 
-## Immediate Direction
+## Completed Checkpoints
 
-Phase 2 Task 04 is complete:
+- Phase 2 is complete and should not be expanded for new lamp planning.
+- Phase 3 Task 01 (`Docs/OasisPlayerPhase3/TASK_01_RUNTIME_LAMP_STATE_AND_SHADER_DECODING.md`) is complete.
 
-```text
-Docs/OasisPlayerPhase2/TASK_04_FACE_RENDERER_INFRASTRUCTURE.md
-```
+## Explicit Non-Goals Until Requested
 
-Phase 2 Task 01 is complete. Do not modify the runtime Face export contract unless a genuine defect is discovered.
+Do not implement:
 
-## Explicit Non-Goals
-
-Do not implement in this priority:
-
-- lamp/display dynamic Face rendering
-- RenderTextures
-- mesh replacement or mesh modification
-- lamp rendering
-- display rendering
-- reels
+- reel rendering
 - buttons
-- emulation integration
-- Player hot reload or IPC
-
-## Testing Direction
-
-Prefer focused tests around:
-
-- valid machine manifests with multiple Faces
-- missing `face.runtime.json`
-- unsupported Face manifest schema version
-- missing artwork or mask image files
-- duplicate Face identifiers
-- duplicate cabinet target assignments
-- missing cabinet target mesh warnings
-- successful RuntimeFace registration
-- continued loading after invalid Face entries
-
-Do not claim WPF, Unity Player, or visual verification unless it was actually performed locally.
-
-
-## Completed Checkpoint
-
-Phase 2 Task 04 (Face Renderer Infrastructure) is implemented and ready for local Unity verification. RuntimeFaces render static artwork through the dedicated Oasis/Face shader with explicit texture binding, cleanup, and future dynamic-state infrastructure.
+- segment displays
+- VFD
+- dot matrix
+- sound
+- cabinet input
+- Player scene redesign
+- new Face export schemas
+- Blender changes

@@ -7,17 +7,34 @@ namespace OasisPlayer.RuntimeBuild
     {
         private readonly List<RuntimeFace> _faces = new List<RuntimeFace>();
         private readonly List<string> _warnings = new List<string>();
+        private RuntimeLampStateTexture _lampStateTexture;
 
         public RuntimeMachine(ResolvedRuntimeBuild build, GameObject cabinet)
         {
             Build = build;
             Cabinet = cabinet;
+            LampState = new RuntimeLampState();
         }
 
         public ResolvedRuntimeBuild Build { get; private set; }
         public GameObject Cabinet { get; private set; }
         public IReadOnlyList<RuntimeFace> Faces { get { return _faces; } }
         public IReadOnlyList<string> Warnings { get { return _warnings; } }
+        public RuntimeLampState LampState { get; private set; }
+        public RuntimeLampStateTexture LampStateTexture
+        {
+            get
+            {
+                if (_lampStateTexture == null) _lampStateTexture = new RuntimeLampStateTexture(LampState);
+                return _lampStateTexture;
+            }
+        }
+
+        public bool ApplyDynamicState()
+        {
+            if (_lampStateTexture == null) return false;
+            return _lampStateTexture.Upload(LampState);
+        }
 
         public void RegisterFace(RuntimeFace face)
         {
@@ -34,6 +51,12 @@ namespace OasisPlayer.RuntimeBuild
             foreach (var face in _faces)
             {
                 face.UnloadAssets();
+            }
+
+            if (_lampStateTexture != null)
+            {
+                _lampStateTexture.Dispose();
+                _lampStateTexture = null;
             }
 
             _faces.Clear();

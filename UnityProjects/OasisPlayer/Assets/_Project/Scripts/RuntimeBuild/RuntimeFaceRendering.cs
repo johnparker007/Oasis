@@ -18,13 +18,15 @@ namespace OasisPlayer.RuntimeBuild
 
             foreach (var face in machine.Faces)
             {
-                if (!TryRender(face, out var warning)) machine.AddWarning(warning);
+                if (!TryRender(machine, face, out var warning)) machine.AddWarning(warning);
             }
         }
 
-        public bool TryRender(RuntimeFace face, out string warning)
+        public bool TryRender(RuntimeMachine machine, RuntimeFace face, out string warning)
         {
             warning = string.Empty;
+            if (machine == null) throw new ArgumentNullException(nameof(machine));
+
             if (face == null)
             {
                 warning = "Runtime Face rendering skipped because the Face was null.";
@@ -51,7 +53,7 @@ namespace OasisPlayer.RuntimeBuild
 
             if (!TryResolveRenderer(face, out var renderer, out warning)) return false;
             if (!TryResolveMaterialSlot(face, renderer, out var slotIndex, out warning)) return false;
-            if (!_materialFactory.TryCreate(face, out var runtimeMaterial, out warning)) return false;
+            if (!_materialFactory.TryCreate(face, machine.LampStateTexture, out var runtimeMaterial, out warning)) return false;
 
             var originalMaterials = renderer.sharedMaterials;
             var replacementMaterials = (Material[])originalMaterials.Clone();
@@ -135,7 +137,7 @@ namespace OasisPlayer.RuntimeBuild
             _shaderName = string.IsNullOrWhiteSpace(shaderName) ? RuntimeFaceShaderProperties.ShaderName : shaderName;
         }
 
-        public bool TryCreate(RuntimeFace face, out Material material, out string warning)
+        public bool TryCreate(RuntimeFace face, RuntimeLampStateTexture lampStateTexture, out Material material, out string warning)
         {
             material = null;
             warning = string.Empty;
@@ -155,8 +157,10 @@ namespace OasisPlayer.RuntimeBuild
             material = new Material(shader);
             material.name = $"RuntimeFace_{(face.Reference != null ? face.Reference.faceId : "Face")}_OasisFace";
             BindTextures(material, face);
+            if (lampStateTexture != null && lampStateTexture.Texture != null) AssignTexture(material, RuntimeFaceShaderProperties.LampStateTexture, lampStateTexture.Texture);
             if (material.HasProperty(RuntimeFaceShaderProperties.StaticBrightness)) material.SetFloat(RuntimeFaceShaderProperties.StaticBrightness, 1f);
             if (material.HasProperty(RuntimeFaceShaderProperties.MaskStrength)) material.SetFloat(RuntimeFaceShaderProperties.MaskStrength, 1f);
+            if (material.HasProperty(RuntimeFaceShaderProperties.EmissionStrength)) material.SetFloat(RuntimeFaceShaderProperties.EmissionStrength, 1f);
             material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
             return true;
         }
@@ -198,6 +202,14 @@ namespace OasisPlayer.RuntimeBuild
         public void MarkDynamicStateDirty()
         {
             HasDynamicState = true;
+        }
+
+        public void BindLampState(RuntimeLampStateTexture lampStateTexture)
+        {
+            if (RuntimeMaterial != null && lampStateTexture != null && lampStateTexture.Texture != null && RuntimeMaterial.HasProperty(RuntimeFaceShaderProperties.LampStateTexture))
+            {
+                RuntimeMaterial.SetTexture(RuntimeFaceShaderProperties.LampStateTexture, lampStateTexture.Texture);
+            }
         }
 
         public void ApplyDynamicState()
