@@ -92,4 +92,4 @@ Task 04 does not implement emulator integration, live lamp state, lamp brightnes
 - Lookup texture sampling preserves encoded data better than artwork-style colour filtering.
 - Runtime material ownership, restoration, and destruction remain explicit and reload-safe.
 - One invalid Face does not prevent other Faces from loading or rendering.
-- Task 04 adds focused EditMode tests for material selection, binding, isolation, cleanup, warnings, lookup loading/configuration, and the future update seam.
+- Task 04 adds focused EditMode tests for material selection, binding, isolation, cleanup, warnings, lookup texture material binding, and the future update seam; loader lookup-path coverage remains a recommended local Unity test follow-up because the current EditMode test assembly references only the RuntimeBuild asmdef.
