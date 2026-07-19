@@ -217,7 +217,7 @@ namespace OasisPlayer.RuntimeBuild
             material.SetFloat(RuntimeFaceShaderProperties.NormalSign, orientation.NormalSign);
             if (Debug.isDebugBuild)
             {
-                Debug.Log($"Oasis Face orientation material: faceId='{(face != null && face.Reference != null ? face.Reference.faceId : "<unknown>")}', cabinetFaceTargetId='{(face != null && face.Reference != null ? face.Reference.cabinetFaceTargetId : "<unknown>")}', rawFrontSide='{(face != null && face.Reference != null ? face.Reference.frontSide : string.Empty)}', parsedFrontSide={frontSide}, isInverted={frontSide == RuntimeFaceFrontSide.Inverted}, shader='{material.shader.name}', hasCull={material.HasProperty(RuntimeFaceShaderProperties.CullMode)}, cull={material.GetInt(RuntimeFaceShaderProperties.CullMode)}, hasNormalSign={material.HasProperty(RuntimeFaceShaderProperties.NormalSign)}, normalSign={material.GetFloat(RuntimeFaceShaderProperties.NormalSign)}, rawFaceRotation={(face != null && face.Reference != null ? face.Reference.faceRotation : 0)}, editorRotation={orientation.EditorRotationDegrees}, unityUvQuarterTurns={material.GetInt(RuntimeFaceShaderProperties.FaceRotationQuarterTurns)}, flipHorizontal={material.GetFloat(RuntimeFaceShaderProperties.FaceFlipHorizontal)}, target='{(face != null && face.CabinetTarget != null ? face.CabinetTarget.name : "<none>")}', materialInstanceId={material.GetInstanceID()}.");
+                Debug.Log($"Oasis Face orientation material: faceId='{(face != null && face.Reference != null ? face.Reference.faceId : "<unknown>")}', cabinetFaceTargetId='{(face != null && face.Reference != null ? face.Reference.cabinetFaceTargetId : "<unknown>")}', rawFrontSide='{(face != null && face.Reference != null ? face.Reference.frontSide : string.Empty)}', parsedFrontSide={frontSide}, isInverted={frontSide == RuntimeFaceFrontSide.Inverted}, shader='{material.shader.name}', hasCull={material.HasProperty(RuntimeFaceShaderProperties.CullMode)}, cull={material.GetInt(RuntimeFaceShaderProperties.CullMode)}, hasNormalSign={material.HasProperty(RuntimeFaceShaderProperties.NormalSign)}, normalSign={material.GetFloat(RuntimeFaceShaderProperties.NormalSign)}, target='{(face != null && face.CabinetTarget != null ? face.CabinetTarget.name : "<none>")}', materialInstanceId={material.GetInstanceID()}.");
             }
             return true;
         }
@@ -242,6 +242,10 @@ namespace OasisPlayer.RuntimeBuild
             var orientation = RuntimeFaceTextureOrientation.FromReference(face != null ? face.Reference : null);
             material.SetInt(RuntimeFaceShaderProperties.FaceRotationQuarterTurns, orientation.UnityUvQuarterTurns);
             material.SetFloat(RuntimeFaceShaderProperties.FaceFlipHorizontal, orientation.FlipHorizontal ? 1f : 0f);
+            if (Debug.isDebugBuild)
+            {
+                Debug.Log($"Oasis Face texture orientation material: faceId='{(face != null && face.Reference != null ? face.Reference.faceId : "<unknown>")}', rawFaceRotation={(face != null && face.Reference != null ? face.Reference.faceRotation : 0)}, editorRotation={orientation.EditorRotationDegrees}, unityUvQuarterTurns={material.GetInt(RuntimeFaceShaderProperties.FaceRotationQuarterTurns)}, flipHorizontal={material.GetFloat(RuntimeFaceShaderProperties.FaceFlipHorizontal)}, materialInstanceId={material.GetInstanceID()}.");
+            }
             return true;
         }
 
