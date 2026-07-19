@@ -5,6 +5,7 @@ namespace OasisPlayer.RuntimeBuild
     public static class RuntimeFaceShaderProperties
     {
         public const string ShaderName = "Oasis/Face";
+        public const string InvertedShaderName = "Oasis/FaceInverted";
         public const string ArtworkTextureName = "_OasisArtworkTex";
         public const string MaskTextureName = "_OasisMaskTex";
         public const string TrayIdTextureName = "_OasisTrayIdTex";

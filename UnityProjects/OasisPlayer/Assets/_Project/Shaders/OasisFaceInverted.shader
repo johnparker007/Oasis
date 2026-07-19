@@ -1,4 +1,4 @@
-Shader "Oasis/Face"
+Shader "Oasis/FaceInverted"
 {
     Properties
     {
@@ -18,7 +18,7 @@ Shader "Oasis/Face"
         _OasisBaseAdditionalLightStrength ("Base Additional Light Strength", Range(0, 2)) = 1
         _OasisMaskStrength ("Mask Strength", Range(0, 4)) = 1
         _OasisNormalSign ("Normal Sign", Float) = 1
-        [HideInInspector] _Cull ("Cull", Float) = 2
+        [HideInInspector] _Cull ("Cull", Float) = 1
     }
 
     SubShader
@@ -183,7 +183,7 @@ Shader "Oasis/Face"
             Name "OasisFaceForwardLit"
             Tags { "LightMode" = "UniversalForward" }
             Blend One OneMinusSrcAlpha
-            Cull Back
+            Cull Front
             ZWrite Off
             ZTest LEqual
 

@@ -158,10 +158,12 @@ namespace OasisPlayer.RuntimeBuild
                 return false;
             }
 
-            var shader = Shader.Find(_shaderName);
+            var frontSideInverted = face.Reference != null && face.Reference.IsInverted();
+            var shaderName = ResolveShaderName(frontSideInverted);
+            var shader = Shader.Find(shaderName);
             if (shader == null)
             {
-                warning = $"Runtime Face '{(face.Reference != null ? face.Reference.faceId : "<unknown>")}' could not render because the dedicated '{_shaderName}' shader was unavailable.";
+                warning = $"Runtime Face '{(face.Reference != null ? face.Reference.faceId : "<unknown>")}' could not render because the dedicated '{shaderName}' shader was unavailable.";
                 return false;
             }
 
@@ -181,16 +183,39 @@ namespace OasisPlayer.RuntimeBuild
             if (material.HasProperty(RuntimeFaceShaderProperties.BaseAmbientStrength)) material.SetFloat(RuntimeFaceShaderProperties.BaseAmbientStrength, DefaultBaseAmbientStrength);
             if (material.HasProperty(RuntimeFaceShaderProperties.BaseMainLightStrength)) material.SetFloat(RuntimeFaceShaderProperties.BaseMainLightStrength, DefaultBaseMainLightStrength);
             if (material.HasProperty(RuntimeFaceShaderProperties.BaseAdditionalLightStrength)) material.SetFloat(RuntimeFaceShaderProperties.BaseAdditionalLightStrength, DefaultBaseAdditionalLightStrength);
-            ApplyFrontSide(material, face);
+            if (!ApplyFrontSide(material, face, frontSideInverted, out warning))
+            {
+                DestroyOwned(material);
+                material = null;
+                return false;
+            }
             material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
             return true;
         }
 
-        private static void ApplyFrontSide(Material material, RuntimeFace face)
+        private string ResolveShaderName(bool inverted)
         {
-            var inverted = face != null && face.Reference != null && face.Reference.IsInverted();
-            if (material.HasProperty(RuntimeFaceShaderProperties.CullMode)) material.SetInt(RuntimeFaceShaderProperties.CullMode, (int)(inverted ? CullMode.Front : CullMode.Back));
-            if (material.HasProperty(RuntimeFaceShaderProperties.NormalSign)) material.SetFloat(RuntimeFaceShaderProperties.NormalSign, inverted ? -1f : 1f);
+            if (!string.Equals(_shaderName, RuntimeFaceShaderProperties.ShaderName, StringComparison.Ordinal)) return _shaderName;
+            return inverted ? RuntimeFaceShaderProperties.InvertedShaderName : RuntimeFaceShaderProperties.ShaderName;
+        }
+
+        private static bool ApplyFrontSide(Material material, RuntimeFace face, bool inverted, out string warning)
+        {
+            warning = string.Empty;
+            if (!RequireProperty(material, RuntimeFaceShaderProperties.CullMode, RuntimeFaceShaderProperties.CullModeName, face, out warning)) return false;
+            if (!RequireProperty(material, RuntimeFaceShaderProperties.NormalSign, RuntimeFaceShaderProperties.NormalSignName, face, out warning)) return false;
+
+            material.SetInt(RuntimeFaceShaderProperties.CullMode, (int)(inverted ? CullMode.Front : CullMode.Back));
+            material.SetFloat(RuntimeFaceShaderProperties.NormalSign, inverted ? -1f : 1f);
+            return true;
+        }
+
+        private static bool RequireProperty(Material material, int propertyId, string propertyName, RuntimeFace face, out string warning)
+        {
+            warning = string.Empty;
+            if (material.HasProperty(propertyId)) return true;
+            warning = $"Runtime Face '{(face != null && face.Reference != null ? face.Reference.faceId : "<unknown>")}' could not apply front-side orientation because shader '{material.shader.name}' does not expose required property '{propertyName}'.";
+            return false;
         }
 
         private static void BindTextures(Material material, RuntimeFace face)
@@ -200,6 +225,13 @@ namespace OasisPlayer.RuntimeBuild
             if (face.TrayId != null) AssignTexture(material, RuntimeFaceShaderProperties.TrayIdTexture, face.TrayId.Texture);
             if (face.LampIds0 != null) AssignTexture(material, RuntimeFaceShaderProperties.LampIds0Texture, face.LampIds0.Texture);
             if (face.LampWeights0 != null) AssignTexture(material, RuntimeFaceShaderProperties.LampWeights0Texture, face.LampWeights0.Texture);
+        }
+
+        private static void DestroyOwned(UnityEngine.Object obj)
+        {
+            if (obj == null) return;
+            if (Application.isPlaying) UnityEngine.Object.Destroy(obj);
+            else UnityEngine.Object.DestroyImmediate(obj);
         }
 
         private static void AssignTexture(Material material, int propertyId, Texture texture)

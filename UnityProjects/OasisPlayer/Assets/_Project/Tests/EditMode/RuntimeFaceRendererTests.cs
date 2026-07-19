@@ -170,6 +170,7 @@ namespace OasisPlayer.Tests
                 Assert.True(sut.TryRender(CreateMachine(face), face, out var warning), warning);
 
                 var runtimeMaterial = face.RenderBinding.RuntimeMaterial;
+                Assert.AreEqual(RuntimeFaceShaderProperties.InvertedShaderName, runtimeMaterial.shader.name);
                 Assert.AreEqual((int)UnityEngine.Rendering.CullMode.Front, runtimeMaterial.GetInt(RuntimeFaceShaderProperties.CullMode));
                 Assert.AreEqual(-1f, runtimeMaterial.GetFloat(RuntimeFaceShaderProperties.NormalSign));
             }
@@ -270,6 +271,36 @@ namespace OasisPlayer.Tests
 
                 Assert.False(rendered);
                 Assert.That(warning, Does.Contain("dedicated"));
+                Assert.AreSame(original, target.GetComponent<MeshRenderer>().sharedMaterial);
+                Assert.Null(face.RenderBinding);
+            }
+            finally
+            {
+                Object.DestroyImmediate(original);
+                Object.DestroyImmediate(target);
+                Object.DestroyImmediate(texture);
+                Object.DestroyImmediate(mask);
+            }
+        }
+
+
+        [Test]
+        public void MaterialCreationFailsWhenOrientationPropertiesAreMissing()
+        {
+            var target = CreateTarget("OasisFace_Front");
+            var original = target.GetComponent<MeshRenderer>().sharedMaterial;
+            var texture = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+            var mask = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+
+            try
+            {
+                var face = CreateFace(target.transform, texture, mask);
+                var sut = new RuntimeFaceRenderer(new RuntimeFaceMaterialFactory("Oasis/FaceMissingOrientationProperties"));
+
+                var rendered = sut.TryRender(CreateMachine(face), face, out var warning);
+
+                Assert.False(rendered);
+                Assert.That(warning, Does.Contain("required property"));
                 Assert.AreSame(original, target.GetComponent<MeshRenderer>().sharedMaterial);
                 Assert.Null(face.RenderBinding);
             }

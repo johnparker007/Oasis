@@ -82,6 +82,14 @@ public sealed class MachineRuntimeBuildServiceTests
         var normalFace = Assert.Single(faces, candidate => candidate.GetProperty("faceId").GetString() == "face-runtime-back");
         Assert.Equal("target-back", normalFace.GetProperty("cabinetFaceTargetId").GetString());
         Assert.Equal("normal", normalFace.GetProperty("frontSide").GetString());
+
+        File.WriteAllText(Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName), CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("source.glb").WithTargetOverride(new CabinetTargetOverride("target-front", CabinetTargetOverride.NormalFrontSide))));
+        var normalResult = new MachineRuntimeBuildService().BuildFromCabinetDocument(project, Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName));
+        Assert.True(normalResult.Success, normalResult.ErrorMessage);
+        using var normalMachine = JsonDocument.Parse(File.ReadAllText(Path.Combine(normalResult.BuildRoot!, "machine.runtime.json")));
+        var changedFace = Assert.Single(normalMachine.RootElement.GetProperty("faces").EnumerateArray(), candidate => candidate.GetProperty("faceId").GetString() == "face-runtime");
+        Assert.Equal("normal", changedFace.GetProperty("frontSide").GetString());
+
         using var faceManifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(faceBuildDirectory, "face.runtime.json")));
         Assert.Equal(1, faceManifest.RootElement.GetProperty("schemaVersion").GetInt32());
         Assert.Equal("artwork.png", faceManifest.RootElement.GetProperty("artwork").GetString());
