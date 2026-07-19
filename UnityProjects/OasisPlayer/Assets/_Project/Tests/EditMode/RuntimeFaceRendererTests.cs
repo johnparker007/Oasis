@@ -37,6 +37,8 @@ namespace OasisPlayer.Tests
                 Assert.AreEqual(Vector2.zero, runtimeMaterial.GetTextureOffset(RuntimeFaceShaderProperties.ArtworkTexture));
                 Assert.AreEqual(Vector2.one, runtimeMaterial.GetTextureScale(RuntimeFaceShaderProperties.MaskTexture));
                 Assert.AreEqual(Vector2.zero, runtimeMaterial.GetTextureOffset(RuntimeFaceShaderProperties.MaskTexture));
+                Assert.AreEqual((int)UnityEngine.Rendering.CullMode.Back, runtimeMaterial.GetInt(RuntimeFaceShaderProperties.CullMode));
+                Assert.AreEqual(1f, runtimeMaterial.GetFloat(RuntimeFaceShaderProperties.NormalSign));
             }
             finally
             {
@@ -145,6 +147,35 @@ namespace OasisPlayer.Tests
             {
                 Object.DestroyImmediate(first);
                 Object.DestroyImmediate(second);
+                Object.DestroyImmediate(target);
+                Object.DestroyImmediate(texture);
+                Object.DestroyImmediate(mask);
+            }
+        }
+
+
+        [Test]
+        public void InvertedFrontSideConfiguresOwnedMaterialCullAndNormalSign()
+        {
+            var target = CreateTarget("OasisFace_Inverted");
+            var texture = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+            var mask = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+
+            try
+            {
+                var face = CreateFace(target.transform, texture, mask, "inverted");
+                face.Reference.frontSide = RuntimeFaceFrontSideExtensions.InvertedValue;
+                var sut = new RuntimeFaceRenderer(new RuntimeFaceMaterialFactory());
+
+                Assert.True(sut.TryRender(CreateMachine(face), face, out var warning), warning);
+
+                var runtimeMaterial = face.RenderBinding.RuntimeMaterial;
+                Assert.AreEqual((int)UnityEngine.Rendering.CullMode.Front, runtimeMaterial.GetInt(RuntimeFaceShaderProperties.CullMode));
+                Assert.AreEqual(-1f, runtimeMaterial.GetFloat(RuntimeFaceShaderProperties.NormalSign));
+            }
+            finally
+            {
+                Object.DestroyImmediate(target.GetComponent<MeshRenderer>().sharedMaterial);
                 Object.DestroyImmediate(target);
                 Object.DestroyImmediate(texture);
                 Object.DestroyImmediate(mask);

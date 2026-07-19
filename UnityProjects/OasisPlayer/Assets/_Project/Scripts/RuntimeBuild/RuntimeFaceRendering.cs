@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace OasisPlayer.RuntimeBuild
 {
@@ -180,8 +181,16 @@ namespace OasisPlayer.RuntimeBuild
             if (material.HasProperty(RuntimeFaceShaderProperties.BaseAmbientStrength)) material.SetFloat(RuntimeFaceShaderProperties.BaseAmbientStrength, DefaultBaseAmbientStrength);
             if (material.HasProperty(RuntimeFaceShaderProperties.BaseMainLightStrength)) material.SetFloat(RuntimeFaceShaderProperties.BaseMainLightStrength, DefaultBaseMainLightStrength);
             if (material.HasProperty(RuntimeFaceShaderProperties.BaseAdditionalLightStrength)) material.SetFloat(RuntimeFaceShaderProperties.BaseAdditionalLightStrength, DefaultBaseAdditionalLightStrength);
+            ApplyFrontSide(material, face);
             material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
             return true;
+        }
+
+        private static void ApplyFrontSide(Material material, RuntimeFace face)
+        {
+            var inverted = face != null && face.Reference != null && face.Reference.IsInverted();
+            if (material.HasProperty(RuntimeFaceShaderProperties.CullMode)) material.SetInt(RuntimeFaceShaderProperties.CullMode, (int)(inverted ? CullMode.Front : CullMode.Back));
+            if (material.HasProperty(RuntimeFaceShaderProperties.NormalSign)) material.SetFloat(RuntimeFaceShaderProperties.NormalSign, inverted ? -1f : 1f);
         }
 
         private static void BindTextures(Material material, RuntimeFace face)

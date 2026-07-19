@@ -17,6 +17,8 @@ Shader "Oasis/Face"
         _OasisBaseMainLightStrength ("Base Main Light Strength", Range(0, 2)) = 1
         _OasisBaseAdditionalLightStrength ("Base Additional Light Strength", Range(0, 2)) = 1
         _OasisMaskStrength ("Mask Strength", Range(0, 4)) = 1
+        _OasisNormalSign ("Normal Sign", Float) = 1
+        [HideInInspector] _Cull ("Cull", Float) = 2
     }
 
     SubShader
@@ -69,6 +71,7 @@ Shader "Oasis/Face"
             float _OasisBaseAmbientStrength;
             float _OasisBaseMainLightStrength;
             float _OasisBaseAdditionalLightStrength;
+            float _OasisNormalSign;
         CBUFFER_END
 
         Varyings vert(Attributes input)
@@ -78,7 +81,7 @@ Shader "Oasis/Face"
             VertexNormalInputs normalInputs = GetVertexNormalInputs(input.normalOS);
             output.positionHCS = positionInputs.positionCS;
             output.positionWS = positionInputs.positionWS;
-            output.normalWS = NormalizeNormalPerVertex(normalInputs.normalWS);
+            output.normalWS = NormalizeNormalPerVertex(normalInputs.normalWS) * _OasisNormalSign;
             output.uv = TRANSFORM_TEX(input.uv, _OasisArtworkTex);
             output.shadowCoord = TransformWorldToShadowCoord(positionInputs.positionWS);
             output.screenPos = ComputeScreenPos(positionInputs.positionCS);
@@ -180,7 +183,7 @@ Shader "Oasis/Face"
             Name "OasisFaceForwardLit"
             Tags { "LightMode" = "UniversalForward" }
             Blend One OneMinusSrcAlpha
-            Cull Back
+            Cull [_Cull]
             ZWrite Off
             ZTest LEqual
 
