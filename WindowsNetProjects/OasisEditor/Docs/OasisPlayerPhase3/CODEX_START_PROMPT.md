@@ -5,10 +5,10 @@ Read:
 1. `PHASE_03_CONTEXT.md`
 2. The current task document named by `00_CURRENT_PRIORITY.md`
 
-Current checkpoint complete: Task 01 Runtime Lamp State and Shader Decoding.
+Current checkpoint complete: Task 03 Lamp Rendering Validation and Tuning. The Player shader now uses additive lamp emission derived from artwork plus `_OasisLampLift`; the Editor preview remains an SDR authoring preview.
 
 Next checkpoint:
 
 `TASK_02_EMULATION_LAMP_BRIDGE.md`
 
-Respect boundaries: do not redesign Face export textures, do not add reels/buttons/displays, and do not begin broad rendering tuning until Task 03.
+Respect boundaries: do not redesign Face export textures, do not add reels/buttons/displays, and do not mark emulator lamp integration complete until the bridge work is actually implemented.
