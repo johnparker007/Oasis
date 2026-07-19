@@ -22,7 +22,7 @@ namespace OasisPlayer.RuntimeBuild
         public string faceId = string.Empty;
         public string assetName = string.Empty;
         public string cabinetFaceTargetId = string.Empty;
-        public string frontSide = RuntimeFaceFrontSide.NormalValue;
+        public string frontSide = RuntimeFaceFrontSideExtensions.NormalValue;
         public string manifest = string.Empty;
 
         public string ResolvedManifestPath
