@@ -128,8 +128,11 @@ namespace OasisPlayer.UI.Controllers
 
             var root = _document.rootVisualElement;
             FillPanel(root);
-            if (!root.styleSheets.Contains(_theme)) root.styleSheets.Add(_theme);
-            _themeAttached = true;
+            AttachTheme(root);
+
+            var graphicsRoot = Require<VisualElement>(root, "graphics-settings-root");
+            AttachTheme(graphicsRoot);
+            FillPanel(graphicsRoot);
 
             foreach (var child in root.Children())
             {
@@ -172,6 +175,12 @@ namespace OasisPlayer.UI.Controllers
             panelSettings.match = 0.5f;
             panelSettings.sortingOrder = short.MaxValue;
             return panelSettings;
+        }
+
+        private void AttachTheme(VisualElement element)
+        {
+            if (!element.styleSheets.Contains(_theme)) element.styleSheets.Add(_theme);
+            _themeAttached = true;
         }
 
         private static void FillPanel(VisualElement element)
