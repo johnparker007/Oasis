@@ -3,7 +3,9 @@
     "rootNamespace": "OasisPlayer.Settings.Appliers",
     "references": [
         "OasisPlayer.Settings",
-        "OasisPlayer.RuntimeBuild"
+        "OasisPlayer.RuntimeBuild",
+        "Unity.RenderPipelines.Core.Runtime",
+        "Unity.RenderPipelines.Universal.Runtime"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
