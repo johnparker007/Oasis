@@ -334,3 +334,7 @@ Implement the focused vertical slice and report:
 - manual verification performed
 - any exact Unity Editor wiring steps still required
 - any deferred limitations or follow-up tasks
+
+## Implementation Note: Lamp Emission Strength
+
+The current `Oasis/Face` shader exposes lamp appearance through `_OasisLampExposureStops` and does not retain a distinct lamp emission-strength property after the exposure-lighting cleanup. The first Graphics Settings screen should therefore omit a separate Lamp Emission Strength control until/unless a future shader design adds a meaningful independent emission parameter.

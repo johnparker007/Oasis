@@ -26,8 +26,13 @@ namespace OasisPlayer.UI.Controllers
         {
             if (Input.GetKeyDown(KeyCode.Escape))
             {
-                if (_open) _controller?.Cancel();
-                else OpenGraphicsSettings();
+                if (_open)
+                {
+                    _controller?.Cancel();
+                    return;
+                }
+
+                OpenGraphicsSettings();
             }
         }
 
