@@ -143,6 +143,7 @@ namespace OasisPlayer.RuntimeBuild
             AssignTexture(material, face.Artwork.Texture);
             ConfigureColor(material);
             ConfigureTransparency(material);
+            ConfigureCulling(material);
             return true;
         }
 
@@ -150,6 +151,12 @@ namespace OasisPlayer.RuntimeBuild
         {
             if (material.HasProperty("_BaseColor")) material.SetColor("_BaseColor", Color.white);
             if (material.HasProperty("_Color")) material.SetColor("_Color", Color.white);
+        }
+
+        private static void ConfigureCulling(Material material)
+        {
+            if (!material.HasProperty("_Cull")) return;
+            material.SetFloat("_Cull", (float)UnityEngine.Rendering.CullMode.Off);
         }
 
         private static void ConfigureTransparency(Material material)

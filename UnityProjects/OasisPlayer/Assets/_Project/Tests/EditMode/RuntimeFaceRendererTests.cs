@@ -35,6 +35,10 @@ namespace OasisPlayer.Tests
                 Assert.AreSame(texture, runtimeMaterial.GetTexture(textureProperty));
                 Assert.AreEqual(Vector2.one, runtimeMaterial.GetTextureScale(textureProperty));
                 Assert.AreEqual(Vector2.zero, runtimeMaterial.GetTextureOffset(textureProperty));
+                if (runtimeMaterial.HasProperty("_Cull"))
+                {
+                    Assert.AreEqual((float)UnityEngine.Rendering.CullMode.Off, runtimeMaterial.GetFloat("_Cull"));
+                }
             }
             finally
             {
