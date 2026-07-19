@@ -45,7 +45,6 @@ namespace OasisPlayer.UI.Controllers
             Require<Button>(root, "restore-defaults-button").clicked += RestoreDefaults;
             Require<Button>(root, "cancel-button").clicked += Cancel;
             Require<Button>(root, "apply-button").clicked += () => Apply();
-            root.RegisterCallback<KeyDownEvent>(OnKeyDown);
             _lampExposure.Focus();
         }
 
@@ -78,7 +77,15 @@ namespace OasisPlayer.UI.Controllers
         public bool Apply()
         {
             var saved = _transaction.Apply();
-            _close?.Invoke();
+            if (saved)
+            {
+                _close?.Invoke();
+            }
+            else
+            {
+                Debug.LogError("Oasis Player graphics settings could not be saved. The settings menu will remain open so the values can be retried or cancelled.");
+            }
+
             return saved;
         }
 
@@ -127,13 +134,6 @@ namespace OasisPlayer.UI.Controllers
             if (element != null) return element;
 
             throw new InvalidOperationException($"Graphics Settings UXML is missing required {typeof(T).Name} '{name}'.");
-        }
-
-        private void OnKeyDown(KeyDownEvent evt)
-        {
-            if (evt.keyCode != KeyCode.Escape) return;
-            evt.StopPropagation();
-            Cancel();
         }
     }
 }

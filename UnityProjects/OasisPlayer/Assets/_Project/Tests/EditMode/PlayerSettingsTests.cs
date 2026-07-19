@@ -1,7 +1,10 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Text.RegularExpressions;
 using NUnit.Framework;
 using OasisPlayer.Settings;
+using UnityEngine;
+using UnityEngine.TestTools;
 
 namespace OasisPlayer.Tests
 {
@@ -167,6 +170,23 @@ namespace OasisPlayer.Tests
             controller.Cancel();
 
             Assert.That(service.Graphics.LampExposureStops, Is.EqualTo(2.5f));
+        }
+
+
+        [Test]
+        public void TransactionApplyFailureDoesNotUpdateBaseline()
+        {
+            File.WriteAllText(_path, "not a directory");
+            var store = new PlayerSettingsStore(Path.Combine(_path, "settings.json"));
+            var service = new PlayerSettingsService(store);
+            var transaction = new GraphicsSettingsTransaction(service);
+            transaction.Open();
+
+            transaction.SetLampExposure(4f);
+            LogAssert.Expect(LogType.Error, new Regex("Oasis Player settings could not be saved"));
+
+            Assert.That(transaction.Apply(), Is.False);
+            Assert.That(transaction.Baseline.LampExposureStops, Is.EqualTo(2.5f));
         }
 
         [Test]
