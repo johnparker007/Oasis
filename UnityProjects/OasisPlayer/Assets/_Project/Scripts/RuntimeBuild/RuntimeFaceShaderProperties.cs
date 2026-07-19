@@ -18,6 +18,7 @@ namespace OasisPlayer.RuntimeBuild
         public const string LampCompressionName = "_OasisLampCompression";
         public const string BaseAmbientStrengthName = "_OasisBaseAmbientStrength";
         public const string BaseMainLightStrengthName = "_OasisBaseMainLightStrength";
+        public const string BaseAdditionalLightStrengthName = "_OasisBaseAdditionalLightStrength";
         public const string MaskStrengthName = "_OasisMaskStrength";
 
         public static readonly int ArtworkTexture = Shader.PropertyToID(ArtworkTextureName);
@@ -33,6 +34,7 @@ namespace OasisPlayer.RuntimeBuild
         public static readonly int LampCompression = Shader.PropertyToID(LampCompressionName);
         public static readonly int BaseAmbientStrength = Shader.PropertyToID(BaseAmbientStrengthName);
         public static readonly int BaseMainLightStrength = Shader.PropertyToID(BaseMainLightStrengthName);
+        public static readonly int BaseAdditionalLightStrength = Shader.PropertyToID(BaseAdditionalLightStrengthName);
         public static readonly int MaskStrength = Shader.PropertyToID(MaskStrengthName);
     }
 }

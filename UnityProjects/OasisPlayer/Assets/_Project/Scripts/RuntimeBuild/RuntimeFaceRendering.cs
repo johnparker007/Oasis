@@ -128,11 +128,12 @@ namespace OasisPlayer.RuntimeBuild
         private const float DefaultStaticBrightness = 1f;
         private const float DefaultMaskStrength = 1f;
         private const float DefaultEmissionStrength = 1.75f;
-        private const float DefaultLampMinLuminance = 0.18f;
-        private const float DefaultLampMaxLuminance = 2.5f;
+        private const float DefaultLampMinLuminance = 0.08f;
+        private const float DefaultLampMaxLuminance = 2f;
         private const float DefaultLampCompression = 2.25f;
         private const float DefaultBaseAmbientStrength = 1f;
         private const float DefaultBaseMainLightStrength = 1f;
+        private const float DefaultBaseAdditionalLightStrength = 1f;
 
         private readonly string _shaderName;
 
@@ -178,6 +179,7 @@ namespace OasisPlayer.RuntimeBuild
             if (material.HasProperty(RuntimeFaceShaderProperties.LampCompression)) material.SetFloat(RuntimeFaceShaderProperties.LampCompression, DefaultLampCompression);
             if (material.HasProperty(RuntimeFaceShaderProperties.BaseAmbientStrength)) material.SetFloat(RuntimeFaceShaderProperties.BaseAmbientStrength, DefaultBaseAmbientStrength);
             if (material.HasProperty(RuntimeFaceShaderProperties.BaseMainLightStrength)) material.SetFloat(RuntimeFaceShaderProperties.BaseMainLightStrength, DefaultBaseMainLightStrength);
+            if (material.HasProperty(RuntimeFaceShaderProperties.BaseAdditionalLightStrength)) material.SetFloat(RuntimeFaceShaderProperties.BaseAdditionalLightStrength, DefaultBaseAdditionalLightStrength);
             material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
             return true;
         }

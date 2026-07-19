@@ -32,27 +32,34 @@ The first Task 03 pass kept the Phase 3 runtime data contract intact and tuned o
 
 The Editor texture preview was inspected and continues to provide an SDR authoring preview using `artwork.rgb * (ambientStrength + mask * visibleLight * emissionStrength)`, clamped to 8-bit output, with no per-lamp colours, illuminated artwork layer, exposure, HDR, bloom, or tonemapping controls.
 
-## Task 03 second-pass Face shader refinement
+## Task 03 second-pass and PR 561 follow-up Face shader refinement
 
-The Player `Oasis/Face` shader now separates scene-lit printed artwork from dynamic lamp emission:
+The Player `Oasis/Face` shader now renders Face output in two transparent passes. The base pass is single-sided (`Cull Back`) and scene-lit by URP spherical-harmonic ambient lighting, the main light, and URP additional per-pixel lights such as point/spot lights. The emission pass is also single-sided/depth-tested but additive (`Blend One One`, `ColorMask RGB`), so lamp RGB is not multiplied by artwork alpha.
+
+The final base formula is:
+
+```text
+baseLighting = SampleSH(normalWS) * _OasisBaseAmbientStrength
+             + mainLight.color * saturate(dot(normalWS, mainLight.direction))
+               * mainLight.distanceAttenuation * mainLight.shadowAttenuation
+               * _OasisBaseMainLightStrength
+             + sum(additionalLight.color * saturate(dot(normalWS, additionalLight.direction))
+                   * additionalLight.distanceAttenuation * additionalLight.shadowAttenuation
+                   * _OasisBaseAdditionalLightStrength)
+baseRgb = artwork.rgb * _OasisStaticBrightness * max(baseLighting, 0)
+```
+
+The final lamp formula keeps the existing lookup contract and uses bounded artwork chroma rather than luminance-normalized colour directions:
 
 ```text
 visibleLight = sum(lampBrightness[lampId] * weight)
-maskedLamp = mask * saturate(visibleLight)
-baseLighting = SampleSH(normalWS) * _OasisBaseAmbientStrength
-             + mainLight.color * abs(dot(normalWS, mainLight.direction))
-               * mainLight.distanceAttenuation * _OasisBaseMainLightStrength
-baseRgb = artwork.rgb * _OasisStaticBrightness * max(baseLighting, 0)
-artworkLuminance = max(dot(artwork.rgb, Rec709Luminance), 0.001)
-hueDirection = artwork.rgb / artworkLuminance
-darkBlend = saturate((_OasisLampMinLuminance - artworkLuminance) / _OasisLampMinLuminance)
-lampColourDirection = lerp(hueDirection, warmNeutralFallback, darkBlend)
-compressedLamp = 1 - exp2(-maskedLamp * _OasisLampCompression)
-lampLuminance = max(dot(artwork.rgb, Rec709Luminance), _OasisLampMinLuminance)
-              * min(compressedLamp * _OasisEmissionStrength, _OasisLampMaxLuminance)
-lampEmission = lampColourDirection * lampLuminance
-finalRgb = baseRgb + lampEmission
-finalAlpha = artwork.a
+lampAmount = max(mask.r, mask.g, mask.b) * mask.a * _OasisMaskStrength * saturate(visibleLight)
+peak = max(artwork.r, artwork.g, artwork.b)
+chroma = artwork.rgb / max(peak, 0.001)
+colourConfidence = saturate(peak / _OasisLampMinLuminance)
+lampColour = lerp(float3(0.55, 0.50, 0.42), chroma, colourConfidence)
+compressedLampAmount = min(1 - exp2(-lampAmount * _OasisLampCompression), _OasisLampMaxLuminance)
+lampEmission = lampColour * compressedLampAmount * _OasisEmissionStrength
 ```
 
 Default runtime controls are centralized in `RuntimeFaceMaterialFactory` and mirrored by shader defaults:
@@ -60,14 +67,15 @@ Default runtime controls are centralized in `RuntimeFaceMaterialFactory` and mir
 - `_OasisStaticBrightness = 1.0`: authored albedo scale for lamps-off artwork before local lighting.
 - `_OasisBaseAmbientStrength = 1.0`: scale for URP spherical-harmonic ambient lighting.
 - `_OasisBaseMainLightStrength = 1.0`: scale for the URP main-light diffuse term.
+- `_OasisBaseAdditionalLightStrength = 1.0`: scale for URP additional per-pixel lights.
 - `_OasisMaskStrength = 1.0`: preserves exported mask semantics.
-- `_OasisEmissionStrength = 1.75`: overall emissive lamp luminance scale.
-- `_OasisLampMinLuminance = 0.18`: minimum source luminance used for active lamps so dark artwork can still illuminate.
-- `_OasisLampMaxLuminance = 2.5`: practical cap for lamp luminance contribution before output, still allowing HDR values.
-- `_OasisLampCompression = 2.25`: soft-knee response; higher lamp controls produce diminishing luminance growth rather than immediate channel saturation.
+- `_OasisEmissionStrength = 1.75`: explicit dynamic lamp emission scale.
+- `_OasisLampMinLuminance = 0.08`: near-black fallback threshold.
+- `_OasisLampMaxLuminance = 2.0`: practical soft-knee cap before emission scaling, still allowing controlled HDR output.
+- `_OasisLampCompression = 2.25`: soft-knee response.
+
+Oasis Editor Face orientation controls were investigated. `CabinetTargetOverride` stores `FrontSide` (`normal`/`inverted`), `FaceRotation`, and `FaceFlipHorizontal`, and the Editor preview uses those values to reorder quad corners and reverse winding. Those values are not currently exported in runtime Face references or Face manifests, and Oasis Player only replaces materials on existing `OasisFace_` targets. This pass keeps normal Face geometry correctly single-sided and documents a future backward-compatible manifest extension as the lowest-complexity way to preserve Editor inversion semantics in Player without shader branches.
 
 Colour-space assumptions remain unchanged: artwork is loaded as colour/sRGB-style data; mask, lamp lookup, and lamp-state textures are loaded or created as linear data. Lookup textures remain point-filtered; artwork and mask remain bilinear-filtered; runtime textures remain clamped and mip-free.
-
-The transparent render state remains `Blend SrcAlpha OneMinusSrcAlpha`, `ZWrite Off`, `ZTest LEqual`, and `Cull Off`. The shader preserves `artwork.a` and does not let lamp state alter alpha. RGB, including emissive RGB, is still source-alpha blended by Unity's transparent blending at antialiased edges; this preserves existing transparent-edge behaviour rather than creating opaque glow fringes.
 
 Bloom, glow halos, post-processing, and the emulator lamp bridge remain future work. The emulator bridge is not complete.
