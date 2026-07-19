@@ -125,6 +125,11 @@ namespace OasisPlayer.RuntimeBuild
 
     public sealed class RuntimeFaceMaterialFactory
     {
+        private const float DefaultStaticBrightness = 1f;
+        private const float DefaultMaskStrength = 1f;
+        private const float DefaultEmissionStrength = 1.75f;
+        private const float DefaultLampLift = 0.35f;
+
         private readonly string _shaderName;
 
         public RuntimeFaceMaterialFactory()
@@ -158,9 +163,13 @@ namespace OasisPlayer.RuntimeBuild
             material.name = $"RuntimeFace_{(face.Reference != null ? face.Reference.faceId : "Face")}_OasisFace";
             BindTextures(material, face);
             if (lampStateTexture != null && lampStateTexture.Texture != null) AssignTexture(material, RuntimeFaceShaderProperties.LampStateTexture, lampStateTexture.Texture);
-            if (material.HasProperty(RuntimeFaceShaderProperties.StaticBrightness)) material.SetFloat(RuntimeFaceShaderProperties.StaticBrightness, 1f);
-            if (material.HasProperty(RuntimeFaceShaderProperties.MaskStrength)) material.SetFloat(RuntimeFaceShaderProperties.MaskStrength, 1f);
-            if (material.HasProperty(RuntimeFaceShaderProperties.EmissionStrength)) material.SetFloat(RuntimeFaceShaderProperties.EmissionStrength, 1f);
+            // Keep the base artwork at authored brightness while adding a separate lamp emission pass.
+            // LampLift lets masked lamps remain visible over dark artwork even though runtime exports do
+            // not yet include per-lamp colours or illuminated artwork textures.
+            if (material.HasProperty(RuntimeFaceShaderProperties.StaticBrightness)) material.SetFloat(RuntimeFaceShaderProperties.StaticBrightness, DefaultStaticBrightness);
+            if (material.HasProperty(RuntimeFaceShaderProperties.MaskStrength)) material.SetFloat(RuntimeFaceShaderProperties.MaskStrength, DefaultMaskStrength);
+            if (material.HasProperty(RuntimeFaceShaderProperties.EmissionStrength)) material.SetFloat(RuntimeFaceShaderProperties.EmissionStrength, DefaultEmissionStrength);
+            if (material.HasProperty(RuntimeFaceShaderProperties.LampLift)) material.SetFloat(RuntimeFaceShaderProperties.LampLift, DefaultLampLift);
             material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
             return true;
         }

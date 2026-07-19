@@ -25,3 +25,21 @@ Semantics:
 - Task 01 proves dynamic lamp rendering without emulator integration.
 - Task 02 will bridge emulation output into the runtime lamp-state model.
 - Task 03 will validate and tune rendering behaviour visually and with more robust render tests.
+
+## Task 03 lamp rendering tuning result
+
+Task 03 kept the Phase 3 runtime data contract intact and tuned only the Player Face composition model. The Editor texture preview was inspected and continues to provide an SDR authoring preview using `artwork.rgb * (ambientStrength + mask * visibleLight * emissionStrength)`, clamped to 8-bit output, with no per-lamp colours, illuminated artwork layer, exposure, HDR, bloom, or tonemapping controls.
+
+The Player shader now separates lamp-off artwork from dynamic lamp emission. The final runtime formula is:
+
+```text
+visibleLight = sum(lampBrightness[lampId] * weight)
+maskedLamp = mask * saturate(visibleLight)
+baseRgb = artwork.rgb * _OasisStaticBrightness
+lampColour = lerp(artwork.rgb, white, _OasisLampLift)
+lampEmission = lampColour * maskedLamp * _OasisEmissionStrength
+finalRgb = baseRgb + lampEmission
+finalAlpha = artwork.a
+```
+
+The default runtime controls are `_OasisStaticBrightness = 1.0`, `_OasisMaskStrength = 1.0`, `_OasisEmissionStrength = 1.75`, and `_OasisLampLift = 0.35`. `_OasisLampLift` compensates for the current lack of separate lamp colours or illuminated artwork textures by lifting dark artwork pixels toward white only in masked, assigned lamp regions. The shader intentionally does not clamp final RGB before return, so HDR/overbright output is available where supported. Bloom and post-processing remain optional future work and were not enabled as part of this task.

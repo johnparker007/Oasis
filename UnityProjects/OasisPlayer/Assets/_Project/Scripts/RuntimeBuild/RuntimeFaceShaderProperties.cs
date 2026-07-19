@@ -13,6 +13,7 @@ namespace OasisPlayer.RuntimeBuild
         public const string LampStateTextureName = "_OasisLampStateTex";
         public const string EmissionStrengthName = "_OasisEmissionStrength";
         public const string StaticBrightnessName = "_OasisStaticBrightness";
+        public const string LampLiftName = "_OasisLampLift";
         public const string MaskStrengthName = "_OasisMaskStrength";
 
         public static readonly int ArtworkTexture = Shader.PropertyToID(ArtworkTextureName);
@@ -23,6 +24,7 @@ namespace OasisPlayer.RuntimeBuild
         public static readonly int LampStateTexture = Shader.PropertyToID(LampStateTextureName);
         public static readonly int EmissionStrength = Shader.PropertyToID(EmissionStrengthName);
         public static readonly int StaticBrightness = Shader.PropertyToID(StaticBrightnessName);
+        public static readonly int LampLift = Shader.PropertyToID(LampLiftName);
         public static readonly int MaskStrength = Shader.PropertyToID(MaskStrengthName);
     }
 }

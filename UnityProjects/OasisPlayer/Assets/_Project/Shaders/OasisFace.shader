@@ -8,7 +8,8 @@ Shader "Oasis/Face"
         _OasisLampIds0Tex ("Lamp IDs 0", 2D) = "black" {}
         _OasisLampWeights0Tex ("Lamp Weights 0", 2D) = "black" {}
         _OasisLampStateTex ("Lamp State", 2D) = "black" {}
-        _OasisEmissionStrength ("Emission Strength", Range(0, 8)) = 1
+        _OasisEmissionStrength ("Emission Strength", Range(0, 8)) = 1.75
+        _OasisLampLift ("Lamp Lift", Range(0, 1)) = 0.35
         _OasisStaticBrightness ("Static Brightness", Range(0, 2)) = 1
         _OasisMaskStrength ("Mask Strength", Range(0, 4)) = 1
     }
@@ -62,6 +63,7 @@ Shader "Oasis/Face"
                 float _OasisStaticBrightness;
                 float _OasisMaskStrength;
                 float _OasisEmissionStrength;
+                float _OasisLampLift;
             CBUFFER_END
 
             Varyings vert(Attributes input)
@@ -103,9 +105,16 @@ Shader "Oasis/Face"
                 visibleLight += DecodeLampBrightness(lampIds.g) * DecodeWeight(weights.g);
                 visibleLight += DecodeLampBrightness(lampIds.b) * DecodeWeight(weights.b);
 
-                float light = DecodeMask(mask) * visibleLight * _OasisEmissionStrength;
-                float multiplier = _OasisStaticBrightness + light;
-                return half4(saturate(artwork.rgb * multiplier), artwork.a);
+                float maskedLamp = DecodeMask(mask) * saturate(visibleLight);
+                float3 baseRgb = artwork.rgb * _OasisStaticBrightness;
+
+                // Runtime Face exports currently provide artwork, mask coverage, lamp IDs, and weights,
+                // but no separate per-lamp colour or illuminated artwork layer. Derive a controllable
+                // emission colour from the source artwork, lifting dark pixels so masked lamps can read
+                // as luminous instead of only multiplying already-dark source texels.
+                float3 lampColour = lerp(artwork.rgb, float3(1.0, 1.0, 1.0), _OasisLampLift);
+                float3 lampEmission = lampColour * maskedLamp * _OasisEmissionStrength;
+                return half4(baseRgb + lampEmission, artwork.a);
             }
             ENDHLSL
         }
