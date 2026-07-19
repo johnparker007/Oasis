@@ -135,10 +135,7 @@ namespace OasisPlayer.RuntimeBuild
     {
         private const float DefaultStaticBrightness = 1f;
         private const float DefaultMaskStrength = 1f;
-        private const float DefaultEmissionStrength = 1.75f;
-        private const float DefaultLampMinLuminance = 0.08f;
-        private const float DefaultLampMaxLuminance = 2f;
-        private const float DefaultLampCompression = 2.25f;
+        private const float DefaultLampExposureStops = 2.5f;
         private const float DefaultBaseAmbientStrength = 1f;
         private const float DefaultBaseMainLightStrength = 1f;
         private const float DefaultBaseAdditionalLightStrength = 1f;
@@ -177,15 +174,12 @@ namespace OasisPlayer.RuntimeBuild
             material.name = $"RuntimeFace_{(face.Reference != null ? face.Reference.faceId : "Face")}_OasisFace";
             BindTextures(material, face);
             if (lampStateTexture != null && lampStateTexture.Texture != null) AssignTexture(material, RuntimeFaceShaderProperties.LampStateTexture, lampStateTexture.Texture);
-            // Keep the base artwork scene-lit while adding alpha-independent lamp emission in the
-            // shader's single premultiplied forward pass. Lamp luminance controls preserve artwork hue
-            // without requiring per-lamp colours or illuminated artwork textures in the runtime export.
+            // Keep the base artwork scene-lit while the shader applies GEGL-style photographic
+            // exposure to lit lamp regions without requiring illuminated artwork textures in the
+            // runtime export.
             if (material.HasProperty(RuntimeFaceShaderProperties.StaticBrightness)) material.SetFloat(RuntimeFaceShaderProperties.StaticBrightness, DefaultStaticBrightness);
             if (material.HasProperty(RuntimeFaceShaderProperties.MaskStrength)) material.SetFloat(RuntimeFaceShaderProperties.MaskStrength, DefaultMaskStrength);
-            if (material.HasProperty(RuntimeFaceShaderProperties.EmissionStrength)) material.SetFloat(RuntimeFaceShaderProperties.EmissionStrength, DefaultEmissionStrength);
-            if (material.HasProperty(RuntimeFaceShaderProperties.LampMinLuminance)) material.SetFloat(RuntimeFaceShaderProperties.LampMinLuminance, DefaultLampMinLuminance);
-            if (material.HasProperty(RuntimeFaceShaderProperties.LampMaxLuminance)) material.SetFloat(RuntimeFaceShaderProperties.LampMaxLuminance, DefaultLampMaxLuminance);
-            if (material.HasProperty(RuntimeFaceShaderProperties.LampCompression)) material.SetFloat(RuntimeFaceShaderProperties.LampCompression, DefaultLampCompression);
+            if (material.HasProperty(RuntimeFaceShaderProperties.LampExposureStops)) material.SetFloat(RuntimeFaceShaderProperties.LampExposureStops, DefaultLampExposureStops);
             if (material.HasProperty(RuntimeFaceShaderProperties.BaseAmbientStrength)) material.SetFloat(RuntimeFaceShaderProperties.BaseAmbientStrength, DefaultBaseAmbientStrength);
             if (material.HasProperty(RuntimeFaceShaderProperties.BaseMainLightStrength)) material.SetFloat(RuntimeFaceShaderProperties.BaseMainLightStrength, DefaultBaseMainLightStrength);
             if (material.HasProperty(RuntimeFaceShaderProperties.BaseAdditionalLightStrength)) material.SetFloat(RuntimeFaceShaderProperties.BaseAdditionalLightStrength, DefaultBaseAdditionalLightStrength);
