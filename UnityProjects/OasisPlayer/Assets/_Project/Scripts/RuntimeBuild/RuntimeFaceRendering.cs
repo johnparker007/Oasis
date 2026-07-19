@@ -217,7 +217,7 @@ namespace OasisPlayer.RuntimeBuild
             material.SetFloat(RuntimeFaceShaderProperties.NormalSign, orientation.NormalSign);
             if (Debug.isDebugBuild)
             {
-                Debug.Log($"Oasis Face orientation material: faceId='{(face != null && face.Reference != null ? face.Reference.faceId : "<unknown>")}', cabinetFaceTargetId='{(face != null && face.Reference != null ? face.Reference.cabinetFaceTargetId : "<unknown>")}', rawFrontSide='{(face != null && face.Reference != null ? face.Reference.frontSide : string.Empty)}', parsedFrontSide={frontSide}, isInverted={frontSide == RuntimeFaceFrontSide.Inverted}, shader='{material.shader.name}', hasCull={material.HasProperty(RuntimeFaceShaderProperties.CullMode)}, cull={material.GetInt(RuntimeFaceShaderProperties.CullMode)}, hasNormalSign={material.HasProperty(RuntimeFaceShaderProperties.NormalSign)}, normalSign={material.GetFloat(RuntimeFaceShaderProperties.NormalSign)}, rotationQuarterTurns={material.GetInt(RuntimeFaceShaderProperties.FaceRotationQuarterTurns)}, flipHorizontal={material.GetFloat(RuntimeFaceShaderProperties.FaceFlipHorizontal)}, target='{(face != null && face.CabinetTarget != null ? face.CabinetTarget.name : "<none>")}', materialInstanceId={material.GetInstanceID()}.");
+                Debug.Log($"Oasis Face orientation material: faceId='{(face != null && face.Reference != null ? face.Reference.faceId : "<unknown>")}', cabinetFaceTargetId='{(face != null && face.Reference != null ? face.Reference.cabinetFaceTargetId : "<unknown>")}', rawFrontSide='{(face != null && face.Reference != null ? face.Reference.frontSide : string.Empty)}', parsedFrontSide={frontSide}, isInverted={frontSide == RuntimeFaceFrontSide.Inverted}, shader='{material.shader.name}', hasCull={material.HasProperty(RuntimeFaceShaderProperties.CullMode)}, cull={material.GetInt(RuntimeFaceShaderProperties.CullMode)}, hasNormalSign={material.HasProperty(RuntimeFaceShaderProperties.NormalSign)}, normalSign={material.GetFloat(RuntimeFaceShaderProperties.NormalSign)}, rawFaceRotation={(face != null && face.Reference != null ? face.Reference.faceRotation : 0)}, editorRotation={orientation.EditorRotationDegrees}, unityUvQuarterTurns={material.GetInt(RuntimeFaceShaderProperties.FaceRotationQuarterTurns)}, flipHorizontal={material.GetFloat(RuntimeFaceShaderProperties.FaceFlipHorizontal)}, target='{(face != null && face.CabinetTarget != null ? face.CabinetTarget.name : "<none>")}', materialInstanceId={material.GetInstanceID()}.");
             }
             return true;
         }
@@ -240,7 +240,7 @@ namespace OasisPlayer.RuntimeBuild
             if (!RequireProperty(material, RuntimeFaceShaderProperties.FaceFlipHorizontal, RuntimeFaceShaderProperties.FaceFlipHorizontalName, face, out warning)) return false;
 
             var orientation = RuntimeFaceTextureOrientation.FromReference(face != null ? face.Reference : null);
-            material.SetInt(RuntimeFaceShaderProperties.FaceRotationQuarterTurns, orientation.RotationQuarterTurns);
+            material.SetInt(RuntimeFaceShaderProperties.FaceRotationQuarterTurns, orientation.UnityUvQuarterTurns);
             material.SetFloat(RuntimeFaceShaderProperties.FaceFlipHorizontal, orientation.FlipHorizontal ? 1f : 0f);
             return true;
         }
@@ -282,13 +282,13 @@ namespace OasisPlayer.RuntimeBuild
     {
         public RuntimeFaceTextureOrientation(int rotationDegrees, bool flipHorizontal)
         {
-            RotationDegrees = NormalizeRotation(rotationDegrees);
-            RotationQuarterTurns = RotationDegrees / 90;
+            EditorRotationDegrees = NormalizeRotation(rotationDegrees);
+            UnityUvQuarterTurns = ResolveUnityUvQuarterTurns(EditorRotationDegrees);
             FlipHorizontal = flipHorizontal;
         }
 
-        public int RotationDegrees { get; }
-        public int RotationQuarterTurns { get; }
+        public int EditorRotationDegrees { get; }
+        public int UnityUvQuarterTurns { get; }
         public bool FlipHorizontal { get; }
 
         public static RuntimeFaceTextureOrientation FromReference(MachineRuntimeFaceReference reference)
@@ -301,7 +301,7 @@ namespace OasisPlayer.RuntimeBuild
         public Vector2 TransformUv(Vector2 uv)
         {
             Vector2 rotated;
-            switch (RotationQuarterTurns)
+            switch (UnityUvQuarterTurns)
             {
                 case 1:
                     rotated = new Vector2(1f - uv.y, uv.x);
@@ -323,6 +323,14 @@ namespace OasisPlayer.RuntimeBuild
         private static int NormalizeRotation(int rotationDegrees)
         {
             return rotationDegrees == 90 || rotationDegrees == 180 || rotationDegrees == 270 ? rotationDegrees : 0;
+        }
+
+        private static int ResolveUnityUvQuarterTurns(int editorRotationDegrees)
+        {
+            // Editor rotation is semantic. The imported Unity GLB Face target UV baseline is one
+            // quarter turn ahead of the Editor preview's fixed corner/texture-coordinate baseline,
+            // so Player applies a -90 degree offset when converting to material UV quarter turns.
+            return ((editorRotationDegrees / 90) + 3) % 4;
         }
     }
 

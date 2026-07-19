@@ -176,7 +176,7 @@ namespace OasisPlayer.Tests
                 var runtimeMaterial = face.RenderBinding.RuntimeMaterial;
                 Assert.AreEqual((int)UnityEngine.Rendering.CullMode.Back, runtimeMaterial.GetInt(RuntimeFaceShaderProperties.CullMode));
                 Assert.AreEqual(1f, runtimeMaterial.GetFloat(RuntimeFaceShaderProperties.NormalSign));
-                Assert.AreEqual(3, runtimeMaterial.GetInt(RuntimeFaceShaderProperties.FaceRotationQuarterTurns));
+                Assert.AreEqual(2, runtimeMaterial.GetInt(RuntimeFaceShaderProperties.FaceRotationQuarterTurns));
                 Assert.AreEqual(1f, runtimeMaterial.GetFloat(RuntimeFaceShaderProperties.FaceFlipHorizontal));
             }
             finally
@@ -189,6 +189,20 @@ namespace OasisPlayer.Tests
         }
 
 
+
+        [TestCase(0, 3)]
+        [TestCase(90, 0)]
+        [TestCase(180, 1)]
+        [TestCase(270, 2)]
+        [TestCase(450, 3)]
+        public void TextureOrientationSeparatesEditorRotationFromUnityUvQuarterTurns(int editorRotation, int unityQuarterTurns)
+        {
+            var orientation = new RuntimeFaceTextureOrientation(editorRotation, false);
+
+            Assert.AreEqual(editorRotation == 90 || editorRotation == 180 || editorRotation == 270 ? editorRotation : 0, orientation.EditorRotationDegrees);
+            Assert.AreEqual(unityQuarterTurns, orientation.UnityUvQuarterTurns);
+        }
+
         [Test]
         public void TextureOrientationTransformsUvCornersLikeEditorPreview()
         {
@@ -197,14 +211,14 @@ namespace OasisPlayer.Tests
             var uv11 = new Vector2(1f, 1f);
             var uv01 = new Vector2(0f, 1f);
 
-            AssertCorners(new RuntimeFaceTextureOrientation(0, false), uv00, uv10, uv11, uv01);
-            AssertCorners(new RuntimeFaceTextureOrientation(90, false), uv10, uv11, uv01, uv00);
-            AssertCorners(new RuntimeFaceTextureOrientation(180, false), uv11, uv01, uv00, uv10);
-            AssertCorners(new RuntimeFaceTextureOrientation(270, false), uv01, uv00, uv10, uv11);
-            AssertCorners(new RuntimeFaceTextureOrientation(0, true), uv10, uv00, uv01, uv11);
-            AssertCorners(new RuntimeFaceTextureOrientation(90, true), uv00, uv01, uv11, uv10);
-            AssertCorners(new RuntimeFaceTextureOrientation(180, true), uv01, uv11, uv10, uv00);
-            AssertCorners(new RuntimeFaceTextureOrientation(270, true), uv11, uv10, uv00, uv01);
+            AssertCorners(new RuntimeFaceTextureOrientation(0, false), uv01, uv00, uv10, uv11);
+            AssertCorners(new RuntimeFaceTextureOrientation(90, false), uv00, uv10, uv11, uv01);
+            AssertCorners(new RuntimeFaceTextureOrientation(180, false), uv10, uv11, uv01, uv00);
+            AssertCorners(new RuntimeFaceTextureOrientation(270, false), uv11, uv01, uv00, uv10);
+            AssertCorners(new RuntimeFaceTextureOrientation(0, true), uv11, uv10, uv00, uv01);
+            AssertCorners(new RuntimeFaceTextureOrientation(90, true), uv10, uv00, uv01, uv11);
+            AssertCorners(new RuntimeFaceTextureOrientation(180, true), uv00, uv01, uv11, uv10);
+            AssertCorners(new RuntimeFaceTextureOrientation(270, true), uv01, uv11, uv10, uv00);
         }
 
         private static void AssertCorners(RuntimeFaceTextureOrientation orientation, Vector2 source0, Vector2 source1, Vector2 source2, Vector2 source3)
