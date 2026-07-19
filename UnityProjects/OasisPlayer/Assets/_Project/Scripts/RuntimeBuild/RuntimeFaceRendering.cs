@@ -331,10 +331,13 @@ namespace OasisPlayer.RuntimeBuild
 
         private static int ResolveUnityUvQuarterTurns(int editorRotationDegrees)
         {
-            // Editor rotation is semantic. The imported Unity GLB Face target UV baseline is one
-            // quarter turn ahead of the Editor preview's fixed corner/texture-coordinate baseline,
-            // so Player applies a -90 degree offset when converting to material UV quarter turns.
-            return ((editorRotationDegrees / 90) + 3) % 4;
+            // Editor rotation is semantic. The Editor rotates by reordering physical quad corners
+            // while keeping fixed texture coordinates; Player rotates imported GLB UVs whose
+            // baseline and positive rotation direction differ from the Editor preview convention.
+            // Convert Editor quarter turns through the reflected Unity UV mapping rather than
+            // treating the serialized value as a direct Unity UV rotation.
+            var editorQuarterTurns = editorRotationDegrees / 90;
+            return (1 - editorQuarterTurns + 4) % 4;
         }
     }
 
