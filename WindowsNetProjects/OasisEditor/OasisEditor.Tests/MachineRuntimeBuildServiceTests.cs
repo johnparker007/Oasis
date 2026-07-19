@@ -1,6 +1,7 @@
 using Xunit;
 using System.Text.Json;
 using OasisEditor.Features.CabinetEditor.Models;
+using SkiaSharp;
 
 namespace OasisEditor.Tests;
 
@@ -27,7 +28,8 @@ public sealed class MachineRuntimeBuildServiceTests
         Assert.Equal([1, 2, 3], File.ReadAllBytes(Path.Combine(result.BuildRoot!, "cabinet", "cabinet.glb")));
         using var machine = JsonDocument.Parse(File.ReadAllText(Path.Combine(result.BuildRoot, "machine.runtime.json")));
         Assert.Equal("oasis.machine.runtime", machine.RootElement.GetProperty("schema").GetString());
-        Assert.Equal(1, machine.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(2, machine.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Empty(machine.RootElement.GetProperty("faces").EnumerateArray());
         Assert.Equal("TestProject", machine.RootElement.GetProperty("machineId").GetString());
         Assert.Equal("cabinet/cabinet.runtime.json", machine.RootElement.GetProperty("cabinetManifest").GetString());
         using var cabinet = JsonDocument.Parse(File.ReadAllText(Path.Combine(result.BuildRoot, "cabinet", "cabinet.runtime.json")));
@@ -37,6 +39,43 @@ public sealed class MachineRuntimeBuildServiceTests
         Assert.Equal("cabinet.glb", cabinet.RootElement.GetProperty("glb").GetString());
         Assert.Equal(2.5, cabinet.RootElement.GetProperty("scale").GetDouble());
         Assert.Equal("Z", cabinet.RootElement.GetProperty("upAxis").GetString());
+    }
+
+    [Fact]
+    public void BuildFromCabinetDocument_ExportsAssignedFacesIntoRuntimeBuild()
+    {
+        var root = CreateTempRoot();
+        var project = CreateProject(root);
+        var cabinetDir = Directory.CreateDirectory(Path.Combine(project.AssetsDirectory, "Cabinet3D", "Test Cabinet")).FullName;
+        var sourceGlb = Path.Combine(cabinetDir, "source.glb");
+        File.WriteAllBytes(sourceGlb, [1, 2, 3]);
+        File.WriteAllText(Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName), CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("source.glb")));
+        var faceDir = Directory.CreateDirectory(Path.Combine(project.AssetsDirectory, "Faces", "Front Face")).FullName;
+        WriteSolidPng(Path.Combine(faceDir, "artwork.png"), 4, 4, SKColors.Red);
+        WriteSolidPng(Path.Combine(faceDir, "mask.png"), 4, 4, SKColors.White);
+        var faceDocument = CreateFaceDocument("target-front", "Assets/Faces/Front Face/artwork.png", "Assets/Faces/Front Face/mask.png");
+        File.WriteAllText(Path.Combine(faceDir, ProjectAssetPathService.FaceManifestFileName), FaceDocumentStorage.Serialize(faceDocument));
+
+        var result = new MachineRuntimeBuildService().BuildFromCabinetDocument(project, Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName));
+
+        Assert.True(result.Success, result.ErrorMessage);
+        var faceBuildDirectory = Path.Combine(result.BuildRoot!, "faces", "Front Face");
+        Assert.True(File.Exists(Path.Combine(faceBuildDirectory, "face.runtime.json")));
+        Assert.True(File.Exists(Path.Combine(faceBuildDirectory, "artwork.png")));
+        Assert.True(File.Exists(Path.Combine(faceBuildDirectory, "mask.png")));
+        Assert.True(File.Exists(Path.Combine(faceBuildDirectory, "trayId.png")));
+        Assert.True(File.Exists(Path.Combine(faceBuildDirectory, "lampIds0.png")));
+        Assert.True(File.Exists(Path.Combine(faceBuildDirectory, "lampWeights0.png")));
+        using var machine = JsonDocument.Parse(File.ReadAllText(Path.Combine(result.BuildRoot, "machine.runtime.json")));
+        var face = Assert.Single(machine.RootElement.GetProperty("faces").EnumerateArray());
+        Assert.Equal("face-runtime", face.GetProperty("faceId").GetString());
+        Assert.Equal("Front Face", face.GetProperty("assetName").GetString());
+        Assert.Equal("target-front", face.GetProperty("cabinetFaceTargetId").GetString());
+        Assert.Equal("faces/Front Face/face.runtime.json", face.GetProperty("manifest").GetString());
+        using var faceManifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(faceBuildDirectory, "face.runtime.json")));
+        Assert.Equal(1, faceManifest.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal("artwork.png", faceManifest.RootElement.GetProperty("artwork").GetString());
+        Assert.Equal("mask.png", faceManifest.RootElement.GetProperty("mask").GetString());
     }
 
     [Fact]
@@ -52,6 +91,43 @@ public sealed class MachineRuntimeBuildServiceTests
 
         Assert.False(result.Success);
         Assert.Contains("GLB model was not found", result.ErrorMessage);
+    }
+
+    private static FaceDocumentModel CreateFaceDocument(string targetId, string artworkPath, string maskPath)
+    {
+        return new FaceDocumentModel
+        {
+            Id = "face-runtime",
+            Title = "Front Face",
+            AssignedCabinetFaceTargetId = targetId,
+            SourceRegion = new FaceSourceRegionModel { X = 0, Y = 0, Width = 4, Height = 4 },
+            MaskLayer = new FaceMaskLayerModel { AssetPath = maskPath, Width = 4, Height = 4 },
+            Elements =
+            [
+                new FaceArtworkElement
+                {
+                    ObjectId = "artwork",
+                    Name = "Artwork",
+                    X = 0,
+                    Y = 0,
+                    Width = 4,
+                    Height = 4,
+                    IsVisible = true,
+                    AssetPath = artworkPath
+                }
+            ]
+        };
+    }
+
+    private static void WriteSolidPng(string path, int width, int height, SKColor color)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        using var bitmap = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
+        bitmap.Erase(color);
+        using var image = SKImage.FromBitmap(bitmap);
+        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+        using var stream = File.Open(path, FileMode.Create, FileAccess.Write, FileShare.None);
+        data.SaveTo(stream);
     }
 
     private static EditorProject CreateProject(string root)

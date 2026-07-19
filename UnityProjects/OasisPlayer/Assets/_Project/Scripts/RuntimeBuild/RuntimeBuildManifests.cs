@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
@@ -12,6 +13,21 @@ namespace OasisPlayer.RuntimeBuild
         public string machineId = string.Empty;
         public string displayName = string.Empty;
         public string cabinetManifest = string.Empty;
+        public MachineRuntimeFaceReference[] faces = Array.Empty<MachineRuntimeFaceReference>();
+    }
+
+    [Serializable]
+    public sealed class MachineRuntimeFaceReference
+    {
+        public string faceId = string.Empty;
+        public string assetName = string.Empty;
+        public string cabinetFaceTargetId = string.Empty;
+        public string manifest = string.Empty;
+
+        public string ResolvedManifestPath
+        {
+            get { return string.IsNullOrWhiteSpace(manifest) ? string.Empty : manifest.Trim(); }
+        }
     }
 
     [Serializable]
@@ -25,15 +41,66 @@ namespace OasisPlayer.RuntimeBuild
         public string upAxis = "Y";
     }
 
+    [Serializable]
+    public sealed class FaceRuntimeManifest
+    {
+        public int schemaVersion;
+        public string faceId = string.Empty;
+        public int width;
+        public int height;
+        public string artwork = string.Empty;
+        public string mask = string.Empty;
+        public string trayId = string.Empty;
+        public string lampIds0 = string.Empty;
+        public string lampWeights0 = string.Empty;
+        public string lampIds1 = string.Empty;
+        public string lampWeights1 = string.Empty;
+        public string trayIdDebug = string.Empty;
+        public string lampWeightsDebug = string.Empty;
+        public FaceRuntimeLampManifestEntry[] lamps = Array.Empty<FaceRuntimeLampManifestEntry>();
+        public FaceRuntimeElementManifestEntry[] trays = Array.Empty<FaceRuntimeElementManifestEntry>();
+        public FaceRuntimeElementManifestEntry[] reels = Array.Empty<FaceRuntimeElementManifestEntry>();
+        public FaceRuntimeElementManifestEntry[] sevenSegmentDisplays = Array.Empty<FaceRuntimeElementManifestEntry>();
+        public FaceRuntimeElementManifestEntry[] alphaDisplays = Array.Empty<FaceRuntimeElementManifestEntry>();
+        public FaceRuntimeButtonManifestEntry[] buttons = Array.Empty<FaceRuntimeButtonManifestEntry>();
+    }
+
+    [Serializable]
+    public class FaceRuntimeElementManifestEntry
+    {
+        public string objectId = string.Empty;
+        public string machineReference = string.Empty;
+        public string name = string.Empty;
+        public float x;
+        public float y;
+        public float width;
+        public float height;
+    }
+
+    [Serializable]
+    public sealed class FaceRuntimeLampManifestEntry : FaceRuntimeElementManifestEntry
+    {
+        public string sourceLampWindowObjectId = string.Empty;
+        public int lampId;
+        public int trayId;
+    }
+
+    [Serializable]
+    public sealed class FaceRuntimeButtonManifestEntry : FaceRuntimeElementManifestEntry
+    {
+        public string inputReference = string.Empty;
+    }
+
     public sealed class ResolvedRuntimeBuild
     {
-        public ResolvedRuntimeBuild(string buildRoot, MachineRuntimeManifest machine, string cabinetManifestPath, CabinetRuntimeManifest cabinet, string glbPath)
+        public ResolvedRuntimeBuild(string buildRoot, MachineRuntimeManifest machine, string cabinetManifestPath, CabinetRuntimeManifest cabinet, string glbPath, MachineRuntimeFaceReference[] faces)
         {
             BuildRoot = buildRoot;
             Machine = machine;
             CabinetManifestPath = cabinetManifestPath;
             Cabinet = cabinet;
             GlbPath = glbPath;
+            Faces = faces ?? Array.Empty<MachineRuntimeFaceReference>();
         }
 
         public string BuildRoot { get; }
@@ -41,6 +108,7 @@ namespace OasisPlayer.RuntimeBuild
         public string CabinetManifestPath { get; }
         public CabinetRuntimeManifest Cabinet { get; }
         public string GlbPath { get; }
+        public IReadOnlyList<MachineRuntimeFaceReference> Faces { get; }
     }
 
     public static class RuntimeBuildLoader
@@ -83,7 +151,7 @@ namespace OasisPlayer.RuntimeBuild
                 return false;
             }
 
-            if (machine == null || machine.schema != MachineSchema || machine.schemaVersion != 1)
+            if (machine == null || machine.schema != MachineSchema || (machine.schemaVersion != 1 && machine.schemaVersion != 2))
             {
                 error = $"Unsupported machine manifest schema/version in {machinePath}.";
                 return false;
@@ -130,7 +198,7 @@ namespace OasisPlayer.RuntimeBuild
                 return false;
             }
 
-            build = new ResolvedRuntimeBuild(root, machine, cabinetPath, cabinet, glbPath);
+            build = new ResolvedRuntimeBuild(root, machine, cabinetPath, cabinet, glbPath, machine.schemaVersion >= 2 ? machine.faces : Array.Empty<MachineRuntimeFaceReference>());
             return true;
         }
 

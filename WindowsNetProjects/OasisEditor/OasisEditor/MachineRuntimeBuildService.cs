@@ -18,7 +18,7 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
     public const string CabinetGlbFileName = "cabinet.glb";
     public const string MachineSchema = "oasis.machine.runtime";
     public const string CabinetSchema = "oasis.cabinet.runtime";
-    public const int MachineSchemaVersion = 1;
+    public const int MachineSchemaVersion = 2;
     public const int CabinetSchemaVersion = 1;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -29,10 +29,12 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
     };
 
     private readonly ProjectAssetPathService _pathService;
+    private readonly FaceRuntimeExportService _faceRuntimeExportService;
 
-    public MachineRuntimeBuildService(ProjectAssetPathService? pathService = null)
+    public MachineRuntimeBuildService(ProjectAssetPathService? pathService = null, FaceRuntimeExportService? faceRuntimeExportService = null)
     {
         _pathService = pathService ?? new ProjectAssetPathService();
+        _faceRuntimeExportService = faceRuntimeExportService ?? new FaceRuntimeExportService();
     }
 
     public MachineRuntimeBuildResult BuildFromCabinetDocument(EditorProject project, string cabinetManifestPath)
@@ -53,14 +55,15 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
             var cabinetRoot = Path.Combine(stagingRoot, CabinetDirectoryName);
             Directory.CreateDirectory(cabinetRoot);
             File.Copy(sourceGlb, Path.Combine(cabinetRoot, CabinetGlbFileName), overwrite: true);
+            var faceReferences = ExportReferencedFaces(project, stagingRoot);
             var cabinetManifest = new CabinetRuntimeManifest(CabinetSchema, CabinetSchemaVersion, cabinetAssetName, CabinetGlbFileName, cabinetDocument.Model.Scale, cabinetDocument.Model.UpAxis);
             File.WriteAllText(Path.Combine(cabinetRoot, CabinetManifestFileName), JsonSerializer.Serialize(cabinetManifest, JsonOptions));
-            var machineManifest = new MachineRuntimeManifest(MachineSchema, MachineSchemaVersion, project.Name, project.Name, ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine(CabinetDirectoryName, CabinetManifestFileName)));
+            var machineManifest = new MachineRuntimeManifest(MachineSchema, MachineSchemaVersion, project.Name, project.Name, ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine(CabinetDirectoryName, CabinetManifestFileName)), faceReferences);
             File.WriteAllText(Path.Combine(stagingRoot, MachineManifestFileName), JsonSerializer.Serialize(machineManifest, JsonOptions));
             ReplaceFinalDirectory(stagingRoot, buildRoot);
             return MachineRuntimeBuildResult.Ok(buildRoot);
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException)
         {
             return MachineRuntimeBuildResult.Fail($"Failed to build Oasis Player runtime output: {ex.Message}");
         }
@@ -69,6 +72,54 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
             if (Directory.Exists(stagingRoot)) Directory.Delete(stagingRoot, recursive: true);
         }
     }
+
+    private IReadOnlyList<MachineRuntimeFaceReference> ExportReferencedFaces(EditorProject project, string stagingRoot)
+    {
+        var faceRoot = _pathService.GetAssetTypeDirectory(project, EditorAssetType.Face);
+        if (!Directory.Exists(faceRoot)) return Array.Empty<MachineRuntimeFaceReference>();
+
+        var references = new List<MachineRuntimeFaceReference>();
+        foreach (var manifestPath in Directory.EnumerateFiles(faceRoot, ProjectAssetPathService.FaceManifestFileName, SearchOption.AllDirectories).OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
+        {
+            if (!FaceDocumentStorage.TryReadValidated(File.ReadAllText(manifestPath), out var faceFile, out _))
+            {
+                throw new InvalidOperationException($"Face manifest is invalid: {manifestPath}");
+            }
+
+            var faceDocument = FaceDocumentStorage.ToModel(faceFile);
+            var targetId = NormalizeOptional(faceDocument.AssignedCabinetFaceTargetId);
+            if (targetId is null) continue;
+
+            var faceAssetName = ProjectAssetPathService.GetPackageAssetNameFromManifestPath(manifestPath, EditorAssetType.Face);
+            if (string.IsNullOrWhiteSpace(faceAssetName))
+            {
+                throw new InvalidOperationException($"Face manifests must be stored as Assets/Faces/<AssetName>/{ProjectAssetPathService.FaceManifestFileName}: {manifestPath}");
+            }
+
+            var exportResult = _faceRuntimeExportService.Export(faceDocument, project, manifestPath);
+            var buildFaceDirectory = Path.Combine(stagingRoot, "faces", _pathService.SanitizePathSegment(faceAssetName));
+            CopyDirectory(exportResult.OutputDirectory, buildFaceDirectory);
+            references.Add(new MachineRuntimeFaceReference(
+                faceDocument.Id,
+                faceAssetName,
+                targetId,
+                ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine("faces", _pathService.SanitizePathSegment(faceAssetName), FaceRuntimeExportService.ManifestFileName))));
+        }
+
+        return references;
+    }
+
+    private static void CopyDirectory(string sourceDirectory, string destinationDirectory)
+    {
+        if (Directory.Exists(destinationDirectory)) Directory.Delete(destinationDirectory, recursive: true);
+        Directory.CreateDirectory(destinationDirectory);
+        foreach (var file in Directory.EnumerateFiles(sourceDirectory).OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
+        {
+            File.Copy(file, Path.Combine(destinationDirectory, Path.GetFileName(file)), overwrite: true);
+        }
+    }
+
+    private static string? NormalizeOptional(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     public string GetBuildRoot(EditorProject project, string machineName) => Path.Combine(project.GeneratedDirectory, "Builds", _pathService.SanitizePathSegment(machineName));
     private static string ResolveCabinetModelPath(string manifestPath, string modelPath) => Path.IsPathFullyQualified(modelPath) ? Path.GetFullPath(modelPath) : Path.GetFullPath(Path.Combine(Path.GetDirectoryName(manifestPath) ?? string.Empty, modelPath));
@@ -82,5 +133,6 @@ public sealed record MachineRuntimeBuildResult(bool Success, string? BuildRoot, 
     public static MachineRuntimeBuildResult Fail(string errorMessage) => new(false, null, errorMessage);
 }
 
-public sealed record MachineRuntimeManifest(string Schema, int SchemaVersion, string MachineId, string DisplayName, string CabinetManifest);
+public sealed record MachineRuntimeManifest(string Schema, int SchemaVersion, string MachineId, string DisplayName, string CabinetManifest, IReadOnlyList<MachineRuntimeFaceReference> Faces);
+public sealed record MachineRuntimeFaceReference(string FaceId, string AssetName, string CabinetFaceTargetId, string Manifest);
 public sealed record CabinetRuntimeManifest(string Schema, int SchemaVersion, string CabinetId, string Glb, double Scale, string UpAxis);

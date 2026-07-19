@@ -9,14 +9,22 @@ namespace OasisPlayer.Loading
     public sealed class MachinePreviewLoader
     {
         private readonly ICabinetModelLoader _modelLoader;
+        private readonly RuntimeFaceLoader _faceLoader;
         private GameObject _current;
+        private RuntimeMachine _runtimeMachine;
 
         public MachinePreviewLoader(ICabinetModelLoader modelLoader)
+            : this(modelLoader, new RuntimeFaceLoader(new PngRuntimeTextureAssetLoader()))
         {
-            _modelLoader = modelLoader;
         }
 
-        public async Task LoadAsync(ResolvedRuntimeBuild build)
+        public MachinePreviewLoader(ICabinetModelLoader modelLoader, RuntimeFaceLoader faceLoader)
+        {
+            _modelLoader = modelLoader;
+            _faceLoader = faceLoader;
+        }
+
+        public async Task<RuntimeMachine> LoadAsync(ResolvedRuntimeBuild build)
         {
             Unload();
             var spawns = UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsSortMode.None)
@@ -34,11 +42,22 @@ namespace OasisPlayer.Loading
             correctionRoot.transform.localScale = Vector3.one * Mathf.Max(0.0001f, build.Cabinet.scale);
             correctionRoot.transform.localRotation = build.Cabinet.upAxis == "Z" ? Quaternion.Euler(-90f, 0f, 0f) : Quaternion.identity;
             _current = correctionRoot;
-            await _modelLoader.LoadAsync(build.GlbPath, correctionRoot.transform);
+            var cabinet = await _modelLoader.LoadAsync(build.GlbPath, correctionRoot.transform);
+            var machine = new RuntimeMachine(build, cabinet);
+            _runtimeMachine = machine;
+            _faceLoader.LoadFaces(machine);
+            foreach (var warning in machine.Warnings) Debug.LogWarning(warning);
+            return machine;
         }
 
         public void Unload()
         {
+            if (_runtimeMachine != null)
+            {
+                _runtimeMachine.UnloadAssets();
+                _runtimeMachine = null;
+            }
+
             if (_current != null)
             {
                 _modelLoader.Unload(_current);
