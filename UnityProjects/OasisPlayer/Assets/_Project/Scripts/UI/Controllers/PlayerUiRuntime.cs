@@ -133,6 +133,7 @@ namespace OasisPlayer.UI.Controllers
             var graphicsRoot = Require<VisualElement>(root, "graphics-settings-root");
             AttachTheme(graphicsRoot);
             FillPanel(graphicsRoot);
+            ApplyCriticalLayoutFallback(root, graphicsRoot);
 
             foreach (var child in root.Children())
             {
@@ -175,6 +176,80 @@ namespace OasisPlayer.UI.Controllers
             panelSettings.match = 0.5f;
             panelSettings.sortingOrder = short.MaxValue;
             return panelSettings;
+        }
+
+        private static void ApplyCriticalLayoutFallback(VisualElement root, VisualElement graphicsRoot)
+        {
+            graphicsRoot.style.alignItems = Align.Center;
+            graphicsRoot.style.justifyContent = Justify.Center;
+            graphicsRoot.style.paddingLeft = 24f;
+            graphicsRoot.style.paddingRight = 24f;
+            graphicsRoot.style.paddingTop = 24f;
+            graphicsRoot.style.paddingBottom = 24f;
+            graphicsRoot.style.backgroundColor = new Color(0f, 0f, 0f, 0.58f);
+
+            var panel = root.Q<VisualElement>(className: "oasis-panel");
+            if (panel != null)
+            {
+                panel.style.width = 680f;
+                panel.style.paddingLeft = 28f;
+                panel.style.paddingRight = 28f;
+                panel.style.paddingTop = 28f;
+                panel.style.paddingBottom = 28f;
+                panel.style.backgroundColor = new Color(0.086f, 0.094f, 0.118f, 0.96f);
+                panel.style.color = new Color(0.92f, 0.93f, 0.96f, 1f);
+            }
+
+            var header = root.Q<VisualElement>(className: "oasis-header");
+            if (header != null)
+            {
+                header.style.flexDirection = FlexDirection.Row;
+                header.style.justifyContent = Justify.SpaceBetween;
+                header.style.alignItems = Align.FlexStart;
+                header.style.marginBottom = 16f;
+            }
+
+            var title = root.Q<Label>(className: "oasis-title");
+            if (title != null)
+            {
+                title.style.fontSize = 30f;
+                title.style.unityFontStyleAndWeight = FontStyle.Bold;
+            }
+
+            root.Query<VisualElement>(className: "oasis-row").ForEach(row =>
+            {
+                row.style.flexDirection = FlexDirection.Row;
+                row.style.alignItems = Align.Center;
+                row.style.marginTop = 8f;
+                row.style.marginBottom = 8f;
+            });
+
+            root.Query<Label>().ForEach(label => label.style.color = new Color(0.92f, 0.93f, 0.96f, 1f));
+            root.Query<Label>(className: "oasis-section").ForEach(label =>
+            {
+                label.style.fontSize = 17f;
+                label.style.unityFontStyleAndWeight = FontStyle.Bold;
+                label.style.color = new Color(0.65f, 0.81f, 1f, 1f);
+                label.style.marginTop = 16f;
+                label.style.marginBottom = 8f;
+            });
+            root.Query<Label>(className: "oasis-label").ForEach(label => label.style.width = 190f);
+            root.Query<Slider>(className: "oasis-slider").ForEach(slider => slider.style.width = 320f);
+            root.Query<Label>(className: "oasis-value").ForEach(label => label.style.width = 90f);
+
+            var buttons = root.Q<VisualElement>(className: "oasis-buttons");
+            if (buttons != null)
+            {
+                buttons.style.flexDirection = FlexDirection.Row;
+                buttons.style.justifyContent = Justify.FlexEnd;
+                buttons.style.marginTop = 28f;
+                buttons.Query<Button>().ForEach(button =>
+                {
+                    button.style.width = 130f;
+                    button.style.flexGrow = 0f;
+                    button.style.marginLeft = 10f;
+                });
+            }
         }
 
         private void AttachTheme(VisualElement element)
