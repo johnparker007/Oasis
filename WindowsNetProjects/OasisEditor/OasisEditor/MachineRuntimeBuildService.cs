@@ -8,6 +8,7 @@ namespace OasisEditor;
 public interface IMachineRuntimeBuildService
 {
     MachineRuntimeBuildResult BuildFromCabinetDocument(EditorProject project, string cabinetManifestPath);
+    MachineRuntimeBuildResult BuildFromCabinetDocument(EditorProject project, string cabinetManifestPath, CabinetDocument cabinetDocument);
 }
 
 public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
@@ -43,6 +44,15 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
         if (string.IsNullOrWhiteSpace(cabinetManifestPath)) return MachineRuntimeBuildResult.Fail("A saved Cabinet3D asset must be selected before building for Oasis Player.");
         if (!File.Exists(cabinetManifestPath)) return MachineRuntimeBuildResult.Fail($"Cabinet3D manifest was not found: {cabinetManifestPath}");
         if (!CabinetDocumentStorage.TryRead(File.ReadAllText(cabinetManifestPath), out var cabinetDocument)) return MachineRuntimeBuildResult.Fail($"Cabinet3D manifest is invalid or missing model.path: {cabinetManifestPath}");
+        return BuildFromCabinetDocument(project, cabinetManifestPath, cabinetDocument);
+    }
+
+    public MachineRuntimeBuildResult BuildFromCabinetDocument(EditorProject project, string cabinetManifestPath, CabinetDocument cabinetDocument)
+    {
+        ArgumentNullException.ThrowIfNull(project);
+        ArgumentNullException.ThrowIfNull(cabinetDocument);
+        if (string.IsNullOrWhiteSpace(cabinetManifestPath)) return MachineRuntimeBuildResult.Fail("A saved Cabinet3D asset must be selected before building for Oasis Player.");
+        if (!File.Exists(cabinetManifestPath)) return MachineRuntimeBuildResult.Fail($"Cabinet3D manifest was not found: {cabinetManifestPath}");
         var cabinetAssetName = ProjectAssetPathService.GetPackageAssetNameFromManifestPath(cabinetManifestPath, EditorAssetType.Cabinet3D);
         if (string.IsNullOrWhiteSpace(cabinetAssetName)) return MachineRuntimeBuildResult.Fail("Cabinet3D manifests must be stored as Assets/Cabinet3D/<AssetName>/asset.cabinet3d before building for Oasis Player.");
         var sourceGlb = ResolveCabinetModelPath(cabinetManifestPath, cabinetDocument.Model.Path);
@@ -99,7 +109,10 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
             var exportResult = _faceRuntimeExportService.Export(faceDocument, project, manifestPath);
             var buildFaceDirectory = Path.Combine(stagingRoot, "faces", _pathService.SanitizePathSegment(faceAssetName));
             CopyDirectory(exportResult.OutputDirectory, buildFaceDirectory);
-            var targetOverride = cabinetDocument.GetTargetOverride(targetId);
+            if (!TryResolveTargetOverride(cabinetDocument, targetId, out var targetOverride))
+            {
+                throw new InvalidOperationException(BuildMissingTargetOverrideMessage(faceDocument.Id, faceAssetName, targetId, cabinetDocument.TargetOverrides));
+            }
             references.Add(new MachineRuntimeFaceReference(
                 faceDocument.Id,
                 faceAssetName,
@@ -119,6 +132,35 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
         {
             File.Copy(file, Path.Combine(destinationDirectory, Path.GetFileName(file)), overwrite: true);
         }
+    }
+
+    private static bool TryResolveTargetOverride(CabinetDocument cabinetDocument, string targetId, out CabinetTargetOverride targetOverride)
+    {
+        var normalizedTargetId = targetId.Trim();
+        var overrides = cabinetDocument.TargetOverrides ?? Array.Empty<CabinetTargetOverride>();
+        var match = overrides.FirstOrDefault(candidate => string.Equals(candidate.TargetId, normalizedTargetId, StringComparison.Ordinal));
+        if (match is not null)
+        {
+            targetOverride = match.Normalized();
+            return true;
+        }
+
+        if (overrides.Length == 0)
+        {
+            targetOverride = CabinetTargetOverride.Default(normalizedTargetId);
+            return true;
+        }
+
+        targetOverride = CabinetTargetOverride.Default(normalizedTargetId);
+        return false;
+    }
+
+    private static string BuildMissingTargetOverrideMessage(string faceId, string faceAssetName, string targetId, IReadOnlyList<CabinetTargetOverride> targetOverrides)
+    {
+        var availableIds = targetOverrides.Count == 0
+            ? "<none>"
+            : string.Join(", ", targetOverrides.Select(targetOverride => $"'{targetOverride.TargetId}'"));
+        return $"Face '{faceId}' ({faceAssetName}) is assigned to cabinet target '{targetId}', but no matching CabinetTargetOverride was found. Available target override IDs: {availableIds}.";
     }
 
     private static string? NormalizeOptional(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();

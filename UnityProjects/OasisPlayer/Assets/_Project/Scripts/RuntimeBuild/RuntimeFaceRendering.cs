@@ -61,6 +61,13 @@ namespace OasisPlayer.RuntimeBuild
             replacementMaterials[slotIndex] = runtimeMaterial;
             renderer.sharedMaterials = replacementMaterials;
 
+            if (Debug.isDebugBuild)
+            {
+                var meshFilter = renderer.GetComponent<MeshFilter>();
+                var assignedMaterial = renderer.sharedMaterials != null && slotIndex >= 0 && slotIndex < renderer.sharedMaterials.Length ? renderer.sharedMaterials[slotIndex] : null;
+                Debug.Log($"Oasis Face renderer binding: faceId='{FaceId(face)}', cabinetFaceTargetId='{TargetId(face)}', target='{(face.CabinetTarget != null ? face.CabinetTarget.name : "<none>")}', mesh='{(meshFilter != null && meshFilter.sharedMesh != null ? meshFilter.sharedMesh.name : "<none>")}', renderer='{renderer.name}', runtimeMaterialInstanceId={(runtimeMaterial != null ? runtimeMaterial.GetInstanceID() : 0)}, rendererMaterialInstanceId={(assignedMaterial != null ? assignedMaterial.GetInstanceID() : 0)}.");
+            }
+
             face.SetRenderBinding(new RuntimeFaceRenderBinding(renderer, originalMaterials, slotIndex, runtimeMaterial));
             return true;
         }
@@ -159,11 +166,10 @@ namespace OasisPlayer.RuntimeBuild
             }
 
             var frontSideInverted = face.Reference != null && face.Reference.IsInverted();
-            var shaderName = ResolveShaderName(frontSideInverted);
-            var shader = Shader.Find(shaderName);
+            var shader = Shader.Find(_shaderName);
             if (shader == null)
             {
-                warning = $"Runtime Face '{(face.Reference != null ? face.Reference.faceId : "<unknown>")}' could not render because the dedicated '{shaderName}' shader was unavailable.";
+                warning = $"Runtime Face '{(face.Reference != null ? face.Reference.faceId : "<unknown>")}' could not render because the dedicated '{_shaderName}' shader was unavailable.";
                 return false;
             }
 
@@ -193,11 +199,6 @@ namespace OasisPlayer.RuntimeBuild
             return true;
         }
 
-        private string ResolveShaderName(bool inverted)
-        {
-            if (!string.Equals(_shaderName, RuntimeFaceShaderProperties.ShaderName, StringComparison.Ordinal)) return _shaderName;
-            return inverted ? RuntimeFaceShaderProperties.InvertedShaderName : RuntimeFaceShaderProperties.ShaderName;
-        }
 
         private static bool ApplyFrontSide(Material material, RuntimeFace face, bool inverted, out string warning)
         {
@@ -207,6 +208,10 @@ namespace OasisPlayer.RuntimeBuild
 
             material.SetInt(RuntimeFaceShaderProperties.CullMode, (int)(inverted ? CullMode.Front : CullMode.Back));
             material.SetFloat(RuntimeFaceShaderProperties.NormalSign, inverted ? -1f : 1f);
+            if (Debug.isDebugBuild)
+            {
+                Debug.Log($"Oasis Face orientation material: faceId='{(face != null && face.Reference != null ? face.Reference.faceId : "<unknown>")}', cabinetFaceTargetId='{(face != null && face.Reference != null ? face.Reference.cabinetFaceTargetId : "<unknown>")}', rawFrontSide='{(face != null && face.Reference != null ? face.Reference.frontSide : string.Empty)}', isInverted={inverted}, shader='{material.shader.name}', hasCull={material.HasProperty(RuntimeFaceShaderProperties.CullMode)}, cull={material.GetInt(RuntimeFaceShaderProperties.CullMode)}, hasNormalSign={material.HasProperty(RuntimeFaceShaderProperties.NormalSign)}, normalSign={material.GetFloat(RuntimeFaceShaderProperties.NormalSign)}, target='{(face != null && face.CabinetTarget != null ? face.CabinetTarget.name : "<none>")}', materialInstanceId={material.GetInstanceID()}.");
+            }
             return true;
         }
 

@@ -170,7 +170,6 @@ namespace OasisPlayer.Tests
                 Assert.True(sut.TryRender(CreateMachine(face), face, out var warning), warning);
 
                 var runtimeMaterial = face.RenderBinding.RuntimeMaterial;
-                Assert.AreEqual(RuntimeFaceShaderProperties.InvertedShaderName, runtimeMaterial.shader.name);
                 Assert.AreEqual((int)UnityEngine.Rendering.CullMode.Front, runtimeMaterial.GetInt(RuntimeFaceShaderProperties.CullMode));
                 Assert.AreEqual(-1f, runtimeMaterial.GetFloat(RuntimeFaceShaderProperties.NormalSign));
             }

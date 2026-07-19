@@ -183,7 +183,7 @@ Shader "Oasis/Face"
             Name "OasisFaceForwardLit"
             Tags { "LightMode" = "UniversalForward" }
             Blend One OneMinusSrcAlpha
-            Cull Back
+            Cull [_Cull]
             ZWrite Off
             ZTest LEqual
 

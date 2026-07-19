@@ -223,6 +223,17 @@ namespace OasisPlayer.RuntimeBuild
                 return false;
             }
 
+            if (Debug.isDebugBuild)
+            {
+                var modifiedUtc = File.GetLastWriteTimeUtc(machinePath).ToString("O");
+                for (var i = 0; i < (machine.faces != null ? machine.faces.Length : 0); i++)
+                {
+                    var reference = machine.faces[i];
+                    if (reference == null) continue;
+                    Debug.Log($"Oasis runtime manifest loaded: path='{machinePath}', modifiedUtc='{modifiedUtc}', machineId='{machine.machineId}', schemaVersion={machine.schemaVersion}, faceId='{reference.faceId}', cabinetFaceTargetId='{reference.cabinetFaceTargetId}', frontSide='{reference.frontSide}', isInverted={reference.IsInverted()}.");
+                }
+            }
+
             build = new ResolvedRuntimeBuild(root, machine, cabinetPath, cabinet, glbPath, machine.faces);
             return true;
         }

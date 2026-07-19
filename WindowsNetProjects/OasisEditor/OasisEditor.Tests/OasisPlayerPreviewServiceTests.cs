@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using OasisEditor.Features.CabinetEditor.Models;
 using Xunit;
 
 namespace OasisEditor.Tests;
@@ -15,7 +16,7 @@ public sealed class OasisPlayerPreviewServiceTests
         var starter = new CapturingStarter();
         var service = new OasisPlayerPreviewService(new StubBuildService(MachineRuntimeBuildResult.Fail("machine build failed")), new OasisPlayerLaunchService(starter));
 
-        var result = service.Preview(project, "asset.cabinet3d", new OasisPlayerPreferences { ExecutablePath = exe });
+        var result = service.Preview(project, "asset.cabinet3d", CabinetDocument.Empty, new OasisPlayerPreferences { ExecutablePath = exe });
 
         Assert.False(result.Success);
         Assert.Equal("machine build failed", result.ErrorMessage);
@@ -34,7 +35,7 @@ public sealed class OasisPlayerPreviewServiceTests
         var starter = new CapturingStarter();
         var service = new OasisPlayerPreviewService(new StubBuildService(MachineRuntimeBuildResult.Ok(exactBuildRoot)), new OasisPlayerLaunchService(starter));
 
-        var result = service.Preview(project, "asset.cabinet3d", new OasisPlayerPreferences { ExecutablePath = exe, PreviewWidth = 1600, PreviewHeight = 900 });
+        var result = service.Preview(project, "asset.cabinet3d", CabinetDocument.Empty, new OasisPlayerPreferences { ExecutablePath = exe, PreviewWidth = 1600, PreviewHeight = 900 });
 
         Assert.True(result.Success, result.ErrorMessage);
         Assert.Equal(exactBuildRoot, result.BuildRoot);
@@ -60,6 +61,7 @@ public sealed class OasisPlayerPreviewServiceTests
         private readonly MachineRuntimeBuildResult _result;
         public StubBuildService(MachineRuntimeBuildResult result) => _result = result;
         public MachineRuntimeBuildResult BuildFromCabinetDocument(EditorProject project, string cabinetManifestPath) => _result;
+        public MachineRuntimeBuildResult BuildFromCabinetDocument(EditorProject project, string cabinetManifestPath, CabinetDocument cabinetDocument) => _result;
     }
 
     private sealed class CapturingStarter : IOasisPlayerProcessStarter
