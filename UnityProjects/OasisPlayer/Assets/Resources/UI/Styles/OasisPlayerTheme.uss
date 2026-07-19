@@ -1,5 +1,5 @@
 .oasis-overlay { flex-grow: 1; align-items: center; justify-content: center; padding: 24px; background-color: rgba(0, 0, 0, 0.58); }
-.oasis-panel { width: 680px; max-width: 92%; padding: 28px; background-color: rgba(22, 24, 30, 0.96); border-radius: 10px; border-top-width: 1px; border-right-width: 1px; border-bottom-width: 1px; border-left-width: 1px; border-top-color: rgba(155, 180, 220, 0.35); border-right-color: rgba(155, 180, 220, 0.35); border-bottom-color: rgba(155, 180, 220, 0.35); border-left-color: rgba(155, 180, 220, 0.35); color: rgb(235, 238, 245); }
+.oasis-panel { width: 680px; padding: 28px; background-color: rgba(22, 24, 30, 0.96); border-radius: 10px; border-top-width: 1px; border-right-width: 1px; border-bottom-width: 1px; border-left-width: 1px; border-top-color: rgba(155, 180, 220, 0.35); border-right-color: rgba(155, 180, 220, 0.35); border-bottom-color: rgba(155, 180, 220, 0.35); border-left-color: rgba(155, 180, 220, 0.35); color: rgb(235, 238, 245); }
 .oasis-header { flex-direction: row; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
 .oasis-heading { flex-grow: 1; }
 .oasis-title { font-size: 30px; -unity-font-style: bold; margin-bottom: 2px; }

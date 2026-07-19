@@ -29,22 +29,22 @@ namespace OasisPlayer.UI.Controllers
         public void Bind(VisualElement root)
         {
             Open();
-            _lampExposure = root.Q<Slider>("lamp-exposure");
-            _lampExposureValue = root.Q<Label>("lamp-exposure-value");
-            _bloomEnabled = root.Q<Toggle>("bloom-enabled");
-            _bloomIntensityRow = root.Q<VisualElement>("bloom-intensity-row");
-            _bloomIntensity = root.Q<Slider>("bloom-intensity");
-            _bloomIntensityValue = root.Q<Label>("bloom-intensity-value");
+            _lampExposure = Require<Slider>(root, "lamp-exposure");
+            _lampExposureValue = Require<Label>(root, "lamp-exposure-value");
+            _bloomEnabled = Require<Toggle>(root, "bloom-enabled");
+            _bloomIntensityRow = Require<VisualElement>(root, "bloom-intensity-row");
+            _bloomIntensity = Require<Slider>(root, "bloom-intensity");
+            _bloomIntensityValue = Require<Label>(root, "bloom-intensity-value");
 
             ConfigureRanges();
             SetControls(_transaction.Editable);
             _lampExposure.RegisterValueChangedCallback(e => SetLampExposure(e.newValue));
             _bloomEnabled.RegisterValueChangedCallback(e => SetBloomEnabled(e.newValue));
             _bloomIntensity.RegisterValueChangedCallback(e => SetBloomIntensity(e.newValue));
-            root.Q<Button>("close-button").clicked += Cancel;
-            root.Q<Button>("restore-defaults-button").clicked += RestoreDefaults;
-            root.Q<Button>("cancel-button").clicked += Cancel;
-            root.Q<Button>("apply-button").clicked += () => Apply();
+            Require<Button>(root, "close-button").clicked += Cancel;
+            Require<Button>(root, "restore-defaults-button").clicked += RestoreDefaults;
+            Require<Button>(root, "cancel-button").clicked += Cancel;
+            Require<Button>(root, "apply-button").clicked += () => Apply();
             root.RegisterCallback<KeyDownEvent>(OnKeyDown);
             _lampExposure.Focus();
         }
@@ -119,6 +119,14 @@ namespace OasisPlayer.UI.Controllers
             if (_bloomIntensity != null) _bloomIntensity.SetEnabled(enabled);
             if (_bloomIntensityRow == null) return;
             _bloomIntensityRow.EnableInClassList("oasis-disabled-row", !enabled);
+        }
+
+        private static T Require<T>(VisualElement root, string name) where T : VisualElement
+        {
+            var element = root.Q<T>(name);
+            if (element != null) return element;
+
+            throw new InvalidOperationException($"Graphics Settings UXML is missing required {typeof(T).Name} '{name}'.");
         }
 
         private void OnKeyDown(KeyDownEvent evt)

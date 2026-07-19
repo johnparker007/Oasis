@@ -1,5 +1,4 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
-  <Style src="project://database/Assets/Resources/UI/Styles/OasisPlayerTheme.uss" />
   <ui:VisualElement name="graphics-settings-root" class="oasis-overlay">
     <ui:VisualElement class="oasis-panel">
       <ui:VisualElement class="oasis-header">
