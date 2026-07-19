@@ -21,6 +21,7 @@ namespace OasisPlayer.UI.Controllers
         private bool _open;
         private bool _previousCursorVisible;
         private bool _themeAttached;
+        private bool _escapeConsumed;
         private CursorLockMode _previousLockMode;
 
         private void Awake()
@@ -37,14 +38,22 @@ namespace OasisPlayer.UI.Controllers
 
         private void Update()
         {
+            if (_escapeConsumed)
+            {
+                if (!Input.GetKey(KeyCode.Escape)) _escapeConsumed = false;
+                return;
+            }
+
             if (Input.GetKeyDown(KeyCode.Escape))
             {
                 if (_open)
                 {
+                    _escapeConsumed = true;
                     _controller?.Cancel();
                     return;
                 }
 
+                _escapeConsumed = true;
                 OpenGraphicsSettings();
             }
         }
@@ -80,7 +89,7 @@ namespace OasisPlayer.UI.Controllers
             UnityEngine.Cursor.visible = true;
             UnityEngine.Cursor.lockState = CursorLockMode.None;
 
-            _document.enabled = true;
+            if (!_document.enabled) _document.enabled = true;
             _document.visualTreeAsset = null;
 
             var root = _document.rootVisualElement;
@@ -105,8 +114,9 @@ namespace OasisPlayer.UI.Controllers
 
         private void CloseGraphicsSettings()
         {
-            _document.rootVisualElement.Clear();
-            _document.enabled = false;
+            var root = _document.rootVisualElement;
+            root.Clear();
+            root.pickingMode = PickingMode.Ignore;
             _controller = null;
             _open = false;
             UnityEngine.Cursor.visible = _previousCursorVisible;
