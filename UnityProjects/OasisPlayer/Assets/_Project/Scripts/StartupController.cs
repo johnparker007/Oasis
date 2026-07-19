@@ -2,6 +2,8 @@ using System;
 using System.Linq;
 using OasisPlayer.Loading;
 using OasisPlayer.RuntimeBuild;
+using OasisPlayer.Settings;
+using OasisPlayer.UI.Controllers;
 using OasisPlayer.Startup;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -16,6 +18,9 @@ public class StartupController : MonoBehaviour
     {
         if (_instance != null && _instance != this) { Destroy(gameObject); return; }
         _instance = this; DontDestroyOnLoad(gameObject); _errors = gameObject.GetComponent<FatalErrorOverlay>() ?? gameObject.AddComponent<FatalErrorOverlay>();
+        PlayerSettingsService.EnsureGlobal();
+        if (gameObject.GetComponent<GraphicsSettingsApplier>() == null) gameObject.AddComponent<GraphicsSettingsApplier>();
+        if (gameObject.GetComponent<PlayerUiRuntime>() == null) gameObject.AddComponent<PlayerUiRuntime>();
     }
 
     private async void Start()

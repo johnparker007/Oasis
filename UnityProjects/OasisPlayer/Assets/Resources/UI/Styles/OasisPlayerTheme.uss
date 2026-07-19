@@ -1,0 +1,12 @@
+.oasis-overlay { flex-grow: 1; align-items: center; justify-content: center; background-color: rgba(0, 0, 0, 0.65); }
+.oasis-panel { width: 720px; max-width: 90%; padding: 28px; background-color: rgb(22, 24, 30); border-radius: 10px; color: rgb(235, 238, 245); }
+.oasis-title { font-size: 30px; -unity-font-style: bold; margin-bottom: 20px; }
+.oasis-section { font-size: 17px; -unity-font-style: bold; margin-top: 14px; margin-bottom: 8px; color: rgb(166, 206, 255); }
+.oasis-row { flex-direction: row; align-items: center; margin-top: 8px; margin-bottom: 8px; }
+.oasis-label { width: 190px; }
+.oasis-slider { flex-grow: 1; margin-left: 8px; margin-right: 12px; }
+.oasis-value { width: 90px; -unity-text-align: middle-right; }
+.oasis-toggle { margin-top: 8px; margin-bottom: 8px; }
+.oasis-buttons { flex-direction: row; justify-content: flex-end; margin-top: 28px; }
+.oasis-buttons Button { margin-left: 10px; min-width: 130px; }
+Button:focus, Slider:focus, Toggle:focus { border-top-color: rgb(122, 177, 255); border-right-color: rgb(122, 177, 255); border-bottom-color: rgb(122, 177, 255); border-left-color: rgb(122, 177, 255); }
