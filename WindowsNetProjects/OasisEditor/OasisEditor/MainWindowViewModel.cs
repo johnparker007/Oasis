@@ -1506,7 +1506,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        var result = new MachineRuntimeBuildService().BuildFromCabinetDocument(LoadedProject, selectedDocument.Document.FilePath);
+        var result = new MachineRuntimeBuildService().BuildFromCabinetDocument(LoadedProject, selectedDocument.Document.FilePath, selectedDocument.GetCabinetDocument());
         if (!result.Success)
         {
             ReportEditorOperationError(result.ErrorMessage ?? "Failed to build Oasis Player runtime output.", OutputLogStatus.Error);
@@ -1533,7 +1533,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        var result = _oasisPlayerPreviewService.Preview(LoadedProject, selectedDocument.Document.FilePath, new OasisPlayerPreferences
+        var result = _oasisPlayerPreviewService.Preview(LoadedProject, selectedDocument.Document.FilePath, selectedDocument.GetCabinetDocument(), new OasisPlayerPreferences
         {
             ExecutablePath = OasisPlayerExecutablePath,
             Fullscreen = OasisPlayerFullscreen,

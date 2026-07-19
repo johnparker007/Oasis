@@ -22,11 +22,38 @@ namespace OasisPlayer.RuntimeBuild
         public string faceId = string.Empty;
         public string assetName = string.Empty;
         public string cabinetFaceTargetId = string.Empty;
+        public string frontSide = RuntimeFaceFrontSideExtensions.NormalValue;
+        public int faceRotation;
+        public bool faceFlipHorizontal;
         public string manifest = string.Empty;
 
         public string ResolvedManifestPath
         {
             get { return string.IsNullOrWhiteSpace(manifest) ? string.Empty : manifest.Trim(); }
+        }
+    }
+
+    public enum RuntimeFaceFrontSide
+    {
+        Normal,
+        Inverted
+    }
+
+    public static class RuntimeFaceFrontSideExtensions
+    {
+        public const string NormalValue = "normal";
+        public const string InvertedValue = "inverted";
+
+        public static RuntimeFaceFrontSide Parse(string value)
+        {
+            return string.Equals(value != null ? value.Trim() : string.Empty, InvertedValue, StringComparison.OrdinalIgnoreCase)
+                ? RuntimeFaceFrontSide.Inverted
+                : RuntimeFaceFrontSide.Normal;
+        }
+
+        public static bool IsInverted(this MachineRuntimeFaceReference reference)
+        {
+            return reference != null && Parse(reference.frontSide) == RuntimeFaceFrontSide.Inverted;
         }
     }
 
@@ -151,7 +178,7 @@ namespace OasisPlayer.RuntimeBuild
                 return false;
             }
 
-            if (machine == null || machine.schema != MachineSchema || (machine.schemaVersion != 1 && machine.schemaVersion != 2))
+            if (machine == null || machine.schema != MachineSchema || (machine.schemaVersion != 3))
             {
                 error = $"Unsupported machine manifest schema/version in {machinePath}.";
                 return false;
@@ -198,7 +225,18 @@ namespace OasisPlayer.RuntimeBuild
                 return false;
             }
 
-            build = new ResolvedRuntimeBuild(root, machine, cabinetPath, cabinet, glbPath, machine.schemaVersion >= 2 ? machine.faces : Array.Empty<MachineRuntimeFaceReference>());
+            if (Debug.isDebugBuild)
+            {
+                var modifiedUtc = File.GetLastWriteTimeUtc(machinePath).ToString("O");
+                for (var i = 0; i < (machine.faces != null ? machine.faces.Length : 0); i++)
+                {
+                    var reference = machine.faces[i];
+                    if (reference == null) continue;
+                    Debug.Log($"Oasis runtime manifest loaded: path='{machinePath}', modifiedUtc='{modifiedUtc}', machineId='{machine.machineId}', schemaVersion={machine.schemaVersion}, faceId='{reference.faceId}', cabinetFaceTargetId='{reference.cabinetFaceTargetId}', frontSide='{reference.frontSide}', isInverted={reference.IsInverted()}.");
+                }
+            }
+
+            build = new ResolvedRuntimeBuild(root, machine, cabinetPath, cabinet, glbPath, machine.faces);
             return true;
         }
 

@@ -17,6 +17,10 @@ Shader "Oasis/Face"
         _OasisBaseMainLightStrength ("Base Main Light Strength", Range(0, 2)) = 1
         _OasisBaseAdditionalLightStrength ("Base Additional Light Strength", Range(0, 2)) = 1
         _OasisMaskStrength ("Mask Strength", Range(0, 4)) = 1
+        _OasisNormalSign ("Normal Sign", Float) = 1
+        [HideInInspector] _Cull ("Cull", Float) = 2
+        _OasisFaceRotationQuarterTurns ("Face Rotation Quarter Turns", Float) = 0
+        _OasisFaceFlipHorizontal ("Face Flip Horizontal", Float) = 0
     }
 
     SubShader
@@ -69,7 +73,35 @@ Shader "Oasis/Face"
             float _OasisBaseAmbientStrength;
             float _OasisBaseMainLightStrength;
             float _OasisBaseAdditionalLightStrength;
+            float _OasisNormalSign;
+            float _OasisFaceRotationQuarterTurns;
+            float _OasisFaceFlipHorizontal;
         CBUFFER_END
+
+        float2 TransformFaceUv(float2 uv)
+        {
+            float turns = floor(_OasisFaceRotationQuarterTurns + 0.5);
+            float2 transformed = uv;
+            if (turns == 1.0)
+            {
+                transformed = float2(1.0 - uv.y, uv.x);
+            }
+            else if (turns == 2.0)
+            {
+                transformed = float2(1.0 - uv.x, 1.0 - uv.y);
+            }
+            else if (turns == 3.0)
+            {
+                transformed = float2(uv.y, 1.0 - uv.x);
+            }
+
+            if (_OasisFaceFlipHorizontal >= 0.5)
+            {
+                transformed.x = 1.0 - transformed.x;
+            }
+
+            return transformed;
+        }
 
         Varyings vert(Attributes input)
         {
@@ -78,8 +110,8 @@ Shader "Oasis/Face"
             VertexNormalInputs normalInputs = GetVertexNormalInputs(input.normalOS);
             output.positionHCS = positionInputs.positionCS;
             output.positionWS = positionInputs.positionWS;
-            output.normalWS = NormalizeNormalPerVertex(normalInputs.normalWS);
-            output.uv = TRANSFORM_TEX(input.uv, _OasisArtworkTex);
+            output.normalWS = NormalizeNormalPerVertex(normalInputs.normalWS) * _OasisNormalSign;
+            output.uv = TransformFaceUv(TRANSFORM_TEX(input.uv, _OasisArtworkTex));
             output.shadowCoord = TransformWorldToShadowCoord(positionInputs.positionWS);
             output.screenPos = ComputeScreenPos(positionInputs.positionCS);
             return output;
@@ -180,7 +212,7 @@ Shader "Oasis/Face"
             Name "OasisFaceForwardLit"
             Tags { "LightMode" = "UniversalForward" }
             Blend One OneMinusSrcAlpha
-            Cull Back
+            Cull [_Cull]
             ZWrite Off
             ZTest LEqual
 

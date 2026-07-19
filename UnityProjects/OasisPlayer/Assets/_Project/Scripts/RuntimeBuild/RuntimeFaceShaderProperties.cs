@@ -20,6 +20,10 @@ namespace OasisPlayer.RuntimeBuild
         public const string BaseMainLightStrengthName = "_OasisBaseMainLightStrength";
         public const string BaseAdditionalLightStrengthName = "_OasisBaseAdditionalLightStrength";
         public const string MaskStrengthName = "_OasisMaskStrength";
+        public const string NormalSignName = "_OasisNormalSign";
+        public const string CullModeName = "_Cull";
+        public const string FaceRotationQuarterTurnsName = "_OasisFaceRotationQuarterTurns";
+        public const string FaceFlipHorizontalName = "_OasisFaceFlipHorizontal";
 
         public static readonly int ArtworkTexture = Shader.PropertyToID(ArtworkTextureName);
         public static readonly int MaskTexture = Shader.PropertyToID(MaskTextureName);
@@ -36,5 +40,9 @@ namespace OasisPlayer.RuntimeBuild
         public static readonly int BaseMainLightStrength = Shader.PropertyToID(BaseMainLightStrengthName);
         public static readonly int BaseAdditionalLightStrength = Shader.PropertyToID(BaseAdditionalLightStrengthName);
         public static readonly int MaskStrength = Shader.PropertyToID(MaskStrengthName);
+        public static readonly int NormalSign = Shader.PropertyToID(NormalSignName);
+        public static readonly int CullMode = Shader.PropertyToID(CullModeName);
+        public static readonly int FaceRotationQuarterTurns = Shader.PropertyToID(FaceRotationQuarterTurnsName);
+        public static readonly int FaceFlipHorizontal = Shader.PropertyToID(FaceFlipHorizontalName);
     }
 }
