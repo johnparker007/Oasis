@@ -7,10 +7,8 @@ namespace OasisPlayer.UI.Controllers
 {
     public sealed class GraphicsSettingsController
     {
-        private readonly PlayerSettingsService _settings;
         private readonly Action _close;
-        private PlayerGraphicsSettings _baseline;
-        private PlayerGraphicsSettings _editable;
+        private readonly GraphicsSettingsTransaction _transaction;
         private Slider _lampExposure;
         private Label _lampExposureValue;
         private Toggle _bloomEnabled;
@@ -20,13 +18,13 @@ namespace OasisPlayer.UI.Controllers
 
         public GraphicsSettingsController(PlayerSettingsService settings, Action close)
         {
-            _settings = settings;
             _close = close;
+            _transaction = new GraphicsSettingsTransaction(settings);
         }
 
-        public bool IsBloomIntensityEnabled => _editable != null && _editable.BloomEnabled;
-        public PlayerGraphicsSettings Baseline => _baseline != null ? _baseline.Clone() : null;
-        public PlayerGraphicsSettings Editable => _editable != null ? _editable.Clone() : null;
+        public bool IsBloomIntensityEnabled => _transaction.IsBloomIntensityEnabled;
+        public PlayerGraphicsSettings Baseline => _transaction.Baseline;
+        public PlayerGraphicsSettings Editable => _transaction.Editable;
 
         public void Bind(VisualElement root)
         {
@@ -39,7 +37,7 @@ namespace OasisPlayer.UI.Controllers
             _bloomIntensityValue = root.Q<Label>("bloom-intensity-value");
 
             ConfigureRanges();
-            SetControls(_editable);
+            SetControls(_transaction.Editable);
             _lampExposure.RegisterValueChangedCallback(e => SetLampExposure(e.newValue));
             _bloomEnabled.RegisterValueChangedCallback(e => SetBloomEnabled(e.newValue));
             _bloomIntensity.RegisterValueChangedCallback(e => SetBloomIntensity(e.newValue));
@@ -53,56 +51,40 @@ namespace OasisPlayer.UI.Controllers
 
         public void Open()
         {
-            _baseline = _settings.Graphics;
-            _editable = _baseline.Clone();
+            _transaction.Open();
         }
 
         public void SetLampExposure(float value)
         {
-            _editable.LampExposureStops = value;
-            Preview();
+            SetControls(_transaction.SetLampExposure(value));
         }
 
         public void SetBloomEnabled(bool value)
         {
-            _editable.BloomEnabled = value;
-            Preview();
+            SetControls(_transaction.SetBloomEnabled(value));
         }
 
         public void SetBloomIntensity(float value)
         {
-            if (!_editable.BloomEnabled) return;
-            _editable.BloomIntensity = value;
-            Preview();
+            SetControls(_transaction.SetBloomIntensity(value));
         }
 
         public void Cancel()
         {
-            _settings.PreviewGraphics(_baseline);
+            _transaction.Cancel();
             _close?.Invoke();
         }
 
         public bool Apply()
         {
-            var saved = _settings.ApplyGraphics(_editable);
-            if (saved) _baseline = _editable.Clone();
+            var saved = _transaction.Apply();
             _close?.Invoke();
             return saved;
         }
 
         public void RestoreDefaults()
         {
-            _editable = _settings.DefaultsForGraphics();
-            SetControls(_editable);
-            Preview();
-        }
-
-        private void Preview()
-        {
-            _editable.Validate();
-            UpdateValueLabels();
-            UpdateEnabledStates();
-            _settings.PreviewGraphics(_editable);
+            SetControls(_transaction.RestoreDefaults());
         }
 
         private void ConfigureRanges()
@@ -125,13 +107,15 @@ namespace OasisPlayer.UI.Controllers
 
         private void UpdateValueLabels()
         {
-            if (_lampExposureValue != null) _lampExposureValue.text = $"{_editable.LampExposureStops:0.0} stops";
-            if (_bloomIntensityValue != null) _bloomIntensityValue.text = _editable.BloomIntensity.ToString("0.0");
+            var editable = _transaction.Editable;
+            if (editable == null) return;
+            if (_lampExposureValue != null) _lampExposureValue.text = $"{editable.LampExposureStops:0.0} stops";
+            if (_bloomIntensityValue != null) _bloomIntensityValue.text = editable.BloomIntensity.ToString("0.0");
         }
 
         private void UpdateEnabledStates()
         {
-            var enabled = _editable.BloomEnabled;
+            var enabled = _transaction.IsBloomIntensityEnabled;
             if (_bloomIntensity != null) _bloomIntensity.SetEnabled(enabled);
             if (_bloomIntensityRow == null) return;
             _bloomIntensityRow.EnableInClassList("oasis-disabled-row", !enabled);

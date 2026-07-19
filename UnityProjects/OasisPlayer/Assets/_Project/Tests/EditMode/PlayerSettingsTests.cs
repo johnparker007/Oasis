@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.IO;
 using NUnit.Framework;
 using OasisPlayer.Settings;
-using OasisPlayer.UI.Controllers;
 
 namespace OasisPlayer.Tests
 {
@@ -114,7 +113,7 @@ namespace OasisPlayer.Tests
         public void ControllerCancelRestoresOpeningSnapshot()
         {
             var service = new PlayerSettingsService(new PlayerSettingsStore(_path));
-            var controller = new GraphicsSettingsController(service, null);
+            var controller = new GraphicsSettingsTransaction(service);
             controller.Open();
 
             controller.SetLampExposure(5f);
@@ -132,7 +131,7 @@ namespace OasisPlayer.Tests
             var store = new PlayerSettingsStore(_path);
             store.Save(settings);
             var service = new PlayerSettingsService(store);
-            var controller = new GraphicsSettingsController(service, null);
+            var controller = new GraphicsSettingsTransaction(service);
             controller.Open();
 
             controller.SetLampExposure(5f);
@@ -146,7 +145,7 @@ namespace OasisPlayer.Tests
         public void ApplyUpdatesOpeningSnapshotForLaterCancel()
         {
             var service = new PlayerSettingsService(new PlayerSettingsStore(_path));
-            var controller = new GraphicsSettingsController(service, null);
+            var controller = new GraphicsSettingsTransaction(service);
             controller.Open();
 
             controller.SetLampExposure(4f);
@@ -161,7 +160,7 @@ namespace OasisPlayer.Tests
         public void EscapeUsesCancelSemantics()
         {
             var service = new PlayerSettingsService(new PlayerSettingsStore(_path));
-            var controller = new GraphicsSettingsController(service, null);
+            var controller = new GraphicsSettingsTransaction(service);
             controller.Open();
             controller.SetLampExposure(6f);
 
@@ -174,7 +173,7 @@ namespace OasisPlayer.Tests
         public void BloomIntensityIsFunctionallyDisabledWhenBloomIsOff()
         {
             var service = new PlayerSettingsService(new PlayerSettingsStore(_path));
-            var controller = new GraphicsSettingsController(service, null);
+            var controller = new GraphicsSettingsTransaction(service);
             controller.Open();
 
             controller.SetBloomEnabled(false);
