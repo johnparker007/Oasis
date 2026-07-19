@@ -14,11 +14,23 @@ Implement a machine-owned runtime lamp-state model, bind it to Face materials, a
 - `RuntimeFaceMaterialFactory` binds the machine lamp texture and centralizes the new shader property IDs.
 - `Oasis/Face` now decodes RGB lamp ID/weight contributions, gates by the runtime mask formula, multiplies artwork by static brightness plus lamp light, clamps RGB, and preserves artwork alpha.
 - Added `RuntimeMachineLampUpdater` to upload dirty lamp data during `LateUpdate`.
-- Added guarded `RuntimeLampDevelopmentControls` in Editor/development builds for deterministic manual verification.
+- Added guarded `RuntimeLampDevelopmentControls` in Editor/development builds for deterministic manual verification. The component now defaults to automatic no-keyboard diagnostics rather than manual keyboard cycling.
 
-## Development controls
+## Development diagnostics
 
-In Preview/Player development builds:
+In Unity Editor or Development builds, `MachinePreviewLoader` automatically attaches the runtime lamp diagnostic component after Faces render. The default mode is `AutomaticSweep` and requires no keyboard input.
+
+Default automatic sequence:
+
+1. All valid lamps `1–255` on for `0.5` seconds.
+2. All lamps off for `0.5` seconds.
+3. Repeat the all-on/all-off flash once more.
+4. Sweep one lamp at a time from `1` through `255`, holding each lamp at full brightness for `0.1` seconds.
+5. Clear all lamps and repeat the sequence.
+
+The diagnostic logs startup state, Face/material binding counts, lamp-state texture dimensions, lookup-data summaries, all-on/all-off transitions, beginning sweep, periodic sweep progress, and sequence repeats. If an all-lamp flash has no visual effect, use these Console summaries to distinguish no rendered Face binding, missing lamp-state material binding, empty lookup textures, zero lookup weights, or shader illumination failure.
+
+Manual mode remains available by changing the component mode in the Inspector. In Manual mode:
 
 - `[` selects the previous lamp number.
 - `]` selects the next lamp number.
@@ -27,7 +39,18 @@ In Preview/Player development builds:
 - `2` sets the selected lamp to 50%.
 - `3` sets the selected lamp to 100%.
 - `C` clears all lamps.
-- Hold `L` to cycle the configured small lamp range.
+
+## Manual no-keyboard verification
+
+1. Open the Oasis Player Unity project.
+2. Enter Play Mode with the existing machine-preview arguments/configuration.
+3. Wait for the cabinet and Face to load.
+4. Do not press any keys.
+5. Observe two all-lamp flashes.
+6. Observe the Player sweep lamps `1–255`, one every `0.1` seconds.
+7. Watch the Console for diagnostic startup, Face/material binding counts, lookup-data validation, all-on/all-off transitions, periodic sweep progress, and sequence repeats.
+8. Confirm the sequence repeats.
+9. Confirm exiting Play Mode produces no cleanup errors.
 
 ## Backward compatibility
 

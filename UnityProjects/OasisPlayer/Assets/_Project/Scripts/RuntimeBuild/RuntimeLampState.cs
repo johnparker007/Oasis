@@ -45,14 +45,27 @@ namespace OasisPlayer.RuntimeBuild
 
         public bool ClearAll()
         {
+            return SetAllBrightness(0f);
+        }
+
+        public bool SetAllBrightness(float brightness)
+        {
+            var normalized = NormalizeBrightness(brightness);
             var changed = false;
+            _brightness[0] = 0f;
             for (var i = MinimumLampNumber; i <= MaximumLampNumber; i++)
             {
-                if (_brightness[i] <= 0f) continue;
-                _brightness[i] = 0f;
+                if (Mathf.Abs(_brightness[i] - normalized) < 0.0001f) continue;
+                _brightness[i] = normalized;
                 changed = true;
             }
-            if (changed) { _version++; _dirty = true; }
+
+            if (changed)
+            {
+                _version++;
+                _dirty = true;
+            }
+
             return changed;
         }
 
