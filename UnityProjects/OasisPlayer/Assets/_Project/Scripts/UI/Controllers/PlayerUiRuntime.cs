@@ -12,6 +12,7 @@ namespace OasisPlayer.UI.Controllers
         private const string RuntimeThemePath = "UI/Styles/OasisPlayerRuntimeTheme";
         private const string PanelSettingsPath = "UI/PanelSettings/OasisRuntimePanelSettings";
 
+        private GameObject _documentHost;
         private UIDocument _document;
         private VisualTreeAsset _graphicsView;
         private StyleSheet _theme;
@@ -30,12 +31,19 @@ namespace OasisPlayer.UI.Controllers
             _theme = Resources.Load<StyleSheet>(ThemePath);
             _runtimeTheme = Resources.Load<ThemeStyleSheet>(RuntimeThemePath);
             _panelSettingsAsset = Resources.Load<PanelSettings>(PanelSettingsPath);
-            _document = gameObject.AddComponent<UIDocument>();
+
+            _documentHost = new GameObject("Oasis Runtime UI Document");
+            _documentHost.transform.SetParent(transform, false);
+            _documentHost.SetActive(false);
+
+            _document = _documentHost.AddComponent<UIDocument>();
             _document.panelSettings = CreateRuntimePanelSettings(_panelSettingsAsset, _runtimeTheme);
             _document.visualTreeAsset = null;
-            _document.enabled = _document.panelSettings != null;
-            if (_document.enabled)
+            _document.enabled = true;
+
+            if (_document.panelSettings != null)
             {
+                _documentHost.SetActive(true);
                 var root = _document.rootVisualElement;
                 FillPanel(root);
                 root.Clear();
@@ -96,7 +104,7 @@ namespace OasisPlayer.UI.Controllers
             UnityEngine.Cursor.visible = true;
             UnityEngine.Cursor.lockState = CursorLockMode.None;
 
-            if (!_document.enabled) _document.enabled = true;
+            if (!_documentHost.activeSelf) _documentHost.SetActive(true);
             _document.visualTreeAsset = null;
 
             var root = _document.rootVisualElement;
