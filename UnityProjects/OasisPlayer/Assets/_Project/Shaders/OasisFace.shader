@@ -8,10 +8,7 @@ Shader "Oasis/Face"
         _OasisLampIds0Tex ("Lamp IDs 0", 2D) = "black" {}
         _OasisLampWeights0Tex ("Lamp Weights 0", 2D) = "black" {}
         _OasisLampStateTex ("Lamp State", 2D) = "black" {}
-        _OasisEmissionStrength ("Emission Strength", Range(0, 8)) = 1.75
-        _OasisLampMinLuminance ("Lamp Minimum Luminance", Range(0, 1)) = 0.08
-        _OasisLampMaxLuminance ("Lamp Maximum Luminance", Range(0, 8)) = 2
-        _OasisLampCompression ("Lamp Compression", Range(0.1, 8)) = 2.25
+        _OasisLampExposureStops ("Lamp Exposure Stops", Range(0, 8)) = 2.5
         _OasisStaticBrightness ("Static Brightness", Range(0, 2)) = 1
         _OasisBaseAmbientStrength ("Base Ambient Strength", Range(0, 2)) = 1
         _OasisBaseMainLightStrength ("Base Main Light Strength", Range(0, 2)) = 1
@@ -66,10 +63,7 @@ Shader "Oasis/Face"
             float4 _OasisArtworkTex_ST;
             float _OasisStaticBrightness;
             float _OasisMaskStrength;
-            float _OasisEmissionStrength;
-            float _OasisLampMinLuminance;
-            float _OasisLampMaxLuminance;
-            float _OasisLampCompression;
+            float _OasisLampExposureStops;
             float _OasisBaseAmbientStrength;
             float _OasisBaseMainLightStrength;
             float _OasisBaseAdditionalLightStrength;
@@ -179,31 +173,11 @@ Shader "Oasis/Face"
             return max(lighting, 0.0);
         }
 
-        float3 DeriveLampColour(float3 artworkRgb)
+        float3 EvaluateLampExposure(float3 artworkRgb, float lampAmount)
         {
-            float peak = max(artworkRgb.r, max(artworkRgb.g, artworkRgb.b));
-            float3 chroma = artworkRgb / max(peak, 0.001);
-
-            // Only nearly black pixels lack a reliable source hue. Blend them toward a subdued neutral
-            // fallback; ordinary dark coloured ink keeps its artwork-derived chroma direction.
-            float colourConfidence = saturate(peak / max(_OasisLampMinLuminance, 0.001));
-            float3 fallback = float3(0.55, 0.50, 0.42);
-            return lerp(fallback, chroma, colourConfidence);
-        }
-
-        float CompressLampAmount(float lampAmount)
-        {
-            float compressed = 1.0 - exp2(-max(lampAmount, 0.0) * _OasisLampCompression);
-            return min(compressed, _OasisLampMaxLuminance);
-        }
-
-        float3 EvaluateLampEmission(float2 uv)
-        {
-            half4 artwork = SAMPLE_TEXTURE2D(_OasisArtworkTex, sampler_OasisArtworkTex, uv);
-            float lampAmount = AccumulateLampAmount(uv);
-            float3 lampColour = DeriveLampColour(artwork.rgb);
-            float compressedLampAmount = CompressLampAmount(lampAmount);
-            return lampColour * compressedLampAmount * _OasisEmissionStrength;
+            float exposureStops = max(_OasisLampExposureStops, 0.0) * saturate(lampAmount);
+            float exposureGain = exp2(exposureStops);
+            return artworkRgb * exposureGain;
         }
         ENDHLSL
 
@@ -228,10 +202,11 @@ Shader "Oasis/Face"
             half4 frag(Varyings input) : SV_Target
             {
                 half4 artwork = SAMPLE_TEXTURE2D(_OasisArtworkTex, sampler_OasisArtworkTex, input.uv);
+                float lampAmount = AccumulateLampAmount(input.uv);
                 float3 baseRgb = artwork.rgb * _OasisStaticBrightness * EvaluateBaseLighting(input);
-                float3 basePremultiplied = baseRgb * artwork.a;
-                float3 lampEmission = EvaluateLampEmission(input.uv);
-                return half4(basePremultiplied + lampEmission, artwork.a);
+                float3 exposedRgb = EvaluateLampExposure(artwork.rgb, lampAmount);
+                float3 lampContribution = max(exposedRgb - artwork.rgb, 0.0);
+                return half4((baseRgb + lampContribution) * artwork.a, artwork.a);
             }
             ENDHLSL
         }
