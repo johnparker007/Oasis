@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using UnityEngine.Rendering;
+using OasisPlayer.Settings;
 
 namespace OasisPlayer.RuntimeBuild
 {
@@ -135,7 +136,7 @@ namespace OasisPlayer.RuntimeBuild
     {
         private const float DefaultStaticBrightness = 1f;
         private const float DefaultMaskStrength = 1f;
-        private const float DefaultLampExposureStops = 2.5f;
+        private static readonly float DefaultLampExposureStops = PlayerGraphicsSettings.Defaults().LampExposureStops;
         private const float DefaultBaseAmbientStrength = 1f;
         private const float DefaultBaseMainLightStrength = 1f;
         private const float DefaultBaseAdditionalLightStrength = 1f;
@@ -196,6 +197,7 @@ namespace OasisPlayer.RuntimeBuild
                 return false;
             }
             material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            RuntimeFaceMaterialRegistry.Register(material);
             return true;
         }
 

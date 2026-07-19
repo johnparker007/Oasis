@@ -2,7 +2,8 @@
     "name": "OasisPlayer.EditMode.Tests",
     "rootNamespace": "OasisPlayer.Tests",
     "references": [
-        "OasisPlayer.RuntimeBuild"
+        "OasisPlayer.RuntimeBuild",
+        "OasisPlayer.Settings"
     ],
     "includePlatforms": [
         "Editor"

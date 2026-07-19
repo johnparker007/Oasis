@@ -1,0 +1,26 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+  <Style src="project://database/Assets/Resources/UI/Styles/OasisPlayerTheme.uss" />
+  <ui:VisualElement name="graphics-settings-root" class="oasis-overlay">
+    <ui:VisualElement class="oasis-panel">
+      <ui:Label text="Graphics Settings" class="oasis-title" />
+      <ui:Label text="Face Lamps" class="oasis-section" />
+      <ui:VisualElement class="oasis-row">
+        <ui:Label text="Lamp Exposure" class="oasis-label" />
+        <ui:Slider name="lamp-exposure" low-value="0" high-value="8" direction="Horizontal" class="oasis-slider" />
+        <ui:Label name="lamp-exposure-value" text="2.5 stops" class="oasis-value" />
+      </ui:VisualElement>
+      <ui:Label text="Rendering" class="oasis-section" />
+      <ui:Toggle name="bloom-enabled" text="Bloom Enabled" class="oasis-toggle" />
+      <ui:VisualElement class="oasis-row">
+        <ui:Label text="Bloom Intensity" class="oasis-label" />
+        <ui:Slider name="bloom-intensity" low-value="0" high-value="10" direction="Horizontal" class="oasis-slider" />
+        <ui:Label name="bloom-intensity-value" text="0.8" class="oasis-value" />
+      </ui:VisualElement>
+      <ui:VisualElement class="oasis-buttons">
+        <ui:Button name="restore-defaults-button" text="Restore Defaults" />
+        <ui:Button name="cancel-button" text="Cancel" />
+        <ui:Button name="apply-button" text="Apply" />
+      </ui:VisualElement>
+    </ui:VisualElement>
+  </ui:VisualElement>
+</ui:UXML>
