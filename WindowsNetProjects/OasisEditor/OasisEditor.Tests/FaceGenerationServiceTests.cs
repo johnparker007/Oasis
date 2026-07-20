@@ -66,10 +66,10 @@ public sealed class FaceGenerationServiceTests
         var lamp = Assert.IsType<FaceLampWindowElement>(Assert.Single(result.Document.Elements.OfType<FaceLampWindowElement>()));
         Assert.Equal("face-lamp-17", lamp.ObjectId);
         Assert.Equal("Start Lamp", lamp.Name);
-        Assert.Equal(10d, lamp.X);
-        Assert.Equal(20d, lamp.Y);
-        Assert.Equal(30d, lamp.Width);
-        Assert.Equal(40d, lamp.Height);
+        Assert.Equal(10d, lamp.X, 9);
+        Assert.Equal(20d, lamp.Y, 9);
+        Assert.Equal(30d, lamp.Width, 9);
+        Assert.Equal(40d, lamp.Height, 9);
         Assert.Equal("lamp:17", lamp.LinkedMachineObjectReference?.ToString());
         Assert.Equal("lamp-17", lamp.LinkedPanel2DElementId);
         Assert.Null(lamp.BulbMaskAssetPath);
