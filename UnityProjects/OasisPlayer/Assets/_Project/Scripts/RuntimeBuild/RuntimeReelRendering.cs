@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 
 namespace OasisPlayer.RuntimeBuild
@@ -100,13 +99,12 @@ namespace OasisPlayer.RuntimeBuild
 
     public sealed class RuntimeReelRenderer
     {
-        private const string TargetPrefix = "OasisReel_";
         private readonly RuntimeReelMeshFactory _meshFactory = new RuntimeReelMeshFactory();
 
         public void RenderReels(RuntimeMachine machine)
         {
             if (machine == null) throw new ArgumentNullException(nameof(machine));
-            var targets = FindReelTargets(machine.Cabinet);
+            var parent = machine.Cabinet != null ? machine.Cabinet.transform : null;
             foreach (var face in machine.Faces)
             {
                 var reels = face.Manifest != null && face.Manifest.reels != null ? face.Manifest.reels : Array.Empty<FaceRuntimeReelManifestEntry>();
@@ -114,10 +112,9 @@ namespace OasisPlayer.RuntimeBuild
                 {
                     if (reel == null) continue;
                     if (!Validate(reel, out var warning)) { machine.AddWarning(warning); continue; }
-                    if (!targets.TryGetValue(Normalize(reel.cabinetReelTargetId), out var target)) { machine.AddWarning($"Cabinet reel target '{reel.cabinetReelTargetId}' was not found for reel '{reel.objectId}'."); continue; }
                     if (reel.BandTexture == null || reel.BandTexture.Texture == null) { machine.AddWarning($"Reel '{reel.objectId}' has no loaded reel-band texture."); continue; }
                     var go = new GameObject("OasisRuntimeReel_" + reel.objectId);
-                    go.transform.SetParent(target, false);
+                    if (parent != null) go.transform.SetParent(parent, false);
                     go.transform.localPosition = Vector3.zero;
                     go.transform.localRotation = RuntimeReelPositionConverter.ToLocalRotation(0f, reel.isReversed, reel.bandOffset, RuntimeReelPositionConverter.DefaultBaselineDegrees, RuntimeReelPositionConverter.DefaultDirectionSign);
                     go.transform.localScale = Vector3.one;
@@ -145,32 +142,10 @@ namespace OasisPlayer.RuntimeBuild
             if (string.IsNullOrWhiteSpace(reel.objectId)) warning = "Runtime reel entry has an empty objectId.";
             else if (string.IsNullOrWhiteSpace(reel.machineReference)) warning = $"Runtime reel '{reel.objectId}' has an empty machineReference.";
             else if (string.IsNullOrWhiteSpace(reel.reelBand)) warning = $"Runtime reel '{reel.objectId}' has an empty reelBand path.";
-            else if (string.IsNullOrWhiteSpace(reel.cabinetReelTargetId)) warning = $"Runtime reel '{reel.objectId}' has an empty cabinetReelTargetId.";
             else if (reel.stops <= 0) warning = $"Runtime reel '{reel.objectId}' has invalid stop count '{reel.stops}'.";
             else if (reel.physicalWidth <= 0f || reel.physicalRadius <= 0f) warning = $"Runtime reel '{reel.objectId}' has invalid physical dimensions.";
             return string.IsNullOrEmpty(warning);
         }
 
-        private static Dictionary<string, Transform> FindReelTargets(GameObject cabinet)
-        {
-            var targets = new Dictionary<string, Transform>(StringComparer.Ordinal);
-            if (cabinet == null) return targets;
-            foreach (var transform in cabinet.GetComponentsInChildren<Transform>(true))
-            {
-                if (!transform.name.StartsWith(TargetPrefix, StringComparison.Ordinal)) continue;
-                var id = Normalize(transform.name.Substring(TargetPrefix.Length));
-                if (!targets.ContainsKey(id)) targets.Add(id, transform);
-            }
-            return targets;
-        }
-
-        private static string Normalize(string value)
-        {
-            if (string.IsNullOrWhiteSpace(value)) return string.Empty;
-            var chars = value.Trim().Where(char.IsLetterOrDigit).ToArray();
-            if (chars.Length == 0) return string.Empty;
-            var text = new string(chars);
-            return char.ToLowerInvariant(text[0]) + text.Substring(1);
-        }
     }
 }

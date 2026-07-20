@@ -196,7 +196,7 @@ public sealed class FaceRuntimeExportService
         foreach (var reel in reels)
         {
             var sourcePath = ResolveExistingProjectPath(project, reel.AssetPath, $"Reel '{DisplayName(reel)}' band");
-            File.Copy(sourcePath, Path.Combine(reelDirectory, CreateReelBandFileName(reel)), overwrite: true);
+            ExportReelBandPng(sourcePath, Path.Combine(reelDirectory, CreateReelBandFileName(reel)), reel);
         }
     }
 
@@ -204,9 +204,20 @@ public sealed class FaceRuntimeExportService
     {
         var objectId = string.IsNullOrWhiteSpace(reel.ObjectId) ? "reel" : reel.ObjectId.Trim();
         var safe = string.Concat(objectId.Select(ch => char.IsLetterOrDigit(ch) || ch == '-' || ch == '_' ? ch : '_'));
-        var extension = Path.GetExtension(reel.AssetPath);
-        if (string.IsNullOrWhiteSpace(extension)) extension = ".png";
-        return $"{safe}{extension}";
+        return $"{safe}.png";
+    }
+
+    private static void ExportReelBandPng(string sourcePath, string outputPath, FaceReelDisplayElement reel)
+    {
+        using var image = LoadImage(sourcePath, $"Reel '{DisplayName(reel)}' band");
+        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+        if (data is null)
+        {
+            throw new IOException($"Reel '{DisplayName(reel)}' band could not be encoded as PNG.");
+        }
+
+        using var stream = File.Open(outputPath, FileMode.Create, FileAccess.Write, FileShare.None);
+        data.SaveTo(stream);
     }
 
     private static void CopyMask(FaceDocumentModel faceDocument, EditorProject project, string outputPath)
