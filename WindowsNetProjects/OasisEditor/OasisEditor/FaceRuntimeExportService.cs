@@ -147,7 +147,7 @@ public sealed class FaceRuntimeExportService
             LampWeightsDebug = FaceRuntimeTextureGenerator.LampWeightsDebugFileName,
             Lamps = texturePlan.Emitters.Select(CreateLampManifestEntry).ToArray(),
             Trays = texturePlan.Trays.Select(CreateTrayManifestEntry).ToArray(),
-            Reels = faceDocument.Elements.OfType<FaceReelDisplayElement>().Select(CreateReelManifestEntry).ToArray(),
+            Reels = faceDocument.Elements.OfType<FaceReelDisplayElement>().Where(HasRuntimeReelBand).Select(CreateReelManifestEntry).ToArray(),
             SevenSegmentDisplays = faceDocument.Elements.OfType<FaceSevenSegmentDisplayElement>().Select(CreateDisplayManifestEntry).ToArray(),
             AlphaDisplays = faceDocument.Elements.OfType<FaceAlphaDisplayElement>().Select(CreateDisplayManifestEntry).ToArray(),
             Buttons = faceDocument.Elements.OfType<FaceButtonElement>().Select(CreateButtonManifestEntry).ToArray()
@@ -187,12 +187,14 @@ public sealed class FaceRuntimeExportService
 
     private static void CopyReelBands(FaceDocumentModel faceDocument, EditorProject project, string outputDirectory)
     {
-        foreach (var reel in faceDocument.Elements.OfType<FaceReelDisplayElement>())
+        foreach (var reel in faceDocument.Elements.OfType<FaceReelDisplayElement>().Where(HasRuntimeReelBand))
         {
             var sourcePath = ResolveExistingProjectPath(project, reel.AssetPath, $"Reel display '{DisplayName(reel)}' band");
             File.Copy(sourcePath, Path.Combine(outputDirectory, CreateReelBandFileName(reel)), overwrite: true);
         }
     }
+
+    private static bool HasRuntimeReelBand(FaceReelDisplayElement reel) => !string.IsNullOrWhiteSpace(reel.AssetPath);
 
     private static string CreateReelBandFileName(FaceReelDisplayElement reel) => $"reel-{SanitizePathSegment(string.IsNullOrWhiteSpace(reel.ObjectId) ? reel.Name : reel.ObjectId)}{Path.GetExtension(reel.AssetPath ?? string.Empty)}";
 
