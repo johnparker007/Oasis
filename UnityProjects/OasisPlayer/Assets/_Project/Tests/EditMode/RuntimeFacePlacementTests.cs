@@ -85,6 +85,7 @@ public sealed class RuntimeFacePlacementTests
             Assert.AreEqual(1, face.ReelRenderBindings.Count);
             var reel = face.ReelRenderBindings[0].GameObject.transform;
             AssertVector(Vector3.right, reel.right);
+            AssertVector(Vector3.back, reel.forward);
             Assert.AreEqual(0.21f, Vector3.Dot(Vector3.forward, reel.position), Epsilon);
             Assert.AreEqual(0.01f, Vector3.Dot(Vector3.forward, reel.position) - 0.2f, Epsilon);
             face.UnloadAssets();

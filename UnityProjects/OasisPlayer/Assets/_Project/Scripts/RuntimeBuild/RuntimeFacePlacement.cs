@@ -28,7 +28,7 @@ namespace OasisPlayer.RuntimeBuild
 
         public Quaternion AlignLocalReelAxesToSurface()
         {
-            return Quaternion.LookRotation(VisibleNormal, VerticalTangent) * Quaternion.Euler(0f, 90f, 0f);
+            return Quaternion.LookRotation(-VisibleNormal, VerticalTangent);
         }
     }
 
