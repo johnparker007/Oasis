@@ -36,7 +36,7 @@ namespace OasisPlayer.Tests
                 {
                     var runtimeFace = new RuntimeFace(
                         reference,
-                        new FaceRuntimeManifest { schemaVersion = 1, faceId = "face", width = 1, height = 1, artwork = "artwork.png", mask = "mask.png" },
+                        new FaceRuntimeManifest { schemaVersion = 2, faceId = "face", width = 1, height = 1, artwork = "artwork.png", mask = "mask.png" },
                         target.transform,
                         new RuntimeTextureAsset("artwork.png", artworkTexture),
                         new RuntimeTextureAsset("mask.png", maskTexture));

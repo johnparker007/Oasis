@@ -8,7 +8,7 @@ namespace OasisEditor;
 
 public sealed class FaceRuntimeExportService
 {
-    public const int RuntimeManifestSchemaVersion = 1;
+    public const int RuntimeManifestSchemaVersion = 2;
     public const string RuntimeDirectoryName = "runtime";
     public const string ManifestFileName = "face.runtime.json";
     public const string ArtworkFileName = "artwork.png";
@@ -146,7 +146,6 @@ public sealed class FaceRuntimeExportService
             LampWeightsDebug = FaceRuntimeTextureGenerator.LampWeightsDebugFileName,
             Lamps = texturePlan.Emitters.Select(CreateLampManifestEntry).ToArray(),
             Trays = texturePlan.Trays.Select(CreateTrayManifestEntry).ToArray(),
-            Reels = faceDocument.Elements.OfType<FaceReelDisplayElement>().Select(CreateDisplayManifestEntry).ToArray(),
             SevenSegmentDisplays = faceDocument.Elements.OfType<FaceSevenSegmentDisplayElement>().Select(CreateDisplayManifestEntry).ToArray(),
             AlphaDisplays = faceDocument.Elements.OfType<FaceAlphaDisplayElement>().Select(CreateDisplayManifestEntry).ToArray(),
             Buttons = faceDocument.Elements.OfType<FaceButtonElement>().Select(CreateButtonManifestEntry).ToArray()
@@ -426,7 +425,6 @@ public sealed class FaceRuntimeManifest
     public string? LampWeightsDebug { get; init; }
     public IReadOnlyList<FaceRuntimeLampManifestEntry> Lamps { get; init; } = [];
     public IReadOnlyList<FaceRuntimeTrayManifestEntry> Trays { get; init; } = [];
-    public IReadOnlyList<FaceRuntimeElementManifestEntry> Reels { get; init; } = [];
     public IReadOnlyList<FaceRuntimeElementManifestEntry> SevenSegmentDisplays { get; init; } = [];
     public IReadOnlyList<FaceRuntimeElementManifestEntry> AlphaDisplays { get; init; } = [];
     public IReadOnlyList<FaceRuntimeButtonManifestEntry> Buttons { get; init; } = [];

@@ -28,7 +28,7 @@ public sealed class MachineRuntimeBuildServiceTests
         Assert.Equal([1, 2, 3], File.ReadAllBytes(Path.Combine(result.BuildRoot!, "cabinet", "cabinet.glb")));
         using var machine = JsonDocument.Parse(File.ReadAllText(Path.Combine(result.BuildRoot, "machine.runtime.json")));
         Assert.Equal("oasis.machine.runtime", machine.RootElement.GetProperty("schema").GetString());
-        Assert.Equal(3, machine.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(MachineRuntimeBuildService.MachineSchemaVersion, machine.RootElement.GetProperty("schemaVersion").GetInt32());
         Assert.Empty(machine.RootElement.GetProperty("faces").EnumerateArray());
         Assert.Equal("TestProject", machine.RootElement.GetProperty("machineId").GetString());
         Assert.Equal("cabinet/cabinet.runtime.json", machine.RootElement.GetProperty("cabinetManifest").GetString());
@@ -97,11 +97,81 @@ public sealed class MachineRuntimeBuildServiceTests
         Assert.False(changedFace.GetProperty("faceFlipHorizontal").GetBoolean());
 
         using var faceManifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(faceBuildDirectory, "face.runtime.json")));
-        Assert.Equal(1, faceManifest.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(FaceRuntimeExportService.RuntimeManifestSchemaVersion, faceManifest.RootElement.GetProperty("schemaVersion").GetInt32());
         Assert.Equal("artwork.png", faceManifest.RootElement.GetProperty("artwork").GetString());
         Assert.Equal("mask.png", faceManifest.RootElement.GetProperty("mask").GetString());
     }
 
+
+
+    [Fact]
+    public void BuildFromCabinetDocument_ExportsReelFromLinkedPanel2DSourceIntoMachineManifest()
+    {
+        var root = CreateTempRoot();
+        var project = CreateProject(root);
+        var cabinetDir = Directory.CreateDirectory(Path.Combine(project.AssetsDirectory, "Cabinet3D", "Reel Cabinet")).FullName;
+        File.WriteAllBytes(Path.Combine(cabinetDir, "source.glb"), [1, 2, 3]);
+        File.WriteAllText(Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName), CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("source.glb").WithTargetOverride(new CabinetTargetOverride("reelTarget1", CabinetTargetOverride.NormalFrontSide))));
+
+        var panelDir = Directory.CreateDirectory(Path.Combine(project.AssetsDirectory, "Panel2D", "Panel")).FullName;
+        var bandPath = Path.Combine(project.AssetsDirectory, "reels", "band.png");
+        WriteSolidPng(bandPath, 2, 8, SKColors.Green);
+        File.WriteAllText(Path.Combine(panelDir, ProjectAssetPathService.Panel2DManifestFileName), Panel2DDocumentStorage.Serialize(
+            "Panel",
+            "Panel with a source conventional reel.",
+            [
+                new PanelElementFile
+                {
+                    ObjectId = "panel-reel-1",
+                    Name = "Panel Reel 1",
+                    Kind = "reel",
+                    X = 0,
+                    Y = 0,
+                    Width = 1,
+                    Height = 4,
+                    AssetPath = "Assets/reels/band.png",
+                    DisplayNumber = 1,
+                    Stops = 24,
+                    IsReversed = true,
+                    BandOffset = 0.125d
+                }
+            ]));
+
+        var faceDir = Directory.CreateDirectory(Path.Combine(project.AssetsDirectory, "Faces", "Reel Face")).FullName;
+        WriteSolidPng(Path.Combine(faceDir, "artwork.png"), 4, 4, SKColors.Red);
+        WriteSolidPng(Path.Combine(faceDir, "mask.png"), 4, 4, SKColors.White);
+        var face = new FaceDocumentModel
+        {
+            Id = "face-reels",
+            Title = "Reel Face",
+            AssignedCabinetFaceTargetId = "reelTarget1",
+            SourcePanel2DDocumentPath = "Assets/Panel2D/Panel/asset.panel2d",
+            SourceRegion = new FaceSourceRegionModel { X = 0, Y = 0, Width = 4, Height = 4 },
+            MaskLayer = new FaceMaskLayerModel { AssetPath = "Assets/Faces/Reel Face/mask.png", Width = 4, Height = 4 },
+            Elements =
+            [
+                new FaceArtworkElement { ObjectId = "artwork", Name = "Artwork", X = 0, Y = 0, Width = 4, Height = 4, IsVisible = true, AssetPath = "Assets/Faces/Reel Face/artwork.png" },
+                new FaceReelDisplayElement { ObjectId = "face-reel-1", Name = "Face Reel 1", X = 1, Y = 0, Width = 1, Height = 4, LinkedMachineObjectReference = MachineObjectReference.Reel(1), LinkedPanel2DElementId = "panel-reel-1", Stops = 24, IsReversed = true, BandOffset = 0.125d }
+            ]
+        };
+        File.WriteAllText(Path.Combine(faceDir, ProjectAssetPathService.FaceManifestFileName), FaceDocumentStorage.Serialize(face));
+
+        var result = new MachineRuntimeBuildService().BuildFromCabinetDocument(project, Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName));
+
+        Assert.True(result.Success, result.ErrorMessage);
+        Assert.True(File.Exists(Path.Combine(result.BuildRoot!, "faces", "Reel Face", "reel-face-reel-1.png")));
+        using var machine = JsonDocument.Parse(File.ReadAllText(Path.Combine(result.BuildRoot, "machine.runtime.json")));
+        var reel = Assert.Single(machine.RootElement.GetProperty("reels").EnumerateArray());
+        Assert.Equal("face-reel-1", reel.GetProperty("objectId").GetString());
+        Assert.Equal("reel:1", reel.GetProperty("machineReference").GetString());
+        Assert.Equal("reelTarget1", reel.GetProperty("cabinetReelTargetId").GetString());
+        Assert.Equal("faces/Reel Face/reel-face-reel-1.png", reel.GetProperty("reelBand").GetString());
+        Assert.Equal(24, reel.GetProperty("stopCount").GetInt32());
+        Assert.True(reel.GetProperty("isReversed").GetBoolean());
+        Assert.Equal(0.125d, reel.GetProperty("bandOffset").GetDouble());
+        Assert.True(reel.GetProperty("physicalWidth").GetDouble() > 0d);
+        Assert.True(reel.GetProperty("physicalRadius").GetDouble() > 0d);
+    }
 
     [Fact]
     public void BuildFromCabinetDocument_UsesProvidedCabinetDocumentForUnsavedTargetOverride()

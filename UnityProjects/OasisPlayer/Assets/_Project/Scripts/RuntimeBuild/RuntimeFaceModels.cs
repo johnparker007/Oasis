@@ -59,6 +59,15 @@ namespace OasisPlayer.RuntimeBuild
                 _lampStateTexture = null;
             }
 
+            var reels = Build != null && Build.Machine != null ? Build.Machine.reels : null;
+            if (reels != null)
+            {
+                foreach (var reel in reels)
+                {
+                    if (reel != null && reel.ReelBandAsset != null) reel.ReelBandAsset.Unload();
+                }
+            }
+
             _faces.Clear();
             _warnings.Clear();
         }

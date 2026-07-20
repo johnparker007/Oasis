@@ -5,6 +5,20 @@ using UnityEngine;
 
 namespace OasisPlayer.RuntimeBuild
 {
+
+    public interface IRuntimeTextureAssetLoader
+    {
+        bool TryLoad(string path, RuntimeTextureRole role, out RuntimeTextureAsset asset, out string error);
+    }
+
+    public enum RuntimeTextureRole
+    {
+        Artwork,
+        Mask,
+        LookupData,
+        ReelBand
+    }
+
     [Serializable]
     public sealed class MachineRuntimeManifest
     {
@@ -14,6 +28,7 @@ namespace OasisPlayer.RuntimeBuild
         public string displayName = string.Empty;
         public string cabinetManifest = string.Empty;
         public MachineRuntimeFaceReference[] faces = Array.Empty<MachineRuntimeFaceReference>();
+        public MachineRuntimeReelReference[] reels = Array.Empty<MachineRuntimeReelReference>();
     }
 
     [Serializable]
@@ -86,7 +101,6 @@ namespace OasisPlayer.RuntimeBuild
         public string lampWeightsDebug = string.Empty;
         public FaceRuntimeLampManifestEntry[] lamps = Array.Empty<FaceRuntimeLampManifestEntry>();
         public FaceRuntimeElementManifestEntry[] trays = Array.Empty<FaceRuntimeElementManifestEntry>();
-        public FaceRuntimeElementManifestEntry[] reels = Array.Empty<FaceRuntimeElementManifestEntry>();
         public FaceRuntimeElementManifestEntry[] sevenSegmentDisplays = Array.Empty<FaceRuntimeElementManifestEntry>();
         public FaceRuntimeElementManifestEntry[] alphaDisplays = Array.Empty<FaceRuntimeElementManifestEntry>();
         public FaceRuntimeButtonManifestEntry[] buttons = Array.Empty<FaceRuntimeButtonManifestEntry>();
@@ -110,6 +124,22 @@ namespace OasisPlayer.RuntimeBuild
         public string sourceLampWindowObjectId = string.Empty;
         public int lampId;
         public int trayId;
+    }
+    [Serializable]
+    public sealed class MachineRuntimeReelReference
+    {
+        public string objectId = string.Empty;
+        public string machineReference = string.Empty;
+        public string cabinetReelTargetId = string.Empty;
+        public string reelBand = string.Empty;
+        public int stopCount;
+        public bool isReversed;
+        public float bandOffset;
+        public float physicalWidth;
+        public float physicalRadius;
+        public int radialSegments = 64;
+        [NonSerialized] public RuntimeTextureAsset ReelBandAsset;
+        [NonSerialized] public Transform CabinetTarget;
     }
 
     [Serializable]
@@ -178,7 +208,7 @@ namespace OasisPlayer.RuntimeBuild
                 return false;
             }
 
-            if (machine == null || machine.schema != MachineSchema || (machine.schemaVersion != 3))
+            if (machine == null || machine.schema != MachineSchema || (machine.schemaVersion != 4))
             {
                 error = $"Unsupported machine manifest schema/version in {machinePath}.";
                 return false;

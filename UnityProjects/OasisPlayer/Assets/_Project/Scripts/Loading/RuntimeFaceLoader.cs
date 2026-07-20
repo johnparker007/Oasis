@@ -7,11 +7,6 @@ using UnityEngine;
 
 namespace OasisPlayer.Loading
 {
-    public interface IRuntimeTextureAssetLoader
-    {
-        bool TryLoad(string path, RuntimeTextureRole role, out RuntimeTextureAsset asset, out string error);
-    }
-
     public sealed class PngRuntimeTextureAssetLoader : IRuntimeTextureAssetLoader
     {
         public bool TryLoad(string path, RuntimeTextureRole role, out RuntimeTextureAsset asset, out string error)
@@ -49,21 +44,14 @@ namespace OasisPlayer.Loading
 
         private static void ConfigureTexture(Texture2D texture, RuntimeTextureRole role)
         {
-            texture.wrapMode = TextureWrapMode.Clamp;
+            texture.wrapMode = role == RuntimeTextureRole.ReelBand ? TextureWrapMode.Repeat : TextureWrapMode.Clamp;
             texture.filterMode = role == RuntimeTextureRole.LookupData ? FilterMode.Point : FilterMode.Bilinear;
         }
     }
 
-    public enum RuntimeTextureRole
-    {
-        Artwork,
-        Mask,
-        LookupData
-    }
-
     public sealed class RuntimeFaceLoader
     {
-        private const int FaceSchemaVersion = 1;
+        private const int FaceSchemaVersion = 2;
         private const string TargetPrefix = "OasisFace_";
 
         private readonly IRuntimeTextureAssetLoader _assetLoader;
@@ -161,7 +149,6 @@ namespace OasisPlayer.Loading
                 var trayId = LoadOptionalTexture(machine, manifest, manifest.trayId, manifestDirectory, referenceFaceId, "tray ID", RuntimeTextureRole.LookupData);
                 var lampIds0 = LoadOptionalTexture(machine, manifest, manifest.lampIds0, manifestDirectory, referenceFaceId, "lamp IDs 0", RuntimeTextureRole.LookupData);
                 var lampWeights0 = LoadOptionalTexture(machine, manifest, manifest.lampWeights0, manifestDirectory, referenceFaceId, "lamp weights 0", RuntimeTextureRole.LookupData);
-
                 machine.RegisterFace(new RuntimeFace(reference, manifest, target, artwork, mask, trayId, lampIds0, lampWeights0));
             }
         }

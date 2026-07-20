@@ -240,7 +240,7 @@ namespace OasisPlayer.Tests
         {
             return new RuntimeFace(
                 new MachineRuntimeFaceReference { faceId = "lookup", cabinetFaceTargetId = "front" },
-                new FaceRuntimeManifest { schemaVersion = 1, faceId = "lookup", width = ids.width, height = ids.height },
+                new FaceRuntimeManifest { schemaVersion = 2, faceId = "lookup", width = ids.width, height = ids.height },
                 null,
                 null,
                 null,
