@@ -11,6 +11,7 @@ namespace OasisPlayer.Loading
         private readonly ICabinetModelLoader _modelLoader;
         private readonly RuntimeFaceLoader _faceLoader;
         private readonly RuntimeFaceRenderer _faceRenderer;
+        private readonly RuntimeReelRenderer _reelRenderer = new RuntimeReelRenderer();
         private GameObject _current;
         private RuntimeMachine _runtimeMachine;
 
@@ -54,6 +55,7 @@ namespace OasisPlayer.Loading
             _runtimeMachine = machine;
             _faceLoader.LoadFaces(machine);
             _faceRenderer.RenderFaces(machine);
+            _reelRenderer.RenderReels(machine);
             var updater = correctionRoot.AddComponent<RuntimeMachineLampUpdater>();
             updater.Initialize(machine);
 #if UNITY_EDITOR || DEVELOPMENT_BUILD

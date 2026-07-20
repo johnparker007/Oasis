@@ -19,7 +19,7 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
     public const string CabinetGlbFileName = "cabinet.glb";
     public const string MachineSchema = "oasis.machine.runtime";
     public const string CabinetSchema = "oasis.cabinet.runtime";
-    public const int MachineSchemaVersion = 3;
+    public const int MachineSchemaVersion = 4;
     public const int CabinetSchemaVersion = 1;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -65,10 +65,10 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
             var cabinetRoot = Path.Combine(stagingRoot, CabinetDirectoryName);
             Directory.CreateDirectory(cabinetRoot);
             File.Copy(sourceGlb, Path.Combine(cabinetRoot, CabinetGlbFileName), overwrite: true);
-            var faceReferences = ExportReferencedFaces(project, stagingRoot, cabinetDocument);
+            var faceReferences = ExportReferencedFaces(project, stagingRoot, cabinetDocument, out var reelReferences);
             var cabinetManifest = new CabinetRuntimeManifest(CabinetSchema, CabinetSchemaVersion, cabinetAssetName, CabinetGlbFileName, cabinetDocument.Model.Scale, cabinetDocument.Model.UpAxis);
             File.WriteAllText(Path.Combine(cabinetRoot, CabinetManifestFileName), JsonSerializer.Serialize(cabinetManifest, JsonOptions));
-            var machineManifest = new MachineRuntimeManifest(MachineSchema, MachineSchemaVersion, project.Name, project.Name, ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine(CabinetDirectoryName, CabinetManifestFileName)), faceReferences);
+            var machineManifest = new MachineRuntimeManifest(MachineSchema, MachineSchemaVersion, project.Name, project.Name, ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine(CabinetDirectoryName, CabinetManifestFileName)), faceReferences, reelReferences);
             File.WriteAllText(Path.Combine(stagingRoot, MachineManifestFileName), JsonSerializer.Serialize(machineManifest, JsonOptions));
             ReplaceFinalDirectory(stagingRoot, buildRoot);
             return MachineRuntimeBuildResult.Ok(buildRoot);
@@ -83,12 +83,17 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
         }
     }
 
-    private IReadOnlyList<MachineRuntimeFaceReference> ExportReferencedFaces(EditorProject project, string stagingRoot, CabinetDocument cabinetDocument)
+    private IReadOnlyList<MachineRuntimeFaceReference> ExportReferencedFaces(EditorProject project, string stagingRoot, CabinetDocument cabinetDocument, out IReadOnlyList<MachineRuntimeReelReference> reelReferences)
     {
         var faceRoot = _pathService.GetAssetTypeDirectory(project, EditorAssetType.Face);
-        if (!Directory.Exists(faceRoot)) return Array.Empty<MachineRuntimeFaceReference>();
+        if (!Directory.Exists(faceRoot))
+        {
+            reelReferences = Array.Empty<MachineRuntimeReelReference>();
+            return Array.Empty<MachineRuntimeFaceReference>();
+        }
 
         var references = new List<MachineRuntimeFaceReference>();
+        var reels = new List<MachineRuntimeReelReference>();
         foreach (var manifestPath in Directory.EnumerateFiles(faceRoot, ProjectAssetPathService.FaceManifestFileName, SearchOption.AllDirectories).OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
         {
             if (!FaceDocumentStorage.TryReadValidated(File.ReadAllText(manifestPath), out var faceFile, out _))
@@ -113,6 +118,7 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
             {
                 throw new InvalidOperationException(BuildMissingTargetOverrideMessage(faceDocument.Id, faceAssetName, targetId, cabinetDocument.TargetOverrides));
             }
+            var runtimeManifestPath = ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine("faces", _pathService.SanitizePathSegment(faceAssetName), FaceRuntimeExportService.ManifestFileName));
             references.Add(new MachineRuntimeFaceReference(
                 faceDocument.Id,
                 faceAssetName,
@@ -120,9 +126,23 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
                 targetOverride.FrontSide,
                 targetOverride.FaceRotation,
                 targetOverride.FaceFlipHorizontal,
-                ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine("faces", _pathService.SanitizePathSegment(faceAssetName), FaceRuntimeExportService.ManifestFileName))));
+                runtimeManifestPath));
+            foreach (var reel in exportResult.Manifest.Reels)
+            {
+                reels.Add(new MachineRuntimeReelReference(
+                    reel.ObjectId,
+                    reel.MachineReference ?? string.Empty,
+                    targetId,
+                    ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine("faces", _pathService.SanitizePathSegment(faceAssetName), reel.ReelBand)),
+                    reel.StopCount,
+                    reel.IsReversed,
+                    reel.BandOffset,
+                    reel.PhysicalWidth,
+                    reel.PhysicalRadius));
+            }
         }
 
+        reelReferences = reels;
         return references;
     }
 
@@ -179,6 +199,7 @@ public sealed record MachineRuntimeBuildResult(bool Success, string? BuildRoot, 
     public static MachineRuntimeBuildResult Fail(string errorMessage) => new(false, null, errorMessage);
 }
 
-public sealed record MachineRuntimeManifest(string Schema, int SchemaVersion, string MachineId, string DisplayName, string CabinetManifest, IReadOnlyList<MachineRuntimeFaceReference> Faces);
+public sealed record MachineRuntimeManifest(string Schema, int SchemaVersion, string MachineId, string DisplayName, string CabinetManifest, IReadOnlyList<MachineRuntimeFaceReference> Faces, IReadOnlyList<MachineRuntimeReelReference> Reels);
 public sealed record MachineRuntimeFaceReference(string FaceId, string AssetName, string CabinetFaceTargetId, string FrontSide, int FaceRotation, bool FaceFlipHorizontal, string Manifest);
+public sealed record MachineRuntimeReelReference(string ObjectId, string MachineReference, string CabinetReelTargetId, string ReelBand, int StopCount, bool IsReversed, double BandOffset, double PhysicalWidth, double PhysicalRadius);
 public sealed record CabinetRuntimeManifest(string Schema, int SchemaVersion, string CabinetId, string Glb, double Scale, string UpAxis);
