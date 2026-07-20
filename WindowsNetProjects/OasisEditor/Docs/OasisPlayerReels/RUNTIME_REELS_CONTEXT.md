@@ -10,6 +10,31 @@ This work spans:
 
 The next runtime-rendered component after Face lamps is the conventional mechanical reel.
 
+## Project maturity and schema policy
+
+Oasis Editor and Oasis Player are an extremely early personal project. There are no external users, released machine packages, stable public file formats, or deployed Player versions that require backwards compatibility.
+
+For this work:
+
+- treat the current repository state as the only supported version
+- update Editor export and Player loading together
+- increment a schema version only when the current format genuinely changes
+- make the current loader accept only the current schema/version
+- update fixtures and tests to the current format
+- delete superseded schema models, loaders, migration code, fallbacks and compatibility tests
+
+Do not add:
+
+- legacy DTOs
+- old-version parsing
+- migration layers
+- compatibility branches
+- dual read/write formats
+- fallback defaults intended to load obsolete builds
+- tests whose sole purpose is preserving obsolete schemas
+
+A schema version is a strict current-format identifier, not a promise to support earlier versions. Breaking old generated runtime builds is acceptable; regenerate them with the current Editor.
+
 ## Existing 2D reel implementation
 
 The Oasis Editor currently renders reels as a vertically scrolling 2D strip image inside a clipped rectangle.
@@ -58,7 +83,7 @@ The generated mesh should initially contain only the curved outer surface:
 - no physical symbol geometry
 - no separate mesh asset authored in Blender
 
-Generate it deterministically at runtime or through a shared mesh factory.
+Generate it deterministically through a shared mesh factory.
 
 ## Axis and UV convention
 
@@ -69,20 +94,16 @@ Recommended:
 - cylinder axle along local X
 - reel width along local X
 - rotation around local X
-- circumference parameter mapped to texture V
+- circumference mapped to texture V
 - reel width mapped to texture U
 
-The implementation must verify the actual orientation against the imported cabinet and Face target transforms rather than assuming Unity primitive-cylinder conventions.
-
-The UV seam should be placed on the hidden rear side of the reel where practical.
-
-The full reel-band texture must map exactly once around the circumference.
+Verify the actual orientation against imported cabinet and target transforms. Place the UV seam consistently, preferably on the hidden rear side. Map the full reel-band texture exactly once around the circumference.
 
 ## Runtime state semantics
 
 Do not redefine reel position semantics in Unity.
 
-The Player should consume one canonical normalized or 96-step effective reel position produced from the same rules as the Editor:
+The Player should consume one canonical effective reel position based on:
 
 - 96 positions per revolution
 - platform reversal
@@ -92,77 +113,68 @@ The Player should consume one canonical normalized or 96-step effective reel pos
 
 Avoid independently reimplementing these rules in several Player call sites.
 
-A normalized runtime value should use:
-
 ```text
 normalized = wrappedPosition / 96
 ```
 
-The mesh rotation should then be derived through one centralized Editor/runtime-to-Unity conversion helper, including any required baseline offset and sign reversal discovered during visual testing.
+Derive mesh rotation through one centralized runtime-to-Unity conversion helper, including any required baseline and sign correction found during visual testing.
 
-Do not modify exported authored values merely to compensate for Unity axis or winding conventions.
+Do not modify exported authored values to compensate for Unity conventions.
 
 ## Runtime build data
 
-The existing Face runtime manifest already contains reel element bounds and machine references, but it does not yet contain enough information to render a 3D reel.
+The current Face runtime manifest contains reel element bounds and machine references, but not enough information to render a 3D reel.
 
-The runtime export will need to resolve and package at least:
+The current runtime format should be changed directly to include the required reel data. Update the Editor exporter, Player loader, fixtures and tests in the same change. Do not preserve the previous format.
+
+Required data includes:
 
 - reel object ID
 - machine reel reference
 - reel-band texture path
 - stop count
-- visible scale where still meaningful
 - authored band offset
-- reversed flag or a canonical pre-resolved direction semantic
-- placement/target information linking the reel to the cabinet
+- reversed flag or canonical direction semantic
+- placement/target information
 - physical reel width
 - physical reel radius or diameter
-- optional visible-window or masking information
 
-Prefer using cabinet-authored reel targets or named mounting transforms where available. Do not position reels from 2D panel pixel bounds directly in world space.
-
-If cabinet reel targets do not yet exist, the first implementation may use a clearly documented temporary placement path, but it must not become the permanent data model.
+Prefer cabinet-authored reel targets or named mounting transforms. Do not use 2D panel pixel bounds as the permanent world-space placement model.
 
 ## Material and lighting
 
-Use a runtime-owned reel material compatible with URP.
+Use a runtime-owned URP-compatible reel material with:
 
-Initial requirements:
-
-- base-colour reel-band texture
-- normal ambient/main/additional lighting
+- reel-band texture as base colour
+- ambient, main and additional lighting
 - no lamp-state shader coupling
 - no bloom-specific behaviour
-- no shader variants unless demonstrably necessary
+- no unnecessary shader variants
 
-The reel-band texture should normally be sampled as an sRGB colour texture.
-
-Use texture wrapping appropriate for the cylinder circumference. The seam must not produce a visible clamp line.
+The reel-band texture should be sampled as sRGB. Configure wrapping and filtering so the circumference seam does not show a clamp artefact.
 
 ## Motion
 
-The first implementation may apply the latest position directly each frame or event.
+The first implementation may apply the latest position directly. Keep the state path suitable for later interpolation, but do not add acceleration, inertia, bounce or motor simulation yet.
 
-Keep the state path compatible with later interpolation, but do not invent acceleration, inertia, bounce or motor simulation during this task.
-
-The initial correctness target is exact symbol alignment with the Editor for stable positions.
+The initial correctness target is exact symbol alignment with the Editor at stable positions.
 
 ## Non-goals
 
-Do not implement in the first reel task:
+Do not implement:
 
 - disc reels
 - flip reels
 - reel lamps
-- physical reel stops or detents
+- physical detents
 - motor sound
 - acceleration/deceleration simulation
 - blur shaders
-- symbol-specific geometry
-- reel casing, hub or spindle artwork
+- symbol geometry
+- hubs or spindles
 - Editor 3D reel preview redesign
 - emulator backend porting
+- backwards-compatible runtime schemas
 
 ## Validation artwork
 
@@ -170,7 +182,7 @@ Use a deliberately asymmetric reel strip with:
 
 - numbered symbols
 - obvious top/bottom orientation
-- a marked texture seam
+- a marked seam
 - distinct colours per stop
 - direction arrows
 
