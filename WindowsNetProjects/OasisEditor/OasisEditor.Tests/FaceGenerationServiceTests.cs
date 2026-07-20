@@ -152,10 +152,10 @@ public sealed class FaceGenerationServiceTests
         var bounds = Assert.IsType<FaceReelDisplayElement>(Assert.Single(service.ConvertSupportedElements(new Panel2DDocumentModel { Elements = [inside, outside] }, shape, 200, 120, null).OfType<FaceReelDisplayElement>()));
         var transformedCorners = new[]
         {
-            (inside.X, inside.Y),
-            (inside.X + inside.Width, inside.Y),
-            (inside.X + inside.Width, inside.Y + inside.Height),
-            (inside.X, inside.Y + inside.Height)
+            (X: inside.X, Y: inside.Y),
+            (X: inside.X + inside.Width, Y: inside.Y),
+            (X: inside.X + inside.Width, Y: inside.Y + inside.Height),
+            (X: inside.X, Y: inside.Y + inside.Height)
         }.Select(c => { FaceSourceShapeTransformService.TryTransformPanelPointToFace(shape, 200, 120, c.X, c.Y, out var point); return point; }).ToArray();
         Assert.Equal(transformedCorners.Min(p => p.X), bounds.X, 9);
         Assert.Equal(transformedCorners.Min(p => p.Y), bounds.Y, 9);
