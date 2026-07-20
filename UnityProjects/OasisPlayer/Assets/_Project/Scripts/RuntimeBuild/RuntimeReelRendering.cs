@@ -97,6 +97,34 @@ namespace OasisPlayer.RuntimeBuild
         }
     }
 
+    public sealed class RuntimeReelRenderBinding : IDisposable
+    {
+        public RuntimeReelRenderBinding(GameObject gameObject, Material material)
+        {
+            GameObject = gameObject;
+            Material = material;
+        }
+
+        public GameObject GameObject { get; private set; }
+        public Material Material { get; private set; }
+
+        public void Dispose()
+        {
+            if (GameObject != null)
+            {
+                if (Application.isPlaying) UnityEngine.Object.Destroy(GameObject);
+                else UnityEngine.Object.DestroyImmediate(GameObject);
+                GameObject = null;
+            }
+            if (Material != null)
+            {
+                if (Application.isPlaying) UnityEngine.Object.Destroy(Material);
+                else UnityEngine.Object.DestroyImmediate(Material);
+                Material = null;
+            }
+        }
+    }
+
     public sealed class RuntimeReelRenderer
     {
         private readonly RuntimeReelMeshFactory _meshFactory = new RuntimeReelMeshFactory();
@@ -104,24 +132,43 @@ namespace OasisPlayer.RuntimeBuild
         public void RenderReels(RuntimeMachine machine)
         {
             if (machine == null) throw new ArgumentNullException(nameof(machine));
-            var parent = machine.Cabinet != null ? machine.Cabinet.transform : null;
             foreach (var face in machine.Faces)
             {
                 var reels = face.Manifest != null && face.Manifest.reels != null ? face.Manifest.reels : Array.Empty<FaceRuntimeReelManifestEntry>();
+                if (reels.Length == 0) continue;
+                if (!RuntimeFacePlacement.TryResolve(face, out var surface, out var surfaceWarning))
+                {
+                    machine.AddWarning(surfaceWarning);
+                    continue;
+                }
+
                 foreach (var reel in reels)
                 {
                     if (reel == null) continue;
-                    if (!Validate(reel, out var warning)) { machine.AddWarning(warning); continue; }
-                    if (reel.BandTexture == null || reel.BandTexture.Texture == null) { machine.AddWarning($"Reel '{reel.objectId}' has no loaded reel-band texture."); continue; }
+                    if (!Validate(face, reel, out var warning)) { machine.AddWarning(warning); continue; }
+                    if (!RuntimeFacePlacement.ValidateComponent(face, reel, out warning)) { machine.AddWarning(warning); continue; }
+                    if (reel.BandTexture == null || reel.BandTexture.Texture == null) { machine.AddWarning($"Runtime Face '{RuntimeFacePlacement.FaceId(face)}' reel '{reel.objectId}' has no loaded reel-band texture."); continue; }
+
+                    var surfacePoint = surface.FaceRectCenterToWorld(reel, face.Manifest);
+                    var position = surfacePoint - (surface.VisibleNormal * (reel.physicalRadius + RuntimeFacePlacement.DefaultSurfaceClearanceMetres));
+                    if (float.IsNaN(position.x) || float.IsInfinity(position.x) || float.IsNaN(position.y) || float.IsInfinity(position.y) || float.IsNaN(position.z) || float.IsInfinity(position.z))
+                    {
+                        machine.AddWarning($"Runtime Face '{RuntimeFacePlacement.FaceId(face)}' reel '{reel.objectId}' produced a non-finite placement position.");
+                        continue;
+                    }
+
                     var go = new GameObject("OasisRuntimeReel_" + reel.objectId);
-                    if (parent != null) go.transform.SetParent(parent, false);
-                    go.transform.localPosition = Vector3.zero;
-                    go.transform.localRotation = RuntimeReelPositionConverter.ToLocalRotation(0f, reel.isReversed, reel.bandOffset, RuntimeReelPositionConverter.DefaultBaselineDegrees, RuntimeReelPositionConverter.DefaultDirectionSign);
+                    go.transform.position = position;
+                    var baseRotation = surface.AlignLocalReelAxesToSurface();
+                    var positionRotation = RuntimeReelPositionConverter.ToLocalRotation(0f, reel.isReversed, reel.bandOffset, RuntimeReelPositionConverter.DefaultBaselineDegrees, RuntimeReelPositionConverter.DefaultDirectionSign);
+                    go.transform.rotation = baseRotation * positionRotation;
                     go.transform.localScale = Vector3.one;
                     var filter = go.AddComponent<MeshFilter>();
                     filter.sharedMesh = _meshFactory.Get(reel.physicalWidth, reel.physicalRadius, 96);
                     var renderer = go.AddComponent<MeshRenderer>();
-                    renderer.sharedMaterial = CreateMaterial(reel);
+                    var material = CreateMaterial(reel);
+                    renderer.sharedMaterial = material;
+                    face.AddReelRenderBinding(new RuntimeReelRenderBinding(go, material));
                 }
             }
         }
@@ -136,14 +183,14 @@ namespace OasisPlayer.RuntimeBuild
             return material;
         }
 
-        private static bool Validate(FaceRuntimeReelManifestEntry reel, out string warning)
+        private static bool Validate(RuntimeFace face, FaceRuntimeReelManifestEntry reel, out string warning)
         {
             warning = string.Empty;
-            if (string.IsNullOrWhiteSpace(reel.objectId)) warning = "Runtime reel entry has an empty objectId.";
-            else if (string.IsNullOrWhiteSpace(reel.machineReference)) warning = $"Runtime reel '{reel.objectId}' has an empty machineReference.";
-            else if (string.IsNullOrWhiteSpace(reel.reelBand)) warning = $"Runtime reel '{reel.objectId}' has an empty reelBand path.";
-            else if (reel.stops <= 0) warning = $"Runtime reel '{reel.objectId}' has invalid stop count '{reel.stops}'.";
-            else if (reel.physicalWidth <= 0f || reel.physicalRadius <= 0f) warning = $"Runtime reel '{reel.objectId}' has invalid physical dimensions.";
+            if (string.IsNullOrWhiteSpace(reel.objectId)) warning = $"Runtime Face '{RuntimeFacePlacement.FaceId(face)}' has a reel entry with an empty objectId.";
+            else if (string.IsNullOrWhiteSpace(reel.machineReference)) warning = $"Runtime Face '{RuntimeFacePlacement.FaceId(face)}' reel '{reel.objectId}' has an empty machineReference.";
+            else if (string.IsNullOrWhiteSpace(reel.reelBand)) warning = $"Runtime Face '{RuntimeFacePlacement.FaceId(face)}' reel '{reel.objectId}' has an empty reelBand path.";
+            else if (reel.stops <= 0) warning = $"Runtime Face '{RuntimeFacePlacement.FaceId(face)}' reel '{reel.objectId}' has invalid stop count '{reel.stops}'.";
+            else if (reel.physicalWidth <= 0f || reel.physicalRadius <= 0f) warning = $"Runtime Face '{RuntimeFacePlacement.FaceId(face)}' reel '{reel.objectId}' has invalid physical dimensions.";
             return string.IsNullOrEmpty(warning);
         }
 

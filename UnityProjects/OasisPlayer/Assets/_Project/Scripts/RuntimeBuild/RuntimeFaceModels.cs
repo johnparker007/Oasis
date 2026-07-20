@@ -92,14 +92,27 @@ namespace OasisPlayer.RuntimeBuild
         public RuntimeTextureAsset LampIds0 { get; private set; }
         public RuntimeTextureAsset LampWeights0 { get; private set; }
         public RuntimeFaceRenderBinding RenderBinding { get; private set; }
+        private readonly List<RuntimeReelRenderBinding> _reelRenderBindings = new List<RuntimeReelRenderBinding>();
+        public IReadOnlyList<RuntimeReelRenderBinding> ReelRenderBindings { get { return _reelRenderBindings; } }
 
         public void SetRenderBinding(RuntimeFaceRenderBinding renderBinding)
         {
             RenderBinding = renderBinding;
         }
 
+        public void AddReelRenderBinding(RuntimeReelRenderBinding binding)
+        {
+            if (binding != null) _reelRenderBindings.Add(binding);
+        }
+
         public void UnloadAssets()
         {
+            for (var i = 0; i < _reelRenderBindings.Count; i++)
+            {
+                _reelRenderBindings[i].Dispose();
+            }
+            _reelRenderBindings.Clear();
+
             if (RenderBinding != null)
             {
                 RenderBinding.Dispose();
