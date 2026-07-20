@@ -76,13 +76,9 @@ namespace OasisPlayer.RuntimeBuild
 
             var bounds = usable.sharedMesh.bounds;
             var transform = usable.transform;
-            var horizontal = transform.TransformVector(new Vector3(bounds.size.x, 0f, 0f));
-            var vertical = transform.TransformVector(new Vector3(0f, bounds.size.y, 0f));
-            var physicalWidth = horizontal.magnitude;
-            var physicalHeight = vertical.magnitude;
-            if (physicalWidth <= 0.0001f || physicalHeight <= 0.0001f)
+            if (!TryResolveSurfaceAxes(bounds, transform, out var horizontal, out var vertical, out var physicalWidth, out var physicalHeight))
             {
-                warning = $"Cabinet target '{targetId}' for Runtime Face '{faceId}' has degenerate surface dimensions.";
+                warning = $"Cabinet target '{targetId}' for Runtime Face '{faceId}' has degenerate surface dimensions. Mesh bounds size is {bounds.size}.";
                 return false;
             }
 
@@ -108,6 +104,51 @@ namespace OasisPlayer.RuntimeBuild
                 return false;
             }
             return true;
+        }
+
+
+        private static bool TryResolveSurfaceAxes(Bounds bounds, Transform transform, out Vector3 horizontal, out Vector3 vertical, out float physicalWidth, out float physicalHeight)
+        {
+            horizontal = Vector3.zero;
+            vertical = Vector3.zero;
+            physicalWidth = 0f;
+            physicalHeight = 0f;
+            var size = bounds.size;
+            var horizontalAxis = SelectAxis(size, -1, 0, 2, 1);
+            if (horizontalAxis < 0) return false;
+            var verticalAxis = SelectAxis(size, horizontalAxis, 1, 2, 0);
+            if (verticalAxis < 0) return false;
+
+            horizontal = transform.TransformVector(AxisVector(horizontalAxis, AxisSize(size, horizontalAxis)));
+            vertical = transform.TransformVector(AxisVector(verticalAxis, AxisSize(size, verticalAxis)));
+            physicalWidth = horizontal.magnitude;
+            physicalHeight = vertical.magnitude;
+            return physicalWidth > 0.0001f && physicalHeight > 0.0001f;
+        }
+
+        private static int SelectAxis(Vector3 size, int excludedAxis, params int[] preferenceOrder)
+        {
+            const float epsilon = 0.000001f;
+            for (var i = 0; i < preferenceOrder.Length; i++)
+            {
+                var axis = preferenceOrder[i];
+                if (axis != excludedAxis && AxisSize(size, axis) > epsilon) return axis;
+            }
+            return -1;
+        }
+
+        private static float AxisSize(Vector3 size, int axis)
+        {
+            if (axis == 0) return size.x;
+            if (axis == 1) return size.y;
+            return size.z;
+        }
+
+        private static Vector3 AxisVector(int axis, float length)
+        {
+            if (axis == 0) return new Vector3(length, 0f, 0f);
+            if (axis == 1) return new Vector3(0f, length, 0f);
+            return new Vector3(0f, 0f, length);
         }
 
         public static bool ValidateComponent(RuntimeFace face, FaceRuntimeElementManifestEntry entry, out string warning)

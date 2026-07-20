@@ -55,6 +55,23 @@ public sealed class RuntimeFacePlacementTests
         finally { Object.DestroyImmediate(target); }
     }
 
+
+    [Test]
+    public void LocalXzFaceTargetMeshUsesNonDegenerateSurfaceDimensions()
+    {
+        var target = CreateLocalXzQuad("xzFace", 2f, 3f);
+        try
+        {
+            var face = CreateFace(target.transform, RuntimeFaceFrontSideExtensions.NormalValue, 200, 300);
+            Assert.IsTrue(RuntimeFacePlacement.TryResolve(face, out var surface, out var warning), warning);
+            Assert.AreEqual(2f, surface.PhysicalWidth, Epsilon);
+            Assert.AreEqual(3f, surface.PhysicalHeight, Epsilon);
+            AssertVector(Vector3.zero, surface.FacePointToWorld(100, 150, 200, 300));
+            AssertVector(new Vector3(-1f, 0f, 1.5f), surface.FacePointToWorld(0, 0, 200, 300));
+        }
+        finally { Object.DestroyImmediate(target); }
+    }
+
     [Test]
     public void ReelRendererPlacesAxleBehindSurfaceAndAlignsAxle()
     {
@@ -117,6 +134,28 @@ public sealed class RuntimeFacePlacementTests
         go.transform.position = position;
         go.transform.rotation = rotation;
         go.transform.localScale = scale;
+        return go;
+    }
+
+
+    private static GameObject CreateLocalXzQuad(string name, float width, float height)
+    {
+        var go = new GameObject(name);
+        var mesh = new Mesh();
+        var halfWidth = width * 0.5f;
+        var halfHeight = height * 0.5f;
+        mesh.vertices = new[]
+        {
+            new Vector3(-halfWidth, 0f, -halfHeight),
+            new Vector3(halfWidth, 0f, -halfHeight),
+            new Vector3(-halfWidth, 0f, halfHeight),
+            new Vector3(halfWidth, 0f, halfHeight)
+        };
+        mesh.triangles = new[] { 0, 2, 1, 1, 2, 3 };
+        mesh.RecalculateBounds();
+        mesh.RecalculateNormals();
+        go.AddComponent<MeshFilter>().sharedMesh = mesh;
+        go.AddComponent<MeshRenderer>().sharedMaterial = new Material(Shader.Find("Standard"));
         return go;
     }
 
