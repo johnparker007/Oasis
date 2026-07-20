@@ -7,11 +7,6 @@ using UnityEngine;
 
 namespace OasisPlayer.Loading
 {
-    public interface IRuntimeTextureAssetLoader
-    {
-        bool TryLoad(string path, RuntimeTextureRole role, out RuntimeTextureAsset asset, out string error);
-    }
-
     public sealed class PngRuntimeTextureAssetLoader : IRuntimeTextureAssetLoader
     {
         public bool TryLoad(string path, RuntimeTextureRole role, out RuntimeTextureAsset asset, out string error)
@@ -52,14 +47,6 @@ namespace OasisPlayer.Loading
             texture.wrapMode = role == RuntimeTextureRole.ReelBand ? TextureWrapMode.Repeat : TextureWrapMode.Clamp;
             texture.filterMode = role == RuntimeTextureRole.LookupData ? FilterMode.Point : FilterMode.Bilinear;
         }
-    }
-
-    public enum RuntimeTextureRole
-    {
-        Artwork,
-        Mask,
-        LookupData,
-        ReelBand
     }
 
     public sealed class RuntimeFaceLoader

@@ -91,11 +91,11 @@ namespace OasisPlayer.Tests.EditMode
             UnityEngine.Object.DestroyImmediate(texture);
         }
 
-        private sealed class FakeTextureLoader : OasisPlayer.Loading.IRuntimeTextureAssetLoader
+        private sealed class FakeTextureLoader : IRuntimeTextureAssetLoader
         {
             private readonly Texture2D _texture;
             public FakeTextureLoader(Texture2D texture) { _texture = texture; }
-            public bool TryLoad(string path, OasisPlayer.Loading.RuntimeTextureRole role, out RuntimeTextureAsset asset, out string error)
+            public bool TryLoad(string path, RuntimeTextureRole role, out RuntimeTextureAsset asset, out string error)
             {
                 asset = new RuntimeTextureAsset(path, _texture);
                 error = string.Empty;

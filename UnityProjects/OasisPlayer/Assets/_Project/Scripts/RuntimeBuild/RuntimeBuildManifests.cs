@@ -5,6 +5,20 @@ using UnityEngine;
 
 namespace OasisPlayer.RuntimeBuild
 {
+
+    public interface IRuntimeTextureAssetLoader
+    {
+        bool TryLoad(string path, RuntimeTextureRole role, out RuntimeTextureAsset asset, out string error);
+    }
+
+    public enum RuntimeTextureRole
+    {
+        Artwork,
+        Mask,
+        LookupData,
+        ReelBand
+    }
+
     [Serializable]
     public sealed class MachineRuntimeManifest
     {
