@@ -59,7 +59,6 @@ public sealed class FaceRuntimeExportService
         CopyMask(faceDocument, project, maskPath);
         progress.Report(0.45, "Creating runtime texture plan...");
         var textureResult = _runtimeTextureGenerator.Generate(faceDocument, width, height, outputDirectory, progress.CreateChild(0.45, 0.75));
-        CopyReelBands(faceDocument, project, outputDirectory);
 
         var generatedUtc = DateTime.UtcNow;
         progress.Report(0.8, "Writing manifest...");
@@ -147,7 +146,6 @@ public sealed class FaceRuntimeExportService
             LampWeightsDebug = FaceRuntimeTextureGenerator.LampWeightsDebugFileName,
             Lamps = texturePlan.Emitters.Select(CreateLampManifestEntry).ToArray(),
             Trays = texturePlan.Trays.Select(CreateTrayManifestEntry).ToArray(),
-            Reels = faceDocument.Elements.OfType<FaceReelDisplayElement>().Where(HasRuntimeReelBand).Select(CreateReelManifestEntry).ToArray(),
             SevenSegmentDisplays = faceDocument.Elements.OfType<FaceSevenSegmentDisplayElement>().Select(CreateDisplayManifestEntry).ToArray(),
             AlphaDisplays = faceDocument.Elements.OfType<FaceAlphaDisplayElement>().Select(CreateDisplayManifestEntry).ToArray(),
             Buttons = faceDocument.Elements.OfType<FaceButtonElement>().Select(CreateButtonManifestEntry).ToArray()
@@ -184,19 +182,6 @@ public sealed class FaceRuntimeExportService
         using var stream = File.Open(outputPath, FileMode.Create, FileAccess.Write, FileShare.None);
         data.SaveTo(stream);
     }
-
-    private static void CopyReelBands(FaceDocumentModel faceDocument, EditorProject project, string outputDirectory)
-    {
-        foreach (var reel in faceDocument.Elements.OfType<FaceReelDisplayElement>().Where(HasRuntimeReelBand))
-        {
-            var sourcePath = ResolveExistingProjectPath(project, reel.AssetPath, $"Reel display '{DisplayName(reel)}' band");
-            File.Copy(sourcePath, Path.Combine(outputDirectory, CreateReelBandFileName(reel)), overwrite: true);
-        }
-    }
-
-    private static bool HasRuntimeReelBand(FaceReelDisplayElement reel) => !string.IsNullOrWhiteSpace(reel.AssetPath);
-
-    private static string CreateReelBandFileName(FaceReelDisplayElement reel) => $"reel-{SanitizePathSegment(string.IsNullOrWhiteSpace(reel.ObjectId) ? reel.Name : reel.ObjectId)}{Path.GetExtension(reel.AssetPath ?? string.Empty)}";
 
     private static void CopyMask(FaceDocumentModel faceDocument, EditorProject project, string outputPath)
     {
@@ -314,26 +299,6 @@ public sealed class FaceRuntimeExportService
             Y = element.Y,
             Width = element.Width,
             Height = element.Height
-        };
-    }
-
-    private static FaceRuntimeReelManifestEntry CreateReelManifestEntry(FaceReelDisplayElement element)
-    {
-        return new FaceRuntimeReelManifestEntry
-        {
-            ObjectId = element.ObjectId,
-            MachineReference = element.LinkedMachineObjectReference?.ToString(),
-            Name = element.Name,
-            X = element.X,
-            Y = element.Y,
-            Width = element.Width,
-            Height = element.Height,
-            ReelBand = CreateReelBandFileName(element),
-            StopCount = Math.Max(1, element.Stops.GetValueOrDefault(1)),
-            IsReversed = element.IsReversed,
-            BandOffset = element.BandOffset.GetValueOrDefault(0d),
-            PhysicalWidth = 0.18d,
-            PhysicalRadius = 0.09d
         };
     }
 
@@ -460,7 +425,6 @@ public sealed class FaceRuntimeManifest
     public string? LampWeightsDebug { get; init; }
     public IReadOnlyList<FaceRuntimeLampManifestEntry> Lamps { get; init; } = [];
     public IReadOnlyList<FaceRuntimeTrayManifestEntry> Trays { get; init; } = [];
-    public IReadOnlyList<FaceRuntimeReelManifestEntry> Reels { get; init; } = [];
     public IReadOnlyList<FaceRuntimeElementManifestEntry> SevenSegmentDisplays { get; init; } = [];
     public IReadOnlyList<FaceRuntimeElementManifestEntry> AlphaDisplays { get; init; } = [];
     public IReadOnlyList<FaceRuntimeButtonManifestEntry> Buttons { get; init; } = [];
@@ -497,16 +461,6 @@ public class FaceRuntimeElementManifestEntry
     public double Y { get; init; }
     public double Width { get; init; }
     public double Height { get; init; }
-}
-
-public sealed class FaceRuntimeReelManifestEntry : FaceRuntimeElementManifestEntry
-{
-    public string ReelBand { get; init; } = string.Empty;
-    public int StopCount { get; init; }
-    public bool IsReversed { get; init; }
-    public double BandOffset { get; init; }
-    public double PhysicalWidth { get; init; }
-    public double PhysicalRadius { get; init; }
 }
 
 public sealed class FaceRuntimeButtonManifestEntry : FaceRuntimeElementManifestEntry

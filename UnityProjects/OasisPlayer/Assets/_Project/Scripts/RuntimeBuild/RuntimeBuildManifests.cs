@@ -87,7 +87,6 @@ namespace OasisPlayer.RuntimeBuild
         public string lampWeightsDebug = string.Empty;
         public FaceRuntimeLampManifestEntry[] lamps = Array.Empty<FaceRuntimeLampManifestEntry>();
         public FaceRuntimeElementManifestEntry[] trays = Array.Empty<FaceRuntimeElementManifestEntry>();
-        public FaceRuntimeReelManifestEntry[] reels = Array.Empty<FaceRuntimeReelManifestEntry>();
         public FaceRuntimeElementManifestEntry[] sevenSegmentDisplays = Array.Empty<FaceRuntimeElementManifestEntry>();
         public FaceRuntimeElementManifestEntry[] alphaDisplays = Array.Empty<FaceRuntimeElementManifestEntry>();
         public FaceRuntimeButtonManifestEntry[] buttons = Array.Empty<FaceRuntimeButtonManifestEntry>();
@@ -112,21 +111,6 @@ namespace OasisPlayer.RuntimeBuild
         public int lampId;
         public int trayId;
     }
-
-    [Serializable]
-    public sealed class FaceRuntimeReelManifestEntry : FaceRuntimeElementManifestEntry
-    {
-        public string reelBand = string.Empty;
-        public int stopCount;
-        public bool isReversed;
-        public float bandOffset;
-        public string cabinetTargetId = string.Empty;
-        public float physicalWidth = 0.18f;
-        public float physicalRadius = 0.09f;
-        public int radialSegments = 64;
-        [NonSerialized] public RuntimeTextureAsset ReelBandAsset;
-    }
-
     [Serializable]
     public sealed class MachineRuntimeReelReference
     {
@@ -139,6 +123,9 @@ namespace OasisPlayer.RuntimeBuild
         public float bandOffset;
         public float physicalWidth;
         public float physicalRadius;
+        public int radialSegments = 64;
+        [NonSerialized] public RuntimeTextureAsset ReelBandAsset;
+        [NonSerialized] public Transform CabinetTarget;
     }
 
     [Serializable]

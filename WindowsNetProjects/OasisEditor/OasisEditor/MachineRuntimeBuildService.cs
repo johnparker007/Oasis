@@ -127,23 +127,108 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
                 targetOverride.FaceRotation,
                 targetOverride.FaceFlipHorizontal,
                 runtimeManifestPath));
-            foreach (var reel in exportResult.Manifest.Reels)
+            foreach (var reel in CreateRuntimeReelReferences(project, faceDocument, faceAssetName, targetId, buildFaceDirectory))
             {
-                reels.Add(new MachineRuntimeReelReference(
-                    reel.ObjectId,
-                    reel.MachineReference ?? string.Empty,
-                    targetId,
-                    ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine("faces", _pathService.SanitizePathSegment(faceAssetName), reel.ReelBand)),
-                    reel.StopCount,
-                    reel.IsReversed,
-                    reel.BandOffset,
-                    reel.PhysicalWidth,
-                    reel.PhysicalRadius));
+                reels.Add(reel);
             }
         }
 
         reelReferences = reels;
         return references;
+    }
+
+    private IReadOnlyList<MachineRuntimeReelReference> CreateRuntimeReelReferences(EditorProject project, FaceDocumentModel faceDocument, string faceAssetName, string cabinetTargetId, string buildFaceDirectory)
+    {
+        var reels = new List<MachineRuntimeReelReference>();
+        var sourcePanel = TryLoadSourcePanelDocument(project, faceDocument);
+        foreach (var reel in faceDocument.Elements.OfType<FaceReelDisplayElement>())
+        {
+            if (!TryResolveReelBandAssetPath(reel, sourcePanel, out var assetPath, out var sourceDescription))
+            {
+                if (string.IsNullOrWhiteSpace(reel.LinkedPanel2DElementId) && string.IsNullOrWhiteSpace(reel.AssetPath)) continue;
+                throw new InvalidOperationException($"Conventional reel '{reel.ObjectId}' ('{reel.Name}') with machine reference '{reel.LinkedMachineObjectReference?.ToString() ?? "<none>"}' could not resolve a reel-band asset. Expected source: {sourceDescription}.");
+            }
+
+            var sourcePath = ResolveExistingProjectPath(project, assetPath, $"Conventional reel '{reel.ObjectId}' ('{reel.Name}') band");
+            var bandFileName = CreateReelBandFileName(reel, assetPath);
+            File.Copy(sourcePath, Path.Combine(buildFaceDirectory, bandFileName), overwrite: true);
+            reels.Add(new MachineRuntimeReelReference(
+                reel.ObjectId,
+                reel.LinkedMachineObjectReference?.ToString() ?? string.Empty,
+                cabinetTargetId,
+                ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine("faces", _pathService.SanitizePathSegment(faceAssetName), bandFileName)),
+                Math.Max(1, reel.Stops.GetValueOrDefault(1)),
+                reel.IsReversed,
+                reel.BandOffset.GetValueOrDefault(0d),
+                0.18d,
+                0.09d,
+                64));
+        }
+
+        if (reels.Count > 0)
+        {
+            System.Diagnostics.Debug.WriteLine($"Oasis runtime reel export: face='{faceDocument.Id}', count={reels.Count}.");
+        }
+        return reels;
+    }
+
+    private static Panel2DDocumentModel? TryLoadSourcePanelDocument(EditorProject project, FaceDocumentModel faceDocument)
+    {
+        if (string.IsNullOrWhiteSpace(faceDocument.SourcePanel2DDocumentPath)) return null;
+        var path = faceDocument.SourcePanel2DDocumentPath.Trim();
+        var fullPath = Path.IsPathFullyQualified(path) ? path : Path.GetFullPath(Path.Combine(project.ProjectDirectory, path));
+        if (!File.Exists(fullPath)) return null;
+        return Panel2DDocumentStorage.TryReadValidated(File.ReadAllText(fullPath), out var file, out _) ? Panel2DDocumentStorage.ToModel(file) : null;
+    }
+
+    private static bool TryResolveReelBandAssetPath(FaceReelDisplayElement reel, Panel2DDocumentModel? sourcePanel, out string assetPath, out string sourceDescription)
+    {
+        if (!string.IsNullOrWhiteSpace(reel.AssetPath))
+        {
+            assetPath = reel.AssetPath.Trim();
+            sourceDescription = "FaceReelDisplayElement.AssetPath";
+            return true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(reel.LinkedPanel2DElementId) && sourcePanel is not null)
+        {
+            var sourceReel = sourcePanel.Elements.FirstOrDefault(element => element.Kind == PanelElementKind.Reel && string.Equals(element.ObjectId, reel.LinkedPanel2DElementId, StringComparison.Ordinal));
+            if (!string.IsNullOrWhiteSpace(sourceReel?.AssetPath))
+            {
+                assetPath = sourceReel.AssetPath.Trim();
+                sourceDescription = $"Panel2D reel '{reel.LinkedPanel2DElementId}'.AssetPath";
+                return true;
+            }
+        }
+
+        assetPath = string.Empty;
+        sourceDescription = string.IsNullOrWhiteSpace(reel.LinkedPanel2DElementId) ? "Face reel AssetPath or LinkedPanel2DElementId" : $"Panel2D reel '{reel.LinkedPanel2DElementId}'.AssetPath";
+        return false;
+    }
+
+    private static string CreateReelBandFileName(FaceReelDisplayElement reel, string assetPath) => $"reel-{SanitizeFileName(string.IsNullOrWhiteSpace(reel.ObjectId) ? reel.Name : reel.ObjectId)}{Path.GetExtension(assetPath)}";
+
+    private static string ResolveExistingProjectPath(EditorProject project, string? projectPath, string description)
+    {
+        if (string.IsNullOrWhiteSpace(projectPath)) throw new FileNotFoundException($"{description} does not specify an asset path.");
+        var candidate = projectPath.Trim();
+        var paths = new List<string>();
+        if (Path.IsPathFullyQualified(candidate)) paths.Add(candidate);
+        else
+        {
+            var normalizedRelative = candidate.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
+            paths.Add(Path.GetFullPath(Path.Combine(project.ProjectDirectory, normalizedRelative)));
+            paths.Add(Path.GetFullPath(Path.Combine(project.AssetsDirectory, normalizedRelative)));
+        }
+        var resolved = paths.FirstOrDefault(File.Exists);
+        if (resolved is not null) return resolved;
+        throw new FileNotFoundException($"{description} references missing asset '{projectPath}'.", paths.FirstOrDefault() ?? candidate);
+    }
+
+    private static string SanitizeFileName(string value)
+    {
+        var invalid = Path.GetInvalidFileNameChars();
+        return string.Concat(value.Select(character => invalid.Contains(character) ? '_' : character));
     }
 
     private static void CopyDirectory(string sourceDirectory, string destinationDirectory)
@@ -201,5 +286,5 @@ public sealed record MachineRuntimeBuildResult(bool Success, string? BuildRoot, 
 
 public sealed record MachineRuntimeManifest(string Schema, int SchemaVersion, string MachineId, string DisplayName, string CabinetManifest, IReadOnlyList<MachineRuntimeFaceReference> Faces, IReadOnlyList<MachineRuntimeReelReference> Reels);
 public sealed record MachineRuntimeFaceReference(string FaceId, string AssetName, string CabinetFaceTargetId, string FrontSide, int FaceRotation, bool FaceFlipHorizontal, string Manifest);
-public sealed record MachineRuntimeReelReference(string ObjectId, string MachineReference, string CabinetReelTargetId, string ReelBand, int StopCount, bool IsReversed, double BandOffset, double PhysicalWidth, double PhysicalRadius);
+public sealed record MachineRuntimeReelReference(string ObjectId, string MachineReference, string CabinetReelTargetId, string ReelBand, int StopCount, bool IsReversed, double BandOffset, double PhysicalWidth, double PhysicalRadius, int RadialSegments);
 public sealed record CabinetRuntimeManifest(string Schema, int SchemaVersion, string CabinetId, string Glb, double Scale, string UpAxis);

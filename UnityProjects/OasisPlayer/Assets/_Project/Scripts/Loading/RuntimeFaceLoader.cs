@@ -162,33 +162,10 @@ namespace OasisPlayer.Loading
                 var trayId = LoadOptionalTexture(machine, manifest, manifest.trayId, manifestDirectory, referenceFaceId, "tray ID", RuntimeTextureRole.LookupData);
                 var lampIds0 = LoadOptionalTexture(machine, manifest, manifest.lampIds0, manifestDirectory, referenceFaceId, "lamp IDs 0", RuntimeTextureRole.LookupData);
                 var lampWeights0 = LoadOptionalTexture(machine, manifest, manifest.lampWeights0, manifestDirectory, referenceFaceId, "lamp weights 0", RuntimeTextureRole.LookupData);
-                LoadReelTextures(machine, manifest, manifestDirectory, referenceFaceId);
-
                 machine.RegisterFace(new RuntimeFace(reference, manifest, target, artwork, mask, trayId, lampIds0, lampWeights0));
             }
         }
 
-
-        private void LoadReelTextures(RuntimeMachine machine, FaceRuntimeManifest manifest, string manifestDirectory, string faceId)
-        {
-            var reels = manifest.reels ?? Array.Empty<FaceRuntimeReelManifestEntry>();
-            foreach (var reel in reels)
-            {
-                if (reel == null) { machine.AddWarning($"Face '{faceId}' contains an empty reel entry."); continue; }
-                if (string.IsNullOrWhiteSpace(reel.reelBand)) { machine.AddWarning($"Reel '{reel.objectId}' on Face '{faceId}' does not specify a reelBand texture."); continue; }
-                if (!TryResolveContained(machine.Build.BuildRoot, manifestDirectory, reel.reelBand, out var texturePath, out var error))
-                {
-                    machine.AddWarning($"Invalid reel-band path for Reel '{reel.objectId}' on Face '{faceId}': {error}");
-                    continue;
-                }
-                if (!_assetLoader.TryLoad(texturePath, RuntimeTextureRole.ReelBand, out var asset, out error))
-                {
-                    machine.AddWarning($"Reel-band texture for Reel '{reel.objectId}' on Face '{faceId}' could not be loaded. {error}");
-                    continue;
-                }
-                reel.ReelBandAsset = asset;
-            }
-        }
 
         private RuntimeTextureAsset LoadOptionalTexture(RuntimeMachine machine, FaceRuntimeManifest manifest, string relativePath, string manifestDirectory, string faceId, string description, RuntimeTextureRole role)
         {

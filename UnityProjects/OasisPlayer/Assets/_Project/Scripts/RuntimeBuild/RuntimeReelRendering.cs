@@ -1,5 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using OasisPlayer.Loading;
 using UnityEngine;
 
 namespace OasisPlayer.RuntimeBuild
@@ -24,7 +27,7 @@ namespace OasisPlayer.RuntimeBuild
             for (var i = 0; i <= radialSegments; i++)
             {
                 var t = i / (float)radialSegments;
-                var angle = (t * Mathf.PI * 2f) + Mathf.PI; // seam at local rear (-Z)
+                var angle = (t * Mathf.PI * 2f) + Mathf.PI;
                 var y = Mathf.Sin(angle) * radius;
                 var z = Mathf.Cos(angle) * radius;
                 var normal = new Vector3(0f, Mathf.Sin(angle), Mathf.Cos(angle));
@@ -82,27 +85,176 @@ namespace OasisPlayer.RuntimeBuild
         }
     }
 
-    public sealed class RuntimeReelRenderer
+    public sealed class RuntimeReelLoader
     {
-        public void RenderReels(RuntimeMachine machine)
+        private static readonly string[] TargetPrefixes = { "OasisReel_", "OasisFace_" };
+        private readonly IRuntimeTextureAssetLoader _assetLoader;
+
+        public RuntimeReelLoader(IRuntimeTextureAssetLoader assetLoader)
+        {
+            _assetLoader = assetLoader ?? throw new ArgumentNullException(nameof(assetLoader));
+        }
+
+        public void LoadReels(RuntimeMachine machine)
         {
             if (machine == null) throw new ArgumentNullException(nameof(machine));
-            foreach (var face in machine.Faces)
+            var reels = machine.Build.Machine.reels ?? Array.Empty<MachineRuntimeReelReference>();
+            var targets = FindReelTargets(machine.Cabinet);
+            var loadedTextures = 0;
+            var resolvedTargets = 0;
+
+            Debug.Log($"Oasis runtime reel manifest entries={reels.Length}.");
+            foreach (var reel in reels)
             {
-                var entries = face.Manifest.reels ?? Array.Empty<FaceRuntimeReelManifestEntry>();
-                foreach (var entry in entries)
+                if (reel == null) { Warn(machine, "Machine manifest contains an empty reel entry."); continue; }
+                if (!ValidateManifestReel(machine, reel)) continue;
+
+                if (TryResolveContained(machine.Build.BuildRoot, machine.Build.BuildRoot, reel.reelBand, out var texturePath, out var error)
+                    && _assetLoader.TryLoad(texturePath, RuntimeTextureRole.ReelBand, out var asset, out error))
                 {
-                    if (!Validate(machine, face, entry)) continue;
-                    var go = new GameObject("OasisRuntimeReel_" + entry.objectId);
-                    go.transform.SetParent(face.CabinetTarget, false);
-                    go.transform.localPosition = Vector3.zero;
-                    go.transform.localRotation = RuntimeReelPositionConverter.ToLocalRotation(0f, entry.isReversed, entry.bandOffset);
-                    var filter = go.AddComponent<MeshFilter>();
-                    filter.sharedMesh = RuntimeReelMeshFactory.GetOrCreate(entry.physicalWidth, entry.physicalRadius, Mathf.Max(16, entry.radialSegments));
-                    var renderer = go.AddComponent<MeshRenderer>();
-                    renderer.sharedMaterial = CreateMaterial(entry.ReelBandAsset.Texture);
+                    reel.ReelBandAsset = asset;
+                    loadedTextures++;
+                    Debug.Log($"Oasis runtime reel texture loaded: objectId='{reel.objectId}', path='{reel.reelBand}'.");
+                }
+                else
+                {
+                    Warn(machine, $"Reel '{reel.objectId}' texture could not be loaded from '{reel.reelBand}': {error}. A diagnostic placeholder will be used.");
+                    reel.ReelBandAsset = new RuntimeTextureAsset("<generated reel diagnostic>", CreateDiagnosticTexture());
+                }
+
+                var targetId = Normalize(reel.cabinetReelTargetId);
+                if (targets.TryGetValue(targetId, out var target))
+                {
+                    reel.CabinetTarget = target;
+                    resolvedTargets++;
+                    Debug.Log($"Oasis runtime reel target resolved: objectId='{reel.objectId}', targetId='{targetId}', target='{target.name}'.");
+                }
+                else
+                {
+                    Error(machine, $"Reel '{reel.objectId}' target '{targetId}' was not found. Available reel targets: {FormatAvailableTargets(targets)}.");
                 }
             }
+
+            Debug.Log($"Oasis runtime reels loaded: manifest entries={reels.Length}, textures loaded={loadedTextures}, targets resolved={resolvedTargets}.");
+        }
+
+        private static bool ValidateManifestReel(RuntimeMachine machine, MachineRuntimeReelReference reel)
+        {
+            if (string.IsNullOrWhiteSpace(reel.objectId)) { Warn(machine, "Machine manifest contains a reel with an empty objectId."); return false; }
+            if (string.IsNullOrWhiteSpace(reel.reelBand)) { Warn(machine, $"Reel '{reel.objectId}' has an empty reelBand path."); return false; }
+            if (string.IsNullOrWhiteSpace(reel.cabinetReelTargetId)) { Warn(machine, $"Reel '{reel.objectId}' has an empty cabinetReelTargetId."); return false; }
+            if (reel.stopCount <= 0) { Warn(machine, $"Reel '{reel.objectId}' has invalid stopCount {reel.stopCount}."); return false; }
+            if (reel.physicalWidth <= 0f || reel.physicalRadius <= 0f) { Warn(machine, $"Reel '{reel.objectId}' has invalid dimensions width={reel.physicalWidth}, radius={reel.physicalRadius}."); return false; }
+            return true;
+        }
+
+        private static Dictionary<string, Transform> FindReelTargets(GameObject cabinet)
+        {
+            var targets = new Dictionary<string, Transform>(StringComparer.Ordinal);
+            if (cabinet == null) return targets;
+            foreach (var transform in cabinet.GetComponentsInChildren<Transform>(true))
+            {
+                var sourceName = IsTargetName(transform.name) ? transform.name : null;
+                if (sourceName == null)
+                {
+                    var meshFilter = transform.GetComponent<MeshFilter>();
+                    if (meshFilter != null && meshFilter.sharedMesh != null && IsTargetName(meshFilter.sharedMesh.name)) sourceName = meshFilter.sharedMesh.name;
+                }
+                if (sourceName == null) continue;
+                var targetId = CreateStableId(sourceName);
+                if (!targets.ContainsKey(targetId)) targets.Add(targetId, transform);
+            }
+            return targets;
+        }
+
+        private static bool IsTargetName(string name)
+        {
+            return !string.IsNullOrEmpty(name) && TargetPrefixes.Any(prefix => name.StartsWith(prefix, StringComparison.Ordinal));
+        }
+
+        private static string CreateStableId(string sourceName)
+        {
+            var prefix = TargetPrefixes.FirstOrDefault(candidate => sourceName.StartsWith(candidate, StringComparison.Ordinal));
+            var suffix = prefix != null ? sourceName.Substring(prefix.Length) : sourceName;
+            var chars = suffix.Where(char.IsLetterOrDigit).ToArray();
+            if (chars.Length == 0) return "target";
+            var text = new string(chars);
+            return char.ToLowerInvariant(text[0]) + text.Substring(1);
+        }
+
+        private static string FormatAvailableTargets(Dictionary<string, Transform> targets)
+        {
+            return targets.Count == 0 ? "<none>" : string.Join(", ", targets.Keys.OrderBy(k => k).Select(k => "'" + k + "'"));
+        }
+
+        private static Texture2D CreateDiagnosticTexture()
+        {
+            var texture = new Texture2D(2, 2, TextureFormat.RGBA32, false, false);
+            texture.SetPixels32(new[] { new Color32(255, 0, 255, 255), new Color32(0, 0, 0, 255), new Color32(0, 0, 0, 255), new Color32(255, 0, 255, 255) });
+            texture.wrapMode = TextureWrapMode.Repeat;
+            texture.filterMode = FilterMode.Point;
+            texture.Apply(false, false);
+            texture.name = "OasisRuntimeReelDiagnostic";
+            return texture;
+        }
+
+        private static string Normalize(string value)
+        {
+            return string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
+        }
+
+        private static void Warn(RuntimeMachine machine, string message)
+        {
+            machine.AddWarning(message);
+            Debug.LogWarning(message);
+        }
+
+        private static void Error(RuntimeMachine machine, string message)
+        {
+            machine.AddWarning(message);
+            Debug.LogError(message);
+        }
+
+        private static bool TryResolveContained(string root, string baseDir, string relative, out string resolved, out string error)
+        {
+            resolved = string.Empty;
+            error = string.Empty;
+            if (string.IsNullOrWhiteSpace(relative)) { error = "path is empty."; return false; }
+            if (Path.IsPathRooted(relative)) { error = "rooted paths are not allowed."; return false; }
+            resolved = Path.GetFullPath(Path.Combine(baseDir, relative.Replace('/', Path.DirectorySeparatorChar)));
+            var fullRoot = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            if (!resolved.StartsWith(fullRoot, StringComparison.OrdinalIgnoreCase)) { error = "path traversal outside the build root is not allowed."; return false; }
+            return true;
+        }
+    }
+
+    public sealed class RuntimeReelRenderer
+    {
+        public int RenderReels(RuntimeMachine machine)
+        {
+            if (machine == null) throw new ArgumentNullException(nameof(machine));
+            var reels = machine.Build.Machine.reels ?? Array.Empty<MachineRuntimeReelReference>();
+            var group = new GameObject("Oasis Runtime Reels");
+            group.transform.SetParent(machine.Cabinet != null && machine.Cabinet.transform.parent != null ? machine.Cabinet.transform.parent : null, false);
+            var created = 0;
+            var skipped = 0;
+            Debug.Log($"Oasis runtime reel renderer entries={reels.Length}.");
+            foreach (var entry in reels)
+            {
+                if (!ValidateRenderable(machine, entry)) { skipped++; continue; }
+                var go = new GameObject("OasisRuntimeReel_" + entry.objectId);
+                go.transform.SetParent(group.transform, false);
+                go.transform.position = entry.CabinetTarget.position;
+                go.transform.rotation = entry.CabinetTarget.rotation * RuntimeReelPositionConverter.ToLocalRotation(0f, entry.isReversed, entry.bandOffset);
+                var filter = go.AddComponent<MeshFilter>();
+                filter.sharedMesh = RuntimeReelMeshFactory.GetOrCreate(entry.physicalWidth, entry.physicalRadius, Mathf.Max(16, entry.radialSegments));
+                var renderer = go.AddComponent<MeshRenderer>();
+                renderer.sharedMaterial = CreateMaterial(entry.ReelBandAsset.Texture);
+                created++;
+                Debug.Log($"Oasis runtime reel object created: objectId='{entry.objectId}', target='{entry.cabinetReelTargetId}', texture='{entry.reelBand}'.");
+            }
+            Debug.Log($"Oasis runtime reels: manifest entries={reels.Length}, objects created={created}, skipped={skipped}.");
+            return created;
         }
 
         private static Material CreateMaterial(Texture2D texture)
@@ -116,15 +268,18 @@ namespace OasisPlayer.RuntimeBuild
             return material;
         }
 
-        private static bool Validate(RuntimeMachine machine, RuntimeFace face, FaceRuntimeReelManifestEntry entry)
+        private static bool ValidateRenderable(RuntimeMachine machine, MachineRuntimeReelReference entry)
         {
-            if (entry == null) { machine.AddWarning("Face contains an empty reel entry."); return false; }
-            if (string.IsNullOrWhiteSpace(entry.objectId)) { machine.AddWarning("Face contains a reel with an empty objectId."); return false; }
-            if (entry.ReelBandAsset == null || entry.ReelBandAsset.Texture == null) { machine.AddWarning($"Reel '{entry.objectId}' has no loaded reel-band texture."); return false; }
-            if (entry.stopCount <= 0) { machine.AddWarning($"Reel '{entry.objectId}' has invalid stopCount {entry.stopCount}."); return false; }
-            if (entry.physicalWidth <= 0f || entry.physicalRadius <= 0f) { machine.AddWarning($"Reel '{entry.objectId}' has invalid physical dimensions."); return false; }
-            if (face.CabinetTarget == null) { machine.AddWarning($"Reel '{entry.objectId}' has no cabinet target."); return false; }
+            if (entry == null) { Warn(machine, "Renderer skipped an empty reel entry."); return false; }
+            if (entry.CabinetTarget == null) { Warn(machine, $"Renderer skipped reel '{entry.objectId}' because target '{entry.cabinetReelTargetId}' was not resolved."); return false; }
+            if (entry.ReelBandAsset == null || entry.ReelBandAsset.Texture == null) { Warn(machine, $"Renderer skipped reel '{entry.objectId}' because no texture or diagnostic placeholder was loaded."); return false; }
             return true;
+        }
+
+        private static void Warn(RuntimeMachine machine, string message)
+        {
+            machine.AddWarning(message);
+            Debug.LogWarning(message);
         }
     }
 }

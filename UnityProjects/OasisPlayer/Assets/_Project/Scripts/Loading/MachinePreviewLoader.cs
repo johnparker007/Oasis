@@ -11,6 +11,7 @@ namespace OasisPlayer.Loading
         private readonly ICabinetModelLoader _modelLoader;
         private readonly RuntimeFaceLoader _faceLoader;
         private readonly RuntimeFaceRenderer _faceRenderer;
+        private readonly RuntimeReelLoader _reelLoader;
         private readonly RuntimeReelRenderer _reelRenderer = new RuntimeReelRenderer();
         private GameObject _current;
         private RuntimeMachine _runtimeMachine;
@@ -30,6 +31,7 @@ namespace OasisPlayer.Loading
             _modelLoader = modelLoader;
             _faceLoader = faceLoader;
             _faceRenderer = faceRenderer;
+            _reelLoader = new RuntimeReelLoader(new PngRuntimeTextureAssetLoader());
         }
 
         public async Task<RuntimeMachine> LoadAsync(ResolvedRuntimeBuild build)
@@ -54,6 +56,7 @@ namespace OasisPlayer.Loading
             var machine = new RuntimeMachine(build, cabinet);
             _runtimeMachine = machine;
             _faceLoader.LoadFaces(machine);
+            _reelLoader.LoadReels(machine);
             _faceRenderer.RenderFaces(machine);
             _reelRenderer.RenderReels(machine);
             var updater = correctionRoot.AddComponent<RuntimeMachineLampUpdater>();
