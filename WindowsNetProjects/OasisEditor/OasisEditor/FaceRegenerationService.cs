@@ -185,16 +185,17 @@ internal sealed class FaceRegenerationService
 
     private static IReadOnlyList<FaceLayerModel> EnsureFaceMaskLayer(IReadOnlyList<FaceLayerModel> layers)
     {
-        if (layers.Any(layer => string.Equals(layer.Id, "layer-face-mask", StringComparison.OrdinalIgnoreCase)))
-        {
-            return layers;
-        }
+        var ensured = layers.Any(layer => string.Equals(layer.Id, "layer-face-mask", StringComparison.OrdinalIgnoreCase))
+            ? layers
+            : layers
+                .Take(1)
+                .Concat([new FaceLayerModel { Id = "layer-face-mask", Name = "Face Mask", IsVisible = true }])
+                .Concat(layers.Skip(1))
+                .ToArray();
 
-        return layers
-            .Take(1)
-            .Concat([new FaceLayerModel { Id = "layer-face-mask", Name = "Face Mask", IsVisible = true }])
-            .Concat(layers.Skip(1))
-            .ToArray();
+        return ensured.Any(layer => string.Equals(layer.Id, "layer-semantic-components", StringComparison.OrdinalIgnoreCase))
+            ? ensured
+            : ensured.Concat([new FaceLayerModel { Id = "layer-semantic-components", Name = "Semantic Components", IsVisible = true }]).ToArray();
     }
 
     private static FaceElementModel PreserveRuntimeIdentity(FaceElementModel regeneratedElement, FaceElementModel existingElement)

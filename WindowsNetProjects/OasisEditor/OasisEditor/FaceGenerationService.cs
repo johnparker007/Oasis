@@ -77,10 +77,12 @@ internal sealed class FaceGenerationService
 {
     private readonly IMachineObjectReferenceResolver _machineObjectReferenceResolver;
     private readonly FaceTrayAutoAuthoringService _trayAutoAuthoringService = new();
+    private readonly FaceSemanticElementConversionService _semanticElementConversionService;
 
     public FaceGenerationService(IMachineObjectReferenceResolver? machineObjectReferenceResolver = null)
     {
         _machineObjectReferenceResolver = machineObjectReferenceResolver ?? MachineObjectReferenceResolver.Instance;
+        _semanticElementConversionService = new FaceSemanticElementConversionService(_machineObjectReferenceResolver);
     }
 
 
@@ -98,7 +100,8 @@ internal sealed class FaceGenerationService
         string? faceAssetDirectory = null,
         FaceGenerationSettingsModel? generationSettings = null,
         IEditorProgressReporter? progress = null,
-        string? sourcePanel2DDocumentPath = null)
+        string? sourcePanel2DDocumentPath = null,
+        IReadOnlyList<InputDefinitionModel>? inputDefinitions = null)
     {
         ArgumentNullException.ThrowIfNull(sourcePanel);
         ArgumentNullException.ThrowIfNull(sourceShape);
@@ -110,12 +113,9 @@ internal sealed class FaceGenerationService
         var assetPath = FaceSourceShapeTransformService.TryGenerateBackground(sourcePanel, sourceShape, output.Width, output.Height, projectDirectory, faceArtworkPath);
         var settings = (generationSettings ?? FaceGenerationSettingsModel.Default).Normalize();
         var faceDocumentId = Guid.NewGuid().ToString("N");
-        progress?.Report(0.2, "Converting source-shape lamps...");
-        var lampWindows = sourcePanel.Elements
-            .Where(element => element.Kind == PanelElementKind.Lamp && IsCenterInsideSourceShape(element, sourceShape))
-            .Select(element => CreateLampWindowFromSourceShape(element, sourceShape, output.Width, output.Height, projectDirectory))
-            .OfType<FaceLampWindowElement>()
-            .ToArray();
+        progress?.Report(0.2, "Converting source-shape semantic components...");
+        var semanticElements = _semanticElementConversionService.ConvertSupportedElements(sourcePanel, sourceShape, output.Width, output.Height, projectDirectory, inputDefinitions).ToArray();
+        var lampWindows = semanticElements.OfType<FaceLampWindowElement>().ToArray();
         var maskLayer = CreateMaskLayerFromSourceShape(
             sourcePanel,
             sourceShape,
@@ -143,7 +143,7 @@ internal sealed class FaceGenerationService
             SourceRegion = region,
             Provenance = new FaceArtworkProvenanceModel { Generator = "Create Face from Face Source Shape", GeneratedAtUtc = DateTime.UtcNow }
         };
-        var elements = new FaceElementModel[] { artwork }.Concat(lampWindows).ToArray();
+        var elements = new FaceElementModel[] { artwork }.Concat(semanticElements).ToArray();
         progress?.Report(0.9, "Auto-authoring trays/emitters...");
         var autoAuthored = _trayAutoAuthoringService.AutoAuthor(new FaceDocumentModel { GenerationSettings = settings, MaskLayer = maskLayer, Elements = elements }, projectDirectory);
         var document = new FaceDocumentModel
@@ -165,12 +165,17 @@ internal sealed class FaceGenerationService
             [
                 new FaceLayerModel { Id = "layer-artwork", Name = "Artwork", IsVisible = true },
                 new FaceLayerModel { Id = "layer-face-mask", Name = "Face Mask", IsVisible = true },
-                new FaceLayerModel { Id = "layer-runtime-lamps", Name = "Runtime Lamps", IsVisible = true }
+                new FaceLayerModel { Id = "layer-runtime-lamps", Name = "Runtime Lamps", IsVisible = true },
+                new FaceLayerModel { Id = "layer-semantic-components", Name = "Semantic Components", IsVisible = true }
             ],
             Elements = elements
         };
-        progress?.Report(1.0, "Face generation complete.");
-        return new FaceGenerationResult(document, lampWindows.Length, 1, 0, 0, 0, 0);
+        var reelCount = semanticElements.OfType<FaceReelDisplayElement>().Count();
+        var sevenSegmentCount = semanticElements.OfType<FaceSevenSegmentDisplayElement>().Count();
+        var alphaCount = semanticElements.OfType<FaceAlphaDisplayElement>().Count();
+        var buttonCount = semanticElements.OfType<FaceButtonElement>().Count();
+        progress?.Report(1.0, $"Face generated: artwork=1, lamps={lampWindows.Length}, reels={reelCount}, sevenSegment={sevenSegmentCount}, alpha={alphaCount}, buttons={buttonCount}");
+        return new FaceGenerationResult(document, lampWindows.Length, 1, buttonCount, sevenSegmentCount, alphaCount, reelCount);
     }
 
     private FaceMaskLayerModel? CreateMaskLayerFromSourceShape(
