@@ -194,7 +194,7 @@ public sealed class FaceRuntimeExportService
         }
     }
 
-    private static string CreateReelBandFileName(FaceReelDisplayElement reel) => $"reel-{SanitizeFileName(string.IsNullOrWhiteSpace(reel.ObjectId) ? reel.Name : reel.ObjectId)}{Path.GetExtension(reel.AssetPath ?? string.Empty)}";
+    private static string CreateReelBandFileName(FaceReelDisplayElement reel) => $"reel-{SanitizePathSegment(string.IsNullOrWhiteSpace(reel.ObjectId) ? reel.Name : reel.ObjectId)}{Path.GetExtension(reel.AssetPath ?? string.Empty)}";
 
     private static void CopyMask(FaceDocumentModel faceDocument, EditorProject project, string outputPath)
     {
