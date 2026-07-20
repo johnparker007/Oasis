@@ -116,16 +116,15 @@ public sealed class MachineRuntimeBuildServiceTests
         var panelDir = Directory.CreateDirectory(Path.Combine(project.AssetsDirectory, "Panel2D", "Panel")).FullName;
         var bandPath = Path.Combine(project.AssetsDirectory, "reels", "band.png");
         WriteSolidPng(bandPath, 2, 8, SKColors.Green);
-        File.WriteAllText(Path.Combine(panelDir, ProjectAssetPathService.Panel2DManifestFileName), Panel2DDocumentStorage.Serialize(new Panel2DDocumentModel
-        {
-            Title = "Panel",
-            Elements =
+        File.WriteAllText(Path.Combine(panelDir, ProjectAssetPathService.Panel2DManifestFileName), Panel2DDocumentStorage.Serialize(
+            "Panel",
+            "Panel with a source conventional reel.",
             [
-                new PanelElementModel
+                new PanelElementFile
                 {
                     ObjectId = "panel-reel-1",
                     Name = "Panel Reel 1",
-                    Kind = PanelElementKind.Reel,
+                    Kind = "reel",
                     X = 0,
                     Y = 0,
                     Width = 1,
@@ -136,8 +135,7 @@ public sealed class MachineRuntimeBuildServiceTests
                     IsReversed = true,
                     BandOffset = 0.125d
                 }
-            ]
-        }));
+            ]));
 
         var faceDir = Directory.CreateDirectory(Path.Combine(project.AssetsDirectory, "Faces", "Reel Face")).FullName;
         WriteSolidPng(Path.Combine(faceDir, "artwork.png"), 4, 4, SKColors.Red);
