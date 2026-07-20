@@ -95,7 +95,7 @@ namespace OasisPlayer.RuntimeBuild
             geometry.Center = transform.TransformPoint(bounds.center);
             geometry.HorizontalTangent = h;
             geometry.VerticalTangent = v;
-            geometry.VisibleNormal = frontSide == RuntimeFaceFrontSide.Inverted ? meshNormal : -meshNormal;
+            geometry.VisibleNormal = frontSide == RuntimeFaceFrontSide.Inverted ? -meshNormal : meshNormal;
             geometry.PhysicalWidth = physicalWidth;
             geometry.PhysicalHeight = physicalHeight;
             if (!IsFinite(geometry.Center))

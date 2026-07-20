@@ -18,7 +18,7 @@ public sealed class RuntimeFacePlacementTests
             AssertVector(Vector3.zero, surface.FacePointToWorld(100, 150, 200, 300));
             AssertVector(new Vector3(-1f, 1.5f, 0f), surface.FacePointToWorld(0, 0, 200, 300));
             AssertVector(new Vector3(1f, -1.5f, 0f), surface.FacePointToWorld(200, 300, 200, 300));
-            AssertVector(Vector3.back, surface.VisibleNormal);
+            AssertVector(Vector3.forward, surface.VisibleNormal);
         }
         finally { Object.DestroyImmediate(target); }
     }
@@ -38,7 +38,7 @@ public sealed class RuntimeFacePlacementTests
             Assert.AreEqual(4f, surface.PhysicalWidth, Epsilon);
             Assert.AreEqual(2f, surface.PhysicalHeight, Epsilon);
             AssertVector(target.transform.TransformPoint(Vector3.zero), surface.FacePointToWorld(200, 100, 400, 200));
-            AssertVector(-Vector3.Cross(target.transform.right, target.transform.up).normalized, surface.VisibleNormal);
+            AssertVector(Vector3.Cross(target.transform.right, target.transform.up).normalized, surface.VisibleNormal);
         }
         finally { Object.DestroyImmediate(target); Object.DestroyImmediate(parent); }
     }
@@ -50,7 +50,7 @@ public sealed class RuntimeFacePlacementTests
         try
         {
             Assert.IsTrue(RuntimeFacePlacement.TryResolve(CreateFace(target.transform, RuntimeFaceFrontSideExtensions.InvertedValue, 100, 100), out var surface, out var warning), warning);
-            AssertVector(Vector3.forward, surface.VisibleNormal);
+            AssertVector(Vector3.back, surface.VisibleNormal);
         }
         finally { Object.DestroyImmediate(target); }
     }
@@ -85,9 +85,9 @@ public sealed class RuntimeFacePlacementTests
             Assert.AreEqual(1, face.ReelRenderBindings.Count);
             var reel = face.ReelRenderBindings[0].GameObject.transform;
             AssertVector(Vector3.right, reel.right);
-            AssertVector(Vector3.back, reel.forward);
-            Assert.AreEqual(0.21f, Vector3.Dot(Vector3.forward, reel.position), Epsilon);
-            Assert.AreEqual(0.01f, Vector3.Dot(Vector3.forward, reel.position) - 0.2f, Epsilon);
+            AssertVector(Vector3.forward, reel.forward);
+            Assert.AreEqual(-0.21f, Vector3.Dot(Vector3.forward, reel.position), Epsilon);
+            Assert.AreEqual(0.01f, -Vector3.Dot(Vector3.forward, reel.position) - 0.2f, Epsilon);
             face.UnloadAssets();
             Assert.IsTrue(face.ReelRenderBindings.Count == 0);
             Assert.IsTrue(reel == null);
@@ -106,8 +106,8 @@ public sealed class RuntimeFacePlacementTests
             var face = CreateFace(target.transform, RuntimeFaceFrontSideExtensions.NormalValue, 100, 100, r1, r2);
             new RuntimeReelRenderer().RenderReels(CreateMachine(face));
             Assert.AreEqual(2, face.ReelRenderBindings.Count);
-            Assert.AreEqual(0.01f, face.ReelRenderBindings[0].GameObject.transform.position.z - 0.1f, Epsilon);
-            Assert.AreEqual(0.01f, face.ReelRenderBindings[1].GameObject.transform.position.z - 0.3f, Epsilon);
+            Assert.AreEqual(0.01f, -face.ReelRenderBindings[0].GameObject.transform.position.z - 0.1f, Epsilon);
+            Assert.AreEqual(0.01f, -face.ReelRenderBindings[1].GameObject.transform.position.z - 0.3f, Epsilon);
         }
         finally { Object.DestroyImmediate(target); }
     }
