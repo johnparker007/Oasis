@@ -54,6 +54,7 @@ namespace OasisPlayer.Loading
             _runtimeMachine = machine;
             _faceLoader.LoadFaces(machine);
             _faceRenderer.RenderFaces(machine);
+            new RuntimeReelRenderer().RenderReels(machine);
             var updater = correctionRoot.AddComponent<RuntimeMachineLampUpdater>();
             updater.Initialize(machine);
 #if UNITY_EDITOR || DEVELOPMENT_BUILD

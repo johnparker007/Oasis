@@ -130,9 +130,15 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
     {
         if (Directory.Exists(destinationDirectory)) Directory.Delete(destinationDirectory, recursive: true);
         Directory.CreateDirectory(destinationDirectory);
-        foreach (var file in Directory.EnumerateFiles(sourceDirectory).OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
+        foreach (var directory in Directory.EnumerateDirectories(sourceDirectory, "*", SearchOption.AllDirectories).OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
         {
-            File.Copy(file, Path.Combine(destinationDirectory, Path.GetFileName(file)), overwrite: true);
+            Directory.CreateDirectory(Path.Combine(destinationDirectory, Path.GetRelativePath(sourceDirectory, directory)));
+        }
+
+        foreach (var file in Directory.EnumerateFiles(sourceDirectory, "*", SearchOption.AllDirectories).OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
+        {
+            var relativePath = Path.GetRelativePath(sourceDirectory, file);
+            File.Copy(file, Path.Combine(destinationDirectory, relativePath), overwrite: true);
         }
     }
 

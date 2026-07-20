@@ -8,11 +8,12 @@ namespace OasisEditor;
 
 public sealed class FaceRuntimeExportService
 {
-    public const int RuntimeManifestSchemaVersion = 1;
+    public const int RuntimeManifestSchemaVersion = 2;
     public const string RuntimeDirectoryName = "runtime";
     public const string ManifestFileName = "face.runtime.json";
     public const string ArtworkFileName = "artwork.png";
     public const string MaskFileName = "mask.png";
+    public const string ReelBandDirectoryName = "reels";
 
     private readonly FaceRuntimeTextureGenerator _runtimeTextureGenerator;
 
@@ -59,6 +60,7 @@ public sealed class FaceRuntimeExportService
         CopyMask(faceDocument, project, maskPath);
         progress.Report(0.45, "Creating runtime texture plan...");
         var textureResult = _runtimeTextureGenerator.Generate(faceDocument, width, height, outputDirectory, progress.CreateChild(0.45, 0.75));
+        CopyReelBands(faceDocument, project, outputDirectory);
 
         var generatedUtc = DateTime.UtcNow;
         progress.Report(0.8, "Writing manifest...");
@@ -146,7 +148,7 @@ public sealed class FaceRuntimeExportService
             LampWeightsDebug = FaceRuntimeTextureGenerator.LampWeightsDebugFileName,
             Lamps = texturePlan.Emitters.Select(CreateLampManifestEntry).ToArray(),
             Trays = texturePlan.Trays.Select(CreateTrayManifestEntry).ToArray(),
-            Reels = faceDocument.Elements.OfType<FaceReelDisplayElement>().Select(CreateDisplayManifestEntry).ToArray(),
+            Reels = faceDocument.Elements.OfType<FaceReelDisplayElement>().Select(CreateReelManifestEntry).ToArray(),
             SevenSegmentDisplays = faceDocument.Elements.OfType<FaceSevenSegmentDisplayElement>().Select(CreateDisplayManifestEntry).ToArray(),
             AlphaDisplays = faceDocument.Elements.OfType<FaceAlphaDisplayElement>().Select(CreateDisplayManifestEntry).ToArray(),
             Buttons = faceDocument.Elements.OfType<FaceButtonElement>().Select(CreateButtonManifestEntry).ToArray()
@@ -178,6 +180,40 @@ public sealed class FaceRuntimeExportService
         if (data is null)
         {
             throw new IOException("Flattened face artwork could not be encoded as PNG.");
+        }
+
+        using var stream = File.Open(outputPath, FileMode.Create, FileAccess.Write, FileShare.None);
+        data.SaveTo(stream);
+    }
+
+
+    private static void CopyReelBands(FaceDocumentModel faceDocument, EditorProject project, string outputDirectory)
+    {
+        var reels = faceDocument.Elements.OfType<FaceReelDisplayElement>().Where(reel => !string.IsNullOrWhiteSpace(reel.AssetPath)).ToArray();
+        if (reels.Length == 0) return;
+        var reelDirectory = Path.Combine(outputDirectory, ReelBandDirectoryName);
+        Directory.CreateDirectory(reelDirectory);
+        foreach (var reel in reels)
+        {
+            var sourcePath = ResolveExistingProjectPath(project, reel.AssetPath, $"Reel '{DisplayName(reel)}' band");
+            ExportReelBandPng(sourcePath, Path.Combine(reelDirectory, CreateReelBandFileName(reel)), reel);
+        }
+    }
+
+    private static string CreateReelBandFileName(FaceReelDisplayElement reel)
+    {
+        var objectId = string.IsNullOrWhiteSpace(reel.ObjectId) ? "reel" : reel.ObjectId.Trim();
+        var safe = string.Concat(objectId.Select(ch => char.IsLetterOrDigit(ch) || ch == '-' || ch == '_' ? ch : '_'));
+        return $"{safe}.png";
+    }
+
+    private static void ExportReelBandPng(string sourcePath, string outputPath, FaceReelDisplayElement reel)
+    {
+        using var image = LoadImage(sourcePath, $"Reel '{DisplayName(reel)}' band");
+        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+        if (data is null)
+        {
+            throw new IOException($"Reel '{DisplayName(reel)}' band could not be encoded as PNG.");
         }
 
         using var stream = File.Open(outputPath, FileMode.Create, FileAccess.Write, FileShare.None);
@@ -303,6 +339,35 @@ public sealed class FaceRuntimeExportService
         };
     }
 
+
+    private static FaceRuntimeReelManifestEntry CreateReelManifestEntry(FaceReelDisplayElement element)
+    {
+        return new FaceRuntimeReelManifestEntry
+        {
+            ObjectId = element.ObjectId,
+            MachineReference = element.LinkedMachineObjectReference?.ToString(),
+            CabinetReelTargetId = ResolveCabinetReelTargetId(element),
+            Name = element.Name,
+            ReelBand = ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine(ReelBandDirectoryName, CreateReelBandFileName(element))),
+            Stops = element.Stops.GetValueOrDefault(0),
+            IsReversed = element.IsReversed,
+            BandOffset = element.BandOffset.GetValueOrDefault(0d),
+            PhysicalWidth = Math.Max(0.01d, element.Width / 1000d),
+            PhysicalRadius = Math.Max(0.01d, element.Height / 2000d),
+            X = element.X,
+            Y = element.Y,
+            Width = element.Width,
+            Height = element.Height
+        };
+    }
+
+    private static string ResolveCabinetReelTargetId(FaceReelDisplayElement element)
+    {
+        var reference = element.LinkedMachineObjectReference?.ToString();
+        if (!string.IsNullOrWhiteSpace(reference)) return reference.Trim().Replace(":", string.Empty);
+        return element.ObjectId;
+    }
+
     private static FaceRuntimeElementManifestEntry CreateDisplayManifestEntry(FaceElementModel element)
     {
         return new FaceRuntimeElementManifestEntry
@@ -426,7 +491,7 @@ public sealed class FaceRuntimeManifest
     public string? LampWeightsDebug { get; init; }
     public IReadOnlyList<FaceRuntimeLampManifestEntry> Lamps { get; init; } = [];
     public IReadOnlyList<FaceRuntimeTrayManifestEntry> Trays { get; init; } = [];
-    public IReadOnlyList<FaceRuntimeElementManifestEntry> Reels { get; init; } = [];
+    public IReadOnlyList<FaceRuntimeReelManifestEntry> Reels { get; init; } = [];
     public IReadOnlyList<FaceRuntimeElementManifestEntry> SevenSegmentDisplays { get; init; } = [];
     public IReadOnlyList<FaceRuntimeElementManifestEntry> AlphaDisplays { get; init; } = [];
     public IReadOnlyList<FaceRuntimeButtonManifestEntry> Buttons { get; init; } = [];
@@ -463,6 +528,18 @@ public class FaceRuntimeElementManifestEntry
     public double Y { get; init; }
     public double Width { get; init; }
     public double Height { get; init; }
+}
+
+
+public sealed class FaceRuntimeReelManifestEntry : FaceRuntimeElementManifestEntry
+{
+    public string CabinetReelTargetId { get; init; } = string.Empty;
+    public string ReelBand { get; init; } = string.Empty;
+    public int Stops { get; init; }
+    public bool IsReversed { get; init; }
+    public double BandOffset { get; init; }
+    public double PhysicalWidth { get; init; }
+    public double PhysicalRadius { get; init; }
 }
 
 public sealed class FaceRuntimeButtonManifestEntry : FaceRuntimeElementManifestEntry

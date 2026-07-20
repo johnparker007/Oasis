@@ -86,7 +86,7 @@ namespace OasisPlayer.RuntimeBuild
         public string lampWeightsDebug = string.Empty;
         public FaceRuntimeLampManifestEntry[] lamps = Array.Empty<FaceRuntimeLampManifestEntry>();
         public FaceRuntimeElementManifestEntry[] trays = Array.Empty<FaceRuntimeElementManifestEntry>();
-        public FaceRuntimeElementManifestEntry[] reels = Array.Empty<FaceRuntimeElementManifestEntry>();
+        public FaceRuntimeReelManifestEntry[] reels = Array.Empty<FaceRuntimeReelManifestEntry>();
         public FaceRuntimeElementManifestEntry[] sevenSegmentDisplays = Array.Empty<FaceRuntimeElementManifestEntry>();
         public FaceRuntimeElementManifestEntry[] alphaDisplays = Array.Empty<FaceRuntimeElementManifestEntry>();
         public FaceRuntimeButtonManifestEntry[] buttons = Array.Empty<FaceRuntimeButtonManifestEntry>();
@@ -110,6 +110,21 @@ namespace OasisPlayer.RuntimeBuild
         public string sourceLampWindowObjectId = string.Empty;
         public int lampId;
         public int trayId;
+    }
+
+    [Serializable]
+    public sealed class FaceRuntimeReelManifestEntry : FaceRuntimeElementManifestEntry
+    {
+        public string cabinetReelTargetId = string.Empty;
+        public string reelBand = string.Empty;
+        public int stops;
+        public bool isReversed;
+        public float bandOffset;
+        public float physicalWidth;
+        public float physicalRadius;
+
+        [NonSerialized]
+        public RuntimeTextureAsset BandTexture;
     }
 
     [Serializable]
