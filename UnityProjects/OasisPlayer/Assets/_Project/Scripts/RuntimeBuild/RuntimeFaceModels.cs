@@ -111,6 +111,11 @@ namespace OasisPlayer.RuntimeBuild
             if (TrayId != null) TrayId.Unload();
             if (LampIds0 != null) LampIds0.Unload();
             if (LampWeights0 != null) LampWeights0.Unload();
+            var reels = Manifest != null && Manifest.reels != null ? Manifest.reels : new FaceRuntimeReelManifestEntry[0];
+            foreach (var reel in reels)
+            {
+                if (reel != null && reel.BandTexture != null) reel.BandTexture.Unload();
+            }
         }
     }
 

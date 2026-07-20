@@ -249,7 +249,7 @@ namespace OasisPlayer.Tests
         {
             return new RuntimeFace(
                 new MachineRuntimeFaceReference { faceId = id, cabinetFaceTargetId = "front" },
-                new FaceRuntimeManifest { schemaVersion = 1, faceId = id, width = 1, height = 1, artwork = "artwork.png", mask = "mask.png" },
+                new FaceRuntimeManifest { schemaVersion = 2, faceId = id, width = 1, height = 1, artwork = "artwork.png", mask = "mask.png" },
                 target,
                 new RuntimeTextureAsset("artwork.png", texture),
                 new RuntimeTextureAsset("mask.png", mask));
@@ -270,7 +270,7 @@ namespace OasisPlayer.Tests
             {
                 var face = new RuntimeFace(
                     new MachineRuntimeFaceReference { faceId = "front", cabinetFaceTargetId = "front" },
-                    new FaceRuntimeManifest { schemaVersion = 1, faceId = "front", width = 1, height = 1, artwork = "artwork.png", mask = "mask.png", trayId = "trayId.png", lampIds0 = "lampIds0.png", lampWeights0 = "lampWeights0.png" },
+                    new FaceRuntimeManifest { schemaVersion = 2, faceId = "front", width = 1, height = 1, artwork = "artwork.png", mask = "mask.png", trayId = "trayId.png", lampIds0 = "lampIds0.png", lampWeights0 = "lampWeights0.png" },
                     target.transform,
                     new RuntimeTextureAsset("artwork.png", texture),
                     new RuntimeTextureAsset("mask.png", mask),
