@@ -239,7 +239,10 @@ internal sealed class FaceRegenerationService
                 Stops = reel.Stops,
                 VisibleScale = reel.VisibleScale,
                 BandOffset = reel.BandOffset,
-                IsReversed = reel.IsReversed
+                IsReversed = reel.IsReversed,
+                ReelSpecificationId = existingElement is FaceReelDisplayElement existingReel && !string.IsNullOrWhiteSpace(existingReel.ReelSpecificationId)
+                    ? existingReel.ReelSpecificationId
+                    : reel.ReelSpecificationId
             },
             FaceSevenSegmentDisplayElement sevenSegment => new FaceSevenSegmentDisplayElement
             {

@@ -174,6 +174,7 @@ public sealed class FaceLampEmitterElement : FaceElementModel
 
 public sealed class FaceReelDisplayElement : FaceElementModel
 {
+    public string? ReelSpecificationId { get; init; }
     public string? AssetPath { get; init; }
     public int? Stops { get; init; }
     public double? VisibleScale { get; init; }

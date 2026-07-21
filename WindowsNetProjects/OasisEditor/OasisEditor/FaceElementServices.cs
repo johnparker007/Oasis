@@ -64,7 +64,8 @@ internal static class FaceElementModelUpdater
                 Stops = reelDisplay.Stops,
                 VisibleScale = reelDisplay.VisibleScale,
                 BandOffset = reelDisplay.BandOffset,
-                IsReversed = reelDisplay.IsReversed
+                IsReversed = reelDisplay.IsReversed,
+                ReelSpecificationId = reelDisplay.ReelSpecificationId
             },
             FaceLampWindowElement => new FaceLampWindowElement
             {

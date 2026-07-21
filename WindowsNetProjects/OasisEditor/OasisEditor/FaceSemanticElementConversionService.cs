@@ -18,7 +18,8 @@ internal sealed class FaceSemanticElementConversionService
         int faceWidth,
         int faceHeight,
         string? projectDirectory,
-        IReadOnlyList<InputDefinitionModel>? inputDefinitions = null)
+        IReadOnlyList<InputDefinitionModel>? inputDefinitions = null,
+        string? defaultReelSpecificationId = null)
     {
         ArgumentNullException.ThrowIfNull(sourcePanel);
         ArgumentNullException.ThrowIfNull(sourceShape);
@@ -28,6 +29,10 @@ internal sealed class FaceSemanticElementConversionService
         foreach (var sourceElement in sourcePanel.Elements)
         {
             var element = ConvertSupportedElement(sourceElement, sourceShape, faceWidth, faceHeight, projectDirectory, buttonsByVisualId);
+            if (element is FaceReelDisplayElement reel && !string.IsNullOrWhiteSpace(defaultReelSpecificationId))
+            {
+                element = CopyReelWithSpecification(reel, defaultReelSpecificationId.Trim());
+            }
             if (element is not null)
             {
                 converted.Add(element);
@@ -123,6 +128,8 @@ internal sealed class FaceSemanticElementConversionService
         var bulbMaskAssetPath = FaceSourceShapeTransformService.TryGenerateTransformedElementAsset(sourceElement, sourceElement.SecondaryAssetPath, sourceShape, faceWidth, faceHeight, bounds, projectDirectory, "face-source-shape-lamp-mask");
         return new FaceLampWindowElement { ObjectId = CreateGeneratedElementId(sourceElement), Name = sourceElement.Name ?? string.Empty, X = bounds.X, Y = bounds.Y, Width = bounds.Width, Height = bounds.Height, IsVisible = sourceElement.IsVisible, IsTransformLocked = sourceElement.IsTransformLocked, LinkedMachineObjectReference = machineReference.IsEmpty ? null : machineReference, LinkedPanel2DElementId = NormalizeOptional(sourceElement.ObjectId), BulbMaskAssetPath = bulbMaskAssetPath, SourceComponentIndex = sourceElement.SourceComponentIndex, SharedSourceSetId = NormalizeOptional(sourceElement.SharedSourceSetId), SharedSourceSetCount = sourceElement.SharedSourceSetCount, SourceBlend = sourceElement.SourceBlend };
     }
+
+    private static FaceReelDisplayElement CopyReelWithSpecification(FaceReelDisplayElement reel, string reelSpecificationId) => new() { ObjectId = reel.ObjectId, Name = reel.Name, X = reel.X, Y = reel.Y, Width = reel.Width, Height = reel.Height, IsVisible = reel.IsVisible, IsTransformLocked = reel.IsTransformLocked, LinkedMachineObjectReference = reel.LinkedMachineObjectReference, LinkedPanel2DElementId = reel.LinkedPanel2DElementId, ReelSpecificationId = reelSpecificationId, AssetPath = reel.AssetPath, Stops = reel.Stops, VisibleScale = reel.VisibleScale, BandOffset = reel.BandOffset, IsReversed = reel.IsReversed };
 
     private static FaceReelDisplayElement CreateReel(PanelElementModel e, FaceSourceRegionModel b, MachineObjectReference r) => new() { ObjectId = CreateGeneratedElementId(e), Name = e.Name ?? string.Empty, X = b.X, Y = b.Y, Width = b.Width, Height = b.Height, IsVisible = e.IsVisible, IsTransformLocked = e.IsTransformLocked, LinkedMachineObjectReference = r.IsEmpty ? null : r, LinkedPanel2DElementId = NormalizeOptional(e.ObjectId), AssetPath = NormalizeOptional(e.AssetPath), Stops = e.Stops, VisibleScale = e.VisibleScale, BandOffset = e.BandOffset, IsReversed = e.IsReversed == true };
     private static FaceSevenSegmentDisplayElement CreateSevenSegment(PanelElementModel e, FaceSourceRegionModel b, MachineObjectReference r) => new() { ObjectId = CreateGeneratedElementId(e), Name = e.Name ?? string.Empty, X = b.X, Y = b.Y, Width = b.Width, Height = b.Height, IsVisible = e.IsVisible, IsTransformLocked = e.IsTransformLocked, LinkedMachineObjectReference = r.IsEmpty ? null : r, LinkedPanel2DElementId = NormalizeOptional(e.ObjectId), OnColorHex = NormalizeOptional(e.OnColorHex), OffColorHex = NormalizeOptional(e.OffColorHex), ShowDecimalPoint = e.ShowDecimalPoint };

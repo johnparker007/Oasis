@@ -32,7 +32,8 @@ public sealed class FaceReelDisplayTests
                     Stops = 16,
                     VisibleScale = 0.5d,
                     BandOffset = 0.25d,
-                    IsReversed = true
+                    IsReversed = true,
+                    ReelSpecificationId = "jpm-standard"
                 }
             ]
         };
@@ -48,6 +49,7 @@ public sealed class FaceReelDisplayTests
         Assert.Equal(0.5d, saved.VisibleScale);
         Assert.Equal(0.25d, saved.BandOffset);
         Assert.True(saved.IsReversed);
+        Assert.Equal("jpm-standard", saved.ReelSpecificationId);
 
         var model = FaceDocumentStorage.ToModel(file);
         var element = Assert.IsType<FaceReelDisplayElement>(Assert.Single(model.Elements));
@@ -58,6 +60,7 @@ public sealed class FaceReelDisplayTests
         Assert.Equal(0.5d, element.VisibleScale);
         Assert.Equal(0.25d, element.BandOffset);
         Assert.True(element.IsReversed);
+        Assert.Equal("jpm-standard", element.ReelSpecificationId);
     }
 
     [Fact]

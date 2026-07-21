@@ -4,15 +4,33 @@ public sealed record CabinetDocument(
     int Version,
     CabinetModelReference Model,
     CabinetTargetOverride[] TargetOverrides,
-    CabinetPreviewSettings Preview)
+    CabinetPreviewSettings Preview,
+    CabinetReelSpecification[] ReelSpecifications = null!,
+    string? DefaultReelSpecificationId = null)
 {
-    public static CabinetDocument Empty => new(1, new CabinetModelReference(string.Empty, 1.0, "Y"), [], CabinetPreviewSettings.Default);
+    public static CabinetDocument Empty => new(2, new CabinetModelReference(string.Empty, 1.0, "Y"), [], CabinetPreviewSettings.Default, [], null);
 
     public static CabinetDocument FromModelPath(string modelPath) => new(
-        1,
+        2,
         new CabinetModelReference(modelPath, 1.0, "Y"),
         [],
-        CabinetPreviewSettings.Default);
+        CabinetPreviewSettings.Default,
+        [],
+        null);
+}
+
+public sealed record CabinetReelSpecification(string Id, string Name, double DiameterMm, double WidthMm)
+{
+    public CabinetReelSpecification Normalized() => new(
+        Id.Trim(),
+        string.IsNullOrWhiteSpace(Name) ? Id.Trim() : Name.Trim(),
+        DiameterMm,
+        WidthMm);
+
+    public bool HasValidDimensions => OasisEditor.PanelElementValidation.IsFinite(DiameterMm)
+        && OasisEditor.PanelElementValidation.IsFinite(WidthMm)
+        && DiameterMm > 0
+        && WidthMm > 0;
 }
 
 public sealed record CabinetTargetOverride(string TargetId, string FrontSide, int FaceRotation = 0, bool FaceFlipHorizontal = false)

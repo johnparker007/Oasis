@@ -1,4 +1,5 @@
 using System.Windows;
+using OasisEditor.Features.CabinetEditor.Models;
 using OasisEditor.Progress;
 
 using SkiaSharp;
@@ -101,7 +102,8 @@ internal sealed class FaceGenerationService
         FaceGenerationSettingsModel? generationSettings = null,
         IEditorProgressReporter? progress = null,
         string? sourcePanel2DDocumentPath = null,
-        IReadOnlyList<InputDefinitionModel>? inputDefinitions = null)
+        IReadOnlyList<InputDefinitionModel>? inputDefinitions = null,
+        CabinetDocument? cabinetDocument = null)
     {
         ArgumentNullException.ThrowIfNull(sourcePanel);
         ArgumentNullException.ThrowIfNull(sourceShape);
@@ -114,7 +116,7 @@ internal sealed class FaceGenerationService
         var settings = (generationSettings ?? FaceGenerationSettingsModel.Default).Normalize();
         var faceDocumentId = Guid.NewGuid().ToString("N");
         progress?.Report(0.2, "Converting source-shape semantic components...");
-        var semanticElements = _semanticElementConversionService.ConvertSupportedElements(sourcePanel, sourceShape, output.Width, output.Height, projectDirectory, inputDefinitions).ToArray();
+        var semanticElements = _semanticElementConversionService.ConvertSupportedElements(sourcePanel, sourceShape, output.Width, output.Height, projectDirectory, inputDefinitions, cabinetDocument?.DefaultReelSpecificationId).ToArray();
         var lampWindows = semanticElements.OfType<FaceLampWindowElement>().ToArray();
         var maskLayer = CreateMaskLayerFromSourceShape(
             sourcePanel,

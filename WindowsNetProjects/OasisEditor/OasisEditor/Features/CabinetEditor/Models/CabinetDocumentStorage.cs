@@ -40,7 +40,12 @@ public static class CabinetDocumentStorage
                     .Where(targetOverride => !string.IsNullOrWhiteSpace(targetOverride.TargetId))
                     .Select(targetOverride => targetOverride.Normalized())
                     .ToArray(),
-                Preview = (parsed.Preview ?? CabinetPreviewSettings.Default).Normalized()
+                Preview = (parsed.Preview ?? CabinetPreviewSettings.Default).Normalized(),
+                ReelSpecifications = (parsed.ReelSpecifications ?? [])
+                    .Where(specification => !string.IsNullOrWhiteSpace(specification.Id))
+                    .Select(specification => specification.Normalized())
+                    .ToArray(),
+                DefaultReelSpecificationId = string.IsNullOrWhiteSpace(parsed.DefaultReelSpecificationId) ? null : parsed.DefaultReelSpecificationId.Trim()
             };
             return true;
         }

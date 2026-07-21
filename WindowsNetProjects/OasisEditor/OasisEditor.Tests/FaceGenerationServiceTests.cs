@@ -1,4 +1,5 @@
 using System.Windows;
+using OasisEditor.Features.CabinetEditor.Models;
 using Xunit;
 
 namespace OasisEditor.Tests;
@@ -116,6 +117,7 @@ public sealed class FaceGenerationServiceTests
         Assert.False(reel.IsVisible);
         Assert.Equal("reel:3", reel.LinkedMachineObjectReference?.ToString());
         Assert.Equal("reel-1", reel.LinkedPanel2DElementId);
+        Assert.Null(reel.ReelSpecificationId);
         var seven = Assert.Single(result.Document.Elements.OfType<FaceSevenSegmentDisplayElement>());
         Assert.Equal("sevenSegment:2", seven.LinkedMachineObjectReference?.ToString());
         Assert.Equal("#FFFF0000", seven.OnColorHex);
@@ -175,7 +177,7 @@ public sealed class FaceGenerationServiceTests
             SourceRegion = FaceSourceRegionModel.FromRect(new Rect(0, 0, 100, 100)),
             Elements =
             [
-                new FaceReelDisplayElement { ObjectId = "existing-reel", Name = "Old", LinkedPanel2DElementId = "reel-1", X = 0, Y = 0, Width = 1, Height = 1, LinkedMachineObjectReference = MachineObjectReference.Reel(99) },
+                new FaceReelDisplayElement { ObjectId = "existing-reel", Name = "Old", LinkedPanel2DElementId = "reel-1", X = 0, Y = 0, Width = 1, Height = 1, LinkedMachineObjectReference = MachineObjectReference.Reel(99), ReelSpecificationId = "user-selected" },
                 new FaceArtworkElement { ObjectId = "manual-art", Name = "Manual", X = 1, Y = 1, Width = 2, Height = 2 }
             ]
         };
@@ -193,8 +195,31 @@ public sealed class FaceGenerationServiceTests
         Assert.Equal("reel:99", reel.LinkedMachineObjectReference?.ToString());
         Assert.Equal("Assets/Reels/new.png", reel.AssetPath);
         Assert.Equal(18, reel.Stops);
+        Assert.Equal("user-selected", reel.ReelSpecificationId);
         Assert.Single(result.Document.Elements.Where(e => e.LinkedPanel2DElementId == "reel-1"));
         Assert.Contains(result.Document.Elements, e => e.ObjectId == "manual-art");
+    }
+
+
+    [Fact]
+    public void GenerateFromPanelFaceSourceShape_AssignsCabinetDefaultReelSpecification()
+    {
+        var panel = new Panel2DDocumentModel
+        {
+            Elements = [new PanelElementModel { ObjectId = "reel-1", Kind = PanelElementKind.Reel, X = 10, Y = 10, Width = 20, Height = 40, DisplayNumber = 1 }]
+        };
+        var cabinet = new CabinetDocument(
+            2,
+            new CabinetModelReference("source.glb", 1, "Y"),
+            [],
+            CabinetPreviewSettings.Default,
+            [new CabinetReelSpecification("default-reel", "Default", 210, 50)],
+            "default-reel");
+
+        var result = new FaceGenerationService().GenerateFromPanelFaceSourceShape(panel, CreateSourceShape(), "Face", cabinetDocument: cabinet);
+
+        var reel = Assert.Single(result.Document.Elements.OfType<FaceReelDisplayElement>());
+        Assert.Equal("default-reel", reel.ReelSpecificationId);
     }
 
     [Fact]
