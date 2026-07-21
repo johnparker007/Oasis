@@ -487,8 +487,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         if (selectedDocument is not null
             && selectedDocument.Document.DocumentType == EditorDocumentType.Cabinet3D)
         {
-            RebuildCabinetDocumentPropertyRows(selectedDocument);
-            return;
+            return true;
         }
 
         if (selectedDocument is not null
@@ -504,8 +503,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         if (selectedDocument is not null
             && selectedDocument.Document.DocumentType == EditorDocumentType.Cabinet3D)
         {
-            RebuildCabinetDocumentPropertyRows(selectedDocument);
-            return;
+            return true;
         }
 
         if (selectedDocument is not null
@@ -520,8 +518,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         if (selectedDocument is not null
             && selectedDocument.Document.DocumentType == EditorDocumentType.Cabinet3D)
         {
-            RebuildCabinetDocumentPropertyRows(selectedDocument);
-            return;
+            return true;
         }
 
         if (selectedDocument is not null
@@ -1052,8 +1049,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         if (selectedDocument is not null
             && selectedDocument.Document.DocumentType == EditorDocumentType.Cabinet3D)
         {
-            RebuildCabinetDocumentPropertyRows(selectedDocument);
-            return;
+            return true;
         }
 
         if (selectedDocument is not null
@@ -1074,8 +1070,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         if (selectedDocument is not null
             && selectedDocument.Document.DocumentType == EditorDocumentType.Cabinet3D)
         {
-            RebuildCabinetDocumentPropertyRows(selectedDocument);
-            return;
+            return true;
         }
 
         if (selectedDocument is not null
@@ -1095,8 +1090,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         if (selectedDocument is not null
             && selectedDocument.Document.DocumentType == EditorDocumentType.Cabinet3D)
         {
-            RebuildCabinetDocumentPropertyRows(selectedDocument);
-            return;
+            return true;
         }
 
         if (selectedDocument is not null
@@ -1649,7 +1643,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             choices.Insert(0, currentChoice);
         }
 
-        _propertyRows.Add(new InspectorChoicePropertyViewModel("Reel Specification", "Reel Size", choices, currentChoice, specifications.Count == 0, commit: choice => TryApplyFaceReelSpecificationUpdate(reelDisplay.ObjectId, choice)));
+        _propertyRows.Add(new InspectorChoicePropertyViewModel("Reel Specification", "Reel Size", choices, currentChoice, specifications.Length == 0, commit: choice => TryApplyFaceReelSpecificationUpdate(reelDisplay.ObjectId, choice)));
         _propertyRows.Add(new InspectorInfoPropertyViewModel("Diameter", "Reel Size", current is null ? string.Empty : $"{current.DiameterMm:0.###} mm"));
         _propertyRows.Add(new InspectorInfoPropertyViewModel("Width", "Reel Size", current is null ? string.Empty : $"{current.WidthMm:0.###} mm"));
     }
