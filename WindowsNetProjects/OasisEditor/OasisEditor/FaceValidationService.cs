@@ -20,7 +20,7 @@ public sealed class FaceValidationService
         FaceDocumentModel faceDocument,
         EditorProject? project,
         IReadOnlyList<DocumentTabViewModel> openDocuments,
-        CabinetDocument? cabinetDocument = null)
+        object? cabinetContextOrDocument = null)
     {
         ArgumentNullException.ThrowIfNull(faceDocument);
         ArgumentNullException.ThrowIfNull(openDocuments);
@@ -30,19 +30,52 @@ public sealed class FaceValidationService
         ValidateArtworkAssets(faceDocument, project, diagnostics);
         ValidateMaskLayer(faceDocument, project, diagnostics);
         ValidateMachineReferences(faceDocument, diagnostics);
-        ValidateReelSpecifications(faceDocument, cabinetDocument, diagnostics);
+        var cabinetContext = cabinetContextOrDocument as FaceCabinetContext;
+        var cabinetDocument = cabinetContext?.CabinetDocument ?? cabinetContextOrDocument as CabinetDocument;
+        ValidateCabinetContext(faceDocument, cabinetContext, diagnostics);
+        ValidateReelSpecifications(faceDocument, cabinetDocument, cabinetContext, diagnostics);
         diagnostics.AddRange(new FaceTrayAutoAuthoringService().Validate(faceDocument));
         return diagnostics;
     }
 
 
+    private static void ValidateCabinetContext(
+        FaceDocumentModel faceDocument,
+        FaceCabinetContext? cabinetContext,
+        List<FaceValidationDiagnostic> diagnostics)
+    {
+        if (!faceDocument.Elements.OfType<FaceReelDisplayElement>().Any())
+        {
+            return;
+        }
+
+        if (cabinetContext is null)
+        {
+            return;
+        }
+
+        if (!cabinetContext.HasCabinet && !string.IsNullOrWhiteSpace(cabinetContext.DiagnosticCode))
+        {
+            diagnostics.Add(new FaceValidationDiagnostic(
+                cabinetContext.DiagnosticCode == "Face.Cabinet.NotAssigned" ? FaceValidationSeverity.Warning : FaceValidationSeverity.Error,
+                cabinetContext.DiagnosticCode,
+                cabinetContext.DiagnosticMessage ?? "Face Cabinet context could not be resolved."));
+        }
+    }
+
     private static void ValidateReelSpecifications(
         FaceDocumentModel faceDocument,
         CabinetDocument? cabinetDocument,
+        FaceCabinetContext? cabinetContext,
         List<FaceValidationDiagnostic> diagnostics)
     {
         if (cabinetDocument is null)
         {
+            if (cabinetContext is not null)
+            {
+                return;
+            }
+
             foreach (var reel in faceDocument.Elements.OfType<FaceReelDisplayElement>().Where(reel => string.IsNullOrWhiteSpace(reel.ReelSpecificationId)))
             {
                 diagnostics.Add(new FaceValidationDiagnostic(
@@ -55,6 +88,13 @@ public sealed class FaceValidationService
         }
 
         var specifications = cabinetDocument.ReelSpecifications ?? [];
+        if (specifications.Length == 0)
+        {
+            diagnostics.Add(new FaceValidationDiagnostic(
+                FaceValidationSeverity.Error,
+                "Cabinet.ReelSpecification.None",
+                "Assigned Cabinet does not contain any reel specifications."));
+        }
         if (string.IsNullOrWhiteSpace(cabinetDocument.DefaultReelSpecificationId))
         {
             diagnostics.Add(new FaceValidationDiagnostic(
@@ -104,8 +144,8 @@ public sealed class FaceValidationService
             {
                 diagnostics.Add(new FaceValidationDiagnostic(
                     FaceValidationSeverity.Error,
-                    "Face.ReelSpecification.MissingSelection",
-                    $"Reel display '{DisplayName(reel)}' references missing cabinet reel specification '{reel.ReelSpecificationId}'."));
+                    "Face.ReelSpecification.UnknownSelection",
+                    $"Reel display '{DisplayName(reel)}' references unknown cabinet reel specification '{reel.ReelSpecificationId}'."));
             }
         }
     }

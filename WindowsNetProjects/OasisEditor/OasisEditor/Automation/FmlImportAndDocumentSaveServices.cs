@@ -184,6 +184,7 @@ public sealed class DocumentSaveService : IDocumentSaveService
             SourcePanel2DDocumentPath = faceDocument.SourcePanel2DDocumentPath,
             SourceFaceShapeId = faceDocument.SourceFaceShapeId,
             AssignedCabinetFaceTargetId = faceDocument.AssignedCabinetFaceTargetId,
+                AssignedCabinetAssetPath = faceDocument.AssignedCabinetAssetPath,
             SourceRegion = faceDocument.SourceRegion,
             LastRegeneratedAtUtc = faceDocument.LastRegeneratedAtUtc,
             GenerationSettings = faceDocument.GenerationSettings,

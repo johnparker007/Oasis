@@ -65,7 +65,7 @@ internal static class FaceElementModelUpdater
                 VisibleScale = reelDisplay.VisibleScale,
                 BandOffset = reelDisplay.BandOffset,
                 IsReversed = reelDisplay.IsReversed,
-                ReelSpecificationId = reelDisplay.ReelSpecificationId
+                ReelSpecificationId = update.HasReelSpecificationId ? update.ReelSpecificationId : reelDisplay.ReelSpecificationId
             },
             FaceLampWindowElement => new FaceLampWindowElement
             {
@@ -154,6 +154,8 @@ internal sealed class FaceElementModelUpdate
     public MachineObjectReference? LinkedMachineObjectReference { get; init; }
     public bool HasLinkedPanel2DElementId { get; init; }
     public string? LinkedPanel2DElementId { get; init; }
+    public bool HasReelSpecificationId { get; init; }
+    public string? ReelSpecificationId { get; init; }
 }
 
 internal static class FaceElementValidation

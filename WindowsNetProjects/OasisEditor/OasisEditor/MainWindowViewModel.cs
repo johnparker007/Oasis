@@ -1406,6 +1406,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             SourcePanel2DDocumentPath = faceDocument.SourcePanel2DDocumentPath,
             SourceFaceShapeId = faceDocument.SourceFaceShapeId,
             AssignedCabinetFaceTargetId = faceDocument.AssignedCabinetFaceTargetId,
+            AssignedCabinetAssetPath = faceDocument.AssignedCabinetAssetPath,
             SourceRegion = faceDocument.SourceRegion,
             LastRegeneratedAtUtc = faceDocument.LastRegeneratedAtUtc,
             GenerationSettings = (settings ?? FaceGenerationSettingsModel.Default).Normalize(),
