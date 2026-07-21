@@ -384,6 +384,13 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
     {
         var selectedDocument = _selectedDocumentAccessor();
         var selection = _activeDocumentContext.ActivePanelSelection;
+        if (selectedDocument is not null
+            && selectedDocument.Document.DocumentType == EditorDocumentType.Cabinet3D)
+        {
+            RebuildCabinetDocumentPropertyRows(selectedDocument);
+            return;
+        }
+
         if (selectedDocument is null || selection is not PanelSelectionInfo panelSelection)
         {
             NotifyContextChanged();
@@ -451,18 +458,15 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
     {
         _propertyRows.Clear();
 
-        var loadedProjectForAsset = _loadedProjectAccessor();
-        var selectedAssetForRows = GetSelectedInspectableAsset();
-        if (loadedProjectForAsset is not null && selectedAssetForRows is not null)
+        var selectedDocument = _selectedDocumentAccessor();
+        var selection = _activeDocumentContext.ActivePanelSelection;
+        if (selectedDocument is not null
+            && selectedDocument.Document.DocumentType == EditorDocumentType.Cabinet3D)
         {
-            AssetInspectorDetailsBuilder.BuildRows(_propertyRows, loadedProjectForAsset, selectedAssetForRows.FullPath, selectedAssetForRows.IsDirectory);
-            OnPropertyChanged(nameof(InspectorPropertyRows));
+            RebuildCabinetDocumentPropertyRows(selectedDocument);
             return;
         }
 
-
-        var selectedDocument = _selectedDocumentAccessor();
-        var selection = _activeDocumentContext.ActivePanelSelection;
         var aggregateSelection = selectedDocument is not null ? TryCreateAggregateSelection(selectedDocument) : default;
         if (selectedDocument is not null && aggregateSelection.Count > 1)
         {
@@ -485,13 +489,6 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         }
 
         if (selectedDocument is not null
-            && selectedDocument.Document.DocumentType == EditorDocumentType.Cabinet3D)
-        {
-            RebuildCabinetDocumentPropertyRows(selectedDocument);
-            return;
-        }
-
-        if (selectedDocument is not null
             && selectedDocument.Document.DocumentType == EditorDocumentType.Face
             && selection is PanelSelectionInfo maskSelection
             && selectedDocument.GetFaceDocument().MaskLayer is FaceMaskLayerModel selectedMaskLayer
@@ -502,25 +499,11 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         }
 
         if (selectedDocument is not null
-            && selectedDocument.Document.DocumentType == EditorDocumentType.Cabinet3D)
-        {
-            RebuildCabinetDocumentPropertyRows(selectedDocument);
-            return;
-        }
-
-        if (selectedDocument is not null
             && selectedDocument.Document.DocumentType == EditorDocumentType.Face
             && selection is PanelSelectionInfo faceSelection
             && selectedDocument.TryGetFaceElement(faceSelection, out var selectedFaceElement))
         {
             RebuildFacePropertyRows(selectedDocument, selectedFaceElement);
-            return;
-        }
-
-        if (selectedDocument is not null
-            && selectedDocument.Document.DocumentType == EditorDocumentType.Cabinet3D)
-        {
-            RebuildCabinetDocumentPropertyRows(selectedDocument);
             return;
         }
 
@@ -1034,25 +1017,26 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
     private bool ShouldRebuildRowsForContextChange()
     {
-        if (GetSelectedInspectableAsset() is not null)
+        var selectedDocument = _selectedDocumentAccessor();
+        var selection = _activeDocumentContext.ActivePanelSelection;
+
+        if (selectedDocument is not null
+            && selectedDocument.Document.DocumentType == EditorDocumentType.Cabinet3D)
         {
             return true;
         }
 
-        var selectedDocument = _selectedDocumentAccessor();
-        var selection = _activeDocumentContext.ActivePanelSelection;
+        if (selectedDocument is null && GetSelectedInspectableAsset() is not null)
+        {
+            return true;
+        }
+
         if (selectedDocument is not null && TryCreateAggregateSelection(selectedDocument) is { Count: > 1 } aggregateSelection)
         {
             return !_hadInspectorSelection
                 || !string.Equals(_lastInspectorSelectionObjectId, GetDocumentSelectionKey(), StringComparison.Ordinal)
                 || (aggregateSelection.IsSupported && aggregateSelection.Domain == EditorSelectionDomain.PanelElement && aggregateSelection.IsSameConcreteType && _lastInspectorSelectionKind != aggregateSelection.PanelElements[0].Kind)
                 || (aggregateSelection.IsSupported && aggregateSelection.Domain == EditorSelectionDomain.FaceElement && aggregateSelection.IsSameConcreteType && !string.Equals(_lastInspectorFaceSelectionKind, FaceSelectionService.GetKindToken(aggregateSelection.FaceElements[0]), StringComparison.Ordinal));
-        }
-
-        if (selectedDocument is not null
-            && selectedDocument.Document.DocumentType == EditorDocumentType.Cabinet3D)
-        {
-            return true;
         }
 
         if (selectedDocument is not null
@@ -1071,12 +1055,6 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         }
 
         if (selectedDocument is not null
-            && selectedDocument.Document.DocumentType == EditorDocumentType.Cabinet3D)
-        {
-            return true;
-        }
-
-        if (selectedDocument is not null
             && selectedDocument.Document.DocumentType == EditorDocumentType.Face
             && selection is PanelSelectionInfo faceSelection
             && selectedDocument.TryGetFaceElement(faceSelection, out var selectedFaceElement))
@@ -1088,12 +1066,6 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
             return !string.Equals(_lastInspectorSelectionObjectId, selectedFaceElement.ObjectId, StringComparison.Ordinal)
                 || !string.Equals(_lastInspectorFaceSelectionKind, FaceSelectionService.GetKindToken(selectedFaceElement), StringComparison.Ordinal);
-        }
-
-        if (selectedDocument is not null
-            && selectedDocument.Document.DocumentType == EditorDocumentType.Cabinet3D)
-        {
-            return true;
         }
 
         if (selectedDocument is not null
@@ -1631,7 +1603,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         if (!context.HasCabinet)
         {
             _propertyRows.Add(new InspectorInfoPropertyViewModel("Reel Specification", "Reel Size", reelDisplay.ReelSpecificationId ?? string.Empty));
-            _propertyRows.Add(new InspectorInfoPropertyViewModel("Cabinet", "Reel Size", context.DiagnosticMessage ?? "Cabinet context unavailable."));
+            _propertyRows.Add(new InspectorInfoPropertyViewModel("Cabinet", "Reel Size", context.DiagnosticCode == "Face.Cabinet.NotAssigned" ? "No Cabinet is assigned to this Face. Assign a Cabinet Face Target before selecting a reel specification." : context.DiagnosticMessage ?? "Cabinet context unavailable."));
             return;
         }
 
