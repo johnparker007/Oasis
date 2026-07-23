@@ -34,6 +34,16 @@ namespace OasisPlayer.RuntimeBuild
         }
     }
 
+    public static class RuntimeReelUnits
+    {
+        public const float MillimetresPerMetre = 1000f;
+
+        public static float MillimetresToMetres(float millimetres)
+        {
+            return millimetres / MillimetresPerMetre;
+        }
+    }
+
     public sealed class RuntimeReelMeshFactory
     {
         private readonly Dictionary<string, Mesh> _cache = new Dictionary<string, Mesh>(StringComparer.Ordinal);
@@ -150,7 +160,9 @@ namespace OasisPlayer.RuntimeBuild
                     if (reel.BandTexture == null || reel.BandTexture.Texture == null) { machine.AddWarning($"Runtime Face '{RuntimeFacePlacement.FaceId(face)}' reel '{reel.objectId}' has no loaded reel-band texture."); continue; }
 
                     var surfacePoint = surface.FaceRectCenterToWorld(reel, face.Manifest);
-                    var position = surfacePoint - (surface.VisibleNormal * (reel.physicalRadius + RuntimeFacePlacement.DefaultSurfaceClearanceMetres));
+                    var physicalWidthMetres = RuntimeReelUnits.MillimetresToMetres(reel.physicalWidth);
+                    var physicalRadiusMetres = RuntimeReelUnits.MillimetresToMetres(reel.physicalRadius);
+                    var position = surfacePoint - (surface.VisibleNormal * (physicalRadiusMetres + RuntimeFacePlacement.DefaultSurfaceClearanceMetres));
                     if (float.IsNaN(position.x) || float.IsInfinity(position.x) || float.IsNaN(position.y) || float.IsInfinity(position.y) || float.IsNaN(position.z) || float.IsInfinity(position.z))
                     {
                         machine.AddWarning($"Runtime Face '{RuntimeFacePlacement.FaceId(face)}' reel '{reel.objectId}' produced a non-finite placement position.");
@@ -164,7 +176,7 @@ namespace OasisPlayer.RuntimeBuild
                     go.transform.rotation = baseRotation * positionRotation;
                     go.transform.localScale = Vector3.one;
                     var filter = go.AddComponent<MeshFilter>();
-                    filter.sharedMesh = _meshFactory.Get(reel.physicalWidth, reel.physicalRadius, 96);
+                    filter.sharedMesh = _meshFactory.Get(physicalWidthMetres, physicalRadiusMetres, 96);
                     var renderer = go.AddComponent<MeshRenderer>();
                     var material = CreateMaterial(reel);
                     renderer.sharedMaterial = material;

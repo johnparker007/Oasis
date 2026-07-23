@@ -47,4 +47,44 @@ public sealed class RuntimeReelMeshFactoryTests
             Assert.Greater(Vector3.Dot(radial, faceNormal), 0f);
         }
     }
+    [Test]
+    public void MillimetresToMetres_ConvertsRuntimeManifestDimensionsOnce()
+    {
+        Assert.AreEqual(0.05f, RuntimeReelUnits.MillimetresToMetres(50f));
+        Assert.AreEqual(0.105f, RuntimeReelUnits.MillimetresToMetres(105f));
+    }
+
+    [Test]
+    public void GeneratedCylinder_UsesSpecifiedMetreDimensions()
+    {
+        var mesh = RuntimeReelMeshFactory.Create(RuntimeReelUnits.MillimetresToMetres(50f), RuntimeReelUnits.MillimetresToMetres(105f), 32);
+
+        Assert.AreEqual(new Vector3(0.05f, 0.21f, 0.21f), mesh.bounds.size);
+    }
+
+    [Test]
+    public void MeshCache_IncludesPhysicalDimensionsInKey()
+    {
+        var factory = new RuntimeReelMeshFactory();
+
+        var standard = factory.Get(0.05f, 0.105f, 32);
+        var standardAgain = factory.Get(0.05f, 0.105f, 32);
+        var wide = factory.Get(0.075f, 0.150f, 32);
+
+        Assert.AreSame(standard, standardAgain);
+        Assert.AreNotSame(standard, wide);
+        Assert.AreEqual(new Vector3(0.05f, 0.21f, 0.21f), standard.bounds.size);
+        Assert.AreEqual(new Vector3(0.075f, 0.3f, 0.3f), wide.bounds.size);
+    }
+
+    [Test]
+    public void FaceApertureDimensions_DoNotAffectGeneratedMeshDimensions()
+    {
+        var smallApertureMesh = RuntimeReelMeshFactory.Create(RuntimeReelUnits.MillimetresToMetres(50f), RuntimeReelUnits.MillimetresToMetres(105f), 32);
+        var largeApertureMesh = RuntimeReelMeshFactory.Create(RuntimeReelUnits.MillimetresToMetres(50f), RuntimeReelUnits.MillimetresToMetres(105f), 32);
+
+        Assert.AreEqual(smallApertureMesh.bounds.size, largeApertureMesh.bounds.size);
+        Assert.AreEqual(new Vector3(0.05f, 0.21f, 0.21f), largeApertureMesh.bounds.size);
+    }
+
 }

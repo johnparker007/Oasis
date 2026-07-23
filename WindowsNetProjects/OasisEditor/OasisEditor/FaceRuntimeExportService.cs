@@ -2,6 +2,7 @@ using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using SkiaSharp;
+using OasisEditor.Features.CabinetEditor.Models;
 using OasisEditor.Progress;
 
 namespace OasisEditor;
@@ -32,8 +33,15 @@ public sealed class FaceRuntimeExportService
 
     public FaceRuntimeExportResult Export(FaceDocumentModel faceDocument, EditorProject project, string? documentPath = null, IEditorProgressReporter? progress = null)
     {
+        var cabinetContext = ResolveStandaloneCabinetContext(faceDocument, project);
+        return Export(faceDocument, project, cabinetContext, documentPath, progress);
+    }
+
+    public FaceRuntimeExportResult Export(FaceDocumentModel faceDocument, EditorProject project, FaceCabinetContext cabinetContext, string? documentPath = null, IEditorProgressReporter? progress = null)
+    {
         ArgumentNullException.ThrowIfNull(faceDocument);
         ArgumentNullException.ThrowIfNull(project);
+        ArgumentNullException.ThrowIfNull(cabinetContext);
         progress ??= NoOpEditorProgressReporter.Instance;
         progress.Report(0.0, "Resolving dimensions/output directory...");
 
@@ -64,7 +72,7 @@ public sealed class FaceRuntimeExportService
 
         var generatedUtc = DateTime.UtcNow;
         progress.Report(0.8, "Writing manifest...");
-        var manifest = CreateManifest(faceDocument, width, height, textureResult.Plan);
+        var manifest = CreateManifest(faceDocument, width, height, textureResult.Plan, cabinetContext);
         var manifestPath = Path.Combine(outputDirectory, ManifestFileName);
         File.WriteAllText(manifestPath, JsonSerializer.Serialize(manifest, s_manifestJsonOptions));
 
@@ -95,7 +103,7 @@ public sealed class FaceRuntimeExportService
             SourcePanel2DDocumentPath = faceDocument.SourcePanel2DDocumentPath,
             SourceFaceShapeId = faceDocument.SourceFaceShapeId,
             AssignedCabinetFaceTargetId = faceDocument.AssignedCabinetFaceTargetId,
-                AssignedCabinetAssetPath = faceDocument.AssignedCabinetAssetPath,
+            AssignedCabinetAssetPath = faceDocument.AssignedCabinetAssetPath,
             SourceRegion = faceDocument.SourceRegion,
             LastRegeneratedAtUtc = faceDocument.LastRegeneratedAtUtc,
             GenerationSettings = faceDocument.GenerationSettings,
@@ -111,14 +119,44 @@ public sealed class FaceRuntimeExportService
         return new FaceRuntimeExportResult(updatedDocument, manifest, outputDirectory, manifestPath, artworkPath, maskPath);
     }
 
-    public FaceRuntimeManifest CreateManifest(FaceDocumentModel faceDocument, int width, int height)
+    private static FaceCabinetContext ResolveStandaloneCabinetContext(FaceDocumentModel faceDocument, EditorProject project)
+    {
+        ArgumentNullException.ThrowIfNull(faceDocument);
+        ArgumentNullException.ThrowIfNull(project);
+        var cabinetAssetPath = string.IsNullOrWhiteSpace(faceDocument.AssignedCabinetAssetPath)
+            ? null
+            : ProjectAssetPathService.NormalizeProjectRelativePath(faceDocument.AssignedCabinetAssetPath);
+        if (string.IsNullOrWhiteSpace(cabinetAssetPath))
+        {
+            return new FaceCabinetContext(null, null, null, "Face.Cabinet.ContextUnavailable", "Standalone Face runtime export has no Cabinet context. Assign a Cabinet asset to the Face or export it through a Machine build that supplies the Cabinet context.");
+        }
+
+        if (string.IsNullOrWhiteSpace(project.ProjectDirectory))
+        {
+            return new FaceCabinetContext(null, null, cabinetAssetPath, "Face.Cabinet.ProjectUnavailable", $"Assigned Cabinet asset '{cabinetAssetPath}' cannot be resolved because no project is loaded.");
+        }
+
+        var fullPath = Path.IsPathRooted(cabinetAssetPath)
+            ? cabinetAssetPath
+            : Path.Combine(project.ProjectDirectory, cabinetAssetPath.Replace('/', Path.DirectorySeparatorChar));
+        if (!File.Exists(fullPath))
+        {
+            return new FaceCabinetContext(null, null, cabinetAssetPath, "Face.Cabinet.AssetMissing", $"Assigned Cabinet asset '{cabinetAssetPath}' could not be found.");
+        }
+
+        return CabinetDocumentStorage.TryRead(File.ReadAllText(fullPath), out var cabinetDocument)
+            ? new FaceCabinetContext(cabinetDocument, null, cabinetAssetPath, null, null)
+            : new FaceCabinetContext(null, null, cabinetAssetPath, "Face.Cabinet.AssetInvalid", $"Assigned Cabinet asset '{cabinetAssetPath}' could not be read.");
+    }
+
+    public FaceRuntimeManifest CreateManifest(FaceDocumentModel faceDocument, int width, int height, FaceCabinetContext? cabinetContext = null)
     {
         ArgumentNullException.ThrowIfNull(faceDocument);
         var texturePlan = _runtimeTextureGenerator.CreatePlan(faceDocument, width, height);
-        return CreateManifest(faceDocument, width, height, texturePlan);
+        return CreateManifest(faceDocument, width, height, texturePlan, cabinetContext);
     }
 
-    public FaceRuntimeManifest CreateManifest(FaceDocumentModel faceDocument, int width, int height, FaceRuntimeTextureGenerationPlan texturePlan)
+    public FaceRuntimeManifest CreateManifest(FaceDocumentModel faceDocument, int width, int height, FaceRuntimeTextureGenerationPlan texturePlan, FaceCabinetContext? cabinetContext = null)
     {
         ArgumentNullException.ThrowIfNull(faceDocument);
         ArgumentNullException.ThrowIfNull(texturePlan);
@@ -149,7 +187,7 @@ public sealed class FaceRuntimeExportService
             LampWeightsDebug = FaceRuntimeTextureGenerator.LampWeightsDebugFileName,
             Lamps = texturePlan.Emitters.Select(CreateLampManifestEntry).ToArray(),
             Trays = texturePlan.Trays.Select(CreateTrayManifestEntry).ToArray(),
-            Reels = faceDocument.Elements.OfType<FaceReelDisplayElement>().Select(CreateReelManifestEntry).ToArray(),
+            Reels = faceDocument.Elements.OfType<FaceReelDisplayElement>().Select(reel => CreateReelManifestEntry(faceDocument, reel, cabinetContext)).ToArray(),
             SevenSegmentDisplays = faceDocument.Elements.OfType<FaceSevenSegmentDisplayElement>().Select(CreateDisplayManifestEntry).ToArray(),
             AlphaDisplays = faceDocument.Elements.OfType<FaceAlphaDisplayElement>().Select(CreateDisplayManifestEntry).ToArray(),
             Buttons = faceDocument.Elements.OfType<FaceButtonElement>().Select(CreateButtonManifestEntry).ToArray()
@@ -341,8 +379,9 @@ public sealed class FaceRuntimeExportService
     }
 
 
-    private static FaceRuntimeReelManifestEntry CreateReelManifestEntry(FaceReelDisplayElement element)
+    private static FaceRuntimeReelManifestEntry CreateReelManifestEntry(FaceDocumentModel faceDocument, FaceReelDisplayElement element, FaceCabinetContext? cabinetContext)
     {
+        var dimensions = ResolveReelPhysicalDimensions(faceDocument, element, cabinetContext);
         return new FaceRuntimeReelManifestEntry
         {
             ObjectId = element.ObjectId,
@@ -353,14 +392,63 @@ public sealed class FaceRuntimeExportService
             Stops = element.Stops.GetValueOrDefault(0),
             IsReversed = element.IsReversed,
             BandOffset = element.BandOffset.GetValueOrDefault(0d),
-            PhysicalWidth = Math.Max(0.01d, element.Width / 1000d),
-            PhysicalRadius = Math.Max(0.01d, element.Height / 2000d),
+            PhysicalWidth = dimensions.WidthMm,
+            PhysicalRadius = dimensions.RadiusMm,
             X = element.X,
             Y = element.Y,
             Width = element.Width,
             Height = element.Height
         };
     }
+
+    private static ResolvedReelPhysicalDimensions ResolveReelPhysicalDimensions(FaceDocumentModel faceDocument, FaceReelDisplayElement reel, FaceCabinetContext? cabinetContext)
+    {
+        var faceAsset = string.IsNullOrWhiteSpace(faceDocument.Title) ? faceDocument.Id : faceDocument.Title;
+        var reelName = DisplayName(reel);
+        var requestedId = string.IsNullOrWhiteSpace(reel.ReelSpecificationId) ? string.Empty : reel.ReelSpecificationId.Trim();
+        var cabinetAsset = cabinetContext?.CabinetAssetPath ?? faceDocument.AssignedCabinetAssetPath ?? string.Empty;
+
+        InvalidOperationException Fail(string reason) => new($"Unable to resolve physical reel dimensions. Face asset '{faceAsset}', reel '{reelName}' (objectId '{reel.ObjectId}'), Cabinet asset '{cabinetAsset}', requested specification ID '{requestedId}': {reason}");
+
+        if (cabinetContext is null || cabinetContext.CabinetDocument is null)
+        {
+            var reason = cabinetContext?.DiagnosticMessage ?? "Face has no assigned Cabinet.";
+            throw Fail(reason);
+        }
+
+        if (string.IsNullOrWhiteSpace(requestedId))
+        {
+            throw Fail("Face reel has no ReelSpecificationId.");
+        }
+
+        var matches = (cabinetContext.CabinetDocument.ReelSpecifications ?? [])
+            .Where(specification => string.Equals(specification.Id?.Trim(), requestedId, StringComparison.Ordinal))
+            .ToArray();
+        if (matches.Length == 0)
+        {
+            throw Fail("Referenced Cabinet reel specification does not exist.");
+        }
+
+        if (matches.Length > 1)
+        {
+            throw Fail("Cabinet contains duplicate matching reel specification IDs.");
+        }
+
+        var specification = matches[0];
+        if (!PanelElementValidation.IsFinite(specification.DiameterMm) || specification.DiameterMm <= 0d)
+        {
+            throw Fail($"Cabinet reel specification diameter '{specification.DiameterMm}' is not a positive finite millimetre value.");
+        }
+
+        if (!PanelElementValidation.IsFinite(specification.WidthMm) || specification.WidthMm <= 0d)
+        {
+            throw Fail($"Cabinet reel specification width '{specification.WidthMm}' is not a positive finite millimetre value.");
+        }
+
+        return new ResolvedReelPhysicalDimensions(specification.WidthMm, specification.DiameterMm / 2d);
+    }
+
+    private readonly record struct ResolvedReelPhysicalDimensions(double WidthMm, double RadiusMm);
 
     private static string ResolveCabinetReelTargetId(FaceReelDisplayElement element)
     {
