@@ -14,6 +14,7 @@ Shader "Oasis/SegmentedDisplay"
         Tags { "RenderType"="Opaque" }
         Pass
         {
+            Cull Off
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag

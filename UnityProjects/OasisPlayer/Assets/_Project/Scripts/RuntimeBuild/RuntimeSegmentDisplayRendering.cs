@@ -39,14 +39,46 @@ namespace OasisPlayer.RuntimeBuild
         private static Mesh BuildSevenSegmentMesh(bool showDecimalPoint)
         {
             var shapes = SevenSegmentShapes(showDecimalPoint);
-            var vertices = new List<Vector3>(); var uv2 = new List<Vector2>(); var triangles = new List<int>();
+            var vertices = new List<Vector3>(); var uv2 = new List<Vector2>(); var triangles = new List<int>(); var normals = new List<Vector3>();
             foreach (var s in shapes)
             {
                 var start = vertices.Count;
-                for (var i = 0; i < s.Points.Length; i++) { vertices.Add(new Vector3(s.Points[i].x - 0.5f, 0.5f - s.Points[i].y, 0f)); uv2.Add(new Vector2(s.Index, 0f)); }
-                for (var i = 1; i < s.Points.Length - 1; i++) { triangles.Add(start); triangles.Add(start + i); triangles.Add(start + i + 1); }
+                var localPoints = new Vector3[s.Points.Length];
+                for (var i = 0; i < s.Points.Length; i++)
+                {
+                    localPoints[i] = new Vector3(s.Points[i].x - 0.5f, 0.5f - s.Points[i].y, 0f);
+                    vertices.Add(localPoints[i]);
+                    uv2.Add(new Vector2(s.Index, 0f));
+                    normals.Add(Vector3.back);
+                }
+
+                var clockwise = SignedArea(localPoints) < 0f;
+                for (var i = 1; i < s.Points.Length - 1; i++)
+                {
+                    triangles.Add(start);
+                    if (clockwise)
+                    {
+                        triangles.Add(start + i);
+                        triangles.Add(start + i + 1);
+                    }
+                    else
+                    {
+                        triangles.Add(start + i + 1);
+                        triangles.Add(start + i);
+                    }
+                }
             }
-            var mesh = new Mesh { name = keyName(showDecimalPoint) }; mesh.SetVertices(vertices); mesh.SetUVs(1, uv2); mesh.SetTriangles(triangles, 0); mesh.RecalculateBounds(); mesh.RecalculateNormals(); return mesh;
+            var mesh = new Mesh { name = keyName(showDecimalPoint) }; mesh.SetVertices(vertices); mesh.SetNormals(normals); mesh.SetUVs(1, uv2); mesh.SetTriangles(triangles, 0); mesh.RecalculateBounds(); return mesh;
+        }
+        private static float SignedArea(Vector3[] points)
+        {
+            var area = 0f;
+            for (var i = 0; i < points.Length; i++)
+            {
+                var next = points[(i + 1) % points.Length];
+                area += (points[i].x * next.y) - (next.x * points[i].y);
+            }
+            return area * 0.5f;
         }
         private static string keyName(bool dp) { return dp ? "Oasis_SevenSegmentDigit_DP" : "Oasis_SevenSegmentDigit"; }
         private struct Shape { public int Index; public Vector2[] Points; public Shape(int i, params Vector2[] p) { Index = i; Points = p; } }
@@ -88,7 +120,7 @@ namespace OasisPlayer.RuntimeBuild
             var material = SharedMaterial(machine); var cellW = e.width / count;
             for (var i = 0; i < count; i++)
             {
-                var go = new GameObject("Digit_" + i); go.transform.SetParent(root.transform, false); var mf = go.AddComponent<MeshFilter>(); var mr = go.AddComponent<MeshRenderer>(); mf.sharedMesh = _meshFactory.GetSevenSegmentDigitMesh(e.showDecimalPoint); mr.sharedMaterial = material;
+                var go = new GameObject("Digit_" + i); go.transform.SetParent(root.transform, false); var mf = go.AddComponent<MeshFilter>(); var mr = go.AddComponent<MeshRenderer>(); mf.sharedMesh = _meshFactory.GetSevenSegmentDigitMesh(true); mr.sharedMaterial = material;
                 var cx = e.x + cellW * (i + .5f); var cy = e.y + e.height * .5f; go.transform.position = surface.FacePointToWorld(cx, cy, face.Manifest.width, face.Manifest.height) + surface.VisibleNormal * RuntimeFacePlacement.DefaultSurfaceClearanceMetres;
                 go.transform.rotation = Quaternion.LookRotation(-surface.VisibleNormal, surface.VerticalTangent); go.transform.localScale = new Vector3(surface.PhysicalWidth * cellW / face.Manifest.width, surface.PhysicalHeight * e.height / face.Manifest.height, 1f);
                 var b = new RuntimeSegmentDigitBinding(mr, e.machineReference, i, Parse(e.onColorHex, Color.red), Parse(e.offColorHex, new Color(.04f,0,0,1))); _digits.Add(b); b.Apply(0, 1f);
