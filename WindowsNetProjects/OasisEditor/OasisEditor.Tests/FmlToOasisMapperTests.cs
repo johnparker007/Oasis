@@ -439,4 +439,76 @@ public sealed class FmlToOasisMapperTests
         Assert.All(result.Elements, element => Assert.True(element.HasBorder));
     }
 
+    [Fact]
+    public void Map_WithAssignedLampNumber_ImportsAsLampUnchanged()
+    {
+        var lamp = new Lamp { X = 10, Y = 20, Width = 30, Height = 40, SublampTable = [new LampSublampTableEntry(1, 7)] };
+        var images = new Dictionary<FmlDecodedImageKey, string>
+        {
+            [new FmlDecodedImageKey(0, "Sublamp 1 Main")] = "lamps/assigned-on.bmp",
+            [new FmlDecodedImageKey(0, "Sublamp 1 Mask")] = "lamps/assigned-mask.bmp"
+        };
+
+        var result = new FmlToOasisMapper().Map(new Layout([lamp]), images);
+
+        var element = Assert.Single(result.Elements);
+        Assert.Equal(PanelElementKind.Lamp, element.Kind);
+        Assert.Equal(7, element.DisplayNumber);
+        Assert.Equal("lamps/assigned-on.bmp", element.AssetPath);
+        Assert.Equal("lamps/assigned-mask.bmp", element.SecondaryAssetPath);
+        Assert.Empty(result.InformationalDiagnostics);
+    }
+
+    [Fact]
+    public void Map_WithUnassignedMfmeLamp_ImportsAsImageWithOnBitmapAndDiagnostic()
+    {
+        var lamp = new Lamp { X = 11, Y = 22, Width = 33, Height = 44 };
+        lamp.Strings["Name"] = "StaticLogo";
+        var images = new Dictionary<FmlDecodedImageKey, string>
+        {
+            [new FmlDecodedImageKey(0, "Off Image")] = "lamps/static-off.bmp",
+            [new FmlDecodedImageKey(0, "Sublamp 1 Main")] = "lamps/static-on.bmp",
+            [new FmlDecodedImageKey(0, "Sublamp 1 Mask")] = "lamps/static-mask.bmp"
+        };
+
+        var result = new FmlToOasisMapper().Map(new Layout([lamp]), images);
+
+        var image = Assert.Single(result.Elements);
+        Assert.Equal(PanelElementKind.Image, image.Kind);
+        Assert.Equal("Image", image.Name);
+        Assert.Equal(11, image.X);
+        Assert.Equal(22, image.Y);
+        Assert.Equal(33, image.Width);
+        Assert.Equal(44, image.Height);
+        Assert.Equal("lamps/static-on.bmp", image.AssetPath);
+        Assert.Equal("lamps/static-mask.bmp", image.SecondaryAssetPath);
+        Assert.Null(image.DisplayNumber);
+        Assert.Equal(0, image.SourceComponentIndex);
+        Assert.DoesNotContain(result.Elements, e => e.Kind == PanelElementKind.Lamp);
+        Assert.Contains(result.InformationalDiagnostics, diagnostic => diagnostic == "Converted unassigned MFME Lamp 'StaticLogo' to an Image because it has no Lamp number.");
+    }
+
+    [Fact]
+    public void Map_WithInvalidOnlyLampNumbers_ImportsAsImage()
+    {
+        var lamp = new Lamp { SublampTable = [new LampSublampTableEntry(1, 0), new LampSublampTableEntry(2, -2)] };
+        lamp.UInt32s["NumberOfDefinedLampNumbers"] = 0;
+
+        var result = new FmlToOasisMapper().Map(new Layout([lamp]), new Dictionary<FmlDecodedImageKey, string>());
+
+        Assert.Equal(PanelElementKind.Image, Assert.Single(result.Elements).Kind);
+        Assert.DoesNotContain(result.Elements, e => e.Kind == PanelElementKind.Lamp);
+    }
+
+    [Fact]
+    public void Map_WithNegativeFallbackNumber_ImportsLampAsImage()
+    {
+        var lamp = new Lamp { Number = -1 };
+
+        var result = new FmlToOasisMapper().Map(new Layout([lamp]), new Dictionary<FmlDecodedImageKey, string>());
+
+        Assert.Equal(PanelElementKind.Image, Assert.Single(result.Elements).Kind);
+        Assert.DoesNotContain(result.Elements, e => e.Kind == PanelElementKind.Lamp);
+    }
+
 }
