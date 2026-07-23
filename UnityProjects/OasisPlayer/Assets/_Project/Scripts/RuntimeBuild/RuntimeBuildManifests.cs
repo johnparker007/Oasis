@@ -87,7 +87,7 @@ namespace OasisPlayer.RuntimeBuild
         public FaceRuntimeLampManifestEntry[] lamps = Array.Empty<FaceRuntimeLampManifestEntry>();
         public FaceRuntimeElementManifestEntry[] trays = Array.Empty<FaceRuntimeElementManifestEntry>();
         public FaceRuntimeReelManifestEntry[] reels = Array.Empty<FaceRuntimeReelManifestEntry>();
-        public FaceRuntimeElementManifestEntry[] sevenSegmentDisplays = Array.Empty<FaceRuntimeElementManifestEntry>();
+        public FaceRuntimeSevenSegmentDisplayManifestEntry[] sevenSegmentDisplays = Array.Empty<FaceRuntimeSevenSegmentDisplayManifestEntry>();
         public FaceRuntimeElementManifestEntry[] alphaDisplays = Array.Empty<FaceRuntimeElementManifestEntry>();
         public FaceRuntimeButtonManifestEntry[] buttons = Array.Empty<FaceRuntimeButtonManifestEntry>();
     }
@@ -125,6 +125,16 @@ namespace OasisPlayer.RuntimeBuild
 
         [NonSerialized]
         public RuntimeTextureAsset BandTexture;
+    }
+
+    [Serializable]
+    public sealed class FaceRuntimeSevenSegmentDisplayManifestEntry : FaceRuntimeElementManifestEntry
+    {
+        public string topology = "sevenSegment";
+        public int digitCount = 1;
+        public string onColorHex = string.Empty;
+        public string offColorHex = string.Empty;
+        public bool showDecimalPoint;
     }
 
     [Serializable]

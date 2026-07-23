@@ -185,6 +185,8 @@ public sealed class FaceReelDisplayElement : FaceElementModel
 
 public sealed class FaceSevenSegmentDisplayElement : FaceElementModel
 {
+    public const int DefaultDigitCount = 1;
+
     public string? OnColorHex { get; init; }
     public string? OffColorHex { get; init; }
     public bool ShowDecimalPoint { get; init; }

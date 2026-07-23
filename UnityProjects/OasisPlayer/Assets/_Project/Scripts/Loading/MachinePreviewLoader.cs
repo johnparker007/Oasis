@@ -55,6 +55,9 @@ namespace OasisPlayer.Loading
             _faceLoader.LoadFaces(machine);
             _faceRenderer.RenderFaces(machine);
             new RuntimeReelRenderer().RenderReels(machine);
+            var segmentRenderer = new RuntimeSegmentDisplayRenderer();
+            segmentRenderer.RenderDisplays(machine);
+            machine.SetSegmentDisplayRenderer(segmentRenderer);
             var updater = correctionRoot.AddComponent<RuntimeMachineLampUpdater>();
             updater.Initialize(machine);
 #if UNITY_EDITOR || DEVELOPMENT_BUILD

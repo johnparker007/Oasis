@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text.Json;
 using System.Windows.Media;
+using OasisEditor.SegmentDisplays;
 
 namespace OasisEditor;
 
@@ -23,7 +24,11 @@ internal static class SegmentDisplayDefinitionLoader
     private static readonly Lazy<IReadOnlyDictionary<string, SegmentDisplayDefinition>> LazyDefinitions = new(LoadDefinitions);
 
     public static bool TryGetSixteenSegmentDefinition(out SegmentDisplayDefinition definition) => TryGetDefinitionByType("led16seg", out definition);
-    public static bool TryGetSevenSegmentDefinition(out SegmentDisplayDefinition definition) => TryGetDefinitionByType("7seg", out definition);
+    public static bool TryGetSevenSegmentDefinition(out SegmentDisplayDefinition definition)
+    {
+        definition = CreateCanonicalSevenSegmentDefinition();
+        return true;
+    }
 
     public static bool TryGetDefinitionByType(string displayType, out SegmentDisplayDefinition definition)
     {
@@ -108,6 +113,51 @@ internal static class SegmentDisplayDefinitionLoader
             punctuation.Geometry = Geometry.Parse(punctuation.PathData);
             punctuation.Geometry.Freeze();
         }
+    }
+
+    private static SegmentDisplayDefinition CreateCanonicalSevenSegmentDefinition()
+    {
+        var canonical = SevenSegmentCanonicalGeometry.Definition;
+        return new SegmentDisplayDefinition
+        {
+            Schema = "oasis.segmentDisplayDefinition.canonical.v1",
+            Name = "Canonical 7-segment display cell",
+            Units = "normalized",
+            MameComponentType = "7seg",
+            Cell = new SegmentDisplayCellDefinition
+            {
+                Size = new SegmentDisplaySizeDefinition { Width = 1d, Height = 1d },
+                RecommendedPitch = 1.1d,
+                Segments = canonical.Segments.Select(segment => new SegmentDisplaySegmentDefinition
+                {
+                    Index = segment.SegmentIndex,
+                    Id = segment.SegmentName,
+                    BitIndex = segment.SegmentIndex,
+                    PathData = ToPathData(segment.Polygon),
+                    Geometry = ToGeometry(segment.Polygon)
+                }).ToList(),
+                DecimalPoint = canonical.DecimalPoint is null ? null : new SegmentDisplayPunctuationDefinition
+                {
+                    Id = canonical.DecimalPoint.SegmentName,
+                    BitIndex = canonical.DecimalPoint.SegmentIndex,
+                    PathData = ToPathData(canonical.DecimalPoint.Polygon),
+                    Geometry = ToGeometry(canonical.DecimalPoint.Polygon)
+                }
+            }
+        };
+    }
+
+    private static string ToPathData(IReadOnlyList<NormalizedPoint> points)
+    {
+        if (points.Count == 0) return string.Empty;
+        return "M " + string.Join(" L ", points.Select(point => $"{point.X} {point.Y}")) + " Z";
+    }
+
+    private static Geometry ToGeometry(IReadOnlyList<NormalizedPoint> points)
+    {
+        var geometry = Geometry.Parse(ToPathData(points));
+        geometry.Freeze();
+        return geometry;
     }
 
     private sealed record SegmentDisplayAssetSpec(string RelativePath, int ExpectedMainSegmentCount, int? RequiredDecimalPointBitIndex, int? RequiredCommaTailBitIndex);

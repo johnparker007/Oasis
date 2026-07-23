@@ -8,12 +8,14 @@ namespace OasisPlayer.RuntimeBuild
         private readonly List<RuntimeFace> _faces = new List<RuntimeFace>();
         private readonly List<string> _warnings = new List<string>();
         private RuntimeLampStateTexture _lampStateTexture;
+        private RuntimeSegmentDisplayRenderer _segmentDisplayRenderer;
 
         public RuntimeMachine(ResolvedRuntimeBuild build, GameObject cabinet)
         {
             Build = build;
             Cabinet = cabinet;
             LampState = new RuntimeLampState();
+            SegmentDisplayState = new RuntimeSegmentDisplayState();
         }
 
         public ResolvedRuntimeBuild Build { get; private set; }
@@ -21,6 +23,7 @@ namespace OasisPlayer.RuntimeBuild
         public IReadOnlyList<RuntimeFace> Faces { get { return _faces; } }
         public IReadOnlyList<string> Warnings { get { return _warnings; } }
         public RuntimeLampState LampState { get; private set; }
+        public RuntimeSegmentDisplayState SegmentDisplayState { get; private set; }
         public RuntimeLampStateTexture LampStateTexture
         {
             get
@@ -32,8 +35,15 @@ namespace OasisPlayer.RuntimeBuild
 
         public bool ApplyDynamicState()
         {
-            if (_lampStateTexture == null) return false;
-            return _lampStateTexture.Upload(LampState);
+            var changed = false;
+            if (_lampStateTexture != null) changed |= _lampStateTexture.Upload(LampState);
+            if (_segmentDisplayRenderer != null) changed |= _segmentDisplayRenderer.ApplyDynamicState(this);
+            return changed;
+        }
+
+        public void SetSegmentDisplayRenderer(RuntimeSegmentDisplayRenderer renderer)
+        {
+            _segmentDisplayRenderer = renderer;
         }
 
         public void RegisterFace(RuntimeFace face)
