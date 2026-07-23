@@ -1,6 +1,7 @@
 using System.Text.Json;
 using OasisEditor;
 using OasisEditor.Automation;
+using OasisEditor.Features.CabinetEditor.Models;
 using SkiaSharp;
 using Xunit;
 
@@ -75,6 +76,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         var maskBefore = File.ReadAllBytes(authoredMaskPath);
 
         var document = CreateDocument("Assets/Faces/Stable Face/artwork.png", "Assets/Faces/Stable Face/mask.png", "Renamed In Inspector");
+        WriteDefaultCabinetAsset();
 
         var result = new FaceRuntimeExportService().Export(document, CreateProject(), GetFaceManifestPath("Stable Face"));
 
@@ -95,6 +97,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         WriteSolidPng(artworkPath, 4, 4, new SKColor(255, 0, 0, 128));
         WriteSolidPng(maskPath, 4, 4, SKColors.White);
         var document = CreateDocument("Assets/artwork.png", "Generated/source-mask.png");
+        WriteDefaultCabinetAsset();
         var project = CreateProject();
 
         var result = new FaceRuntimeExportService().Export(document, project, GetFaceManifestPath());
@@ -154,6 +157,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         WriteSolidPng(artworkPath, 4, 4, new SKColor(0, 255, 0, 192));
         WriteSolidPng(maskPath, 4, 4, SKColors.White);
         var document = CreateDocument("Assets/artwork.png", "Generated/source-mask.png");
+        WriteDefaultCabinetAsset();
         var current = new DocumentTabViewModel(
             EditorDocument.CreateFaceStub("Front Face").MarkDirty(),
             faceDocumentJson: FaceDocumentStorage.Serialize(document));
@@ -465,7 +469,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
     {
         var document = CreateDocument("Assets/artwork.png", "Generated/source-mask.png");
 
-        var manifest = new FaceRuntimeExportService().CreateManifest(document, 4, 4);
+        var manifest = new FaceRuntimeExportService().CreateManifest(document, 4, 4, CreateCabinetContext(CreateCabinet(new CabinetReelSpecification("standard", "Standard", 210, 50))));
 
         Assert.Equal("trayId.png", manifest.TrayId);
         Assert.Equal("lampIds0.png", manifest.LampIds0);
@@ -479,6 +483,104 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         Assert.Equal("runtime-tray-lamp-24", tray.ObjectId);
         Assert.Equal("runtime-emitter-lamp-24", tray.LampEmitterObjectId);
         Assert.Equal(24, tray.LampId);
+    }
+
+
+    [Fact]
+    public void CreateManifest_ResolvesReelDimensionsFromCabinetSpecification()
+    {
+        var document = CreateReelDocument("standard", 10, 20, 300, 400);
+        var cabinet = CreateCabinet(new CabinetReelSpecification("standard", "Standard", 210, 50));
+
+        var manifest = new FaceRuntimeExportService().CreateManifest(document, 100, 100, CreateCabinetContext(cabinet));
+
+        var reel = Assert.Single(manifest.Reels);
+        Assert.Equal(50, reel.PhysicalWidth);
+        Assert.Equal(105, reel.PhysicalRadius);
+    }
+
+    [Fact]
+    public void CreateManifest_UsesDifferentCabinetSpecificationsPerReel()
+    {
+        var document = CreateReelDocument("standard", 1, 1, 10, 10, "wide", 20, 20, 200, 40);
+        var cabinet = CreateCabinet(
+            new CabinetReelSpecification("standard", "Standard", 210, 50),
+            new CabinetReelSpecification("wide", "Wide", 300, 75));
+
+        var manifest = new FaceRuntimeExportService().CreateManifest(document, 100, 100, CreateCabinetContext(cabinet));
+
+        Assert.Equal(2, manifest.Reels.Count);
+        Assert.Equal(50, manifest.Reels[0].PhysicalWidth);
+        Assert.Equal(105, manifest.Reels[0].PhysicalRadius);
+        Assert.Equal(75, manifest.Reels[1].PhysicalWidth);
+        Assert.Equal(150, manifest.Reels[1].PhysicalRadius);
+    }
+
+    [Fact]
+    public void CreateManifest_ReelDimensionsAreIndependentOfFaceRectangle()
+    {
+        var document = CreateReelDocument("standard", 1, 1, 10, 10, "standard", 50, 60, 700, 800);
+        var cabinet = CreateCabinet(new CabinetReelSpecification("standard", "Standard", 210, 50));
+
+        var manifest = new FaceRuntimeExportService().CreateManifest(document, 1000, 1000, CreateCabinetContext(cabinet));
+
+        Assert.All(manifest.Reels, reel =>
+        {
+            Assert.Equal(50, reel.PhysicalWidth);
+            Assert.Equal(105, reel.PhysicalRadius);
+        });
+    }
+
+    [Theory]
+    [InlineData("", "Face reel has no ReelSpecificationId")]
+    [InlineData("unknown", "does not exist")]
+    public void CreateManifest_WithUnresolvedReelSpecification_Throws(string specificationId, string expected)
+    {
+        var document = CreateReelDocument(specificationId, 1, 1, 1000, 1000);
+        var cabinet = CreateCabinet(new CabinetReelSpecification("standard", "Standard", 210, 50));
+
+        var exception = Assert.Throws<InvalidOperationException>(() => new FaceRuntimeExportService().CreateManifest(document, 100, 100, CreateCabinetContext(cabinet)));
+
+        Assert.Contains(expected, exception.Message);
+        Assert.Contains("Face asset", exception.Message);
+        Assert.Contains("Cabinet asset", exception.Message);
+        Assert.Contains(specificationId, exception.Message);
+    }
+
+    [Fact]
+    public void CreateManifest_WithMissingCabinet_Throws()
+    {
+        var document = CreateReelDocument("standard", 1, 1, 1000, 1000);
+
+        var exception = Assert.Throws<InvalidOperationException>(() => new FaceRuntimeExportService().CreateManifest(document, 100, 100));
+
+        Assert.Contains("Face has no assigned Cabinet", exception.Message);
+    }
+
+    [Fact]
+    public void CreateManifest_WithDuplicateSpecificationIds_Throws()
+    {
+        var document = CreateReelDocument("standard", 1, 1, 1000, 1000);
+        var cabinet = CreateCabinet(new CabinetReelSpecification("standard", "A", 210, 50), new CabinetReelSpecification("standard", "B", 220, 55));
+
+        var exception = Assert.Throws<InvalidOperationException>(() => new FaceRuntimeExportService().CreateManifest(document, 100, 100, CreateCabinetContext(cabinet)));
+
+        Assert.Contains("duplicate", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData(0, 50, "diameter")]
+    [InlineData(double.NaN, 50, "diameter")]
+    [InlineData(210, 0, "width")]
+    [InlineData(210, double.PositiveInfinity, "width")]
+    public void CreateManifest_WithInvalidSpecificationDimensions_Throws(double diameterMm, double widthMm, string expected)
+    {
+        var document = CreateReelDocument("standard", 1, 1, 1000, 1000);
+        var cabinet = CreateCabinet(new CabinetReelSpecification("standard", "Standard", diameterMm, widthMm));
+
+        var exception = Assert.Throws<InvalidOperationException>(() => new FaceRuntimeExportService().CreateManifest(document, 100, 100, CreateCabinetContext(cabinet)));
+
+        Assert.Contains(expected, exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
 
@@ -740,6 +842,13 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         };
     }
 
+    private void WriteDefaultCabinetAsset()
+    {
+        var path = Path.Combine(_assetsDirectory, "Cabinets", "cabinet.asset");
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, CabinetDocumentStorage.Serialize(CreateCabinet(new CabinetReelSpecification("standard", "Standard", 210, 50))));
+    }
+
     private string GetFaceManifestPath(string assetName = "Runtime Face") => Path.Combine(_assetsDirectory, "Faces", assetName, "asset.face");
 
     private static FaceDocumentModel CreateDocument(string artworkAssetPath, string maskAssetPath, string title = "Runtime Face")
@@ -748,6 +857,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         {
             Id = "face-runtime",
             Title = title,
+            AssignedCabinetAssetPath = "Assets/Cabinets/cabinet.asset",
             SourceRegion = new FaceSourceRegionModel
             {
                 X = 0,
@@ -793,13 +903,52 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
                     Y = 0,
                     Width = 1,
                     Height = 4,
-                    LinkedMachineObjectReference = MachineObjectReference.Reel(1)
+                    LinkedMachineObjectReference = MachineObjectReference.Reel(1),
+                    ReelSpecificationId = "standard",
+                    Stops = 20
                 }
             ]
         };
     }
 
+    private static CabinetDocument CreateCabinet(params CabinetReelSpecification[] specifications) => new(
+        2,
+        new CabinetModelReference("Assets/Cabinets/cabinet.glb", 1.0, "Y"),
+        [],
+        CabinetPreviewSettings.Default,
+        specifications,
+        specifications.FirstOrDefault()?.Id);
 
+    private static FaceCabinetContext CreateCabinetContext(CabinetDocument cabinet) => new(cabinet, null, "Assets/Cabinets/cabinet.asset", null, null);
+
+    private static FaceDocumentModel CreateReelDocument(params object[] reelData)
+    {
+        var elements = new List<FaceElementModel>();
+        for (var i = 0; i < reelData.Length; i += 5)
+        {
+            elements.Add(new FaceReelDisplayElement
+            {
+                ObjectId = $"reel-{i / 5 + 1}",
+                Name = $"Reel {i / 5 + 1}",
+                ReelSpecificationId = (string)reelData[i],
+                X = Convert.ToDouble(reelData[i + 1]),
+                Y = Convert.ToDouble(reelData[i + 2]),
+                Width = Convert.ToDouble(reelData[i + 3]),
+                Height = Convert.ToDouble(reelData[i + 4]),
+                Stops = 20,
+                LinkedMachineObjectReference = MachineObjectReference.Reel(i / 5 + 1)
+            });
+        }
+
+        return new FaceDocumentModel
+        {
+            Id = "face-runtime",
+            Title = "Runtime Face",
+            AssignedCabinetAssetPath = "Assets/Cabinets/cabinet.asset",
+            SourceRegion = new FaceSourceRegionModel { X = 0, Y = 0, Width = 1000, Height = 1000 },
+            Elements = elements
+        };
+    }
 
 
     private static FaceDocumentModel CreateDocumentWithLampWindows(params FaceLampWindowElement[] lampWindows)
@@ -915,6 +1064,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         WriteSolidPng(artworkPath, 4, 4, new SKColor(0, 0, 255, 128));
         WriteSolidPng(maskPath, 4, 4, SKColors.White);
         var document = CreateDocument("Assets/progress-artwork.png", "Generated/progress-mask.png");
+        WriteDefaultCabinetAsset();
         var project = CreateProject();
         var service = new FaceRuntimeExportService();
         var baseline = service.Export(document, project, GetFaceManifestPath());
