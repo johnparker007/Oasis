@@ -1,3 +1,4 @@
+using OasisEditor.Features.CabinetEditor.Models;
 using OasisEditor.Progress;
 
 namespace OasisEditor;
@@ -39,7 +40,8 @@ internal sealed class FaceRegenerationService
         string? generatedDirectory = null,
         FaceGenerationSettingsModel? generationSettings = null,
         IEditorProgressReporter? progress = null,
-        string? documentPath = null)
+        string? documentPath = null,
+        CabinetDocument? cabinetDocument = null)
     {
         ArgumentNullException.ThrowIfNull(existingFace);
         ArgumentNullException.ThrowIfNull(sourcePanel);
@@ -81,13 +83,15 @@ internal sealed class FaceRegenerationService
             existingFace.Title,
             sourcePanel2DDocumentId: existingFace.SourcePanel2DDocumentId,
             assignedCabinetFaceTargetId: existingFace.AssignedCabinetFaceTargetId,
+            assignedCabinetAssetPath: existingFace.AssignedCabinetAssetPath,
             targetAspectRatio: targetAspectRatio,
             projectDirectory: projectDirectory,
             generatedDirectory: generatedDirectory,
             faceAssetName: ResolveFaceAssetName(documentPath),
             generationSettings: settings,
             progress: progress.CreateChild(0.15, 0.45),
-            sourcePanel2DDocumentPath: existingFace.SourcePanel2DDocumentPath);
+            sourcePanel2DDocumentPath: existingFace.SourcePanel2DDocumentPath,
+            cabinetDocument: cabinetDocument);
 
         progress.Report(0.45, "Correlating regenerated elements...");
         var existingGeneratedByKey = existingFace.Elements
@@ -151,6 +155,7 @@ internal sealed class FaceRegenerationService
             SourcePanel2DDocumentPath = existingFace.SourcePanel2DDocumentPath,
             SourceFaceShapeId = existingFace.SourceFaceShapeId,
             AssignedCabinetFaceTargetId = existingFace.AssignedCabinetFaceTargetId,
+            AssignedCabinetAssetPath = existingFace.AssignedCabinetAssetPath,
             SourceRegion = generated.Document.SourceRegion ?? sourceRegion,
             LastRegeneratedAtUtc = DateTime.UtcNow,
             GenerationSettings = settings,
@@ -239,7 +244,10 @@ internal sealed class FaceRegenerationService
                 Stops = reel.Stops,
                 VisibleScale = reel.VisibleScale,
                 BandOffset = reel.BandOffset,
-                IsReversed = reel.IsReversed
+                IsReversed = reel.IsReversed,
+                ReelSpecificationId = existingElement is FaceReelDisplayElement existingReel && !string.IsNullOrWhiteSpace(existingReel.ReelSpecificationId)
+                    ? existingReel.ReelSpecificationId
+                    : reel.ReelSpecificationId
             },
             FaceSevenSegmentDisplayElement sevenSegment => new FaceSevenSegmentDisplayElement
             {

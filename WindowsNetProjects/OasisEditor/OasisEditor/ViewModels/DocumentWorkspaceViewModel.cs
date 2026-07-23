@@ -28,6 +28,7 @@ public sealed class DocumentWorkspaceViewModel
     private readonly FaceRegenerationService _faceRegenerationService = new();
     private readonly FaceRuntimeExportService _faceRuntimeExportService = new();
     private readonly FaceValidationService _faceValidationService = new();
+    private readonly FaceCabinetContextResolver _faceCabinetContextResolver = new();
 
     private int _untitledDocumentCounter = 1;
     private int _panelDocumentCounter = 1;
@@ -159,7 +160,12 @@ public sealed class DocumentWorkspaceViewModel
         if (selection is null || !string.Equals(selection.Value.Kind, PanelFaceSourceShapeCommands.SelectionKind, StringComparison.Ordinal)) return null;
         if (!sourceDocument.TryGetPanelFaceSourceShape(selection.Value.ObjectId, out var shape)) return null;
 
-        var target = _openDocuments.Select(d => d.CabinetViewer?.SelectedFaceTarget?.Target).FirstOrDefault(t => t is not null);
+        var selectedCabinet = _openDocuments
+            .Where(d => d.Document.DocumentType == EditorDocumentType.Cabinet3D)
+            .Select(d => new { Document = d, Target = d.CabinetViewer?.SelectedFaceTarget?.Target })
+            .FirstOrDefault(entry => entry.Target is not null);
+        var target = selectedCabinet?.Target;
+        var cabinetContext = _faceCabinetContextResolver.ResolveForGeneration(loadedProject, _openDocuments, target?.Id);
         var targetAspect = target is null || target.Corners.Count < 4
             ? (double?)null
             : (target.Corners[1] - target.Corners[0]).Length / Math.Max(0.0001, (target.Corners[3] - target.Corners[0]).Length);
@@ -172,6 +178,7 @@ public sealed class DocumentWorkspaceViewModel
             title,
             sourcePanel2DDocumentId: sourceDocument.DocumentId.ToString("N"),
             assignedCabinetFaceTargetId: target?.Id,
+            assignedCabinetAssetPath: cabinetContext.CabinetAssetPath,
             targetAspectRatio: targetAspect,
             projectDirectory: loadedProject.ProjectDirectory,
             generatedDirectory: loadedProject.GeneratedDirectory,
@@ -179,7 +186,8 @@ public sealed class DocumentWorkspaceViewModel
             faceAssetDirectory: pendingFaceAssetDirectory,
             generationSettings: generationSettings,
             progress: progress.CreateChild(0.0, 0.8),
-            sourcePanel2DDocumentPath: sourceDocument.FilePath);
+            sourcePanel2DDocumentPath: sourceDocument.FilePath,
+            cabinetDocument: cabinetContext.CabinetDocument);
         var generatedFaceDocument = result.Document;
         var faceJson = FaceDocumentStorage.Serialize(generatedFaceDocument);
         var faceEditorDocument = EditorDocument.CreateFaceStub(title).MarkDirty();
@@ -187,6 +195,10 @@ public sealed class DocumentWorkspaceViewModel
         ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
         _setStatusMessage($"Generated face document from Face Source Shape '{shape.Name}'.");
         _addOutputEntry($"Generated face '{document.Title}' from Face Source Shape '{shape.Name}'.", OutputLogStatus.Info);
+        if (!cabinetContext.HasCabinet)
+        {
+            _addOutputEntry($"Face generation did not resolve a Cabinet reel specification context: {cabinetContext.DiagnosticMessage}", OutputLogStatus.Warning);
+        }
         progress.Report(1.0, "Face creation from Face Source Shape complete.");
         return document;
     }
@@ -211,6 +223,7 @@ public sealed class DocumentWorkspaceViewModel
                 SourcePanel2DDocumentPath = faceDocument.SourcePanel2DDocumentPath,
                 SourceFaceShapeId = faceDocument.SourceFaceShapeId,
                 AssignedCabinetFaceTargetId = faceDocument.AssignedCabinetFaceTargetId,
+                AssignedCabinetAssetPath = faceDocument.AssignedCabinetAssetPath,
                 SourceRegion = faceDocument.SourceRegion,
                 LastRegeneratedAtUtc = faceDocument.LastRegeneratedAtUtc,
                 GenerationSettings = faceDocument.GenerationSettings,
@@ -292,6 +305,12 @@ public sealed class DocumentWorkspaceViewModel
 
         progress ??= NoOpEditorProgressReporter.Instance;
         progress.Report(0.0, "Regenerating selected Face from Face Source Shape...");
+        var cabinetContext = _faceCabinetContextResolver.ResolveForFace(loadedProject, _openDocuments, existingFace);
+        if (!cabinetContext.HasCabinet)
+        {
+            _addOutputEntry($"Face regeneration did not resolve a Cabinet reel specification context: {cabinetContext.DiagnosticMessage}", OutputLogStatus.Warning);
+        }
+
         var result = _faceRegenerationService.Regenerate(
             existingFace,
             sourcePanelDocument.GetPanelDocument(),
@@ -299,7 +318,8 @@ public sealed class DocumentWorkspaceViewModel
             loadedProject.GeneratedDirectory,
             generationSettings,
             progress.CreateChild(0.0, 0.8),
-            selectedDocument.FilePath);
+            selectedDocument.FilePath,
+            cabinetContext.CabinetDocument);
 
         progress.Report(0.8, "Exporting regenerated runtime preview assets...");
         var regeneratedFaceDocument = ExportRuntimeAssetsForPreview(result.Document, loadedProject, selectedDocument.FilePath, progress.CreateChild(0.8, 0.95));
@@ -334,7 +354,8 @@ public sealed class DocumentWorkspaceViewModel
             return [];
         }
 
-        return _faceValidationService.Validate(selectedDocument.GetFaceDocument(), _getLoadedProject(), _openDocuments.ToArray());
+        var faceDocument = selectedDocument.GetFaceDocument();
+        return _faceValidationService.Validate(faceDocument, _getLoadedProject(), _openDocuments.ToArray(), _faceCabinetContextResolver.ResolveForFace(_getLoadedProject(), _openDocuments, faceDocument));
     }
 
 
@@ -377,7 +398,7 @@ public sealed class DocumentWorkspaceViewModel
 
     private void LogFaceDiagnostics(FaceDocumentModel faceDocument)
     {
-        var diagnostics = _faceValidationService.Validate(faceDocument, _getLoadedProject(), _openDocuments.ToArray());
+        var diagnostics = _faceValidationService.Validate(faceDocument, _getLoadedProject(), _openDocuments.ToArray(), _faceCabinetContextResolver.ResolveForFace(_getLoadedProject(), _openDocuments, faceDocument));
         foreach (var diagnostic in diagnostics)
         {
             _addOutputEntry($"Face validation ({diagnostic.Code}): {diagnostic.Message}", diagnostic.Severity == FaceValidationSeverity.Error ? OutputLogStatus.Error : OutputLogStatus.Warning);
@@ -762,6 +783,7 @@ public sealed class DocumentWorkspaceViewModel
                 SourcePanel2DDocumentPath = faceDocument.SourcePanel2DDocumentPath,
                 SourceFaceShapeId = faceDocument.SourceFaceShapeId,
                 AssignedCabinetFaceTargetId = faceDocument.AssignedCabinetFaceTargetId,
+                AssignedCabinetAssetPath = faceDocument.AssignedCabinetAssetPath,
                 SourceRegion = faceDocument.SourceRegion,
                 LastRegeneratedAtUtc = faceDocument.LastRegeneratedAtUtc,
                 GenerationSettings = faceDocument.GenerationSettings,

@@ -19,9 +19,91 @@ internal static class CabinetMutationCommands
         return new SetCabinetTargetOverrideCommand(documentId, document, targetId, null, null, faceFlipHorizontal, "Set cabinet target horizontal flip");
     }
 
+
+    public static Commands.ICommand CreateAddReelSpecificationCommand(Guid documentId, DocumentTabViewModel document)
+    {
+        var current = document.GetCabinetDocument();
+        var existing = current.ReelSpecifications ?? [];
+        var id = $"reel-{Guid.NewGuid():N}";
+        var specification = new CabinetReelSpecification(id, $"Reel Specification {existing.Length + 1}", 210, 50);
+        var next = current with
+        {
+            ReelSpecifications = existing.Append(specification).ToArray(),
+            DefaultReelSpecificationId = existing.Length == 0 ? id : current.DefaultReelSpecificationId
+        };
+        return new SetCabinetDocumentCommand(documentId, document, next, "Add cabinet reel specification");
+    }
+
+    public static Commands.ICommand CreateDeleteReelSpecificationCommand(Guid documentId, DocumentTabViewModel document, string specificationId)
+    {
+        var current = document.GetCabinetDocument();
+        var normalizedId = specificationId.Trim();
+        var next = current with
+        {
+            ReelSpecifications = (current.ReelSpecifications ?? []).Where(specification => !string.Equals(specification.Id, normalizedId, StringComparison.Ordinal)).ToArray(),
+            DefaultReelSpecificationId = string.Equals(current.DefaultReelSpecificationId, normalizedId, StringComparison.Ordinal) ? null : current.DefaultReelSpecificationId
+        };
+        return new SetCabinetDocumentCommand(documentId, document, next, "Delete cabinet reel specification");
+    }
+
+    public static Commands.ICommand CreateUpdateReelSpecificationCommand(Guid documentId, DocumentTabViewModel document, CabinetReelSpecification updatedSpecification)
+    {
+        var current = document.GetCabinetDocument();
+        var next = current with
+        {
+            ReelSpecifications = (current.ReelSpecifications ?? []).Select(specification => string.Equals(specification.Id, updatedSpecification.Id, StringComparison.Ordinal) ? updatedSpecification : specification).ToArray()
+        };
+        return new SetCabinetDocumentCommand(documentId, document, next, "Update cabinet reel specification");
+    }
+
+    public static Commands.ICommand CreateSetDefaultReelSpecificationCommand(Guid documentId, DocumentTabViewModel document, string? specificationId)
+    {
+        var normalizedId = string.IsNullOrWhiteSpace(specificationId) ? null : specificationId.Trim();
+        var current = document.GetCabinetDocument();
+        return new SetCabinetDocumentCommand(documentId, document, current with { DefaultReelSpecificationId = normalizedId }, "Set default cabinet reel specification");
+    }
+
     public static Commands.ICommand CreateSetPreviewLampModeCommand(Guid documentId, DocumentTabViewModel document, string lampPreviewMode)
     {
         return new SetCabinetPreviewLampModeCommand(documentId, document, CabinetLampPreviewMode.Normalize(lampPreviewMode));
+    }
+
+
+    private sealed class SetCabinetDocumentCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
+    {
+        private readonly Guid _documentId;
+        private readonly DocumentTabViewModel _document;
+        private readonly CabinetDocument _nextDocument;
+        private readonly string _description;
+        private CabinetDocument? _originalDocument;
+
+        public SetCabinetDocumentCommand(Guid documentId, DocumentTabViewModel document, CabinetDocument nextDocument, string description)
+        {
+            _documentId = documentId;
+            _document = document;
+            _nextDocument = nextDocument;
+            _description = description;
+        }
+
+        public Guid DocumentId => _documentId;
+        public string Description => _description;
+        public bool WasExecuted { get; private set; }
+
+        public void Execute()
+        {
+            WasExecuted = false;
+            _originalDocument ??= _document.GetCabinetDocument();
+            _document.SetCabinetDocument(_nextDocument);
+            _document.MarkDirty();
+            WasExecuted = true;
+        }
+
+        public void Undo()
+        {
+            if (_originalDocument is null) return;
+            _document.SetCabinetDocument(_originalDocument);
+            _document.MarkDirty();
+        }
     }
 
     private sealed class SetCabinetPreviewLampModeCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand

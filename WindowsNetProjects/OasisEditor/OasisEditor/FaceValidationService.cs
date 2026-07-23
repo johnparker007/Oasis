@@ -1,5 +1,6 @@
 using System.IO;
 using System.Linq;
+using OasisEditor.Features.CabinetEditor.Models;
 using SkiaSharp;
 
 namespace OasisEditor;
@@ -18,7 +19,8 @@ public sealed class FaceValidationService
     public IReadOnlyList<FaceValidationDiagnostic> Validate(
         FaceDocumentModel faceDocument,
         EditorProject? project,
-        IReadOnlyList<DocumentTabViewModel> openDocuments)
+        IReadOnlyList<DocumentTabViewModel> openDocuments,
+        object? cabinetContextOrDocument = null)
     {
         ArgumentNullException.ThrowIfNull(faceDocument);
         ArgumentNullException.ThrowIfNull(openDocuments);
@@ -28,8 +30,124 @@ public sealed class FaceValidationService
         ValidateArtworkAssets(faceDocument, project, diagnostics);
         ValidateMaskLayer(faceDocument, project, diagnostics);
         ValidateMachineReferences(faceDocument, diagnostics);
+        var cabinetContext = cabinetContextOrDocument as FaceCabinetContext;
+        var cabinetDocument = cabinetContext?.CabinetDocument ?? cabinetContextOrDocument as CabinetDocument;
+        ValidateCabinetContext(faceDocument, cabinetContext, diagnostics);
+        ValidateReelSpecifications(faceDocument, cabinetDocument, cabinetContext, diagnostics);
         diagnostics.AddRange(new FaceTrayAutoAuthoringService().Validate(faceDocument));
         return diagnostics;
+    }
+
+
+    private static void ValidateCabinetContext(
+        FaceDocumentModel faceDocument,
+        FaceCabinetContext? cabinetContext,
+        List<FaceValidationDiagnostic> diagnostics)
+    {
+        if (!faceDocument.Elements.OfType<FaceReelDisplayElement>().Any())
+        {
+            return;
+        }
+
+        if (cabinetContext is null)
+        {
+            return;
+        }
+
+        if (!cabinetContext.HasCabinet && !string.IsNullOrWhiteSpace(cabinetContext.DiagnosticCode))
+        {
+            diagnostics.Add(new FaceValidationDiagnostic(
+                cabinetContext.DiagnosticCode == "Face.Cabinet.NotAssigned" ? FaceValidationSeverity.Warning : FaceValidationSeverity.Error,
+                cabinetContext.DiagnosticCode,
+                cabinetContext.DiagnosticMessage ?? "Face Cabinet context could not be resolved."));
+        }
+    }
+
+    private static void ValidateReelSpecifications(
+        FaceDocumentModel faceDocument,
+        CabinetDocument? cabinetDocument,
+        FaceCabinetContext? cabinetContext,
+        List<FaceValidationDiagnostic> diagnostics)
+    {
+        if (cabinetDocument is null)
+        {
+            if (cabinetContext is not null)
+            {
+                return;
+            }
+
+            foreach (var reel in faceDocument.Elements.OfType<FaceReelDisplayElement>().Where(reel => string.IsNullOrWhiteSpace(reel.ReelSpecificationId)))
+            {
+                diagnostics.Add(new FaceValidationDiagnostic(
+                    FaceValidationSeverity.Warning,
+                    "Face.ReelSpecification.MissingSelection",
+                    $"Reel display '{DisplayName(reel)}' does not have a selected cabinet reel specification."));
+            }
+
+            return;
+        }
+
+        var specifications = cabinetDocument.ReelSpecifications ?? [];
+        if (specifications.Length == 0)
+        {
+            diagnostics.Add(new FaceValidationDiagnostic(
+                FaceValidationSeverity.Error,
+                "Cabinet.ReelSpecification.None",
+                "Assigned Cabinet does not contain any reel specifications."));
+        }
+        if (string.IsNullOrWhiteSpace(cabinetDocument.DefaultReelSpecificationId))
+        {
+            diagnostics.Add(new FaceValidationDiagnostic(
+                FaceValidationSeverity.Error,
+                "Cabinet.ReelSpecification.DefaultMissing",
+                "Cabinet does not have a default reel specification selected."));
+        }
+        else if (!specifications.Any(specification => string.Equals(specification.Id, cabinetDocument.DefaultReelSpecificationId.Trim(), StringComparison.Ordinal)))
+        {
+            diagnostics.Add(new FaceValidationDiagnostic(
+                FaceValidationSeverity.Error,
+                "Cabinet.ReelSpecification.DefaultMissing",
+                $"Cabinet default reel specification '{cabinetDocument.DefaultReelSpecificationId}' does not exist."));
+        }
+
+        foreach (var duplicateGroup in specifications.Where(specification => !string.IsNullOrWhiteSpace(specification.Id)).GroupBy(specification => specification.Id.Trim(), StringComparer.Ordinal).Where(group => group.Count() > 1))
+        {
+            diagnostics.Add(new FaceValidationDiagnostic(
+                FaceValidationSeverity.Error,
+                "Cabinet.ReelSpecification.DuplicateId",
+                $"Cabinet contains duplicate reel specification ID '{duplicateGroup.Key}'."));
+        }
+
+        foreach (var specification in specifications)
+        {
+            if (string.IsNullOrWhiteSpace(specification.Id) || !specification.HasValidDimensions)
+            {
+                diagnostics.Add(new FaceValidationDiagnostic(
+                    FaceValidationSeverity.Error,
+                    "Cabinet.ReelSpecification.InvalidDimensions",
+                    $"Cabinet reel specification '{(string.IsNullOrWhiteSpace(specification.Id) ? specification.Name : specification.Id)}' must have positive finite diameter and width values."));
+            }
+        }
+
+        foreach (var reel in faceDocument.Elements.OfType<FaceReelDisplayElement>())
+        {
+            if (string.IsNullOrWhiteSpace(reel.ReelSpecificationId))
+            {
+                diagnostics.Add(new FaceValidationDiagnostic(
+                    FaceValidationSeverity.Error,
+                    "Face.ReelSpecification.MissingSelection",
+                    $"Reel display '{DisplayName(reel)}' does not have a selected cabinet reel specification."));
+                continue;
+            }
+
+            if (!specifications.Any(specification => string.Equals(specification.Id, reel.ReelSpecificationId.Trim(), StringComparison.Ordinal)))
+            {
+                diagnostics.Add(new FaceValidationDiagnostic(
+                    FaceValidationSeverity.Error,
+                    "Face.ReelSpecification.UnknownSelection",
+                    $"Reel display '{DisplayName(reel)}' references unknown cabinet reel specification '{reel.ReelSpecificationId}'."));
+            }
+        }
     }
 
     private static void ValidateSourcePanel(

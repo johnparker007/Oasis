@@ -9,6 +9,7 @@ public sealed class FaceDocumentModel
     public string? SourcePanel2DDocumentPath { get; init; }
     public string? SourceFaceShapeId { get; init; }
     public string? AssignedCabinetFaceTargetId { get; init; }
+    public string? AssignedCabinetAssetPath { get; init; }
     public FaceSourceRegionModel? SourceRegion { get; init; }
     public DateTime? LastRegeneratedAtUtc { get; init; }
     public FaceGenerationSettingsModel GenerationSettings { get; init; } = FaceGenerationSettingsModel.Default;
@@ -174,6 +175,7 @@ public sealed class FaceLampEmitterElement : FaceElementModel
 
 public sealed class FaceReelDisplayElement : FaceElementModel
 {
+    public string? ReelSpecificationId { get; init; }
     public string? AssetPath { get; init; }
     public int? Stops { get; init; }
     public double? VisibleScale { get; init; }

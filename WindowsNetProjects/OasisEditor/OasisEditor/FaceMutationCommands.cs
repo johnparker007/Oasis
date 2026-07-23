@@ -31,9 +31,10 @@ internal static class FaceMutationCommands
     public static Commands.ICommand CreateAssignCabinetFaceTargetCommand(
         Guid documentId,
         DocumentTabViewModel document,
-        string? assignedTargetId)
+        string? assignedTargetId,
+        string? assignedCabinetAssetPath = null)
     {
-        return new AssignCabinetFaceTargetMutationCommand(documentId, document, NormalizeTargetId(assignedTargetId));
+        return new AssignCabinetFaceTargetMutationCommand(documentId, document, NormalizeTargetId(assignedTargetId), NormalizeAssetPath(assignedCabinetAssetPath));
     }
 
     private static PanelChangeEvent CreateChange(DocumentTabViewModel document, string? objectId, PanelChangeProperties properties, bool structure = false)
@@ -49,8 +50,9 @@ internal static class FaceMutationCommands
     }
 
     private static string? NormalizeTargetId(string? targetId) => string.IsNullOrWhiteSpace(targetId) ? null : targetId.Trim();
+    private static string? NormalizeAssetPath(string? assetPath) => string.IsNullOrWhiteSpace(assetPath) ? null : assetPath.Trim().Replace('\\', '/');
 
-    private static FaceDocumentModel WithAssignedCabinetFaceTarget(FaceDocumentModel faceDocument, string? assignedTargetId)
+    private static FaceDocumentModel WithAssignedCabinetFaceTarget(FaceDocumentModel faceDocument, string? assignedTargetId, string? assignedCabinetAssetPath)
     {
         return new FaceDocumentModel
         {
@@ -61,6 +63,7 @@ internal static class FaceMutationCommands
             SourcePanel2DDocumentPath = faceDocument.SourcePanel2DDocumentPath,
             SourceFaceShapeId = faceDocument.SourceFaceShapeId,
             AssignedCabinetFaceTargetId = NormalizeTargetId(assignedTargetId),
+            AssignedCabinetAssetPath = NormalizeAssetPath(assignedCabinetAssetPath),
             SourceRegion = faceDocument.SourceRegion,
             LastRegeneratedAtUtc = faceDocument.LastRegeneratedAtUtc,
             GenerationSettings = faceDocument.GenerationSettings,
@@ -289,13 +292,16 @@ internal static class FaceMutationCommands
         private readonly Guid _documentId;
         private readonly DocumentTabViewModel _document;
         private readonly string? _assignedTargetId;
+        private readonly string? _assignedCabinetAssetPath;
         private string? _originalTargetId;
+        private string? _originalCabinetAssetPath;
 
-        public AssignCabinetFaceTargetMutationCommand(Guid documentId, DocumentTabViewModel document, string? assignedTargetId)
+        public AssignCabinetFaceTargetMutationCommand(Guid documentId, DocumentTabViewModel document, string? assignedTargetId, string? assignedCabinetAssetPath)
         {
             _documentId = documentId;
             _document = document;
             _assignedTargetId = assignedTargetId;
+            _assignedCabinetAssetPath = assignedCabinetAssetPath;
         }
 
         public Guid DocumentId => _documentId;
@@ -307,14 +313,17 @@ internal static class FaceMutationCommands
             WasExecuted = false;
             var faceDocument = _document.GetFaceDocument();
             var currentTargetId = NormalizeTargetId(faceDocument.AssignedCabinetFaceTargetId);
-            if (string.Equals(currentTargetId, _assignedTargetId, StringComparison.Ordinal))
+            var currentCabinetAssetPath = NormalizeAssetPath(faceDocument.AssignedCabinetAssetPath);
+            if (string.Equals(currentTargetId, _assignedTargetId, StringComparison.Ordinal)
+                && string.Equals(currentCabinetAssetPath, _assignedCabinetAssetPath, StringComparison.OrdinalIgnoreCase))
             {
                 return;
             }
 
             _originalTargetId ??= currentTargetId;
+            _originalCabinetAssetPath ??= currentCabinetAssetPath;
             _document.SetFaceDocument(
-                WithAssignedCabinetFaceTarget(faceDocument, _assignedTargetId),
+                WithAssignedCabinetFaceTarget(faceDocument, _assignedTargetId, _assignedCabinetAssetPath),
                 CreateChange(_document, null, PanelChangeProperties.Metadata));
             _document.MarkDirty();
             WasExecuted = true;
@@ -324,7 +333,7 @@ internal static class FaceMutationCommands
         {
             var faceDocument = _document.GetFaceDocument();
             _document.SetFaceDocument(
-                WithAssignedCabinetFaceTarget(faceDocument, _originalTargetId),
+                WithAssignedCabinetFaceTarget(faceDocument, _originalTargetId, _originalCabinetAssetPath),
                 CreateChange(_document, null, PanelChangeProperties.Metadata));
             _document.MarkDirty();
         }

@@ -5,7 +5,7 @@ namespace OasisEditor;
 
 public static class FaceDocumentStorage
 {
-    public const int CurrentSchemaVersion = 5;
+    public const int CurrentSchemaVersion = 7;
 
     private static readonly JsonSerializerOptions s_readOptions = new()
     {
@@ -162,6 +162,7 @@ public static class FaceDocumentStorage
             SourcePanel2DDocumentPath = string.IsNullOrWhiteSpace(file.SourcePanel2DDocumentPath) ? null : file.SourcePanel2DDocumentPath.Trim(),
             SourceFaceShapeId = string.IsNullOrWhiteSpace(file.SourceFaceShapeId) ? null : file.SourceFaceShapeId.Trim(),
             AssignedCabinetFaceTargetId = string.IsNullOrWhiteSpace(file.AssignedCabinetFaceTargetId) ? null : file.AssignedCabinetFaceTargetId.Trim(),
+            AssignedCabinetAssetPath = string.IsNullOrWhiteSpace(file.AssignedCabinetAssetPath) ? null : file.AssignedCabinetAssetPath.Trim().Replace('\\', '/'),
             SourceRegion = ToModel(file.SourceRegion),
             LastRegeneratedAtUtc = file.LastRegeneratedAtUtc,
             GenerationSettings = ToModel(file.GenerationSettings),
@@ -197,6 +198,7 @@ public static class FaceDocumentStorage
             SourcePanel2DDocumentPath = string.IsNullOrWhiteSpace(model.SourcePanel2DDocumentPath) ? null : model.SourcePanel2DDocumentPath.Trim(),
             SourceFaceShapeId = model.SourceFaceShapeId,
             AssignedCabinetFaceTargetId = string.IsNullOrWhiteSpace(model.AssignedCabinetFaceTargetId) ? null : model.AssignedCabinetFaceTargetId.Trim(),
+            AssignedCabinetAssetPath = string.IsNullOrWhiteSpace(model.AssignedCabinetAssetPath) ? null : model.AssignedCabinetAssetPath.Trim().Replace('\\', '/'),
             SourceRegion = ToFile(model.SourceRegion),
             LastRegeneratedAtUtc = model.LastRegeneratedAtUtc,
             GenerationSettings = ToFile(model.GenerationSettings),
@@ -517,6 +519,8 @@ public static class FaceDocumentStorage
         };
     }
 
+    private static string? NormalizeOptional(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
     private static FaceElementModel ToModel(FaceElementFile file)
     {
         MachineObjectReference? reference = null;
@@ -561,6 +565,7 @@ public static class FaceDocumentStorage
                 IsTransformLocked = file.LockTransform,
                 LinkedMachineObjectReference = reference,
                 LinkedPanel2DElementId = file.LinkedPanel2DElementId,
+                ReelSpecificationId = NormalizeOptional(file.ReelSpecificationId),
                 AssetPath = file.AssetPath,
                 Stops = file.Stops,
                 VisibleScale = file.VisibleScale,
@@ -713,6 +718,7 @@ public static class FaceDocumentStorage
             LockTransform = model.IsTransformLocked,
             LinkedMachineObjectReference = model.LinkedMachineObjectReference?.ToString(),
             LinkedPanel2DElementId = model.LinkedPanel2DElementId,
+            ReelSpecificationId = model is FaceReelDisplayElement reelSpecification ? NormalizeOptional(reelSpecification.ReelSpecificationId) : null,
             LinkedInputReference = model is FaceButtonElement button ? button.LinkedInputReference?.ToString() : null,
             OnColorHex = model switch { FaceSevenSegmentDisplayElement sevenSegment => sevenSegment.OnColorHex, FaceAlphaDisplayElement alpha => alpha.OnColorHex, _ => null },
             OffColorHex = model switch { FaceSevenSegmentDisplayElement sevenSegment => sevenSegment.OffColorHex, FaceAlphaDisplayElement alpha => alpha.OffColorHex, _ => null },
@@ -764,6 +770,7 @@ public sealed record FaceDocumentFile
     public string? SourcePanel2DDocumentPath { get; init; }
     public string? SourceFaceShapeId { get; init; }
     public string? AssignedCabinetFaceTargetId { get; init; }
+    public string? AssignedCabinetAssetPath { get; init; }
     public FaceSourceRegionFile? SourceRegion { get; init; }
     public DateTime? LastRegeneratedAtUtc { get; init; }
     public FaceGenerationSettingsFile? GenerationSettings { get; init; }
@@ -900,6 +907,7 @@ public sealed record FaceElementFile
     public string? LinkedMachineObjectReference { get; init; }
     public string? LinkedPanel2DElementId { get; init; }
     public string? LinkedInputReference { get; init; }
+    public string? ReelSpecificationId { get; init; }
     public string? OnColorHex { get; init; }
     public string? OffColorHex { get; init; }
     public bool ShowDecimalPoint { get; init; }
