@@ -64,7 +64,7 @@ namespace OasisPlayer.Loading
 
     public sealed class RuntimeFaceLoader
     {
-        private const int FaceSchemaVersion = 2;
+        private const int FaceSchemaVersion = 3;
         private const string TargetPrefix = "OasisFace_";
 
         private readonly IRuntimeTextureAssetLoader _assetLoader;

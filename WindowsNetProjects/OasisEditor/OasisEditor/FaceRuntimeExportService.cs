@@ -9,7 +9,7 @@ namespace OasisEditor;
 
 public sealed class FaceRuntimeExportService
 {
-    public const int RuntimeManifestSchemaVersion = 2;
+    public const int RuntimeManifestSchemaVersion = 3;
     public const string RuntimeDirectoryName = "runtime";
     public const string ManifestFileName = "face.runtime.json";
     public const string ArtworkFileName = "artwork.png";
@@ -188,7 +188,7 @@ public sealed class FaceRuntimeExportService
             Lamps = texturePlan.Emitters.Select(CreateLampManifestEntry).ToArray(),
             Trays = texturePlan.Trays.Select(CreateTrayManifestEntry).ToArray(),
             Reels = faceDocument.Elements.OfType<FaceReelDisplayElement>().Select(reel => CreateReelManifestEntry(faceDocument, reel, cabinetContext)).ToArray(),
-            SevenSegmentDisplays = faceDocument.Elements.OfType<FaceSevenSegmentDisplayElement>().Select(CreateDisplayManifestEntry).ToArray(),
+            SevenSegmentDisplays = faceDocument.Elements.OfType<FaceSevenSegmentDisplayElement>().Select(CreateSevenSegmentDisplayManifestEntry).ToArray(),
             AlphaDisplays = faceDocument.Elements.OfType<FaceAlphaDisplayElement>().Select(CreateDisplayManifestEntry).ToArray(),
             Buttons = faceDocument.Elements.OfType<FaceButtonElement>().Select(CreateButtonManifestEntry).ToArray()
         };
@@ -457,6 +457,25 @@ public sealed class FaceRuntimeExportService
         return element.ObjectId;
     }
 
+    private static FaceRuntimeSevenSegmentDisplayManifestEntry CreateSevenSegmentDisplayManifestEntry(FaceSevenSegmentDisplayElement element)
+    {
+        return new FaceRuntimeSevenSegmentDisplayManifestEntry
+        {
+            ObjectId = element.ObjectId,
+            MachineReference = element.LinkedMachineObjectReference?.ToString(),
+            Name = element.Name,
+            X = element.X,
+            Y = element.Y,
+            Width = element.Width,
+            Height = element.Height,
+            Topology = SegmentDisplayTopologyNames.SevenSegment,
+            DigitCount = FaceSevenSegmentDisplayElement.DefaultDigitCount,
+            OnColorHex = element.OnColorHex,
+            OffColorHex = element.OffColorHex,
+            ShowDecimalPoint = element.ShowDecimalPoint
+        };
+    }
+
     private static FaceRuntimeElementManifestEntry CreateDisplayManifestEntry(FaceElementModel element)
     {
         return new FaceRuntimeElementManifestEntry
@@ -581,7 +600,7 @@ public sealed class FaceRuntimeManifest
     public IReadOnlyList<FaceRuntimeLampManifestEntry> Lamps { get; init; } = [];
     public IReadOnlyList<FaceRuntimeTrayManifestEntry> Trays { get; init; } = [];
     public IReadOnlyList<FaceRuntimeReelManifestEntry> Reels { get; init; } = [];
-    public IReadOnlyList<FaceRuntimeElementManifestEntry> SevenSegmentDisplays { get; init; } = [];
+    public IReadOnlyList<FaceRuntimeSevenSegmentDisplayManifestEntry> SevenSegmentDisplays { get; init; } = [];
     public IReadOnlyList<FaceRuntimeElementManifestEntry> AlphaDisplays { get; init; } = [];
     public IReadOnlyList<FaceRuntimeButtonManifestEntry> Buttons { get; init; } = [];
 }
@@ -619,6 +638,20 @@ public class FaceRuntimeElementManifestEntry
     public double Height { get; init; }
 }
 
+
+public sealed class FaceRuntimeSevenSegmentDisplayManifestEntry : FaceRuntimeElementManifestEntry
+{
+    public string Topology { get; init; } = SegmentDisplayTopologyNames.SevenSegment;
+    public int DigitCount { get; init; } = FaceSevenSegmentDisplayElement.DefaultDigitCount;
+    public string? OnColorHex { get; init; }
+    public string? OffColorHex { get; init; }
+    public bool ShowDecimalPoint { get; init; }
+}
+
+public static class SegmentDisplayTopologyNames
+{
+    public const string SevenSegment = "sevenSegment";
+}
 
 public sealed class FaceRuntimeReelManifestEntry : FaceRuntimeElementManifestEntry
 {

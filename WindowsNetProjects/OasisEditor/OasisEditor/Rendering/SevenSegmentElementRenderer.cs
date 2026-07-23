@@ -1,6 +1,5 @@
-using System.IO;
-using System.Text.Json;
 using SkiaSharp;
+using OasisEditor.SegmentDisplays;
 
 namespace OasisEditor.Rendering;
 
@@ -127,39 +126,25 @@ internal sealed class SevenSegmentElementRenderer : IPanelElementRenderer
 
     private static SevenSegmentSkiaDefinition? LoadDefinition()
     {
-        var path = Path.Combine(AppContext.BaseDirectory, "Assets", "SegmentDisplays", "oasis_7_segment_display_definition.json");
-        if (!File.Exists(path))
+        var definition = SevenSegmentCanonicalGeometry.Definition;
+        var paths = definition.Segments
+            .Select(segment => new SevenSegmentSkiaPath(segment.SegmentIndex, ToSkiaPath(segment.Polygon)))
+            .ToArray();
+        var decimalPath = definition.DecimalPoint is null ? null : ToSkiaPath(definition.DecimalPoint.Polygon);
+        return new SevenSegmentSkiaDefinition(1f, 1f, paths, decimalPath);
+    }
+
+    private static SKPath ToSkiaPath(IReadOnlyList<NormalizedPoint> points)
+    {
+        var path = new SKPath();
+        if (points.Count == 0) return path;
+        path.MoveTo((float)points[0].X, (float)points[0].Y);
+        for (var i = 1; i < points.Count; i++)
         {
-            return null;
+            path.LineTo((float)points[i].X, (float)points[i].Y);
         }
-
-        var json = File.ReadAllText(path);
-        var root = JsonSerializer.Deserialize<SevenSegmentDefinitionRoot>(json, new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true
-        });
-        var cell = root?.Cell;
-        if (cell?.Size is null || cell.Segments is null || cell.Segments.Count != 7)
-        {
-            return null;
-        }
-
-        var paths = new List<SevenSegmentSkiaPath>(cell.Segments.Count);
-        foreach (var segment in cell.Segments)
-        {
-            if (string.IsNullOrWhiteSpace(segment.PathData))
-            {
-                return null;
-            }
-
-            paths.Add(new SevenSegmentSkiaPath(segment.Index, SKPath.ParseSvgPathData(segment.PathData)));
-        }
-
-        var decimalPath = string.IsNullOrWhiteSpace(cell.DecimalPoint?.PathData)
-            ? null
-            : SKPath.ParseSvgPathData(cell.DecimalPoint.PathData);
-
-        return new SevenSegmentSkiaDefinition((float)cell.Size.Width, (float)cell.Size.Height, paths, decimalPath);
+        path.Close();
+        return path;
     }
 
     private static int BuildDefaultMask(IReadOnlyList<SevenSegmentSkiaPath> segments)
@@ -194,32 +179,4 @@ internal sealed class SevenSegmentElementRenderer : IPanelElementRenderer
     private readonly record struct SegmentVisualCacheKey(int Width, int Height, int SegmentMask, int BrightnessBucket, SKColor OnColor, SKColor OffColor);
     private sealed record SevenSegmentSkiaPath(int Index, SKPath Path);
 
-    private sealed class SevenSegmentDefinitionRoot
-    {
-        public SevenSegmentCell? Cell { get; set; }
-    }
-
-    private sealed class SevenSegmentCell
-    {
-        public SevenSegmentSize? Size { get; set; }
-        public List<SevenSegmentPath>? Segments { get; set; }
-        public SevenSegmentDecimalPoint? DecimalPoint { get; set; }
-    }
-
-    private sealed class SevenSegmentSize
-    {
-        public double Width { get; set; }
-        public double Height { get; set; }
-    }
-
-    private sealed class SevenSegmentPath
-    {
-        public int Index { get; set; }
-        public string? PathData { get; set; }
-    }
-
-    private sealed class SevenSegmentDecimalPoint
-    {
-        public string? PathData { get; set; }
-    }
 }
