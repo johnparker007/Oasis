@@ -33,8 +33,15 @@ public sealed class FaceRuntimeExportService
 
     public FaceRuntimeExportResult Export(FaceDocumentModel faceDocument, EditorProject project, string? documentPath = null, IEditorProgressReporter? progress = null)
     {
+        var cabinetContext = ResolveStandaloneCabinetContext(faceDocument, project);
+        return Export(faceDocument, project, cabinetContext, documentPath, progress);
+    }
+
+    public FaceRuntimeExportResult Export(FaceDocumentModel faceDocument, EditorProject project, FaceCabinetContext cabinetContext, string? documentPath = null, IEditorProgressReporter? progress = null)
+    {
         ArgumentNullException.ThrowIfNull(faceDocument);
         ArgumentNullException.ThrowIfNull(project);
+        ArgumentNullException.ThrowIfNull(cabinetContext);
         progress ??= NoOpEditorProgressReporter.Instance;
         progress.Report(0.0, "Resolving dimensions/output directory...");
 
@@ -65,7 +72,6 @@ public sealed class FaceRuntimeExportService
 
         var generatedUtc = DateTime.UtcNow;
         progress.Report(0.8, "Writing manifest...");
-        var cabinetContext = new FaceCabinetContextResolver().ResolveForFace(project, Array.Empty<DocumentTabViewModel>(), faceDocument);
         var manifest = CreateManifest(faceDocument, width, height, textureResult.Plan, cabinetContext);
         var manifestPath = Path.Combine(outputDirectory, ManifestFileName);
         File.WriteAllText(manifestPath, JsonSerializer.Serialize(manifest, s_manifestJsonOptions));
@@ -97,7 +103,7 @@ public sealed class FaceRuntimeExportService
             SourcePanel2DDocumentPath = faceDocument.SourcePanel2DDocumentPath,
             SourceFaceShapeId = faceDocument.SourceFaceShapeId,
             AssignedCabinetFaceTargetId = faceDocument.AssignedCabinetFaceTargetId,
-                AssignedCabinetAssetPath = faceDocument.AssignedCabinetAssetPath,
+            AssignedCabinetAssetPath = faceDocument.AssignedCabinetAssetPath,
             SourceRegion = faceDocument.SourceRegion,
             LastRegeneratedAtUtc = faceDocument.LastRegeneratedAtUtc,
             GenerationSettings = faceDocument.GenerationSettings,
@@ -111,6 +117,36 @@ public sealed class FaceRuntimeExportService
 
         progress.Report(1.0, "Runtime export complete.");
         return new FaceRuntimeExportResult(updatedDocument, manifest, outputDirectory, manifestPath, artworkPath, maskPath);
+    }
+
+    private static FaceCabinetContext ResolveStandaloneCabinetContext(FaceDocumentModel faceDocument, EditorProject project)
+    {
+        ArgumentNullException.ThrowIfNull(faceDocument);
+        ArgumentNullException.ThrowIfNull(project);
+        var cabinetAssetPath = string.IsNullOrWhiteSpace(faceDocument.AssignedCabinetAssetPath)
+            ? null
+            : ProjectAssetPathService.NormalizeProjectRelativePath(faceDocument.AssignedCabinetAssetPath);
+        if (string.IsNullOrWhiteSpace(cabinetAssetPath))
+        {
+            return new FaceCabinetContext(null, null, null, "Face.Cabinet.ContextUnavailable", "Standalone Face runtime export has no Cabinet context. Assign a Cabinet asset to the Face or export it through a Machine build that supplies the Cabinet context.");
+        }
+
+        if (string.IsNullOrWhiteSpace(project.ProjectDirectory))
+        {
+            return new FaceCabinetContext(null, null, cabinetAssetPath, "Face.Cabinet.ProjectUnavailable", $"Assigned Cabinet asset '{cabinetAssetPath}' cannot be resolved because no project is loaded.");
+        }
+
+        var fullPath = Path.IsPathRooted(cabinetAssetPath)
+            ? cabinetAssetPath
+            : Path.Combine(project.ProjectDirectory, cabinetAssetPath.Replace('/', Path.DirectorySeparatorChar));
+        if (!File.Exists(fullPath))
+        {
+            return new FaceCabinetContext(null, null, cabinetAssetPath, "Face.Cabinet.AssetMissing", $"Assigned Cabinet asset '{cabinetAssetPath}' could not be found.");
+        }
+
+        return CabinetDocumentStorage.TryRead(File.ReadAllText(fullPath), out var cabinetDocument)
+            ? new FaceCabinetContext(cabinetDocument, null, cabinetAssetPath, null, null)
+            : new FaceCabinetContext(null, null, cabinetAssetPath, "Face.Cabinet.AssetInvalid", $"Assigned Cabinet asset '{cabinetAssetPath}' could not be read.");
     }
 
     public FaceRuntimeManifest CreateManifest(FaceDocumentModel faceDocument, int width, int height, FaceCabinetContext? cabinetContext = null)
