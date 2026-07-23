@@ -99,6 +99,7 @@ internal static class FaceElementModelUpdater
                 LinkedPanel2DElementId = update.HasLinkedPanel2DElementId ? update.LinkedPanel2DElementId : existing.LinkedPanel2DElementId,
                 OnColorHex = sevenSegmentDisplay.OnColorHex,
                 OffColorHex = sevenSegmentDisplay.OffColorHex,
+                DigitCount = sevenSegmentDisplay.DigitCount,
                 ShowDecimalPoint = sevenSegmentDisplay.ShowDecimalPoint
             },
             FaceAlphaDisplayElement alphaDisplay => new FaceAlphaDisplayElement
@@ -116,6 +117,7 @@ internal static class FaceElementModelUpdater
                 SegmentDisplayType = alphaDisplay.SegmentDisplayType,
                 OnColorHex = alphaDisplay.OnColorHex,
                 OffColorHex = alphaDisplay.OffColorHex,
+                DigitCount = alphaDisplay.DigitCount,
                 ShowDecimalPoint = alphaDisplay.ShowDecimalPoint,
                 ShowCommaTail = alphaDisplay.ShowCommaTail,
                 IsReversed = alphaDisplay.IsReversed

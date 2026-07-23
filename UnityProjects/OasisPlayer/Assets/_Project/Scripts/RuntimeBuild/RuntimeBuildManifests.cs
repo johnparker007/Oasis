@@ -88,7 +88,7 @@ namespace OasisPlayer.RuntimeBuild
         public FaceRuntimeElementManifestEntry[] trays = Array.Empty<FaceRuntimeElementManifestEntry>();
         public FaceRuntimeReelManifestEntry[] reels = Array.Empty<FaceRuntimeReelManifestEntry>();
         public FaceRuntimeSevenSegmentDisplayManifestEntry[] sevenSegmentDisplays = Array.Empty<FaceRuntimeSevenSegmentDisplayManifestEntry>();
-        public FaceRuntimeElementManifestEntry[] alphaDisplays = Array.Empty<FaceRuntimeElementManifestEntry>();
+        public FaceRuntimeAlphaSegmentDisplayManifestEntry[] alphaSegmentDisplays = Array.Empty<FaceRuntimeAlphaSegmentDisplayManifestEntry>();
         public FaceRuntimeButtonManifestEntry[] buttons = Array.Empty<FaceRuntimeButtonManifestEntry>();
     }
 
@@ -128,13 +128,25 @@ namespace OasisPlayer.RuntimeBuild
     }
 
     [Serializable]
-    public sealed class FaceRuntimeSevenSegmentDisplayManifestEntry : FaceRuntimeElementManifestEntry
+    public class FaceRuntimeSegmentDisplayManifestEntry : FaceRuntimeElementManifestEntry
     {
         public string topology = "sevenSegment";
         public int digitCount = 1;
         public string onColorHex = string.Empty;
         public string offColorHex = string.Empty;
         public bool showDecimalPoint;
+        public bool showCommaTail;
+        public bool isReversed;
+    }
+
+    [Serializable]
+    public sealed class FaceRuntimeSevenSegmentDisplayManifestEntry : FaceRuntimeSegmentDisplayManifestEntry
+    {
+    }
+
+    [Serializable]
+    public sealed class FaceRuntimeAlphaSegmentDisplayManifestEntry : FaceRuntimeSegmentDisplayManifestEntry
+    {
     }
 
     [Serializable]

@@ -45,6 +45,7 @@ internal sealed class PanelElementModel
     public int? DisplayNumber { get; init; }
     public int? LampNumber { get; init; }
     public string? SegmentDisplayType { get; init; }
+    public int? DigitCount { get; init; }
     public bool ShowDecimalPoint { get; init; }
     public bool ShowCommaTail { get; init; }
     public bool HasBorder { get; init; }

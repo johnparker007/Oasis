@@ -5,7 +5,7 @@ namespace OasisEditor;
 
 public static class FaceDocumentStorage
 {
-    public const int CurrentSchemaVersion = 7;
+    public const int CurrentSchemaVersion = 8;
 
     private static readonly JsonSerializerOptions s_readOptions = new()
     {
@@ -591,6 +591,7 @@ public static class FaceDocumentStorage
                 LinkedPanel2DElementId = file.LinkedPanel2DElementId,
                 OnColorHex = file.OnColorHex,
                 OffColorHex = file.OffColorHex,
+                DigitCount = Math.Max(1, file.DigitCount ?? FaceSevenSegmentDisplayElement.DefaultDigitCount),
                 ShowDecimalPoint = file.ShowDecimalPoint
             };
         }
@@ -613,6 +614,7 @@ public static class FaceDocumentStorage
                 SegmentDisplayType = file.SegmentDisplayType,
                 OnColorHex = file.OnColorHex,
                 OffColorHex = file.OffColorHex,
+                DigitCount = Math.Max(1, file.DigitCount ?? 16),
                 ShowDecimalPoint = file.ShowDecimalPoint,
                 ShowCommaTail = file.ShowCommaTail,
                 IsReversed = file.IsReversed
@@ -722,6 +724,7 @@ public static class FaceDocumentStorage
             LinkedInputReference = model is FaceButtonElement button ? button.LinkedInputReference?.ToString() : null,
             OnColorHex = model switch { FaceSevenSegmentDisplayElement sevenSegment => sevenSegment.OnColorHex, FaceAlphaDisplayElement alpha => alpha.OnColorHex, _ => null },
             OffColorHex = model switch { FaceSevenSegmentDisplayElement sevenSegment => sevenSegment.OffColorHex, FaceAlphaDisplayElement alpha => alpha.OffColorHex, _ => null },
+            DigitCount = model switch { FaceSevenSegmentDisplayElement sevenSegmentDigitCount => sevenSegmentDigitCount.DigitCount, FaceAlphaDisplayElement alphaDigitCount => alphaDigitCount.DigitCount, _ => null },
             ShowDecimalPoint = model switch { FaceSevenSegmentDisplayElement sevenSegment => sevenSegment.ShowDecimalPoint, FaceAlphaDisplayElement alpha => alpha.ShowDecimalPoint, _ => false },
             ShowCommaTail = model is FaceAlphaDisplayElement alphaComma && alphaComma.ShowCommaTail,
             IsReversed = model switch { FaceAlphaDisplayElement alphaReversed => alphaReversed.IsReversed, FaceReelDisplayElement reelReversed => reelReversed.IsReversed, _ => false },
@@ -910,6 +913,7 @@ public sealed record FaceElementFile
     public string? ReelSpecificationId { get; init; }
     public string? OnColorHex { get; init; }
     public string? OffColorHex { get; init; }
+    public int? DigitCount { get; init; }
     public bool ShowDecimalPoint { get; init; }
     public bool ShowCommaTail { get; init; }
     public bool IsReversed { get; init; }

@@ -29,6 +29,7 @@ internal static class PanelElementModelCloner
             DisplayNumber = source.DisplayNumber,
             LampNumber = source.LampNumber,
             SegmentDisplayType = source.SegmentDisplayType,
+            DigitCount = source.DigitCount,
             ShowDecimalPoint = source.ShowDecimalPoint,
             ShowCommaTail = source.ShowCommaTail,
             HasBorder = source.HasBorder,

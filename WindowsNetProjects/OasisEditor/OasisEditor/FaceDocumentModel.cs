@@ -189,6 +189,7 @@ public sealed class FaceSevenSegmentDisplayElement : FaceElementModel
 
     public string? OnColorHex { get; init; }
     public string? OffColorHex { get; init; }
+    public int DigitCount { get; init; } = DefaultDigitCount;
     public bool ShowDecimalPoint { get; init; }
 }
 
@@ -197,6 +198,7 @@ public sealed class FaceAlphaDisplayElement : FaceElementModel
     public string? SegmentDisplayType { get; init; }
     public string? OnColorHex { get; init; }
     public string? OffColorHex { get; init; }
+    public int DigitCount { get; init; } = 16;
     public bool ShowDecimalPoint { get; init; }
     public bool ShowCommaTail { get; init; }
     public bool IsReversed { get; init; }
