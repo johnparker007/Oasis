@@ -1,4 +1,5 @@
 using OasisEditor.SegmentDisplays;
+using Xunit;
 
 namespace OasisEditor.Tests;
 
