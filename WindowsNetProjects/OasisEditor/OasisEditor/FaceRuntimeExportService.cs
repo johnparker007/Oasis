@@ -9,7 +9,7 @@ namespace OasisEditor;
 
 public sealed class FaceRuntimeExportService
 {
-    public const int RuntimeManifestSchemaVersion = 3;
+    public const int RuntimeManifestSchemaVersion = 4;
     public const string RuntimeDirectoryName = "runtime";
     public const string ManifestFileName = "face.runtime.json";
     public const string ArtworkFileName = "artwork.png";
@@ -189,7 +189,7 @@ public sealed class FaceRuntimeExportService
             Trays = texturePlan.Trays.Select(CreateTrayManifestEntry).ToArray(),
             Reels = faceDocument.Elements.OfType<FaceReelDisplayElement>().Select(reel => CreateReelManifestEntry(faceDocument, reel, cabinetContext)).ToArray(),
             SevenSegmentDisplays = faceDocument.Elements.OfType<FaceSevenSegmentDisplayElement>().Select(CreateSevenSegmentDisplayManifestEntry).ToArray(),
-            AlphaDisplays = faceDocument.Elements.OfType<FaceAlphaDisplayElement>().Select(CreateDisplayManifestEntry).ToArray(),
+            AlphaSegmentDisplays = faceDocument.Elements.OfType<FaceAlphaDisplayElement>().Select(CreateAlphaSegmentDisplayManifestEntry).ToArray(),
             Buttons = faceDocument.Elements.OfType<FaceButtonElement>().Select(CreateButtonManifestEntry).ToArray()
         };
     }
@@ -469,16 +469,16 @@ public sealed class FaceRuntimeExportService
             Width = element.Width,
             Height = element.Height,
             Topology = SegmentDisplayTopologyNames.SevenSegment,
-            DigitCount = FaceSevenSegmentDisplayElement.DefaultDigitCount,
+            DigitCount = Math.Max(1, element.DigitCount),
             OnColorHex = element.OnColorHex,
             OffColorHex = element.OffColorHex,
             ShowDecimalPoint = element.ShowDecimalPoint
         };
     }
 
-    private static FaceRuntimeElementManifestEntry CreateDisplayManifestEntry(FaceElementModel element)
+    private static FaceRuntimeAlphaSegmentDisplayManifestEntry CreateAlphaSegmentDisplayManifestEntry(FaceAlphaDisplayElement element)
     {
-        return new FaceRuntimeElementManifestEntry
+        return new FaceRuntimeAlphaSegmentDisplayManifestEntry
         {
             ObjectId = element.ObjectId,
             MachineReference = element.LinkedMachineObjectReference?.ToString(),
@@ -486,8 +486,22 @@ public sealed class FaceRuntimeExportService
             X = element.X,
             Y = element.Y,
             Width = element.Width,
-            Height = element.Height
+            Height = element.Height,
+            Topology = ResolveAlphaTopology(element.SegmentDisplayType),
+            DigitCount = Math.Max(1, element.DigitCount),
+            OnColorHex = element.OnColorHex,
+            OffColorHex = element.OffColorHex,
+            ShowDecimalPoint = element.ShowDecimalPoint,
+            ShowCommaTail = element.ShowCommaTail,
+            IsReversed = element.IsReversed
         };
+    }
+
+    private static string ResolveAlphaTopology(string? segmentDisplayType)
+    {
+        return string.Equals(segmentDisplayType, "led16seg", StringComparison.OrdinalIgnoreCase) || string.Equals(segmentDisplayType, "led16segsc", StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(segmentDisplayType)
+            ? SegmentDisplayTopologyNames.SixteenSegment
+            : throw new InvalidOperationException($"Unsupported alpha segment display type '{segmentDisplayType}'.");
     }
 
     private static FaceRuntimeButtonManifestEntry CreateButtonManifestEntry(FaceButtonElement element)
@@ -601,7 +615,7 @@ public sealed class FaceRuntimeManifest
     public IReadOnlyList<FaceRuntimeTrayManifestEntry> Trays { get; init; } = [];
     public IReadOnlyList<FaceRuntimeReelManifestEntry> Reels { get; init; } = [];
     public IReadOnlyList<FaceRuntimeSevenSegmentDisplayManifestEntry> SevenSegmentDisplays { get; init; } = [];
-    public IReadOnlyList<FaceRuntimeElementManifestEntry> AlphaDisplays { get; init; } = [];
+    public IReadOnlyList<FaceRuntimeAlphaSegmentDisplayManifestEntry> AlphaSegmentDisplays { get; init; } = [];
     public IReadOnlyList<FaceRuntimeButtonManifestEntry> Buttons { get; init; } = [];
 }
 
@@ -639,18 +653,29 @@ public class FaceRuntimeElementManifestEntry
 }
 
 
-public sealed class FaceRuntimeSevenSegmentDisplayManifestEntry : FaceRuntimeElementManifestEntry
+public class FaceRuntimeSegmentDisplayManifestEntry : FaceRuntimeElementManifestEntry
 {
     public string Topology { get; init; } = SegmentDisplayTopologyNames.SevenSegment;
     public int DigitCount { get; init; } = FaceSevenSegmentDisplayElement.DefaultDigitCount;
     public string? OnColorHex { get; init; }
     public string? OffColorHex { get; init; }
     public bool ShowDecimalPoint { get; init; }
+    public bool ShowCommaTail { get; init; }
+    public bool IsReversed { get; init; }
+}
+
+public sealed class FaceRuntimeSevenSegmentDisplayManifestEntry : FaceRuntimeSegmentDisplayManifestEntry
+{
+}
+
+public sealed class FaceRuntimeAlphaSegmentDisplayManifestEntry : FaceRuntimeSegmentDisplayManifestEntry
+{
 }
 
 public static class SegmentDisplayTopologyNames
 {
     public const string SevenSegment = "sevenSegment";
+    public const string SixteenSegment = "sixteenSegment";
 }
 
 public sealed class FaceRuntimeReelManifestEntry : FaceRuntimeElementManifestEntry

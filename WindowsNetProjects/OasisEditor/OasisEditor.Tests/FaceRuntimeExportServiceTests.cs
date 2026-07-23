@@ -123,7 +123,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
 
         using var manifestJson = JsonDocument.Parse(File.ReadAllText(result.ManifestPath));
         var root = manifestJson.RootElement;
-        Assert.Equal(3, root.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(4, root.GetProperty("schemaVersion").GetInt32());
         Assert.Equal("face-runtime", root.GetProperty("faceId").GetString());
         Assert.Equal("artwork.png", root.GetProperty("artwork").GetString());
         Assert.Equal("mask.png", root.GetProperty("mask").GetString());

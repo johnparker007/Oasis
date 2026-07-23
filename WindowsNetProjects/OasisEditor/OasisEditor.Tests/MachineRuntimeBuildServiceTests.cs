@@ -97,7 +97,7 @@ public sealed class MachineRuntimeBuildServiceTests
         Assert.False(changedFace.GetProperty("faceFlipHorizontal").GetBoolean());
 
         using var faceManifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(faceBuildDirectory, "face.runtime.json")));
-        Assert.Equal(3, faceManifest.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(4, faceManifest.RootElement.GetProperty("schemaVersion").GetInt32());
         Assert.Equal("artwork.png", faceManifest.RootElement.GetProperty("artwork").GetString());
         Assert.Equal("mask.png", faceManifest.RootElement.GetProperty("mask").GetString());
     }

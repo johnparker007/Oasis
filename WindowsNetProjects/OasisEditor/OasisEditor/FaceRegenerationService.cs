@@ -280,6 +280,7 @@ internal sealed class FaceRegenerationService
                 SegmentDisplayType = alpha.SegmentDisplayType,
                 OnColorHex = alpha.OnColorHex,
                 OffColorHex = alpha.OffColorHex,
+                DigitCount = alpha.DigitCount,
                 ShowDecimalPoint = alpha.ShowDecimalPoint,
                 ShowCommaTail = alpha.ShowCommaTail,
                 IsReversed = alpha.IsReversed

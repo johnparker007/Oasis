@@ -335,6 +335,7 @@ internal static class Panel2DDocumentStorage
             DisplayNumber = normalized.DisplayNumber,
             LampNumber = normalized.LampNumber,
             SegmentDisplayType = normalized.SegmentDisplayType,
+            DigitCount = normalized.DigitCount,
             ShowDecimalPoint = normalized.ShowDecimalPoint ?? false,
             ShowCommaTail = normalized.ShowCommaTail ?? false,
             HasBorder = normalized.HasBorder ?? false,
@@ -538,6 +539,7 @@ internal static class Panel2DDocumentStorage
         var normalizedDisplayNumber = normalizedNative?.Number ?? element.DisplayNumber;
         var normalizedLampNumber = normalizedNative?.LampNumber ?? element.LampNumber;
         var normalizedSegmentDisplayType = NormalizeOptionalString(normalizedNative?.SegmentDisplayType ?? element.SegmentDisplayType);
+        var normalizedDigitCount = element.DigitCount is > 0 ? element.DigitCount : null;
         var normalizedShowDecimalPoint = normalizedNative?.ShowDecimalPoint ?? element.ShowDecimalPoint ?? false;
         var normalizedShowCommaTail = normalizedNative?.ShowCommaTail ?? element.ShowCommaTail ?? false;
         var normalizedHasBorder = normalizedNative?.HasBorder ?? element.HasBorder ?? false;
@@ -619,6 +621,7 @@ internal static class Panel2DDocumentStorage
             DisplayNumber = normalizedDisplayNumber,
             LampNumber = normalizedLampNumber,
             SegmentDisplayType = normalizedSegmentDisplayType,
+            DigitCount = normalizedDigitCount,
             ShowDecimalPoint = normalizedShowDecimalPoint,
             ShowCommaTail = normalizedShowCommaTail,
             HasBorder = normalizedHasBorder,
@@ -897,6 +900,7 @@ internal sealed record PanelElementFile : IPanelSelectableObject
     public int? DisplayNumber { get; init; }
     public int? LampNumber { get; init; }
     public string? SegmentDisplayType { get; init; }
+    public int? DigitCount { get; init; }
     public bool? ShowDecimalPoint { get; init; }
     public bool? ShowCommaTail { get; init; }
     public bool? HasBorder { get; init; }
@@ -932,6 +936,7 @@ internal sealed record PanelElementNativeFile
     public int? Number { get; init; }
     public int? LampNumber { get; init; }
     public string? SegmentDisplayType { get; init; }
+    public int? DigitCount { get; init; }
     public bool? ShowDecimalPoint { get; init; }
     public bool? ShowCommaTail { get; init; }
     public bool? HasBorder { get; init; }
