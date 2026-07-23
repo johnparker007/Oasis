@@ -3742,7 +3742,25 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public bool ExecuteDocumentCanvasCommand(Guid documentId, EditorCommands.ICommand command)
     {
-        return _documentWorkspace.ExecuteDocumentCanvasCommand(documentId, command);
+        try
+        {
+            var executed = _documentWorkspace.ExecuteDocumentCanvasCommand(documentId, command);
+            if (executed)
+            {
+                NotifyInspectorChanged();
+            }
+            else
+            {
+                AddOutputEntry($"Command '{command.Description}' was not executed for document '{documentId:N}'.", OutputLogStatus.Warning);
+            }
+
+            return executed;
+        }
+        catch (Exception exception)
+        {
+            AddOutputEntry($"Command '{command.Description}' failed for document '{documentId:N}': {exception.Message}", OutputLogStatus.Error);
+            return false;
+        }
     }
 
     public void UpdateDocumentPanelSelection(Guid documentId, PanelSelectionInfo? selection)
@@ -4547,6 +4565,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         OnPropertyChanged(nameof(UndoMenuHeader));
         OnPropertyChanged(nameof(RedoMenuHeader));
+        NotifyInspectorChanged();
         CommandManager.InvalidateRequerySuggested();
     }
 

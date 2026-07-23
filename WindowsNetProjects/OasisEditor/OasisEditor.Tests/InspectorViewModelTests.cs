@@ -92,6 +92,68 @@ public sealed class InspectorViewModelTests
         Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Delete" && row.GroupName.StartsWith("Reel:", StringComparison.Ordinal));
     }
 
+
+    [Fact]
+    public void InspectorPropertyRows_CabinetReelSpecificationActions_UseProductionStyleCommandHistoryAndAutoRefresh()
+    {
+        var selectedDocument = new DocumentTabViewModel(
+            EditorDocument.CreateCabinet3DStub("Cabinet"),
+            cabinetDocumentJson: CabinetDocumentStorage.Serialize(new CabinetDocument(2, new CabinetModelReference("cabinet.glb", 1, "Y"), [], CabinetPreviewSettings.Default, [], null)));
+        var context = new ActiveDocumentContextService();
+        context.SetActiveDocument(selectedDocument);
+        InspectorViewModel? viewModel = null;
+        bool ExecuteViaDocumentCommandHistory(Guid documentId, EditorCommands.ICommand command)
+        {
+            if (selectedDocument.DocumentId != documentId)
+            {
+                return false;
+            }
+
+            selectedDocument.CommandService.Execute(command);
+            var executed = command is not EditorCommands.IExecutionTrackedCommand tracked || tracked.WasExecuted;
+            if (executed)
+            {
+                viewModel!.NotifyContextChanged();
+            }
+
+            return executed;
+        }
+
+        viewModel = CreateInspectorViewModel(selectedDocument, context, ExecuteViaDocumentCommandHistory);
+        viewModel.NotifyContextChanged();
+
+        Assert.IsType<InspectorActionPropertyViewModel>(viewModel.InspectorPropertyRows.Single(row => row.DisplayName == "Add Reel Specification")).Command.Execute(null);
+
+        var specification = Assert.Single(selectedDocument.GetCabinetDocument().ReelSpecifications);
+        Assert.Equal(specification.Id, selectedDocument.GetCabinetDocument().DefaultReelSpecificationId);
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Name" && row.GroupName.StartsWith("Reel:", StringComparison.Ordinal));
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Diameter mm" && row.GroupName.StartsWith("Reel:", StringComparison.Ordinal));
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Width mm" && row.GroupName.StartsWith("Reel:", StringComparison.Ordinal));
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Delete" && row.GroupName.StartsWith("Reel:", StringComparison.Ordinal));
+
+        var nameRow = Assert.IsType<InspectorTextPropertyViewModel>(viewModel.InspectorPropertyRows.Single(row => row.DisplayName == "Name" && row.GroupName.StartsWith("Reel:", StringComparison.Ordinal)));
+        nameRow.Value = "Standard 3 Reel";
+        Assert.Equal("Standard 3 Reel", Assert.Single(selectedDocument.GetCabinetDocument().ReelSpecifications).Name);
+
+        Assert.True(selectedDocument.CommandService.TryUndo());
+        viewModel.NotifyContextChanged();
+        Assert.Equal("Reel Specification 1", Assert.Single(selectedDocument.GetCabinetDocument().ReelSpecifications).Name);
+
+        Assert.True(selectedDocument.CommandService.TryUndo());
+        viewModel.NotifyContextChanged();
+        Assert.Empty(selectedDocument.GetCabinetDocument().ReelSpecifications);
+        Assert.DoesNotContain(viewModel.InspectorPropertyRows, row => row.DisplayName == "Name" && row.GroupName.StartsWith("Reel:", StringComparison.Ordinal));
+
+        Assert.True(selectedDocument.CommandService.TryRedo());
+        viewModel.NotifyContextChanged();
+        Assert.Single(selectedDocument.GetCabinetDocument().ReelSpecifications);
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Name" && row.GroupName.StartsWith("Reel:", StringComparison.Ordinal));
+
+        Assert.IsType<InspectorActionPropertyViewModel>(viewModel.InspectorPropertyRows.Single(row => row.DisplayName == "Delete" && row.GroupName.StartsWith("Reel:", StringComparison.Ordinal))).Command.Execute(null);
+        Assert.Empty(selectedDocument.GetCabinetDocument().ReelSpecifications);
+        Assert.DoesNotContain(viewModel.InspectorPropertyRows, row => row.DisplayName == "Delete" && row.GroupName.StartsWith("Reel:", StringComparison.Ordinal));
+    }
+
     [Fact]
     public void InspectorPropertyRows_SelectedFaceReelWithoutCabinet_ShowsExplanationAndRetainsStoredId()
     {
