@@ -1613,7 +1613,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
     private void AddPanelReelLampNumberRow(PanelElementModel reel, string displayName, ReelLampSlotPosition position)
     {
-        _propertyRows.Add(new InspectorIntPropertyViewModel(displayName, "Reel Lamps", GetReelLampNumber(reel.ReelLamps, position), commit: value => value < 0 ? "Lamp Number must be zero or greater." : TryApplyUpdate(reel.ObjectId, $"Update {displayName.ToLowerInvariant()}", new PanelElementModelUpdate { ReelLamps = SetReelLampNumber(reel.ReelLamps, position, value) })));
+        _propertyRows.Add(new InspectorIntPropertyViewModel(displayName, "Reel Lamps", GetReelLampNumber(reel.ReelLamps, position), commit: value => value < 0 ? "Lamp Number must be zero or greater." : TryApplyUpdate(reel.ObjectId, $"Update {displayName.ToLowerInvariant()}", new PanelElementModelUpdate { ReelLamps = new PanelElementOptionalValue<IReadOnlyList<ReelLampSlotModel>>(SetReelLampNumber(reel.ReelLamps, position, value)) })));
     }
 
     private void AddFaceReelLampRows(FaceReelDisplayElement reel)
