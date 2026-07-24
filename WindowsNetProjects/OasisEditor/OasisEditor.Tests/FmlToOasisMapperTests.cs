@@ -444,35 +444,79 @@ public sealed class FmlToOasisMapperTests
 public sealed class FmlReelLampImportTests
 {
     [Fact]
-    public void Map_WithReelThreeLamps_OwnsThreeLampSlots()
+    public void Map_WithCommonMfmeReelLampSlots_MapsSlots234ToTopMiddleBottom()
     {
-        var reel = new Reel { X = 1, Y = 2, Width = 30, Height = 90, SublampTable = [new LampSublampTableEntry(1, 10), new LampSublampTableEntry(2, 11), new LampSublampTableEntry(3, 12)] };
-        reel.UInt32s["Stops"] = 20;
+        var reel = CreateReel([new LampSublampTableEntry(2, 5), new LampSublampTableEntry(3, 4), new LampSublampTableEntry(4, 3)]);
+        reel.Booleans["LampsEnabled"] = true;
 
-        var element = Assert.Single(new FmlToOasisMapper().Map(new Layout([reel]), new Dictionary<FmlDecodedImageKey, string>()).Elements);
+        var result = new FmlToOasisMapper().Map(new Layout([reel]), new Dictionary<FmlDecodedImageKey, string>());
+        var element = Assert.Single(result.Elements);
 
         Assert.Equal(PanelElementKind.Reel, element.Kind);
-        Assert.Equal([10, 11, 12], element.ReelLamps.Select(lamp => lamp.LampNumber).ToArray());
-        Assert.DoesNotContain(element.ReelLamps, lamp => lamp.LampNumber is null);
+        Assert.True(element.ReelLampsEnabled);
+        Assert.Equal([5, 4, 3], element.ReelLamps.Select(lamp => lamp.LampNumber).ToArray());
+        Assert.Contains(result.Warnings, warning => warning.Message.Contains("MFME slots [2=5, 3=4, 4=3] -> Oasis [top=5, middle=4, bottom=3], enabled=true", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData(2, null, 4, 3)]
+    [InlineData(3, 5, null, 3)]
+    [InlineData(4, 5, 4, null)]
+    public void Map_WithMissingCommonMfmeSlot_KeepsOnlyThatOasisSlotUnassigned(int missingSlot, int? expectedTop, int? expectedMiddle, int? expectedBottom)
+    {
+        var entries = new[] { new LampSublampTableEntry(2, 5), new LampSublampTableEntry(3, 4), new LampSublampTableEntry(4, 3) }
+            .Where(entry => entry.SublampIndex != missingSlot)
+            .ToArray();
+        var element = Assert.Single(new FmlToOasisMapper().Map(new Layout([CreateReel(entries)]), new Dictionary<FmlDecodedImageKey, string>()).Elements);
+
+        Assert.Equal([expectedTop, expectedMiddle, expectedBottom], element.ReelLamps.Select(lamp => lamp.LampNumber).ToArray());
     }
 
     [Fact]
-    public void Map_WithReelMissingLampAssignments_KeepsEmptySlots()
+    public void Map_WithUndefinedCommonMfmeSlots_KeepsSlotsUnassigned()
     {
-        var reel = new Reel { X = 1, Y = 2, Width = 30, Height = 90, SublampTable = [new LampSublampTableEntry(1, -2), new LampSublampTableEntry(3, 33)] };
+        var element = Assert.Single(new FmlToOasisMapper().Map(new Layout([CreateReel([new LampSublampTableEntry(2, -2), new LampSublampTableEntry(3, -2), new LampSublampTableEntry(4, -2)])]), new Dictionary<FmlDecodedImageKey, string>()).Elements);
+
+        Assert.Equal(3, element.ReelLamps.Count);
+        Assert.All(element.ReelLamps, lamp => Assert.Null(lamp.LampNumber));
+    }
+
+    [Fact]
+    public void Map_WithExtraMfmeTraySlots_IgnoresExtrasWithoutShiftingCommonSlots()
+    {
+        // Oasis intentionally imports only the common three-lamp subset of MFME's larger 15-slot tray.
+        var reel = CreateReel(
+        [
+            new LampSublampTableEntry(1, 99),
+            new LampSublampTableEntry(2, 5),
+            new LampSublampTableEntry(3, 4),
+            new LampSublampTableEntry(4, 3),
+            new LampSublampTableEntry(5, 88),
+            new LampSublampTableEntry(6, 77),
+            new LampSublampTableEntry(11, 66)
+        ]);
 
         var element = Assert.Single(new FmlToOasisMapper().Map(new Layout([reel]), new Dictionary<FmlDecodedImageKey, string>()).Elements);
 
-        Assert.Equal(3, element.ReelLamps.Count);
-        Assert.Null(element.ReelLamps[0].LampNumber);
-        Assert.Null(element.ReelLamps[1].LampNumber);
-        Assert.Equal(33, element.ReelLamps[2].LampNumber);
+        Assert.Equal([5, 4, 3], element.ReelLamps.Select(lamp => lamp.LampNumber).ToArray());
+    }
+
+    [Fact]
+    public void Map_WithLampsEnabledFalse_PreservesAssignmentsButMarksDisabled()
+    {
+        var reel = CreateReel([new LampSublampTableEntry(2, 5), new LampSublampTableEntry(3, 4), new LampSublampTableEntry(4, 3)]);
+        reel.Booleans["LampsEnabled"] = false;
+
+        var element = Assert.Single(new FmlToOasisMapper().Map(new Layout([reel]), new Dictionary<FmlDecodedImageKey, string>()).Elements);
+
+        Assert.False(element.ReelLampsEnabled);
+        Assert.Equal([5, 4, 3], element.ReelLamps.Select(lamp => lamp.LampNumber).ToArray());
     }
 
     [Fact]
     public void Map_WithOpaqueReel_DecodesOpaqueFlag()
     {
-        var reel = new Reel { X = 1, Y = 2, Width = 30, Height = 90 };
+        var reel = CreateReel([]);
         reel.Booleans["OpaqueBand"] = true;
 
         var element = Assert.Single(new FmlToOasisMapper().Map(new Layout([reel]), new Dictionary<FmlDecodedImageKey, string>()).Elements);
@@ -483,12 +527,19 @@ public sealed class FmlReelLampImportTests
     [Fact]
     public void Map_WithNonOpaqueReel_DecodesOpaqueFlagFalse()
     {
-        var reel = new Reel { X = 1, Y = 2, Width = 30, Height = 90 };
+        var reel = CreateReel([]);
         reel.Booleans["OpaqueBand"] = false;
 
         var element = Assert.Single(new FmlToOasisMapper().Map(new Layout([reel]), new Dictionary<FmlDecodedImageKey, string>()).Elements);
 
         Assert.False(element.IsOpaqueReel);
         Assert.Null(element.ReelLampTransmissionMaskAssetPath);
+    }
+
+    private static Reel CreateReel(IReadOnlyList<LampSublampTableEntry> entries)
+    {
+        var reel = new Reel { X = 1, Y = 2, Width = 30, Height = 90, SublampTable = entries };
+        reel.UInt32s["Stops"] = 20;
+        return reel;
     }
 }

@@ -44,6 +44,7 @@ internal static class PanelElementModelCloner
             Stops = source.Stops,
             VisibleScale = source.VisibleScale,
             BandOffset = source.BandOffset,
+            ReelLampsEnabled = source.ReelLampsEnabled,
             ReelLamps = source.ReelLamps,
             IsOpaqueReel = source.IsOpaqueReel,
             ReelLampTransmissionMaskAssetPath = source.ReelLampTransmissionMaskAssetPath,

@@ -48,6 +48,10 @@ internal sealed class PanelElementModelUpdate
     public PanelElementOptionalValue<int?> Stops { get; init; }
     public PanelElementOptionalValue<double?> VisibleScale { get; init; }
     public PanelElementOptionalValue<double?> BandOffset { get; init; }
+    public PanelElementOptionalValue<bool> ReelLampsEnabled { get; init; }
+    public PanelElementOptionalValue<IReadOnlyList<ReelLampSlotModel>> ReelLamps { get; init; }
+    public PanelElementOptionalValue<bool> IsOpaqueReel { get; init; }
+    public PanelElementOptionalValue<string?> ReelLampTransmissionMaskAssetPath { get; init; }
     public PanelElementOptionalValue<bool> IsTransformLocked { get; init; }
     public PanelElementOptionalValue<bool> IsVisible { get; init; }
 }
@@ -87,6 +91,10 @@ internal static class PanelElementModelUpdater
             Stops = update.Stops.HasValue ? update.Stops.Value : source.Stops,
             VisibleScale = update.VisibleScale.HasValue ? update.VisibleScale.Value : source.VisibleScale,
             BandOffset = update.BandOffset.HasValue ? update.BandOffset.Value : source.BandOffset,
+            ReelLampsEnabled = update.ReelLampsEnabled.HasValue ? update.ReelLampsEnabled.Value : source.ReelLampsEnabled,
+            ReelLamps = update.ReelLamps.HasValue ? update.ReelLamps.Value : source.ReelLamps,
+            IsOpaqueReel = update.IsOpaqueReel.HasValue ? update.IsOpaqueReel.Value : source.IsOpaqueReel,
+            ReelLampTransmissionMaskAssetPath = update.ReelLampTransmissionMaskAssetPath.HasValue ? update.ReelLampTransmissionMaskAssetPath.Value : source.ReelLampTransmissionMaskAssetPath,
             IsTransformLocked = update.IsTransformLocked.HasValue ? update.IsTransformLocked.Value : source.IsTransformLocked,
             IsVisible = update.IsVisible.HasValue ? update.IsVisible.Value : source.IsVisible,
             SourceComponentIndex = source.SourceComponentIndex,

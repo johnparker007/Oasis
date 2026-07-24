@@ -122,23 +122,42 @@ internal sealed class FmlToOasisMapper
         var stops = UInt(c, "Stops") ?? (c as DiscReel)?.Stops ?? (c as FlipReel)?.Stops ?? 0;
         double? scale = stops > 0 ? ((Double(c, "Height") ?? c.Height) / 50d) / stops : null;
         if (stops == 0) warnings.Add(new LayoutImportWarning("fml.import.reel.stops.invalid", "Reel stops must be greater than zero to calculate visible scale.", index.ToString(CultureInfo.InvariantCulture)));
-        return new PanelElementModel { ObjectId = Guid.NewGuid().ToString("N"), Name = $"Reel {Number(c).GetValueOrDefault(c.Number) + 1}", Kind = PanelElementKind.Reel, X = c.X, Y = c.Y, Width = Math.Max(1, c.Width), Height = Math.Max(1, c.Height), DisplayNumber = Number(c).GetValueOrDefault(c.Number) + 1, AssetPath = FirstRoleImage(images, index, IsReelBand) ?? FirstImage(images, index), SecondaryAssetPath = FirstRoleImage(images, index, IsOverlay), Stops = (int)stops, IsReversed = Bool(c, "Reversed") ?? Bool(c, "Reverse") ?? false, VisibleScale = scale, ReelLamps = MapReelLamps(c), IsOpaqueReel = Bool(c, "OpaqueBand") ?? Bool(c, "Opaque") ?? false, SourceComponentIndex = index, ImportSource = Source(c, index) };
+        var lampsEnabled = Bool(c, "LampsEnabled") ?? true;
+        var reelLamps = MapReelLamps(c);
+        var reelName = $"Reel {Number(c).GetValueOrDefault(c.Number) + 1}";
+        warnings.Add(new LayoutImportWarning(
+            "fml.import.reel.lamps.common3",
+            $"Reel '{reelName}': {FormatMfmeCommonReelLampSlots(c)} -> Oasis [top={FormatLamp(reelLamps[0].LampNumber)}, middle={FormatLamp(reelLamps[1].LampNumber)}, bottom={FormatLamp(reelLamps[2].LampNumber)}], enabled={lampsEnabled.ToString().ToLowerInvariant()}",
+            index.ToString(CultureInfo.InvariantCulture)));
+        return new PanelElementModel { ObjectId = Guid.NewGuid().ToString("N"), Name = reelName, Kind = PanelElementKind.Reel, X = c.X, Y = c.Y, Width = Math.Max(1, c.Width), Height = Math.Max(1, c.Height), DisplayNumber = Number(c).GetValueOrDefault(c.Number) + 1, AssetPath = FirstRoleImage(images, index, IsReelBand) ?? FirstImage(images, index), SecondaryAssetPath = FirstRoleImage(images, index, IsOverlay), Stops = (int)stops, IsReversed = Bool(c, "Reversed") ?? Bool(c, "Reverse") ?? false, VisibleScale = scale, ReelLampsEnabled = lampsEnabled, ReelLamps = reelLamps, IsOpaqueReel = Bool(c, "OpaqueBand") ?? Bool(c, "Opaque") ?? false, SourceComponentIndex = index, ImportSource = Source(c, index) };
     }
 
     private static IReadOnlyList<ReelLampSlotModel> MapReelLamps(BaseComponent c)
     {
+        // Oasis currently imports only the common three-lamp subset of MFME's larger 3-column by 5-row reel-lamp tray.
+        // Confirmed common mechanical reels use MFME left-column tray slots 2, 3 and 4 for top, middle and bottom.
         var bySlot = GetSublamps(c)
-            .Where(entry => entry.SublampIndex is >= 1 and <= 3)
+            .Where(entry => entry.SublampIndex is >= 2 and <= 4)
             .GroupBy(entry => entry.SublampIndex)
             .ToDictionary(group => group.Key, group => NormalizeLampNumber(group.OrderBy(entry => entry.SublampNumber).First().SublampNumber));
 
         return
         [
-            new ReelLampSlotModel { Position = ReelLampSlotPosition.Top, LampNumber = bySlot.GetValueOrDefault(1), LocalVerticalCenter = 1d / 6d, Radius = 0.42d, Intensity = 1d },
-            new ReelLampSlotModel { Position = ReelLampSlotPosition.Middle, LampNumber = bySlot.GetValueOrDefault(2), LocalVerticalCenter = 0.5d, Radius = 0.42d, Intensity = 1d },
-            new ReelLampSlotModel { Position = ReelLampSlotPosition.Bottom, LampNumber = bySlot.GetValueOrDefault(3), LocalVerticalCenter = 5d / 6d, Radius = 0.42d, Intensity = 1d }
+            new ReelLampSlotModel { Position = ReelLampSlotPosition.Top, LampNumber = bySlot.GetValueOrDefault(2), LocalVerticalCenter = 1d / 6d, Radius = 0.42d, Intensity = 1d },
+            new ReelLampSlotModel { Position = ReelLampSlotPosition.Middle, LampNumber = bySlot.GetValueOrDefault(3), LocalVerticalCenter = 0.5d, Radius = 0.42d, Intensity = 1d },
+            new ReelLampSlotModel { Position = ReelLampSlotPosition.Bottom, LampNumber = bySlot.GetValueOrDefault(4), LocalVerticalCenter = 5d / 6d, Radius = 0.42d, Intensity = 1d }
         ];
     }
+
+    private static string FormatMfmeCommonReelLampSlots(BaseComponent c)
+    {
+        var bySlot = GetSublamps(c).GroupBy(entry => entry.SublampIndex).ToDictionary(group => group.Key, group => group.OrderBy(entry => entry.SublampNumber).First().SublampNumber);
+        return $"MFME slots [2={FormatLamp(ResolveCommonSlot(bySlot, 2))}, 3={FormatLamp(ResolveCommonSlot(bySlot, 3))}, 4={FormatLamp(ResolveCommonSlot(bySlot, 4))}]";
+    }
+
+    private static int? ResolveCommonSlot(IReadOnlyDictionary<int, int> bySlot, int slot) => bySlot.TryGetValue(slot, out var lampNumber) ? NormalizeLampNumber(lampNumber) : null;
+
+    private static string FormatLamp(int? lampNumber) => lampNumber?.ToString(CultureInfo.InvariantCulture) ?? "blank";
 
     private static int? NormalizeLampNumber(int lampNumber) => lampNumber >= 0 && lampNumber != UndefinedSublampNumber ? lampNumber : null;
 

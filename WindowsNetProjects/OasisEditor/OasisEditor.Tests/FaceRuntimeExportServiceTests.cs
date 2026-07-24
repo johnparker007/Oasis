@@ -899,6 +899,24 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         Assert.Equal(-1, Assert.Single(Assert.Single(manifest.Reels).ReelLamps).LampId);
     }
 
+
+    [Fact]
+    public void CreateManifest_ReelLamps_ExportsEnabledFlagAndCommonLampIds()
+    {
+        var document = CreateReelDocumentWithLamps(
+        [
+            new ReelLampSlotModel { Position = ReelLampSlotPosition.Top, LampNumber = 5, LocalVerticalCenter = 1d / 6d, Radius = 0.42d, Intensity = 1d },
+            new ReelLampSlotModel { Position = ReelLampSlotPosition.Middle, LampNumber = 4, LocalVerticalCenter = 0.5d, Radius = 0.42d, Intensity = 1d },
+            new ReelLampSlotModel { Position = ReelLampSlotPosition.Bottom, LampNumber = 3, LocalVerticalCenter = 5d / 6d, Radius = 0.42d, Intensity = 1d }
+        ], reelLampsEnabled: false);
+
+        var manifest = new FaceRuntimeExportService().CreateManifest(document, 100, 100, CreateCabinetContext(CreateCabinet(new CabinetReelSpecification("standard", "Standard", 210, 50))));
+
+        var reel = Assert.Single(manifest.Reels);
+        Assert.False(reel.ReelLampsEnabled);
+        Assert.Equal([5, 4, 3], reel.ReelLamps.Select(lamp => lamp.LampId).ToArray());
+    }
+
     private EditorProject CreateProject()
     {
         return new EditorProject
@@ -1002,12 +1020,12 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         };
     }
 
-    private static FaceDocumentModel CreateReelDocumentWithLamps(IReadOnlyList<ReelLampSlotModel> lamps)
+    private static FaceDocumentModel CreateReelDocumentWithLamps(IReadOnlyList<ReelLampSlotModel> lamps, bool reelLampsEnabled = true)
     {
         return new FaceDocumentModel
         {
             Id = "face-runtime", Title = "Runtime Face", AssignedCabinetAssetPath = "Assets/Cabinets/cabinet.asset", SourceRegion = new FaceSourceRegionModel { X = 0, Y = 0, Width = 1000, Height = 1000 },
-            Elements = [new FaceReelDisplayElement { ObjectId = "reel-1", Name = "Reel 1", ReelSpecificationId = "standard", X = 10, Y = 20, Width = 300, Height = 400, Stops = 20, LinkedMachineObjectReference = MachineObjectReference.Reel(1), ReelLamps = lamps }]
+            Elements = [new FaceReelDisplayElement { ObjectId = "reel-1", Name = "Reel 1", ReelSpecificationId = "standard", X = 10, Y = 20, Width = 300, Height = 400, Stops = 20, LinkedMachineObjectReference = MachineObjectReference.Reel(1), ReelLampsEnabled = reelLampsEnabled, ReelLamps = lamps }]
         };
     }
 

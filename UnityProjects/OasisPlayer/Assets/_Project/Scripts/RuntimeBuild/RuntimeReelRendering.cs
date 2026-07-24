@@ -150,6 +150,7 @@ namespace OasisPlayer.RuntimeBuild
 
         private void Configure(FaceRuntimeReelManifestEntry reel)
         {
+            var lampsEnabled = reel == null || reel.reelLampsEnabled;
             var lamps = reel != null && reel.reelLamps != null ? reel.reelLamps : Array.Empty<FaceRuntimeReelLampManifestEntry>();
             for (var i = 0; i < _lampIds.Length; i++) _lampIds[i] = -1;
             var verticalCenters = new Vector4(1f / 6f, 0.5f, 5f / 6f, 0f);
@@ -159,7 +160,7 @@ namespace OasisPlayer.RuntimeBuild
             {
                 var lamp = lamps[i];
                 // RuntimeLampState is one-based (1..255), so both the -1 unassigned sentinel and manifest value 0 stay off.
-                _lampIds[i] = lamp != null && lamp.lampId > 0 ? lamp.lampId : -1;
+                _lampIds[i] = lampsEnabled && lamp != null && lamp.lampId > 0 ? lamp.lampId : -1;
                 if (i == 0) { verticalCenters.x = lamp.localVerticalCenter; radii.x = lamp.radius; intensities.x = lamp.intensity; }
                 else if (i == 1) { verticalCenters.y = lamp.localVerticalCenter; radii.y = lamp.radius; intensities.y = lamp.intensity; }
                 else { verticalCenters.z = lamp.localVerticalCenter; radii.z = lamp.radius; intensities.z = lamp.intensity; }
@@ -260,9 +261,31 @@ namespace OasisPlayer.RuntimeBuild
                     renderer.sharedMaterial = material;
                     var binding = new RuntimeReelRenderBinding(go, material, renderer, reel);
                     binding.ApplyLampState(machine.LampState);
+                    machine.AddWarning($"Reel lamp binding: reel={DisplayReelName(reel)}, enabled={reel.reelLampsEnabled.ToString().ToLowerInvariant()}, ids=[{FormatReelLampIds(reel)}], assigned={CountAssignedReelLamps(reel)}");
                     face.AddReelRenderBinding(binding);
                 }
             }
+        }
+
+        private static string DisplayReelName(FaceRuntimeReelManifestEntry reel)
+        {
+            return reel == null || string.IsNullOrWhiteSpace(reel.name) ? reel != null ? reel.objectId : string.Empty : reel.name;
+        }
+
+        private static string FormatReelLampIds(FaceRuntimeReelManifestEntry reel)
+        {
+            var lamps = reel != null && reel.reelLamps != null ? reel.reelLamps : Array.Empty<FaceRuntimeReelLampManifestEntry>();
+            var ids = new string[3];
+            for (var i = 0; i < ids.Length; i++) ids[i] = i < lamps.Length ? lamps[i].lampId.ToString() : "-1";
+            return string.Join(",", ids);
+        }
+
+        private static int CountAssignedReelLamps(FaceRuntimeReelManifestEntry reel)
+        {
+            var lamps = reel != null && reel.reelLamps != null ? reel.reelLamps : Array.Empty<FaceRuntimeReelLampManifestEntry>();
+            var count = 0;
+            for (var i = 0; i < lamps.Length && i < 3; i++) if (lamps[i].lampId > 0) count++;
+            return count;
         }
 
         public static Material CreateMaterial(RuntimeMachine machine, FaceRuntimeReelManifestEntry reel)

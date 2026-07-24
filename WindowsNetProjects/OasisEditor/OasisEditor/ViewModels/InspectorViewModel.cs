@@ -1252,6 +1252,8 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                 selectedElement.BandOffset ?? 0d,
                 commit: value => TryApplyBandOffsetUpdate(selectedElement.ObjectId, value),
                 format: "G17"));
+
+            AddPanelReelLampRows(selectedElement);
         }
 
         if (selectedElement.Kind is PanelElementKind.Reel or PanelElementKind.Alpha)
@@ -1570,6 +1572,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         if (selectedElement is FaceReelDisplayElement reelDisplay)
         {
             AddFaceReelSpecificationRows(selectedDocument, reelDisplay);
+            AddFaceReelLampRows(reelDisplay);
         }
 
         if (selectedElement is FaceArtworkElement artwork)
@@ -1595,6 +1598,62 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(InspectorPropertyRows));
     }
 
+
+
+    private void AddPanelReelLampRows(PanelElementModel reel)
+    {
+        const string group = "Reel Lamps";
+        _propertyRows.Add(new InspectorBoolPropertyViewModel("Lamps Enabled", group, reel.ReelLampsEnabled, commit: value => TryApplyUpdate(reel.ObjectId, "Update reel lamps enabled", new PanelElementModelUpdate { ReelLampsEnabled = value })));
+        AddPanelReelLampNumberRow(reel, "Top Lamp Number", ReelLampSlotPosition.Top);
+        AddPanelReelLampNumberRow(reel, "Middle Lamp Number", ReelLampSlotPosition.Middle);
+        AddPanelReelLampNumberRow(reel, "Bottom Lamp Number", ReelLampSlotPosition.Bottom);
+        _propertyRows.Add(new InspectorBoolPropertyViewModel("Opaque Band/Reel", group, reel.IsOpaqueReel, commit: value => TryApplyUpdate(reel.ObjectId, "Update opaque reel", new PanelElementModelUpdate { IsOpaqueReel = value })));
+        _propertyRows.Add(new InspectorInfoPropertyViewModel("Transmission Mask", group, string.IsNullOrWhiteSpace(reel.ReelLampTransmissionMaskAssetPath) ? "Not generated" : reel.ReelLampTransmissionMaskAssetPath));
+    }
+
+    private void AddPanelReelLampNumberRow(PanelElementModel reel, string displayName, ReelLampSlotPosition position)
+    {
+        _propertyRows.Add(new InspectorIntPropertyViewModel(displayName, "Reel Lamps", GetReelLampNumber(reel.ReelLamps, position), commit: value => value < 0 ? "Lamp Number must be zero or greater." : TryApplyUpdate(reel.ObjectId, $"Update {displayName.ToLowerInvariant()}", new PanelElementModelUpdate { ReelLamps = SetReelLampNumber(reel.ReelLamps, position, value) })));
+    }
+
+    private void AddFaceReelLampRows(FaceReelDisplayElement reel)
+    {
+        const string group = "Reel Lamps";
+        _propertyRows.Add(new InspectorBoolPropertyViewModel("Lamps Enabled", group, reel.ReelLampsEnabled, commit: value => TryApplyFaceUpdate(reel.ObjectId, "Update reel lamps enabled", new FaceElementModelUpdate { ReelLampsEnabled = value })));
+        AddFaceReelLampNumberRow(reel, "Top Lamp Number", ReelLampSlotPosition.Top);
+        AddFaceReelLampNumberRow(reel, "Middle Lamp Number", ReelLampSlotPosition.Middle);
+        AddFaceReelLampNumberRow(reel, "Bottom Lamp Number", ReelLampSlotPosition.Bottom);
+        _propertyRows.Add(new InspectorBoolPropertyViewModel("Opaque Reel", group, reel.IsOpaqueReel, commit: value => TryApplyFaceUpdate(reel.ObjectId, "Update opaque reel", new FaceElementModelUpdate { IsOpaqueReel = value })));
+        _propertyRows.Add(new InspectorInfoPropertyViewModel("Transmission Mask", group, string.IsNullOrWhiteSpace(reel.ReelLampTransmissionMaskAssetPath) ? "Not generated" : reel.ReelLampTransmissionMaskAssetPath));
+    }
+
+    private void AddFaceReelLampNumberRow(FaceReelDisplayElement reel, string displayName, ReelLampSlotPosition position)
+    {
+        _propertyRows.Add(new InspectorIntPropertyViewModel(displayName, "Reel Lamps", GetReelLampNumber(reel.ReelLamps, position), commit: value => value < 0 ? "Lamp Number must be zero or greater." : TryApplyFaceUpdate(reel.ObjectId, $"Update {displayName.ToLowerInvariant()}", new FaceElementModelUpdate { ReelLamps = SetReelLampNumber(reel.ReelLamps, position, value) })));
+    }
+
+    private static int? GetReelLampNumber(IReadOnlyList<ReelLampSlotModel> lamps, ReelLampSlotPosition position)
+    {
+        return EnsureCommonReelLampSlots(lamps).First(lamp => lamp.Position == position).LampNumber;
+    }
+
+    private static IReadOnlyList<ReelLampSlotModel> SetReelLampNumber(IReadOnlyList<ReelLampSlotModel> lamps, ReelLampSlotPosition position, int? lampNumber)
+    {
+        return EnsureCommonReelLampSlots(lamps)
+            .Select(lamp => lamp.Position == position ? new ReelLampSlotModel { Position = lamp.Position, LampNumber = lampNumber, LocalVerticalCenter = lamp.LocalVerticalCenter, Radius = lamp.Radius, Intensity = lamp.Intensity } : lamp)
+            .ToArray();
+    }
+
+    private static IReadOnlyList<ReelLampSlotModel> EnsureCommonReelLampSlots(IReadOnlyList<ReelLampSlotModel>? lamps)
+    {
+        var source = lamps ?? [];
+        return
+        [
+            source.FirstOrDefault(lamp => lamp.Position == ReelLampSlotPosition.Top) ?? new ReelLampSlotModel { Position = ReelLampSlotPosition.Top, LocalVerticalCenter = 1d / 6d, Radius = 0.42d, Intensity = 1d },
+            source.FirstOrDefault(lamp => lamp.Position == ReelLampSlotPosition.Middle) ?? new ReelLampSlotModel { Position = ReelLampSlotPosition.Middle, LocalVerticalCenter = 0.5d, Radius = 0.42d, Intensity = 1d },
+            source.FirstOrDefault(lamp => lamp.Position == ReelLampSlotPosition.Bottom) ?? new ReelLampSlotModel { Position = ReelLampSlotPosition.Bottom, LocalVerticalCenter = 5d / 6d, Radius = 0.42d, Intensity = 1d }
+        ];
+    }
 
     private void AddFaceReelSpecificationRows(DocumentTabViewModel selectedDocument, FaceReelDisplayElement reelDisplay)
     {
@@ -1721,6 +1780,21 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                 case "Band Offset" when row is InspectorDoublePropertyViewModel bandOffsetRow:
                     bandOffsetRow.SetCommittedValue(selectedElement.BandOffset ?? 0d);
                     break;
+                case "Lamps Enabled" when row is InspectorBoolPropertyViewModel panelReelLampsEnabledRow:
+                    panelReelLampsEnabledRow.SetCommittedValue(selectedElement.ReelLampsEnabled);
+                    break;
+                case "Top Lamp Number" when row is InspectorIntPropertyViewModel panelTopLampRow:
+                    panelTopLampRow.SetCommittedValue(GetReelLampNumber(selectedElement.ReelLamps, ReelLampSlotPosition.Top));
+                    break;
+                case "Middle Lamp Number" when row is InspectorIntPropertyViewModel panelMiddleLampRow:
+                    panelMiddleLampRow.SetCommittedValue(GetReelLampNumber(selectedElement.ReelLamps, ReelLampSlotPosition.Middle));
+                    break;
+                case "Bottom Lamp Number" when row is InspectorIntPropertyViewModel panelBottomLampRow:
+                    panelBottomLampRow.SetCommittedValue(GetReelLampNumber(selectedElement.ReelLamps, ReelLampSlotPosition.Bottom));
+                    break;
+                case "Opaque Band/Reel" when row is InspectorBoolPropertyViewModel panelOpaqueReelRow:
+                    panelOpaqueReelRow.SetCommittedValue(selectedElement.IsOpaqueReel);
+                    break;
                 case "Import Format" when row is InspectorInfoPropertyViewModel importFormatRow:
                     importFormatRow.SetCommittedValue(selectedElement.ImportSource?.Format ?? string.Empty);
                     break;
@@ -1766,6 +1840,21 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                     break;
                 case "Reel Specification" when row is InspectorChoicePropertyViewModel specificationRow && selectedElement is FaceReelDisplayElement reelDisplay:
                     specificationRow.SetCommittedValue(reelDisplay.ReelSpecificationId ?? "(Unresolved)");
+                    break;
+                case "Lamps Enabled" when row is InspectorBoolPropertyViewModel faceReelLampsEnabledRow && selectedElement is FaceReelDisplayElement faceReel:
+                    faceReelLampsEnabledRow.SetCommittedValue(faceReel.ReelLampsEnabled);
+                    break;
+                case "Top Lamp Number" when row is InspectorIntPropertyViewModel faceTopLampRow && selectedElement is FaceReelDisplayElement faceTopReel:
+                    faceTopLampRow.SetCommittedValue(GetReelLampNumber(faceTopReel.ReelLamps, ReelLampSlotPosition.Top));
+                    break;
+                case "Middle Lamp Number" when row is InspectorIntPropertyViewModel faceMiddleLampRow && selectedElement is FaceReelDisplayElement faceMiddleReel:
+                    faceMiddleLampRow.SetCommittedValue(GetReelLampNumber(faceMiddleReel.ReelLamps, ReelLampSlotPosition.Middle));
+                    break;
+                case "Bottom Lamp Number" when row is InspectorIntPropertyViewModel faceBottomLampRow && selectedElement is FaceReelDisplayElement faceBottomReel:
+                    faceBottomLampRow.SetCommittedValue(GetReelLampNumber(faceBottomReel.ReelLamps, ReelLampSlotPosition.Bottom));
+                    break;
+                case "Opaque Reel" when row is InspectorBoolPropertyViewModel faceOpaqueReelRow && selectedElement is FaceReelDisplayElement faceOpaqueReel:
+                    faceOpaqueReelRow.SetCommittedValue(faceOpaqueReel.IsOpaqueReel);
                     break;
             }
         }

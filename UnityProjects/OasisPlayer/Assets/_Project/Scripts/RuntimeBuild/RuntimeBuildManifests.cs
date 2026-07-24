@@ -123,6 +123,7 @@ namespace OasisPlayer.RuntimeBuild
         public float physicalWidth;
         public float physicalRadius;
         public string transmissionMask = string.Empty;
+        public bool reelLampsEnabled = true;
         public FaceRuntimeReelLampManifestEntry[] reelLamps = Array.Empty<FaceRuntimeReelLampManifestEntry>();
 
         [NonSerialized]

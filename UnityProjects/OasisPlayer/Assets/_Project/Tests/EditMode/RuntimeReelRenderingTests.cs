@@ -105,6 +105,42 @@ public sealed class RuntimeReelRenderingTests
         }
     }
 
+
+    [Test]
+    public void DisabledReelLampsKeepAssignmentsButBrightnessStaysOff()
+    {
+        var reel = Reel();
+        reel.reelLampsEnabled = false;
+        reel.reelLamps = new[]
+        {
+            new FaceRuntimeReelLampManifestEntry { lampId = 5, localVerticalCenter = 0.2f, radius = 0.4f, intensity = 1f },
+            new FaceRuntimeReelLampManifestEntry { lampId = 4, localVerticalCenter = 0.5f, radius = 0.4f, intensity = 1f },
+            new FaceRuntimeReelLampManifestEntry { lampId = 3, localVerticalCenter = 0.8f, radius = 0.4f, intensity = 1f }
+        };
+        var go = new GameObject("reel");
+        var renderer = go.AddComponent<MeshRenderer>();
+        var material = new Material(Shader.Find("Oasis/ReelLamp"));
+        try
+        {
+            var binding = new RuntimeReelRenderBinding(go, material, renderer, reel);
+            var lampState = new RuntimeLampState();
+            lampState.SetBrightness(5, 1f);
+            lampState.SetBrightness(4, 1f);
+            lampState.SetBrightness(3, 1f);
+            Assert.IsFalse(binding.ApplyLampState(lampState));
+            var block = new MaterialPropertyBlock();
+            renderer.GetPropertyBlock(block);
+            Assert.AreEqual(Vector4.zero, block.GetVector(RuntimeFaceShaderProperties.ReelLampBrightness));
+            binding.Dispose();
+        }
+        finally
+        {
+            if (go != null) Object.DestroyImmediate(go);
+            if (material != null) Object.DestroyImmediate(material);
+            reel.BandTexture.Unload();
+        }
+    }
+
     [Test]
     public void LampBrightnessUpdate_DoesNotRecreateMaterial()
     {

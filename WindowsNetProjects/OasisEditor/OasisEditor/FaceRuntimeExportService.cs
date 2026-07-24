@@ -415,6 +415,7 @@ public sealed class FaceRuntimeExportService
             Stops = element.Stops.GetValueOrDefault(0),
             IsReversed = element.IsReversed,
             BandOffset = element.BandOffset.GetValueOrDefault(0d),
+            ReelLampsEnabled = element.ReelLampsEnabled,
             ReelLamps = element.ReelLamps.Select(CreateReelLampManifestEntry).ToArray(),
             TransmissionMask = element.IsOpaqueReel ? ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine(ReelBandDirectoryName, CreateReelTransmissionMaskFileName(element))) : null,
             PhysicalWidth = dimensions.WidthMm,
@@ -722,6 +723,7 @@ public sealed class FaceRuntimeReelManifestEntry : FaceRuntimeElementManifestEnt
     public double PhysicalWidth { get; init; }
     public double PhysicalRadius { get; init; }
     public string? TransmissionMask { get; init; }
+    public bool ReelLampsEnabled { get; init; } = true;
     public IReadOnlyList<FaceRuntimeReelLampManifestEntry> ReelLamps { get; init; } = [];
 }
 
