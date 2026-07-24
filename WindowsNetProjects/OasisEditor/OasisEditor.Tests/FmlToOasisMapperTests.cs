@@ -455,7 +455,7 @@ public sealed class FmlReelLampImportTests
         Assert.Equal(PanelElementKind.Reel, element.Kind);
         Assert.True(element.ReelLampsEnabled);
         Assert.Equal([5, 4, 3], element.ReelLamps.Select(lamp => lamp.LampNumber).ToArray());
-        Assert.Contains(result.Warnings, warning => warning.Message.Contains("MFME slots [2=5, 3=4, 4=3] -> Oasis [top=5, middle=4, bottom=3], enabled=true", StringComparison.Ordinal));
+        Assert.DoesNotContain(result.Warnings, warning => warning.Code == "fml.import.reel.lamps.common3");
     }
 
     [Theory]
@@ -475,10 +475,12 @@ public sealed class FmlReelLampImportTests
     [Fact]
     public void Map_WithUndefinedCommonMfmeSlots_KeepsSlotsUnassigned()
     {
-        var element = Assert.Single(new FmlToOasisMapper().Map(new Layout([CreateReel([new LampSublampTableEntry(2, -2), new LampSublampTableEntry(3, -2), new LampSublampTableEntry(4, -2)])]), new Dictionary<FmlDecodedImageKey, string>()).Elements);
+        var result = new FmlToOasisMapper().Map(new Layout([CreateReel([new LampSublampTableEntry(2, -2), new LampSublampTableEntry(3, -2), new LampSublampTableEntry(4, -2)])]), new Dictionary<FmlDecodedImageKey, string>());
+        var element = Assert.Single(result.Elements);
 
         Assert.Equal(3, element.ReelLamps.Count);
         Assert.All(element.ReelLamps, lamp => Assert.Null(lamp.LampNumber));
+        Assert.Contains(result.Warnings, warning => warning.Code == "fml.import.reel.lamps.common3.undefined");
     }
 
     [Fact]
@@ -496,9 +498,23 @@ public sealed class FmlReelLampImportTests
             new LampSublampTableEntry(11, 66)
         ]);
 
-        var element = Assert.Single(new FmlToOasisMapper().Map(new Layout([reel]), new Dictionary<FmlDecodedImageKey, string>()).Elements);
+        var result = new FmlToOasisMapper().Map(new Layout([reel]), new Dictionary<FmlDecodedImageKey, string>());
+        var element = Assert.Single(result.Elements);
 
         Assert.Equal([5, 4, 3], element.ReelLamps.Select(lamp => lamp.LampNumber).ToArray());
+        Assert.Contains(result.Warnings, warning => warning.Code == "fml.import.reel.lamps.extraIgnored");
+    }
+
+
+    [Fact]
+    public void Map_WithLampsEnabledAndNoCommonSlots_WarnsClearly()
+    {
+        var reel = CreateReel([]);
+        reel.Booleans["LampsEnabled"] = true;
+
+        var result = new FmlToOasisMapper().Map(new Layout([reel]), new Dictionary<FmlDecodedImageKey, string>());
+
+        Assert.Contains(result.Warnings, warning => warning.Code == "fml.import.reel.lamps.common3.missing");
     }
 
     [Fact]

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using MfmeFmlDecoder.src.Model;
 using MfmeFmlDecoder.src.Model.Component;
@@ -125,10 +126,8 @@ internal sealed class FmlToOasisMapper
         var lampsEnabled = Bool(c, "LampsEnabled") ?? true;
         var reelLamps = MapReelLamps(c);
         var reelName = $"Reel {Number(c).GetValueOrDefault(c.Number) + 1}";
-        warnings.Add(new LayoutImportWarning(
-            "fml.import.reel.lamps.common3",
-            $"Reel '{reelName}': {FormatMfmeCommonReelLampSlots(c)} -> Oasis [top={FormatLamp(reelLamps[0].LampNumber)}, middle={FormatLamp(reelLamps[1].LampNumber)}, bottom={FormatLamp(reelLamps[2].LampNumber)}], enabled={lampsEnabled.ToString().ToLowerInvariant()}",
-            index.ToString(CultureInfo.InvariantCulture)));
+        Debug.WriteLine($"Reel '{reelName}': {FormatMfmeCommonReelLampSlots(c)} -> Oasis [top={FormatLamp(reelLamps[0].LampNumber)}, middle={FormatLamp(reelLamps[1].LampNumber)}, bottom={FormatLamp(reelLamps[2].LampNumber)}], enabled={lampsEnabled.ToString().ToLowerInvariant()}");
+        AddReelLampImportWarnings(c, reelName, reelLamps, lampsEnabled, index, warnings);
         return new PanelElementModel { ObjectId = Guid.NewGuid().ToString("N"), Name = reelName, Kind = PanelElementKind.Reel, X = c.X, Y = c.Y, Width = Math.Max(1, c.Width), Height = Math.Max(1, c.Height), DisplayNumber = Number(c).GetValueOrDefault(c.Number) + 1, AssetPath = FirstRoleImage(images, index, IsReelBand) ?? FirstImage(images, index), SecondaryAssetPath = FirstRoleImage(images, index, IsOverlay), Stops = (int)stops, IsReversed = Bool(c, "Reversed") ?? Bool(c, "Reverse") ?? false, VisibleScale = scale, ReelLampsEnabled = lampsEnabled, ReelLamps = reelLamps, IsOpaqueReel = Bool(c, "OpaqueBand") ?? Bool(c, "Opaque") ?? false, SourceComponentIndex = index, ImportSource = Source(c, index) };
     }
 
@@ -147,6 +146,28 @@ internal sealed class FmlToOasisMapper
             new ReelLampSlotModel { Position = ReelLampSlotPosition.Middle, LampNumber = bySlot.GetValueOrDefault(3), LocalVerticalCenter = 0.5d, Radius = 0.42d, Intensity = 1d },
             new ReelLampSlotModel { Position = ReelLampSlotPosition.Bottom, LampNumber = bySlot.GetValueOrDefault(4), LocalVerticalCenter = 5d / 6d, Radius = 0.42d, Intensity = 1d }
         ];
+    }
+
+
+    private static void AddReelLampImportWarnings(BaseComponent c, string reelName, IReadOnlyList<ReelLampSlotModel> reelLamps, bool lampsEnabled, int index, ICollection<LayoutImportWarning> warnings)
+    {
+        var sublamps = GetSublamps(c).ToArray();
+        if (lampsEnabled && reelLamps.All(lamp => lamp.LampNumber is null))
+        {
+            warnings.Add(new LayoutImportWarning("fml.import.reel.lamps.common3.missing", $"Reel '{reelName}' has LampsEnabled=true but none of MFME slots 2, 3 or 4 contain assigned lamp numbers.", index.ToString(CultureInfo.InvariantCulture)));
+        }
+
+        var undefinedCommonSlots = sublamps.Where(entry => entry.SublampIndex is >= 2 and <= 4 && entry.SublampNumber == UndefinedSublampNumber).Select(entry => entry.SublampIndex).Distinct().OrderBy(slot => slot).ToArray();
+        if (undefinedCommonSlots.Length > 0)
+        {
+            warnings.Add(new LayoutImportWarning("fml.import.reel.lamps.common3.undefined", $"Reel '{reelName}' has undefined MFME reel-lamp values in common slots [{string.Join(",", undefinedCommonSlots)}].", index.ToString(CultureInfo.InvariantCulture)));
+        }
+
+        var ignoredSlots = sublamps.Where(entry => entry.SublampIndex is < 2 or > 4 && NormalizeLampNumber(entry.SublampNumber) is not null).Select(entry => entry.SublampIndex).Distinct().OrderBy(slot => slot).ToArray();
+        if (ignoredSlots.Length > 0)
+        {
+            warnings.Add(new LayoutImportWarning("fml.import.reel.lamps.extraIgnored", $"Reel '{reelName}' has MFME reel-lamp tray slots outside the supported common slots 2, 3 and 4; ignored slots [{string.Join(",", ignoredSlots)}].", index.ToString(CultureInfo.InvariantCulture)));
+        }
     }
 
     private static string FormatMfmeCommonReelLampSlots(BaseComponent c)

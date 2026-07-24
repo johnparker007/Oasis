@@ -150,48 +150,6 @@ internal sealed class ImportPanelElementsCommand : IDocumentCommand, IExecutionT
 
     private static PanelElementModel CloneElement(PanelElementModel source, string? objectId = null)
     {
-        return new PanelElementModel
-        {
-            ObjectId = objectId ?? source.ObjectId,
-            Name = source.Name,
-            Kind = source.Kind,
-            X = source.X,
-            Y = source.Y,
-            Width = source.Width,
-            Height = source.Height,
-            AssetPath = source.AssetPath,
-            SecondaryAssetPath = source.SecondaryAssetPath,
-            DisplayNumber = source.DisplayNumber,
-            LampNumber = source.LampNumber,
-            SegmentDisplayType = source.SegmentDisplayType,
-            ShowDecimalPoint = source.ShowDecimalPoint,
-            ShowCommaTail = source.ShowCommaTail,
-            HasBorder = source.HasBorder,
-            OnColorHex = source.OnColorHex,
-            OffColorHex = source.OffColorHex,
-            TextColorHex = source.TextColorHex,
-            DisplayText = source.DisplayText,
-            TextBoxFontName = source.TextBoxFontName,
-            TextBoxFontStyle = source.TextBoxFontStyle,
-            TextBoxFontSize = source.TextBoxFontSize,
-            IsReversed = source.IsReversed,
-            Stops = source.Stops,
-            VisibleScale = source.VisibleScale,
-            BandOffset = source.BandOffset,
-            IsTransformLocked = source.IsTransformLocked,
-            IsVisible = source.IsVisible,
-            SourceComponentIndex = source.SourceComponentIndex,
-            SourceElementIndex = source.SourceElementIndex,
-            SharedSourceSetId = source.SharedSourceSetId,
-            SharedSourceSetCount = source.SharedSourceSetCount,
-            SourceBlend = source.SourceBlend,
-            ImportSource = source.ImportSource is null
-                ? null
-                : new PanelElementImportSourceModel
-                {
-                    Format = source.ImportSource.Format,
-                    Reference = source.ImportSource.Reference
-                }
-        };
+        return PanelElementModelCloner.Clone(source, objectId: objectId);
     }
 }
