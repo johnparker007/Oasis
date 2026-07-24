@@ -181,6 +181,9 @@ public sealed class FaceReelDisplayElement : FaceElementModel
     public double? VisibleScale { get; init; }
     public double? BandOffset { get; init; }
     public bool IsReversed { get; init; }
+    public IReadOnlyList<ReelLampSlotModel> ReelLamps { get; init; } = [];
+    public bool IsOpaqueReel { get; init; }
+    public string? ReelLampTransmissionMaskAssetPath { get; init; }
 }
 
 public sealed class FaceSevenSegmentDisplayElement : FaceElementModel

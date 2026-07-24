@@ -60,6 +60,9 @@ internal sealed class PanelElementModel
     public int? Stops { get; init; }
     public double? VisibleScale { get; init; }
     public double? BandOffset { get; init; }
+    public IReadOnlyList<ReelLampSlotModel> ReelLamps { get; init; } = [];
+    public bool IsOpaqueReel { get; init; }
+    public string? ReelLampTransmissionMaskAssetPath { get; init; }
     public bool IsTransformLocked { get; init; }
     public bool IsVisible { get; init; } = true;
     public int? SourceComponentIndex { get; init; }
@@ -68,6 +71,23 @@ internal sealed class PanelElementModel
     public int? SharedSourceSetCount { get; init; }
     public bool SourceBlend { get; init; }
     public PanelElementImportSourceModel? ImportSource { get; init; }
+}
+
+
+public enum ReelLampSlotPosition
+{
+    Top,
+    Middle,
+    Bottom
+}
+
+public sealed class ReelLampSlotModel
+{
+    public ReelLampSlotPosition Position { get; init; }
+    public int? LampNumber { get; init; }
+    public double LocalVerticalCenter { get; init; }
+    public double Radius { get; init; }
+    public double Intensity { get; init; }
 }
 
 internal sealed class PanelElementImportSourceModel

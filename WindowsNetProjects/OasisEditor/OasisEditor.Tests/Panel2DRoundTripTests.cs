@@ -213,7 +213,7 @@ public sealed class Panel2DRoundTripTests
     }
 
     [Fact]
-    public void Serialize_WithNativeElementMetadata_WritesSchemaVersion2()
+    public void Serialize_WithNativeElementMetadata_WritesCurrentSchemaVersion()
     {
         var json = Panel2DDocumentStorage.Serialize(
             "Panel V2",
@@ -263,7 +263,7 @@ public sealed class Panel2DRoundTripTests
     {
         const string sourceJson = """
         {
-          "SchemaVersion": 3,
+          "SchemaVersion": 4,
           "Title": "Future Panel",
           "Summary": "Future",
           "Elements": []
@@ -273,7 +273,7 @@ public sealed class Panel2DRoundTripTests
         var success = Panel2DDocumentStorage.TryReadValidated(sourceJson, out _, out var errorMessage);
 
         Assert.False(success);
-        Assert.Contains("Unsupported schema version '3'", errorMessage);
+        Assert.Contains("Unsupported schema version '4'", errorMessage);
     }
 
     [Fact]
