@@ -1,3 +1,4 @@
+using OasisEditor.Features.FmlImport;
 using OasisEditor.Features.LayoutImport;
 using Xunit;
 
@@ -52,7 +53,7 @@ public sealed class LayoutImportAssetCopierTests
             }
         };
 
-        var result = new LayoutImportAssetCopier().CopyAssetsFromStaging(stagingRoot, "My Layout", assetsRoot, copyAssets: true, elements, FmlBackgroundMode.TransparentBackground);
+        var result = new LayoutImportAssetCopier().CopyAssetsFromStaging(stagingRoot, "My Layout", assetsRoot, copyAssets: true, elements, FmlBackgroundMode.NoBackground);
 
         Assert.True(result.Succeeded);
         var reel = Assert.Single(result.Elements);

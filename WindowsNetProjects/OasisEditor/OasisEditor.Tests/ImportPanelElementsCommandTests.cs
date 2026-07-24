@@ -109,7 +109,7 @@ public sealed class ImportPanelElementsCommandTests
         fmlReel.UInt32s["Stops"] = 20;
         fmlReel.Booleans["LampsEnabled"] = true;
         var mapped = new FmlToOasisMapper().Map(new Layout([fmlReel]), new Dictionary<FmlDecodedImageKey, string> { [new FmlDecodedImageKey(0, "reelBand")] = "reels/reel.png" });
-        var copied = new LayoutImportAssetCopier().CopyAssetsFromStaging(stagingRoot, "My Layout", assetsRoot, copyAssets: true, mapped.Elements, FmlBackgroundMode.TransparentBackground);
+        var copied = new LayoutImportAssetCopier().CopyAssetsFromStaging(stagingRoot, "My Layout", assetsRoot, copyAssets: true, mapped.Elements, FmlBackgroundMode.NoBackground);
         Assert.True(copied.Succeeded);
         var document = new DocumentTabViewModel(EditorDocument.CreatePanel2DStub("Panel"));
 

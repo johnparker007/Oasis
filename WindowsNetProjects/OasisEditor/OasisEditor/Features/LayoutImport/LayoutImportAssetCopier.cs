@@ -148,11 +148,14 @@ internal sealed class LayoutImportAssetCopier
             transmissionMask = null;
         }
 
-        var mapped = PanelElementModelCloner.Clone(element);
-        mapped.AssetPath = primary;
-        mapped.SecondaryAssetPath = secondary;
-        mapped.ReelLampTransmissionMaskAssetPath = transmissionMask;
-        return mapped;
+        return PanelElementModelCloner.Clone(
+            element,
+            assetPath: primary,
+            overrideAssetPath: true,
+            secondaryAssetPath: secondary,
+            overrideSecondaryAssetPath: true,
+            reelLampTransmissionMaskAssetPath: transmissionMask,
+            overrideReelLampTransmissionMaskAssetPath: true);
     }
 
     private static PanelElementModel[] BakeDisplayOverlaysIntoBackgrounds(
@@ -217,9 +220,7 @@ internal sealed class LayoutImportAssetCopier
 
     private static PanelElementModel CloneWithAssetPath(PanelElementModel element, string? assetPath)
     {
-        var clone = PanelElementModelCloner.Clone(element);
-        clone.AssetPath = assetPath;
-        return clone;
+        return PanelElementModelCloner.Clone(element, assetPath: assetPath, overrideAssetPath: true);
     }
 
     private static string? TryResolveProjectAssetPath(string? projectRelativePath, string projectAssetsRoot)
