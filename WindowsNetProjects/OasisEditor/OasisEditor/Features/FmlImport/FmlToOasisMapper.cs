@@ -122,8 +122,25 @@ internal sealed class FmlToOasisMapper
         var stops = UInt(c, "Stops") ?? (c as DiscReel)?.Stops ?? (c as FlipReel)?.Stops ?? 0;
         double? scale = stops > 0 ? ((Double(c, "Height") ?? c.Height) / 50d) / stops : null;
         if (stops == 0) warnings.Add(new LayoutImportWarning("fml.import.reel.stops.invalid", "Reel stops must be greater than zero to calculate visible scale.", index.ToString(CultureInfo.InvariantCulture)));
-        return new PanelElementModel { ObjectId = Guid.NewGuid().ToString("N"), Name = $"Reel {Number(c).GetValueOrDefault(c.Number) + 1}", Kind = PanelElementKind.Reel, X = c.X, Y = c.Y, Width = Math.Max(1, c.Width), Height = Math.Max(1, c.Height), DisplayNumber = Number(c).GetValueOrDefault(c.Number) + 1, AssetPath = FirstRoleImage(images, index, IsReelBand) ?? FirstImage(images, index), SecondaryAssetPath = FirstRoleImage(images, index, IsOverlay), Stops = (int)stops, IsReversed = Bool(c, "Reversed") ?? Bool(c, "Reverse") ?? false, VisibleScale = scale, SourceComponentIndex = index, ImportSource = Source(c, index) };
+        return new PanelElementModel { ObjectId = Guid.NewGuid().ToString("N"), Name = $"Reel {Number(c).GetValueOrDefault(c.Number) + 1}", Kind = PanelElementKind.Reel, X = c.X, Y = c.Y, Width = Math.Max(1, c.Width), Height = Math.Max(1, c.Height), DisplayNumber = Number(c).GetValueOrDefault(c.Number) + 1, AssetPath = FirstRoleImage(images, index, IsReelBand) ?? FirstImage(images, index), SecondaryAssetPath = FirstRoleImage(images, index, IsOverlay), Stops = (int)stops, IsReversed = Bool(c, "Reversed") ?? Bool(c, "Reverse") ?? false, VisibleScale = scale, ReelLamps = MapReelLamps(c), IsOpaqueReel = Bool(c, "OpaqueBand") ?? Bool(c, "Opaque") ?? false, SourceComponentIndex = index, ImportSource = Source(c, index) };
     }
+
+    private static IReadOnlyList<ReelLampSlotModel> MapReelLamps(BaseComponent c)
+    {
+        var bySlot = GetSublamps(c)
+            .Where(entry => entry.SublampIndex is >= 1 and <= 3)
+            .GroupBy(entry => entry.SublampIndex)
+            .ToDictionary(group => group.Key, group => NormalizeLampNumber(group.OrderBy(entry => entry.SublampNumber).First().SublampNumber));
+
+        return
+        [
+            new ReelLampSlotModel { Position = ReelLampSlotPosition.Top, LampNumber = bySlot.GetValueOrDefault(1), LocalVerticalCenter = 1d / 6d, Radius = 0.42d, Intensity = 1d },
+            new ReelLampSlotModel { Position = ReelLampSlotPosition.Middle, LampNumber = bySlot.GetValueOrDefault(2), LocalVerticalCenter = 0.5d, Radius = 0.42d, Intensity = 1d },
+            new ReelLampSlotModel { Position = ReelLampSlotPosition.Bottom, LampNumber = bySlot.GetValueOrDefault(3), LocalVerticalCenter = 5d / 6d, Radius = 0.42d, Intensity = 1d }
+        ];
+    }
+
+    private static int? NormalizeLampNumber(int lampNumber) => lampNumber >= 0 && lampNumber != UndefinedSublampNumber ? lampNumber : null;
 
     private static PanelElementModel MapSegment(BaseComponent c, int index, IReadOnlyDictionary<FmlDecodedImageKey, string> images) => new() { ObjectId = Guid.NewGuid().ToString("N"), Name = $"7 Segment {Number(c).GetValueOrDefault(c.Number)}", Kind = PanelElementKind.SevenSegment, X = c.X, Y = c.Y, Width = Math.Max(1, c.Width), Height = Math.Max(1, c.Height), DisplayNumber = Number(c).GetValueOrDefault(c.Number), SecondaryAssetPath = FirstRoleImage(images, index, IsOverlay), OnColorHex = Color(c, "OnColour") ?? Color(c, "OnColor"), SourceComponentIndex = index, ImportSource = Source(c, index) };
     private static PanelElementModel MapAlpha(BaseComponent c, int index, IReadOnlyDictionary<FmlDecodedImageKey, string> images) => new() { ObjectId = Guid.NewGuid().ToString("N"), Name = "Alpha", Kind = PanelElementKind.Alpha, X = c.X, Y = c.Y, Width = Math.Max(1, c.Width), Height = Math.Max(1, c.Height), IsReversed = Bool(c, "Reversed") ?? false, SecondaryAssetPath = FirstRoleImage(images, index, IsOverlay), OnColorHex = Color(c, "OnColour") ?? Color(c, "OnColor"), SourceComponentIndex = index, ImportSource = Source(c, index) };

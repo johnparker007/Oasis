@@ -440,3 +440,55 @@ public sealed class FmlToOasisMapperTests
     }
 
 }
+
+public sealed class FmlReelLampImportTests
+{
+    [Fact]
+    public void Map_WithReelThreeLamps_OwnsThreeLampSlots()
+    {
+        var reel = new Reel { X = 1, Y = 2, Width = 30, Height = 90, SublampTable = [new LampSublampTableEntry(1, 10), new LampSublampTableEntry(2, 11), new LampSublampTableEntry(3, 12)] };
+        reel.UInt32s["Stops"] = 20;
+
+        var element = Assert.Single(new FmlToOasisMapper().Map(new Layout([reel]), new Dictionary<FmlDecodedImageKey, string>()).Elements);
+
+        Assert.Equal(PanelElementKind.Reel, element.Kind);
+        Assert.Equal([10, 11, 12], element.ReelLamps.Select(lamp => lamp.LampNumber).ToArray());
+        Assert.DoesNotContain(element.ReelLamps, lamp => lamp.LampNumber is null);
+    }
+
+    [Fact]
+    public void Map_WithReelMissingLampAssignments_KeepsEmptySlots()
+    {
+        var reel = new Reel { X = 1, Y = 2, Width = 30, Height = 90, SublampTable = [new LampSublampTableEntry(1, -2), new LampSublampTableEntry(3, 33)] };
+
+        var element = Assert.Single(new FmlToOasisMapper().Map(new Layout([reel]), new Dictionary<FmlDecodedImageKey, string>()).Elements);
+
+        Assert.Equal(3, element.ReelLamps.Count);
+        Assert.Null(element.ReelLamps[0].LampNumber);
+        Assert.Null(element.ReelLamps[1].LampNumber);
+        Assert.Equal(33, element.ReelLamps[2].LampNumber);
+    }
+
+    [Fact]
+    public void Map_WithOpaqueReel_DecodesOpaqueFlag()
+    {
+        var reel = new Reel { X = 1, Y = 2, Width = 30, Height = 90 };
+        reel.Booleans["OpaqueBand"] = true;
+
+        var element = Assert.Single(new FmlToOasisMapper().Map(new Layout([reel]), new Dictionary<FmlDecodedImageKey, string>()).Elements);
+
+        Assert.True(element.IsOpaqueReel);
+    }
+
+    [Fact]
+    public void Map_WithNonOpaqueReel_DecodesOpaqueFlagFalse()
+    {
+        var reel = new Reel { X = 1, Y = 2, Width = 30, Height = 90 };
+        reel.Booleans["OpaqueBand"] = false;
+
+        var element = Assert.Single(new FmlToOasisMapper().Map(new Layout([reel]), new Dictionary<FmlDecodedImageKey, string>()).Elements);
+
+        Assert.False(element.IsOpaqueReel);
+        Assert.Null(element.ReelLampTransmissionMaskAssetPath);
+    }
+}

@@ -5,7 +5,7 @@ namespace OasisEditor;
 
 internal static class Panel2DDocumentStorage
 {
-    public const int CurrentSchemaVersion = 2;
+    public const int CurrentSchemaVersion = 3;
     public const int LegacySchemaVersion = 1;
 
     internal static PanelElementKind ParseElementKind(string? kind)
@@ -350,6 +350,9 @@ internal static class Panel2DDocumentStorage
             Stops = normalized.Stops,
             VisibleScale = normalized.VisibleScale,
             BandOffset = normalized.BandOffset,
+            ReelLamps = (normalized.ReelLamps ?? []).Select(ToModel).ToArray(),
+            IsOpaqueReel = normalized.IsOpaqueReel ?? false,
+            ReelLampTransmissionMaskAssetPath = normalized.ReelLampTransmissionMaskAssetPath,
             IsTransformLocked = normalized.LockTransform,
             IsVisible = normalized.IsVisible ?? true,
             SourceComponentIndex = normalized.SourceComponentIndex,
@@ -405,6 +408,9 @@ internal static class Panel2DDocumentStorage
             Stops = element.Stops,
             VisibleScale = element.VisibleScale,
             BandOffset = element.BandOffset,
+            ReelLamps = element.ReelLamps.Select(ToFile).ToArray(),
+            IsOpaqueReel = element.IsOpaqueReel,
+            ReelLampTransmissionMaskAssetPath = element.ReelLampTransmissionMaskAssetPath,
             LockTransform = element.IsTransformLocked,
             IsVisible = element.IsVisible,
             SourceComponentIndex = element.SourceComponentIndex,
@@ -560,6 +566,9 @@ internal static class Panel2DDocumentStorage
         var normalizedStops = normalizedNative?.Stops ?? element.Stops;
         var normalizedVisibleScale = normalizedNative?.VisibleScale ?? element.VisibleScale;
         var normalizedBandOffset = normalizedNative?.BandOffset ?? element.BandOffset;
+        var normalizedReelLamps = NormalizeReelLamps(element.ReelLamps);
+        var normalizedIsOpaqueReel = normalizedKind == PanelElementKind.Reel && (element.IsOpaqueReel ?? false);
+        var normalizedReelLampTransmissionMaskAssetPath = normalizedIsOpaqueReel ? NormalizeOptionalString(element.ReelLampTransmissionMaskAssetPath) : null;
         var normalizedLockTransform = element.LockTransform;
         var normalizedIsVisible = element.IsVisible ?? true;
         var normalizedSourceComponentIndex = element.SourceComponentIndex;
@@ -636,6 +645,9 @@ internal static class Panel2DDocumentStorage
             Stops = normalizedStops,
             VisibleScale = normalizedVisibleScale,
             BandOffset = normalizedBandOffset,
+            ReelLamps = normalizedReelLamps,
+            IsOpaqueReel = normalizedIsOpaqueReel,
+            ReelLampTransmissionMaskAssetPath = normalizedReelLampTransmissionMaskAssetPath,
             LockTransform = normalizedLockTransform,
             IsVisible = normalizedIsVisible,
             SourceComponentIndex = normalizedSourceComponentIndex,
@@ -845,6 +857,36 @@ internal static class Panel2DDocumentStorage
         };
     }
 
+    private static PanelElementReelLampFile[] NormalizeReelLamps(IReadOnlyList<PanelElementReelLampFile>? lamps)
+    {
+        return (lamps ?? [])
+            .Select(NormalizeReelLamp)
+            .OrderBy(lamp => lamp.Position, StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    private static PanelElementReelLampFile NormalizeReelLamp(PanelElementReelLampFile lamp)
+    {
+        var position = NormalizeReelLampPosition(lamp.Position);
+        return lamp with
+        {
+            Position = position,
+            LampNumber = lamp.LampNumber is >= 0 ? lamp.LampNumber : null,
+            LocalVerticalCenter = IsFinite(lamp.LocalVerticalCenter) ? Math.Clamp(lamp.LocalVerticalCenter, 0d, 1d) : DefaultReelLampCenter(position),
+            Radius = IsFinite(lamp.Radius) && lamp.Radius > 0d ? lamp.Radius : 0.42d,
+            Intensity = IsFinite(lamp.Intensity) && lamp.Intensity >= 0d ? lamp.Intensity : 1d
+        };
+    }
+
+    private static string NormalizeReelLampPosition(string? position) => string.Equals(position, "top", StringComparison.OrdinalIgnoreCase) ? "top" : string.Equals(position, "bottom", StringComparison.OrdinalIgnoreCase) ? "bottom" : "middle";
+    private static double DefaultReelLampCenter(string position) => position == "top" ? 1d / 6d : position == "bottom" ? 5d / 6d : 0.5d;
+    private static PanelElementReelLampFile ToFile(ReelLampSlotModel lamp) => NormalizeReelLamp(new PanelElementReelLampFile { Position = lamp.Position.ToString().ToLowerInvariant(), LampNumber = lamp.LampNumber, LocalVerticalCenter = lamp.LocalVerticalCenter, Radius = lamp.Radius, Intensity = lamp.Intensity });
+    private static ReelLampSlotModel ToModel(PanelElementReelLampFile lamp)
+    {
+        var normalized = NormalizeReelLamp(lamp);
+        return new ReelLampSlotModel { Position = normalized.Position == "top" ? ReelLampSlotPosition.Top : normalized.Position == "bottom" ? ReelLampSlotPosition.Bottom : ReelLampSlotPosition.Middle, LampNumber = normalized.LampNumber, LocalVerticalCenter = normalized.LocalVerticalCenter, Radius = normalized.Radius, Intensity = normalized.Intensity };
+    }
+
     private static string NormalizeLampFontName(string? value) => string.IsNullOrWhiteSpace(value) ? "Tahoma" : value.Trim();
     private static string NormalizeLampFontStyle(string? value) => string.IsNullOrWhiteSpace(value) ? "Regular" : value.Trim();
     private static string NormalizeLampFontSize(string? value) => string.IsNullOrWhiteSpace(value) ? "8" : value.Trim();
@@ -912,6 +954,9 @@ internal sealed record PanelElementFile : IPanelSelectableObject
     public string? TextBoxFontStyle { get; init; }
     public string? TextBoxFontSize { get; init; }
     public bool? IsReversed { get; init; }
+    public PanelElementReelLampFile[]? ReelLamps { get; init; }
+    public bool? IsOpaqueReel { get; init; }
+    public string? ReelLampTransmissionMaskAssetPath { get; init; }
     public int? Stops { get; init; }
     public double? VisibleScale { get; init; }
     public double? BandOffset { get; init; }
@@ -927,6 +972,15 @@ internal sealed record PanelElementFile : IPanelSelectableObject
 
     [JsonIgnore]
     public PanelElementKind ElementKind => Panel2DDocumentStorage.ParseElementKind(Kind);
+}
+
+internal sealed record PanelElementReelLampFile
+{
+    public string Position { get; init; } = "middle";
+    public int? LampNumber { get; init; }
+    public double LocalVerticalCenter { get; init; }
+    public double Radius { get; init; }
+    public double Intensity { get; init; }
 }
 
 internal sealed record PanelElementNativeFile
