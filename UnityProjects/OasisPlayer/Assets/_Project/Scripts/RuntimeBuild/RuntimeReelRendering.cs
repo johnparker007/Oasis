@@ -110,8 +110,6 @@ namespace OasisPlayer.RuntimeBuild
 
     public static class RuntimeReelLampGeometry
     {
-        public const float DefaultRadius = 0.15f;
-
         public static Vector4 DeriveVerticalCenters(int stops)
         {
             // Reel lamps are fixed in projected aperture space, not rotating band space.
@@ -122,6 +120,22 @@ namespace OasisPlayer.RuntimeBuild
             return new Vector4(0.5f + offset, 0.5f, 0.5f - offset, 0f);
         }
 
+        public static float DeriveAutomaticRadius(int stops)
+        {
+            // Radius is a fraction of projected reel diameter in aperture space, not band
+            // circumference or reel width. Aspect correction in the field calculation makes
+            // equal physical X/Y distances equal before this diameter-relative radius is used.
+            // For example, 16 stops gives ~0.1435, or ~0.0402m on a 0.28m diameter reel.
+            var safeStops = Mathf.Max(1, stops);
+            var projectedOffset = 0.5f * Mathf.Sin((Mathf.PI * 2f) / safeStops);
+            return Mathf.Max(0.0001f, projectedOffset * 0.75f);
+        }
+
+        public static float ResolveRadius(float authoredRadius, int stops)
+        {
+            return authoredRadius > 0f ? authoredRadius : DeriveAutomaticRadius(stops);
+        }
+
         public static float EvaluateField(Vector2 apertureUv, float verticalCenter, float radius, float physicalWidth, float physicalDiameter)
         {
             var delta = apertureUv - new Vector2(0.5f, verticalCenter);
@@ -130,6 +144,34 @@ namespace OasisPlayer.RuntimeBuild
             return 1f - Mathf.SmoothStep(radius * 0.35f, Mathf.Max(radius, 0.0001f), d);
         }
     }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+    public enum RuntimeReelLampDiagnosticMode
+    {
+        FollowLampState,
+        ForceTop,
+        ForceMiddle,
+        ForceBottom,
+        ForceAll
+    }
+
+    public static class RuntimeReelLampDiagnostics
+    {
+        public static Vector4 SelectBrightness(Vector4 lampStateBrightness, RuntimeReelLampDiagnosticMode mode, float multiplier)
+        {
+            Vector4 selected;
+            switch (mode)
+            {
+                case RuntimeReelLampDiagnosticMode.ForceTop: selected = new Vector4(1f, 0f, 0f, 0f); break;
+                case RuntimeReelLampDiagnosticMode.ForceMiddle: selected = new Vector4(0f, 1f, 0f, 0f); break;
+                case RuntimeReelLampDiagnosticMode.ForceBottom: selected = new Vector4(0f, 0f, 1f, 0f); break;
+                case RuntimeReelLampDiagnosticMode.ForceAll: selected = new Vector4(1f, 1f, 1f, 0f); break;
+                default: selected = lampStateBrightness; break;
+            }
+            return selected * Mathf.Clamp(multiplier, 1f, 20f);
+        }
+    }
+#endif
 
     public sealed class RuntimeReelRenderBinding : IDisposable
     {
@@ -156,14 +198,15 @@ namespace OasisPlayer.RuntimeBuild
             var lamps = reel != null && reel.reelLamps != null ? reel.reelLamps : Array.Empty<FaceRuntimeReelLampManifestEntry>();
             for (var i = 0; i < _lampIds.Length; i++) _lampIds[i] = -1;
             var verticalCenters = RuntimeReelLampGeometry.DeriveVerticalCenters(reel != null ? reel.stops : 12);
-            var radii = new Vector4(RuntimeReelLampGeometry.DefaultRadius, RuntimeReelLampGeometry.DefaultRadius, RuntimeReelLampGeometry.DefaultRadius, 0f);
+            var automaticRadius = RuntimeReelLampGeometry.DeriveAutomaticRadius(reel != null ? reel.stops : 12);
+            var radii = new Vector4(automaticRadius, automaticRadius, automaticRadius, 0f);
             var intensities = new Vector4(1f, 1f, 1f, 0f);
             for (var i = 0; i < lamps.Length && i < 3; i++)
             {
                 var lamp = lamps[i];
                 // RuntimeLampState is one-based (1..255), so both the -1 unassigned sentinel and manifest value 0 stay off.
                 _lampIds[i] = lampsEnabled && lamp != null && lamp.lampId > 0 ? lamp.lampId : -1;
-                var radius = lamp != null && lamp.radius > 0f ? lamp.radius : RuntimeReelLampGeometry.DefaultRadius;
+                var radius = RuntimeReelLampGeometry.ResolveRadius(lamp != null ? lamp.radius : 0f, reel != null ? reel.stops : 12);
                 var intensity = lamp != null ? lamp.intensity : 1f;
                 if (i == 0) { radii.x = radius; intensities.x = intensity; }
                 else if (i == 1) { radii.y = radius; intensities.y = intensity; }
@@ -189,12 +232,36 @@ namespace OasisPlayer.RuntimeBuild
 
         public bool ApplyLampState(RuntimeLampState lampState)
         {
-            if (lampState == null || lampState.Version == _lampStateVersion) return false;
+            return ApplyLampStateInternal(lampState, false, Vector4.zero);
+        }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        public bool ApplyLampState(RuntimeLampState lampState, RuntimeReelLampDiagnosticMode diagnosticMode, float diagnosticMultiplier)
+        {
+            var normal = ReadBrightness(lampState);
+            var selected = RuntimeReelLampDiagnostics.SelectBrightness(normal, diagnosticMode, diagnosticMultiplier);
+            return ApplyLampStateInternal(lampState, true, selected);
+        }
+#endif
+
+        private Vector4 ReadBrightness(RuntimeLampState lampState)
+        {
+            return new Vector4(
+                _lampIds[0] > 0 ? lampState.GetBrightness(_lampIds[0]) : 0f,
+                _lampIds[1] > 0 ? lampState.GetBrightness(_lampIds[1]) : 0f,
+                _lampIds[2] > 0 ? lampState.GetBrightness(_lampIds[2]) : 0f,
+                0f);
+        }
+
+        private bool ApplyLampStateInternal(RuntimeLampState lampState, bool hasSelectedBrightness, Vector4 selectedBrightness)
+        {
+            if (lampState == null || (!hasSelectedBrightness && lampState.Version == _lampStateVersion)) return false;
             _lampStateVersion = lampState.Version;
+            var selected = hasSelectedBrightness ? selectedBrightness : ReadBrightness(lampState);
             var changed = false;
             for (var i = 0; i < _brightness.Length; i++)
             {
-                var next = _lampIds[i] > 0 ? lampState.GetBrightness(_lampIds[i]) : 0f;
+                var next = selected[i];
                 if (Mathf.Abs(_brightness[i] - next) > 0.0001f) { _brightness[i] = next; changed = true; }
             }
             if (!changed) return false;

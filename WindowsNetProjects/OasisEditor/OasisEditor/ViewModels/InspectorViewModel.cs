@@ -1649,9 +1649,9 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         var source = lamps ?? [];
         return
         [
-            source.FirstOrDefault(lamp => lamp.Position == ReelLampSlotPosition.Top) ?? new ReelLampSlotModel { Position = ReelLampSlotPosition.Top, LocalVerticalCenter = 1d / 6d, Radius = 0.42d, Intensity = 1d },
-            source.FirstOrDefault(lamp => lamp.Position == ReelLampSlotPosition.Middle) ?? new ReelLampSlotModel { Position = ReelLampSlotPosition.Middle, LocalVerticalCenter = 0.5d, Radius = 0.42d, Intensity = 1d },
-            source.FirstOrDefault(lamp => lamp.Position == ReelLampSlotPosition.Bottom) ?? new ReelLampSlotModel { Position = ReelLampSlotPosition.Bottom, LocalVerticalCenter = 5d / 6d, Radius = 0.42d, Intensity = 1d }
+            source.FirstOrDefault(lamp => lamp.Position == ReelLampSlotPosition.Top) ?? new ReelLampSlotModel { Position = ReelLampSlotPosition.Top, LocalVerticalCenter = 1d / 6d, Radius = 0d, Intensity = 1d },
+            source.FirstOrDefault(lamp => lamp.Position == ReelLampSlotPosition.Middle) ?? new ReelLampSlotModel { Position = ReelLampSlotPosition.Middle, LocalVerticalCenter = 0.5d, Radius = 0d, Intensity = 1d },
+            source.FirstOrDefault(lamp => lamp.Position == ReelLampSlotPosition.Bottom) ?? new ReelLampSlotModel { Position = ReelLampSlotPosition.Bottom, LocalVerticalCenter = 5d / 6d, Radius = 0d, Intensity = 1d }
         ];
     }
 

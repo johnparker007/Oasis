@@ -138,7 +138,8 @@ namespace OasisPlayer.RuntimeBuild
         public string position = string.Empty;
         public int lampId = -1;
         public float localVerticalCenter;
-        public float radius;
+        // Zero/non-positive selects the stop-derived aperture radius; positive is an authored override.
+        public float radius = 0f;
         public float intensity;
     }
 

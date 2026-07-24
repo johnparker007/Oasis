@@ -732,7 +732,7 @@ public sealed class FaceRuntimeReelLampManifestEntry
     public string Position { get; init; } = string.Empty;
     public int LampId { get; init; }
     public double LocalVerticalCenter { get; init; }
-    public double Radius { get; init; }
+    public double Radius { get; init; } = 0d;
     public double Intensity { get; init; }
 }
 

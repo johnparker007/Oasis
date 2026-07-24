@@ -234,6 +234,8 @@ namespace OasisPlayer.RuntimeBuild
         [SerializeField] private int allFlashCount = 2;
         [SerializeField] private bool repeat = true;
         [SerializeField] private int manualLampNumber = 1;
+        [SerializeField] private RuntimeReelLampDiagnosticMode reelLampDiagnosticMode = RuntimeReelLampDiagnosticMode.FollowLampState;
+        [SerializeField, Range(1f, 20f)] private float reelLampDiagnosticMultiplier = 1f;
         [SerializeField] private RuntimeLampDiagnosticStage currentStage;
         [SerializeField] private int currentLamp;
         [SerializeField] private bool running;
@@ -244,6 +246,7 @@ namespace OasisPlayer.RuntimeBuild
         public void Initialize(RuntimeMachine machine)
         {
             _machine = machine;
+            ApplyReelLampDiagnostics();
             _sequence = new RuntimeLampDiagnosticSequence(CreateSettings());
             RuntimeLampDiagnosticReporter.LogReady(machine);
             if (_sequence.Start(machine != null ? machine.LampState : null))
@@ -257,6 +260,7 @@ namespace OasisPlayer.RuntimeBuild
         private void Update()
         {
             if (_machine == null) return;
+            ApplyReelLampDiagnostics();
             if (_sequence == null) _sequence = new RuntimeLampDiagnosticSequence(CreateSettings());
 
             if (mode == RuntimeLampDiagnosticMode.Manual)
@@ -290,6 +294,11 @@ namespace OasisPlayer.RuntimeBuild
                 AllFlashCount = allFlashCount,
                 Repeat = repeat
             }.Clamped();
+        }
+
+        private void ApplyReelLampDiagnostics()
+        {
+            if (_machine != null) _machine.SetReelLampDiagnostics(reelLampDiagnosticMode, reelLampDiagnosticMultiplier);
         }
 
         private void RunManualControls()
@@ -352,6 +361,7 @@ namespace OasisPlayer.RuntimeBuild
 
         private void OnDisable()
         {
+            if (_machine != null) _machine.SetReelLampDiagnostics(RuntimeReelLampDiagnosticMode.FollowLampState, 1f);
             if (_machine != null) _machine.LampState.ClearAll();
         }
     }

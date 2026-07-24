@@ -455,6 +455,7 @@ public sealed class FmlReelLampImportTests
         Assert.Equal(PanelElementKind.Reel, element.Kind);
         Assert.True(element.ReelLampsEnabled);
         Assert.Equal([5, 4, 3], element.ReelLamps.Select(lamp => lamp.LampNumber).ToArray());
+        Assert.All(element.ReelLamps, lamp => Assert.Equal(0d, lamp.Radius));
         Assert.DoesNotContain(result.Warnings, warning => warning.Code == "fml.import.reel.lamps.common3");
     }
 

@@ -7,7 +7,7 @@ Shader "Oasis/ReelLamp"
         _OasisReelTransmissionMaskEnabled ("Transmission Mask Enabled", Float) = 0
         _OasisReelLampBrightness ("Lamp Brightness", Vector) = (0,0,0,0)
         _OasisReelLampVerticalCenters ("Lamp Vertical Centers", Vector) = (0.75,0.5,0.25,0)
-        _OasisReelLampRadii ("Lamp Radii", Vector) = (0.15,0.15,0.15,0)
+        _OasisReelLampRadii ("Lamp Radii", Vector) = (0,0,0,0)
         _OasisReelLampIntensities ("Lamp Intensities", Vector) = (1,1,1,0)
         _OasisReelLampColor ("Lamp Color", Color) = (1.0,0.82,0.55,1)
         _OasisReelApertureCenterWS ("Aperture Center WS", Vector) = (0,0,0,0)

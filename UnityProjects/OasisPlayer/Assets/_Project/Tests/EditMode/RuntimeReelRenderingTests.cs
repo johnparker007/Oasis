@@ -56,6 +56,10 @@ public sealed class RuntimeReelRenderingTests
             Assert.AreEqual(0.6545f, centers.x, 0.0001f);
             Assert.AreEqual(0.5f, centers.y, 0.0001f);
             Assert.AreEqual(0.3455f, centers.z, 0.0001f);
+            var radii = block.GetVector(RuntimeFaceShaderProperties.ReelLampRadii);
+            Assert.AreEqual(0.2f, radii.x, 0.0001f);
+            Assert.AreEqual(0.3f, radii.y, 0.0001f);
+            Assert.AreEqual(0.4f, radii.z, 0.0001f);
             Assert.AreEqual(1f, block.GetFloat(RuntimeFaceShaderProperties.ReelTransmissionMaskEnabled), 0.0001f);
             Assert.AreSame(mask, block.GetTexture(RuntimeFaceShaderProperties.ReelTransmissionMaskTexture));
             binding.Dispose();
@@ -179,8 +183,8 @@ public sealed class RuntimeReelRenderingTests
     [Test]
     public void AspectCorrection_EqualPhysicalDistancesHaveEqualFieldStrength()
     {
-        var fieldA = RuntimeReelLampGeometry.EvaluateField(new Vector2(0.5f + 10f / 70f, 0.5f), 0.5f, 0.15f, 70f, 190f);
-        var fieldB = RuntimeReelLampGeometry.EvaluateField(new Vector2(0.5f, 0.5f + 10f / 190f), 0.5f, 0.15f, 70f, 190f);
+        var fieldA = RuntimeReelLampGeometry.EvaluateField(new Vector2(0.5f + 0.6f, 0.5f), 0.5f, 0.2f, 70f, 280f);
+        var fieldB = RuntimeReelLampGeometry.EvaluateField(new Vector2(0.5f, 0.5f + 0.15f), 0.5f, 0.2f, 70f, 280f);
         Assert.AreEqual(fieldA, fieldB, 0.0001f);
 
         var squareA = RuntimeReelLampGeometry.EvaluateField(new Vector2(0.6f, 0.5f), 0.5f, 0.15f, 100f, 100f);
@@ -189,14 +193,95 @@ public sealed class RuntimeReelRenderingTests
     }
 
     [Test]
-    public void DefaultRadius_PrimarilyIlluminatesOneSymbol()
+    public void AutomaticRadius_IsStopDerivedAndPrimarilyIlluminatesOneSymbol()
     {
         var centers = RuntimeReelLampGeometry.DeriveVerticalCenters(12);
-        var own = RuntimeReelLampGeometry.EvaluateField(new Vector2(0.5f, centers.x), centers.x, RuntimeReelLampGeometry.DefaultRadius, 70f, 190f);
-        var middle = RuntimeReelLampGeometry.EvaluateField(new Vector2(0.5f, centers.y), centers.x, RuntimeReelLampGeometry.DefaultRadius, 70f, 190f);
+        var radius = RuntimeReelLampGeometry.DeriveAutomaticRadius(12);
+        var own = RuntimeReelLampGeometry.EvaluateField(new Vector2(0.5f, centers.x), centers.x, radius, 70f, 190f);
+        var middle = RuntimeReelLampGeometry.EvaluateField(new Vector2(0.5f, centers.y), centers.x, radius, 70f, 190f);
         Assert.Greater(own, 0.95f);
         Assert.Less(middle, 0.05f);
     }
+
+    [Test]
+    public void AutomaticRadius_MatchesStopCountsAndDecreasesWithMoreStops()
+    {
+        var twelve = RuntimeReelLampGeometry.DeriveAutomaticRadius(12);
+        var sixteen = RuntimeReelLampGeometry.DeriveAutomaticRadius(16);
+        var twentyFive = RuntimeReelLampGeometry.DeriveAutomaticRadius(25);
+        Assert.AreEqual(0.1875f, twelve, 0.000001f);
+        Assert.AreEqual(0.143506f, sixteen, 0.000001f);
+        Assert.AreEqual(0.093259f, twentyFive, 0.000001f);
+        Assert.Greater(twelve, sixteen);
+        Assert.Greater(sixteen, twentyFive);
+    }
+
+    [Test]
+    public void ResolveRadius_NonPositiveIsAutomaticAndPositiveIsExactOverride()
+    {
+        var automatic = RuntimeReelLampGeometry.DeriveAutomaticRadius(16);
+        Assert.AreEqual(automatic, RuntimeReelLampGeometry.ResolveRadius(0f, 16));
+        Assert.AreEqual(automatic, RuntimeReelLampGeometry.ResolveRadius(-1f, 16));
+        Assert.AreEqual(0.234f, RuntimeReelLampGeometry.ResolveRadius(0.234f, 16));
+    }
+
+    [Test]
+    public void Configure_ZeroAndNegativeRadiiUseAutomaticWhilePositiveOverrides()
+    {
+        var reel = Reel();
+        reel.stops = 16;
+        reel.reelLamps = new[]
+        {
+            new FaceRuntimeReelLampManifestEntry { radius = 0f, intensity = 1f },
+            new FaceRuntimeReelLampManifestEntry { radius = -0.5f, intensity = 1f },
+            new FaceRuntimeReelLampManifestEntry { radius = 0.2f, intensity = 1f }
+        };
+        var go = new GameObject("reel");
+        var renderer = go.AddComponent<MeshRenderer>();
+        var material = new Material(Shader.Find("Oasis/ReelLamp"));
+        try
+        {
+            var binding = new RuntimeReelRenderBinding(go, material, renderer, reel);
+            var block = new MaterialPropertyBlock();
+            renderer.GetPropertyBlock(block);
+            var radii = block.GetVector(RuntimeFaceShaderProperties.ReelLampRadii);
+            Assert.AreEqual(0.143506f, radii.x, 0.000001f);
+            Assert.AreEqual(0.143506f, radii.y, 0.000001f);
+            Assert.AreEqual(0.2f, radii.z, 0.000001f);
+            binding.Dispose();
+        }
+        finally
+        {
+            if (go != null) Object.DestroyImmediate(go);
+            if (material != null) Object.DestroyImmediate(material);
+            reel.BandTexture.Unload();
+        }
+    }
+
+    [Test]
+    public void ChangingStopCountChangesCentersAndAutomaticRadius()
+    {
+        Assert.AreNotEqual(RuntimeReelLampGeometry.DeriveVerticalCenters(12), RuntimeReelLampGeometry.DeriveVerticalCenters(25));
+        Assert.AreNotEqual(RuntimeReelLampGeometry.DeriveAutomaticRadius(12), RuntimeReelLampGeometry.DeriveAutomaticRadius(25));
+    }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+    [TestCase(RuntimeReelLampDiagnosticMode.ForceTop, 8f, 8f, 0f, 0f)]
+    [TestCase(RuntimeReelLampDiagnosticMode.ForceMiddle, 8f, 0f, 8f, 0f)]
+    [TestCase(RuntimeReelLampDiagnosticMode.ForceBottom, 8f, 0f, 0f, 8f)]
+    public void ReelLampDiagnostics_ForcedModesSelectChannelAndApplyMultiplier(RuntimeReelLampDiagnosticMode mode, float multiplier, float top, float middle, float bottom)
+    {
+        var result = RuntimeReelLampDiagnostics.SelectBrightness(new Vector4(0.2f, 0.3f, 0.4f, 0f), mode, multiplier);
+        Assert.AreEqual(new Vector4(top, middle, bottom, 0f), result);
+    }
+
+    [Test]
+    public void ReelLampDiagnostics_FollowStateDefaultsToUnmodifiedBrightness()
+    {
+        var brightness = new Vector4(0.2f, 0.3f, 0.4f, 0f);
+        Assert.AreEqual(brightness, RuntimeReelLampDiagnostics.SelectBrightness(brightness, RuntimeReelLampDiagnosticMode.FollowLampState, 1f));
+    }
+#endif
 
     [Test]
     public void ApertureProperties_DoNotUseBandOffset()

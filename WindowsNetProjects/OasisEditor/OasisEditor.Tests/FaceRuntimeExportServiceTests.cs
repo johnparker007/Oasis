@@ -894,7 +894,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
     [Fact]
     public void CreateManifest_UnassignedReelLamp_UsesNegativeSentinel()
     {
-        var document = CreateReelDocumentWithLamps([new ReelLampSlotModel { Position = ReelLampSlotPosition.Top, LampNumber = null, LocalVerticalCenter = 1d / 6d, Radius = 0.42d, Intensity = 1d }]);
+        var document = CreateReelDocumentWithLamps([new ReelLampSlotModel { Position = ReelLampSlotPosition.Top, LampNumber = null, LocalVerticalCenter = 1d / 6d, Radius = 0d, Intensity = 1d }]);
         var manifest = new FaceRuntimeExportService().CreateManifest(document, 100, 100, CreateCabinetContext(CreateCabinet(new CabinetReelSpecification("standard", "Standard", 210, 50))));
         Assert.Equal(-1, Assert.Single(Assert.Single(manifest.Reels).ReelLamps).LampId);
     }
@@ -905,9 +905,9 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
     {
         var document = CreateReelDocumentWithLamps(
         [
-            new ReelLampSlotModel { Position = ReelLampSlotPosition.Top, LampNumber = 5, LocalVerticalCenter = 1d / 6d, Radius = 0.42d, Intensity = 1d },
-            new ReelLampSlotModel { Position = ReelLampSlotPosition.Middle, LampNumber = 4, LocalVerticalCenter = 0.5d, Radius = 0.42d, Intensity = 1d },
-            new ReelLampSlotModel { Position = ReelLampSlotPosition.Bottom, LampNumber = 3, LocalVerticalCenter = 5d / 6d, Radius = 0.42d, Intensity = 1d }
+            new ReelLampSlotModel { Position = ReelLampSlotPosition.Top, LampNumber = 5, LocalVerticalCenter = 1d / 6d, Radius = 0d, Intensity = 1d },
+            new ReelLampSlotModel { Position = ReelLampSlotPosition.Middle, LampNumber = 4, LocalVerticalCenter = 0.5d, Radius = 0d, Intensity = 1d },
+            new ReelLampSlotModel { Position = ReelLampSlotPosition.Bottom, LampNumber = 3, LocalVerticalCenter = 5d / 6d, Radius = 0d, Intensity = 1d }
         ], reelLampsEnabled: false);
 
         var manifest = new FaceRuntimeExportService().CreateManifest(document, 100, 100, CreateCabinetContext(CreateCabinet(new CabinetReelSpecification("standard", "Standard", 210, 50))));
@@ -915,6 +915,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         var reel = Assert.Single(manifest.Reels);
         Assert.False(reel.ReelLampsEnabled);
         Assert.Equal([5, 4, 3], reel.ReelLamps.Select(lamp => lamp.LampId).ToArray());
+        Assert.All(reel.ReelLamps, lamp => Assert.Equal(0d, lamp.Radius));
     }
 
     private EditorProject CreateProject()

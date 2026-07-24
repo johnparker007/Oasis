@@ -877,7 +877,7 @@ internal static class Panel2DDocumentStorage
             Position = position,
             LampNumber = lamp.LampNumber is >= 0 ? lamp.LampNumber : null,
             LocalVerticalCenter = IsFinite(lamp.LocalVerticalCenter) ? Math.Clamp(lamp.LocalVerticalCenter, 0d, 1d) : DefaultReelLampCenter(position),
-            Radius = IsFinite(lamp.Radius) && lamp.Radius > 0d ? lamp.Radius : 0.42d,
+            Radius = IsFinite(lamp.Radius) && lamp.Radius > 0d ? lamp.Radius : 0d,
             Intensity = IsFinite(lamp.Intensity) && lamp.Intensity >= 0d ? lamp.Intensity : 1d
         };
     }
@@ -984,7 +984,7 @@ internal sealed record PanelElementReelLampFile
     public string Position { get; init; } = "middle";
     public int? LampNumber { get; init; }
     public double LocalVerticalCenter { get; init; }
-    public double Radius { get; init; }
+    public double Radius { get; init; } = 0d;
     public double Intensity { get; init; }
 }
 
