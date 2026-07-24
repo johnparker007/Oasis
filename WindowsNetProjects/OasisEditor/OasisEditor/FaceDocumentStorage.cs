@@ -905,6 +905,15 @@ public sealed record FaceLayerFile
     public bool LockTransform { get; init; }
 }
 
+public sealed record FaceReelLampFile
+{
+    public string Position { get; init; } = "middle";
+    public int? LampNumber { get; init; }
+    public double LocalVerticalCenter { get; init; }
+    public double Radius { get; init; }
+    public double Intensity { get; init; }
+}
+
 public sealed record FaceElementFile
 {
     public string? ObjectId { get; init; }

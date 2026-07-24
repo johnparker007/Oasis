@@ -74,14 +74,14 @@ internal sealed class PanelElementModel
 }
 
 
-internal enum ReelLampSlotPosition
+public enum ReelLampSlotPosition
 {
     Top,
     Middle,
     Bottom
 }
 
-internal sealed class ReelLampSlotModel
+public sealed class ReelLampSlotModel
 {
     public ReelLampSlotPosition Position { get; init; }
     public int? LampNumber { get; init; }
