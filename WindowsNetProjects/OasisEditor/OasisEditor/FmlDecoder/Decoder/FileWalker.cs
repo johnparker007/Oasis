@@ -1,6 +1,9 @@
-﻿using System;
+using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using MfmeFmlDecoder.Model;
+using MfmeFmlDecoder.src.Model;
 using MfmeFmlDecoder.Utilities;
 
 namespace MfmeFmlDecoder.Decoder
@@ -11,6 +14,9 @@ namespace MfmeFmlDecoder.Decoder
         private const string SupportedMfmeVersion = "20.1";
 
         private ComponentWalker _componentWalker;
+
+        public LayoutFileHeader Header { get; } = new LayoutFileHeader();
+
         public FileWalker(ComponentWalker componentWalker)
         {
             _componentWalker = componentWalker;
@@ -63,6 +69,7 @@ namespace MfmeFmlDecoder.Decoder
                 }
 
                 OnRecordRead(recordStartOffset, tag, length, values);
+                InterpretFileLevelTag(tag, values);
 
                 if (tag == MfmeVersionReader.MfmeVersionTag)
                 {
@@ -95,6 +102,81 @@ namespace MfmeFmlDecoder.Decoder
         {
             RunLog.WriteLine($"Offset: 0x{offset:X8}, Tag: 0x{tag:X2}, Length: 0x{length:X2}");
             HexDumpUtility.PrintHexDump((uint)(offset + 8), values, maxBytes: 0xFF);
+        }
+
+        private void InterpretFileLevelTag(uint tag, byte[] values)
+        {
+            switch (tag)
+            {
+                case LayoutFileHeader.LayoutDescriptionTag:
+                    // 101-byte buffer may hold multiple null-terminated lines (line1\0line2\0…).
+                    Header.Description = DecodeNullSeparatedAscii(values);
+                    break;
+                case LayoutFileHeader.TextNotesTag:
+                    Header.TextNotes = DecodeNullTerminatedAscii(values);
+                    break;
+                case LayoutFileHeader.SplashBitmapTag:
+                    Header.SplashBitmap = TryBuildSplashBitmap(values);
+                    break;
+            }
+        }
+
+        private static BitmapEntry TryBuildSplashBitmap(byte[] values)
+        {
+            if (values is null || values.Length == 0)
+            {
+                return null;
+            }
+
+            var info = BmpUtility.ReadInfo(values);
+            return new BitmapEntry(info.Width, info.Height, info.BitsPerPixel, values)
+            {
+                Purpose = LayoutFileHeader.SplashBitmapImageKey
+            };
+        }
+
+        private static string DecodeNullTerminatedAscii(byte[] values)
+        {
+            if (values is null || values.Length == 0)
+            {
+                return string.Empty;
+            }
+
+            int end = Array.IndexOf(values, (byte)0);
+            if (end < 0)
+            {
+                end = values.Length;
+            }
+
+            return Encoding.ASCII.GetString(values, 0, end);
+        }
+
+        /// <summary>
+        /// Decode one or more C-strings packed into a fixed buffer (e.g. layout
+        /// description tag 0x0C: line1\0line2\0padding). Joins non-empty parts with newlines.
+        /// </summary>
+        private static string DecodeNullSeparatedAscii(byte[] values)
+        {
+            if (values is null || values.Length == 0)
+                return string.Empty;
+
+            var parts = new List<string>();
+            int i = 0;
+            while (i < values.Length)
+            {
+                int end = Array.IndexOf(values, (byte)0, i);
+                if (end < 0) end = values.Length;
+                if (end > i)
+                    parts.Add(Encoding.ASCII.GetString(values, i, end - i));
+                if (end >= values.Length) break;
+                i = end + 1;
+                // Trailing padding is all zeros — stop once we hit an empty segment
+                // after at least one part (avoid inventing blank lines from padding).
+                if (i < values.Length && values[i] == 0 && parts.Count > 0)
+                    break;
+            }
+
+            return string.Join("\n", parts);
         }
 
         private static void ValidateMfmeVersion(long recordStartOffset, byte[] values)

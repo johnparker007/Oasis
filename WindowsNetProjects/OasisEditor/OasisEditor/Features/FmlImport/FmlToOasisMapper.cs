@@ -145,7 +145,7 @@ internal sealed class FmlToOasisMapper
     private static string? LampText(BaseComponent c) => Str(c, "OffText") ?? Str(c, "On1Text") ?? Str(c, "On2Text") ?? Str(c, "On3Text") ?? ButtonLabelText(c) ?? Text(c);
     private static string? ButtonLabelText(BaseComponent c) => Str(c, "Label") ?? Str(c, "Label (UTF-16)");
     private static string? LabelText(BaseComponent c) => Str(c, "Label") ?? Str(c, "Label (UTF-16)") ?? Text(c);
-    private static int? LabelLampNumber(BaseComponent c) => UInt(c, "Lamp") is uint lamp ? unchecked((int)lamp) : null;
+    private static int? LabelLampNumber(BaseComponent c) => c is Label label ? label.Lamp : c.Int32s.TryGetValue("Lamp", out var lamp) ? lamp : UInt(c, "Lamp") is uint legacyLamp ? unchecked((int)legacyLamp) : null;
     private static string? Text(BaseComponent c) => Str(c, "Text") ?? Str(c, "Caption") ?? Str(c, "TextBoxText");
     private static FontTagEntry? Font(BaseComponent c) => c.Fonts.Values.FirstOrDefault(f => f.Role.Contains("off", StringComparison.OrdinalIgnoreCase)) ?? c.Fonts.Values.FirstOrDefault();
     private static string? FontStyle(FontTagEntry? font) => font is null ? null : font.FontStyle == 1 ? "Bold" : "Regular";

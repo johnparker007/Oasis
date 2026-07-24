@@ -83,7 +83,7 @@ namespace MfmeFmlDecoder.Application
                 fileWalker.WalkTlv(fullInputPath, offset);
             }
 
-            return componentParser.ToLayout();
+            return componentParser.ToLayout(fileWalker.Header);
         }
 
         private static byte[] ReadFileBytes(string fullInputPath)

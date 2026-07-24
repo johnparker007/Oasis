@@ -269,7 +269,7 @@ namespace MfmeFmlDecoder.src.Decoder.Component.Core
                 {
                     int valueOffset = checked((int)offset);
                     byte hostTagKeyByte = GetTagKeyFirstByte(data, offset - tagKeyLengthBytes, tagKeyLengthBytes, tag);
-                    length = ReadTlvBlockLength(data, valueOffset, hostTagKeyByte);
+                    length = ReadTlvBlockLength(data, valueOffset, hostTagKeyByte, componentTagMap);
                 }
                 else if (tagInfo.Role == ValueRole.LAMP_SUBLAMP_TABLE)
                 {
@@ -719,7 +719,8 @@ namespace MfmeFmlDecoder.src.Decoder.Component.Core
                         {
                             int vo = checked((int)valueStart);
                             byte hostTagKeyByte = GetTagKeyFirstByte(data, beforeKeyEnd, tagKeyLengthBytes, tag);
-                            length = ReadTlvBlockLength(data, vo, hostTagKeyByte, scanEndExclusive);
+                            length = ReadTlvBlockLength(
+                                data, vo, hostTagKeyByte, componentTagMap, scanEndExclusive);
                         }
                         else if (tagInfo.Role == ValueRole.LAMP_SUBLAMP_TABLE)
                         {
@@ -1371,6 +1372,39 @@ namespace MfmeFmlDecoder.src.Decoder.Component.Core
             return selectedByDropdownName;
         }
 
+        /// <summary>
+        /// After angle normalization the extended TLV cursor can land on leftover wire bytes.
+        /// Scan forward for the first decodable tag key in <paramref name="componentTagMap"/>.
+        /// </summary>
+        internal static long AlignExtendedSectionStart(
+            ComponentTagMap componentTagMap,
+            byte[] data,
+            long offset,
+            int maxScanBytes = 32)
+        {
+            if (componentTagMap is null) throw new ArgumentNullException(nameof(componentTagMap));
+            if (data is null) throw new ArgumentNullException(nameof(data));
+            if (offset < 0 || offset > data.Length) throw new ArgumentOutOfRangeException(nameof(offset));
+            if (maxScanBytes < 0) throw new ArgumentOutOfRangeException(nameof(maxScanBytes));
+
+            long scanEnd = Math.Min(data.Length, offset + maxScanBytes);
+            for (long i = offset; i < scanEnd; i++)
+            {
+                if (data[i] == 0x00)
+                {
+                    continue;
+                }
+
+                if (TryReadNestedTagBlockHeader(data, i, out _, out _, out _)
+                    || TryReadTag(componentTagMap, data, i, out _, out _, out _))
+                {
+                    return i;
+                }
+            }
+
+            return offset;
+        }
+
         private static bool TryReadTag(
             ComponentTagMap componentTagMap,
             byte[] data,
@@ -1800,9 +1834,17 @@ namespace MfmeFmlDecoder.src.Decoder.Component.Core
 
         /// <summary>
         /// Stop scanning inner TLVBLOCK records when the outer TLV stream resumes: EOF, explicit
-        /// <c>0x00</c> delimiter, or a tag key byte greater than this block's host tag id.
+        /// <c>0x00</c> delimiter, or a following outer tag id greater than this block's host tag.
+        /// When <paramref name="componentTagMap"/> is set, a high next-byte only ends the block if that
+        /// byte is a mapped 1-byte tag (so opaque blobs whose first byte happens to be &gt; host are not
+        /// mistaken for the next tag).
         /// </summary>
-        private static bool ShouldEndTlvBlockScan(byte[] data, int pos, int scanEndExclusive, byte hostTagKeyByte)
+        private static bool ShouldEndTlvBlockScan(
+            byte[] data,
+            int pos,
+            int scanEndExclusive,
+            byte hostTagKeyByte,
+            ComponentTagMap componentTagMap)
         {
             if (pos >= scanEndExclusive)
             {
@@ -1815,11 +1857,26 @@ namespace MfmeFmlDecoder.src.Decoder.Component.Core
                 return true;
             }
 
-            return next > hostTagKeyByte;
+            if (next <= hostTagKeyByte)
+            {
+                return false;
+            }
+
+            if (componentTagMap is null)
+            {
+                return true;
+            }
+
+            return componentTagMap.TryGetValue(next, 1, out _);
         }
 
         /// <inheritdoc cref="ValueRole.TLVBLOCK" />
-        private static int ReadTlvBlockLength(byte[] data, int valueOffset, byte hostTagKeyByte, int scanEndExclusive = -1)
+        private static int ReadTlvBlockLength(
+            byte[] data,
+            int valueOffset,
+            byte hostTagKeyByte,
+            ComponentTagMap componentTagMap = null,
+            int scanEndExclusive = -1)
         {
             checked
             {
@@ -1847,7 +1904,7 @@ namespace MfmeFmlDecoder.src.Decoder.Component.Core
                 int pos = valueOffset;
                 while (pos < scanEndExclusive)
                 {
-                    if (ShouldEndTlvBlockScan(data, pos, scanEndExclusive, hostTagKeyByte))
+                    if (ShouldEndTlvBlockScan(data, pos, scanEndExclusive, hostTagKeyByte, componentTagMap))
                     {
                         return pos - valueOffset;
                     }
@@ -1872,6 +1929,21 @@ namespace MfmeFmlDecoder.src.Decoder.Component.Core
                     int tlvRecordBytes = 4 + (int)payloadLength;
                     if (pos + tlvRecordBytes > scanEndExclusive)
                     {
+                        // At the start of a TLVBLOCK, some layouts store a fixed 24-byte opaque blob
+                        // instead of length-prefixed records (Lamp nested 0x68 on Indiana Jones; same
+                        // width as unknown tags 0x5C–0x5E). Do not scan byte-by-byte for 0x00 — those
+                        // blobs contain interior zeros that are not delimiters.
+                        if (pos == valueOffset)
+                        {
+                            const int opaqueFixedBytes = 24;
+                            if (valueOffset + opaqueFixedBytes <= scanEndExclusive)
+                            {
+                                return opaqueFixedBytes;
+                            }
+
+                            return scanEndExclusive - valueOffset;
+                        }
+
                         LogTlvBlockOverflowContext(
                             data,
                             pos,
@@ -1903,9 +1975,24 @@ namespace MfmeFmlDecoder.src.Decoder.Component.Core
                 List<byte[]> entries = new();
                 int pos = valueOffset;
                 int endExclusive = valueOffset + totalSpanBytes;
+
+                if (totalSpanBytes > 0 && pos + 4 <= endExclusive)
+                {
+                    uint firstPayloadLength = BinaryPrimitives.ReadUInt32LittleEndian(data.AsSpan(pos, 4));
+                    bool firstRecordFits = firstPayloadLength > 0
+                        && firstPayloadLength <= int.MaxValue - 4
+                        && pos + 4 + (int)firstPayloadLength <= endExclusive;
+                    if (!firstRecordFits)
+                    {
+                        // Opaque blob measured by ReadTlvBlockLength — expose as a single raw entry.
+                        entries.Add(CopyRaw(data, valueOffset, totalSpanBytes));
+                        return entries;
+                    }
+                }
+
                 while (pos < endExclusive)
                 {
-                    if (ShouldEndTlvBlockScan(data, pos, endExclusive, hostTagKeyByte))
+                    if (ShouldEndTlvBlockScan(data, pos, endExclusive, hostTagKeyByte, componentTagMap: null))
                     {
                         break;
                     }

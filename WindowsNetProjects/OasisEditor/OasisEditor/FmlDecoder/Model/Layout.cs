@@ -1,9 +1,10 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Nodes;
+using MfmeFmlDecoder.Model;
 using MfmeFmlDecoder.src.Model.Component;
 
 namespace MfmeFmlDecoder.src.Model
@@ -12,10 +13,21 @@ namespace MfmeFmlDecoder.src.Model
     {
         public IReadOnlyList<BaseComponent> Components { get; }
 
-        public Layout(IEnumerable<BaseComponent> components)
+        public LayoutFileHeader Header { get; }
+
+        public Layout(IEnumerable<BaseComponent> components, LayoutFileHeader header = null)
         {
             Components = components != null ? components.ToList() : new List<BaseComponent>();
+            Header = header ?? new LayoutFileHeader();
         }
+
+        public bool HasSplash => Header.HasSplash;
+
+        public string Description => Header.Description ?? string.Empty;
+
+        public string TextNotes => Header.TextNotes ?? string.Empty;
+
+        public IReadOnlyDictionary<string, BitmapEntry> Images => Header.Images;
 
         public string ToJson(bool indented = true)
         {
@@ -26,6 +38,7 @@ namespace MfmeFmlDecoder.src.Model
                 new JsonWriterOptions { Indented = indented });
 
             writer.WriteStartObject();
+
             writer.WriteStartArray("Components");
             for (int i = 0; i < Components.Count; i++)
             {

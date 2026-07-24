@@ -20,6 +20,7 @@ namespace MfmeFmlDecoder.src.Decoder.Component
             { 0x02, new TagInfo(0x04, "DigitWidth", new byte[] { 0x11, 0x00, 0x00, 0x00 }, ValueRole.UINT32) },
             { 0x03, new TagInfo(0x04, "Columns", new byte[] { 0x10, 0x00, 0x00, 0x00 }, ValueRole.UINT32) },
             { 0x04, new TagInfo(0x00, "Alpha Character Bitmap", Array.Empty<byte>(), ValueRole.BITMAP) },
+            { 0x08, new TagInfo(0x04, "Unknown 0x08", new byte[] { 0x00, 0x00, 0x00, 0x00 }, ValueRole.UINT32) },
             { 0x36, new TagInfo(0x00, "Overlay Image", Array.Empty<byte>(), ValueRole.BITMAP) },
             { 0x3B, new TagInfo(0x04, "Unknown3B", new byte[] { 0x00, 0x00, 0x00, 0x00 }, ValueRole.UINT32) },
             { 0x40, new TagInfo(0x01, "Reversed", new byte[] { 0x00 }, ValueRole.BOOLEAN) },

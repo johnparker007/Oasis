@@ -41,9 +41,11 @@
         /// Repeated opaque TLV payloads in one extended tag value.
         /// <para>Layout: zero or more records of <c>[payloadLength:uint32 LE]</c>, <c>[payload:payloadLength bytes]</c>,
         /// terminated by a zero <c>payloadLength</c>, EOF, a <c>0x00</c> byte, or resumption of the outer TLV
-        /// stream when the next byte is a tag id greater than this block's host tag key.</para>
+        /// stream when the next byte is a mapped tag id greater than this block's host tag key.
+        /// If the first length-prefix does not fit, a fixed 24-byte opaque blob is assumed
+        /// (seen on some Lamp nested <c>0x68</c> values; same width as unknown tags <c>0x5C</c>–<c>0x5E</c>).</para>
         /// Parsed value is <see cref="List{T}"/> of <see cref="byte[]"/> — one entry per non-zero-length TLV payload
-        /// (excluding each record's length prefix).
+        /// (excluding each record's length prefix), or a single raw blob for the opaque fallback.
         /// </summary>
         TLVBLOCK,
 
