@@ -31,3 +31,10 @@ Use this checklist on a Windows development machine with the Oasis Editor toolch
 - Confirm no duplicate reel materials or owned textures remain after unload.
 - Confirm reel transmission-mask textures are destroyed/unloaded with their owning Face.
 - Confirm lamp-state updates are not duplicated after reload and do not create duplicate subscriptions or bindings.
+
+## URP shader sanity checks
+
+- Open `OasisReelLamp.shader` in the Unity project and confirm the Console reports no compile errors.
+- Select a generated reel material and confirm it uses `Oasis/ReelLamp` without rendering magenta.
+- Deliberately rename or break `Oasis/ReelLamp` in a temporary local branch and confirm the Player logs a clear diagnostic warning before falling back to a visible reel-band material.
+- Reposition and rotate the cabinet/Face target, then confirm the fixed reel-lamp aperture remains aligned while the reel band and mask continue to move through it.

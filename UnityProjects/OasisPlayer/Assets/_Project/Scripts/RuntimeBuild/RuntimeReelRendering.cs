@@ -107,6 +107,28 @@ namespace OasisPlayer.RuntimeBuild
         }
     }
 
+
+    public static class RuntimeReelShaderCoordinateHelper
+    {
+        public static float ToWindowUvOffset(float effectivePosition, bool isReversed, float bandOffset)
+        {
+            var adjusted = effectivePosition;
+            if (isReversed)
+            {
+                var wrappedInput = RuntimeReelPositionConverter.PositiveModulo(adjusted, RuntimeReelPositionConverter.PositionsPerRevolution);
+                adjusted = wrappedInput == 0f ? 0f : RuntimeReelPositionConverter.PositionsPerRevolution - wrappedInput;
+            }
+
+            adjusted += bandOffset * RuntimeReelPositionConverter.PositionsPerRevolution;
+            return RuntimeReelPositionConverter.PositiveModulo(adjusted, RuntimeReelPositionConverter.PositionsPerRevolution) / RuntimeReelPositionConverter.PositionsPerRevolution;
+        }
+
+        public static Vector2 ToFixedWindowUv(Vector2 rotatingBandUv, float windowUvOffset)
+        {
+            return new Vector2(rotatingBandUv.x, RuntimeReelPositionConverter.PositiveModulo(rotatingBandUv.y - windowUvOffset, 1f));
+        }
+    }
+
     public sealed class RuntimeReelRenderBinding : IDisposable
     {
         public RuntimeReelRenderBinding(GameObject gameObject, Material material, MeshRenderer renderer, FaceRuntimeReelManifestEntry reel)
@@ -130,21 +152,23 @@ namespace OasisPlayer.RuntimeBuild
         {
             var lamps = reel != null && reel.reelLamps != null ? reel.reelLamps : Array.Empty<FaceRuntimeReelLampManifestEntry>();
             for (var i = 0; i < _lampIds.Length; i++) _lampIds[i] = -1;
-            var centers = new Vector4(0.5f, 1f / 6f, 0.5f, 0.5f);
+            var verticalCenters = new Vector4(1f / 6f, 0.5f, 5f / 6f, 0f);
             var radii = new Vector4(0.42f, 0.42f, 0.42f, 0f);
             var intensities = new Vector4(1f, 1f, 1f, 0f);
             for (var i = 0; i < lamps.Length && i < 3; i++)
             {
                 var lamp = lamps[i];
+                // RuntimeLampState is one-based (1..255), so both the -1 unassigned sentinel and manifest value 0 stay off.
                 _lampIds[i] = lamp != null && lamp.lampId > 0 ? lamp.lampId : -1;
-                if (i == 0) { centers.x = 0.5f; centers.y = lamp.localVerticalCenter; radii.x = lamp.radius; intensities.x = lamp.intensity; }
-                else if (i == 1) { centers.z = 0.5f; centers.w = lamp.localVerticalCenter; radii.y = lamp.radius; intensities.y = lamp.intensity; }
-                else { radii.z = lamp.radius; intensities.z = lamp.intensity; }
+                if (i == 0) { verticalCenters.x = lamp.localVerticalCenter; radii.x = lamp.radius; intensities.x = lamp.intensity; }
+                else if (i == 1) { verticalCenters.y = lamp.localVerticalCenter; radii.y = lamp.radius; intensities.y = lamp.intensity; }
+                else { verticalCenters.z = lamp.localVerticalCenter; radii.z = lamp.radius; intensities.z = lamp.intensity; }
             }
-            PropertyBlock.SetVector(RuntimeFaceShaderProperties.ReelLampCenters, centers);
+            PropertyBlock.SetVector(RuntimeFaceShaderProperties.ReelLampVerticalCenters, verticalCenters);
             PropertyBlock.SetVector(RuntimeFaceShaderProperties.ReelLampRadii, radii);
             PropertyBlock.SetVector(RuntimeFaceShaderProperties.ReelLampIntensities, intensities);
             PropertyBlock.SetFloat(RuntimeFaceShaderProperties.ReelTransmissionMaskEnabled, reel != null && reel.TransmissionMaskTexture != null ? 1f : 0f);
+            PropertyBlock.SetFloat(RuntimeFaceShaderProperties.ReelWindowUvOffset, reel != null ? RuntimeReelShaderCoordinateHelper.ToWindowUvOffset(0f, reel.isReversed, reel.bandOffset) : 0f);
             if (reel != null && reel.TransmissionMaskTexture != null) PropertyBlock.SetTexture(RuntimeFaceShaderProperties.ReelTransmissionMaskTexture, reel.TransmissionMaskTexture.Texture);
             PropertyBlock.SetVector(RuntimeFaceShaderProperties.ReelLampBrightness, Vector4.zero);
             if (Renderer != null) Renderer.SetPropertyBlock(PropertyBlock);
@@ -226,7 +250,13 @@ namespace OasisPlayer.RuntimeBuild
                     var filter = go.AddComponent<MeshFilter>();
                     filter.sharedMesh = _meshFactory.Get(physicalWidthMetres, physicalRadiusMetres, 96);
                     var renderer = go.AddComponent<MeshRenderer>();
-                    var material = CreateMaterial(reel);
+                    var material = CreateMaterial(machine, reel);
+                    if (material == null)
+                    {
+                        if (Application.isPlaying) UnityEngine.Object.Destroy(go);
+                        else UnityEngine.Object.DestroyImmediate(go);
+                        continue;
+                    }
                     renderer.sharedMaterial = material;
                     var binding = new RuntimeReelRenderBinding(go, material, renderer, reel);
                     binding.ApplyLampState(machine.LampState);
@@ -235,11 +265,19 @@ namespace OasisPlayer.RuntimeBuild
             }
         }
 
-        private static Material CreateMaterial(FaceRuntimeReelManifestEntry reel)
+        public static Material CreateMaterial(RuntimeMachine machine, FaceRuntimeReelManifestEntry reel)
         {
             var shader = Shader.Find("Oasis/ReelLamp");
-            if (shader == null) shader = Shader.Find("Universal Render Pipeline/Lit");
-            if (shader == null) shader = Shader.Find("Standard");
+            if (shader == null || !shader.isSupported)
+            {
+                if (machine != null) machine.AddWarning(shader == null ? "Runtime reel shader 'Oasis/ReelLamp' could not be found; using visible diagnostic fallback." : "Runtime reel shader 'Oasis/ReelLamp' is not supported by the active render pipeline; using visible diagnostic fallback.");
+                shader = Shader.Find("Universal Render Pipeline/Lit");
+            }
+            if (shader == null)
+            {
+                if (machine != null) machine.AddWarning("No supported shader was available for runtime reel rendering; reel was skipped.");
+                return null;
+            }
             var material = new Material(shader);
             material.name = "RuntimeReel_" + reel.objectId;
             material.mainTexture = reel.BandTexture.Texture;
