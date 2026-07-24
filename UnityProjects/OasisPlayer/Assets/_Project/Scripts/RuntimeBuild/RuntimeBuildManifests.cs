@@ -127,13 +127,15 @@ namespace OasisPlayer.RuntimeBuild
 
         [NonSerialized]
         public RuntimeTextureAsset BandTexture;
+        [NonSerialized]
+        public RuntimeTextureAsset TransmissionMaskTexture;
     }
 
     [Serializable]
     public sealed class FaceRuntimeReelLampManifestEntry
     {
         public string position = string.Empty;
-        public int lampId;
+        public int lampId = -1;
         public float localVerticalCenter;
         public float radius;
         public float intensity;

@@ -22,6 +22,13 @@ namespace OasisPlayer.RuntimeBuild
         public const string FaceRotationQuarterTurnsName = "_OasisFaceRotationQuarterTurns";
         public const string FaceFlipHorizontalName = "_OasisFaceFlipHorizontal";
 
+        public const string ReelLampBrightnessName = "_OasisReelLampBrightness";
+        public const string ReelLampCentersName = "_OasisReelLampCenters";
+        public const string ReelLampRadiiName = "_OasisReelLampRadii";
+        public const string ReelLampIntensitiesName = "_OasisReelLampIntensities";
+        public const string ReelTransmissionMaskTextureName = "_OasisReelTransmissionMaskTex";
+        public const string ReelTransmissionMaskEnabledName = "_OasisReelTransmissionMaskEnabled";
+
         public static readonly int ArtworkTexture = Shader.PropertyToID(ArtworkTextureName);
         public static readonly int MaskTexture = Shader.PropertyToID(MaskTextureName);
         public static readonly int TrayIdTexture = Shader.PropertyToID(TrayIdTextureName);
@@ -38,5 +45,12 @@ namespace OasisPlayer.RuntimeBuild
         public static readonly int CullMode = Shader.PropertyToID(CullModeName);
         public static readonly int FaceRotationQuarterTurns = Shader.PropertyToID(FaceRotationQuarterTurnsName);
         public static readonly int FaceFlipHorizontal = Shader.PropertyToID(FaceFlipHorizontalName);
+
+        public static readonly int ReelLampBrightness = Shader.PropertyToID(ReelLampBrightnessName);
+        public static readonly int ReelLampCenters = Shader.PropertyToID(ReelLampCentersName);
+        public static readonly int ReelLampRadii = Shader.PropertyToID(ReelLampRadiiName);
+        public static readonly int ReelLampIntensities = Shader.PropertyToID(ReelLampIntensitiesName);
+        public static readonly int ReelTransmissionMaskTexture = Shader.PropertyToID(ReelTransmissionMaskTextureName);
+        public static readonly int ReelTransmissionMaskEnabled = Shader.PropertyToID(ReelTransmissionMaskEnabledName);
     }
 }

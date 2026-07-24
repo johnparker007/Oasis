@@ -109,14 +109,62 @@ namespace OasisPlayer.RuntimeBuild
 
     public sealed class RuntimeReelRenderBinding : IDisposable
     {
-        public RuntimeReelRenderBinding(GameObject gameObject, Material material)
+        public RuntimeReelRenderBinding(GameObject gameObject, Material material, MeshRenderer renderer, FaceRuntimeReelManifestEntry reel)
         {
             GameObject = gameObject;
             Material = material;
+            Renderer = renderer;
+            PropertyBlock = new MaterialPropertyBlock();
+            Configure(reel);
         }
 
         public GameObject GameObject { get; private set; }
         public Material Material { get; private set; }
+        public MeshRenderer Renderer { get; private set; }
+        public MaterialPropertyBlock PropertyBlock { get; private set; }
+        private readonly int[] _lampIds = new int[3];
+        private readonly float[] _brightness = new float[3];
+        private int _lampStateVersion = -1;
+
+        private void Configure(FaceRuntimeReelManifestEntry reel)
+        {
+            var lamps = reel != null && reel.reelLamps != null ? reel.reelLamps : Array.Empty<FaceRuntimeReelLampManifestEntry>();
+            for (var i = 0; i < _lampIds.Length; i++) _lampIds[i] = -1;
+            var centers = new Vector4(0.5f, 1f / 6f, 0.5f, 0.5f);
+            var radii = new Vector4(0.42f, 0.42f, 0.42f, 0f);
+            var intensities = new Vector4(1f, 1f, 1f, 0f);
+            for (var i = 0; i < lamps.Length && i < 3; i++)
+            {
+                var lamp = lamps[i];
+                _lampIds[i] = lamp != null && lamp.lampId > 0 ? lamp.lampId : -1;
+                if (i == 0) { centers.x = 0.5f; centers.y = lamp.localVerticalCenter; radii.x = lamp.radius; intensities.x = lamp.intensity; }
+                else if (i == 1) { centers.z = 0.5f; centers.w = lamp.localVerticalCenter; radii.y = lamp.radius; intensities.y = lamp.intensity; }
+                else { radii.z = lamp.radius; intensities.z = lamp.intensity; }
+            }
+            PropertyBlock.SetVector(RuntimeFaceShaderProperties.ReelLampCenters, centers);
+            PropertyBlock.SetVector(RuntimeFaceShaderProperties.ReelLampRadii, radii);
+            PropertyBlock.SetVector(RuntimeFaceShaderProperties.ReelLampIntensities, intensities);
+            PropertyBlock.SetFloat(RuntimeFaceShaderProperties.ReelTransmissionMaskEnabled, reel != null && reel.TransmissionMaskTexture != null ? 1f : 0f);
+            if (reel != null && reel.TransmissionMaskTexture != null) PropertyBlock.SetTexture(RuntimeFaceShaderProperties.ReelTransmissionMaskTexture, reel.TransmissionMaskTexture.Texture);
+            PropertyBlock.SetVector(RuntimeFaceShaderProperties.ReelLampBrightness, Vector4.zero);
+            if (Renderer != null) Renderer.SetPropertyBlock(PropertyBlock);
+        }
+
+        public bool ApplyLampState(RuntimeLampState lampState)
+        {
+            if (lampState == null || lampState.Version == _lampStateVersion) return false;
+            _lampStateVersion = lampState.Version;
+            var changed = false;
+            for (var i = 0; i < _brightness.Length; i++)
+            {
+                var next = _lampIds[i] > 0 ? lampState.GetBrightness(_lampIds[i]) : 0f;
+                if (Mathf.Abs(_brightness[i] - next) > 0.0001f) { _brightness[i] = next; changed = true; }
+            }
+            if (!changed) return false;
+            PropertyBlock.SetVector(RuntimeFaceShaderProperties.ReelLampBrightness, new Vector4(_brightness[0], _brightness[1], _brightness[2], 0f));
+            if (Renderer != null) Renderer.SetPropertyBlock(PropertyBlock);
+            return true;
+        }
 
         public void Dispose()
         {
@@ -180,14 +228,17 @@ namespace OasisPlayer.RuntimeBuild
                     var renderer = go.AddComponent<MeshRenderer>();
                     var material = CreateMaterial(reel);
                     renderer.sharedMaterial = material;
-                    face.AddReelRenderBinding(new RuntimeReelRenderBinding(go, material));
+                    var binding = new RuntimeReelRenderBinding(go, material, renderer, reel);
+                    binding.ApplyLampState(machine.LampState);
+                    face.AddReelRenderBinding(binding);
                 }
             }
         }
 
         private static Material CreateMaterial(FaceRuntimeReelManifestEntry reel)
         {
-            var shader = Shader.Find("Universal Render Pipeline/Lit");
+            var shader = Shader.Find("Oasis/ReelLamp");
+            if (shader == null) shader = Shader.Find("Universal Render Pipeline/Lit");
             if (shader == null) shader = Shader.Find("Standard");
             var material = new Material(shader);
             material.name = "RuntimeReel_" + reel.objectId;
@@ -203,6 +254,7 @@ namespace OasisPlayer.RuntimeBuild
             else if (string.IsNullOrWhiteSpace(reel.reelBand)) warning = $"Runtime Face '{RuntimeFacePlacement.FaceId(face)}' reel '{reel.objectId}' has an empty reelBand path.";
             else if (reel.stops <= 0) warning = $"Runtime Face '{RuntimeFacePlacement.FaceId(face)}' reel '{reel.objectId}' has invalid stop count '{reel.stops}'.";
             else if (reel.physicalWidth <= 0f || reel.physicalRadius <= 0f) warning = $"Runtime Face '{RuntimeFacePlacement.FaceId(face)}' reel '{reel.objectId}' has invalid physical dimensions.";
+            else if (!string.IsNullOrWhiteSpace(reel.transmissionMask) && (reel.TransmissionMaskTexture == null || reel.TransmissionMaskTexture.Texture == null)) warning = $"Runtime Face '{RuntimeFacePlacement.FaceId(face)}' reel '{reel.objectId}' declares a transmission mask but it was not loaded.";
             return string.IsNullOrEmpty(warning);
         }
 

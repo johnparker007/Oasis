@@ -123,7 +123,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
 
         using var manifestJson = JsonDocument.Parse(File.ReadAllText(result.ManifestPath));
         var root = manifestJson.RootElement;
-        Assert.Equal(5, root.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(6, root.GetProperty("schemaVersion").GetInt32());
         Assert.Equal("face-runtime", root.GetProperty("faceId").GetString());
         Assert.Equal("artwork.png", root.GetProperty("artwork").GetString());
         Assert.Equal("mask.png", root.GetProperty("mask").GetString());
@@ -829,6 +829,76 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         }
     }
 
+
+    [Fact]
+    public void Export_OpaqueReel_CopiesTransmissionMaskAsContainedRuntimeAsset()
+    {
+        var artworkPath = Path.Combine(_assetsDirectory, "artwork.png");
+        var faceMaskPath = Path.Combine(_generatedDirectory, "source-mask.png");
+        var bandPath = Path.Combine(_assetsDirectory, "reel-band.png");
+        var transmissionPath = Path.Combine(_generatedDirectory, "reel-transmission.png");
+        WriteSolidPng(artworkPath, 4, 4, SKColors.Red);
+        WriteSolidPng(faceMaskPath, 4, 4, SKColors.White);
+        WriteSolidPng(bandPath, 2, 2, SKColors.Green);
+        WriteSolidPng(transmissionPath, 2, 2, new SKColor(10, 20, 30, 255));
+        var document = CreateDocumentWithRuntimeReel("Assets/artwork.png", "Generated/source-mask.png", "Assets/reel-band.png", true, "Generated/reel-transmission.png");
+        WriteDefaultCabinetAsset();
+
+        var result = new FaceRuntimeExportService().Export(document, CreateProject(), GetFaceManifestPath());
+
+        var reel = Assert.Single(result.Manifest.Reels);
+        Assert.Equal("reels/reel-1_transmissionMask.png", reel.TransmissionMask);
+        Assert.False(Path.IsPathRooted(reel.TransmissionMask!));
+        Assert.DoesNotContain("Assets/", reel.TransmissionMask, StringComparison.OrdinalIgnoreCase);
+        var packagedPath = Path.Combine(result.OutputDirectory, reel.TransmissionMask!.Replace('/', Path.DirectorySeparatorChar));
+        Assert.True(File.Exists(packagedPath));
+        Assert.Equal(SKBitmap.Decode(transmissionPath).GetPixel(0, 0), SKBitmap.Decode(packagedPath).GetPixel(0, 0));
+    }
+
+    [Fact]
+    public void Export_NonOpaqueReel_OmitsTransmissionMaskPackage()
+    {
+        var artworkPath = Path.Combine(_assetsDirectory, "artwork.png");
+        var faceMaskPath = Path.Combine(_generatedDirectory, "source-mask.png");
+        var bandPath = Path.Combine(_assetsDirectory, "reel-band.png");
+        var transmissionPath = Path.Combine(_generatedDirectory, "reel-transmission.png");
+        WriteSolidPng(artworkPath, 4, 4, SKColors.Red);
+        WriteSolidPng(faceMaskPath, 4, 4, SKColors.White);
+        WriteSolidPng(bandPath, 2, 2, SKColors.Green);
+        WriteSolidPng(transmissionPath, 2, 2, SKColors.Black);
+        var document = CreateDocumentWithRuntimeReel("Assets/artwork.png", "Generated/source-mask.png", "Assets/reel-band.png", false, "Generated/reel-transmission.png");
+        WriteDefaultCabinetAsset();
+
+        var result = new FaceRuntimeExportService().Export(document, CreateProject(), GetFaceManifestPath());
+
+        Assert.Null(Assert.Single(result.Manifest.Reels).TransmissionMask);
+        Assert.False(File.Exists(Path.Combine(result.OutputDirectory, "reels", "reel-1_transmissionMask.png")));
+    }
+
+    [Fact]
+    public void Export_OpaqueReelMissingTransmissionMask_FailsClearly()
+    {
+        var artworkPath = Path.Combine(_assetsDirectory, "artwork.png");
+        var faceMaskPath = Path.Combine(_generatedDirectory, "source-mask.png");
+        var bandPath = Path.Combine(_assetsDirectory, "reel-band.png");
+        WriteSolidPng(artworkPath, 4, 4, SKColors.Red);
+        WriteSolidPng(faceMaskPath, 4, 4, SKColors.White);
+        WriteSolidPng(bandPath, 2, 2, SKColors.Green);
+        var document = CreateDocumentWithRuntimeReel("Assets/artwork.png", "Generated/source-mask.png", "Assets/reel-band.png", true, "Generated/missing-transmission.png");
+        WriteDefaultCabinetAsset();
+
+        var exception = Assert.Throws<FileNotFoundException>(() => new FaceRuntimeExportService().Export(document, CreateProject(), GetFaceManifestPath()));
+        Assert.Contains("transmission mask", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void CreateManifest_UnassignedReelLamp_UsesNegativeSentinel()
+    {
+        var document = CreateReelDocumentWithLamps([new ReelLampSlotModel { Position = ReelLampSlotPosition.Top, LampNumber = null, LocalVerticalCenter = 1d / 6d, Radius = 0.42d, Intensity = 1d }]);
+        var manifest = new FaceRuntimeExportService().CreateManifest(document, 100, 100, CreateCabinetContext(CreateCabinet(new CabinetReelSpecification("standard", "Standard", 210, 50))));
+        Assert.Equal(-1, Assert.Single(Assert.Single(manifest.Reels).ReelLamps).LampId);
+    }
+
     private EditorProject CreateProject()
     {
         return new EditorProject
@@ -908,6 +978,36 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
                     Stops = 20
                 }
             ]
+        };
+    }
+
+
+    private static FaceDocumentModel CreateDocumentWithRuntimeReel(string artworkAssetPath, string maskAssetPath, string reelBandPath, bool isOpaque, string? transmissionMaskPath)
+    {
+        var document = CreateDocument(artworkAssetPath, maskAssetPath);
+        return new FaceDocumentModel
+        {
+            Id = document.Id,
+            Title = document.Title,
+            AssignedCabinetAssetPath = document.AssignedCabinetAssetPath,
+            SourceRegion = document.SourceRegion,
+            MaskLayer = document.MaskLayer,
+            Elements = document.Elements.Select(element => element is FaceReelDisplayElement reel
+                ? new FaceReelDisplayElement
+                {
+                    ObjectId = reel.ObjectId, Name = reel.Name, X = reel.X, Y = reel.Y, Width = reel.Width, Height = reel.Height, LinkedMachineObjectReference = reel.LinkedMachineObjectReference,
+                    ReelSpecificationId = reel.ReelSpecificationId, Stops = reel.Stops, AssetPath = reelBandPath, IsOpaqueReel = isOpaque, ReelLampTransmissionMaskAssetPath = transmissionMaskPath
+                }
+                : element).ToArray()
+        };
+    }
+
+    private static FaceDocumentModel CreateReelDocumentWithLamps(IReadOnlyList<ReelLampSlotModel> lamps)
+    {
+        return new FaceDocumentModel
+        {
+            Id = "face-runtime", Title = "Runtime Face", AssignedCabinetAssetPath = "Assets/Cabinets/cabinet.asset", SourceRegion = new FaceSourceRegionModel { X = 0, Y = 0, Width = 1000, Height = 1000 },
+            Elements = [new FaceReelDisplayElement { ObjectId = "reel-1", Name = "Reel 1", ReelSpecificationId = "standard", X = 10, Y = 20, Width = 300, Height = 400, Stops = 20, LinkedMachineObjectReference = MachineObjectReference.Reel(1), ReelLamps = lamps }]
         };
     }
 
