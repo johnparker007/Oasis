@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using MfmeFmlDecoder.Decryption;
 using MfmeFmlDecoder.Decoder;
+using MfmeFmlDecoder.GameConfig;
 using MfmeFmlDecoder.src.Decoder.Component;
 using MfmeFmlDecoder.Utilities;
 using MfmeFmlDecoder.src.Decoder.Component.Core;
@@ -56,19 +57,21 @@ namespace MfmeFmlDecoder.Application
                     )
                 );
 
+                byte[] layoutBytes;
                 if (string.Equals(Path.GetExtension(inputPath), ".fml", StringComparison.OrdinalIgnoreCase))
                 {
-                    byte[] decrypted = FmlDecryptor.Decrypt(ReadFileBytes(inputPath));
-                    fileWalker.WalkTlv(decrypted, offset);
+                    layoutBytes = FmlDecryptor.Decrypt(ReadFileBytes(inputPath));
+                    fileWalker.WalkTlv(layoutBytes, offset);
                 }
                 else
                 {
-                    fileWalker.WalkTlv(inputPath, offset);
+                    layoutBytes = ReadFileBytes(inputPath);
+                    fileWalker.WalkTlv(layoutBytes, offset);
                 }
 
                 if (writeLayoutJson || exportLayout)
                 {
-                    var layout = componentParser.ToLayout();
+                    var layout = componentParser.ToLayout(fileWalker.Header);
 
                     if (writeLayoutJson)
                     {
@@ -79,7 +82,10 @@ namespace MfmeFmlDecoder.Application
                     if (exportLayout)
                     {
                         string outputZipPath = exportOutputPath ?? Path.ChangeExtension(inputPath, ".zip");
-                        LayoutExporter.ExportToZip(layout, outputZipPath);
+                        string machineJson = null;
+                        string gameJson = null;
+                        TryDecodeGameConfig(inputPath, layoutBytes, out machineJson, out gameJson);
+                        LayoutExporter.ExportToZip(layout, outputZipPath, machineJson, gameJson);
                         RunLog.WriteDiagnosticLine($"Exported layout to {Path.GetFullPath(outputZipPath)}");
                     }
                 }
@@ -111,6 +117,41 @@ namespace MfmeFmlDecoder.Application
             }
 
             return MfmeVersionReader.Read(inputPath, offset);
+        }
+
+        private static void TryDecodeGameConfig(
+            string layoutPath,
+            byte[] layoutBytes,
+            out string machineJson,
+            out string gameJson)
+        {
+            machineJson = null;
+            gameJson = null;
+
+            string gamPath = SiblingGamResolver.TryResolve(layoutPath, out string skipReason);
+            if (gamPath is null)
+            {
+                if (!string.IsNullOrEmpty(skipReason))
+                    RunLog.WriteDiagnosticLine(skipReason);
+                return;
+            }
+
+            if (!GameConfigDecoder.TryDecode(
+                    layoutPath,
+                    gamPath,
+                    layoutBytes,
+                    mapsDirectory: null,
+                    out GameConfigDecodeResult decoded,
+                    out string decodeSkip))
+            {
+                RunLog.WriteDiagnosticLine(
+                    "GameConfig skipped: " + (decodeSkip ?? "unknown reason"));
+                return;
+            }
+
+            machineJson = decoded.MachineJson;
+            gameJson = decoded.GameJson;
+            RunLog.WriteDiagnosticLine($"GameConfig decoded from {gamPath}");
         }
 
         private static bool TryParseArgs(
@@ -285,6 +326,8 @@ namespace MfmeFmlDecoder.Application
             Console.WriteLine("Options:");
             Console.WriteLine("  --json, -j          Emit decoded layout as JSON on standard output only; errors go to stderr.");
             Console.WriteLine("  --export[=path]     Write layout.json and component images to a zip file.");
+            Console.WriteLine("                      If a sibling .gam is found, also write machine.json (FML tags)");
+            Console.WriteLine("                      and game.json (GAM settings) into the zip.");
             Console.WriteLine("                      Default output: <input-file>.zip in the same directory as the input file.");
             Console.WriteLine("  --mfme-version      Print the MFME version from the layout file (TLV tag 0x2F) on standard output.");
             Console.WriteLine();

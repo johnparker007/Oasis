@@ -19,6 +19,17 @@ namespace MfmeFmlDecoder.Decryption
             0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
         };
 
+        // Standard AACS file header prefix used by the reference encoder.
+        // Bytes 12..15 are overwritten with the chunk count; bytes 28..127 are
+        // an ECL-encrypted 0..99 counter under the file password.
+        private static readonly byte[] s_fileHeaderPrefix =
+        {
+            0x41, 0x41, 0x43, 0x53, 0x00, 0x00, 0x08, 0x00,
+            0x3F, 0xF4, 0x41, 0xC1, 0x01, 0x00, 0x00, 0x00,
+            0x29, 0x5C, 0x8F, 0x3F, 0x02, 0x00, 0x01, 0x00,
+            0x00, 0x00, 0x00, 0x00
+        };
+
         public static byte[] Decrypt(byte[] fmlBytes, IProgress<double> progress = null)
         {
             if (fmlBytes == null || fmlBytes.Length < 148)
@@ -35,6 +46,112 @@ namespace MfmeFmlDecoder.Decryption
                 progress?.Report(0);
                 return DecryptAllChunks(fmlBytes, AltPassword, progress);
             }
+        }
+
+        /// <summary>
+        /// Re-packs plaintext into a valid FML using the original file's password
+        /// (phase-1 alt password or phase-2 mixer-derived password).
+        /// Uses the same layout as the reference encoder: AACS header, per-chunk
+        /// CRC32, zlib+ECL payloads, and trailing seed when phase 2.
+        /// </summary>
+        public static byte[] RepackAsSingleChunk(byte[] originalFml, byte[] plaintext)
+        {
+            if (originalFml == null || originalFml.Length < 148)
+                throw new ArgumentException("FML data too short", nameof(originalFml));
+            if (plaintext == null)
+                throw new ArgumentNullException(nameof(plaintext));
+
+            string password = DerivePassword(originalFml);
+            bool phase1 = FindLastNextHeaderOffset(originalFml) == (uint)originalFml.Length;
+            return Encode(plaintext, password, chunkSize: 524288, phase1: phase1);
+        }
+
+        /// <summary>
+        /// Encode plaintext to an FML. <paramref name="password"/> must be an 8-char hex string.
+        /// </summary>
+        public static byte[] Encode(byte[] plaintext, string password, int chunkSize = 524288, bool phase1 = false)
+        {
+            if (plaintext == null || plaintext.Length == 0)
+                throw new ArgumentException("Plaintext is null or empty", nameof(plaintext));
+            if (password == null || password.Length != 8)
+                throw new ArgumentException("Password must be an 8-character hex string (e.g. \"01279247\")", nameof(password));
+            if (chunkSize <= 0)
+                throw new ArgumentOutOfRangeException(nameof(chunkSize));
+
+            uint passwordVal = uint.Parse(password, System.Globalization.NumberStyles.HexNumber);
+            uint seed = MixInverse(passwordVal);
+
+            byte[] aesKey = Ripemd128.ComputeHash(Encoding.ASCII.GetBytes(password));
+            byte[] iv = EncryptEcb(aesKey, s_allFfBlock);
+
+            using MemoryStream output = new MemoryStream();
+            int totalChunks = (plaintext.Length + chunkSize - 1) / chunkSize;
+
+            output.Write(s_fileHeaderPrefix, 0, 12);
+            output.Write(BitConverter.GetBytes((uint)totalChunks), 0, 4);
+            output.Write(s_fileHeaderPrefix, 16, 12);
+
+            byte[] counter = new byte[100];
+            for (int i = 0; i < 100; i++)
+                counter[i] = (byte)i;
+            byte[] encryptedCounter = EclEncrypt(counter, aesKey, iv);
+            output.Write(encryptedCounter, 0, 100);
+
+            int offset = 0;
+            for (int chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++)
+            {
+                int thisChunkSize = Math.Min(chunkSize, plaintext.Length - offset);
+                byte[] chunkPlain = new byte[thisChunkSize];
+                Buffer.BlockCopy(plaintext, offset, chunkPlain, 0, thisChunkSize);
+
+                uint crc32 = ComputeChunkCrc32(chunkPlain);
+                byte[] compressed = ZlibCompress(chunkPlain);
+                byte[] encrypted = EclEncrypt(compressed, aesKey, iv);
+
+                output.Write(BitConverter.GetBytes((uint)encrypted.Length), 0, 4);
+                output.Write(BitConverter.GetBytes((uint)thisChunkSize), 0, 4);
+                output.Write(BitConverter.GetBytes(crc32), 0, 4);
+
+                // next_header_offset is written before payload; points at end of this payload
+                // (start of next header, or seed / EOF).
+                uint nextOff = (uint)(output.Length + 4 + encrypted.Length);
+                output.Write(BitConverter.GetBytes(nextOff), 0, 4);
+                output.Write(encrypted, 0, encrypted.Length);
+
+                offset += thisChunkSize;
+            }
+
+            if (!phase1)
+                output.Write(BitConverter.GetBytes(seed), 0, 4);
+
+            return output.ToArray();
+        }
+
+        public static uint ComputeChunkCrc32(byte[] decompressedData)
+        {
+            uint crc = 0;
+            foreach (byte b in decompressedData)
+            {
+                crc ^= b;
+                for (int j = 0; j < 8; j++)
+                    crc = (crc & 1) != 0 ? (crc >> 1) ^ 0xEDB88320u : crc >> 1;
+            }
+
+            return crc;
+        }
+
+        public static uint MixInverse(uint password)
+        {
+            uint result = password;
+            const uint addr = 0x00C59A00;
+            for (int i = 0; i < 100; i++)
+            {
+                uint v4 = (result >> 3) | (result << 29);
+                uint v = (v4 >> 24) | (v4 << 24) | (v4 & 0x00FFFF00);
+                result = addr ^ v;
+            }
+
+            return result;
         }
 
         // Two file format phases exist:
@@ -308,6 +425,53 @@ namespace MfmeFmlDecoder.Decryption
                 for (int j = 0; j < rem; j++)
                     result[resultPos++] = (byte)(source[tailStart + j] ^ keystream[j]);
             }
+        }
+
+        private static byte[] EclEncrypt(byte[] plaintext, byte[] aesKey, byte[] iv)
+        {
+            byte[] result = new byte[plaintext.Length];
+            using Aes aes = Aes.Create();
+            aes.Mode = CipherMode.ECB;
+            aes.Padding = PaddingMode.None;
+            aes.Key = aesKey;
+            using ICryptoTransform encryptor = aes.CreateEncryptor();
+
+            byte[] fb_d = new byte[16];
+            byte[] plainBlock = new byte[16];
+            byte[] cipherBlock = new byte[16];
+            byte[] keystream = new byte[16];
+            Buffer.BlockCopy(iv, 0, fb_d, 0, 16);
+
+            int fullBlocks = plaintext.Length - (plaintext.Length % 16);
+            for (int i = 0; i < fullBlocks; i += 16)
+            {
+                for (int j = 0; j < 16; j++)
+                    plainBlock[j] = (byte)(plaintext[i + j] ^ fb_d[j]);
+
+                encryptor.TransformBlock(plainBlock, 0, 16, cipherBlock, 0);
+                Buffer.BlockCopy(cipherBlock, 0, result, i, 16);
+
+                for (int j = 0; j < 16; j++)
+                    fb_d[j] = (byte)(cipherBlock[j] ^ fb_d[j]);
+            }
+
+            int rem = plaintext.Length % 16;
+            if (rem > 0)
+            {
+                encryptor.TransformBlock(fb_d, 0, 16, keystream, 0);
+                for (int j = 0; j < rem; j++)
+                    result[fullBlocks + j] = (byte)(plaintext[fullBlocks + j] ^ keystream[j]);
+            }
+
+            return result;
+        }
+
+        private static byte[] ZlibCompress(byte[] plaintext)
+        {
+            using MemoryStream output = new MemoryStream();
+            using (var zlib = new ZLibStream(output, CompressionLevel.Optimal, leaveOpen: true))
+                zlib.Write(plaintext, 0, plaintext.Length);
+            return output.ToArray();
         }
 
         private static byte[] ZlibDecompress(byte[] compressed, int compressedLength, int maxOutputSize)

@@ -40,19 +40,20 @@ namespace MfmeFmlDecoder.src.Decoder.Component
 
         public RGBLed Parse(long componentOffset, uint componentId, byte[] data)
         {
-            // Normalize for MFME angle bug
+            // Normalize for MFME angle bug.
+            // When angle wire is invalid, SublampCount (0x38) often overlaps the wire bytes;
+            // rewrite preserves those tags after a zero-angle + terminator, so extended parse
+            // must use parseData and start at the post-terminator offset (delta 0).
             var (component, offset, parseData) = ParseBase(
                 componentOffset,
                 componentId,
                 data,
                 normalizationRule: new GeometryAngleNormalization.Rule(
-                    RewriteTriggerOffsetDelta: -1,
+                    RewriteTriggerOffsetDelta: 0,
                     ValidAngleOffsetDelta: 0));
 
-            DumpRemaining(componentOffset, data, offset);
-
             var parseOptions = WithComponentTagLogging(ExtendedTagParser.Options.Default);
-            var parseResult = ParseExtendedTags(component, componentTagMap, data, offset, parseOptions);
+            var parseResult = ParseExtendedTags(component, componentTagMap, parseData, offset, parseOptions);
 
             ApplyExtendedTags(component, parseResult.ValuesByTag, styleOptions);
 

@@ -17,6 +17,7 @@ namespace MfmeFmlDecoder.src.Decoder.Component
             { 0x04, new TagInfo(0x04, "BorderWidth", new byte[] { 0x04, 0x00, 0x00, 0x00 }, ValueRole.UINT32) },
             { 0x08, new TagInfo(0x00, "Reel Image", Array.Empty<byte>(), ValueRole.BITMAP) },
             { 0x07, new TagInfo(0x00, "Lamp Mask 1", Array.Empty<byte>(), ValueRole.BITMAP) },
+            { 0x09, new TagInfo(0x01, "Unknown 0x09", new byte[] { 0x00 }, ValueRole.BYTE) },
             { 0x0A, new TagInfo(0x00, "Lamp Mask 2", Array.Empty<byte>(), ValueRole.BITMAP) },
             { 0x0E, new TagInfo(0x00, "Lamp Mask 3", Array.Empty<byte>(), ValueRole.BITMAP) },
             { 0x36, new TagInfo(0x00, "Overlay Image", Array.Empty<byte>(), ValueRole.BITMAP) },

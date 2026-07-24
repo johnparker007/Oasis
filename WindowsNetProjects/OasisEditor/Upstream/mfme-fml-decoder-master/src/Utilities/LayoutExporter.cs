@@ -8,7 +8,11 @@ namespace MfmeFmlDecoder.Utilities
 {
     internal static class LayoutExporter
     {
-        public static void ExportToZip(Layout layout, string outputZipPath)
+        public static void ExportToZip(
+            Layout layout,
+            string outputZipPath,
+            string machineJson = null,
+            string gameJson = null)
         {
             if (layout is null) throw new ArgumentNullException(nameof(layout));
             if (string.IsNullOrWhiteSpace(outputZipPath)) throw new ArgumentException("Output zip path is required.", nameof(outputZipPath));
@@ -19,7 +23,12 @@ namespace MfmeFmlDecoder.Utilities
             try
             {
                 WriteLayoutJson(layout, tempDir);
+                WriteLayoutImages(layout, tempDir);
                 WriteComponentImages(layout, tempDir);
+                if (!string.IsNullOrEmpty(machineJson))
+                    File.WriteAllText(Path.Combine(tempDir, "machine.json"), machineJson);
+                if (!string.IsNullOrEmpty(gameJson))
+                    File.WriteAllText(Path.Combine(tempDir, "game.json"), gameJson);
                 WriteZipArchive(tempDir, outputZipPath);
             }
             finally
@@ -38,6 +47,23 @@ namespace MfmeFmlDecoder.Utilities
         {
             string jsonPath = Path.Combine(tempDir, "layout.json");
             File.WriteAllText(jsonPath, layout.ToJson(indented: true));
+        }
+
+        private static void WriteLayoutImages(Layout layout, string tempDir)
+        {
+            if (layout.Images.Count == 0)
+            {
+                return;
+            }
+
+            string imageDir = Path.Combine(tempDir, "images");
+            Directory.CreateDirectory(imageDir);
+
+            foreach (var kvp in layout.Images)
+            {
+                string fileName = kvp.Key + ".bmp";
+                File.WriteAllBytes(Path.Combine(imageDir, fileName), kvp.Value.Bytes);
+            }
         }
 
         private static void WriteComponentImages(Layout layout, string tempDir)

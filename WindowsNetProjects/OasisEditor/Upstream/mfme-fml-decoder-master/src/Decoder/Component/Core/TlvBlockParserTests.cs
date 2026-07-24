@@ -26,6 +26,8 @@ namespace MfmeFmlDecoder.src.Decoder.Component.Core
             var tagMap = new ComponentTagMap
             {
                 { 0x68, new TagInfo(0x00, "Unknown 0x68 (TLV Block)", new byte[0], ValueRole.TLVBLOCK) },
+                { 0x69, new TagInfo(0x01, "RGBLED", new byte[] { 0x00 }, ValueRole.BOOLEAN) },
+                { 0x6C, new TagInfo(0x01, "Preserve Aspect Ratio", new byte[] { 0x00 }, ValueRole.BOOLEAN) },
             };
 
             var result = new ExtendedTagParser().Parse(
@@ -39,7 +41,48 @@ namespace MfmeFmlDecoder.src.Decoder.Component.Core
             Assert.Equal(2, entries.Count);
             Assert.Equal(new byte[] { 0x08, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00 }, entries[0]);
             Assert.Equal(new byte[] { 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0xFF }, entries[1]);
-            Assert.Equal(25, result.Offset);
+            Assert.True(result.BooleansByAttributeName.TryGetValue("RGBLED", out bool rgbLed));
+            Assert.True(rgbLed);
+            Assert.True(result.BooleansByAttributeName.TryGetValue("Preserve Aspect Ratio", out bool preserveAspect));
+            Assert.True(preserveAspect);
+            Assert.Equal(30, result.Offset);
+        }
+
+        [Fact]
+        public void Parse_TlvBlock_OpaqueBlobWhenFirstLengthDoesNotFit()
+        {
+            // Host 0x68 followed by 24 opaque bytes (first uint32 = 0xCF does not fit as TLV length),
+            // then mapped higher tags — matches Indiana Jones / Pizza Lamp unknown-blob width.
+            byte[] data =
+            {
+                0x68,
+                0xCF, 0x00, 0x00, 0x00, 0x7F, 0x01, 0x00, 0x00,
+                0x35, 0x00, 0x00, 0x00, 0xC2, 0x01, 0x00, 0x00,
+                0x57, 0x49, 0xFC, 0xFF, 0x00, 0x00, 0x00, 0xFF,
+                0x69, 0x01,
+                0x00,
+            };
+
+            var tagMap = new ComponentTagMap
+            {
+                { 0x68, new TagInfo(0x00, "Unknown 0x68 (TLV Block)", new byte[0], ValueRole.TLVBLOCK) },
+                { 0x69, new TagInfo(0x01, "RGBLED", new byte[] { 0x00 }, ValueRole.BOOLEAN) },
+            };
+
+            var result = new ExtendedTagParser().Parse(
+                tagMap,
+                data,
+                offset: 0,
+                ExtendedTagParser.Options.Default.WithoutMatchedTagLogging());
+
+            Assert.True(result.ValuesByTag.TryGetValue(0x68, out object tlvValue));
+            var entries = Assert.IsType<List<byte[]>>(tlvValue);
+            Assert.Single(entries);
+            Assert.Equal(24, entries[0].Length);
+            Assert.Equal(0xCF, entries[0][0]);
+            Assert.True(result.BooleansByAttributeName.TryGetValue("RGBLED", out bool rgbLed));
+            Assert.True(rgbLed);
+            Assert.Equal(28, result.Offset);
         }
 
         [Fact]

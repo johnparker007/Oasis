@@ -17,6 +17,8 @@ namespace MfmeFmlDecoder.src.Decoder.Component
             { 0x02, new TagInfo(0x04, "YSize", new byte[] { 0x02 }, ValueRole.UINT32) },
             { 0x07, new TagInfo(0x04, "DotSpacing", new byte[] { 0x01 }, ValueRole.UINT32) },
             { 0x03, new TagInfo(0x04, "Unknown 0x03", new byte[] { 0x01 }, ValueRole.UINT32) },
+            { 0x08, new TagInfo(0x04, "Unknown 0x08", new byte[] { 0x00, 0x00, 0x00, 0x00 }, ValueRole.UINT32) },
+            { 0x0A, new TagInfo(0x01, "Unknown 0x0A", new byte[] { 0x00 }, ValueRole.BOOLEAN) },
 
             { 0x36, new TagInfo(0x04, "Overlay Image", new byte[] { }, ValueRole.BITMAP) },
             { 0x3B, new TagInfo(0x04, "Unknown 0x3B", new byte[] { 0x00 }, ValueRole.UINT32) },
@@ -30,8 +32,8 @@ namespace MfmeFmlDecoder.src.Decoder.Component
                 componentId,
                 data,
                 normalizationRule: new GeometryAngleNormalization.Rule(
-                    RewriteTriggerOffsetDelta: 2,
-                    ValidAngleOffsetDelta: 2));
+                    RewriteTriggerOffsetDelta: 0,
+                    ValidAngleOffsetDelta: 0));
 
             DumpRemaining(componentOffset, parseData, offset);
 

@@ -41,7 +41,8 @@ namespace MfmeFmlDecoder.src.Decoder.Component
         {
             { 0x38, new TagInfo(0x04, "SublampCount", new byte[] { 0x00 }, ValueRole.SUBLAMP_COUNT) },
             { 0x39, new TagInfo(0x04, "SublampTable", new byte[] { 0x00 }, ValueRole.LAMP_SUBLAMP_TABLE) },
-            { 0x3B, new TagInfo(0x04, "Unknown 0x3B", Array.Empty<byte>(), ValueRole.UINT32) }
+            { 0x3B, new TagInfo(0x04, "Unknown 0x3B", Array.Empty<byte>(), ValueRole.UINT32) },
+            { 0x36, new TagInfo(0x00, "Overlay Image", Array.Empty<byte>(), ValueRole.BITMAP) },
         }.WithNestedTagBlock(new ComponentTagMap
         {
             { 0x15, new TagInfo(0x04, "Columns", new byte[] { 0x01, 0x00, 0x00, 0x00 }, ValueRole.UINT32) },
@@ -73,6 +74,7 @@ namespace MfmeFmlDecoder.src.Decoder.Component
             { 0x13, new TagInfo(48, "Visible", Array.Empty<byte>(), ValueRole.DIGIT_FLAG_ARRAY) },
             { 0x1D, new TagInfo(48, "DPOff", Array.Empty<byte>(), ValueRole.DIGIT_FLAG_ARRAY) },
             { 0x36, new TagInfo(0x00, "Overlay Image", Array.Empty<byte>(), ValueRole.BITMAP) },
+            
         });
 
         public SevenSegBlock Parse(long componentOffset, uint componentId, byte[] data)

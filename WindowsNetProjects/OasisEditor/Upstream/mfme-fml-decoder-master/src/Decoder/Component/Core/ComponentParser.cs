@@ -196,10 +196,10 @@ namespace MfmeFmlDecoder.src.Decoder.Component.Core
             }
         }
 
-        public Layout ToLayout()
+        public Layout ToLayout(LayoutFileHeader header = null)
         {
             BorderOwnershipAssigner.Annotate(components);
-            return new Layout(components);
+            return new Layout(components, header);
         }
     }
 }
