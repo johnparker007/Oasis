@@ -12,9 +12,14 @@ MonoBehaviour:
   m_Script: {fileID: 19101, guid: 0000000000000000e000000000000000, type: 0}
   m_Name: OasisRuntimePanelSettings
   m_EditorClassIdentifier: 
-  themeUss: {fileID: 11400000, guid: 5b9a601d1f7a438cbd30570dc80af72c, type: 2}
+  themeUss: {fileID: -4733365628477956816, guid: 5b9a601d1f7a438cbd30570dc80af72c, type: 3}
+  m_DisableNoThemeWarning: 0
   m_TargetTexture: {fileID: 0}
+  m_RenderMode: 0
+  m_WorldSpaceLayer: 0
   m_ScaleMode: 2
+  m_ReferenceSpritePixelsPerUnit: 100
+  m_PixelsPerUnit: 100
   m_Scale: 1
   m_ReferenceDpi: 96
   m_FallbackDpi: 96
@@ -23,6 +28,7 @@ MonoBehaviour:
   m_Match: 0.5
   m_SortingOrder: 32767
   m_TargetDisplay: 0
+  m_BindingLogLevel: 0
   m_ClearDepthStencil: 0
   m_ClearColor: 0
   m_ColorClearValue: {r: 0, g: 0, b: 0, a: 0}
@@ -32,3 +38,9 @@ MonoBehaviour:
     m_MaxAtlasSize: 4096
     m_MaxSubTextureSize: 64
     m_ActiveFilters: -1
+  m_AtlasBlitShader: {fileID: 9101, guid: 0000000000000000f000000000000000, type: 0}
+  m_RuntimeShader: {fileID: 9100, guid: 0000000000000000f000000000000000, type: 0}
+  m_RuntimeWorldShader: {fileID: 9102, guid: 0000000000000000f000000000000000, type: 0}
+  m_ICUDataAsset: {fileID: 0}
+  forceGammaRendering: 0
+  textSettings: {fileID: 0}
