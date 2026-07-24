@@ -122,6 +122,7 @@ public sealed class ImportPanelElementsCommandTests
         var element = Panel2DDocumentStorage.ToModel(parsed).Elements.Single();
         Assert.True(element.ReelLampsEnabled);
         Assert.Equal([5, 4, 3], element.ReelLamps.Select(lamp => lamp.LampNumber).ToArray());
+        Assert.All(element.ReelLamps, lamp => Assert.Equal(0d, lamp.Radius));
     }
 
     [Fact]

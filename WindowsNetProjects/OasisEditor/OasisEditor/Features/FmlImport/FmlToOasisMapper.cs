@@ -142,9 +142,9 @@ internal sealed class FmlToOasisMapper
 
         return
         [
-            new ReelLampSlotModel { Position = ReelLampSlotPosition.Top, LampNumber = bySlot.GetValueOrDefault(2), LocalVerticalCenter = 1d / 6d, Radius = 0.42d, Intensity = 1d },
-            new ReelLampSlotModel { Position = ReelLampSlotPosition.Middle, LampNumber = bySlot.GetValueOrDefault(3), LocalVerticalCenter = 0.5d, Radius = 0.42d, Intensity = 1d },
-            new ReelLampSlotModel { Position = ReelLampSlotPosition.Bottom, LampNumber = bySlot.GetValueOrDefault(4), LocalVerticalCenter = 5d / 6d, Radius = 0.42d, Intensity = 1d }
+            new ReelLampSlotModel { Position = ReelLampSlotPosition.Top, LampNumber = bySlot.GetValueOrDefault(2), LocalVerticalCenter = 1d / 6d, Radius = 0d, Intensity = 1d },
+            new ReelLampSlotModel { Position = ReelLampSlotPosition.Middle, LampNumber = bySlot.GetValueOrDefault(3), LocalVerticalCenter = 0.5d, Radius = 0d, Intensity = 1d },
+            new ReelLampSlotModel { Position = ReelLampSlotPosition.Bottom, LampNumber = bySlot.GetValueOrDefault(4), LocalVerticalCenter = 5d / 6d, Radius = 0d, Intensity = 1d }
         ];
     }
 

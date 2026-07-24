@@ -6,11 +6,14 @@ Shader "Oasis/ReelLamp"
         _OasisReelTransmissionMaskTex ("Transmission Mask", 2D) = "white" {}
         _OasisReelTransmissionMaskEnabled ("Transmission Mask Enabled", Float) = 0
         _OasisReelLampBrightness ("Lamp Brightness", Vector) = (0,0,0,0)
-        _OasisReelLampVerticalCenters ("Lamp Vertical Centers", Vector) = (0.1667,0.5,0.8333,0)
-        _OasisReelLampRadii ("Lamp Radii", Vector) = (0.42,0.42,0.42,0)
+        _OasisReelLampVerticalCenters ("Lamp Vertical Centers", Vector) = (0.75,0.5,0.25,0)
+        _OasisReelLampRadii ("Lamp Radii", Vector) = (0,0,0,0)
         _OasisReelLampIntensities ("Lamp Intensities", Vector) = (1,1,1,0)
         _OasisReelLampColor ("Lamp Color", Color) = (1.0,0.82,0.55,1)
-        _OasisReelWindowUvOffset ("Window UV Offset", Float) = 0
+        _OasisReelApertureCenterWS ("Aperture Center WS", Vector) = (0,0,0,0)
+        _OasisReelApertureRightWS ("Aperture Right WS", Vector) = (1,0,0,0)
+        _OasisReelApertureUpWS ("Aperture Up WS", Vector) = (0,1,0,0)
+        _OasisReelApertureSize ("Aperture Size", Vector) = (1,1,0,0)
     }
 
     SubShader
@@ -51,7 +54,10 @@ Shader "Oasis/ReelLamp"
             float4 _OasisReelLampRadii;
             float4 _OasisReelLampIntensities;
             float4 _OasisReelLampColor;
-            float _OasisReelWindowUvOffset;
+            float4 _OasisReelApertureCenterWS;
+            float4 _OasisReelApertureRightWS;
+            float4 _OasisReelApertureUpWS;
+            float4 _OasisReelApertureSize;
         CBUFFER_END
 
         Varyings vert(Attributes input)
@@ -96,19 +102,24 @@ Shader "Oasis/ReelLamp"
             return max(lighting, 0.0);
         }
 
-        float SmoothField(float2 windowUv, float verticalCenter, float radius)
+        float2 ApertureUv(float3 positionWS)
         {
-            float2 center = float2(0.5, verticalCenter);
-            float d = distance(windowUv, center);
-            return 1.0 - smoothstep(radius * 0.35, max(radius, 0.0001), d);
+            // Aperture UV is the fixed projected reel window: X is physical reel width,
+            // Y is physical reel diameter.  The rotating band UV remains separate for artwork
+            // and transmission-mask sampling.
+            float2 size = max(_OasisReelApertureSize.xy, float2(0.0001, 0.0001));
+            float3 delta = positionWS - _OasisReelApertureCenterWS.xyz;
+            return float2(0.5 + dot(delta, normalize(_OasisReelApertureRightWS.xyz)) / size.x,
+                          0.5 + dot(delta, normalize(_OasisReelApertureUpWS.xyz)) / size.y);
         }
 
-        float2 FixedWindowUv(float2 bandUv)
+        float SmoothField(float2 apertureUv, float verticalCenter, float radius)
         {
-            // The reel-band UV is attached to the generated cylinder and therefore rotates with the symbols.
-            // The renderer supplies the current band offset separately, letting the shader derive aperture UVs
-            // that stay fixed relative to the reel window instead of cabinet world-space translation/rotation.
-            return float2(bandUv.x, frac(bandUv.y - _OasisReelWindowUvOffset + 1.0));
+            float2 center = float2(0.5, verticalCenter);
+            float2 delta = apertureUv - center;
+            delta.x *= _OasisReelApertureSize.x / max(_OasisReelApertureSize.y, 0.0001);
+            float d = length(delta);
+            return 1.0 - smoothstep(radius * 0.35, max(radius, 0.0001), d);
         }
         ENDHLSL
 
@@ -132,16 +143,16 @@ Shader "Oasis/ReelLamp"
             half4 frag(Varyings input) : SV_Target
             {
                 half4 band = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, input.bandUv);
-                float2 windowUv = FixedWindowUv(input.bandUv);
+                float2 apertureUv = ApertureUv(input.positionWS);
                 float mask = lerp(1.0, SAMPLE_TEXTURE2D(_OasisReelTransmissionMaskTex, sampler_OasisReelTransmissionMaskTex, input.bandUv).r, saturate(_OasisReelTransmissionMaskEnabled));
 
                 float lamp = 0.0;
-                lamp += SmoothField(windowUv, _OasisReelLampVerticalCenters.x, _OasisReelLampRadii.x) * _OasisReelLampBrightness.x * _OasisReelLampIntensities.x;
-                lamp += SmoothField(windowUv, _OasisReelLampVerticalCenters.y, _OasisReelLampRadii.y) * _OasisReelLampBrightness.y * _OasisReelLampIntensities.y;
-                lamp += SmoothField(windowUv, _OasisReelLampVerticalCenters.z, _OasisReelLampRadii.z) * _OasisReelLampBrightness.z * _OasisReelLampIntensities.z;
+                lamp += SmoothField(apertureUv, _OasisReelLampVerticalCenters.x, _OasisReelLampRadii.x) * _OasisReelLampBrightness.x * _OasisReelLampIntensities.x;
+                lamp += SmoothField(apertureUv, _OasisReelLampVerticalCenters.y, _OasisReelLampRadii.y) * _OasisReelLampBrightness.y * _OasisReelLampIntensities.y;
+                lamp += SmoothField(apertureUv, _OasisReelLampVerticalCenters.z, _OasisReelLampRadii.z) * _OasisReelLampBrightness.z * _OasisReelLampIntensities.z;
 
                 float3 lit = band.rgb * EvaluateBaseLighting(input);
-                float3 emission = band.rgb * _OasisReelLampColor.rgb * saturate(lamp) * mask;
+                float3 emission = band.rgb * _OasisReelLampColor.rgb * max(lamp, 0.0) * mask;
                 return half4(lit + emission, band.a);
             }
             ENDHLSL

@@ -294,4 +294,31 @@ public sealed class FaceDocumentRoundTripTests
         Assert.True(alpha.IsReversed);
     }
 
+    [Fact]
+    public void Serialize_AndRead_RoundTripsAutomaticAndOverrideReelLampRadii()
+    {
+        var source = new FaceDocumentModel
+        {
+            Id = "face-reel-lamps",
+            Title = "Reel Lamps",
+            Elements =
+            [
+                new FaceReelDisplayElement
+                {
+                    ObjectId = "reel-1", Name = "Reel", Width = 70, Height = 280, Stops = 16,
+                    ReelLamps =
+                    [
+                        new ReelLampSlotModel { Position = ReelLampSlotPosition.Top, LampNumber = 1, Radius = 0d, Intensity = 1d },
+                        new ReelLampSlotModel { Position = ReelLampSlotPosition.Middle, LampNumber = 2, Radius = 0.2d, Intensity = 1d }
+                    ]
+                }
+            ]
+        };
+
+        var json = FaceDocumentStorage.Serialize(source);
+        Assert.True(FaceDocumentStorage.TryReadValidated(json, out var file, out var error), error);
+        var reel = Assert.IsType<FaceReelDisplayElement>(Assert.Single(FaceDocumentStorage.ToModel(file).Elements));
+        Assert.Equal([0d, 0.2d], reel.ReelLamps.Select(lamp => lamp.Radius).ToArray());
+    }
+
 }

@@ -87,7 +87,9 @@ public sealed class ReelLampSlotModel
     public ReelLampSlotPosition Position { get; init; }
     public int? LampNumber { get; init; }
     public double LocalVerticalCenter { get; init; }
-    public double Radius { get; init; }
+    // Fraction of projected reel diameter. Zero means derive from stop count at runtime;
+    // a positive value is an explicit authored override.
+    public double Radius { get; init; } = 0d;
     public double Intensity { get; init; }
 }
 

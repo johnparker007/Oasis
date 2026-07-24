@@ -9,6 +9,10 @@ namespace OasisPlayer.RuntimeBuild
         private readonly List<string> _warnings = new List<string>();
         private RuntimeLampStateTexture _lampStateTexture;
         private RuntimeSegmentDisplayRenderer _segmentDisplayRenderer;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        private RuntimeReelLampDiagnosticMode _reelLampDiagnosticMode = RuntimeReelLampDiagnosticMode.FollowLampState;
+        private float _reelLampDiagnosticMultiplier = 1f;
+#endif
 
         public RuntimeMachine(ResolvedRuntimeBuild build, GameObject cabinet)
         {
@@ -40,10 +44,25 @@ namespace OasisPlayer.RuntimeBuild
             if (_segmentDisplayRenderer != null) changed |= _segmentDisplayRenderer.ApplyDynamicState(this);
             foreach (var face in _faces)
             {
-                for (var i = 0; i < face.ReelRenderBindings.Count; i++) changed |= face.ReelRenderBindings[i].ApplyLampState(LampState);
+                for (var i = 0; i < face.ReelRenderBindings.Count; i++)
+                {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                    changed |= face.ReelRenderBindings[i].ApplyLampState(LampState, _reelLampDiagnosticMode, _reelLampDiagnosticMultiplier);
+#else
+                    changed |= face.ReelRenderBindings[i].ApplyLampState(LampState);
+#endif
+                }
             }
             return changed;
         }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        public void SetReelLampDiagnostics(RuntimeReelLampDiagnosticMode mode, float multiplier)
+        {
+            _reelLampDiagnosticMode = mode;
+            _reelLampDiagnosticMultiplier = Mathf.Clamp(multiplier, 1f, 20f);
+        }
+#endif
 
         public void SetSegmentDisplayRenderer(RuntimeSegmentDisplayRenderer renderer)
         {

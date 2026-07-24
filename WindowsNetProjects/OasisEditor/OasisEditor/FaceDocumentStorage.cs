@@ -912,7 +912,7 @@ public sealed record FaceReelLampFile
     public string Position { get; init; } = "middle";
     public int? LampNumber { get; init; }
     public double LocalVerticalCenter { get; init; }
-    public double Radius { get; init; }
+    public double Radius { get; init; } = 0d;
     public double Intensity { get; init; }
 }
 
