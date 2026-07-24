@@ -118,12 +118,12 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         Assert.Equal("Generated/Faces/Runtime Face/runtime/lampWeights0.png", result.Document.RuntimeRenderAssets.LampWeights0Path);
         Assert.Equal("Generated/Faces/Runtime Face/runtime/trayId_debug.png", result.Document.RuntimeRenderAssets.TrayIdDebugPath);
         Assert.Equal("Generated/Faces/Runtime Face/runtime/lampWeights_debug.png", result.Document.RuntimeRenderAssets.LampWeightsDebugPath);
-        Assert.Equal(4, result.Document.RuntimeRenderAssets.Width);
-        Assert.Equal(4, result.Document.RuntimeRenderAssets.Height);
+        Assert.Equal(5, result.Document.RuntimeRenderAssets.Width);
+        Assert.Equal(5, result.Document.RuntimeRenderAssets.Height);
 
         using var manifestJson = JsonDocument.Parse(File.ReadAllText(result.ManifestPath));
         var root = manifestJson.RootElement;
-        Assert.Equal(4, root.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(5, root.GetProperty("schemaVersion").GetInt32());
         Assert.Equal("face-runtime", root.GetProperty("faceId").GetString());
         Assert.Equal("artwork.png", root.GetProperty("artwork").GetString());
         Assert.Equal("mask.png", root.GetProperty("mask").GetString());
@@ -631,12 +631,12 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         using var lampIds0 = SKBitmap.Decode(Path.Combine(outputDirectory, "lampIds0.png"));
         using var lampWeights0 = SKBitmap.Decode(Path.Combine(outputDirectory, "lampWeights0.png"));
 
-        Assert.Equal(4, trayId.Width);
-        Assert.Equal(4, trayId.Height);
-        Assert.Equal(4, lampIds0.Width);
-        Assert.Equal(4, lampIds0.Height);
-        Assert.Equal(4, lampWeights0.Width);
-        Assert.Equal(4, lampWeights0.Height);
+        Assert.Equal(5, trayId.Width);
+        Assert.Equal(5, trayId.Height);
+        Assert.Equal(5, lampIds0.Width);
+        Assert.Equal(5, lampIds0.Height);
+        Assert.Equal(5, lampWeights0.Width);
+        Assert.Equal(5, lampWeights0.Height);
         Assert.Equal(5, trayId.GetPixel(1, 1).Red);
         Assert.Equal(77, lampIds0.GetPixel(1, 1).Red);
         Assert.True(lampWeights0.GetPixel(1, 1).Red > 0);

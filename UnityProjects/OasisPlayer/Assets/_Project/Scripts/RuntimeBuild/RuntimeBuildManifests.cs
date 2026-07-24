@@ -122,9 +122,21 @@ namespace OasisPlayer.RuntimeBuild
         public float bandOffset;
         public float physicalWidth;
         public float physicalRadius;
+        public string transmissionMask = string.Empty;
+        public FaceRuntimeReelLampManifestEntry[] reelLamps = Array.Empty<FaceRuntimeReelLampManifestEntry>();
 
         [NonSerialized]
         public RuntimeTextureAsset BandTexture;
+    }
+
+    [Serializable]
+    public sealed class FaceRuntimeReelLampManifestEntry
+    {
+        public string position = string.Empty;
+        public int lampId;
+        public float localVerticalCenter;
+        public float radius;
+        public float intensity;
     }
 
     [Serializable]

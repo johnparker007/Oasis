@@ -5,7 +5,7 @@ namespace OasisEditor;
 
 public static class FaceDocumentStorage
 {
-    public const int CurrentSchemaVersion = 8;
+    public const int CurrentSchemaVersion = 9;
 
     private static readonly JsonSerializerOptions s_readOptions = new()
     {
@@ -519,6 +519,9 @@ public static class FaceDocumentStorage
         };
     }
 
+    private static FaceReelLampFile ToFile(ReelLampSlotModel lamp) => new() { Position = lamp.Position.ToString().ToLowerInvariant(), LampNumber = lamp.LampNumber, LocalVerticalCenter = lamp.LocalVerticalCenter, Radius = lamp.Radius, Intensity = lamp.Intensity };
+    private static ReelLampSlotModel ToModel(FaceReelLampFile lamp) => new() { Position = string.Equals(lamp.Position, "top", StringComparison.OrdinalIgnoreCase) ? ReelLampSlotPosition.Top : string.Equals(lamp.Position, "bottom", StringComparison.OrdinalIgnoreCase) ? ReelLampSlotPosition.Bottom : ReelLampSlotPosition.Middle, LampNumber = lamp.LampNumber is >= 0 ? lamp.LampNumber : null, LocalVerticalCenter = lamp.LocalVerticalCenter, Radius = lamp.Radius, Intensity = lamp.Intensity };
+
     private static string? NormalizeOptional(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private static FaceElementModel ToModel(FaceElementFile file)
@@ -570,7 +573,10 @@ public static class FaceDocumentStorage
                 Stops = file.Stops,
                 VisibleScale = file.VisibleScale,
                 BandOffset = file.BandOffset,
-                IsReversed = file.IsReversed
+                IsReversed = file.IsReversed,
+                ReelLamps = (file.ReelLamps ?? []).Select(ToModel).ToArray(),
+                IsOpaqueReel = file.IsOpaqueReel,
+                ReelLampTransmissionMaskAssetPath = NormalizeOptional(file.ReelLampTransmissionMaskAssetPath)
             };
         }
 
@@ -733,6 +739,9 @@ public static class FaceDocumentStorage
             VisibleScale = model is FaceReelDisplayElement reelVisibleScale ? reelVisibleScale.VisibleScale : null,
             BandOffset = model is FaceReelDisplayElement reelBandOffset ? reelBandOffset.BandOffset : null,
             AssetPath = model switch { FaceArtworkElement artwork => artwork.AssetPath, FaceReelDisplayElement reel => reel.AssetPath, _ => null },
+            ReelLamps = model is FaceReelDisplayElement reelLamps ? reelLamps.ReelLamps.Select(ToFile).ToArray() : null,
+            IsOpaqueReel = model is FaceReelDisplayElement opaqueReel && opaqueReel.IsOpaqueReel,
+            ReelLampTransmissionMaskAssetPath = model is FaceReelDisplayElement maskReel ? NormalizeOptional(maskReel.ReelLampTransmissionMaskAssetPath) : null,
             SourcePanel2DDocumentId = model is FaceArtworkElement artworkSource ? artworkSource.SourcePanel2DDocumentId : null,
             SourceRegion = model is FaceArtworkElement artworkRegion ? ToFile(artworkRegion.SourceRegion) : null,
             ArtworkProvenance = model is FaceArtworkElement artworkProvenance ? ToFile(artworkProvenance.Provenance) : null,
@@ -922,6 +931,9 @@ public sealed record FaceElementFile
     public double? VisibleScale { get; init; }
     public double? BandOffset { get; init; }
     public string? AssetPath { get; init; }
+    public FaceReelLampFile[]? ReelLamps { get; init; }
+    public bool IsOpaqueReel { get; init; }
+    public string? ReelLampTransmissionMaskAssetPath { get; init; }
     public string? SourcePanel2DDocumentId { get; init; }
     public FaceSourceRegionFile? SourceRegion { get; init; }
     public FaceArtworkProvenanceFile? ArtworkProvenance { get; init; }

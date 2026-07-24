@@ -9,7 +9,7 @@ namespace OasisEditor;
 
 public sealed class FaceRuntimeExportService
 {
-    public const int RuntimeManifestSchemaVersion = 4;
+    public const int RuntimeManifestSchemaVersion = 5;
     public const string RuntimeDirectoryName = "runtime";
     public const string ManifestFileName = "face.runtime.json";
     public const string ArtworkFileName = "artwork.png";
@@ -392,6 +392,8 @@ public sealed class FaceRuntimeExportService
             Stops = element.Stops.GetValueOrDefault(0),
             IsReversed = element.IsReversed,
             BandOffset = element.BandOffset.GetValueOrDefault(0d),
+            ReelLamps = element.ReelLamps.Select(CreateReelLampManifestEntry).ToArray(),
+            TransmissionMask = element.IsOpaqueReel ? element.ReelLampTransmissionMaskAssetPath : null,
             PhysicalWidth = dimensions.WidthMm,
             PhysicalRadius = dimensions.RadiusMm,
             X = element.X,
@@ -400,6 +402,15 @@ public sealed class FaceRuntimeExportService
             Height = element.Height
         };
     }
+
+    private static FaceRuntimeReelLampManifestEntry CreateReelLampManifestEntry(ReelLampSlotModel lamp) => new()
+    {
+        Position = lamp.Position.ToString().ToLowerInvariant(),
+        LampId = lamp.LampNumber,
+        LocalVerticalCenter = lamp.LocalVerticalCenter,
+        Radius = lamp.Radius,
+        Intensity = lamp.Intensity
+    };
 
     private static ResolvedReelPhysicalDimensions ResolveReelPhysicalDimensions(FaceDocumentModel faceDocument, FaceReelDisplayElement reel, FaceCabinetContext? cabinetContext)
     {
@@ -687,6 +698,17 @@ public sealed class FaceRuntimeReelManifestEntry : FaceRuntimeElementManifestEnt
     public double BandOffset { get; init; }
     public double PhysicalWidth { get; init; }
     public double PhysicalRadius { get; init; }
+    public string? TransmissionMask { get; init; }
+    public IReadOnlyList<FaceRuntimeReelLampManifestEntry> ReelLamps { get; init; } = [];
+}
+
+public sealed class FaceRuntimeReelLampManifestEntry
+{
+    public string Position { get; init; } = string.Empty;
+    public int? LampId { get; init; }
+    public double LocalVerticalCenter { get; init; }
+    public double Radius { get; init; }
+    public double Intensity { get; init; }
 }
 
 public sealed class FaceRuntimeButtonManifestEntry : FaceRuntimeElementManifestEntry

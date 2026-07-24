@@ -213,7 +213,7 @@ public sealed class Panel2DRoundTripTests
     }
 
     [Fact]
-    public void Serialize_WithNativeElementMetadata_WritesSchemaVersion2()
+    public void Serialize_WithNativeElementMetadata_WritesCurrentSchemaVersion()
     {
         var json = Panel2DDocumentStorage.Serialize(
             "Panel V2",

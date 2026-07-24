@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text;
+using SkiaSharp;
 using OasisEditor.Features.FmlImport;
 
 namespace OasisEditor.Features.LayoutImport;
@@ -123,6 +124,30 @@ internal sealed class LayoutImportAssetCopier
             }
         }
 
+        var transmissionMask = element.ReelLampTransmissionMaskAssetPath;
+        if (element.Kind == PanelElementKind.Reel && element.IsOpaqueReel && !string.IsNullOrWhiteSpace(primary))
+        {
+            var outputReelPath = Path.Combine(projectAssetsRoot, primary["Assets/".Length..].Replace('/', Path.DirectorySeparatorChar));
+            if (File.Exists(outputReelPath))
+            {
+                var maskPath = Path.Combine(Path.GetDirectoryName(outputReelPath)!, Path.GetFileNameWithoutExtension(outputReelPath) + "_transmission.png");
+                if (MfmeReelLampTransmissionMaskGenerator.TryGenerate(outputReelPath, maskPath, out var processingError))
+                {
+                    var relative = Path.GetRelativePath(projectAssetsRoot, maskPath).Replace('\\', '/');
+                    transmissionMask = $"Assets/{relative}";
+                    copied.Add(transmissionMask);
+                }
+                else
+                {
+                    errors.Add($"Failed to generate reel transmission mask '{element.AssetPath}': {processingError}");
+                }
+            }
+        }
+        else if (element.Kind == PanelElementKind.Reel && !element.IsOpaqueReel)
+        {
+            transmissionMask = null;
+        }
+
         return new PanelElementModel
         {
             ObjectId = element.ObjectId,
@@ -151,6 +176,9 @@ internal sealed class LayoutImportAssetCopier
             Stops = element.Stops,
             VisibleScale = element.VisibleScale,
             BandOffset = element.BandOffset,
+            ReelLamps = element.ReelLamps,
+            IsOpaqueReel = element.IsOpaqueReel,
+            ReelLampTransmissionMaskAssetPath = transmissionMask,
             IsTransformLocked = element.IsTransformLocked,
             IsVisible = element.IsVisible,
             SourceComponentIndex = element.SourceComponentIndex,
@@ -510,4 +538,66 @@ internal sealed class LayoutAssetCopyResult
     public required IReadOnlyList<string> Errors { get; init; }
 
     public bool Succeeded => Errors.Count == 0;
+}
+
+
+internal static class MfmeReelLampTransmissionMaskGenerator
+{
+    public static bool TryGenerate(string sourcePath, string outputPath, out string? error)
+    {
+        error = null;
+        try
+        {
+            using var bitmap = SKBitmap.Decode(sourcePath);
+            if (bitmap is null)
+            {
+                error = "Image could not be decoded.";
+                return false;
+            }
+
+            var background = EstimateBackground(bitmap);
+            using var mask = new SKBitmap(bitmap.Width, bitmap.Height, SKColorType.Rgba8888, SKAlphaType.Premul);
+            for (var y = 0; y < bitmap.Height; y++)
+            {
+                for (var x = 0; x < bitmap.Width; x++)
+                {
+                    var pixel = bitmap.GetPixel(x, y);
+                    var distance = ColourDistance(pixel, background);
+                    var alpha = pixel.Alpha == 0 ? (byte)0 : (byte)Math.Clamp((distance - 18) * 4, 0, 255);
+                    mask.SetPixel(x, y, new SKColor(alpha, alpha, alpha, alpha));
+                }
+            }
+
+            using var image = SKImage.FromBitmap(mask);
+            using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+            if (data is null)
+            {
+                error = "Mask image could not be encoded.";
+                return false;
+            }
+
+            using var stream = File.Open(outputPath, FileMode.Create, FileAccess.Write, FileShare.None);
+            data.SaveTo(stream);
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            error = ex.Message;
+            return false;
+        }
+    }
+
+    private static SKColor EstimateBackground(SKBitmap bitmap)
+    {
+        var samples = new[] { bitmap.GetPixel(0, 0), bitmap.GetPixel(bitmap.Width - 1, 0), bitmap.GetPixel(0, bitmap.Height - 1), bitmap.GetPixel(bitmap.Width - 1, bitmap.Height - 1) };
+        return new SKColor((byte)samples.Average(c => c.Red), (byte)samples.Average(c => c.Green), (byte)samples.Average(c => c.Blue), 255);
+    }
+
+    private static double ColourDistance(SKColor a, SKColor b)
+    {
+        var r = a.Red - b.Red;
+        var g = a.Green - b.Green;
+        var bl = a.Blue - b.Blue;
+        return Math.Sqrt(r * r + g * g + bl * bl);
+    }
 }
