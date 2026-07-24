@@ -25,7 +25,7 @@ namespace MfmeFmlDecoder.src.Decoder.Component
             { 0x09, new TagInfo(0x04, "Tilt", new byte[] { 0x02, 0x00, 0x00, 0x00  }, ValueRole.UINT32) },
             { 0x07, new TagInfo(0x04, "Style", new byte[] { 0x01, 0x00, 0x00, 0x00  }, ValueRole.BOOLEAN) },
             { 0x4C, new TagInfo(0x02, "IsHorizontal", new byte[] { 0x01, 0x00  }, ValueRole.BOOLEAN) },
-            { 0x0A, new TagInfo(0x04, "CenterLine", new byte[] { 0x01 }, ValueRole.BOOLEAN) },
+            { 0x0A, new TagInfo(0x01, "CenterLine", new byte[] { 0x01 }, ValueRole.BOOLEAN) },
 
         };
 

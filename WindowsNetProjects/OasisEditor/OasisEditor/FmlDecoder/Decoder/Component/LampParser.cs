@@ -34,21 +34,22 @@ namespace MfmeFmlDecoder.src.Decoder.Component
             { 0x36, new TagInfo(0x00, "Overlay Bitmap", Array.Empty<byte>(), ValueRole.BITMAP) },
             { 0x68, new TagInfo(0x04, "Unknown 0x68", new byte[ ] { 0x00, 0x00, 0x00, 0x00 }, ValueRole.UINT32) },
             { 0x19, new TagInfo(0x01, "Coin / Note Selected", new byte[ ] { 0x00 }, ValueRole.BOOLEAN) },
+            { 0x08, new TagInfo(0x04, "Unknown 0x08", new byte[] { 0x32, 0x00, 0x00, 0x00 }, ValueRole.UINT32) },
         }.WithNestedTagBlock(new ComponentTagMap
             {
-                { 0x04, new TagInfo(0x04, "Sublamp1Colour", Array.Empty<byte>(), ValueRole.ARGB_COLOR) },
-                { 0x05, new TagInfo(0x04, "Sublamp2Colour", Array.Empty<byte>(), ValueRole.ARGB_COLOR) },
-                { 0x15, new TagInfo(0x04, "Sublamp3Colour", Array.Empty<byte>(), ValueRole.ARGB_COLOR) },
-                { 0x16, new TagInfo(0x04, "Sublamp4Colour", Array.Empty<byte>(), ValueRole.ARGB_COLOR) },
-                { 0x32, new TagInfo(0x04, "Sublamp5Colour", Array.Empty<byte>(), ValueRole.ARGB_COLOR) },
-                { 0x33, new TagInfo(0x04, "Sublamp6Colour", Array.Empty<byte>(), ValueRole.ARGB_COLOR) },
-                { 0x34, new TagInfo(0x04, "Sublamp7Colour", Array.Empty<byte>(), ValueRole.ARGB_COLOR) },
-                { 0x35, new TagInfo(0x04, "Sublamp8Colour", Array.Empty<byte>(), ValueRole.ARGB_COLOR) },
-                { 0x42, new TagInfo(0x04, "Sublamp9Colour", Array.Empty<byte>(), ValueRole.ARGB_COLOR) },
-                { 0x43, new TagInfo(0x04, "Sublamp10Colour", Array.Empty<byte>(), ValueRole.ARGB_COLOR) },
-                { 0x44, new TagInfo(0x04, "Sublamp11Colour", Array.Empty<byte>(), ValueRole.ARGB_COLOR) },
-                { 0x45, new TagInfo(0x04, "Sublamp12Colour", Array.Empty<byte>(), ValueRole.ARGB_COLOR) },
-                { 0x06, new TagInfo(0x04, "OffImageColour", Array.Empty<byte>(), ValueRole.ARGB_COLOR) },
+                { 0x04, new TagInfo(0x04, "Sublamp1Colour", new byte[ ] { 0x00, 0xFF, 0xFF, 0xFF }, ValueRole.ARGB_COLOR) },
+                { 0x05, new TagInfo(0x04, "Sublamp2Colour", new byte[ ] { 0x00, 0xFF, 0xFF, 0xFF }, ValueRole.ARGB_COLOR) },
+                { 0x15, new TagInfo(0x04, "Sublamp3Colour", new byte[ ] { 0x00, 0xFF, 0xFF, 0xFF }, ValueRole.ARGB_COLOR) },
+                { 0x16, new TagInfo(0x04, "Sublamp4Colour", new byte[ ] { 0x00, 0xFF, 0xFF, 0xFF }, ValueRole.ARGB_COLOR) },
+                { 0x32, new TagInfo(0x04, "Sublamp5Colour", new byte[ ] { 0x00, 0xFF, 0xFF, 0xFF }, ValueRole.ARGB_COLOR) },
+                { 0x33, new TagInfo(0x04, "Sublamp6Colour", new byte[ ] { 0x00, 0xFF, 0xFF, 0xFF }, ValueRole.ARGB_COLOR) },
+                { 0x34, new TagInfo(0x04, "Sublamp7Colour", new byte[ ] { 0x00, 0xFF, 0xFF, 0xFF }, ValueRole.ARGB_COLOR) },
+                { 0x35, new TagInfo(0x04, "Sublamp8Colour", new byte[ ] { 0x00, 0xFF, 0xFF, 0xFF }, ValueRole.ARGB_COLOR) },
+                { 0x42, new TagInfo(0x04, "Sublamp9Colour", new byte[ ] { 0x00, 0xFF, 0xFF, 0xFF }, ValueRole.ARGB_COLOR) },
+                { 0x43, new TagInfo(0x04, "Sublamp10Colour", new byte[ ] { 0x00, 0xFF, 0xFF, 0xFF }, ValueRole.ARGB_COLOR) },
+                { 0x44, new TagInfo(0x04, "Sublamp11Colour", new byte[ ] { 0x00, 0xFF, 0xFF, 0xFF }, ValueRole.ARGB_COLOR) },
+                { 0x45, new TagInfo(0x04, "Sublamp12Colour", new byte[ ] { 0x00, 0xFF, 0xFF, 0xFF }, ValueRole.ARGB_COLOR) },
+                { 0x06, new TagInfo(0x04, "OffImageColour", new byte[ ] { 0xF0, 0xF0, 0xF0, 0xFF }, ValueRole.ARGB_COLOR) },
                 { 0x19, new TagInfo(0x00, "On1Font", Array.Empty<byte>(), ValueRole.FONT) },
                 { 0x26, new TagInfo(0x00, "On1Text", Array.Empty<byte>(), ValueRole.TEXT) },
                 { 0x1A, new TagInfo(0x00, "On2Font", Array.Empty<byte>(), ValueRole.FONT) },
@@ -114,10 +115,20 @@ namespace MfmeFmlDecoder.src.Decoder.Component
                 // HACK
                 // TODO: I have no idea what these do, they don't appear on forms anywhere
                 // Might be related to the specific tech used
-                // Appear to be inferred my MFME and added to the FML.
-                { 0x5C, new TagInfo(0x14, "Unknown 0x5C", new byte[] { 0x00 }, ValueRole.RAW) },
-                { 0x5D, new TagInfo(0x14, "Unknown 0x5D", new byte[] { 0x00 }, ValueRole.RAW) },
-                { 0x5E, new TagInfo(0x14, "Unknown 0x5E", new byte[] { 0x00 }, ValueRole.RAW) },
+                // Appear to be inferred by MFME and added to the FML.
+                // Seen as a run of 24-byte blobs (six uint32-sized fields) e.g. 0x5C..0x5F, 0x60, 0x62.
+                { 0x5C, new TagInfo(0x18, "Unknown 0x5C", new byte[] { 0x00 }, ValueRole.RAW) },
+                { 0x5D, new TagInfo(0x18, "Unknown 0x5D", new byte[] { 0x00 }, ValueRole.RAW) },
+                { 0x5E, new TagInfo(0x18, "Unknown 0x5E", new byte[] { 0x00 }, ValueRole.RAW) },
+                { 0x5F, new TagInfo(0x18, "Unknown 0x5F", new byte[] { 0x00 }, ValueRole.RAW) },
+                { 0x60, new TagInfo(0x18, "Unknown 0x60", new byte[] { 0x00 }, ValueRole.RAW) },
+                { 0x61, new TagInfo(0x18, "Unknown 0x61", new byte[] { 0x00 }, ValueRole.RAW) },
+                { 0x62, new TagInfo(0x18, "Unknown 0x62", new byte[] { 0x00 }, ValueRole.RAW) },
+                { 0x63, new TagInfo(0x18, "Unknown 0x63", new byte[] { 0x00 }, ValueRole.RAW) },
+                { 0x64, new TagInfo(0x18, "Unknown 0x64", new byte[] { 0x00 }, ValueRole.RAW) },
+                { 0x65, new TagInfo(0x18, "Unknown 0x65", new byte[] { 0x00 }, ValueRole.RAW) },
+                { 0x66, new TagInfo(0x18, "Unknown 0x66", new byte[] { 0x00 }, ValueRole.RAW) },
+                { 0x67, new TagInfo(0x18, "Unknown 0x67", new byte[] { 0x00 }, ValueRole.RAW) },
             });
 
         public Lamp Parse(long componentOffset, uint componentId, byte[] data)

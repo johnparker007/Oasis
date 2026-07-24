@@ -183,7 +183,7 @@ public sealed class FmlToOasisMapperTests
     {
         var label = new Label { X = 7, Y = 8, Width = 90, Height = 24 };
         label.Strings["Label"] = "COLLECT";
-        label.UInt32s["Lamp"] = 0;
+        label.Lamp = 0;
         label.Fonts["Primary"] = new FontTagEntry(0, "Primary", "Tahoma", 9, 0, "Western", "#010203FF", 1);
 
         var result = new FmlToOasisMapper().Map(new Layout([label]), new Dictionary<FmlDecodedImageKey, string>());
