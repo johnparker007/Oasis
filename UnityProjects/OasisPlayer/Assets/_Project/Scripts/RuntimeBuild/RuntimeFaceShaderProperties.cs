@@ -28,7 +28,10 @@ namespace OasisPlayer.RuntimeBuild
         public const string ReelLampIntensitiesName = "_OasisReelLampIntensities";
         public const string ReelTransmissionMaskTextureName = "_OasisReelTransmissionMaskTex";
         public const string ReelTransmissionMaskEnabledName = "_OasisReelTransmissionMaskEnabled";
-        public const string ReelWindowUvOffsetName = "_OasisReelWindowUvOffset";
+        public const string ReelApertureCenterWSName = "_OasisReelApertureCenterWS";
+        public const string ReelApertureRightWSName = "_OasisReelApertureRightWS";
+        public const string ReelApertureUpWSName = "_OasisReelApertureUpWS";
+        public const string ReelApertureSizeName = "_OasisReelApertureSize";
 
         public static readonly int ArtworkTexture = Shader.PropertyToID(ArtworkTextureName);
         public static readonly int MaskTexture = Shader.PropertyToID(MaskTextureName);
@@ -53,6 +56,9 @@ namespace OasisPlayer.RuntimeBuild
         public static readonly int ReelLampIntensities = Shader.PropertyToID(ReelLampIntensitiesName);
         public static readonly int ReelTransmissionMaskTexture = Shader.PropertyToID(ReelTransmissionMaskTextureName);
         public static readonly int ReelTransmissionMaskEnabled = Shader.PropertyToID(ReelTransmissionMaskEnabledName);
-        public static readonly int ReelWindowUvOffset = Shader.PropertyToID(ReelWindowUvOffsetName);
+        public static readonly int ReelApertureCenterWS = Shader.PropertyToID(ReelApertureCenterWSName);
+        public static readonly int ReelApertureRightWS = Shader.PropertyToID(ReelApertureRightWSName);
+        public static readonly int ReelApertureUpWS = Shader.PropertyToID(ReelApertureUpWSName);
+        public static readonly int ReelApertureSize = Shader.PropertyToID(ReelApertureSizeName);
     }
 }

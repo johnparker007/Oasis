@@ -108,24 +108,26 @@ namespace OasisPlayer.RuntimeBuild
     }
 
 
-    public static class RuntimeReelShaderCoordinateHelper
+    public static class RuntimeReelLampGeometry
     {
-        public static float ToWindowUvOffset(float effectivePosition, bool isReversed, float bandOffset)
-        {
-            var adjusted = effectivePosition;
-            if (isReversed)
-            {
-                var wrappedInput = RuntimeReelPositionConverter.PositiveModulo(adjusted, RuntimeReelPositionConverter.PositionsPerRevolution);
-                adjusted = wrappedInput == 0f ? 0f : RuntimeReelPositionConverter.PositionsPerRevolution - wrappedInput;
-            }
+        public const float DefaultRadius = 0.15f;
 
-            adjusted += bandOffset * RuntimeReelPositionConverter.PositionsPerRevolution;
-            return RuntimeReelPositionConverter.PositiveModulo(adjusted, RuntimeReelPositionConverter.PositionsPerRevolution) / RuntimeReelPositionConverter.PositionsPerRevolution;
+        public static Vector4 DeriveVerticalCenters(int stops)
+        {
+            // Reel lamps are fixed in projected aperture space, not rotating band space.
+            // For N stops, adjacent visible symbols are at +/- one stop angle around the reel;
+            // projecting those positions onto the visible diameter gives 0.5 +/- 0.5*sin(2*pi/N).
+            var safeStops = Mathf.Max(1, stops);
+            var offset = 0.5f * Mathf.Sin((Mathf.PI * 2f) / safeStops);
+            return new Vector4(0.5f + offset, 0.5f, 0.5f - offset, 0f);
         }
 
-        public static Vector2 ToFixedWindowUv(Vector2 rotatingBandUv, float windowUvOffset)
+        public static float EvaluateField(Vector2 apertureUv, float verticalCenter, float radius, float physicalWidth, float physicalDiameter)
         {
-            return new Vector2(rotatingBandUv.x, RuntimeReelPositionConverter.PositiveModulo(rotatingBandUv.y - windowUvOffset, 1f));
+            var delta = apertureUv - new Vector2(0.5f, verticalCenter);
+            delta.x *= physicalWidth / Mathf.Max(physicalDiameter, 0.0001f);
+            var d = delta.magnitude;
+            return 1f - Mathf.SmoothStep(radius * 0.35f, Mathf.Max(radius, 0.0001f), d);
         }
     }
 
@@ -153,25 +155,35 @@ namespace OasisPlayer.RuntimeBuild
             var lampsEnabled = reel == null || reel.reelLampsEnabled;
             var lamps = reel != null && reel.reelLamps != null ? reel.reelLamps : Array.Empty<FaceRuntimeReelLampManifestEntry>();
             for (var i = 0; i < _lampIds.Length; i++) _lampIds[i] = -1;
-            var verticalCenters = new Vector4(1f / 6f, 0.5f, 5f / 6f, 0f);
-            var radii = new Vector4(0.42f, 0.42f, 0.42f, 0f);
+            var verticalCenters = RuntimeReelLampGeometry.DeriveVerticalCenters(reel != null ? reel.stops : 12);
+            var radii = new Vector4(RuntimeReelLampGeometry.DefaultRadius, RuntimeReelLampGeometry.DefaultRadius, RuntimeReelLampGeometry.DefaultRadius, 0f);
             var intensities = new Vector4(1f, 1f, 1f, 0f);
             for (var i = 0; i < lamps.Length && i < 3; i++)
             {
                 var lamp = lamps[i];
                 // RuntimeLampState is one-based (1..255), so both the -1 unassigned sentinel and manifest value 0 stay off.
                 _lampIds[i] = lampsEnabled && lamp != null && lamp.lampId > 0 ? lamp.lampId : -1;
-                if (i == 0) { verticalCenters.x = lamp.localVerticalCenter; radii.x = lamp.radius; intensities.x = lamp.intensity; }
-                else if (i == 1) { verticalCenters.y = lamp.localVerticalCenter; radii.y = lamp.radius; intensities.y = lamp.intensity; }
-                else { verticalCenters.z = lamp.localVerticalCenter; radii.z = lamp.radius; intensities.z = lamp.intensity; }
+                var radius = lamp != null && lamp.radius > 0f ? lamp.radius : RuntimeReelLampGeometry.DefaultRadius;
+                var intensity = lamp != null ? lamp.intensity : 1f;
+                if (i == 0) { radii.x = radius; intensities.x = intensity; }
+                else if (i == 1) { radii.y = radius; intensities.y = intensity; }
+                else { radii.z = radius; intensities.z = intensity; }
             }
             PropertyBlock.SetVector(RuntimeFaceShaderProperties.ReelLampVerticalCenters, verticalCenters);
             PropertyBlock.SetVector(RuntimeFaceShaderProperties.ReelLampRadii, radii);
             PropertyBlock.SetVector(RuntimeFaceShaderProperties.ReelLampIntensities, intensities);
             PropertyBlock.SetFloat(RuntimeFaceShaderProperties.ReelTransmissionMaskEnabled, reel != null && reel.TransmissionMaskTexture != null ? 1f : 0f);
-            PropertyBlock.SetFloat(RuntimeFaceShaderProperties.ReelWindowUvOffset, reel != null ? RuntimeReelShaderCoordinateHelper.ToWindowUvOffset(0f, reel.isReversed, reel.bandOffset) : 0f);
             if (reel != null && reel.TransmissionMaskTexture != null) PropertyBlock.SetTexture(RuntimeFaceShaderProperties.ReelTransmissionMaskTexture, reel.TransmissionMaskTexture.Texture);
             PropertyBlock.SetVector(RuntimeFaceShaderProperties.ReelLampBrightness, Vector4.zero);
+            if (Renderer != null) Renderer.SetPropertyBlock(PropertyBlock);
+        }
+
+        public void ConfigureAperture(Vector3 center, Vector3 right, Vector3 up, float physicalWidth, float physicalDiameter)
+        {
+            PropertyBlock.SetVector(RuntimeFaceShaderProperties.ReelApertureCenterWS, new Vector4(center.x, center.y, center.z, 0f));
+            PropertyBlock.SetVector(RuntimeFaceShaderProperties.ReelApertureRightWS, new Vector4(right.x, right.y, right.z, 0f));
+            PropertyBlock.SetVector(RuntimeFaceShaderProperties.ReelApertureUpWS, new Vector4(up.x, up.y, up.z, 0f));
+            PropertyBlock.SetVector(RuntimeFaceShaderProperties.ReelApertureSize, new Vector4(physicalWidth, physicalDiameter, 0f, 0f));
             if (Renderer != null) Renderer.SetPropertyBlock(PropertyBlock);
         }
 
@@ -260,6 +272,7 @@ namespace OasisPlayer.RuntimeBuild
                     }
                     renderer.sharedMaterial = material;
                     var binding = new RuntimeReelRenderBinding(go, material, renderer, reel);
+                    binding.ConfigureAperture(surfacePoint, surface.HorizontalTangent, surface.VerticalTangent, physicalWidthMetres, physicalRadiusMetres * 2f);
                     binding.ApplyLampState(machine.LampState);
                     machine.AddWarning($"Reel lamp binding: reel={DisplayReelName(reel)}, enabled={reel.reelLampsEnabled.ToString().ToLowerInvariant()}, ids=[{FormatReelLampIds(reel)}], assigned={CountAssignedReelLamps(reel)}");
                     face.AddReelRenderBinding(binding);

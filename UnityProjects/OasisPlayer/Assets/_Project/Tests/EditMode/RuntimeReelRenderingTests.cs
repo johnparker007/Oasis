@@ -33,7 +33,7 @@ public sealed class RuntimeReelRenderingTests
     }
 
     [Test]
-    public void Configure_WritesAllThreeImportedVerticalCentersAndMaskProperties()
+    public void Configure_DerivesVerticalCentersFromStopCountAndMaskProperties()
     {
         var reel = Reel();
         var mask = new Texture2D(2, 2);
@@ -53,9 +53,9 @@ public sealed class RuntimeReelRenderingTests
             var block = new MaterialPropertyBlock();
             renderer.GetPropertyBlock(block);
             var centers = block.GetVector(RuntimeFaceShaderProperties.ReelLampVerticalCenters);
-            Assert.AreEqual(0.12f, centers.x, 0.0001f);
-            Assert.AreEqual(0.47f, centers.y, 0.0001f);
-            Assert.AreEqual(0.91f, centers.z, 0.0001f);
+            Assert.AreEqual(0.6545f, centers.x, 0.0001f);
+            Assert.AreEqual(0.5f, centers.y, 0.0001f);
+            Assert.AreEqual(0.3455f, centers.z, 0.0001f);
             Assert.AreEqual(1f, block.GetFloat(RuntimeFaceShaderProperties.ReelTransmissionMaskEnabled), 0.0001f);
             Assert.AreSame(mask, block.GetTexture(RuntimeFaceShaderProperties.ReelTransmissionMaskTexture));
             binding.Dispose();
@@ -169,15 +169,67 @@ public sealed class RuntimeReelRenderingTests
     }
 
     [Test]
-    public void FixedWindowUv_IsIndependentOfWorldTransforms()
+    public void DerivedVerticalCenters_MatchProjectedStopCounts()
     {
-        var bandUv = new Vector2(0.25f, 0.75f);
-        var offset = RuntimeReelShaderCoordinateHelper.ToWindowUvOffset(24f, false, 0f);
-        var a = RuntimeReelShaderCoordinateHelper.ToFixedWindowUv(bandUv, offset);
-        var b = RuntimeReelShaderCoordinateHelper.ToFixedWindowUv(bandUv, offset);
-        Assert.AreEqual(a, b);
-        Assert.AreEqual(0.25f, a.x, 0.0001f);
-        Assert.AreEqual(0.5f, a.y, 0.0001f);
+        AssertCenters(12, 0.75f, 0.5f, 0.25f);
+        AssertCenters(16, 0.6913f, 0.5f, 0.3087f);
+        AssertCenters(25, 0.6243f, 0.5f, 0.3757f);
+    }
+
+    [Test]
+    public void AspectCorrection_EqualPhysicalDistancesHaveEqualFieldStrength()
+    {
+        var fieldA = RuntimeReelLampGeometry.EvaluateField(new Vector2(0.5f + 10f / 70f, 0.5f), 0.5f, 0.15f, 70f, 190f);
+        var fieldB = RuntimeReelLampGeometry.EvaluateField(new Vector2(0.5f, 0.5f + 10f / 190f), 0.5f, 0.15f, 70f, 190f);
+        Assert.AreEqual(fieldA, fieldB, 0.0001f);
+
+        var squareA = RuntimeReelLampGeometry.EvaluateField(new Vector2(0.6f, 0.5f), 0.5f, 0.15f, 100f, 100f);
+        var squareB = RuntimeReelLampGeometry.EvaluateField(new Vector2(0.5f, 0.6f), 0.5f, 0.15f, 100f, 100f);
+        Assert.AreEqual(squareA, squareB, 0.0001f);
+    }
+
+    [Test]
+    public void DefaultRadius_PrimarilyIlluminatesOneSymbol()
+    {
+        var centers = RuntimeReelLampGeometry.DeriveVerticalCenters(12);
+        var own = RuntimeReelLampGeometry.EvaluateField(new Vector2(0.5f, centers.x), centers.x, RuntimeReelLampGeometry.DefaultRadius, 70f, 190f);
+        var middle = RuntimeReelLampGeometry.EvaluateField(new Vector2(0.5f, centers.y), centers.x, RuntimeReelLampGeometry.DefaultRadius, 70f, 190f);
+        Assert.Greater(own, 0.95f);
+        Assert.Less(middle, 0.05f);
+    }
+
+    [Test]
+    public void ApertureProperties_DoNotUseBandOffset()
+    {
+        var reel = Reel();
+        reel.bandOffset = 0.25f;
+        var go = new GameObject("reel");
+        var renderer = go.AddComponent<MeshRenderer>();
+        var material = new Material(Shader.Find("Oasis/ReelLamp"));
+        try
+        {
+            var binding = new RuntimeReelRenderBinding(go, material, renderer, reel);
+            binding.ConfigureAperture(new Vector3(1f, 2f, 3f), Vector3.right, Vector3.up, 0.07f, 0.19f);
+            var block = new MaterialPropertyBlock();
+            renderer.GetPropertyBlock(block);
+            Assert.AreEqual(new Vector4(1f, 2f, 3f, 0f), block.GetVector(RuntimeFaceShaderProperties.ReelApertureCenterWS));
+            Assert.AreEqual(new Vector4(0.07f, 0.19f, 0f, 0f), block.GetVector(RuntimeFaceShaderProperties.ReelApertureSize));
+            binding.Dispose();
+        }
+        finally
+        {
+            if (go != null) Object.DestroyImmediate(go);
+            if (material != null) Object.DestroyImmediate(material);
+            reel.BandTexture.Unload();
+        }
+    }
+
+    private static void AssertCenters(int stops, float top, float middle, float bottom)
+    {
+        var centers = RuntimeReelLampGeometry.DeriveVerticalCenters(stops);
+        Assert.AreEqual(top, centers.x, 0.001f);
+        Assert.AreEqual(middle, centers.y, 0.0001f);
+        Assert.AreEqual(bottom, centers.z, 0.001f);
     }
 
     private static FaceRuntimeReelManifestEntry Reel()
