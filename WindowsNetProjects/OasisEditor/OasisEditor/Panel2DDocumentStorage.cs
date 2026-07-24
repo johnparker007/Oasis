@@ -350,6 +350,7 @@ internal static class Panel2DDocumentStorage
             Stops = normalized.Stops,
             VisibleScale = normalized.VisibleScale,
             BandOffset = normalized.BandOffset,
+            ReelLampsEnabled = normalized.ReelLampsEnabled ?? true,
             ReelLamps = (normalized.ReelLamps ?? []).Select(ToModel).ToArray(),
             IsOpaqueReel = normalized.IsOpaqueReel ?? false,
             ReelLampTransmissionMaskAssetPath = normalized.ReelLampTransmissionMaskAssetPath,
@@ -408,6 +409,7 @@ internal static class Panel2DDocumentStorage
             Stops = element.Stops,
             VisibleScale = element.VisibleScale,
             BandOffset = element.BandOffset,
+            ReelLampsEnabled = element.ReelLampsEnabled,
             ReelLamps = element.ReelLamps.Select(ToFile).ToArray(),
             IsOpaqueReel = element.IsOpaqueReel,
             ReelLampTransmissionMaskAssetPath = element.ReelLampTransmissionMaskAssetPath,
@@ -566,6 +568,7 @@ internal static class Panel2DDocumentStorage
         var normalizedStops = normalizedNative?.Stops ?? element.Stops;
         var normalizedVisibleScale = normalizedNative?.VisibleScale ?? element.VisibleScale;
         var normalizedBandOffset = normalizedNative?.BandOffset ?? element.BandOffset;
+        var normalizedReelLampsEnabled = normalizedKind != PanelElementKind.Reel || (element.ReelLampsEnabled ?? true);
         var normalizedReelLamps = NormalizeReelLamps(element.ReelLamps);
         var normalizedIsOpaqueReel = normalizedKind == PanelElementKind.Reel && (element.IsOpaqueReel ?? false);
         var normalizedReelLampTransmissionMaskAssetPath = normalizedIsOpaqueReel ? NormalizeOptionalString(element.ReelLampTransmissionMaskAssetPath) : null;
@@ -645,6 +648,7 @@ internal static class Panel2DDocumentStorage
             Stops = normalizedStops,
             VisibleScale = normalizedVisibleScale,
             BandOffset = normalizedBandOffset,
+            ReelLampsEnabled = normalizedReelLampsEnabled,
             ReelLamps = normalizedReelLamps,
             IsOpaqueReel = normalizedIsOpaqueReel,
             ReelLampTransmissionMaskAssetPath = normalizedReelLampTransmissionMaskAssetPath,
@@ -954,6 +958,7 @@ internal sealed record PanelElementFile : IPanelSelectableObject
     public string? TextBoxFontStyle { get; init; }
     public string? TextBoxFontSize { get; init; }
     public bool? IsReversed { get; init; }
+    public bool? ReelLampsEnabled { get; init; }
     public PanelElementReelLampFile[]? ReelLamps { get; init; }
     public bool? IsOpaqueReel { get; init; }
     public string? ReelLampTransmissionMaskAssetPath { get; init; }

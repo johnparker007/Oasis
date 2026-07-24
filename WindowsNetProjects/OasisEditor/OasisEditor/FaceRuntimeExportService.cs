@@ -9,12 +9,13 @@ namespace OasisEditor;
 
 public sealed class FaceRuntimeExportService
 {
-    public const int RuntimeManifestSchemaVersion = 5;
+    public const int RuntimeManifestSchemaVersion = 6;
     public const string RuntimeDirectoryName = "runtime";
     public const string ManifestFileName = "face.runtime.json";
     public const string ArtworkFileName = "artwork.png";
     public const string MaskFileName = "mask.png";
     public const string ReelBandDirectoryName = "reels";
+    public const string ReelTransmissionMaskSuffix = "_transmissionMask.png";
 
     private readonly FaceRuntimeTextureGenerator _runtimeTextureGenerator;
 
@@ -69,6 +70,7 @@ public sealed class FaceRuntimeExportService
         progress.Report(0.45, "Creating runtime texture plan...");
         var textureResult = _runtimeTextureGenerator.Generate(faceDocument, width, height, outputDirectory, progress.CreateChild(0.45, 0.75));
         CopyReelBands(faceDocument, project, outputDirectory);
+        CopyReelTransmissionMasks(faceDocument, project, outputDirectory);
 
         var generatedUtc = DateTime.UtcNow;
         progress.Report(0.8, "Writing manifest...");
@@ -239,11 +241,14 @@ public sealed class FaceRuntimeExportService
         }
     }
 
-    private static string CreateReelBandFileName(FaceReelDisplayElement reel)
+    private static string CreateReelBandFileName(FaceReelDisplayElement reel) => $"{CreateSafeReelObjectId(reel)}.png";
+
+    private static string CreateReelTransmissionMaskFileName(FaceReelDisplayElement reel) => $"{CreateSafeReelObjectId(reel)}{ReelTransmissionMaskSuffix}";
+
+    private static string CreateSafeReelObjectId(FaceReelDisplayElement reel)
     {
         var objectId = string.IsNullOrWhiteSpace(reel.ObjectId) ? "reel" : reel.ObjectId.Trim();
-        var safe = string.Concat(objectId.Select(ch => char.IsLetterOrDigit(ch) || ch == '-' || ch == '_' ? ch : '_'));
-        return $"{safe}.png";
+        return string.Concat(objectId.Select(ch => char.IsLetterOrDigit(ch) || ch == '-' || ch == '_' ? ch : '_'));
     }
 
     private static void ExportReelBandPng(string sourcePath, string outputPath, FaceReelDisplayElement reel)
@@ -257,6 +262,24 @@ public sealed class FaceRuntimeExportService
 
         using var stream = File.Open(outputPath, FileMode.Create, FileAccess.Write, FileShare.None);
         data.SaveTo(stream);
+    }
+
+    private static void CopyReelTransmissionMasks(FaceDocumentModel faceDocument, EditorProject project, string outputDirectory)
+    {
+        var opaqueReels = faceDocument.Elements.OfType<FaceReelDisplayElement>().Where(reel => reel.IsOpaqueReel).ToArray();
+        if (opaqueReels.Length == 0) return;
+        var reelDirectory = Path.Combine(outputDirectory, ReelBandDirectoryName);
+        Directory.CreateDirectory(reelDirectory);
+        foreach (var reel in opaqueReels)
+        {
+            if (string.IsNullOrWhiteSpace(reel.ReelLampTransmissionMaskAssetPath))
+            {
+                throw new FileNotFoundException($"Opaque reel '{DisplayName(reel)}' requires a reel-lamp transmission mask asset.");
+            }
+
+            var sourcePath = ResolveExistingProjectPath(project, reel.ReelLampTransmissionMaskAssetPath, $"Opaque reel '{DisplayName(reel)}' transmission mask");
+            ExportReelBandPng(sourcePath, Path.Combine(reelDirectory, CreateReelTransmissionMaskFileName(reel)), reel);
+        }
     }
 
     private static void CopyMask(FaceDocumentModel faceDocument, EditorProject project, string outputPath)
@@ -392,8 +415,9 @@ public sealed class FaceRuntimeExportService
             Stops = element.Stops.GetValueOrDefault(0),
             IsReversed = element.IsReversed,
             BandOffset = element.BandOffset.GetValueOrDefault(0d),
+            ReelLampsEnabled = element.ReelLampsEnabled,
             ReelLamps = element.ReelLamps.Select(CreateReelLampManifestEntry).ToArray(),
-            TransmissionMask = element.IsOpaqueReel ? element.ReelLampTransmissionMaskAssetPath : null,
+            TransmissionMask = element.IsOpaqueReel ? ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine(ReelBandDirectoryName, CreateReelTransmissionMaskFileName(element))) : null,
             PhysicalWidth = dimensions.WidthMm,
             PhysicalRadius = dimensions.RadiusMm,
             X = element.X,
@@ -406,7 +430,7 @@ public sealed class FaceRuntimeExportService
     private static FaceRuntimeReelLampManifestEntry CreateReelLampManifestEntry(ReelLampSlotModel lamp) => new()
     {
         Position = lamp.Position.ToString().ToLowerInvariant(),
-        LampId = lamp.LampNumber,
+        LampId = lamp.LampNumber.GetValueOrDefault(-1),
         LocalVerticalCenter = lamp.LocalVerticalCenter,
         Radius = lamp.Radius,
         Intensity = lamp.Intensity
@@ -699,13 +723,14 @@ public sealed class FaceRuntimeReelManifestEntry : FaceRuntimeElementManifestEnt
     public double PhysicalWidth { get; init; }
     public double PhysicalRadius { get; init; }
     public string? TransmissionMask { get; init; }
+    public bool ReelLampsEnabled { get; init; } = true;
     public IReadOnlyList<FaceRuntimeReelLampManifestEntry> ReelLamps { get; init; } = [];
 }
 
 public sealed class FaceRuntimeReelLampManifestEntry
 {
     public string Position { get; init; } = string.Empty;
-    public int? LampId { get; init; }
+    public int LampId { get; init; }
     public double LocalVerticalCenter { get; init; }
     public double Radius { get; init; }
     public double Intensity { get; init; }

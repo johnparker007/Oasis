@@ -1,3 +1,6 @@
+using MfmeFmlDecoder.src.Model;
+using MfmeFmlDecoder.src.Model.Component;
+using OasisEditor.Features.FmlImport;
 using OasisEditor.Features.LayoutImport;
 using Xunit;
 
@@ -69,6 +72,57 @@ public sealed class ImportPanelElementsCommandTests
         Assert.Contains(document.GetPanelElements(), element => element.ObjectId == "import-b");
     }
 
+
+
+    [Fact]
+    public void Execute_WithImportedReel_PreservesReelLampFields()
+    {
+        var document = new DocumentTabViewModel(EditorDocument.CreatePanel2DStub("Panel"));
+        var source = CreateReelWithCommonLamps("import-reel");
+
+        var command = new ImportPanelElementsCommand(document.DocumentId, document, [source]);
+
+        document.CommandService.Execute(command);
+
+        var imported = Assert.Single(document.GetPanelElements());
+        Assert.Equal("import-reel", imported.ObjectId);
+        Assert.True(imported.ReelLampsEnabled);
+        Assert.True(imported.IsOpaqueReel);
+        Assert.Equal("Assets/Reels/reel_transmission.png", imported.ReelLampTransmissionMaskAssetPath);
+        Assert.Equal([5, 4, 3], imported.ReelLamps.Select(lamp => lamp.LampNumber).ToArray());
+        Assert.Equal([0.12d, 0.45d, 0.88d], imported.ReelLamps.Select(lamp => lamp.LocalVerticalCenter).ToArray());
+        Assert.Equal([0.21d, 0.31d, 0.41d], imported.ReelLamps.Select(lamp => lamp.Radius).ToArray());
+        Assert.Equal([1.1d, 1.2d, 1.3d], imported.ReelLamps.Select(lamp => lamp.Intensity).ToArray());
+        Assert.Equal(7, imported.DigitCount);
+    }
+
+
+    [Fact]
+    public void FmlMappedReelThroughAssetCopierAndImportCommand_PreservesSerializedReelLamps()
+    {
+        var tempRoot = Path.Combine(Path.GetTempPath(), "OasisEditorTests", Guid.NewGuid().ToString("N"));
+        var stagingRoot = Path.Combine(tempRoot, "staging");
+        var assetsRoot = Path.Combine(tempRoot, "project", "Assets");
+        Directory.CreateDirectory(Path.Combine(stagingRoot, "reels"));
+        File.WriteAllBytes(Path.Combine(stagingRoot, "reels", "reel.png"), [1, 2, 3]);
+        var fmlReel = new Reel { X = 1, Y = 2, Width = 30, Height = 90, SublampTable = [new LampSublampTableEntry(2, 5), new LampSublampTableEntry(3, 4), new LampSublampTableEntry(4, 3)] };
+        fmlReel.UInt32s["Stops"] = 20;
+        fmlReel.Booleans["LampsEnabled"] = true;
+        var mapped = new FmlToOasisMapper().Map(new Layout([fmlReel]), new Dictionary<FmlDecodedImageKey, string> { [new FmlDecodedImageKey(0, "reelBand")] = "reels/reel.png" });
+        var copied = new LayoutImportAssetCopier().CopyAssetsFromStaging(stagingRoot, "My Layout", assetsRoot, copyAssets: true, mapped.Elements, FmlBackgroundMode.NoBackground);
+        Assert.True(copied.Succeeded);
+        var document = new DocumentTabViewModel(EditorDocument.CreatePanel2DStub("Panel"));
+
+        document.CommandService.Execute(new ImportPanelElementsCommand(document.DocumentId, document, copied.Elements));
+        var json = DocumentWorkspaceViewModel.BuildDocumentContent(document);
+
+        Assert.Contains("\"ReelLamps\"", json, StringComparison.Ordinal);
+        Assert.Equal(3, System.Text.Json.JsonDocument.Parse(json).RootElement.GetProperty("Elements")[0].GetProperty("ReelLamps").GetArrayLength());
+        Assert.True(Panel2DDocumentStorage.TryReadValidated(json, out var parsed, out var error), error);
+        var element = Panel2DDocumentStorage.ToModel(parsed).Elements.Single();
+        Assert.True(element.ReelLampsEnabled);
+        Assert.Equal([5, 4, 3], element.ReelLamps.Select(lamp => lamp.LampNumber).ToArray());
+    }
 
     [Fact]
     public void Execute_WithImportedReelsAndAlphaDisplaysForImageBackedBackground_MovesThemBeforeBackgroundSoBackgroundDrawsInFront()
@@ -421,5 +475,29 @@ public sealed class ImportPanelElementsCommandTests
         Assert.Contains(parsed.Elements, element => element.Kind == "reel" && element.DisplayNumber == 3);
         Assert.Contains(parsed.Elements, element => element.Kind == "sevenSegment" && element.DisplayNumber == 2);
         Assert.Contains(parsed.Elements, element => element.Kind == "alpha" && element.IsReversed == true);
+    }
+
+    private static PanelElementModel CreateReelWithCommonLamps(string objectId)
+    {
+        return new PanelElementModel
+        {
+            ObjectId = objectId,
+            Name = "Reel 2",
+            Kind = PanelElementKind.Reel,
+            X = 1,
+            Y = 2,
+            Width = 30,
+            Height = 90,
+            DigitCount = 7,
+            ReelLampsEnabled = true,
+            IsOpaqueReel = true,
+            ReelLampTransmissionMaskAssetPath = "Assets/Reels/reel_transmission.png",
+            ReelLamps =
+            [
+                new ReelLampSlotModel { Position = ReelLampSlotPosition.Top, LampNumber = 5, LocalVerticalCenter = 0.12d, Radius = 0.21d, Intensity = 1.1d },
+                new ReelLampSlotModel { Position = ReelLampSlotPosition.Middle, LampNumber = 4, LocalVerticalCenter = 0.45d, Radius = 0.31d, Intensity = 1.2d },
+                new ReelLampSlotModel { Position = ReelLampSlotPosition.Bottom, LampNumber = 3, LocalVerticalCenter = 0.88d, Radius = 0.41d, Intensity = 1.3d }
+            ]
+        };
     }
 }

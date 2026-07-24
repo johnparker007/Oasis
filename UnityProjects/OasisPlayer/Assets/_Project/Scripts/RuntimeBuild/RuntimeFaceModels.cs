@@ -38,6 +38,10 @@ namespace OasisPlayer.RuntimeBuild
             var changed = false;
             if (_lampStateTexture != null) changed |= _lampStateTexture.Upload(LampState);
             if (_segmentDisplayRenderer != null) changed |= _segmentDisplayRenderer.ApplyDynamicState(this);
+            foreach (var face in _faces)
+            {
+                for (var i = 0; i < face.ReelRenderBindings.Count; i++) changed |= face.ReelRenderBindings[i].ApplyLampState(LampState);
+            }
             return changed;
         }
 
@@ -138,6 +142,7 @@ namespace OasisPlayer.RuntimeBuild
             foreach (var reel in reels)
             {
                 if (reel != null && reel.BandTexture != null) reel.BandTexture.Unload();
+                if (reel != null && reel.TransmissionMaskTexture != null) reel.TransmissionMaskTexture.Unload();
             }
         }
     }

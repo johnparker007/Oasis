@@ -148,46 +148,14 @@ internal sealed class LayoutImportAssetCopier
             transmissionMask = null;
         }
 
-        return new PanelElementModel
-        {
-            ObjectId = element.ObjectId,
-            Name = element.Name,
-            Kind = element.Kind,
-            X = element.X,
-            Y = element.Y,
-            Width = element.Width,
-            Height = element.Height,
-            AssetPath = primary,
-            SecondaryAssetPath = secondary,
-            DisplayNumber = element.DisplayNumber,
-            LampNumber = element.LampNumber,
-            SegmentDisplayType = element.SegmentDisplayType,
-            ShowDecimalPoint = element.ShowDecimalPoint,
-            ShowCommaTail = element.ShowCommaTail,
-            HasBorder = element.HasBorder,
-            OnColorHex = element.OnColorHex,
-            OffColorHex = element.OffColorHex,
-            TextColorHex = element.TextColorHex,
-            DisplayText = element.DisplayText,
-            TextBoxFontName = element.TextBoxFontName,
-            TextBoxFontStyle = element.TextBoxFontStyle,
-            TextBoxFontSize = element.TextBoxFontSize,
-            IsReversed = element.IsReversed,
-            Stops = element.Stops,
-            VisibleScale = element.VisibleScale,
-            BandOffset = element.BandOffset,
-            ReelLamps = element.ReelLamps,
-            IsOpaqueReel = element.IsOpaqueReel,
-            ReelLampTransmissionMaskAssetPath = transmissionMask,
-            IsTransformLocked = element.IsTransformLocked,
-            IsVisible = element.IsVisible,
-            SourceComponentIndex = element.SourceComponentIndex,
-            SourceElementIndex = element.SourceElementIndex,
-            SharedSourceSetId = element.SharedSourceSetId,
-            SharedSourceSetCount = element.SharedSourceSetCount,
-            SourceBlend = element.SourceBlend,
-            ImportSource = element.ImportSource
-        };
+        return PanelElementModelCloner.Clone(
+            element,
+            assetPath: primary,
+            overrideAssetPath: true,
+            secondaryAssetPath: secondary,
+            overrideSecondaryAssetPath: true,
+            reelLampTransmissionMaskAssetPath: transmissionMask,
+            overrideReelLampTransmissionMaskAssetPath: true);
     }
 
     private static PanelElementModel[] BakeDisplayOverlaysIntoBackgrounds(
@@ -252,43 +220,7 @@ internal sealed class LayoutImportAssetCopier
 
     private static PanelElementModel CloneWithAssetPath(PanelElementModel element, string? assetPath)
     {
-        return new PanelElementModel
-        {
-            ObjectId = element.ObjectId,
-            Name = element.Name,
-            Kind = element.Kind,
-            X = element.X,
-            Y = element.Y,
-            Width = element.Width,
-            Height = element.Height,
-            AssetPath = assetPath,
-            SecondaryAssetPath = element.SecondaryAssetPath,
-            DisplayNumber = element.DisplayNumber,
-            LampNumber = element.LampNumber,
-            SegmentDisplayType = element.SegmentDisplayType,
-            ShowDecimalPoint = element.ShowDecimalPoint,
-            ShowCommaTail = element.ShowCommaTail,
-            HasBorder = element.HasBorder,
-            OnColorHex = element.OnColorHex,
-            OffColorHex = element.OffColorHex,
-            TextColorHex = element.TextColorHex,
-            DisplayText = element.DisplayText,
-            TextBoxFontName = element.TextBoxFontName,
-            TextBoxFontStyle = element.TextBoxFontStyle,
-            TextBoxFontSize = element.TextBoxFontSize,
-            IsReversed = element.IsReversed,
-            Stops = element.Stops,
-            VisibleScale = element.VisibleScale,
-            BandOffset = element.BandOffset,
-            IsTransformLocked = element.IsTransformLocked,
-            IsVisible = element.IsVisible,
-            SourceComponentIndex = element.SourceComponentIndex,
-            SourceElementIndex = element.SourceElementIndex,
-            SharedSourceSetId = element.SharedSourceSetId,
-            SharedSourceSetCount = element.SharedSourceSetCount,
-            SourceBlend = element.SourceBlend,
-            ImportSource = element.ImportSource
-        };
+        return PanelElementModelCloner.Clone(element, assetPath: assetPath, overrideAssetPath: true);
     }
 
     private static string? TryResolveProjectAssetPath(string? projectRelativePath, string projectAssetsRoot)

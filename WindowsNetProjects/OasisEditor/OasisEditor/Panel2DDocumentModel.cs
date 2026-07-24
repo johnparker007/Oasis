@@ -60,6 +60,7 @@ internal sealed class PanelElementModel
     public int? Stops { get; init; }
     public double? VisibleScale { get; init; }
     public double? BandOffset { get; init; }
+    public bool ReelLampsEnabled { get; init; } = true;
     public IReadOnlyList<ReelLampSlotModel> ReelLamps { get; init; } = [];
     public bool IsOpaqueReel { get; init; }
     public string? ReelLampTransmissionMaskAssetPath { get; init; }

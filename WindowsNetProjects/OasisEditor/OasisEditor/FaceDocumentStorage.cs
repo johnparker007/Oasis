@@ -574,6 +574,7 @@ public static class FaceDocumentStorage
                 VisibleScale = file.VisibleScale,
                 BandOffset = file.BandOffset,
                 IsReversed = file.IsReversed,
+                ReelLampsEnabled = file.ReelLampsEnabled ?? true,
                 ReelLamps = (file.ReelLamps ?? []).Select(ToModel).ToArray(),
                 IsOpaqueReel = file.IsOpaqueReel,
                 ReelLampTransmissionMaskAssetPath = NormalizeOptional(file.ReelLampTransmissionMaskAssetPath)
@@ -739,6 +740,7 @@ public static class FaceDocumentStorage
             VisibleScale = model is FaceReelDisplayElement reelVisibleScale ? reelVisibleScale.VisibleScale : null,
             BandOffset = model is FaceReelDisplayElement reelBandOffset ? reelBandOffset.BandOffset : null,
             AssetPath = model switch { FaceArtworkElement artwork => artwork.AssetPath, FaceReelDisplayElement reel => reel.AssetPath, _ => null },
+            ReelLampsEnabled = model is FaceReelDisplayElement reelLampsEnabled ? reelLampsEnabled.ReelLampsEnabled : null,
             ReelLamps = model is FaceReelDisplayElement reelLamps ? reelLamps.ReelLamps.Select(ToFile).ToArray() : null,
             IsOpaqueReel = model is FaceReelDisplayElement opaqueReel && opaqueReel.IsOpaqueReel,
             ReelLampTransmissionMaskAssetPath = model is FaceReelDisplayElement maskReel ? NormalizeOptional(maskReel.ReelLampTransmissionMaskAssetPath) : null,
@@ -940,6 +942,7 @@ public sealed record FaceElementFile
     public double? VisibleScale { get; init; }
     public double? BandOffset { get; init; }
     public string? AssetPath { get; init; }
+    public bool? ReelLampsEnabled { get; init; }
     public FaceReelLampFile[]? ReelLamps { get; init; }
     public bool IsOpaqueReel { get; init; }
     public string? ReelLampTransmissionMaskAssetPath { get; init; }

@@ -49,7 +49,7 @@ namespace OasisPlayer.Loading
 
         private static void ConfigureTexture(Texture2D texture, RuntimeTextureRole role)
         {
-            texture.wrapMode = role == RuntimeTextureRole.ReelBand ? TextureWrapMode.Repeat : TextureWrapMode.Clamp;
+            texture.wrapMode = role == RuntimeTextureRole.ReelBand || role == RuntimeTextureRole.ReelTransmissionMask ? TextureWrapMode.Repeat : TextureWrapMode.Clamp;
             texture.filterMode = role == RuntimeTextureRole.LookupData ? FilterMode.Point : FilterMode.Bilinear;
         }
     }
@@ -59,12 +59,13 @@ namespace OasisPlayer.Loading
         Artwork,
         Mask,
         LookupData,
-        ReelBand
+        ReelBand,
+        ReelTransmissionMask
     }
 
     public sealed class RuntimeFaceLoader
     {
-        private const int FaceSchemaVersion = 5;
+        private const int FaceSchemaVersion = 6;
         private const string TargetPrefix = "OasisFace_";
 
         private readonly IRuntimeTextureAssetLoader _assetLoader;
@@ -188,6 +189,21 @@ namespace OasisPlayer.Loading
                 }
 
                 reel.BandTexture = asset;
+
+                if (string.IsNullOrWhiteSpace(reel.transmissionMask)) continue;
+                if (!TryResolveContained(machine.Build.BuildRoot, manifestDirectory, reel.transmissionMask, out var maskPath, out error))
+                {
+                    machine.AddWarning($"Invalid reel transmission-mask path for Face '{faceId}', reel '{reel.objectId}': {error}");
+                    continue;
+                }
+
+                if (!_assetLoader.TryLoad(maskPath, RuntimeTextureRole.ReelTransmissionMask, out var maskAsset, out error))
+                {
+                    machine.AddWarning($"Reel transmission-mask texture for Face '{faceId}', reel '{reel.objectId}' could not be loaded. {error}");
+                    continue;
+                }
+
+                reel.TransmissionMaskTexture = maskAsset;
             }
         }
 

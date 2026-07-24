@@ -64,7 +64,11 @@ internal static class FaceElementModelUpdater
                 Stops = reelDisplay.Stops,
                 VisibleScale = reelDisplay.VisibleScale,
                 BandOffset = reelDisplay.BandOffset,
-                IsReversed = reelDisplay.IsReversed,
+                IsReversed = update.IsReversed ?? reelDisplay.IsReversed,
+                ReelLampsEnabled = update.ReelLampsEnabled ?? reelDisplay.ReelLampsEnabled,
+                ReelLamps = update.ReelLamps ?? reelDisplay.ReelLamps,
+                IsOpaqueReel = update.IsOpaqueReel ?? reelDisplay.IsOpaqueReel,
+                ReelLampTransmissionMaskAssetPath = update.HasReelLampTransmissionMaskAssetPath ? update.ReelLampTransmissionMaskAssetPath : reelDisplay.ReelLampTransmissionMaskAssetPath,
                 ReelSpecificationId = update.HasReelSpecificationId ? update.ReelSpecificationId : reelDisplay.ReelSpecificationId
             },
             FaceLampWindowElement => new FaceLampWindowElement
@@ -158,6 +162,12 @@ internal sealed class FaceElementModelUpdate
     public string? LinkedPanel2DElementId { get; init; }
     public bool HasReelSpecificationId { get; init; }
     public string? ReelSpecificationId { get; init; }
+    public bool? IsReversed { get; init; }
+    public bool? ReelLampsEnabled { get; init; }
+    public IReadOnlyList<ReelLampSlotModel>? ReelLamps { get; init; }
+    public bool? IsOpaqueReel { get; init; }
+    public bool HasReelLampTransmissionMaskAssetPath { get; init; }
+    public string? ReelLampTransmissionMaskAssetPath { get; init; }
 }
 
 internal static class FaceElementValidation
