@@ -224,9 +224,9 @@ namespace OasisPlayer.RuntimeBuild
             // winding is opposite to the Editor preview winding, so Player maps the semantic front
             // side to the opposite Unity cull state while keeping the lighting normal aligned with
             // the side that remains visible.
-            return frontSide == RuntimeFaceFrontSide.Inverted
-                ? new RuntimeFaceUnityOrientation(CullMode.Back, 1f)
-                : new RuntimeFaceUnityOrientation(CullMode.Front, -1f);
+            return new RuntimeFaceUnityOrientation(
+                frontSide == RuntimeFaceFrontSide.Inverted ? CullMode.Back : CullMode.Front,
+                RuntimeFaceFrontSideOrientation.ResolveNormalSign(frontSide));
         }
 
         private static bool ApplyTextureOrientation(Material material, RuntimeFace face, out string warning)
@@ -347,6 +347,21 @@ namespace OasisPlayer.RuntimeBuild
 
         public CullMode CullMode { get; }
         public float NormalSign { get; }
+    }
+
+    /// <summary>Single Player contract for mapping Editor front-side semantics onto imported GLB mesh normals.</summary>
+    public static class RuntimeFaceFrontSideOrientation
+    {
+        public static float ResolveNormalSign(RuntimeFaceFrontSide frontSide)
+        {
+            // Unity's imported GLB winding is opposite to the Editor preview semantics.
+            return frontSide == RuntimeFaceFrontSide.Inverted ? 1f : -1f;
+        }
+
+        public static Vector3 ResolveVisibleNormal(Vector3 meshFacingNormal, RuntimeFaceFrontSide frontSide)
+        {
+            return meshFacingNormal.normalized * ResolveNormalSign(frontSide);
+        }
     }
 
     public sealed class RuntimeFaceRenderBinding

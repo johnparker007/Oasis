@@ -1,6 +1,7 @@
 using OasisEditor.Features.CabinetEditor.Models;
 using OasisEditor.Features.CabinetEditor.Services;
 using System.Windows.Media.Media3D;
+using NumericsVector2 = System.Numerics.Vector2;
 using Xunit;
 
 namespace OasisEditor.Tests;
@@ -37,16 +38,36 @@ public sealed class CabinetReelSpecificationTests
     [Fact]
     public void ReflectionPlaneDerivesFromOrderedFaceTargetGeometry()
     {
-        var target = new CabinetFaceTarget("glass", "OasisFace_glass", "Glass", new[] { new Point3D(2, 3, 4), new Point3D(6, 3, 4), new Point3D(6, 5, 4), new Point3D(2, 5, 4) }, new Vector3D(0, 0, 1), new Point3D(4, 4, 4), true, null);
+        var target = new CabinetFaceTarget("glass", "OasisFace_glass", "Glass", new[] { new Point3D(2, 3, 4), new Point3D(6, 3, 4), new Point3D(6, 5, 4), new Point3D(2, 5, 4) }, new Vector3D(0, 0, 1), new Point3D(4, 4, 4), true, null, new Point3D(2, 3, 4), new Vector3D(4, 0, 0), new Vector3D(0, 2, 0));
         Assert.True(CabinetReflectionPlaneDeriver.TryDerive(target, out var plane, out var error), error);
         Assert.Equal(new CabinetReflectionVector(2, 3, 4), plane.Origin); Assert.Equal(new CabinetReflectionVector(1, 0, 0), plane.Right); Assert.Equal(new CabinetReflectionVector(0, 1, 0), plane.Up); Assert.Equal(4, plane.Width); Assert.Equal(2, plane.Height);
     }
+
+    [Theory]
+    [MemberData(nameof(UvMappings))]
+    public void ReflectionBasisComesFromTextureCoordinatesInsteadOfGeometricOrder(
+        NumericsVector2 uv0, NumericsVector2 uv1, NumericsVector2 uv2, NumericsVector2 uv3,
+        Point3D expectedOrigin, Vector3D expectedRight, Vector3D expectedUp)
+    {
+        var positions = new[] { new Point3D(2, 3, 4), new Point3D(6, 3, 4), new Point3D(6, 5, 4), new Point3D(2, 5, 4) };
+        var samples = new[] { (positions[2], uv2), (positions[0], uv0), (positions[3], uv3), (positions[1], uv1), (positions[2], uv2), (positions[0], uv0) };
+        Assert.True(GlbCabinetFaceTargetDetector.TryDeriveUvBasis(samples, out var origin, out var right, out var up, out var error), error);
+        Assert.Equal(expectedOrigin, origin); Assert.Equal(expectedRight, right); Assert.Equal(expectedUp, up);
+    }
+
+    public static TheoryData<NumericsVector2, NumericsVector2, NumericsVector2, NumericsVector2, Point3D, Vector3D, Vector3D> UvMappings => new()
+    {
+        { new(0, 0), new(1, 0), new(1, 1), new(0, 1), new(2, 3, 4), new(4, 0, 0), new(0, 2, 0) },
+        { new(0, 1), new(0, 0), new(1, 0), new(1, 1), new(6, 3, 4), new(0, 2, 0), new(-4, 0, 0) },
+        { new(1, 0), new(0, 0), new(0, 1), new(1, 1), new(6, 3, 4), new(-4, 0, 0), new(0, 2, 0) },
+        { new(0, 1), new(1, 1), new(1, 0), new(0, 0), new(2, 5, 4), new(4, 0, 0), new(0, -2, 0) }
+    };
 
     [Fact]
     public void CabinetSerialization_RoundTripsReelSpecificationsAndDefault()
     {
         var cabinet = new CabinetDocument(
-            4,
+            5,
             new CabinetModelReference("source.glb", 1.0, "Y"),
             [],
             CabinetPreviewSettings.Default,
@@ -56,7 +77,7 @@ public sealed class CabinetReelSpecificationTests
         var json = CabinetDocumentStorage.Serialize(cabinet);
 
         Assert.True(CabinetDocumentStorage.TryRead(json, out var parsed));
-        Assert.Equal(2, parsed.Version);
+        Assert.Equal(5, parsed.Version);
         Assert.Equal("jpm-standard", parsed.DefaultReelSpecificationId);
         var specification = Assert.Single(parsed.ReelSpecifications);
         Assert.Equal("jpm-standard", specification.Id);
@@ -76,7 +97,7 @@ public sealed class CabinetReelSpecificationTests
             ]
         };
         var cabinet = new CabinetDocument(
-            4,
+            5,
             new CabinetModelReference("source.glb", 1.0, "Y"),
             [],
             CabinetPreviewSettings.Default,
@@ -100,7 +121,7 @@ public sealed class CabinetReelSpecificationTests
     {
         var document = new DocumentTabViewModel(
             EditorDocument.CreateCabinet3DStub("Cabinet"),
-            cabinetDocumentJson: CabinetDocumentStorage.Serialize(new CabinetDocument(4, new CabinetModelReference("cabinet.glb", 1, "Y"), [], CabinetPreviewSettings.Default, [], null)));
+            cabinetDocumentJson: CabinetDocumentStorage.Serialize(new CabinetDocument(5, new CabinetModelReference("cabinet.glb", 1, "Y"), [], CabinetPreviewSettings.Default, [], null)));
 
         var addCommand = CabinetMutationCommands.CreateAddReelSpecificationCommand(document.DocumentId, document);
         addCommand.Execute();
@@ -128,7 +149,7 @@ public sealed class CabinetReelSpecificationTests
             var project = new EditorProject { Name = "Test", ProjectDirectory = root, ProjectFilePath = Path.Combine(root, "test.oasis"), AssetsDirectory = Path.Combine(root, "Assets"), MachinesDirectory = Path.Combine(root, "Machines"), GeneratedDirectory = Path.Combine(root, "Generated") };
             var cabinetPath = Path.Combine(root, "Assets", "Cabinets", "main.cabinet3d");
             Directory.CreateDirectory(Path.GetDirectoryName(cabinetPath)!);
-            File.WriteAllText(cabinetPath, CabinetDocumentStorage.Serialize(new CabinetDocument(4, new CabinetModelReference("cabinet.glb", 1, "Y"), [], CabinetPreviewSettings.Default, [new CabinetReelSpecification("standard", "Standard", 210, 50)], "standard")));
+            File.WriteAllText(cabinetPath, CabinetDocumentStorage.Serialize(new CabinetDocument(5, new CabinetModelReference("cabinet.glb", 1, "Y"), [], CabinetPreviewSettings.Default, [new CabinetReelSpecification("standard", "Standard", 210, 50)], "standard")));
             var face = new FaceDocumentModel { AssignedCabinetAssetPath = "Assets/Cabinets/main.cabinet3d" };
 
             var context = new FaceCabinetContextResolver().ResolveForFace(project, [], face);

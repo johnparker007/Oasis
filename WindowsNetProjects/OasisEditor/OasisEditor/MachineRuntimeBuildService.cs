@@ -21,7 +21,7 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
     public const string MachineSchema = "oasis.machine.runtime";
     public const string CabinetSchema = "oasis.cabinet.runtime";
     public const int MachineSchemaVersion = 3;
-    public const int CabinetSchemaVersion = 3;
+    public const int CabinetSchemaVersion = 4;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {

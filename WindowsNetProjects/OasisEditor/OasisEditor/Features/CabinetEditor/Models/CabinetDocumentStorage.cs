@@ -29,7 +29,7 @@ public static class CabinetDocumentStorage
         try
         {
             var parsed = JsonSerializer.Deserialize<CabinetDocument>(json, Options);
-            if (parsed?.Model is null || string.IsNullOrWhiteSpace(parsed.Model.Path) || parsed.Version != 4)
+            if (parsed?.Model is null || string.IsNullOrWhiteSpace(parsed.Model.Path) || parsed.Version != 5)
             {
                 return false;
             }

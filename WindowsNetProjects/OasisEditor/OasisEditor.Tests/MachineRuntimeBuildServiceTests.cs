@@ -35,7 +35,7 @@ public sealed class MachineRuntimeBuildServiceTests
         var cabinetDir = Directory.CreateDirectory(Path.Combine(project.AssetsDirectory, "Cabinet3D", "Test Cabinet")).FullName;
         var sourceGlb = Path.Combine(cabinetDir, "source.glb");
         File.WriteAllBytes(sourceGlb, [1, 2, 3]);
-        File.WriteAllText(Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName), CabinetDocumentStorage.Serialize(new CabinetDocument(4, new CabinetModelReference("source.glb", 2.5, "Z"), [], CabinetPreviewSettings.Default)));
+        File.WriteAllText(Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName), CabinetDocumentStorage.Serialize(new CabinetDocument(5, new CabinetModelReference("source.glb", 2.5, "Z"), [], CabinetPreviewSettings.Default)));
         var stale = Path.Combine(project.GeneratedDirectory, "Builds", "Test Cabinet", "stale.txt");
         Directory.CreateDirectory(Path.GetDirectoryName(stale)!);
         File.WriteAllText(stale, "stale");
@@ -54,7 +54,7 @@ public sealed class MachineRuntimeBuildServiceTests
         Assert.Equal("cabinet/cabinet.runtime.json", machine.RootElement.GetProperty("cabinetManifest").GetString());
         using var cabinet = JsonDocument.Parse(File.ReadAllText(Path.Combine(result.BuildRoot, "cabinet", "cabinet.runtime.json")));
         Assert.Equal("oasis.cabinet.runtime", cabinet.RootElement.GetProperty("schema").GetString());
-        Assert.Equal(2, cabinet.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(4, cabinet.RootElement.GetProperty("schemaVersion").GetInt32());
         Assert.Equal("Test Cabinet", cabinet.RootElement.GetProperty("cabinetId").GetString());
         Assert.Equal("cabinet.glb", cabinet.RootElement.GetProperty("glb").GetString());
         Assert.Equal(2.5, cabinet.RootElement.GetProperty("scale").GetDouble());
@@ -147,7 +147,7 @@ public sealed class MachineRuntimeBuildServiceTests
         var root = CreateTempRoot();
         var project = CreateProject(root);
         var manifestPath = CreateCabinetAsset(project, "Runtime Cabinet", CreateCabinetWithSpec("source.glb", new CabinetTargetOverride("bottomGlass", CabinetTargetOverride.NormalFrontSide)));
-        _ = CreateCabinetAsset(project, "Unrelated Cabinet", new CabinetDocument(4, new CabinetModelReference("source.glb", 1.0, "Y"), [new CabinetTargetOverride("bottomGlass", CabinetTargetOverride.NormalFrontSide)], CabinetPreviewSettings.Default, [new CabinetReelSpecification("standard", "Different", 500, 300)], "standard"));
+        _ = CreateCabinetAsset(project, "Unrelated Cabinet", new CabinetDocument(5, new CabinetModelReference("source.glb", 1.0, "Y"), [new CabinetTargetOverride("bottomGlass", CabinetTargetOverride.NormalFrontSide)], CabinetPreviewSettings.Default, [new CabinetReelSpecification("standard", "Different", 500, 300)], "standard"));
         CreateFaceAssetWithReel(project, "Bottom Face", "face-bottom", "bottomGlass", null, "standard");
 
         var result = new MachineRuntimeBuildService().BuildFromCabinetDocument(project, manifestPath);
@@ -256,7 +256,7 @@ public sealed class MachineRuntimeBuildServiceTests
     }
 
     private static CabinetDocument CreateCabinetWithSpec(string modelPath, CabinetTargetOverride targetOverride) => new(
-        4,
+        5,
         new CabinetModelReference(modelPath, 1.0, "Y"),
         [targetOverride],
         CabinetPreviewSettings.Default,

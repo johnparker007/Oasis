@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using UnityEngine;
 
 namespace OasisPlayer.RuntimeBuild
@@ -25,7 +26,7 @@ namespace OasisPlayer.RuntimeBuild
                 var sourceDefinitions = definition.sources ?? Array.Empty<RuntimeCabinetReflectionSourceDefinition>();
                 if (sourceDefinitions.Length == 0 || sourceDefinitions.Length > RuntimeCabinetReflectionShaderProperties.MaximumSources) { Warn(machine, definition, $"source count must be between 1 and {RuntimeCabinetReflectionShaderProperties.MaximumSources}"); continue; }
                 var sources = new RuntimeCabinetReflectionSource[sourceDefinitions.Length]; var sourceFailure = false;
-                for (var sourceIndex = 0; sourceIndex < sourceDefinitions.Length; sourceIndex++) { var source = sourceDefinitions[sourceIndex]; if (source == null || !TryWorldPlane(machine.Cabinet.transform, source.plane, out var plane)) { Warn(machine, definition, $"source {sourceIndex} cabinet-local Face plane is invalid after world transformation"); sourceFailure = true; break; } sources[sourceIndex] = new RuntimeCabinetReflectionSource(source.faceId, plane); }
+                for (var sourceIndex = 0; sourceIndex < sourceDefinitions.Length; sourceIndex++) { var source = sourceDefinitions[sourceIndex]; if (source == null || !TryWorldPlane(machine.Cabinet.transform, source.plane, out var plane)) { Warn(machine, definition, $"source {sourceIndex} cabinet-local Face plane is invalid after world transformation"); sourceFailure = true; break; } var reference = machine.Faces.FirstOrDefault(face => face.Reference != null && string.Equals(face.Reference.faceId, source.faceId, StringComparison.Ordinal))?.Reference; var frontSide = RuntimeFaceFrontSideExtensions.Parse(reference != null ? reference.frontSide : null); sources[sourceIndex] = new RuntimeCabinetReflectionSource(source.faceId, plane, frontSide); }
                 if (sourceFailure) continue;
                 if (!TryLoadMask(machine, definition, out var mask, out var maskWarning)) { Warn(machine, definition, maskWarning); continue; }
                 if (!RuntimeCabinetReflectionBinding.TryCreate(machine, sources, renderer, definition.materialSlot, out var binding, out var warning, definition.settings, mask)) { Warn(machine, definition, warning); continue; }
@@ -59,7 +60,8 @@ namespace OasisPlayer.RuntimeBuild
             if (cabinetRoot == null || source == null || source.origin == null || source.right == null || source.up == null) return false;
             var rightSpan = cabinetRoot.TransformVector(source.right.Value.normalized * source.width);
             var upSpan = cabinetRoot.TransformVector(source.up.Value.normalized * source.height);
-            return RuntimeFaceReflectionPlane.TryCreate(cabinetRoot.TransformPoint(source.origin.Value), rightSpan, upSpan, rightSpan.magnitude, upSpan.magnitude, out plane);
+            var normal = source.normal != null ? cabinetRoot.TransformDirection(source.normal.Value) : Vector3.Cross(rightSpan, upSpan);
+            return RuntimeFaceReflectionPlane.TryCreate(cabinetRoot.TransformPoint(source.origin.Value), rightSpan, upSpan, normal, rightSpan.magnitude, upSpan.magnitude, out plane);
         }
 
         public static bool TryResolveRenderer(GameObject cabinet, string targetId, out Renderer renderer, out string available)
