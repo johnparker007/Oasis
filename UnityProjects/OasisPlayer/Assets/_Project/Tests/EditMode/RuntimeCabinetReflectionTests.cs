@@ -57,10 +57,24 @@ namespace OasisPlayer.Tests
             RuntimeFaceReflectionPlane.TryCreate(Vector3.zero, Vector3.right, Vector3.up, 1, 1, out var plane);
             var normal = new[] { new RuntimeCabinetReflectionSource("face", plane, RuntimeFaceFrontSide.Normal) };
             var inverted = new[] { new RuntimeCabinetReflectionSource("face", plane, RuntimeFaceFrontSide.Inverted) };
-            Assert.True(RuntimeCabinetReflectionMath.TrySelectNearest(new Vector3(.1f, .2f, 1), Vector3.back, normal, out _, out var normalUv));
-            Assert.False(RuntimeCabinetReflectionMath.TrySelectNearest(new Vector3(.1f, .2f, 1), Vector3.back, inverted, out _, out _));
-            Assert.True(RuntimeCabinetReflectionMath.TrySelectNearest(new Vector3(.1f, .2f, -1), Vector3.forward, inverted, out _, out var invertedUv));
+            Assert.AreEqual(Vector3.back, normal[0].VisibleNormalWS);
+            Assert.AreEqual(Vector3.forward, inverted[0].VisibleNormalWS);
+            Assert.True(RuntimeCabinetReflectionMath.TrySelectNearest(new Vector3(.1f, .2f, -1), Vector3.forward, normal, out _, out var normalUv));
+            Assert.False(RuntimeCabinetReflectionMath.TrySelectNearest(new Vector3(.1f, .2f, 1), Vector3.back, normal, out _, out _));
+            Assert.True(RuntimeCabinetReflectionMath.TrySelectNearest(new Vector3(.1f, .2f, 1), Vector3.back, inverted, out _, out var invertedUv));
+            Assert.False(RuntimeCabinetReflectionMath.TrySelectNearest(new Vector3(.1f, .2f, -1), Vector3.forward, inverted, out _, out _));
             Assert.AreEqual(normalUv, invertedUv);
+        }
+
+        [Test]
+        public void ReflectionAndNormalFaceShareFrontSideNormalContract()
+        {
+            Assert.AreEqual(-1f, RuntimeFaceFrontSideOrientation.ResolveNormalSign(RuntimeFaceFrontSide.Normal));
+            Assert.AreEqual(1f, RuntimeFaceFrontSideOrientation.ResolveNormalSign(RuntimeFaceFrontSide.Inverted));
+            Assert.AreEqual(RuntimeFaceMaterialFactory.ResolveUnityOrientation(RuntimeFaceFrontSide.Normal).NormalSign, RuntimeFaceFrontSideOrientation.ResolveNormalSign(RuntimeFaceFrontSide.Normal));
+            Assert.AreEqual(RuntimeFaceMaterialFactory.ResolveUnityOrientation(RuntimeFaceFrontSide.Inverted).NormalSign, RuntimeFaceFrontSideOrientation.ResolveNormalSign(RuntimeFaceFrontSide.Inverted));
+            Assert.True(RuntimeCabinetReflectionMath.IsRayFacingVisibleSide(Vector3.forward, Vector3.back));
+            Assert.False(RuntimeCabinetReflectionMath.IsRayFacingVisibleSide(Vector3.back, Vector3.back));
         }
 
         [Test]
@@ -178,6 +192,7 @@ namespace OasisPlayer.Tests
             Assert.AreEqual(4, Regex.Matches(source, @"\bSAMPLER\(").Count, "Cabinet reflection shader must share Face samplers to remain below the D3D11 ps_4_0 limit.");
             StringAssert.DoesNotContain("sampler_OasisArtworkTex1", source);
             StringAssert.Contains("float3 colour=float3(0,0,0)", source);
+            StringAssert.Contains("if(d>=-1e-5)return false", source, "Shader facing must use the same ray-dot-visible-normal < -epsilon convention as CPU selection.");
             StringAssert.Contains("UsePass \"Universal Render Pipeline/Lit/ShadowCaster\"", source);
             StringAssert.Contains("UsePass \"Universal Render Pipeline/Lit/DepthOnly\"", source);
             StringAssert.Contains("UsePass \"Universal Render Pipeline/Lit/DepthNormals\"", source);

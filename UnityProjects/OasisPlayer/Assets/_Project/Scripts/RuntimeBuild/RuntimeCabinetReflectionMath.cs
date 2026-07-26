@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace OasisPlayer.RuntimeBuild
 {
-    public readonly struct RuntimeCabinetReflectionSource { public RuntimeCabinetReflectionSource(string faceId, RuntimeFaceReflectionPlane plane, RuntimeFaceFrontSide frontSide = RuntimeFaceFrontSide.Normal) { FaceId = faceId; Plane = plane; FrontSide = frontSide; } public string FaceId { get; } public RuntimeFaceReflectionPlane Plane { get; } public RuntimeFaceFrontSide FrontSide { get; } public Vector3 VisibleNormalWS { get { return FrontSide == RuntimeFaceFrontSide.Inverted ? -Plane.NormalWS : Plane.NormalWS; } } }
+    public readonly struct RuntimeCabinetReflectionSource { public RuntimeCabinetReflectionSource(string faceId, RuntimeFaceReflectionPlane plane, RuntimeFaceFrontSide frontSide = RuntimeFaceFrontSide.Normal) { FaceId = faceId; Plane = plane; FrontSide = frontSide; VisibleNormalWS = RuntimeFaceFrontSideOrientation.ResolveVisibleNormal(plane.NormalWS, frontSide); } public string FaceId { get; } public RuntimeFaceReflectionPlane Plane { get; } public RuntimeFaceFrontSide FrontSide { get; } public Vector3 VisibleNormalWS { get; } }
     /// <summary>Rectangle origin is UV (0,0); right/up lead to (1,0)/(0,1), while the normal independently identifies the mesh-facing side.</summary>
     public readonly struct RuntimeFaceReflectionPlane
     {
@@ -80,10 +80,15 @@ namespace OasisPlayer.RuntimeBuild
             if (sources == null || sources.Length > RuntimeCabinetReflectionShaderProperties.MaximumSources) return false;
             for (var index = 0; index < sources.Length; index++)
             {
-                if (Vector3.Dot(direction, sources[index].VisibleNormalWS) >= -RayEpsilon || !TryIntersectRayWithPlane(origin, direction, sources[index].Plane, out var distance, out var hit) || distance >= nearest || !TryWorldPointToFaceUv(hit, sources[index].Plane, out var candidate) || candidate.x < 0f || candidate.x > 1f || candidate.y < 0f || candidate.y > 1f) continue;
+                if (!IsRayFacingVisibleSide(direction, sources[index].VisibleNormalWS) || !TryIntersectRayWithPlane(origin, direction, sources[index].Plane, out var distance, out var hit) || distance >= nearest || !TryWorldPointToFaceUv(hit, sources[index].Plane, out var candidate) || candidate.x < 0f || candidate.x > 1f || candidate.y < 0f || candidate.y > 1f) continue;
                 nearest = distance; sourceIndex = index; uv = candidate;
             }
             return sourceIndex >= 0;
+        }
+
+        public static bool IsRayFacingVisibleSide(Vector3 rayDirection, Vector3 visibleNormal)
+        {
+            return Vector3.Dot(rayDirection, visibleNormal) < -RayEpsilon;
         }
 
         private static bool IsFinite(float value) { return !float.IsNaN(value) && !float.IsInfinity(value); }
