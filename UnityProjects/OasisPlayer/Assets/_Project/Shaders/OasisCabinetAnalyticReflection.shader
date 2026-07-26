@@ -33,6 +33,11 @@ Shader "Oasis/CabinetAnalyticReflection"
         _OasisFacePlaneUpWS ("Face Up WS", Vector) = (0,1,0,0)
         _OasisFacePlaneNormalWS ("Face Normal WS", Vector) = (0,0,1,0)
         _OasisFacePlaneSize ("Face Width Height", Vector) = (1,1,0,0)
+        [HideInInspector] _Cull ("Cull", Float) = 2
+        [HideInInspector] _ZWrite ("ZWrite", Float) = 1
+        [HideInInspector] _Cutoff ("Cutoff", Float) = 0.5
+        [HideInInspector] _Surface ("Surface", Float) = 0
+        [HideInInspector] _AlphaClip ("Alpha Clip", Float) = 0
     }
 
     SubShader
@@ -50,6 +55,8 @@ Shader "Oasis/CabinetAnalyticReflection"
             #pragma multi_compile _ _ADDITIONAL_LIGHTS
             #pragma multi_compile_fragment _ _ADDITIONAL_LIGHT_SHADOWS
             #pragma multi_compile_fragment _ _SHADOWS_SOFT
+            #pragma multi_compile _ _FORWARD_PLUS
+            #pragma multi_compile_fog
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SurfaceInput.hlsl"
@@ -66,8 +73,8 @@ Shader "Oasis/CabinetAnalyticReflection"
             #include "Includes/OasisFaceLampCommon.hlsl"
 
             struct Attributes { float4 positionOS:POSITION; float3 normalOS:NORMAL; float4 tangentOS:TANGENT; float2 uv:TEXCOORD0; };
-            struct Varyings { float4 positionCS:SV_POSITION; float3 positionWS:TEXCOORD0; half3 normalWS:TEXCOORD1; half4 tangentWS:TEXCOORD2; float2 uv:TEXCOORD3; float4 shadowCoord:TEXCOORD4; };
-            Varyings vert(Attributes v) { Varyings o; VertexPositionInputs p=GetVertexPositionInputs(v.positionOS.xyz); VertexNormalInputs n=GetVertexNormalInputs(v.normalOS,v.tangentOS); o.positionCS=p.positionCS; o.positionWS=p.positionWS; o.normalWS=n.normalWS; o.tangentWS=half4(n.tangentWS,v.tangentOS.w*GetOddNegativeScale()); o.uv=TRANSFORM_TEX(v.uv,_BaseMap); o.shadowCoord=TransformWorldToShadowCoord(p.positionWS); return o; }
+            struct Varyings { float4 positionCS:SV_POSITION; float3 positionWS:TEXCOORD0; half3 normalWS:TEXCOORD1; half4 tangentWS:TEXCOORD2; float2 uv:TEXCOORD3; float4 shadowCoord:TEXCOORD4; half fogFactor:TEXCOORD5; };
+            Varyings vert(Attributes v) { Varyings o; VertexPositionInputs p=GetVertexPositionInputs(v.positionOS.xyz); VertexNormalInputs n=GetVertexNormalInputs(v.normalOS,v.tangentOS); o.positionCS=p.positionCS; o.positionWS=p.positionWS; o.normalWS=n.normalWS; o.tangentWS=half4(n.tangentWS,v.tangentOS.w*GetOddNegativeScale()); o.uv=TRANSFORM_TEX(v.uv,_BaseMap); o.shadowCoord=TransformWorldToShadowCoord(p.positionWS); o.fogFactor=ComputeFogFactor(p.positionCS.z); return o; }
 
             float3 ReconstructFace(float2 uv)
             {
@@ -79,12 +86,18 @@ Shader "Oasis/CabinetAnalyticReflection"
             half4 frag(Varyings i):SV_Target
             {
                 half4 baseSample=SAMPLE_TEXTURE2D(_BaseMap,sampler_BaseMap,i.uv)*_BaseColor;
-                half3 bitangent=cross(i.normalWS,i.tangentWS.xyz)*i.tangentWS.w;
+                half tangentValid=step(1e-4,dot(i.tangentWS.xyz,i.tangentWS.xyz));
+                half3 fallbackAxis=abs(i.normalWS.y)<0.999?half3(0,1,0):half3(1,0,0);
+                half3 fallbackTangent=normalize(cross(fallbackAxis,i.normalWS));
+                half3 safeTangent=normalize(lerp(fallbackTangent,i.tangentWS.xyz,tangentValid));
+                half3 bitangent=cross(i.normalWS,safeTangent)*i.tangentWS.w;
                 half3 normalTS=UnpackNormalScale(SAMPLE_TEXTURE2D(_BumpMap,sampler_BumpMap,i.uv),_BumpScale);
-                half3 normalWS=NormalizeNormalPerPixel(TransformTangentToWorld(normalTS,half3x3(i.tangentWS.xyz,bitangent,i.normalWS)));
+                half3 mappedNormal=NormalizeNormalPerPixel(TransformTangentToWorld(normalTS,half3x3(safeTangent,bitangent,i.normalWS)));
+                half3 normalWS=NormalizeNormalPerPixel(lerp(i.normalWS,mappedNormal,tangentValid));
                 InputData inputData=(InputData)0; inputData.positionWS=i.positionWS; inputData.normalWS=normalWS; inputData.viewDirectionWS=GetWorldSpaceNormalizeViewDir(i.positionWS); inputData.shadowCoord=i.shadowCoord; inputData.normalizedScreenSpaceUV=GetNormalizedScreenSpaceUV(i.positionCS);
+                inputData.bakedGI=SampleSH(normalWS);
                 SurfaceData surface=(SurfaceData)0; surface.albedo=baseSample.rgb; surface.alpha=baseSample.a; surface.metallic=_Metallic; surface.smoothness=_Smoothness; surface.normalTS=half3(0,0,1); surface.occlusion=1;
-                half4 cabinet=UniversalFragmentPBR(inputData,surface);
+                half4 cabinet=UniversalFragmentPBR(inputData,surface); cabinet.rgb=MixFog(cabinet.rgb,i.fogFactor);
                 if (_OasisReflectionEnabled<0.5 || _OasisFacePlaneSize.x<=0 || _OasisFacePlaneSize.y<=0) return cabinet;
 
                 float3 incident=SafeNormalize(i.positionWS-_WorldSpaceCameraPos);
@@ -96,10 +109,11 @@ Shader "Oasis/CabinetAnalyticReflection"
                 float3 relative=i.positionWS+reflected*t-_OasisFacePlaneOriginWS.xyz;
                 float2 planeUv=float2(dot(relative,_OasisFacePlaneRightWS.xyz)/_OasisFacePlaneSize.x,dot(relative,_OasisFacePlaneUpWS.xyz)/_OasisFacePlaneSize.y);
                 if (any(planeUv<0) || any(planeUv>1)) return cabinet;
-                float2 uv=TransformFaceUv(planeUv)+normalTS.xy*_OasisReflectionDistortion;
+                float2 uv=saturate(TransformFaceUv(planeUv)+normalTS.xy*_OasisReflectionDistortion);
                 float2 d=float2(_OasisReflectionRoughness*0.006,0);
                 // Each tap reconstructs IDs/weights independently; lookup textures are never prefiltered as colour.
-                float3 reflectedColour=(ReconstructFace(uv)*2+ReconstructFace(uv+d)+ReconstructFace(uv-d)+ReconstructFace(uv+d.yx)+ReconstructFace(uv-d.yx))/6;
+                float3 reflectedColour=ReconstructFace(uv);
+                if (_OasisReflectionRoughness>0.001) reflectedColour=(reflectedColour*2+ReconstructFace(saturate(uv+d))+ReconstructFace(saturate(uv-d))+ReconstructFace(saturate(uv+d.yx))+ReconstructFace(saturate(uv-d.yx)))/6;
                 float edge=min(min(planeUv.x,planeUv.y),min(1-planeUv.x,1-planeUv.y));
                 float edgeFade=_OasisReflectionEdgeFade>1e-5?saturate(edge/_OasisReflectionEdgeFade):1;
                 float visibility=SAMPLE_TEXTURE2D(_OasisReflectionVisibilityMaskTex,sampler_OasisReflectionVisibilityMaskTex,i.uv).r;
@@ -109,5 +123,9 @@ Shader "Oasis/CabinetAnalyticReflection"
             }
             ENDHLSL
         }
+        UsePass "Universal Render Pipeline/Lit/ShadowCaster"
+        UsePass "Universal Render Pipeline/Lit/DepthOnly"
+        UsePass "Universal Render Pipeline/Lit/DepthNormals"
+        UsePass "Universal Render Pipeline/Lit/Meta"
     }
 }

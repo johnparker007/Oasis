@@ -1,0 +1,71 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using UnityEngine;
+
+namespace OasisPlayer.RuntimeBuild
+{
+    public sealed class RuntimeCabinetReflectionRenderer
+    {
+        public void Render(RuntimeMachine machine)
+        {
+            if (machine == null || machine.Build == null || machine.Build.Cabinet == null) return;
+            var definitions = machine.Build.Cabinet.reflections ?? Array.Empty<RuntimeCabinetReflectionDefinition>();
+            var claimed = new HashSet<string>(StringComparer.Ordinal);
+            var resolved = 0;
+            foreach (var definition in definitions)
+            {
+                if (definition == null || definition.settings == null || !definition.settings.enabled) continue;
+                if (!TryResolveRenderer(machine.Cabinet, definition.targetId, out var renderer, out var targetInfo)) { Warn(machine, definition, $"target could not be resolved; available targets: {targetInfo}"); continue; }
+                var claim = renderer.GetInstanceID() + ":" + definition.materialSlot;
+                if (claimed.Contains(claim)) { Warn(machine, definition, "another reflection definition already owns this target/material slot"); continue; }
+                if (!TryWorldPlane(machine.Cabinet.transform, definition.plane, out var plane)) { Warn(machine, definition, "cabinet-local Face plane is invalid after world transformation"); continue; }
+                if (!TryLoadMask(machine, definition, out var mask, out var maskWarning)) { Warn(machine, definition, maskWarning); continue; }
+                if (!RuntimeCabinetReflectionBinding.TryCreate(machine, definition.sourceFaceId, renderer, definition.materialSlot, plane, out var binding, out var warning, definition.settings, mask)) { Warn(machine, definition, warning); continue; }
+                claimed.Add(claim); machine.AddCabinetReflectionBinding(binding); resolved++;
+            }
+            if (Debug.isDebugBuild) Debug.Log($"Oasis cabinet reflections: definitions={definitions.Length}, resolved={resolved}, disabled={definitions.Length - resolved}, bindings={machine.CabinetReflectionBindings.Count}.");
+        }
+
+        private static bool TryLoadMask(RuntimeMachine machine, RuntimeCabinetReflectionDefinition definition, out Texture mask, out string warning)
+        {
+            mask = Texture2D.whiteTexture; warning = string.Empty;
+            if (string.IsNullOrWhiteSpace(definition.visibilityMask)) return true;
+            var cabinetDir = Path.GetDirectoryName(machine.Build.CabinetManifestPath);
+            var root = Path.GetFullPath(machine.Build.BuildRoot).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            var path = Path.GetFullPath(Path.Combine(cabinetDir, definition.visibilityMask));
+            if (!path.StartsWith(root, StringComparison.OrdinalIgnoreCase) || !File.Exists(path)) { warning = $"visibility mask path is invalid or missing: '{definition.visibilityMask}'"; return false; }
+            try
+            {
+                var texture = new Texture2D(2, 2, TextureFormat.RGBA32, false, true) { filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp, name = "OasisReflectionMask_" + definition.id };
+                if (!texture.LoadImage(File.ReadAllBytes(path), false)) { Destroy(texture); warning = "visibility mask could not be decoded"; return false; }
+                var asset = new RuntimeTextureAsset(path, texture); machine.AddCabinetReflectionTexture(asset); mask = texture; return true;
+            }
+            catch (Exception ex) { warning = "visibility mask could not be loaded: " + ex.Message; return false; }
+        }
+
+        private static void Destroy(UnityEngine.Object value) { if (Application.isPlaying) UnityEngine.Object.Destroy(value); else UnityEngine.Object.DestroyImmediate(value); }
+
+        public static bool TryWorldPlane(Transform cabinetRoot, RuntimeCabinetReflectionPlaneDefinition source, out RuntimeFaceReflectionPlane plane)
+        {
+            plane = default;
+            if (cabinetRoot == null || source == null || source.origin == null || source.right == null || source.up == null) return false;
+            var rightSpan = cabinetRoot.TransformVector(source.right.Value.normalized * source.width);
+            var upSpan = cabinetRoot.TransformVector(source.up.Value.normalized * source.height);
+            return RuntimeFaceReflectionPlane.TryCreate(cabinetRoot.TransformPoint(source.origin.Value), rightSpan, upSpan, rightSpan.magnitude, upSpan.magnitude, out plane);
+        }
+
+        private static bool TryResolveRenderer(GameObject cabinet, string targetId, out Renderer renderer, out string available)
+        {
+            renderer = null; var matches = new List<Renderer>(); var names = new List<string>();
+            if (cabinet != null) foreach (var candidate in cabinet.GetComponentsInChildren<Renderer>(true)) { names.Add(candidate.name); if (string.Equals(candidate.name, targetId != null ? targetId.Trim() : string.Empty, StringComparison.Ordinal)) matches.Add(candidate); }
+            available = names.Count == 0 ? "<none>" : string.Join(", ", names);
+            if (matches.Count != 1) return false; renderer = matches[0]; return true;
+        }
+
+        private static void Warn(RuntimeMachine machine, RuntimeCabinetReflectionDefinition definition, string reason)
+        {
+            machine.AddWarning($"Cabinet reflection '{definition.id}' failed: targetId='{definition.targetId}', materialSlot={definition.materialSlot}, sourceFaceId='{definition.sourceFaceId}', reason={reason}.");
+        }
+    }
+}

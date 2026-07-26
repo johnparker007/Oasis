@@ -6,17 +6,34 @@ public sealed record CabinetDocument(
     CabinetTargetOverride[] TargetOverrides,
     CabinetPreviewSettings Preview,
     CabinetReelSpecification[] ReelSpecifications = null!,
-    string? DefaultReelSpecificationId = null)
+    string? DefaultReelSpecificationId = null,
+    CabinetReflectionDefinition[]? Reflections = null)
 {
-    public static CabinetDocument Empty => new(2, new CabinetModelReference(string.Empty, 1.0, "Y"), [], CabinetPreviewSettings.Default, [], null);
+    public static CabinetDocument Empty => new(3, new CabinetModelReference(string.Empty, 1.0, "Y"), [], CabinetPreviewSettings.Default, [], null);
 
     public static CabinetDocument FromModelPath(string modelPath) => new(
-        2,
+        3,
         new CabinetModelReference(modelPath, 1.0, "Y"),
         [],
         CabinetPreviewSettings.Default,
         [],
         null);
+}
+
+public sealed record CabinetReflectionVector(double X, double Y, double Z);
+
+public sealed record CabinetReflectionPlane(CabinetReflectionVector Origin, CabinetReflectionVector Right, CabinetReflectionVector Up, double Width, double Height);
+
+public sealed record CabinetReflectionSettings(bool Enabled, double Strength, double UnlitArtworkStrength, double LitLampStrength, double FresnelPower, double FresnelStrength, double Roughness, double Distortion, double EdgeFade)
+{
+    public static CabinetReflectionSettings RoughPlastic => new(true, .2, .2, 1, 5, .5, .5, .005, .03);
+    public static CabinetReflectionSettings PolishedChrome => new(true, .8, .8, 1.5, 4, 1, 0, 0, .015);
+    public CabinetReflectionSettings Normalized() => new(Enabled, Math.Clamp(Strength, 0, 2), Math.Clamp(UnlitArtworkStrength, 0, 2), Math.Clamp(LitLampStrength, 0, 4), Math.Clamp(FresnelPower, .1, 10), Math.Clamp(FresnelStrength, 0, 2), Math.Clamp(Roughness, 0, 1), Math.Clamp(Distortion, 0, .05), Math.Clamp(EdgeFade, 0, .25));
+}
+
+public sealed record CabinetReflectionDefinition(string Id, string TargetId, int MaterialSlot, string SourceFaceId, CabinetReflectionPlane Plane, CabinetReflectionSettings Settings, string? VisibilityMask = null)
+{
+    public CabinetReflectionDefinition Normalized() => this with { Id = Id.Trim(), TargetId = TargetId?.Trim() ?? string.Empty, SourceFaceId = SourceFaceId?.Trim() ?? string.Empty, Settings = Settings.Normalized(), VisibilityMask = string.IsNullOrWhiteSpace(VisibilityMask) ? null : VisibilityMask.Trim() };
 }
 
 public sealed record CabinetReelSpecification(string Id, string Name, double DiameterMm, double WidthMm)

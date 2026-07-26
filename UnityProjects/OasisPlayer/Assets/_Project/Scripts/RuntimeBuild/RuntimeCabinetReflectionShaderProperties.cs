@@ -26,5 +26,12 @@ namespace OasisPlayer.RuntimeBuild
         public static readonly int Roughness = Shader.PropertyToID("_OasisReflectionRoughness");
         public static readonly int Distortion = Shader.PropertyToID("_OasisReflectionDistortion");
         public static readonly int EdgeFade = Shader.PropertyToID("_OasisReflectionEdgeFade");
+
+        public static readonly int[] RequiredProperties =
+        {
+            BaseMap, BaseColor, NormalMap, NormalScale, Smoothness, Metallic, VisibilityMask, Enabled,
+            FaceOrigin, FaceRight, FaceUp, FaceNormal, FaceSize, Strength, UnlitArtworkStrength,
+            LitLampStrength, FresnelPower, FresnelStrength, Roughness, Distortion, EdgeFade
+        };
     }
 }

@@ -6,6 +6,18 @@ namespace OasisEditor.Tests;
 public sealed class CabinetReelSpecificationTests
 {
     [Fact]
+    public void ReflectionDefinitionRoundTripsExplicitPlaneAndSettings()
+    {
+        var reflection = new CabinetReflectionDefinition("side", "CabinetSide", 1, "lowerGlass",
+            new CabinetReflectionPlane(new(1, 2, 3), new(1, 0, 0), new(0, 1, 0), 2.5, 1.25),
+            CabinetReflectionSettings.PolishedChrome, "masks/side.png");
+        var source = CabinetDocument.FromModelPath("cabinet.glb") with { Reflections = [reflection] };
+
+        Assert.True(CabinetDocumentStorage.TryRead(CabinetDocumentStorage.Serialize(source), out var parsed));
+        Assert.Equal(reflection, Assert.Single(parsed.Reflections!));
+    }
+
+    [Fact]
     public void CabinetSerialization_RoundTripsReelSpecificationsAndDefault()
     {
         var cabinet = new CabinetDocument(

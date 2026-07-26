@@ -9,6 +9,8 @@ namespace OasisPlayer.RuntimeBuild
         private readonly List<string> _warnings = new List<string>();
         private RuntimeLampStateTexture _lampStateTexture;
         private RuntimeSegmentDisplayRenderer _segmentDisplayRenderer;
+        private readonly List<RuntimeCabinetReflectionBinding> _cabinetReflectionBindings = new List<RuntimeCabinetReflectionBinding>();
+        private readonly List<RuntimeTextureAsset> _cabinetReflectionTextures = new List<RuntimeTextureAsset>();
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
         private RuntimeReelLampDiagnosticMode _reelLampDiagnosticMode = RuntimeReelLampDiagnosticMode.FollowLampState;
         private float _reelLampDiagnosticMultiplier = 1f;
@@ -27,6 +29,7 @@ namespace OasisPlayer.RuntimeBuild
         public GameObject Cabinet { get; private set; }
         public IReadOnlyList<RuntimeFace> Faces { get { return _faces; } }
         public IReadOnlyList<string> Warnings { get { return _warnings; } }
+        public IReadOnlyList<RuntimeCabinetReflectionBinding> CabinetReflectionBindings { get { return _cabinetReflectionBindings; } }
         public RuntimeLampState LampState { get; private set; }
         public RuntimeReelState ReelState { get; private set; }
         public RuntimeSegmentDisplayState SegmentDisplayState { get; private set; }
@@ -82,8 +85,15 @@ namespace OasisPlayer.RuntimeBuild
             if (!string.IsNullOrWhiteSpace(warning)) _warnings.Add(warning);
         }
 
+        public void AddCabinetReflectionBinding(RuntimeCabinetReflectionBinding binding) { if (binding != null) _cabinetReflectionBindings.Add(binding); }
+        public void AddCabinetReflectionTexture(RuntimeTextureAsset texture) { if (texture != null) _cabinetReflectionTextures.Add(texture); }
+
         public void UnloadAssets()
         {
+            for (var i = 0; i < _cabinetReflectionBindings.Count; i++) _cabinetReflectionBindings[i].Dispose();
+            _cabinetReflectionBindings.Clear();
+            for (var i = 0; i < _cabinetReflectionTextures.Count; i++) _cabinetReflectionTextures[i].Unload();
+            _cabinetReflectionTextures.Clear();
             foreach (var face in _faces)
             {
                 face.UnloadAssets();

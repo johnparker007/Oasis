@@ -1,5 +1,7 @@
 using NUnit.Framework;
+using System.IO;
 using OasisPlayer.RuntimeBuild;
+using OasisPlayer.Loading;
 using UnityEngine;
 
 namespace OasisPlayer.Tests
@@ -63,6 +65,11 @@ namespace OasisPlayer.Tests
                 Assert.True(material.HasProperty(RuntimeCabinetReflectionShaderProperties.FaceOrigin));
                 Assert.True(material.HasProperty(RuntimeCabinetReflectionShaderProperties.FaceSize));
                 Assert.True(material.HasProperty(RuntimeCabinetReflectionShaderProperties.Strength));
+                foreach (var property in RuntimeCabinetReflectionShaderProperties.RequiredProperties) Assert.True(material.HasProperty(property), property.ToString());
+                Assert.True(material.HasProperty(RuntimeFaceShaderProperties.LampExposureStops));
+                Assert.True(material.HasProperty(RuntimeFaceShaderProperties.MaskStrength));
+                Assert.True(material.HasProperty(RuntimeFaceShaderProperties.FaceRotationQuarterTurns));
+                Assert.True(material.HasProperty(RuntimeFaceShaderProperties.FaceFlipHorizontal));
             }
             finally { Object.DestroyImmediate(material); }
         }
@@ -88,15 +95,66 @@ namespace OasisPlayer.Tests
                 var lampTexture = actual.GetTexture(RuntimeFaceShaderProperties.LampStateTexture);
                 machine.LampState.SetBrightness(1, .5f); machine.ApplyDynamicState();
                 renderer.GetPropertyBlock(actual, 0); Assert.AreSame(lampTexture, actual.GetTexture(RuntimeFaceShaderProperties.LampStateTexture));
-                binding.Dispose(); binding.Dispose();
-                renderer.GetPropertyBlock(actual, 0); Assert.AreEqual(.73f, actual.GetFloat(RuntimeCabinetReflectionShaderProperties.Strength));
                 Assert.False(RuntimeCabinetReflectionBinding.TryCreate(machine, "glass", renderer, 1, plane, out _, out _));
+                machine.AddCabinetReflectionBinding(binding); machine.UnloadAssets(); machine.UnloadAssets();
+                renderer.GetPropertyBlock(actual, 0); Assert.AreEqual(.73f, actual.GetFloat(RuntimeCabinetReflectionShaderProperties.Strength));
             }
             finally
             {
                 machine.UnloadAssets();
                 Object.DestroyImmediate(material); Object.DestroyImmediate(target);
             }
+        }
+
+        [Test]
+        public void CabinetLocalPlaneHandlesTranslationRotationNonUniformAndMirroredScale()
+        {
+            var root = new GameObject("root");
+            try
+            {
+                root.transform.position = new Vector3(3, 4, 5); root.transform.rotation = Quaternion.Euler(0, 90, 0); root.transform.localScale = new Vector3(-2, 3, 4);
+                var source = new RuntimeCabinetReflectionPlaneDefinition
+                {
+                    origin = new RuntimeCabinetReflectionVector { x = 1, y = 2, z = 0 },
+                    right = new RuntimeCabinetReflectionVector { x = 1 }, up = new RuntimeCabinetReflectionVector { y = 1 }, width = 2, height = 1
+                };
+                Assert.True(RuntimeCabinetReflectionRenderer.TryWorldPlane(root.transform, source, out var plane));
+                Assert.AreEqual(root.transform.TransformPoint(new Vector3(1, 2, 0)), plane.OriginWS);
+                Assert.AreEqual(4, plane.Width, 1e-5f); Assert.AreEqual(3, plane.Height, 1e-5f);
+                Assert.AreEqual(Vector3.Cross(plane.RightWS, plane.UpWS).normalized, plane.NormalWS);
+            }
+            finally { Object.DestroyImmediate(root); }
+        }
+
+        [Test]
+        public void LookupAndLampStateTexturesUsePointClampSampling()
+        {
+            var state = new RuntimeLampState(); using (var stateTexture = new RuntimeLampStateTexture(state))
+            {
+                Assert.AreEqual(FilterMode.Point, stateTexture.Texture.filterMode); Assert.AreEqual(TextureWrapMode.Clamp, stateTexture.Texture.wrapMode);
+            }
+            var path = Path.Combine(Application.temporaryCachePath, "oasis-reflection-lookup.png");
+            var source = NewTexture(); File.WriteAllBytes(path, source.EncodeToPNG()); Object.DestroyImmediate(source);
+            try
+            {
+                Assert.True(new PngRuntimeTextureAssetLoader().TryLoad(path, RuntimeTextureRole.LookupData, out var asset, out var error), error);
+                Assert.AreEqual(FilterMode.Point, asset.Texture.filterMode); Assert.AreEqual(TextureWrapMode.Clamp, asset.Texture.wrapMode); asset.Unload();
+            }
+            finally { if (File.Exists(path)) File.Delete(path); }
+        }
+
+        [Test]
+        public void ShaderSourceRetainsSharedReconstructionBoundsAndProductionPasses()
+        {
+            var source = File.ReadAllText("Assets/_Project/Shaders/OasisCabinetAnalyticReflection.shader");
+            StringAssert.Contains("#include \"Includes/OasisFaceLampCommon.hlsl\"", source);
+            StringAssert.Contains("art.rgb*_OasisReflectionUnlitArtworkStrength", source);
+            StringAssert.Contains("_OasisReflectionLitLampStrength", source);
+            StringAssert.Contains("ReconstructFace(saturate(uv+d))", source);
+            StringAssert.Contains("UsePass \"Universal Render Pipeline/Lit/ShadowCaster\"", source);
+            StringAssert.Contains("UsePass \"Universal Render Pipeline/Lit/DepthOnly\"", source);
+            StringAssert.Contains("UsePass \"Universal Render Pipeline/Lit/DepthNormals\"", source);
+            StringAssert.Contains("UsePass \"Universal Render Pipeline/Lit/Meta\"", source);
         }
 
         private static Texture2D NewTexture() { return new Texture2D(1, 1, TextureFormat.RGBA32, false, true); }

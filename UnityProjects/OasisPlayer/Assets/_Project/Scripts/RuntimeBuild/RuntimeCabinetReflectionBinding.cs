@@ -14,7 +14,7 @@ namespace OasisPlayer.RuntimeBuild
 
         private RuntimeCabinetReflectionBinding(Renderer renderer, int materialIndex) { _renderer = renderer; _materialIndex = materialIndex; }
 
-        public static bool TryCreate(RuntimeMachine machine, string faceId, Renderer renderer, int materialIndex, RuntimeFaceReflectionPlane plane, out RuntimeCabinetReflectionBinding binding, out string warning)
+        public static bool TryCreate(RuntimeMachine machine, string faceId, Renderer renderer, int materialIndex, RuntimeFaceReflectionPlane plane, out RuntimeCabinetReflectionBinding binding, out string warning, RuntimeCabinetReflectionSettings settings = null, Texture visibilityMask = null)
         {
             binding = null; warning = string.Empty;
             if (machine == null || renderer == null) { warning = "Cabinet reflection requires a runtime machine and target renderer."; return false; }
@@ -37,6 +37,7 @@ namespace OasisPlayer.RuntimeBuild
             binding._properties.SetTexture(RuntimeFaceShaderProperties.LampIds0Texture, face.LampIds0.Texture);
             binding._properties.SetTexture(RuntimeFaceShaderProperties.LampWeights0Texture, face.LampWeights0.Texture);
             binding._properties.SetTexture(RuntimeFaceShaderProperties.LampStateTexture, machine.LampStateTexture.Texture);
+            if (visibilityMask != null) binding._properties.SetTexture(RuntimeCabinetReflectionShaderProperties.VisibilityMask, visibilityMask);
             if (face.RenderBinding?.RuntimeMaterial != null)
             {
                 binding._properties.SetFloat(RuntimeFaceShaderProperties.LampExposureStops, face.RenderBinding.RuntimeMaterial.GetFloat(RuntimeFaceShaderProperties.LampExposureStops));
@@ -45,8 +46,20 @@ namespace OasisPlayer.RuntimeBuild
             var orientation = RuntimeFaceTextureOrientation.FromReference(face.Reference);
             binding._properties.SetFloat(RuntimeFaceShaderProperties.FaceRotationQuarterTurns, orientation.UnityUvQuarterTurns);
             binding._properties.SetFloat(RuntimeFaceShaderProperties.FaceFlipHorizontal, orientation.FlipHorizontal ? 1f : 0f);
+            if (settings != null)
+            {
+                binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.Enabled, settings.enabled ? 1f : 0f);
+                binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.Strength, Mathf.Clamp(settings.strength, 0f, 2f));
+                binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.UnlitArtworkStrength, Mathf.Clamp(settings.unlitArtworkStrength, 0f, 2f));
+                binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.LitLampStrength, Mathf.Clamp(settings.litLampStrength, 0f, 4f));
+                binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.FresnelPower, Mathf.Clamp(settings.fresnelPower, .1f, 10f));
+                binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.FresnelStrength, Mathf.Clamp(settings.fresnelStrength, 0f, 2f));
+                binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.Roughness, Mathf.Clamp01(settings.roughness));
+                binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.Distortion, Mathf.Clamp(settings.distortion, 0f, .05f));
+                binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.EdgeFade, Mathf.Clamp(settings.edgeFade, 0f, .25f));
+            }
             binding.SetPlane(plane);
-            binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.Enabled, 1f);
+            if (settings == null) binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.Enabled, 1f);
             renderer.SetPropertyBlock(binding._properties, materialIndex);
             return true;
         }
