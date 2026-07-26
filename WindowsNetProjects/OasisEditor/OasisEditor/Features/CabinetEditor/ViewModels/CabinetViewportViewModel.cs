@@ -32,7 +32,7 @@ public sealed class CabinetViewportViewModel : INotifyPropertyChanged
             _model = value;
             OnPropertyChanged();
             ModelBounds = value?.Bounds ?? Rect3D.Empty;
-            ResetCamera();
+            FrameModel();
         }
     }
 
@@ -116,6 +116,8 @@ public sealed class CabinetViewportViewModel : INotifyPropertyChanged
         }
     }
     public ICommand ResetCameraCommand { get; }
+
+    public void FrameModel() => ResetCamera();
 
     private void ResetCamera()
     {

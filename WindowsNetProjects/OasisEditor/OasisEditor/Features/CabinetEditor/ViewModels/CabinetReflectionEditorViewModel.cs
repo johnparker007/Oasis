@@ -15,6 +15,10 @@ public sealed class CabinetReflectionEditorViewModel : INotifyPropertyChanged, I
     private readonly DocumentTabViewModel _document;
     private readonly SynchronizationContext? _context;
     private FileSystemWatcher? _watcher;
+    private Timer? _refreshDebounce;
+    private readonly object _refreshGate = new();
+    private bool _attached;
+    private bool _disposed;
     private CabinetReflectionDefinition? _selected;
     private CabinetReflectionSourceViewModel? _selectedSource;
 
@@ -25,7 +29,7 @@ public sealed class CabinetReflectionEditorViewModel : INotifyPropertyChanged, I
         AddSourceCommand = new RelayCommand(AddSource, () => Selected is not null && Selected.Sources.Length < CabinetReflectionContract.MaximumSources && FaceChoices.Count > 0);
         RemoveSourceCommand = new RelayCommand(RemoveSource, () => SelectedSource is not null); DeriveCommand = new RelayCommand(Derive, () => SelectedSource is not null);
         RefreshCommand = new RelayCommand(Refresh); BrowseMaskCommand = new RelayCommand(BrowseMask, () => Selected is not null); ClearMaskCommand = new RelayCommand(() => Mask = string.Empty, () => Selected is not null);
-        Attach();
+        AttachOnce();
     }
     public event PropertyChangedEventHandler? PropertyChanged;
     public ObservableCollection<CabinetReflectionDefinition> Items { get; } = new();
@@ -51,12 +55,30 @@ public sealed class CabinetReflectionEditorViewModel : INotifyPropertyChanged, I
     public double FresnelStrength { get => Selected?.Settings.FresnelStrength ?? 0; set => UpdateSettings(s => s with { FresnelStrength = value }); } public double FresnelPower { get => Selected?.Settings.FresnelPower ?? 0; set => UpdateSettings(s => s with { FresnelPower = value }); } public double EdgeFade { get => Selected?.Settings.EdgeFade ?? 0; set => UpdateSettings(s => s with { EdgeFade = value }); }
     public string Validation { get { if (Selected is null) return string.Empty; if (Items.Count(item => item.Id == Selected.Id) > 1) return "Duplicate receiver ID."; if (Target is null) return "Cabinet renderer is missing."; if (Slot is null) return "Material slot is invalid."; if (Selected.Settings.Enabled && Sources.Count == 0) return "Enabled receivers require at least one source Face."; if (Sources.Count > CabinetReflectionContract.MaximumSources) return $"A receiver supports at most {CabinetReflectionContract.MaximumSources} source Faces."; if (Sources.GroupBy(source => source.FaceId).Any(group => group.Count() > 1)) return "Duplicate source Face IDs are not allowed within a receiver."; foreach (var source in Sources) { if (source.Choice?.IsMissing != false) return $"Source Face '{source.FaceId}' is missing. Choose another Face or remove this source."; if (!CabinetReflectionPlaneValidation.TryValidate(source.Model.Plane, out var error)) return $"Source Face '{source.Choice.Label}' plane is invalid: {error}"; } return "Valid"; } }
 
-    public void Attach() { Refresh(); StartWatcher(); }
-    public void Detach() { _watcher?.Dispose(); _watcher = null; }
-    public void Dispose() => Detach();
+    private void AttachOnce()
+    {
+        if (_attached || _disposed) return;
+        _attached = true;
+        Refresh();
+        StartWatcher();
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        lock (_refreshGate)
+        {
+            _disposed = true;
+            _watcher?.Dispose();
+            _watcher = null;
+            _refreshDebounce?.Dispose();
+            _refreshDebounce = null;
+        }
+    }
     public void SetDiscovery(IEnumerable<CabinetReflectionReceiverTarget> targets, IEnumerable<CabinetFaceTarget> faceTargets) { Targets.Clear(); foreach (var item in targets) Targets.Add(item); FaceTargets.Clear(); foreach (var item in faceTargets) FaceTargets.Add(item); RaiseAll(); }
     public void Refresh()
     {
+        if (_disposed) return;
         var receiverId = Selected?.Id; var sourceIndex = SelectedSource?.Index;
         var discovered = CabinetReflectionFaceCatalog.Discover(_document.Document.FilePath).ToList();
         var storedIds = (_document.GetCabinetDocument().Reflections ?? []).SelectMany(item => item.Sources ?? []).Select(item => item.FaceId).Where(id => !string.IsNullOrWhiteSpace(id));
@@ -68,10 +90,20 @@ public sealed class CabinetReflectionEditorViewModel : INotifyPropertyChanged, I
     }
     private void StartWatcher()
     {
-        Detach(); var package = Path.GetDirectoryName(_document.Document.FilePath); var assets = Directory.GetParent(Directory.GetParent(package ?? string.Empty)?.FullName ?? string.Empty)?.FullName; var faces = assets is null ? null : Path.Combine(assets, "Faces"); if (faces is null || !Directory.Exists(faces)) return;
+        var package = Path.GetDirectoryName(_document.Document.FilePath); var assets = Directory.GetParent(Directory.GetParent(package ?? string.Empty)?.FullName ?? string.Empty)?.FullName; var faces = assets is null ? null : Path.Combine(assets, "Faces"); if (faces is null || !Directory.Exists(faces)) return;
         _watcher = new FileSystemWatcher(faces) { IncludeSubdirectories = true, NotifyFilter = NotifyFilters.DirectoryName | NotifyFilters.FileName | NotifyFilters.LastWrite };
-        FileSystemEventHandler changed = (_, _) => _context?.Post(_ => Refresh(), null); RenamedEventHandler renamed = (_, _) => _context?.Post(_ => Refresh(), null);
+        FileSystemEventHandler changed = (_, _) => ScheduleRefresh(); RenamedEventHandler renamed = (_, _) => ScheduleRefresh();
         _watcher.Created += changed; _watcher.Deleted += changed; _watcher.Changed += changed; _watcher.Renamed += renamed; _watcher.EnableRaisingEvents = true;
+    }
+
+    private void ScheduleRefresh()
+    {
+        lock (_refreshGate)
+        {
+            if (_disposed) return;
+            _refreshDebounce ??= new Timer(_ => _context?.Post(_ => { if (!_disposed) Refresh(); }, null), null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+            _refreshDebounce.Change(TimeSpan.FromMilliseconds(150), Timeout.InfiniteTimeSpan);
+        }
     }
     private void RebuildSources() { Sources.Clear(); if (_selected is not null) for (var i = 0; i < _selected.Sources.Length; i++) Sources.Add(new(this, i, _selected.Sources[i])); _selectedSource = Sources.FirstOrDefault(); }
     private void Add() { var target = Targets.FirstOrDefault(); if (target is null) return; var sources = FaceChoices.FirstOrDefault(choice => !choice.IsMissing) is { } choice ? new[] { NewSource(choice.FaceId) } : []; var item = new CabinetReflectionDefinition("reflection-" + Guid.NewGuid().ToString("N"), target.TargetPath, 0, sources, CabinetReflectionSettings.RoughPlastic); ExecuteAdd(item); if (Sources.Count > 0) Derive(); }

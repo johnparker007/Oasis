@@ -30,7 +30,7 @@
                 <ColumnDefinition Width="260" />
             </Grid.ColumnDefinitions>
 
-            <h:HelixViewport3D Grid.Column="0" ZoomExtentsWhenLoaded="True"
+            <h:HelixViewport3D Grid.Column="0"
                               ShowCoordinateSystem="False"
                               ShowViewCube="False"
                               IsHeadLightEnabled="False"

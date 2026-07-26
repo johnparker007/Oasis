@@ -929,6 +929,7 @@ public sealed class DocumentWorkspaceViewModel
             WasExecuted = false;
             _index = _owner._openDocuments.IndexOf(_document);
             _owner._openDocuments.Remove(_document);
+            _document.Dispose();
             _document.CommandService.History.Clear();
             _owner._onDocumentClosed(_document.DocumentId);
 
@@ -1004,4 +1005,3 @@ public sealed class DocumentWorkspaceViewModel
         }
     }
 }
-

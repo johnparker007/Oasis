@@ -16,7 +16,7 @@ using SkiaSharp;
 
 namespace OasisEditor.Features.CabinetEditor.ViewModels;
 
-public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
+public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDisposable
 {
     private static readonly TimeSpan LivePreviewRefreshInterval = TimeSpan.FromMilliseconds(1000d / 15d);
 
@@ -33,6 +33,8 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
     private string? _errorMessage;
     private bool _isLoading;
     private CabinetFaceTargetViewModel? _selectedFaceTarget;
+    private readonly CancellationTokenSource _lifetimeCancellation = new();
+    private bool _disposed;
 
     public CabinetModelDocumentViewModel(ICabinetModelLoader modelLoader, DocumentTabViewModel document, Func<IReadOnlyList<DocumentTabViewModel>>? openDocumentsAccessor = null)
     {
@@ -142,13 +144,15 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
 
     public async Task LoadAsync(CancellationToken cancellationToken = default)
     {
-        if (!CanLoad()) return;
+        if (_disposed || !CanLoad()) return;
+        using var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _lifetimeCancellation.Token);
         IsLoading = true;
         ErrorMessage = null;
         LoadStatus = $"Loading {DisplayName}...";
         try
         {
-            var result = await _modelLoader.LoadAsync(ModelPath, cancellationToken);
+            var result = await _modelLoader.LoadAsync(ModelPath, linkedCancellation.Token);
+            if (_disposed) return;
             if (!result.Succeeded || result.Model is null)
             {
                 Viewport.Model = null;
@@ -162,6 +166,7 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
             }
 
             Viewport.Model = result.Model;
+            Viewport.FrameModel();
             FaceTargets.Clear();
             foreach (var target in result.FaceTargets)
             {
@@ -178,12 +183,30 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
         }
         catch (OperationCanceledException)
         {
-            LoadStatus = "Cabinet model load cancelled.";
+            if (!_disposed) LoadStatus = "Cabinet model load cancelled.";
         }
         finally
         {
-            IsLoading = false;
+            if (!_disposed) IsLoading = false;
         }
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        _lifetimeCancellation.Cancel();
+        _lifetimeCancellation.Dispose();
+        _livePreviewRefreshTimer.Stop();
+        _livePreviewRefreshTimer.Tick -= OnLivePreviewRefreshTimerTick;
+        ReflectionEditor.Dispose();
+        foreach (var liveBase in _liveBaseCache.Values) liveBase.Dispose();
+        _liveBaseCache.Clear();
+        _staticPreviewCache.Clear();
+        _facePreviewEntriesByDocumentId.Clear();
+        _pendingLivePreviewDocumentIds.Clear();
+        Viewport.FacePreviewModel = null;
+        Viewport.Model = null;
     }
 
     public void RefreshFacePreviews()

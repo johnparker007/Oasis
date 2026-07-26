@@ -7,7 +7,7 @@ using OasisEditor.Features.CabinetEditor.ViewModels;
 
 namespace OasisEditor;
 
-public sealed class DocumentTabViewModel : INotifyPropertyChanged
+public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly CommandService _commandService;
     private EditorDocument _document;
@@ -147,7 +147,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
             _cabinetDocumentModel = CabinetDocumentStorage.TryRead(value, out var cabinetDocument)
                 ? cabinetDocument
                 : CabinetDocument.Empty;
-            _cabinetViewer = null;
+            DisposeCabinetViewer();
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CabinetDocumentJson)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasCabinetViewer)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CabinetViewer)));
@@ -174,6 +174,18 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CabinetDocumentJson)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasCabinetViewer)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CabinetViewer)));
+    }
+
+    internal void DisposeCabinetViewer()
+    {
+        _cabinetViewer?.Dispose();
+        _cabinetViewer = null;
+    }
+
+    public void Dispose()
+    {
+        DisposeCabinetViewer();
+        SelectionState.SelectionChanged -= OnSelectionStateChanged;
     }
 
     public string? FaceDocumentJson
