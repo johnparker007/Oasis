@@ -71,8 +71,9 @@ namespace OasisPlayer.RuntimeBuild
 
     [Serializable] public sealed class RuntimeCabinetReflectionVector { public float x; public float y; public float z; public Vector3 Value { get { return new Vector3(x, y, z); } } }
     [Serializable] public sealed class RuntimeCabinetReflectionPlaneDefinition { public RuntimeCabinetReflectionVector origin = new RuntimeCabinetReflectionVector(); public RuntimeCabinetReflectionVector right = new RuntimeCabinetReflectionVector(); public RuntimeCabinetReflectionVector up = new RuntimeCabinetReflectionVector(); public float width; public float height; }
+    [Serializable] public sealed class RuntimeCabinetReflectionSourceDefinition { public string faceId = string.Empty; public RuntimeCabinetReflectionPlaneDefinition plane = new RuntimeCabinetReflectionPlaneDefinition(); }
     [Serializable] public sealed class RuntimeCabinetReflectionSettings { public bool enabled = true; public float strength; public float unlitArtworkStrength; public float litLampStrength; public float fresnelPower; public float fresnelStrength; public float roughness; public float distortion; public float edgeFade; }
-    [Serializable] public sealed class RuntimeCabinetReflectionDefinition { public string id = string.Empty; public string targetId = string.Empty; public int materialSlot; public string sourceFaceId = string.Empty; public RuntimeCabinetReflectionPlaneDefinition plane = new RuntimeCabinetReflectionPlaneDefinition(); public RuntimeCabinetReflectionSettings settings = new RuntimeCabinetReflectionSettings(); public string visibilityMask = string.Empty; }
+    [Serializable] public sealed class RuntimeCabinetReflectionDefinition { public string id = string.Empty; public string targetId = string.Empty; public int materialSlot; public RuntimeCabinetReflectionSourceDefinition[] sources = Array.Empty<RuntimeCabinetReflectionSourceDefinition>(); public RuntimeCabinetReflectionSettings settings = new RuntimeCabinetReflectionSettings(); public string visibilityMask = string.Empty; }
 
     [Serializable]
     public sealed class FaceRuntimeManifest
@@ -266,7 +267,7 @@ namespace OasisPlayer.RuntimeBuild
                 return false;
             }
 
-            if (cabinet == null || cabinet.schema != CabinetSchema || cabinet.schemaVersion != 2)
+            if (cabinet == null || cabinet.schema != CabinetSchema || cabinet.schemaVersion != 3)
             {
                 error = $"Unsupported cabinet manifest schema/version in {cabinetPath}.";
                 return false;

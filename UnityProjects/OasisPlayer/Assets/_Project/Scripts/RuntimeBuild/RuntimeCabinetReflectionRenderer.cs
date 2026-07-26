@@ -22,9 +22,13 @@ namespace OasisPlayer.RuntimeBuild
                 resolvedTargets++;
                 var claim = renderer.GetInstanceID() + ":" + definition.materialSlot;
                 if (claimed.Contains(claim)) { Warn(machine, definition, "another reflection definition already owns this target/material slot"); continue; }
-                if (!TryWorldPlane(machine.Cabinet.transform, definition.plane, out var plane)) { Warn(machine, definition, "cabinet-local Face plane is invalid after world transformation"); continue; }
+                var sourceDefinitions = definition.sources ?? Array.Empty<RuntimeCabinetReflectionSourceDefinition>();
+                if (sourceDefinitions.Length == 0 || sourceDefinitions.Length > RuntimeCabinetReflectionShaderProperties.MaximumSources) { Warn(machine, definition, $"source count must be between 1 and {RuntimeCabinetReflectionShaderProperties.MaximumSources}"); continue; }
+                var sources = new RuntimeCabinetReflectionSource[sourceDefinitions.Length]; var sourceFailure = false;
+                for (var sourceIndex = 0; sourceIndex < sourceDefinitions.Length; sourceIndex++) { var source = sourceDefinitions[sourceIndex]; if (source == null || !TryWorldPlane(machine.Cabinet.transform, source.plane, out var plane)) { Warn(machine, definition, $"source {sourceIndex} cabinet-local Face plane is invalid after world transformation"); sourceFailure = true; break; } sources[sourceIndex] = new RuntimeCabinetReflectionSource(source.faceId, plane); }
+                if (sourceFailure) continue;
                 if (!TryLoadMask(machine, definition, out var mask, out var maskWarning)) { Warn(machine, definition, maskWarning); continue; }
-                if (!RuntimeCabinetReflectionBinding.TryCreate(machine, definition.sourceFaceId, renderer, definition.materialSlot, plane, out var binding, out var warning, definition.settings, mask)) { Warn(machine, definition, warning); continue; }
+                if (!RuntimeCabinetReflectionBinding.TryCreate(machine, sources, renderer, definition.materialSlot, out var binding, out var warning, definition.settings, mask)) { Warn(machine, definition, warning); continue; }
                 convertedMaterials++; claimed.Add(claim); machine.AddCabinetReflectionBinding(binding); resolved++;
             }
             if (Debug.isDebugBuild) Debug.Log($"Oasis cabinet reflections: definitions={definitions.Length}, enabled={enabled}, resolvedTargets={resolvedTargets}, convertedMaterials={convertedMaterials}, bindings={machine.CabinetReflectionBindings.Count}, failed={enabled - resolved}.");
@@ -92,7 +96,7 @@ namespace OasisPlayer.RuntimeBuild
 
         private static void Warn(RuntimeMachine machine, RuntimeCabinetReflectionDefinition definition, string reason)
         {
-            machine.AddWarning($"Cabinet reflection '{definition.id}' failed: targetId='{definition.targetId}', materialSlot={definition.materialSlot}, sourceFaceId='{definition.sourceFaceId}', reason={reason}.");
+            machine.AddWarning($"Cabinet reflection '{definition.id}' failed: targetId='{definition.targetId}', materialSlot={definition.materialSlot}, reason={reason}.");
         }
     }
 }

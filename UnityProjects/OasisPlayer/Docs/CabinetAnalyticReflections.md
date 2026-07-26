@@ -65,3 +65,16 @@ Author a stepped grey-plastic section and polished/chrome section with different
 ## No reflection appears
 
 Check that (1) a receiver exists, (2) it is enabled, (3) its renderer path resolves, (4) its material slot is valid, (5) the Face resolves, (6) the plane validates, (7) the runtime material conversion succeeded, (8) the camera angle reflects toward the Face, (9) strength is non-zero, and (10) the visibility mask is not black. Development logs provide one aggregate definitions/enabled/targets/conversions/bindings/failures summary plus definition-specific warnings; no messages are emitted per frame.
+
+## Multi-source receiver verification
+
+Cabinet runtime schema 3 stores an ordered `sources` array on each receiver. A receiver owns one renderer/material slot and supports at most four Face sources. The shader intersects the reflected ray with every configured plane, selects the nearest in-bounds positive hit, and reconstructs only that Face (including roughness samples and the shared live lamp-state texture).
+
+Manual Editor/Player verification:
+
+1. Open a Cabinet3D package while two Face packages (for example `TopGlass` and `BottomGlass`) exist in `Assets/Faces`; Face tabs do not need to be open.
+2. Leave the Cabinet3D view open, open/close Face tabs and rename or reload a Face package. Confirm **Refresh** and asset-change notifications retain choices by Face ID and update their displayed package names.
+3. Add one receiver for one renderer/material slot, add both source Faces, and derive each plane independently.
+4. Save and reopen the Cabinet3D package; confirm both source selections and planes persist.
+5. Build and inspect `cabinet.runtime.json`; confirm one receiver contains two `sources` entries.
+6. Load the build in Oasis Player. Confirm the same surface reflects both Faces and live lamps, the nearest valid plane wins, and only one binding/material replacement owns the target slot.
