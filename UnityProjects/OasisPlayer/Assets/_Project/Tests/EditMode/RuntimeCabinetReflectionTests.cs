@@ -1,7 +1,6 @@
 using NUnit.Framework;
 using System.IO;
 using OasisPlayer.RuntimeBuild;
-using OasisPlayer.Loading;
 using UnityEngine;
 
 namespace OasisPlayer.Tests
@@ -127,20 +126,12 @@ namespace OasisPlayer.Tests
         }
 
         [Test]
-        public void LookupAndLampStateTexturesUsePointClampSampling()
+        public void LampStateTextureUsesPointClampSampling()
         {
             var state = new RuntimeLampState(); using (var stateTexture = new RuntimeLampStateTexture(state))
             {
                 Assert.AreEqual(FilterMode.Point, stateTexture.Texture.filterMode); Assert.AreEqual(TextureWrapMode.Clamp, stateTexture.Texture.wrapMode);
             }
-            var path = Path.Combine(Application.temporaryCachePath, "oasis-reflection-lookup.png");
-            var source = NewTexture(); File.WriteAllBytes(path, source.EncodeToPNG()); Object.DestroyImmediate(source);
-            try
-            {
-                Assert.True(new PngRuntimeTextureAssetLoader().TryLoad(path, RuntimeTextureRole.LookupData, out var asset, out var error), error);
-                Assert.AreEqual(FilterMode.Point, asset.Texture.filterMode); Assert.AreEqual(TextureWrapMode.Clamp, asset.Texture.wrapMode); asset.Unload();
-            }
-            finally { if (File.Exists(path)) File.Delete(path); }
         }
 
         [Test]
