@@ -24,7 +24,7 @@ namespace OasisPlayer.RuntimeBuild
 
     public sealed class RuntimeLampDiagnosticSequence
     {
-        private static readonly float[] Pattern = { 1f, .8f, .6f, .4f, .2f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f };
+        private static readonly float[] Pattern = { 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, .2f, .4f, .6f, .8f, 1f };
         private RuntimeLampDiagnosticSettings _settings;
         private float _elapsed;
         public RuntimeLampDiagnosticSequence(RuntimeLampDiagnosticSettings settings) { Configure(settings); }
@@ -84,7 +84,9 @@ namespace OasisPlayer.RuntimeBuild
 
     public sealed class RuntimeReelDevelopmentControls : MonoBehaviour
     {
-        [SerializeField] private float rpm = 0.5f;
+        // Half a revolution per second is fast enough to make the diagnostic useful visually.
+        public const float DefaultRpm = 30f;
+        [SerializeField] private float rpm = DefaultRpm;
         private RuntimeMachine _machine;
         public float Rpm { get { return rpm; } set { rpm = value; } }
         public static float PositionsPerSecond(float speedRpm) { return speedRpm * RuntimeReelPositionConverter.PositionsPerRevolution / 60f; }

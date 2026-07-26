@@ -34,9 +34,10 @@ namespace OasisPlayer.Tests
         }
 
         [Test]
-        public void ReelDiagnosticSpeedUsesSharedConversionConstant()
+        public void ReelDiagnosticDefaultsToHalfARevolutionPerSecond()
         {
-            Assert.AreEqual(.8f, RuntimeReelDevelopmentControls.PositionsPerSecond(.5f), .0001f);
+            Assert.AreEqual(30f, RuntimeReelDevelopmentControls.DefaultRpm);
+            Assert.AreEqual(48f, RuntimeReelDevelopmentControls.PositionsPerSecond(RuntimeReelDevelopmentControls.DefaultRpm), .0001f);
         }
     }
 }

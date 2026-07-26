@@ -83,14 +83,14 @@ namespace OasisPlayer.Tests
             var state = new RuntimeLampState();
             var sequence = new RuntimeLampDiagnosticSequence(RuntimeLampDiagnosticSettings.DefaultAutomatic());
             Assert.True(sequence.Start(state));
-            var expected = new[] { 1f, .8f, .6f, .4f, .2f, 0f };
+            var expected = new[] { 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, .2f, .4f, .6f, .8f, 1f };
             for (var i = 0; i < expected.Length; i++) Assert.AreEqual(expected[i], state.GetBrightness(i + 1), .0001f);
-            Assert.AreEqual(1f, state.GetBrightness(17));
-            Assert.AreEqual(.2f, state.GetBrightness(21));
-            Assert.AreEqual(0f, state.GetBrightness(RuntimeLampState.MaximumLampNumber));
+            Assert.AreEqual(0f, state.GetBrightness(17));
+            Assert.AreEqual(.2f, state.GetBrightness(28));
+            Assert.AreEqual(.8f, state.GetBrightness(RuntimeLampState.MaximumLampNumber));
             Assert.AreEqual(1, sequence.Advance(state, .5f));
-            Assert.AreEqual(1f, state.GetBrightness(2));
-            Assert.AreEqual(.8f, state.GetBrightness(3));
+            Assert.AreEqual(1f, state.GetBrightness(17));
+            Assert.AreEqual(.8f, state.GetBrightness(16));
         }
 
         [Test]
@@ -103,7 +103,8 @@ namespace OasisPlayer.Tests
             Assert.AreEqual(.2f, sequence.ElapsedSeconds, .0001f);
             Assert.AreEqual(14, sequence.Advance(state, 7f));
             Assert.AreEqual(0, sequence.ShiftOffset);
-            Assert.AreEqual(1f, state.GetBrightness(RuntimeLampState.MinimumLampNumber));
+            Assert.AreEqual(0f, state.GetBrightness(RuntimeLampState.MinimumLampNumber));
+            Assert.AreEqual(1f, state.GetBrightness(RuntimeLampState.MinimumLampNumber + 15));
         }
 
         [Test]
