@@ -5,7 +5,7 @@
 // exclusively owned by TransformFaceUv below.
 float2 ConvertReflectionPlaneUvToUnityBaseUv(float2 uv)
 {
-    return float2(uv.x, 1.0 - uv.y);
+    return 1.0 - uv;
 }
 
 float2 TransformFaceUv(float2 uv, float quarterTurns, float flipHorizontal)

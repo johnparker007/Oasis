@@ -342,10 +342,10 @@ namespace OasisPlayer.RuntimeBuild
     {
         public static Vector2 ConvertReflectionPlaneUvToUnityBaseUv(Vector2 uv)
         {
-            // glTF textures use an upper-left origin. glTFast exposes Unity mesh UVs with V
-            // inverted, so this conversion belongs between raw-GLB plane reconstruction and
-            // the shared authored rotation/flip transform. It must not be applied to mesh UVs.
-            return new Vector2(uv.x, 1f - uv.y);
+            // The exported analytic basis follows raw GLB target coordinates in both axes,
+            // whereas matched glTFast runtime vertices expose the opposite Unity base-UV
+            // corners. This belongs before authored rotation/flip and never applies to mesh UVs.
+            return new Vector2(1f - uv.x, 1f - uv.y);
         }
     }
 

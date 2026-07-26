@@ -78,7 +78,8 @@ namespace OasisPlayer.RuntimeBuild
             {
                 var positionWS = faceRenderer.transform.TransformPoint(positions[i]);
                 if (!RuntimeCabinetReflectionMath.TryWorldPointToFaceUv(positionWS, plane, out var rawGlbUv)) continue;
-                Debug.Log($"Face target: {face.Reference.cabinetFaceTargetId} position={positionWS} rawGlbUv={rawGlbUv} unityMeshUv={unityUvs[i]}.");
+                var convertedUv = RuntimeFaceBaseUvConversion.ConvertReflectionPlaneUvToUnityBaseUv(rawGlbUv);
+                Debug.Log($"Face target: {face.Reference.cabinetFaceTargetId} position={positionWS} analyticPlaneUv={rawGlbUv} runtimeMeshUv={unityUvs[i]} candidateConvertedUv={convertedUv}.");
             }
         }
 
