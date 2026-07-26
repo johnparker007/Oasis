@@ -13,7 +13,7 @@ public sealed class MachineRuntimeBuildServiceTests
         var root = CreateTempRoot(); var project = CreateProject(root);
         var cabinetDir = Directory.CreateDirectory(Path.Combine(project.AssetsDirectory, "Cabinet3D", "Reflective")).FullName;
         File.WriteAllBytes(Path.Combine(cabinetDir, "source.glb"), [1]); WriteSolidPng(Path.Combine(cabinetDir, "side-mask.png"), 2, 2, SKColors.White);
-        var reflection = new CabinetReflectionDefinition("side", "SideMesh", 0, "lowerGlass", new CabinetReflectionPlane(new(0, 0, 0), new(1, 0, 0), new(0, 1, 0), 2, 1), CabinetReflectionSettings.RoughPlastic, "side-mask.png");
+        var reflection = new CabinetReflectionDefinition("side", "SideMesh", 0, "lowerGlass", new CabinetReflectionPlane(new(0, 0, 0), new(1, 0, 0), new(0, 1, 0), 2, 1), CabinetReflectionSettings.RoughPlastic with { Enabled = false }, "side-mask.png");
         var document = CabinetDocument.FromModelPath("source.glb") with { Reflections = [reflection] };
         var manifestPath = Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName); File.WriteAllText(manifestPath, CabinetDocumentStorage.Serialize(document));
 

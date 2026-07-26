@@ -52,6 +52,7 @@ public sealed class SharpGltfWpfModelLoader : ICabinetModelLoader
             }
 
             var faceTargets = FaceTargetDetector.DetectTargets(modelPath, cancellationToken);
+            var reflectionTargets = GlbCabinetReflectionReceiverDiscovery.Discover(modelPath);
             var primitiveMeshes = new Dictionary<int, MeshGeometry3D>();
             var triangleCount = 0;
             foreach (var (a, b, c, material) in scene.EvaluateTriangles())
@@ -99,7 +100,7 @@ public sealed class SharpGltfWpfModelLoader : ICabinetModelLoader
             }
 
             group.Freeze();
-            return CabinetModelLoadResult.Success(group, faceTargets);
+            return CabinetModelLoadResult.Success(group, faceTargets, reflectionTargets);
         }
         catch (OperationCanceledException)
         {

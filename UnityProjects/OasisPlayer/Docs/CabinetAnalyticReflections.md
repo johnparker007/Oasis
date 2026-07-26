@@ -28,7 +28,13 @@ camera -> cabinet fragment normal -> reflected ray
 
 Cabinet reflection definitions are part of `CabinetDocument`. Each has a stable ID, cabinet renderer target name, material slot, source Face ID, explicit cabinet-local Face plane, resolved settings, and optional visibility-mask path relative to the Cabinet asset directory. The runtime exporter packages definitions in cabinet schema version 2 and copies masks into `cabinet/reflection-masks`. Escaping the Cabinet asset directory is rejected.
 
-The selected GLB material slot must be authored with `Oasis/CabinetAnalyticReflection`. This permits several renderers to share one material while independent `MaterialPropertyBlock`s carry source and plane data. Player never mutates or replaces imported material assets.
+Open a Cabinet3D document and expand **Reflection Receivers**. Add a receiver, choose a discovered renderer hierarchy path and material slot, choose an authoritative Face ID, and select Rough Plastic or Polished Chrome. Renderer paths remain distinct even when leaf names are duplicated. Definitions can be duplicated, disabled, or removed; settings become Custom after individual edits.
+
+Automatic plane derivation uses the ordered rectangular Face-target geometry: corner 0 is UV `(0,0)`, the 0→1 edge is right, and 0→3 is up. Face rotation/flip remains a later shader operation. Use **Derive Again** after changing the Face. Select Manual or edit origin/right/up/size fields for unusual targets. The validation line reports duplicate IDs, missing targets/Faces, invalid slots, and invalid planes.
+
+Choose an optional mask with the picker; it is stored relative to the Cabinet asset. White enables reflection and black disables it using receiver material UVs. A mask is unnecessary for an isolated renderer/slot.
+
+Imported materials do not need the Oasis shader. Player creates one owned `Oasis/CabinetAnalyticReflection` material per bound slot and explicitly copies compatible base map/colour, UV scale/offset, normal map/scale, metallic, smoothness/gloss, cutoff, and culling. It replaces only that slot, never mutates the imported shared material, and retains independent `MaterialPropertyBlock` source data. Disposal restores the original slot and property block and destroys only the owned material.
 
 The plane origin is untransformed Face UV `(0,0)`. Right/up point toward `(1,0)`/`(0,1)` over positive width/height; normal is `cross(right, up)`. Values are cabinet-target local, transformed only after model scale/up-axis correction. Transform vectors preserve non-uniform and mirrored scale; the resulting basis is validated. Bounds are tested before shared rotation/flip. Explicit metadata avoids assumptions about pivots, mesh UV topology, or `transform.right/up`.
 
@@ -55,3 +61,7 @@ Each section supports one Face. There is no arbitrary scene/cabinet self-occlusi
 ## Manual validation
 
 Author a stepped grey-plastic section and polished/chrome section with different source Faces/material slots and, optionally, a cabinet-UV mask. Export normally through OasisEditor, load normally in OasisPlayer, move the camera, and switch lamps off/partial/full. Confirm alignment, geometry discontinuities, softness/sharpness, miss environment lighting, shadows/depth, detailed isolation of an invalid target, a machine with zero definitions, and clean unload/reload.
+
+## No reflection appears
+
+Check that (1) a receiver exists, (2) it is enabled, (3) its renderer path resolves, (4) its material slot is valid, (5) the Face resolves, (6) the plane validates, (7) the runtime material conversion succeeded, (8) the camera angle reflects toward the Face, (9) strength is non-zero, and (10) the visibility mask is not black. Development logs provide one aggregate definitions/enabled/targets/conversions/bindings/failures summary plus definition-specific warnings; no messages are emitted per frame.

@@ -1,4 +1,6 @@
 using OasisEditor.Features.CabinetEditor.Models;
+using OasisEditor.Features.CabinetEditor.Services;
+using System.Windows.Media.Media3D;
 using Xunit;
 
 namespace OasisEditor.Tests;
@@ -15,6 +17,30 @@ public sealed class CabinetReelSpecificationTests
 
         Assert.True(CabinetDocumentStorage.TryRead(CabinetDocumentStorage.Serialize(source), out var parsed));
         Assert.Equal(reflection, Assert.Single(parsed.Reflections!));
+    }
+
+    [Fact]
+    public void ReflectionPresetsAreExplicitAndEditedValuesBecomeCustom()
+    {
+        Assert.Equal(CabinetReflectionPreset.RoughPlastic, CabinetReflectionPreset.Detect(CabinetReflectionSettings.RoughPlastic));
+        Assert.Equal(CabinetReflectionPreset.PolishedChrome, CabinetReflectionPreset.Detect(CabinetReflectionSettings.PolishedChrome));
+        Assert.Equal(CabinetReflectionPreset.Custom, CabinetReflectionPreset.Detect(CabinetReflectionSettings.RoughPlastic with { Strength = .31 }));
+    }
+
+    [Fact]
+    public void ManualReflectionPlaneValidationRejectsDegenerateValues()
+    {
+        Assert.True(CabinetReflectionPlaneValidation.TryValidate(new(new(0, 0, 0), new(1, 0, 0), new(0, 1, 0), 1, 1), out _));
+        Assert.False(CabinetReflectionPlaneValidation.TryValidate(new(new(0, 0, 0), new(0, 0, 0), new(0, 1, 0), 1, 1), out _));
+        Assert.False(CabinetReflectionPlaneValidation.TryValidate(new(new(0, 0, 0), new(1, 0, 0), new(1, 0, 0), 1, 1), out _));
+    }
+
+    [Fact]
+    public void ReflectionPlaneDerivesFromOrderedFaceTargetGeometry()
+    {
+        var target = new CabinetFaceTarget("glass", "OasisFace_glass", "Glass", new[] { new Point3D(2, 3, 4), new Point3D(6, 3, 4), new Point3D(6, 5, 4), new Point3D(2, 5, 4) }, new Vector3D(0, 0, 1), new Point3D(4, 4, 4), true, null);
+        Assert.True(CabinetReflectionPlaneDeriver.TryDerive(target, out var plane, out var error), error);
+        Assert.Equal(new CabinetReflectionVector(2, 3, 4), plane.Origin); Assert.Equal(new CabinetReflectionVector(1, 0, 0), plane.Right); Assert.Equal(new CabinetReflectionVector(0, 1, 0), plane.Up); Assert.Equal(4, plane.Width); Assert.Equal(2, plane.Height);
     }
 
     [Fact]

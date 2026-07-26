@@ -69,6 +69,32 @@
                     Background="{DynamicResource ToolBarBackgroundBrush}"
                     BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="4">
                 <DockPanel>
+                    <Expander DockPanel.Dock="Bottom" Margin="0,12,0,0" Header="Reflection Receivers" IsExpanded="False" DataContext="{Binding CabinetViewer.ReflectionEditor}">
+                        <ScrollViewer MaxHeight="430" VerticalScrollBarVisibility="Auto">
+                            <StackPanel Margin="0,8,0,0">
+                                <StackPanel Orientation="Horizontal"><Button Margin="0,0,5,0" Command="{Binding AddCommand}" Content="Add"/><Button Margin="0,0,5,0" Command="{Binding DuplicateCommand}" Content="Duplicate"/><Button Command="{Binding RemoveCommand}" Content="Remove"/></StackPanel>
+                                <ListBox Height="90" Margin="0,6,0,6" ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}" DisplayMemberPath="Id"/>
+                                <StackPanel IsEnabled="{Binding HasSelection}">
+                                    <CheckBox Content="Enabled" IsChecked="{Binding Enabled}"/>
+                                    <TextBlock Margin="0,5,0,2" Text="Receiver ID"/><TextBox Text="{Binding Id, UpdateSourceTrigger=LostFocus}"/>
+                                    <TextBlock Margin="0,5,0,2" Text="Cabinet Renderer"/><ComboBox ItemsSource="{Binding Targets}" SelectedItem="{Binding Target}" DisplayMemberPath="DisplayName"/>
+                                    <TextBlock Margin="0,5,0,2" Text="Material Slot"/><ComboBox ItemsSource="{Binding Slots}" SelectedItem="{Binding Slot}" DisplayMemberPath="DisplayName"/>
+                                    <TextBlock Margin="0,5,0,2" Text="Source Face"/><ComboBox ItemsSource="{Binding FaceIds}" SelectedItem="{Binding FaceId}"/>
+                                    <TextBlock Margin="0,5,0,2" Text="Surface Preset"/><ComboBox ItemsSource="{Binding Presets}" SelectedItem="{Binding Preset}"/>
+                                    <TextBlock Margin="0,5,0,2" Text="Plane Source"/><ComboBox ItemsSource="{Binding PlaneSources}" SelectedItem="{Binding PlaneSource}"/><Button Margin="0,4,0,0" Command="{Binding DeriveCommand}" Content="Derive Again"/>
+                                    <TextBlock Margin="0,5,0,2" Text="Origin X / Y / Z"/><StackPanel Orientation="Horizontal"><TextBox Width="65" Text="{Binding OriginX}"/><TextBox Width="65" Text="{Binding OriginY}"/><TextBox Width="65" Text="{Binding OriginZ}"/></StackPanel>
+                                    <TextBlock Margin="0,5,0,2" Text="Right X / Y / Z"/><StackPanel Orientation="Horizontal"><TextBox Width="65" Text="{Binding RightX}"/><TextBox Width="65" Text="{Binding RightY}"/><TextBox Width="65" Text="{Binding RightZ}"/></StackPanel>
+                                    <TextBlock Margin="0,5,0,2" Text="Up X / Y / Z"/><StackPanel Orientation="Horizontal"><TextBox Width="65" Text="{Binding UpX}"/><TextBox Width="65" Text="{Binding UpY}"/><TextBox Width="65" Text="{Binding UpZ}"/></StackPanel>
+                                    <TextBlock Margin="0,5,0,2" Text="Width / Height"/><StackPanel Orientation="Horizontal"><TextBox Width="95" Text="{Binding Width}"/><TextBox Width="95" Text="{Binding Height}"/></StackPanel>
+                                    <TextBlock Margin="0,5,0,2" Text="Visibility Mask (cabinet UVs; white=on)"/><TextBox Text="{Binding Mask}"/><StackPanel Orientation="Horizontal"><Button Margin="0,3,5,0" Command="{Binding BrowseMaskCommand}" Content="Choose..."/><Button Margin="0,3,0,0" Command="{Binding ClearMaskCommand}" Content="Clear"/></StackPanel>
+                                    <TextBlock Margin="0,5,0,2" Text="Reflection / Artwork / Lamp Strength"/><StackPanel Orientation="Horizontal"><TextBox Width="65" Text="{Binding Strength}"/><TextBox Width="65" Text="{Binding Artwork}"/><TextBox Width="65" Text="{Binding Lamps}"/></StackPanel>
+                                    <TextBlock Margin="0,5,0,2" Text="Roughness / Distortion"/><StackPanel Orientation="Horizontal"><TextBox Width="95" Text="{Binding Roughness}"/><TextBox Width="95" Text="{Binding Distortion}"/></StackPanel>
+                                    <TextBlock Margin="0,5,0,2" Text="Fresnel Strength / Power / Edge Fade"/><StackPanel Orientation="Horizontal"><TextBox Width="65" Text="{Binding FresnelStrength}"/><TextBox Width="65" Text="{Binding FresnelPower}"/><TextBox Width="65" Text="{Binding EdgeFade}"/></StackPanel>
+                                    <TextBlock Margin="0,6,0,0" Text="{Binding Validation}" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Expander>
                     <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
                         <TextBlock FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="Oasis Face Targets" />
                         <TextBlock Margin="0,8,0,3" Foreground="{DynamicResource TextSecondaryBrush}" Text="Lamp Preview" />

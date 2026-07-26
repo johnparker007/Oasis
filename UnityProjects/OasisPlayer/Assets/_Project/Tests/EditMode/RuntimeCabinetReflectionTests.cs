@@ -77,10 +77,12 @@ namespace OasisPlayer.Tests
         public void BindingAssignsSharedLampTextureAndRestoresPropertyBlock()
         {
             var target = new GameObject("reflector");
-            var material = new Material(Shader.Find(RuntimeCabinetReflectionShaderProperties.ShaderName));
+            var material = new Material(Shader.Find("Standard"));
+            var untouched = new Material(Shader.Find("Standard"));
+            var baseTexture = NewTexture(); var normalTexture = NewTexture(); material.mainTexture = baseTexture; material.mainTextureScale = new Vector2(.5f, .75f); material.mainTextureOffset = new Vector2(.1f, .2f); material.color = new Color(.2f, .3f, .4f, 1); material.SetTexture("_BumpMap", normalTexture); material.SetFloat("_BumpScale", .8f); material.SetFloat("_Metallic", .6f); material.SetFloat("_Glossiness", .7f);
             var textures = new[] { NewTexture(), NewTexture(), NewTexture(), NewTexture() };
             var machine = new RuntimeMachine(null, target);
-            var renderer = target.AddComponent<MeshRenderer>(); renderer.sharedMaterial = material;
+            var renderer = target.AddComponent<MeshRenderer>(); renderer.sharedMaterials = new[] { material, untouched };
             var original = new MaterialPropertyBlock(); original.SetFloat(RuntimeCabinetReflectionShaderProperties.Strength, .73f); renderer.SetPropertyBlock(original, 0);
             machine.RegisterFace(new RuntimeFace(new MachineRuntimeFaceReference { faceId = "glass" }, null, null,
                 new RuntimeTextureAsset("art", textures[0]), new RuntimeTextureAsset("mask", textures[1]), null,
@@ -89,19 +91,26 @@ namespace OasisPlayer.Tests
             try
             {
                 Assert.True(RuntimeCabinetReflectionBinding.TryCreate(machine, "glass", renderer, 0, plane, out var binding, out var warning), warning);
+                Assert.AreSame(untouched, renderer.sharedMaterials[1]); Assert.AreNotSame(material, renderer.sharedMaterials[0]); Assert.AreSame(binding.RuntimeMaterial, renderer.sharedMaterials[0]);
+                Assert.AreSame(baseTexture, binding.RuntimeMaterial.GetTexture("_BaseMap")); Assert.AreEqual(material.mainTextureScale, binding.RuntimeMaterial.GetTextureScale("_BaseMap")); Assert.AreEqual(material.mainTextureOffset, binding.RuntimeMaterial.GetTextureOffset("_BaseMap"));
+                Assert.AreSame(normalTexture, binding.RuntimeMaterial.GetTexture("_BumpMap")); Assert.AreEqual(.8f, binding.RuntimeMaterial.GetFloat("_BumpScale"));
+                Assert.AreEqual(material.color, binding.RuntimeMaterial.GetColor("_BaseColor")); Assert.AreEqual(.6f, binding.RuntimeMaterial.GetFloat("_Metallic")); Assert.AreEqual(.7f, binding.RuntimeMaterial.GetFloat("_Smoothness"));
+                var ownedMaterial = binding.RuntimeMaterial;
                 var actual = new MaterialPropertyBlock(); renderer.GetPropertyBlock(actual, 0);
                 Assert.AreSame(machine.LampStateTexture.Texture, actual.GetTexture(RuntimeFaceShaderProperties.LampStateTexture));
                 var lampTexture = actual.GetTexture(RuntimeFaceShaderProperties.LampStateTexture);
                 machine.LampState.SetBrightness(1, .5f); machine.ApplyDynamicState();
                 renderer.GetPropertyBlock(actual, 0); Assert.AreSame(lampTexture, actual.GetTexture(RuntimeFaceShaderProperties.LampStateTexture));
-                Assert.False(RuntimeCabinetReflectionBinding.TryCreate(machine, "glass", renderer, 1, plane, out _, out _));
+                Assert.False(RuntimeCabinetReflectionBinding.TryCreate(machine, "glass", renderer, 2, plane, out _, out _));
                 machine.AddCabinetReflectionBinding(binding); machine.UnloadAssets(); machine.UnloadAssets();
+                Assert.AreSame(material, renderer.sharedMaterials[0]); Assert.AreSame(untouched, renderer.sharedMaterials[1]);
+                Assert.True(ownedMaterial == null);
                 renderer.GetPropertyBlock(actual, 0); Assert.AreEqual(.73f, actual.GetFloat(RuntimeCabinetReflectionShaderProperties.Strength));
             }
             finally
             {
                 machine.UnloadAssets();
-                Object.DestroyImmediate(material); Object.DestroyImmediate(target);
+                Object.DestroyImmediate(baseTexture); Object.DestroyImmediate(normalTexture); Object.DestroyImmediate(material); Object.DestroyImmediate(untouched); Object.DestroyImmediate(target);
             }
         }
 

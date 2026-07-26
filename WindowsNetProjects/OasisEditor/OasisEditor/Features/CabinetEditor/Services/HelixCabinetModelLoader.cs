@@ -38,7 +38,7 @@ public sealed class HelixCabinetModelLoader : ICabinetModelLoader
                 }
 
                 var faceTargets = _faceTargetDetector.DetectTargets(modelPath, cancellationToken);
-                return CabinetModelLoadResult.Success(model, faceTargets);
+                return CabinetModelLoadResult.Success(model, faceTargets, GlbCabinetReflectionReceiverDiscovery.Discover(modelPath));
             }
             catch (OperationCanceledException)
             {
