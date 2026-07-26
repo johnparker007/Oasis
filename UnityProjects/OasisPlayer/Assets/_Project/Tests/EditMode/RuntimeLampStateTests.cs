@@ -78,112 +78,42 @@ namespace OasisPlayer.Tests
         }
 
         [Test]
-        public void AutomaticDiagnosticDefaultsAndClampsLampRange()
-        {
-            var defaults = RuntimeLampDiagnosticSettings.DefaultAutomatic();
-            Assert.AreEqual(RuntimeLampDiagnosticMode.AutomaticSweep, defaults.Mode);
-            Assert.AreEqual(1, defaults.FirstLamp);
-            Assert.AreEqual(255, defaults.LastLamp);
-            Assert.AreEqual(0.1f, defaults.SecondsPerLamp, 0.0001f);
-
-            var clamped = new RuntimeLampDiagnosticSettings
-            {
-                Mode = RuntimeLampDiagnosticMode.AutomaticSweep,
-                FirstLamp = 0,
-                LastLamp = 999,
-                SecondsPerLamp = 0f,
-                AllOnSeconds = 0f,
-                AllOffSeconds = 0f,
-                AllFlashCount = 0,
-                Repeat = true
-            }.Clamped();
-
-            Assert.AreEqual(1, clamped.FirstLamp);
-            Assert.AreEqual(255, clamped.LastLamp);
-            Assert.Greater(clamped.SecondsPerLamp, 0f);
-            Assert.AreEqual(1, clamped.AllFlashCount);
-        }
-
-        [Test]
-        public void AutomaticSequenceRunsTwoAllOnFlashesBeforeSweepAndRepeats()
+        public void AdvancingPatternRepeatsAndMovesTowardIncreasingLampNumbers()
         {
             var state = new RuntimeLampState();
-            var settings = RuntimeLampDiagnosticSettings.DefaultAutomatic();
-            settings.FirstLamp = 1;
-            settings.LastLamp = 3;
-            settings.SecondsPerLamp = 0.1f;
-            settings.AllOnSeconds = 0.5f;
-            settings.AllOffSeconds = 0.5f;
-            settings.AllFlashCount = 2;
-            settings.Repeat = true;
-            var sequence = new RuntimeLampDiagnosticSequence(settings);
-
+            var sequence = new RuntimeLampDiagnosticSequence(RuntimeLampDiagnosticSettings.DefaultAutomatic());
             Assert.True(sequence.Start(state));
-            Assert.AreEqual(RuntimeLampDiagnosticStage.AllOn, sequence.CurrentStage);
-            Assert.AreEqual(1f, state.GetBrightness(1));
-            Assert.AreEqual(1f, state.GetBrightness(255));
-
-            Assert.AreEqual(RuntimeLampDiagnosticTransition.AllOff, sequence.Advance(state, 0.5f));
-            Assert.AreEqual(0f, state.GetBrightness(1));
-            Assert.AreEqual(RuntimeLampDiagnosticTransition.AllOn, sequence.Advance(state, 0.5f));
+            var expected = new[] { 1f, .8f, .6f, .4f, .2f, 0f };
+            for (var i = 0; i < expected.Length; i++) Assert.AreEqual(expected[i], state.GetBrightness(i + 1), .0001f);
+            Assert.AreEqual(1f, state.GetBrightness(17));
+            Assert.AreEqual(.2f, state.GetBrightness(21));
+            Assert.AreEqual(0f, state.GetBrightness(RuntimeLampState.MaximumLampNumber));
+            Assert.AreEqual(1, sequence.Advance(state, .5f));
             Assert.AreEqual(1f, state.GetBrightness(2));
-            Assert.AreEqual(RuntimeLampDiagnosticTransition.AllOff, sequence.Advance(state, 0.5f));
-            Assert.AreEqual(RuntimeLampDiagnosticTransition.BeginSweep, sequence.Advance(state, 0.5f));
-            Assert.AreEqual(RuntimeLampDiagnosticStage.Sweep, sequence.CurrentStage);
-            Assert.AreEqual(1, sequence.CurrentLamp);
-            AssertOnlyLampEnabled(state, 1, 3, 1);
-
-            Assert.AreEqual(RuntimeLampDiagnosticTransition.SweepLamp, sequence.Advance(state, 0.1f));
-            Assert.AreEqual(2, sequence.CurrentLamp);
-            AssertOnlyLampEnabled(state, 1, 3, 2);
-            Assert.AreEqual(RuntimeLampDiagnosticTransition.SweepLamp, sequence.Advance(state, 0.1f));
-            Assert.AreEqual(3, sequence.CurrentLamp);
-            AssertOnlyLampEnabled(state, 1, 3, 3);
-            Assert.AreEqual(RuntimeLampDiagnosticTransition.RepeatAllOn, sequence.Advance(state, 0.1f));
-            Assert.AreEqual(1, sequence.CompletedCycles);
-            Assert.AreEqual(RuntimeLampDiagnosticStage.AllOn, sequence.CurrentStage);
-            Assert.AreEqual(1f, state.GetBrightness(1));
+            Assert.AreEqual(.8f, state.GetBrightness(3));
         }
 
-
         [Test]
-        public void AutomaticSweepReachesLamp255()
+        public void AdvancingPatternPreservesFractionalTimeAndWraps()
         {
             var state = new RuntimeLampState();
-            var settings = RuntimeLampDiagnosticSettings.DefaultAutomatic();
-            settings.AllOnSeconds = 0.01f;
-            settings.AllOffSeconds = 0.01f;
-            settings.SecondsPerLamp = 0.1f;
-            var sequence = new RuntimeLampDiagnosticSequence(settings);
+            var sequence = new RuntimeLampDiagnosticSequence(RuntimeLampDiagnosticSettings.DefaultAutomatic());
             sequence.Start(state);
-            sequence.Advance(state, 0.01f);
-            sequence.Advance(state, 0.01f);
-            sequence.Advance(state, 0.01f);
-            sequence.Advance(state, 0.01f);
-
-            Assert.AreEqual(RuntimeLampDiagnosticStage.Sweep, sequence.CurrentStage);
-            Assert.AreEqual(1, sequence.CurrentLamp);
-            for (var i = 2; i <= 255; i++)
-            {
-                sequence.Advance(state, 0.1f);
-            }
-
-            Assert.AreEqual(255, sequence.CurrentLamp);
-            Assert.AreEqual(1f, state.GetBrightness(255));
-            Assert.AreEqual(0f, state.GetBrightness(254));
+            Assert.AreEqual(2, sequence.Advance(state, 1.2f));
+            Assert.AreEqual(.2f, sequence.ElapsedSeconds, .0001f);
+            Assert.AreEqual(14, sequence.Advance(state, 7f));
+            Assert.AreEqual(0, sequence.ShiftOffset);
+            Assert.AreEqual(1f, state.GetBrightness(RuntimeLampState.MinimumLampNumber));
         }
 
         [Test]
-        public void AutomaticSequenceDoesNothingWhenOff()
+        public void AdvancingPatternDoesNothingWhenOff()
         {
             var state = new RuntimeLampState();
-            var settings = RuntimeLampDiagnosticSettings.DefaultAutomatic();
-            settings.Mode = RuntimeLampDiagnosticMode.Off;
+            var settings = RuntimeLampDiagnosticSettings.DefaultAutomatic(); settings.Mode = RuntimeLampDiagnosticMode.Off;
             var sequence = new RuntimeLampDiagnosticSequence(settings);
-
             Assert.False(sequence.Start(state));
-            Assert.AreEqual(RuntimeLampDiagnosticTransition.None, sequence.Advance(state, 1f));
-            Assert.AreEqual(0f, state.GetBrightness(1));
+            Assert.AreEqual(0, sequence.Advance(state, 1f));
         }
 
         [Test]

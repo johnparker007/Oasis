@@ -19,6 +19,7 @@ namespace OasisPlayer.RuntimeBuild
             Build = build;
             Cabinet = cabinet;
             LampState = new RuntimeLampState();
+            ReelState = new RuntimeReelState();
             SegmentDisplayState = new RuntimeSegmentDisplayState();
         }
 
@@ -27,6 +28,7 @@ namespace OasisPlayer.RuntimeBuild
         public IReadOnlyList<RuntimeFace> Faces { get { return _faces; } }
         public IReadOnlyList<string> Warnings { get { return _warnings; } }
         public RuntimeLampState LampState { get; private set; }
+        public RuntimeReelState ReelState { get; private set; }
         public RuntimeSegmentDisplayState SegmentDisplayState { get; private set; }
         public RuntimeLampStateTexture LampStateTexture
         {
@@ -46,6 +48,7 @@ namespace OasisPlayer.RuntimeBuild
             {
                 for (var i = 0; i < face.ReelRenderBindings.Count; i++)
                 {
+                    changed |= face.ReelRenderBindings[i].ApplyReelState(ReelState);
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
                     changed |= face.ReelRenderBindings[i].ApplyLampState(LampState, _reelLampDiagnosticMode, _reelLampDiagnosticMultiplier);
 #else
