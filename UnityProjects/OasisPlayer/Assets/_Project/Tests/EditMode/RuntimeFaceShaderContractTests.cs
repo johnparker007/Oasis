@@ -14,30 +14,38 @@ namespace OasisPlayer.Tests
         {
             var shader = Shader.Find(RuntimeFaceShaderProperties.ShaderName);
             Assert.NotNull(shader);
+            var material = new Material(shader);
 
-            var requiredProperties = new[]
+            try
             {
-                RuntimeFaceShaderProperties.ArtworkTextureName,
-                RuntimeFaceShaderProperties.MaskTextureName,
-                RuntimeFaceShaderProperties.TrayIdTextureName,
-                RuntimeFaceShaderProperties.LampIds0TextureName,
-                RuntimeFaceShaderProperties.LampWeights0TextureName,
-                RuntimeFaceShaderProperties.LampStateTextureName,
-                RuntimeFaceShaderProperties.LampExposureStopsName,
-                RuntimeFaceShaderProperties.StaticBrightnessName,
-                RuntimeFaceShaderProperties.BaseAmbientStrengthName,
-                RuntimeFaceShaderProperties.BaseMainLightStrengthName,
-                RuntimeFaceShaderProperties.BaseAdditionalLightStrengthName,
-                RuntimeFaceShaderProperties.MaskStrengthName,
-                RuntimeFaceShaderProperties.NormalSignName,
-                RuntimeFaceShaderProperties.CullModeName,
-                RuntimeFaceShaderProperties.FaceRotationQuarterTurnsName,
-                RuntimeFaceShaderProperties.FaceFlipHorizontalName
-            };
+                var requiredProperties = new[]
+                {
+                    RuntimeFaceShaderProperties.ArtworkTextureName,
+                    RuntimeFaceShaderProperties.MaskTextureName,
+                    RuntimeFaceShaderProperties.TrayIdTextureName,
+                    RuntimeFaceShaderProperties.LampIds0TextureName,
+                    RuntimeFaceShaderProperties.LampWeights0TextureName,
+                    RuntimeFaceShaderProperties.LampStateTextureName,
+                    RuntimeFaceShaderProperties.LampExposureStopsName,
+                    RuntimeFaceShaderProperties.StaticBrightnessName,
+                    RuntimeFaceShaderProperties.BaseAmbientStrengthName,
+                    RuntimeFaceShaderProperties.BaseMainLightStrengthName,
+                    RuntimeFaceShaderProperties.BaseAdditionalLightStrengthName,
+                    RuntimeFaceShaderProperties.MaskStrengthName,
+                    RuntimeFaceShaderProperties.NormalSignName,
+                    RuntimeFaceShaderProperties.CullModeName,
+                    RuntimeFaceShaderProperties.FaceRotationQuarterTurnsName,
+                    RuntimeFaceShaderProperties.FaceFlipHorizontalName
+                };
 
-            foreach (var property in requiredProperties)
+                foreach (var property in requiredProperties)
+                {
+                    Assert.True(material.HasProperty(property), $"Oasis/Face is missing runtime property {property}.");
+                }
+            }
+            finally
             {
-                Assert.True(shader.HasProperty(property), $"Oasis/Face is missing runtime property {property}.");
+                Object.DestroyImmediate(material);
             }
         }
 
