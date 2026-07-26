@@ -1,0 +1,73 @@
+using System;
+using UnityEngine;
+
+namespace OasisPlayer.RuntimeBuild
+{
+    /// <summary>Binds one face to a cabinet slot already using Oasis/CabinetAnalyticReflection.</summary>
+    public sealed class RuntimeCabinetReflectionBinding : IDisposable
+    {
+        private readonly Renderer _renderer;
+        private readonly int _materialIndex;
+        private readonly MaterialPropertyBlock _properties = new MaterialPropertyBlock();
+        private readonly MaterialPropertyBlock _originalProperties = new MaterialPropertyBlock();
+        private bool _disposed;
+
+        private RuntimeCabinetReflectionBinding(Renderer renderer, int materialIndex) { _renderer = renderer; _materialIndex = materialIndex; }
+
+        public static bool TryCreate(RuntimeMachine machine, string faceId, Renderer renderer, int materialIndex, RuntimeFaceReflectionPlane plane, out RuntimeCabinetReflectionBinding binding, out string warning)
+        {
+            binding = null; warning = string.Empty;
+            if (machine == null || renderer == null) { warning = "Cabinet reflection requires a runtime machine and target renderer."; return false; }
+            if (!plane.IsValid) { warning = "Cabinet reflection Face plane is invalid."; return false; }
+            if (string.IsNullOrWhiteSpace(faceId)) { warning = "Cabinet reflection source Face ID is empty."; return false; }
+            RuntimeFace face = null; var matches = 0;
+            foreach (var candidate in machine.Faces)
+                if (candidate.Reference != null && string.Equals(candidate.Reference.faceId, faceId.Trim(), StringComparison.Ordinal)) { face = candidate; matches++; }
+            if (matches != 1) { warning = matches == 0 ? $"Cabinet reflection source Face '{faceId}' was not found." : $"Cabinet reflection source Face '{faceId}' is ambiguous ({matches} matches)."; return false; }
+            if (face.Artwork?.Texture == null || face.Mask?.Texture == null || face.LampIds0?.Texture == null || face.LampWeights0?.Texture == null) { warning = $"Cabinet reflection source Face '{faceId}' is missing required artwork or lamp lookup textures."; return false; }
+            var materials = renderer.sharedMaterials;
+            if (materialIndex < 0 || materialIndex >= materials.Length || materials[materialIndex] == null) { warning = $"Cabinet reflection material slot {materialIndex} is invalid."; return false; }
+            if (materials[materialIndex].shader == null || materials[materialIndex].shader.name != RuntimeCabinetReflectionShaderProperties.ShaderName) { warning = $"Cabinet reflection slot {materialIndex} must already use '{RuntimeCabinetReflectionShaderProperties.ShaderName}'."; return false; }
+
+            binding = new RuntimeCabinetReflectionBinding(renderer, materialIndex);
+            renderer.GetPropertyBlock(binding._originalProperties, materialIndex);
+            renderer.GetPropertyBlock(binding._properties, materialIndex);
+            binding._properties.SetTexture(RuntimeFaceShaderProperties.ArtworkTexture, face.Artwork.Texture);
+            binding._properties.SetTexture(RuntimeFaceShaderProperties.MaskTexture, face.Mask.Texture);
+            binding._properties.SetTexture(RuntimeFaceShaderProperties.LampIds0Texture, face.LampIds0.Texture);
+            binding._properties.SetTexture(RuntimeFaceShaderProperties.LampWeights0Texture, face.LampWeights0.Texture);
+            binding._properties.SetTexture(RuntimeFaceShaderProperties.LampStateTexture, machine.LampStateTexture.Texture);
+            if (face.RenderBinding?.RuntimeMaterial != null)
+            {
+                binding._properties.SetFloat(RuntimeFaceShaderProperties.LampExposureStops, face.RenderBinding.RuntimeMaterial.GetFloat(RuntimeFaceShaderProperties.LampExposureStops));
+                binding._properties.SetFloat(RuntimeFaceShaderProperties.MaskStrength, face.RenderBinding.RuntimeMaterial.GetFloat(RuntimeFaceShaderProperties.MaskStrength));
+            }
+            var orientation = RuntimeFaceTextureOrientation.FromReference(face.Reference);
+            binding._properties.SetFloat(RuntimeFaceShaderProperties.FaceRotationQuarterTurns, orientation.UnityUvQuarterTurns);
+            binding._properties.SetFloat(RuntimeFaceShaderProperties.FaceFlipHorizontal, orientation.FlipHorizontal ? 1f : 0f);
+            binding.SetPlane(plane);
+            binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.Enabled, 1f);
+            renderer.SetPropertyBlock(binding._properties, materialIndex);
+            return true;
+        }
+
+        public void SetPlane(RuntimeFaceReflectionPlane plane)
+        {
+            if (_disposed) return;
+            _properties.SetVector(RuntimeCabinetReflectionShaderProperties.FaceOrigin, plane.OriginWS);
+            _properties.SetVector(RuntimeCabinetReflectionShaderProperties.FaceRight, plane.RightWS);
+            _properties.SetVector(RuntimeCabinetReflectionShaderProperties.FaceUp, plane.UpWS);
+            _properties.SetVector(RuntimeCabinetReflectionShaderProperties.FaceNormal, plane.NormalWS);
+            _properties.SetVector(RuntimeCabinetReflectionShaderProperties.FaceSize, new Vector4(plane.Width, plane.Height, 0f, 0f));
+            if (_renderer != null) _renderer.SetPropertyBlock(_properties, _materialIndex);
+        }
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+            if (_renderer == null) return;
+            _renderer.SetPropertyBlock(_originalProperties, _materialIndex);
+        }
+    }
+}
