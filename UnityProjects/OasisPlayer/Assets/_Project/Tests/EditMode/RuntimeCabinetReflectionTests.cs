@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using System.IO;
+using System.Text.RegularExpressions;
 using OasisPlayer.RuntimeBuild;
 using UnityEngine;
 
@@ -151,6 +152,9 @@ namespace OasisPlayer.Tests
             StringAssert.Contains("art.rgb*_OasisReflectionUnlitArtworkStrength", source);
             StringAssert.Contains("_OasisReflectionLitLampStrength", source);
             StringAssert.Contains("ReconstructFace(selected,saturate(uv+d))", source);
+            Assert.AreEqual(4, Regex.Matches(source, @"\bSAMPLER\(").Count, "Cabinet reflection shader must share Face samplers to remain below the D3D11 ps_4_0 limit.");
+            StringAssert.DoesNotContain("sampler_OasisArtworkTex1", source);
+            StringAssert.Contains("float3 colour=float3(0,0,0)", source);
             StringAssert.Contains("UsePass \"Universal Render Pipeline/Lit/ShadowCaster\"", source);
             StringAssert.Contains("UsePass \"Universal Render Pipeline/Lit/DepthOnly\"", source);
             StringAssert.Contains("UsePass \"Universal Render Pipeline/Lit/DepthNormals\"", source);
