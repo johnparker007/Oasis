@@ -7,6 +7,36 @@ namespace OasisPlayer.Tests
     public sealed class RuntimeFaceRendererTests
     {
         [Test]
+        public void OasisFaceShaderContainsEveryRuntimeFaceProperty()
+        {
+            var shader = Shader.Find(RuntimeFaceShaderProperties.ShaderName);
+            Assert.NotNull(shader);
+
+            var propertyNames = new[]
+            {
+                RuntimeFaceShaderProperties.ArtworkTextureName,
+                RuntimeFaceShaderProperties.MaskTextureName,
+                RuntimeFaceShaderProperties.TrayIdTextureName,
+                RuntimeFaceShaderProperties.LampIds0TextureName,
+                RuntimeFaceShaderProperties.LampWeights0TextureName,
+                RuntimeFaceShaderProperties.LampStateTextureName,
+                RuntimeFaceShaderProperties.LampExposureStopsName,
+                RuntimeFaceShaderProperties.StaticBrightnessName,
+                RuntimeFaceShaderProperties.BaseAmbientStrengthName,
+                RuntimeFaceShaderProperties.BaseMainLightStrengthName,
+                RuntimeFaceShaderProperties.BaseAdditionalLightStrengthName,
+                RuntimeFaceShaderProperties.MaskStrengthName,
+                RuntimeFaceShaderProperties.NormalSignName,
+                RuntimeFaceShaderProperties.CullModeName,
+                RuntimeFaceShaderProperties.FaceRotationQuarterTurnsName,
+                RuntimeFaceShaderProperties.FaceFlipHorizontalName
+            };
+
+            foreach (var propertyName in propertyNames)
+                Assert.True(shader.HasProperty(propertyName), "Oasis face shader is missing " + propertyName);
+        }
+
+        [Test]
         public void ValidRuntimeFaceProducesBindingAndDoesNotMutateSharedMaterial()
         {
             var target = new GameObject("OasisFace_Front");

@@ -62,6 +62,20 @@ namespace OasisPlayer.Tests
         }
 
         [Test]
+        public void LookupDecoderRejectsZeroAndResolvesBoundaryLampIds()
+        {
+            var brightness = new float[256];
+            brightness[0] = 1f;
+            brightness[1] = 0.25f;
+            brightness[255] = 0.75f;
+
+            Assert.AreEqual(0f, RuntimeFaceLampLookupDecoder.Accumulate(brightness, new[] { 0, 0, 0 }, new[] { 255, 255, 255 }));
+            Assert.AreEqual(1f, RuntimeFaceLampLookupDecoder.Accumulate(brightness, new[] { 1, 255, 0 }, new[] { 255, 255, 255 }));
+            Assert.AreEqual(1, RuntimeFaceLampLookupDecoder.ResolveLampStateIndex(0, 1));
+            Assert.AreEqual(255, RuntimeFaceLampLookupDecoder.ResolveLampStateIndex(0, 255));
+        }
+
+        [Test]
         public void SetAllBrightnessSetsValidLampsAndLeavesSentinelZeroWithoutRedirtyingUnchangedState()
         {
             var state = new RuntimeLampState();
