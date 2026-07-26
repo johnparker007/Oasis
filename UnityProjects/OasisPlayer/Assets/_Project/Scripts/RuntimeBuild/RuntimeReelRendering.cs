@@ -176,11 +176,20 @@ namespace OasisPlayer.RuntimeBuild
     public sealed class RuntimeReelRenderBinding : IDisposable
     {
         public RuntimeReelRenderBinding(GameObject gameObject, Material material, MeshRenderer renderer, FaceRuntimeReelManifestEntry reel)
+            : this(gameObject, material, renderer, reel, 0, gameObject != null ? gameObject.transform.rotation * Quaternion.Inverse(RuntimeReelPositionConverter.ToLocalRotation(0f, reel != null && reel.isReversed, reel != null ? reel.bandOffset : 0f, RuntimeReelPositionConverter.DefaultBaselineDegrees, RuntimeReelPositionConverter.DefaultDirectionSign)) : Quaternion.identity)
+        {
+        }
+
+        public RuntimeReelRenderBinding(GameObject gameObject, Material material, MeshRenderer renderer, FaceRuntimeReelManifestEntry reel, int reelIndex, Quaternion baseRotation)
         {
             GameObject = gameObject;
             Material = material;
             Renderer = renderer;
             PropertyBlock = new MaterialPropertyBlock();
+            ReelIndex = reelIndex;
+            _baseRotation = baseRotation;
+            _isReversed = reel != null && reel.isReversed;
+            _bandOffset = reel != null ? reel.bandOffset : 0f;
             Configure(reel);
         }
 
@@ -188,9 +197,29 @@ namespace OasisPlayer.RuntimeBuild
         public Material Material { get; private set; }
         public MeshRenderer Renderer { get; private set; }
         public MaterialPropertyBlock PropertyBlock { get; private set; }
+        public int ReelIndex { get; private set; }
         private readonly int[] _lampIds = new int[3];
         private readonly float[] _brightness = new float[3];
         private int _lampStateVersion = -1;
+        private readonly Quaternion _baseRotation;
+        private readonly bool _isReversed;
+        private readonly float _bandOffset;
+        private int _reelStateVersion = -1;
+        private float _lastPosition = float.NaN;
+
+        public bool ApplyReelState(RuntimeReelState reelState)
+        {
+            if (reelState == null || reelState.Version == _reelStateVersion) return false;
+            _reelStateVersion = reelState.Version;
+            var position = reelState.GetPosition(ReelIndex);
+            if (!float.IsNaN(_lastPosition) && Mathf.Abs(_lastPosition - position) < 0.0001f) return false;
+            _lastPosition = position;
+            if (GameObject != null)
+            {
+                GameObject.transform.rotation = _baseRotation * RuntimeReelPositionConverter.ToLocalRotation(position, _isReversed, _bandOffset, RuntimeReelPositionConverter.DefaultBaselineDegrees, RuntimeReelPositionConverter.DefaultDirectionSign);
+            }
+            return true;
+        }
 
         private void Configure(FaceRuntimeReelManifestEntry reel)
         {
@@ -294,6 +323,7 @@ namespace OasisPlayer.RuntimeBuild
         public void RenderReels(RuntimeMachine machine)
         {
             if (machine == null) throw new ArgumentNullException(nameof(machine));
+            var runtimeReelIndex = 0;
             foreach (var face in machine.Faces)
             {
                 var reels = face.Manifest != null && face.Manifest.reels != null ? face.Manifest.reels : Array.Empty<FaceRuntimeReelManifestEntry>();
@@ -307,6 +337,7 @@ namespace OasisPlayer.RuntimeBuild
                 foreach (var reel in reels)
                 {
                     if (reel == null) continue;
+                    if (runtimeReelIndex >= RuntimeReelState.MaximumReelCount) { machine.AddWarning("Runtime reel limit exceeded; remaining reels were skipped."); break; }
                     if (!Validate(face, reel, out var warning)) { machine.AddWarning(warning); continue; }
                     if (!RuntimeFacePlacement.ValidateComponent(face, reel, out warning)) { machine.AddWarning(warning); continue; }
                     if (reel.BandTexture == null || reel.BandTexture.Texture == null) { machine.AddWarning($"Runtime Face '{RuntimeFacePlacement.FaceId(face)}' reel '{reel.objectId}' has no loaded reel-band texture."); continue; }
@@ -338,7 +369,7 @@ namespace OasisPlayer.RuntimeBuild
                         continue;
                     }
                     renderer.sharedMaterial = material;
-                    var binding = new RuntimeReelRenderBinding(go, material, renderer, reel);
+                    var binding = new RuntimeReelRenderBinding(go, material, renderer, reel, runtimeReelIndex++, baseRotation);
                     binding.ConfigureAperture(surfacePoint, surface.HorizontalTangent, surface.VerticalTangent, physicalWidthMetres, physicalRadiusMetres * 2f);
                     binding.ApplyLampState(machine.LampState);
                     machine.AddWarning($"Reel lamp binding: reel={DisplayReelName(reel)}, enabled={reel.reelLampsEnabled.ToString().ToLowerInvariant()}, ids=[{FormatReelLampIds(reel)}], assigned={CountAssignedReelLamps(reel)}");

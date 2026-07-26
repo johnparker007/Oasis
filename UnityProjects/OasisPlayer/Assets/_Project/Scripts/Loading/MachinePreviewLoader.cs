@@ -58,11 +58,13 @@ namespace OasisPlayer.Loading
             var segmentRenderer = new RuntimeSegmentDisplayRenderer();
             segmentRenderer.RenderDisplays(machine);
             machine.SetSegmentDisplayRenderer(segmentRenderer);
-            var updater = correctionRoot.AddComponent<RuntimeMachineLampUpdater>();
+            var updater = correctionRoot.AddComponent<RuntimeMachineStateUpdater>();
             updater.Initialize(machine);
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             var controls = correctionRoot.AddComponent<RuntimeLampDevelopmentControls>();
             controls.Initialize(machine);
+            var reelControls = correctionRoot.AddComponent<RuntimeReelDevelopmentControls>();
+            reelControls.Initialize(machine);
 #endif
             foreach (var warning in machine.Warnings) Debug.LogWarning(warning);
             return machine;
