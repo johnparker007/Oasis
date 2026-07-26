@@ -45,7 +45,8 @@ public static class CabinetDocumentStorage
                     .Where(specification => !string.IsNullOrWhiteSpace(specification.Id))
                     .Select(specification => specification.Normalized())
                     .ToArray(),
-                DefaultReelSpecificationId = string.IsNullOrWhiteSpace(parsed.DefaultReelSpecificationId) ? null : parsed.DefaultReelSpecificationId.Trim()
+                DefaultReelSpecificationId = string.IsNullOrWhiteSpace(parsed.DefaultReelSpecificationId) ? null : parsed.DefaultReelSpecificationId.Trim(),
+                Reflections = (parsed.Reflections ?? []).Where(reflection => !string.IsNullOrWhiteSpace(reflection.Id) && reflection.Plane is not null && reflection.Settings is not null).Select(reflection => reflection.Normalized()).ToArray()
             };
             return true;
         }

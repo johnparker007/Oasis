@@ -54,6 +54,7 @@ namespace OasisPlayer.Loading
             _runtimeMachine = machine;
             _faceLoader.LoadFaces(machine);
             _faceRenderer.RenderFaces(machine);
+            new RuntimeCabinetReflectionRenderer().Render(machine);
             new RuntimeReelRenderer().RenderReels(machine);
             var segmentRenderer = new RuntimeSegmentDisplayRenderer();
             segmentRenderer.RenderDisplays(machine);

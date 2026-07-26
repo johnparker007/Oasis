@@ -48,6 +48,7 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
         _livePreviewRefreshTimer.Tick += OnLivePreviewRefreshTimerTick;
         ReloadCommand = new RelayCommand(async () => await LoadAsync(), CanLoad);
         ResetCameraCommand = Viewport.ResetCameraCommand;
+        ReflectionEditor = new CabinetReflectionEditorViewModel(document, openDocumentsAccessor);
         if (!string.IsNullOrWhiteSpace(ModelPath))
         {
             _ = LoadAsync();
@@ -58,6 +59,7 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
 
     public CabinetViewportViewModel Viewport { get; }
     public ObservableCollection<CabinetFaceTargetViewModel> FaceTargets { get; } = new();
+    public CabinetReflectionEditorViewModel ReflectionEditor { get; }
     public string ModelPath { get; }
     public string DisplayName => string.IsNullOrWhiteSpace(ModelPath) ? "Cabinet Model Viewer" : Path.GetFileName(ModelPath);
     public string LoadStatus { get => _loadStatus; private set { _loadStatus = value; OnPropertyChanged(); } }
@@ -133,6 +135,7 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(SelectedFaceRotation));
         OnPropertyChanged(nameof(IsSelectedFaceFlippedHorizontally));
         OnPropertyChanged(nameof(SelectedLampPreviewMode));
+        ReflectionEditor.Refresh();
         InvalidatePreviewCache();
         RefreshFacePreviews();
     }
@@ -167,6 +170,7 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(HasFaceTargets));
             OnPropertyChanged(nameof(FaceTargetStatus));
             SelectedFaceTarget = FaceTargets.FirstOrDefault();
+            ReflectionEditor.SetDiscovery(result.ReflectionTargets, result.FaceTargets);
             RefreshFacePreviews();
             LoadStatus = FaceTargets.Count == 0
                 ? $"Loaded {DisplayName}; no Oasis face targets found"

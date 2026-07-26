@@ -6,17 +6,57 @@ public sealed record CabinetDocument(
     CabinetTargetOverride[] TargetOverrides,
     CabinetPreviewSettings Preview,
     CabinetReelSpecification[] ReelSpecifications = null!,
-    string? DefaultReelSpecificationId = null)
+    string? DefaultReelSpecificationId = null,
+    CabinetReflectionDefinition[]? Reflections = null)
 {
-    public static CabinetDocument Empty => new(2, new CabinetModelReference(string.Empty, 1.0, "Y"), [], CabinetPreviewSettings.Default, [], null);
+    public static CabinetDocument Empty => new(3, new CabinetModelReference(string.Empty, 1.0, "Y"), [], CabinetPreviewSettings.Default, [], null);
 
     public static CabinetDocument FromModelPath(string modelPath) => new(
-        2,
+        3,
         new CabinetModelReference(modelPath, 1.0, "Y"),
         [],
         CabinetPreviewSettings.Default,
         [],
         null);
+}
+
+public sealed record CabinetReflectionVector(double X, double Y, double Z);
+
+public sealed record CabinetReflectionPlane(CabinetReflectionVector Origin, CabinetReflectionVector Right, CabinetReflectionVector Up, double Width, double Height);
+
+public sealed record CabinetReflectionSettings(bool Enabled, double Strength, double UnlitArtworkStrength, double LitLampStrength, double FresnelPower, double FresnelStrength, double Roughness, double Distortion, double EdgeFade)
+{
+    public static CabinetReflectionSettings RoughPlastic => new(true, .2, .2, 1, 5, .5, .5, .005, .03);
+    public static CabinetReflectionSettings PolishedChrome => new(true, .8, .8, 1.5, 4, 1, 0, 0, .015);
+    public CabinetReflectionSettings Normalized() => new(Enabled, Math.Clamp(Strength, 0, 2), Math.Clamp(UnlitArtworkStrength, 0, 2), Math.Clamp(LitLampStrength, 0, 4), Math.Clamp(FresnelPower, .1, 10), Math.Clamp(FresnelStrength, 0, 2), Math.Clamp(Roughness, 0, 1), Math.Clamp(Distortion, 0, .05), Math.Clamp(EdgeFade, 0, .25));
+}
+
+public sealed record CabinetReflectionDefinition(string Id, string TargetId, int MaterialSlot, string SourceFaceId, CabinetReflectionPlane Plane, CabinetReflectionSettings Settings, string? VisibilityMask = null, string PlaneSource = CabinetReflectionPlaneSource.Automatic)
+{
+    public CabinetReflectionDefinition Normalized() => this with { Id = Id.Trim(), TargetId = TargetId?.Trim() ?? string.Empty, SourceFaceId = SourceFaceId?.Trim() ?? string.Empty, Settings = Settings.Normalized(), VisibilityMask = string.IsNullOrWhiteSpace(VisibilityMask) ? null : VisibilityMask.Trim() };
+}
+
+public static class CabinetReflectionPlaneSource { public const string Automatic = "Automatic from Face target"; public const string Manual = "Manual"; }
+public static class CabinetReflectionPreset
+{
+    public const string RoughPlastic = "Rough Plastic"; public const string PolishedChrome = "Polished Chrome"; public const string Custom = "Custom";
+    public static string Detect(CabinetReflectionSettings value) => value == CabinetReflectionSettings.RoughPlastic ? RoughPlastic : value == CabinetReflectionSettings.PolishedChrome ? PolishedChrome : Custom;
+    public static CabinetReflectionSettings Resolve(string preset, CabinetReflectionSettings current) => preset == RoughPlastic ? CabinetReflectionSettings.RoughPlastic : preset == PolishedChrome ? CabinetReflectionSettings.PolishedChrome : current;
+}
+
+public static class CabinetReflectionPlaneValidation
+{
+    public static bool TryValidate(CabinetReflectionPlane? plane, out string error)
+    {
+        error = string.Empty; if (plane is null || plane.Origin is null || plane.Right is null || plane.Up is null) { error = "Plane values are missing."; return false; }
+        var values = new[] { plane.Origin.X, plane.Origin.Y, plane.Origin.Z, plane.Right.X, plane.Right.Y, plane.Right.Z, plane.Up.X, plane.Up.Y, plane.Up.Z, plane.Width, plane.Height };
+        if (values.Any(value => double.IsNaN(value) || double.IsInfinity(value))) { error = "Plane values must be finite."; return false; }
+        if (plane.Width <= 0 || plane.Height <= 0) { error = "Plane width and height must be positive."; return false; }
+        var rightLength = Math.Sqrt(plane.Right.X * plane.Right.X + plane.Right.Y * plane.Right.Y + plane.Right.Z * plane.Right.Z); var upLength = Math.Sqrt(plane.Up.X * plane.Up.X + plane.Up.Y * plane.Up.Y + plane.Up.Z * plane.Up.Z);
+        if (rightLength < 1e-6 || upLength < 1e-6) { error = "Plane axes must be non-zero."; return false; }
+        var dot = (plane.Right.X * plane.Up.X + plane.Right.Y * plane.Up.Y + plane.Right.Z * plane.Up.Z) / (rightLength * upLength);
+        if (Math.Abs(dot) > 1e-4) { error = "Plane right and up axes must be orthogonal."; return false; } return true;
+    }
 }
 
 public sealed record CabinetReelSpecification(string Id, string Name, double DiameterMm, double WidthMm)

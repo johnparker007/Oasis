@@ -4,6 +4,13 @@ namespace OasisEditor;
 
 internal static class CabinetMutationCommands
 {
+    public static Commands.ICommand CreateUpdateReflectionCommand(Guid documentId, DocumentTabViewModel document, string originalId, CabinetReflectionDefinition definition)
+    {
+        var current = document.GetCabinetDocument(); var reflections = current.Reflections ?? [];
+        return new SetCabinetDocumentCommand(documentId, document, current with { Reflections = reflections.Select(item => item.Id == originalId ? definition : item).ToArray() }, "Update reflection receiver");
+    }
+    public static Commands.ICommand CreateAddReflectionCommand(Guid documentId, DocumentTabViewModel document, CabinetReflectionDefinition definition) { var current = document.GetCabinetDocument(); return new SetCabinetDocumentCommand(documentId, document, current with { Reflections = (current.Reflections ?? []).Append(definition).ToArray() }, "Add reflection receiver"); }
+    public static Commands.ICommand CreateDeleteReflectionCommand(Guid documentId, DocumentTabViewModel document, string id) { var current = document.GetCabinetDocument(); return new SetCabinetDocumentCommand(documentId, document, current with { Reflections = (current.Reflections ?? []).Where(item => item.Id != id).ToArray() }, "Delete reflection receiver"); }
     public static Commands.ICommand CreateSetTargetFrontSideCommand(Guid documentId, DocumentTabViewModel document, string targetId, string frontSide)
     {
         return new SetCabinetTargetOverrideCommand(documentId, document, targetId, CabinetTargetOverride.NormalizeFrontSide(frontSide), null, null, "Set cabinet target front side");

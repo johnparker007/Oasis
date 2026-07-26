@@ -8,6 +8,26 @@ namespace OasisEditor.Tests;
 public sealed class MachineRuntimeBuildServiceTests
 {
     [Fact]
+    public void BuildFromCabinetDocument_ExportsReflectionDefinitionAndVisibilityMask()
+    {
+        var root = CreateTempRoot(); var project = CreateProject(root);
+        var cabinetDir = Directory.CreateDirectory(Path.Combine(project.AssetsDirectory, "Cabinet3D", "Reflective")).FullName;
+        File.WriteAllBytes(Path.Combine(cabinetDir, "source.glb"), [1]); WriteSolidPng(Path.Combine(cabinetDir, "side-mask.png"), 2, 2, SKColors.White);
+        var reflection = new CabinetReflectionDefinition("side", "SideMesh", 0, "lowerGlass", new CabinetReflectionPlane(new(0, 0, 0), new(1, 0, 0), new(0, 1, 0), 2, 1), CabinetReflectionSettings.RoughPlastic with { Enabled = false }, "side-mask.png");
+        var document = CabinetDocument.FromModelPath("source.glb") with { Reflections = [reflection] };
+        var manifestPath = Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName); File.WriteAllText(manifestPath, CabinetDocumentStorage.Serialize(document));
+
+        var result = new MachineRuntimeBuildService().BuildFromCabinetDocument(project, manifestPath, document);
+
+        Assert.True(result.Success, result.ErrorMessage);
+        using var json = JsonDocument.Parse(File.ReadAllText(Path.Combine(result.BuildRoot!, "cabinet", "cabinet.runtime.json")));
+        var exported = Assert.Single(json.RootElement.GetProperty("reflections").EnumerateArray());
+        Assert.Equal("side", exported.GetProperty("id").GetString()); Assert.Equal("SideMesh", exported.GetProperty("targetId").GetString());
+        Assert.Equal("reflection-masks/side.png", exported.GetProperty("visibilityMask").GetString());
+        Assert.True(File.Exists(Path.Combine(result.BuildRoot, "cabinet", "reflection-masks", "side.png")));
+    }
+
+    [Fact]
     public void BuildFromCabinetDocument_WritesDeterministicVersionedBuildAndCopiesGlb()
     {
         var root = CreateTempRoot();
@@ -34,11 +54,12 @@ public sealed class MachineRuntimeBuildServiceTests
         Assert.Equal("cabinet/cabinet.runtime.json", machine.RootElement.GetProperty("cabinetManifest").GetString());
         using var cabinet = JsonDocument.Parse(File.ReadAllText(Path.Combine(result.BuildRoot, "cabinet", "cabinet.runtime.json")));
         Assert.Equal("oasis.cabinet.runtime", cabinet.RootElement.GetProperty("schema").GetString());
-        Assert.Equal(1, cabinet.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(2, cabinet.RootElement.GetProperty("schemaVersion").GetInt32());
         Assert.Equal("Test Cabinet", cabinet.RootElement.GetProperty("cabinetId").GetString());
         Assert.Equal("cabinet.glb", cabinet.RootElement.GetProperty("glb").GetString());
         Assert.Equal(2.5, cabinet.RootElement.GetProperty("scale").GetDouble());
         Assert.Equal("Z", cabinet.RootElement.GetProperty("upAxis").GetString());
+        Assert.Empty(cabinet.RootElement.GetProperty("reflections").EnumerateArray());
     }
 
     [Fact]
