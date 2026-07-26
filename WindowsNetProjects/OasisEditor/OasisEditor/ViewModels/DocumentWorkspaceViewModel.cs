@@ -540,6 +540,8 @@ public sealed class DocumentWorkspaceViewModel
 
     public void ReplaceDocument(DocumentTabViewModel original, DocumentTabViewModel updated)
     {
+        updated.SetOpenDocumentsAccessor(() => _openDocuments);
+        updated.SetProjectAccessor(_getLoadedProject);
         ExecuteDocumentMutation(new ReplaceDocumentTabMutationCommand(this, original, updated));
     }
 
@@ -547,6 +549,7 @@ public sealed class DocumentWorkspaceViewModel
     public void ClearProjectSessionState()
     {
         _shellCommandService.History.Clear();
+        foreach (var document in _openDocuments) document.Dispose();
         _openDocuments.Clear();
         _setSelectedDocument(null);
         _setLoadedProject(null);
@@ -633,6 +636,8 @@ public sealed class DocumentWorkspaceViewModel
             PanelPanX = selectedDocument.PanelPanX,
             PanelPanY = selectedDocument.PanelPanY
         };
+        updated.SetOpenDocumentsAccessor(() => _openDocuments);
+        updated.SetProjectAccessor(_getLoadedProject);
 
         ExecuteDocumentMutation(new ReplaceDocumentTabMutationCommand(this, selectedDocument, updated));
         _setStatusMessage($"Updated inspector summary for {updated.Title}");
@@ -653,6 +658,7 @@ public sealed class DocumentWorkspaceViewModel
             faceDocumentJson: faceDocumentJson,
             cabinetDocumentJson: cabinetDocumentJson);
         tab.SetOpenDocumentsAccessor(() => _openDocuments);
+        tab.SetProjectAccessor(_getLoadedProject);
         return tab;
     }
 
@@ -929,6 +935,7 @@ public sealed class DocumentWorkspaceViewModel
             WasExecuted = false;
             _index = _owner._openDocuments.IndexOf(_document);
             _owner._openDocuments.Remove(_document);
+            _document.Dispose();
             _document.CommandService.History.Clear();
             _owner._onDocumentClosed(_document.DocumentId);
 
@@ -1004,4 +1011,3 @@ public sealed class DocumentWorkspaceViewModel
         }
     }
 }
-

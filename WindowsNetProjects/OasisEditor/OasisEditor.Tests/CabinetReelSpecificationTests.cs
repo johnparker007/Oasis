@@ -10,8 +10,7 @@ public sealed class CabinetReelSpecificationTests
     [Fact]
     public void ReflectionDefinitionRoundTripsExplicitPlaneAndSettings()
     {
-        var reflection = new CabinetReflectionDefinition("side", "CabinetSide", 1, "lowerGlass",
-            new CabinetReflectionPlane(new(1, 2, 3), new(1, 0, 0), new(0, 1, 0), 2.5, 1.25),
+        var reflection = new CabinetReflectionDefinition("side", "CabinetSide", 1, [new CabinetReflectionSource("lowerGlass", new CabinetReflectionPlane(new(1, 2, 3), new(1, 0, 0), new(0, 1, 0), 2.5, 1.25))],
             CabinetReflectionSettings.PolishedChrome, "masks/side.png");
         var source = CabinetDocument.FromModelPath("cabinet.glb") with { Reflections = [reflection] };
 
@@ -47,7 +46,7 @@ public sealed class CabinetReelSpecificationTests
     public void CabinetSerialization_RoundTripsReelSpecificationsAndDefault()
     {
         var cabinet = new CabinetDocument(
-            2,
+            4,
             new CabinetModelReference("source.glb", 1.0, "Y"),
             [],
             CabinetPreviewSettings.Default,
@@ -77,7 +76,7 @@ public sealed class CabinetReelSpecificationTests
             ]
         };
         var cabinet = new CabinetDocument(
-            2,
+            4,
             new CabinetModelReference("source.glb", 1.0, "Y"),
             [],
             CabinetPreviewSettings.Default,
@@ -101,7 +100,7 @@ public sealed class CabinetReelSpecificationTests
     {
         var document = new DocumentTabViewModel(
             EditorDocument.CreateCabinet3DStub("Cabinet"),
-            cabinetDocumentJson: CabinetDocumentStorage.Serialize(new CabinetDocument(2, new CabinetModelReference("cabinet.glb", 1, "Y"), [], CabinetPreviewSettings.Default, [], null)));
+            cabinetDocumentJson: CabinetDocumentStorage.Serialize(new CabinetDocument(4, new CabinetModelReference("cabinet.glb", 1, "Y"), [], CabinetPreviewSettings.Default, [], null)));
 
         var addCommand = CabinetMutationCommands.CreateAddReelSpecificationCommand(document.DocumentId, document);
         addCommand.Execute();
@@ -129,7 +128,7 @@ public sealed class CabinetReelSpecificationTests
             var project = new EditorProject { Name = "Test", ProjectDirectory = root, ProjectFilePath = Path.Combine(root, "test.oasis"), AssetsDirectory = Path.Combine(root, "Assets"), MachinesDirectory = Path.Combine(root, "Machines"), GeneratedDirectory = Path.Combine(root, "Generated") };
             var cabinetPath = Path.Combine(root, "Assets", "Cabinets", "main.cabinet3d");
             Directory.CreateDirectory(Path.GetDirectoryName(cabinetPath)!);
-            File.WriteAllText(cabinetPath, CabinetDocumentStorage.Serialize(new CabinetDocument(2, new CabinetModelReference("cabinet.glb", 1, "Y"), [], CabinetPreviewSettings.Default, [new CabinetReelSpecification("standard", "Standard", 210, 50)], "standard")));
+            File.WriteAllText(cabinetPath, CabinetDocumentStorage.Serialize(new CabinetDocument(4, new CabinetModelReference("cabinet.glb", 1, "Y"), [], CabinetPreviewSettings.Default, [new CabinetReelSpecification("standard", "Standard", 210, 50)], "standard")));
             var face = new FaceDocumentModel { AssignedCabinetAssetPath = "Assets/Cabinets/main.cabinet3d" };
 
             var context = new FaceCabinetContextResolver().ResolveForFace(project, [], face);

@@ -21,7 +21,7 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
     public const string MachineSchema = "oasis.machine.runtime";
     public const string CabinetSchema = "oasis.cabinet.runtime";
     public const int MachineSchemaVersion = 3;
-    public const int CabinetSchemaVersion = 2;
+    public const int CabinetSchemaVersion = 3;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -88,15 +88,23 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
 
     private static void ValidateReflections(IReadOnlyList<CabinetReflectionDefinition> definitions, IReadOnlyList<CabinetReflectionReceiverTarget> targets, IReadOnlyList<MachineRuntimeFaceReference> faces)
     {
-        var ids = new HashSet<string>(StringComparer.Ordinal); var claims = new HashSet<string>(StringComparer.Ordinal); var faceIds = faces.Select(face => face.FaceId).ToHashSet(StringComparer.Ordinal);
+        var ids = new HashSet<string>(StringComparer.Ordinal); var claims = new HashSet<string>(StringComparer.Ordinal); var faceIds = faces.GroupBy(face => face.FaceId).ToDictionary(group => group.Key, group => group.ToArray(), StringComparer.Ordinal);
         foreach (var definition in definitions.Where(item => item.Settings.Enabled))
         {
             if (string.IsNullOrWhiteSpace(definition.Id) || !ids.Add(definition.Id)) throw new InvalidOperationException($"Enabled cabinet reflection IDs must be non-empty and unique: '{definition.Id}'.");
             var target = targets.SingleOrDefault(item => item.TargetPath == definition.TargetId) ?? throw new InvalidOperationException($"Reflection '{definition.Id}' cabinet renderer target was not found: '{definition.TargetId}'.");
             if (target.MaterialSlots.All(slot => slot.Index != definition.MaterialSlot)) throw new InvalidOperationException($"Reflection '{definition.Id}' material slot {definition.MaterialSlot} is invalid for '{definition.TargetId}'.");
             if (!claims.Add(definition.TargetId + ":" + definition.MaterialSlot)) throw new InvalidOperationException($"Multiple enabled reflections target '{definition.TargetId}' material slot {definition.MaterialSlot}.");
-            if (!faceIds.Contains(definition.SourceFaceId)) throw new InvalidOperationException($"Reflection '{definition.Id}' source Face was not exported for this cabinet: '{definition.SourceFaceId}'.");
-            if (!CabinetReflectionPlaneValidation.TryValidate(definition.Plane, out var error)) throw new InvalidOperationException($"Reflection '{definition.Id}' plane is invalid: {error}");
+            if (definition.Sources.Length == 0) throw new InvalidOperationException($"Reflection '{definition.Id}' in cabinet requires at least one source Face.");
+            if (definition.Sources.Length > CabinetReflectionContract.MaximumSources) throw new InvalidOperationException($"Reflection '{definition.Id}' has {definition.Sources.Length} sources; the supported maximum is {CabinetReflectionContract.MaximumSources}.");
+            var sourceIds = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var source in definition.Sources)
+            {
+                var display = faceIds.TryGetValue(source.FaceId, out var matches) && matches.Length > 0 ? matches[0].AssetName : "unknown Face";
+                if (!sourceIds.Add(source.FaceId)) throw new InvalidOperationException($"Reflection '{definition.Id}' contains duplicate source Face '{display}' ({source.FaceId}).");
+                if (matches is null || matches.Length != 1) throw new InvalidOperationException($"Reflection '{definition.Id}' source Face '{display}' ({source.FaceId}) must resolve uniquely; found {matches?.Length ?? 0} matches.");
+                if (!CabinetReflectionPlaneValidation.TryValidate(source.Plane, out var error)) throw new InvalidOperationException($"Reflection '{definition.Id}' source Face '{display}' ({source.FaceId}) plane is invalid: {error}");
+            }
         }
     }
 

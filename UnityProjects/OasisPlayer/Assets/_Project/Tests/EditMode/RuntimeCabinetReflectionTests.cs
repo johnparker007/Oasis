@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using System.IO;
+using System.Text.RegularExpressions;
 using OasisPlayer.RuntimeBuild;
 using UnityEngine;
 
@@ -56,19 +57,19 @@ namespace OasisPlayer.Tests
             var material = new Material(shader);
             try
             {
-                Assert.True(material.HasProperty(RuntimeFaceShaderProperties.ArtworkTexture));
-                Assert.True(material.HasProperty(RuntimeFaceShaderProperties.MaskTexture));
-                Assert.True(material.HasProperty(RuntimeFaceShaderProperties.LampIds0Texture));
-                Assert.True(material.HasProperty(RuntimeFaceShaderProperties.LampWeights0Texture));
+                Assert.True(material.HasProperty(RuntimeCabinetReflectionShaderProperties.Artwork[0]));
+                Assert.True(material.HasProperty(RuntimeCabinetReflectionShaderProperties.Mask[0]));
+                Assert.True(material.HasProperty(RuntimeCabinetReflectionShaderProperties.LampIds[0]));
+                Assert.True(material.HasProperty(RuntimeCabinetReflectionShaderProperties.LampWeights[0]));
                 Assert.True(material.HasProperty(RuntimeFaceShaderProperties.LampStateTexture));
-                Assert.True(material.HasProperty(RuntimeCabinetReflectionShaderProperties.FaceOrigin));
-                Assert.True(material.HasProperty(RuntimeCabinetReflectionShaderProperties.FaceSize));
+                Assert.True(material.HasProperty(RuntimeCabinetReflectionShaderProperties.FaceOrigin[0]));
+                Assert.True(material.HasProperty(RuntimeCabinetReflectionShaderProperties.FaceSize[0]));
                 Assert.True(material.HasProperty(RuntimeCabinetReflectionShaderProperties.Strength));
                 foreach (var property in RuntimeCabinetReflectionShaderProperties.RequiredProperties) Assert.True(material.HasProperty(property), property.ToString());
-                Assert.True(material.HasProperty(RuntimeFaceShaderProperties.LampExposureStops));
-                Assert.True(material.HasProperty(RuntimeFaceShaderProperties.MaskStrength));
-                Assert.True(material.HasProperty(RuntimeFaceShaderProperties.FaceRotationQuarterTurns));
-                Assert.True(material.HasProperty(RuntimeFaceShaderProperties.FaceFlipHorizontal));
+                Assert.True(material.HasProperty(RuntimeCabinetReflectionShaderProperties.Exposure[0]));
+                Assert.True(material.HasProperty(RuntimeCabinetReflectionShaderProperties.MaskStrength[0]));
+                Assert.True(material.HasProperty(RuntimeCabinetReflectionShaderProperties.Rotation[0]));
+                Assert.True(material.HasProperty(RuntimeCabinetReflectionShaderProperties.Flip[0]));
             }
             finally { Object.DestroyImmediate(material); }
         }
@@ -90,7 +91,7 @@ namespace OasisPlayer.Tests
             RuntimeFaceReflectionPlane.TryCreate(Vector3.zero, Vector3.right, Vector3.up, 1, 1, out var plane);
             try
             {
-                Assert.True(RuntimeCabinetReflectionBinding.TryCreate(machine, "glass", renderer, 0, plane, out var binding, out var warning), warning);
+                Assert.True(RuntimeCabinetReflectionBinding.TryCreate(machine, new[] { new RuntimeCabinetReflectionSource("glass", plane) }, renderer, 0, out var binding, out var warning), warning);
                 Assert.AreSame(untouched, renderer.sharedMaterials[1]); Assert.AreNotSame(material, renderer.sharedMaterials[0]); Assert.AreSame(binding.RuntimeMaterial, renderer.sharedMaterials[0]);
                 Assert.AreSame(baseTexture, binding.RuntimeMaterial.GetTexture("_BaseMap")); Assert.AreEqual(material.mainTextureScale, binding.RuntimeMaterial.GetTextureScale("_BaseMap")); Assert.AreEqual(material.mainTextureOffset, binding.RuntimeMaterial.GetTextureOffset("_BaseMap"));
                 Assert.AreSame(normalTexture, binding.RuntimeMaterial.GetTexture("_BumpMap")); Assert.AreEqual(.8f, binding.RuntimeMaterial.GetFloat("_BumpScale"));
@@ -101,7 +102,7 @@ namespace OasisPlayer.Tests
                 var lampTexture = actual.GetTexture(RuntimeFaceShaderProperties.LampStateTexture);
                 machine.LampState.SetBrightness(1, .5f); machine.ApplyDynamicState();
                 renderer.GetPropertyBlock(actual, 0); Assert.AreSame(lampTexture, actual.GetTexture(RuntimeFaceShaderProperties.LampStateTexture));
-                Assert.False(RuntimeCabinetReflectionBinding.TryCreate(machine, "glass", renderer, 2, plane, out _, out _));
+                Assert.False(RuntimeCabinetReflectionBinding.TryCreate(machine, new[] { new RuntimeCabinetReflectionSource("glass", plane) }, renderer, 2, out _, out _));
                 machine.AddCabinetReflectionBinding(binding); machine.UnloadAssets(); machine.UnloadAssets();
                 Assert.AreSame(material, renderer.sharedMaterials[0]); Assert.AreSame(untouched, renderer.sharedMaterials[1]);
                 Assert.True(ownedMaterial == null);
@@ -147,10 +148,13 @@ namespace OasisPlayer.Tests
         public void ShaderSourceRetainsSharedReconstructionBoundsAndProductionPasses()
         {
             var source = File.ReadAllText("Assets/_Project/Shaders/OasisCabinetAnalyticReflection.shader");
-            StringAssert.Contains("#include \"Includes/OasisFaceLampCommon.hlsl\"", source);
+            StringAssert.Contains("_OasisReflectionSourceCount", source);
             StringAssert.Contains("art.rgb*_OasisReflectionUnlitArtworkStrength", source);
             StringAssert.Contains("_OasisReflectionLitLampStrength", source);
-            StringAssert.Contains("ReconstructFace(saturate(uv+d))", source);
+            StringAssert.Contains("ReconstructFace(selected,saturate(uv+d))", source);
+            Assert.AreEqual(4, Regex.Matches(source, @"\bSAMPLER\(").Count, "Cabinet reflection shader must share Face samplers to remain below the D3D11 ps_4_0 limit.");
+            StringAssert.DoesNotContain("sampler_OasisArtworkTex1", source);
+            StringAssert.Contains("float3 colour=float3(0,0,0)", source);
             StringAssert.Contains("UsePass \"Universal Render Pipeline/Lit/ShadowCaster\"", source);
             StringAssert.Contains("UsePass \"Universal Render Pipeline/Lit/DepthOnly\"", source);
             StringAssert.Contains("UsePass \"Universal Render Pipeline/Lit/DepthNormals\"", source);

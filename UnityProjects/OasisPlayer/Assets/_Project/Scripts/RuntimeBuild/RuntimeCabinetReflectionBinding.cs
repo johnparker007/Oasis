@@ -17,64 +17,39 @@ namespace OasisPlayer.RuntimeBuild
         private RuntimeCabinetReflectionBinding(Renderer renderer, int materialIndex, Material originalMaterial, Material ownedMaterial) { _renderer = renderer; _materialIndex = materialIndex; _originalMaterial = originalMaterial; _ownedMaterial = ownedMaterial; }
         public Material RuntimeMaterial { get { return _ownedMaterial; } }
 
-        public static bool TryCreate(RuntimeMachine machine, string faceId, Renderer renderer, int materialIndex, RuntimeFaceReflectionPlane plane, out RuntimeCabinetReflectionBinding binding, out string warning, RuntimeCabinetReflectionSettings settings = null, Texture visibilityMask = null)
+        public static bool TryCreate(RuntimeMachine machine, RuntimeCabinetReflectionSource[] sources, Renderer renderer, int materialIndex, out RuntimeCabinetReflectionBinding binding, out string warning, RuntimeCabinetReflectionSettings settings = null, Texture visibilityMask = null)
         {
             binding = null; warning = string.Empty;
             if (machine == null || renderer == null) { warning = "Cabinet reflection requires a runtime machine and target renderer."; return false; }
-            if (!plane.IsValid) { warning = "Cabinet reflection Face plane is invalid."; return false; }
-            if (string.IsNullOrWhiteSpace(faceId)) { warning = "Cabinet reflection source Face ID is empty."; return false; }
-            RuntimeFace face = null; var matches = 0;
-            foreach (var candidate in machine.Faces)
-                if (candidate.Reference != null && string.Equals(candidate.Reference.faceId, faceId.Trim(), StringComparison.Ordinal)) { face = candidate; matches++; }
-            if (matches != 1) { warning = matches == 0 ? $"Cabinet reflection source Face '{faceId}' was not found." : $"Cabinet reflection source Face '{faceId}' is ambiguous ({matches} matches)."; return false; }
-            if (face.Artwork?.Texture == null || face.Mask?.Texture == null || face.LampIds0?.Texture == null || face.LampWeights0?.Texture == null) { warning = $"Cabinet reflection source Face '{faceId}' is missing required artwork or lamp lookup textures."; return false; }
-            var materials = renderer.sharedMaterials;
-            if (materialIndex < 0 || materialIndex >= materials.Length || materials[materialIndex] == null) { warning = $"Cabinet reflection material slot {materialIndex} is invalid."; return false; }
-            var shader = Shader.Find(RuntimeCabinetReflectionShaderProperties.ShaderName);
-            if (shader == null) { warning = $"Cabinet reflection shader '{RuntimeCabinetReflectionShaderProperties.ShaderName}' was not found."; return false; }
-            var originalMaterial = materials[materialIndex];
-            Material ownedMaterial = null;
-            try
+            if (sources == null || sources.Length == 0 || sources.Length > RuntimeCabinetReflectionShaderProperties.MaximumSources) { warning = $"Cabinet reflection requires 1-{RuntimeCabinetReflectionShaderProperties.MaximumSources} sources."; return false; }
+            var faces = new RuntimeFace[sources.Length];
+            for (var sourceIndex = 0; sourceIndex < sources.Length; sourceIndex++)
             {
-                ownedMaterial = new Material(shader) { name = originalMaterial.name + " (Oasis Analytic Reflection)" };
-                CopyCabinetProperties(originalMaterial, ownedMaterial);
+                var source = sources[sourceIndex]; if (!source.Plane.IsValid || string.IsNullOrWhiteSpace(source.FaceId)) { warning = $"Cabinet reflection source {sourceIndex} is invalid."; return false; }
+                var matches = 0; foreach (var candidate in machine.Faces) if (candidate.Reference != null && string.Equals(candidate.Reference.faceId, source.FaceId.Trim(), StringComparison.Ordinal)) { faces[sourceIndex] = candidate; matches++; }
+                if (matches != 1) { warning = $"Cabinet reflection source Face '{source.FaceId}' resolved {matches} times."; return false; }
+                var face = faces[sourceIndex]; if (face.Artwork?.Texture == null || face.Mask?.Texture == null || face.LampIds0?.Texture == null || face.LampWeights0?.Texture == null) { warning = $"Cabinet reflection source Face '{source.FaceId}' is missing required textures."; return false; }
             }
+            var materials = renderer.sharedMaterials; if (materialIndex < 0 || materialIndex >= materials.Length || materials[materialIndex] == null) { warning = $"Cabinet reflection material slot {materialIndex} is invalid."; return false; }
+            var shader = Shader.Find(RuntimeCabinetReflectionShaderProperties.ShaderName); if (shader == null) { warning = $"Cabinet reflection shader '{RuntimeCabinetReflectionShaderProperties.ShaderName}' was not found."; return false; }
+            var originalMaterial = materials[materialIndex]; Material ownedMaterial = null;
+            try { ownedMaterial = new Material(shader) { name = originalMaterial.name + " (Oasis Analytic Reflection)" }; CopyCabinetProperties(originalMaterial, ownedMaterial); }
             catch (Exception ex) { DestroyOwned(ownedMaterial); warning = "Cabinet reflection material conversion failed: " + ex.Message; return false; }
-
-            binding = new RuntimeCabinetReflectionBinding(renderer, materialIndex, originalMaterial, ownedMaterial);
-            renderer.GetPropertyBlock(binding._originalProperties, materialIndex);
-            renderer.GetPropertyBlock(binding._properties, materialIndex);
+            binding = new RuntimeCabinetReflectionBinding(renderer, materialIndex, originalMaterial, ownedMaterial); renderer.GetPropertyBlock(binding._originalProperties, materialIndex); renderer.GetPropertyBlock(binding._properties, materialIndex);
             var replacement = (Material[])materials.Clone(); replacement[materialIndex] = ownedMaterial; renderer.sharedMaterials = replacement;
-            binding._properties.SetTexture(RuntimeFaceShaderProperties.ArtworkTexture, face.Artwork.Texture);
-            binding._properties.SetTexture(RuntimeFaceShaderProperties.MaskTexture, face.Mask.Texture);
-            binding._properties.SetTexture(RuntimeFaceShaderProperties.LampIds0Texture, face.LampIds0.Texture);
-            binding._properties.SetTexture(RuntimeFaceShaderProperties.LampWeights0Texture, face.LampWeights0.Texture);
-            binding._properties.SetTexture(RuntimeFaceShaderProperties.LampStateTexture, machine.LampStateTexture.Texture);
+            binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.SourceCount, sources.Length); binding._properties.SetTexture(RuntimeFaceShaderProperties.LampStateTexture, machine.LampStateTexture.Texture);
+            for (var i = 0; i < sources.Length; i++)
+            {
+                var face = faces[i]; var orientation = RuntimeFaceTextureOrientation.FromReference(face.Reference);
+                binding._properties.SetTexture(RuntimeCabinetReflectionShaderProperties.Artwork[i], face.Artwork.Texture); binding._properties.SetTexture(RuntimeCabinetReflectionShaderProperties.Mask[i], face.Mask.Texture); binding._properties.SetTexture(RuntimeCabinetReflectionShaderProperties.LampIds[i], face.LampIds0.Texture); binding._properties.SetTexture(RuntimeCabinetReflectionShaderProperties.LampWeights[i], face.LampWeights0.Texture);
+                binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.Rotation[i], orientation.UnityUvQuarterTurns); binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.Flip[i], orientation.FlipHorizontal ? 1f : 0f);
+                var material = face.RenderBinding?.RuntimeMaterial; binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.Exposure[i], material != null ? material.GetFloat(RuntimeFaceShaderProperties.LampExposureStops) : 2.5f); binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.MaskStrength[i], material != null ? material.GetFloat(RuntimeFaceShaderProperties.MaskStrength) : 1f);
+                binding.SetPlane(i, sources[i].Plane, false);
+            }
             if (visibilityMask != null) binding._properties.SetTexture(RuntimeCabinetReflectionShaderProperties.VisibilityMask, visibilityMask);
-            if (face.RenderBinding?.RuntimeMaterial != null)
-            {
-                binding._properties.SetFloat(RuntimeFaceShaderProperties.LampExposureStops, face.RenderBinding.RuntimeMaterial.GetFloat(RuntimeFaceShaderProperties.LampExposureStops));
-                binding._properties.SetFloat(RuntimeFaceShaderProperties.MaskStrength, face.RenderBinding.RuntimeMaterial.GetFloat(RuntimeFaceShaderProperties.MaskStrength));
-            }
-            var orientation = RuntimeFaceTextureOrientation.FromReference(face.Reference);
-            binding._properties.SetFloat(RuntimeFaceShaderProperties.FaceRotationQuarterTurns, orientation.UnityUvQuarterTurns);
-            binding._properties.SetFloat(RuntimeFaceShaderProperties.FaceFlipHorizontal, orientation.FlipHorizontal ? 1f : 0f);
-            if (settings != null)
-            {
-                binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.Enabled, settings.enabled ? 1f : 0f);
-                binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.Strength, Mathf.Clamp(settings.strength, 0f, 2f));
-                binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.UnlitArtworkStrength, Mathf.Clamp(settings.unlitArtworkStrength, 0f, 2f));
-                binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.LitLampStrength, Mathf.Clamp(settings.litLampStrength, 0f, 4f));
-                binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.FresnelPower, Mathf.Clamp(settings.fresnelPower, .1f, 10f));
-                binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.FresnelStrength, Mathf.Clamp(settings.fresnelStrength, 0f, 2f));
-                binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.Roughness, Mathf.Clamp01(settings.roughness));
-                binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.Distortion, Mathf.Clamp(settings.distortion, 0f, .05f));
-                binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.EdgeFade, Mathf.Clamp(settings.edgeFade, 0f, .25f));
-            }
-            binding.SetPlane(plane);
-            if (settings == null) binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.Enabled, 1f);
-            renderer.SetPropertyBlock(binding._properties, materialIndex);
-            return true;
+            binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.Enabled, settings == null || settings.enabled ? 1f : 0f);
+            if (settings != null) { binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.Strength, Mathf.Clamp(settings.strength, 0f, 2f)); binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.UnlitArtworkStrength, Mathf.Clamp(settings.unlitArtworkStrength, 0f, 2f)); binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.LitLampStrength, Mathf.Clamp(settings.litLampStrength, 0f, 4f)); binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.FresnelPower, Mathf.Clamp(settings.fresnelPower, .1f, 10f)); binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.FresnelStrength, Mathf.Clamp(settings.fresnelStrength, 0f, 2f)); binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.Roughness, Mathf.Clamp01(settings.roughness)); binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.Distortion, Mathf.Clamp(settings.distortion, 0f, .05f)); binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.EdgeFade, Mathf.Clamp(settings.edgeFade, 0f, .25f)); }
+            renderer.SetPropertyBlock(binding._properties, materialIndex); return true;
         }
 
         private static void CopyCabinetProperties(Material source, Material destination)
@@ -98,15 +73,11 @@ namespace OasisPlayer.RuntimeBuild
         private static void CopyFloat(Material source, Material destination, string sourceName, string destinationName) { if (source.HasProperty(sourceName) && destination.HasProperty(destinationName)) destination.SetFloat(destinationName, source.GetFloat(sourceName)); }
         private static void DestroyOwned(UnityEngine.Object value) { if (value == null) return; if (Application.isPlaying) UnityEngine.Object.Destroy(value); else UnityEngine.Object.DestroyImmediate(value); }
 
-        public void SetPlane(RuntimeFaceReflectionPlane plane)
+        public void SetPlane(int sourceIndex, RuntimeFaceReflectionPlane plane, bool apply = true)
         {
-            if (_disposed) return;
-            _properties.SetVector(RuntimeCabinetReflectionShaderProperties.FaceOrigin, plane.OriginWS);
-            _properties.SetVector(RuntimeCabinetReflectionShaderProperties.FaceRight, plane.RightWS);
-            _properties.SetVector(RuntimeCabinetReflectionShaderProperties.FaceUp, plane.UpWS);
-            _properties.SetVector(RuntimeCabinetReflectionShaderProperties.FaceNormal, plane.NormalWS);
-            _properties.SetVector(RuntimeCabinetReflectionShaderProperties.FaceSize, new Vector4(plane.Width, plane.Height, 0f, 0f));
-            if (_renderer != null) _renderer.SetPropertyBlock(_properties, _materialIndex);
+            if (_disposed || sourceIndex < 0 || sourceIndex >= RuntimeCabinetReflectionShaderProperties.MaximumSources) return;
+            _properties.SetVector(RuntimeCabinetReflectionShaderProperties.FaceOrigin[sourceIndex], plane.OriginWS); _properties.SetVector(RuntimeCabinetReflectionShaderProperties.FaceRight[sourceIndex], plane.RightWS); _properties.SetVector(RuntimeCabinetReflectionShaderProperties.FaceUp[sourceIndex], plane.UpWS); _properties.SetVector(RuntimeCabinetReflectionShaderProperties.FaceNormal[sourceIndex], plane.NormalWS); _properties.SetVector(RuntimeCabinetReflectionShaderProperties.FaceSize[sourceIndex], new Vector4(plane.Width, plane.Height, 0f, 0f));
+            if (apply && _renderer != null) _renderer.SetPropertyBlock(_properties, _materialIndex);
         }
 
         public void Dispose()

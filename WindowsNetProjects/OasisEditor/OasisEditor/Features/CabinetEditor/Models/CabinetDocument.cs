@@ -9,10 +9,10 @@ public sealed record CabinetDocument(
     string? DefaultReelSpecificationId = null,
     CabinetReflectionDefinition[]? Reflections = null)
 {
-    public static CabinetDocument Empty => new(3, new CabinetModelReference(string.Empty, 1.0, "Y"), [], CabinetPreviewSettings.Default, [], null);
+    public static CabinetDocument Empty => new(4, new CabinetModelReference(string.Empty, 1.0, "Y"), [], CabinetPreviewSettings.Default, [], null);
 
     public static CabinetDocument FromModelPath(string modelPath) => new(
-        3,
+        4,
         new CabinetModelReference(modelPath, 1.0, "Y"),
         [],
         CabinetPreviewSettings.Default,
@@ -31,10 +31,17 @@ public sealed record CabinetReflectionSettings(bool Enabled, double Strength, do
     public CabinetReflectionSettings Normalized() => new(Enabled, Math.Clamp(Strength, 0, 2), Math.Clamp(UnlitArtworkStrength, 0, 2), Math.Clamp(LitLampStrength, 0, 4), Math.Clamp(FresnelPower, .1, 10), Math.Clamp(FresnelStrength, 0, 2), Math.Clamp(Roughness, 0, 1), Math.Clamp(Distortion, 0, .05), Math.Clamp(EdgeFade, 0, .25));
 }
 
-public sealed record CabinetReflectionDefinition(string Id, string TargetId, int MaterialSlot, string SourceFaceId, CabinetReflectionPlane Plane, CabinetReflectionSettings Settings, string? VisibilityMask = null, string PlaneSource = CabinetReflectionPlaneSource.Automatic)
+public sealed record CabinetReflectionSource(string FaceId, CabinetReflectionPlane Plane, string PlaneSource = CabinetReflectionPlaneSource.Automatic)
 {
-    public CabinetReflectionDefinition Normalized() => this with { Id = Id.Trim(), TargetId = TargetId?.Trim() ?? string.Empty, SourceFaceId = SourceFaceId?.Trim() ?? string.Empty, Settings = Settings.Normalized(), VisibilityMask = string.IsNullOrWhiteSpace(VisibilityMask) ? null : VisibilityMask.Trim() };
+    public CabinetReflectionSource Normalized() => this with { FaceId = FaceId?.Trim() ?? string.Empty };
 }
+
+public sealed record CabinetReflectionDefinition(string Id, string TargetId, int MaterialSlot, CabinetReflectionSource[] Sources, CabinetReflectionSettings Settings, string? VisibilityMask = null)
+{
+    public CabinetReflectionDefinition Normalized() => this with { Id = Id.Trim(), TargetId = TargetId?.Trim() ?? string.Empty, Sources = (Sources ?? []).Select(source => source.Normalized()).ToArray(), Settings = Settings.Normalized(), VisibilityMask = string.IsNullOrWhiteSpace(VisibilityMask) ? null : VisibilityMask.Trim() };
+}
+
+public static class CabinetReflectionContract { public const int MaximumSources = 4; }
 
 public static class CabinetReflectionPlaneSource { public const string Automatic = "Automatic from Face target"; public const string Manual = "Manual"; }
 public static class CabinetReflectionPreset

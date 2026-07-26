@@ -7,7 +7,7 @@ using OasisEditor.Features.CabinetEditor.ViewModels;
 
 namespace OasisEditor;
 
-public sealed class DocumentTabViewModel : INotifyPropertyChanged
+public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly CommandService _commandService;
     private EditorDocument _document;
@@ -33,6 +33,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     private readonly MachineRuntimeState _runtimeState;
     private CabinetModelDocumentViewModel? _cabinetViewer;
     private Func<IReadOnlyList<DocumentTabViewModel>>? _openDocumentsAccessor;
+    private Func<EditorProject?>? _projectAccessor;
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<PanelChangeEvent>? PanelChanged;
@@ -110,13 +111,26 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
     public bool IsDirty => Document.IsDirty;
     public bool HasCabinetViewer => Document.DocumentType == EditorDocumentType.Cabinet3D && !string.IsNullOrWhiteSpace(_cabinetDocumentModel.Model.Path);
     public CabinetModelDocumentViewModel? ExistingCabinetViewer => _cabinetViewer;
-    public CabinetModelDocumentViewModel? CabinetViewer => HasCabinetViewer
-        ? _cabinetViewer ??= new CabinetModelDocumentViewModel(new SharpGltfWpfModelLoader(), this, _openDocumentsAccessor)
-        : null;
+    public CabinetModelDocumentViewModel? CabinetViewer => HasCabinetViewer ? GetOrCreateCabinetViewer() : null;
+
+    private CabinetModelDocumentViewModel GetOrCreateCabinetViewer()
+    {
+        if (_cabinetViewer is not null) return _cabinetViewer;
+        var viewer = new CabinetModelDocumentViewModel(new SharpGltfWpfModelLoader(), this, _openDocumentsAccessor, _projectAccessor);
+        _cabinetViewer = viewer;
+        viewer.Initialize();
+        return viewer;
+    }
 
     public void SetOpenDocumentsAccessor(Func<IReadOnlyList<DocumentTabViewModel>> openDocumentsAccessor)
     {
         _openDocumentsAccessor = openDocumentsAccessor;
+    }
+
+    public void SetProjectAccessor(Func<EditorProject?> projectAccessor)
+    {
+        _projectAccessor = projectAccessor;
+        _cabinetViewer?.ReflectionEditor.RefreshProjectContext();
     }
 
     public void MarkDirty()
@@ -147,7 +161,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
             _cabinetDocumentModel = CabinetDocumentStorage.TryRead(value, out var cabinetDocument)
                 ? cabinetDocument
                 : CabinetDocument.Empty;
-            _cabinetViewer = null;
+            DisposeCabinetViewer();
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CabinetDocumentJson)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasCabinetViewer)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CabinetViewer)));
@@ -174,6 +188,18 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CabinetDocumentJson)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasCabinetViewer)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CabinetViewer)));
+    }
+
+    internal void DisposeCabinetViewer()
+    {
+        _cabinetViewer?.Dispose();
+        _cabinetViewer = null;
+    }
+
+    public void Dispose()
+    {
+        DisposeCabinetViewer();
+        SelectionState.SelectionChanged -= OnSelectionStateChanged;
     }
 
     public string? FaceDocumentJson

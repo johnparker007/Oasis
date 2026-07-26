@@ -2,6 +2,7 @@ using UnityEngine;
 
 namespace OasisPlayer.RuntimeBuild
 {
+    public readonly struct RuntimeCabinetReflectionSource { public RuntimeCabinetReflectionSource(string faceId, RuntimeFaceReflectionPlane plane) { FaceId = faceId; Plane = plane; } public string FaceId { get; } public RuntimeFaceReflectionPlane Plane { get; } }
     /// <summary>Rectangle origin is UV (0,0); right/up lead to (1,0)/(0,1), and normal is cross(right, up).</summary>
     public readonly struct RuntimeFaceReflectionPlane
     {
@@ -64,6 +65,18 @@ namespace OasisPlayer.RuntimeBuild
             var reflected = Vector3.Reflect((cabinetPosition - camera).normalized, cabinetNormal.normalized);
             return TryIntersectRayWithPlane(cabinetPosition, reflected, plane, out _, out var hit) && TryWorldPointToFaceUv(hit, plane, out uv)
                 && uv.x >= 0f && uv.x <= 1f && uv.y >= 0f && uv.y <= 1f;
+        }
+
+        public static bool TrySelectNearest(Vector3 origin, Vector3 direction, RuntimeCabinetReflectionSource[] sources, out int sourceIndex, out Vector2 uv)
+        {
+            sourceIndex = -1; uv = default; var nearest = float.PositiveInfinity;
+            if (sources == null || sources.Length > RuntimeCabinetReflectionShaderProperties.MaximumSources) return false;
+            for (var index = 0; index < sources.Length; index++)
+            {
+                if (!TryIntersectRayWithPlane(origin, direction, sources[index].Plane, out var distance, out var hit) || distance >= nearest || !TryWorldPointToFaceUv(hit, sources[index].Plane, out var candidate) || candidate.x < 0f || candidate.x > 1f || candidate.y < 0f || candidate.y > 1f) continue;
+                nearest = distance; sourceIndex = index; uv = candidate;
+            }
+            return sourceIndex >= 0;
         }
 
         private static bool IsFinite(float value) { return !float.IsNaN(value) && !float.IsInfinity(value); }
