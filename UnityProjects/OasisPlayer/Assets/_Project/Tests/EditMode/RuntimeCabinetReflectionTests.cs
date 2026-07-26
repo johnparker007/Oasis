@@ -51,6 +51,57 @@ namespace OasisPlayer.Tests
             Assert.AreEqual(new Vector2(expectedU, expectedV), orientation.TransformUv(new Vector2(u, v)));
         }
 
+        [TestCase(0, 0, 1, 1)]
+        [TestCase(1, 0, 0, 1)]
+        [TestCase(0, 1, 1, 0)]
+        [TestCase(1, 1, 0, 0)]
+        [TestCase(.1f, .2f, .9f, .8f)]
+        [TestCase(.9f, .2f, .1f, .8f)]
+        [TestCase(.1f, .8f, .9f, .2f)]
+        [TestCase(.9f, .8f, .1f, .2f)]
+        public void ReflectionPlaneUvMapsToEstablishedRuntimeMeshUv(float u, float v, float expectedU, float expectedV)
+        {
+            Assert.AreEqual(new Vector2(expectedU, expectedV), RuntimeFaceBaseUvConversion.ConvertReflectionPlaneUvToUnityBaseUv(new Vector2(u, v)));
+        }
+
+        [TestCase(0, false)] [TestCase(90, false)] [TestCase(180, false)] [TestCase(270, false)]
+        [TestCase(0, true)] [TestCase(90, true)] [TestCase(180, true)] [TestCase(270, true)]
+        public void ReflectionFinalUvMatchesNormalFaceForEveryOrientation(int rotation, bool flipHorizontal)
+        {
+            var rawGlbPoints = new[]
+            {
+                new Vector2(0, 0), new Vector2(1, 0), new Vector2(0, 1), new Vector2(1, 1),
+                new Vector2(.1f, .2f), new Vector2(.9f, .2f), new Vector2(.1f, .8f), new Vector2(.9f, .8f)
+            };
+            var orientation = new RuntimeFaceTextureOrientation(rotation, flipHorizontal);
+            foreach (var rawGlbUv in rawGlbPoints)
+            {
+                var reflectionFinalUv = orientation.TransformUv(RuntimeFaceBaseUvConversion.ConvertReflectionPlaneUvToUnityBaseUv(rawGlbUv));
+                Assert.AreEqual(ExpectedFinalUv(rawGlbUv, rotation, flipHorizontal), reflectionFinalUv, $"rawGlbUv={rawGlbUv}, rotation={rotation}, flipHorizontal={flipHorizontal}");
+            }
+        }
+
+        [TestCase(270, false, RuntimeFaceFrontSide.Inverted)]
+        [TestCase(90, true, RuntimeFaceFrontSide.Normal)]
+        public void VogueFaceUvParityIsIndependentOfFrontSide(int rotation, bool flipHorizontal, RuntimeFaceFrontSide frontSide)
+        {
+            var actual = new RuntimeFaceTextureOrientation(rotation, flipHorizontal).TransformUv(RuntimeFaceBaseUvConversion.ConvertReflectionPlaneUvToUnityBaseUv(new Vector2(.1f, .2f)));
+            var expected = rotation == 270 ? new Vector2(.1f, .2f) : new Vector2(.1f, .8f);
+            Assert.AreEqual(expected, actual, $"A left-side sample moved sides for {frontSide}.");
+        }
+
+        private static Vector2 ExpectedFinalUv(Vector2 rawPlaneUv, int editorRotation, bool flipHorizontal)
+        {
+            // Independent reference: the established Vogue vertex correspondence is (1-u,1-v),
+            // followed by the documented Editor-to-Unity quarter-turn mapping.
+            var uv = new Vector2(1f - rawPlaneUv.x, 1f - rawPlaneUv.y);
+            var turns = (1 - editorRotation / 90 + 4) % 4;
+            if (turns == 1) uv = new Vector2(1f - uv.y, uv.x);
+            else if (turns == 2) uv = new Vector2(1f - uv.x, 1f - uv.y);
+            else if (turns == 3) uv = new Vector2(uv.y, 1f - uv.x);
+            return flipHorizontal ? new Vector2(1f - uv.x, uv.y) : uv;
+        }
+
         [Test]
         public void SourceFrontSideChangesIntersectionSideWithoutChangingUvBasis()
         {
@@ -187,6 +238,8 @@ namespace OasisPlayer.Tests
             StringAssert.Contains("art.rgb*_OasisReflectionUnlitArtworkStrength", source);
             StringAssert.Contains("_OasisReflectionLitLampStrength", source);
             StringAssert.Contains("ReconstructFace(selected,saturate(uv+d))", source);
+            StringAssert.Contains("TransformFaceUv(ConvertReflectionPlaneUvToUnityBaseUv(uv)", source);
+            StringAssert.Contains("return 1.0 - uv;", File.ReadAllText("Assets/_Project/Shaders/Includes/OasisFaceUvOrientation.hlsl"));
             Assert.AreEqual(4, Regex.Matches(source, @"\bSAMPLER\(").Count, "Cabinet reflection shader must share Face samplers to remain below the D3D11 ps_4_0 limit.");
             StringAssert.DoesNotContain("sampler_OasisArtworkTex1", source);
             StringAssert.Contains("float3 colour=float3(0,0,0)", source);

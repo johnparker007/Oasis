@@ -6,6 +6,8 @@ namespace OasisPlayer.RuntimeBuild
     /// <summary>Owns one converted analytic material and its per-slot reflection data.</summary>
     public sealed class RuntimeCabinetReflectionBinding : IDisposable
     {
+        // Opt-in while diagnosing a development cabinet; never emits parity/mesh dumps by default.
+        private static readonly bool EnableUvParityDiagnostics = false;
         private readonly Renderer _renderer;
         private readonly int _materialIndex;
         private readonly MaterialPropertyBlock _properties = new MaterialPropertyBlock();
@@ -45,12 +47,40 @@ namespace OasisPlayer.RuntimeBuild
                 binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.Rotation[i], orientation.UnityUvQuarterTurns); binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.Flip[i], orientation.FlipHorizontal ? 1f : 0f);
                 var material = face.RenderBinding?.RuntimeMaterial; binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.Exposure[i], material != null ? material.GetFloat(RuntimeFaceShaderProperties.LampExposureStops) : 2.5f); binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.MaskStrength[i], material != null ? material.GetFloat(RuntimeFaceShaderProperties.MaskStrength) : 1f);
                 binding.SetPlane(i, sources[i].Plane, sources[i].VisibleNormalWS, false);
-                if (Debug.isDebugBuild) { var planeCenter = sources[i].Plane.OriginWS + sources[i].Plane.RightWS * (sources[i].Plane.Width * .5f) + sources[i].Plane.UpWS * (sources[i].Plane.Height * .5f); var representativeRay = (planeCenter - renderer.bounds.center).normalized; Debug.Log($"Oasis reflection source orientation: faceId='{face.Reference.faceId}', rawFrontSide='{face.Reference.frontSide}', rawEditorRotation={face.Reference.faceRotation}, unityUvQuarterTurns={orientation.UnityUvQuarterTurns}, flipHorizontal={orientation.FlipHorizontal}, planeOrigin={sources[i].Plane.OriginWS}, planeRight={sources[i].Plane.RightWS}, planeUp={sources[i].Plane.UpWS}, meshNormal={sources[i].Plane.NormalWS}, resolvedVisibleNormal={sources[i].VisibleNormalWS}, planeSize=({sources[i].Plane.Width}, {sources[i].Plane.Height}), representativeReflectedRay={representativeRay}, facingDot={Vector3.Dot(representativeRay, sources[i].VisibleNormalWS)}."); }
+                if (Debug.isDebugBuild) { var planeCenter = sources[i].Plane.OriginWS + sources[i].Plane.RightWS * (sources[i].Plane.Width * .5f) + sources[i].Plane.UpWS * (sources[i].Plane.Height * .5f); var representativeRay = (planeCenter - renderer.bounds.center).normalized; Debug.Log($"Oasis reflection source orientation: faceId='{face.Reference.faceId}', rawFrontSide='{face.Reference.frontSide}', rawEditorRotation={face.Reference.faceRotation}, unityUvQuarterTurns={orientation.UnityUvQuarterTurns}, flipHorizontal={orientation.FlipHorizontal}, planeOrigin={sources[i].Plane.OriginWS}, planeRight={sources[i].Plane.RightWS}, planeUp={sources[i].Plane.UpWS}, meshNormal={sources[i].Plane.NormalWS}, resolvedVisibleNormal={sources[i].VisibleNormalWS}, planeSize=({sources[i].Plane.Width}, {sources[i].Plane.Height}), representativeReflectedRay={representativeRay}, facingDot={Vector3.Dot(representativeRay, sources[i].VisibleNormalWS)}."); if (EnableUvParityDiagnostics) LogUvParity(face, sources[i].Plane, orientation); }
             }
             if (visibilityMask != null) binding._properties.SetTexture(RuntimeCabinetReflectionShaderProperties.VisibilityMask, visibilityMask);
             binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.Enabled, settings == null || settings.enabled ? 1f : 0f);
             if (settings != null) { binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.Strength, Mathf.Clamp(settings.strength, 0f, 2f)); binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.UnlitArtworkStrength, Mathf.Clamp(settings.unlitArtworkStrength, 0f, 2f)); binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.LitLampStrength, Mathf.Clamp(settings.litLampStrength, 0f, 4f)); binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.FresnelPower, Mathf.Clamp(settings.fresnelPower, .1f, 10f)); binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.FresnelStrength, Mathf.Clamp(settings.fresnelStrength, 0f, 2f)); binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.Roughness, Mathf.Clamp01(settings.roughness)); binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.Distortion, Mathf.Clamp(settings.distortion, 0f, .05f)); binding._properties.SetFloat(RuntimeCabinetReflectionShaderProperties.EdgeFade, Mathf.Clamp(settings.edgeFade, 0f, .25f)); }
             renderer.SetPropertyBlock(binding._properties, materialIndex); return true;
+        }
+
+        private static void LogUvParity(RuntimeFace face, RuntimeFaceReflectionPlane plane, RuntimeFaceTextureOrientation orientation)
+        {
+            var points = new[] { new Vector2(0, 0), new Vector2(1, 0), new Vector2(0, 1), new Vector2(1, 1), new Vector2(.1f, .2f), new Vector2(.9f, .2f), new Vector2(.1f, .8f), new Vector2(.9f, .8f) };
+            for (var i = 0; i < points.Length; i++)
+            {
+                var rawGlbUv = points[i];
+                var unityBaseUv = RuntimeFaceBaseUvConversion.ConvertReflectionPlaneUvToUnityBaseUv(rawGlbUv);
+                var planePoint = plane.OriginWS + plane.RightWS * (rawGlbUv.x * plane.Width) + plane.UpWS * (rawGlbUv.y * plane.Height);
+                RuntimeCabinetReflectionMath.TryWorldPointToFaceUv(planePoint, plane, out var reflectionPlaneUv);
+                var normalFinalUv = orientation.TransformUv(unityBaseUv);
+                var reflectionFinalUv = orientation.TransformUv(RuntimeFaceBaseUvConversion.ConvertReflectionPlaneUvToUnityBaseUv(reflectionPlaneUv));
+                Debug.Log($"Oasis reflection UV parity: faceId='{face.Reference.faceId}', rawGlbUv={rawGlbUv}, unityEquivalentBaseUv={unityBaseUv}, reflectionPlaneUv={reflectionPlaneUv}, normalFaceFinalUv={normalFinalUv}, reflectionFinalUv={reflectionFinalUv}, rotation={orientation.EditorRotationDegrees}, flipHorizontal={orientation.FlipHorizontal}.");
+            }
+
+            var faceRenderer = face.RenderBinding != null ? face.RenderBinding.Renderer : null;
+            var meshFilter = faceRenderer != null ? faceRenderer.GetComponent<MeshFilter>() : null;
+            var mesh = meshFilter != null ? meshFilter.sharedMesh : null;
+            if (mesh == null) return;
+            var positions = mesh.vertices; var unityUvs = mesh.uv;
+            for (var i = 0; i < positions.Length && i < unityUvs.Length; i++)
+            {
+                var positionWS = faceRenderer.transform.TransformPoint(positions[i]);
+                if (!RuntimeCabinetReflectionMath.TryWorldPointToFaceUv(positionWS, plane, out var rawGlbUv)) continue;
+                var convertedUv = RuntimeFaceBaseUvConversion.ConvertReflectionPlaneUvToUnityBaseUv(rawGlbUv);
+                Debug.Log($"Face target: {face.Reference.cabinetFaceTargetId} position={positionWS} analyticPlaneUv={rawGlbUv} runtimeMeshUv={unityUvs[i]} candidateConvertedUv={convertedUv}.");
+            }
         }
 
         private static void CopyCabinetProperties(Material source, Material destination)
