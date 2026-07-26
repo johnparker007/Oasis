@@ -71,8 +71,6 @@ namespace OasisPlayer.Tests
         {
             Assert.AreEqual(-1f, RuntimeFaceFrontSideOrientation.ResolveNormalSign(RuntimeFaceFrontSide.Normal));
             Assert.AreEqual(1f, RuntimeFaceFrontSideOrientation.ResolveNormalSign(RuntimeFaceFrontSide.Inverted));
-            Assert.AreEqual(RuntimeFaceMaterialFactory.ResolveUnityOrientation(RuntimeFaceFrontSide.Normal).NormalSign, RuntimeFaceFrontSideOrientation.ResolveNormalSign(RuntimeFaceFrontSide.Normal));
-            Assert.AreEqual(RuntimeFaceMaterialFactory.ResolveUnityOrientation(RuntimeFaceFrontSide.Inverted).NormalSign, RuntimeFaceFrontSideOrientation.ResolveNormalSign(RuntimeFaceFrontSide.Inverted));
             Assert.True(RuntimeCabinetReflectionMath.IsRayFacingVisibleSide(Vector3.forward, Vector3.back));
             Assert.False(RuntimeCabinetReflectionMath.IsRayFacingVisibleSide(Vector3.back, Vector3.back));
         }

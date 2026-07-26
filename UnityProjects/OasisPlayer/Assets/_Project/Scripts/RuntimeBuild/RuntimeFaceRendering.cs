@@ -218,7 +218,7 @@ namespace OasisPlayer.RuntimeBuild
             return true;
         }
 
-        internal static RuntimeFaceUnityOrientation ResolveUnityOrientation(RuntimeFaceFrontSide frontSide)
+        private static RuntimeFaceUnityOrientation ResolveUnityOrientation(RuntimeFaceFrontSide frontSide)
         {
             // The Editor preview defines the authoring semantics. Unity's imported GLB Face target
             // winding is opposite to the Editor preview winding, so Player maps the semantic front
