@@ -15,11 +15,13 @@ public sealed class CabinetViewerLifecycleTests
         var document = CreateDocument();
         var loader = new CountingLoader(CreateModel());
         var viewer = new CabinetModelDocumentViewModel(loader, document);
+        viewer.Initialize();
 
         await WaitUntilAsync(() => !viewer.IsLoading);
 
         Assert.Equal(1, loader.LoadCount);
         Assert.Same(loader.Model, viewer.Viewport.Model);
+        Assert.Empty(viewer.ReflectionEditor.FaceChoices);
         Assert.False(viewer.Viewport.ModelBounds.IsEmpty);
         Assert.NotEqual(new Point3D(10, 6.5, 10), viewer.Viewport.CameraPosition);
         viewer.Dispose();
@@ -30,6 +32,7 @@ public sealed class CabinetViewerLifecycleTests
     {
         var document = CreateDocument();
         var viewer = new CabinetModelDocumentViewModel(new CountingLoader(CreateModel()), document);
+        viewer.Initialize();
         var field = typeof(DocumentTabViewModel).GetField("_cabinetViewer", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
         Assert.NotNull(field);
         field!.SetValue(document, viewer);
@@ -40,18 +43,6 @@ public sealed class CabinetViewerLifecycleTests
 
         Assert.Null(document.ExistingCabinetViewer);
         Assert.Null(viewer!.Viewport.Model);
-    }
-
-    [Fact]
-    public void InvalidModelBounds_DoNotReplaceTheExistingCamera()
-    {
-        var viewport = new CabinetViewportViewModel();
-        var originalPosition = viewport.CameraPosition;
-        viewport.Model = new Model3DGroup();
-
-        Assert.Equal(originalPosition, viewport.CameraPosition);
-        Assert.False(viewport.TryFrameModel(out var error));
-        Assert.Contains("empty", error, StringComparison.OrdinalIgnoreCase);
     }
 
     private static DocumentTabViewModel CreateDocument()

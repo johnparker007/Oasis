@@ -17,8 +17,8 @@ public sealed class CabinetViewportViewModel : INotifyPropertyChanged
 
     public CabinetViewportViewModel()
     {
-        ResetCameraCommand = new RelayCommand(() => TryFrameModel(out _));
-        ApplyDefaultCamera();
+        ResetCameraCommand = new RelayCommand(ResetCamera);
+        ResetCamera();
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -32,7 +32,7 @@ public sealed class CabinetViewportViewModel : INotifyPropertyChanged
             _model = value;
             OnPropertyChanged();
             ModelBounds = value?.Bounds ?? Rect3D.Empty;
-            if (value is not null) TryFrameModel(out _);
+            ResetCamera();
         }
     }
 
@@ -117,12 +117,16 @@ public sealed class CabinetViewportViewModel : INotifyPropertyChanged
     }
     public ICommand ResetCameraCommand { get; }
 
-    public bool TryFrameModel(out string error)
+    private void ResetCamera()
     {
         var bounds = ModelBounds;
-        if (!TryValidateBounds(bounds, out error)) return false;
-        var center = new Point3D(bounds.X + bounds.SizeX / 2d, bounds.Y + bounds.SizeY / 2d, bounds.Z + bounds.SizeZ / 2d);
-        var radius = Math.Max(Math.Max(bounds.SizeX, bounds.SizeY), bounds.SizeZ);
+        var center = bounds.IsEmpty
+            ? new Point3D(0, 0, 0)
+            : new Point3D(bounds.X + bounds.SizeX / 2d, bounds.Y + bounds.SizeY / 2d, bounds.Z + bounds.SizeZ / 2d);
+        var radius = bounds.IsEmpty
+            ? 5d
+            : Math.Max(Math.Max(bounds.SizeX, bounds.SizeY), bounds.SizeZ);
+        if (radius <= 0d) radius = 5d;
 
         var distance = radius * 2.5d;
         CameraPosition = new Point3D(center.X + distance, center.Y + distance * 0.65d, center.Z + distance);
@@ -133,28 +137,6 @@ public sealed class CabinetViewportViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(CameraLookDirection));
         OnPropertyChanged(nameof(CameraUpDirection));
         OnPropertyChanged(nameof(CameraFieldOfView));
-        error = string.Empty;
-        return true;
-    }
-
-    public static bool TryValidateBounds(Rect3D bounds, out string error)
-    {
-        if (bounds.IsEmpty) { error = "model bounds are empty"; return false; }
-        var values = new[] { bounds.X, bounds.Y, bounds.Z, bounds.SizeX, bounds.SizeY, bounds.SizeZ };
-        if (values.Any(value => double.IsNaN(value) || double.IsInfinity(value))) { error = "model bounds contain NaN or infinity"; return false; }
-        var extent = Math.Max(Math.Max(bounds.SizeX, bounds.SizeY), bounds.SizeZ);
-        if (extent <= 1e-9) { error = "model bounds have no usable extent"; return false; }
-        if (extent > 1e9) { error = $"model bounds extent {extent:G6} is unreasonable"; return false; }
-        error = string.Empty;
-        return true;
-    }
-
-    private void ApplyDefaultCamera()
-    {
-        CameraPosition = new Point3D(10, 6.5, 10);
-        CameraLookDirection = new Vector3D(-10, -6.5, -10);
-        CameraUpDirection = new Vector3D(0, 1, 0);
-        CameraFieldOfView = 45d;
     }
 
     private double GetSceneHelperSize()

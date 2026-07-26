@@ -13,6 +13,7 @@ namespace OasisEditor.Features.CabinetEditor.ViewModels;
 public sealed class CabinetReflectionEditorViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly DocumentTabViewModel _document;
+    private readonly Func<EditorProject?>? _projectAccessor;
     private readonly SynchronizationContext? _context;
     private FileSystemWatcher? _watcher;
     private Timer? _refreshDebounce;
@@ -22,14 +23,13 @@ public sealed class CabinetReflectionEditorViewModel : INotifyPropertyChanged, I
     private CabinetReflectionDefinition? _selected;
     private CabinetReflectionSourceViewModel? _selectedSource;
 
-    public CabinetReflectionEditorViewModel(DocumentTabViewModel document, Func<IReadOnlyList<DocumentTabViewModel>>? unused = null)
+    public CabinetReflectionEditorViewModel(DocumentTabViewModel document, Func<EditorProject?>? projectAccessor = null)
     {
-        _document = document; _context = SynchronizationContext.Current;
+        _document = document; _projectAccessor = projectAccessor; _context = SynchronizationContext.Current;
         AddCommand = new RelayCommand(Add, () => Targets.Count > 0); RemoveCommand = new RelayCommand(Remove, () => Selected is not null); DuplicateCommand = new RelayCommand(Duplicate, () => Selected is not null);
         AddSourceCommand = new RelayCommand(AddSource, () => Selected is not null && Selected.Sources.Length < CabinetReflectionContract.MaximumSources && FaceChoices.Count > 0);
         RemoveSourceCommand = new RelayCommand(RemoveSource, () => SelectedSource is not null); DeriveCommand = new RelayCommand(Derive, () => SelectedSource is not null);
         RefreshCommand = new RelayCommand(Refresh); BrowseMaskCommand = new RelayCommand(BrowseMask, () => Selected is not null); ClearMaskCommand = new RelayCommand(() => Mask = string.Empty, () => Selected is not null);
-        AttachOnce();
     }
     public event PropertyChangedEventHandler? PropertyChanged;
     public ObservableCollection<CabinetReflectionDefinition> Items { get; } = new();
@@ -55,12 +55,19 @@ public sealed class CabinetReflectionEditorViewModel : INotifyPropertyChanged, I
     public double FresnelStrength { get => Selected?.Settings.FresnelStrength ?? 0; set => UpdateSettings(s => s with { FresnelStrength = value }); } public double FresnelPower { get => Selected?.Settings.FresnelPower ?? 0; set => UpdateSettings(s => s with { FresnelPower = value }); } public double EdgeFade { get => Selected?.Settings.EdgeFade ?? 0; set => UpdateSettings(s => s with { EdgeFade = value }); }
     public string Validation { get { if (Selected is null) return string.Empty; if (Items.Count(item => item.Id == Selected.Id) > 1) return "Duplicate receiver ID."; if (Target is null) return "Cabinet renderer is missing."; if (Slot is null) return "Material slot is invalid."; if (Selected.Settings.Enabled && Sources.Count == 0) return "Enabled receivers require at least one source Face."; if (Sources.Count > CabinetReflectionContract.MaximumSources) return $"A receiver supports at most {CabinetReflectionContract.MaximumSources} source Faces."; if (Sources.GroupBy(source => source.FaceId).Any(group => group.Count() > 1)) return "Duplicate source Face IDs are not allowed within a receiver."; foreach (var source in Sources) { if (source.Choice?.IsMissing != false) return $"Source Face '{source.FaceId}' is missing. Choose another Face or remove this source."; if (!CabinetReflectionPlaneValidation.TryValidate(source.Model.Plane, out var error)) return $"Source Face '{source.Choice.Label}' plane is invalid: {error}"; } return "Valid"; } }
 
-    private void AttachOnce()
+    public void Initialize()
     {
         if (_attached || _disposed) return;
         _attached = true;
         Refresh();
         StartWatcher();
+    }
+
+    public void RefreshProjectContext()
+    {
+        if (_disposed) return;
+        Refresh();
+        if (_watcher is null) StartWatcher();
     }
 
     public void Dispose()
@@ -80,7 +87,9 @@ public sealed class CabinetReflectionEditorViewModel : INotifyPropertyChanged, I
     {
         if (_disposed) return;
         var receiverId = Selected?.Id; var sourceIndex = SelectedSource?.Index;
-        var discovered = CabinetReflectionFaceCatalog.Discover(_document.Document.FilePath).ToList();
+        List<CabinetReflectionFaceChoice> discovered;
+        try { discovered = CabinetReflectionFaceCatalog.Discover(_projectAccessor?.Invoke()?.AssetsDirectory).ToList(); }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or ObjectDisposedException or System.Security.SecurityException) { discovered = []; }
         var storedIds = (_document.GetCabinetDocument().Reflections ?? []).SelectMany(item => item.Sources ?? []).Select(item => item.FaceId).Where(id => !string.IsNullOrWhiteSpace(id));
         foreach (var missing in storedIds.Where(id => discovered.All(choice => choice.FaceId != id)).Distinct(StringComparer.Ordinal)) discovered.Add(new(missing, $"Missing Face ({missing})", string.Empty, $"Missing Face ({missing})", null, true));
         FaceChoices.Clear(); foreach (var choice in discovered) FaceChoices.Add(choice);
@@ -90,10 +99,27 @@ public sealed class CabinetReflectionEditorViewModel : INotifyPropertyChanged, I
     }
     private void StartWatcher()
     {
-        var package = Path.GetDirectoryName(_document.Document.FilePath); var assets = Directory.GetParent(Directory.GetParent(package ?? string.Empty)?.FullName ?? string.Empty)?.FullName; var faces = assets is null ? null : Path.Combine(assets, "Faces"); if (faces is null || !Directory.Exists(faces)) return;
-        _watcher = new FileSystemWatcher(faces) { IncludeSubdirectories = true, NotifyFilter = NotifyFilters.DirectoryName | NotifyFilters.FileName | NotifyFilters.LastWrite };
-        FileSystemEventHandler changed = (_, _) => ScheduleRefresh(); RenamedEventHandler renamed = (_, _) => ScheduleRefresh();
-        _watcher.Created += changed; _watcher.Deleted += changed; _watcher.Changed += changed; _watcher.Renamed += renamed; _watcher.EnableRaisingEvents = true;
+        if (_disposed || _watcher is not null) return;
+        string? faces;
+        try
+        {
+            var assets = _projectAccessor?.Invoke()?.AssetsDirectory;
+            if (string.IsNullOrWhiteSpace(assets)) return;
+            faces = Path.Combine(Path.GetFullPath(assets), "Faces");
+            if (!Directory.Exists(faces)) return;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException) { return; }
+        try
+        {
+            _watcher = new FileSystemWatcher(faces) { IncludeSubdirectories = true, NotifyFilter = NotifyFilters.DirectoryName | NotifyFilters.FileName | NotifyFilters.LastWrite };
+            FileSystemEventHandler changed = (_, _) => ScheduleRefresh(); RenamedEventHandler renamed = (_, _) => ScheduleRefresh();
+            _watcher.Created += changed; _watcher.Deleted += changed; _watcher.Changed += changed; _watcher.Renamed += renamed; _watcher.EnableRaisingEvents = true;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or ObjectDisposedException or System.Security.SecurityException)
+        {
+            _watcher?.Dispose();
+            _watcher = null;
+        }
     }
 
     private void ScheduleRefresh()

@@ -20,8 +20,7 @@
             </StackPanel>
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                 <Button Padding="10,4" Margin="0,0,8,0" Command="{Binding CabinetViewer.ReloadCommand}" Content="Reload" />
-                <Button Padding="10,4" Margin="0,0,8,0" Command="{Binding CabinetViewer.ResetCameraCommand}" Content="Reset Camera" />
-                <Button Padding="10,4" Command="{Binding CabinetViewer.DumpViewStateCommand}" Content="Dump Cabinet View State" />
+                <Button Padding="10,4" Command="{Binding CabinetViewer.ResetCameraCommand}" Content="Reset Camera" />
             </StackPanel>
         </DockPanel>
 
@@ -31,7 +30,7 @@
                 <ColumnDefinition Width="260" />
             </Grid.ColumnDefinitions>
 
-            <h:HelixViewport3D x:Name="CabinetViewport" Grid.Column="0" SizeChanged="OnCabinetViewportSizeChanged"
+            <h:HelixViewport3D Grid.Column="0"
                               ShowCoordinateSystem="False"
                               ShowViewCube="False"
                               IsHeadLightEnabled="False"
