@@ -58,18 +58,36 @@ namespace OasisPlayer.RuntimeBuild
             return RuntimeFaceReflectionPlane.TryCreate(cabinetRoot.TransformPoint(source.origin.Value), rightSpan, upSpan, rightSpan.magnitude, upSpan.magnitude, out plane);
         }
 
-        private static bool TryResolveRenderer(GameObject cabinet, string targetId, out Renderer renderer, out string available)
+        public static bool TryResolveRenderer(GameObject cabinet, string targetId, out Renderer renderer, out string available)
         {
-            renderer = null; var matches = new List<Renderer>(); var names = new List<string>();
+            renderer = null; var exactMatches = new List<Renderer>(); var normalizedMatches = new List<Renderer>(); var names = new List<string>();
             var requested = targetId != null ? targetId.Trim() : string.Empty;
-            if (cabinet != null) foreach (var candidate in cabinet.GetComponentsInChildren<Renderer>(true)) { var path = RelativePath(cabinet.transform, candidate.transform); names.Add(path); if (string.Equals(path, requested, StringComparison.Ordinal)) matches.Add(candidate); }
+            if (cabinet != null) foreach (var candidate in cabinet.GetComponentsInChildren<Renderer>(true))
+            {
+                var path = RelativePath(cabinet.transform, candidate.transform); names.Add(path);
+                if (string.Equals(path, requested, StringComparison.Ordinal)) exactMatches.Add(candidate);
+                else if (string.Equals(RemoveSyntheticScenePrefix(path), requested, StringComparison.Ordinal)) normalizedMatches.Add(candidate);
+            }
             available = names.Count == 0 ? "<none>" : string.Join(", ", names);
-            if (matches.Count != 1) return false; renderer = matches[0]; return true;
+            if (exactMatches.Count > 1) return false;
+            if (exactMatches.Count == 1) { renderer = exactMatches[0]; return true; }
+            if (normalizedMatches.Count != 1) return false;
+            renderer = normalizedMatches[0];
+            if (Debug.isDebugBuild) Debug.Log($"Cabinet reflection target resolved through glTF Scene prefix: authoredTargetId='{requested}', runtimePath='{RelativePath(cabinet.transform, renderer.transform)}'.");
+            return true;
         }
 
         private static string RelativePath(Transform root, Transform target)
         {
             var parts = new List<string>(); for (var current = target; current != null && current != root; current = current.parent) parts.Add(current.name); parts.Reverse(); return string.Join("/", parts);
+        }
+
+        public static string RemoveSyntheticScenePrefix(string runtimePath)
+        {
+            const string prefix = "Scene/";
+            if (string.IsNullOrEmpty(runtimePath)) return string.Empty;
+            if (runtimePath == "Scene") return string.Empty;
+            return runtimePath.StartsWith(prefix, StringComparison.Ordinal) ? runtimePath.Substring(prefix.Length) : runtimePath;
         }
 
         private static void Warn(RuntimeMachine machine, RuntimeCabinetReflectionDefinition definition, string reason)

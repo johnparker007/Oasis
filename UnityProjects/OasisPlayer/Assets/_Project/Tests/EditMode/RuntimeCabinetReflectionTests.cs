@@ -157,6 +157,57 @@ namespace OasisPlayer.Tests
             StringAssert.Contains("UsePass \"Universal Render Pipeline/Lit/Meta\"", source);
         }
 
+        [TestCase("vogue/front/front_2", "vogue/front/front_2", true)]
+        [TestCase("vogue/front/front_2", "Scene/vogue/front/front_2", true)]
+        [TestCase("vogue/front/front_2", "Scene/other-vogue/front/front_2", false)]
+        [TestCase("vogue/front/front_2", "OtherRoot/vogue/front/front_2", false)]
+        public void RendererTargetResolutionUsesOnlyExactOrSyntheticScenePrefix(string authored, string runtimePath, bool expected)
+        {
+            var cabinet = new GameObject("cabinet");
+            try
+            {
+                var expectedRenderer = CreateRendererPath(cabinet.transform, runtimePath);
+                Assert.AreEqual(expected, RuntimeCabinetReflectionRenderer.TryResolveRenderer(cabinet, authored, out var actual, out _));
+                Assert.AreSame(expected ? expectedRenderer : null, actual);
+            }
+            finally { Object.DestroyImmediate(cabinet); }
+        }
+
+        [Test]
+        public void ExactRendererPathTakesPriorityOverSceneNormalizedPath()
+        {
+            var cabinet = new GameObject("cabinet");
+            try
+            {
+                var exact = CreateRendererPath(cabinet.transform, "vogue/front/front_2");
+                CreateRendererPath(cabinet.transform, "Scene/vogue/front/front_2");
+                Assert.True(RuntimeCabinetReflectionRenderer.TryResolveRenderer(cabinet, "vogue/front/front_2", out var actual, out _));
+                Assert.AreSame(exact, actual);
+            }
+            finally { Object.DestroyImmediate(cabinet); }
+        }
+
+        [Test]
+        public void AmbiguousSceneNormalizedRendererPathsAreRejected()
+        {
+            var cabinet = new GameObject("cabinet");
+            try
+            {
+                CreateRendererPath(cabinet.transform, "Scene/vogue/front/front_2");
+                CreateRendererPath(cabinet.transform, "Scene/vogue/front/front_2");
+                Assert.False(RuntimeCabinetReflectionRenderer.TryResolveRenderer(cabinet, "vogue/front/front_2", out var actual, out _));
+                Assert.Null(actual);
+            }
+            finally { Object.DestroyImmediate(cabinet); }
+        }
+
+        private static Renderer CreateRendererPath(Transform root, string path)
+        {
+            var parent = root;
+            foreach (var segment in path.Split('/')) { var child = new GameObject(segment); child.transform.SetParent(parent, false); parent = child.transform; }
+            return parent.gameObject.AddComponent<MeshRenderer>();
+        }
+
         private static Texture2D NewTexture() { return new Texture2D(1, 1, TextureFormat.RGBA32, false, true); }
     }
 }
