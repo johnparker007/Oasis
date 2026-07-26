@@ -67,8 +67,7 @@ Shader "Oasis/Cabinet Analytic Reflection"
                 float4 shadowCoord : TEXCOORD4;
             };
 
-            TEXTURE2D(_BaseMap); SAMPLER(sampler_BaseMap);
-            TEXTURE2D(_BumpMap); SAMPLER(sampler_BumpMap);
+            // SurfaceInput.hlsl owns the conventional URP _BaseMap and _BumpMap declarations.
             TEXTURE2D(_OasisReflectionVisibilityMask); SAMPLER(sampler_OasisReflectionVisibilityMask);
             TEXTURE2D(_OasisArtworkTex); SAMPLER(sampler_OasisArtworkTex);
 
