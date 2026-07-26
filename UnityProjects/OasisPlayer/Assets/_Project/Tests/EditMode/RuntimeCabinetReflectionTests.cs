@@ -51,6 +51,39 @@ namespace OasisPlayer.Tests
             Assert.AreEqual(new Vector2(expectedU, expectedV), orientation.TransformUv(new Vector2(u, v)));
         }
 
+        [TestCase(0, false)] [TestCase(90, false)] [TestCase(180, false)] [TestCase(270, false)]
+        [TestCase(0, true)] [TestCase(90, true)] [TestCase(180, true)] [TestCase(270, true)]
+        public void ReflectionFinalUvMatchesNormalFaceForEveryOrientation(int rotation, bool flipHorizontal)
+        {
+            var rawGlbPoints = new[]
+            {
+                new Vector2(0, 0), new Vector2(1, 0), new Vector2(0, 1), new Vector2(1, 1),
+                new Vector2(.1f, .2f), new Vector2(.9f, .2f), new Vector2(.1f, .8f), new Vector2(.9f, .8f)
+            };
+            var orientation = new RuntimeFaceTextureOrientation(rotation, flipHorizontal);
+            foreach (var rawGlbUv in rawGlbPoints)
+            {
+                // Normal rendering starts with the V-inverted UV glTFast put on the mesh.
+                var unityMeshBaseUv = new Vector2(rawGlbUv.x, 1f - rawGlbUv.y);
+                var normalFinalUv = orientation.TransformUv(unityMeshBaseUv);
+                var reflectionFinalUv = orientation.TransformUv(RuntimeFaceBaseUvConversion.ConvertReflectionPlaneUvToUnityBaseUv(rawGlbUv));
+                Assert.AreEqual(normalFinalUv, reflectionFinalUv, $"rawGlbUv={rawGlbUv}, rotation={rotation}, flipHorizontal={flipHorizontal}");
+            }
+        }
+
+        [TestCase(270, false, RuntimeFaceFrontSide.Inverted)]
+        [TestCase(90, true, RuntimeFaceFrontSide.Normal)]
+        public void VogueFaceUvParityIsIndependentOfFrontSide(int rotation, bool flipHorizontal, RuntimeFaceFrontSide frontSide)
+        {
+            var orientation = new RuntimeFaceTextureOrientation(rotation, flipHorizontal);
+            var points = new[] { new Vector2(0, 0), new Vector2(1, 0), new Vector2(0, 1), new Vector2(1, 1), new Vector2(.1f, .2f), new Vector2(.9f, .8f) };
+            foreach (var rawGlbUv in points)
+            {
+                var unityBaseUv = RuntimeFaceBaseUvConversion.ConvertReflectionPlaneUvToUnityBaseUv(rawGlbUv);
+                Assert.AreEqual(orientation.TransformUv(unityBaseUv), orientation.TransformUv(RuntimeFaceBaseUvConversion.ConvertReflectionPlaneUvToUnityBaseUv(rawGlbUv)), frontSide.ToString());
+            }
+        }
+
         [Test]
         public void SourceFrontSideChangesIntersectionSideWithoutChangingUvBasis()
         {
@@ -187,6 +220,7 @@ namespace OasisPlayer.Tests
             StringAssert.Contains("art.rgb*_OasisReflectionUnlitArtworkStrength", source);
             StringAssert.Contains("_OasisReflectionLitLampStrength", source);
             StringAssert.Contains("ReconstructFace(selected,saturate(uv+d))", source);
+            StringAssert.Contains("TransformFaceUv(ConvertReflectionPlaneUvToUnityBaseUv(uv)", source);
             Assert.AreEqual(4, Regex.Matches(source, @"\bSAMPLER\(").Count, "Cabinet reflection shader must share Face samplers to remain below the D3D11 ps_4_0 limit.");
             StringAssert.DoesNotContain("sampler_OasisArtworkTex1", source);
             StringAssert.Contains("float3 colour=float3(0,0,0)", source);
