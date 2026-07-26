@@ -149,7 +149,14 @@ public sealed class GlbCabinetFaceTargetDetector : ICabinetFaceTargetDetector
             up = ((c.Position - a.Position) * du1 - (b.Position - a.Position) * du2) / determinant;
             origin = a.Position - right * a.Uv.X - up * a.Uv.Y;
             var scale = Math.Max(1d, Math.Max(right.Length, up.Length));
-            if (samples.Any(sample => (origin + right * sample.Uv.X + up * sample.Uv.Y - sample.Position).Length > scale * 1e-4))
+            var mappingIsAffine = true;
+            foreach (var sample in samples)
+            {
+                if ((origin + right * sample.Uv.X + up * sample.Uv.Y - sample.Position).Length <= scale * 1e-4) continue;
+                mappingIsAffine = false;
+                break;
+            }
+            if (!mappingIsAffine)
             {
                 error = "Target TEXCOORD_0 is not a single affine planar mapping."; return false;
             }
