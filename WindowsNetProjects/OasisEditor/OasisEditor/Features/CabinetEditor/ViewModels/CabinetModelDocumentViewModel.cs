@@ -33,6 +33,9 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
     private string? _errorMessage;
     private bool _isLoading;
     private CabinetFaceTargetViewModel? _selectedFaceTarget;
+    private double _viewportWidth;
+    private double _viewportHeight;
+    private string _viewDiagnostic = "Cabinet view has not loaded a model.";
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private bool _disposed;
 
@@ -50,6 +53,7 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
         _livePreviewRefreshTimer.Tick += OnLivePreviewRefreshTimerTick;
         ReloadCommand = new RelayCommand(async () => await LoadAsync(), CanLoad);
         ResetCameraCommand = Viewport.ResetCameraCommand;
+        DumpViewStateCommand = new RelayCommand(DumpViewState);
         ReflectionEditor = new CabinetReflectionEditorViewModel(document, openDocumentsAccessor);
         if (!string.IsNullOrWhiteSpace(ModelPath))
         {
@@ -74,6 +78,8 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
     public bool IsLoading { get => _isLoading; private set { _isLoading = value; OnPropertyChanged(); if (ReloadCommand is RelayCommand relay) relay.RaiseCanExecuteChanged(); } }
     public ICommand ReloadCommand { get; }
     public ICommand ResetCameraCommand { get; }
+    public ICommand DumpViewStateCommand { get; }
+    public string ViewDiagnostic { get => _viewDiagnostic; private set { _viewDiagnostic = value; OnPropertyChanged(); } }
     public IReadOnlyList<string> FrontSideOptions { get; } = new[] { CabinetTargetOverride.NormalFrontSide, CabinetTargetOverride.InvertedFrontSide };
     public IReadOnlyList<int> FaceRotationOptions { get; } = new[] { 0, 90, 180, 270 };
     public IReadOnlyList<string> LampPreviewModeOptions { get; } = new[] { CabinetLampPreviewMode.Live, CabinetLampPreviewMode.BackgroundOnly, CabinetLampPreviewMode.LampsOff, CabinetLampPreviewMode.LampsAllOn };
@@ -161,12 +167,14 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
                 OnPropertyChanged(nameof(HasFaceTargets));
                 OnPropertyChanged(nameof(FaceTargetStatus));
                 ErrorMessage = result.ErrorMessage ?? "Unable to load the cabinet model.";
-                LoadStatus = "Cabinet model load failed.";
+                ViewDiagnostic = $"Cabinet view diagnostic: load=failure, reason={ErrorMessage}, viewport=({_viewportWidth:G6}x{_viewportHeight:G6}).";
+                Debug.WriteLine(ViewDiagnostic);
+                LoadStatus = "Cabinet model load failed; details were written to diagnostics.";
                 return;
             }
 
             Viewport.Model = result.Model;
-            Viewport.FrameModel();
+            var boundsValid = CabinetViewportViewModel.TryValidateBounds(Viewport.ModelBounds, out var boundsError);
             FaceTargets.Clear();
             foreach (var target in result.FaceTargets)
             {
@@ -177,9 +185,17 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
             SelectedFaceTarget = FaceTargets.FirstOrDefault();
             ReflectionEditor.SetDiscovery(result.ReflectionTargets, result.FaceTargets);
             RefreshFacePreviews();
+            ViewDiagnostic = BuildViewDiagnostic(result.Model, boundsValid ? null : boundsError);
+            Debug.WriteLine(ViewDiagnostic);
+            if (!boundsValid)
+            {
+                ErrorMessage = $"Cabinet model loaded, but cannot be framed: {boundsError}.";
+                LoadStatus = $"Loaded {DisplayName}, but bounds are invalid: {boundsError}.";
+                return;
+            }
             LoadStatus = FaceTargets.Count == 0
-                ? $"Loaded {DisplayName}; no Oasis face targets found"
-                : $"Loaded {DisplayName}; detected {FaceTargets.Count} Oasis face target{(FaceTargets.Count == 1 ? string.Empty : "s")}";
+                ? $"Loaded {DisplayName}; no Oasis face targets found; view diagnostics written."
+                : $"Loaded {DisplayName}; detected {FaceTargets.Count} Oasis face target{(FaceTargets.Count == 1 ? string.Empty : "s")}; view diagnostics written.";
         }
         catch (OperationCanceledException)
         {
@@ -189,6 +205,38 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
         {
             if (!_disposed) IsLoading = false;
         }
+    }
+
+    public void UpdateViewportSize(double width, double height)
+    {
+        _viewportWidth = width; _viewportHeight = height;
+        if (Viewport.Model is not null)
+        {
+            ViewDiagnostic = BuildViewDiagnostic(Viewport.Model, CabinetViewportViewModel.TryValidateBounds(Viewport.ModelBounds, out var error) ? null : error);
+            Debug.WriteLine(ViewDiagnostic);
+        }
+    }
+
+    private void DumpViewState()
+    {
+        ViewDiagnostic = Viewport.Model is null ? "Cabinet view diagnostic: model is absent." : BuildViewDiagnostic(Viewport.Model, CabinetViewportViewModel.TryValidateBounds(Viewport.ModelBounds, out var error) ? null : error);
+        Debug.WriteLine(ViewDiagnostic);
+    }
+
+    private string BuildViewDiagnostic(Model3DGroup model, string? boundsError)
+    {
+        var bounds = Viewport.ModelBounds;
+        var centre = bounds.IsEmpty ? new Point3D() : new Point3D(bounds.X + bounds.SizeX / 2, bounds.Y + bounds.SizeY / 2, bounds.Z + bounds.SizeZ / 2);
+        var radius = bounds.IsEmpty ? 0 : Math.Max(Math.Max(bounds.SizeX, bounds.SizeY), bounds.SizeZ);
+        var triangles = CountTriangles(model);
+        var finite = new[] { bounds.X, bounds.Y, bounds.Z, bounds.SizeX, bounds.SizeY, bounds.SizeZ }.All(value => !double.IsNaN(value) && !double.IsInfinity(value));
+        return $"Cabinet view diagnostic: load=success, children={model.Children.Count}, triangles={triangles}, bounds=({bounds.X:G6},{bounds.Y:G6},{bounds.Z:G6}; {bounds.SizeX:G6},{bounds.SizeY:G6},{bounds.SizeZ:G6}), finite={finite}, boundsValid={boundsError is null}, boundsError={boundsError ?? "none"}, centre=({centre.X:G6},{centre.Y:G6},{centre.Z:G6}), radius={radius:G6}, distance={radius * 2.5:G6}, camera=({Viewport.CameraPosition.X:G6},{Viewport.CameraPosition.Y:G6},{Viewport.CameraPosition.Z:G6}), look=({Viewport.CameraLookDirection.X:G6},{Viewport.CameraLookDirection.Y:G6},{Viewport.CameraLookDirection.Z:G6}), lookLength={Viewport.CameraLookDirection.Length:G6}, up=({Viewport.CameraUpDirection.X:G6},{Viewport.CameraUpDirection.Y:G6},{Viewport.CameraUpDirection.Z:G6}), fov={Viewport.CameraFieldOfView:G6}, viewport=({_viewportWidth:G6}x{_viewportHeight:G6}).";
+    }
+
+    private static int CountTriangles(Model3D model)
+    {
+        if (model is GeometryModel3D geometry) return geometry.Geometry is MeshGeometry3D mesh ? mesh.TriangleIndices.Count / 3 : 0;
+        return model is Model3DGroup group ? group.Children.Sum(CountTriangles) : 0;
     }
 
     public void Dispose()

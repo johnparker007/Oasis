@@ -42,6 +42,18 @@ public sealed class CabinetViewerLifecycleTests
         Assert.Null(viewer!.Viewport.Model);
     }
 
+    [Fact]
+    public void InvalidModelBounds_DoNotReplaceTheExistingCamera()
+    {
+        var viewport = new CabinetViewportViewModel();
+        var originalPosition = viewport.CameraPosition;
+        viewport.Model = new Model3DGroup();
+
+        Assert.Equal(originalPosition, viewport.CameraPosition);
+        Assert.False(viewport.TryFrameModel(out var error));
+        Assert.Contains("empty", error, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static DocumentTabViewModel CreateDocument()
     {
         var cabinet = CabinetDocument.FromModelPath("cabinet.glb");
