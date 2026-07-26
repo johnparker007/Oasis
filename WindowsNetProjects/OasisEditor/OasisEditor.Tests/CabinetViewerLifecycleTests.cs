@@ -1,3 +1,4 @@
+using System.Windows.Media;
 using System.Windows.Media.Media3D;
 using OasisEditor.Features.CabinetEditor.Models;
 using OasisEditor.Features.CabinetEditor.Services;
