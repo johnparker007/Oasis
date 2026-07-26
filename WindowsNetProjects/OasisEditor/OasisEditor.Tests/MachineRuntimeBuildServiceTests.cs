@@ -256,7 +256,7 @@ public sealed class MachineRuntimeBuildServiceTests
     }
 
     private static CabinetDocument CreateCabinetWithSpec(string modelPath, CabinetTargetOverride targetOverride) => new(
-        4,
+        5,
         new CabinetModelReference(modelPath, 1.0, "Y"),
         [targetOverride],
         CabinetPreviewSettings.Default,
