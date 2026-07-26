@@ -44,7 +44,7 @@ namespace OasisPlayer.Tests
             RuntimeFaceReflectionPlane.TryCreate(new Vector3(-1, -1, 2), Vector3.right, Vector3.up, 2, 2, out var plane);
             Assert.True(RuntimeCabinetReflectionMath.TryReflectToFaceUv(new Vector3(0, 0, 1), Vector3.zero, Vector3.forward, plane, out var flatUv));
             Assert.True(RuntimeCabinetReflectionMath.TryReflectToFaceUv(new Vector3(.2f, 0, 1), Vector3.zero, new Vector3(.1f, 0, 1), plane, out var bevelUv));
-            Assert.AreNotEqual(flatUv.x, bevelUv.x, 1e-4f);
+            Assert.That(Mathf.Abs(flatUv.x - bevelUv.x), Is.GreaterThan(1e-4f));
             Assert.False(RuntimeCabinetReflectionMath.TryReflectToFaceUv(Vector3.back, Vector3.zero, Vector3.forward, plane, out _));
         }
 

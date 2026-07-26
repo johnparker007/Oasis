@@ -54,8 +54,6 @@ Shader "Oasis/CabinetAnalyticReflection"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SurfaceInput.hlsl"
 
-            TEXTURE2D(_BaseMap); SAMPLER(sampler_BaseMap);
-            TEXTURE2D(_BumpMap); SAMPLER(sampler_BumpMap);
             TEXTURE2D(_OasisReflectionVisibilityMaskTex); SAMPLER(sampler_OasisReflectionVisibilityMaskTex);
             TEXTURE2D(_OasisArtworkTex); SAMPLER(sampler_OasisArtworkTex);
             CBUFFER_START(UnityPerMaterial)
