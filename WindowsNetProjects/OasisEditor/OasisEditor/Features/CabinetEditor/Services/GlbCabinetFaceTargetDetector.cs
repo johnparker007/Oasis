@@ -57,6 +57,8 @@ public sealed class GlbCabinetFaceTargetDetector : ICabinetFaceTargetDetector
             }
 
             var points = new List<Point3D>();
+            var samples = new List<(Point3D Position, Vector2 Uv)>();
+            Vector3D? meshNormal = null;
             if (mesh.TryGetProperty("primitives", out var primitives) && primitives.ValueKind == JsonValueKind.Array)
             {
                 foreach (var primitive in primitives.EnumerateArray())
@@ -64,16 +66,35 @@ public sealed class GlbCabinetFaceTargetDetector : ICabinetFaceTargetDetector
                     if (!primitive.TryGetProperty("attributes", out var attributes)
                         || !attributes.TryGetProperty("POSITION", out var positionAccessorElement)) continue;
 
+                    if (!attributes.TryGetProperty("TEXCOORD_0", out var uvAccessorElement))
+                    {
+                        return Invalid(id, sourceName, displayName, "Target mesh must provide TEXCOORD_0 so reflection UVs can match the rendered Face.");
+                    }
+
                     var localPositions = ReadVector3Accessor(root, binaryChunk, positionAccessorElement.GetInt32());
+                    var textureCoordinates = ReadVector2Accessor(root, binaryChunk, uvAccessorElement.GetInt32());
+                    if (textureCoordinates.Count != localPositions.Count)
+                    {
+                        return Invalid(id, sourceName, displayName, "Target POSITION and TEXCOORD_0 accessors have different vertex counts.");
+                    }
                     var indexes = primitive.TryGetProperty("indices", out var indicesElement)
                         ? ReadIndexAccessor(root, binaryChunk, indicesElement.GetInt32())
                         : Enumerable.Range(0, localPositions.Count).ToArray();
+
+                    if (meshNormal is null && indexes.Length >= 3 && indexes.Take(3).All(index => index >= 0 && index < localPositions.Count))
+                    {
+                        var p0 = Vector3.Transform(localPositions[indexes[0]], transform); var p1 = Vector3.Transform(localPositions[indexes[1]], transform); var p2 = Vector3.Transform(localPositions[indexes[2]], transform);
+                        var candidateNormal = Vector3.Cross(p1 - p0, p2 - p0);
+                        if (candidateNormal.LengthSquared() > 1e-12f) { candidateNormal = Vector3.Normalize(candidateNormal); meshNormal = new Vector3D(candidateNormal.X, candidateNormal.Y, candidateNormal.Z); }
+                    }
 
                     foreach (var index in indexes)
                     {
                         if (index < 0 || index >= localPositions.Count) continue;
                         var transformed = Vector3.Transform(localPositions[index], transform);
-                        AddUnique(points, new Point3D(transformed.X, transformed.Y, transformed.Z));
+                        var point = new Point3D(transformed.X, transformed.Y, transformed.Z);
+                        AddUnique(points, point);
+                        samples.Add((point, textureCoordinates[index]));
                     }
                 }
             }
@@ -92,17 +113,57 @@ public sealed class GlbCabinetFaceTargetDetector : ICabinetFaceTargetDetector
             }
 
             normal.Normalize();
+            if (meshNormal is not null) normal = meshNormal.Value;
             if (!IsPlanar(ordered, normal, center))
             {
                 return Invalid(id, sourceName, displayName, "Quad corners are not planar.");
             }
 
-            return new CabinetFaceTarget(id, sourceName, displayName, ordered, normal, center, true, null);
+            if (!TryDeriveUvBasis(samples, out var uvOrigin, out var uvRightSpan, out var uvUpSpan, out var uvError))
+            {
+                return Invalid(id, sourceName, displayName, uvError);
+            }
+
+            return new CabinetFaceTarget(id, sourceName, displayName, ordered, normal, center, true, null, uvOrigin, uvRightSpan, uvUpSpan);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Invalid(id, sourceName, displayName, $"Target geometry could not be read: {ex.Message}");
         }
+    }
+
+    internal static bool TryDeriveUvBasis(IReadOnlyList<(Point3D Position, Vector2 Uv)> samples, out Point3D origin, out Vector3D right, out Vector3D up, out string error)
+    {
+        origin = default; right = default; up = default; error = string.Empty;
+        const double epsilon = 1e-6;
+        for (var i = 0; i < samples.Count - 2; i++)
+        for (var j = i + 1; j < samples.Count - 1; j++)
+        for (var k = j + 1; k < samples.Count; k++)
+        {
+            var a = samples[i]; var b = samples[j]; var c = samples[k];
+            var du1 = b.Uv.X - a.Uv.X; var dv1 = b.Uv.Y - a.Uv.Y;
+            var du2 = c.Uv.X - a.Uv.X; var dv2 = c.Uv.Y - a.Uv.Y;
+            var determinant = du1 * dv2 - du2 * dv1;
+            if (Math.Abs(determinant) <= epsilon) continue;
+            right = ((b.Position - a.Position) * dv2 - (c.Position - a.Position) * dv1) / determinant;
+            up = ((c.Position - a.Position) * du1 - (b.Position - a.Position) * du2) / determinant;
+            origin = a.Position - right * a.Uv.X - up * a.Uv.Y;
+            var scale = Math.Max(1d, Math.Max(right.Length, up.Length));
+            if (samples.Any(sample => (origin + right * sample.Uv.X + up * sample.Uv.Y - sample.Position).Length > scale * 1e-4))
+            {
+                error = "Target TEXCOORD_0 is not a single affine planar mapping."; return false;
+            }
+            if (right.Length <= epsilon || up.Length <= epsilon || Math.Abs(Vector3D.DotProduct(right, up) / (right.Length * up.Length)) > 1e-4)
+            {
+                error = "Target TEXCOORD_0 must describe a non-degenerate rectangular mapping."; return false;
+            }
+            if (samples.Any(sample => sample.Uv.X < -1e-4 || sample.Uv.X > 1.0001 || sample.Uv.Y < -1e-4 || sample.Uv.Y > 1.0001))
+            {
+                error = "Target TEXCOORD_0 must use the canonical 0..1 Face rectangle."; return false;
+            }
+            return true;
+        }
+        error = "Target TEXCOORD_0 cannot form a valid rectangular planar mapping."; return false;
     }
 
     private static IReadOnlyList<Point3D> OrderCorners(IReadOnlyList<Point3D> points, Point3D center)
@@ -148,6 +209,15 @@ public sealed class GlbCabinetFaceTargetDetector : ICabinetFaceTargetDetector
             result.Add(new Vector3(ReadSingle(binaryChunk, offset), ReadSingle(binaryChunk, offset + 4), ReadSingle(binaryChunk, offset + 8)));
         }
 
+        return result;
+    }
+
+    private static List<Vector2> ReadVector2Accessor(JsonElement root, byte[] binaryChunk, int accessorIndex)
+    {
+        var accessor = GetAccessor(root, accessorIndex, out _, out var byteOffset, out var stride);
+        if (accessor.GetProperty("type").GetString() != "VEC2" || accessor.GetProperty("componentType").GetInt32() != 5126) throw new InvalidDataException("TEXCOORD_0 accessor must be float VEC2.");
+        var count = accessor.GetProperty("count").GetInt32(); var result = new List<Vector2>(count);
+        for (var i = 0; i < count; i++) { var offset = byteOffset + i * stride; result.Add(new Vector2(ReadSingle(binaryChunk, offset), ReadSingle(binaryChunk, offset + 4))); }
         return result;
     }
 

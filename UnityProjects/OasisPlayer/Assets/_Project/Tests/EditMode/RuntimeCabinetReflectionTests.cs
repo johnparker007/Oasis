@@ -40,6 +40,29 @@ namespace OasisPlayer.Tests
             Assert.AreEqual(new Vector2(x, y), uv);
         }
 
+        [TestCase(0, false, .1f, .2f, .1f, .2f)]
+        [TestCase(90, false, .1f, .2f, .8f, .1f)]
+        [TestCase(180, false, .9f, .2f, .1f, .8f)]
+        [TestCase(270, false, .1f, .8f, .8f, .9f)]
+        [TestCase(90, true, .9f, .8f, .8f, .9f)]
+        public void ReflectionUsesNormalFaceTextureOrientation(int rotation, bool flip, float u, float v, float expectedU, float expectedV)
+        {
+            var orientation = new RuntimeFaceTextureOrientation(rotation, flip);
+            Assert.AreEqual(new Vector2(expectedU, expectedV), orientation.TransformUv(new Vector2(u, v)));
+        }
+
+        [Test]
+        public void SourceFrontSideChangesIntersectionSideWithoutChangingUvBasis()
+        {
+            RuntimeFaceReflectionPlane.TryCreate(Vector3.zero, Vector3.right, Vector3.up, 1, 1, out var plane);
+            var normal = new[] { new RuntimeCabinetReflectionSource("face", plane, RuntimeFaceFrontSide.Normal) };
+            var inverted = new[] { new RuntimeCabinetReflectionSource("face", plane, RuntimeFaceFrontSide.Inverted) };
+            Assert.True(RuntimeCabinetReflectionMath.TrySelectNearest(new Vector3(.1f, .2f, 1), Vector3.back, normal, out _, out var normalUv));
+            Assert.False(RuntimeCabinetReflectionMath.TrySelectNearest(new Vector3(.1f, .2f, 1), Vector3.back, inverted, out _, out _));
+            Assert.True(RuntimeCabinetReflectionMath.TrySelectNearest(new Vector3(.1f, .2f, -1), Vector3.forward, inverted, out _, out var invertedUv));
+            Assert.AreEqual(normalUv, invertedUv);
+        }
+
         [Test]
         public void ReflectedUvChangesWithCabinetNormalAndRejectsAwayRay()
         {

@@ -10,4 +10,7 @@ public sealed record CabinetFaceTarget(
     Vector3D Normal,
     Point3D Center,
     bool IsValid,
-    string? ErrorMessage);
+    string? ErrorMessage,
+    Point3D? UvOrigin = null,
+    Vector3D? UvRightSpan = null,
+    Vector3D? UvUpSpan = null);

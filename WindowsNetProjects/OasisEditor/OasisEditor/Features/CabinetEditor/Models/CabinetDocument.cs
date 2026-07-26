@@ -9,10 +9,10 @@ public sealed record CabinetDocument(
     string? DefaultReelSpecificationId = null,
     CabinetReflectionDefinition[]? Reflections = null)
 {
-    public static CabinetDocument Empty => new(4, new CabinetModelReference(string.Empty, 1.0, "Y"), [], CabinetPreviewSettings.Default, [], null);
+    public static CabinetDocument Empty => new(5, new CabinetModelReference(string.Empty, 1.0, "Y"), [], CabinetPreviewSettings.Default, [], null);
 
     public static CabinetDocument FromModelPath(string modelPath) => new(
-        4,
+        5,
         new CabinetModelReference(modelPath, 1.0, "Y"),
         [],
         CabinetPreviewSettings.Default,
@@ -22,7 +22,7 @@ public sealed record CabinetDocument(
 
 public sealed record CabinetReflectionVector(double X, double Y, double Z);
 
-public sealed record CabinetReflectionPlane(CabinetReflectionVector Origin, CabinetReflectionVector Right, CabinetReflectionVector Up, double Width, double Height);
+public sealed record CabinetReflectionPlane(CabinetReflectionVector Origin, CabinetReflectionVector Right, CabinetReflectionVector Up, double Width, double Height, CabinetReflectionVector? Normal = null);
 
 public sealed record CabinetReflectionSettings(bool Enabled, double Strength, double UnlitArtworkStrength, double LitLampStrength, double FresnelPower, double FresnelStrength, double Roughness, double Distortion, double EdgeFade)
 {

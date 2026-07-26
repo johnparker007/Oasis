@@ -12,30 +12,8 @@ SAMPLER(sampler_OasisLampWeights0Tex);
 TEXTURE2D(_OasisLampStateTex);
 SAMPLER(sampler_OasisLampStateTex);
 
-float2 TransformFaceUv(float2 uv)
-{
-    float turns = floor(_OasisFaceRotationQuarterTurns + 0.5);
-    float2 transformed = uv;
-    if (turns == 1.0)
-    {
-        transformed = float2(1.0 - uv.y, uv.x);
-    }
-    else if (turns == 2.0)
-    {
-        transformed = float2(1.0 - uv.x, 1.0 - uv.y);
-    }
-    else if (turns == 3.0)
-    {
-        transformed = float2(uv.y, 1.0 - uv.x);
-    }
-
-    if (_OasisFaceFlipHorizontal >= 0.5)
-    {
-        transformed.x = 1.0 - transformed.x;
-    }
-
-    return transformed;
-}
+#include "OasisFaceUvOrientation.hlsl"
+float2 TransformFaceUv(float2 uv) { return TransformFaceUv(uv, _OasisFaceRotationQuarterTurns, _OasisFaceFlipHorizontal); }
 
 float DecodeLampBrightness(float lampId)
 {

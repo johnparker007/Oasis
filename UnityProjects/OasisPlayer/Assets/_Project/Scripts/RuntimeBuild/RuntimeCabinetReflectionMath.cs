@@ -2,13 +2,13 @@ using UnityEngine;
 
 namespace OasisPlayer.RuntimeBuild
 {
-    public readonly struct RuntimeCabinetReflectionSource { public RuntimeCabinetReflectionSource(string faceId, RuntimeFaceReflectionPlane plane) { FaceId = faceId; Plane = plane; } public string FaceId { get; } public RuntimeFaceReflectionPlane Plane { get; } }
-    /// <summary>Rectangle origin is UV (0,0); right/up lead to (1,0)/(0,1), and normal is cross(right, up).</summary>
+    public readonly struct RuntimeCabinetReflectionSource { public RuntimeCabinetReflectionSource(string faceId, RuntimeFaceReflectionPlane plane, RuntimeFaceFrontSide frontSide = RuntimeFaceFrontSide.Normal) { FaceId = faceId; Plane = plane; FrontSide = frontSide; } public string FaceId { get; } public RuntimeFaceReflectionPlane Plane { get; } public RuntimeFaceFrontSide FrontSide { get; } public Vector3 VisibleNormalWS { get { return FrontSide == RuntimeFaceFrontSide.Inverted ? -Plane.NormalWS : Plane.NormalWS; } } }
+    /// <summary>Rectangle origin is UV (0,0); right/up lead to (1,0)/(0,1), while the normal independently identifies the mesh-facing side.</summary>
     public readonly struct RuntimeFaceReflectionPlane
     {
-        private RuntimeFaceReflectionPlane(Vector3 origin, Vector3 right, Vector3 up, float width, float height)
+        private RuntimeFaceReflectionPlane(Vector3 origin, Vector3 right, Vector3 up, Vector3 normal, float width, float height)
         {
-            OriginWS = origin; RightWS = right; UpWS = up; NormalWS = Vector3.Cross(right, up).normalized; Width = width; Height = height;
+            OriginWS = origin; RightWS = right; UpWS = up; NormalWS = normal.normalized; Width = width; Height = height;
         }
 
         public Vector3 OriginWS { get; }
@@ -21,12 +21,19 @@ namespace OasisPlayer.RuntimeBuild
 
         public static bool TryCreate(Vector3 origin, Vector3 right, Vector3 up, float width, float height, out RuntimeFaceReflectionPlane plane)
         {
+            return TryCreate(origin, right, up, Vector3.Cross(right, up), width, height, out plane);
+        }
+
+        public static bool TryCreate(Vector3 origin, Vector3 right, Vector3 up, Vector3 normal, float width, float height, out RuntimeFaceReflectionPlane plane)
+        {
             plane = default;
-            if (!Finite(origin) || !Finite(right) || !Finite(up) || !Finite(width) || !Finite(height) || width <= 0f || height <= 0f) return false;
-            if (right.sqrMagnitude < 1e-8f || up.sqrMagnitude < 1e-8f) return false;
+            if (!Finite(origin) || !Finite(right) || !Finite(up) || !Finite(normal) || !Finite(width) || !Finite(height) || width <= 0f || height <= 0f) return false;
+            if (right.sqrMagnitude < 1e-8f || up.sqrMagnitude < 1e-8f || normal.sqrMagnitude < 1e-8f) return false;
             right.Normalize(); up.Normalize();
             if (Vector3.Cross(right, up).sqrMagnitude < 1e-8f || Mathf.Abs(Vector3.Dot(right, up)) > 1e-4f) return false;
-            plane = new RuntimeFaceReflectionPlane(origin, right, up, width, height);
+            normal.Normalize();
+            if (Mathf.Abs(Vector3.Dot(normal, right)) > 1e-4f || Mathf.Abs(Vector3.Dot(normal, up)) > 1e-4f) return false;
+            plane = new RuntimeFaceReflectionPlane(origin, right, up, normal, width, height);
             return true;
         }
 
@@ -73,7 +80,7 @@ namespace OasisPlayer.RuntimeBuild
             if (sources == null || sources.Length > RuntimeCabinetReflectionShaderProperties.MaximumSources) return false;
             for (var index = 0; index < sources.Length; index++)
             {
-                if (!TryIntersectRayWithPlane(origin, direction, sources[index].Plane, out var distance, out var hit) || distance >= nearest || !TryWorldPointToFaceUv(hit, sources[index].Plane, out var candidate) || candidate.x < 0f || candidate.x > 1f || candidate.y < 0f || candidate.y > 1f) continue;
+                if (Vector3.Dot(direction, sources[index].VisibleNormalWS) >= -RayEpsilon || !TryIntersectRayWithPlane(origin, direction, sources[index].Plane, out var distance, out var hit) || distance >= nearest || !TryWorldPointToFaceUv(hit, sources[index].Plane, out var candidate) || candidate.x < 0f || candidate.x > 1f || candidate.y < 0f || candidate.y > 1f) continue;
                 nearest = distance; sourceIndex = index; uv = candidate;
             }
             return sourceIndex >= 0;
