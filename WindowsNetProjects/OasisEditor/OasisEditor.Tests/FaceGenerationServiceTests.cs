@@ -209,7 +209,7 @@ public sealed class FaceGenerationServiceTests
             Elements = [new PanelElementModel { ObjectId = "reel-1", Kind = PanelElementKind.Reel, X = 10, Y = 10, Width = 20, Height = 40, DisplayNumber = 1 }]
         };
         var cabinet = new CabinetDocument(
-            2,
+            4,
             new CabinetModelReference("source.glb", 1, "Y"),
             [],
             CabinetPreviewSettings.Default,

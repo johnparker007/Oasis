@@ -35,7 +35,7 @@ public sealed class MachineRuntimeBuildServiceTests
         var cabinetDir = Directory.CreateDirectory(Path.Combine(project.AssetsDirectory, "Cabinet3D", "Test Cabinet")).FullName;
         var sourceGlb = Path.Combine(cabinetDir, "source.glb");
         File.WriteAllBytes(sourceGlb, [1, 2, 3]);
-        File.WriteAllText(Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName), CabinetDocumentStorage.Serialize(new CabinetDocument(1, new CabinetModelReference("source.glb", 2.5, "Z"), [], CabinetPreviewSettings.Default)));
+        File.WriteAllText(Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName), CabinetDocumentStorage.Serialize(new CabinetDocument(4, new CabinetModelReference("source.glb", 2.5, "Z"), [], CabinetPreviewSettings.Default)));
         var stale = Path.Combine(project.GeneratedDirectory, "Builds", "Test Cabinet", "stale.txt");
         Directory.CreateDirectory(Path.GetDirectoryName(stale)!);
         File.WriteAllText(stale, "stale");
@@ -147,7 +147,7 @@ public sealed class MachineRuntimeBuildServiceTests
         var root = CreateTempRoot();
         var project = CreateProject(root);
         var manifestPath = CreateCabinetAsset(project, "Runtime Cabinet", CreateCabinetWithSpec("source.glb", new CabinetTargetOverride("bottomGlass", CabinetTargetOverride.NormalFrontSide)));
-        _ = CreateCabinetAsset(project, "Unrelated Cabinet", new CabinetDocument(2, new CabinetModelReference("source.glb", 1.0, "Y"), [new CabinetTargetOverride("bottomGlass", CabinetTargetOverride.NormalFrontSide)], CabinetPreviewSettings.Default, [new CabinetReelSpecification("standard", "Different", 500, 300)], "standard"));
+        _ = CreateCabinetAsset(project, "Unrelated Cabinet", new CabinetDocument(4, new CabinetModelReference("source.glb", 1.0, "Y"), [new CabinetTargetOverride("bottomGlass", CabinetTargetOverride.NormalFrontSide)], CabinetPreviewSettings.Default, [new CabinetReelSpecification("standard", "Different", 500, 300)], "standard"));
         CreateFaceAssetWithReel(project, "Bottom Face", "face-bottom", "bottomGlass", null, "standard");
 
         var result = new MachineRuntimeBuildService().BuildFromCabinetDocument(project, manifestPath);
@@ -256,7 +256,7 @@ public sealed class MachineRuntimeBuildServiceTests
     }
 
     private static CabinetDocument CreateCabinetWithSpec(string modelPath, CabinetTargetOverride targetOverride) => new(
-        2,
+        4,
         new CabinetModelReference(modelPath, 1.0, "Y"),
         [targetOverride],
         CabinetPreviewSettings.Default,

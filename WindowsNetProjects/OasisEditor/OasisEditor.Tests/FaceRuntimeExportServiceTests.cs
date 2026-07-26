@@ -1031,7 +1031,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
     }
 
     private static CabinetDocument CreateCabinet(params CabinetReelSpecification[] specifications) => new(
-        2,
+        4,
         new CabinetModelReference("Assets/Cabinets/cabinet.glb", 1.0, "Y"),
         [],
         CabinetPreviewSettings.Default,

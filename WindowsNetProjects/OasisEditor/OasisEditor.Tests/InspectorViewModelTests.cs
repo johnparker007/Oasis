@@ -73,7 +73,7 @@ public sealed class InspectorViewModelTests
     {
         var selectedDocument = new DocumentTabViewModel(
             EditorDocument.CreateCabinet3DStub("Cabinet"),
-            cabinetDocumentJson: CabinetDocumentStorage.Serialize(new CabinetDocument(2, new CabinetModelReference("cabinet.glb", 1, "Y"), [], CabinetPreviewSettings.Default, [], null)));
+            cabinetDocumentJson: CabinetDocumentStorage.Serialize(new CabinetDocument(4, new CabinetModelReference("cabinet.glb", 1, "Y"), [], CabinetPreviewSettings.Default, [], null)));
         var context = new ActiveDocumentContextService();
         context.SetActiveDocument(selectedDocument);
         var viewModel = CreateInspectorViewModel(selectedDocument, context, ExecuteImmediately);
@@ -98,7 +98,7 @@ public sealed class InspectorViewModelTests
     {
         var selectedDocument = new DocumentTabViewModel(
             EditorDocument.CreateCabinet3DStub("Cabinet"),
-            cabinetDocumentJson: CabinetDocumentStorage.Serialize(new CabinetDocument(2, new CabinetModelReference("cabinet.glb", 1, "Y"), [], CabinetPreviewSettings.Default, [], null)));
+            cabinetDocumentJson: CabinetDocumentStorage.Serialize(new CabinetDocument(4, new CabinetModelReference("cabinet.glb", 1, "Y"), [], CabinetPreviewSettings.Default, [], null)));
         var context = new ActiveDocumentContextService();
         context.SetActiveDocument(selectedDocument);
         InspectorViewModel? viewModel = null;
@@ -183,7 +183,7 @@ public sealed class InspectorViewModelTests
             Directory.CreateDirectory(Path.GetDirectoryName(cabinetPath)!);
             var cabinetDocument = new DocumentTabViewModel(
                 EditorDocument.CreateFromFile(cabinetPath, "Cabinet"),
-                cabinetDocumentJson: CabinetDocumentStorage.Serialize(new CabinetDocument(2, new CabinetModelReference("cabinet.glb", 1, "Y"), [], CabinetPreviewSettings.Default, [new CabinetReelSpecification("standard", "Standard Reel", 210, 50)], "standard")));
+                cabinetDocumentJson: CabinetDocumentStorage.Serialize(new CabinetDocument(4, new CabinetModelReference("cabinet.glb", 1, "Y"), [], CabinetPreviewSettings.Default, [new CabinetReelSpecification("standard", "Standard Reel", 210, 50)], "standard")));
             var reel = new FaceReelDisplayElement { ObjectId = "reel-1", Name = "Reel", X = 1, Y = 2, Width = 3, Height = 4, IsVisible = true, ReelSpecificationId = "missing" };
             var faceDocument = new DocumentTabViewModel(
                 EditorDocument.CreateFaceStub("Face"),
