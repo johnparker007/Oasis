@@ -7,16 +7,18 @@ namespace OasisEditor;
 internal static class AmberApiVersions
 {
     internal const uint V1 = 0x00010000u;
+    internal const uint V2 = 0x00020000u;
 
-    internal static string Format(uint version) => version == V1
-        ? $"API v1 (0x{version:X8})"
+    internal static string Format(uint version) => version is V1 or V2
+        ? $"API v{version >> 16} (0x{version:X8})"
         : $"API version 0x{version:X8}";
 }
 
 internal enum AmberResult : int
 {
     Ok, InvalidArgument, UnsupportedVersion, DllLoadFailed, ExportMissing, InvalidState,
-    InstanceLimit, InitialiseFailed, InternalError, NoMoreItems, BufferTooSmall
+    InstanceLimit, InitialiseFailed, InternalError, NoMoreItems, BufferTooSmall,
+    NotSupported, InvalidRange, MalformedConfiguration
 }
 
 [StructLayout(LayoutKind.Sequential)]
@@ -40,7 +42,19 @@ internal struct AmberApiV1Native
     internal IntPtr GetBridgeInfo, EnumerateCore, Create, Destroy, Initialise, Reset, Run, Shutdown, GetLastError;
 }
 
-[UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate AmberResult AmberGetApiDelegate(uint version, uint apiSize, ref AmberApiV1Native api);
+// API v2 is an ABI-stable extension of the complete v1 prefix. Keeping the
+// fields flattened makes every offset directly testable and keeps marshalling
+// blittable (80-byte prefix plus eight x64 function pointers = 144 bytes).
+[StructLayout(LayoutKind.Sequential)]
+internal struct AmberApiV2Native
+{
+    internal uint StructSize, ApiVersion;
+    internal IntPtr GetBridgeInfo, EnumerateCore, Create, Destroy, Initialise, Reset, Run, Shutdown, GetLastError;
+    internal IntPtr GetCapabilities, SetSwitchState, GetOutputSnapshot, GetAudioFormat,
+        FillAudioFrames, ConfigureReels, ConfigureCoins, SetPercentageSwitch;
+}
+
+[UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate AmberResult AmberGetApiDelegate(uint version, uint apiSize, ref AmberApiV2Native api);
 [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate AmberResult GetBridgeInfoDelegate(ref AmberBridgeInfoNative info);
 [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate AmberResult EnumerateCoreDelegate(uint index, ref AmberCoreInfoNative info);
 [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate AmberResult CreateDelegate(IntPtr coreId, out IntPtr handle);

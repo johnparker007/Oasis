@@ -153,18 +153,22 @@ public sealed class AmberBridgeLibrary : IAmberBridgeLibrary
 
     private static NativeApi NegotiateApi(IAmberBridgeModule module)
     {
-        var table = new AmberApiV1Native { StructSize = SizeOf<AmberApiV1Native>() };
-        Debug.WriteLine($"Amber Bridge: Calling AmberGetApi with {AmberApiVersions.Format(AmberApiVersions.V1)}.");
-        var result = module.BindAmberGetApi()(AmberApiVersions.V1, table.StructSize, ref table);
+        var table = new AmberApiV2Native { StructSize = SizeOf<AmberApiV2Native>() };
+        Debug.WriteLine($"Amber Bridge: Calling AmberGetApi with {AmberApiVersions.Format(AmberApiVersions.V2)}.");
+        var result = module.BindAmberGetApi()(AmberApiVersions.V2, table.StructSize, ref table);
         if (result != AmberResult.Ok)
         {
-            throw new AmberBridgeException("AmberGetApi", result);
+            var detail = result == AmberResult.UnsupportedVersion
+                ? "Amber Bridge API v2 is required. Requested version: 0x00020000. Required table size: 144."
+                : null;
+            throw new AmberBridgeException("AmberGetApi", result, detail);
         }
-        Debug.WriteLine("Amber Bridge: AmberGetApi succeeded.");
-        if (table.StructSize < SizeOf<AmberApiV1Native>() || table.ApiVersion != AmberApiVersions.V1)
+        if (table.StructSize != SizeOf<AmberApiV2Native>() || table.ApiVersion != AmberApiVersions.V2)
         {
-            throw new AmberBridgeException("AmberGetApi validation", AmberResult.UnsupportedVersion);
+            throw new AmberBridgeException("AmberGetApi validation", AmberResult.UnsupportedVersion,
+                $"Amber Bridge API v2 is required. Requested version: 0x00020000. Required table size: 144. Returned version: 0x{table.ApiVersion:X8}. Returned table size: {table.StructSize}.");
         }
+        Debug.WriteLine($"Amber Bridge: AmberGetApi succeeded; version 0x{table.ApiVersion:X8}, table size {table.StructSize}.");
 
         ValidateFunctionPointers(table);
         return new NativeApi(table);
@@ -174,7 +178,7 @@ public sealed class AmberBridgeLibrary : IAmberBridgeLibrary
     {
         var info = new AmberBridgeInfoNative { StructSize = SizeOf<AmberBridgeInfoNative>() };
         ThrowForResult(api, "GetBridgeInfo", api.GetBridgeInfo(ref info), IntPtr.Zero);
-        if (info.StructSize < SizeOf<AmberBridgeInfoNative>() || info.ApiVersion != AmberApiVersions.V1)
+        if (info.StructSize < SizeOf<AmberBridgeInfoNative>())
         {
             throw new AmberBridgeException("GetBridgeInfo validation", AmberResult.UnsupportedVersion);
         }
@@ -235,16 +239,20 @@ public sealed class AmberBridgeLibrary : IAmberBridgeLibrary
         }
     }
 
-    private static void ValidateFunctionPointers(AmberApiV1Native table)
+    private static void ValidateFunctionPointers(AmberApiV2Native table)
     {
         if (table.GetBridgeInfo == IntPtr.Zero || table.EnumerateCore == IntPtr.Zero ||
             table.Create == IntPtr.Zero || table.Destroy == IntPtr.Zero ||
             table.Initialise == IntPtr.Zero || table.Reset == IntPtr.Zero ||
             table.Run == IntPtr.Zero || table.Shutdown == IntPtr.Zero ||
-            table.GetLastError == IntPtr.Zero)
+            table.GetLastError == IntPtr.Zero || table.GetCapabilities == IntPtr.Zero ||
+            table.SetSwitchState == IntPtr.Zero || table.GetOutputSnapshot == IntPtr.Zero ||
+            table.GetAudioFormat == IntPtr.Zero || table.FillAudioFrames == IntPtr.Zero ||
+            table.ConfigureReels == IntPtr.Zero || table.ConfigureCoins == IntPtr.Zero ||
+            table.SetPercentageSwitch == IntPtr.Zero)
         {
             throw new AmberBridgeException("AmberGetApi validation", AmberResult.ExportMissing,
-                "The v1 function table contains a null required function pointer.");
+                "The v2 function table contains a null required function pointer.");
         }
     }
 
@@ -277,7 +285,7 @@ public sealed class AmberBridgeLibrary : IAmberBridgeLibrary
 
     private sealed class NativeApi
     {
-        internal NativeApi(AmberApiV1Native table)
+        internal NativeApi(AmberApiV2Native table)
         {
             GetBridgeInfo = Marshal.GetDelegateForFunctionPointer<GetBridgeInfoDelegate>(table.GetBridgeInfo);
             EnumerateCore = Marshal.GetDelegateForFunctionPointer<EnumerateCoreDelegate>(table.EnumerateCore);
