@@ -175,7 +175,7 @@
                     </Style>
                 </StackPanel.Style>
                 <TextBlock FontSize="18" FontWeight="SemiBold" Text="Native Emulation" />
-                <TextBlock Margin="0,16,0,4" Text="System6 native core DLL path" Foreground="{DynamicResource TextSecondaryBrush}" />
+                <TextBlock Margin="0,16,0,4" Text="System6 AmberBridge.dll path" Foreground="{DynamicResource TextSecondaryBrush}" />
                 <TextBox Text="{Binding System6NativeLibraryPath, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                 <TextBlock Margin="0,16,0,4" Text="Audio Buffer Length (ms)" Foreground="{DynamicResource TextSecondaryBrush}" />
                 <TextBox Width="120"

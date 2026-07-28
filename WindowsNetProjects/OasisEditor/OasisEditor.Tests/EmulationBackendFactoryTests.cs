@@ -8,7 +8,7 @@ public sealed class EmulationBackendFactoryTests
     [Fact]
     public void CreateBackend_ForNone_ReturnsNull()
     {
-        var factory = new EmulationBackendFactory(() => new FakeBackend(), () => "C:/cores/system6.dll");
+        var factory = new EmulationBackendFactory(() => new FakeBackend(), () => "C:/cores/AmberBridge.dll");
 
         Assert.Null(factory.CreateBackend(FruitMachinePlatformType.None));
     }
@@ -16,7 +16,7 @@ public sealed class EmulationBackendFactoryTests
     [Fact]
     public void CreateBackend_ForImpactWithSystem6Path_ReturnsSystem6Backend()
     {
-        var factory = new EmulationBackendFactory(() => new FakeBackend(), () => "C:/cores/system6.dll");
+        var factory = new EmulationBackendFactory(() => new FakeBackend(), () => "C:/cores/AmberBridge.dll", amberBridgeFactory: _ => throw new InvalidOperationException("created only on start"));
 
         Assert.IsType<System6NativeBackend>(factory.CreateBackend(FruitMachinePlatformType.Impact));
     }
@@ -34,7 +34,7 @@ public sealed class EmulationBackendFactoryTests
     public void CreateBackend_ForMpu4_ReturnsMameBackend()
     {
         var mameBackend = new FakeBackend();
-        var factory = new EmulationBackendFactory(() => mameBackend, () => "C:/cores/system6.dll");
+        var factory = new EmulationBackendFactory(() => mameBackend, () => "C:/cores/AmberBridge.dll");
 
         Assert.Same(mameBackend, factory.CreateBackend(FruitMachinePlatformType.MPU4));
     }

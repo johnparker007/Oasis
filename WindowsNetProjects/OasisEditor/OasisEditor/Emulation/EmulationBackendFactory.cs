@@ -9,16 +9,18 @@ public sealed class EmulationBackendFactory : IEmulationBackendFactory
 {
     private readonly Func<IEmulationBackend> _mameBackendFactory;
     private readonly Func<string?> _system6LibraryPathProvider;
-    private readonly Func<int> _system6AudioBufferLengthMillisecondsProvider;
+    private readonly Func<string, IAmberBridgeLibrary> _amberBridgeFactory;
 
     public EmulationBackendFactory(
         Func<IEmulationBackend> mameBackendFactory,
         Func<string?> system6LibraryPathProvider,
-        Func<int>? system6AudioBufferLengthMillisecondsProvider = null)
+        Func<int>? system6AudioBufferLengthMillisecondsProvider = null,
+        Func<string, IAmberBridgeLibrary>? amberBridgeFactory = null)
     {
         _mameBackendFactory = mameBackendFactory ?? throw new ArgumentNullException(nameof(mameBackendFactory));
         _system6LibraryPathProvider = system6LibraryPathProvider ?? throw new ArgumentNullException(nameof(system6LibraryPathProvider));
-        _system6AudioBufferLengthMillisecondsProvider = system6AudioBufferLengthMillisecondsProvider ?? (() => NativeEmulationPreferences.DefaultAudioBufferLengthMilliseconds);
+        _ = system6AudioBufferLengthMillisecondsProvider; // Retained in the public constructor pending preferences UI cleanup.
+        _amberBridgeFactory = amberBridgeFactory ?? (static path => new AmberBridgeLibrary(path));
     }
 
     public IEmulationBackend? CreateBackend(FruitMachinePlatformType platform)
@@ -37,13 +39,7 @@ public sealed class EmulationBackendFactory : IEmulationBackendFactory
         var libraryPath = _system6LibraryPathProvider();
         return string.IsNullOrWhiteSpace(libraryPath)
             ? _mameBackendFactory()
-            : new System6NativeBackend(
-                libraryPath,
-                static path => new System6NativeLibrary(path),
-                60,
-                () => new NAudioEmulationAudioSink(NormalizeSystem6AudioBufferLengthMilliseconds(_system6AudioBufferLengthMillisecondsProvider())));
+            : new System6NativeBackend(libraryPath, _amberBridgeFactory);
     }
 
-    private static int NormalizeSystem6AudioBufferLengthMilliseconds(int value)
-        => Math.Clamp(value, 10, 1000);
 }

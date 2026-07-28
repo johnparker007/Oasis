@@ -62,3 +62,20 @@ valid through the complete `Initialise` call.
 
 v0.1.1 exposes no switch inputs, output snapshots, lamps, reels, displays, audio, reel configuration, coin
 configuration, percentage configuration, or persistence.
+
+## Oasis integration status
+
+`System6NativeBackend` now uses the managed `IAmberBridgeLibrary` lifecycle. The native-library preference passed
+to the backend is an absolute path to `AmberBridge.dll`, not to `AmberOasis.JPMSystem6.dll`. The core DLL must be
+colocated with the bridge; Amber Bridge selects and loads the `jpm-system6` core itself.
+
+Startup validates the Editor's existing two-required-program-ROM rule and file existence before creating the
+bridge. Non-empty program and sound ROM slots are supplied in their configured order; absent sound ROMs are an
+empty collection. Successful startup performs initialise followed by the single reset historically performed after
+ROM loading. The existing 1 kHz scheduler then calls bridge `Run`, while pause/resume gates that loop. Stop calls
+shutdown once and disposal releases the bridge (and therefore its instance and module).
+
+Bridge v0.1.1 cannot service the Editor's switch, output, audio, reel-configuration, coin-configuration, or
+percentage-configuration operations. Output and audio polling are disabled, and optional startup configuration is
+skipped rather than sent to the former JPM exports. An explicit switch request throws `NotSupportedException` with
+an Amber Bridge v0.1.1 diagnostic. These operations are deferred until a future bridge API exposes them.
