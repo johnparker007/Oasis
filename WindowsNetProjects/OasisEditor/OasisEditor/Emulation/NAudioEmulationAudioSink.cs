@@ -10,6 +10,11 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink
     private BufferedWaveProvider? _buffer;
     private WasapiOut? _output;
     private EmulationAudioFormat? _format;
+    private long _droppedBlocks;
+    private long _droppedBytes;
+
+    internal long DroppedBlocks => Interlocked.Read(ref _droppedBlocks);
+    internal long DroppedBytes => Interlocked.Read(ref _droppedBytes);
 
     public NAudioEmulationAudioSink(int bufferLengthMilliseconds = NativeEmulationPreferences.DefaultAudioBufferLengthMilliseconds)
     {
@@ -36,6 +41,8 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink
         _output.Init(_buffer);
         _output.Play();
         _format = format;
+        Interlocked.Exchange(ref _droppedBlocks, 0);
+        Interlocked.Exchange(ref _droppedBytes, 0);
     }
 
     public void PushPcm(ReadOnlySpan<byte> pcmBytes)
@@ -45,11 +52,14 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink
             return;
         }
 
-        var format = _format ?? throw new InvalidOperationException("Audio sink has not been started.");
-        var configuredBufferBytes = format.SampleRate * format.Channels * (format.BitsPerSample / 8) * _bufferLengthMilliseconds / 1000;
-        if (_buffer.BufferedBytes > configuredBufferBytes)
+        _ = _format ?? throw new InvalidOperationException("Audio sink has not been started.");
+        if (ShouldDropIncomingBlock(_buffer.BufferedBytes, _buffer.BufferLength, pcmBytes.Length))
         {
-            _buffer.ClearBuffer();
+            var droppedBlocks = Interlocked.Increment(ref _droppedBlocks);
+            Interlocked.Add(ref _droppedBytes, pcmBytes.Length);
+            if (droppedBlocks == 1 || (droppedBlocks & (droppedBlocks - 1)) == 0)
+                System.Diagnostics.Debug.WriteLine($"NAudio emulation buffer: dropped incoming audio block; blocks={droppedBlocks}, bytes={DroppedBytes}, buffered={_buffer.BufferedBytes}, capacity={_buffer.BufferLength}.");
+            return;
         }
 
         var bytes = pcmBytes.ToArray();
@@ -68,6 +78,9 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink
     }
 
     public void Dispose() => Stop();
+
+    internal static bool ShouldDropIncomingBlock(int bufferedBytes, int bufferCapacityBytes, int incomingBytes)
+        => incomingBytes > bufferCapacityBytes - bufferedBytes;
 
     private static void ValidateFormat(EmulationAudioFormat format)
     {

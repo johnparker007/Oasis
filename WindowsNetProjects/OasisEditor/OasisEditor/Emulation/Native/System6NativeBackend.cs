@@ -19,7 +19,10 @@ public sealed class System6NativeBackend : IEmulationBackend
     private readonly AmberOutputSnapshotBuffer _snapshot = new();
     private readonly ConcurrentQueue<(uint Index, bool IsOn)> _switchCommands = new();
     private readonly HashSet<uint> _assertedSwitches = [];
-    private readonly short[] _audioSamples = new short[96 * 2];
+    private short[] _audioSamples = [];
+    private int _audioSampleRate;
+    private int _audioChannelCount;
+    private int _audioFramesPerPump;
     private AmberBridgeCapabilities? _amberCapabilities;
     private AmberLampState[] _lastLamps = [];
     private int[] _lastReels = [];
@@ -89,6 +92,10 @@ public sealed class System6NativeBackend : IEmulationBackend
             _bridge.Reset(); // Preserve the direct backend's post-ROM-load startup reset.
             var audioFormat = _bridge.GetAudioFormat();
             ValidateAudioFormat(audioFormat);
+            _audioSampleRate = checked((int)audioFormat.SampleRate);
+            _audioChannelCount = checked((int)audioFormat.Channels);
+            _audioFramesPerPump = CalculateFramesPerPump(_audioSampleRate, EmulationPumpHz);
+            _audioSamples = new short[checked(_audioFramesPerPump * _audioChannelCount)];
             _audioSink.Start(new((int)audioFormat.SampleRate, (int)audioFormat.Channels, 16));
             ApplyProjectConfiguration(roms);
             _shutdown = false;
@@ -198,18 +205,36 @@ public sealed class System6NativeBackend : IEmulationBackend
     {
         try
         {
+            var pumpTicks = Math.Max(1L, Stopwatch.Frequency / EmulationPumpHz);
+            var nextDeadline = Stopwatch.GetTimestamp();
             while (!cancellationToken.IsCancellationRequested)
             {
                 if (State != EmulationBackendState.Running)
                 {
                     await Task.Delay(PumpInterval, cancellationToken).ConfigureAwait(false);
+                    nextDeadline = Stopwatch.GetTimestamp();
                     continue;
                 }
                 RunCycles(System6ClockHz / EmulationPumpHz);
                 ProcessSwitchCommands();
                 PollOutputsAndAudio();
-                // A zero result still yields to the existing cadence, avoiding a busy loop.
-                await Task.Delay(PumpInterval, cancellationToken).ConfigureAwait(false);
+
+                nextDeadline += pumpTicks;
+                var now = Stopwatch.GetTimestamp();
+                // Never run an unbounded sequence of immediate catch-up slices after a stall.
+                if (now - nextDeadline > pumpTicks * 3)
+                    nextDeadline = now + pumpTicks;
+
+                var remainingTicks = nextDeadline - Stopwatch.GetTimestamp();
+                if (remainingTicks > 0)
+                {
+                    var remaining = TimeSpan.FromSeconds((double)remainingTicks / Stopwatch.Frequency);
+                    await Task.Delay(remaining, cancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    await Task.Yield();
+                }
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
@@ -236,9 +261,11 @@ public sealed class System6NativeBackend : IEmulationBackend
         bridge.GetOutputSnapshot(_snapshot);
         if (!_firstSnapshot) { _firstSnapshot = true; Debug.WriteLine($"Amber Bridge: First output snapshot received; lamps={_snapshot.MatrixLampCount}, reels={_snapshot.ReelCount}, alpha={_snapshot.AlphaDisplayCount}, sevenSegment={_snapshot.SevenSegmentDisplayCount}."); }
         TranslateSnapshot();
-        var frames = bridge.FillAudioFrames(_audioSamples, 96);
-        if (frames != 0) _audioSink.PushPcm(MemoryMarshal.AsBytes(_audioSamples.AsSpan(0, checked((int)frames * 2))));
-        if (!_firstAudio) { _firstAudio = true; Debug.WriteLine($"Amber Bridge: First audio fill completed; requested=96, written={frames}."); }
+        var writtenFrames = bridge.FillAudioFrames(_audioSamples, checked((uint)_audioFramesPerPump));
+        var writtenSamples = checked((int)writtenFrames * _audioChannelCount);
+        var bytes = MemoryMarshal.AsBytes(_audioSamples.AsSpan(0, writtenSamples));
+        if (!bytes.IsEmpty) _audioSink.PushPcm(bytes);
+        if (!_firstAudio) { _firstAudio = true; Debug.WriteLine($"Amber Bridge: First audio fill completed; sampleRate={_audioSampleRate} Hz, pumpRate={EmulationPumpHz} Hz, framesRequested={_audioFramesPerPump}, framesWritten={writtenFrames}, samplesWritten={writtenSamples}, bytesSubmitted={bytes.Length}."); }
     }
 
     private void TranslateSnapshot()
@@ -262,7 +289,15 @@ public sealed class System6NativeBackend : IEmulationBackend
     }
 
     private static void ValidateRequiredCapabilities(AmberBridgeCapabilities c) { var missing = new List<string>(); if (!c.SupportsSwitchInput) missing.Add("switch input"); if (!c.SupportsOutputSnapshots) missing.Add("output snapshots"); if (!c.SupportsAudio) missing.Add("audio"); if (missing.Count != 0) throw new InvalidOperationException($"Amber Bridge API v2 core jpm-system6 is missing required capabilities: {string.Join(", ", missing)}. Raw mask=0x{c.RawFeatureBits:X16}."); }
-    private static void ValidateAudioFormat(AmberAudioFormat f) { if (f is not { SampleRate: 48000, Channels: 2, SampleFormat: 1, Interleaving: 1 }) throw new NotSupportedException($"Unsupported Amber audio format: rate={f.SampleRate}, channels={f.Channels}, sampleFormat={f.SampleFormat}, interleaving={f.Interleaving}."); Debug.WriteLine("Amber Bridge: Audio format 48000 Hz, 2 channels, signed PCM16, interleaved."); }
+    private static void ValidateAudioFormat(AmberAudioFormat f) { if (f is not { SampleRate: 48000, Channels: 2, SampleFormat: 1, Interleaving: 1 }) throw new NotSupportedException($"Unsupported Amber audio format: rate={f.SampleRate}, channels={f.Channels}, sampleFormat={f.SampleFormat}, interleaving={f.Interleaving}."); CalculateFramesPerPump(checked((int)f.SampleRate), EmulationPumpHz); Debug.WriteLine("Amber Bridge: Audio format 48000 Hz, 2 channels, signed PCM16, interleaved."); }
+    internal static int CalculateFramesPerPump(int sampleRate, int pumpRate)
+    {
+        if (sampleRate <= 0) throw new ArgumentOutOfRangeException(nameof(sampleRate));
+        if (pumpRate <= 0) throw new ArgumentOutOfRangeException(nameof(pumpRate));
+        if (sampleRate % pumpRate != 0)
+            throw new NotSupportedException($"Audio sample rate {sampleRate} Hz is not evenly divisible by the {pumpRate} Hz emulation pump.");
+        return sampleRate / pumpRate;
+    }
     private void ReleaseAssertedSwitches() { if (_bridge is not null) foreach (var index in _assertedSwitches) _bridge.SetSwitchState(index, false); _assertedSwitches.Clear(); while (_switchCommands.TryDequeue(out _)) { } }
     private void ClearOutputCaches() { _lastLamps = []; _lastReels = []; _lastAlpha = []; _lastSevenSegments = []; }
 

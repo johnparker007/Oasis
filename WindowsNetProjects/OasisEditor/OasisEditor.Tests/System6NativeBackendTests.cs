@@ -106,6 +106,57 @@ public sealed class System6NativeBackendTests
         Assert.Contains((7u, false), fake.SwitchStates);
     }
 
+    [Fact]
+    public async Task PumpRequestsFramesAndPushesOnlyWrittenStereoSamples()
+    {
+        using var files = NativeFiles.Create(2, 0);
+        var fake = new FakeAmberBridge { AudioFramesWritten = 17 };
+        var sink = new FakeAudioSink();
+        var backend = new System6NativeBackend(files.Bridge, _ => fake, sink);
+
+        await backend.StartAsync(Request(files), CancellationToken.None);
+        await fake.FirstAudioFill.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await backend.StopAsync(CancellationToken.None);
+
+        Assert.All(fake.AudioFrameCapacities, capacity => Assert.Equal(48u, capacity));
+        Assert.Equal(48 * 2, fake.AudioSampleBufferLengths[0]);
+        Assert.Equal(17 * 2 * sizeof(short), sink.BlockLengths[0]);
+    }
+
+    [Fact]
+    public async Task FullPumpFillPushesNinetySixSamplesAsOneHundredNinetyTwoBytes()
+    {
+        using var files = NativeFiles.Create(2, 0);
+        var fake = new FakeAmberBridge { AudioFramesWritten = 48 };
+        var sink = new FakeAudioSink();
+        var backend = new System6NativeBackend(files.Bridge, _ => fake, sink);
+
+        await backend.StartAsync(Request(files), CancellationToken.None);
+        await fake.FirstAudioFill.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await backend.StopAsync(CancellationToken.None);
+
+        Assert.Equal(192, sink.BlockLengths[0]);
+    }
+
+    [Fact]
+    public void FramesPerPumpRequiresAnIntegralRelationship()
+    {
+        Assert.Equal(48, System6NativeBackend.CalculateFramesPerPump(48_000, 1_000));
+        Assert.Throws<NotSupportedException>(() => System6NativeBackend.CalculateFramesPerPump(44_100, 1_000));
+    }
+
+    [Fact]
+    public async Task CancellationDoesNotCauseUnboundedCatchUp()
+    {
+        using var files = NativeFiles.Create(2, 0);
+        var fake = new FakeAmberBridge { RunDelayMilliseconds = 8 };
+        var backend = new System6NativeBackend(files.Bridge, _ => fake);
+        await backend.StartAsync(Request(files), CancellationToken.None);
+        await Task.Delay(40);
+        await backend.StopAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.InRange(fake.RunRequests.Count, 1, 10);
+    }
+
     private static EmulationLaunchRequest Request(NativeFiles files)
     {
         var settings = new System6NativeRomSettings
@@ -135,6 +186,11 @@ public sealed class System6NativeBackendTests
         public List<(uint Index, bool IsOn)> SwitchStates { get; } = [];
         public Exception? InitialiseException { get; init; }
         public int RunResult { get; init; } = 1;
+        public int RunDelayMilliseconds { get; init; }
+        public uint AudioFramesWritten { get; init; }
+        public List<uint> AudioFrameCapacities { get; } = [];
+        public List<int> AudioSampleBufferLengths { get; } = [];
+        public TaskCompletionSource FirstAudioFill { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public int ResetCount { get; private set; }
         public int ShutdownCount { get; private set; }
         public int DisposeCount { get; private set; }
@@ -147,11 +203,11 @@ public sealed class System6NativeBackendTests
             SoundRoms = soundRomPaths?.ToArray() ?? [];
         }
         public void Reset() { Calls.Add("Reset"); ResetCount++; }
-        public int Run(uint cycles) { lock (RunRequests) RunRequests.Add(cycles); return RunResult; }
+        public int Run(uint cycles) { lock (RunRequests) RunRequests.Add(cycles); if (RunDelayMilliseconds != 0) Thread.Sleep(RunDelayMilliseconds); return RunResult; }
         public void SetSwitchState(uint switchIndex, bool isOn) { lock (SwitchStates) SwitchStates.Add((switchIndex, isOn)); }
         public void GetOutputSnapshot(AmberOutputSnapshotBuffer destination) { }
         public AmberAudioFormat GetAudioFormat() => new(48000, 2, 1, 1);
-        public uint FillAudioFrames(Span<short> interleavedSamples, uint frameCapacity) => 0;
+        public uint FillAudioFrames(Span<short> interleavedSamples, uint frameCapacity) { lock (AudioFrameCapacities) { AudioFrameCapacities.Add(frameCapacity); AudioSampleBufferLengths.Add(interleavedSamples.Length); } FirstAudioFill.TrySetResult(); return AudioFramesWritten; }
         public void ConfigureReels(AmberReelConfiguration configuration) { }
         public void ConfigureCoins(AmberCoinConfiguration configuration) { }
         public void SetPercentageSwitch(uint rawValue) { }
@@ -160,6 +216,16 @@ public sealed class System6NativeBackendTests
     }
 
     private sealed class TestException : Exception;
+
+    private sealed class FakeAudioSink : IEmulationAudioSink
+    {
+        public List<int> BlockLengths { get; } = [];
+        public void Start(EmulationAudioFormat format) { }
+        public void PushPcm(ReadOnlySpan<byte> pcmBytes) { lock (BlockLengths) BlockLengths.Add(pcmBytes.Length); }
+        public void Stop() { }
+        public void Clear() { }
+        public void Dispose() { }
+    }
 
     private sealed class NativeFiles : IDisposable
     {
