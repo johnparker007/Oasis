@@ -243,7 +243,15 @@ public sealed class InspectorAggregateValueTests
         if (document.SelectionState.PrimaryItem is { } primary
             && document.TryGetPanelElementByObjectId(primary.ObjectId, out var element))
         {
-            context.SetPanelSelection(document.DocumentId, PanelSelectionContract.ToSelectionInfo(element));
+            context.SetPanelSelection(
+                document.DocumentId,
+                new PanelSelectionInfo(
+                    element.ObjectId,
+                    Panel2DDocumentStorage.SerializeElementKind(element.Kind),
+                    element.X,
+                    element.Y,
+                    element.Width,
+                    element.Height));
         }
         return new InspectorViewModel(
             selectedAssetAccessor: () => null,
