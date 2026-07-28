@@ -535,7 +535,7 @@ internal sealed class FakeBridge : IAmberBridgeModule
 
     public AmberGetApiDelegate BindAmberGetApi() => GetApi;
 
-    private AmberResult GetApiImpl(uint version, uint size, ref AmberApiV2Native api)
+    private unsafe AmberResult GetApiImpl(uint version, uint size, ref AmberApiV2Native api)
     {
         GetApiCallCount++;
         RequestedVersion = version;
