@@ -121,7 +121,7 @@ public sealed class System6NativeBackendTests
 
     private sealed class FakeAmberBridge : IAmberBridgeLibrary
     {
-        public AmberBridgeDetails BridgeDetails { get; } = new(1, "Test Amber Bridge", "0.1.1");
+        public AmberBridgeDetails BridgeDetails { get; } = new(AmberApiVersions.V1, "Test Amber Bridge", "0.1.1");
         public List<string> Calls { get; } = [];
         public IReadOnlyList<string> ProgramRoms { get; private set; } = [];
         public IReadOnlyList<string> SoundRoms { get; private set; } = [];

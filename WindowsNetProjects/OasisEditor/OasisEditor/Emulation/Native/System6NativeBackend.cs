@@ -73,9 +73,10 @@ public sealed class System6NativeBackend : IEmulationBackend
             _bridge.Reset(); // Preserve the direct backend's post-ROM-load startup reset.
             _shutdown = false;
             var details = _bridge.BridgeDetails;
-            Debug.WriteLine($"System6 Amber Bridge startup: {details.Name} {details.BridgeVersion}; API {details.ApiVersion}; core jpm-system6; program ROMs={programs.Count}; sound ROMs={sounds.Count}.");
+            Debug.WriteLine($"System6 Amber Bridge startup: {details.Name} {details.BridgeVersion}; {AmberApiVersions.Format(details.ApiVersion)}; core jpm-system6; program ROMs={programs.Count}; sound ROMs={sounds.Count}.");
 
             _runCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            Debug.WriteLine("System6 Amber Bridge startup: Run loop starting.");
             _runTask = Task.Run(() => RunLoopAsync(_runCancellation.Token), CancellationToken.None);
             SetState(EmulationBackendState.Running);
             return Task.CompletedTask;
