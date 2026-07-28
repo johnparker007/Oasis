@@ -16,7 +16,9 @@ public sealed class CabinetReelSpecificationTests
         var source = CabinetDocument.FromModelPath("cabinet.glb") with { Reflections = [reflection] };
 
         Assert.True(CabinetDocumentStorage.TryRead(CabinetDocumentStorage.Serialize(source), out var parsed));
-        Assert.Equal(reflection, Assert.Single(parsed.Reflections!));
+        var parsedReflection = Assert.Single(parsed.Reflections!);
+        Assert.Equal(reflection with { Sources = parsedReflection.Sources }, parsedReflection);
+        Assert.Equal(reflection.Sources, parsedReflection.Sources);
     }
 
     [Fact]
@@ -164,14 +166,14 @@ public sealed class CabinetReelSpecificationTests
     }
 
     [Fact]
-    public void FaceSerialization_RoundTripsAssignedCabinetAssetPathWithSchemaVersion7()
+    public void FaceSerialization_RoundTripsAssignedCabinetAssetPathWithCurrentSchemaVersion()
     {
         var face = new FaceDocumentModel { Title = "Face", AssignedCabinetAssetPath = "Assets\\Cabinets\\main.cabinet3d" };
 
         var json = FaceDocumentStorage.Serialize(face);
 
         Assert.True(FaceDocumentStorage.TryReadValidated(json, out var file, out var error), error);
-        Assert.Equal(7, file.SchemaVersion);
+        Assert.Equal(FaceDocumentStorage.CurrentSchemaVersion, file.SchemaVersion);
         Assert.Equal("Assets/Cabinets/main.cabinet3d", file.AssignedCabinetAssetPath);
     }
 

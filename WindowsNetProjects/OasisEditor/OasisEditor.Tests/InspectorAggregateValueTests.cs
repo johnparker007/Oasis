@@ -116,7 +116,7 @@ public sealed class InspectorAggregateValueTests
         Assert.True(originalRows.SequenceEqual(viewModel.InspectorPropertyRows));
         Assert.Equal("5", Assert.IsType<InspectorDoublePropertyViewModel>(viewModel.InspectorPropertyRows.Single(row => row.DisplayName == "X")).Value);
         Assert.Equal("7", Assert.IsType<InspectorDoublePropertyViewModel>(viewModel.InspectorPropertyRows.Single(row => row.DisplayName == "Y")).Value);
-        Assert.Contains("2 Panel2D components selected", viewModel.InspectorSummary);
+        Assert.Contains("2 Panel2D Components selected", viewModel.InspectorSummary);
     }
 
     [Fact]
@@ -205,7 +205,7 @@ public sealed class InspectorAggregateValueTests
         viewModel.NotifyContextChanged();
 
         Assert.NotSame(firstRow, viewModel.InspectorPropertyRows[0]);
-        Assert.Contains("3 Panel2D components selected", viewModel.InspectorSummary);
+        Assert.Contains("3 Panel2D Components selected", viewModel.InspectorSummary);
     }
 
     [Fact]
@@ -240,6 +240,19 @@ public sealed class InspectorAggregateValueTests
     {
         var context = new ActiveDocumentContextService();
         context.SetActiveDocument(document);
+        if (document.SelectionState.PrimaryItem is { } primary
+            && document.TryGetPanelElementByObjectId(primary.ObjectId, out var element))
+        {
+            context.SetPanelSelection(
+                document.DocumentId,
+                new PanelSelectionInfo(
+                    element.ObjectId,
+                    Panel2DDocumentStorage.SerializeElementKind(element.Kind),
+                    element.X,
+                    element.Y,
+                    element.Width,
+                    element.Height));
+        }
         return new InspectorViewModel(
             selectedAssetAccessor: () => null,
             selectedDocumentAccessor: () => document,
