@@ -8,162 +8,357 @@ public sealed class AmberBridgeLibrary : IAmberBridgeLibrary
     private readonly object _sync = new();
     private readonly IAmberBridgeModule _module;
     private readonly IAmberStringAllocator _allocator;
-    private readonly GetBridgeInfoDelegate _getBridgeInfo;
-    private readonly EnumerateCoreDelegate _enumerateCore;
-    private readonly CreateDelegate _create;
-    private readonly HandleDelegate _destroy, _reset, _shutdown;
-    private readonly InitialiseDelegate _initialise;
-    private readonly RunDelegate _run;
-    private readonly GetLastErrorDelegate _getLastError;
+    private readonly NativeApi _api;
     private IntPtr _handle;
-    private bool _initialised, _shutdownCalled, _disposed;
+    private bool _initialised;
+    private bool _shutdownAttempted;
+    private bool _destroyAttempted;
+    private bool _disposed;
 
-    public AmberBridgeLibrary(string absoluteBridgePath) : this(new AmberBridgeModule(absoluteBridgePath), new AmberStringAllocator()) { }
+    public AmberBridgeLibrary(string absoluteBridgePath)
+        : this(new AmberBridgeModule(absoluteBridgePath), new AmberStringAllocator()) { }
 
     internal AmberBridgeLibrary(IAmberBridgeModule module, IAmberStringAllocator? allocator = null)
     {
-        _module = module ?? throw new ArgumentNullException(nameof(module));
+        ArgumentNullException.ThrowIfNull(module);
+        _module = module;
         _allocator = allocator ?? new AmberStringAllocator();
+
+        NativeApi? api = null;
+        IntPtr handle = IntPtr.Zero;
         try
         {
-            var api = new AmberApiV1Native { StructSize = SizeOf<AmberApiV1Native>() };
-            CheckWithoutHandle("AmberGetApi", _module.BindAmberGetApi()(1, api.StructSize, ref api));
-            if (api.StructSize < SizeOf<AmberApiV1Native>() || api.ApiVersion != 1)
-                throw new AmberBridgeException("AmberGetApi validation", AmberResult.UnsupportedVersion);
-            ValidatePointers(api);
-            _getBridgeInfo = Marshal.GetDelegateForFunctionPointer<GetBridgeInfoDelegate>(api.GetBridgeInfo);
-            _enumerateCore = Marshal.GetDelegateForFunctionPointer<EnumerateCoreDelegate>(api.EnumerateCore);
-            _create = Marshal.GetDelegateForFunctionPointer<CreateDelegate>(api.Create);
-            _destroy = Marshal.GetDelegateForFunctionPointer<HandleDelegate>(api.Destroy);
-            _initialise = Marshal.GetDelegateForFunctionPointer<InitialiseDelegate>(api.Initialise);
-            _reset = Marshal.GetDelegateForFunctionPointer<HandleDelegate>(api.Reset);
-            _run = Marshal.GetDelegateForFunctionPointer<RunDelegate>(api.Run);
-            _shutdown = Marshal.GetDelegateForFunctionPointer<HandleDelegate>(api.Shutdown);
-            _getLastError = Marshal.GetDelegateForFunctionPointer<GetLastErrorDelegate>(api.GetLastError);
+            api = NegotiateApi(module);
+            BridgeDetails = ReadBridgeDetails(api);
+            VerifyCore(api);
 
-            var info = new AmberBridgeInfoNative { StructSize = SizeOf<AmberBridgeInfoNative>() };
-            Check("GetBridgeInfo", _getBridgeInfo(ref info));
-            if (info.StructSize < SizeOf<AmberBridgeInfoNative>() || info.ApiVersion != 1)
-                throw new AmberBridgeException("GetBridgeInfo validation", AmberResult.UnsupportedVersion);
-            BridgeDetails = new(info.ApiVersion, Utf8(info.Name), Utf8(info.BridgeVersion));
-            VerifyCore();
             using var core = new Utf8Allocation(System6CoreId, _allocator);
-            Check("Create", _create(core.Pointer, out _handle));
-            if (_handle == IntPtr.Zero) throw new AmberBridgeException("Create", AmberResult.InternalError, "Bridge returned a null handle.");
+            var createResult = api.Create(core.Pointer, out handle);
+            ThrowForResult(api, "Create", createResult, handle);
+            if (handle == IntPtr.Zero)
+            {
+                throw new AmberBridgeException("Create", AmberResult.InternalError, "Bridge returned a null handle.");
+            }
+
+            _api = api;
+            _handle = handle;
         }
         catch
         {
-            if (_handle != IntPtr.Zero && _destroy is not null) _destroy(_handle);
-            _module.Dispose();
-            _disposed = true;
+            // Construction has not initialised the instance. Destroy any handle the
+            // bridge returned, suppress cleanup failures, and preserve the original error.
+            if (handle != IntPtr.Zero && api is not null)
+            {
+                try { api.Destroy(handle); } catch { }
+            }
+
+            try { module.Dispose(); } catch { }
             throw;
         }
     }
 
-    public AmberBridgeDetails BridgeDetails { get; } = null!;
+    public AmberBridgeDetails BridgeDetails { get; }
 
     public void Initialise(IReadOnlyList<string> programRomPaths, IReadOnlyList<string>? soundRomPaths = null)
     {
         lock (_sync)
         {
             ThrowIfDisposed();
-            if (_initialised) throw new InvalidOperationException("Amber Bridge is already initialised.");
-            ValidateRoms(programRomPaths, nameof(programRomPaths));
-            soundRomPaths ??= Array.Empty<string>(); ValidateRoms(soundRomPaths, nameof(soundRomPaths));
+            if (_initialised)
+            {
+                throw new InvalidOperationException("Amber Bridge is already initialised.");
+            }
+
+            ValidateRomPaths(programRomPaths, nameof(programRomPaths), minimumCount: 1);
+            soundRomPaths ??= Array.Empty<string>();
+            ValidateRomPaths(soundRomPaths, nameof(soundRomPaths), minimumCount: 0);
+
             using var paths = new RomPathAllocations(programRomPaths, soundRomPaths, _allocator);
-            var p = paths.Parameters;
-            Check("Initialise", _initialise(_handle, ref p));
+            var parameters = paths.Parameters;
+            ThrowForResult(_api, "Initialise", _api.Initialise(_handle, ref parameters), _handle);
             _initialised = true;
         }
     }
 
-    public void Reset() { lock (_sync) { RequireInitialised(); Check("Reset", _reset(_handle)); } }
-    public int Run(uint cycles) { lock (_sync) { RequireInitialised(); Check("Run", _run(_handle, cycles, out var ran)); return ran; } }
-    public void Shutdown() { lock (_sync) { ThrowIfDisposed(); ShutdownCore(); } }
+    public void Reset()
+    {
+        lock (_sync)
+        {
+            RequireRunning();
+            ThrowForResult(_api, "Reset", _api.Reset(_handle), _handle);
+        }
+    }
+
+    public int Run(uint cycles)
+    {
+        lock (_sync)
+        {
+            RequireRunning();
+            ThrowForResult(_api, "Run", _api.Run(_handle, cycles, out var cyclesRun), _handle);
+            return cyclesRun;
+        }
+    }
+
+    public void Shutdown()
+    {
+        lock (_sync)
+        {
+            ThrowIfDisposed();
+            if (!_initialised)
+            {
+                throw new InvalidOperationException("Amber Bridge has not been initialised.");
+            }
+            if (_shutdownAttempted)
+            {
+                throw new InvalidOperationException("Amber Bridge shutdown has already been attempted.");
+            }
+
+            _shutdownAttempted = true;
+            ThrowForResult(_api, "Shutdown", _api.Shutdown(_handle), _handle);
+        }
+    }
 
     public void Dispose()
     {
         lock (_sync)
         {
             if (_disposed) return;
-            try { if (_initialised && !_shutdownCalled) { _shutdown(_handle); _shutdownCalled = true; } }
-            finally
+
+            // Dispose is deliberately non-throwing. Each remaining cleanup stage is
+            // attempted once, and later stages run even when native cleanup fails.
+            if (_initialised && !_shutdownAttempted)
             {
-                try { if (_handle != IntPtr.Zero) { _destroy(_handle); _handle = IntPtr.Zero; } }
-                finally { _module.Dispose(); _disposed = true; }
+                _shutdownAttempted = true;
+                try { _api.Shutdown(_handle); } catch { }
             }
+
+            if (_handle != IntPtr.Zero && !_destroyAttempted)
+            {
+                _destroyAttempted = true;
+                try { _api.Destroy(_handle); } catch { }
+                _handle = IntPtr.Zero;
+            }
+
+            try { _module.Dispose(); } catch { }
+            _disposed = true;
         }
     }
 
-    private void VerifyCore()
+    private static NativeApi NegotiateApi(IAmberBridgeModule module)
     {
-        for (uint i = 0; ; i++)
+        var table = new AmberApiV1Native { StructSize = SizeOf<AmberApiV1Native>() };
+        var result = module.BindAmberGetApi()(1, table.StructSize, ref table);
+        if (result != AmberResult.Ok)
+        {
+            throw new AmberBridgeException("AmberGetApi", result);
+        }
+        if (table.StructSize < SizeOf<AmberApiV1Native>() || table.ApiVersion != 1)
+        {
+            throw new AmberBridgeException("AmberGetApi validation", AmberResult.UnsupportedVersion);
+        }
+
+        ValidateFunctionPointers(table);
+        return new NativeApi(table);
+    }
+
+    private static AmberBridgeDetails ReadBridgeDetails(NativeApi api)
+    {
+        var info = new AmberBridgeInfoNative { StructSize = SizeOf<AmberBridgeInfoNative>() };
+        ThrowForResult(api, "GetBridgeInfo", api.GetBridgeInfo(ref info), IntPtr.Zero);
+        if (info.StructSize < SizeOf<AmberBridgeInfoNative>() || info.ApiVersion != 1)
+        {
+            throw new AmberBridgeException("GetBridgeInfo validation", AmberResult.UnsupportedVersion);
+        }
+
+        return new AmberBridgeDetails(info.ApiVersion, ReadUtf8(info.Name), ReadUtf8(info.BridgeVersion));
+    }
+
+    private static void VerifyCore(NativeApi api)
+    {
+        for (uint index = 0; ; index++)
         {
             var info = new AmberCoreInfoNative { StructSize = SizeOf<AmberCoreInfoNative>() };
-            var result = _enumerateCore(i, ref info);
+            var result = api.EnumerateCore(index, ref info);
             if (result == AmberResult.NoMoreItems) break;
-            Check("EnumerateCore", result);
-            if (info.StructSize < SizeOf<AmberCoreInfoNative>()) throw new AmberBridgeException("EnumerateCore validation", AmberResult.InternalError);
-            if (Utf8(info.CoreId) == System6CoreId) return;
+            ThrowForResult(api, "EnumerateCore", result, IntPtr.Zero);
+            if (info.StructSize < SizeOf<AmberCoreInfoNative>())
+            {
+                throw new AmberBridgeException("EnumerateCore validation", AmberResult.InternalError, "Core information structure is too small.");
+            }
+            if (info.CoreId == IntPtr.Zero)
+            {
+                throw new AmberBridgeException("EnumerateCore validation", AmberResult.InternalError, "Core ID is null.");
+            }
+
+            var coreId = ReadUtf8(info.CoreId);
+            if (coreId.Length == 0)
+            {
+                throw new AmberBridgeException("EnumerateCore validation", AmberResult.InternalError, "Core ID is empty.");
+            }
+            if (coreId == System6CoreId) return;
         }
+
         throw new AmberBridgeException("EnumerateCore", AmberResult.NoMoreItems, $"Required core '{System6CoreId}' was not found.");
     }
 
-    private void ShutdownCore()
+    private static void ThrowForResult(NativeApi api, string operation, AmberResult result, IntPtr handle)
     {
-        if (!_initialised) throw new InvalidOperationException("Amber Bridge has not been initialised.");
-        if (_shutdownCalled) return;
-        Check("Shutdown", _shutdown(_handle)); _shutdownCalled = true;
+        if (result != AmberResult.Ok)
+        {
+            throw new AmberBridgeException(operation, result, ReadLastError(api, handle));
+        }
     }
-    private void RequireInitialised() { ThrowIfDisposed(); if (!_initialised || _shutdownCalled) throw new InvalidOperationException("Amber Bridge is not running."); }
-    private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(_disposed, this);
-    private void Check(string operation, AmberResult result) { if (result != AmberResult.Ok) throw new AmberBridgeException(operation, result, LastError()); }
-    private static void CheckWithoutHandle(string operation, AmberResult result) { if (result != AmberResult.Ok) throw new AmberBridgeException(operation, result); }
 
-    private string? LastError()
+    private static string? ReadLastError(NativeApi api, IntPtr handle)
     {
-        var result = _getLastError(_handle, IntPtr.Zero, 0, out var required);
+        var result = api.GetLastError(handle, IntPtr.Zero, 0, out var required);
         if (result is not (AmberResult.Ok or AmberResult.BufferTooSmall) || required == 0) return null;
+
         var buffer = Marshal.AllocHGlobal(checked((int)required));
-        try { result = _getLastError(_handle, buffer, required, out required); return result == AmberResult.Ok ? Utf8(buffer) : null; }
-        finally { Marshal.FreeHGlobal(buffer); }
+        try
+        {
+            result = api.GetLastError(handle, buffer, required, out _);
+            return result == AmberResult.Ok ? ReadUtf8(buffer) : null;
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(buffer);
+        }
     }
 
-    private static void ValidatePointers(AmberApiV1Native a)
+    private static void ValidateFunctionPointers(AmberApiV1Native table)
     {
-        if (a.GetBridgeInfo == IntPtr.Zero || a.EnumerateCore == IntPtr.Zero || a.Create == IntPtr.Zero || a.Destroy == IntPtr.Zero ||
-            a.Initialise == IntPtr.Zero || a.Reset == IntPtr.Zero || a.Run == IntPtr.Zero || a.Shutdown == IntPtr.Zero || a.GetLastError == IntPtr.Zero)
-            throw new AmberBridgeException("AmberGetApi validation", AmberResult.ExportMissing, "The v1 function table contains a null required function pointer.");
+        if (table.GetBridgeInfo == IntPtr.Zero || table.EnumerateCore == IntPtr.Zero ||
+            table.Create == IntPtr.Zero || table.Destroy == IntPtr.Zero ||
+            table.Initialise == IntPtr.Zero || table.Reset == IntPtr.Zero ||
+            table.Run == IntPtr.Zero || table.Shutdown == IntPtr.Zero ||
+            table.GetLastError == IntPtr.Zero)
+        {
+            throw new AmberBridgeException("AmberGetApi validation", AmberResult.ExportMissing,
+                "The v1 function table contains a null required function pointer.");
+        }
     }
-    private static uint SizeOf<T>() => checked((uint)Marshal.SizeOf<T>());
-    private static string Utf8(IntPtr p) => p == IntPtr.Zero ? string.Empty : Marshal.PtrToStringUTF8(p) ?? string.Empty;
-    private static void ValidateRoms(IReadOnlyList<string> paths, string name)
+
+    private void RequireRunning()
     {
-        ArgumentNullException.ThrowIfNull(paths);
-        if (paths.Count > 4) throw new ArgumentException("Amber Bridge accepts at most four ROM paths.", name);
-        if (paths.Any(string.IsNullOrWhiteSpace)) throw new ArgumentException("ROM paths must not be empty; omit absent trailing slots.", name);
+        ThrowIfDisposed();
+        if (!_initialised || _shutdownAttempted)
+        {
+            throw new InvalidOperationException("Amber Bridge is not running.");
+        }
+    }
+
+    private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(_disposed, this);
+    private static uint SizeOf<T>() => checked((uint)Marshal.SizeOf<T>());
+    private static string ReadUtf8(IntPtr pointer) =>
+        pointer == IntPtr.Zero ? string.Empty : Marshal.PtrToStringUTF8(pointer) ?? string.Empty;
+
+    private static void ValidateRomPaths(IReadOnlyList<string> paths, string parameterName, int minimumCount)
+    {
+        ArgumentNullException.ThrowIfNull(paths, parameterName);
+        if (paths.Count < minimumCount || paths.Count > 4)
+        {
+            throw new ArgumentException($"ROM path count must be between {minimumCount} and 4.", parameterName);
+        }
+        if (paths.Any(string.IsNullOrWhiteSpace))
+        {
+            throw new ArgumentException("ROM paths must not be null, empty, or whitespace.", parameterName);
+        }
+    }
+
+    private sealed class NativeApi
+    {
+        internal NativeApi(AmberApiV1Native table)
+        {
+            GetBridgeInfo = Marshal.GetDelegateForFunctionPointer<GetBridgeInfoDelegate>(table.GetBridgeInfo);
+            EnumerateCore = Marshal.GetDelegateForFunctionPointer<EnumerateCoreDelegate>(table.EnumerateCore);
+            Create = Marshal.GetDelegateForFunctionPointer<CreateDelegate>(table.Create);
+            Destroy = Marshal.GetDelegateForFunctionPointer<HandleDelegate>(table.Destroy);
+            Initialise = Marshal.GetDelegateForFunctionPointer<InitialiseDelegate>(table.Initialise);
+            Reset = Marshal.GetDelegateForFunctionPointer<HandleDelegate>(table.Reset);
+            Run = Marshal.GetDelegateForFunctionPointer<RunDelegate>(table.Run);
+            Shutdown = Marshal.GetDelegateForFunctionPointer<HandleDelegate>(table.Shutdown);
+            GetLastError = Marshal.GetDelegateForFunctionPointer<GetLastErrorDelegate>(table.GetLastError);
+        }
+
+        internal GetBridgeInfoDelegate GetBridgeInfo { get; }
+        internal EnumerateCoreDelegate EnumerateCore { get; }
+        internal CreateDelegate Create { get; }
+        internal HandleDelegate Destroy { get; }
+        internal InitialiseDelegate Initialise { get; }
+        internal HandleDelegate Reset { get; }
+        internal RunDelegate Run { get; }
+        internal HandleDelegate Shutdown { get; }
+        internal GetLastErrorDelegate GetLastError { get; }
     }
 
     private sealed class Utf8Allocation : IDisposable
     {
         private readonly IAmberStringAllocator _allocator;
-        internal Utf8Allocation(string value, IAmberStringAllocator allocator) { _allocator = allocator; Pointer = allocator.Allocate(value); }
+
+        internal Utf8Allocation(string value, IAmberStringAllocator allocator)
+        {
+            _allocator = allocator;
+            Pointer = allocator.Allocate(value);
+        }
+
         internal IntPtr Pointer { get; }
         public void Dispose() => _allocator.Free(Pointer);
     }
+
     private sealed class RomPathAllocations : IDisposable
     {
         private readonly List<IntPtr> _pointers = [];
         private readonly IAmberStringAllocator _allocator;
-        internal RomPathAllocations(IReadOnlyList<string> programs, IReadOnlyList<string> sounds, IAmberStringAllocator allocator)
+
+        internal RomPathAllocations(
+            IReadOnlyList<string> programs,
+            IReadOnlyList<string> sounds,
+            IAmberStringAllocator allocator)
         {
             _allocator = allocator;
-            var p = programs.Select(Allocate).Concat(Enumerable.Repeat(IntPtr.Zero, 4 - programs.Count)).ToArray();
-            var s = sounds.Select(Allocate).Concat(Enumerable.Repeat(IntPtr.Zero, 4 - sounds.Count)).ToArray();
-            Parameters = new AmberInitialiseParamsNative { StructSize = SizeOf<AmberInitialiseParamsNative>(), Program0=p[0], Program1=p[1], Program2=p[2], Program3=p[3], Sound0=s[0], Sound1=s[1], Sound2=s[2], Sound3=s[3] };
+            try
+            {
+                var programPointers = AllocateSlots(programs);
+                var soundPointers = AllocateSlots(sounds);
+                Parameters = new AmberInitialiseParamsNative
+                {
+                    StructSize = SizeOf<AmberInitialiseParamsNative>(),
+                    Program0 = programPointers[0], Program1 = programPointers[1],
+                    Program2 = programPointers[2], Program3 = programPointers[3],
+                    Sound0 = soundPointers[0], Sound1 = soundPointers[1],
+                    Sound2 = soundPointers[2], Sound3 = soundPointers[3]
+                };
+            }
+            catch
+            {
+                FreeAll();
+                throw;
+            }
         }
+
         internal AmberInitialiseParamsNative Parameters { get; }
-        private IntPtr Allocate(string value) { var p = _allocator.Allocate(value); _pointers.Add(p); return p; }
-        public void Dispose() { foreach (var p in _pointers) _allocator.Free(p); _pointers.Clear(); }
+
+        public void Dispose() => FreeAll();
+
+        private IntPtr[] AllocateSlots(IReadOnlyList<string> paths)
+        {
+            var slots = new IntPtr[4];
+            for (var index = 0; index < paths.Count; index++)
+            {
+                slots[index] = _allocator.Allocate(paths[index]);
+                _pointers.Add(slots[index]);
+            }
+            return slots;
+        }
+
+        private void FreeAll()
+        {
+            foreach (var pointer in _pointers)
+            {
+                _allocator.Free(pointer);
+            }
+            _pointers.Clear();
+        }
     }
 }

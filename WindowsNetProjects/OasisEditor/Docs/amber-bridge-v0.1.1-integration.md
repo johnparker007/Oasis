@@ -13,7 +13,8 @@ load the core DLL. v0.1.1 exports exactly `AmberGetApi`, using `__cdecl`. The Sy
 
 ## ABI
 
-All strings are null-terminated `const char *` values and handles (`AmberInstance_t *`) are opaque. Integer widths
+The header does not specify an encoding for strings. The managed wrapper explicitly interprets all null-terminated
+`const char *` values as UTF-8, with no ANSI fallback. Handles (`AmberInstance_t *`) are opaque. Integer widths
 are explicit. Every callback and the sole export use `__cdecl`.
 
 ```c
@@ -53,7 +54,7 @@ all calls on it must be serialized. Reset is valid after successful initialisati
 at most once and only after successful initialisation. Destroy precedes unload and is still required after failed
 initialisation; failed initialisation must not be followed by shutdown.
 
-There are at most four program and four sound ROM paths. Missing **trailing** slots are null pointers, not empty
+**Program ROM count: 1–4. Sound ROM count: 0–4.** Missing **trailing** slots are null pointers, not empty
 strings or dummy files. Sound ROMs are optional, so no sound ROMs means four null pointers. Path storage remains
 valid through the complete `Initialise` call.
 
