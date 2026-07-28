@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 namespace OasisEditor;
@@ -30,7 +31,9 @@ public sealed class AmberBridgeLibrary : IAmberBridgeLibrary
         {
             api = NegotiateApi(module);
             BridgeDetails = ReadBridgeDetails(api);
+            Debug.WriteLine($"Amber Bridge: Bridge information read ({BridgeDetails.Name} {BridgeDetails.BridgeVersion}, {AmberApiVersions.Format(BridgeDetails.ApiVersion)}).");
             VerifyCore(api);
+            Debug.WriteLine($"Amber Bridge: {System6CoreId} core found.");
 
             using var core = new Utf8Allocation(System6CoreId, _allocator);
             var createResult = api.Create(core.Pointer, out handle);
@@ -42,6 +45,7 @@ public sealed class AmberBridgeLibrary : IAmberBridgeLibrary
 
             _api = api;
             _handle = handle;
+            Debug.WriteLine("Amber Bridge: Instance created.");
         }
         catch
         {
@@ -75,8 +79,10 @@ public sealed class AmberBridgeLibrary : IAmberBridgeLibrary
 
             using var paths = new RomPathAllocations(programRomPaths, soundRomPaths, _allocator);
             var parameters = paths.Parameters;
+            Debug.WriteLine("Amber Bridge: Initialise starting.");
             ThrowForResult(_api, "Initialise", _api.Initialise(_handle, ref parameters), _handle);
             _initialised = true;
+            Debug.WriteLine("Amber Bridge: Initialise completed.");
         }
     }
 
@@ -86,6 +92,7 @@ public sealed class AmberBridgeLibrary : IAmberBridgeLibrary
         {
             RequireRunning();
             ThrowForResult(_api, "Reset", _api.Reset(_handle), _handle);
+            Debug.WriteLine("Amber Bridge: Reset completed.");
         }
     }
 
@@ -147,12 +154,14 @@ public sealed class AmberBridgeLibrary : IAmberBridgeLibrary
     private static NativeApi NegotiateApi(IAmberBridgeModule module)
     {
         var table = new AmberApiV1Native { StructSize = SizeOf<AmberApiV1Native>() };
-        var result = module.BindAmberGetApi()(1, table.StructSize, ref table);
+        Debug.WriteLine($"Amber Bridge: Calling AmberGetApi with {AmberApiVersions.Format(AmberApiVersions.V1)}.");
+        var result = module.BindAmberGetApi()(AmberApiVersions.V1, table.StructSize, ref table);
         if (result != AmberResult.Ok)
         {
             throw new AmberBridgeException("AmberGetApi", result);
         }
-        if (table.StructSize < SizeOf<AmberApiV1Native>() || table.ApiVersion != 1)
+        Debug.WriteLine("Amber Bridge: AmberGetApi succeeded.");
+        if (table.StructSize < SizeOf<AmberApiV1Native>() || table.ApiVersion != AmberApiVersions.V1)
         {
             throw new AmberBridgeException("AmberGetApi validation", AmberResult.UnsupportedVersion);
         }
@@ -165,7 +174,7 @@ public sealed class AmberBridgeLibrary : IAmberBridgeLibrary
     {
         var info = new AmberBridgeInfoNative { StructSize = SizeOf<AmberBridgeInfoNative>() };
         ThrowForResult(api, "GetBridgeInfo", api.GetBridgeInfo(ref info), IntPtr.Zero);
-        if (info.StructSize < SizeOf<AmberBridgeInfoNative>() || info.ApiVersion != 1)
+        if (info.StructSize < SizeOf<AmberBridgeInfoNative>() || info.ApiVersion != AmberApiVersions.V1)
         {
             throw new AmberBridgeException("GetBridgeInfo validation", AmberResult.UnsupportedVersion);
         }

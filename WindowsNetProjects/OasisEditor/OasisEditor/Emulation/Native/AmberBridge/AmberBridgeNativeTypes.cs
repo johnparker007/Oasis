@@ -1,7 +1,17 @@
 using System.IO;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 namespace OasisEditor;
+
+internal static class AmberApiVersions
+{
+    internal const uint V1 = 0x00010000u;
+
+    internal static string Format(uint version) => version == V1
+        ? $"API v1 (0x{version:X8})"
+        : $"API version 0x{version:X8}";
+}
 
 internal enum AmberResult : int
 {
@@ -50,6 +60,7 @@ internal sealed class AmberBridgeModule : IAmberBridgeModule
     internal AmberBridgeModule(string path)
     {
         if (!Path.IsPathFullyQualified(path)) throw new ArgumentException("Amber Bridge path must be absolute.", nameof(path));
+        Debug.WriteLine("Amber Bridge: Loading AmberBridge.dll.");
         _loader = new NativeLibraryLoader(path);
     }
     public AmberGetApiDelegate BindAmberGetApi() => _loader.BindExport<AmberGetApiDelegate>("AmberGetApi");

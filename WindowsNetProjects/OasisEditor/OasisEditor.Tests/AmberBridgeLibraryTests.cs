@@ -12,9 +12,10 @@ public sealed class AmberBridgeLibraryTests
         using var native = new FakeBridge();
         using var bridge = new AmberBridgeLibrary(native);
 
-        Assert.Equal(1u, native.RequestedVersion);
+        Assert.Equal(0x00010000u, native.RequestedVersion);
+        Assert.NotEqual(1u, native.RequestedVersion);
         Assert.Equal((uint)Marshal.SizeOf<AmberApiV1Native>(), native.RequestedSize);
-        Assert.Equal(new AmberBridgeDetails(1, "Amber", "0.1.1"), bridge.BridgeDetails);
+        Assert.Equal(new AmberBridgeDetails(AmberApiVersions.V1, "Amber", "0.1.1"), bridge.BridgeDetails);
         Assert.Contains("Create:jpm-system6", native.Calls);
     }
 
@@ -29,8 +30,8 @@ public sealed class AmberBridgeLibraryTests
     }
 
     [Theory]
-    [InlineData((int)AmberResult.UnsupportedVersion, 1)]
-    [InlineData((int)AmberResult.Ok, 2)]
+    [InlineData((int)AmberResult.UnsupportedVersion, 0x00010000u)]
+    [InlineData((int)AmberResult.Ok, 1u)]
     public void NegotiationFailuresUnloadTheModule(int resultCode, uint returnedVersion)
     {
         using var native = new FakeBridge
@@ -69,8 +70,8 @@ public sealed class AmberBridgeLibraryTests
     }
 
     [Theory]
-    [InlineData(0u, 1u)]
-    [InlineData(1u, 2u)]
+    [InlineData(0u, 0x00010000u)]
+    [InlineData(1u, 1u)]
     public void InvalidBridgeMetadataIsRejected(uint returnedSize, uint apiVersion)
     {
         using var native = new FakeBridge
@@ -439,11 +440,11 @@ internal sealed class FakeBridge : IAmberBridgeModule
 
     internal AmberGetApiDelegate GetApi { get; }
     internal AmberResult GetApiResult { get; set; } = AmberResult.Ok;
-    internal uint ReturnedVersion { get; set; } = 1;
+    internal uint ReturnedVersion { get; set; } = AmberApiVersions.V1;
     internal bool OmitRun { get; set; }
     internal AmberResult GetBridgeInfoResult { get; set; } = AmberResult.Ok;
     internal uint BridgeInfoSize { get; set; } = (uint)Marshal.SizeOf<AmberBridgeInfoNative>();
-    internal uint BridgeInfoApiVersion { get; set; } = 1;
+    internal uint BridgeInfoApiVersion { get; set; } = AmberApiVersions.V1;
     internal AmberResult EnumerateResult { get; set; } = AmberResult.Ok;
     internal uint CoreInfoSize { get; set; } = (uint)Marshal.SizeOf<AmberCoreInfoNative>();
     internal string? CoreId { get; set; } = AmberBridgeLibrary.System6CoreId;
@@ -471,6 +472,7 @@ internal sealed class FakeBridge : IAmberBridgeModule
         RequestedVersion = version;
         RequestedSize = size;
         if (GetApiResult != AmberResult.Ok) return GetApiResult;
+        if (version != 0x00010000u) return AmberResult.UnsupportedVersion;
 
         api.StructSize = (uint)Marshal.SizeOf<AmberApiV1Native>();
         api.ApiVersion = ReturnedVersion;

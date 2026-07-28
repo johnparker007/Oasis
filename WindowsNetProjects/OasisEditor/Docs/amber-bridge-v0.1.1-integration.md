@@ -13,11 +13,17 @@ load the core DLL. v0.1.1 exports exactly `AmberGetApi`, using `__cdecl`. The Sy
 
 ## ABI
 
+The semantic API version is **v1**, whose exact encoded ABI value is
+`AMBER_API_VERSION_1 = 0x00010000u` (65536 decimal). Oasis passes and validates `0x00010000`; decimal `1` is not a
+valid Amber API version value.
+
 The header does not specify an encoding for strings. The managed wrapper explicitly interprets all null-terminated
 `const char *` values as UTF-8, with no ANSI fallback. Handles (`AmberInstance_t *`) are opaque. Integer widths
 are explicit. Every callback and the sole export use `__cdecl`.
 
 ```c
+#define AMBER_API_VERSION_1 0x00010000u
+#define AMBER_API_VERSION_CURRENT AMBER_API_VERSION_1
 typedef struct AmberInstance_t* AmberHandle;
 typedef enum AmberResult {
   AMBER_OK=0, AMBER_INVALID_ARGUMENT=1, AMBER_UNSUPPORTED_VERSION=2,
@@ -43,7 +49,7 @@ typedef struct AmberApiV1 {
 AmberResult __cdecl AmberGetApi(uint32_t requested_version, uint32_t api_size, AmberApiV1* api);
 ```
 
-Oasis requests API version 1 and passes `sizeof(AmberApiV1)`. Success is **only** `AMBER_OK` (zero).
+Oasis requests API v1 by passing `AMBER_API_VERSION_1` (`0x00010000u`) and `sizeof(AmberApiV1)`. Success is **only** `AMBER_OK` (zero).
 `GetLastError` uses its `required` output and `AMBER_BUFFER_TOO_SMALL` to support a size query followed by retrieval.
 
 ## ROM and lifecycle rules
@@ -62,3 +68,20 @@ valid through the complete `Initialise` call.
 
 v0.1.1 exposes no switch inputs, output snapshots, lamps, reels, displays, audio, reel configuration, coin
 configuration, percentage configuration, or persistence.
+
+## Oasis integration status
+
+`System6NativeBackend` now uses the managed `IAmberBridgeLibrary` lifecycle. The native-library preference passed
+to the backend is an absolute path to `AmberBridge.dll`, not to `AmberOasis.JPMSystem6.dll`. The core DLL must be
+colocated with the bridge; Amber Bridge selects and loads the `jpm-system6` core itself.
+
+Startup validates the Editor's existing two-required-program-ROM rule and file existence before creating the
+bridge. Non-empty program and sound ROM slots are supplied in their configured order; absent sound ROMs are an
+empty collection. Successful startup performs initialise followed by the single reset historically performed after
+ROM loading. The existing 1 kHz scheduler then calls bridge `Run`, while pause/resume gates that loop. Stop calls
+shutdown once and disposal releases the bridge (and therefore its instance and module).
+
+Bridge v0.1.1 cannot service the Editor's switch, output, audio, reel-configuration, coin-configuration, or
+percentage-configuration operations. Output and audio polling are disabled, and optional startup configuration is
+skipped rather than sent to the former JPM exports. An explicit switch request throws `NotSupportedException` with
+an Amber Bridge v0.1.1 diagnostic. These operations are deferred until a future bridge API exposes them.
