@@ -6,15 +6,23 @@ namespace OasisEditor.Tests;
 
 public sealed class AmberBridgeLibraryTests
 {
+    [Theory]
+    [InlineData(0u, 0d)]
+    [InlineData(65536u, 1d)]
+    [InlineData(131072u, 2d)]
+    [InlineData(uint.MaxValue, 65535.99998474121d)]
+    public void Q16_16DecodingPreservesUnsignedRange(uint raw, double expected) =>
+        Assert.Equal(expected, AmberQ16_16.Decode(raw), 10);
+
     [Fact]
-    public void NegotiatesV1ReadsInformationEnumeratesCoreAndCreates()
+    public void NegotiatesV2ExactlyOnceReadsInformationEnumeratesCoreAndCreates()
     {
         using var native = new FakeBridge();
         using var bridge = new AmberBridgeLibrary(native);
 
-        Assert.Equal(0x00010000u, native.RequestedVersion);
-        Assert.NotEqual(1u, native.RequestedVersion);
-        Assert.Equal((uint)Marshal.SizeOf<AmberApiV1Native>(), native.RequestedSize);
+        Assert.Equal(AmberApiVersions.V2, native.RequestedVersion);
+        Assert.Equal((uint)Marshal.SizeOf<AmberApiV2Native>(), native.RequestedSize);
+        Assert.Equal(1, native.GetApiCallCount);
         Assert.Equal(new AmberBridgeDetails(AmberApiVersions.V1, "Amber", "0.1.1"), bridge.BridgeDetails);
         Assert.Contains("Create:jpm-system6", native.Calls);
     }
@@ -25,12 +33,45 @@ public sealed class AmberBridgeLibraryTests
         Assert.Equal(typeof(int), Enum.GetUnderlyingType(typeof(AmberResult)));
         Assert.Equal(8 + (2 * IntPtr.Size), Marshal.SizeOf<AmberBridgeInfoNative>());
         Assert.Equal(4 + (2 * IntPtr.Size) + (IntPtr.Size == 8 ? 4 : 0), Marshal.SizeOf<AmberCoreInfoNative>());
-        Assert.Equal(8 + (9 * IntPtr.Size), Marshal.SizeOf<AmberApiV1Native>());
+        Assert.Equal(80, Marshal.SizeOf<AmberApiV1Native>());
+        Assert.Equal(144, Marshal.SizeOf<AmberApiV2Native>());
+        string[] prefix = ["StructSize", "ApiVersion", "GetBridgeInfo", "EnumerateCore", "Create", "Destroy", "Initialise", "Reset", "Run", "Shutdown", "GetLastError"];
+        foreach (var field in prefix)
+            Assert.Equal(Marshal.OffsetOf<AmberApiV1Native>(field), Marshal.OffsetOf<AmberApiV2Native>(field));
+        Assert.Equal(80, Marshal.OffsetOf<AmberApiV2Native>(nameof(AmberApiV2Native.GetCapabilities)).ToInt32());
+        Assert.Equal(88, Marshal.OffsetOf<AmberApiV2Native>(nameof(AmberApiV2Native.SetSwitchState)).ToInt32());
+        Assert.Equal(96, Marshal.OffsetOf<AmberApiV2Native>(nameof(AmberApiV2Native.GetOutputSnapshot)).ToInt32());
+        Assert.Equal(104, Marshal.OffsetOf<AmberApiV2Native>(nameof(AmberApiV2Native.GetAudioFormat)).ToInt32());
+        Assert.Equal(112, Marshal.OffsetOf<AmberApiV2Native>(nameof(AmberApiV2Native.FillAudioFrames)).ToInt32());
+        Assert.Equal(120, Marshal.OffsetOf<AmberApiV2Native>(nameof(AmberApiV2Native.ConfigureReels)).ToInt32());
+        Assert.Equal(128, Marshal.OffsetOf<AmberApiV2Native>(nameof(AmberApiV2Native.ConfigureCoins)).ToInt32());
+        Assert.Equal(136, Marshal.OffsetOf<AmberApiV2Native>(nameof(AmberApiV2Native.SetPercentageSwitch)).ToInt32());
+        Assert.Equal(0x00020000u, AmberApiVersions.V2);
+        Assert.Equal(11, (int)AmberResult.NotSupported);
+        Assert.Equal(12, (int)AmberResult.InvalidRange);
+        Assert.Equal(13, (int)AmberResult.MalformedConfiguration);
+        Assert.Equal(32, Marshal.SizeOf<AmberCapabilitiesV1Native>());
+        Assert.Equal(8, Marshal.SizeOf<AmberLampStateV1Native>());
+        Assert.Equal(52, Marshal.SizeOf<AmberAlphaDisplayStateV1Native>());
+        Assert.Equal(8, Marshal.SizeOf<AmberSevenSegmentStateV1Native>());
+        Assert.Equal(4592, Marshal.SizeOf<AmberOutputSnapshotV1Native>());
+        Assert.Equal(40, Marshal.OffsetOf<AmberOutputSnapshotV1Native>(nameof(AmberOutputSnapshotV1Native.MatrixLamps)).ToInt32());
+        Assert.Equal(4136, Marshal.OffsetOf<AmberOutputSnapshotV1Native>(nameof(AmberOutputSnapshotV1Native.ReelPositions)).ToInt32());
+        Assert.Equal(4168, Marshal.OffsetOf<AmberOutputSnapshotV1Native>(nameof(AmberOutputSnapshotV1Native.AlphaDisplays)).ToInt32());
+        Assert.Equal(4272, Marshal.OffsetOf<AmberOutputSnapshotV1Native>(nameof(AmberOutputSnapshotV1Native.SevenSegmentDisplays)).ToInt32());
+        Assert.Equal(32, Marshal.SizeOf<AmberAudioFormatV1Native>());
+        Assert.Equal(24, Marshal.SizeOf<AmberReelConfigV1Native>());
+        Assert.Equal(208, Marshal.SizeOf<AmberReelConfigurationV1Native>());
+        Assert.Equal(20, Marshal.SizeOf<AmberCoinChannelConfigV1Native>());
+        Assert.Equal(32, Marshal.SizeOf<AmberCoinRouteConfigV1Native>());
+        Assert.Equal(408, Marshal.SizeOf<AmberCoinConfigurationV1Native>());
+        Assert.Equal(136, Marshal.OffsetOf<AmberCoinConfigurationV1Native>(nameof(AmberCoinConfigurationV1Native.Routes)).ToInt32());
+        Assert.Equal(392, Marshal.OffsetOf<AmberCoinConfigurationV1Native>(nameof(AmberCoinConfigurationV1Native.LockoutPortBase)).ToInt32());
         Assert.Equal(4 + (8 * IntPtr.Size) + (IntPtr.Size == 8 ? 4 : 0), Marshal.SizeOf<AmberInitialiseParamsNative>());
     }
 
     [Theory]
-    [InlineData((int)AmberResult.UnsupportedVersion, 0x00010000u)]
+    [InlineData((int)AmberResult.UnsupportedVersion, 0x00020000u)]
     [InlineData((int)AmberResult.Ok, 1u)]
     public void NegotiationFailuresUnloadTheModule(int resultCode, uint returnedVersion)
     {
@@ -69,21 +110,29 @@ public sealed class AmberBridgeLibraryTests
         Assert.Equal(new[] { "Unload" }, native.CleanupCalls);
     }
 
-    [Theory]
-    [InlineData(0u, 0x00010000u)]
-    [InlineData(1u, 1u)]
-    public void InvalidBridgeMetadataIsRejected(uint returnedSize, uint apiVersion)
+    [Fact]
+    public void UndersizedBridgeMetadataIsRejected()
     {
         using var native = new FakeBridge
         {
-            BridgeInfoSize = returnedSize,
-            BridgeInfoApiVersion = apiVersion
+            BridgeInfoSize = 0
         };
 
         var error = Assert.Throws<AmberBridgeException>(() => new AmberBridgeLibrary(native));
 
         Assert.Equal("GetBridgeInfo validation", error.Operation);
         Assert.Equal(new[] { "Unload" }, native.CleanupCalls);
+    }
+
+    [Fact]
+    public void BridgeMetadataVersionIsIndependentOfNegotiatedTableVersion()
+    {
+        using var native = new FakeBridge { BridgeInfoApiVersion = AmberApiVersions.V1 };
+
+        using var bridge = new AmberBridgeLibrary(native);
+
+        Assert.Equal(AmberApiVersions.V1, bridge.BridgeDetails.ApiVersion);
+        Assert.Equal(AmberApiVersions.V2, native.RequestedVersion);
     }
 
     [Fact]
@@ -268,6 +317,24 @@ public sealed class AmberBridgeLibraryTests
     }
 
     [Fact]
+    public void V2SemanticOperationsTranslateCapabilitiesAudioAndFrames()
+    {
+        using var native = new FakeBridge();
+        using var bridge = new AmberBridgeLibrary(native);
+        var capabilities = bridge.GetCapabilities();
+        Assert.Equal(0x3ful, capabilities.RawFeatureBits);
+        Assert.True(capabilities.SupportsSwitchInput);
+        bridge.Initialise(["program.rom"]);
+        Assert.Equal(new AmberAudioFormat(48000, 2, 1, 1), bridge.GetAudioFormat());
+        Span<short> samples = stackalloc short[8];
+        Assert.Equal(4u, bridge.FillAudioFrames(samples, 4));
+        Assert.Equal(new short[] { 0, 1, 2, 3, 4, 5, 6, 7 }, samples.ToArray());
+        bridge.SetSwitchState(255, true);
+        Assert.Throws<ArgumentOutOfRangeException>(() => bridge.SetSwitchState(256, true));
+        Assert.Throws<ArgumentOutOfRangeException>(() => bridge.SetPercentageSwitch(16));
+    }
+
+    [Fact]
     public void DisposeAfterInitialiseAutomaticallyOrdersShutdownDestroyUnload()
     {
         var native = new FakeBridge();
@@ -440,7 +507,7 @@ internal sealed class FakeBridge : IAmberBridgeModule
 
     internal AmberGetApiDelegate GetApi { get; }
     internal AmberResult GetApiResult { get; set; } = AmberResult.Ok;
-    internal uint ReturnedVersion { get; set; } = AmberApiVersions.V1;
+    internal uint ReturnedVersion { get; set; } = AmberApiVersions.V2;
     internal bool OmitRun { get; set; }
     internal AmberResult GetBridgeInfoResult { get; set; } = AmberResult.Ok;
     internal uint BridgeInfoSize { get; set; } = (uint)Marshal.SizeOf<AmberBridgeInfoNative>();
@@ -458,6 +525,7 @@ internal sealed class FakeBridge : IAmberBridgeModule
     internal bool DelayRun { get; set; }
     internal uint RequestedVersion { get; private set; }
     internal uint RequestedSize { get; private set; }
+    internal int GetApiCallCount { get; private set; }
     internal bool Disposed { get; private set; }
     internal List<string> Calls { get; } = [];
     internal string?[] ProgramPaths { get; private set; } = new string?[4];
@@ -467,14 +535,15 @@ internal sealed class FakeBridge : IAmberBridgeModule
 
     public AmberGetApiDelegate BindAmberGetApi() => GetApi;
 
-    private AmberResult GetApiImpl(uint version, uint size, ref AmberApiV1Native api)
+    private unsafe AmberResult GetApiImpl(uint version, uint size, ref AmberApiV2Native api)
     {
+        GetApiCallCount++;
         RequestedVersion = version;
         RequestedSize = size;
         if (GetApiResult != AmberResult.Ok) return GetApiResult;
-        if (version != 0x00010000u) return AmberResult.UnsupportedVersion;
+        if (version != AmberApiVersions.V2 || size != 144) return AmberResult.UnsupportedVersion;
 
-        api.StructSize = (uint)Marshal.SizeOf<AmberApiV1Native>();
+        api.StructSize = (uint)Marshal.SizeOf<AmberApiV2Native>();
         api.ApiVersion = ReturnedVersion;
         api.GetBridgeInfo = Pointer<GetBridgeInfoDelegate>(GetBridgeInfo);
         api.EnumerateCore = Pointer<EnumerateCoreDelegate>(EnumerateCore);
@@ -485,6 +554,14 @@ internal sealed class FakeBridge : IAmberBridgeModule
         api.Run = OmitRun ? IntPtr.Zero : Pointer<RunDelegate>(Run);
         api.Shutdown = Pointer<HandleDelegate>(Shutdown);
         api.GetLastError = Pointer<GetLastErrorDelegate>(GetLastError);
+        api.GetCapabilities = Pointer<GetCapabilitiesDelegate>(GetCapabilities);
+        api.SetSwitchState = Pointer<SetSwitchStateDelegate>(SetSwitchState);
+        api.GetOutputSnapshot = Pointer<GetOutputSnapshotDelegate>(GetOutputSnapshot);
+        api.GetAudioFormat = Pointer<GetAudioFormatDelegate>(GetAudioFormat);
+        api.FillAudioFrames = Pointer<FillAudioFramesDelegate>(FillAudioFrames);
+        api.ConfigureReels = Pointer<ConfigureReelsDelegate>(ConfigureReels);
+        api.ConfigureCoins = Pointer<ConfigureCoinsDelegate>(ConfigureCoins);
+        api.SetPercentageSwitch = Pointer<SetPercentageSwitchDelegate>(SetPercentageSwitch);
         return AmberResult.Ok;
     }
 
@@ -535,6 +612,15 @@ internal sealed class FakeBridge : IAmberBridgeModule
         Calls.Add("Reset");
         return AmberResult.Ok;
     }
+
+    private AmberResult GetCapabilities(IntPtr handle, ref AmberCapabilitiesV1Native capabilities) { capabilities.FeatureBits = 0x3f; capabilities.MaximumSwitches = 256; return AmberResult.Ok; }
+    private AmberResult SetSwitchState(IntPtr handle, uint index, uint isOn) => AmberResult.Ok;
+    private unsafe AmberResult GetOutputSnapshot(IntPtr handle, AmberOutputSnapshotV1Native* snapshot) { snapshot->StructSize = (uint)sizeof(AmberOutputSnapshotV1Native); snapshot->Version = 1; return AmberResult.Ok; }
+    private AmberResult GetAudioFormat(IntPtr handle, ref AmberAudioFormatV1Native format) { format.SampleRate = 48000; format.Channels = 2; format.SampleFormat = 1; format.Interleaving = 1; return AmberResult.Ok; }
+    private unsafe AmberResult FillAudioFrames(IntPtr handle, short* samples, uint capacity, out uint written) { written = capacity; if (samples != null) for (var i = 0; i < checked((int)capacity * 2); i++) samples[i] = (short)i; return AmberResult.Ok; }
+    private unsafe AmberResult ConfigureReels(IntPtr handle, AmberReelConfigurationV1Native* configuration) => AmberResult.Ok;
+    private unsafe AmberResult ConfigureCoins(IntPtr handle, AmberCoinConfigurationV1Native* configuration) => AmberResult.Ok;
+    private AmberResult SetPercentageSwitch(IntPtr handle, uint rawValue) => AmberResult.Ok;
 
     private AmberResult Run(IntPtr handle, uint cycles, out int cyclesRun)
     {

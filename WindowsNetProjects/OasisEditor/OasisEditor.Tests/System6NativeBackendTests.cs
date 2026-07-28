@@ -93,14 +93,17 @@ public sealed class System6NativeBackendTests
     }
 
     [Fact]
-    public async Task SwitchInputIsExplicitlyUnsupported()
+    public async Task SwitchInputIsQueuedAsPersistentLevel()
     {
         using var files = NativeFiles.Create(2, 0);
-        var backend = new System6NativeBackend(files.Bridge, _ => new FakeAmberBridge());
+        var fake = new FakeAmberBridge();
+        var backend = new System6NativeBackend(files.Bridge, _ => fake);
         await backend.StartAsync(Request(files), CancellationToken.None);
-        var ex = await Assert.ThrowsAsync<NotSupportedException>(() => backend.SetInputStateAsync(new InputDefinitionModel { Id = "button" }, true, CancellationToken.None));
-        Assert.Contains("Amber Bridge v0.1.1", ex.Message);
+        await backend.SetInputStateAsync(new InputDefinitionModel { Id = "button", ButtonNumber = "7" }, true, CancellationToken.None);
+        await Task.Delay(20);
         await backend.StopAsync(CancellationToken.None);
+        Assert.Contains((7u, true), fake.SwitchStates);
+        Assert.Contains((7u, false), fake.SwitchStates);
     }
 
     private static EmulationLaunchRequest Request(NativeFiles files)
@@ -122,10 +125,14 @@ public sealed class System6NativeBackendTests
     private sealed class FakeAmberBridge : IAmberBridgeLibrary
     {
         public AmberBridgeDetails BridgeDetails { get; } = new(AmberApiVersions.V1, "Test Amber Bridge", "0.1.1");
+        public uint NegotiatedApiVersion => AmberApiVersions.V2;
+        public uint NegotiatedApiTableSize => 144;
+        public AmberBridgeCapabilities GetCapabilities() => new(0x3f, 256);
         public List<string> Calls { get; } = [];
         public IReadOnlyList<string> ProgramRoms { get; private set; } = [];
         public IReadOnlyList<string> SoundRoms { get; private set; } = [];
         public List<uint> RunRequests { get; } = [];
+        public List<(uint Index, bool IsOn)> SwitchStates { get; } = [];
         public Exception? InitialiseException { get; init; }
         public int RunResult { get; init; } = 1;
         public int ResetCount { get; private set; }
@@ -141,6 +148,13 @@ public sealed class System6NativeBackendTests
         }
         public void Reset() { Calls.Add("Reset"); ResetCount++; }
         public int Run(uint cycles) { lock (RunRequests) RunRequests.Add(cycles); return RunResult; }
+        public void SetSwitchState(uint switchIndex, bool isOn) { lock (SwitchStates) SwitchStates.Add((switchIndex, isOn)); }
+        public void GetOutputSnapshot(AmberOutputSnapshotBuffer destination) { }
+        public AmberAudioFormat GetAudioFormat() => new(48000, 2, 1, 1);
+        public uint FillAudioFrames(Span<short> interleavedSamples, uint frameCapacity) => 0;
+        public void ConfigureReels(AmberReelConfiguration configuration) { }
+        public void ConfigureCoins(AmberCoinConfiguration configuration) { }
+        public void SetPercentageSwitch(uint rawValue) { }
         public void Shutdown() { Calls.Add("Shutdown"); ShutdownCount++; }
         public void Dispose() { Calls.Add("Dispose"); DisposeCount++; }
     }
