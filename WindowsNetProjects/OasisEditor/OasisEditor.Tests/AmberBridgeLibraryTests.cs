@@ -6,6 +6,14 @@ namespace OasisEditor.Tests;
 
 public sealed class AmberBridgeLibraryTests
 {
+    [Theory]
+    [InlineData(0u, 0d)]
+    [InlineData(65536u, 1d)]
+    [InlineData(131072u, 2d)]
+    [InlineData(uint.MaxValue, 65535.99998474121d)]
+    public void Q16_16DecodingPreservesUnsignedRange(uint raw, double expected) =>
+        Assert.Equal(expected, AmberQ16_16.Decode(raw), 10);
+
     [Fact]
     public void NegotiatesV2ExactlyOnceReadsInformationEnumeratesCoreAndCreates()
     {
@@ -42,6 +50,23 @@ public sealed class AmberBridgeLibraryTests
         Assert.Equal(11, (int)AmberResult.NotSupported);
         Assert.Equal(12, (int)AmberResult.InvalidRange);
         Assert.Equal(13, (int)AmberResult.MalformedConfiguration);
+        Assert.Equal(32, Marshal.SizeOf<AmberCapabilitiesV1Native>());
+        Assert.Equal(8, Marshal.SizeOf<AmberLampStateV1Native>());
+        Assert.Equal(52, Marshal.SizeOf<AmberAlphaDisplayStateV1Native>());
+        Assert.Equal(8, Marshal.SizeOf<AmberSevenSegmentStateV1Native>());
+        Assert.Equal(4592, Marshal.SizeOf<AmberOutputSnapshotV1Native>());
+        Assert.Equal(40, Marshal.OffsetOf<AmberOutputSnapshotV1Native>(nameof(AmberOutputSnapshotV1Native.MatrixLamps)).ToInt32());
+        Assert.Equal(4136, Marshal.OffsetOf<AmberOutputSnapshotV1Native>(nameof(AmberOutputSnapshotV1Native.ReelPositions)).ToInt32());
+        Assert.Equal(4168, Marshal.OffsetOf<AmberOutputSnapshotV1Native>(nameof(AmberOutputSnapshotV1Native.AlphaDisplays)).ToInt32());
+        Assert.Equal(4272, Marshal.OffsetOf<AmberOutputSnapshotV1Native>(nameof(AmberOutputSnapshotV1Native.SevenSegmentDisplays)).ToInt32());
+        Assert.Equal(32, Marshal.SizeOf<AmberAudioFormatV1Native>());
+        Assert.Equal(24, Marshal.SizeOf<AmberReelConfigV1Native>());
+        Assert.Equal(208, Marshal.SizeOf<AmberReelConfigurationV1Native>());
+        Assert.Equal(20, Marshal.SizeOf<AmberCoinChannelConfigV1Native>());
+        Assert.Equal(32, Marshal.SizeOf<AmberCoinRouteConfigV1Native>());
+        Assert.Equal(408, Marshal.SizeOf<AmberCoinConfigurationV1Native>());
+        Assert.Equal(136, Marshal.OffsetOf<AmberCoinConfigurationV1Native>(nameof(AmberCoinConfigurationV1Native.Routes)).ToInt32());
+        Assert.Equal(392, Marshal.OffsetOf<AmberCoinConfigurationV1Native>(nameof(AmberCoinConfigurationV1Native.LockoutPortBase)).ToInt32());
         Assert.Equal(4 + (8 * IntPtr.Size) + (IntPtr.Size == 8 ? 4 : 0), Marshal.SizeOf<AmberInitialiseParamsNative>());
     }
 
@@ -292,6 +317,24 @@ public sealed class AmberBridgeLibraryTests
     }
 
     [Fact]
+    public void V2SemanticOperationsTranslateCapabilitiesAudioAndFrames()
+    {
+        using var native = new FakeBridge();
+        using var bridge = new AmberBridgeLibrary(native);
+        var capabilities = bridge.GetCapabilities();
+        Assert.Equal(0x3ful, capabilities.RawFeatureBits);
+        Assert.True(capabilities.SupportsSwitchInput);
+        bridge.Initialise(["program.rom"]);
+        Assert.Equal(new AmberAudioFormat(48000, 2, 1, 1), bridge.GetAudioFormat());
+        Span<short> samples = stackalloc short[8];
+        Assert.Equal(4u, bridge.FillAudioFrames(samples, 4));
+        Assert.Equal(new short[] { 0, 1, 2, 3, 4, 5, 6, 7 }, samples.ToArray());
+        bridge.SetSwitchState(255, true);
+        Assert.Throws<ArgumentOutOfRangeException>(() => bridge.SetSwitchState(256, true));
+        Assert.Throws<ArgumentOutOfRangeException>(() => bridge.SetPercentageSwitch(16));
+    }
+
+    [Fact]
     public void DisposeAfterInitialiseAutomaticallyOrdersShutdownDestroyUnload()
     {
         var native = new FakeBridge();
@@ -511,15 +554,14 @@ internal sealed class FakeBridge : IAmberBridgeModule
         api.Run = OmitRun ? IntPtr.Zero : Pointer<RunDelegate>(Run);
         api.Shutdown = Pointer<HandleDelegate>(Shutdown);
         api.GetLastError = Pointer<GetLastErrorDelegate>(GetLastError);
-        var placeholder = Pointer<HandleDelegate>(Reset);
-        api.GetCapabilities = placeholder;
-        api.SetSwitchState = placeholder;
-        api.GetOutputSnapshot = placeholder;
-        api.GetAudioFormat = placeholder;
-        api.FillAudioFrames = placeholder;
-        api.ConfigureReels = placeholder;
-        api.ConfigureCoins = placeholder;
-        api.SetPercentageSwitch = placeholder;
+        api.GetCapabilities = Pointer<GetCapabilitiesDelegate>(GetCapabilities);
+        api.SetSwitchState = Pointer<SetSwitchStateDelegate>(SetSwitchState);
+        api.GetOutputSnapshot = Pointer<GetOutputSnapshotDelegate>(GetOutputSnapshot);
+        api.GetAudioFormat = Pointer<GetAudioFormatDelegate>(GetAudioFormat);
+        api.FillAudioFrames = Pointer<FillAudioFramesDelegate>(FillAudioFrames);
+        api.ConfigureReels = Pointer<ConfigureReelsDelegate>(ConfigureReels);
+        api.ConfigureCoins = Pointer<ConfigureCoinsDelegate>(ConfigureCoins);
+        api.SetPercentageSwitch = Pointer<SetPercentageSwitchDelegate>(SetPercentageSwitch);
         return AmberResult.Ok;
     }
 
@@ -570,6 +612,15 @@ internal sealed class FakeBridge : IAmberBridgeModule
         Calls.Add("Reset");
         return AmberResult.Ok;
     }
+
+    private AmberResult GetCapabilities(IntPtr handle, ref AmberCapabilitiesV1Native capabilities) { capabilities.FeatureBits = 0x3f; capabilities.MaximumSwitches = 256; return AmberResult.Ok; }
+    private AmberResult SetSwitchState(IntPtr handle, uint index, uint isOn) => AmberResult.Ok;
+    private unsafe AmberResult GetOutputSnapshot(IntPtr handle, AmberOutputSnapshotV1Native* snapshot) { snapshot->StructSize = (uint)sizeof(AmberOutputSnapshotV1Native); snapshot->Version = 1; return AmberResult.Ok; }
+    private AmberResult GetAudioFormat(IntPtr handle, ref AmberAudioFormatV1Native format) { format.SampleRate = 48000; format.Channels = 2; format.SampleFormat = 1; format.Interleaving = 1; return AmberResult.Ok; }
+    private unsafe AmberResult FillAudioFrames(IntPtr handle, short* samples, uint capacity, out uint written) { written = capacity; if (samples != null) for (var i = 0; i < checked((int)capacity * 2); i++) samples[i] = (short)i; return AmberResult.Ok; }
+    private unsafe AmberResult ConfigureReels(IntPtr handle, AmberReelConfigurationV1Native* configuration) => AmberResult.Ok;
+    private unsafe AmberResult ConfigureCoins(IntPtr handle, AmberCoinConfigurationV1Native* configuration) => AmberResult.Ok;
+    private AmberResult SetPercentageSwitch(IntPtr handle, uint rawValue) => AmberResult.Ok;
 
     private AmberResult Run(IntPtr handle, uint cycles, out int cyclesRun)
     {

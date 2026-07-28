@@ -31,7 +31,7 @@ public sealed class AmberBridgeLibrary : IAmberBridgeLibrary
         {
             api = NegotiateApi(module);
             BridgeDetails = ReadBridgeDetails(api);
-            Debug.WriteLine($"Amber Bridge: Bridge information read ({BridgeDetails.Name} {BridgeDetails.BridgeVersion}, {AmberApiVersions.Format(BridgeDetails.ApiVersion)}).");
+            Debug.WriteLine($"Amber Bridge: Bridge product metadata read: {BridgeDetails.Name} {BridgeDetails.BridgeVersion}; compatibility {AmberApiVersions.Format(BridgeDetails.ApiVersion)}.");
             VerifyCore(api);
             Debug.WriteLine($"Amber Bridge: {System6CoreId} core found.");
 
@@ -45,6 +45,8 @@ public sealed class AmberBridgeLibrary : IAmberBridgeLibrary
 
             _api = api;
             _handle = handle;
+            NegotiatedApiVersion = AmberApiVersions.V2;
+            NegotiatedApiTableSize = SizeOf<AmberApiV2Native>();
             Debug.WriteLine("Amber Bridge: Instance created.");
         }
         catch
@@ -62,6 +64,15 @@ public sealed class AmberBridgeLibrary : IAmberBridgeLibrary
     }
 
     public AmberBridgeDetails BridgeDetails { get; }
+    public uint NegotiatedApiVersion { get; }
+    public uint NegotiatedApiTableSize { get; }
+
+    public AmberBridgeCapabilities GetCapabilities()
+    {
+        lock (_sync) { ThrowIfDisposed(); var value = new AmberCapabilitiesV1Native { StructSize = SizeOf<AmberCapabilitiesV1Native>(), Version = 1 };
+            ThrowForResult(_api, "GetCapabilities", _api.GetCapabilities(_handle, ref value), _handle);
+            return new(value.FeatureBits, value.MaximumSwitches); }
+    }
 
     public void Initialise(IReadOnlyList<string> programRomPaths, IReadOnlyList<string>? soundRomPaths = null)
     {
@@ -105,6 +116,35 @@ public sealed class AmberBridgeLibrary : IAmberBridgeLibrary
             return cyclesRun;
         }
     }
+
+    public void SetSwitchState(uint switchIndex, bool isOn)
+    { lock (_sync) { RequireRunning(); if (switchIndex >= AmberNativeConstants.MaximumSwitches) throw new ArgumentOutOfRangeException(nameof(switchIndex)); ThrowForResult(_api, "SetSwitchState", _api.SetSwitchState(_handle, switchIndex, isOn ? 1u : 0u), _handle); } }
+
+    public unsafe void GetOutputSnapshot(AmberOutputSnapshotBuffer destination)
+    { ArgumentNullException.ThrowIfNull(destination); lock (_sync) { RequireRunning(); destination.Prepare(); fixed (AmberOutputSnapshotV1Native* p = &destination.Native) ThrowForResult(_api, "GetOutputSnapshot", _api.GetOutputSnapshot(_handle, p), _handle); destination.ValidateCounts(); } }
+
+    public AmberAudioFormat GetAudioFormat()
+    { lock (_sync) { RequireRunning(); var value = new AmberAudioFormatV1Native { StructSize = SizeOf<AmberAudioFormatV1Native>(), Version = 1 }; ThrowForResult(_api, "GetAudioFormat", _api.GetAudioFormat(_handle, ref value), _handle); return new(value.SampleRate, value.Channels, value.SampleFormat, value.Interleaving); } }
+
+    public unsafe uint FillAudioFrames(Span<short> interleavedSamples, uint frameCapacity)
+    { lock (_sync) { RequireRunning(); if (frameCapacity == 0) { ThrowForResult(_api, "FillAudioFrames", _api.FillAudioFrames(_handle, null, 0, out var zero), _handle); return zero; }
+        var required = checked((int)(frameCapacity * 2u)); if (interleavedSamples.Length < required) throw new ArgumentException("The sample span must contain two samples per stereo frame.", nameof(interleavedSamples));
+        fixed (short* p = interleavedSamples) { ThrowForResult(_api, "FillAudioFrames", _api.FillAudioFrames(_handle, p, frameCapacity, out var written), _handle); if (written > frameCapacity) throw new AmberBridgeException("FillAudioFrames validation", AmberResult.InternalError, "Bridge wrote more frames than requested."); return written; } } }
+
+    public unsafe void ConfigureReels(AmberReelConfiguration configuration)
+    { ArgumentNullException.ThrowIfNull(configuration); lock (_sync) { RequireRunning(); if ((configuration.ApplyMask & ~0xffu) != 0) throw new ArgumentOutOfRangeException(nameof(configuration)); var native = new AmberReelConfigurationV1Native { StructSize = SizeOf<AmberReelConfigurationV1Native>(), Version = 1, ReelCount = 8, ApplyMask = configuration.ApplyMask };
+        fixed (byte* p = native.Reels) foreach (var reel in configuration.Reels) { if (reel.Index >= 8 || reel.Steps is < 1 or > 255 || reel.OptoStart > 255 || reel.OptoEnd > 255) throw new ArgumentException($"Invalid reel configuration at index {reel.Index}.", nameof(configuration)); ((AmberReelConfigV1Native*)p)[reel.Index] = new() { ReelIndex = reel.Index, Enabled = reel.Enabled ? 1u : 0u, Steps = reel.Steps, OptoStart = reel.OptoStart, OptoEnd = reel.OptoEnd, OptoInvert = reel.OptoInvert ? 1u : 0u }; }
+        ThrowForResult(_api, "ConfigureReels", _api.ConfigureReels(_handle, &native), _handle); } }
+
+    public unsafe void ConfigureCoins(AmberCoinConfiguration configuration)
+    { ArgumentNullException.ThrowIfNull(configuration); lock (_sync) { RequireRunning(); if ((configuration.ChannelApplyMask & ~0x3fu) != 0 || (configuration.RouteApplyMask & ~0xffu) != 0) throw new ArgumentOutOfRangeException(nameof(configuration)); var native = new AmberCoinConfigurationV1Native { StructSize = SizeOf<AmberCoinConfigurationV1Native>(), Version = 1, ChannelApplyMask = configuration.ChannelApplyMask, RouteApplyMask = configuration.RouteApplyMask, ConfigurationFlags = configuration.ApplyLockoutPort ? 1u : 0u, LockoutPortBase = configuration.LockoutPortBase, LockoutPortValue = configuration.LockoutPortValue };
+        if (configuration.ApplyLockoutPort && (configuration.LockoutPortBase > 255 || configuration.LockoutPortValue > 255)) throw new ArgumentException("Coin lockout values must fit in a byte.", nameof(configuration));
+        fixed (byte* cp = native.Channels) foreach (var c in configuration.Channels) { if (c.Index >= 6 || c.Value > 255) throw new ArgumentException($"Invalid coin channel {c.Index}.", nameof(configuration)); ((AmberCoinChannelConfigV1Native*)cp)[c.Index] = new() { ChannelIndex = c.Index, Enabled = c.Enabled ? 1u : 0u, Value = c.Value, LockoutInvert = c.LockoutInvert ? 1u : 0u }; }
+        fixed (byte* rp = native.Routes) foreach (var r in configuration.Routes) { if (r.Index >= 8 || r.PortIndex > 7 || r.CoinCode > 255 || r.Level > 255 || r.FullLevel > 255) throw new ArgumentException($"Invalid coin route {r.Index}.", nameof(configuration)); ((AmberCoinRouteConfigV1Native*)rp)[r.Index] = new() { RouteIndex = r.Index, Enabled = r.Enabled ? 1u : 0u, CounterIn = r.CounterIn, CounterOut = r.CounterOut, PortIndex = r.PortIndex, CoinCode = r.CoinCode, Level = r.Level, FullLevel = r.FullLevel }; }
+        ThrowForResult(_api, "ConfigureCoins", _api.ConfigureCoins(_handle, &native), _handle); } }
+
+    public void SetPercentageSwitch(uint rawValue)
+    { lock (_sync) { RequireRunning(); if (rawValue > 15) throw new ArgumentOutOfRangeException(nameof(rawValue)); ThrowForResult(_api, "SetPercentageSwitch", _api.SetPercentageSwitch(_handle, rawValue), _handle); } }
 
     public void Shutdown()
     {
@@ -296,6 +336,14 @@ public sealed class AmberBridgeLibrary : IAmberBridgeLibrary
             Run = Marshal.GetDelegateForFunctionPointer<RunDelegate>(table.Run);
             Shutdown = Marshal.GetDelegateForFunctionPointer<HandleDelegate>(table.Shutdown);
             GetLastError = Marshal.GetDelegateForFunctionPointer<GetLastErrorDelegate>(table.GetLastError);
+            GetCapabilities = Marshal.GetDelegateForFunctionPointer<GetCapabilitiesDelegate>(table.GetCapabilities);
+            SetSwitchState = Marshal.GetDelegateForFunctionPointer<SetSwitchStateDelegate>(table.SetSwitchState);
+            GetOutputSnapshot = Marshal.GetDelegateForFunctionPointer<GetOutputSnapshotDelegate>(table.GetOutputSnapshot);
+            GetAudioFormat = Marshal.GetDelegateForFunctionPointer<GetAudioFormatDelegate>(table.GetAudioFormat);
+            FillAudioFrames = Marshal.GetDelegateForFunctionPointer<FillAudioFramesDelegate>(table.FillAudioFrames);
+            ConfigureReels = Marshal.GetDelegateForFunctionPointer<ConfigureReelsDelegate>(table.ConfigureReels);
+            ConfigureCoins = Marshal.GetDelegateForFunctionPointer<ConfigureCoinsDelegate>(table.ConfigureCoins);
+            SetPercentageSwitch = Marshal.GetDelegateForFunctionPointer<SetPercentageSwitchDelegate>(table.SetPercentageSwitch);
         }
 
         internal GetBridgeInfoDelegate GetBridgeInfo { get; }
@@ -307,6 +355,14 @@ public sealed class AmberBridgeLibrary : IAmberBridgeLibrary
         internal RunDelegate Run { get; }
         internal HandleDelegate Shutdown { get; }
         internal GetLastErrorDelegate GetLastError { get; }
+        internal GetCapabilitiesDelegate GetCapabilities { get; }
+        internal SetSwitchStateDelegate SetSwitchState { get; }
+        internal GetOutputSnapshotDelegate GetOutputSnapshot { get; }
+        internal GetAudioFormatDelegate GetAudioFormat { get; }
+        internal FillAudioFramesDelegate FillAudioFrames { get; }
+        internal ConfigureReelsDelegate ConfigureReels { get; }
+        internal ConfigureCoinsDelegate ConfigureCoins { get; }
+        internal SetPercentageSwitchDelegate SetPercentageSwitch { get; }
     }
 
     private sealed class Utf8Allocation : IDisposable
