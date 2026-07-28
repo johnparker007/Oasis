@@ -152,6 +152,7 @@ public sealed class System6NativeBackendTests
         var fake = new FakeAmberBridge { RunDelayMilliseconds = 8 };
         var backend = new System6NativeBackend(files.Bridge, _ => fake);
         await backend.StartAsync(Request(files), CancellationToken.None);
+        await WaitUntilAsync(() => { lock (fake.RunRequests) return fake.RunRequests.Count > 0; }, TimeSpan.FromSeconds(1));
         await Task.Delay(40);
         await backend.StopAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(2));
         Assert.InRange(fake.RunRequests.Count, 1, 10);
@@ -171,6 +172,17 @@ public sealed class System6NativeBackendTests
             SoundRom4Path = files.Sounds.ElementAtOrDefault(3) ?? ""
         };
         return new(FruitMachinePlatformType.Impact, "test", files.Directory, [], "", settings);
+    }
+
+    private static async Task WaitUntilAsync(Func<bool> condition, TimeSpan timeout)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        while (!condition() && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(10);
+        }
+
+        Assert.True(condition(), $"Condition was not met within {timeout}.");
     }
 
     private sealed class FakeAmberBridge : IAmberBridgeLibrary

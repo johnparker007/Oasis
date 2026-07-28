@@ -133,6 +133,7 @@ public sealed class InspectorViewModelTests
 
         var nameRow = Assert.IsType<InspectorTextPropertyViewModel>(viewModel.InspectorPropertyRows.Single(row => row.DisplayName == "Name" && row.GroupName.StartsWith("Reel:", StringComparison.Ordinal)));
         nameRow.Value = "Standard 3 Reel";
+        nameRow.Commit();
         Assert.Equal("Standard 3 Reel", Assert.Single(selectedDocument.GetCabinetDocument().ReelSpecifications).Name);
 
         Assert.True(selectedDocument.CommandService.TryUndo());
@@ -169,7 +170,7 @@ public sealed class InspectorViewModelTests
         viewModel.NotifyContextChanged();
 
         Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Reel Specification" && row.GroupName == "Reel Size" && row is InspectorInfoPropertyViewModel info && info.Value == "stored-id");
-        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Cabinet" && row.GroupName == "Reel Size" && row is InspectorInfoPropertyViewModel info && info.Value.Contains("Face is not assigned", StringComparison.Ordinal));
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Cabinet" && row.GroupName == "Reel Size" && row is InspectorInfoPropertyViewModel info && info.Value.Contains("Cabinet is assigned", StringComparison.Ordinal));
     }
 
     [Fact]

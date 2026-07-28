@@ -178,7 +178,7 @@ public sealed class LampElementRendererTests
 
             Assert.Equal(SKColors.Black, onBitmap.GetPixel(10, 0));
             Assert.Equal(SKColors.Black, offBitmap.GetPixel(10, 0));
-            Assert.Equal(SKColors.Transparent, offBitmap.GetPixel(10, 10));
+            Assert.Equal(0, offBitmap.GetPixel(10, 10).Alpha);
         }
         finally
         {

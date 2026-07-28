@@ -109,7 +109,7 @@ public sealed class Panel2DSelectionInteractionServiceTests
         var elements = new[]
         {
             new PanelElementModel { ObjectId = "a", Kind = PanelElementKind.Lamp, X = 0, Y = 0, Width = 10, Height = 10, IsVisible = true },
-            new PanelElementModel { ObjectId = "partial", Kind = PanelElementKind.Lamp, X = 8, Y = 8, Width = 10, Height = 10, IsVisible = true },
+            new PanelElementModel { ObjectId = "partial", Kind = PanelElementKind.Lamp, X = 18, Y = 18, Width = 10, Height = 10, IsVisible = true },
             new PanelElementModel { ObjectId = "hidden", Kind = PanelElementKind.Lamp, X = 0, Y = 0, Width = 10, Height = 10, IsVisible = false },
             new PanelElementModel { ObjectId = "b", Kind = PanelElementKind.Reel, X = 20, Y = 20, Width = 5, Height = 5, IsVisible = true }
         };

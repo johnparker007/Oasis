@@ -865,7 +865,13 @@ internal static class Panel2DDocumentStorage
     {
         return (lamps ?? [])
             .Select(NormalizeReelLamp)
-            .OrderBy(lamp => lamp.Position, StringComparer.Ordinal)
+            .OrderBy(lamp => lamp.Position switch
+            {
+                "top" => 0,
+                "middle" => 1,
+                "bottom" => 2,
+                _ => 3
+            })
             .ToArray();
     }
 

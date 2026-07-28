@@ -12,7 +12,7 @@ public sealed class MachineRuntimeBuildServiceTests
     {
         var root = CreateTempRoot(); var project = CreateProject(root);
         var cabinetDir = Directory.CreateDirectory(Path.Combine(project.AssetsDirectory, "Cabinet3D", "Reflective")).FullName;
-        File.WriteAllBytes(Path.Combine(cabinetDir, "source.glb"), [1]); WriteSolidPng(Path.Combine(cabinetDir, "side-mask.png"), 2, 2, SKColors.White);
+        WriteMinimalGlb(Path.Combine(cabinetDir, "source.glb")); WriteSolidPng(Path.Combine(cabinetDir, "side-mask.png"), 2, 2, SKColors.White);
         var reflection = new CabinetReflectionDefinition("side", "SideMesh", 0, [new CabinetReflectionSource("lowerGlass", new CabinetReflectionPlane(new(0, 0, 0), new(1, 0, 0), new(0, 1, 0), 2, 1))], CabinetReflectionSettings.RoughPlastic with { Enabled = false }, "side-mask.png");
         var document = CabinetDocument.FromModelPath("source.glb") with { Reflections = [reflection] };
         var manifestPath = Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName); File.WriteAllText(manifestPath, CabinetDocumentStorage.Serialize(document));
@@ -34,7 +34,7 @@ public sealed class MachineRuntimeBuildServiceTests
         var project = CreateProject(root);
         var cabinetDir = Directory.CreateDirectory(Path.Combine(project.AssetsDirectory, "Cabinet3D", "Test Cabinet")).FullName;
         var sourceGlb = Path.Combine(cabinetDir, "source.glb");
-        File.WriteAllBytes(sourceGlb, [1, 2, 3]);
+        WriteMinimalGlb(sourceGlb);
         File.WriteAllText(Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName), CabinetDocumentStorage.Serialize(new CabinetDocument(5, new CabinetModelReference("source.glb", 2.5, "Z"), [], CabinetPreviewSettings.Default)));
         var stale = Path.Combine(project.GeneratedDirectory, "Builds", "Test Cabinet", "stale.txt");
         Directory.CreateDirectory(Path.GetDirectoryName(stale)!);
@@ -45,7 +45,7 @@ public sealed class MachineRuntimeBuildServiceTests
         Assert.True(result.Success, result.ErrorMessage);
         Assert.Equal(Path.Combine(project.GeneratedDirectory, "Builds", "Test Cabinet"), result.BuildRoot);
         Assert.False(File.Exists(stale));
-        Assert.Equal([1, 2, 3], File.ReadAllBytes(Path.Combine(result.BuildRoot!, "cabinet", "cabinet.glb")));
+        Assert.Equal(File.ReadAllBytes(sourceGlb), File.ReadAllBytes(Path.Combine(result.BuildRoot!, "cabinet", "cabinet.glb")));
         using var machine = JsonDocument.Parse(File.ReadAllText(Path.Combine(result.BuildRoot, "machine.runtime.json")));
         Assert.Equal("oasis.machine.runtime", machine.RootElement.GetProperty("schema").GetString());
         Assert.Equal(3, machine.RootElement.GetProperty("schemaVersion").GetInt32());
@@ -69,7 +69,7 @@ public sealed class MachineRuntimeBuildServiceTests
         var project = CreateProject(root);
         var cabinetDir = Directory.CreateDirectory(Path.Combine(project.AssetsDirectory, "Cabinet3D", "Test Cabinet")).FullName;
         var sourceGlb = Path.Combine(cabinetDir, "source.glb");
-        File.WriteAllBytes(sourceGlb, [1, 2, 3]);
+        WriteMinimalGlb(sourceGlb);
         File.WriteAllText(Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName), CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("source.glb").WithTargetOverride(new CabinetTargetOverride("target-front", " INVERTED ", 450, true)).WithTargetOverride(new CabinetTargetOverride("target-back", CabinetTargetOverride.NormalFrontSide))));
         var faceDir = Directory.CreateDirectory(Path.Combine(project.AssetsDirectory, "Faces", "Front Face")).FullName;
         WriteSolidPng(Path.Combine(faceDir, "artwork.png"), 4, 4, SKColors.Red);
@@ -181,7 +181,7 @@ public sealed class MachineRuntimeBuildServiceTests
         var project = CreateProject(root);
         var cabinetDir = Directory.CreateDirectory(Path.Combine(project.AssetsDirectory, "Cabinet3D", "Realistic Cabinet")).FullName;
         var sourceGlb = Path.Combine(cabinetDir, "source.glb");
-        File.WriteAllBytes(sourceGlb, [1, 2, 3]);
+        WriteMinimalGlb(sourceGlb);
         var manifestPath = Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName);
         File.WriteAllText(manifestPath, CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("source.glb").WithTargetOverride(new CabinetTargetOverride("topGlass1", CabinetTargetOverride.NormalFrontSide))));
         var faceDir = Directory.CreateDirectory(Path.Combine(project.AssetsDirectory, "Faces", "Top Glass Face")).FullName;
@@ -213,7 +213,7 @@ public sealed class MachineRuntimeBuildServiceTests
         var project = CreateProject(root);
         var cabinetDir = Directory.CreateDirectory(Path.Combine(project.AssetsDirectory, "Cabinet3D", "Mismatch Cabinet")).FullName;
         var sourceGlb = Path.Combine(cabinetDir, "source.glb");
-        File.WriteAllBytes(sourceGlb, [1, 2, 3]);
+        WriteMinimalGlb(sourceGlb);
         var manifestPath = Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName);
         File.WriteAllText(manifestPath, CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("source.glb").WithTargetOverride(new CabinetTargetOverride("topGlass1", CabinetTargetOverride.InvertedFrontSide))));
         var faceDir = Directory.CreateDirectory(Path.Combine(project.AssetsDirectory, "Faces", "Mismatched Face")).FullName;
@@ -249,7 +249,7 @@ public sealed class MachineRuntimeBuildServiceTests
     private static string CreateCabinetAsset(EditorProject project, string assetName, CabinetDocument cabinetDocument)
     {
         var cabinetDir = Directory.CreateDirectory(Path.Combine(project.AssetsDirectory, "Cabinet3D", assetName)).FullName;
-        File.WriteAllBytes(Path.Combine(cabinetDir, "source.glb"), [1, 2, 3]);
+        WriteMinimalGlb(Path.Combine(cabinetDir, "source.glb"));
         var manifestPath = Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName);
         File.WriteAllText(manifestPath, CabinetDocumentStorage.Serialize(cabinetDocument));
         return manifestPath;
@@ -311,6 +311,20 @@ public sealed class MachineRuntimeBuildServiceTests
                 }
             ]
         };
+    }
+
+    private static void WriteMinimalGlb(string path)
+    {
+        const string json = "{\"asset\":{\"version\":\"2.0\"},\"scene\":0,\"scenes\":[{}]} ";
+        var jsonBytes = System.Text.Encoding.UTF8.GetBytes(json);
+        using var stream = File.Create(path);
+        using var writer = new BinaryWriter(stream);
+        writer.Write(0x46546C67u);
+        writer.Write(2u);
+        writer.Write((uint)(12 + 8 + jsonBytes.Length));
+        writer.Write((uint)jsonBytes.Length);
+        writer.Write(0x4E4F534Au);
+        writer.Write(jsonBytes);
     }
 
     private static void WriteSolidPng(string path, int width, int height, SKColor color)

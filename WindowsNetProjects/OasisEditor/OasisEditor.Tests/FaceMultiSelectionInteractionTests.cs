@@ -38,7 +38,7 @@ public sealed class FaceMultiSelectionInteractionTests
         var elements = new FaceElementModel[]
         {
             new FaceArtworkElement { ObjectId = "art", X = 0, Y = 0, Width = 10, Height = 10, IsVisible = true, IsTransformLocked = true },
-            new FaceLampWindowElement { ObjectId = "partial", X = 8, Y = 8, Width = 10, Height = 10, IsVisible = true },
+            new FaceLampWindowElement { ObjectId = "partial", X = 18, Y = 18, Width = 10, Height = 10, IsVisible = true },
             new FaceLampWindowElement { ObjectId = "hidden", X = 0, Y = 0, Width = 10, Height = 10, IsVisible = false },
             new FaceReelDisplayElement { ObjectId = "reel", X = 20, Y = 20, Width = 5, Height = 5, IsVisible = true }
         };

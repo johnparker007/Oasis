@@ -27,7 +27,7 @@ public sealed class PanelElementHasBorderStorageTests
     public void Panel2DStorage_MissingHasBorder_DeserializesFalse()
     {
         const string json = """
-        {"schemaVersion":2,"title":"Panel","elements":[{"objectId":"lamp","name":"Lamp","kind":"lamp","width":10,"height":10}]}
+        {"schemaVersion":3,"title":"Panel","elements":[{"objectId":"lamp","name":"Lamp","kind":"lamp","width":10,"height":10}]}
         """;
 
         var loaded = Panel2DDocumentStorage.DeserializeModel(json);
