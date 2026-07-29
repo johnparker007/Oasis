@@ -73,7 +73,7 @@ public sealed record FabricAmberConfiguration(
         native.Coins.ChannelMask = CoinChannelApplyMask;
         native.Coins.RouteMask = CoinRouteApplyMask;
 
-        fixed (byte* pointer = native.Reels.Reels)
+        byte* pointer = native.Reels.Reels;
         {
             for (var index = 0; index < Reels.Count; index++)
             {
@@ -89,7 +89,7 @@ public sealed record FabricAmberConfiguration(
                 };
             }
         }
-        fixed (byte* pointer = native.Coins.Channels)
+        pointer = native.Coins.Channels;
         {
             for (var index = 0; index < CoinChannels.Count; index++)
             {
@@ -103,7 +103,7 @@ public sealed record FabricAmberConfiguration(
                 };
             }
         }
-        fixed (byte* pointer = native.Coins.Routes)
+        pointer = native.Coins.Routes;
         {
             for (var index = 0; index < CoinRoutes.Count; index++)
             {

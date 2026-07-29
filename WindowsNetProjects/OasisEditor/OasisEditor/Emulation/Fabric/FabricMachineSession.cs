@@ -1,3 +1,4 @@
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -57,8 +58,8 @@ internal sealed unsafe class FabricMachineSession : IFabricMachineSession
             Index = input.NumericalIndex,
             Active = input.Active ? (byte)1 : (byte)0
         };
-        fixed (byte* identifier = native.Identifier)
-            FabricRuntimeLibrary.WriteFixed(input.Identifier, identifier, FabricAbi.IdentifierCapacity);
+        byte* identifier = native.Identifier;
+        FabricRuntimeLibrary.WriteFixed(input.Identifier, identifier, FabricAbi.IdentifierCapacity);
         Check(_exports.SubmitInputFn(_handle, &native), "FabricSessionSubmitInput");
     }
 
@@ -88,7 +89,8 @@ internal sealed unsafe class FabricMachineSession : IFabricMachineSession
         }
         catch (OverflowException exception)
         {
-            throw new ArgumentOutOfRangeException(nameof(frameCapacity), "Audio sample capacity overflowed.", exception);
+            throw new ArgumentOutOfRangeException(nameof(frameCapacity), frameCapacity,
+                $"Audio sample capacity overflowed: {exception.Message}");
         }
         if (samples.Length < requiredSamples)
             throw new ArgumentException($"Audio span contains {samples.Length} samples but {requiredSamples} are required.", nameof(samples));

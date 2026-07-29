@@ -1,3 +1,4 @@
+using Xunit;
 using OasisEditor;
 
 namespace OasisEditor.Tests;

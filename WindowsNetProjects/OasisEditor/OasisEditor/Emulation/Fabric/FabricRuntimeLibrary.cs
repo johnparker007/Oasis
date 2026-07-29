@@ -1,3 +1,4 @@
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -22,7 +23,12 @@ public sealed unsafe class FabricRuntimeLibrary : IFabricRuntimeLibrary
             var resourceBytes=resources.Length*sizeof(FabricRomResourceNative); var resourcePtr=resourceBytes==0?0:Marshal.AllocHGlobal(resourceBytes); if(resourcePtr!=0){allocations.Add(resourcePtr); fixed(FabricRomResourceNative* p=resources) Buffer.MemoryCopy(p,(void*)resourcePtr,resourceBytes,resourceBytes);}
             var config=request.Configuration?.ToNativeBytes()??[]; var configPtr=config.Length==0?0:Marshal.AllocHGlobal(config.Length); if(configPtr!=0){allocations.Add(configPtr); Marshal.Copy(config,0,configPtr,config.Length);}
             var native=new FabricLaunchRequestNative { Size=(uint)sizeof(FabricLaunchRequestNative),Version=FabricAbi.Version,Resources=resourcePtr,ResourceCount=(uint)resources.Length,Configuration=configPtr,ConfigurationSize=(uint)config.Length };
-            fixed(byte* p=native.BackendKind) WriteFixed(request.BackendKind,p,64); fixed(byte* p=native.MachineIdentifier) WriteFixed(request.MachineIdentifier,p,64); fixed(byte* p=native.BackendPath) WriteFixed(request.BackendPath,p,1024);
+            byte* backendKind = native.BackendKind;
+            byte* machineIdentifier = native.MachineIdentifier;
+            byte* backendPath = native.BackendPath;
+            WriteFixed(request.BackendKind, backendKind, FabricAbi.IdentifierCapacity);
+            WriteFixed(request.MachineIdentifier, machineIdentifier, FabricAbi.IdentifierCapacity);
+            WriteFixed(request.BackendPath, backendPath, FabricAbi.PathCapacity);
             var result=_exports!.CreateSessionFn(_runtime,&native,out var session); if(result!=FabricResult.Ok) throw Error(result,"FabricCreateSession",_runtime,false);
             FabricMachineSession? managedSession = null;
             try
