@@ -44,6 +44,9 @@ public sealed class NativeEmulationPreferences
     public const int DefaultAudioBufferLengthMilliseconds = 50;
 
     public string System6LibraryPath { get; init; } = string.Empty;
+    public bool UseFabricForAmber { get; init; }
+    public string FabricRuntimeLibraryPath { get; init; } = string.Empty;
+    public string FabricAmberApiV2LibraryPath { get; init; } = string.Empty;
     public int AudioBufferLengthMilliseconds { get; init; } = DefaultAudioBufferLengthMilliseconds;
 }
 
