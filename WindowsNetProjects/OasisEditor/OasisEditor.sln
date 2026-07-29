@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OasisEditor", "OasisEditor\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OasisEditor.Tests", "OasisEditor.Tests\OasisEditor.Tests.csproj", "{DA3D77B1-8730-403B-AACA-5ABA73A882FF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OasisEditor.NativeIntegrationTests", "OasisEditor.NativeIntegrationTests\OasisEditor.NativeIntegrationTests.csproj", "{C13B6D26-59AE-49E2-A04E-CB3A07D90C21}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{DA3D77B1-8730-403B-AACA-5ABA73A882FF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DA3D77B1-8730-403B-AACA-5ABA73A882FF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DA3D77B1-8730-403B-AACA-5ABA73A882FF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C13B6D26-59AE-49E2-A04E-CB3A07D90C21}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C13B6D26-59AE-49E2-A04E-CB3A07D90C21}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C13B6D26-59AE-49E2-A04E-CB3A07D90C21}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C13B6D26-59AE-49E2-A04E-CB3A07D90C21}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

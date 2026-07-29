@@ -15,3 +15,5 @@ All calls for one managed backend session are serialized by a shared session gat
 Timestamp deltas are converted directly to nanoseconds with quotient/remainder arithmetic. Fractional numerator is carried between pumps to avoid systematic drift; pause/resume and reset clear both the baseline and remainder. Scheduler gaps are forwarded as one elapsed value—there is no unbounded catch-up loop.
 
 Display change detection uses a composite identity of output family, native display identifier, display ordinal, and local position. Oasis event indexes retain the direct backend's 16-cells-per-display convention; alpha punctuation attributes are included in bits 16 and 17 of the published alpha event mask.
+
+The Windows-only `OasisEditor.NativeIntegrationTests` project validates the real dynamically loaded Fabric boundary. It is opt-in through environment variables and reports missing DLLs, ROMs, or the C layout probe as skipped rather than failed. See `fabric-migration-test-plan.md` for prerequisites and commands.
