@@ -38,7 +38,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
 
     public FabricEmulationBackend(string runtimePath, string amberPath)
         : this(runtimePath, amberPath, path => new FabricRuntimeLibrary(path),
-            new NAudioEmulationAudioSink(), new StopwatchFabricClock(), Debug.WriteLine)
+            new NAudioEmulationAudioSink(), new StopwatchFabricClock(), WriteDebugError)
     {
     }
 
@@ -55,7 +55,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         _runtimeFactory = runtimeFactory;
         _audioSink = audioSink;
         _clock = clock;
-        _errorLogger = errorLogger ?? Debug.WriteLine;
+        _errorLogger = errorLogger ?? WriteDebugError;
         _elapsedTime = new FabricElapsedTime(clock.Frequency);
     }
 
@@ -423,6 +423,8 @@ public sealed class FabricEmulationBackend : IEmulationBackend
 
     private void LogException(string message, Exception exception) =>
         _errorLogger($"[Error] {message}{Environment.NewLine}{exception}");
+
+    private static void WriteDebugError(string message) => Debug.WriteLine(message);
 
     private void ReleaseAssertedInputs()
     {
