@@ -123,21 +123,104 @@ public sealed class FabricManagedBehaviorTests
     [Fact]
     public async Task Backend_PumpFailureIsRecordedAndCleanedUp()
     {
-        var session = new FakeSession { AdvanceFailure = new InvalidOperationException("advance failed") };
+        var failure = new FabricException(FabricResult.BackendError, "FabricSessionAdvance",
+            "production Amber adapter: Run returned an invalid result",
+            new InvalidOperationException("inner adapter failure"));
+        var session = new FakeSession { AdvanceFailure = failure };
         var runtime = new FakeRuntime(session);
-        var backend = new FabricEmulationBackend("runtime", "amber", _ => runtime, new FakeAudioSink(), new FakeClock());
+        var errors = new List<string>();
+        var backend = new FabricEmulationBackend("runtime", "amber", _ => runtime, new FakeAudioSink(), new FakeClock(), errors.Add);
         var request = new EmulationLaunchRequest(FruitMachinePlatformType.Impact, "machine", "", [], "", new System6NativeRomSettings());
 
         await backend.StartAsync(request, CancellationToken.None);
         await session.FirstAdvance.Task.WaitAsync(TimeSpan.FromSeconds(2));
         await session.Disposed.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await WaitForStateAsync(backend, EmulationBackendState.Failed);
 
-        Assert.IsType<InvalidOperationException>(backend.LastFailure);
+        Assert.Same(failure, backend.LastFailure);
+        var error = Assert.Single(errors);
+        Assert.Contains("Fabric emulation pump failed", error);
+        Assert.Contains("FabricSessionAdvance", error);
+        Assert.Contains("7 (BackendError)", error);
+        Assert.Contains("production Amber adapter", error);
+        Assert.Contains("inner adapter failure", error);
+        Assert.Contains(nameof(FabricException), error);
         Assert.Equal(EmulationBackendState.Failed, backend.State);
         Assert.Equal(1, session.ShutdownCount);
         Assert.Equal(1, session.DisposeCount);
         Assert.Equal(1, runtime.DisposeCount);
         await backend.StopAsync(CancellationToken.None);
+    }
+
+    [Theory]
+    [InlineData("snapshot")]
+    [InlineData("audio")]
+    public async Task Backend_PumpFailureLogIdentifiesSnapshotAndAudioOperations(string failingOperation)
+    {
+        var operation = failingOperation == "snapshot" ? "FabricSessionGetSnapshot" : "FabricSessionReadAudio";
+        var failure = new FabricException(FabricResult.InternalError, operation, "native last error");
+        var session = new FakeSession
+        {
+            SnapshotFailure = failingOperation == "snapshot" ? failure : null,
+            AudioFailure = failingOperation == "audio" ? failure : null
+        };
+        var errors = new List<string>();
+        var backend = new FabricEmulationBackend("runtime", "amber", _ => new FakeRuntime(session),
+            new FakeAudioSink(), new FakeClock(), errors.Add);
+
+        await backend.StartAsync(CreateRequest(), CancellationToken.None);
+        await session.Disposed.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await WaitForStateAsync(backend, EmulationBackendState.Failed);
+
+        Assert.Same(failure, backend.LastFailure);
+        Assert.Contains(operation, Assert.Single(errors));
+        Assert.Equal(EmulationBackendState.Failed, backend.State);
+    }
+
+    [Fact]
+    public async Task Backend_CleanupFailureIsLoggedWithoutReplacingPumpFailure()
+    {
+        var pumpFailure = new InvalidOperationException("original pump failure");
+        var session = new FakeSession
+        {
+            AdvanceFailure = pumpFailure,
+            ShutdownFailure = new InvalidOperationException("cleanup shutdown failure"),
+            DisposeFailure = new InvalidOperationException("cleanup dispose failure")
+        };
+        var runtime = new FakeRuntime(session);
+        var errors = new List<string>();
+        var backend = new FabricEmulationBackend("runtime", "amber", _ => runtime,
+            new FakeAudioSink(), new FakeClock(), errors.Add);
+
+        await backend.StartAsync(CreateRequest(), CancellationToken.None);
+        await session.Disposed.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await WaitForStateAsync(backend, EmulationBackendState.Failed);
+
+        Assert.Same(pumpFailure, backend.LastFailure);
+        Assert.Equal(2, errors.Count);
+        Assert.Contains("original pump failure", errors[0]);
+        Assert.Contains("cleanup after pump failure", errors[1]);
+        Assert.Contains("cleanup shutdown failure", errors[1]);
+        Assert.Contains("cleanup dispose failure", errors[1]);
+        Assert.Equal(1, runtime.DisposeCount);
+        Assert.Equal(EmulationBackendState.Failed, backend.State);
+    }
+
+    [Fact]
+    public async Task Backend_NormalStopCancellationDoesNotReportPumpFailure()
+    {
+        var session = new FakeSession();
+        var errors = new List<string>();
+        var backend = new FabricEmulationBackend("runtime", "amber", _ => new FakeRuntime(session),
+            new FakeAudioSink(), new FakeClock(), errors.Add);
+
+        await backend.StartAsync(CreateRequest(), CancellationToken.None);
+        await session.FirstAdvance.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await backend.StopAsync(CancellationToken.None);
+
+        Assert.Null(backend.LastFailure);
+        Assert.Empty(errors);
+        Assert.Equal(EmulationBackendState.Stopped, backend.State);
     }
 
     [Theory]
@@ -189,6 +272,14 @@ public sealed class FabricManagedBehaviorTests
     private static EmulationLaunchRequest CreateRequest() =>
         new(FruitMachinePlatformType.Impact, "machine", "", [], "", new System6NativeRomSettings());
 
+    private static async Task WaitForStateAsync(FabricEmulationBackend backend, EmulationBackendState state)
+    {
+        var timeout = DateTime.UtcNow + TimeSpan.FromSeconds(2);
+        while (backend.State != state && DateTime.UtcNow < timeout)
+            await Task.Delay(10);
+        Assert.Equal(state, backend.State);
+    }
+
     private sealed class FakeClock : IFabricClock
     {
         private long _timestamp;
@@ -211,6 +302,10 @@ public sealed class FabricManagedBehaviorTests
         public TaskCompletionSource FirstAudioRead { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public TaskCompletionSource Disposed { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public Exception? AdvanceFailure { get; init; }
+        public Exception? SnapshotFailure { get; init; }
+        public Exception? AudioFailure { get; init; }
+        public Exception? ShutdownFailure { get; init; }
+        public Exception? DisposeFailure { get; init; }
         public FabricAudioFormat AudioFormat { get; init; } = new(48000, 2, 16, true, true, true);
         public int LastFrameCapacity { get; private set; }
         public int LastSampleCapacity { get; private set; }
@@ -223,7 +318,9 @@ public sealed class FabricManagedBehaviorTests
         public void Reset() => Invoke(() => ResetCount++);
         public void Advance(ulong elapsedNanoseconds) => Invoke(() => { FirstAdvance.TrySetResult(); if (AdvanceFailure is not null) throw AdvanceFailure; });
         public void SubmitInput(FabricInput input) => Invoke(() => { });
-        public FabricMachineSnapshot GetSnapshot() => Invoke(() => new FabricMachineSnapshot(1, [], [], [], []));
+        public FabricMachineSnapshot GetSnapshot() => Invoke(() => SnapshotFailure is null
+            ? new FabricMachineSnapshot(1, [], [], [], [])
+            : throw SnapshotFailure);
         public FabricAudioFormat GetAudioFormat() => Invoke(() => AudioFormat);
         public int ReadAudio(Span<short> samples, int frameCapacity)
         {
@@ -233,11 +330,17 @@ public sealed class FabricManagedBehaviorTests
                 LastFrameCapacity = frameCapacity;
                 LastSampleCapacity = sampleCapacity;
                 FirstAudioRead.TrySetResult();
+                if (AudioFailure is not null) throw AudioFailure;
                 return 0;
             });
         }
-        public void Shutdown() => Invoke(() => ShutdownCount++);
-        public void Dispose() { DisposeCount++; Disposed.TrySetResult(); }
+        public void Shutdown() => Invoke(() => { ShutdownCount++; if (ShutdownFailure is not null) throw ShutdownFailure; });
+        public void Dispose()
+        {
+            DisposeCount++;
+            Disposed.TrySetResult();
+            if (DisposeFailure is not null) throw DisposeFailure;
+        }
         private void Invoke(Action action) => Invoke(() => { action(); return true; });
         private T Invoke<T>(Func<T> action)
         {

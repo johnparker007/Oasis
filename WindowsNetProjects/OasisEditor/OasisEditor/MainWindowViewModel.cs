@@ -385,7 +385,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 input => LoadedProject?.InputDefinitions.FirstOrDefault(definition => string.Equals(definition.Id, input.Id, StringComparison.OrdinalIgnoreCase))),
             () => System6NativeLibraryPath,
             () => System6AudioBufferLengthMilliseconds,
-            fabricConfigurationProvider: () => (UseFabricForAmber, FabricRuntimeLibraryPath, FabricAmberApiV2LibraryPath));
+            fabricConfigurationProvider: () => (UseFabricForAmber, FabricRuntimeLibraryPath, FabricAmberApiV2LibraryPath),
+            fabricErrorLogger: message => AddOutputEntry(message, OutputLogStatus.Error));
 
         _mameEmulationService.StateChanged += (_, state) =>
         {

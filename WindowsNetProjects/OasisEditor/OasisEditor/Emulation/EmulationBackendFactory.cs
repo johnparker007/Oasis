@@ -12,19 +12,22 @@ public sealed class EmulationBackendFactory : IEmulationBackendFactory
     private readonly Func<string, IAmberBridgeLibrary> _amberBridgeFactory;
     private readonly Func<int> _system6AudioBufferLengthMillisecondsProvider;
     private readonly Func<(bool Enabled,string? RuntimePath,string? AmberPath)> _fabricConfigurationProvider;
+    private readonly Action<string>? _fabricErrorLogger;
 
     public EmulationBackendFactory(
         Func<IEmulationBackend> mameBackendFactory,
         Func<string?> system6LibraryPathProvider,
         Func<int>? system6AudioBufferLengthMillisecondsProvider = null,
         Func<string, IAmberBridgeLibrary>? amberBridgeFactory = null,
-        Func<(bool Enabled,string? RuntimePath,string? AmberPath)>? fabricConfigurationProvider = null)
+        Func<(bool Enabled,string? RuntimePath,string? AmberPath)>? fabricConfigurationProvider = null,
+        Action<string>? fabricErrorLogger = null)
     {
         _mameBackendFactory = mameBackendFactory ?? throw new ArgumentNullException(nameof(mameBackendFactory));
         _system6LibraryPathProvider = system6LibraryPathProvider ?? throw new ArgumentNullException(nameof(system6LibraryPathProvider));
         _system6AudioBufferLengthMillisecondsProvider = system6AudioBufferLengthMillisecondsProvider ?? (() => NativeEmulationPreferences.DefaultAudioBufferLengthMilliseconds);
         _amberBridgeFactory = amberBridgeFactory ?? (static path => new AmberBridgeLibrary(path));
         _fabricConfigurationProvider = fabricConfigurationProvider ?? (() => (false,null,null));
+        _fabricErrorLogger = fabricErrorLogger;
     }
 
     public IEmulationBackend? CreateBackend(FruitMachinePlatformType platform)
@@ -45,7 +48,8 @@ public sealed class EmulationBackendFactory : IEmulationBackendFactory
         {
             if (string.IsNullOrWhiteSpace(fabric.RuntimePath) || string.IsNullOrWhiteSpace(fabric.AmberPath))
                 throw new InvalidOperationException("Fabric emulation is enabled, but both the Fabric runtime DLL path and Amber API v2 DLL path must be configured.");
-            return new FabricEmulationBackend(fabric.RuntimePath, fabric.AmberPath);
+            return new FabricEmulationBackend(fabric.RuntimePath, fabric.AmberPath, path => new FabricRuntimeLibrary(path),
+                new NAudioEmulationAudioSink(), new StopwatchFabricClock(), _fabricErrorLogger);
         }
         var libraryPath = _system6LibraryPathProvider();
         return string.IsNullOrWhiteSpace(libraryPath)
