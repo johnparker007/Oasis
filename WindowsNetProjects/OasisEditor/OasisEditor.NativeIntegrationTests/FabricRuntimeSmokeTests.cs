@@ -8,7 +8,7 @@ namespace OasisEditor.NativeIntegrationTests;
 
 public sealed class FabricRuntimeSmokeTests
 {
-    [Fact]
+    [NativeFact("FABRIC_RUNTIME_DLL")]
     public void Runtime_CanBeCreatedDestroyedAndModuleReloadedRepeatedly()
     {
         var runtimePath = NativePrerequisites.RequireFile("FABRIC_RUNTIME_DLL");
@@ -21,7 +21,7 @@ public sealed class FabricRuntimeSmokeTests
         RecordTiming("200 runtime load/create/destroy/unload iterations", stopwatch.Elapsed);
     }
 
-    [Fact]
+    [NativeFact("FABRIC_RUNTIME_DLL")]
     public void Runtime_RejectsUnsupportedAbiAndReturnsNativeErrorText()
     {
         var runtimePath = NativePrerequisites.RequireFile("FABRIC_RUNTIME_DLL");
@@ -44,7 +44,7 @@ public sealed class FabricRuntimeSmokeTests
         Assert.Equal(path, exception.FileName);
     }
 
-    [Theory]
+    [NativeTheory("FABRIC_RUNTIME_DLL")]
     [InlineData("not-a-provider", "jpm-system6")]
     [InlineData("amber-api-v2", "not-a-machine")]
     public void Session_InvalidProviderIdentityPreservesResultAndError(string backendKind, string machineIdentifier)

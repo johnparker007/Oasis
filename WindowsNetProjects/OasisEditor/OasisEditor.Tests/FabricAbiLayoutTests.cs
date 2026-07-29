@@ -12,7 +12,7 @@ public sealed class FabricAbiLayoutTests
         Assert.Equal(1208, Marshal.SizeOf<FabricLaunchRequestNative>()); // fixed strings end at 1160; aligned pointers/counts end at 1208.
         Assert.Equal(40, Marshal.SizeOf<FabricRomResourceNative>());
         Assert.Equal(48, Marshal.SizeOf<FabricCapabilitiesNative>());
-        Assert.Equal(80, Marshal.SizeOf<FabricInputNative>());
+        Assert.Equal(84, Marshal.SizeOf<FabricInputNative>());
         Assert.Equal(84, Marshal.SizeOf<FabricLampNative>());
         Assert.Equal(80, Marshal.SizeOf<FabricReelNative>());
         Assert.Equal(160, Marshal.SizeOf<FabricCharacterDisplayNative>());

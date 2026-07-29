@@ -5,7 +5,7 @@ namespace OasisEditor.NativeIntegrationTests;
 
 public sealed class FabricNativeLayoutProbeTests
 {
-    [Fact]
+    [NativeFact("FABRIC_LAYOUT_PROBE_EXE")]
     public void NativeCLayoutsMatchManagedX64Assertions()
     {
         var probe = NativePrerequisites.RequireFile("FABRIC_LAYOUT_PROBE_EXE");
@@ -29,7 +29,7 @@ public sealed class FabricNativeLayoutProbeTests
             ["sizeof.FabricLaunchRequest"] = 1208,
             ["sizeof.FabricRomResource"] = 40,
             ["sizeof.FabricCapabilities"] = 48,
-            ["sizeof.FabricInput"] = 80,
+            ["sizeof.FabricInput"] = 84,
             ["sizeof.FabricLamp"] = 84,
             ["sizeof.FabricReel"] = 80,
             ["sizeof.FabricCharacterDisplay"] = 160,

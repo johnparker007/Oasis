@@ -6,7 +6,7 @@ namespace OasisEditor.NativeIntegrationTests;
 
 public sealed class FabricProviderIntegrationTests
 {
-    [Fact]
+    [NativeFact("FABRIC_RUNTIME_DLL", "AMBER_FAKE_API_V2_DLL")]
     public void FakeAmber_ExercisesCompleteBoundaryAndStressPaths()
     {
         var runtimePath = NativePrerequisites.RequireFile("FABRIC_RUNTIME_DLL");
@@ -69,7 +69,7 @@ public sealed class FabricProviderIntegrationTests
         session.Shutdown();
     }
 
-    [Fact]
+    [NativeFact("FABRIC_RUNTIME_DLL", "AMBER_FAKE_API_V2_DLL")]
     public void FakeAmber_RepeatedSessionLifecycleKeepsRuntimeAliveUntilSessionsEnd()
     {
         var runtimePath = NativePrerequisites.RequireFile("FABRIC_RUNTIME_DLL");
@@ -88,7 +88,7 @@ public sealed class FabricProviderIntegrationTests
         RecordTiming("200 full runtime/session lifecycles", stopwatch.Elapsed);
     }
 
-    [Fact]
+    [NativeFact("FABRIC_RUNTIME_DLL", "AMBER_FAKE_API_V2_DLL")]
     public void RuntimeDisposalIsDeferredWhileFakeProviderSessionIsAlive()
     {
         var runtimePath = NativePrerequisites.RequireFile("FABRIC_RUNTIME_DLL");
@@ -108,7 +108,7 @@ public sealed class FabricProviderIntegrationTests
         using var reloaded = new FabricRuntimeLibrary(runtimePath);
     }
 
-    [Fact]
+    [NativeFact("FABRIC_RUNTIME_DLL", "AMBER_API_V2_DLL", "AMBER_TEST_ROM_DIRECTORY")]
     public void RealAmber_OptionalLifecycleSmokeTest()
     {
         var runtimePath = NativePrerequisites.RequireFile("FABRIC_RUNTIME_DLL");
@@ -146,7 +146,7 @@ public sealed class FabricProviderIntegrationTests
         AddRole("program", FabricRomRole.Program);
         AddRole("sound", FabricRomRole.Sound);
         if (resources.Count == 0)
-            throw Xunit.Sdk.SkipException.ForSkip(
+            throw new InvalidOperationException(
                 "AMBER_TEST_ROM_DIRECTORY must contain program and/or sound subdirectories with up to four ROM files.");
         return resources;
 
