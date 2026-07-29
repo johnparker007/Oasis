@@ -140,6 +140,55 @@ public sealed class FabricManagedBehaviorTests
         await backend.StopAsync(CancellationToken.None);
     }
 
+    [Theory]
+    [InlineData(44100, 2)]
+    [InlineData(48000, 2)]
+    [InlineData(32000, 1)]
+    public async Task Backend_AcceptsPositivePcm16FormatsAndPassesFormatToSink(uint sampleRate, ushort channels)
+    {
+        var session = new FakeSession { AudioFormat = new(sampleRate, channels, 16, true, true, true) };
+        var audio = new FakeAudioSink();
+        var backend = CreateBackend(session, audio);
+
+        await backend.StartAsync(CreateRequest(), CancellationToken.None);
+        await session.FirstAudioRead.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await backend.StopAsync(CancellationToken.None);
+
+        Assert.Equal(new EmulationAudioFormat(checked((int)sampleRate), channels, 16), audio.StartedFormat);
+        Assert.Equal(Math.Max(1, checked((int)sampleRate / 500)), session.LastFrameCapacity);
+        Assert.Equal(0, session.LastSampleCapacity % channels);
+    }
+
+    [Theory]
+    [InlineData(48000, 2, 16, false, true, true)]
+    [InlineData(48000, 2, 16, true, false, true)]
+    [InlineData(48000, 2, 16, true, true, false)]
+    [InlineData(48000, 2, 8, true, true, true)]
+    [InlineData(0, 2, 16, true, true, true)]
+    [InlineData(48000, 0, 16, true, true, true)]
+    public async Task Backend_RejectsUnsupportedAudioFormats(
+        uint sampleRate, ushort channels, ushort bitsPerSample,
+        bool interleaved, bool signedSamples, bool littleEndian)
+    {
+        var session = new FakeSession
+        {
+            AudioFormat = new(sampleRate, channels, bitsPerSample, interleaved, signedSamples, littleEndian)
+        };
+        var audio = new FakeAudioSink();
+        var backend = CreateBackend(session, audio);
+
+        await Assert.ThrowsAsync<NotSupportedException>(() =>
+            backend.StartAsync(CreateRequest(), CancellationToken.None));
+
+        Assert.Null(audio.StartedFormat);
+    }
+
+    private static FabricEmulationBackend CreateBackend(FakeSession session, FakeAudioSink audio) =>
+        new("runtime", "amber", _ => new FakeRuntime(session), audio, new FakeClock());
+
+    private static EmulationLaunchRequest CreateRequest() =>
+        new(FruitMachinePlatformType.Impact, "machine", "", [], "", new System6NativeRomSettings());
+
     private sealed class FakeClock : IFabricClock
     {
         private long _timestamp;
@@ -159,8 +208,12 @@ public sealed class FabricManagedBehaviorTests
     {
         private int _activeCalls;
         public TaskCompletionSource FirstAdvance { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource FirstAudioRead { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public TaskCompletionSource Disposed { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public Exception? AdvanceFailure { get; init; }
+        public FabricAudioFormat AudioFormat { get; init; } = new(48000, 2, 16, true, true, true);
+        public int LastFrameCapacity { get; private set; }
+        public int LastSampleCapacity { get; private set; }
         public int MaximumConcurrentCalls { get; private set; }
         public int ResetCount { get; private set; }
         public int ShutdownCount { get; private set; }
@@ -171,8 +224,18 @@ public sealed class FabricManagedBehaviorTests
         public void Advance(ulong elapsedNanoseconds) => Invoke(() => { FirstAdvance.TrySetResult(); if (AdvanceFailure is not null) throw AdvanceFailure; });
         public void SubmitInput(FabricInput input) => Invoke(() => { });
         public FabricMachineSnapshot GetSnapshot() => Invoke(() => new FabricMachineSnapshot(1, [], [], [], []));
-        public FabricAudioFormat GetAudioFormat() => Invoke(() => new FabricAudioFormat(48000, 2, 16, true, true, true));
-        public int ReadAudio(Span<short> samples, int frameCapacity) => Invoke(() => 0);
+        public FabricAudioFormat GetAudioFormat() => Invoke(() => AudioFormat);
+        public int ReadAudio(Span<short> samples, int frameCapacity)
+        {
+            var sampleCapacity = samples.Length;
+            return Invoke(() =>
+            {
+                LastFrameCapacity = frameCapacity;
+                LastSampleCapacity = sampleCapacity;
+                FirstAudioRead.TrySetResult();
+                return 0;
+            });
+        }
         public void Shutdown() => Invoke(() => ShutdownCount++);
         public void Dispose() { DisposeCount++; Disposed.TrySetResult(); }
         private void Invoke(Action action) => Invoke(() => { action(); return true; });
@@ -189,7 +252,8 @@ public sealed class FabricManagedBehaviorTests
     {
         public int StartCount { get; private set; }
         public int StopCount { get; private set; }
-        public void Start(EmulationAudioFormat format) => StartCount++;
+        public EmulationAudioFormat? StartedFormat { get; private set; }
+        public void Start(EmulationAudioFormat format) { StartedFormat = format; StartCount++; }
         public void PushPcm(ReadOnlySpan<byte> pcmBytes) { }
         public void Stop() => StopCount++;
         public void Clear() { }

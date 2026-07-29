@@ -278,12 +278,16 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         if (!session.Capabilities.Has(FabricCapability.Audio))
             return;
         var format = session.GetAudioFormat();
-        if (format is not { SampleRate: 48000, ChannelCount: 2, BitsPerSample: 16,
-            Interleaved: true, SignedSamples: true, LittleEndian: true })
+        if (format.SampleRate == 0 || format.ChannelCount == 0 || format is not
+            { BitsPerSample: 16, Interleaved: true, SignedSamples: true, LittleEndian: true })
             throw new NotSupportedException($"Unsupported Fabric audio format: {format}.");
         _audioFormat = format;
-        _audioBuffer = new short[96];
-        _audioSink.Start(new(48000, 2, 16));
+        var frameCapacity = Math.Max(1, checked((int)format.SampleRate / 500));
+        _audioBuffer = new short[checked(frameCapacity * (int)format.ChannelCount)];
+        _audioSink.Start(new(
+            checked((int)format.SampleRate),
+            checked((int)format.ChannelCount),
+            checked((int)format.BitsPerSample)));
         _audioStarted = true;
     }
 
