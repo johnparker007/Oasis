@@ -31,6 +31,11 @@ public enum FabricResult { Ok, InvalidArgument, UnsupportedVersion, NotFound, In
 public sealed class FabricException : Exception
 {
     public FabricException(FabricResult result, string operation, string? detail = null, Exception? inner = null)
-        : base($"{operation} failed with Fabric result {(int)result} ({result}){(string.IsNullOrEmpty(detail) ? string.Empty : $": {detail}")}", inner) { Result = result; }
+        : base($"{operation} failed with Fabric result {(int)result} ({result}){(string.IsNullOrEmpty(detail) ? string.Empty : $":{Environment.NewLine}{detail}")}", inner)
+    {
+        Result = result;
+        Operation = operation;
+    }
     public FabricResult Result { get; }
+    public string Operation { get; }
 }

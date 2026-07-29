@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 namespace OasisEditor;
@@ -14,6 +15,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     private readonly Func<string, IFabricRuntimeLibrary> _runtimeFactory;
     private readonly IEmulationAudioSink _audioSink;
     private readonly IFabricClock _clock;
+    private readonly Action<string> _errorLogger;
     private readonly FabricElapsedTime _elapsedTime;
     private readonly SemaphoreSlim _sessionGate = new(1, 1);
     private readonly ConcurrentQueue<InputCommand> _inputCommands = new();
@@ -36,7 +38,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
 
     public FabricEmulationBackend(string runtimePath, string amberPath)
         : this(runtimePath, amberPath, path => new FabricRuntimeLibrary(path),
-            new NAudioEmulationAudioSink(), new StopwatchFabricClock())
+            new NAudioEmulationAudioSink(), new StopwatchFabricClock(), WriteDebugError)
     {
     }
 
@@ -45,13 +47,15 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         string amberPath,
         Func<string, IFabricRuntimeLibrary> runtimeFactory,
         IEmulationAudioSink audioSink,
-        IFabricClock clock)
+        IFabricClock clock,
+        Action<string>? errorLogger = null)
     {
         _runtimePath = runtimePath;
         _amberPath = amberPath;
         _runtimeFactory = runtimeFactory;
         _audioSink = audioSink;
         _clock = clock;
+        _errorLogger = errorLogger ?? WriteDebugError;
         _elapsedTime = new FabricElapsedTime(clock.Frequency);
     }
 
@@ -267,8 +271,16 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         catch (Exception exception)
         {
             LastFailure = exception;
+            LogException("Fabric emulation pump failed.", exception);
             _pumpCancellation?.Cancel();
-            await CleanupResourcesAsync().ConfigureAwait(false);
+            try
+            {
+                await CleanupResourcesAsync().ConfigureAwait(false);
+            }
+            catch (Exception cleanupException)
+            {
+                LogException("Fabric cleanup after pump failure also failed.", cleanupException);
+            }
             SetState(EmulationBackendState.Failed);
         }
     }
@@ -367,25 +379,27 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     private async Task CleanupResourcesAsync()
     {
         await _sessionGate.WaitAsync().ConfigureAwait(false);
+        List<Exception>? failures = null;
         try
         {
             if (_session is not null)
             {
-                try { ReleaseAssertedInputs(); } catch { }
+                TryCleanup(ReleaseAssertedInputs, ref failures);
                 if (!_shutdown)
                 {
-                    try { _session.Shutdown(); } catch { }
+                    TryCleanup(_session.Shutdown, ref failures);
                     _shutdown = true;
                 }
-                _session.Dispose();
+                TryCleanup(_session.Dispose, ref failures);
                 _session = null;
             }
             if (_audioStarted)
             {
-                _audioSink.Stop();
+                TryCleanup(_audioSink.Stop, ref failures);
                 _audioStarted = false;
             }
-            _runtime?.Dispose();
+            if (_runtime is not null)
+                TryCleanup(_runtime.Dispose, ref failures);
             _runtime = null;
             _audioFormat = null;
             _pumpCancellation?.Dispose();
@@ -397,7 +411,20 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         {
             _sessionGate.Release();
         }
+        if (failures is { Count: > 0 })
+            throw failures.Count == 1 ? failures[0] : new AggregateException("Multiple Fabric cleanup operations failed.", failures);
     }
+
+    private static void TryCleanup(Action action, ref List<Exception>? failures)
+    {
+        try { action(); }
+        catch (Exception exception) { (failures ??= []).Add(exception); }
+    }
+
+    private void LogException(string message, Exception exception) =>
+        _errorLogger($"[Error] {message}{Environment.NewLine}{exception}");
+
+    private static void WriteDebugError(string message) => Debug.WriteLine(message);
 
     private void ReleaseAssertedInputs()
     {
