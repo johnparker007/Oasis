@@ -24,7 +24,21 @@ public sealed unsafe class FabricRuntimeLibrary : IFabricRuntimeLibrary
             var native=new FabricLaunchRequestNative { Size=(uint)sizeof(FabricLaunchRequestNative),Version=FabricAbi.Version,Resources=resourcePtr,ResourceCount=(uint)resources.Length,Configuration=configPtr,ConfigurationSize=(uint)config.Length };
             fixed(byte* p=native.BackendKind) WriteFixed(request.BackendKind,p,64); fixed(byte* p=native.MachineIdentifier) WriteFixed(request.MachineIdentifier,p,64); fixed(byte* p=native.BackendPath) WriteFixed(request.BackendPath,p,1024);
             var result=_exports!.CreateSessionFn(_runtime,&native,out var session); if(result!=FabricResult.Ok) throw Error(result,"FabricCreateSession",_runtime,false);
-            lock(_gate) _sessions++; return new FabricMachineSession(session,_exports,SessionDisposed);
+            FabricMachineSession? managedSession = null;
+            try
+            {
+                managedSession = FabricMachineSession.Create(session, _exports, SessionDisposed);
+                lock (_gate)
+                    _sessions++;
+                managedSession.ActivateOwnership();
+                session = 0; // Ownership has transferred to the successfully registered wrapper.
+                return managedSession;
+            }
+            finally
+            {
+                if (session != 0)
+                    _exports.DestroySessionFn(session);
+            }
         } finally { foreach(var p in allocations.AsEnumerable().Reverse()) Marshal.FreeHGlobal(p); }
     }
     private static nint AllocUtf8(string s,List<nint> owned){var bytes=Encoding.UTF8.GetBytes(s+'\0');var p=Marshal.AllocHGlobal(bytes.Length);Marshal.Copy(bytes,0,p,bytes.Length);owned.Add(p);return p;}

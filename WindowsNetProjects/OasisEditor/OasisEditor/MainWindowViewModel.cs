@@ -42,6 +42,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string _mameLuaPluginPath = string.Empty;
     private string _mameCommandLineOverrides = string.Empty;
     private string _system6NativeLibraryPath = string.Empty;
+    private bool _useFabricForAmber;
+    private string _fabricRuntimeLibraryPath = string.Empty;
+    private string _fabricAmberApiV2LibraryPath = string.Empty;
     private int _system6AudioBufferLengthMilliseconds = NativeEmulationPreferences.DefaultAudioBufferLengthMilliseconds;
     private string _mameRomDownloadBaseUrl = MameRomDownloadService.DefaultDownloadRootUrl;
     private string _mameRomArchiveExtension = MameRomDownloadService.DefaultArchiveExtension;
@@ -280,6 +283,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             _mameLuaPluginPath = MameRuntimePaths.ResolveBundledLuaPluginSourcePath();
             _mameCommandLineOverrides = preferences.Mame.CommandLineOverrides;
             _system6NativeLibraryPath = preferences.NativeEmulation.System6LibraryPath;
+            _useFabricForAmber = preferences.NativeEmulation.UseFabricForAmber;
+            _fabricRuntimeLibraryPath = preferences.NativeEmulation.FabricRuntimeLibraryPath;
+            _fabricAmberApiV2LibraryPath = preferences.NativeEmulation.FabricAmberApiV2LibraryPath;
             _system6AudioBufferLengthMilliseconds = NormalizeSystem6AudioBufferLengthMilliseconds(preferences.NativeEmulation.AudioBufferLengthMilliseconds);
             _mameRomDownloadBaseUrl = preferences.Mame.RomDownloadBaseUrl;
             _mameRomArchiveExtension = preferences.Mame.RomArchiveExtension;
@@ -378,7 +384,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 () => SelectedFruitMachinePlatform,
                 input => LoadedProject?.InputDefinitions.FirstOrDefault(definition => string.Equals(definition.Id, input.Id, StringComparison.OrdinalIgnoreCase))),
             () => System6NativeLibraryPath,
-            () => System6AudioBufferLengthMilliseconds);
+            () => System6AudioBufferLengthMilliseconds,
+            fabricConfigurationProvider: () => (UseFabricForAmber, FabricRuntimeLibraryPath, FabricAmberApiV2LibraryPath));
 
         _mameEmulationService.StateChanged += (_, state) =>
         {
@@ -663,6 +670,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public string MameLuaPluginPath => _mameLuaPluginPath;
     public string MameCommandLineOverrides { get => _mameCommandLineOverrides; set { if (SetProperty(ref _mameCommandLineOverrides, value)) SavePreferences(); } }
     public string System6NativeLibraryPath { get => _system6NativeLibraryPath; set { if (SetProperty(ref _system6NativeLibraryPath, value)) SavePreferences(); } }
+    public bool UseFabricForAmber { get => _useFabricForAmber; set { if (SetProperty(ref _useFabricForAmber, value)) SavePreferences(); } }
+    public string FabricRuntimeLibraryPath { get => _fabricRuntimeLibraryPath; set { if (SetProperty(ref _fabricRuntimeLibraryPath, value)) SavePreferences(); } }
+    public string FabricAmberApiV2LibraryPath { get => _fabricAmberApiV2LibraryPath; set { if (SetProperty(ref _fabricAmberApiV2LibraryPath, value)) SavePreferences(); } }
     public int System6AudioBufferLengthMilliseconds
     {
         get => _system6AudioBufferLengthMilliseconds;
@@ -2542,6 +2552,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             NativeEmulation = new NativeEmulationPreferences
             {
                 System6LibraryPath = System6NativeLibraryPath,
+                UseFabricForAmber = UseFabricForAmber,
+                FabricRuntimeLibraryPath = FabricRuntimeLibraryPath,
+                FabricAmberApiV2LibraryPath = FabricAmberApiV2LibraryPath,
                 AudioBufferLengthMilliseconds = System6AudioBufferLengthMilliseconds
             },
             Player = new OasisPlayerPreferences

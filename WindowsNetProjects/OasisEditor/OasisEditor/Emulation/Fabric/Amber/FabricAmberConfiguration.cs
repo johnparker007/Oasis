@@ -1,31 +1,130 @@
-using System.Runtime.InteropServices;
-
 namespace OasisEditor;
 
-public sealed record FabricAmberReel(uint Index,bool Enabled,uint Steps,uint OptoStart,uint OptoEnd,bool OptoInvert);
-public sealed record FabricAmberCoinChannel(uint Index,bool Enabled,uint Value,bool LockoutInvert);
-public sealed record FabricAmberCoinRoute(uint Index,bool Enabled,uint CounterIn,uint CounterOut,uint PortIndex,uint CoinCode,uint Level,uint FullLevel);
-public sealed record FabricAmberConfiguration(uint ReelApplyMask,IReadOnlyList<FabricAmberReel> Reels,uint CoinChannelApplyMask,
-    uint CoinRouteApplyMask,IReadOnlyList<FabricAmberCoinChannel> CoinChannels,IReadOnlyList<FabricAmberCoinRoute> CoinRoutes,uint? PercentageSwitch) : IFabricBackendConfiguration
+public sealed record FabricAmberReel(
+    uint Index, bool Enabled, uint Steps, uint OptoStart, uint OptoEnd, bool OptoInvert);
+
+public sealed record FabricAmberCoinChannel(
+    uint Index, bool Enabled, uint Value, bool LockoutInvert);
+
+public sealed record FabricAmberCoinRoute(
+    uint Index, bool Enabled, uint CounterIn, uint CounterOut,
+    uint PortIndex, uint CoinCode, uint Level, uint FullLevel);
+
+public sealed record FabricAmberConfiguration(
+    uint ReelApplyMask,
+    IReadOnlyList<FabricAmberReel> Reels,
+    uint CoinChannelApplyMask,
+    uint CoinRouteApplyMask,
+    IReadOnlyList<FabricAmberCoinChannel> CoinChannels,
+    IReadOnlyList<FabricAmberCoinRoute> CoinRoutes,
+    uint? PercentageSwitch) : IFabricBackendConfiguration
 {
-    public static FabricAmberConfiguration FromSystem6(System6NativeRomSettings s)
+    public static FabricAmberConfiguration FromSystem6(System6NativeRomSettings settings)
     {
-        var reels=s.ReelOptos.Select(x=>new FabricAmberReel(checked((uint)x.ReelIndex),x.Enabled,checked((uint)x.Steps),checked((uint)x.OptoStart),checked((uint)x.OptoEnd),x.OptoInvert)).ToArray();
-        var coins=s.Coins.Where(x=>x.Enabled).ToArray();
-        return new(reels.Aggregate(0u,(m,x)=>m|1u<<(int)x.Index),reels,
-            coins.Aggregate(0u,(m,x)=>m|1u<<x.Num),coins.Aggregate(0u,(m,x)=>m|1u<<x.Num),
-            coins.Select(x=>new FabricAmberCoinChannel((uint)x.Num,x.CoinEnable!=0,(uint)x.CoinValue,x.LockoutInvert!=0)).ToArray(),
-            coins.Select(x=>new FabricAmberCoinRoute((uint)x.Num,x.Enabled,(uint)x.CounterIn,(uint)x.CounterOut,(uint)x.PortIndex,(uint)x.Coin,(uint)x.Level,(uint)x.FullLevel)).ToArray(),
-            checked((uint)Math.Clamp(s.PercentSwitchValue,0,15)));
+        ArgumentNullException.ThrowIfNull(settings);
+        var reels = settings.ReelOptos.Select(reel => new FabricAmberReel(
+            checked((uint)reel.ReelIndex), reel.Enabled, checked((uint)reel.Steps),
+            checked((uint)reel.OptoStart), checked((uint)reel.OptoEnd), reel.OptoInvert)).ToArray();
+
+        // Match System6NativeBackend: only enabled coin slots are intentionally applied.
+        var coins = settings.Coins.Where(coin => coin.Enabled).ToArray();
+        return new FabricAmberConfiguration(
+            reels.Aggregate(0u, (mask, reel) => mask | 1u << (int)reel.Index),
+            reels,
+            coins.Aggregate(0u, (mask, coin) => mask | 1u << coin.Num),
+            coins.Aggregate(0u, (mask, coin) => mask | 1u << coin.Num),
+            coins.Select(coin => new FabricAmberCoinChannel(
+                checked((uint)coin.Num), coin.CoinEnable != 0, checked((uint)coin.CoinValue), coin.LockoutInvert != 0)).ToArray(),
+            coins.Select(coin => new FabricAmberCoinRoute(
+                checked((uint)coin.Num), coin.Enabled, checked((uint)coin.CounterIn), checked((uint)coin.CounterOut),
+                checked((uint)coin.PortIndex), checked((uint)coin.Coin), checked((uint)coin.Level), checked((uint)coin.FullLevel))).ToArray(),
+            ValidatePercentageSwitch(settings.PercentSwitchValue));
     }
+
+    private static uint ValidatePercentageSwitch(int value)
+    {
+        if (value is < 0 or > 15)
+            throw new ArgumentOutOfRangeException(nameof(value), value,
+                "System 6 percentage switch must be a raw value from 0 to 15.");
+        return (uint)value;
+    }
+
     public unsafe byte[] ToNativeBytes()
     {
-        if(Reels.Count>8||CoinChannels.Count>6||CoinRoutes.Count>8)throw new ArgumentException("Amber configuration exceeds ABI capacities.");
-        var n=new FabricAmberConfigurationNative{Magic=0x32424146,Size=(uint)sizeof(FabricAmberConfigurationNative),Version=1,Flags=(Reels.Count>0?1u:0)|(CoinChannels.Count>0||CoinRoutes.Count>0?2u:0)|(PercentageSwitch.HasValue?4u:0),Percentage=PercentageSwitch??0};
-        n.Reels.Size=(uint)sizeof(AmberReelsNative);n.Reels.Version=1;n.Reels.Count=(uint)Reels.Count;n.Reels.ApplyMask=ReelApplyMask;n.Coins.Size=(uint)sizeof(AmberCoinsNative);n.Coins.Version=1;n.Coins.ChannelMask=CoinChannelApplyMask;n.Coins.RouteMask=CoinRouteApplyMask;
-        fixed(byte* p=n.Reels.Reels)for(var i=0;i<Reels.Count;i++)((AmberReelNative*)p)[i]=new(){Index=Reels[i].Index,Enabled=Reels[i].Enabled?1u:0,Steps=Reels[i].Steps,OptoStart=Reels[i].OptoStart,OptoEnd=Reels[i].OptoEnd,OptoInvert=Reels[i].OptoInvert?1u:0};
-        fixed(byte* p=n.Coins.Channels)for(var i=0;i<CoinChannels.Count;i++)((AmberCoinChannelNative*)p)[i]=new(){Index=CoinChannels[i].Index,Enabled=CoinChannels[i].Enabled?1u:0,Value=CoinChannels[i].Value,LockoutInvert=CoinChannels[i].LockoutInvert?1u:0};
-        fixed(byte* p=n.Coins.Routes)for(var i=0;i<CoinRoutes.Count;i++)((AmberCoinRouteNative*)p)[i]=new(){Index=CoinRoutes[i].Index,Enabled=CoinRoutes[i].Enabled?1u:0,CounterIn=CoinRoutes[i].CounterIn,CounterOut=CoinRoutes[i].CounterOut,PortIndex=CoinRoutes[i].PortIndex,CoinCode=CoinRoutes[i].CoinCode,Level=CoinRoutes[i].Level,FullLevel=CoinRoutes[i].FullLevel};
-        var bytes=new byte[sizeof(FabricAmberConfigurationNative)];fixed(byte* p=bytes)Buffer.MemoryCopy(&n,p,bytes.Length,bytes.Length);return bytes;
+        if (Reels.Count > 8 || CoinChannels.Count > 6 || CoinRoutes.Count > 8)
+            throw new ArgumentException("Amber configuration exceeds ABI capacities.");
+
+        var native = new FabricAmberConfigurationNative
+        {
+            Magic = 0x32424146,
+            Size = (uint)sizeof(FabricAmberConfigurationNative),
+            Version = 1,
+            Flags = (Reels.Count > 0 ? 1u : 0)
+                | (CoinChannels.Count > 0 || CoinRoutes.Count > 0 ? 2u : 0)
+                | (PercentageSwitch.HasValue ? 4u : 0),
+            Percentage = PercentageSwitch ?? 0
+        };
+        native.Reels.Size = (uint)sizeof(AmberReelsNative);
+        native.Reels.Version = 1;
+        native.Reels.Count = (uint)Reels.Count;
+        native.Reels.ApplyMask = ReelApplyMask;
+        native.Coins.Size = (uint)sizeof(AmberCoinsNative);
+        native.Coins.Version = 1;
+        native.Coins.ChannelMask = CoinChannelApplyMask;
+        native.Coins.RouteMask = CoinRouteApplyMask;
+
+        fixed (byte* pointer = native.Reels.Reels)
+        {
+            for (var index = 0; index < Reels.Count; index++)
+            {
+                var reel = Reels[index];
+                ((AmberReelNative*)pointer)[index] = new AmberReelNative
+                {
+                    Index = reel.Index,
+                    Enabled = reel.Enabled ? 1u : 0,
+                    Steps = reel.Steps,
+                    OptoStart = reel.OptoStart,
+                    OptoEnd = reel.OptoEnd,
+                    OptoInvert = reel.OptoInvert ? 1u : 0
+                };
+            }
+        }
+        fixed (byte* pointer = native.Coins.Channels)
+        {
+            for (var index = 0; index < CoinChannels.Count; index++)
+            {
+                var channel = CoinChannels[index];
+                ((AmberCoinChannelNative*)pointer)[index] = new AmberCoinChannelNative
+                {
+                    Index = channel.Index,
+                    Enabled = channel.Enabled ? 1u : 0,
+                    Value = channel.Value,
+                    LockoutInvert = channel.LockoutInvert ? 1u : 0
+                };
+            }
+        }
+        fixed (byte* pointer = native.Coins.Routes)
+        {
+            for (var index = 0; index < CoinRoutes.Count; index++)
+            {
+                var route = CoinRoutes[index];
+                ((AmberCoinRouteNative*)pointer)[index] = new AmberCoinRouteNative
+                {
+                    Index = route.Index,
+                    Enabled = route.Enabled ? 1u : 0,
+                    CounterIn = route.CounterIn,
+                    CounterOut = route.CounterOut,
+                    PortIndex = route.PortIndex,
+                    CoinCode = route.CoinCode,
+                    Level = route.Level,
+                    FullLevel = route.FullLevel
+                };
+            }
+        }
+
+        var bytes = new byte[sizeof(FabricAmberConfigurationNative)];
+        fixed (byte* pointer = bytes)
+            Buffer.MemoryCopy(&native, pointer, bytes.Length, bytes.Length);
+        return bytes;
     }
 }

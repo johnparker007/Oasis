@@ -5,18 +5,335 @@ namespace OasisEditor;
 
 internal sealed unsafe class FabricMachineSession : IFabricMachineSession
 {
-    private const int MaxLamps=4096,MaxReels=64,MaxCharacters=64,MaxSegments=256; private readonly FabricNativeExports _e; private readonly Action _released; private nint _handle; private bool _shutdown;
-    internal FabricMachineSession(nint handle,FabricNativeExports exports,Action released){_handle=handle;_e=exports;_released=released;var n=new FabricCapabilitiesNative{Size=(uint)sizeof(FabricCapabilitiesNative),Version=FabricAbi.Version};Check(_e.GetCapabilitiesFn(_handle,&n),"FabricSessionGetCapabilities");Capabilities=new(n.Flags);}
-    public FabricCapabilities Capabilities{get;}
-    public void Initialise()=>Check(_e.Initialise(_handle),"FabricSessionInitialise"); public void Reset()=>Check(_e.Reset(_handle),"FabricSessionReset");
-    public void Advance(TimeSpan elapsed){if(elapsed<TimeSpan.Zero)throw new ArgumentOutOfRangeException(nameof(elapsed));Check(_e.AdvanceFn(_handle,checked((ulong)(elapsed.Ticks*100))),"FabricSessionAdvance");}
-    public void SubmitInput(FabricInput input){var n=new FabricInputNative{Size=(uint)sizeof(FabricInputNative),Version=FabricAbi.Version,Index=input.NumericalIndex,Active=input.Active?(byte)1:(byte)0};fixed(byte* p=n.Identifier)FabricRuntimeLibrary.WriteFixed(input.Identifier,p,64);Check(_e.SubmitInputFn(_handle,&n),"FabricSessionSubmitInput");}
-    public FabricAudioFormat GetAudioFormat(){var n=new FabricAudioFormatNative{Size=(uint)sizeof(FabricAudioFormatNative),Version=FabricAbi.Version};Check(_e.GetAudioFormatFn(_handle,&n),"FabricSessionGetAudioFormat");return new(n.SampleRate,n.Channels,n.BitsPerSample,n.Interleaved!=0,n.Signed!=0,n.LittleEndian!=0);}
-    public int ReadAudio(Span<short> samples,int frameCapacity){if(frameCapacity<0)throw new ArgumentOutOfRangeException(nameof(frameCapacity));fixed(short* p=samples){Check(_e.ReadAudioFn(_handle,p,(uint)frameCapacity,out var written),"FabricSessionReadAudio");if(written>(uint)frameCapacity)throw new InvalidDataException("Fabric returned more audio frames than requested.");return (int)written;}}
-    public FabricMachineSnapshot GetSnapshot(){uint lc=0,rc=0,cc=0,sc=0;for(var attempt=0;attempt<3;attempt++){var lamps=new FabricLampNative[lc];var reels=new FabricReelNative[rc];var chars=new FabricCharacterDisplayNative[cc];var segments=new FabricSegmentDisplayNative[sc];fixed(FabricLampNative* lp=lamps)fixed(FabricReelNative* rp=reels)fixed(FabricCharacterDisplayNative* cp=chars)fixed(FabricSegmentDisplayNative* sp=segments){var n=new FabricMachineSnapshotNative{Size=(uint)sizeof(FabricMachineSnapshotNative),Version=FabricAbi.Version,Lamps=(nint)lp,LampCapacity=lc,Reels=(nint)rp,ReelCapacity=rc,Characters=(nint)cp,CharacterCapacity=cc,Segments=(nint)sp,SegmentCapacity=sc};var result=_e.GetSnapshotFn(_handle,&n);if(result==FabricResult.BufferTooSmall){Guard(n.LampCount,MaxLamps,"lamps");Guard(n.ReelCount,MaxReels,"reels");Guard(n.CharacterCount,MaxCharacters,"character displays");Guard(n.SegmentCount,MaxSegments,"segment displays");lc=n.LampCount;rc=n.ReelCount;cc=n.CharacterCount;sc=n.SegmentCount;continue;}Check(result,"FabricSessionGetSnapshot");return Convert(n,lamps,reels,chars,segments);}}throw new InvalidDataException("Fabric snapshot capacities did not stabilise after three attempts.");}
-    private static FabricMachineSnapshot Convert(FabricMachineSnapshotNative n,FabricLampNative[] lamps,FabricReelNative[] reels,FabricCharacterDisplayNative[] chars,FabricSegmentDisplayNative[] segments){var ml=new List<FabricLamp>((int)n.LampCount);for(var i=0;i<n.LampCount;i++){fixed(byte* p=lamps[i].Identifier)ml.Add(new(Read(p,64),lamps[i].Index,lamps[i].LogicalState!=0,lamps[i].Brightness));}var mr=new List<FabricReel>((int)n.ReelCount);for(var i=0;i<n.ReelCount;i++){fixed(byte* p=reels[i].Identifier)mr.Add(new(Read(p,64),reels[i].Index,reels[i].Position));}var mc=new List<FabricCharacterDisplay>((int)n.CharacterCount);for(var i=0;i<n.CharacterCount;i++){if(chars[i].Count>16)throw new InvalidDataException("Fabric character count exceeds 16.");var values=new uint[chars[i].Count];var attrs=new byte[chars[i].Count];fixed(uint* p=chars[i].Characters)new ReadOnlySpan<uint>(p,values.Length).CopyTo(values);fixed(byte* p=chars[i].Attributes)new ReadOnlySpan<byte>(p,attrs.Length).CopyTo(attrs);fixed(byte* p=chars[i].Identifier)mc.Add(new(Read(p,64),values,attrs));}var ms=new List<FabricSegmentDisplay>((int)n.SegmentCount);for(var i=0;i<n.SegmentCount;i++){if(segments[i].Count>16)throw new InvalidDataException("Fabric digit count exceeds 16.");var masks=new ulong[segments[i].Count];fixed(ulong* p=segments[i].Masks)new ReadOnlySpan<ulong>(p,masks.Length).CopyTo(masks);fixed(byte* p=segments[i].Identifier)ms.Add(new(Read(p,64),masks));}return new(n.Sequence,ml,mr,mc,ms);}
-    private static string Read(byte* p,int cap){var s=new ReadOnlySpan<byte>(p,cap);var z=s.IndexOf((byte)0);return Encoding.UTF8.GetString(z<0?s:s[..z]);} private static void Guard(uint count,int max,string kind){if(count>max)throw new InvalidDataException($"Fabric requested {count} {kind}; managed safety limit is {max}.");}
-    private void Check(FabricResult result,string op){if(result!=FabricResult.Ok)throw FabricRuntimeLibrary.Error(result,op,_handle,true,_e);}
-    public void Shutdown(){if(_handle==0||_shutdown)return;Check(_e.Shutdown(_handle),"FabricSessionShutdown");_shutdown=true;}
-    public void Dispose(){if(_handle==0)return;try{if(!_shutdown)Shutdown();}catch{}finally{try{_e.DestroySessionFn(_handle);}catch{} _handle=0;_released();}GC.SuppressFinalize(this);}~FabricMachineSession(){Dispose();}
+    private const int MaxLamps = 4096;
+    private const int MaxReels = 64;
+    private const int MaxCharacterDisplays = 64;
+    private const int MaxSegmentDisplays = 256;
+
+    private readonly FabricNativeExports _exports;
+    private readonly Action _released;
+    private FabricLampNative[] _lamps = [];
+    private FabricReelNative[] _reels = [];
+    private FabricCharacterDisplayNative[] _characters = [];
+    private FabricSegmentDisplayNative[] _segments = [];
+    private nint _handle;
+    private ushort? _audioChannels;
+    private bool _shutdown;
+    private bool _ownsHandle;
+
+    private FabricMachineSession(nint handle, FabricNativeExports exports, Action released)
+    {
+        _handle = handle;
+        _exports = exports;
+        _released = released;
+    }
+
+    internal static FabricMachineSession Create(nint handle, FabricNativeExports exports, Action released)
+    {
+        var session = new FabricMachineSession(handle, exports, released);
+        session.Capabilities = session.QueryCapabilities();
+        return session;
+    }
+
+    internal void ActivateOwnership() => _ownsHandle = true;
+
+    public FabricCapabilities Capabilities { get; private set; }
+
+    public void Initialise() => Check(_exports.Initialise(_handle), "FabricSessionInitialise");
+
+    public void Reset() => Check(_exports.Reset(_handle), "FabricSessionReset");
+
+    public void Advance(ulong elapsedNanoseconds)
+    {
+        Check(_exports.AdvanceFn(_handle, elapsedNanoseconds), "FabricSessionAdvance");
+    }
+
+    public void SubmitInput(FabricInput input)
+    {
+        var native = new FabricInputNative
+        {
+            Size = (uint)sizeof(FabricInputNative),
+            Version = FabricAbi.Version,
+            Index = input.NumericalIndex,
+            Active = input.Active ? (byte)1 : (byte)0
+        };
+        fixed (byte* identifier = native.Identifier)
+            FabricRuntimeLibrary.WriteFixed(input.Identifier, identifier, FabricAbi.IdentifierCapacity);
+        Check(_exports.SubmitInputFn(_handle, &native), "FabricSessionSubmitInput");
+    }
+
+    public FabricAudioFormat GetAudioFormat()
+    {
+        var native = new FabricAudioFormatNative
+        {
+            Size = (uint)sizeof(FabricAudioFormatNative),
+            Version = FabricAbi.Version
+        };
+        Check(_exports.GetAudioFormatFn(_handle, &native), "FabricSessionGetAudioFormat");
+        _audioChannels = native.Channels;
+        return new(native.SampleRate, native.Channels, native.BitsPerSample,
+            native.Interleaved != 0, native.Signed != 0, native.LittleEndian != 0);
+    }
+
+    /// <summary>Reads multi-channel frames into an interleaved sample span.</summary>
+    public int ReadAudio(Span<short> samples, int frameCapacity)
+    {
+        if (frameCapacity < 0)
+            throw new ArgumentOutOfRangeException(nameof(frameCapacity));
+        var channels = _audioChannels ?? throw new InvalidOperationException("GetAudioFormat must be called before ReadAudio.");
+        int requiredSamples;
+        try
+        {
+            requiredSamples = checked(frameCapacity * channels);
+        }
+        catch (OverflowException exception)
+        {
+            throw new ArgumentOutOfRangeException(nameof(frameCapacity), "Audio sample capacity overflowed.", exception);
+        }
+        if (samples.Length < requiredSamples)
+            throw new ArgumentException($"Audio span contains {samples.Length} samples but {requiredSamples} are required.", nameof(samples));
+
+        fixed (short* pointer = samples)
+        {
+            Check(_exports.ReadAudioFn(_handle, pointer, (uint)frameCapacity, out var written), "FabricSessionReadAudio");
+            if (written > (uint)frameCapacity)
+                throw new InvalidDataException("Fabric returned more audio frames than requested.");
+            return checked((int)written);
+        }
+    }
+
+    public FabricMachineSnapshot GetSnapshot()
+    {
+        for (var attempt = 0; attempt < 4; attempt++)
+        {
+            fixed (FabricLampNative* lamps = _lamps)
+            fixed (FabricReelNative* reels = _reels)
+            fixed (FabricCharacterDisplayNative* characters = _characters)
+            fixed (FabricSegmentDisplayNative* segments = _segments)
+            {
+                var native = new FabricMachineSnapshotNative
+                {
+                    Size = (uint)sizeof(FabricMachineSnapshotNative),
+                    Version = FabricAbi.Version,
+                    Lamps = (nint)lamps,
+                    LampCapacity = (uint)_lamps.Length,
+                    Reels = (nint)reels,
+                    ReelCapacity = (uint)_reels.Length,
+                    Characters = (nint)characters,
+                    CharacterCapacity = (uint)_characters.Length,
+                    Segments = (nint)segments,
+                    SegmentCapacity = (uint)_segments.Length
+                };
+                var result = _exports.GetSnapshotFn(_handle, &native);
+                if (result == FabricResult.BufferTooSmall)
+                {
+                    GrowBuffers(native);
+                    continue;
+                }
+                Check(result, "FabricSessionGetSnapshot");
+                ValidateSuccessfulSnapshot(native, (nint)lamps, (nint)reels, (nint)characters, (nint)segments);
+                return ConvertSnapshot(native);
+            }
+        }
+        throw new InvalidDataException("Fabric snapshot capacities did not stabilise after four attempts.");
+    }
+
+    public void Shutdown()
+    {
+        if (_handle == 0 || _shutdown)
+            return;
+        Check(_exports.Shutdown(_handle), "FabricSessionShutdown");
+        _shutdown = true;
+    }
+
+    public void Dispose()
+    {
+        if (_handle == 0 || !_ownsHandle)
+            return;
+        try
+        {
+            if (!_shutdown)
+                Shutdown();
+        }
+        catch
+        {
+            // Dispose and finalization must still destroy the opaque handle.
+        }
+        finally
+        {
+            try { _exports.DestroySessionFn(_handle); } catch { }
+            _handle = 0;
+            _released();
+        }
+        GC.SuppressFinalize(this);
+    }
+
+    ~FabricMachineSession() => Dispose();
+
+    private FabricCapabilities QueryCapabilities()
+    {
+        var native = new FabricCapabilitiesNative
+        {
+            Size = (uint)sizeof(FabricCapabilitiesNative),
+            Version = FabricAbi.Version
+        };
+        Check(_exports.GetCapabilitiesFn(_handle, &native), "FabricSessionGetCapabilities");
+        ValidateHeader(native.Size, native.Version, (uint)sizeof(FabricCapabilitiesNative), "capabilities");
+        return new(native.Flags);
+    }
+
+    private void GrowBuffers(FabricMachineSnapshotNative snapshot)
+    {
+        _lamps = Grow(_lamps, snapshot.LampCount, MaxLamps, "lamps");
+        _reels = Grow(_reels, snapshot.ReelCount, MaxReels, "reels");
+        _characters = Grow(_characters, snapshot.CharacterCount, MaxCharacterDisplays, "character displays");
+        _segments = Grow(_segments, snapshot.SegmentCount, MaxSegmentDisplays, "segment displays");
+        for (var index = 0; index < _lamps.Length; index++)
+        {
+            _lamps[index].Size = (uint)sizeof(FabricLampNative);
+            _lamps[index].Version = FabricAbi.Version;
+        }
+        for (var index = 0; index < _reels.Length; index++)
+        {
+            _reels[index].Size = (uint)sizeof(FabricReelNative);
+            _reels[index].Version = FabricAbi.Version;
+        }
+        for (var index = 0; index < _characters.Length; index++)
+        {
+            _characters[index].Size = (uint)sizeof(FabricCharacterDisplayNative);
+            _characters[index].Version = FabricAbi.Version;
+            _characters[index].Capacity = FabricAbi.CharacterCapacity;
+        }
+        for (var index = 0; index < _segments.Length; index++)
+        {
+            _segments[index].Size = (uint)sizeof(FabricSegmentDisplayNative);
+            _segments[index].Version = FabricAbi.Version;
+            _segments[index].Capacity = FabricAbi.SegmentCapacity;
+        }
+    }
+
+    private static T[] Grow<T>(T[] current, uint required, int maximum, string name)
+    {
+        if (required > maximum)
+            throw new InvalidDataException($"Fabric requested {required} {name}; managed safety limit is {maximum}.");
+        if (required <= current.Length)
+            return current;
+        var geometric = Math.Max(4, current.Length * 2);
+        return new T[Math.Min(maximum, Math.Max(checked((int)required), geometric))];
+    }
+
+    private void ValidateSuccessfulSnapshot(
+        FabricMachineSnapshotNative snapshot,
+        nint expectedLamps,
+        nint expectedReels,
+        nint expectedCharacters,
+        nint expectedSegments)
+    {
+        ValidateHeader(snapshot.Size, snapshot.Version, (uint)sizeof(FabricMachineSnapshotNative), "snapshot");
+        ValidateTopLevel(snapshot.LampCount, snapshot.LampCapacity, snapshot.Lamps, expectedLamps, _lamps.Length, "lamp");
+        ValidateTopLevel(snapshot.ReelCount, snapshot.ReelCapacity, snapshot.Reels, expectedReels, _reels.Length, "reel");
+        ValidateTopLevel(snapshot.CharacterCount, snapshot.CharacterCapacity, snapshot.Characters, expectedCharacters, _characters.Length, "character display");
+        ValidateTopLevel(snapshot.SegmentCount, snapshot.SegmentCapacity, snapshot.Segments, expectedSegments, _segments.Length, "segment display");
+
+        for (var index = 0; index < snapshot.LampCount; index++)
+            ValidateHeader(_lamps[index].Size, _lamps[index].Version, (uint)sizeof(FabricLampNative), $"lamp {index}");
+        for (var index = 0; index < snapshot.ReelCount; index++)
+            ValidateHeader(_reels[index].Size, _reels[index].Version, (uint)sizeof(FabricReelNative), $"reel {index}");
+        for (var index = 0; index < snapshot.CharacterCount; index++)
+        {
+            ref var display = ref _characters[index];
+            ValidateHeader(display.Size, display.Version, (uint)sizeof(FabricCharacterDisplayNative), $"character display {index}");
+            if (display.Capacity is 0 or > FabricAbi.CharacterCapacity || display.Count > display.Capacity)
+                throw new InvalidDataException($"Fabric character display {index} returned invalid count/capacity {display.Count}/{display.Capacity}.");
+        }
+        for (var index = 0; index < snapshot.SegmentCount; index++)
+        {
+            ref var display = ref _segments[index];
+            ValidateHeader(display.Size, display.Version, (uint)sizeof(FabricSegmentDisplayNative), $"segment display {index}");
+            if (display.Capacity is 0 or > FabricAbi.SegmentCapacity || display.Count > display.Capacity)
+                throw new InvalidDataException($"Fabric segment display {index} returned invalid count/capacity {display.Count}/{display.Capacity}.");
+        }
+    }
+
+    private static void ValidateTopLevel(uint count, uint capacity, nint pointer, nint expectedPointer, int managedCapacity, string name)
+    {
+        if (capacity > managedCapacity || count > capacity)
+            throw new InvalidDataException($"Fabric {name} count/capacity {count}/{capacity} exceeds the supplied buffer.");
+        if (count != 0 && pointer == 0)
+            throw new InvalidDataException($"Fabric returned {count} {name} entries with a null pointer.");
+        if (pointer != expectedPointer)
+            throw new InvalidDataException($"Fabric replaced the caller-owned {name} buffer pointer.");
+    }
+
+    private static void ValidateHeader(uint size, uint version, uint expectedSize, string name)
+    {
+        if (size < expectedSize || version != FabricAbi.Version)
+            throw new InvalidDataException($"Fabric {name} returned invalid size/version {size}/0x{version:X8}.");
+    }
+
+    private FabricMachineSnapshot ConvertSnapshot(FabricMachineSnapshotNative snapshot)
+    {
+        var lamps = new List<FabricLamp>((int)snapshot.LampCount);
+        for (var index = 0; index < snapshot.LampCount; index++)
+        {
+            ref var lamp = ref _lamps[index];
+            fixed (byte* identifier = lamp.Identifier)
+                lamps.Add(new(ReadIdentifier(identifier), lamp.Index, lamp.LogicalState != 0, lamp.Brightness));
+        }
+
+        var reels = new List<FabricReel>((int)snapshot.ReelCount);
+        for (var index = 0; index < snapshot.ReelCount; index++)
+        {
+            ref var reel = ref _reels[index];
+            fixed (byte* identifier = reel.Identifier)
+                reels.Add(new(ReadIdentifier(identifier), reel.Index, reel.Position));
+        }
+
+        var characters = new List<FabricCharacterDisplay>((int)snapshot.CharacterCount);
+        for (var index = 0; index < snapshot.CharacterCount; index++)
+        {
+            ref var display = ref _characters[index];
+            var values = new uint[display.Count];
+            var attributes = new byte[display.Count];
+            fixed (uint* source = display.Characters)
+                new ReadOnlySpan<uint>(source, values.Length).CopyTo(values);
+            fixed (byte* source = display.Attributes)
+                new ReadOnlySpan<byte>(source, attributes.Length).CopyTo(attributes);
+            fixed (byte* identifier = display.Identifier)
+                characters.Add(new(ReadIdentifier(identifier), values, attributes));
+        }
+
+        var segments = new List<FabricSegmentDisplay>((int)snapshot.SegmentCount);
+        for (var index = 0; index < snapshot.SegmentCount; index++)
+        {
+            ref var display = ref _segments[index];
+            var masks = new ulong[display.Count];
+            fixed (ulong* source = display.Masks)
+                new ReadOnlySpan<ulong>(source, masks.Length).CopyTo(masks);
+            fixed (byte* identifier = display.Identifier)
+                segments.Add(new(ReadIdentifier(identifier), masks));
+        }
+        return new(snapshot.Sequence, lamps, reels, characters, segments);
+    }
+
+    private static string ReadIdentifier(byte* pointer)
+    {
+        var bytes = new ReadOnlySpan<byte>(pointer, FabricAbi.IdentifierCapacity);
+        var terminator = bytes.IndexOf((byte)0);
+        var bounded = terminator < 0 ? bytes : bytes[..terminator];
+        try
+        {
+            return new UTF8Encoding(false, true).GetString(bounded);
+        }
+        catch (DecoderFallbackException exception)
+        {
+            throw new InvalidDataException("Fabric returned an invalid UTF-8 identifier.", exception);
+        }
+    }
+
+    private void Check(FabricResult result, string operation)
+    {
+        if (result != FabricResult.Ok)
+            throw FabricRuntimeLibrary.Error(result, operation, _handle, true, _exports);
+    }
 }

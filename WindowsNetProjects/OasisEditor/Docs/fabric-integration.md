@@ -9,3 +9,9 @@ Ownership is module → runtime → sessions. Disposal shuts down and destroys s
 The pump measures `Stopwatch` timestamp deltas and passes elapsed duration rather than fixed cycles. Pause/resume and reset establish a fresh baseline. Audio capacity is expressed in stereo frames, while only `framesWritten × channelCount` samples are submitted.
 
 `UseFabricForAmber` defaults to false. Therefore the existing direct Amber backend remains the default; when the option is enabled both Fabric and Amber DLL paths are required. Epoch and all other platforms retain their existing routing.
+
+All calls for one managed backend session are serialized by a shared session gate. Reset and cleanup take the same gate as advance, input, snapshot and audio, so reset/shutdown cannot overlap the pump. Unexpected pump failures are retained in `LastFailure` and trigger deterministic session/audio/runtime cleanup.
+
+Timestamp deltas are converted directly to nanoseconds with quotient/remainder arithmetic. Fractional numerator is carried between pumps to avoid systematic drift; pause/resume and reset clear both the baseline and remainder. Scheduler gaps are forwarded as one elapsed value—there is no unbounded catch-up loop.
+
+Display change detection uses a composite identity of output family, native display identifier, display ordinal, and local position. Oasis event indexes retain the direct backend's 16-cells-per-display convention; alpha punctuation attributes are included in bits 16 and 17 of the published alpha event mask.

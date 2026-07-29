@@ -39,6 +39,25 @@ public sealed class EmulationBackendFactoryTests
         Assert.Same(mameBackend, factory.CreateBackend(FruitMachinePlatformType.MPU4));
     }
 
+    [Fact]
+    public void CreateBackend_WithValidFabricFeature_ReturnsFabricBackend()
+    {
+        var factory = new EmulationBackendFactory(() => new FakeBackend(), () => "legacy.dll",
+            fabricConfigurationProvider: () => (true, "runtime.dll", "amber.dll"));
+
+        Assert.IsType<FabricEmulationBackend>(factory.CreateBackend(FruitMachinePlatformType.Impact));
+    }
+
+    [Fact]
+    public void CreateBackend_WithIncompleteEnabledFabricFeature_ThrowsActionableError()
+    {
+        var factory = new EmulationBackendFactory(() => new FakeBackend(), () => "legacy.dll",
+            fabricConfigurationProvider: () => (true, "runtime.dll", null));
+
+        var error = Assert.Throws<InvalidOperationException>(() => factory.CreateBackend(FruitMachinePlatformType.Impact));
+        Assert.Contains("both the Fabric runtime DLL path and Amber API v2 DLL path", error.Message);
+    }
+
     private sealed class FakeBackend : IEmulationBackend
     {
         public EmulationBackendKind BackendKind => EmulationBackendKind.Mame;

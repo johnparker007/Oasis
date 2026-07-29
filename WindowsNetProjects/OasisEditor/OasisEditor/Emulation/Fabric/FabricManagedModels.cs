@@ -23,7 +23,7 @@ public interface IFabricRuntimeLibrary : IDisposable { IFabricMachineSession Cre
 public interface IFabricMachineSession : IDisposable
 {
     FabricCapabilities Capabilities { get; }
-    void Initialise(); void Reset(); void Advance(TimeSpan elapsed); void SubmitInput(FabricInput input);
+    void Initialise(); void Reset(); void Advance(ulong elapsedNanoseconds); void SubmitInput(FabricInput input);
     FabricMachineSnapshot GetSnapshot(); FabricAudioFormat GetAudioFormat(); int ReadAudio(Span<short> samples, int frameCapacity); void Shutdown();
 }
 
