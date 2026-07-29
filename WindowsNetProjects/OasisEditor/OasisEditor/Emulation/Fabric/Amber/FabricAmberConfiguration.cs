@@ -123,8 +123,8 @@ public sealed record FabricAmberConfiguration(
         }
 
         var bytes = new byte[sizeof(FabricAmberConfigurationNative)];
-        fixed (byte* pointer = bytes)
-            Buffer.MemoryCopy(&native, pointer, bytes.Length, bytes.Length);
+        fixed (byte* destination = bytes)
+            Buffer.MemoryCopy(&native, destination, bytes.Length, bytes.Length);
         return bytes;
     }
 }
