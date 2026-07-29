@@ -11,17 +11,20 @@ public sealed class EmulationBackendFactory : IEmulationBackendFactory
     private readonly Func<string?> _system6LibraryPathProvider;
     private readonly Func<string, IAmberBridgeLibrary> _amberBridgeFactory;
     private readonly Func<int> _system6AudioBufferLengthMillisecondsProvider;
+    private readonly Func<(bool Enabled,string? RuntimePath,string? AmberPath)> _fabricConfigurationProvider;
 
     public EmulationBackendFactory(
         Func<IEmulationBackend> mameBackendFactory,
         Func<string?> system6LibraryPathProvider,
         Func<int>? system6AudioBufferLengthMillisecondsProvider = null,
-        Func<string, IAmberBridgeLibrary>? amberBridgeFactory = null)
+        Func<string, IAmberBridgeLibrary>? amberBridgeFactory = null,
+        Func<(bool Enabled,string? RuntimePath,string? AmberPath)>? fabricConfigurationProvider = null)
     {
         _mameBackendFactory = mameBackendFactory ?? throw new ArgumentNullException(nameof(mameBackendFactory));
         _system6LibraryPathProvider = system6LibraryPathProvider ?? throw new ArgumentNullException(nameof(system6LibraryPathProvider));
         _system6AudioBufferLengthMillisecondsProvider = system6AudioBufferLengthMillisecondsProvider ?? (() => NativeEmulationPreferences.DefaultAudioBufferLengthMilliseconds);
         _amberBridgeFactory = amberBridgeFactory ?? (static path => new AmberBridgeLibrary(path));
+        _fabricConfigurationProvider = fabricConfigurationProvider ?? (() => (false,null,null));
     }
 
     public IEmulationBackend? CreateBackend(FruitMachinePlatformType platform)
@@ -37,6 +40,13 @@ public sealed class EmulationBackendFactory : IEmulationBackendFactory
 
     private IEmulationBackend CreateSystem6BackendOrMameFallback()
     {
+        var fabric = _fabricConfigurationProvider();
+        if (fabric.Enabled)
+        {
+            if (string.IsNullOrWhiteSpace(fabric.RuntimePath) || string.IsNullOrWhiteSpace(fabric.AmberPath))
+                throw new InvalidOperationException("Fabric emulation is enabled, but both the Fabric runtime DLL path and Amber API v2 DLL path must be configured.");
+            return new FabricEmulationBackend(fabric.RuntimePath, fabric.AmberPath);
+        }
         var libraryPath = _system6LibraryPathProvider();
         return string.IsNullOrWhiteSpace(libraryPath)
             ? _mameBackendFactory()
