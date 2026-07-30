@@ -22,6 +22,7 @@ public sealed class PlayViewInputRouterTests
     private sealed class RecordingBackend : IEmulationBackend
     {
         public List<(string, bool)> Inputs { get; } = [];
+        public EmulationBackendKind BackendKind => EmulationBackendKind.Fabric;
         public EmulationBackendState State => EmulationBackendState.Running;
         public EmulationBackendCapabilities Capabilities { get; } = new(true, true, true, true, false, false, false);
         public event EventHandler<EmulationBackendState>? StateChanged { add { } remove { } }

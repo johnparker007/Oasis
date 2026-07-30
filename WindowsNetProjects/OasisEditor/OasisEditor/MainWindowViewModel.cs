@@ -85,6 +85,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly IMachineSegmentRuntimeAdapter _segmentRuntimeAdapter;
     private IEmulationBackend? _activeEmulationBackend;
     private EmulationBackendState _emulationState = EmulationBackendState.Stopped;
+    private readonly IInputMapDiagnosticsService _inputMapDiagnosticsService = new InputMapDiagnosticsService();
     private readonly OasisPlayerPreviewService _oasisPlayerPreviewService = new();
     private IReadOnlyList<InputMapDiagnostic> _inputMapDiagnostics = [];
     private PlayViewInputRouter? _playViewInputRouter;

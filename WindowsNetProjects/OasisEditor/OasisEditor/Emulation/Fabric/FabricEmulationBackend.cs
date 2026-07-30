@@ -60,6 +60,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         _errorLogger = errorLogger ?? WriteDebugError;
     }
 
+    public EmulationBackendKind BackendKind => EmulationBackendKind.Fabric;
     public EmulationBackendCapabilities Capabilities => BackendCapabilities;
     public EmulationBackendState State { get { lock (_stateGate) return _state; } }
     public Exception? LastFailure { get; private set; }

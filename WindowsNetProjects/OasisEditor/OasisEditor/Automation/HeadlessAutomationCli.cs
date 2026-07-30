@@ -118,13 +118,6 @@ internal static class HeadlessAutomationCli
             return HeadlessExitCode.SaveFailed;
         }
 
-        if (message.Contains("lay", StringComparison.OrdinalIgnoreCase)
-            || message.Contains("export", StringComparison.OrdinalIgnoreCase)
-            || message.Contains("not implemented", StringComparison.OrdinalIgnoreCase))
-        {
-            return HeadlessExitCode.ExportFailed;
-        }
-
         return HeadlessExitCode.UnexpectedError;
     }
 
