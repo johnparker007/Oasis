@@ -1770,12 +1770,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private bool EnsurePlayViewInputRouter()
     {
+        if (LoadedProject is null
+            || _activeEmulationBackend is null
+            || EmulationState is not EmulationBackendState.Running and not EmulationBackendState.Paused)
         {
             return false;
         }
 
-        _playViewInputRouter ??= _activeEmulationBackend is not null
-            ? new PlayViewInputRouter(_activeEmulationBackend)
+        _playViewInputRouter ??= new PlayViewInputRouter(_activeEmulationBackend);
         return true;
     }
 
