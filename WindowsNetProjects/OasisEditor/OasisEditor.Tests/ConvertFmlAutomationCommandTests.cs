@@ -88,4 +88,19 @@ public sealed class ConvertFmlAutomationCommandTests
         }
     }
 
+    private sealed class FakeSaveService : IDocumentSaveService
+    {
+        public bool WasCalled { get; private set; }
+
+        public DocumentTabViewModel SaveDocument(
+            DocumentTabViewModel current,
+            string savePath,
+            EditorProject? project = null,
+            IEditorProgressReporter? progress = null)
+        {
+            WasCalled = true;
+            return current;
+        }
+    }
+
 }

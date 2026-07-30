@@ -294,7 +294,7 @@ public sealed class FabricManagedBehaviorTests
         new("runtime", "amber", _ => new FakeRuntime(session), audio, new FakeClock());
 
     private static EmulationLaunchRequest CreateRequest() =>
-        new(FruitMachinePlatformType.Impact, "machine", "", [], "", new System6NativeRomSettings());
+        new(new System6NativeRomSettings());
 
     private static async Task WaitForStateAsync(FabricEmulationBackend backend, EmulationBackendState state)
     {
