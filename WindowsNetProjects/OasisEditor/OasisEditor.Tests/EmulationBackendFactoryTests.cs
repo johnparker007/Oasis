@@ -68,7 +68,7 @@ public sealed class EmulationBackendFactoryTests
     }
 
     private static EmulationBackendFactory CreateFactory(string? runtime, string? amber, Func<int>? buffer = null, Func<int, IEmulationAudioSink>? sink = null) =>
-        new(() => runtime, () => amber, buffer, _ => throw new InvalidOperationException("Created only on start."), sink ?? (_ => new NullSink()), new StopwatchFabricClock());
+        new(() => runtime, () => amber, buffer, _ => throw new InvalidOperationException("Created only on start."), sink ?? (_ => new NullSink()), new StopwatchFabricClock(), null);
 
     private sealed class NullSink : IEmulationAudioSink
     {

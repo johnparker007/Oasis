@@ -19,17 +19,33 @@ public sealed class EmulationBackendFactory : IEmulationBackendFactory
         Func<string?> fabricRuntimePathProvider,
         Func<string?> productionAmberPathProvider,
         Func<int>? audioBufferLengthMillisecondsProvider = null,
-        Func<string, IFabricRuntimeLibrary>? runtimeFactory = null,
-        Func<int, IEmulationAudioSink>? audioSinkFactory = null,
-        IFabricClock? clock = null,
         Action<string>? errorLogger = null)
+        : this(
+            fabricRuntimePathProvider,
+            productionAmberPathProvider,
+            audioBufferLengthMillisecondsProvider,
+            static path => new FabricRuntimeLibrary(path),
+            static bufferLength => new NAudioEmulationAudioSink(bufferLength),
+            new StopwatchFabricClock(),
+            errorLogger)
+    {
+    }
+
+    internal EmulationBackendFactory(
+        Func<string?> fabricRuntimePathProvider,
+        Func<string?> productionAmberPathProvider,
+        Func<int>? audioBufferLengthMillisecondsProvider,
+        Func<string, IFabricRuntimeLibrary> runtimeFactory,
+        Func<int, IEmulationAudioSink> audioSinkFactory,
+        IFabricClock clock,
+        Action<string>? errorLogger)
     {
         _fabricRuntimePathProvider = fabricRuntimePathProvider ?? throw new ArgumentNullException(nameof(fabricRuntimePathProvider));
         _productionAmberPathProvider = productionAmberPathProvider ?? throw new ArgumentNullException(nameof(productionAmberPathProvider));
         _audioBufferLengthMillisecondsProvider = audioBufferLengthMillisecondsProvider ?? (() => NativeEmulationPreferences.DefaultAudioBufferLengthMilliseconds);
-        _runtimeFactory = runtimeFactory ?? (static path => new FabricRuntimeLibrary(path));
-        _audioSinkFactory = audioSinkFactory ?? (static bufferLength => new NAudioEmulationAudioSink(bufferLength));
-        _clock = clock ?? new StopwatchFabricClock();
+        _runtimeFactory = runtimeFactory ?? throw new ArgumentNullException(nameof(runtimeFactory));
+        _audioSinkFactory = audioSinkFactory ?? throw new ArgumentNullException(nameof(audioSinkFactory));
+        _clock = clock ?? throw new ArgumentNullException(nameof(clock));
         _errorLogger = errorLogger;
     }
 
