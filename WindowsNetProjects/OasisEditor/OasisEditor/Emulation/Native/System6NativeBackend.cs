@@ -50,6 +50,7 @@ public sealed class System6NativeBackend : IEmulationBackend
     }
 
     public EmulationBackendKind BackendKind => EmulationBackendKind.NativeSystem6;
+    internal IEmulationAudioSink AudioSink => _audioSink;
     public EmulationBackendCapabilities Capabilities => BackendCapabilities;
     public EmulationBackendState State { get { lock (_stateGate) return _state; } }
     internal int LastCyclesRun { get; private set; }
