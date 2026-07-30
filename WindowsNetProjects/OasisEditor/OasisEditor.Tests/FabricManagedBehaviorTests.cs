@@ -316,8 +316,6 @@ public sealed class FabricManagedBehaviorTests
     {
         public FabricLaunchRequest? Request { get; private set; }
         public int DisposeCount { get; private set; }
-        public int FramesToWrite { get; init; }
-        public List<ulong> Advances { get; } = [];
         public IFabricMachineSession CreateSession(FabricLaunchRequest request) { Request = request; return session; }
         public void Dispose() => DisposeCount++;
     }
@@ -340,6 +338,8 @@ public sealed class FabricManagedBehaviorTests
         public int ResetCount { get; private set; }
         public int ShutdownCount { get; private set; }
         public int DisposeCount { get; private set; }
+        public int FramesToWrite { get; init; }
+        public List<ulong> Advances { get; } = [];
         public FabricCapabilities Capabilities => new((ulong)(FabricCapability.DigitalInput | FabricCapability.Audio));
         public void Initialise() => Invoke(() => { });
         public void Reset() => Invoke(() => ResetCount++);
