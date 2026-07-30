@@ -178,6 +178,7 @@
                 <TextBlock Margin="0,16,0,4" Text="System6 AmberBridge.dll path" Foreground="{DynamicResource TextSecondaryBrush}" />
                 <TextBox Text="{Binding System6NativeLibraryPath, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                 <CheckBox Margin="0,16,0,4" Content="Use Fabric for Amber emulation" IsChecked="{Binding UseFabricForAmber}" />
+                <CheckBox Margin="0,8,0,4" Content="Enable Amber backend comparison logging" IsChecked="{Binding EnableAmberBackendComparisonLogging}" />
                 <TextBlock Margin="0,8,0,4" Text="FabricRuntime.dll path" Foreground="{DynamicResource TextSecondaryBrush}" />
                 <TextBox Text="{Binding FabricRuntimeLibraryPath, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                 <TextBlock Margin="0,8,0,4" Text="Amber API v2 DLL path for JPM System 6 / Impact" Foreground="{DynamicResource TextSecondaryBrush}" />

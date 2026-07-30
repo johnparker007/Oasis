@@ -47,6 +47,7 @@ public sealed class NativeEmulationPreferences
     public bool UseFabricForAmber { get; init; }
     public string FabricRuntimeLibraryPath { get; init; } = string.Empty;
     public string FabricAmberApiV2LibraryPath { get; init; } = string.Empty;
+    public bool EnableAmberBackendComparisonLogging { get; init; }
     public int AudioBufferLengthMilliseconds { get; init; } = DefaultAudioBufferLengthMilliseconds;
 }
 

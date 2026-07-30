@@ -6,6 +6,17 @@ namespace OasisEditor.Tests;
 public sealed class EditorPreferencesSerializationTests
 {
     [Fact]
+    public void AmberComparisonLogging_DefaultsFalseAndRoundTrips()
+    {
+        Assert.False(new EditorPreferences().NativeEmulation.EnableAmberBackendComparisonLogging);
+        var json = JsonSerializer.Serialize(new EditorPreferences
+        {
+            NativeEmulation = new NativeEmulationPreferences { EnableAmberBackendComparisonLogging = true }
+        });
+        Assert.True(JsonSerializer.Deserialize<EditorPreferences>(json)!.NativeEmulation.EnableAmberBackendComparisonLogging);
+    }
+
+    [Fact]
     public void MamePreferences_Defaults_AutoUpdateToTrue()
     {
         var preferences = new EditorPreferences();

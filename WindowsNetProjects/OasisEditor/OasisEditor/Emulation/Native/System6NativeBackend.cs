@@ -16,6 +16,10 @@ public sealed class System6NativeBackend : IEmulationBackend
     private readonly string _bridgePath;
     private readonly Func<string, IAmberBridgeLibrary> _bridgeFactory;
     private readonly IEmulationAudioSink _audioSink;
+    private readonly Func<bool> _comparisonEnabled;
+    private readonly Action<string>? _comparisonSink;
+    private AmberComparisonSession? _comparison;
+    private long _pumpIteration;
     private readonly AmberOutputSnapshotBuffer _snapshot = new();
     private readonly ConcurrentQueue<(uint Index, bool IsOn)> _switchCommands = new();
     private readonly HashSet<uint> _assertedSwitches = [];
@@ -40,13 +44,16 @@ public sealed class System6NativeBackend : IEmulationBackend
     public System6NativeBackend(string bridgePath)
         : this(bridgePath, static path => new AmberBridgeLibrary(path), new NAudioEmulationAudioSink()) { }
 
-    internal System6NativeBackend(string bridgePath, Func<string, IAmberBridgeLibrary> bridgeFactory, IEmulationAudioSink? audioSink = null)
+    internal System6NativeBackend(string bridgePath, Func<string, IAmberBridgeLibrary> bridgeFactory, IEmulationAudioSink? audioSink = null,
+        Func<bool>? comparisonEnabled = null, Action<string>? comparisonSink = null)
     {
         if (string.IsNullOrWhiteSpace(bridgePath))
             throw new ArgumentException("Amber Bridge DLL path must not be empty.", nameof(bridgePath));
         _bridgePath = bridgePath;
         _bridgeFactory = bridgeFactory ?? throw new ArgumentNullException(nameof(bridgeFactory));
         _audioSink = audioSink ?? new NullAudioSink();
+        _comparisonEnabled = comparisonEnabled ?? (() => false);
+        _comparisonSink = comparisonSink;
     }
 
     public EmulationBackendKind BackendKind => EmulationBackendKind.NativeSystem6;
@@ -70,6 +77,11 @@ public sealed class System6NativeBackend : IEmulationBackend
             throw new InvalidOperationException($"System6 native backend cannot start while it is {State}.");
 
         SetState(EmulationBackendState.Starting);
+        var comparison = new AmberComparisonSession(_comparisonEnabled(), "direct", _comparisonSink);
+        _comparison = comparison.Enabled ? comparison : null;
+        _pumpIteration = 0;
+        _comparison?.Write("ComparisonStart", $"selected_backend:Direct_Amber|platform:{request.Platform}|machine:{request.MachineName}|process_id:{Environment.ProcessId}|amber_dll:{AmberComparisonSession.SafeFileName(_bridgePath)}");
+        _comparison?.Write("BackendCreate");
         try
         {
             if (!Path.IsPathFullyQualified(_bridgePath))
@@ -84,19 +96,27 @@ public sealed class System6NativeBackend : IEmulationBackend
             var programs = ValidateRomPaths(roms.ProgramRomPaths, requireTwoProgramRoms: true, "program");
             var sounds = ValidateRomPaths(roms.SoundRomPaths, requireTwoProgramRoms: false, "sound");
 
+            _comparison?.Write("LoadProgramRoms", AmberComparisonSession.RomSummary("program", roms.ProgramRomPaths));
+            _comparison?.Write("LoadSoundRoms", AmberComparisonSession.RomSummary("sound", roms.SoundRomPaths));
+
             _bridge = _bridgeFactory(_bridgePath);
+            _comparison?.Write("LibraryLoad", $"filename:{AmberComparisonSession.SafeFileName(_bridgePath)}");
             _amberCapabilities = _bridge.GetCapabilities();
             ValidateRequiredCapabilities(_amberCapabilities);
             Debug.WriteLine($"Amber Bridge: Capabilities read; mask 0x{_amberCapabilities.RawFeatureBits:X16}; maximum switches {_amberCapabilities.MaximumSwitches}.");
             _bridge.Initialise(programs, sounds);
+            _comparison?.Write("Initialise");
             _bridge.Reset(); // Preserve the direct backend's post-ROM-load startup reset.
+            _comparison?.Write("Reset", "startup:true");
             var audioFormat = _bridge.GetAudioFormat();
+            _comparison?.Write("GetAudioFormat", $"sample_rate:{audioFormat.SampleRate}|channels:{audioFormat.Channels}|bits_per_sample:16|encoding:pcm_signed|interleaving:{audioFormat.Interleaving}");
             ValidateAudioFormat(audioFormat);
             _audioSampleRate = checked((int)audioFormat.SampleRate);
             _audioChannelCount = checked((int)audioFormat.Channels);
             _audioFramesPerPump = CalculateFramesPerPump(_audioSampleRate, EmulationPumpHz);
             _audioSamples = new short[checked(_audioFramesPerPump * _audioChannelCount)];
             _audioSink.Start(new((int)audioFormat.SampleRate, (int)audioFormat.Channels, 16));
+            _comparison?.Write("AudioSink", "state:started");
             ApplyProjectConfiguration(roms);
             _shutdown = false;
             var details = _bridge.BridgeDetails;
@@ -109,8 +129,9 @@ public sealed class System6NativeBackend : IEmulationBackend
             SetState(EmulationBackendState.Running);
             return Task.CompletedTask;
         }
-        catch
+        catch (Exception exception)
         {
+            _comparison?.Write("Failure", result: "failure", summary: exception.GetType().Name);
             DisposeBridgeAfterFailure();
             SetState(EmulationBackendState.Failed);
             throw;
@@ -122,6 +143,7 @@ public sealed class System6NativeBackend : IEmulationBackend
         if (_disposed || State == EmulationBackendState.Stopped) return;
         SetState(EmulationBackendState.Stopping);
         if (_runCancellation is not null) await _runCancellation.CancelAsync().ConfigureAwait(false);
+        _comparison?.Write("Cancellation", "expected:true|operation:pump");
         if (_runTask is not null)
         {
             try { await _runTask.WaitAsync(cancellationToken).ConfigureAwait(false); }
@@ -131,14 +153,19 @@ public sealed class System6NativeBackend : IEmulationBackend
         try { ShutdownBridgeOnce(); }
         finally
         {
+            _comparison?.Write("Shutdown");
             _audioSink.Stop();
+            _comparison?.Write("AudioSink", "state:stopped");
             _bridge?.Dispose();
+            _comparison?.Write("Destroy");
             _bridge = null;
         }
         _runCancellation?.Dispose();
         _runCancellation = null;
         _runTask = null;
         SetState(EmulationBackendState.Stopped);
+        _comparison?.Write("ComparisonEnd");
+        _comparison = null;
     }
 
     public Task PauseAsync(CancellationToken cancellationToken)
@@ -181,6 +208,7 @@ public sealed class System6NativeBackend : IEmulationBackend
         if (_amberCapabilities is null || switchIndex >= _amberCapabilities.MaximumSwitches)
             throw new ArgumentOutOfRangeException(nameof(inputDefinition), $"Switch {switchIndex} exceeds the bridge capability limit.");
         _switchCommands.Enqueue((switchIndex, isPressed));
+        _comparison?.WriteBounded("input", AmberComparisonSession.InputLimit, "SubmitInput", $"oasis_id:{inputDefinition.Id}|switch_index:{switchIndex}|active:{isPressed.ToString().ToLowerInvariant()}|duplicate_suppression:false|shutdown_release:false", "queued");
         return Task.CompletedTask;
     }
 
@@ -215,7 +243,11 @@ public sealed class System6NativeBackend : IEmulationBackend
                     nextDeadline = Stopwatch.GetTimestamp();
                     continue;
                 }
-                RunCycles(System6ClockHz / EmulationPumpHz);
+                var iteration = ++_pumpIteration;
+                var advanceStarted = Stopwatch.GetTimestamp();
+                var cyclesRun = RunCycles(System6ClockHz / EmulationPumpHz);
+                var durationNs = (Stopwatch.GetTimestamp() - advanceStarted) * 1_000_000_000L / Stopwatch.Frequency;
+                _comparison?.WriteBounded("advance", AmberComparisonSession.AdvanceLimit, "Advance", $"iteration:{iteration}|elapsed_ns:1000000|time_source:fixed|requested_cycles:8000|native_run_calls:1|native_return:{cyclesRun}|maximum_catch_up:3|clamping:true|accumulated_remainder:false|duration_ns:{durationNs}");
                 ProcessSwitchCommands();
                 PollOutputsAndAudio();
 
@@ -259,12 +291,27 @@ public sealed class System6NativeBackend : IEmulationBackend
     {
         var bridge = RequireActiveBridge();
         bridge.GetOutputSnapshot(_snapshot);
+        if (_comparison?.Enabled == true)
+        {
+            var fingerprint = string.Join(',', Enumerable.Range(0, (int)_snapshot.MatrixLampCount).Select(i => _snapshot.GetLamp(i))) + ";" +
+                string.Join(',', Enumerable.Range(0, (int)_snapshot.ReelCount).Select(i => _snapshot.GetReelPosition(i))) + ";" +
+                string.Join(',', Enumerable.Range(0, (int)_snapshot.SevenSegmentDisplayCount).Select(i => _snapshot.GetSevenSegmentDisplay(i).SegmentMask));
+            var change = _comparison.TrackSnapshot(fingerprint);
+            _comparison.WriteBounded("snapshot", AmberComparisonSession.SnapshotLimit, "GetSnapshot", $"lamp_count:{_snapshot.MatrixLampCount}|reel_count:{_snapshot.ReelCount}|reel_positions:{string.Join(',', Enumerable.Range(0, (int)_snapshot.ReelCount).Select(i => _snapshot.GetReelPosition(i)))}|character_display_count:{_snapshot.AlphaDisplayCount}|segment_display_count:{_snapshot.SevenSegmentDisplayCount}|{change}");
+        }
         if (!_firstSnapshot) { _firstSnapshot = true; Debug.WriteLine($"Amber Bridge: First output snapshot received; lamps={_snapshot.MatrixLampCount}, reels={_snapshot.ReelCount}, alpha={_snapshot.AlphaDisplayCount}, sevenSegment={_snapshot.SevenSegmentDisplayCount}."); }
         TranslateSnapshot();
         var writtenFrames = bridge.FillAudioFrames(_audioSamples, checked((uint)_audioFramesPerPump));
         var writtenSamples = checked((int)writtenFrames * _audioChannelCount);
         var bytes = MemoryMarshal.AsBytes(_audioSamples.AsSpan(0, writtenSamples));
         if (!bytes.IsEmpty) _audioSink.PushPcm(bytes);
+        if (_comparison is not null)
+        {
+            var samples = _audioSamples.AsSpan(0, writtenSamples);
+            var nonzero = 0; var peak = 0;
+            foreach (var sample in samples) { if (sample != 0) nonzero++; peak = Math.Max(peak, Math.Abs((int)sample)); }
+            _comparison.WriteBounded("audio", AmberComparisonSession.AudioLimit, "ReadAudio", $"requested_frames:{_audioFramesPerPump}|returned_frames:{writtenFrames}|nonzero_samples:{nonzero}|peak_absolute_sample:{peak}|submitted_frames:{writtenFrames}");
+        }
         if (!_firstAudio) { _firstAudio = true; Debug.WriteLine($"Amber Bridge: First audio fill completed; sampleRate={_audioSampleRate} Hz, pumpRate={EmulationPumpHz} Hz, framesRequested={_audioFramesPerPump}, framesWritten={writtenFrames}, samplesWritten={writtenSamples}, bytesSubmitted={bytes.Length}."); }
     }
 
@@ -283,6 +330,9 @@ public sealed class System6NativeBackend : IEmulationBackend
     private void ApplyProjectConfiguration(System6NativeRomSettings settings)
     {
         var bridge = RequireActiveBridge(); var caps = _amberCapabilities!;
+        _comparison?.Write("ConfigureReels", string.Join(",", settings.ReelOptos.Select(r => $"index:{r.ReelIndex}|enabled:{r.Enabled}|steps:{r.Steps}|opto_start:{r.OptoStart}|opto_end:{r.OptoEnd}|opto_invert:{r.OptoInvert}|apply:true")));
+        _comparison?.Write("ConfigureCoins", string.Join(",", settings.Coins.Select(c => $"index:{c.Num}|enabled:{c.Enabled}|value:{c.CoinValue}|lockout_invert:{c.LockoutInvert}|port_index:{c.PortIndex}|coin_code:{c.Coin}|level:{c.Level}|full_level:{c.FullLevel}")));
+        _comparison?.Write("ConfigurePercentage", $"raw_value:{settings.PercentSwitchValue}");
         if (settings.ReelOptos.Count != 0) { if (!caps.SupportsReelConfiguration) throw new InvalidOperationException("Project contains reel configuration but the bridge does not support it."); var reels = settings.ReelOptos.Select(r => new AmberReelConfigurationEntry((uint)r.ReelIndex, r.Enabled, (uint)r.Steps, (uint)r.OptoStart, (uint)r.OptoEnd, r.OptoInvert)).ToArray(); bridge.ConfigureReels(new(reels.Aggregate(0u, (m, r) => m | 1u << (int)r.Index), reels)); }
         if (settings.Coins.Any(c => c.Enabled)) { if (!caps.SupportsCoinConfiguration) throw new InvalidOperationException("Project contains coin configuration but the bridge does not support it."); var channels = settings.Coins.Where(c => c.Enabled).Select(c => new AmberCoinChannelConfiguration((uint)c.Num, c.CoinEnable != 0, (uint)c.CoinValue, c.LockoutInvert != 0)).ToArray(); var routes = settings.Coins.Where(c => c.Enabled).Select(c => new AmberCoinRouteConfiguration((uint)c.Num, c.Enabled, (uint)c.CounterIn, (uint)c.CounterOut, (uint)c.PortIndex, (uint)c.Coin, (uint)c.Level, (uint)c.FullLevel)).ToArray(); bridge.ConfigureCoins(new(channels.Aggregate(0u, (m, c) => m | 1u << (int)c.Index), routes.Aggregate(0u, (m, r) => m | 1u << (int)r.Index), channels, routes)); }
         if (caps.SupportsPercentageSwitch) bridge.SetPercentageSwitch(checked((uint)settings.PercentSwitchValue));
@@ -333,7 +383,9 @@ public sealed class System6NativeBackend : IEmulationBackend
     private void ShutdownBridgeOnce()
     {
         if (_bridge is null || _shutdown) return;
+        var releasedCount = _assertedSwitches.Count;
         ReleaseAssertedSwitches();
+        _comparison?.Write("SubmitInput", "shutdown_release:true", "success", $"released_count:{releasedCount}");
         _shutdown = true;
         _bridge.Shutdown();
     }

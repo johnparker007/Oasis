@@ -17,6 +17,10 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     private readonly IFabricClock _clock;
     private readonly Action<string> _errorLogger;
     private readonly FabricElapsedTime _elapsedTime;
+    private readonly Func<bool> _comparisonEnabled;
+    private readonly Action<string>? _comparisonSink;
+    private AmberComparisonSession? _comparison;
+    private long _pumpIteration;
     private readonly SemaphoreSlim _sessionGate = new(1, 1);
     private readonly ConcurrentQueue<InputCommand> _inputCommands = new();
     private readonly HashSet<int> _assertedInputs = [];
@@ -48,7 +52,9 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         Func<string, IFabricRuntimeLibrary> runtimeFactory,
         IEmulationAudioSink audioSink,
         IFabricClock clock,
-        Action<string>? errorLogger = null)
+        Action<string>? errorLogger = null,
+        Func<bool>? comparisonEnabled = null,
+        Action<string>? comparisonSink = null)
     {
         _runtimePath = runtimePath;
         _amberPath = amberPath;
@@ -57,6 +63,8 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         _clock = clock;
         _errorLogger = errorLogger ?? WriteDebugError;
         _elapsedTime = new FabricElapsedTime(clock.Frequency);
+        _comparisonEnabled = comparisonEnabled ?? (() => false);
+        _comparisonSink = comparisonSink;
     }
 
     public EmulationBackendKind BackendKind => EmulationBackendKind.NativeSystem6;
@@ -80,21 +88,33 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             throw new InvalidOperationException($"Fabric backend cannot start while it is {State}.");
 
         SetState(EmulationBackendState.Starting);
+        var comparison = new AmberComparisonSession(_comparisonEnabled(), "fabric", _comparisonSink);
+        _comparison = comparison.Enabled ? comparison : null;
+        _pumpIteration = 0;
+        _comparison?.Write("ComparisonStart", $"selected_backend:Fabric_Amber|platform:{request.Platform}|machine:{request.MachineName}|process_id:{Environment.ProcessId}|fabric_runtime:{AmberComparisonSession.SafeFileName(_runtimePath)}|amber_dll:{AmberComparisonSession.SafeFileName(_amberPath)}");
+        _comparison?.Write("BackendCreate");
         try
         {
             var settings = request.System6NativeRoms
                 ?? throw new InvalidOperationException("Fabric System 6 requires native ROM settings.");
             var resources = BuildRomResources(settings);
+            _comparison?.Write("LoadProgramRoms", AmberComparisonSession.RomSummary("program", settings.ProgramRomPaths));
+            _comparison?.Write("LoadSoundRoms", AmberComparisonSession.RomSummary("sound", settings.SoundRomPaths));
+            WriteConfiguration(settings);
             cancellationToken.ThrowIfCancellationRequested();
             _runtime = _runtimeFactory(_runtimePath);
+            _comparison?.Write("LibraryLoad", $"filename:{AmberComparisonSession.SafeFileName(_runtimePath)}");
+            _comparison?.Write("RuntimeCreate");
             _session = _runtime.CreateSession(new FabricLaunchRequest(
                 "amber-api-v2", "jpm-system6", _amberPath, resources,
                 FabricAmberConfiguration.FromSystem6(settings)));
+            _comparison?.Write("SessionCreate");
 
             await _sessionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
                 _session.Initialise();
+                _comparison?.Write("Initialise");
                 ConfigureAudio(_session);
                 _elapsedTime.Reset(_clock.GetTimestamp());
             }
@@ -109,8 +129,9 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             _pumpTask = Task.Run(() => PumpAsync(_pumpCancellation.Token), CancellationToken.None);
             SetState(EmulationBackendState.Running);
         }
-        catch
+        catch (Exception exception)
         {
+            _comparison?.Write("Failure", result: "failure", summary: exception.GetType().Name);
             await CleanupResourcesAsync().ConfigureAwait(false);
             SetState(EmulationBackendState.Failed);
             throw;
@@ -126,6 +147,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
 
         if (_pumpCancellation is not null)
             await _pumpCancellation.CancelAsync().ConfigureAwait(false);
+        _comparison?.Write("Cancellation", "expected:true|operation:pump");
         if (_pumpTask is not null && Task.CurrentId != _pumpTask.Id)
         {
             try
@@ -143,6 +165,8 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         }
         await CleanupResourcesAsync().ConfigureAwait(false);
         SetState(EmulationBackendState.Stopped);
+        _comparison?.Write("ComparisonEnd");
+        _comparison = null;
     }
 
     public Task PauseAsync(CancellationToken cancellationToken)
@@ -197,6 +221,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         if (!int.TryParse(inputDefinition.ButtonNumber, out var index))
             throw new InvalidOperationException($"Input '{inputDefinition.Id}' has no numeric switch mapping.");
         _inputCommands.Enqueue(new(index, isPressed));
+        _comparison?.WriteBounded("input", AmberComparisonSession.InputLimit, "SubmitInput", $"oasis_id:{inputDefinition.Id}|switch_index:{index}|active:{isPressed.ToString().ToLowerInvariant()}|duplicate_suppression:false|shutdown_release:false", "queued");
         return Task.CompletedTask;
     }
 
@@ -253,7 +278,12 @@ public sealed class FabricEmulationBackend : IEmulationBackend
                 try
                 {
                     var session = RequireSession();
-                    session.Advance(_elapsedTime.AdvanceTo(_clock.GetTimestamp()));
+                    var iteration = ++_pumpIteration;
+                    var elapsed = _elapsedTime.AdvanceTo(_clock.GetTimestamp());
+                    var started = Stopwatch.GetTimestamp();
+                    session.Advance(elapsed);
+                    var durationNs = (Stopwatch.GetTimestamp() - started) * 1_000_000_000L / Stopwatch.Frequency;
+                    _comparison?.WriteBounded("advance", AmberComparisonSession.AdvanceLimit, "Advance", $"iteration:{iteration}|elapsed_ns:{elapsed}|time_source:monotonic_variable|advance_calls:1|native_return:unavailable|catch_up:false|clamping:false|duration_ns:{durationNs}");
                     ProcessInputs(session);
                     PublishSnapshot(session.GetSnapshot());
                     ReadAudio(session);
@@ -290,6 +320,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         if (!session.Capabilities.Has(FabricCapability.Audio))
             return;
         var format = session.GetAudioFormat();
+        _comparison?.Write("GetAudioFormat", $"sample_rate:{format.SampleRate}|channels:{format.ChannelCount}|bits_per_sample:{format.BitsPerSample}|encoding:pcm_signed|interleaving:{format.Interleaved}");
         if (format.SampleRate == 0 || format.ChannelCount == 0 || format is not
             { BitsPerSample: 16, Interleaved: true, SignedSamples: true, LittleEndian: true })
             throw new NotSupportedException($"Unsupported Fabric audio format: {format}.");
@@ -301,6 +332,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             checked((int)format.ChannelCount),
             checked((int)format.BitsPerSample)));
         _audioStarted = true;
+        _comparison?.Write("AudioSink", "state:started");
     }
 
     private void ProcessInputs(IFabricMachineSession session)
@@ -325,10 +357,26 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         var bytes = MemoryMarshal.AsBytes(_audioBuffer.AsSpan(0, sampleCount));
         if (!bytes.IsEmpty)
             _audioSink.PushPcm(bytes);
+        if (_comparison is not null)
+        {
+            var samples = _audioBuffer.AsSpan(0, sampleCount);
+            var nonzero = 0; var peak = 0;
+            foreach (var sample in samples) { if (sample != 0) nonzero++; peak = Math.Max(peak, Math.Abs((int)sample)); }
+            _comparison.WriteBounded("audio", AmberComparisonSession.AudioLimit, "ReadAudio", $"requested_frames:{frameCapacity}|returned_frames:{framesWritten}|nonzero_samples:{nonzero}|peak_absolute_sample:{peak}|submitted_frames:{framesWritten}");
+        }
     }
 
     private void PublishSnapshot(FabricMachineSnapshot snapshot)
     {
+        if (_comparison?.Enabled == true)
+        {
+            var fingerprint = string.Join(',', snapshot.Lamps.Select(x => $"{x.NumericalIndex}:{x.LogicalState}:{x.Brightness}")) + ";" +
+                string.Join(',', snapshot.Reels.Select(x => $"{x.NumericalIndex}:{x.Position}")) + ";" +
+                string.Join(',', snapshot.CharacterDisplays.SelectMany(x => x.Characters)) + ";" +
+                string.Join(',', snapshot.SegmentDisplays.SelectMany(x => x.SegmentMasks));
+            var change = _comparison.TrackSnapshot(fingerprint);
+            _comparison.WriteBounded("snapshot", AmberComparisonSession.SnapshotLimit, "GetSnapshot", $"sequence:{snapshot.Sequence}|lamp_count:{snapshot.Lamps.Count}|reel_count:{snapshot.Reels.Count}|reel_positions:{string.Join(',', snapshot.Reels.Select(x => x.Position))}|character_display_count:{snapshot.CharacterDisplays.Count}|segment_display_count:{snapshot.SegmentDisplays.Count}|{change}");
+        }
         foreach (var lamp in snapshot.Lamps)
         {
             var value = (lamp.LogicalState, lamp.Brightness);
@@ -376,6 +424,13 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         }
     }
 
+    private void WriteConfiguration(System6NativeRomSettings settings)
+    {
+        _comparison?.Write("ConfigureReels", string.Join(",", settings.ReelOptos.Select(r => $"index:{r.ReelIndex}|enabled:{r.Enabled}|steps:{r.Steps}|opto_start:{r.OptoStart}|opto_end:{r.OptoEnd}|opto_invert:{r.OptoInvert}|apply:true")));
+        _comparison?.Write("ConfigureCoins", string.Join(",", settings.Coins.Select(c => $"index:{c.Num}|enabled:{c.Enabled}|value:{c.CoinValue}|lockout_invert:{c.LockoutInvert}|port_index:{c.PortIndex}|coin_code:{c.Coin}|level:{c.Level}|full_level:{c.FullLevel}")));
+        _comparison?.Write("ConfigurePercentage", $"raw_value:{settings.PercentSwitchValue}");
+    }
+
     private async Task CleanupResourcesAsync()
     {
         await _sessionGate.WaitAsync().ConfigureAwait(false);
@@ -384,22 +439,30 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         {
             if (_session is not null)
             {
+                var releasedCount = _assertedInputs.Count;
                 TryCleanup(ReleaseAssertedInputs, ref failures);
+                _comparison?.Write("SubmitInput", "shutdown_release:true", "success", $"released_count:{releasedCount}");
                 if (!_shutdown)
                 {
                     TryCleanup(_session.Shutdown, ref failures);
+                    _comparison?.Write("Shutdown");
                     _shutdown = true;
                 }
                 TryCleanup(_session.Dispose, ref failures);
+                _comparison?.Write("Destroy", "resource:session");
                 _session = null;
             }
             if (_audioStarted)
             {
                 TryCleanup(_audioSink.Stop, ref failures);
+                _comparison?.Write("AudioSink", "state:stopped");
                 _audioStarted = false;
             }
             if (_runtime is not null)
+            {
                 TryCleanup(_runtime.Dispose, ref failures);
+                _comparison?.Write("Destroy", "resource:runtime");
+            }
             _runtime = null;
             _audioFormat = null;
             _pumpCancellation?.Dispose();
