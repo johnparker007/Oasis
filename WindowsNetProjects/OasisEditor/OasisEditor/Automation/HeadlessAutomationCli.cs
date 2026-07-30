@@ -8,7 +8,6 @@ internal enum HeadlessExitCode
     InputFileNotFound = 2,
     ImportFailed = 3,
     SaveFailed = 4,
-    ExportFailed = 5,
     UnexpectedError = 10
 }
 
@@ -49,7 +48,6 @@ internal static class HeadlessAutomationCli
         var input = ReadValue(args, "--input");
         var projectFile = ReadValue(args, "--project");
         var panel = ReadValue(args, "--panel");
-        var exportLay = ReadValue(args, "--export-lay");
 
         if (string.IsNullOrWhiteSpace(input) || string.IsNullOrWhiteSpace(projectFile) || string.IsNullOrWhiteSpace(panel))
         {
@@ -81,8 +79,7 @@ internal static class HeadlessAutomationCli
             ProjectRootLocation = projectDirectory,
             InputFmlPath = fullInput,
             PanelDocumentTitle = Path.GetFileNameWithoutExtension(panelRelativeOrName),
-            OutputPanelPath = outputPanelPath,
-            ExportLayPath = exportLay
+            OutputPanelPath = outputPanelPath
         };
 
         return HeadlessCliParseResult.Success(options);
@@ -96,7 +93,6 @@ internal static class HeadlessAutomationCli
             new Panel2DDocumentCreationService(),
             new FmlAutomationImportService(),
             new DocumentSaveService(),
-            new PlaceholderMameLayExportService(),
             options);
 
         var context = new OasisAutomationCommandContext
@@ -120,13 +116,6 @@ internal static class HeadlessAutomationCli
         if (message.Contains("save", StringComparison.OrdinalIgnoreCase))
         {
             return HeadlessExitCode.SaveFailed;
-        }
-
-        if (message.Contains("lay", StringComparison.OrdinalIgnoreCase)
-            || message.Contains("export", StringComparison.OrdinalIgnoreCase)
-            || message.Contains("not implemented", StringComparison.OrdinalIgnoreCase))
-        {
-            return HeadlessExitCode.ExportFailed;
         }
 
         return HeadlessExitCode.UnexpectedError;

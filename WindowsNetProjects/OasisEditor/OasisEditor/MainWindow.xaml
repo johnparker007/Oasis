@@ -144,138 +144,20 @@
                           Command="{Binding OpenProjectSettingsCommand}" />
             </MenuItem>
             <MenuItem Header="_Window">
-                <MenuItem Header="_Assets"
-                          Click="OnAssetsWindowMenuItemClicked" />
-                <MenuItem Header="_Hierarchy"
-                          Click="OnHierarchyWindowMenuItemClicked" />
-                <MenuItem Header="_Inspector"
-                          Click="OnInspectorWindowMenuItemClicked" />
-                <MenuItem Header="_Output"
-                          Click="OnOutputWindowMenuItemClicked" />
-                <MenuItem Header="_Play View"
-                          Command="{Binding OpenPlayViewCommand}" />
-                <MenuItem Header="_Input Map"
-                          Command="{Binding OpenInputMapCommand}" />
-                <Separator />
-                <MenuItem Header="Debugger _Control"
-                          Command="{Binding OpenDebuggerControlCommand}" />
-                <MenuItem Header="Debugger _Disassembly"
-                          Command="{Binding OpenDebuggerDisassemblyCommand}" />
-                <MenuItem Header="Debugger _Registers"
-                          Command="{Binding OpenDebuggerRegistersCommand}" />
-                <MenuItem Header="Debugger _Memory"
-                          Command="{Binding OpenDebuggerMemoryCommand}" />
-                <MenuItem Header="Debugger _Breakpoints"
-                          Command="{Binding OpenDebuggerBreakpointsCommand}" />
-                <MenuItem Header="Debugger _Watchpoints"
-                          Command="{Binding OpenDebuggerWatchpointsCommand}" />
+                <MenuItem Header="_Assets" Click="OnAssetsWindowMenuItemClicked" />
+                <MenuItem Header="_Hierarchy" Click="OnHierarchyWindowMenuItemClicked" />
+                <MenuItem Header="_Inspector" Click="OnInspectorWindowMenuItemClicked" />
+                <MenuItem Header="_Output" Click="OnOutputWindowMenuItemClicked" />
+                <MenuItem Header="_Play View" Command="{Binding OpenPlayViewCommand}" />
+                <MenuItem Header="_Input Map" Command="{Binding OpenInputMapCommand}" />
             </MenuItem>
             <MenuItem Header="_Emulation">
-                <MenuItem.Resources>
-                    <Style x:Key="EmulationMenuItemWithCheckSlotStyle"
-                           TargetType="{x:Type MenuItem}"
-                           BasedOn="{StaticResource EditorMenuItemStyle}">
-                        <Setter Property="Tag"
-                                Value="ReserveCheckGlyph" />
-                    </Style>
-                </MenuItem.Resources>
-                <MenuItem Header="Start And _Load State"
-                          Command="{Binding StartAndLoadStateEmulationCommand}"
-                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
-                <MenuItem Header="Start _Debugger And Load State"
-                          Command="{Binding StartDebuggerAndLoadStateEmulationCommand}"
-                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
-                <MenuItem Header="Save State And E_xit"
-                          Command="{Binding SaveStateAndExitEmulationCommand}"
-                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                <MenuItem Header="_Start" Command="{Binding StartEmulationCommand}" />
+                <MenuItem Header="_Stop" Command="{Binding StopEmulationCommand}" />
+                <MenuItem Header="_Pause" Command="{Binding TogglePauseEmulationCommand}" IsCheckable="True" IsChecked="{Binding IsPauseEmulationChecked, Mode=OneWay}" />
                 <Separator />
-                <MenuItem Header="_Start"
-                          Command="{Binding StartEmulationCommand}"
-                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
-                <MenuItem Header="Start _Debugger"
-                          Command="{Binding StartDebuggerEmulationCommand}"
-                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
-                <MenuItem Header="_Load State"
-                          Command="{Binding LoadStateEmulationCommand}"
-                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
-                <MenuItem Header="Save _State"
-                          Command="{Binding SaveStateEmulationCommand}"
-                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
-                <MenuItem Header="_Exit"
-                          Command="{Binding StopEmulationCommand}"
-                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
-                <Separator />
-                <MenuItem Header="_Pause"
-                          Command="{Binding TogglePauseEmulationCommand}"
-                          IsCheckable="True"
-                          IsChecked="{Binding IsPauseEmulationChecked, Mode=OneWay}"
-                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
-                <MenuItem Header="_Unthrottle"
-                          Command="{Binding ToggleUnthrottleEmulationCommand}"
-                          IsCheckable="True"
-                          IsChecked="{Binding IsUnthrottleEmulationChecked, Mode=OneWay}"
-                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
-                <Separator />
-                <MenuItem Header="Soft _Reset"
-                          Command="{Binding SoftResetEmulationCommand}"
-                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
-                <MenuItem Header="_Hard Reset"
-                          Command="{Binding HardResetEmulationCommand}"
-                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
-                <Separator />
-                <MenuItem Header="Open Debugger _Panels">
-                    <MenuItem Header="_Control"
-                              Command="{Binding OpenDebuggerControlCommand}"
-                              Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
-                    <MenuItem Header="_Disassembly"
-                              Command="{Binding OpenDebuggerDisassemblyCommand}"
-                              Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
-                    <MenuItem Header="_Registers"
-                              Command="{Binding OpenDebuggerRegistersCommand}"
-                              Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
-                    <MenuItem Header="_Memory"
-                              Command="{Binding OpenDebuggerMemoryCommand}"
-                              Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
-                    <MenuItem Header="_Breakpoints"
-                              Command="{Binding OpenDebuggerBreakpointsCommand}"
-                              Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
-                    <MenuItem Header="_Watchpoints"
-                              Command="{Binding OpenDebuggerWatchpointsCommand}"
-                              Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
-                </MenuItem>
-                <Separator />
-                <MenuItem Header="Debugger _Status"
-                          Command="{Binding RefreshDebuggerStatusCommand}"
-                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
-                <MenuItem Header="Debugger _CPU List"
-                          Command="{Binding ListDebuggerCpusCommand}"
-                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
-                <MenuItem Header="Debugger _Run"
-                          Command="{Binding DebuggerRunCommand}"
-                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
-                <MenuItem Header="Debugger _Break"
-                          Command="{Binding DebuggerBreakCommand}"
-                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
-                <MenuItem Header="Debugger S_tep"
-                          Command="{Binding DebuggerStepCommand}"
-                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
-                <Separator />
-                <MenuItem Header="Debugger List Break_points"
-                          Command="{Binding ListDebuggerBreakpointsCommand}"
-                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
-                <MenuItem Header="Debugger List _Watchpoints"
-                          Command="{Binding ListDebuggerWatchpointsCommand}"
-                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
-                <MenuItem Header="Debugger Add Test Breakpoint At _PC"
-                          Command="{Binding AddTestDebuggerBreakpointCommand}"
-                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
-                <Separator />
-                <MenuItem Header="Debugger Disassemble Around _PC"
-                          Command="{Binding DisassembleAroundCurrentPcCommand}"
-                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
-                <MenuItem Header="Debugger Disassemble From _0x0"
-                          Command="{Binding DisassembleFixedAddressTestBlockCommand}"
-                          Style="{StaticResource EmulationMenuItemWithCheckSlotStyle}" />
+                <MenuItem Header="Soft _Reset" Command="{Binding SoftResetEmulationCommand}" />
+                <MenuItem Header="_Hard Reset" Command="{Binding HardResetEmulationCommand}" />
             </MenuItem>
         </Menu>
 

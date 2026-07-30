@@ -1,4 +1,3 @@
-using OasisEditor;
 using Xunit;
 
 namespace OasisEditor.Tests;
@@ -6,126 +5,95 @@ namespace OasisEditor.Tests;
 public sealed class EmulationBackendFactoryTests
 {
     [Fact]
-    public void CreateBackend_ForNone_ReturnsNull()
+    public void None_ReturnsNull()
     {
-        var factory = new EmulationBackendFactory(() => new FakeBackend(), () => "C:/cores/AmberBridge.dll");
-
+        var factory = CreateFactory(null, null);
         Assert.Null(factory.CreateBackend(FruitMachinePlatformType.None));
     }
 
     [Fact]
-    public void CreateBackend_ForImpactWithSystem6Path_ReturnsSystem6Backend()
+    public void Impact_WithValidConfiguration_ReturnsFabricBackend()
     {
-        var factory = new EmulationBackendFactory(() => new FakeBackend(), () => "C:/cores/AmberBridge.dll", amberBridgeFactory: _ => throw new InvalidOperationException("created only on start"));
-
-        Assert.IsType<System6NativeBackend>(factory.CreateBackend(FruitMachinePlatformType.Impact));
-    }
-
-    [Fact]
-    public void CreateBackend_ForImpactWithoutSystem6Path_FallsBackToMameBackend()
-    {
-        var mameBackend = new FakeBackend();
-        var factory = new EmulationBackendFactory(() => mameBackend, () => string.Empty);
-
-        Assert.Same(mameBackend, factory.CreateBackend(FruitMachinePlatformType.Impact));
-    }
-
-    [Fact]
-    public void CreateBackend_ForMpu4_ReturnsMameBackend()
-    {
-        var mameBackend = new FakeBackend();
-        var factory = new EmulationBackendFactory(() => mameBackend, () => "C:/cores/AmberBridge.dll");
-
-        Assert.Same(mameBackend, factory.CreateBackend(FruitMachinePlatformType.MPU4));
-    }
-
-    [Fact]
-    public void CreateBackend_WithValidFabricFeature_ReturnsFabricBackend()
-    {
-        var factory = new EmulationBackendFactory(() => new FakeBackend(), () => "legacy.dll",
-            fabricConfigurationProvider: () => (true, "runtime.dll", "amber.dll"));
-
+        using var files = NativeFiles.Create();
+        var factory = CreateFactory(files.Runtime, files.Amber);
         Assert.IsType<FabricEmulationBackend>(factory.CreateBackend(FruitMachinePlatformType.Impact));
     }
 
     [Theory]
-    [InlineData(false, 73)]
-    [InlineData(true, 73)]
-    [InlineData(false, NativeEmulationPreferences.DefaultAudioBufferLengthMilliseconds)]
-    [InlineData(true, NativeEmulationPreferences.DefaultAudioBufferLengthMilliseconds)]
-    public void AmberBackends_UseTheSameConfiguredAudioBuffer(bool fabricEnabled, int configuredMilliseconds)
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Impact_MissingConfiguredPath_ThrowsActionableError(bool runtime)
     {
-        var factory = new EmulationBackendFactory(() => new FakeBackend(), () => "legacy.dll",
-            () => configuredMilliseconds,
-            fabricConfigurationProvider: () => (fabricEnabled, "runtime.dll", "amber.dll"));
+        using var files = NativeFiles.Create();
+        var factory = CreateFactory(runtime ? null : files.Runtime, runtime ? files.Amber : null);
+        var error = Assert.Throws<InvalidOperationException>(() => factory.CreateBackend(FruitMachinePlatformType.Impact));
+        Assert.Contains(runtime ? "Fabric runtime" : "Production Amber", error.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Preferences", error.Message, StringComparison.OrdinalIgnoreCase);
+    }
 
-        var backend = factory.CreateBackend(FruitMachinePlatformType.Impact);
-        var sink = backend switch
-        {
-            FabricEmulationBackend fabric => fabric.AudioSink,
-            System6NativeBackend direct => direct.AudioSink,
-            _ => throw new Xunit.Sdk.XunitException("Expected an Amber backend.")
-        };
-
-        Assert.Equal(configuredMilliseconds, Assert.IsType<NAudioEmulationAudioSink>(sink).BufferLengthMilliseconds);
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Impact_MissingFile_ThrowsActionableError(bool runtime)
+    {
+        using var files = NativeFiles.Create();
+        var missing = Path.Combine(files.Directory, "missing.dll");
+        var factory = CreateFactory(runtime ? missing : files.Runtime, runtime ? files.Amber : missing);
+        var error = Assert.Throws<FileNotFoundException>(() => factory.CreateBackend(FruitMachinePlatformType.Impact));
+        Assert.Contains(runtime ? "FabricRuntime.dll" : "production Amber", error.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public void CreateBackend_WithIncompleteEnabledFabricFeature_ThrowsActionableError()
+    public void Epoch_ThrowsBeforePathValidation()
     {
-        var factory = new EmulationBackendFactory(() => new FakeBackend(), () => "legacy.dll",
-            fabricConfigurationProvider: () => (true, "runtime.dll", null));
-
-        var error = Assert.Throws<InvalidOperationException>(() => factory.CreateBackend(FruitMachinePlatformType.Impact));
-        Assert.Contains("both the Fabric runtime DLL path and Amber API v2 DLL path", error.Message);
+        var error = Assert.Throws<NotSupportedException>(() => CreateFactory(null, null).CreateBackend(FruitMachinePlatformType.Epoch));
+        Assert.Contains("Epoch", error.Message);
     }
 
-    private sealed class FakeBackend : IEmulationBackend
+    [Fact]
+    public void EveryOtherUnsupportedEnumValue_ThrowsNotSupportedException()
     {
-        public EmulationBackendKind BackendKind => EmulationBackendKind.Mame;
-        public EmulationBackendState State => EmulationBackendState.Stopped;
-        public EmulationBackendCapabilities Capabilities { get; } = new(false, false, false, false, false, false, false, false);
-        public event EventHandler<EmulationBackendState>? StateChanged
-        {
-            add { }
-            remove { }
-        }
+        foreach (var platform in Enum.GetValues<FruitMachinePlatformType>().Where(value => value is not FruitMachinePlatformType.None and not FruitMachinePlatformType.Impact and not FruitMachinePlatformType.Epoch))
+            Assert.Throws<NotSupportedException>(() => CreateFactory(null, null).CreateBackend(platform));
+    }
 
-        public event EventHandler<MachineLampChangedEventArgs>? LampChanged
-        {
-            add { }
-            remove { }
-        }
+    [Fact]
+    public void ConfiguredAudioBufferLength_ReachesFabricAudioSinkFactory()
+    {
+        using var files = NativeFiles.Create();
+        var received = 0;
+        var factory = CreateFactory(files.Runtime, files.Amber, () => 73, value => { received = value; return new NullSink(); });
+        Assert.IsType<FabricEmulationBackend>(factory.CreateBackend(FruitMachinePlatformType.Impact));
+        Assert.Equal(73, received);
+    }
 
-        public event EventHandler<MachineReelChangedEventArgs>? ReelChanged
-        {
-            add { }
-            remove { }
-        }
+    private static EmulationBackendFactory CreateFactory(string? runtime, string? amber, Func<int>? buffer = null, Func<int, IEmulationAudioSink>? sink = null) =>
+        new(() => runtime, () => amber, buffer, _ => throw new InvalidOperationException("Created only on start."), sink ?? (_ => new NullSink()), new StopwatchFabricClock(), null);
 
-        public event EventHandler<MachineSegmentChangedEventArgs>? SegmentChanged
-        {
-            add { }
-            remove { }
-        }
+    private sealed class NullSink : IEmulationAudioSink
+    {
+        public void Start(EmulationAudioFormat format) { }
+        public void PushPcm(ReadOnlySpan<byte> pcmBytes) { }
+        public void Stop() { }
+        public void Clear() { }
+        public void Dispose() { }
+    }
 
-        public event EventHandler<MachineVfdBrightnessChangedEventArgs>? VfdBrightnessChanged
+    private sealed class NativeFiles : IDisposable
+    {
+        private NativeFiles(string directory, string runtime, string amber) { Directory = directory; Runtime = runtime; Amber = amber; }
+        public string Directory { get; }
+        public string Runtime { get; }
+        public string Amber { get; }
+        public static NativeFiles Create()
         {
-            add { }
-            remove { }
+            var directory = Path.Combine(Path.GetTempPath(), "oasis-factory-" + Guid.NewGuid().ToString("N"));
+            System.IO.Directory.CreateDirectory(directory);
+            var runtime = Path.Combine(directory, "FabricRuntime.dll");
+            var amber = Path.Combine(directory, "ProductionAmber.dll");
+            File.WriteAllBytes(runtime, []); File.WriteAllBytes(amber, []);
+            return new(directory, runtime, amber);
         }
-
-        public event EventHandler<MachineDotMatrixChangedEventArgs>? DotMatrixChanged
-        {
-            add { }
-            remove { }
-        }
-        public Task StartAsync(EmulationLaunchRequest request, CancellationToken cancellationToken) => Task.CompletedTask;
-        public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-        public Task PauseAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-        public Task ResumeAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-        public Task ResetAsync(EmulationResetKind resetKind, CancellationToken cancellationToken) => Task.CompletedTask;
-        public Task SetInputStateAsync(InputDefinitionModel inputDefinition, bool isPressed, CancellationToken cancellationToken) => Task.CompletedTask;
-        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+        public void Dispose() { if (System.IO.Directory.Exists(Directory)) System.IO.Directory.Delete(Directory, true); }
     }
 }

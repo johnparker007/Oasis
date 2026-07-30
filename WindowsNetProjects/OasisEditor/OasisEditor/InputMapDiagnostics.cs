@@ -20,13 +20,6 @@ public interface IInputMapDiagnosticsService
 
 public sealed class InputMapDiagnosticsService : IInputMapDiagnosticsService
 {
-    private readonly IMameInputPortResolver _resolver;
-
-    public InputMapDiagnosticsService(IMameInputPortResolver resolver)
-    {
-        _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
-    }
-
     public IReadOnlyList<InputMapDiagnostic> Analyze(FruitMachinePlatformType platform, IReadOnlyList<InputDefinitionModel> inputs)
     {
         ArgumentNullException.ThrowIfNull(inputs);
@@ -40,15 +33,6 @@ public sealed class InputMapDiagnosticsService : IInputMapDiagnosticsService
             if (input is null || string.IsNullOrWhiteSpace(input.Id))
             {
                 continue;
-            }
-
-            if (!_resolver.TryResolve(platform, input, out _))
-            {
-                diagnostics.Add(new InputMapDiagnostic(
-                    "input.unresolved_target",
-                    $"Input '{input.Name}' cannot resolve MAME tag/mask for platform {platform}.",
-                    input.Id,
-                    InputMapDiagnosticSeverity.Warning));
             }
 
             if (!string.IsNullOrWhiteSpace(input.KeyboardShortcut))

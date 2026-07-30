@@ -85,8 +85,6 @@ internal sealed class FmlImportDiagnosticsWriter
                     i.RawMfmeShortcut,
                     i.KeyboardShortcut,
                     i.LinkedVisualElementId,
-                    i.MamePortTag,
-                    i.MameMask,
                     i.Notes
                 }),
             Warnings = mapResult.Warnings

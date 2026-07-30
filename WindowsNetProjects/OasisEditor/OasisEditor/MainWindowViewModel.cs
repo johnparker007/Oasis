@@ -10,8 +10,6 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Collections.Specialized;
 using Microsoft.Win32;
-using OasisEditor.Features.MameDebugger;
-using OasisEditor.Features.MameDebugger.ViewModels;
 using OasisEditor.Features.LayoutImport;
 using OasisEditor.Features.FmlImport;
 using OasisEditor.Features.CabinetEditor.Models;
@@ -24,7 +22,7 @@ namespace OasisEditor;
 
 public sealed class MainWindowViewModel : INotifyPropertyChanged
 {
-    private const int NativeSystem6SevenSegmentCellStride = 16;
+    private const int System6SevenSegmentCellStride = 16;
     private static readonly bool kDebugSkiaPerformanceOutput = false;
     private readonly RecentProjectsStore _recentProjectsStore = new();
     private readonly IApplicationThemeService _applicationThemeService;
@@ -35,29 +33,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private EditorProject? _loadedProject;
     private DocumentTabViewModel? _selectedDocument;
     private ThemePreference _selectedThemePreference;
-    private string _mameVersion = "0267";
-    private string _mameExecutablePath = string.Empty;
-    private string _mameInstallRootDirectory = string.Empty;
-    private string _mameReleaseSource = string.Empty;
-    private string _mameLuaPluginPath = string.Empty;
-    private string _mameCommandLineOverrides = string.Empty;
-    private string _system6NativeLibraryPath = string.Empty;
-    private bool _useFabricForAmber;
     private string _fabricRuntimeLibraryPath = string.Empty;
-    private string _fabricAmberApiV2LibraryPath = string.Empty;
+    private string _productionAmberLibraryPath = string.Empty;
     private int _system6AudioBufferLengthMilliseconds = NativeEmulationPreferences.DefaultAudioBufferLengthMilliseconds;
-    private string _mameRomDownloadBaseUrl = MameRomDownloadService.DefaultDownloadRootUrl;
-    private string _mameRomArchiveExtension = MameRomDownloadService.DefaultArchiveExtension;
-    private string _mameLocalRomSourceDirectory = string.Empty;
-    private string _mameLocalRomArchiveExtension = MameRomDownloadService.DefaultArchiveExtension;
-    private bool _keepMameUpToDateAutomatically = true;
-    private bool _debugOutputLamps;
-    private bool _debugOutputStdIn;
-    private bool _debugOutputStdOut;
     private string _lastMfmeFmlImportDirectory = string.Empty;
     private FaceGenerationSettingsModel _defaultFaceGenerationSettings = FaceGenerationSettingsModel.Default;
     private bool _showFaceGenerationSettingsBeforeRegenerate = true;
-    private string _mameValidationSummary = "Not validated.";
     private string _oasisPlayerExecutablePath = string.Empty;
     private bool _oasisPlayerFullscreen;
     private int _oasisPlayerPreviewWidth = OasisPlayerLaunchService.DefaultPreviewWidth;
@@ -66,7 +47,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string _selectedProjectSettingsCategory = "General";
     private string _selectedNativeProjectSettingsTab = "ROMS";
     private FruitMachinePlatformType _selectedFruitMachinePlatform = FruitMachinePlatformType.None;
-    private string _mameRomName = string.Empty;
     private bool _automaticallyDownloadMissingRoms = true;
     private string _system6ProgramRom1Path = string.Empty;
     private string _system6ProgramRom2Path = string.Empty;
@@ -78,11 +58,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string _system6SoundRom4Path = string.Empty;
     private bool _system6FlashSwitch;
     private int _system6PercentSwitchValue = System6NativeRomSettings.DefaultPercentSwitchValue;
-    private string _system6NativeRomStatus = "Program ROM 1 and 2 are required for native DLL launch.";
+    private string _system6NativeRomStatus = "Program ROM 1 and 2 are required for Fabric Amber launch.";
     private ObservableCollection<System6ReelOptoSettingsViewModel> _system6ReelOptos = [];
     private ObservableCollection<System6CoinSettingsViewModel> _system6Coins = [];
-    private string _mameRomStatus = "Unknown";
-    private bool _isMameRomDownloadInProgress;
     private bool _isFmlImportInProgress;
     private bool _isEditorProgressVisible;
     private bool _isEditorProgressIndeterminate;
@@ -100,27 +78,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly IFmlImportService _fmlImportService = new FmlImportService();
     private readonly Automation.IDocumentSaveService _documentSaveService = new Automation.DocumentSaveService();
     private readonly IProgressDialogService _progressDialogService;
-    private readonly MameDownloadService _mameDownloadService = new();
-    private readonly MameRomDownloadService _mameRomDownloadService = new();
-    private readonly MamePluginAssetValidator _mamePluginAssetValidator = new();
-    private readonly MamePluginDeploymentService _mamePluginDeploymentService = new();
-    private readonly IMameSetupOrchestrator _mameSetupOrchestrator;
-    private readonly IMameVersionCatalogService _mameVersionCatalogService;
     private bool _isLoadingPreferences;
-    private readonly IMameEmulationService _mameEmulationService;
-    private readonly IMameProcessRunner _mameProcessRunner;
     private readonly IEmulationBackendFactory _emulationBackendFactory;
-    private readonly IMameLampRuntimeAdapter _lampRuntimeAdapter;
-    private readonly IMameReelRuntimeAdapter _reelRuntimeAdapter;
-    private readonly IMameSegmentRuntimeAdapter _segmentRuntimeAdapter;
+    private readonly IMachineLampRuntimeAdapter _lampRuntimeAdapter;
+    private readonly IMachineReelRuntimeAdapter _reelRuntimeAdapter;
+    private readonly IMachineSegmentRuntimeAdapter _segmentRuntimeAdapter;
     private IEmulationBackend? _activeEmulationBackend;
-    private readonly IMameDebuggerService _mameDebuggerService;
-    private readonly MameDebuggerShellViewModel _mameDebuggerShell;
-    private MameSetupState _mameSetupState = MameSetupState.NotStarted;
-    private bool _isAutoProvisioningMame;
-    private bool _isMameUnthrottled;
-    private MameEmulationState _mameEmulationState = MameEmulationState.Stopped;
-    private readonly IInputMapDiagnosticsService _inputMapDiagnosticsService = new InputMapDiagnosticsService(new MameInputPortResolver());
+    private EmulationBackendState _emulationState = EmulationBackendState.Stopped;
+    private readonly IInputMapDiagnosticsService _inputMapDiagnosticsService = new InputMapDiagnosticsService();
     private readonly OasisPlayerPreviewService _oasisPlayerPreviewService = new();
     private IReadOnlyList<InputMapDiagnostic> _inputMapDiagnostics = [];
     private PlayViewInputRouter? _playViewInputRouter;
@@ -183,22 +148,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OpenProjectSettingsCommand = new RelayCommand(OpenProjectSettings);
         OpenInputMapCommand = new RelayCommand(OpenInputMap);
         OpenPlayViewCommand = new RelayCommand(OpenPlayView);
-        OpenDebuggerControlCommand = new RelayCommand(OpenDebuggerControl);
-        OpenDebuggerDisassemblyCommand = new RelayCommand(OpenDebuggerDisassembly);
-        OpenDebuggerRegistersCommand = new RelayCommand(OpenDebuggerRegisters);
-        OpenDebuggerMemoryCommand = new RelayCommand(OpenDebuggerMemory);
-        OpenDebuggerBreakpointsCommand = new RelayCommand(OpenDebuggerBreakpoints);
-        OpenDebuggerWatchpointsCommand = new RelayCommand(OpenDebuggerWatchpoints);
         ClosePreferencesCommand = new RelayCommand(ClosePreferences);
-        BrowseMameExecutableCommand = new RelayCommand(BrowseMameExecutable);
         BrowseOasisPlayerExecutableCommand = new RelayCommand(BrowseOasisPlayerExecutable);
-        ValidateMamePreferencesCommand = new RelayCommand(ValidateMamePreferences);
-        RefreshMameVersionsCommand = new RelayCommand(RefreshMameVersions);
-        DownloadMameVersionCommand = new RelayCommand(DownloadMameVersion);
-        OpenMameInstallRootCommand = new RelayCommand(OpenMameInstallRoot);
-        ResyncMamePluginsCommand = new RelayCommand(ResyncMamePlugins);
-        RemoveCachedMameVersionCommand = new RelayCommand(RemoveCachedMameVersion);
-        DownloadMameRomCommand = new RelayCommand(DownloadMameRom, CanDownloadMameRom);
         BrowseSystem6ProgramRom1Command = new RelayCommand(() => BrowseSystem6RomPath(1, true));
         BrowseSystem6ProgramRom2Command = new RelayCommand(() => BrowseSystem6RomPath(2, true));
         BrowseSystem6ProgramRom3Command = new RelayCommand(() => BrowseSystem6RomPath(3, true));
@@ -208,32 +159,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         BrowseSystem6SoundRom3Command = new RelayCommand(() => BrowseSystem6RomPath(3, false));
         BrowseSystem6SoundRom4Command = new RelayCommand(() => BrowseSystem6RomPath(4, false));
         ResetSystem6ReelOptosCommand = new RelayCommand(ResetSystem6ReelOptosToDefaults);
-        ResetMameRomSourceDefaultsCommand = new RelayCommand(ResetMameRomSourceDefaults);
         CloseProjectSettingsCommand = new RelayCommand(CloseProjectSettings);
         CloseProjectCommand = new RelayCommand(CloseProject, CanCloseProject);
         ExitCommand = new RelayCommand(ExitApplication);
-        StartAndLoadStateEmulationCommand = new RelayCommand(StartAndLoadStateEmulation, CanStartAndLoadStateEmulation);
-        StartDebuggerAndLoadStateEmulationCommand = new RelayCommand(StartDebuggerAndLoadStateEmulation, CanStartAndLoadStateEmulation);
-        SaveStateAndExitEmulationCommand = new RelayCommand(SaveStateAndExitEmulation, CanSaveStateAndExitEmulation);
         StartEmulationCommand = new RelayCommand(StartEmulation, CanStartEmulation);
-        StartDebuggerEmulationCommand = new RelayCommand(StartDebuggerEmulation, CanStartEmulation);
-        LoadStateEmulationCommand = new RelayCommand(LoadStateEmulation, CanLoadStateEmulation);
-        SaveStateEmulationCommand = new RelayCommand(SaveStateEmulation, CanSaveStateEmulation);
         StopEmulationCommand = new RelayCommand(StopEmulation, CanStopEmulation);
         TogglePauseEmulationCommand = new RelayCommand(TogglePauseEmulation, CanTogglePauseEmulation);
-        ToggleUnthrottleEmulationCommand = new RelayCommand(ToggleUnthrottleEmulation, CanSetThrottleEmulation);
         SoftResetEmulationCommand = new RelayCommand(SoftResetEmulation, CanResetEmulation);
         HardResetEmulationCommand = new RelayCommand(HardResetEmulation, CanResetEmulation);
-        RefreshDebuggerStatusCommand = new RelayCommand(RefreshDebuggerStatus, CanQueryDebugger);
-        ListDebuggerCpusCommand = new RelayCommand(ListDebuggerCpus, CanQueryDebugger);
-        DebuggerRunCommand = new RelayCommand(DebuggerRun, CanControlDebugger);
-        DebuggerBreakCommand = new RelayCommand(DebuggerBreak, CanControlDebugger);
-        DebuggerStepCommand = new RelayCommand(DebuggerStep, CanControlDebugger);
-        ListDebuggerBreakpointsCommand = new RelayCommand(ListDebuggerBreakpoints, CanControlDebugger);
-        ListDebuggerWatchpointsCommand = new RelayCommand(ListDebuggerWatchpoints, CanControlDebugger);
-        AddTestDebuggerBreakpointCommand = new RelayCommand(AddTestDebuggerBreakpoint, CanControlDebugger);
-        DisassembleAroundCurrentPcCommand = new RelayCommand(DisassembleAroundCurrentPc, CanControlDebugger);
-        DisassembleFixedAddressTestBlockCommand = new RelayCommand(DisassembleFixedAddressTestBlock, CanControlDebugger);
 
         _outputLog = new OutputLogViewModel();
         _outputLog.PropertyChanged += OnOutputLogPropertyChanged;
@@ -276,33 +209,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             var preferences = _preferencesStore.Load();
             _selectedThemePreference = preferences.ThemePreference;
-            _mameVersion = preferences.Mame.Version;
-            _mameExecutablePath = preferences.Mame.ExecutablePath;
-            _mameInstallRootDirectory = MameRuntimePaths.EnsureManagedRuntimeRootDirectory();
-            _mameReleaseSource = preferences.Mame.ReleaseSource;
-            _mameLuaPluginPath = MameRuntimePaths.ResolveBundledLuaPluginSourcePath();
-            _mameCommandLineOverrides = preferences.Mame.CommandLineOverrides;
-            _system6NativeLibraryPath = preferences.NativeEmulation.System6LibraryPath;
-            _useFabricForAmber = preferences.NativeEmulation.UseFabricForAmber;
             _fabricRuntimeLibraryPath = preferences.NativeEmulation.FabricRuntimeLibraryPath;
-            _fabricAmberApiV2LibraryPath = preferences.NativeEmulation.FabricAmberApiV2LibraryPath;
+            _productionAmberLibraryPath = preferences.NativeEmulation.ProductionAmberLibraryPath;
             _system6AudioBufferLengthMilliseconds = NormalizeSystem6AudioBufferLengthMilliseconds(preferences.NativeEmulation.AudioBufferLengthMilliseconds);
-            _mameRomDownloadBaseUrl = preferences.Mame.RomDownloadBaseUrl;
-            _mameRomArchiveExtension = preferences.Mame.RomArchiveExtension;
-            _mameLocalRomSourceDirectory = preferences.Mame.LocalRomSourceDirectory;
-            _mameLocalRomArchiveExtension = preferences.Mame.LocalRomArchiveExtension;
-            _mameRomDownloadService.DownloadRootUrl = _mameRomDownloadBaseUrl;
-            _mameRomDownloadService.ArchiveExtension = _mameRomArchiveExtension;
-            _mameRomDownloadService.LocalRomSourceDirectory = _mameLocalRomSourceDirectory;
-            _mameRomDownloadService.LocalRomArchiveExtension = _mameLocalRomArchiveExtension;
             _oasisPlayerExecutablePath = preferences.Player.ExecutablePath;
             _oasisPlayerFullscreen = preferences.Player.Fullscreen;
             _oasisPlayerPreviewWidth = preferences.Player.PreviewWidth;
             _oasisPlayerPreviewHeight = preferences.Player.PreviewHeight;
-            _keepMameUpToDateAutomatically = preferences.Mame.KeepMameUpToDateAutomatically;
-            _debugOutputLamps = preferences.Mame.DebugOutputLamps;
-            _debugOutputStdIn = preferences.Mame.DebugOutputStdIn;
-            _debugOutputStdOut = preferences.Mame.DebugOutputStdOut;
             _lastMfmeFmlImportDirectory = preferences.LastMfmeFmlImportDirectory;
             _defaultFaceGenerationSettings = preferences.FaceGeneration.ToSettings();
             _showFaceGenerationSettingsBeforeRegenerate = preferences.FaceGeneration.ShowFaceGenerationSettingsBeforeRegenerate;
@@ -316,106 +229,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             _isLoadingPreferences = false;
         }
-        _mameVersionCatalogService = new MameVersionCatalogService(_mameDownloadService);
-        var setupValidationService = new MameSetupValidationService(_mamePluginAssetValidator, _mameVersionCatalogService);
-        _mameSetupOrchestrator = new MameSetupOrchestrator(setupValidationService);
-        _lampRuntimeAdapter = new MameLampRuntimeAdapter(
-            () => OpenDocuments,
-            () => DebugOutputLamps,
-            message => AddOutputEntry(message, OutputLogStatus.Info),
-            DispatchToUiThread);
-        _reelRuntimeAdapter = new MameReelRuntimeAdapter(
-            () => OpenDocuments,
-            () => SelectedFruitMachinePlatform,
-            () => _activeEmulationBackend?.BackendKind ?? EmulationBackendKind.Mame,
-            () => DebugOutputStdOut,
-            message => AddOutputEntry(message, OutputLogStatus.Info),
-            DispatchToUiThread);
-        _segmentRuntimeAdapter = new MameSegmentRuntimeAdapter(
-            () => OpenDocuments,
-            DispatchToUiThread,
-            () => SelectedFruitMachinePlatform);
-        var mameStdoutParser = new MameStdoutParser(
-            new MameLampStateParser(),
-            _lampRuntimeAdapter,
-            new MameReelStateParser(),
-            _reelRuntimeAdapter,
-            new MameSegmentStateParser(),
-            _segmentRuntimeAdapter,
-            platformProvider: () => SelectedFruitMachinePlatform,
-            vfdDotMatrixStateParser: new MameVfdDotMatrixStateParser(),
-            vfdDotMatrixRuntimeAdapter: new MameVfdDotMatrixRuntimeAdapter(
-                () => OpenDocuments,
-                DispatchToUiThread));
-        _mameProcessRunner = new MameProcessRunner(
-            stdoutLogger: line => ProcessMameStdoutLine(line, mameStdoutParser),
-            stdinLogger: line =>
-            {
-                if (DebugOutputStdIn)
-                {
-                    AddOutputEntry($"[MAME-STDIN] {line}", OutputLogStatus.Info);
-                }
-            },
-            stderrLogger: line => AddOutputEntry($"[MAME-ERR] {line}", OutputLogStatus.Warning));
-        _mameDebuggerService = new MameDebuggerService(
-            _mameProcessRunner,
-            message => AddOutputEntry(message, OutputLogStatus.Info));
-        _mameDebuggerShell = new MameDebuggerShellViewModel(_mameDebuggerService, AddOutputEntry);
-        _mameDebuggerService.DebuggerEventReceived += (_, debuggerEvent) =>
-        {
-            DispatchToUiThread(() =>
-            {
-                AddOutputEntry(
-                    $"MAME debugger event: {debuggerEvent.Event} state={debuggerEvent.State ?? "unknown"} cpu={debuggerEvent.Cpu ?? "unknown"} pc={debuggerEvent.Pc?.ToString() ?? "unknown"}.",
-                    OutputLogStatus.Info);
-                NotifyEmulationCommands();
-                _mameDebuggerShell.NotifyCommandStateChanged();
-            });
-        };
-        _mameEmulationService = new MameEmulationService(
-            new MameProcessStartInfoBuilder(),
-            _mameProcessRunner,
-            BuildMameLaunchRequest);
+        _lampRuntimeAdapter = new MachineLampRuntimeAdapter(
+            () => OpenDocuments, () => false, _ => { }, DispatchToUiThread);
+        _reelRuntimeAdapter = new MachineReelRuntimeAdapter(
+            () => OpenDocuments, () => SelectedFruitMachinePlatform, () => false, _ => { }, DispatchToUiThread);
+        _segmentRuntimeAdapter = new MachineSegmentRuntimeAdapter(() => OpenDocuments, DispatchToUiThread);
         _emulationBackendFactory = new EmulationBackendFactory(
-            () => new MameEmulationBackend(
-                _mameEmulationService,
-                new MameInputCommandService(new MameInputPortResolver()),
-                _mameProcessRunner,
-                () => SelectedFruitMachinePlatform,
-                input => LoadedProject?.InputDefinitions.FirstOrDefault(definition => string.Equals(definition.Id, input.Id, StringComparison.OrdinalIgnoreCase))),
-            () => System6NativeLibraryPath,
+            () => FabricRuntimeLibraryPath, () => ProductionAmberLibraryPath,
             () => System6AudioBufferLengthMilliseconds,
-            fabricConfigurationProvider: () => (UseFabricForAmber, FabricRuntimeLibraryPath, FabricAmberApiV2LibraryPath),
-            fabricErrorLogger: message => AddOutputEntry(message, OutputLogStatus.Error));
-
-        _mameEmulationService.StateChanged += (_, state) =>
-        {
-            DispatchToUiThread(() =>
-            {
-                if (state is MameEmulationState.Stopping or MameEmulationState.Stopped or MameEmulationState.Failed)
-                {
-                    _ = ReleaseAllPlayViewInputsAsync($"emulation state '{state}'", CancellationToken.None);
-                }
-
-                if (state is MameEmulationState.Starting or MameEmulationState.Stopped or MameEmulationState.Failed)
-                {
-                    IsUnthrottleEmulationChecked = false;
-                }
-
-                if (state is MameEmulationState.Stopped or MameEmulationState.Failed)
-                {
-                    _mameDebuggerService.SetDebuggerLaunchActive(false);
-                }
-
-                EmulationState = state;
-                AddOutputEntry($"Emulation state changed to {state}.", OutputLogStatus.Info);
-            });
-        };
-
-        if (_keepMameUpToDateAutomatically)
-        {
-            SyncMameVersionToLatestInstalled();
-        }
+            errorLogger: message => AddOutputEntry(message, OutputLogStatus.Error));
 
         RecentProjects = new ObservableCollection<string>(_recentProjectsStore.Load());
         OpenDocuments = new ObservableCollection<DocumentTabViewModel>();
@@ -494,7 +316,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         LoadStartupProject(startupProjectFilePath.Trim());
         RefreshHierarchy();
-        _ = ValidateMamePreferencesAsync();
     }
 
     public ICommand OpenUntitledDocumentCommand { get; }
@@ -538,22 +359,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand OpenProjectSettingsCommand { get; }
     public ICommand OpenInputMapCommand { get; }
     public ICommand OpenPlayViewCommand { get; }
-    public ICommand OpenDebuggerControlCommand { get; }
-    public ICommand OpenDebuggerDisassemblyCommand { get; }
-    public ICommand OpenDebuggerRegistersCommand { get; }
-    public ICommand OpenDebuggerMemoryCommand { get; }
-    public ICommand OpenDebuggerBreakpointsCommand { get; }
-    public ICommand OpenDebuggerWatchpointsCommand { get; }
     public ICommand ClosePreferencesCommand { get; }
-    public ICommand BrowseMameExecutableCommand { get; }
     public ICommand BrowseOasisPlayerExecutableCommand { get; }
-    public ICommand ValidateMamePreferencesCommand { get; }
-    public ICommand RefreshMameVersionsCommand { get; }
-    public ICommand DownloadMameVersionCommand { get; }
-    public ICommand OpenMameInstallRootCommand { get; }
-    public ICommand ResyncMamePluginsCommand { get; }
-    public ICommand RemoveCachedMameVersionCommand { get; }
-    public ICommand DownloadMameRomCommand { get; }
     public ICommand BrowseSystem6ProgramRom1Command { get; }
     public ICommand BrowseSystem6ProgramRom2Command { get; }
     public ICommand BrowseSystem6ProgramRom3Command { get; }
@@ -564,44 +371,25 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand BrowseSystem6SoundRom4Command { get; }
     public ICommand CloseProjectSettingsCommand { get; }
     public ICommand ResetSystem6ReelOptosCommand { get; }
-    public ICommand ResetMameRomSourceDefaultsCommand { get; }
     public ICommand ApplyInspectorSummaryCommand { get; }
     public ICommand CloseProjectCommand { get; }
     public ICommand ExitCommand { get; }
-    public ICommand StartAndLoadStateEmulationCommand { get; }
-    public ICommand StartDebuggerAndLoadStateEmulationCommand { get; }
-    public ICommand SaveStateAndExitEmulationCommand { get; }
     public ICommand StartEmulationCommand { get; }
-    public ICommand StartDebuggerEmulationCommand { get; }
-    public ICommand LoadStateEmulationCommand { get; }
-    public ICommand SaveStateEmulationCommand { get; }
     public ICommand StopEmulationCommand { get; }
     public ICommand TogglePauseEmulationCommand { get; }
-    public ICommand ToggleUnthrottleEmulationCommand { get; }
     public ICommand SoftResetEmulationCommand { get; }
     public ICommand HardResetEmulationCommand { get; }
-    public ICommand RefreshDebuggerStatusCommand { get; }
-    public ICommand ListDebuggerCpusCommand { get; }
-    public ICommand DebuggerRunCommand { get; }
-    public ICommand DebuggerBreakCommand { get; }
-    public ICommand DebuggerStepCommand { get; }
-    public ICommand ListDebuggerBreakpointsCommand { get; }
-    public ICommand ListDebuggerWatchpointsCommand { get; }
-    public ICommand AddTestDebuggerBreakpointCommand { get; }
-    public ICommand DisassembleAroundCurrentPcCommand { get; }
-    public ICommand DisassembleFixedAddressTestBlockCommand { get; }
     public ObservableCollection<string> RecentProjects { get; }
     public ObservableCollection<DocumentTabViewModel> OpenDocuments { get; }
     public ObservableCollection<AssetBrowserItemViewModel> AssetBrowserItems { get; }
     public ObservableCollection<OutputLogEntry> OutputEntries { get; }
     public OutputLogViewModel OutputLog => _outputLog;
-    public MameDebuggerShellViewModel DebuggerShell => _mameDebuggerShell;
     public IReadOnlyList<AssetDirectoryNodeViewModel> AssetDirectoryTree => _assetBrowser.AssetDirectoryTree;
 
 
     public IReadOnlyList<ThemePreference> ThemePreferences { get; } = Enum.GetValues<ThemePreference>();
-    public IReadOnlyList<string> PreferencesCategories { get; } = ["Appearance", "Player", "MAME", "Native Emulation"];
-    public IReadOnlyList<string> ProjectSettingsCategories { get; } = ["General", "MAME", "Native"];
+    public IReadOnlyList<string> PreferencesCategories { get; } = ["Appearance", "Player", "Fabric Emulation"];
+    public IReadOnlyList<string> ProjectSettingsCategories { get; } = ["General", "Impact / Fabric"];
     public IReadOnlyList<string> NativeProjectSettingsTabs { get; } = ["ROMS", "Stake/Prize", "Reels", "Coins"];
     public IReadOnlyList<FruitMachinePlatformType> FruitMachinePlatformTypes { get; } = Enum.GetValues<FruitMachinePlatformType>();
     public IReadOnlyList<InputDefinitionModel> InputDefinitions => LoadedProject?.InputDefinitions ?? [];
@@ -660,20 +448,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    public string MameVersion { get => _mameVersion; set { if (SetProperty(ref _mameVersion, value)) SavePreferences(); } }
     public string OasisPlayerExecutablePath { get => _oasisPlayerExecutablePath; set { if (SetProperty(ref _oasisPlayerExecutablePath, value)) SavePreferences(); } }
     public bool OasisPlayerFullscreen { get => _oasisPlayerFullscreen; set { if (SetProperty(ref _oasisPlayerFullscreen, value)) SavePreferences(); } }
     public int OasisPlayerPreviewWidth { get => _oasisPlayerPreviewWidth; set { if (SetProperty(ref _oasisPlayerPreviewWidth, value)) SavePreferences(); } }
     public int OasisPlayerPreviewHeight { get => _oasisPlayerPreviewHeight; set { if (SetProperty(ref _oasisPlayerPreviewHeight, value)) SavePreferences(); } }
-    public string MameExecutablePath { get => _mameExecutablePath; set { if (SetProperty(ref _mameExecutablePath, value)) SavePreferences(); } }
-    public string MameInstallRootDirectory => _mameInstallRootDirectory;
-    public string MameReleaseSource { get => _mameReleaseSource; set { if (SetProperty(ref _mameReleaseSource, value)) SavePreferences(); } }
-    public string MameLuaPluginPath => _mameLuaPluginPath;
-    public string MameCommandLineOverrides { get => _mameCommandLineOverrides; set { if (SetProperty(ref _mameCommandLineOverrides, value)) SavePreferences(); } }
-    public string System6NativeLibraryPath { get => _system6NativeLibraryPath; set { if (SetProperty(ref _system6NativeLibraryPath, value)) SavePreferences(); } }
-    public bool UseFabricForAmber { get => _useFabricForAmber; set { if (SetProperty(ref _useFabricForAmber, value)) SavePreferences(); } }
     public string FabricRuntimeLibraryPath { get => _fabricRuntimeLibraryPath; set { if (SetProperty(ref _fabricRuntimeLibraryPath, value)) SavePreferences(); } }
-    public string FabricAmberApiV2LibraryPath { get => _fabricAmberApiV2LibraryPath; set { if (SetProperty(ref _fabricAmberApiV2LibraryPath, value)) SavePreferences(); } }
+    public string ProductionAmberLibraryPath { get => _productionAmberLibraryPath; set { if (SetProperty(ref _productionAmberLibraryPath, value)) SavePreferences(); } }
     public int System6AudioBufferLengthMilliseconds
     {
         get => _system6AudioBufferLengthMilliseconds;
@@ -686,159 +466,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             }
         }
     }
-    public string MameRomDownloadBaseUrl
-    {
-        get => _mameRomDownloadBaseUrl;
-        set
-        {
-            if (SetProperty(ref _mameRomDownloadBaseUrl, value))
-            {
-                _mameRomDownloadService.DownloadRootUrl = value;
-                SavePreferences();
-            }
-        }
-    }
-
-    public string MameRomArchiveExtension
-    {
-        get => _mameRomArchiveExtension;
-        set
-        {
-            if (SetProperty(ref _mameRomArchiveExtension, value))
-            {
-                _mameRomDownloadService.ArchiveExtension = value;
-                SavePreferences();
-            }
-        }
-    }
-
-    public string MameLocalRomSourceDirectory
-    {
-        get => _mameLocalRomSourceDirectory;
-        set
-        {
-            if (SetProperty(ref _mameLocalRomSourceDirectory, value))
-            {
-                _mameRomDownloadService.LocalRomSourceDirectory = value;
-                SavePreferences();
-            }
-        }
-    }
-
-    public string MameLocalRomArchiveExtension
-    {
-        get => _mameLocalRomArchiveExtension;
-        set
-        {
-            if (SetProperty(ref _mameLocalRomArchiveExtension, value))
-            {
-                _mameRomDownloadService.LocalRomArchiveExtension = value;
-                SavePreferences();
-            }
-        }
-    }
-    public bool KeepMameUpToDateAutomatically
-    {
-        get => _keepMameUpToDateAutomatically;
-        set
-        {
-            if (!SetProperty(ref _keepMameUpToDateAutomatically, value))
-            {
-                return;
-            }
-
-            if (value)
-            {
-                SyncMameVersionToLatestInstalled();
-            }
-
-            OnPropertyChanged(nameof(IsMameVersionEditable));
-            SavePreferences();
-        }
-    }
-    public bool IsMameVersionEditable => !KeepMameUpToDateAutomatically;
-    public bool DebugOutputLamps
-    {
-        get => _debugOutputLamps;
-        set
-        {
-            if (SetProperty(ref _debugOutputLamps, value))
-            {
-                SavePreferences();
-            }
-        }
-    }
-    public bool DebugOutputStdIn
-    {
-        get => _debugOutputStdIn;
-        set
-        {
-            if (SetProperty(ref _debugOutputStdIn, value))
-            {
-                SavePreferences();
-            }
-        }
-    }
-    public bool DebugOutputStdOut
-    {
-        get => _debugOutputStdOut;
-        set
-        {
-            if (SetProperty(ref _debugOutputStdOut, value))
-            {
-                SavePreferences();
-            }
-        }
-    }
-    public string MameRomName
-    {
-        get => _mameRomName;
-        set
-        {
-            if (!SetProperty(ref _mameRomName, value))
-            {
-                return;
-            }
-
-            if (LoadedProject is null)
-            {
-                return;
-            }
-
-            LoadedProject.MameRomName = value;
-            SaveLoadedProjectMetadata();
-            RefreshMameRomStatus();
-            if (DownloadMameRomCommand is RelayCommand downloadMameRomCommand)
-            {
-                downloadMameRomCommand.RaiseCanExecuteChanged();
-            }
-        }
-    }
-    public bool AutomaticallyDownloadMissingRoms
-    {
-        get => _automaticallyDownloadMissingRoms;
-        set
-        {
-            if (!SetProperty(ref _automaticallyDownloadMissingRoms, value))
-            {
-                return;
-            }
-
-            if (LoadedProject is null)
-            {
-                return;
-            }
-
-            LoadedProject.AutomaticallyDownloadMissingRoms = value;
-            SaveLoadedProjectMetadata();
-        }
-    }
-    public string MameRomStatus
-    {
-        get => _mameRomStatus;
-        private set => SetProperty(ref _mameRomStatus, value);
-    }
-
     public string System6ProgramRom1Path { get => _system6ProgramRom1Path; set => SetSystem6RomPath(ref _system6ProgramRom1Path, value, nameof(System6ProgramRom1Path)); }
     public string System6ProgramRom2Path { get => _system6ProgramRom2Path; set => SetSystem6RomPath(ref _system6ProgramRom2Path, value, nameof(System6ProgramRom2Path)); }
     public string System6ProgramRom3Path { get => _system6ProgramRom3Path; set => SetSystem6RomPath(ref _system6ProgramRom3Path, value, nameof(System6ProgramRom3Path)); }
@@ -873,10 +500,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public string System6NativeRomStatus { get => _system6NativeRomStatus; private set => SetProperty(ref _system6NativeRomStatus, value); }
     public ObservableCollection<System6ReelOptoSettingsViewModel> System6ReelOptos { get => _system6ReelOptos; private set => SetProperty(ref _system6ReelOptos, value); }
     public ObservableCollection<System6CoinSettingsViewModel> System6Coins { get => _system6Coins; private set => SetProperty(ref _system6Coins, value); }
-    public string MameValidationSummary { get => _mameValidationSummary; private set => SetProperty(ref _mameValidationSummary, value); }
-    public string MameSetupPhaseDisplay => _mameSetupState.Phase.ToString();
-    public string MameSetupLatestKnownVersion => _mameSetupState.LatestKnownVersion;
-    public bool IsMameSetupInProgress => _mameSetupState.IsInProgress;
 
     public bool IsEditorProgressVisible
     {
@@ -951,12 +574,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public string WindowTitle => FormatWindowTitle(LoadedProject?.Name);
 
     public bool HasLoadedProject => LoadedProject is not null;
-    public MameEmulationState EmulationState
+    public EmulationBackendState EmulationState
     {
-        get => _mameEmulationState;
+        get => _emulationState;
         private set
         {
-            if (SetProperty(ref _mameEmulationState, value))
+            if (SetProperty(ref _emulationState, value))
             {
                 OnPropertyChanged(nameof(IsPauseEmulationChecked));
                 NotifyEmulationCommands();
@@ -964,13 +587,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    public bool IsPauseEmulationChecked => EmulationState == MameEmulationState.Paused;
-
-    public bool IsUnthrottleEmulationChecked
-    {
-        get => _isMameUnthrottled;
-        private set => SetProperty(ref _isMameUnthrottled, value);
-    }
+    public bool IsPauseEmulationChecked => EmulationState == EmulationBackendState.Paused;
 
     public string ProjectFilePath
     {
@@ -2154,14 +1771,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private bool EnsurePlayViewInputRouter()
     {
-        if (LoadedProject is null || EmulationState is not MameEmulationState.Running and not MameEmulationState.Paused)
+        if (LoadedProject is null
+            || _activeEmulationBackend is null
+            || EmulationState is not EmulationBackendState.Running and not EmulationBackendState.Paused)
         {
             return false;
         }
 
-        _playViewInputRouter ??= _activeEmulationBackend is not null
-            ? new PlayViewInputRouter(_activeEmulationBackend)
-            : new PlayViewInputRouter(new MameInputCommandService(new MameInputPortResolver()), _mameProcessRunner);
+        _playViewInputRouter ??= new PlayViewInputRouter(_activeEmulationBackend);
         return true;
     }
 
@@ -2171,26 +1788,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ToolWindowOpenRequested?.Invoke(EditorToolWindowId.Preferences);
         AddOutputEntry("Opened Preferences pane.", OutputLogStatus.Info);
     }
-
-    private void BrowseMameExecutable()
-    {
-        var dialog = new OpenFileDialog
-        {
-            Title = "Select mame.exe",
-            Filter = "MAME Executable|mame.exe|Executable Files|*.exe|All Files|*.*",
-            CheckFileExists = true,
-            Multiselect = false,
-            FileName = Path.GetFileName(MameExecutablePath)
-        };
-
-        if (dialog.ShowDialog(_ownerWindow) == true)
-        {
-            MameExecutablePath = dialog.FileName;
-            AddOutputEntry($"Selected MAME executable: {dialog.FileName}", OutputLogStatus.Info);
-            ValidateMamePreferences();
-        }
-    }
-
 
     private void BrowseOasisPlayerExecutable()
     {
@@ -2213,318 +1810,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private async void ValidateMamePreferences()
-    {
-        await ValidateMamePreferencesAsync();
-    }
-
-    private async Task ValidateMamePreferencesAsync()
-    {
-        AutoResolveManagedMameExecutablePath();
-
-        _mameSetupState = new MameSetupState(MameSetupPhase.Validating, "Validating setup...", MameSetupLatestKnownVersion, true, []);
-        OnPropertyChanged(nameof(MameSetupPhaseDisplay));
-        OnPropertyChanged(nameof(IsMameSetupInProgress));
-
-        var state = await _mameSetupOrchestrator.ValidateAsync(
-            new MameSetupValidationRequest(
-                MameExecutablePath,
-                MameInstallRootDirectory,
-                MameLuaPluginPath,
-                MameVersion,
-                MameReleaseSource),
-            CancellationToken.None);
-
-        _mameSetupState = state;
-        OnPropertyChanged(nameof(MameSetupPhaseDisplay));
-        OnPropertyChanged(nameof(MameSetupLatestKnownVersion));
-        OnPropertyChanged(nameof(IsMameSetupInProgress));
-        MameValidationSummary = state.Summary;
-
-        if (state.Phase == MameSetupPhase.Ready)
-        {
-            AddOutputEntry($"MAME preferences validation passed. Latest known version: {MameSetupLatestKnownVersion}.", OutputLogStatus.Info);
-            await TryAutoProvisionMameAsync(state);
-        }
-        else
-        {
-            AddOutputEntry($"MAME preferences validation requires attention: {state.Summary}", OutputLogStatus.Warning);
-            if (state.Issues is not null)
-            {
-                foreach (var issue in state.Issues)
-                {
-                    AddOutputEntry($"MAME setup issue: {issue}", OutputLogStatus.Warning);
-                }
-            }
-
-            await TryAutoProvisionMameAsync(state);
-        }
-    }
-
-    private void AutoResolveManagedMameExecutablePath()
-    {
-        if (!string.IsNullOrWhiteSpace(MameExecutablePath) && File.Exists(MameExecutablePath))
-        {
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(MameInstallRootDirectory) || !Directory.Exists(MameInstallRootDirectory))
-        {
-            return;
-        }
-
-        var candidates = new List<string>();
-        if (!string.IsNullOrWhiteSpace(MameVersion))
-        {
-            var versionInstallDirectory = _mameDownloadService.GetInstallDirectory(MameInstallRootDirectory, MameVersion);
-            candidates.Add(Path.Combine(versionInstallDirectory, "mame.exe"));
-            candidates.Add(Path.Combine(versionInstallDirectory, $"mame{MameVersion}", "mame.exe"));
-        }
-
-        foreach (var installDirectory in Directory.EnumerateDirectories(MameInstallRootDirectory, "mame*"))
-        {
-            candidates.Add(Path.Combine(installDirectory, "mame.exe"));
-            candidates.Add(Path.Combine(installDirectory, Path.GetFileName(installDirectory), "mame.exe"));
-        }
-
-        var resolvedPath = candidates
-            .Where(path => !string.IsNullOrWhiteSpace(path))
-            .Select(Path.GetFullPath)
-            .FirstOrDefault(File.Exists);
-
-        if (string.IsNullOrWhiteSpace(resolvedPath))
-        {
-            return;
-        }
-
-        MameExecutablePath = resolvedPath;
-        AddOutputEntry($"Resolved installed MAME executable: {resolvedPath}", OutputLogStatus.Info);
-    }
-
-    private void SyncMameVersionToLatestInstalled()
-    {
-        var latestInstalledVersion = TryGetLatestInstalledMameVersion();
-        if (string.IsNullOrWhiteSpace(latestInstalledVersion))
-        {
-            return;
-        }
-
-        if (!string.Equals(MameVersion, latestInstalledVersion, StringComparison.OrdinalIgnoreCase))
-        {
-            MameVersion = latestInstalledVersion;
-            AddOutputEntry($"Auto-update enabled. Using latest installed MAME version: {MameVersion}.", OutputLogStatus.Info);
-        }
-    }
-
-    private string? TryGetLatestInstalledMameVersion()
-    {
-        if (string.IsNullOrWhiteSpace(MameInstallRootDirectory) || !Directory.Exists(MameInstallRootDirectory))
-        {
-            return null;
-        }
-
-        var discoveredVersions = new List<string>();
-        foreach (var installDirectory in Directory.EnumerateDirectories(MameInstallRootDirectory, "mame*"))
-        {
-            var executableCandidates = new[]
-            {
-                Path.Combine(installDirectory, "mame.exe"),
-                Path.Combine(installDirectory, Path.GetFileName(installDirectory), "mame.exe")
-            };
-
-            if (!executableCandidates.Any(File.Exists))
-            {
-                continue;
-            }
-
-            var directoryName = Path.GetFileName(installDirectory);
-            if (!string.IsNullOrWhiteSpace(directoryName) && directoryName.StartsWith("mame", StringComparison.OrdinalIgnoreCase))
-            {
-                var version = directoryName[4..];
-                if (!string.IsNullOrWhiteSpace(version))
-                {
-                    discoveredVersions.Add(version);
-                }
-            }
-        }
-
-        var normalizedVersions = MameVersionParsing.NormalizeSortAndDedupe(discoveredVersions);
-        return normalizedVersions.FirstOrDefault();
-    }
-
-    private bool IsLatestVersionInstallNeeded(string latestKnownVersion)
-    {
-        if (string.IsNullOrWhiteSpace(latestKnownVersion))
-        {
-            return false;
-        }
-
-        var selectedOrInstalledVersion = string.IsNullOrWhiteSpace(MameVersion)
-            ? TryGetLatestInstalledMameVersion()
-            : MameVersion;
-
-        if (string.IsNullOrWhiteSpace(selectedOrInstalledVersion))
-        {
-            return true;
-        }
-
-        var ordered = MameVersionParsing.NormalizeSortAndDedupe([latestKnownVersion, selectedOrInstalledVersion]);
-        var highestKnown = ordered.FirstOrDefault();
-        return string.Equals(highestKnown, latestKnownVersion, StringComparison.OrdinalIgnoreCase)
-            && !string.Equals(latestKnownVersion, MameVersionParsing.NormalizeVersion(selectedOrInstalledVersion), StringComparison.OrdinalIgnoreCase);
-    }
-
-    private async Task TryAutoProvisionMameAsync(MameSetupState state)
-    {
-        if (_isAutoProvisioningMame)
-        {
-            return;
-        }
-
-        if (!KeepMameUpToDateAutomatically)
-        {
-            AddOutputEntry("Auto-provision skipped: Keep MAME up to date automatically is disabled.", OutputLogStatus.Info);
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(state.LatestKnownVersion))
-        {
-            AddOutputEntry("Auto-provision skipped: latest MAME version is unknown.", OutputLogStatus.Warning);
-            return;
-        }
-
-        var hasMissingExecutableIssue = state.Issues.Any(issue => issue.Contains("executable", StringComparison.OrdinalIgnoreCase));
-        var needsLatestVersionInstall = IsLatestVersionInstallNeeded(state.LatestKnownVersion);
-        if (!hasMissingExecutableIssue && !needsLatestVersionInstall)
-        {
-            return;
-        }
-
-        try
-        {
-            _isAutoProvisioningMame = true;
-            if (needsLatestVersionInstall)
-            {
-                AddOutputEntry($"Auto-update enabled. Latest known version {state.LatestKnownVersion} is newer than installed/selected version {MameVersion}.", OutputLogStatus.Info);
-            }
-
-            MameVersion = state.LatestKnownVersion;
-            AddOutputEntry($"Auto-provisioning MAME {MameVersion} in background...", OutputLogStatus.Info);
-
-            var executablePath = await _mameDownloadService.DownloadAndExtractAsync(
-                MameReleaseSource,
-                MameVersion,
-                MameInstallRootDirectory,
-                new Progress<string>(message => AddOutputEntry($"[Auto-setup] {message}", OutputLogStatus.Info)),
-                CancellationToken.None);
-
-            MameExecutablePath = executablePath;
-            SyncMameVersionToLatestInstalled();
-            AddOutputEntry($"Auto-provisioning completed. Executable: {executablePath}", OutputLogStatus.Info);
-
-            ResyncMamePlugins();
-            await ValidateMamePreferencesAsync();
-        }
-        catch (Exception ex)
-        {
-            AddOutputEntry($"Auto-provisioning failed: {ex.Message}", OutputLogStatus.Warning);
-        }
-        finally
-        {
-            _isAutoProvisioningMame = false;
-        }
-    }
-
-
-    private async void RefreshMameVersions()
-    {
-        try
-        {
-            var catalog = await _mameVersionCatalogService.GetLatestVersionAsync(CancellationToken.None);
-            var source = catalog.IsFromCache ? "cache" : "network/service";
-            AddOutputEntry($"Known MAME versions ({source}): {string.Join(", ", catalog.KnownVersions)}", OutputLogStatus.Info);
-            if (!string.IsNullOrWhiteSpace(catalog.LatestVersion))
-            {
-                AddOutputEntry($"Latest known MAME version: {catalog.LatestVersion}", OutputLogStatus.Info);
-            }
-        }
-        catch (Exception ex)
-        {
-            AddOutputEntry($"Failed to refresh MAME versions: {ex.Message}", OutputLogStatus.Warning);
-        }
-    }
-
-    private async void DownloadMameVersion()
-    {
-        try
-        {
-            ValidateMamePreferences();
-            if (MameValidationSummary.StartsWith("MAME preferences validation failed", StringComparison.OrdinalIgnoreCase))
-            {
-                return;
-            }
-
-            var executablePath = await _mameDownloadService.DownloadAndExtractAsync(
-                MameReleaseSource,
-                MameVersion,
-                MameInstallRootDirectory,
-                new Progress<string>(message => AddOutputEntry(message, OutputLogStatus.Info)),
-                CancellationToken.None);
-            MameExecutablePath = executablePath;
-            AddOutputEntry($"MAME download completed. Executable: {executablePath}", OutputLogStatus.Info);
-            ValidateMamePreferences();
-        }
-        catch (Exception ex)
-        {
-            AddOutputEntry($"MAME download failed: {ex.Message}", OutputLogStatus.Warning);
-        }
-    }
-
-    private void OpenMameInstallRoot()
-    {
-        if (string.IsNullOrWhiteSpace(MameInstallRootDirectory) || !Directory.Exists(MameInstallRootDirectory))
-        {
-            AddOutputEntry("MAME install root directory does not exist.", OutputLogStatus.Warning);
-            return;
-        }
-
-        System.Diagnostics.Process.Start("explorer.exe", MameInstallRootDirectory);
-    }
-
-
-    private void ResyncMamePlugins()
-    {
-        try
-        {
-            var copied = _mamePluginDeploymentService.SyncPluginFiles(MameLuaPluginPath, MameExecutablePath);
-            AddOutputEntry($"Re-synced Oasis Lua plugins into active MAME install ({copied} files copied).", OutputLogStatus.Info);
-            ValidateMamePreferences();
-        }
-        catch (Exception ex)
-        {
-            AddOutputEntry($"Failed to re-sync Oasis Lua plugins: {ex.Message}", OutputLogStatus.Warning);
-        }
-    }
-    private void RemoveCachedMameVersion()
-    {
-        try
-        {
-            var removed = _mameDownloadService.RemoveCachedVersion(MameInstallRootDirectory, MameVersion);
-            AddOutputEntry(removed
-                ? $"Removed cached MAME version {MameVersion}."
-                : $"No cached MAME version directory found for {MameVersion}.", removed ? OutputLogStatus.Info : OutputLogStatus.Warning);
-
-            if (KeepMameUpToDateAutomatically)
-            {
-                SyncMameVersionToLatestInstalled();
-            }
-        }
-        catch (Exception ex)
-        {
-            AddOutputEntry($"Failed to remove cached MAME version: {ex.Message}", OutputLogStatus.Warning);
-        }
-    }
-
     private static int NormalizeSystem6AudioBufferLengthMilliseconds(int value)
         => Math.Clamp(value, 10, 1000);
 
@@ -2535,27 +1820,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             ThemePreference = SelectedThemePreference,
             LastMfmeFmlImportDirectory = _lastMfmeFmlImportDirectory,
-            Mame = new MamePreferences
-            {
-                Version = MameVersion,
-                ExecutablePath = MameExecutablePath,
-                ReleaseSource = MameReleaseSource,
-                CommandLineOverrides = MameCommandLineOverrides,
-                KeepMameUpToDateAutomatically = KeepMameUpToDateAutomatically,
-                DebugOutputLamps = DebugOutputLamps,
-                DebugOutputStdIn = DebugOutputStdIn,
-                DebugOutputStdOut = DebugOutputStdOut,
-                RomDownloadBaseUrl = MameRomDownloadBaseUrl,
-                RomArchiveExtension = MameRomArchiveExtension,
-                LocalRomSourceDirectory = MameLocalRomSourceDirectory,
-                LocalRomArchiveExtension = MameLocalRomArchiveExtension
-            },
             NativeEmulation = new NativeEmulationPreferences
             {
-                System6LibraryPath = System6NativeLibraryPath,
-                UseFabricForAmber = UseFabricForAmber,
                 FabricRuntimeLibraryPath = FabricRuntimeLibraryPath,
-                FabricAmberApiV2LibraryPath = FabricAmberApiV2LibraryPath,
+                ProductionAmberLibraryPath = ProductionAmberLibraryPath,
                 AudioBufferLengthMilliseconds = System6AudioBufferLengthMilliseconds
             },
             Player = new OasisPlayerPreferences
@@ -2578,52 +1846,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             },
             ProjectWindowStates = existingPreferences.ProjectWindowStates
         });
-    }
-
-    private void ProcessMameStdoutLine(string line, IMameStdoutParser parser)
-    {
-        if (string.IsNullOrWhiteSpace(line))
-        {
-            return;
-        }
-
-        var normalized = line.Replace("\r\n", "\n", StringComparison.Ordinal)
-            .Replace('\r', '\n')
-            .Replace("\\n", "\n", StringComparison.Ordinal);
-        var segments = normalized.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (segments.Length == 0)
-        {
-            return;
-        }
-
-        foreach (var segment in segments)
-        {
-            if (TryClassifyMameStdoutSegment(segment, DebugOutputStdOut, out var status))
-            {
-                AddOutputEntry($"[MAME-STDOUT] {segment}", status);
-            }
-
-            _mameDebuggerService.ProcessStdoutLine(segment);
-            parser.ProcessLine(segment);
-        }
-    }
-
-    private static bool TryClassifyMameStdoutSegment(string segment, bool debugOutputStdOut, out OutputLogStatus status)
-    {
-        if (debugOutputStdOut)
-        {
-            status = OutputLogStatus.Info;
-            return true;
-        }
-
-        if (segment.StartsWith("@ERROR", StringComparison.Ordinal))
-        {
-            status = OutputLogStatus.Warning;
-            return true;
-        }
-
-        status = OutputLogStatus.Info;
-        return false;
     }
 
     private void OpenProjectSettings()
@@ -2652,42 +1874,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             EndEditorProgress();
         }
-    }
-
-    private void OpenDebuggerControl()
-    {
-        ToolWindowOpenRequested?.Invoke(EditorToolWindowId.DebuggerControl);
-        AddOutputEntry("Opened Debugger Control pane.", OutputLogStatus.Info);
-    }
-
-    private void OpenDebuggerDisassembly()
-    {
-        ToolWindowOpenRequested?.Invoke(EditorToolWindowId.DebuggerDisassembly);
-        AddOutputEntry("Opened Disassembly pane.", OutputLogStatus.Info);
-    }
-
-    private void OpenDebuggerRegisters()
-    {
-        ToolWindowOpenRequested?.Invoke(EditorToolWindowId.DebuggerRegisters);
-        AddOutputEntry("Opened Registers pane.", OutputLogStatus.Info);
-    }
-
-    private void OpenDebuggerMemory()
-    {
-        ToolWindowOpenRequested?.Invoke(EditorToolWindowId.DebuggerMemory);
-        AddOutputEntry("Opened Memory pane.", OutputLogStatus.Info);
-    }
-
-    private void OpenDebuggerBreakpoints()
-    {
-        ToolWindowOpenRequested?.Invoke(EditorToolWindowId.DebuggerBreakpoints);
-        AddOutputEntry("Opened Breakpoints pane.", OutputLogStatus.Info);
-    }
-
-    private void OpenDebuggerWatchpoints()
-    {
-        ToolWindowOpenRequested?.Invoke(EditorToolWindowId.DebuggerWatchpoints);
-        AddOutputEntry("Opened Watchpoints pane.", OutputLogStatus.Info);
     }
 
     private void ClosePreferences()
@@ -2766,85 +1952,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         Application.Current.Shutdown();
     }
 
-    private MameEmulationCommandState CurrentEmulationCommandState =>
-        MameEmulationCommandStateEvaluator.Evaluate(HasLoadedProject, EmulationState);
-
-    private bool CanStartAndLoadStateEmulation()
-    {
-        return CurrentEmulationCommandState.CanStartAndLoadState;
-    }
-
-    private async void StartAndLoadStateEmulation()
-    {
-        if (!CanStartAndLoadStateEmulation())
-        {
-            return;
-        }
-
-        AddOutputEntry("Emulation start and load state requested.", OutputLogStatus.Info);
-        try
-        {
-            await _mameEmulationService.StartAndLoadStateAsync(CancellationToken.None);
-        }
-        catch (Exception ex)
-        {
-            AddOutputEntry($"Emulation failed to start and load state: {ex.Message}", OutputLogStatus.Error);
-        }
-    }
-
-    private async void StartDebuggerAndLoadStateEmulation()
-    {
-        if (!CanStartAndLoadStateEmulation())
-        {
-            return;
-        }
-
-        AddOutputEntry("Debugger emulation start and load state requested.", OutputLogStatus.Info);
-        try
-        {
-            if (!TrySyncMamePluginsForDebuggerLaunch())
-            {
-                return;
-            }
-
-            await _mameEmulationService.StartDebuggerAndLoadStateAsync(CancellationToken.None);
-            _mameDebuggerService.SetDebuggerLaunchActive(true);
-            await TryLogDebuggerStatusAsync("Debugger launch validation");
-            NotifyEmulationCommands();
-        }
-        catch (Exception ex)
-        {
-            _mameDebuggerService.SetDebuggerLaunchActive(false);
-            AddOutputEntry($"Debugger emulation failed to start and load state: {ex.Message}", OutputLogStatus.Error);
-        }
-    }
-
-    private bool CanSaveStateAndExitEmulation()
-    {
-        return CurrentEmulationCommandState.CanSaveStateAndExit;
-    }
-
-    private async void SaveStateAndExitEmulation()
-    {
-        if (!CanSaveStateAndExitEmulation())
-        {
-            return;
-        }
-
-        AddOutputEntry("Emulation save state and exit requested.", OutputLogStatus.Info);
-        try
-        {
-            await _mameEmulationService.SaveStateAndExitAsync(CancellationToken.None);
-        }
-        catch (Exception ex)
-        {
-            AddOutputEntry($"Emulation failed to save state and exit cleanly: {ex.Message}", OutputLogStatus.Error);
-        }
-    }
 
     private bool CanStartEmulation()
     {
-        return CurrentEmulationCommandState.CanStart;
+        return HasLoadedProject && EmulationState is EmulationBackendState.Stopped or EmulationBackendState.Failed;
     }
 
     private async void StartEmulation()
@@ -2896,17 +2007,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private EmulationLaunchRequest BuildEmulationLaunchRequest()
     {
-        var romRootPath = MameRuntimePaths.EnsureManagedRomRootDirectory();
-        var romPaths = string.IsNullOrWhiteSpace(MameRomName)
-            ? Array.Empty<string>()
-            : new[] { Path.Combine(romRootPath, MameRomName + MameRomArchiveExtension) };
-
         return new EmulationLaunchRequest(
-            SelectedFruitMachinePlatform,
-            MameRomName,
-            romRootPath,
-            romPaths,
-            MameCommandLineOverrides,
             BuildSystem6NativeRomSettingsForLaunch(),
             BuildConfiguredLampIdsForLaunch(),
             BuildConfiguredSevenSegmentDisplayIdsForLaunch());
@@ -2945,7 +2046,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             foreach (var element in document.GetPanelElements())
             {
-                if (element.Kind == PanelElementKind.SevenSegment && element.DisplayNumber is int displayId && displayId is >= 0 and <= ushort.MaxValue / NativeSystem6SevenSegmentCellStride)
+                if (element.Kind == PanelElementKind.SevenSegment && element.DisplayNumber is int displayId && displayId is >= 0 and <= ushort.MaxValue / System6SevenSegmentCellStride)
                 {
                     displayIds.Add(displayId);
                 }
@@ -2956,7 +2057,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 if (faceDisplay.LinkedMachineObjectReference is MachineObjectReference reference
                     && reference.Kind == MachineObjectKind.SevenSegmentDisplay
                     && int.TryParse(reference.Id, out var displayId)
-                    && displayId is >= 0 and <= ushort.MaxValue / NativeSystem6SevenSegmentCellStride)
+                    && displayId is >= 0 and <= ushort.MaxValue / System6SevenSegmentCellStride)
                 {
                     displayIds.Add(displayId);
                 }
@@ -3028,7 +2129,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private void RefreshSystem6NativeRomStatus()
     {
         System6NativeRomStatus = string.IsNullOrWhiteSpace(System6ProgramRom1Path) || string.IsNullOrWhiteSpace(System6ProgramRom2Path)
-            ? "Program ROM 1 and 2 are required for native DLL launch."
+            ? "Program ROM 1 and 2 are required for Fabric Amber launch."
             : "Configured; paths are validated when native emulation starts.";
     }
 
@@ -3138,107 +2239,20 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         DispatchToUiThread(() =>
         {
-            EmulationState = state switch
-            {
-                EmulationBackendState.Starting => MameEmulationState.Starting,
-                EmulationBackendState.Running => MameEmulationState.Running,
-                EmulationBackendState.Paused => MameEmulationState.Paused,
-                EmulationBackendState.Stopping => MameEmulationState.Stopping,
-                EmulationBackendState.Stopped => MameEmulationState.Stopped,
-                _ => MameEmulationState.Failed
-            };
+            EmulationState = state;
             AddOutputEntry($"Emulation backend state changed to {state}.", OutputLogStatus.Info);
         });
     }
 
-    private async void StartDebuggerEmulation()
-    {
-        if (!CanStartEmulation())
-        {
-            return;
-        }
-
-        AddOutputEntry("Debugger emulation start requested.", OutputLogStatus.Info);
-        try
-        {
-            if (!TrySyncMamePluginsForDebuggerLaunch())
-            {
-                return;
-            }
-
-            await _mameEmulationService.StartDebuggerAsync(CancellationToken.None);
-            _mameDebuggerService.SetDebuggerLaunchActive(true);
-            await TryLogDebuggerStatusAsync("Debugger launch validation");
-            NotifyEmulationCommands();
-        }
-        catch (Exception ex)
-        {
-            _mameDebuggerService.SetDebuggerLaunchActive(false);
-            AddOutputEntry($"Debugger emulation failed to start: {ex.Message}", OutputLogStatus.Error);
-        }
-    }
-
-    private bool CanLoadStateEmulation()
-    {
-        return CurrentEmulationCommandState.CanLoadState;
-    }
-
-    private async void LoadStateEmulation()
-    {
-        await SendEmulationCommandAsync(
-            CanLoadStateEmulation,
-            "Emulation load state requested.",
-            "Emulation failed to load state",
-            cancellationToken => _mameEmulationService.LoadStateAsync(cancellationToken));
-    }
-
-    private bool CanSaveStateEmulation()
-    {
-        return CurrentEmulationCommandState.CanSaveState;
-    }
-
-    private async void SaveStateEmulation()
-    {
-        await SendEmulationCommandAsync(
-            CanSaveStateEmulation,
-            "Emulation save state requested.",
-            "Emulation failed to save state",
-            cancellationToken => _mameEmulationService.SaveStateAsync(cancellationToken));
-    }
-
-    private bool CanStopEmulation()
-    {
-        return CurrentEmulationCommandState.CanStop;
-    }
+    private bool CanStopEmulation() => _activeEmulationBackend is not null;
 
     public void StopEmulationForWindowClose()
     {
-        if (_activeEmulationBackend is null && _mameEmulationService.State == MameEmulationState.Stopped)
-        {
-            return;
-        }
-
-        AddOutputEntry("Emulation stop requested.", OutputLogStatus.Info);
+        if (_activeEmulationBackend is null) return;
         try
         {
-            if (_activeEmulationBackend is not null)
-            {
-                _activeEmulationBackend.StopAsync(CancellationToken.None).GetAwaiter().GetResult();
-                _activeEmulationBackend.StateChanged -= OnActiveBackendStateChanged;
-                _activeEmulationBackend.LampChanged -= OnActiveBackendLampChanged;
-                _activeEmulationBackend.ReelChanged -= OnActiveBackendReelChanged;
-                _activeEmulationBackend.SegmentChanged -= OnActiveBackendSegmentChanged;
-                _activeEmulationBackend.VfdBrightnessChanged -= OnActiveBackendVfdBrightnessChanged;
-                _activeEmulationBackend.DisposeAsync().AsTask().GetAwaiter().GetResult();
-                _activeEmulationBackend = null;
-                _playViewInputRouter = null;
-                _playViewInputDispatcher = null;
-                EmulationState = MameEmulationState.Stopped;
-            }
-            else
-            {
-                _mameEmulationService.StopAsync(CancellationToken.None).GetAwaiter().GetResult();
-            }
+            _activeEmulationBackend.StopAsync(CancellationToken.None).GetAwaiter().GetResult();
+            DetachAndDisposeActiveBackendAsync().GetAwaiter().GetResult();
         }
         catch (Exception ex)
         {
@@ -3246,39 +2260,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private async void StopEmulation()
-    {
-        await StopEmulationAsync().ConfigureAwait(false);
-    }
+    private async void StopEmulation() => await StopEmulationAsync().ConfigureAwait(false);
 
     private async Task StopEmulationAsync()
     {
-        if (!CanStopEmulation())
-        {
-            return;
-        }
-
-        AddOutputEntry("Emulation stop requested.", OutputLogStatus.Info);
+        if (_activeEmulationBackend is null) return;
         try
         {
-            if (_activeEmulationBackend is not null)
-            {
-                await _activeEmulationBackend.StopAsync(CancellationToken.None);
-                _activeEmulationBackend.StateChanged -= OnActiveBackendStateChanged;
-                _activeEmulationBackend.LampChanged -= OnActiveBackendLampChanged;
-                _activeEmulationBackend.ReelChanged -= OnActiveBackendReelChanged;
-                _activeEmulationBackend.SegmentChanged -= OnActiveBackendSegmentChanged;
-                _activeEmulationBackend.VfdBrightnessChanged -= OnActiveBackendVfdBrightnessChanged;
-                await _activeEmulationBackend.DisposeAsync();
-                _activeEmulationBackend = null;
-                _playViewInputRouter = null;
-                _playViewInputDispatcher = null;
-                EmulationState = MameEmulationState.Stopped;
-            }
-            else
-            {
-                await _mameEmulationService.StopAsync(CancellationToken.None);
-            }
+            await _activeEmulationBackend.StopAsync(CancellationToken.None);
+            await DetachAndDisposeActiveBackendAsync();
         }
         catch (Exception ex)
         {
@@ -3286,317 +2276,51 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private bool CanTogglePauseEmulation()
+    private async Task DetachAndDisposeActiveBackendAsync()
     {
-        return CurrentEmulationCommandState.CanTogglePause;
+        var backend = _activeEmulationBackend;
+        if (backend is null) return;
+        backend.StateChanged -= OnActiveBackendStateChanged;
+        backend.LampChanged -= OnActiveBackendLampChanged;
+        backend.ReelChanged -= OnActiveBackendReelChanged;
+        backend.SegmentChanged -= OnActiveBackendSegmentChanged;
+        backend.VfdBrightnessChanged -= OnActiveBackendVfdBrightnessChanged;
+        await backend.DisposeAsync();
+        _activeEmulationBackend = null;
+        _playViewInputRouter = null;
+        _playViewInputDispatcher = null;
+        EmulationState = EmulationBackendState.Stopped;
     }
+
+    private bool CanTogglePauseEmulation() => _activeEmulationBackend is not null && EmulationState is EmulationBackendState.Running or EmulationBackendState.Paused;
 
     private async void TogglePauseEmulation()
     {
-        if (IsPauseEmulationChecked)
-        {
-            var commandSucceeded = await SendEmulationCommandAsync(
-                CanTogglePauseEmulation,
-                "Emulation resume requested.",
-                "Emulation failed to resume",
-                cancellationToken => _activeEmulationBackend?.ResumeAsync(cancellationToken) ?? _mameEmulationService.ResumeAsync(cancellationToken));
-
-            if (!commandSucceeded)
-            {
-                OnPropertyChanged(nameof(IsPauseEmulationChecked));
-            }
-
-            return;
-        }
-
-        var pauseSucceeded = await SendEmulationCommandAsync(
-            CanTogglePauseEmulation,
-            "Emulation pause requested.",
-            "Emulation failed to pause",
-            cancellationToken => _activeEmulationBackend?.PauseAsync(cancellationToken) ?? _mameEmulationService.PauseAsync(cancellationToken));
-
-        if (!pauseSucceeded)
-        {
-            OnPropertyChanged(nameof(IsPauseEmulationChecked));
-        }
-    }
-
-    private bool CanSetThrottleEmulation()
-    {
-        return CurrentEmulationCommandState.CanSetThrottle;
-    }
-
-    private async void ToggleUnthrottleEmulation()
-    {
-        var shouldUnthrottle = !IsUnthrottleEmulationChecked;
-        var commandSucceeded = await SendEmulationCommandAsync(
-            CanSetThrottleEmulation,
-            shouldUnthrottle ? "Emulation unthrottle requested." : "Emulation throttle requested.",
-            shouldUnthrottle ? "Emulation failed to disable throttle" : "Emulation failed to enable throttle",
-            cancellationToken => _mameEmulationService.SetThrottleAsync(!shouldUnthrottle, cancellationToken));
-
-        if (commandSucceeded)
-        {
-            IsUnthrottleEmulationChecked = shouldUnthrottle;
-        }
+        if (_activeEmulationBackend is null) return;
+        if (EmulationState == EmulationBackendState.Paused)
+            await SendEmulationCommandAsync(CanTogglePauseEmulation, "Emulation resume requested.", "Emulation failed to resume", _activeEmulationBackend.ResumeAsync);
         else
-        {
-            OnPropertyChanged(nameof(IsUnthrottleEmulationChecked));
-        }
+            await SendEmulationCommandAsync(CanTogglePauseEmulation, "Emulation pause requested.", "Emulation failed to pause", _activeEmulationBackend.PauseAsync);
+        OnPropertyChanged(nameof(IsPauseEmulationChecked));
     }
 
     private bool CanResetEmulation()
     {
-        return CurrentEmulationCommandState.CanReset;
+        return _activeEmulationBackend is not null && EmulationState is EmulationBackendState.Running or EmulationBackendState.Paused;
     }
 
     private async void SoftResetEmulation()
     {
-        await SendEmulationCommandAsync(
-            CanResetEmulation,
-            "Emulation soft reset requested.",
-            "Emulation failed to soft reset",
-            cancellationToken => _activeEmulationBackend?.ResetAsync(EmulationResetKind.Soft, cancellationToken) ?? _mameEmulationService.SoftResetAsync(cancellationToken));
+        await SendEmulationCommandAsync(CanResetEmulation, "Emulation soft reset requested.",
+            "Emulation failed to soft reset", cancellationToken =>
+                _activeEmulationBackend!.ResetAsync(EmulationResetKind.Soft, cancellationToken));
     }
 
     private async void HardResetEmulation()
     {
-        await SendEmulationCommandAsync(
-            CanResetEmulation,
-            "Emulation hard reset requested.",
-            "Emulation failed to hard reset",
-            cancellationToken => _activeEmulationBackend?.ResetAsync(EmulationResetKind.Hard, cancellationToken) ?? _mameEmulationService.HardResetAsync(cancellationToken));
-    }
-
-    private bool TrySyncMamePluginsForDebuggerLaunch()
-    {
-        try
-        {
-            var copied = _mamePluginDeploymentService.SyncPluginFiles(MameLuaPluginPath, MameExecutablePath);
-            AddOutputEntry($"Debugger launch synced Oasis Lua plugins into active MAME install ({copied} files copied).", OutputLogStatus.Info);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            AddOutputEntry($"Debugger launch blocked because Oasis Lua plugins could not be synced: {ex.Message}", OutputLogStatus.Error);
-            return false;
-        }
-    }
-
-    private bool CanQueryDebugger()
-    {
-        return _mameEmulationService.State is MameEmulationState.Running or MameEmulationState.Paused;
-    }
-
-    private bool CanControlDebugger()
-    {
-        return CanQueryDebugger() && _mameDebuggerService.State.IsDebuggerLaunchActive;
-    }
-
-    private async void RefreshDebuggerStatus()
-    {
-        await SendDebuggerCommandAsync(
-            CanQueryDebugger,
-            "Debugger status requested.",
-            "Debugger status request failed",
-            async cancellationToken =>
-            {
-                await LogDebuggerStatusAsync("Debugger status", cancellationToken);
-            });
-    }
-
-    private async void ListDebuggerCpus()
-    {
-        await SendDebuggerCommandAsync(
-            CanQueryDebugger,
-            "Debugger CPU list requested.",
-            "Debugger CPU list request failed",
-            async cancellationToken =>
-            {
-                var cpus = await _mameDebuggerService.GetCpuListAsync(cancellationToken);
-                if (cpus.Count == 0)
-                {
-                    AddOutputEntry("Debugger CPU list returned no CPU devices.", OutputLogStatus.Warning);
-                    return;
-                }
-
-                AddOutputEntry($"Debugger CPUs: {string.Join(", ", cpus.Select(cpu => cpu.IsCurrent ? $"{cpu.Tag} ({cpu.Name}, current)" : $"{cpu.Tag} ({cpu.Name})"))}.", OutputLogStatus.Info);
-            });
-    }
-
-    private async void DebuggerRun()
-    {
-        await SendDebuggerCommandAsync(
-            CanControlDebugger,
-            "Debugger run requested.",
-            "Debugger run failed",
-            cancellationToken => _mameDebuggerService.RunAsync(cancellationToken));
-    }
-
-    private async void DebuggerBreak()
-    {
-        await SendDebuggerCommandAsync(
-            CanControlDebugger,
-            "Debugger break requested.",
-            "Debugger break failed",
-            cancellationToken => _mameDebuggerService.BreakAsync(cancellationToken));
-    }
-
-    private async void DebuggerStep()
-    {
-        await SendDebuggerCommandAsync(
-            CanControlDebugger,
-            "Debugger step requested.",
-            "Debugger step failed",
-            cancellationToken => _mameDebuggerService.StepAsync(cancellationToken));
-    }
-
-    private async void ListDebuggerBreakpoints()
-    {
-        await SendDebuggerCommandAsync(
-            CanControlDebugger,
-            "Debugger breakpoint list requested.",
-            "Debugger breakpoint list failed",
-            async cancellationToken =>
-            {
-                var breakpoints = await _mameDebuggerService.GetBreakpointsAsync(null, cancellationToken);
-                AddOutputEntry(breakpoints.Count == 0
-                    ? "Debugger breakpoints: none."
-                    : $"Debugger breakpoints: {string.Join(", ", breakpoints.Select(bp => $"#{bp.MameId} {bp.Cpu} 0x{bp.Address:X} enabled={bp.Enabled}"))}.",
-                    OutputLogStatus.Info);
-            });
-    }
-
-    private async void ListDebuggerWatchpoints()
-    {
-        await SendDebuggerCommandAsync(
-            CanControlDebugger,
-            "Debugger watchpoint list requested.",
-            "Debugger watchpoint list failed",
-            async cancellationToken =>
-            {
-                var watchpoints = await _mameDebuggerService.GetWatchpointsAsync(null, cancellationToken);
-                AddOutputEntry(watchpoints.Count == 0
-                    ? "Debugger watchpoints: none."
-                    : $"Debugger watchpoints: {string.Join(", ", watchpoints.Select(wp => $"#{wp.MameId} {wp.Cpu} 0x{wp.Address:X}-0x{wp.Address + wp.Length - 1:X} {wp.Type} enabled={wp.Enabled}"))}.",
-                    OutputLogStatus.Info);
-            });
-    }
-
-    private async void AddTestDebuggerBreakpoint()
-    {
-        await SendDebuggerCommandAsync(
-            CanControlDebugger,
-            "Debugger test breakpoint requested at current PC.",
-            "Debugger test breakpoint failed",
-            async cancellationToken =>
-            {
-                var status = await _mameDebuggerService.GetStatusAsync(cancellationToken);
-                if (!status.Pc.HasValue)
-                {
-                    AddOutputEntry("Debugger test breakpoint could not be created because the current PC is unknown.", OutputLogStatus.Warning);
-                    return;
-                }
-
-                var breakpoint = await _mameDebuggerService.SetBreakpointAsync(
-                    new MameDebuggerBreakpointRequest(status.Cpu, status.Pc.Value),
-                    cancellationToken);
-                AddOutputEntry($"Debugger test breakpoint #{breakpoint.MameId} set on {breakpoint.Cpu} at 0x{breakpoint.Address:X}.", OutputLogStatus.Info);
-            });
-    }
-
-    private async void DisassembleAroundCurrentPc()
-    {
-        await SendDebuggerCommandAsync(
-            CanControlDebugger,
-            "Debugger disassembly requested around current PC.",
-            "Debugger disassembly around current PC failed",
-            async cancellationToken =>
-            {
-                var status = await _mameDebuggerService.GetStatusAsync(cancellationToken);
-                var block = await _mameDebuggerService.DisassembleAsync(
-                    new MameDebuggerDisassemblyRequest(status.Cpu, null, 16, CenterAroundPc: true),
-                    cancellationToken);
-                LogDisassemblyBlock("Debugger disassembly around PC", block);
-            });
-    }
-
-    private async void DisassembleFixedAddressTestBlock()
-    {
-        await SendDebuggerCommandAsync(
-            CanControlDebugger,
-            "Debugger fixed-address disassembly test requested.",
-            "Debugger fixed-address disassembly test failed",
-            async cancellationToken =>
-            {
-                var status = await _mameDebuggerService.GetStatusAsync(cancellationToken);
-                var block = await _mameDebuggerService.DisassembleAsync(
-                    new MameDebuggerDisassemblyRequest(status.Cpu, 0, 16, CenterAroundPc: false),
-                    cancellationToken);
-                LogDisassemblyBlock("Debugger disassembly from 0x0", block);
-            });
-    }
-
-    private void LogDisassemblyBlock(string prefix, MameDebuggerDisassemblyBlock block)
-    {
-        AddOutputEntry($"{prefix}: cpu={block.Cpu} start=0x{block.StartAddress:X} lines={block.Lines.Count}/{block.LineCount} pc={(block.CurrentPc.HasValue ? $"0x{block.CurrentPc.Value:X}" : "unknown")}", OutputLogStatus.Info);
-        foreach (var line in block.Lines.Take(8))
-        {
-            var current = line.IsCurrentPc ? "=> " : "   ";
-            var instruction = string.IsNullOrWhiteSpace(line.InstructionText) ? line.RawText : line.InstructionText;
-            var opcodes = string.IsNullOrWhiteSpace(line.OpcodeBytes) ? string.Empty : $" [{line.OpcodeBytes}]";
-            AddOutputEntry($"{current}{line.Cpu} 0x{line.Address:X}:{opcodes} {instruction}", OutputLogStatus.Info);
-        }
-        if (block.Lines.Count > 8)
-        {
-            AddOutputEntry($"{prefix}: {block.Lines.Count - 8} additional disassembly lines omitted from temporary Output preview.", OutputLogStatus.Info);
-        }
-    }
-
-    private async Task LogDebuggerStatusAsync(string prefix, CancellationToken cancellationToken = default)
-    {
-        var status = await _mameDebuggerService.GetStatusAsync(cancellationToken);
-        var statusLevel = status.Available ? OutputLogStatus.Info : OutputLogStatus.Warning;
-        AddOutputEntry($"{prefix}: available={status.Available}, state={status.State}, cpu={status.Cpu ?? "unknown"}, pc={status.Pc?.ToString() ?? "unknown"}.", statusLevel);
-    }
-
-    private async Task TryLogDebuggerStatusAsync(string prefix, CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            await LogDebuggerStatusAsync(prefix, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            AddOutputEntry($"{prefix} did not receive a debugger protocol response yet: {ex.Message}", OutputLogStatus.Warning);
-        }
-    }
-
-
-    private async Task<bool> SendDebuggerCommandAsync(
-        Func<bool> canExecute,
-        string requestedMessage,
-        string failureMessage,
-        Func<CancellationToken, Task> command)
-    {
-        if (!canExecute())
-        {
-            return false;
-        }
-
-        AddOutputEntry(requestedMessage, OutputLogStatus.Info);
-        try
-        {
-            await command(CancellationToken.None);
-            NotifyEmulationCommands();
-            return true;
-        }
-        catch (Exception ex)
-        {
-            AddOutputEntry($"{failureMessage}: {ex.Message}", OutputLogStatus.Error);
-            NotifyEmulationCommands();
-            return false;
-        }
+        await SendEmulationCommandAsync(CanResetEmulation, "Emulation hard reset requested.",
+            "Emulation failed to hard reset", cancellationToken =>
+                _activeEmulationBackend!.ResetAsync(EmulationResetKind.Hard, cancellationToken));
     }
 
     private async Task<bool> SendEmulationCommandAsync(
@@ -3623,30 +2347,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private MameProcessLaunchRequest? BuildMameLaunchRequest()
-    {
-        if (!HasLoadedProject || string.IsNullOrWhiteSpace(MameExecutablePath) || string.IsNullOrWhiteSpace(MameRomName))
-        {
-            return null;
-        }
-
-        return new MameProcessLaunchRequest(
-            MameExecutablePath,
-            MameRomName,
-            MameRuntimePaths.EnsureManagedRomRootDirectory(),
-            MameRuntimePaths.ResolveBundledLuaPluginSourcePath(),
-            MameCommandLineOverrides);
-    }
-
     private void LoadStartupProject(string startupProjectFilePath)
     {
         var project = LoadProjectFromFile(startupProjectFilePath);
         LoadedProject = project;
         SelectedFruitMachinePlatform = project.FruitMachinePlatform;
-        MameRomName = project.MameRomName;
-        AutomaticallyDownloadMissingRoms = project.AutomaticallyDownloadMissingRoms;
         ApplySystem6NativeRomSettingsToViewModel(project.System6NativeRoms);
-        RefreshMameRomStatus();
         RefreshSystem6NativeRomStatus();
         ProjectAssetPathResolver.ProjectDirectoryPath = project.ProjectDirectory;
         ProjectFilePath = project.ProjectFilePath;
@@ -3714,8 +2420,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         var machinesDirectory = ResolveProjectDirectory(projectDirectory, layoutElement, "machines");
         var generatedDirectory = ResolveProjectDirectory(projectDirectory, layoutElement, "generated");
         var fruitMachinePlatform = ResolveFruitMachinePlatform(projectDocument.RootElement);
-        var mameRomName = ResolveMameRomName(projectDocument.RootElement);
-        var automaticallyDownloadMissingRoms = ResolveAutomaticallyDownloadMissingRoms(projectDocument.RootElement);
         var system6NativeRoms = ResolveSystem6NativeRomSettings(projectDocument.RootElement);
         var inputDefinitions = ResolveInputDefinitions(projectDocument.RootElement);
 
@@ -3728,8 +2432,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             MachinesDirectory = machinesDirectory,
             GeneratedDirectory = generatedDirectory,
             FruitMachinePlatform = fruitMachinePlatform,
-            MameRomName = mameRomName,
-            AutomaticallyDownloadMissingRoms = automaticallyDownloadMissingRoms,
             System6NativeRoms = system6NativeRoms
         }.WithInputDefinitions(inputDefinitions);
     }
@@ -3911,7 +2613,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                     {
                         wroteProjectSettings = true;
                         writer.WritePropertyName("project_settings");
-                        WriteProjectSettings(writer, property.Value, LoadedProject.FruitMachinePlatform, LoadedProject.MameRomName, LoadedProject.AutomaticallyDownloadMissingRoms, LoadedProject.System6NativeRoms);
+                        WriteProjectSettings(writer, property.Value, LoadedProject.FruitMachinePlatform, LoadedProject.System6NativeRoms);
                         continue;
                     }
 
@@ -3931,8 +2633,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                     writer.WritePropertyName("project_settings");
                     writer.WriteStartObject();
                     writer.WriteString("FruitMachine_Platform", LoadedProject.FruitMachinePlatform.ToString());
-                    writer.WriteString("MameRomName", LoadedProject.MameRomName);
-                    writer.WriteBoolean("AutomaticallyDownloadMissingRoms", LoadedProject.AutomaticallyDownloadMissingRoms);
                     WriteSystem6NativeRomSettings(writer, LoadedProject.System6NativeRoms);
                     writer.WriteEndObject();
                 }
@@ -3954,61 +2654,30 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private static void WriteProjectSettings(Utf8JsonWriter writer, JsonElement existingProjectSettings, FruitMachinePlatformType platform, string mameRomName, bool automaticallyDownloadMissingRoms, System6NativeRomSettings system6NativeRoms)
+    private static void WriteProjectSettings(Utf8JsonWriter writer, JsonElement existingProjectSettings, FruitMachinePlatformType platform, System6NativeRomSettings system6NativeRoms)
     {
         writer.WriteStartObject();
         var wrotePlatform = false;
-        var wroteMameRomName = false;
-        var wroteAutomaticallyDownloadMissingRoms = false;
-        var wroteSystem6NativeRoms = false;
-
-        foreach (var settingProperty in existingProjectSettings.EnumerateObject())
+        var wroteSystem6Settings = false;
+        foreach (var property in existingProjectSettings.EnumerateObject())
         {
-            if (settingProperty.NameEquals("FruitMachine_Platform"))
+            if (property.NameEquals("FruitMachine_Platform"))
             {
                 writer.WriteString("FruitMachine_Platform", platform.ToString());
                 wrotePlatform = true;
-                continue;
             }
-            if (settingProperty.NameEquals("MameRomName"))
-            {
-                writer.WriteString("MameRomName", mameRomName);
-                wroteMameRomName = true;
-                continue;
-            }
-            if (settingProperty.NameEquals("AutomaticallyDownloadMissingRoms"))
-            {
-                writer.WriteBoolean("AutomaticallyDownloadMissingRoms", automaticallyDownloadMissingRoms);
-                wroteAutomaticallyDownloadMissingRoms = true;
-                continue;
-            }
-            if (settingProperty.NameEquals("System6NativeRoms"))
+            else if (property.NameEquals("System6NativeRoms"))
             {
                 WriteSystem6NativeRomSettings(writer, system6NativeRoms);
-                wroteSystem6NativeRoms = true;
-                continue;
+                wroteSystem6Settings = true;
             }
-
-            settingProperty.WriteTo(writer);
+            else if (!property.NameEquals("MameRomName") && !property.NameEquals("AutomaticallyDownloadMissingRoms"))
+            {
+                property.WriteTo(writer);
+            }
         }
-
-        if (!wrotePlatform)
-        {
-            writer.WriteString("FruitMachine_Platform", platform.ToString());
-        }
-        if (!wroteMameRomName)
-        {
-            writer.WriteString("MameRomName", mameRomName);
-        }
-        if (!wroteAutomaticallyDownloadMissingRoms)
-        {
-            writer.WriteBoolean("AutomaticallyDownloadMissingRoms", automaticallyDownloadMissingRoms);
-        }
-        if (!wroteSystem6NativeRoms)
-        {
-            WriteSystem6NativeRomSettings(writer, system6NativeRoms);
-        }
-
+        if (!wrotePlatform) writer.WriteString("FruitMachine_Platform", platform.ToString());
+        if (!wroteSystem6Settings) WriteSystem6NativeRomSettings(writer, system6NativeRoms);
         writer.WriteEndObject();
     }
 
@@ -4179,34 +2848,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         return FruitMachinePlatformType.None;
     }
 
-    private static string ResolveMameRomName(JsonElement root)
-    {
-        if (!root.TryGetProperty("project_settings", out var projectSettingsElement)
-            || !projectSettingsElement.TryGetProperty("MameRomName", out var romNameElement))
-        {
-            return string.Empty;
-        }
-
-        return romNameElement.GetString() ?? string.Empty;
-    }
-
-    private static bool ResolveAutomaticallyDownloadMissingRoms(JsonElement root)
-    {
-        if (!root.TryGetProperty("project_settings", out var projectSettingsElement)
-            || !projectSettingsElement.TryGetProperty("AutomaticallyDownloadMissingRoms", out var autoDownloadElement))
-        {
-            return true;
-        }
-
-        return autoDownloadElement.ValueKind switch
-        {
-            JsonValueKind.True => true,
-            JsonValueKind.False => false,
-            _ => true
-        };
-    }
-
-
     private static void WriteInputDefinitions(Utf8JsonWriter writer, IReadOnlyList<InputDefinitionModel> inputDefinitions)
     {
         writer.WriteStartArray();
@@ -4226,8 +2867,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             {
                 writer.WriteString("LinkedVisualElementId", input.LinkedVisualElementId.Value);
             }
-            writer.WriteString("MamePortTag", input.MamePortTag);
-            writer.WriteString("MameMask", input.MameMask);
             writer.WriteString("Notes", input.Notes);
             writer.WriteEndObject();
         }
@@ -4279,93 +2918,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 RawMfmeShortcut = inputElement.TryGetProperty("RawMfmeShortcut", out var rawShortcutElement) ? rawShortcutElement.GetString() ?? string.Empty : string.Empty,
                 KeyboardShortcut = inputElement.TryGetProperty("KeyboardShortcut", out var keyboardShortcutElement) ? keyboardShortcutElement.GetString() ?? string.Empty : string.Empty,
                 LinkedVisualElementId = linkedVisualId,
-                MamePortTag = inputElement.TryGetProperty("MamePortTag", out var tagElement) ? tagElement.GetString() ?? string.Empty : string.Empty,
-                MameMask = inputElement.TryGetProperty("MameMask", out var maskElement) ? maskElement.GetString() ?? string.Empty : string.Empty,
                 Notes = inputElement.TryGetProperty("Notes", out var notesElement) ? notesElement.GetString() ?? string.Empty : string.Empty
             });
         }
 
         return definitions;
-    }
-
-    private bool CanDownloadMameRom() => LoadedProject is not null && !string.IsNullOrWhiteSpace(MameRomName) && !_isMameRomDownloadInProgress;
-
-    private void ResetMameRomSourceDefaults()
-    {
-        MameRomDownloadBaseUrl = MameRomDownloadService.DefaultDownloadRootUrl;
-        MameRomArchiveExtension = MameRomDownloadService.DefaultArchiveExtension;
-        MameLocalRomSourceDirectory = string.Empty;
-        MameLocalRomArchiveExtension = MameRomDownloadService.DefaultArchiveExtension;
-        AddOutputEntry("Reset ROM source preferences to defaults.", OutputLogStatus.Info);
-    }
-
-    private void DownloadMameRom()
-    {
-        if (_isMameRomDownloadInProgress)
-        {
-            return;
-        }
-
-        if (LoadedProject is null || string.IsNullOrWhiteSpace(MameRomName))
-        {
-            MameRomStatus = "Missing";
-            AddOutputEntry("MAME ROM download skipped: no ROM name configured.", OutputLogStatus.Warning);
-            return;
-        }
-
-        _ = DownloadMameRomAsync(MameRomName.Trim());
-    }
-
-    private async Task DownloadMameRomAsync(string romName)
-    {
-        _isMameRomDownloadInProgress = true;
-        if (DownloadMameRomCommand is RelayCommand downloadMameRomCommand)
-        {
-            downloadMameRomCommand.RaiseCanExecuteChanged();
-        }
-
-        MameRomStatus = "Downloading";
-        AddOutputEntry($"MAME ROM download requested for '{romName}'.", OutputLogStatus.Info);
-        var downloadUrl = _mameRomDownloadService.BuildDownloadUrl(romName);
-        try
-        {
-            var localSourcePath = _mameRomDownloadService.GetLocalRomArchivePath(romName);
-            var archivePath = await _mameRomDownloadService.DownloadRomAsync(romName, CancellationToken.None);
-            MameRomStatus = "Installed";
-            if (!string.IsNullOrWhiteSpace(localSourcePath) && File.Exists(localSourcePath))
-            {
-                AddOutputEntry($"MAME ROM copied from local source '{localSourcePath}' to '{archivePath}'.", OutputLogStatus.Info);
-            }
-            else
-            {
-                AddOutputEntry($"MAME ROM downloaded to '{archivePath}'.", OutputLogStatus.Info);
-            }
-        }
-        catch (Exception ex)
-        {
-            MameRomStatus = "Failed";
-            AddOutputEntry($"MAME ROM download failed for '{romName}' from '{downloadUrl}': {ex.Message}", OutputLogStatus.Error);
-        }
-        finally
-        {
-            _isMameRomDownloadInProgress = false;
-            if (DownloadMameRomCommand is RelayCommand updatedDownloadMameRomCommand)
-            {
-                updatedDownloadMameRomCommand.RaiseCanExecuteChanged();
-            }
-        }
-    }
-
-    private void RefreshMameRomStatus()
-    {
-        var romName = MameRomName.Trim();
-        if (string.IsNullOrWhiteSpace(romName))
-        {
-            MameRomStatus = "Missing";
-            return;
-        }
-
-        MameRomStatus = _mameRomDownloadService.IsRomInstalled(romName) ? "Installed" : "Missing";
     }
 
     private static string ResolveProjectDirectory(string projectDirectory, JsonElement layoutElement, string propertyName)
@@ -4542,29 +3099,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void NotifyEmulationCommands()
     {
-        RaiseEmulationCommandCanExecuteChanged(StartAndLoadStateEmulationCommand);
-        RaiseEmulationCommandCanExecuteChanged(StartDebuggerAndLoadStateEmulationCommand);
-        RaiseEmulationCommandCanExecuteChanged(SaveStateAndExitEmulationCommand);
         RaiseEmulationCommandCanExecuteChanged(StartEmulationCommand);
-        RaiseEmulationCommandCanExecuteChanged(StartDebuggerEmulationCommand);
-        RaiseEmulationCommandCanExecuteChanged(LoadStateEmulationCommand);
-        RaiseEmulationCommandCanExecuteChanged(SaveStateEmulationCommand);
         RaiseEmulationCommandCanExecuteChanged(StopEmulationCommand);
         RaiseEmulationCommandCanExecuteChanged(TogglePauseEmulationCommand);
-        RaiseEmulationCommandCanExecuteChanged(ToggleUnthrottleEmulationCommand);
         RaiseEmulationCommandCanExecuteChanged(SoftResetEmulationCommand);
         RaiseEmulationCommandCanExecuteChanged(HardResetEmulationCommand);
-        RaiseEmulationCommandCanExecuteChanged(RefreshDebuggerStatusCommand);
-        RaiseEmulationCommandCanExecuteChanged(ListDebuggerCpusCommand);
-        RaiseEmulationCommandCanExecuteChanged(DebuggerRunCommand);
-        RaiseEmulationCommandCanExecuteChanged(DebuggerBreakCommand);
-        RaiseEmulationCommandCanExecuteChanged(DebuggerStepCommand);
-        RaiseEmulationCommandCanExecuteChanged(ListDebuggerBreakpointsCommand);
-        RaiseEmulationCommandCanExecuteChanged(ListDebuggerWatchpointsCommand);
-        RaiseEmulationCommandCanExecuteChanged(AddTestDebuggerBreakpointCommand);
-        RaiseEmulationCommandCanExecuteChanged(DisassembleAroundCurrentPcCommand);
-        RaiseEmulationCommandCanExecuteChanged(DisassembleFixedAddressTestBlockCommand);
-        _mameDebuggerShell.NotifyCommandStateChanged();
     }
 
     private static void RaiseEmulationCommandCanExecuteChanged(ICommand command)

@@ -451,7 +451,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
                     : _sevenSegmentElementsByObjectId.ContainsKey(objectId)
                         ? new SegmentVisualState(_runtimeState.GetSegmentCellMasks(objectId, 1))
                         : _vfdDotMatrixElementsByObjectId.ContainsKey(objectId)
-                            ? new VfdDotMatrixVisualState(_runtimeState.GetVfdDotMatrixDots(objectId, MameVfdDotMatrixStateParser.DotCount))
+                            ? new VfdDotMatrixVisualState(_runtimeState.GetVfdDotMatrixDots(objectId, 128 * 8))
                             : new SegmentVisualState(_runtimeState.GetSegmentCellMasks(objectId, 16));
             if (!_lastVisualStateByObjectId.TryGetValue(objectId, out var previous)
                 || !Equals(previous, nextState))

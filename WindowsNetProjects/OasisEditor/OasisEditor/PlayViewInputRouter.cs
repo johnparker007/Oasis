@@ -2,16 +2,8 @@ namespace OasisEditor;
 
 public sealed class PlayViewInputRouter
 {
-    private readonly IMameInputCommandService? _commandService;
-    private readonly IMameProcessRunner? _processRunner;
-    private readonly IEmulationBackend? _backend;
+    private readonly IEmulationBackend _backend;
     private readonly HashSet<string> _activeInputIds = [];
-
-    public PlayViewInputRouter(IMameInputCommandService commandService, IMameProcessRunner processRunner)
-    {
-        _commandService = commandService ?? throw new ArgumentNullException(nameof(commandService));
-        _processRunner = processRunner ?? throw new ArgumentNullException(nameof(processRunner));
-    }
 
     public PlayViewInputRouter(IEmulationBackend backend)
     {
@@ -84,20 +76,14 @@ public sealed class PlayViewInputRouter
 
     private async Task<bool> TrySendInputStateAsync(FruitMachinePlatformType platform, InputDefinitionModel inputDefinition, bool isPressed, CancellationToken cancellationToken)
     {
-        if (_backend is not null)
+        try
         {
-            try
-            {
-                await _backend.SetInputStateAsync(inputDefinition, isPressed, cancellationToken).ConfigureAwait(false);
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
+            await _backend.SetInputStateAsync(inputDefinition, isPressed, cancellationToken).ConfigureAwait(false);
+            return true;
         }
-
-        return _commandService is not null && _processRunner is not null
-            && await _commandService.TrySendInputStateAsync(_processRunner, platform, inputDefinition, isPressed, cancellationToken).ConfigureAwait(false);
+        catch
+        {
+            return false;
+        }
     }
 }

@@ -56,11 +56,10 @@ public sealed class FaceRuntimeStateResolver : IFaceRuntimeStateResolver
             reelDisplay.Stops.GetValueOrDefault(1),
             reelDisplay.IsReversed,
             reelDisplay.BandOffset.GetValueOrDefault(0d),
-            runtimeState.FruitMachinePlatform,
-            runtimeState.EmulationBackendKind);
+            runtimeState.FruitMachinePlatform);
     }
 
-    internal static double ResolveEffectiveReelPosition(double rawReelPosition, int stops, bool reelReversed, double reelBandOffset, FruitMachinePlatformType platform, EmulationBackendKind backendKind)
+    internal static double ResolveEffectiveReelPosition(double rawReelPosition, int stops, bool reelReversed, double reelBandOffset, FruitMachinePlatformType platform)
     {
         const double positionsPerRevolution = 96d;
         var safeStops = Math.Max(1, stops);
@@ -69,7 +68,7 @@ public sealed class FaceRuntimeStateResolver : IFaceRuntimeStateResolver
         var directionAdjusted = shouldReverse && wrapped != 0d
             ? positionsPerRevolution - wrapped
             : wrapped;
-        var platformOffset = MameReelRuntimeAdapter.ResolvePlatformBandOffsetNormalized(backendKind, platform, safeStops);
+        var platformOffset = MachineReelRuntimeAdapter.ResolvePlatformBandOffsetNormalized(platform, safeStops);
         var offsetAdjusted = directionAdjusted + ((platformOffset + reelBandOffset) * positionsPerRevolution);
         return ((offsetAdjusted % positionsPerRevolution) + positionsPerRevolution) % positionsPerRevolution;
     }

@@ -29,8 +29,7 @@ public interface IEmulationBackend : IAsyncDisposable
 
 public enum EmulationBackendKind
 {
-    Mame,
-    NativeSystem6
+    Fabric
 }
 
 public enum EmulationBackendState
@@ -56,18 +55,19 @@ public sealed record EmulationBackendCapabilities(
     bool SupportsHardReset,
     bool SupportsSaveState,
     bool SupportsLoadState,
-    bool SupportsThrottle,
-    bool SupportsDebugger);
+    bool SupportsThrottle);
 
 public sealed record EmulationLaunchRequest(
-    FruitMachinePlatformType Platform,
-    string MachineName,
-    string RomRootPath,
-    IReadOnlyList<string> RomPaths,
-    string AdditionalArguments,
-    System6NativeRomSettings? System6NativeRoms = null,
+    System6NativeRomSettings System6Configuration,
     IReadOnlyList<int>? ConfiguredLampIds = null,
     IReadOnlyList<int>? ConfiguredSevenSegmentDisplayIds = null);
+
+public enum SegmentOutputType
+{
+    Digit,
+    Vfd,
+    NativeAlpha
+}
 
 public sealed class MachineLampChangedEventArgs : EventArgs
 {
@@ -95,7 +95,7 @@ public sealed class MachineReelChangedEventArgs : EventArgs
 
 public sealed class MachineSegmentChangedEventArgs : EventArgs
 {
-    public MachineSegmentChangedEventArgs(int cellId, int segmentMask, MameSegmentOutputType outputType)
+    public MachineSegmentChangedEventArgs(int cellId, int segmentMask, SegmentOutputType outputType)
     {
         CellId = cellId;
         SegmentMask = segmentMask;
@@ -104,7 +104,7 @@ public sealed class MachineSegmentChangedEventArgs : EventArgs
 
     public int CellId { get; }
     public int SegmentMask { get; }
-    public MameSegmentOutputType OutputType { get; }
+    public SegmentOutputType OutputType { get; }
 }
 
 public sealed class MachineVfdBrightnessChangedEventArgs : EventArgs

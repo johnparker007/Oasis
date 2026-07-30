@@ -5,50 +5,38 @@ namespace OasisEditor.Tests;
 public sealed class PlayViewInputRouterTests
 {
     [Fact]
-    public async Task TryPressAsync_DuplicatePress_DoesNotSendSecondDown()
+    public async Task PressReleaseAndReleaseAll_UseActiveBackendOnly()
     {
-        var processRunner = new FakeMameProcessRunner();
-        var router = new PlayViewInputRouter(new MameInputCommandService(new MameInputPortResolver()), processRunner);
-        var input = new InputDefinitionModel { Id = "btn-1", Kind = InputDefinitionKind.Button, ButtonNumber = "2" };
-
-        var first = await router.TryPressAsync(FruitMachinePlatformType.MPU4, input, CancellationToken.None);
-        var second = await router.TryPressAsync(FruitMachinePlatformType.MPU4, input, CancellationToken.None);
-
-        Assert.True(first);
-        Assert.False(second);
-        Assert.Single(processRunner.Commands);
-        Assert.Equal("set_input_value ORANGE1 4 1", processRunner.Commands[0]);
+        var backend = new RecordingBackend();
+        var router = new PlayViewInputRouter(backend);
+        var first = new InputDefinitionModel { Id = "first", ButtonNumber = "1" };
+        var second = new InputDefinitionModel { Id = "second", ButtonNumber = "2" };
+        Assert.True(await router.TryPressAsync(FruitMachinePlatformType.Impact, first, CancellationToken.None));
+        Assert.True(await router.TryReleaseAsync(FruitMachinePlatformType.Impact, first, CancellationToken.None));
+        Assert.True(await router.TryPressAsync(FruitMachinePlatformType.Impact, second, CancellationToken.None));
+        Assert.Equal(1, await router.ReleaseAllAsync(FruitMachinePlatformType.Impact,
+            new Dictionary<string, InputDefinitionModel> { [second.Id] = second }, CancellationToken.None));
+        Assert.Equal([(first.Id, true), (first.Id, false), (second.Id, true), (second.Id, false)], backend.Inputs);
     }
 
-    [Fact]
-    public async Task ReleaseAllAsync_ReleasesPressedInputs()
+    private sealed class RecordingBackend : IEmulationBackend
     {
-        var processRunner = new FakeMameProcessRunner();
-        var router = new PlayViewInputRouter(new MameInputCommandService(new MameInputPortResolver()), processRunner);
-        var input = new InputDefinitionModel { Id = "btn-1", Kind = InputDefinitionKind.Button, ButtonNumber = "2" };
-
-        await router.TryPressAsync(FruitMachinePlatformType.MPU4, input, CancellationToken.None);
-
-        var released = await router.ReleaseAllAsync(
-            FruitMachinePlatformType.MPU4,
-            new Dictionary<string, InputDefinitionModel> { [input.Id] = input },
-            CancellationToken.None);
-
-        Assert.Equal(1, released);
-        Assert.Equal(2, processRunner.Commands.Count);
-        Assert.Equal("set_input_value ORANGE1 4 0", processRunner.Commands[1]);
-    }
-
-    private sealed class FakeMameProcessRunner : IMameProcessRunner
-    {
-        public List<string> Commands { get; } = [];
-
-        public Task StartAsync(System.Diagnostics.ProcessStartInfo startInfo, CancellationToken cancellationToken) => Task.CompletedTask;
+        public List<(string, bool)> Inputs { get; } = [];
+        public EmulationBackendKind BackendKind => EmulationBackendKind.Fabric;
+        public EmulationBackendState State => EmulationBackendState.Running;
+        public EmulationBackendCapabilities Capabilities { get; } = new(true, true, true, true, false, false, false);
+        public event EventHandler<EmulationBackendState>? StateChanged { add { } remove { } }
+        public event EventHandler<MachineLampChangedEventArgs>? LampChanged { add { } remove { } }
+        public event EventHandler<MachineReelChangedEventArgs>? ReelChanged { add { } remove { } }
+        public event EventHandler<MachineSegmentChangedEventArgs>? SegmentChanged { add { } remove { } }
+        public event EventHandler<MachineVfdBrightnessChangedEventArgs>? VfdBrightnessChanged { add { } remove { } }
+        public event EventHandler<MachineDotMatrixChangedEventArgs>? DotMatrixChanged { add { } remove { } }
+        public Task StartAsync(EmulationLaunchRequest request, CancellationToken cancellationToken) => Task.CompletedTask;
         public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-        public Task WriteStandardInputAsync(string command, CancellationToken cancellationToken)
-        {
-            Commands.Add(command);
-            return Task.CompletedTask;
-        }
+        public Task PauseAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task ResumeAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task ResetAsync(EmulationResetKind resetKind, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task SetInputStateAsync(InputDefinitionModel inputDefinition, bool isPressed, CancellationToken cancellationToken) { Inputs.Add((inputDefinition.Id, isPressed)); return Task.CompletedTask; }
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 }

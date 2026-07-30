@@ -15,7 +15,6 @@ public class MachineRuntimeState
 
     public string? LampTestObjectId { get; set; }
     public FruitMachinePlatformType FruitMachinePlatform { get; set; } = FruitMachinePlatformType.None;
-    public EmulationBackendKind EmulationBackendKind { get; set; } = EmulationBackendKind.Mame;
 
     public bool IsLampTestActive => !string.IsNullOrWhiteSpace(LampTestObjectId);
 

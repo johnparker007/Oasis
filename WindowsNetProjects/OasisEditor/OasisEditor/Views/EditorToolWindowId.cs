@@ -10,10 +10,4 @@ public enum EditorToolWindowId
     Preferences,
     ProjectSettings,
     InputMap,
-    DebuggerControl,
-    DebuggerDisassembly,
-    DebuggerRegisters,
-    DebuggerMemory,
-    DebuggerBreakpoints,
-    DebuggerWatchpoints
 }

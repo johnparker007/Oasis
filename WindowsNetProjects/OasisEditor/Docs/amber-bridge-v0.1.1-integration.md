@@ -1,4 +1,5 @@
 # Amber Bridge v0.1.1 integration contract
+> **Historical:** This document describes a removed direct integration and is not the current OasisEditor runtime architecture. Current runtime access is exclusively through FabricRuntime.dll and the production Amber API v2 provider.
 
 This is Oasis's durable copy of the integration contract for the separately maintained
 [`johnparker007/AmberOasisBridge`](https://github.com/johnparker007/AmberOasisBridge). The immutable baseline is tag
