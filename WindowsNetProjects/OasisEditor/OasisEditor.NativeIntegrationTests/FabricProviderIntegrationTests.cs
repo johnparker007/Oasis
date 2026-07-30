@@ -136,7 +136,7 @@ public sealed class FabricProviderIntegrationTests
     {
         var settings = new System6NativeRomSettings { PercentSwitchValue = 0 };
         return new FabricLaunchRequest(
-            "amber-api-v2", "jpm-system6", amberPath, resources,
+            "amber", "jpm-system6", amberPath, resources,
             FabricAmberConfiguration.FromSystem6(settings));
     }
 

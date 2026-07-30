@@ -107,7 +107,7 @@ public sealed class FabricManagedBehaviorTests
         await backend.StopAsync(CancellationToken.None);
 
         Assert.Equal("C:/fabric/FabricRuntime.dll", runtimePath);
-        Assert.Equal("amber-api-v2", runtime.Request!.BackendKind);
+        Assert.Equal("amber", runtime.Request!.BackendKind);
         Assert.Equal("jpm-system6", runtime.Request.MachineIdentifier);
         Assert.Equal("D:/amber/amber.dll", runtime.Request.BackendPath);
         Assert.Equal(1, session.MaximumConcurrentCalls);

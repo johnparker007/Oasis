@@ -1,4 +1,4 @@
-> **Historical document:** This no longer describes the current OasisEditor runtime architecture. Current runtime access is exclusively through FabricRuntime.dll and the production Amber API v2 provider.
+> **Historical document:** This describes the former direct Amber API v2 integration, including `AmberGetApi`, and not the current OasisEditor runtime architecture. Current runtime access is exclusively through FabricRuntime.dll and its production `amber` backend.
 
 # Amber Bridge v0.2 integration
 

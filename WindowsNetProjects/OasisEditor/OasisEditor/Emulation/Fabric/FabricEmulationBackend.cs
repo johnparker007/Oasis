@@ -6,6 +6,8 @@ namespace OasisEditor;
 
 public sealed class FabricEmulationBackend : IEmulationBackend
 {
+    private const string AmberBackendKind = "amber";
+    private const string JpmSystem6MachineIdentifier = "jpm-system6";
     private const int EmulationPumpHz = 1000;
     private const ulong NanosecondsPerPump = 1_000_000;
     private static readonly TimeSpan PumpInterval = TimeSpan.FromMilliseconds(1);
@@ -89,7 +91,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             cancellationToken.ThrowIfCancellationRequested();
             _runtime = _runtimeFactory(_runtimePath);
             _session = _runtime.CreateSession(new FabricLaunchRequest(
-                "amber-api-v2", "jpm-system6", _amberPath, resources,
+                AmberBackendKind, JpmSystem6MachineIdentifier, _amberPath, resources,
                 FabricAmberConfiguration.FromSystem6(settings)));
 
             await _sessionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
