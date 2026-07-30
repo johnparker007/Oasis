@@ -1,6 +1,6 @@
 namespace OasisEditor;
 
-public sealed class MameLampRuntimeAdapter : IMameLampRuntimeAdapter
+public sealed class MachineLampRuntimeAdapter : IMachineLampRuntimeAdapter
 {
     private readonly object _pendingSync = new();
     private readonly Func<IEnumerable<DocumentTabViewModel>> _documentProvider;
@@ -13,7 +13,7 @@ public sealed class MameLampRuntimeAdapter : IMameLampRuntimeAdapter
     private readonly IMachineObjectReferenceResolver _machineObjectReferenceResolver;
     private bool _uiUpdateScheduled;
 
-    public MameLampRuntimeAdapter(
+    public MachineLampRuntimeAdapter(
         Func<IEnumerable<DocumentTabViewModel>> documentProvider,
         Func<bool> debugOutputEnabledProvider,
         Action<string> infoLogger,
@@ -88,7 +88,7 @@ public sealed class MameLampRuntimeAdapter : IMameLampRuntimeAdapter
                 };
                 if (_debugOutputEnabledProvider())
                 {
-                    _infoLogger($"[MAME-LAMP] lamp{pendingLampId} value={pendingLampValue} intensity={normalizedIntensity:0.###}");
+                    _infoLogger($"[FABRIC-LAMP] lamp{pendingLampId} value={pendingLampValue} intensity={normalizedIntensity:0.###}");
                 }
 
                 var machineStateChanged = document.RuntimeState.SetLampIntensityIfChanged(lampReference, normalizedIntensity);

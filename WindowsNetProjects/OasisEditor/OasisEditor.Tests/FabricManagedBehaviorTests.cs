@@ -99,8 +99,7 @@ public sealed class FabricManagedBehaviorTests
         var audio = new FakeAudioSink();
         var backend = new FabricEmulationBackend("C:/fabric/FabricRuntime.dll", "D:/amber/amber.dll",
             path => { runtimePath = path; return runtime; }, audio, clock);
-        var request = new EmulationLaunchRequest(FruitMachinePlatformType.Impact, "machine", "", [], "",
-            new System6NativeRomSettings { ProgramRom1Path = "p0", SoundRom1Path = "s0" });
+        var request = new EmulationLaunchRequest(new System6NativeRomSettings { ProgramRom1Path = "p0", SoundRom1Path = "s0" });
 
         await backend.StartAsync(request, CancellationToken.None);
         await session.FirstAdvance.Task.WaitAsync(TimeSpan.FromSeconds(2));
@@ -130,7 +129,7 @@ public sealed class FabricManagedBehaviorTests
         var runtime = new FakeRuntime(session);
         var errors = new List<string>();
         var backend = new FabricEmulationBackend("runtime", "amber", _ => runtime, new FakeAudioSink(), new FakeClock(), errors.Add);
-        var request = new EmulationLaunchRequest(FruitMachinePlatformType.Impact, "machine", "", [], "", new System6NativeRomSettings());
+        var request = new EmulationLaunchRequest(new System6NativeRomSettings());
 
         await backend.StartAsync(request, CancellationToken.None);
         await session.FirstAdvance.Task.WaitAsync(TimeSpan.FromSeconds(2));

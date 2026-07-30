@@ -11,7 +11,5 @@ public sealed class InputDefinitionModel
     public string RawMfmeShortcut { get; set; } = string.Empty;
     public string KeyboardShortcut { get; set; } = string.Empty;
     public Guid? LinkedVisualElementId { get; set; }
-    public string MamePortTag { get; set; } = string.Empty;
-    public string MameMask { get; set; } = string.Empty;
     public string Notes { get; set; } = string.Empty;
 }

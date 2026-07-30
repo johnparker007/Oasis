@@ -10,7 +10,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     private const ulong NanosecondsPerPump = 1_000_000;
     private static readonly TimeSpan PumpInterval = TimeSpan.FromMilliseconds(1);
     private static readonly EmulationBackendCapabilities BackendCapabilities =
-        new(true, true, true, true, false, false, false, false);
+        new(true, true, true, true, false, false, false);
 
     private readonly string _runtimePath;
     private readonly string _amberPath;
@@ -60,7 +60,6 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         _errorLogger = errorLogger ?? WriteDebugError;
     }
 
-    public EmulationBackendKind BackendKind => EmulationBackendKind.NativeSystem6;
     public EmulationBackendCapabilities Capabilities => BackendCapabilities;
     public EmulationBackendState State { get { lock (_stateGate) return _state; } }
     public Exception? LastFailure { get; private set; }
@@ -84,8 +83,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         SetState(EmulationBackendState.Starting);
         try
         {
-            var settings = request.System6NativeRoms
-                ?? throw new InvalidOperationException("Fabric System 6 requires native ROM settings.");
+            var settings = request.System6Configuration;
             var resources = BuildRomResources(settings);
             cancellationToken.ThrowIfCancellationRequested();
             _runtime = _runtimeFactory(_runtimePath);
@@ -279,7 +277,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
 
                 nextDeadline += pumpTicks;
                 var now = _clock.GetTimestamp();
-                // Match direct Amber: execute the current slice, then abandon catch-up once over three ticks late.
+                // Execute the current slice, then abandon catch-up once over three ticks late.
                 if (now - nextDeadline > pumpTicks * 3)
                     nextDeadline = now + pumpTicks;
 
@@ -394,7 +392,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
                     continue;
                 _displayOutputs[identity] = publishedMask;
                 var eventIndex = checked(displayOrdinal * FabricAbi.CharacterCapacity + position);
-                SegmentChanged?.Invoke(this, new(eventIndex, unchecked((int)publishedMask), MameSegmentOutputType.NativeAlpha));
+                SegmentChanged?.Invoke(this, new(eventIndex, unchecked((int)publishedMask), SegmentOutputType.NativeAlpha));
             }
         }
         for (var displayOrdinal = 0; displayOrdinal < snapshot.SegmentDisplays.Count; displayOrdinal++)
@@ -408,7 +406,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
                     continue;
                 _displayOutputs[identity] = mask;
                 var eventIndex = checked(displayOrdinal * FabricAbi.SegmentCapacity + position);
-                SegmentChanged?.Invoke(this, new(eventIndex, unchecked((int)mask), MameSegmentOutputType.Digit));
+                SegmentChanged?.Invoke(this, new(eventIndex, unchecked((int)mask), SegmentOutputType.Digit));
             }
         }
     }

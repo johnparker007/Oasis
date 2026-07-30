@@ -123,7 +123,6 @@ internal static class SegmentDisplayDefinitionLoader
             Schema = "oasis.segmentDisplayDefinition.canonical.v1",
             Name = "Canonical 7-segment display cell",
             Units = "normalized",
-            MameComponentType = "7seg",
             Cell = new SegmentDisplayCellDefinition
             {
                 Size = new SegmentDisplaySizeDefinition { Width = 1d, Height = 1d },

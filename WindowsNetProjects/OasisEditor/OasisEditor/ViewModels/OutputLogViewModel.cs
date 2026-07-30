@@ -26,7 +26,7 @@ public sealed class OutputLogViewModel : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public OutputLogViewModel()
-        : this(new OutputLogDiskWriter(MameRuntimePaths.EnsureManagedLogRootDirectory()), new OutputLogShellLauncher())
+        : this(new OutputLogDiskWriter(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OasisEditor", "Logs")), new OutputLogShellLauncher())
     {
     }
 

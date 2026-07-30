@@ -31,8 +31,6 @@
                 <DataGridTextColumn Header="Key" Binding="{Binding KeyboardShortcut}" Width="0.8*" />
                 <DataGridTextColumn Header="Raw MFME Key" Binding="{Binding RawMfmeShortcut}" Width="0.9*" />
                 <DataGridTextColumn Header="Linked Visual" Binding="{Binding LinkedVisualElementId}" Width="1.3*" />
-                <DataGridTextColumn Header="Tag" Binding="{Binding MamePortTag}" Width="0.8*" />
-                <DataGridTextColumn Header="Mask" Binding="{Binding MameMask}" Width="0.7*" />
                 <DataGridCheckBoxColumn Header="Inverted" Binding="{Binding Inverted}" Width="0.8*" />
                 <DataGridTextColumn Header="Notes" Binding="{Binding Notes}" Width="1.3*" />
             </DataGrid.Columns>

@@ -26,7 +26,7 @@ public sealed record FabricAmberConfiguration(
             checked((uint)reel.ReelIndex), reel.Enabled, checked((uint)reel.Steps),
             checked((uint)reel.OptoStart), checked((uint)reel.OptoEnd), reel.OptoInvert)).ToArray();
 
-        // Match System6NativeBackend: only enabled coin slots are intentionally applied.
+        // Only enabled coin slots are intentionally applied.
         var coins = settings.Coins.Where(coin => coin.Enabled).ToArray();
         return new FabricAmberConfiguration(
             reels.Aggregate(0u, (mask, reel) => mask | 1u << (int)reel.Index),

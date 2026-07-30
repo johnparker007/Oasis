@@ -17,12 +17,6 @@ public partial class EditorShellView : UserControl
         HideToolWindow(EditorToolWindowId.ProjectSettings);
         HideToolWindow(EditorToolWindowId.InputMap);
         HideToolWindow(EditorToolWindowId.PlayView);
-        HideToolWindow(EditorToolWindowId.DebuggerControl);
-        HideToolWindow(EditorToolWindowId.DebuggerDisassembly);
-        HideToolWindow(EditorToolWindowId.DebuggerRegisters);
-        HideToolWindow(EditorToolWindowId.DebuggerMemory);
-        HideToolWindow(EditorToolWindowId.DebuggerBreakpoints);
-        HideToolWindow(EditorToolWindowId.DebuggerWatchpoints);
     }
 
     public void ShowOrFocusToolWindow(EditorToolWindowId toolWindowId)
@@ -92,12 +86,6 @@ public partial class EditorShellView : UserControl
         ConfigureHideOnClose(EditorToolWindowId.ProjectSettings);
         ConfigureHideOnClose(EditorToolWindowId.InputMap);
         ConfigureHideOnClose(EditorToolWindowId.PlayView);
-        ConfigureHideOnClose(EditorToolWindowId.DebuggerControl);
-        ConfigureHideOnClose(EditorToolWindowId.DebuggerDisassembly);
-        ConfigureHideOnClose(EditorToolWindowId.DebuggerRegisters);
-        ConfigureHideOnClose(EditorToolWindowId.DebuggerMemory);
-        ConfigureHideOnClose(EditorToolWindowId.DebuggerBreakpoints);
-        ConfigureHideOnClose(EditorToolWindowId.DebuggerWatchpoints);
 
         if (DataContext is not MainWindowViewModel viewModel)
         {

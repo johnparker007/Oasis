@@ -17,7 +17,6 @@ public sealed class ConvertFmlAutomationCommandTests
             new Panel2DDocumentCreationService(),
             new FakeFmlImportService(succeeded: true),
             saveService,
-            new FakeMameLayExportService(),
             new ConvertFmlAutomationOptions
             {
                 ProjectName = "DemoProject",
@@ -45,7 +44,6 @@ public sealed class ConvertFmlAutomationCommandTests
             new Panel2DDocumentCreationService(),
             new FakeFmlImportService(succeeded: false),
             saveService,
-            new FakeMameLayExportService(),
             new ConvertFmlAutomationOptions
             {
                 ProjectName = "DemoProject",
@@ -90,22 +88,4 @@ public sealed class ConvertFmlAutomationCommandTests
         }
     }
 
-    private sealed class FakeMameLayExportService : IMameLayExportService
-    {
-        public OasisAutomationCommandResult Export(DocumentTabViewModel panelDocument, string outputLayPath)
-        {
-            return OasisAutomationCommandResult.Success("ok");
-        }
-    }
-
-    private sealed class FakeSaveService : IDocumentSaveService
-    {
-        public bool WasCalled { get; private set; }
-
-        public DocumentTabViewModel SaveDocument(DocumentTabViewModel current, string savePath, EditorProject? project = null, IEditorProgressReporter? progress = null)
-        {
-            WasCalled = true;
-            return current;
-        }
-    }
 }

@@ -51,44 +51,12 @@
             </ScrollViewer>
 
             <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <ScrollViewer.Style>
-                    <Style TargetType="ScrollViewer">
-                            <Setter Property="Visibility" Value="Collapsed" />
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding SelectedProjectSettingsCategory}" Value="MAME">
-                                    <Setter Property="Visibility" Value="Visible" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                    </Style>
-                </ScrollViewer.Style>
-                <StackPanel>
-                    <TextBlock FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="MAME" />
-
-                    <TextBlock Margin="0,16,0,4" Text="MAME ROM" Foreground="{DynamicResource TextSecondaryBrush}" />
-                    <StackPanel Orientation="Horizontal">
-                        <TextBox Width="220"
-                                 HorizontalAlignment="Left"
-                                 Text="{Binding MameRomName, UpdateSourceTrigger=LostFocus}" />
-                        <Button Margin="8,0,0,0"
-                                Padding="10,2"
-                                Command="{Binding DownloadMameRomCommand}"
-                                Content="Download" />
-                    </StackPanel>
-                    <TextBlock Margin="0,8,0,0"
-                               Text="{Binding MameRomStatus, StringFormat=Status: {0}}"
-                               Foreground="{DynamicResource TextSecondaryBrush}" />
-                    <CheckBox Margin="0,8,0,0"
-                              Content="Automatically download missing ROMs"
-                              IsChecked="{Binding AutomaticallyDownloadMissingRoms}" />
-                </StackPanel>
-            </ScrollViewer>
-
-            <Grid>
+                <Grid>
                 <Grid.Style>
                     <Style TargetType="Grid">
                             <Setter Property="Visibility" Value="Collapsed" />
                             <Style.Triggers>
-                                <DataTrigger Binding="{Binding SelectedProjectSettingsCategory}" Value="Native">
+                                <DataTrigger Binding="{Binding SelectedProjectSettingsCategory}" Value="Impact / Fabric">
                                     <Setter Property="Visibility" Value="Visible" />
                                 </DataTrigger>
                             </Style.Triggers>
@@ -100,7 +68,7 @@
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
-                <TextBlock Grid.Row="0" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="Native" />
+                <TextBlock Grid.Row="0" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="Impact / Fabric" />
                 <ListBox Grid.Row="1"
                          Margin="0,14,0,12"
                          ItemsSource="{Binding NativeProjectSettingsTabs}"
@@ -124,7 +92,7 @@
                         </Style>
                     </ScrollViewer.Style>
                     <StackPanel>
-                        <TextBlock Margin="0,0,0,4" Text="Native DLL ROMs / System6 ROMs" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <TextBlock Margin="0,0,0,4" Text="System 6 ROMs for Fabric Amber emulation" Foreground="{DynamicResource TextSecondaryBrush}" />
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="120" />
@@ -164,7 +132,7 @@
                     <StackPanel>
                         <TextBlock Margin="0,0,0,4" Text="Percent switch value" Foreground="{DynamicResource TextSecondaryBrush}" />
                         <TextBox Width="80" HorizontalAlignment="Left" Text="{Binding System6PercentSwitchValue, UpdateSourceTrigger=LostFocus}" />
-                        <TextBlock Margin="0,4,0,0" Text="Native System 6 SetPercent value. Low four bits map to DLL percentage switches 8–11." Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+                        <TextBlock Margin="0,4,0,0" Text="Fabric Amber provider percentage value. Low four bits map to DLL percentage switches 8–11." Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
                     </StackPanel>
                 </ScrollViewer>
 
@@ -239,10 +207,11 @@
                                 <DataGridTextColumn Header="Full Level" Binding="{Binding FullLevel, UpdateSourceTrigger=LostFocus}" Width="85" />
                             </DataGrid.Columns>
                         </DataGrid>
-                        <TextBlock Margin="0,8,0,0" Text="Only enabled coin rows are sent to the native System 6 backend at startup." Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+                        <TextBlock Margin="0,8,0,0" Text="Only enabled coin rows are sent to the Fabric Amber provider." Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
                     </StackPanel>
                 </ScrollViewer>
             </Grid>
+            </ScrollViewer>
         </Grid>
     </Grid>
 </UserControl>

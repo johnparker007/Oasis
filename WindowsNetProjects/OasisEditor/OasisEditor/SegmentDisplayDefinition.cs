@@ -15,8 +15,6 @@ internal sealed class SegmentDisplayDefinition
     [JsonPropertyName("units")]
     public string? Units { get; set; }
 
-    [JsonPropertyName("mameComponentType")]
-    public string? MameComponentType { get; set; }
 
     [JsonPropertyName("cell")]
     public SegmentDisplayCellDefinition? Cell { get; set; }

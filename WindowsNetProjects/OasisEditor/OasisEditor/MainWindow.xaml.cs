@@ -189,7 +189,6 @@ public partial class MainWindow : Window
         _preferencesStore.Save(new EditorPreferences
         {
             ThemePreference = preferences.ThemePreference,
-            Mame = preferences.Mame,
             NativeEmulation = preferences.NativeEmulation,
             OutputLog = preferences.OutputLog,
             FaceGeneration = preferences.FaceGeneration,

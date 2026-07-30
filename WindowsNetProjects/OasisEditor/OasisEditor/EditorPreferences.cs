@@ -4,7 +4,6 @@ public sealed class EditorPreferences
 {
     public ThemePreference ThemePreference { get; init; } = ThemePreference.Dark;
 
-    public MamePreferences Mame { get; init; } = new();
     public NativeEmulationPreferences NativeEmulation { get; init; } = new();
     public OutputLogPreferences OutputLog { get; init; } = new();
     public FaceGenerationPreferences FaceGeneration { get; init; } = new();
@@ -13,23 +12,6 @@ public sealed class EditorPreferences
 
     public Dictionary<string, ProjectWindowState> ProjectWindowStates { get; init; } = new();
 }
-
-public sealed class MamePreferences
-{
-    public string Version { get; init; } = "0267";
-    public string ExecutablePath { get; init; } = string.Empty;
-    public string ReleaseSource { get; init; } = "https://github.com/mamedev/mame/releases";
-    public string CommandLineOverrides { get; init; } = string.Empty;
-    public bool KeepMameUpToDateAutomatically { get; init; } = true;
-    public bool DebugOutputLamps { get; init; }
-    public bool DebugOutputStdIn { get; init; }
-    public bool DebugOutputStdOut { get; init; }
-    public string RomDownloadBaseUrl { get; init; } = "https://archive.org/download/MAME215RomsOnlyMerged/";
-    public string RomArchiveExtension { get; init; } = ".zip";
-    public string LocalRomSourceDirectory { get; init; } = string.Empty;
-    public string LocalRomArchiveExtension { get; init; } = ".zip";
-}
-
 
 public sealed class OasisPlayerPreferences
 {
@@ -43,10 +25,8 @@ public sealed class NativeEmulationPreferences
 {
     public const int DefaultAudioBufferLengthMilliseconds = 50;
 
-    public string System6LibraryPath { get; init; } = string.Empty;
-    public bool UseFabricForAmber { get; init; }
     public string FabricRuntimeLibraryPath { get; init; } = string.Empty;
-    public string FabricAmberApiV2LibraryPath { get; init; } = string.Empty;
+    public string ProductionAmberLibraryPath { get; init; } = string.Empty;
     public int AudioBufferLengthMilliseconds { get; init; } = DefaultAudioBufferLengthMilliseconds;
 }
 
