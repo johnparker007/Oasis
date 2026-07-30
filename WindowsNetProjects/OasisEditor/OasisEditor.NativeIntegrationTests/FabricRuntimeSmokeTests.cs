@@ -46,7 +46,7 @@ public sealed class FabricRuntimeSmokeTests
 
     [NativeTheory("FABRIC_RUNTIME_DLL")]
     [InlineData("not-a-provider", "jpm-system6")]
-    [InlineData("amber-api-v2", "not-a-machine")]
+    [InlineData("amber", "not-a-machine")]
     public void Session_InvalidProviderIdentityPreservesResultAndError(string backendKind, string machineIdentifier)
     {
         var runtimePath = NativePrerequisites.RequireFile("FABRIC_RUNTIME_DLL");

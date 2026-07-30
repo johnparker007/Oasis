@@ -3,7 +3,7 @@
 The supported runtime chain is:
 
 ```text
-OasisEditor -> FabricRuntime.dll -> production Amber API v2 provider DLL
+OasisEditor -> FabricRuntime.dll -> production Amber provider DLL
 ```
 
 ## Automated unit tests
@@ -14,7 +14,7 @@ Run on Windows with the .NET/WPF toolchain:
 dotnet test .\OasisEditor.Tests\OasisEditor.Tests.csproj
 ```
 
-The managed suite covers backend selection, configuration validation, Fabric ABI layout, the fixed 1 ms scheduler, bounded catch-up, ROM and provider configuration, input routing and release, output snapshots, partial audio reads, audio buffering, and failure cleanup. It also asserts the `amber-api-v2` provider identifier and `jpm-system6` machine identifier.
+The managed suite covers backend selection, configuration validation, Fabric ABI layout, the fixed 1 ms scheduler, bounded catch-up, ROM and provider configuration, input routing and release, output snapshots, partial audio reads, audio buffering, and failure cleanup. It also asserts the `amber` backend identifier and `jpm-system6` machine identifier.
 
 ## Windows-only native integration tests
 
@@ -28,7 +28,7 @@ These tests validate the native Fabric ABI/layout and runtime/provider integrati
 
 ## Manual end-to-end verification
 
-The following checks were completed by the user after PR #594: the solution builds, the test suite passes, OasisEditor launches, Impact/System 6 emulation starts, and Fabric reaches the production Amber API v2 provider.
+Historical verification after PR #594 used the former experimental Amber API v2 provider path. The current standalone Fabric runtime instead reaches the production `amber` backend.
 
 The following focused checks remain for this verification pass:
 
