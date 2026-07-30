@@ -48,6 +48,28 @@ public sealed class EmulationBackendFactoryTests
         Assert.IsType<FabricEmulationBackend>(factory.CreateBackend(FruitMachinePlatformType.Impact));
     }
 
+    [Theory]
+    [InlineData(false, 73)]
+    [InlineData(true, 73)]
+    [InlineData(false, NativeEmulationPreferences.DefaultAudioBufferLengthMilliseconds)]
+    [InlineData(true, NativeEmulationPreferences.DefaultAudioBufferLengthMilliseconds)]
+    public void AmberBackends_UseTheSameConfiguredAudioBuffer(bool fabricEnabled, int configuredMilliseconds)
+    {
+        var factory = new EmulationBackendFactory(() => new FakeBackend(), () => "legacy.dll",
+            () => configuredMilliseconds,
+            fabricConfigurationProvider: () => (fabricEnabled, "runtime.dll", "amber.dll"));
+
+        var backend = factory.CreateBackend(FruitMachinePlatformType.Impact);
+        var sink = backend switch
+        {
+            FabricEmulationBackend fabric => fabric.AudioSink,
+            System6NativeBackend direct => direct.AudioSink,
+            _ => throw new Xunit.Sdk.XunitException("Expected an Amber backend.")
+        };
+
+        Assert.Equal(configuredMilliseconds, Assert.IsType<NAudioEmulationAudioSink>(sink).BufferLengthMilliseconds);
+    }
+
     [Fact]
     public void CreateBackend_WithIncompleteEnabledFabricFeature_ThrowsActionableError()
     {

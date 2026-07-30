@@ -49,7 +49,7 @@ public sealed class EmulationBackendFactory : IEmulationBackendFactory
             if (string.IsNullOrWhiteSpace(fabric.RuntimePath) || string.IsNullOrWhiteSpace(fabric.AmberPath))
                 throw new InvalidOperationException("Fabric emulation is enabled, but both the Fabric runtime DLL path and Amber API v2 DLL path must be configured.");
             return new FabricEmulationBackend(fabric.RuntimePath, fabric.AmberPath, path => new FabricRuntimeLibrary(path),
-                new NAudioEmulationAudioSink(), new StopwatchFabricClock(), _fabricErrorLogger);
+                new NAudioEmulationAudioSink(_system6AudioBufferLengthMillisecondsProvider()), new StopwatchFabricClock(), _fabricErrorLogger);
         }
         var libraryPath = _system6LibraryPathProvider();
         return string.IsNullOrWhiteSpace(libraryPath)

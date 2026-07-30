@@ -238,8 +238,33 @@ public sealed class FabricManagedBehaviorTests
         await backend.StopAsync(CancellationToken.None);
 
         Assert.Equal(new EmulationAudioFormat(checked((int)sampleRate), channels, 16), audio.StartedFormat);
-        Assert.Equal(Math.Max(1, checked((int)sampleRate / 500)), session.LastFrameCapacity);
+        Assert.Equal((checked((int)sampleRate) + 999) / 1000, session.LastFrameCapacity);
         Assert.Equal(0, session.LastSampleCapacity % channels);
+    }
+
+    [Theory]
+    [InlineData(48000, 48)]
+    [InlineData(44100, 45)]
+    [InlineData(1, 1)]
+    public void AudioCapacity_HoldsMaximumSingleTickEntitlement(int sampleRate, int expectedFrames)
+    {
+        Assert.Equal(expectedFrames, FabricEmulationBackend.CalculateAudioFramesPerTick(sampleRate));
+    }
+
+    [Fact]
+    public async Task Backend_UsesFixedOneMillisecondAdvancesAndSubmitsFramesExactlyOnce()
+    {
+        var session = new FakeSession { FramesToWrite = 48 };
+        var audio = new FakeAudioSink();
+        var backend = CreateBackend(session, audio);
+
+        await backend.StartAsync(CreateRequest(), CancellationToken.None);
+        await session.FirstAudioRead.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await backend.StopAsync(CancellationToken.None);
+
+        Assert.All(session.Advances, value => Assert.Equal(1_000_000UL, value));
+        Assert.Equal(48, session.LastFrameCapacity);
+        Assert.Equal(48 * 2 * sizeof(short), audio.LastPcmBytes);
     }
 
     [Theory]
@@ -283,7 +308,7 @@ public sealed class FabricManagedBehaviorTests
     private sealed class FakeClock : IFabricClock
     {
         private long _timestamp;
-        public long Frequency => 1_000;
+        public long Frequency => 10_000;
         public long GetTimestamp() => Interlocked.Increment(ref _timestamp);
     }
 
@@ -313,10 +338,12 @@ public sealed class FabricManagedBehaviorTests
         public int ResetCount { get; private set; }
         public int ShutdownCount { get; private set; }
         public int DisposeCount { get; private set; }
+        public int FramesToWrite { get; init; }
+        public List<ulong> Advances { get; } = [];
         public FabricCapabilities Capabilities => new((ulong)(FabricCapability.DigitalInput | FabricCapability.Audio));
         public void Initialise() => Invoke(() => { });
         public void Reset() => Invoke(() => ResetCount++);
-        public void Advance(ulong elapsedNanoseconds) => Invoke(() => { FirstAdvance.TrySetResult(); if (AdvanceFailure is not null) throw AdvanceFailure; });
+        public void Advance(ulong elapsedNanoseconds) => Invoke(() => { Advances.Add(elapsedNanoseconds); FirstAdvance.TrySetResult(); if (AdvanceFailure is not null) throw AdvanceFailure; });
         public void SubmitInput(FabricInput input) => Invoke(() => { });
         public FabricMachineSnapshot GetSnapshot() => Invoke(() => SnapshotFailure is null
             ? new FabricMachineSnapshot(1, [], [], [], [])
@@ -331,7 +358,7 @@ public sealed class FabricManagedBehaviorTests
                 LastSampleCapacity = sampleCapacity;
                 FirstAudioRead.TrySetResult();
                 if (AudioFailure is not null) throw AudioFailure;
-                return 0;
+                return Math.Min(FramesToWrite, frameCapacity);
             });
         }
         public void Shutdown() => Invoke(() => { ShutdownCount++; if (ShutdownFailure is not null) throw ShutdownFailure; });
@@ -356,8 +383,9 @@ public sealed class FabricManagedBehaviorTests
         public int StartCount { get; private set; }
         public int StopCount { get; private set; }
         public EmulationAudioFormat? StartedFormat { get; private set; }
+        public int LastPcmBytes { get; private set; }
         public void Start(EmulationAudioFormat format) { StartedFormat = format; StartCount++; }
-        public void PushPcm(ReadOnlySpan<byte> pcmBytes) { }
+        public void PushPcm(ReadOnlySpan<byte> pcmBytes) => LastPcmBytes = pcmBytes.Length;
         public void Stop() => StopCount++;
         public void Clear() { }
         public void Dispose() { }
