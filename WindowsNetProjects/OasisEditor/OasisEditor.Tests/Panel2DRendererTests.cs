@@ -440,6 +440,23 @@ public sealed class Panel2DRendererTests
             PanelViewportTransform.Identity);
     }
 
+    [Fact]
+    public void SevenSegmentRenderer_DecimalPointBitControlsIlluminationAndBrightness()
+    {
+        using var offSurface = SKSurface.Create(new SKImageInfo(100, 100));
+        using var litSurface = SKSurface.Create(new SKImageInfo(100, 100));
+        SevenSegmentElementRenderer.RenderSegmentDisplay(offSurface.Canvas, SKRect.Create(100, 100), [0], [0.5d], "#FFFF0000", "#FF100000");
+        SevenSegmentElementRenderer.RenderSegmentDisplay(litSurface.Canvas, SKRect.Create(100, 100), [1 << 7], [0.5d], "#FFFF0000", "#FF100000");
+
+        using var offBitmap = SKBitmap.FromImage(offSurface.Snapshot());
+        using var litBitmap = SKBitmap.FromImage(litSurface.Snapshot());
+        var offPixel = offBitmap.GetPixel(82, 85);
+        var litPixel = litBitmap.GetPixel(82, 85);
+
+        Assert.True(litPixel.Red > offPixel.Red);
+        Assert.True(litPixel.Red < 255);
+    }
+
 
     [Fact]
     public void Render_WithAlphaRenderer_DoesNotThrow()

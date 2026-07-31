@@ -117,7 +117,8 @@ internal sealed class SevenSegmentElementRenderer : IPanelElementRenderer
         }
         if (definition.DecimalPoint is not null)
         {
-            paint.Color = cacheKey.OffColor;
+            var lit = (cacheKey.SegmentMask & (1 << SevenSegmentBitMapping.DecimalPoint)) != 0;
+            paint.Color = lit ? Lerp(cacheKey.OffColor, cacheKey.OnColor, litAmount) : cacheKey.OffColor;
             canvas.DrawPath(definition.DecimalPoint, paint);
         }
         canvas.Restore();

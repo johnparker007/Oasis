@@ -28,16 +28,16 @@ public sealed class FabricSevenSegmentRuntimeTests
         ]));
         Assert.Single(dispatches)();
 
-        Assert.Equal([0x3F], document.RuntimeState.GetSegmentCellMasks("seven-0", 1));
-        Assert.Equal([0x06], document.RuntimeState.GetSegmentCellMasks("seven-1", 1));
-        Assert.Equal([0x5B], document.RuntimeState.GetSegmentCellMasks("seven-2", 1));
+        Assert.Equal([0x7E], document.RuntimeState.GetSegmentCellMasks("seven-0", 1));
+        Assert.Equal([0x30], document.RuntimeState.GetSegmentCellMasks("seven-1", 1));
+        Assert.Equal([0x6D], document.RuntimeState.GetSegmentCellMasks("seven-2", 1));
         var reference = MachineObjectReference.SevenSegmentDisplay(1);
-        Assert.Equal([0x06, 0x5B], document.RuntimeState.GetSegmentCellMasks(reference, 2));
+        Assert.Equal([0x30, 0x6D], document.RuntimeState.GetSegmentCellMasks(reference, 2));
         Assert.Contains(panelNotifications.SelectMany(values => values.Keys), id => id == "seven-0");
         Assert.Contains(panelNotifications.SelectMany(values => values.Keys), id => id == "seven-2");
         Assert.Contains(faceNotifications.SelectMany(ids => ids), id => id == "face-seven-1");
-        Assert.Contains(diagnostics, message => message.Contains("cellId=0") && message.Contains("mask=0x3F"));
-        Assert.Contains(diagnostics, message => message.Contains("face=face-seven-1") && message.Contains("0x5B"));
+        Assert.Contains(diagnostics, message => message.Contains("cellId=0") && message.Contains("mask=0x7E"));
+        Assert.Contains(diagnostics, message => message.Contains("face=face-seven-1") && message.Contains("0x6D"));
     }
 
     [Fact]

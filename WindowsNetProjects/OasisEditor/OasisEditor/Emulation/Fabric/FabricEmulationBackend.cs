@@ -408,19 +408,21 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             for (var position = 0; position < display.SegmentMasks.Length; position++)
             {
                 var identity = new DisplayOutputIdentity(DisplayOutputFamily.Segment, display.Identifier, displayOrdinal, position);
-                var mask = display.SegmentMasks[position];
-                if (_displayOutputs.TryGetValue(identity, out var previous) && previous == mask)
+                var oasisMask = System6SevenSegmentMapper.MapNativeMaskToOasisMask(
+                    unchecked((int)display.SegmentMasks[position]));
+                var publishedMask = unchecked((uint)oasisMask);
+                if (_displayOutputs.TryGetValue(identity, out var previous) && previous == publishedMask)
                 {
                     oasisCellId++;
                     continue;
                 }
-                _displayOutputs[identity] = mask;
-                SegmentChanged?.Invoke(this, new(oasisCellId, unchecked((int)mask), SegmentOutputType.Digit));
+                _displayOutputs[identity] = publishedMask;
+                SegmentChanged?.Invoke(this, new(oasisCellId, oasisMask, SegmentOutputType.Digit));
                 if (Debugger.IsAttached)
                 {
                     Debug.WriteLine(
                         $"Fabric segment changed: identifier='{display.Identifier}', ordinal={displayOrdinal}, " +
-                        $"position={position}, oasisCellId={oasisCellId}, mask=0x{mask:X}.");
+                        $"position={position}, oasisCellId={oasisCellId}, mask=0x{publishedMask:X}.");
                 }
                 oasisCellId++;
             }
