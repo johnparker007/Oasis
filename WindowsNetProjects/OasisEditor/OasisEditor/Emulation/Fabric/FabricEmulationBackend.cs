@@ -26,6 +26,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     private readonly Dictionary<int, (bool State, float Brightness)> _lamps = [];
     private readonly Dictionary<int, int> _reels = [];
     private readonly Dictionary<DisplayOutputIdentity, ulong> _displayOutputs = [];
+    private readonly Dictionary<DisplayBrightnessIdentity, float> _displayBrightnessOutputs = [];
     private readonly object _stateGate = new();
 
     private IFabricRuntimeLibrary? _runtime;
@@ -386,6 +387,15 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         for (var displayOrdinal = 0; displayOrdinal < snapshot.CharacterDisplays.Count; displayOrdinal++)
         {
             var display = snapshot.CharacterDisplays[displayOrdinal];
+            var brightnessIdentity = new DisplayBrightnessIdentity(
+                DisplayOutputFamily.Character, display.Identifier, displayOrdinal);
+            if (!_displayBrightnessOutputs.TryGetValue(brightnessIdentity, out var previousBrightness)
+                || previousBrightness != display.Brightness)
+            {
+                _displayBrightnessOutputs[brightnessIdentity] = display.Brightness;
+                var displayBaseIndex = checked(displayOrdinal * FabricAbi.CharacterCapacity);
+                VfdBrightnessChanged?.Invoke(this, new(displayBaseIndex, display.Brightness));
+            }
             for (var position = 0; position < display.Characters.Length; position++)
             {
                 var identity = new DisplayOutputIdentity(DisplayOutputFamily.Character, display.Identifier, displayOrdinal, position);
@@ -498,6 +508,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         _lamps.Clear();
         _reels.Clear();
         _displayOutputs.Clear();
+        _displayBrightnessOutputs.Clear();
     }
 
     private IFabricMachineSession RequireSession() =>
@@ -524,5 +535,6 @@ public sealed class FabricEmulationBackend : IEmulationBackend
 
     private readonly record struct InputCommand(int Index, bool Active);
     private readonly record struct DisplayOutputIdentity(DisplayOutputFamily Family, string Identifier, int DisplayOrdinal, int Position);
+    private readonly record struct DisplayBrightnessIdentity(DisplayOutputFamily Family, string Identifier, int DisplayOrdinal);
     private enum DisplayOutputFamily { Character, Segment }
 }

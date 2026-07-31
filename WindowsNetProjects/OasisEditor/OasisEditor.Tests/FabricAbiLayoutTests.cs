@@ -8,6 +8,7 @@ public sealed class FabricAbiLayoutTests
     [Fact]
     public void X64NativeLayoutsMatchPublishedAbi()
     {
+        Assert.Equal(0x00020000u, FabricAbi.Version);
         if (IntPtr.Size != 8) return;
         Assert.Equal(1208, Marshal.SizeOf<FabricLaunchRequestNative>()); // fixed strings end at 1160; aligned pointers/counts end at 1208.
         Assert.Equal(40, Marshal.SizeOf<FabricRomResourceNative>());
@@ -15,7 +16,8 @@ public sealed class FabricAbiLayoutTests
         Assert.Equal(84, Marshal.SizeOf<FabricInputNative>());
         Assert.Equal(84, Marshal.SizeOf<FabricLampNative>());
         Assert.Equal(80, Marshal.SizeOf<FabricReelNative>());
-        Assert.Equal(160, Marshal.SizeOf<FabricCharacterDisplayNative>());
+        Assert.Equal(164, Marshal.SizeOf<FabricCharacterDisplayNative>());
+        Assert.Equal(160, Marshal.OffsetOf<FabricCharacterDisplayNative>("Brightness").ToInt32());
         Assert.Equal(208, Marshal.SizeOf<FabricSegmentDisplayNative>());
         Assert.Equal(80, Marshal.SizeOf<FabricMachineSnapshotNative>());
         Assert.Equal(20, Marshal.SizeOf<FabricAudioFormatNative>());
