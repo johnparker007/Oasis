@@ -67,16 +67,14 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
             {
                 if (intensity > 0d)
                 {
-                    context.Canvas.DrawImage(lampImage, bounds);
-                    if (intensity < 1d)
+                    var imageAlpha = (byte)Math.Clamp(Math.Round(intensity * 255d), 0d, 255d);
+                    if (element.SourceBlend)
                     {
-                        using var dimmerPaint = new SKPaint
-                        {
-                            Color = new SKColor(0, 0, 0, (byte)Math.Clamp(Math.Round((1d - intensity) * 255d), 0d, 255d)),
-                            Style = SKPaintStyle.Fill,
-                            IsAntialias = true
-                        };
-                        context.Canvas.DrawRect(bounds, dimmerPaint);
+                        DrawBlendedLamp(context.Canvas, lampImage, bounds, imageAlpha);
+                    }
+                    else
+                    {
+                        DrawNormalLamp(context.Canvas, lampImage, bounds, imageAlpha);
                     }
                 }
             }
@@ -150,6 +148,44 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
         };
         var inset = borderPaint.StrokeWidth / 2f;
         canvas.DrawRect(SKRect.Create(bounds.Left + inset, bounds.Top + inset, Math.Max(0f, bounds.Width - borderPaint.StrokeWidth), Math.Max(0f, bounds.Height - borderPaint.StrokeWidth)), borderPaint);
+    }
+
+    private static void DrawBlendedLamp(SKCanvas canvas, SKImage image, SKRect bounds, byte imageAlpha)
+    {
+        // MFME's Blend flag makes overlapping sublamps accumulate their light.
+        using var imagePaint = new SKPaint
+        {
+            Color = SKColors.White.WithAlpha(imageAlpha),
+            BlendMode = SKBlendMode.Plus,
+            IsAntialias = true
+        };
+        canvas.DrawImage(image, bounds, imagePaint);
+    }
+
+    private static void DrawNormalLamp(SKCanvas canvas, SKImage image, SKRect bounds, byte imageAlpha)
+    {
+        var isNativeSize = image.Width == bounds.Width && image.Height == bounds.Height;
+        if (imageAlpha == byte.MaxValue && isNativeSize)
+        {
+            canvas.DrawImage(image, bounds.Left, bounds.Top);
+            return;
+        }
+
+        using var imagePaint = new SKPaint
+        {
+            Color = SKColors.White.WithAlpha(imageAlpha),
+            BlendMode = SKBlendMode.SrcOver,
+            FilterQuality = SKFilterQuality.None
+        };
+        if (isNativeSize)
+        {
+            canvas.DrawImage(image, bounds.Left, bounds.Top, imagePaint);
+        }
+        else
+        {
+            // MFME OnImages are pixel artwork; nearest-neighbour scaling keeps their binary alpha edges intact.
+            canvas.DrawImage(image, bounds, imagePaint);
+        }
     }
 
     private static SKImage BuildTextLampVisual(TextVisualCacheKey visualKey, string displayText, double fontSize, SKColor fillColor, SKColor textColor, string? fontName, string? fontStyle)

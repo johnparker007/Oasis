@@ -439,6 +439,18 @@ public sealed class FmlToOasisMapperTests
         Assert.All(result.Elements, element => Assert.True(element.HasBorder));
     }
 
+    [Fact]
+    public void Map_Lamp_PreservesMfmeBlendFlagOnEveryGeneratedSublamp()
+    {
+        var lamp = new Lamp { SublampTable = [new LampSublampTableEntry(1, 5), new LampSublampTableEntry(2, 6)] };
+        lamp.Booleans["Blend"] = true;
+
+        var result = new FmlToOasisMapper().Map(new Layout([lamp]), new Dictionary<FmlDecodedImageKey, string>());
+
+        Assert.Equal(2, result.Elements.Count);
+        Assert.All(result.Elements, element => Assert.True(element.SourceBlend));
+    }
+
 }
 
 public sealed class FmlReelLampImportTests

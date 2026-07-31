@@ -112,12 +112,11 @@ internal sealed class LayoutImportAssetCopier
             string.Equals(Path.GetExtension(element.AssetPath), ".bmp", StringComparison.OrdinalIgnoreCase))
         {
             var sourceLampPath = TryResolveSourceAssetPath(element.AssetPath, stagingRootPath);
-            var sourceMaskPath = TryResolveSourceAssetPath(element.SecondaryAssetPath, stagingRootPath);
             var outputLampPath = Path.Combine(projectAssetsRoot, primary["Assets/".Length..].Replace('/', Path.DirectorySeparatorChar));
 
             if (sourceLampPath is not null && File.Exists(sourceLampPath))
             {
-                if (!MfmeLampAssetPostProcessor.TryProcessLamp(sourceLampPath, sourceMaskPath, outputLampPath, applyMaskTint: true, out var processingError))
+                if (!MfmeLampAssetPostProcessor.TryProcessLamp(sourceLampPath, outputLampPath, out var processingError))
                 {
                     errors.Add($"Failed to process lamp asset '{element.AssetPath}': {processingError}");
                 }

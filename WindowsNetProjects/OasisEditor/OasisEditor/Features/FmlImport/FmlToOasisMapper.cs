@@ -110,7 +110,8 @@ internal sealed class FmlToOasisMapper
                 OnColorHex = SublampColor(c, entry.SublampIndex) ?? Color(c, "OnColour") ?? Color(c, "OnColor") ?? Color(c, "Colour") ?? Color(c, "Color"),
                 OffColorHex = LampOffColor(c), TextColorHex = TextColor(c),
                 DisplayText = LampText(c), HasBorder = hasBorder, TextBoxFontName = font?.FontName ?? "Tahoma", TextBoxFontStyle = FontStyle(font), TextBoxFontSize = font?.FontSize.ToString(CultureInfo.InvariantCulture) ?? "8",
-                SourceComponentIndex = index, SourceElementIndex = entry.SublampIndex, SharedSourceSetId = sharedSetId, SharedSourceSetCount = entries.Length, ImportSource = Source(c, index, displayNumber)
+                SourceComponentIndex = index, SourceElementIndex = entry.SublampIndex, SharedSourceSetId = sharedSetId, SharedSourceSetCount = entries.Length,
+                SourceBlend = Bool(c, "Blend") ?? false, ImportSource = Source(c, index, displayNumber)
             });
         }
 
