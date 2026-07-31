@@ -95,6 +95,7 @@ public sealed class MachineReelChangedEventArgs : EventArgs
 
 public sealed class MachineSegmentChangedEventArgs : EventArgs
 {
+    /// <param name="cellId">For digit output, the dense zero-based Oasis digit-cell ID. For alpha output, the flattened character-cell ID.</param>
     public MachineSegmentChangedEventArgs(int cellId, int segmentMask, SegmentOutputType outputType)
     {
         CellId = cellId;

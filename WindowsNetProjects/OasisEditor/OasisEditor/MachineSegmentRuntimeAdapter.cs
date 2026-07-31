@@ -94,6 +94,8 @@ public sealed class MachineSegmentRuntimeAdapter : IMachineSegmentRuntimeAdapter
             {
                 var objectId = element.ObjectId!;
                 var baseIndex = ResolveBaseIndex(element);
+                // A panel seven-segment element is one physical digit. Its display number is
+                // the dense Oasis digit-cell ID published by the backend.
                 var cellCount = element.Kind == PanelElementKind.SevenSegment ? 1 : 16;
                 var cellMasks = new int[cellCount];
                 var cellBrightness = new double[cellCount];
@@ -125,6 +127,10 @@ public sealed class MachineSegmentRuntimeAdapter : IMachineSegmentRuntimeAdapter
                 {
                     LogAlphaTrace(element, baseIndex, snapshot, cellMasks);
                 }
+                else
+                {
+                    LogDigitTrace(element, baseIndex, snapshot, cellMasks, maskChanged);
+                }
                 var brightnessChanged = element.Kind == PanelElementKind.Alpha
                     && document.RuntimeState.SetSegmentCellBrightnessIfChanged(objectId, cellBrightness);
                 if (_machineObjectReferenceResolver.TryGetReference(element, out var machineReference)
@@ -153,17 +159,39 @@ public sealed class MachineSegmentRuntimeAdapter : IMachineSegmentRuntimeAdapter
                     || faceDisplay.LinkedMachineObjectReference is not MachineObjectReference reference
                     || reference.Kind != MachineObjectKind.SevenSegmentDisplay
                     || reference.IsEmpty
-                    || !int.TryParse(reference.Id, out var cellId)
-                    || !_latestDigitMasksByCell.TryGetValue(cellId, out var mask))
+                    || !int.TryParse(reference.Id, out var cellId))
                 {
                     continue;
                 }
 
-                var maskChanged = document.RuntimeState.SetSegmentCellMasksIfChanged(reference, [mask]);
-                var brightnessChanged = document.RuntimeState.SetSegmentCellBrightnessIfChanged(reference, [1d]);
+                var cellCount = Math.Max(1, faceDisplay.DigitCount);
+                var cellMasks = new int[cellCount];
+                var cellBrightness = Enumerable.Repeat(1d, cellCount).ToArray();
+                var hasLiveCell = false;
+                for (var position = 0; position < cellCount; position++)
+                {
+                    if (_latestDigitMasksByCell.TryGetValue(cellId + position, out var mask))
+                    {
+                        cellMasks[position] = mask;
+                        hasLiveCell = true;
+                    }
+                }
+                if (!hasLiveCell)
+                {
+                    continue;
+                }
+
+                var maskChanged = document.RuntimeState.SetSegmentCellMasksIfChanged(reference, cellMasks);
+                var brightnessChanged = document.RuntimeState.SetSegmentCellBrightnessIfChanged(reference, cellBrightness);
                 if (maskChanged || brightnessChanged || changedMachineReferences.Contains(reference))
                 {
                     FaceRuntimeDisplayReferenceIndex.AddObjectIdsForReference<FaceSevenSegmentDisplayElement>(document, reference, changedFaceObjectIds);
+                    if (_diagnosticLogger is not null && maskChanged)
+                    {
+                        _diagnosticLogger(
+                            $"Seven-segment face update: face={faceDisplay.ObjectId}; reference={reference}; " +
+                            $"baseCellId={cellId}; digitCount={cellCount}; masks=[{string.Join(", ", cellMasks.Select(value => $"0x{value:X}"))}].");
+                    }
                 }
             }
 
@@ -272,6 +300,29 @@ public sealed class MachineSegmentRuntimeAdapter : IMachineSegmentRuntimeAdapter
             $"Alpha ordering trace: platform={platform}; element={element.ObjectId}; displayNumber={element.DisplayNumber?.ToString() ?? "null"}; " +
             $"reference={reference}; baseIndex={baseIndex}; reversed={reversed}; raw=[{string.Join(", ", raw)}]; " +
             $"mapping=[{string.Join(", ", mapping)}]; canonical=[{string.Join(", ", canonicalMasks.Select(mask => $"0x{mask:X}"))}]");
+    }
+
+    private void LogDigitTrace(
+        PanelElementModel element,
+        int cellId,
+        IReadOnlyDictionary<int, (int Mask, SegmentOutputType OutputType)> updates,
+        IReadOnlyList<int> masks,
+        bool updated)
+    {
+        if (_diagnosticLogger is null
+            || !updates.TryGetValue(cellId, out var state)
+            || state.OutputType != SegmentOutputType.Digit)
+        {
+            return;
+        }
+
+        var reference = _machineObjectReferenceResolver.TryGetReference(element, out var resolvedReference)
+            ? resolvedReference.ToString()
+            : "unresolved";
+        _diagnosticLogger(
+            $"Seven-segment panel update: cellId={cellId}; mask=0x{state.Mask:X}; element={element.ObjectId}; " +
+            $"displayNumber={element.DisplayNumber?.ToString() ?? "null"}; reference={reference}; updated={updated}; " +
+            $"runtimeMasks=[{string.Join(", ", masks.Select(value => $"0x{value:X}"))}].");
     }
 
 }
