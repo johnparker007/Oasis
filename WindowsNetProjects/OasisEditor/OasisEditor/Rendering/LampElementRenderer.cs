@@ -67,16 +67,22 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
             {
                 if (intensity > 0d)
                 {
-                    context.Canvas.DrawImage(lampImage, bounds);
-                    if (intensity < 1d)
+                    var imageAlpha = (byte)Math.Clamp(Math.Round(intensity * 255d), 0d, 255d);
+                    if (imageAlpha == byte.MaxValue && !element.SourceBlend)
                     {
-                        using var dimmerPaint = new SKPaint
+                        context.Canvas.DrawImage(lampImage, bounds);
+                    }
+                    else if (imageAlpha > 0)
+                    {
+                        // MFME's Blend flag makes overlapping sublamps accumulate their light;
+                        // ordinary graphical lamps retain source-over compositing.
+                        using var imagePaint = new SKPaint
                         {
-                            Color = new SKColor(0, 0, 0, (byte)Math.Clamp(Math.Round((1d - intensity) * 255d), 0d, 255d)),
-                            Style = SKPaintStyle.Fill,
+                            Color = SKColors.White.WithAlpha(imageAlpha),
+                            BlendMode = element.SourceBlend ? SKBlendMode.Plus : SKBlendMode.SrcOver,
                             IsAntialias = true
                         };
-                        context.Canvas.DrawRect(bounds, dimmerPaint);
+                        context.Canvas.DrawImage(lampImage, bounds, imagePaint);
                     }
                 }
             }
