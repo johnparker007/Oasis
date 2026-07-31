@@ -438,8 +438,7 @@ public sealed class Face2DRenderer : IFace2DRenderer
             element.OnColorHex,
             element.OffColorHex,
             element.ShowDecimalPoint,
-            element.ShowCommaTail,
-            element.IsReversed);
+            element.ShowCommaTail);
     }
 
     private static void DrawButton(SKCanvas canvas, FaceButtonElement element, PanelViewportTransform viewport)

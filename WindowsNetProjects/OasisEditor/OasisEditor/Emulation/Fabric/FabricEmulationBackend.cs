@@ -365,7 +365,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             _audioSink.PushPcm(bytes);
     }
 
-    private void PublishSnapshot(FabricMachineSnapshot snapshot)
+    internal void PublishSnapshot(FabricMachineSnapshot snapshot)
     {
         foreach (var lamp in snapshot.Lamps)
         {
