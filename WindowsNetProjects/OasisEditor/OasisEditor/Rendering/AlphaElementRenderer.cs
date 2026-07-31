@@ -104,7 +104,7 @@ internal sealed class AlphaElementRenderer : IPanelElementRenderer
 
         for (var cellIndex = 0; cellIndex < cellCount; cellIndex++)
         {
-            var dataIndex = isReversed ? (cellCount - 1 - cellIndex) : cellIndex;
+            var dataIndex = SegmentCellOrder.SourceIndexForVisualCell(cellIndex, cellCount, isReversed);
             var mask = dataIndex < cellMasks.Length ? cellMasks[dataIndex] : defaultMask;
             var litAmount = dataIndex < cellBrightness.Length ? Math.Clamp(cellBrightness[dataIndex], 0d, 1d) : 1d;
             var brightnessBucket = (int)Math.Round(litAmount * 4d);

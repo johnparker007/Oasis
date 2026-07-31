@@ -101,11 +101,10 @@ public sealed class MachineSegmentRuntimeAdapter : IMachineSegmentRuntimeAdapter
                 var cellCount = element.Kind == PanelElementKind.SevenSegment ? 1 : 16;
                 var cellMasks = new int[cellCount];
                 var cellBrightness = new double[cellCount];
-                const bool reversePlatformAlphaCells = false;
                 for (var i = 0; i < cellMasks.Length; i++)
                 {
                     var source = element.Kind == PanelElementKind.SevenSegment ? _latestDigitMasksByCell : _latestVfdMasksByCell;
-                    var sourceOffset = reversePlatformAlphaCells ? cellMasks.Length - 1 - i : i;
+                    var sourceOffset = i;
                     if (source.TryGetValue(baseIndex + sourceOffset, out var mask))
                     {
                         cellMasks[i] = element.Kind == PanelElementKind.SevenSegment
@@ -179,10 +178,9 @@ public sealed class MachineSegmentRuntimeAdapter : IMachineSegmentRuntimeAdapter
 
                 var cellMasks = new int[16];
                 var cellBrightness = new double[16];
-                const bool reversePlatformAlphaCells = false;
                 for (var i = 0; i < cellMasks.Length; i++)
                 {
-                    var sourceOffset = reversePlatformAlphaCells ? cellMasks.Length - 1 - i : i;
+                    var sourceOffset = i;
                     if (_latestVfdMasksByCell.TryGetValue(baseIndex + sourceOffset, out var mask))
                     {
                         cellMasks[i] = mask;

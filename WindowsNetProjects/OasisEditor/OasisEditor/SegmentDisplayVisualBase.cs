@@ -48,14 +48,14 @@ internal abstract class SegmentDisplayVisualBase : FrameworkElement
 
         for (var i = 0; i < CellCount; i++)
         {
-            var dataIndex = IsReversed ? (CellCount - 1 - i) : i;
+            var dataIndex = SegmentCellOrder.SourceIndexForVisualCell(i, CellCount, IsReversed);
             var segmentMask = CellSegmentMasks is not null && dataIndex < CellSegmentMasks.Length
                 ? CellSegmentMasks[dataIndex]
                 : dataIndex < (DisplayText?.Length ?? 0)
                     ? GetSegmentMaskForChar(DisplayText![dataIndex])
                     : 0;
             var cellTransform = new MatrixTransform(scale, 0, 0, scale, offsetX + (i * pitch * scale), offsetY);
-            var brightness = CellBrightness is not null && i < CellBrightness.Length ? Math.Clamp(CellBrightness[i], 0d, 1d) : 1d;
+            var brightness = CellBrightness is not null && dataIndex < CellBrightness.Length ? Math.Clamp(CellBrightness[dataIndex], 0d, 1d) : 1d;
 
             foreach (var segment in _definition.Cell.Segments)
             {
