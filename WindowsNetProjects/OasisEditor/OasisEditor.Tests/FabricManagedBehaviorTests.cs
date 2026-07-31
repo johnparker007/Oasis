@@ -5,6 +5,18 @@ namespace OasisEditor.Tests;
 
 public sealed class FabricManagedBehaviorTests
 {
+    [Fact]
+    public unsafe void NativeCharacterDisplayConversionPreservesBrightnessAndRejectsNonFiniteValues()
+    {
+        var native = new FabricCharacterDisplayNative { Brightness = 0.625f };
+
+        var managed = FabricMachineSession.ConvertCharacterDisplay(ref native);
+
+        Assert.Equal(0.625f, managed.Brightness);
+        native.Brightness = float.NaN;
+        Assert.Throws<InvalidDataException>(() => FabricMachineSession.ConvertCharacterDisplay(ref native));
+    }
+
     public static TheoryData<int, int> System6AlphaBitMapping => new()
     {
         { 0, 0 }, { 1, 1 }, { 2, 2 }, { 3, 3 },
@@ -71,7 +83,7 @@ public sealed class FabricManagedBehaviorTests
         var nativeAlphaMask = (1u << 8) | (1u << 14);
         const ulong sevenSegmentMask = 0x5a;
         var snapshot = new FabricMachineSnapshot(1, [], [],
-            [new FabricCharacterDisplay("alpha", [nativeAlphaMask], [0b11])],
+            [new FabricCharacterDisplay("alpha", [nativeAlphaMask], [0b11], 0.5f)],
             [new FabricSegmentDisplay("seven", [sevenSegmentMask])]);
 
         backend.PublishSnapshot(snapshot);
@@ -88,6 +100,56 @@ public sealed class FabricManagedBehaviorTests
                 Assert.Equal(0x2d, sevenSegmentChange.SegmentMask);
                 Assert.Equal(SegmentOutputType.Digit, sevenSegmentChange.OutputType);
             });
+    }
+
+    [Fact]
+    public void Backend_PublishesDisplayBrightnessIndependentlyFromSegmentChanges()
+    {
+        var backend = CreateBackend(new FakeSession(), new FakeAudioSink());
+        var brightnessChanges = new List<MachineVfdBrightnessChangedEventArgs>();
+        var segmentChanges = new List<MachineSegmentChangedEventArgs>();
+        backend.VfdBrightnessChanged += (_, change) => brightnessChanges.Add(change);
+        backend.SegmentChanged += (_, change) => segmentChanges.Add(change);
+
+        backend.PublishSnapshot(new(1, [], [],
+        [
+            new("alpha.0", [1u], [0], 0.25f),
+            new("alpha.1", [2u], [0], 0.75f)
+        ], []));
+        backend.PublishSnapshot(new(2, [], [],
+        [
+            new("alpha.0", [1u], [0], 0.5f),
+            new("alpha.1", [2u], [0], 0.75f)
+        ], []));
+        backend.PublishSnapshot(new(3, [], [],
+        [
+            new("alpha.0", [4u], [0], 0.5f),
+            new("alpha.1", [2u], [0], 0.75f)
+        ], []));
+
+        Assert.Collection(brightnessChanges,
+            change => { Assert.Equal(0, change.CellId); Assert.Equal(0.25, change.NormalizedBrightness); },
+            change => { Assert.Equal(FabricAbi.CharacterCapacity, change.CellId); Assert.Equal(0.75, change.NormalizedBrightness); },
+            change => { Assert.Equal(0, change.CellId); Assert.Equal(0.5, change.NormalizedBrightness); });
+        Assert.Equal(3, segmentChanges.Count);
+    }
+
+    [Fact]
+    public async Task Backend_ResetClearsDisplayBrightnessCache()
+    {
+        var backend = CreateBackend(new FakeSession(), new FakeAudioSink());
+        var brightnessChanges = new List<MachineVfdBrightnessChangedEventArgs>();
+        backend.VfdBrightnessChanged += (_, change) => brightnessChanges.Add(change);
+        var snapshot = new FabricMachineSnapshot(1, [], [],
+            [new("alpha", [], [], 0.4f)], []);
+
+        await backend.StartAsync(CreateRequest(), CancellationToken.None);
+        backend.PublishSnapshot(snapshot);
+        await backend.ResetAsync(EmulationResetKind.Soft, CancellationToken.None);
+        backend.PublishSnapshot(snapshot);
+        await backend.StopAsync(CancellationToken.None);
+
+        Assert.Equal(2, brightnessChanges.Count);
     }
 
     [Fact]

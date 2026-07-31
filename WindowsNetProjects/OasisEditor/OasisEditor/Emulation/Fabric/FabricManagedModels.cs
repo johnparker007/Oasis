@@ -12,7 +12,7 @@ public sealed record FabricInput(string Identifier, int NumericalIndex, bool Act
 public readonly record struct FabricCapabilities(ulong Flags) { public bool Has(FabricCapability value) => (Flags & (ulong)value) != 0; }
 public readonly record struct FabricLamp(string Identifier, int NumericalIndex, bool LogicalState, float Brightness);
 public readonly record struct FabricReel(string Identifier, int NumericalIndex, int Position);
-public sealed record FabricCharacterDisplay(string Identifier, uint[] Characters, byte[] Attributes);
+public sealed record FabricCharacterDisplay(string Identifier, uint[] Characters, byte[] Attributes, float Brightness);
 public sealed record FabricSegmentDisplay(string Identifier, ulong[] SegmentMasks);
 public sealed record FabricMachineSnapshot(ulong Sequence, IReadOnlyList<FabricLamp> Lamps, IReadOnlyList<FabricReel> Reels,
     IReadOnlyList<FabricCharacterDisplay> CharacterDisplays, IReadOnlyList<FabricSegmentDisplay> SegmentDisplays);

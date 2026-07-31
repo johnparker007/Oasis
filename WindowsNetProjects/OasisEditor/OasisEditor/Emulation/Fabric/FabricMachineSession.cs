@@ -295,14 +295,7 @@ internal sealed unsafe class FabricMachineSession : IFabricMachineSession
         for (var index = 0; index < snapshot.CharacterCount; index++)
         {
             ref var display = ref _characters[index];
-            var values = new uint[display.Count];
-            var attributes = new byte[display.Count];
-            fixed (uint* source = display.Characters)
-                new ReadOnlySpan<uint>(source, values.Length).CopyTo(values);
-            fixed (byte* source = display.Attributes)
-                new ReadOnlySpan<byte>(source, attributes.Length).CopyTo(attributes);
-            fixed (byte* identifier = display.Identifier)
-                characters.Add(new(ReadIdentifier(identifier), values, attributes));
+            characters.Add(ConvertCharacterDisplay(ref display, index));
         }
 
         var segments = new List<FabricSegmentDisplay>((int)snapshot.SegmentCount);
@@ -316,6 +309,22 @@ internal sealed unsafe class FabricMachineSession : IFabricMachineSession
                 segments.Add(new(ReadIdentifier(identifier), masks));
         }
         return new(snapshot.Sequence, lamps, reels, characters, segments);
+    }
+
+    internal static FabricCharacterDisplay ConvertCharacterDisplay(
+        ref FabricCharacterDisplayNative display,
+        int displayIndex = 0)
+    {
+        if (!float.IsFinite(display.Brightness))
+            throw new InvalidDataException($"Fabric character display {displayIndex} returned non-finite brightness.");
+        var values = new uint[display.Count];
+        var attributes = new byte[display.Count];
+        fixed (uint* source = display.Characters)
+            new ReadOnlySpan<uint>(source, values.Length).CopyTo(values);
+        fixed (byte* source = display.Attributes)
+            new ReadOnlySpan<byte>(source, attributes.Length).CopyTo(attributes);
+        fixed (byte* identifier = display.Identifier)
+            return new(ReadIdentifier(identifier), values, attributes, display.Brightness);
     }
 
     private static string ReadIdentifier(byte* pointer)

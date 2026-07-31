@@ -6,6 +6,28 @@ namespace OasisEditor.Tests;
 public sealed class FabricSevenSegmentRuntimeTests
 {
     [Fact]
+    public void AlphaBrightnessAtEachDisplayBaseIndexReachesRuntimeCells()
+    {
+        var document = new DocumentTabViewModel(
+            EditorDocument.CreateFromFile("panel.panel2d", "panel", "panel"));
+        document.SetPanelElements([
+            new PanelElementModel { ObjectId = "alpha-0", Kind = PanelElementKind.Alpha, DisplayNumber = 0 },
+            new PanelElementModel { ObjectId = "alpha-1", Kind = PanelElementKind.Alpha, DisplayNumber = 1 }
+        ]);
+        var dispatches = new List<Action>();
+        var adapter = new MachineSegmentRuntimeAdapter(() => [document], dispatches.Add);
+
+        adapter.ApplyVfdBrightness(0, 0.5);
+        adapter.ApplyVfdBrightness(FabricAbi.CharacterCapacity, 0.25);
+        Assert.Single(dispatches)();
+
+        Assert.All(document.RuntimeState.GetSegmentCellBrightness("alpha-0", 16),
+            brightness => Assert.Equal(0.5, brightness));
+        Assert.All(document.RuntimeState.GetSegmentCellBrightness("alpha-1", 16),
+            brightness => Assert.Equal(0.25, brightness));
+    }
+
+    [Fact]
     public void Snapshot_UsesDenseDigitCellsAndUpdatesPanelAndLinkedFaceDisplays()
     {
         var document = CreateDocument();
@@ -74,8 +96,8 @@ public sealed class FabricSevenSegmentRuntimeTests
 
         backend.PublishSnapshot(new FabricMachineSnapshot(1, [], [],
         [
-            new FabricCharacterDisplay("alpha.0", [1u], [0]),
-            new FabricCharacterDisplay("alpha.1", [2u], [0])
+            new FabricCharacterDisplay("alpha.0", [1u], [0], 1f),
+            new FabricCharacterDisplay("alpha.1", [2u], [0], 1f)
         ], []));
 
         Assert.Collection(changes,

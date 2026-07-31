@@ -32,7 +32,7 @@ public sealed class FabricNativeLayoutProbeTests
             ["sizeof.FabricInput"] = 84,
             ["sizeof.FabricLamp"] = 84,
             ["sizeof.FabricReel"] = 80,
-            ["sizeof.FabricCharacterDisplay"] = 160,
+            ["sizeof.FabricCharacterDisplay"] = 164,
             ["sizeof.FabricSegmentDisplay"] = 208,
             ["sizeof.FabricMachineSnapshot"] = 80,
             ["sizeof.FabricAudioFormat"] = 20,
@@ -49,7 +49,8 @@ public sealed class FabricNativeLayoutProbeTests
             ["offsetof.FabricMachineSnapshot.lamps"] = 16,
             ["offsetof.FabricMachineSnapshot.reels"] = 32,
             ["offsetof.FabricMachineSnapshot.character_displays"] = 48,
-            ["offsetof.FabricMachineSnapshot.segment_displays"] = 64
+            ["offsetof.FabricMachineSnapshot.segment_displays"] = 64,
+            ["offsetof.FabricCharacterDisplay.brightness"] = 160
         };
 
         Assert.Equal(expected.Count, values.Count);

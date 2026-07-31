@@ -13,7 +13,7 @@ typedef struct FabricCapabilities { uint32_t struct_size, struct_version; uint64
 typedef struct FabricInput { uint32_t struct_size, struct_version; char identifier[ID]; int32_t numerical_index; uint8_t active, reserved[7]; } FabricInput;
 typedef struct FabricLamp { uint32_t struct_size, struct_version; char identifier[ID]; int32_t numerical_index; uint8_t logical_state, reserved[3]; float brightness; } FabricLamp;
 typedef struct FabricReel { uint32_t struct_size, struct_version; char identifier[ID]; int32_t numerical_index, position; } FabricReel;
-typedef struct FabricCharacterDisplay { uint32_t struct_size, struct_version; char identifier[ID]; uint32_t character_count, character_capacity, characters[CHARS]; uint8_t attributes[CHARS]; } FabricCharacterDisplay;
+typedef struct FabricCharacterDisplay { uint32_t struct_size, struct_version; char identifier[ID]; uint32_t character_count, character_capacity, characters[CHARS]; uint8_t attributes[CHARS]; float brightness; } FabricCharacterDisplay;
 typedef struct FabricSegmentDisplay { uint32_t struct_size, struct_version; char identifier[ID]; uint32_t digit_count, digit_capacity; uint64_t segment_masks[DIGITS]; } FabricSegmentDisplay;
 typedef struct FabricMachineSnapshot { uint32_t struct_size, struct_version; uint64_t sequence; FabricLamp *lamps; uint32_t lamp_capacity, lamp_count; FabricReel *reels; uint32_t reel_capacity, reel_count; FabricCharacterDisplay *character_displays; uint32_t character_display_capacity, character_display_count; FabricSegmentDisplay *segment_displays; uint32_t segment_display_capacity, segment_display_count; } FabricMachineSnapshot;
 typedef struct FabricAudioFormat { uint32_t struct_size, struct_version, sample_rate; uint16_t channel_count, bits_per_sample; uint8_t interleaved, signed_samples, little_endian, reserved; } FabricAudioFormat;
@@ -36,5 +36,6 @@ int main(void) {
     OFF(FabricLaunchRequest, rom_resources); OFF(FabricRomResource, path);
     OFF(FabricMachineSnapshot, lamps); OFF(FabricMachineSnapshot, reels);
     OFF(FabricMachineSnapshot, character_displays); OFF(FabricMachineSnapshot, segment_displays);
+    OFF(FabricCharacterDisplay, brightness);
     return 0;
 }
