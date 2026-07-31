@@ -125,6 +125,7 @@ internal sealed class FmlImportDiagnosticsWriter
         AppendList(sb, "Decoder errors", report.DecoderErrors);
         AppendList(sb, "Decoder warnings", report.DecoderWarnings);
         AppendList(sb, "Mapper warnings", report.MapperWarnings.Select(FormatWarning));
+        AppendList(sb, "Mapper informational diagnostics", report.MapperInformationalDiagnostics);
         AppendList(sb, "Asset copy warnings", report.AssetCopyWarnings.Select(FormatWarning));
         sb.AppendLine();
 
@@ -264,6 +265,7 @@ internal sealed class FmlImportDiagnosticsReport
     public IReadOnlyList<string> DecoderErrors { get; init; } = [];
     public IReadOnlyList<string> DecoderWarnings { get; init; } = [];
     public IReadOnlyList<LayoutImportWarning> MapperWarnings { get; init; } = [];
+    public IReadOnlyList<string> MapperInformationalDiagnostics { get; init; } = [];
     public IReadOnlyList<LayoutImportWarning> AssetCopyWarnings { get; init; } = [];
     public IReadOnlyList<string> UnsupportedComponentTypes { get; init; } = [];
     public int ImportedAssetCount { get; init; }
