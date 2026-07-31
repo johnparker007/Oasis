@@ -13,6 +13,37 @@ public sealed class FabricManagedBehaviorTests
         { 12, 11 }, { 13, 12 }, { 14, 8 }, { 15, 13 },
     };
 
+    public static TheoryData<int, int> System6SevenSegmentBitMapping => new()
+    {
+        { 0, 6 }, // G -> G
+        { 1, 5 }, // F -> F
+        { 2, 4 }, // E -> E
+        { 3, 3 }, // D -> D
+        { 4, 2 }, // C -> C
+        { 5, 1 }, // B -> B
+        { 6, 0 }, // A -> A
+        { 7, 7 }, // DP -> DP
+    };
+
+    [Theory]
+    [MemberData(nameof(System6SevenSegmentBitMapping))]
+    public void System6SevenSegmentMapper_MapsEachNativeNamedSegmentToTheCanonicalOasisSegment(
+        int nativeBit, int oasisBit)
+    {
+        Assert.Equal(1 << oasisBit,
+            System6SevenSegmentMapper.MapNativeMaskToOasisMask(1 << nativeBit));
+    }
+
+    [Fact]
+    public void System6SevenSegmentMapper_MapsZeroCombinedSegmentsAndIgnoresUnknownBits()
+    {
+        Assert.Equal(0, System6SevenSegmentMapper.MapNativeMaskToOasisMask(0));
+
+        var nativeMask = (1 << 0) | (1 << 4) | (1 << 7) | (1 << 12);
+        var expectedOasisMask = (1 << 6) | (1 << 2) | (1 << 7);
+        Assert.Equal(expectedOasisMask, System6SevenSegmentMapper.MapNativeMaskToOasisMask(nativeMask));
+    }
+
     [Theory]
     [MemberData(nameof(System6AlphaBitMapping))]
     public void System6AlphaMapper_MapsEveryNativeBitToItsOasisBit(int nativeBit, int oasisBit)
@@ -32,7 +63,7 @@ public sealed class FabricManagedBehaviorTests
     }
 
     [Fact]
-    public void Backend_PublishesMappedAlphaWithPunctuationAndLeavesSevenSegmentUnchanged()
+    public void Backend_PublishesMappedAlphaWithPunctuationAndMappedSevenSegmentMask()
     {
         var backend = CreateBackend(new FakeSession(), new FakeAudioSink());
         var changes = new List<MachineSegmentChangedEventArgs>();
@@ -53,9 +84,27 @@ public sealed class FabricManagedBehaviorTests
             },
             sevenSegmentChange =>
             {
-                Assert.Equal(unchecked((int)sevenSegmentMask), sevenSegmentChange.SegmentMask);
+                Assert.Equal(0x5a, unchecked((int)sevenSegmentMask));
+                Assert.Equal(0x2d, sevenSegmentChange.SegmentMask);
                 Assert.Equal(SegmentOutputType.Digit, sevenSegmentChange.OutputType);
             });
+    }
+
+    [Fact]
+    public void Backend_DoesNotRepublishAnUnchangedMappedSevenSegmentMask()
+    {
+        var backend = CreateBackend(new FakeSession(), new FakeAudioSink());
+        var changes = new List<MachineSegmentChangedEventArgs>();
+        backend.SegmentChanged += (_, change) => changes.Add(change);
+        var snapshot = new FabricMachineSnapshot(1, [], [], [],
+            [new FabricSegmentDisplay("seven", [0x41UL])]);
+
+        backend.PublishSnapshot(snapshot);
+        backend.PublishSnapshot(new FabricMachineSnapshot(2, [], [], [],
+            [new FabricSegmentDisplay("seven", [0x141UL])]));
+
+        var change = Assert.Single(changes);
+        Assert.Equal(0x41, change.SegmentMask);
     }
 
     [Fact]
