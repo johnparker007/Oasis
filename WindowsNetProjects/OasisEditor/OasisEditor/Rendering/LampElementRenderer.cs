@@ -68,21 +68,33 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
                 if (intensity > 0d)
                 {
                     var imageAlpha = (byte)Math.Clamp(Math.Round(intensity * 255d), 0d, 255d);
-                    if (imageAlpha == byte.MaxValue && !element.SourceBlend)
+                    if (element.SourceBlend)
+                    {
+                        // MFME's Blend flag makes overlapping sublamps accumulate their light.
+                        using var imagePaint = new SKPaint
+                        {
+                            Color = SKColors.White.WithAlpha(imageAlpha),
+                            BlendMode = SKBlendMode.Plus,
+                            IsAntialias = true
+                        };
+                        context.Canvas.DrawImage(lampImage, bounds, imagePaint);
+                    }
+                    else if (imageAlpha == byte.MaxValue)
                     {
                         context.Canvas.DrawImage(lampImage, bounds);
                     }
                     else if (imageAlpha > 0)
                     {
-                        // MFME's Blend flag makes overlapping sublamps accumulate their light;
-                        // ordinary graphical lamps retain source-over compositing.
-                        using var imagePaint = new SKPaint
+                        // Apply opacity when the already-premultiplied image layer is restored.
+                        // This leaves the OnImage RGB untouched and scales only its source-over contribution.
+                        using var opacityPaint = new SKPaint
                         {
                             Color = SKColors.White.WithAlpha(imageAlpha),
-                            BlendMode = element.SourceBlend ? SKBlendMode.Plus : SKBlendMode.SrcOver,
-                            IsAntialias = true
+                            BlendMode = SKBlendMode.SrcOver
                         };
-                        context.Canvas.DrawImage(lampImage, bounds, imagePaint);
+                        context.Canvas.SaveLayer(bounds, opacityPaint);
+                        context.Canvas.DrawImage(lampImage, bounds);
+                        context.Canvas.Restore();
                     }
                 }
             }
@@ -357,8 +369,13 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
             return null;
         }
 
-        using var bitmap = SKBitmap.Decode(codec);
-        return bitmap is null ? null : SKImage.FromBitmap(bitmap);
+        // Decode directly to premultiplied pixels so scaling interpolates RGB already weighted
+        // by alpha; decoding to unpremultiplied pixels can bleed transparent black into edges.
+        using var bitmap = new SKBitmap(new SKImageInfo(codec.Info.Width, codec.Info.Height, SKColorType.Bgra8888, SKAlphaType.Premul));
+        var decodeResult = codec.GetPixels(bitmap.Info, bitmap.GetPixels());
+        return decodeResult is SKCodecResult.Success or SKCodecResult.IncompleteInput
+            ? SKImage.FromBitmap(bitmap)
+            : null;
     }
 
     private static bool TryResolveAssetPath(string? assetPath, out string resolvedPath)
