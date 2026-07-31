@@ -67,16 +67,24 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
             {
                 if (intensity > 0d)
                 {
-                    context.Canvas.DrawImage(lampImage, bounds);
                     if (intensity < 1d)
                     {
+                        var rgbScale = (float)intensity;
                         using var dimmerPaint = new SKPaint
                         {
-                            Color = new SKColor(0, 0, 0, (byte)Math.Clamp(Math.Round((1d - intensity) * 255d), 0d, 255d)),
-                            Style = SKPaintStyle.Fill,
-                            IsAntialias = true
+                            ColorFilter = SKColorFilter.CreateColorMatrix(
+                            [
+                                rgbScale, 0f, 0f, 0f, 0f,
+                                0f, rgbScale, 0f, 0f, 0f,
+                                0f, 0f, rgbScale, 0f, 0f,
+                                0f, 0f, 0f, 1f, 0f
+                            ])
                         };
-                        context.Canvas.DrawRect(bounds, dimmerPaint);
+                        context.Canvas.DrawImage(lampImage, bounds, dimmerPaint);
+                    }
+                    else
+                    {
+                        context.Canvas.DrawImage(lampImage, bounds);
                     }
                 }
             }

@@ -186,6 +186,54 @@ public sealed class LampElementRendererTests
         }
     }
 
+    [Fact]
+    public void Render_ImageBackedLampAtFractionalIntensity_DarkensRgbAndPreservesAlpha()
+    {
+        var imagePath = Path.Combine(Path.GetTempPath(), $"oasis-lamp-dimming-{Guid.NewGuid():N}.png");
+        try
+        {
+            using (var source = new SKBitmap(new SKImageInfo(4, 4)))
+            {
+                source.Erase(SKColors.Transparent);
+                source.SetPixel(1, 1, new SKColor(200, 120, 80, 255));
+                source.SetPixel(2, 2, new SKColor(160, 100, 60, 128));
+                using var image = SKImage.FromBitmap(source);
+                using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+                using var stream = File.Create(imagePath);
+                data.SaveTo(stream);
+            }
+
+            using var bitmap = RenderLamp(new PanelElementModel
+            {
+                ObjectId = "lamp-image-dimmed",
+                Kind = PanelElementKind.Lamp,
+                Width = 4,
+                Height = 4,
+                AssetPath = imagePath
+            }, 0.5d);
+
+            var transparentPixel = bitmap.GetPixel(0, 0);
+            Assert.Equal(0, transparentPixel.Alpha);
+            Assert.Equal(new SKColor(0, 0, 0, 0), transparentPixel);
+
+            var opaquePixel = bitmap.GetPixel(1, 1);
+            Assert.Equal(255, opaquePixel.Alpha);
+            Assert.InRange(opaquePixel.Red, 99, 101);
+            Assert.InRange(opaquePixel.Green, 59, 61);
+            Assert.InRange(opaquePixel.Blue, 39, 41);
+
+            var partiallyTransparentPixel = bitmap.GetPixel(2, 2);
+            Assert.Equal(128, partiallyTransparentPixel.Alpha);
+            Assert.InRange(partiallyTransparentPixel.Red, 79, 81);
+            Assert.InRange(partiallyTransparentPixel.Green, 49, 51);
+            Assert.InRange(partiallyTransparentPixel.Blue, 29, 31);
+        }
+        finally
+        {
+            if (File.Exists(imagePath)) File.Delete(imagePath);
+        }
+    }
+
     private static SKBitmap RenderLamp(PanelElementModel element, double intensity)
     {
         using var surface = SKSurface.Create(new SKImageInfo(Math.Max(1, (int)element.Width), Math.Max(1, (int)element.Height)));
