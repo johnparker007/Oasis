@@ -5,11 +5,13 @@ public sealed class MachineSegmentRuntimeAdapter : IMachineSegmentRuntimeAdapter
     private readonly object _pendingSync = new();
     private readonly Func<IEnumerable<DocumentTabViewModel>> _documentProvider;
     private readonly Func<FruitMachinePlatformType> _platformProvider;
+    private readonly Action<string>? _diagnosticLogger;
     private readonly Action<Action> _uiDispatch;
     private readonly IMachineObjectReferenceResolver _machineObjectReferenceResolver;
     private readonly Dictionary<int, (int Mask, SegmentOutputType OutputType)> _pendingMasks = new();
     private readonly Dictionary<int, double> _pendingVfdBrightnessByDisplay = new();
     private readonly Dictionary<int, int> _latestVfdMasksByCell = new();
+    private readonly Dictionary<int, SegmentOutputType> _latestAlphaOutputTypeByCell = new();
     private readonly Dictionary<int, int> _latestDigitMasksByCell = new();
     private readonly Dictionary<int, double> _latestVfdBrightnessByDisplay = new();
     private bool _uiUpdateScheduled;
@@ -17,11 +19,13 @@ public sealed class MachineSegmentRuntimeAdapter : IMachineSegmentRuntimeAdapter
     public MachineSegmentRuntimeAdapter(
         Func<IEnumerable<DocumentTabViewModel>> documentProvider,
         Action<Action> uiDispatch,
-        Func<FruitMachinePlatformType>? platformProvider = null)
+        Func<FruitMachinePlatformType>? platformProvider = null,
+        Action<string>? diagnosticLogger = null)
     {
         _documentProvider = documentProvider ?? throw new ArgumentNullException(nameof(documentProvider));
         _uiDispatch = uiDispatch ?? throw new ArgumentNullException(nameof(uiDispatch));
         _platformProvider = platformProvider ?? (() => FruitMachinePlatformType.MPU4);
+        _diagnosticLogger = diagnosticLogger;
         _machineObjectReferenceResolver = MachineObjectReferenceResolver.Instance;
     }
 
@@ -73,6 +77,7 @@ public sealed class MachineSegmentRuntimeAdapter : IMachineSegmentRuntimeAdapter
                 if (state.OutputType == SegmentOutputType.Vfd || state.OutputType == SegmentOutputType.NativeAlpha)
                 {
                     _latestVfdMasksByCell[cellId] = state.Mask;
+                    _latestAlphaOutputTypeByCell[cellId] = state.OutputType;
                 }
                 else
                 {
@@ -116,6 +121,10 @@ public sealed class MachineSegmentRuntimeAdapter : IMachineSegmentRuntimeAdapter
                 }
 
                 var maskChanged = document.RuntimeState.SetSegmentCellMasksIfChanged(objectId, cellMasks);
+                if (element.Kind == PanelElementKind.Alpha)
+                {
+                    LogAlphaTrace(element, baseIndex, snapshot, cellMasks);
+                }
                 var brightnessChanged = element.Kind == PanelElementKind.Alpha
                     && document.RuntimeState.SetSegmentCellBrightnessIfChanged(objectId, cellBrightness);
                 if (_machineObjectReferenceResolver.TryGetReference(element, out var machineReference)
@@ -230,14 +239,45 @@ public sealed class MachineSegmentRuntimeAdapter : IMachineSegmentRuntimeAdapter
         return element.DisplayNumber.GetValueOrDefault(0);
     }
 
+    private void LogAlphaTrace(
+        PanelElementModel element,
+        int baseIndex,
+        IReadOnlyDictionary<int, (int Mask, SegmentOutputType OutputType)> updates,
+        IReadOnlyList<int> canonicalMasks)
+    {
+        if (_diagnosticLogger is null
+            || !updates.Keys.Any(cellId => cellId >= baseIndex && cellId < baseIndex + canonicalMasks.Count))
+        {
+            return;
+        }
+
+        var platform = _platformProvider();
+        var reversed = element.IsReversed == true;
+        var raw = updates
+            .Where(update => update.Key >= baseIndex && update.Key < baseIndex + canonicalMasks.Count)
+            .OrderBy(update => update.Key)
+            .Select(update => $"{update.Value.OutputType}:id={update.Key}:mask=0x{update.Value.Mask:X}");
+        var mapping = Enumerable.Range(0, canonicalMasks.Count).Select(destinationIndex =>
+        {
+            var sourceOffset = AlphaCellOrder.SourceIndexForCanonicalCell(destinationIndex, canonicalMasks.Count, reversed, platform);
+            var sourceId = baseIndex + sourceOffset;
+            var outputType = _latestAlphaOutputTypeByCell.GetValueOrDefault(sourceId);
+            return $"dst={destinationIndex}<-srcOffset={sourceOffset}:id={sourceId}:{outputType}";
+        });
+        var reference = _machineObjectReferenceResolver.TryGetReference(element, out var resolvedReference)
+            ? resolvedReference.ToString()
+            : "unresolved";
+
+        _diagnosticLogger(
+            $"Alpha ordering trace: platform={platform}; element={element.ObjectId}; displayNumber={element.DisplayNumber?.ToString() ?? "null"}; " +
+            $"reference={reference}; baseIndex={baseIndex}; reversed={reversed}; raw=[{string.Join(", ", raw)}]; " +
+            $"mapping=[{string.Join(", ", mapping)}]; canonical=[{string.Join(", ", canonicalMasks.Select(mask => $"0x{mask:X}"))}]");
+    }
+
 }
 
-/// <summary>
-/// Converts Fabric character-display positions into Oasis's canonical
-/// left-to-right cell order. Fabric publishes positions in display order;
-/// MFME's Reversed flag describes the Impact address direction rather than a
-/// second visual transform.
-/// </summary>
+// Kept explicit so the live trace records the exact currently selected mapping.
+// Its physical left/right interpretation must be validated from a captured run.
 internal static class AlphaCellOrder
 {
     internal static int SourceIndexForCanonicalCell(int canonicalIndex, int cellCount, bool sourceAddressingReversed, FruitMachinePlatformType platform)

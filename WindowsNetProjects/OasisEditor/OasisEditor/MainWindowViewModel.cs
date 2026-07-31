@@ -233,7 +233,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             () => OpenDocuments, () => false, _ => { }, DispatchToUiThread);
         _reelRuntimeAdapter = new MachineReelRuntimeAdapter(
             () => OpenDocuments, () => SelectedFruitMachinePlatform, () => false, _ => { }, DispatchToUiThread);
-        _segmentRuntimeAdapter = new MachineSegmentRuntimeAdapter(() => OpenDocuments, DispatchToUiThread);
+        _segmentRuntimeAdapter = new MachineSegmentRuntimeAdapter(
+            () => OpenDocuments,
+            DispatchToUiThread,
+            () => SelectedFruitMachinePlatform,
+            message => AddOutputEntry(
+                $"Backend={_activeEmulationBackend?.GetType().Name ?? "none"}; {message}",
+                OutputLogStatus.Info));
         _emulationBackendFactory = new EmulationBackendFactory(
             () => FabricRuntimeLibraryPath, () => ProductionAmberLibraryPath,
             () => System6AudioBufferLengthMilliseconds,
