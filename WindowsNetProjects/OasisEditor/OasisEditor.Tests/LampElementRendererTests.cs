@@ -178,7 +178,7 @@ public sealed class LampElementRendererTests
 
             Assert.Equal(SKColors.Black, onBitmap.GetPixel(10, 0));
             Assert.Equal(SKColors.Black, offBitmap.GetPixel(10, 0));
-            Assert.Equal(0, offBitmap.GetPixel(10, 10).Alpha);
+            Assert.Equal(255, offBitmap.GetPixel(10, 10).Alpha);
         }
         finally
         {
@@ -187,7 +187,7 @@ public sealed class LampElementRendererTests
     }
 
     [Fact]
-    public void Render_ImageBackedLamp_MapsBrightnessFromOffThroughFullIntensityAndPreservesAlpha()
+    public void Render_ImageBackedLamp_UsesImageAlphaAsMaskForInterpolatedLampColor()
     {
         var imagePath = Path.Combine(Path.GetTempPath(), $"oasis-lamp-dimming-{Guid.NewGuid():N}.png");
         try
@@ -195,8 +195,8 @@ public sealed class LampElementRendererTests
             using (var source = new SKBitmap(new SKImageInfo(4, 4)))
             {
                 source.Erase(SKColors.Transparent);
-                source.SetPixel(1, 1, new SKColor(200, 120, 80, 255));
-                source.SetPixel(2, 2, new SKColor(160, 100, 60, 128));
+                source.SetPixel(1, 1, new SKColor(0, 0, 0, 255));
+                source.SetPixel(2, 2, new SKColor(0, 0, 0, 128));
                 using var image = SKImage.FromBitmap(source);
                 using var data = image.Encode(SKEncodedImageFormat.Png, 100);
                 using var stream = File.Create(imagePath);
@@ -209,7 +209,9 @@ public sealed class LampElementRendererTests
                 Kind = PanelElementKind.Lamp,
                 Width = 4,
                 Height = 4,
-                AssetPath = imagePath
+                AssetPath = imagePath,
+                OffColorHex = "#FF200000",
+                OnColorHex = "#FFFF8000"
             };
 
             using var fullBitmap = RenderLamp(element, 1d);
@@ -218,15 +220,15 @@ public sealed class LampElementRendererTests
 
             var fullOpaquePixel = fullBitmap.GetPixel(1, 1);
             Assert.Equal(255, fullOpaquePixel.Alpha);
-            Assert.InRange(fullOpaquePixel.Red, 199, 201);
-            Assert.InRange(fullOpaquePixel.Green, 119, 121);
-            Assert.InRange(fullOpaquePixel.Blue, 79, 81);
+            Assert.InRange(fullOpaquePixel.Red, 254, 255);
+            Assert.InRange(fullOpaquePixel.Green, 127, 129);
+            Assert.InRange(fullOpaquePixel.Blue, 0, 1);
 
             var fullPartiallyTransparentPixel = fullBitmap.GetPixel(2, 2);
             Assert.Equal(128, fullPartiallyTransparentPixel.Alpha);
-            Assert.InRange(fullPartiallyTransparentPixel.Red, 159, 161);
-            Assert.InRange(fullPartiallyTransparentPixel.Green, 99, 101);
-            Assert.InRange(fullPartiallyTransparentPixel.Blue, 59, 61);
+            Assert.InRange(fullPartiallyTransparentPixel.Red, 254, 255);
+            Assert.InRange(fullPartiallyTransparentPixel.Green, 127, 129);
+            Assert.InRange(fullPartiallyTransparentPixel.Blue, 0, 1);
 
             using var partialBitmap = RenderLamp(element, 0.5d);
 
@@ -236,20 +238,29 @@ public sealed class LampElementRendererTests
 
             var opaquePixel = partialBitmap.GetPixel(1, 1);
             Assert.Equal(255, opaquePixel.Alpha);
-            Assert.InRange(opaquePixel.Red, 99, 101);
-            Assert.InRange(opaquePixel.Green, 59, 61);
-            Assert.InRange(opaquePixel.Blue, 39, 41);
+            Assert.InRange(opaquePixel.Red, 143, 145);
+            Assert.InRange(opaquePixel.Green, 63, 65);
+            Assert.InRange(opaquePixel.Blue, 0, 1);
 
             var partiallyTransparentPixel = partialBitmap.GetPixel(2, 2);
             Assert.Equal(128, partiallyTransparentPixel.Alpha);
-            Assert.InRange(partiallyTransparentPixel.Red, 79, 81);
-            Assert.InRange(partiallyTransparentPixel.Green, 49, 51);
-            Assert.InRange(partiallyTransparentPixel.Blue, 29, 31);
+            Assert.InRange(partiallyTransparentPixel.Red, 143, 145);
+            Assert.InRange(partiallyTransparentPixel.Green, 63, 65);
+            Assert.InRange(partiallyTransparentPixel.Blue, 0, 1);
 
             using var offBitmap = RenderLamp(element, 0d);
             Assert.Equal(new SKColor(0, 0, 0, 0), offBitmap.GetPixel(0, 0));
-            Assert.Equal(new SKColor(0, 0, 0, 0), offBitmap.GetPixel(1, 1));
-            Assert.Equal(new SKColor(0, 0, 0, 0), offBitmap.GetPixel(2, 2));
+            var offOpaquePixel = offBitmap.GetPixel(1, 1);
+            Assert.Equal(255, offOpaquePixel.Alpha);
+            Assert.InRange(offOpaquePixel.Red, 31, 33);
+            Assert.InRange(offOpaquePixel.Green, 0, 1);
+            Assert.InRange(offOpaquePixel.Blue, 0, 1);
+
+            var offPartiallyTransparentPixel = offBitmap.GetPixel(2, 2);
+            Assert.Equal(128, offPartiallyTransparentPixel.Alpha);
+            Assert.InRange(offPartiallyTransparentPixel.Red, 31, 33);
+            Assert.InRange(offPartiallyTransparentPixel.Green, 0, 1);
+            Assert.InRange(offPartiallyTransparentPixel.Blue, 0, 1);
         }
         finally
         {

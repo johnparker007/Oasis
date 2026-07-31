@@ -65,28 +65,11 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
         {
             if (TryGetLampImage(element.AssetPath, out var lampImage))
             {
-                var brightness = (float)Math.Clamp(intensity, 0d, 1d);
-                if (brightness > 0f)
+                using var imagePaint = new SKPaint
                 {
-                    if (brightness < 1f)
-                    {
-                        using var dimmerPaint = new SKPaint
-                        {
-                            ColorFilter = SKColorFilter.CreateColorMatrix(
-                            [
-                                brightness, 0f, 0f, 0f, 0f,
-                                0f, brightness, 0f, 0f, 0f,
-                                0f, 0f, brightness, 0f, 0f,
-                                0f, 0f, 0f, 1f, 0f
-                            ])
-                        };
-                        context.Canvas.DrawImage(lampImage, bounds, dimmerPaint);
-                    }
-                    else
-                    {
-                        context.Canvas.DrawImage(lampImage, bounds);
-                    }
-                }
+                    ColorFilter = SKColorFilter.CreateBlendMode(fillColor, SKBlendMode.SrcIn)
+                };
+                context.Canvas.DrawImage(lampImage, bounds, imagePaint);
             }
             else
             {
