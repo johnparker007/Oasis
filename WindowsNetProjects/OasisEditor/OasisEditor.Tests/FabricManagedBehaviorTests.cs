@@ -5,6 +5,59 @@ namespace OasisEditor.Tests;
 
 public sealed class FabricManagedBehaviorTests
 {
+    public static TheoryData<int, int> System6AlphaBitMapping => new()
+    {
+        { 0, 0 }, { 1, 1 }, { 2, 2 }, { 3, 3 },
+        { 4, 4 }, { 5, 5 }, { 6, 6 }, { 7, 7 },
+        { 8, 10 }, { 9, 14 }, { 10, 9 }, { 11, 15 },
+        { 12, 11 }, { 13, 12 }, { 14, 8 }, { 15, 13 },
+    };
+
+    [Theory]
+    [MemberData(nameof(System6AlphaBitMapping))]
+    public void System6AlphaMapper_MapsEveryNativeBitToItsOasisBit(int nativeBit, int oasisBit)
+    {
+        Assert.Equal(1 << oasisBit,
+            System6AlphaSegmentMapper.MapNativeMaskToOasisMask(1 << nativeBit));
+    }
+
+    [Fact]
+    public void System6AlphaMapper_MapsZeroAndMultipleBits()
+    {
+        Assert.Equal(0, System6AlphaSegmentMapper.MapNativeMaskToOasisMask(0));
+
+        var nativeMask = (1 << 2) | (1 << 8) | (1 << 10) | (1 << 14);
+        var expectedOasisMask = (1 << 2) | (1 << 10) | (1 << 9) | (1 << 8);
+        Assert.Equal(expectedOasisMask, System6AlphaSegmentMapper.MapNativeMaskToOasisMask(nativeMask));
+    }
+
+    [Fact]
+    public void Backend_PublishesMappedAlphaWithPunctuationAndLeavesSevenSegmentUnchanged()
+    {
+        var backend = CreateBackend(new FakeSession(), new FakeAudioSink());
+        var changes = new List<MachineSegmentChangedEventArgs>();
+        backend.SegmentChanged += (_, change) => changes.Add(change);
+        var nativeAlphaMask = (1u << 8) | (1u << 14);
+        const ulong sevenSegmentMask = 0x5a;
+        var snapshot = new FabricMachineSnapshot(1, [], [],
+            [new FabricCharacterDisplay("alpha", [nativeAlphaMask], [0b11])],
+            [new FabricSegmentDisplay("seven", [sevenSegmentMask])]);
+
+        backend.PublishSnapshot(snapshot);
+
+        Assert.Collection(changes,
+            alphaChange =>
+            {
+                Assert.Equal((1 << 10) | (1 << 8) | (1 << 16) | (1 << 17), alphaChange.SegmentMask);
+                Assert.Equal(SegmentOutputType.NativeAlpha, alphaChange.OutputType);
+            },
+            sevenSegmentChange =>
+            {
+                Assert.Equal(unchecked((int)sevenSegmentMask), sevenSegmentChange.SegmentMask);
+                Assert.Equal(SegmentOutputType.Digit, sevenSegmentChange.OutputType);
+            });
+    }
+
     [Fact]
     public void ElapsedTime_PreservesFractionalRemainderWithoutDrift()
     {

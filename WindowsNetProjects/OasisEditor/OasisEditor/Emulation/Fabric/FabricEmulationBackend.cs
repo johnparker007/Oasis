@@ -389,8 +389,11 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             for (var position = 0; position < display.Characters.Length; position++)
             {
                 var identity = new DisplayOutputIdentity(DisplayOutputFamily.Character, display.Identifier, displayOrdinal, position);
-                // Oasis's alpha event carries one integer. Keep the native mask in its low 32 bits and punctuation in bits 16/17.
-                var publishedMask = display.Characters[position] | ((uint)display.Attributes[position] << 16);
+                // Oasis's alpha event carries one integer. Convert Amber's low 16 segment bits,
+                // then retain punctuation in bits 16/17.
+                var oasisMask = System6AlphaSegmentMapper.MapNativeMaskToOasisMask(
+                    unchecked((int)display.Characters[position]));
+                var publishedMask = unchecked((uint)oasisMask) | ((uint)display.Attributes[position] << 16);
                 if (_displayOutputs.TryGetValue(identity, out var previous) && previous == publishedMask)
                     continue;
                 _displayOutputs[identity] = publishedMask;
