@@ -257,10 +257,9 @@ public sealed class LampElementRendererTests
     }
 
     [Theory]
-    [InlineData(0.25d)]
-    [InlineData(0.5d)]
-    [InlineData(1d)]
-    public void Render_NormalImageLampScaledEdges_MatchPremultipliedSourceOverWithoutDarkHalo(double intensity)
+    [InlineData(0.5d, 152, 138, 92)]
+    [InlineData(1d, 240, 180, 40)]
+    public void Render_NormalImageLampScaled_UsesNearestNeighbourWithoutDarkHalo(double intensity, byte expectedRed, byte expectedGreen, byte expectedBlue)
     {
         WithEdgeLampImage(path =>
         {
@@ -270,28 +269,12 @@ public sealed class LampElementRendererTests
                 new PanelElementModel { ObjectId = $"scaled-edge-{intensity}", Kind = PanelElementKind.Lamp, Width = renderedSize, Height = renderedSize, AssetPath = path },
                 intensity,
                 background);
-            using var scaledSource = ScalePremultipliedSource(path, renderedSize);
 
-            for (var y = 0; y < renderedSize; y++)
-            {
-                for (var x = 0; x < renderedSize; x++)
-                {
-                    var source = scaledSource.GetPixel(x, y);
-                    var effectiveAlpha = (source.Alpha / 255d) * intensity;
-                    var expected = new SKColor(
-                        Composite(source.Red, background.Red, effectiveAlpha),
-                        Composite(source.Green, background.Green, effectiveAlpha),
-                        Composite(source.Blue, background.Blue, effectiveAlpha),
-                        255);
-                    AssertColorNear(expected, actual.GetPixel(x, y), tolerance: 3);
-                }
-            }
-
-            Assert.Equal(background, actual.GetPixel(0, 0));
-            var edge = actual.GetPixel(6, 2);
-            Assert.True(edge.Red >= Math.Min(background.Red, scaledSource.GetPixel(6, 2).Red));
-            Assert.True(edge.Green >= Math.Min(background.Green, scaledSource.GetPixel(6, 2).Green));
-            Assert.True(edge.Blue >= Math.Min(background.Blue, scaledSource.GetPixel(6, 2).Blue));
+            var expectedArtwork = new SKColor(expectedRed, expectedGreen, expectedBlue, 255);
+            Assert.Equal(background, actual.GetPixel(3, 7));
+            AssertColorNear(expectedArtwork, actual.GetPixel(4, 7));
+            AssertColorNear(expectedArtwork, actual.GetPixel(11, 7));
+            Assert.Equal(background, actual.GetPixel(12, 7));
         });
     }
 
@@ -334,19 +317,11 @@ public sealed class LampElementRendererTests
             using var bitmap = new SKBitmap(4, 4, SKColorType.Rgba8888, SKAlphaType.Unpremul);
             bitmap.Erase(SKColors.Transparent);
             bitmap.SetPixel(3, 0, new SKColor(90, 180, 240, 0));
-            var edge = new SKColor(240, 180, 40, 96);
-            bitmap.SetPixel(1, 0, edge);
-            bitmap.SetPixel(2, 0, edge);
-            bitmap.SetPixel(0, 1, edge);
-            bitmap.SetPixel(3, 1, edge);
-            bitmap.SetPixel(0, 2, edge);
-            bitmap.SetPixel(3, 2, edge);
-            bitmap.SetPixel(1, 3, edge);
-            bitmap.SetPixel(2, 3, edge);
-            bitmap.SetPixel(1, 1, new SKColor(255, 210, 60, 255));
-            bitmap.SetPixel(2, 1, new SKColor(255, 210, 60, 255));
-            bitmap.SetPixel(1, 2, new SKColor(255, 210, 60, 255));
-            bitmap.SetPixel(2, 2, new SKColor(255, 210, 60, 255));
+            var artwork = new SKColor(240, 180, 40, 255);
+            bitmap.SetPixel(1, 1, artwork);
+            bitmap.SetPixel(2, 1, artwork);
+            bitmap.SetPixel(1, 2, artwork);
+            bitmap.SetPixel(2, 2, artwork);
             using var image = SKImage.FromBitmap(bitmap);
             using var data = image.Encode(SKEncodedImageFormat.Png, 100);
             using (var stream = File.Create(imagePath)) data.SaveTo(stream);
@@ -358,21 +333,6 @@ public sealed class LampElementRendererTests
             if (File.Exists(imagePath)) File.Delete(imagePath);
         }
     }
-
-    private static SKBitmap ScalePremultipliedSource(string imagePath, int size)
-    {
-        using var codec = SKCodec.Create(imagePath);
-        using var source = new SKBitmap(new SKImageInfo(codec.Info.Width, codec.Info.Height, SKColorType.Bgra8888, SKAlphaType.Premul));
-        Assert.Equal(SKCodecResult.Success, codec.GetPixels(source.Info, source.GetPixels()));
-        using var image = SKImage.FromBitmap(source);
-        using var surface = SKSurface.Create(new SKImageInfo(size, size, SKColorType.Bgra8888, SKAlphaType.Premul));
-        surface.Canvas.Clear(SKColors.Transparent);
-        surface.Canvas.DrawImage(image, SKRect.Create(size, size));
-        return SKBitmap.FromImage(surface.Snapshot());
-    }
-
-    private static byte Composite(byte source, byte destination, double alpha)
-        => (byte)Math.Clamp(Math.Round((source * alpha) + (destination * (1d - alpha))), 0d, 255d);
 
     private static void AssertColorNear(SKColor expected, SKColor actual, byte tolerance = 1)
     {

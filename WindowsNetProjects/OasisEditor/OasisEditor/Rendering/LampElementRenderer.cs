@@ -70,31 +70,11 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
                     var imageAlpha = (byte)Math.Clamp(Math.Round(intensity * 255d), 0d, 255d);
                     if (element.SourceBlend)
                     {
-                        // MFME's Blend flag makes overlapping sublamps accumulate their light.
-                        using var imagePaint = new SKPaint
-                        {
-                            Color = SKColors.White.WithAlpha(imageAlpha),
-                            BlendMode = SKBlendMode.Plus,
-                            IsAntialias = true
-                        };
-                        context.Canvas.DrawImage(lampImage, bounds, imagePaint);
+                        DrawBlendedLamp(context.Canvas, lampImage, bounds, imageAlpha);
                     }
-                    else if (imageAlpha == byte.MaxValue)
+                    else
                     {
-                        context.Canvas.DrawImage(lampImage, bounds);
-                    }
-                    else if (imageAlpha > 0)
-                    {
-                        // Apply opacity when the already-premultiplied image layer is restored.
-                        // This leaves the OnImage RGB untouched and scales only its source-over contribution.
-                        using var opacityPaint = new SKPaint
-                        {
-                            Color = SKColors.White.WithAlpha(imageAlpha),
-                            BlendMode = SKBlendMode.SrcOver
-                        };
-                        context.Canvas.SaveLayer(bounds, opacityPaint);
-                        context.Canvas.DrawImage(lampImage, bounds);
-                        context.Canvas.Restore();
+                        DrawNormalLamp(context.Canvas, lampImage, bounds, imageAlpha);
                     }
                 }
             }
@@ -168,6 +148,44 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
         };
         var inset = borderPaint.StrokeWidth / 2f;
         canvas.DrawRect(SKRect.Create(bounds.Left + inset, bounds.Top + inset, Math.Max(0f, bounds.Width - borderPaint.StrokeWidth), Math.Max(0f, bounds.Height - borderPaint.StrokeWidth)), borderPaint);
+    }
+
+    private static void DrawBlendedLamp(SKCanvas canvas, SKImage image, SKRect bounds, byte imageAlpha)
+    {
+        // MFME's Blend flag makes overlapping sublamps accumulate their light.
+        using var imagePaint = new SKPaint
+        {
+            Color = SKColors.White.WithAlpha(imageAlpha),
+            BlendMode = SKBlendMode.Plus,
+            IsAntialias = true
+        };
+        canvas.DrawImage(image, bounds, imagePaint);
+    }
+
+    private static void DrawNormalLamp(SKCanvas canvas, SKImage image, SKRect bounds, byte imageAlpha)
+    {
+        var isNativeSize = image.Width == bounds.Width && image.Height == bounds.Height;
+        if (imageAlpha == byte.MaxValue && isNativeSize)
+        {
+            canvas.DrawImage(image, bounds.Left, bounds.Top);
+            return;
+        }
+
+        using var imagePaint = new SKPaint
+        {
+            Color = SKColors.White.WithAlpha(imageAlpha),
+            BlendMode = SKBlendMode.SrcOver,
+            FilterQuality = SKFilterQuality.None
+        };
+        if (isNativeSize)
+        {
+            canvas.DrawImage(image, bounds.Left, bounds.Top, imagePaint);
+        }
+        else
+        {
+            // MFME OnImages are pixel artwork; nearest-neighbour scaling keeps their binary alpha edges intact.
+            canvas.DrawImage(image, bounds, imagePaint);
+        }
     }
 
     private static SKImage BuildTextLampVisual(TextVisualCacheKey visualKey, string displayText, double fontSize, SKColor fillColor, SKColor textColor, string? fontName, string? fontStyle)
@@ -369,13 +387,8 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
             return null;
         }
 
-        // Decode directly to premultiplied pixels so scaling interpolates RGB already weighted
-        // by alpha; decoding to unpremultiplied pixels can bleed transparent black into edges.
-        using var bitmap = new SKBitmap(new SKImageInfo(codec.Info.Width, codec.Info.Height, SKColorType.Bgra8888, SKAlphaType.Premul));
-        var decodeResult = codec.GetPixels(bitmap.Info, bitmap.GetPixels());
-        return decodeResult is SKCodecResult.Success or SKCodecResult.IncompleteInput
-            ? SKImage.FromBitmap(bitmap)
-            : null;
+        using var bitmap = SKBitmap.Decode(codec);
+        return bitmap is null ? null : SKImage.FromBitmap(bitmap);
     }
 
     private static bool TryResolveAssetPath(string? assetPath, out string resolvedPath)
