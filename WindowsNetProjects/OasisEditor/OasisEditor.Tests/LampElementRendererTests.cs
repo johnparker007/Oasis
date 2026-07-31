@@ -114,6 +114,19 @@ public sealed class LampElementRendererTests
     }
 
     [Fact]
+    public void Render_TextLampAtFullIntensity_UsesStoredOnColor()
+    {
+        using var bitmap = RenderLamp(new PanelElementModel
+        {
+            ObjectId = "text-on-color", Kind = PanelElementKind.Lamp, Width = 24, Height = 24,
+            DisplayText = "HI", OnColorHex = "#FF20C060", OffColorHex = "#FF800000",
+            TextColorHex = "#FFFFFFFF", TextBoxFontSize = "8"
+        }, 1d);
+
+        Assert.Equal(new SKColor(32, 192, 96, 255), bitmap.GetPixel(1, 1));
+    }
+
+    [Fact]
     public void Render_LampAtZeroIntensity_WithNoOffColor_UsesDefensiveRendererFallback()
     {
         using var surface = SKSurface.Create(new SKImageInfo(16, 16));

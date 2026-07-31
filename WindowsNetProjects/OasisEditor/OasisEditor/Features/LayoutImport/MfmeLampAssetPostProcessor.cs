@@ -9,9 +9,7 @@ internal static class MfmeLampAssetPostProcessor
 {
     public static bool TryProcessLamp(
         string sourceLampPath,
-        string? sourceMaskPath,
         string destinationLampPath,
-        bool applyMaskTint,
         out string? error)
     {
         error = null;
@@ -19,13 +17,6 @@ internal static class MfmeLampAssetPostProcessor
         try
         {
             var lamp = LoadBgra32(sourceLampPath, preservePaletteAlpha: true);
-            var preserveExistingTransparency = HasAnyFullyTransparentPixels(lamp);
-
-            if (!string.IsNullOrWhiteSpace(sourceMaskPath) && File.Exists(sourceMaskPath))
-            {
-                var mask = LoadBgra32(sourceMaskPath!, preservePaletteAlpha: false);
-                ApplyMask(lamp, mask, applyMaskTint, preserveExistingTransparency);
-            }
 
             var directory = Path.GetDirectoryName(destinationLampPath);
             if (!string.IsNullOrWhiteSpace(directory))
@@ -205,66 +196,6 @@ internal static class MfmeLampAssetPostProcessor
 
         return bytes[offset] | (bytes[offset + 1] << 8);
     }
-
-    private static bool HasAnyFullyTransparentPixels(PixelBuffer image)
-    {
-        for (var i = 3; i < image.Pixels.Length; i += 4)
-        {
-            if (image.Pixels[i] == 0)
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private static void ApplyMask(PixelBuffer image, PixelBuffer mask, bool applyMaskTint, bool preserveExistingTransparency)
-    {
-        for (var y = 0; y < image.Height; y++)
-        {
-            for (var x = 0; x < image.Width; x++)
-            {
-                var offset = (y * image.Stride) + (x * 4);
-                if (image.Pixels[offset + 3] == 0)
-                {
-                    continue;
-                }
-
-                var maskX = ScaleCoordinate(x, image.Width, mask.Width);
-                var maskY = ScaleCoordinate(y, image.Height, mask.Height);
-                var maskOffset = (maskY * mask.Stride) + (maskX * 4);
-
-                var mb = mask.Pixels[maskOffset];
-                var mg = mask.Pixels[maskOffset + 1];
-                var mr = mask.Pixels[maskOffset + 2];
-                var maskAlpha = Math.Max(mr, Math.Max(mg, mb));
-                if (!preserveExistingTransparency)
-                {
-                    image.Pixels[offset + 3] = maskAlpha;
-                }
-
-                if (applyMaskTint)
-                {
-                    image.Pixels[offset] = Multiply255(image.Pixels[offset], mb);
-                    image.Pixels[offset + 1] = Multiply255(image.Pixels[offset + 1], mg);
-                    image.Pixels[offset + 2] = Multiply255(image.Pixels[offset + 2], mr);
-                }
-            }
-        }
-    }
-
-    private static int ScaleCoordinate(int value, int sourceSize, int destinationSize)
-    {
-        if (sourceSize <= 1 || destinationSize <= 1)
-        {
-            return 0;
-        }
-
-        return (int)Math.Round((double)value * (destinationSize - 1) / (sourceSize - 1));
-    }
-
-    private static byte Multiply255(byte left, byte right) => (byte)((left * right) / 255);
 
     private static void SavePng(PixelBuffer image, string destinationPath)
     {
