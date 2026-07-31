@@ -65,18 +65,18 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
         {
             if (TryGetLampImage(element.AssetPath, out var lampImage))
             {
-                if (intensity > 0d)
+                var brightness = (float)Math.Clamp(intensity, 0d, 1d);
+                if (brightness > 0f)
                 {
-                    if (intensity < 1d)
+                    if (brightness < 1f)
                     {
-                        var rgbScale = (float)intensity;
                         using var dimmerPaint = new SKPaint
                         {
                             ColorFilter = SKColorFilter.CreateColorMatrix(
                             [
-                                rgbScale, 0f, 0f, 0f, 0f,
-                                0f, rgbScale, 0f, 0f, 0f,
-                                0f, 0f, rgbScale, 0f, 0f,
+                                brightness, 0f, 0f, 0f, 0f,
+                                0f, brightness, 0f, 0f, 0f,
+                                0f, 0f, brightness, 0f, 0f,
                                 0f, 0f, 0f, 1f, 0f
                             ])
                         };
