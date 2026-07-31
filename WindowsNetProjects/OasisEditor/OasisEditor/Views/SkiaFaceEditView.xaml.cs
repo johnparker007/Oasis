@@ -295,8 +295,7 @@ public partial class SkiaFaceEditView : UserControl
             element.OnColorHex,
             element.OffColorHex,
             element.ShowDecimalPoint,
-            element.ShowCommaTail,
-            element.IsReversed);
+            element.ShowCommaTail);
     }
 
     private static void DrawArtworkElement(SKCanvas canvas, FaceArtworkElement element, PanelViewportTransform viewport, SKPaint hiddenPaint)

@@ -48,7 +48,9 @@ internal abstract class SegmentDisplayVisualBase : FrameworkElement
 
         for (var i = 0; i < CellCount; i++)
         {
-            var dataIndex = SegmentCellOrder.SourceIndexForVisualCell(i, CellCount, IsReversed);
+            // Cell arrays are canonical left-to-right; IsReversed is an input
+            // addressing property consumed before state reaches the visual.
+            var dataIndex = i;
             var segmentMask = CellSegmentMasks is not null && dataIndex < CellSegmentMasks.Length
                 ? CellSegmentMasks[dataIndex]
                 : dataIndex < (DisplayText?.Length ?? 0)

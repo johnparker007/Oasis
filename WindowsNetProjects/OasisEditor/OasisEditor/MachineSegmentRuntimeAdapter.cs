@@ -12,7 +12,6 @@ public sealed class MachineSegmentRuntimeAdapter : IMachineSegmentRuntimeAdapter
     private readonly Dictionary<int, int> _latestVfdMasksByCell = new();
     private readonly Dictionary<int, int> _latestDigitMasksByCell = new();
     private readonly Dictionary<int, double> _latestVfdBrightnessByDisplay = new();
-    private readonly HashSet<int> _latestNativeAlphaCells = new();
     private bool _uiUpdateScheduled;
 
     public MachineSegmentRuntimeAdapter(
@@ -74,14 +73,6 @@ public sealed class MachineSegmentRuntimeAdapter : IMachineSegmentRuntimeAdapter
                 if (state.OutputType == SegmentOutputType.Vfd || state.OutputType == SegmentOutputType.NativeAlpha)
                 {
                     _latestVfdMasksByCell[cellId] = state.Mask;
-                    if (state.OutputType == SegmentOutputType.NativeAlpha)
-                    {
-                        _latestNativeAlphaCells.Add(cellId);
-                    }
-                    else
-                    {
-                        _latestNativeAlphaCells.Remove(cellId);
-                    }
                 }
                 else
                 {
@@ -104,7 +95,9 @@ public sealed class MachineSegmentRuntimeAdapter : IMachineSegmentRuntimeAdapter
                 for (var i = 0; i < cellMasks.Length; i++)
                 {
                     var source = element.Kind == PanelElementKind.SevenSegment ? _latestDigitMasksByCell : _latestVfdMasksByCell;
-                    var sourceOffset = i;
+                    var sourceOffset = element.Kind == PanelElementKind.Alpha
+                        ? AlphaCellOrder.SourceIndexForCanonicalCell(i, cellMasks.Length, element.IsReversed == true, _platformProvider())
+                        : i;
                     if (source.TryGetValue(baseIndex + sourceOffset, out var mask))
                     {
                         cellMasks[i] = element.Kind == PanelElementKind.SevenSegment
@@ -180,7 +173,7 @@ public sealed class MachineSegmentRuntimeAdapter : IMachineSegmentRuntimeAdapter
                 var cellBrightness = new double[16];
                 for (var i = 0; i < cellMasks.Length; i++)
                 {
-                    var sourceOffset = i;
+                    var sourceOffset = AlphaCellOrder.SourceIndexForCanonicalCell(i, cellMasks.Length, faceDisplay.IsReversed, _platformProvider());
                     if (_latestVfdMasksByCell.TryGetValue(baseIndex + sourceOffset, out var mask))
                     {
                         cellMasks[i] = mask;
@@ -237,17 +230,21 @@ public sealed class MachineSegmentRuntimeAdapter : IMachineSegmentRuntimeAdapter
         return element.DisplayNumber.GetValueOrDefault(0);
     }
 
-    private bool HasNativeAlphaCells(int baseIndex, int cellCount)
+}
+
+/// <summary>
+/// Converts Fabric character-display positions into Oasis's canonical
+/// left-to-right cell order. Fabric publishes positions in display order;
+/// MFME's Reversed flag describes the Impact address direction rather than a
+/// second visual transform.
+/// </summary>
+internal static class AlphaCellOrder
+{
+    internal static int SourceIndexForCanonicalCell(int canonicalIndex, int cellCount, bool sourceAddressingReversed, FruitMachinePlatformType platform)
     {
-        for (var offset = 0; offset < cellCount; offset++)
-        {
-            if (_latestNativeAlphaCells.Contains(baseIndex + offset))
-            {
-                return true;
-            }
-        }
-
-        return false;
+        var reverseSource = platform == FruitMachinePlatformType.Impact
+            ? !sourceAddressingReversed
+            : sourceAddressingReversed;
+        return reverseSource ? cellCount - 1 - canonicalIndex : canonicalIndex;
     }
-
 }

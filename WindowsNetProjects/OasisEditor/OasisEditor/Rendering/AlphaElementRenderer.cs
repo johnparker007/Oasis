@@ -42,8 +42,7 @@ internal sealed class AlphaElementRenderer : IPanelElementRenderer
             element.OnColorHex,
             element.OffColorHex,
             element.ShowDecimalPoint,
-            element.ShowCommaTail,
-            element.IsReversed == true);
+            element.ShowCommaTail);
     }
 
     internal static void RenderAlphaDisplay(
@@ -55,8 +54,7 @@ internal sealed class AlphaElementRenderer : IPanelElementRenderer
         string? onColorHex,
         string? offColorHex,
         bool showDecimalPoint,
-        bool showCommaTail,
-        bool isReversed)
+        bool showCommaTail)
     {
         if (bounds.Width <= 0f || bounds.Height <= 0f)
         {
@@ -104,7 +102,9 @@ internal sealed class AlphaElementRenderer : IPanelElementRenderer
 
         for (var cellIndex = 0; cellIndex < cellCount; cellIndex++)
         {
-            var dataIndex = SegmentCellOrder.SourceIndexForVisualCell(cellIndex, cellCount, isReversed);
+            // Runtime state is canonical left-to-right. Reversed describes the
+            // source display addressing and is consumed by the runtime adapter.
+            var dataIndex = cellIndex;
             var mask = dataIndex < cellMasks.Length ? cellMasks[dataIndex] : defaultMask;
             var litAmount = dataIndex < cellBrightness.Length ? Math.Clamp(cellBrightness[dataIndex], 0d, 1d) : 1d;
             var brightnessBucket = (int)Math.Round(litAmount * 4d);
