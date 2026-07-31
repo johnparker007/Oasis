@@ -101,8 +101,8 @@ public sealed class FaceRuntimeStateResolver : IFaceRuntimeStateResolver
         ArgumentNullException.ThrowIfNull(runtimeState);
 
         return TryGetSevenSegmentDisplayReference(display, out var reference)
-            ? runtimeState.GetSegmentCellMasks(reference, 1)
-            : new int[1];
+            ? runtimeState.GetSegmentCellMasks(reference, Math.Max(1, display.DigitCount))
+            : new int[Math.Max(1, display.DigitCount)];
     }
 
     public double[] GetSevenSegmentCellBrightness(FaceSevenSegmentDisplayElement display, MachineRuntimeState runtimeState)
@@ -111,8 +111,8 @@ public sealed class FaceRuntimeStateResolver : IFaceRuntimeStateResolver
         ArgumentNullException.ThrowIfNull(runtimeState);
 
         return TryGetSevenSegmentDisplayReference(display, out var reference)
-            ? runtimeState.GetSegmentCellBrightness(reference, 1)
-            : [1d];
+            ? runtimeState.GetSegmentCellBrightness(reference, Math.Max(1, display.DigitCount))
+            : Enumerable.Repeat(1d, Math.Max(1, display.DigitCount)).ToArray();
     }
 
     public int[] GetAlphaCellMasks(FaceAlphaDisplayElement display, MachineRuntimeState runtimeState)

@@ -401,6 +401,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
                 SegmentChanged?.Invoke(this, new(eventIndex, unchecked((int)publishedMask), SegmentOutputType.NativeAlpha));
             }
         }
+        var oasisCellId = 0;
         for (var displayOrdinal = 0; displayOrdinal < snapshot.SegmentDisplays.Count; displayOrdinal++)
         {
             var display = snapshot.SegmentDisplays[displayOrdinal];
@@ -409,10 +410,19 @@ public sealed class FabricEmulationBackend : IEmulationBackend
                 var identity = new DisplayOutputIdentity(DisplayOutputFamily.Segment, display.Identifier, displayOrdinal, position);
                 var mask = display.SegmentMasks[position];
                 if (_displayOutputs.TryGetValue(identity, out var previous) && previous == mask)
+                {
+                    oasisCellId++;
                     continue;
+                }
                 _displayOutputs[identity] = mask;
-                var eventIndex = checked(displayOrdinal * FabricAbi.SegmentCapacity + position);
-                SegmentChanged?.Invoke(this, new(eventIndex, unchecked((int)mask), SegmentOutputType.Digit));
+                SegmentChanged?.Invoke(this, new(oasisCellId, unchecked((int)mask), SegmentOutputType.Digit));
+                if (Debugger.IsAttached)
+                {
+                    Debug.WriteLine(
+                        $"Fabric segment changed: identifier='{display.Identifier}', ordinal={displayOrdinal}, " +
+                        $"position={position}, oasisCellId={oasisCellId}, mask=0x{mask:X}.");
+                }
+                oasisCellId++;
             }
         }
     }

@@ -59,6 +59,22 @@ public sealed class FaceRuntimeStateResolverTests
     }
 
     [Fact]
+    public void GetSevenSegmentCellMasks_UsesConfiguredDigitCount()
+    {
+        var runtimeState = new MachineRuntimeState();
+        var reference = MachineObjectReference.SevenSegmentDisplay(3);
+        runtimeState.SetSegmentCellMasksIfChanged(reference, [0x06, 0x5B]);
+        var display = new FaceSevenSegmentDisplayElement
+        {
+            LinkedMachineObjectReference = reference,
+            DigitCount = 2
+        };
+
+        Assert.Equal([0x06, 0x5B],
+            FaceRuntimeStateResolver.Instance.GetSevenSegmentCellMasks(display, runtimeState));
+    }
+
+    [Fact]
     public void GetSevenSegmentCellMasks_IgnoresLinkedPanel2DElementIdWhenMachineReferenceIsMissing()
     {
         var runtimeState = new MachineRuntimeState();
