@@ -4,6 +4,7 @@ namespace OasisEditor.Rendering;
 
 internal sealed class AlphaElementRenderer : IPanelElementRenderer
 {
+    private const int BrightnessBucketMaximum = 31;
     private const int MaxVisualCacheEntries = 4096;
     private static readonly Dictionary<string, Lazy<AlphaSkiaDefinition?>> DefinitionsByType = new(StringComparer.OrdinalIgnoreCase);
     private static readonly Dictionary<AlphaVisualCacheKey, SKImage> VisualCache = new();
@@ -106,8 +107,8 @@ internal sealed class AlphaElementRenderer : IPanelElementRenderer
             // source display addressing and is consumed by the runtime adapter.
             var dataIndex = cellIndex;
             var mask = dataIndex < cellMasks.Length ? cellMasks[dataIndex] : defaultMask;
-            var litAmount = dataIndex < cellBrightness.Length ? Math.Clamp(cellBrightness[dataIndex], 0d, 1d) : 1d;
-            var brightnessBucket = (int)Math.Round(litAmount * 4d);
+            var litAmount = dataIndex < cellBrightness.Length ? cellBrightness[dataIndex] : 1d;
+            var brightnessBucket = ToBrightnessBucket(litAmount);
             var key = new AlphaVisualCacheKey(displayType, cellPixelWidth, cellPixelHeight, mask, brightnessBucket, onColor, offColor, showDecimalPoint, showCommaTail);
             var visual = GetOrCreateVisual(key, definition);
             var cellRect = SKRect.Create(originX + (cellIndex * scaledPitch), originY, scaledCellWidth, scaledCellHeight);
@@ -150,7 +151,7 @@ internal sealed class AlphaElementRenderer : IPanelElementRenderer
         canvas.Save();
         canvas.Translate(offsetX, offsetY);
         canvas.Scale(scale, scale);
-        var litAmount = key.BrightnessBucket / 4d;
+        var litAmount = FromBrightnessBucket(key.BrightnessBucket);
         foreach (var segment in definition.Segments)
         {
             var lit = (key.Mask & (1 << segment.Index)) != 0;
@@ -239,6 +240,21 @@ internal sealed class AlphaElementRenderer : IPanelElementRenderer
         var clamped = Math.Clamp(factor, 0d, 1d);
         byte Scale(byte value) => (byte)Math.Clamp(Math.Round(value * clamped), 0d, 255d);
         return new SKColor(Scale(color.Red), Scale(color.Green), Scale(color.Blue), 255);
+    }
+
+    internal static int ToBrightnessBucket(double brightness)
+    {
+        var clamped = Math.Clamp(brightness, 0d, 1d);
+        return Math.Clamp(
+            (int)Math.Round(clamped * BrightnessBucketMaximum),
+            0,
+            BrightnessBucketMaximum);
+    }
+
+    internal static double FromBrightnessBucket(int bucket)
+    {
+        return Math.Clamp(bucket, 0, BrightnessBucketMaximum)
+            / (double)BrightnessBucketMaximum;
     }
 
     private static SKColor Lerp(SKColor from, SKColor to, double t)
