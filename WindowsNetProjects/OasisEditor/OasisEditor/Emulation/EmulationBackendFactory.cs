@@ -16,12 +16,14 @@ public sealed class EmulationBackendFactory : IEmulationBackendFactory
     private readonly Func<int, IEmulationAudioSink> _audioSinkFactory;
     private readonly IFabricClock _clock;
     private readonly Action<string>? _errorLogger;
+    private readonly Action<string>? _inputLogger;
 
     public EmulationBackendFactory(
         Func<string?> fabricRuntimePathProvider,
         Func<string?> productionAmberPathProvider,
         Func<int>? audioBufferLengthMillisecondsProvider = null,
-        Action<string>? errorLogger = null)
+        Action<string>? errorLogger = null,
+        Action<string>? inputLogger = null)
         : this(
             fabricRuntimePathProvider,
             productionAmberPathProvider,
@@ -29,7 +31,8 @@ public sealed class EmulationBackendFactory : IEmulationBackendFactory
             static path => new FabricRuntimeLibrary(path),
             static bufferLength => new NAudioEmulationAudioSink(bufferLength),
             new StopwatchFabricClock(),
-            errorLogger)
+            errorLogger,
+            inputLogger)
     {
     }
 
@@ -40,7 +43,8 @@ public sealed class EmulationBackendFactory : IEmulationBackendFactory
         Func<string, IFabricRuntimeLibrary> runtimeFactory,
         Func<int, IEmulationAudioSink> audioSinkFactory,
         IFabricClock clock,
-        Action<string>? errorLogger)
+        Action<string>? errorLogger,
+        Action<string>? inputLogger = null)
     {
         _fabricRuntimePathProvider = fabricRuntimePathProvider ?? throw new ArgumentNullException(nameof(fabricRuntimePathProvider));
         _productionAmberPathProvider = productionAmberPathProvider ?? throw new ArgumentNullException(nameof(productionAmberPathProvider));
@@ -49,6 +53,7 @@ public sealed class EmulationBackendFactory : IEmulationBackendFactory
         _audioSinkFactory = audioSinkFactory ?? throw new ArgumentNullException(nameof(audioSinkFactory));
         _clock = clock ?? throw new ArgumentNullException(nameof(clock));
         _errorLogger = errorLogger;
+        _inputLogger = inputLogger;
     }
 
     public IEmulationBackend? CreateBackend(FruitMachinePlatformType platform)
@@ -76,6 +81,6 @@ public sealed class EmulationBackendFactory : IEmulationBackendFactory
             throw new FileNotFoundException("The production Amber API v2 provider DLL was not found at the configured path. Select a valid provider under Preferences > Fabric Emulation.", amberPath);
 
         return new FabricEmulationBackend(runtimePath, amberPath, _runtimeFactory,
-            _audioSinkFactory(_audioBufferLengthMillisecondsProvider()), _clock, _errorLogger);
+            _audioSinkFactory(_audioBufferLengthMillisecondsProvider()), _clock, _errorLogger, _inputLogger);
     }
 }

@@ -48,9 +48,37 @@ public sealed class PlayViewInputRouterTests
         Assert.Equal([(first.Id, true), (first.Id, false), (second.Id, true), (second.Id, false)], backend.Inputs);
     }
 
+    [Fact]
+    public async Task KeyboardAndPointer_RouteCoinButtonNumberUnchangedForPressAndRelease()
+    {
+        var backend = new RecordingBackend();
+        var visualId = Guid.NewGuid();
+        var coin = new InputDefinitionModel
+        {
+            Id = "20p-coin",
+            Name = "20p Coin",
+            ButtonNumber = "34",
+            CoinInput = true,
+            KeyboardShortcut = "C",
+            LinkedVisualElementId = visualId
+        };
+        var shared = new PlayViewInputRouter(backend);
+        var keyboard = new PlayViewKeyboardInputRouter(shared, [coin]);
+        var pointer = new PlayViewPointerInputRouter(shared, [coin]);
+
+        Assert.True(await keyboard.TryHandleKeyDownAsync(FruitMachinePlatformType.Impact, "C", true, false, CancellationToken.None));
+        Assert.True(await keyboard.TryHandleKeyUpAsync(FruitMachinePlatformType.Impact, "C", true, CancellationToken.None));
+        Assert.True(await pointer.TryHandlePointerDownAsync(FruitMachinePlatformType.Impact, visualId, true, CancellationToken.None));
+        Assert.True(await pointer.TryHandlePointerUpAsync(FruitMachinePlatformType.Impact, visualId, true, CancellationToken.None));
+
+        Assert.Equal([("20p-coin", "34", true, true), ("20p-coin", "34", true, false),
+            ("20p-coin", "34", true, true), ("20p-coin", "34", true, false)], backend.RoutedInputs);
+    }
+
     private sealed class RecordingBackend : IEmulationBackend
     {
         public List<(string, bool)> Inputs { get; } = [];
+        public List<(string Id, string ButtonNumber, bool CoinInput, bool Pressed)> RoutedInputs { get; } = [];
         public EmulationBackendKind BackendKind => EmulationBackendKind.Fabric;
         public EmulationBackendState State => EmulationBackendState.Running;
         public EmulationBackendCapabilities Capabilities { get; } = new(true, true, true, true, false, false, false);
@@ -65,7 +93,7 @@ public sealed class PlayViewInputRouterTests
         public Task PauseAsync(CancellationToken cancellationToken) => Task.CompletedTask;
         public Task ResumeAsync(CancellationToken cancellationToken) => Task.CompletedTask;
         public Task ResetAsync(EmulationResetKind resetKind, CancellationToken cancellationToken) => Task.CompletedTask;
-        public Task SetInputStateAsync(InputDefinitionModel inputDefinition, bool isPressed, CancellationToken cancellationToken) { Inputs.Add((inputDefinition.Id, isPressed)); return Task.CompletedTask; }
+        public Task SetInputStateAsync(InputDefinitionModel inputDefinition, bool isPressed, CancellationToken cancellationToken) { Inputs.Add((inputDefinition.Id, isPressed)); RoutedInputs.Add((inputDefinition.Id, inputDefinition.ButtonNumber, inputDefinition.CoinInput, isPressed)); return Task.CompletedTask; }
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 }

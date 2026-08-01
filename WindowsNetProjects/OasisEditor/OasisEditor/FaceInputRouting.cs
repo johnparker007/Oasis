@@ -103,7 +103,7 @@ public sealed class FacePlayViewPointerInputRouter
             return Task.FromResult(false);
         }
 
-        return _inputRouter.TryPressAsync(platform, input, cancellationToken);
+        return _inputRouter.TryPressAsync(platform, input, cancellationToken, "pointer");
     }
 
     public Task<bool> TryHandlePointerUpAsync(FruitMachinePlatformType platform, MachineInputReference inputReference, bool isFocused, CancellationToken cancellationToken)
@@ -113,7 +113,7 @@ public sealed class FacePlayViewPointerInputRouter
             return Task.FromResult(false);
         }
 
-        return _inputRouter.TryReleaseAsync(platform, input, cancellationToken);
+        return _inputRouter.TryReleaseAsync(platform, input, cancellationToken, "pointer");
     }
 
     private bool TryResolveInput(MachineInputReference inputReference, out InputDefinitionModel input)

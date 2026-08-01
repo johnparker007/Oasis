@@ -20,9 +20,10 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     private readonly IEmulationAudioSink _audioSink;
     private readonly IFabricClock _clock;
     private readonly Action<string> _errorLogger;
+    private readonly Action<string>? _inputLogger;
     private readonly SemaphoreSlim _sessionGate = new(1, 1);
     private readonly ConcurrentQueue<InputCommand> _inputCommands = new();
-    private readonly HashSet<int> _assertedInputs = [];
+    private readonly FabricInputScheduler _inputScheduler = new();
     private readonly Dictionary<int, (bool State, float Brightness)> _lamps = [];
     private readonly Dictionary<int, int> _reels = [];
     private readonly Dictionary<DisplayOutputIdentity, ulong> _displayOutputs = [];
@@ -40,6 +41,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     private bool _audioStarted;
     private bool _disposed;
     private long _scheduleGeneration;
+    private long _pumpSequence;
 
     public FabricEmulationBackend(string runtimePath, string amberPath)
         : this(runtimePath, amberPath, path => new FabricRuntimeLibrary(path),
@@ -53,7 +55,8 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         Func<string, IFabricRuntimeLibrary> runtimeFactory,
         IEmulationAudioSink audioSink,
         IFabricClock clock,
-        Action<string>? errorLogger = null)
+        Action<string>? errorLogger = null,
+        Action<string>? inputLogger = null)
     {
         _runtimePath = runtimePath;
         _amberPath = amberPath;
@@ -61,6 +64,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         _audioSink = audioSink;
         _clock = clock;
         _errorLogger = errorLogger ?? WriteDebugError;
+        _inputLogger = inputLogger;
     }
 
     public EmulationBackendKind BackendKind => EmulationBackendKind.Fabric;
@@ -269,8 +273,11 @@ public sealed class FabricEmulationBackend : IEmulationBackend
                 try
                 {
                     var session = RequireSession();
+                    ProcessInputs();
+                    var pumpSequence = Interlocked.Increment(ref _pumpSequence);
+                    _inputScheduler.ApplyBeforeAdvance(session, pumpSequence, _inputLogger);
                     session.Advance(NanosecondsPerPump);
-                    ProcessInputs(session);
+                    _inputScheduler.MarkAdvanced();
                     PublishSnapshot(session.GetSnapshot());
                     ReadAudio(session);
                 }
@@ -342,16 +349,10 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         return checked((sampleRate + EmulationPumpHz - 1) / EmulationPumpHz);
     }
 
-    private void ProcessInputs(IFabricMachineSession session)
+    private void ProcessInputs()
     {
         while (_inputCommands.TryDequeue(out var input))
-        {
-            session.SubmitInput(new($"oasis.switch.{input.Index}", input.Index, input.Active));
-            if (input.Active)
-                _assertedInputs.Add(input.Index);
-            else
-                _assertedInputs.Remove(input.Index);
-        }
+            _inputScheduler.Request(input.Index, input.Active);
     }
 
     private void ReadAudio(IFabricMachineSession session)
@@ -492,16 +493,13 @@ public sealed class FabricEmulationBackend : IEmulationBackend
 
     private void ReleaseAssertedInputs()
     {
-        var session = _session;
-        if (session is not null)
-            foreach (var index in _assertedInputs)
-                session.SubmitInput(new($"oasis.switch.{index}", index, false));
-        _assertedInputs.Clear();
+        _inputScheduler.ReleaseAll(_session);
     }
 
     private void ClearPendingInputs()
     {
         while (_inputCommands.TryDequeue(out _)) { }
+        _inputScheduler.Clear();
     }
 
     private void ClearOutputCaches()

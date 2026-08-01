@@ -32,7 +32,7 @@ public sealed class PlayViewPointerInputRouter
             return Task.FromResult(false);
         }
 
-        return _inputRouter.TryPressAsync(platform, input, cancellationToken);
+        return _inputRouter.TryPressAsync(platform, input, cancellationToken, "pointer");
     }
 
     public Task<bool> TryHandlePointerUpAsync(FruitMachinePlatformType platform, Guid visualElementId, bool isFocused, CancellationToken cancellationToken)
@@ -42,7 +42,7 @@ public sealed class PlayViewPointerInputRouter
             return Task.FromResult(false);
         }
 
-        return _inputRouter.TryReleaseAsync(platform, input, cancellationToken);
+        return _inputRouter.TryReleaseAsync(platform, input, cancellationToken, "pointer");
     }
 
     public Task<int> ReleaseAllActiveAsync(FruitMachinePlatformType platform, CancellationToken cancellationToken)

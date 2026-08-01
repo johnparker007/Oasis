@@ -4,13 +4,15 @@ public sealed class PlayViewInputRouter
 {
     private readonly IEmulationBackend _backend;
     private readonly HashSet<string> _activeInputIds = [];
+    private readonly Action<string>? _inputLogger;
 
-    public PlayViewInputRouter(IEmulationBackend backend)
+    public PlayViewInputRouter(IEmulationBackend backend, Action<string>? inputLogger = null)
     {
         _backend = backend ?? throw new ArgumentNullException(nameof(backend));
+        _inputLogger = inputLogger;
     }
 
-    public async Task<bool> TryPressAsync(FruitMachinePlatformType platform, InputDefinitionModel inputDefinition, CancellationToken cancellationToken)
+    public async Task<bool> TryPressAsync(FruitMachinePlatformType platform, InputDefinitionModel inputDefinition, CancellationToken cancellationToken, string source = "shared")
     {
         ArgumentNullException.ThrowIfNull(inputDefinition);
 
@@ -25,6 +27,8 @@ public sealed class PlayViewInputRouter
         }
 
         var wrote = await TrySendInputStateAsync(platform, inputDefinition, isPressed: true, cancellationToken).ConfigureAwait(false);
+        if (wrote)
+            LogRoute(source, inputDefinition, true);
         if (!wrote)
         {
             _activeInputIds.Remove(inputDefinition.Id);
@@ -33,7 +37,7 @@ public sealed class PlayViewInputRouter
         return wrote;
     }
 
-    public async Task<bool> TryReleaseAsync(FruitMachinePlatformType platform, InputDefinitionModel inputDefinition, CancellationToken cancellationToken)
+    public async Task<bool> TryReleaseAsync(FruitMachinePlatformType platform, InputDefinitionModel inputDefinition, CancellationToken cancellationToken, string source = "shared")
     {
         ArgumentNullException.ThrowIfNull(inputDefinition);
 
@@ -42,7 +46,10 @@ public sealed class PlayViewInputRouter
             return false;
         }
 
-        return await TrySendInputStateAsync(platform, inputDefinition, isPressed: false, cancellationToken).ConfigureAwait(false);
+        var wrote = await TrySendInputStateAsync(platform, inputDefinition, isPressed: false, cancellationToken).ConfigureAwait(false);
+        if (wrote)
+            LogRoute(source, inputDefinition, false);
+        return wrote;
     }
 
     public async Task<int> ReleaseAllAsync(FruitMachinePlatformType platform, IReadOnlyDictionary<string, InputDefinitionModel> inputDefinitionsById, CancellationToken cancellationToken)
@@ -86,4 +93,7 @@ public sealed class PlayViewInputRouter
             return false;
         }
     }
+
+    private void LogRoute(string source, InputDefinitionModel input, bool pressed) =>
+        _inputLogger?.Invoke($"[Input] source={source} name=\"{input.Name}\" coin={input.CoinInput.ToString().ToLowerInvariant()} switch={input.ButtonNumber} state={(pressed ? "pressed" : "released")}");
 }

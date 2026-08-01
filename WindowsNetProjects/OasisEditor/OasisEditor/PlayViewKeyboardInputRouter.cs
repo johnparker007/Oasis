@@ -43,7 +43,7 @@ public sealed class PlayViewKeyboardInputRouter
             return Task.FromResult(false);
         }
 
-        return _inputRouter.TryPressAsync(platform, input, cancellationToken);
+        return _inputRouter.TryPressAsync(platform, input, cancellationToken, "keyboard");
     }
 
     public Task<bool> TryHandleKeyUpAsync(FruitMachinePlatformType platform, string keyboardShortcut, bool isFocused, CancellationToken cancellationToken)
@@ -53,7 +53,7 @@ public sealed class PlayViewKeyboardInputRouter
             return Task.FromResult(false);
         }
 
-        return _inputRouter.TryReleaseAsync(platform, input, cancellationToken);
+        return _inputRouter.TryReleaseAsync(platform, input, cancellationToken, "keyboard");
     }
 
     private bool TryGetInputForShortcut(string keyboardShortcut, out InputDefinitionModel input)
