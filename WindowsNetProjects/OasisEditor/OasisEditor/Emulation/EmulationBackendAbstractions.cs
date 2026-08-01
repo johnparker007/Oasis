@@ -27,6 +27,13 @@ public interface IEmulationBackend : IAsyncDisposable
     Task SetInputStateAsync(InputDefinitionModel inputDefinition, bool isPressed, CancellationToken cancellationToken);
 }
 
+public interface IRawInputDiagnosticBackend
+{
+    bool IsRawInputDiagnosticAvailable { get; }
+    Task SetRawInputStateAsync(int switchIndex, bool isPressed, CancellationToken cancellationToken);
+    Task PulseRawInputAsync(int switchIndex, CancellationToken cancellationToken);
+}
+
 public enum EmulationBackendKind
 {
     Fabric

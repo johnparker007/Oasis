@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 
 namespace OasisEditor;
 
-public sealed class FabricEmulationBackend : IEmulationBackend
+public sealed class FabricEmulationBackend : IEmulationBackend, IRawInputDiagnosticBackend
 {
     private const string AmberBackendKind = "amber";
     private const string JpmSystem6MachineIdentifier = "jpm-system6";
@@ -23,6 +23,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     private readonly Action<string> _diagnosticLogger;
     private readonly SemaphoreSlim _sessionGate = new(1, 1);
     private readonly ConcurrentQueue<InputCommand> _inputCommands = new();
+    private readonly Dictionary<int, long> _rawPulseReleases = [];
     private readonly HashSet<int> _assertedInputs = [];
     private readonly Dictionary<int, (bool State, float Brightness)> _lamps = [];
     private readonly Dictionary<int, int> _reels = [];
@@ -41,6 +42,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     private bool _audioStarted;
     private bool _disposed;
     private long _scheduleGeneration;
+    private long _pumpNumber;
 
     public FabricEmulationBackend(string runtimePath, string amberPath)
         : this(runtimePath, amberPath, path => new FabricRuntimeLibrary(path),
@@ -71,6 +73,9 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     public EmulationBackendState State { get { lock (_stateGate) return _state; } }
     public Exception? LastFailure { get; private set; }
     internal IEmulationAudioSink AudioSink => _audioSink;
+    public bool IsRawInputDiagnosticAvailable =>
+        State is EmulationBackendState.Running or EmulationBackendState.Paused
+        && _session?.Capabilities.Has(FabricCapability.DigitalInput) == true;
 
     public event EventHandler<EmulationBackendState>? StateChanged;
     public event EventHandler<MachineLampChangedEventArgs>? LampChanged;
@@ -228,6 +233,37 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         return Task.CompletedTask;
     }
 
+    public Task SetRawInputStateAsync(int switchIndex, bool isPressed, CancellationToken cancellationToken)
+    {
+        ValidateRawSwitchIndex(switchIndex);
+        EnsureDigitalInputAvailable(cancellationToken);
+        _inputCommands.Enqueue(new(switchIndex, isPressed, true));
+        return Task.CompletedTask;
+    }
+
+    public Task PulseRawInputAsync(int switchIndex, CancellationToken cancellationToken)
+    {
+        ValidateRawSwitchIndex(switchIndex);
+        EnsureDigitalInputAvailable(cancellationToken);
+        _inputCommands.Enqueue(new(switchIndex, true, true, true));
+        return Task.CompletedTask;
+    }
+
+    private static void ValidateRawSwitchIndex(int switchIndex)
+    {
+        if (switchIndex is < 0 or > byte.MaxValue)
+            throw new ArgumentOutOfRangeException(nameof(switchIndex), switchIndex, "Raw switch index must be from 0 to 255.");
+    }
+
+    private void EnsureDigitalInputAvailable(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        ThrowIfDisposed();
+        EnsureAcceptingOperations();
+        if (_session?.Capabilities.Has(FabricCapability.DigitalInput) != true)
+            throw new NotSupportedException("Fabric session does not support raw digital input diagnostics.");
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (_disposed)
@@ -294,6 +330,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
                 {
                     var session = RequireSession();
                     session.Advance(NanosecondsPerPump);
+                    _pumpNumber++;
                     ProcessInputs(session);
                     PublishSnapshot(session.GetSnapshot());
                     ReadAudio(session);
@@ -368,14 +405,29 @@ public sealed class FabricEmulationBackend : IEmulationBackend
 
     private void ProcessInputs(IFabricMachineSession session)
     {
+        foreach (var release in _rawPulseReleases.Where(pair => pair.Value <= _pumpNumber).ToArray())
+        {
+            SubmitInput(session, release.Key, false, isRaw: true);
+            _rawPulseReleases.Remove(release.Key);
+        }
+
         while (_inputCommands.TryDequeue(out var input))
         {
-            session.SubmitInput(new($"oasis.switch.{input.Index}", input.Index, input.Active));
-            if (input.Active)
-                _assertedInputs.Add(input.Index);
-            else
-                _assertedInputs.Remove(input.Index);
+            SubmitInput(session, input.Index, input.Active, input.IsRaw);
+            if (input.IsPulse)
+                _rawPulseReleases[input.Index] = _pumpNumber + 1;
         }
+    }
+
+    private void SubmitInput(IFabricMachineSession session, int index, bool active, bool isRaw)
+    {
+        session.SubmitInput(new($"oasis.switch.{index}", index, active));
+        if (active)
+            _assertedInputs.Add(index);
+        else
+            _assertedInputs.Remove(index);
+        if (isRaw)
+            _diagnosticLogger($"[Fabric Raw Input] switch={index} state={(active ? "pressed" : "released")} pump={_pumpNumber}");
     }
 
     private void ReadAudio(IFabricMachineSession session)
@@ -526,6 +578,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     private void ClearPendingInputs()
     {
         while (_inputCommands.TryDequeue(out _)) { }
+        _rawPulseReleases.Clear();
     }
 
     private void ClearOutputCaches()
@@ -558,7 +611,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         StateChanged?.Invoke(this, state);
     }
 
-    private readonly record struct InputCommand(int Index, bool Active);
+    private readonly record struct InputCommand(int Index, bool Active, bool IsRaw = false, bool IsPulse = false);
     private readonly record struct DisplayOutputIdentity(DisplayOutputFamily Family, string Identifier, int DisplayOrdinal, int Position);
     private readonly record struct DisplayBrightnessIdentity(DisplayOutputFamily Family, string Identifier, int DisplayOrdinal);
     private enum DisplayOutputFamily { Character, Segment }

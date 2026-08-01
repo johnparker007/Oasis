@@ -168,6 +168,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         HardResetEmulationCommand = new RelayCommand(HardResetEmulation, CanResetEmulation);
 
         _outputLog = new OutputLogViewModel();
+        _outputLog.ConfigureRawInputProbe(() => _activeEmulationBackend as IRawInputDiagnosticBackend);
         _outputLog.PropertyChanged += OnOutputLogPropertyChanged;
         SkiaRenderDiagnostics.IsEnabled = kDebugSkiaPerformanceOutput;
         if (kDebugSkiaPerformanceOutput)
@@ -239,7 +240,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _emulationBackendFactory = new EmulationBackendFactory(
             () => FabricRuntimeLibraryPath, () => ProductionAmberLibraryPath,
             () => System6AudioBufferLengthMilliseconds,
-            errorLogger: message => AddOutputEntry(message, OutputLogStatus.Error));
+            errorLogger: message => AddOutputEntry(message, OutputLogStatus.Error),
+            diagnosticLogger: message => AddOutputEntry(message, OutputLogStatus.Info));
 
         RecentProjects = new ObservableCollection<string>(_recentProjectsStore.Load());
         OpenDocuments = new ObservableCollection<DocumentTabViewModel>();
@@ -2007,6 +2009,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             ?? throw new InvalidOperationException($"No emulation backend is available for platform '{SelectedFruitMachinePlatform}'.");
 
         _activeEmulationBackend = backend;
+        _outputLog.NotifyRawInputAvailabilityChanged();
         backend.StateChanged += OnActiveBackendStateChanged;
         backend.LampChanged += OnActiveBackendLampChanged;
         backend.ReelChanged += OnActiveBackendReelChanged;
@@ -2026,6 +2029,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             backend.VfdBrightnessChanged -= OnActiveBackendVfdBrightnessChanged;
             await backend.DisposeAsync().ConfigureAwait(false);
             _activeEmulationBackend = null;
+            _outputLog.NotifyRawInputAvailabilityChanged();
             throw;
         }
     }
@@ -2265,6 +2269,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         DispatchToUiThread(() =>
         {
             EmulationState = state;
+            _outputLog.NotifyRawInputAvailabilityChanged();
             AddOutputEntry($"Emulation backend state changed to {state}.", OutputLogStatus.Info);
         });
     }
@@ -2312,6 +2317,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         backend.VfdBrightnessChanged -= OnActiveBackendVfdBrightnessChanged;
         await backend.DisposeAsync();
         _activeEmulationBackend = null;
+        _outputLog.NotifyRawInputAvailabilityChanged();
         _playViewInputRouter = null;
         _playViewInputDispatcher = null;
         EmulationState = EmulationBackendState.Stopped;

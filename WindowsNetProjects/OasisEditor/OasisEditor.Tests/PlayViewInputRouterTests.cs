@@ -48,6 +48,14 @@ public sealed class PlayViewInputRouterTests
         Assert.Equal([(first.Id, true), (first.Id, false), (second.Id, true), (second.Id, false)], backend.Inputs);
     }
 
+    [Fact]
+    public void BackendWithoutRawDiagnosticInterfaceReportsUnsupportedCleanly()
+    {
+        IEmulationBackend backend = new RecordingBackend();
+
+        Assert.Null(backend as IRawInputDiagnosticBackend);
+    }
+
     private sealed class RecordingBackend : IEmulationBackend
     {
         public List<(string, bool)> Inputs { get; } = [];

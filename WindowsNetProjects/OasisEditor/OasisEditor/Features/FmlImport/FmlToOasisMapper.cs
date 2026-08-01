@@ -23,6 +23,7 @@ internal sealed class FmlToOasisMapper
         var elements = new List<PanelElementModel>();
         var warnings = new List<LayoutImportWarning>();
         var inputs = new List<InputDefinitionModel>();
+        var inputDiagnostics = new List<string>();
         var unsupported = new List<string>();
 
         for (var index = 0; index < layout.Components.Count; index++)
@@ -40,7 +41,7 @@ internal sealed class FmlToOasisMapper
                     AddUnsupportedComponent(component, unsupported, warnings);
                     break;
                 case Lamp or PrismLamp or Button or Checkbox:
-                    MapLampLike(component, index, exportedImages, elements, inputs, warnings);
+                    MapLampLike(component, index, exportedImages, elements, inputs, inputDiagnostics, warnings);
                     break;
                 case Reel or BandReel or DiscReel or FlipReel:
                     elements.Add(MapReel(component, index, exportedImages, warnings));
@@ -60,7 +61,7 @@ internal sealed class FmlToOasisMapper
             }
         }
 
-        return new FmlToOasisMapResult { Elements = elements, Warnings = warnings, InputDefinitions = inputs, UnsupportedComponentTypes = unsupported };
+        return new FmlToOasisMapResult { Elements = elements, Warnings = warnings, InputDefinitions = inputs, InputDiagnostics = inputDiagnostics, UnsupportedComponentTypes = unsupported };
     }
 
     private static PanelElementModel MapBackground(BaseComponent c, int index, IReadOnlyDictionary<FmlDecodedImageKey, string> images) => new()
@@ -84,7 +85,7 @@ internal sealed class FmlToOasisMapper
         warnings.Add(new LayoutImportWarning("fml.import.component.unsupported", $"Unsupported FML component '{componentType}' was skipped.", componentType));
     }
 
-    private static void MapLampLike(BaseComponent c, int index, IReadOnlyDictionary<FmlDecodedImageKey, string> images, List<PanelElementModel> elements, List<InputDefinitionModel> inputs, ICollection<LayoutImportWarning> warnings)
+    private static void MapLampLike(BaseComponent c, int index, IReadOnlyDictionary<FmlDecodedImageKey, string> images, List<PanelElementModel> elements, List<InputDefinitionModel> inputs, List<string> inputDiagnostics, ICollection<LayoutImportWarning> warnings)
     {
         var entries = GetSublamps(c).Where(e => e.SublampNumber != UndefinedSublampNumber && e.SublampNumber >= 0).OrderBy(e => e.SublampIndex).ToArray();
         if (entries.Length == 0)
@@ -119,6 +120,7 @@ internal sealed class FmlToOasisMapper
         if (input is not null)
         {
             inputs.Add(input);
+            inputDiagnostics.Add(BuildInputDiagnostic(c, index, input));
         }
         else if (HasInputMetadata(c))
         {
@@ -130,6 +132,40 @@ internal sealed class FmlToOasisMapper
                 $"FML component {index.ToString(CultureInfo.InvariantCulture)} ({c.GetType().Name}) contains input metadata but no input could be mapped. UInt32 keys=[{string.Join(", ", c.UInt32s.Keys.OrderBy(key => key, StringComparer.Ordinal))}]; Boolean keys=[{string.Join(", ", c.Booleans.Keys.OrderBy(key => key, StringComparer.Ordinal))}]; shortcut codes=[{string.Join(", ", shortcutCodes)}].",
                 index.ToString(CultureInfo.InvariantCulture)));
         }
+    }
+
+    private static string BuildInputDiagnostic(BaseComponent component, int componentIndex, InputDefinitionModel input)
+    {
+        var sourceField = component.WasValuePresent("Button Number") ? "Button Number"
+            : component.WasValuePresent("ButtonNumber") ? "ButtonNumber"
+            : "none";
+        return $"[MFME Input Decode] component={componentIndex} type={component.GetType().Name} " +
+            $"name=\"{EscapeDiagnostic(input.Name)}\" coin={input.CoinInput.ToString().ToLowerInvariant()} " +
+            $"selectedButtonNumber={input.ButtonNumber} sourceField=\"{sourceField}\" " +
+            $"shortcut=\"{EscapeDiagnostic(input.KeyboardShortcut)}\" " +
+            $"int32={FormatDiagnosticDictionary(component.Int32s)} " +
+            $"uint32={FormatDiagnosticDictionary(component.UInt32s)} " +
+            $"bool={FormatDiagnosticDictionary(component.Booleans)} " +
+            $"strings={FormatDiagnosticDictionary(component.Strings, value => $"\"{EscapeDiagnostic(value)}\"")}";
+    }
+
+    private static string FormatDiagnosticDictionary<T>(
+        IReadOnlyDictionary<string, T> values, Func<T, string>? formatValue = null)
+    {
+        formatValue ??= value => Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty;
+        return "{" + string.Join(", ", values
+            .Where(pair => !pair.Key.Contains("image", StringComparison.OrdinalIgnoreCase)
+                && !pair.Key.Contains("bitmap", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(pair => pair.Key, StringComparer.Ordinal)
+            .Select(pair => $"{pair.Key}={formatValue(pair.Value)}")) + "}";
+    }
+
+    private static string EscapeDiagnostic(string value)
+    {
+        const int maximumLength = 200;
+        var bounded = value.Length <= maximumLength ? value : value[..maximumLength] + "…";
+        return bounded.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal)
+            .Replace("\r", "\\r", StringComparison.Ordinal).Replace("\n", "\\n", StringComparison.Ordinal);
     }
 
     private static PanelElementModel MapReel(BaseComponent c, int index, IReadOnlyDictionary<FmlDecodedImageKey, string> images, ICollection<LayoutImportWarning> warnings)
@@ -415,5 +451,6 @@ internal sealed class FmlToOasisMapResult
     public required IReadOnlyList<PanelElementModel> Elements { get; init; }
     public required IReadOnlyList<LayoutImportWarning> Warnings { get; init; }
     public required IReadOnlyList<InputDefinitionModel> InputDefinitions { get; init; }
+    public required IReadOnlyList<string> InputDiagnostics { get; init; }
     public required IReadOnlyList<string> UnsupportedComponentTypes { get; init; }
 }

@@ -22,6 +22,9 @@ public sealed class OutputLogViewModel : INotifyPropertyChanged
     private string _searchText = string.Empty;
     private string _searchTextNormalized = string.Empty;
     private IReadOnlyList<OutputLogEntry> _selectedEntries = Array.Empty<OutputLogEntry>();
+    private Func<IRawInputDiagnosticBackend?>? _rawInputBackendProvider;
+    private string _rawSwitchIndexText = "0";
+    private bool _isRawSwitchAsserted;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -38,12 +41,35 @@ public sealed class OutputLogViewModel : INotifyPropertyChanged
         FilteredEntries = CollectionViewSource.GetDefaultView(OutputEntries);
         FilteredEntries.Filter = ShouldShowEntry;
         ClearOutputCommand = new RelayCommand(ClearOutput, CanClearOutput);
+        PressRawSwitchCommand = new RelayCommand(() => SetRawSwitch(true), CanUseRawSwitchProbe);
+        ReleaseRawSwitchCommand = new RelayCommand(() => SetRawSwitch(false), CanUseRawSwitchProbe);
+        PulseRawSwitchCommand = new RelayCommand(PulseRawSwitch, CanUseRawSwitchProbe);
         _diskWriter.Initialize();
     }
 
     public ObservableCollection<OutputLogEntry> OutputEntries { get; }
     public ICollectionView FilteredEntries { get; }
     public ICommand ClearOutputCommand { get; }
+    public ICommand PressRawSwitchCommand { get; }
+    public ICommand ReleaseRawSwitchCommand { get; }
+    public ICommand PulseRawSwitchCommand { get; }
+    public string RawSwitchIndexText
+    {
+        get => _rawSwitchIndexText;
+        set
+        {
+            if (string.Equals(_rawSwitchIndexText, value, StringComparison.Ordinal)) return;
+            _rawSwitchIndexText = value ?? string.Empty;
+            IsRawSwitchAsserted = false;
+            OnPropertyChanged();
+            NotifyRawInputAvailabilityChanged();
+        }
+    }
+    public bool IsRawSwitchAsserted
+    {
+        get => _isRawSwitchAsserted;
+        private set { if (_isRawSwitchAsserted != value) { _isRawSwitchAsserted = value; OnPropertyChanged(); } }
+    }
     public string CurrentLogPath => _diskWriter.CurrentLogPath;
     public string LogDirectoryPath => Path.GetDirectoryName(CurrentLogPath) ?? string.Empty;
     public string CopySelectionHeader => SelectedEntries.Count == 1 ? "Copy Row" : "Copy Rows";
@@ -154,6 +180,57 @@ public sealed class OutputLogViewModel : INotifyPropertyChanged
         if (ClearOutputCommand is RelayCommand clearRelayCommand)
         {
             clearRelayCommand.RaiseCanExecuteChanged();
+        }
+    }
+
+    public void ConfigureRawInputProbe(Func<IRawInputDiagnosticBackend?> backendProvider)
+    {
+        _rawInputBackendProvider = backendProvider ?? throw new ArgumentNullException(nameof(backendProvider));
+        NotifyRawInputAvailabilityChanged();
+    }
+
+    public void NotifyRawInputAvailabilityChanged()
+    {
+        (PressRawSwitchCommand as RelayCommand)?.RaiseCanExecuteChanged();
+        (ReleaseRawSwitchCommand as RelayCommand)?.RaiseCanExecuteChanged();
+        (PulseRawSwitchCommand as RelayCommand)?.RaiseCanExecuteChanged();
+    }
+
+    private bool CanUseRawSwitchProbe() => TryGetRawSwitchIndex(out _)
+        && _rawInputBackendProvider?.Invoke()?.IsRawInputDiagnosticAvailable == true;
+
+    private bool TryGetRawSwitchIndex(out int switchIndex) =>
+        int.TryParse(RawSwitchIndexText, out switchIndex) && switchIndex is >= 0 and <= byte.MaxValue;
+
+    private async void SetRawSwitch(bool pressed)
+    {
+        var backend = _rawInputBackendProvider?.Invoke();
+        if (backend is null || !TryGetRawSwitchIndex(out var switchIndex)) return;
+        AddOutputEntry($"[Raw Input] switch={switchIndex} action={(pressed ? "press" : "release")}", OutputLogStatus.Info);
+        try
+        {
+            await backend.SetRawInputStateAsync(switchIndex, pressed, CancellationToken.None);
+            IsRawSwitchAsserted = pressed;
+        }
+        catch (Exception exception)
+        {
+            AddOutputEntry($"[Raw Input] switch={switchIndex} failed: {exception.Message}", OutputLogStatus.Error);
+        }
+    }
+
+    private async void PulseRawSwitch()
+    {
+        var backend = _rawInputBackendProvider?.Invoke();
+        if (backend is null || !TryGetRawSwitchIndex(out var switchIndex)) return;
+        AddOutputEntry($"[Raw Input] switch={switchIndex} action=pulse", OutputLogStatus.Info);
+        try
+        {
+            await backend.PulseRawInputAsync(switchIndex, CancellationToken.None);
+            IsRawSwitchAsserted = false;
+        }
+        catch (Exception exception)
+        {
+            AddOutputEntry($"[Raw Input] switch={switchIndex} failed: {exception.Message}", OutputLogStatus.Error);
         }
     }
 

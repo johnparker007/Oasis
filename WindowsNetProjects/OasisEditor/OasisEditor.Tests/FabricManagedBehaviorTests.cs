@@ -343,6 +343,72 @@ public sealed class FabricManagedBehaviorTests
         Assert.Equal(2, saved!.LockoutValue);
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(255)]
+    public async Task Backend_RawInputPressAndReleaseSubmitIndexUnchanged(int switchIndex)
+    {
+        var session = new FakeSession();
+        var backend = CreateBackend(session, new FakeAudioSink());
+        await backend.StartAsync(CreateRequest(), CancellationToken.None);
+
+        await backend.SetRawInputStateAsync(switchIndex, true, CancellationToken.None);
+        await WaitForInputCountAsync(session, 1);
+        await backend.SetRawInputStateAsync(switchIndex, false, CancellationToken.None);
+        await WaitForInputCountAsync(session, 2);
+        await backend.StopAsync(CancellationToken.None);
+
+        Assert.Collection(session.Inputs,
+            input => Assert.Equal((switchIndex, true), (input.Input.NumericalIndex, input.Input.Active)),
+            input => Assert.Equal((switchIndex, false), (input.Input.NumericalIndex, input.Input.Active)));
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(256)]
+    public async Task Backend_RawInputRejectsIndexesOutsideByteRange(int switchIndex)
+    {
+        var backend = CreateBackend(new FakeSession(), new FakeAudioSink());
+
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            backend.SetRawInputStateAsync(switchIndex, true, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Backend_RawPulseSpansAtLeastOneAdvanceBeforeRelease()
+    {
+        var session = new FakeSession();
+        var backend = CreateBackend(session, new FakeAudioSink());
+        await backend.StartAsync(CreateRequest(), CancellationToken.None);
+
+        await backend.PulseRawInputAsync(72, CancellationToken.None);
+        await WaitForInputCountAsync(session, 2);
+        await backend.StopAsync(CancellationToken.None);
+
+        Assert.Equal((72, true), (session.Inputs[0].Input.NumericalIndex, session.Inputs[0].Input.Active));
+        Assert.Equal((72, false), (session.Inputs[1].Input.NumericalIndex, session.Inputs[1].Input.Active));
+        Assert.True(session.Inputs[1].AdvanceCount > session.Inputs[0].AdvanceCount);
+    }
+
+    [Fact]
+    public async Task Backend_RawInputDoesNotCreateOrModifyProjectInputDefinitions()
+    {
+        var projectInputs = new List<InputDefinitionModel>
+        {
+            new() { Id = "mapped", ButtonNumber = "74" }
+        };
+        var session = new FakeSession();
+        var backend = CreateBackend(session, new FakeAudioSink());
+        await backend.StartAsync(CreateRequest(), CancellationToken.None);
+
+        await backend.SetRawInputStateAsync(72, true, CancellationToken.None);
+        await WaitForInputCountAsync(session, 1);
+        await backend.StopAsync(CancellationToken.None);
+
+        var input = Assert.Single(projectInputs);
+        Assert.Equal(("mapped", "74"), (input.Id, input.ButtonNumber));
+    }
+
     [Fact]
     public void ProjectSettingsSerialization_RoundTripsLockoutValue()
     {
@@ -585,6 +651,14 @@ public sealed class FabricManagedBehaviorTests
         Assert.Equal(state, backend.State);
     }
 
+    private static async Task WaitForInputCountAsync(FakeSession session, int count)
+    {
+        var timeout = DateTime.UtcNow + TimeSpan.FromSeconds(2);
+        while (session.Inputs.Count < count && DateTime.UtcNow < timeout)
+            await Task.Delay(10);
+        Assert.True(session.Inputs.Count >= count, $"Expected at least {count} submitted inputs.");
+    }
+
     private sealed class FakeClock : IFabricClock
     {
         private long _timestamp;
@@ -620,11 +694,12 @@ public sealed class FabricManagedBehaviorTests
         public int DisposeCount { get; private set; }
         public int FramesToWrite { get; init; }
         public List<ulong> Advances { get; } = [];
+        public List<(FabricInput Input, int AdvanceCount)> Inputs { get; } = [];
         public FabricCapabilities Capabilities => new((ulong)(FabricCapability.DigitalInput | FabricCapability.Audio));
         public void Initialise() => Invoke(() => { });
         public void Reset() => Invoke(() => ResetCount++);
         public void Advance(ulong elapsedNanoseconds) => Invoke(() => { Advances.Add(elapsedNanoseconds); FirstAdvance.TrySetResult(); if (AdvanceFailure is not null) throw AdvanceFailure; });
-        public void SubmitInput(FabricInput input) => Invoke(() => { });
+        public void SubmitInput(FabricInput input) => Invoke(() => Inputs.Add((input, Advances.Count)));
         public FabricMachineSnapshot GetSnapshot() => Invoke(() => SnapshotFailure is null
             ? new FabricMachineSnapshot(1, [], [], [], [])
             : throw SnapshotFailure);

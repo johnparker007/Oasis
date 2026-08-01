@@ -396,6 +396,31 @@ public sealed class FmlToOasisMapperTests
     }
 
     [Fact]
+    public void Map_WithCoinInput_ReportsSelectedSourceAndBoundedRawMetadata()
+    {
+        var lamp = CreateLamp();
+        SetExplicitUInt(lamp, "ButtonNumber", 72);
+        SetExplicitBool(lamp, "Coin / Note Selected", true);
+        lamp.Int32s["Coin Number"] = 3;
+        lamp.UInt32s["Shortcut 1"] = 0x35;
+        lamp.Booleans["Shortcut 1 Enabled"] = true;
+        lamp.Strings["SelectedCoinNote"] = "50p";
+        lamp.Strings["ImageBlob"] = new string('x', 1000);
+
+        var diagnostic = Assert.Single(Map(lamp).InputDiagnostics);
+
+        Assert.Contains("[MFME Input Decode] component=0 type=Lamp", diagnostic);
+        Assert.Contains("coin=true selectedButtonNumber=72 sourceField=\"ButtonNumber\"", diagnostic);
+        Assert.Contains("int32={Coin Number=3}", diagnostic);
+        Assert.Contains("ButtonNumber=72", diagnostic);
+        Assert.Contains("Shortcut 1=53", diagnostic);
+        Assert.Contains("Coin / Note Selected=True", diagnostic);
+        Assert.Contains("SelectedCoinNote=\"50p\"", diagnostic);
+        Assert.DoesNotContain("ImageBlob", diagnostic);
+        Assert.DoesNotContain(new string('x', 100), diagnostic);
+    }
+
+    [Fact]
     public void Map_WithPlaceholderCoinNote_DoesNotCreateInput()
     {
         var lamp = CreateLamp();
