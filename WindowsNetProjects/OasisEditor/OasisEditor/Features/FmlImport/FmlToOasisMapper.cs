@@ -40,7 +40,7 @@ internal sealed class FmlToOasisMapper
                     AddUnsupportedComponent(component, unsupported, warnings);
                     break;
                 case Lamp or PrismLamp or Button or Checkbox:
-                    MapLampLike(component, index, exportedImages, elements, inputs);
+                    MapLampLike(component, index, exportedImages, elements, inputs, warnings);
                     break;
                 case Reel or BandReel or DiscReel or FlipReel:
                     elements.Add(MapReel(component, index, exportedImages, warnings));
@@ -84,7 +84,7 @@ internal sealed class FmlToOasisMapper
         warnings.Add(new LayoutImportWarning("fml.import.component.unsupported", $"Unsupported FML component '{componentType}' was skipped.", componentType));
     }
 
-    private static void MapLampLike(BaseComponent c, int index, IReadOnlyDictionary<FmlDecodedImageKey, string> images, List<PanelElementModel> elements, List<InputDefinitionModel> inputs)
+    private static void MapLampLike(BaseComponent c, int index, IReadOnlyDictionary<FmlDecodedImageKey, string> images, List<PanelElementModel> elements, List<InputDefinitionModel> inputs, ICollection<LayoutImportWarning> warnings)
     {
         var entries = GetSublamps(c).Where(e => e.SublampNumber != UndefinedSublampNumber && e.SublampNumber >= 0).OrderBy(e => e.SublampIndex).ToArray();
         if (entries.Length == 0)
@@ -116,7 +116,20 @@ internal sealed class FmlToOasisMapper
         }
 
         var input = BuildInput(c, elements.LastOrDefault(e => e.SourceComponentIndex == index)?.ObjectId ?? string.Empty);
-        if (input is not null) inputs.Add(input);
+        if (input is not null)
+        {
+            inputs.Add(input);
+        }
+        else if (HasInputMetadata(c))
+        {
+            var shortcutCodes = c.UInt32s
+                .Where(pair => pair.Key is "Shortcut 1" or "Shortcut 2")
+                .Select(pair => $"{pair.Key}={pair.Value.ToString(CultureInfo.InvariantCulture)}");
+            warnings.Add(new LayoutImportWarning(
+                "fml.import.input.unmapped",
+                $"FML component {index.ToString(CultureInfo.InvariantCulture)} ({c.GetType().Name}) contains input metadata but no input could be mapped. UInt32 keys=[{string.Join(", ", c.UInt32s.Keys.OrderBy(key => key, StringComparer.Ordinal))}]; Boolean keys=[{string.Join(", ", c.Booleans.Keys.OrderBy(key => key, StringComparer.Ordinal))}]; shortcut codes=[{string.Join(", ", shortcutCodes)}].",
+                index.ToString(CultureInfo.InvariantCulture)));
+        }
     }
 
     private static PanelElementModel MapReel(BaseComponent c, int index, IReadOnlyDictionary<FmlDecodedImageKey, string> images, ICollection<LayoutImportWarning> warnings)
@@ -263,7 +276,126 @@ internal sealed class FmlToOasisMapper
     private static bool IsMainBackgroundImage(string k) { var n = Norm(k); return n.Contains("background") && !n.Contains("mask") && !IsOverlay(k); }
     private static string Norm(string s) { var n = new string(s.Select(ch => char.IsLetterOrDigit(ch) ? char.ToLowerInvariant(ch) : '_').ToArray()); while (n.Contains("__", StringComparison.Ordinal)) n = n.Replace("__", "_", StringComparison.Ordinal); return n.Trim('_'); }
     private static PanelElementImportSourceModel Source(BaseComponent c, int index, int? n = null) => new() { Format = ImportSourceFormat, Reference = n.HasValue ? $"{c.GetType().Name}:{index}:{n.Value}" : $"{c.GetType().Name}:{index}" };
-    private static InputDefinitionModel? BuildInput(BaseComponent c, string linkedObjectId) { var button = Str(c, "ButtonNumber") ?? Str(c, "Button"); var has = button is not null || Bool(c, "HasButtonInput") == true || Bool(c, "HasCoinInput") == true; if (!has) return null; var raw = Str(c, "Shortcut1") ?? string.Empty; MfmeShortcutKeyMapper.TryMap(raw, out var mapped); return new InputDefinitionModel { Id = Guid.NewGuid().ToString("N"), Name = Text(c) ?? "Imported Input", Kind = Bool(c, "HasCoinInput") == true ? InputDefinitionKind.Coin : InputDefinitionKind.Button, ButtonNumber = button ?? string.Empty, CoinInput = Bool(c, "HasCoinInput") == true, Inverted = Bool(c, "Inverted") ?? false, RawMfmeShortcut = raw, KeyboardShortcut = mapped.ToString(), LinkedVisualElementId = Guid.TryParse(linkedObjectId, out var id) ? id : null, Notes = string.Empty }; }
+    private static InputDefinitionModel? BuildInput(BaseComponent c, string linkedObjectId)
+    {
+        var buttonNumber = GetInputButtonNumber(c);
+        var coinNote = GetSelectedCoinNote(c);
+        var isCoinInput = Bool(c, "Coin / Note Selected") == true || coinNote is not null;
+        var shortcut = GetPrimaryShortcut(c);
+        var hasEnabledShortcut = HasEnabledShortcut(c);
+        if (!buttonNumber.HasValue && !isCoinInput && !hasEnabledShortcut)
+        {
+            return null;
+        }
+
+        var rawShortcut = shortcut?.Text ?? string.Empty;
+        var keyboardShortcut = string.Empty;
+        if (shortcut is not null && MfmeShortcutKeyMapper.TryMap(rawShortcut, out var mappedKey))
+        {
+            keyboardShortcut = mappedKey.ToString();
+        }
+
+        var name = LampText(c) ?? (isCoinInput ? coinNote ?? "Imported Coin Input" : "Imported Button Input");
+        return new InputDefinitionModel
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            Name = name,
+            Kind = isCoinInput ? InputDefinitionKind.Coin : InputDefinitionKind.Button,
+            ButtonNumber = buttonNumber?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+            CoinInput = isCoinInput,
+            Inverted = Bool(c, "Inverted") ?? false,
+            RawMfmeShortcut = rawShortcut,
+            KeyboardShortcut = keyboardShortcut,
+            LinkedVisualElementId = Guid.TryParse(linkedObjectId, out var id) ? id : null,
+            Notes = shortcut is null && hasEnabledShortcut ? FormatUnknownShortcutNotes(c) : string.Empty
+        };
+    }
+
+    private static uint? GetInputButtonNumber(BaseComponent c)
+        => UInt(c, "Button Number") ?? UInt(c, "ButtonNumber");
+
+    private static string? GetSelectedCoinNote(BaseComponent c)
+    {
+        var value = Str(c, "SelectedCoinNote");
+        return value is null || value.Equals("none", StringComparison.OrdinalIgnoreCase)
+            || value.Equals("(none)", StringComparison.OrdinalIgnoreCase)
+            || value.Equals("not selected", StringComparison.OrdinalIgnoreCase)
+            ? null
+            : value;
+    }
+
+    private static MfmeDecodedShortcut? GetPrimaryShortcut(BaseComponent c)
+    {
+        foreach (var number in new[] { 1, 2 })
+        {
+            if (Bool(c, $"Shortcut {number} Enabled") != true || UInt(c, $"Shortcut {number}") is not uint code)
+            {
+                continue;
+            }
+
+            if (TryDecodeMfmeShortcut(code, out var text))
+            {
+                return new MfmeDecodedShortcut(code, text);
+            }
+        }
+
+        return null;
+    }
+
+    // MFME persists shortcuts as Win32 virtual-key codes, not character code points.
+    private static bool TryDecodeMfmeShortcut(uint code, out string text)
+    {
+        text = code switch
+        {
+            0x08 => "BACKSPACE",
+            0x09 => "TAB",
+            0x0D => "ENTER",
+            0x10 => "SHIFT",
+            0x11 => "CTRL",
+            0x12 => "ALT",
+            0x1B => "ESCAPE",
+            0x20 => "SPACE",
+            0x25 => "LEFT",
+            0x26 => "UP",
+            0x27 => "RIGHT",
+            0x28 => "DOWN",
+            0x30 or >= 0x31 and <= 0x39 => ((char)code).ToString(),
+            >= 0x41 and <= 0x5A => ((char)code).ToString(),
+            0xBA => ";",
+            0xBB => "=",
+            0xBC => ",",
+            0xBD => "-",
+            0xBE => ".",
+            0xBF => "/",
+            0xC0 => "`",
+            0xDB => "[",
+            0xDC => "\\",
+            0xDD => "]",
+            0xDE => "'",
+            0xDF => "#",
+            _ => string.Empty
+        };
+        return text.Length > 0;
+    }
+
+    private static bool HasEnabledShortcut(BaseComponent c)
+        => Bool(c, "Shortcut 1 Enabled") == true || Bool(c, "Shortcut 2 Enabled") == true;
+
+    private static bool HasInputMetadata(BaseComponent c)
+        => GetInputButtonNumber(c).HasValue || GetSelectedCoinNote(c) is not null || Bool(c, "Coin / Note Selected") == true
+            || HasEnabledShortcut(c) || Bool(c, "Inverted") == true;
+
+    private static string FormatUnknownShortcutNotes(BaseComponent c)
+    {
+        var codes = new[] { 1, 2 }
+            .Where(number => Bool(c, $"Shortcut {number} Enabled") == true)
+            .Select(number => UInt(c, $"Shortcut {number}") is uint code
+                ? $"Shortcut {number} code: {code.ToString(CultureInfo.InvariantCulture)}"
+                : $"Shortcut {number} code unavailable");
+        return string.Join("; ", codes);
+    }
+
+    private sealed record MfmeDecodedShortcut(uint Code, string Text);
 }
 
 internal sealed class FmlToOasisMapResult

@@ -127,6 +127,7 @@ internal sealed class FmlImportService : IFmlImportService
 
         diagnostics.Add($"Generated image count: {imagePaths.Count}; image root: {stagingDirectory}; image paths: {FormatImagePaths(imagePaths.Values)}");
         diagnostics.Add($"Decoded FML component counts by Type: {FormatCounts(CountDecodedTypes(layout))}");
+        diagnostics.Add($"Mapped input definition count: {mapResult.InputDefinitions.Count}; button inputs: {mapResult.InputDefinitions.Count(input => !input.CoinInput)}; coin inputs: {mapResult.InputDefinitions.Count(input => input.CoinInput)}; with shortcuts: {mapResult.InputDefinitions.Count(input => !string.IsNullOrWhiteSpace(input.KeyboardShortcut))}; without shortcuts: {mapResult.InputDefinitions.Count(input => string.IsNullOrWhiteSpace(input.KeyboardShortcut))}");
 
         var assetCopyStopwatch = Stopwatch.StartNew();
         var assetResult = _assetCopier.CopyAssetsFromStaging(

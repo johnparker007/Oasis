@@ -134,7 +134,12 @@ internal sealed class FmlImportDiagnosticsWriter
         AppendLine(sb, "Image count", report.ImagePaths.Count.ToString());
         AppendList(sb, "Image filenames", report.ImagePaths.Values.OrderBy(v => v, StringComparer.Ordinal));
         AppendList(sb, "Panel element counts", CountStrings(report.MapResult?.Elements.Select(e => e.Kind.ToString()) ?? []).Select(kvp => $"{kvp.Key}: {kvp.Value}"));
-        AppendLine(sb, "Input definition count", (report.MapResult?.InputDefinitions.Count ?? 0).ToString());
+        var inputs = report.MapResult?.InputDefinitions ?? [];
+        AppendLine(sb, "Mapped input definition count", inputs.Count.ToString());
+        AppendLine(sb, "Button input count", inputs.Count(input => !input.CoinInput).ToString());
+        AppendLine(sb, "Coin input count", inputs.Count(input => input.CoinInput).ToString());
+        AppendLine(sb, "Inputs with shortcuts", inputs.Count(input => !string.IsNullOrWhiteSpace(input.KeyboardShortcut)).ToString());
+        AppendLine(sb, "Inputs without shortcuts", inputs.Count(input => string.IsNullOrWhiteSpace(input.KeyboardShortcut)).ToString());
         AppendLine(sb, "Imported asset count", report.ImportedAssetCount.ToString());
         AppendBackgroundDiagnostics(sb, report);
         sb.AppendLine();
