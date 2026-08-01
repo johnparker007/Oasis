@@ -404,6 +404,29 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public int InputMapWarningCount => InputMapDiagnostics.Count(d => d.Severity == InputMapDiagnosticSeverity.Warning);
     public bool HasInputMapDiagnostics => InputMapDiagnostics.Count > 0;
 
+    public int DeleteInputDefinitions(IReadOnlyCollection<InputDefinitionModel> selectedInputs)
+    {
+        if (LoadedProject is null || selectedInputs.Count == 0)
+        {
+            return 0;
+        }
+
+        // TODO: Wrap this project-level mutation when the Editor exposes project-scoped undo history;
+        // the existing Undo/Redo service is scoped exclusively to the active content document.
+        var deletedCount = InputMapDeletionService.DeleteSelected(LoadedProject.InputDefinitions, selectedInputs);
+        if (deletedCount == 0)
+        {
+            return 0;
+        }
+
+        SaveLoadedProjectMetadata();
+        SelectedDocument?.MarkDirty();
+        OnPropertyChanged(nameof(InputDefinitions));
+        RefreshInputMapDiagnostics();
+        AddOutputEntry($"Deleted {deletedCount} input definition(s).", OutputLogStatus.Info);
+        return deletedCount;
+    }
+
 
     public FruitMachinePlatformType SelectedFruitMachinePlatform
     {
