@@ -21,6 +21,7 @@
   <ItemGroup>
     <Content Include="..\OasisEditor\MfmeFonts\*.ttf" Link="MfmeFonts\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\OasisEditor\MfmeFonts\*.TTF" Link="MfmeFonts\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\OasisEditor\Views\ProjectSettingsView.xaml" Link="Views\ProjectSettingsView.xaml" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

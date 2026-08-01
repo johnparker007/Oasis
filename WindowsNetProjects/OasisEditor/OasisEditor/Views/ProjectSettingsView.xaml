@@ -51,17 +51,17 @@
             </ScrollViewer>
 
             <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <Grid>
-                <Grid.Style>
-                    <Style TargetType="Grid">
-                            <Setter Property="Visibility" Value="Collapsed" />
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding SelectedProjectSettingsCategory}" Value="Impact / Fabric">
-                                    <Setter Property="Visibility" Value="Visible" />
-                                </DataTrigger>
-                            </Style.Triggers>
+                <ScrollViewer.Style>
+                    <Style TargetType="ScrollViewer">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding SelectedProjectSettingsCategory}" Value="Impact / Fabric">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
                     </Style>
-                </Grid.Style>
+                </ScrollViewer.Style>
+                <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
