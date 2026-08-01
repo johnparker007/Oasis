@@ -86,9 +86,9 @@ internal static class PanelElementModelFactory
     private static PanelElementFile CreateReelElement(Point panelPoint)
     {
         var objectId = Guid.NewGuid().ToString("N");
-        return CreateBaseElement(PanelElementKind.Reel, objectId, "Reel 1", panelPoint, NewReelWidth, NewReelHeight) with
+        return CreateBaseElement(PanelElementKind.Reel, objectId, "Reel 0", panelPoint, NewReelWidth, NewReelHeight) with
         {
-            DisplayNumber = 1,
+            DisplayNumber = 0,
             Stops = 24,
             VisibleScale = 3d / 24d,
             IsReversed = false

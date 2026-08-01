@@ -379,6 +379,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         }
         foreach (var reel in snapshot.Reels)
         {
+            // Fabric and Oasis both use the native zero-based reel identifier.
             if (_reels.TryGetValue(reel.NumericalIndex, out var previous) && previous == reel.Position)
                 continue;
             _reels[reel.NumericalIndex] = reel.Position;

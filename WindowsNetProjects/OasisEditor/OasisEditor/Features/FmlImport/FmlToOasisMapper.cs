@@ -139,10 +139,11 @@ internal sealed class FmlToOasisMapper
         if (stops == 0) warnings.Add(new LayoutImportWarning("fml.import.reel.stops.invalid", "Reel stops must be greater than zero to calculate visible scale.", index.ToString(CultureInfo.InvariantCulture)));
         var lampsEnabled = Bool(c, "LampsEnabled") ?? true;
         var reelLamps = MapReelLamps(c);
-        var reelName = $"Reel {Number(c).GetValueOrDefault(c.Number) + 1}";
+        var reelNumber = Number(c).GetValueOrDefault(c.Number);
+        var reelName = $"Reel {reelNumber}";
         Debug.WriteLine($"Reel '{reelName}': {FormatMfmeCommonReelLampSlots(c)} -> Oasis [top={FormatLamp(reelLamps[0].LampNumber)}, middle={FormatLamp(reelLamps[1].LampNumber)}, bottom={FormatLamp(reelLamps[2].LampNumber)}], enabled={lampsEnabled.ToString().ToLowerInvariant()}");
         AddReelLampImportWarnings(c, reelName, reelLamps, lampsEnabled, index, warnings);
-        return new PanelElementModel { ObjectId = Guid.NewGuid().ToString("N"), Name = reelName, Kind = PanelElementKind.Reel, X = c.X, Y = c.Y, Width = Math.Max(1, c.Width), Height = Math.Max(1, c.Height), DisplayNumber = Number(c).GetValueOrDefault(c.Number) + 1, AssetPath = FirstRoleImage(images, index, IsReelBand) ?? FirstImage(images, index), SecondaryAssetPath = FirstRoleImage(images, index, IsOverlay), Stops = (int)stops, IsReversed = Bool(c, "Reversed") ?? Bool(c, "Reverse") ?? false, VisibleScale = scale, ReelLampsEnabled = lampsEnabled, ReelLamps = reelLamps, IsOpaqueReel = Bool(c, "OpaqueBand") ?? Bool(c, "Opaque") ?? false, SourceComponentIndex = index, ImportSource = Source(c, index) };
+        return new PanelElementModel { ObjectId = Guid.NewGuid().ToString("N"), Name = reelName, Kind = PanelElementKind.Reel, X = c.X, Y = c.Y, Width = Math.Max(1, c.Width), Height = Math.Max(1, c.Height), DisplayNumber = reelNumber, AssetPath = FirstRoleImage(images, index, IsReelBand) ?? FirstImage(images, index), SecondaryAssetPath = FirstRoleImage(images, index, IsOverlay), Stops = (int)stops, IsReversed = Bool(c, "Reversed") ?? Bool(c, "Reverse") ?? false, VisibleScale = scale, ReelLampsEnabled = lampsEnabled, ReelLamps = reelLamps, IsOpaqueReel = Bool(c, "OpaqueBand") ?? Bool(c, "Opaque") ?? false, SourceComponentIndex = index, ImportSource = Source(c, index) };
     }
 
     private static IReadOnlyList<ReelLampSlotModel> MapReelLamps(BaseComponent c)
