@@ -17,7 +17,7 @@ internal static class FabricAbi { internal const uint Version = 0x00020000; inte
 
 [StructLayout(LayoutKind.Sequential)] internal struct AmberReelNative { internal uint Index,Enabled,Steps,OptoStart,OptoEnd,OptoInvert; }
 [StructLayout(LayoutKind.Sequential)] internal unsafe struct AmberReelsNative { internal uint Size,Version,Count,ApplyMask; internal fixed byte Reels[8*24]; }
-[StructLayout(LayoutKind.Sequential)] internal struct AmberCoinChannelNative { internal uint Index,Enabled,Value,LockoutInvert,Reserved; }
+[StructLayout(LayoutKind.Sequential)] internal struct AmberCoinChannelNative { internal uint Index,Enabled,Value,LockoutValue,LockoutInvert; }
 [StructLayout(LayoutKind.Sequential)] internal struct AmberCoinRouteNative { internal uint Index,Enabled,CounterIn,CounterOut,PortIndex,CoinCode,Level,FullLevel; }
 [StructLayout(LayoutKind.Sequential)] internal unsafe struct AmberCoinsNative { internal uint Size,Version,ChannelMask,RouteMask; internal fixed byte Channels[6*20]; internal fixed byte Routes[8*32]; internal uint LockoutBase,LockoutValue,Flags,Reserved; }
 [StructLayout(LayoutKind.Sequential)] internal unsafe struct FabricAmberConfigurationNative { internal uint Magic,Size,Version,Flags; internal AmberReelsNative Reels; internal AmberCoinsNative Coins; internal uint Percentage; internal fixed uint Reserved[3]; }

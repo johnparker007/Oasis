@@ -20,6 +20,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     private readonly IEmulationAudioSink _audioSink;
     private readonly IFabricClock _clock;
     private readonly Action<string> _errorLogger;
+    private readonly Action<string> _diagnosticLogger;
     private readonly SemaphoreSlim _sessionGate = new(1, 1);
     private readonly ConcurrentQueue<InputCommand> _inputCommands = new();
     private readonly HashSet<int> _assertedInputs = [];
@@ -53,7 +54,8 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         Func<string, IFabricRuntimeLibrary> runtimeFactory,
         IEmulationAudioSink audioSink,
         IFabricClock clock,
-        Action<string>? errorLogger = null)
+        Action<string>? errorLogger = null,
+        Action<string>? diagnosticLogger = null)
     {
         _runtimePath = runtimePath;
         _amberPath = amberPath;
@@ -61,6 +63,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         _audioSink = audioSink;
         _clock = clock;
         _errorLogger = errorLogger ?? WriteDebugError;
+        _diagnosticLogger = diagnosticLogger ?? WriteDebugError;
     }
 
     public EmulationBackendKind BackendKind => EmulationBackendKind.Fabric;
@@ -89,6 +92,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         {
             var settings = request.System6Configuration;
             var resources = BuildRomResources(settings);
+            LogCoinConfiguration(settings);
             cancellationToken.ThrowIfCancellationRequested();
             _runtime = _runtimeFactory(_runtimePath);
             _session = _runtime.CreateSession(new FabricLaunchRequest(
@@ -120,6 +124,26 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             throw;
         }
     }
+
+    private void LogCoinConfiguration(System6NativeRomSettings settings)
+    {
+        foreach (var coin in settings.Coins.Where(coin => coin.Enabled))
+        {
+            _diagnosticLogger(
+                $"[Coin Config Source] channelIndex={coin.Num} enabled={FormatBoolean(coin.CoinEnable != 0)} value={coin.CoinValue} " +
+                $"lockoutValue={coin.LockoutValue} lockoutInvert={FormatBoolean(coin.LockoutInvert != 0)}");
+        }
+
+        var configuration = FabricAmberConfiguration.FromSystem6(settings);
+        foreach (var channel in configuration.CoinChannels)
+        {
+            _diagnosticLogger(
+                $"[Coin Config Fabric] channelIndex={channel.Index} enabled={FormatBoolean(channel.Enabled)} value={channel.Value} " +
+                $"lockoutValue={channel.LockoutValue} lockoutInvert={FormatBoolean(channel.LockoutInvert)}");
+        }
+    }
+
+    private static string FormatBoolean(bool value) => value ? "true" : "false";
 
     public async Task StopAsync(CancellationToken cancellationToken)
     {

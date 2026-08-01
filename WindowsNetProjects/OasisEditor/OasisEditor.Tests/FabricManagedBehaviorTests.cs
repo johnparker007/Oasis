@@ -1,5 +1,7 @@
 using Xunit;
 using OasisEditor;
+using System.Reflection;
+using System.Text.Json;
 
 namespace OasisEditor.Tests;
 
@@ -236,7 +238,7 @@ public sealed class FabricManagedBehaviorTests
             ReelOptos = [new() { ReelIndex = 2, Enabled = false, Steps = 96, OptoStart = 5, OptoEnd = 7, OptoInvert = true }],
             Coins =
             [
-                new() { Num = 1, Enabled = true, CoinEnable = 1, CoinValue = 20, LockoutInvert = 1, CounterIn = 2, CounterOut = 3, PortIndex = 4, Coin = 5, Level = 6, FullLevel = 7 },
+                new() { Num = 1, Enabled = true, CoinEnable = 1, CoinValue = 20, LockoutValue = 2, LockoutInvert = 1, CounterIn = 2, CounterOut = 3, PortIndex = 4, Coin = 5, Level = 6, FullLevel = 7 },
                 new() { Num = 2, Enabled = false }
             ],
             PercentSwitchValue = 12
@@ -248,9 +250,124 @@ public sealed class FabricManagedBehaviorTests
         Assert.Equal(new FabricAmberReel(2, false, 96, 5, 7, true), Assert.Single(configuration.Reels));
         Assert.Equal(1u << 1, configuration.CoinChannelApplyMask);
         Assert.Equal(1u << 1, configuration.CoinRouteApplyMask);
-        Assert.Equal(new FabricAmberCoinChannel(1, true, 20, true), Assert.Single(configuration.CoinChannels));
+        Assert.Equal(new FabricAmberCoinChannel(1, true, 20, 2, true), Assert.Single(configuration.CoinChannels));
         Assert.Equal(new FabricAmberCoinRoute(1, true, 2, 3, 4, 5, 6, 7), Assert.Single(configuration.CoinRoutes));
         Assert.Equal(12u, configuration.PercentageSwitch);
+    }
+
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(1, 0)]
+    [InlineData(2, 1)]
+    public void AmberConfiguration_MapsLockoutValuesWithoutInference(int lockoutValue, int lockoutInvert)
+    {
+        var settings = new System6NativeRomSettings
+        {
+            Coins =
+            [
+                new()
+                {
+                    Num = 2, Enabled = true, CoinEnable = 1, CoinValue = 20,
+                    LockoutValue = lockoutValue, LockoutInvert = lockoutInvert
+                }
+            ]
+        };
+
+        var channel = Assert.Single(FabricAmberConfiguration.FromSystem6(settings).CoinChannels);
+
+        Assert.Equal(new FabricAmberCoinChannel(2, true, 20, checked((uint)lockoutValue), lockoutInvert != 0), channel);
+    }
+
+    [Fact]
+    public void AmberConfiguration_NativeBytesUseCurrentChannelLayoutAndPreserveRouteOffset()
+    {
+        var configuration = FabricAmberConfiguration.FromSystem6(new System6NativeRomSettings
+        {
+            Coins =
+            [
+                new()
+                {
+                    Num = 2, Enabled = true, CoinEnable = 1, CoinValue = 20,
+                    LockoutValue = 1, LockoutInvert = 1, CounterIn = 7
+                }
+            ]
+        });
+
+        var bytes = configuration.ToNativeBytes();
+        const int firstChannelOffset = 240;
+        const int firstRouteOffset = 360;
+
+        Assert.Equal(2u, BitConverter.ToUInt32(bytes, firstChannelOffset));
+        Assert.Equal(1u, BitConverter.ToUInt32(bytes, firstChannelOffset + 4));
+        Assert.Equal(20u, BitConverter.ToUInt32(bytes, firstChannelOffset + 8));
+        Assert.Equal(1u, BitConverter.ToUInt32(bytes, firstChannelOffset + 12));
+        Assert.Equal(1u, BitConverter.ToUInt32(bytes, firstChannelOffset + 16));
+        Assert.Equal(2u, BitConverter.ToUInt32(bytes, firstRouteOffset));
+        Assert.Equal(1u, BitConverter.ToUInt32(bytes, firstRouteOffset + 4));
+        Assert.Equal(7u, BitConverter.ToUInt32(bytes, firstRouteOffset + 8));
+    }
+
+    [Fact]
+    public async Task Backend_LaunchPreservesLockoutValueAndLogsSourceAndFabricValues()
+    {
+        var session = new FakeSession();
+        var runtime = new FakeRuntime(session);
+        var diagnostics = new List<string>();
+        var backend = new FabricEmulationBackend("runtime", "amber", _ => runtime,
+            new FakeAudioSink(), new FakeClock(), diagnosticLogger: diagnostics.Add);
+        var request = new EmulationLaunchRequest(new System6NativeRomSettings
+        {
+            Coins = [new() { Num = 2, Enabled = true, CoinEnable = 1, CoinValue = 20, LockoutValue = 1 }]
+        });
+
+        await backend.StartAsync(request, CancellationToken.None);
+        await session.FirstAdvance.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await backend.StopAsync(CancellationToken.None);
+
+        var configuration = Assert.IsType<FabricAmberConfiguration>(runtime.Request!.Configuration);
+        Assert.Equal(1u, Assert.Single(configuration.CoinChannels).LockoutValue);
+        Assert.Contains("[Coin Config Source] channelIndex=2 enabled=true value=20 lockoutValue=1 lockoutInvert=false", diagnostics);
+        Assert.Contains("[Coin Config Fabric] channelIndex=2 enabled=true value=20 lockoutValue=1 lockoutInvert=false", diagnostics);
+    }
+
+    [Fact]
+    public void CoinSettingsViewModel_EditPreservesLockoutValueInBackingModel()
+    {
+        System6CoinSettings? saved = null;
+        System6CoinSettingsViewModel? viewModel = null;
+        viewModel = new System6CoinSettingsViewModel(new System6CoinSettings { LockoutValue = 0 },
+            () => saved = viewModel!.ToModel());
+
+        viewModel.LockoutValue = 2;
+
+        Assert.Equal(2, saved!.LockoutValue);
+    }
+
+    [Fact]
+    public void ProjectSettingsSerialization_RoundTripsLockoutValue()
+    {
+        var settings = new System6NativeRomSettings
+        {
+            Coins = [new() { Num = 0, Enabled = true, CoinEnable = 1, LockoutValue = 2 }]
+        };
+        using var stream = new MemoryStream();
+        using (var writer = new Utf8JsonWriter(stream))
+        {
+            writer.WriteStartObject();
+            writer.WritePropertyName("project_settings");
+            writer.WriteStartObject();
+            typeof(MainWindowViewModel).GetMethod("WriteSystem6NativeRomSettings",
+                BindingFlags.NonPublic | BindingFlags.Static)!.Invoke(null, [writer, settings]);
+            writer.WriteEndObject();
+            writer.WriteEndObject();
+        }
+        using var document = JsonDocument.Parse(stream.ToArray());
+
+        var reloaded = Assert.IsType<System6NativeRomSettings>(
+            typeof(MainWindowViewModel).GetMethod("ResolveSystem6NativeRomSettings",
+                BindingFlags.NonPublic | BindingFlags.Static)!.Invoke(null, [document.RootElement]));
+
+        Assert.Equal(2, reloaded.Coins[0].LockoutValue);
     }
 
     [Fact]

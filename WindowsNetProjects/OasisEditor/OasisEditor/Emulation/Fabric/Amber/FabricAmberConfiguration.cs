@@ -4,7 +4,7 @@ public sealed record FabricAmberReel(
     uint Index, bool Enabled, uint Steps, uint OptoStart, uint OptoEnd, bool OptoInvert);
 
 public sealed record FabricAmberCoinChannel(
-    uint Index, bool Enabled, uint Value, bool LockoutInvert);
+    uint Index, bool Enabled, uint Value, uint LockoutValue, bool LockoutInvert);
 
 public sealed record FabricAmberCoinRoute(
     uint Index, bool Enabled, uint CounterIn, uint CounterOut,
@@ -34,7 +34,8 @@ public sealed record FabricAmberConfiguration(
             coins.Aggregate(0u, (mask, coin) => mask | 1u << coin.Num),
             coins.Aggregate(0u, (mask, coin) => mask | 1u << coin.Num),
             coins.Select(coin => new FabricAmberCoinChannel(
-                checked((uint)coin.Num), coin.CoinEnable != 0, checked((uint)coin.CoinValue), coin.LockoutInvert != 0)).ToArray(),
+                checked((uint)coin.Num), coin.CoinEnable != 0, checked((uint)coin.CoinValue),
+                checked((uint)coin.LockoutValue), coin.LockoutInvert != 0)).ToArray(),
             coins.Select(coin => new FabricAmberCoinRoute(
                 checked((uint)coin.Num), coin.Enabled, checked((uint)coin.CounterIn), checked((uint)coin.CounterOut),
                 checked((uint)coin.PortIndex), checked((uint)coin.Coin), checked((uint)coin.Level), checked((uint)coin.FullLevel))).ToArray(),
@@ -99,6 +100,7 @@ public sealed record FabricAmberConfiguration(
                     Index = channel.Index,
                     Enabled = channel.Enabled ? 1u : 0,
                     Value = channel.Value,
+                    LockoutValue = channel.LockoutValue,
                     LockoutInvert = channel.LockoutInvert ? 1u : 0
                 };
             }

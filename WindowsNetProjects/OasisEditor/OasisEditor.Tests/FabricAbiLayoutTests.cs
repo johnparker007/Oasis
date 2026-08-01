@@ -24,6 +24,8 @@ public sealed class FabricAbiLayoutTests
         Assert.Equal(24, Marshal.SizeOf<AmberReelNative>());
         Assert.Equal(208, Marshal.SizeOf<AmberReelsNative>());
         Assert.Equal(20, Marshal.SizeOf<AmberCoinChannelNative>());
+        Assert.Equal(12, Marshal.OffsetOf<AmberCoinChannelNative>("LockoutValue").ToInt32());
+        Assert.Equal(16, Marshal.OffsetOf<AmberCoinChannelNative>("LockoutInvert").ToInt32());
         Assert.Equal(32, Marshal.SizeOf<AmberCoinRouteNative>());
         Assert.Equal(408, Marshal.SizeOf<AmberCoinsNative>());
         Assert.Equal(648, Marshal.SizeOf<FabricAmberConfigurationNative>());
