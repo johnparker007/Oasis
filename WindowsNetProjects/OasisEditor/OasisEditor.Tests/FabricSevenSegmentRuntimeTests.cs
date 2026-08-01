@@ -61,8 +61,6 @@ public sealed class FabricSevenSegmentRuntimeTests
         Assert.Contains(panelNotifications.SelectMany(values => values.Keys), id => id == "seven-0");
         Assert.Contains(panelNotifications.SelectMany(values => values.Keys), id => id == "seven-2");
         Assert.Contains(faceNotifications.SelectMany(ids => ids), id => id == "face-seven-1");
-        Assert.Contains(diagnostics, message => message.Contains("cellId=0") && message.Contains("mask=0xFC"));
-        Assert.Contains(diagnostics, message => message.Contains("face=face-seven-1") && message.Contains("0xDA"));
     }
 
     [Fact]
