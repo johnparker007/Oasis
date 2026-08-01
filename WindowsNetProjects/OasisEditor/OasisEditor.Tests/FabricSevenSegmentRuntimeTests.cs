@@ -41,9 +41,7 @@ public sealed class FabricSevenSegmentRuntimeTests
         document.PanelVisualStateChanged += change => panelNotifications.Add(change.ValuesByObjectId);
         document.FaceVisualStateChanged += change => faceNotifications.Add(change.ObjectIds);
         var dispatches = new List<Action>();
-        var diagnostics = new List<string>();
-        var adapter = new MachineSegmentRuntimeAdapter(
-            () => [document], dispatches.Add, diagnosticLogger: diagnostics.Add);
+        var adapter = new MachineSegmentRuntimeAdapter(() => [document], dispatches.Add);
         var backend = new FabricEmulationBackend("fabric", "amber");
         backend.SegmentChanged += (_, change) =>
             adapter.ApplySegmentState(change.CellId, change.SegmentMask, change.OutputType);
