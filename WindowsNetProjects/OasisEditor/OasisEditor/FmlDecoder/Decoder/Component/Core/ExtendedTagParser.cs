@@ -88,6 +88,7 @@ namespace MfmeFmlDecoder.src.Decoder.Component.Core
         internal sealed record ParseResult(
             long Offset,
             IReadOnlyDictionary<uint, object> ValuesByTag,
+            IReadOnlySet<uint> PresentTagIds,
             IReadOnlyDictionary<string, FontTagEntry> FontsByRole,
             IReadOnlyDictionary<string, string> StringsByAttributeName,
             IReadOnlyDictionary<string, float> FloatsByAttributeName,
@@ -172,6 +173,7 @@ namespace MfmeFmlDecoder.src.Decoder.Component.Core
                     return new ParseResult(
                         offset,
                         valuesByTag,
+                        new HashSet<uint>(encounteredTags),
                         fontsByRole,
                         stringsByAttributeName,
                         floatsByAttributeName,
@@ -427,6 +429,7 @@ namespace MfmeFmlDecoder.src.Decoder.Component.Core
                 return new ParseResult(
                     offset,
                     valuesByTag,
+                    new HashSet<uint>(encounteredTags),
                     fontsByRole,
                     stringsByAttributeName,
                     floatsByAttributeName,
@@ -2435,4 +2438,3 @@ namespace MfmeFmlDecoder.src.Decoder.Component.Core
         }
     }
 }
-

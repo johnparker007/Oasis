@@ -278,9 +278,11 @@ internal sealed class FmlToOasisMapper
     private static PanelElementImportSourceModel Source(BaseComponent c, int index, int? n = null) => new() { Format = ImportSourceFormat, Reference = n.HasValue ? $"{c.GetType().Name}:{index}:{n.Value}" : $"{c.GetType().Name}:{index}" };
     private static InputDefinitionModel? BuildInput(BaseComponent c, string linkedObjectId)
     {
-        var buttonNumber = GetInputButtonNumber(c);
+        var buttonNumber = GetExplicitInputButtonNumber(c);
         var coinNote = GetSelectedCoinNote(c);
-        var isCoinInput = Bool(c, "Coin / Note Selected") == true || coinNote is not null;
+        var isCoinInput =
+            (c.WasValuePresent("Coin / Note Selected") && Bool(c, "Coin / Note Selected") == true)
+            || (c.WasValuePresent("SelectedCoinNoteId") && coinNote is not null);
         var shortcut = GetPrimaryShortcut(c);
         var hasEnabledShortcut = HasEnabledShortcut(c);
         if (!buttonNumber.HasValue && !isCoinInput && !hasEnabledShortcut)
@@ -313,6 +315,11 @@ internal sealed class FmlToOasisMapper
 
     private static uint? GetInputButtonNumber(BaseComponent c)
         => UInt(c, "Button Number") ?? UInt(c, "ButtonNumber");
+
+    private static uint? GetExplicitInputButtonNumber(BaseComponent c)
+        => c.WasValuePresent("Button Number") || c.WasValuePresent("ButtonNumber")
+            ? GetInputButtonNumber(c)
+            : null;
 
     private static string? GetSelectedCoinNote(BaseComponent c)
     {
@@ -379,11 +386,15 @@ internal sealed class FmlToOasisMapper
     }
 
     private static bool HasEnabledShortcut(BaseComponent c)
-        => Bool(c, "Shortcut 1 Enabled") == true || Bool(c, "Shortcut 2 Enabled") == true;
+        => Enumerable.Range(1, 2).Any(number =>
+            c.WasValuePresent($"Shortcut {number} Enabled")
+            && Bool(c, $"Shortcut {number} Enabled") == true);
 
     private static bool HasInputMetadata(BaseComponent c)
-        => GetInputButtonNumber(c).HasValue || GetSelectedCoinNote(c) is not null || Bool(c, "Coin / Note Selected") == true
-            || HasEnabledShortcut(c) || Bool(c, "Inverted") == true;
+        => GetExplicitInputButtonNumber(c).HasValue
+            || (c.WasValuePresent("SelectedCoinNoteId") && GetSelectedCoinNote(c) is not null)
+            || (c.WasValuePresent("Coin / Note Selected") && Bool(c, "Coin / Note Selected") == true)
+            || HasEnabledShortcut(c);
 
     private static string FormatUnknownShortcutNotes(BaseComponent c)
     {
