@@ -217,7 +217,7 @@ public sealed class FmlToOasisMapperTests
         var lamp = new Lamp { X = 1, Y = 2, Width = 30, Height = 40, SublampTable = [new LampSublampTableEntry(1, 9)] };
         lamp.Colours["Sublamp1Colour"] = "#112233FF";
         var button = new Button { X = 5, Y = 6, Width = 20, Height = 20, SublampTable = [new LampSublampTableEntry(1, 12)] };
-        button.Strings["ButtonNumber"] = "1";
+        button.UInt32s["Button Number"] = 1;
         button.Strings["Label"] = "START";
 
         var images = new Dictionary<FmlDecodedImageKey, string>
@@ -240,7 +240,7 @@ public sealed class FmlToOasisMapperTests
     public void Map_WithButtonLabel_MapsToLampDisplayTextAndInputDefinition()
     {
         var button = new Button { X = 5, Y = 6, Width = 20, Height = 20, SublampTable = [new LampSublampTableEntry(1, 12)] };
-        button.Strings["ButtonNumber"] = "1";
+        button.UInt32s["Button Number"] = 1;
         button.Strings["Label"] = "START";
 
         var result = new FmlToOasisMapper().Map(new Layout([button]), new Dictionary<FmlDecodedImageKey, string>());
@@ -258,7 +258,7 @@ public sealed class FmlToOasisMapperTests
     public void Map_WithDecodedButtonUtf16Label_MapsToLampDisplayText()
     {
         var button = new Button { X = 5, Y = 6, Width = 20, Height = 20, SublampTable = [new LampSublampTableEntry(1, 12)] };
-        button.Strings["ButtonNumber"] = "1";
+        button.UInt32s["Button Number"] = 1;
         button.Strings["Label (UTF-16)"] = "START";
 
         var result = new FmlToOasisMapper().Map(new Layout([button]), new Dictionary<FmlDecodedImageKey, string>());
@@ -290,6 +290,144 @@ public sealed class FmlToOasisMapperTests
         Assert.Equal(PanelElementKind.Lamp, element.Kind);
         Assert.Equal("HOLD", element.DisplayText);
     }
+
+    [Fact]
+    public void Map_WithCurrentButtonInputFields_PreservesZeroShortcutInversionAndVisualLink()
+    {
+        var button = CreateButton();
+        button.Strings["Label"] = "START";
+        button.UInt32s["Button Number"] = 0;
+        button.Booleans["Shortcut 1 Enabled"] = true;
+        button.UInt32s["Shortcut 1"] = 0x20;
+        button.Booleans["Inverted"] = true;
+
+        var result = Map(button);
+
+        var element = Assert.Single(result.Elements);
+        var input = Assert.Single(result.InputDefinitions);
+        Assert.Equal("START", input.Name);
+        Assert.Equal("0", input.ButtonNumber);
+        Assert.Equal("SPACE", input.RawMfmeShortcut);
+        Assert.Equal("Space", input.KeyboardShortcut);
+        Assert.True(input.Inverted);
+        Assert.Equal(element.ObjectId, input.LinkedVisualElementId?.ToString("N"));
+    }
+
+    [Fact]
+    public void Map_WithCurrentLampInputFields_UsesSecondEnabledShortcut()
+    {
+        var lamp = CreateLamp();
+        lamp.UInt32s["ButtonNumber"] = 2;
+        lamp.Booleans["Shortcut 1 Enabled"] = false;
+        lamp.UInt32s["Shortcut 1"] = 0x41;
+        lamp.Booleans["Shortcut 2 Enabled"] = true;
+        lamp.UInt32s["Shortcut 2"] = 0x31;
+
+        var input = Assert.Single(Map(lamp).InputDefinitions);
+
+        Assert.Equal("2", input.ButtonNumber);
+        Assert.Equal("1", input.RawMfmeShortcut);
+        Assert.Equal("D1", input.KeyboardShortcut);
+    }
+
+    [Fact]
+    public void Map_WithUnknownPrimaryShortcut_FallsBackToValidSecondaryShortcut()
+    {
+        var button = CreateButton();
+        button.UInt32s["Button Number"] = 3;
+        button.Booleans["Shortcut 1 Enabled"] = true;
+        button.UInt32s["Shortcut 1"] = uint.MaxValue;
+        button.Booleans["Shortcut 2 Enabled"] = true;
+        button.UInt32s["Shortcut 2"] = 0x25;
+
+        var input = Assert.Single(Map(button).InputDefinitions);
+
+        Assert.Equal("LEFT", input.RawMfmeShortcut);
+        Assert.Equal("Left", input.KeyboardShortcut);
+    }
+
+    [Fact]
+    public void Map_WithNoOrUnknownShortcut_StillCreatesInputRows()
+    {
+        var noShortcut = CreateButton();
+        noShortcut.UInt32s["Button Number"] = 4;
+        var unknownShortcut = CreateButton();
+        unknownShortcut.UInt32s["Button Number"] = 5;
+        unknownShortcut.Booleans["Shortcut 1 Enabled"] = true;
+        unknownShortcut.UInt32s["Shortcut 1"] = uint.MaxValue;
+
+        var result = new FmlToOasisMapper().Map(new Layout([noShortcut, unknownShortcut]), new Dictionary<FmlDecodedImageKey, string>());
+
+        Assert.Equal(2, result.InputDefinitions.Count);
+        Assert.All(result.InputDefinitions, input => Assert.Equal(string.Empty, input.KeyboardShortcut));
+        Assert.Contains(result.InputDefinitions, input => input.ButtonNumber == "5" && input.Notes.Contains(uint.MaxValue.ToString(), StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Map_WithCurrentCoinFields_CreatesNamedCoinInputAndRetainsButtonNumber()
+    {
+        var lamp = CreateLamp();
+        lamp.UInt32s["ButtonNumber"] = 6;
+        lamp.Booleans["Coin / Note Selected"] = true;
+        lamp.Strings["SelectedCoinNote"] = "£1 Coin";
+
+        var input = Assert.Single(Map(lamp).InputDefinitions);
+
+        Assert.Equal(InputDefinitionKind.Coin, input.Kind);
+        Assert.True(input.CoinInput);
+        Assert.Equal("6", input.ButtonNumber);
+        Assert.Equal("£1 Coin", input.Name);
+    }
+
+    [Fact]
+    public void Map_WithPlaceholderCoinNote_DoesNotCreateInput()
+    {
+        var lamp = CreateLamp();
+        lamp.Strings["SelectedCoinNote"] = "(none)";
+
+        Assert.Empty(Map(lamp).InputDefinitions);
+    }
+
+    [Fact]
+    public void Map_WithMultiSublampInput_CreatesOneInputLinkedToLastVisual()
+    {
+        var lamp = new Lamp
+        {
+            Width = 20,
+            Height = 20,
+            SublampTable = [new LampSublampTableEntry(1, 7), new LampSublampTableEntry(2, 8)]
+        };
+        lamp.UInt32s["ButtonNumber"] = 7;
+
+        var result = Map(lamp);
+
+        Assert.Equal(2, result.Elements.Count);
+        var input = Assert.Single(result.InputDefinitions);
+        Assert.Equal(result.Elements[1].ObjectId, input.LinkedVisualElementId?.ToString("N"));
+    }
+
+    [Fact]
+    public void Map_WithoutCurrentInputMetadata_DoesNotCreateInput()
+    {
+        Assert.Empty(Map(CreateButton()).InputDefinitions);
+    }
+
+    private static Button CreateButton() => new()
+    {
+        Width = 20,
+        Height = 20,
+        SublampTable = [new LampSublampTableEntry(1, 1)]
+    };
+
+    private static Lamp CreateLamp() => new()
+    {
+        Width = 20,
+        Height = 20,
+        SublampTable = [new LampSublampTableEntry(1, 1)]
+    };
+
+    private static FmlToOasisMapResult Map(BaseComponent component)
+        => new FmlToOasisMapper().Map(new Layout([component]), new Dictionary<FmlDecodedImageKey, string>());
 
 
     [Theory]
