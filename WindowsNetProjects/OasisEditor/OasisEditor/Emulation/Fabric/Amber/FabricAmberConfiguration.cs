@@ -19,6 +19,16 @@ public sealed record FabricAmberConfiguration(
     IReadOnlyList<FabricAmberCoinRoute> CoinRoutes,
     uint? PercentageSwitch) : IFabricBackendConfiguration
 {
+    internal const uint NativeMagic = 0x32424146;
+    internal const uint NativeVersion = 1;
+    internal const uint ReelsFlag = 1;
+    internal const uint CoinsFlag = 2;
+    internal const uint PercentageFlag = 4;
+
+    internal uint NativeFlags => (Reels.Count > 0 ? ReelsFlag : 0)
+        | (CoinChannels.Count > 0 || CoinRoutes.Count > 0 ? CoinsFlag : 0)
+        | (PercentageSwitch.HasValue ? PercentageFlag : 0);
+
     public static FabricAmberConfiguration FromSystem6(System6NativeRomSettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
@@ -56,12 +66,10 @@ public sealed record FabricAmberConfiguration(
 
         var native = new FabricAmberConfigurationNative
         {
-            Magic = 0x32424146,
+            Magic = NativeMagic,
             Size = (uint)sizeof(FabricAmberConfigurationNative),
-            Version = 1,
-            Flags = (Reels.Count > 0 ? 1u : 0)
-                | (CoinChannels.Count > 0 || CoinRoutes.Count > 0 ? 2u : 0)
-                | (PercentageSwitch.HasValue ? 4u : 0),
+            Version = NativeVersion,
+            Flags = NativeFlags,
             Percentage = PercentageSwitch ?? 0
         };
         native.Reels.Size = (uint)sizeof(AmberReelsNative);

@@ -254,6 +254,50 @@ public sealed class FabricManagedBehaviorTests
     }
 
     [Fact]
+    public void AmberConfiguration_CoinTranslationMatchesFormerDirectAmberPayload()
+    {
+        var settings = new System6NativeRomSettings
+        {
+            Coins =
+            [
+                new() { Num = 0, Enabled = true, CoinEnable = 1, CoinValue = 10, LockoutInvert = 0, CounterIn = 1, CounterOut = 2, PortIndex = 3, Coin = 4, Level = 5, FullLevel = 6 },
+                new() { Num = 1, Enabled = false, CoinEnable = 1, CoinValue = 20 },
+                new() { Num = 3, Enabled = true, CoinEnable = 0, CoinValue = 50, LockoutInvert = 1, CounterIn = 7, CounterOut = 8, PortIndex = 9, Coin = 10, Level = 11, FullLevel = 12 }
+            ]
+        };
+
+        var configuration = FabricAmberConfiguration.FromSystem6(settings);
+
+        Assert.Equal(0b1001u, configuration.CoinChannelApplyMask);
+        Assert.Equal(0b1001u, configuration.CoinRouteApplyMask);
+        Assert.Equal([
+            new FabricAmberCoinChannel(0, true, 10, false),
+            new FabricAmberCoinChannel(3, false, 50, true)
+        ], configuration.CoinChannels);
+        Assert.Equal([
+            new FabricAmberCoinRoute(0, true, 1, 2, 3, 4, 5, 6),
+            new FabricAmberCoinRoute(3, true, 7, 8, 9, 10, 11, 12)
+        ], configuration.CoinRoutes);
+        Assert.Equal(FabricAmberConfiguration.CoinsFlag,
+            configuration.NativeFlags & FabricAmberConfiguration.CoinsFlag);
+    }
+
+    [Fact]
+    public void AmberConfiguration_NoEnabledCoinRowsProducesNoCoinPayloadOrFlag()
+    {
+        var configuration = FabricAmberConfiguration.FromSystem6(new System6NativeRomSettings
+        {
+            Coins = [new() { Num = 0, Enabled = false, CoinEnable = 1, CoinValue = 20 }]
+        });
+
+        Assert.Equal(0u, configuration.CoinChannelApplyMask);
+        Assert.Equal(0u, configuration.CoinRouteApplyMask);
+        Assert.Empty(configuration.CoinChannels);
+        Assert.Empty(configuration.CoinRoutes);
+        Assert.Equal(0u, configuration.NativeFlags & FabricAmberConfiguration.CoinsFlag);
+    }
+
+    [Fact]
     public async Task Backend_UsesExactLaunchValuesAndSerializesResetWithPump()
     {
         var clock = new FakeClock();
@@ -267,7 +311,9 @@ public sealed class FabricManagedBehaviorTests
 
         await backend.StartAsync(request, CancellationToken.None);
         await session.FirstAdvance.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        var advancesBeforeReset = session.Advances.Count;
         await backend.ResetAsync(EmulationResetKind.Soft, CancellationToken.None);
+        await WaitForAdvanceCountAsync(session, advancesBeforeReset + 1);
         await backend.StopAsync(CancellationToken.None);
 
         Assert.Equal("C:/fabric/FabricRuntime.dll", runtimePath);
@@ -281,6 +327,12 @@ public sealed class FabricManagedBehaviorTests
         Assert.Equal(1, runtime.DisposeCount);
         Assert.Equal(1, audio.StartCount);
         Assert.Equal(1, audio.StopCount);
+        Assert.NotNull(runtime.Request!.Configuration);
+        Assert.NotEmpty(runtime.Request.Configuration!.ToNativeBytes());
+        Assert.Equal("Initialise", session.Operations[0]);
+        Assert.Contains("Reset", session.Operations);
+        Assert.True(session.Operations.IndexOf("Initialise") < session.Operations.IndexOf("Advance"));
+        Assert.True(session.Operations.IndexOf("Reset") < session.Operations.LastIndexOf("Advance"));
     }
 
     [Fact]
@@ -468,6 +520,14 @@ public sealed class FabricManagedBehaviorTests
         Assert.Equal(state, backend.State);
     }
 
+    private static async Task WaitForAdvanceCountAsync(FakeSession session, int count)
+    {
+        var timeout = DateTime.UtcNow + TimeSpan.FromSeconds(2);
+        while (session.Advances.Count < count && DateTime.UtcNow < timeout)
+            await Task.Delay(10);
+        Assert.True(session.Advances.Count >= count);
+    }
+
     private sealed class FakeClock : IFabricClock
     {
         private long _timestamp;
@@ -503,10 +563,11 @@ public sealed class FabricManagedBehaviorTests
         public int DisposeCount { get; private set; }
         public int FramesToWrite { get; init; }
         public List<ulong> Advances { get; } = [];
+        public List<string> Operations { get; } = [];
         public FabricCapabilities Capabilities => new((ulong)(FabricCapability.DigitalInput | FabricCapability.Audio));
-        public void Initialise() => Invoke(() => { });
-        public void Reset() => Invoke(() => ResetCount++);
-        public void Advance(ulong elapsedNanoseconds) => Invoke(() => { Advances.Add(elapsedNanoseconds); FirstAdvance.TrySetResult(); if (AdvanceFailure is not null) throw AdvanceFailure; });
+        public void Initialise() => Invoke(() => Operations.Add("Initialise"));
+        public void Reset() => Invoke(() => { Operations.Add("Reset"); ResetCount++; });
+        public void Advance(ulong elapsedNanoseconds) => Invoke(() => { Operations.Add("Advance"); Advances.Add(elapsedNanoseconds); FirstAdvance.TrySetResult(); if (AdvanceFailure is not null) throw AdvanceFailure; });
         public void SubmitInput(FabricInput input) => Invoke(() => { });
         public FabricMachineSnapshot GetSnapshot() => Invoke(() => SnapshotFailure is null
             ? new FabricMachineSnapshot(1, [], [], [], [])

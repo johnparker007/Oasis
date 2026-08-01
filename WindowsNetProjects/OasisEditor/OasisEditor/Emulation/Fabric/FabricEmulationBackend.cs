@@ -93,11 +93,14 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         {
             var settings = request.System6Configuration;
             var resources = BuildRomResources(settings);
+            var configuration = FabricAmberConfiguration.FromSystem6(settings);
+            LogCoinConfiguration(settings, configuration);
             cancellationToken.ThrowIfCancellationRequested();
             _runtime = _runtimeFactory(_runtimePath);
             _session = _runtime.CreateSession(new FabricLaunchRequest(
                 AmberBackendKind, JpmSystem6MachineIdentifier, _amberPath, resources,
-                FabricAmberConfiguration.FromSystem6(settings)));
+                configuration));
+            _inputLogger?.Invoke("[Coin Config Lifecycle] FabricCreateSession accepted configuration; blob was supplied during session creation before initialise; initialise follows; no startup reset is issued by Oasis.");
 
             await _sessionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
@@ -348,6 +351,28 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             throw new ArgumentOutOfRangeException(nameof(sampleRate));
         return checked((sampleRate + EmulationPumpHz - 1) / EmulationPumpHz);
     }
+
+    private void LogCoinConfiguration(System6NativeRomSettings settings, FabricAmberConfiguration configuration)
+    {
+        if (_inputLogger is null)
+            return;
+
+        _inputLogger($"[Coin Config Source] rowCount={settings.Coins.Count} enabledRowCount={settings.Coins.Count(coin => coin.Enabled)}");
+        for (var slot = 0; slot < settings.Coins.Count; slot++)
+        {
+            var coin = settings.Coins[slot];
+            _inputLogger($"[Coin Config Source] slot={slot} enabled={Lower(coin.Enabled)} num={coin.Num} coinEnable={coin.CoinEnable} value={coin.CoinValue} lockoutInvert={coin.LockoutInvert} counterIn={coin.CounterIn} counterOut={coin.CounterOut} port={coin.PortIndex} coin={coin.Coin} level={coin.Level} fullLevel={coin.FullLevel}");
+        }
+        foreach (var channel in configuration.CoinChannels)
+            _inputLogger($"[Coin Config Fabric] channelIndex={channel.Index} enabled={Lower(channel.Enabled)} value={channel.Value} lockoutInvert={Lower(channel.LockoutInvert)}");
+        foreach (var route in configuration.CoinRoutes)
+            _inputLogger($"[Coin Config Fabric] routeIndex={route.Index} enabled={Lower(route.Enabled)} counterIn={route.CounterIn} counterOut={route.CounterOut} port={route.PortIndex} coinCode={route.CoinCode} level={route.Level} fullLevel={route.FullLevel}");
+
+        var nativeSize = configuration.ToNativeBytes().Length;
+        _inputLogger($"[Coin Config Fabric] channelMask=0x{configuration.CoinChannelApplyMask:X8} routeMask=0x{configuration.CoinRouteApplyMask:X8} coinsFlag={Lower((configuration.NativeFlags & FabricAmberConfiguration.CoinsFlag) != 0)} nativeMagic=0x{FabricAmberConfiguration.NativeMagic:X8} nativeVersion={FabricAmberConfiguration.NativeVersion} nativeSize={nativeSize} blobNonEmpty={Lower(nativeSize != 0)}");
+    }
+
+    private static string Lower(bool value) => value.ToString().ToLowerInvariant();
 
     private void ProcessInputs()
     {
