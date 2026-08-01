@@ -5,6 +5,35 @@ namespace OasisEditor.Tests;
 public sealed class PlayViewInputRouterTests
 {
     [Fact]
+    public async Task PointerRouter_ReturnsFalseForVisualWithoutGenuineInput()
+    {
+        var backend = new RecordingBackend();
+        var router = new PlayViewPointerInputRouter(new PlayViewInputRouter(backend), []);
+
+        Assert.False(await router.TryHandlePointerDownAsync(
+            FruitMachinePlatformType.Impact, Guid.NewGuid(), isFocused: true, CancellationToken.None));
+        Assert.Empty(backend.Inputs);
+    }
+
+    [Fact]
+    public async Task PointerRouter_RoutesVisualLinkedByGenuineInput()
+    {
+        var backend = new RecordingBackend();
+        var visualId = Guid.NewGuid();
+        var input = new InputDefinitionModel
+        {
+            Id = "genuine",
+            ButtonNumber = "0",
+            LinkedVisualElementId = visualId
+        };
+        var router = new PlayViewPointerInputRouter(new PlayViewInputRouter(backend), [input]);
+
+        Assert.True(await router.TryHandlePointerDownAsync(
+            FruitMachinePlatformType.Impact, visualId, isFocused: true, CancellationToken.None));
+        Assert.Equal([("genuine", true)], backend.Inputs);
+    }
+
+    [Fact]
     public async Task PressReleaseAndReleaseAll_UseActiveBackendOnly()
     {
         var backend = new RecordingBackend();

@@ -2,6 +2,7 @@ using System.Text;
 using MfmeFmlDecoder.Decoder;
 using MfmeFmlDecoder.src.Decoder.Component.Core;
 using MfmeFmlDecoder.src.Model;
+using MfmeFmlDecoder.Model;
 using Xunit;
 
 namespace OasisEditor.Tests;
@@ -33,6 +34,24 @@ public sealed class FmlDecoderRegressionTests
         Assert.Equal("Header notes", layout.TextNotes);
         Assert.False(layout.HasSplash);
         Assert.Empty(layout.Images);
+    }
+
+    [Fact]
+    public void ExtendedTags_DistinguishAbsentDefaultFromExplicitZero()
+    {
+        var tagMap = new ComponentTagMap
+        {
+            { 0x18, new TagInfo(4, "ButtonNumber", [0, 0, 0, 0], ValueRole.UINT32) }
+        };
+        var parser = new ExtendedTagParser();
+
+        var absent = parser.Parse(tagMap, [0x00], 0, ExtendedTagParser.Options.Default.WithoutMatchedTagLogging());
+        var explicitZero = parser.Parse(tagMap, [0x18, 0x00, 0x00, 0x00, 0x00, 0x00], 0, ExtendedTagParser.Options.Default.WithoutMatchedTagLogging());
+
+        Assert.Equal(0u, absent.UInt32sByAttributeName["ButtonNumber"]);
+        Assert.DoesNotContain(0x18u, absent.PresentTagIds);
+        Assert.Equal(0u, explicitZero.UInt32sByAttributeName["ButtonNumber"]);
+        Assert.Contains(0x18u, explicitZero.PresentTagIds);
     }
 
     private static byte[] BuildTlv(params (uint Tag, byte[] Value)[] records)

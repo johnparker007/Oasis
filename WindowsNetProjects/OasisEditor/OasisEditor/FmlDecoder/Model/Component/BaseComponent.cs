@@ -53,6 +53,16 @@ namespace MfmeFmlDecoder.src.Model.Component
         public Dictionary<string, string> Colours { get; } = new Dictionary<string, string>(StringComparer.Ordinal);
         public Dictionary<string, BitmapEntry> Images { get; } = new Dictionary<string, BitmapEntry>(StringComparer.Ordinal);
 
+        /// <summary>
+        /// Decoder value names whose extended tags were physically present in the source component.
+        /// Value dictionaries also contain schema defaults, so callers must use this metadata when
+        /// source presence is significant (notably for MFME input fields where zero is valid).
+        /// </summary>
+        [JsonIgnore]
+        public HashSet<string> PresentValueKeys { get; } = new HashSet<string>(StringComparer.Ordinal);
+
+        public bool WasValuePresent(string key) => PresentValueKeys.Contains(key);
+
         private static readonly JsonSerializerOptions ToJsonOptions = CreateToJsonOptions();
 
         internal static JsonSerializerOptions CreateJsonWriteOptions(bool writeIndented)

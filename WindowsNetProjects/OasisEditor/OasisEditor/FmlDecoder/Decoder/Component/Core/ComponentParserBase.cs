@@ -199,6 +199,7 @@ namespace MfmeFmlDecoder.src.Decoder.Component.Core
 
             ExtendedTagParser.ParseResult parseResult =
                 new ExtendedTagParser().Parse(componentTagMap, data, offset, options);
+            RecordPresentValueKeys(component, componentTagMap, parseResult);
             AssignStringsFromParseResult(component, parseResult);
             AssignFloatsFromParseResult(component, parseResult);
             AssignUInt32sFromParseResult(component, parseResult);
@@ -211,6 +212,25 @@ namespace MfmeFmlDecoder.src.Decoder.Component.Core
             AssignBitmapEntriesFromParseResult(component, parseResult, componentTagMap);
             ApplyNestedTagBlockOrientation(component, parseResult);
             return parseResult;
+        }
+
+        private static void RecordPresentValueKeys(
+            BaseComponent component,
+            ComponentTagMap componentTagMap,
+            ExtendedTagParser.ParseResult parseResult)
+        {
+            foreach (uint tagId in parseResult.PresentTagIds)
+            {
+                if (componentTagMap.TryGetValue(tagId, out TagInfo tagInfo))
+                {
+                    component.PresentValueKeys.Add(tagInfo.AttributeName);
+                }
+            }
+
+            if (componentTagMap.NestedTagBlockMap is not null && parseResult.NestedTagBlockResult is not null)
+            {
+                RecordPresentValueKeys(component, componentTagMap.NestedTagBlockMap, parseResult.NestedTagBlockResult);
+            }
         }
 
         /// <summary>

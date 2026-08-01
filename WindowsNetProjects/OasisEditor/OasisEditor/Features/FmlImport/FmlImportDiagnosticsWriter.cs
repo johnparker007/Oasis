@@ -131,11 +131,21 @@ internal sealed class FmlImportDiagnosticsWriter
         AppendSection(sb, "Summary");
         AppendList(sb, "Unsupported component summary", CountStrings(report.UnsupportedComponentTypes).Select(kvp => $"{kvp.Key}: {kvp.Value}"));
         AppendList(sb, "Component counts by type", report.Layout is null ? [] : CountComponents(report.Layout).Select(kvp => $"{kvp.Key}: {kvp.Value}"));
+        var inputCapableComponents = report.Layout?.Components.Count(component => component is Lamp or Button) ?? 0;
+        var defaultOnlyInputComponents = report.Layout?.Components.Count(component =>
+            (component is Lamp or Button)
+            && (component.UInt32s.ContainsKey("Button Number") || component.UInt32s.ContainsKey("ButtonNumber"))
+            && !component.WasValuePresent("Button Number")
+            && !component.WasValuePresent("ButtonNumber")
+            && !component.PresentValueKeys.Any(key => key is "Shortcut 1 Enabled" or "Shortcut 2 Enabled" or "Coin / Note Selected" or "SelectedCoinNoteId")) ?? 0;
+        AppendLine(sb, "Lamp/Button component count", inputCapableComponents.ToString());
         AppendLine(sb, "Image count", report.ImagePaths.Count.ToString());
         AppendList(sb, "Image filenames", report.ImagePaths.Values.OrderBy(v => v, StringComparer.Ordinal));
         AppendList(sb, "Panel element counts", CountStrings(report.MapResult?.Elements.Select(e => e.Kind.ToString()) ?? []).Select(kvp => $"{kvp.Key}: {kvp.Value}"));
         var inputs = report.MapResult?.InputDefinitions ?? [];
         AppendLine(sb, "Mapped input definition count", inputs.Count.ToString());
+        AppendLine(sb, "Genuine input component count", inputs.Count.ToString());
+        AppendLine(sb, "Components rejected with default-only input fields", defaultOnlyInputComponents.ToString());
         AppendLine(sb, "Button input count", inputs.Count(input => !input.CoinInput).ToString());
         AppendLine(sb, "Coin input count", inputs.Count(input => input.CoinInput).ToString());
         AppendLine(sb, "Inputs with shortcuts", inputs.Count(input => !string.IsNullOrWhiteSpace(input.KeyboardShortcut)).ToString());
