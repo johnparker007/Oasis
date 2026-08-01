@@ -235,10 +235,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _segmentRuntimeAdapter = new MachineSegmentRuntimeAdapter(
             () => OpenDocuments,
             DispatchToUiThread,
-            () => SelectedFruitMachinePlatform,
-            message => AddOutputEntry(
-                $"Backend={_activeEmulationBackend?.GetType().Name ?? "none"}; {message}",
-                OutputLogStatus.Info));
+            () => SelectedFruitMachinePlatform);
         _emulationBackendFactory = new EmulationBackendFactory(
             () => FabricRuntimeLibraryPath, () => ProductionAmberLibraryPath,
             () => System6AudioBufferLengthMilliseconds,
