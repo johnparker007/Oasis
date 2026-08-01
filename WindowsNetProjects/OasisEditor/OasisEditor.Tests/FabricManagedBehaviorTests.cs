@@ -27,14 +27,14 @@ public sealed class FabricManagedBehaviorTests
 
     public static TheoryData<int, int> System6SevenSegmentBitMapping => new()
     {
-        { 0, 6 }, // G -> G
-        { 1, 5 }, // F -> F
-        { 2, 4 }, // E -> E
-        { 3, 3 }, // D -> D
-        { 4, 2 }, // C -> C
-        { 5, 1 }, // B -> B
-        { 6, 0 }, // A -> A
-        { 7, 7 }, // DP -> DP
+        { 0, 7 },
+        { 1, 6 },
+        { 2, 5 },
+        { 3, 4 },
+        { 4, 3 },
+        { 5, 2 },
+        { 6, 1 },
+        { 7, 0 },
     };
 
     [Theory]
@@ -52,7 +52,7 @@ public sealed class FabricManagedBehaviorTests
         Assert.Equal(0, System6SevenSegmentMapper.MapNativeMaskToOasisMask(0));
 
         var nativeMask = (1 << 0) | (1 << 4) | (1 << 7) | (1 << 12);
-        var expectedOasisMask = (1 << 6) | (1 << 2) | (1 << 7);
+        var expectedOasisMask = (1 << 7) | (1 << 3) | (1 << 0);
         Assert.Equal(expectedOasisMask, System6SevenSegmentMapper.MapNativeMaskToOasisMask(nativeMask));
     }
 
@@ -97,7 +97,7 @@ public sealed class FabricManagedBehaviorTests
             sevenSegmentChange =>
             {
                 Assert.Equal(0x5a, unchecked((int)sevenSegmentMask));
-                Assert.Equal(0x2d, sevenSegmentChange.SegmentMask);
+                Assert.Equal(0x5a, sevenSegmentChange.SegmentMask);
                 Assert.Equal(SegmentOutputType.Digit, sevenSegmentChange.OutputType);
             });
     }
@@ -166,7 +166,7 @@ public sealed class FabricManagedBehaviorTests
             [new FabricSegmentDisplay("seven", [0x141UL])]));
 
         var change = Assert.Single(changes);
-        Assert.Equal(0x41, change.SegmentMask);
+        Assert.Equal(0x82, change.SegmentMask);
     }
 
     [Fact]
