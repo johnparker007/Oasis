@@ -7,6 +7,7 @@ public sealed class MachineObjectReferenceResolverTests
 {
     [Theory]
     [InlineData("lamp", 17, MachineObjectKind.Lamp, "17")]
+    [InlineData("reel", 0, MachineObjectKind.Reel, "0")]
     [InlineData("reel", 2, MachineObjectKind.Reel, "2")]
     [InlineData("alpha", 0, MachineObjectKind.AlphaDisplay, "0")]
     [InlineData("sevenSegment", 12, MachineObjectKind.SevenSegmentDisplay, "12")]

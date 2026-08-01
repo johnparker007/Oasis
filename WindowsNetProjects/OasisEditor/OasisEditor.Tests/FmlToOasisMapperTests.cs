@@ -9,6 +9,21 @@ namespace OasisEditor.Tests;
 public sealed class FmlToOasisMapperTests
 {
     [Fact]
+    public void Map_WithFourMfmeReels_PreservesZeroBasedMachineIdentifiers()
+    {
+        var reels = Enumerable.Range(0, 4)
+            .Select(number => new BandReel { Number = number, Width = 30, Height = 100 })
+            .ToArray();
+
+        var result = new FmlToOasisMapper().Map(new Layout(reels), new Dictionary<FmlDecodedImageKey, string>());
+        var mappedReels = result.Elements.Where(element => element.Kind == PanelElementKind.Reel).ToArray();
+
+        Assert.Equal(["Reel 0", "Reel 1", "Reel 2", "Reel 3"], mappedReels.Select(element => element.Name));
+        Assert.Equal([0, 1, 2, 3], mappedReels.Select(element => element.DisplayNumber.GetValueOrDefault()));
+        Assert.DoesNotContain(mappedReels, element => element.Name == "Reel 4");
+    }
+
+    [Fact]
     public void Map_WithTextOnlyLamp_PreservesNumberTextColourAndNoAssets()
     {
         var lamp = new Lamp

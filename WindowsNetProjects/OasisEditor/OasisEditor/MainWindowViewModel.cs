@@ -3413,7 +3413,7 @@ public sealed class System6ReelOptoSettingsViewModel : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public int ReelIndex { get; }
-    public int ReelNumber => ReelIndex + 1;
+    public int ReelNumber => ReelIndex;
 
     public bool Enabled { get => _enabled; set => SetAndSave(ref _enabled, value, nameof(Enabled)); }
     public int Steps { get => _steps; set => SetAndSave(ref _steps, value, nameof(Steps)); }
