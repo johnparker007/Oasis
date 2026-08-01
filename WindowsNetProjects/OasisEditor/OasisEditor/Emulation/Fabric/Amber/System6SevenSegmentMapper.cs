@@ -6,14 +6,14 @@ internal static class System6SevenSegmentMapper
     // Oasis canonical bit.
     private static readonly int[] NativeBitToOasisBit =
     [
-        7, // native bit 0 (G)  -> Oasis bit 6 (G)
-        6, // native bit 1 (F)  -> Oasis bit 5 (F)
-        5, // native bit 2 (E)  -> Oasis bit 4 (E)
-        4, // native bit 3 (D)  -> Oasis bit 3 (D)
-        3, // native bit 4 (C)  -> Oasis bit 2 (C)
-        2, // native bit 5 (B)  -> Oasis bit 1 (B)
-        1, // native bit 6 (A)  -> Oasis bit 0 (A)
-        0, // native bit 7 (DP) -> Oasis bit 7 (DP)
+        7, // native bit 0 (G)  
+        6, // native bit 1 (F)  
+        5, // native bit 2 (E)  
+        4, // native bit 3 (D)  
+        3, // native bit 4 (C)  
+        2, // native bit 5 (B)  
+        1, // native bit 6 (A)  
+        0, // native bit 7 (DP) 
     ];
 
     internal static int MapNativeMaskToOasisMask(int nativeMask)
