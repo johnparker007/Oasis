@@ -61,8 +61,16 @@ public partial class InputMapView : UserControl
             return;
         }
 
-        viewModel.DeleteInputDefinitions(selectedInputs);
+        // InputDefinitions is intentionally the project's List-backed model rather than an
+        // ObservableCollection. Detach DataGrid selection from those items before mutating the
+        // list, then explicitly refresh the view so its cached rows and indexes cannot go stale.
         InputMapGrid.SelectedItems.Clear();
+        InputMapGrid.CurrentItem = null;
+
+        if (viewModel.DeleteInputDefinitions(selectedInputs) > 0)
+        {
+            InputMapGrid.Items.Refresh();
+        }
     }
 
     private static T? FindVisualParent<T>(DependencyObject? child) where T : DependencyObject
