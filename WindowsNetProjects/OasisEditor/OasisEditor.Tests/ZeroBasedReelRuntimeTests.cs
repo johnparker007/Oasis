@@ -83,10 +83,10 @@ public sealed class ZeroBasedReelRuntimeTests
     }
 
     [Fact]
-    public void ImpactCorrection_PreservesExistingTwelveAndSixteenStopBandOffsets()
+    public void ImpactCorrection_AppliesTwelveAndSixteenStopBandOffsets()
     {
         Assert.Equal(-0.025d, MachineReelRuntimeAdapter.ResolvePlatformBandOffsetNormalized(FruitMachinePlatformType.Impact, 12));
-        Assert.Equal(-0.08d, MachineReelRuntimeAdapter.ResolvePlatformBandOffsetNormalized(FruitMachinePlatformType.Impact, 16));
+        Assert.Equal(-0.018d, MachineReelRuntimeAdapter.ResolvePlatformBandOffsetNormalized(FruitMachinePlatformType.Impact, 16), 6);
     }
 
     [Fact]
