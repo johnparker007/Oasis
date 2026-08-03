@@ -6,6 +6,7 @@ public sealed class MachineReelRuntimeAdapter : IMachineReelRuntimeAdapter
     private readonly object _pendingSync = new();
     private readonly Func<IEnumerable<DocumentTabViewModel>> _documentProvider;
     private readonly Func<FruitMachinePlatformType> _platformProvider;
+    private readonly Func<int, int> _reelPositionCountProvider;
     private readonly Func<bool> _debugOutputEnabledProvider;
     private readonly Action<string> _infoLogger;
     private readonly Action<Action> _uiDispatch;
@@ -20,10 +21,12 @@ public sealed class MachineReelRuntimeAdapter : IMachineReelRuntimeAdapter
         Func<FruitMachinePlatformType> platformProvider,
         Func<bool> debugOutputEnabledProvider,
         Action<string> infoLogger,
-        Action<Action> uiDispatch)
+        Action<Action> uiDispatch,
+        Func<int, int>? reelPositionCountProvider = null)
     {
         _documentProvider = documentProvider ?? throw new ArgumentNullException(nameof(documentProvider));
         _platformProvider = platformProvider ?? throw new ArgumentNullException(nameof(platformProvider));
+        _reelPositionCountProvider = reelPositionCountProvider ?? (_ => ReelPositionsPerRevolution);
         _debugOutputEnabledProvider = debugOutputEnabledProvider ?? throw new ArgumentNullException(nameof(debugOutputEnabledProvider));
         _infoLogger = infoLogger ?? throw new ArgumentNullException(nameof(infoLogger));
         _uiDispatch = uiDispatch ?? throw new ArgumentNullException(nameof(uiDispatch));
@@ -77,7 +80,8 @@ public sealed class MachineReelRuntimeAdapter : IMachineReelRuntimeAdapter
             foreach (var (reelId, reelValue) in snapshot)
             {
                 var reelReference = MachineObjectReference.Reel(reelId);
-                var machinePosition = ResolveMachineReelPosition(reelValue);
+                var positionCount = _reelPositionCountProvider(reelId);
+                var machinePosition = NormalizePlatformReelPosition(platform, reelValue, positionCount);
                 if (document.RuntimeState.SetReelPositionIfChanged(reelReference, machinePosition)
                     && faceObjectIdsByReel.TryGetValue(reelReference, out var matchingFaceObjectIds))
                 {
@@ -94,7 +98,7 @@ public sealed class MachineReelRuntimeAdapter : IMachineReelRuntimeAdapter
 
                 foreach (var objectId in objectIds)
                 {
-                    if (!TryResolveEffectiveReelPosition(document, objectId, reelValue, out var effectiveReelPosition, out var stops, out var normalizedPosition))
+                    if (!TryResolveEffectiveReelPosition(document, objectId, reelValue, positionCount, out var effectiveReelPosition, out var stops, out var normalizedPosition))
                     {
                         continue;
                     }
@@ -164,12 +168,33 @@ public sealed class MachineReelRuntimeAdapter : IMachineReelRuntimeAdapter
         return cacheEntry.MappingByReelId;
     }
 
-    private static double ResolveMachineReelPosition(int rawReelValue)
+    internal static double NormalizePlatformReelPosition(FruitMachinePlatformType platform, int backendPosition, int positionCount)
     {
-        return ((rawReelValue % ReelPositionsPerRevolution) + ReelPositionsPerRevolution) % ReelPositionsPerRevolution;
+        var safePositionCount = positionCount > 0 ? positionCount : ReelPositionsPerRevolution;
+        var normalizedBackendPosition = WrapPosition(backendPosition, safePositionCount);
+        var platformPosition = platform == FruitMachinePlatformType.Impact
+            ? ReversePosition(normalizedBackendPosition, safePositionCount)
+            : normalizedBackendPosition;
+        return platformPosition * (double)ReelPositionsPerRevolution / safePositionCount;
     }
 
-    private bool TryResolveEffectiveReelPosition(DocumentTabViewModel document, string objectId, int rawReelValue, out double effectiveReelPosition, out int stops, out double normalizedPosition)
+    internal static int ReversePosition(int position, int positionCount)
+    {
+        if (positionCount <= 0)
+        {
+            return position;
+        }
+
+        var normalized = WrapPosition(position, positionCount);
+        return normalized == 0 ? 0 : positionCount - normalized;
+    }
+
+    private static int WrapPosition(int position, int positionCount)
+    {
+        return ((position % positionCount) + positionCount) % positionCount;
+    }
+
+    private bool TryResolveEffectiveReelPosition(DocumentTabViewModel document, string objectId, int rawReelValue, int positionCount, out double effectiveReelPosition, out int stops, out double normalizedPosition)
     {
         effectiveReelPosition = 0d;
         stops = 0;
@@ -183,28 +208,30 @@ public sealed class MachineReelRuntimeAdapter : IMachineReelRuntimeAdapter
         }
 
         stops = reelElement.Stops.Value;
-        effectiveReelPosition = ResolveEffectiveReelPosition(rawReelValue, reelElement.Stops.Value, reelElement.IsReversed == true, reelElement.BandOffset ?? 0d);
+        var platform = _platformProvider();
+        var canonicalPosition = NormalizePlatformReelPosition(platform, rawReelValue, positionCount);
+        effectiveReelPosition = ResolveEffectiveReelPosition(canonicalPosition, reelElement.Stops.Value, reelElement.IsReversed == true, reelElement.BandOffset ?? 0d, platform);
         var wrappedPosition = ((effectiveReelPosition % ReelPositionsPerRevolution) + ReelPositionsPerRevolution) % ReelPositionsPerRevolution;
         normalizedPosition = wrappedPosition / ReelPositionsPerRevolution;
         return true;
     }
 
-    private double ResolveEffectiveReelPosition(int rawReelValue, int stops, bool reelReversed, double reelBandOffset)
+    private static double ResolveEffectiveReelPosition(double canonicalPosition, int stops, bool reelReversed, double reelBandOffset, FruitMachinePlatformType platform)
     {
-        var wrapped = ((rawReelValue % ReelPositionsPerRevolution) + ReelPositionsPerRevolution) % ReelPositionsPerRevolution;
-        var platformReversed = RequiresPlatformReversal(_platformProvider());
+        var wrapped = ((canonicalPosition % ReelPositionsPerRevolution) + ReelPositionsPerRevolution) % ReelPositionsPerRevolution;
+        var platformReversed = RequiresLegacyPlatformReversal(platform);
         var shouldReverse = platformReversed ^ reelReversed;
         var directionAdjusted = shouldReverse && wrapped != 0
             ? ReelPositionsPerRevolution - wrapped
             : wrapped;
-        var platformOffset = ResolvePlatformBandOffsetNormalized(_platformProvider(), stops);
+        var platformOffset = ResolvePlatformBandOffsetNormalized(platform, stops);
         var totalOffset = platformOffset + reelBandOffset;
         var offsetSteps = totalOffset * ReelPositionsPerRevolution;
         var offsetAdjusted = directionAdjusted + offsetSteps;
         return ((offsetAdjusted % ReelPositionsPerRevolution) + ReelPositionsPerRevolution) % ReelPositionsPerRevolution;
     }
 
-    private static bool RequiresPlatformReversal(FruitMachinePlatformType platform)
+    private static bool RequiresLegacyPlatformReversal(FruitMachinePlatformType platform)
     {
         return platform == FruitMachinePlatformType.MPU4;
     }

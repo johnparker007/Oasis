@@ -113,7 +113,7 @@ public sealed class FaceReelDisplayTests
 
         var position = FaceRuntimeStateResolver.Instance.GetReelPosition(reel, runtimeState);
 
-        Assert.Equal(88.32d, position, 2);
+        Assert.Equal(94.272d, position, 3);
     }
 
     [Fact]
