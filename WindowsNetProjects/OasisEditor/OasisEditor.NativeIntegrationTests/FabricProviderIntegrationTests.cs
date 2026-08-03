@@ -26,8 +26,8 @@ public sealed class FabricProviderIntegrationTests
 
         for (var iteration = 0; iteration < 1_000; iteration++)
         {
-            session.SubmitInput(new FabricInput("oasis.switch.0", 0, true));
-            session.SubmitInput(new FabricInput("oasis.switch.0", 0, false));
+            session.SubmitInput(new FabricInput("oasis.switch.0", 0, FabricInputKind.Digital, true));
+            session.SubmitInput(new FabricInput("oasis.switch.0", 0, FabricInputKind.Digital, false));
             session.Advance((ulong)(1_000_000 + iteration % 17));
         }
 
@@ -134,7 +134,15 @@ public sealed class FabricProviderIntegrationTests
 
     private static FabricLaunchRequest CreateRequest(string amberPath, IReadOnlyList<FabricRomResource> resources)
     {
-        var settings = new System6NativeRomSettings { PercentSwitchValue = 0 };
+        var settings = new System6NativeRomSettings
+        {
+            PercentSwitchValue = 0,
+            CoinCommunicationStyle = AmberCoinCommunicationStyle.Parallel,
+            CoinCommunicationInvert = false,
+            CoinPulseCycles = 800_000,
+            CoinEdcEnabled = false,
+            Coins = [new System6CoinSettings { Num = 0, Enabled = true, CoinEnable = 1, CoinValue = 0 }]
+        };
         return new FabricLaunchRequest(
             "amber", "jpm-system6", amberPath, resources,
             FabricAmberConfiguration.FromSystem6(settings));

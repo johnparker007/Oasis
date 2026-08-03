@@ -91,9 +91,11 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             var resources = BuildRomResources(settings);
             cancellationToken.ThrowIfCancellationRequested();
             _runtime = _runtimeFactory(_runtimePath);
+            var configuration = FabricAmberConfiguration.FromSystem6(settings);
+            WriteCoinConfigurationDiagnostics(configuration);
             _session = _runtime.CreateSession(new FabricLaunchRequest(
                 AmberBackendKind, JpmSystem6MachineIdentifier, _amberPath, resources,
-                FabricAmberConfiguration.FromSystem6(settings)));
+                configuration));
 
             await _sessionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
@@ -204,6 +206,40 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         return Task.CompletedTask;
     }
 
+    public Task<CoinInputResult> InsertCoinAsync(InputDefinitionModel inputDefinition, CancellationToken cancellationToken) =>
+        SetCoinStateAsync(inputDefinition, true, cancellationToken);
+
+    public async Task ReleaseCoinAsync(InputDefinitionModel inputDefinition, CancellationToken cancellationToken) =>
+        _ = await SetCoinStateAsync(inputDefinition, false, cancellationToken).ConfigureAwait(false);
+
+    private async Task<CoinInputResult> SetCoinStateAsync(InputDefinitionModel inputDefinition, bool active, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(inputDefinition);
+        ThrowIfDisposed();
+        EnsureAcceptingOperations();
+        var session = RequireSession();
+        if (!session.Capabilities.Has(FabricCapability.CoinInput))
+            throw new NotSupportedException("Fabric session does not support coin input.");
+        if (inputDefinition.CoinChannel is not (>= 0 and <= 5) || inputDefinition.CoinValue is not (>= 0 and <= 12))
+            throw new InvalidOperationException($"Coin input '{inputDefinition.Id}' requires a channel from 0 to 5 and denomination from 0 to 12.");
+
+        await _sessionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var channel = checked((byte)inputDefinition.CoinChannel.Value);
+            var value = checked((byte)inputDefinition.CoinValue.Value);
+            var result = session.SubmitInput(new(inputDefinition.Name, 0, FabricInputKind.Coin, active, channel, value));
+            Debug.WriteLine(active
+                ? $"[Fabric Coin Input] channel={channel} value={value} result={(result == FabricResult.InputRejected ? "rejected" : "accepted")}"
+                : $"[Fabric Coin Input] channel={channel} value={value} state=released");
+            return result == FabricResult.InputRejected ? CoinInputResult.Rejected : CoinInputResult.Accepted;
+        }
+        finally
+        {
+            _sessionGate.Release();
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (_disposed)
@@ -220,6 +256,23 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         AddRomRole(resources, settings.ProgramRomPaths, FabricRomRole.Program);
         AddRomRole(resources, settings.SoundRomPaths, FabricRomRole.Sound);
         return resources;
+    }
+
+    internal static IReadOnlyList<string> BuildCoinConfigurationDiagnostics(FabricAmberConfiguration configuration)
+    {
+        var lines = new List<string>(configuration.CoinChannels.Count + 1)
+        {
+            $"[Coin Config Fabric v2] size={Marshal.SizeOf<AmberCoinsNative>()} version=2 channelMask=0x{configuration.CoinChannelApplyMask:X8} routeMask=0x{configuration.CoinRouteApplyMask:X8} style={(uint)configuration.CommunicationStyle} invert={(configuration.CommunicationInvert ? 1 : 0)} cycles={configuration.PulseCycles} edc={(configuration.EdcEnabled ? 1 : 0)}"
+        };
+        lines.AddRange(configuration.CoinChannels.Select(channel =>
+            $"[Coin Config Fabric v2] slot={channel.Index} index={channel.Index} enabled={(channel.Enabled ? 1 : 0)} value={channel.Value} lockoutInvert={(channel.LockoutInvert ? 1 : 0)} reserved=0"));
+        return lines;
+    }
+
+    private static void WriteCoinConfigurationDiagnostics(FabricAmberConfiguration configuration)
+    {
+        foreach (var line in BuildCoinConfigurationDiagnostics(configuration))
+            Debug.WriteLine(line);
     }
 
     private static void AddRomRole(List<FabricRomResource> resources, IReadOnlyList<string> paths, FabricRomRole role)
@@ -346,7 +399,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     {
         while (_inputCommands.TryDequeue(out var input))
         {
-            session.SubmitInput(new($"oasis.switch.{input.Index}", input.Index, input.Active));
+            session.SubmitInput(new($"oasis.switch.{input.Index}", input.Index, FabricInputKind.Digital, input.Active));
             if (input.Active)
                 _assertedInputs.Add(input.Index);
             else
@@ -495,7 +548,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         var session = _session;
         if (session is not null)
             foreach (var index in _assertedInputs)
-                session.SubmitInput(new($"oasis.switch.{index}", index, false));
+                session.SubmitInput(new($"oasis.switch.{index}", index, FabricInputKind.Digital, false));
         _assertedInputs.Clear();
     }
 

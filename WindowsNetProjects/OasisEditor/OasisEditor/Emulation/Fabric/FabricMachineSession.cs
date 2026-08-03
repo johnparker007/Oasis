@@ -49,18 +49,24 @@ internal sealed unsafe class FabricMachineSession : IFabricMachineSession
         Check(_exports.AdvanceFn(_handle, elapsedNanoseconds), "FabricSessionAdvance");
     }
 
-    public void SubmitInput(FabricInput input)
+    public FabricResult SubmitInput(FabricInput input)
     {
         var native = new FabricInputNative
         {
             Size = (uint)sizeof(FabricInputNative),
             Version = FabricAbi.Version,
-            Index = input.NumericalIndex,
-            Active = input.Active ? (byte)1 : (byte)0
+            NumericalIndex = input.NumericalIndex,
+            Kind = input.Kind,
+            Active = input.Active ? (byte)1 : (byte)0,
+            CoinChannel = input.CoinChannel,
+            CoinValue = input.CoinValue
         };
         byte* identifier = native.Identifier;
         FabricRuntimeLibrary.WriteFixed(input.Identifier, identifier, FabricAbi.IdentifierCapacity);
-        Check(_exports.SubmitInputFn(_handle, &native), "FabricSessionSubmitInput");
+        var result = _exports.SubmitInputFn(_handle, &native);
+        if (result is not (FabricResult.Ok or FabricResult.InputRejected))
+            Check(result, "FabricSessionSubmitInput");
+        return result;
     }
 
     public FabricAudioFormat GetAudioFormat()

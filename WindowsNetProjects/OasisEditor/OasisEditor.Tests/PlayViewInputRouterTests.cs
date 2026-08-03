@@ -48,6 +48,32 @@ public sealed class PlayViewInputRouterTests
         Assert.Equal([(first.Id, true), (first.Id, false), (second.Id, true), (second.Id, false)], backend.Inputs);
     }
 
+    [Fact]
+    public async Task CoinPressIsSingleShotUntilReleaseAndReleaseAllUsesCoinRelease()
+    {
+        var backend = new RecordingBackend();
+        var router = new PlayViewInputRouter(backend);
+        var coin = new InputDefinitionModel { Id = "coin", CoinInput = true, CoinChannel = 2, CoinValue = 3 };
+
+        Assert.True(await router.TryPressAsync(FruitMachinePlatformType.Impact, coin, CancellationToken.None));
+        Assert.False(await router.TryPressAsync(FruitMachinePlatformType.Impact, coin, CancellationToken.None));
+        Assert.True(await router.TryReleaseAsync(FruitMachinePlatformType.Impact, coin, CancellationToken.None));
+        Assert.True(await router.TryPressAsync(FruitMachinePlatformType.Impact, coin, CancellationToken.None));
+        Assert.Equal(1, await router.ReleaseAllAsync(FruitMachinePlatformType.Impact,
+            new Dictionary<string, InputDefinitionModel> { [coin.Id] = coin }, CancellationToken.None));
+        Assert.Equal([(coin.Id, true), (coin.Id, false), (coin.Id, true), (coin.Id, false)], backend.Inputs);
+    }
+
+    [Fact]
+    public async Task UnresolvedCoinIsNotActivated()
+    {
+        var backend = new RecordingBackend();
+        var router = new PlayViewInputRouter(backend);
+        Assert.False(await router.TryPressAsync(FruitMachinePlatformType.Impact,
+            new InputDefinitionModel { Id = "coin", CoinInput = true }, CancellationToken.None));
+        Assert.Empty(backend.Inputs);
+    }
+
     private sealed class RecordingBackend : IEmulationBackend
     {
         public List<(string, bool)> Inputs { get; } = [];
@@ -66,6 +92,8 @@ public sealed class PlayViewInputRouterTests
         public Task ResumeAsync(CancellationToken cancellationToken) => Task.CompletedTask;
         public Task ResetAsync(EmulationResetKind resetKind, CancellationToken cancellationToken) => Task.CompletedTask;
         public Task SetInputStateAsync(InputDefinitionModel inputDefinition, bool isPressed, CancellationToken cancellationToken) { Inputs.Add((inputDefinition.Id, isPressed)); return Task.CompletedTask; }
+        public Task<CoinInputResult> InsertCoinAsync(InputDefinitionModel inputDefinition, CancellationToken cancellationToken) { Inputs.Add((inputDefinition.Id, true)); return Task.FromResult(CoinInputResult.Accepted); }
+        public Task ReleaseCoinAsync(InputDefinitionModel inputDefinition, CancellationToken cancellationToken) { Inputs.Add((inputDefinition.Id, false)); return Task.CompletedTask; }
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 }

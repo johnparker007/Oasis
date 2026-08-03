@@ -379,7 +379,7 @@ public sealed class FmlToOasisMapperTests
     }
 
     [Fact]
-    public void Map_WithCurrentCoinFields_CreatesNamedCoinInputAndRetainsButtonNumber()
+    public void Map_WithCoinMarker_CreatesUnresolvedCoinWithoutGuessingFromSwitch()
     {
         var lamp = CreateLamp();
         SetExplicitUInt(lamp, "ButtonNumber", 6);
@@ -391,7 +391,10 @@ public sealed class FmlToOasisMapperTests
 
         Assert.Equal(InputDefinitionKind.Coin, input.Kind);
         Assert.True(input.CoinInput);
-        Assert.Equal("6", input.ButtonNumber);
+        Assert.Equal(string.Empty, input.ButtonNumber);
+        Assert.Null(input.CoinChannel);
+        Assert.Null(input.CoinValue);
+        Assert.Contains("without a resolved Amber coin channel or denomination", input.Notes);
         Assert.Equal("£1 Coin", input.Name);
     }
 

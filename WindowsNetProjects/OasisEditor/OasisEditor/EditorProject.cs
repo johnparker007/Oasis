@@ -32,6 +32,10 @@ public sealed class System6NativeRomSettings
     public string SoundRom4Path { get; set; } = string.Empty;
     public bool FlashSwitch { get; set; }
     public int PercentSwitchValue { get; set; } = DefaultPercentSwitchValue;
+    public AmberCoinCommunicationStyle CoinCommunicationStyle { get; set; } = AmberCoinCommunicationStyle.Parallel;
+    public bool CoinCommunicationInvert { get; set; }
+    public uint CoinPulseCycles { get; set; } = 800_000;
+    public bool CoinEdcEnabled { get; set; }
 
     public IReadOnlyList<string> ProgramRomPaths => [ProgramRom1Path, ProgramRom2Path, ProgramRom3Path, ProgramRom4Path];
     public IReadOnlyList<string> SoundRomPaths => [SoundRom1Path, SoundRom2Path, SoundRom3Path, SoundRom4Path];
@@ -92,7 +96,6 @@ public sealed class System6CoinSettings
     public const int DefaultCoin = 0;
     public const int DefaultCoinValue = 0;
     public const int DefaultCoinEnable = 1;
-    public const int DefaultLockoutValue = 0;
     public const int DefaultLockoutInvert = 0;
 
     public string Name { get; set; } = string.Empty;
@@ -101,7 +104,6 @@ public sealed class System6CoinSettings
     public int Coin { get; set; } = DefaultCoin;
     public int CoinValue { get; set; } = DefaultCoinValue;
     public int CoinEnable { get; set; } = DefaultCoinEnable;
-    public int LockoutValue { get; set; } = DefaultLockoutValue;
     public int LockoutInvert { get; set; } = DefaultLockoutInvert;
     public int CounterIn { get; set; }
     public int CounterOut { get; set; }
@@ -117,7 +119,25 @@ public sealed class System6CoinSettings
         Coin = DefaultCoin,
         CoinValue = DefaultCoinValue,
         CoinEnable = DefaultCoinEnable,
-        LockoutValue = DefaultLockoutValue,
         LockoutInvert = DefaultLockoutInvert
+    };
+}
+
+public enum AmberCoinCommunicationStyle { Parallel = 0 }
+
+public enum AmberCoinDenomination
+{
+    TwoPence = 0, FivePence = 1, TenPence = 2, TwentyPence = 3, FiftyPence = 4,
+    OnePound = 5, TwoPounds = 6, FivePenceToken = 7, TenPenceToken = 8,
+    TwentyPenceToken = 9, FiftyPenceToken = 10, OnePoundToken = 11, TwoPoundsToken = 12
+}
+
+public static class AmberCoinDenominations
+{
+    public static string GetLabel(int value) => value switch
+    {
+        0 => "2p", 1 => "5p", 2 => "10p", 3 => "20p", 4 => "50p", 5 => "£1", 6 => "£2",
+        7 => "5p token", 8 => "10p token", 9 => "20p token", 10 => "50p token", 11 => "£1 token", 12 => "£2 token",
+        _ => throw new ArgumentOutOfRangeException(nameof(value))
     };
 }
