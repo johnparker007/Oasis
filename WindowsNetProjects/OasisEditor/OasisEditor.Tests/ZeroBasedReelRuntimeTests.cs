@@ -38,12 +38,76 @@ public sealed class ZeroBasedReelRuntimeTests
         backend.PublishSnapshot(CreateSnapshot());
         Assert.Single(dispatches)();
 
-        Assert.Equal(10, document.RuntimeState.GetReelPosition("reel-0"));
-        Assert.Equal(20, document.RuntimeState.GetReelPosition("reel-1"));
-        Assert.Equal(30, document.RuntimeState.GetReelPosition("reel-2"));
-        Assert.Equal(40, document.RuntimeState.GetReelPosition("reel-3"));
-        Assert.Equal(10, document.RuntimeState.GetReelPosition(MachineObjectReference.Reel(0)));
-        Assert.Equal(40, document.RuntimeState.GetReelPosition(MachineObjectReference.Reel(3)));
+        Assert.Equal(86, document.RuntimeState.GetReelPosition("reel-0"));
+        Assert.Equal(76, document.RuntimeState.GetReelPosition("reel-1"));
+        Assert.Equal(66, document.RuntimeState.GetReelPosition("reel-2"));
+        Assert.Equal(56, document.RuntimeState.GetReelPosition("reel-3"));
+        Assert.Equal(86, document.RuntimeState.GetReelPosition(MachineObjectReference.Reel(0)));
+        Assert.Equal(56, document.RuntimeState.GetReelPosition(MachineObjectReference.Reel(3)));
+    }
+
+    [Theory]
+    [InlineData(FruitMachinePlatformType.Impact, 0, 96, 0d)]
+    [InlineData(FruitMachinePlatformType.Impact, 1, 96, 95d)]
+    [InlineData(FruitMachinePlatformType.Impact, 95, 96, 1d)]
+    [InlineData(FruitMachinePlatformType.Impact, 96, 96, 0d)]
+    [InlineData(FruitMachinePlatformType.Impact, 97, 96, 95d)]
+    [InlineData(FruitMachinePlatformType.Impact, -1, 96, 1d)]
+    [InlineData(FruitMachinePlatformType.Scorpion4, 10, 96, 10d)]
+    [InlineData(FruitMachinePlatformType.Impact, 10, 48, 76d)]
+    public void PlatformNormalization_UsesConfiguredBackendMotorStepRange(
+        FruitMachinePlatformType platform, int position, int positionCount, double expected)
+    {
+        Assert.Equal(expected, MachineReelRuntimeAdapter.NormalizePlatformReelPosition(platform, position, positionCount));
+    }
+
+    [Theory]
+    [InlineData(false, 86d)]
+    [InlineData(true, 10d)]
+    public void ImpactPlatformCorrection_PrecedesComponentReversal(bool isReversed, double expected)
+    {
+        var document = new DocumentTabViewModel(EditorDocument.CreateFromFile("panel.panel2d", "panel", "panel"));
+        document.SetPanelElements([new PanelElementModel
+        {
+            ObjectId = "reel-0", Kind = PanelElementKind.Reel, DisplayNumber = 0,
+            Stops = 24, IsReversed = isReversed
+        }]);
+        var dispatches = new List<Action>();
+        var adapter = new MachineReelRuntimeAdapter(() => [document], () => FruitMachinePlatformType.Impact,
+            () => false, _ => { }, dispatches.Add);
+
+        adapter.ApplyReelState(0, 10);
+        Assert.Single(dispatches)();
+
+        Assert.Equal(expected, document.RuntimeState.GetReelPosition("reel-0"));
+    }
+
+    [Fact]
+    public void ImpactCorrection_PreservesExistingTwelveAndSixteenStopBandOffsets()
+    {
+        Assert.Equal(-0.025d, MachineReelRuntimeAdapter.ResolvePlatformBandOffsetNormalized(FruitMachinePlatformType.Impact, 12));
+        Assert.Equal(-0.08d, MachineReelRuntimeAdapter.ResolvePlatformBandOffsetNormalized(FruitMachinePlatformType.Impact, 16));
+    }
+
+    [Fact]
+    public void ImpactAdapter_AllowsEachReelToUseItsConfiguredMotorStepCount()
+    {
+        var document = new DocumentTabViewModel(EditorDocument.CreateFromFile("panel.panel2d", "panel", "panel"));
+        document.SetPanelElements(Enumerable.Range(0, 2).Select(reelId => new PanelElementModel
+        {
+            ObjectId = $"reel-{reelId}", Kind = PanelElementKind.Reel,
+            DisplayNumber = reelId, Stops = 24
+        }).ToArray());
+        var dispatches = new List<Action>();
+        var adapter = new MachineReelRuntimeAdapter(() => [document], () => FruitMachinePlatformType.Impact,
+            () => false, _ => { }, dispatches.Add, reelId => reelId == 0 ? 48 : 96);
+
+        adapter.ApplyReelState(0, 10);
+        adapter.ApplyReelState(1, 10);
+        Assert.Single(dispatches)();
+
+        Assert.Equal(76d, document.RuntimeState.GetReelPosition("reel-0"));
+        Assert.Equal(86d, document.RuntimeState.GetReelPosition("reel-1"));
     }
 
     private static FabricMachineSnapshot CreateSnapshot() => new(1, [],

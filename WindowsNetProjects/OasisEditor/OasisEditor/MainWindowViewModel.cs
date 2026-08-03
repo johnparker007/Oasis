@@ -235,7 +235,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _lampRuntimeAdapter = new MachineLampRuntimeAdapter(
             () => OpenDocuments, () => false, _ => { }, DispatchToUiThread);
         _reelRuntimeAdapter = new MachineReelRuntimeAdapter(
-            () => OpenDocuments, () => SelectedFruitMachinePlatform, () => false, _ => { }, DispatchToUiThread);
+            () => OpenDocuments, () => SelectedFruitMachinePlatform, () => false, _ => { }, DispatchToUiThread,
+            reelId => System6ReelOptos.FirstOrDefault(reel => reel.ReelIndex == reelId)?.Steps
+                ?? System6ReelOptoSettings.DefaultSteps);
         _segmentRuntimeAdapter = new MachineSegmentRuntimeAdapter(
             () => OpenDocuments,
             DispatchToUiThread,
